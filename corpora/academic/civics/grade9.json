@@ -2,8 +2,8 @@
   "version": 1,
   "grade": "grade9",
   "subject": "civics",
-  "source": "hybrid: Wikibooks open textbooks + prior sources, cleaned + sentence-segmented",
-  "note": "Textbook corpus for civics/grade9. Trained via curriculum._trainAcademicStories. A course is a book, not an article about the subject.",
+  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
+  "note": "Hybrid academic-depth corpus for civics/grade9. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
   "experiences": [
     {
       "theme": "government",
@@ -15,14 +15,14 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/0/04/Forms_of_government.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "for the executive power referred to as \"the government\", see executive . for other uses, see government . world's states colored by systems of government : parliamentary systems : head of government is elected or nominated by and accountable to the legislature.",
+          "context": "world's states colored by systems of government : parliamentary systems : head of government is elected or nominated by and accountable to the legislature.",
           "licence": "CC0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/a/ad/The_Harmsworth_atlas_and_Gazetter_1908_Government_systems_world_map.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Forms of government in 1908 from The Harmsworth atlas and Gazetter",
-          "context": "historically, this required centralized administration and complex social organisation, as seen in regions like mesopotamia. 17 however, there is archaeological evidence that shows similar successes with more egalitarian and decentralized complex societies. forms of government in 1908 from the harmsworth atlas and gazetter starting at the end of the 17th century, the prevalence of republican forms of government grew. the english civil war and glorious revolution in england, the american revolution , and the french revolution contributed to the growth of representative forms of government.",
+          "context": "historically, this required centralized administration and complex social organisation, as seen in regions like mesopotamia. however, there is archaeological evidence that shows similar successes with more egalitarian and decentralized complex societies. forms of government in 1908 from the harmsworth atlas and gazetter starting at the end of the 17th century, the prevalence of republican forms of government grew. the english civil war and glorious revolution in england, the american revolution , and the french revolution contributed to the growth of representative forms of government.",
           "licence": "Public domain"
         },
         {
@@ -40,17 +40,24 @@
           "licence": "Public domain"
         },
         {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/06/Electoral_democracies.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Governments recognised as \"electoral democracies\" as of 2022 by the Freedom in the World survey",
+          "context": "",
+          "licence": "CC0"
+        },
+        {
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/29/Separation_of_powers.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Separation of powers in the US government , demonstrating the trias politica model",
-          "context": "institutions the organization, exercise, and constraints of power in a country are shaped by political institutions. 51 such institutions can increase the stability of a government.",
+          "context": "institutions edit the organization, exercise, and constraints of power in a country are shaped by political institutions. such institutions can increase the stability of a government. however, in parliamentary and semi-presidential systems , branches of government often intersect, having shared membership and overlapping functions.",
           "licence": "CC0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/f8/EIU_Democracy_Index_2017.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "more than half of the nations in the world are democracies-97 of 167, as of 2021. 57 however, the world is becoming more authoritarian with a quarter of the world's population under democratically backsliding governments.",
+          "context": "more than half of the nations in the world are democracies-97 of 167, as of 2021. however, the world is becoming more authoritarian with a quarter of the world's population under democratically backsliding governments.",
           "licence": "CC BY-SA 4.0"
         },
         {
@@ -77,15 +84,15 @@
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/b/bb/Government-spending-by-function.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
-          "caption": "Government spending composition by country (2023) [ 61 ]",
-          "context": "59 the united nations sustainable development goal 5 is a global initiative that aims to influence the provision of public services and infrastructure to marginalized demographics. government spending composition by country 61 public policy can be considered the sum of a government's direct and indirect activities. 62 it includes various aspects of life such as education, health care, employment, finance, economics, transportation, and all over elements of society.",
+          "caption": "Government spending composition by country (2023)",
+          "context": "in modern developed countries , public services often include courts , education , emergency services , health care , military , and policing , among others. the united nations sustainable development goal 5 is a global initiative that aims to influence the provision of public services and infrastructure to marginalized demographics. government spending composition by country public policy can be considered the sum of a government's direct and indirect activities. it includes various aspects of life such as education, health care, employment, finance, economics, transportation, and all over elements of society.",
           "licence": "CC BY 4.0"
         }
       ]
     },
     {
       "theme": "democracy",
-      "story": "democracy is a form of government in which political power is vested in the people or the population of a state. in a direct democracy, the people have the direct authority to deliberate and decide legislation. in a representative democracy, the people choose governing officials through elections to do so. the definition of \"the people\" and the ways authority is shared among them or delegated by them have changed over time and at varying rates in different countries. the notion of democracy has evolved considerably over time. throughout history, one can find evidence of direct democracy, in which communities make decisions through popular assembly. today, the dominant form of democracy is representative democracy, where citizens elect government officials to govern on their behalf such as in a parliamentary or presidential democracy. the term appeared in the 5th century bc in greek city-states, notably classical athens, to mean \"rule of the people\", in contrast to aristocracy , meaning \"rule of an elite\". in virtually all democratic governments throughout ancient and modern history, democratic citizenship was initially restricted to an elite class, which was later extended to all adult citizens. in most modern democracies, this was achieved through the suffrage movements of the 19th and 20th centuries. democracy contrasts with forms of government where power is not vested in the general population of a state, such as authoritarian systems. historically a rare and vulnerable form of government, democratic systems of government have become more prevalent since the 19th century, in particular with various waves of democratization. democracy more consistently results in improved health, education and economic outcomes. according to the v-dem democracy indices and the economist democracy index, less than half the world's population lives in a democracy as of 2022. at the same time, while representative democracy is widely valued, pew research center found that dissatisfaction with democratic performance is common even in many established democracies. in purely representative democracies, democracy is understood to be defined by free voting. no consensus exists on a precise definition of democracy , and many approaches have been taken to define it. a study identified 2,234 adjectives used to describe democracy in the english language. democratic principles are reflected in all eligible citizens being equal before the law and having equal access to legislative processes, even if not every vote cast elects someone. legal equality, political freedom and rule of law are often identified by commentators as foundational characteristics for a well-functioning democracy. in some countries, notably in the united kingdom , the dominant principle is that of parliamentary sovereignty, while maintaining judicial independence. in india, parliamentary sovereignty is subject to the constitution of india which includes judicial review. though the term \"democracy\" is typically used in the context of a political state, the principles also are potentially applicable to private organisations, such as clubs, societies and firms. democracies may use many different decision-making methods, but majority rule is the dominant form. without compensation, like legal protections of individual or group rights, political minorities can be oppressed by the \"tyranny of the majority\". majority rule involves a competitive approach, opposed to consensus democracy, creating the need that elections, and generally deliberation, be substantively and procedurally \"fair\", i.e., just and equitable. in some countries, freedom of political expression, freedom of speech, and freedom of the press are considered important to ensure that voters are well informed, enabling them to vote according to their own interests and beliefs. it has also been suggested that a basic feature of democracy is the capacity of all voters to participate freely and fully in the life of their society. republics, though often popularly associated with democracy because of the shared principle of rule by consent of the governed, are not necessarily democracies, as republicanism does not specify how the people are to rule. classically the term \"republic\" encompassed both democracies and aristocracies and their mixtures. in a modern sense the republican form of government is a form of government without a monarch. because of this, democracies can be republics or constitutional monarchies, such as the united kingdom, where the monarch is not a ruler. democratic assemblies are as old as the human species and are found throughout human history, but up until the nineteenth century, major political figures have largely opposed democracy. republican theorists linked democracy to small size: as political units grew in size, the likelihood increased that the government would turn despotic. at the same time, small political units were vulnerable to conquest. forms of democracy occurred organically in societies around the world that had no contact with each other. = = the term democracy first appeared in ancient greek political and philosophical thought in the city-state of athens during classical antiquity. the word comes from demos ' people' and kratos 'force/might'. under cleisthenes, what is generally held as the first example of a type of democracy in the sixth-century bc was established in athens. cleisthenes is referred to as \"the father of athenian democracy\". aeschylus also strongly alludes to the word in his play the suppliants, staged in c.463 bc, where he mentions \"the demos's ruling hand\" [demou kratousa cheir]. before that time, the word used to define the new political system of cleisthenes was probably isonomia, meaning political equality. all eligible citizens were allowed to speak and vote in the assembly, which set the laws of the city-state. however, athenian citizenship excluded women, slaves, foreigners , and youths below the age of military service. effectively, only 1 in 4 residents in athens qualified as citizens. owning land was not a requirement for citizenship. the exclusion of large parts of the population from the citizen body is closely related to the ancient understanding of citizenship. in most of antiquity the benefit of citizenship was tied to the obligation to fight war campaigns. range voting appeared in sparta as early as 700 bc. the spartan ecclesia was an assembly of the people, held once a month, in which every male citizen of at least 20 years of age could participate. in the assembly, spartans elected leaders and cast votes by range voting and shouting . aristotle called this \"childish\", as compared with the stone voting ballots used by the athenian citizenry. sparta adopted it because of its simplicity, and to prevent any biased voting, buying, or cheating that was predominant in the early democratic elections. in addition, the overthrow of the roman kingdom created a system with a democratic element in the form of many different popular assamblies. even though the roman republic contributed significantly to many aspects of democracy, only a fraction of romans were citizens with votes in elections for magistrates. the votes of the powerful were given more weight through a system of weighted voting, so most high officials, including members of the senate, came from a few wealthy and noble families. the roman model of governance inspired many political thinkers over the centuries. = = vaishali, capital city of the vajjika league of india, is considered one of the first examples of a republic around the 6th century bc. = = other cultures, such as the iroquois in the americas also developed a form of democratic society between 1450 and 1660 , well before contact with the europeans. this democracy continues to the present day and is the world's oldest standing representative democracy. = = while most regions in europe during the middle ages were ruled by clergy or feudal lords, there existed various systems involving elections or assemblies, although often only involving a small part of the population. in scandinavia, bodies known as things consisted of freemen presided by a lawspeaker. the veche, found in eastern europe, was a similar body to the scandinavian thing. in the roman catholic church, the pope has been elected by a papal conclave composed of cardinals since 1059. the first documented parliamentary body in europe was the cortes of leon. established by alfonso ix in 1188, the cortes had authority over setting taxation, foreign affairs and legislating, though the exact nature of its role remains disputed. the republic of ragusa, established in 1358 and centered around the city of dubrovnik, provided representation and voting rights to its male aristocracy only. various italian city-states and polities had republic forms of government. for instance, the republic of florence, established in 1115, was led by the signoria whose members were chosen by sortition. in the 10th-15th century frisia, a distinctly non-feudal society, the right to vote on local matters and on county officials was based on land size. the kouroukan fouga divided the mali empire into ruling clans that were represented at a great assembly called the gbara. however, the charter made mali more similar to a constitutional monarchy than a democratic republic. the first representative national assembly in england was simon de montfort's parliament in 1265. the emergence of petitioning is some of the earliest evidence of parliament being used as a forum to address the general grievances of ordinary people. however, the power to call parliament remained at the pleasure of the monarch. studies have linked the emergence of parliamentary institutions in europe during the medieval period to urban agglomeration and the creation of new classes, such as artisans, as well as the presence of nobility and religious elites. scholars have also linked the emergence of representative government to europe's relative political fragmentation. in poland, noble democracy was characterized by an increase in the activity of the middle nobility, which wanted to increase their share in exercising power at the expense of the magnates. magnates dominated the most important offices in the state and sat on the royal council, later the senate. the growing importance of the middle nobility had an impact on the establishment of the institution of the land sejmik , which subsequently obtained more rights. during the fifteenth and first half of the sixteenth century, sejmiks received more and more power and became the most important institutions of local power. in 1454, casimir iv jagiellon granted the sejmiks the right to decide on taxes and to convene a mass mobilization in the nieszawa statutes. he also pledged not to create new laws without their consent. = = in 17th century england, there was renewed interest in magna carta. the parliament of england passed the petition of right in 1628 which established certain liberties for subjects. the english civil war was fought between the king and an oligarchic but elected parliament, during which the idea of a political party took form with groups debating rights to political representation during the putney debates of 1647. after the glorious revolution of 1688, the bill of rights was enacted in 1689 which codified certain rights and liberties and is still in effect. the bill set out the requirement for regular elections, rules for freedom of speech in parliament and limited the power of the monarch, ensuring that, unlike much of europe at the time, royal absolutism would not prevail. economic historians douglass north and barry weingast have characterized the institutions implemented in the glorious revolution as a resounding success in terms of restraining the government and ensuring protection for property rights. renewed interest in the magna carta, the english civil war, and the glorious revolution in the 17th century prompted the growth of political philosophy on the british isles. thomas hobbes was the first philosopher to articulate a detailed social contract theory. writing in the leviathan , hobbes theorized that individuals living in the state of nature led lives that were \"solitary, poor, nasty, brutish and short\" and constantly waged a war of all against all. in order to prevent the occurrence of an anarchic state of nature, hobbes reasoned that individuals ceded their rights to a strong, authoritarian power. in other words, hobbes advocated for an absolute monarchy which, in his opinion, was the best form of government. later, philosopher and physician john locke would posit a different interpretation of social contract theory. writing in his two treatises of government , locke posited that all individuals possessed the inalienable rights to life, liberty and estate . according to locke, individuals would voluntarily come together to form a state for the purposes of defending their rights. particularly important for locke were property rights, whose protection locke deemed to be a government's primary purpose. furthermore, locke asserted that governments were legitimate only if they held the consent of the governed. for locke, citizens had the right to revolt against a government that acted against their interest or became tyrannical. although they were not widely read during his lifetime, locke's works are considered the founding documents of liberal thought and profoundly influenced the leaders of the american revolution and later the french revolution. his liberal democratic framework of governance remains the preeminent form of democracy in the world. in the cossack republics of ukraine in the 16th and 17th centuries, the cossack hetmanate and zaporizhian sich, the holder of the highest post of hetman was elected by the representatives from the country's districts. in north america, representative government began in jamestown, virginia, with the election of the house of burgesses in 1619. the puritans , baptists, and quakers who founded these colonies applied the democratic organisation of their congregations also to the administration of their communities in worldly matters. = = the first parliament of great britain was established in 1707, after the merger of the kingdom of england and the kingdom of scotland under the acts of union. however, parliament was only elected by male property owners, which amounted to 3% of the population in 1780. the first known british person of african heritage to vote in a general election, ignatius sancho, voted in 1774 and 1780. during the age of liberty in sweden , civil rights were expanded and power shifted from the monarch to parliament. the taxed peasantry was represented in parliament, although with little influence, but commoners without taxed property had no suffrage. the creation of the short-lived corsican republic in 1755 was an early attempt to adopt a democratic constitution . this corsican constitution was the first based on enlightenment principles and included female suffrage, something that was not included in most other democracies until the 20th century. the great majority of white men were farmers who met the property ownership or taxpaying requirements. with few exceptions, no blacks or women could vote. vermont, which, on declaring independence of great britain in 1777, adopted a constitution modelled on pennsylvania's citizenship and democratic suffrage for males with or without property. the united states constitution of 1787 is the oldest surviving, still active, governmental codified constitution. the constitution provided for an elected government and protected civil rights and liberties, but did not end slavery nor extend voting rights in the united states, instead leaving the issue of suffrage to the individual states. generally, states limited suffrage to white male property owners and taxpayers. at the time of the first presidential election in 1789, about 6% of the population was eligible to vote. the naturalization act of 1790 limited u.s. the bill of rights in 1791 set limits on government power to protect personal freedoms but had little impact on judgements by the courts for the first 130 years after ratification. in 1789, revolutionary france adopted the declaration of the rights of man and of the citizen and, although short-lived, the national convention was elected by all men in 1792. in force for less than 19 months, it was declared null and void by the grodno sejm that met in 1793. nonetheless, the 1791 constitution helped keep alive polish aspirations for the eventual restoration of the country's sovereignty over a century later. in the united states, the 1828 presidential election was the first in which non-property-holding white males could vote in the vast majority of states. voter turnout soared during the 1830s, reaching about 80% of the adult white male population in the 1840 presidential election. north carolina was the last state to abolish property qualification in 1856 resulting in a close approximation to universal white male suffrage . full enfranchisement of citizens was not secured until after the civil rights movement gained passage by the us congress of the voting rights act of 1965. universal male suffrage was established in france in march 1848 in the wake of the french revolution of 1848. during that year, several revolutions broke out in europe as rulers were confronted with popular demands for liberal constitutions and more democratic government. in 1876, the ottoman empire transitioned from an absolute monarchy to a constitutional one, and held two elections the next year to elect members to her newly formed parliament. provisional electoral regulations were issued, stating that the elected members of the provincial administrative councils would elect members to the first parliament. later that year, a new constitution was promulgated, which provided for a bicameral parliament with a senate appointed by the sultan and a popularly elected chamber of deputies. only men above the age of 30 who were competent in turkish and had full civil rights were allowed to stand for election. reasons for disqualification included holding dual citizenship, being employed by a foreign government, being bankrupt, employed as a servant, or having \"notoriety for ill deeds\". full universal suffrage was achieved in 1934. in 1893, the self-governing colony new zealand became the first country in the world to establish active universal suffrage by recognizing women as having the right to vote. = = 20th-century transitions to liberal democracy have come in successive \"waves of democracy\", variously resulting from wars, revolutions, decolonisation, and religious and economic circumstances. global waves of \"democratic regression\" reversing democratization, have also occurred in the 1920s and 30s, in the 1960s and 1970s, and in the 2010s. world war i and the dissolution of the autocratic ottoman and austro-hungarian empires resulted in the creation of new nation-states in europe, most of them at least nominally democratic. in the 1920s democratic movements flourished and women's suffrage advanced, but the great depression brought disenchantment and most of the countries of europe, latin america, and asia turned to strong-man rule or dictatorships. fascism and dictatorships flourished in nazi germany, italy, spain and portugal, as well as non-democratic governments in the baltics, the balkans, brazil, cuba, china, and japan, among others. world war ii brought a definitive reversal of this trend in western europe. the democratisation of the american, british, and french sectors of occupied germany , austria, italy, and the occupied japan served as a model for the later theory of government change. however, most of eastern europe, including the soviet sector of germany fell into the non-democratic soviet-dominated bloc. the war was followed by decolonisation, and again most of the new independent states had nominally democratic constitutions. india emerged as the world's largest democracy and continues to be so. countries that were once part of the british empire often adopted the british westminster system. in 1948, the universal declaration of human rights mandated democracy: 3. by 1960, the vast majority of country-states were nominally democracies, although most of the world's populations lived in nominal democracies that experienced sham elections, and other forms of subterfuge . a subsequent wave of democratisation brought substantial gains toward true liberal democracy for many states, dubbed \"third wave of democracy\". portugal, spain, and several of the military dictatorships in south america returned to civilian rule in the 1970s and 1980s. this was followed by countries in east and south asia by the mid-to-late 1980s. economic malaise in the 1980s, along with resentment of soviet oppression, contributed to the collapse of the soviet union, the associated end of the cold war, and the democratisation and liberalisation of the former eastern bloc countries. the most successful of the new democracies were those geographically and culturally closest to western europe, and they are now either part of the european union or candidate states. in 1986, after the toppling of the most prominent asian dictatorship, the only democratic state of its kind at the time emerged in the philippines with the rise of corazon aquino, who would later be known as the mother of asian democracy. the liberal trend spread to some states in africa in the 1990s, most prominently in south africa. according to freedom house, in 2007 there were 123 electoral democracies . according to world forum on democracy, electoral democracies now represent 120 of the 192 existing countries and constitute 58.2 per cent of the world's population. at the same time liberal democracies i.e. countries freedom house regards as free and respectful of basic human rights and the rule of law are 85 in number and represent 38 per cent of the global population. also in 2007 the united nations declared 15 september the international day of democracy. many countries reduced their voting age to 18 years; the major democracies began to do so in the 1970s starting in western europe and north america. most electoral democracies continue to exclude those younger than 18 from voting. the voting age has been lowered to 16 for national elections in a number of countries, including brazil, austria, cuba, and nicaragua. in california, a 2004 proposal to permit a quarter vote at 14 and a half vote at 16 was ultimately defeated. in 2008, the german parliament proposed but shelved a bill that would grant the vote to each citizen at birth, to be used by a parent until the child claims it for themselves. in a freedom house report released in 2018, democracy scores for most countries declined for the 12th consecutive year. the christian science monitor reported that nationalist and populist political ideologies were gaining ground, at the expense of rule of law, in countries like poland, turkey and hungary. for example, in poland, the president appointed 27 new supreme court judges over legal objections from the european commission. in turkey, thousands of judges were removed from their positions following a failed coup attempt during a government crackdown. within english-speaking western democracies, \"protection-based\" attitudes combining cultural conservatism and leftist economic attitudes were the strongest predictor of support for authoritarian modes of governance. aristotle's democratic theory contrasted rule by the many , with rule by the few , and with rule by a single person . he also thought that there was a good and a bad variant of each system . a common view among early and renaissance republican theorists was that democracy could only survive in small political communities. heeding the lessons of the roman republic's shift to monarchism as it grew larger or smaller, these republican theorists held that the expansion of territory and population inevitably led to tyranny. democracy was therefore highly fragile and rare historically, as it could only survive in small political units, which due to their size were vulnerable to conquest by larger political units. = = the theory of aggregative democracy claims that the aim of the democratic processes is to solicit citizens' preferences and aggregate them together to determine what social policies society should adopt. therefore, proponents of this view hold that democratic participation should primarily focus on voting, where the policy with the most votes gets implemented. different variants of aggregative democracy exist. according to the minimalist democracy conception, elections are a mechanism for competition between politicians. joseph schumpeter articulated this view famously in his book capitalism, socialism, and democracy. anthony downs argues that ideological political parties are necessary to act as a mediating broker between individuals and governments. on the other hand, direct democracy, where citizens vote directly on legislative proposals, can show better aggregation in cases of differences in preferences between elites and voters.",
+      "story": "democracy is a form of government in which political power is vested in the people or the population of a state. in a direct democracy, the people have the direct authority to deliberate and decide legislation. in a representative democracy, the people choose governing officials through elections to do so. the definition of \"the people\" and the ways authority is shared among them or delegated by them have changed over time and at varying rates in different countries. the notion of democracy has evolved considerably over time. throughout history, one can find evidence of direct democracy, in which communities make decisions through popular assembly. today, the dominant form of democracy is representative democracy, where citizens elect government officials to govern on their behalf such as in a parliamentary or presidential democracy. the term appeared in the 5th century bc in greek city-states, notably classical athens, to mean \"rule of the people\", in contrast to aristocracy , meaning \"rule of an elite\". in virtually all democratic governments throughout ancient and modern history, democratic citizenship was initially restricted to an elite class, which was later extended to all adult citizens. in most modern democracies, this was achieved through the suffrage movements of the 19th and 20th centuries. democracy contrasts with forms of government where power is not vested in the general population of a state, such as authoritarian systems. historically a rare and vulnerable form of government, democratic systems of government have become more prevalent since the 19th century, in particular with various waves of democratization. democracy more consistently results in improved health, education and economic outcomes. according to the v-dem democracy indices and the economist democracy index, less than half the world's population lives in a democracy as of 2022. at the same time, while representative democracy is widely valued, pew research center found that dissatisfaction with democratic performance is common even in many established democracies. in purely representative democracies, democracy is understood to be defined by free voting. no consensus exists on a precise definition of democracy , and many approaches have been taken to define it. a study identified 2,234 adjectives used to describe democracy in the english language. democratic principles are reflected in all eligible citizens being equal before the law and having equal access to legislative processes, even if not every vote cast elects someone. legal equality, political freedom and rule of law are often identified by commentators as foundational characteristics for a well-functioning democracy. in some countries, notably in the united kingdom , the dominant principle is that of parliamentary sovereignty, while maintaining judicial independence. in india, parliamentary sovereignty is subject to the constitution of india which includes judicial review. though the term \"democracy\" is typically used in the context of a political state, the principles also are potentially applicable to private organisations, such as clubs, societies and firms. democracies may use many different decision-making methods, but majority rule is the dominant form. without compensation, like legal protections of individual or group rights, political minorities can be oppressed by the \"tyranny of the majority\". majority rule involves a competitive approach, opposed to consensus democracy, creating the need that elections, and generally deliberation, be substantively and procedurally \"fair\", i.e., just and equitable. in some countries, freedom of political expression, freedom of speech, and freedom of the press are considered important to ensure that voters are well informed, enabling them to vote according to their own interests and beliefs. it has also been suggested that a basic feature of democracy is the capacity of all voters to participate freely and fully in the life of their society. republics, though often popularly associated with democracy because of the shared principle of rule by consent of the governed, are not necessarily democracies, as republicanism does not specify how the people are to rule. classically the term \"republic\" encompassed both democracies and aristocracies and their mixtures. in a modern sense the republican form of government is a form of government without a monarch. because of this, democracies can be republics or constitutional monarchies, such as the united kingdom, where the monarch is not a ruler. democratic assemblies are as old as the human species and are found throughout human history, but up until the nineteenth century, major political figures have largely opposed democracy. republican theorists linked democracy to small size: as political units grew in size, the likelihood increased that the government would turn despotic. at the same time, small political units were vulnerable to conquest. forms of democracy occurred organically in societies around the world that had no contact with each other. = = the term democracy first appeared in ancient greek political and philosophical thought in the city-state of athens during classical antiquity. the word comes from demos ' people' and kratos 'force/might'. under cleisthenes, what is generally held as the first example of a type of democracy in the sixth-century bc was established in athens. cleisthenes is referred to as \"the father of athenian democracy\". aeschylus also strongly alludes to the word in his play the suppliants, staged in c.463 bc, where he mentions \"the demos's ruling hand\" demou kratousa cheir. before that time, the word used to define the new political system of cleisthenes was probably isonomia, meaning political equality. all eligible citizens were allowed to speak and vote in the assembly, which set the laws of the city-state. however, athenian citizenship excluded women, slaves, foreigners , and youths below the age of military service. effectively, only 1 in 4 residents in athens qualified as citizens. owning land was not a requirement for citizenship. the exclusion of large parts of the population from the citizen body is closely related to the ancient understanding of citizenship. in most of antiquity the benefit of citizenship was tied to the obligation to fight war campaigns. range voting appeared in sparta as early as 700 bc. the spartan ecclesia was an assembly of the people, held once a month, in which every male citizen of at least 20 years of age could participate. in the assembly, spartans elected leaders and cast votes by range voting and shouting . aristotle called this \"childish\", as compared with the stone voting ballots used by the athenian citizenry. sparta adopted it because of its simplicity, and to prevent any biased voting, buying, or cheating that was predominant in the early democratic elections. in addition, the overthrow of the roman kingdom created a system with a democratic element in the form of many different popular assamblies. even though the roman republic contributed significantly to many aspects of democracy, only a fraction of romans were citizens with votes in elections for magistrates. the votes of the powerful were given more weight through a system of weighted voting, so most high officials, including members of the senate, came from a few wealthy and noble families. the roman model of governance inspired many political thinkers over the centuries. = = vaishali, capital city of the vajjika league of india, is considered one of the first examples of a republic around the 6th century bc. = = other cultures, such as the iroquois in the americas also developed a form of democratic society between 1450 and 1660 , well before contact with the europeans. this democracy continues to the present day and is the world's oldest standing representative democracy. = = while most regions in europe during the middle ages were ruled by clergy or feudal lords, there existed various systems involving elections or assemblies, although often only involving a small part of the population. in scandinavia, bodies known as things consisted of freemen presided by a lawspeaker. the veche, found in eastern europe, was a similar body to the scandinavian thing. in the roman catholic church, the pope has been elected by a papal conclave composed of cardinals since 1059. the first documented parliamentary body in europe was the cortes of leon. established by alfonso ix in 1188, the cortes had authority over setting taxation, foreign affairs and legislating, though the exact nature of its role remains disputed. the republic of ragusa, established in 1358 and centered around the city of dubrovnik, provided representation and voting rights to its male aristocracy only. various italian city-states and polities had republic forms of government. for instance, the republic of florence, established in 1115, was led by the signoria whose members were chosen by sortition. in the 10th-15th century frisia, a distinctly non-feudal society, the right to vote on local matters and on county officials was based on land size. the kouroukan fouga divided the mali empire into ruling clans that were represented at a great assembly called the gbara. however, the charter made mali more similar to a constitutional monarchy than a democratic republic. the first representative national assembly in england was simon de montfort's parliament in 1265. the emergence of petitioning is some of the earliest evidence of parliament being used as a forum to address the general grievances of ordinary people. however, the power to call parliament remained at the pleasure of the monarch. studies have linked the emergence of parliamentary institutions in europe during the medieval period to urban agglomeration and the creation of new classes, such as artisans, as well as the presence of nobility and religious elites. scholars have also linked the emergence of representative government to europe's relative political fragmentation. in poland, noble democracy was characterized by an increase in the activity of the middle nobility, which wanted to increase their share in exercising power at the expense of the magnates. magnates dominated the most important offices in the state and sat on the royal council, later the senate. the growing importance of the middle nobility had an impact on the establishment of the institution of the land sejmik , which subsequently obtained more rights. during the fifteenth and first half of the sixteenth century, sejmiks received more and more power and became the most important institutions of local power. in 1454, casimir iv jagiellon granted the sejmiks the right to decide on taxes and to convene a mass mobilization in the nieszawa statutes. he also pledged not to create new laws without their consent. = = in 17th century england, there was renewed interest in magna carta. the parliament of england passed the petition of right in 1628 which established certain liberties for subjects. the english civil war was fought between the king and an oligarchic but elected parliament, during which the idea of a political party took form with groups debating rights to political representation during the putney debates of 1647. after the glorious revolution of 1688, the bill of rights was enacted in 1689 which codified certain rights and liberties and is still in effect. the bill set out the requirement for regular elections, rules for freedom of speech in parliament and limited the power of the monarch, ensuring that, unlike much of europe at the time, royal absolutism would not prevail. economic historians douglass north and barry weingast have characterized the institutions implemented in the glorious revolution as a resounding success in terms of restraining the government and ensuring protection for property rights. renewed interest in the magna carta, the english civil war, and the glorious revolution in the 17th century prompted the growth of political philosophy on the british isles. thomas hobbes was the first philosopher to articulate a detailed social contract theory. writing in the leviathan , hobbes theorized that individuals living in the state of nature led lives that were \"solitary, poor, nasty, brutish and short\" and constantly waged a war of all against all. in order to prevent the occurrence of an anarchic state of nature, hobbes reasoned that individuals ceded their rights to a strong, authoritarian power. in other words, hobbes advocated for an absolute monarchy which, in his opinion, was the best form of government. later, philosopher and physician john locke would posit a different interpretation of social contract theory. writing in his two treatises of government , locke posited that all individuals possessed the inalienable rights to life, liberty and estate . according to locke, individuals would voluntarily come together to form a state for the purposes of defending their rights. particularly important for locke were property rights, whose protection locke deemed to be a government's primary purpose. furthermore, locke asserted that governments were legitimate only if they held the consent of the governed. for locke, citizens had the right to revolt against a government that acted against their interest or became tyrannical. although they were not widely read during his lifetime, locke's works are considered the founding documents of liberal thought and profoundly influenced the leaders of the american revolution and later the french revolution. his liberal democratic framework of governance remains the preeminent form of democracy in the world. in the cossack republics of ukraine in the 16th and 17th centuries, the cossack hetmanate and zaporizhian sich, the holder of the highest post of hetman was elected by the representatives from the country's districts. in north america, representative government began in jamestown, virginia, with the election of the house of burgesses in 1619. the puritans , baptists, and quakers who founded these colonies applied the democratic organisation of their congregations also to the administration of their communities in worldly matters. = = the first parliament of great britain was established in 1707, after the merger of the kingdom of england and the kingdom of scotland under the acts of union. however, parliament was only elected by male property owners, which amounted to 3% of the population in 1780. the first known british person of african heritage to vote in a general election, ignatius sancho, voted in 1774 and 1780. during the age of liberty in sweden , civil rights were expanded and power shifted from the monarch to parliament. the taxed peasantry was represented in parliament, although with little influence, but commoners without taxed property had no suffrage. the creation of the short-lived corsican republic in 1755 was an early attempt to adopt a democratic constitution . this corsican constitution was the first based on enlightenment principles and included female suffrage, something that was not included in most other democracies until the 20th century. the great majority of white men were farmers who met the property ownership or taxpaying requirements. with few exceptions, no blacks or women could vote. vermont, which, on declaring independence of great britain in 1777, adopted a constitution modelled on pennsylvania's citizenship and democratic suffrage for males with or without property. the united states constitution of 1787 is the oldest surviving, still active, governmental codified constitution. the constitution provided for an elected government and protected civil rights and liberties, but did not end slavery nor extend voting rights in the united states, instead leaving the issue of suffrage to the individual states. generally, states limited suffrage to white male property owners and taxpayers. at the time of the first presidential election in 1789, about 6% of the population was eligible to vote. the naturalization act of 1790 limited u.s. the bill of rights in 1791 set limits on government power to protect personal freedoms but had little impact on judgements by the courts for the first 130 years after ratification. in 1789, revolutionary france adopted the declaration of the rights of man and of the citizen and, although short-lived, the national convention was elected by all men in 1792. in force for less than 19 months, it was declared null and void by the grodno sejm that met in 1793. nonetheless, the 1791 constitution helped keep alive polish aspirations for the eventual restoration of the country's sovereignty over a century later. in the united states, the 1828 presidential election was the first in which non-property-holding white males could vote in the vast majority of states. voter turnout soared during the 1830s, reaching about 80% of the adult white male population in the 1840 presidential election. north carolina was the last state to abolish property qualification in 1856 resulting in a close approximation to universal white male suffrage . full enfranchisement of citizens was not secured until after the civil rights movement gained passage by the us congress of the voting rights act of 1965. universal male suffrage was established in france in march 1848 in the wake of the french revolution of 1848. during that year, several revolutions broke out in europe as rulers were confronted with popular demands for liberal constitutions and more democratic government. in 1876, the ottoman empire transitioned from an absolute monarchy to a constitutional one, and held two elections the next year to elect members to her newly formed parliament. provisional electoral regulations were issued, stating that the elected members of the provincial administrative councils would elect members to the first parliament. later that year, a new constitution was promulgated, which provided for a bicameral parliament with a senate appointed by the sultan and a popularly elected chamber of deputies. only men above the age of 30 who were competent in turkish and had full civil rights were allowed to stand for election. reasons for disqualification included holding dual citizenship, being employed by a foreign government, being bankrupt, employed as a servant, or having \"notoriety for ill deeds\". full universal suffrage was achieved in 1934. in 1893, the self-governing colony new zealand became the first country in the world to establish active universal suffrage by recognizing women as having the right to vote. = = 20th-century transitions to liberal democracy have come in successive \"waves of democracy\", variously resulting from wars, revolutions, decolonisation, and religious and economic circumstances. global waves of \"democratic regression\" reversing democratization, have also occurred in the 1920s and 30s, in the 1960s and 1970s, and in the 2010s. world war i and the dissolution of the autocratic ottoman and austro-hungarian empires resulted in the creation of new nation-states in europe, most of them at least nominally democratic. in the 1920s democratic movements flourished and women's suffrage advanced, but the great depression brought disenchantment and most of the countries of europe, latin america, and asia turned to strong-man rule or dictatorships. fascism and dictatorships flourished in nazi germany, italy, spain and portugal, as well as non-democratic governments in the baltics, the balkans, brazil, cuba, china, and japan, among others. world war ii brought a definitive reversal of this trend in western europe. the democratisation of the american, british, and french sectors of occupied germany , austria, italy, and the occupied japan served as a model for the later theory of government change. however, most of eastern europe, including the soviet sector of germany fell into the non-democratic soviet-dominated bloc. the war was followed by decolonisation, and again most of the new independent states had nominally democratic constitutions. india emerged as the world's largest democracy and continues to be so. countries that were once part of the british empire often adopted the british westminster system. in 1948, the universal declaration of human rights mandated democracy: 3. by 1960, the vast majority of country-states were nominally democracies, although most of the world's populations lived in nominal democracies that experienced sham elections, and other forms of subterfuge . a subsequent wave of democratisation brought substantial gains toward true liberal democracy for many states, dubbed \"third wave of democracy\". portugal, spain, and several of the military dictatorships in south america returned to civilian rule in the 1970s and 1980s. this was followed by countries in east and south asia by the mid-to-late 1980s. economic malaise in the 1980s, along with resentment of soviet oppression, contributed to the collapse of the soviet union, the associated end of the cold war, and the democratisation and liberalisation of the former eastern bloc countries. the most successful of the new democracies were those geographically and culturally closest to western europe, and they are now either part of the european union or candidate states. in 1986, after the toppling of the most prominent asian dictatorship, the only democratic state of its kind at the time emerged in the philippines with the rise of corazon aquino, who would later be known as the mother of asian democracy. the liberal trend spread to some states in africa in the 1990s, most prominently in south africa. according to freedom house, in 2007 there were 123 electoral democracies . according to world forum on democracy, electoral democracies now represent 120 of the 192 existing countries and constitute 58.2 per cent of the world's population. at the same time liberal democracies i.e. countries freedom house regards as free and respectful of basic human rights and the rule of law are 85 in number and represent 38 per cent of the global population. also in 2007 the united nations declared 15 september the international day of democracy. many countries reduced their voting age to 18 years; the major democracies began to do so in the 1970s starting in western europe and north america. most electoral democracies continue to exclude those younger than 18 from voting. the voting age has been lowered to 16 for national elections in a number of countries, including brazil, austria, cuba, and nicaragua. in california, a 2004 proposal to permit a quarter vote at 14 and a half vote at 16 was ultimately defeated. in 2008, the german parliament proposed but shelved a bill that would grant the vote to each citizen at birth, to be used by a parent until the child claims it for themselves. in a freedom house report released in 2018, democracy scores for most countries declined for the 12th consecutive year. the christian science monitor reported that nationalist and populist political ideologies were gaining ground, at the expense of rule of law, in countries like poland, turkey and hungary. for example, in poland, the president appointed 27 new supreme court judges over legal objections from the european commission. in turkey, thousands of judges were removed from their positions following a failed coup attempt during a government crackdown. within english-speaking western democracies, \"protection-based\" attitudes combining cultural conservatism and leftist economic attitudes were the strongest predictor of support for authoritarian modes of governance. aristotle's democratic theory contrasted rule by the many , with rule by the few , and with rule by a single person . he also thought that there was a good and a bad variant of each system . a common view among early and renaissance republican theorists was that democracy could only survive in small political communities. heeding the lessons of the roman republic's shift to monarchism as it grew larger or smaller, these republican theorists held that the expansion of territory and population inevitably led to tyranny. democracy was therefore highly fragile and rare historically, as it could only survive in small political units, which due to their size were vulnerable to conquest by larger political units. = = the theory of aggregative democracy claims that the aim of the democratic processes is to solicit citizens' preferences and aggregate them together to determine what social policies society should adopt. therefore, proponents of this view hold that democratic participation should primarily focus on voting, where the policy with the most votes gets implemented. different variants of aggregative democracy exist. according to the minimalist democracy conception, elections are a mechanism for competition between politicians. joseph schumpeter articulated this view famously in his book capitalism, socialism, and democracy. anthony downs argues that ideological political parties are necessary to act as a mediating broker between individuals and governments. on the other hand, direct democracy, where citizens vote directly on legislative proposals, can show better aggregation in cases of differences in preferences between elites and voters.",
       "source": "en.wikipedia.org",
       "licence": "CC-BY-SA-3.0",
       "figures": [
@@ -100,22 +107,29 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/d/da/The_Parthenon_in_Athens.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "The Parthenon is considered a symbol of democracy.",
-          "context": "the parthenon is considered a symbol of democracy.",
+          "context": "according to the v-dem democracy indices and the economist democracy index , less than half the world's population lives in a democracy as of 2022 . at the same time, while representative democracy is widely valued, pew research center found that dissatisfaction with democratic performance is common even in many established democracies. the parthenon is considered a symbol of democracy.",
           "licence": "CC BY 2.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/a/a8/Political_regime_dem_fh%2C_World%2C_2025_%28cropped%29.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "An interactive chart of democracies by Freedom House",
-          "context": "an interactive chart of democracies by freedom house in purely representative democracies, democracy is understood to be defined by free voting.",
+          "context": "an interactive chart of democracies by freedom house in purely representative democracies, democracy is understood to be defined by free voting. no consensus exists on a precise definition of democracy , and many approaches have been taken to define it.",
           "licence": "CC BY 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/c5/Age_of_democracy_polity%2C_World%2C_2020_%28cropped%29.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Age of democracy polity",
-          "context": "because of this, democracies can be republics or constitutional monarchies , such as the united kingdom, where the monarch is not a ruler.",
+          "context": "in a modern sense the republican form of government is a form of government without a monarch . because of this, democracies can be republics or constitutional monarchies , such as the united kingdom, where the monarch is not a ruler.",
           "licence": "CC BY 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/f1/Discurso_funebre_pericles.PNG?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "republican theorists linked democracy to small size: as political units grew in size, the likelihood increased that the government would turn despotic. at the same time, small political units were vulnerable to conquest.",
+          "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/51/Austria_Parlament_Athena_bw.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
@@ -142,7 +156,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/b/b8/John_Locke.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "after the glorious revolution of 1688, the bill of rights was enacted in 1689 which codified certain rights and liberties and is still in effect. the bill set out the requirement for regular elections, rules for freedom of speech in parliament and limited the power of the monarch, ensuring that, unlike much of europe at the time, royal absolutism would not prevail. john locke expanded on thomas hobbes 's social contract theory and developed the concept of natural rights , the right to private property and the principle of consent of the governed . his ideas form the ideological basis of liberal democracies today.",
+          "context": "the bill set out the requirement for regular elections, rules for freedom of speech in parliament and limited the power of the monarch, ensuring that, unlike much of europe at the time, royal absolutism would not prevail. economic historians douglass north and barry weingast have characterized the institutions implemented in the glorious revolution as a resounding success in terms of restraining the government and ensuring protection for property rights. john locke expanded on thomas hobbes 's social contract theory and developed the concept of natural rights , the right to private property and the principle of consent of the governed . his ideas form the ideological basis of liberal democra",
           "licence": "Public domain"
         },
         {
@@ -156,38 +170,178 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/f9/Declaration_of_Independence_%281819%29%2C_by_John_Trumbull.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "the creation of the short-lived corsican republic in 1755 was an early attempt to adopt a democratic constitution . 107 this corsican constitution was the first based on enlightenment principles and included female suffrage , something that was not included in most other democracies until the 20th century.",
+          "context": "the creation of the short-lived corsican republic in 1755 was an early attempt to adopt a democratic constitution . this corsican constitution was the first based on enlightenment principles and included female suffrage , something that was not included in most other democracies until the 20th century. the great majority of white men were farmers who met the property ownership or taxpaying requirements. with few exceptions, no blacks or women could vote.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Declaration_of_the_Rights_of_Man_and_of_the_Citizen_in_1789.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "112 the naturalization act of 1790 limited u.s. 113 the bill of rights in 1791 set limits on government power to protect personal freedoms but had little impact on judgements by the courts for the first 130 years after ratification. inspired by enlightenment philosophers, the declaration of the rights of man and of the citizen had a significant impact on the development of popular conceptions of individual liberty and democracy in europe and worldwide.",
+          "context": "the naturalization act of 1790 limited u.s. the bill of rights in 1791 set limits on government power to protect personal freedoms but had little impact on judgements by the courts for the first 130 years after ratification. inspired by enlightenment philosophers, the declaration of the rights of man and of the citizen had a significant impact on the development of popular conceptions of individual liberty and democracy in europe and worldwide.",
           "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/db/Suffrage_universel_1848.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "1850s lithograph marking the establishment of universal male suffrage in France in 1848",
+          "context": "full enfranchisement of citizens was not secured until after the civil rights movement gained passage by the us congress of the voting rights act of 1965 .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/62/Opening_of_the_first_parliament.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Painting depicting the opening of the first Australian Parliament in 1901, one of the events that formed part of the first wave of democracy in the early 20th century",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/91/Lev_Trotsky_1906-3.3_V1.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "in the 1920s democratic movements flourished and women's suffrage advanced, but the great depression brought disenchantment and most of the countries of europe, latin america, and asia turned to strong-man rule or dictatorships. fascism and dictatorships flourished in nazi germany , italy , spain and portugal , as well as non-democratic governments in the baltics , the balkans , brazil , cuba , china , and japan , among others. the soviet of workers' deputies of saint petersburg in 1905: leon trotsky in the center. the soviets were as an early example of a workers council .",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/73/Mandela_voting_in_1994.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Nelson Mandela voting in the 1994 multi-racial elections in South Africa . It was the first time he had voted in his life.",
+          "context": "countries that were once part of the british empire often adopted the british westminster system . in 1948, the universal declaration of human rights mandated democracy: 3. nelson mandela voting in the 1994 multi-racial elections in south africa . it was the first time he had voted in his life.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b9/Corazon_Aquino_inauguration.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Corazon Aquino taking the oath of office, becoming the first female president in Asia",
+          "context": "the most successful of the new democracies were those geographically and culturally closest to western europe, and they are now either part of the european union or candidate states . in 1986, after the toppling of the most prominent asian dictatorship, the only democratic state of its kind at the time emerged in the philippines with the rise of corazon aquino , who would later be known as the mother of asian democracy . corazon aquino taking the oath of office, becoming the first female president in asia the liberal trend spread to some states in africa in the 1990s, most prominently in south africa.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/81/Age_of_democracies_at_the_end_of_2015%2C_OWID.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Age of democracies at the end of 2015",
+          "context": "age of democracies at the end of 2015 according to freedom house , in 2007 there were 123 electoral democracies . according to world forum on democracy , electoral democracies now represent 120 of the 192 existing countries and constitute 58.2 per cent of the world's population.",
+          "licence": "CC BY 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/68/Nordiska_radets_presidium_haller_mote_med_de_nordiska_statsministrarna_under_session_i_Helsingfors_2008-10-28.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "countries freedom house regards as free and respectful of basic human rights and the rule of law are 85 in number and represent 38 per cent of the global population. also in 2007 the united nations declared 15 september the international day of democracy . meeting of the grand committee of the parliament of finland in 2008 many countries reduced their voting age to 18 years; the major democracies began to do so in the 1970s starting in western europe and north america. most electoral democracies continue to exclude those younger than 18 from voting.",
+          "licence": "CC BY 2.5 dk"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/a2/Countries_democratizing_or_autocratizing_substantially_and_significantly_2010%E2%80%932020.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "for example, in poland, the president appointed 27 new supreme court judges over legal objections from the european commission . in turkey, thousands of judges were removed from their positions following a failed coup attempt during a government crackdown . countries autocratising or democratising substantially and significantly . countries in grey are substantially unchanged.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c4/Democracy_claims.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "countries autocratising or democratising substantially and significantly . countries in grey are substantially unchanged.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/04/Forms_of_government.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "proponents of direct democracy view citizens do not rule themselves unless they directly decide laws and policies. political activity can be valuable in itself, it socialises and educates citizens, and popular participation can check powerful elites. world's states colored by systems of government : parliamentary systems : head of government is elected or nominated by and accountable to the legislature.",
+          "licence": "CC0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/7d/Landsgemeinde_Glarus%2C_2009.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A Landsgemeinde (in 2009) of the canton of Glarus , an example of direct democracy in Switzerland",
+          "context": "one form of democracy is direct democracy , in which all eligible citizens have active participation in the political decision making, for example voting on policy initiatives directly. in most modern democracies, the whole body of eligible citizens remain the sovereign power but political power is exercised indirectly through elected representatives; this is called a representative democracy .",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/3e/Swiss_voting_material.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "in switzerland , without needing to register, every citizen receives ballot papers and information brochures for each vote . switzerland has a direct democracy system and votes are organised about four times a year; here, to berne 's citizen in november 2008 about 5 national, 2 cantonal, 4 municipal referendums, and 2 elections to take care of at the same time.",
+          "licence": "CC BY 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e4/Houses.of.parliament.overall.arp.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "a characteristic of representative democracy is that while the representatives are elected by the people to act in the people's interest, they retain the freedom to exercise their own judgement as how best to do so. such reasons have driven criticism upon representative democracy, pointing out the contradictions of representation mechanisms with democracy. the palace of westminster in london , united kingdom. the westminster system originates from the british houses of parliament .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/ac/King_Charles_III_%28July_2023%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "King Charles III , a constitutional monarch",
+          "context": "a semi-presidential system is a system of democracy in which the government includes both a prime minister and a president. the particular powers held by the prime minister and president vary by country.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/1c/Quality_of_democracy_%E2%80%93_and_the_problems_of_measuring_it_%287_rankings%29.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "such democracies typically have only one central authority which is often not subject to meaningful public review by any other governmental authority. russian-style democracy has often been referred to as a \"guided democracy\". same country , seven approaches, concepts the search for a common approach to conceptualize, measure and compare democracy remains a challenge in modern political science.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/59/Economist_Intelligence_Unit_Democracy_Index_2024.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "media, hearings, panels, other deliberative bodies vi. egalitarian political equality are all citizens equally empowered?",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b2/Number_of_countries_experiencing_autocratization_and_democratization%2C_1900%E2%80%932000.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "yet others have identified fascist moments in modern democracies. they have termed the societies produced by modern democracies as neo-feudal and have contrasted democracy with fascism, anarcho-capitalism , theocracy , and absolute monarchy . 2010 , the number of countries autocratizing is higher than those democratizing . a democratic transition describes a phase in a country's political system , often created as a result of an incomplete change from an authoritarian regime to a democratic one .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/ef/Hong_Kong_P1066634_%2848678676473%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Banner in Hong Kong asking for democracy, August 2019",
+          "context": "some accounts of democratization emphasize how elites drove democratization, whereas other accounts emphasize grassroots bottom-up processes. how democratization occurs has also been used to explain other political phenomena, such as whether a country goes to a war or whether its economy grows. banner in hong kong asking for democracy, august 2019 several philosophers and researchers have outlined historical and social factors seen as supporting the evolution of democracy. other commentators have mentioned the influence of economic development.",
+          "licence": "CC BY 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/f0/1790-_Electoral_and_liberal_democracy_indices_-_world.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "the v-dem institute 's indices of democracy indicate that worldwide democracy peaked in 2012, and has since declined, with the decline accelerating in the early 2020s.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/27/Putin%27s_speech_on_Crocus_City_Hall_attack.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Russia under Vladimir Putin has turned into an authoritarian state",
+          "context": "autocratization edit the v-dem institute 's indices of democracy indicate that worldwide democracy peaked in 2012, and has since declined, with the decline accelerating in the early 2020s.",
+          "licence": "CC BY 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/08/Alexander_Lukashenko_%282024%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Alexander Lukashenko is currently serving his seventh and final term as the President of Belarus , leading many to claim he is \"Europe's Last Dictator\".",
+          "context": "with the exception of a handful of cases, voters never, ever - in any society, in any culture - prioritize democracy over all else. individual voters worry about much more mundane things, as is their right. alexander lukashenko is currently serving his seventh and final term as the president of belarus , leading many to claim he is \"europe's last dictator\".",
+          "licence": "CC BY 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/42/Social_sciences.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "icon",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY-SA 3.0"
         }
       ]
     },
     {
       "theme": "separation-of-powers",
-      "story": "separation of powers is intended to prevent power centralization, democratic backsliding and tyrannical government. separation of powers is closely linked to notions of checks and balances. polybius described the roman republic as a mixed government ruled by the roman senate, consuls and the assemblies. polybius explained the system of checks and balances in detail, crediting lycurgus of sparta with the first government of this kind. the system comprised a legislative branch and two executive branches, the english council of state and the lord protector, all being elected and having checks upon each other. a further development in english thought was the idea that the judicial powers should be separated from the executive branch. this followed the use of the juridical system by the crown to prosecute opposition leaders following the restoration, in the late years of charles ii and during the short reign of james ii . an earlier forerunner to montesquieu's tripartite system was articulated by john locke in his work two treatises of government . in the two treatises, locke distinguished between legislative, executive, and federative power. locke defined legislative power as having \"the right to direct how the force of the commonwealth shall be employed\" , while executive power entailed the \"execution of the laws that are made, and remain in force\" . locke distinguishes between separate powers, but not between discretely separate institutions, and notes that one body or person can share in two or more of the powers. for instance, locke noted that while the executive and federative powers are different, they are often combined in a single institution . locke believed that the legislative power was supreme over the executive and federative powers, which are subordinate. locke reasoned that the legislative was supreme because it has law-giving authority; \"[f]or what can give laws to another, must need to be superior to him\" . according to locke, legislative power derives its authority from the people, who have the right to make and unmake the legislature. he argues that once people consent to be governed by laws, only those representatives they have chosen can create laws on their behalf, and they are bound solely by laws enacted by these representatives. locke maintained that there are restrictions on the legislative power. locke says that the legislature cannot govern arbitrarily, cannot levy taxes, or confiscate property without the consent of the governed , and cannot transfer its law-making powers to another body, known as the nondelegation doctrine . the term \"tripartite system\" is commonly ascribed to french enlightenment political philosopher montesquieu, although he did not use such a term but referred to the \"distribution\" of powers. in the spirit of law , montesquieu described the various forms of distribution of political power among a legislature, an executive, and a judiciary. montesquieu's approach was to present and defend a form of government whose powers were not excessively centralized in a single monarch or similar ruler . he based this model on the constitution of the roman republic and the british constitutional system. montesquieu took the view that the roman republic had powers separated so that no one could usurp complete power. in the british constitutional system, montesquieu discerned a separation of powers among the monarch, parliament, and the courts of law. in every government there are three sorts of power: the legislative; the executive in respect to things dependent on the law of nations; and the executive in regard to matters that depend on the civil law. by virtue of the first, the prince or magistrate enacts temporary or perpetual laws and amends or abrogates those that have been already enacted. by the second, he makes peace or war, sends or receives embassies, establishes public security, and provides against invasions. by the third, he punishes criminals or determines the disputes that arise between individuals. the latter we shall call the judiciary power, and the other simply the executive power of the state. montesquieu argues that each power should only exercise its own functions, or \"there would be an end to everything\". if the same person or body of magistrates held legislative and executive powers, liberty would be lost since the same monarch or senate could both enact and execute tyrannical laws. similarly, a political entity holding both judiciary and legislative powers would exert arbitrary control over subjects, and one holding both judiciary and executive powers would be oppressive. separation of powers requires a different source of legitimization, or a different act of legitimization from the same source, for each of the separate powers. if the legislative branch appoints the executive and judicial powers, as montesquieu indicated, there will be no separation or division of its powers, since the power to appoint carries with it the power to revoke. executive power would be given to a monarch, as that branch's need to be quick is best fulfilled by one, while legislative power is better regulated by many. if executive power were given to selected members of the legislation rather than the monarch, liberty would be lost since the members would always be able to have both powers. in most modern constitutions, the separation of powers doctrine is modified by the notion of moderate, balanced government or checks and balances - a distinct idea that was developed from the ancient theory of mixed government. since the two concepts developed alongside each other, they have been closely associated, even though they are in conflict to some extent. they are at times even used interchangeably. a government with checks and balances comprises more than one institution exercising state power, and intends for each institution to have some influence over the other . one institution may then \"check\" the other, or hinder it from using its power to pursue its ends - such as by declaring one of its actions a legal nullity or by questioning and removing one of its officers from their position. for instance, many parliaments consist of two houses; both of which are required to pass a bill before it becomes a law. a member representing a larger and more diverse base may require a broader coalition, composed of people with opposing interests, to win election, and is thus incentivized to moderate their stance; and vice versa. one branch's efforts to prevent another branch from becoming supreme are thought to perpetually hinder any branch from imposing unduly severe measures on the governed. immanuel kant took this view, saying that \"the problem of setting up a state can be solved even by a nation of devils,\" so long as they possess an appropriate constitution to pit opposing factions against each other. checks and balances are designed to maintain the system of separation of powers keeping each branch in its place. the idea is that it is not enough to separate the powers and guarantee their independence but the branches need to have the constitutional means to defend their own legitimate powers from the encroachments of the other branches. under this influence, it was implemented in 1787 in the constitution of the united states separation of powers. 78, alexander hamilton, citing montesquieu, redefined the judiciary as a separately distinct branch of government with the legislative and the executive branches. before hamilton, many colonists in the american colonies had adhered to british political ideas and conceived of government as divided into executive and legislative branches . james madison wrote about checks and balances in federalist no. for madison, no government would be necessary if men were angels, but since men must govern men, the challenge is to have a government control both the governed and itself. while the government is primarily controlled by its dependence on the public, other precautions are necessary. having rival interests creates \"the defect of better motives\" in both private and public life, displayed in distributing power to make everybody's private interests defend public rights through checking each other. thomas paine wrote about balances in common sense. according to paine, two houses on behalf of the king and the people respectively creates a house divided against itself. while \"pleasantly arranged\", this system will end up being dominated by the power made strongest in the constitution. other powers can check its speed, but they will be ineffectual if they cannot stop it. importantly, paine rejected the theory that english liberty was secured by constitutionally guaranteed checks and balances. there are different theories about how to differentiate the functions of the state , so that they may be distributed among multiple structures of government . disagreement arises between various normative theories in particular about what is the allocation of functions to specific governing bodies or branches of government. how to correctly or usefully delineate and define the 'state functions' is another major point of contention. the function of the legislative branch of government broadly consists of authoritatively issuing binding rules. the function of the executive branch of government includes many exercises of powers in fact, whether in carrying into effect legal decisions or affecting the real world on its own initiative. the function of the judicial branch of government is the binding application of legal rules to a particular case, which usually involves creatively interpreting and developing these rules. the function of an electoral branch of government is the oversight of the process surrounding elections, typically to the other branches of government. this may include electoral boundary delimitation or the administration of an election. in some governments such as bolivia, costa rica, panama, nicaragua, and venezuela, it forms its own distinct branch, while in others it may be fused variably into the executive, judicial, or legislative branches. the function of an auditory branch of government is to monitor the performance of the government in its operation. in taiwan, the control yuan forms its own branch of government tasked with the oversight and auditing of the government, and holds the ability to impeach public officials for misconduct. \"prelude to the separation of powers\". doi:10.1017/s0008197301000629. the meaning of the separation of powers. an analysis of the doctrine from its origin to the adoption of the united states constitution. tulane studies in political science. new orleans/the hague: tulane university press/martinus nijhoff. \"the rise and fall of the 'doctrine' of separation of powers\". \"the real separation in separation of powers law\". mollers, christoph [in german] . the three branches: a comparative model of separation of powers. in masterman, roger; schutze, robert . the cambridge companion to comparative constitutional law. the making of constitutional democracy: from creation to application of law. constitutionalism and the separation of powers. \"separation of powers in thought and practice?\". zoldan, is the federal judiciary independent of congress?, 70 stan.",
+      "story": "separation of powers is intended to prevent power centralization, democratic backsliding and tyrannical government. separation of powers is closely linked to notions of checks and balances. polybius described the roman republic as a mixed government ruled by the roman senate, consuls and the assemblies. polybius explained the system of checks and balances in detail, crediting lycurgus of sparta with the first government of this kind. the system comprised a legislative branch and two executive branches, the english council of state and the lord protector, all being elected and having checks upon each other. a further development in english thought was the idea that the judicial powers should be separated from the executive branch. this followed the use of the juridical system by the crown to prosecute opposition leaders following the restoration, in the late years of charles ii and during the short reign of james ii . an earlier forerunner to montesquieu's tripartite system was articulated by john locke in his work two treatises of government . in the two treatises, locke distinguished between legislative, executive, and federative power. locke defined legislative power as having \"the right to direct how the force of the commonwealth shall be employed\" , while executive power entailed the \"execution of the laws that are made, and remain in force\" . locke distinguishes between separate powers, but not between discretely separate institutions, and notes that one body or person can share in two or more of the powers. for instance, locke noted that while the executive and federative powers are different, they are often combined in a single institution . locke believed that the legislative power was supreme over the executive and federative powers, which are subordinate. locke reasoned that the legislative was supreme because it has law-giving authority; \"for what can give laws to another, must need to be superior to him\" . according to locke, legislative power derives its authority from the people, who have the right to make and unmake the legislature. he argues that once people consent to be governed by laws, only those representatives they have chosen can create laws on their behalf, and they are bound solely by laws enacted by these representatives. locke maintained that there are restrictions on the legislative power. locke says that the legislature cannot govern arbitrarily, cannot levy taxes, or confiscate property without the consent of the governed , and cannot transfer its law-making powers to another body, known as the nondelegation doctrine . the term \"tripartite system\" is commonly ascribed to french enlightenment political philosopher montesquieu, although he did not use such a term but referred to the \"distribution\" of powers. in the spirit of law , montesquieu described the various forms of distribution of political power among a legislature, an executive, and a judiciary. montesquieu's approach was to present and defend a form of government whose powers were not excessively centralized in a single monarch or similar ruler . he based this model on the constitution of the roman republic and the british constitutional system. montesquieu took the view that the roman republic had powers separated so that no one could usurp complete power. in the british constitutional system, montesquieu discerned a separation of powers among the monarch, parliament, and the courts of law. in every government there are three sorts of power: the legislative; the executive in respect to things dependent on the law of nations; and the executive in regard to matters that depend on the civil law. by virtue of the first, the prince or magistrate enacts temporary or perpetual laws and amends or abrogates those that have been already enacted. by the second, he makes peace or war, sends or receives embassies, establishes public security, and provides against invasions. by the third, he punishes criminals or determines the disputes that arise between individuals. the latter we shall call the judiciary power, and the other simply the executive power of the state. montesquieu argues that each power should only exercise its own functions, or \"there would be an end to everything\". if the same person or body of magistrates held legislative and executive powers, liberty would be lost since the same monarch or senate could both enact and execute tyrannical laws. similarly, a political entity holding both judiciary and legislative powers would exert arbitrary control over subjects, and one holding both judiciary and executive powers would be oppressive. separation of powers requires a different source of legitimization, or a different act of legitimization from the same source, for each of the separate powers. if the legislative branch appoints the executive and judicial powers, as montesquieu indicated, there will be no separation or division of its powers, since the power to appoint carries with it the power to revoke. executive power would be given to a monarch, as that branch's need to be quick is best fulfilled by one, while legislative power is better regulated by many. if executive power were given to selected members of the legislation rather than the monarch, liberty would be lost since the members would always be able to have both powers. in most modern constitutions, the separation of powers doctrine is modified by the notion of moderate, balanced government or checks and balances - a distinct idea that was developed from the ancient theory of mixed government. since the two concepts developed alongside each other, they have been closely associated, even though they are in conflict to some extent. they are at times even used interchangeably. a government with checks and balances comprises more than one institution exercising state power, and intends for each institution to have some influence over the other . one institution may then \"check\" the other, or hinder it from using its power to pursue its ends - such as by declaring one of its actions a legal nullity or by questioning and removing one of its officers from their position. for instance, many parliaments consist of two houses; both of which are required to pass a bill before it becomes a law. a member representing a larger and more diverse base may require a broader coalition, composed of people with opposing interests, to win election, and is thus incentivized to moderate their stance; and vice versa. one branch's efforts to prevent another branch from becoming supreme are thought to perpetually hinder any branch from imposing unduly severe measures on the governed. immanuel kant took this view, saying that \"the problem of setting up a state can be solved even by a nation of devils,\" so long as they possess an appropriate constitution to pit opposing factions against each other. checks and balances are designed to maintain the system of separation of powers keeping each branch in its place. the idea is that it is not enough to separate the powers and guarantee their independence but the branches need to have the constitutional means to defend their own legitimate powers from the encroachments of the other branches. under this influence, it was implemented in 1787 in the constitution of the united states separation of powers. 78, alexander hamilton, citing montesquieu, redefined the judiciary as a separately distinct branch of government with the legislative and the executive branches. before hamilton, many colonists in the american colonies had adhered to british political ideas and conceived of government as divided into executive and legislative branches . james madison wrote about checks and balances in federalist no. for madison, no government would be necessary if men were angels, but since men must govern men, the challenge is to have a government control both the governed and itself. while the government is primarily controlled by its dependence on the public, other precautions are necessary. having rival interests creates \"the defect of better motives\" in both private and public life, displayed in distributing power to make everybody's private interests defend public rights through checking each other. thomas paine wrote about balances in common sense. according to paine, two houses on behalf of the king and the people respectively creates a house divided against itself. while \"pleasantly arranged\", this system will end up being dominated by the power made strongest in the constitution. other powers can check its speed, but they will be ineffectual if they cannot stop it. importantly, paine rejected the theory that english liberty was secured by constitutionally guaranteed checks and balances. there are different theories about how to differentiate the functions of the state , so that they may be distributed among multiple structures of government . disagreement arises between various normative theories in particular about what is the allocation of functions to specific governing bodies or branches of government. how to correctly or usefully delineate and define the 'state functions' is another major point of contention. the function of the legislative branch of government broadly consists of authoritatively issuing binding rules. the function of the executive branch of government includes many exercises of powers in fact, whether in carrying into effect legal decisions or affecting the real world on its own initiative. the function of the judicial branch of government is the binding application of legal rules to a particular case, which usually involves creatively interpreting and developing these rules. the function of an electoral branch of government is the oversight of the process surrounding elections, typically to the other branches of government. this may include electoral boundary delimitation or the administration of an election. in some governments such as bolivia, costa rica, panama, nicaragua, and venezuela, it forms its own distinct branch, while in others it may be fused variably into the executive, judicial, or legislative branches. the function of an auditory branch of government is to monitor the performance of the government in its operation. in taiwan, the control yuan forms its own branch of government tasked with the oversight and auditing of the government, and holds the ability to impeach public officials for misconduct. \"prelude to the separation of powers\". doi:10.1017/s0008197301000629. the meaning of the separation of powers. an analysis of the doctrine from its origin to the adoption of the united states constitution. tulane studies in political science. new orleans/the hague: tulane university press/martinus nijhoff. \"the rise and fall of the 'doctrine' of separation of powers\". \"the real separation in separation of powers law\". mollers, christoph in german . the three branches: a comparative model of separation of powers. in masterman, roger; schutze, robert . the cambridge companion to comparative constitutional law. the making of constitutional democracy: from creation to application of law. constitutionalism and the separation of powers. \"separation of powers in thought and practice?\". zoldan, is the federal judiciary independent of congress?, 70 stan.",
       "source": "en.wikipedia.org",
       "licence": "CC-BY-SA-3.0",
       "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/en/b/b4/Ambox_important.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this article has multiple issues. please help improve it or discuss these issues on the talk page .",
-          "licence": "Public domain"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/f/fe/Unbalanced_scales.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "please improve it by verifying the claims made and adding inline citations . statements consisting only of original research should be removed. this article may be unbalanced towards certain viewpoints . please help improve it by adding information on neglected viewpoints.",
-          "licence": "Public domain"
-        },
         {
           "src": "https://upload.wikimedia.org/wikipedia/en/0/01/A_coloured_voting_box.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "icon",
@@ -199,29 +353,15 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/0/0f/John_Locke_by_John_Greenhill.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "John Locke",
-          "context": "this followed the use of the juridical system by the crown to prosecute opposition leaders following the restoration , in the late years of charles ii and during the short reign of james ii . john locke an earlier forerunner to montesquieu's tripartite system was articulated by john locke in his work two treatises of government . 7 in the two treatises , locke distinguished between legislative, executive, and federative power.",
+          "context": "a further development in english thought was the idea that the judicial powers should be separated from the executive branch. this followed the use of the juridical system by the crown to prosecute opposition leaders following the restoration , in the late years of charles ii and during the short reign of james ii . john locke an earlier forerunner to montesquieu's tripartite system was articulated by john locke in his work two treatises of government . in the two treatises , locke distinguished between legislative, executive, and federative power.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/fc/Montesquieu_1.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Montesquieu",
-          "context": "10 locke maintained that there are restrictions on the legislative power. locke says that the legislature cannot govern arbitrarily, cannot levy taxes, or confiscate property without the consent of the governed , and cannot transfer its law-making powers to another body, known as the nondelegation doctrine . montesquieu the term \"tripartite system\" is commonly ascribed to french enlightenment political philosopher montesquieu , although he did not use such a term but referred to the \"distribution\" of powers.",
+          "context": "locke maintained that there are restrictions on the legislative power. locke says that the legislature cannot govern arbitrarily, cannot levy taxes, or confiscate property without the consent of the governed , and cannot transfer its law-making powers to another body, known as the nondelegation doctrine . montesquieu the term \"tripartite system\" is commonly ascribed to french enlightenment political philosopher montesquieu , although he did not use such a term but referred to the \"distribution\" of powers. in the spirit of law , montesquieu described the various forms of distribution of political power among a legislature , an executive , and a judiciary .",
           "licence": "Public domain"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/en/9/99/Question_book-new.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "this section needs more citations . please help improve this section by adding citations to reliable sources .",
-          "licence": "Cc-by-sa-3.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/1/1c/Wiki_letter_w_cropped.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "[icon]",
-          "caption": "",
-          "context": "this section needs expansion . you can help by adding missing information .",
-          "licence": "CC BY-SA 3.0"
         }
       ]
     },
@@ -249,22 +389,8 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/1/1f/Savka_Dabcevic_Kucar.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Savka Dabčević-Kučar , Croatian Spring participant; Europe's first female prime minister",
-          "context": "savka dabcevic-kucar , croatian spring participant; europe's first female prime minister civil rights guarantee equal protection under the law. when civil and political rights are not guaranteed to all as part of equal protection of laws , or when such guarantees exist on paper but are not respected in practice, opposition, legal action and even social unrest may ensue.",
+          "context": "it is considered by some that the sole purpose of government is the protection of life, liberty, and property. some thinkers have argued that the concepts of self-ownership and cognitive liberty affirm rights to choose the food one eats, the medicine one takes , and the habit one indulges . savka dabcevic-kucar , croatian spring participant; europe's first female prime minister civil rights guarantee equal protection under the law. when civil and political rights are not guaranteed to all as part of equal protection of laws , or when such guarantees exist on paper but are not respected in practice, opposition, legal action and even social unrest may ensue.",
           "licence": "CC BY-SA 3.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/en/b/b4/Ambox_important.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this section may contain original research . please improve it by verifying the claims made and adding inline citations .",
-          "licence": "Public domain"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/b/bd/Ambox_globe_content.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "Globe icon.",
-          "caption": "",
-          "context": "the examples and perspectives in this section deal primarily with the united states and do not represent a worldwide view of the subject . you may improve this section , discuss the issue on the talk page , or create a new section, as appropriate.",
-          "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/1/17/Balance%2C_by_David.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
@@ -292,7 +418,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/fc/Election_MG_3455.JPG?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A ballot box used in France",
-          "context": "\"free election\" redirects here. for the \"free elections\" of polish kings, see royal elections in poland .",
+          "context": "",
           "licence": "CC BY-SA 2.0 fr"
         },
         {
@@ -327,35 +453,21 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/0/0e/Cardiganshire_Election_ballot_paper_1880.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A British election campaign leaflet with an illustration of an example ballot paper, 1880",
-          "context": "",
+          "context": "the pala king gopala (ruled c.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e5/Election_of_Paasikivi.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "10 11 the spartan election of the ephors , therefore, also predates the reforms of solon in athens by approximately 180 years. in 1946 mannerheim resigned as president of finland, and the parliament of finland elected prime minister paasikivi to succeed him, with 159 votes. questions of suffrage , especially suffrage for minority groups, have dominated the history of elections.",
+          "context": "nor were the lowest of the four classes of athenian citizens eligible to hold public office, through the reforms of solon . the spartan election of the ephors , therefore, also predates the reforms of solon in athens by approximately 180 years. in 1946 mannerheim resigned as president of finland, and the parliament of finland elected prime minister paasikivi to succeed him, with 159 votes. questions of suffrage , especially suffrage for minority groups, have dominated the history of elections.",
           "licence": "Public domain"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/en/9/99/Question_book-new.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "this section needs more citations . please help improve this section by adding citations to reliable sources .",
-          "licence": "Cc-by-sa-3.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/f/fb/Electoral_systems_map_simplified.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "please help improve this section by adding citations to reliable sources . unsourced material may be challenged and removed .",
-          "licence": "CC BY-SA 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/3e/Swiss_voting_material.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "electoral systems main articles: electoral system and social choice function many electoral methods are used in the world. the purpose of an election may be to choose one person, such as a president, or a group of members, such as a committee or a parliament. in switzerland , without the need to register, every citizen receives at home the ballot papers and information brochure for each voting . switzerland has a direct democracy system and votes are organized about four times a year; here, to berne 's citizens in november 2008 about 5 national, 2 cantonal, 4 municipal referendums, and 2 elections to take care of at the same time.",
+          "context": "electoral systems edit many electoral methods are used in the world. the purpose of an election may be to choose one person, such as a president, or a group of members, such as a committee or a parliament. in switzerland , without the need to register, every citizen receives at home the ballot papers and information brochure for each voting . switzerland has a direct democracy system and votes are organized about four times a year; here, to berne 's citizens in november 2008 about 5 national, 2 cantonal, 4 municipal referendums, and 2 elections to take care of at the same time.",
           "licence": "CC BY 3.0"
         },
         {
@@ -364,6 +476,20 @@
           "caption": "A man voting in the Czech Republic in 2014",
           "context": "this minority rule success can also result if multiple winners are elected and voters cast multiple votes . but even if the majority is split among multiple candidates, proportionate results can still be produced if votes can be transferred, as under stv, or if multiple winners are elected and each voter has just one vote. a man voting in the czech republic in 2014 alternatives to first-past-the-post voting include approval voting , two-round , proportional representation , and instant-runoff voting . with two-round elections, the field of candidates is thinned prior to the second round of voting.",
           "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/f5/The_Presidential_Election_in_Argentina%2C_the_Polling-Station_at_the_Church_of_La_Merced%2C_Buenos_Ayres.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "while in the first elections, there may be plenty of hopeful candidates, in the last rounds consensus on one winner is generally achieved. in today's context of rapid communication, candidates can put disproportionate resources into competing strongly in the first few stages, because those stages affect the reaction of latter stages. buenos aires 1892: \"the rival voters were kept back by an armed force of police out of sight to others. only batches of two or three were allowed to enter the polling office at a time.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/0a/Wahlzettel-3.-Reich.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A ballot from the 1936 elections in Nazi Germany",
+          "context": "other examples include persuading candidates not to run, such as through blackmailing, bribery, intimidation or physical violence. a ballot from the 1936 elections in nazi germany a sham election , or show election is an election that is held purely for show; that is, without any significant political choice or real impact on the results of the election. sham elections are a common event in dictatorships that feel the need to feign the appearance of public legitimacy .",
+          "licence": "Public domain"
         }
       ]
     },
@@ -384,7 +510,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/53/Young_woman%27s_first_vote._Cooktown%2C_Australia.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Young woman's first vote. Cooktown, Australia .",
-          "context": "the voters or elected representatives cast their preferences on one, some, or all options, 1,2,3,4... voting methods \"voting method\" redirects here; not to be confused with electoral system . the most common voting method uses paper ballots on which a voter either places an x or marks their preferences as in ranked voting . this may involve marking their support for a candidate or party whose identification is printed on the ballot, or a write-in where they write out the name of their preferred candidate .",
+          "context": "the condorcet rule is used in decision-making. the voters or elected representatives cast their preferences on one, some, or all options, 1,2,3,4... the most common voting method uses paper ballots on which a voter either places an x or marks their preferences as in ranked voting . this may involve marking their support for a candidate or party whose identification is printed on the ballot, or a write-in where they write out the name of their preferred candidate .",
           "licence": "CC BY-SA 4.0"
         },
         {
@@ -398,7 +524,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/52/Votes_for_Women.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Suffrage poster, 1920",
-          "context": "additional forms of voting include a recorded vote and balloting. the assembly can decide on the voting method by adopting a motion on it. suffrage poster, 1920 this section is an excerpt from women's suffrage .",
+          "context": "additional forms of voting include a recorded vote and balloting. the assembly can decide on the voting method by adopting a motion on it.",
           "licence": "Public domain"
         },
         {
@@ -441,56 +567,49 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/c4/The_Ideals_of_United_Australia_%28cropped%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "it is easier for voters to evaluate one simple list of policies for each party, like this platform for the united australia party , than to individually judge every single candidate. an alternative explanation for why parties are ubiquitous across the world is that the formation of parties provides compatible incentives for candidates and legislators.",
+          "context": "some authors have challenged it on empirical grounds, either finding no evidence for the claim that parties emerge from existing cleavages, or arguing that the claim is not empirically testable. others note that while social cleavages might cause political parties to exist, this obscures the opposite effect: that political parties also cause changes in the underlying social cleavages. it is easier for voters to evaluate one simple list of policies for each party, like this platform for the united australia party , than to individually judge every single candidate. an alternative explanation for why parties are ubiquitous across the world is that the formation of parties provides compatible i",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/98/18th_National_Congress_of_the_Communist_Party_of_China.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "parties in democracies usually select their party leadership in ways that are more open and competitive than parties in autocracies, where the selection of a new party leader is likely to be tightly controlled. in countries with large sub-national regions, particularly federalist countries, there may be regional party leaders and regional party members in addition to the national membership and leadership.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/54/National_Woman%27s_Party_Members_Lafayette_Park_August_6%2C_1918.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Members of the National Woman's Party in 1918",
-          "context": "54 55 these executive organizations may serve to constrain the party leader, especially if that leader is an autocrat. 56 57 it is common for political parties to conduct major leadership decisions, like selecting a party executive and setting their policy goals, during regular party conferences .",
+          "context": "these executive organizations may serve to constrain the party leader, especially if that leader is an autocrat. it is common for political parties to conduct major leadership decisions, like selecting a party executive and setting their policy goals, during regular party conferences .",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/65/Bundesarchiv_B_145_Bild-F079282-0030%2C_M%C3%BCnster%2C_SPD-Parteitag%2C_Willy_Brandt.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "parties can arise from existing cleavages in society, like the social democratic party of germany which was formed to represent german workers. a mass party is a type of political party that developed around cleavages in society and mobilized the ordinary citizens or 'masses' in the political process.",
+          "context": "elite parties give little priority to expanding the party's membership base, and its leaders are its only members. the earliest political parties, such as the democratic-republicans and the federalists , are classified as elite parties. parties can arise from existing cleavages in society, like the social democratic party of germany which was formed to represent german workers. a mass party is a type of political party that developed around cleavages in society and mobilized the ordinary citizens or 'masses' in the political process.",
           "licence": "CC BY-SA 3.0 de"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/38/NorthWest_Territories_Legislature_Plan_2014_19_Members.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "97 because some party systems include a large number of parties that have a very low probability of winning elections, it is often useful to think about the effective number of parties rather than the literal number of registered parties. in a non-partisan legislature, like the legislative assembly of the northwest territories , every member runs and legislates as a political independent with no party affiliation. in a non-partisan system, no political parties exist, or political parties are not a major part of the political system.",
+          "context": "an informative way to classify the party systems of the world is by how many parties they include. because some party systems include a large number of parties that have a very low probability of winning elections, it is often useful to think about the effective number of parties rather than the literal number of registered parties. in a non-partisan legislature, like the legislative assembly of the northwest territories , every member runs and legislates as a political independent with no party affiliation. in a non-partisan system, no political parties exist, or political parties are not a major part of the political system.",
           "licence": "CC BY-SA 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e8/Boleta_electoral_marcada%2C_de_las_elecciones_federales_de_M%C3%A9xico_de_2012.JPG?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "121 criticisms also center around these systems' tendencies to encourage insincere voting and to facilitate the spoiler effect . on this 2012 mexican ballot, voters have more than two parties to choose from. multi-party systems are systems in which more than two parties have a realistic chance of holding power and influencing policy.",
+          "context": "for example, some commentators argue that political institutions in prominent two-party systems like the united states have been specifically designed to ensure that no third party can become competitive. criticisms also center around these systems' tendencies to encourage insincere voting and to facilitate the spoiler effect . on this 2012 mexican ballot, voters have more than two parties to choose from. multi-party systems are systems in which more than two parties have a realistic chance of holding power and influencing policy.",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e5/The_Bosses_of_the_Senate_by_Joseph_Keppler.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Campaign finance restrictions may be motivated by the perception that excessive or secretive contributions to political parties will make them beholden to people other than the voters.",
-          "context": "143 144 much of this expense is paid by candidates and political parties, which often develop sophisticated fundraising organizations. 145 because paying for participation in electoral contests is such a central democratic activity, the funding of political parties is an important feature of a country's politics. campaign finance restrictions may be motivated by the perception that excessive or secretive contributions to political parties will make them beholden to people other than the voters. common sources of party funding across countries include dues-paying party members, advocacy groups and lobbying organizations, corporations, trade unions, and candidates who may self-fund activities.",
-          "licence": "Public domain"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/1/17/Balance%2C_by_David.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "",
-          "licence": "CC BY 3.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/6/66/DodgerBlue_flag_waving.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "conservatism european union <img alt=\"\" src=\"//upload.wikimedia.org/wikipedia/commons/thumb/4/4c/feminism_symbol.svg/20px-feminism_symbol.svg.png?",
+          "context": "much of this expense is paid by candidates and political parties, which often develop sophisticated fundraising organizations. because paying for participation in electoral contests is such a central democratic activity, the funding of political parties is an important feature of a country's politics. campaign finance restrictions may be motivated by the perception that excessive or secretive contributions to political parties will make them beholden to people other than the voters. common sources of party funding across countries include dues-paying party members, advocacy groups and lobbying organizations, corporations, trade unions, and candidates who may self-fund activities.",
           "licence": "Public domain"
         }
       ]
@@ -505,35 +624,28 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/9/96/Jury_box_cropped.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "An empty jury box at an American courtroom in Pershing County, Nevada",
-          "context": "for the film with that title, see juror no. not to be confused with jurist , an individual with expertise in law. most trial juries are \" petit juries \", and consist of up to 15 people.",
+          "context": "most trial juries are \" petit juries \", and consist of up to 15 people.",
           "licence": "CC BY-SA 2.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/b/bd/Ambox_globe_content.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "Globe icon.",
-          "caption": "",
-          "context": "the examples and perspectives in this section deal primarily with england and do not represent a worldwide view of the subject . you may improve this section , discuss the issue on the talk page , or create a new section, as appropriate.",
-          "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/b/b7/The_Jury_by_John_Morgan.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "The Jury , an 1861 painting by John Morgan of a British jury, all of whom then had to be men",
-          "context": "you may improve this section , discuss the issue on the talk page , or create a new section, as appropriate.",
+          "context": "the same custom evolved into the vehmic court system in medieval germany. in anglo-saxon england, juries investigated crimes.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/33/Jury_summons.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Notice mailed to summon a potential juror to a US court in 2007",
-          "context": "after 1922, trial juries throughout england had to satisfy the same qualifications; although it was not until the 1980s that a centralised system was designed for selecting jurors from among the people who were qualified to serve. 36 this meant there was still a great amount of discretion in the hands of local officials. notice mailed to summon a potential juror to a us court in 2007 potential jurors are summoned to the courthouse for service. in the past, jurors were identified manually, by local authorities making lists of men they believed to be eligible for service.",
+          "context": "after 1922, trial juries throughout england had to satisfy the same qualifications; although it was not until the 1980s that a centralised system was designed for selecting jurors from among the people who were qualified to serve. this meant there was still a great amount of discretion in the hands of local officials. notice mailed to summon a potential juror to a us court in 2007 potential jurors are summoned to the courthouse for service. in the past, jurors were identified manually, by local authorities making lists of men they believed to be eligible for service.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/1/19/Jury_duty.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "About 50 prospective jurors awaiting jury selection",
-          "context": "",
+          "context": "in scotland , a jury in a criminal trial consists of 15 jurors, which is thought to be the largest in the world. trials in the republic of ireland have 15 jurors.",
           "licence": "CC BY 2.0"
         }
       ]
@@ -548,14 +660,14 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e0/A_mosaic_LAW_by_Frederick_Dielman%2C_1847-1935.JPG?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "for other uses, see rule of law . a mosaic representing both the judicial and legislative aspects of law. the woman on the throne holds a sword to chastise the guilty and a palm branch to reward the meritorious.",
+          "context": "a mosaic representing both the judicial and legislative aspects of law. the woman on the throne holds a sword to chastise the guilty and a palm branch to reward the meritorious.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/9/9b/Countries_by_adherence_to_the_Rule_of_Law_%282017%E2%80%9318%29.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Countries by adherence to the Rule of Law (2017-18)",
-          "context": "the woman on the throne holds a sword to chastise the guilty and a palm branch to reward the meritorious. glory surrounds her head and the aegis of minerva signifies the armor of righteousness and wisdom.",
+          "context": "glory surrounds her head and the aegis of minerva signifies the armor of righteousness and wisdom.",
           "licence": "CC BY-SA 4.0"
         },
         {
@@ -569,43 +681,36 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/32/Albert_Venn_Dicey.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "British constitutional theorist Albert Venn Dicey is often associated with the thin conception of the rule of law.",
-          "context": "british constitutional theorist albert venn dicey is often associated with the thin conception of the rule of law. 61 second, the equality of law - \"the universal subjection of all classes to one law administered by the ordinary courts\".",
+          "context": "the rule of law is thus somewhat at odds with flexibility, even when flexibility may be preferable. hayek , joseph raz , and joseph unger . british constitutional theorist albert venn dicey is often associated with the thin conception of the rule of law. second, the equality of law - \"the universal subjection of all classes to one law administered by the ordinary courts\".",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/a/a9/Joseph_Raz_-_20090224.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Joseph Raz in February 2009. He stated in a 1977 article that the rule of law requires that \"the making of particular laws should be guided by open and relatively stable general rules\".",
-          "context": "68 the second group includes principles including judicial independence , 69 natural justice , 70 judicial review , 70 and limited administrative discretion . he stated in a 1977 article that the rule of law requires that \"the making of particular laws should be guided by open and relatively stable general rules\". in raz's view, one of the virtues of the rule of law is the restraint it imposes on authorities.",
+          "context": "construed more narrowly, the rule of law would also mean that the government should be ruled by and subjected to the law. the second group includes principles including judicial independence , natural justice , judicial review , and limited administrative discretion . he stated in a 1977 article that the rule of law requires that \"the making of particular laws should be guided by open and relatively stable general rules\". in raz's view, one of the virtues of the rule of law is the restraint it imposes on authorities.",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/8/80/Ronald_Dworkin_at_the_Brooklyn_Book_Festival.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "some substantive theorists believe that democracy is part of the rule of law. 56 substantivists include ronald dworkin , sir john laws , lon fuller , trevor allan , and tom bingham holding that the rule of law intrinsically protects some or all individual rights. ronald dworkin in september 2008. dworkin's conception of the rule of law is \"thick\", as it encompasses a substantive theory of law and adjudication .",
+          "context": "some substantive theorists believe that democracy is part of the rule of law. substantivists include ronald dworkin , sir john laws , lon fuller , trevor allan , and tom bingham holding that the rule of law intrinsically protects some or all individual rights. ronald dworkin in september 2008. dworkin's conception of the rule of law is \"thick\", as it encompasses a substantive theory of law and adjudication .",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/0/0b/Legal_Systems_-_Global.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
-          "caption": "",
-          "context": "82 the authors highlight historical examples, such as the french revolution, where the rule of law helped dismantle absolutism and feudal privileges, paving the way for inclusive institutions. they also discuss how pluralistic political institutions are essential for the rule of law to thrive, as they create broad coalitions that support fairness and equality. a common language between lawyers of common law and civil law countries is critically important for research of links between the rule of law and real economy.",
+          "caption": "Legal systems of the world, with common law in red, and civil law in blue",
+          "context": "the authors highlight historical examples, such as the french revolution, where the rule of law helped dismantle absolutism and feudal privileges, paving the way for inclusive institutions. they also discuss how pluralistic political institutions are essential for the rule of law to thrive, as they create broad coalitions that support fairness and equality. a common language between lawyers of common law and civil law countries is critically important for research of links between the rule of law and real economy. the rule of law can be hampered when there is a disconnect between legal and popular consensus.",
           "licence": "Public domain"
         },
         {
-          "src": "https://upload.wikimedia.org/wikipedia/en/b/b4/Ambox_important.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/0e/Scale_of_justice_2.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "this section has multiple issues. please help improve it or discuss these issues on the talk page .",
+          "context": "in the 19th century classic work introduction to the study of the law of the constitution , a. dicey , a constitutional scholar and lawyer, wrote of the twin pillars of the british constitution : the rule of law and parliamentary sovereignty .",
           "licence": "Public domain"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/en/9/99/Question_book-new.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "please help improve it or discuss these issues on the talk page . this section relies on a single source . please help improve this section by adding citations to reliable sources .",
-          "licence": "Cc-by-sa-3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/1/1f/2024_K%C3%B8benhavns_Domhus_%282%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
@@ -613,13 +718,6 @@
           "caption": "",
           "context": "the iba calls upon all countries to respect these fundamental principles. it also calls upon its members to speak out in support of the rule of law within their respective communities. \"with law shall the land be built\", the preface of codex holmiensis above copenhagen court house . in 2023, the wjp ranked denmark no.",
           "licence": "CC0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/1/17/Balance%2C_by_David.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "",
-          "licence": "CC BY 3.0"
         }
       ]
     },
@@ -633,20 +731,20 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e8/13th_Amendment_Pg1of1_AC.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "13th Amendment in the National Archives , bearing the signature of Abraham Lincoln",
-          "context": "",
+          "context": "despite affirmative action and other programs that expanded opportunities for black and other minorities in the u.s. by the early 21st century, racial gaps in income, housing, education, and criminal justice persist.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/4/45/Lynching-of-will-james.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "The mob-style lynching of Will James , Cairo, Illinois , 1909",
-          "context": "after the landmark supreme court case of smith v.",
+          "context": "however, if the states failed to implement the acts, the laws allowed the federal government to get involved. many republican governors were afraid of sending black militia troops to fight the klan for fear of war. after the landmark supreme court case of smith v.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/ff/Omaha_courthouse_lynching.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
-          "caption": "",
+          "caption": "Lynching victim Will Brown, who was mutilated and burned during the Omaha, Nebraska race riot of 1919 . Postcards and photographs of lynchings were popular souvenirs in the U.S.",
           "context": "washington , president of the tuskegee institute , to dine at the white house , making him the first african american to attend an official dinner there. however, these actions were resisted by both white democrats and white republicans as an unwanted federal intrusion into state politics. lynching victim will brown, who was mutilated and burned during the omaha, nebraska race riot of 1919 . postcards and photographs of lynchings were popular souvenirs in the u.s.",
           "licence": "Public domain"
         },
@@ -654,7 +752,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/7/75/ColoredSailersRoomWWINOLA.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Colored Sailors room in World War I",
-          "context": "21 for example, in 1963 in the city of anniston, alabama , two black ministers were brutally beaten for attempting to integrate the public library. 21 though there was resistance and violence, the integration of libraries was generally quicker than the integration of other public institutions. colored sailors room in world war i the situation for black people outside of the south was somewhat better . in 1900, reverend matthew anderson, speaking at the annual hampton negro conference in virginia, said that \"...the lines along most of the avenues of wage-earning are more rigidly drawn in the north than in the south.",
+          "context": "for example, in 1963 in the city of anniston, alabama , two black ministers were brutally beaten for attempting to integrate the public library. though there was resistance and violence, the integration of libraries was generally quicker than the integration of other public institutions. colored sailors room in world war i the situation for black people outside of the south was somewhat better . in 1900, reverend matthew anderson, speaking at the annual hampton negro conference in virginia, said that \"...the lines along most of the avenues of wage-earning are more rigidly drawn in the north than in the south.",
           "licence": "Public domain"
         },
         {
@@ -689,7 +787,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/a/aa/Warren_Supreme_Court.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "In 1954, the U.S. Supreme Court under Chief Justice Earl Warren ruled unanimously that racial segregation in public schools was unconstitutional.",
-          "context": "the naacp proceeded with five cases challenging the school systems; these were later combined under what is known today as brown v. 43 under the leadership of walter reuther , the united auto workers donated $75,000 to help pay for the naacp's efforts at the supreme court. supreme court under chief justice earl warren ruled unanimously that racial segregation in public schools was unconstitutional. supreme court under chief justice earl warren ruled unanimously in brown v.",
+          "context": "the naacp proceeded with five cases challenging the school systems; these were later combined under what is known today as brown v. under the leadership of walter reuther , the united auto workers donated $75,000 to help pay for the naacp's efforts at the supreme court. supreme court under chief justice earl warren ruled unanimously that racial segregation in public schools was unconstitutional. supreme court under chief justice earl warren ruled unanimously in brown v.",
           "licence": "Public domain"
         },
         {
@@ -703,14 +801,245 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/7/7c/Emmett_Till%27s_funeral_-_mourners_%28restored%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Emmett Till 's mother, Mamie (middle), at her son's funeral in 1955. White men killed him after a white woman accused him of offending her in her family's grocery store.",
-          "context": "the city responded to the campaign by permitting more open transfers to high-quality, historically white schools. emmett till 's mother, mamie , at her son's funeral in 1955. white men killed him after a white woman accused him of offending her in her family's grocery store.",
+          "context": "during the boycott, some of the first freedom schools were established. the city responded to the campaign by permitting more open transfers to high-quality, historically white schools. emmett till 's mother, mamie , at her son's funeral in 1955. white men killed him after a white woman accused him of offending her in her family's grocery store.",
           "licence": "CC0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/ea/Rosa_Parks_being_fingerprinted_by_Deputy_Sheriff_D.H._Lackey_after_being_arrested_on_February_22%2C_1956%2C_during_the_Montgomery_bus_boycott.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "rosa parks being fingerprinted after being arrested for not giving up her seat on a bus to a white person. on december 1, 1955, nine months after a 15-year-old high school student, claudette colvin , refused to give up her seat to a white passenger on a public bus in montgomery, alabama, and was arrested, rosa parks did the same thing.",
+          "context": "till's family decided to donate the original casket to the smithsonian's national museum of african american culture and history, where it is now on display. in 2007, bryant said that she had fabricated the most sensational part of her story in 1955. rosa parks being fingerprinted after being arrested for not giving up her seat on a bus to a white person. on december 1, 1955, nine months after a 15-year-old high school student, claudette colvin , refused to give up her seat to a white passenger on a public bus in montgomery, alabama, and was arrested, rosa parks did the same thing.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/fa/Little_Rock_integration_protest.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "White parents rally against integrating Little Rock's schools in August 1959.",
+          "context": "the lengthy protest attracted national attention for him and the city. his eloquent appeals to christian brotherhood and american idealism created a positive impression on people both inside and outside the south. white parents rally against integrating little rock's schools in august 1959. the little rock nine were a group of nine students who attended segregated black high schools in little rock , the capital of arkansas.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/5f/Civil_Rights_protesters_and_Woolworth%27s_Sit-In%2C_Durham%2C_NC%2C_10_February_1960._From_the_N%26O_Negative_Collection%2C_State_Archives_of_North_Carolina%2C_Raleigh%2C_NC._Photos_taken_by_The_News_%26_%2824495308926%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "after three weeks, the movement successfully secured the store's change in its segregated seating policy, and soon afterward, all dockum stores in kansas were desegregated. this movement was quickly followed in the same year by a student sit-in at a katz drug store in oklahoma city led by clara luper , which was also successful. student sit-in at woolworth in durham, north carolina on february 10, 1960. mostly black students from area colleges led a sit-in at a woolworth 's store in greensboro, north carolina .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/0b/Freedom_Riders_attacked.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A mob beats Freedom Riders in Birmingham. The FBI reclaimed this picture from a local journalist who was also beaten and whose camera was smashed.",
+          "context": "that proved to be a dangerous mission. in anniston, alabama , one bus was firebombed , forcing its passengers to flee for their lives. a mob beats freedom riders in birmingham. the fbi reclaimed this picture from a local journalist who was also beaten and whose camera was smashed.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/29/James_Meredith_OleMiss.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "James Meredith walking to class accompanied by a U.S. Marshal and a Justice Department official.",
+          "context": "supreme court challenges at the time. it was not until after the passage of the 1965 voting rights act that most black people in mississippi and other southern states gained federal protection to enforce their constitutional right to vote. james meredith walking to class accompanied by a u.s. marshal and a justice department official.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c2/US_Marshals_at_Ole_Miss_October_1962_cph.3c35522.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "U.S. Army trucks loaded with Federal law enforcement personnel on the University of Mississippi campus, 1962.",
+          "context": "circuit court of appeals held barnett and lieutenant governor paul b. in contempt , ordering them arrested and fined more than $10,000 for each day they refused to allow meredith to enroll. army trucks loaded with federal law enforcement personnel on the university of mississippi campus, 1962. kennedy sent in a force of u.s.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e4/Recreation_of_Martin_Luther_King%27s_Cell_in_Birmingham_Jail_-_National_Civil_Rights_Museum_-_Downtown_Memphis_-_Tennessee_-_USA.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "convinced that the order was unconstitutional, the campaign defied it and prepared for mass arrests of its supporters. king elected to be among those arrested on april 12, 1963. supporters appealed to the kennedy administration, which intervened to obtain king's release.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/93/Bomb_wreckage_near_Gaston_Motel_%2814_May_1963%29.JPG?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A black and white photograph of a building in ruins next to an intact wall",
+          "caption": "",
+          "context": "national television networks broadcast the scenes of the dogs attacking demonstrators and the water from the fire hoses knocking down the schoolchildren. widespread public outrage led the kennedy administration to intervene more forcefully in negotiations between the white business community and the sclc. parts of the white community reacted violently. they bombed the gaston motel , which housed the sclc's unofficial headquarters, and the home of king's brother, the reverend a.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/cf/Wallace_at_University_of_Alabama_edit2.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "they bombed the gaston motel , which housed the sclc's unofficial headquarters, and the home of king's brother, the reverend a. in response, thousands of black people rioted , burning numerous buildings, and one of them stabbed and wounded a police officer. alabama governor george wallace tried to block desegregation at the university of alabama and is confronted by u.s. deputy attorney general nicholas katzenbach in 1963.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e6/March_on_Washington_edit.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "The March on Washington for Jobs and Freedom at the National Mall",
+          "context": "the black delegation criticized kennedy harshly for vacillating on civil rights and said that the african-american community's thoughts were increasingly turning to violence. the meeting ended with ill will on all sides.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/f9/Civil_Rights_March_on_Washington%2C_D.C._%28Leaders_of_the_march_posing_in_front_of_the_statue_of_Abraham_Lincoln..._-_NARA_-_542063_%28cropped%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "the black delegation criticized kennedy harshly for vacillating on civil rights and said that the african-american community's thoughts were increasingly turning to violence. the meeting ended with ill will on all sides. leaders of the march on washington posing before the lincoln memorial on august 28, 1963 on june 11, 1963, george wallace , governor of alabama, tried to block the integration of the university of alabama .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/a4/Bayard_Rustin_NYWTS_3.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Bayard Rustin (left) and Cleveland Robinson (right) , organizers of the March, on August 7, 1963",
+          "context": "kennedy sent a military force to make governor wallace step aside, allowing the enrollment of vivian malone jones and james hood . the next week, as promised, on june 19, 1963, president kennedy submitted his civil rights bill to congress. bayard rustin and cleveland robinson , organizers of the march, on august 7, 1963 randolph and bayard rustin were the chief planners of the march on washington for jobs and freedom , which they proposed in 1962. in 1963, the kennedy administration initially opposed the march, concerned that it would undermine the drive to pass civil rights legislation.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/15/Civil_Rights_March_on_Washington%2C_D.C._%28Dr._Martin_Luther_King%2C_Jr._and_Mathew_Ahmann_in_a_crowd.%29_-_NARA_-_542015_-_Restoration.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "the march had six official goals: meaningful civil rights laws a massive federal works program full and fair employment decent housing the right to vote adequate integrated education. of these, the march's primary focus was the passage of the civil rights act that the kennedy administration had proposed following the upheavals in birmingham. at a civil rights march on washington, d.c. national media attention also greatly contributed to the march's national exposure and probable impact.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e1/WhiteTradeOnlyLancasterOhio.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "while the kennedy administration appeared sincerely committed to passing the bill, it was not clear that it had enough votes in congress to do so. however, when president kennedy was assassinated on november 22, 1963, the new president lyndon johnson decided to use his influence in congress to bring about much of kennedy's legislative agenda. \"we cater to white trade only\" sign on a restaurant window in lancaster, ohio , in 1938. in 1964, martin luther king jr.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/70/Rc17739_04.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Black and white photograph of segregationists fighting on a beach",
+          "caption": "White segregationists (foreground) trying to prevent black people from swimming at a \"White only\" beach in St. Augustine, Florida during the 1964 Monson Motor Lodge protests",
+          "context": "they were arrested and convicted of trespassing and sentenced to six months in jail and reform school. it took a special act of the governor and cabinet of florida to release them after national protests by the pittsburgh courier , jackie robinson , and others. white segregationists trying to prevent black people from swimming at a \"white only\" beach in st. augustine, florida during the 1964 monson motor lodge protests in response to repression, the st.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/cc/FBI_Poster_of_Missing_Civil_Rights_Workers.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "many of mississippi's white residents deeply resented the outsiders and attempts to change their society.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/a9/Lyndon_Johnson_signing_Civil_Rights_Act%2C_July_2%2C_1964.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Lyndon B. Johnson signs the historic Civil Rights Act of 1964",
+          "context": "civil rights act of 1964 edit although president kennedy had proposed civil rights legislation and it had support from northern congressmen and senators of both parties, southern senators blocked the bill by threatening filibusters . after considerable parliamentary maneuvering and 54 days of filibuster on the floor of the united states senate, president johnson got a bill through congress. the bill authorized the attorney general to file lawsuits to enforce the new law. the law also nullified state and local laws that required such discrimination.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/5d/Lyndon_Johnson_meeting_with_civil_rights_leaders.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "in 1963, cofo held a freedom ballot in mississippi to demonstrate black mississippians' desire to vote. more than 80,000 people registered and voted in the mock election, which pitted an integrated slate of candidates from the \"freedom party\" against the official state democratic party candidates. johnson meets with civil rights leaders martin luther king jr. , whitney young , and james farmer , january 1964 in 1964, organizers launched the mississippi freedom democratic party to challenge the all-white official party.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/3c/Bloody_Sunday-Alabama_police_attack.jpeg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Police attack nonviolent marchers on \"Bloody Sunday\", the first day of the Selma to Montgomery marches .",
+          "context": "at least 16 other marchers were hospitalized. among those gassed and beaten was amelia boynton , who was at the center of civil rights activity at the time. police attack nonviolent marchers on \"bloody sunday\", the first day of the selma to montgomery marches . king turned around these marchers at the last minute to avoid violating a federal injunction.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/87/Gnome-mime-sound-openclipart.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "he died of his injuries in a birmingham hospital on march 11. four klansmen shot and killed detroit homemaker viola liuzzo as she drove marchers back to selma that night.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/a3/40th_in_Watts.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Soldiers direct traffic away from an area of South Central Los Angeles burning during the 1965 Watts riot",
+          "context": "while the early civil rights movement primarily focused on legal challenges to segregation in the south, the \"long hot summers\" brought attention to the racial disparities and issues within urban communities in the north. systemic racism, police brutality, high unemployment rates, poor living conditions in urban black neighborhoods, and a sense of hopelessness contributed to the widespread unrest. the riots were ignited by the arrest of marquette frye during a traffic stop, which escalated into a physical confrontation with police officers and drew a large crowd of onlookers.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/42/Newark_Riots_1967_%28305517077%29_%28cropped%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "1967 Newark riots",
+          "context": "to quell the violence, national guard troops were deployed to the area and imposed a curfew . after 34 people were killed and $35 million in property was damaged, the public feared an expansion of the violence to other cities, and so the appetite for additional programs in president lyndon johnson's agenda was lost.",
+          "licence": "CC BY-SA 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/87/Detroit_1967.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Destroyed buildings during the 1967 Detroit riots",
+          "context": "after 34 people were killed and $35 million in property was damaged, the public feared an expansion of the violence to other cities, and so the appetite for additional programs in president lyndon johnson's agenda was lost.",
+          "licence": "CC BY-SA 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/64/Resurrection_City_Washington_D.C._1968.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "the president had directed them, in simple words, to document what happened, find out why it happened, and find out how to prevent it. the commission's 1968 report identified police practices, unemployment and underemployment, and lack of adequate housing as the most significant grievances motivating the rage. a 3,000-person shantytown called resurrection city was established in 1968 on the national mall as part of the poor people's campaign. as 1968 began, the fair housing bill was being filibustered once again, but two developments revived it.",
+          "licence": "CC BY 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/54/Leffler_-_1968_Washington%2C_D.C._Martin_Luther_King%2C_Jr._riots.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Aftermath of the King assassination riots in Washington, D.C.",
+          "context": "gave his life for the poor of the world, the garbage workers of memphis and the peasants of vietnam. the day that negro people and others in bondage are truly free, on the day want is abolished, on the day wars are no more, on that day i know my husband will rest in a long-deserved peace. aftermath of the king assassination riots in washington, d.c. ralph abernathy succeeded king as the head of the sclc and attempted to carry forth king's plan for a poor people's march.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/27/MississippiStatePen.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Mississippi State Penitentiary",
+          "context": "the civil rights act of 1968 prohibited discrimination concerning the sale, rental, and financing of housing based on race, religion, and national origin. it also made it a federal crime to \"by force or by the threat of force, injure, intimidate, or interfere with anyone...by reason of their race, color, religion, or national origin.\" gates v. mississippi state penitentiary conditions at the mississippi state penitentiary at parchman , then known as parchman farm, became part of public civil rights discussions after activists were imprisoned there. in the spring of 1961, freedom riders came to the south to test the desegregation of public facilities.",
+          "licence": "CC BY 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/02/Fannie_Lou_Hamer_1964-08-22.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "title ix, or the education amendments of 1972 , was later renamed the patsy t. mink equal opportunity in education act following mink's death in 2002. fannie lou hamer of the mississippi freedom democratic party is an example of local grassroots leadership in the movement. african-american women edit african-american women in the civil rights movement were pivotal to its success.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/23/Robert_Kennedy_speaking_before_a_crowd%2C_June_14%2C_1963.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "eisenhower's work in desegregating the judicial system is also notable. the judges he appointed were liberal when it came to the subject of civil rights/desegregation, and he actively avoided placing segregationists in federal courts. kennedy , the attorney general .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/81/LyndonJohnson_signs_Voting_Rights_Act_of_1965.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "President Lyndon B. Johnson signs the Voting Rights Act of 1965",
+          "context": "kennedy personally authorized some of the programs. kennedy directly ordered surveillance on james baldwin after their antagonistic racial summit in 1963. johnson signs the voting rights act of 1965 lyndon johnson made civil rights one of his highest priorities, coupling it with his war on poverty . however, the increasing opposition to the vietnam war, coupled with the cost of the war, undercut support for his domestic programs.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e1/MLK_and_Malcolm_X_USNWR_cropped.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Malcolm X and Martin Luther King Jr. speak to each other thoughtfully as others look on.",
+          "caption": "Malcolm X meets with Martin Luther King Jr. , March 26, 1964",
+          "context": "malcolm articulates for negroes, their suffering ... he corroborates their reality.\" on the local level, malcolm and the noi had been allied with the harlem chapter of the congress of racial equality since at least 1962. malcolm x meets with martin luther king jr. , march 26, 1964 on march 26, 1964, as the civil rights act faced stiff opposition in congress, malcolm held a public meeting with martin luther king jr.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/7f/March_on_washington_Aug_28_1963.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Jewish civil rights activist Joseph L. Rauh Jr. marching with Martin Luther King Jr. in 1963",
+          "context": "on the day of malcolm's appearance, president johnson made his first public statement in support of the selma campaign. paul ryan haygood, a co-director of the naacp legal defense fund , credits malcolm with a role in gaining support from the federal government. jewish civil rights activist joseph l. marching with martin luther king jr.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/3e/John_Carlos%2C_Tommie_Smith%2C_Peter_Norman_1968cr.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "for the most part, the black individuals who had reservations about various aspects of the movement and the activists' ideologies were not able to make a game-changing dent in the activists' efforts. still, the existence of these alternative ideas gave some black people an outlet to express their concerns about the changing social structure. gold medalist tommie smith and bronze medalist john carlos showing the raised fist on the podium after the 200 m race at the 1968 summer olympics ; both wear olympic project for human rights badges. peter norman from australia also wears an ophr badge in solidarity with smith and carlos.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/5b/Malcolm_X_Ireland.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Mural of Malcolm X in Belfast",
+          "context": "law and that we could govern our own affairs, define our own ways and continue to survive in this society\". native americans were also active supporters of king's movement throughout the 1960s, which included a sizable native american contingent at the 1963 march on washington for jobs and freedom. mural of malcolm x in belfast due to policies of segregation and disenfranchisement present in northern ireland, many irish activists took inspiration from american civil rights activists. people's democracy had organized a \"long march\" from belfast to derry which was inspired by the selma to montgomery marches .",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c5/Rc17739_03.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Ku Klux Klan demonstration in St. Augustine, Florida in 1964",
+          "context": "many only reacted to the movement once forced to by their changing environment, and when they did, their response was usually whatever they felt would disturb their daily life the least. most of their personal reactions, whether eventually in support or resistance, were not extreme. ku klux klan demonstration in st. augustine, florida in 1964 king reached the height of his popularity in 1964, when he was awarded the nobel peace prize .",
           "licence": "Public domain"
         }
       ]

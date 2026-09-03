@@ -2,8 +2,8 @@
   "version": 1,
   "grade": "grade11",
   "subject": "psychology",
-  "source": "hybrid: Wikibooks open textbooks + prior sources, cleaned + sentence-segmented",
-  "note": "Textbook corpus for psychology/grade11. Trained via curriculum._trainAcademicStories. A course is a book, not an article about the subject.",
+  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
+  "note": "Hybrid academic-depth corpus for psychology/grade11. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
   "experiences": [
     {
       "theme": "cognitive-bias",
@@ -15,7 +15,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/65/Cognitive_bias_codex_en.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "The Cognitive Bias Codex",
-          "context": "the cognitive bias codex a cognitive bias is a systematic pattern of deviation from the norm or rationality in judgment . 1 2 individuals create their own \" subjective reality \" from their perception of the input.",
+          "context": "the cognitive bias codex a cognitive bias is a systematic pattern of deviation from the norm or rationality in judgment . individuals create their own \" subjective reality \" from their perception of the input.",
           "licence": "CC BY-SA 4.0"
         },
         {
@@ -44,35 +44,35 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/c6/A_woman_diagnosed_as_suffering_from_hilarious_mania._Colour_Wellcome_L0026687.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "An 1892 color lithograph depicting a woman diagnosed with hilarious mania",
-          "context": "unlike mania, hypomania is not always associated with impaired functioning. an 1892 color lithograph depicting a woman diagnosed with hilarious mania also known as mania, a manic episode is a period of at least one week of elevated or irritable mood, which can range from euphoria to delirium . the core symptom of mania involves an increase in energy of psychomotor activity .",
+          "context": "in some people with bipolar disorder, depressive symptoms predominate, and the episodes of mania are always the more subdued hypomania type. unlike mania, hypomania is not always associated with impaired functioning. an 1892 color lithograph depicting a woman diagnosed with hilarious mania also known as mania, a manic episode is a period of at least one week of elevated or irritable mood, which can range from euphoria to delirium . the core symptom of mania involves an increase in energy of psychomotor activity .",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/58/%27Melancholy_passing_into_mania%27_Wellcome_L0022595_%28cropped%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "An 1858 lithograph captioned \"Melancholy passing into mania\"",
-          "context": "73 manic individuals often have a history of substance use disorder developed over years as a form of \"self-medication\".",
+          "context": "the onset of a manic or depressive episode is often foreshadowed by sleep disturbance . manic individuals often have a history of substance use disorder developed over years as a form of \"self-medication\". overall functioning may increase during episodes of hypomania and is thought to serve as a defense mechanism against depression by some. hypomanic episodes rarely progress to full-blown manic episodes.",
           "licence": "CC BY 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/28/%27Melancholy%27_by_W._Bagg_Wellcome_L0022594.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Melancholy by William Bagg, after a photograph by Hugh Welch Diamond",
-          "context": "78 page needed most commonly, symptoms continue for time periods from a few weeks to a few months.",
+          "context": "these individuals may not be able to identify these specific symptoms as hypomania, rather they view them as typical depression with slight alterations in mood. most commonly, symptoms continue for time periods from a few weeks to a few months.",
           "licence": "CC BY 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/d/d2/E._Kraepelin.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Kraepelin looking to the side",
           "caption": "Since Emil Kraepelin's distinction between bipolar disorder and schizophrenia in the 19th century, researchers have defined a spectrum of different types of bipolar disorder.",
-          "context": "118 common medications that can cause manic symptoms include antidepressants, prednisone , parkinson's disease medications, thyroid hormone , stimulants , and certain antibiotics . since emil kraepelin's distinction between bipolar disorder and schizophrenia in the 19th century, researchers have defined a spectrum of different types of bipolar disorder. bipolar spectrum disorders include bipolar i disorder, bipolar ii disorder, cyclothymic disorder, and cases where subthreshold symptoms are found to cause clinically significant impairment or distress.",
+          "context": "certain vitamin deficiencies such as pellagra , vitamin b 12 deficiency , folate deficiency , and wernicke-korsakoff syndrome can also lead to mania. common medications that can cause manic symptoms include antidepressants, prednisone , parkinson's disease medications, thyroid hormone , stimulants , and certain antibiotics . since emil kraepelin's distinction between bipolar disorder and schizophrenia in the 19th century, researchers have defined a spectrum of different types of bipolar disorder. bipolar spectrum disorders include bipolar i disorder, bipolar ii disorder, cyclothymic disorder, and cases where subthreshold symptoms are found to cause clinically significant impairment or distre",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/f0/Bipolar_disorder_subtypes_comparison_between_Bipolar_I%2C_II_disorder_and_Cyclothymia.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Graph using lines represent different type of bipolar spectrum disorders with emotions fluctuating from mania, hypomania, baseline, and depression; bipolar-1 goes from major depression to mania; bipolar-2 from major depression to hypomania; and cyclothymia from minor despression to hypomania",
           "caption": "",
-          "context": "130 bipolar ii disorder was established as a diagnosis in 1994 within dsm iv; though debate continues over whether it is a distinct entity, part of a spectrum, or is the very same condition as bipolar i disorder.",
+          "context": "the concept of the bipolar spectrum is similar to that of emil kraepelin 's original concept of manic depressive illness. bipolar ii disorder was established as a diagnosis in 1994 within dsm iv; though debate continues over whether it is a distinct entity, part of a spectrum, or is the very same condition as bipolar i disorder.",
           "licence": "CC BY 4.0"
         },
         {
@@ -85,29 +85,57 @@
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/f2/Lithium2017a.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
-          "caption": "Lithium is often used to treat bipolar disorder and has the best evidence for reducing suicide. [ 170 ]",
-          "context": "168 some clinicians emphasize the need to talk with individuals experiencing mania, to develop a therapeutic alliance in support of recovery . lithium is often used to treat bipolar disorder and has the best evidence for reducing suicide. 170 medications are often prescribed to help improve symptoms of bipolar disorder.",
+          "caption": "Lithium is often used to treat bipolar disorder and has the best evidence for reducing suicide.",
+          "context": "most studies have been based only on bipolar i, however, and treatment during the acute phase can be a particular challenge. some clinicians emphasize the need to talk with individuals experiencing mania, to develop a therapeutic alliance in support of recovery . lithium is often used to treat bipolar disorder and has the best evidence for reducing suicide. medications are often prescribed to help improve symptoms of bipolar disorder.",
           "licence": "CC BY-SA 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/4/41/Bipolar_disorder_world_map_-_DALY_-_WHO2004.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "222 224 in addition to reducing suicide, lithium also decreases all-cause mortality in people with bipolar disorder.",
+          "context": "randomized controlled trials and other studies for over 40 years have shown that lithium is highly effective in reducing suicide among people with bipolar disorder. in addition to reducing suicide, lithium also decreases all-cause mortality in people with bipolar disorder.",
           "licence": "CC BY-SA 2.5"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/62/Homeless_veteran_stand_down.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Sign reading &#39;1 out of 4 homeless men have served our country in the military&#39;",
           "caption": "Sign made by homeless veteran",
-          "context": "245 earlier reviews also found elevated rates as high as 6-9%, but estimates vary depending on diagnostic criteria and design. sign made by homeless veteran bipolar disorder is associated with several risk factors for homelessness, including incarceration , substance use, and socioeconomic instability. in the united states, it was reported that in veterans with bipolar disorder, 55% reported being homeless at some point in their lives, and 12% had been homeless within the last four weeks.",
+          "context": "earlier reviews also found elevated rates as high as 6-9%, but estimates vary depending on diagnostic criteria and design. sign made by homeless veteran bipolar disorder is associated with several risk factors for homelessness, including incarceration , substance use, and socioeconomic instability. in the united states, it was reported that in veterans with bipolar disorder, 55% reported being homeless at some point in their lives, and 12% had been homeless within the last four weeks.",
           "licence": "CC BY 2.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/cd/Emil_Kraepelin_1926.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "German psychiatrist Emil Kraepelin first distinguished between manic-depressive illness and \"dementia praecox\" (now known as schizophrenia ) in the late 19th century.",
-          "context": "246 as a result of this, current estimates of the prevalence of bipolar disorder in the homeless population may be underestimated. expanding integrated models of care that combine psychiatric treatment with housing and social services has been suggested as a potential approach to improving long-term stability and reducing emergency service use. german psychiatrist emil kraepelin first distinguished between manic-depressive illness and \"dementia praecox\" in the late 19th century. in the early 1800s, french psychiatrist jean-etienne dominique esquirol 's lypemania, one of his affective monomanias , was the first elaboration on what was to become modern depression.",
+          "context": "as a result of this, current estimates of the prevalence of bipolar disorder in the homeless population may be underestimated. expanding integrated models of care that combine psychiatric treatment with housing and social services has been suggested as a potential approach to improving long-term stability and reducing emergency service use. german psychiatrist emil kraepelin first distinguished between manic-depressive illness and \"dementia praecox\" in the late 19th century. in the early 1800s, french psychiatrist jean-etienne dominique esquirol 's lypemania, one of his affective monomanias , was the first elaboration on what was to become modern depression.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/54/Rosemary_Clooney_Allan_Warren.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Singer Rosemary Clooney 's public revelation of bipolar disorder made her an early celebrity spokesperson for mental illness.",
+          "context": "the subtypes bipolar ii and rapid cycling have been included since the dsm-iv, based on work from the 1970s by david dunner , elliot gershon , frederick goodwin , ronald fieve , and joseph fleiss . singer rosemary clooney 's public revelation of bipolar disorder made her an early celebrity spokesperson for mental illness. cost edit the united states spent approximately $202.1 billion on people diagnosed with bipolar i disorder in 2015.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/7e/Lithium-carbonate-xtal-1979-Mercury-3D-sf.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Lithium is the only medication approved by the FDA for treating mania in children.",
+          "context": "probands of people with bipolar disorder are more likely to be professionally successful, as well as to demonstrate temperamental traits similar to bipolar disorder. furthermore, while studies of the frequency of bipolar disorder in creative population samples have been conflicting, full-blown bipolar disorder in creative samples is rare. lithium is the only medication approved by the fda for treating mania in children. in the 1920s, kraepelin noted that manic episodes are rare before puberty.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/41/Psi_with_Rod_of_Asclepius.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "icon",
+          "caption": "",
+          "context": "\"apparent comorbidity of bipolar disorder in a population with combat-related post-traumatic stress disorder\". doi:10.7205/milmed-d-13-00307.",
+          "licence": "CC0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d6/WHO_Rod.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "icon",
+          "caption": "",
+          "context": "",
           "licence": "Public domain"
         }
       ]
@@ -143,57 +171,57 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/a/ad/Schizophrenia_brain_large.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Diagram of the brain in schizophrenia",
-          "context": "the most deficient areas are magenta, while the least deficient areas are blue. diagram of the brain in schizophrenia an estimated 70% of those with schizophrenia have cognitive deficits, and these are most pronounced in early-onset and late-onset illness. 57 58 these are often evident long before the onset of illness in the prodromal stage , and may be present in childhood or early adolescence.",
+          "context": "cognitive symptoms edit map of deficits in neural tissue throughout the human brain in a patient with schizophrenia. the most deficient areas are magenta, while the least deficient areas are blue. diagram of the brain in schizophrenia an estimated 70% of those with schizophrenia have cognitive deficits, and these are most pronounced in early-onset and late-onset illness. these are often evident long before the onset of illness in the prodromal stage , and may be present in childhood or early adolescence.",
           "licence": "CC BY-SA 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/69/Overlapping_clinical_phenotypes_in_genes_associated_with_monogenic_forms_of_autism_spectrum_disorder_%28ASD%29%2C_dystonia%2C_epilepsy_and_schizophrenia.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "through resting-state fmri, researchers have observed altered connectivity patterns within several key brain networks, such as the default mode network , 173 salience network , 174 and central executive network . 175 alterations may underlie cognitive and emotional symptoms in schizophrenia, such as disorganized thinking, impaired attention, and emotional dysregulation.",
+          "context": "through resting-state fmri, researchers have observed altered connectivity patterns within several key brain networks, such as the default mode network , salience network , and central executive network . alterations may underlie cognitive and emotional symptoms in schizophrenia, such as disorganized thinking, impaired attention, and emotional dysregulation.",
           "licence": "CC BY-SA 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/22/Risperdal_tablets.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Risperidone (trade name Risperdal) is a common atypical antipsychotic medication.",
-          "context": "195 there still remain a smaller group of people who do not improve enough to be discharged. 26 33 in some countries that lack the necessary supportive and social services, long-term hospital stays are more usual. risperidone is a common atypical antipsychotic medication. most antipsychotics reduce overall, positive, negative, and depressive symptoms in schizophrenia, with clozapine showing the largest overall effect, though efficacy differences between drugs are mostly gradual.",
+          "context": "there still remain a smaller group of people who do not improve enough to be discharged. in some countries that lack the necessary supportive and social services, long-term hospital stays are more usual. risperidone is a common atypical antipsychotic medication. most antipsychotics reduce overall, positive, negative, and depressive symptoms in schizophrenia, with clozapine showing the largest overall effect, though efficacy differences between drugs are mostly gradual.",
           "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/7c/Schizophrenia_world_map_-_DALY_-_WHO2004.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "supplementation with b vitamins has been shown to significantly improve symptoms, and to put in reverse some of the cognitive deficits. it is also suggested that the noted dysfunction in gut microbiota might benefit from the use of probiotics .",
+          "licence": "CC BY-SA 2.5"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/51/Schizophrenia_prevalence%2C_World%2C_2023.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Schizophrenia prevalence",
-          "context": "",
+          "context": "poor cognitive functioning, decision-making, and facial perception may contribute to making a wrong judgement of a situation that could result in an inappropriate response such as violence. these associated risk factors are also present in antisocial personality disorder which when present as a comorbid disorder greatly increases the risk of violence. schizophrenia prevalence in 2017, the global burden of disease study estimated there were 1.1 million new cases; in 2022 the world health organization reported a total of 24 million cases globally. schizophrenia affects around 0.3-0.7% of people at some point in their life.",
           "licence": "CC BY 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/c4/Eugen_bleuler.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "The term schizophrenia was coined by Eugen Bleuler .",
-          "context": "the term schizophrenia was coined by eugen bleuler . accounts of a schizophrenia-like syndrome are rare in records before the 19th century; the earliest case reports were in 1797 and 1809.",
+          "context": "schizophrenia causes approximately one percent of worldwide disability adjusted life years and resulted in 17,000 deaths in 2015. the term schizophrenia was coined by eugen bleuler . accounts of a schizophrenia-like syndrome are rare in records before the 19th century; the earliest case reports were in 1797 and 1809.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/3e/Chlorpromazine-3D-vdW.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A molecule of chlorpromazine , the first antipsychotic developed in the 1950s",
-          "context": "286 dsm iv brought an increased focus on an evidence-based medical model. a molecule of chlorpromazine , the first antipsychotic developed in the 1950s in the 1930s a number of shock procedures which induced seizures or comas were used to treat schizophrenia. 288 insulin shock involved injecting large doses of insulin to induce comas, which in turn produced hypoglycemia and convulsions.",
+          "context": "in 1980 dsm iii was published and showed a shift in focus from the clinically based biopsychosocial model to a reason-based medical model. dsm iv brought an increased focus on an evidence-based medical model. a molecule of chlorpromazine , the first antipsychotic developed in the 1950s in the 1930s a number of shock procedures which induced seizures or comas were used to treat schizophrenia. insulin shock involved injecting large doses of insulin to induce comas, which in turn produced hypoglycemia and convulsions.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/a/a9/John_Forbes_Nash%2C_Jr._by_Peter_Badge.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "john nash , an american mathematician and joint recipient of the 1994 nobel memorial prize in economic sciences , had schizophrenia. his life was the subject of the 1998 book, a beautiful mind , by sylvia nasar .",
+          "context": "political abuse edit from the 1960s until 1989, psychiatrists in the ussr and eastern bloc diagnosed thousands of people with sluggish schizophrenia , without signs of psychosis, based on \"the assumption that symptoms would later appear\". now discredited, the diagnosis provided a convenient way to confine political dissidents. john nash , an american mathematician and joint recipient of the 1994 nobel memorial prize in economic sciences , had schizophrenia. his life was the subject of the 1998 book, a beautiful mind , by sylvia nasar .",
           "licence": "CC BY-SA 3.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/4/41/Psi_with_Rod_of_Asclepius.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "",
-          "licence": "CC0"
         }
       ]
     },
@@ -213,7 +241,7 @@
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/cc/PTSD_stress_brain.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
-          "caption": "Regions of the brain associated with phobias [ 26 ]",
+          "caption": "Regions of the brain associated with phobias",
           "context": "similarly, social anxiety disorder is found two to six times more frequently in those with first degree relatives that have it versus those that do not. agoraphobia is believed to have the strongest genetic association.",
           "licence": "Public domain"
         },
@@ -221,22 +249,15 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/d/d1/Blausen_0614_LimbicSystem.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Anatomical components of the limbic system",
-          "context": "",
+          "context": "similarly, social anxiety disorder is found two to six times more frequently in those with first degree relatives that have it versus those that do not. agoraphobia is believed to have the strongest genetic association.",
           "licence": "CC BY 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/9/92/140930-A-DO086-644_%2815454639691%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A soldier stomping his foot to put out the fire rising up his leg during military fire-phobia training",
-          "context": "44 its effectiveness in treating complex or trauma-related phobias has not been empirically established. 45 primarily used to treat post-traumatic stress disorder , emdr has been demonstrated to ease phobia symptoms following a specific trauma, such as a fear of dogs following a dog bite. traditional systematic desensitization involves a person being exposed to the object they are afraid of over time so that the fear and discomfort do not become overwhelming. this controlled exposure to the anxiety-provoking stimulus is key to the effectiveness of exposure therapy in the treatment of specific phobias.",
+          "context": "its effectiveness in treating complex or trauma-related phobias has not been empirically established. primarily used to treat post-traumatic stress disorder , emdr has been demonstrated to ease phobia symptoms following a specific trauma, such as a fear of dogs following a dog bite. traditional systematic desensitization involves a person being exposed to the object they are afraid of over time so that the fear and discomfort do not become overwhelming. this controlled exposure to the anxiety-provoking stimulus is key to the effectiveness of exposure therapy in the treatment of specific phobias.",
           "licence": "Public domain"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/4/41/Psi_with_Rod_of_Asclepius.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "",
-          "licence": "CC0"
         }
       ]
     },
@@ -250,22 +271,15 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/7/72/American_Lady_Against_The_Sky.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "the word psyche comes from the ancient greek for ' soul ' or ' butterfly '. 9 the fluttering insect appears in the coat of arms of britain's royal college of psychiatrists .",
+          "context": "the word psyche comes from the ancient greek for ' soul ' or ' butterfly '. the fluttering insect appears in the coat of arms of britain's royal college of psychiatrists .",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/7/78/Neuropsychiatric_conditions_world_map_-_DALY_-_WHO2002.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "16 although the focus of psychiatry has changed little over time, the diagnostic and treatment processes have evolved dramatically and continue to do so. since the late 20th century, the field of psychiatry has continued to become more biological and less conceptually isolated from other medical fields.",
+          "context": "although the focus of psychiatry has changed little over time, the diagnostic and treatment processes have evolved dramatically and continue to do so. since the late 20th century, the field of psychiatry has continued to become more biological and less conceptually isolated from other medical fields.",
           "licence": "CC BY-SA 2.5"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/en/9/99/Question_book-new.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "this section relies on a single source . please help improve this section by adding citations to reliable sources .",
-          "licence": "Cc-by-sa-3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/5d/NIMH_Clinical_Center.JPG?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
@@ -278,7 +292,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/25/20180927-RD-LSC-0048_%2844259432605%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Telemental health session",
-          "context": "112 telepsychiatry this section is an excerpt from telepsychiatry . telemental health session telepsychiatry or telemental health refers to the use of telecommunications technology to deliver psychiatric care remotely for people with mental health conditions . it is a branch of telemedicine .",
+          "context": "the underlying assumption was that psychopharmacology was at least as effective as psychotherapy, and it could be delivered more efficiently because less time is required for the appointment. because of this shift in practice patterns, psychiatrists often refer patients whom they think would benefit from psychotherapy to other mental health professionals, e.g., clinical social workers and psychologists. telemental health session telepsychiatry or telemental health refers to the use of telecommunications technology to deliver psychiatric care remotely for people with mental health conditions . it is a branch of telemedicine .",
           "licence": "Public domain"
         },
         {
@@ -292,14 +306,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/21/Acetylcholine.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Otto Loewi 's work led to the identification of the first neurotransmitter, acetylcholine .",
-          "context": "143 following sigmund freud 's pioneering work, ideas stemming from psychoanalytic theory also began to take root in psychiatry. 144 the psychoanalytic theory became popular among psychiatrists because it allowed the patients to be treated in private practices instead of warehoused in asylums. otto loewi 's work led to the identification of the first neurotransmitter, acetylcholine . by the 1970s, however, the psychoanalytic school of thought became marginalized within the field.",
-          "licence": "Public domain"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d6/WHO_Rod.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "",
+          "context": "following sigmund freud 's pioneering work, ideas stemming from psychoanalytic theory also began to take root in psychiatry. the psychoanalytic theory became popular among psychiatrists because it allowed the patients to be treated in private practices instead of warehoused in asylums. otto loewi 's work led to the identification of the first neurotransmitter, acetylcholine . by the 1970s, however, the psychoanalytic school of thought became marginalized within the field.",
           "licence": "Public domain"
         }
       ]
@@ -308,30 +315,7 @@
       "theme": "coping",
       "story": "coping refers to the application of coping mechanisms, conscious and unconscious cognitions that people use to manage unpleasant emotions, stress, and anxiety. hundreds of coping strategies have been proposed to explain how people manage stress. however, no universal classification system has been agreed upon. researchers have grouped coping responses through rational, empirical , or hybrid approaches. billings and moos later added avoidance coping as a subset of emotion-focused strategies. however, some scholars have questioned the psychometric validity of such strict categorizations, noting that coping strategies often overlap and that individuals may employ multiple strategies simultaneously. people typically use a combination of coping functions that change over time. while all strategies can be useful, individuals who rely more on problem-focused coping tend to adjust better overall. this may be because problem-focused coping provides a greater sense of control, whereas emotion-focused coping sometimes reduces perceived control. lazarus noted a link between his concept of \"defensive re-appraisal\" and freud's notion of \"ego defenses\", illustrating that coping strategies can overlap with psychological defense mechanisms. appraisal-focused coping involves changing the way a person thinks about or conceptualizes a stressful situation. individuals may deny or cognitively distance themselves from the situation in an effort to reframe their perspective to a less emotionally difficult outlook. adaptive behavioral coping strategies are coping mechanisms that involve direct behavioural action. coping is often reactive, meaning it occurs in response to a stressor. this differs from proactive coping, which aims to prepare for or prevent future stressors. defense mechanisms, which operate unconsciously, are typically considered separate from coping. the effectiveness of coping depends on the stressor type, the individual's traits, and the surrounding environment. people using problem-focused strategies attempt to address the source of stress directly, often by gathering information or developing new skills. folkman and lazarus identified three main problem-focused approaches: taking control, information seeking, and evaluating pros and cons. however, problem-focused coping may backfire when stressors are uncontrollable, such as chronic illness or loss. emotion-focused coping strategies may also include media-based practices such as comfort television, where individuals engage with familiar and predictable content to regulate mood and alleviate stress. for example, re-appraisal tries to find a more positive meaning of the cause of the stress to reduce the emotional component of the stressor. avoidance of the emotional distress will distract from the negative feelings associated with the stressor. emotion-focused coping is well suited for stressors that seem uncontrollable . some mechanisms of emotion-focused coping, such as distancing or avoidance, can have alleviating outcomes for a short period of time; however they can be detrimental when used over an extended period. positive emotion-focused mechanisms, such as seeking social support and positive re-appraisal, are associated with beneficial outcomes. emotional approach coping is one form of emotion-focused coping in which emotional expression and processing are used to adaptively manage a response to a stressor. other examples include relaxation training through deep breathing, meditation, yoga, music and art therapy, and aromatherapy. the health theory of coping addresses limitations of earlier models by classifying coping strategies as healthy or unhealthy based on likely outcomes. anticipating and reacting to a future stressor is known as proactive coping or future-oriented coping. anticipation is when one reduces the stress of some difficult challenge by anticipating what it will be like and preparing for how one is going to cope with it. social coping recognizes that individuals are embedded within a social environment, which can be stressful, but also is the source of coping resources, such as seeking social support from others. humor used as a positive coping method may have useful benefits to emotional and mental health well-being. however, maladaptive humor styles such as self-defeating humor can also have negative effects on psychological adjustment and might exacerbate negative effects of other stressors. by having a humorous outlook on life, stressful experiences can be and are often minimized. this coping method corresponds with positive emotional states and is known to be an indicator of mental health. physiological processes are also influenced by the exercise of humor. for example, laughing may reduce muscle tension, increase the flow of oxygen to the blood, exercise the cardiovascular region, and produce endorphins in the body. using humor in coping while processing feelings can vary depending on life circumstances and individual humor styles. in regard to grief and loss in life occurrences, it has been found that genuine laughs/smiles when speaking about the loss predicted later adjustment and evoked more positive responses from other people. a person might also find comedic relief with others around irrational possible outcomes for the deceased funeral service. it is also possible that humor would be used by people to feel a sense of control over a more powerless situation and used as a way to temporarily escape a feeling of helplessness. exercised humor can be a sign of positive adjustment as well as drawing support and interaction from others around the loss. whereas adaptive coping strategies improve functioning, a maladaptive coping technique will just reduce symptoms while maintaining or strengthening the stressor. maladaptive techniques are only effective as a short-term rather than long-term coping process. examples of maladaptive behavior strategies include anxious avoidance, dissociation, escape , use of maladaptive humor styles such as self-defeating humor, procrastination, rationalization, safety behaviors, and sensitization. these coping strategies interfere with the person's ability to unlearn, or break apart, the paired association between the situation and the associated anxiety symptoms. these are maladaptive strategies as they serve to maintain the disorder. anxious avoidance is when a person avoids anxiety-provoking situations by all means. this is the most common method. dissociation is the ability of the mind to separate and compartmentalize thoughts, memories, and emotions. this is often associated with dissociative disorders and post-traumatic stress syndrome. escape is closely related to avoidance. this technique is often demonstrated by people who experience panic attacks or have phobias. these people want to flee the situation at the first sign of anxiety. the use of self-defeating humor means that a person disparages themselves to entertain others. this type of humor has been shown to lead to negative psychological adjustment and exacerbate the effect of existing stressors. procrastination is when a person willingly delays a task to receive a temporary relief from stress. while this may work for short-term relief, when used as a coping mechanism, procrastination causes more issues in the long run. rationalization is the practice of attempting to use reasoning to minimize the severity of an incident, or avoid approaching it in ways that could cause psychological trauma or stress. it most commonly manifests in the form of making excuses for the behavior of the person engaging in the rationalization, or others involved in the situation the person is attempting to rationalize. sensitization is when a person seeks to learn about, rehearse, and/or anticipate fearful events in a protective effort to prevent these events from occurring in the first place. safety behaviors are demonstrated when individuals with anxiety disorders come to rely on something, or someone, as a means of coping with their excessive anxiety. many people think that meditation \"not only calms our emotions, but...makes us feel more 'together'\", as too can \"the kind of prayer in which you're trying to achieve an inner quietness and peace\". low-effort syndrome or low-effort coping refers to the coping responses of a person refusing to work hard. for example, a student at school may learn to put in only minimal effort as they believe that if they put in effort it could unveil their flaws. social media influencers have posted their 'rejection spreadsheets' to help inspire others to attempt more projects, share strategies, and celebrate occasional victories. at the height of grief, bereavement should be met with initial support from outer networks as grievers are less entitled to seek support for themselves. avoidance coping increases the prolonged consequences of grief, whereas coping with grief with active and supportive mechanisms reduce acuteness of grief symptoms while influencing a positive posttraumatic growth from the event. the healthy strategy she termed \"moving with\" is that with which psychologically healthy people develop relationships. in order to move with, there must be communication, agreement, disagreement, compromise, and decisions. the three other strategies she described - \"moving toward\", \"moving against\" and \"moving away\" - represented neurotic, unhealthy strategies people utilize to protect themselves. horney investigated these patterns of neurotic needs . the neurotics might feel these attachments more strongly because of difficulties within their lives. if the neurotic does not experience these needs, they will experience anxiety. the ten needs are: affection and approval, the need to please others and be liked. a partner who will take over one's life, based on the idea that love will solve all of one's problems. restriction of one's life to narrow borders, to be undemanding, satisfied with little, inconspicuous; to simplify one's life. power, for control over others, for a facade of omnipotence, caused by a desperate desire for strength and dominance. exploitation of others; to get the better of them. social recognition or prestige, caused by an abnormal concern for appearances and popularity. self-sufficiency and independence. perfection and unassailability, a desire to be perfect and a fear of being flawed. this strategy includes neurotic needs one, two, and three. in withdrawal, also known as \"moving away\" or the \"resigning solution\", individuals distance themselves from anyone perceived as a threat to avoid getting hurt - \"the 'mouse-hole' attitude ... the security of unobtrusiveness.\" the argument is, \"if i do not let anyone close to me, i won't get hurt.\" a neurotic, according to horney desires to be distant because of being abused. if they can be the extreme introvert, no one will ever develop a relationship with them. if there is no one around, nobody can hurt them. these \"moving away\" people fight personality, so they often come across as cold or shallow. they emotionally remove themselves from society. included in this strategy are neurotic needs three, nine, and ten. in aggression, also known as the \"moving against\" or the \"expansive solution\", the individual threatens those perceived as a threat to avoid getting hurt. children might react to parental differences by displaying anger or hostility. this strategy includes neurotic needs four, five, six, seven, and eight. related to the work of karen horney, public administration scholars developed a classification of coping by frontline workers when working with clients . this coping classification is focused on the behavior workers can display towards clients when confronted with stress. they show that during public service delivery there are three main families of coping: moving towards clients: coping by helping clients in stressful situations. an example is a teacher working overtime to help students. moving away from clients: coping by avoiding meaningful interactions with clients in stressful situations. an example is a public servant stating \"the office is very busy today, please return tomorrow.\" moving against clients: coping by confronting clients. for instance, teachers can cope with stress when working with students by imposing very rigid rules, such as no cellphone use in class and sending everyone to the office when they use a cellphone. furthermore, aggression towards clients is also included here. in their systematic review of 35 years of the literature, the scholars found that the most often used family is moving towards clients . moving away from clients was found in 38% of all coping fragments and moving against clients in 19%. in 1937, the psychoanalyst heinz hartmann marked it as the evolution of ego psychology by publishing his paper, \"me\" . hartmann focused on the adaptive progression of the ego \"through the mastery of new demands and tasks\". in his wake, ego psychology further stressed \"the development of the personality and of 'ego-strengths'...adaptation to social realities\". from this perspective, \"the art of soothing ourselves is a fundamental life skill; some psychoanalytic thinkers, such as john bowlby and d. winnicott see this as the most essential of all psychic tools.\" object relations theory has examined the childhood development both of \"independent coping...capacity for self-soothing\", and of \"aided coping. emotion-focused coping in infancy is often accomplished through the assistance of an adult.\" gender differences in coping strategies are how men and women differ in managing psychological stress. there is evidence that males often develop stress due to their careers, whereas females often encounter stress due to issues in interpersonal relationships. recent studies acknowledge levels of self-esteem as a factor in the decision to react with a problem-focused or emotion-focused approach to stressors. an alternative explanation for the aforementioned differences involves genetic factors. the degree to which genetic factors and social conditioning influence behavior is the subject of ongoing debate. hormones also play a part in stress management. cortisol, a stress hormone, was found to be elevated in males during stressful situations. in females, however, cortisol levels were decreased in stressful situations, and instead, an increase in limbic activity was discovered. many researchers believe that these results underlie the reasons why men exhibit a fight-or-flight reaction to stress, whereas females have a tend-and-befriend reaction. the \"fight-or-flight\" response activates the sympathetic nervous system in the form of increased focus levels, adrenaline, and epinephrine. conversely, the \"tend-and-befriend\" reaction refers to the tendency of women to protect their offspring and relatives. although these two reactions support a genetic basis to differences in behavior, one should not assume that in general females cannot implement \"fight-or-flight\" behavior or that males cannot implement \"tend-and-befriend\" behavior. additionally, this study implied differing health impacts for each gender as a result of the contrasting stress processes. stress, health & well-being thriving in the 21st century. folkman, susan; moskowitz, judith tedlie . \"coping: pitfalls and promise\". doi:10.1146/annurev.psych.55.090902.141456. lazarus, \"coping and emotion\", in nancy stein et al. eds., psychological and biological approaches to emotion brougham, ruby r.; zail, christy m.; mendoza, celeste m.; miller, janine r. \"stress, sex differences, and coping strategies among college students\". doi:10.1007/s12144-009-9047-0. arantzamendi m, sapeta p, belar a, centeno c. how palliative care professionals develop coping competence through their career: a grounded theory. doi: 10.1177/02692163241229961.",
       "source": "en.wikipedia.org",
-      "licence": "CC-BY-SA-3.0",
-      "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/en/b/b4/Ambox_important.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this article has multiple issues. please help improve it or discuss these issues on the talk page .",
-          "licence": "Public domain"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/5/52/Acap.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "please help improve it or discuss these issues on the talk page . this article may require copy editing for spelling, grammar, style, cohesion, or tone . you can assist by editing it .",
-          "licence": "Public domain"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/en/6/6c/Wiki_letter_w.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "it may include hallucinated information, copyright violations , claims not verified in cited sources, original research , or fictitious references . any such material should be removed . this article's lead section may be too short to adequately summarize the key points . please consider expanding the lead to provide an accessible overview of all important aspects of the article.",
-          "licence": "Cc-by-sa-3.0"
-        }
-      ]
+      "licence": "CC-BY-SA-3.0"
     },
     {
       "theme": "mental-disorder",
@@ -340,66 +324,59 @@
       "licence": "CC-BY-SA-3.0",
       "figures": [
         {
-          "src": "https://upload.wikimedia.org/wikipedia/en/9/99/Question_book-new.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "this section relies excessively on references to primary sources . please improve this section by adding secondary or tertiary sources .",
-          "licence": "Cc-by-sa-3.0"
-        },
-        {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/3c/Tornow_Pritzhagen_10.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "The \"Haus Tornow am See\" (former manor house) in Germany from 1912 is today separated into a special education school and a hotel with integrated work/job- and rehabilitation -training for people with mental disorders.",
-          "context": "the \"haus tornow am see\" in germany from 1912 is today separated into a special education school and a hotel with integrated work/job- and rehabilitation -training for people with mental disorders. treatment and support for mental disorders are provided in psychiatric hospitals , clinics or a range of community mental health services .",
+          "context": "universal prevention need very high numbers of people to show effect . approaches to overcome this are focus on high-incidence groups , use multiple interventions to achieve greater, and thus more statistically valid, effects, use cumulative meta-analyses of many trials, and run very large trials. the \"haus tornow am see\" in germany from 1912 is today separated into a special education school and a hotel with integrated work/job- and rehabilitation -training for people with mental disorders. treatment and support for mental disorders are provided in psychiatric hospitals , clinics or a range of community mental health services .",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/4/44/Mental_and_behavioral_disorders_world_map-Deaths_per_million_persons-WHO2012.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "as of 2019 update cannabis is specifically not recommended as a treatment.",
+          "context": "this could include an emotional support animal or specifically trained psychiatric service dog . as of 2019 cannabis is specifically not recommended as a treatment.",
           "licence": "CC BY-SA 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/1/1b/Gautier_-_Salpetriere.JPG?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Eight patients representing mental diagnoses as of the 19th century at the Salpêtrière , Paris",
-          "context": "families that encountered difficulties when caring for the mentally ill visited tuscan courts to settle matters of ownership, finance, and other problems caused or exacerbated by the state of an individual diagnosed with a mental disorder. 183 due to the struggle to define and diagnose mental disorders universally, treatment of patients in institutions and in family homes became inconsistent and on a case-by-case basis. asylum care was often harsh and treated people like wild animals, but towards the end of the 18th century a moral treatment movement gradually developed. clear descriptions of some syndromes may be rare before the 19th century.",
+          "context": "families that encountered difficulties when caring for the mentally ill visited tuscan courts to settle matters of ownership, finance, and other problems caused or exacerbated by the state of an individual diagnosed with a mental disorder. due to the struggle to define and diagnose mental disorders universally, treatment of patients in institutions and in family homes became inconsistent and on a case-by-case basis. asylum care was often harsh and treated people like wild animals, but towards the end of the 18th century a moral treatment movement gradually developed. clear descriptions of some syndromes may be rare before the 19th century.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/4/4d/A_mentally_ill_patient_in_a_strait-jacket_attached_to_the_wa_Wellcome_V0016643ER.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A patient in a strait-jacket and barrel contraption, 1908",
-          "context": "numerous different classification schemes and diagnostic terms were developed by different authorities, and the term psychiatry was coined , though medical superintendents were still known as alienists. a patient in a strait-jacket and barrel contraption, 1908 the turn of the 20th century saw the development of psychoanalysis, which would later come to the fore, along with kraepelin 's classification scheme. asylum \"inmates\" were increasingly referred to as \"patients\", and asylums were renamed as hospitals.",
+          "context": "nineteenth century edit industrialization and population growth led to a massive expansion of the number and size of insane asylums in every western country in the 19th century. numerous different classification schemes and diagnostic terms were developed by different authorities, and the term psychiatry was coined , though medical superintendents were still known as alienists. a patient in a strait-jacket and barrel contraption, 1908 the turn of the 20th century saw the development of psychoanalysis, which would later come to the fore, along with kraepelin 's classification scheme. asylum \"inmates\" were increasingly referred to as \"patients\", and asylums were renamed as hospitals.",
           "licence": "CC BY 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/5b/Insulin_shock_therapy.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Insulin shock procedure , 1950s",
-          "context": "insulin shock procedure , 1950s early in the 20th century in the united states, a mental hygiene movement developed, aiming to prevent mental disorders. clinical psychology and social work developed as professions.",
+          "context": "asylum \"inmates\" were increasingly referred to as \"patients\", and asylums were renamed as hospitals. insulin shock procedure , 1950s early in the 20th century in the united states, a mental hygiene movement developed, aiming to prevent mental disorders. clinical psychology and social work developed as professions.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/f3/Self.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "188 nigeria is still nowhere near being equipped to solve prevailing mental health challenges. different societies or cultures, even different individuals in a subculture , can disagree as to what constitutes optimal versus pathological, biological and psychological functioning. research has demonstrated that cultures vary in the relative importance placed on, for example, happiness, autonomy, or social relationships for pleasure.",
+          "context": "disorders such as depression, anxiety, schizophrenia, personality disorder, old age-related disorder, and substance-abuse disorder are common in nigeria, as in other countries in africa. nigeria is still nowhere near being equipped to solve prevailing mental health challenges. different societies or cultures, even different individuals in a subculture , can disagree as to what constitutes optimal versus pathological, biological and psychological functioning. research has demonstrated that cultures vary in the relative importance placed on, for example, happiness, autonomy, or social relationships for pleasure.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e6/Giorgio_Antonucci.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Giorgio Antonucci , a physician known for questioning the basis of psychiatry",
-          "context": "those with schizophrenia commonly report some type of religious delusion , 203 204 205 and religion itself may be a trigger for schizophrenia.",
+          "context": "there is a link between religion and schizophrenia , a complex mental disorder characterized by a difficulty in recognizing reality, regulating emotional responses, and thinking in a clear and logical manner. those with schizophrenia commonly report some type of religious delusion , and religion itself may be a trigger for schizophrenia.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/8/86/Dr_Thomas_S_Szasz.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Thomas Szasz , author of The Myth of Mental Illness",
-          "context": "thomas szasz , author of the myth of mental illness controversy has often surrounded psychiatry, and the term anti-psychiatry was coined by the psychiatrist david cooper in 1967. the anti-psychiatry message is that psychiatric treatments are ultimately more damaging than helpful to patients, and psychiatry's history involves what may now be seen as dangerous treatments.",
+          "context": "those with schizophrenia commonly report some type of religious delusion , and religion itself may be a trigger for schizophrenia. thomas szasz , author of the myth of mental illness controversy has often surrounded psychiatry, and the term anti-psychiatry was coined by the psychiatrist david cooper in 1967. the anti-psychiatry message is that psychiatric treatments are ultimately more damaging than helpful to patients, and psychiatry's history involves what may now be seen as dangerous treatments.",
           "licence": "CC BY-SA 3.0"
         },
         {
@@ -415,6 +392,13 @@
           "caption": "",
           "context": "",
           "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/65/Creative_Commons_by_small.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "doi : 10.1080/03009734.2018.1526235 . this article incorporates text from this source, which is available under the cc by 4.0 license. ^ bax, orestis kanter; chartonas, dimitrios; parker, jennie; symniakou, spyridon; lee, tennyson .",
+          "licence": "Public domain"
         }
       ]
     },
@@ -425,73 +409,66 @@
       "licence": "CC-BY-SA-3.0",
       "figures": [
         {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/b/bd/Ambox_current_red_Asia_Australia.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this article needs to be updated . the reason given is: many outdated sources and information .",
-          "licence": "CC0"
-        },
-        {
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/65/A_woman_diagnosed_as_suffering_from_melancholia._Colour_lith_Wellcome_L0026686.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "an 1892 lithograph of a woman diagnosed with melancholia a person facing a major depressive episode may have feelings of hopelessness and self-hatred , and may also experience suicidal ideation and thoughts of self-harm .",
+          "context": "it can negatively affect a person's personal life, work life, or education, and cause issues with a person's sleeping habits, eating habits, and general health. an 1892 lithograph of a woman diagnosed with melancholia a person facing a major depressive episode may have feelings of hopelessness and self-hatred , and may also experience suicidal ideation and thoughts of self-harm . in many cases, this manifests as a complete loss of emotional reactivity, a neurological protection response known as emotional blunting or anhedonia .",
           "licence": "CC BY 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/67/Diathesis_stress_model_cup_analogy.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
-          "caption": "",
-          "context": "41 diagnosis and treatment is further complicated in that the elderly are often simultaneously treated with a number of other drugs, and often have other concurrent diseases . a cup analogy demonstrating the diathesis-stress model that under the same amount of stressors, person 2 is more vulnerable than person 1, because of their predisposition 42 the etiology of depression is not yet fully understood.",
+          "caption": "A cup analogy demonstrating the diathesis-stress model that under the same amount of stressors, person 2 is more vulnerable than person 1, because of their predisposition",
+          "context": "elderly people with depression may not present with classical depressive symptoms. diagnosis and treatment is further complicated in that the elderly are often simultaneously treated with a number of other drugs, and often have other concurrent diseases . a cup analogy demonstrating the diathesis-stress model that under the same amount of stressors, person 2 is more vulnerable than person 1, because of their predisposition the etiology of depression is not yet fully understood. the biopsychosocial model proposes that biological, psychological, and social factors all play a role in causing depression.",
           "licence": "CC BY 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/a/af/A_wretched_man_with_an_approaching_depression%3B_represented_b_Wellcome_V0011145.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Caricature of a man with depression",
-          "context": "with this, researchers have also seen that the concentration of quinolinic acid correlates to the severity of depressive symptoms.",
+          "context": "studies have shown that the post-mortem brains of patients with mdd have higher levels of quinolinic acid than people who did not have mdd. with this, researchers have also seen that the concentration of quinolinic acid correlates to the severity of depressive symptoms.",
           "licence": "CC BY 2.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/59/Soccer_football_informal_in_Manipur_India_cropped.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Physical exercise is one recommended way to manage mild depression.",
-          "context": "development of mental health services is minimal in many countries; depression is viewed as a phenomenon of the developed world despite evidence to the contrary, and not as an inherently life-threatening condition. 163 there is insufficient evidence to determine the effectiveness of psychological versus medical therapy in children. physical exercise is one recommended way to manage mild depression. physical exercise has been found to be effective for major depression, and may be recommended to people who are willing, motivated, and healthy enough to participate in an exercise program as treatment.",
+          "context": "development of mental health services is minimal in many countries; depression is viewed as a phenomenon of the developed world despite evidence to the contrary, and not as an inherently life-threatening condition. there is insufficient evidence to determine the effectiveness of psychological versus medical therapy in children. physical exercise is one recommended way to manage mild depression. physical exercise has been found to be effective for major depression, and may be recommended to people who are willing, motivated, and healthy enough to participate in an exercise program as treatment.",
           "licence": "CC BY-SA 2.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/4/48/Zoloft_bottles.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Sertraline (Zoloft) is used primarily to treat major depression in adults.",
-          "context": "sertraline is used primarily to treat major depression in adults. conflicting results have arisen from studies that look at the effectiveness of antidepressants in people with acute, mild to moderate depression.",
+          "context": "telehealth edit the remote provision of psychotherapy, through media such as telephone and video, can make treatment for depression more available and accessible. the administration of treatments, such as cbt, via telehealth may provide a viable alternative to face-to-face care. sertraline is used primarily to treat major depression in adults. conflicting results have arisen from studies that look at the effectiveness of antidepressants in people with acute, mild to moderate depression.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/f2/Unipolar_depressive_disorders_world_map_-_DALY_-_WHO2004.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "people with major depression are less likely to follow medical recommendations for treating and preventing cardiovascular disorders, further increasing their risk of medical complications. 307 cardiologists may not recognize underlying depression that complicates a cardiovascular problem under their care.",
+          "context": "people with major depression are less likely to follow medical recommendations for treating and preventing cardiovascular disorders, further increasing their risk of medical complications. cardiologists may not recognize underlying depression that complicates a cardiovascular problem under their care.",
           "licence": "CC BY-SA 2.5"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/1/18/Hippocrates_pushkin02.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Diagnoses of depression go back at least as far as Hippocrates .",
-          "context": "diagnoses of depression go back at least as far as hippocrates . the term depression itself was derived from the latin verb deprimere , meaning \"to press down\".",
+          "context": "it was a similar but far broader concept than today's depression; prominence was given to a clustering of the symptoms of sadness, dejection, and despondency, and often fear, anger, delusions and obsessions were included. diagnoses of depression go back at least as far as hippocrates . the term depression itself was derived from the latin verb deprimere , meaning \"to press down\".",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/c2/Abraham_Lincoln_O-60_by_Brady%2C_1862.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "the 16th american president , abraham lincoln , had \" melancholy \", a condition that now may be referred to as clinical depression. 350 the term depression is used in a number of different ways.",
+          "context": "there have been some continued empirically based arguments for a return to the diagnosis of melancholia. there has been some criticism of the expansion of coverage of the diagnosis, related to the development and promotion of antidepressants and the biological model since the late 1950s. the 16th american president , abraham lincoln , had \" melancholy \", a condition that now may be referred to as clinical depression. the term depression is used in a number of different ways.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/ec/Norges_statsminister_Kjell_Magne_Bondevik.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "In 1998, the Norwegian PM Kjell Magne Bondevik publicly announced he would take a leave of absence in order to recover from a depressive episode.",
-          "context": "359 some pioneering psychologists, such as americans william james 360 361 and john b. watson , 362 dealt with their own depression. in 1998, the norwegian pm kjell magne bondevik publicly announced he would take a leave of absence in order to recover from a depressive episode. there has been a continuing discussion of whether neurological disorders and mood disorders may be linked to creativity , a discussion that goes back to aristotelian times.",
+          "context": "some pioneering psychologists, such as americans william james and john b. watson , dealt with their own depression. in 1998, the norwegian pm kjell magne bondevik publicly announced he would take a leave of absence in order to recover from a depressive episode. there has been a continuing discussion of whether neurological disorders and mood disorders may be linked to creativity , a discussion that goes back to aristotelian times.",
           "licence": "CC BY 2.5 dk"
         },
         {
@@ -510,31 +487,24 @@
       "licence": "CC-BY-SA-3.0",
       "figures": [
         {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/f/fe/Unbalanced_scales.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "the neutrality of this article is disputed . relevant discussion may be found on the talk page .",
-          "licence": "Public domain"
-        },
-        {
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/c5/Edvard_Munch%2C_1893%2C_The_Scream%2C_oil%2C_tempera_and_pastel_on_cardboard%2C_91_x_73_cm%2C_National_Gallery_of_Norway.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "please do not remove this message until conditions to do so are met . anxiety underlies the scream by edvard munch , which grapples with a complex human experience.",
+          "context": "anxiety underlies the scream by edvard munch , which grapples with a complex human experience.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/a/a8/Emperor_Traianus_Decius_%28Mary_Harrsch%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
-          "caption": "",
-          "context": "79 anxiety has also been linked to the experience of intrusive thoughts . studies have revealed that individuals who experience high levels of anxiety are highly vulnerable to the experience of intense intrusive thoughts or psychological disorders that are characterized by intrusive thoughts. 82 environmental factors are also important.",
+          "caption": "A marble bust of the Roman Emperor Decius from the Capitoline Museum , conveying \"an impression of anxiety and weariness, as of a man shouldering heavy [state] responsibilities\"",
+          "context": "anxiety has also been linked to the experience of intrusive thoughts . studies have revealed that individuals who experience high levels of anxiety are highly vulnerable to the experience of intense intrusive thoughts or psychological disorders that are characterized by intrusive thoughts. environmental factors are also important. twin studies show that individual-specific environments have a large influence on anxiety, whereas shared environmental influences operate during childhood but decline through adolescence.",
           "licence": "CC BY-SA 2.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/f6/Challenge_vs_skill.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "117 118 acute exposure to toxic levels of benzene may cause euphoria, anxiety, and irritability lasting up to 2 weeks after the exposure.",
+          "context": "while many often report self-medicating anxiety with these substances, improvements in anxiety from drugs are usually short-lived and tend to be exaggerated. acute exposure to toxic levels of benzene may cause euphoria, anxiety, and irritability lasting up to 2 weeks after the exposure.",
           "licence": "Public domain"
         }
       ]
@@ -549,7 +519,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e1/Hall_Freud_Jung_in_front_of_Clark_1909.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Freud, seated left of picture with Jung seated at the right of the picture. 1909",
-          "context": "70 also in 1892, at the second congress of experimental psychology, van eeden attempted to take the credit for the term psychotherapy and to distance the term from hypnosis. 70 thus psychotherapy initially meant \"the treatment of disease by psychic or hypnotic influence, or by suggestion\". freud, seated left of picture with jung seated at the right of the picture. 1909 sigmund freud visited the nancy school and his early neurological practice involved the use of hypnotism.",
+          "context": "also in 1892, at the second congress of experimental psychology, van eeden attempted to take the credit for the term psychotherapy and to distance the term from hypnosis. thus psychotherapy initially meant \"the treatment of disease by psychic or hypnotic influence, or by suggestion\". freud, seated left of picture with jung seated at the right of the picture. 1909 sigmund freud visited the nancy school and his early neurological practice involved the use of hypnotism.",
           "licence": "Public domain"
         },
         {
@@ -563,14 +533,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/25/20180927-RD-LSC-0048_%2844259432605%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Telemental health session",
-          "context": "telemental health session telepsychiatry or telemental health refers to the use of telecommunications technology to deliver psychiatric care remotely for people with mental health conditions . it is a branch of telemedicine .",
-          "licence": "Public domain"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e4/Psi-stylized.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "stylized letter psi",
-          "caption": "",
-          "context": "",
+          "context": "computer-supported therapy : classical psychotherapy is supported by means of online or software application elements. the feasibility of such interventions has been investigated for individual and group therapy. telemental health session telepsychiatry or telemental health refers to the use of telecommunications technology to deliver psychiatric care remotely for people with mental health conditions . it is a branch of telemedicine .",
           "licence": "Public domain"
         }
       ]
@@ -585,36 +548,29 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/b/bd/Classes_of_stresses_that_plants_are_exposed_to.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Schematic overview of the classes of stresses in plants",
-          "context": "\"environmental stress\" redirects here. for the manufacturing process, see environmental stress screening .",
+          "context": "",
           "licence": "CC BY 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/54/Response_to_stress.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Neurohormonal response to stress",
-          "context": "for the manufacturing process, see environmental stress screening . neurohormonal response to stress stress , whether physiological , biological or psychological , is an organism's response to a stressor , such as an environmental condition or change in life circumstances. 1 2 when stressed by stimuli that alter an organism's environment, multiple systems respond across the body.",
+          "context": "neurohormonal response to stress stress , whether physiological , biological or psychological , is an organism's response to a stressor , such as an environmental condition or change in life circumstances. when stressed by stimuli that alter an organism's environment, multiple systems respond across the body.",
           "licence": "CC BY 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/9/9c/Rotating_brain_colored.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "rotating human brain with various parts highlighted in different colors",
           "caption": "",
-          "context": "",
+          "context": "first to use the term in a biological context, selye continued to define stress as \"the non-specific response of the body to any demand placed upon it\". neuroscientists such as bruce mcewen and jaap koolhaas believe that stress, based on years of empirical research, \"should be restricted to conditions where an environmental demand exceeds the natural regulatory capacity of an organism\".",
           "licence": "CC BY-SA 2.1 jp"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/cc/General_Adaptation_Syndrome.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A diagram of the general adaptation syndrome model",
-          "context": "one evaluation of the different stresses in people's lives is the holmes and rahe stress scale .",
+          "context": "adverse experiences during development are thought to contribute to deficits in the maturity of an individual's stress response systems. one evaluation of the different stresses in people's lives is the holmes and rahe stress scale .",
           "licence": "CC BY 3.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/a/ae/Star_of_life.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this section needs more reliable medical references for verification or relies too heavily on primary sources . please review the contents of the section and add the appropriate references if you can.",
-          "licence": "Public domain"
         }
       ]
     },

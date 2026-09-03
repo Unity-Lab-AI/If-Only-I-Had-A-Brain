@@ -2,7 +2,7 @@
   "version": 1,
   "grade": "grade11",
   "subject": "science",
-  "source": "hybrid: OpenStax textbooks (CC-BY) + Simple/English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
+  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
   "note": "Hybrid academic-depth corpus for science/grade11. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
   "experiences": [
     {
@@ -29,28 +29,35 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/7/75/Aristoteles_Louvre2.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Aristotle famously described a force as anything that causes an object to undergo \"unnatural motion\"",
-          "context": "aristotle famously described a force as anything that causes an object to undergo \"unnatural motion\" since antiquity the concept of force has been recognized as integral to the functioning of each of the simple machines . the mechanical advantage given by a simple machine allowed for less force to be used in exchange for that force acting over a greater distance for the same amount of work .",
+          "context": "only four main interactions are known: in order of decreasing strength, they are: strong , electromagnetic , weak , and gravitational . high-energy particle physics observations made during the 1970s and 1980s confirmed that the weak and electromagnetic forces are expressions of a more fundamental electroweak interaction. aristotle famously described a force as anything that causes an object to undergo \"unnatural motion\" since antiquity the concept of force has been recognized as integral to the functioning of each of the simple machines . the mechanical advantage given by a simple machine allowed for less force to be used in exchange for that force acting over a greater distance for the sam",
           "licence": "CC BY-SA 2.5"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/39/GodfreyKneller-IsaacNewton-1689.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "an observer moving in tandem with an object will see it as being at rest. so, its natural behavior will be to remain at rest with respect to that observer, which means that an observer who sees it moving at constant speed in a straight line will see it continuing to do so. his principia presented his three laws of motion in geometrical language, whereas modern physics uses differential calculus and vectors .",
+          "context": "an observer moving in tandem with an object will see it as being at rest. so, its natural behavior will be to remain at rest with respect to that observer, which means that an observer who sees it moving at constant speed in a straight line will see it continuing to do so. his principia presented his three laws of motion in geometrical language, whereas modern physics uses differential calculus and vectors . second law edit according to the first law, motion at constant speed in a straight line does not need a cause.",
           "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/09/Addition_av_vektorer_003.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "the question of which aspects of newton's laws to take as definitions and which to regard as holding physical content has been answered in various ways, which ultimately do not affect how the theory is used in practice. notable physicists, philosophers and mathematicians who have sought a more explicit definition of the concept of force include ernst mach and walter noll .",
+          "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/52/Freebodydiagram3_pn.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Free body diagrams of a block on a flat surface and an inclined plane . Forces are resolved and added together to determine their magnitudes and the net force.",
-          "context": "free body diagrams of a block on a flat surface and an inclined plane . forces are resolved and added together to determine their magnitudes and the net force.",
+          "context": "such experiments demonstrate the crucial properties that forces are additive vector quantities : they have magnitude and direction. the magnitude of the resultant varies from the difference of the magnitudes of the two forces to their sum, depending on the angle between their lines of action. free body diagrams of a block on a flat surface and an inclined plane . forces are resolved and added together to determine their magnitudes and the net force.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/cc/Galileo.arp.300pix.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Galileo Galilei was the first to point out the inherent contradictions contained in Aristotle's description of forces.",
-          "context": "galileo galilei was the first to point out the inherent contradictions contained in aristotle's description of forces. dynamic equilibrium was first described by galileo who noticed that certain assumptions of aristotelian physics were contradicted by observations and logic .",
+          "context": "these were all formulated and experimentally verified before isaac newton expounded his three laws of motion . galileo galilei was the first to point out the inherent contradictions contained in aristotle's description of forces. dynamic equilibrium was first described by galileo who noticed that certain assumptions of aristotelian physics were contradicted by observations and logic .",
           "licence": "Public domain"
         },
         {
@@ -64,14 +71,14 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/c7/Incline.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "F N represents the normal force exerted on the object.",
-          "context": "this led maxwell to discover that electric and magnetic fields could be \"self-generating\" through a wave that traveled at a speed that he calculated to be the speed of light . this insight united the nascent fields of electromagnetic theory with optics and led directly to a complete description of the electromagnetic spectrum . f n represents the normal force exerted on the object. main article: normal force when objects are in contact, the force directly between them is called the normal force, the component of the total force in the system exerted normal to the interface between the objects.",
+          "context": "this led maxwell to discover that electric and magnetic fields could be \"self-generating\" through a wave that traveled at a speed that he calculated to be the speed of light . this insight united the nascent fields of electromagnetic theory with optics and led directly to a complete description of the electromagnetic spectrum . f n represents the normal force exerted on the object. when objects are in contact, the force directly between them is called the normal force, the component of the total force in the system exerted normal to the interface between the objects.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/5a/Mass-spring-system.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "F k is the force that responds to the load on the spring",
-          "context": "f k is the force that responds to the load on the spring a simple elastic force acts to return a spring to its natural length. an ideal spring is taken to be massless, frictionless, unbreakable, and infinitely stretchable.",
+          "context": "such machines allow a mechanical advantage for a corresponding increase in the length of displaced string needed to move the load. these tandem effects result ultimately in the conservation of mechanical energy since the work done on the load is the same no matter how complicated the machine. f k is the force that responds to the load on the spring a simple elastic force acts to return a spring to its natural length. an ideal spring is taken to be massless, frictionless, unbreakable, and infinitely stretchable.",
           "licence": "CC BY-SA 3.0"
         },
         {
@@ -85,8 +92,22 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/0/09/Torque_animation.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Relationship between force ( F ), torque ( τ ), and momentum vectors ( p and L ) in a rotating system.",
-          "context": "4 : 12-11 in general relativity , gravity becomes a fictitious force that arises in situations where spacetime deviates from a flat geometry. relationship between force , torque , and momentum vectors in a rotating system. main article: torque forces that cause extended objects to rotate are associated with torques .",
+          "context": "because these forces are not genuine they are also referred to as \"pseudo forces\". in general relativity , gravity becomes a fictitious force that arises in situations where spacetime deviates from a flat geometry. relationship between force , torque , and momentum vectors in a rotating system. forces that cause extended objects to rotate are associated with torques .",
           "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/89/Beta_Negative_Decay.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Feynman diagram for the decay of a neutron into a proton. The W boson is between two vertices indicating a repulsion.",
+          "context": "this gives rise to an emergent pressure known as degeneracy pressure . the dynamic equilibrium between the degeneracy pressure and the attractive electromagnetic force give atoms, molecules, liquids, and solids stability . feynman diagram for the decay of a neutron into a proton. the w boson is between two vertices indicating a repulsion.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/9f/GRAVITY_A_powerful_new_probe_of_black_holes.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Instruments like GRAVITY provide a powerful probe for gravity force detection.",
+          "context": "instruments like gravity provide a powerful probe for gravity force detection. newton's law of gravitation is an example of action at a distance : one body, like the sun, exerts an influence upon any other body, like the earth, no matter how far apart they are.",
+          "licence": "CC BY 4.0"
         }
       ]
     },
@@ -114,7 +135,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/c3/Joule%27s_Apparatus_%28Harper%27s_Scan%29.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Joule's apparatus for measuring the mechanical equivalent of heat. A descending weight attached to a string causes a paddle immersed in water to rotate.",
-          "context": "31 conservation of energy does apply during wave function collapse in h. everett 's many-worlds interpretation of quantum mechanics. joule's apparatus for measuring the mechanical equivalent of heat. a descending weight attached to a string causes a paddle immersed in water to rotate.",
+          "context": "conservation of energy does apply during wave function collapse in h. everett 's many-worlds interpretation of quantum mechanics. joule's apparatus for measuring the mechanical equivalent of heat. a descending weight attached to a string causes a paddle immersed in water to rotate.",
           "licence": "Public domain"
         },
         {
@@ -142,7 +163,7 @@
     },
     {
       "theme": "momentum",
-      "story": "in newtonian mechanics, momentum is the product of the mass and velocity of an object. it is a vector quantity, possessing a magnitude and a direction. if m is an object's mass and v is its velocity , then the object's momentum p is: p = m v . newton's second law of motion states that the rate of change of a body's momentum is equal to the net force acting on it. momentum depends on the frame of reference, but in any inertial frame of reference, it is a conserved quantity, meaning that if a closed system is not affected by external forces, its total momentum does not change. momentum is also conserved in special relativity and, in a modified form, in electrodynamics, quantum mechanics, quantum field theory, and general relativity. it is an expression of one of the fundamental symmetries of space and time: translational symmetry. advanced formulations of classical mechanics, lagrangian and hamiltonian mechanics, allow one to choose coordinate systems that incorporate symmetries and constraints. in these systems the conserved quantity is generalized momentum, and in general this is different from the kinetic momentum defined above. the concept of generalized momentum is carried over into quantum mechanics, where it becomes an operator on a wave function. the momentum and position operators are related by the heisenberg uncertainty principle. in continuous systems such as electromagnetic fields, fluid dynamics and deformable bodies, a momentum density can be defined as momentum per volume and is said to satisfy a conservation law. a continuum version of the conservation of momentum leads to equations such as the navier-stokes equations for fluids or the cauchy momentum equation for deformable solids or fluids. momentum is a vector quantity: it has both magnitude and direction. since momentum has a direction, it can be used to predict the resulting direction and speed of motion of objects after they collide. below, the basic properties of momentum are described in one dimension. the vector equations are almost identical to the scalar equations . the momentum of a particle is conventionally represented by the letter p. it is the product of two quantities, the particle's mass and its velocity : p = m v . in si units, if the mass is in kilograms and the velocity is in meters per second then the momentum is in kilogram meters per second . in cgs units, if the mass is in grams and the velocity in centimeters per second, then the momentum is in gram centimeters per second . being a vector, momentum has magnitude and direction. the momentum of a system of particles is the vector sum of their momenta. if two particles have respective masses m1 and m2, and velocities v1 and v2, the total momentum is p = p 1 + p 2 = m 1 v 1 + m 2 v 2 . example: a model airplane of mass 1 kg accelerates from rest to a velocity of 6 m/s due north in 2 s. the net force required to produce this acceleration is 3 newtons due north. the rate of change of momentum is 3 /s due north which is numerically equivalent to 3 newtons. in a closed system the total momentum remains constant. this fact, known as the law of conservation of momentum, is implied by newton's laws of motion. suppose, for example, that two particles interact. as explained by the third law, the forces between them are equal in magnitude but opposite in direction. similarly, if there are several particles, the momentum exchanged between each pair of particles adds to zero, so the total change in momentum is zero. the conservation of the total momentum of a number of interacting particles can be expressed as m a v a + m b v b + m c v c + ... it can also be generalized to situations where newton's laws do not hold, such as in relativistic situations and those involving electrodynamics. momentum is a measurable quantity, and the measurement depends on the frame of reference. both calculations are equally correct. in both frames of reference, any change in momentum will be found to be consistent with the relevant laws of physics. suppose x is a position in an inertial frame of reference. from the point of view of another frame of reference, moving at a constant speed u relative to the other, the position changes with time as x ' = x - u t . moreover, as long as the force has the same form, in both frames, newton's second law is unchanged. forces such as newtonian gravity, which depend only on the scalar distance between objects, satisfy this criterion. this independence of reference frame is called newtonian relativity or galilean invariance. a change of reference frame can often simplify calculations of motion. for example, in a collision of two particles, a reference frame can be chosen where one particle begins at rest. another commonly used reference frame is the center of mass frame - one that is moving with the center of mass. in this frame, the total momentum is zero. if two particles, each of known momentum, collide and coalesce, the law of conservation of momentum can be used to determine the momentum of the coalesced body. if the outcome of the collision is that the two particles separate, the law is not sufficient to determine the momentum of each particle. if the momentum of one particle after the collision is known, the law can be used to determine the momentum of the other particle. alternatively if the combined kinetic energy after the collision is known, the law can be used to determine the momentum of each particle after the collision. kinetic energy is usually not conserved. if it is conserved, the collision is called an elastic collision; if not, it is an inelastic collision. = = an elastic collision is one in which no kinetic energy is transformed into heat or some other form of energy. perfectly elastic collisions can occur when the objects do not touch each other, as for example in atomic or nuclear scattering where electric repulsion keeps the objects apart. a slingshot maneuver of a satellite around a planet can also be viewed as a perfectly elastic collision. a collision between two pool balls is a good example of an almost totally elastic collision, due to their high rigidity, but when bodies come in contact there is always some dissipation. a head-on elastic collision between two bodies can be represented by velocities in one dimension, along a line passing through the bodies. for example, suppose there are two bodies of equal mass m, one stationary and one approaching the other at a speed v . because of the symmetry, after the collision both must be moving away from the center of mass at the same speed. adding the speed of the center of mass to both, we find that the body that was moving is now stopped and the other is moving away at speed v. the bodies have exchanged their velocities. regardless of the velocities of the bodies, a switch to the center of mass frame leads us to the same conclusion. therefore, the final velocities are given by v a 2 = v b 1 v b 2 = v a 1 . = = in an inelastic collision, some of the kinetic energy of the colliding bodies is converted into other forms of energy . in a perfectly inelastic collision , both bodies have the same motion afterwards. a head-on inelastic collision between two bodies can be represented by velocities in one dimension, along a line passing through the bodies. if the velocities are va1 and vb1 before the collision then in a perfectly inelastic collision both bodies will be travelling with velocity v2 after the collision. the equation expressing conservation of momentum is: m a v a 1 + m b v b 1 = v 2 . in this instance the initial velocities of the bodies would be non-zero, or the bodies would have to be massless. one measure of the inelasticity of the collision is the coefficient of restitution cr, defined as the ratio of relative velocity of separation to relative velocity of approach. in applying this measure to a ball bouncing from a solid surface, this can be easily measured using the following formula: c r = bounce height drop height . for example, an explosion is the result of a chain reaction that transforms potential energy stored in chemical, mechanical, or nuclear form into kinetic energy, acoustic energy, and electromagnetic radiation. rockets also make use of conservation of momentum: propellant is thrust outward, gaining momentum, and an equal and opposite momentum is imparted to the rocket. real motion has both direction and velocity and must be represented by a vector. in a coordinate system with x, y, z axes, velocity has components vx in the x-direction, vy in the y-direction, vz in the z-direction. the vector is represented by a boldface symbol: v = . each vector equation represents three scalar equations. the equations are still one-dimensional, but each scalar represents the magnitude of the vector, for example, v 2 = v x 2 + v y 2 + v z 2 . often coordinates can be chosen so that only two components are needed, as in the figure. each component can be obtained separately and the results combined to produce a vector result. a simple construction involving the center of mass frame can be used to show that if a stationary elastic sphere is struck by a moving sphere, the two will head off at right angles after the collision . the concept of momentum plays a fundamental role in explaining the behavior of variable-mass objects such as a rocket ejecting fuel or a star accreting gas. in analyzing such an object, one treats the object's mass as a function that varies with time: m . the momentum of the object at time t is therefore p = m v . this is distinct from v, which is the velocity of the object itself as seen in an inertial frame. this equation is derived by keeping track of both the momentum of the object as well as the momentum of the ejected/accreted mass . when considered together, the object and the mass constitute a closed system in which total momentum is conserved. for example, a bead on an abacus is constrained to move along its wire and a pendulum bob is constrained to swing at a fixed distance from the pivot. many such constraints can be incorporated by changing the normal cartesian coordinates to a set of generalized coordinates that may be fewer in number. refined mathematical methods have been developed for solving mechanics problems in generalized coordinates. they introduce a generalized momentum, also known as the canonical momentum or conjugate momentum, that extends the concepts of both linear momentum and angular momentum. to distinguish it from generalized momentum, the product of mass and velocity is also referred to as mechanical momentum, kinetic momentum or kinematic momentum. the two main methods are described below. in lagrangian mechanics, a lagrangian is defined as the difference between the kinetic energy t and the potential energy v: l = t - v . even if qi is a cartesian coordinate, pi will not be the same as the mechanical momentum if the potential depends on velocity. in this mathematical framework, a generalized momentum is associated with the generalized coordinates. now if a given coordinate qi does not appear in the lagrangian , then pj is constant. this is the generalization of the conservation of momentum. even if the generalized coordinates are just the ordinary spatial coordinates, the conjugate momenta are not necessarily the ordinary momentum coordinates. an example is found in the section on electromagnetism. in hamiltonian mechanics, the lagrangian is replaced by a hamiltonian that is a function of generalized coordinates and momentum. conservation of momentum is a mathematical consequence of the homogeneity of space . that is, conservation of momentum is a consequence of the fact that the laws of physics do not depend on position; this is a special case of noether's theorem. for systems that do not have this symmetry, it may not be possible to define conservation of momentum. examples where conservation of momentum does not apply include curved spacetimes in general relativity or time crystals in condensed matter physics. = = in fields such as fluid dynamics and solid mechanics, it is not feasible to follow the motion of individual atoms or molecules. instead, the materials must be approximated by a continuum in which, at each point, there is a particle or fluid parcel that is assigned the average of the properties of atoms in a small region nearby. consider a column of water in hydrostatic equilibrium. all the forces on the water are in balance and the water is motionless. on any given drop of water, two forces are balanced. the first is gravity, which acts directly on each atom and molecule inside. the second force is the sum of all the forces exerted on its surface by the surrounding water. the force from below is greater than the force from above by just the amount needed to balance gravity. the normal force per unit area is the pressure p. this is equal to the net force on the droplet. forces that can change the momentum of a droplet include the gradient of the pressure and gravity, as above. in addition, surface forces can deform the droplet. such a shear stress occurs if the fluid has a velocity gradient because the fluid is moving faster on one side than another. this is also a flux, or flow per unit area, of x-momentum through the surface. the momentum balance equations can be extended to more general materials, including solids. the cauchy momentum equation is broadly applicable to deformations of solids and liquids. the relationship between the stresses and the strain rate depends on the properties of the material . = = a disturbance in a medium gives rise to oscillations, or waves, that propagate away from their source. in a solid, similar equations can be obtained for propagation of pressure and shear . in the linear approximation that leads to the above acoustic equation, the time average of this flux is zero. however, nonlinear effects can give rise to a nonzero average. it is possible for momentum flux to occur even though the wave itself does not have a mean momentum. = = in maxwell's equations, the forces between particles are mediated by electric and magnetic fields. the electromagnetic force on a particle with charge q due to a combination of electric field e and magnetic field b is f = q . it is the momentum due to the interaction of the particle with the electromagnetic fields. these quantities form a four-vector, so the analogy is consistent; besides, the concept of potential momentum is important in explaining the so-called hidden momentum of the electromagnetic fields. = = in newtonian mechanics, the law of conservation of momentum can be derived from the law of action and reaction, which states that every force has a reciprocating equal and opposite force. under some circumstances, moving charged particles can exert forces on each other in non-opposite directions. nevertheless, the combined momentum of the particles and the electromagnetic field is conserved. == == the lorentz force imparts a momentum to the particle, so by newton's second law the particle must impart a momentum to the electromagnetic fields. the momentum density is proportional to the poynting vector s which gives the directional rate of energy transfer per unit area: g = s c 2 . it is more difficult to define momentum density in media because the division into electromagnetic and mechanical is arbitrary. in quantum mechanics, momentum is defined as a self-adjoint operator on the wave function. the heisenberg uncertainty principle defines limits on how accurately the momentum and position of a single observable system can be known at once. in quantum mechanics, position and momentum are conjugate variables. this is a commonly encountered form of the momentum operator, though the momentum operator in other bases can take other forms. even though photons have no mass, they still carry momentum. this leads to applications such as the solar sail. the calculation of the momentum of light within dielectric media is somewhat controversial . = = newtonian physics assumes that absolute time and space exist outside of any observer; this gives rise to galilean invariance. it also results in a prediction that the speed of light can vary from one reference frame to another. this is contrary to what has been observed. in the special theory of relativity, einstein keeps the postulate that the equations of motion do not depend on the reference frame, but assumes that the speed of light c is invariant. as a result, position and time in two reference frames are related by the lorentz transformation instead of the galilean transformation. consider, for example, one reference frame moving relative to another at velocity v in the x direction. = = in the theory of special relativity, physical quantities are expressed in terms of four-vectors that include time as a fourth coordinate along with the three space coordinates. these vectors are generally represented by capital letters, for example r for position. the expression for the four-momentum depends on how the coordinates are expressed. time may be given in its normal units or multiplied by the speed of light so that all the components of the four-vector have dimensions of length. the relativistic energy-momentum relationship holds even for massless particles such as photons; by setting m0 = 0 it follows that e = p c . this is unlike the non-relativistic case where they travel at right angles. = = in about 530 ad, john philoponus developed a concept of momentum in on physics, a commentary to aristotle's physics. aristotle claimed that everything that is moving must be kept moving by something. for example, a thrown ball must be kept moving by motions of the air. philoponus pointed out the absurdity in aristotle's claim that motion of an object is promoted by the same air that is resisting its passage. he proposed instead that an impetus was imparted to the object in the act of throwing it. = = in 1020, ibn sina read philoponus and published his own theory of motion in the book of healing. = = in the 13th and 14th century, peter olivi and jean buridan read and refined the work of philoponus, and possibly that of ibn sina. buridan, who in about 1350 was made rector of the university of paris, referred to impetus being proportional to the weight times the speed. merely by letting things run their course, he preserves the same amount of motion ... as he put there in the beginning. this should not be read as a statement of the modern law of conservation of momentum, since descartes had no concept of mass as distinct from weight and size. more important, he believed that it is speed rather than velocity that is conserved. so for descartes, if a moving object were to bounce off a surface, changing its direction but not its speed, there would be no change in its quantity of motion. galileo, in his two new sciences , used the italian word impeto to similarly describe descartes's quantity of motion. = = in the 1600s, christiaan huygens concluded quite early that descartes's laws for the elastic collision of two bodies must be wrong, and he formulated the correct laws. an important step was his recognition of the galilean invariance of the problems. his views then took many years to be circulated. he passed them on in person to william brouncker and christopher wren in london, in 1661. what spinoza wrote to henry oldenburg about them, in 1666 during the second anglo-dutch war, was guarded. huygens had actually worked them out in a manuscript de motu corporum ex percussione in the period 1652-1656. the war ended in 1667, and huygens announced his results to the royal society in 1668. he published them in the journal des scavans in 1669. wallis used momentum for quantity of motion, and vis for force. he points out that force is conserved but quantity of motion, construed as the product of size and speed of an object, is not conserved. his definition ii defines quantitas motus, \"quantity of motion\", as \"arising from the velocity and quantity of matter conjointly\", which identifies it as momentum. thus when in law ii he refers to mutatio motus, \"change of motion\", being proportional to the force impressed, he is generally taken to mean momentum and not motion. = = in 1721, john jennings published miscellanea, where the momentum in its current mathematical sense is attested, five years before the final edition of newton's principia mathematica. in 1728, the cyclopedia states: the momentum, impetus, or quantity of motion of any body, is the factum [i.e., product] of its velocity, multiplied into its mass.",
+      "story": "in newtonian mechanics, momentum is the product of the mass and velocity of an object. it is a vector quantity, possessing a magnitude and a direction. if m is an object's mass and v is its velocity , then the object's momentum p is: p = m v . newton's second law of motion states that the rate of change of a body's momentum is equal to the net force acting on it. momentum depends on the frame of reference, but in any inertial frame of reference, it is a conserved quantity, meaning that if a closed system is not affected by external forces, its total momentum does not change. momentum is also conserved in special relativity and, in a modified form, in electrodynamics, quantum mechanics, quantum field theory, and general relativity. it is an expression of one of the fundamental symmetries of space and time: translational symmetry. advanced formulations of classical mechanics, lagrangian and hamiltonian mechanics, allow one to choose coordinate systems that incorporate symmetries and constraints. in these systems the conserved quantity is generalized momentum, and in general this is different from the kinetic momentum defined above. the concept of generalized momentum is carried over into quantum mechanics, where it becomes an operator on a wave function. the momentum and position operators are related by the heisenberg uncertainty principle. in continuous systems such as electromagnetic fields, fluid dynamics and deformable bodies, a momentum density can be defined as momentum per volume and is said to satisfy a conservation law. a continuum version of the conservation of momentum leads to equations such as the navier-stokes equations for fluids or the cauchy momentum equation for deformable solids or fluids. momentum is a vector quantity: it has both magnitude and direction. since momentum has a direction, it can be used to predict the resulting direction and speed of motion of objects after they collide. below, the basic properties of momentum are described in one dimension. the vector equations are almost identical to the scalar equations . the momentum of a particle is conventionally represented by the letter p. it is the product of two quantities, the particle's mass and its velocity : p = m v . in si units, if the mass is in kilograms and the velocity is in meters per second then the momentum is in kilogram meters per second . in cgs units, if the mass is in grams and the velocity in centimeters per second, then the momentum is in gram centimeters per second . being a vector, momentum has magnitude and direction. the momentum of a system of particles is the vector sum of their momenta. if two particles have respective masses m1 and m2, and velocities v1 and v2, the total momentum is p = p 1 + p 2 = m 1 v 1 + m 2 v 2 . example: a model airplane of mass 1 kg accelerates from rest to a velocity of 6 m/s due north in 2 s. the net force required to produce this acceleration is 3 newtons due north. the rate of change of momentum is 3 /s due north which is numerically equivalent to 3 newtons. in a closed system the total momentum remains constant. this fact, known as the law of conservation of momentum, is implied by newton's laws of motion. suppose, for example, that two particles interact. as explained by the third law, the forces between them are equal in magnitude but opposite in direction. similarly, if there are several particles, the momentum exchanged between each pair of particles adds to zero, so the total change in momentum is zero. the conservation of the total momentum of a number of interacting particles can be expressed as m a v a + m b v b + m c v c + ... it can also be generalized to situations where newton's laws do not hold, such as in relativistic situations and those involving electrodynamics. momentum is a measurable quantity, and the measurement depends on the frame of reference. both calculations are equally correct. in both frames of reference, any change in momentum will be found to be consistent with the relevant laws of physics. suppose x is a position in an inertial frame of reference. from the point of view of another frame of reference, moving at a constant speed u relative to the other, the position changes with time as x ' = x - u t . moreover, as long as the force has the same form, in both frames, newton's second law is unchanged. forces such as newtonian gravity, which depend only on the scalar distance between objects, satisfy this criterion. this independence of reference frame is called newtonian relativity or galilean invariance. a change of reference frame can often simplify calculations of motion. for example, in a collision of two particles, a reference frame can be chosen where one particle begins at rest. another commonly used reference frame is the center of mass frame - one that is moving with the center of mass. in this frame, the total momentum is zero. if two particles, each of known momentum, collide and coalesce, the law of conservation of momentum can be used to determine the momentum of the coalesced body. if the outcome of the collision is that the two particles separate, the law is not sufficient to determine the momentum of each particle. if the momentum of one particle after the collision is known, the law can be used to determine the momentum of the other particle. alternatively if the combined kinetic energy after the collision is known, the law can be used to determine the momentum of each particle after the collision. kinetic energy is usually not conserved. if it is conserved, the collision is called an elastic collision; if not, it is an inelastic collision. = = an elastic collision is one in which no kinetic energy is transformed into heat or some other form of energy. perfectly elastic collisions can occur when the objects do not touch each other, as for example in atomic or nuclear scattering where electric repulsion keeps the objects apart. a slingshot maneuver of a satellite around a planet can also be viewed as a perfectly elastic collision. a collision between two pool balls is a good example of an almost totally elastic collision, due to their high rigidity, but when bodies come in contact there is always some dissipation. a head-on elastic collision between two bodies can be represented by velocities in one dimension, along a line passing through the bodies. for example, suppose there are two bodies of equal mass m, one stationary and one approaching the other at a speed v . because of the symmetry, after the collision both must be moving away from the center of mass at the same speed. adding the speed of the center of mass to both, we find that the body that was moving is now stopped and the other is moving away at speed v. the bodies have exchanged their velocities. regardless of the velocities of the bodies, a switch to the center of mass frame leads us to the same conclusion. therefore, the final velocities are given by v a 2 = v b 1 v b 2 = v a 1 . = = in an inelastic collision, some of the kinetic energy of the colliding bodies is converted into other forms of energy . in a perfectly inelastic collision , both bodies have the same motion afterwards. a head-on inelastic collision between two bodies can be represented by velocities in one dimension, along a line passing through the bodies. if the velocities are va1 and vb1 before the collision then in a perfectly inelastic collision both bodies will be travelling with velocity v2 after the collision. the equation expressing conservation of momentum is: m a v a 1 + m b v b 1 = v 2 . in this instance the initial velocities of the bodies would be non-zero, or the bodies would have to be massless. one measure of the inelasticity of the collision is the coefficient of restitution cr, defined as the ratio of relative velocity of separation to relative velocity of approach. in applying this measure to a ball bouncing from a solid surface, this can be easily measured using the following formula: c r = bounce height drop height . for example, an explosion is the result of a chain reaction that transforms potential energy stored in chemical, mechanical, or nuclear form into kinetic energy, acoustic energy, and electromagnetic radiation. rockets also make use of conservation of momentum: propellant is thrust outward, gaining momentum, and an equal and opposite momentum is imparted to the rocket. real motion has both direction and velocity and must be represented by a vector. in a coordinate system with x, y, z axes, velocity has components vx in the x-direction, vy in the y-direction, vz in the z-direction. the vector is represented by a boldface symbol: v = . each vector equation represents three scalar equations. the equations are still one-dimensional, but each scalar represents the magnitude of the vector, for example, v 2 = v x 2 + v y 2 + v z 2 . often coordinates can be chosen so that only two components are needed, as in the figure. each component can be obtained separately and the results combined to produce a vector result. a simple construction involving the center of mass frame can be used to show that if a stationary elastic sphere is struck by a moving sphere, the two will head off at right angles after the collision . the concept of momentum plays a fundamental role in explaining the behavior of variable-mass objects such as a rocket ejecting fuel or a star accreting gas. in analyzing such an object, one treats the object's mass as a function that varies with time: m . the momentum of the object at time t is therefore p = m v . this is distinct from v, which is the velocity of the object itself as seen in an inertial frame. this equation is derived by keeping track of both the momentum of the object as well as the momentum of the ejected/accreted mass . when considered together, the object and the mass constitute a closed system in which total momentum is conserved. for example, a bead on an abacus is constrained to move along its wire and a pendulum bob is constrained to swing at a fixed distance from the pivot. many such constraints can be incorporated by changing the normal cartesian coordinates to a set of generalized coordinates that may be fewer in number. refined mathematical methods have been developed for solving mechanics problems in generalized coordinates. they introduce a generalized momentum, also known as the canonical momentum or conjugate momentum, that extends the concepts of both linear momentum and angular momentum. to distinguish it from generalized momentum, the product of mass and velocity is also referred to as mechanical momentum, kinetic momentum or kinematic momentum. the two main methods are described below. in lagrangian mechanics, a lagrangian is defined as the difference between the kinetic energy t and the potential energy v: l = t - v . even if qi is a cartesian coordinate, pi will not be the same as the mechanical momentum if the potential depends on velocity. in this mathematical framework, a generalized momentum is associated with the generalized coordinates. now if a given coordinate qi does not appear in the lagrangian , then pj is constant. this is the generalization of the conservation of momentum. even if the generalized coordinates are just the ordinary spatial coordinates, the conjugate momenta are not necessarily the ordinary momentum coordinates. an example is found in the section on electromagnetism. in hamiltonian mechanics, the lagrangian is replaced by a hamiltonian that is a function of generalized coordinates and momentum. conservation of momentum is a mathematical consequence of the homogeneity of space . that is, conservation of momentum is a consequence of the fact that the laws of physics do not depend on position; this is a special case of noether's theorem. for systems that do not have this symmetry, it may not be possible to define conservation of momentum. examples where conservation of momentum does not apply include curved spacetimes in general relativity or time crystals in condensed matter physics. = = in fields such as fluid dynamics and solid mechanics, it is not feasible to follow the motion of individual atoms or molecules. instead, the materials must be approximated by a continuum in which, at each point, there is a particle or fluid parcel that is assigned the average of the properties of atoms in a small region nearby. consider a column of water in hydrostatic equilibrium. all the forces on the water are in balance and the water is motionless. on any given drop of water, two forces are balanced. the first is gravity, which acts directly on each atom and molecule inside. the second force is the sum of all the forces exerted on its surface by the surrounding water. the force from below is greater than the force from above by just the amount needed to balance gravity. the normal force per unit area is the pressure p. this is equal to the net force on the droplet. forces that can change the momentum of a droplet include the gradient of the pressure and gravity, as above. in addition, surface forces can deform the droplet. such a shear stress occurs if the fluid has a velocity gradient because the fluid is moving faster on one side than another. this is also a flux, or flow per unit area, of x-momentum through the surface. the momentum balance equations can be extended to more general materials, including solids. the cauchy momentum equation is broadly applicable to deformations of solids and liquids. the relationship between the stresses and the strain rate depends on the properties of the material . = = a disturbance in a medium gives rise to oscillations, or waves, that propagate away from their source. in a solid, similar equations can be obtained for propagation of pressure and shear . in the linear approximation that leads to the above acoustic equation, the time average of this flux is zero. however, nonlinear effects can give rise to a nonzero average. it is possible for momentum flux to occur even though the wave itself does not have a mean momentum. = = in maxwell's equations, the forces between particles are mediated by electric and magnetic fields. the electromagnetic force on a particle with charge q due to a combination of electric field e and magnetic field b is f = q . it is the momentum due to the interaction of the particle with the electromagnetic fields. these quantities form a four-vector, so the analogy is consistent; besides, the concept of potential momentum is important in explaining the so-called hidden momentum of the electromagnetic fields. = = in newtonian mechanics, the law of conservation of momentum can be derived from the law of action and reaction, which states that every force has a reciprocating equal and opposite force. under some circumstances, moving charged particles can exert forces on each other in non-opposite directions. nevertheless, the combined momentum of the particles and the electromagnetic field is conserved. == == the lorentz force imparts a momentum to the particle, so by newton's second law the particle must impart a momentum to the electromagnetic fields. the momentum density is proportional to the poynting vector s which gives the directional rate of energy transfer per unit area: g = s c 2 . it is more difficult to define momentum density in media because the division into electromagnetic and mechanical is arbitrary. in quantum mechanics, momentum is defined as a self-adjoint operator on the wave function. the heisenberg uncertainty principle defines limits on how accurately the momentum and position of a single observable system can be known at once. in quantum mechanics, position and momentum are conjugate variables. this is a commonly encountered form of the momentum operator, though the momentum operator in other bases can take other forms. even though photons have no mass, they still carry momentum. this leads to applications such as the solar sail. the calculation of the momentum of light within dielectric media is somewhat controversial . = = newtonian physics assumes that absolute time and space exist outside of any observer; this gives rise to galilean invariance. it also results in a prediction that the speed of light can vary from one reference frame to another. this is contrary to what has been observed. in the special theory of relativity, einstein keeps the postulate that the equations of motion do not depend on the reference frame, but assumes that the speed of light c is invariant. as a result, position and time in two reference frames are related by the lorentz transformation instead of the galilean transformation. consider, for example, one reference frame moving relative to another at velocity v in the x direction. = = in the theory of special relativity, physical quantities are expressed in terms of four-vectors that include time as a fourth coordinate along with the three space coordinates. these vectors are generally represented by capital letters, for example r for position. the expression for the four-momentum depends on how the coordinates are expressed. time may be given in its normal units or multiplied by the speed of light so that all the components of the four-vector have dimensions of length. the relativistic energy-momentum relationship holds even for massless particles such as photons; by setting m0 = 0 it follows that e = p c . this is unlike the non-relativistic case where they travel at right angles. = = in about 530 ad, john philoponus developed a concept of momentum in on physics, a commentary to aristotle's physics. aristotle claimed that everything that is moving must be kept moving by something. for example, a thrown ball must be kept moving by motions of the air. philoponus pointed out the absurdity in aristotle's claim that motion of an object is promoted by the same air that is resisting its passage. he proposed instead that an impetus was imparted to the object in the act of throwing it. = = in 1020, ibn sina read philoponus and published his own theory of motion in the book of healing. = = in the 13th and 14th century, peter olivi and jean buridan read and refined the work of philoponus, and possibly that of ibn sina. buridan, who in about 1350 was made rector of the university of paris, referred to impetus being proportional to the weight times the speed. merely by letting things run their course, he preserves the same amount of motion ... as he put there in the beginning. this should not be read as a statement of the modern law of conservation of momentum, since descartes had no concept of mass as distinct from weight and size. more important, he believed that it is speed rather than velocity that is conserved. so for descartes, if a moving object were to bounce off a surface, changing its direction but not its speed, there would be no change in its quantity of motion. galileo, in his two new sciences , used the italian word impeto to similarly describe descartes's quantity of motion. = = in the 1600s, christiaan huygens concluded quite early that descartes's laws for the elastic collision of two bodies must be wrong, and he formulated the correct laws. an important step was his recognition of the galilean invariance of the problems. his views then took many years to be circulated. he passed them on in person to william brouncker and christopher wren in london, in 1661. what spinoza wrote to henry oldenburg about them, in 1666 during the second anglo-dutch war, was guarded. huygens had actually worked them out in a manuscript de motu corporum ex percussione in the period 1652-1656. the war ended in 1667, and huygens announced his results to the royal society in 1668. he published them in the journal des scavans in 1669. wallis used momentum for quantity of motion, and vis for force. he points out that force is conserved but quantity of motion, construed as the product of size and speed of an object, is not conserved. his definition ii defines quantitas motus, \"quantity of motion\", as \"arising from the velocity and quantity of matter conjointly\", which identifies it as momentum. thus when in law ii he refers to mutatio motus, \"change of motion\", being proportional to the force impressed, he is generally taken to mean momentum and not motion. = = in 1721, john jennings published miscellanea, where the momentum in its current mathematical sense is attested, five years before the final edition of newton's principia mathematica. in 1728, the cyclopedia states: the momentum, impetus, or quantity of motion of any body, is the factum i.e., product of its velocity, multiplied into its mass.",
       "source": "en.wikipedia.org",
       "licence": "CC-BY-SA-3.0",
       "figures": [
@@ -164,21 +185,21 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/c6/Elastischer_sto%C3%9F.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Elastic collision of equal masses",
-          "context": "8 kinetic energy is usually not conserved. if it is conserved, the collision is called an elastic collision ; if not, it is an inelastic collision . elastic collision of equal masses elastic collision of unequal masses an elastic collision is one in which no kinetic energy is transformed into heat or some other form of energy.",
+          "context": "kinetic energy is usually not conserved. if it is conserved, the collision is called an elastic collision ; if not, it is an inelastic collision . elastic collision of equal masses elastic collision of unequal masses an elastic collision is one in which no kinetic energy is transformed into heat or some other form of energy.",
           "licence": "CC BY-SA 2.5"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e5/Elastischer_sto%C3%9F3.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Elastic collision of unequal masses",
-          "context": "elastic collision of unequal masses an elastic collision is one in which no kinetic energy is transformed into heat or some other form of energy. perfectly elastic collisions can occur when the objects do not touch each other, as for example in atomic or nuclear scattering where electric repulsion keeps the objects apart.",
+          "context": "kinetic energy is usually not conserved. if it is conserved, the collision is called an elastic collision ; if not, it is an inelastic collision . elastic collision of unequal masses an elastic collision is one in which no kinetic energy is transformed into heat or some other form of energy. perfectly elastic collisions can occur when the objects do not touch each other, as for example in atomic or nuclear scattering where electric repulsion keeps the objects apart.",
           "licence": "CC BY-SA 2.5"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/d/de/Inelastischer_sto%C3%9F.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "a perfectly inelastic collision between equal masses",
-          "context": "a perfectly inelastic collision between equal masses in an inelastic collision, some of the kinetic energy of the colliding bodies is converted into other forms of energy .",
+          "context": "a perfectly inelastic collision between equal masses in an inelastic collision, some of the kinetic energy of the colliding bodies is converted into other forms of energy . in a perfectly inelastic collision , both bodies have the same motion afterwards.",
           "licence": "CC BY-SA 2.5"
         },
         {
@@ -192,7 +213,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/f0/Equation_motion_body.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Motion of a material body",
-          "context": "motion of a material body in fields such as fluid dynamics and solid mechanics , it is not feasible to follow the motion of individual atoms or molecules. instead, the materials must be approximated by a continuum in which, at each point, there is a particle or fluid parcel that is assigned the average of the properties of atoms in a small region nearby.",
+          "context": "examples where conservation of momentum does not apply include curved spacetimes in general relativity or time crystals in condensed matter physics . motion of a material body in fields such as fluid dynamics and solid mechanics , it is not feasible to follow the motion of individual atoms or molecules. instead, the materials must be approximated by a continuum in which, at each point, there is a particle or fluid parcel that is assigned the average of the properties of atoms in a small region nearby.",
           "licence": "CC0"
         },
         {
@@ -213,7 +234,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/b/bc/Christiaan_Huygens-painting_%28cropped%29.jpeg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Portrait of Christiaan Huygens",
           "caption": "Christiaan Huygens (1629-1695)",
-          "context": "so for descartes, if a moving object were to bounce off a surface, changing its direction but not its speed, there would be no change in its quantity of motion. 67 68 69 galileo , in his two new sciences , used the italian word impeto to similarly describe descartes's quantity of motion. christiaan huygens in the 1600s, christiaan huygens concluded quite early that descartes's laws for the elastic collision of two bodies must be wrong, and he formulated the correct laws. 70 an important step was his recognition of the galilean invariance of the problems.",
+          "context": "so for descartes, if a moving object were to bounce off a surface, changing its direction but not its speed, there would be no change in its quantity of motion. galileo , in his two new sciences , used the italian word impeto to similarly describe descartes's quantity of motion. christiaan huygens in the 1600s, christiaan huygens concluded quite early that descartes's laws for the elastic collision of two bodies must be wrong, and he formulated the correct laws. an important step was his recognition of the galilean invariance of the problems.",
           "licence": "Public domain"
         },
         {
@@ -235,7 +256,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/20/London_MMB_%C2%BB1E6_Lightning.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Lightning strikes on a city at night",
           "caption": "",
-          "context": "for other uses, see electric . electricity is invisible, but it can yield visually observable phenomena, shown here with the flash of lightning and various forms of electric light in the buildings.",
+          "context": "electricity is invisible, but it can yield visually observable phenomena, shown here with the flash of lightning and various forms of electric light in the buildings.",
           "licence": "CC BY-SA 4.0"
         },
         {
@@ -249,49 +270,49 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/4/45/Thales.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "A bust of a bearded man with dishevelled hair",
           "caption": "A fictional portrait of Thales , the earliest known researcher into electricity",
-          "context": "a fictional portrait of thales , the earliest known researcher into electricity long before any knowledge of electricity existed, people were aware of shocks from electric fish . ancient egyptian texts dating from 2750 bce described them as the \"protectors\" of all other fish.",
+          "context": "this rapid expansion in electrical technology at the time was the driving force behind the second industrial revolution , with electricity's versatility driving transformations in both industry and society. electricity is integral to applications spanning transport , heating/cooling , lighting , communications , and computation , making it the foundation of modern industrial society. a fictional portrait of thales , the earliest known researcher into electricity long before any knowledge of electricity existed, people were aware of shocks from electric fish . ancient egyptian texts dating from 2750 bce described them as the \"protectors\" of all other fish.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/25/Franklin-Benjamin-LOC.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "A half-length portrait of a bald, somewhat portly man in a three-piece suit.",
           "caption": "",
-          "context": "thales of miletus made a series of observations on static electricity around 600 bce, from which he believed that friction rendered amber magnetic , in contrast to minerals such as magnetite , which needed no rubbing. 5 6 7 8 thales was incorrect in believing the attraction was due to a magnetic effect, but later science would prove a link between magnetism and electricity. benjamin franklin conducted extensive research on electricity in the 18th century, as documented by joseph priestley history and present status of electricity , with whom franklin carried on extended correspondence.",
+          "context": "thales of miletus made a series of observations on static electricity around 600 bce, from which he believed that friction rendered amber magnetic , in contrast to minerals such as magnetite , which needed no rubbing. thales was incorrect in believing the attraction was due to a magnetic effect, but later science would prove a link between magnetism and electricity. benjamin franklin conducted extensive research on electricity in the 18th century, as documented by joseph priestley history and present status of electricity , with whom franklin carried on extended correspondence.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/8/88/M_Faraday_Th_Phillips_oil_1842.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Half-length portrait oil painting of a man in a dark suit",
           "caption": "Michael Faraday 's discoveries formed the foundation of electric motor technology.",
-          "context": "15 a succession of sparks jumping from the key to the back of his hand showed that lightning was indeed electrical in nature. 16 he also explained the apparently paradoxical behaviour 17 of the leyden jar as a device for storing large amounts of electrical charge in terms of electricity consisting of both positive and negative charges. michael faraday 's discoveries formed the foundation of electric motor technology. in 1775, hugh williamson reported a series of experiments to the royal society on the shocks delivered by the electric eel ; 18 that same year the surgeon and anatomist john hunter described the structure of the fish's electric organs .",
+          "context": "a succession of sparks jumping from the key to the back of his hand showed that lightning was indeed electrical in nature. he also explained the apparently paradoxical behaviour of the leyden jar as a device for storing large amounts of electrical charge in terms of electricity consisting of both positive and negative charges. michael faraday 's discoveries formed the foundation of electric motor technology. in 1775, hugh williamson reported a series of experiments to the royal society on the shocks delivered by the electric eel ; that same year the surgeon and anatomist john hunter described the structure of the fish's electric organs .",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/fa/Electroscope.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "A clear glass dome has an external electrode that connects through the glass to a pair of gold leaves. A charged rod touches the external electrode and makes the leaves repel.",
           "caption": "",
-          "context": "charge on a gold-leaf electroscope causes the leaves to visibly repel each other. by modern convention, the charge carried by electrons is defined as negative, and that by protons is positive.",
+          "context": "the first working transistor, a germanium -based point-contact transistor , was invented by john bardeen and walter houser brattain at bell labs in 1947, followed by the bipolar junction transistor in 1948. charge on a gold-leaf electroscope causes the leaves to visibly repel each other. by modern convention, the charge carried by electrons is defined as negative, and that by protons is positive.",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/f8/Lichtbogen_3000_Volt.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Two metal wires form an inverted V shape. A blindingly bright orange-white electric arc flows between their tips.",
           "caption": "An electric arc provides an energetic demonstration of electric current.",
-          "context": "43 however, depending on the conditions, an electric current can consist of a flow of charged particles in either direction or even in both directions at once. the positive-to-negative convention is widely used to simplify this situation. an electric arc provides an energetic demonstration of electric current. the process by which electric current passes through a material is termed electrical conduction , and its nature varies with that of the charged particles and the material through which they are travelling.",
+          "context": "however, depending on the conditions, an electric current can consist of a flow of charged particles in either direction or even in both directions at once. the positive-to-negative convention is widely used to simplify this situation. an electric arc provides an energetic demonstration of electric current. the process by which electric current passes through a material is termed electrical conduction , and its nature varies with that of the charged particles and the material through which they are travelling.",
           "licence": "CC BY 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/37/VFPt_image_charge_plane_horizontal.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Field lines emanating from a positive charge above a plane conductor",
-          "context": "since large bodies such as planets generally carry no net charge, the electric field at a distance is usually zero. thus gravity is the dominant force at distance in the universe, despite being much weaker.",
+          "context": "since large bodies such as planets generally carry no net charge, the electric field at a distance is usually zero. thus gravity is the dominant force at distance in the universe, despite being much weaker. the conceptual charge, termed a ' test charge ', must be vanishingly small to prevent its own electric field disturbing the main field and must also be stationary to prevent the effect of magnetic fields .",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/c2/Panasonic-oxyride.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Two AA batteries each have a plus sign marked at one end.",
           "caption": "A pair of AA cells . The + sign indicates the polarity of the potential difference between the battery terminals.",
-          "context": "the + sign indicates the polarity of the potential difference between the battery terminals. the concept of electric potential is closely linked to that of the electric field.",
+          "context": "the field strength is greatly affected by nearby conducting objects, and it is particularly intense when it is forced to curve around sharply pointed objects. this principle is exploited in the lightning conductor , the sharp spike of which acts to encourage the lightning strike to develop there, rather than to the building it serves to protect. the + sign indicates the polarity of the potential difference between the battery terminals. the concept of electric potential is closely linked to that of the electric field.",
           "licence": "CC BY-SA 3.0"
         },
         {
@@ -305,14 +326,56 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/59/Electric_motor_cycle_3.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "A cut-away diagram of a small electric motor",
           "caption": "The electric motor exploits an important effect of electromagnetism: a current through a magnetic field experiences a force at right angles to both the field and current.",
-          "context": "53 the interaction is mediated by the magnetic field each current produces and forms the basis for the international definition of the ampere . the electric motor exploits an important effect of electromagnetism: a current through a magnetic field experiences a force at right angles to both the field and current. this relationship between magnetic fields and currents is extremely important, for it led to michael faraday's invention of the electric motor in 1821.",
+          "context": "the force on the compass needle did not direct it to or away from the current-carrying wire, but acted at right angles to it. the interaction is mediated by the magnetic field each current produces and forms the basis for the international definition of the ampere . the electric motor exploits an important effect of electromagnetism: a current through a magnetic field experiences a force at right angles to both the field and current. this relationship between magnetic fields and currents is extremely important, for it led to michael faraday's invention of the electric motor in 1821.",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/a/a0/Ohms_law_voltage_source.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "refer to caption",
           "caption": "",
-          "context": "54 faraday's disc was inefficient and of no use as a practical generator, but it showed the possibility of generating electric power using magnetism, a possibility that would be taken up by those that followed on from his work. the voltage source v on the left drives a current i around the circuit, delivering electrical energy into the resistor r . from the resistor, the current returns to the source, completing the circuit.",
+          "context": "exploitation of this discovery enabled him to invent the first electrical generator in 1831, in which he converted the mechanical energy of a rotating copper disc to electrical energy. faraday's disc was inefficient and of no use as a practical generator, but it showed the possibility of generating electric power using magnetism, a possibility that would be taken up by those that followed on from his work. the voltage source v on the left drives a current i around the circuit, delivering electrical energy into the resistor r . from the resistor, the current returns to the source, completing the circuit.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/2b/Share_of_the_population_with_access_to_electricity%2C_World%2C_2023_%28cropped%29.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "one henry is the inductance that will induce a potential difference of one volt if the current through it changes at a rate of one ampere per second. the inductor's behaviour is in some regards converse to that of the capacitor: it will freely allow an unchanging current but opposes a rapidly changing one. share of the population with access to electricity electric power is the rate at which electric energy is transferred by an electric circuit .",
+          "licence": "CC BY 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d9/Arduino_ftdi_chip-1.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Surface-mount electronic components",
+          "context": "electric utilities measure power using electricity meters , which keep a running total of the electric energy delivered to a customer. unlike fossil fuels , electricity is a low entropy form of energy and can be converted into motion or many other forms of energy with high efficiency.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/74/Gorskii_04414u.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "maxwell's equations , which unify light, fields, and charge are one of the great milestones of theoretical physics. early 20th-century alternator made in budapest , hungary, in the power generating hall of a hydroelectric station . in the 6th century bc the greek philosopher thales of miletus experimented with amber rods: these were the first studies into the production of electricity.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e2/Parque_e%C3%B3lico_La_Muela.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A wind farm of about a dozen three-bladed white wind turbines.",
+          "caption": "Wind power is of increasing importance in many countries.",
+          "context": "such generators bear no resemblance to faraday's homopolar disc generator of 1831, but they still rely on his electromagnetic principle that a conductor linking a changing magnetic field induces a potential difference across its ends. electricity generated by solar panels rely on a different mechanism: solar radiation is converted directly into electricity using the photovoltaic effect . wind power is of increasing importance in many countries. demand for electricity grows with great rapidity as a nation modernises and its economy develops.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b4/Gluehlampe_01_KMJ.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "a photo of a light bulb",
+          "caption": "",
+          "context": "storage plays an increasing role in bridging that gap. there are four types of energy storage technologies, each in varying states of technology readiness : batteries , chemical storage such as hydrogen , thermal or mechanical . the incandescent light bulb , an early application of electricity, operates by joule heating : the passage of current through resistance generating heat. electricity is a very convenient way to transfer energy, and it has been adapted to a huge, and growing, number of uses.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/03/Electric-eel2.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "The electric eel , Electrophorus electricus",
+          "context": "the pain caused by an electric shock can be intense, leading electricity at times to be employed as a method of torture . death caused by an electric shock- electrocution -is still used for judicial execution in some us states, though its use had become very rare by the end of the 20th century. the electric eel , electrophorus electricus electricity is not a human invention, and may be observed in several forms in nature, notably lightning . many interactions familiar at the macroscopic level, such as touch , friction or chemical bonding , are due to interactions between electric fields on the atomic scale.",
           "licence": "CC BY-SA 3.0"
         }
       ]
@@ -327,7 +390,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/a/a2/Metal_shavings_around_bar_magnet_%28close-up%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "for other uses, see magnetic , magnetism , and magnetized . the shape of a bar magnet 's magnetic field is revealed by the orientation of iron filings sprinkled on the table around it.",
+          "context": "the shape of a bar magnet 's magnetic field is revealed by the orientation of iron filings sprinkled on the table around it.",
           "licence": "CC BY-SA 4.0"
         },
         {
@@ -338,24 +401,17 @@
           "licence": "CC BY-SA 3.0"
         },
         {
-          "src": "https://upload.wikimedia.org/wikipedia/en/9/99/Question_book-new.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "this section needs more citations . please help improve this section by adding citations to reliable sources .",
-          "licence": "Cc-by-sa-3.0"
-        },
-        {
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/20/Lodestone_attracting_nails.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Lodestone , a natural magnet , attracting iron nails. Ancient humans discovered the property of magnetism from lodestone.",
-          "context": "please help improve this section by adding citations to reliable sources . unsourced material may be challenged and removed . lodestone , a natural magnet , attracting iron nails. ancient humans discovered the property of magnetism from lodestone.",
+          "context": "lodestone , a natural magnet , attracting iron nails. ancient humans discovered the property of magnetism from lodestone.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e0/Blacksmith_at_the_anvil._Wellcome_L0005875.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "lodestone , a natural magnet , attracting iron nails. ancient humans discovered the property of magnetism from lodestone. an illustration from gilbert's 1600 de magnete showing one of the earliest methods of making a magnet. a blacksmith holds a piece of red-hot iron in a north-south direction and hammers it as it cools.",
+          "context": "an illustration from gilbert's 1600 de magnete showing one of the earliest methods of making a magnet. a blacksmith holds a piece of red-hot iron in a north-south direction and hammers it as it cools.",
           "licence": "CC BY 4.0"
         },
         {
@@ -368,8 +424,8 @@
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/a/aa/Magnetism.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
-          "caption": "Hierarchy of types of magnetism. [ 14 ]",
-          "context": "the magnetic behavior of a material depends on its structure, particularly its electron configuration , for the reasons mentioned above, and also on the temperature. at high temperatures, random thermal motion makes it more difficult for the electrons to maintain alignment. hierarchy of types of magnetism. 14 diamagnetism main article: diamagnetism diamagnetism appears in all materials and is the tendency of a material to oppose an applied magnetic field, and therefore, to be repelled by a magnetic field.",
+          "caption": "Hierarchy of types of magnetism.",
+          "context": "the magnetic behavior of a material depends on its structure, particularly its electron configuration , for the reasons mentioned above, and also on the temperature. at high temperatures, random thermal motion makes it more difficult for the electrons to maintain alignment. hierarchy of types of magnetism. diamagnetism edit diamagnetism appears in all materials and is the tendency of a material to oppose an applied magnetic field, and therefore, to be repelled by a magnetic field.",
           "licence": "Public domain"
         },
         {
@@ -383,21 +439,21 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/5d/Antiferromagnetic_ordering.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Antiferromagnetic ordering",
-          "context": "when a magnetized ferromagnetic material is heated to the curie point temperature, the molecules are agitated to the point that the magnetic domains lose the organization, and the magnetic properties they cause cease. when the material is cooled, this domain alignment structure spontaneously returns, in a manner roughly analogous to how a liquid can freeze into a crystalline solid. antiferromagnetic ordering main article: antiferromagnetism in an antiferromagnet , unlike a ferromagnet, there is a tendency for the intrinsic magnetic moments of neighboring valence electrons to point in opposite directions. when all atoms are arranged in a substance so that each neighbor is anti-parallel, the s",
+          "context": "when a magnetized ferromagnetic material is heated to the curie point temperature, the molecules are agitated to the point that the magnetic domains lose the organization, and the magnetic properties they cause cease. when the material is cooled, this domain alignment structure spontaneously returns, in a manner roughly analogous to how a liquid can freeze into a crystalline solid. antiferromagnetic ordering in an antiferromagnet , unlike a ferromagnet, there is a tendency for the intrinsic magnetic moments of neighboring valence electrons to point in opposite directions. when all atoms are arranged in a substance so that each neighbor is anti-parallel, the substance is antiferromagnetic .",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/8/81/Ferrimagnetic_ordering.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Ferrimagnetic ordering",
-          "context": "in some materials, neighboring electrons prefer to point in opposite directions, but there is no geometrical arrangement in which each pair of neighbors is anti-aligned. this is called a canted antiferromagnet or spin ice and is an example of geometrical frustration . ferrimagnetic ordering main article: ferrimagnetism like ferromagnetism, ferrimagnets retain their magnetization in the absence of a field. however, like antiferromagnets, neighboring pairs of electron spins tend to point in opposite directions.",
+          "context": "in some materials, neighboring electrons prefer to point in opposite directions, but there is no geometrical arrangement in which each pair of neighbors is anti-aligned. this is called a canted antiferromagnet or spin ice and is an example of geometrical frustration . ferrimagnetic ordering like ferromagnetism, ferrimagnets retain their magnetization in the absence of a field. however, like antiferromagnets, neighboring pairs of electron spins tend to point in opposite directions.",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/3c/Electromagnet.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "An electromagnet attracts paper clips when current is applied, creating a magnetic field. The electromagnet loses them when current and magnetic field are removed.",
-          "context": "17 : 12 large databases listing the magnetic properties of materials can analyzed by ai tools to predict new magnetic materials. an electromagnet attracts paper clips when current is applied, creating a magnetic field. the electromagnet loses them when current and magnetic field are removed.",
+          "context": "these materials are further classified as ferromagnetic , like iron , nickel , and cobalt , or as ferrimagnetic , like fe 3 o 4 . large databases listing the magnetic properties of materials can analyzed by ai tools to predict new magnetic materials. an electromagnet attracts paper clips when current is applied, creating a magnetic field. the electromagnet loses them when current and magnetic field are removed.",
           "licence": "CC BY-SA 3.0"
         },
         {
@@ -406,6 +462,13 @@
           "caption": "Magnetic lines of force of a bar magnet shown by iron filings on paper",
           "context": "magnetic lines of force of a bar magnet shown by iron filings on paper <source src=\"//upload.wikimedia.org/wikipedia/commons/a/a2/magnet_bar.",
           "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/7b/Frog_diamagnetic_levitation.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "a live frog levitates inside a 32 mm diameter vertical bore of a bitter solenoid in a very strong magnetic field-about 16 teslas some organisms can detect magnetic fields, a phenomenon known as magnetoception . some materials in living things are ferromagnetic, though it is unclear if the magnetic properties serve a special function or are merely a byproduct of containing iron.",
+          "licence": "CC BY-SA 3.0"
         }
       ]
     },
@@ -419,22 +482,15 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/4/43/2006-01-14_Surface_waves.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Surface waves in water showing water ripples",
-          "context": "for the human hand gesture, see waving . for other uses, see wave and wave motion . surface waves in water showing water ripples in mathematics and physical science , a wave is a propagating dynamic disturbance of one or more quantities . periodic waves oscillate repeatedly about an equilibrium value at some frequency .",
+          "context": "surface waves in water showing water ripples in mathematics and physical science , a wave is a propagating dynamic disturbance of one or more quantities . periodic waves oscillate repeatedly about an equilibrium value at some frequency .",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/b/b3/Santos_E_et_al_Neuroimage_2014_.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
-          "caption": "",
-          "context": "in mathematics and electronics waves are studied as signals . 2 on the other hand, some waves have envelopes which do not move at all such as standing waves and hydraulic jumps . example of biological waves expanding over the brain cortex, an example of spreading depolarizations 3 a physical wave field is almost always confined to some finite region of space, called its domain . for example, the seismic waves generated by earthquakes are significant only in the interior and surface of the planet, so they can be ignored outside it.",
+          "caption": "Example of biological waves expanding over the brain cortex, an example of spreading depolarizations",
+          "context": "in mathematics and electronics waves are studied as signals . on the other hand, some waves have envelopes which do not move at all such as standing waves and hydraulic jumps . example of biological waves expanding over the brain cortex, an example of spreading depolarizations a physical wave field is almost always confined to some finite region of space, called its domain . for example, the seismic waves generated by earthquakes are significant only in the interior and surface of the planet, so they can be ignored outside it.",
           "licence": "CC BY-SA 4.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/en/9/99/Question_book-new.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "this section does not cite any sources . please help improve this section by adding citations to reliable sources .",
-          "licence": "Cc-by-sa-3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/33/Half-open_pipe_wave.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
@@ -447,7 +503,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/7/7c/Nonsinusoidal_wavelength.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Wavelength λ can be measured between any two corresponding points on a waveform.",
-          "context": "wave in elastic medium main articles: wave equation and d'alembert's formula consider a traveling transverse wave on a string . consider the string to have a single spatial dimension.",
+          "context": "wave in elastic medium edit consider a traveling transverse wave on a string . consider the string to have a single spatial dimension.",
           "licence": "CC BY-SA 3.0"
         },
         {
@@ -482,7 +538,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/b/bd/Wave_group.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "The red square moves with the phase velocity , while the green circles propagate with the group velocity .",
-          "context": "unsourced material may be challenged and removed . the red square moves with the phase velocity , while the green circles propagate with the group velocity . there are two velocities that are associated with waves, the phase velocity and the group velocity .",
+          "context": "the red square moves with the phase velocity , while the green circles propagate with the group velocity . there are two velocities that are associated with waves, the phase velocity and the group velocity .",
           "licence": "CC BY-SA 4.0"
         },
         {
@@ -498,6 +554,125 @@
           "caption": "Tracing the y component of a circle while going around the circle results in a sine wave (red). Tracing the x component results in a cosine wave (blue). Both waves are sinusoids of the same frequency but different phases.",
           "context": "tracing the y component of a circle while going around the circle results in a sine wave . tracing the x component results in a cosine wave .",
           "licence": "CC0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/8c/Standing_wave.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Standing wave. The red dots represent the wave nodes .",
+          "context": "for electromagnetic plane waves, the electric and magnetic fields themselves are transverse to the direction of propagation, and also perpendicular to each other. the red dots represent the wave nodes . a standing wave, also known as a stationary wave , is a wave whose envelope remains in a constant position.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/5c/Standing_waves_on_a_string.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "One-dimensional standing waves; the fundamental mode and the first 5 overtones",
+          "caption": "",
+          "context": "halfway between two nodes there is an antinode , where the two counter-propagating waves enhance each other maximally. there is no net propagation of energy over time.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/15/Drum_vibration_mode01.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A two-dimensional standing wave on a disk; this is the fundamental mode.",
+          "caption": "",
+          "context": "a two-dimensional standing wave on a disk ; this is the fundamental mode.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6e/Drum_vibration_mode21.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A standing wave on a disk with two nodal lines crossing at the center; this is an overtone.",
+          "caption": "",
+          "context": "a standing wave on a disk with two nodal lines crossing at the center; this is an overtone.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/4f/Soliton_hydro.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Solitary wave in a laboratory wave channel",
+          "context": "solitary wave in a laboratory wave channel a soliton or solitary wave is a self-reinforcing wave packet that maintains its shape while it propagates at a constant velocity. solitons are caused by a cancellation of nonlinear and dispersive effects in the medium.",
+          "licence": "CC BY-SA 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/7e/SV_wave_propagation.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "The propagation of SV-wave in a homogeneous half-space (the horizontal displacement field)",
+          "context": "the frequency domain solution can be obtained by first finding the helmholtz decomposition of the displacement field, which is then substituted into the wave equation . from here, the plane wave eigenmodes can be calculated.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/30/SV_wave_propagation_y.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "The propagation of SV-wave in a homogeneous half-space (The vertical displacement field)",
+          "context": "from here, the plane wave eigenmodes can be calculated. the propagation of sv-wave in a homogeneous half-space the analytical solution of sv-wave in a half-space indicates that the plane sv wave reflects back to the domain as a p and sv waves, leaving out special cases. the angle of the reflected sv wave is identical to the incidence wave, while the angle of the reflected p wave is greater than the sv wave.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d9/Seismic_wave_prop_mine.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Seismic wave propagation in 2D modelled using FDTD method in the presence of a landmine",
+          "context": "p wave propagation edit similar to the sv wave, the p incidence, in general, reflects as the p and sv wave. there are some special cases where the regime is different. seismic wave propagation in 2d modelled using fdtd method in the presence of a landmine wave velocity is a general concept, of various kinds of wave velocities, for a wave's phase and speed concerning energy propagation.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/49/Wave_refraction.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Sinusoidal traveling plane wave entering a region of lower wave velocity at an angle, illustrating the decrease in wavelength and change of direction (refraction) that results",
+          "context": "the amount of absorption will generally depend on the frequency of the wave, which, for instance, explains why objects may appear colored. reflection edit when a wave strikes a reflective surface, it changes direction, such that the angle made by the incident wave and line normal to the surface equals the angle made by the reflected wave and the same normal line. sinusoidal traveling plane wave entering a region of lower wave velocity at an angle, illustrating the decrease in wavelength and change of direction that results refraction is the phenomenon of a wave changing its speed. mathematically, this means that the size of the phase velocity changes.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/2c/Two_sources_interference.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Identical waves from two sources undergoing interference . Observed at the bottom one sees 5 positions where the waves add in phase, but in between which they are out of phase and cancel.",
+          "context": "diffraction edit a wave exhibits diffraction when it encounters an obstacle that bends the wave or when it spreads after emerging from an opening. diffraction effects are more pronounced when the size of the obstacle or opening is comparable to the wavelength of the wave. identical waves from two sources undergoing interference . observed at the bottom one sees 5 positions where the waves add in phase, but in between which they are out of phase and cancel.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/84/Circular.Polarization.Circularly.Polarized.Light_Circular.Polarizer_Creating.Left.Handed.Helix.View.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "however at any point in that region the field quantities describing those waves add according to the superposition principle . this is called an interference pattern . the phenomenon of polarization arises when wave motion can occur simultaneously in two orthogonal directions. transverse waves can be polarized, for instance.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/f5/Light_dispersion_conceptual_waves.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Schematic of light being dispersed by a prism. Click to see animation.",
+          "context": "longitudinal waves, such as sound waves, do not exhibit polarization. for these waves there is only one direction of oscillation, that is, along the direction of travel. schematic of light being dispersed by a prism. dispersion is the frequency dependence of the refractive index , a consequence of the atomic nature of materials.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/be/Shallow_water_wave.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "gravity waves are waves generated in a fluid medium or at the interface between two media when the force of gravity or buoyancy works to restore equilibrium. surface waves on water are the most familiar example.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d4/Transonico-en.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Formation of a shock wave by a plane",
+          "context": "two types of particle motion result in two types of body waves: primary and secondary waves. they include body waves-the primary and secondary waves -and surface waves, such as rayleigh waves , love waves , and stoneley waves . formation of a shock wave by a plane a shock wave is a type of propagating disturbance. when a wave moves faster than the local speed of sound in a fluid , it is a shock wave.",
+          "licence": "CC BY 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b8/GravitationalWave_CrossPolarization.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Animation showing the effect of a cross-polarized gravitational wave on a ring of test particles",
+          "context": "shear waves edit shear waves are body waves due to shear rigidity and inertia. they can only be transmitted through solids and to a lesser extent through liquids with a sufficiently high viscosity. animation showing the effect of a cross-polarized gravitational wave on a ring of test particles gravitational waves also travel through space. the first observation of gravitational waves was announced on 11 february 2016.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6a/Onde_electromagn%C3%A9tique.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "the first observation of gravitational waves was announced on 11 february 2016. gravitational waves are disturbances in the curvature of spacetime , predicted by einstein's theory of general relativity . an electromagnetic wave consists of two waves that are oscillations of the electric and magnetic fields. an electromagnetic wave travels in a direction that is at right angles to the oscillation direction of both fields.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b0/Wave_packet_%28dispersion%29.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A propagating wave packet; in general, the envelope of the wave packet moves at a different speed than the constituent waves.",
+          "context": "dirac waves accounted for the fine details of the hydrogen spectrum in a completely rigorous way. the wave equation also implied the existence of a new form of matter, antimatter, previously unsuspected and unobserved and which was experimentally confirmed. a propagating wave packet; in general, the envelope of the wave packet moves at a different speed than the constituent waves.",
+          "licence": "Public domain"
         }
       ]
     },
@@ -511,14 +686,14 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/8/85/Eight_founding_schools.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "6 7 this article is focused mainly on classical thermodynamics which primarily studies systems in thermodynamic equilibrium . non-equilibrium thermodynamics is often treated as an extension of the classical treatment, but statistical mechanics has brought many advances to that field. the thermodynamicists of the original eight founding schools of thermodynamics.",
+          "context": "non-equilibrium thermodynamics is often treated as an extension of the classical treatment, but statistical mechanics has brought many advances to that field. the thermodynamicists of the original eight founding schools of thermodynamics.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/c7/Carnot_engine_%28hot_body_-_working_body_-_cold_body%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "the thermodynamic study of non-equilibrium systems requires more general concepts than are dealt with by equilibrium thermodynamics. 27 many natural systems still today remain beyond the scope of currently known macroscopic thermodynamic methods. in the various theoretical descriptions of thermodynamics these laws may be expressed in seemingly differing forms, but the most prominent formulations are the following.",
+          "context": "the thermodynamic study of non-equilibrium systems requires more general concepts than are dealt with by equilibrium thermodynamics. many natural systems still today remain beyond the scope of currently known macroscopic thermodynamic methods. in the various theoretical descriptions of thermodynamics these laws may be expressed in seemingly differing forms, but the most prominent formulations are the following.",
           "licence": "Public domain"
         },
         {
@@ -568,7 +743,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/1/14/UGC_1810_and_UGC_1813_in_Arp_273_%28captured_by_the_Hubble_Space_Telescope%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "\"gravitation\" and \"law of gravity\" redirect here. for other uses, see gravitation and law of gravity . the shapes of two massive galaxies in this image evolved under the effects of gravity.",
+          "context": "the shapes of two massive galaxies in this image evolved under the effects of gravity.",
           "licence": "Public domain"
         },
         {
@@ -582,14 +757,14 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/66/The_Leaning_Tower_of_Pisa_SB.jpeg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "The Leaning Tower of Pisa , where according to legend Galileo performed an experiment about the speed of falling objects",
-          "context": "the persian intellectual al-biruni believed that the force of gravity was not unique to the earth, and he correctly assumed that other heavenly bodies should exert a gravitational attraction as well. 20 in contrast, al-khazini held the same position as aristotle that all matter in the universe is attracted to the center of the earth.",
+          "context": "the persian intellectual al-biruni believed that the force of gravity was not unique to the earth, and he correctly assumed that other heavenly bodies should exert a gravitational attraction as well. in contrast, al-khazini held the same position as aristotle that all matter in the universe is attracted to the center of the earth.",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/3b/Portrait_of_Sir_Isaac_Newton%2C_1689.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "English physicist and mathematician, Sir Isaac Newton (1642-1727)",
-          "context": "this letter likely turned newton's thinking in a new direction leading to his revolutionary work on gravity. 38 when newton reported his results in 1686, hooke claimed the inverse square law portion was his \"notion\" . however the orbits were known to be ellipses.",
+          "context": "this letter likely turned newton's thinking in a new direction leading to his revolutionary work on gravity. when newton reported his results in 1686, hooke claimed the inverse square law portion was his \"notion\" . however the orbits were known to be ellipses. at halley's suggestion, newton tackled the problem and was able to prove that ellipses also proved the inverse square relation from kepler's observations.",
           "licence": "Public domain"
         },
         {
@@ -603,14 +778,14 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/0/02/Falling_ball.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "An initially-stationary object that is allowed to fall freely under gravity drops a distance that is proportional to the square of the elapsed time. This image spans half a second and was captured at 20 flashes per second.",
-          "context": "60 61 in 2015, the ligo observatory detected faint gravitational waves , the existence of which had been predicted by general relativity. scientists believe that the waves emanated from a black hole merger that occurred 1.5 billion light-years away. an initially-stationary object that is allowed to fall freely under gravity drops a distance that is proportional to the square of the elapsed time. this image spans half a second and was captured at 20 flashes per second.",
+          "context": "in 2015, the ligo observatory detected faint gravitational waves , the existence of which had been predicted by general relativity. scientists believe that the waves emanated from a black hole merger that occurred 1.5 billion light-years away. an initially-stationary object that is allowed to fall freely under gravity drops a distance that is proportional to the square of the elapsed time. this image spans half a second and was captured at 20 flashes per second.",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/7/7d/Gravity_action-reaction.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "If an object with comparable mass to that of the Earth were to fall towards it, then the corresponding acceleration of the Earth would be observable.",
-          "context": "main article: gravity of earth every planetary body is surrounded by its own gravitational field, which can be conceptualized with newtonian physics as exerting an attractive force on all objects. assuming a spherically symmetrical planet, the strength of this field at any given point above the surface is proportional to the planetary body's mass and inversely proportional to the square of the distance from the center of the body. if an object with comparable mass to that of the earth were to fall towards it, then the corresponding acceleration of the earth would be observable. the strength of the gravitational field is numerically equal to the acceleration of objects under its influence.",
+          "context": "every planetary body is surrounded by its own gravitational field, which can be conceptualized with newtonian physics as exerting an attractive force on all objects. assuming a spherically symmetrical planet, the strength of this field at any given point above the surface is proportional to the planetary body's mass and inversely proportional to the square of the distance from the center of the body. if an object with comparable mass to that of the earth were to fall towards it, then the corresponding acceleration of the earth would be observable. the strength of the gravitational field is numerically equal to the acceleration of objects under its influence.",
           "licence": "CC BY-SA 3.0"
         },
         {
@@ -631,21 +806,21 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/b/b9/GalacticRotation2.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Rotation curve of a typical spiral galaxy: predicted (A) and observed (B). The discrepancy between the curves is attributed to dark matter .",
-          "context": "79 anomalies and discrepancies not to be confused with gravity anomaly . there are some observations that are not adequately accounted for, which may point to the need for better theories of gravity or perhaps be explained in other ways. rotation curve of a typical spiral galaxy: predicted and observed . the discrepancy between the curves is attributed to dark matter .",
+          "context": "this confirmed that the speed of gravitational waves was the same as the speed of light. anomalies and discrepancies edit there are some observations that are not adequately accounted for, which may point to the need for better theories of gravity or perhaps be explained in other ways. rotation curve of a typical spiral galaxy: predicted and observed . the discrepancy between the curves is attributed to dark matter .",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/39/Gravitational_Field.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Computer generated simulation of two bodies orbiting each other with plotted gravitational field",
-          "context": "86 : 4 creating a theory independent of action at a distance requires combining the concept of relativity with gravity, an enormously complex task using the newtonian model. computer generated simulation of two bodies orbiting each other with plotted gravitational field a second equivalent approach to model gravity uses fields. 86 : 44 in physics, a field represents a physical phenomenon using a mathematical entity associated with each point in a space.",
+          "context": "nevertheless the model explains a vast number of physical effects including cannon ball trajectories, tidal motion and planetary orbits. creating a theory independent of action at a distance requires combining the concept of relativity with gravity, an enormously complex task using the newtonian model. computer generated simulation of two bodies orbiting each other with plotted gravitational field a second equivalent approach to model gravity uses fields. in physics, a field represents a physical phenomenon using a mathematical entity associated with each point in a space.",
           "licence": "CC0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/37/1919_eclipse_positive.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "The 1919 total solar eclipse provided one of the first opportunities to test the predictions of general relativity.",
-          "context": "several solutions are the basis for understanding black holes and for our modern model of the evolution of the universe since the big bang . the 1919 total solar eclipse provided one of the first opportunities to test the predictions of general relativity. testing the predictions of general relativity has historically been difficult, because they are almost identical to the predictions of newtonian gravity for small energies and masses.",
+          "context": "these cases however have been transformational in our understanding of the cosmos. several solutions are the basis for understanding black holes and for our modern model of the evolution of the universe since the big bang . the 1919 total solar eclipse provided one of the first opportunities to test the predictions of general relativity. testing the predictions of general relativity has historically been difficult, because they are almost identical to the predictions of newtonian gravity for small energies and masses.",
           "licence": "Public domain"
         }
       ]
@@ -667,7 +842,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/b/b9/Barometer_mercury_column_hg.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Mercury column",
-          "context": "mercury column the si unit for pressure is the pascal , equal to one newton per square metre . this name for the unit was added in 1971; 7 before that, pressure in si was expressed in newtons per square metre.",
+          "context": "mercury column the si unit for pressure is the pascal , equal to one newton per square metre . this name for the unit was added in 1971; before that, pressure in si was expressed in newtons per square metre.",
           "licence": "CC BY-SA 2.5"
         },
         {
@@ -681,7 +856,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/c2/Defekter_unterflurhydrant_goettingen.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Water escapes at high speed from a damaged hydrant that contains water at high pressure (due to high pressure of the water it behaves like it is sprayed)",
-          "context": "this effect is unnoticeable at everyday pressures but is significant in neutron stars , although it has not been experimentally tested. water escapes at high speed from a damaged hydrant that contains water at high pressure fluid pressure is most often the compressive stress at some point within a fluid . fluid pressure occurs in one of two situations: an open condition, called \"open channel flow\", e.g.",
+          "context": "according to the theory of general relativity , pressure increases the strength of a gravitational field and so adds to the mass-energy cause of gravity . this effect is unnoticeable at everyday pressures but is significant in neutron stars , although it has not been experimentally tested. water escapes at high speed from a damaged hydrant that contains water at high pressure fluid pressure is most often the compressive stress at some point within a fluid . fluid pressure occurs in one of two situations: an open condition, called \"open channel flow\", e.g.",
           "licence": "CC BY-SA 4.0"
         },
         {
@@ -695,7 +870,7 @@
     },
     {
       "theme": "power-physics-",
-      "story": "power is the amount of energy transferred or converted per unit time. in the international system of units, the unit of power is the watt , equal to one joule per second . the output power of a motor is the product of the torque that the motor generates and the angular velocity of its output shaft. likewise, the power dissipated in an electrical element of a circuit is the product of the current flowing through the element and of the voltage across the element. power is the rate with respect to time at which work is done or, more generally, the rate of change of total mechanical energy. however, in systems where potential energy changes without explicit work being done , the total energy definition is more general. in older works, power is sometimes called activity. the dimension of power is energy divided by time. in the international system of units , the unit of power is the watt , which is equal to one joule per second. other common and traditional measures are horsepower , comparing to the power of a horse; one mechanical horsepower equals about 745.7 watts. other units of power include ergs per second , foot-pounds per minute, dbm, a logarithmic measure relative to a reference of 1 milliwatt, calories per hour, btu per hour , and tons of refrigeration. as a simple example, burning one kilogram of coal releases more energy than detonating a kilogram of tnt, but because the tnt reaction releases energy more quickly, it delivers more power than the coal. average power is often called \"power\" when the context makes it clear. power in mechanical systems is the combination of forces and movement. in particular, power is the product of a force on an object and the object's velocity, or the product of a torque on a shaft and the shaft's angular velocity. mechanical power is also described as the time derivative of work. if a mechanical system has no losses, then the input power must equal the output power. this provides a simple formula for the mechanical advantage of the system. let the input power to a device be a force fa acting on a point that moves with velocity va and the output power be a force fb acts on a point that moves with velocity vb. the peak power is simply defined by: p 0 = max [ p ] . these ratios are called the duty cycle of the pulse train.",
+      "story": "power is the amount of energy transferred or converted per unit time. in the international system of units, the unit of power is the watt , equal to one joule per second . the output power of a motor is the product of the torque that the motor generates and the angular velocity of its output shaft. likewise, the power dissipated in an electrical element of a circuit is the product of the current flowing through the element and of the voltage across the element. power is the rate with respect to time at which work is done or, more generally, the rate of change of total mechanical energy. however, in systems where potential energy changes without explicit work being done , the total energy definition is more general. in older works, power is sometimes called activity. the dimension of power is energy divided by time. in the international system of units , the unit of power is the watt , which is equal to one joule per second. other common and traditional measures are horsepower , comparing to the power of a horse; one mechanical horsepower equals about 745.7 watts. other units of power include ergs per second , foot-pounds per minute, dbm, a logarithmic measure relative to a reference of 1 milliwatt, calories per hour, btu per hour , and tons of refrigeration. as a simple example, burning one kilogram of coal releases more energy than detonating a kilogram of tnt, but because the tnt reaction releases energy more quickly, it delivers more power than the coal. average power is often called \"power\" when the context makes it clear. power in mechanical systems is the combination of forces and movement. in particular, power is the product of a force on an object and the object's velocity, or the product of a torque on a shaft and the shaft's angular velocity. mechanical power is also described as the time derivative of work. if a mechanical system has no losses, then the input power must equal the output power. this provides a simple formula for the mechanical advantage of the system. let the input power to a device be a force fa acting on a point that moves with velocity va and the output power be a force fb acts on a point that moves with velocity vb. the peak power is simply defined by: p 0 = max p . these ratios are called the duty cycle of the pulse train.",
       "source": "en.wikipedia.org",
       "licence": "CC-BY-SA-3.0",
       "figures": [
@@ -753,21 +928,21 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/2e/Current_notation.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "The electrons , the charge carriers in an electrical circuit, flow in the direction opposite that of the conventional electric current.",
-          "context": "7 the i symbol was used by andre-marie ampere , after whom the unit of electric current is named, in formulating ampere's force law . 8 the notation travelled from france to great britain, where it became standard, although at least one journal did not change from using c to i until 1896. the electrons , the charge carriers in an electrical circuit, flow in the direction opposite that of the conventional electric current.",
+          "context": "the i symbol was used by andre-marie ampere , after whom the unit of electric current is named, in formulating ampere's force law . the notation travelled from france to great britain, where it became standard, although at least one journal did not change from using c to i until 1896. the electrons , the charge carriers in an electrical circuit, flow in the direction opposite that of the conventional electric current.",
           "licence": "CC BY 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/60/Magnetic_field_produced_by_an_electric_current_in_a_solenoid.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A magnetic field is produced by an electric current in a solenoid .",
-          "context": "a magnetic field is produced by an electric current in a solenoid . in an electromagnet, a coil of wires behaves like a magnet when an electric current flows through it.",
+          "context": "the commonly known si unit of power, the watt , is equivalent to one joule per second. a magnetic field is produced by an electric current in a solenoid . in an electromagnet, a coil of wires behaves like a magnet when an electric current flows through it.",
           "licence": "CC BY-SA 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/7/72/Electromagnetic_induction_-_solenoid_to_loop_-_animation.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Alternating electric current flows through the solenoid, producing a changing magnetic field. This field causes an electric current to flow in the wire loop by electromagnetic induction .",
-          "context": "electromagnetic induction main article: electromagnetic induction magnetic fields can also be used to make electric currents. when a changing magnetic field is applied to a conductor, an electromotive force is induced, 21 : 1004 which starts an electric current when there is a suitable path. alternating electric current flows through the solenoid, producing a changing magnetic field. this field causes an electric current to flow in the wire loop by electromagnetic induction .",
+          "context": "electromagnetic induction edit magnetic fields can also be used to make electric currents. when a changing magnetic field is applied to a conductor, an electromotive force is induced, which starts an electric current when there is a suitable path. alternating electric current flows through the solenoid, producing a changing magnetic field. this field causes an electric current to flow in the wire loop by electromagnetic induction .",
           "licence": "CC BY-SA 4.0"
         },
         {
@@ -810,7 +985,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/25/Electrostatic_definition_of_voltage.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "In a static field, the work is independent of the path",
-          "context": "",
+          "context": "even today, the term \"tension\" is still used, for example within the phrase \" high tension \" which is commonly used in the contexts of automotive electronics and systems using thermionic valves .",
           "licence": "CC BY-SA 3.0"
         },
         {
@@ -836,17 +1011,10 @@
       "licence": "CC-BY-SA-3.0",
       "figures": [
         {
-          "src": "https://upload.wikimedia.org/wikipedia/en/9/99/Question_book-new.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "this article needs more citations . please help improve this article by adding citations to reliable sources .",
-          "licence": "Cc-by-sa-3.0"
-        },
-        {
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Pendulum-no-text.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A pendulum with a period of 2.8 s and a frequency of 0.36 Hz",
-          "context": "spatial frequency is defined for properties that vary or occur repeatedly in geometry or space. the unit of measurement of frequency in the international system of units is the hertz , having the symbol hz. 3 the period t is the time taken to complete one cycle of an oscillation or rotation.",
+          "context": "spatial frequency is defined for properties that vary or occur repeatedly in geometry or space. the unit of measurement of frequency in the international system of units is the hertz , having the symbol hz. the period t is the time taken to complete one cycle of an oscillation or rotation.",
           "licence": "CC BY-SA 4.0"
         },
         {
@@ -881,21 +1049,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/7/74/Ultrasound_range_diagram.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "The sound wave spectrum, with rough guide of some applications",
-          "context": "the sound wave spectrum, with rough guide of some applications sound propagates as mechanical vibration waves of pressure and displacement, in air or other substances. 13 in general, frequency components of a sound determine its \"color\", its timbre .",
-          "licence": "CC BY-SA 3.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/2/26/Spectrogram_showing_shared_partials.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "A spectrogram of a violin playing a note and then a perfect fifth above it. The shared partials are highlighted by the white dashes.",
-          "caption": "",
-          "context": "",
-          "licence": "CC BY-SA 3.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Stylised_atom_with_three_Bohr_model_orbits_and_stylised_nucleus.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "",
+          "context": "the sound wave spectrum, with rough guide of some applications sound propagates as mechanical vibration waves of pressure and displacement, in air or other substances. in general, frequency components of a sound determine its \"color\", its timbre .",
           "licence": "CC BY-SA 3.0"
         }
       ]
@@ -910,7 +1064,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/fa/Prism_flat_rainbow_%28cropped%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "\"visible light\" redirects here. for other uses, see visible light . a triangular prism dispersing a beam of white light. the longer wavelengths and the shorter wavelengths are separated.",
+          "context": "a triangular prism dispersing a beam of white light. the longer wavelengths and the shorter wavelengths are separated.",
           "licence": "CC0"
         },
         {
@@ -924,14 +1078,14 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/b/ba/Rocca_dell%27Abisso%2C_Fondachelli_Fantina%2C_Sicilia.JPG?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Beam of sun light inside the cavity of Rocca ill'Abissu at Fondachelli-Fantina , Sicily",
-          "context": "15 16 17 plant growth is also affected by the colour spectrum of light, a process known as photomorphogenesis . beam of sun light inside the cavity of rocca ill'abissu at fondachelli-fantina , sicily the speed of light in vacuum is defined to be exactly 299 792 458 m/s . the fixed value of the speed of light in si units results from the fact that the meter is now defined in terms of the speed of light.",
+          "context": "under ideal laboratory conditions, people can see infrared up to at least 1,050 nm; children and young adults may perceive ultraviolet wavelengths down to about 310-313 nm. plant growth is also affected by the colour spectrum of light, a process known as photomorphogenesis . beam of sun light inside the cavity of rocca ill'abissu at fondachelli-fantina , sicily the speed of light in vacuum is defined to be exactly 299 792 458 m/s . the fixed value of the speed of light in si units results from the fact that the meter is now defined in terms of the speed of light.",
           "licence": "CC0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/d/d9/Linear_visible_spectrum.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "21 however, the popular description of light being \"stopped\" in these experiments refers only to light being stored in the excited states of atoms, then re-emitted at an arbitrary later time, as stimulated by a second laser pulse. during the time it had \"stopped\", it had ceased to be light. the study of light and the interaction of light and matter is termed optics . optics has different forms appropriate to different circumstances.",
+          "context": "however, the popular description of light being \"stopped\" in these experiments refers only to light being stored in the excited states of atoms, then re-emitted at an arbitrary later time, as stimulated by a second laser pulse. during the time it had \"stopped\", it had ceased to be light. the study of light and the interaction of light and matter is termed optics . optics has different forms appropriate to different circumstances.",
           "licence": "Public domain"
         },
         {
@@ -952,28 +1106,28 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/c8/PierreGassendi.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Pierre Gassendi",
-          "context": "pierre gassendi pierre gassendi , an atomist, proposed a particle theory of light which was published posthumously in the 1660s. isaac newton studied gassendi's work at an early age and preferred his view to descartes's theory of the plenum .",
+          "context": "descartes arrived at this conclusion by analogy with the behaviour of sound waves. although descartes was incorrect about the relative speeds, he was correct in assuming that light behaved like a wave and in concluding that refraction could be explained by the speed of light in different media. pierre gassendi pierre gassendi , an atomist, proposed a particle theory of light which was published posthumously in the 1660s. isaac newton studied gassendi's work at an early age and preferred his view to descartes's theory of the plenum .",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/a/a4/Christiaan_Huygens-painting.jpeg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Christiaan Huygens",
-          "context": "40 another supporter of the wave theory was leonhard euler . he argued in nova theoria lucis et colorum that diffraction could more easily be explained by a wave theory.",
+          "context": "another supporter of the wave theory was leonhard euler . he argued in nova theoria lucis et colorum that diffraction could more easily be explained by a wave theory.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/8/8a/Young_Diffraction.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
-          "caption": "",
-          "context": "40 another supporter of the wave theory was leonhard euler . he argued in nova theoria lucis et colorum that diffraction could more easily be explained by a wave theory. thomas young 's sketch of water waves showing diffraction 41 the wave theory predicted that light waves could interfere with each other like sound waves . young showed by means of numerous diffraction experiments that light behaved as waves.",
+          "caption": "Thomas Young 's sketch of water waves showing diffraction",
+          "context": "another supporter of the wave theory was leonhard euler . he argued in nova theoria lucis et colorum that diffraction could more easily be explained by a wave theory. thomas young 's sketch of water waves showing diffraction the wave theory predicted that light waves could interfere with each other like sound waves . young showed by means of numerous diffraction experiments that light behaved as waves.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/35/Onde_electromagnetique.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A linearly polarized electromagnetic wave traveling along the z-axis, with E denoting the electric field and perpendicular B denoting magnetic field",
-          "context": "the first to make a sufficiently accurate measurement was leon foucault , in 1850. 46 his result supported the wave theory, and the classical particle theory was finally abandoned .",
+          "context": "the first to make a sufficiently accurate measurement was leon foucault , in 1850. his result supported the wave theory, and the classical particle theory was finally abandoned . this was the first evidence that light was related to electromagnetism .",
           "licence": "CC BY-SA 3.0"
         },
         {
@@ -1008,8 +1162,8 @@
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/24/Friction_between_surfaces.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
-          "caption": "Simulated blocks with fractal rough surfaces, exhibiting static frictional interactions [ 1 ]",
-          "context": "simulated blocks with fractal rough surfaces, exhibiting static frictional interactions 1 friction is the force resisting the relative motion of solid surfaces, fluid layers, and material elements sliding or grinding against each other.",
+          "caption": "Simulated blocks with fractal rough surfaces, exhibiting static frictional interactions",
+          "context": "simulated blocks with fractal rough surfaces, exhibiting static frictional interactions friction is the force resisting the relative motion of solid surfaces, fluid layers, and material elements sliding or grinding against each other. types of friction include dry, fluid, lubricated, skin, and internal - an incomplete list.",
           "licence": "CC BY-SA 4.0"
         },
         {
@@ -1030,7 +1184,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/8/85/Free_body.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Angle of friction, θ , when block just starts to slide",
-          "context": "for certain applications, it is more useful to define static friction in terms of the maximum angle before which one of the items will begin sliding. this is called the angle of friction or friction angle .",
+          "context": "this is called the angle of friction or friction angle .",
           "licence": "CC BY-SA 3.0"
         },
         {
@@ -1063,24 +1217,31 @@
           "licence": "Public domain"
         },
         {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/d/df/Iridium-1_Launch_%2832312419215%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d3/Free_body1.3.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "rockets work by creating unbalanced high pressure that pushes the rocket upwards while exhaust gas exits through an open nozzle. 30 in other words, if one body exerts a force on a second body, the second body is also exerting a force on the first body, of equal magnitude in the opposite direction.",
+          "context": "when the net force on a body is equal to zero, then by newton's second law, the body does not accelerate, and it is said to be in mechanical equilibrium .",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/df/Iridium-1_Launch_%2832312419215%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Rockets work by creating unbalanced high pressure that pushes the rocket upwards while exhaust gas exits through an open nozzle.",
+          "context": "third law edit to every action there is always opposed an equal reaction; or, the mutual actions of two bodies upon each other are always equal, and directed to contrary parts. rockets work by creating unbalanced high pressure that pushes the rocket upwards while exhaust gas exits through an open nozzle. in other words, if one body exerts a force on a second body, the second body is also exerting a force on the first body, of equal magnitude in the opposite direction.",
           "licence": "CC0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/3c/Bouncing_ball_strobe_edit.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "some example problems in newtonian mechanics are particularly noteworthy for conceptual or historical reasons. a bouncing ball photographed at 25 frames per second using a stroboscopic flash . in between bounces, the ball's height as a function of time is close to being a parabola , deviating from a parabolic arc because of air resistance, spin, and deformation into a non-spherical shape upon impact.",
+          "context": "examples edit the study of the behavior of massive bodies using newton's laws is known as newtonian mechanics. some example problems in newtonian mechanics are particularly noteworthy for conceptual or historical reasons. a bouncing ball photographed at 25 frames per second using a stroboscopic flash . in between bounces, the ball's height as a function of time is close to being a parabola , deviating from a parabolic arc because of air resistance, spin, and deformation into a non-spherical shape upon impact.",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/a/ae/Binary_system_orbit_q%3D3_e%3D0.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Two objects in uniform circular motion, orbiting around the barycenter (center of mass of both objects)",
-          "context": "two objects in uniform circular motion, orbiting around the barycenter when a body is in uniform circular motion, the force on it changes the direction of its motion but not its speed.",
+          "context": "setting the wrong vector equal to zero is a common confusion among physics students. two objects in uniform circular motion, orbiting around the barycenter when a body is in uniform circular motion, the force on it changes the direction of its motion but not its speed.",
           "licence": "CC BY-SA 4.0"
         },
         {
@@ -1101,14 +1262,14 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/ee/Newtonssailboat.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A boat equipped with a fan and a sail",
-          "context": "a boat equipped with a fan and a sail the fan and sail example is a situation studied in discussions of newton's third law. 51 in the situation, a fan is attached to a cart or a sailboat and blows on its sail.",
+          "context": "a boat equipped with a fan and a sail the fan and sail example is a situation studied in discussions of newton's third law. in the situation, a fan is attached to a cart or a sailboat and blows on its sail.",
           "licence": "CC0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/0/04/Masocentro1.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Fork-cork-toothpick object balanced on a pen on the toothpick part",
           "caption": "The total center of mass of the forks , cork , and toothpick is vertically below the pen's tip.",
-          "context": "in newtonian mechanics, the motion of a rigid body is often understood by separating it into movement of the body's center of mass and movement around the center of mass. the total center of mass of the forks , cork , and toothpick is vertically below the pen's tip. significant aspects of the motion of an extended body can be understood by imagining the mass of that body concentrated to a single point, known as the center of mass.",
+          "context": "rigid-body motion and rotation edit a rigid body is an object whose size is too large to neglect and which maintains the same shape over time. in newtonian mechanics, the motion of a rigid body is often understood by separating it into movement of the body's center of mass and movement around the center of mass. the total center of mass of the forks , cork , and toothpick is vertically below the pen's tip. significant aspects of the motion of an extended body can be understood by imagining the mass of that body concentrated to a single point, known as the center of mass.",
           "licence": "CC BY-SA 4.0"
         },
         {
@@ -1129,8 +1290,92 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e5/Noether.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Emmy Noether , whose 1915 proof of a celebrated theorem that relates symmetries and conservation laws was a key development in modern physics and can be conveniently stated in the language of Lagrangian or Hamiltonian mechanics",
-          "context": "29 lagrangian mechanics provides a convenient framework in which to prove noether's theorem , which relates symmetries and conservation laws. 72 the conservation of momentum can be derived by applying noether's theorem to a lagrangian for a multi-particle system, and so, newton's third law is a theorem rather than an assumption. 9 : 742 the hamiltonian is a function of the positions and the momenta of all the bodies making up the system, and it may also depend explicitly upon time.",
+          "context": "lagrangian mechanics provides a convenient framework in which to prove noether's theorem , which relates symmetries and conservation laws. the conservation of momentum can be derived by applying noether's theorem to a lagrangian for a multi-particle system, and so, newton's third law is a theorem rather than an assumption. the hamiltonian is a function of the positions and the momenta of all the bodies making up the system, and it may also depend explicitly upon time. the time derivatives of the position and momentum variables are given by partial derivatives of the hamiltonian, via hamilton's equations .",
           "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c2/Brownian_motion_large.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A simulation of a larger, but still microscopic, particle (in yellow) surrounded by a gas of smaller particles, illustrating Brownian motion",
+          "context": "kinetic theory can explain, for example, the pressure that a gas exerts upon the container holding it as the aggregate of many impacts of atoms, each imparting a tiny amount of momentum. the langevin equation is a special case of newton's second law, adapted for the case of describing a small object bombarded stochastically by even smaller ones.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/a9/Cyclotron_motion.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "The Lorentz force law in effect: electrons are bent into a circular trajectory by a magnetic field.",
+          "context": "the lorentz force law in effect: electrons are bent into a circular trajectory by a magnetic field.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/3b/Portrait_of_Sir_Isaac_Newton%2C_1689.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Isaac Newton (1643–1727), in a 1689 portrait by Godfrey Kneller",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/41/NewtonsPrincipia.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Newton&#39;s own copy of his Principia, with hand-written corrections for the second edition, in the Wren Library at Trinity College, Cambridge",
+          "caption": "",
+          "context": "",
+          "licence": "CC0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/5d/Newtons_laws_in_latin.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Newton&#39;s first and second laws, in Latin, from the original 1687 Principia Mathematica",
+          "caption": "",
+          "context": "newton combined knowledge of celestial motions with the study of events on earth and showed that one theory of mechanics could encompass both.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c2/Statue_at_the_Aristotle_University_of_Thessaloniki_%28cropped%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Statue of Aristotle",
+          "caption": "Aristotle (384-322 BCE )",
+          "context": "aristotle the subject of physics is often traced back to aristotle , but the history of the concepts involved is obscured by multiple factors. in addition, some concepts often termed \"aristotelian\" might better be attributed to his followers and commentators upon him.",
+          "licence": "CC BY-SA 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/cc/Galileo.arp.300pix.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Justus Sustermans - Portrait of Galileo Galilei",
+          "caption": "Galileo Galilei (1564-1642)",
+          "context": "descartes knew about this controversy and did not wish to get involved. the world was not published until 1664, ten years after his death. galileo galilei the modern concept of inertia is credited to galileo. based on his experiments, galileo concluded that the \"natural\" behavior of a moving body was to keep moving, until something else interfered with it.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b1/Frans_Hals_-_Portret_van_Ren%C3%A9_Descartes_%28cropped%292.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Portrait of René Descartes",
+          "caption": "René Descartes (1596-1650)",
+          "context": "based on his experiments, galileo concluded that the \"natural\" behavior of a moving body was to keep moving, until something else interfered with it. rene descartes galileo recognized that in projectile motion, the earth's gravity affects vertical but not horizontal motion. however, galileo's idea of inertia was not exactly the one that would be codified into newton's first law.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/ff/Breaking_String.PNG?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Ball in circular motion has string cut and flies off tangentially.",
+          "context": "this idea was corrected by isaac beeckman , descartes, and pierre gassendi , who recognized that inertial motion should be motion in a straight line. descartes published his laws of nature with this correction in principles of philosophy in 1644, with the heliocentric part toned down. ball in circular motion has string cut and flies off tangentially. first law of nature: each thing when left to itself continues in the same state; so any moving body goes on moving until something stops it.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/bc/Christiaan_Huygens-painting_%28cropped%29.jpeg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Christiaan Huygens (1629-1695)",
+          "context": "hypothesis i: any body already in motion will continue to move perpetually with the same speed and in a straight line unless it is impeded. according to huygens, this law was already known by galileo and descartes among others. one important characteristic of newtonian physics is that forces can act at a distance without requiring physical contact. for example, the sun and the earth pull on each other gravitationally, despite being separated by millions of kilometres.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/dc/JKepler_%28cropped%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Portrait of Johannes Kepler",
+          "caption": "Johannes Kepler (1571-1630)",
+          "context": "newton considered aetherial explanations of force but ultimately rejected them. and indeed, since newton's time every attempt at such a model has failed . johannes kepler johannes kepler suggested that gravitational attractions were reciprocal - that, for example, the moon pulls on the earth while the earth pulls on the moon - but he did not argue that such pairs are equal and opposite. in his principles of philosophy , descartes introduced the idea that during a collision between bodies, a \"quantity of motion\" remains unchanged.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/en/0/08/Page_157_from_Mechanism_of_the_Heaven%2C_Mary_Somerville_1831.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "in a later manuscript, newton added a law of action and reaction, while saying that this law and the law regarding the center of mass implied one another. newton probably settled on the presentation in the principia, with three primary laws and then other statements reduced to corollaries, during 1685. page 157 from mechanism of the heavens , mary somerville 's expanded version of the first two volumes of laplace's traite de mecanique celeste . here, somerville deduces the inverse-square law of gravity from kepler's laws of planetary motion .",
+          "licence": "PD-US"
         }
       ]
     },
@@ -1170,13 +1415,6 @@
       "licence": "CC-BY-SA-3.0",
       "figures": [
         {
-          "src": "https://upload.wikimedia.org/wikipedia/en/9/99/Question_book-new.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "this article needs more citations . please help improve this article by adding citations to reliable sources .",
-          "licence": "Cc-by-sa-3.0"
-        },
-        {
           "src": "https://upload.wikimedia.org/wikipedia/commons/4/43/Mediaeval_archery_reenactment.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
@@ -1208,21 +1446,21 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/a/a7/Longbowmen.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Archery is one of humankind's oldest applications of elastic potential energy",
-          "context": "archery is one of humankind's oldest applications of elastic potential energy a horizontal spring exerts a force f = that is proportional to its deformation in the axial or x -direction.",
+          "context": "the work of gravity depends only on the vertical movement of the curve r . archery is one of humankind's oldest applications of elastic potential energy a horizontal spring exerts a force f = that is proportional to its deformation in the axial or x -direction.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/c2/Solar_sys.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Gravitational force keeps the planets in orbit around the Sun",
-          "context": "if an object falls from one point to another point inside a gravitational field, the force of gravity will do positive work on the object, and the gravitational potential energy will decrease by the same amount. gravitational force keeps the planets in orbit around the sun consider a book placed on top of a table. as the book is raised from the floor to the table, some external force works against the gravitational force.",
+          "context": "the potential energy due to elevated positions is called gravitational potential energy, and is evidenced by water in an elevated reservoir or kept behind a dam. if an object falls from one point to another point inside a gravitational field, the force of gravity will do positive work on the object, and the gravitational potential energy will decrease by the same amount. gravitational force keeps the planets in orbit around the sun consider a book placed on top of a table. as the book is raised from the floor to the table, some external force works against the gravitational force.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/26/Plasma-lamp_2.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Plasma formed inside a gas filled sphere",
-          "context": "electric potential energy main article: electric potential energy an object can have potential energy by virtue of its electric charge and several forces related to their presence. there are two main types of this kind of potential energy: electrostatic potential energy, electrodynamic potential energy .",
+          "context": "electric potential energy edit an object can have potential energy by virtue of its electric charge and several forces related to their presence. there are two main types of this kind of potential energy: electrostatic potential energy, electrodynamic potential energy .",
           "licence": "CC BY-SA 3.0"
         }
       ]
@@ -1301,7 +1539,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/9/98/Kinematics.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Kinematic quantities of a classical particle: mass m , position r , velocity v , acceleration a .",
-          "context": "in newtonian mechanics , the acceleration of a mass arises from forces acting on it, with its net acceleration being a result of the net force acting on it. kinematic quantities of a classical particle: mass m , position r , velocity v , acceleration a .",
+          "context": "radial acceleration or normal acceleration is the component of the acceleration that changes the direction of the object's velocity. in newtonian mechanics , the acceleration of a mass arises from forces acting on it, with its net acceleration being a result of the net force acting on it. kinematic quantities of a classical particle: mass m , position r , velocity v , acceleration a .",
           "licence": "CC0"
         },
         {
@@ -1322,21 +1560,21 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/8/81/Apple_in_elevator.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Apple suspended in an upward-moving elevator: it moves downward during initial acceleration and upward during deceleration (stopping).",
-          "context": "other forms an object moving in a circular motion-such as a satellite orbiting the earth-is accelerating due to the change of direction of motion, although its speed may be constant. in this case it is said to be undergoing centripetal acceleration. apple suspended in an upward-moving elevator: it moves downward during initial acceleration and upward during deceleration . proper acceleration , the acceleration of a body relative to a free-fall condition, is measured by an instrument called an accelerometer .",
+          "context": "other forms edit an object moving in a circular motion-such as a satellite orbiting the earth-is accelerating due to the change of direction of motion, although its speed may be constant. in this case it is said to be undergoing centripetal acceleration. apple suspended in an upward-moving elevator: it moves downward during initial acceleration and upward during deceleration . proper acceleration , the acceleration of a body relative to a free-fall condition, is measured by an instrument called an accelerometer .",
           "licence": "CC BY-SA 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/24/Oscillating_pendulum.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "An oscillating pendulum, with velocity and acceleration marked. It experiences both tangential and centripetal acceleration.",
-          "context": "8 both acceleration and deceleration are treated the same, as they are both changes in velocity. each of these accelerations is felt by passengers until their relative velocity is neutralised in reference to the acceleration due to change in speed. an oscillating pendulum, with velocity and acceleration marked. it experiences both tangential and centripetal acceleration.",
+          "context": "both acceleration and deceleration are treated the same, as they are both changes in velocity. each of these accelerations is felt by passengers until their relative velocity is neutralised in reference to the acceleration due to change in speed. an oscillating pendulum, with velocity and acceleration marked. it experiences both tangential and centripetal acceleration.",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/4/45/Acceleration_components.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "components of acceleration for a curved motion. the tangential component a t is due to the change in speed of traversal, and points along the curve in the direction of the velocity vector .",
+          "context": "tangential and centripetal acceleration edit an oscillating pendulum, with velocity and acceleration marked. it experiences both tangential and centripetal acceleration. components of acceleration for a curved motion. the tangential component a t is due to the change in speed of traversal, and points along the curve in the direction of the velocity vector .",
           "licence": "CC0"
         },
         {
@@ -1358,6 +1596,13 @@
           "alt": "",
           "caption": "",
           "context": "velocity vector v , always tangent to the path of motion.",
+          "licence": "CC0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/58/Acceleration_vector_plane_polar_coords.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "acceleration vector a , not parallel to the radial motion but offset by the angular and coriolis accelerations, nor tangent to the path but offset by the centripetal and radial accelerations. kinematic vectors in plane polar coordinates .",
           "licence": "CC0"
         }
       ]

@@ -22,7 +22,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/5f/Jacquard.loom.full.view.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "The Jacquard loom was one of the first programmable devices.",
-          "context": "these programming languages are more like the language with which one talks and writes every day. the compiler converts the user's instructions into binary code that the computer will understand and do what is needed. the jacquard loom was one of the first programmable devices. first computer change | change source in 1837, charles babbage proposed the first general mechanical computer, the analytical engine.",
+          "context": "these programming languages are more like the language with which one talks and writes every day. the compiler converts the user's instructions into binary code that the computer will understand and do what is needed. the jacquard loom was one of the first programmable devices. first computer change change source in 1837, charles babbage proposed the first general mechanical computer, the analytical engine.",
           "licence": "Public domain"
         },
         {
@@ -43,7 +43,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/a/a4/Flag_of_the_United_States.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "United States",
           "caption": "",
-          "context": "connected to the sound card are speakers , which are like a mouth, and are where the sound comes out. apple 220,000 samsung 212,680 <img alt=\"taiwan\" src=\"//thumb.",
+          "context": "most computers have a sound card or another method of making sound, which is like vocal cords , or a voice box. connected to the sound card are speakers , which are like a mouth, and are where the sound comes out. apple 220,000 samsung 212,680 <img alt=\"taiwan\" src=\"//thumb.",
           "licence": "Public domain"
         },
         {
@@ -81,13 +81,6 @@
       "source": "simple.wikipedia.org",
       "licence": "CC-BY-SA-3.0",
       "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/6/64/Question_book-4.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this article does not have any sources . you can help wikipedia by finding good sources, and adding them.",
-          "licence": "CC BY-SA 3.0"
-        },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/37/Bubble_sort_animation.gif?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
@@ -143,21 +136,21 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e5/Von_Neumann_Architecture.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Von Neumann architecture scheme",
-          "context": "boolean algebra is now the basis of the circuits that model the transistors and other components of integrated circuits that make up modern computer hardware. 8 in 1945, turing finished the design for a computer that was never built. von neumann architecture scheme around this time, technological advancement in relays and vacuum tubes enabled the construction of the first computers.",
+          "context": "boolean algebra is now the basis of the circuits that model the transistors and other components of integrated circuits that make up modern computer hardware. in 1945, turing finished the design for a computer that was never built. von neumann architecture scheme around this time, technological advancement in relays and vacuum tubes enabled the construction of the first computers. building on babbage's design, relay computers were built by george stibitz at bell laboratories and harvard university 's howard aiken , who engineered the mark i .",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/9/9a/Growth_in_processor_performance%2C_1978%E2%80%932010.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
-          "caption": "",
-          "context": "growth in processor performance , 13 1978-2010 computer architecture involves balancing various goals, such as cost, speed, availability, and energy efficiency. designers must have a thorough understanding of hardware requirements and diverse aspects of computing, ranging from compilers to integrated circuit design .",
+          "caption": "Growth in processor performance (as measured by benchmarks), 1978-2010",
+          "context": "von neumann's design featured a centralized memory that stored both data and programs, a central processing unit with priority of access to the memory, and input and output units . growth in processor performance , 1978-2010 computer architecture involves balancing various goals, such as cost, speed, availability, and energy efficiency. designers must have a thorough understanding of hardware requirements and diverse aspects of computing, ranging from compilers to integrated circuit design .",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/4/4e/Personal_computer%2C_exploded_6.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "34 increases in performance require a commensurate increase in energy use and cooling demand.",
+          "context": "power delivery as well as heat dissipation are the most challenging aspects of hardware design, and have been the limiting factor to the development of smaller and faster chips since the early twenty-first century. increases in performance require a commensurate increase in energy use and cooling demand.",
           "licence": "CC BY 2.5"
         },
         {
@@ -178,7 +171,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/b/b7/Computer-motherboard.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Computer motherboard",
-          "context": "computer motherboard the motherboard is the main component of a computer. it is a board with integrated circuitry that connects the other parts of the computer including the cpu , the ram , the disk drives as well as any peripherals connected via the ports or the expansion slots .",
+          "context": "portable and laptop computers require cases that provide impact protection for the unit. hobbyists may decorate the cases with colored lights, paint, or other features, in an activity called case modding . computer motherboard the motherboard is the main component of a computer. it is a board with integrated circuitry that connects the other parts of the computer including the cpu , the ram , the disk drives as well as any peripherals connected via the ports or the expansion slots .",
           "licence": "CC BY-SA 4.0"
         }
       ]
@@ -193,7 +186,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/ce/DARPA_Logo_2010.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Logo of DARPA , an organization funded by the US government, which helped develop the Internet",
-          "context": "these networks share different kinds of information . the short form of the internet is \"the net.\" one of its most popular services is the world wide web , which is used by billions of people every day. logo of darpa , an organization funded by the us government, which helped develop the internet the internet was developed in the united states by the department of defence advanced research projects agency . the internet was first connected in october 1969 1 and was called arpanet .",
+          "context": "these networks share different kinds of information . the short form of the internet is \"the net.\" one of its most popular services is the world wide web , which is used by billions of people every day. logo of darpa , an organization funded by the us government, which helped develop the internet the internet was developed in the united states by the department of defence advanced research projects agency . the internet was first connected in october 1969 and was called arpanet .",
           "licence": "Public domain"
         },
         {
@@ -232,7 +225,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/a/ac/Computer_keyboard_-_Tangentbord_-_2022.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Keyboard with backlight.",
-          "context": "a qwerty computer keyboard in us layout. a computer keyboard is an input device that allows a person to enter letters , numbers , and other symbols into a computer . it is one of the most used input devices for computers .",
+          "context": "a computer keyboard is an input device that allows a person to enter letters , numbers , and other symbols into a computer . it is one of the most used input devices for computers .",
           "licence": "CC BY 3.0"
         },
         {
@@ -261,14 +254,14 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/1/1d/Industrieroboter.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Industrial robot, used for welding",
-          "context": "the next year, it started work in a factory in new jersey , lifting and stacking pieces of metal that were too hot for people to touch. 4 the engineers could program it, and reprogram it if they had to. industrial robot, used for welding robots have many uses. many factories use robots to do hard work quickly and without many mistakes.",
+          "context": "the next year, it started work in a factory in new jersey , lifting and stacking pieces of metal that were too hot for people to touch. the engineers could program it, and reprogram it if they had to. industrial robot, used for welding robots have many uses. many factories use robots to do hard work quickly and without many mistakes.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/7/7a/Ink_and_Marker_Robot_Illustration_49.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Ink and Marker Robot Illustration 49",
-          "context": "\"this is the opening of an era in which human beings and robots can co-exist,\" says japanese firm mitsubishi about one of the many human-like robots in japan. 10 the south korean ministry of information and communication has predicted that every south korean household will have a robot by between 2015 and 2020. ink and marker robot illustration 49 western societies are more likely to be against, or even fear the development of robots. science fiction movies and other stories often show them as dangerous rebels against humanity.",
+          "context": "\"this is the opening of an era in which human beings and robots can co-exist,\" says japanese firm mitsubishi about one of the many human-like robots in japan. the south korean ministry of information and communication has predicted that every south korean household will have a robot by between 2015 and 2020. ink and marker robot illustration 49 western societies are more likely to be against, or even fear the development of robots. science fiction movies and other stories often show them as dangerous rebels against humanity.",
           "licence": "CC BY-SA 4.0"
         }
       ]

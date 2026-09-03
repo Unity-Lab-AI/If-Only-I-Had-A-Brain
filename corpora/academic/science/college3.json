@@ -2,8 +2,8 @@
   "version": 1,
   "grade": "college3",
   "subject": "science",
-  "source": "hybrid: Saylor Academy open textbooks + prior sources, cleaned + sentence-segmented",
-  "note": "Upper-undergraduate textbook corpus for science/college3. Trained via curriculum._trainAcademicStories. A college year is a course with a book.",
+  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
+  "note": "Hybrid academic-depth corpus for science/college3. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
   "experiences": [
     {
       "theme": "neuron",
@@ -35,7 +35,7 @@
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/0/0d/GFPneuron.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
-          "caption": "",
+          "caption": "Image of pyramidal neurons in mouse cerebral cortex expressing green fluorescent protein . The red staining indicates GABAergic interneurons.",
           "context": "typical axons seldom contain ribosomes , except some in the initial segment. dendrites contain granular endoplasmic reticulum or ribosomes, in diminishing amounts as the distance from the cell body increases. image of pyramidal neurons in mouse cerebral cortex expressing green fluorescent protein . the red staining indicates gabaergic interneurons.",
           "licence": "CC BY 2.5"
         },
@@ -43,21 +43,21 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/4/4f/Structural_classification_of_neurons_by_polarity_hariadhi.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Different kinds of neurons",
-          "context": "the dendritic tree wraps around the cell body and receives signals from other neurons. the end of the axon has branching axon terminals that release neurotransmitters into a gap called the synaptic cleft between the terminals and the dendrites of the next neuron. different kinds of neurons most neurons can be anatomically characterized as: 4 unipolar : single process. unipolar cells are exclusively sensory neurons.",
+          "context": "the dendritic tree wraps around the cell body and receives signals from other neurons. the end of the axon has branching axon terminals that release neurotransmitters into a gap called the synaptic cleft between the terminals and the dendrites of the next neuron. different kinds of neurons most neurons can be anatomically characterized as: unipolar : single process. unipolar cells are exclusively sensory neurons.",
           "licence": "CC BY-SA 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/0/01/Neurotransmitters.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Synaptic vesicles containing neurotransmitters",
-          "context": "neurons that fire in bursts are called phasic. some neurons are notable for their high firing rates, for example, some types of cortical inhibitory interneurons, cells in globus pallidus , retinal ganglion cells . synaptic vesicles containing neurotransmitters main article: neurotransmitter neurotransmitters are chemical messengers released from one neuron to affect another neuron, a muscle cell or a gland cell . cholinergic acetylcholine is released from presynaptic neurons into the synaptic cleft.",
+          "context": "neurons that fire in bursts are called phasic. some neurons are notable for their high firing rates, for example, some types of cortical inhibitory interneurons, cells in globus pallidus , retinal ganglion cells . synaptic vesicles containing neurotransmitters neurotransmitters are chemical messengers released from one neuron to affect another neuron, a muscle cell or a gland cell . cholinergic edit acetylcholine is released from presynaptic neurons into the synaptic cleft.",
           "licence": "CC BY-SA 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/30/Chemical_synapse_schema_cropped.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A signal propagating down an axon to the cell body and dendrites of the next cell",
-          "context": "",
+          "context": "besides being universal this classification has the advantage of being able to classify astrocytes as well. a method called patch-sequencing in which all three qualities can be measured at once is used extensively by the allen institute for brain science .",
           "licence": "Public domain"
         },
         {
@@ -70,29 +70,43 @@
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/8/83/All-or-none_law_en.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
-          "caption": "",
-          "context": "the main goal of studying neural coding is to characterize the relationship between the stimulus and the individual or ensemble neuronal responses and the relationships among the electrical activities of the neurons within the ensemble. 43 it is thought that neurons can encode both digital and analog information. as long as the stimulus reaches the threshold, the full response will be given. a larger stimulus does not result in a larger response, and vice versa.",
+          "caption": "As long as the stimulus reaches the threshold, the full response will be given. A larger stimulus does not result in a larger response, and vice versa.",
+          "context": "the main goal of studying neural coding is to characterize the relationship between the stimulus and the individual or ensemble neuronal responses and the relationships among the electrical activities of the neurons within the ensemble. it is thought that neurons can encode both digital and analog information. as long as the stimulus reaches the threshold, the full response will be given. a larger stimulus does not result in a larger response, and vice versa.",
           "licence": "CC BY 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/5e/Golgi_Hippocampus.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Drawing by Camillo Golgi of a hippocampus stained using the silver nitrate method",
-          "context": "55 53 some previous works used nerve cell , as adopted in camillo golgi 's 1873 paper on the discovery of the silver staining technique used to visualize nervous tissue under light microscopy.",
+          "context": "that spelling was also used by many writers in english, but has now become rare in american usage and uncommon in british usage. some previous works used nerve cell , as adopted in camillo golgi 's 1873 paper on the discovery of the silver staining technique used to visualize nervous tissue under light microscopy.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e2/Purkinje_cell_by_Cajal.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Drawing of a Purkinje cell in the cerebellar cortex done by Santiago Ramón y Cajal , demonstrating the ability of Golgi's staining method to reveal fine detail",
-          "context": "",
+          "context": "some previous works used nerve cell , as adopted in camillo golgi 's 1873 paper on the discovery of the silver staining technique used to visualize nervous tissue under light microscopy. to make the structure of individual neurons visible, ramon y cajal improved a silver staining process that had been developed by camillo golgi . the improved process involves a technique called \"double impregnation\" and is still in use.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/1/15/PurkinjeCell.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "drawing of neurons in the pigeon cerebellum , by spanish neuroscientist santiago ramon y cajal in 1899. denotes purkinje cells and denotes granule cells , both of which are multipolar.",
+          "context": "in 1888 ramon y cajal published a paper about the bird cerebellum. in 1891, the german anatomist heinrich wilhelm waldeyer wrote a highly influential review of the neuron doctrine in which he introduced the term neuron to describe the anatomical and physiological unit of the nervous system. drawing of neurons in the pigeon cerebellum , by spanish neuroscientist santiago ramon y cajal in 1899. denotes purkinje cells and denotes granule cells , both of which are multipolar.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/7f/Guillain-barr%C3%A9_syndrome_-_Nerve_Damage.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Guillain-Barré syndrome - demyelination",
+          "context": "weakness is typically caused by circulating antibodies that block acetylcholine receptors at the postsynaptic neuromuscular junction, inhibiting the stimulative effect of the neurotransmitter acetylcholine. myasthenia is treated with immunosuppressants , cholinesterase inhibitors and, in selected cases, thymectomy . guillain-barre syndrome - demyelination demyelination is a process characterized by the gradual loss of the myelin sheath enveloping nerve fibers. when myelin deteriorates, signal conduction along nerves can be significantly impaired or lost, and the nerve eventually withers.",
+          "licence": "CC BY 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/65/Creative_Commons_by_small.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "this article incorporates text available under the cc by 4.0 license. betts, j gordon; desaix, peter; johnson, eddie; johnson, jody e; korol, oksana; kruse, dean; poe, brandon; wise, james; womble, mark d; young, kelly a .",
           "licence": "Public domain"
         }
       ]
@@ -121,7 +135,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/8/89/Bilaterian-plan.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "A rod-shaped body contains a digestive system running from the mouth at one end to the anus at the other. Alongside the digestive system is a nerve cord with a brain at the end, near to the mouth.",
           "caption": "Nervous system of a generic bilaterian animal, in the form of a nerve cord with segmental enlargements, and a \"brain\" at the front",
-          "context": "",
+          "context": "a myelinated axon is wrapped in a fatty insulating sheath of myelin , which serves to greatly increase the speed of signal propagation. myelin is white, making parts of the brain filled exclusively with nerve fibers appear as light-colored white matter , in contrast to the darker-colored grey matter that marks areas with high densities of neuron cell bodies.",
           "licence": "Public domain"
         },
         {
@@ -135,7 +149,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/b/b4/Shark_brain.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "A T-shaped object is made up of the cord at the bottom which feeds into a lower central mass. This is topped by a larger central mass with an arm extending from either side.",
           "caption": "The brain of a shark",
-          "context": "the brain of a shark the first vertebrates appeared over 500 million years ago during the cambrian period , and may have resembled the modern jawless fish in form.",
+          "context": "the complete \"wiring diagrams\" of c. elegans was created in 1986, enabling a multitude of studies that would otherwise have not been possible. the brain of a shark the first vertebrates appeared over 500 million years ago during the cambrian period , and may have resembled the modern jawless fish in form.",
           "licence": "Public domain"
         },
         {
@@ -163,22 +177,99 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e1/Visual_processing_areas_of_the_brains_of_four_species_of_birds.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "brains of an emu , a kiwi , a barn owl , and a pigeon , with visual processing areas labelled the avian brain is the central organ of the nervous system in birds.",
+          "context": "diencephalon is related to regulation of eye and body movement in response to visual stimuli, sensory information, circadian rhythms , olfactory input, and autonomic nervous system . telencephalon is related to control of movements, neurotransmitters and neuromodulators responsible for integrating inputs and transmitting outputs are present, sensory systems, and cognitive functions. brains of an emu , a kiwi , a barn owl , and a pigeon , with visual processing areas labelled the avian brain is the central organ of the nervous system in birds.",
           "licence": "CC BY 2.5"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/c8/6_week_embryo_brain.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Very simple drawing of the front end of a human embryo, showing each vesicle of the developing brain in a different color.",
           "caption": "Brain of a human embryo in the sixth week of development",
-          "context": "it takes up a much larger proportion of the brain for primates than for other species, and an especially large fraction of the human brain. brain of a human embryo in the sixth week of development the brain develops in an intricately orchestrated sequence of stages. 80 it changes in shape from a simple swelling at the front of the nerve cord in the earliest embryonic stages, to a complex array of areas and connections.",
+          "context": "the prefrontal cortex carries out functions that include planning , working memory , motivation , attention , and executive control . it takes up a much larger proportion of the brain for primates than for other species, and an especially large fraction of the human brain. brain of a human embryo in the sixth week of development the brain develops in an intricately orchestrated sequence of stages. it changes in shape from a simple swelling at the front of the nerve cord in the earliest embryonic stages, to a complex array of areas and connections.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/26/Spike-waves.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Graph showing 16 voltage traces going across the page from left to right, each showing a different signal. At the middle of the page all of the traces abruptly begin to show sharp jerky spikes, which continue to the end of the plot.",
           "caption": "Brain electrical activity recorded from a human patient during an epileptic seizure",
-          "context": "89 norepinephrine , which is involved in arousal, comes exclusively from a nearby small area called the locus coeruleus . 90 other neurotransmitters such as acetylcholine and dopamine have multiple sources in the brain but are not as ubiquitously distributed as glutamate and gaba. brain electrical activity recorded from a human patient during an epileptic seizure as a side effect of the electrochemical processes used by neurons for signaling, brain tissue generates electric fields when it is active. when large numbers of neurons show synchronized activity, the electric fields that they generate can be large enough to detect outside the skull, using electroencephalography 92 or magnetoencepha",
+          "context": "norepinephrine , which is involved in arousal, comes exclusively from a nearby small area called the locus coeruleus . other neurotransmitters such as acetylcholine and dopamine have multiple sources in the brain but are not as ubiquitously distributed as glutamate and gaba. brain electrical activity recorded from a human patient during an epileptic seizure as a side effect of the electrochemical processes used by neurons for signaling, brain tissue generates electric fields when it is active. when large numbers of neurons show synchronized activity, the electric fields that they generate can be large enough to detect outside the skull, using electroencephalography or magnetoencephalography ",
           "licence": "CC BY-SA 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/63/Model_of_Cerebellar_Perceptron.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Model of a neural circuit in the cerebellum, as proposed by James S. Albus",
+          "context": "model of a neural circuit in the cerebellum, as proposed by james s. albus information from the sense organs is collected in the brain.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e4/Hearing_mechanics_cropped.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Drawing showing the ear, inner ear, and brain areas involved in hearing. A series of light blue arrows shows the flow of signals through the system.",
+          "caption": "Diagram of signal processing in the auditory system",
+          "context": "these signal-processing tasks require intricate interplay between a variety of functional subsystems. the function of the brain is to provide coherent control over the actions of an animal.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/9f/LocationOfHypothalamus.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Cross-section of a human head, showing location of the hypothalamus",
+          "context": "during deep nrem sleep, also called slow wave sleep , activity in the cortex takes the form of large synchronized waves, whereas in the waking state it is noisy and desynchronized. levels of the neurotransmitters norepinephrine and serotonin drop during slow wave sleep, and fall almost to zero during rem sleep; levels of acetylcholine show the reverse pattern. the ability of an animal to regulate the internal environment of its body-the milieu interieur , as the pioneering physiologist claude bernard called it-is known as homeostasis . maintaining homeostasis is a crucial function of the brain.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/3e/Basal_ganglia.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "some of the outputs also go to the pituitary gland , a tiny gland attached to the brain directly underneath the hypothalamus. the pituitary gland secretes hormones into the bloodstream, where they circulate throughout the body and induce changes in cellular activity. components of the basal ganglia, shown in two cross-sections of the human brain. blue: caudate nucleus and putamen .",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/89/Henry_Markram_-_Visualizing_Synaptic_Maps_onto_Neocrortical_Neurons.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "motor learning is the ability to refine patterns of body movement by practicing, or more generally by repetition. a number of brain areas are involved, including the premotor cortex , basal ganglia, and especially the cerebellum, which functions as a large memory bank for microadjustments of the parameters of movement. the human brain project is a large scientific research project, starting in 2013, which aims to simulate the complete human brain. the field of neuroscience encompasses all approaches that seek to understand the brain and the rest of the nervous system.",
+          "licence": "CC BY 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/ac/Brain-computer_interface_%28schematic%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Drawing showing a monkey in a restraint chair, a computer monitor, a rototic arm, and three pieces of computer equipment, with arrows between them to show the flow of information.",
+          "caption": "Design of an experiment in which brain activity from a monkey was used to control a robotic arm",
+          "context": "because the brain does not contain pain receptors, it is possible using these techniques to record brain activity from animals that are awake and behaving without causing distress. design of an experiment in which brain activity from a monkey was used to control a robotic arm another approach to brain function is to examine the consequences of damage to specific brain areas. in humans, the effects of strokes and other types of brain damage have been a key source of information about brain function.",
+          "licence": "CC BY 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/3a/1543%2C_Andreas_Vesalius%27_Fabrica%2C_Base_Of_The_Brain.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "all these things we endure from the brain, when it is not healthy... andreas vesalius ' fabrica , published in 1543, showing the base of the human brain, including optic chiasma , cerebellum, olfactory bulbs , etc. the roman physician galen also argued for the importance of the brain, and theorized in some depth about how it might work.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/15/PurkinjeCell.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A drawing on yellowing paper with an archiving stamp in the corner. A spidery tree branch structure connects to the top of a mass. A few narrow processes follow away from the bottom of the mass.",
+          "caption": "",
+          "context": "without such a stain, brain tissue under a microscope appears as an impenetrable tangle of protoplasmic fibers, in which it is impossible to determine any structure. in the hands of camillo golgi , and especially of the spanish neuroanatomist santiago ramon y cajal , the new stain revealed hundreds of distinct types of neurons, each with its own unique dendritic structure and pattern of connectivity. these studies complemented the anatomical picture with a conception of the brain as a dynamic entity.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/60/Gulai_Otak.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Gulai otak , beef brain curry from Indonesia",
+          "context": "gulai otak , beef brain curry from indonesia animal brains are used as food in numerous cuisines. in rituals edit some archaeological evidence suggests that the mourning rituals of european neanderthals also involved the consumption of the brain.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e1/Anatomy_posture_and_body_mechanics_08.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "icon",
+          "caption": "",
+          "context": "a prion disease called kuru has been traced to this.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/2d/Issoria_lathonia.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "icon",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY-SA 3.0"
         }
       ]
     },
@@ -192,42 +283,42 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/4/4f/Autonomic_and_Somatic_Nervous_System.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "the medical specialty of neurology studies disorders of the nervous system and looks for interventions that can prevent or treat them. neuroscience is the field of science that focuses on the study of the nervous system. the nervous system derives its name from nerves, which are cylindrical bundles of fibers , that emanate from the brain and spinal cord , and branch repeatedly to innervate every part of the body.",
+          "context": "the medical specialty of neurology studies disorders of the nervous system and looks for interventions that can prevent or treat them. neuroscience is the field of science that focuses on the study of the nervous system. the nervous system derives its name from nerves, which are cylindrical bundles of fibers , that emanate from the brain and spinal cord , and branch repeatedly to innervate every part of the body. nerves are large enough to have been recognized by the ancient egyptians , greeks , and romans , but their internal structure was not understood until it became possible to examine them using a microscope .",
           "licence": "CC BY-SA 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/b/b5/Neuron.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Structure of a typical neuron with Schwann cells in the peripheral nervous system",
-          "context": "10 11 cells the nervous system contains two main categories or types of cells: neurons and glial cells . structure of a typical neuron with schwann cells in the peripheral nervous system the nervous system is defined by the presence of a special type of cell-the neuron .",
+          "context": "in bilaterian animals, which make up the great majority of existing species, the nervous system has a common structure that originated early in the ediacaran period, over 550 million years ago. cells edit the nervous system contains two main categories or types of cells: neurons and glial cells . structure of a typical neuron with schwann cells in the peripheral nervous system the nervous system is defined by the presence of a special type of cell-the neuron . many types of neuron possess an axon , a protoplasmic protrusion that can extend to distant parts of the body and make thousands of synaptic contacts; axons typically extend throughout the body in bundles called nerves.",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/b/bc/Human_nervous_system_flowchart.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Flowchart of the human nervous system",
-          "context": "13 a very important type of glial cell generates layers of a fatty substance called myelin that wraps around axons and provides electrical insulation which allows them to transmit action potentials much more rapidly and efficiently. recent findings indicate that glial cells, such as microglia and astrocytes, serve as important resident immune cells within the central nervous system.",
+          "context": "a very important type of glial cell generates layers of a fatty substance called myelin that wraps around axons and provides electrical insulation which allows them to transmit action potentials much more rapidly and efficiently. recent findings indicate that glial cells, such as microglia and astrocytes, serve as important resident immune cells within the central nervous system.",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/d/de/Visible_Human_head_slice.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Horizontal section of the head of an adult female human, showing skin, skull, and brain with gray matter (brown in this image) and underlying white matter",
-          "context": "recent findings indicate that glial cells, such as microglia and astrocytes, serve as important resident immune cells within the central nervous system.",
+          "context": "the cns is the major division, and consists of the brain and the spinal cord .",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/8/89/Bilaterian-plan.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "A rod-shaped body contains a digestive system running from the mouth at one end to the anus at the other. Alongside the digestive system is a nerve cord with a brain at the end, near to the mouth.",
           "caption": "Nervous system of a bilaterian animal, in the form of a nerve cord with segmental enlargements, and a \"brain\" at the front",
-          "context": "unlike bilaterians , radiata only have two primordial cell layers, endoderm and ectoderm . neurons are generated from a special set of ectodermal precursor cells, which also serve as precursors for every other ectodermal cell type. all bilateria are thought to have descended from a common wormlike ancestor that appear as fossils beginning in the ediacaran period, 550-600 million years ago.",
+          "context": "unlike bilaterians , radiata only have two primordial cell layers, endoderm and ectoderm . neurons are generated from a special set of ectodermal precursor cells, which also serve as precursors for every other ectodermal cell type. all bilateria are thought to have descended from a common wormlike ancestor that appear as fossils beginning in the ediacaran period, 550-600 million years ago. the fundamental bilaterian body form is a tube with a hollow gut cavity running from mouth to anus, and a nerve cord with an enlargement for each body segment, with an especially large ganglion at the front, called the \"brain\".",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/38/Gray797.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Area of the human body surface innervated by each spinal nerve",
-          "context": "10 the fundamental bilaterian body form is a tube with a hollow gut cavity running from mouth to anus, and a nerve cord with an enlargement for each body segment, with an especially large ganglion at the front, called the \"brain\". area of the human body surface innervated by each spinal nerve even mammals, including humans, show the segmented bilaterian body plan at the level of the nervous system. the spinal cord contains a series of segmental ganglia, each giving rise to motor and sensory nerves that innervate a portion of the body surface and underlying musculature.",
+          "context": "the fundamental bilaterian body form is a tube with a hollow gut cavity running from mouth to anus, and a nerve cord with an enlargement for each body segment, with an especially large ganglion at the front, called the \"brain\". area of the human body surface innervated by each spinal nerve even mammals, including humans, show the segmented bilaterian body plan at the level of the nervous system. the spinal cord contains a series of segmental ganglia, each giving rise to motor and sensory nerves that innervate a portion of the body surface and underlying musculature.",
           "licence": "Public domain"
         },
         {
@@ -241,35 +332,70 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/22/Spider_internal_anatomy-en.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Internal anatomy of a spider, showing the nervous system in blue",
-          "context": "in this species, the nervous system is sexually dimorphic ; the nervous systems of the two sexes, males and female hermaphrodites , have different numbers of neurons and groups of neurons that perform sex-specific functions. elegans , males have exactly 383 neurons, while hermaphrodites have exactly 302 neurons. 29 typically, each body segment has one ganglion on each side, though some ganglia are fused to form the brain and other large ganglia.",
+          "context": "in this species, the nervous system is sexually dimorphic ; the nervous systems of the two sexes, males and female hermaphrodites , have different numbers of neurons and groups of neurons that perform sex-specific functions. elegans , males have exactly 383 neurons, while hermaphrodites have exactly 302 neurons. typically, each body segment has one ganglion on each side, though some ganglia are fused to form the brain and other large ganglia. the head segment contains the brain, also known as the supraesophageal ganglion .",
           "licence": "CC BY 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/d/d2/Gastropod_nervous_system.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Simplified diagram of the mollusc nervous system",
-          "context": "simplified diagram of the mollusc nervous system the cephalic molluscs have two pairs of main nerve cords organized around a number of paired ganglia, the visceral cords serving the internal organs and the pedal ones serving the foot. most pairs of corresponding ganglia on both sides of the body are linked by commissures .",
+          "context": "a protoplasmic fiber runs from the cell body and branches profusely, with some parts transmitting signals and other parts receiving signals. thus, most parts of the insect brain have passive cell bodies arranged around the periphery, while the neural signal processing takes place in a tangle of protoplasmic fibers called neuropil , in the interior. simplified diagram of the mollusc nervous system the cephalic molluscs have two pairs of main nerve cords organized around a number of paired ganglia, the visceral cords serving the internal organs and the pedal ones serving the foot. most pairs of corresponding ganglia on both sides of the body are linked by commissures .",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/30/Chemical_synapse_schema_cropped.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "major elements in synaptic transmission. an electrochemical wave called an action potential travels along the axon of a neuron .",
+          "context": "in humans, the sophistication of the nervous system makes it possible to have language , abstract representation of concepts , transmission of culture , and many other features of human society that would not exist without the human brain. major elements in synaptic transmission. an electrochemical wave called an action potential travels along the axon of a neuron .",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/d/d7/SynapseSchematic_lines.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "An illustrated chemical synapse",
           "caption": "",
-          "context": "for example, release of the neurotransmitter acetylcholine at a synaptic contact between a motor neuron and a muscle cell induces rapid contraction of the muscle cell. 42 the entire synaptic transmission process takes only a fraction of a millisecond, although the effects on the postsynaptic cell may last much longer .",
+          "context": "for example, release of the neurotransmitter acetylcholine at a synaptic contact between a motor neuron and a muscle cell induces rapid contraction of the muscle cell. the entire synaptic transmission process takes only a fraction of a millisecond, although the effects on the postsynaptic cell may last much longer .",
           "licence": "CC BY-SA 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/8/8a/Descartes-reflex.JPG?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Illustration of pain pathway, from René Descartes 's Treatise of Man",
-          "context": "networks formed by interconnected groups of neurons are capable of a wide variety of functions, including feature detection, pattern generation and timing, 50 and there are seen to be countless types of information processing possible. warren mcculloch and walter pitts showed in 1943 that even artificial neural networks formed from a greatly simplified mathematical abstraction of a neuron are capable of universal computation . illustration of pain pathway, from rene descartes 's treatise of man historically, for many years the predominant view of the function of the nervous system was as a stimulus-response associator.",
+          "context": "networks formed by interconnected groups of neurons are capable of a wide variety of functions, including feature detection, pattern generation and timing, and there are seen to be countless types of information processing possible. warren mcculloch and walter pitts showed in 1943 that even artificial neural networks formed from a greatly simplified mathematical abstraction of a neuron are capable of universal computation . illustration of pain pathway, from rene descartes 's treatise of man historically, for many years the predominant view of the function of the nervous system was as a stimulus-response associator.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/74/Nervous_system_organization_en.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Simplified schema of basic nervous system function: signals are picked up by sensory receptors and sent to the spinal cord and brain, where processing occurs that results in signals sent back to the spinal cord and then out to motor neurons",
+          "context": "neurons were found to be capable of producing regular sequences of action potentials, or sequences of bursts, even in complete isolation. when intrinsically active neurons are connected to each other in complex circuits, the possibilities for generating intricate temporal patterns become far more extensive. this can be shown in the \"withdrawal reflex\" causing a hand to jerk back after a hot stove is touched.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/95/Gray17.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Human embryo, showing neural groove",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/4c/Development_of_the_neural_tube.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Four stages in the development of the neural tube in the human embryo",
+          "context": "four stages in the development of the neural tube in the human embryo in vertebrates, the first sign of the nervous system is the appearance of a thin strip of cells along the center of the back, called the neural plate . the inner portion of the neural plate is destined to become the central nervous system , the outer portion the peripheral nervous system .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6f/CNS_protection.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Layers protecting the brain and spinal cord",
+          "context": "identified dnt1, the first neurotrophin found in flies . dnt1 shares structural similarity with all known neurotrophins and is a key factor in the fate of neurons in drosophila . layers protecting the brain and spinal cord the central nervous system is protected by major physical and chemical barriers. physically, the brain and spinal cord are surrounded by tough meningeal membranes, and enclosed in the bones of the skull and vertebral column , which combine to form a strong physical shield.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d6/WHO_Rod.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "icon",
+          "caption": "",
+          "context": "neurological practice draws heavily on the fields of neuroscience and psychiatry to treat diseases of the nervous system using various techniques of neurotherapy .",
           "licence": "Public domain"
         }
       ]
@@ -284,63 +410,63 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/ca/Cognition2.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Representation of a human brain thinking",
-          "context": "for the company, see cognition ai . for other uses, see cognitive . representation of a human brain thinking cognition encompasses mental processes that deal with knowledge . it includes psychological activities that acquire, store, retrieve, transform, or apply information .",
+          "context": "representation of a human brain thinking cognition encompasses mental processes that deal with knowledge . it includes psychological activities that acquire, store, retrieve, transform, or apply information .",
           "licence": "CC0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/fc/Simplified_model_of_perception_and_memory.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Diagram of cognitive processes associated with perception and memory",
-          "caption": "",
-          "context": "they are sometimes divided into basic processes, like perception and memory , and higher-order processes, like thinking . this distinction rests on the idea that higher-order processes could not occur without basic processes. simplified model of cognitive processes associated with perception and memory 11 perception is the organization and interpretation of sensory information about the world. it is a complex mental activity that involves the interplay of diverse cognitive processes, many of which occur automatically and unconsciously .",
+          "caption": "Simplified model of cognitive processes associated with perception and memory",
+          "context": "they are sometimes divided into basic processes, like perception and memory , and higher-order processes, like thinking . this distinction rests on the idea that higher-order processes could not occur without basic processes. simplified model of cognitive processes associated with perception and memory perception is the organization and interpretation of sensory information about the world. it is a complex mental activity that involves the interplay of diverse cognitive processes, many of which occur automatically and unconsciously .",
           "licence": "CC0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/fd/Generalization_process_using_trees.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Diagram of several trees with arrows to one more tree",
-          "caption": "",
-          "context": "abductive reasoning , another type of non-deductive reasoning, seeks the best explanation of a phenomenon. for example, a doctor uses abductive reasoning when they infer that a child has chickenpox as an explanation of the child's skin rash and fever . through concept formation, the mind learns to identify common patterns among diverse instances. 33 problem-solving is a goal-directed activity that aims to overcome obstacles and arrive at a pre-defined objective.",
+          "caption": "Through concept formation, the mind learns to identify common patterns among diverse instances.",
+          "context": "abductive reasoning , another type of non-deductive reasoning, seeks the best explanation of a phenomenon. for example, a doctor uses abductive reasoning when they infer that a child has chickenpox as an explanation of the child's skin rash and fever . through concept formation, the mind learns to identify common patterns among diverse instances. problem-solving is a goal-directed activity that aims to overcome obstacles and arrive at a pre-defined objective.",
           "licence": "CC0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/ff/Metacognition2.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Diagram of a brain thinking about a brain",
-          "caption": "Metacognitive processes deal with information about other cognitive processes. [ 47 ]",
-          "context": "by becoming familiar with a task, a process that was initially controlled can become automatic, freeing up resources for other activities. for example, as a novice driver becomes experienced, they can automatically handle the car and adapt to road and traffic conditions while gaining the ability to engage in a conversation at the same time. metacognitive processes deal with information about other cognitive processes. 47 consciousness is closely related to metacognition , which encompasses any knowledge or cognitive process that deals with information about cognition.",
+          "caption": "Metacognitive processes deal with information about other cognitive processes.",
+          "context": "by becoming familiar with a task, a process that was initially controlled can become automatic, freeing up resources for other activities. for example, as a novice driver becomes experienced, they can automatically handle the car and adapt to road and traffic conditions while gaining the ability to engage in a conversation at the same time. metacognitive processes deal with information about other cognitive processes. consciousness is closely related to metacognition , which encompasses any knowledge or cognitive process that deals with information about cognition.",
           "licence": "CC0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/b/b2/Artificial_neural_network_colored.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Diagram of a neural network consisting of several layers",
-          "caption": "",
-          "context": "this change may, in turn, prompt the execution of another rule, leading to a dynamic sequence of operations that can solve complex computational tasks. the cognitive architecture soar is an example of this approach. connectionism analyzes cognition through complex neural networks consisting of several layers of nodes. 66 connectionism is another form of computationalism that differs from classical computationalism in various ways.",
+          "caption": "Connectionism analyzes cognition through complex neural networks consisting of several layers of nodes.",
+          "context": "this change may, in turn, prompt the execution of another rule, leading to a dynamic sequence of operations that can solve complex computational tasks. the cognitive architecture soar is an example of this approach. connectionism analyzes cognition through complex neural networks consisting of several layers of nodes. connectionism is another form of computationalism that differs from classical computationalism in various ways.",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/60/Jean_Piaget_in_Ann_Arbor_%28cropped%29.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Photo of a man with white hair and glasses, wearing a suit",
-          "caption": "Jean Piaget divided the cognitive development of children into four stages. [ 81 ]",
-          "context": "79 ancient chinese thought emphasized the connection between cognition and behavior. these ideas originated prior to the qin period and anticipated later theories of enactive cognition. jean piaget divided the cognitive development of children into four stages. 81 cognitive development is the progressive growth of mental abilities from infancy through adulthood as individuals acquire and improve cognitive skills and learn from experience.",
+          "caption": "Jean Piaget divided the cognitive development of children into four stages.",
+          "context": "ancient chinese thought emphasized the connection between cognition and behavior. these ideas originated prior to the qin period and anticipated later theories of enactive cognition. jean piaget divided the cognitive development of children into four stages. cognitive development is the progressive growth of mental abilities from infancy through adulthood as individuals acquire and improve cognitive skills and learn from experience.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/3b/BonoboFishing04.jpeg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Photo of a bonobo using a stick to fish for termites",
           "caption": "",
-          "context": "contemporary approaches integrate ideas from both perspectives, moving beyond a polarizing opposition between empiricism and nativism. the ability to employ tools is an example of animal cognition , such as a bonobo fishing for termites with a stick. 89 animal cognition encompasses the mechanisms by which animals acquire, process, and use information to guide flexible, goal-directed behavior .",
+          "context": "nativists , by contrast, argue that the mind has innate knowledge of abstract patterns. contemporary approaches integrate ideas from both perspectives, moving beyond a polarizing opposition between empiricism and nativism. the ability to employ tools is an example of animal cognition , such as a bonobo fishing for termites with a stick. animal cognition encompasses the mechanisms by which animals acquire, process, and use information to guide flexible, goal-directed behavior .",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/4/4a/1206_FMRI.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "fMRI image showing the brain from a top view with active areas colored in orange",
-          "caption": "",
-          "context": "early cognitive psychologists, such as wilhelm wundt , made extensive use of introspection , in which researchers examine and reflect on their own experiences to understand mental processes. the choice of method depends on the studied cognitive process and can differ markedly between areas like perception and memory. fmri is a neuroimaging technique that can measure regional brain activity corresponding to specific cognitive tasks. 102 cognitive neuroscience investigates how the nervous system gives rise to cognition.",
+          "caption": "fMRI is a neuroimaging technique that can measure regional brain activity corresponding to specific cognitive tasks.",
+          "context": "early cognitive psychologists, such as wilhelm wundt , made extensive use of introspection , in which researchers examine and reflect on their own experiences to understand mental processes. the choice of method depends on the studied cognitive process and can differ markedly between areas like perception and memory. fmri is a neuroimaging technique that can measure regional brain activity corresponding to specific cognitive tasks. cognitive neuroscience investigates how the nervous system gives rise to cognition.",
           "licence": "CC BY 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/b/b8/John_Locke.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Oil painting of a man with gray hair wearing a brown attire",
-          "caption": "",
-          "context": "it includes the field of machine learning , through which computer systems acquire new abilities not explicitly coded by programmers. the field of cognitive robotics integrates insights from these subfields to create intelligent robots . 125 cognitive research has its roots in ancient philosophy . early work took the form of reflections on the nature and sources of knowledge , proposed divisions of the mind into separate faculties , and analyzed specific cognitive processes, like perception and deductive reasoning.",
+          "caption": "John Locke argued that humans have no inborn knowledge and need to learn everything from experience.",
+          "context": "it includes the field of machine learning , through which computer systems acquire new abilities not explicitly coded by programmers. the field of cognitive robotics integrates insights from these subfields to create intelligent robots . cognitive research has its roots in ancient philosophy . early work took the form of reflections on the nature and sources of knowledge , proposed divisions of the mind into separate faculties , and analyzed specific cognitive processes, like perception and deductive reasoning.",
           "licence": "Public domain"
         }
       ]
@@ -362,14 +488,14 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/9/93/Minute_structure_of_the_cerebral_cortex.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Diagram of layers pattern. Cells grouped on left, axonal layers on right.",
-          "context": "20 a genetic disorder of the cerebral cortex, whereby decreased folding in certain areas results in a microgyrus , where there are four layers instead of six, is in some instances seen to be related to dyslexia . cells grouped on left, axonal layers on right.",
+          "context": "a later study using a larger patient population reports no change in the cortical thickness in patients with migraine. a genetic disorder of the cerebral cortex, whereby decreased folding in certain areas results in a microgyrus , where there are four layers instead of six, is in some instances seen to be related to dyslexia . cells grouped on left, axonal layers on right.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/5b/Cajal_cortex_drawings.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "cells grouped on left, axonal layers on right. three drawings of cortical lamination by santiago ramon y cajal , each showing a vertical cross-section, with the surface of the cortex at the top. left: nissl -stained visual cortex of a human adult.",
+          "context": "layers of neocortex edit diagram of layers pattern. cells grouped on left, axonal layers on right. three drawings of cortical lamination by santiago ramon y cajal , each showing a vertical cross-section, with the surface of the cortex at the top. left: nissl -stained visual cortex of a human adult.",
           "licence": "Public domain"
         },
         {
@@ -397,35 +523,35 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/4/4a/Cerebral_vascular_territories.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Cortical blood supply",
-          "context": "the posterior cerebral artery supplies the occipital lobes. the circle of willis is the main blood system that deals with blood supply in the cerebrum and cerebral cortex.",
+          "context": "the posterior cerebral artery supplies the occipital lobes. the circle of willis is the main blood system that deals with blood supply in the cerebrum and cerebral cortex. cortical blood supply development edit the prenatal development of the cerebral cortex is a complex and finely tuned process called corticogenesis , influenced by the interplay between genes and the environment.",
           "licence": "CC BY 2.5"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/7/7a/Neurogenesis_and_Differentiation_of_Cortical_Layers.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Neurogenesis is shown in red and lamination is shown in blue. Adapted from (Sur et al. 2001)",
-          "context": "at first, this zone contains neural stem cells , that transition to radial glial cells -progenitor cells, which divide to produce glial cells and neurons. neurogenesis is shown in red and lamination is shown in blue. adapted from the cerebral cortex is composed of a heterogenous population of cells that give rise to different cell types.",
+          "context": "cortical neuron development edit cortical neurons are generated within the ventricular zone , next to the ventricles . at first, this zone contains neural stem cells , that transition to radial glial cells -progenitor cells, which divide to produce glial cells and neurons. neurogenesis is shown in red and lamination is shown in blue. adapted from the cerebral cortex is composed of a heterogenous population of cells that give rise to different cell types.",
           "licence": "CC BY-SA 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/fd/Human_Cortical_Development.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Human cortical development between 26 and 39 week gestational age",
-          "context": "49 the development process is time ordered and regulated by hundreds of genes and epigenetic regulatory mechanisms . human cortical development between 26 and 39 week gestational age the layered structure of the mature cerebral cortex is formed during development. the first pyramidal neurons generated migrate out of the ventricular zone and subventricular zone , together with reelin -producing cajal-retzius neurons , from the preplate .",
+          "context": "the migrating daughter cells become the pyramidal cells of the cerebral cortex. the development process is time ordered and regulated by hundreds of genes and epigenetic regulatory mechanisms . human cortical development between 26 and 39 week gestational age the layered structure of the mature cerebral cortex is formed during development. the first pyramidal neurons generated migrate out of the ventricular zone and subventricular zone , together with reelin -producing cajal-retzius neurons , from the preplate .",
           "licence": "CC BY 2.5"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/30/Emx2_and_Pax6_Expression.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Depicted in blue, Emx2 is highly expressed at the caudomedial pole and dissipates outward. Pax6 expression is represented in purple and is highly expressed at the rostral lateral pole. (Adapted from Sanes, D., Reh, T., & Harris, W. (2012). Development of the Nervous System (3rd ed.). Burlington: Elsevier Science)",
-          "context": "thus, the layers of the cortex are created in an inside-out order. 52 the only exception to this inside-out sequence of neurogenesis occurs in the layer i of primates , in which, in contrast to rodents , neurogenesis continues throughout the entire period of corticogenesis . depicted in blue, emx2 is highly expressed at the caudomedial pole and dissipates outward. pax6 expression is represented in purple and is highly expressed at the rostral lateral pole.",
+          "context": "thus, the layers of the cortex are created in an inside-out order. the only exception to this inside-out sequence of neurogenesis occurs in the layer i of primates , in which, in contrast to rodents , neurogenesis continues throughout the entire period of corticogenesis . depicted in blue, emx2 is highly expressed at the caudomedial pole and dissipates outward. pax6 expression is represented in purple and is highly expressed at the rostral lateral pole.",
           "licence": "CC BY-SA 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/d/db/Constudproc.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Some functional areas of cortex",
-          "context": "the protomap hypothesis states that the cellular and molecular identity and characteristics of neurons in each cortical area are specified by cortical stem cells , known as radial glial cells , in a primordial map. this map is controlled by secreted signaling proteins and downstream transcription factors . most sensory information is routed to the cerebral cortex via the thalamus.",
+          "context": "the protomap hypothesis states that the cellular and molecular identity and characteristics of neurons in each cortical area are specified by cortical stem cells , known as radial glial cells , in a primordial map. this map is controlled by secreted signaling proteins and downstream transcription factors . most sensory information is routed to the cerebral cortex via the thalamus. olfactory information, however, passes through the olfactory bulb to the olfactory cortex .",
           "licence": "CC BY-SA 3.0"
         },
         {
@@ -433,6 +559,41 @@
           "alt": "",
           "caption": "Motor and sensory regions of the cerebral cortex",
           "context": "in more general terms the cortex is typically described as comprising three parts: sensory, motor, and association areas. sensory and motor areas are defined as primary regions, while association areas work with primary regions but go beyond them. motor and sensory regions of the cerebral cortex the sensory areas are the cortical areas that receive and process information from the senses . parts of the cortex that receive sensory inputs from the thalamus are called primary sensory areas.",
+          "licence": "CC BY 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/22/Cortical_areas_that_have_been_shown_to_be_involved_in_speech_processing_fnhum-06-00099-g005.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Cortical areas involved in speech processing.",
+          "context": "the putamen and globus pallidus are also collectively known as the lentiform nucleus , because together they form a lens-shaped body. the putamen and caudate nucleus are also collectively called the corpus striatum after their striped appearance. cortical areas involved in speech processing. the association areas are the parts of the cerebral cortex that do not belong to the primary regions.",
+          "licence": "CC BY 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/4d/Middle_Cerebral_Artery_occlusion._Kentar_et_al_Acta_Neuroch_2020.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "in the past it was theorized that language abilities are localized in broca's area in areas of the left inferior frontal gyrus , ba44 and ba45 , for language expression and in wernicke's area ba22 , for language reception. however, the processes of language expression and reception have been shown to occur in areas other than just those structures around the lateral sulcus , including the frontal lobe, basal ganglia , cerebellum , and pons . hemodynamic changes observed on gyrencephalic brain cortex after an arterial vessel occlusion in ios. the video has a speed of 50x to better appreciate the spreading depolarization over the brain cortex.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/35/Lateral_surface_of_cerebral_cortex_-_gyri.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Lateral surface of the human cerebral cortex",
+          "caption": "",
+          "context": "until recently no counterpart to the cerebral cortex had been recognized in invertebrates. however, a study published in the journal cell in 2010, based on gene expression profiles, reported strong affinities between the cerebral cortex and the mushroom bodies of the ragworm platynereis dumerilii .",
+          "licence": "CC BY 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/15/Medial_surface_of_cerebral_cortex_-_entorhinal_cortex.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Medial surface of the human cerebral cortex",
+          "caption": "",
+          "context": "medial surface of the human cerebral cortex <img alt=\"tissue slice from the brain of an adult macaque monkey.",
+          "licence": "CC BY 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/9a/Brainmaps-macaque-hippocampus.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Tissue slice from the brain of an adult macaque monkey. The cerebral cortex is depicted in dark violet.",
+          "caption": "",
+          "context": "tissue slice from the brain of an adult macaque monkey. the cerebral cortex is depicted in dark violet.",
           "licence": "CC BY 3.0"
         }
       ]
@@ -447,7 +608,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/1/15/PurkinjeCell.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Drawing by Santiago Ramón y Cajal (1899) of neurons in the pigeon cerebellum",
-          "context": "\"brain science\" redirects here. for other aspects of brain science, see cognitive science , cognitive psychology , neurology , and neuropsychology .",
+          "context": "",
           "licence": "Public domain"
         },
         {
@@ -461,35 +622,35 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/9/96/Gray739.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Illustration from Gray's Anatomy (1918) of a lateral view of the human brain , featuring the hippocampus among other neuroanatomical features",
-          "context": "9 the scope of neuroscience has broadened over time to include different approaches used to study the nervous system at different scales. the techniques used by neuroscientists have expanded enormously, from molecular and cellular studies of individual neurons to imaging of sensory , motor , and cognitive tasks in the brain. illustration from gray's anatomy of a lateral view of the human brain , featuring the hippocampus among other neuroanatomical features the earliest study of the nervous system dates to ancient egypt . trepanation , the surgical practice of either drilling or scraping a hole into the skull for the purpose of curing head injuries or mental disorders , or relieving cranial ",
+          "context": "the scope of neuroscience has broadened over time to include different approaches used to study the nervous system at different scales. the techniques used by neuroscientists have expanded enormously, from molecular and cellular studies of individual neurons to imaging of sensory , motor , and cognitive tasks in the brain. illustration from gray's anatomy of a lateral view of the human brain , featuring the hippocampus among other neuroanatomical features the earliest study of the nervous system dates to ancient egypt . trepanation , the surgical practice of either drilling or scraping a hole into the skull for the purpose of curing head injuries or mental disorders , or relieving cranial pr",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/6d/GolgiStainedPyramidalCell.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "The Golgi stain first allowed for the visualization of individual neurons.",
-          "context": "15 abulcasis , averroes , avicenna , avenzoar , and maimonides , active in the medieval muslim world, described a number of medical problems related to the brain. in renaissance europe , vesalius , rene descartes , thomas willis and jan swammerdam also made several contributions to neuroscience. the golgi stain first allowed for the visualization of individual neurons. luigi galvani 's pioneering work in the late 1700s set the stage for studying the electrical excitability of muscles and neurons.",
+          "context": "abulcasis , averroes , avicenna , avenzoar , and maimonides , active in the medieval muslim world, described a number of medical problems related to the brain. in renaissance europe , vesalius , rene descartes , thomas willis and jan swammerdam also made several contributions to neuroscience. the golgi stain first allowed for the visualization of individual neurons. luigi galvani 's pioneering work in the late 1700s set the stage for studying the electrical excitability of muscles and neurons.",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/63/Vergleichende_Lokalisationslehre_der_Grosshirnrinde_in_ihren_Prinzipien_dargestellt_auf_Grund_des_Zellenbaues.pdf?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "in 1894, neurologist and psychiatrist edward flatau published a human brain atlas \"atlas of the human brain and the course of the nerve-fibres\" which consisted of long-exposure photographs of fresh brain sections. 24 in 1897, charles scott sherrington introduced the name \"synapse\" for the connection between neurons.",
+          "context": "in 1894, neurologist and psychiatrist edward flatau published a human brain atlas \"atlas of the human brain and the course of the nerve-fibres\" which consisted of long-exposure photographs of fresh brain sections. in 1897, charles scott sherrington introduced the name \"synapse\" for the connection between neurons.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/0/0a/Sensory_and_motor_homunculi.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "3-D sensory and motor homunculus models at the Natural History Museum, London",
-          "context": "the first freestanding neuroscience department was founded in 1964 at the university of california, irvine by james l. 29 this was followed by the department of neurobiology at harvard medical school , which was founded in 1966 by stephen kuffler. 3-d sensory and motor homunculus models at the natural history museum, london in the process of treating epilepsy , wilder penfield produced maps of the location of various functions in the brain. 31 32 he summarized his findings in a 1950 book called the cerebral cortex of man .",
+          "context": "the first freestanding neuroscience department was founded in 1964 at the university of california, irvine by james l. this was followed by the department of neurobiology at harvard medical school , which was founded in 1966 by stephen kuffler. 3-d sensory and motor homunculus models at the natural history museum, london in the process of treating epilepsy , wilder penfield produced maps of the location of various functions in the brain. he summarized his findings in a 1950 book called the cerebral cortex of man .",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/5b/Nervous_system_diagram-en.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Human nervous system",
-          "context": "42 over time, brain research has gone through philosophical, experimental, and theoretical phases, with work on neural implants and brain simulation predicted to be important in the future. human nervous system the scientific study of the nervous system increased significantly during the second half of the twentieth century, principally due to advances in molecular biology , electrophysiology , and computational neuroscience . this has allowed neuroscientists to study the nervous system in all its aspects: how it is structured, how it works, how it develops, how it malfunctions, and how it can be changed.",
+          "context": "recently, the application of neuroscience research results has also given rise to applied disciplines as neuroeconomics , neuroeducation , neuroethics , and neurolaw . over time, brain research has gone through philosophical, experimental, and theoretical phases, with work on neural implants and brain simulation predicted to be important in the future. human nervous system the scientific study of the nervous system increased significantly during the second half of the twentieth century, principally due to advances in molecular biology , electrophysiology , and computational neuroscience . this has allowed neuroscientists to study the nervous system in all its aspects: how it is structured, h",
           "licence": "CC BY-SA 4.0"
         },
         {
@@ -510,15 +671,43 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/56/Parasagittal_MRI_of_human_head_in_patient_with_benign_familial_macrocephaly_prior_to_brain_injury_%28ANIMATED%29.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "an mri of a human head showing benign familial macrocephaly recently, the boundaries between various specialties have blurred, as they are all influenced by basic research in neuroscience. for example, brain imaging enables objective biological insight into mental illnesses, which can lead to faster diagnosis, more accurate prognosis, and improved monitoring of patient progress over time.",
+          "context": "neurosurgery and psychosurgery work primarily with surgical treatment of diseases of the central and peripheral nervous systems. neuroscience underlies the development of various neurotherapy methods to treat diseases of the nervous system. an mri of a human head showing benign familial macrocephaly recently, the boundaries between various specialties have blurred, as they are all influenced by basic research in neuroscience. for example, brain imaging enables objective biological insight into mental illnesses, which can lead to faster diagnosis, more accurate prognosis, and improved monitoring of patient progress over time.",
           "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/2a/Ivan_Pavlov_nobel.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "nobel prizes related to neuroscience edit year prize field image laureate lifetime country rationale ref.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e0/Roger_Wolcott_Sperry.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "sperry 1913-1994 united states \"for his discoveries concerning the functional specialization of the cerebral hemispheres \" david h.",
+          "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/4/47/DHUBEL.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "schally 1926-2024 poland 1981 physiology roger w.",
+          "context": "schally 1926-2024 poland 1981 physiology roger w. hubel 1926-2013 canada \"for their discoveries concerning information processing in the visual system \" torsten n.",
           "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/7d/Torsten_Wiesel-7Nov2006.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "sperry 1913-1994 united states \"for his discoveries concerning the functional specialization of the cerebral hemispheres \" david h.",
+          "licence": "CC BY-SA 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/2b/Stanley_Cohen_Nobel.webp?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "hubel 1926-2013 canada \"for their discoveries concerning information processing in the visual system \" torsten n.",
+          "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/8/8d/Sakmann.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
@@ -526,6 +715,20 @@
           "caption": "",
           "context": "bert sakmann 1942- germany 1997 physiology stanley b.",
           "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/dd/Paul_Greengard.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "paul greengard 1925-2019 united states eric r.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/df/Roderick_MacKinnon%2C_M.D..jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Roderick MacKinnon",
+          "caption": "",
+          "context": "roderick mackinnon 1956- united states \"for discoveries concerning channels in cell membranes ...",
+          "licence": "CC BY-SA 3.0"
         }
       ]
     },

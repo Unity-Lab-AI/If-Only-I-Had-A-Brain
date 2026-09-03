@@ -27,13 +27,6 @@
       "licence": "CC-BY-SA-3.0",
       "figures": [
         {
-          "src": "https://upload.wikimedia.org/wikipedia/en/9/99/Question_book-new.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "this section needs more citations . please help improve this section by adding citations to reliable sources .",
-          "licence": "Cc-by-sa-3.0"
-        },
-        {
           "src": "https://upload.wikimedia.org/wikipedia/commons/a/ae/Vennandornot.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Figure 2. Venn diagrams for conjunction, disjunction, and complement",
@@ -44,7 +37,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/c1/LogicGates.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "From left to right: AND , OR , and NOT gates.",
-          "context": "digital logic gates digital logic is the application of the boolean algebra of 0 and 1 to electronic hardware consisting of logic gates connected to form a circuit diagram . each gate implements a boolean operation, and is depicted schematically by a shape indicating the operation. from left to right: and , or , and not gates. the lines on the left of each gate represent input wires or ports .",
+          "context": "digital logic gates edit digital logic is the application of the boolean algebra of 0 and 1 to electronic hardware consisting of logic gates connected to form a circuit diagram . each gate implements a boolean operation, and is depicted schematically by a shape indicating the operation. from left to right: and , or , and not gates. the lines on the left of each gate represent input wires or ports .",
           "licence": "CC BY 3.0"
         },
         {
@@ -62,13 +55,6 @@
       "source": "en.wikipedia.org",
       "licence": "CC-BY-SA-3.0",
       "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/1/16/Four_bit_adder_with_carry_lookahead.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "for discrete ttl logic, see transistor-transistor logic . for the former image processing company, see discreet logic .",
-          "licence": "CC0"
-        },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/1/1a/Buffer_ANSI_Labelled.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Buffer symbol",
@@ -145,6 +131,181 @@
           "caption": "",
           "context": "",
           "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/ea/NOR_IEC_Labelled.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "NOR symbol",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/17/XOR_ANSI_Labelled.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "XOR symbol",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d0/XOR_IEC_Labelled.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "XOR symbol",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b8/XNOR_ANSI_Labelled.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "XNOR symbol",
+          "caption": "",
+          "context": "if there are more than two inputs, the output of the distinctive-shape symbol is undefined. the output of the rectangular-shaped symbol is true if the number of true inputs is exactly one or exactly the number following the \"=\" in the qualifying symbol.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/62/XNOR_IEC_Labelled.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "XNOR symbol",
+          "caption": "",
+          "context": "if there are more than two inputs, the output of the distinctive-shape symbol is undefined. the output of the rectangular-shaped symbol is true if the number of true inputs is exactly one or exactly the number following the \"=\" in the qualifying symbol.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/cc/IMPLY_ANSI.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "IMPLY symbol",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/67/NIMPLY_ANSI.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "NIMPLY symbol",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/3f/NOT_from_NAND.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Circuit diagram: NAND(A, A)",
+          "caption": "",
+          "context": "sheffer in 1913, so the nand logical operation is sometimes called sheffer stroke ; the logical nor is sometimes called peirce's arrow . consequently, these gates are sometimes called universal logic gates .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/ba/NOT_from_NOR.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Circuit diagram: NOR(A, A)",
+          "caption": "",
+          "context": "sheffer in 1913, so the nand logical operation is sometimes called sheffer stroke ; the logical nor is sometimes called peirce's arrow . consequently, these gates are sometimes called universal logic gates .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/16/AND_from_NAND.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Circuit diagram: NAND(NAND(A, B), NAND(A, B))",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/f4/AND_from_NOR.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Circuit diagram: NOR(NOR(A, A), NOR(B, B))",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/2b/NAND_from_NOR.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Circuit diagram: NOR(NOR(A, B), NOR(A, B))",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/90/OR_from_NAND.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Circuit diagram: NAND(NAND(A, A), NAND(B, B))",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/4b/OR_from_NOR.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Circuit diagram: NOR(NOR(A, B), NOR(A, B))",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/4e/NOR_from_NAND.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Circuit diagram: NAND(NAND(NAND(A, A), NAND(B, B)))",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/fa/XOR_from_NAND.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Circuit diagram: NAND(NAND(A, NAND(A, B)), NAND(NAND(A, B), B))",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e3/XOR_from_NOR.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Circuit diagram: NOR(NOR(NOR(A, A), NOR(B, B)), NOR(A, B))",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/94/XNOR_from_NAND_2.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Circuit diagram: NAND(NAND(NAND(A, A), NAND(B, B)), NAND(A, B))",
+          "caption": "",
+          "context": "imply <img alt=\"circuit diagram: nand , nand ), nand \" src=\"//upload.wikimedia.org/wikipedia/commons/thumb/f/f3/imply_from_nand.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/f0/XNOR_from_NOR.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Circuit diagram: NOR(NOR(A, NOR(A, B)), NOR(NOR(A, B), B))",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/f3/IMPLY_from_NAND.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Circuit diagram: NAND(NAND(NAND(A, A), NAND(A, A)), NAND(B, B)",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/66/IMPLY_from_NOR.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Circuit diagram: NOR(NOR(NOR(A, A), B), NOR(NOR(A, A), B))",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c6/R-S_mk2.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Animation of how an SR NOR gate latch works",
+          "context": "animation of how an sr nor gate latch works logic gates can also be used to hold a state, allowing data storage. a storage element can be constructed by connecting several gates in a \" latch \" circuit.",
+          "licence": "CC BY 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c6/TexasInstruments_7400_chip%2C_view_and_element_placement.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "The 7400 chip, containing four NANDs. The two additional pins supply power (+5 V) and connect the ground.",
+          "context": "the semiconductor logic gate, on the other hand, acts as a high- gain voltage amplifier , which sinks a tiny current at its input and produces a low-impedance voltage at its output. it is not possible for current to flow between the output and the input of a semiconductor logic gate. the 7400 chip, containing four nands. the two additional pins supply power and connect the ground.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/2f/CMOS_inverter.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "CMOS diagram of a NOT gate , also known as an inverter. MOSFETs are the most common way to make logic gates.",
+          "context": "for higher speed and better density, the resistors used in rtl were replaced by diodes resulting in diode-transistor logic . transistor-transistor logic then supplanted dtl. cmos diagram of a not gate , also known as an inverter. mosfets are the most common way to make logic gates.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c0/Tristate_buffer.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A three-state buffer can be thought of as a switch. If B is on, the switch is closed. If B is off, the switch is open.",
+          "context": "this is a transistorless, currentless, junctionless binary logic synthesis technique allowing it to have very fast operation speeds. ferroelectric fet fefet fefet transistors can retain their state to speed recovery in case of a power loss. a three-state buffer can be thought of as a switch. if b is on, the switch is closed.",
+          "licence": "Public domain"
         }
       ]
     },
@@ -185,36 +346,43 @@
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e6/ThomasHarriot.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
-          "caption": "",
-          "context": "thomas harriot developed binary notation and arithmetic in the early 17th century.",
+          "caption": "Thomas Harriot (1646-1716) developed binary notation and arithmetic in the early 17th century.",
+          "context": "thomas harriot developed binary notation and arithmetic in the early 17th century. charles babbage is sometimes referred to as the \"father of computing\".",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/67/Babbage40.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
-          "caption": "Charles Babbage is sometimes referred to as the \"father of computing\". [ 14 ]",
-          "context": "charles babbage is sometimes referred to as the \"father of computing\".",
+          "caption": "Charles Babbage is sometimes referred to as the \"father of computing\".",
+          "context": "charles babbage is sometimes referred to as the \"father of computing\". ada lovelace published the first algorithm intended for processing on a computer.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/0/0f/Ada_lovelace.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
-          "caption": "Ada Lovelace published the first algorithm intended for processing on a computer. [ 15 ]",
-          "context": "13 charles babbage is sometimes referred to as the \"father of computing\". ada lovelace published the first algorithm intended for processing on a computer. 15 the earliest foundations of what would become computer science predate the invention of the modern digital computer .",
+          "caption": "Ada Lovelace published the first algorithm intended for processing on a computer.",
+          "context": "ada lovelace published the first algorithm intended for processing on a computer. the earliest foundations of what would become computer science predate the invention of the modern digital computer .",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/9/9d/DFAexample.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "the second question is addressed by computational complexity theory , which studies the time and space costs associated with different approaches to solving a multitude of computational problems. problem, one of the millennium prize problems , 60 is an open problem in the theory of computation.",
+          "context": "the second question is addressed by computational complexity theory , which studies the time and space costs associated with different approaches to solving a multitude of computational problems. problem, one of the millennium prize problems , is an open problem in the theory of computation.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/a/aa/Syntax_tree.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "the second question is addressed by computational complexity theory , which studies the time and space costs associated with different approaches to solving a multitude of computational problems. problem, one of the millennium prize problems , 60 is an open problem in the theory of computation.",
+          "context": "the second question is addressed by computational complexity theory , which studies the time and space costs associated with different approaches to solving a multitude of computational problems. problem, one of the millennium prize problems , is an open problem in the theory of computation.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/14/Kellerautomat.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "models of computation quantum computing theory logic circuit theory cellular automata information and coding theory edit information theory, closely related to probability and statistics , is related to the quantification of information.",
           "licence": "Public domain"
         },
         {
@@ -237,6 +405,97 @@
           "caption": "",
           "context": "for industrial use, tool support is required. however, the high cost of using formal methods means that they are usually only used in the development of high-integrity and life-critical systems , where safety or security is of utmost importance.",
           "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/67/Simx2%3Dtransl_OK.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "the study is connected to many other fields in computer science, including computer vision , image processing , and computational geometry , and is heavily applied in the fields of special effects and video games .",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/f4/FWDvsINV_Kinematics_HighResTransp.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "the study is connected to many other fields in computer science, including computer vision , image processing , and computational geometry , and is heavily applied in the fields of special effects and video games .",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/8b/Csg_tree.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "2d computer graphics computer animation rendering mixed reality virtual reality solid modeling image and sound processing edit information can take the form of images, sound, video or other multimedia.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/cb/DIT-FFT-butterfly.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "what is the lower bound on the complexity of fast fourier transform algorithms? is one of the unsolved problems in theoretical computer science .",
+          "licence": "CC BY 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/37/Bayer_pattern_on_sensor.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "what is the lower bound on the complexity of fast fourier transform algorithms? is one of the unsolved problems in theoretical computer science . <img src=\"//upload.wikimedia.org/wikipedia/commons/thumb/c/ce/quality_comparison_jpg_vs_saveforweb.jpg/120px-quality_comparison_jpg_vs_saveforweb.jpg?",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/8d/Opus_quality_comparison_colorblind_compatible.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "<img src=\"//upload.wikimedia.org/wikipedia/commons/thumb/e/e4/meningiomamrisegmentation.png/120px-meningiomamrisegmentation.",
+          "licence": "CC BY 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/5b/Lorenz_attractor_yb.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "notable in electrical and electronic circuit design are spice, as well as software for physical realization of new designs. the latter includes essential design software for integrated circuits .",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/cb/Quark_wiki.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "notable in electrical and electronic circuit design are spice, as well as software for physical realization of new designs. the latter includes essential design software for integrated circuits .",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e4/InterfaceNeuronaleDirecte-tag.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "hci has several subfields that focus on the relationship between emotions , social behavior and brain activity with computers.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/51/Human_eye%2C_rendered_from_Eye.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "\", and the question remains effectively unanswered, although the turing test is still used to assess computer output on the scale of human intelligence. but the automation of evaluative and predictive tasks has been increasingly successful as a substitute for human monitoring and intervention in domains of computer application involving complex real-world data.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/3a/ABasicComputer.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "the term \"architecture\" in computer literature can be traced to the work of lyle r. , members of the machine organization department in ibm's main research center in 1959.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/60/Intel_Core2_arch.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "the term \"architecture\" in computer literature can be traced to the work of lyle r. , members of the machine organization department in ibm's main research center in 1959.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/21/SIMD.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": ", members of the machine organization department in ibm's main research center in 1959.",
+          "licence": "CC BY-SA 3.0"
         }
       ]
     },
@@ -250,7 +509,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/21/Guido_van_Rossum_in_PyConUS24.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "The designer of Python, Guido van Rossum , at PyCon US 2024",
-          "context": "41 earlier versions in the 3.x series have reached end-of-life and no longer receive security updates. python is widely taught as an introductory programming language. the designer of python, guido van rossum , at pycon us 2024 python was conceived in the late 1980s 11 by guido van rossum at centrum wiskunde & informatica in the netherlands .",
+          "context": "earlier versions in the 3.x series have reached end-of-life and no longer receive security updates. python is widely taught as an introductory programming language. the designer of python, guido van rossum , at pycon us 2024 python was conceived in the late 1980s by guido van rossum at centrum wiskunde & informatica in the netherlands . it was designed as a successor to the abc programming language, which was inspired by setl , capable of exception handling and interfacing with the amoeba operating system.",
           "licence": "CC BY-SA 4.0"
         },
         {
@@ -266,16 +525,7 @@
       "theme": "variable-computer-science-",
       "story": "in some other languages such as basic, python, or ruby - a variable is more accurately described as a name associated with a value, with memory allocation handled transparently by the interpreter or runtime. a variable can eventually be associated with or identified by a memory address. the variable name is the usual way to reference the stored value, in addition to referring to the variable itself, depending on the context. this separation of name and content allows the name to be used independently of the exact information it represents. the identifier in computer source code can be bound to a value during run time, and the value of the variable may thus change during the course of program execution. variables in programming may not directly correspond to the concept of variables in mathematics. the latter is abstract, having no reference to a physical object such as storage location. the value of a computing variable is not necessarily part of an equation or formula as in mathematics. furthermore, the variables can also be constants if the value is defined statically. a variable's storage location may be referenced by several different identifiers, a situation known as aliasing. assigning a value to the variable using one of the identifiers will change the value that can be accessed through the other identifiers. compilers have to replace variables' symbolic names with the actual locations of the data. while a variable's name, type, and location often remain fixed, the data stored in the location may be changed during program execution. in imperative programming languages, values can generally be accessed or changed at any time. in pure functional and logic languages, variables are bound to expressions and keep a single value during their entire lifetime due to the requirements of referential transparency. in imperative languages, the same behavior is exhibited by constants , which are typically contrasted with variables. depending on the type system of a programming language, variables may only be able to store a specified data type . alternatively, a datatype may be associated only with the current value, allowing a single variable to store anything supported by the programming language. variables are the containers for storing the values. variables and scope: automatic variables: each local variable in a function comes into existence only when the function is called, and disappears when the function is exited. such variables are known as automatic variables. external variables: these are variables that are external to a function and can be accessed by name by any function. these variables remain in existence permanently; rather than appearing and disappearing as functions are called and exited, they retain their values even after the functions that set them have returned. an identifier referencing a variable can be used to access the variable in order to read out the value, or alter the value, or edit other attributes of the variable, such as access permission, locks, semaphores, etc. for instance, a variable might be referenced by the identifier \"total_count\" and the variable can contain the number 1956. if a variable is only referenced by a single identifier, that identifier can simply be called the name of the variable; otherwise, we can speak of it as one of the names of the variable. for instance, in the previous example the identifier \"total_count\" is the name of the variable in question, and \"r\" is another name of the same variable. the scope of a variable describes where in a program's text the variable may be used, while the extent of a variable describes when in a program's execution the variable has a value. the scope of a variable affects its extent. the scope of a variable is actually a property of the name of the variable, and the extent is a property of the storage location of the variable. these should not be confused with context , which is a property of the program, and varies by point in the program's text or execution-see scope: an overview. further, object lifetime may coincide with variable lifetime, but in many cases is not tied to it. scope is an important part of the name resolution of a variable. most languages define a specific scope for each variable , which may differ within a given program. the scope of a variable is the portion of the program's text for which the variable's name has meaning and for which the variable is said to be \"visible\". entrance into that scope typically begins a variable's lifetime and exit from that scope typically ends its lifetime . for instance, a variable with \"lexical scope\" is meaningful only within a certain function/subroutine, or more finely within a block of expressions/statements ; this is static resolution, performable at parse-time or compile-time. alternatively, a variable with dynamic scope is resolved at run-time, based on a global binding stack that depends on the specific control flow. variables only accessible within a certain functions are termed \"local variables\". a \"global variable\", or one with indefinite scope, may be referred to anywhere in the program. extent, on the other hand, is a runtime aspect of a variable. each binding of a variable to a value can have its own extent at runtime. the extent of the binding is the portion of the program's execution time during which the variable continues to refer to the same value or memory location. a running program may enter and leave a given extent many times, as in the case of a closure. however, it can be permissible for a variable binding to extend beyond its scope, as occurs in lisp closures and c static local variables; when execution passes back into the variable's scope, the variable may once again be used. a variable whose scope begins before its extent does is said to be uninitialized and often has an undefined, arbitrary value if accessed , since it has yet to be explicitly given a particular value. a variable whose extent ends before its scope may become a dangling pointer and deemed uninitialized once more since its value has been destroyed. variables described by the previous two cases may be said to be out of extent or unbound. in many languages, it is an error to try to use the value of a variable when it is out of extent. in other languages, doing so may yield unpredictable results. such a variable may, however, be assigned a new value, which gives it a new extent. for space efficiency, a memory space needed for a variable may be allocated only when the variable is first used and freed when it is no longer needed. a variable is only needed when it is in scope, thus beginning each variable's lifetime when it enters scope may give space to unused variables. to avoid wasting such space, compilers often warn programmers if a variable is declared but not used. it is considered good programming practice to make the scope of variables as narrow as feasible so that different parts of a program do not accidentally interact with each other by modifying each other's variables. doing so also prevents action at a distance. common techniques for doing so are to have different sections of a program use different name spaces, or to make individual variables \"private\" through either dynamic variable scoping or lexical variable scoping. many programming languages employ a reserved value to indicate an invalid or uninitialized variable. in statically typed languages such as c, c++, java or c#, a variable also has a type, meaning that only certain kinds of values can be stored in it. for example, a variable of type \"integer\" is prohibited from storing text values. in dynamically typed languages such as python, a variable's type is inferred by its value, and can change according to its value. in common lisp, both situations exist simultaneously: a variable is given a type which exists at compile time. values also have types, which can be checked and queried at runtime. typing of variables also allows polymorphisms to be resolved at compile time. however, this is different from the polymorphism used in object-oriented function calls which resolves the call based on the value type as opposed to the supertypes the variable is allowed to have. variables often store simple data, like integers and literal strings, but some programming languages allow a variable to store values of other datatypes as well. such languages may also enable functions to be parametric polymorphic. these functions operate like variables to represent data of multiple types. for example, a function named length may determine the length of a list. such a length function may be parametric polymorphic by including a type variable in its type signature, since the number of elements in the list is independent of the elements' types. the formal parameters of functions are also referred to as variables. for instance, in this python code segment, the variable named x is a parameter because it is given a value when the function is called. the integer 5 is the argument which gives x its value. in most languages, function parameters have local scope. this specific variable named x can only be referred to within the add_two function . the specifics of variable allocation and the representation of their values vary widely, both among programming languages and among implementations of a given language. many language implementations allocate space for local variables, whose extent lasts for a single function call on the call stack, and whose memory is automatically reclaimed when the function returns. more generally, in name binding, the name of a variable is bound to the address of some particular block of bytes in memory, and operations on the variable manipulate that block. referencing is more common for variables whose values have large or unknown sizes when the code is compiled. such variables reference the location of the value instead of storing the value itself, which is allocated from a pool of memory called the heap. a value, however, is an abstraction, an idea; in implementation, a value is represented by some data object, which is stored somewhere in computer memory. the program, or the runtime environment, must set aside memory for each data object and, since memory is finite, ensure that this memory is yielded for reuse when the object is no longer needed to represent some variable's value. objects allocated from the heap must be reclaimed-especially when the objects are no longer needed. in a garbage-collected language , the runtime environment automatically reclaims objects when extant variables can no longer refer to them. in non-garbage-collected languages, such as c, the program must explicitly allocate memory, and then later free it, to reclaim its memory. failure to do so leads to memory leaks, in which the heap is depleted as the program runs, risks eventual failure from exhausting available memory. when a variable refers to a data structure created dynamically, some of its components may be only indirectly accessed through the variable. in such circumstances, garbage collectors must deal with a case where only a portion of the memory reachable from the variable needs to be reclaimed. unlike their mathematical counterparts, programming variables and constants commonly take multiple-character names, e.g. single-character names are most commonly used only for auxiliary variables; for instance, i, j, k for array index variables. some naming conventions are enforced at the language level as part of the language syntax which involves the format of valid identifiers. in almost all languages, variable names cannot start with a digit and cannot contain whitespace characters. whether or not punctuation marks are permitted in variable names varies from language to language; many languages only permit the underscore in variable names and forbid all other punctuation. in some programming languages, sigils are affixed to variable identifiers to indicate the variable's datatype or scope. case-sensitivity of variable names also varies between languages and some languages require the use of a certain case in naming certain entities; most modern languages are case-sensitive; some older languages are not. some languages reserve certain forms of variable names for their own internal use; in many languages, names beginning with two underscores often fall under this category. however, beyond the basic restrictions imposed by a language, the naming of variables is largely a matter of style. at the machine code level, variable names are not used, so the exact names chosen do not matter to the computer. thus names of variables identify them, for the rest they are just a tool for programmers to make programs easier to write and understand. using poorly chosen variable names can make code more difficult to review than non-descriptive names, so names that are clear are often encouraged. programmers often create and adhere to code style guidelines that offer guidance on naming variables or impose a precise naming scheme. shorter names are faster to type but are less descriptive; longer names often make programs easier to read and the purpose of variables easier to understand. however, extreme verbosity in variable names can also lead to less comprehensible code. we can classify variables based on their lifetime. the different types of variables are static, stack-dynamic, explicit heap-dynamic, and implicit heap-dynamic. a static variable is also known as global variable, it is bound to a memory cell before execution begins and remains to the same memory cell until termination. a typical example is the static variables in c and c++. a stack-dynamic variable is known as local variable, which is bound when the declaration statement is executed, and it is deallocated when the procedure returns. the main examples are local variables in c subprograms and java methods. explicit heap-dynamic variables are nameless memory cells that are allocated and deallocated by explicit run-time instructions specified by the programmer. the main examples are dynamic objects in c++ and all objects in java. implicit heap-dynamic variables are bound to heap storage only when they are assigned values. allocation and release occur when values are reassigned to variables. as a result, implicit heap-dynamic variables have the highest degree of flexibility. the main examples are some variables in javascript, php and all variables in apl. \"computer science: an overview\" .",
       "source": "en.wikipedia.org",
-      "licence": "CC-BY-SA-3.0",
-      "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/en/9/99/Question_book-new.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "this article needs more citations . please help improve this article by adding citations to reliable sources .",
-          "licence": "Cc-by-sa-3.0"
-        }
-      ]
+      "licence": "CC-BY-SA-3.0"
     },
     {
       "theme": "control-flow",
@@ -287,7 +537,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/9/9d/Programmingloops.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "basic types of program loops",
-          "context": "basic types of program loops main article: loop a loop is a sequence of statements, loop body, which is executed a number of times based on runtime state. the body is executed once for each item of a collection , until a condition is met , or infinitely .",
+          "context": "basic types of program loops a loop is a sequence of statements, loop body, which is executed a number of times based on runtime state. the body is executed once for each item of a collection , until a condition is met , or infinitely .",
           "licence": "CC BY-SA 4.0"
         }
       ]
@@ -296,16 +546,7 @@
       "theme": "subroutine",
       "story": "in computer programming, a function is a callable unit of software logic that has a well-formed interface and behavior and can be invoked multiple times. callable units provide a powerful programming tool. the primary purpose is to allow for the decomposition of a large and/or complicated problem into chunks that have relatively low cognitive load and to assign the chunks meaningful names . judicious application can reduce the cost of developing and maintaining software, while increasing its quality and reliability. callable units are present at multiple levels of abstraction in the programming environment. for example, a programmer may write a function in source code that is compiled to machine code that implements similar semantics. there is a callable unit in the source code and an associated one in the machine code, but they are different kinds of callable units - with different implications and features. some object-oriented languages, such as java and c#, refer to functions inside classes as \"methods\". however, alan turing had discussed subroutines in a paper of 1945 on design proposals for the npl ace, going so far as to invent the concept of a return address stack. the idea of a subroutine was worked out after computing machines had already existed for some time. the arithmetic and conditional jump instructions were planned ahead of time and have changed relatively little, but the special instructions used for procedure calls have changed greatly over the years. the earliest computers, such as the manchester baby, and some early microprocessors, such as the rca 1802, did not have a single subroutine call instruction. subroutines could be implemented, but they required programmers to use the call sequence-a series of instructions-at each call site. a single subroutine was implemented in 1945 in konrad zuse's z4 in the form of a tape. in 1945, alan turing used the terms \"bury\" and \"unbury\" as a means of calling and returning from subroutines. in january 1947 john mauchly presented general notes at a symposium of large scale digital calculating machinery under the joint sponsorship of harvard university and the bureau of ordnance, united states navy. here he discusses serial and parallel operation suggesting: ...the structure of the machine need not be complicated one bit. all these subroutines will then be stored in the machine, and all one needs to do is make a brief reference to them by number, as they are indicated in the coding. kay mcnulty had worked closely with john mauchly on the eniac team and developed an idea for subroutines for the eniac computer she was programming during world war ii. she and the other eniac programmers used the subroutines to help calculate missile trajectories. goldstine and von neumann wrote a paper dated 16 august 1948 discussing the use of subroutines. machines before the mid-1960s, such as the univac i, the pdp-1, and the ibm 1130, typically use a calling convention which saved the instruction counter in the first memory location of the called subroutine. this allows arbitrarily deep levels of subroutine nesting but does not support recursive subroutines. the burroughs b5000 is one of the first computers to store subroutine return data on a stack. the dec pdp-6 is one of the first accumulator-based machines to have a subroutine call instruction that saved the return address in a stack addressed by an accumulator or index register. the later pdp-10 , pdp-11 and vax-11 lines followed suit; this feature also supports both arbitrarily deep subroutine nesting and recursive subroutines. in the very early assemblers, subroutine support was limited. subroutines were not explicitly separated from each other or from the main program, and indeed the source code of a subroutine could be interspersed with that of other subprograms. some assemblers would offer predefined macros to generate the call and return sequences. by the 1960s, assemblers usually had much more sophisticated support for both inline and separately assembled subroutines that could be linked together. one of the first programming languages to support user-written subroutines and functions was fortran ii. the ibm fortran ii compiler was released in 1958. algol 58 and other early programming languages also supported procedural programming. even with this cumbersome approach, subroutines proved very useful. they allowed the use of the same code in many different programs. memory was a very scarce resource on early computers, and subroutines allowed significant savings in the size of programs. many early computers loaded the program instructions into memory from a punched paper tape. each subroutine could then be provided by a separate piece of tape, loaded or spliced before or after the main program ; and the same subroutine tape could then be used by many different programs. a similar approach was used in computers that loaded program instructions from punched cards. the name subroutine library originally meant a library, in the literal sense, which kept indexed collections of tapes or decks of cards for collective use. another advance was the jump to subroutine instruction, which combined the saving of the return address with the calling jump, thereby minimizing overhead significantly. at least five forms of this existed in the 1950s. return jump: store the return address in the first word of the subroutine. return jump on the univac 1103a is an early example. index jump: store the return address in an index register. transfer and set index on the ibm 704 is an early example. automatic storage into a dedicated storage location: the store p location on the rca 501 is an early example. automatic storage into a designated register: the sequence and cosequence history registers on the honeywell 800 is an early example. patch return address: the \"return address\" instruction adds one to the contents of the program counter register and patches the address portion of a branch instruction at the last word of the subroutine with the caller's return address. the \"return address\" instruction is followed immediately with a branch instruction to the beginning of the subroutine. the ibm system/360 architecture is an example of saving the return address into a designated register. the branch instructions bal or balr, designed for procedure calling, would save the return address in a processor register specified in the instruction, by convention register 14. to return, the subroutine had only to execute an indirect branch instruction through that register. if the subroutine needed that register for some other purpose , it would save the register's contents to a private memory location or a register stack. the hp 2100 architecture is an example of saving the return address in the first word of the subroutine. the jsb instruction would save the return address in the memory location that was the target of the branch. execution of the procedure would begin at the next memory location. in the hp 2100 assembly language, one would write, for example to call a subroutine called mysub from the main program. the subroutine would be coded as the jsb instruction placed the address of the next instruction into the location specified as its operand , and then branched to the next location after that . the subroutine could then return to the main program by executing the indirect jump jmp mysub, i which branched to the location stored at location mysub. compilers for fortran and other languages could easily make use of these instructions when available. this approach supported multiple levels of calls; however, since the return address, parameters, and return values of a subroutine were assigned fixed memory locations, it did not allow for recursive calls. incidentally, a similar method was used by lotus 1-2-3, in the early 1980s, to discover the recalculation dependencies in a spreadsheet. namely, a location was reserved in each cell to store the return address. since circular references are not allowed for natural recalculation order, this allows a tree walk without reserving space for a stack in memory, which was very limited on small computers such as the ibm pc. most modern implementations of a function call use a call stack, a special case of the stack data structure, to implement function calls and returns. each procedure call creates a new entry, called a stack frame, at the top of the stack; when the procedure returns, its stack frame is deleted from the stack, and its space may be used for other procedure calls. each stack frame contains the private data of the corresponding call, which typically includes the procedure's parameters and internal variables, and the return address. the call sequence can be implemented by a sequence of ordinary instructions and very long instruction word architectures), but many traditional machines designed since the late 1960s have included special instructions for that purpose. the call stack is usually implemented as a contiguous area of memory. it is an arbitrary design choice whether the bottom of the stack is the lowest or highest address within this area, so that the stack may grow forwards or backwards in memory; however, many architectures chose the latter. some designs, notably some forth implementations, used two separate stacks, one mainly for control information and the other for data. the former was, or worked like, a call stack and was only indirectly accessible to the programmer through other language constructs while the latter was more directly accessible. when stack-based procedure calls were first introduced, an important motivation was to save precious memory. with this scheme, the compiler does not have to reserve separate space in memory for the private data of each procedure. at any moment, the stack contains only the private data of the calls that are currently active . because of the ways in which programs were usually assembled from libraries, it was not uncommon to find programs that include thousands of functions, of which only a handful are active at any given moment. for such programs, the call stack mechanism could save significant amounts of memory. indeed, the call stack mechanism can be viewed as the earliest and simplest method for automatic memory management. however, another advantage of the call stack method is that it allows recursive function calls, since each nested call to the same procedure gets a separate instance of its private data. in a multi-threaded environment, there is generally more than one stack. an environment that fully supports coroutines or lazy evaluation may use data structures other than stacks to store their activation records. = = one disadvantage of the call stack mechanism is the increased cost of a procedure call and its matching return. the extra cost includes incrementing and decrementing the stack pointer , and accessing the local variables and parameters by frame-relative addresses, instead of absolute addresses. the cost may be realized in increased execution time, or increased processor complexity, or both. this overhead is most obvious and objectionable in leaf procedures or leaf functions, which return without making any procedure calls themselves. to reduce that overhead, many modern compilers try to delay the use of a call stack until it is really needed. for example, the call of a procedure p may store the return address and parameters of the called procedure in certain processor registers, and transfer control to the procedure's body by a simple jump. if the procedure p returns without making any other call, the call stack is not used at all. if p needs to call another procedure q, it will then use the call stack to save the contents of any registers that will be needed after q returns. in general, a callable unit is a list of instructions that, starting at the first instruction, executes sequentially except as directed via its internal logic. it can be invoked many times during the execution of a program. execution continues at the next instruction after the call instruction when it returns control. the features of implementations of callable units evolved over time and varies by context. this section describes features of the various common implementations. other languages, such as c, c++, c# and lisp, use only one name for a callable unit, function. the c-family languages use the keyword void to indicate no return value. if declared to return a value, a call can be embedded in an expression in order to consume the return value. for example, a square root callable unit might be called like y = sqrt . a callable unit that does not return a value is called as a stand-alone statement like print . this syntax can also be used for a callable unit that returns a value, but the return value will be ignored. some older languages require a keyword for calls that do not consume a return value, like call print . most implementations, especially in modern languages, support parameters which the callable declares as formal parameters. a caller passes actual parameters, a.k.a. different programming languages provide different conventions for passing arguments. in some languages, such as basic, a callable has different syntax for a callable that returns a value vs. in other languages, the syntax is the same regardless. in some of these languages an extra keyword is used to declare no return value, such as void in c, c++ and c#. in some languages, such as python, the difference is whether the body contains a return statement with a value, and a particular callable may return with or without a value based on control flow. side effects are considered undesirable by robert c. martin, who is known for promoting design principles. martin argues that side effects can result in temporal coupling or order dependencies. in strictly functional programming languages such as haskell, a function can have no side effects, which means it cannot change the state of the program. functions always return the same result for the same input. such languages typically only support functions that return a value, since there is no value in a function that has neither return value nor side effect. most contexts support local variables - memory owned by a callable to hold intermediate values. these variables are typically stored in the call's activation record on the call stack along with other information such as the return address. if supported by the language, a callable may call itself, causing its execution to suspend while another nested execution of the same callable executes. recursion is a useful means to simplify some complex algorithms and break down complex problems. recursive languages provide a new copy of local variables on each call. if the programmer desires the recursive callable to use the same variables instead of using locals, they typically declare them in a shared context such static or global. languages going back to algol, pl/i and c and modern languages, almost invariably use a call stack, usually supported by the instruction sets to provide an activation record for each call. that way, a nested call can modify its local variables without affecting any of the suspended call's variables. recursion allows direct implementation of functionality defined by mathematical induction and recursive divide and conquer algorithms. here is an example of a recursive function in c to find fibonacci numbers: early languages like fortran did not initially support recursion because only one set of variables and return address were allocated for each callable. early computer instruction sets made storing return addresses and variables on a stack difficult. machines with index registers or general-purpose registers, e.g., cdc 6000 series, pdp-6, ge 635, system/360, univac 1100 series, could use one of those registers as a stack pointer. some languages, e.g., ada, pascal, pl/i, python, support declaring and defining a function inside, e.g., a function body, such that the name of the inner is only visible within the body of the outer. a simple example in pascal:the function f is nested within e. note that e's parameter x is also visible in f while both x and y are invisible outside e and f respectively. if a callable can be executed properly even when another execution of the same callable is already in progress, that callable is said to be reentrant. a reentrant callable is also useful in multi-threaded situations since multiple threads can call the same callable without fear of interfering with each other. in the ibm cics transaction processing system, quasi-reentrant was a slightly less restrictive, but similar, requirement for application programs that were shared by many threads. some languages support overloading - allow multiple callables with the same name in the same scope, but operating on different types of input. consider the square root function applied to real number, complex number and matrix input. the algorithm for each type of input is different, and the return value may have a different type. by writing three separate callables with the same name. sqrt, the resulting code may be easier to write and to maintain since each one has a name that is relatively easy to understand and to remember instead of giving longer and more complicated names like sqrt_real, sqrt_complex, qrt_matrix. overloading is supported in many languages that support strong typing. often the compiler selects the overload to call based on the type of the input arguments or it fails if the input arguments do not select an overload. older and weakly-typed languages generally do not support overloading. here is an example of overloading in c++, two functions area that accept different types: pl/i has the generic attribute to define a generic name for a set of entry references called with different types of arguments. example: declare gen_name generic , flame when , pathname otherwise); multiple argument definitions may be specified for each entry. a call to \"gen_name\" will result in a call to \"name\" when the argument is fixed binary, \"flame\" when float\", etc. if the argument matches none of the choices \"pathname\" will be called. a closure is a callable plus values of some of its variables captured from the environment in which it was created. closures were a notable feature of the lisp programming language, introduced by john mccarthy. depending on the implementation, closures can serve as a mechanism for side-effects. besides its happy path behavior, a callable may need to inform the caller about an exceptional condition that occurred during its execution. most modern languages support exceptions which allows for exceptional control flow that pops the call stack until an exception handler is found to handle the condition. languages that do not support exceptions can use the return value to indicate success or failure of a call. another approach is to use a well-known location like a global variable for success indication. a callable writes the value and the caller reads it after a call. = = some optimizations for minimizing call overhead may seem straight forward, but cannot be used if the callable has side effects. for example, in the expression -1)/ +1), the function f cannot be called only once with its value used two times since the two calls may return different results. moreover, in the few languages which define the order of evaluation of the division operator's operands, the value of x must be fetched again before the second call, since the first call may have changed it. determining whether a callable has a side effect is difficult - indeed, undecidable by virtue of rice's theorem. so, while this optimization is safe in a purely functional programming language, a compiler for a language not limited to functional typically assumes the worst case, that every callable may have side effects. = = inlining eliminates calls for particular callables. the compiler replaces each call with the compiled code of the callable. not only does this avoid the call overhead, but it also allows the compiler to optimize code of the caller more effectively by taking into account the context and arguments at that call. inlining, however, usually increases the compiled code size, except when only called once or the body is very short, like one line. callables can be defined within a program, or separately in a library that can be used by multiple programs. a compiler translates call and return statements into machine instructions according to a well-defined calling convention. for code compiled by the same or a compatible compiler, functions can be compiled separately from the programs that call them. the instruction sequences corresponding to call and return statements are called the procedure's prologue and epilogue. a built-in function, or builtin function, or intrinsic function, is a function for which the compiler generates code at compile time or provides in a way different from other functions. a built-in function does not need to be defined like other functions since it is built in to the programming language. this makes the calling code concise and readable even if the function is not meant to be reused. improving traceability ; by not decomposing the code into functions, debugging would be severely impaired = = compared to using in-line code, invoking a function imposes some computational overhead in the call mechanism. a function typically requires standard housekeeping code - both at the entry to, and exit from, the function . many programming conventions have been developed regarding callables. with respect to naming, many developers name a callable with a phrase starting with a verb when it does a certain task, with an adjective when it makes an inquiry, and with a noun when it is used to substitute variables. some programmers suggest that a callable should perform exactly one task, and if it performs more than one task, it should be split up into multiple callables. they argue that callables are key components in software maintenance, and their roles in the program must remain distinct. proponents of modular programming advocate that each callable should have minimal dependency on the rest of the codebase. for example, the use of global variables is generally deemed unwise, because it adds coupling between all callables that use the global variables. if such coupling is not necessary, they advise to refactor callables to accept passed parameters instead. early basic variants require each line to have a unique number that orders the lines for execution, provides no separation of the code that is callable, no mechanism for passing arguments or to return a value and all variables are global. it provides the command gosub where sub is short for sub procedure, subprocedure or subroutine. control jumps to the specified line number and then continues on the next line on return. this code repeatedly asks the user to enter a number and reports the square root of the value. lines 100-130 are the callable. in microsoft small basic, targeted to the student first learning how to program in a text-based language, a callable unit is called a subroutine. the sub keyword denotes the start of a subroutine and is followed by a name identifier. subsequent lines are the body which ends with the endsub keyword. this can be called as sayhello . in later versions of visual basic , including the latest product line and vb6, the term procedure is used for the callable unit concept. the keyword sub is used to return no value and function to return a value. when used in the context of a class, a procedure is a method. each parameter has a data type that can be specified, but if not, defaults to object for later versions based on .net and variant for vb6. vb supports parameter passing conventions by value and by reference via the keywords byval and byref, respectively. unless byref is specified, an argument is passed byval. therefore, byval is rarely explicitly specified. for a simple type like a number these conventions are relatively clear. passing byref allows the procedure to modify the passed variable whereas passing byval does not. for an object, semantics can confuse programmers since an object is always treated as a reference. passing an object byval copies the reference, not the state of the object. the called procedure can modify the state of the object via its methods yet cannot modify the object reference of the actual parameter. giving v is 5 before the call, it will be 7 after. in c and c++, a callable unit is called a function. a function definition starts with the name of the type of value that it returns or void to indicate that it does not return a value. this is followed by the function name, formal arguments in parentheses, and body lines in braces. in c++, a function declared in a class is called a member function or method. a function outside of a class can be called a free function to distinguish it from a member function. this function does not return a value and is always called stand-alone, like dosomething this function returns the integer value 5. the call can be stand-alone or in an expression like y = x + returnfive this function has a side-effect - modifies the value passed by address to the input value plus 2. it could be called for variable v as addtwo where the ampersand tells the compiler to pass the address of a variable. giving v is 5 before the call, it will be 7 after. this function requires c++ - would not compile as c. it has the same behavior as the preceding example but passes the actual parameter by reference rather than passing its address. a call such as addtwo does not include an ampersand since the compiler handles passing by reference without syntax in the call. in pl/i a called procedure may be passed a descriptor providing information about the argument, such as string lengths and array bounds. this allows the procedure to be more general and eliminates the need for the programmer to pass such information. by default pl/i passes arguments by reference. a function to change the sign of each element of a two-dimensional array might look like: this could be called with various arrays as follows: in python, the keyword def denotes the start of a function definition. the statements of the function body follow as indented on subsequent lines and end at the line that is indented the same as the first line or end of file. the first function returns greeting text that includes the name passed by the caller. the second function calls the first and is called like greet_martin to write \"welcome martin\" to the console. in the procedural interpretation of logic programs, logical implications behave as goal-reduction procedures. a rule of the form: a :- b which has the logical reading: a if b behaves as a procedure that reduces goals that unify with a to subgoals that are instances ofb. consider, for example, the prolog program: notice that the motherhood function, x = mother is represented by a relation, as in a relational database. however, relations in prolog function as callable units. for example, the procedure call ?- parent_child produces the output x = elizabeth. but the same procedure can be called with other input-output patterns.",
       "source": "en.wikipedia.org",
-      "licence": "CC-BY-SA-3.0",
-      "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/en/9/99/Question_book-new.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "this section does not cite any sources . please help improve this section by adding citations to reliable sources .",
-          "licence": "Cc-by-sa-3.0"
-        }
-      ]
+      "licence": "CC-BY-SA-3.0"
     }
   ]
 }

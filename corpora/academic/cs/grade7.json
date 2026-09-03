@@ -15,7 +15,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/6d/Data_types_-_en.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "These are some of the different types of data: Geographical, Cultural, Scientific, Financial, Statistical, Meteorological, Natural, Transport",
-          "context": "for data in computer science, see data . for other uses, see data and datum .",
+          "context": "",
           "licence": "CC BY 3.0"
         },
         {
@@ -37,7 +37,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/f2/DVD_Rental_Query.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "An SQL select statement and its result",
-          "context": "for instances of the general concept, see lists of databases . the dbms additionally encompasses the core facilities provided to administer the database. the sum total of the database, the dbms and the associated applications can be referred to as a database system .",
+          "context": "the dbms additionally encompasses the core facilities provided to administer the database. the sum total of the database, the dbms and the associated applications can be referred to as a database system .",
           "licence": "CC BY-SA 4.0"
         },
         {
@@ -53,20 +53,6 @@
           "caption": "In the relational model , records are \"linked\" using virtual keys not stored in the database but defined as needed between the data contained in the records.",
           "context": "the terminology that is now familiar came from early implementations. codd would later criticize the tendency for practical implementations to depart from the mathematical foundations on which the model was based. in the relational model , records are \"linked\" using virtual keys not stored in the database but defined as needed between the data contained in the records. the use of primary keys to represent cross-table relationships, rather than disk addresses, had two primary motivations.",
           "licence": "CC BY-SA 3.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/en/9/99/Question_book-new.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "this section does not cite any sources . please help improve this section by adding citations to reliable sources .",
-          "licence": "Cc-by-sa-3.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/2/2e/Ambox_contradict.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "furthermore, avoiding the creation of a new database containing personal information can make it easier to comply with privacy regulations. however, with data virtualization, the connection to all necessary data sources must be operational as there is no local copy of the data, which is one of the main drawbacks of the approach. this article appears to contradict the article database security . please discuss at the talk page and do not remove this message until the contradictions are resolved.",
-          "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/0/09/Process_of_database_design_v2.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
@@ -85,8 +71,8 @@
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/4/4d/Traditional_View_of_Data_SVG.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
-          "caption": "Traditional view of data [ 43 ]",
-          "context": "traditional view of data 43 a database management system provides three views of the database data: the external level defines how each group of end-users sees the organization of data in the database. a single database can have any number of views at the external level.",
+          "caption": "Traditional view of data",
+          "context": "traditional view of data a database management system provides three views of the database data: the external level defines how each group of end-users sees the organization of data in the database. a single database can have any number of views at the external level.",
           "licence": "CC BY-SA 3.0"
         }
       ]
@@ -101,7 +87,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/21/Chrome_on_Linux.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A web page from Wikipedia displayed in Google Chrome",
-          "context": "a web page from wikipedia displayed in google chrome the world wide web 2 is a global interconnected information system that enables content sharing over the internet .",
+          "context": "a web page from wikipedia displayed in google chrome the world wide web is a global interconnected information system that enables content sharing over the internet . it facilitates access to documents and other web resources according to specific rules of the hypertext transfer protocol .",
           "licence": "CC BY-SA 4.0"
         },
         {
@@ -115,21 +101,21 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/d/d1/WWW-LetShare.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "The former World Wide Web logo, designed by Robert Cailliau . Currently, there is no widely accepted logo in use for the WWW.",
-          "context": "14 15 the world's first web server, exhibited at cern in geneva. the former world wide web logo, designed by robert cailliau . currently, there is no widely accepted logo in use for the www.",
+          "context": "when he became aware of ted nelson 's hypertext model , in which documents can be linked in unconstrained ways through hyperlinks associated with \"hot spots\" embedded in the text, it helped to confirm the validity of his concept. the world's first web server, exhibited at cern in geneva. the former world wide web logo, designed by robert cailliau . currently, there is no widely accepted logo in use for the www.",
           "licence": "CC BY-SA 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/39/Internet_Key_Layers.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "48 the english writer douglas adams once quipped in the independent on sunday : \"the world wide web is the only thing i know of whose shortened form takes three times longer to say than what it's short for\". the world wide web functions as an application layer protocol that is run \"on top of\" the internet, helping it to make it more functional. the advent of the mosaic web browser helped to make the web much more usable, including the display of images and moving images .",
+          "context": "stephen fry , in his \"podgrams\" series of podcasts, pronounces it wuh wuh wuh . the english writer douglas adams once quipped in the independent on sunday : \"the world wide web is the only thing i know of whose shortened form takes three times longer to say than what it's short for\". the world wide web functions as an application layer protocol that is run \"on top of\" the internet, helping it to make it more functional. the advent of the mosaic web browser helped to make the web much more usable, including the display of images and moving images .",
           "licence": "CC BY-SA 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/b/b9/WorldWideWebAroundWikipedia.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Graphic representation of a minute fraction of the WWW, demonstrating hyperlinks",
-          "context": "update 52 linking most web pages contain hyperlinks to other related pages and perhaps to downloadable files, source documents, definitions, and other web resources. in the underlying html, a hyperlink is coded like this: a href = \"http://example.org/home.html\" example.org homepage / a . graphic representation of a minute fraction of the www, demonstrating hyperlinks such a collection of useful, related resources interconnected via hypertext links is dubbed a web of information. publication on the internet created what tim berners-lee first called the worldwideweb in november 12, 1990.",
+          "context": "linking edit most web pages contain hyperlinks to other related pages and perhaps to downloadable files, source documents, definitions, and other web resources. in the underlying html, a hyperlink is coded like this: a href = \"http://example.org/home.html\" example.org homepage / a . graphic representation of a minute fraction of the www, demonstrating hyperlinks such a collection of useful, related resources interconnected via hypertext links is dubbed a web of information. publication on the internet created what tim berners-lee first called the worldwideweb in november 12, 1990.",
           "licence": "CC BY-SA 3.0"
         },
         {
@@ -150,29 +136,57 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/8/87/United_States_Antarctic_Program_website_from_2018_02_22.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "The usap.gov website",
-          "context": "multiple ajax requests can be handled at the same time, and users can interact with the page while data is retrieved. web pages may also regularly poll the server to check whether new information is available. the usap.gov website a website 61 is a collection of related web resources including web pages , multimedia content, typically identified with a common domain name , and published on at least one web server . notable examples are wikipedia .org, google .com, and amazon.com .",
+          "context": "multiple ajax requests can be handled at the same time, and users can interact with the page while data is retrieved. web pages may also regularly poll the server to check whether new information is available. the usap.gov website a website is a collection of related web resources including web pages , multimedia content, typically identified with a common domain name , and published on at least one web server . notable examples are wikipedia .org, google .com, and amazon.com .",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/38/Inside_and_Rear_of_Webserver.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "The inside and front of a Dell PowerEdge web server, a computer designed for rack mounting",
-          "context": "the most popular browsers are chrome , safari , edge , samsung internet and firefox . the inside and front of a dell poweredge web server, a computer designed for rack mounting a web server is server software , or hardware dedicated to running said software, that can satisfy world wide web client requests. a web server can, in general, contain one or more websites.",
+          "context": "this is the program that the user runs to download, format, and display a web page on the user's computer. the most popular browsers are chrome , safari , edge , samsung internet and firefox . the inside and front of a dell poweredge web server, a computer designed for rack mounting a web server is server software , or hardware dedicated to running said software, that can satisfy world wide web client requests. a web server can, in general, contain one or more websites.",
           "licence": "CC BY 2.5"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/69/Wikimedia_Foundation_Servers-8055_35.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Multiple web servers may be used for a high traffic website; here, Dell servers are installed together to be used for the Wikimedia Foundation .",
-          "context": "63 the communication between client and server takes place using the hypertext transfer protocol . pages delivered are most frequently html documents , which may include images , style sheets and scripts in addition to the text content. multiple web servers may be used for a high traffic website; here, dell servers are installed together to be used for the wikimedia foundation . a user agent , commonly a web browser or web crawler , initiates communication by making a request for a specific resource using http and the server responds with the content of that resource or an error message if unable to do so.",
+          "context": "the communication between client and server takes place using the hypertext transfer protocol . pages delivered are most frequently html documents , which may include images , style sheets and scripts in addition to the text content. multiple web servers may be used for a high traffic website; here, dell servers are installed together to be used for the wikimedia foundation . a user agent , commonly a web browser or web crawler , initiates communication by making a request for a specific resource using http and the server responds with the content of that resource or an error message if unable to do so.",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/d/db/World_Map_of_Web_Index_2014.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A global map of the Web Index for countries in 2014",
-          "context": "a global map of the web index for countries in 2014 the w3c internationalisation activity assures that web technology works in all languages, scripts, and cultures. 132 beginning in 2004 or 2005, unicode gained ground and eventually in december 2007 surpassed both ascii and western european as the web's most frequently used character map .",
+          "context": "tim berners-lee once said, \"the power of the web is in its universality. access by everyone regardless of disability is an essential aspect.\" many countries regulate web accessibility as a requirement for websites. a global map of the web index for countries in 2014 the w3c internationalisation activity assures that web technology works in all languages, scripts, and cultures. beginning in 2004 or 2005, unicode gained ground and eventually in december 2007 surpassed both ascii and western european as the web's most frequently used character map .",
           "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b6/Rubik%27s_cube_v3.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "icon",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/27/EC1835_C_cut.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "icon",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/8f/Noun-smartphone-apps-432831.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "icon",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/28/Noun-artificial-intelligence-6431591.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "icon",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY 3.0"
         }
       ]
     },
@@ -183,24 +197,10 @@
       "licence": "CC-BY-SA-3.0",
       "figures": [
         {
-          "src": "https://upload.wikimedia.org/wikipedia/en/b/b4/Ambox_important.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this article has multiple issues. please help improve it or discuss these issues on the talk page .",
-          "licence": "Public domain"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/en/9/99/Question_book-new.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "wikipedia is not a guidebook; please help rewrite such content to be encyclopedic or move it to wikiversity , wikibooks , or wikivoyage . this article needs more citations . please help improve this article by adding citations to reliable sources .",
-          "licence": "Cc-by-sa-3.0"
-        },
-        {
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/c8/Tim_Berners-Lee_April_2009.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Photograph of Tim Berners-Lee in April 2009",
           "caption": "Tim Berners-Lee in April 2009",
-          "context": "tim berners-lee in april 2009 in 1980, the physicist tim berners-lee , a contractor at cern , proposed and prototyped enquire , a system for cern researchers to use and share documents. in 1989, berners-lee wrote a memo proposing an internet -based hypertext system.",
+          "context": "the inclusion of css defines the look and layout of content. the world wide web consortium , former maintainer of the html and current maintainer of the css standards, has encouraged the use of css over explicit presentational html since 1997. tim berners-lee in april 2009 in 1980, the physicist tim berners-lee , a contractor at cern , proposed and prototyped enquire , a system for cern researchers to use and share documents. in 1989, berners-lee wrote a memo proposing an internet -based hypertext system.",
           "licence": "CC BY 2.0"
         },
         {
@@ -209,13 +209,6 @@
           "caption": "HTML element content categories",
           "context": "the document type declaration !doctype html is for html5. if a declaration is not included, various browsers will revert to \" quirks mode \" for rendering. html element content categories html documents imply a structure of nested html elements . these are indicated in the document by html tags , enclosed in angle brackets.",
           "licence": "CC BY-SA 4.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/en/6/6c/Wiki_letter_w.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "this article is missing information about contenteditable. please expand the article by making an edit request to include this information .",
-          "licence": "Cc-by-sa-3.0"
         }
       ]
     },
@@ -229,14 +222,14 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/fd/Dead_Zone_Campaign_%282658313491%29.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "The home page of NASA from 2008",
-          "context": "the home page of nasa from 2008 a web page , or webpage , is a web document that is accessed in a web browser . 1 a website typically consists of many web pages linked together under a common domain name .",
+          "context": "the home page of nasa from 2008 a web page , or webpage , is a web document that is accessed in a web browser . a website typically consists of many web pages linked together under a common domain name .",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e1/Platypus_article_on_Vector_2022.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Each article on the Wikipedia website is a distinct web page. The URL is visible in the browser's address bar at the top.",
-          "context": "the term \"web page\" is therefore a metaphor of paper pages bound together into a book. each article on the wikipedia website is a distinct web page. the url is visible in the browser's address bar at the top.",
+          "context": "a website typically consists of many web pages linked together under a common domain name . the term \"web page\" is therefore a metaphor of paper pages bound together into a book. each article on the wikipedia website is a distinct web page. the url is visible in the browser's address bar at the top.",
           "licence": "CC BY-SA 4.0"
         }
       ]
@@ -251,7 +244,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/d/d0/PhishingTrustedBank.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "27 firstly, they are a singular attack that involves multiple methods of attack. in this sense, they are \"multi-vectored\" . an example of a phishing email, disguised as an official email from a bank. the sender is attempting to trick the recipient into revealing confidential information by confirming it at the phisher's website.",
+          "context": "firstly, they are a singular attack that involves multiple methods of attack. in this sense, they are \"multi-vectored\" . an example of a phishing email, disguised as an official email from a bank. the sender is attempting to trick the recipient into revealing confidential information by confirming it at the phisher's website.",
           "licence": "Public domain"
         },
         {
@@ -260,13 +253,6 @@
           "caption": "Cryptographic techniques involve transforming information, scrambling it, so it becomes unreadable during transmission. The intended recipient can unscramble the message; ideally, eavesdroppers cannot.",
           "context": "such attacks can, for example, disable official websites and networks, disrupt or disable essential services, steal or alter classified data, and cripple financial systems. data integrity is the accuracy and consistency of stored data, indicated by an absence of any alteration in data between two updates of a data record. cryptographic techniques involve transforming information, scrambling it, so it becomes unreadable during transmission. the intended recipient can unscramble the message; ideally, eavesdroppers cannot.",
           "licence": "CC BY-SA 3.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c5/CIAJMK1209-en.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "vectorial version",
-          "caption": "vectorial version",
-          "context": "",
-          "licence": "CC BY-SA 4.0"
         }
       ]
     },
@@ -276,27 +262,6 @@
       "source": "en.wikipedia.org",
       "licence": "CC-BY-SA-3.0",
       "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/en/b/b4/Ambox_important.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this article has multiple issues. please help improve it or discuss these issues on the talk page .",
-          "licence": "Public domain"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/en/9/99/Question_book-new.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "please help improve it or discuss these issues on the talk page . this article needs more citations . please help improve this article by adding citations to reliable sources .",
-          "licence": "Cc-by-sa-3.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/b/bd/Ambox_current_red_Asia_Australia.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this article needs to be updated . please help update this article to reflect recent events or newly available information.",
-          "licence": "CC0"
-        },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/3f/Internet_map_1024_-_transparent%2C_inverted.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Visualization of Internet routing paths",
@@ -308,56 +273,154 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/d/d6/A_sketch_of_the_ARPANET_in_December_1969.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "a sketch of the arpanet in december 1969. the nodes 1-4, and computers: sds sigma 7 at ucla , sds 940 at stanford research institute , ibm 360/75 at ucsb and the pdp-10 at university of utah are depicted.",
+          "context": "however, the world wide web, or the web , is only one of a large number of internet services. it is the global collection of web pages, documents and other web resources linked by hyperlinks and urls . a sketch of the arpanet in december 1969. the nodes 1-4, and computers: sds sigma 7 at ucla , sds 940 at stanford research institute , ibm 360/75 at ucsb and the pdp-10 at university of utah are depicted.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e5/NSFNET-backbone-T3.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "T3 NSFNET Backbone, c. 1992",
-          "context": "commercial internet service providers emerged in 1989 in the united states and australia. 48 the arpanet was decommissioned in 1990. 1992 the linking of commercial networks and enterprises by the early 1990s, as well as the advent of the world wide web , 50 marked the beginning of the transition to the modern internet.",
+          "context": "commercial internet service providers emerged in 1989 in the united states and australia. the arpanet was decommissioned in 1990. 1992 the linking of commercial networks and enterprises by the early 1990s, as well as the advent of the world wide web , marked the beginning of the transition to the modern internet. steady advances in semiconductor technology and optical networking created new economic opportunities for commercial involvement in the expansion of the network in its core and for delivering services to the public.",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e4/Number_of_mobile_cellular_subscriptions_2012-2016.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Number of mobile cellular subscriptions 2012-2016",
-          "context": "69 as of 2018 update , 80% of the world's population were covered by a 4g network. number of mobile cellular subscriptions 2012-2016 the international telecommunication union estimated that, by the end of 2017, 48% of individual users regularly connect to the internet, up from 34% in 2012. 71 mobile internet connectivity has played an important role in expanding access in recent years, especially in asia and the pacific and in africa.",
+          "context": "modern smartphones can access the internet through cellular carrier networks, and internet usage by mobile and tablet devices exceeded desktop worldwide for the first time in october 2016. as of 2018 , 80% of the world's population were covered by a 4g network. number of mobile cellular subscriptions 2012-2016 the international telecommunication union estimated that, by the end of 2017, 48% of individual users regularly connect to the internet, up from 34% in 2012. mobile internet connectivity has played an important role in expanding access in recent years, especially in asia and the pacific and in africa.",
           "licence": "CC BY-SA 3.0 igo"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/a/a1/Graph_depicting_share_of_the_population_using_the_Internet.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "share of population using the internet. <img alt=\"a scatter plot showing internet usage per capita versus gdp per capita.",
+          "context": "one solution, zero-rating , is the practice of internet service providers allowing users free connectivity to access specific content or applications without cost. social impact edit the internet has enabled new forms of social interaction, activities, and social associations, giving rise to the scholarly study of the sociology of the internet . share of population using the internet. <img alt=\"a scatter plot showing internet usage per capita versus gdp per capita.",
           "licence": "CC BY-SA 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/68/Internet_users_for_100_people_by_GDP_per_capita.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "A scatter plot showing Internet usage per capita versus GDP per capita. It shows Internet usage increasing with GDP.",
           "caption": "",
-          "context": "",
+          "context": "users edit share of population using the internet.",
           "licence": "CC BY-SA 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/29/Internet_users_per_100_inhabitants_ITU.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "internet users per 100 inhabitants source: international telecommunication union . 76 77 between 2000 and 2009, the number of internet users globally rose from 390 million to 1.9 billion.",
+          "context": "internet users per 100 inhabitants source: international telecommunication union . between 2000 and 2009, the number of internet users globally rose from 390 million to 1.9 billion.",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e0/InternetUsersByLanguagePieChart.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Internet users by language[86]",
           "caption": "",
+          "context": "however, some glitches such as mojibake still remain.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/88/WebsitesByLanguagePieChart.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Website content languages[93]",
+          "caption": "",
           "context": "",
           "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/0b/Share_of_individuals_using_the_internet.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "internet users in 2021 as a percentage of a country's population source: our world in data .",
+          "licence": "CC BY 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/f4/FixedBroadbandInternetPenetrationWorldMap.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "fixed broadband internet subscriptions in 2012 as a percentage of a country's population source: international telecommunication union .",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/79/MobileBroadbandInternetPenetrationWorldMap_2013.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "fixed broadband internet subscriptions in 2012 as a percentage of a country's population source: international telecommunication union . mobile broadband internet subscriptions in 2012 as a percentage of a country's population source: international telecommunication union . the internet allows greater flexibility in working hours and location, especially with the spread of unmetered high-speed connections.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/01/Thai-coup-detat-2014-social-media-banner.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "in 2011, internet advertising revenues in the united states surpassed those of cable television and nearly exceeded those of broadcast television . many common online advertising practices are controversial and increasingly subject to regulation. banner in bangkok during the 2014 thai coup d'etat , informing the thai public that 'like' or 'share' activities on social media could result in imprisonment the internet has achieved new relevance as a political tool. the presidential campaign of howard dean in 2004 in the united states was notable for its success in soliciting donation via the internet.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d1/First_Web_Server.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "This NeXT Computer was used by Tim Berners-Lee at CERN and became the world's first Web server .",
+          "context": "this next computer was used by tim berners-lee at cern and became the world's first web server . uris symbolically identify services, web servers , databases, and the documents and resources that they can provide.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/46/Icannheadquartersplayavista.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "ICANN headquarters in the Playa Vista neighborhood of Los Angeles , California, United States",
+          "context": "the price can be paid by the remote charging of funds from, for example, a credit card whose details are also passed-usually fully encrypted-across the internet. the origin and authenticity of the file received may be checked by a digital signature . icann headquarters in the playa vista neighborhood of los angeles , california, united states the internet is a global network that comprises many voluntarily interconnected autonomous networks. it operates without a central governing body.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/7d/World_map_of_submarine_cables.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "2007 map showing submarine fiberoptic telecommunication cables around the world",
+          "context": "on 16 november 2005, the united nations-sponsored world summit on the information society in tunis established the internet governance forum to discuss internet-related issues. as with any computer network, the internet physically consists of routers , media , repeaters, and modems. however, as an example of internetworking , many of the network nodes are not necessarily internet equipment per se.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/36/Internet_Connectivity_Distribution_%26_Core.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Packet routing across the Internet involves several tiers of Internet service providers.",
+          "context": "however, as an example of internetworking , many of the network nodes are not necessarily internet equipment per se. internet packets are carried by other full-fledged networking protocols, with the internet acting as a homogeneous networking standard, running across heterogeneous hardware, with the packets guided to their destinations by ip routers. packet routing across the internet involves several tiers of internet service providers. internet service providers establish worldwide connectivity between individual networks at various levels of scope.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/3b/UDP_encapsulation.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "the protocol suite does not explicitly specify hardware methods to transfer bits, or protocols to manage such hardware, but assumes that appropriate technology is available. examples of that technology include wi-fi , ethernet , and dsl . as user data is processed through the protocol stack, each abstraction layer adds encapsulation information at the sending host. data is transmitted over the wire at the link level between hosts and routers.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c4/IP_stack_connections.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "encapsulation is removed by the receiving host. intermediate relays update link encapsulation at each hop, and inspect the ip layer for routing purposes. conceptual data flow in a simple network topology of two hosts connected by a link between their respective routers. the application on each host executes read and write operations as if the processes were directly connected to each other by some kind of data pipe.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/a5/Example_of_an_iterative_DNS_resolver.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A DNS resolver consults three name servers to resolve the domain name user-visible \"www.wikipedia.org\" to determine the IPv4 Address 207.142.131.234.",
+          "context": "ip enables internetworking, essentially establishing the internet itself. two versions of the internet protocol exist, ipv4 and ipv6 . a dns resolver consults three name servers to resolve the domain name user-visible \"www.wikipedia.org\" to determine the ipv4 address 207.142.131.234. for locating individual computers on the network, the internet provides ip addresses .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/14/Subnetting_Concept-en.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Creating a subnet by dividing the host identifier",
+          "context": "essentially all modern computer operating systems support both versions of the internet protocol. network infrastructure, however, has been lagging in this development. creating a subnet by dividing the host identifier a subnet or subnetwork is a logical subdivision of an ip network . computers that belong to a subnet are addressed with an identical most-significant bit -group in their ip addresses.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c8/Internet_Censorship_and_Surveillance_World_Map.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "similar systems are operated by iranian secret police to identify and suppress dissidents. the required hardware and software were allegedly installed by german siemens and finnish nokia .",
+          "licence": "CC0"
         }
       ]
     },
     {
       "theme": "web-browser",
-      "story": "a web browser, often abbreviated as browser, is an application for accessing websites. when a user requests a web page from a particular website, the browser retrieves its files from a web server and then displays the page on the user's screen. browsers can also display content stored locally on the user's device. browsers are used on a range of devices, including desktops, laptops, tablets, smartphones, smartwatches, smart televisions and consoles. as of 2026, the most used browsers worldwide are google chrome , safari , edge , firefox , samsung browser , and opera . as of 2023, an estimated 5.4 billion people had used a browser. the purpose of a web browser is to fetch content and display it on the user's device. this process begins when the user inputs a uniform resource locator , such as https://en.wikipedia.org/, into the browser's address bar. virtually all urls on the web start with either http: or https: which means they are retrieved with the hypertext transfer protocol . for secure mode , the connection between the browser and web server is encrypted, providing a secure and private data transfer. for this reason, a web browser is often referred to as an http client or a user agent. requisite materials, including text, style sheets, images, and other types of multimedia, are downloaded from the server. once the materials have been downloaded, the web browser's engine is responsible for converting those resources into an interactive visual representation of the page on the user's device. modern web browsers also contain separate javascript engines which enable more complex interactive applications inside the browser. a web browser that does not render a graphical user interface is known as a headless browser. web pages usually contain hyperlinks to other pages and resources. each link contains a url, and when it is clicked or tapped, the browser navigates to the new resource. most browsers use an internal cache of web page resources to improve loading times for subsequent visits to the same page. the cache can store many items, such as large images, so they do not need to be downloaded from the server again. cached items are usually only stored for as long as the web server stipulates in its http response messages. a web browser is not the same thing as a search engine, though the two are often confused. a search engine is a website that provides links to other websites and allows users to search for specific resources using a textual query. however, web browsers are often used to access search engines, and most modern browsers allow users to access a default search engine directly by typing a query into the address bar. the first web browser, called worldwideweb, was created in 1990 by sir tim berners-lee. he then recruited nicola pellow to write the line mode browser, which displayed web pages on dumb terminals. the mosaic web browser was released in april 1993, and was later credited as the first web browser to find mainstream popularity. its innovative graphical user interface made the world wide web easy to navigate and thus more accessible to the average person. this, in turn, sparked the internet boom of the 1990s, when the web grew at a very rapid rate. the lead developers of mosaic then founded the netscape corporation, which released the mosaic-influenced netscape navigator in 1994. navigator quickly became the most popular browser. microsoft debuted internet explorer in 1995, leading to a browser war with netscape. within a few years, microsoft gained a dominant position in the browser market for two reasons: it bundled internet explorer with its popular windows operating system and did so as freeware with no restrictions on usage. the market share of internet explorer peaked at over 95% in the early 2000s. in 1998, netscape launched what would become the mozilla foundation to create a new browser using the open-source software model. this work evolved into the firefox browser, first released by mozilla in 2004. firefox's market share peaked at 32% in 2010. apple released its safari browser in 2003; it remains the dominant browser on apple devices, though it did not become popular elsewhere. google debuted its chrome browser in 2008, which steadily took market share from internet explorer and became the most popular browser in 2012. chrome has remained dominant ever since. in 2015, microsoft replaced internet explorer with edge [legacy] for the windows 10 release. in 2020, this legacy version was replaced by a new chromium-based version of edge. since the early 2000s, browsers have greatly expanded their html, css, javascript, and multimedia capabilities. one reason has been to enable more sophisticated websites, such as web apps. starting in the mid-2020s, browsers with integrated artificial intelligence capabilities, known as ai browsers, have become increasingly common. this includes both new entrants to the browser market, such as perplexity comet and chatgpt atlas, and established browsers that added ai features, such as chrome with the gemini chatbot and edge with the copilot chatbot. the most popular browsers share many features. they automatically log users' browsing history, unless the users turn off their browsing history or use the non-logging private mode. they also allow users to set bookmarks, customize the browser with extensions, and manage their downloads and passwords. some provide a sync service and web accessibility features. common user interface features: allowing the user to have multiple pages open at the same time, either in different windows or in different tabs of the same window. back and forward buttons to go back to the previous page visited or forward to the next one. a refresh or reload and a stop button to reload and cancel loading the current page. a home button to return to the start page. an address bar to input the url of a page and display it, and a search bar to input queries into a search engine. while mobile browsers have similar ui features as desktop versions, the limitations of the often-smaller touch screens require mobile uis to be simpler. the difference is significant for users accustomed to keyboard shortcuts. responsive web design is used to create websites that offer a consistent experience across the desktop and mobile versions of the website and across varying screen sizes. the most popular desktop browsers also have sophisticated web development tools. access to some web content - particularly streaming services like netflix, disney+, and spotify - is restricted by digital rights management software. a web browser is able to access drm-restricted content through the use of a content decryption module such as widevine. as of 2020, the cdms used by dominant web browsers require browser providers to pay costly license fees, making it unfeasible for most independent open-source browsers to offer access to drm-restricted content. google chrome has been the dominant browser worldwide since the mid-2010s and currently has a 69% global market share on all devices. the other two browsers in the top four are made from different codebases. safari, based on apple's webkit code, is the second most popular web browser and is dominant on apple devices, resulting in a 16% global share. firefox, in fourth place, with about 2% market share, is based on mozilla's code. both of these codebases are open-source, so a number of small niche browsers are also made from them. the following table details the top web browsers by market share, as of april, 2025: prior to late 2016, the majority of web traffic came from desktop computers. however, since then, mobile devices have represented the majority of web traffic. as of february 2025, mobile devices represent a 62% share of internet traffic, followed by desktop at 36% and tablet at 2%. web browsers are popular targets for hackers, who exploit security holes to steal information, destroy files, and partake in other malicious activities. browser vendors regularly patch these security holes, so users are strongly encouraged to keep their browser software updated. other protection measures are antivirus software and being aware of scams. during the course of browsing, cookies received from various websites are stored by the browser. some of them contain login credentials or site preferences. however, others are used for tracking user behavior over long periods of time, so browsers typically provide a section in the menu for deleting cookies. some browsers have more proactive protection against cookies and trackers that limit their functionality and ability to track user behaviour. finer-grained management of cookies usually requires a browser extension. telemetry data is collected by most popular web browsers, which can usually be opted out of by the user. a study from 2020 portrays that there are two tiers of browsers in terms of privacy: the privacy-focused browsers perform better than popular browsers and recommend the former browsers. blocking fingerprinting, cookies, tracking scripts, ads, etc. seems to explain that difference.",
+      "story": "a web browser, often abbreviated as browser, is an application for accessing websites. when a user requests a web page from a particular website, the browser retrieves its files from a web server and then displays the page on the user's screen. browsers can also display content stored locally on the user's device. browsers are used on a range of devices, including desktops, laptops, tablets, smartphones, smartwatches, smart televisions and consoles. as of 2026, the most used browsers worldwide are google chrome , safari , edge , firefox , samsung browser , and opera . as of 2023, an estimated 5.4 billion people had used a browser. the purpose of a web browser is to fetch content and display it on the user's device. this process begins when the user inputs a uniform resource locator , such as https://en.wikipedia.org/, into the browser's address bar. virtually all urls on the web start with either http: or https: which means they are retrieved with the hypertext transfer protocol . for secure mode , the connection between the browser and web server is encrypted, providing a secure and private data transfer. for this reason, a web browser is often referred to as an http client or a user agent. requisite materials, including text, style sheets, images, and other types of multimedia, are downloaded from the server. once the materials have been downloaded, the web browser's engine is responsible for converting those resources into an interactive visual representation of the page on the user's device. modern web browsers also contain separate javascript engines which enable more complex interactive applications inside the browser. a web browser that does not render a graphical user interface is known as a headless browser. web pages usually contain hyperlinks to other pages and resources. each link contains a url, and when it is clicked or tapped, the browser navigates to the new resource. most browsers use an internal cache of web page resources to improve loading times for subsequent visits to the same page. the cache can store many items, such as large images, so they do not need to be downloaded from the server again. cached items are usually only stored for as long as the web server stipulates in its http response messages. a web browser is not the same thing as a search engine, though the two are often confused. a search engine is a website that provides links to other websites and allows users to search for specific resources using a textual query. however, web browsers are often used to access search engines, and most modern browsers allow users to access a default search engine directly by typing a query into the address bar. the first web browser, called worldwideweb, was created in 1990 by sir tim berners-lee. he then recruited nicola pellow to write the line mode browser, which displayed web pages on dumb terminals. the mosaic web browser was released in april 1993, and was later credited as the first web browser to find mainstream popularity. its innovative graphical user interface made the world wide web easy to navigate and thus more accessible to the average person. this, in turn, sparked the internet boom of the 1990s, when the web grew at a very rapid rate. the lead developers of mosaic then founded the netscape corporation, which released the mosaic-influenced netscape navigator in 1994. navigator quickly became the most popular browser. microsoft debuted internet explorer in 1995, leading to a browser war with netscape. within a few years, microsoft gained a dominant position in the browser market for two reasons: it bundled internet explorer with its popular windows operating system and did so as freeware with no restrictions on usage. the market share of internet explorer peaked at over 95% in the early 2000s. in 1998, netscape launched what would become the mozilla foundation to create a new browser using the open-source software model. this work evolved into the firefox browser, first released by mozilla in 2004. firefox's market share peaked at 32% in 2010. apple released its safari browser in 2003; it remains the dominant browser on apple devices, though it did not become popular elsewhere. google debuted its chrome browser in 2008, which steadily took market share from internet explorer and became the most popular browser in 2012. chrome has remained dominant ever since. in 2015, microsoft replaced internet explorer with edge legacy for the windows 10 release. in 2020, this legacy version was replaced by a new chromium-based version of edge. since the early 2000s, browsers have greatly expanded their html, css, javascript, and multimedia capabilities. one reason has been to enable more sophisticated websites, such as web apps. starting in the mid-2020s, browsers with integrated artificial intelligence capabilities, known as ai browsers, have become increasingly common. this includes both new entrants to the browser market, such as perplexity comet and chatgpt atlas, and established browsers that added ai features, such as chrome with the gemini chatbot and edge with the copilot chatbot. the most popular browsers share many features. they automatically log users' browsing history, unless the users turn off their browsing history or use the non-logging private mode. they also allow users to set bookmarks, customize the browser with extensions, and manage their downloads and passwords. some provide a sync service and web accessibility features. common user interface features: allowing the user to have multiple pages open at the same time, either in different windows or in different tabs of the same window. back and forward buttons to go back to the previous page visited or forward to the next one. a refresh or reload and a stop button to reload and cancel loading the current page. a home button to return to the start page. an address bar to input the url of a page and display it, and a search bar to input queries into a search engine. while mobile browsers have similar ui features as desktop versions, the limitations of the often-smaller touch screens require mobile uis to be simpler. the difference is significant for users accustomed to keyboard shortcuts. responsive web design is used to create websites that offer a consistent experience across the desktop and mobile versions of the website and across varying screen sizes. the most popular desktop browsers also have sophisticated web development tools. access to some web content - particularly streaming services like netflix, disney+, and spotify - is restricted by digital rights management software. a web browser is able to access drm-restricted content through the use of a content decryption module such as widevine. as of 2020, the cdms used by dominant web browsers require browser providers to pay costly license fees, making it unfeasible for most independent open-source browsers to offer access to drm-restricted content. google chrome has been the dominant browser worldwide since the mid-2010s and currently has a 69% global market share on all devices. the other two browsers in the top four are made from different codebases. safari, based on apple's webkit code, is the second most popular web browser and is dominant on apple devices, resulting in a 16% global share. firefox, in fourth place, with about 2% market share, is based on mozilla's code. both of these codebases are open-source, so a number of small niche browsers are also made from them. the following table details the top web browsers by market share, as of april, 2025: prior to late 2016, the majority of web traffic came from desktop computers. however, since then, mobile devices have represented the majority of web traffic. as of february 2025, mobile devices represent a 62% share of internet traffic, followed by desktop at 36% and tablet at 2%. web browsers are popular targets for hackers, who exploit security holes to steal information, destroy files, and partake in other malicious activities. browser vendors regularly patch these security holes, so users are strongly encouraged to keep their browser software updated. other protection measures are antivirus software and being aware of scams. during the course of browsing, cookies received from various websites are stored by the browser. some of them contain login credentials or site preferences. however, others are used for tracking user behavior over long periods of time, so browsers typically provide a section in the menu for deleting cookies. some browsers have more proactive protection against cookies and trackers that limit their functionality and ability to track user behaviour. finer-grained management of cookies usually requires a browser extension. telemetry data is collected by most popular web browsers, which can usually be opted out of by the user. a study from 2020 portrays that there are two tiers of browsers in terms of privacy: the privacy-focused browsers perform better than popular browsers and recommend the former browsers. blocking fingerprinting, cookies, tracking scripts, ads, etc. seems to explain that difference.",
       "source": "en.wikipedia.org",
       "licence": "CC-BY-SA-3.0",
       "figures": [
@@ -372,7 +435,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/1/13/Chromium_%28web_browser%29.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Traditional browser arrangement has user interface features above page content.",
-          "context": "they also allow users to set bookmarks , customize the browser with extensions , and manage their downloads 31 and passwords . 32 some provide a sync service 33 and web accessibility features. traditional browser arrangement has user interface features above page content. common user interface features: allowing the user to have multiple pages open at the same time, either in different windows or in different tabs of the same window.",
+          "context": "they also allow users to set bookmarks , customize the browser with extensions , and manage their downloads and passwords . some provide a sync service and web accessibility features. traditional browser arrangement has user interface features above page content. common user interface features: allowing the user to have multiple pages open at the same time, either in different windows or in different tabs of the same window.",
           "licence": "CC BY-SA 4.0"
         }
       ]

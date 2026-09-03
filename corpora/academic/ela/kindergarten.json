@@ -41,13 +41,6 @@
       "licence": "CC-BY-SA-3.0",
       "figures": [
         {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e1/Alphabet_world_distribution.PNG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "for alphabets in computing, see alphabet . for the company, see alphabet inc.",
-          "licence": "CC BY-SA 3.0"
-        },
-        {
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e4/Venn_diagram_gr_la_ru.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
@@ -58,7 +51,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/a/ae/Causa_10.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "13th century calligraphy & illustration",
-          "context": "although no alphabet fits its language perfectly, they are flexible enough to fit any language approximately. the alphabet was a unique invention. 13th century calligraphy & illustration the roman alphabet , the cyrillic , and a few others come from the ancient greek alphabet , which dates back to about 1100 to 800 bc . 3 p167 the greek alphabet was probably developed from the phoenician script, which appeared somewhat earlier, and had some similar letter-shapes.",
+          "context": "although no alphabet fits its language perfectly, they are flexible enough to fit any language approximately. the alphabet was a unique invention. 13th century calligraphy & illustration the roman alphabet , the cyrillic , and a few others come from the ancient greek alphabet , which dates back to about 1100 to 800 bc . p167 the greek alphabet was probably developed from the phoenician script, which appeared somewhat earlier, and had some similar letter-shapes.",
           "licence": "Public domain"
         }
       ]
@@ -87,16 +80,7 @@
       "theme": "word",
       "story": "a word is something spoken by the mouth that is meaningful. it is usually part of a sentence which makes the meaning clear. words are also used in writing, which is a relatively modern invention. in alphabetic writing, a word is a collection of letters. the word then communicates a meaning that can also usually be pronounced. some words have more than one meaning; for example, 'spring' can refer to the season, the device, or a conjugation of the verb. some words have different pronunciation; for example, 'wind' and 'wind' are pronounced differently. some words have different spelling; for example, 'color' and 'colour' are both correct. 'color' is used in american english, and 'colour' is used in british english. some words can be only one letter such as \"a\" and \"i\" in english. besides english, all other languages have their own words. when written with an alphabet, words are usually separated by a space. when written with ideograms, each word is usually a separate symbol. words can be invented, which are then called neologisms. for example, radar was originally an acronym but became an actual word. two words may be joined to make a compound word. a word is the smallest thing that can be said with meaning. that contrasts with a morpheme, which is the smallest unit of meaning but may not stand on its own. a word may consist of a single morpheme , or several , and a morpheme may not be able to stand on its own as a word . the meaning of words can be found in a dictionary. lexeme parts of speech heteronym - when two different words have the same spelling iggulden, hal; iggulden, conn .",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0",
-      "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this short article can be made longer. you can help wikipedia by adding to it .",
-          "licence": "CC BY-SA 3.0"
-        }
-      ]
+      "licence": "CC-BY-SA-3.0"
     },
     {
       "theme": "rhyme",
@@ -1785,23 +1769,7 @@
       "theme": "consonant",
       "story": "a consonant is a speech sound in which the air is at least partly blocked or any letter which represents this. consonants may come singly or in clusters , but must be connected to a vowel to form a syllable. all the letters of the english alphabet are both consonants and vowels. notice that the consonant and vowel notation does not match the letters of english spelling in a one-to-one relationship , but rather individual sounds. b and p are plosives, using the lips to produce a tiny sharp sound. phonetics texts give more details, with diagrams. consonants may be voiced or unvoiced. the th in the is voiced, but in breath is not. there are 21 consonant letters in english, for 24 consonant sounds in most english accents.p242 because of the history of the english language, there is no neat one-to-one relationship between letter and sound. th and ch each stand for a single sound, and x in fox stands for two sounds . all these letters are consonants: b, c, d, f, g, h, j, k, l, m, n, p, q, r, s, t, v, w, x, y and z . w and y are often used as consonants, but they are sometimes used as vowels. for example, in the word yellow, y is a consonant, but in the word happy, it is a vowel. the rest of the letters of the alphabet are called vowels.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0",
-      "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/2/27/Disc_Plain_black.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "•",
-          "caption": "",
-          "context": "",
-          "licence": "Public domain"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this short article can be made longer. you can help wikipedia by adding to it .",
-          "licence": "CC BY-SA 3.0"
-        }
-      ]
+      "licence": "CC-BY-SA-3.0"
     },
     {
       "theme": "syllable",
@@ -1826,7 +1794,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/8/83/Torah_and_jad.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A Torah is a kind of scroll still used today.",
-          "context": "some examples are dictionaries , cookbooks , textbooks for learning in school, or a biography . a torah is a kind of scroll still used today. between the written manuscript and the book are several inventions.",
+          "context": "non-fiction change change source non-fiction fiction are about true facts or things that have really happened. some examples are dictionaries , cookbooks , textbooks for learning in school, or a biography . a torah is a kind of scroll still used today. between the written manuscript and the book are several inventions.",
           "licence": "CC BY 2.5"
         }
       ]
@@ -1843,13 +1811,6 @@
           "caption": "A girl reading a book",
           "context": "a girl reading a book reading is understanding writing in a language . fundamentally, reading is the way people look at certain marks and know what they mean.",
           "licence": "Public domain"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this short article can be made longer. you can help wikipedia by adding to it .",
-          "licence": "CC BY-SA 3.0"
         }
       ]
     },
@@ -1891,14 +1852,14 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/a/aa/AmarnaLetterOfMarriageNegotiation-BritishMuseum-August19-08.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Letter negotiating a marriage ~1350 BC. It is from Tushratta, King of the Mitanni, to the pharaoh Amenhotep III",
-          "context": "it is based on the sounds of spoken language. all alphabets are modified versions of the first one, which originated with the phoenicians and the ancient greeks . letter negotiating a marriage ~1350 bc. it is from tushratta, king of the mitanni, to the pharaoh amenhotep iii the sumerians lived in mesopotamia , 10 between the tigris and euphrates rivers.",
+          "context": "it is based on the sounds of spoken language. all alphabets are modified versions of the first one, which originated with the phoenicians and the ancient greeks . letter negotiating a marriage ~1350 bc. it is from tushratta, king of the mitanni, to the pharaoh amenhotep iii the sumerians lived in mesopotamia , between the tigris and euphrates rivers.",
           "licence": "CC BY 2.5"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/27/Egypt-Hieroglyphs.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Hieroglyphs on stone; Ramses II statue behind",
-          "context": "3 p71 each version of cuneiform had to be deciphered separately, because all the languages were different. documents written in more than one language provided the clues. hieroglyphs on stone; ramses ii statue behind this is the most famous of the old forms of writing, or scripts . it was invented at roughly the same time as cuneiform, yet was quite different in style, and used different materials.",
+          "context": "p71 each version of cuneiform had to be deciphered separately, because all the languages were different. documents written in more than one language provided the clues. hieroglyphs on stone; ramses ii statue behind this is the most famous of the old forms of writing, or scripts . it was invented at roughly the same time as cuneiform, yet was quite different in style, and used different materials.",
           "licence": "CC BY-SA 3.0"
         },
         {
@@ -1921,16 +1882,7 @@
       "theme": "nursery-rhyme",
       "story": "a nursery rhyme is a traditional poem for young children. the term has been used since the 18th century or early 19th century. in north america, the term \"mother goose rhymes\", first used in the mid-18th century, is often used. they are created to make young children learn how to speak in easier ways, i.e., the way of connecting a funny incident with rhyming words, which enable them to speak quicker and have an easier understanding of the english language. nursery rhymes always use basic words that are easy to grasp and understand. some informative nursery rhymes are: a, b, c, d..... 1, 2 buckle my shoe these specific rhymes help children learn the alphabet and count numbers, aided by some useful words. both rhymes with a similar tune can also vary in speed.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0",
-      "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "1, 2 buckle my shoe these specific rhymes help children learn the alphabet and count numbers, aided by some useful words. both rhymes with a similar tune can also vary in speed . this short article can be made longer. you can help wikipedia by adding to it .",
-          "licence": "CC BY-SA 3.0"
-        }
-      ]
+      "licence": "CC-BY-SA-3.0"
     },
     {
       "theme": "fairy-tale",
@@ -1949,7 +1901,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/2a/Redsun.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Ivan Bilibin 's picture of the Russian fairy tale about Vasilisa the Beautiful",
-          "context": "8 he said that many stories had both fantastic qualities and animals. 8 he suggested that fairy tales could be recognized by their story, but this has been criticized, because the same stories can be found in stories that are not fairy tales. ivan bilibin 's picture of the russian fairy tale about vasilisa the beautiful in fact, people such as stith thompson point out that there are often more talking animals and magic in fairy tales than fairies. 10 however, just because there is a talking animal in a story does not mean that the story is a fairy tale.",
+          "context": "he said that many stories had both fantastic qualities and animals. he suggested that fairy tales could be recognized by their story, but this has been criticized, because the same stories can be found in stories that are not fairy tales. ivan bilibin 's picture of the russian fairy tale about vasilisa the beautiful in fact, people such as stith thompson point out that there are often more talking animals and magic in fairy tales than fairies. however, just because there is a talking animal in a story does not mean that the story is a fairy tale.",
           "licence": "Public domain"
         }
       ]
@@ -1958,16 +1910,7 @@
       "theme": "poem",
       "story": "poetry is written, spoken or sung language that is used in stronger or more original ways than prose is used. poetry uses the meanings of words as prose does; but it also uses the sounds of words as if they were music, especially rhymes, other repeating sounds, and rhythms . poetry arranges words and groups of words to make repetitions and parallelisms. poetry uses figures of speech, ellipses and delayed identification to suggest that there is more meaning in the language. some people believe that poetry began when language began. they think it is probably \"as old as history and older, present wherever religion is present.\" the english words \"poetry,\" \"poet,\" and \"poem\" first appeared in english in the 14th century. they come from the latin word poeta, which itself probably comes from poiein, a greek word that means \"to make.\" there are three major kinds of poetry: lyric, narrative, and dramatic. lyric poetry tends to be brief and is often about emotions. narrative poetry tells a story with a plot. dramatic poetry can be performed as a play. a poem can be as short as a few words or as long as a book. a one-line poem is called a monostich. a poem that is as long as a book is an epic. poems are often printed on the page as lines and groups of lines called stanzas. there are many different \"poetic forms\" or ways to shape a poem on the printed page or in the ear of the person who hears it. some forms are: the sonnet, haiku, the ballad, the stev, the prose poem, the ode, free verse, blank verse, limerick, and nursery rhymes.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0",
-      "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/1/1d/P_literature.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this short article about literature can be made longer. you can help wikipedia by adding to it .",
-          "licence": "CC BY-SA 3.0"
-        }
-      ]
+      "licence": "CC-BY-SA-3.0"
     },
     {
       "theme": "song",
@@ -1979,16 +1922,7 @@
       "theme": "name",
       "story": "a name is a word given to things and people. for example, cat is the name of a kind of animal. \"aarav\" , \"adhrit\" are names of a person, usually a male. \"ananya\" is a common female name. the word 'name' can also be used as a verb. to name something is to give it a name. in many cultures, there are rules and customs about how to give a person a name. some of the rules are defined by laws, and others are defined by traditions . there are rules about different of the names and naming, including the following: 1. number of parts of a name in some cultures, a person has a one-part name, such as \"muhammad.\" in other cultures, a person has a two-part name, such as \"john smith.\" in some cultures, a person can have any number of name parts. in the united states, for example, some people have three: first name, middle name, and last name. other people have only two: a first and last name. in chinese cultures, it is typical for a person to have three-part name, such as \"cheah ching san,\" where \"cheah\" is the surname. written in english format a comma is introduced making it \"ching san, cheah.\" in muslim and arabic culture, a name can have one to six parts. such as \"abdullah ibn muhammad al ash-sheikh\". relations with names of parents and other relatives in some cultures, people have the same \"family name\" as their parents. for example, the father of john smith may be mike smith. and mike smith's father may be james smith. the \"smith\" part is the same for all the family. in other cultures, a person has the same name as his or her father, but the name is in a different place. for example, shafiq hanif's son may be hanif kamal. hanif is in both the father's and son's name. name changes in some cultures, a name changes when people marry, divorce, go through some religious ceremony, etc. for example, in some spanish-speaking countries, people use two last names: their mother's father's name and their father's name. if elena rodriguez gomez and jose sanchez soria marry, she may change her name to elena rodriguez de sanchez, and their child could be named pilar sanchez rodriguez, taking the names of both of her grandfathers. name origins in some cultures, personal names come from history. in most european countries, some first names are taken from the quran or bible. in some cultures, names are taken from a relative. in other cultures, a name shows what the parents hope their child will be like. a baby may be given a name wisdom because parents hope the baby will be a wise girl or boy. some cultures avoid giving people a name of an animal. for example, there is no name like dog, cat, snake, owl, or fish in japanese people's first names. but in some cultures animal names may be good. lengths, pronunciations, spelling, etc. there are some other linguistic patterns. for example, many chinese names are made up of three syllables. use of names, titles, nicknames, etc. in some cultures, people use names when they call each other. in other cultures, people use their nicknames. in some other cultures, people use their titles when they call each other. spelling of names, titles, nicknames, etc. name awareness taking note of names is taken a step farther by those who elect to celebrate a name whether their own name, someone else's name, or names in general, complete ownership of one's name might very well include celebrating it. middle names while some people might choose to \"hide\" a middle name for any number of reasons , others have taken to celebrating their middle name . in the english language, names exclusively are usually pronounced in correlation with the spelling, however can be pronounced as desired, e.g. however, not probable, is held true in the english rules of grammar. examples of names sarah, lucy, ellen, claire, ben. isabelle can become izzy or belle. here are some things that are often found in japanese names today. in the past, people went by different rules. number of parts of a name japanese names have two parts. one is the family name and the other is the given name. \"suzuki ichiro\" is a name of a japanese person. suzuki is the family name, and ichiro is the first name. in the japanese language, the family name comes first, and the given name comes second. only some members of the royal family do not have a family name. the parents have the same family name. so, a son of ono yoko and ono ken is ono something. the family name ono is mostly shared by the paternal part of the family. so ono ken's parents have the family name ono, but ono yoko's parents probably do not. name changes names of people change when they marry and divorce. it is a custom in many parts of the world that women change their family name to that of their new husband when they marry. however, in europe and north america especially, many women no longer do this even though their mothers and grandmothers may have. sometimes, the man will take the woman's family name. lengths, pronunciations, spelling, etc. use of names, titles, nicknames, etc.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0",
-      "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/6/64/Question_book-4.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this article does not have any sources . you can help wikipedia by finding good sources, and adding them.",
-          "licence": "CC BY-SA 3.0"
-        }
-      ]
+      "licence": "CC-BY-SA-3.0"
     },
     {
       "theme": "picture-book",
@@ -1997,25 +1931,11 @@
       "licence": "CC-BY-SA-3.0",
       "figures": [
         {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b4/Ambox_important.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this article needs more sources for verifiability . please help improve this article by adding reliable sources .",
-          "licence": "Public domain"
-        },
-        {
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/6e/Peter-rabbit.PNG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Peter Rabbit with his family, from The Tale of Peter Rabbit by Beatrix Potter , 1902",
-          "context": "unsourced material may be challenged or removed. peter rabbit with his family, from the tale of peter rabbit by beatrix potter , 1902 a picture book is a book that combines words and pictures to tell a story . they are usually for young children to read.",
+          "context": "peter rabbit with his family, from the tale of peter rabbit by beatrix potter , 1902 a picture book is a book that combines words and pictures to tell a story . they are usually for young children to read.",
           "licence": "Public domain"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/1/1d/P_literature.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "potter did all her own illustrations, which are watercolour paintings . some of the best-known picture books are make way for ducklings , the cat in the hat , and where the wild things are . this short article about literature can be made longer. you can help wikipedia by adding to it .",
-          "licence": "CC BY-SA 3.0"
         }
       ]
     },

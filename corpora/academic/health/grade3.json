@@ -65,14 +65,14 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/ca/Human_skeleton_front_en.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "The skeleton of a woman with the scientific names for the bones",
-          "context": "",
+          "context": "these creatures all have skeletons made of hard plates or shells.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/4/4e/Human_skeleton_back_en.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A skeleton from the back",
-          "context": "a skeleton from the back the important parts of a human body are the head , the spine , the chest , the abdomen , the arms and hands , and the legs and feet .",
+          "context": "a skeleton from the back the important parts of a human body are the head , the spine , the chest , the abdomen , the arms and hands , and the legs and feet . bones of the head change change source the head bones all together are called the skull.",
           "licence": "Public domain"
         },
         {
@@ -90,13 +90,6 @@
       "source": "simple.wikipedia.org",
       "licence": "CC-BY-SA-3.0",
       "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/6/64/Question_book-4.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this article does not have any sources . you can help wikipedia by finding good sources, and adding them.",
-          "licence": "CC BY-SA 3.0"
-        },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e5/Muscles_anterior_labeled.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Skeletal muscles, viewed from the front",
@@ -137,7 +130,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e5/Diagram_of_the_human_heart_%28cropped%29.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Heart structure: Arrows show the direction of blood flow.",
-          "context": "structure change | change source the human heart has four chambers or closed spaces. some animals have only two or three chambers. heart structure: arrows show the direction of blood flow. in humans, the four chambers are two atria and two ventricles .",
+          "context": "structure change change source the human heart has four chambers or closed spaces. some animals have only two or three chambers. heart structure: arrows show the direction of blood flow. in humans, the four chambers are two atria and two ventricles .",
           "licence": "CC BY-SA 3.0"
         },
         {
@@ -209,7 +202,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/56/Poumon_artificiel.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Examining a patient in a tank respirator",
-          "context": "examining a patient in a tank respirator a disease or medical condition is an unhealthy state where something bad happens to the body or mind . 1 diseases can cause pain , parts of the body to stop working the right way, or death.",
+          "context": "examining a patient in a tank respirator a disease or medical condition is an unhealthy state where something bad happens to the body or mind . diseases can cause pain , parts of the body to stop working the right way, or death.",
           "licence": "Public domain"
         }
       ]

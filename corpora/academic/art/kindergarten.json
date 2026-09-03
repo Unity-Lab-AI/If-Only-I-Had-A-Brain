@@ -58,15 +58,8 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/24/Parametric_surface_illustration_%28sphere%29.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Sphere Shading",
-          "context": "pencils or pens are most commonly used for drawing. however, chalk , charcoal , and many others writing utensils are used. sphere shading shading change | change source shading is the darkening or coloring of a drawing with lines or blocks of color. it can be used to make your drawings more three dimensional .",
+          "context": "pencils or pens are most commonly used for drawing. however, chalk , charcoal , and many others writing utensils are used. sphere shading shading change change source shading is the darkening or coloring of a drawing with lines or blocks of color. it can be used to make your drawings more three dimensional .",
           "licence": "CC BY-SA 4.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "there is parallel hatching, contour , crosshatching, tick hatching, and more. there are many different ways you can do this. this short article can be made longer. you can help wikipedia by adding to it .",
-          "licence": "CC BY-SA 3.0"
         }
       ]
     },
@@ -99,6 +92,70 @@
       "licence": "CC-BY-SA-3.0"
     },
     {
+      "theme": "line-art",
+      "story": "line art or line drawing is any image that consists of distinct straight lines or curved lines placed against a background . two-dimensional or three-dimensional objects are often represented through shade or hue . line art can use lines of different colors, although line art is usually monochromatic. several techniques used in printmaking largely or entirely use lines, such as engraving, etching and woodcut, and drawings with pen or pencil may be made up of lines. line art emphasizes form and drawings, of several constant widths , or of freely varying widths . line art may tend towards realism , or it may be a caricature, cartoon, ideograph, or glyph. one of the most fundamental elements of art is the line. an important feature of a line is that it indicates the edge of a two-dimensional shape or a three-dimensional form. a shape can be indicated by means of an outline, and a three-dimensional form can be indicated by contour lines. before the development of photography and of halftones, line art was the standard format for illustrations to be used in print publications, using black ink on white paper. using either stippling or hatching, shades of gray could also be simulated.",
+      "source": "en.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/dc/Dansk_skov.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Art Nouveau line art",
+          "context": "line art can use lines of different colors, although line art is usually monochromatic. several techniques used in printmaking largely or entirely use lines, such as engraving , etching and woodcut , and drawings with pen or pencil may be made up of lines. art nouveau line art line art emphasizes form and drawings , of several constant widths , or of freely varying widths . line art may tend towards realism , or it may be a caricature , cartoon , ideograph , or glyph .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/04/LEPI_Psychidae_Orophora_unicolor_m.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Stippling",
+          "caption": "",
+          "context": "history edit before the development of photography and of halftones , line art was the standard format for illustrations to be used in print publications, using black ink on white paper. using either stippling or hatching , shades of gray could also be simulated.",
+          "licence": "CC BY 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/80/Veronica_detail.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Detail of hatching",
+          "caption": "",
+          "context": "using either stippling or hatching , shades of gray could also be simulated.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/ec/Linlithgow_Palace_Nordfassade_02.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Linlithgow Palace",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/66/Line_art_peacock_swathylakshmi_rajapuram_01.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Line art peacock",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b1/D%C3%BCrer_Melancholia_I_d%C3%A9tail_temps.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Detail of Melencolia I by Albrecht Dürer",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/f7/B320_Rembrandt.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Self-portrait by Rembrandt",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c1/Leonardo_da_Vinci_-_RCIN_912516%2C_The_head_of_Leda_c.1505-8.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Line art by Leonardo da Vinci",
+          "context": "",
+          "licence": "Public domain"
+        }
+      ]
+    },
+    {
       "theme": "clay",
       "story": "clay is a fine-grained silicate mineral made when rocks break down. wet clay is soft and can be shaped to make pottery, bricks and other things. when it is shaped and then fired in a kiln to make it hard, it becomes pottery. clay often contains some water because the water molecules stick to the tiny grains. there may also be some organic materials in the clay. there are 35 recognized clay mineral species on earth, they make muds stick together , or able to flow . the thixotropy of clay sometimes causes landslides. quartz, feldspars, iron oxides, and carbonates can weather to sizes of a typical clay mineral. the formation of clay is well understood. it can come from soil, volcanic ash, and glaciation. ancient mudrocks are another source, because they weather and disintegrate easily. clay is by far the smallest particles recognized in mudrocks. a clay particle is about 1/1000th the width of a sand grain. this means a clay particle will travel 1000 times further at constant water velocity, thus requiring quieter conditions for settlement. where the grains are more than a few millimeters wide, the material is called silt, not clay.",
       "source": "simple.wikipedia.org",
@@ -125,13 +182,6 @@
           "caption": "' Juan Gris, The Sunblind , 1914, Tate Gallery",
           "context": "' juan gris, the sunblind , 1914, tate gallery collage is an art term. it is a work of art like a painting but with pieces of paper and fabric stuck on a surface such as a piece of paper, wood or canvas.",
           "licence": "Public domain"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "wikimedia commons has media related to collage . this short article can be made longer. you can help wikipedia by adding to it .",
-          "licence": "CC BY-SA 3.0"
         }
       ]
     },
@@ -146,13 +196,6 @@
           "alt": "",
           "caption": "Hexagonal tiling of a floor in Rome . The tiling follows a simple pattern",
           "context": "hexagonal tiling of a floor in rome . the tiling follows a simple pattern a pattern is an idea , a concept or a model .",
-          "licence": "CC BY-SA 3.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this short article can be made longer. you can help wikipedia by adding to it .",
           "licence": "CC BY-SA 3.0"
         }
       ]
@@ -253,7 +296,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/ef/Modern-Trade-Painter.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Painting the exterior of a building",
-          "context": "other types of modern house paint only need one layer, particularly on the inside. artists using oil paint and tempera often use many layers to get just the right effect. painting the exterior of a building paint has four important uses. protection change | change source paint is used to protect all sorts of buildings and structures from the effects of water and sun.",
+          "context": "other types of modern house paint only need one layer, particularly on the inside. artists using oil paint and tempera often use many layers to get just the right effect. painting the exterior of a building paint has four important uses. protection change change source paint is used to protect all sorts of buildings and structures from the effects of water and sun.",
           "licence": "CC BY-SA 2.5"
         },
         {
@@ -275,14 +318,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e1/Scissors.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Scissors are used for sewing , in the kitchen , and for paper .",
-          "context": "scissors are used for sewing , in the kitchen , and for paper . scissors are a tool used for cutting thin material like: 1 paper cardboard metal foil thin plastic food cloth rope wire hair nail knives are better than scissors for some uses.",
-          "licence": "CC BY-SA 3.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this short article can be made longer. you can help wikipedia by adding to it .",
+          "context": "scissors are used for sewing , in the kitchen , and for paper . scissors are a tool used for cutting thin material like: paper cardboard metal foil thin plastic food cloth rope wire hair nail knives are better than scissors for some uses.",
           "licence": "CC BY-SA 3.0"
         }
       ]
@@ -306,13 +342,6 @@
           "caption": "The formula for the perimeter of a rectangle.",
           "context": "the word comes from latin words meaning \"right\" and angle\". a rectangle whose four sides have the same length is called a square . the formula for the perimeter of a rectangle.",
           "licence": "CC0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/f/f0/Rhombohedron.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "rhombohedron <!-- transclusion expansion time report 100.00% 251.172 1 -total 33.77% 84.",
-          "licence": "Public domain"
         }
       ]
     },
@@ -327,13 +356,6 @@
           "alt": "",
           "caption": "A Circle",
           "context": "a circle a circle is a round, two-dimensional shape. all points on the edge of the circle are at the same distance from the center.",
-          "licence": "Public domain"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/f/f0/Rhombohedron.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "rhombohedron <!-- transclusion expansion time report 100.00% 166.615 1 -total 41.",
           "licence": "Public domain"
         }
       ]
@@ -355,7 +377,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/32/Isosceles-right-triangle.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "This is an isosceles right triangle , because it has a right angle and two of its sides have the same length.",
-          "context": "modern computers usually use triangles to make more complex drawings . this is an isosceles right triangle , because it has a right angle and two of its sides have the same length. triangles can be grouped according to how many of their sides are equal: 3 if all the three sides of a triangle have the same length, then it is an equilateral triangle .",
+          "context": "modern computers usually use triangles to make more complex drawings . this is an isosceles right triangle , because it has a right angle and two of its sides have the same length. triangles can be grouped according to how many of their sides are equal: if all the three sides of a triangle have the same length, then it is an equilateral triangle .",
           "licence": "Public domain"
         },
         {
@@ -411,7 +433,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/58/Triangle_Centers.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A triangle with circumcenter (blue,) orthocenter (red,) incenter (yellow,) and centroid (green)",
-          "context": "4 to prove this, each of the 3 quadrilateral pieces can be divided further into triangles. after this, the 6 triangles can be measured to find that all 3 of the original pieces have the same area. a triangle with circumcenter orthocenter incenter and centroid different people have different ways of finding the center of the triangle. some people say the center of the biggest circle that fits inside the triangle is the center of the triangle, which is the same point as the intersection of the angle bisectors.",
+          "context": "to prove this, each of the 3 quadrilateral pieces can be divided further into triangles. after this, the 6 triangles can be measured to find that all 3 of the original pieces have the same area. a triangle with circumcenter orthocenter incenter and centroid different people have different ways of finding the center of the triangle. some people say the center of the biggest circle that fits inside the triangle is the center of the triangle, which is the same point as the intersection of the angle bisectors.",
           "licence": "CC BY-SA 4.0"
         }
       ]
@@ -450,13 +472,6 @@
           "caption": "Shoemakers are a type of craftsman",
           "context": "shoemakers are a type of craftsman craft or handicraft is about making things with one's own hands and skills. the different types of crafts can be put in groups according to the material being used.",
           "licence": "CC BY-SA 3.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "when they have a lot of experience they may be called a master craftsman . if they are young people learning a craft they are called an apprentice . this short article can be made longer. you can help wikipedia by adding to it .",
-          "licence": "CC BY-SA 3.0"
         }
       ]
     },
@@ -467,25 +482,11 @@
       "licence": "CC-BY-SA-3.0",
       "figures": [
         {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b4/Ambox_important.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this article needs more sources for verifiability . please help improve this article by adding reliable sources .",
-          "licence": "Public domain"
-        },
-        {
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/6e/Peter-rabbit.PNG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Peter Rabbit with his family, from The Tale of Peter Rabbit by Beatrix Potter , 1902",
-          "context": "unsourced material may be challenged or removed. peter rabbit with his family, from the tale of peter rabbit by beatrix potter , 1902 a picture book is a book that combines words and pictures to tell a story . they are usually for young children to read.",
+          "context": "peter rabbit with his family, from the tale of peter rabbit by beatrix potter , 1902 a picture book is a book that combines words and pictures to tell a story . they are usually for young children to read.",
           "licence": "Public domain"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/1/1d/P_literature.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "potter did all her own illustrations, which are watercolour paintings . some of the best-known picture books are make way for ducklings , the cat in the hat , and where the wild things are . this short article about literature can be made longer. you can help wikipedia by adding to it .",
-          "licence": "CC BY-SA 3.0"
         }
       ]
     }

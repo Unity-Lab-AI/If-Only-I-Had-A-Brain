@@ -2,8 +2,8 @@
   "version": 1,
   "grade": "grade12",
   "subject": "psychology",
-  "source": "hybrid: Wikibooks open textbooks + prior sources, cleaned + sentence-segmented",
-  "note": "Textbook corpus for psychology/grade12. Trained via curriculum._trainAcademicStories. A course is a book, not an article about the subject.",
+  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
+  "note": "Hybrid academic-depth corpus for psychology/grade12. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
   "experiences": [
     {
       "theme": "neuron",
@@ -35,7 +35,7 @@
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/0/0d/GFPneuron.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
-          "caption": "",
+          "caption": "Image of pyramidal neurons in mouse cerebral cortex expressing green fluorescent protein . The red staining indicates GABAergic interneurons.",
           "context": "typical axons seldom contain ribosomes , except some in the initial segment. dendrites contain granular endoplasmic reticulum or ribosomes, in diminishing amounts as the distance from the cell body increases. image of pyramidal neurons in mouse cerebral cortex expressing green fluorescent protein . the red staining indicates gabaergic interneurons.",
           "licence": "CC BY 2.5"
         },
@@ -43,21 +43,21 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/4/4f/Structural_classification_of_neurons_by_polarity_hariadhi.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Different kinds of neurons",
-          "context": "the dendritic tree wraps around the cell body and receives signals from other neurons. the end of the axon has branching axon terminals that release neurotransmitters into a gap called the synaptic cleft between the terminals and the dendrites of the next neuron. different kinds of neurons most neurons can be anatomically characterized as: 4 unipolar : single process. unipolar cells are exclusively sensory neurons.",
+          "context": "the dendritic tree wraps around the cell body and receives signals from other neurons. the end of the axon has branching axon terminals that release neurotransmitters into a gap called the synaptic cleft between the terminals and the dendrites of the next neuron. different kinds of neurons most neurons can be anatomically characterized as: unipolar : single process. unipolar cells are exclusively sensory neurons.",
           "licence": "CC BY-SA 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/0/01/Neurotransmitters.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Synaptic vesicles containing neurotransmitters",
-          "context": "neurons that fire in bursts are called phasic. some neurons are notable for their high firing rates, for example, some types of cortical inhibitory interneurons, cells in globus pallidus , retinal ganglion cells . synaptic vesicles containing neurotransmitters main article: neurotransmitter neurotransmitters are chemical messengers released from one neuron to affect another neuron, a muscle cell or a gland cell . cholinergic acetylcholine is released from presynaptic neurons into the synaptic cleft.",
+          "context": "neurons that fire in bursts are called phasic. some neurons are notable for their high firing rates, for example, some types of cortical inhibitory interneurons, cells in globus pallidus , retinal ganglion cells . synaptic vesicles containing neurotransmitters neurotransmitters are chemical messengers released from one neuron to affect another neuron, a muscle cell or a gland cell . cholinergic edit acetylcholine is released from presynaptic neurons into the synaptic cleft.",
           "licence": "CC BY-SA 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/30/Chemical_synapse_schema_cropped.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A signal propagating down an axon to the cell body and dendrites of the next cell",
-          "context": "",
+          "context": "besides being universal this classification has the advantage of being able to classify astrocytes as well. a method called patch-sequencing in which all three qualities can be measured at once is used extensively by the allen institute for brain science .",
           "licence": "Public domain"
         },
         {
@@ -70,29 +70,43 @@
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/8/83/All-or-none_law_en.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
-          "caption": "",
-          "context": "the main goal of studying neural coding is to characterize the relationship between the stimulus and the individual or ensemble neuronal responses and the relationships among the electrical activities of the neurons within the ensemble. 43 it is thought that neurons can encode both digital and analog information. as long as the stimulus reaches the threshold, the full response will be given. a larger stimulus does not result in a larger response, and vice versa.",
+          "caption": "As long as the stimulus reaches the threshold, the full response will be given. A larger stimulus does not result in a larger response, and vice versa.",
+          "context": "the main goal of studying neural coding is to characterize the relationship between the stimulus and the individual or ensemble neuronal responses and the relationships among the electrical activities of the neurons within the ensemble. it is thought that neurons can encode both digital and analog information. as long as the stimulus reaches the threshold, the full response will be given. a larger stimulus does not result in a larger response, and vice versa.",
           "licence": "CC BY 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/5e/Golgi_Hippocampus.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Drawing by Camillo Golgi of a hippocampus stained using the silver nitrate method",
-          "context": "55 53 some previous works used nerve cell , as adopted in camillo golgi 's 1873 paper on the discovery of the silver staining technique used to visualize nervous tissue under light microscopy.",
+          "context": "that spelling was also used by many writers in english, but has now become rare in american usage and uncommon in british usage. some previous works used nerve cell , as adopted in camillo golgi 's 1873 paper on the discovery of the silver staining technique used to visualize nervous tissue under light microscopy.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e2/Purkinje_cell_by_Cajal.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Drawing of a Purkinje cell in the cerebellar cortex done by Santiago Ramón y Cajal , demonstrating the ability of Golgi's staining method to reveal fine detail",
-          "context": "",
+          "context": "some previous works used nerve cell , as adopted in camillo golgi 's 1873 paper on the discovery of the silver staining technique used to visualize nervous tissue under light microscopy. to make the structure of individual neurons visible, ramon y cajal improved a silver staining process that had been developed by camillo golgi . the improved process involves a technique called \"double impregnation\" and is still in use.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/1/15/PurkinjeCell.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "drawing of neurons in the pigeon cerebellum , by spanish neuroscientist santiago ramon y cajal in 1899. denotes purkinje cells and denotes granule cells , both of which are multipolar.",
+          "context": "in 1888 ramon y cajal published a paper about the bird cerebellum. in 1891, the german anatomist heinrich wilhelm waldeyer wrote a highly influential review of the neuron doctrine in which he introduced the term neuron to describe the anatomical and physiological unit of the nervous system. drawing of neurons in the pigeon cerebellum , by spanish neuroscientist santiago ramon y cajal in 1899. denotes purkinje cells and denotes granule cells , both of which are multipolar.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/7f/Guillain-barr%C3%A9_syndrome_-_Nerve_Damage.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Guillain-Barré syndrome - demyelination",
+          "context": "weakness is typically caused by circulating antibodies that block acetylcholine receptors at the postsynaptic neuromuscular junction, inhibiting the stimulative effect of the neurotransmitter acetylcholine. myasthenia is treated with immunosuppressants , cholinesterase inhibitors and, in selected cases, thymectomy . guillain-barre syndrome - demyelination demyelination is a process characterized by the gradual loss of the myelin sheath enveloping nerve fibers. when myelin deteriorates, signal conduction along nerves can be significantly impaired or lost, and the nerve eventually withers.",
+          "licence": "CC BY 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/65/Creative_Commons_by_small.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "this article incorporates text available under the cc by 4.0 license. betts, j gordon; desaix, peter; johnson, eddie; johnson, jody e; korol, oksana; kruse, dean; poe, brandon; wise, james; womble, mark d; young, kelly a .",
           "licence": "Public domain"
         }
       ]
@@ -107,42 +121,42 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/4/4f/Autonomic_and_Somatic_Nervous_System.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "the medical specialty of neurology studies disorders of the nervous system and looks for interventions that can prevent or treat them. neuroscience is the field of science that focuses on the study of the nervous system. the nervous system derives its name from nerves, which are cylindrical bundles of fibers , that emanate from the brain and spinal cord , and branch repeatedly to innervate every part of the body.",
+          "context": "the medical specialty of neurology studies disorders of the nervous system and looks for interventions that can prevent or treat them. neuroscience is the field of science that focuses on the study of the nervous system. the nervous system derives its name from nerves, which are cylindrical bundles of fibers , that emanate from the brain and spinal cord , and branch repeatedly to innervate every part of the body. nerves are large enough to have been recognized by the ancient egyptians , greeks , and romans , but their internal structure was not understood until it became possible to examine them using a microscope .",
           "licence": "CC BY-SA 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/b/b5/Neuron.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Structure of a typical neuron with Schwann cells in the peripheral nervous system",
-          "context": "10 11 cells the nervous system contains two main categories or types of cells: neurons and glial cells . structure of a typical neuron with schwann cells in the peripheral nervous system the nervous system is defined by the presence of a special type of cell-the neuron .",
+          "context": "in bilaterian animals, which make up the great majority of existing species, the nervous system has a common structure that originated early in the ediacaran period, over 550 million years ago. cells edit the nervous system contains two main categories or types of cells: neurons and glial cells . structure of a typical neuron with schwann cells in the peripheral nervous system the nervous system is defined by the presence of a special type of cell-the neuron . many types of neuron possess an axon , a protoplasmic protrusion that can extend to distant parts of the body and make thousands of synaptic contacts; axons typically extend throughout the body in bundles called nerves.",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/b/bc/Human_nervous_system_flowchart.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Flowchart of the human nervous system",
-          "context": "13 a very important type of glial cell generates layers of a fatty substance called myelin that wraps around axons and provides electrical insulation which allows them to transmit action potentials much more rapidly and efficiently. recent findings indicate that glial cells, such as microglia and astrocytes, serve as important resident immune cells within the central nervous system.",
+          "context": "a very important type of glial cell generates layers of a fatty substance called myelin that wraps around axons and provides electrical insulation which allows them to transmit action potentials much more rapidly and efficiently. recent findings indicate that glial cells, such as microglia and astrocytes, serve as important resident immune cells within the central nervous system.",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/d/de/Visible_Human_head_slice.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Horizontal section of the head of an adult female human, showing skin, skull, and brain with gray matter (brown in this image) and underlying white matter",
-          "context": "recent findings indicate that glial cells, such as microglia and astrocytes, serve as important resident immune cells within the central nervous system.",
+          "context": "the cns is the major division, and consists of the brain and the spinal cord .",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/8/89/Bilaterian-plan.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "A rod-shaped body contains a digestive system running from the mouth at one end to the anus at the other. Alongside the digestive system is a nerve cord with a brain at the end, near to the mouth.",
           "caption": "Nervous system of a bilaterian animal, in the form of a nerve cord with segmental enlargements, and a \"brain\" at the front",
-          "context": "unlike bilaterians , radiata only have two primordial cell layers, endoderm and ectoderm . neurons are generated from a special set of ectodermal precursor cells, which also serve as precursors for every other ectodermal cell type. all bilateria are thought to have descended from a common wormlike ancestor that appear as fossils beginning in the ediacaran period, 550-600 million years ago.",
+          "context": "unlike bilaterians , radiata only have two primordial cell layers, endoderm and ectoderm . neurons are generated from a special set of ectodermal precursor cells, which also serve as precursors for every other ectodermal cell type. all bilateria are thought to have descended from a common wormlike ancestor that appear as fossils beginning in the ediacaran period, 550-600 million years ago. the fundamental bilaterian body form is a tube with a hollow gut cavity running from mouth to anus, and a nerve cord with an enlargement for each body segment, with an especially large ganglion at the front, called the \"brain\".",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/38/Gray797.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Area of the human body surface innervated by each spinal nerve",
-          "context": "10 the fundamental bilaterian body form is a tube with a hollow gut cavity running from mouth to anus, and a nerve cord with an enlargement for each body segment, with an especially large ganglion at the front, called the \"brain\". area of the human body surface innervated by each spinal nerve even mammals, including humans, show the segmented bilaterian body plan at the level of the nervous system. the spinal cord contains a series of segmental ganglia, each giving rise to motor and sensory nerves that innervate a portion of the body surface and underlying musculature.",
+          "context": "the fundamental bilaterian body form is a tube with a hollow gut cavity running from mouth to anus, and a nerve cord with an enlargement for each body segment, with an especially large ganglion at the front, called the \"brain\". area of the human body surface innervated by each spinal nerve even mammals, including humans, show the segmented bilaterian body plan at the level of the nervous system. the spinal cord contains a series of segmental ganglia, each giving rise to motor and sensory nerves that innervate a portion of the body surface and underlying musculature.",
           "licence": "Public domain"
         },
         {
@@ -156,35 +170,70 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/22/Spider_internal_anatomy-en.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Internal anatomy of a spider, showing the nervous system in blue",
-          "context": "in this species, the nervous system is sexually dimorphic ; the nervous systems of the two sexes, males and female hermaphrodites , have different numbers of neurons and groups of neurons that perform sex-specific functions. elegans , males have exactly 383 neurons, while hermaphrodites have exactly 302 neurons. 29 typically, each body segment has one ganglion on each side, though some ganglia are fused to form the brain and other large ganglia.",
+          "context": "in this species, the nervous system is sexually dimorphic ; the nervous systems of the two sexes, males and female hermaphrodites , have different numbers of neurons and groups of neurons that perform sex-specific functions. elegans , males have exactly 383 neurons, while hermaphrodites have exactly 302 neurons. typically, each body segment has one ganglion on each side, though some ganglia are fused to form the brain and other large ganglia. the head segment contains the brain, also known as the supraesophageal ganglion .",
           "licence": "CC BY 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/d/d2/Gastropod_nervous_system.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Simplified diagram of the mollusc nervous system",
-          "context": "simplified diagram of the mollusc nervous system the cephalic molluscs have two pairs of main nerve cords organized around a number of paired ganglia, the visceral cords serving the internal organs and the pedal ones serving the foot. most pairs of corresponding ganglia on both sides of the body are linked by commissures .",
+          "context": "a protoplasmic fiber runs from the cell body and branches profusely, with some parts transmitting signals and other parts receiving signals. thus, most parts of the insect brain have passive cell bodies arranged around the periphery, while the neural signal processing takes place in a tangle of protoplasmic fibers called neuropil , in the interior. simplified diagram of the mollusc nervous system the cephalic molluscs have two pairs of main nerve cords organized around a number of paired ganglia, the visceral cords serving the internal organs and the pedal ones serving the foot. most pairs of corresponding ganglia on both sides of the body are linked by commissures .",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/30/Chemical_synapse_schema_cropped.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "major elements in synaptic transmission. an electrochemical wave called an action potential travels along the axon of a neuron .",
+          "context": "in humans, the sophistication of the nervous system makes it possible to have language , abstract representation of concepts , transmission of culture , and many other features of human society that would not exist without the human brain. major elements in synaptic transmission. an electrochemical wave called an action potential travels along the axon of a neuron .",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/d/d7/SynapseSchematic_lines.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "An illustrated chemical synapse",
           "caption": "",
-          "context": "for example, release of the neurotransmitter acetylcholine at a synaptic contact between a motor neuron and a muscle cell induces rapid contraction of the muscle cell. 42 the entire synaptic transmission process takes only a fraction of a millisecond, although the effects on the postsynaptic cell may last much longer .",
+          "context": "for example, release of the neurotransmitter acetylcholine at a synaptic contact between a motor neuron and a muscle cell induces rapid contraction of the muscle cell. the entire synaptic transmission process takes only a fraction of a millisecond, although the effects on the postsynaptic cell may last much longer .",
           "licence": "CC BY-SA 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/8/8a/Descartes-reflex.JPG?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Illustration of pain pathway, from René Descartes 's Treatise of Man",
-          "context": "networks formed by interconnected groups of neurons are capable of a wide variety of functions, including feature detection, pattern generation and timing, 50 and there are seen to be countless types of information processing possible. warren mcculloch and walter pitts showed in 1943 that even artificial neural networks formed from a greatly simplified mathematical abstraction of a neuron are capable of universal computation . illustration of pain pathway, from rene descartes 's treatise of man historically, for many years the predominant view of the function of the nervous system was as a stimulus-response associator.",
+          "context": "networks formed by interconnected groups of neurons are capable of a wide variety of functions, including feature detection, pattern generation and timing, and there are seen to be countless types of information processing possible. warren mcculloch and walter pitts showed in 1943 that even artificial neural networks formed from a greatly simplified mathematical abstraction of a neuron are capable of universal computation . illustration of pain pathway, from rene descartes 's treatise of man historically, for many years the predominant view of the function of the nervous system was as a stimulus-response associator.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/74/Nervous_system_organization_en.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Simplified schema of basic nervous system function: signals are picked up by sensory receptors and sent to the spinal cord and brain, where processing occurs that results in signals sent back to the spinal cord and then out to motor neurons",
+          "context": "neurons were found to be capable of producing regular sequences of action potentials, or sequences of bursts, even in complete isolation. when intrinsically active neurons are connected to each other in complex circuits, the possibilities for generating intricate temporal patterns become far more extensive. this can be shown in the \"withdrawal reflex\" causing a hand to jerk back after a hot stove is touched.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/95/Gray17.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Human embryo, showing neural groove",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/4c/Development_of_the_neural_tube.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Four stages in the development of the neural tube in the human embryo",
+          "context": "four stages in the development of the neural tube in the human embryo in vertebrates, the first sign of the nervous system is the appearance of a thin strip of cells along the center of the back, called the neural plate . the inner portion of the neural plate is destined to become the central nervous system , the outer portion the peripheral nervous system .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6f/CNS_protection.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Layers protecting the brain and spinal cord",
+          "context": "identified dnt1, the first neurotrophin found in flies . dnt1 shares structural similarity with all known neurotrophins and is a key factor in the fate of neurons in drosophila . layers protecting the brain and spinal cord the central nervous system is protected by major physical and chemical barriers. physically, the brain and spinal cord are surrounded by tough meningeal membranes, and enclosed in the bones of the skull and vertebral column , which combine to form a strong physical shield.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d6/WHO_Rod.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "icon",
+          "caption": "",
+          "context": "neurological practice draws heavily on the fields of neuroscience and psychiatry to treat diseases of the nervous system using various techniques of neurotherapy .",
           "licence": "Public domain"
         }
       ]
@@ -213,7 +262,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/8/89/Bilaterian-plan.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "A rod-shaped body contains a digestive system running from the mouth at one end to the anus at the other. Alongside the digestive system is a nerve cord with a brain at the end, near to the mouth.",
           "caption": "Nervous system of a generic bilaterian animal, in the form of a nerve cord with segmental enlargements, and a \"brain\" at the front",
-          "context": "",
+          "context": "a myelinated axon is wrapped in a fatty insulating sheath of myelin , which serves to greatly increase the speed of signal propagation. myelin is white, making parts of the brain filled exclusively with nerve fibers appear as light-colored white matter , in contrast to the darker-colored grey matter that marks areas with high densities of neuron cell bodies.",
           "licence": "Public domain"
         },
         {
@@ -227,7 +276,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/b/b4/Shark_brain.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "A T-shaped object is made up of the cord at the bottom which feeds into a lower central mass. This is topped by a larger central mass with an arm extending from either side.",
           "caption": "The brain of a shark",
-          "context": "the brain of a shark the first vertebrates appeared over 500 million years ago during the cambrian period , and may have resembled the modern jawless fish in form.",
+          "context": "the complete \"wiring diagrams\" of c. elegans was created in 1986, enabling a multitude of studies that would otherwise have not been possible. the brain of a shark the first vertebrates appeared over 500 million years ago during the cambrian period , and may have resembled the modern jawless fish in form.",
           "licence": "Public domain"
         },
         {
@@ -255,22 +304,99 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e1/Visual_processing_areas_of_the_brains_of_four_species_of_birds.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "brains of an emu , a kiwi , a barn owl , and a pigeon , with visual processing areas labelled the avian brain is the central organ of the nervous system in birds.",
+          "context": "diencephalon is related to regulation of eye and body movement in response to visual stimuli, sensory information, circadian rhythms , olfactory input, and autonomic nervous system . telencephalon is related to control of movements, neurotransmitters and neuromodulators responsible for integrating inputs and transmitting outputs are present, sensory systems, and cognitive functions. brains of an emu , a kiwi , a barn owl , and a pigeon , with visual processing areas labelled the avian brain is the central organ of the nervous system in birds.",
           "licence": "CC BY 2.5"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/c8/6_week_embryo_brain.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Very simple drawing of the front end of a human embryo, showing each vesicle of the developing brain in a different color.",
           "caption": "Brain of a human embryo in the sixth week of development",
-          "context": "it takes up a much larger proportion of the brain for primates than for other species, and an especially large fraction of the human brain. brain of a human embryo in the sixth week of development the brain develops in an intricately orchestrated sequence of stages. 80 it changes in shape from a simple swelling at the front of the nerve cord in the earliest embryonic stages, to a complex array of areas and connections.",
+          "context": "the prefrontal cortex carries out functions that include planning , working memory , motivation , attention , and executive control . it takes up a much larger proportion of the brain for primates than for other species, and an especially large fraction of the human brain. brain of a human embryo in the sixth week of development the brain develops in an intricately orchestrated sequence of stages. it changes in shape from a simple swelling at the front of the nerve cord in the earliest embryonic stages, to a complex array of areas and connections.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/26/Spike-waves.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Graph showing 16 voltage traces going across the page from left to right, each showing a different signal. At the middle of the page all of the traces abruptly begin to show sharp jerky spikes, which continue to the end of the plot.",
           "caption": "Brain electrical activity recorded from a human patient during an epileptic seizure",
-          "context": "89 norepinephrine , which is involved in arousal, comes exclusively from a nearby small area called the locus coeruleus . 90 other neurotransmitters such as acetylcholine and dopamine have multiple sources in the brain but are not as ubiquitously distributed as glutamate and gaba. brain electrical activity recorded from a human patient during an epileptic seizure as a side effect of the electrochemical processes used by neurons for signaling, brain tissue generates electric fields when it is active. when large numbers of neurons show synchronized activity, the electric fields that they generate can be large enough to detect outside the skull, using electroencephalography 92 or magnetoencepha",
+          "context": "norepinephrine , which is involved in arousal, comes exclusively from a nearby small area called the locus coeruleus . other neurotransmitters such as acetylcholine and dopamine have multiple sources in the brain but are not as ubiquitously distributed as glutamate and gaba. brain electrical activity recorded from a human patient during an epileptic seizure as a side effect of the electrochemical processes used by neurons for signaling, brain tissue generates electric fields when it is active. when large numbers of neurons show synchronized activity, the electric fields that they generate can be large enough to detect outside the skull, using electroencephalography or magnetoencephalography ",
           "licence": "CC BY-SA 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/63/Model_of_Cerebellar_Perceptron.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Model of a neural circuit in the cerebellum, as proposed by James S. Albus",
+          "context": "model of a neural circuit in the cerebellum, as proposed by james s. albus information from the sense organs is collected in the brain.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e4/Hearing_mechanics_cropped.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Drawing showing the ear, inner ear, and brain areas involved in hearing. A series of light blue arrows shows the flow of signals through the system.",
+          "caption": "Diagram of signal processing in the auditory system",
+          "context": "these signal-processing tasks require intricate interplay between a variety of functional subsystems. the function of the brain is to provide coherent control over the actions of an animal.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/9f/LocationOfHypothalamus.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Cross-section of a human head, showing location of the hypothalamus",
+          "context": "during deep nrem sleep, also called slow wave sleep , activity in the cortex takes the form of large synchronized waves, whereas in the waking state it is noisy and desynchronized. levels of the neurotransmitters norepinephrine and serotonin drop during slow wave sleep, and fall almost to zero during rem sleep; levels of acetylcholine show the reverse pattern. the ability of an animal to regulate the internal environment of its body-the milieu interieur , as the pioneering physiologist claude bernard called it-is known as homeostasis . maintaining homeostasis is a crucial function of the brain.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/3e/Basal_ganglia.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "some of the outputs also go to the pituitary gland , a tiny gland attached to the brain directly underneath the hypothalamus. the pituitary gland secretes hormones into the bloodstream, where they circulate throughout the body and induce changes in cellular activity. components of the basal ganglia, shown in two cross-sections of the human brain. blue: caudate nucleus and putamen .",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/89/Henry_Markram_-_Visualizing_Synaptic_Maps_onto_Neocrortical_Neurons.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "motor learning is the ability to refine patterns of body movement by practicing, or more generally by repetition. a number of brain areas are involved, including the premotor cortex , basal ganglia, and especially the cerebellum, which functions as a large memory bank for microadjustments of the parameters of movement. the human brain project is a large scientific research project, starting in 2013, which aims to simulate the complete human brain. the field of neuroscience encompasses all approaches that seek to understand the brain and the rest of the nervous system.",
+          "licence": "CC BY 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/ac/Brain-computer_interface_%28schematic%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Drawing showing a monkey in a restraint chair, a computer monitor, a rototic arm, and three pieces of computer equipment, with arrows between them to show the flow of information.",
+          "caption": "Design of an experiment in which brain activity from a monkey was used to control a robotic arm",
+          "context": "because the brain does not contain pain receptors, it is possible using these techniques to record brain activity from animals that are awake and behaving without causing distress. design of an experiment in which brain activity from a monkey was used to control a robotic arm another approach to brain function is to examine the consequences of damage to specific brain areas. in humans, the effects of strokes and other types of brain damage have been a key source of information about brain function.",
+          "licence": "CC BY 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/3a/1543%2C_Andreas_Vesalius%27_Fabrica%2C_Base_Of_The_Brain.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "all these things we endure from the brain, when it is not healthy... andreas vesalius ' fabrica , published in 1543, showing the base of the human brain, including optic chiasma , cerebellum, olfactory bulbs , etc. the roman physician galen also argued for the importance of the brain, and theorized in some depth about how it might work.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/15/PurkinjeCell.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A drawing on yellowing paper with an archiving stamp in the corner. A spidery tree branch structure connects to the top of a mass. A few narrow processes follow away from the bottom of the mass.",
+          "caption": "",
+          "context": "without such a stain, brain tissue under a microscope appears as an impenetrable tangle of protoplasmic fibers, in which it is impossible to determine any structure. in the hands of camillo golgi , and especially of the spanish neuroanatomist santiago ramon y cajal , the new stain revealed hundreds of distinct types of neurons, each with its own unique dendritic structure and pattern of connectivity. these studies complemented the anatomical picture with a conception of the brain as a dynamic entity.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/60/Gulai_Otak.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Gulai otak , beef brain curry from Indonesia",
+          "context": "gulai otak , beef brain curry from indonesia animal brains are used as food in numerous cuisines. in rituals edit some archaeological evidence suggests that the mourning rituals of european neanderthals also involved the consumption of the brain.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e1/Anatomy_posture_and_body_mechanics_08.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "icon",
+          "caption": "",
+          "context": "a prion disease called kuru has been traced to this.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/2d/Issoria_lathonia.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "icon",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY-SA 3.0"
         }
       ]
     },
@@ -284,63 +410,63 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/ca/Cognition2.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Representation of a human brain thinking",
-          "context": "for the company, see cognition ai . for other uses, see cognitive . representation of a human brain thinking cognition encompasses mental processes that deal with knowledge . it includes psychological activities that acquire, store, retrieve, transform, or apply information .",
+          "context": "representation of a human brain thinking cognition encompasses mental processes that deal with knowledge . it includes psychological activities that acquire, store, retrieve, transform, or apply information .",
           "licence": "CC0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/fc/Simplified_model_of_perception_and_memory.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Diagram of cognitive processes associated with perception and memory",
-          "caption": "",
-          "context": "they are sometimes divided into basic processes, like perception and memory , and higher-order processes, like thinking . this distinction rests on the idea that higher-order processes could not occur without basic processes. simplified model of cognitive processes associated with perception and memory 11 perception is the organization and interpretation of sensory information about the world. it is a complex mental activity that involves the interplay of diverse cognitive processes, many of which occur automatically and unconsciously .",
+          "caption": "Simplified model of cognitive processes associated with perception and memory",
+          "context": "they are sometimes divided into basic processes, like perception and memory , and higher-order processes, like thinking . this distinction rests on the idea that higher-order processes could not occur without basic processes. simplified model of cognitive processes associated with perception and memory perception is the organization and interpretation of sensory information about the world. it is a complex mental activity that involves the interplay of diverse cognitive processes, many of which occur automatically and unconsciously .",
           "licence": "CC0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/fd/Generalization_process_using_trees.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Diagram of several trees with arrows to one more tree",
-          "caption": "",
-          "context": "abductive reasoning , another type of non-deductive reasoning, seeks the best explanation of a phenomenon. for example, a doctor uses abductive reasoning when they infer that a child has chickenpox as an explanation of the child's skin rash and fever . through concept formation, the mind learns to identify common patterns among diverse instances. 33 problem-solving is a goal-directed activity that aims to overcome obstacles and arrive at a pre-defined objective.",
+          "caption": "Through concept formation, the mind learns to identify common patterns among diverse instances.",
+          "context": "abductive reasoning , another type of non-deductive reasoning, seeks the best explanation of a phenomenon. for example, a doctor uses abductive reasoning when they infer that a child has chickenpox as an explanation of the child's skin rash and fever . through concept formation, the mind learns to identify common patterns among diverse instances. problem-solving is a goal-directed activity that aims to overcome obstacles and arrive at a pre-defined objective.",
           "licence": "CC0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/ff/Metacognition2.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Diagram of a brain thinking about a brain",
-          "caption": "Metacognitive processes deal with information about other cognitive processes. [ 47 ]",
-          "context": "by becoming familiar with a task, a process that was initially controlled can become automatic, freeing up resources for other activities. for example, as a novice driver becomes experienced, they can automatically handle the car and adapt to road and traffic conditions while gaining the ability to engage in a conversation at the same time. metacognitive processes deal with information about other cognitive processes. 47 consciousness is closely related to metacognition , which encompasses any knowledge or cognitive process that deals with information about cognition.",
+          "caption": "Metacognitive processes deal with information about other cognitive processes.",
+          "context": "by becoming familiar with a task, a process that was initially controlled can become automatic, freeing up resources for other activities. for example, as a novice driver becomes experienced, they can automatically handle the car and adapt to road and traffic conditions while gaining the ability to engage in a conversation at the same time. metacognitive processes deal with information about other cognitive processes. consciousness is closely related to metacognition , which encompasses any knowledge or cognitive process that deals with information about cognition.",
           "licence": "CC0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/b/b2/Artificial_neural_network_colored.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Diagram of a neural network consisting of several layers",
-          "caption": "",
-          "context": "this change may, in turn, prompt the execution of another rule, leading to a dynamic sequence of operations that can solve complex computational tasks. the cognitive architecture soar is an example of this approach. connectionism analyzes cognition through complex neural networks consisting of several layers of nodes. 66 connectionism is another form of computationalism that differs from classical computationalism in various ways.",
+          "caption": "Connectionism analyzes cognition through complex neural networks consisting of several layers of nodes.",
+          "context": "this change may, in turn, prompt the execution of another rule, leading to a dynamic sequence of operations that can solve complex computational tasks. the cognitive architecture soar is an example of this approach. connectionism analyzes cognition through complex neural networks consisting of several layers of nodes. connectionism is another form of computationalism that differs from classical computationalism in various ways.",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/60/Jean_Piaget_in_Ann_Arbor_%28cropped%29.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Photo of a man with white hair and glasses, wearing a suit",
-          "caption": "Jean Piaget divided the cognitive development of children into four stages. [ 81 ]",
-          "context": "79 ancient chinese thought emphasized the connection between cognition and behavior. these ideas originated prior to the qin period and anticipated later theories of enactive cognition. jean piaget divided the cognitive development of children into four stages. 81 cognitive development is the progressive growth of mental abilities from infancy through adulthood as individuals acquire and improve cognitive skills and learn from experience.",
+          "caption": "Jean Piaget divided the cognitive development of children into four stages.",
+          "context": "ancient chinese thought emphasized the connection between cognition and behavior. these ideas originated prior to the qin period and anticipated later theories of enactive cognition. jean piaget divided the cognitive development of children into four stages. cognitive development is the progressive growth of mental abilities from infancy through adulthood as individuals acquire and improve cognitive skills and learn from experience.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/3b/BonoboFishing04.jpeg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Photo of a bonobo using a stick to fish for termites",
           "caption": "",
-          "context": "contemporary approaches integrate ideas from both perspectives, moving beyond a polarizing opposition between empiricism and nativism. the ability to employ tools is an example of animal cognition , such as a bonobo fishing for termites with a stick. 89 animal cognition encompasses the mechanisms by which animals acquire, process, and use information to guide flexible, goal-directed behavior .",
+          "context": "nativists , by contrast, argue that the mind has innate knowledge of abstract patterns. contemporary approaches integrate ideas from both perspectives, moving beyond a polarizing opposition between empiricism and nativism. the ability to employ tools is an example of animal cognition , such as a bonobo fishing for termites with a stick. animal cognition encompasses the mechanisms by which animals acquire, process, and use information to guide flexible, goal-directed behavior .",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/4/4a/1206_FMRI.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "fMRI image showing the brain from a top view with active areas colored in orange",
-          "caption": "",
-          "context": "early cognitive psychologists, such as wilhelm wundt , made extensive use of introspection , in which researchers examine and reflect on their own experiences to understand mental processes. the choice of method depends on the studied cognitive process and can differ markedly between areas like perception and memory. fmri is a neuroimaging technique that can measure regional brain activity corresponding to specific cognitive tasks. 102 cognitive neuroscience investigates how the nervous system gives rise to cognition.",
+          "caption": "fMRI is a neuroimaging technique that can measure regional brain activity corresponding to specific cognitive tasks.",
+          "context": "early cognitive psychologists, such as wilhelm wundt , made extensive use of introspection , in which researchers examine and reflect on their own experiences to understand mental processes. the choice of method depends on the studied cognitive process and can differ markedly between areas like perception and memory. fmri is a neuroimaging technique that can measure regional brain activity corresponding to specific cognitive tasks. cognitive neuroscience investigates how the nervous system gives rise to cognition.",
           "licence": "CC BY 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/b/b8/John_Locke.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Oil painting of a man with gray hair wearing a brown attire",
-          "caption": "",
-          "context": "it includes the field of machine learning , through which computer systems acquire new abilities not explicitly coded by programmers. the field of cognitive robotics integrates insights from these subfields to create intelligent robots . 125 cognitive research has its roots in ancient philosophy . early work took the form of reflections on the nature and sources of knowledge , proposed divisions of the mind into separate faculties , and analyzed specific cognitive processes, like perception and deductive reasoning.",
+          "caption": "John Locke argued that humans have no inborn knowledge and need to learn everything from experience.",
+          "context": "it includes the field of machine learning , through which computer systems acquire new abilities not explicitly coded by programmers. the field of cognitive robotics integrates insights from these subfields to create intelligent robots . cognitive research has its roots in ancient philosophy . early work took the form of reflections on the nature and sources of knowledge , proposed divisions of the mind into separate faculties , and analyzed specific cognitive processes, like perception and deductive reasoning.",
           "licence": "Public domain"
         }
       ]
@@ -362,7 +488,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/6d/Synthesizing_3D_Shapes_via_Modeling_Multi-View_Depth_Maps_and_Silhouettes_With_Deep_Generative_Networks.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "the necker cube and rubin vase can be perceived in more than one way. humans are able to make a very good guess on the underlying 3d shape category/identity/geometry given a silhouette of that shape. computer vision researchers have been able to build computational models for perception that exhibit a similar behavior and are capable of generating and reconstructing 3d shapes from single or multi-view depth maps or silhouettes.",
+          "context": "humans are able to make a very good guess on the underlying 3d shape category/identity/geometry given a silhouette of that shape. computer vision researchers have been able to build computational models for perception that exhibit a similar behavior and are capable of generating and reconstructing 3d shapes from single or multi-view depth maps or silhouettes.",
           "licence": "CC BY-SA 4.0"
         },
         {
@@ -390,21 +516,21 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/d/d2/Anatomy_of_the_Human_Ear.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "in an experiment, human readers wore an elastic cap with 64 embedded electrodes distributed over their scalp surface. 25 within 230 milliseconds of encountering the anomalous word, the human readers generated an event-related electrical potential alteration of their eeg at the left occipital-temporal channel, over the left occipital lobe and temporal lobe.",
+          "context": "in an experiment, human readers wore an elastic cap with 64 embedded electrodes distributed over their scalp surface. within 230 milliseconds of encountering the anomalous word, the human readers generated an event-related electrical potential alteration of their eeg at the left occipital-temporal channel, over the left occipital lobe and temporal lobe.",
           "licence": "CC BY 2.5"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/5c/Spectrogram_of_I_owe_you.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Though the phrase \"I owe you\" can be heard as three distinct words, a spectrogram reveals no clear boundaries.",
-          "context": "thus, it is an element of social cognition . though the phrase \"i owe you\" can be heard as three distinct words, a spectrogram reveals no clear boundaries. speech perception is the process by which spoken language is heard, interpreted and understood.",
+          "context": "social edit social perception is the part of perception that allows people to understand the individuals and groups of their social world. thus, it is an element of social cognition . though the phrase \"i owe you\" can be heard as three distinct words, a spectrogram reveals no clear boundaries. speech perception is the process by which spoken language is heard, interpreted and understood.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/30/Gestalt_closure.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Law of Closure. The human brain tends to perceive complete shapes even if those forms are incomplete.",
-          "context": "68 the perceptual systems of the brain achieve perceptual constancy in a variety of ways, each specialized for the kind of information being processed, 70 with phonemic restoration as a notable example from hearing. the human brain tends to perceive complete shapes even if those forms are incomplete. the principles of grouping are a set of principles in psychology , first proposed by gestalt psychologists , to explain how humans naturally perceive objects with patterns and objects.",
+          "context": "these constancies are not always total, but the variation in the percept is much less than the variation in the physical stimulus. the perceptual systems of the brain achieve perceptual constancy in a variety of ways, each specialized for the kind of information being processed, with phonemic restoration as a notable example from hearing. the human brain tends to perceive complete shapes even if those forms are incomplete. the principles of grouping are a set of principles in psychology , first proposed by gestalt psychologists , to explain how humans naturally perceive objects with patterns and objects.",
           "licence": "Public domain"
         },
         {
@@ -412,13 +538,6 @@
           "alt": "",
           "caption": "",
           "context": "this article incorporates text from this source, which is available under the cc by 4.0 license. cognitive psychology: connecting mind, research, and everyday experience, 4th edition .",
-          "licence": "Public domain"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e4/Psi-stylized.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "stylized letter psi",
-          "caption": "",
-          "context": "",
           "licence": "Public domain"
         }
       ]
@@ -433,7 +552,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/8/87/Cooking_contest_140418-N-OX321-101.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "American students learning how to make and roll sushi",
-          "context": "for the album by perfume genius, see learning . for other uses, see learn , learned , and learners .",
+          "context": "",
           "licence": "Public domain"
         },
         {
@@ -447,7 +566,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/4/43/Children_competition_on_side_wheels_in_the_eighties_in_Czechoslovakia.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Children learn to bike in the eighties in Czechoslovakia.",
-          "context": "some of these categories can, in turn, be parsed into sub-types. for instance, declarative memory comprises both episodic and semantic memory. children learn to bike in the eighties in czechoslovakia. evolution of learning research in evolutionary biology has examined the conditions under which learning is favored over innate behavior.",
+          "context": "some of these categories can, in turn, be parsed into sub-types. for instance, declarative memory comprises both episodic and semantic memory. children learn to bike in the eighties in czechoslovakia. evolution of learning edit research in evolutionary biology has examined the conditions under which learning is favored over innate behavior.",
           "licence": "CC BY 4.0"
         },
         {
@@ -469,7 +588,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/58/Memory.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Overview of the forms and functions of memory",
-          "context": "for other uses, including works entitled \"memory\", see memory . for other uses, see memories .",
+          "context": "",
           "licence": "CC BY-SA 3.0"
         },
         {
@@ -518,7 +637,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/b/bf/Multistore_model.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Multi-store model",
-          "context": "51 glial cells have also an important role in memory formation, although how they do their work remains to be unveiled. 52 53 other mechanisms for memory consolidation can not be discarded. multi-store model the multi-store model was first described in 1968 by atkinson and shiffrin . the multi-store model has been criticised for being too simplistic.",
+          "context": "glial cells have also an important role in memory formation, although how they do their work remains to be unveiled. other mechanisms for memory consolidation can not be discarded. multi-store model the multi-store model was first described in 1968 by atkinson and shiffrin . the multi-store model has been criticised for being too simplistic.",
           "licence": "Public domain"
         },
         {
@@ -532,7 +651,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/1/1e/Garten_des_Vergessens.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "The garden of oblivion, illustration by Ephraim Moses Lilien",
-          "context": "the amount of time saved measures memory. 79 implicit-memory tasks - information is drawn from memory without conscious realization. the garden of oblivion, illustration by ephraim moses lilien transience - memories degrade with the passing of time. this occurs in the storage stage of memory, after the information has been stored and before it is retrieved.",
+          "context": "the amount of time saved measures memory. implicit-memory tasks - information is drawn from memory without conscious realization. the garden of oblivion, illustration by ephraim moses lilien transience - memories degrade with the passing of time. this occurs in the storage stage of memory, after the information has been stored and before it is retrieved.",
           "licence": "Public domain"
         },
         {
@@ -546,8 +665,22 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/8/81/DNA_methylation_and_demethylation_molecular_mechanisms.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "DNA methylation and demethylation molecular mechanisms",
-          "context": "91 the camp response element-binding protein is a transcription factor which is believed to be important in consolidating short-term to long-term memories, and which is believed to be downregulated in alzheimer's disease. dna methylation and demethylation molecular mechanisms rats exposed to an intense learning event may retain a life-long memory of the event, even after a single training session. the long-term memory of such an event appears to be initially stored in the hippocampus , but this storage is transient.",
+          "context": "on the molecular level, an increase of the postsynaptic scaffolding proteins psd-95 and homer1c has been shown to correlate with the stabilization of synaptic enlargement. the camp response element-binding protein is a transcription factor which is believed to be important in consolidating short-term to long-term memories, and which is believed to be downregulated in alzheimer's disease. dna methylation and demethylation molecular mechanisms rats exposed to an intense learning event may retain a life-long memory of the event, even after a single training session. the long-term memory of such an event appears to be initially stored in the hippocampus , but this storage is transient.",
           "licence": "CC BY 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/29/Regulatory_sequence_in_a_promoter_at_a_transcription_start_site_with_a_paused_RNA_polymerase_%28no_caption%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "such a learning experience appears to rapidly trigger top2b to induce double-strand breaks in the promoter dna of ieg genes that function in neuroplasticity . repair of these induced breaks is associated with dna demethylation of ieg gene promoters allowing immediate expression of these ieg genes. regulatory sequence in a promoter at a transcription start site with a paused rna polymerase and a top2b-induced double-strand break the double-strand breaks that are induced during a learning experience are not immediately repaired. about 600 regulatory sequences in promoters and about 800 regulatory sequences in enhancers appear to depend on double strand breaks initiated by topoisomerase 2-beta ",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/58/Brain_regions_in_memory_formation_updated.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Brain regions involved in memory formation including medial prefrontal cortex (mPFC)",
+          "context": "the double-strand breaks in the promoter are thus associated with top2b and at least these four repair enzymes. these proteins are present simultaneously on a single promoter nucleosome located near the transcription start site of their target gene. this allows the enhancer, with its bound transcription factors and mediator proteins , to directly interact with the rna polymerase paused at the transcription start site to start transcription .",
+          "licence": "CC BY-SA 4.0"
         }
       ]
     },
@@ -561,7 +694,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/ed/20220822_Distinguishing_introversion_and_extraversion_%28extroversion%29_-_comparison_chart.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "theories that place a great deal of emphasis on learning are often more optimistic than those that do not. personality types are distinguished from personality traits , which vary in degree. for example, in type theory, there are two types of people: introverts and extroverts.",
+          "context": "optimistic versus pessimistic : personality theories differ concerning whether humans are integral in changing their own personalities. theories that place a great deal of emphasis on learning are often more optimistic than those that do not. personality types are distinguished from personality traits , which vary in degree. for example, in type theory, there are two types of people: introverts and extroverts.",
           "licence": "CC BY-SA 4.0"
         },
         {
@@ -577,13 +710,6 @@
           "caption": "",
           "context": "biology plays a very important role in the development of personality. the study of biology in personality psychology primarily focuses on identifying the role of genetic determinants and how they mold individual personalities.",
           "licence": "CC BY 2.5"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e4/Psi-stylized.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "stylized letter psi",
-          "caption": "",
-          "context": "",
-          "licence": "Public domain"
         }
       ]
     },
@@ -597,14 +723,14 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/0/0c/RobertFuddBewusstsein17Jh.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "17th-century representation of consciousness by Robert Fludd , an English Paracelsian physician",
-          "context": "not to be confused with conscience or conscientiousness . 17th-century representation of consciousness by robert fludd , an english paracelsian physician consciousness is being aware of something internal to one's self, or of states or objects in one's external environment. 1 it has been the topic of extensive explanations, analyses, and debate among philosophers, scientists, and theologians for millennia.",
+          "context": "17th-century representation of consciousness by robert fludd , an english paracelsian physician consciousness is being aware of something internal to one's self, or of states or objects in one's external environment. it has been the topic of extensive explanations, analyses, and debate among philosophers, scientists, and theologians for millennia.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/d/d1/JohnLocke.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "John Locke , a 17th-century British Age of Enlightenment philosopher",
-          "context": "26 27 it might mean the knowledge of the value of one's own thoughts. 25 one way that this shift during the seventeenth century from \"conscience\" to \"consciousness\" took place was through the poetry of john milton, as the scholar timothy m.",
+          "context": "it might mean the knowledge of the value of one's own thoughts. one way that this shift during the seventeenth century from \"conscience\" to \"consciousness\" took place was through the poetry of john milton, as the scholar timothy m. the essay strongly influenced 18th-century british philosophy , and locke's definition appeared in samuel johnson 's celebrated dictionary .",
           "licence": "Public domain"
         },
         {
@@ -618,42 +744,42 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e7/Necker_cube.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "The Necker cube , an ambiguous image",
-          "context": "broadly viewed, scientific approaches are based on two core concepts. in either case, the ultimate goals are to develop techniques for assessing consciousness objectively in humans as well as other animals, and to understand the neural and psychological mechanisms that underlie it. the necker cube , an ambiguous image experimental research on consciousness presents special difficulties, due to the lack of a universally accepted operational definition .",
+          "context": "broadly viewed, scientific approaches are based on two core concepts. in either case, the ultimate goals are to develop techniques for assessing consciousness objectively in humans as well as other animals, and to understand the neural and psychological mechanisms that underlie it. the necker cube , an ambiguous image experimental research on consciousness presents special difficulties, due to the lack of a universally accepted operational definition . for example, subjects who stare continuously at a necker cube usually report that they experience it \"flipping\" between two 3d configurations, even though the stimulus itself remains the same.",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/8/8d/Mirror_Test_on_Octopus_vulgaris.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Mirror test subjected on a common octopus",
-          "context": "131 studies related to the neuroscience of free will have also shown that the influence consciousness has on decision-making is not always straightforward. mirror test subjected on a common octopus another approach applies specifically to the study of self-awareness , that is, the ability to distinguish oneself from others. in the 1970s gordon gallup developed an operational test for self-awareness, known as the mirror test .",
+          "context": "their reliability as indicators of consciousness is disputed, however, due to numerous studies showing that alert human subjects can be induced to behave purposefully in a variety of ways in spite of reporting a complete lack of awareness. studies related to the neuroscience of free will have also shown that the influence consciousness has on decision-making is not always straightforward. mirror test subjected on a common octopus another approach applies specifically to the study of self-awareness , that is, the ability to distinguish oneself from others. in the 1970s gordon gallup developed an operational test for self-awareness, known as the mirror test .",
           "licence": "CC BY-SA 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Neural_Correlates_Of_Consciousness.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Schema of the neural processes underlying consciousness, from Christof Koch",
-          "context": "the hope is to find that activity in a particular part of the brain, or a particular pattern of global brain activity, which will be strongly predictive of conscious awareness.",
+          "context": "it is recognized as a factor in self-recognition. the brain processes during contingency awareness and learning is believed to rely on an intact medial temporal lobe and age. the hope is to find that activity in a particular part of the brain, or a particular pattern of global brain activity, which will be strongly predictive of conscious awareness. several brain imaging techniques, such as eeg and fmri , have been used for physical measures of brain activity in these studies.",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/23/Abbot_of_Watkungtaphao_in_Phu_Soidao_Waterfall.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A Buddhist monk meditating",
-          "context": "a buddhist monk meditating there are some brain states in which consciousness seems to be absent, including dreamless sleep or coma. there are also a variety of circumstances that can change the relationship between the mind and the world in less drastic ways, producing what are known as altered states of consciousness.",
+          "context": "consciousness in this sense has been compared to the blind spot in the retina where it is not an adaption of the retina, but instead just a by-product of the way the retinal axons were wired. a buddhist monk meditating there are some brain states in which consciousness seems to be absent, including dreamless sleep or coma. there are also a variety of circumstances that can change the relationship between the mind and the world in less drastic ways, producing what are known as altered states of consciousness.",
           "licence": "CC BY 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/7/77/Big-eared-townsend-fledermaus.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "244 also, it is difficult to reason objectively about the question, because a denial that an animal is conscious is often taken to imply that it does not feel, its life has no value, and that harming it is not morally wrong. descartes, for example, has sometimes been blamed for mistreatment of animals due to the fact that he believed only humans have a non-physical mind. thomas nagel argues that while a human might be able to imagine what it is like to be a bat by taking \"the bat's point of view\", it would still be impossible \"to know what it is like for a bat to be a bat\". philosophers who consider subjective experience the essence of consciousness also generally believe, as a correlate, th",
+          "context": "also, it is difficult to reason objectively about the question, because a denial that an animal is conscious is often taken to imply that it does not feel, its life has no value, and that harming it is not morally wrong. descartes, for example, has sometimes been blamed for mistreatment of animals due to the fact that he believed only humans have a non-physical mind. thomas nagel argues that while a human might be able to imagine what it is like to be a bat by taking \"the bat's point of view\", it would still be impossible \"to know what it is like for a bat to be a bat\". philosophers who consider subjective experience the essence of consciousness also generally believe, as a correlate, that t",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/69/John_searle2.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "John Searle in December 2005",
-          "context": "103 104 jurgen schmidhuber argues that consciousness is the result of compression; 255 as an agent sees representation of itself recurring in the environment, the compression of this representation can be called consciousness.",
+          "context": "for example, daniel dennett and douglas hofstadter argue that anything capable of passing the turing test is necessarily conscious, while david chalmers argues that a philosophical zombie could pass the test, yet fail to be conscious. jurgen schmidhuber argues that consciousness is the result of compression; as an agent sees representation of itself recurring in the environment, the compression of this representation can be called consciousness.",
           "licence": "CC BY-SA 3.0"
         },
         {
@@ -662,37 +788,14 @@
           "caption": "",
           "context": "this audio file was created from a revision of this article dated 30 july 2023 , and does not reflect subsequent edits.",
           "licence": "Public domain"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d6/WHO_Rod.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "",
-          "licence": "Public domain"
         }
       ]
     },
     {
       "theme": "behaviorism",
-      "story": "behaviorism is a systematic approach to understanding the behavior of humans and other animals. although behaviorists generally accept the important role of heredity in determining behavior, deriving from skinner's two levels of selection , they focus primarily on environmental events. the cognitive revolution of the late 20th century largely replaced behaviorism as an explanatory theory with cognitive psychology, which, unlike behaviorism, views internal mental states as explanations for observable behavior. behaviorism emerged in the early 1900s as a reaction to depth psychology and other traditional forms of psychology, which often had difficulty making predictions that could be tested experimentally. it was derived from earlier research in the late nineteenth century, such as when edward thorndike pioneered the law of effect, a procedure that involved the use of consequences to strengthen or weaken behavior. with a 1924 publication, john b. watson devised methodological behaviorism, which rejected introspective methods and sought to understand behavior by only measuring observable behaviors and events. skinner proposed that covert behavior-including cognition and emotions-are subject to the same controlling variables as observable behavior, which became the basis for his philosophy called radical behaviorism. the titles given to the various branches of behaviorism include: behavioral genetics: proposed in 1869 by francis galton, a relative of charles darwin. galton believed that inherited factors had a significant impact on individuals' behaviors, however did not believe nurturing was not important. interbehaviorism: proposed by jacob robert kantor before b. methodological behaviorism: john b. watson's behaviorism states that only public events can be objectively observed. although it was still acknowledged that thoughts and feelings exist, they were not considered part of the science of behavior. it also laid the theoretical foundation for the early approach behavior modification in the 1970s and 1980s. methodological behaviorism \"representing the logical positivist-derived philosophy of science\" which is common in science today, radical focuses on the \"pragmatist perspective.\" psychological behaviorism: as proposed by arthur w. staats, unlike the previous behaviorisms of skinner, hull, and tolman, was based upon a program of human research involving various types of human behavior. psychological behaviorism introduces new principles of human learning. humans learn not only by animal learning principles but also by special human learning principles. those principles involve humans' uniquely huge learning ability. humans learn repertoires that enable them to learn other things. human learning is thus cumulative. no other animal demonstrates that ability, making the human species unique. behavioral events may be observable but not all are, some are considered \"private\": they are accessible and noticed by only the person who is behaving. skinner described behavior as the name for the part of the functioning of the organism that consists of its interacting or having commerce with its surrounding environment. in simple terms, how an individual interacts with its surrounding environment.[rb] although private events cannot be directly seen by others, they are later determined through the species' overt behavior. radical behaviorism forms the core philosophy behind behavior analysis. willard van orman quine used many of radical behaviorism's ideas in his study of knowledge and language. teleological behaviorism: proposed by howard rachlin, post-skinnerian, purposive, close to microeconomics. focuses on objective observation as opposed to cognitive processes. theoretical behaviorism: proposed by j. staddon, adds a concept of internal state to allow for the effects of context. according to theoretical behaviorism, a state is a set of equivalent histories, i.e., past histories in which members of the same stimulus class produce members of the same response class . conditioned stimuli are thus seen to control neither stimulus nor response but state. theoretical behaviorism is a logical extension of skinner's class-based definition of the operant. two subtypes of theoretical behaviorism are: hullian and post-hullian: theoretical, group data, not dynamic, physiological purposive: tolman's behavioristic anticipation of cognitive psychology b. skinner proposed radical behaviorism as the conceptual underpinning of the experimental analysis of behavior. like methodological behaviorism, it rejects the reflex as a model of all behavior, and it defends the science of behavior as complementary to but independent of physiology. radical behaviorism overlaps considerably with other western philosophical positions, such as american pragmatism. in 1959, skinner observed the emotions of two pigeons by noting that they appeared angry because their feathers ruffled. the pigeons were placed together in an operant chamber, where they were aggressive as a consequence of previous reinforcement in the environment. through stimulus control and subsequent discrimination training, whenever skinner turned off the green light, the pigeons came to notice that the food reinforcer is discontinued following each peck and responded without aggression. skinner concluded that humans also learn aggression and possess such emotions no differently than do nonhuman animals. as experimental behavioral psychology is related to behavioral neuroscience, we can date the first research in the area to the beginning of the 19th century. later, this essentially philosophical position gained strength from the success of skinner's early experimental work with rats and pigeons, summarized in his books the behavior of organisms and schedules of reinforcement. of particular importance was his concept of the operant response, of which the canonical example was the rat's lever-press. in contrast with the idea of a physiological or reflex response, an operant is a class of structurally distinct but functionally equivalent responses. for example, while a rat might press a lever with its left paw or its right paw or its tail, all of these responses operate on the world in the same way and have a common consequence. operants are often thought of as species of responses, where the individuals differ but the class coheres in its function-shared consequences with operants and reproductive success with species. this is a clear distinction between skinner's theory and s-r theory. with this method, skinner carried out substantial experimental work on the effects of different schedules and rates of reinforcement on the rates of operant responses made by rats and pigeons. he achieved remarkable success in training animals to perform unexpected responses, to emit large numbers of responses, and to demonstrate many empirical regularities at the purely behavioral level. this lent some credibility to his conceptual analysis. it is largely his conceptual analysis that made his work much more rigorous than his peers, a point which can be seen clearly in his seminal work are theories of learning necessary? in which he criticizes what he viewed to be theoretical weaknesses then common in the study of psychology. an important descendant of the experimental analysis of behavior is the society for quantitative analysis of behavior. skinner did not respond in detail but claimed that chomsky failed to understand his ideas, and the disagreements between the two and the theories involved have been further discussed. innateness theory, which has been heavily critiqued, is opposed to behaviorist theory which claims that language is a set of habits that can be acquired by means of conditioning. according to some, the behaviorist account is a process which would be too slow to explain a phenomenon as complicated as language learning. what was important for a behaviorist's analysis of human behavior was not language acquisition so much as the interaction between language and overt behavior. in an essay republished in his 1969 book contingencies of reinforcement, skinner took the view that humans could construct linguistic stimuli that would then acquire control over their behavior in the same way that external stimuli could. the possibility of such \"instructional control\" over behavior meant that contingencies of reinforcement would not always produce the same effects on human behavior as they reliably do in other animals. recently, a new line of behavioral research on language was started under the name of relational frame theory. skinner's book verbal behavior does not quite emphasize language development, but to understand human behavior. additionally, his work serves in understanding social interactions in the child's early developmental stages, focusing on the topic of caregiver-infant interaction. noam chomsky, an american linguistic professor, has criticized and questioned skinner's theories about the possible suggestion of parental tutoring in language development. however, there is a lack of supporting evidence for skinner's statement. understanding language is a complex topic but can be understood through the use of two theories: innateness and acquisition. both theories offer a different perspective whether language is inherently \"acquired\" or \"learned\". operant conditioning was developed by b. skinner in 1938 and is a form of learning in which the frequency of a behavior is controlled by consequences to change behavior. in other words, behavior is controlled by historical consequential contingencies, particularly reinforcement-a stimulus that increases the probability of performing behaviors, and punishment-a stimulus that decreases such probability. the core tools of consequences are either positive , or negative . for example, when a person is teaching a dog to sit, they pair the command \"sit\" with a treat. the treat is the positive reinforcement for the behavior of sitting. the key to making positive reinforcement effect is to reward the behavior immediately. negative reinforcement: increases the frequency of a behavior, but the behavior results from removing an unpleasant or unwanted stimulus. for example, a child hates being nagged to clean his room which increases the frequency of the child cleaning his room to prevent his mother from nagging. another example would be putting on sunscreen before going outside to prevent sunburn . positive punishment: providing a stimulus that an individual does not desire to decrease undesired behaviors. for example, if a child engages in an undesired behavior, then parents may spank the child to correct their behavior. negative punishment: removing a stimulus that an individual desires in order to decrease undesired behaviors. an example of this would be grounding a child for failing a test. grounding in this example is taking away the child's ability to play video games. as long as it is clear that the ability to play video games was taken away because they failed a test, this is negative punishment. the key here is the connection to the behavior and the result of the behavior. a classical experiment in operant conditioning, for example, is the skinner box, \"puzzle box\" or operant conditioning chamber to test the effects of operant conditioning principles on rats, cats and other species. from this experiment, he discovered that the rats learned very effectively if they were rewarded frequently with food. skinner also found that he could shape the rats' behavior through the use of rewards, which could, in turn, be applied to human learning as well. skinner's model was based on the premise that reinforcement is used for the desired actions or responses, while punishment was used to stop the responses of the undesired actions that are not. this theory proved that humans or animals will repeat any action that leads to a positive outcome, and avoid any action that leads to a negative outcome. the experiment with the pigeons showed that a positive outcome leads to learned behavior since the pigeon learned to peck the disc in return for the reward of food. it includes the following controlling stimuli: discriminative stimulus : an antecedent stimulus that increases the chance of the organism engaging in a behavior. one example of this occurred in skinner's laboratory. whenever the green light appeared, it signaled the pigeon to perform the behavior of pecking because it learned in the past that each time it pecked, food was presented . stimulus delta : an antecedent stimulus that signals the organism not to perform a behavior since it was extinguished or punished in the past. one notable instance of this occurs when a person stops their car immediately after the traffic light turns red . however, the person could decide to drive through the red light, but subsequently receive a speeding ticket , so this behavior will potentially not reoccur following the presence of the s-delta. although operant conditioning plays the largest role in discussions of behavioral mechanisms, respondent conditioning is also an important behavior-analytic process that need not refer to mental or other internal processes. pavlov's experiments with dogs provide the most familiar example of the classical conditioning procedure. in the beginning, the dog was provided with meat to eat, resulting in increased salivation . afterward, a bell ring was presented together with food to the dog. although the bell ring was a neutral stimulus , the dog would start to salivate when only hearing a bell ring after a number of pairings. eventually, the neutral stimulus became conditioned. the idea of classical conditioning helped behaviorist john watson discover the key mechanism behind how humans acquire the behaviors that they do, which was to find a natural reflex that produces the response being considered. following darwin's theory of evolution, this would simply mean that human behavior is just a more complex version in respect to behavior displayed by other species. behaviorism is a psychological movement that can be contrasted with philosophy of mind. the basic premise of behaviorism is that the study of behavior should be a natural science, such as chemistry or physics. initially, behaviorism rejected any reference to hypothetical inner states of organisms as causes for their behavior, but b. skinner's radical behaviorism reintroduced reference to inner states and also advocated for the study of thoughts and feelings as behaviors subject to the same mechanisms as external behavior. behaviorism takes a functional view of behavior. according to edmund fantino and colleagues: \"behavior analysis has much to offer the study of phenomena normally dominated by cognitive and social psychologists. it is sometimes argued that ludwig wittgenstein defended a logical behaviorist position . in logical positivism , the meaning of psychological statements is their verification conditions, which consist of performed overt behavior. quine made use of a type of behaviorism, influenced by some of skinner's ideas, in his own work on language. quine's work in semantics differed substantially from the empiricist semantics of carnap, which he attempted to create an alternative to, couching his semantic theory in references to physical objects rather than sensations. gilbert ryle defended a distinct strain of philosophical behaviorism, sketched in his book the concept of mind. ryle's central claim was that instances of dualism frequently represented \"category mistakes\", and hence that they were really misunderstandings of the use of ordinary language. daniel dennett likewise acknowledges himself to be a type of behaviorist, though he offers extensive criticism of radical behaviorism and refutes skinner's rejection of the value of intentional idioms and the possibility of free will. this is dennett's main point in \"skinner skinned\". dennett argues that there is a crucial difference between explaining and explaining away... if our explanation of apparently rational behavior turns out to be extremely simple, we may want to say that the behavior was not really rational after all. but if the explanation is very complex and intricate, we may want to say not that the behavior is not rational, but that we now have a better understanding of what rationality consists in. nevertheless, skinner's operant conditioning was heavily influenced by the law of effect's principle of reinforcement. trace conditioning: akin to b. there is also a time delay between the cs and unconditioned stimulus , causing the conditioned response -particularly the reflex-to be faded over time. according to marchand, the hippocampus is a part of the cognitive processes during trace conditioning and other forms of classical conditioning in two ways: needing to overcome stimuli or due to mre activity from complex challenges. however, results may vary due to the nature of the task and the design of the experiment . skinner's view of behavior is most often characterized as a \"molecular\" view of behavior; that is, behavior can be decomposed into atomistic parts or molecules. this view is inconsistent with skinner's complete description of behavior as delineated in other works, including his 1981 article \"selection by consequences\". skinner proposed that a complete account of behavior requires understanding of selection history at three levels: biology ; behavior ; and for some species, culture . this whole organism then interacts with its environment. molecular behaviorists use notions from melioration theory, negative power function discounting or additive versions of negative power function discounting. according to moore, the perseverance in a molecular examination of behavior may be sign of a desire for an in-depth understanding, maybe to identify any underlying mechanism or components that contribute to comples actions. this strategy might involve elements, procedures, or variables that contribute to behaviorism. molar behaviorists, such as howard rachlin, richard herrnstein, and william baum, argue that behavior cannot be understood by focusing on events in the moment. that is, they argue that behavior is best understood as the ultimate product of an organism's history and that molecular behaviorists are committing a fallacy by inventing fictitious proximal causes for behavior. molar behaviorists argue that standard molecular constructs, such as \"associative strength\", are better replaced by molar variables such as rate of reinforcement. thus, a molar behaviorist would describe \"loving someone\" as a pattern of loving behavior over time; there is no isolated, proximal cause of loving behavior, only a history of behaviors that can be summarized as \"love\". skinner's radical behaviorism has been highly successful experimentally, revealing new phenomena with new methods, but skinner's dismissal of theory limited its development. theoretical behaviorism recognized that a historical system, an organism, has a state as well as sensitivity to stimuli and the ability to emit responses. indeed, skinner himself acknowledged the possibility of what he called \"latent\" responses in humans, even though he neglected to extend this idea to rats and pigeons. latent responses constitute a repertoire, from which operant reinforcement can select. theoretical behaviorism links between the brain and the behavior that provides a real understanding of the behavior, rather than a mental presumption of how brain-behavior relates. the theoretical concept of behaviorism are blended with knowledge of mental structure such as memory and expectancies associated with inflexible behaviorist stances that have traditionally forbidden the examination of the mental state. because of its flexibility, theoretical behaviorism permits the cognitive process to have an impact on behavior. from its inception, behavior analysis has centered its examination on cultural occurrences . nevertheless, the methods used to tackle these occurrences have evolved. initially, culture was perceived as a factor influencing behavior, later becoming a subject of study in itself. this shift prompted research into group practices and the potential for significant behavioral transformations on a larger scale. following glenn's influential work, \"metacontingencies in walden two\", numerous research endeavors exploring behavior analysis in cultural contexts have centered around the concept of the metacontingency. with the growth of large-scale behavioral data, computational approaches to behavior analysis have become far more common. behavior informatics and behavior computing examine behavior from an informatics and computing perspective, with the aim of modeling and analyzing how behaviors form, interact, and change. found that in the realm of healthcare and health psychology, substantial evidence supports the notion that personalized health interventions yield greater effectiveness compared to standardized approaches. simultaneous advancements in sensor and communication technology, alongside the field of data science, have now made it possible to comprehensively measure behaviors occurring in real-life settings. these two elements, when combined with advancements in computational modeling, have laid the groundwork for the emerging discipline known as behavioral informatics. behavioral informatics represents a scientific and engineering domain encompassing behavior tracking, evaluation, computational modeling, deduction, and intervention. in the second half of the 20th century, behaviorism was largely eclipsed as a result of the cognitive revolution. this shift was due to radical behaviorism being highly criticized for not examining mental processes, and this led to the development of the cognitive therapy movement. developments in computer science would lead to parallels being drawn between human thought and the computational functionality of computers, opening entirely new areas of psychological thought. allen newell and herbert simon spent years developing the concept of artificial intelligence and later worked with cognitive psychologists regarding the implications of ai. the effective result was more of a framework conceptualization of mental functions with their counterparts in computers . formal recognition of the field involved the establishment of research institutions such as george mandler's center for human information processing in 1964. additionally, burgos contends that pragmatism engenders a relativism that contradicts the emphasis on science as the paramount path to knowledge. staddon further argues that the proliferation of diversification in social science poses disadvantages by hindering healthy and open scientific communication and critique among specialized areas. rider shares a similar concern, highlighting reduced communication between the experimental analysis of behavior and applied behavior analysis. contrarily, diversification is portrayed as an innate and uncontrollable consequence of the environment, a natural facet contributing to species' survival. it is viewed as an integral aspect of the evolution of behaviorism. in the early years of cognitive psychology, behaviorist critics held that the empiricism it pursued was incompatible with the concept of internal mental states. cognitive neuroscience, however, continues to gather evidence of direct correlations between physiological brain activity and putative mental states, endorsing the basis for cognitive psychology. secondly, both skinner and many other behaviorists of that era endorsed contiguity as a sufficient process for response selection. however, rescorla and wagner later demonstrated, particularly in classical conditioning, that competition is an essential complement to contiguity. they showed that in operant conditioning, both contiguity and competition are imperative for discerning cause-and-effect relationships. the influential rescorla-wagner model highlights the significance of competition for limited \"associative value,\" essential for assessing predictability. however, these conditions rarely hold in reality: behavior following reinforcement tends to exhibit high variability, and superstitious behavior diminishes with extremely brief intervals between reinforcements. behavior therapy is a term referring to different types of therapies that treat mental health disorders. it identifies and helps change people's unhealthy behaviors or destructive behaviors through learning theory and conditioning. ivan pavlov's classical conditioning, as well as counterconditioning, are the basis for much of clinical behavior therapy, but also includes other techniques, including operant conditioning and modeling . a frequently noted behavior therapy is systematic desensitization , which was first demonstrated by joseph wolpe and arnold lazarus. applied behavior analysis -also called behavioral engineering-is a scientific discipline that applies the principles of behavior analysis to change behavior. aba derived from much earlier research in the journal of the experimental analysis of behavior, which was founded by b. skinner and his colleagues at harvard university. in addition, methodological behaviorism was the theory underpinning behavior modification since private events were not conceptualized during the 1970s and early 1980s, which contrasted from the radical behaviorism of behavior analysis. aba-the term that replaced behavior modification-has emerged as a thriving field. the independent development of behavior analysis outside the united states also continues to develop. the field of applied animal behavior-a sub-discipline of aba that involves training animals-is regulated by the animal behavior society, and those who practice this technique are called applied animal behaviorists. research on applied animal behavior has been frequently conducted in the applied animal behaviour science journal since its founding in 1974. nevertheless, the certification is applicable to all human services related to the rather broad field of behavior analysis , and the abai currently has 14 accredited ma and ph.d. programs for comprehensive study in that field. early behavioral interventions based on aba are empirically validated for teaching children with autism and have been proven as such for over the past five decades. since the late 1990s and throughout the twenty-first century, early aba interventions have also been identified as the treatment of choice by the us surgeon general, american academy of pediatrics, and us national research council. a related term for incidental teaching, called pivotal response treatment , refers to ebi procedures that exclusively entail twenty-five hours per week of naturalistic teaching . current research is showing that there is a wide array of learning styles, and that is the children with receptive language delays who initially require discrete trials to acquire speech. incentive-based contingency management is the standard of care for adults with substance-use disorders; it has also been shown to be highly effective for other addictions . habit reversal training, an approach firmly grounded in counterconditioning which uses contingency management procedures to reinforce alternative behavior, is currently the only empirically validated approach for managing tic disorders. these studies also reveal that systematic desensitization is more effective for children if used in conjunction with shaping, which is further termed contact desensitization, but this comparison has yet to be substantiated with adults. various forms of cbt have been used to treat physically experienced symptoms that disrupt individuals' livelihood, which often stem from complex mental health disorders. dbt is quite similar to acceptance and commitment therapy, but contrasts in that it derives from a cbt framework. a study on bpd was conducted, confirming dbt as a constructive therapeutic option for emotionally unregulated patients. cognitive-based behavioral activation -the psychotherapeutic approach used for depression-is shown to be highly effective and is widely used in clinical practice. some large randomized control trials have indicated that cognitive-based ba is as beneficial as antidepressant medications but more efficacious than traditional cognitive therapy. stanford encyclopedia of philosophy. fieser, james; dowden, bradley . internet encyclopedia of philosophy.",
+      "story": "behaviorism is a systematic approach to understanding the behavior of humans and other animals. although behaviorists generally accept the important role of heredity in determining behavior, deriving from skinner's two levels of selection , they focus primarily on environmental events. the cognitive revolution of the late 20th century largely replaced behaviorism as an explanatory theory with cognitive psychology, which, unlike behaviorism, views internal mental states as explanations for observable behavior. behaviorism emerged in the early 1900s as a reaction to depth psychology and other traditional forms of psychology, which often had difficulty making predictions that could be tested experimentally. it was derived from earlier research in the late nineteenth century, such as when edward thorndike pioneered the law of effect, a procedure that involved the use of consequences to strengthen or weaken behavior. with a 1924 publication, john b. watson devised methodological behaviorism, which rejected introspective methods and sought to understand behavior by only measuring observable behaviors and events. skinner proposed that covert behavior-including cognition and emotions-are subject to the same controlling variables as observable behavior, which became the basis for his philosophy called radical behaviorism. the titles given to the various branches of behaviorism include: behavioral genetics: proposed in 1869 by francis galton, a relative of charles darwin. galton believed that inherited factors had a significant impact on individuals' behaviors, however did not believe nurturing was not important. interbehaviorism: proposed by jacob robert kantor before b. methodological behaviorism: john b. watson's behaviorism states that only public events can be objectively observed. although it was still acknowledged that thoughts and feelings exist, they were not considered part of the science of behavior. it also laid the theoretical foundation for the early approach behavior modification in the 1970s and 1980s. methodological behaviorism \"representing the logical positivist-derived philosophy of science\" which is common in science today, radical focuses on the \"pragmatist perspective.\" psychological behaviorism: as proposed by arthur w. staats, unlike the previous behaviorisms of skinner, hull, and tolman, was based upon a program of human research involving various types of human behavior. psychological behaviorism introduces new principles of human learning. humans learn not only by animal learning principles but also by special human learning principles. those principles involve humans' uniquely huge learning ability. humans learn repertoires that enable them to learn other things. human learning is thus cumulative. no other animal demonstrates that ability, making the human species unique. behavioral events may be observable but not all are, some are considered \"private\": they are accessible and noticed by only the person who is behaving. skinner described behavior as the name for the part of the functioning of the organism that consists of its interacting or having commerce with its surrounding environment. in simple terms, how an individual interacts with its surrounding environment.rb although private events cannot be directly seen by others, they are later determined through the species' overt behavior. radical behaviorism forms the core philosophy behind behavior analysis. willard van orman quine used many of radical behaviorism's ideas in his study of knowledge and language. teleological behaviorism: proposed by howard rachlin, post-skinnerian, purposive, close to microeconomics. focuses on objective observation as opposed to cognitive processes. theoretical behaviorism: proposed by j. staddon, adds a concept of internal state to allow for the effects of context. according to theoretical behaviorism, a state is a set of equivalent histories, i.e., past histories in which members of the same stimulus class produce members of the same response class . conditioned stimuli are thus seen to control neither stimulus nor response but state. theoretical behaviorism is a logical extension of skinner's class-based definition of the operant. two subtypes of theoretical behaviorism are: hullian and post-hullian: theoretical, group data, not dynamic, physiological purposive: tolman's behavioristic anticipation of cognitive psychology b. skinner proposed radical behaviorism as the conceptual underpinning of the experimental analysis of behavior. like methodological behaviorism, it rejects the reflex as a model of all behavior, and it defends the science of behavior as complementary to but independent of physiology. radical behaviorism overlaps considerably with other western philosophical positions, such as american pragmatism. in 1959, skinner observed the emotions of two pigeons by noting that they appeared angry because their feathers ruffled. the pigeons were placed together in an operant chamber, where they were aggressive as a consequence of previous reinforcement in the environment. through stimulus control and subsequent discrimination training, whenever skinner turned off the green light, the pigeons came to notice that the food reinforcer is discontinued following each peck and responded without aggression. skinner concluded that humans also learn aggression and possess such emotions no differently than do nonhuman animals. as experimental behavioral psychology is related to behavioral neuroscience, we can date the first research in the area to the beginning of the 19th century. later, this essentially philosophical position gained strength from the success of skinner's early experimental work with rats and pigeons, summarized in his books the behavior of organisms and schedules of reinforcement. of particular importance was his concept of the operant response, of which the canonical example was the rat's lever-press. in contrast with the idea of a physiological or reflex response, an operant is a class of structurally distinct but functionally equivalent responses. for example, while a rat might press a lever with its left paw or its right paw or its tail, all of these responses operate on the world in the same way and have a common consequence. operants are often thought of as species of responses, where the individuals differ but the class coheres in its function-shared consequences with operants and reproductive success with species. this is a clear distinction between skinner's theory and s-r theory. with this method, skinner carried out substantial experimental work on the effects of different schedules and rates of reinforcement on the rates of operant responses made by rats and pigeons. he achieved remarkable success in training animals to perform unexpected responses, to emit large numbers of responses, and to demonstrate many empirical regularities at the purely behavioral level. this lent some credibility to his conceptual analysis. it is largely his conceptual analysis that made his work much more rigorous than his peers, a point which can be seen clearly in his seminal work are theories of learning necessary? in which he criticizes what he viewed to be theoretical weaknesses then common in the study of psychology. an important descendant of the experimental analysis of behavior is the society for quantitative analysis of behavior. skinner did not respond in detail but claimed that chomsky failed to understand his ideas, and the disagreements between the two and the theories involved have been further discussed. innateness theory, which has been heavily critiqued, is opposed to behaviorist theory which claims that language is a set of habits that can be acquired by means of conditioning. according to some, the behaviorist account is a process which would be too slow to explain a phenomenon as complicated as language learning. what was important for a behaviorist's analysis of human behavior was not language acquisition so much as the interaction between language and overt behavior. in an essay republished in his 1969 book contingencies of reinforcement, skinner took the view that humans could construct linguistic stimuli that would then acquire control over their behavior in the same way that external stimuli could. the possibility of such \"instructional control\" over behavior meant that contingencies of reinforcement would not always produce the same effects on human behavior as they reliably do in other animals. recently, a new line of behavioral research on language was started under the name of relational frame theory. skinner's book verbal behavior does not quite emphasize language development, but to understand human behavior. additionally, his work serves in understanding social interactions in the child's early developmental stages, focusing on the topic of caregiver-infant interaction. noam chomsky, an american linguistic professor, has criticized and questioned skinner's theories about the possible suggestion of parental tutoring in language development. however, there is a lack of supporting evidence for skinner's statement. understanding language is a complex topic but can be understood through the use of two theories: innateness and acquisition. both theories offer a different perspective whether language is inherently \"acquired\" or \"learned\". operant conditioning was developed by b. skinner in 1938 and is a form of learning in which the frequency of a behavior is controlled by consequences to change behavior. in other words, behavior is controlled by historical consequential contingencies, particularly reinforcement-a stimulus that increases the probability of performing behaviors, and punishment-a stimulus that decreases such probability. the core tools of consequences are either positive , or negative . for example, when a person is teaching a dog to sit, they pair the command \"sit\" with a treat. the treat is the positive reinforcement for the behavior of sitting. the key to making positive reinforcement effect is to reward the behavior immediately. negative reinforcement: increases the frequency of a behavior, but the behavior results from removing an unpleasant or unwanted stimulus. for example, a child hates being nagged to clean his room which increases the frequency of the child cleaning his room to prevent his mother from nagging. another example would be putting on sunscreen before going outside to prevent sunburn . positive punishment: providing a stimulus that an individual does not desire to decrease undesired behaviors. for example, if a child engages in an undesired behavior, then parents may spank the child to correct their behavior. negative punishment: removing a stimulus that an individual desires in order to decrease undesired behaviors. an example of this would be grounding a child for failing a test. grounding in this example is taking away the child's ability to play video games. as long as it is clear that the ability to play video games was taken away because they failed a test, this is negative punishment. the key here is the connection to the behavior and the result of the behavior. a classical experiment in operant conditioning, for example, is the skinner box, \"puzzle box\" or operant conditioning chamber to test the effects of operant conditioning principles on rats, cats and other species. from this experiment, he discovered that the rats learned very effectively if they were rewarded frequently with food. skinner also found that he could shape the rats' behavior through the use of rewards, which could, in turn, be applied to human learning as well. skinner's model was based on the premise that reinforcement is used for the desired actions or responses, while punishment was used to stop the responses of the undesired actions that are not. this theory proved that humans or animals will repeat any action that leads to a positive outcome, and avoid any action that leads to a negative outcome. the experiment with the pigeons showed that a positive outcome leads to learned behavior since the pigeon learned to peck the disc in return for the reward of food. it includes the following controlling stimuli: discriminative stimulus : an antecedent stimulus that increases the chance of the organism engaging in a behavior. one example of this occurred in skinner's laboratory. whenever the green light appeared, it signaled the pigeon to perform the behavior of pecking because it learned in the past that each time it pecked, food was presented . stimulus delta : an antecedent stimulus that signals the organism not to perform a behavior since it was extinguished or punished in the past. one notable instance of this occurs when a person stops their car immediately after the traffic light turns red . however, the person could decide to drive through the red light, but subsequently receive a speeding ticket , so this behavior will potentially not reoccur following the presence of the s-delta. although operant conditioning plays the largest role in discussions of behavioral mechanisms, respondent conditioning is also an important behavior-analytic process that need not refer to mental or other internal processes. pavlov's experiments with dogs provide the most familiar example of the classical conditioning procedure. in the beginning, the dog was provided with meat to eat, resulting in increased salivation . afterward, a bell ring was presented together with food to the dog. although the bell ring was a neutral stimulus , the dog would start to salivate when only hearing a bell ring after a number of pairings. eventually, the neutral stimulus became conditioned. the idea of classical conditioning helped behaviorist john watson discover the key mechanism behind how humans acquire the behaviors that they do, which was to find a natural reflex that produces the response being considered. following darwin's theory of evolution, this would simply mean that human behavior is just a more complex version in respect to behavior displayed by other species. behaviorism is a psychological movement that can be contrasted with philosophy of mind. the basic premise of behaviorism is that the study of behavior should be a natural science, such as chemistry or physics. initially, behaviorism rejected any reference to hypothetical inner states of organisms as causes for their behavior, but b. skinner's radical behaviorism reintroduced reference to inner states and also advocated for the study of thoughts and feelings as behaviors subject to the same mechanisms as external behavior. behaviorism takes a functional view of behavior. according to edmund fantino and colleagues: \"behavior analysis has much to offer the study of phenomena normally dominated by cognitive and social psychologists. it is sometimes argued that ludwig wittgenstein defended a logical behaviorist position . in logical positivism , the meaning of psychological statements is their verification conditions, which consist of performed overt behavior. quine made use of a type of behaviorism, influenced by some of skinner's ideas, in his own work on language. quine's work in semantics differed substantially from the empiricist semantics of carnap, which he attempted to create an alternative to, couching his semantic theory in references to physical objects rather than sensations. gilbert ryle defended a distinct strain of philosophical behaviorism, sketched in his book the concept of mind. ryle's central claim was that instances of dualism frequently represented \"category mistakes\", and hence that they were really misunderstandings of the use of ordinary language. daniel dennett likewise acknowledges himself to be a type of behaviorist, though he offers extensive criticism of radical behaviorism and refutes skinner's rejection of the value of intentional idioms and the possibility of free will. this is dennett's main point in \"skinner skinned\". dennett argues that there is a crucial difference between explaining and explaining away... if our explanation of apparently rational behavior turns out to be extremely simple, we may want to say that the behavior was not really rational after all. but if the explanation is very complex and intricate, we may want to say not that the behavior is not rational, but that we now have a better understanding of what rationality consists in. nevertheless, skinner's operant conditioning was heavily influenced by the law of effect's principle of reinforcement. trace conditioning: akin to b. there is also a time delay between the cs and unconditioned stimulus , causing the conditioned response -particularly the reflex-to be faded over time. according to marchand, the hippocampus is a part of the cognitive processes during trace conditioning and other forms of classical conditioning in two ways: needing to overcome stimuli or due to mre activity from complex challenges. however, results may vary due to the nature of the task and the design of the experiment . skinner's view of behavior is most often characterized as a \"molecular\" view of behavior; that is, behavior can be decomposed into atomistic parts or molecules. this view is inconsistent with skinner's complete description of behavior as delineated in other works, including his 1981 article \"selection by consequences\". skinner proposed that a complete account of behavior requires understanding of selection history at three levels: biology ; behavior ; and for some species, culture . this whole organism then interacts with its environment. molecular behaviorists use notions from melioration theory, negative power function discounting or additive versions of negative power function discounting. according to moore, the perseverance in a molecular examination of behavior may be sign of a desire for an in-depth understanding, maybe to identify any underlying mechanism or components that contribute to comples actions. this strategy might involve elements, procedures, or variables that contribute to behaviorism. molar behaviorists, such as howard rachlin, richard herrnstein, and william baum, argue that behavior cannot be understood by focusing on events in the moment. that is, they argue that behavior is best understood as the ultimate product of an organism's history and that molecular behaviorists are committing a fallacy by inventing fictitious proximal causes for behavior. molar behaviorists argue that standard molecular constructs, such as \"associative strength\", are better replaced by molar variables such as rate of reinforcement. thus, a molar behaviorist would describe \"loving someone\" as a pattern of loving behavior over time; there is no isolated, proximal cause of loving behavior, only a history of behaviors that can be summarized as \"love\". skinner's radical behaviorism has been highly successful experimentally, revealing new phenomena with new methods, but skinner's dismissal of theory limited its development. theoretical behaviorism recognized that a historical system, an organism, has a state as well as sensitivity to stimuli and the ability to emit responses. indeed, skinner himself acknowledged the possibility of what he called \"latent\" responses in humans, even though he neglected to extend this idea to rats and pigeons. latent responses constitute a repertoire, from which operant reinforcement can select. theoretical behaviorism links between the brain and the behavior that provides a real understanding of the behavior, rather than a mental presumption of how brain-behavior relates. the theoretical concept of behaviorism are blended with knowledge of mental structure such as memory and expectancies associated with inflexible behaviorist stances that have traditionally forbidden the examination of the mental state. because of its flexibility, theoretical behaviorism permits the cognitive process to have an impact on behavior. from its inception, behavior analysis has centered its examination on cultural occurrences . nevertheless, the methods used to tackle these occurrences have evolved. initially, culture was perceived as a factor influencing behavior, later becoming a subject of study in itself. this shift prompted research into group practices and the potential for significant behavioral transformations on a larger scale. following glenn's influential work, \"metacontingencies in walden two\", numerous research endeavors exploring behavior analysis in cultural contexts have centered around the concept of the metacontingency. with the growth of large-scale behavioral data, computational approaches to behavior analysis have become far more common. behavior informatics and behavior computing examine behavior from an informatics and computing perspective, with the aim of modeling and analyzing how behaviors form, interact, and change. found that in the realm of healthcare and health psychology, substantial evidence supports the notion that personalized health interventions yield greater effectiveness compared to standardized approaches. simultaneous advancements in sensor and communication technology, alongside the field of data science, have now made it possible to comprehensively measure behaviors occurring in real-life settings. these two elements, when combined with advancements in computational modeling, have laid the groundwork for the emerging discipline known as behavioral informatics. behavioral informatics represents a scientific and engineering domain encompassing behavior tracking, evaluation, computational modeling, deduction, and intervention. in the second half of the 20th century, behaviorism was largely eclipsed as a result of the cognitive revolution. this shift was due to radical behaviorism being highly criticized for not examining mental processes, and this led to the development of the cognitive therapy movement. developments in computer science would lead to parallels being drawn between human thought and the computational functionality of computers, opening entirely new areas of psychological thought. allen newell and herbert simon spent years developing the concept of artificial intelligence and later worked with cognitive psychologists regarding the implications of ai. the effective result was more of a framework conceptualization of mental functions with their counterparts in computers . formal recognition of the field involved the establishment of research institutions such as george mandler's center for human information processing in 1964. additionally, burgos contends that pragmatism engenders a relativism that contradicts the emphasis on science as the paramount path to knowledge. staddon further argues that the proliferation of diversification in social science poses disadvantages by hindering healthy and open scientific communication and critique among specialized areas. rider shares a similar concern, highlighting reduced communication between the experimental analysis of behavior and applied behavior analysis. contrarily, diversification is portrayed as an innate and uncontrollable consequence of the environment, a natural facet contributing to species' survival. it is viewed as an integral aspect of the evolution of behaviorism. in the early years of cognitive psychology, behaviorist critics held that the empiricism it pursued was incompatible with the concept of internal mental states. cognitive neuroscience, however, continues to gather evidence of direct correlations between physiological brain activity and putative mental states, endorsing the basis for cognitive psychology. secondly, both skinner and many other behaviorists of that era endorsed contiguity as a sufficient process for response selection. however, rescorla and wagner later demonstrated, particularly in classical conditioning, that competition is an essential complement to contiguity. they showed that in operant conditioning, both contiguity and competition are imperative for discerning cause-and-effect relationships. the influential rescorla-wagner model highlights the significance of competition for limited \"associative value,\" essential for assessing predictability. however, these conditions rarely hold in reality: behavior following reinforcement tends to exhibit high variability, and superstitious behavior diminishes with extremely brief intervals between reinforcements. behavior therapy is a term referring to different types of therapies that treat mental health disorders. it identifies and helps change people's unhealthy behaviors or destructive behaviors through learning theory and conditioning. ivan pavlov's classical conditioning, as well as counterconditioning, are the basis for much of clinical behavior therapy, but also includes other techniques, including operant conditioning and modeling . a frequently noted behavior therapy is systematic desensitization , which was first demonstrated by joseph wolpe and arnold lazarus. applied behavior analysis -also called behavioral engineering-is a scientific discipline that applies the principles of behavior analysis to change behavior. aba derived from much earlier research in the journal of the experimental analysis of behavior, which was founded by b. skinner and his colleagues at harvard university. in addition, methodological behaviorism was the theory underpinning behavior modification since private events were not conceptualized during the 1970s and early 1980s, which contrasted from the radical behaviorism of behavior analysis. aba-the term that replaced behavior modification-has emerged as a thriving field. the independent development of behavior analysis outside the united states also continues to develop. the field of applied animal behavior-a sub-discipline of aba that involves training animals-is regulated by the animal behavior society, and those who practice this technique are called applied animal behaviorists. research on applied animal behavior has been frequently conducted in the applied animal behaviour science journal since its founding in 1974. nevertheless, the certification is applicable to all human services related to the rather broad field of behavior analysis , and the abai currently has 14 accredited ma and ph.d. programs for comprehensive study in that field. early behavioral interventions based on aba are empirically validated for teaching children with autism and have been proven as such for over the past five decades. since the late 1990s and throughout the twenty-first century, early aba interventions have also been identified as the treatment of choice by the us surgeon general, american academy of pediatrics, and us national research council. a related term for incidental teaching, called pivotal response treatment , refers to ebi procedures that exclusively entail twenty-five hours per week of naturalistic teaching . current research is showing that there is a wide array of learning styles, and that is the children with receptive language delays who initially require discrete trials to acquire speech. incentive-based contingency management is the standard of care for adults with substance-use disorders; it has also been shown to be highly effective for other addictions . habit reversal training, an approach firmly grounded in counterconditioning which uses contingency management procedures to reinforce alternative behavior, is currently the only empirically validated approach for managing tic disorders. these studies also reveal that systematic desensitization is more effective for children if used in conjunction with shaping, which is further termed contact desensitization, but this comparison has yet to be substantiated with adults. various forms of cbt have been used to treat physically experienced symptoms that disrupt individuals' livelihood, which often stem from complex mental health disorders. dbt is quite similar to acceptance and commitment therapy, but contrasts in that it derives from a cbt framework. a study on bpd was conducted, confirming dbt as a constructive therapeutic option for emotionally unregulated patients. cognitive-based behavioral activation -the psychotherapeutic approach used for depression-is shown to be highly effective and is widely used in clinical practice. some large randomized control trials have indicated that cognitive-based ba is as beneficial as antidepressant medications but more efficacious than traditional cognitive therapy. stanford encyclopedia of philosophy. fieser, james; dowden, bradley . internet encyclopedia of philosophy.",
       "source": "en.wikipedia.org",
-      "licence": "CC-BY-SA-3.0",
-      "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/en/9/99/Question_book-new.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "this section needs more citations . please help improve this section by adding citations to reliable sources .",
-          "licence": "Cc-by-sa-3.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e4/Psi-stylized.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "stylized letter psi",
-          "caption": "",
-          "context": "",
-          "licence": "Public domain"
-        }
-      ]
+      "licence": "CC-BY-SA-3.0"
     },
     {
       "theme": "sigmund-freud",
@@ -708,10 +811,17 @@
           "licence": "Public domain"
         },
         {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/65/FreudSignature.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "in creating psychoanalysis, freud introduced therapeutic methods such as free association , the interpretation of dreams , and the analysis of transference phenomena that arise in the clinical setting.",
+          "licence": "Public domain"
+        },
+        {
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/f0/Pribor_-_Birthplace_of_Sigmund_Freud.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "photograph",
           "caption": "",
-          "context": "auden 's 1940 poetic tribute to freud describes him as \"no more a person now but a whole climate of opinion / under whom we conduct our different lives\".",
+          "context": "nonetheless, freud's work has suffused contemporary western thought and popular culture. auden 's 1940 poetic tribute to freud describes him as \"no more a person now but a whole climate of opinion / under whom we conduct our different lives\". both of his parents were from galicia .",
           "licence": "CC BY 3.0"
         },
         {
@@ -725,7 +835,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/3d/Wien_-_Wohnhaus_Sigmund_Freuds.JPG?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "photograph",
           "caption": "Freud's home at Berggasse 19 , Vienna",
-          "context": "31 they would also have a substantial effect on the content of psychoanalytic ideas, particularly in respect of their common concerns with depth interpretation and \"the bounding of desire by law\". freud's home at berggasse 19 , vienna in 1896, minna bernays, martha freud 's sister, became a permanent member of the freud household after the death of her fiance. \"a paper published in 1969 by john m.",
+          "context": "it anticipated the book of the same name , which was published two years later. they would also have a substantial effect on the content of psychoanalytic ideas, particularly in respect of their common concerns with depth interpretation and \"the bounding of desire by law\". freud's home at berggasse 19 , vienna in 1896, minna bernays, martha freud 's sister, became a permanent member of the freud household after the death of her fiance. \"a paper published in 1969 by john m.",
           "licence": "CC BY-SA 4.0"
         },
         {
@@ -739,7 +849,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/fb/Freudsdoor.JPG?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Ornate staircase, a landing with an interior door and window, staircase continuing up",
           "caption": "Approach to Freud's consulting rooms at Berggasse 19",
-          "context": "he called this procedure \" free association \". by 1896, he was using the term \" psychoanalysis \" to refer to his new clinical method and the theories on which it was based. his explorations of his feelings of hostility to his father and rivalrous jealousy over his mother's affections led him to fundamentally revise his theory of the origin of the neuroses.",
+          "context": "he called this procedure \" free association \". by 1896, he was using the term \" psychoanalysis \" to refer to his new clinical method and the theories on which it was based. his explorations of his feelings of hostility to his father and rivalrous jealousy over his mother's affections led him to fundamentally revise his theory of the origin of the neuroses. based on his early clinical work, freud postulated that unconscious memories of sexual molestation in early childhood were a necessary precondition for psychoneuroses , a formulation now known as freud's seduction theory .",
           "licence": "CC BY-SA 3.0"
         },
         {
@@ -753,14 +863,14 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/b/b5/Hall_Freud_Jung_in_front_of_Clark.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "a journal, the jahrbuch fur psychoanalytische und psychopathologische forschungen , was launched in 1909 under the editorship of jung. 99 plans for an international association of psychoanalysts were put in place and these were implemented at the nuremberg congress of 1910, where jung was elected, with freud's support, as its first president. at clark university , worcester, massachusetts in 1909. stanley hall , carl jung ; back row: abraham brill , ernest jones , sandor ferenczi freud turned to brill and jones to further his ambition to spread the psychoanalytic cause in the english-speaking world.",
+          "context": "a journal, the jahrbuch fur psychoanalytische und psychopathologische forschungen , was launched in 1909 under the editorship of jung. plans for an international association of psychoanalysts were put in place and these were implemented at the nuremberg congress of 1910, where jung was elected, with freud's support, as its first president. at clark university , worcester, massachusetts in 1909. stanley hall , carl jung ; back row: abraham brill , ernest jones , sandor ferenczi freud turned to brill and jones to further his ambition to spread the psychoanalytic cause in the english-speaking world.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/0/00/Freud_and_other_psychoanalysts_1922.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "102 this new formation was initially called society for free psychoanalysis but it was soon renamed the society for individual psychology . in the period after world war i, adler became increasingly associated with a psychological position he devised called individual psychology .",
+          "context": "this new formation was initially called society for free psychoanalysis but it was soon renamed the society for individual psychology . in the period after world war i, adler became increasingly associated with a psychological position he devised called individual psychology .",
           "licence": "Public domain"
         },
         {
@@ -774,15 +884,36 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/2b/Sigmund_Freud_%284625084022%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Commemorative English Heritage blue plaque at Freud's Hampstead home",
-          "context": "instead, he removed evidence of freud's foreign bank accounts to his own safekeeping and arranged the storage of the ipa library in the austrian national library, where it remained until the end of the war. unable to access his own accounts, freud turned to princess marie bonaparte , the most eminent and wealthy of his french followers, who had travelled to vienna to offer her support, and it was she who made the necessary funds available.",
+          "context": "though required to disclose details of all of freud's bank accounts to his superiors and to arrange the destruction of the historic library of books housed at the ipa, sauerwald did neither. instead, he removed evidence of freud's foreign bank accounts to his own safekeeping and arranged the storage of the ipa library in the austrian national library, where it remained until the end of the war. unable to access his own accounts, freud turned to princess marie bonaparte , the most eminent and wealthy of his french followers, who had travelled to vienna to offer her support, and it was she who made the necessary funds available. this allowed sauerwald to sign the necessary exit visas for freud",
           "licence": "CC BY 2.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/0/00/Freud%27s_ashes_in_Golder%27s_Green_Columbarium.JPG?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "139 he continued to see patients there until the terminal stages of his illness. he also worked on his last books, moses and monotheism , published in german in 1938 and in english the following year 140 and the uncompleted an outline of psychoanalysis , which was published posthumously. freud's ashes in the \"freud corner\" at golders green crematorium , london by mid-september 1939, freud's cancer of the jaw was causing him increasingly severe pain and had been declared inoperable. the last book he read, balzac 's la peau de chagrin , prompted reflections on his own increasing frailty.",
+          "context": "he continued to see patients there until the terminal stages of his illness. he also worked on his last books, moses and monotheism , published in german in 1938 and in english the following year and the uncompleted an outline of psychoanalysis , which was published posthumously. freud's ashes in the \"freud corner\" at golders green crematorium , london by mid-september 1939, freud's cancer of the jaw was causing him increasingly severe pain and had been declared inoperable. the last book he read, balzac 's la peau de chagrin , prompted reflections on his own increasing frailty.",
           "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/be/Structural-Iceberg.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "The iceberg metaphor is often used to explain the psyche's parts in relation to one another.",
+          "context": "after freud's later development of the theory of the oedipus complex , this normative developmental trajectory becomes formulated in terms of the child's renunciation of incestuous desires under the fantasised threat of castration . freud hoped to prove that his model was universally valid and turned to ancient mythology and contemporary ethnography for comparative material, arguing that totemism reflected a ritualized enactment of a tribal oedipal conflict. the iceberg metaphor is often used to explain the psyche's parts in relation to one another. freud proposed that the human psyche could be divided into three parts: the id, the ego, and the superego.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/ce/Sigmund_Freud_statue%2C_London_1.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "he discussed it in works such as dreams and telepathy and dreams and occultism . the 1971 sigmund freud memorial in hampstead, north london , by oscar nemon , is located near to where sigmund and anna freud lived, now the freud museum . the building behind the statue is the tavistock clinic , a major psychological health care institution.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/fd/Betty_Friedan_1960.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Shoulder high portrait of a forty-year-old woman with short brownish hair wearing a buttoned sweater",
+          "caption": "",
+          "context": "auden in his 1940 collection another time . auden describes freud as having created \"a whole climate of opinion / under whom we conduct our different lives.\" freud influenced literary critic harold bloom . betty friedan criticizes freud's view of women in her 1963 book the feminine mystique . the decline in freud's reputation has been attributed partly to the revival of feminism .",
+          "licence": "Public domain"
         }
       ]
     },

@@ -38,16 +38,7 @@
       "theme": "musical-note",
       "story": "for example, in the first two lines of the song \"twinkle, twinkle, little star, how i wonder what you are\" there are 14 notes: one for each syllable. confusingly, the word \"note\" can also mean the pitch of a note . for example: the whole of the song \"twinkle, twinkle, little star\" can be played using six different notes: c, d, e, f, g and a. the word \"note\" can also mean the written symbol of the note, which shows the note value. nearly all music is made up of notes. music without notes might be sound effects. in some western countries, like the united kingdom, germany and the us, seven of the notes are given a letter of the alphabet according to their pitch. from lowest sounding to highest sounding: rest, c, d, e, f, g, a, b. this pattern repeats, so that after g will come a. this a is an octave higher than the first a. because there are 12 notes needed in western music, these 7 notes can have modifiers . the two main modifiers are sharps, which raise the pitch a half-step, and flats, which lower the pitch a half-step. however, when writing in music notation, the flat, sharp or natural signs are written before the note. a way to remember this is to say: if the sign came after the note, it would be too late, and you would have already played it, so it must go before so that you know what is coming. sharps and flats can also be written in key signatures. a key signature is written at the beginning of the piece, and repeated at the beginning of each line. it gives the sharps or flats which are going to be regular in the piece. two other modifiers are double sharps, which raise the note a whole step, and double flats, which lower the note a whole step. these are much less common that the simple sharp or flat, but can still be seen in some types of music. this is called an enharmonic equivalent. in some languages, such as the romance languages , seven of the notes are named \"do\", \"re\", \"mi\", \"fa\", \"sol\", \"la\" and \"tsi\") instead of \"c\", \"d\", \"e\", \"f\", \"g\", \"a\" and \"b\". nearly all of these names are the focus for a song in the sound of music.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0",
-      "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/0/0f/Mergefrom.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "it has been suggested that the text on a be merged into this article. in some languages, such as the romance languages , seven of the notes are named \"do\", \"re\", \"mi\", \"fa\", \"sol\", \"la\" and \"tsi\") instead of \"c\", \"d\", \"e\", \"f\", \"g\", \"a\" and \"b\".",
-          "licence": "Public domain"
-        }
-      ]
+      "licence": "CC-BY-SA-3.0"
     },
     {
       "theme": "staff-music-",
@@ -139,14 +130,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/27/MozartExcerptK331.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "The first two measures of Mozart 's Sonata XI, which indicates the tempo as \"Andante grazioso\" and a modern editor's metronome marking: \" ♪ = 120\".",
-          "context": "for the rate of heart beats, see heart rate . tempo is the speed of a song or piece of music. it is measured in beats per minute, or bpm.",
-          "licence": "Public domain"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/f/ff/GClef.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this short article about music can be made longer. you can help wikipedia by adding to it .",
+          "context": "tempo is the speed of a song or piece of music. it is measured in beats per minute, or bpm.",
           "licence": "Public domain"
         }
       ]

@@ -15,7 +15,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/39/IBM_system_360-50_console_-_MfK_Bern.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "IBM System/360 Model 50 operator's console and CPU; the operator's console is a terminal used by the operating system to communicate with the operator.",
-          "context": "ibm system/360 model 50 operator's console and cpu; the operator's console is a terminal used by the operating system to communicate with the operator. the first computers in the late 1940s and 1950s were directly programmed either with plugboards or with machine code inputted on media such as punch cards , without programming languages or operating systems.",
+          "context": "this overhead is not negligible: to the direct cost of mode switching it's necessary to add the indirect pollution of important processor structures which affects both user-mode and kernel-mode performance. ibm system/360 model 50 operator's console and cpu; the operator's console is a terminal used by the operating system to communicate with the operator. the first computers in the late 1940s and 1950s were directly programmed either with plugboards or with machine code inputted on media such as punch cards , without programming languages or operating systems.",
           "licence": "CC BY-SA 3.0"
         },
         {
@@ -29,42 +29,35 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/9/95/System_1_File_Edit.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Graphical user interface of a Macintosh",
-          "context": "graphical user interface of a macintosh the invention of large scale integration enabled the production of personal computers from around 1980. 46 for around five years, cp/m was the most popular operating system for microcomputers.",
+          "context": "since 2008, minix is used in controllers of most intel microchips , while linux is widespread in data centers and android smartphones. graphical user interface of a macintosh the invention of large scale integration enabled the production of personal computers from around 1980. for around five years, cp/m was the most popular operating system for microcomputers.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/8/8f/Kernel_Layout.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A kernel connects the application software to the hardware of a computer.",
-          "context": "53 the kernel also manages memory for other processes and controls access to input/output devices. a kernel connects the application software to the hardware of a computer. the operating system provides an interface between an application program and the computer hardware, so that an application program can interact with the hardware only by obeying rules and procedures programmed into the operating system.",
-          "licence": "CC BY-SA 3.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/1/1c/Wiki_letter_w_cropped.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "[icon]",
-          "caption": "",
-          "context": "this section needs expansion . you can help by making an edit request <a class=\"external text\" data-mw-original-href=\"//en.",
+          "context": "most operating systems have two modes of operation: in user mode , the hardware checks that the software is only executing legal instructions, whereas the kernel has unrestricted powers and is not subject to these checks. the kernel also manages memory for other processes and controls access to input/output devices. a kernel connects the application software to the hardware of a computer. the operating system provides an interface between an application program and the computer hardware, so that an application program can interact with the hardware only by obeying rules and procedures programmed into the operating system.",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/6e/Virtual_memory.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Many operating systems can \"trick\" programs into using memory scattered around the hard disk and RAM as if it is one continuous chunk of memory, called virtual memory.",
-          "context": "a general protection fault would be produced, indicating a segmentation violation had occurred; however, the system would often crash anyway. many operating systems can \"trick\" programs into using memory scattered around the hard disk and ram as if it is one continuous chunk of memory, called virtual memory. the use of virtual memory addressing means that the kernel can choose what memory each program may use at any given time, allowing the operating system to use the same memory locations for multiple tasks.",
+          "context": "windows versions 3.1 through me had some level of memory protection, but programs could easily circumvent the need to use it. a general protection fault would be produced, indicating a segmentation violation had occurred; however, the system would often crash anyway. many operating systems can \"trick\" programs into using memory scattered around the hard disk and ram as if it is one continuous chunk of memory, called virtual memory. the use of virtual memory addressing means that the kernel can choose what memory each program may use at any given time, allowing the operating system to use the same memory locations for multiple tasks.",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/d/d4/Layers_of_a_Linux_system.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Layers of a Linux system",
-          "context": "android, ios, and ipados are mobile operating systems , while windows, macos, and linux are desktop operating systems. layers of a linux system linux is free software distributed under the gnu general public license , which means that all of its derivatives are legally required to release their source code .",
+          "context": "layers of a linux system linux is free software distributed under the gnu general public license , which means that all of its derivatives are legally required to release their source code . linux was designed by programmers for their own use, thus emphasizing simplicity and consistency, with a small number of basic elements that can be combined in nearly unlimited ways, and avoiding redundancy.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/d/db/Diagram_of_a_security_descriptor_for_a_file_on_Windows.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
-          "caption": "",
-          "context": "141 unlike linux, much of android is written in java and uses object-oriented design .",
+          "caption": "Security descriptor for a file that is read-only by default, specified no access for Elvis, read/write access for Cathy, and full access for Ida, the owner of the file",
+          "context": "",
           "licence": "Public domain"
         }
       ]
@@ -98,31 +91,10 @@
       "licence": "CC-BY-SA-3.0",
       "figures": [
         {
-          "src": "https://upload.wikimedia.org/wikipedia/en/9/99/Question_book-new.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "this article needs more citations . please help improve this article by adding citations to reliable sources .",
-          "licence": "Cc-by-sa-3.0"
-        },
-        {
           "src": "https://upload.wikimedia.org/wikipedia/commons/a/a5/Multithreaded_process.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A process with two threads of execution, running on one processor",
-          "context": "\"single thread\" redirects here. for michelin-starred restaurant in california, see singlethread . a process with two threads of execution, running on one processor program vs.",
-          "licence": "CC BY-SA 3.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/2/25/Concepts-_Program_vs._Process_vs._Thread.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "for michelin-starred restaurant in california, see singlethread .",
-          "licence": "CC BY-SA 4.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/1/1c/Wiki_letter_w_cropped.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "[icon]",
-          "caption": "",
-          "context": "this section needs expansion . you can help by adding missing information .",
+          "context": "a process with two threads of execution, running on one processor program vs.",
           "licence": "CC BY-SA 3.0"
         }
       ]
@@ -137,8 +109,15 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/0/0c/Thread_pool.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A sample thread pool (green boxes) with a queue (FIFO) of waiting tasks (blue) and a queue of completed tasks (yellow)",
-          "context": "a sample thread pool with a queue of waiting tasks and a queue of completed tasks first in, first out , also known as first come, first served , is the simplest scheduling algorithm. fifo simply queues processes in the order that they arrive in the ready queue.",
+          "context": "if the channel conditions are favourable, the throughput and system spectral efficiency may be increased. a sample thread pool with a queue of waiting tasks and a queue of completed tasks first in, first out , also known as first come, first served , is the simplest scheduling algorithm. fifo simply queues processes in the order that they arrive in the ready queue.",
           "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/65/Simplified_Structure_of_the_Linux_Kernel.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "linux edit linux 1.2 edit linux 1.2 used a round-robin scheduling policy. linux 2.2 edit linux 2.2 added scheduling classes and support for symmetric multiprocessing .",
+          "licence": "CC BY-SA 4.0"
         }
       ]
     },
@@ -149,17 +128,10 @@
       "licence": "CC-BY-SA-3.0",
       "figures": [
         {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/a/a4/Text_document_with_red_question_mark.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this article includes a list of general references but lacks sufficient corresponding inline citations . please help improve this article by introducing more precise citations.",
-          "licence": "Public domain"
-        },
-        {
           "src": "https://upload.wikimedia.org/wikipedia/commons/4/4a/External_Fragmentation.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "An example of external fragmentation",
-          "context": "unix-like operating systems, memory is managed at the application level. memory management within an address space is generally categorized as either manual memory management or automatic memory management. an example of external fragmentation the task of fulfilling an allocation request consists of locating a block of unused memory of sufficient size. memory requests are satisfied by allocating portions from a large pool note 2 of memory called the heap note 3 or free store .",
+          "context": "unix-like operating systems, memory is managed at the application level. memory management within an address space is generally categorized as either manual memory management or automatic memory management. an example of external fragmentation the task of fulfilling an allocation request consists of locating a block of unused memory of sufficient size. memory requests are satisfied by allocating portions from a large pool of memory called the heap or free store .",
           "licence": "CC0"
         }
       ]
@@ -173,22 +145,15 @@
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/6e/Virtual_memory.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
-          "caption": "",
-          "context": "for the tbn game show, see virtual memory . not to be confused with vram . virtual memory combines active ram and inactive memory on dasd a to form a large range of contiguous addresses.",
+          "caption": "Virtual memory combines active RAM and inactive memory on DASD to form a large range of contiguous addresses.",
+          "context": "virtual memory combines active ram and inactive memory on dasd to form a large range of contiguous addresses.",
           "licence": "CC BY-SA 3.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/en/9/99/Question_book-new.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "this section needs more citations . please help improve this section by adding citations to reliable sources .",
-          "licence": "Cc-by-sa-3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/d/d9/University_of_Manchester_Atlas%2C_January_1963.JPG?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "The University of Manchester Atlas Computer was the first computer to use true virtual memory.",
-          "context": "larger programs for which the available memory was not large enough to hold all the code and data had to contain logic for managing primary and secondary storage, such as overlaying . virtual memory was therefore introduced not only to extend primary memory, but to make such an extension as easy as possible for programmers to use. the university of manchester atlas computer was the first computer to use true virtual memory. the first true virtual memory system was that implemented at the university of manchester to create a one-level storage system 8 as part of the atlas computer .",
+          "context": "larger programs for which the available memory was not large enough to hold all the code and data had to contain logic for managing primary and secondary storage, such as overlaying . virtual memory was therefore introduced not only to extend primary memory, but to make such an extension as easy as possible for programmers to use. the university of manchester atlas computer was the first computer to use true virtual memory. the first true virtual memory system was that implemented at the university of manchester to create a one-level storage system as part of the atlas computer .",
           "licence": "CC BY 3.0"
         }
       ]
@@ -199,13 +164,6 @@
       "source": "en.wikipedia.org",
       "licence": "CC-BY-SA-3.0",
       "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/en/9/99/Question_book-new.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "this article needs more citations . please help improve this article by adding citations to reliable sources .",
-          "licence": "Cc-by-sa-3.0"
-        },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/9/9a/100_000-files_5-bytes_each_--_400_megs_of_slack_space.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
@@ -224,14 +182,14 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/2c/File_Hierarchy.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Example of a directory structure in a hierarchical file system",
-          "context": "hierarchical file systems this section is an excerpt from hierarchical file system . example of a directory structure in a hierarchical file system in computing , a hierarchical file system is a file system that uses directories to organize files into a tree structure. 30 in a hierarchical file system, directories contain information about both files and other directories, called subdirectories which, in turn, can point to other subdirectories, and so on.",
+          "context": "the only constructs are buckets and objects . advanced file management is allowed by being able to use nearly any character in the object's name, and the ability to select subsets of the bucket's content based on identical prefixes. example of a directory structure in a hierarchical file system in computing , a hierarchical file system is a file system that uses directories to organize files into a tree structure. in a hierarchical file system, directories contain information about both files and other directories, called subdirectories which, in turn, can point to other subdirectories, and so on.",
           "licence": "CC BY-SA 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/1/10/Dir_command_in_Windows_Command_Prompt.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Directory listing in a Windows command shell",
-          "context": "directory listing in a windows command shell windows makes use of the fat , ntfs , exfat , live file system and refs file systems .",
+          "context": "file systems in plan 9 are organized with the help of private, per-process namespaces, allowing each process to have a different view of the many file systems that provide resources in a distributed system. the inferno operating system shares these concepts with plan 9. directory listing in a windows command shell windows makes use of the fat , ntfs , exfat , live file system and refs file systems .",
           "licence": "Public domain"
         }
       ]
@@ -240,16 +198,7 @@
       "theme": "concurrency-computer-science-",
       "story": "in computer science, concurrency refers to the ability of a system to execute multiple tasks through simultaneous execution or time-sharing , sharing resources and managing interactions. parallelism executes tasks independently on multiple cpu cores. concurrency allows for multiple threads of control at the program level, which can use parallelism or time-slicing to perform these tasks. programs may exhibit parallelism only, concurrency only, both parallelism and concurrency, neither. concurrent use of shared resources can be a source of indeterminacy, leading to issues such as deadlocks, and resource starvation. design of concurrent systems often entails finding reliable techniques for coordinating their execution, data exchange, memory allocation, and execution scheduling to minimize response time and maximize throughput. concurrency theory has been an active field of research in theoretical computer science. one of the first proposals was carl adam petri's seminal work on petri nets in the early 1960s. in the years since, a wide variety of formalisms have been developed for modeling and reasoning about concurrency. some of these are based on message passing, while others have different mechanisms for concurrency. the proliferation of different models of concurrency has motivated some researchers to develop ways to unify these different theoretical models. the concurrency representation theorem in the actor model provides a fairly general way to represent concurrent systems that are closed in the sense that they do not receive communications from outside. various types of temporal logic can be used to help reason about concurrent systems. some of these logics, such as linear temporal logic and computation tree logic, allow assertions to be made about the sequences of states that a concurrent system can pass through. others, such as action computational tree logic, hennessy-milner logic, and lamport's temporal logic of actions, build their assertions from sequences of actions . the principal application of these logics is in writing specifications for concurrent systems. concurrent programming encompasses programming languages and algorithms used to implement concurrent systems. the base goals of concurrent programming include correctness, performance and robustness. concurrent systems such as operating systems and database management systems are generally designed to operate indefinitely, including automatic recovery from failure, and not terminate unexpectedly . because they use shared resources, concurrent systems in general require the inclusion of some kind of arbiter somewhere in their implementation , to control access to those resources. the use of arbiters introduces the possibility of indeterminacy in concurrent computation which has major implications for practice including correctness and performance. for example, arbitration introduces unbounded nondeterminism which raises issues with model checking because it causes explosion in the state space and can even cause models to have an infinite number of states. some concurrent programming models include coprocesses and deterministic concurrency. in these models, threads of control explicitly yield their timeslices, either to the system or to another process. tanenbaum, andrew s.; van steen, maarten . distributed systems: principles and paradigms. a practical theory of reactive systems. elements of distributed computing. concurrency: state models and java programming. quantitative assessments of distributed systems: methodologies and techniques . somerset: john wiley & sons inc.isbn 9781119131144 bhattacharyya, s. handbook of signal processing systems . new york, ny: springer.10.1007/978-1-4614-6859-2 isbn 9781461468592 wolter, k. resilience assessment and evaluation of computing systems . isbn 9783642290329 process algebra diary - prof.",
       "source": "en.wikipedia.org",
-      "licence": "CC-BY-SA-3.0",
-      "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/en/9/99/Question_book-new.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "this section does not cite any sources . please help improve this section by adding citations to reliable sources .",
-          "licence": "Cc-by-sa-3.0"
-        }
-      ]
+      "licence": "CC-BY-SA-3.0"
     },
     {
       "theme": "deadlock",

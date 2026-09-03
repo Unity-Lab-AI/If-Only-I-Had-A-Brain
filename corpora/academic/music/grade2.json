@@ -9,16 +9,7 @@
       "theme": "melody",
       "story": "a melody in music is a group of notes of various pitches which are played one after another. together they make a tune in the same way that a group of words make a sentence. some people like to sing melodies. in music, 'melody' contrasts with 'harmony'. harmony means notes which are played at the same time, like chords. composers often think of a melody and then add harmony to it. some music has more than one melody happening at the same time. when this happens throughout the whole piece, it is called polyphonic music. rounds and fugues are types of polyphonic music. if the other melody only happens sometimes, then the second melody is called a countermelody. the adjective of melody is melodic. there is also the adjective melodious which means: 'a sweet-sounding melody'. music that does not have an obvious melody may be hard to understand . many melodies are easy to sing, while others are difficult to sing. still other melodies are impossible to sing. those melodies can still be played on musical instruments.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0",
-      "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/f/ff/GClef.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "still other melodies are impossible to sing. those melodies can still be played on musical instruments . this short article about music can be made longer. you can help wikipedia by adding to it .",
-          "licence": "Public domain"
-        }
-      ]
+      "licence": "CC-BY-SA-3.0"
     },
     {
       "theme": "rhythm",
@@ -36,16 +27,7 @@
       "theme": "musical-note",
       "story": "for example, in the first two lines of the song \"twinkle, twinkle, little star, how i wonder what you are\" there are 14 notes: one for each syllable. confusingly, the word \"note\" can also mean the pitch of a note . for example: the whole of the song \"twinkle, twinkle, little star\" can be played using six different notes: c, d, e, f, g and a. the word \"note\" can also mean the written symbol of the note, which shows the note value. nearly all music is made up of notes. music without notes might be sound effects. in some western countries, like the united kingdom, germany and the us, seven of the notes are given a letter of the alphabet according to their pitch. from lowest sounding to highest sounding: rest, c, d, e, f, g, a, b. this pattern repeats, so that after g will come a. this a is an octave higher than the first a. because there are 12 notes needed in western music, these 7 notes can have modifiers . the two main modifiers are sharps, which raise the pitch a half-step, and flats, which lower the pitch a half-step. however, when writing in music notation, the flat, sharp or natural signs are written before the note. a way to remember this is to say: if the sign came after the note, it would be too late, and you would have already played it, so it must go before so that you know what is coming. sharps and flats can also be written in key signatures. a key signature is written at the beginning of the piece, and repeated at the beginning of each line. it gives the sharps or flats which are going to be regular in the piece. two other modifiers are double sharps, which raise the note a whole step, and double flats, which lower the note a whole step. these are much less common that the simple sharp or flat, but can still be seen in some types of music. this is called an enharmonic equivalent. in some languages, such as the romance languages , seven of the notes are named \"do\", \"re\", \"mi\", \"fa\", \"sol\", \"la\" and \"tsi\") instead of \"c\", \"d\", \"e\", \"f\", \"g\", \"a\" and \"b\". nearly all of these names are the focus for a song in the sound of music.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0",
-      "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/0/0f/Mergefrom.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "it has been suggested that the text on a be merged into this article. in some languages, such as the romance languages , seven of the notes are named \"do\", \"re\", \"mi\", \"fa\", \"sol\", \"la\" and \"tsi\") instead of \"c\", \"d\", \"e\", \"f\", \"g\", \"a\" and \"b\".",
-          "licence": "Public domain"
-        }
-      ]
+      "licence": "CC-BY-SA-3.0"
     },
     {
       "theme": "guitar",
@@ -90,32 +72,18 @@
       "licence": "CC-BY-SA-3.0",
       "figures": [
         {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b4/Ambox_important.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this article needs more sources for verifiability . please help improve this article by adding reliable sources .",
-          "licence": "Public domain"
-        },
-        {
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/c0/Violin_case.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A violin and bow in its case",
-          "context": "a violin and bow in its case the violin is a string instrument which has four strings and is played with a bow . 1 the strings are usually tuned to the notes g, d, a, and e.",
+          "context": "a violin and bow in its case the violin is a string instrument which has four strings and is played with a bow . the strings are usually tuned to the notes g, d, a, and e.",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/f3/Stradivarius_violin_front.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A violin made by Stradivarius",
-          "context": "this word can be used as a nickname for the violin. it is properly used when talking about folk music , but is used in all kinds of music. a violin made by stradivarius the word \"violin\" and the word \"viol\" come from the same word. 4 the violin was not made directly from the instruments called viols .",
+          "context": "this word can be used as a nickname for the violin. it is properly used when talking about folk music , but is used in all kinds of music. a violin made by stradivarius the word \"violin\" and the word \"viol\" come from the same word. the violin was not made directly from the instruments called viols .",
           "licence": "CC BY 2.5"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/6/64/Question_book-4.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "they are some of the best instruments in existence. 14 they can have prices over one million dollars. this section does not have any sources . you can help wikipedia by finding good sources, and adding them.",
-          "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/d/db/Itzhak_Perlman_whitehouse.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
@@ -150,7 +118,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/0/0a/A_sadhu_playing_flute%2C_Benaras.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "A flute in India",
           "caption": "",
-          "context": "gallery change | change source there are flutes in many cultures . the flute has been described as \"a musical weed which springs up everywhere\".",
+          "context": "gallery change change source there are flutes in many cultures . the flute has been described as \"a musical weed which springs up everywhere\".",
           "licence": "CC BY-SA 2.0"
         },
         {
@@ -171,7 +139,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/a/af/US_Navy_070112-N-3228G-001_Musician_3rd_Class_Cassy_DeMoss_of_the_Pacific_Fleet_Band_performs_at_the_decommissioning_ceremony_for_the_rescue_and_salvage_ship_USS_Salvor_%28ARS_52%29.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "A piccolo in the US",
           "caption": "",
-          "context": "",
+          "context": "a piccolo in the us famous flutists change change source the band jethro tull was founded by a flute player . it can be heard in many songs.",
           "licence": "Public domain"
         }
       ]

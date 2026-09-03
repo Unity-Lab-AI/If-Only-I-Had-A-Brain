@@ -51,29 +51,22 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/f0/Bicycles_at_Frederiksberg_-_Flickr_-_Kristoffer_Trolle.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Cycling is an aerobic form of exercise.",
-          "context": "cycling is an aerobic form of exercise. aerobic exercise , also known as cardio , is physical exercise 1 of low to high intensity that depends primarily on the aerobic energy -generating process.",
+          "context": "cycling is an aerobic form of exercise. aerobic exercise , also known as cardio , is physical exercise of low to high intensity that depends primarily on the aerobic energy -generating process.",
           "licence": "CC BY 2.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/4/43/1896_Olympic_marathon.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Athletes training for the 1896 Olympic marathon",
-          "context": "mitochondria are organelles that rely on oxygen for the metabolism of carbs, proteins, and fats. aerobic exercise causes a remodeling of mitochondrial cells within the tissues of the liver and heart.",
+          "context": "mitochondria are organelles that rely on oxygen for the metabolism of carbs, proteins, and fats. aerobic exercise causes a remodeling of mitochondrial cells within the tissues of the liver and heart. athletes training for the 1896 olympic marathon archibald hill , a british physiologist, introduced the concepts of maximal oxygen uptake and oxygen debt in 1922. german physician otto meyerhof and hill shared the 1922 nobel prize in physiology or medicine for their independent work related to muscle energy metabolism.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/69/Exercise_zones_Fox_and_Haskell.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Fox and Haskell formula shows the split between aerobic (light orange) and anaerobic (dark orange) exercise and heart rate.",
-          "context": "27 aerobics at home became popular worldwide after the release of jane fonda's workout exercise video in 1982. 28 29 step aerobics was popular in the 1990s, driven by a step product and program from reebok shoes. fox and haskell formula shows the split between aerobic and anaerobic exercise and heart rate.",
+          "context": "aerobics at home became popular worldwide after the release of jane fonda's workout exercise video in 1982. step aerobics was popular in the 1990s, driven by a step product and program from reebok shoes. fox and haskell formula shows the split between aerobic and anaerobic exercise and heart rate.",
           "licence": "CC BY-SA 3.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/en/9/99/Question_book-new.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "this section needs more citations . relevant discussion may be found on the talk page .",
-          "licence": "Cc-by-sa-3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/7/7a/US_Army_51673_aerobathon.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
@@ -90,13 +83,6 @@
       "source": "simple.wikipedia.org",
       "licence": "CC-BY-SA-3.0",
       "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/6/64/Question_book-4.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this article does not have any sources . you can help wikipedia by finding good sources, and adding them.",
-          "licence": "CC BY-SA 3.0"
-        },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/c3/Jordan_by_Lipofsky_16577.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
@@ -186,14 +172,14 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/cf/Football_pitch_metric.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A football field",
-          "context": "in that case, extra-time, with two halves of 15 minutes each, may be played, and if there is still a tie, a penalty shootout decides the winner. sometimes, extra-time is skipped, and the game goes right into the penalty shootout. a football field fundamental rules change | change source the side which scores the most goals wins. if scores are equal, the result is a draw.",
+          "context": "in that case, extra-time, with two halves of 15 minutes each, may be played, and if there is still a tie, a penalty shootout decides the winner. sometimes, extra-time is skipped, and the game goes right into the penalty shootout. a football field fundamental rules change change source the side which scores the most goals wins. if scores are equal, the result is a draw.",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/9/95/Sports_icon.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Sports",
           "caption": "",
-          "context": "",
+          "context": "became the first team to win 100 trophies.",
           "licence": "Public domain"
         },
         {
@@ -243,7 +229,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/1/14/Baseball_field_overview.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A baseball field.",
-          "context": "in the u.s., baseball is called the national pastime , 1 because so many people in the united states used to spend a lot of time playing or watching baseball games. today, though, most americans follow football more than baseball, especially when it comes time for the super bowl . a game of baseball is played by two teams on a baseball field . umpires watch everything carefully to decide what happened, make calls about a play, and make sure everyone follows the rules .",
+          "context": "in the u.s., baseball is called the national pastime , because so many people in the united states used to spend a lot of time playing or watching baseball games. today, though, most americans follow football more than baseball, especially when it comes time for the super bowl . a game of baseball is played by two teams on a baseball field . umpires watch everything carefully to decide what happened, make calls about a play, and make sure everyone follows the rules .",
           "licence": "Public domain"
         },
         {
@@ -351,6 +337,55 @@
           "caption": "",
           "context": "",
           "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/03/Flag_of_Italy.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Italy",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/9e/Flag_of_Japan.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Japan",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/fc/Flag_of_Mexico.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Mexico",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/73/Flag_of_Romania.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Romania",
+          "caption": "",
+          "context": "romanian gymnastics federation archived 2007-05-20 at the wayback machine <a rel=\"nofollow\" class=\"external text\" href=\"http://www.sportgymrus.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/f3/Flag_of_Russia.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Russia",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/a5/Flag_of_the_United_Kingdom_%281-2%29.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "United Kingdom",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/a4/Flag_of_the_United_States.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "United States",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
         }
       ]
     },
@@ -364,16 +399,7 @@
       "theme": "heart-rate",
       "story": "heart rate is how many times a heart beats per minute . the average bpm for a man or women who does not exercise is 70 bpm. heart rate varies between people because of fitness, age and genetics.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0",
-      "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e3/Exceptional_newcomer.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this short article about biology can be made longer. you can help wikipedia by adding to it .",
-          "licence": "CC BY-SA 4.0"
-        }
-      ]
+      "licence": "CC-BY-SA-3.0"
     }
   ]
 }

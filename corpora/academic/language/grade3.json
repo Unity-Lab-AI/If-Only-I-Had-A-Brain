@@ -30,7 +30,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/b/b1/Welcome_differentlangs.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Translations of the word welcome shown in many places frequented by foreigners or tourists to welcome people of all different nationalities",
-          "context": "for the marshall crenshaw album, see good evening . for the song by john reuben, see john reuben . greetings are sometimes used just prior to a conversation or to greet in passing, such as on a sidewalk or trail. greetings exist in all known human cultures.",
+          "context": "greetings are sometimes used just prior to a conversation or to greet in passing, such as on a sidewalk or trail. greetings exist in all known human cultures.",
           "licence": "CC0"
         },
         {
@@ -58,7 +58,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/fd/03.05_%E7%B8%BD%E7%B5%B1%E6%8E%A5%E8%A6%8B%E7%BE%8E%E5%9C%8B%E5%9C%A8%E8%87%BA%E5%8D%94%E6%9C%83%28AIT%29%E4%B8%BB%E5%B8%AD%E8%8E%AB%E5%81%A5.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "two kisses are most common throughout all of france but in provence three kisses are given and in nantes four are exchanged. 9 however, in finistere at the western tip of brittany and deux-sevres in the poitou-charentes region, one kiss is preferred.",
+          "context": "two kisses are most common throughout all of france but in provence three kisses are given and in nantes four are exchanged. however, in finistere at the western tip of brittany and deux-sevres in the poitou-charentes region, one kiss is preferred.",
           "licence": "CC BY 2.0"
         },
         {
@@ -101,7 +101,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/f2/Square_root_of_2_triangle.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "√2 is irrational.",
-          "context": "sometimes, a ratio is considered as a rational number. irrational numbers change | change source irrational numbers are numbers which cannot be written as a fraction, but do not have imaginary parts . irrational numbers often occur in geometry . for example, if we have a square which has sides of 1 meter, the distance between opposite corners is the square root of two, which equals 1.414213 ...",
+          "context": "sometimes, a ratio is considered as a rational number. irrational numbers change change source irrational numbers are numbers which cannot be written as a fraction, but do not have imaginary parts . irrational numbers often occur in geometry . for example, if we have a square which has sides of 1 meter, the distance between opposite corners is the square root of two, which equals 1.414213 ...",
           "licence": "Public domain"
         }
       ]
@@ -171,13 +171,6 @@
       "licence": "CC-BY-SA-3.0",
       "figures": [
         {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e1/Alphabet_world_distribution.PNG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "for alphabets in computing, see alphabet . for the company, see alphabet inc.",
-          "licence": "CC BY-SA 3.0"
-        },
-        {
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e4/Venn_diagram_gr_la_ru.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
@@ -188,7 +181,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/a/ae/Causa_10.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "13th century calligraphy & illustration",
-          "context": "although no alphabet fits its language perfectly, they are flexible enough to fit any language approximately. the alphabet was a unique invention. 13th century calligraphy & illustration the roman alphabet , the cyrillic , and a few others come from the ancient greek alphabet , which dates back to about 1100 to 800 bc . 3 p167 the greek alphabet was probably developed from the phoenician script, which appeared somewhat earlier, and had some similar letter-shapes.",
+          "context": "although no alphabet fits its language perfectly, they are flexible enough to fit any language approximately. the alphabet was a unique invention. 13th century calligraphy & illustration the roman alphabet , the cyrillic , and a few others come from the ancient greek alphabet , which dates back to about 1100 to 800 bc . p167 the greek alphabet was probably developed from the phoenician script, which appeared somewhat earlier, and had some similar letter-shapes.",
           "licence": "Public domain"
         }
       ]
@@ -197,16 +190,7 @@
       "theme": "pronunciation",
       "story": "pronunciation is a way a word is usually spoken. it can be affected by many different factors: geographical location or dialect presence of speech defect ethnic group education level social class mispronunciation is an actual mistake in speaking. it is not used for how a speaker of a dialect pronounces a word. examples occur in many place names and personal names. for instance, leicester square is actually pronounced like \"lester square\".",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0",
-      "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "examples occur in many place names and personal names. for instance, leicester square is actually pronounced like \"lester square\". this short article can be made longer. you can help wikipedia by adding to it .",
-          "licence": "CC BY-SA 3.0"
-        }
-      ]
+      "licence": "CC-BY-SA-3.0"
     },
     {
       "theme": "vocabulary",
@@ -220,13 +204,6 @@
           "caption": "Some of the twenty volumes of the printed version of the Oxford English Dictionary . Today, the online and CD versions are more used.",
           "context": "some of the twenty volumes of the printed version of the oxford english dictionary . today, the online and cd versions are more used.",
           "licence": "CC BY 2.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "human behavior and the principle of least effort . cambridge, massachusetts: addison-wesley. this short article can be made longer. you can help wikipedia by adding to it .",
-          "licence": "CC BY-SA 3.0"
         }
       ]
     }

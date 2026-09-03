@@ -2,8 +2,8 @@
   "version": 1,
   "grade": "college4",
   "subject": "science",
-  "source": "hybrid: Saylor Academy open textbooks + prior sources, cleaned + sentence-segmented",
-  "note": "Upper-undergraduate textbook corpus for science/college4. Trained via curriculum._trainAcademicStories. A college year is a course with a book.",
+  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
+  "note": "Hybrid academic-depth corpus for science/college4. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
   "experiences": [
     {
       "theme": "neuroscience",
@@ -15,7 +15,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/1/15/PurkinjeCell.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Drawing by Santiago Ramón y Cajal (1899) of neurons in the pigeon cerebellum",
-          "context": "\"brain science\" redirects here. for other aspects of brain science, see cognitive science , cognitive psychology , neurology , and neuropsychology .",
+          "context": "",
           "licence": "Public domain"
         },
         {
@@ -29,35 +29,35 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/9/96/Gray739.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Illustration from Gray's Anatomy (1918) of a lateral view of the human brain , featuring the hippocampus among other neuroanatomical features",
-          "context": "9 the scope of neuroscience has broadened over time to include different approaches used to study the nervous system at different scales. the techniques used by neuroscientists have expanded enormously, from molecular and cellular studies of individual neurons to imaging of sensory , motor , and cognitive tasks in the brain. illustration from gray's anatomy of a lateral view of the human brain , featuring the hippocampus among other neuroanatomical features the earliest study of the nervous system dates to ancient egypt . trepanation , the surgical practice of either drilling or scraping a hole into the skull for the purpose of curing head injuries or mental disorders , or relieving cranial ",
+          "context": "the scope of neuroscience has broadened over time to include different approaches used to study the nervous system at different scales. the techniques used by neuroscientists have expanded enormously, from molecular and cellular studies of individual neurons to imaging of sensory , motor , and cognitive tasks in the brain. illustration from gray's anatomy of a lateral view of the human brain , featuring the hippocampus among other neuroanatomical features the earliest study of the nervous system dates to ancient egypt . trepanation , the surgical practice of either drilling or scraping a hole into the skull for the purpose of curing head injuries or mental disorders , or relieving cranial pr",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/6d/GolgiStainedPyramidalCell.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "The Golgi stain first allowed for the visualization of individual neurons.",
-          "context": "15 abulcasis , averroes , avicenna , avenzoar , and maimonides , active in the medieval muslim world, described a number of medical problems related to the brain. in renaissance europe , vesalius , rene descartes , thomas willis and jan swammerdam also made several contributions to neuroscience. the golgi stain first allowed for the visualization of individual neurons. luigi galvani 's pioneering work in the late 1700s set the stage for studying the electrical excitability of muscles and neurons.",
+          "context": "abulcasis , averroes , avicenna , avenzoar , and maimonides , active in the medieval muslim world, described a number of medical problems related to the brain. in renaissance europe , vesalius , rene descartes , thomas willis and jan swammerdam also made several contributions to neuroscience. the golgi stain first allowed for the visualization of individual neurons. luigi galvani 's pioneering work in the late 1700s set the stage for studying the electrical excitability of muscles and neurons.",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/63/Vergleichende_Lokalisationslehre_der_Grosshirnrinde_in_ihren_Prinzipien_dargestellt_auf_Grund_des_Zellenbaues.pdf?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "in 1894, neurologist and psychiatrist edward flatau published a human brain atlas \"atlas of the human brain and the course of the nerve-fibres\" which consisted of long-exposure photographs of fresh brain sections. 24 in 1897, charles scott sherrington introduced the name \"synapse\" for the connection between neurons.",
+          "context": "in 1894, neurologist and psychiatrist edward flatau published a human brain atlas \"atlas of the human brain and the course of the nerve-fibres\" which consisted of long-exposure photographs of fresh brain sections. in 1897, charles scott sherrington introduced the name \"synapse\" for the connection between neurons.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/0/0a/Sensory_and_motor_homunculi.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "3-D sensory and motor homunculus models at the Natural History Museum, London",
-          "context": "the first freestanding neuroscience department was founded in 1964 at the university of california, irvine by james l. 29 this was followed by the department of neurobiology at harvard medical school , which was founded in 1966 by stephen kuffler. 3-d sensory and motor homunculus models at the natural history museum, london in the process of treating epilepsy , wilder penfield produced maps of the location of various functions in the brain. 31 32 he summarized his findings in a 1950 book called the cerebral cortex of man .",
+          "context": "the first freestanding neuroscience department was founded in 1964 at the university of california, irvine by james l. this was followed by the department of neurobiology at harvard medical school , which was founded in 1966 by stephen kuffler. 3-d sensory and motor homunculus models at the natural history museum, london in the process of treating epilepsy , wilder penfield produced maps of the location of various functions in the brain. he summarized his findings in a 1950 book called the cerebral cortex of man .",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/5b/Nervous_system_diagram-en.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Human nervous system",
-          "context": "42 over time, brain research has gone through philosophical, experimental, and theoretical phases, with work on neural implants and brain simulation predicted to be important in the future. human nervous system the scientific study of the nervous system increased significantly during the second half of the twentieth century, principally due to advances in molecular biology , electrophysiology , and computational neuroscience . this has allowed neuroscientists to study the nervous system in all its aspects: how it is structured, how it works, how it develops, how it malfunctions, and how it can be changed.",
+          "context": "recently, the application of neuroscience research results has also given rise to applied disciplines as neuroeconomics , neuroeducation , neuroethics , and neurolaw . over time, brain research has gone through philosophical, experimental, and theoretical phases, with work on neural implants and brain simulation predicted to be important in the future. human nervous system the scientific study of the nervous system increased significantly during the second half of the twentieth century, principally due to advances in molecular biology , electrophysiology , and computational neuroscience . this has allowed neuroscientists to study the nervous system in all its aspects: how it is structured, h",
           "licence": "CC BY-SA 4.0"
         },
         {
@@ -78,15 +78,43 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/56/Parasagittal_MRI_of_human_head_in_patient_with_benign_familial_macrocephaly_prior_to_brain_injury_%28ANIMATED%29.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "an mri of a human head showing benign familial macrocephaly recently, the boundaries between various specialties have blurred, as they are all influenced by basic research in neuroscience. for example, brain imaging enables objective biological insight into mental illnesses, which can lead to faster diagnosis, more accurate prognosis, and improved monitoring of patient progress over time.",
+          "context": "neurosurgery and psychosurgery work primarily with surgical treatment of diseases of the central and peripheral nervous systems. neuroscience underlies the development of various neurotherapy methods to treat diseases of the nervous system. an mri of a human head showing benign familial macrocephaly recently, the boundaries between various specialties have blurred, as they are all influenced by basic research in neuroscience. for example, brain imaging enables objective biological insight into mental illnesses, which can lead to faster diagnosis, more accurate prognosis, and improved monitoring of patient progress over time.",
           "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/2a/Ivan_Pavlov_nobel.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "nobel prizes related to neuroscience edit year prize field image laureate lifetime country rationale ref.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e0/Roger_Wolcott_Sperry.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "sperry 1913-1994 united states \"for his discoveries concerning the functional specialization of the cerebral hemispheres \" david h.",
+          "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/4/47/DHUBEL.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "schally 1926-2024 poland 1981 physiology roger w.",
+          "context": "schally 1926-2024 poland 1981 physiology roger w. hubel 1926-2013 canada \"for their discoveries concerning information processing in the visual system \" torsten n.",
           "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/7d/Torsten_Wiesel-7Nov2006.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "sperry 1913-1994 united states \"for his discoveries concerning the functional specialization of the cerebral hemispheres \" david h.",
+          "licence": "CC BY-SA 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/2b/Stanley_Cohen_Nobel.webp?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "hubel 1926-2013 canada \"for their discoveries concerning information processing in the visual system \" torsten n.",
+          "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/8/8d/Sakmann.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
@@ -94,6 +122,20 @@
           "caption": "",
           "context": "bert sakmann 1942- germany 1997 physiology stanley b.",
           "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/dd/Paul_Greengard.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "paul greengard 1925-2019 united states eric r.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/df/Roderick_MacKinnon%2C_M.D..jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Roderick MacKinnon",
+          "caption": "",
+          "context": "roderick mackinnon 1956- united states \"for discoveries concerning channels in cell membranes ...",
+          "licence": "CC BY-SA 3.0"
         }
       ]
     },
@@ -114,14 +156,14 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/9/93/Minute_structure_of_the_cerebral_cortex.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Diagram of layers pattern. Cells grouped on left, axonal layers on right.",
-          "context": "20 a genetic disorder of the cerebral cortex, whereby decreased folding in certain areas results in a microgyrus , where there are four layers instead of six, is in some instances seen to be related to dyslexia . cells grouped on left, axonal layers on right.",
+          "context": "a later study using a larger patient population reports no change in the cortical thickness in patients with migraine. a genetic disorder of the cerebral cortex, whereby decreased folding in certain areas results in a microgyrus , where there are four layers instead of six, is in some instances seen to be related to dyslexia . cells grouped on left, axonal layers on right.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/5b/Cajal_cortex_drawings.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "cells grouped on left, axonal layers on right. three drawings of cortical lamination by santiago ramon y cajal , each showing a vertical cross-section, with the surface of the cortex at the top. left: nissl -stained visual cortex of a human adult.",
+          "context": "layers of neocortex edit diagram of layers pattern. cells grouped on left, axonal layers on right. three drawings of cortical lamination by santiago ramon y cajal , each showing a vertical cross-section, with the surface of the cortex at the top. left: nissl -stained visual cortex of a human adult.",
           "licence": "Public domain"
         },
         {
@@ -149,35 +191,35 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/4/4a/Cerebral_vascular_territories.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Cortical blood supply",
-          "context": "the posterior cerebral artery supplies the occipital lobes. the circle of willis is the main blood system that deals with blood supply in the cerebrum and cerebral cortex.",
+          "context": "the posterior cerebral artery supplies the occipital lobes. the circle of willis is the main blood system that deals with blood supply in the cerebrum and cerebral cortex. cortical blood supply development edit the prenatal development of the cerebral cortex is a complex and finely tuned process called corticogenesis , influenced by the interplay between genes and the environment.",
           "licence": "CC BY 2.5"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/7/7a/Neurogenesis_and_Differentiation_of_Cortical_Layers.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Neurogenesis is shown in red and lamination is shown in blue. Adapted from (Sur et al. 2001)",
-          "context": "at first, this zone contains neural stem cells , that transition to radial glial cells -progenitor cells, which divide to produce glial cells and neurons. neurogenesis is shown in red and lamination is shown in blue. adapted from the cerebral cortex is composed of a heterogenous population of cells that give rise to different cell types.",
+          "context": "cortical neuron development edit cortical neurons are generated within the ventricular zone , next to the ventricles . at first, this zone contains neural stem cells , that transition to radial glial cells -progenitor cells, which divide to produce glial cells and neurons. neurogenesis is shown in red and lamination is shown in blue. adapted from the cerebral cortex is composed of a heterogenous population of cells that give rise to different cell types.",
           "licence": "CC BY-SA 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/fd/Human_Cortical_Development.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Human cortical development between 26 and 39 week gestational age",
-          "context": "49 the development process is time ordered and regulated by hundreds of genes and epigenetic regulatory mechanisms . human cortical development between 26 and 39 week gestational age the layered structure of the mature cerebral cortex is formed during development. the first pyramidal neurons generated migrate out of the ventricular zone and subventricular zone , together with reelin -producing cajal-retzius neurons , from the preplate .",
+          "context": "the migrating daughter cells become the pyramidal cells of the cerebral cortex. the development process is time ordered and regulated by hundreds of genes and epigenetic regulatory mechanisms . human cortical development between 26 and 39 week gestational age the layered structure of the mature cerebral cortex is formed during development. the first pyramidal neurons generated migrate out of the ventricular zone and subventricular zone , together with reelin -producing cajal-retzius neurons , from the preplate .",
           "licence": "CC BY 2.5"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/30/Emx2_and_Pax6_Expression.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Depicted in blue, Emx2 is highly expressed at the caudomedial pole and dissipates outward. Pax6 expression is represented in purple and is highly expressed at the rostral lateral pole. (Adapted from Sanes, D., Reh, T., & Harris, W. (2012). Development of the Nervous System (3rd ed.). Burlington: Elsevier Science)",
-          "context": "thus, the layers of the cortex are created in an inside-out order. 52 the only exception to this inside-out sequence of neurogenesis occurs in the layer i of primates , in which, in contrast to rodents , neurogenesis continues throughout the entire period of corticogenesis . depicted in blue, emx2 is highly expressed at the caudomedial pole and dissipates outward. pax6 expression is represented in purple and is highly expressed at the rostral lateral pole.",
+          "context": "thus, the layers of the cortex are created in an inside-out order. the only exception to this inside-out sequence of neurogenesis occurs in the layer i of primates , in which, in contrast to rodents , neurogenesis continues throughout the entire period of corticogenesis . depicted in blue, emx2 is highly expressed at the caudomedial pole and dissipates outward. pax6 expression is represented in purple and is highly expressed at the rostral lateral pole.",
           "licence": "CC BY-SA 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/d/db/Constudproc.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Some functional areas of cortex",
-          "context": "the protomap hypothesis states that the cellular and molecular identity and characteristics of neurons in each cortical area are specified by cortical stem cells , known as radial glial cells , in a primordial map. this map is controlled by secreted signaling proteins and downstream transcription factors . most sensory information is routed to the cerebral cortex via the thalamus.",
+          "context": "the protomap hypothesis states that the cellular and molecular identity and characteristics of neurons in each cortical area are specified by cortical stem cells , known as radial glial cells , in a primordial map. this map is controlled by secreted signaling proteins and downstream transcription factors . most sensory information is routed to the cerebral cortex via the thalamus. olfactory information, however, passes through the olfactory bulb to the olfactory cortex .",
           "licence": "CC BY-SA 3.0"
         },
         {
@@ -185,6 +227,41 @@
           "alt": "",
           "caption": "Motor and sensory regions of the cerebral cortex",
           "context": "in more general terms the cortex is typically described as comprising three parts: sensory, motor, and association areas. sensory and motor areas are defined as primary regions, while association areas work with primary regions but go beyond them. motor and sensory regions of the cerebral cortex the sensory areas are the cortical areas that receive and process information from the senses . parts of the cortex that receive sensory inputs from the thalamus are called primary sensory areas.",
+          "licence": "CC BY 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/22/Cortical_areas_that_have_been_shown_to_be_involved_in_speech_processing_fnhum-06-00099-g005.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Cortical areas involved in speech processing.",
+          "context": "the putamen and globus pallidus are also collectively known as the lentiform nucleus , because together they form a lens-shaped body. the putamen and caudate nucleus are also collectively called the corpus striatum after their striped appearance. cortical areas involved in speech processing. the association areas are the parts of the cerebral cortex that do not belong to the primary regions.",
+          "licence": "CC BY 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/4d/Middle_Cerebral_Artery_occlusion._Kentar_et_al_Acta_Neuroch_2020.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "in the past it was theorized that language abilities are localized in broca's area in areas of the left inferior frontal gyrus , ba44 and ba45 , for language expression and in wernicke's area ba22 , for language reception. however, the processes of language expression and reception have been shown to occur in areas other than just those structures around the lateral sulcus , including the frontal lobe, basal ganglia , cerebellum , and pons . hemodynamic changes observed on gyrencephalic brain cortex after an arterial vessel occlusion in ios. the video has a speed of 50x to better appreciate the spreading depolarization over the brain cortex.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/35/Lateral_surface_of_cerebral_cortex_-_gyri.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Lateral surface of the human cerebral cortex",
+          "caption": "",
+          "context": "until recently no counterpart to the cerebral cortex had been recognized in invertebrates. however, a study published in the journal cell in 2010, based on gene expression profiles, reported strong affinities between the cerebral cortex and the mushroom bodies of the ragworm platynereis dumerilii .",
+          "licence": "CC BY 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/15/Medial_surface_of_cerebral_cortex_-_entorhinal_cortex.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Medial surface of the human cerebral cortex",
+          "caption": "",
+          "context": "medial surface of the human cerebral cortex <img alt=\"tissue slice from the brain of an adult macaque monkey.",
+          "licence": "CC BY 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/9a/Brainmaps-macaque-hippocampus.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Tissue slice from the brain of an adult macaque monkey. The cerebral cortex is depicted in dark violet.",
+          "caption": "",
+          "context": "tissue slice from the brain of an adult macaque monkey. the cerebral cortex is depicted in dark violet.",
           "licence": "CC BY 3.0"
         }
       ]
@@ -199,7 +276,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/50/Synapse_figure.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Diagram of a chemical synaptic connection",
-          "context": "diagram of a chemical synaptic connection in the nervous system , a synapse 1 is a structure that allows a neuron to exchange signals with another cell in its immediate vicinity. synapses can be classified as either chemical or electrical , depending on the mechanism of signal transmission between neurons.",
+          "context": "diagram of a chemical synaptic connection in the nervous system , a synapse is a structure that allows a neuron to exchange signals with another cell in its immediate vicinity. synapses can be classified as either chemical or electrical , depending on the mechanism of signal transmission between neurons.",
           "licence": "CC BY-SA 4.0"
         },
         {
@@ -249,7 +326,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/9/99/Neural_network_example.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Schematic of a simple feedforward artificial neural network",
-          "context": "signals generated by neural networks in the brain eventually travel through the nervous system and across neuromuscular junctions to muscle cells , where they cause contraction and thereby motion. schematic of a simple feedforward artificial neural network in machine learning, a neural network is an artificial mathematical model used to approximate nonlinear functions. while early artificial neural networks were physical machines, 3 today they are almost always implemented in software .",
+          "context": "very large interconnected networks are called large scale brain networks , and many of these together form brains and nervous systems . signals generated by neural networks in the brain eventually travel through the nervous system and across neuromuscular junctions to muscle cells , where they cause contraction and thereby motion. schematic of a simple feedforward artificial neural network in machine learning, a neural network is an artificial mathematical model used to approximate nonlinear functions. while early artificial neural networks were physical machines, today they are almost always implemented in software .",
           "licence": "Public domain"
         }
       ]
@@ -264,7 +341,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/58/Memory.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Overview of the forms and functions of memory",
-          "context": "for other uses, including works entitled \"memory\", see memory . for other uses, see memories .",
+          "context": "",
           "licence": "CC BY-SA 3.0"
         },
         {
@@ -313,7 +390,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/b/bf/Multistore_model.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Multi-store model",
-          "context": "51 glial cells have also an important role in memory formation, although how they do their work remains to be unveiled. 52 53 other mechanisms for memory consolidation can not be discarded. multi-store model the multi-store model was first described in 1968 by atkinson and shiffrin . the multi-store model has been criticised for being too simplistic.",
+          "context": "glial cells have also an important role in memory formation, although how they do their work remains to be unveiled. other mechanisms for memory consolidation can not be discarded. multi-store model the multi-store model was first described in 1968 by atkinson and shiffrin . the multi-store model has been criticised for being too simplistic.",
           "licence": "Public domain"
         },
         {
@@ -327,7 +404,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/1/1e/Garten_des_Vergessens.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "The garden of oblivion, illustration by Ephraim Moses Lilien",
-          "context": "the amount of time saved measures memory. 79 implicit-memory tasks - information is drawn from memory without conscious realization. the garden of oblivion, illustration by ephraim moses lilien transience - memories degrade with the passing of time. this occurs in the storage stage of memory, after the information has been stored and before it is retrieved.",
+          "context": "the amount of time saved measures memory. implicit-memory tasks - information is drawn from memory without conscious realization. the garden of oblivion, illustration by ephraim moses lilien transience - memories degrade with the passing of time. this occurs in the storage stage of memory, after the information has been stored and before it is retrieved.",
           "licence": "Public domain"
         },
         {
@@ -341,8 +418,22 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/8/81/DNA_methylation_and_demethylation_molecular_mechanisms.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "DNA methylation and demethylation molecular mechanisms",
-          "context": "91 the camp response element-binding protein is a transcription factor which is believed to be important in consolidating short-term to long-term memories, and which is believed to be downregulated in alzheimer's disease. dna methylation and demethylation molecular mechanisms rats exposed to an intense learning event may retain a life-long memory of the event, even after a single training session. the long-term memory of such an event appears to be initially stored in the hippocampus , but this storage is transient.",
+          "context": "on the molecular level, an increase of the postsynaptic scaffolding proteins psd-95 and homer1c has been shown to correlate with the stabilization of synaptic enlargement. the camp response element-binding protein is a transcription factor which is believed to be important in consolidating short-term to long-term memories, and which is believed to be downregulated in alzheimer's disease. dna methylation and demethylation molecular mechanisms rats exposed to an intense learning event may retain a life-long memory of the event, even after a single training session. the long-term memory of such an event appears to be initially stored in the hippocampus , but this storage is transient.",
           "licence": "CC BY 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/29/Regulatory_sequence_in_a_promoter_at_a_transcription_start_site_with_a_paused_RNA_polymerase_%28no_caption%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "such a learning experience appears to rapidly trigger top2b to induce double-strand breaks in the promoter dna of ieg genes that function in neuroplasticity . repair of these induced breaks is associated with dna demethylation of ieg gene promoters allowing immediate expression of these ieg genes. regulatory sequence in a promoter at a transcription start site with a paused rna polymerase and a top2b-induced double-strand break the double-strand breaks that are induced during a learning experience are not immediately repaired. about 600 regulatory sequences in promoters and about 800 regulatory sequences in enhancers appear to depend on double strand breaks initiated by topoisomerase 2-beta ",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/58/Brain_regions_in_memory_formation_updated.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Brain regions involved in memory formation including medial prefrontal cortex (mPFC)",
+          "context": "the double-strand breaks in the promoter are thus associated with top2b and at least these four repair enzymes. these proteins are present simultaneously on a single promoter nucleosome located near the transcription start site of their target gene. this allows the enhancer, with its bound transcription factors and mediator proteins , to directly interact with the rna polymerase paused at the transcription start site to start transcription .",
+          "licence": "CC BY-SA 4.0"
         }
       ]
     },
@@ -363,7 +454,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/9/95/Action_potential_basic_shape.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Shape of a typical action potential. The membrane potential remains near a baseline level until at some point in time, it abruptly spikes upward and then rapidly falls.",
-          "context": "c in some types of neurons, slow calcium spikes provide the driving force for a long burst of rapidly emitted sodium spikes. in cardiac muscle cells , on the other hand, an initial fast sodium spike provides a \"primer\" to provoke the rapid onset of a calcium spike, which then produces muscle contraction . shape of a typical action potential. the membrane potential remains near a baseline level until at some point in time, it abruptly spikes upward and then rapidly falls.",
+          "context": "in some types of neurons, slow calcium spikes provide the driving force for a long burst of rapidly emitted sodium spikes. in cardiac muscle cells , on the other hand, an initial fast sodium spike provides a \"primer\" to provoke the rapid onset of a calcium spike, which then produces muscle contraction . shape of a typical action potential. the membrane potential remains near a baseline level until at some point in time, it abruptly spikes upward and then rapidly falls.",
           "licence": "CC BY-SA 3.0"
         },
         {
@@ -372,13 +463,6 @@
           "caption": "",
           "context": "action potentials are driven by channel proteins whose configuration switches between closed and open states as a function of the voltage difference between the interior and exterior of the cell. these voltage-sensitive proteins are known as voltage-gated ion channels . approximate plot of a typical action potential shows its various phases as the action potential passes a point on a cell membrane . the membrane potential starts out at approximately -70 mv at time zero.",
           "licence": "CC BY-SA 3.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/en/9/99/Question_book-new.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "this section needs more citations . please help improve this section by adding citations to reliable sources .",
-          "licence": "Cc-by-sa-3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/55/Blausen_0011_ActionPotential_Nerve.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
@@ -398,14 +482,14 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/b/bc/Neuron_Hand-tuned.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "At one end of an elongated structure is a branching mass. At the centre of this mass is the nucleus and the branches are dendrites. A thick axon trails away from the mass, ending with further branching which are labeled as axon terminals. Along the axon are a number of protuberances labeled as myelin sheaths.",
           "caption": "",
-          "context": "",
+          "context": "xenopus sodium and potassium currents increase drastically after a neuron goes through its final phase of mitosis . the sodium current density of rat cortical neurons increases by 600% within the first two postnatal weeks.",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/30/SynapseSchematic_en.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "The pre- and post-synaptic axons are separated by a short distance known as the synaptic cleft. Neurotransmitter released by pre-synaptic axons diffuse through the synaptic clef to bind to and open ion channels in post-synaptic axons.",
           "caption": "",
-          "context": "the basic requirement is that the membrane voltage at the hillock be raised above the threshold for firing. 8 9 21 22 there are several ways in which this depolarization can occur. when an action potential arrives at the end of the pre-synaptic axon , it causes the release of neurotransmitter molecules that open ion channels in the post-synaptic neuron . the combined excitatory and inhibitory postsynaptic potentials of such inputs can begin a new action potential in the post-synaptic neuron.",
+          "context": "the basic requirement is that the membrane voltage at the hillock be raised above the threshold for firing. there are several ways in which this depolarization can occur. when an action potential arrives at the end of the pre-synaptic axon , it causes the release of neurotransmitter molecules that open ion channels in the post-synaptic neuron . the combined excitatory and inhibitory postsynaptic potentials of such inputs can begin a new action potential in the post-synaptic neuron.",
           "licence": "CC BY-SA 4.0"
         },
         {
@@ -419,22 +503,85 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/d/d3/Neuron1.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Axons of neurons are wrapped by several myelin sheaths, which shield the axon from extracellular fluid. There are short gaps between the myelin sheaths known as nodes of Ranvier where the axon is directly exposed to the surrounding extracellular fluid.",
           "caption": "",
-          "context": "in saltatory conduction , an action potential at one node of ranvier causes inwards currents that depolarize the membrane at the next node, provoking a new action potential there; the action potential appears to \"hop\" from node to node. to enable fast and efficient transduction of electrical signals in the nervous system, certain neuronal axons are covered with myelin sheaths.",
+          "context": "however, only the unfired part of the axon can respond with an action potential; the part that has just fired is unresponsive until the action potential is safely out of range and cannot restimulate that part. in the usual orthodromic conduction , the action potential propagates from the axon hillock towards the synaptic knobs ; propagation in the opposite direction-known as antidromic conduction -is very rare. in saltatory conduction , an action potential at one node of ranvier causes inwards currents that depolarize the membrane at the next node, provoking a new action potential there; the action potential appears to \"hop\" from node to node. to enable fast and efficient transduction of ele",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/4/4a/Conduction_velocity_and_myelination.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "A log-log plot of conduction velocity (m/s) vs axon diameter (μm).",
           "caption": "",
-          "context": "u by contrast, in unmyelinated axons, the action potential provokes another in the membrane immediately adjacent, and moves continuously down the axon like a wave. comparison of the conduction velocities of myelinated and unmyelinated axons in the cat .",
+          "context": "although the mechanism of saltatory conduction was suggested in 1925 by ralph lillie, the first experimental evidence for saltatory conduction came from ichiji tasaki and taiji takeuchi and from andrew huxley and robert stampfli. by contrast, in unmyelinated axons, the action potential provokes another in the membrane immediately adjacent, and moves continuously down the axon like a wave. comparison of the conduction velocities of myelinated and unmyelinated axons in the cat . the conduction velocity v of myelinated neurons varies roughly linearly with axon diameter d , whereas the speed of unmyelinated neurons varies roughly as the square root .",
           "licence": "CC BY 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/0/0c/Cable_theory_Neuron_RC_circuit_v3.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "A diagram showing the resistance and capacitance across the cell membrane of an axon. The cell membrane is divided into adjacent regions, each having its own resistance and capacitance between the cytosol and extracellular fluid across the membrane. Each of these regions is in turn connected by an intracellular circuit with a resistance.",
           "caption": "",
-          "context": "57 some diseases degrade myelin and impair saltatory conduction, reducing the conduction velocity of action potentials. x the most well-known of these is multiple sclerosis , in which the breakdown of myelin impairs coordinated movement. cable theory's simplified view of a neuronal fiber. the connected rc circuits correspond to adjacent segments of a passive neurite .",
+          "context": "some diseases degrade myelin and impair saltatory conduction, reducing the conduction velocity of action potentials. the most well-known of these is multiple sclerosis , in which the breakdown of myelin impairs coordinated movement. cable theory's simplified view of a neuronal fiber. the connected rc circuits correspond to adjacent segments of a passive neurite .",
           "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b7/Gap_cell_junction-en.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Electrical synapases are composed of protein complexes that are imbedded in both membranes of adjacent neurons and thereby provide a direct channel for ions to flow from the cytoplasm of one cell into an adjacent cell.",
+          "caption": "",
+          "context": "neurotransmitters are small molecules that may open ion channels in the postsynaptic cell; most axons have the same neurotransmitter at all of their termini. this complex process is inhibited by the neurotoxins tetanospasmin and botulinum toxin , which are responsible for tetanus and botulism , respectively. electrical synapses between excitable cells allow ions to pass directly from one cell to another, and are much faster than chemical synapses . electrical synapses edit some synapses dispense with the \"middleman\" of the neurotransmitter, and connect the presynaptic and postsynaptic cells together.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/aa/Ventricular_myocyte_action_potential.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Plot of membrane potential versus time. The initial resting phase (region 4) is negative and constant flowed by sharp rise (0) to a peak (1). The plateau phase (2) is slightly below the peak. The plateau phase is followed by a fairly rapid return (3) back to the resting potential (4).",
+          "caption": "",
+          "context": "this enzyme quickly reduces the stimulus to the muscle, which allows the degree and timing of muscular contraction to be regulated delicately. some poisons inactivate acetylcholinesterase to prevent this control, such as the nerve agents sarin and tabun , and the insecticides diazinon and malathion . phases of a cardiac action potential. the sharp rise in voltage corresponds to the influx of sodium ions, whereas the two decays correspond to the sodium-channel inactivation and the repolarizing eflux of potassium ions.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/4c/Loligo_forbesii.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Illustration of the longfin inshore squid.",
+          "caption": "",
+          "context": "this functionality was likely, at some later point, cross-purposed to provide a communication mechanism. even modern single-celled bacteria can utilize action potentials to communicate with other bacteria in the same biofilm . giant axons of the longfin inshore squid were crucial for scientists to understand the action potential. the study of action potentials has required the development of new experimental methods.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/8d/Single_channel.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Plot of membrane potential versus time. The channel is primarily in a high conductance state punctuated by random and relatively brief transitions to a low conductance states",
+          "caption": "",
+          "context": "refinements of this method are able to produce electrode tips that are as fine as 100 a , which also confers high input impedance. action potentials may also be recorded with small metal electrodes placed just next to a neuron, with neurochips containing eosfets , or optically with dyes that are sensitive to ca 2+ or to voltage. as revealed by a patch clamp electrode, an ion channel has two states: open and closed . for this discovery, they were awarded the nobel prize in physiology or medicine in 1991.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/77/Puffer_Fish_DSC01257.JPG?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Photograph of a pufferfish.",
+          "caption": "",
+          "context": "optical imaging technologies have been developed in recent years to measure action potentials, either via simultaneous multisite recordings or with ultra-spatial resolution. using voltage-sensitive dyes , action potentials have been optically recorded from a tiny patch of cardiomyocyte membrane. tetrodotoxin is a lethal toxin found in pufferfish that inhibits the voltage-sensitive sodium channel , halting action potentials. several neurotoxins , both natural and synthetic, function by blocking the action potential.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/15/PurkinjeCell.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Hand drawn figure of two Purkinje cells side by side with dendrites projecting upwards that look like tree branches and a few axons projected downwards that connect to a few granule cells at the bottom of the drawing.",
+          "caption": "",
+          "context": "neurotoxins aimed at the ion channels of insects have been effective insecticides ; one example is the synthetic permethrin , which prolongs the activation of the sodium channels involved in action potentials. the ion channels of insects are sufficiently different from their human counterparts that there are few side effects in humans. image of two purkinje cells drawn by santiago ramon y cajal in 1899. large trees of dendrites feed into the soma , from which a single axon emerges and moves generally downwards with a few branch points.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/52/3b8e.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Cartoon diagram of the sodium–potassium pump drawn vertically imbedded in a schematic diagram of a lipid bilayer represented by two parallel horizontal lines. The portion of the protein that is imbedded in the lipid bilayer is composed largely of anti-parallel beta sheets. There is also a large intracellular domain of the protein with a mixed alpha-helix/beta-sheet structure.",
+          "caption": "",
+          "context": "for their discoveries, golgi and ramon y cajal were awarded the 1906 nobel prize in physiology . their work resolved a long-standing controversy in the neuroanatomy of the 19th century; golgi himself had argued for the network model of the nervous system. ribbon diagram of the sodium-potassium pump in its e2-pi state. the estimated boundaries of the lipid bilayer are shown as blue and red planes.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/1f/MembraneCircuit.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Circuit diagram depicting five parallel circuits that are interconnected at the top to the extracellular solution and at the bottom to the intracellular solution.",
+          "caption": "",
+          "context": "the sodium-potassium pump was identified in 1957 and its properties gradually elucidated, culminating in the determination of its atomic-resolution structure by x-ray crystallography . the crystal structures of related ionic pumps have also been solved, giving a broader view of how these molecular machines work. equivalent electrical circuit for the hodgkin-huxley model of the action potential. i m and v m represent the current through, and the voltage across, a small patch of membrane, respectively.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/87/Gnome-mime-sound-openclipart.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Spoken Wikipedia icon",
+          "caption": "",
+          "context": "this audio file was created from a revision of this article dated 22 june 2005 , and does not reflect subsequent edits.",
+          "licence": "Public domain"
         }
       ]
     },

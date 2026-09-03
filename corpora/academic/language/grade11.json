@@ -12,20 +12,6 @@
       "licence": "CC-BY-SA-3.0",
       "figures": [
         {
-          "src": "https://upload.wikimedia.org/wikipedia/en/b/b4/Ambox_important.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this section has multiple issues. please help improve it or discuss these issues on the talk page .",
-          "licence": "Public domain"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/en/9/99/Question_book-new.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "please help improve it or discuss these issues on the talk page . this section needs more citations . please help improve this section by adding citations to reliable sources .",
-          "licence": "Cc-by-sa-3.0"
-        },
-        {
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e8/Noun-linguistics.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "icon",
           "caption": "",
@@ -41,32 +27,18 @@
       "licence": "CC-BY-SA-3.0",
       "figures": [
         {
-          "src": "https://upload.wikimedia.org/wikipedia/en/9/99/Question_book-new.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "this article needs more citations . please help improve this article by adding citations to reliable sources .",
-          "licence": "Cc-by-sa-3.0"
-        },
-        {
           "src": "https://upload.wikimedia.org/wikipedia/commons/0/00/Citation_de_Ferdinand_de_Saussure.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Swiss linguist Ferdinand de Saussure is regarded as the creator of semiotics .",
-          "context": "but, by and large, linguistics can be seen as an umbrella term. 9 linguistics is also related to the philosophy of language , stylistics , rhetoric , semiotics , lexicography , and translation . swiss linguist ferdinand de saussure is regarded as the creator of semiotics . historical linguistics main article: historical linguistics historical linguistics is the study of how language changes over history, particularly with regard to a specific language or a group of languages.",
+          "context": "but, by and large, linguistics can be seen as an umbrella term. linguistics is also related to the philosophy of language , stylistics , rhetoric , semiotics , lexicography , and translation . swiss linguist ferdinand de saussure is regarded as the creator of semiotics . historical linguistics edit historical linguistics is the study of how language changes over history, particularly with regard to a specific language or a group of languages.",
           "licence": "CC BY 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e8/Noun-linguistics.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "icon",
           "caption": "",
-          "context": "",
+          "context": "forensic linguists have also used their expertise in the framework of criminal cases.",
           "licence": "CC BY 3.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/7/79/Encoding_communication.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "Encoding communication",
-          "caption": "",
-          "context": "",
-          "licence": "CC BY 2.5"
         }
       ]
     },
@@ -80,7 +52,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/f7/Larynx_%28top_view%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "See caption",
           "caption": "A top-down view of the larynx",
-          "context": "45 glottal stops, especially between vowels, do usually not form a complete closure. true glottal stops normally occur only when they are geminated . a top-down view of the larynx the larynx, commonly known as the \"voice box\", is a cartilaginous structure in the trachea responsible for phonation . the vocal folds are held together so that they vibrate, or held apart so that they do not.",
+          "context": "glottal stops, especially between vowels, do usually not form a complete closure. true glottal stops normally occur only when they are geminated . a top-down view of the larynx the larynx, commonly known as the \"voice box\", is a cartilaginous structure in the trachea responsible for phonation . the vocal folds are held together so that they vibrate, or held apart so that they do not.",
           "licence": "Public domain"
         },
         {
@@ -96,13 +68,6 @@
           "caption": "",
           "context": "the location of the tongue during vowel production changes the frequencies at which the cavity resonates, and it is these resonances-known as formants -which are measured and used to characterize vowels.",
           "licence": "Public domain"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/1/1c/Wiki_letter_w_cropped.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "[icon]",
-          "caption": "",
-          "context": "this section needs expansion . you can help by adding missing information .",
-          "licence": "CC BY-SA 3.0"
         }
       ]
     },
@@ -135,8 +100,8 @@
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/9/98/Wismar_Marienkirche_Bronzeb%C3%BCste_Gottlob_Frege_%2801-1%29.JPG?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Bust of Gottlob Frege",
-          "caption": "",
-          "context": "speaker meaning, by contrast, is the private or subjective meaning that individuals associate with expressions. it can diverge from the literal meaning, like when a person associates the word needle with pain or drugs. the distinction between sense and reference was first introduced by the philosopher gottlob frege .",
+          "caption": "The distinction between sense and reference was first introduced by the philosopher Gottlob Frege .",
+          "context": "speaker meaning, by contrast, is the private or subjective meaning that individuals associate with expressions. it can diverge from the literal meaning, like when a person associates the word needle with pain or drugs. the distinction between sense and reference was first introduced by the philosopher gottlob frege . meaning is often analyzed in terms of sense and reference , also referred to as intension and extension or connotation and denotation .",
           "licence": "CC BY-SA 3.0"
         },
         {
@@ -150,49 +115,49 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/6e/ParseTree.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Diagram of a parse tree",
           "caption": "Parse trees , like the constituency-based parse tree, show how expressions are combined to form sentences.",
-          "context": "61 for example, in the sentence \"mary hit the ball\", mary is the subject, hit is the predicate, and the ball is an argument. 61 a more fine-grained categorization distinguishes between different semantic roles of words, such as agent, patient, theme, location, source, and goal. parse trees , like the constituency-based parse tree, show how expressions are combined to form sentences. verbs usually function as predicates and often help to establish connections between different expressions to form a more complex meaning structure.",
+          "context": "for example, in the sentence \"mary hit the ball\", mary is the subject, hit is the predicate, and the ball is an argument. a more fine-grained categorization distinguishes between different semantic roles of words, such as agent, patient, theme, location, source, and goal. parse trees , like the constituency-based parse tree, show how expressions are combined to form sentences. verbs usually function as predicates and often help to establish connections between different expressions to form a more complex meaning structure.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/8/8a/Hypotenuse.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Diagram of a hypotenuse",
           "caption": "",
-          "context": "72 dynamic semantics is a subfield of formal semantics that focuses on how information grows over time. according to it, \"meaning is context change potential\": the meaning of a sentence is not given by the information it contains but by the information change it brings about relative to a context. cognitive semantics is interested in the conceptual structures underlying language, which can be articulated through the contrast between profile and base. for instance, the term hypotenuse profiles a straight line against the background of a right-angled triangle .",
+          "context": "dynamic semantics is a subfield of formal semantics that focuses on how information grows over time. according to it, \"meaning is context change potential\": the meaning of a sentence is not given by the information it contains but by the information change it brings about relative to a context. cognitive semantics is interested in the conceptual structures underlying language, which can be articulated through the contrast between profile and base. for instance, the term hypotenuse profiles a straight line against the background of a right-angled triangle .",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/3c/Referential_theory_of_meaning.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Diagram of referential theories",
           "caption": "Referential theories identify meaning with the entities to which expressions point.",
-          "context": "some theorists include these topics within the scope of semantics while others consider them part of the distinct discipline of pragmatics. 95 theories of meaning theories of meaning explain what meaning is, what meaning an expression has, and how the relation between expression and meaning is established. referential theories identify meaning with the entities to which expressions point. referential theories state that the meaning of an expression is the entity to which it points.",
+          "context": "some theorists include these topics within the scope of semantics while others consider them part of the distinct discipline of pragmatics. theories of meaning edit theories of meaning explain what meaning is, what meaning an expression has, and how the relation between expression and meaning is established. referential theories identify meaning with the entities to which expressions point. referential theories state that the meaning of an expression is the entity to which it points.",
           "licence": "CC0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e6/Ideational_theory_of_meaning.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Diagram of ideational theories",
           "caption": "Ideational theories identify meaning with the mental states of language users.",
-          "context": "i according to this view, expressions like the first man to run a four-minute mile refer to different persons in different worlds. this view can also be used to analyze sentences that talk about what is possible or what is necessary: possibility is what is true in some possible worlds while necessity is what is true in all possible worlds. ideational theories identify meaning with the mental states of language users. ideational theories, also called mentalist theories, are not primarily interested in the reference of expressions and instead explain meaning in terms of the mental states of language users.",
+          "context": "according to this view, expressions like the first man to run a four-minute mile refer to different persons in different worlds. this view can also be used to analyze sentences that talk about what is possible or what is necessary: possibility is what is true in some possible worlds while necessity is what is true in all possible worlds. ideational theories identify meaning with the mental states of language users. ideational theories, also called mentalist theories, are not primarily interested in the reference of expressions and instead explain meaning in terms of the mental states of language users.",
           "licence": "CC0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/a/a3/Hindi_Manuscript_884_Wellcome_L0024558.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Painting of Bhartṛhari",
-          "caption": "",
-          "context": "they discerned different kinds of words by their semantic and syntactic roles, such as the contrast between names, common nouns, and verbs. they also discussed the difference between statements, commands, and prohibitions. bhartrhari developed and compared various semantic theories of the meaning of words. 137 in ancient india , the orthodox school of nyaya held that all names refer to real objects.",
+          "caption": "Bhartṛhari developed and compared various semantic theories of the meaning of words.",
+          "context": "they discerned different kinds of words by their semantic and syntactic roles, such as the contrast between names, common nouns, and verbs. they also discussed the difference between statements, commands, and prohibitions. bhartrhari developed and compared various semantic theories of the meaning of words. in ancient india , the orthodox school of nyaya held that all names refer to real objects.",
           "licence": "CC BY 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/8/86/Abelard_cour_Napoleon_Louvre_%28cropped%29.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Statue of Abelard",
           "caption": "One of Peter Abelard 's innovations was his focus on the meaning of full sentences rather than the meaning of individual words.",
-          "context": "140 in ancient china , the mohists argued that names play a key role in making distinctions to guide moral behavior. 141 they inspired the school of names , which explored the relation between names and entities while examining how names are required to identify and judge entities. one of peter abelard 's innovations was his focus on the meaning of full sentences rather than the meaning of individual words. in the middle ages, augustine of hippo developed a general conception of signs as entities that stand for other entities and convey them to the intellect.",
+          "context": "in ancient china , the mohists argued that names play a key role in making distinctions to guide moral behavior. they inspired the school of names , which explored the relation between names and entities while examining how names are required to identify and judge entities. one of peter abelard 's innovations was his focus on the meaning of full sentences rather than the meaning of individual words. in the middle ages, augustine of hippo developed a general conception of signs as entities that stand for other entities and convey them to the intellect.",
           "licence": "CC BY 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/4/48/Michel_Br%C3%A9al.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Photo of Michel Jules Alfred Bréal",
           "caption": "Michel Bréal coined the French term sémantique and conceptualized the scope of this field of inquiry.",
-          "context": "153 etienne bonnot de condillac accepted and further developed leibniz's idea of the linguistic nature of thought. against locke, he held that language is involved in the creation of ideas and is not merely a medium to communicate them. michel breal coined the french term semantique and conceptualized the scope of this field of inquiry. in the 19th century, semantics emerged and solidified as an independent field of inquiry.",
+          "context": "etienne bonnot de condillac accepted and further developed leibniz's idea of the linguistic nature of thought. against locke, he held that language is involved in the creation of ideas and is not merely a medium to communicate them. michel breal coined the french term semantique and conceptualized the scope of this field of inquiry. in the 19th century, semantics emerged and solidified as an independent field of inquiry.",
           "licence": "Public domain"
         }
       ]
@@ -214,14 +179,14 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/2c/Inscription_Theatre_Leptis_Magna_Libya.JPG?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "this occurs especially in regions such as scandinavia and the benelux , as well as among germanophones , but the phenomenon has also been expanding into some non-germanic countries. one of the tripolitania punic inscriptions at leptis magna , written in both latin and punic the first recorded use of the word multilingual in the english language occurred in the 1830s. the word is a combination of multi- and - lingual .",
+          "context": "in some large nations with multiple languages, such as india , schoolchildren may routinely learn multiple languages based on where they reside in the country. this occurs especially in regions such as scandinavia and the benelux , as well as among germanophones , but the phenomenon has also been expanding into some non-germanic countries. one of the tripolitania punic inscriptions at leptis magna , written in both latin and punic the first recorded use of the word multilingual in the english language occurred in the 1830s. the word is a combination of multi- and - lingual .",
           "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/fd/%22Pvt._Lloyd_A._Taylor%2C_21-year-old_transportation_dispatcher_at_Mitchel_Field%2C_New_York_City%2C_who_knows_Latin%2C_Greek%2C_Sp_-_NARA_-_535873.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "in individuals \"polyglot\" redirects here. for other uses, see polyglot . taylor, 21-year-old transportation dispatcher at mitchel field , new york city, who knows latin, greek, spanish, french, german, and japanese, studies a book on chinese.",
+          "context": "students who receive two-way bilingual immersion, a form of dual language education that brings together students from two different language backgrounds to learn in both languages, will perform at an even higher level. examples of such programs include international and multi-national education schools. taylor, 21-year-old transportation dispatcher at mitchel field , new york city, who knows latin, greek, spanish, french, german, and japanese, studies a book on chinese.",
           "licence": "Public domain"
         },
         {
@@ -235,7 +200,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/51/Brussels_signs.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A bilingual sign in Brussels , the capital of Belgium . In Brussels, both Dutch and French are official languages.",
-          "context": "a bilingual sign in brussels , the capital of belgium . in brussels, both dutch and french are official languages.",
+          "context": "studies with bimodal bilinguals have also provided insight into the tip of the tongue phenomenon, working memory , and patterns of neural activity when recognizing facial expressions , signing, and speaking. a bilingual sign in brussels , the capital of belgium . in brussels, both dutch and french are official languages.",
           "licence": "Public domain"
         },
         {
@@ -286,6 +251,62 @@
           "caption": "",
           "context": "text is written in six languages: english, filipino , cebuano , chinese, korean, and russian , from top to bottom. the name of a train found in south india written in four languages: kannada, hindi, tamil, and english. boards like this are common on trains that pass through two or more states where the languages spoken are different.",
           "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/22/UAE_signboard.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A trilingual ( Arabic , English and Urdu ) sign in the UAE in the three widely spoken languages in the UAE",
+          "context": "the name of a train found in south india written in four languages: kannada, hindi, tamil, and english. boards like this are common on trains that pass through two or more states where the languages spoken are different. a trilingual sign in the uae in the three widely spoken languages in the uae widespread multilingualism is one form of language contact . linguist ekkehard wolff estimates that 50% of the population of africa is multilingual.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/52/Wakkanai_Russian_sign.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Japanese, English, and Russian sign in Northern Japan",
+          "caption": "",
+          "context": "for example, in czechoslovakia, it was common to hear two people talking on television each speaking a different language without any difficulty understanding each other. this bilingualism still exists nowadays, although it has started to deteriorate since czechoslovakia split up.",
+          "licence": "CC BY 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c8/Chengde_summer_palace_writings.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Mongolian, Chagatai, Chinese, Tibetan, and Manchu sign in Chengde, China",
+          "caption": "",
+          "context": "this bilingualism still exists nowadays, although it has started to deteriorate since czechoslovakia split up.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/71/Languages_of_Israel.jpeg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A sign at the Israeli Ministry of Interior and Ministry of Immigration and Absorption in Haifa in 2009 uses Hebrew, Arabic, English, and Russian",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/bb/Protected_place_sign%2C_Fort_Canning_Park%2C_Singapore_-_20081203.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A multilingual sign in Singapore&#39;s four official languages: English, Chinese, Tamil, and Malay",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/89/Trilingual_road_sign_in_India.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Urdu, Hindi, and English on a road sign in India",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d8/Tifinagh_writing.JPG?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A sign in Morocco uses Arabic, Berber (written in Tifinagh), and French",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/ec/Hebkeyboard.JPG?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Dual-language Hebrew and English keyboard",
+          "context": "multilingualised software supports multiple languages for display and input simultaneously, but generally has a single user interface language. support for other locale features like time, date, number and currency formats may vary as the system tends towards full internationalization.",
+          "licence": "Public domain"
         }
       ]
     },
@@ -302,25 +323,11 @@
       "licence": "CC-BY-SA-3.0",
       "figures": [
         {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/1/1c/Ambox_rewrite.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this section may be in need of reorganization to comply with wikipedia's layout guidelines . please help by editing the article to make improvements to the overall structure.",
-          "licence": "Public domain"
-        },
-        {
           "src": "https://upload.wikimedia.org/wikipedia/commons/9/92/West_Germanic_dialect_diagram_shaded.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
-          "caption": "",
-          "context": "they define a dialect cluster as a central variety together with all those varieties whose speakers understand the central variety at a specified threshold level or higher. if the threshold level is high, usually between 70% and 85%, the cluster is designated as a language . local varieties in the west germanic dialect continuum are oriented towards either standard dutch or standard german depending on which side of the border they are spoken on. 32 another occasionally used criterion for discriminating dialects from languages is the sociolinguistic notion of linguistic authority .",
+          "caption": "Local varieties in the West Germanic dialect continuum are oriented towards either Standard Dutch or Standard German depending on which side of the border they are spoken on.",
+          "context": "they define a dialect cluster as a central variety together with all those varieties whose speakers understand the central variety at a specified threshold level or higher. if the threshold level is high, usually between 70% and 85%, the cluster is designated as a language . local varieties in the west germanic dialect continuum are oriented towards either standard dutch or standard german depending on which side of the border they are spoken on. another occasionally used criterion for discriminating dialects from languages is the sociolinguistic notion of linguistic authority .",
           "licence": "CC BY-SA 4.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/1/1c/Wiki_letter_w_cropped.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "[icon]",
-          "caption": "",
-          "context": "this section needs expansion . you can help by adding missing information .",
-          "licence": "CC BY-SA 3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/8/81/%D0%9A%D0%BD%D0%B8%D0%B3%D0%B0_%D0%B1%D1%83%D1%82%D1%82%D1%8F_%D1%83%D0%BA%D1%80%D0%B0%D1%97%D0%BD%D1%81%D1%8C%D0%BA%D0%BE%D0%B3%D0%BE_%D0%BD%D0%B0%D1%80%D0%BE%D0%B4%D1%83.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",

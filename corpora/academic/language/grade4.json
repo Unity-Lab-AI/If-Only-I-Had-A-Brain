@@ -56,13 +56,6 @@
           "caption": "Some of the twenty volumes of the printed version of the Oxford English Dictionary . Today, the online and CD versions are more used.",
           "context": "some of the twenty volumes of the printed version of the oxford english dictionary . today, the online and cd versions are more used.",
           "licence": "CC BY 2.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "human behavior and the principle of least effort . cambridge, massachusetts: addison-wesley. this short article can be made longer. you can help wikipedia by adding to it .",
-          "licence": "CC BY-SA 3.0"
         }
       ]
     },
@@ -70,16 +63,7 @@
       "theme": "pronunciation",
       "story": "pronunciation is a way a word is usually spoken. it can be affected by many different factors: geographical location or dialect presence of speech defect ethnic group education level social class mispronunciation is an actual mistake in speaking. it is not used for how a speaker of a dialect pronounces a word. examples occur in many place names and personal names. for instance, leicester square is actually pronounced like \"lester square\".",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0",
-      "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "examples occur in many place names and personal names. for instance, leicester square is actually pronounced like \"lester square\". this short article can be made longer. you can help wikipedia by adding to it .",
-          "licence": "CC BY-SA 3.0"
-        }
-      ]
+      "licence": "CC-BY-SA-3.0"
     },
     {
       "theme": "spain",
@@ -126,7 +110,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/1/18/Dama_de_Elche.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Lady of Elche made by the Iberians",
-          "context": "lady of elche made by the iberians people have lived in spain since the stone age . later, the roman empire controlled spain for about five hundred years; then as the roman empire broke up, groups of germanic people including visigoths moved in and took control.",
+          "context": "spain was under a falangismo under general francisco franco from 1936 to 1974. lady of elche made by the iberians people have lived in spain since the stone age . later, the roman empire controlled spain for about five hundred years; then as the roman empire broke up, groups of germanic people including visigoths moved in and took control.",
           "licence": "CC BY-SA 2.5"
         },
         {
@@ -168,8 +152,15 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/e/e7/Tapas_Bar_%26_Restaurant%2C_Palo_Santo_Cafe%2C_Aranda_de_Duero.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Spanish tortilla",
           "caption": "",
-          "context": "spanish tortilla city areas change | change source in spain, many people live in cities or close to cities. the ten biggest city areas are: pos.",
+          "context": "spanish tortilla city areas change change source in spain, many people live in cities or close to cities. the ten biggest city areas are: pos.",
           "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/ae/Spain_languages.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Languages of Spain",
+          "context": "languages of spain while spanish is the most spoken language in the country, other languages like catalan , basque or galician are also spoken in a few territories.",
+          "licence": "Public domain"
         }
       ]
     }

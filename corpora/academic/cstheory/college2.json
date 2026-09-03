@@ -15,35 +15,21 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/5e/GCD_through_successive_subtractions.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "In a loop, subtract the larger number against the smaller number. Halt the loop when the subtraction will make a number negative. Assess two numbers, whether one of them is equal to zero or not. If yes, take the other number as the greatest common divisor. If no, put the two numbers in the subtraction loop again.",
           "caption": "",
-          "context": "for the subfield of computer science, see analysis of algorithms . for other uses, see algorithm . flowchart of an algorithm to find the greatest common divisor of two numbers.",
+          "context": "flowchart of an algorithm to find the greatest common divisor of two numbers.",
           "licence": "CC BY-SA 4.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/d/dd/Al-Khwarizmi_portrait.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Muḥammad ibn Mūsā al-Khwārizmī : The 9th-century mathematician whose name is the origin of the word 'algorithm'.",
-          "context": "9 here, alghoarismi or algoritmi is the latinization of al-khwarizmi's name; 2 the text starts with the phrase dixit algoritmi , or \"thus spoke al-khwarizmi\". muhammad ibn musa al-khwarizmi : the 9th-century mathematician whose name is the origin of the word 'algorithm'. the word algorism in english came to mean the use of place-value notation in calculations; it occurs in the ancrene wisse from circa 1225.",
+          "context": "etymology edit around 825 ad, persian scientist and polymath muhammad ibn musa al-khwarizmi wrote kitab al-hisab al-hindi and kitab al-jam' wa'l-tafriq al-hisab al-hindi . here, alghoarismi or algoritmi is the latinization of al-khwarizmi's name; the text starts with the phrase dixit algoritmi , or \"thus spoke al-khwarizmi\". muhammad ibn musa al-khwarizmi : the 9th-century mathematician whose name is the origin of the word 'algorithm'. the word algorism in english came to mean the use of place-value notation in calculations; it occurs in the ancrene wisse from circa 1225.",
           "licence": "Public domain"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/en/6/6c/Wiki_letter_w.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "this section is missing information about 20th and 21st century development of computer algorithms. please expand the section to include this information.",
-          "licence": "Cc-by-sa-3.0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/cf/Diagram_for_the_computation_of_Bernoulli_numbers.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Ada Lovelace 's diagram from \" Note G \", the first published computer algorithm",
-          "context": "these led to the invention of the digital adding device by george stibitz in 1937. while working in bell laboratories, he observed the \"burdensome\" use of mechanical calculators with gears, prompting him to create an experimental digital adder at home. ada lovelace 's diagram from \" note g \", the first published computer algorithm in 1928, a partial formalization of the modern concept of algorithms began with attempts to solve david hilbert 's entscheidungsproblem . later formalizations were framed as attempts to define \" effective calculability \" 37 or \"effective method\".",
-          "licence": "Public domain"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/en/b/b4/Ambox_important.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "moschovakis, who proposed a mathematical theory of algorithms based on set-theoretic objects and distinguished algorithms from their implementations. his theory was developed in connection with questions of computational complexity and with the mathematical analysis of particular algorithms. this section may contain original research . the section has no citations and undefined terms.",
+          "context": "these led to the invention of the digital adding device by george stibitz in 1937. while working in bell laboratories, he observed the \"burdensome\" use of mechanical calculators with gears, prompting him to create an experimental digital adder at home. ada lovelace 's diagram from \" note g \", the first published computer algorithm in 1928, a partial formalization of the modern concept of algorithms began with attempts to solve david hilbert 's entscheidungsproblem . later formalizations were framed as attempts to define \" effective calculability \" or \"effective method\".",
           "licence": "Public domain"
         }
       ]
@@ -60,13 +46,6 @@
       "source": "en.wikipedia.org",
       "licence": "CC-BY-SA-3.0",
       "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/a/a4/Text_document_with_red_question_mark.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this article includes a list of general references but lacks sufficient corresponding inline citations . please help improve this article by introducing more precise citations.",
-          "licence": "Public domain"
-        },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/0/09/Binary_search_vs_Linear_search_example_svg.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
@@ -90,11 +69,11 @@
       "licence": "CC-BY-SA-3.0",
       "figures": [
         {
-          "src": "https://upload.wikimedia.org/wikipedia/en/9/99/Question_book-new.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/a6/Sierpinski_triangle_turtle.gif?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
           "caption": "",
-          "context": "this section needs more citations . please help improve this section by adding citations to reliable sources .",
-          "licence": "Cc-by-sa-3.0"
+          "context": "recursion solves such recursive problems by using functions that call themselves from within their own code. the approach can be applied to many types of problems, and recursion is one of the central ideas of computer science.",
+          "licence": "CC0"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/f/fe/Recursive2.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
@@ -107,7 +86,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/0/07/Tower_of_Hanoi.jpeg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Towers of Hanoi",
-          "context": "create new variable called remainder 2. set remainder to the remainder of x/y 3. towers of hanoi main article: towers of hanoi the towers of hanoi is a mathematical puzzle whose solution illustrates recursion. 32 33 there are three pegs which can hold stacks of disks of different diameters.",
+          "context": "create new variable called remainder 2. set remainder to the remainder of x/y 3. towers of hanoi the towers of hanoi is a mathematical puzzle whose solution illustrates recursion. there are three pegs which can hold stacks of disks of different diameters.",
           "licence": "CC BY-SA 3.0"
         }
       ]
@@ -158,7 +137,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/4/4c/Shell_sorting_algorithm_color_bars.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A Shellsort, different from bubble sort in that it moves elements to numerous swapping positions",
-          "context": "a shellsort, different from bubble sort in that it moves elements to numerous swapping positions main article: shellsort shellsort was invented by donald shell in 1959. 28 it improves upon insertion sort by moving out of order elements more than one position at a time.",
+          "context": "a shellsort, different from bubble sort in that it moves elements to numerous swapping positions shellsort was invented by donald shell in 1959. it improves upon insertion sort by moving out of order elements more than one position at a time.",
           "licence": "CC BY-SA 4.0"
         }
       ]

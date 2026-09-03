@@ -65,13 +65,6 @@
           "caption": "Some of the twenty volumes of the printed version of the Oxford English Dictionary . Today, the online and CD versions are more used.",
           "context": "some of the twenty volumes of the printed version of the oxford english dictionary . today, the online and cd versions are more used.",
           "licence": "CC BY 2.0"
-        },
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "human behavior and the principle of least effort . cambridge, massachusetts: addison-wesley. this short article can be made longer. you can help wikipedia by adding to it .",
-          "licence": "CC BY-SA 3.0"
         }
       ]
     },
@@ -138,10 +131,17 @@
           "licence": "CC BY-SA 3.0"
         },
         {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c2/Tulum-Seaside-2010.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/66/Barranca_del_cobre_2.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
-          "context": "<img src=\"//upload.wikimedia.org/wikipedia/commons/thumb/5/55/xel-ha-inlet.jpg/330px-xel-ha-inlet.",
+          "context": "<img src=\"//thumb.wikimedia.org/wikipedia/commons/thumb/d/d1/los_maravillosos_prismas_bas%c3%a1lticos.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d1/Los_maravillosos_Prismas_Bas%C3%A1lticos..jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "people change change source mexico is the most populous spanish-speaking country in the world. it is also the second most populous country in latin america .",
           "licence": "CC BY-SA 3.0"
         }
       ]
@@ -153,17 +153,17 @@
       "licence": "CC-BY-SA-3.0",
       "figures": [
         {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b4/Ambox_important.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this article needs more sources for verifiability . please help improve this article by adding reliable sources .",
-          "licence": "Public domain"
-        },
-        {
           "src": "https://upload.wikimedia.org/wikipedia/commons/1/1a/Flag_of_Argentina.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "Argentina",
           "caption": "",
-          "context": "",
+          "context": "in spanish, \"latino\" is a masculine term whereas \"latina\" is a feminine term . in the english language, \"latino\" is not associated with gender so it is an all-inclusive term.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b3/Bandera_de_Bolivia_%28Estado%29.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Bolivia",
+          "caption": "",
+          "context": "bolivia chile <img alt=\"colombia\" src=\"//thumb.wikimedia.org/wikipedia/commons/thumb/2/21/flag_of_colombia.svg/40px-flag_of_colombia.",
           "licence": "Public domain"
         },
         {
@@ -227,6 +227,90 @@
           "alt": "Honduras",
           "caption": "",
           "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/fc/Flag_of_Mexico.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Mexico",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/19/Flag_of_Nicaragua.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Nicaragua",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/ab/Flag_of_Panama.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Panama",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/27/Flag_of_Paraguay.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Paraguay",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/cf/Flag_of_Peru.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Peru",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/28/Flag_of_Puerto_Rico.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Puerto Rico",
+          "caption": "",
+          "context": "puerto rico uruguay <img alt=\"venezuela\" src=\"//thumb.wikimedia.org/wikipedia/commons/thumb/0/06/flag_of_venezuela.svg/40px-flag_of_venezuela.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/fe/Flag_of_Uruguay.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Uruguay",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/06/Flag_of_Venezuela.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Venezuela",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/05/Flag_of_Brazil.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Brazil",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c3/Flag_of_France.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "French Guiana",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/56/Flag_of_Haiti.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Haiti",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/2e/State_flag_of_Venezuela_%281954%E2%80%932006%29.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "venezuela 26,814,843 1.6% 42.9% 43.3% 7.7% 2.3% 0.0% 2.2% total 561,183,291 9.2% 39.1% 33.3% 14.3% 3.2% 0.2% 0.7% note: puerto rico is an overseas territory of the united states .",
           "licence": "Public domain"
         }
       ]

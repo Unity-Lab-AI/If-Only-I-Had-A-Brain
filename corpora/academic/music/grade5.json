@@ -15,16 +15,7 @@
       "theme": "key-music-",
       "story": "most music is in a particular key. this means that one of the 12 notes sounds like the \"home note\". when the piece finishes it normally comes to rest on this home note . the piece will be built on the notes of the scale that starts on that note. there are two kinds of key : major and minor. sometimes the key of a piece is in its title: \"minuet in c\", \"sonata in f sharp major\". if the title does not say \"major\" or \"minor\" it is normally taken to be major. major keys are normally said to sound happy or positive, and minor keys are said to sound sad, or sometimes creepy or angry. some songs are exceptions to this general rule; for example \"happy\" by pharrell williams is in a minor key, and \"tears in heaven\" by eric clapton is in a major key.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0",
-      "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/f/ff/GClef.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this short article about music can be made longer. you can help wikipedia by adding to it .",
-          "licence": "Public domain"
-        }
-      ]
+      "licence": "CC-BY-SA-3.0"
     },
     {
       "theme": "time-signature",
@@ -89,13 +80,6 @@
       "source": "simple.wikipedia.org",
       "licence": "CC-BY-SA-3.0",
       "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/6/64/Question_book-4.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this article does not have any sources . you can help wikipedia by finding good sources, and adding them.",
-          "licence": "CC BY-SA 3.0"
-        },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/1/12/Lithuanian_folklore_performance.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
