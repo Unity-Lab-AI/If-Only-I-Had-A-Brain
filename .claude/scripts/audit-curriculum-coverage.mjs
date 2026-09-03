@@ -66,6 +66,31 @@ async function examVocabPreWalk() {
 // that the next corpus pass is supposed to target. The COUNTS were always exact;
 // the LIST is what was lying by omission, and only to the consumer that needed it.
 const FULL = process.argv.includes('--json') || process.argv.includes('--full');
+
+// ⛔⛔ A MISSING CORPUS MUST NOT RENDER AS "EVERY CELL IS EMPTY".
+//
+// The corpus is no longer tracked in this repository — it lives in the data repo
+// (`UnityAILab/BrainWaves`) alongside the wavelet fields, which is what the press
+// pulls. So a checkout without that data now legitimately has no `corpora/`, and
+// `computeCoverage` would dutifully report 193 EMPTY cells: a real number
+// describing a missing checkout, read as a catastrophic curriculum failure.
+//
+// That is the same defect this whole module exists to catch, so the absence is
+// named as an absence rather than counted as a finding.
+// ⚠ `CORPUS` is already `<root>/corpora/academic`. Testing `CORPUS/academic`
+// here made the guard fire on a perfectly healthy checkout — caught by running
+// it rather than by reading it, which is the only way that class of slip shows.
+if (!fs.existsSync(CORPUS)) {
+  console.log('ABORT — no corpus at ' + CORPUS + '\n');
+  console.log('  This is NOT "every cell is empty". The corpus is not tracked in this');
+  console.log('  repository any more — the books and the wavelet fields both live in the');
+  console.log('  data repo, which is what a press pulls onto the box.');
+  console.log('\n  To audit locally, put the data repo\'s `corpora/` here:');
+  console.log('    git clone git@git.unityailab.com:UnityAILab/BrainWaves.git ../BrainWaves');
+  console.log('    cp -r ../BrainWaves/corpora/. ./corpora/');
+  process.exit(2);
+}
+
 const r = computeCoverage(mod, CORPUS, FULL ? { listCap: Infinity } : undefined);
 if (!r) {
   console.log('ABORT — curriculum module did not expose GRADE_ORDER / subjectsOwedAt.');

@@ -167,6 +167,7 @@ rsync -a --delete \
   --exclude '.loop-freeze.json' \
   --exclude 'server/.loop-freeze.json' \
   --exclude 'fields' \
+  --exclude 'corpora' \
   --exclude '.claude' \
   "$TMP/src/" "$BACKEND_DIR/" >> "$LOG" 2>&1 || { log "FATAL — rsync overlay failed; aborting."; exit 1; }
 
@@ -181,20 +182,34 @@ printf '{"sha":"%s","short":"%s","branch":"%s","deployedAt":"%s"}\n' \
 # Re-install deps if package.json changed (best-effort, non-fatal).
 ( cd "$BACKEND_DIR/server" && npm install --omit=dev >> "$LOG" 2>&1 ) || log "npm install skipped/failed (non-fatal)"
 
-# ── WAVESEE.3 — THE WAVELET FIELDS COME DOWN ON EVERY PRESS ───────────────────
+# ── THE DATA REPO — ONE SOURCE FOR THE BOOKS *AND* THE WAVELET FIELDS ─────────
 #
-# Operator: *"we will jsut put all the wavlets in the main brain repo wher they
-# belong so when update freshwalk is read it will pull it all properly and run
-# it and she can see the wavelts and train on them"* and *"we will fix it so
-# that it over writes the old copies.. it has 500MB/s dl speeds so itls only
-# take 3 minutes"*. He also has NO server access — only the dashboard buttons —
-# so this is the ONLY place the fetch can live.
+# Operator, twice: *"we will jsut put all the wavlets in the main brain repo
+# wher they belong so when update freshwalk is read it will pull it all properly
+# and run it and she can see the wavelts and train on them"*, then — after
+# finding the corpus and the fields living in two different repos — *"we need to
+# makes suure there is only one repo with all the corpus and fields, PERIOD!
+# Then when it auto downloads it to the server when pressing update freshwalk
+# the server then trains Unity on it as the books and information that trains
+# her via pgase cell grade course ciriculim corpus.... directly"*.
 #
-# ⛔ THEY ARE NOT IN THIS REPO ON PURPOSE. `If-Only-I-Had-A-Brain` pushes to a
-# PUBLIC GitHub remote as well as Forgejo; ~133 GB of LFS cannot go there, and
-# putting the fields in this tree would also drag them through the shallow clone
-# above on every press. `BrainWaves` is Forgejo-ONLY, which is what makes it the
-# right home — the operator's "i dont care about github we will use forgjo".
+# He has NO server access — only the dashboard buttons — so this is the ONLY
+# place the fetch can live.
+#
+# ⛔ WHAT WAS WRONG: the press pulled the BOOKS out of the code repo (`corpora/`
+# rode the shallow clone) and the FIELDS out of this one. Two repos fed one
+# brain, through two clone paths, with two ways to go stale — and they already
+# had: the data repo's corpus mirror predated both the deepening pass and the
+# topic-list expansion. `corpora` is now on the code-clone EXCLUDE list above and
+# comes from here instead, so there is exactly one source of truth for what she
+# reads.
+#
+# ⛔ AND THE CODE REPO COULD NEVER HAVE BEEN THAT SOURCE. `If-Only-I-Had-A-Brain`
+# pushes to a PUBLIC GitHub remote; the fields are hundreds of GB of Git LFS and
+# cannot go there. `corpora/glove.6B.300d.txt` proves the same point from the
+# other side — it is GITIGNORED in the code repo and LFS-tracked here, so before
+# this change a press delivered no embeddings at all and the box had to be fed by
+# hand. One Forgejo-only data repo fixes both.
 #
 # ⛔⛔ `git clone --depth 1` IS NOT LFS-AWARE. `*.field.json` is an LFS filter,
 # so without `git lfs pull` every file on disk is a ~130-byte POINTER STUB —
@@ -202,25 +217,42 @@ printf '{"sha":"%s","short":"%s","branch":"%s","deployedAt":"%s"}\n' \
 # perceives nothing. `server/figure-field-store.js` refuses stubs and counts
 # them separately for exactly this reason; this side must still fetch properly.
 #
-# ⚠ `fields` is on the rsync --delete EXCLUDE list above, or the next press
-# would delete everything this step just downloaded.
+# ⚠ `fields` AND `corpora` are both on the rsync --delete EXCLUDE list above, or
+# the next press would delete everything this step just downloaded.
 #
-# Non-fatal by construction: a field miss costs a live fetch + transform, which
-# is the behaviour that shipped before this existed. It must never block a boot.
-FIELDS_REMOTE="${UAL_FIELDS_REMOTE:-git@git.unityailab.com:UnityAILab/BrainWaves.git}"
+# ⛔⛔ THE FIELDS ARE NON-FATAL AND THE BOOKS ARE NOT, AND THAT ASYMMETRY IS THE
+# WHOLE SAFETY OF THIS BLOCK. A missing field costs a live fetch + transform,
+# which is the behaviour that shipped before any of this existed. A missing
+# CORPUS means she boots with nothing to read and walks a curriculum of empty
+# cells — so if this step cannot leave books on the box, the deploy ABORTS
+# rather than restarting her into an empty library. It aborts BEFORE .force-fresh
+# is written, so a failed data sync can never cost the trained weights either.
+DATA_REMOTE="${UAL_FIELDS_REMOTE:-git@git.unityailab.com:UnityAILab/BrainWaves.git}"
 FIELDS_DIR="${UAL_FIELDS_DIR:-$BACKEND_DIR/fields}"
+CORPORA_DIR="${UAL_CORPORA_DIR:-$BACKEND_DIR/corpora}"
+_corpus_ok=0
 if [ "${UAL_SKIP_FIELDS:-0}" = "1" ]; then
-  log "field sync SKIPPED (UAL_SKIP_FIELDS=1) — every figure will be fetched and transformed live."
+  log "data sync SKIPPED (UAL_SKIP_FIELDS=1) — using whatever books and fields are already on the box."
 elif ! command -v git-lfs >/dev/null 2>&1 && ! git lfs version >/dev/null 2>&1; then
-  log "WARN — git-lfs NOT INSTALLED on this box. Skipping the field sync rather than filling the disk with pointer stubs; she will transform every figure live. Install git-lfs to enable the fast path."
+  log "WARN — git-lfs NOT INSTALLED on this box. Skipping the data sync rather than filling the disk with pointer stubs. Install git-lfs to enable it."
 else
   FTMP="$(mktemp -d)"
-  log "field sync — pulling wavelet fields from ${FIELDS_REMOTE} (overwrites in place)"
-  if git clone --depth 1 --branch main --filter=blob:none "$FIELDS_REMOTE" "$FTMP/bw" >> "$LOG" 2>&1 \
+  log "data sync — pulling books + wavelet fields from ${DATA_REMOTE} (overwrites in place)"
+  if git clone --depth 1 --branch main --filter=blob:none "$DATA_REMOTE" "$FTMP/bw" >> "$LOG" 2>&1 \
      && ( cd "$FTMP/bw" && git lfs pull >> "$LOG" 2>&1 ); then
-    mkdir -p "$FIELDS_DIR"
-    # --delete so a field removed upstream disappears here too; this directory
-    # is OURS and holds nothing else, so a full mirror is the honest sync.
+    mkdir -p "$FIELDS_DIR" "$CORPORA_DIR"
+    # THE BOOKS FIRST — this is the half the walk cannot run without.
+    # --delete so a cell removed upstream disappears here too; this directory is
+    # OURS and holds nothing the server writes, so a full mirror is honest.
+    if [ -d "$FTMP/bw/corpora" ] && rsync -a --delete "$FTMP/bw/corpora/" "$CORPORA_DIR/" >> "$LOG" 2>&1; then
+      _ccount="$(find "$CORPORA_DIR" -name '*.json' 2>/dev/null | wc -l | tr -d ' ')"
+      _csize="$(du -sh "$CORPORA_DIR" 2>/dev/null | cut -f1)"
+      log "corpus sync OK — ${_ccount} corpus files (${_csize}) at ${CORPORA_DIR}; this is what she is taught from."
+      _corpus_ok=1
+    else
+      log "WARN — corpus rsync failed or the data repo has no corpora/; falling back to whatever is already on the box."
+    fi
+    # THE FIELDS SECOND — her precomputed view of every picture. Non-fatal.
     if rsync -a --delete "$FTMP/bw/fields/" "$FIELDS_DIR/" >> "$LOG" 2>&1; then
       _fcount="$(find "$FIELDS_DIR" -name '*.field.json' 2>/dev/null | wc -l | tr -d ' ')"
       _fsize="$(du -sh "$FIELDS_DIR" 2>/dev/null | cut -f1)"
@@ -229,9 +261,24 @@ else
       log "WARN — field rsync failed; keeping whatever was already on disk (live transform covers the rest)."
     fi
   else
-    log "WARN — field clone/lfs-pull failed; keeping whatever was already on disk (live transform covers the rest)."
+    log "WARN — data clone/lfs-pull failed; keeping whatever books and fields are already on disk."
   fi
   rm -rf "$FTMP"
+fi
+
+# ⛔ THE BOOKS GATE. Whether the sync ran, was skipped, or failed, the one thing
+# that must be true before a restart is that there ARE books on the box. A press
+# that leaves her with an empty corpus produces a walk of empty cells and reports
+# it as a successful deploy — the exact "instrument says fine while nothing is
+# there" failure this project keeps paying for. Checked against the directory the
+# server actually reads, not against the exit code of the step above.
+if [ "$_corpus_ok" != "1" ]; then
+  _have="$(find "$CORPORA_DIR/academic" -name '*.json' 2>/dev/null | wc -l | tr -d ' ')"
+  if [ "${_have:-0}" -lt 1 ]; then
+    log "FATAL — no corpus on the box (${CORPORA_DIR}/academic is empty or missing) and the data sync did not provide one. ABORTING before .force-fresh is written, so the trained weights are untouched and the service keeps running the old code. Fix the data repo pull (${DATA_REMOTE}) and press again."
+    exit 1
+  fi
+  log "corpus: sync did not run, but ${_have} academic cells are already on the box — continuing with those."
 fi
 
 # SAVESTART vs FRESH WALK. In fresh-walk mode (default) we write .force-fresh
