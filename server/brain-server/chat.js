@@ -901,6 +901,65 @@ const SERVER_CHAT_MIXIN = {
       const isFresh = trainedCap.wordsBucketed === 0
         && trainedCap.passedCellCount === 0
         && trainedCap.subGradesActive === 0;
+
+      // ── THE MEMORY GAP, DERIVED RATHER THAN LEFT BLANK ──────────────────
+      //
+      // This is the point the whole `deriveMemoryGap` feature was built for and
+      // never reached: she HAS training, and this specific input produced no
+      // stable sequence. Before this, the only two outcomes were a trained
+      // answer or nothing — no path between them — so a concept just outside
+      // her training made her go blank instead of reasoning from what she knows,
+      // which is not how a mind behaves.
+      //
+      // ⛔ A FRESH BRAIN NEVER DERIVES. Interpolating against adjacent trained
+      // weights needs adjacent trained weights; on a zero-training brain it
+      // would be inventing, which is the one thing this lane must not do.
+      //
+      // ⛔ THE EPISODIC COMMIT RIDES ALONG AND IS NOT A FOLLOW-UP. The cache
+      // behind the consistency contract is in-memory, so without the commit she
+      // would re-derive after every restart and contradict herself while the
+      // code claimed she could not. Passing `commit` here is what makes the
+      // contract true rather than asserted.
+      //
+      // ⚠ IT STAYS HEDGED. A derived answer is surfaced as thinking-aloud, never
+      // as something she was taught — `silent:false` with `derived:true` so the
+      // transport and the page can both tell the difference.
+      if (!isFresh && this.cortexCluster && typeof this.cortexCluster.deriveMemoryGap === 'function') {
+        this._chatStamp('respond:derive-gap');
+        try {
+          const gap = await this.cortexCluster.deriveMemoryGap(text, {
+            curriculumBusy: !!this._curriculumInProgress,
+            commit: (concept, answer) => {
+              if (typeof this.storeEpisode === 'function') this.storeEpisode(userId, 'derived-memory', concept, answer);
+            },
+          });
+          if (gap && gap.derived && gap.answer) {
+            this._derivedGapCount = (this._derivedGapCount || 0) + 1;
+            try {
+              process.stdout.write(`[Brain] ~ derived-gap (concept=${gap.concept}) persisted=${gap.persisted} "${gap.answer}"\n`);
+            } catch { /* nf */ }
+            return {
+              text: gap.answer,
+              action: 'respond_text',
+              silent: false,
+              derived: true,
+              hedge: !!gap.hedge,
+              // ⚠ Surfaced, not hidden: a reader must be able to tell an answer
+              // she reasoned to from one she was taught, and a derivation that
+              // did not persist from one that did.
+              derivedDetail: `No trained answer for this input, so she reasoned from adjacent trained weights and is thinking aloud rather than recalling. ${gap.persisted ? 'Stored, so the same gap gives the same answer next time.' : 'NOT stored — the same gap may answer differently after a restart.'}`,
+              minGrade,
+              trainedCap,
+            };
+          }
+          // A refusal is not a failure and is logged as itself — the gate
+          // protecting boundary canon only proves it works by saying so.
+          if (gap && gap.refused) {
+            try { process.stdout.write(`[Brain] ~ derived-gap REFUSED (${gap.reason})\n`); } catch { /* nf */ }
+          }
+        } catch { /* derivation must never break the reply path */ }
+      }
+
       return {
         text: '',
         action: 'respond_text',

@@ -1786,8 +1786,18 @@ export const CLUSTER_EMIT_MIXIN = {
    *   3. OPERATOR CORRECTION — `correctDerivedMemory(concept, value)` lets the operator
    *      overwrite a derived memory; the corrected value sticks (consistency).
    *
-   * Hebbian-commit + episodic-store of the derivation are follow-on wiring
-   * (need the episodic API); this is the derivation + gate + cache core.
+   * ⭐ THE EPISODIC COMMIT IS WIRED AS OF 2026-09-03 AND IS NOT OPTIONAL. This
+   * comment used to read *"follow-on wiring (need the episodic API)"* and the
+   * whole feature then sat with ZERO CALLERS for months — the deferral outlived
+   * its reason, because the episodic API exists.
+   *
+   * ⛔⛔ WHY IT CANNOT BE DEFERRED AGAIN: contract (1) is CONSISTENCY, and the
+   * cache backing it is an in-memory Map. Without a commit, every derived answer
+   * is re-derived from scratch on the next boot — so she would contradict
+   * herself across restarts **while the code claimed she could not**, which is
+   * worse than the feature being off. A caller passes `opts.commit`, and a call
+   * without one is answered but marked `persisted:false` so the gap is visible
+   * rather than assumed.
    *
    * @param {string} concept — the gap concept (e.g. a name/fact chat lacks)
    * @param {object} [opts] — passed to composeSentence (temperature etc.)
@@ -1825,9 +1835,53 @@ export const CLUSTER_EMIT_MIXIN = {
       return { derived: false, concept: key, reason: 'no-derivation (honest gap)' };
     }
 
-    const result = { derived: true, concept: key, answer, hedge: true };
+    const result = { derived: true, concept: key, answer, hedge: true, persisted: false };
     this._derivedMemories.set(key, result);   // cache for consistency-on-recall
+    // ⛔ THE COMMIT, AND IT RUNS BEFORE THE ANSWER IS HANDED BACK. The cache
+    // above only survives this process; the episode is what makes contract (1)
+    // true across a restart. Best-effort by construction — a storage failure
+    // must not swallow an answer she has already derived — but it is RECORDED
+    // either way, so `persisted:false` on a returned answer means the durability
+    // half did not happen and nobody has to infer that from silence.
+    if (typeof opts.commit === 'function') {
+      try { opts.commit(key, answer); result.persisted = true; } catch { result.persisted = false; }
+    }
     return result;
+  },
+
+  /**
+   * Rehydrate the derivation cache from episodic memory at boot. This is the
+   * other half of contract (1): the commit writes, and nothing read it back
+   * until this existed, so a restart silently reopened every gap.
+   *
+   * ⚠ ROWS ARE TRUSTED ONLY FOR SHAPE, NOT FOR CONTENT. Each is re-checked
+   * against the sensitive-topic gate on the way in — the boundary list can grow
+   * after an answer was already stored, and a memory laid down under an older
+   * gate must not walk back through a newer one.
+   *
+   * @param {Array<{concept:string, answer:string, corrected?:boolean}>} rows
+   * @returns {{loaded:number, refused:number}}
+   */
+  loadDerivedMemories(rows) {
+    if (!this._derivedMemories) this._derivedMemories = new Map();
+    let loaded = 0, refused = 0;
+    for (const r of (Array.isArray(rows) ? rows : [])) {
+      const key = String((r && r.concept) || '').toLowerCase().trim();
+      const answer = (r && r.answer) ? String(r.answer) : '';
+      if (!key || !answer) continue;
+      if (this._isSensitiveGapTopic(key)) { refused++; continue; }
+      // A later derivation supersedes an earlier one for the same gap, and an
+      // operator CORRECTION supersedes any derivation — so a corrected row is
+      // never overwritten by a plain one replayed after it.
+      const held = this._derivedMemories.get(key);
+      if (held && held.corrected && !(r && r.corrected)) continue;
+      this._derivedMemories.set(key, {
+        derived: true, concept: key, answer,
+        hedge: !(r && r.corrected), corrected: !!(r && r.corrected), persisted: true,
+      });
+      loaded++;
+    }
+    return { loaded, refused };
   },
 
   /**
@@ -1856,12 +1910,23 @@ export const CLUSTER_EMIT_MIXIN = {
    * the cached derivation so the corrected value sticks (consistency). Pass
    * value=null to forget a derivation (forces a fresh derive next time).
    */
-  correctDerivedMemory(concept, value) {
+  correctDerivedMemory(concept, value, opts = {}) {
     const key = String(concept || '').toLowerCase().trim();
     if (!key) return false;
     if (!this._derivedMemories) this._derivedMemories = new Map();
     if (value == null) { this._derivedMemories.delete(key); return true; }
-    this._derivedMemories.set(key, { derived: true, concept: key, answer: String(value), hedge: false, corrected: true });
+    this._derivedMemories.set(key, { derived: true, concept: key, answer: String(value), hedge: false, corrected: true, persisted: false });
+    // ⛔⛔ A CORRECTION THAT DOES NOT OUTLIVE THE PROCESS IS NOT A CORRECTION.
+    // The derivation path commits and the loader gives a corrected row priority
+    // over any later plain derive — but until this existed **nothing wrote a
+    // corrected row at all**, so an operator correction survived exactly until
+    // the next restart and the wrong answer then came back. Found by harnessing
+    // the read-back and noticing the query supported a row type no writer
+    // produced: **a reader for a record nobody creates is a dead branch wearing
+    // the look of a feature.**
+    if (typeof opts.commit === 'function') {
+      try { opts.commit(key, String(value)); const h = this._derivedMemories.get(key); if (h) h.persisted = true; } catch { /* the Map still holds it for this process */ }
+    }
     return true;
   },
 
