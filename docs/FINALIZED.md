@@ -5,6 +5,46 @@
 
 ---
 
+## 2026-09-02 (NINETEENTH BATCH) — `CURVEDEPTH.14` — THE BIGGER HOST EXISTS, AND TWO OF THIS BOARD'S RECORDED FACTS ABOUT HOSTS WERE STALE
+
+The ruling was *"FIND A BIGGER HOST FIRST, before writing any more fetchers … probe licence AND reachability per host before a line of fetcher is written."* This is that probe. **No fetcher was written.**
+
+### LibreTexts — ≥295,534 pages, and the libraries map onto the starved courses one for one
+
+```
+  human      75,004   art 20 · language 10 · music 13
+  socialsci  74,685   social 17 · psychology 4
+  bio        33,679   science
+  biz        33,332   economics 3
+  med        29,535   health 13 · pe 13
+  eng        24,459   cs 8 · cstheory 4 · cssystems 4
+  phys       19,582   science
+  k12         5,258   the early bands
+             -------
+            295,534   (chem, math, stats not yet counted)
+```
+
+`TEXTBOOK.1` says 131 of 174 cells have no textbook and names the gap by course. `human` alone is 75,004 pages against the 43 art/language/music cells that have no book at all.
+
+### Four things only a probe could establish
+
+1. ⛔ **The MindTouch API 403s while `sitemap.xml` returns 200.** Probing the landing page says *"200, host is fine"* — and a fetcher built on that would have been aimed at a locked door.
+2. ⚠ **Two sitemap shapes, and one assumption gets zero from the other half.** `human`/`socialsci` serve `<sitemapindex>`; the other six serve flat page lists. **My own counter assumed the index shape and reported `med` as "29,535 shards, 0 pages"** — the right number wearing the wrong noun.
+3. ⛔ **Licence is per page, and most pages state none inline.** 12 real book pages sampled: **3 CC-BY 4.0 · 2 CC-BY-NC-SA 4.0 · 7 no CC link.** A fetcher must resolve licence per book and skip what it cannot verify.
+4. **Prose arrives inside page chrome** — 34,363 chars on the sample page including CSS and nav, so an extractor is required.
+
+### Two control results that correct this board
+
+⭐ **`open.umn.edu` does not 403 this client.** `CURVEDEPTH.14` states it *"403s this client outright and is not to be worked around by forging a browser User-Agent."* It returned **200, 83,826 bytes, "All Textbooks — Open Textbook Library."** The recorded refusal was **inherited rather than re-checked** — the same failure shape as the 500 GB disk constant that propagated into two rows and an operator decision. ⚠ `pressbooks.pub` was **not** re-tested; its claim stands unverified rather than corrected.
+
+⚠ **The known-GOOD control timed out.** Gutenberg — the host this corpus already uses — aborted on timeout during the probe. **A timeout is not evidence a host is dead**, and a probe that treated it as one would have retired a working source. Controls in both directions are why that is visible instead of believed.
+
+**Also probed, recorded so nobody repeats them:** OAPEN's REST API **works** and returns real titles with CC-BY / NC / SA / ND metadata — a genuine second option for the college band · Siyavula **alive** (my first 404 was my own wrong path) · DOAB **403** · SmartHistory **403** · CK-12 **403** · BCcampus 200 · CORE 200.
+
+**Unblocked, not started:** `TEXTBOOK.1`'s ingest, moved to in-progress with the host question answered and the licence gate named as its precondition.
+
+---
+
 ## 2026-09-02 (EIGHTEENTH BATCH) — `MATHLEAK.1` + `COURSEGUT.1` — THE CHOKEPOINT WAS THE READER, AND THE RE-INGEST WAS NEVER NEEDED
 
 Picked up on *"yes that sounds like the plan"* — corpus cleanliness before corpus content, both pre-walk-mandatory.
