@@ -2908,7 +2908,7 @@ var VoiceIO = class {
     this._initRecognition();
   }
   /**
-   * HEARING.1 — turn the sound she just took in into an equation, and hand it
+   * the hearing lane — turn the sound she just took in into an equation, and hand it
    * up with the words it carried.
    *
    * ⛔ PERCEIVED ON THIS SIDE, DELIBERATELY. The raw PCM for a 3-second
@@ -3121,7 +3121,7 @@ var VoiceIO = class {
   //
   // They formed one closed circuit whose every outcome was failure:
   // `_voxQueueMissing` queued each un-banked word, `_voxPrimeLoop` walked the
-  // queue, and `_voxFetchWord` — already gutted to a bare `throw` by LLMGUT.6
+  // queue, and `_voxFetchWord` — already gutted to a bare `throw` by the text-AI removal
   // when the external TTS lane went ("we do not use pollinations tts we use the
   // unity one equations") — guaranteed the exception. Each word therefore cost
   // one throw, one `VOX prime failed` warn, and a hardcoded 6-second sleep.
@@ -3279,7 +3279,7 @@ var VoiceIO = class {
   // it looks wired.
   //
   // ⚠ WHAT IS DELIBERATELY NOT GUTTED: `SpeechRecognition` (the listening half).
-  // That is STT, it is her ONLY source of words, and `HEARING.1` is built on
+  // That is STT, it is her ONLY source of words, and `the hearing lane` is built on
   // top of it — the sound becomes a percept, the transcript still names it.
   // Deleting it would leave her unable to know what was said at all.
   // =========================================================================
@@ -3287,7 +3287,7 @@ var VoiceIO = class {
     return this._speaking;
   }
   /**
-   * VOX.0 — pin her spoken age. app.js feeds this from live state.minGrade
+   * pin her spoken age. app.js feeds this from live state.minGrade
    * (same-girl-growing-up continuity: the voice ages as she walks the
    * grades, exactly like the self-image age pin). Clamped 3..30.
    */
@@ -3299,7 +3299,7 @@ var VoiceIO = class {
   /**
    * Playback rate for the one speaking lane.
    *
-   * AGE/GRADE VOICE MODULATION SCRAPPED (Gee 2026-07-15: "the age modulator is
+   * AGE/GRADE VOICE MODULATION SCRAPPED (operator, 2026-07-15: "the age modulator is
    * busted she sounde like a starwars ... sand scavenger creatrure all
    * distorted ... scrap the per age/grade modulation and keep her original chosen
    * sound for her voice"). The age-pinned pitch/formant OLA shift (1.14 young →
@@ -3316,7 +3316,7 @@ var VoiceIO = class {
   _agePreset() {
     return { rate: 1 };
   }
-  // _pitchShiftOLA — REMOVED (Gee 2026-07-15: "scrap the per age/grade modulation").
+  // _pitchShiftOLA — REMOVED (operator, 2026-07-15: "scrap the per age/grade modulation").
   // The duration-preserving OLA pitch shift existed ONLY to age-pitch her voice;
   // with the age modulation scrapped it had no caller. Her voice is the untouched
   // original — no pitch shifting anywhere.
@@ -3377,7 +3377,7 @@ var VoiceIO = class {
   // What it used to do, kept as one line of history rather than a page: it
   // POSTed her text to an outside chat model with an instruction to repeat it
   // verbatim and played back the returned audio — an outside model producing
-  // her voice. Gee: "we do not use pollinations tts we use the unity one
+  // her voice. The operator: "we do not use pollinations tts we use the unity one
   // equations".
   //
   // ⚠ `_pollTtsDead` went with it. It was READ at two sites and ASSIGNED at
@@ -13583,7 +13583,7 @@ var VisualCortex = class {
     }
     this.motionEnergy = totalDiff / V1_COUNT;
   }
-  // ── T14.25: Skin-tone map (HSV-based face detection heuristic) ───
+  // ── Skin-tone map (HSV-based face detection heuristic) ───
   //
   // Per-pixel binary skin mask via RGB→HSV conversion and a human-skin
   // HSV box (H in [0°, 50°] OR [340°, 360°], S in [0.2, 0.7], V in
@@ -13621,7 +13621,7 @@ var VisualCortex = class {
       this._skinMap[i] = hueSkin && satSkin && valSkin ? 1 : 0;
     }
   }
-  // ── T14.25: Face+motion-tracking saccade via weighted centroid ───
+  // ── Face+motion-tracking saccade via weighted centroid ───
   //
   // Gaze lands on the weighted CENTROID of an effective attention map
   // (not the peak — peaks are single noisy pixels and jitter). The
@@ -13735,7 +13735,7 @@ var VisualCortex = class {
   /**
    * MS.I3 — IMAGINE into the mind-space. Imagination is vision without a camera: she recalls
    * a remembered field C and ABSTRACTS it (a single-field thought-op; the two-image
-   * morph-toward-another-memory was removed per MEYE.3 — a composite of two seen frames
+   * morph-toward-another-memory was removed deliberately — a composite of two seen frames
    * is a static superposition, not imagination), reads the percept out, and that percept
    * drives the visual region exactly like a perceived frame — she SEES what she imagines.
    * Returns the percept vector (Float32Array) or null if nothing's remembered yet. Pure +
@@ -13770,7 +13770,7 @@ var VisualCortex = class {
     return this.perceptVector;
   }
   /**
-   * UVM-INT.3 — DE-NOVO imagination from internal mind-state (no camera/file).
+   * DE-NOVO imagination from internal mind-state (no camera/file).
    * `imagine()` recalls REMEMBERED field-Cs, so it returns null when the memory
    * ring is empty (headless/server Unity, or before she's ever seen anything).
    * This folds a cortex activation vector straight into a field C via the
@@ -13850,7 +13850,7 @@ var VisualCortex = class {
     return this._active;
   }
   /**
-   * T14.10 — Render a deterministic visual template for a letter.
+   * Render a deterministic visual template for a letter.
    *
    * Text-only Unity doesn't have a camera rendering typed characters,
    * so the visual template has to come from somewhere. This method
@@ -13862,7 +13862,7 @@ var VisualCortex = class {
    *
    * Called from `cluster.readText(text, { visualCortex })` which drives
    * the cortex visual sub-region with each character's template before
-   * injecting the letter one-hot. Over T14.5 curriculum exposure the
+   * injecting the letter one-hot. Over curriculum exposure the
    * cortex visual↔letter cross-projection learns that a given template
    * should activate the corresponding letter one-hot — matching how
    * biological visual cortex learns letter identity in early reading.
@@ -13927,7 +13927,7 @@ var VisualCortex = class {
       motionEnergy: this.motionEnergy,
       colors: this.colors,
       maxSalience: this._maxSalience(),
-      // FOCUSDEAD — read these two BEFORE concluding anything about the gaze.
+      // read these two BEFORE concluding anything about the gaze.
       // `frames` flat ⟹ nothing is calling processFrame (a driver problem);
       // `frames` climbing while gaze sits still ⟹ the salience competition is
       // the problem. `framesRefused` climbing means the cortex is being driven

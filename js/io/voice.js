@@ -47,7 +47,7 @@ class VoiceIO {
     //
     // ⚠ It was KEPT and flagged for a day on the argument that it is a
     // working, purely-equational reconstruction of her own voice and worth
-    // reading if the sentence lane is ever redesigned. Gee's decision was to
+    // reading if the sentence lane is ever redesigned. The operator's decision was to
     // delete it, and the reasoning that wins is the LAW's: her own canon calls
     // per-word concat a FALLBACK — sentence-level Equation Unity One carries
     // the quality — so a dormant second lane is a standing invitation for a
@@ -67,7 +67,7 @@ class VoiceIO {
     // meant writing it again for the microphone lane.
     //
     // ⭐ THE HISTORY IS NOT LOST: git holds it, and `docs/FINALIZED.md`
-    // §VOXREF.1/.2/.3 records how word-level reconstruction was built. A
+    // The ledger records how word-level reconstruction was built. A
     // deleted lane with a written record beats a dormant one with a comment.
     //
     // AUDIO UNLOCK — browsers keep a gesture-less AudioContext SUSPENDED
@@ -81,7 +81,7 @@ class VoiceIO {
   }
 
   /**
-   * HEARING.1 — turn the sound she just took in into an equation, and hand it
+   * the hearing lane — turn the sound she just took in into an equation, and hand it
    * up with the words it carried.
    *
    * ⛔ PERCEIVED ON THIS SIDE, DELIBERATELY. The raw PCM for a 3-second
@@ -190,7 +190,7 @@ class VoiceIO {
     // if the transform hiccups, so a codec edge never silences her.
     let pcm = out.pcm;
     let sr = out.sampleRate;
-    // ⚠ REGFIND.5 — THE LOG USED TO CLAIM THE EQUATIONAL LANE UNCONDITIONALLY.
+    // ⚠ THE LOG USED TO CLAIM THE EQUATIONAL LANE UNCONDITIONALLY.
     // The catch below is correct and deliberate — "a codec edge never silences
     // her" — but the line underneath asserted `Equation Unity One` whether the
     // round-trip ran or was skipped, so an operator could not tell an
@@ -261,10 +261,10 @@ class VoiceIO {
         throw new Error('audio locked (autoplay policy) — interact with the page once');
       }
     }
-    // VOXREF.4 age-pinned pitch shift — REMOVED (Gee 2026-07-15: "scrap the per
+    // Age-pinned pitch shift — REMOVED (operator, 2026-07-15: "scrap the per
     // age/grade modulation"). The OLA pitch shift distorted her into a scavenger
     // creature; her voice is now ALWAYS the untouched original (see _agePreset).
-    // VOXREF.5 — prosody polish: a short (~4ms) edge fade-in/out kills the click
+    // Prosody polish: a short (~4ms) edge fade-in/out kills the click
     // artifacts at word-concat boundaries on the vox-bank fallback path (the
     // whole-sentence lane has no seams; the fade is inaudible on a full sentence).
     if (pcm && pcm.length > 0) {
@@ -300,7 +300,7 @@ class VoiceIO {
   //
   // They formed one closed circuit whose every outcome was failure:
   // `_voxQueueMissing` queued each un-banked word, `_voxPrimeLoop` walked the
-  // queue, and `_voxFetchWord` — already gutted to a bare `throw` by LLMGUT.6
+  // queue, and `_voxFetchWord` — already gutted to a bare `throw` by the text-AI removal
   // when the external TTS lane went ("we do not use pollinations tts we use the
   // unity one equations") — guaranteed the exception. Each word therefore cost
   // one throw, one `VOX prime failed` warn, and a hardcoded 6-second sleep.
@@ -407,7 +407,7 @@ class VoiceIO {
         };
         if (this._onResult) this._onResult(payload);
         if (result.isFinal) {
-          // ⭐⭐ HEARING.1 — THE UTTERANCE REACHES BACK FOR ITS OWN SOUND.
+          // ⭐⭐ the hearing lane — THE UTTERANCE REACHES BACK FOR ITS OWN SOUND.
           // `SpeechRecognition` never hands back the audio it recognised, and
           // it only reports a phrase AFTER it ends — so nothing that starts
           // recording HERE could ever catch the utterance. The tap has been
@@ -499,7 +499,7 @@ class VoiceIO {
   // it looks wired.
   //
   // ⚠ WHAT IS DELIBERATELY NOT GUTTED: `SpeechRecognition` (the listening half).
-  // That is STT, it is her ONLY source of words, and `HEARING.1` is built on
+  // That is STT, it is her ONLY source of words, and `the hearing lane` is built on
   // top of it — the sound becomes a percept, the transcript still names it.
   // Deleting it would leave her unable to know what was said at all.
   // =========================================================================
@@ -509,7 +509,7 @@ class VoiceIO {
   }
 
   /**
-   * VOX.0 — pin her spoken age. app.js feeds this from live state.minGrade
+   * pin her spoken age. app.js feeds this from live state.minGrade
    * (same-girl-growing-up continuity: the voice ages as she walks the
    * grades, exactly like the self-image age pin). Clamped 3..30.
    */
@@ -522,7 +522,7 @@ class VoiceIO {
   /**
    * Playback rate for the one speaking lane.
    *
-   * AGE/GRADE VOICE MODULATION SCRAPPED (Gee 2026-07-15: "the age modulator is
+   * AGE/GRADE VOICE MODULATION SCRAPPED (operator, 2026-07-15: "the age modulator is
    * busted she sounde like a starwars ... sand scavenger creatrure all
    * distorted ... scrap the per age/grade modulation and keep her original chosen
    * sound for her voice"). The age-pinned pitch/formant OLA shift (1.14 young →
@@ -540,7 +540,7 @@ class VoiceIO {
     return { rate: 1.0 };
   }
 
-  // _pitchShiftOLA — REMOVED (Gee 2026-07-15: "scrap the per age/grade modulation").
+  // _pitchShiftOLA — REMOVED (operator, 2026-07-15: "scrap the per age/grade modulation").
   // The duration-preserving OLA pitch shift existed ONLY to age-pitch her voice;
   // with the age modulation scrapped it had no caller. Her voice is the untouched
   // original — no pitch shifting anywhere.
@@ -557,7 +557,7 @@ class VoiceIO {
     this._speaking = true;
     this.emit('speech_start');
 
-    // VOX.0 — the age preset picks the voice unless the caller (or setVoice)
+    // the age preset picks the voice unless the caller (or setVoice)
     // explicitly overrides. Her voice tracks her live grade via setAge().
     const voice = options.voice || null;
 
@@ -569,7 +569,7 @@ class VoiceIO {
     // in-browser (her real voice, natural prosody). Preloaded at setup. Falls
     // through to the per-word vox-bank, then the executor, if not ready/fails.
     // ⛔⛔ THE THREE-TIER VOICE CHAIN WAS REMOVED 2026-09-01.
-    // Gee, ruling on the whole stack rather than cognition alone:
+    // The operator, ruling on the whole stack rather than cognition alone:
     // "no fallbacks. PERIOD"
     //
     // It ran live-piper → banked-vox → browser TTS, each tier entered when the
@@ -581,7 +581,7 @@ class VoiceIO {
     //
     // ⭐ HER CANON ALREADY NAMED THE ONE CORRECT PATH: the sentence-level
     // Equation Unity One lane (piper → CDF 9/7 equations) IS her voice — the
-    // one Gee signed off with "perfect" — and the per-word bank concat is
+    // one the operator signed off with "perfect" — and the per-word bank concat is
     // described in that same record AS a fallback. So this is not a new
     // preference; it is the stack finally matching the decision.
     //
@@ -617,11 +617,11 @@ class VoiceIO {
     //     try { this._voxQueueMissing(text); } catch { }
     //
     // and it ran on EVERY utterance, queueing every un-banked word for
-    // `_voxPrimeLoop`. That loop calls `_voxFetchWord`, which LLMGUT.6 had
+    // `_voxPrimeLoop`. That loop calls `_voxFetchWord`, which the text-AI removal had
     // already reduced to a bare `throw` — so each queued word bought a
     // guaranteed exception, a `[VoiceIO] VOX prime failed` console warn, and a
     // hardcoded 6-second sleep. Six seconds per word, forever, to accomplish
-    // nothing, on the page Gee actually reads.
+    // nothing, on the page the operator actually reads.
     //
     // ⭐ It is the CODE-AT-WAR shape: a producer still feeding a consumer that
     // no longer exists. Its output fed `_speakVox`, orphaned by the
@@ -673,7 +673,7 @@ class VoiceIO {
   // What it used to do, kept as one line of history rather than a page: it
   // POSTed her text to an outside chat model with an instruction to repeat it
   // verbatim and played back the returned audio — an outside model producing
-  // her voice. Gee: "we do not use pollinations tts we use the unity one
+  // her voice. The operator: "we do not use pollinations tts we use the unity one
   // equations".
   //
   // ⚠ `_pollTtsDead` went with it. It was READ at two sites and ASSIGNED at
