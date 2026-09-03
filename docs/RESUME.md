@@ -6,24 +6,27 @@
 >
 > ### ⛔ STATE RIGHT NOW
 > ```
-> branch     feature/figpair-0902 @ d30fd999 — NOT cascaded yet
-> board      56 open · 24 in-progress · 21 closed-in-place awaiting migration
-> figures    26,457 / 32,296 (81.9%) — STOPPED DELIBERATELY, nothing running
+> branch     feature/figpair-0902 — NOT cascaded yet
+> board      54 open · 24 in-progress · 21 closed-in-place awaiting migration
+> figures    26,458 / 31,383 (84.3%) — STOPPED DELIBERATELY, nothing running
 > walk       frozen ON PURPOSE — training still being BUILT
 > ```
+> ⛔ **THE FIGURE NUMBERS ON THIS LINE WERE WRONG IN THIS FILE'S PREVIOUS VERSION AND THE CORRECTION MATTERS.** It read `26,457 / 32,296 (81.9%)`. **`26,457` is the LEDGER count — the number the producer's own code explicitly refuses to trust**, because a field is ledgered when it is *written* and delivered when it is *committed*. **`32,296` counts 913 figures the pipeline deliberately never collects**: 89 site-furniture images, 631 with no anchor text, 193 in formats nothing can decode. Both replaced with figures measured by running production code.
 >
 > ### ⛔⛔ THE FIGURE RUN WAS STOPPED, AND THE CURVE IS WHY — NOT IMPATIENCE
 > Gee approved it: *"that whole plane from start to fininsh will work tell me when tthe downloads finished two more passes"*. Yield per `--limit 1500` pass: **911 → 854 → 860 → 862 → 788 → 692 → 617 → 553 → 539 → 405 → 331 → 270 → 207 → 156 → 121 → 98**, success **61% → 6.5%**, a clean **×0.81 geometric decay** — my projection said ×0.81 and the last two passes measured ×0.78.
 > ```
 >   ~675 further figures before it yields <1/pass · ~25 passes · ~4 hours
->   asymptote ~26,900 of 32,296 · ~5,400 (17%) NEVER deliverable by that design
+>   4,925 of 31,383 still owed — an UNKNOWN share of them dead, not "~5,400"
 > ```
-> ⭐ **Stopped CLEANLY** — only the outer loop was killed, so the in-flight batch generated, committed and pushed before exiting. Zero processes left. ⛔ **The 5,400 are DEAD, not slow** (404s, undecodable formats, moved repos) and **every pass re-attempted every one of them**, because failures were recorded nowhere. **That curve IS the cost of the missing ledger, drawn out over hours.**
+> ⭐ **Stopped CLEANLY** — only the outer loop was killed, so the in-flight batch generated, committed and pushed before exiting. Zero processes left. ⛔ **Much of the tail is DEAD, not slow** (404s, undecodable formats, moved repos) and **every pass re-attempted every one of them**, because failures were recorded nowhere. **That curve IS the cost of the missing ledger, drawn out over hours.**
+> ⚠ **I previously wrote that "the 5,400 are DEAD". That number came from the wrong denominator, and the word "dead" was a projection, not a reading** — with no ledger there was nothing that could tell a 404 from a timeout. **193 of them are provably dead by format; the rest are unclassified until a sweep runs with the ledger wired in.**
 >
-> ### ⭐⭐ THE REBUILD IS HALF IN — `.claude/scripts/figure-failure-ledger.mjs`
+> ### ⭐⭐ THE REBUILD IS IN — `.claude/scripts/figure-failure-ledger.mjs` + `js/brain/figure-identity.cjs`
 > Failure ledger written **as it happens** (the run gets KILLED — that is how it normally ends), permanent-vs-transient classification, retry selector with an attempt cap, and the live permanent/transient split now printed **while a run goes** rather than in hindsight.
 > ⚠ **The classifier leans one way ON PURPOSE: when in doubt, TRANSIENT.** A wrongly-transient row costs one retry; a wrongly-permanent row loses that figure forever with nothing left to re-examine it.
-> ⏳ **Still owed:** the retry pass itself · collapse the duplicated `figKey` and format rule (`WAVESEE.2`) · fix the progress counter (`REGFIND.1`).
+> ✅ **Since shipped:** `--retry` mode (sources its list from the ledger alone, caps attempts, reports the permanent and given-up sets instead of dropping them) · **the key rule collapsed from FIVE copies to one owner** · the format rule's two copies, **which did not agree**, merged · the progress counter now reports the pass's own delta.
+> ⏳ **Still owed:** **one sweep over the 4,925, with the ledger now wired in, then `--retry` against what it records.** ⛔ **`failures.jsonl` does not exist** — the ledger landed *after* the run stopped, so the 15 passes that produced the decay curve wrote down none of their reasons and nothing can recover them. The retry mode says so out loud rather than reporting "nothing to do".
 >
 > ### ⛔⛔⛔ FOUR OF MY OWN INSTRUMENTS LIED IN ONE SESSION — CHECK BEFORE TRUSTING ANY OF THEM
 > 1. **A brace-depth scope classifier** called two module-scope constants `live`.

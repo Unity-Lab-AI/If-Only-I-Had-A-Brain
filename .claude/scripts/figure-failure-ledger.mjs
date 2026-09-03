@@ -28,6 +28,13 @@
 
 import fs from 'fs';
 import path from 'path';
+// ⛔ THE FORMAT RULE IS NOT WRITTEN HERE ANY MORE, AND THAT IS THE FIX THIS
+// MODULE MOST NEEDED. Its own list (`gif|pdf|djvu|stl|webm|mp4|svgz`) and the
+// curriculum's reachability gate (`gif|pdf|djvu|stl`) had silently diverged, so
+// one could call an address permanently dead while the other handed the same
+// address to the perception lane as a live figure. Unlike the hash rule, whose
+// two forms were provably congruent, **a list is not congruent to another list.**
+import { isUndecodableFigure } from '../../js/brain/figure-identity.cjs';
 
 /**
  * ⛔ PERMANENT vs TRANSIENT IS THE WHOLE POINT, AND IT IS THE ONE JUDGEMENT
@@ -64,12 +71,13 @@ export function classifyFailure(f = {}) {
     return { kind: PERMANENT, reason: `HTTP ${status} — refused, and a retry sends the identical request`, retryable: false };
   }
   // ⛔ FORMAT REFUSALS ARE PERMANENT BY CONSTRUCTION, not by observation: there
-  // is no decoder in the path and a retry fetches the same bytes. GIF is here on
-  // the operator's ruling — she has no temporal percept path, so a first frame
-  // of an animation whose MOTION is the lesson would bank a misleading percept
-  // rather than a partial one (`TEMPORAL.1`).
-  if (/^(gif|pdf|djvu|stl|webm|mp4|svgz)$/.test(ext)) {
-    return { kind: PERMANENT, reason: `.${ext} — no decoder in this path, and a retry fetches the same bytes`, retryable: false };
+  // is no decoder in the path and a retry fetches the same bytes. GIF is on the
+  // list on the operator's ruling — she has no temporal percept path, so a first
+  // frame of an animation whose MOTION is the lesson would bank a misleading
+  // percept rather than a partial one. The list itself lives with the gate that
+  // enforces it, so a format decided in one place is decided in both.
+  if (isUndecodableFigure(url)) {
+    return { kind: PERMANENT, reason: `.${ext || 'this format'} — no decoder in this path, and a retry fetches the same bytes`, retryable: false };
   }
   // ⛔ A VECTOR WHOSE RENDITION PATH ALSO FAILED IS PERMANENT, and telling that
   // apart from a plain decode failure matters: 28 SVGs in the first ledger this

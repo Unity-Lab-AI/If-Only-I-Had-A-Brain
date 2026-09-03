@@ -5,6 +5,46 @@
 
 ---
 
+## 2026-09-02 (SIXTEENTH BATCH) — `WAVESEE.2` + `REGFIND.1` — THE RULE HAD FIVE OWNERS, AND THE FILE THE PRODUCER TRUSTS MOST WAS 121 ROWS STALE
+
+Closing steps 5 and 6 of the sequence Gee approved with *"that whole plane from start to fininsh will work tell me when tthe downloads finished two more passes"*, and picked up on *"get to it"*.
+
+### `WAVESEE.2` — one owner for the figure's address
+
+The row warned that the key rule was about to have **two** copies. It had **five**:
+
+| file | form | returns |
+|---|---|---|
+| `js/brain/curriculum.js` (`figKeyOf`) | `(h<<5)+h ^ c` | bare |
+| `server/figure-queue.js` | `(h<<5)+h ^ c` | bare |
+| `server/figure-field-store.js` | `h*33 ^ c` | `fig:` prefixed |
+| `.claude/scripts/perceive-corpus-figures.mjs` | `h*33 ^ c` | `fig:` prefixed |
+| `.claude/scripts/gen-figure-links.mjs` | `h*33 ^ c` | bare |
+
+All five now resolve to `js/brain/figure-identity.cjs`, which also owns `bareKey`, `shardName`, the undecodable-format rule and `figureAddress`.
+
+- ⭐ **The two arithmetic forms were proven equivalent by RUNNING them** over every URL the corpus holds — **38,318 compared, 0 disagreements** — and then by the stronger check that **all 26,238 delivered field filenames still re-derive from the corpus, 0 orphans.** Congruence mod 2³² was the argument; the measurement was the evidence.
+- ⛔⛔ **The row was aimed at the wrong rule. The hash copies agreed; THE FORMAT RULE DID NOT.** The reachability gate held `gif|pdf|djvu|stl`, the failure classifier held `gif|pdf|djvu|stl|webm|mp4|svgz` — so one could call an address permanently dead while the other handed the same address to the perception lane as live. **A list is not congruent to another list.** Merged to the union *after* measuring that the corpus holds zero webm/mp4/svgz, so the merge provably changes no outcome today.
+- ⭐ **A real saving fell out:** the producer refuses undecodable formats **before opening a socket** — **193 distinct figures (294 citations), 0 of which ever produced a field across 15 passes**, each costing a fetch and, for the animated ones, a MediaWiki rendition round-trip, on *every* pass.
+- ⚠ **Caught in my own edit before it shipped:** a bare `export … from` re-export forwards a name to importers **without creating a local binding**, and `curriculum.js` calls `figKeyOf` itself twice. `node --check` and the bundle both pass; it throws at the first figure. Every touched module was then **really loaded**, not syntax-checked.
+- ⛔ **The chosen home is a `.cjs` inside `js/brain/`, and the reason is a constraint, not a preference.** The consumers span CommonJS server files on the teach path and the ESM curriculum the repo's own invariant calls browser-bundled. No Node version is pinned anywhere in `deploy/` or CI, so `require(esm)` — unflagged only since 22.12 — is a floor this refactor has no business introducing on the teach path. A CJS module with no Node APIs is requireable and importable everywhere with no build step.
+
+### `REGFIND.1` — the counter, the stop test, and a third defect nobody had filed
+
+- **The counter** now reports the pass's own delta (`stats.ok`, incremented once per field produced) instead of `find … | wc -l`. It cannot double-count by construction, and it is written to `pass-summary.json`. **The ad-hoc shell loop that held the bug is gone**, so re-typing it cannot re-introduce it.
+- **The stop test** now says *"STOP: this pass produced nothing new"* and names the next move, instead of running one iteration past completion on a stale count.
+- ⛔⛔ **The third defect, found while fixing the first two, was worse than either: the resume AUTHORITY was stale.** `delivered.txt` is the file the producer trusts above all else to decide what is done, and it was written by the shell pipeline — so it froze when that pipeline stopped. It listed **26,238** keys while the repository tracked **26,359**. A resume would have re-fetched, re-decoded and re-transformed **121 already-delivered figures**, silently, reporting it as progress. The producer now regenerates it from `git ls-files` at startup — **confirmed live, `26,238 → 26,359` on the first run.** ⚠ Read-only by design; nothing stages, commits or deletes in that tree.
+- ⭐ **The gap the row left explicitly unexplained now reconciles to the file.** 219 keys in `uploaded.jsonl` absent from `delivered.txt`, **0 the other way**; `git status` splits it as **98 untracked + 121 tracked-and-present = 219 on disk**, against **26,238 deleted-but-tracked** matching `delivered.txt` to the row. The ledger records a field when it is **written**, the repository when it is **committed**.
+- ⛔ **A number I reported was wrong and is corrected:** I stated the run stopped at **26,457 of 32,296 (81.9%)**. `26,457` is the *ledger* count the code explicitly distrusts, and `32,296` counts the **913 figures the pipeline deliberately never collects** (89 site furniture, 631 unanchored, 193 undecodable). Measured with production code: **26,458 held of 31,383 teachable — 84.3%, 4,925 remaining.**
+
+### Step 4 is built and deliberately not claimed
+
+`--retry` sources its list from the ledger's retryable set alone, caps attempts, and reports the permanent and given-up sets rather than dropping them. ⛔ **`failures.jsonl` does not exist** — the ledger was wired in *after* the run stopped, so the 15 passes that produced the decay curve recorded none of their reasons and nothing can recover them. The mode refuses to pretend: *"the failure ledger is EMPTY, which is not the same as 'nothing failed'"*. `WAVESEE.6` stays **open** with that named as its remaining work.
+
+**Verified:** `node --check` ×6 · real `require()`/`import()` of all 6 touched modules · 38,318-URL hash equivalence · 26,238-filename re-derivation · classifier on 10 cases including `a.jpg?v=2.gif` correctly not read as a GIF · a live 3-figure production pass writing `pass-summary.json` · `--retry` run against the real delivery tree.
+
+---
+
 ## 2026-09-02 (FIFTEENTH BATCH) — THE GENERATED PHONICS QUESTIONS REACH THE LIVE EXAM, AND ONE FILED GAP TURNS OUT NOT TO EXIST
 
 Filed under `PHONBANK.2` (*"STILL OWED: wiring the generated set into `EXAM_BANKS`"*) and closing part ② of `PHONBANK.1`, whose originating words from Gee were:

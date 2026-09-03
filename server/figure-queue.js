@@ -45,12 +45,12 @@ const DB_FILE = path.join(__dirname, 'figure-queue.db');
 // A stable identity for a figure, from its own address. ⛔ Not its position in
 // any list — an index re-points at a different picture the moment a cell is
 // re-ingested, which is the bug the figure key already carried once today.
-function figKey(url) {
-  const s = String(url || '');
-  let h = 5381;
-  for (let i = 0; i < s.length; i++) h = (((h << 5) + h) ^ s.charCodeAt(i)) >>> 0;
-  return h.toString(36);
-}
+//
+// ⭐ ONE OWNER. This rule used to be written out here in full, in a second
+// arithmetic form than the producer's, and in three other files besides. The
+// forms were proven to agree over every URL in the corpus before they were
+// merged — but two copies agreeing today is not one copy.
+const { figKeyOf: figKey } = require('../js/brain/figure-identity.cjs');
 
 class FigureQueue {
   constructor() {

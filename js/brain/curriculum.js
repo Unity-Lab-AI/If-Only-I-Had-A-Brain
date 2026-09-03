@@ -310,13 +310,21 @@ export const SUBJECTS_RETIRED_AT = {
  *
  * A URL identifies the picture; an index identifies where it happened to sit
  * that day. Short, filename-safe, and stable across re-ingests and reorderings.
+ *
+ * ⭐ THE BODY NOW LIVES IN ONE PLACE. This rule had five independent
+ * implementations across the brain, the server and the field producer; the
+ * re-export keeps every existing importer working while there is exactly one
+ * definition to change. The merge was proven byte-identical against all five
+ * over the whole corpus before it landed — see the owning module's header.
+ *
+ * ⚠ IMPORTED AND RE-EXPORTED, NOT `export … from`. A bare re-export forwards the
+ * name to importers WITHOUT creating a local binding, and this file calls
+ * `figKeyOf` itself — so the shorter form would have thrown a ReferenceError at
+ * the two call sites while every static check passed.
  */
-export function figKeyOf(fig) {
-  const src = String((fig && (fig.url || fig.src)) || '');
-  let h = 5381;
-  for (let i = 0; i < src.length; i++) h = (((h << 5) + h) ^ src.charCodeAt(i)) >>> 0;
-  return h.toString(36);
-}
+import { figKeyOf } from './figure-identity.cjs';
+
+export { figKeyOf };
 
 export function ledgerFloorIdx(passedCells) {
   const ledger = (passedCells instanceof Set)

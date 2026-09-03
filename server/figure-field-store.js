@@ -21,30 +21,13 @@
 const fs = require('fs');
 const path = require('path');
 
-// ⛔⛔ THIS RULE HAS A SECOND COPY TODAY, AND THAT IS A KNOWN DEFECT, NOT AN
-// OVERSIGHT. `.claude/scripts/perceive-corpus-figures.mjs` holds the identical
-// `figKey`/`bare`/`shardName`, and it could not be edited when this shipped:
-// its batch loop respawns `node` every batch, so an edit lands mid-run against
-// a job with hours left. **The producer is pointed at this module the moment
-// that run ends (WAVESEE.2).** Two owners of a hash rule is how two writers
-// drift apart, and this board already carries three separate instances of it.
-//
-// djb2 over the URL — the figure's IDENTITY, never its position in a file. A
-// list index into a corpus that gets re-ingested silently re-points at
-// different content, a defect this project has already paid for once.
-function figKey(url) {
-  let h = 5381;
-  const s = String(url || '');
-  for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
-  return `fig:${h.toString(36)}`;
-}
-
-// ⛔ THE `fig:` PREFIX MUST NEVER REACH A FILENAME. A colon is illegal on
-// Windows and NTFS reads it as an alternate-data-stream separator, so
-// `fig:abc.field.json` silently produces a stream hanging off a file named
-// `fig` — with no write error at all. The producer paid for this once.
-const bare = (key) => String(key).replace(/^fig:/, '');
-const shardName = (key) => bare(key).slice(0, 2).padEnd(2, '0');
+// ⭐ THE DUPLICATE THIS FILE USED TO WARN ABOUT IS GONE. `figKey`, `bare` and
+// `shardName` were written out here in full and again in the field producer,
+// which could not be edited while its run was live — the batch loop respawns
+// `node` every batch, so an edit would have landed mid-run against a job with
+// hours left. The run has ended, and all five copies of the rule now resolve to
+// the module below. Two owners of a hash rule is how two writers drift apart.
+const { figKey, bareKey: bare, shardName } = require('../js/brain/figure-identity.cjs');
 
 // Where the press leaves them. `deploy/self-update.sh` syncs `BrainWaves` here
 // on every Update / Fresh-walk, and the path is on the rsync EXCLUDE list so

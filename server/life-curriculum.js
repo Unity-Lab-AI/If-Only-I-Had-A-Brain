@@ -181,18 +181,18 @@ const academicStorySentences = (subject, grade) => storySentences(`academic/${su
 // ⚠ SVG, WEBP and TIFF are deliberately NOT here. They partially succeed today
 // (648, 6 and 12 respectively already banked), so refusing them would throw away
 // figures the pipeline can already read.
-const UNDECODABLE_FIGURE_EXT = /\.(gif|pdf|djvu|stl)(\?|#|$)/i;
-
-function figureAddress(f) {
-  if (!f) return '';
-  const href = typeof f.url === 'string' && f.url ? f.url : (typeof f.src === 'string' ? f.src : '');
-  if (!/^https?:\/\//i.test(href)) return '';
-  // Tested against the PATH, not the whole URL — a query string routinely
-  // carries `utm_source=…` and other text that would otherwise match.
-  const path = href.split('?')[0].split('#')[0];
-  if (UNDECODABLE_FIGURE_EXT.test(`${path}?`)) return '';
-  return href;
-}
+// ⛔⛔ THIS RULE HAD A SECOND COPY, AND UNLIKE THE HASH RULE THE TWO DID NOT
+// AGREE. The failure classifier that decides whether a fetch is worth retrying
+// held `gif|pdf|djvu|stl|webm|mp4|svgz`; this gate held only the first four. So
+// one of them would call an address permanently dead while the other handed the
+// very same address to the perception lane as a live figure.
+//
+// ⭐ The union was MEASURED before it was adopted rather than assumed safe: the
+// corpus holds **zero** webm, mp4 or svgz figures, so both lists reach the same
+// verdict on every figure that exists today and the merge changes no outcome.
+// Both now read from one module, so the next format decided here is decided
+// everywhere. **Two copies that happen to agree are not one copy.**
+const { figureAddress } = require('../js/brain/figure-identity.cjs');
 
 // ⭐⭐ FIGPAIR.1 — THE SECTION AND ITS PICTURES, TOGETHER, THE WAY THE BOOK HAS
 // THEM. Operator: *"WE GIVE HER EACH ONE AT THE SAME TIME SHE IS TRAING THE TEXT
