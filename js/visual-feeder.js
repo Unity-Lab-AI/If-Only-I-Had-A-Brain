@@ -98,7 +98,7 @@ async function startCamera() {
     vid.muted = true; vid.playsInline = true; vid.autoplay = true;
     vid.srcObject = stream; vid.style.display = 'none';
     document.body.appendChild(vid);
-    // SEE.1 — DEAD-AIR GATES. A page can hold camera permission while the
+    // DEAD-AIR GATES. A page can hold camera permission while the
     // "camera" is dead: a muted/ended track, a covered lens, or a virtual
     // cam serving a static "no signal" placeholder. Those are NOT sight —
     // shipping them bound the same dead-air graphic to every concept she
@@ -144,7 +144,7 @@ let _lastImageAt = 0;
 
 function promptFromUrl(url) {
   try {
-    // WORDLOCK (2026-08-21) — two label bugs made images bind to the wrong
+    // ⛔ TWO LABEL BUGS made images bind to the wrong
     // words: (1) only the legacy /image/ path matched, so current /prompt/
     // renders returned NULL labels and the server fused them with whatever
     // word she was THINKING; (2) the label was the WHOLE prompt — subject +

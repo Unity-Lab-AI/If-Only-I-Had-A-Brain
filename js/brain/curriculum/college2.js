@@ -86,32 +86,28 @@ export const COL2_MIXIN = {
       'the endoplasmic reticulum makes proteins', 'the golgi apparatus packages proteins',
       'lysosomes digest waste',
     ];
-    // T14.24 Session 51 (task #108) — TODO-aligned Col2 triple pass.
-
-    // TODO Sci-Col2 spec (line 468): "Organic chemistry, cell biology,
-    // physics 2". Three helpers run BEFORE the sentence walk:
-
-    //   _teachOrganicChemistry — 12 concepts: alkane, alkene, alkyne,
-    //     aromatic, stereoisomer, chirality, alcohol, aldehyde, ketone,
-    //     carboxylic acid, ester, amine. Covers hydrocarbon families
-    //     + functional groups the sentence walk then binds to their
-    //     natural language form.
-
-    //   _teachCellBiologyAdvanced — 10 college-depth cell biology
-    //     concepts extending G7 _teachCells: endoplasmic reticulum,
-    //     golgi apparatus, lysosome, peroxisome, vesicle, cytoskeleton,
-    //     microtubule, actin filament, cell signaling, apoptosis.
-
-    //   _teachPhysics2 — 10 physics 2 concepts (electric/magnetic
-    //     fields, EM wave, thermodynamics, heat engine, refraction,
-    //     diffraction, interference, photoelectric effect, wave-
-    //     particle duality). Mandatory per TODO even though current
-    //     sentence walk is org-chem + cell-bio focused — the concept
-    //     basins exist for future cells to reference.
-
-    // All three feed through _conceptTeach so every concept word
-    // (~32 new concepts) enters Unity's dictionary via the Session
-    // 46 growth fix.
+    // THE COLLEGE-2 SCIENCE YEAR IS THREE COURSES, so three concept lattices
+    // are primed BEFORE the sentence walk:
+    //
+    //   _teachOrganicChemistry — 12 concepts (alkane, alkene, alkyne, aromatic,
+    //     stereoisomer, chirality, alcohol, aldehyde, ketone, carboxylic acid,
+    //     ester, amine): the hydrocarbon families plus the functional groups the
+    //     sentence pass then binds to their natural-language form.
+    //
+    //   _teachCellBiologyAdvanced — 10 college-depth concepts extending the
+    //     grade-7 cell pass: endoplasmic reticulum, golgi apparatus, lysosome,
+    //     peroxisome, vesicle, cytoskeleton, microtubule, actin filament,
+    //     cell signaling, apoptosis.
+    //
+    //   _teachPhysics2 — 10 concepts (electric/magnetic fields, EM wave,
+    //     thermodynamics, heat engine, refraction, diffraction, interference,
+    //     photoelectric effect, wave-particle duality). ⚠ Deliberately taught
+    //     even though this cell's sentences are org-chem and cell-bio: the
+    //     course is on the roster, and the basins have to exist before a later
+    //     cell can reference them.
+    //
+    // All three feed through _conceptTeach, so every concept word (~32) enters
+    // her dictionary rather than existing only inside a sentence.
     await this._teachOrganicChemistry();
     await this._teachCellBiologyAdvanced();
     await this._teachPhysics2();
@@ -145,8 +141,7 @@ export const COL2_MIXIN = {
       'interest groups influence policy', 'political parties organize competition',
       'elections choose leaders', 'voting behavior varies', 'political economy links politics and economics',
     ];
-    // T14.24 Session 70 — prime political science lattice per TODO
-    // line 537 before the Col2 sentence pass.
+    // Prime the political-science lattice before the sentence pass.
     await this._teachPoliticalScience();
     await this._teachCausalChains([
       ['democracy', 'vote'], ['vote', 'represent'], ['power', 'corrupt'],
@@ -179,8 +174,8 @@ export const COL2_MIXIN = {
       'new media art uses digital tools', 'every movement responds to its time',
       'art reflects culture', 'art shapes culture', 'understanding art needs history',
     ];
-    // T14.24 Session 89 — prime specialized art history movement
-    // chronology per TODO line 567 before the Col2 sentence pass.
+    // Prime the art-movement chronology before the sentence pass, so the
+    // sentences bind movements to each other in order rather than as a list.
     await this._teachSpecializedArtHistory();
     await this._teachInference([
       ['impressionism', 'post-impressionism', 'cubism'],

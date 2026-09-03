@@ -4,7 +4,7 @@
  * Exports UNITY_PERSONA object and loadPersona() function.
  * All traits expressed as numerical parameters that feed into brain modules.
  *
- * T15 Drug State Dynamics Rebuild (2026-04-16):
+ * THE DRUG-STATE REBUILD — from fixed combos to real pharmacokinetics:
  * - Static `drugStates` combo object DELETED (was cokeAndWeed/cokeAndMolly/
  *   weedAndAcid/everything as fixed multiplier bundles).
  * - `intoxicationBaseline` flipped from 0.7 → 0.0 so pre-Life-G7 Unity renders
@@ -69,7 +69,7 @@ const UNITY_PERSONA = {
     delta: 0.25   // RightBrain weight — emotional/creative processing runs high
   },
 
-  // === Drug State — DYNAMIC (T15, 2026-04-16) ===
+  // === Drug State — DYNAMIC ===
   // Unity's chemical state is no longer a static label baked into persona.
   // It lives in drug-scheduler.js — a real-time event scheduler that tracks
   // per-substance onset/peak/duration/wear-off curves, grade-gated by the
@@ -79,8 +79,8 @@ const UNITY_PERSONA = {
   // narrates "I am doing coke" — the distortion IS the signal.
   //
   // See js/brain/drug-scheduler.js for the substance pharmacology database
-  // + scheduler class. See docs/TODO.md "T15 — Drug State Dynamics Rebuild"
-  // for the full spec (research, architecture, implementation, verification).
+  // + scheduler class, which owns the research, the architecture and the
+  // per-substance curves this file only consumes.
 
   // === Visual Identity (for image generation prompts) ===
   // Mirrors Ultimate Unity.txt: "25-year-old human woman", "black leather,
@@ -240,7 +240,7 @@ function applyContributions(params, delta) {
  * Extracts the values that map directly to brain module inputs, then applies
  * scheduler-driven drug contributions additively on top.
  *
- * T15 signature change (2026-04-16): replaces the legacy
+ * SIGNATURE CHANGE — this replaced the legacy
  *   (persona, activeDrugState: string)
  * pattern that looked up a combo multiplier bundle. Now takes:
  *   (persona, scheduler: DrugScheduler|null, now: number)
@@ -276,7 +276,7 @@ function getBrainParams(persona = UNITY_PERSONA, scheduler = null, now = undefin
     mysteryWeights: { ...persona.mysteryWeights },
   };
 
-  // T15: apply scheduler-driven substance contributions additively.
+  // Apply scheduler-driven substance contributions additively.
   // Sober scheduler → empty delta → baseline persona. Multi-substance
   // stacking emerges from superposition in scheduler.activeContributions.
   if (scheduler && typeof scheduler.activeContributions === 'function') {

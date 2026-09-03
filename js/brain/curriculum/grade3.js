@@ -281,8 +281,7 @@ export const G3_MIXIN = {
       'the statue of liberty is in new york', 'the white house is in washington',
       'alaska has glaciers', 'hawaii has volcanoes',
     ];
-    // T14.24 Session 59 — prime US regions concept lattice per TODO
-    // line 500 before the geography sentence pass.
+    // Prime the US-regions concept lattice before the geography sentence pass.
     await this._teachUSRegions();
     await this._teachSentenceList(SENTENCES, ctx, { reps: 2, ticksPerWord: 2 });
     await this._teachProductionStack('social', ctx, { tag: 'SOC-G3' });
@@ -314,8 +313,7 @@ export const G3_MIXIN = {
       'practice makes artists better', 'every artist started as a beginner',
       'paper comes in many sizes', 'paper comes in many colors',
     ];
-    // T14.24 Session 78 — prime drawing basics elements lattice per
-    // TODO line 557 before the drawing sentence pass.
+    // Prime the drawing-basics elements lattice before the drawing sentence pass.
     await this._teachDrawingBasics();
     await this._teachSentenceList(SENTENCES, ctx, { reps: 2, ticksPerWord: 2 });
     await this._teachProductionStack('art', ctx, { tag: 'ART-G3' });

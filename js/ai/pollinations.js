@@ -11,7 +11,7 @@
  * Works without an API key (free tier); BYOP key unlocks higher limits.
  */
 
-// LLMGUT.5/.6 — `GEN_URL` ('https://gen.pollinations.ai') is retired. It served
+// `GEN_URL` ('https://gen.pollinations.ai') is RETIRED. It served
 // the text lane, the TTS lane and the model list, all now deleted. This module
 // is images only.
 const IMAGE_URL = 'https://image.pollinations.ai';
@@ -40,7 +40,7 @@ export class PollinationsAI {
         return h;
     }
 
-    // LLMGUT.5 (2026-08-25) — THE TEXT LANE IS DELETED.
+    // ⛔ THE TEXT LANE IS DELETED — there is no text-AI in the cognition path.
     //
     // `chat()` POSTed to `gen.pollinations.ai/v1/chat/completions`. Its own
     // doc-comment said it was kept solely for the vision describer — and that
@@ -54,7 +54,7 @@ export class PollinationsAI {
     // ⛔ THIS DELETION IS SURGICAL ON PURPOSE. The image lane below is
     // LOAD-BEARING and stays: `image.pollinations.ai/prompt` is how she gets
     // her reference look-ups and her generated images, it is verified unfiltered
-    // (WORDSALAD.1f), and gutting this file wholesale would have taken her eyes
+    // and measured so, and gutting this file wholesale would have taken her eyes
     // out along with the LLM.
 
     // ── Image Generation ───────────────────────────────────────────────
@@ -83,7 +83,7 @@ export class PollinationsAI {
      */
     generateImage(prompt, options = {}) {
         try {
-            // R15 — options.model wins, then a user-saved default
+            // options.model wins, then a user-saved default
             // from the setup modal (stored on `this._defaultImageModel`
             // by app.js injectCustomBackendsIntoProviders() from
             // localStorage.pollinations_image_model), then 'flux' as
@@ -125,10 +125,10 @@ export class PollinationsAI {
         }
     }
 
-    // LLMGUT.5/.6 — `speak()` and `listModels()` DELETED.
+    // `speak()` and `listModels()` DELETED.
     //
-    // Operator: "we do not use pollinations tts we use the unity one
-    // equations". Correct — her voice is Equation Unity One (piper hfc_female
+    // This project does not use a third-party TTS lane; it uses her own
+    // equations. Her voice is Equation Unity One (piper hfc_female
     // through the CDF 9/7 round-trip) with her own banked word equations
     // behind it. This was an external TTS lane that nothing reached any more,
     // and it answered 401 on the anonymous tier regardless.

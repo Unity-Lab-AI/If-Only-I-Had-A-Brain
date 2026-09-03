@@ -1,5 +1,5 @@
 /**
- * mindspace/audio.js — Unity's equational AUDIO substrate (VOX.2, ESM).
+ * mindspace/audio.js — Unity's equational AUDIO substrate (ESM).
  *
  * The same univsmatics mathematics that runs her vision, in the wavelet's
  * NATIVE habitat: 1-D signals. A spoken word is perceived through the

@@ -243,7 +243,7 @@ function getDefinitionSync(word) {
 }
 
 /**
- * MINDMOTION.1 — the FULL cached definitions (with partOfSpeech), cache-only:
+ * The FULL cached definitions (with partOfSpeech), cache-only:
  * never a network call, so a tick-path caller (the eye-subject picker's
  * adjective probe) stays microseconds. Returns null on any miss — an unknown
  * word is simply not treated as a modifier.

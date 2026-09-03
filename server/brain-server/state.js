@@ -1042,6 +1042,17 @@ const SERVER_STATE_MIXIN = {
           ringCap: 400,
         };
       }),
+      // ⭐⭐ THE KNOBS. Every training / weight / saturation knob with its LIVE
+      // value, its default, and whether a write could take effect at all.
+      // Operator: *"we have all the knobs in the teachview ... you willl be the
+      // one setting all the knobs"*. ⛔ These were readable only from a shell on
+      // the box, and there is no shell — so the values that govern how she
+      // learns could not be READ, let alone turned. Static data plus an env
+      // read: no measurement, nothing to slow down, safe at 10fps.
+      knobs: _lap('knobs', () => {
+        try { return require('../knob-registry.js').knobState(); }
+        catch { return null; }
+      }),
       letterRead: _lap('letterRead', () => {
         try {
           const cur = this.curriculum;

@@ -41,6 +41,14 @@
 import { sharedEmbeddings } from './embeddings.js';
 import { ensureLetter, ensureLetters, encodeLetter, decodeLetter, inventorySize, inventorySnapshot } from './letter-input.js';
 import { EXAM_BANKS, TRAIN_BANKS, _examSanitizeReport, _examInjectReport, injectGeneratedExamQuestions, cutScoreFor, trainExamOverlap, examVocabCoverage, extractVocabFromBank, methodologyBankFor, scoreMethodologyAnswer } from './student-question-banks.js';
+// ⭐ Self-pricing rep compression — the collision load is COUNTED from real
+// patterns rather than computed, because the closed form's K and COLS are
+// ambiguous against the live tiled encoding by six orders of magnitude.
+// Aliased on import so the long names read clearly at the single call site.
+import {
+  measureCollisionLoad as _repMeasureCollisionLoad,
+  safeCompressionFor as _repSafeCompressionFor,
+} from './rep-compression.js';
 // Track-level subject names (ela/math/science/social/art/life) live as
 // the local `SUBJECTS` constant below. iter21-B band codes (ela/math/
 // sci/soc/art/life) are normalized via `subjects.js`. Keep them
@@ -302,13 +310,21 @@ export const SUBJECTS_RETIRED_AT = {
  *
  * A URL identifies the picture; an index identifies where it happened to sit
  * that day. Short, filename-safe, and stable across re-ingests and reorderings.
+ *
+ * ⭐ THE BODY NOW LIVES IN ONE PLACE. This rule had five independent
+ * implementations across the brain, the server and the field producer; the
+ * re-export keeps every existing importer working while there is exactly one
+ * definition to change. The merge was proven byte-identical against all five
+ * over the whole corpus before it landed — see the owning module's header.
+ *
+ * ⚠ IMPORTED AND RE-EXPORTED, NOT `export … from`. A bare re-export forwards the
+ * name to importers WITHOUT creating a local binding, and this file calls
+ * `figKeyOf` itself — so the shorter form would have thrown a ReferenceError at
+ * the two call sites while every static check passed.
  */
-export function figKeyOf(fig) {
-  const src = String((fig && (fig.url || fig.src)) || '');
-  let h = 5381;
-  for (let i = 0; i < src.length; i++) h = (((h << 5) + h) ^ src.charCodeAt(i)) >>> 0;
-  return h.toString(36);
-}
+import { figKeyOf } from './figure-identity.cjs';
+
+export { figKeyOf };
 
 export function ledgerFloorIdx(passedCells) {
   const ledger = (passedCells instanceof Set)
@@ -2967,6 +2983,51 @@ export class Curriculum {
     // `_teachLanguageMechanics` band ladder — instead of sitting at 0% for the
     // phase's entire duration and then jumping 4%. Derived and exact, and it
     // works for every phase in every grade with no per-runner wiring.
+    // ⛔⛔ THE DENOMINATOR COUNTED WORK THE GRADE FORBIDS, so the bar had a
+    // ceiling it could never reach and nothing said so.
+    //
+    // The ELA mechanics phase declares 14 nested units, and the count above is
+    // derived exactly — but ELEVEN of them sit behind a grade guard. At
+    // kindergarten only THREE can run, so a bar reporting `3/14` was showing
+    // 21% for a phase that had finished everything it was allowed to do. The
+    // reading was not noise; it was a correct fraction of the wrong whole.
+    //
+    // ⭐ A DERIVED DENOMINATOR IS ONLY HONEST IF IT IS DERIVED UNDER THE
+    // CONDITIONS THE NUMERATOR RUNS IN. The gates are read from the same source
+    // text the units are, so the two halves of the fraction now describe the
+    // same run.
+    //
+    // The shape being parsed, verbatim from the mechanics ladder:
+    //     const g1 = ORDER.indexOf('grade1');      ← binds a local to a grade
+    //     if (atLeast(g1)) { … this._teachMorphology(…) … }
+    //     if (atLeast(g2) && typeof this._teachPhrases === 'function') { … }
+    // so a unit's gate is the innermost `atLeast(<local>)` block containing it.
+    const _gateOf = (src) => {
+      // local name → grade name, e.g. `g5` → `grade5`
+      const vars = new Map(
+        [...src.matchAll(/\b(\w+)\s*=\s*ORDER\.indexOf\(\s*['"]([^'"]+)['"]\s*\)/g)]
+          .map((m) => [m[1], m[2]]),
+      );
+      const gates = new Map();
+      const stack = [];
+      let depth = 0;
+      for (const line of src.split('\n')) {
+        // Units on THIS line belong to the guards already open, never to a
+        // guard opening on the same line — `if (atLeast(g2) && typeof
+        // this._teachPhrases === 'function')` names its own unit in the
+        // condition, and crediting that to its own gate would be circular.
+        for (const m of line.matchAll(/this\.(_teach[A-Za-z0-9_]+)\s*\(/g)) {
+          if (!gates.has(m[1])) gates.set(m[1], stack.length ? stack[stack.length - 1].grade : null);
+        }
+        const opened = /\batLeast\(\s*(\w+)\s*\)/.exec(line);
+        let delta = 0;
+        for (const ch of line) { if (ch === '{') delta++; else if (ch === '}') delta--; }
+        if (opened && delta > 0) stack.push({ grade: vars.get(opened[1]) || null, depth });
+        depth += delta;
+        while (stack.length && depth <= stack[stack.length - 1].depth) stack.pop();
+      }
+      return gates;
+    };
     if (!this._teachNestedTotal) this._teachNestedTotal = {};
     for (const _n of TRACKED) {
       try {
@@ -2980,10 +3041,17 @@ export class Curriculum {
         // declared nested unit from a deep primitive at credit time.
         if (!this._teachNestedSet) this._teachNestedSet = {};
         this._teachNestedSet[_n] = _nested;
+        // unit → the grade it first becomes reachable at, or null for ungated.
+        if (!this._teachNestedGate) this._teachNestedGate = {};
+        const _g = _gateOf(_src);
+        _g.delete(_n);
+        this._teachNestedGate[_n] = _g;
       } catch {
         this._teachNestedTotal[_n] = 0;
         if (!this._teachNestedSet) this._teachNestedSet = {};
         this._teachNestedSet[_n] = null;
+        if (!this._teachNestedGate) this._teachNestedGate = {};
+        this._teachNestedGate[_n] = null;
       }
     }
     // LATCH-PROOF PHASE STACK (2026-08-14). The prior implementation decided
@@ -3083,7 +3151,14 @@ export class Curriculum {
           // Start a fresh within-phase work tally for this phase.
           this._phaseWorkName = name;
           this._phaseWorkSeen = new Set();
-          this._phaseWorkTotal = (this._teachNestedTotal && this._teachNestedTotal[name]) || 0;
+          // ⭐ THE TOTAL IS THE UNITS THIS GRADE CAN ACTUALLY REACH, not every
+          // unit the method lexically names. `_phaseReachableTotal` falls back
+          // to the lexical count only when there are no gates to read, which is
+          // the correct answer for a phase that has none.
+          this._phaseWorkTotal = this._phaseReachableTotal(name);
+          // A fresh phase has nothing in flight yet; carrying the previous
+          // phase's unit forward would be a stale name wearing a live age.
+          this._phaseWorkInflight = null;
           // PHONPROG.1a — clear any self-published cursor from the PREVIOUS
           // phase. A stale exact-looking percentage outliving its phase is the
           // same lying-instrument shape this fix exists to remove.
@@ -3119,6 +3194,26 @@ export class Curriculum {
         // CELLBOUND.E - the expected-unit set captured by reference alongside
         // the tally, so credit lands on the phase this call actually ran inside.
         const workExpect = isCellPhase ? null : this._phaseWorkExpect;
+        // ⛔⛔ THE IN-FLIGHT UNIT IS NAMED ON ENTRY, BECAUSE `done` CANNOT MOVE
+        // AND THAT IS CORRECT BEHAVIOUR MISREADING AS A DEAD BAR.
+        //
+        // Credit is granted on EXIT — deliberately, so an unfinished unit is
+        // never counted as done — and one of these units is priced in its own
+        // comment at **14.9 hours in a single call**. So `done: 0` was both
+        // accurate and useless: two live samples 417 s apart read
+        // `{done: 0, total: 14, frac: 0}` while `cellSubPhases` moved
+        // 105,072 → 108,275. She was working; the bar could not say so.
+        //
+        // ⭐ THE FIX IS NOT TO CREDIT EARLY. Crediting on entry would make
+        // `done` move by lying about completion, which is the defect this
+        // instrument exists to avoid. It is to say WHICH unit is in flight and
+        // HOW LONG it has been there — a 4-hour age on a named unit is the
+        // difference between "stuck" and "this one takes hours", and no
+        // fraction can express that.
+        if (!isCellPhase && workSeen && (!workExpect || workExpect.has(name))
+            && !workSeen.has(name) && !this._phaseWorkInflight) {
+          this._phaseWorkInflight = { name, at: Date.now() };
+        }
         if (isCellPhase) {
           const _ck = cl._currentCellKey || '';
           if (this._cellPhasesStartedKey !== _ck) {
@@ -3223,12 +3318,23 @@ export class Curriculum {
             this._phaseWorkSeen = null;
             this._phaseWorkTotal = 0;
             this._phaseWorkExpect = null;
+            // The in-flight marker retires with its own phase. A unit name
+            // outliving the phase it ran inside is the stale-tag defect that
+            // has already made an age climb across whole eras and name the
+            // wrong culprit.
+            this._phaseWorkInflight = null;
             cl._phaseDeadlineAt = 0;
             cl._phaseDeadlineName = null;
           } else if (workSeen && (!workExpect || workExpect.has(name))) {
             // A nested teach call is one unit of the enclosing phase's work,
             // credited on EXIT so an in-flight unit is never counted as done.
             workSeen.add(name);
+            // It is no longer in flight — cleared only if THIS unit is the one
+            // marked, so a nested sibling finishing cannot clear the long unit
+            // that is actually holding the phase.
+            if (this._phaseWorkInflight && this._phaseWorkInflight.name === name) {
+              this._phaseWorkInflight = null;
+            }
           }
         }
       };
@@ -3368,6 +3474,37 @@ export class Curriculum {
    * broadcast so the dashboard has the full training picture in one
    * poll. Null fields when Unity isn't mid-cell.
    */
+  /**
+   * How many of a phase's nested work units the CURRENT grade can actually
+   * reach — the honest denominator for the within-phase progress bar.
+   *
+   * ⛔ WHY IT IS NOT JUST THE LEXICAL COUNT. The ELA mechanics phase names 14
+   * nested units and eleven sit behind a grade guard, so at kindergarten only
+   * three can ever run. Reporting `3/14` was arithmetically exact and described
+   * a whole that does not exist at that grade — a bar pinned at a 21% ceiling
+   * with nothing saying why.
+   *
+   * ⚠ FALLS BACK TO THE LEXICAL COUNT ONLY WHEN THERE ARE NO GATES TO READ,
+   * which is the correct answer for a phase that has none — not a degradation.
+   * A unit whose gate names a grade outside `GRADE_ORDER` is COUNTED rather
+   * than dropped: an unresolvable guard must not silently shrink the whole.
+   */
+  _phaseReachableTotal(name) {
+    const lexical = (this._teachNestedTotal && this._teachNestedTotal[name]) || 0;
+    const gates = this._teachNestedGate && this._teachNestedGate[name];
+    if (!gates || !gates.size) return lexical;
+    const grade = this.cluster?._currentCellKey ? String(this.cluster._currentCellKey).split('/').pop() : null;
+    const gi = grade ? GRADE_ORDER.indexOf(grade) : -1;
+    if (gi < 0) return lexical;           // unknown grade → no basis to exclude anything
+    let n = 0;
+    for (const [, g] of gates) {
+      if (!g) { n++; continue; }           // ungated — runs at every grade
+      const ref = GRADE_ORDER.indexOf(g);
+      if (ref < 0 || gi >= ref) n++;      // unresolvable guard counts, per the note above
+    }
+    return n;
+  }
+
   getCurriculumStatus() {
     const cluster = this.cluster;
     const perSubject = {};
@@ -3847,8 +3984,13 @@ export class Curriculum {
       // sitting at 0% for its whole duration and then jumping.
       //
       // `total` is the count of distinct nested `_teach*` units the phase's own
-      // source calls; `done` is how many have FINISHED (counted on exit, not on
-      // entry, so an in-flight unit is never reported as complete). A vocabulary
+      // source calls THAT THIS GRADE CAN REACH — eleven of the ELA mechanics
+      // phase's fourteen sit behind grade guards, so a raw lexical count gave
+      // the bar a 21% ceiling at kindergarten. `done` is how many have FINISHED
+      // (counted on exit, not on entry, so an in-flight unit is never reported
+      // as complete), and `inflight`/`inflightMs` name the unit currently
+      // running and how long it has held — because `done` sitting at 0 for
+      // hours is correct here and says nothing. A vocabulary
       // list running inside the phase is within-phase work too, so its position
       // folds into the SAME fraction rather than becoming a second signal the UI
       // would have to choose between.
@@ -3863,11 +4005,22 @@ export class Curriculum {
             const done = this._phaseWorkSeen ? this._phaseWorkSeen.size : 0;
             const vp = this._vocabProgress;
             const vFrac = (vp && vp.total > 0) ? Math.min(1, (vp.taught | 0) / vp.total) : 0;
+            // ⭐ THE UNIT CURRENTLY RUNNING, WITH ITS AGE — the answer to
+            // "is she stuck?" that a fraction cannot give. `done` legitimately
+            // sits at 0 for hours because credit is granted on exit and one
+            // unit is priced at 14.9 hours per call, so without this the bar
+            // is indistinguishable from a dead one. ⚠ Reported ALONGSIDE
+            // `done`, never folded into it: an in-flight unit is not progress,
+            // and inflating the fraction to look alive is the exact lie this
+            // instrument exists to avoid.
+            const inf = this._phaseWorkInflight;
             return {
               name: this._phaseWorkName || null,
               done,
               total: this._phaseWorkTotal,
               frac: Math.min(0.99, (done + vFrac) / this._phaseWorkTotal),
+              inflight: inf ? inf.name : null,
+              inflightMs: inf ? (Date.now() - inf.at) : null,
             };
           })()
         : null,
@@ -8855,6 +9008,21 @@ export class Curriculum {
           } catch (e) { if (this._hb) this._hb(`[Curriculum] fundamentals refresh (${grade}) non-fatal: ${e?.message || e}`); }
         }
       }
+      // ⭐⭐ PER-SUBJECT REHEARSAL — the operator's *"without just replaceing
+      // old teachings with current teachings"*, and it runs HERE, at the one
+      // chokepoint every cell of every subject passes through, rather than as a
+      // ninth copy of the ELA block above.
+      //
+      // ⛔ BEFORE the new material, deliberately: the cell's gate at the end
+      // grades what was taught THIS grade, so rehearsing afterwards would decay
+      // exactly what is about to be measured. Warm-up review, then the lesson.
+      //
+      // ⚠ Non-fatal like every other prepended phase — a refresh of old
+      // material can never be allowed to cost a cell its new material.
+      if (PROSE_ACADEMIC_SUBJECTS.has(subject)) {
+        try { await this._rehearseEarlierGrades(subject, grade, ctx); }
+        catch (e) { if (this._hb) this._hb(`[Curriculum] _rehearseEarlierGrades(${subject}/${grade}) non-fatal: ${e?.message || e}`); }
+      }
       // HYBRID depth: prose-academic subjects train the downloaded real-
       // curriculum corpus (corpora/academic/<subject>/<grade>.json) before the
       // bespoke runner — the operator 2026-06-18 hybrid decision. Math stays equational;
@@ -10899,9 +11067,12 @@ export class Curriculum {
 
   /**
    * T18.13.b — resolve the max grade index from DREAM_MAX_GRADE env var
-   * or opts.maxGrade. Defaults to 'kindergarten' per Pre-K + K ONLY
-   * scope LAW. Returns -1 if uncapped (DREAM_MAX_GRADE=phd or any
-   * grade at or after GRADE_ORDER's last entry).
+   * or opts.maxGrade. ⛔ DEFAULTS TO UNCAPPED — the full pre-K→PhD walk. This
+   * comment used to say *"Defaults to 'kindergarten' per Pre-K + K ONLY scope
+   * LAW"*, and that LAW is REVOKED; the body below has defaulted to `'phd'`
+   * since, so the description contradicted the four lines under it. Returns -1
+   * when uncapped (which is the default, or any grade at/after GRADE_ORDER's
+   * last entry). The env var still caps lower, for testing.
    */
   _resolveMaxGradeIdx() {
     const envMax = (typeof process !== 'undefined' && process.env && process.env.DREAM_MAX_GRADE)
@@ -11071,7 +11242,15 @@ export class Curriculum {
     // T18.13.b — Pre-K + K ONLY cap. `DREAM_MAX_GRADE=phd` unsets the cap.
     const maxIdx = this._resolveMaxGradeIdx();
     const capLabel = maxIdx >= 0 ? GRADE_ORDER[maxIdx] : 'phd';
-    this._hb(`[Curriculum] T18.13 grade cap = '${capLabel}' (set DREAM_MAX_GRADE env to change; defaults to 'kindergarten' per Pre-K + K ONLY LAW)`);
+    // ⛔ THIS LINE USED TO TELL THE OPERATOR THE CAP WAS 'kindergarten' — and it
+    // has not been for months. `_resolveMaxGradeIdx` defaults to `'phd'`; the
+    // Pre-K + K ONLY scope was REVOKED, and the resolver's own comment says so.
+    // The log line was never updated with it, so the one surface reporting the
+    // grade cap was announcing a cap that does not exist and naming a revoked
+    // LAW as its authority. **An instrument describing a bound the code does not
+    // apply is the defect class this ledger is full of** — and this one would
+    // read as "the walk stops at K" to anyone reading the boot log.
+    this._hb(`[Curriculum] T18.13 grade cap = '${capLabel}' (set DREAM_MAX_GRADE to cap lower for testing; DEFAULT IS UNCAPPED — the full pre-K→PhD walk, since the Pre-K+K-only scope was revoked)`);
 
     // T18.13.a — START AT i=0 (pre-K) NOT i=1. Hard-coded `i=1` was
     // silently skipping every subject's pre-K runner — the exact bug
@@ -16419,15 +16598,97 @@ export class Curriculum {
       if (typeof this._teachWordDefinition === 'function') {
         const taught = cluster._definitionTaughtWords || new Set();
         const STOP = new Set(['the','and','that','this','with','from','have','has','had','are','was','were','for','not','they','them','their','which','also','into','than','then','such','these','those','some','can','may','will','would','could','should','more','most','one','two','its','our','your','who','how','why','when','where','what','been','being']);
-        const seen = new Set();
-        const newWords = [];
+        // ⭐⭐ ORDERED BY HOW OFTEN THE CELL ACTUALLY USES THE WORD, NOT BY WHERE
+        // IT HAPPENS TO FIRST APPEAR.
+        //
+        // ⛔ THE POINT OF THIS WHOLE STEP is that the prose afterwards binds on
+        // ANCHORED basins instead of phantom ones. So the sixty lookups it can
+        // afford should be spent on the words the prose LEANS ON — and in corpus
+        // order they were being spent on whichever rare one-off words happened
+        // to appear early, while the words the chapter repeats constantly went
+        // unanchored.
+        //
+        // ⭐ MEASURED, on the share of a cell's total content-word OCCURRENCES
+        // the sixty anchored words cover:
+        //
+        //     cell              corpus order   top-60 by frequency
+        //     science/grade5        9.14%           27.18%   (3.0x)
+        //     math/grade10         10.39%           32.96%   (3.2x)
+        //     ela/grade3            5.49%           19.21%   (3.5x)
+        //     art/grade4            6.86%           24.49%   (3.6x)
+        //     science/phd           1.73%            9.84%   (5.7x)
+        //     MEAN                  6.85%           20.71%   = 3.0x
+        //
+        // ⭐ **NO RE-PRICE IS OWED AND THAT IS THE ARGUMENT FOR DOING IT.** The
+        // lookup count, the cap, the rotation and the wall-clock are all
+        // unchanged — only WHICH sixty words get picked changes. Three times the
+        // coverage for free.
+        //
+        // ⚠ THE ROTATION IS UNTOUCHED AND MUST STAY. It exists because
+        // `slice(0, CAP)` stranded every word past the first sixty as soon as
+        // sixty undefinable ones collected at the head. Frequency changes the
+        // ORDER the rotation walks; it does not reintroduce a fixed head.
+        //
+        // ⚠ Ties broken by first appearance so the order is fully deterministic
+        // — a cursor walking a list that reshuffles between visits would revisit
+        // and skip unpredictably.
+        const freq = new Map();
+        const firstAt = new Map();
+        let position = 0;
         for (const s of sentences) {
           for (const tok of String(s).toLowerCase().split(/\s+/)) {
             const c = tok.replace(/[^a-z]/g, '');
-            if (c.length > 3 && !STOP.has(c) && !taught.has(c) && !seen.has(c)) { seen.add(c); newWords.push(c); }
+            if (c.length <= 3 || STOP.has(c) || taught.has(c)) continue;
+            if (!freq.has(c)) { freq.set(c, 0); firstAt.set(c, position++); }
+            freq.set(c, freq.get(c) + 1);
           }
         }
-        const VOCAB_CAP = opts.vocabCap ?? 60;
+        const newWords = [...freq.keys()].sort((a, b) => {
+          const d = freq.get(b) - freq.get(a);
+          return d !== 0 ? d : firstAt.get(a) - firstAt.get(b);
+        });
+        // ⛔⛔⛔ THE 60-WORD CAP IS GONE. Operator: *"why did you put a cap on
+        // her?"* / *"she has to be able to look up all workds she needs to know
+        // no some bullshit limit"*.
+        //
+        // ⛔ AND THE ARITHMETIC THAT APPEARED TO JUSTIFY IT WAS MINE AND IT WAS
+        // WRONG TWICE OVER. I priced removal at ~25 days and it is ~20 HOURS:
+        //
+        //   ① I summed DISTINCT-PER-CELL words — 1,996,943 — when the figure
+        //      that matters is DISTINCT ACROSS THE WHOLE CORPUS: **365,132**.
+        //      `_definitionTaughtWords` is global and persisted, so a word
+        //      anchored in any cell is never looked up again in any other.
+        //      **A 5.5× overcount.**
+        //   ② I then priced it as cold SERIAL lookups at ~3.9 s each, ignoring
+        //      `prefetchDefinitions`, which already batches at concurrency 20.
+        //      **Another 20×.**
+        //
+        // Re-measured by walking the cells in real grade-major order and
+        // counting only words not already anchored by an earlier cell:
+        //
+        //     total NEW lookups across the whole walk   365,132
+        //     total time at concurrency 20              19.8 h   (3.4% of a ~24d walk)
+        //     cells whose first visit exceeds 30 min    6 of 189
+        //     worst cell  science/grad  68,942 new      224 min, ONCE, ever
+        //
+        // ⭐ **A CAP HERE WAS NEVER A COST CONTROL, IT WAS A CEILING ON WHAT SHE
+        // CAN EVER KNOW** — the same shape as the figure lane's per-visit cap,
+        // which turned out to make everything past a cell's 24th picture
+        // unreachable for the lane's entire life. **Unlimited by default.**
+        //
+        // ⚠ `DREAM_ACAD_VOCAB_CAP` exists as a DIAGNOSTIC lever only — for
+        // bisecting a slow cell, never as an operating setting. Unset means no
+        // limit, and that is the intended state.
+        //
+        // ⭐ FREQUENCY ORDERING STILL MATTERS WITH NO CAP, which is why it stays.
+        // It no longer decides WHICH words she learns — it decides the ORDER,
+        // so if a long cell is ever deferred part-way the words the prose leans
+        // on are already anchored rather than whichever ones sorted first.
+        const _capEnv = (typeof process !== 'undefined' && process.env
+          && process.env.DREAM_ACAD_VOCAB_CAP);
+        const VOCAB_CAP = opts.vocabCap
+          ?? ((_capEnv !== undefined && _capEnv !== '' && Number(_capEnv) > 0)
+            ? Number(_capEnv) : Infinity);
         // ⛔⛔ ROTATE THE WINDOW — `slice(0, CAP)` STRANDS EVERY WORD PAST THE
         // FIRST 60 AS SOON AS 60 UNDEFINABLE ONES COLLECT AT THE HEAD
         // (found 2026-09-02 sweeping the teach path for this shape).
@@ -16463,15 +16724,108 @@ export class Curriculum {
           try { const r = await this._teachWordDefinition(w, { reps: 3, label: `ACADEMIC-PREVOCAB-${subject}-${grade}` }); if (r && r.defsBound > 0) anchored++; }
           catch { /* per-word best-effort */ }
         }
-        if (this._hb) this._hb(`[Curriculum] _trainAcademicStories(${subject}/${grade}) PRE-VOCAB — ${anchored}/${batch.length} academic terms definition-anchored before prose binding (${newWords.length} unlearned content words found, window ${VOCAB_CAP} from offset ${vStart}). Prose now binds on anchored basins, not phantom word basins.`);
+        // ⭐ REPORT THE COVERAGE THE WINDOW ACTUALLY BOUGHT, not just its size.
+        // "60/60 anchored" says nothing about whether those sixty words are the
+        // ones the chapter leans on — and that difference is the entire point of
+        // ordering by frequency. `covers` is the share of this cell's content-word
+        // OCCURRENCES that the batch accounts for, which is the number that says
+        // how much of the coming prose will land on an anchored basin.
+        let _occTotal = 0; for (const n of freq.values()) _occTotal += n;
+        let _occBatch = 0; for (const w of batch) _occBatch += (freq.get(w) | 0);
+        const _cov = _occTotal > 0 ? (100 * _occBatch / _occTotal) : 0;
+        if (this._hb) this._hb(`[Curriculum] _trainAcademicStories(${subject}/${grade}) PRE-VOCAB — ${anchored}/${batch.length} academic terms definition-anchored before prose binding (${newWords.length} unlearned content words found; ${Number.isFinite(VOCAB_CAP) ? `window ${VOCAB_CAP} from offset ${vStart} — A CAP IS SET, which is a diagnostic state, not the intended one` : 'NO CAP — every unlearned word in this cell is looked up'}, ordered by how often this cell uses them). This batch covers ${_cov.toFixed(1)}% of the cell's content-word occurrences. Prose now binds on anchored basins, not phantom word basins.`);
       }
     } catch { /* pre-vocab is best-effort; never blocks the story train */ }
 
     const reps = opts.reps ?? 3;
     const ticksPerWord = opts.ticksPerWord ?? 2;
-    // TEACHVIEW — carry the CELL and the SOURCE FILE down into the bus so the
-    // feed can say not just what she is being taught but where it came from,
-    // which is the question that could not be answered at all before today.
+    // ⭐⭐ FIGPAIR.1 — THE PICTURE LANDS ON THE PAGE IT BELONGS TO.
+    //
+    // Operator: *"we DO NOT JUST FEED HER THE WAVES CONSECUTIVELY WE GIVE HER
+    // EACH ONE AT THE SAME TIME SHE IS TRAING THE TEXT AND CHAPETERSECTIONS ...
+    // it would be stupid to just feed her a shit tone of images on a fucking
+    // timer with no fucking relation to the actual text"*.
+    //
+    // ⛔ WHAT WAS WRONG, PRECISELY: the caption binding was never the problem —
+    // a queued figure carries its own alt/caption/context and binds to its own
+    // words wherever it is drained. **CO-ACTIVATION was the problem.** Hebbian
+    // learning is fires-together-wires-together, so a cell diagram perceived
+    // while she is being taught weather never co-activates with the
+    // cell-biology prose it illustrates. The picture kept its caption and lost
+    // its lesson.
+    //
+    // ⭐ THE REASON THIS IS ONLY NOW POSSIBLE: the background drain existed
+    // because ONE figure cost ~7.7s (fetch + decode + full CDF 9/7), so inline
+    // was capped at 6 per visit and `math/grade10` needed 462 cell visits for
+    // its 2,769 figures. With the precomputed field store a figure is a ~50ms
+    // local read — that same cell is ~138 seconds. **The cap and the timer were
+    // both consequences of a cost that no longer exists.**
+    //
+    // ⛔⛔ AND THAT IS WHY THE INLINE PATH IS GATED ON A FIELD HIT. `opts.fieldOnly`
+    // makes the percept refuse to fall back to the network here: on a miss the
+    // figure goes to the background queue exactly as before. Without that gate a
+    // fieldless cell would revert to ~7.7s each and put 5.9 HOURS inside one
+    // cell pass — the precise failure the drain was built to prevent. **Field
+    // hit → inline, beside its text. Miss → the queue. Never the reverse.**
+    let sectionFigs = 0;
+    const cluster2 = this.cluster;
+    if (typeof cluster2?.academicStoryExperiences === 'function'
+        && typeof cluster2?.perceiveTextbookFigure === 'function') {
+      let sections = [];
+      try { sections = cluster2.academicStoryExperiences(subject, grade) || []; } catch { sections = []; }
+      if (sections.length) {
+        for (const sec of sections) {
+          if (!Array.isArray(sec.sentences) || !sec.sentences.length) continue;
+          // TEACHVIEW — carry the CELL and the SOURCE FILE down into the bus so
+          // the feed can say not just what she is being taught but where it came
+          // from. ⚠ The `label` deliberately stays the cell-wide
+          // `ACADEMIC-<subject>-<grade>-STORIES` string the flat path used, so
+          // the ledger's per-cell totals are continuous across this change and a
+          // section is a PHASE boundary rather than a new kind of lesson.
+          await this._phasedTeach(`ACADEMIC-${subject}-${grade}-SEC-${sec.theme || 'section'}`, () =>
+            this._teachSentenceList(sec.sentences, ctx, {
+              reps, ticksPerWord,
+              label: `ACADEMIC-${subject}-${grade}-STORIES`,
+              source: `corpora/academic/${subject}/${grade}.json`,
+            })
+          );
+          // The section's own pictures, NOW, while its prose is the active state.
+          //
+          // ⛔⛔ THE KEY IS `theme + figKeyOf(url)` AND IT MUST BE, BECAUSE THAT
+          // IS WHAT THE OTHER TWO LANES BANK UNDER. Caught in this row's own
+          // harness before it shipped: passing the bare section theme as the key
+          // gives every figure in a section the SAME store key, so of the five
+          // pictures on the cell-biology page only the first would ever land —
+          // the rest read as already-held and return null. Worse, that collision
+          // key is one NO other lane uses, so the one figure that did land was
+          // banked under a phantom address `_perceiveCellFigures` and the drain
+          // would both miss, and re-perceive from the network anyway.
+          // **One picture, one address, one owner of the rule.**
+          for (const fig of (sec.figures || [])) {
+            try {
+              const rec = await cluster2.perceiveTextbookFigure(fig, {
+                key: `${sec.theme || subject}-${figKeyOf(fig)}`,
+                theme: sec.theme || `${subject}/${grade}`,
+                fieldOnly: true,
+              });
+              if (rec) sectionFigs++;
+            } catch { /* a picture must never break the lesson it illustrates */ }
+          }
+        }
+        this._hb(`[Curriculum] _trainAcademicStories(${subject}/${grade}) DONE — ${sections.length} chapter sections taught IN ORDER, each with its own figures perceived beside its prose (${sectionFigs} landed from the field store; the rest ride the background queue). Source: corpora/academic/${subject}/${grade}.json.`);
+        return { trained: sentences.length, sections: sections.length, figuresInline: sectionFigs };
+      }
+    }
+
+    // ⚠ FALLBACK — the flat sentence walk, byte-for-byte what ran before this
+    // change. Reached in exactly two cases, and NEITHER is "the browser build":
+    // this module is server-only in practice (`brain-server.js:2501` is its one
+    // importer, by dynamic import, and it is absent from `js/app.bundle.js`
+    // entirely — checked, not assumed). The two real cases are **the section
+    // bridge failed to attach at boot**, and **the cell has experiences but none
+    // of them carry prose**. It teaches the same sentences in the same order and
+    // the totals are identical (harnessed); only the figure pairing is lost, and
+    // the background queue still covers every one of those figures.
     await this._phasedTeach(`ACADEMIC-${subject}-${grade}-STORIES`, () =>
       this._teachSentenceList(sentences, ctx, {
         reps, ticksPerWord,
@@ -16481,6 +16835,145 @@ export class Curriculum {
     );
     this._hb(`[Curriculum] _trainAcademicStories(${subject}/${grade}) DONE — trained on ${sentences.length} real-curriculum sentences from corpora/academic/${subject}/${grade}.json (hybrid depth source).`);
     return { trained: sentences.length };
+  }
+
+  /**
+   * ⭐⭐ PER-SUBJECT REHEARSAL — top up what this subject taught in EARLIER
+   * grades before teaching the current one.
+   *
+   * Operator: *"without just replaceing old teachings with current teachings"*.
+   *
+   * ⛔ THAT WAS AN ACCURATE DESCRIPTION OF EIGHT OF HER NINE COURSES. Four
+   * things protect old learning in this brain and only one of them is
+   * curriculum rehearsal:
+   *
+   *   Oja self-normalises          bounds the damage — and its own `−η·post²·w`
+   *                                term IS the forgetting mechanism
+   *   saturation detection         catches "everything means everything" and
+   *                                VETOES replay; it does not refresh anything
+   *   CLS consolidation replay     replays EPISODES and SCHEMAS, never grade-2
+   *                                maths — memory consolidation, not curriculum
+   *   the fundamentals refresh     real spaced repetition — for ELA ALPHABET
+   *                                MECHANICS and nothing else
+   *
+   * So when grade 10 trained, **nothing anywhere refreshed grade 3, and the Oja
+   * decay on those weights was unopposed.**
+   *
+   * ⭐ THIS IS THE ELA IDIOM GENERALISED TO THE CHOKEPOINT, not a ninth copy of
+   * it. Every prose subject gets the same treatment from one place, because
+   * "fix the chokepoint, not the instance" is a rule this board has been
+   * corrected on twice.
+   *
+   * ⛔⛔ IT RUNS BEFORE THE NEW MATERIAL, AND THE ORDER IS LOAD-BEARING. The
+   * cell's gate at the end tests what was taught THIS grade; rehearsing after
+   * the new material would decay exactly what is about to be graded. Warm-up
+   * review, then the lesson — which is also what the ELA refresh already does.
+   *
+   * ⭐ EVERY EARLIER GRADE IS TOUCHED ON EVERY VISIT, not the nearest one. The
+   * budget is split evenly across earlier grades and each grade carries its OWN
+   * cursor, so successive visits sweep different material within each grade
+   * rather than re-presenting the same opening paragraph forever. A single
+   * flattened window would have spent the whole budget on grade 1 — the shape
+   * that made the figure lane unable to reach past its 24th picture.
+   *
+   * ⚠ RE-PRICE, COMPUTED BEFORE THIS SHIPPED and against the real corpus, not
+   * estimated: 189 prose cells, 170 of which gain a rehearsal (a subject's first
+   * prose grade has nothing earlier). At 2% of the cell capped at 250 sentences
+   * and ONE rep against the content lane's three, the walk gains **17,681
+   * sentence-reps against 7,627,185 — 0.232%**, worst single cell **0.667%**
+   * (`psychology/grade12`). Against ~24 days that is **+80 minutes across the
+   * entire walk**. **Teaching ADDED. No gate removed, no bound weakened, no
+   * corpus re-fetched** — so `corpus × reps × scale × visits` is unchanged for
+   * every piece of new material.
+   *
+   * ⛔ ONE REP IS A TOP-UP AND IS MEANT TO BE. Oja deposits
+   * `1 − (1 − lr)^n` of a pattern, so at `DREAM_CONTENT_LR = 0.0468` one
+   * exposure re-deposits **4.68%** onto a basin that is already there. **This
+   * re-anchors; it does not relearn** — and relearning is what would actually
+   * cost real time. Raising `DREAM_REHEARSAL_REPS` re-prices linearly and the
+   * arithmetic above is the baseline to raise it against.
+   */
+  async _rehearseEarlierGrades(subject, grade, ctx) {
+    const cluster = this.cluster;
+    if (!cluster || typeof cluster.academicStorySentences !== 'function') {
+      return { rehearsed: 0, reason: 'no academic-story loader' };
+    }
+    const envNum = (k, d) => {
+      try {
+        const v = (typeof process !== 'undefined' && process.env) ? process.env[k] : undefined;
+        if (v === undefined || v === '') return d;
+        const n = Number(v);
+        return Number.isFinite(n) && n >= 0 ? n : d;
+      } catch { return d; }
+    };
+    // The escape hatch is checked by VALUE, not by presence — `=0` on the
+    // fraction is the honest way to disable the lane and reads the same as the
+    // figure lane's `DREAM_TEXTFIG_PER_CELL=0`.
+    const frac = envNum('DREAM_REHEARSAL_FRACTION', 0.02);
+    const maxSent = envNum('DREAM_REHEARSAL_MAX', 250);
+    const reps = envNum('DREAM_REHEARSAL_REPS', 1);
+    if (frac <= 0 || maxSent <= 0 || reps <= 0) return { rehearsed: 0, reason: 'disabled' };
+
+    const here = GRADE_ORDER.indexOf(grade);
+    if (here <= 0) return { rehearsed: 0, reason: 'first grade — nothing earlier' };
+
+    // ⚠ EARLIER = EARLIER IN `GRADE_ORDER` AND HOLDING PROSE. Deliberately not
+    // gated on the passedCells ledger: the walk resolves the lowest owed cell
+    // and runs in order, so an earlier grade of the same subject holding prose
+    // is material she has been through. Rehearsing a grade she somehow skipped
+    // would be teaching, not harm — whereas requiring a ledger hit would make
+    // this lane silently do nothing on any brain whose ledger predates it.
+    const earlier = [];
+    for (let i = 0; i < here; i++) {
+      const g = GRADE_ORDER[i];
+      let list = [];
+      try { list = cluster.academicStorySentences(subject, g) || []; } catch { list = []; }
+      if (list.length) earlier.push([g, list]);
+    }
+    if (!earlier.length) return { rehearsed: 0, reason: 'no earlier prose in this subject' };
+
+    let own = 0;
+    try { own = (cluster.academicStorySentences(subject, grade) || []).length; } catch { own = 0; }
+    // A cell with no prose of its own still rehearses — it has earlier grades to
+    // protect and nothing new to be measured against, so it takes the cap.
+    const budget = own > 0 ? Math.min(Math.floor(frac * own), maxSent) : Math.min(maxSent, 60);
+    if (budget <= 0) return { rehearsed: 0, reason: 'budget rounds to zero' };
+
+    const per = Math.max(1, Math.floor(budget / earlier.length));
+    if (!this._rehearsalCursor) this._rehearsalCursor = new Map();
+
+    let rehearsed = 0;
+    const covered = [];
+    for (const [g, list] of earlier) {
+      // ⭐ ONE CURSOR PER (subject, earlier-grade) — NOT per cell doing the
+      // rehearsing. A grade's sweep position is a property of that grade's
+      // corpus, so grade 3 continues where it left off no matter whether it was
+      // grade 4 or grade 11 that last rehearsed it. Per-process and deliberately
+      // not persisted: losing it costs one repeated window, never a gap.
+      const ck = `${subject}/${g}`;
+      const start = (this._rehearsalCursor.get(ck) | 0) % list.length;
+      const take = Math.min(per, list.length);
+      const slice = Array.from({ length: take }, (_, k) => list[(start + k) % list.length]);
+      this._rehearsalCursor.set(ck, (start + take) % list.length);
+      try {
+        await this._phasedTeach(`REHEARSE-${subject}-${g}`, () =>
+          this._teachSentenceList(slice, ctx, {
+            reps, ticksPerWord: 2,
+            label: `REHEARSE-${subject}-${g}`,
+            source: `corpora/academic/${subject}/${g}.json`,
+          })
+        );
+        rehearsed += take;
+        covered.push(`${g}:${take}@${start}`);
+      } catch (e) {
+        // One earlier grade failing must never cost the cell its new material.
+        if (this._hb) this._hb(`[Curriculum] rehearsal ${subject}/${g} non-fatal: ${e?.message || e}`);
+      }
+    }
+    if (rehearsed > 0 && this._hb) {
+      this._hb(`[Curriculum] _rehearseEarlierGrades(${subject}/${grade}) — ${rehearsed} sentence(s) re-presented at ${reps} rep across ${earlier.length} earlier grade(s) BEFORE new material, so this grade's teaching does not simply replace them (${covered.join(' ')}). Budget ${budget} = ${(frac * 100).toFixed(1)}% of this cell's ${own} own sentences, capped ${maxSent}.`);
+    }
+    return { rehearsed, grades: earlier.length, budget };
   }
 
   /**
@@ -17249,7 +17742,9 @@ export class Curriculum {
     //   required lr would exceed the ceiling the compression is REDUCED rather
     //   than the lr clamped — clamping would silently deliver LESS training
     //   than authored, i.e. the exact cut this is designed not to be.
-    const REP_COMPRESS = Math.max(1, Number(
+    // ⚠ `let`, not `const`: the self-pricing block below may replace it with a
+    // MEASURED factor when `DREAM_REP_AUTOPRICE=1`.
+    let REP_COMPRESS = Math.max(1, Number(
       // ⭐⭐ `REPCOMP.3` — THE NUMBER IS 5, AND IT WAS MEASURED, NOT CHOSEN.
       //   Gee: "you need to find out what the compress number needs to be".
       //
@@ -17387,6 +17882,95 @@ export class Curriculum {
     const MIN_RESULT_REPS = Math.max(1, Number(
       (typeof process !== 'undefined' && process.env && process.env.DREAM_REP_COMPRESS_FLOOR) || 4,
     ) || 4);
+    // ⭐⭐⭐ SELF-PRICING — MEASURE THIS CALL'S OWN COLLISION LOAD AND LET THE
+    // MEASUREMENT CHOOSE THE COMPRESSION, instead of carrying a constant chosen
+    // against a corpus an eleventh of today's size.
+    //
+    // Operator: *"did you set all the knobs for what we need so we dont have to
+    // do but like 1-3 reps for everything"*.
+    //
+    // ⛔ THE ANSWER COULD NOT BE A NUMBER TYPED IN HERE. `REP_COMPRESS = 40` was
+    // measured, but the sweep that measured it wrote its own expiry into the
+    // comment above — *"the compression that is free today is the first thing
+    // that breaks when the pair count climbs"* — and the academic corpus has
+    // gone 4.48M → 50.2M words since, **11.2×**. At 6× the sweep's load, 5
+    // presentations score 43% where 20 still score 94%.
+    //
+    // ⛔⛔ AND THE SWEEP'S OWN "PRODUCTION" ROW MAY NEVER HAVE DESCRIBED THIS
+    // ENCODING. Its 0.246 is `7,250 × 8² / 1,885,340` — 8 active cells drawn
+    // from 1.88M, an extremely sparse code. The live encoder is `semWTA` at
+    // `semTopK = 8` over a ~300-dim embedding, tiled so each surviving dim
+    // writes a whole group of cells ATOMICALLY. **A tile group is one feature,
+    // not 6,284**, so the live geometry is 8 dims of ~300, which is nothing like
+    // 8 cells of 1.88M. What makes it work is noted a few lines above: *"the
+    // survivors are mostly identity-hash dims (5 of 5) plus 3 strongest GloVe
+    // dims — mostly disjoint between similar words"*. **That near-orthogonality
+    // is measurable and is NOT derivable from the sweep's frame.**
+    //
+    // ⭐ So the load is COUNTED, not computed: `measureCollisionLoad` walks the
+    // real top-K dim sets and counts how many patterns share each one. It
+    // reproduces the sweep's published 0.246 under the sweep's own geometry
+    // (0.2469) and catches skew the closed form is blind to — one shared hot
+    // cell moves the counted load from 0.25 to 7,249 while `P·K²/COLS` does not
+    // move at all.
+    //
+    // ⚠ SAMPLED, AND SCALED BACK UP. Collecting every pattern would cost a
+    // second pass over the pairs; a bounded sample is measured and multiplied by
+    // `pairs/sample`, which is exact for the uniform case (load ∝ P) and an
+    // approximation under skew — stated rather than hidden.
+    //
+    // ⚠⚠ DEFAULT OFF, BECAUSE THE FIRST LIVE READING IS THE THING THAT SETTLES
+    // WHETHER 0.246 EVER APPLIED. Enabling it to steer before that number has
+    // been SEEN would be choosing a rep count from a table whose production row
+    // is in doubt — the same mistake one level down. `DREAM_REP_AUTOPRICE=1`
+    // arms it; unarmed it still measures and still publishes, so one press
+    // produces the evidence.
+    let _autoPrice = null;
+    try {
+      const _armed = (typeof process !== 'undefined' && process.env
+        && process.env.DREAM_REP_AUTOPRICE === '1');
+      const _semRegionEarly = cluster.regions && cluster.regions.sem;
+      if (_semRegionEarly && pairs.length >= 8 && typeof this._topKEmbedding === 'function') {
+        const _k = opts.semTopK ?? 8;
+        const _sampleN = Math.min(pairs.length, 512);
+        const _stride = Math.max(1, Math.floor(pairs.length / _sampleN));
+        const _sets = [];
+        for (let i = 0; i < pairs.length && _sets.length < _sampleN; i += _stride) {
+          const _w = Array.isArray(pairs[i]) ? pairs[i][0] : null;
+          if (!_w) continue;
+          const _e = this._dictionaryPatternFor(_w);
+          if (!_e || !_e.length) continue;
+          const _t = this._topKEmbedding(_e, _k);
+          const _idx = [];
+          for (let d = 0; d < _t.length; d++) if (_t[d] !== 0) _idx.push(d);
+          if (_idx.length) _sets.push(_idx);
+        }
+        if (_sets.length >= 8) {
+          const _m = _repMeasureCollisionLoad(_sets);
+          // load ∝ P, so a sample of n scales by pairs/n.
+          const _scaled = _m.load * (pairs.length / _sets.length);
+          const _verdict = _repSafeCompressionFor(_scaled, 0.95);
+          _autoPrice = {
+            sampled: _sets.length, pairs: pairs.length,
+            sampleLoad: _m.load, load: _scaled,
+            meanActiveDims: _m.meanActive, maxSharers: _m.maxSharers,
+            distinctDims: _m.cellsTouched,
+            factor: _verdict.factor, reps: _verdict.reps,
+            expectedRetrieval: _verdict.expectedRetrieval,
+            reason: _verdict.reason, armed: _armed,
+          };
+          // Published for the knob panel and the teach view — the number that
+          // did not exist before today.
+          if (cluster) cluster._repCompressionVerdict = _autoPrice;
+          this._hb(`[Curriculum][${opts.label || 'ASSOC'}] REPPRICE — measured collision load ${_scaled.toFixed(3)} over ${pairs.length} pairs (sampled ${_sets.length}, ${_m.meanActive.toFixed(1)} active dims each, ${_m.cellsTouched} distinct, max ${_m.maxSharers} patterns on one dim). The sweep supports ${_verdict.factor}× → ${_verdict.reps} reps at ${(100 * _verdict.expectedRetrieval).toFixed(1)}% retrieval. ${_armed ? 'ARMED — steering compression.' : 'NOT armed (DREAM_REP_AUTOPRICE=1 to steer); the hand-set ' + REP_COMPRESS + '× stands.'} ⚠ The sweep\'s 0.246 "production" row used 8 cells of 1,885,340; this brain uses 8 dims of ~300, so compare before trusting.`);
+          if (_armed) REP_COMPRESS = Math.max(1, _verdict.factor);
+        }
+      }
+    } catch (e) {
+      // Pricing must never be able to stop a teach.
+      if (this._hb) this._hb(`[Curriculum] REPPRICE non-fatal: ${e?.message || e}`);
+    }
+
     if (REP_COMPRESS > 1 && reps >= MIN_REPS_TO_COMPRESS && lr > 0 && lr < 1) {
       const _target = 1 - Math.pow(1 - lr, reps);      // what the authored dose reaches
       // `REPCOMP.4` — the result floor. Never fewer than MIN_RESULT_REPS

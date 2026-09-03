@@ -131,13 +131,12 @@ export const G11_MIXIN = {
       'time dilates at high speeds', 'mass and energy are equivalent',
       'quantum mechanics describes small things', 'uncertainty limits what we can know',
     ];
-    // T14.24 Session 48 (task #105) — TODO-aligned kinematics.
-
-    // TODO Sci-G11 spec (line 458): "_teachKinematics() uses actual
-    // motion equations v=u+at, s=ut+½at² as magnitude chains".
-
-    // Session 43 defined _teachKinematics with 20 randomly-generated
-    // (u, a, t) triples where:
+    // KINEMATICS TAUGHT AS THE REAL MOTION EQUATIONS — v = u + at and
+    // s = ut + ½at² — carried as magnitude chains rather than as sentences
+    // about motion. This is the equational-teach standard the grade gate
+    // requires: no word list, no worked-answer table.
+    //
+    // _teachKinematics walks 20 generated (u, a, t) triples where:
     //   u = initial velocity in [0, 10)
     //   a = acceleration in [0, 5)
     //   t = time in [0, 3)
@@ -211,8 +210,7 @@ export const G11_MIXIN = {
       'the media informs the public', 'public opinion shapes policy',
       'rights come with responsibilities',
     ];
-    // T14.24 Session 67 — prime three-branch structure per TODO
-    // line 530 before the civics sentence pass.
+    // Prime the three-branch structure before the civics sentence pass.
     await this._teachGovBranches();
     // ── Soc-G11: government causal chains + checks-and-balances inference ──
     await this._teachCausalChains([
@@ -247,8 +245,7 @@ export const G11_MIXIN = {
       'installation art creates environments', 'performance art uses the body',
       'digital art uses technology',
     ];
-    // T14.24 Session 86 — prime visual art theory lattice per TODO
-    // line 565 before the theory sentence pass.
+    // Prime the visual-art-theory lattice before the theory sentence pass.
     await this._teachVisualArtTheory();
     await this._teachCausalChains([
       ['form', 'content'], ['content', 'meaning'], ['context', 'interpret'],

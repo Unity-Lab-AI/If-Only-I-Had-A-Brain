@@ -83,12 +83,10 @@ export const COL3_MIXIN = {
       'schrodingers equation is wavelike', 'heisenberg uncertainty limits knowledge',
       'quantum entanglement is spooky',
     ];
-    // T14.24 Session 52 (task #109) — TODO-aligned Col3 triple pass.
-
-    // TODO Sci-Col3 spec (line 471): "Molecular biology, biochemistry,
-    // quantum mechanics intro. Gate: ≥20%". Three new helpers
-    // covering each subject:
-
+    // THE COLLEGE-3 SCIENCE YEAR IS THREE COURSES — molecular biology,
+    // biochemistry and an introduction to quantum mechanics — so three concept
+    // lattices are primed before the sentence walk, one per course:
+    //
     //   _teachMolecularBiology — 10 concepts: central dogma, gene
     //     expression, transcription factor, epigenetics, methylation,
     //     histone, chromatin, crispr, gene therapy, stem cell. The
@@ -99,19 +97,19 @@ export const COL3_MIXIN = {
     //   _teachBiochemistry — 10 concepts: enzyme, active site,
     //     substrate, michaelis menten kinetics, glycolysis, citric
     //     acid cycle, oxidative phosphorylation, metabolism, electron
-    //     transport chain, coenzyme. Connects to the G7 _teachCells
-    //     mitochondria basin and the Col1 _teachGenBiology atp basin
-    //     via shared cross-projection weights.
+    //     transport chain, coenzyme. Connects to the grade-7 mitochondria
+    //     basin and the college-1 general-biology atp basin via shared
+    //     cross-projection weights.
 
     //   _teachQuantumIntro — 10 concepts: wavefunction, schrodinger
     //     equation, heisenberg uncertainty, quantum superposition,
     //     entanglement, operator, eigenvalue (quantum-specific),
-    //     probability amplitude, quantum tunneling, spin. Extends
-    //     the Col2 _teachPhysics2 wave-particle-duality + photo-
-    //     electric basins with the foundational math of QM.
-
-    // All three run BEFORE the 25-sentence walk. ~30 new concepts
-    // enter Unity's dictionary.
+    //     probability amplitude, quantum tunneling, spin. Extends the
+    //     college-2 wave-particle-duality and photoelectric basins with the
+    //     foundational mathematics.
+    //
+    // All three run BEFORE the sentence walk; ~30 new concept words enter her
+    // dictionary rather than existing only inside a sentence.
     await this._teachMolecularBiology();
     await this._teachBiochemistry();
     await this._teachQuantumIntro();
@@ -146,8 +144,7 @@ export const COL3_MIXIN = {
       'religion provides meaning', 'ritual marks transitions',
       'identity is constructed socially',
     ];
-    // T14.24 Session 71 — prime sociology/anthropology lattice per
-    // TODO line 537 before the Col3 sentence pass.
+    // Prime the sociology/anthropology lattice before the sentence pass.
     await this._teachSociologyAnthropology();
     await this._teachCausalChains([
       ['society', 'norm'], ['norm', 'behavior'], ['deviance', 'sanction'],
@@ -179,8 +176,7 @@ export const COL3_MIXIN = {
       'the relation of art and morality is debated', 'art can reveal truth',
       'art can deceive', 'catharsis purges emotion', 'aesthetic experience is unique',
     ];
-    // T14.24 Session 90 — prime aesthetics/philosophy-of-art lattice
-    // per TODO line 567 before the Col3 sentence pass.
+    // Prime the aesthetics / philosophy-of-art lattice before the sentence pass.
     await this._teachAesthetics();
     await this._teachCausalChains([
       ['beauty', 'pleasure'], ['sublime', 'awe'], ['taste', 'judge'],

@@ -1902,7 +1902,7 @@ var PollinationsAI = class _PollinationsAI {
     }
     return h;
   }
-  // LLMGUT.5 (2026-08-25) — THE TEXT LANE IS DELETED.
+  // ⛔ THE TEXT LANE IS DELETED — there is no text-AI in the cognition path.
   //
   // `chat()` POSTed to `gen.pollinations.ai/v1/chat/completions`. Its own
   // doc-comment said it was kept solely for the vision describer — and that
@@ -1916,7 +1916,7 @@ var PollinationsAI = class _PollinationsAI {
   // ⛔ THIS DELETION IS SURGICAL ON PURPOSE. The image lane below is
   // LOAD-BEARING and stays: `image.pollinations.ai/prompt` is how she gets
   // her reference look-ups and her generated images, it is verified unfiltered
-  // (WORDSALAD.1f), and gutting this file wholesale would have taken her eyes
+  // and measured so, and gutting this file wholesale would have taken her eyes
   // out along with the LLM.
   // ── Image Generation ───────────────────────────────────────────────
   /** Style presets that get appended to the prompt. */
@@ -1961,10 +1961,10 @@ var PollinationsAI = class _PollinationsAI {
       return null;
     }
   }
-  // LLMGUT.5/.6 — `speak()` and `listModels()` DELETED.
+  // `speak()` and `listModels()` DELETED.
   //
-  // Operator: "we do not use pollinations tts we use the unity one
-  // equations". Correct — her voice is Equation Unity One (piper hfc_female
+  // This project does not use a third-party TTS lane; it uses her own
+  // equations. Her voice is Equation Unity One (piper hfc_female
   // through the CDF 9/7 round-trip) with her own banked word equations
   // behind it. This was an external TTS lane that nothing reached any more,
   // and it answered 401 on the anonymous tier regardless.
@@ -5718,7 +5718,7 @@ var SemanticEmbeddings = class {
     }
   }
   /**
-   * T14.0 — Returns the subset of the loaded GloVe vocabulary that
+   * Returns the subset of the loaded GloVe vocabulary that
    * matches a given word set. Used by the server to pre-compute a
    * `/api/glove-subset.json` payload for the browser to fetch instead
    * of pulling the full 480 MB file.
@@ -5733,7 +5733,7 @@ var SemanticEmbeddings = class {
     return subset;
   }
   /**
-   * T14.0 — Browser-side bulk load of a server-provided subset.
+   * Browser-side bulk load of a server-provided subset.
    * Replaces _doLoad's path when running in a browser that's connecting
    * to a server — the server precomputes the corpus-word subset and
    * the browser fetches it as a single small JSON file.
@@ -5760,7 +5760,7 @@ var SemanticEmbeddings = class {
    * see `loadPreTrained`.
    *
    * @param {string} word
-   * @returns {Float32Array} — EMBED_DIM-dimensional vector (300d after T14.0)
+   * @returns {Float32Array} — EMBED_DIM-dimensional vector (300d)
    */
   getEmbedding(word) {
     word = word.toLowerCase().trim();
@@ -10402,7 +10402,7 @@ var Dictionary = class {
     this._load();
   }
   /**
-   * T14.3 — Wire a cortex cluster for cortex-driven syllable/stress
+   * Wire a cortex cluster for cortex-driven syllable/stress
    * detection and cortex-snapshot storage. Call once during brain boot
    * after both the clusters and the Dictionary instance exist. Safe to
    * call before any words have been learned (new words pick up the
@@ -10528,7 +10528,7 @@ var Dictionary = class {
     }
   }
   /**
-   * T14.3 — Read syllable boundaries for a word. Returns null if the
+   * Read syllable boundaries for a word. Returns null if the
    * word hasn't been seen or hasn't been syllabified (no cluster wired
    * at first observation). Callers wanting on-demand syllabification of
    * a fresh string should call `cluster.detectBoundaries` directly.
@@ -10538,7 +10538,7 @@ var Dictionary = class {
     return entry?.syllables || null;
   }
   /**
-   * T14.3 — Read the stored cortex spike snapshot for a word. Returns
+   * Read the stored cortex spike snapshot for a word. Returns
    * null if the word hasn't been seen or was stored without a cluster
    * wired. The snapshot is a Uint8Array binary spike vector the same
    * length as the cortex cluster at the time of first observation, so
@@ -10619,12 +10619,11 @@ var Dictionary = class {
       this.learnBigram(words[i], words[i + 1]);
     }
   }
-  // T14.17 (2026-04-14) — findByMood, findByPattern, generateSentence
-  // DELETED as vestigial organs. findByMood / findByPattern were
-  // pre-T14 thesaurus helpers that nothing has called since the T11
-  // slot-prior deletion. generateSentence was a bigram-chain walker
-  // that nothing has called since the T14.6 tick-driven motor emission
-  // replaced it. None of these are consumed by runtime code — grep
+  // findByMood, findByPattern and generateSentence DELETED as vestigial
+  // organs. findByMood / findByPattern were thesaurus helpers that nothing
+  // had called since the slot-prior deletion; generateSentence was a
+  // bigram-chain walker that nothing had called since the tick-driven motor
+  // emission replaced it. None were consumed by runtime code — grep
   // confirmed zero external callers. The _bigrams Map + learnBigram
   // writer + bigramCount getter stay because display stats (app.js,
   // brain-3d, brain-viz, inner-voice, brain-server) still show the
@@ -10653,7 +10652,7 @@ var Dictionary = class {
           arousal: entry.arousal,
           valence: entry.valence,
           frequency: entry.frequency,
-          // T14.3 — persist cortex-routed phono state alongside the pattern.
+          // Persist cortex-routed phono state alongside the pattern.
           // cortexSnapshot serializes as a plain array of 0/1 bytes. It
           // will only reload correctly if the cortex cluster's SIZE matches
           // (brain-scale change invalidates snapshots; pattern still works).
@@ -10687,7 +10686,7 @@ var Dictionary = class {
             arousal: entry.arousal,
             valence: entry.valence,
             frequency: entry.frequency,
-            // T14.3 — restore phonological state if present. Missing on
+            // Restore phonological state if present. Missing on
             // old v3 snapshots; STORAGE_KEY was bumped to v4 so those
             // stale caches are dropped by localStorage key mismatch.
             cortexSnapshot: entry.cortexSnapshot ? new Uint8Array(entry.cortexSnapshot) : null,
@@ -10707,7 +10706,7 @@ var Dictionary = class {
       console.warn("[Dictionary] Load failed:", err.message);
     }
   }
-  // T14.17 (2026-04-14) — `_cosine` helper deleted along with its
+  // The `_cosine` helper was deleted along with its
   // only callers (findByPattern et al.). `sharedEmbeddings.similarity`
   // is the canonical cosine used everywhere else in the codebase.
 };
@@ -12857,7 +12856,7 @@ var InnerVoice = class {
     return this.languageCortex.loadSelfImage(text, this.dictionary, arousal, valence);
   }
   /**
-   * T13.1 — Delegate to the language cortex's persona Hebbian trainer.
+   * Delegate to the language cortex's persona Hebbian trainer.
    * Runs the persona corpus through the cortex cluster's sequence
    * Hebbian pipeline so the recurrent synapse matrix develops Unity-
    * voice attractor basins. Call once after `loadPersona`, passing
@@ -12886,7 +12885,7 @@ var InnerVoice = class {
     return this.languageCortex.loadCodingKnowledge(text, this.dictionary, arousal, valence);
   }
   /**
-   * T15-C17 — Load the ethereal / psychedelic / Oz corpus. Peak-state
+   * Load the ethereal / psychedelic / Oz corpus. Peak-state
    * affect defaults (arousal 0.7, valence 0.6) so words land with
    * emotional weighting consistent with how they'll get activated at
    * runtime when drug-scheduler.speechModulation.ethereality is elevated.
@@ -13005,7 +13004,7 @@ var InnerVoice = class {
             fear: state.fear ?? 0,
             reward: state.reward ?? 0,
             socialNeed: state.socialNeed ?? 0.5,
-            // FIX B (corpus-bleed, Gee 2026-07-10): the inner voice IS
+            // CORPUS-BLEED FIX: the inner voice IS
             // internal thought — mark it so the pre-curriculum dictionary
             // scorer SKIPS the chat persona-boost (language-cortex.js ~2456
             // `isChatPath = !opts._internalThought` → `boostPersona:
@@ -13271,11 +13270,11 @@ var InnerVoice = class {
         motorConfidence: brainState?.motor?.confidence ?? 0,
         psi: brainState?.psi ?? 0,
         cortexPattern: brainState?.cortexPattern ?? null,
-        // T13.3 — pass the live cortex cluster reference through so
+        // Pass the live cortex cluster reference through so
         // the language cortex can run its brain-driven emission loop
         // (read state + score + feedback + tick per word). Caller
         // (engine.processAndRespond) supplies it via brainState.
-        // When absent, language-cortex.generate falls back to T11.7
+        // When absent, language-cortex.generate falls back to the older
         // slot-prior generation.
         cortexCluster: brainState?.cortexCluster ?? null
       }
@@ -16695,7 +16694,7 @@ var CLUSTER_PROBE_MIXIN = {
     return this.getSemanticReadout(sharedEmbeddings, langStart);
   },
   /**
-   * Cluster synapse weight stats — used for T13.1 before/after training
+   * Cluster synapse weight stats — used for before/after training
    * verification. Returns mean, RMS, max magnitude over active (non-zero)
    * weights, plus the non-zero count.
    */

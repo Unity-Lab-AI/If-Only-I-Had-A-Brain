@@ -18,9 +18,9 @@ export const G2_MIXIN = {
     // converge.
     const DIGRAPHS = ['th', 'sh', 'ch', 'ph', 'wh', 'ck', 'ng'];
 
-    // T14.24 Session 28 — TODO-aligned three-method split. Call the
-    // named methods with additional long-word + phrase coverage that
-    // the original Session 7 impl didn't split out.
+    // THREE NAMED METHODS RATHER THAN ONE BLENDED PASS, with the extra
+    // long-word and phrase coverage the original single implementation folded
+    // together and could not be measured separately.
     const LONG_WORDS = [
       'chat', 'fish', 'duck', 'rock', 'king', 'song',
       'thing', 'graph', 'check', 'bring', 'black', 'quick',
@@ -347,8 +347,7 @@ export const G2_MIXIN = {
       'the state collects taxes', 'the state pays for schools',
       'the state runs the dmv', 'the state has courts',
     ];
-    // T14.24 Session 58 — prime state-name sequence walk per TODO
-    // line 496 before the state-concept sentence pass.
+    // Prime the state-name sequence walk before the state-concept sentence pass.
     await this._teachStateNames();
     await this._teachSentenceList(SENTENCES, ctx, { reps: 2, ticksPerWord: 2 });
     // Production stack + self-gate (K-uniform dedicated production gate).
@@ -372,8 +371,7 @@ export const G2_MIXIN = {
       'a song has a chorus and verse', 'the chorus repeats',
       'music makes us feel things', 'everyone can feel the beat',
     ];
-    // T14.24 Session 77 — prime rhythm patterns temporal cycles per
-    // TODO line 557 before the rhythm sentence pass.
+    // Prime rhythm patterns as temporal cycles before the rhythm sentence pass.
     await this._teachRhythmPatterns();
     // ── Art-G2: music causal chains ──
     await this._teachCausalChains([

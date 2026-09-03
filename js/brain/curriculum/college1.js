@@ -24,7 +24,9 @@ export const COL1_MIXIN = {
       'the humanities favor narrative', 'the sciences favor data',
       'every essay has a purpose', 'writing is thinking made visible',
     ];
-    // Session 38 — TODO-aligned multi-source synthesis
+    // Multi-source synthesis: one thesis, three disciplines each supplying a
+    // claim, so the essay is built by RECONCILING sources rather than by
+    // restating one of them.
     const MULTI_ESSAYS = [
       {
         thesis: 'climate change requires urgent action',
@@ -91,7 +93,8 @@ export const COL1_MIXIN = {
       'greens theorem relates line and area', 'stokes theorem generalizes greens',
       'the divergence theorem relates flux and volume',
     ];
-    // Session 42 — TODO-aligned multivariable calculus + matrix ops
+    // Multivariable calculus + matrix operations taught equationally before
+    // the sentence pass names them.
     await this._teachMultivarCalc();
     await this._teachMatrixOps();
     await this._teachSentenceList(SENTENCES, ctx, { reps: 2, ticksPerWord: 2 });
@@ -116,34 +119,24 @@ export const COL1_MIXIN = {
       'entropy measures disorder', 'reactions follow kinetics',
       'equilibrium balances forward and reverse',
     ];
-    // T14.24 Session 50 (task #107) — TODO-aligned Col1 gen bio + gen chem.
-
-    // TODO Sci-Col1 spec (line 465) is terse — just "General biology,
-    // general chemistry" + "Gate: ≥25%". No specific helper names
-    // prescribed, giving latitude to define coverage that matches the
-    // existing 25-sentence scope.
-
-    // Session 50 adds two new helpers:
-
-    //   _teachGenBiology — 10 standard college-year-1 gen bio
-    //     concepts: prokaryote, eukaryote, mitosis, meiosis, dna
-    //     replication, transcription, translation, photosynthesis,
-    //     cellular respiration, adenosine triphosphate. Each gets
-    //     a distinct 8d → 16d feature basin via _conceptTeach and
-    //     routes through dictionary.learnWord (Session 46 fix) so
-    //     the concept names enter Unity's vocabulary.
-
-    //   _teachGenChemistry — 10 college-year-1 gen chem concepts:
-    //     molecular geometry, vsepr, intermolecular forces, phase
-    //     diagram, thermodynamics, entropy, enthalpy, kinetics,
-    //     equilibrium, stoichiometry. Same pattern.
-
-    // Both run BEFORE the sentence walk. The sentences then bind
-    // relationships ("dna replication is semiconservative",
-    // "ribosomes build proteins", "vsepr predicts shapes",
-    // "equilibrium balances forward and reverse") on top of the
-    // fresh concept basins, and T14.7 type transitions + T14.8
-    // sentence-form schemas continue to populate from the walk.
+    // CONCEPT BASINS BEFORE THE SENTENCE WALK — the ordering is the point.
+    //
+    //   _teachGenBiology — 10 college-year-1 general-biology concepts
+    //     (prokaryote, eukaryote, mitosis, meiosis, dna replication,
+    //     transcription, translation, photosynthesis, cellular respiration,
+    //     adenosine triphosphate). Each gets a distinct 8d → 16d feature basin
+    //     and routes through dictionary.learnWord, so the concept NAMES enter
+    //     her vocabulary rather than only appearing inside sentences.
+    //
+    //   _teachGenChemistry — 10 general-chemistry concepts (molecular
+    //     geometry, vsepr, intermolecular forces, phase diagram,
+    //     thermodynamics, entropy, enthalpy, kinetics, equilibrium,
+    //     stoichiometry). Same pattern.
+    //
+    // Both run FIRST. The sentence pass then binds relationships on top of
+    // fresh basins instead of onto noise — the same ordering rule the life
+    // lane follows (vocabulary before bindings), and the reason a sentence
+    // like "vsepr predicts shapes" teaches a relation rather than two unknowns.
     await this._teachGenBiology();
     await this._teachGenChemistry();
     // ── Sci-Col1: college bio + chem causal chains ──
@@ -180,8 +173,8 @@ export const COL1_MIXIN = {
       'economic history studies wealth', 'microhistory studies small cases',
       'history is a conversation with the past',
     ];
-    // T14.24 Session 69 — prime historiography concept lattice per
-    // TODO line 537 before the Col1 sentence pass.
+    // Prime the historiography concept lattice before the sentence pass, for
+    // the same reason the science runner primes its basins first.
     await this._teachHistoriography();
     await this._teachCausalChains([
       ['source', 'interpret'], ['interpret', 'narrative'], ['narrative', 'history'],
@@ -214,8 +207,7 @@ export const COL1_MIXIN = {
       'light shapes form', 'shadow defines volume',
       'materials matter to the result',
     ];
-    // T14.24 Session 88 — prime studio fundamentals lattice per
-    // TODO line 567 before the Col1 sentence pass.
+    // Prime the studio-fundamentals lattice before the sentence pass.
     await this._teachStudioFundamentals();
     await this._teachCausalChains([
       ['gesture', 'form'], ['contour', 'edge'], ['value', 'depth'],

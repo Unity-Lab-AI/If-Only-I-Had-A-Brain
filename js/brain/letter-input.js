@@ -1,7 +1,7 @@
 /**
  * letter-input.js — Dynamic letter one-hot encoder for the cortex letter region
  *
- * T14.1 (2026-04-14) — ships with the t14-language-rebuild branch.
+ * Part of the language rebuild: letters enter the cortex as one-hot input.
  *
  * Letters are the primitive symbols the brain reads and writes. They're NOT
  * hardcoded as a 26-character English alphabet — the inventory is a dynamic
@@ -10,7 +10,7 @@
  * later includes, the inventory grows by one and all one-hot vectors for
  * previously-seen symbols gain a new dimension. No hardcoded alphabet cap.
  *
- * Why one-hot and not phoneme features: phonemes are LEARNED. T14.1 does
+ * Why one-hot and not phoneme features: phonemes are LEARNED. This lane does
  * NOT hardcode an English phonology feature table like the earlier draft.
  * Instead, letters are primitive one-hot inputs to the cortex's letter
  * sub-region, and the cortex's recurrent + cross-region Hebbian dynamics
@@ -41,7 +41,7 @@
 
 // Module-level singleton. One inventory per brain. Browser and server each
 // maintain their own — they're identical as long as they're trained on the
-// same corpora. Persistence (T14.16) keeps them in sync across restarts.
+// same corpora. The persistence layer keeps them in sync across restarts.
 const LETTER_INVENTORY = new Set();
 
 // Default English alphabet + digits + basic punctuation + space. Seeded
@@ -211,7 +211,7 @@ export function ensureLetters(letters) {
 /**
  * Decode a letter vector back to a letter symbol. Argmax over the one-hot
  * dimensions — whichever dimension has the highest activation is the
- * letter that the activation pattern represents. Used by the T14.6 tick-
+ * letter that the activation pattern represents. Used by the tick-
  * driven motor emission loop to read letters out of the cortex motor
  * region readout.
  *
@@ -286,7 +286,7 @@ export function decodeLetterAlpha(vec) {
 /**
  * Serialize the inventory for persistence. Returns a plain array in
  * insertion order, which is the order that defines the one-hot dimensions.
- * Persistence layer (T14.16) stores this alongside the cortex cluster
+ * The persistence layer stores this alongside the cortex cluster
  * weights so the dimensions line up after reload.
  */
 export function serializeInventory() {

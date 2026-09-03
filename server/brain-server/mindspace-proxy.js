@@ -57,8 +57,9 @@ class MindSpaceWorkerProxy {
     });
   }
 
-  // ── ONE PROCESS (Gee 2026-07-17: "the minds eye and voice go on the GPU ...
-  // its one process not bolted together shit") — DONOR BRIDGE ────────────────
+  // ── ONE PROCESS — DONOR BRIDGE ─────────────────────────────────────────────
+  // Her mind's eye and her voice run on the GPU, on the SAME device computing
+  // her brain. They are one process, not two systems bolted together.
   // When a mindspace-capable donor is connected (compute.html / donor-v0.3.11+),
   // the heavy mind-space ops run ON THE DONOR GPU — the same device computing
   // her brain. brain-server injects the bridge after construction. The LOCAL
@@ -90,7 +91,7 @@ class MindSpaceWorkerProxy {
 
   sketch(...args) { return this._call('sketch', args); }
 
-  // BLOBSTORE — the donor lane serializes recs to JSON over the WS; resident
+  // THE WIRE FORM. The donor lane serializes recs to JSON over the WS; resident
   // store recs hold binary Buffers, so convert to the base64 wire form at
   // this boundary (a Buffer inside JSON.stringify becomes a bloated numeric
   // object the donor's browser decoder cannot read).
@@ -134,7 +135,7 @@ class MindSpaceWorkerProxy {
   }
 
   morph(...args) { return this._call('morph', args); }
-  // PROXYCOLOR (2026-08-21) — reconstruct a rec to pixels. The COLOR pipeline
+  // Reconstruct a rec to pixels. ⛔ The COLOR pipeline
   // (palette + per-part + per-stroke sampling) checks `typeof imagine ===
   // 'function'` before sampling — this method was MISSING from the proxy, so
   // on the box every schema silently banked with NO colors and every drawing
@@ -164,8 +165,8 @@ class MindSpaceWorkerProxy {
   // would silently fall to null, and she'd look things up without ever drawing.
   // THIS omission was exactly that bug: the proxy lacked traceField, so
   // _drawConcept's guard (`typeof this.mindSpace.traceField !== 'function'`)
-  // bailed on EVERY call and no drawing was ever produced. (Gee 2026-07-15:
-  // "twn - twenty lookups in a row and not one single drawing has been attempted".)
+  // bailed on EVERY call and no drawing was ever produced — twenty reference
+  // look-ups in a row with not one drawing attempted, and nothing logged.
   traceField(...args) {
     return (this._local && typeof this._local.traceField === 'function')
       ? this._local.traceField(...args)

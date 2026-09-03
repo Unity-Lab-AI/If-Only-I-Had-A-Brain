@@ -51,7 +51,7 @@ export class SparseMatrix {
     const { rows, cols } = this;
     const noSelfConnect = (rows === cols);
 
-    // T14.21 (2026-04-14) — rewritten to sample in O(nnz) instead of
+    // Rewritten to sample in O(nnz) instead of
     // O(rows * cols). The old algorithm walked a nested loop over every
     // matrix cell and ran Math.random() per cell to decide inclusion:
 
@@ -997,13 +997,13 @@ export class SparseMatrix {
       if (maxAbs > 0 && scale * maxAbs > wBound) {
         scale = wBound / maxAbs;
       }
-      // ⭐ NORMROWS.2 (2026-08-25, Gee's call) — DEADBAND, not an exact compare.
+      // ⭐ DEADBAND, not an exact compare.
       //
       // This read `if (scale === 1) continue`, an EXACT float comparison that
       // essentially never fires — so a row already sitting at target norm was
       // multiplied by ~1.0 on every single pass. The self-profile put this
       // function at **27.5% of main-thread self-time**, the walk's largest cost
-      // once the SCALEWALK fixes landed, and the write loop below is roughly
+      // once the earlier scaling fixes landed, and the write loop below is roughly
       // half of it.
       //
       // ⛔ THIS IS A NUMERICAL CHANGE, NOT A FREE ONE, and it was decided rather

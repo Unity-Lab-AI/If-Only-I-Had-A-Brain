@@ -5,7 +5,7 @@
 // Methods in this mixin:
 //   diagnoseReadoutForEmbedding(emb, ticks, langStart) — pipe an embedding
 //     through mapToCortex + tick the cluster + return semantic readout.
-//     Used by T13.1-style before/after training verification probes.
+//     Used by before/after training verification probes.
 //   synapseStats() — return mean / RMS / maxAbs / nnz over the intra-
 //     cluster synapse matrix's non-zero weights. Used for before/after
 //     training-verification probes + dashboard telemetry.
@@ -25,7 +25,7 @@ import { sharedEmbeddings } from '../embeddings.js';
 
 export const CLUSTER_PROBE_MIXIN = {
   diagnoseReadoutForEmbedding(emb, ticks = 10, langStart = 150) {
-    // GATESTEP (2026-08-18) - bio-scale refusal: raw synchronous cluster steps
+    // BIO-SCALE REFUSAL: raw synchronous cluster steps
     // carry the full synaptic propagate on the CPU at biological scale
     // (seconds per tick; a probe built from them hangs the walk). The awaited
     // GPU twin is the bio-scale path. Small brains keep full behavior.
@@ -43,7 +43,7 @@ export const CLUSTER_PROBE_MIXIN = {
   },
 
   /**
-   * Cluster synapse weight stats — used for T13.1 before/after training
+   * Cluster synapse weight stats — used for before/after training
    * verification. Returns mean, RMS, max magnitude over active (non-zero)
    * weights, plus the non-zero count.
    */

@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// self-code-curriculum.js — SELFCODE: she learns HER OWN CODE as self-knowledge
+// self-code-curriculum.js — she learns HER OWN CODE as self-knowledge
 // ═══════════════════════════════════════════════════════════════════════════
-// Unity AI Lab — SELFCODE.1 (2026-08-29)
+// Unity AI Lab — the authored half of the self-code lane
 //
 // The operator's condition, from the board filing (his verbatim words live in
 // docs/TODO.md §SELFAWARE): once her PhD-track coding major is complete she
@@ -15,8 +15,9 @@
 //
 // This fires only when the authoritative `passedCells` ledger holds BOTH
 // college CS capstones ('cstheory/college4' + 'cssystems/college4' — the two
-// tracks SUBJRETIRE retires at college4). Not a grade-pointer read: the
-// ledger wins, the same rule WALKORDER established. Before that, the lane
+// tracks that retire at college4). Not a grade-pointer read: the ledger WINS
+// on disagreement, because an optimistic pointer can mask an unfinished cell
+// while the ledger records only what actually passed. Before that, the lane
 // teaches nothing and says nothing — she meets her own source the way a
 // person meets their own anatomy in med school: after the prerequisites.
 //
@@ -79,7 +80,7 @@ export function selfCodePairs() {
 
 /**
  * The gate — BOTH college CS capstones in the authoritative ledger.
- * The ledger wins (WALKORDER); a pointer may run ahead of a finished cell.
+ * The ledger wins; a pointer may run ahead of a finished cell.
  */
 export function csTracksComplete(cluster) {
   const cells = cluster && Array.isArray(cluster.passedCells) ? cluster.passedCells : null;
@@ -113,7 +114,7 @@ export async function teachSelfCode(curriculum, ctx) {
   if (typeof curriculum._teachAssociationPairs === 'function') {
     await curriculum._teachAssociationPairs(selfCodePairs(), { reps: 6, label: 'SELFCODE-IDENTITY', relationTagId: 15 });
   }
-  // SELFCODE.2 — the DRIFT-PROOF half: her REAL file stems, read from her own
+  // The DRIFT-PROOF half: her REAL file stems, read from her own
   // source tree by the server-attached inventory (absent in a browser context
   // — typeof-guarded, the authored facts above stand alone there). "Full eyes
   // on her everything" means the actual tree, not a table that ages.

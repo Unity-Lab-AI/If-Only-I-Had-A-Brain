@@ -1,4 +1,4 @@
-// DRAWGATE — WordNet lexicographer-category taxonomy for the drawable check.
+// WordNet lexicographer-category taxonomy for the drawable check.
 //
 // The operator's law: she draws ONLY a thing, person, place, or animal.
 // Word lists cannot cover the real world; a TAXONOMY can. WordNet (a static

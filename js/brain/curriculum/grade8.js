@@ -160,11 +160,11 @@ export const G8_MIXIN = {
       'a circuit is a path for electricity', 'voltage pushes the current',
       'resistance slows the current', 'ohms law says voltage equals current times resistance',
     ];
-    // T14.24 Session 44 — TODO-aligned energy-form sem binding.
-    // TODO Sci-G8 spec (line 447): "_teachEnergyForms() (kinetic/
-    // potential/thermal) via sem binding". Session 43 extended this
-    // to 7 forms — the TODO's three core examples plus electrical,
-    // chemical, nuclear, and radiant — each with a distinct 8d
+    // THE FORMS OF ENERGY, BOUND THROUGH SEM. The three core forms this year
+    // owes are kinetic, potential and thermal; the pass teaches SEVEN — those
+    // three plus electrical, chemical, nuclear and radiant — because a form she
+    // meets in a later sentence and has no basin for binds to nothing. Each
+    // form carries a distinct 8d
     // feature vector fed through _conceptTeach. The cortex gets one
     // basin per energy form before the sentences teach transformation
     // relationships between them (e.g. "energy changes from one form
@@ -222,8 +222,7 @@ export const G8_MIXIN = {
       'child labor was a problem', 'reformers fought for better conditions',
       'women fought for the right to vote', 'the progressive era brought changes',
     ];
-    // T14.24 Session 64 — prime civil war cause-effect chain per
-    // TODO line 520 before the civil-war sentence pass.
+    // Prime the civil-war cause-and-effect chain before its sentence pass.
     await this._teachCivilWar();
 
     // ── EQUATIONAL REASONING: Civil War as inference chain ──
@@ -257,9 +256,8 @@ export const G8_MIXIN = {
       'theme and variations shows creativity', 'twelve bar blues is a chord pattern',
       'jazz uses swing rhythms', 'improvisation creates music in the moment',
     ];
-    // T14.24 Session 83 — prime advanced music theory lattice +
-    // reuse visual composition for the "middle school visual
-    // composition" component of Art-G8 per TODO line 561.
+    // Prime the advanced music-theory lattice, and re-run visual composition
+    // for this year's middle-school visual-composition component.
     await this._teachAdvancedMusicTheory();
     await this._teachVisualComposition();
     await this._teachSentenceList(SENTENCES, ctx, { reps: 2, ticksPerWord: 2 });

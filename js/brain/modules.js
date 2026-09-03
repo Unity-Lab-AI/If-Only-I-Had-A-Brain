@@ -203,7 +203,7 @@ export class Amygdala {
     }
 
     // Hebbian tweak of recurrent weights, kept symmetric — learns which nuclei co-fire.
-    // T13.7.7 — added Oja-style decay so the basin doesn't crawl toward
+    // Oja-style decay, so the basin doesn't crawl toward
     // the ±1 cap forever. Without decay, after ~10k ticks every weight
     // pins to ±1, the settled state x goes to ±1 uniformly, and both
     // fear/reward sigmoids saturate to 1.000 — which is exactly what
@@ -222,7 +222,7 @@ export class Amygdala {
     }
 
     // Read fear / reward from the settled attractor, not the raw input.
-    // T13.7.7 — divide raw projections by sqrt(size) before sigmoid so
+    // Divide raw projections by sqrt(size) before the sigmoid, so
     // a 32-neuron amygdala doesn't immediately saturate the sigmoid the
     // moment a few nuclei fire. Pre-fix, fearRaw could easily exceed ±5
     // which makes sigmoid output nearly 1.000 — pinning the popup display.
