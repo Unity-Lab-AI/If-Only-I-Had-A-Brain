@@ -1,7 +1,7 @@
 // figure-field-store.js — A PRECOMPUTED WAVELET FIELD IS A PERCEPT SOURCE.
 //
-// Gee: *"we are going to fix here so she can fucking see the wavefore just like
-// she sees how to draw and watch the camera"*. That is the whole design goal:
+// The design goal is that she sees a precomputed field the SAME way she sees
+// her own drawing or a camera frame — one perception path, not a special case:
 // a field read here enters `_perceiveTextbookFigure` at exactly the point a
 // freshly-transformed image would, and every step after it — `describe`,
 // `store.set`, `_queuePhraseTeach` (ORDER tag 13 + ATTACH tag 35) — is

@@ -176,7 +176,7 @@ const KNOBS = [
     what: 'Minimum retained dose under compression.',
   },
 
-  // ══ KNOBEFFECT.1 — batch 5: the last 48, across twelve files ══════════════
+  // ══ EFFECT CLASSES, batch 5: the last 48, across twelve files ═════════════
   //
   // ⛔⛔ `cluster.js` IS WHY INDENTATION WAS NEVER GOING TO WORK, and it is the
   // file the two failed classifiers both stumbled on. Three different shapes
@@ -247,7 +247,7 @@ const KNOBS = [
   { key: 'DREAM_HB_BUF_FORGIVE_MB', effect: 'live', group: 'GPU & donor' },
   { key: 'DREAM_LOOP_FREEZE_WARN_MS', effect: 'boot', group: 'Watchdogs, bounds & safety', proof: 'passed into the watchdog worker at construction — the worker keeps the value it was started with' },
 
-  // ══ KNOBEFFECT.1 — batch 4: `chat.js` (26) + `visual-memory.js` (16) ══════
+  // ══ EFFECT CLASSES, batch 4: `chat.js` (26) + `visual-memory.js` (16) ═════
   //
   // `chat.js` is a mixin body — all 26 reads sit inside methods, 0 cache-guard
   // candidates, so all `live`. `visual-memory.js` is the first file in this
@@ -303,7 +303,7 @@ const KNOBS = [
   { key: 'DREAM_CHAT_QPROBE_TIMEOUT_MS', effect: 'live', group: 'Speech & emission' },
   { key: 'DREAM_DF7_FANOUT_PROPAGATE', effect: 'live', group: 'GPU & donor' },
 
-  // ══ KNOBEFFECT.1 — batch 3: `server/brain-server/gpu.js`, all 30 ══════════
+  // ══ EFFECT CLASSES, batch 3: `server/brain-server/gpu.js`, all 30 ═════════
   //
   // Same shape as batch 2 and for the same structural reason: `gpu.js` is a
   // mixin body, every read sits at indent ≥ 4 inside a method, and there is no
@@ -345,7 +345,7 @@ const KNOBS = [
   { key: 'DREAM_DELTA_COLIDX', effect: 'live', group: 'GPU & donor' },
   { key: 'DREAM_READBACK_MIN_GAP_MS', effect: 'live', group: 'GPU & donor' },
 
-  // ══ KNOBEFFECT.1 — batch 2: `js/brain/curriculum.js`, all 33 ══════════════
+  // ══ EFFECT CLASSES, batch 2: `js/brain/curriculum.js`, all 33 ═════════════
   //
   // ⭐ ALL 33 ARE `live`, AND THE UNIFORMITY IS A FACT ABOUT THE FILE RATHER
   // THAN AN ASSUMPTION: `curriculum.js` is a class body, so every one of these
@@ -403,7 +403,7 @@ const KNOBS = [
   { key: 'DREAM_MECH_EVERY_CELL', effect: 'live' },
   { key: 'DREAM_LEARN_GEOMETRY', effect: 'live' },
 
-  // ══ KNOBEFFECT.3 — emptying the UNSORTED pen ══════════════════════════════
+  // ══ EMPTYING THE UNSORTED PEN ═════════════════════════════════════════════
   //
   // ⭐ ALL 17 PLACED BY READING what each one governs, not by keyword. The pen
   // is named `UNSORTED — no category read yet` precisely so it stays visibly
@@ -441,7 +441,7 @@ const KNOBS = [
   { key: 'DREAM_WALK_TICK_MS', group: 'Curriculum, gates & schedule' },
   { key: 'DREAM_POLLINATIONS_KEY', group: 'Vision & imagination' },
 
-  // ══ KNOBEFFECT.1 — effect classes, batch 1: `server/brain-server.js` ═══════
+  // ══ EFFECT CLASSES, batch 1: `server/brain-server.js` ═════════════════════
   //
   // ⛔ CLASSIFIED BY READING EACH SITE, NOT BY A SCOPE DETECTOR. Two detectors
   // have already produced confident wrong answers on exactly this question — a
@@ -1149,7 +1149,7 @@ function plain(s) {
  * inferred, and nothing reports a health it cannot know.
  */
 function knobState() {
-  // ══ KNOBEFFECT.3 — THE CANONICAL CATEGORIES, AND KNOBEFFECT.2's GROUP ORDER ══
+  // ══ THE CANONICAL CATEGORIES, AND THE GROUP DISPLAY ORDER ═════════════════
   //
   // Operator: *"proper orgainaization and catorigzations"*.
   //
@@ -1168,7 +1168,7 @@ function knobState() {
   // ⚠ ONE MAP OF 17 ENTRIES, NOT 205 EDITS. Recategorising per-knob would mean
   // touching every entry twice — once now and again when its effect class is
   // read — so the legacy name is mapped wholesale and individual knobs are
-  // corrected as they are read for `KNOBEFFECT.1`. Fewer touches, no rework.
+  // corrected as each one's read site is visited. Fewer touches, no rework.
   const GROUP_ORDER = [
     'Teaching dose & repetition',
     'Curriculum, gates & schedule',
@@ -1341,7 +1341,7 @@ function knobState() {
   // describing behaviour the code does not have is the same defect as a field
   // nobody renders.**
   //
-  // ⭐ AND SIZE WOULD HAVE BEEN THE WRONG RULE ANYWAY (`KNOBEFFECT.2`): a
+  // ⭐ AND SIZE WOULD HAVE BEEN THE WRONG RULE ANYWAY: a
   // size-ordered list REARRANGES ITSELF as knobs are added, so a reader who
   // learns where something lives is wrong next week. `GROUP_ORDER` is fixed and
   // meaningful — outward from her to the machine — so position becomes

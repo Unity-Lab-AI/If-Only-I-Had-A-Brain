@@ -45,7 +45,7 @@ function loadStories(domain, grade) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// WORDSALAD.2 — HER NAME AND HER "I" GET THEIR CAPITALS AT THE LOAD BOUNDARY.
+// HER NAME AND HER "I" GET THEIR CAPITALS AT THE LOAD BOUNDARY.
 //
 // The story corpora are authored lowercase (~800 stories across 20 life grades
 // plus the coding and academic domains), so every sentence read out of them
@@ -135,7 +135,7 @@ const codingStorySentences = (grade) => storySentences('coding', grade);
 const loadAcademicStories    = (subject, grade) => loadStories(`academic/${subject}`, grade);
 const academicStorySentences = (subject, grade) => storySentences(`academic/${subject}`, grade);
 
-// TEXTFIG.3 — the figures a cell owns, flattened with the theme that owns them.
+// The figures a cell owns, flattened with the theme that owns them.
 //
 // ⛔ Deliberately NOT folded into `storyExperiences`: that shape is consumed by
 // the teach path, which walks `sentences`, and adding an image array to it would
@@ -210,10 +210,10 @@ const { figureAddress } = require('../js/brain/figure-identity.cjs');
 // fourteenth fetcher nobody has written yet.
 const { storyToSentences, cleanProse, cleaningStats } = require('../js/brain/text-cleaning.cjs');
 
-// ⭐⭐ FIGPAIR.1 — THE SECTION AND ITS PICTURES, TOGETHER, THE WAY THE BOOK HAS
-// THEM. Operator: *"WE GIVE HER EACH ONE AT THE SAME TIME SHE IS TRAING THE TEXT
-// AND CHAPETERSECTIONS IN THE TEXT BOOKS ... WEHRE THE IMAGES ARE ON THAT PAGE
-// OF TEXT SHE IS READING"*.
+// ⭐⭐ THE SECTION AND ITS PICTURES, TOGETHER, THE WAY THE BOOK HAS THEM.
+// A chapter section's own figures are handed over beside its own sentences, so
+// a diagram co-activates with the page it illustrates instead of arriving off a
+// background timer.
 //
 // ⛔ THE CORPUS ALWAYS HAD THIS AND THREE ACCESSORS THREW IT AWAY.
 // `academicStorySentences` flattens every experience into one sentence array,

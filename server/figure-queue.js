@@ -1,10 +1,10 @@
 // figure-queue.js — EVERY ILLUSTRATION GETS SEEN, AND EACH ONE KEEPS ITS TEXT.
 //
-// Gee: *"we need to make sure we use all illistrations and figures in all corpus
-// so Unity can see them and they are converted in topo coeffient wavelets as we
-// do it"*, *"all illistrastions shall always be direclty connected and trained to
-// the text that refrences them"*, and on the design fork: **option 1 — the
-// background lane — *"but they have to link to thhe text corrctly"*.**
+// The requirement, in three parts: EVERY illustration in every corpus is
+// converted to wavelet coefficients and seen; each one stays directly connected
+// to the text that references it; and the chosen design is the background lane
+// rather than an inline one — on the condition that the link to the text
+// survives the deferral, which is what the carried row below guarantees.
 //
 // ⛔ THE MEASUREMENT THAT FORCED THIS. Figures were perceived INLINE in the cell
 // pass, bounded to `DREAM_TEXTFIG_PER_CELL` (6) per visit. With 37,592 figures
