@@ -228,6 +228,30 @@ corpora/glove.6B.300d.txt
 corpora/glove.6B.zip
 corpora/glove.6B.*.txt
 
+# ⛔⛔ THE CORPUS LIVES IN ONE REPO, AND IT IS NOT THIS ONE.
+#
+# Operator: *"we need to makes suure there is only one repo with all the corpus
+# and fields, PERIOD! Then when it auto downloads it to the server when pressing
+# update freshwalk the server then trains Unity on it as the books and
+# information that trains her via pgase cell grade course ciriculim corpus....
+# directly"*.
+#
+# The books and the wavelet fields now both live in `UnityAILab/BrainWaves`,
+# and `deploy/self-update.sh` pulls BOTH from there on every press — `corpora`
+# is on that script's rsync exclude list so a code overlay can never overwrite
+# the data. Tracking a second copy here is precisely the drift he was objecting
+# to: this one was already stale against the data repo, in both directions.
+#
+# ⚠ THE FILES STAY ON DISK LOCALLY — this is `git rm --cached`, not a delete.
+# The fetchers and `audit-curriculum-coverage.mjs` still read `corpora/` here;
+# what changed is that the result is published by copying into the data repo and
+# pushing THAT, instead of committing a duplicate into the code repo.
+#
+# ⚠ STATED COST, so it is chosen rather than discovered: a clone of this
+# repository — including the PUBLIC one — no longer carries the books. Anyone
+# running the walk locally needs the data repo alongside it.
+corpora/
+
 # === OS junk ===
 .DS_Store
 Thumbs.db
