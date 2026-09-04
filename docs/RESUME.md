@@ -1,6 +1,65 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-09-03 NIGHT (LATEST — PICK UP HERE) THE 114 GB DOWNLOAD WAS NEVER REQUIRED, AND THE PRESS IS GATED ON CURRICULUM, NOT DATA
+> ## ⭐⭐⭐ 2026-09-03 LATE NIGHT (LATEST — PICK UP HERE) ALL 213 CELLS ARE TESTED, SHE WRITES IN HER OWN HAND, AND ONE QUESTION FROM GEE STOPPED A WALK-BLOCKER
+>
+> ### Read in this order: this block → `docs/TODO.md §DEPLOYCHECK` → `docs/TODO.md` → the blocks below.
+>
+> ### ⛔ ONE JOB IS STILL RUNNING
+> ```
+> LibreTexts corpus fetch   node .claude/scripts/fetch-libretexts-corpora.mjs
+>    log: .scratch/libretexts.log   ·   THIN cells 73 -> 65 and still falling
+>    merges by theme and is idempotent — it CANNOT repeat the --replace loss
+>    ⚠ it writes into local corpora/, which is gitignored here and belongs to BrainWaves
+> ```
+>
+> ### ⛔ STATE
+> ```
+> branch    feature/spelltruth5-0903 — NOT cascaded (everything before it IS on main, both remotes)
+> exams     12 -> 209 cells with a held-out bank · 2,806 questions · ALL 213 cells covered
+> life      19 files · themes 719 -> 895 · sentences 4,304 -> 5,033 · 81,922 words
+> coverage  213 cells · 128 OK · 65 THIN · 0 EMPTY
+> CODELEAK  28 -> 14 files
+> ```
+>
+> ### ⛔⛔⛔ THE THING THAT MATTERS MOST: GEE ASKED ONE QUESTION AND IT CAUGHT A WALK-BLOCKER
+>
+> *"remember exams dont stop her from going to next grade, right?"* — **they DO.** `result.pass = false`, *"BATTERY BLOCKS advancement"*, floor **90%**.
+> ⛔ **The derived exam banks are ~1 in 7 wrong BY CONSTRUCTION, so a derived-only bank tops out near 86%.** All 191 newly-covered cells would have **failed forever**, the walk would have **wedged at grade 1**, and it would have surfaced days into a press looking like a training failure instead of a question failure.
+> ⭐ **Fixed by splitting the aggregate, NOT by weakening the gate** — reporting counts everything, **blocking counts authored norm-referenced items only**, and a cell with no authored items is vacuously satisfied. 6/6 harnessed, both directions: derived questions cannot fail her and cannot rescue her.
+> ⚠ **Owned:** I first keyed it on `r.source`, which the timeout/error paths do not set — **a timing failure would have blocked a grade.**
+>
+> ### ⭐⭐ WHAT SHIPPED
+>
+> - **`PHONBANK.1` ③ + `LIFEEXAM.1` — every cell now has a held-out test.** An empty bank does not shorten the battery, it **SKIPS** it, so grade 1 → PhD had **no independent question at all**. 188 derived from each cell's own corpus (pre-taught by construction) + **18 life cells hand-written** after the automated route was measured and refused.
+> - **`EXAMTEACH.1`** — a missed question now teaches its answer (Gee's ask). ⛔ The held-out cost is paid deliberately and what is taught is the **knowledge, never the question string**.
+> - **`SPELLTRUTH.5` — she learns what a letter LOOKS like.** `renderLetterTemplate` was a **trig hash of the codepoint**: she could tell `a` from `b` and had never seen either. Now she looks at the printed letter, traces it, banks `letter:<ch>`, and writes from her own traces — **visibly not the font** (hollow outlines, because an edge trace follows a boundary). ⛔ **The typeset caption is DELETED with no flag**, and there is **no fallback**: a letter she has not learned is not written, and a partial word is refused.
+> - **`LIFEDEPTH`** — every year of her life filled in, adult years first. The curve ran BACKWARDS (332 sentences at age 6, 169 at 25); it does not now.
+> - **`EARLYTEACH.2`** — counting taught equationally. **Seven of the ten counting words had no quantity behind them.**
+> - **`REGFIND.9`** — the derivation lane has callers for the first time, with the episodic commit and a boot rehydrate.
+> - **`CORPUSBUFFER`** — books stream in during training, one copy on the box, measured at `1.000x`.
+>
+> ### ⛔ BEFORE THE PRESS: READ `docs/TODO.md §DEPLOYCHECK`
+> **255 non-merge commits since the last deploy.** The corpus MOVED REPOS, the field format CHANGED, the exam gate CHANGED, and `server/exam-banks/` (206 files) is a NEW directory that **must reach the box or 197 cells silently lose their tests while the boot looks healthy.** Twelve numbered checks, each with a log line or counter behind it.
+>
+> ### ⚠ OWNED THIS SESSION — the pattern is one thing, five times
+> **Every one was assuming a data shape instead of reading it, and every one was caught by RUNNING the code rather than by reasoning:**
+> - `r.source` on rows the timeout paths do not set → a timing failure could block a grade
+> - `r.expectedAnswer` lives on the QUESTION, not the result row → the corrective teach would have been **empty on every cell forever** while reading as correct
+> - a trace point is `[x,y]` not `{x,y}` → **all 26 letters "traced successfully" and normalised to ZERO strokes**
+> - a helper returning `{strokes,aspect}` on success and bare `[]` on failure → threw **only on the failure path**
+> - auto-fit scaled letter widths but not gaps → long words rendered wider than the width the same function reported (**Gee's own earlier cut-off bug, in new code**)
+>
+> ⚠ **And I reported four life-canon gaps of which only ONE was real** — the one Gee spotted. A grep artifact, a two-fields-different-meanings mistake, and a by-design file all read as defects. **Measure, then claim.**
+>
+> ### NEXT
+> - **Cascade `feature/spelltruth5-0903`** and push both remotes.
+> - **`CODELEAK.1`: 14 files left** — `curriculum.js` (432) and `brain-server.js` (334) are the bulk. Method proven; the unit is a WHOLE file.
+> - **`DOCSWEEP2.1`** — untouched, and now larger: the one-repo move, the exam banks, her handwriting and the deleted caption all changed what the docs must say.
+> - **Push local `corpora/` to BrainWaves** before any press — the life canon and the LibreTexts books live there, not here.
+>
+> ---
+>
+> ## ⭐⭐ 2026-09-03 NIGHT — THE 114 GB DOWNLOAD WAS NEVER REQUIRED, AND THE PRESS IS GATED ON CURRICULUM, NOT DATA
 >
 > ### Read in this order: this block → `docs/TODO.md` → the blocks below.
 >

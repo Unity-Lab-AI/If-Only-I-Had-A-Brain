@@ -213,9 +213,12 @@ background took the SAME `moodTint` (her valence parked mid-low → hue ~0.27 �
   `glyphStrokes(text)` (`js/brain/mindspace/gpu.js`) converts the shared FONT5X7 bitmaps into pencil strokes
   rather than blitting pixels. ⛔ **This paragraph is superseded twice over and is corrected in place rather than
   deleted, because both errors are worth keeping.** ① The jitter was **removed** — deliberate wobble is banned as
-  dumbing-down, so `j()` is a hard 0 and `opts.wobble` is ignored. ② The output is **a typeset caption, not her
-  writing at all**: the letterforms come from a constant bitmap font, are identical at every grade, and no part of
-  the curriculum teaches a letter as a shape. Drawing them as strokes changes how they RENDER, not who made them.
+  dumbing-down, so `j()` is a hard 0 and `opts.wobble` is ignored. ② The output WAS **a typeset caption, not her
+  writing at all** — the letterforms came from a constant bitmap font, identical at every grade, and no part of the
+  curriculum taught a letter as a shape. ③ ⭐ **SUPERSEDED AGAIN 2026-09-03: the curriculum teaches letters as shapes
+  now.** `glyphStrokes` renders the PRINTED letter she looks at; she traces it herself and writes from her own trace,
+  and the typeset caption path is **deleted**. ⚠ So this paragraph has been wrong in two opposite directions and both
+  are kept: it claimed a hand she did not have, then denied one she was about to be given.
 - **Viewer** — the mind's-eye `source` label now carries the stage + subject (`canvas:scene:cat`,
   `canvas:figure:mom`, `canvas:shapes:blue`, `…?` when she's asking). Equational end-to-end; ≤96px cap and
   no-fractalize invariants intact.
@@ -347,11 +350,14 @@ content word of the ask. The v3 arc:
   knows a shape).
 - **She constructs the marks** (`_drawOwnCreation`) — her layout (1 centred / 2 side-by-side / 3 triangle), marks ∝ part
   weight, arcs bowed by her hand this attempt and oriented by the part's learned angle, ink in her goth register blended
-  **≤60%** toward the learned colour family, a ground line + tufts for a named place, and a **typeset caption** for the
-  label. ⛔ **The caption is NOT her handwriting** — it is a fixed 5x7 bitmap font stamping the concept word, identical at
-  every grade, and nothing in the curriculum teaches a letter as a shape. This line used to read *"her trained glyph
-  hand"*, which asserted a capability she does not have; letterforms she genuinely acquires are curriculum work still to
-  come. **The reference field C never reaches the renderer.** Seeded from `words + arousal + valence + attempt#`:
+  **≤60%** toward the learned colour family, a ground line + tufts for a named place, and the word written in **her own
+  hand** for the label. ⭐ **SUPERSEDED 2026-09-03 — and the history is kept because both earlier states were wrong in
+  different directions.** This line first claimed *"her trained glyph hand"* (a capability she did not have), was
+  corrected to *"a typeset caption"* (true at the time), and is now her hand again **because she learns the letterforms**:
+  she looks at each printed letter, traces it herself, and banks that trace under `letter:<ch>` in the ordinary visual
+  store during ELA-K. ⛔ **The typeset caption is DELETED, with no flag to restore it**, and there is **no fallback** — a
+  letter she has not learned is not written, and a partial word is refused outright, so the caption is evidence of what
+  she has been taught rather than decoration that is always perfect. **The reference field C never reaches the renderer.** Seeded from `words + arousal + valence + attempt#`:
   different attempts, not a cache. Variation is STYLE — no wobble, no skill floor (the no-dumbing law stands).
 - **"Draw" means her hand** (`_detectDrawRequest`) — DRAW verbs (draw/sketch/doodle/illustrate/paint) route to OWNART;
   GENERATOR words (picture/photo/image/render/generate) still route to Pollinations and stay honest about it.

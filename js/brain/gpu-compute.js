@@ -62,14 +62,14 @@ const LIF_SHADER = /* wgsl */`
     noiseAmp: f32,   // y-channel jitter to prevent phase lock
     seed: u32,
     gridX: u32,
-    numRegions: u32,       // T17.7 Phase A.3 — how many entries in regionGates to scan
+    numRegions: u32,       // how many entries in regionGates to scan
   };
 
   @group(0) @binding(0) var<uniform> params: Params;
   @group(0) @binding(1) var<storage, read_write> state: array<vec2<f32>>;  // (x, y) per neuron
   @group(0) @binding(2) var<storage, read_write> spikes: array<u32>;
-  @group(0) @binding(3) var<storage, read> currents: array<f32>;           // T18.4.a — per-neuron synaptic current
-  // T17.7 Phase A.3 — per-region hemispheric gate table. Packed as a
+  @group(0) @binding(3) var<storage, read> currents: array<f32>;           // per-neuron synaptic current
+  // per-region hemispheric gate table. Packed as a
   // flat f32 array where each region takes 4 entries: [start, end,
   // gate, pad]. numRegions (in params) tells the shader how many
   // regions to scan. Gate is precomputed server-side as
@@ -99,7 +99,7 @@ const LIF_SHADER = /* wgsl */`
     return f32(hash) / 4294967295.0;
   }
 
-  // T17.7 Phase A.3 — resolve per-neuron region gate via linear scan
+  // resolve per-neuron region gate via linear scan
   // of the regionGates table. At 8 regions per cluster this is 8
   // iterations per neuron per tick — negligible vs the Rulkov arithmetic.
   // Returns 1.0 if the neuron index doesn't fall in any registered
@@ -136,14 +136,14 @@ const LIF_SHADER = /* wgsl */`
     // modulated to effectiveDrive ~ 6-40. Normalize to σ ∈ [-1.0, 0.5]:
     // silent cortex at σ≈-1, bursting cerebellum at σ≈0.3, saturated at 0.5.
     //
-    // T18.4.a — per-neuron synaptic current from SYNAPSE_PROPAGATE_SHADER
+    // per-neuron synaptic current from SYNAPSE_PROPAGATE_SHADER
     // (intra-cluster recurrence) plus any uploaded external / incoming
     // projection current gets added to the global drive BEFORE sigma
     // normalization. Without this the main brain was running with zero
     // synaptic coupling — every neuron saw only the global drive uniform,
     // the intra-cluster synapse matrix was uploaded but never consumed.
     //
-    // T17.7 Phase A.3 — hemispheric gate modulates per-neuron drive
+    // hemispheric gate modulates per-neuron drive
     // based on the neuron's region membership + global Ψ. Gate is
     // precomputed server-side per region as hemisphereGate(side, Ψ)
     // and uploaded via regionGates buffer; shader looks up the gate
@@ -183,8 +183,8 @@ const SYNAPSE_PROPAGATE_SHADER = /* wgsl */`
   struct Params {
     n: u32,          // number of post-synaptic neurons
     nnz: u32,        // total non-zero entries
-    srcOffset: u32,  // T17.7 Phase A.4 — read spikes at [srcOffset + colIdx[k]] when cluster-bound
-    dstOffset: u32,  // T17.7 Phase A.4 — write currents at [dstOffset + i] when cluster-bound
+    srcOffset: u32,  // read spikes at [srcOffset + colIdx[k]] when cluster-bound
+    dstOffset: u32,  // write currents at [dstOffset + i] when cluster-bound
   };
 
   @group(0) @binding(0) var<uniform> params: Params;
@@ -210,7 +210,7 @@ const SYNAPSE_PROPAGATE_SHADER = /* wgsl */`
       }
     }
 
-    // T17.7 Phase A.4 — write to destination offset within the bound
+    // write to destination offset within the bound
     // cluster's currents buffer. When the sparse matrix is STANDALONE
     // (default standalone mode), srcOffset+dstOffset are both 0 and
     // behavior is identical to pre-A.4 — spikes[] and currents[] point
@@ -250,8 +250,8 @@ const PLASTICITY_SHADER = /* wgsl */`
     reward: f32,     // reward signal multiplier (applied to Oja lr)
     wMin: f32,
     wMax: f32,
-    srcOffset: u32,  // T17.7 Phase A.4 — preSpikes[srcOffset + j] when cluster-bound
-    dstOffset: u32,  // T17.7 Phase A.4 — postSpikes[dstOffset + i] when cluster-bound
+    srcOffset: u32,  // preSpikes[srcOffset + j] when cluster-bound
+    dstOffset: u32,  // postSpikes[dstOffset + i] when cluster-bound
   };
 
   @group(0) @binding(0) var<uniform> params: Params;
@@ -312,7 +312,7 @@ const PLASTICITY_SHADER = /* wgsl */`
   }
 `;
 
-// T18.4.a cleanup — CURRENT_GEN_SHADER REMOVED.
+// cleanup —CURRENT_GEN_SHADER REMOVED.
 //
 // Prior incarnation wrote `currents[i] = effectiveDrive + noise` as a
 // separate GPU dispatch before LIF. LIF_SHADER now does per-neuron
@@ -322,7 +322,7 @@ const PLASTICITY_SHADER = /* wgsl */`
 // + noise" kernel is redundant. Keeping it around with no pipeline
 // bound would be textbook vestigial organ code.
 
-// T18.4.c — Voltage mean reduction. Atomic accumulator over the
+// Voltage mean reduction. Atomic accumulator over the
 // Rulkov x-component of every neuron's (x, y) state. WebGPU atomics
 // only work on u32/i32, so we scale voltages by VOLT_SCALE=1000 and
 // add as i32 (Rulkov x ranges ~±3, so ×1000 fits in signed i32
@@ -385,7 +385,7 @@ const SPIKE_COUNT_SHADER = /* wgsl */`
 const VALID_REGION_SIDES = new Set(['left', 'right', 'bilateral', 'center']);
 
 /**
- * GOTCHA.2 — validate a cluster's sub-region map for GPU registration.
+ * validate a cluster's sub-region map for GPU registration.
  *
  * EXTRACTED FROM `uploadCluster` SO IT CAN BE HARNESSED. The loop it replaces
  * could only be exercised through a real WebGPU device, so its behaviour was
@@ -471,7 +471,7 @@ export class GPUCompute {
     this._buffers = {};
     this._ping = 0; // double-buffer index
     // Standalone sparse matrices keyed by name (not tied to any single
-    // cluster). Used for T14.4 cross-region projections + any other
+    // cluster). Used for cross-region projections + any other
     // sparse structure that lives outside a cluster's intra-cluster
     // synapse matrix. Each entry: { rows, cols, nnz, values, colIdx,
     // rowPtr, preSpikes, postCurrents } where each field after
@@ -504,7 +504,7 @@ export class GPUCompute {
         },
       });
 
-      // T18.6.a — device.lost handler. WebGPU fires this promise when the
+      // device.lost handler. WebGPU fires this promise when the
       // device crashes (most common cause: VRAM exhaustion during
       // biological-scale sparse matrix upload; also driver timeouts,
       // system sleep, OOM kills). Without this handler every subsequent
@@ -557,7 +557,7 @@ export class GPUCompute {
   }
 
   /**
-   * T18.6.a — register a callback fired when WebGPU emits device.lost.
+   * register a callback fired when WebGPU emits device.lost.
    * Used by compute.html to surface the lost state to the brain server
    * over WebSocket so the server log records the real crash cause
    * instead of just observing downstream phantom "size too large"
@@ -607,7 +607,7 @@ export class GPUCompute {
       },
     });
 
-    // T18.4.c — voltage mean reduction pipeline.
+    // voltage mean reduction pipeline.
     this._pipelines.voltStats = device.createComputePipeline({
       layout: 'auto',
       compute: {
@@ -620,7 +620,7 @@ export class GPUCompute {
   }
 
   /**
-   * T18.14.b — destroy every WebGPU buffer on a cluster buffers entry.
+   * destroy every WebGPU buffer on a cluster buffers entry.
    * Called from `uploadCluster` before overwriting `this._buffers[name]`
    * so re-init on WS reconnect (server's `ws.on('close')` resets
    * `_gpuInitialized={}` → tick loop re-sends `gpu_init` → compute.html
@@ -629,7 +629,7 @@ export class GPUCompute {
    * neuron for voltages + spikes + currents). Each `.destroy()` wrapped
    * in try/catch so double-free on a dead device is non-fatal;
    * `bufs=undefined` is a no-op. Matches the `_destroySparseEntryBuffers`
-   * pattern from T18.11.a for sparse matrices.
+   * pattern used for sparse matrices.
    */
   _destroyClusterBuffers(bufs) {
     if (!bufs) return;
@@ -660,19 +660,19 @@ export class GPUCompute {
    * @param {Float64Array} voltages — initial voltages (converted to f32)
    * @param {SparseMatrix} synapses — CSR synapse matrix
    * @param {object} lifParams — LIF parameters
-   * @param {object} [regions] — T17.7 Phase A — optional sub-region slice
+   * @param {object} [regions] — optional sub-region slice
    *   metadata. Shape: `{auditory: {start, end}, visual: {start, end}, ...}`.
    *   When supplied, stored on `bufs.regions` for subsequent slice-range
    *   operations (`writeSpikeSlice`, `readbackSpikeSlice`,
    *   `writeCurrentSlice`, and cluster-bound cross-projection propagate).
    *   When absent the cluster is homogeneous — all current call sites
-   *   behave identically to pre-T17.7 code.
+   *   behave identically to the pre-slice code.
    */
   uploadCluster(name, size, voltages, synapses, lifParams, regions) {
     const device = this._device;
     const vRest = lifParams?.Vrest || -65;
 
-    // T18.14.b — destroy any prior buffer set for this cluster BEFORE
+    // destroy any prior buffer set for this cluster BEFORE
     // allocating new ones. Prevents VRAM orphaning on WS reconnect when
     // the browser tab is the same but the server re-sends gpu_init.
     // Without this guard, biological-scale re-init orphans ~6.3 GB of
@@ -734,7 +734,7 @@ export class GPUCompute {
 
     // LAYOUT — voltages + spikes + currents = 12 bytes/neuron
     //
-    // T18.4.a (2026-04-18) — `currents` buffer REINTRODUCED. A prior
+    // (2026-04-18) —`currents` buffer REINTRODUCED. A prior
     // "slim" refactor removed it under the mistaken belief that
     // LIF_SHADER generated currents inline and the intra-cluster
     // synapse matrix wasn't on the per-tick path. In reality the slim
@@ -760,7 +760,7 @@ export class GPUCompute {
       // "usage doesn't include CopySrc" and the whole CommandBuffer
       // becomes invalid — breaking every readback downstream.
       currents: makeBuffer(size * 4, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC),
-      // T17.7 Phase A.3 — regionGates storage buffer. 16 regions × 4
+      // regionGates storage buffer. 16 regions × 4
       // f32 per entry (start, end, gate, pad) = 256 bytes. Initialized
       // to zeros; `numRegions` defaults to 0 so the shader's linear
       // scan finds nothing and returns 1.0 gate → homogeneous behavior
@@ -787,7 +787,7 @@ export class GPUCompute {
       buffers.synNnz = synapses.nnz;
     }
 
-    // T17.7 Phase A.1/A.2 — sub-region slice metadata + hemispheric
+    // sub-region slice metadata + hemispheric
     // `side` attribute. Stored on the buffer entry so subsequent
     // slice-range accessors (writeSpikeSlice, readbackSpikeSlice,
     // cluster-bound sparse cross-projections) can resolve sub-region
@@ -816,7 +816,7 @@ export class GPUCompute {
     if (regions && typeof regions === 'object') {
       const { validated, nested, overlapping, invalid } = validateClusterRegions(regions, size, name);
       buffers.regions = validated;
-      // GOTCHA.2 — NESTING IS EXPECTED AND IS NOT AN ERROR. It used to be
+      // NESTING IS EXPECTED AND IS NOT AN ERROR. It used to be
       // reported as `overlaps prior region … skipping` once per sub-band, so a
       // healthy upload printed 12 warnings that read like a defect. Nested
       // sub-bands are summarised on one line; a TRUE partial overlap (one that
@@ -839,7 +839,7 @@ export class GPUCompute {
   }
 
   /**
-   * T17.7 Phase A.1/A.2 — get validated region range for a cluster
+   * get validated region range for a cluster
    * sub-region. Returns `{start, end, side}` or null if the cluster
    * doesn't have that region or wasn't uploaded with region metadata.
    * Used by slice-range accessors + cluster-bound sparse cross-
@@ -875,7 +875,7 @@ export class GPUCompute {
   }
 
   /**
-   * T17.7 Phase A.3 — update the per-cluster regionGates storage
+   * update the per-cluster regionGates storage
    * buffer with current Ψ-computed gate values. Called per-tick (or
    * whenever Ψ changes significantly) before the next LIF dispatch.
    *
@@ -908,7 +908,7 @@ export class GPUCompute {
       const base = i * 4;
       packed[base]     = region.start;
       packed[base + 1] = region.end;
-      // RHYTHM3S.2 (2026-08-27) — per-region attention gain multiplies the Ψ
+      // (2026-08-27) —per-region attention gain multiplies the Ψ
       // hemisphere gate. The gains ride compute_batch (absent from older
       // servers → 1.0), server-clamped to [0.5, 2.0] like the CPU step's own
       // attention lookup; re-clamped here so a malformed value cannot saturate.
@@ -923,7 +923,7 @@ export class GPUCompute {
   }
 
   /**
-   * T17.7 Phase A.2 — compute a Ψ-modulated hemispheric binding
+   * compute a Ψ-modulated hemispheric binding
    * coefficient for a region. Used by downstream slice-range LIF
    * modulation in Phase B; exposed here as a shared helper so both
    * the server (current assembly) and Phase B shader dispatches read
@@ -954,7 +954,7 @@ export class GPUCompute {
   }
 
   /**
-   * T17.7 Phase A.3 — write a spike pattern to a cluster's spike
+   * write a spike pattern to a cluster's spike
    * buffer at a sub-region slice. Used by curriculum teach methods to
    * inject input patterns (sem embedding, letter one-hot, motor
    * target) into the unified cortex's language sub-regions instead of
@@ -1004,7 +1004,7 @@ export class GPUCompute {
   }
 
   /**
-   * T17.7 Phase C.1 — sparse spike-slice write. Avoids allocating a
+   * sparse spike-slice write. Avoids allocating a
    * full-region Uint32Array when the pattern is sparse (a small list
    * of indices that should fire). Zero-fills the region slice via
    * `encoder.clearBuffer` (GPU-native — no CPU memory allocation)
@@ -1102,7 +1102,7 @@ export class GPUCompute {
   }
 
   /**
-   * T17.7 Phase C.1 — pure clear of a region slice on the spikes
+   * pure clear of a region slice on the spikes
    * buffer. GPU-native (`encoder.clearBuffer`) — no CPU allocation.
    * Used by curriculum `_clearSpikes` between teach iterations so
    * the next pattern write lands on zeroed main-cortex slices
@@ -1128,7 +1128,7 @@ export class GPUCompute {
   }
 
   /**
-   * T17.7 Phase A.3 — write per-neuron current injection to a
+   * write per-neuron current injection to a
    * cluster's `currents` buffer at a sub-region slice. Used by
    * sensory injection (Wernicke's text input) and curriculum teach
    * pre/post pattern building to feed currents that the LIF shader
@@ -1175,7 +1175,7 @@ export class GPUCompute {
   }
 
   /**
-   * T17.7 Phase A.3 — atomic-reduce spike count in a sub-region
+   * atomic-reduce spike count in a sub-region
    * slice. Used by generation paths (motor region argmax decode)
    * that need spike telemetry at sub-region granularity without
    * reading back the full cluster spike buffer (which would be
@@ -1281,7 +1281,7 @@ export class GPUCompute {
   }
 
   /**
-   * T17.7 Phase D — GPU-side reduction of a region slice into a fixed
+   * GPU-side reduction of a region slice into a fixed
    * number of letter buckets. Returns a Uint32Array of length
    * `bucketCount` where bucket[b] = spike count in the sub-slice
    * `[regionStart + startOffset + b·bucketSize, regionStart +
@@ -1411,7 +1411,7 @@ export class GPUCompute {
   }
 
   /**
-   * T18.11 — destroy every GPU buffer hanging off a sparse-matrix entry.
+   * destroy every GPU buffer hanging off a sparse-matrix entry.
    * Called before overwriting `_sparseMatrices[name]` so re-uploads
    * don't orphan the prior allocation. Safe on undefined entry (no-op)
    * and safe on a device-lost state (each destroy wrapped in try/catch
@@ -1421,7 +1421,7 @@ export class GPUCompute {
    *   - Cluster-bound: values + colIdx + rowPtr (3 buffers)
    *   - Standalone:    values + colIdx + rowPtr + preSpikes + postCurrents + postSpikes (6 buffers)
    *
-   * Completes T18.10's partial fix — that commit only destroyed on the
+   * Completes an earlier partial fix — that commit only destroyed on the
    * validation-FAILURE branch. This helper handles the success-path
    * leak that stacks across any future re-upload trigger.
    */
@@ -1437,7 +1437,7 @@ export class GPUCompute {
 
   /**
    * Upload a standalone sparse CSR matrix to GPU — not bound to any
-   * cluster. Used for T14.4 cross-region projections where the matrix
+   * cluster. Used for cross-region projections where the matrix
    * connects one region's spikes to another region's currents
    * (independent of any cluster's intra-cluster synapses).
    *
@@ -1450,7 +1450,7 @@ export class GPUCompute {
    * @param {Float32Array|Float64Array} values — CSR non-zero weights, length = nnz
    * @param {Uint32Array} colIdx — CSR column indices, length = nnz
    * @param {Uint32Array} rowPtr — CSR row pointers, length = rows + 1
-   * @param {object} [binding] — T17.7 Phase A.4 — optional cluster-
+   * @param {object} [binding] — optional cluster-
    *   binding metadata so the sparse matrix addresses slices of live
    *   cluster buffers instead of standalone preSpikes/postCurrents.
    *   Shape: `{srcCluster, srcRegion, dstCluster, dstRegion}`. When
@@ -1470,7 +1470,7 @@ export class GPUCompute {
   uploadSparseMatrix(name, rows, cols, values, colIdx, rowPtr, binding) {
     if (!this._available) return false;
     const device = this._device;
-    // T18.11 — completes T18.10. If a matrix with this name is already
+    // completes that fix. If a matrix with this name is already
     // on GPU, destroy its buffers BEFORE allocating new ones. Without
     // this, any re-upload path (reconnect-triggered re-init, rebind
     // fallback on persisted-without-binding matrices, future
@@ -1478,7 +1478,7 @@ export class GPUCompute {
     // buffers (standalone: +preSpikes/postCurrents/postSpikes) at
     // 100-600 MB each. Stacked leaks guarantee VRAM exhaustion on a
     // 16 GB card during biological-scale init — the PC-reset / network
-    // stack collapse cascade T18.10 half-fixed.
+    // stack collapse cascade the earlier fix only half-addressed.
     this._destroySparseEntryBuffers(this._sparseMatrices[name]);
     const vals32 = values instanceof Float32Array ? values : new Float32Array(values);
     const cols32 = colIdx instanceof Uint32Array ? colIdx : new Uint32Array(colIdx);
@@ -1518,7 +1518,7 @@ export class GPUCompute {
       colIdx: colIdxBuf,
       rowPtr: rowPtrBuf,
     };
-    // T17.7 Phase A.4 — cluster-bound vs standalone mode.
+    // cluster-bound vs standalone mode.
     //
     // Cluster-bound: the matrix reads pre-spikes from a source
     // cluster's spikes buffer at a slice offset, writes post-currents
@@ -1535,10 +1535,10 @@ export class GPUCompute {
       const srcBufs = this._buffers[binding.srcCluster];
       const dstBufs = this._buffers[binding.dstCluster];
       if (!srcBufs?.spikes || !dstBufs?.currents) {
-        // T18.10 — destroy the three allocated buffers before returning
+        // destroy the three allocated buffers before returning
         // false. Each can be 100-600 MB at biological scale; without
         // cleanup they orphan in VRAM, repeated failures (upload order
-        // race / T18.6.c auto-rescale re-init) stack leaks until VRAM
+        // race / auto-rescale re-init) stack leaks until VRAM
         // exhausts → device.lost cascades into Windows TDR → certain
         // Windows + NVIDIA driver combos take the whole network stack
         // down until PC reset.
@@ -1588,7 +1588,7 @@ export class GPUCompute {
   _beginSparseUpload(name, rows, cols, nnz, rowPtr, binding) {
     if (!this._available) return false;
     const device = this._device;
-    // T18.11 — destroy any prior entry's buffers before re-upload. Same
+    // destroy any prior entry's buffers before re-upload. Same
     // leak pattern as uploadSparseMatrix — chunked path also orphaned
     // values/colIdx/rowPtr (+ optional pre/post/currents buffers in
     // standalone mode) on re-upload.
@@ -1606,7 +1606,7 @@ export class GPUCompute {
       rowPtr: makeStorage(rowPtr32.byteLength),
       _pending: true,
     };
-    // T17.7 Phase A.4 — chunked upload path gains cluster-binding
+    // chunked upload path gains cluster-binding
     // parameter. Same cluster-bound vs standalone split as
     // uploadSparseMatrix: bound mode reads/writes cluster buffers at
     // region offsets; standalone allocates its own pre/post/currents.
@@ -1614,7 +1614,7 @@ export class GPUCompute {
       const srcBufs = this._buffers[binding.srcCluster];
       const dstBufs = this._buffers[binding.dstCluster];
       if (!srcBufs?.spikes || !dstBufs?.currents) {
-        // T18.10 — destroy the three allocated buffers before returning
+        // destroy the three allocated buffers before returning
         // false. Same leak path as uploadSparseMatrix — chunked-upload
         // cluster-bound validation failure orphans values/colIdx/rowPtr
         // in VRAM. A single leaked 7.9 GB cross-projection attempt
@@ -1687,7 +1687,7 @@ export class GPUCompute {
     if (!entry) return null;
     const device = this._device;
 
-    // T17.7 Phase A.4 — cluster-bound vs standalone dispatch.
+    // cluster-bound vs standalone dispatch.
     // Cluster-bound: pre-spikes read from bound src cluster's spikes
     // at srcRegion.start offset; post-currents accumulate into bound
     // dst cluster's currents at dstRegion.start offset. The shader
@@ -1808,7 +1808,7 @@ export class GPUCompute {
    * T32 — BATCHED Hebbian dispatch. Runs N Hebbian ops in ONE command
    * encoder + ONE device.queue.submit(). Previous single-op hebbianSparse
    * created fresh encoder + fresh paramsBuf + fresh bindGroup + individual
-   * submit PER op. At T18.8 batched WS frames (64 ops per frame) that was
+   * submit PER op. At batched WS frames (64 ops per frame) that was
    * 64 separate submits per batch → GPU queue serializes per-submit,
    * CPU ping-pongs with driver between submits → GPU utilization sub-1%
    * at teach velocity even though shader ops are microseconds each.
@@ -1875,7 +1875,7 @@ export class GPUCompute {
     if (!entry) return false;
     const device = this._device;
 
-    // T17.7 Phase A.4 — cluster-bound vs standalone dispatch.
+    // cluster-bound vs standalone dispatch.
     // Cluster-bound: pre-spikes read from src cluster's spikes at
     // srcRegion.start offset; post-spikes read from dst cluster's
     // spikes at dstRegion.start offset (same spikes buffer as used
@@ -1916,9 +1916,9 @@ export class GPUCompute {
     pass.dispatchWorkgroups(Math.ceil(entry.rows / 256));
     pass.end();
     device.queue.submit([encoder.finish()]);
-    // T18.14.a — DESTROY paramsBuf after submit. WebGPU does NOT garbage
+    // DESTROY paramsBuf after submit. WebGPU does NOT garbage
     // collect buffers; the previous "destroyed lazily by device GC"
-    // comment was a lie. At ELA-K teach velocity through T18.8 batched
+    // comment was a lie. At ELA-K teach velocity through batched
     // Hebbian dispatch (~30K hebbianSparse calls per teach pass), every
     // leaked 32-byte paramsBuf orphans a driver allocation-table handle.
     // NVIDIA drivers cap at ~65K concurrent handles + Windows imposes
@@ -1941,7 +1941,7 @@ export class GPUCompute {
   writeSparsePreSpikes(name, spikes) {
     const entry = this._sparseMatrices[name];
     if (!entry) return false;
-    // T17.7 Phase A.4 — cluster-bound matrices don't have standalone
+    // cluster-bound matrices don't have standalone
     // preSpikes (they read from the bound src cluster's spikes buffer
     // via the LIF-populated slice). Skip silently — the spikes are
     // already in the cluster's spike buffer from the last LIF step.
@@ -1968,7 +1968,7 @@ export class GPUCompute {
   }
 
   /**
-   * T17.7 Phase C.1 — rebind an already-uploaded sparse matrix from
+   * rebind an already-uploaded sparse matrix from
    * standalone mode to cluster-bound mode WITHOUT re-transferring the
    * matrix data. The values/colIdx/rowPtr buffers stay in place; only
    * the per-request shader inputs (src/dst spike + current buffers)
@@ -2099,7 +2099,7 @@ export class GPUCompute {
     edView.setUint32(16, bufs.numRegions ?? 0, true);           // abs 44 — T17.7
     device.queue.writeBuffer(bufs.params, 28, edBuf);
 
-    // T18.4.a + T17.7 Phase A.3 — LIF bind group includes per-neuron
+    // LIF bind group includes per-neuron
     // `currents` buffer (synaptic drive from propagate shader) AND the
     // `regionGates` storage buffer (Ψ-modulated hemispheric gate table
     // per sub-region). Both are required for the shader to compute
@@ -2127,7 +2127,7 @@ export class GPUCompute {
   }
 
   /**
-   * T18.4.a — Zero the per-cluster `currents` buffer at the start of
+   * Zero the per-cluster `currents` buffer at the start of
    * each substep so `SYNAPSE_PROPAGATE_SHADER`'s `currents[i] += sum`
    * accumulation starts fresh. Uses `clearBuffer` (native WebGPU
    * zero-fill) instead of a dispatch so it's essentially free.
@@ -2143,7 +2143,7 @@ export class GPUCompute {
   }
 
   /**
-   * T18.4.a — Upload external or incoming projection current deltas
+   * Upload external or incoming projection current deltas
    * from CPU (server) into the GPU `currents` buffer before the
    * propagate+LIF dispatch. Used for inter-cluster projections
    * (cortex → amygdala etc) that are computed server-side but feed
@@ -2241,7 +2241,7 @@ export class GPUCompute {
       });
     }
 
-    // T14.22.6 — per-call readback buffer. The old code shared
+    // per-call readback buffer. The old code shared
     // bufs.spikeCountReadback across all calls for this cluster,
     // which collided when two fullStep calls overlapped in time:
     // call 1 awaited mapAsync on the shared buffer, call 2 tried
@@ -2251,7 +2251,7 @@ export class GPUCompute {
     //   Failed to execute 'mapAsync' on 'GPUBuffer': Buffer
     //   already has an outstanding map pending.
     // Plus cascading "used in submit while mapped/pending map"
-    // warnings. T14.22.3 worked around this by serializing fullStep
+    // warnings. an earlier change worked around this by serializing fullStep
     // calls in compute.html, which fixed the crash but cost 7x
     // parallelism — 7 clusters ran sequentially instead of
     // concurrently, turning ~50ms/substep into ~350ms/substep
@@ -2310,7 +2310,7 @@ export class GPUCompute {
   }
 
   /**
-   * T18.4.c — Voltage mean on GPU via atomic reduction, no CPU scan.
+   * Voltage mean on GPU via atomic reduction, no CPU scan.
    * Accumulates scaled integer representation of Rulkov x-component
    * (fast variable, the spike analog) across every neuron atomically,
    * reads back the single i32 sum, divides by size + VOLT_SCALE=1000
@@ -2390,7 +2390,7 @@ export class GPUCompute {
    * @returns {Promise<{spikeCount: number}>}
    */
   async fullStep(name, effectiveDrive, noiseAmp) {
-    // T18.4.a (2026-04-18) — FULL pipeline: clear → propagate → LIF.
+    // (2026-04-18) —FULL pipeline: clear → propagate → LIF.
     //
     // Prior behavior: single LIF dispatch with inline drive+noise. The
     // `currents` buffer existed but LIF_SHADER never read it, and
