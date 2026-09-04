@@ -72,6 +72,36 @@ log() { echo "[self-update] $(date -u +%Y-%m-%dT%H:%M:%SZ) $*" | tee -a "$LOG"; 
 #
 # ⚠ These NEVER fail and never return empty. An unknown count reads 0 and an
 # unknown size reads `?`, which is the honest answer and a safe one to compare.
+# ⛔⛔ EVERY GATE ABORT GOES THROUGH HERE, AND IT DISARMS THE WIPE ON THE WAY OUT.
+#
+# The gates used to say *"ABORTING before .force-fresh is written, so the trained
+# weights are untouched"* — and that was FALSE. The `/update` handler writes
+# `.force-fresh` BEFORE it spawns this script ("ARMED in the server dir
+# (handler-side; survives any restart path)"), so by the time any gate runs the
+# flag is already on disk. A gate cannot abort "before" something that already
+# happened.
+#
+# ⛔ THE CONSEQUENCE WAS A LANDMINE. A refused deploy left the wipe armed for the
+# NEXT restart from any cause at all — a Restart press, systemd, an OOM, a
+# reboot — and `brain-server.js` only clears a stale flag in `/savererun`,
+# deliberately not in `/restart`. So a press that correctly refused to run still
+# armed a weight-wipe that would fire later, for an unrelated reason, with
+# nobody connecting the two.
+#
+# ⭐ If the deploy is not proceeding, the fresh-walk intent it was armed for is
+# not happening either. The next press re-arms it; nothing is lost by disarming
+# a press that already failed.
+_abort() {
+  local _ff="${BACKEND_DIR}/server/.force-fresh"
+  if [ -f "$_ff" ]; then
+    if rm -f "$_ff" 2>/dev/null; then
+      log "DISARMED .force-fresh — this deploy is not restarting her, so the pending weight-wipe is cleared. It was armed by the /update handler before this script started; leaving it would wipe the weights at the next restart from ANY cause, long after this press."
+    else
+      log "⛔ WARN — could NOT remove ${_ff}. A weight-wipe is still armed and will fire at the next restart from any cause. Do not restart until it is cleared."
+    fi
+  fi
+  exit 1
+}
 _count() { local n; n="$( { find "$@" 2>/dev/null || true; } | wc -l | tr -d ' ' )" || n=0; printf '%s' "${n:-0}"; }
 _size()  { local s; s="$( { du -sh "$1" 2>/dev/null || true; } | cut -f1 )" || s='?'; printf '%s' "${s:-?}"; }
 # ⚠ THE REDIRECTION IS INSIDE THE SILENCED GROUP, not on `wc`. `wc -c < missing`
@@ -88,8 +118,8 @@ trap 'rm -rf "$TMP"' EXIT
 # Fetch the latest as a shallow clean tree (overlay source — the backend dir
 # itself stays .git-less).
 if ! git clone --depth 1 --branch "$GIT_BRANCH" "$GIT_REMOTE" "$TMP/src" >> "$LOG" 2>&1; then
-  log "FATAL — git clone failed; aborting (service NOT restarted, weights intact)."
-  exit 1
+  log "FATAL — git clone of the CODE repo failed; aborting (service NOT restarted)."
+  _abort
 fi
 
 # Capture the DEPLOY IDENTITY from the exact tree we just cloned. This is the
@@ -484,8 +514,8 @@ if [ "$_corpus_ok" != "1" ]; then
   # the top of this file. It is the reason all three helpers exist.
   _have="$(_count "$CORPORA_DIR/academic" -name '*.json')"
   if [ "${_have:-0}" -lt 1 ]; then
-    log "FATAL — no corpus on the box (${CORPORA_DIR}/academic is empty or missing) and the data sync did not provide one. ABORTING before .force-fresh is written, so the trained weights are untouched and the service keeps running the old code. Fix the data repo pull (${DATA_REMOTE}) and press again."
-    exit 1
+    log "FATAL — no corpus on the box (${CORPORA_DIR}/academic is empty or missing) and the data sync did not provide one. ABORTING: the service keeps running the old code, the trained weights are untouched, and the pending wipe is disarmed below. Fix the data repo pull (${DATA_REMOTE}) and press again."
+    _abort
   fi
   log "corpus: sync did not run, but ${_have} academic cells are already on the box — continuing with those."
 fi
@@ -578,17 +608,17 @@ if [ "${_glove_now:-0}" -lt "$_GLOVE_MIN_BYTES" ] && [ "${UAL_GLOVE_FETCH:-1}" =
 fi
 
 if [ ! -f "$_GLOVE" ]; then
-  log "FATAL — the GloVe embedding table is MISSING at ${_GLOVE}. The boot reads it before anything else and stops hard without it (NO FALLBACKS), so restarting now would produce a crash loop rather than a walk. ABORTING before .force-fresh is written; the trained weights are untouched and the service keeps running. Fix the data repo pull (${DATA_REMOTE}) and press again."
-  exit 1
+  log "FATAL — the GloVe embedding table is MISSING at ${_GLOVE}. The boot reads it before anything else and stops hard without it (NO FALLBACKS), so restarting now would produce a crash loop rather than a walk. ABORTING: the service keeps running, the trained weights are untouched, and the pending wipe is disarmed below. Fix the data repo pull (${DATA_REMOTE}) and press again."
+  _abort
 fi
 _gbytes="$(_bytes "$_GLOVE")"
 if [ "${_gbytes:-0}" -lt "$_GLOVE_MIN_BYTES" ]; then
   if head -c 40 "$_GLOVE" 2>/dev/null | grep -q 'git-lfs'; then
     log "FATAL — ${_GLOVE} is a GIT-LFS POINTER STUB (${_gbytes} bytes), not the embedding table. It is a real file, so nothing else would have noticed; the boot would read it, fail to parse a single vector, and stop by design. Install git-lfs on this box or un-LFS that file in ${DATA_REMOTE}. ABORTING before .force-fresh — weights untouched."
   else
-    log "FATAL — ${_GLOVE} is only ${_gbytes} bytes against a ${_GLOVE_MIN_BYTES}-byte floor; the real table is about 1.04 GB. This is a truncated or partial transfer, and the boot stops hard on it. ABORTING before .force-fresh — weights untouched."
+    log "FATAL — ${_GLOVE} is only ${_gbytes} bytes against a ${_GLOVE_MIN_BYTES}-byte floor; the real table is about 1.04 GB. This is a truncated or partial transfer, and the boot stops hard on it. ABORTING — weights untouched, pending wipe disarmed below."
   fi
-  exit 1
+  _abort
 fi
 log "embeddings OK — GloVe present at ${_GLOVE} (${_gbytes} bytes); the boot's hardest precondition is satisfied."
 

@@ -3933,3 +3933,8 @@ Gee pressed both buttons. **Neither the walk nor the corpus is on the box, and t
 - **Acceptance:** a press that cannot deliver the corpus says so, in one line, in the console ring — naming what failed and why — and the box can reach the data repo without anyone holding a shell.
 
 
+
+- [x] `PRESSFAIL.8` — ✅ **FIXED 2026-09-04 — THE GATES CLAIMED THEY PROTECTED THE WEIGHTS AND THEY DID NOT.** Every gate said *"ABORTING before `.force-fresh` is written, so the trained weights are untouched"*. **False.** The `/update` handler writes `.force-fresh` **before** it spawns the script — its own log line says so: *"ARMED in the server dir (handler-side; survives any restart path)"*. **A gate cannot abort "before" something that already happened.**
+  - ⛔⛔ **THE CONSEQUENCE WAS A LANDMINE.** A correctly-refused deploy left a weight-wipe armed for the **next restart from any cause at all** — a Restart press, systemd, an OOM, a reboot — and `brain-server.js:10468` clears a stale flag **only in `/savererun`**, deliberately not in `/restart`. So a press that did the right thing still armed a wipe that would fire later, for an unrelated reason, with nobody connecting the two. **Confirmed live: the flag was armed on the box through three refused presses.**
+  - ⭐ **`_abort()` now disarms on the way out** — if the deploy is not restarting her, the fresh-walk intent it was armed for is not happening either, and the next press re-arms it. Wired into all four refusal paths. ⚠ **Deliberately NOT wired into the restart-failure path**, where the deploy IS proceeding and the flag is intended.
+  - **Exercised:** flag armed → gate fires → `DISARMED .force-fresh` → flag gone, exit 1.
