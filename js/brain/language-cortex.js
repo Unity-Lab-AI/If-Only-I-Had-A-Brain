@@ -2362,6 +2362,25 @@ export class LanguageCortex {
                 // returning silence, because a question scored as her answer would
                 // corrupt every gate that reads it.
                 curiosityAsk: true,
+                // ⭐⭐ THE THALAMIC RELAY IS ON (2026-09-04, Gee's call).
+                //
+                // `cluster/attention.js` — cosine → temperature softmax →
+                // weighted sum over the words already emitted in this utterance
+                // — has been built, wired into this exact path and DEAD since it
+                // shipped: the gate is `opts.attention === true` and nothing in
+                // the tree ever passed it. Built, documented, never called, which
+                // is the dormant class this project has a ledger full of.
+                //
+                // ⚠ IT IS OPT-IN PER CALLER AND STAYS THAT WAY. This is the
+                // CONVERSATIONAL lane. The ~30 gate and probe callers of the same
+                // method must keep composing without it, for the same reason they
+                // do not get `curiosityAsk`: a gate number has to describe the
+                // trained matrix alone, and a relay reading back her own recent
+                // words into sem would inflate exactly what the gate measures.
+                //
+                // ⛔ It changes what she says, so it lands with the fresh walk
+                // rather than quietly: the walk is the measurement.
+                attention: true,
                 // DONOR-DROP FIX (2026-07-16) — mid-walk, ONE candidate: each
                 // rerank candidate is a FULL sentence emission (~13s of GPU
                 // dispatches); 3 of them stacked on teach starved the event
@@ -2420,6 +2439,11 @@ export class LanguageCortex {
                         temperature: Number(_temp.toFixed(2)),
                         topK: _topK,
                         coherenceCandidates: opts.curriculumBusy ? 1 : 2,   // donor-drop fix — see above
+                        // Same lane, same reply — a continuation sentence that
+                        // could not see the words the first sentence just
+                        // emitted would be the one place the relay is most
+                        // obviously supposed to help.
+                        attention: true,
                         gradeGate: true,
                       });
                     } catch { cont = null; }
