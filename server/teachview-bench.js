@@ -305,7 +305,45 @@ function checkPressControls(s) {
   return ok('press controls', `uptime ${Math.round(Number(s.time))}s · ${where}`);
 }
 
-const CHECKS = [checkKnobs, checkWriteLane, checkLedger, checkCorpusFeed, checkFigures, checkFieldProducers, checkNewInstruments, checkPressControls];
+/**
+ * ⭐⭐ THE OPERATOR DEFAULTS — added with the lane, not after it.
+ *
+ * ⛔ THE FAILURE THIS HUNTS IS A SAVED SETTING THAT IS DOING NOTHING. Three ways
+ * that happens, and none of them announces itself:
+ *   • the defaults file failed to parse at boot, so EVERY default silently
+ *     reverted to code behaviour while the file still sits there looking applied;
+ *   • a default is SHADOWED — the environment already sets that knob, so the
+ *     saved value is ignored, and the operator reads their own number in the
+ *     file while the brain does something else;
+ *   • an entry was REFUSED (not a DREAM_ key, or not a scalar) and dropped.
+ *
+ * ⚠ PENDING IS NOT A FAULT. A default saved since boot is waiting for a restart,
+ * which is correct and expected — it is reported, never flagged.
+ */
+function checkKnobDefaults(s) {
+  const d = s && s.knobDefaults;
+  // Nothing has ever been saved. There is no surface and nothing to sweep —
+  // that is a pass, not a grey, because the absence is fully explained.
+  if (d === null || d === undefined) return ok('knob defaults', 'none stored — the brain is running code behaviour plus the environment');
+  if (d.bootError) {
+    return bad('knob defaults', `the defaults file did NOT apply at boot (${d.bootError}) — every stored default silently reverted to code behaviour while the file still sits there.`);
+  }
+  if (d.readError) {
+    return bad('knob defaults', `the defaults file cannot be read now (${d.readError}) — the panel cannot show what this box will start with.`);
+  }
+  if (d.skipped && d.skipped.length) {
+    return bad('knob defaults', `${d.skipped.length} entr(ies) in the defaults file were REFUSED and are doing nothing: ${d.skipped.slice(0, 4).map((x) => `${x.key} (${x.why})`).join(', ')}`);
+  }
+  if (d.shadowed && d.shadowed.length) {
+    return bad('knob defaults', `${d.shadowed.length} stored default(s) are SHADOWED by the environment and doing nothing — the saved value is not what the brain is running: ${d.shadowed.slice(0, 3).map((x) => `${x.key} stored=${x.stored} env=${x.env}`).join(', ')}`);
+  }
+  const parts = [`${d.storedCount} stored`];
+  if (d.applied.length) parts.push(`${d.applied.length} governing this boot`);
+  if (d.pending.length) parts.push(`${d.pending.length} awaiting a restart`);
+  return ok('knob defaults', parts.join(' · '));
+}
+
+const CHECKS = [checkKnobs, checkWriteLane, checkLedger, checkCorpusFeed, checkFigures, checkFieldProducers, checkNewInstruments, checkPressControls, checkKnobDefaults];
 
 /**
  * Run every surface check over a snapshot. Pure: no I/O, no globals.
@@ -400,6 +438,15 @@ function healthySnapshot() {
     // them the press check reads GREY on a healthy snapshot, and grey does not
     // pass.
     time: 4820,
+    // The defaults lane in its HEALTHY shape: some stored, some governing this
+    // boot, none shadowed and none refused.
+    knobDefaults: {
+      storedCount: 2, savedAt: '2026-09-04T00:00:00Z',
+      applied: [{ key: 'DREAM_CONTENT_LR', value: '0.02' }],
+      shadowed: [], skipped: [], pending: ['DREAM_INQUIRE_DEPTH'],
+      bootError: null, readError: null,
+      stored: { DREAM_CONTENT_LR: '0.02', DREAM_INQUIRE_DEPTH: '4' },
+    },
     curriculum: {
       currentSubject: 'ela', currentGrade: 'kindergarten',
       currentCourseName: 'Reading', currentGradeLabel: 'Kindergarten',
@@ -445,6 +492,16 @@ const FAULTS = [
     (s) => { delete s.curriculum; }],
   ['the cell ledger total gone (the position line silently falls back to a derived sum that can disagree with it)',
     (s) => { delete s.curriculum.passedCellsTotal; }],
+  // ── the operator defaults, added with the lane 2026-09-04. Every fault here
+  //    is a SAVED SETTING DOING NOTHING while the file still looks applied. ──
+  ['the defaults file failed to parse at boot (every stored default silently reverted to code behaviour)',
+    (s) => { s.knobDefaults.bootError = 'not a unity-knob-defaults file'; }],
+  ['a stored default SHADOWED by the environment (the saved value is not what the brain is running)',
+    (s) => { s.knobDefaults.shadowed = [{ key: 'DREAM_CONTENT_LR', stored: '0.02', env: '0.9' }]; }],
+  ['an entry in the defaults file REFUSED and dropped',
+    (s) => { s.knobDefaults.skipped = [{ key: 'PATH', why: 'not a DREAM_ knob' }]; }],
+  ['the defaults file unreadable now (the panel cannot say what the box will start with)',
+    (s) => { s.knobDefaults.readError = 'EACCES'; }],
 ];
 
 /**
@@ -573,6 +630,17 @@ function collect(ctx) {
       ? brain.curriculum.getCurriculumStatus() : null;
   } catch { s.curriculum = null; }
   try { s.graduation = (cl && cl.graduation) || null; } catch { s.graduation = null; }
+
+  // ⭐ THE DEFAULTS, COLLECTED WITH THE CHECK RATHER THAN AFTER IT. Adding a
+  // clause and forgetting the collector is exactly how `checkNewInstruments`
+  // spent a day returning GREY on the live box; the two go in together now.
+  // ⚠ Same source the state builder uses, so the bench and the page cannot
+  // disagree about what is stored.
+  try {
+    s.knobDefaults = (typeof brain.getState === 'function' && brain._knobDefaultsState)
+      ? brain._knobDefaultsState()
+      : require('./brain-server/state.js').SERVER_STATE_MIXIN._knobDefaultsState.call(brain);
+  } catch { s.knobDefaults = undefined; }
 
   return s;
 }

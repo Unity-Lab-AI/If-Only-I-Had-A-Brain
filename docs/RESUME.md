@@ -45,8 +45,22 @@
 > ⭐ Also found: **`.tv-q` used in six card titles and never declared in CSS**, and a 403 returning **without pinning `WEIGHT_BASE`** — so every write lane fired at the page's own origin and a refusal arrived as *"the brain is down"*.
 > ⚠ **Owned:** my first verification script was a broken detector that reported eleven helpers as undeclared; **ten were regex mangling in my own checker.** Rewritten to literal matching, which found the one true positive. **A detector written from an assumed format measures the assumption.**
 >
+> ### ✅ `TEACHFINAL.2` AND `.4` ARE DONE TOO — AND THE WHOLE TEACHFINAL SECTION IS NOW CLOSED
+> **`.4`** — ⛔⛔ **the page had no way out of it: every link in the entire document was a weights download**, on a page that names the dashboard as where Stop and Reset live. That dangling reference was written the same morning. Four destinations now, all checked against the real contents of `html/`. **Eight buttons had no tooltip** on a page whose rule is that every control explains itself. ⛔⛔ **And two drop handlers were firing on one drop** — the knob loader's window-level listener plus the position zone's own, because `preventDefault()` does not stop propagation, so a weights file dropped on the restore zone was **also parsed as a knob set and reported a failure on a completely legitimate action.**
+> **`.2`** — the index card is now a **control-by-control breakdown**: a paragraph can say a page *has* presses; only a list can say what each one **costs**. 32/32, including five checks that the index does not contradict the page.
+>
+> ### ⭐⭐ NEW THIS SESSION — `TRAINDEF`, filed from Gee's own sentence and built
+> *"and we need traing defaults we can set and obviously with the teachviewer we need it to have restart safties and be ablke to have defualts for the different setttings yand nobs you adjust"* — three items, three rows, all three built.
+> ⛔ **The only "default" that existed was the code literal.** `reset to default` compares against the source fallback, `save positions` writes a file the **browser** holds, and `POST /knob` persists nothing — **so every knob tuned during a walk was silently discarded by the next press.**
+> ⛔⛔ **THE APPLY RUNS BEFORE EVERY `require`, beside the TZ pin, and that is the whole design.** A `boot` knob is read once at module scope, so applying later would work for the `live` knobs and **silently do nothing for the boot-frozen ones** — a panel where half the rows lie about being applied. It is also **why boot-frozen knobs get a default control at all**: the live lane refuses them with a 409, correctly, and a default is the only thing that can ever set one.
+> ⭐ **A real environment value always wins**; a default that loses is reported **`shadowed`**, never dropped — that is the reading that otherwise sends someone hunting a bug that does not exist.
+> **Rulings taken:** *"Auto-apply, but loudly"* and *"Allowed like any other knob"* on the gate knobs. ⚠ **They compose better than the second option's own text implied** — no block, but a gate knob carrying a default is still **named at every boot**.
+> **Safeties** run **at the press, not off the 30 s poll** — a 30-second-old "no save running" is a guess with a timestamp.
+>
 > ### NEXT — in order
-> - **`TEACHFINAL.2`** — the pages-page write-up · **`TEACHFINAL.4`** — buttons and navigation. ⚠ `legend.html`'s Teach View card was amended **factually** today (finalization checklist, weight downloads, position restore, press controls) — **that is not `.2`'s write-up**, which is still owed to the same standard as the rest of the index.
+> - **`CURVEDEPTH.12`** — `cstheory` (653,525) and `major` (514,969), **1.17M of the remaining 1.90M owed**, via the hand-curated CS book list. No Wikipedia lane reaches either, and a wrong `linkRe` fails **silently** here, so every field must be READ off the live page.
+> - **`PREWALK.1`** — the obvious-regression sweep, which has to happen *before* the press.
+> - **`NOFALLBACK.5`** — the RE-PRICE, immediately before the press, by law.
 > - **`CURVEDEPTH.12`** — `cstheory` and `major`, the last big corpus blocks, via the hand-curated CS book list (every field must be READ off the live page; a wrong `linkRe` fails **silently** here).
 > - **`NOFALLBACK.5`** — the RE-PRICE, immediately before the press, by law.
 >

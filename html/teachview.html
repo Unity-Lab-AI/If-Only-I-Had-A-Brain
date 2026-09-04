@@ -120,6 +120,13 @@
   /* The press controls are TIERED BY CONSEQUENCE, not by verb. The border colour
      is the same signal the label carries in words, so the destructive press does
      not sit in an undifferentiated row beside the harmless one. */
+  /* The way OFF this page. Sits directly under the header so it is in the same
+     place on every load, and reads as navigation rather than as another control. */
+  #tvNav{display:flex;gap:9px;align-items:center;flex-wrap:wrap;
+    padding:7px 14px;border-bottom:1px solid var(--tv-line);background:#0a0e14}
+  #tvNav a{color:var(--tv-dim);text-decoration:none;font-size:11.5px;
+    padding:2px 8px;border:1px solid var(--tv-line);border-radius:4px}
+  #tvNav a:hover{color:var(--tv-accent);border-color:var(--tv-accent)}
   .tv-press-grp{border-left:2px solid var(--tv-line);padding-left:9px}
   .tv-press-lbl{color:var(--tv-dim);font-size:10px;letter-spacing:.1em;
     text-transform:uppercase;margin-bottom:5px}
@@ -251,6 +258,29 @@
     title="The subject/grade cell being taught right now."
     data-tip="The subject/grade cell currently being taught, e.g. science/grade5.&#10;&#10;The walk resolves the LOWEST cell still owed and starts there, so this is not necessarily the highest grade she has reached.">—</span>
 </header>
+
+<!-- ⛔⛔ THIS PAGE HAD NO WAY OUT OF IT. Every link in the document was a weights
+     download; there was no route to the pages index, none to the dashboard, and
+     none to the mind's eye — on a page that sits beside all three and, since the
+     press controls landed, tells a reader in as many words that Stop and Reset
+     "remain on the dashboard". A page that names another surface and cannot
+     reach it is a dangling reference, and it was one I wrote myself.
+     ⚠ Every href below was checked against the real contents of html/. -->
+<nav id="tvNav" aria-label="Related surfaces">
+  <span class="tv-sub" style="letter-spacing:.1em;text-transform:uppercase;font-size:10px">go to</span>
+  <a class="tv-tip" href="legend.html"
+    title="The pages index — every surface this project ships, explained."
+    data-tip="THE PAGES INDEX.&#10;&#10;Every surface this project ships, with what it is for and what a reader should conclude from it. Start here if you do not know which page answers your question.">📖 all pages</a>
+  <a class="tv-tip" href="dashboard.html"
+    title="The operator dashboard — vitals, the donor rows, and the full press set."
+    data-tip="THE OPERATOR DASHBOARD.&#10;&#10;The brain's vitals, the donor GPU rows, and the COMPLETE press set — including the two this page deliberately does not carry: Stop Brain (which leaves nothing to revive the process) and Reset (which the re-walk here does non-destructively).&#10;&#10;⚠ Admin-gated, like the presses on this page.">🎛 dashboard</a>
+  <a class="tv-tip" href="minds-eye.html"
+    title="What she is picturing — the images beside the words on this page."
+    data-tip="HER MIND'S EYE.&#10;&#10;The picture side of the same education. The words she is taught are on this page; what she pictures while learning them is on that one, and they are one education rather than two.">👁 mind's eye</a>
+  <a class="tv-tip" href="docs.html"
+    title="The written documentation."
+    data-tip="THE DOCUMENTATION.&#10;&#10;The written record behind every surface — what was built, what was measured, and what is still owed.">📄 docs</a>
+</nav>
 
 <!-- ⛔ THE ADMIN LANE, STATED. Every READING on this page comes from
      /public-state.json and needs no auth by design — so the instruments are
@@ -401,26 +431,38 @@
       </h2>
       <div class="tv-body">
         <div id="tvPressPos" class="tv-sub" style="line-height:1.5">reading the walk position…</div>
+        <!-- ⭐⭐ WHAT THIS BOOT IS ACTUALLY RUNNING. The single most consequential
+             thing to know before a press: whether the brain is running code
+             behaviour or somebody's stored defaults. -->
+        <div id="tvDefaults" class="tv-sub" style="margin-top:7px;line-height:1.5"></div>
 
         <div style="margin-top:10px" class="tv-press-grp">
           <div class="tv-press-lbl">keeps training</div>
           <div class="tv-controls">
-            <button id="tvPressRestart" class="tv-press keep">🔄 Restart · keeps training</button>
-            <button id="tvPressUpdKeep" class="tv-press keep">⬆ Update code · keeps training</button>
+            <button id="tvPressRestart" class="tv-press keep tv-tip"
+              title="Restart and resume at the same cell. Nothing is discarded."
+              data-tip="RESTART — and RESUME.&#10;&#10;The brain force-saves its weights, drops a resume marker, and exits; the service brings it back and it picks up at the same cell.&#10;&#10;⭐ THIS IS WHAT MAKES A RESTORED WALK POSITION TAKE EFFECT. Dropping a position file above changes a file on disk and nothing else — the running process still holds the old ledger in memory until this fires.&#10;&#10;⚠ If a heavy change altered the brain's size or format the saved weights cannot load and it fresh-starts instead, saying so.">🔄 Restart · keeps training</button>
+            <button id="tvPressUpdKeep" class="tv-press keep tv-tip"
+              title="Pull the latest code and resume the saved weights. No fresh walk."
+              data-tip="UPDATE — and KEEP TRAINING.&#10;&#10;The box re-pulls the project code, restarts, and RESUMES the saved weights. No fresh walk; nothing she has learned is lost.&#10;&#10;⭐ This is how a fix ships without costing training, and it is the normal press. Takes a minute or two.&#10;&#10;⚠ Code that changes WHAT SHE IS TAUGHT does not retroactively re-teach her — for that you want a walk that starts from zero.">⬆ Update code · keeps training</button>
           </div>
         </div>
 
         <div style="margin-top:10px" class="tv-press-grp">
           <div class="tv-press-lbl">keeps the weights, resets the position</div>
           <div class="tv-controls">
-            <button id="tvPressRewalk" class="tv-press warn">🔁 Re-walk from pre-K · keeps weights</button>
+            <button id="tvPressRewalk" class="tv-press warn tv-tip"
+              title="Re-teach the whole curriculum on top of the brain she already has. Weights survive; the position does not."
+              data-tip="RE-WALK — KEEPING THE WEIGHTS.&#10;&#10;Every trained weight is KEPT and a rollback checkpoint is taken first. Episodic memory and identity are preserved. What resets is the POSITION: every grade pointer goes back to pre-K and every passed cell is cleared.&#10;&#10;⭐ She then re-teaches the entire curriculum over the synapses she already has. The learning rule is self-normalising, so re-teaching strengthens rather than corrupts — this is the press for “she learned it badly”, not “start her over”.&#10;&#10;⚠ The walk begins at the beginning and takes as long as it took the first time.">🔁 Re-walk from pre-K · keeps weights</button>
           </div>
         </div>
 
         <div style="margin-top:10px" class="tv-press-grp">
           <div class="tv-press-lbl">discards training</div>
           <div class="tv-controls">
-            <button id="tvPressFresh" class="tv-press bad">⬆ Update code · WIPES all training</button>
+            <button id="tvPressFresh" class="tv-press bad tv-tip"
+              title="Pull the latest code and WIPE every trained weight. There is no way back."
+              data-tip="THE FRESH WALK — AND IT DESTROYS EVERYTHING SHE HAS LEARNED.&#10;&#10;The box re-pulls the project code, then wipes every trained weight, every episode, every schema and her visual store. Her identity anchors survive. Nothing she has LEARNED does.&#10;&#10;⭐ IT IS THE RIGHT PRESS AFTER A CHANGE TO WHAT SHE IS TAUGHT, and only then. A walk teaches from zero using whatever the code does at that moment, so a curriculum change that is not walked was never applied to her.&#10;&#10;⛔ It is the WRONG press for anything else, because there is no way back. Confirm twice, and read what the dialog says she is currently doing before the second one.">⬆ Update code · WIPES all training</button>
           </div>
         </div>
 
@@ -593,9 +635,15 @@
       <div class="tv-body">
         <div class="tv-controls">
           <select id="tvLedgerCell"><option value="">— pick a cell —</option></select>
-          <button id="tvLedgerFirst">start</button>
-          <button id="tvLedgerPrev">newer</button>
-          <button id="tvLedgerNext">older</button>
+          <button id="tvLedgerFirst" class="tv-tip"
+            title="Jump to the very first thing this cell ever taught."
+            data-tip="Jump to the START of this cell's record — the first item it ever taught.&#10;&#10;⭐ Paging is by cursor, not by page number, so this is the only way back to the beginning in one step.">start</button>
+          <button id="tvLedgerPrev" class="tv-tip"
+            title="Page toward what was taught more recently."
+            data-tip="Page toward NEWER items — later in the cell's teaching.&#10;&#10;⚠ Nothing is lost by paging: this reads the complete stored record, not the paced pane at the top of the page.">newer</button>
+          <button id="tvLedgerNext" class="tv-tip"
+            title="Page toward what was taught earlier."
+            data-tip="Page toward OLDER items — earlier in the cell's teaching.&#10;&#10;⭐ This pages to the TRUE end of the record. “Everything a cell ever taught” means everything; the reading pane above is a 400-row window and this is not.">older</button>
           <label class="tv-sub">rows <input id="tvLedgerLimit" type="number" min="20" max="500" step="20" value="100" style="width:64px" /></label>
         </div>
         <div id="tvLedgerRows" style="max-height:340px;overflow-y:auto;margin-top:9px"></div>
@@ -1142,9 +1190,42 @@ function knobEsc(s) {
    redraw" and is how the checkboxes call it. */
 let lastKnobs = null;
 
+/* ⭐ THE THREE PIECES OF DEFAULTS STATE THE PAGE HOLDS.
+   `KNOB_DEFAULTS` is the last published block; `PENDING_DEFAULTS` are the ones
+   saved since this boot and therefore waiting on a restart; `LIVE_KNOB_WRITES`
+   is the set this page has written LIVE, which nothing else can know — the
+   server sees an environment value and cannot tell whether the unit set it or a
+   browser did a minute ago. It is the difference between "configured" and "about
+   to be silently reverted by the restart you are hovering over". */
+let KNOB_DEFAULTS = null;
+let PENDING_DEFAULTS = [];
+const LIVE_KNOB_WRITES = new Set();
+
+/* Decorate each knob row with what the defaults file says about it, so the row
+   renderer reads one field instead of three lookups. ⛔ `applied` and `shadowed`
+   come from the BOOT report and cannot be re-derived later: they record what
+   process.env held at the instant the first module loaded, and that instant is
+   gone. Anything stored but in neither list was saved after boot. */
+function decorateKnobDefaults(k) {
+  if (!k || !Array.isArray(k.groups)) return k;
+  const d = KNOB_DEFAULTS;
+  const applied = new Set(((d && d.applied) || []).map((x) => x.key));
+  const shadowed = new Set(((d && d.shadowed) || []).map((x) => x.key));
+  const stored = (d && d.stored) || {};
+  for (const g of k.groups) {
+    for (const row of g.knobs) {
+      row.defaultStored = Object.prototype.hasOwnProperty.call(stored, row.key) ? stored[row.key] : null;
+      row.defaultState = row.defaultStored == null ? null
+        : (applied.has(row.key) ? 'applied' : (shadowed.has(row.key) ? 'shadowed' : 'pending'));
+    }
+  }
+  return k;
+}
+
 function renderKnobs(k) {
   if (k) lastKnobs = k;
   k = lastKnobs;
+  decorateKnobDefaults(k);
   const host = $('tvKnobs');
   if (!host) return;
   /* ⛔ HONEST EMPTY STATE, same rule as the teach bus above. A missing block
@@ -1258,15 +1339,60 @@ function renderKnobs(k) {
             + ` placeholder="${knobEsc(x.dflt)}" spellcheck="false"`
             + ` style="width:150px;font:11.5px var(--tv-font);background:var(--tv-bg);color:var(--tv-ink);`
             + `border:1px solid var(--tv-line);border-radius:3px;padding:2px 5px">`
+            /* ⚠ The only control on this page generated in a loop, and the only
+               one that was shipping with no title — a live write to a training
+               knob deserves the same explanation as a button that pages a list.
+               The knob's own name goes in it, because "set" alone names nothing. */
             + ` <button class="tv-knob-set" data-key="${knobEsc(x.key)}"`
+            + ` title="Write this value to ${knobEsc(x.key)} on the running brain. Admin-gated; it takes effect immediately and is not persisted across a restart."`
             + ` style="font:11px var(--tv-font);background:var(--tv-panel);color:var(--tv-accent);`
             + `border:1px solid var(--tv-line);border-radius:3px;padding:2px 8px;cursor:pointer">set</button>`
-            + ` <span class="tv-knob-msg" data-key="${knobEsc(x.key)}" class="tv-sub"></span>`
+            /* ⛔ TWO `class` ATTRIBUTES ON ONE ELEMENT — the parser keeps the FIRST
+               and silently drops the second, so `tv-sub` has never applied here and
+               this message has been rendering at full brightness instead of dimmed
+               since it was written. Merged. */
+            + ` <span class="tv-knob-msg tv-sub" data-key="${knobEsc(x.key)}"></span>`
             + `</div>`
           : `<div class="tv-sub" style="margin-top:3px;color:var(--tv-warn)">`
             + `⛔ not settable while running — ${x.effect === 'boot'
-              ? 'captured at boot; set it in the launcher and restart'
+              ? 'captured at boot; set it in the launcher and restart, or give it a DEFAULT below'
               : 'no verified effect class, so no write could be honest'}</div>`)
+        /* ⭐⭐ THE DEFAULT LANE — Operator: *"be ablke to have defualts for the
+           different setttings yand nobs you adjust"*.
+           ⛔ OFFERED ON EVERY KNOB, INCLUDING THE BOOT-FROZEN ONES, and that is
+           deliberate rather than sloppy. The live-write control above is refused
+           on a boot knob because a write to it would change nothing — but a
+           DEFAULT is applied before any module loads, so it is the ONE thing that
+           can actually set a boot-frozen knob. Withholding it here would have
+           left 40 knobs with no settable path at all, which is the opposite of
+           what was asked for.
+           ⚠ The two controls make DIFFERENT promises and the labels say so: `set`
+           changes her now and is lost on restart; `default` changes nothing now
+           and is what she starts with from here on. */
+        + `<div style="margin-top:4px;display:flex;gap:5px;align-items:center;flex-wrap:wrap">`
+          + `<input class="tv-knob-def-in" data-key="${knobEsc(x.key)}" value="${knobEsc(x.defaultStored != null ? x.defaultStored : '')}"`
+          + ` placeholder="${knobEsc(x.dflt)}" spellcheck="false"`
+          + ` style="width:112px;font:11.5px var(--tv-font);background:var(--tv-bg);color:var(--tv-ink);`
+          + `border:1px solid var(--tv-line);border-radius:3px;padding:2px 5px">`
+          + `<button class="tv-knob-def" data-key="${knobEsc(x.key)}"`
+          + ` title="Store this as the value the box STARTS with for ${knobEsc(x.key)}. Does not change the running brain — it takes effect at the next restart."`
+          + ` style="font:11px var(--tv-font);background:var(--tv-panel);color:var(--tv-warn);`
+          + `border:1px solid var(--tv-line);border-radius:3px;padding:2px 8px;cursor:pointer">◎ make default</button>`
+          + (x.defaultStored != null
+            ? `<button class="tv-knob-def-clear" data-key="${knobEsc(x.key)}"`
+              + ` title="Remove the stored default for ${knobEsc(x.key)} so it falls back to the code value at the next restart."`
+              + ` style="font:11px var(--tv-font);background:var(--tv-panel);color:var(--tv-dim);`
+              + `border:1px solid var(--tv-line);border-radius:3px;padding:2px 8px;cursor:pointer">✕ clear</button>`
+            : '')
+          + `<span class="tv-knob-def-msg tv-sub" data-key="${knobEsc(x.key)}">${
+            x.defaultStored == null ? ''
+              : (x.defaultState === 'applied'
+                ? '<span style="color:var(--tv-good)">running this default</span>'
+                : (x.defaultState === 'shadowed'
+                  ? '<span style="color:var(--tv-warn)">stored, but the environment overrides it — doing nothing</span>'
+                  : '<span style="color:var(--tv-warn)">saved — takes effect at the next restart</span>'))
+          }</span>`
+        + `</div>`
         + (detail
           ? `<div class="tv-note" style="margin-top:3px">${knobEsc(x.what)}`
             + (x.why ? `<br><span style="color:var(--tv-accent)">WHY THIS VALUE:</span> ${knobEsc(x.why)}` : '')
@@ -1291,7 +1417,11 @@ function renderKnobs(k) {
       msg.textContent = ' …';
       msg.style.color = 'var(--tv-dim)';
       try {
-        const r = await fetch('/knob', {
+        /* ⚠ WEIGHT_BASE, not a bare '/knob'. Every other write lane on this page
+           resolves through the same base, and this one did not — so opened from
+           disk against a loopback brain it fired at the page's own origin and
+           failed as a network error, which reads as "the brain is down". */
+        const r = await fetch((WEIGHT_BASE || '') + '/knob', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ key, value: input.value }),
@@ -1314,11 +1444,75 @@ function renderKnobs(k) {
         msg.style.color = j.caveat ? 'var(--tv-warn)' : 'var(--tv-good)';
         /* `after` comes from re-deriving the knob through the registry, so this
            line is evidence the BRAIN sees the value, not that a POST succeeded. */
-        msg.textContent = ` ✓ now ${j.after}${j.caveat ? ' — ' + j.caveat : ''}`;
+        /* ⛔ RECORD IT. A live write persists NOTHING, so the next restart
+           reverts it silently — and the person who just tuned it is the last one
+           who would expect that. The restart safeties read this set and say so
+           before a press. Nothing else can know: the server sees an environment
+           value and cannot tell a unit setting from a browser write. */
+        LIVE_KNOB_WRITES.add(key);
+        msg.textContent = ` ✓ now ${j.after}${j.caveat ? ' — ' + j.caveat : ''} — live only; use "make default" to keep it across a restart`;
       } catch (e) {
         msg.style.color = 'var(--tv-bad)';
         msg.textContent = ` ⛔ ${(e && e.message) || 'request failed'}`;
       }
+    };
+  }
+
+  /* ⭐ THE DEFAULT LANE'S TWO BUTTONS. One route, two shapes — set and clear —
+     because a default you cannot remove is a trap, not a setting. */
+  const defPost = async (key, body, msgEl, okText) => {
+    msgEl.style.color = 'var(--tv-dim)';
+    msgEl.textContent = ' …';
+    try {
+      const r = await fetch((WEIGHT_BASE || '') + '/knob-default', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, ...body }),
+      });
+      if (isForbidden(r)) {
+        markAdminLane(false, 'This browser is not calling from loopback.');
+        msgEl.style.color = 'var(--tv-warn)';
+        msgEl.textContent = ' ⚠ admin-only — this page is not on the admin lane. Nothing was saved, and the brain is fine.';
+        return;
+      }
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) markAdminLane(true);
+      if (!r.ok || !j.ok) {
+        msgEl.style.color = 'var(--tv-bad)';
+        msgEl.textContent = ` ⛔ ${j.why || ('HTTP ' + r.status)}`;
+        return;
+      }
+      msgEl.style.color = 'var(--tv-warn)';
+      msgEl.textContent = ` ${okText}`;
+      /* A default just written is PENDING until a restart, and the safeties
+         should say so on the very next press rather than after the poll. */
+      if (body.clear) { const i = PENDING_DEFAULTS.indexOf(key); if (i >= 0) PENDING_DEFAULTS.splice(i, 1); }
+      else if (!PENDING_DEFAULTS.includes(key)) PENDING_DEFAULTS.push(key);
+    } catch (e) {
+      msgEl.style.color = 'var(--tv-bad)';
+      msgEl.textContent = ` ⛔ ${(e && e.message) || 'request failed'}`;
+    }
+  };
+
+  for (const btn of host.querySelectorAll('.tv-knob-def')) {
+    btn.onclick = () => {
+      const key = btn.getAttribute('data-key');
+      const input = host.querySelector(`.tv-knob-def-in[data-key="${key}"]`);
+      const msgEl = host.querySelector(`.tv-knob-def-msg[data-key="${key}"]`);
+      if (!input || !msgEl) return;
+      if (input.value === '') {
+        msgEl.style.color = 'var(--tv-warn)';
+        msgEl.textContent = ' ⚠ nothing typed — an empty box would store an empty default rather than clearing one. Use ✕ clear.';
+        return;
+      }
+      defPost(key, { value: input.value }, msgEl, `◎ saved — the box will START with ${input.value}. The running brain is unchanged; restart to apply.`);
+    };
+  }
+  for (const btn of host.querySelectorAll('.tv-knob-def-clear')) {
+    btn.onclick = () => {
+      const key = btn.getAttribute('data-key');
+      const msgEl = host.querySelector(`.tv-knob-def-msg[data-key="${key}"]`);
+      if (!msgEl) return;
+      defPost(key, { clear: true }, msgEl, '✕ default removed — falls back to the code value at the next restart.');
     };
   }
 }
@@ -1442,6 +1636,22 @@ function knobLoadFromText(txt, label) {
   let j;
   try { j = JSON.parse(txt); } catch (e) {
     knobReport(`<div class="tv-note">⛔ <b>Not valid JSON</b> — ${knobEsc(e.message)}</div>`);
+    return;
+  }
+  /* ⭐ THE OTHER FILE THIS PAGE ACCEPTS. Two drop lanes share one page, and the
+     window-level listener catches anything dropped outside the position zone —
+     so a brain-weights.json aimed at that zone and missed it by a few pixels
+     used to come back as "not a knob-positions file", which is true, useless,
+     and reads as a rejection of a perfectly good file.
+     ⛔ THE WITNESS IS THE SERVER'S OWN — `cortex.passedCells` being an array is
+     exactly what POST /weights/position tests before it accepts anything, so the
+     page and the server agree by construction rather than by coincidence. */
+  if (j && j.cortex && Array.isArray(j.cortex.passedCells)) {
+    knobReport('<div class="tv-note">↪ <b>That is a brain-weights position file, not a knob set.</b> '
+      + 'It carries a walk position (' + j.cortex.passedCells.length + ' passed cells'
+      + (j.version != null ? ', save version ' + knobEsc(String(j.version)) : '') + ').<br>'
+      + 'Drop it on the <b>restore</b> zone in the “Download model weights” card to resume the walk from it — '
+      + 'nothing has been sent from here.</div>');
     return;
   }
   if (!j || j.kind !== 'unity-knob-positions' || !Array.isArray(j.knobs)) {
@@ -1909,6 +2119,24 @@ async function sendPosition(file) {
     msg.textContent = `${file.name} is not a .json — the position lives in brain-weights.json (about 761 KB). The multi-gigabyte .bin is placed on the box, not uploaded through a browser.`;
     return;
   }
+  /* ⛔ IT SURFACES ITS CONSEQUENCE BEFORE IT FIRES, like every other control on
+     this page that changes something. Restoring overwrites the position the
+     brain will resume from — recoverable (the server keeps the previous one as
+     .prerestore) but not nothing, and a file landing on a drop zone by accident
+     should not silently rewrite where she is. */
+  const posNow = PRESS_POS ? `\n\n--- where she is right now ---\n${PRESS_POS}` : '';
+  if (!window.confirm(
+    `Restore a walk position from ${file.name}?\n\n`
+    + '✓ The server refuses the file outright if its save version does not match the weights on disk\n'
+    + '✓ The position being replaced is kept as brain-weights.json.prerestore\n'
+    + '✗ The brain will resume from the position in THIS file instead of where it is now\n\n'
+    + 'The running process keeps the old position in memory until it restarts — '
+    + 'use "Restart · keeps training" below to make this take effect.'
+    + posNow)) {
+    msg.style.color = 'var(--tv-dim)';
+    msg.textContent = 'cancelled — nothing was sent and the position on the box is unchanged.';
+    return;
+  }
   msg.style.color = 'var(--tv-dim)';
   msg.textContent = `reading ${file.name} (${(file.size / 1024).toFixed(0)} KB)…`;
   let text = '';
@@ -1948,6 +2176,15 @@ async function sendPosition(file) {
     drop.ondragover = (e) => { e.preventDefault(); drop.style.borderColor = 'var(--tv-accent)'; };
     drop.ondragleave = () => { drop.style.borderColor = 'var(--tv-line)'; };
     drop.ondrop = (e) => {
+      /* ⛔⛔ BOTH HANDLERS WERE FIRING ON ONE DROP. There is a SECOND, window-level
+         drop listener on this page (the knob-file loader, registered so a knob set
+         can be dropped anywhere). A drop event bubbles from this div all the way to
+         window, and `preventDefault()` does NOT stop propagation — so dropping a
+         brain-weights.json here ALSO handed it to the knob loader, which then
+         reported a confusing parse failure on a completely legitimate action.
+         Nothing was destroyed, because the knob loader only ever shows a diff, but
+         a correct action must not produce an error message. */
+      e.stopPropagation();
       e.preventDefault();
       drop.style.borderColor = 'var(--tv-line)';
       sendPosition(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]);
@@ -2133,6 +2370,56 @@ function restorePressLabels() {
   for (const a of PRESS_ACTIONS) { const b = $(a.id); if (b && PRESS_LABELS[a.id]) b.textContent = PRESS_LABELS[a.id]; }
 }
 
+/* ⭐⭐ RESTART SAFETIES. Operator: *"with the teachviewer we need it to have
+   restart safties"*.
+
+   ⛔ EACH ONE IS CHECKED AT THE MOMENT OF THE PRESS, NOT READ OFF A POLL. The
+   weights listing refreshes every 30 s, and a 30-second-old "no save running" is
+   not a safety — it is a guess with a timestamp. So this re-asks the server
+   immediately before firing.
+
+   ⛔ AND A SAFETY THAT CANNOT READ ITS OWN SIGNAL SAYS SO. If the check itself
+   fails, the operator is told the check failed; it is never silently treated as
+   "all clear", because that turns an unreadable instrument into a green light. */
+async function pressSafeties() {
+  const out = [];
+  // ① A checkpoint mid-write. Restarting through one leaves a half-written
+  //    binary beside a full JSON — the mismatched pair the restore route exists
+  //    to refuse, except nobody would know to look.
+  try {
+    const r = await fetch((WEIGHT_BASE || '') + '/weights/list', { cache: 'no-store' });
+    if (r.ok) {
+      const j = await r.json();
+      if (j && j.writing) {
+        out.push({ level: 'stop', text: `A WEIGHTS SAVE IS IN FLIGHT RIGHT NOW (${j.writing.name}, ${fmtBytes(j.writing.bytes)} written so far). `
+          + 'Restarting through a checkpoint write leaves a half-written binary beside a complete ledger. Wait for it to finish.' });
+      }
+    } else if (r.status !== 403) {
+      out.push({ level: 'unknown', text: `Could not check whether a weights save is running (HTTP ${r.status}). This is a CANNOT-TELL, not an all-clear.` });
+    }
+  } catch (e) {
+    out.push({ level: 'unknown', text: `Could not check whether a weights save is running (${(e && e.message) || e}). This is a CANNOT-TELL, not an all-clear.` });
+  }
+  // ② Live knob writes made from this page. `POST /knob` changes the RUNNING
+  //    value and persists nothing, so a restart silently reverts every one of
+  //    them — and the operator who just tuned them is the last person who would
+  //    expect that. Counted client-side because this page is the only thing that
+  //    knows which writes were made from it.
+  if (LIVE_KNOB_WRITES.size) {
+    out.push({ level: 'warn', text: `${LIVE_KNOB_WRITES.size} knob(s) were set live from this page and are NOT saved as defaults: `
+      + `${[...LIVE_KNOB_WRITES].slice(0, 8).join(', ')}${LIVE_KNOB_WRITES.size > 8 ? ' …' : ''}. `
+      + 'A restart reverts them. Use "make default" on each one first if they should survive.' });
+  }
+  // ③ Defaults saved since this boot. Not a hazard — the opposite — but a
+  //    restart is exactly what applies them, and knowing that changes whether
+  //    this press is the one you wanted.
+  if (PENDING_DEFAULTS.length) {
+    out.push({ level: 'info', text: `${PENDING_DEFAULTS.length} saved default(s) are waiting for a restart to take effect: `
+      + `${PENDING_DEFAULTS.slice(0, 8).join(', ')}${PENDING_DEFAULTS.length > 8 ? ' …' : ''}. This press will apply them.` });
+  }
+  return out;
+}
+
 async function firePress(a) {
   const msg = $('tvPressMsg'); if (!msg) return;
   const btn = $(a.id);
@@ -2141,8 +2428,40 @@ async function firePress(a) {
      is the right press, and a reader should not have to scroll to answer it. */
   const pos = PRESS_POS
     || 'This page cannot currently read the walk position, so it cannot tell you what this press would cost.';
-  if (!window.confirm(`${a.head}\n\n${a.body}\n\n--- where she is right now ---\n${pos}`)) return;
-  if (a.confirm2 && !window.confirm(`${a.confirm2}\n\n${pos}`)) return;
+
+  /* ⛔ THE SAFETIES RUN FIRST AND ARE SHOWN SEPARATELY. Folding them into the
+     action's own confirm would bury "a checkpoint is being written right now"
+     inside a paragraph the reader has already learned to click through. A STOP
+     finding gets its own dialog, phrased so the safe answer is the default one. */
+  msg.style.color = 'var(--tv-dim)';
+  msg.textContent = 'checking restart safeties…';
+  const safeties = await pressSafeties();
+  const stops = safeties.filter((s) => s.level === 'stop');
+  const unknowns = safeties.filter((s) => s.level === 'unknown');
+  const notes = safeties.filter((s) => s.level === 'warn' || s.level === 'info');
+  if (stops.length || unknowns.length) {
+    const head = stops.length
+      ? '⛔ RESTART SAFETY — DO NOT PRESS THIS RIGHT NOW\n\n'
+      : '⚠ A RESTART SAFETY COULD NOT BE CHECKED\n\n';
+    if (!window.confirm(head + [...stops, ...unknowns].map((s) => '• ' + s.text).join('\n\n')
+      + '\n\nPress Cancel to stop. Press OK only if you know this is safe.')) {
+      msg.style.color = 'var(--tv-warn)';
+      msg.textContent = 'stopped by a restart safety — nothing was pressed.';
+      return;
+    }
+  }
+  const notesText = notes.length ? '\n\n--- also worth knowing ---\n' + notes.map((s) => '• ' + s.text).join('\n') : '';
+
+  if (!window.confirm(`${a.head}\n\n${a.body}\n\n--- where she is right now ---\n${pos}${notesText}`)) {
+    msg.style.color = 'var(--tv-dim)';
+    msg.textContent = 'cancelled — nothing was pressed.';
+    return;
+  }
+  if (a.confirm2 && !window.confirm(`${a.confirm2}\n\n${pos}`)) {
+    msg.style.color = 'var(--tv-dim)';
+    msg.textContent = 'cancelled at the second confirmation — nothing was pressed.';
+    return;
+  }
 
   setPressEnabled(false);
   if (btn) btn.textContent = '⏳ ' + a.verb + '…';
@@ -2198,8 +2517,65 @@ function fmtPressUp(sec) {
   return (s / 3600).toFixed(1) + 'h';
 }
 
+/* ⭐⭐ THE DEFAULTS READOUT — "is this boot running code behaviour?"
+   ⛔ THE THREE STATES MUST NEVER LOOK ALIKE, and one of them is the whole reason
+   this exists: a SHADOWED default is saved, visible in the file, and doing
+   absolutely nothing because the environment already spoke. Without a word for
+   it, an operator reads their own saved value in the panel, sees the brain
+   behaving differently, and has no way to find out why. */
+function renderDefaults(st) {
+  const el = $('tvDefaults'); if (!el) return;
+  const d = st && st.knobDefaults;
+  KNOB_DEFAULTS = d || null;
+  if (d && Array.isArray(d.pending)) PENDING_DEFAULTS = d.pending.slice();
+  if (!d) {
+    /* ⚠ Absent is not "none". On a server that predates this lane the field is
+       simply missing, and claiming "no defaults" would be an assertion about a
+       file this page never looked at. */
+    el.innerHTML = '<span style="color:var(--tv-dim)">no defaults block published — this build may predate the defaults lane. '
+      + 'That is not the same as “no defaults are set”.</span>';
+    return;
+  }
+  if (d.bootError) {
+    el.innerHTML = `<span style="color:var(--tv-bad)">⛔ The defaults file was NOT applied at boot — ${knobEsc(d.bootError)}. `
+      + 'This boot is running code defaults plus whatever the environment sets.</span>';
+    return;
+  }
+  const bits = [];
+  if (d.applied.length) {
+    bits.push(`<span style="color:var(--tv-good)">◎ ${d.applied.length} operator default(s) are governing this boot</span>`
+      + ` <span style="color:var(--tv-dim)">— on these knobs she is NOT running code behaviour: `
+      + `${d.applied.slice(0, 6).map((x) => knobEsc(x.key) + '=' + knobEsc(x.value)).join(' · ')}${d.applied.length > 6 ? ' …' : ''}</span>`);
+  }
+  if (d.shadowed.length) {
+    bits.push(`<span style="color:var(--tv-warn)">⚠ ${d.shadowed.length} stored default(s) are SHADOWED and doing nothing</span>`
+      + ` <span style="color:var(--tv-dim)">— the environment already sets these, so the saved value is ignored: `
+      + `${d.shadowed.slice(0, 6).map((x) => knobEsc(x.key) + ' stored ' + knobEsc(x.stored) + ' vs env ' + knobEsc(x.env)).join(' · ')}${d.shadowed.length > 6 ? ' …' : ''}</span>`);
+  }
+  if (d.pending.length) {
+    bits.push(`<span style="color:var(--tv-warn)">⏳ ${d.pending.length} default(s) saved since this boot and waiting on a restart</span>`
+      + ` <span style="color:var(--tv-dim)">— ${d.pending.slice(0, 6).map(knobEsc).join(' · ')}${d.pending.length > 6 ? ' …' : ''}</span>`);
+  }
+  if (d.skipped.length) {
+    bits.push(`<span style="color:var(--tv-bad)">⛔ ${d.skipped.length} entr(ies) in the file were REFUSED</span>`
+      + ` <span style="color:var(--tv-dim)">— ${d.skipped.slice(0, 4).map((x) => knobEsc(x.key) + ' (' + knobEsc(x.why) + ')').join(' · ')}</span>`);
+  }
+  if (d.readError) bits.push(`<span style="color:var(--tv-bad)">⛔ the defaults file could not be re-read: ${knobEsc(d.readError)}</span>`);
+  if (LIVE_KNOB_WRITES.size) {
+    bits.push(`<span style="color:var(--tv-warn)">⚠ ${LIVE_KNOB_WRITES.size} knob(s) set LIVE from this page and not saved as defaults</span>`
+      + ' <span style="color:var(--tv-dim)">— a restart reverts them.</span>');
+  }
+  if (!bits.length) {
+    el.innerHTML = '<span style="color:var(--tv-dim)">◎ no operator defaults stored — this boot is running code behaviour '
+      + 'plus whatever the environment sets. Use “make default” on any knob to change what the box starts with.</span>';
+    return;
+  }
+  el.innerHTML = bits.map((b) => `<div>${b}</div>`).join('');
+}
+
 function renderPress(st) {
   PRESS_POS = pressPosition(st);
+  renderDefaults(st);
   const posEl = $('tvPressPos');
   if (posEl) {
     posEl.innerHTML = PRESS_POS

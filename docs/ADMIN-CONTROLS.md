@@ -511,6 +511,44 @@ Two state blocks changed meaning on the fresh walk, and both are easy to misread
 
 ⚠ **The panel is READ-ONLY and says so** rather than drawing a control that would not work. Write support waits on every effect class being proven, because a boot-frozen knob must **refuse** a write with that reason instead of accepting one silently.
 
+> ⭐ **SUPERSEDED 2026-09-03/04, kept for the reasoning.** The precondition was met: the write lane shipped (`POST /knob`, loopback-gated, a boot-frozen knob refused with a 409 rather than accepted silently), and **the defaults lane below now covers the boot-frozen knobs the live lane correctly refuses.**
+
+## ◎ TRAINING DEFAULTS YOU CAN SET — `server/knob-defaults.json` (2026-09-04)
+
+Settable training defaults, per knob, that survive a restart.
+
+⛔ **BEFORE THIS, THE ONLY "DEFAULT" THAT EXISTED WAS THE CODE LITERAL.** `↺ reset to default` compares against the **source fallback**; `⤓ save positions` writes a file the **browser** holds. Nothing on the box persisted an operator-chosen value, so **nothing survived a boot** — and `POST /knob` changes the running value and persists nothing, meaning **every knob tuned during a walk was silently discarded by the next press**.
+
+**Two controls per knob, two different promises, and the labels say which:**
+
+| Control | Route | Effect | Survives a restart? |
+|---|---|---|---|
+| **`set`** | `POST /knob` | Changes the **running** brain immediately | ❌ No — reverted at the next boot |
+| **`◎ make default`** | `POST /knob-default` | Changes **nothing** now; it is what the box **starts with** | ✅ Yes — applied at every boot |
+| **`✕ clear`** | `POST /knob-default` `{clear:true}` | Removes a stored default | — falls back to the code value |
+
+⭐ **THE DEFAULT CONTROL IS OFFERED ON EVERY KNOB, INCLUDING THE BOOT-FROZEN ONES.** The live lane refuses those with a 409, correctly, because a live write to one does nothing. **A default is the one thing that CAN set them**, because it is applied before any module loads. Withholding it would have left ~40 knobs with no settable path at all.
+
+⛔⛔ **THE APPLY RUNS BEFORE EVERY `require` IN `brain-server.js`.** A `boot` knob is read once at module scope, so its value is decided by whatever `process.env` holds when its module first loads. Applying anywhere later would work for the `live` knobs and **silently do nothing for the boot-frozen ones** — a settings panel where half the rows lie about having been applied.
+
+⭐ **A REAL ENVIRONMENT VALUE ALWAYS WINS.** The service unit and the launchers stay authoritative; a stored default only fills a knob nobody set.
+
+**Three states, and they never render alike** — in the panel, in `state.knobDefaults`, and in the sweep bench:
+
+| State | Meaning | What to conclude |
+|---|---|---|
+| **applied** | A stored default is governing this boot | On these knobs the brain is **not running code behaviour** |
+| **shadowed** | Stored, but the environment already set that knob | The saved value is doing **nothing**. This is the reading that otherwise sends someone hunting a bug that is not there |
+| **pending** | Saved since this boot began | In the file, not in this process. It needs a restart and nothing else |
+
+⛔ **`applied` and `shadowed` cannot be recomputed later.** They record what `process.env` held at the instant the first module loaded, and that instant is gone — re-deriving them would produce a plausible answer that is **not** the one the brain booted with. The boot report is stashed and published; only `stored` is re-read from disk.
+
+⚠ **THE BOOT LINE IS THE POINT OF "AUTO-APPLY, BUT LOUDLY".** Every applied default is named in the console at boot, and every shadowed one is warned about with **both** values. It is printed **after** the console ring installs, so it is readable through the public console tunnel on a box with no shell.
+
+**Operator data, protected like it:** gitignored, excluded from the deploy overlay, and **not in the fresh-walk wipe list** — settings are not training state.
+
+⚠ **The walk-bounding knobs (`DREAM_PHASE_BUDGET_MS`, `DREAM_STRUCTURE_DOSE`, the consolidation gate) may carry a default like any other**, by operator ruling. There is no pre-save re-price gate. **The boot announcement is what surfaces it** — a gate knob carrying a default is named at every boot, so a change to how long the walk takes is flagged rather than silent. `CONSTRAINTS.md §RE-PRICE THE WALK BEFORE REMOVING A GATE` still applies to the person setting it.
+
 ## 🎛 Env knobs that change TRAINING (2026-08-20)
 
 Every one of these is opt-in with a stated default. **The buttons above are the normal

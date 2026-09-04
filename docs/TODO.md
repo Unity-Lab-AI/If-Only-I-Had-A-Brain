@@ -3582,7 +3582,12 @@ Gee (verbatim):
 
   **Original filing:** **TRAINING FINALIZATION STEPS, IN THE TEACH VIEWER.** The walk now has an ending; the viewer has no idea. Surface the finalization sequence as an ordered, live checklist — the last cell closing, the grade ledger settling, the graduation record being written, her own memory of finishing being banked, the corpus verdict, and the deferred lanes taking over from the walk — each with its own state and its own reason when it has not happened yet. ⛔ **A step that has not run and a step that cannot run must not render the same.**
 
-- [ ] `TEACHFINAL.2` — **PROPER WRITE-UPS FOR IT ON THE PAGES PAGE.** Every surface this project ships is listed and explained on the pages index; the finalization view needs its entry there written to the same standard as the rest — what it is for, what each control does, and what a reader should conclude from each state.
+- [x] `TEACHFINAL.2` — ✅ **WRITTEN + VERIFIED 2026-09-04 (32/32).** The index card described a page that had since grown a finalization checklist, five instrument panels, a weights lane, a position restore, 200+ knobs and four presses. Rewritten as a **control-by-control breakdown** rather than a longer paragraph — a paragraph can say a page *has* presses; only a list can say what each one **costs**.
+  - ⭐ **It states the split the page depends on:** everything the page **reads** is public and needs no login, and only the **writes** are gated — so the card does not imply the whole surface is admin-only.
+  - **Every state gets a conclusion, not a description:** the finalization states (`pending` / `waiting` / `blocked` / `failed`), the three default states including the confusing one (**stored, but the environment overrides it — doing nothing**), the press verdict including **could not tell**, and empty wiring rows named as the worst reading on the page.
+  - **Verified against the page it documents** — five agreement checks, so the index cannot drift into contradicting the surface.
+
+  **Original filing:** **PROPER WRITE-UPS FOR IT ON THE PAGES PAGE.** Every surface this project ships is listed and explained on the pages index; the finalization view needs its entry there written to the same standard as the rest — what it is for, what each control does, and what a reader should conclude from each state.
 
 - [x] `TEACHFINAL.3` — ✅ **DONE 2026-09-04, and the measurement changed what the row meant.** The enforcement was **already correct and already server-side**: all three privileged endpoints (`/knob`, `/corpus-buffer`, `/teach-bench`) sit behind `requireLoopback`. Nothing needed locking down.
   - ⛔⛔ **WHAT WAS ACTUALLY BROKEN WAS THE HONESTY, AND IT WAS THE EXACT DEFECT THE DASHBOARD ALREADY FIXED.** A 403 rendered here as **`buffer ERROR — forbidden — privileged endpoint requires loopback caller`** — which reads as *the buffer is broken*. It is not: the brain is fine, the buffer is fine, and what failed is that this browser is not on the admin lane. **An auth failure must never render as a brain failure.** All three write paths now detect 403 specifically and say so.
@@ -3592,7 +3597,14 @@ Gee (verbatim):
 
   **Original filing:** **ADMIN ONLY.** The viewer carries operator controls, so the finalization surface inherits the same gate as the rest of the admin lane. ⚠ **And it must fail the way the dashboard already learned to:** an auth failure renders as *"admin lane not authenticated"*, never as *"the brain is broken"*.
 
-- [ ] `TEACHFINAL.4` — **PROPER BUTTONS AND NAVIGATION.** Consistent placement, labels that name the consequence rather than the verb, and every irreversible control surfacing its consequence before it fires — the same rule the donor rows already follow.
+- [x] `TEACHFINAL.4` — ✅ **BUILT + VERIFIED 2026-09-04 (26/26).**
+  - ⛔⛔ **THE PAGE HAD NO WAY OUT OF IT. Every link in the entire document was a weights download** — no route to the pages index, none to the dashboard, none to the mind's eye, on a page that sits beside all three and which, since the presses landed, tells a reader that Stop and Reset *"remain on the dashboard"*. **That is a dangling reference, and it was one I wrote myself that morning.** Four destinations now, each checked against the real contents of `html/`.
+  - **Eight buttons were shipping with no tooltip** on a page whose stated rule is that every control explains itself — the four presses, the three ledger pagers, and the per-knob `set`, which is generated in a loop and is a **live write to a training knob**. `set`'s tooltip names the knob, because "set" alone names nothing.
+  - ⛔⛔ **TWO DROP HANDLERS WERE FIRING ON ONE DROP.** The knob loader registers a **window-level** listener; `preventDefault()` does **not** stop propagation, so a `brain-weights.json` dropped on the restore zone was also handed to the knob loader and reported a parse failure **on a completely legitimate action**. Nothing was destroyed (that lane only ever shows a diff), but a correct action must not produce an error. Fixed both ways: `stopPropagation` on the zone, and the knob loader now **recognises a weights file and points at the right zone** using `cortex.passedCells` — **the server's own witness**, so the two agree by construction.
+  - **The position restore now confirms before it fires**, naming the walk position and the restart requirement. It was the one control that changed something on the box with no confirmation at all.
+  - ⭐ **Found by reading:** a `<span>` with **two `class` attributes** — the parser keeps the first, so `tv-sub` had never applied and that message rendered at full brightness since the day it was written. And `fetch('/knob')` used a **bare path** while every other write lane resolves through `WEIGHT_BASE`, so from disk against a loopback brain it failed as a network error that reads as *"the brain is down"*.
+
+  **Original filing:** **PROPER BUTTONS AND NAVIGATION.** Consistent placement, labels that name the consequence rather than the verb, and every irreversible control surfacing its consequence before it fires — the same rule the donor rows already follow.
 
 - [x] `TEACHFINAL.5` — ✅ **BUILT + VERIFIED 2026-09-04 (8/8 against the real on-disk files).**
   - ⭐⭐ **THE MEASUREMENT THAT DECIDED THE DESIGN: the position lives in the SMALL half of the pair.** `brain-weights.json` is **744 KB** and carries `grades`, `passedCells`, `passedPhases` and `phaseRepCursor`; `brain-weights.bin` is **4.16 GB** and carries only synapse values. So *"start trasining form point left off on that weight set"* needs the 744 KB file, **not** the 4 GB one — the requirement was already architecturally satisfied, it just had no route.
@@ -3651,6 +3663,48 @@ Gee (verbatim):
   - **the exam battery** — authored vs derived items, the split that decides blocking, and the corrective-teach count per cell.
   - **her letter shapes** — whether `letter:<ch>` has been learned, since a drawing with no words is correct behaviour when it has not been and must not read as a rendering failure.
   - ⛔ **No new surface ships without saying what a reader should CONCLUDE from each state** — the pages-page write-up in `TEACHFINAL.2` covers these too.
+
+---
+
+## TRAINDEF — settable training defaults, and restart safeties on the viewer — filed 2026-09-04
+
+Gee (verbatim):
+
+> *"and we need traing defaults we can set and obviously with the teachviewer we need it to have restart safties and be ablke to have defualts for the different setttings yand nobs you adjust"*
+
+- [x] `TRAINDEF.1` — ✅ **BUILT + VERIFIED 2026-09-04 (20/20 on the boot apply · 30/30 on the state and the panel).** `server/knob-defaults.json` + `POST /knob-default`, applied at boot, announced loudly. **Ruling taken: *"Auto-apply, but loudly"*.**
+  - ⛔⛔ **THE APPLY RUNS BEFORE EVERY `require` IN `brain-server.js`, AND THAT IS THE WHOLE DESIGN.** A `boot` knob is read **once at module scope**, so its value is decided by whatever `process.env` holds when its module first loads. Applying after the requires would work for `live` knobs and **silently do nothing for the boot-frozen ones** — a settings panel where half the rows lie about being applied. Same placement and same reasoning as the `TZ` pin directly above it.
+  - ⭐ **A REAL ENVIRONMENT VALUE ALWAYS WINS** — the service unit stays authoritative. A default that loses is reported **`shadowed`**, never dropped silently: it is the reading that otherwise sends someone hunting a bug that does not exist, because the value is in the file, visible, and doing nothing.
+  - ⚠ **The announcement is stashed and printed after the console ring**, deliberately: logging at the apply site would put the most consequential boot line — **which knobs are not running code behaviour** — in the one place the public console tunnel cannot reach, on a box with no shell.
+  - **Operator data, protected like it:** gitignored, excluded from the deploy overlay, and **not in the fresh-walk wipe list** — true by construction, since that list is an explicit allowlist of named files rather than a pattern.
+  - ⭐ **Published as a NAMED METHOD (`_knobDefaultsState()`), not an inline thunk** — the same correction this file already took once. `applied` and `shadowed` **cannot be recomputed later**: they record what `process.env` held at the instant the first module loaded, and that instant is gone.
+
+  **Original filing:** **WE NEED TRAINING DEFAULTS WE CAN SET.** Gee (verbatim): *"we need traing defaults we can set"*. Today the only "default" that exists is the **code** fallback — the literal in the source that applies when the environment sets nothing. There is no default anyone can SET. ⛔ **And a live knob write does not survive a restart**, so every value tuned during a walk is silently discarded by the next press, which is the exact shape of a setting that looks applied and is not.
+  - **The gap in one line:** `↺ reset to default` compares against the code literal, and `⤓ save positions` writes a file the **browser** holds. Nothing on the box persists an operator-chosen value, so nothing survives a boot.
+  - ⚠ **The live-write lane already exists and already refuses honestly** (`POST /knob`, loopback-gated, boot-frozen knobs refuse rather than accept silently). This row is the persistence layer under it, not a new control surface.
+  - ⛔ **RE-PRICE applies if any default lands on a knob that bounds the walk.** `DREAM_PHASE_BUDGET_MS`, `DREAM_STRUCTURE_DOSE` and the consolidation gate are the ones that decide whether the walk is finite — a settable default on any of them is a gate change and must be priced before it ships, per `CONSTRAINTS.md §RE-PRICE THE WALK BEFORE REMOVING A GATE`.
+
+- [x] `TRAINDEF.2` — ✅ **BUILT + VERIFIED 2026-09-04.** Three safeties, run before every press.
+  - ⛔ **CHECKED AT THE PRESS, NOT READ OFF A POLL.** The weights listing refreshes every 30 s, and **a 30-second-old "no save running" is not a safety, it is a guess with a timestamp** — so the check re-asks the server immediately before firing.
+  - **The three:** a **checkpoint mid-write** (restarting through one leaves a half-written binary beside a complete ledger — the mismatched pair the restore route exists to refuse, except nobody would know to look); **live knob writes that will revert**, counted client-side because the server sees an environment value and **cannot tell a unit setting from a browser write a minute ago**; and **defaults waiting on this restart**, which is not a hazard but changes whether this is the press you wanted.
+  - ⛔ **A safety that cannot read its own signal SAYS SO** — never silently treated as all-clear, because that turns an unreadable instrument into a green light.
+  - **A STOP finding gets its own dialog** before the action's own confirm. Burying *"a checkpoint is being written right now"* inside a paragraph the reader has learned to click through would defeat the point.
+
+  **Original filing:** **RESTART SAFETIES ON THE TEACH VIEWER.** Gee (verbatim): *"with the teachviewer we need it to have restart safties"*. The presses landed today with confirmations and a measured-not-assumed verdict; what they do **not** have is a guard against firing at a bad moment.
+  - **The ones with a real signal behind them:** a **weights save in flight** (the download route already refuses during one, so the signal exists — a restart mid-checkpoint is how a half-written pair gets made); **live knob writes that will revert** on the restart the operator is about to fire; and a **press fired while another press is still in flight**, which is how a fresh walk gets aimed at a brain that was already restarting.
+  - ⛔ **A safety that cannot read its own signal must say so rather than pass.** The page's standing rule: "has not happened" and "cannot tell" never render the same.
+
+- [x] `TRAINDEF.3` — ✅ **BUILT + VERIFIED 2026-09-04.** Per-knob, across the whole panel — every row carries its own `◎ make default` and `✕ clear`, not one global baseline.
+  - ⭐ **OFFERED ON EVERY KNOB, INCLUDING THE BOOT-FROZEN ONES, and that is deliberate.** `POST /knob` refuses a live write to those with a 409, correctly, because such a write does nothing — **a default is the one thing that can actually set them.** Withholding it would have left ~40 knobs with no settable path at all, the opposite of what was asked for.
+  - **The two lanes make different promises and every surface says so:** `set` changes her now and is lost on restart; `◎ make default` changes nothing now and is what she starts with from here on. The server repeats it in its own reply.
+  - ⛔ **Three per-row states that never render alike:** *running this default* · *stored, but the environment overrides it — doing nothing* · *saved — takes effect at the next restart*.
+  - **A default can always be CLEARED** — a default you cannot remove is a trap, not a setting.
+  - ⚠ **Ruling taken on the gate knobs: *"allowed like any other knob"*** — no special handling, no pre-save re-price. **It composes with the "loudly" ruling**: a gate knob carrying a default is still named at boot, so a walk-length change is flagged rather than blocked.
+
+  **Original filing:** **DEFAULTS FOR THE DIFFERENT SETTINGS AND KNOBS YOU ADJUST.** Gee (verbatim): *"be ablke to have defualts for the different setttings yand nobs you adjust"*. Per-setting defaults across the whole panel — not one global baseline — so each knob carries a value somebody chose, distinct from the code literal it falls back to.
+  - **The panel already has the axis this needs:** every knob carries a `provenance` (set / derived / config / inherited / stale) and an `effect` class (live / cached / boot-frozen / unproven). ⛔ **A default on a boot-frozen knob and a default on a live knob are different promises** — one takes effect at the next boot, the other immediately — and the panel must not render them the same.
+
+---
 
 - [ ] `PREWALK.1` — **ANYTHING OBVIOUS THAT MAY HAVE REGRESSED, BEFORE WE WALK.** Gee (verbatim): *"and any thing obvious thay may have regressed before we freshwalk"*. ⚠ **Narrower and earlier than `REGRESSION.1`**, which is the full review and is explicitly the LAST item on the board — this one is the obvious-breakage sweep that has to happen *before* the press, because a fresh walk teaches from zero using whatever the code does at that moment.
   - **The changes to sweep are the ones that landed since the last press**, and the init-time ones matter most because they only ever take effect on this walk: the cross-projection wiring, the lamination change, the sem topographic removal, the attention head going live, the exam-gate split, the corrective teach, letter shapes, the graduation record, and the deferred-lane driver.
