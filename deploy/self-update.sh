@@ -246,23 +246,50 @@ _corpus_ok=0
 # minutes instead of hours, at the price of live-transforming figures during the
 # walk. Default stays 1 so nothing changes for a box that wants them.
 _want_fields="${UAL_FIELDS:-1}"
+# ⛔⛔ git-lfs IS NOT A PRECONDITION FOR THE BOOKS, AND GATING THEM ON IT WAS A
+# BRICK WAITING TO HAPPEN. `BrainWaves/.gitattributes` LFS-tracks exactly two
+# patterns — `*.field.json` and (historically) the GloVe table. EVERY corpus JSON
+# is a plain git blob and arrives with an ordinary checkout. This block used to
+# skip ENTIRELY when git-lfs was absent, which threw away the half that needs no
+# LFS at all and then walked straight into the books gate below.
+#
+# ⚠ NOTHING ON THIS BOX PROVISIONS git-lfs. `deploy/bootstrap-backend.sh` has no
+# install line for it, and this block has never run on the deployed box — it
+# landed after the last deploy. Its presence is UNVERIFIED, so the design rule is
+# that its absence must cost the FIELDS (non-fatal, live-transform covers them)
+# and never the BOOKS or the embeddings (fatal).
+_have_lfs=0
+if command -v git-lfs >/dev/null 2>&1 || git lfs version >/dev/null 2>&1; then _have_lfs=1; fi
 if [ "${UAL_SKIP_FIELDS:-0}" = "1" ]; then
   log "data sync SKIPPED ENTIRELY (UAL_SKIP_FIELDS=1) — using whatever books and fields are already on the box. NOTE: this skips the BOOKS too; use UAL_FIELDS=0 if you only meant to skip the 114 GB of field blobs."
-elif ! command -v git-lfs >/dev/null 2>&1 && ! git lfs version >/dev/null 2>&1; then
-  log "WARN — git-lfs NOT INSTALLED on this box. Skipping the data sync rather than filling the disk with pointer stubs. Install git-lfs to enable it."
 else
   FTMP="$(mktemp -d)"
+  if [ "$_have_lfs" != "1" ]; then
+    # ⛔ NOT A SKIP. The clone still runs and the books still land; only the LFS
+    # payloads are unavailable, and every one of those is non-fatal by design.
+    log "WARN — git-lfs is NOT installed on this box. The BOOKS are plain git blobs and are pulled anyway; only the wavelet field blobs are unavailable, and a missing field is transformed live. Install git-lfs to enable the field cache."
+    _want_fields=0
+  fi
   if [ "$_want_fields" = "1" ]; then
     log "data sync — pulling books + wavelet fields from ${DATA_REMOTE} (overwrites in place)"
   else
-    log "data sync — pulling BOOKS ONLY from ${DATA_REMOTE} (UAL_FIELDS=0). Field blobs are skipped; she will transform each figure live, which is slower per figure and costs no download."
+    log "data sync — pulling BOOKS ONLY from ${DATA_REMOTE}. Field blobs are skipped; she will transform each figure live, which is slower per figure and costs no download."
   fi
   # ⛔ `git lfs pull` IS THE 114 GB, NOT THE CLONE. The clone is
   # `--filter=blob:none` and therefore cheap whatever is in the repo; it is the
   # LFS fetch that pulls the field payloads. Restricting it with `-I` is what
   # actually saves the download — skipping the rsync afterwards would still have
   # paid for every byte.
+  # ⛔⛔ THIS FUNCTION'S EXIT STATUS DECIDES WHETHER THE BOOKS ARE RSYNCED, so on a
+  # box with no git-lfs it MUST succeed rather than fail. `git lfs pull` there
+  # exits non-zero ("git: 'lfs' is not a git command"), which would take the whole
+  # data sync down its failure branch and lose the corpus — over a payload that is
+  # optional by design and already declared non-fatal twenty lines above.
   _lfs_pull() {
+    if [ "$_have_lfs" != "1" ]; then
+      log "field blobs stay as pointers — no git-lfs on this box. The books are already checked out by the clone and are completely unaffected."
+      return 0
+    fi
     if [ "$_want_fields" = "1" ]; then ( cd "$FTMP/bw" && git lfs pull >> "$LOG" 2>&1 );
     else ( cd "$FTMP/bw" && git lfs pull -I 'corpora/**' >> "$LOG" 2>&1 ); fi
   }
@@ -287,7 +314,15 @@ else
     # a download" into "destroy the store". The skip path does not rsync at all.
     if [ "$_want_fields" != "1" ]; then
       _fkept="$(find "$FIELDS_DIR" \( -name '*.field.json' -o -name '*.field.json.gz' \) 2>/dev/null | wc -l | tr -d ' ')"
-      log "field sync SKIPPED (UAL_FIELDS=0) — ${_fkept} fields already on the box are LEFT UNTOUCHED; every figure without one is transformed live."
+      # ⚠ THE REASON IS NAMED. "UAL_FIELDS=0" and "this box has no git-lfs" are
+      # different facts with different fixes, and a log line that reports the
+      # operator's own switch when the real cause is a missing tool sends whoever
+      # reads it looking in the wrong place.
+      if [ "$_have_lfs" != "1" ]; then
+        log "field sync SKIPPED — no git-lfs on this box, so the source tree holds POINTER STUBS, not fields. ${_fkept} fields already on the box are LEFT UNTOUCHED (mirroring stubs over them would destroy the store); every figure without one is transformed live."
+      else
+        log "field sync SKIPPED (UAL_FIELDS=0) — ${_fkept} fields already on the box are LEFT UNTOUCHED; every figure without one is transformed live."
+      fi
     elif rsync -a --delete "$FTMP/bw/fields/" "$FIELDS_DIR/" >> "$LOG" 2>&1; then
       # ⚠ BOTH ENCODINGS COUNTED. Fields are written gzipped now, and a glob
       # anchored to the old name reported a healthy sync as zero fields — the
@@ -318,6 +353,39 @@ if [ "$_corpus_ok" != "1" ]; then
   fi
   log "corpus: sync did not run, but ${_have} academic cells are already on the box — continuing with those."
 fi
+
+# ⛔⛔ THE EMBEDDINGS GATE. The books gate above counts `corpora/academic/*.json`
+# and NOTHING else, so a box with a full library and no GloVe table sails through
+# it and gets restarted into a boot that cannot complete — `brain-server.js`
+# answers a failed `loadPreTrained()` with "Boot STOPS here by design (NO
+# FALLBACKS)", and with `Restart=always` in the unit that is a crash loop, not an
+# error message. A gate standing in front of an irreversible press has to refuse
+# EVERY certain-crash it can already see, not one of them.
+#
+# ⛔ AND A POINTER STUB IS A REAL FILE. If GloVe is ever LFS-tracked again and
+# this box has no git-lfs, `corpora/glove.6B.300d.txt` exists, is readable, and is
+# 135 bytes of pointer text — an existence check calls that healthy and the boot
+# dies on it anyway. Both the size and the first line are checked, because they
+# catch different failures: a stub, and a transfer that stopped halfway.
+#
+# ⚠ IT ABORTS BEFORE `.force-fresh` IS WRITTEN, exactly like the books gate — so a
+# refusal here can never cost the trained weights.
+_GLOVE="${CORPORA_DIR}/glove.6B.300d.txt"
+_GLOVE_MIN_BYTES="${UAL_GLOVE_MIN_BYTES:-100000000}"
+if [ ! -f "$_GLOVE" ]; then
+  log "FATAL — the GloVe embedding table is MISSING at ${_GLOVE}. The boot reads it before anything else and stops hard without it (NO FALLBACKS), so restarting now would produce a crash loop rather than a walk. ABORTING before .force-fresh is written; the trained weights are untouched and the service keeps running. Fix the data repo pull (${DATA_REMOTE}) and press again."
+  exit 1
+fi
+_gbytes="$(wc -c < "$_GLOVE" 2>/dev/null | tr -d ' ')"
+if [ "${_gbytes:-0}" -lt "$_GLOVE_MIN_BYTES" ]; then
+  if head -c 40 "$_GLOVE" 2>/dev/null | grep -q 'git-lfs'; then
+    log "FATAL — ${_GLOVE} is a GIT-LFS POINTER STUB (${_gbytes} bytes), not the embedding table. It is a real file, so nothing else would have noticed; the boot would read it, fail to parse a single vector, and stop by design. Install git-lfs on this box or un-LFS that file in ${DATA_REMOTE}. ABORTING before .force-fresh — weights untouched."
+  else
+    log "FATAL — ${_GLOVE} is only ${_gbytes} bytes against a ${_GLOVE_MIN_BYTES}-byte floor; the real table is about 1.04 GB. This is a truncated or partial transfer, and the boot stops hard on it. ABORTING before .force-fresh — weights untouched."
+  fi
+  exit 1
+fi
+log "embeddings OK — GloVe present at ${_GLOVE} (${_gbytes} bytes); the boot's hardest precondition is satisfied."
 
 # SAVESTART vs FRESH WALK. In fresh-walk mode (default) we write .force-fresh
 # so the brain-server's autoClearStaleState wipes trained state at boot

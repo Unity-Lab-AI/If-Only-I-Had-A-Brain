@@ -377,6 +377,7 @@ Pollinations       → brain-side code only (the CLI plugin was removed 2026-08-
 | Fact | Consequence |
 |---|---|
 | **`deploy.yml` rsyncs the FRONTEND on every push; the node process restarts only on a press** | The page can be current while the server is old. A running server was found at `7ce77189` with `main` 15+ commits ahead |
+| **A press runs the BOX's copy of `deploy/self-update.sh`, not `main`'s** | `brain-server.js` resolves it from `__dirname`. The new script only takes effect on the press AFTER the one that delivers it — so **when the box's commit and `main` disagree, the press is a TWO-PRESS sequence.** Found 2026-09-04: the box's copy predated ONEREPO, had no `--exclude 'corpora'`, and would have `--delete`d the books and GloVe off the box, then restarted into a boot that stops by design. **Diff that commit's script against `main`'s before pressing** |
 | **The neuron count is DERIVED AT BOOT from free host RAM** | It is not a property of the brain. The same code booted at 425,436,550 and 411,216,550. Quote `state.totalNeurons` with the boot that produced it, never a constant |
 | **`DREAM_KEEP_STATE` unset = WIPE** | `start.*` boots fresh; only `Savestart.*` resumes. Setting it wrong costs the whole run |
 | **A stage tag whose AGE CLIMBS means the blocker is UNMARKED code** | `_tstage` is never nulled, so a stale tag names the wrong culprit |
