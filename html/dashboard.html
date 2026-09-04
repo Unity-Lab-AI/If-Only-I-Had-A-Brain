@@ -4314,6 +4314,13 @@
         if (u.memoryBytes) bits.push(`${(u.memoryBytes / 1073741824).toFixed(1)} GB`);
         if (typeof u.nRestarts === 'number' && u.nRestarts > 0) bits.push(`${u.nRestarts} restarts`);
         if (st && st.portOpen === false && phase !== 'offline' && phase !== 'halted') bits.push('port closed');
+        // ⛔ LISTENING BUT NOT ANSWERING. `phase` stays 'online' on purpose so the
+        // power buttons below remain enabled, which means the title alone would
+        // read as a healthy brain during a total outage — exactly what happened on
+        // 2026-09-04, when the panel said "Brain online" while nothing served.
+        // The meta line is where that gets contradicted.
+        if (st && st.loopPinned && phase === 'online') bits.push('⛔ NOT ANSWERING (loop pinned)');
+        else if (st && typeof st.respondedMs === 'number' && st.respondedMs >= 1000) bits.push(`slow: ${st.respondedMs}ms`);
         elMeta.textContent = bits.join(' · ');
 
         // Only offer actions that make sense for the current phase. Offering
