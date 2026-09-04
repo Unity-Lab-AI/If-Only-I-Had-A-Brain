@@ -2,6 +2,11 @@
 
 > ## ⭐⭐⭐ 2026-09-04 LATEST (PICK UP HERE) THREE QUARTERS OF EVERY LAMINATED PROJECTION WAS BORN DEAD
 >
+> ### ✅ THE CORPUS IS ON BRAINWAVES — `8e705652`, 212 cells · 8,447 entries · 65,794,913 words
+> Staged `corpora/` **explicitly**, per that repo's README. **4 added, 61 modified, ZERO deletions, nothing outside `corpora/`**; all **26,359 fields verified still tracked** afterwards.
+> ⛔⛔ **READ THIS BEFORE RUNNING ANY GIT COMMAND IN BRAINWAVES: the ~26,238 `D` entries `git status` shows there are NOT REAL.** The field producer writes a field, uploads it, and **deletes the local copy immediately** — by design, so a field exists exactly twice in the world. The working tree holds a few hundred files against **26,359 tracked**. **`git commit -a` or `git add -A` at that root would delete 114 GB of wavelet fields and look like a perfectly ordinary commit while doing it.** Stage paths explicitly, every time.
+> ⏳ **The book lane's books are NOT in that push** — a second sync is owed when it finishes.
+>
 > ### ✅ COVERAGE MOVED TWICE TODAY — 128/65 → 145 OK / 48 THIN / 0 EMPTY
 > LibreTexts landing took it to 133/60; **twelve hand-extended topic lists took it to 145/48.** ⛔ **And the auditor's own verdict is `PASS — every cell the walk runs has a lane and content`, so state it plainly: the walk can already run start to finish. THIN is about how much she learns, not whether the walk completes.**
 > ⛔ **The constraint on those cells was NOT the one the board had on record.** `CURVEBUILD.6` said the binding constraint is the topic LIST — true then, false for these: `pe/grade4` held **all 28** of its declared topics and still sat at 17,578, i.e. **~628 words per article.** The lists were not short, **the articles were.** ~150 topics added, `--only-missing`, **`SKIPPED BY REASON — none` on all thirteen runs.**
