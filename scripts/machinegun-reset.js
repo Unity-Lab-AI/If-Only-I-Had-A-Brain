@@ -187,10 +187,82 @@
     return fire('update', 'FRESH WALK (WIPES ALL TRAINING)');
   };
 
+  /* ---------------------------------------------------------------------------
+   * WAIT-THEN-FIRE. Take the confirmation NOW, fire LATER, when it is safe.
+   *
+   * The problem this solves: on 2026-09-04 the brain was pinned for hours by a
+   * running self-update.sh, and firing a press into that spawns a SECOND deploy
+   * doing a --delete rsync into the same directory at the same time. That is the
+   * one action of the night that could corrupt the install rather than merely
+   * fail. So the operator had to sit and poll by hand, waiting for a window.
+   *
+   * !! THE SAFE-TO-FIRE SIGNAL IS portOpen COMING BACK AND STAYING BACK. The
+   * brain is pinned because the deploy is saturating the disk it shares; when
+   * the deploy ends - completes, fails, or dies - the contention stops and the
+   * brain starts answering again. So portOpen=true is a proxy for "no deploy is
+   * running", which is exactly the precondition.
+   *
+   * !! IT REQUIRES THE SIGNAL TWICE, CONSECUTIVELY. That night the brain flapped:
+   * brief serving windows inside long pinned stretches. A single portOpen=true
+   * could be one of those windows rather than a real recovery, and firing into
+   * it would put us straight back into the overlapping-deploy case.
+   */
+  G.armWhenReady = function (verb, label) {
+    var CONSEC = 2;          // consecutive good readings required
+    var GAP_MS = 300000;     // 5 min apart - a flap is far shorter than this
+    var MAX_WAIT_MS = 21600000; // 6 h, then stop rather than wait forever
+    var seen = 0;
+    var until = Date.now() + MAX_WAIT_MS;
+    G.stop = false;
+    log('WAITING for the box to be safe to press, then firing ' + label + '.');
+    log('  needs portOpen=true on ' + CONSEC + ' consecutive checks '
+      + (GAP_MS / 60000) + ' min apart.');
+    log('  kill switch: __mg.stop = true');
+    function tick() {
+      if (G.stop) { log('wait cancelled.', '#fc0'); return; }
+      if (Date.now() > until) {
+        log('GAVE UP WAITING after ' + (MAX_WAIT_MS / 3600000) + ' h - never saw a', '#f88');
+        log('sustained window. Nothing was fired. Check __mg.status().', '#f88');
+        return;
+      }
+      getStatus().then(function (j) {
+        if (j && !j.__auth && j.portOpen === true) {
+          seen++;
+          log('  ready ' + seen + '/' + CONSEC + ' (portOpen=true, phase=' + j.phase + ')');
+          if (seen >= CONSEC) {
+            log('BOX IS READY - firing ' + label + ' now.', '#6f6');
+            fire(verb, label);
+            return;
+          }
+        } else {
+          if (seen > 0) log('  ...lost it (that was a flap, not a recovery) - counter reset.', '#fc0');
+          seen = 0;
+        }
+        setTimeout(tick, GAP_MS);
+      });
+    }
+    tick();
+  };
+
+  G.freshWalkWhenReady = function () {
+    // Same two confirmations as the immediate version, taken UP FRONT - consent
+    // is given now even though the press happens later.
+    if (!window.confirm('FRESH WALK when the box frees up - pull new code and WIPE ALL TRAINING?\n\n'
+      + 'Nothing fires now. It waits until no deploy is running, then presses.\n\n'
+      + 'Every trained weight, episode and schema is destroyed.\n'
+      + 'There is no way back.')) { log('cancelled.', '#fc0'); return; }
+    var t = window.prompt('Type  WIPE  to arm the delayed fresh walk:');
+    if (String(t || '').trim().toUpperCase() !== 'WIPE') {
+      log('cancelled at the second confirmation.', '#fc0'); return;
+    }
+    return G.armWhenReady('update', 'FRESH WALK (WIPES ALL TRAINING)');
+  };
+
   log('ARMED - nothing has been fired.');
-  log('  __mg.restart()     keeps weights');
+  log('  __mg.freshWalkWhenReady()  <- WAITS for the box, then wipes+walks');
+  log('  __mg.freshWalk()   fire NOW, new code, WIPES ALL TRAINING');
   log('  __mg.savestart()   new code, keeps weights');
-  log('  __mg.freshWalk()   new code, WIPES ALL TRAINING (asks twice)');
+  log('  __mg.restart()     keeps weights');
   log('  __mg.status()      one reading');
   log('  __mg.stop = true   kill switch');
   G.status();
