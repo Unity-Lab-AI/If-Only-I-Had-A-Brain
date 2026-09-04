@@ -12186,8 +12186,7 @@ var LanguageCortex = class {
     } catch {
     }
     if (cluster && typeof cluster.generateSentence === "function") {
-      const curriculumDone = cluster.intentCentroids && cluster.intentCentroids.size > 0 || Array.isArray(cluster.passedPhases) && cluster.passedPhases.length > 0 || Array.isArray(cluster.passedCells) && cluster.passedCells.length > 0 || cluster.grades && typeof cluster.grades === "object" && Object.values(cluster.grades).some((g) => g && g !== "pre-K");
-      if (curriculumDone && cluster._gpuProxyReady) {
+      {
         let intentSeed = null;
         if (cluster._lastUserInputEmbedding && cluster._lastUserInputEmbedding.length > 0) {
           intentSeed = cluster._lastUserInputEmbedding;

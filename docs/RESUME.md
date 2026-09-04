@@ -64,6 +64,11 @@
 > **Owed 1,999,649 → 1,796,637 · `major` 514,295 → 373,432.** BrainWaves `140342d1`, **0 deletions, 26,359 fields verified intact.**
 > ⏳ **`cstheory` 612,443 is now the largest single debt left**, in `college2` (213,160) and `college1` (182,433). They want **discrete maths / algorithms / theory-of-computation** texts; the strongest candidate (Barak) is **CC-BY-NC-ND** and refused.
 >
+> ### ⭐⭐ THE CORPUS IS FED — owed 4,951,331 → **1,149,894** across the day
+> **The last win was ROUTING, not fetching.** LibreTexts sent every CS book to `cssystems`, whose cells were all at the 2-book cap, so the area **delivered nothing** while `cstheory` owed 612,443 with **zero books from the lane**. ⚠ **An unreachable subject and a thin one read identically on the board.**
+> ⛔ **My first re-route was wrong and the book TITLES caught it in one `--list` run** — it offered `cstheory` Pygame, Fortran and Linux. **A cell filled with the wrong content is worse than one left thin, because the thin one still says it is thin.** Corrected: programming → `major`, discrete-maths/logic → `cstheory`, re-priced first.
+> **`major` 514,295 → 55,144, four of six cells CLEARED. `cstheory` 652,874 → 283,988.** BrainWaves **`1e09d3d1`**, 0 deletions, **26,359 fields verified intact**.
+>
 > ### NEXT — in order
 > - **`PREWALK.1`** — the obvious-regression sweep, which has to happen *before* the press.
 > - **`NOFALLBACK.5`** — the RE-PRICE, immediately before the press, by law.
