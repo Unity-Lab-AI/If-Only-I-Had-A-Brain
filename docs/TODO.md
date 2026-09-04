@@ -4040,3 +4040,23 @@ Gee pressed both buttons. **Neither the walk nor the corpus is on the box, and t
   - ⭐ **THE ONE-LINE VERSION: nothing tonight was hard; everything tonight was invisible.** The deploy key took **30 seconds** to fix once we could see it was the problem — and seeing that took hours, three failed token attempts, and a lucky window in a 60-line console ring.
   - ⛔ **AND IT WILL RECUR EXACTLY.** `deploy/bootstrap-backend.sh` provisions **nothing** for the data repo, so a rebuilt box reproduces the whole night. That is the highest-value shell fix and it is two lines.
   - ⚠ **NOT A REQUEST FOR SHELL ACCESS** — the dashboard-only constraint is deliberate and the instruments should be good enough without it. This row is the measured cost of the ones that were not, so the next round of instrument work is aimed by evidence rather than by taste.
+
+## MGCONFIRM — the machine gun asked for the confirmation and never sent it — filed 2026-09-04
+
+Gee (verbatim, pasting the console):
+
+```
+__mg.freshWalk()
+Promise {<pending>}
+VM63:59 [machinegun] baseline activeEnter = Fri 2026-09-04 10:37:04 UTC
+VM63:59 [machinegun] firing FRESH WALK (WIPES ALL TRAINING) (POST /ctl/update), one at a time.
+VM63:59 [machinegun] attempt 1/8 - POST /ctl/update
+VM63:59 [machinegun]   -> http 200 {  "ok": false,  "action": "update",  "mode": "fresh-walk",  "refused": true,  "needsConfirm": "WIPE",  "message": "Refused: UPDATE +
+VM63:59
+```
+
+- [x] `MGCONFIRM.1` — ✅ **FIXED + 26/26 EXERCISED 2026-09-04** (full entry in `docs/FINALIZED.md` §MGCONFIRM). The token now rides `?confirm=WIPE`; `restart`/`update-savestart` still carry none, deliberately, and that is asserted rather than assumed. ⭐ **The interlock itself worked exactly as built** — added 2026-08-26 after a probe destroyed a running walk's weights, it stood between a mis-built client and the same outcome. **Original filing:** ⛔ **THE CEREMONY RAN AND THE PAYLOAD DID NOT.** `freshWalk()` takes two confirmations — a dialog, then a typed `WIPE` — and then calls `fire('update', ...)`, which POSTs with **no body and no query string**. `brain-ctl.js:803` requires `confirmToken === 'WIPE'`, so the server refused, correctly. **The operator typed the word; it was never put on the wire.** The interlock worked exactly as designed; the client never participated in it.
+
+- [x] `MGCONFIRM.2` — ✅ **FIXED 2026-09-04** (full entry in `docs/FINALIZED.md` §MGCONFIRM). `terminalRefusal()` stops the retrier on `refused === true` and echoes the server's own message; `busy` still retries, driven by a harness case. ⭐ **The generalisable shape: "ignore the response" is a rule about AMBIGUITY, and it silently swallowed an unambiguous answer.** **Original filing:** ⛔ **A STRUCTURED REFUSAL WAS TREATED AS AN AMBIGUOUS OUTCOME, AND THAT IS THE WORSE BUG.** `step()` documents *"the response is logged and then IGNORED. Only `activeEnter` decides."* That rule is right for a dropped connection — a working press and an unreachable server look identical from a browser. ⛔ **It is wrong for `{"refused":true}`**, which is the server stating a deterministic verdict. The retrier would have burned **8 attempts × 5 min = 40 minutes** re-sending a request that can never succeed, printing "not landed — re-arming" the whole time. **Narrow the rule: ignore the response UNLESS it is a structured refusal.** ⚠ `busy: true` is the opposite case — genuinely transient — and must keep retrying.
+
+- [x] `MGCONFIRM.3` — ✅ **ESTABLISHED 2026-09-04** (full entry in `docs/FINALIZED.md` §MGCONFIRM). The control plane is reachable, authenticated and answering while the brain still returns `upstream-unreachable`. **Original filing:** ⭐ **WHAT THE REFUSAL PROVES, AND IT IS THE FIRST GOOD NEWS IN HOURS.** `http 200` with a parsed JSON body from `/ctl/update` means **the control plane is reachable, authenticated and answering** while the brain itself is still `upstream-unreachable`. That is the always-up sibling service doing precisely the job it was built for. **The press lane is open; only the payload was wrong.**
