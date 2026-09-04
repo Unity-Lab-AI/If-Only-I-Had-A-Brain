@@ -1,6 +1,40 @@
 # RESUME — Session Pickup Brief
 
-> ## 🟡 2026-09-04 ARMED AND WAITING — AND A CATALOGUE OF WHAT A SHELL WOULD HAVE FIXED IN MINUTES (LATEST — PICK UP HERE)
+> ## 🟢 2026-09-04 THE PRESS LANE IS OPEN — THE MACHINE GUN WAS FIRING BLANKS (LATEST — PICK UP HERE)
+>
+> ### ⛔ STATE
+> ```
+> branch                   feature/mgconfirm  -> cascade to develop -> main
+> brain HTTP               public-state.json 200, body = brainOffline:true, upstream-unreachable
+> /ctl/update              http 200 with a PARSED JSON REFUSAL  <- the control plane is ALIVE
+> unit                     activeEnter 10:37:04 UTC (unchanged) - no boot has happened
+> self-update.sh spawned   12:41 UTC · now ~15:40 UTC · elapsed ~3h0m
+> estimate                 114 GB @ ~5 MB/s = 6.3 h  ->  finishes ~19:00 UTC
+> weights                  INTACT
+> ```
+>
+> ### ⭐⭐ THE GOOD NEWS, AND IT ARRIVED DISGUISED AS AN ERROR
+> Gee fired `__mg.freshWalk()` and got `http 200 {"refused":true,"needsConfirm":"WIPE"}`. **That refusal is the most useful reading of the day:** the control plane is reachable, authenticated and answering *while the brain itself is unreachable* — which is precisely the job that always-up sibling service exists to do. **The press lane was open the whole time. Only the payload was wrong.**
+>
+> ### ⛔ TWO DEFECTS IN MY OWN TOOL, BOTH FOUND BY FIRING IT AT THE REAL BOX
+> 1. **The confirmation was collected and never sent.** `freshWalk()` asks twice — a dialog, then a typed `WIPE` — and then POSTed with **no body and no query string**. `/ctl/update` requires `confirm=WIPE` and refused, correctly. ⭐ **The interlock worked exactly as built** — it was added 2026-08-26 after a probe of that endpoint ran a real fresh-walk deploy and destroyed a running walk's weights. Tonight it stood between a mis-built client and the same outcome. **The defect was entirely on my side.**
+> 2. **A structured refusal was treated as an ambiguous outcome — the worse bug.** The tool's rule was *"ignore the response, only `activeEnter` decides"*, which is **right** for a dropped connection (a working press and an unreachable server look identical from a browser) and **wrong** for `{"refused":true}`. It would have spent **8 attempts × 5 min = 40 minutes** re-sending an impossible request and ended on `GAVE UP` — a cannot-tell verdict over an outcome the server had stated in full on attempt 1.
+>
+> ⭐ **The generalisable shape: "ignore the response" is a rule about AMBIGUITY, and it silently swallowed an unambiguous answer.**
+>
+> ### ✅ FIXED — v3, 26/26 against the REAL script body
+> The file is read off disk and run in a mocked browser on a **virtual clock**, so 5-minute deadlines resolve instantly. The mock reproduces `brain-ctl.js`'s actual contract. ⭐ **Including the case that would otherwise have failed silently hours later, unattended: the delayed `freshWalkWhenReady()` path carries the token through the wait.**
+>
+> ⚠ **The mirror check needed fixing too.** A raw `diff` of the `.js` and `.txt` copies reported **all 337 lines changed** — `core.autocrlf` had left one CRLF and one LF. **Both stage to the same blob (`6411c81e…`).** Same lesson as the bundle "staleness": *a byte comparison across a checkout boundary measures line endings, not content.* **Verify a mirror by staged blob hash.**
+>
+> ### NEXT
+> - **Cascade `feature/mgconfirm`**, then **re-paste the script** — the armed tab is running v2 and its delayed fire would refuse exactly the same way.
+> - ⏳ **We are ~3 h into a ~6.3 h estimate.** Nothing about the current reading says wedged; it also does not say working. That is `SHELLGAP.1`, unchanged.
+> - **The finish line is `activeEnter` leaving `10:37:04`.** Nothing else counts.
+>
+> ---
+>
+> ## 🟡 2026-09-04 ARMED AND WAITING — AND A CATALOGUE OF WHAT A SHELL WOULD HAVE FIXED IN MINUTES
 >
 > ### ⛔ STATE
 > ```

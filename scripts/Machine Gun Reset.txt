@@ -1,4 +1,4 @@
-/* UNITY MACHINE GUN v2 - paste into the browser console (F12) on ANY page of
+/* UNITY MACHINE GUN v3 - paste into the browser console (F12) on ANY page of
  * https://if-only-i-had-a-brain.git.unityailab.com
  * ASCII only. Short lines. Nothing here can be broken by copy-wrap.
  *
@@ -44,6 +44,21 @@
  * restarted. A brain that merely starts answering again with the SAME
  * activeEnter has NOT restarted - that case fooled a human that night and this
  * tool reports it as not-landed.
+ *
+ * ---------------------------------------------------------------------------
+ * v3 - TWO FIXES, FOUND BY FIRING IT AT THE REAL BOX
+ *
+ * (1) THE CONFIRMATION IS NOW SENT. v2 asked the operator to type WIPE, got it,
+ *     and POSTed with no body and no query string. /ctl/update requires
+ *     confirm=WIPE and refused every attempt - correctly. The interlock worked;
+ *     the client never participated in it. The word was typed and thrown away.
+ *
+ * (2) A STRUCTURED REFUSAL IS NO LONGER RETRIED. "Ignore the response, only
+ *     activeEnter decides" is right for a dropped connection and WRONG for
+ *     {"refused":true}, which is a deterministic verdict. v2 would have spent
+ *     8 attempts x 5 min = 40 minutes re-sending a request that could never
+ *     succeed, printing "not landed - re-arming" throughout. `busy` is the
+ *     opposite case - transient - and still retries.
  */
 (function () {
   'use strict';
@@ -115,7 +130,19 @@
     });
   }
 
-  function fire(verb, label) {
+  /* !! `query` CARRIES THE CONFIRMATION TOKEN, AND IT IS NOT OPTIONAL DECORATION.
+   * /ctl/update and /ctl/reset both refuse unless they receive confirm=WIPE.
+   * v2 asked the operator to type WIPE, got it, and then POSTed with no body and
+   * no query string - so the server refused every time, correctly, and the tool
+   * reported "not landed" 8 times over 40 minutes. The word was typed and never
+   * put on the wire.
+   *
+   * Sent on the QUERY STRING rather than as a JSON body on purpose: the handler
+   * accepts either (brain-ctl.js reads body.confirm || ?confirm=), and a POST
+   * with a JSON Content-Type is not a "simple request", so it drags in a CORS
+   * preflight that a bare POST does not need.
+   */
+  function fire(verb, label, query) {
     if (G.busy) { log('already firing - use __mg.stop=true first.', '#fc0'); return; }
     G.busy = true; G.stop = false; G.attempts = 0; G.verdict = null;
     return getStatus().then(function (j) {
@@ -130,12 +157,35 @@
       }
       G.baseline = j.unit.activeEnter;
       log('baseline activeEnter = ' + G.baseline);
-      log('firing ' + label + ' (POST /ctl/' + verb + '), one at a time.');
-      return step(verb, label);
+      log('firing ' + label + ' (POST /ctl/' + verb + (query || '') + '), one at a time.');
+      return step(verb, label, query);
     });
   }
 
-  function step(verb, label) {
+  /* A server verdict that is DETERMINISTIC. Returns a reason string, or null if
+   * the response says nothing conclusive.
+   *
+   * !! THIS NARROWS step()'s "ignore the response" RULE, WHICH WAS TOO BROAD.
+   * Ignoring the response is right for a dropped connection - a working press
+   * and an unreachable server look identical from a browser, which is why only
+   * activeEnter is trusted. It is WRONG for {"refused":true}: that is the server
+   * stating an outcome that will not change on a retry, and re-sending it 8
+   * times is 40 minutes of "not landed - re-arming" over a request that cannot
+   * ever succeed.
+   *
+   * !! `busy` is deliberately NOT terminal. Another power action being in flight
+   * is transient by definition, and retrying is exactly the right response.
+   */
+  function terminalRefusal(text) {
+    var j = null;
+    try { j = JSON.parse(text); } catch (e) { return null; }
+    if (!j || j.refused !== true) return null;
+    var why = String(j.message || 'the server refused this action.');
+    if (j.needsConfirm) why += ' [needsConfirm=' + j.needsConfirm + ']';
+    return why;
+  }
+
+  function step(verb, label, query) {
     if (G.stop) { log('stopped.', '#fc0'); G.busy = false; return; }
     if (G.attempts >= MAX_ATTEMPTS) {
       G.verdict = 'GAVE UP'; G.busy = false;
@@ -147,25 +197,34 @@
       return;
     }
     G.attempts++;
-    log('attempt ' + G.attempts + '/' + MAX_ATTEMPTS + ' - POST /ctl/' + verb);
-    return fetch(CTL + verb, { method: 'POST', cache: 'no-store' })
+    log('attempt ' + G.attempts + '/' + MAX_ATTEMPTS + ' - POST /ctl/' + verb + (query || ''));
+    return fetch(CTL + verb + (query || ''), { method: 'POST', cache: 'no-store' })
       .then(function (r) {
         return r.text().then(function (t) { return { s: r.status, t: t }; });
       })
       .catch(function (e) { return { s: 0, t: String((e && e.message) || e) }; })
       .then(function (res) {
-        // A dropped connection is what a WORKING press looks like from a
-        // browser - and also what an unreachable server looks like. So the
-        // response is logged and then IGNORED. Only activeEnter decides.
         log('  -> http ' + res.s + ' ' + String(res.t).slice(0, 140));
+        // A REFUSAL IS AN ANSWER. Stop, and say what the server said.
+        var refused = terminalRefusal(res.t);
+        if (refused) {
+          G.verdict = 'REFUSED';
+          log('SERVER REFUSED - not retrying. This will not change on a retry.', '#f88');
+          log('  ' + refused, '#f88');
+          return 'refused';
+        }
+        // Otherwise: a dropped connection is what a WORKING press looks like
+        // from a browser - and also what an unreachable server looks like. So
+        // the response is logged and then IGNORED. Only activeEnter decides.
         log('  watching activeEnter for ' + (WAIT_MS / 60000) + ' min...');
         return watch(Date.now() + WAIT_MS);
       })
       .then(function (ok) {
+        if (ok === 'refused') { G.busy = false; return; }
         if (ok) { G.busy = false; return; }
         if (G.stop) { G.busy = false; return; }
         log('  not landed - re-arming.', '#fc0');
-        return step(verb, label);
+        return step(verb, label, query);
       });
   }
 
@@ -184,7 +243,8 @@
     if (String(t || '').trim().toUpperCase() !== 'WIPE') {
       log('cancelled at the second confirmation.', '#fc0'); return;
     }
-    return fire('update', 'FRESH WALK (WIPES ALL TRAINING)');
+    // !! The typed word goes ON THE WIRE. v2 collected it and threw it away.
+    return fire('update', 'FRESH WALK (WIPES ALL TRAINING)', '?confirm=WIPE');
   };
 
   /* ---------------------------------------------------------------------------
@@ -207,7 +267,7 @@
    * could be one of those windows rather than a real recovery, and firing into
    * it would put us straight back into the overlapping-deploy case.
    */
-  G.armWhenReady = function (verb, label) {
+  G.armWhenReady = function (verb, label, query) {
     var CONSEC = 2;          // consecutive good readings required
     var GAP_MS = 300000;     // 5 min apart - a flap is far shorter than this
     var MAX_WAIT_MS = 21600000; // 6 h, then stop rather than wait forever
@@ -231,7 +291,7 @@
           log('  ready ' + seen + '/' + CONSEC + ' (portOpen=true, phase=' + j.phase + ')');
           if (seen >= CONSEC) {
             log('BOX IS READY - firing ' + label + ' now.', '#6f6');
-            fire(verb, label);
+            fire(verb, label, query);
             return;
           }
         } else {
@@ -255,7 +315,7 @@
     if (String(t || '').trim().toUpperCase() !== 'WIPE') {
       log('cancelled at the second confirmation.', '#fc0'); return;
     }
-    return G.armWhenReady('update', 'FRESH WALK (WIPES ALL TRAINING)');
+    return G.armWhenReady('update', 'FRESH WALK (WIPES ALL TRAINING)', '?confirm=WIPE');
   };
 
   log('ARMED - nothing has been fired.');
