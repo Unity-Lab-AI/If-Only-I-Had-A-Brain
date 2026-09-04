@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "language",
+ "grade": "grade6",
+ "sample": 14,
+ "poolSize": 17,
+ "themes": 14,
+ "questions": [
+  {
+   "q": "what is a spanish",
+   "a": "language",
+   "variants": [
+    "language"
+   ],
+   "standard": "language/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a conjugation",
+   "a": "creation",
+   "variants": [
+    "creation"
+   ],
+   "standard": "language/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a tense",
+   "a": "category",
+   "variants": [
+    "category"
+   ],
+   "standard": "language/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a pronoun",
+   "a": "category",
+   "variants": [
+    "category"
+   ],
+   "standard": "language/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a adjective",
+   "a": "word",
+   "variants": [
+    "word"
+   ],
+   "standard": "language/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a spain",
+   "a": "democracy",
+   "variants": [
+    "democracy"
+   ],
+   "standard": "language/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a imperfect",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "language/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a present perfect",
+   "a": "combination",
+   "variants": [
+    "combination"
+   ],
+   "standard": "language/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a clause",
+   "a": "phrase",
+   "variants": [
+    "phrase"
+   ],
+   "standard": "language/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a vocabulary acquisition",
+   "a": "aspect",
+   "variants": [
+    "aspect"
+   ],
+   "standard": "language/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a idiom",
+   "a": "expression",
+   "variants": [
+    "expression"
+   ],
+   "standard": "language/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a association football",
+   "a": "spain",
+   "variants": [
+    "spain"
+   ],
+   "standard": "language/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mexico",
+   "a": "country",
+   "variants": [
+    "country"
+   ],
+   "standard": "language/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a brazil",
+   "a": "country",
+   "variants": [
+    "country"
+   ],
+   "standard": "language/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

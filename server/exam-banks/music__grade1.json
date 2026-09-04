@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "music",
+ "grade": "grade1",
+ "sample": 14,
+ "poolSize": 20,
+ "themes": 11,
+ "questions": [
+  {
+   "q": "what is a music",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "music/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a musical instrument",
+   "a": "device",
+   "variants": [
+    "device"
+   ],
+   "standard": "music/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a soundboard",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "music/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a drum",
+   "a": "instrument",
+   "variants": [
+    "instrument"
+   ],
+   "standard": "music/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a loudness",
+   "a": "perception",
+   "variants": [
+    "perception"
+   ],
+   "standard": "music/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a wind instrument",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "music/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a concert tour",
+   "a": "series",
+   "variants": [
+    "series"
+   ],
+   "standard": "music/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a lullaby",
+   "a": "song",
+   "variants": [
+    "song"
+   ],
+   "standard": "music/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a dancing",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "music/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a music education",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "music/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a orchestra",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "music/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a rhythm",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "music/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a lyre",
+   "a": "instrument",
+   "variants": [
+    "instrument"
+   ],
+   "standard": "music/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a drum kit",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "music/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

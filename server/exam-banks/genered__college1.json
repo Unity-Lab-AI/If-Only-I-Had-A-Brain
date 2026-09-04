@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "genered",
+ "grade": "college1",
+ "sample": 14,
+ "poolSize": 108,
+ "themes": 61,
+ "questions": [
+  {
+   "q": "what is a critical thinking",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "genered/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a logic",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "genered/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a rhetoric",
+   "a": "art",
+   "variants": [
+    "art"
+   ],
+   "standard": "genered/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a moral psychology",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "genered/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a epistemology",
+   "a": "branch",
+   "variants": [
+    "branch"
+   ],
+   "standard": "genered/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a hypothesis",
+   "a": "knowledge",
+   "variants": [
+    "knowledge"
+   ],
+   "standard": "genered/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a statistics",
+   "a": "discipline",
+   "variants": [
+    "discipline"
+   ],
+   "standard": "genered/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a market",
+   "a": "institution",
+   "variants": [
+    "institution"
+   ],
+   "standard": "genered/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a why",
+   "a": "cost",
+   "variants": [
+    "cost"
+   ],
+   "standard": "genered/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a elasticity",
+   "a": "concept",
+   "variants": [
+    "concept"
+   ],
+   "standard": "genered/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a price elasticity",
+   "a": "ratio",
+   "variants": [
+    "ratio"
+   ],
+   "standard": "genered/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a coffee",
+   "a": "crop",
+   "variants": [
+    "crop"
+   ],
+   "standard": "genered/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a market structure",
+   "a": "concept",
+   "variants": [
+    "concept"
+   ],
+   "standard": "genered/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a profit",
+   "a": "difference",
+   "variants": [
+    "difference"
+   ],
+   "standard": "genered/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

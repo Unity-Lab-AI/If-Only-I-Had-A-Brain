@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "math",
+ "grade": "phd",
+ "sample": 14,
+ "poolSize": 25,
+ "themes": 17,
+ "questions": [
+  {
+   "q": "what is a wavelet",
+   "a": "oscillation",
+   "variants": [
+    "oscillation"
+   ],
+   "standard": "math/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a wavelet compression",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "math/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a rotation",
+   "a": "shift",
+   "variants": [
+    "shift"
+   ],
+   "standard": "math/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a signal processing",
+   "a": "engineering",
+   "variants": [
+    "engineering"
+   ],
+   "standard": "math/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sampling",
+   "a": "reduction",
+   "variants": [
+    "reduction"
+   ],
+   "standard": "math/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a each convolution",
+   "a": "operator",
+   "variants": [
+    "operator"
+   ],
+   "standard": "math/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a filter bank",
+   "a": "array",
+   "variants": [
+    "array"
+   ],
+   "standard": "math/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a compressed sensing",
+   "a": "technique",
+   "variants": [
+    "technique"
+   ],
+   "standard": "math/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a matching pursuit",
+   "a": "algorithm",
+   "variants": [
+    "algorithm"
+   ],
+   "standard": "math/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a singular values",
+   "a": "roots",
+   "variants": [
+    "roots"
+   ],
+   "standard": "math/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a trace norm",
+   "a": "case",
+   "variants": [
+    "case"
+   ],
+   "standard": "math/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a spring system",
+   "a": "example",
+   "variants": [
+    "example"
+   ],
+   "standard": "math/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a important example",
+   "a": "space",
+   "variants": [
+    "space"
+   ],
+   "standard": "math/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a hilbert space",
+   "a": "vector",
+   "variants": [
+    "vector"
+   ],
+   "standard": "math/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

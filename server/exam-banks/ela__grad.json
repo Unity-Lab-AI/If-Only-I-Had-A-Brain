@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "ela",
+ "grade": "grad",
+ "sample": 14,
+ "poolSize": 63,
+ "themes": 26,
+ "questions": [
+  {
+   "q": "what is a literature review",
+   "a": "overview",
+   "variants": [
+    "overview"
+   ],
+   "standard": "ela/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a paper",
+   "a": "work",
+   "variants": [
+    "work"
+   ],
+   "standard": "ela/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a technical note",
+   "a": "description",
+   "variants": [
+    "description"
+   ],
+   "standard": "ela/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a method",
+   "a": "procedure",
+   "variants": [
+    "procedure"
+   ],
+   "standard": "ela/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a researcher",
+   "a": "who",
+   "variants": [
+    "who"
+   ],
+   "standard": "ela/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a experiment",
+   "a": "cornerstone",
+   "variants": [
+    "cornerstone"
+   ],
+   "standard": "ela/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a video papers",
+   "a": "addition",
+   "variants": [
+    "addition"
+   ],
+   "standard": "ela/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a metaphor",
+   "a": "application",
+   "variants": [
+    "application"
+   ],
+   "standard": "ela/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a bombast",
+   "a": "voice",
+   "variants": [
+    "voice"
+   ],
+   "standard": "ela/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a citation",
+   "a": "reference",
+   "variants": [
+    "reference"
+   ],
+   "standard": "ela/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a bibliography",
+   "a": "word",
+   "variants": [
+    "word"
+   ],
+   "standard": "ela/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a systematic review",
+   "a": "synthesis",
+   "variants": [
+    "synthesis"
+   ],
+   "standard": "ela/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a qualitative research",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "ela/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a supposition",
+   "a": "opinion",
+   "variants": [
+    "opinion"
+   ],
+   "standard": "ela/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "social",
+ "grade": "grade12",
+ "sample": 14,
+ "poolSize": 61,
+ "themes": 32,
+ "questions": [
+  {
+   "q": "what is a constitution",
+   "a": "idea",
+   "variants": [
+    "idea"
+   ],
+   "standard": "social/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a jimmy carter",
+   "a": "president",
+   "variants": [
+    "president"
+   ],
+   "standard": "social/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a section nine",
+   "a": "list",
+   "variants": [
+    "list"
+   ],
+   "standard": "social/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a political party",
+   "a": "organization",
+   "variants": [
+    "organization"
+   ],
+   "standard": "social/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a democracy",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "social/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a globalization",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "social/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a general assembly",
+   "a": "organ",
+   "variants": [
+    "organ"
+   ],
+   "standard": "social/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a another virtue",
+   "a": "protection",
+   "variants": [
+    "protection"
+   ],
+   "standard": "social/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a constitutional amendment",
+   "a": "modification",
+   "variants": [
+    "modification"
+   ],
+   "standard": "social/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a resilience resilience",
+   "a": "function",
+   "variants": [
+    "function"
+   ],
+   "standard": "social/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a another example",
+   "a": "netherlands",
+   "variants": [
+    "netherlands"
+   ],
+   "standard": "social/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a amendment",
+   "a": "basis",
+   "variants": [
+    "basis"
+   ],
+   "standard": "social/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a united kingdom",
+   "a": "signatory",
+   "variants": [
+    "signatory"
+   ],
+   "standard": "social/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a electoral college",
+   "a": "body",
+   "variants": [
+    "body"
+   ],
+   "standard": "social/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

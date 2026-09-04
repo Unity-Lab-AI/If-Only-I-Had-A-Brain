@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "social",
+ "grade": "grade10",
+ "sample": 14,
+ "poolSize": 17,
+ "themes": 10,
+ "questions": [
+  {
+   "q": "what is a lead body",
+   "a": "museum",
+   "variants": [
+    "museum"
+   ],
+   "standard": "social/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a orientalism",
+   "a": "view",
+   "variants": [
+    "view"
+   ],
+   "standard": "social/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a song",
+   "a": "example",
+   "variants": [
+    "example"
+   ],
+   "standard": "social/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a crystal palace",
+   "a": "example",
+   "variants": [
+    "example"
+   ],
+   "standard": "social/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a nationalism",
+   "a": "movement",
+   "variants": [
+    "movement"
+   ],
+   "standard": "social/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a internal colonialism",
+   "a": "notion",
+   "variants": [
+    "notion"
+   ],
+   "standard": "social/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a general assembly",
+   "a": "organ",
+   "variants": [
+    "organ"
+   ],
+   "standard": "social/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a poland",
+   "a": "member",
+   "variants": [
+    "member"
+   ],
+   "standard": "social/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a socialism",
+   "a": "system",
+   "variants": [
+    "system"
+   ],
+   "standard": "social/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a atmosphere",
+   "a": "layer",
+   "variants": [
+    "layer"
+   ],
+   "standard": "social/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a creole nationalism",
+   "a": "ideology",
+   "variants": [
+    "ideology"
+   ],
+   "standard": "social/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a holocaust",
+   "a": "history",
+   "variants": [
+    "history"
+   ],
+   "standard": "social/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a weather",
+   "a": "state",
+   "variants": [
+    "state"
+   ],
+   "standard": "social/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a cactus",
+   "a": "plant",
+   "variants": [
+    "plant"
+   ],
+   "standard": "social/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

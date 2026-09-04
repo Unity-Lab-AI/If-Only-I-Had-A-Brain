@@ -1,0 +1,100 @@
+{
+ "version": 1,
+ "subject": "social",
+ "grade": "pre-K",
+ "sample": 14,
+ "poolSize": 9,
+ "themes": 5,
+ "questions": [
+  {
+   "q": "what is a family",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "social/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a biological father",
+   "a": "parent",
+   "variants": [
+    "parent"
+   ],
+   "standard": "social/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a child",
+   "a": "person",
+   "variants": [
+    "person"
+   ],
+   "standard": "social/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a house",
+   "a": "building",
+   "variants": [
+    "building"
+   ],
+   "standard": "social/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sharing",
+   "a": "use",
+   "variants": [
+    "use"
+   ],
+   "standard": "social/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a social father",
+   "a": "who",
+   "variants": [
+    "who"
+   ],
+   "standard": "social/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mansion",
+   "a": "house",
+   "variants": [
+    "house"
+   ],
+   "standard": "social/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a palace",
+   "a": "house",
+   "variants": [
+    "house"
+   ],
+   "standard": "social/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a clay",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "social/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

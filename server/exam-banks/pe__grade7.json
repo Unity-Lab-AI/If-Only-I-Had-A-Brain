@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "pe",
+ "grade": "grade7",
+ "sample": 14,
+ "poolSize": 47,
+ "themes": 25,
+ "questions": [
+  {
+   "q": "what is a physical fitness",
+   "a": "state",
+   "variants": [
+    "state"
+   ],
+   "standard": "pe/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a endurance training",
+   "a": "act",
+   "variants": [
+    "act"
+   ],
+   "standard": "pe/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a season analysis",
+   "a": "attempt",
+   "variants": [
+    "attempt"
+   ],
+   "standard": "pe/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a cardiac arrest",
+   "a": "stop",
+   "variants": [
+    "stop"
+   ],
+   "standard": "pe/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a basketball",
+   "a": "sport",
+   "variants": [
+    "sport"
+   ],
+   "standard": "pe/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a north america",
+   "a": "region",
+   "variants": [
+    "region"
+   ],
+   "standard": "pe/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a athletics",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "pe/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a teamwork",
+   "a": "effort",
+   "variants": [
+    "effort"
+   ],
+   "standard": "pe/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a muscle contraction",
+   "a": "activation",
+   "variants": [
+    "activation"
+   ],
+   "standard": "pe/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a muscle strength",
+   "a": "result",
+   "variants": [
+    "result"
+   ],
+   "standard": "pe/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a example",
+   "a": "disc",
+   "variants": [
+    "disc"
+   ],
+   "standard": "pe/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a ligament",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "pe/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a cardiovascular fitness",
+   "a": "component",
+   "variants": [
+    "component"
+   ],
+   "standard": "pe/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a anaerobic exercise",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "pe/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

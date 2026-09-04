@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "ela",
+ "grade": "grade11",
+ "sample": 14,
+ "poolSize": 15,
+ "themes": 9,
+ "questions": [
+  {
+   "q": "what is a tom",
+   "a": "man",
+   "variants": [
+    "man"
+   ],
+   "standard": "ela/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a symbolism",
+   "a": "practice",
+   "variants": [
+    "practice"
+   ],
+   "standard": "ela/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a novel",
+   "a": "work",
+   "variants": [
+    "work"
+   ],
+   "standard": "ela/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a narration",
+   "a": "use",
+   "variants": [
+    "use"
+   ],
+   "standard": "ela/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a widow douglas",
+   "a": "who",
+   "variants": [
+    "who"
+   ],
+   "standard": "ela/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a hemp",
+   "a": "sort",
+   "variants": [
+    "sort"
+   ],
+   "standard": "ela/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a entire world",
+   "a": "collection",
+   "variants": [
+    "collection"
+   ],
+   "standard": "ela/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a miss catherine",
+   "a": "girl",
+   "variants": [
+    "girl"
+   ],
+   "standard": "ela/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a business",
+   "a": "thing",
+   "variants": [
+    "thing"
+   ],
+   "standard": "ela/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a dream",
+   "a": "belief",
+   "variants": [
+    "belief"
+   ],
+   "standard": "ela/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a symbol",
+   "a": "idea",
+   "variants": [
+    "idea"
+   ],
+   "standard": "ela/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a heroic romance",
+   "a": "genre",
+   "variants": [
+    "genre"
+   ],
+   "standard": "ela/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a narrative perspective",
+   "a": "position",
+   "variants": [
+    "position"
+   ],
+   "standard": "ela/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a doctor robinson",
+   "a": "who",
+   "variants": [
+    "who"
+   ],
+   "standard": "ela/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

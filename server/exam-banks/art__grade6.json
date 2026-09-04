@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "art",
+ "grade": "grade6",
+ "sample": 14,
+ "poolSize": 48,
+ "themes": 20,
+ "questions": [
+  {
+   "q": "what is a conservation",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "art/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a pantheon",
+   "a": "temple",
+   "variants": [
+    "temple"
+   ],
+   "standard": "art/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a disney renaissance",
+   "a": "period",
+   "variants": [
+    "period"
+   ],
+   "standard": "art/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a painting",
+   "a": "art",
+   "variants": [
+    "art"
+   ],
+   "standard": "art/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sculpture",
+   "a": "branch",
+   "variants": [
+    "branch"
+   ],
+   "standard": "art/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a architecture",
+   "a": "mix",
+   "variants": [
+    "mix"
+   ],
+   "standard": "art/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a drawing",
+   "a": "art",
+   "variants": [
+    "art"
+   ],
+   "standard": "art/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a composition",
+   "a": "organization",
+   "variants": [
+    "organization"
+   ],
+   "standard": "art/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a gothic art",
+   "a": "term",
+   "variants": [
+    "term"
+   ],
+   "standard": "art/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a louvre transfiguration",
+   "a": "example",
+   "variants": [
+    "example"
+   ],
+   "standard": "art/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a cathedral",
+   "a": "church",
+   "variants": [
+    "church"
+   ],
+   "standard": "art/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a column",
+   "a": "member",
+   "variants": [
+    "member"
+   ],
+   "standard": "art/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a temple",
+   "a": "place",
+   "variants": [
+    "place"
+   ],
+   "standard": "art/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a glaze",
+   "a": "pottery",
+   "variants": [
+    "pottery"
+   ],
+   "standard": "art/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

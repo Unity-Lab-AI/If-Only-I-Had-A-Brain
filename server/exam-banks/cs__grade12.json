@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "cs",
+ "grade": "grade12",
+ "sample": 14,
+ "poolSize": 28,
+ "themes": 16,
+ "questions": [
+  {
+   "q": "what is a language abstraction",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "cs/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a software testing",
+   "a": "problem",
+   "variants": [
+    "problem"
+   ],
+   "standard": "cs/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a version control",
+   "a": "practice",
+   "variants": [
+    "practice"
+   ],
+   "standard": "cs/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a java",
+   "a": "language",
+   "variants": [
+    "language"
+   ],
+   "standard": "cs/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a implementation inheritance",
+   "a": "mechanism",
+   "variants": [
+    "mechanism"
+   ],
+   "standard": "cs/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a parametric polymorphism",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "cs/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a specialized class",
+   "a": "sub",
+   "variants": [
+    "sub"
+   ],
+   "standard": "cs/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a encapsulation",
+   "a": "technique",
+   "variants": [
+    "technique"
+   ],
+   "standard": "cs/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a interface",
+   "a": "boundary",
+   "variants": [
+    "boundary"
+   ],
+   "standard": "cs/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a controller",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "cs/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a integration testing",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "cs/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a git",
+   "a": "system",
+   "variants": [
+    "system"
+   ],
+   "standard": "cs/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a documentation",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "cs/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a generic programming",
+   "a": "style",
+   "variants": [
+    "style"
+   ],
+   "standard": "cs/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

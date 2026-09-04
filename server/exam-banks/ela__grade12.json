@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "ela",
+ "grade": "grade12",
+ "sample": 14,
+ "poolSize": 24,
+ "themes": 11,
+ "questions": [
+  {
+   "q": "what is a plot",
+   "a": "revelation",
+   "variants": [
+    "revelation"
+   ],
+   "standard": "ela/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a thus oceania",
+   "a": "corruption",
+   "variants": [
+    "corruption"
+   ],
+   "standard": "ela/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a british literature",
+   "a": "body",
+   "variants": [
+    "body"
+   ],
+   "standard": "ela/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a tragedy",
+   "a": "genre",
+   "variants": [
+    "genre"
+   ],
+   "standard": "ela/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a epic",
+   "a": "poem",
+   "variants": [
+    "poem"
+   ],
+   "standard": "ela/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a satire",
+   "a": "genre",
+   "variants": [
+    "genre"
+   ],
+   "standard": "ela/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a second nun",
+   "a": "example",
+   "variants": [
+    "example"
+   ],
+   "standard": "ela/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a double blessing",
+   "a": "grace",
+   "variants": [
+    "grace"
+   ],
+   "standard": "ela/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a love",
+   "a": "law",
+   "variants": [
+    "law"
+   ],
+   "standard": "ela/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mine",
+   "a": "house",
+   "variants": [
+    "house"
+   ],
+   "standard": "ela/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a practicality",
+   "a": "thing",
+   "variants": [
+    "thing"
+   ],
+   "standard": "ela/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a play",
+   "a": "series",
+   "variants": [
+    "series"
+   ],
+   "standard": "ela/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a example",
+   "a": "brother",
+   "variants": [
+    "brother"
+   ],
+   "standard": "ela/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a utopia",
+   "a": "work",
+   "variants": [
+    "work"
+   ],
+   "standard": "ela/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

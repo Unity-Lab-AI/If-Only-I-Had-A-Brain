@@ -1,0 +1,70 @@
+{
+ "version": 1,
+ "subject": "science",
+ "grade": "grade1",
+ "sample": 14,
+ "poolSize": 6,
+ "themes": 4,
+ "questions": [
+  {
+   "q": "what is a summer",
+   "a": "season",
+   "variants": [
+    "season"
+   ],
+   "standard": "science/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a abdomen",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "science/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a fish",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "science/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a carpel",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "science/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a winter",
+   "a": "season",
+   "variants": [
+    "season"
+   ],
+   "standard": "science/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a equinox",
+   "a": "time",
+   "variants": [
+    "time"
+   ],
+   "standard": "science/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

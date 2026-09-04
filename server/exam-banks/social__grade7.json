@@ -1,0 +1,120 @@
+{
+ "version": 1,
+ "subject": "social",
+ "grade": "grade7",
+ "sample": 14,
+ "poolSize": 11,
+ "themes": 7,
+ "questions": [
+  {
+   "q": "what is a disney renaissance",
+   "a": "period",
+   "variants": [
+    "period"
+   ],
+   "standard": "social/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a study",
+   "a": "example",
+   "variants": [
+    "example"
+   ],
+   "standard": "social/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a trade route",
+   "a": "series",
+   "variants": [
+    "series"
+   ],
+   "standard": "social/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a knight",
+   "a": "title",
+   "variants": [
+    "title"
+   ],
+   "standard": "social/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a castle",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "social/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a one example",
+   "a": "chronicle",
+   "variants": [
+    "chronicle"
+   ],
+   "standard": "social/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a quintessential example",
+   "a": "community",
+   "variants": [
+    "community"
+   ],
+   "standard": "social/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a female equivalent",
+   "a": "dame",
+   "variants": [
+    "dame"
+   ],
+   "standard": "social/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a moat",
+   "a": "castle",
+   "variants": [
+    "castle"
+   ],
+   "standard": "social/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a switzerland",
+   "a": "case",
+   "variants": [
+    "case"
+   ],
+   "standard": "social/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a ham",
+   "a": "example",
+   "variants": [
+    "example"
+   ],
+   "standard": "social/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

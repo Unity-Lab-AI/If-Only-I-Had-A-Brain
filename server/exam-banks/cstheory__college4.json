@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "cstheory",
+ "grade": "college4",
+ "sample": 14,
+ "poolSize": 50,
+ "themes": 17,
+ "questions": [
+  {
+   "q": "what is a instance",
+   "a": "number",
+   "variants": [
+    "number"
+   ],
+   "standard": "cstheory/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a interesting example",
+   "a": "problem",
+   "variants": [
+    "problem"
+   ],
+   "standard": "cstheory/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a example",
+   "a": "programming",
+   "variants": [
+    "programming"
+   ],
+   "standard": "cstheory/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a cipher",
+   "a": "pair",
+   "variants": [
+    "pair"
+   ],
+   "standard": "cstheory/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a information theory",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "cstheory/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a computer science",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "cstheory/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a linear time",
+   "a": "complexity",
+   "variants": [
+    "complexity"
+   ],
+   "standard": "cstheory/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a first definition",
+   "a": "basis",
+   "variants": [
+    "basis"
+   ],
+   "standard": "cstheory/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sat",
+   "a": "problem",
+   "variants": [
+    "problem"
+   ],
+   "standard": "cstheory/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a graph coloring",
+   "a": "case",
+   "variants": [
+    "case"
+   ],
+   "standard": "cstheory/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a run-time distribution",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "cstheory/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a key",
+   "a": "datum",
+   "variants": [
+    "datum"
+   ],
+   "standard": "cstheory/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a digital signature",
+   "a": "scheme",
+   "variants": [
+    "scheme"
+   ],
+   "standard": "cstheory/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a proof",
+   "a": "file",
+   "variants": [
+    "file"
+   ],
+   "standard": "cstheory/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

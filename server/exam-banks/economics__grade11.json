@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "economics",
+ "grade": "grade11",
+ "sample": 14,
+ "poolSize": 99,
+ "themes": 64,
+ "questions": [
+  {
+   "q": "what is a macroeconomics",
+   "a": "branch",
+   "variants": [
+    "branch"
+   ],
+   "standard": "economics/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a gdp",
+   "a": "product",
+   "variants": [
+    "product"
+   ],
+   "standard": "economics/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a inflation",
+   "a": "increase",
+   "variants": [
+    "increase"
+   ],
+   "standard": "economics/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a unemployment",
+   "a": "state",
+   "variants": [
+    "state"
+   ],
+   "standard": "economics/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a money supply",
+   "a": "number",
+   "variants": [
+    "number"
+   ],
+   "standard": "economics/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a war",
+   "a": "incentive",
+   "variants": [
+    "incentive"
+   ],
+   "standard": "economics/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a recession",
+   "a": "contraction",
+   "variants": [
+    "contraction"
+   ],
+   "standard": "economics/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a economic growth",
+   "a": "increase",
+   "variants": [
+    "increase"
+   ],
+   "standard": "economics/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a forward guidance",
+   "a": "practice",
+   "variants": [
+    "practice"
+   ],
+   "standard": "economics/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a quantitative easing",
+   "a": "measure",
+   "variants": [
+    "measure"
+   ],
+   "standard": "economics/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a interest rate",
+   "a": "amount",
+   "variants": [
+    "amount"
+   ],
+   "standard": "economics/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a market",
+   "a": "institution",
+   "variants": [
+    "institution"
+   ],
+   "standard": "economics/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a why",
+   "a": "cost",
+   "variants": [
+    "cost"
+   ],
+   "standard": "economics/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a price elasticity",
+   "a": "ratio",
+   "variants": [
+    "ratio"
+   ],
+   "standard": "economics/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "cs",
+ "grade": "grade10",
+ "sample": 14,
+ "poolSize": 31,
+ "themes": 15,
+ "questions": [
+  {
+   "q": "what is a hash table",
+   "a": "structure",
+   "variants": [
+    "structure"
+   ],
+   "standard": "cs/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a linear search",
+   "a": "algorithm",
+   "variants": [
+    "algorithm"
+   ],
+   "standard": "cs/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a virtual memory",
+   "a": "system",
+   "variants": [
+    "system"
+   ],
+   "standard": "cs/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a heuristic",
+   "a": "approach",
+   "variants": [
+    "approach"
+   ],
+   "standard": "cs/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a linked list",
+   "a": "collection",
+   "variants": [
+    "collection"
+   ],
+   "standard": "cs/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a stack",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "cs/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a queue",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "cs/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a algorithm analysis",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "cs/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a linear time",
+   "a": "complexity",
+   "variants": [
+    "complexity"
+   ],
+   "standard": "cs/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a key",
+   "a": "datum",
+   "variants": [
+    "datum"
+   ],
+   "standard": "cs/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a memory cell",
+   "a": "block",
+   "variants": [
+    "block"
+   ],
+   "standard": "cs/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a pointer",
+   "a": "programming",
+   "variants": [
+    "programming"
+   ],
+   "standard": "cs/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a garbage collection",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "cs/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a iteration",
+   "a": "technique",
+   "variants": [
+    "technique"
+   ],
+   "standard": "cs/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

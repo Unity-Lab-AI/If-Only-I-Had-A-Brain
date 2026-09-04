@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "social",
+ "grade": "grade2",
+ "sample": 14,
+ "poolSize": 14,
+ "themes": 9,
+ "questions": [
+  {
+   "q": "what is a continent",
+   "a": "area",
+   "variants": [
+    "area"
+   ],
+   "standard": "social/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a country",
+   "a": "territory",
+   "variants": [
+    "territory"
+   ],
+   "standard": "social/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a ocean",
+   "a": "body",
+   "variants": [
+    "body"
+   ],
+   "standard": "social/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mountain",
+   "a": "rise",
+   "variants": [
+    "rise"
+   ],
+   "standard": "social/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a river",
+   "a": "stream",
+   "variants": [
+    "stream"
+   ],
+   "standard": "social/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a culture",
+   "a": "word",
+   "variants": [
+    "word"
+   ],
+   "standard": "social/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a language",
+   "a": "humans",
+   "variants": [
+    "humans"
+   ],
+   "standard": "social/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a city",
+   "a": "place",
+   "variants": [
+    "place"
+   ],
+   "standard": "social/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a village",
+   "a": "place",
+   "variants": [
+    "place"
+   ],
+   "standard": "social/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a oceania",
+   "a": "region",
+   "variants": [
+    "region"
+   ],
+   "standard": "social/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a nation state",
+   "a": "country",
+   "variants": [
+    "country"
+   ],
+   "standard": "social/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mountain range",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "social/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a submarine river",
+   "a": "stream",
+   "variants": [
+    "stream"
+   ],
+   "standard": "social/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a chinese",
+   "a": "language",
+   "variants": [
+    "language"
+   ],
+   "standard": "social/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

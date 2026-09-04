@@ -29970,6 +29970,57 @@ export class Curriculum {
       console.warn('[Curriculum] generated-question injection failed:', err?.message || err);
     }
 
+    // ⭐⭐ THE DERIVED BANKS FOR EVERY OTHER CELL JOIN HERE, for the same reason
+    // the phonics rows do: before the integrity check below, so the check covers
+    // what was injected rather than only what was authored.
+    //
+    // ⛔⛔ WHY THIS EXISTS. 12 of the 213 cells the walk runs had a bank, and an
+    // empty bank is not a shorter test — the battery reads
+    // `if (bank && bank.length > 0)`, so a missing bank **skips the held-out
+    // student battery entirely**. From grade 1 to PhD nothing independent was
+    // ever asked. The per-cell gates still ran and she still had to produce, but
+    // the only thing checking that she LEARNED rather than that she can EMIT
+    // covered two grades out of twenty.
+    //
+    // ⚠ WHAT THESE ARE AND ARE NOT. Every question is derived from that cell's
+    // OWN corpus — the file it is taught from — so the pre-taught rule holds by
+    // construction rather than by review, and each term and answer must appear
+    // at least three times in that cell. They test ONE thing: definitional
+    // recall, the `sem(word) → sem(definition)` binding the curriculum actually
+    // teaches. They are NOT equivalent to the authored pre-K/K banks, which mix
+    // recall, sequencing and application. A real check that beats nothing.
+    //
+    // ⚠ SAMPLED, on the operator's instruction — *"make it a sampling not
+    // extensive i dont want to be testing for hours each grade"*. Fourteen
+    // questions a cell, spread across that cell's themes.
+    // ⛔ THE BANKS ARRIVE ON THE CLUSTER, NOT FROM DISK. This file has no `fs`
+    // and must not gain one — it is a browser-side ESM module that also runs on
+    // the server, which is exactly why the phonics rows come in through
+    // `cluster.phonicsExamQuestions` rather than a file read. The server loads
+    // `server/exam-banks/` and hands the parsed documents over; here they are
+    // just data.
+    try {
+      const _ebDocs = (this.cluster && Array.isArray(this.cluster.derivedExamBanks))
+        ? this.cluster.derivedExamBanks : [];
+      let _ebCells = 0, _ebAdded = 0, _ebCreated = 0, _ebRefused = 0;
+      for (const doc of _ebDocs) {
+        if (!doc || !Array.isArray(doc.questions) || !doc.questions.length) continue;
+        const r = injectGeneratedExamQuestions(`${doc.subject}/${doc.grade}`, doc.questions);
+        _ebCells++; _ebAdded += r.added; if (r.createdCell) _ebCreated++;
+        _ebRefused += r.rejectedTrainOverlap + r.rejectedDuplicate + r.rejectedEmpty;
+      }
+      if (_ebDocs.length) {
+        this._hb(`[Curriculum] Derived exam banks: ${_ebAdded} questions across ${_ebCells} cells (${_ebCreated} cells had NO bank before) · refused ${_ebRefused} as duplicates or training overlap`);
+      } else {
+        // ⛔ Stated, not silent. No files here means the walk is back to twelve
+        // tested cells out of 213, and a quiet boot would look identical to a
+        // healthy one.
+        console.warn('[Curriculum] ⚠ no derived exam banks found — only the authored pre-K/K cells will be examined. Run .claude/scripts/gen-exam-banks.mjs.');
+      }
+    } catch (err) {
+      console.warn('[Curriculum] derived exam-bank injection failed:', err?.message || err);
+    }
+
     // Held-out eval integrity check — the exam banks must be disjoint
     // from anything the teaching side exposes the brain to. Non-empty
     // overlap means a gate pass could be memorization, not learning.

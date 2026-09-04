@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "language",
+ "grade": "grade3",
+ "sample": 14,
+ "poolSize": 30,
+ "themes": 14,
+ "questions": [
+  {
+   "q": "what is a mathematics",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "language/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a following",
+   "a": "names",
+   "variants": [
+    "names"
+   ],
+   "standard": "language/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a family",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "language/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a alphabet",
+   "a": "list",
+   "variants": [
+    "list"
+   ],
+   "standard": "language/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a pronunciation",
+   "a": "word",
+   "variants": [
+    "word"
+   ],
+   "standard": "language/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a notable case",
+   "a": "word",
+   "variants": [
+    "word"
+   ],
+   "standard": "language/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a month",
+   "a": "amount",
+   "variants": [
+    "amount"
+   ],
+   "standard": "language/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a summer",
+   "a": "season",
+   "variants": [
+    "season"
+   ],
+   "standard": "language/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a body",
+   "a": "thing",
+   "variants": [
+    "thing"
+   ],
+   "standard": "language/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a house",
+   "a": "building",
+   "variants": [
+    "building"
+   ],
+   "standard": "language/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a rug",
+   "a": "point",
+   "variants": [
+    "point"
+   ],
+   "standard": "language/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a spain",
+   "a": "country",
+   "variants": [
+    "country"
+   ],
+   "standard": "language/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mexico",
+   "a": "country",
+   "variants": [
+    "country"
+   ],
+   "standard": "language/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a latin america",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "language/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

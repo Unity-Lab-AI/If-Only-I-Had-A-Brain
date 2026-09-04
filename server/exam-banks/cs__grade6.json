@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "cs",
+ "grade": "grade6",
+ "sample": 14,
+ "poolSize": 29,
+ "themes": 17,
+ "questions": [
+  {
+   "q": "what is a remainder",
+   "a": "bit",
+   "variants": [
+    "bit"
+   ],
+   "standard": "cs/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a word pixel",
+   "a": "combination",
+   "variants": [
+    "combination"
+   ],
+   "standard": "cs/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a scratch",
+   "a": "language",
+   "variants": [
+    "language"
+   ],
+   "standard": "cs/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a heuristic",
+   "a": "approach",
+   "variants": [
+    "approach"
+   ],
+   "standard": "cs/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a variable name",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "cs/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a loop",
+   "a": "construct",
+   "variants": [
+    "construct"
+   ],
+   "standard": "cs/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sequence",
+   "a": "collection",
+   "variants": [
+    "collection"
+   ],
+   "standard": "cs/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a event",
+   "a": "state",
+   "variants": [
+    "state"
+   ],
+   "standard": "cs/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sprite",
+   "a": "bitmap",
+   "variants": [
+    "bitmap"
+   ],
+   "standard": "cs/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a integer",
+   "a": "number",
+   "variants": [
+    "number"
+   ],
+   "standard": "cs/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a text",
+   "a": "pointer",
+   "variants": [
+    "pointer"
+   ],
+   "standard": "cs/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a software testing",
+   "a": "act",
+   "variants": [
+    "act"
+   ],
+   "standard": "cs/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a internet",
+   "a": "system",
+   "variants": [
+    "system"
+   ],
+   "standard": "cs/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a router",
+   "a": "computer",
+   "variants": [
+    "computer"
+   ],
+   "standard": "cs/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "music",
+ "grade": "grade7",
+ "sample": 14,
+ "poolSize": 20,
+ "themes": 13,
+ "questions": [
+  {
+   "q": "what is a harmony",
+   "a": "result",
+   "variants": [
+    "result"
+   ],
+   "standard": "music/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a jazz",
+   "a": "genre",
+   "variants": [
+    "genre"
+   ],
+   "standard": "music/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a blues",
+   "a": "genre",
+   "variants": [
+    "genre"
+   ],
+   "standard": "music/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a musical instrument",
+   "a": "device",
+   "variants": [
+    "device"
+   ],
+   "standard": "music/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a rhythm",
+   "a": "timing",
+   "variants": [
+    "timing"
+   ],
+   "standard": "music/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a syncopation",
+   "a": "variety",
+   "variants": [
+    "variety"
+   ],
+   "standard": "music/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a swing music",
+   "a": "style",
+   "variants": [
+    "style"
+   ],
+   "standard": "music/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a big band",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "music/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a regional mexican",
+   "a": "format",
+   "variants": [
+    "format"
+   ],
+   "standard": "music/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a tune",
+   "a": "melody",
+   "variants": [
+    "melody"
+   ],
+   "standard": "music/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a world music",
+   "a": "phrase",
+   "variants": [
+    "phrase"
+   ],
+   "standard": "music/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a neo soul",
+   "a": "blend",
+   "variants": [
+    "blend"
+   ],
+   "standard": "music/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a blue note",
+   "a": "interval",
+   "variants": [
+    "interval"
+   ],
+   "standard": "music/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a hard bop",
+   "a": "extension",
+   "variants": [
+    "extension"
+   ],
+   "standard": "music/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

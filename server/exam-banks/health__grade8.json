@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "health",
+ "grade": "grade8",
+ "sample": 14,
+ "poolSize": 47,
+ "themes": 21,
+ "questions": [
+  {
+   "q": "what is a adolescence",
+   "a": "period",
+   "variants": [
+    "period"
+   ],
+   "standard": "health/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a anxiety",
+   "a": "emotion",
+   "variants": [
+    "emotion"
+   ],
+   "standard": "health/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a cortisol",
+   "a": "hormone",
+   "variants": [
+    "hormone"
+   ],
+   "standard": "health/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a foraging",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "health/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a pica",
+   "a": "eating",
+   "variants": [
+    "eating"
+   ],
+   "standard": "health/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a another factor",
+   "a": "effects",
+   "variants": [
+    "effects"
+   ],
+   "standard": "health/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a addiction",
+   "a": "disorder",
+   "variants": [
+    "disorder"
+   ],
+   "standard": "health/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a consent",
+   "a": "principle",
+   "variants": [
+    "principle"
+   ],
+   "standard": "health/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a psychotherapy",
+   "a": "treatment",
+   "variants": [
+    "treatment"
+   ],
+   "standard": "health/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a agoraphobia",
+   "a": "disorder",
+   "variants": [
+    "disorder"
+   ],
+   "standard": "health/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a dissociation",
+   "a": "ability",
+   "variants": [
+    "ability"
+   ],
+   "standard": "health/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a therapist",
+   "a": "who",
+   "variants": [
+    "who"
+   ],
+   "standard": "health/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a diet",
+   "a": "factor",
+   "variants": [
+    "factor"
+   ],
+   "standard": "health/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a narcissism",
+   "a": "have",
+   "variants": [
+    "have"
+   ],
+   "standard": "health/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

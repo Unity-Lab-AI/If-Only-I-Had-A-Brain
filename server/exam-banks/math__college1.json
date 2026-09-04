@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "math",
+ "grade": "college1",
+ "sample": 14,
+ "poolSize": 17,
+ "themes": 12,
+ "questions": [
+  {
+   "q": "what is a trace",
+   "a": "parabola",
+   "variants": [
+    "parabola"
+   ],
+   "standard": "math/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a equator",
+   "a": "trace",
+   "variants": [
+    "trace"
+   ],
+   "standard": "math/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a calculating torque",
+   "a": "application",
+   "variants": [
+    "application"
+   ],
+   "standard": "math/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a first row",
+   "a": "header",
+   "variants": [
+    "header"
+   ],
+   "standard": "math/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a origin",
+   "a": "point",
+   "variants": [
+    "point"
+   ],
+   "standard": "math/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a red graph",
+   "a": "function",
+   "variants": [
+    "function"
+   ],
+   "standard": "math/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a solid",
+   "a": "tetrahedron",
+   "variants": [
+    "tetrahedron"
+   ],
+   "standard": "math/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a next layer",
+   "a": "core",
+   "variants": [
+    "core"
+   ],
+   "standard": "math/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a rolling planimeter",
+   "a": "device",
+   "variants": [
+    "device"
+   ],
+   "standard": "math/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a divergence",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "math/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a vector fields",
+   "a": "tool",
+   "variants": [
+    "tool"
+   ],
+   "standard": "math/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a divergence theorem",
+   "a": "version",
+   "variants": [
+    "version"
+   ],
+   "standard": "math/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a intersection curve",
+   "a": "ellipse",
+   "variants": [
+    "ellipse"
+   ],
+   "standard": "math/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a centripetal force",
+   "a": "sum",
+   "variants": [
+    "sum"
+   ],
+   "standard": "math/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "art",
+ "grade": "grade11",
+ "sample": 14,
+ "poolSize": 36,
+ "themes": 14,
+ "questions": [
+  {
+   "q": "what is a latter",
+   "a": "art",
+   "variants": [
+    "art"
+   ],
+   "standard": "art/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a pop art",
+   "a": "movement",
+   "variants": [
+    "movement"
+   ],
+   "standard": "art/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a title",
+   "a": "words",
+   "variants": [
+    "words"
+   ],
+   "standard": "art/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a minimalism",
+   "a": "movement",
+   "variants": [
+    "movement"
+   ],
+   "standard": "art/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a performance art",
+   "a": "installation",
+   "variants": [
+    "installation"
+   ],
+   "standard": "art/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a street art",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "art/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a photography",
+   "a": "application",
+   "variants": [
+    "application"
+   ],
+   "standard": "art/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a montage",
+   "a": "technique",
+   "variants": [
+    "technique"
+   ],
+   "standard": "art/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a graffiti",
+   "a": "tool",
+   "variants": [
+    "tool"
+   ],
+   "standard": "art/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a result",
+   "a": "space",
+   "variants": [
+    "space"
+   ],
+   "standard": "art/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a soft box",
+   "a": "fabric",
+   "variants": [
+    "fabric"
+   ],
+   "standard": "art/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a classic hollywood",
+   "a": "style",
+   "variants": [
+    "style"
+   ],
+   "standard": "art/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a hardcore dancing",
+   "a": "development",
+   "variants": [
+    "development"
+   ],
+   "standard": "art/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a goth",
+   "a": "subculture",
+   "variants": [
+    "subculture"
+   ],
+   "standard": "art/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

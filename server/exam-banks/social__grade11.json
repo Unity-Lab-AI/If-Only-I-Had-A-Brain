@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "social",
+ "grade": "grade11",
+ "sample": 14,
+ "poolSize": 20,
+ "themes": 4,
+ "questions": [
+  {
+   "q": "what is a lead body",
+   "a": "museum",
+   "variants": [
+    "museum"
+   ],
+   "standard": "social/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a book",
+   "a": "collection",
+   "variants": [
+    "collection"
+   ],
+   "standard": "social/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a latter",
+   "a": "means",
+   "variants": [
+    "means"
+   ],
+   "standard": "social/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a strike",
+   "a": "line",
+   "variants": [
+    "line"
+   ],
+   "standard": "social/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a benchmark leak",
+   "a": "source",
+   "variants": [
+    "source"
+   ],
+   "standard": "social/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a hazard",
+   "a": "event",
+   "variants": [
+    "event"
+   ],
+   "standard": "social/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a bootleg",
+   "a": "raspberry",
+   "variants": [
+    "raspberry"
+   ],
+   "standard": "social/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a watershed",
+   "a": "boundary",
+   "variants": [
+    "boundary"
+   ],
+   "standard": "social/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a magical shop",
+   "a": "add",
+   "variants": [
+    "add"
+   ],
+   "standard": "social/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a velocity",
+   "a": "speed",
+   "variants": [
+    "speed"
+   ],
+   "standard": "social/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a leisure vision",
+   "a": "version",
+   "variants": [
+    "version"
+   ],
+   "standard": "social/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a capacity",
+   "a": "volume",
+   "variants": [
+    "volume"
+   ],
+   "standard": "social/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a drift",
+   "a": "issue",
+   "variants": [
+    "issue"
+   ],
+   "standard": "social/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a water cycle",
+   "a": "system",
+   "variants": [
+    "system"
+   ],
+   "standard": "social/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

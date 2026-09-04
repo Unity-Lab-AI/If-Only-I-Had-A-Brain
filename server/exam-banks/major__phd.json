@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "major",
+ "grade": "phd",
+ "sample": 14,
+ "poolSize": 87,
+ "themes": 11,
+ "questions": [
+  {
+   "q": "what is a nest",
+   "a": "simulator",
+   "variants": [
+    "simulator"
+   ],
+   "standard": "major/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a soma",
+   "a": "body",
+   "variants": [
+    "body"
+   ],
+   "standard": "major/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a synapse",
+   "a": "structure",
+   "variants": [
+    "structure"
+   ],
+   "standard": "major/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a action potential",
+   "a": "series",
+   "variants": [
+    "series"
+   ],
+   "standard": "major/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a convergent recursion",
+   "a": "algorithm",
+   "variants": [
+    "algorithm"
+   ],
+   "standard": "major/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a population coding",
+   "a": "method",
+   "variants": [
+    "method"
+   ],
+   "standard": "major/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a synaptic plasticity",
+   "a": "ability",
+   "variants": [
+    "ability"
+   ],
+   "standard": "major/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a cerebral cortex",
+   "a": "covering",
+   "variants": [
+    "covering"
+   ],
+   "standard": "major/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a neuroscience",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "major/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a unsupervised learning",
+   "a": "machine",
+   "variants": [
+    "machine"
+   ],
+   "standard": "major/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a reinforcement learning",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "major/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a axon",
+   "a": "projection",
+   "variants": [
+    "projection"
+   ],
+   "standard": "major/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a second function",
+   "a": "computation",
+   "variants": [
+    "computation"
+   ],
+   "standard": "major/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a vector coding",
+   "a": "example",
+   "variants": [
+    "example"
+   ],
+   "standard": "major/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

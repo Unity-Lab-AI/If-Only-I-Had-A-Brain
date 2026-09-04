@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "art",
+ "grade": "grade9",
+ "sample": 14,
+ "poolSize": 56,
+ "themes": 22,
+ "questions": [
+  {
+   "q": "what is a conservation",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "art/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a aesthetics",
+   "a": "branch",
+   "variants": [
+    "branch"
+   ],
+   "standard": "art/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a art criticism",
+   "a": "evaluation",
+   "variants": [
+    "evaluation"
+   ],
+   "standard": "art/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a iconography",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "art/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a cartridge paper",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "art/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sculpture",
+   "a": "artwork",
+   "variants": [
+    "artwork"
+   ],
+   "standard": "art/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a photography",
+   "a": "application",
+   "variants": [
+    "application"
+   ],
+   "standard": "art/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a composition",
+   "a": "organization",
+   "variants": [
+    "organization"
+   ],
+   "standard": "art/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a design",
+   "a": "proposal",
+   "variants": [
+    "proposal"
+   ],
+   "standard": "art/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a one example",
+   "a": "version",
+   "variants": [
+    "version"
+   ],
+   "standard": "art/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a linseed oil",
+   "a": "purpose",
+   "variants": [
+    "purpose"
+   ],
+   "standard": "art/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a pastel fixative",
+   "a": "varnish",
+   "variants": [
+    "varnish"
+   ],
+   "standard": "art/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a lithography",
+   "a": "technique",
+   "variants": [
+    "technique"
+   ],
+   "standard": "art/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a etching power",
+   "a": "source",
+   "variants": [
+    "source"
+   ],
+   "standard": "art/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

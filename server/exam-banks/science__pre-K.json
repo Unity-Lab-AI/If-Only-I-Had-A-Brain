@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "science",
+ "grade": "pre-K",
+ "sample": 14,
+ "poolSize": 20,
+ "themes": 6,
+ "questions": [
+  {
+   "q": "what is a water",
+   "a": "substance",
+   "variants": [
+    "substance"
+   ],
+   "standard": "science/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a nuclear fusion",
+   "a": "reaction",
+   "variants": [
+    "reaction"
+   ],
+   "standard": "science/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a tree",
+   "a": "plant",
+   "variants": [
+    "plant"
+   ],
+   "standard": "science/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a fire",
+   "a": "reaction",
+   "variants": [
+    "reaction"
+   ],
+   "standard": "science/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a fish",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "science/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a embryo",
+   "a": "stage",
+   "variants": [
+    "stage"
+   ],
+   "standard": "science/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a solvent",
+   "a": "substance",
+   "variants": [
+    "substance"
+   ],
+   "standard": "science/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a chromosphere",
+   "a": "layer",
+   "variants": [
+    "layer"
+   ],
+   "standard": "science/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a trunk",
+   "a": "body",
+   "variants": [
+    "body"
+   ],
+   "standard": "science/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a eggs",
+   "a": "folklore",
+   "variants": [
+    "folklore"
+   ],
+   "standard": "science/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a freezing point",
+   "a": "temperature",
+   "variants": [
+    "temperature"
+   ],
+   "standard": "science/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a corona",
+   "a": "atmosphere",
+   "variants": [
+    "atmosphere"
+   ],
+   "standard": "science/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a tree climbing",
+   "a": "activity",
+   "variants": [
+    "activity"
+   ],
+   "standard": "science/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a boiling point",
+   "a": "temperature",
+   "variants": [
+    "temperature"
+   ],
+   "standard": "science/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

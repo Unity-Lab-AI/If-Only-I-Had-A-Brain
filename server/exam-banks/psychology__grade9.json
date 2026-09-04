@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "psychology",
+ "grade": "grade9",
+ "sample": 14,
+ "poolSize": 107,
+ "themes": 16,
+ "questions": [
+  {
+   "q": "what is a emotion",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "psychology/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a learning",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "psychology/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a brain",
+   "a": "organ",
+   "variants": [
+    "organ"
+   ],
+   "standard": "psychology/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a consumer behaviour",
+   "a": "behavior",
+   "variants": [
+    "behavior"
+   ],
+   "standard": "psychology/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a vision",
+   "a": "sense",
+   "variants": [
+    "sense"
+   ],
+   "standard": "psychology/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a memory",
+   "a": "mechanism",
+   "variants": [
+    "mechanism"
+   ],
+   "standard": "psychology/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a reason",
+   "a": "continuity",
+   "variants": [
+    "continuity"
+   ],
+   "standard": "psychology/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a dream",
+   "a": "succession",
+   "variants": [
+    "succession"
+   ],
+   "standard": "psychology/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a moral intelligence",
+   "a": "capacity",
+   "variants": [
+    "capacity"
+   ],
+   "standard": "psychology/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a psychoanalysis",
+   "a": "collection",
+   "variants": [
+    "collection"
+   ],
+   "standard": "psychology/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a intensity",
+   "a": "strength",
+   "variants": [
+    "strength"
+   ],
+   "standard": "psychology/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a haptic memory",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "psychology/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a eeg",
+   "a": "diagnosis",
+   "variants": [
+    "diagnosis"
+   ],
+   "standard": "psychology/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a behavior analysis",
+   "a": "science",
+   "variants": [
+    "science"
+   ],
+   "standard": "psychology/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

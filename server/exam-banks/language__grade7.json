@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "language",
+ "grade": "grade7",
+ "sample": 14,
+ "poolSize": 24,
+ "themes": 14,
+ "questions": [
+  {
+   "q": "what is a tense",
+   "a": "category",
+   "variants": [
+    "category"
+   ],
+   "standard": "language/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a future tense",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "language/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a adverb",
+   "a": "expression",
+   "variants": [
+    "expression"
+   ],
+   "standard": "language/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a idiom",
+   "a": "expression",
+   "variants": [
+    "expression"
+   ],
+   "standard": "language/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a latin america",
+   "a": "region",
+   "variants": [
+    "region"
+   ],
+   "standard": "language/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a imperfect",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "language/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a conjunction",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "language/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a slang",
+   "a": "vocabulary",
+   "variants": [
+    "vocabulary"
+   ],
+   "standard": "language/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a register",
+   "a": "variety",
+   "variants": [
+    "variety"
+   ],
+   "standard": "language/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a argentina",
+   "a": "power",
+   "variants": [
+    "power"
+   ],
+   "standard": "language/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a spanish",
+   "a": "language",
+   "variants": [
+    "language"
+   ],
+   "standard": "language/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sierra",
+   "a": "region",
+   "variants": [
+    "region"
+   ],
+   "standard": "language/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a chile",
+   "a": "economy",
+   "variants": [
+    "economy"
+   ],
+   "standard": "language/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a christianity",
+   "a": "religion",
+   "variants": [
+    "religion"
+   ],
+   "standard": "language/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

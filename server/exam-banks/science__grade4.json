@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "science",
+ "grade": "grade4",
+ "sample": 14,
+ "poolSize": 48,
+ "themes": 32,
+ "questions": [
+  {
+   "q": "what is a solar system",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "science/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a ecosystem",
+   "a": "community",
+   "variants": [
+    "community"
+   ],
+   "standard": "science/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a planet",
+   "a": "earth",
+   "variants": [
+    "earth"
+   ],
+   "standard": "science/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a energy",
+   "a": "property",
+   "variants": [
+    "property"
+   ],
+   "standard": "science/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a electricity",
+   "a": "presence",
+   "variants": [
+    "presence"
+   ],
+   "standard": "science/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a magnetism",
+   "a": "force",
+   "variants": [
+    "force"
+   ],
+   "standard": "science/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a compression",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "science/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a star",
+   "a": "ball",
+   "variants": [
+    "ball"
+   ],
+   "standard": "science/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a earth",
+   "a": "planet",
+   "variants": [
+    "planet"
+   ],
+   "standard": "science/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a nuclear fusion",
+   "a": "reaction",
+   "variants": [
+    "reaction"
+   ],
+   "standard": "science/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a orbit",
+   "a": "path",
+   "variants": [
+    "path"
+   ],
+   "standard": "science/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a eclipse",
+   "a": "event",
+   "variants": [
+    "event"
+   ],
+   "standard": "science/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a phase",
+   "a": "angle",
+   "variants": [
+    "angle"
+   ],
+   "standard": "science/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a asteroid",
+   "a": "planet",
+   "variants": [
+    "planet"
+   ],
+   "standard": "science/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "math",
+ "grade": "grade8",
+ "sample": 14,
+ "poolSize": 22,
+ "themes": 2,
+ "questions": [
+  {
+   "q": "what is a new point",
+   "a": "distance",
+   "variants": [
+    "distance"
+   ],
+   "standard": "math/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a another example",
+   "a": "colors",
+   "variants": [
+    "colors"
+   ],
+   "standard": "math/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a vector",
+   "a": "quantity",
+   "variants": [
+    "quantity"
+   ],
+   "standard": "math/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a statistic",
+   "a": "quantity",
+   "variants": [
+    "quantity"
+   ],
+   "standard": "math/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a rigid transformation",
+   "a": "move",
+   "variants": [
+    "move"
+   ],
+   "standard": "math/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a standard deviation",
+   "a": "measure",
+   "variants": [
+    "measure"
+   ],
+   "standard": "math/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a volume volume",
+   "a": "number",
+   "variants": [
+    "number"
+   ],
+   "standard": "math/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a value",
+   "a": "outlier",
+   "variants": [
+    "outlier"
+   ],
+   "standard": "math/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mathematical model",
+   "a": "figure",
+   "variants": [
+    "figure"
+   ],
+   "standard": "math/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a each equation",
+   "a": "result",
+   "variants": [
+    "result"
+   ],
+   "standard": "math/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a soccer ball",
+   "a": "polyhedron",
+   "variants": [
+    "polyhedron"
+   ],
+   "standard": "math/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a correlation coefficient",
+   "a": "number",
+   "variants": [
+    "number"
+   ],
+   "standard": "math/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a silo",
+   "a": "container",
+   "variants": [
+    "container"
+   ],
+   "standard": "math/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a function notation",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "math/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

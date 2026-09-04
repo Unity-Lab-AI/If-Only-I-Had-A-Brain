@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "genered",
+ "grade": "college3",
+ "sample": 14,
+ "poolSize": 275,
+ "themes": 16,
+ "questions": [
+  {
+   "q": "what is a conservation",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "genered/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a music",
+   "a": "arrangement",
+   "variants": [
+    "arrangement"
+   ],
+   "standard": "genered/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a literature",
+   "a": "method",
+   "variants": [
+    "method"
+   ],
+   "standard": "genered/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a comparative religion",
+   "a": "branch",
+   "variants": [
+    "branch"
+   ],
+   "standard": "genered/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a environmental determinism",
+   "a": "theory",
+   "variants": [
+    "theory"
+   ],
+   "standard": "genered/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a culture",
+   "a": "concept",
+   "variants": [
+    "concept"
+   ],
+   "standard": "genered/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a monetary system",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "genered/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a result",
+   "a": "resource",
+   "variants": [
+    "resource"
+   ],
+   "standard": "genered/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a risk",
+   "a": "consequence",
+   "variants": [
+    "consequence"
+   ],
+   "standard": "genered/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a consumer surplus",
+   "a": "value",
+   "variants": [
+    "value"
+   ],
+   "standard": "genered/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a strategic management",
+   "a": "body",
+   "variants": [
+    "body"
+   ],
+   "standard": "genered/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a nyse",
+   "a": "market",
+   "variants": [
+    "market"
+   ],
+   "standard": "genered/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a imf",
+   "a": "organization",
+   "variants": [
+    "organization"
+   ],
+   "standard": "genered/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a whirlpool",
+   "a": "supplier",
+   "variants": [
+    "supplier"
+   ],
+   "standard": "genered/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

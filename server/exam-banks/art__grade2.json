@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "art",
+ "grade": "grade2",
+ "sample": 14,
+ "poolSize": 19,
+ "themes": 13,
+ "questions": [
+  {
+   "q": "what is a still life",
+   "a": "work",
+   "variants": [
+    "work"
+   ],
+   "standard": "art/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sculpture",
+   "a": "artwork",
+   "variants": [
+    "artwork"
+   ],
+   "standard": "art/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mosaic",
+   "a": "art",
+   "variants": [
+    "art"
+   ],
+   "standard": "art/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a painting",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "art/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a drawing",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "art/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a quilt",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "art/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a portrait",
+   "a": "photograph",
+   "variants": [
+    "photograph"
+   ],
+   "standard": "art/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a line drawing",
+   "a": "means",
+   "variants": [
+    "means"
+   ],
+   "standard": "art/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a origami",
+   "a": "art",
+   "variants": [
+    "art"
+   ],
+   "standard": "art/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a portrait painting",
+   "a": "genre",
+   "variants": [
+    "genre"
+   ],
+   "standard": "art/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a next number",
+   "a": "product",
+   "variants": [
+    "product"
+   ],
+   "standard": "art/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a puppetry",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "art/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a example",
+   "a": "use",
+   "variants": [
+    "use"
+   ],
+   "standard": "art/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a stone sculpture",
+   "a": "activity",
+   "variants": [
+    "activity"
+   ],
+   "standard": "art/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

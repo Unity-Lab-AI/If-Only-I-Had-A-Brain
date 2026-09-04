@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "art",
+ "grade": "grade12",
+ "sample": 14,
+ "poolSize": 62,
+ "themes": 21,
+ "questions": [
+  {
+   "q": "what is a aesthetics",
+   "a": "branch",
+   "variants": [
+    "branch"
+   ],
+   "standard": "art/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a art criticism",
+   "a": "evaluation",
+   "variants": [
+    "evaluation"
+   ],
+   "standard": "art/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a following",
+   "a": "list",
+   "variants": [
+    "list"
+   ],
+   "standard": "art/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a visual culture",
+   "a": "aspect",
+   "variants": [
+    "aspect"
+   ],
+   "standard": "art/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a semiotics",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "art/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a art school",
+   "a": "institution",
+   "variants": [
+    "institution"
+   ],
+   "standard": "art/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a art gallery",
+   "a": "building",
+   "variants": [
+    "building"
+   ],
+   "standard": "art/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a vanity gallery",
+   "a": "space",
+   "variants": [
+    "space"
+   ],
+   "standard": "art/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a art dealer",
+   "a": "company",
+   "variants": [
+    "company"
+   ],
+   "standard": "art/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a forward auction",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "art/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a cold storage",
+   "a": "strategy",
+   "variants": [
+    "strategy"
+   ],
+   "standard": "art/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a art forgery",
+   "a": "creation",
+   "variants": [
+    "creation"
+   ],
+   "standard": "art/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a intellectual property",
+   "a": "category",
+   "variants": [
+    "category"
+   ],
+   "standard": "art/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a patronage",
+   "a": "aid",
+   "variants": [
+    "aid"
+   ],
+   "standard": "art/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

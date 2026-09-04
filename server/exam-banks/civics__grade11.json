@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "civics",
+ "grade": "grade11",
+ "sample": 14,
+ "poolSize": 37,
+ "themes": 22,
+ "questions": [
+  {
+   "q": "what is a amendment",
+   "a": "basis",
+   "variants": [
+    "basis"
+   ],
+   "standard": "civics/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a another example",
+   "a": "netherlands",
+   "variants": [
+    "netherlands"
+   ],
+   "standard": "civics/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a political campaign",
+   "a": "effort",
+   "variants": [
+    "effort"
+   ],
+   "standard": "civics/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a war",
+   "a": "incentive",
+   "variants": [
+    "incentive"
+   ],
+   "standard": "civics/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a communication",
+   "a": "need",
+   "variants": [
+    "need"
+   ],
+   "standard": "civics/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a report",
+   "a": "product",
+   "variants": [
+    "product"
+   ],
+   "standard": "civics/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a optional referendum",
+   "a": "class",
+   "variants": [
+    "class"
+   ],
+   "standard": "civics/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a solidarity incentive",
+   "a": "reward",
+   "variants": [
+    "reward"
+   ],
+   "standard": "civics/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a senate",
+   "a": "house",
+   "variants": [
+    "house"
+   ],
+   "standard": "civics/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a political science",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "civics/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a democracy",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "civics/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a republicanism",
+   "a": "system",
+   "variants": [
+    "system"
+   ],
+   "standard": "civics/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a liberal philosophy",
+   "a": "culmination",
+   "variants": [
+    "culmination"
+   ],
+   "standard": "civics/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a paternalistic conservatism",
+   "a": "strand",
+   "variants": [
+    "strand"
+   ],
+   "standard": "civics/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

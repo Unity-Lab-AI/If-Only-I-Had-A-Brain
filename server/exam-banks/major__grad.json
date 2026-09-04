@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "major",
+ "grade": "grad",
+ "sample": 14,
+ "poolSize": 90,
+ "themes": 11,
+ "questions": [
+  {
+   "q": "what is a data mining",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "major/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a convergent recursion",
+   "a": "algorithm",
+   "variants": [
+    "algorithm"
+   ],
+   "standard": "major/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a cap",
+   "a": "chain",
+   "variants": [
+    "chain"
+   ],
+   "standard": "major/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a supervised learning",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "major/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a unsupervised learning",
+   "a": "machine",
+   "variants": [
+    "machine"
+   ],
+   "standard": "major/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a gradient descent",
+   "a": "method",
+   "variants": [
+    "method"
+   ],
+   "standard": "major/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a gaussian elimination",
+   "a": "algorithm",
+   "variants": [
+    "algorithm"
+   ],
+   "standard": "major/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a probability",
+   "a": "number",
+   "variants": [
+    "number"
+   ],
+   "standard": "major/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a statistics",
+   "a": "discipline",
+   "variants": [
+    "discipline"
+   ],
+   "standard": "major/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a numerical analysis",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "major/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mixed norm",
+   "a": "fourier",
+   "variants": [
+    "fourier"
+   ],
+   "standard": "major/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a similarity learning",
+   "a": "area",
+   "variants": [
+    "area"
+   ],
+   "standard": "major/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a fourth issue",
+   "a": "degree",
+   "variants": [
+    "degree"
+   ],
+   "standard": "major/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a energy function",
+   "a": "measure",
+   "variants": [
+    "measure"
+   ],
+   "standard": "major/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

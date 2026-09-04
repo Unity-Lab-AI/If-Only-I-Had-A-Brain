@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "art",
+ "grade": "phd",
+ "sample": 14,
+ "poolSize": 61,
+ "themes": 21,
+ "questions": [
+  {
+   "q": "what is a analogy",
+   "a": "area",
+   "variants": [
+    "area"
+   ],
+   "standard": "art/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a aesthetics",
+   "a": "branch",
+   "variants": [
+    "branch"
+   ],
+   "standard": "art/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sensory input",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "art/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a light spectrum",
+   "a": "line",
+   "variants": [
+    "line"
+   ],
+   "standard": "art/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a creative process",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "art/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a cognitive science",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "art/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a electric sheep",
+   "a": "project",
+   "variants": [
+    "project"
+   ],
+   "standard": "art/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a content similarity",
+   "a": "sum",
+   "variants": [
+    "sum"
+   ],
+   "standard": "art/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a data mining",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "art/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a cap",
+   "a": "chain",
+   "variants": [
+    "chain"
+   ],
+   "standard": "art/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a padding",
+   "a": "addition",
+   "variants": [
+    "addition"
+   ],
+   "standard": "art/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a input",
+   "a": "image",
+   "variants": [
+    "image"
+   ],
+   "standard": "art/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a pattern recognition",
+   "a": "task",
+   "variants": [
+    "task"
+   ],
+   "standard": "art/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a visual system",
+   "a": "basis",
+   "variants": [
+    "basis"
+   ],
+   "standard": "art/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

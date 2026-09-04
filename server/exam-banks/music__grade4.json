@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "music",
+ "grade": "grade4",
+ "sample": 14,
+ "poolSize": 17,
+ "themes": 12,
+ "questions": [
+  {
+   "q": "what is a minor scale",
+   "a": "series",
+   "variants": [
+    "series"
+   ],
+   "standard": "music/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a orchestra",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "music/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a wind instrument",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "music/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a key signature",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "music/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a canon",
+   "a": "piece",
+   "variants": [
+    "piece"
+   ],
+   "standard": "music/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a symphony",
+   "a": "piece",
+   "variants": [
+    "piece"
+   ],
+   "standard": "music/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a classical music",
+   "a": "term",
+   "variants": [
+    "term"
+   ],
+   "standard": "music/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a soundboard",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "music/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a violin",
+   "a": "instrument",
+   "variants": [
+    "instrument"
+   ],
+   "standard": "music/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a guitar",
+   "a": "instrument",
+   "variants": [
+    "instrument"
+   ],
+   "standard": "music/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a music education",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "music/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a string quintet",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "music/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a lowest kind",
+   "a": "trumpet",
+   "variants": [
+    "trumpet"
+   ],
+   "standard": "music/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a one example",
+   "a": "kennedy",
+   "variants": [
+    "kennedy"
+   ],
+   "standard": "music/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "language",
+ "grade": "grade12",
+ "sample": 14,
+ "poolSize": 42,
+ "themes": 19,
+ "questions": [
+  {
+   "q": "what is a linguistics",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "language/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a language",
+   "a": "system",
+   "variants": [
+    "system"
+   ],
+   "standard": "language/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a etymon",
+   "a": "predicate",
+   "variants": [
+    "predicate"
+   ],
+   "standard": "language/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a phonology",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "language/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a following",
+   "a": "list",
+   "variants": [
+    "list"
+   ],
+   "standard": "language/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a latin",
+   "a": "belonging",
+   "variants": [
+    "belonging"
+   ],
+   "standard": "language/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a language family",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "language/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a dialectology",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "language/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a comparative linguistics",
+   "a": "branch",
+   "variants": [
+    "branch"
+   ],
+   "standard": "language/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a nominative",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "language/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a dialect continuum",
+   "a": "network",
+   "variants": [
+    "network"
+   ],
+   "standard": "language/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a language change",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "language/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a example",
+   "a": "phrase",
+   "variants": [
+    "phrase"
+   ],
+   "standard": "language/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a borrowing",
+   "a": "term",
+   "variants": [
+    "term"
+   ],
+   "standard": "language/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

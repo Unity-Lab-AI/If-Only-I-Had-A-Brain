@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "ela",
+ "grade": "grade10",
+ "sample": 14,
+ "poolSize": 20,
+ "themes": 10,
+ "questions": [
+  {
+   "q": "what is a rhetoric",
+   "a": "art",
+   "variants": [
+    "art"
+   ],
+   "standard": "ela/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a drama",
+   "a": "mode",
+   "variants": [
+    "mode"
+   ],
+   "standard": "ela/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a tragedy",
+   "a": "genre",
+   "variants": [
+    "genre"
+   ],
+   "standard": "ela/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a symbolism",
+   "a": "practice",
+   "variants": [
+    "practice"
+   ],
+   "standard": "ela/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a persuasion",
+   "a": "act",
+   "variants": [
+    "act"
+   ],
+   "standard": "ela/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a logic",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "ela/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a natural philosophy",
+   "a": "genius",
+   "variants": [
+    "genius"
+   ],
+   "standard": "ela/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mother",
+   "a": "lady",
+   "variants": [
+    "lady"
+   ],
+   "standard": "ela/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a john",
+   "a": "man",
+   "variants": [
+    "man"
+   ],
+   "standard": "ela/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a humility",
+   "a": "grace",
+   "variants": [
+    "grace"
+   ],
+   "standard": "ela/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a each sutra",
+   "a": "rule",
+   "variants": [
+    "rule"
+   ],
+   "standard": "ela/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mime",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "ela/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a consistency consistency",
+   "a": "aspect",
+   "variants": [
+    "aspect"
+   ],
+   "standard": "ela/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a statement form",
+   "a": "truth",
+   "variants": [
+    "truth"
+   ],
+   "standard": "ela/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

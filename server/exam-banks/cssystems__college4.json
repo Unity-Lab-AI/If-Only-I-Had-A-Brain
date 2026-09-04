@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "cssystems",
+ "grade": "college4",
+ "sample": 14,
+ "poolSize": 91,
+ "themes": 25,
+ "questions": [
+  {
+   "q": "what is a optical fiber",
+   "a": "glass",
+   "variants": [
+    "glass"
+   ],
+   "standard": "cssystems/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a internet protocol",
+   "a": "component",
+   "variants": [
+    "component"
+   ],
+   "standard": "cssystems/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a tcp",
+   "a": "service",
+   "variants": [
+    "service"
+   ],
+   "standard": "cssystems/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a packet forwarding",
+   "a": "transit",
+   "variants": [
+    "transit"
+   ],
+   "standard": "cssystems/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a distributed computing",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "cssystems/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a retrieval",
+   "a": "selection",
+   "variants": [
+    "selection"
+   ],
+   "standard": "cssystems/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a client-server model",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "cssystems/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a threat",
+   "a": "event",
+   "variants": [
+    "event"
+   ],
+   "standard": "cssystems/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a each takeaway",
+   "a": "statement",
+   "variants": [
+    "statement"
+   ],
+   "standard": "cssystems/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a another possibility",
+   "a": "presentation",
+   "variants": [
+    "presentation"
+   ],
+   "standard": "cssystems/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a payload",
+   "a": "data",
+   "variants": [
+    "data"
+   ],
+   "standard": "cssystems/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a port",
+   "a": "structure",
+   "variants": [
+    "structure"
+   ],
+   "standard": "cssystems/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a glue record",
+   "a": "combination",
+   "variants": [
+    "combination"
+   ],
+   "standard": "cssystems/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a http",
+   "a": "foundation",
+   "variants": [
+    "foundation"
+   ],
+   "standard": "cssystems/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

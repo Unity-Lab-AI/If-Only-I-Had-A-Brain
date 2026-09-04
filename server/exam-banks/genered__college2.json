@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "genered",
+ "grade": "college2",
+ "sample": 14,
+ "poolSize": 314,
+ "themes": 19,
+ "questions": [
+  {
+   "q": "what is a economics",
+   "a": "science",
+   "variants": [
+    "science"
+   ],
+   "standard": "genered/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a production theory",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "genered/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a national output",
+   "a": "amount",
+   "variants": [
+    "amount"
+   ],
+   "standard": "genered/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a programme evaluation",
+   "a": "method",
+   "variants": [
+    "method"
+   ],
+   "standard": "genered/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a anthropology",
+   "a": "discipline",
+   "variants": [
+    "discipline"
+   ],
+   "standard": "genered/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a psychology",
+   "a": "discipline",
+   "variants": [
+    "discipline"
+   ],
+   "standard": "genered/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a attention",
+   "a": "selection",
+   "variants": [
+    "selection"
+   ],
+   "standard": "genered/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a international trade",
+   "a": "economics",
+   "variants": [
+    "economics"
+   ],
+   "standard": "genered/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a later adulthood",
+   "a": "period",
+   "variants": [
+    "period"
+   ],
+   "standard": "genered/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a brand",
+   "a": "tool",
+   "variants": [
+    "tool"
+   ],
+   "standard": "genered/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a independent clause",
+   "a": "sentence",
+   "variants": [
+    "sentence"
+   ],
+   "standard": "genered/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a initiative overload",
+   "a": "cause",
+   "variants": [
+    "cause"
+   ],
+   "standard": "genered/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a technology",
+   "a": "means",
+   "variants": [
+    "means"
+   ],
+   "standard": "genered/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a positivism",
+   "a": "movement",
+   "variants": [
+    "movement"
+   ],
+   "standard": "genered/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

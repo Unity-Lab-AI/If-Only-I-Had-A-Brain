@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "social",
+ "grade": "grade6",
+ "sample": 14,
+ "poolSize": 16,
+ "themes": 8,
+ "questions": [
+  {
+   "q": "what is a coptic",
+   "a": "alphabet",
+   "variants": [
+    "alphabet"
+   ],
+   "standard": "social/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mesopotamia",
+   "a": "region",
+   "variants": [
+    "region"
+   ],
+   "standard": "social/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a latter",
+   "a": "example",
+   "variants": [
+    "example"
+   ],
+   "standard": "social/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a empire",
+   "a": "polity",
+   "variants": [
+    "polity"
+   ],
+   "standard": "social/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a geography",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "social/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a shield",
+   "a": "region",
+   "variants": [
+    "region"
+   ],
+   "standard": "social/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a monetary system",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "social/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a river",
+   "a": "stream",
+   "variants": [
+    "stream"
+   ],
+   "standard": "social/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a lower mesopotamia",
+   "a": "area",
+   "variants": [
+    "area"
+   ],
+   "standard": "social/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a step pyramid",
+   "a": "design",
+   "variants": [
+    "design"
+   ],
+   "standard": "social/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a scale",
+   "a": "frame",
+   "variants": [
+    "frame"
+   ],
+   "standard": "social/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a any organization",
+   "a": "system",
+   "variants": [
+    "system"
+   ],
+   "standard": "social/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a exact dating",
+   "a": "matter",
+   "variants": [
+    "matter"
+   ],
+   "standard": "social/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a physical geography",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "social/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}
