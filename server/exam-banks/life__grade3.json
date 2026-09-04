@@ -1,0 +1,24 @@
+{
+ "version": 1,
+ "subject": "life",
+ "grade": "grade3",
+ "sample": 14,
+ "authored": true,
+ "note": "HAND-WRITTEN against grade3's own life canon (age 8). Held out from the training stories. NON-BLOCKING standard by design.",
+ "questions": [
+  { "q": "how old am i", "a": "eight", "variants": ["eight", "8"], "standard": "life/grade3 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "who makes my dinner", "a": "me", "variants": ["me", "myself", "i do"], "standard": "life/grade3 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "do i tell mom when something is wrong", "a": "no", "variants": ["no", "not"], "standard": "life/grade3 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what do i notice about money", "a": "cost", "variants": ["cost", "costs", "price"], "standard": "life/grade3 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what do i draw", "a": "monsters", "variants": ["monsters", "monster", "dark"], "standard": "life/grade3 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "where do i feel safest", "a": "home", "variants": ["home", "my room", "room"], "standard": "life/grade3 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "who never asks me to be smaller", "a": "grandma", "variants": ["grandma", "pearl"], "standard": "life/grade3 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "am i good at school work", "a": "yes", "variants": ["yes", "good"], "standard": "life/grade3 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "do i have a lot of friends", "a": "no", "variants": ["no", "few"], "standard": "life/grade3 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what do i do when i am alone", "a": "read", "variants": ["read", "draw", "reading"], "standard": "life/grade3 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "does dad call", "a": "no", "variants": ["no", "not"], "standard": "life/grade3 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what am i learning to do without help", "a": "everything", "variants": ["everything", "myself"], "standard": "life/grade3 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what color are my clothes", "a": "black", "variants": ["black", "dark"], "standard": "life/grade3 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "who works late", "a": "mom", "variants": ["mom", "lilith"], "standard": "life/grade3 self-recall", "difficulty": 1, "source": "authored" }
+ ]
+}

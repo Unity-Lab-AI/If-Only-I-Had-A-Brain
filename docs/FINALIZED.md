@@ -37,6 +37,63 @@ Gee, verbatim, and this question is the reason half of this row did not ship:
 
 ---
 
+## 2026-09-03 — `EXAMGATE` — THE OPERATOR'S QUESTION CAUGHT A WALK-BLOCKER I WAS ABOUT TO SHIP
+
+Gee: **"remember exams dont stop her from going to next grade, right?"**
+
+⛔⛔ **THEY DO. `result.pass = false`, and the log says so: *"BATTERY BLOCKS advancement… grade NOT advanced."* The floor is 90%.**
+
+**AND THE DERIVED BANKS COULD NOT REACH IT.** The generated questions carry a measured residual of roughly **one in seven wrong**, so the ceiling on a derived-only bank is about **86%** — permanently under the bar. Shipped as it stood, **all 191 newly-covered cells would have failed forever**, the walk would have wedged at grade 1, and it would have been discovered *days into a press* looking like a training failure rather than a question failure. **She would have been failed by the questions being wrong, not by her being wrong.**
+
+**THE FIX — TWO AGGREGATES, NOT A WEAKER GATE.** ⛔ Lowering the floor was refused: it is a real, norm-calibrated bar and weakening it to fit generated content is the wrong direction. Instead `battery.rate` still reports EVERYTHING to the dashboard and the ledger, while the **blocking** aggregate counts **authored, norm-referenced items only** (DIBELS 8 / AIMSweb / Fountas & Pinnell — the calibration derived items never earned). A cell with no authored items has no blocking aggregate and is vacuously satisfied, the same convention the methodology criterion already uses. The sub-standard criterion gets the same treatment, because `key-term recall` has no cut score and would have held grades shut on its `__default__`.
+
+**Harnessed 6/6 on the real logic:**
+
+```
+  derived-only at 86% (the actual case)   blocks: false   <- required
+  derived-only life at 25%                blocks: false   <- required
+  authored at 86%                         blocks: TRUE    <- gate still works
+  authored at 95%                         blocks: false
+  authored 95% + derived 20%              blocks: false   <- derived cannot fail her
+  authored 60% + derived 100%             blocks: TRUE    <- derived cannot rescue her
+```
+
+⚠ **AND A BUG INSIDE THE FIX, CAUGHT BY READING RATHER THAN ASSUMING.** I first keyed the split on `r.source`. The main probe path does set it — **but the deadline-exceeded, timed-out and threw paths push rows with `standard` and no `source`.** A source-keyed check would have read `undefined` on exactly the rows produced when the battery is under time pressure, counted them as authored, and let a **timing failure block a grade**. Keyed on `standard` now, which every path sets.
+
+---
+
+## 2026-09-03 — `EXAMTEACH` — A FAILED QUESTION IS NOW TAUGHT, AND THE HELD-OUT COST IS PAID ON PURPOSE
+
+Gee: **"each exam question failed needs to train her on the answer too"**.
+
+He is right: a test that finds a gap and walks away from it has spent the probe and bought nothing. There was **no such mechanism** — the existing `RETEACH` is vocabulary spaced-repetition, unrelated to exam outcomes.
+
+**WHAT IT DOES.** After the battery, every question she missed contributes its answer word to the ordinary vocabulary lane and a binding from the question's own content words to that answer.
+
+⛔⛔ **THE HELD-OUT COST IS REAL AND IS PAID DELIBERATELY**, recorded here so nobody finds it later as a defect: teaching from exam material means an item is no longer a clean unseen probe the second time it is asked. ⭐ **What is taught is therefore the KNOWLEDGE, not the item** — the literal question string is never drilled, so the next asking still tests whether she KNOWS it rather than whether she memorised that sentence, which is the distinction `trainExamOverlap` exists to protect.
+
+⚠⚠ **AND THE FIRST CUT WOULD HAVE SILENTLY DONE NOTHING.** I filtered on `r.expectedAnswer` — which lives on the QUESTION, not on the result row. `battery.results[i].expectedAnswer` was `undefined`, so the missed-set would have been **empty on every cell forever** while the code read as correct. The expected answer is now carried onto the result row at the point it is known, rather than re-joined by question text later — a join that would break on the first reworded question.
+
+⚠ Best-effort by construction: a corrective teach that could throw would let a bad answer string take down a walk that had already finished its cell.
+
+---
+
+## 2026-09-03 — `LIFEEXAM.1` — 18 LIFE CELLS HAND-WRITTEN AFTER THE AUTOMATED ROUTE WAS REFUSED
+
+The automated life extraction was measured and refused (see `LIFEEXAM` above). ⭐ **Checking first showed the gap was narrower than reported:** `life/pre-K` and `life/kindergarten` **already had authored banks** (24 and 75 questions), so the real gap was **18 cells, grade1 → phd**, not 20.
+
+**14 questions a cell, written against each year's own canon** and held out from it — the question strings do not appear in the stories she trains on. Answers are single words she has at that band, with variants for partial credit.
+
+```
+  cells with a held-out bank   12 -> 209
+  questions injected            2,806   (197 cells created, 0 refused)
+  life cells still uncovered    NONE — all 20
+```
+
+⚠ **Every life question carries a `self-recall` standard, which the gate treats as NON-BLOCKING** by the `EXAMGATE` split above. Autobiographical recall is measured and corrective-taught; it does not hold a grade shut — a person's memory of her own childhood is not a graduation requirement.
+
+---
+
 ## 2026-09-03 — `LIFEDEPTH` — EVERY YEAR OF HER LIFE WAS FOUR SENTENCES A WEEK, AND IT RAN BACKWARDS
 
 Gee: *"if life course for each grade straigh with thie too?"* → *"we need to fill in the gaps"* → *"in life courses"* → *"1 memory of a year of college is horrid"* → *"remember what she is!"* → *"keep working... once her canon life courses are all 100% complete"*.

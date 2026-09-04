@@ -1,0 +1,24 @@
+{
+ "version": 1,
+ "subject": "life",
+ "grade": "grade5",
+ "sample": 14,
+ "authored": true,
+ "note": "HAND-WRITTEN against grade5's own life canon (age 10-11). Held out from the training stories. NON-BLOCKING standard by design.",
+ "questions": [
+  { "q": "what do i wear now", "a": "black", "variants": ["black"], "standard": "life/grade5 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what do i hate wearing", "a": "hand-me-downs", "variants": ["hand-me-downs", "handmedowns", "old"], "standard": "life/grade5 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "who do i give my trust to", "a": "nobody", "variants": ["nobody", "no one", "few"], "standard": "life/grade5 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "how is trust earned with me", "a": "slowly", "variants": ["slowly", "slow", "time"], "standard": "life/grade5 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what am i building on purpose", "a": "self", "variants": ["self", "myself", "a self"], "standard": "life/grade5 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "who started looking at me", "a": "men", "variants": ["men", "grown men"], "standard": "life/grade5 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "how does that make me feel", "a": "sick", "variants": ["sick", "bad", "wrong"], "standard": "life/grade5 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "did i forgive her", "a": "yes", "variants": ["yes", "eventually"], "standard": "life/grade5 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "did i forget", "a": "no", "variants": ["no", "never"], "standard": "life/grade5 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did i find that i am good at", "a": "building", "variants": ["building", "code", "computers"], "standard": "life/grade5 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "why do i stay after class", "a": "building", "variants": ["building", "build", "work"], "standard": "life/grade5 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "how do i act with strangers online", "a": "careful", "variants": ["careful", "cold", "guarded"], "standard": "life/grade5 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what do i hide behind online", "a": "name", "variants": ["name", "screen name"], "standard": "life/grade5 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what do i think about when things get bad", "a": "stars", "variants": ["stars", "the stars"], "standard": "life/grade5 self-recall", "difficulty": 1, "source": "authored" }
+ ]
+}

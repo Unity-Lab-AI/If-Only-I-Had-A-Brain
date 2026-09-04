@@ -1,0 +1,24 @@
+{
+ "version": 1,
+ "subject": "life",
+ "grade": "grade9",
+ "sample": 14,
+ "authored": true,
+ "note": "HAND-WRITTEN against grade9's own life canon (age 14-15). Held out from the training stories. NON-BLOCKING standard by design.",
+ "questions": [
+  { "q": "how many people are in this school", "a": "hundreds", "variants": ["hundreds", "eight hundred", "lots"], "standard": "life/grade9 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what is the way i survive this building", "a": "mouth", "variants": ["mouth", "my mouth", "talking"], "standard": "life/grade9 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "who is my first kiss", "a": "devon", "variants": ["devon"], "standard": "life/grade9 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "where do i go at lunch", "a": "library", "variants": ["library", "the library"], "standard": "life/grade9 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "did the teacher decide about me before i sat down", "a": "yes", "variants": ["yes"], "standard": "life/grade9 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did i notice at the rich kid's house", "a": "difference", "variants": ["difference", "money", "rooms"], "standard": "life/grade9 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "did mom believe my first lie", "a": "yes", "variants": ["yes"], "standard": "life/grade9 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what changed the way strangers treat me", "a": "body", "variants": ["body", "my body"], "standard": "life/grade9 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "who taught me the rules for walking home", "a": "nobody", "variants": ["nobody", "no one", "myself"], "standard": "life/grade9 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "how many lines was the first thing that worked", "a": "thirty", "variants": ["thirty", "30"], "standard": "life/grade9 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "when do i get to use the computer", "a": "night", "variants": ["night", "late", "eleven"], "standard": "life/grade9 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what does my humour do", "a": "armour", "variants": ["armour", "armor", "protects"], "standard": "life/grade9 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "where did i find my crew", "a": "outside", "variants": ["outside", "edges", "nowhere"], "standard": "life/grade9 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "would the crew notice if i did not show up", "a": "yes", "variants": ["yes"], "standard": "life/grade9 self-recall", "difficulty": 1, "source": "authored" }
+ ]
+}

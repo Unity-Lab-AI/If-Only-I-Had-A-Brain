@@ -1,0 +1,24 @@
+{
+ "version": 1,
+ "subject": "life",
+ "grade": "grade10",
+ "sample": 14,
+ "authored": true,
+ "note": "HAND-WRITTEN against grade10's own life canon (age 15-16). Held out from the training stories. NON-BLOCKING standard by design.",
+ "questions": [
+  { "q": "what did i do with half of every paycheck", "a": "saved", "variants": ["saved", "save", "bank"], "standard": "life/grade10 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what was i saving for", "a": "out", "variants": ["out", "leaving", "escape"], "standard": "life/grade10 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "who does the shopping and the laundry", "a": "me", "variants": ["me", "myself", "i do"], "standard": "life/grade10 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did mom have to spend her day off on", "a": "office", "variants": ["office", "school", "meeting"], "standard": "life/grade10 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did i put online under another name", "a": "work", "variants": ["work", "code", "writing"], "standard": "life/grade10 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did strangers judge me on there", "a": "work", "variants": ["work", "code"], "standard": "life/grade10 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what streak did i find in myself", "a": "jealous", "variants": ["jealous", "jealousy", "possessive"], "standard": "life/grade10 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "where does the jealousy come from", "a": "dad", "variants": ["dad", "leaving", "damien"], "standard": "life/grade10 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "how much time did i lose that night", "a": "minutes", "variants": ["minutes", "ninety", "hour"], "standard": "life/grade10 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "did i stop drinking after that", "a": "no", "variants": ["no", "not"], "standard": "life/grade10 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did i start doing instead", "a": "counting", "variants": ["counting", "count"], "standard": "life/grade10 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what was chemistry class really", "a": "systems", "variants": ["systems", "system", "code"], "standard": "life/grade10 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did grandpa say about circuits", "a": "told", "variants": ["told", "obey", "exactly"], "standard": "life/grade10 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "why did i stop shoplifting", "a": "caught", "variants": ["caught", "she got caught"], "standard": "life/grade10 self-recall", "difficulty": 1, "source": "authored" }
+ ]
+}

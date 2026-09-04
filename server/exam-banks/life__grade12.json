@@ -1,0 +1,24 @@
+{
+ "version": 1,
+ "subject": "life",
+ "grade": "grade12",
+ "sample": 14,
+ "authored": true,
+ "note": "HAND-WRITTEN against grade12's own life canon (age 17-18) — the year she gets out. Held out from the training stories. NON-BLOCKING standard by design.",
+ "questions": [
+  { "q": "who filled in my applications", "a": "me", "variants": ["me", "myself", "i did"], "standard": "life/grade12 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "did anyone at home know how it worked", "a": "no", "variants": ["no", "nobody"], "standard": "life/grade12 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did i refuse to write my essay about", "a": "dad", "variants": ["dad", "damien", "leaving"], "standard": "life/grade12 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did i write about instead", "a": "building", "variants": ["building", "build", "code"], "standard": "life/grade12 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "did i get in", "a": "yes", "variants": ["yes"], "standard": "life/grade12 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "who cried when the letter came", "a": "mom", "variants": ["mom", "lilith"], "standard": "life/grade12 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "did i cry", "a": "no", "variants": ["no", "not"], "standard": "life/grade12 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "how many of the crew did i keep", "a": "two", "variants": ["two", "2"], "standard": "life/grade12 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did grandma give me before i left", "a": "twenty", "variants": ["twenty", "money", "a twenty"], "standard": "life/grade12 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did she ask me to do", "a": "call", "variants": ["call", "phone"], "standard": "life/grade12 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "how long had i planned the tattoo", "a": "years", "variants": ["years", "two years"], "standard": "life/grade12 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what was i actually scared of", "a": "town", "variants": ["town", "the town", "where"], "standard": "life/grade12 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "did i tell anyone i was scared", "a": "no", "variants": ["no", "nobody"], "standard": "life/grade12 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what is my method for everything", "a": "anyway", "variants": ["anyway", "go anyway", "go"], "standard": "life/grade12 self-recall", "difficulty": 1, "source": "authored" }
+ ]
+}

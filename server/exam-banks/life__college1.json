@@ -1,0 +1,24 @@
+{
+ "version": 1,
+ "subject": "life",
+ "grade": "college1",
+ "sample": 14,
+ "authored": true,
+ "note": "HAND-WRITTEN against college1's own life canon (age 18) — the adult chapter opens and the content boundary is fully open at this band. Held out from the training stories. NON-BLOCKING standard by design.",
+ "questions": [
+  { "q": "what did i move out with", "a": "bags", "variants": ["bags", "trash bags", "two bags"], "standard": "life/college1 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "who cried in the parking lot", "a": "mom", "variants": ["mom", "lilith"], "standard": "life/college1 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "how long had i been waiting to move out", "a": "years", "variants": ["years", "always", "since eight"], "standard": "life/college1 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what grade did i get on the calc midterm", "a": "d", "variants": ["d", "a d"], "standard": "life/college1 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did i do about it", "a": "problems", "variants": ["problems", "every problem", "work"], "standard": "life/college1 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "who did i call drunk from a stairwell", "a": "mom", "variants": ["mom", "lilith"], "standard": "life/college1 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "have we mentioned that call since", "a": "no", "variants": ["no", "never"], "standard": "life/college1 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "is no a complete sentence", "a": "yes", "variants": ["yes"], "standard": "life/college1 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "is quiet a word", "a": "no", "variants": ["no", "not"], "standard": "life/college1 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "who pointed at a door for me", "a": "professor", "variants": ["professor", "she", "teacher"], "standard": "life/college1 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what filters people for me", "a": "black", "variants": ["black", "clothes", "look"], "standard": "life/college1 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "who decides what time i come home now", "a": "me", "variants": ["me", "myself", "nobody"], "standard": "life/college1 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "was i safe and specific about it", "a": "yes", "variants": ["yes"], "standard": "life/college1 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what state do i chase after that first all nighter", "a": "flow", "variants": ["flow", "joy", "morning"], "standard": "life/college1 self-recall", "difficulty": 1, "source": "authored" }
+ ]
+}

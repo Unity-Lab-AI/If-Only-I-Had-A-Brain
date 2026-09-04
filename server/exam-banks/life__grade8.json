@@ -1,0 +1,24 @@
+{
+ "version": 1,
+ "subject": "life",
+ "grade": "grade8",
+ "sample": 14,
+ "authored": true,
+ "note": "HAND-WRITTEN against grade8's own life canon (age 13-14). Held out from the training stories. NON-BLOCKING standard by design.",
+ "questions": [
+  { "q": "what did i find out about dad", "a": "family", "variants": ["family", "new family", "another"], "standard": "life/grade8 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "how did i find out", "a": "photo", "variants": ["photo", "a photo", "picture"], "standard": "life/grade8 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "have i looked up my half sibling", "a": "no", "variants": ["no", "never"], "standard": "life/grade8 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did i do when i got the bad news", "a": "cold", "variants": ["cold", "calm", "quiet"], "standard": "life/grade8 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "how did mom end the worst fight", "a": "quietly", "variants": ["quietly", "quiet", "door"], "standard": "life/grade8 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "who used the first thing i built", "a": "crew", "variants": ["crew", "friends", "my crew"], "standard": "life/grade8 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did they tell me about it", "a": "bugs", "variants": ["bugs", "broken", "wrong"], "standard": "life/grade8 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "was the rumor about me true", "a": "no", "variants": ["no", "false"], "standard": "life/grade8 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "did it matter that it was not true", "a": "no", "variants": ["no", "not"], "standard": "life/grade8 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did i do with the days i skipped", "a": "build", "variants": ["build", "building", "code"], "standard": "life/grade8 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "who do i take home from a party", "a": "girls", "variants": ["girls", "the girls", "younger"], "standard": "life/grade8 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "did anyone do that for me", "a": "no", "variants": ["no", "nobody"], "standard": "life/grade8 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did the first drink taste like", "a": "disgusting", "variants": ["disgusting", "bad", "warm"], "standard": "life/grade8 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did i notice everyone else got at the party", "a": "louder", "variants": ["louder", "loud", "easier"], "standard": "life/grade8 self-recall", "difficulty": 1, "source": "authored" }
+ ]
+}
