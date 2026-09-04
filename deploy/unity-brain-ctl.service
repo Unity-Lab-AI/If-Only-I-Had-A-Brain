@@ -74,7 +74,27 @@ NoNewPrivileges=false
 #   validates its own input and hardcodes the unit name.
 PrivateTmp=true
 ProtectSystem=full
-ProtectHome=true
+ProtectHome=read-only
+# ^ ⛔ MUST NOT be `true`. 2026-09-04: with ProtectHome=true, /home is replaced by
+#   an EMPTY tmpfs for this service, so /home/unity/.ssh — the Forgejo DEPLOY KEY
+#   and known_hosts — is invisible to everything ctl spawns. `/ctl/update` falls
+#   back to running deploy/self-update.sh IN THIS SERVICE'S sandbox when the brain
+#   is too busy to accept the request, and that clone then dies with:
+#       hostkeys_find_by_key_hostfile: hostkeys_foreach failed for
+#       /home/unity/.ssh/known_hosts: Permission denied
+#       Host key verification failed. / fatal: Could not read from remote repository.
+#   The permissions on disk are FINE (unity:unity, 0600/0644) — this is the sandbox,
+#   not the filesystem, which is exactly why it reads as a bogus auth failure and
+#   sends you chasing deploy-key authorisation that was never broken.
+#   `read-only` still denies WRITES to /home and still hides /root, keeping the
+#   hardening that matters here while letting ssh read the key.
+#   ⭐ THIS IS THE SECOND TIME THIS EXACT DIRECTIVE BROKE A CRITICAL PATH on this
+#   box: nightly-backup.service was silently failing for 3 months because
+#   ProtectHome=true hid /root/.restic-password (see REDEPLOY-NOTES 2026-08-26 and
+#   dropins/nightly-backup/). If a unit reads a secret out of a home directory,
+#   ProtectHome=true WILL break it and the error will not mention systemd.
+#   Prove it in one line before believing any auth theory:
+#       systemd-run -p ProtectHome=true -p User=unity /bin/sh -c 'ls /home/unity/.ssh'
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true

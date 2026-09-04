@@ -42,6 +42,62 @@ last-verified: "cd465955 2026-08-29"
 
 ---
 
+## ✅ 2026-09-04 — RESOLVED: Gee's redeploy + fresh walk "wouldn't connect at all". TWO independent bugs; the visible one was NOT the deploy failure
+
+**Symptom as reported:** Gee pressed Update repeatedly, then said the brain "won't connect at all". Both halves were real, and they had **different causes** — chasing one hides the other.
+
+> 📎 **Read together with the two 2026-09-04 entries below.** They cover the *data-repo* side of the same bad day (the box has no `BrainWaves` credential, the books gate dying silently under `set -euo pipefail`, GloVe self-provisioning). This entry covers the *code-repo* side and the outage: **`ProtectHome=true` hiding the deploy key**, and a **runaway `git lfs pull` starving the brain's event loop**. Different failures, same press — do not stop at the first one you find.
+
+### Bug 1 — the site was unreachable because a runaway `git lfs pull` ran INSIDE the brain's cgroup
+
+`self-update.sh` hydrates wavelet fields from the **BrainWaves** data repo with `git lfs pull`. That process is spawned by the brain, so it lives in `unity-brain.service`'s cgroup and **shares the brain's memory budget**. It had been running **22 minutes** and had read **2.07 TB while writing ZERO bytes** — a pathological re-read loop, not slow progress (sampled `/proc/<pid>/io` 20s apart: `read_bytes` climbed 45 GB, `write_bytes` stayed 0).
+
+Consequence: `MemoryCurrent` pinned at the `MemoryHigh=20G` ceiling (`memory.events high` climbing **~19k throttle events per 10s**), so the kernel throttled the *whole cgroup* — including node. The journal is unambiguous about what that did to the user experience:
+```
+[EventLoop] ⛔ STARVED — the loop was late 80.3s out of the last 82s (2% serviced).
+   HTTP/WS callers wait this long — the dashboard, minds-eye and chat will look "disconnected" while teaching is fine.
+[LoopWatchdog] ✓ main loop RECOVERED after 61761ms (episode 30 this session, worst 253005ms)
+```
+**The brain was `active`, port 7525 was listening, and `/ctl/status` cheerfully said `"Brain is online and serving."` — while `curl` on `/public-state.json` timed out at 20s and externally returned nothing.** That is why "it won't connect" and "systemd says it's fine" were both true. ⚠ **`/ctl/status` checks that the port is OPEN, not that it ANSWERS** — do not use it to rule out an outage.
+
+**Fix applied:** killed the wedged `git-lfs` tree (PIDs 4155236/4155237/4155424/4155425) **only** — not the brain. Memory fell **24G → 15G instantly** and the site returned to sub-second (`/` 0.54s, `/public-state.json` 0.59s, `/minds-eye.json` 2.7s, `/html/dashboard.html` 0.56s, all **200**). Killing the LFS pull is explicitly safe and the script says so: **fields stay as pointers, the books are plain git blobs that already landed with the clone, and it does not block the press.**
+
+### Bug 2 — every `/ctl/update` press died on `ProtectHome=true` hiding the deploy key
+
+With the loop starved, ctl logged `brain accepted nothing — falling back to running the deploy script directly`. **That fallback runs `deploy/self-update.sh` inside `unity-brain-ctl.service`'s own sandbox**, and that unit had `ProtectHome=true`, which replaces `/home` with an **empty tmpfs**. So `/home/unity/.ssh` — the Forgejo deploy key and `known_hosts` — did not exist for the clone:
+```
+hostkeys_find_by_key_hostfile: hostkeys_foreach failed for /home/unity/.ssh/known_hosts: Permission denied
+Host key verification failed. / fatal: Could not read from remote repository.
+[self-update] FATAL — git clone of the CODE repo failed; aborting (service NOT restarted).
+```
+**⚠ THE TRAP: this is a systemd sandbox, and systemd is never named in the error.** It reads exactly like a revoked deploy key, and the script's own WARN text actively points you at "the box's deploy key is NOT authorised" — a dead end. **The key was always fine.** Proven both directions in one line each:
+```bash
+sudo -u unity -H ssh -T git@git.unityailab.com                                  # ✓ authenticates fine
+systemd-run -p ProtectHome=true      -p User=unity /bin/sh -c 'ls /home/unity/.ssh'  # ✗ Permission denied
+systemd-run -p ProtectHome=read-only -p User=unity /bin/sh -c 'ls /home/unity/.ssh'  # ✓ readable
+```
+**Fix:** drop-in `deploy/dropins/unity-brain-ctl/10-fix-protecthome-deploykey.conf` → `ProtectHome=read-only` (writes to `/home` still denied, `/root` still hidden — the hardening that matters is kept). Installed, `daemon-reload`, ctl restarted; verified `ProtectHome=read-only` **and** a real clone succeeding inside a sandbox replicating the unit's settings. The repo's `deploy/unity-brain-ctl.service` was corrected too, so a clean install cannot reintroduce it.
+
+**⭐ SECOND TIME THIS EXACT DIRECTIVE BROKE A CRITICAL PATH HERE.** `nightly-backup.service` failed silently for three months because `ProtectHome=true` hid `/root/.restic-password` (2026-08-26 entry). **Rule: if a unit reads a secret out of a home directory, `ProtectHome=true` will break it, and the failure will look like anything except systemd.**
+
+### Outcome — deployed and training intact
+
+The retry after the LFS kill completed cleanly: **`main@af23e4ff`** deployed, and despite Gee pressing *fresh walk*, `UAL_KEEP_STATE=1` meant it was a **SAVESTART** — nothing was wiped:
+```
+[Brain] ⚠ DREAM_KEEP_STATE=1 — KEEPING prior state. Auto-clear SKIPPED.
+[Brain] cortex state queued for apply: 2 passedCells, grades { ela=kindergarten math=kindergarten … }
+[Brain] passedPhases restored: 97 phase markers · word-bucket map: 1944 words
+[Tier3Store] boot — 30 Tier 3 identity-bound schemas restored
+```
+Tests: `test-brain-ctl.mjs` **71/71**, `test-ctlplane-integration.mjs` **64/64** (3 new assertions pin `ProtectHome`; **verified they FAIL when reverted to `true`**, so they are not vacuous).
+
+### ⚠ Still open — the real remaining hazard (needs a decision, not a command)
+
+**`git lfs pull` for the ~114 GB field set runs in the brain's cgroup and can starve the brain to death without ever failing.** The kill was a bandage. Options: run the data sync as a **separate systemd unit** with its own `MemoryMax` (so it cannot touch the brain's budget), and/or give it a **timeout + no-progress watchdog** (it read 2 TB and wrote 0 bytes for 22 minutes; nothing noticed). Until then, **before pressing Update, check `pgrep -fa git-lfs`** — if one is running, the press will likely wedge the box again.
+
+Also worth knowing: the walk is **DEADLOCKED independently of all this** — `[Curriculum] ⛔ runner quiet 20.7 min … cortexFullyReady=false uploadInFlight=false` with `donors=0`. It cannot train with no GPU donor attached, so this is expected on a headless box, but the upload re-arm watchdog appears not to fire. Separate issue, untouched here.
+---
+
 ## 🔴 2026-09-04 (later) — BOTH PRESSES RAN. THE BOX CANNOT CLONE THE DATA REPO, AND THE GATE THAT SHOULD HAVE SAID SO DIED SILENTLY
 
 **Read this before diagnosing an Update that "did nothing".**

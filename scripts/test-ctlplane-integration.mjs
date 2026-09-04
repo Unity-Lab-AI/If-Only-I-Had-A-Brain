@@ -160,6 +160,26 @@ console.log('\n4. cross-file consistency — ports, unit names and paths must ag
     !/(Requires|PartOf|BindsTo)=unity-brain\.service/.test(UNIT),
     'it must stay up precisely WHEN the brain is down');
 
+  // ── 2026-09-04 REGRESSION: ProtectHome=true broke Gee's redeploy ──
+  // ctl's /update asks the brain first, but when the brain's event loop is
+  // starved it accepts nothing and ctl runs deploy/self-update.sh ITSELF, inside
+  // this unit's sandbox. With ProtectHome=true, /home is an EMPTY tmpfs, so
+  // /home/unity/.ssh (the Forgejo deploy key + known_hosts) vanishes and the
+  // clone dies with "Host key verification failed" — which reads as a deploy-key
+  // authorisation problem that does not exist. Second time this directive broke a
+  // critical path here; nightly-backup.service failed silently for 3 months the
+  // same way (ProtectHome=true hid /root/.restic-password).
+  check('unit does NOT set ProtectHome=true (it hides the deploy key)',
+    !/^\s*ProtectHome\s*=\s*true\s*$/m.test(UNIT),
+    'ProtectHome=true makes /home an empty tmpfs → self-update.sh cannot read ' +
+    '/home/unity/.ssh → git clone fails as "Host key verification failed"');
+  check('unit sets ProtectHome=read-only (writes still denied, /root still hidden)',
+    /^\s*ProtectHome\s*=\s*read-only\s*$/m.test(UNIT),
+    'read-only keeps the hardening that matters while letting ssh read the key');
+  check('the ProtectHome choice is explained where someone would re-tighten it',
+    /ProtectHome/.test(UNIT) && /deploy key|known_hosts/i.test(UNIT),
+    'without the comment, a future hardening pass silently re-breaks deploys');
+
   // The wiping verbs and their token must agree across service and UI.
   check('ctl requires the WIPE token', /confirmToken !== 'WIPE'/.test(CTL));
   check('dashboard sends the WIPE token', /confirmToken: 'WIPE'/.test(DASH));
