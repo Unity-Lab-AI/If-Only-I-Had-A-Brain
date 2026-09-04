@@ -3583,7 +3583,13 @@ Gee (verbatim):
 
 - [ ] `TEACHFINAL.2` — **PROPER WRITE-UPS FOR IT ON THE PAGES PAGE.** Every surface this project ships is listed and explained on the pages index; the finalization view needs its entry there written to the same standard as the rest — what it is for, what each control does, and what a reader should conclude from each state.
 
-- [ ] `TEACHFINAL.3` — **ADMIN ONLY.** The viewer carries operator controls, so the finalization surface inherits the same gate as the rest of the admin lane. ⚠ **And it must fail the way the dashboard already learned to:** an auth failure renders as *"admin lane not authenticated"*, never as *"the brain is broken"*.
+- [x] `TEACHFINAL.3` — ✅ **DONE 2026-09-04, and the measurement changed what the row meant.** The enforcement was **already correct and already server-side**: all three privileged endpoints (`/knob`, `/corpus-buffer`, `/teach-bench`) sit behind `requireLoopback`. Nothing needed locking down.
+  - ⛔⛔ **WHAT WAS ACTUALLY BROKEN WAS THE HONESTY, AND IT WAS THE EXACT DEFECT THE DASHBOARD ALREADY FIXED.** A 403 rendered here as **`buffer ERROR — forbidden — privileged endpoint requires loopback caller`** — which reads as *the buffer is broken*. It is not: the brain is fine, the buffer is fine, and what failed is that this browser is not on the admin lane. **An auth failure must never render as a brain failure.** All three write paths now detect 403 specifically and say so.
+  - ⭐⭐ **AND THE INSTRUMENTS ARE DELIBERATELY NOT GATED.** Everything this page READS comes from `/public-state.json`, which needs **no auth by design** — hiding the dials behind an admin check would have invented a restriction the server does not have, and made a working page look broken to a legitimate reader. **Only the three writes are gated, because only they are gated on the server.**
+  - **Controls are DIMMED, not hidden** (`body.tv-no-admin`, plus an `(admin)` suffix). A control that vanishes teaches a reader it does not exist; a control that is visibly refused teaches them why. The click still fires and still gets the server's real answer — the page is not the enforcement and does not pretend to be.
+  - ⚠ **The banner stays SILENT until a call has actually answered.** Asserting a lane nobody has tested would be its own lie.
+
+  **Original filing:** **ADMIN ONLY.** The viewer carries operator controls, so the finalization surface inherits the same gate as the rest of the admin lane. ⚠ **And it must fail the way the dashboard already learned to:** an auth failure renders as *"admin lane not authenticated"*, never as *"the brain is broken"*.
 
 - [ ] `TEACHFINAL.4` — **PROPER BUTTONS AND NAVIGATION.** Consistent placement, labels that name the consequence rather than the verb, and every irreversible control surfacing its consequence before it fires — the same rule the donor rows already follow.
 
