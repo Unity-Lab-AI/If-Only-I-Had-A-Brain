@@ -5,6 +5,36 @@
 
 ---
 
+## 2026-09-04 — `PHONBANK.1` CLOSED + `MATHGAP.1` PART ① + THE BOARD WAS MISREPORTING WHAT BLOCKS THE WALK
+
+Gee: *"we are completeing the todos blcoking a freshwalk and graduation"* — so the first job was working out which rows genuinely block it, and **three of them turned out not to.**
+
+### ⛔ `PHONBANK.1` WAS ALREADY DONE — ALL THREE PARTS — AND LEFT OPEN
+
+Re-verified against the **live artefacts**, not against the row's own text, because a row is not evidence:
+
+- **① five missing letters** — retracted 2026-09-02, 26/26 covered.
+- **② no letter carries more than one sound** — **110 generated phonics questions, and exactly 9 letters tested for more than one sound: `a c g i o s u x y`**, plus 32 multi-letter graphemes. Underneath them `corpora/phonics/gpc.json` holds **241 rules · 156 graphemes · 66 carrying more than one sound**, 19 of those single letters.
+- **③ 12 cells of 213** — `server/exam-banks/` holds **206 files / 2,806 questions**.
+
+⚠ **Two of my own detectors over-reported while checking, and neither was trusted.** A `letter 'x' makes` regex returned *"0 letters with more than one sound"*, and a `letter a` pattern returned *"0 distinct letters"* — both because the real questions **quote** the letter (`the letter "a"`). The artefact was read directly instead. **That is the third and fourth bad detector this session; the pattern is mine and it is worth naming: a regex written from an assumed format measures the assumption.**
+
+### ⭐ `MATHGAP.1` PART ① — `math/grade9` CLEARED
+
+Filed at 67,775 words against the 146,000 high-band floor. **Now 174,894.** Twenty-two genuinely-new geometry topics, `SKIPPED BY REASON — no-such-page:1` of 22.
+
+⚠ **The first attempt moved it 638 words instead of the ~2,000 it owed, because 9 of the 10 topics I added were already banked.** Corrected by choosing against **the cell's own banked theme list** rather than against the topic array — *a topic present in the source list is not evidence the cell lacks it.*
+
+⏳ Part ② stays open and is a **placement** question, not a volume one: `math/college1` is *"Calculus II and Multivariable"* while `math/grade12` (*"AP Calculus"*) holds the whole OpenStax calculus book. ⚠ It is **no longer EMPTY** as the row says — that half of the filing is stale.
+
+### ⛔ THE REAL FINDING: THREE ROWS WERE LYING ABOUT THE BLOCKER LIST
+
+`SPELLTRUTH.2` (decided and both options shipped), `PHONBANK.1` (all three parts done) and `TEXTBOOK.1` (*"the ingest is NOT started"* — it has now run twice, 6,179,563 words on the first pass alone) were all reporting work that no longer existed.
+
+**An open row makes the board lie about what blocks the walk**, and *"what blocks the walk"* is the exact question being asked. The LAW already names a completed row left open as the same defect class as an instrument nobody reads — this is what that costs in practice.
+
+---
+
 ## 2026-09-04 — `WORDWIRE.3` — THE TOPOGRAPHIC RADIUS IS A FRACTION OF THE REGION NOW, AND THE FRACTION IS DERIVED
 
 `initTopographicProjection` puts 70% of a row's picks within ±`radiusTopo` of its centre, and that was the literal **30** at every size this brain is ever built at — a 6,700-neuron browser instance and the 671,000,000-neuron tier. **The same line of code therefore meant two opposite things**, which is the bug shape this session found twice (the other being `initRandom`'s missing `Math.max(1, …)`, which bites *small* brains for the mirror-image reason).

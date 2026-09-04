@@ -573,7 +573,17 @@ const TOPICS = {
       'Cartesian coordinate system', 'Slope', 'Distance', 'Midpoint', 'Mathematical proof', 'Theorem',
       'Axiom', 'Trigonometry', 'Sine and cosine', 'Tangent', 'Right triangle', 'Special right triangle',
       'Law of sines', 'Law of cosines', 'Symmetry', 'Tessellation', 'Euclid', "Euclid's Elements",
-      'Mathematical proof', 'Congruence (geometry)', 'Similarity (geometry)'],
+      'Mathematical proof', 'Congruence (geometry)', 'Similarity (geometry)',
+      'Euclidean geometry', 'Axiom', 'Theorem', 'Polygon', 'Circle',
+      'Area', 'Volume', 'Surface area', 'Coordinate system', 'Transformation geometry',
+      // Chosen against the cell's OWN banked theme list, not from the topic
+      // array — nine of the ten above were already held, so the fetch moved
+      // the cell by 638 words instead of the ~2,000 it owed.
+      'Rhombus', 'Rectangle', 'Square', 'Circumference', 'Diameter', 'Radius',
+      'Chord (geometry)', 'Arc (geometry)', 'Sector (geometry)', 'Inscribed angle',
+      'Prism (geometry)', 'Pyramid (geometry)', 'Cylinder', 'Cone', 'Sphere',
+      'Polyhedron', 'Platonic solid', 'Vector (mathematics and physics)',
+      'Angle bisector', 'Perpendicular', 'Parallel (geometry)', 'Locus (mathematics)'],
     // ⛔ `Sine` AND `Cosine` both resolve to `Sine and cosine` — two asked-for
     // titles, one article, which would bank the same prose twice under two
     // themes. Collapsed to the canonical one.
