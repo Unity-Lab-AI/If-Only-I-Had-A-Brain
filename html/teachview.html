@@ -2016,17 +2016,39 @@ function renderDials(st, tv) {
   const host = $('tvDials');
   if (!host) return;
   const cur = st.consciousness || {};
+  /* ⛔⛔ THESE TWO DIALS READ A PRODUCER THAT WAS NEVER THERE, AND THE PANEL SAID
+     "2 no signal" FOR IT — honestly, and about the wrong thing. Both were written
+     against `st.consciousness.firingPct` and `st.consciousness.phi`; the state
+     publishes NEITHER key. The numbers exist and always did, under different
+     names in different places: the firing rate is its own top-level block
+     (`st.firing.pct`, with the target beside it), and Φ is
+     `st.consciousness.phiProxy`.
+     ⭐ THIS IS THE DEFECT CLASS THE PAGE EXISTS TO CATCH, committed on the page
+     itself — a consumer still reading a producer that moved. It does not throw
+     and it does not draw a wrong number; it draws NO number, which is the least
+     harmful version of the failure and therefore the easiest to leave in place.
+     ⚠ Found by diffing the dial's field names against the 55 keys the running
+     brain actually publishes, not by reading either file. */
+  const fir = st.firing || {};
   const specs = [
     {
       id: 'firing', label: 'firing', tip: 'Share of neurons that fired on the last tick, against the homeostatic target the drive is steered toward.\n\nDrifting far from target for long means the drive loop is not holding — not that she is thinking harder.',
-      val: cur.firingPct != null ? cur.firingPct.toFixed(2) + '%' : null,
-      frac: cur.firingPct != null ? Math.min(1, cur.firingPct / 15) : null, c: TV_C.accent,
-      sub: 'target 7.5%',
+      val: fir.pct != null ? Number(fir.pct).toFixed(2) + '%' : null,
+      frac: fir.pct != null ? Math.min(1, fir.pct / 15) : null, c: TV_C.accent,
+      /* ⚠ The target is READ, not restated. It was hardcoded as "target 7.5%"
+         beside a value that never rendered — so the one part of this dial that
+         did draw was a constant the brain does not have to agree with. */
+      sub: fir.targetPct != null ? `target ${fir.targetPct}%` : 'target not published',
     },
     {
-      id: 'phi', label: 'phi', tip: 'The integration proxy — Shannon entropy over a sample of spikes.\n\n⚠ A PROXY, not a measurement of consciousness. It says how distributed her activity is, nothing more.',
-      val: cur.phi != null ? Number(cur.phi).toFixed(3) : null,
-      frac: cur.phi != null ? Math.min(1, cur.phi) : null, c: TV_C.pink, sub: 'integration proxy',
+      id: 'phi', label: 'phi', tip: 'The integration proxy — Shannon entropy over a sample of spikes.\n\n⚠ A PROXY, not a measurement of consciousness. It says how distributed her activity is, nothing more.\n\nThe word under the number is phiState: live is a real measurement, floored means it pinned at its own floor, unmeasured means nothing sampled it. A low number and an unmeasured one are different findings.',
+      val: cur.phiProxy != null ? Number(cur.phiProxy).toFixed(3) : null,
+      frac: cur.phiProxy != null ? Math.min(1, cur.phiProxy) : null, c: TV_C.pink,
+      /* ⛔ `phiState` TRAVELS WITH THE VALUE BECAUSE THE PRODUCER SAYS IT MUST —
+         its own comment records that Φ can pin at its floor and `phiProxy` alone
+         cannot say so. A floored 0.019 and a live 0.019 are the same digits and
+         different facts. */
+      sub: cur.phiState ? `integration proxy · ${cur.phiState}` : 'integration proxy',
     },
     {
       id: 'lanes', label: 'lanes', tip: 'How many distinct teach lanes have published this boot.\n\nOne lane doing everything is a narrower education than the mix suggests.',

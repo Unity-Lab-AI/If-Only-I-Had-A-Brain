@@ -1,6 +1,55 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-09-04 NIGHT (LATEST — PICK UP HERE) THE LOCAL REHEARSAL FOUND SIX DEFECTS THAT WOULD HAVE SHIPPED, AND NONE WERE FINDABLE BY READING
+> ## ⭐⭐⭐ 2026-09-04 LATE (LATEST — PICK UP HERE) THE FINAL CHECK FOUND THAT THE PRESS BRICKS THE BOX, AND IT WAS CAUGHT BEFORE THE BUTTON
+>
+> ### Read in this order: this block → `docs/TODO.md §PRESSHARD` → `deploy/REDEPLOY-NOTES.md` top entry → the blocks below.
+>
+> ### ⛔ STATE — the press is NOT taken, and the hardening is NOT cascaded yet
+> ```
+> main                9cf8453a   (origin + github level)
+> feature/pressharden            the hardening — COMMITTED? no, see below
+> BrainWaves main     f750d208   (was 1e09d3d1) — GloVe is a PLAIN BLOB now
+> box is running      29a02f6f   deployed 2026-09-01, idle 63.6h "no donor connected"
+> local rehearsal     still up   (fresh walk, donor 0.3.36 attached, ela/kindergarten pre-cell)
+> ```
+>
+> ### ⛔⛔ THE FINDING: A PRESS RUNS THE **BOX'S** `self-update.sh`, NOT `main`'s
+> `brain-server.js` resolves it from `__dirname`. **The version on `main` only takes effect on the press AFTER the one that delivers it.**
+>
+> | fact | read from |
+> |---|---|
+> | box at `29a02f6f`, deployed `2026-09-01T17:14:36Z` | live `/public-state.json` → `state.build` |
+> | that copy: **no `--exclude 'corpora'`**, no `--exclude 'fields'`, no data-sync, **no books gate** | `git show 29a02f6f:deploy/self-update.sh` — 139 lines shorter, insertions-only |
+> | `corpora/` = **0** tracked on `main`, **125** at `29a02f6f` | `41b36b59` ONEREPO untracked **227 files**; `.gitignore:268` |
+>
+> So `rsync -a --delete` finds no `corpora/` in the source and **deletes the destination's — the books AND `glove.6B.300d.txt`.** ⛔ **She then never comes up at all:** GloVe load throws, the boot answers *"Boot STOPS here by design (NO FALLBACKS)"*, and `Restart=always` makes that a **crash loop** with `.force-fresh` already written.
+>
+> ### ✅ WHAT SHIPPED — three fixes, all removing ONE unverified tool from the critical path
+> **Nothing on the box provisions `git-lfs`** (`bootstrap-backend.sh` has no install line) and **the data-sync block has never run there** — it landed 09-03, the box is at 09-01.
+> - **Books off the LFS gate.** `BrainWaves/.gitattributes` LFS-tracks only `*.field.json`; every corpus JSON is a plain blob. ⛔ **The subtle half: `_lfs_pull`'s EXIT STATUS** decides whether the books get rsynced, so it returns `0` on a box without LFS instead of taking the whole sync down its failure branch.
+> - **GloVe OFF LFS** — BrainWaves `1e09d3d1 → f750d208`, pushed. **2 files, 0 deletions, `fields` re-read at 26,359 after the commit.** Fields keep LFS: a missing field costs a live transform, a missing GloVe costs the boot.
+> - **The gate gates the embeddings** (`UAL_GLOVE_MIN_BYTES`, 100 MB) — **4/4 on real files**, size *and* first-40-bytes, because a pointer stub is a real file. Aborts before `.force-fresh`.
+>
+> ### ⛔ THE PRESS IS A TWO-PRESS SEQUENCE AND THAT IS STRUCTURAL
+> **Press 1 always runs the old script** — there is no way around it without a shell. It delivers the new one. **Press 2 runs the new one** and pulls corpus + GloVe + fields back from BrainWaves behind the books and embeddings gates. `unity-brain-ctl` is a **separate always-up service**, so `/ctl/update` fires press 2 with the brain in a crash loop.
+> ⭐ **Press 1 should be `⬆ Update (keep weights)`** — it does not write `.force-fresh`, so the existing trained weights survive the ugly middle. Press 2 is the fresh walk.
+>
+> ### ✅ ALSO FIXED — the viewer's "2 no signal" was true about the wrong thing
+> Gee asked directly. `firing` read `st.consciousness.firingPct` and `phi` read `st.consciousness.phi`; **the state publishes neither key.** Both numbers exist elsewhere — `st.firing.pct` and `st.consciousness.phiProxy`. **4/6 → 6/6 reading, verified live.** ⭐ **It fails in the least harmful way available, which is why it survived**: no number rather than a wrong one, under an honest "no signal" label. Found by diffing the dial field names against the 55 keys the brain publishes — reading either file alone would not have found it.
+>
+> ### PREWALK FINAL PASS — CLEAN against `9cf8453a`
+> Bundle fresh-build **byte-identical** to `main`'s blob (1,011,611 B), `node --check` + ESM import on both changed JS files, **0 untracked-and-unignored** files, all 222 HTML id references resolve, 4 flagged CSS classes opened by hand and all benign.
+>
+> ### NEXT — in order
+> - **Cascade `feature/pressharden`**, then re-run PREWALK against whatever commit is actually pressed.
+> - **Shut down the local rehearsal** before the press (Gee's own instruction).
+> - **Press 1 (keep weights) → press 2 (fresh walk).** Then Gee starts the pod.
+> - ⏳ **Watch on the walk:** `defQueue.lastWindow` is `null` — the ~2.4h pre-cell bootstrap makes that correct now. **`lastWindow: null` an hour into a cell is a real finding.**
+> - ⚠ **Open and unresolved:** `DEF-MISS "is" ×11` on the local run. There is **no lemma/inflection retry** in `server/definition-service.js` — a 404 is cached PERMANENT — so every inflected function word may bind nothing. Not press-blocking; worth measuring on the walk.
+>
+> ---
+>
+> ## ⭐⭐⭐ 2026-09-04 NIGHT — THE LOCAL REHEARSAL FOUND SIX DEFECTS THAT WOULD HAVE SHIPPED, AND NONE WERE FINDABLE BY READING
 >
 > ### Read in this order: this block → `docs/TODO.md §PREWALK` → `docs/TODO.md §NOFALLBACK.5` → the blocks below.
 >

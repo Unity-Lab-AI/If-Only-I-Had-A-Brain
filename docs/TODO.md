@@ -3809,4 +3809,47 @@ Gee (verbatim):
 
 - **Acceptance:** an operator can watch a walk finish, see every finalization step resolve with a reason, save the resulting weight set, drop it back in later, and have training resume from exactly where that set left off — with the write-up on the pages page describing all of it; **and every surface in the viewer has been re-checked against its live source, with a reason recorded for each one that had drifted.**
 
+---
+
+## PRESSHARD — the final check before the press found that the press bricks the box — filed 2026-09-04
+
+Gee (verbatim):
+
+> *"read resume.md we are doing final chack before we press update fresh walk on the box's dashboard at the deployed site and we will shut down the local run that was a test before the press. then onces its up on the site ill tell you when to start the pod"*
+
+Ruling taken on the finding below (verbatim option): **"Harden first, then press"**.
+
+- [~] `PRESSHARD.1` — ⛔⛔ **THE PRESS RUNS THE BOX'S OWN COPY OF `deploy/self-update.sh`, AND THAT COPY DELETES THE CORPUS WITH NOTHING TO PUT IT BACK.**
+  - **The chain, every link read rather than assumed.** `server/brain-server.js` resolves the script from `__dirname` — so a press executes **whatever is on the box**, not what is on `main`. The box reports `build.sha 29a02f6f`, deployed `2026-09-01T17:14:36Z`, read live off `/public-state.json`.
+  - **That copy is 139 lines shorter than `main`'s, insertions-only:** no `--exclude 'corpora'`, no `--exclude 'fields'`, no BrainWaves data-sync, **no books gate**.
+  - ⛔ **And `41b36b59` (ONEREPO, 2026-09-03) untracked 227 corpus files from this repo** — `.gitignore:268` now ignores `corpora/`. `git ls-tree main -- corpora` is **0 files**; at `29a02f6f` it was **125**.
+  - **So the overlay's `rsync -a --delete` finds no `corpora/` in the source and deletes the destination's** — books *and* `corpora/glove.6B.300d.txt`. `WorkingDirectory=/opt/unity-brain` and every GloVe candidate path resolves inside the delete zone.
+  - ⛔⛔ **It is not "a walk on an empty library" — she never comes up at all.** GloVe load throws, and `brain-server.js` answers it with *"Boot STOPS here by design (NO FALLBACKS)"*. `Restart=always` then makes it a crash loop, with `.force-fresh` already written.
+  - ⭐ **The recovery path exists and is self-serve** — press 1 overlays the good script, and the control plane (`unity-brain-ctl`, its own service on 7526) fires `/ctl/update` with the brain down. **The press is a TWO-PRESS sequence either way; the first one always runs the old script.**
+  - ⚠ **The hole in that path is `git-lfs`,** which is what the rows below close.
+
+- [x] `PRESSHARD.2` — ✅ **BUILT 2026-09-04.** The clone always runs and the books always land; only the FIELDS fall back when the extension is absent. ⛔ **The subtle half was `_lfs_pull`'s EXIT STATUS** — it sits inside `if git clone … && _lfs_pull; then`, so a non-zero `git lfs pull` took the **whole data sync** down its failure branch and lost the corpus over a payload declared non-fatal twenty lines above. It returns `0` there now. ⚠ The skip still does not rsync, and the log line names **which** of the two reasons applied.
+
+  **Original filing:** **THE BOOKS DO NOT NEED `git-lfs` AND THE SCRIPT GATES THEM ON IT ANYWAY.** `BrainWaves/.gitattributes` LFS-tracks exactly two patterns — `*.field.json` and `corpora/glove.6B.300d.txt`. **Every corpus JSON is a plain blob.** But the data-sync block skips *entirely* on `! command -v git-lfs`, so a box without it loses the books it could have had, then trips the books gate.
+  - **Nothing provisions git-lfs.** `deploy/bootstrap-backend.sh` has no `apt`/`git-lfs` line anywhere, and **no press has ever exercised that path** — the block landed `41b36b59` on 09-03 and the box is at 09-01. Its presence on the box is **unverified and unverifiable from here.**
+
+- [x] `PRESSHARD.3` — ✅ **DONE 2026-09-04 — BrainWaves `1e09d3d1 → f750d208`, pushed and verified.** `.gitattributes` no longer LFS-tracks the table; the real 1,037,962,819-byte blob is committed plain. ⚠ **Staged by explicit path, per that repo's standing trap: 2 files changed, 0 deletions, and `git ls-tree -r --name-only HEAD fields | wc -l` re-read 26,359 after the commit.** The fields keep LFS — the asymmetry is the argument: a missing field costs a live transform, a missing GloVe costs the boot.
+
+  **Original filing:** **UN-LFS GloVe IN BrainWaves so the one fatal file has no `git-lfs` dependency.** 1.04 GB is over GitHub's blob limit but BrainWaves is Forgejo-only, and the press clone is `--filter=blob:none` + checkout, which materialises a plain blob without LFS. The fields stay LFS: a missing field is explicitly non-fatal, a missing GloVe stops the boot.
+
+- [x] `PRESSHARD.4` — ✅ **BUILT + VERIFIED 2026-09-04, 4/4 on real files.** `UAL_GLOVE_MIN_BYTES` (100 MB) plus a first-40-bytes read, because **existence is not the check — a pointer stub is a real file**, and a stub and a half-finished transfer are different failures with different fixes. absent → FATAL missing · LFS stub → FATAL pointer stub · 500-byte truncation → FATAL truncated · the real 1,037,962,819-byte table → PASS. ⚠ Aborts **before `.force-fresh`**, exactly like the books gate, so a refusal can never cost the trained weights.
+
+  **Original filing:** **THE BOOKS GATE MUST GATE GloVe TOO.** It counts `corpora/academic/*.json` and nothing else, so a box with books and no embeddings passes the gate and restarts into a boot that cannot complete. A gate in front of an irreversible press must refuse **every** certain-crash it can see, not one of them.
+
+- [x] `INSTRDEAD.1` — ✅ **FIXED + VERIFIED 2026-09-04 — the viewer's "2 no signal" was true about the wrong thing.** Gee (verbatim): *"instraments 4/6 reading - 2 no signal IS THAT NORMAL? BEFORE WE PREESS CHACK IT OUT"*.
+  - **No, and it is this ledger's most-repeated defect committed on the page built to catch it: a consumer still reading a producer that moved.** `firing` read `st.consciousness.firingPct` and `phi` read `st.consciousness.phi`; **the state publishes neither key.**
+  - **Both numbers exist and always did**, elsewhere: `st.firing.pct` (with `targetPct`, `ema`, `driveScale` beside it) and `st.consciousness.phiProxy`.
+  - ⭐ **It fails in the least harmful way available, which is exactly why it survived** — it draws no number rather than a wrong one, and the honest "no signal" label made the panel look correct while two of its six dials were dead.
+  - ⚠ **The hardcoded `sub: 'target 7.5%'` went too.** It was the only part of that dial which ever rendered, and it was a constant the brain does not have to agree with; the target is read now.
+  - ⛔ **`phiState` now travels with the value, because the producer's own comment says it must** — Φ can pin at its floor and `phiProxy` alone cannot say so. A floored `0.019` and a live `0.019` are the same digits and different facts.
+  - **Verified against the running brain, not against the file: 4/6 → 6/6 reading** — `firing 9.70% (target 7.5%)` · `phi 0.019 · live`.
+  - ⚠ **Found by diffing the dial field names against the 55 keys the brain actually publishes.** Reading either file alone would not have found it; both are internally consistent.
+
+- **Acceptance:** the two-press sequence can be run from the dashboard with no shell on the box, and **no single point of it depends on a tool nobody has verified is installed** — with the books restorable without `git-lfs`, GloVe restorable without `git-lfs`, and a gate that refuses to restart into a boot it can already see will fail.
+
 
