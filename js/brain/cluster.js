@@ -1225,6 +1225,20 @@ export class NeuronCluster {
       const logConstruction = this.size >= 50000;
       if (logConstruction) console.log(`[Cluster ${name}] initializing ${pairs.length * 2} cross-projections at size=${this.size.toLocaleString()}...`);
       let _projIdx = 0;
+      // ⚠ DECLARED HERE, ABOVE THE LOOP, AND THAT PLACEMENT IS THE WHOLE POINT.
+      // The wiring audit below the loop reads `_topoFrac` to report each
+      // projection's resolved radius. Declared INSIDE the loop it is out of
+      // scope there, the audit throws a ReferenceError into its own try/catch,
+      // and `cluster.wiringAudit` silently never gets assigned — which is
+      // exactly what happened on the first cut of this change, and exactly the
+      // scoping trap this project already has on record from `FIELD_MAXSIDE`.
+      const _topoFrac = (() => {
+        try {
+          const v = parseFloat(process?.env?.DREAM_TOPO_RADIUS_FRAC);
+          return (Number.isFinite(v) && v > 0 && v <= 1) ? v : (1 / 52);
+        } catch { return 1 / 52; }
+      })();
+      const _radiusFor = (srcCols) => Math.max(30, Math.round(srcCols * _topoFrac));
       for (const [a, b] of pairs) {
         const aSize = this.regions[a].end - this.regions[a].start;
         const bSize = this.regions[b].end - this.regions[b].start;
@@ -1337,12 +1351,37 @@ export class NeuronCluster {
         // exempted. They are real laminated cortex and they keep their masks —
         // as a BIAS now rather than a veto (see `maskMode` below), so the
         // hierarchy is preserved as a gradient and no row is ever born dead.
+        // ⛔⛔ THE TOPOGRAPHIC RADIUS IS A FRACTION OF THE SOURCE REGION NOW,
+        // NOT A FIXED CELL COUNT (2026-09-04).
+        //
+        // `initTopographicProjection` puts `localFrac` (70%) of a row's picks
+        // within ±`radiusTopo` of its centre, and that was the literal **30** at
+        // every size this brain is ever built at — from a 6,700-neuron browser
+        // instance to the 671,000,000-neuron tier. **The same line of code
+        // therefore means two opposite things:** a broad, sensible prior on a
+        // small brain, and a pinhole on the deployed one.
+        //
+        // ⭐ THE DERIVATION, because a named threshold does not get to be a
+        // guess. These pairs are BUCKET-ALIGNED spaces — letter `a`'s bucket
+        // corresponds to motor `a`'s bucket, which is the entire reason they are
+        // on the topographic list. So the local window should be about **one
+        // bucket wide**: for an inventory of ~26 symbols a bucket is `cols/26`,
+        // and a ±radius spanning one bucket is `cols/52`. Hence the default
+        // fraction **1/52 ≈ 0.0192** — derived from the alignment the prior
+        // exists to exploit, not chosen for feel.
+        //
+        // ⚠ The floor keeps the OLD value as a lower bound, so no geometry ever
+        // gets a narrower prior than it has today; on every real region the
+        // derived value is the larger one and the floor never binds.
+        //
+        // ⚠ The sem pairs are NOT affected — they came off the topographic list
+        // entirely, because their spaces are not aligned at all.
         const _readoutBand = (r) => (r === 'word_motor' || r === 'motor' || r === 'letter');
         const srcMaskAB = (this.lamination && aRegion && !_readoutBand(a)) ? buildLayerMask(aRegion, 1) : null; // L2/3 of source
         const dstMaskAB = (this.lamination && bRegion && !_readoutBand(b)) ? buildLayerMask(bRegion, 2) : null; // L4 of dest
         if (TOPOGRAPHIC_PAIRS.has(abKey) && typeof ab.initTopographicProjection === 'function') {
           ab.initTopographicProjection(abDensity, abExcitatory, 0.2, {
-            radiusTopo: 30,
+            radiusTopo: _radiusFor(aSize),   // source region is the column space
             srcLayerMask: srcMaskAB,
             dstLayerMask: dstMaskAB,
           });
@@ -1359,7 +1398,7 @@ export class NeuronCluster {
         const dstMaskBA = (this.lamination && aRegion && !_readoutBand(a)) ? buildLayerMask(aRegion, 2) : null;
         if (TOPOGRAPHIC_PAIRS.has(baKey) && typeof ba.initTopographicProjection === 'function') {
           ba.initTopographicProjection(baDensity, baExcitatory, 0.2, {
-            radiusTopo: 30,
+            radiusTopo: _radiusFor(bSize),   // reverse direction — b is the column space
             srcLayerMask: srcMaskBA,
             dstLayerMask: dstMaskBA,
           });
@@ -1410,14 +1449,22 @@ export class NeuronCluster {
           const [srcName, dstName] = key.split('_to_');
           const topo = TOPOGRAPHIC_PAIRS.has(`${srcName}-${dstName}`);
           const bound = MOTOR_BOUND_PAIRS.has(`${srcName}-${dstName}`);
-          const rec = { key, rows: mx.rows, cols: mx.cols, nnz: mx.nnz, mean, min, max, empty, topographic: topo, motorBound: bound };
+          // The resolved topographic radius is REPORTED, not assumed. It is
+          // derived from the source region now, so it differs per projection
+          // and per brain size — exactly the thing that was invisible while it
+          // was a literal, and exactly the thing a reader needs to see.
+          const rec = {
+            key, rows: mx.rows, cols: mx.cols, nnz: mx.nnz, mean, min, max, empty,
+            topographic: topo, motorBound: bound,
+            radiusTopo: topo ? Math.max(30, Math.round(mx.cols * _topoFrac)) : null,
+          };
           _lines.push(rec);
           if (!_worst || mean < _worst.mean) _worst = rec;
         }
         this.wiringAudit = { minWires: _MIN_WIRES, projections: _lines, worst: _worst };
         for (const r of _lines) {
           const thin = r.mean < _MIN_WIRES;
-          const tag = `${r.topographic ? ' topographic' : ' random'}${r.motorBound ? ' motor-bound' : ''}`;
+          const tag = `${r.topographic ? ` topographic r=${r.radiusTopo}` : ' random'}${r.motorBound ? ' motor-bound' : ''}`;
           const msg = `[Cluster ${name}] wiring ${r.key} — ${r.mean.toFixed(2)} wires/row (min ${r.min}, max ${r.max}) · ${r.rows.toLocaleString()}x${r.cols.toLocaleString()} · nnz ${r.nnz.toLocaleString()}${tag}`;
           if (r.empty > 0) {
             console.warn(`${msg} · ⛔ ${r.empty.toLocaleString()} EMPTY ROWS — those rows can never learn, because ojaUpdate cannot insert an entry that construction did not create.`);
@@ -1431,7 +1478,14 @@ export class NeuronCluster {
           console.log(`[Cluster ${name}] wiring audit — ${_lines.length} projections · thinnest is ${_worst.key} at ${_worst.mean.toFixed(2)} wires/row. A projection's wires-per-row is set at construction and never grows.`);
         }
       } catch (err) {
-        console.warn(`[Cluster ${name}] wiring audit failed (non-fatal — the projections are built either way): ${err && err.message ? err.message : err}`);
+        // ⛔ LEAVE A MARKER, NOT AN ABSENCE. A thrown audit used to leave
+        // `wiringAudit` undefined, which reads identically to "this build has
+        // no audit" — and that is how the first cut of the scale-derived radius
+        // hid a ReferenceError behind a warning nobody was listening for.
+        // A consumer can now tell "the audit failed, here is why" from "the
+        // audit never ran", which are different problems.
+        this.wiringAudit = { error: (err && err.message) ? err.message : String(err), projections: [] };
+        console.warn(`[Cluster ${name}] ⛔ wiring audit FAILED (the projections are built either way, but nothing is reporting their wires): ${this.wiringAudit.error}`);
       }
     } else {
       this.crossProjections = {};

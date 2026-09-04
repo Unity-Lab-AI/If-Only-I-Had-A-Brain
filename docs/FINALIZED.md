@@ -5,6 +5,35 @@
 
 ---
 
+## 2026-09-04 — `WORDWIRE.3` — THE TOPOGRAPHIC RADIUS IS A FRACTION OF THE REGION NOW, AND THE FRACTION IS DERIVED
+
+`initTopographicProjection` puts 70% of a row's picks within ±`radiusTopo` of its centre, and that was the literal **30** at every size this brain is ever built at — a 6,700-neuron browser instance and the 671,000,000-neuron tier. **The same line of code therefore meant two opposite things**, which is the bug shape this session found twice (the other being `initRandom`'s missing `Math.max(1, …)`, which bites *small* brains for the mirror-image reason).
+
+### THE DERIVATION, because a named threshold does not get to be a guess
+
+These pairs are **bucket-aligned** — letter `a`'s bucket corresponds to motor `a`'s bucket, which is the entire reason they are on the topographic list. So the local window should be about **one bucket wide**. For an inventory of ~26 symbols a bucket is `cols/26`, and a ±radius spanning one bucket is `cols/52`. Hence the default **1/52 ≈ 0.0192**, tunable via `DREAM_TOPO_RADIUS_FRAC` and floored at the old 30 so no geometry gets a narrower prior than it had.
+
+### MEASURED — the prior is now the same size relative to a bucket at every scale
+
+```
+neurons          letter cols     bucket        OLD r=30            NEW r=cols/52
+    400,000           36,740      1,413      4.2% of a bucket     100.1% of a bucket
+  2,000,000          183,700      7,065      0.8%                 100.0%
+ 50,000,000        4,592,500    176,635      0.0%                 100.0%
+306,458,816       28,148,243  1,082,625      0.0%                 100.0%
+671,000,000       61,631,350  2,370,437      0.0%                 100.0%
+```
+
+**The resolved radius is now reported per projection by the wiring audit** — `r=30` at 8k (the floor binding), `r=58` / `r=231` at 60k — because it differs per projection and per brain size, which is precisely what was invisible while it was a literal. Zero empty rows preserved at both sizes.
+
+### ⛔ OWNED — THE FIRST CUT BROKE THE AUDIT AND DID IT SILENTLY
+
+I declared `_topoFrac` **inside** the pair loop. The wiring audit runs *after* that loop and reads it, so it threw a `ReferenceError` straight into its own `try/catch`, and **`cluster.wiringAudit` silently stopped being assigned at all.** `node --check` passed. It is the same scoping trap this project already has on record from `FIELD_MAXSIDE` — *declared inside the worker branch while the main thread reports it* — and I walked into it in the same file, in the same session, having written that comparison myself an hour earlier.
+
+⭐ **Two fixes, not one.** The declaration is hoisted above the loop with the reason written at the site — and **the audit's catch now leaves a marker (`wiringAudit.error`) instead of an absence.** A thrown audit used to read identically to "this build has no audit", which is how the ReferenceError hid behind a warning nobody was listening for.
+
+---
+
 ## 2026-09-04 — `SEMDENSE.1` — SEM SPARSITY WAS NEVER MISSING, IT WAS IN THE WRONG LANE
 
 Gee, asked because it changes what she is taught and only takes effect on a fresh walk, and answered **"Build it and walk with it"**.
