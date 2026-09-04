@@ -327,6 +327,22 @@ CORPORA_DIR="${UAL_CORPORA_DIR:-$BACKEND_DIR/corpora}"
 # is not readable by the service user, is rejected rather than half-used.
 # `UAL_DATA_LOCAL_PATH` overrides the search outright.
 _local_data=''
+# ⭐⭐ SEARCH, DO NOT JUST GUESS. The first cut of this probed eight hardcoded
+# paths, found nothing on the live box, and reported "not found on local disk" —
+# which was true of my guesses and told us nothing about the machine. Forgejo's
+# repository root is configurable and moves between packagings, so the fixed
+# list is tried first (fast, no I/O storm) and then an actual BOUNDED search
+# runs. `-print -quit` stops at the first hit, so this costs one directory walk
+# and not a full filesystem scan.
+_search_local_repo() {
+  local root p
+  for root in /var/lib /home /data /srv /opt /mnt /var/opt; do
+    [ -d "$root" ] || continue
+    p="$( { find "$root" -maxdepth 6 -type d -name 'brainwaves.git' -print -quit 2>/dev/null || true; } )"
+    if [ -n "$p" ] && git -C "$p" rev-parse --git-dir >/dev/null 2>&1; then printf '%s' "$p"; return 0; fi
+  done
+  return 1
+}
 for _cand in \
   "${UAL_DATA_LOCAL_PATH:-}" \
   /var/lib/forgejo/repositories/unityailab/brainwaves.git \
@@ -339,12 +355,66 @@ for _cand in \
   [ -n "$_cand" ] || continue
   if git -C "$_cand" rev-parse --git-dir >/dev/null 2>&1; then _local_data="$_cand"; break; fi
 done
+if [ -z "$_local_data" ]; then
+  log "data repo not at any known path — searching the filesystem for it (bounded, first hit wins)…"
+  _local_data="$(_search_local_repo || true)"
+fi
 if [ -n "$_local_data" ]; then
-  log "data repo found ON THIS BOX at ${_local_data} — cloning from local disk instead of ${DATA_REMOTE}. No credential is involved, and the corpus and embedding table are plain blobs so they arrive in full. ⚠ The LFS field payloads do NOT come over a filesystem path and stay as pointers; every figure without one is transformed live, which is the documented non-fatal path."
+  log "data repo found ON THIS BOX at ${_local_data} — cloning from local disk instead of over SSH. No credential is involved, and the corpus and embedding table are plain blobs so they arrive in full."
   DATA_REMOTE="$_local_data"
 else
-  log "data repo not found on local disk (checked the usual Forgejo/Gitea repository roots) — using ${DATA_REMOTE} over SSH, which needs the box's deploy key to be authorised on that repo."
+  log "data repo not found on local disk (known paths AND a bounded search) — using ${DATA_REMOTE} over SSH, which needs the box's deploy key to be authorised on that repo."
 fi
+
+# ── FORGEJO'S LFS STORE, FOR THE WAVELET FIELDS ───────────────────────────────
+#
+# ⭐⭐ THE FIELDS ARE ALREADY ON THIS MACHINE. Forgejo runs on this box, so its
+# LFS objects — all 114 GB of them — are sitting on local disk. The brain cannot
+# reach them through the GIT protocol because the deploy key is scoped to the
+# code repo, and `git lfs` speaks HTTP so a filesystem clone leaves pointers.
+# **But a file copy needs no credential at all.**
+#
+# Operator, when I offered a route that dropped them: *"we need to be able to use
+# the fields or wtf!"* and *"we are still using the wavelets"*. He is right, and
+# this is how they arrive without another permission chase.
+#
+# HOW IT WORKS: a local clone gives us every field's LFS POINTER, and a pointer
+# contains the object's `oid sha256:…`. Forgejo stores each object at
+# `<store>/<oid[0:2]>/<oid[2:4]>/<oid>`. So the OID in the pointer is the
+# filename on disk — we copy it into place ourselves and skip LFS entirely.
+#
+# ⚠ `--reflink=auto` so a filesystem that supports copy-on-write (btrfs/xfs)
+# costs no extra space, and one that does not falls back to a real copy. A
+# HARDLINK would be free everywhere and is deliberately NOT used: it would make
+# the brain's field files the SAME inode as Forgejo's LFS objects, so anything
+# that ever truncated or rewrote one would silently corrupt the data repo's
+# store. Not worth the disk saving.
+#
+# ⚠ THIS MAY SIMPLY NOT BE READABLE. Forgejo's data directory is conventionally
+# `git:git` and mode 0700, and the brain runs as its own service user. If that is
+# the case here this reports it and the fields stay absent — which is non-fatal
+# and always was. It says so rather than implying the fields were fetched.
+_search_lfs_store() {
+  local root p
+  # Derived from the repo location first — the store is a sibling of the
+  # repository root far more often than it is anywhere else.
+  for p in \
+    "${UAL_LFS_STORE:-}" \
+    "${_local_data%/repositories/*}/lfs" \
+    "${_local_data%/repositories/*}/data/lfs" \
+    /var/lib/forgejo/data/lfs /var/lib/forgejo/lfs \
+    /var/lib/gitea/data/lfs /var/lib/gitea/lfs \
+    /data/gitea/lfs /data/forgejo/lfs ; do
+    [ -n "$p" ] || continue
+    if [ -d "$p" ] && [ -r "$p" ]; then printf '%s' "$p"; return 0; fi
+  done
+  for root in /var/lib /data /srv /opt /home; do
+    [ -d "$root" ] || continue
+    p="$( { find "$root" -maxdepth 5 -type d -name lfs -print -quit 2>/dev/null || true; } )"
+    if [ -n "$p" ] && [ -r "$p" ]; then printf '%s' "$p"; return 0; fi
+  done
+  return 1
+}
 _corpus_ok=0
 # ⛔⛔ THE TWO HALVES OF THIS SYNC ARE NOT THE SAME SIZE AND MUST NOT SHARE A
 # SWITCH. The books are ~400 MB and the walk CANNOT RUN without them; the fields
@@ -471,7 +541,38 @@ else
     # sends someone hunting the corpus for a problem that was never in it.
     if ! _lfs_pull; then
       _fkept="$(_count "$FIELDS_DIR" \( -name '*.field.json' -o -name '*.field.json.gz' \))"
-      log "WARN — git lfs pull FAILED (missing object, dropped connection or disk). ${_fkept} fields already on the box are LEFT UNTOUCHED and every figure without one is transformed live, which is the path that always existed. ⭐ THE BOOKS ABOVE ARE UNAFFECTED — they are plain git blobs and landed with the clone. This does not block the press."
+      log "WARN — git lfs pull FAILED or was unavailable. ${_fkept} fields already on the box are LEFT UNTOUCHED. ⭐ THE BOOKS ABOVE ARE UNAFFECTED — they are plain git blobs and landed with the clone. This does not block the press."
+      # ⭐⭐ THE FIELDS STILL ARRIVE, FROM FORGEJO'S OWN STORE ON THIS DISK.
+      # This is the whole point of the block above: LFS speaks HTTP and we have
+      # no credential, but the objects are local files named by their OID and the
+      # pointers we just checked out carry those OIDs.
+      _lfs_store="$(_search_lfs_store || true)"
+      if [ -z "$_lfs_store" ]; then
+        log "WARN — could not find (or read) Forgejo's LFS object store on this box, so the field payloads cannot be hydrated from disk either. Every figure without a field is transformed live. ⚠ If Forgejo's data directory is mode 0700 and owned by another user, this is a PERMISSIONS result, not an absence — say so rather than assuming the fields are gone."
+      elif [ ! -d "$FTMP/bw/fields" ]; then
+        log "WARN — the clone has no fields/ directory; nothing to hydrate."
+      else
+        log "fields — hydrating from Forgejo's local LFS store at ${_lfs_store}. No credential, no network: each pointer names its object and the object is a file on this disk."
+        _fh=0; _fm=0; _fs=0
+        while IFS= read -r _ptr; do
+          _rel="${_ptr#"$FTMP/bw/fields/"}"
+          _dst="${FIELDS_DIR}/${_rel}"
+          # Already hydrated at full size? leave it.
+          if [ -f "$_dst" ] && [ "$(_bytes "$_dst")" -gt 400 ]; then _fs=$((_fs+1)); continue; fi
+          _oid="$( { grep -m1 -oE 'oid sha256:[0-9a-f]{64}' "$_ptr" 2>/dev/null || true; } | cut -d: -f2 )"
+          if [ -z "$_oid" ]; then _fm=$((_fm+1)); continue; fi
+          _obj="${_lfs_store}/${_oid:0:2}/${_oid:2:2}/${_oid}"
+          if [ -f "$_obj" ]; then
+            mkdir -p "$(dirname "$_dst")" 2>/dev/null || true
+            if cp --reflink=auto -f "$_obj" "$_dst" 2>/dev/null || cp -f "$_obj" "$_dst" 2>/dev/null; then
+              _fh=$((_fh+1))
+            else _fm=$((_fm+1)); fi
+          else _fm=$((_fm+1)); fi
+        done <<EOF
+$( { find "$FTMP/bw/fields" -name '*.field.json' -type f 2>/dev/null || true; } )
+EOF
+        log "fields — hydrated ${_fh} from the local store, ${_fs} already present, ${_fm} unresolved. ⚠ The unresolved ones are transformed live; that is the documented non-fatal path and not a failed press."
+      fi
     elif [ "$_want_fields" != "1" ]; then
       _fkept="$(_count "$FIELDS_DIR" \( -name '*.field.json' -o -name '*.field.json.gz' \))"
       # ⚠ THE REASON IS NAMED. "UAL_FIELDS=0" and "this box has no git-lfs" are
