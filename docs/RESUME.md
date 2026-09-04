@@ -31,6 +31,15 @@
 > - **The gate gates the embeddings** (`UAL_GLOVE_MIN_BYTES`, 100 MB) — **4/4 on real files**, size *and* first-40-bytes, because a pointer stub is a real file. Aborts before `.force-fresh`.
 > - **The clone gates the books; the LFS pull gates only the fields.** Gee: *"make sure brain wave repo is good too everything depends on it"* — and auditing the repo is what found this. They were ONE condition, so **any** lfs failure aborted the press at the books gate over a payload the block itself calls non-fatal. ⚠ **Different cause from the git-lfs-absent fix, same shape; fixing the first did not fix the second.**
 >
+> - ⛔⛔ **`UAL_FIELDS=0` DID NOT SAVE THE DOWNLOAD IT IS NAMED FOR — measured, and the false claim was in the script.** `--filter=blob:none` makes the *git* blobs lazy and does **nothing** about LFS, whose smudge filter runs at **checkout**. Rehearsed with the press's own clone command:
+> ```
+>                        without SKIP_SMUDGE        with it
+>   on disk              10 GB and climbing (→114)  2.1 GB in 2m56s
+>   fields               1,099 smudged full-size    26,359 pointers @ ~131 B
+>   git lfs pull called  no — never reached         the only thing that decides
+> ```
+> ✅ **GloVe still arrives real through the fixed path — 1,037,962,819 bytes, sha256 matching local exactly — and all 193 academic JSONs.** ⭐ **Verified by RUNNING the hatch, per the RE-PRICE law** — the `DREAM_PHASE_BUDGET_MS=0` shape again. ⚠ Floor is **~1.4 GB, not zero**: GloVe rides the checkout as a plain blob.
+>
 > ### ✅ BrainWaves AUDITED — `f750d208`
 > ```
 > fields tracked   26,359          corpora  232 files (193 academic)

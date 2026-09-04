@@ -92,6 +92,15 @@ throws and the boot answers *"Boot STOPS here by design (NO FALLBACKS)"*; with
    Found by auditing the data repo rather than by re-reading the fix; it is a different
    cause from (1) with the same shape, and fixing (1) did not fix it.
 
+5. **`GIT_LFS_SKIP_SMUDGE=1` on the data clone.** The script claimed *"`git lfs pull` IS
+   the 114 GB, NOT the clone"*. False, and measured false: `--filter=blob:none` makes the
+   *git* blobs lazy and does nothing about LFS, whose smudge filter runs at **checkout**.
+   Rehearsed with the press's own clone command — **10 GB and climbing, 1,099 fields
+   already smudged full-size, `git lfs pull` never called.** With the skip: **2.1 GB in
+   2m56s, all 26,359 fields as ~131-byte pointers**, and GloVe still arriving real with a
+   matching sha256. ⭐ Verified by RUNNING the escape hatch, per the RE-PRICE law. ⚠ The
+   floor is ~1.4 GB, not zero — GloVe rides the checkout as a plain blob.
+
 ### The data repo audited clean the same day
 
 `UnityAILab/BrainWaves` `main` = `f750d208` · **26,359** fields tracked · 232 corpora
