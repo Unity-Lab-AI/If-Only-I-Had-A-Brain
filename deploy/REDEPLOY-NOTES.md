@@ -42,6 +42,44 @@ last-verified: "cd465955 2026-08-29"
 
 ---
 
+## 🔴 2026-09-04 (later) — BOTH PRESSES RAN. THE BOX CANNOT CLONE THE DATA REPO, AND THE GATE THAT SHOULD HAVE SAID SO DIED SILENTLY
+
+**Read this before diagnosing an Update that "did nothing".**
+
+| time | what the ring showed |
+|---|---|
+| 04:37:30 | press 1 booted → `⛔ FATAL — GloVe 300d could not be loaded` → `Language subsystem init FAILED` |
+| 04:39:14 | press 2 fired · `.force-fresh` ARMED · overlay to `fec05e56` **succeeded** |
+| 04:39:19 | `WARN — the data-repo CLONE failed` — **then nothing at all** |
+
+Box state after: `curriculumCoverage` **0 fed / 193 EMPTY**, `entries 0`. Disk **425 GB free** — not disk.
+
+### Why the press went quiet
+
+`set -euo pipefail` + the books gate's own first line:
+
+```
+_have="$(find "$CORPORA_DIR/academic" -name '*.json' 2>/dev/null | wc -l | tr -d ' ')"
+```
+
+With that directory missing, `find` exits non-zero, `pipefail` carries it out of the pipeline, **the assignment fails and `set -e` kills the script — before the FATAL line it was about to log.** Reproduced exactly. **Not restarting was right; saying nothing was not.**
+
+Eight sites had that shape. They now go through `_count` / `_size` / `_bytes` at the top of the script, which never fail (unknown count `0`, unknown size `?`). The clone's stderr is captured and its tail rides in the WARN, because it previously went only to `self-update.log` — **a file on a box whose operator has no shell.**
+
+### ⛔ THE BLOCKER: the box has no credential for the data repo
+
+`bootstrap-backend.sh` provisions **nothing** for `BrainWaves`, and no page here mentions it. The code-repo clone works, so the box has a key for `If-Only-I-Had-A-Brain` — **a key that clones the code repo does not imply access to a second, separate Forgejo repo.**
+
+**Fix, no shell required:** copy the deploy key from `If-Only-I-Had-A-Brain → Settings → Deploy Keys` into `BrainWaves → Settings → Deploy Keys`, read access. Then press again — and if it is something else, the press now says what.
+
+⚠ **The audit that missed it was thorough and pointed at the wrong subject.** BrainWaves was verified from a workstation with a founder key: tree census, `.gitattributes`, LFS batch API, a full timed clone rehearsal. **None of that is evidence the box can reach it.**
+
+### ⚠ Still open: the no-fallbacks boot guard does not stop the boot
+
+`"Boot STOPS here by design (NO FALLBACKS)"` logs, throws, and gets caught upstream — the process ran 25+ minutes with a dead language subsystem, which is why press 1 read as a success. **Not fixed yet on purpose:** hard-failing the boot while the box has no corpus crash-loops it and takes the brain's own `/update` with it, leaving only `/ctl/update`.
+
+---
+
 ## 🔴 2026-09-04 — THE PRESS RUNS THE BOX'S OWN `self-update.sh`, AND THE ONE ON THE BOX WOULD HAVE DELETED THE CORPUS
 
 **Found during the final pre-press check, before the button was touched.** Nothing was

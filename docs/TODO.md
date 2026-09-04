@@ -3887,4 +3887,36 @@ Ruling taken on the finding below (verbatim option): **"Harden first, then press
 
 - **Acceptance:** the two-press sequence can be run from the dashboard with no shell on the box, and **no single point of it depends on a tool nobody has verified is installed** — with the books restorable without `git-lfs`, GloVe restorable without `git-lfs`, and a gate that refuses to restart into a boot it can already see will fail.
 
+---
+
+## PRESSFAIL — the press ran, and the box cannot reach the data repo — filed 2026-09-04
+
+Gee pressed both buttons. **Neither the walk nor the corpus is on the box, and the press reported almost none of it.**
+
+- [x] `PRESSFAIL.1` — ✅ **DIAGNOSED 2026-09-04 from the live console ring. THE FULL SEQUENCE, read rather than inferred.**
+  - **04:37:30 — press 1 booted and GloVe was GONE.** `[Embeddings] ⛔ FATAL — GloVe 300d could not be loaded` → `[Brain] ⛔ Boot STOPS here by design (NO FALLBACKS)` → `[Brain] Language subsystem init FAILED`. **Press 1 deleted the corpus and the embedding table exactly as predicted.**
+  - **04:39:14 — press 2 fired.** `.force-fresh` ARMED by the handler. Overlay to `fec05e56` **succeeded**.
+  - **04:39:19 — `WARN — the data-repo CLONE failed`.** Then **silence.** No books-gate FATAL, no GloVe-gate FATAL, no restart.
+  - **Measured on the box:** `curriculumCoverage` = **0 fed / 193 EMPTY of 193**, `entries: 0`, `reachableWords: 0`. Disk is **425 GB free at 51.5%** — *not* a disk problem.
+  - ⛔ **I REPORTED PRESS 1 AS A CLEAN SUCCESS AND IT WAS NOT.** I read `build=fec05e56` plus a climbing uptime as proof and **never opened the boot log** — on the same day, in the same session, that the `$`-bug taught *"some panels are stale means OPEN THE CONSOLE FIRST"*. The process surviving is what made it look healthy: **a brain with a dead language subsystem serves state, draws, and consolidates.**
+
+- [x] `PRESSFAIL.2` — ✅ **FIXED 2026-09-04 — THE BOOKS GATE DIED SILENTLY INSTEAD OF REFUSING LOUDLY, AND THERE WERE EIGHT OF IT.**
+  - **The mechanism, reproduced locally:** with `set -euo pipefail`, `_have="$(find "$CORPORA_DIR/academic" … | wc -l | tr -d ' ')"` on a **missing directory** makes `find` exit non-zero, `pipefail` propagates it out of the pipeline, **the assignment fails, and `set -e` terminates the script — before the FATAL line it was about to print.** Repro: `exit=1`, message never printed.
+  - ⭐ **Not restarting was the CORRECT outcome. Telling nobody why was not.** A gate whose entire job is to refuse *loudly* became the quietest failure in the script, at the one moment anyone was watching.
+  - ⛔ **EIGHT SITES OF THIS SHAPE, not one** — only the books gate had fired; the other seven were the same bug waiting on a missing directory or a `du` that cannot stat. All routed through **three helpers** (`_count` / `_size` / `_bytes`) that never fail and never return empty: unknown count reads `0`, unknown size reads `?`. **A `|| true` on the one that bit us would have left seven.**
+  - ⚠ **Also fixed: `_bytes` printed shell stderr noise.** `wc -c < missing` fails when the *shell* opens the file, so `wc … 2>/dev/null` cannot suppress it — the redirection had to move inside the silenced group. The value was already right; the log line was the defect.
+
+- [x] `PRESSFAIL.3` — ✅ **FIXED 2026-09-04 — THE CLONE'S OWN ERROR NEVER REACHED ANYONE.**
+  - The clone sent stderr to `>> "$LOG" 2>&1` — **a file on the box** — while only `log()` tees to stdout and therefore into the admin console ring. **Git said WHY in one line, into a file nobody with a dashboard can read, on a box with no shell.**
+  - The output is captured now and the tail rides in the WARN itself, plus a second line naming the most likely cause. **A failure whose reason is unreadable costs a whole diagnosis cycle; this one cost the press.**
+
+- [ ] `PRESSFAIL.4` — ⛔ **THE BLOCKER: NOTHING GRANTS THE BOX ACCESS TO THE DATA REPO.** `deploy/bootstrap-backend.sh` has **no key provisioning for `BrainWaves`**, and no deploy doc mentions one. The code-repo clone succeeds, so the box holds a working key for `If-Only-I-Had-A-Brain` — **and a key that clones the code repo does not imply access to a second, separate Forgejo repo.**
+  - ⛔⛔ **THIS IS THE GAP IN MY OWN AUDIT, AND IT IS THE `feedback_harness_production_wiring` LESSON MADE AGAIN.** I verified BrainWaves was healthy **from my machine with my key** — tree census, LFS batch API, a full clone rehearsal — and called it *"audited clean, everything depends on it, verified"*. **I never once verified the BOX could reach it.** Every check I ran proved the repo was fine and none of them proved the thing that actually mattered.
+  - **The fix needs no shell:** copy the deploy key from `If-Only-I-Had-A-Brain → Settings → Deploy Keys` into `BrainWaves → Settings → Deploy Keys` (read access is enough). The next press then reports the real reason if it is something else.
+
+- [ ] `PRESSFAIL.5` — ⚠ **"Boot STOPS here by design (NO FALLBACKS)" DOES NOT STOP THE BOOT.** The guard logs FATAL and `throw`s, and something upstream catches it: the process came up and ran for 25+ minutes with `Language subsystem init FAILED`, serving state, drawing and consolidating. **A brain running without embeddings that looks alive is strictly worse than one that dies**, and it is the reason press 1 read as a success.
+  - ⛔ **DELIBERATELY NOT FIXED YET.** Making the boot hard-fail *right now* would put the box into a real crash loop while it has no corpus, which makes recovery harder rather than easier (the brain's own `/update` goes with it; only `/ctl/update` would remain). **Filed to ship after the corpus is back, not before.**
+
+- **Acceptance:** a press that cannot deliver the corpus says so, in one line, in the console ring — naming what failed and why — and the box can reach the data repo without anyone holding a shell.
+
 
