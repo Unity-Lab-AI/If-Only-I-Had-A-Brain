@@ -4,11 +4,14 @@
 >
 > ### ⛔ STATE
 > ```
-> branch    feature/lamdead-0904 (cascaded)
+> branch    feature/lamdead-0904 + feature/lam400-verify (both cascaded)
 > job       LibreTexts corpus fetch still running (.scratch/libretexts.log)
 > built     LAMDEAD.1 · ATTNDEAD.1  (both were DECISIONS, both answered)
 > open      WORDWIRE.3 · SEMDENSE.1 · TEACHFINAL.1-.6 · the pre-existing press-blockers
 > ```
+>
+> ### ✅ THE 400,000-NEURON CONFIRMATION LANDED — 8/8
+> The largest build this machine can make, and the size that carried the worst of it: **60,000 empty rows in `letter_to_phon` and 15,000 in `motor_to_letter` before; zero empty rows across all 16 projections after**, thinnest 3.00 wires/row at a minimum of 3. ⚠ It was still running when the fix was committed and is recorded on its **result**, not on the expectation.
 >
 > ### ⭐⭐ TWO RULINGS, BOTH TAKEN AS "AIM AT THE ENDGAME"
 > **`LAMDEAD` — *"1 & 2 in line with the overacrching understanding of fully the whole endgame wanted"*.** Both halves, and with the endgame as the deciding frame they were never alternatives:

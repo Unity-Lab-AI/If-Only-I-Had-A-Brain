@@ -45,6 +45,8 @@ letter_to_motor   1.47 wires/row, 1,040 EMPTY             ->   6.00/row, 0 empty
 
 **9/9 harness on the real cluster and the real matrix**, including the two negatives: veto mode still reproduces exactly 75.0% empty rows so the comparison is honest, and a one-column matrix does not ask for a wire it cannot have.
 
+⭐ **CONFIRMED AT 400,000 NEURONS — the largest build this machine can make, and the size that carried the worst of it.** That cluster previously held **60,000 empty rows in `letter_to_phon` and 15,000 in `motor_to_letter`**; it now reports **zero empty rows across all 16 projections, thinnest 3.00 wires/row with a minimum of 3.** ⚠ The run was still going when the fix was committed and is recorded here on its result rather than on the expectation — **8/8 at 400,000.**
+
 ### `ATTNDEAD.1` — the relay is on
 
 `js/brain/cluster/attention.js` — cosine → temperature softmax → weighted sum over the words already emitted in this utterance — was built, wired into `emit.js`, documented, and gated behind `opts.attention === true`, **which nothing in the tree ever passed.** It now rides the conversational lane: the primary compose and its continuations.
