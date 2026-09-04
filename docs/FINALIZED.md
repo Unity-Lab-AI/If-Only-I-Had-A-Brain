@@ -9,6 +9,26 @@
 
 Gee pressed both buttons. **Neither the walk nor the corpus is on the box, and the press reported almost none of it.**
 
+### ✅ `PRESSFAIL.6` + `.7` — THE PRESS NO LONGER NEEDS A CREDENTIAL FOR THE THINGS THAT STOP THE WALK
+
+Gee (verbatim): *"do it"* · *"it cant use git operations on the repo i dont think but through its box and forgjo"* · *"it needs the wavletgs too tho"*
+
+**`PRESSFAIL.6` — GloVe self-provisions.** It was the only file whose absence stops the boot, and it lived ONLY in the data repo, so an unprovisioned credential held the brain's hardest precondition hostage. The press now fetches it from its public, unauthenticated source when missing or short.
+
+⭐ **THE CODE ALREADY NAMED THAT SOURCE.** `embeddings.js` throws with *"download glove.6B.300d.txt from https://nlp.stanford.edu/data/glove.6B.zip"* — **the error message told an operator exactly what to do and the deploy could not do it itself.** Both mirrors verified live and unauthenticated: **862,182,613 bytes**.
+
+⚠ **Provisioning, not a capability fallback.** The SAME table from its upstream publisher — identical vectors. NO-FALLBACKS forbids a *lesser capability* (hash vectors instead of semantic ones); a second URL for a byte-identical artefact is not that.
+
+⛔ **Verified before trusted — size AND shape**, because a truncated download and a wrong file are both real files the boot would read and die on. Measured: **real 301 fields / 1,037,962,819 B → PASS · LFS stub 2 → REJECT · truncated 58 → REJECT · wrong-dimension 4 → REJECT.**
+
+**`PRESSFAIL.7` — the data repo is on the same machine.** ⭐⭐ **`git.unityailab.com` IS this box**, and our own docs said so all along: `REDEPLOY-NOTES.md:41` *"shares the host with Forgejo"*, `README.md:363` *"sshd on this shared box"*. **The SSH clone loops back to the same machine** — which is why it needs a credential, and why it does not have to.
+
+⚠ **The operator pointed this out after I had spent six rounds sending him through PowerShell quoting and three token scopes.** It was in the repository the entire time, in a file I had already read and quoted from earlier the same session.
+
+The path is **discovered, not assumed** — eight candidate Forgejo/Gitea roots, each tested with `git rev-parse`, so a directory that exists but is not a repo, or is unreadable by the service user, is rejected rather than half-used. Exercised 3/3.
+
+⛔ **What it gets, stated plainly:** corpus ✓ · GloVe ✓ (plain blobs) · **fields ✗ — LFS resolves over HTTP, not a filesystem path.** ⭐ **That is enough for a correct walk:** the two that arrive are the two that stop the boot, and a missing field is non-fatal by design — she transforms that figure live, the path that existed before the field cache. The wavelets reattach as a speed-up later.
+
 ### The sequence, read off the live console ring rather than inferred
 
 | time | what |
