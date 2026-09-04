@@ -488,13 +488,58 @@ else
   # exits non-zero ("git: 'lfs' is not a git command"), which would take the whole
   # data sync down its failure branch and lose the corpus — over a payload that is
   # optional by design and already declared non-fatal twenty lines above.
+  # ⛔⛔ THE LFS PULL RUNS INSIDE THE BRAIN'S CGROUP AND CAN STARVE HER TO DEATH.
+  # 2026-09-04, live on the box: this `git lfs pull` had been running 22 MINUTES
+  # and had read 2.07 TB while writing ZERO bytes — a pathological re-read loop,
+  # not slow progress (sampled /proc/<pid>/io 20s apart: read_bytes +45 GB,
+  # write_bytes flat at 0). Because brain-server.js spawns this script, the pull
+  # lives in unity-brain.service's cgroup and shares its MemoryHigh=20G budget, so
+  # the kernel throttled the WHOLE cgroup — including node:
+  #     [EventLoop] ⛔ STARVED — the loop was late 80.3s out of the last 82s (2% serviced)
+  #     [LoopWatchdog] ✓ main loop RECOVERED after 61761ms (episode 30, worst 253005ms)
+  # ⭐ THE TRAP: the unit stayed `active`, port 7525 stayed LISTENING, and
+  # /ctl/status still said "Brain is online and serving" — while curl on
+  # /public-state.json timed out at 20s. That is how "the brain won't connect at
+  # all" and "systemd says it's fine" were both true at once. /ctl/status checks
+  # that the port is OPEN, not that it ANSWERS.
+  # Killing the pull dropped the box from 24G to 15G instantly and the site
+  # returned to sub-second. So: BOUND IT. `timeout` caps the wall clock, and the
+  # fields are non-fatal by design (return 0), so a cap costs pointers, never a
+  # press. Override with UAL_LFS_TIMEOUT (e.g. 0 to disable, or '2h' on a box that
+  # genuinely needs the full ~114 GB hydrate).
+  _LFS_TIMEOUT="${UAL_LFS_TIMEOUT:-45m}"
   _lfs_pull() {
     if [ "$_have_lfs" != "1" ]; then
       log "field blobs stay as pointers — no git-lfs on this box. The books are already checked out by the clone and are completely unaffected."
       return 0
     fi
-    if [ "$_want_fields" = "1" ]; then ( cd "$FTMP/bw" && git lfs pull >> "$LOG" 2>&1 );
-    else ( cd "$FTMP/bw" && git lfs pull -I 'corpora/**' >> "$LOG" 2>&1 ); fi
+    # `timeout` may be absent on a minimal box; degrade to an unbounded pull
+    # rather than failing, but SAY SO, because the hazard above is then live.
+    _to=''
+    if [ "$_LFS_TIMEOUT" != "0" ] && command -v timeout >/dev/null 2>&1; then
+      _to="timeout --signal=TERM --kill-after=60s $_LFS_TIMEOUT"
+    elif [ "$_LFS_TIMEOUT" != "0" ]; then
+      log "WARN — no \`timeout\` binary, so \`git lfs pull\` runs UNBOUNDED. It shares the brain's cgroup memory budget; if it wedges it can starve her event loop while systemd still reports her healthy. Watch with: pgrep -fa git-lfs"
+    fi
+    # ⛔ `|| _lfs_rc=$?` IS LOAD-BEARING under `set -e`. A bare failing subshell
+    # here would abort the whole press before the 124 branch below could turn a
+    # deliberate timeout into the non-fatal outcome the fields are supposed to
+    # have. The original one-liner was safe only because it was the function's
+    # last command evaluated in an `if` condition; adding code after it removes
+    # that protection.
+    _lfs_rc=0
+    if [ "$_want_fields" = "1" ]; then
+      ( cd "$FTMP/bw" && $_to git lfs pull >> "$LOG" 2>&1 ) || _lfs_rc=$?
+    else
+      ( cd "$FTMP/bw" && $_to git lfs pull -I 'corpora/**' >> "$LOG" 2>&1 ) || _lfs_rc=$?
+    fi
+    # 124 = timeout fired. Name it, because "lfs pull failed" after 45 silent
+    # minutes is the least useful sentence a no-shell operator could receive.
+    if [ "$_lfs_rc" = "124" ] || [ "$_lfs_rc" = "137" ]; then
+      log "WARN — \`git lfs pull\` EXCEEDED ${_LFS_TIMEOUT} and was killed on purpose. ⭐ THIS IS A GUARD, NOT A BUG: the pull runs in the brain's cgroup, and on 2026-09-04 a wedged one (2.07 TB read, 0 bytes written) throttled her event loop to 2% serviced while systemd and /ctl/status both still called her healthy. Fields stay as POINTERS (non-fatal by design — she transforms the figure live); THE BOOKS ARE UNAFFECTED. Raise with UAL_LFS_TIMEOUT=2h if the box really needs the full hydrate."
+      return 0
+    fi
+    return "$_lfs_rc"
   }
   # ⛔⛔ THE CLONE GATES THE BOOKS; THE LFS PULL GATES ONLY THE FIELDS.
   # These were ONE condition — `if git clone … && _lfs_pull; then` — which made
