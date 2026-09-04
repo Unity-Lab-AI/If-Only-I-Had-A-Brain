@@ -16100,7 +16100,29 @@ export class Curriculum {
       // TEACHVIEW — a word she was MEANT to learn and could not. This is the
       // `PRECELL.1` shape (67 words needed, 0 taught, lane reports DONE) made
       // visible: the shortfall is now a flag naming the word, not a silence.
-      try { this.teachFlag('warn', 'DEF-MISS', `no dictionary definition for "${w}" — bound nothing`, {}); } catch { /* nf */ }
+      //
+      // ⛔⛔ A SINGLE LETTER IS NOT A MISSING DEFINITION, AND FLAGGING ONE IS A
+      // FALSE ALARM THAT HIDES THE REAL ONES. All 26 letters are in the K
+      // vocabulary — correctly, she learns the alphabet — so all 26 are queued
+      // for a dictionary lookup, and **24 of them can never resolve**: `a` and
+      // `i` are the only single-character English words, and those two DO
+      // resolve and never reach this branch. The other 24 raised a warn flag on
+      // every fresh walk, reported live as `def-miss x 7 … for "r"`.
+      //
+      // ⭐ The letters are not untaught — they are taught by the LETTER and
+      // PHONICS lanes, as shapes and sounds, which is what a letter is. A flag
+      // saying "bound nothing" about `r` is describing the wrong lane entirely.
+      //
+      // ⚠ NO WORD LIST HERE, DELIBERATELY (see the no-word-lists rule): the test
+      // is STRUCTURAL — one character — not a curated set of exceptions, and the
+      // dictionary itself remains the authority on the two that are words.
+      // ⛔ The lookup still happens and the miss is still cached; only the
+      // FLAG is suppressed, because the flags panel exists to surface a real
+      // curriculum shortfall and 24 guaranteed false positives per walk is how a
+      // panel stops being read.
+      if (String(w || '').length > 1) {
+        try { this.teachFlag('warn', 'DEF-MISS', `no dictionary definition for "${w}" — bound nothing`, {}); } catch { /* nf */ }
+      }
       return { passes: 0, totalTrained: 0, defsBound: 0, skipped: 'no definition' };
     }
 

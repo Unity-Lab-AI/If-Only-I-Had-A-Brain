@@ -148,6 +148,21 @@ server/mindspace-memory-v*.json
 server/episodic-memory.db
 server/episodic-memory.db-wal
 server/episodic-memory.db-shm
+# ⛔ THE TEACH LEDGER AND THE FIGURE QUEUE — runtime SQLite the brain creates on
+# its first boot, and they were NOT ignored. Found on 2026-09-04 by booting a
+# local brain and reading `git status`: six untracked files (.db, -wal, -shm each)
+# appeared in a repo where nothing else runtime-generated does. They are the same
+# class as the episodic and visual stores directly above — machine-local state,
+# never the code — and the teach ledger in particular grows with every taught
+# item, so a careless `git add -A` on a walked brain would commit a database of
+# the whole curriculum. The WAL and SHM siblings are listed because SQLite writes
+# all three and ignoring only the .db leaves two behind.
+server/teach-ledger.db
+server/teach-ledger.db-wal
+server/teach-ledger.db-shm
+server/figure-queue.db
+server/figure-queue.db-wal
+server/figure-queue.db-shm
 server/node_modules/
 server/package-lock.json
 
