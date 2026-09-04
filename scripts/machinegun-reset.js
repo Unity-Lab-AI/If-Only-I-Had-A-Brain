@@ -1,13 +1,20 @@
-/* UNITY MACHINE GUN v4 - paste into the browser console (F12) on ANY page of
+/* UNITY MACHINE GUN v5 - paste into the browser console (F12) on ANY page of
  * https://if-only-i-had-a-brain.git.unityailab.com
  * ASCII only. Short lines. Nothing here can be broken by copy-wrap.
  *
  *   PASTE          arms and reports. Fires NOTHING.
  *   __mg.restart()    keeps weights. Safe. Use when she is wedged.
  *   __mg.savestart()  pulls new code, keeps weights.
- *   __mg.freshWalk()  pulls new code and WIPES ALL TRAINING. Asks twice.
+ *   __mg.reset()      WIPES ALL TRAINING, no deploy, ~2 min. Asks twice.
+ *   __mg.freshWalk()  pulls new code AND wipes. Deploy first. Asks twice.
  *   __mg.status()     one reading, no firing.
  *   __mg.stop = true  kill switch.
+ *
+ * !! reset() vs freshWalk(): BOTH wipe, and they cost wildly different amounts.
+ * freshWalk() runs a full deploy first - clone, overlay, and a data sync that
+ * has taken HOURS on this box - then restarts. reset() just arms the wipe and
+ * restarts. If the build stamp already reads the commit you want, a deploy
+ * fetches nothing and costs everything: use reset().
  *
  * scripts/machinegun-reset.js and "scripts/Machine Gun Reset.txt" carry the
  * SAME body on purpose. If you edit one, mirror the other.
@@ -260,6 +267,31 @@
     return fire('update', 'FRESH WALK (WIPES ALL TRAINING)', '?confirm=WIPE');
   };
 
+  /* !! RESET IS THE CHEAP FRESH WALK, AND IT IS USUALLY THE ONE YOU WANT.
+   *
+   * freshWalk() runs a DEPLOY and then wipes: clone, overlay, a data sync that
+   * has taken hours on this box, and only then the restart. reset() writes
+   * .force-fresh, deletes the resume marker and restarts. Same outcome for her -
+   * every trained weight cleared, identity-core Tier 3 anchors preserved - in
+   * about two minutes instead of a whole afternoon.
+   *
+   * The only reason to prefer freshWalk() is when the box needs NEW CODE. If
+   * the build stamp already reads the commit you want, a deploy fetches nothing
+   * and costs everything.
+   */
+  G.reset = function () {
+    if (!window.confirm('RESET - WIPE ALL TRAINING and restart on the code'
+      + ' already on the box?\n\n'
+      + 'No deploy, no data sync. Every trained weight, episode and schema is\n'
+      + 'destroyed. Identity anchors survive. Nothing she has LEARNED does.\n\n'
+      + 'There is no way back.')) { log('cancelled.', '#fc0'); return; }
+    var t = window.prompt('Type  WIPE  to confirm the reset:');
+    if (String(t || '').trim().toUpperCase() !== 'WIPE') {
+      log('cancelled at the second confirmation.', '#fc0'); return;
+    }
+    return fire('reset', 'RESET (WIPES ALL TRAINING, no deploy)', '?confirm=WIPE');
+  };
+
   /* ---------------------------------------------------------------------------
    * WAIT-THEN-FIRE. Take the confirmation NOW, fire LATER, when it is safe.
    *
@@ -364,7 +396,8 @@
   };
 
   log('ARMED - nothing has been fired.');
-  log('  __mg.freshWalkWhenReady()  <- WAITS for the box, then wipes+walks');
+  log('  __mg.reset()       <- WIPES ALL TRAINING, no deploy, ~2 min');
+  log('  __mg.freshWalkWhenReady()  WAITS for the box, then deploy+wipe');
   log('  __mg.freshWalk()   fire NOW, new code, WIPES ALL TRAINING');
   log('  __mg.savestart()   new code, keeps weights');
   log('  __mg.restart()     keeps weights');
