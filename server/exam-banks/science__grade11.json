@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "science",
+ "grade": "grade11",
+ "sample": 14,
+ "poolSize": 181,
+ "themes": 102,
+ "questions": [
+  {
+   "q": "what is a force",
+   "a": "action",
+   "variants": [
+    "action"
+   ],
+   "standard": "science/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a energy",
+   "a": "quantity",
+   "variants": [
+    "quantity"
+   ],
+   "standard": "science/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a momentum",
+   "a": "product",
+   "variants": [
+    "product"
+   ],
+   "standard": "science/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a thus gravity",
+   "a": "distance",
+   "variants": [
+    "distance"
+   ],
+   "standard": "science/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a magnetism",
+   "a": "class",
+   "variants": [
+    "class"
+   ],
+   "standard": "science/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a phase velocity",
+   "a": "rate",
+   "variants": [
+    "rate"
+   ],
+   "standard": "science/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a thermodynamics",
+   "a": "branch",
+   "variants": [
+    "branch"
+   ],
+   "standard": "science/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a gravity",
+   "a": "law",
+   "variants": [
+    "law"
+   ],
+   "standard": "science/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a pressure",
+   "a": "amount",
+   "variants": [
+    "amount"
+   ],
+   "standard": "science/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a power",
+   "a": "amount",
+   "variants": [
+    "amount"
+   ],
+   "standard": "science/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a electric current",
+   "a": "flow",
+   "variants": [
+    "flow"
+   ],
+   "standard": "science/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a electrochemical potential",
+   "a": "voltage",
+   "variants": [
+    "voltage"
+   ],
+   "standard": "science/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a frequency",
+   "a": "number",
+   "variants": [
+    "number"
+   ],
+   "standard": "science/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a quantum optics",
+   "a": "physics",
+   "variants": [
+    "physics"
+   ],
+   "standard": "science/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

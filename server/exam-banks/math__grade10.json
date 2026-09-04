@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "math",
+ "grade": "grade10",
+ "sample": 14,
+ "poolSize": 34,
+ "themes": 25,
+ "questions": [
+  {
+   "q": "what is a why",
+   "a": "product",
+   "variants": [
+    "product"
+   ],
+   "standard": "math/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a composite number",
+   "a": "counting",
+   "variants": [
+    "counting"
+   ],
+   "standard": "math/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a division",
+   "a": "operation",
+   "variants": [
+    "operation"
+   ],
+   "standard": "math/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a fraction",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "math/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a figure",
+   "a": "triangle",
+   "variants": [
+    "triangle"
+   ],
+   "standard": "math/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a equation",
+   "a": "sum",
+   "variants": [
+    "sum"
+   ],
+   "standard": "math/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a inequality",
+   "a": "identity",
+   "variants": [
+    "identity"
+   ],
+   "standard": "math/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a first row",
+   "a": "title",
+   "variants": [
+    "title"
+   ],
+   "standard": "math/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a rise",
+   "a": "amount",
+   "variants": [
+    "amount"
+   ],
+   "standard": "math/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a function",
+   "a": "relation",
+   "variants": [
+    "relation"
+   ],
+   "standard": "math/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a relation",
+   "a": "function",
+   "variants": [
+    "function"
+   ],
+   "standard": "math/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a result",
+   "a": "equation",
+   "variants": [
+    "equation"
+   ],
+   "standard": "math/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a matrix",
+   "a": "array",
+   "variants": [
+    "array"
+   ],
+   "standard": "math/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a first term",
+   "a": "product",
+   "variants": [
+    "product"
+   ],
+   "standard": "math/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "pe",
+ "grade": "grade12",
+ "sample": 14,
+ "poolSize": 39,
+ "themes": 19,
+ "questions": [
+  {
+   "q": "what is a physical fitness",
+   "a": "state",
+   "variants": [
+    "state"
+   ],
+   "standard": "pe/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a public health",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "pe/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sedentary lifestyle",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "pe/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a obesity",
+   "a": "disease",
+   "variants": [
+    "disease"
+   ],
+   "standard": "pe/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a friendship",
+   "a": "relationship",
+   "variants": [
+    "relationship"
+   ],
+   "standard": "pe/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a jain meditation",
+   "a": "system",
+   "variants": [
+    "system"
+   ],
+   "standard": "pe/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a recreation",
+   "a": "activity",
+   "variants": [
+    "activity"
+   ],
+   "standard": "pe/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a heart disease",
+   "a": "cause",
+   "variants": [
+    "cause"
+   ],
+   "standard": "pe/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a age",
+   "a": "heart",
+   "variants": [
+    "heart"
+   ],
+   "standard": "pe/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a outdoor recreation",
+   "a": "concept",
+   "variants": [
+    "concept"
+   ],
+   "standard": "pe/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a hike",
+   "a": "walk",
+   "variants": [
+    "walk"
+   ],
+   "standard": "pe/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a critical mass",
+   "a": "event",
+   "variants": [
+    "event"
+   ],
+   "standard": "pe/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a running",
+   "a": "method",
+   "variants": [
+    "method"
+   ],
+   "standard": "pe/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a swimming",
+   "a": "propulsion",
+   "variants": [
+    "propulsion"
+   ],
+   "standard": "pe/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

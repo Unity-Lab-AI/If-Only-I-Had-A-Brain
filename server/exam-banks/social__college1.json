@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "social",
+ "grade": "college1",
+ "sample": 14,
+ "poolSize": 116,
+ "themes": 27,
+ "questions": [
+  {
+   "q": "what is a society",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "social/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a psychology",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "social/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a political science",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "social/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a example",
+   "a": "requirement",
+   "variants": [
+    "requirement"
+   ],
+   "standard": "social/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a culture",
+   "a": "concept",
+   "variants": [
+    "concept"
+   ],
+   "standard": "social/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a programme evaluation",
+   "a": "method",
+   "variants": [
+    "method"
+   ],
+   "standard": "social/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a anthropology",
+   "a": "discipline",
+   "variants": [
+    "discipline"
+   ],
+   "standard": "social/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a economics",
+   "a": "science",
+   "variants": [
+    "science"
+   ],
+   "standard": "social/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a canada",
+   "a": "country",
+   "variants": [
+    "country"
+   ],
+   "standard": "social/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a aging",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "social/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a structure",
+   "a": "issue",
+   "variants": [
+    "issue"
+   ],
+   "standard": "social/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a prison",
+   "a": "environment",
+   "variants": [
+    "environment"
+   ],
+   "standard": "social/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a social development",
+   "a": "people",
+   "variants": [
+    "people"
+   ],
+   "standard": "social/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a strain theory",
+   "a": "perspective",
+   "variants": [
+    "perspective"
+   ],
+   "standard": "social/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "health",
+ "grade": "grade11",
+ "sample": 14,
+ "poolSize": 53,
+ "themes": 17,
+ "questions": [
+  {
+   "q": "what is a adolescence",
+   "a": "period",
+   "variants": [
+    "period"
+   ],
+   "standard": "health/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a behaviorism",
+   "a": "school",
+   "variants": [
+    "school"
+   ],
+   "standard": "health/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a therapist",
+   "a": "who",
+   "variants": [
+    "who"
+   ],
+   "standard": "health/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a homework",
+   "a": "aspect",
+   "variants": [
+    "aspect"
+   ],
+   "standard": "health/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sexual health",
+   "a": "state",
+   "variants": [
+    "state"
+   ],
+   "standard": "health/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a stalking",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "health/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a goal setting",
+   "a": "practice",
+   "variants": [
+    "practice"
+   ],
+   "standard": "health/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a clinical psychology",
+   "a": "profession",
+   "variants": [
+    "profession"
+   ],
+   "standard": "health/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a psychotherapy",
+   "a": "use",
+   "variants": [
+    "use"
+   ],
+   "standard": "health/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a gad",
+   "a": "disorder",
+   "variants": [
+    "disorder"
+   ],
+   "standard": "health/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mixed state",
+   "a": "episode",
+   "variants": [
+    "episode"
+   ],
+   "standard": "health/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a schizophrenia",
+   "a": "disorder",
+   "variants": [
+    "disorder"
+   ],
+   "standard": "health/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mind wandering",
+   "a": "situation",
+   "variants": [
+    "situation"
+   ],
+   "standard": "health/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a another example",
+   "a": "association",
+   "variants": [
+    "association"
+   ],
+   "standard": "health/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

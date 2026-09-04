@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "pe",
+ "grade": "grade4",
+ "sample": 14,
+ "poolSize": 20,
+ "themes": 13,
+ "questions": [
+  {
+   "q": "what is a physical fitness",
+   "a": "ability",
+   "variants": [
+    "ability"
+   ],
+   "standard": "pe/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a endurance",
+   "a": "ability",
+   "variants": [
+    "ability"
+   ],
+   "standard": "pe/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a strength training",
+   "a": "use",
+   "variants": [
+    "use"
+   ],
+   "standard": "pe/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a athletics",
+   "a": "sport",
+   "variants": [
+    "sport"
+   ],
+   "standard": "pe/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a swimming",
+   "a": "movement",
+   "variants": [
+    "movement"
+   ],
+   "standard": "pe/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a breathing",
+   "a": "step",
+   "variants": [
+    "step"
+   ],
+   "standard": "pe/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a anaerobic exercise",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "pe/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a circulatory system",
+   "a": "body",
+   "variants": [
+    "body"
+   ],
+   "standard": "pe/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a joint",
+   "a": "place",
+   "variants": [
+    "place"
+   ],
+   "standard": "pe/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a basketball",
+   "a": "sport",
+   "variants": [
+    "sport"
+   ],
+   "standard": "pe/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a baseball",
+   "a": "bat",
+   "variants": [
+    "bat"
+   ],
+   "standard": "pe/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a hockey",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "pe/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a dancing",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "pe/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a anaerobic metabolism",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "pe/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

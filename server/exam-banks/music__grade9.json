@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "music",
+ "grade": "grade9",
+ "sample": 14,
+ "poolSize": 37,
+ "themes": 16,
+ "questions": [
+  {
+   "q": "what is a music theory",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "music/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a dissonance",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "music/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a counterpoint",
+   "a": "relationship",
+   "variants": [
+    "relationship"
+   ],
+   "standard": "music/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a solfege",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "music/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a ear training",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "music/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a punk rock",
+   "a": "genre",
+   "variants": [
+    "genre"
+   ],
+   "standard": "music/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a cent",
+   "a": "unit",
+   "variants": [
+    "unit"
+   ],
+   "standard": "music/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a harmonic cadence",
+   "a": "progression",
+   "variants": [
+    "progression"
+   ],
+   "standard": "music/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a modulation",
+   "a": "change",
+   "variants": [
+    "change"
+   ],
+   "standard": "music/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a blue note",
+   "a": "interval",
+   "variants": [
+    "interval"
+   ],
+   "standard": "music/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a musical scale",
+   "a": "series",
+   "variants": [
+    "series"
+   ],
+   "standard": "music/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a fantasia",
+   "a": "example",
+   "variants": [
+    "example"
+   ],
+   "standard": "music/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sonata form",
+   "a": "structure",
+   "variants": [
+    "structure"
+   ],
+   "standard": "music/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a rhythmic motif",
+   "a": "term",
+   "variants": [
+    "term"
+   ],
+   "standard": "music/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

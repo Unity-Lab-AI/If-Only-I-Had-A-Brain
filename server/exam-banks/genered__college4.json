@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "genered",
+ "grade": "college4",
+ "sample": 14,
+ "poolSize": 256,
+ "themes": 16,
+ "questions": [
+  {
+   "q": "what is a compulsion",
+   "a": "method",
+   "variants": [
+    "method"
+   ],
+   "standard": "genered/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a globalization",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "genered/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a environmental science",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "genered/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a medical ethics",
+   "a": "department",
+   "variants": [
+    "department"
+   ],
+   "standard": "genered/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a another example",
+   "a": "advancement",
+   "variants": [
+    "advancement"
+   ],
+   "standard": "genered/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a chief",
+   "a": "person",
+   "variants": [
+    "person"
+   ],
+   "standard": "genered/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a technology",
+   "a": "means",
+   "variants": [
+    "means"
+   ],
+   "standard": "genered/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a good housekeeping",
+   "a": "issue",
+   "variants": [
+    "issue"
+   ],
+   "standard": "genered/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a law",
+   "a": "behavior",
+   "variants": [
+    "behavior"
+   ],
+   "standard": "genered/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a corporation",
+   "a": "person",
+   "variants": [
+    "person"
+   ],
+   "standard": "genered/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a success",
+   "a": "result",
+   "variants": [
+    "result"
+   ],
+   "standard": "genered/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a competence",
+   "a": "reflection",
+   "variants": [
+    "reflection"
+   ],
+   "standard": "genered/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a specific performance",
+   "a": "remedy",
+   "variants": [
+    "remedy"
+   ],
+   "standard": "genered/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a small business",
+   "a": "generator",
+   "variants": [
+    "generator"
+   ],
+   "standard": "genered/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

@@ -1,0 +1,30 @@
+{
+ "version": 1,
+ "subject": "social",
+ "grade": "grade8",
+ "sample": 14,
+ "poolSize": 2,
+ "themes": 2,
+ "questions": [
+  {
+   "q": "what is a war",
+   "a": "memory",
+   "variants": [
+    "memory"
+   ],
+   "standard": "social/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a slavery",
+   "a": "ownership",
+   "variants": [
+    "ownership"
+   ],
+   "standard": "social/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

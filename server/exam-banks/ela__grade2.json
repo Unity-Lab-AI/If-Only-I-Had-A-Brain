@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "ela",
+ "grade": "grade2",
+ "sample": 14,
+ "poolSize": 14,
+ "themes": 12,
+ "questions": [
+  {
+   "q": "what is a adjective",
+   "a": "word",
+   "variants": [
+    "word"
+   ],
+   "standard": "ela/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a punctuation",
+   "a": "name",
+   "variants": [
+    "name"
+   ],
+   "standard": "ela/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a necessity",
+   "a": "mother",
+   "variants": [
+    "mother"
+   ],
+   "standard": "ela/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a syllable",
+   "a": "combination",
+   "variants": [
+    "combination"
+   ],
+   "standard": "ela/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a synonym",
+   "a": "word",
+   "variants": [
+    "word"
+   ],
+   "standard": "ela/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a opposition",
+   "a": "relation",
+   "variants": [
+    "relation"
+   ],
+   "standard": "ela/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a dictionary",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "ela/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a reading comprehension",
+   "a": "ability",
+   "variants": [
+    "ability"
+   ],
+   "standard": "ela/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a example",
+   "a": "conflict",
+   "variants": [
+    "conflict"
+   ],
+   "standard": "ela/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a fable",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "ela/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a camel case",
+   "a": "practice",
+   "variants": [
+    "practice"
+   ],
+   "standard": "ela/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a orthography",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "ela/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a partner reading",
+   "a": "strategy",
+   "variants": [
+    "strategy"
+   ],
+   "standard": "ela/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a spelling",
+   "a": "problem",
+   "variants": [
+    "problem"
+   ],
+   "standard": "ela/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

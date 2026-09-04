@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "music",
+ "grade": "grade5",
+ "sample": 14,
+ "poolSize": 18,
+ "themes": 13,
+ "questions": [
+  {
+   "q": "what is a symphony",
+   "a": "piece",
+   "variants": [
+    "piece"
+   ],
+   "standard": "music/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a harmonic cadence",
+   "a": "progression",
+   "variants": [
+    "progression"
+   ],
+   "standard": "music/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sonata form",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "music/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a variation",
+   "a": "technique",
+   "variants": [
+    "technique"
+   ],
+   "standard": "music/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a orchestra",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "music/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a trio",
+   "a": "piece",
+   "variants": [
+    "piece"
+   ],
+   "standard": "music/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a ballet",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "music/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a classical music",
+   "a": "term",
+   "variants": [
+    "term"
+   ],
+   "standard": "music/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a jazz",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "music/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a blues",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "music/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a improvisation",
+   "a": "art",
+   "variants": [
+    "art"
+   ],
+   "standard": "music/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a music education",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "music/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a concert tour",
+   "a": "series",
+   "variants": [
+    "series"
+   ],
+   "standard": "music/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a rhythmic cadence",
+   "a": "pattern",
+   "variants": [
+    "pattern"
+   ],
+   "standard": "music/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

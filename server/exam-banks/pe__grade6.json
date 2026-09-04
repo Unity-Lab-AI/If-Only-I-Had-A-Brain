@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "pe",
+ "grade": "grade6",
+ "sample": 14,
+ "poolSize": 55,
+ "themes": 25,
+ "questions": [
+  {
+   "q": "what is a myocardium",
+   "a": "tissue",
+   "variants": [
+    "tissue"
+   ],
+   "standard": "pe/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a muscle strength",
+   "a": "result",
+   "variants": [
+    "result"
+   ],
+   "standard": "pe/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a lymphatic system",
+   "a": "subsystem",
+   "variants": [
+    "subsystem"
+   ],
+   "standard": "pe/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a anaerobic exercise",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "pe/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sportsmanship",
+   "a": "attitude",
+   "variants": [
+    "attitude"
+   ],
+   "standard": "pe/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a ioc",
+   "a": "body",
+   "variants": [
+    "body"
+   ],
+   "standard": "pe/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a physical fitness",
+   "a": "state",
+   "variants": [
+    "state"
+   ],
+   "standard": "pe/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a flexibility",
+   "a": "range",
+   "variants": [
+    "range"
+   ],
+   "standard": "pe/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a ultrasonography",
+   "a": "tool",
+   "variants": [
+    "tool"
+   ],
+   "standard": "pe/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a heart rate",
+   "a": "frequency",
+   "variants": [
+    "frequency"
+   ],
+   "standard": "pe/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a long-term hypertension",
+   "a": "factor",
+   "variants": [
+    "factor"
+   ],
+   "standard": "pe/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a foraging",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "pe/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a dehydration",
+   "a": "lack",
+   "variants": [
+    "lack"
+   ],
+   "standard": "pe/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a basketball",
+   "a": "sport",
+   "variants": [
+    "sport"
+   ],
+   "standard": "pe/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

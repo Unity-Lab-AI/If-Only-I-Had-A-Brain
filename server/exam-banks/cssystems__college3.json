@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "cssystems",
+ "grade": "college3",
+ "sample": 14,
+ "poolSize": 40,
+ "themes": 19,
+ "questions": [
+  {
+   "q": "what is a distributed system",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "cssystems/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a process",
+   "a": "instance",
+   "variants": [
+    "instance"
+   ],
+   "standard": "cssystems/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a thread",
+   "a": "component",
+   "variants": [
+    "component"
+   ],
+   "standard": "cssystems/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a scheduling",
+   "a": "action",
+   "variants": [
+    "action"
+   ],
+   "standard": "cssystems/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a memory management",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "cssystems/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a example",
+   "a": "system",
+   "variants": [
+    "system"
+   ],
+   "standard": "cssystems/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a deadlock",
+   "a": "situation",
+   "variants": [
+    "situation"
+   ],
+   "standard": "cssystems/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a principal parts",
+   "a": "kernel",
+   "variants": [
+    "kernel"
+   ],
+   "standard": "cssystems/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a device driver",
+   "a": "program",
+   "variants": [
+    "program"
+   ],
+   "standard": "cssystems/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a context switch",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "cssystems/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mutual exclusion",
+   "a": "property",
+   "variants": [
+    "property"
+   ],
+   "standard": "cssystems/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a data race",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "cssystems/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a critical section",
+   "a": "piece",
+   "variants": [
+    "piece"
+   ],
+   "standard": "cssystems/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a clock",
+   "a": "version",
+   "variants": [
+    "version"
+   ],
+   "standard": "cssystems/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

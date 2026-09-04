@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "science",
+ "grade": "grade12",
+ "sample": 14,
+ "poolSize": 304,
+ "themes": 113,
+ "questions": [
+  {
+   "q": "what is a brain",
+   "a": "organ",
+   "variants": [
+    "organ"
+   ],
+   "standard": "science/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a neuroscience",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "science/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a lymphatic system",
+   "a": "subsystem",
+   "variants": [
+    "subsystem"
+   ],
+   "standard": "science/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a trachea",
+   "a": "area",
+   "variants": [
+    "area"
+   ],
+   "standard": "science/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a biodiversity",
+   "a": "variability",
+   "variants": [
+    "variability"
+   ],
+   "standard": "science/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a pollution",
+   "a": "introduction",
+   "variants": [
+    "introduction"
+   ],
+   "standard": "science/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a ecosystem respiration",
+   "a": "sum",
+   "variants": [
+    "sum"
+   ],
+   "standard": "science/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a carbon",
+   "a": "component",
+   "variants": [
+    "component"
+   ],
+   "standard": "science/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a green hydrogen",
+   "a": "means",
+   "variants": [
+    "means"
+   ],
+   "standard": "science/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a endocrine system",
+   "a": "organism",
+   "variants": [
+    "organism"
+   ],
+   "standard": "science/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a deforestation",
+   "a": "contributor",
+   "variants": [
+    "contributor"
+   ],
+   "standard": "science/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a human skeleton",
+   "a": "framework",
+   "variants": [
+    "framework"
+   ],
+   "standard": "science/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a myocardium",
+   "a": "tissue",
+   "variants": [
+    "tissue"
+   ],
+   "standard": "science/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a thalamus",
+   "a": "collection",
+   "variants": [
+    "collection"
+   ],
+   "standard": "science/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

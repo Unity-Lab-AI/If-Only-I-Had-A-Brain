@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "health",
+ "grade": "kindergarten",
+ "sample": 14,
+ "poolSize": 30,
+ "themes": 16,
+ "questions": [
+  {
+   "q": "what is a hygiene",
+   "a": "act",
+   "variants": [
+    "act"
+   ],
+   "standard": "health/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a hand washing",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "health/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a tooth brushing",
+   "a": "act",
+   "variants": [
+    "act"
+   ],
+   "standard": "health/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a fruit",
+   "a": "structure",
+   "variants": [
+    "structure"
+   ],
+   "standard": "health/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a safety",
+   "a": "feeling",
+   "variants": [
+    "feeling"
+   ],
+   "standard": "health/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a health",
+   "a": "state",
+   "variants": [
+    "state"
+   ],
+   "standard": "health/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a body",
+   "a": "thing",
+   "variants": [
+    "thing"
+   ],
+   "standard": "health/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a plaque",
+   "a": "substance",
+   "variants": [
+    "substance"
+   ],
+   "standard": "health/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a hand",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "health/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a water",
+   "a": "temperature",
+   "variants": [
+    "temperature"
+   ],
+   "standard": "health/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a bread",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "health/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a meat",
+   "a": "food",
+   "variants": [
+    "food"
+   ],
+   "standard": "health/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a nurse",
+   "a": "who",
+   "variants": [
+    "who"
+   ],
+   "standard": "health/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a dentistry",
+   "a": "medicine",
+   "variants": [
+    "medicine"
+   ],
+   "standard": "health/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

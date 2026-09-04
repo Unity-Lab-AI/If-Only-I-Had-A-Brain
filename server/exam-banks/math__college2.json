@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "math",
+ "grade": "college2",
+ "sample": 14,
+ "poolSize": 36,
+ "themes": 17,
+ "questions": [
+  {
+   "q": "what is a function",
+   "a": "object",
+   "variants": [
+    "object"
+   ],
+   "standard": "math/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a gaussian elimination",
+   "a": "algorithm",
+   "variants": [
+    "algorithm"
+   ],
+   "standard": "math/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a vector bundle",
+   "a": "family",
+   "variants": [
+    "family"
+   ],
+   "standard": "math/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a matrix",
+   "a": "array",
+   "variants": [
+    "array"
+   ],
+   "standard": "math/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a determinant",
+   "a": "function",
+   "variants": [
+    "function"
+   ],
+   "standard": "math/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a corresponding eigenvalue",
+   "a": "factor",
+   "variants": [
+    "factor"
+   ],
+   "standard": "math/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a linear map",
+   "a": "homomorphism",
+   "variants": [
+    "homomorphism"
+   ],
+   "standard": "math/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a effective alternative",
+   "a": "value",
+   "variants": [
+    "value"
+   ],
+   "standard": "math/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a solution set",
+   "a": "intersection",
+   "variants": [
+    "intersection"
+   ],
+   "standard": "math/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a matrix inversion",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "math/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a orthogonality",
+   "a": "term",
+   "variants": [
+    "term"
+   ],
+   "standard": "math/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a dot product",
+   "a": "operation",
+   "variants": [
+    "operation"
+   ],
+   "standard": "math/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a trace norm",
+   "a": "case",
+   "variants": [
+    "case"
+   ],
+   "standard": "math/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a example",
+   "a": "equation",
+   "variants": [
+    "equation"
+   ],
+   "standard": "math/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "ela",
+ "grade": "grade4",
+ "sample": 14,
+ "poolSize": 24,
+ "themes": 18,
+ "questions": [
+  {
+   "q": "what is a argumentative essay",
+   "a": "piece",
+   "variants": [
+    "piece"
+   ],
+   "standard": "ela/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a grammar",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "ela/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a metaphor",
+   "a": "term",
+   "variants": [
+    "term"
+   ],
+   "standard": "ela/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a paragraph",
+   "a": "collection",
+   "variants": [
+    "collection"
+   ],
+   "standard": "ela/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a example",
+   "a": "conflict",
+   "variants": [
+    "conflict"
+   ],
+   "standard": "ela/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a experience",
+   "a": "thing",
+   "variants": [
+    "thing"
+   ],
+   "standard": "ela/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a inflection",
+   "a": "slide",
+   "variants": [
+    "slide"
+   ],
+   "standard": "ela/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a temperance",
+   "a": "thing",
+   "variants": [
+    "thing"
+   ],
+   "standard": "ela/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a god",
+   "a": "father",
+   "variants": [
+    "father"
+   ],
+   "standard": "ela/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a why",
+   "a": "army",
+   "variants": [
+    "army"
+   ],
+   "standard": "ela/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a oatmeal",
+   "a": "dish",
+   "variants": [
+    "dish"
+   ],
+   "standard": "ela/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a narrative",
+   "a": "term",
+   "variants": [
+    "term"
+   ],
+   "standard": "ela/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a setting",
+   "a": "time",
+   "variants": [
+    "time"
+   ],
+   "standard": "ela/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a idiom",
+   "a": "phrase",
+   "variants": [
+    "phrase"
+   ],
+   "standard": "ela/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

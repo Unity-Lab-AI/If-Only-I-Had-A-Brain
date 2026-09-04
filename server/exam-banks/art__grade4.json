@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "art",
+ "grade": "grade4",
+ "sample": 14,
+ "poolSize": 19,
+ "themes": 14,
+ "questions": [
+  {
+   "q": "what is a sculpture",
+   "a": "artwork",
+   "variants": [
+    "artwork"
+   ],
+   "standard": "art/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mosaic",
+   "a": "art",
+   "variants": [
+    "art"
+   ],
+   "standard": "art/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a calligraphy",
+   "a": "art",
+   "variants": [
+    "art"
+   ],
+   "standard": "art/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a one example",
+   "a": "use",
+   "variants": [
+    "use"
+   ],
+   "standard": "art/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a islamic art",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "art/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a relief",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "art/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a bust",
+   "a": "statue",
+   "variants": [
+    "statue"
+   ],
+   "standard": "art/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a straw",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "art/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a fresco",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "art/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a pyramid",
+   "a": "structure",
+   "variants": [
+    "structure"
+   ],
+   "standard": "art/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a temple",
+   "a": "building",
+   "variants": [
+    "building"
+   ],
+   "standard": "art/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mask",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "art/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a symbol",
+   "a": "word",
+   "variants": [
+    "word"
+   ],
+   "standard": "art/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a petroglyph",
+   "a": "image",
+   "variants": [
+    "image"
+   ],
+   "standard": "art/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

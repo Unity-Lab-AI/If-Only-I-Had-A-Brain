@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "health",
+ "grade": "grade1",
+ "sample": 14,
+ "poolSize": 27,
+ "themes": 13,
+ "questions": [
+  {
+   "q": "what is a hygiene",
+   "a": "act",
+   "variants": [
+    "act"
+   ],
+   "standard": "health/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a health",
+   "a": "state",
+   "variants": [
+    "state"
+   ],
+   "standard": "health/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a epidemiology",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "health/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a body",
+   "a": "thing",
+   "variants": [
+    "thing"
+   ],
+   "standard": "health/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a plaque",
+   "a": "substance",
+   "variants": [
+    "substance"
+   ],
+   "standard": "health/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a hand washing",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "health/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a fruit",
+   "a": "structure",
+   "variants": [
+    "structure"
+   ],
+   "standard": "health/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a water",
+   "a": "temperature",
+   "variants": [
+    "temperature"
+   ],
+   "standard": "health/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a nurse",
+   "a": "who",
+   "variants": [
+    "who"
+   ],
+   "standard": "health/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a dentistry",
+   "a": "medicine",
+   "variants": [
+    "medicine"
+   ],
+   "standard": "health/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a medication",
+   "a": "use",
+   "variants": [
+    "use"
+   ],
+   "standard": "health/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a safety",
+   "a": "feeling",
+   "variants": [
+    "feeling"
+   ],
+   "standard": "health/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a fungi",
+   "a": "cause",
+   "variants": [
+    "cause"
+   ],
+   "standard": "health/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a circulatory system",
+   "a": "body",
+   "variants": [
+    "body"
+   ],
+   "standard": "health/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

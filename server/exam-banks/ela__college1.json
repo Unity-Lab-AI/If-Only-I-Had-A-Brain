@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "ela",
+ "grade": "college1",
+ "sample": 14,
+ "poolSize": 55,
+ "themes": 10,
+ "questions": [
+  {
+   "q": "what is a film essay",
+   "a": "movie",
+   "variants": [
+    "movie"
+   ],
+   "standard": "ela/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a rhetoric",
+   "a": "art",
+   "variants": [
+    "art"
+   ],
+   "standard": "ela/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a logic",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "ela/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a initial",
+   "a": "letter",
+   "variants": [
+    "letter"
+   ],
+   "standard": "ela/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a persuasion",
+   "a": "act",
+   "variants": [
+    "act"
+   ],
+   "standard": "ela/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a country",
+   "a": "deal",
+   "variants": [
+    "deal"
+   ],
+   "standard": "ela/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mina",
+   "a": "woman",
+   "variants": [
+    "woman"
+   ],
+   "standard": "ela/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a implacable resentment",
+   "a": "character",
+   "variants": [
+    "character"
+   ],
+   "standard": "ela/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a death",
+   "a": "end",
+   "variants": [
+    "end"
+   ],
+   "standard": "ela/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a quotation marks",
+   "a": "tool",
+   "variants": [
+    "tool"
+   ],
+   "standard": "ela/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a argumentative essay",
+   "a": "piece",
+   "variants": [
+    "piece"
+   ],
+   "standard": "ela/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a each sutra",
+   "a": "rule",
+   "variants": [
+    "rule"
+   ],
+   "standard": "ela/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a statement form",
+   "a": "truth",
+   "variants": [
+    "truth"
+   ],
+   "standard": "ela/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a propaganda",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "ela/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

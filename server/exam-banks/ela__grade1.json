@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "ela",
+ "grade": "grade1",
+ "sample": 14,
+ "poolSize": 28,
+ "themes": 13,
+ "questions": [
+  {
+   "q": "what is a chamois",
+   "a": "beast",
+   "variants": [
+    "beast"
+   ],
+   "standard": "ela/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a each stanza",
+   "a": "chapter",
+   "variants": [
+    "chapter"
+   ],
+   "standard": "ela/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a who",
+   "a": "lass",
+   "variants": [
+    "lass"
+   ],
+   "standard": "ela/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a while beauty",
+   "a": "treasure",
+   "variants": [
+    "treasure"
+   ],
+   "standard": "ela/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a king",
+   "a": "magician",
+   "variants": [
+    "magician"
+   ],
+   "standard": "ela/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a word",
+   "a": "collection",
+   "variants": [
+    "collection"
+   ],
+   "standard": "ela/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a adjective",
+   "a": "word",
+   "variants": [
+    "word"
+   ],
+   "standard": "ela/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a punctuation",
+   "a": "name",
+   "variants": [
+    "name"
+   ],
+   "standard": "ela/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a chinese",
+   "a": "language",
+   "variants": [
+    "language"
+   ],
+   "standard": "ela/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a alphabet",
+   "a": "list",
+   "variants": [
+    "list"
+   ],
+   "standard": "ela/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a syllable",
+   "a": "unit",
+   "variants": [
+    "unit"
+   ],
+   "standard": "ela/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a book",
+   "a": "format",
+   "variants": [
+    "format"
+   ],
+   "standard": "ela/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a orthography",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "ela/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a death",
+   "a": "brother",
+   "variants": [
+    "brother"
+   ],
+   "standard": "ela/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

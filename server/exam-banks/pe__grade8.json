@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "pe",
+ "grade": "grade8",
+ "sample": 14,
+ "poolSize": 52,
+ "themes": 23,
+ "questions": [
+  {
+   "q": "what is a carbohydrate catabolism",
+   "a": "breakdown",
+   "variants": [
+    "breakdown"
+   ],
+   "standard": "pe/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a foraging",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "pe/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a bmi",
+   "a": "rule",
+   "variants": [
+    "rule"
+   ],
+   "standard": "pe/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a muscle contraction",
+   "a": "activation",
+   "variants": [
+    "activation"
+   ],
+   "standard": "pe/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a oxygen",
+   "a": "element",
+   "variants": [
+    "element"
+   ],
+   "standard": "pe/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sport psychology",
+   "a": "science",
+   "variants": [
+    "science"
+   ],
+   "standard": "pe/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a stretching",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "pe/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sleep",
+   "a": "state",
+   "variants": [
+    "state"
+   ],
+   "standard": "pe/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a physical fitness",
+   "a": "state",
+   "variants": [
+    "state"
+   ],
+   "standard": "pe/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a endurance training",
+   "a": "act",
+   "variants": [
+    "act"
+   ],
+   "standard": "pe/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a interval training",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "pe/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a flexibility",
+   "a": "range",
+   "variants": [
+    "range"
+   ],
+   "standard": "pe/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a heart rate",
+   "a": "frequency",
+   "variants": [
+    "frequency"
+   ],
+   "standard": "pe/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a supply",
+   "a": "transport",
+   "variants": [
+    "transport"
+   ],
+   "standard": "pe/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

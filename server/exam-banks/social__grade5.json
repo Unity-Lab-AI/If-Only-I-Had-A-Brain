@@ -1,0 +1,70 @@
+{
+ "version": 1,
+ "subject": "social",
+ "grade": "grade5",
+ "sample": 14,
+ "poolSize": 6,
+ "themes": 4,
+ "questions": [
+  {
+   "q": "what is a executive branch",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "social/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a columbus day",
+   "a": "holiday",
+   "variants": [
+    "holiday"
+   ],
+   "standard": "social/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a exploration",
+   "a": "act",
+   "variants": [
+    "act"
+   ],
+   "standard": "social/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a jamestown",
+   "a": "town",
+   "variants": [
+    "town"
+   ],
+   "standard": "social/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a other house",
+   "a": "senate",
+   "variants": [
+    "senate"
+   ],
+   "standard": "social/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a judicial branch",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "social/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

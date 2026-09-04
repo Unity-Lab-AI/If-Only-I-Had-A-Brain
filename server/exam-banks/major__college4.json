@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "major",
+ "grade": "college4",
+ "sample": 14,
+ "poolSize": 55,
+ "themes": 23,
+ "questions": [
+  {
+   "q": "what is a data mining",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "major/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a artificial intelligence",
+   "a": "capability",
+   "variants": [
+    "capability"
+   ],
+   "standard": "major/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a convergent recursion",
+   "a": "algorithm",
+   "variants": [
+    "algorithm"
+   ],
+   "standard": "major/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a threat",
+   "a": "event",
+   "variants": [
+    "event"
+   ],
+   "standard": "major/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a cipher",
+   "a": "pair",
+   "variants": [
+    "pair"
+   ],
+   "standard": "major/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a token",
+   "a": "pair",
+   "variants": [
+    "pair"
+   ],
+   "standard": "major/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a figure",
+   "a": "view",
+   "variants": [
+    "view"
+   ],
+   "standard": "major/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a software architecture",
+   "a": "means",
+   "variants": [
+    "means"
+   ],
+   "standard": "major/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a functional programming",
+   "a": "paradigm",
+   "variants": [
+    "paradigm"
+   ],
+   "standard": "major/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a cap",
+   "a": "chain",
+   "variants": [
+    "chain"
+   ],
+   "standard": "major/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a padding",
+   "a": "addition",
+   "variants": [
+    "addition"
+   ],
+   "standard": "major/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a fourth issue",
+   "a": "degree",
+   "variants": [
+    "degree"
+   ],
+   "standard": "major/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a unsupervised learning",
+   "a": "machine",
+   "variants": [
+    "machine"
+   ],
+   "standard": "major/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a following",
+   "a": "list",
+   "variants": [
+    "list"
+   ],
+   "standard": "major/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

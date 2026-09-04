@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "art",
+ "grade": "grade8",
+ "sample": 14,
+ "poolSize": 19,
+ "themes": 12,
+ "questions": [
+  {
+   "q": "what is a cabaret scene",
+   "a": "example",
+   "variants": [
+    "example"
+   ],
+   "standard": "art/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a expressionism",
+   "a": "movement",
+   "variants": [
+    "movement"
+   ],
+   "standard": "art/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sculpture",
+   "a": "artwork",
+   "variants": [
+    "artwork"
+   ],
+   "standard": "art/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a collage",
+   "a": "technique",
+   "variants": [
+    "technique"
+   ],
+   "standard": "art/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a art criticism",
+   "a": "evaluation",
+   "variants": [
+    "evaluation"
+   ],
+   "standard": "art/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a fauvism",
+   "a": "style",
+   "variants": [
+    "style"
+   ],
+   "standard": "art/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a constructivism",
+   "a": "movement",
+   "variants": [
+    "movement"
+   ],
+   "standard": "art/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a artist",
+   "a": "hand",
+   "variants": [
+    "hand"
+   ],
+   "standard": "art/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a art movement",
+   "a": "style",
+   "variants": [
+    "style"
+   ],
+   "standard": "art/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a american gothic",
+   "a": "painting",
+   "variants": [
+    "painting"
+   ],
+   "standard": "art/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a manifesto",
+   "a": "declaration",
+   "variants": [
+    "declaration"
+   ],
+   "standard": "art/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a vanity gallery",
+   "a": "space",
+   "variants": [
+    "space"
+   ],
+   "standard": "art/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a stone sculpture",
+   "a": "activity",
+   "variants": [
+    "activity"
+   ],
+   "standard": "art/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a photomontage",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "art/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

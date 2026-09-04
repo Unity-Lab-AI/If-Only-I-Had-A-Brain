@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "pe",
+ "grade": "grade2",
+ "sample": 14,
+ "poolSize": 22,
+ "themes": 14,
+ "questions": [
+  {
+   "q": "what is a physical fitness",
+   "a": "ability",
+   "variants": [
+    "ability"
+   ],
+   "standard": "pe/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a basketball",
+   "a": "sport",
+   "variants": [
+    "sport"
+   ],
+   "standard": "pe/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a swimming",
+   "a": "movement",
+   "variants": [
+    "movement"
+   ],
+   "standard": "pe/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a skeleton",
+   "a": "structure",
+   "variants": [
+    "structure"
+   ],
+   "standard": "pe/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a running",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "pe/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a jumping",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "pe/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a weight throw",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "pe/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sway",
+   "a": "movement",
+   "variants": [
+    "movement"
+   ],
+   "standard": "pe/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a flexibility",
+   "a": "range",
+   "variants": [
+    "range"
+   ],
+   "standard": "pe/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a endurance",
+   "a": "ability",
+   "variants": [
+    "ability"
+   ],
+   "standard": "pe/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a gymnastics",
+   "a": "sport",
+   "variants": [
+    "sport"
+   ],
+   "standard": "pe/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a dancing",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "pe/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a referee",
+   "a": "who",
+   "variants": [
+    "who"
+   ],
+   "standard": "pe/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a heart",
+   "a": "people",
+   "variants": [
+    "people"
+   ],
+   "standard": "pe/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

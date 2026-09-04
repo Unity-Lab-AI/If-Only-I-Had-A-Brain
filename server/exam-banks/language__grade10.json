@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "language",
+ "grade": "grade10",
+ "sample": 14,
+ "poolSize": 32,
+ "themes": 11,
+ "questions": [
+  {
+   "q": "what is a cervantes",
+   "a": "character",
+   "variants": [
+    "character"
+   ],
+   "standard": "language/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a poetry",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "language/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a fidelity",
+   "a": "extent",
+   "variants": [
+    "extent"
+   ],
+   "standard": "language/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a idiom",
+   "a": "expression",
+   "variants": [
+    "expression"
+   ],
+   "standard": "language/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a literary realism",
+   "a": "attempt",
+   "variants": [
+    "attempt"
+   ],
+   "standard": "language/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a novel",
+   "a": "work",
+   "variants": [
+    "work"
+   ],
+   "standard": "language/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a short story",
+   "a": "piece",
+   "variants": [
+    "piece"
+   ],
+   "standard": "language/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a drama",
+   "a": "mode",
+   "variants": [
+    "mode"
+   ],
+   "standard": "language/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a metaphor",
+   "a": "figure",
+   "variants": [
+    "figure"
+   ],
+   "standard": "language/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a plot",
+   "a": "sequence",
+   "variants": [
+    "sequence"
+   ],
+   "standard": "language/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a film essay",
+   "a": "movie",
+   "variants": [
+    "movie"
+   ],
+   "standard": "language/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a prosody",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "language/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a transparency",
+   "a": "extent",
+   "variants": [
+    "extent"
+   ],
+   "standard": "language/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a animist realism",
+   "a": "term",
+   "variants": [
+    "term"
+   ],
+   "standard": "language/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

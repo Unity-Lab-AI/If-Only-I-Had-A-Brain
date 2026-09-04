@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "social",
+ "grade": "phd",
+ "sample": 14,
+ "poolSize": 170,
+ "themes": 14,
+ "questions": [
+  {
+   "q": "what is a research ethics",
+   "a": "discipline",
+   "variants": [
+    "discipline"
+   ],
+   "standard": "social/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a interdisciplinary study",
+   "a": "seeking",
+   "variants": [
+    "seeking"
+   ],
+   "standard": "social/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a deliberative democracy",
+   "a": "reform",
+   "variants": [
+    "reform"
+   ],
+   "standard": "social/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a knowledge",
+   "a": "awareness",
+   "variants": [
+    "awareness"
+   ],
+   "standard": "social/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a experiment",
+   "a": "cornerstone",
+   "variants": [
+    "cornerstone"
+   ],
+   "standard": "social/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a platonic idealism",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "social/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a tumor size",
+   "a": "parameter",
+   "variants": [
+    "parameter"
+   ],
+   "standard": "social/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a model",
+   "a": "adaptation",
+   "variants": [
+    "adaptation"
+   ],
+   "standard": "social/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a epistemology",
+   "a": "branch",
+   "variants": [
+    "branch"
+   ],
+   "standard": "social/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a positivism",
+   "a": "school",
+   "variants": [
+    "school"
+   ],
+   "standard": "social/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a childhood",
+   "a": "stage",
+   "variants": [
+    "stage"
+   ],
+   "standard": "social/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a every saying",
+   "a": "expression",
+   "variants": [
+    "expression"
+   ],
+   "standard": "social/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a human history",
+   "a": "construct",
+   "variants": [
+    "construct"
+   ],
+   "standard": "social/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a moral psychology",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "social/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

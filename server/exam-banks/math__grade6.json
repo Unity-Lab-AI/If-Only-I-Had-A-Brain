@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "math",
+ "grade": "grade6",
+ "sample": 14,
+ "poolSize": 16,
+ "themes": 1,
+ "questions": [
+  {
+   "q": "what is a rectangle",
+   "a": "example",
+   "variants": [
+    "example"
+   ],
+   "standard": "math/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a corresponding height",
+   "a": "length",
+   "variants": [
+    "length"
+   ],
+   "standard": "math/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a each face",
+   "a": "polygon",
+   "variants": [
+    "polygon"
+   ],
+   "standard": "math/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a summary length",
+   "a": "attribute",
+   "variants": [
+    "attribute"
+   ],
+   "standard": "math/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a volume",
+   "a": "attribute",
+   "variants": [
+    "attribute"
+   ],
+   "standard": "math/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a surface area",
+   "a": "volume",
+   "variants": [
+    "volume"
+   ],
+   "standard": "math/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a volume volume",
+   "a": "number",
+   "variants": [
+    "number"
+   ],
+   "standard": "math/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a large bag",
+   "a": "deal",
+   "variants": [
+    "deal"
+   ],
+   "standard": "math/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a unknown",
+   "a": "product",
+   "variants": [
+    "product"
+   ],
+   "standard": "math/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a tetrahedron",
+   "a": "polyhedron",
+   "variants": [
+    "polyhedron"
+   ],
+   "standard": "math/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a zero",
+   "a": "number",
+   "variants": [
+    "number"
+   ],
+   "standard": "math/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a account balance",
+   "a": "amount",
+   "variants": [
+    "amount"
+   ],
+   "standard": "math/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a floor",
+   "a": "rectangle",
+   "variants": [
+    "rectangle"
+   ],
+   "standard": "math/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a who",
+   "a": "artist",
+   "variants": [
+    "artist"
+   ],
+   "standard": "math/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "economics",
+ "grade": "grade12",
+ "sample": 14,
+ "poolSize": 102,
+ "themes": 35,
+ "questions": [
+  {
+   "q": "what is a international trade",
+   "a": "exchange",
+   "variants": [
+    "exchange"
+   ],
+   "standard": "economics/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a economic system",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "economics/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a advanced capitalism",
+   "a": "situation",
+   "variants": [
+    "situation"
+   ],
+   "standard": "economics/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a free market",
+   "a": "system",
+   "variants": [
+    "system"
+   ],
+   "standard": "economics/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a gdp",
+   "a": "product",
+   "variants": [
+    "product"
+   ],
+   "standard": "economics/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a economic growth",
+   "a": "increase",
+   "variants": [
+    "increase"
+   ],
+   "standard": "economics/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a latter",
+   "a": "revaluation",
+   "variants": [
+    "revaluation"
+   ],
+   "standard": "economics/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a globalization",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "economics/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a comparative advantage",
+   "a": "opportunity",
+   "variants": [
+    "opportunity"
+   ],
+   "standard": "economics/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a nasdaq",
+   "a": "exchange",
+   "variants": [
+    "exchange"
+   ],
+   "standard": "economics/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a autonomous consumption",
+   "a": "amount",
+   "variants": [
+    "amount"
+   ],
+   "standard": "economics/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a experimental economics",
+   "a": "use",
+   "variants": [
+    "use"
+   ],
+   "standard": "economics/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a total cost",
+   "a": "sum",
+   "variants": [
+    "sum"
+   ],
+   "standard": "economics/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a machine",
+   "a": "input",
+   "variants": [
+    "input"
+   ],
+   "standard": "economics/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

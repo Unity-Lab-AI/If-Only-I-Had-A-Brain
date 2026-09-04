@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "math",
+ "grade": "grade12",
+ "sample": 14,
+ "poolSize": 30,
+ "themes": 17,
+ "questions": [
+  {
+   "q": "what is a function",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "math/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a slope",
+   "a": "change",
+   "variants": [
+    "change"
+   ],
+   "standard": "math/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a differential calculus",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "math/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a first row",
+   "a": "header",
+   "variants": [
+    "header"
+   ],
+   "standard": "math/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a speed",
+   "a": "magnitude",
+   "variants": [
+    "magnitude"
+   ],
+   "standard": "math/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a first column",
+   "a": "header",
+   "variants": [
+    "header"
+   ],
+   "standard": "math/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a definite integral",
+   "a": "number",
+   "variants": [
+    "number"
+   ],
+   "standard": "math/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a substitution",
+   "a": "technique",
+   "variants": [
+    "technique"
+   ],
+   "standard": "math/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a base",
+   "a": "circle",
+   "variants": [
+    "circle"
+   ],
+   "standard": "math/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a shell",
+   "a": "cylinder",
+   "variants": [
+    "cylinder"
+   ],
+   "standard": "math/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a population growth",
+   "a": "example",
+   "variants": [
+    "example"
+   ],
+   "standard": "math/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a calculus",
+   "a": "mathematics",
+   "variants": [
+    "mathematics"
+   ],
+   "standard": "math/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a step size",
+   "a": "value",
+   "variants": [
+    "value"
+   ],
+   "standard": "math/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a second row",
+   "a": "function",
+   "variants": [
+    "function"
+   ],
+   "standard": "math/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

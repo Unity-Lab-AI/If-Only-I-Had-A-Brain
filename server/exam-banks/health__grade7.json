@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "health",
+ "grade": "grade7",
+ "sample": 14,
+ "poolSize": 47,
+ "themes": 20,
+ "questions": [
+  {
+   "q": "what is a adolescence",
+   "a": "stage",
+   "variants": [
+    "stage"
+   ],
+   "standard": "health/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sexuality",
+   "a": "experience",
+   "variants": [
+    "experience"
+   ],
+   "standard": "health/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sexual health",
+   "a": "state",
+   "variants": [
+    "state"
+   ],
+   "standard": "health/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a dual protection",
+   "a": "use",
+   "variants": [
+    "use"
+   ],
+   "standard": "health/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a another factor",
+   "a": "effects",
+   "variants": [
+    "effects"
+   ],
+   "standard": "health/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a tobacco smoking",
+   "a": "practice",
+   "variants": [
+    "practice"
+   ],
+   "standard": "health/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a suicide",
+   "a": "cause",
+   "variants": [
+    "cause"
+   ],
+   "standard": "health/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a psychotherapy",
+   "a": "treatment",
+   "variants": [
+    "treatment"
+   ],
+   "standard": "health/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a testosterone",
+   "a": "hormone",
+   "variants": [
+    "hormone"
+   ],
+   "standard": "health/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a hiv",
+   "a": "cause",
+   "variants": [
+    "cause"
+   ],
+   "standard": "health/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a pregnancy",
+   "a": "time",
+   "variants": [
+    "time"
+   ],
+   "standard": "health/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a consent",
+   "a": "principle",
+   "variants": [
+    "principle"
+   ],
+   "standard": "health/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a nicotine",
+   "a": "metabolite",
+   "variants": [
+    "metabolite"
+   ],
+   "standard": "health/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a atomizer",
+   "a": "element",
+   "variants": [
+    "element"
+   ],
+   "standard": "health/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "music",
+ "grade": "grade8",
+ "sample": 14,
+ "poolSize": 27,
+ "themes": 17,
+ "questions": [
+  {
+   "q": "what is a popular music",
+   "a": "term",
+   "variants": [
+    "term"
+   ],
+   "standard": "music/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a jazz",
+   "a": "genre",
+   "variants": [
+    "genre"
+   ],
+   "standard": "music/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a blues",
+   "a": "genre",
+   "variants": [
+    "genre"
+   ],
+   "standard": "music/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a musical style",
+   "a": "synthesis",
+   "variants": [
+    "synthesis"
+   ],
+   "standard": "music/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sampler",
+   "a": "instrument",
+   "variants": [
+    "instrument"
+   ],
+   "standard": "music/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a recording studio",
+   "a": "facility",
+   "variants": [
+    "facility"
+   ],
+   "standard": "music/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a music box",
+   "a": "instrument",
+   "variants": [
+    "instrument"
+   ],
+   "standard": "music/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a music genre",
+   "a": "category",
+   "variants": [
+    "category"
+   ],
+   "standard": "music/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a songwriter",
+   "a": "who",
+   "variants": [
+    "who"
+   ],
+   "standard": "music/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a beatles",
+   "a": "act",
+   "variants": [
+    "act"
+   ],
+   "standard": "music/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a pedal point",
+   "a": "tone",
+   "variants": [
+    "tone"
+   ],
+   "standard": "music/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a alternative rock",
+   "a": "category",
+   "variants": [
+    "category"
+   ],
+   "standard": "music/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a rap",
+   "a": "ingredient",
+   "variants": [
+    "ingredient"
+   ],
+   "standard": "music/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a tear",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "music/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

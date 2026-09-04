@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "economics",
+ "grade": "grade9",
+ "sample": 14,
+ "poolSize": 103,
+ "themes": 15,
+ "questions": [
+  {
+   "q": "what is a money supply",
+   "a": "number",
+   "variants": [
+    "number"
+   ],
+   "standard": "economics/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a inflation",
+   "a": "increase",
+   "variants": [
+    "increase"
+   ],
+   "standard": "economics/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a market",
+   "a": "mechanism",
+   "variants": [
+    "mechanism"
+   ],
+   "standard": "economics/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a implicit costs",
+   "a": "opportunity",
+   "variants": [
+    "opportunity"
+   ],
+   "standard": "economics/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a trade",
+   "a": "act",
+   "variants": [
+    "act"
+   ],
+   "standard": "economics/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a profit",
+   "a": "difference",
+   "variants": [
+    "difference"
+   ],
+   "standard": "economics/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a budget",
+   "a": "plan",
+   "variants": [
+    "plan"
+   ],
+   "standard": "economics/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a economics",
+   "a": "science",
+   "variants": [
+    "science"
+   ],
+   "standard": "economics/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a absolute scarcity",
+   "a": "condition",
+   "variants": [
+    "condition"
+   ],
+   "standard": "economics/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a bank",
+   "a": "institution",
+   "variants": [
+    "institution"
+   ],
+   "standard": "economics/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sweden",
+   "a": "example",
+   "variants": [
+    "example"
+   ],
+   "standard": "economics/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a machine",
+   "a": "input",
+   "variants": [
+    "input"
+   ],
+   "standard": "economics/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a average",
+   "a": "point",
+   "variants": [
+    "point"
+   ],
+   "standard": "economics/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a gdp",
+   "a": "value",
+   "variants": [
+    "value"
+   ],
+   "standard": "economics/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

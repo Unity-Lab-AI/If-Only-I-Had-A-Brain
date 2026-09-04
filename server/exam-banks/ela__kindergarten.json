@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "ela",
+ "grade": "kindergarten",
+ "sample": 14,
+ "poolSize": 24,
+ "themes": 11,
+ "questions": [
+  {
+   "q": "what is a alphabet",
+   "a": "list",
+   "variants": [
+    "list"
+   ],
+   "standard": "ela/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a word",
+   "a": "collection",
+   "variants": [
+    "collection"
+   ],
+   "standard": "ela/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a each stanza",
+   "a": "chapter",
+   "variants": [
+    "chapter"
+   ],
+   "standard": "ela/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a while beauty",
+   "a": "treasure",
+   "variants": [
+    "treasure"
+   ],
+   "standard": "ela/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a honesty",
+   "a": "policy",
+   "variants": [
+    "policy"
+   ],
+   "standard": "ela/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a great",
+   "a": "palace",
+   "variants": [
+    "palace"
+   ],
+   "standard": "ela/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a chinese",
+   "a": "language",
+   "variants": [
+    "language"
+   ],
+   "standard": "ela/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a nursery rhyme",
+   "a": "poem",
+   "variants": [
+    "poem"
+   ],
+   "standard": "ela/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a fairy tale",
+   "a": "expression",
+   "variants": [
+    "expression"
+   ],
+   "standard": "ela/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a song",
+   "a": "piece",
+   "variants": [
+    "piece"
+   ],
+   "standard": "ela/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a accuracy",
+   "a": "use",
+   "variants": [
+    "use"
+   ],
+   "standard": "ela/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a each letter",
+   "a": "symbol",
+   "variants": [
+    "symbol"
+   ],
+   "standard": "ela/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a death",
+   "a": "brother",
+   "variants": [
+    "brother"
+   ],
+   "standard": "ela/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a wisdom",
+   "a": "beauty",
+   "variants": [
+    "beauty"
+   ],
+   "standard": "ela/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

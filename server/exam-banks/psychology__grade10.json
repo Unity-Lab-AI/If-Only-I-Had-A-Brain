@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "psychology",
+ "grade": "grade10",
+ "sample": 14,
+ "poolSize": 90,
+ "themes": 11,
+ "questions": [
+  {
+   "q": "what is a memory",
+   "a": "ability",
+   "variants": [
+    "ability"
+   ],
+   "standard": "psychology/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a personality psychology",
+   "a": "branch",
+   "variants": [
+    "branch"
+   ],
+   "standard": "psychology/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a social psychology",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "psychology/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a stage",
+   "a": "order",
+   "variants": [
+    "order"
+   ],
+   "standard": "psychology/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a motivation",
+   "a": "state",
+   "variants": [
+    "state"
+   ],
+   "standard": "psychology/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a classical conditioning",
+   "a": "procedure",
+   "variants": [
+    "procedure"
+   ],
+   "standard": "psychology/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a extinction",
+   "a": "strategy",
+   "variants": [
+    "strategy"
+   ],
+   "standard": "psychology/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a reinforcement",
+   "a": "component",
+   "variants": [
+    "component"
+   ],
+   "standard": "psychology/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a behavioral genetics",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "psychology/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a stereotype",
+   "a": "perception",
+   "variants": [
+    "perception"
+   ],
+   "standard": "psychology/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a eeg",
+   "a": "diagnosis",
+   "variants": [
+    "diagnosis"
+   ],
+   "standard": "psychology/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a thought",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "psychology/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a idiographic psychology",
+   "a": "attempt",
+   "variants": [
+    "attempt"
+   ],
+   "standard": "psychology/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a attitude",
+   "a": "evaluation",
+   "variants": [
+    "evaluation"
+   ],
+   "standard": "psychology/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

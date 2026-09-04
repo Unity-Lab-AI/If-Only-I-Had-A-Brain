@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "cs",
+ "grade": "grade5",
+ "sample": 14,
+ "poolSize": 21,
+ "themes": 18,
+ "questions": [
+  {
+   "q": "what is a computer",
+   "a": "machine",
+   "variants": [
+    "machine"
+   ],
+   "standard": "cs/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a algorithm",
+   "a": "list",
+   "variants": [
+    "list"
+   ],
+   "standard": "cs/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a operating system",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "cs/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a computer file",
+   "a": "means",
+   "variants": [
+    "means"
+   ],
+   "standard": "cs/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a programming language",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "cs/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a computer keyboard",
+   "a": "device",
+   "variants": [
+    "device"
+   ],
+   "standard": "cs/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a robot",
+   "a": "machine",
+   "variants": [
+    "machine"
+   ],
+   "standard": "cs/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a computer mouse",
+   "a": "device",
+   "variants": [
+    "device"
+   ],
+   "standard": "cs/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a web browser",
+   "a": "application",
+   "variants": [
+    "application"
+   ],
+   "standard": "cs/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a search engine",
+   "a": "google",
+   "variants": [
+    "google"
+   ],
+   "standard": "cs/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a electronic mail",
+   "a": "service",
+   "variants": [
+    "service"
+   ],
+   "standard": "cs/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a password",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "cs/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a digital citizen",
+   "a": "who",
+   "variants": [
+    "who"
+   ],
+   "standard": "cs/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a bit",
+   "a": "unit",
+   "variants": [
+    "unit"
+   ],
+   "standard": "cs/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

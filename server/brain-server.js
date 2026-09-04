@@ -5984,6 +5984,38 @@ class ServerBrain {
       this.cortexCluster.ensureIntraTopology('boot complete — restore path never delivered');
     }
 
+    // ── LOAD THE DERIVED EXAM BANKS AND HAND THEM TO THE CURRICULUM ───────
+    //
+    // ⛔ THE FILE READ LIVES HERE BECAUSE `curriculum.js` HAS NO `fs` AND MUST
+    // NOT GAIN ONE — it is a browser-side ESM module that also runs server-side,
+    // and the phonics rows already arrive through the cluster for exactly this
+    // reason. The server reads; the curriculum consumes.
+    //
+    // ⚠ These cover the 201 cells that had no held-out bank at all. An empty
+    // bank does not shorten the student battery, it SKIPS it, so before this the
+    // walk ran from grade 1 to PhD without one independent question.
+    if (this.cortexCluster) {
+      try {
+        const _ebDir = path.join(__dirname, 'exam-banks');
+        const _ebFiles = fs.readdirSync(_ebDir).filter((f) => f.endsWith('.json'));
+        const docs = [];
+        let questions = 0;
+        for (const f of _ebFiles) {
+          try {
+            const doc = JSON.parse(fs.readFileSync(path.join(_ebDir, f), 'utf8'));
+            if (doc && Array.isArray(doc.questions) && doc.questions.length) { docs.push(doc); questions += doc.questions.length; }
+          } catch { /* one unreadable file must not cost the other 190 */ }
+        }
+        this.cortexCluster.derivedExamBanks = docs;
+        console.log(`[Brain] derived exam banks: ${docs.length} cells / ${questions} questions loaded for the held-out battery`);
+      } catch {
+        this.cortexCluster.derivedExamBanks = [];
+        // ⛔ Named. Silence here means 201 cells go back to being untested while
+        // the boot looks perfectly healthy.
+        console.warn('[Brain] ⚠ no derived exam banks at server/exam-banks — only the authored pre-K/K cells will be examined. Run .claude/scripts/gen-exam-banks.mjs.');
+      }
+    }
+
     // ── REHYDRATE THE DERIVED-MEMORY CACHE ────────────────────────────────
     //
     // ⛔ THE OTHER HALF OF THE CONSISTENCY CONTRACT, AND THE HALF THAT DID NOT

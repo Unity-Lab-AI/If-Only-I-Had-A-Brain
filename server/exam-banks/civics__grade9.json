@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "civics",
+ "grade": "grade9",
+ "sample": 14,
+ "poolSize": 29,
+ "themes": 10,
+ "questions": [
+  {
+   "q": "what is a government",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "civics/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a election",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "civics/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a voting",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "civics/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a political party",
+   "a": "organization",
+   "variants": [
+    "organization"
+   ],
+   "standard": "civics/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a jury",
+   "a": "body",
+   "variants": [
+    "body"
+   ],
+   "standard": "civics/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a another virtue",
+   "a": "protection",
+   "variants": [
+    "protection"
+   ],
+   "standard": "civics/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a senate",
+   "a": "house",
+   "variants": [
+    "house"
+   ],
+   "standard": "civics/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a clinton",
+   "a": "supporter",
+   "variants": [
+    "supporter"
+   ],
+   "standard": "civics/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a technology",
+   "a": "productivity",
+   "variants": [
+    "productivity"
+   ],
+   "standard": "civics/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a long-term residency",
+   "a": "class",
+   "variants": [
+    "class"
+   ],
+   "standard": "civics/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a autocracy",
+   "a": "system",
+   "variants": [
+    "system"
+   ],
+   "standard": "civics/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a internet voting",
+   "a": "possibility",
+   "variants": [
+    "possibility"
+   ],
+   "standard": "civics/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a elite party",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "civics/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a coroner",
+   "a": "who",
+   "variants": [
+    "who"
+   ],
+   "standard": "civics/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

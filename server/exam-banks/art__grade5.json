@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "art",
+ "grade": "grade5",
+ "sample": 14,
+ "poolSize": 20,
+ "themes": 15,
+ "questions": [
+  {
+   "q": "what is a painting",
+   "a": "portrait",
+   "variants": [
+    "portrait"
+   ],
+   "standard": "art/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a fresco",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "art/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sculpture",
+   "a": "branch",
+   "variants": [
+    "branch"
+   ],
+   "standard": "art/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a composition",
+   "a": "organization",
+   "variants": [
+    "organization"
+   ],
+   "standard": "art/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a renaissance",
+   "a": "history",
+   "variants": [
+    "history"
+   ],
+   "standard": "art/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a technique",
+   "a": "shading",
+   "variants": [
+    "shading"
+   ],
+   "standard": "art/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a tempera",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "art/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a portrait painting",
+   "a": "genre",
+   "variants": [
+    "genre"
+   ],
+   "standard": "art/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a still life",
+   "a": "work",
+   "variants": [
+    "work"
+   ],
+   "standard": "art/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a curvilinear perspective",
+   "a": "drawing",
+   "variants": [
+    "drawing"
+   ],
+   "standard": "art/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a david",
+   "a": "statue",
+   "variants": [
+    "statue"
+   ],
+   "standard": "art/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a entire ceiling",
+   "a": "fresco",
+   "variants": [
+    "fresco"
+   ],
+   "standard": "art/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a anatomy",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "art/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a florence",
+   "a": "city",
+   "variants": [
+    "city"
+   ],
+   "standard": "art/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

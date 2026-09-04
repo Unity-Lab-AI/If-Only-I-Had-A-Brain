@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "math",
+ "grade": "grade9",
+ "sample": 14,
+ "poolSize": 66,
+ "themes": 27,
+ "questions": [
+  {
+   "q": "what is a conjecture",
+   "a": "guess",
+   "variants": [
+    "guess"
+   ],
+   "standard": "math/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a geometry",
+   "a": "branch",
+   "variants": [
+    "branch"
+   ],
+   "standard": "math/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a euclidean geometry",
+   "a": "system",
+   "variants": [
+    "system"
+   ],
+   "standard": "math/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a isolated point",
+   "a": "element",
+   "variants": [
+    "element"
+   ],
+   "standard": "math/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a line segment",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "math/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a triangle",
+   "a": "figure",
+   "variants": [
+    "figure"
+   ],
+   "standard": "math/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a congruence",
+   "a": "relation",
+   "variants": [
+    "relation"
+   ],
+   "standard": "math/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a following",
+   "a": "list",
+   "variants": [
+    "list"
+   ],
+   "standard": "math/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a circle",
+   "a": "shape",
+   "variants": [
+    "shape"
+   ],
+   "standard": "math/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a simple polygon",
+   "a": "boundary",
+   "variants": [
+    "boundary"
+   ],
+   "standard": "math/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a isosceles trapezoid",
+   "a": "hull",
+   "variants": [
+    "hull"
+   ],
+   "standard": "math/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a perimeter",
+   "a": "length",
+   "variants": [
+    "length"
+   ],
+   "standard": "math/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a area",
+   "a": "measure",
+   "variants": [
+    "measure"
+   ],
+   "standard": "math/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a capacity",
+   "a": "amount",
+   "variants": [
+    "amount"
+   ],
+   "standard": "math/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

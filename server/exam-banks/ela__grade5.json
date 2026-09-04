@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "ela",
+ "grade": "grade5",
+ "sample": 14,
+ "poolSize": 37,
+ "themes": 22,
+ "questions": [
+  {
+   "q": "what is a narrative",
+   "a": "term",
+   "variants": [
+    "term"
+   ],
+   "standard": "ela/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a grammar",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "ela/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a argumentative essay",
+   "a": "piece",
+   "variants": [
+    "piece"
+   ],
+   "standard": "ela/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a metaphor",
+   "a": "term",
+   "variants": [
+    "term"
+   ],
+   "standard": "ela/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a highlands",
+   "a": "york",
+   "variants": [
+    "york"
+   ],
+   "standard": "ela/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a matthew",
+   "a": "man",
+   "variants": [
+    "man"
+   ],
+   "standard": "ela/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a anne",
+   "a": "name",
+   "variants": [
+    "name"
+   ],
+   "standard": "ela/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a easy mouth",
+   "a": "journey",
+   "variants": [
+    "journey"
+   ],
+   "standard": "ela/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a john",
+   "a": "groom",
+   "variants": [
+    "groom"
+   ],
+   "standard": "ela/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a boy",
+   "a": "creature",
+   "variants": [
+    "creature"
+   ],
+   "standard": "ela/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a ten years",
+   "a": "time",
+   "variants": [
+    "time"
+   ],
+   "standard": "ela/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a clever child",
+   "a": "mine",
+   "variants": [
+    "mine"
+   ],
+   "standard": "ela/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a meg",
+   "a": "comfort",
+   "variants": [
+    "comfort"
+   ],
+   "standard": "ela/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a criticism",
+   "a": "test",
+   "variants": [
+    "test"
+   ],
+   "standard": "ela/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

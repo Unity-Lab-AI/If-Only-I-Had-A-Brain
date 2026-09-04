@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "ela",
+ "grade": "college2",
+ "sample": 14,
+ "poolSize": 124,
+ "themes": 25,
+ "questions": [
+  {
+   "q": "what is a literature",
+   "a": "method",
+   "variants": [
+    "method"
+   ],
+   "standard": "ela/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a american gothic",
+   "a": "painting",
+   "variants": [
+    "painting"
+   ],
+   "standard": "ela/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a time",
+   "a": "evening",
+   "variants": [
+    "evening"
+   ],
+   "standard": "ela/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a standing agora",
+   "a": "symptom",
+   "variants": [
+    "symptom"
+   ],
+   "standard": "ela/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a film essay",
+   "a": "movie",
+   "variants": [
+    "movie"
+   ],
+   "standard": "ela/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a logic",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "ela/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a persuasion",
+   "a": "act",
+   "variants": [
+    "act"
+   ],
+   "standard": "ela/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a audience",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "ela/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a register",
+   "a": "variety",
+   "variants": [
+    "variety"
+   ],
+   "standard": "ela/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a result",
+   "a": "description",
+   "variants": [
+    "description"
+   ],
+   "standard": "ela/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a report",
+   "a": "statement",
+   "variants": [
+    "statement"
+   ],
+   "standard": "ela/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a business proposal",
+   "a": "offer",
+   "variants": [
+    "offer"
+   ],
+   "standard": "ela/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a editing",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "ela/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mutual understanding",
+   "a": "principle",
+   "variants": [
+    "principle"
+   ],
+   "standard": "ela/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

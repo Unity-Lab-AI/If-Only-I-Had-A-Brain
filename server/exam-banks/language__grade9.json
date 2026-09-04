@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "language",
+ "grade": "grade9",
+ "sample": 14,
+ "poolSize": 54,
+ "themes": 17,
+ "questions": [
+  {
+   "q": "what is a spanish",
+   "a": "language",
+   "variants": [
+    "language"
+   ],
+   "standard": "language/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a linguistics",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "language/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a language transfer",
+   "a": "phenomenon",
+   "variants": [
+    "phenomenon"
+   ],
+   "standard": "language/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a word",
+   "a": "combination",
+   "variants": [
+    "combination"
+   ],
+   "standard": "language/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a fidelity",
+   "a": "extent",
+   "variants": [
+    "extent"
+   ],
+   "standard": "language/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a spain",
+   "a": "country",
+   "variants": [
+    "country"
+   ],
+   "standard": "language/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a interpretation",
+   "a": "activity",
+   "variants": [
+    "activity"
+   ],
+   "standard": "language/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a latin america",
+   "a": "region",
+   "variants": [
+    "region"
+   ],
+   "standard": "language/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a novel",
+   "a": "work",
+   "variants": [
+    "work"
+   ],
+   "standard": "language/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a poetry",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "language/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a drama",
+   "a": "mode",
+   "variants": [
+    "mode"
+   ],
+   "standard": "language/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a film essay",
+   "a": "movie",
+   "variants": [
+    "movie"
+   ],
+   "standard": "language/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a journalism",
+   "a": "production",
+   "variants": [
+    "production"
+   ],
+   "standard": "language/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a montage",
+   "a": "technique",
+   "variants": [
+    "technique"
+   ],
+   "standard": "language/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

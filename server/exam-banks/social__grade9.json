@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "social",
+ "grade": "grade9",
+ "sample": 14,
+ "poolSize": 51,
+ "themes": 9,
+ "questions": [
+  {
+   "q": "what is a government",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "social/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a citizenship",
+   "a": "membership",
+   "variants": [
+    "membership"
+   ],
+   "standard": "social/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a election",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "social/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a modern federalism",
+   "a": "system",
+   "variants": [
+    "system"
+   ],
+   "standard": "social/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a amendment",
+   "a": "basis",
+   "variants": [
+    "basis"
+   ],
+   "standard": "social/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a jimmy carter",
+   "a": "president",
+   "variants": [
+    "president"
+   ],
+   "standard": "social/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a section nine",
+   "a": "list",
+   "variants": [
+    "list"
+   ],
+   "standard": "social/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a clinton",
+   "a": "supporter",
+   "variants": [
+    "supporter"
+   ],
+   "standard": "social/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a agglomeration",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "social/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a autocracy",
+   "a": "system",
+   "variants": [
+    "system"
+   ],
+   "standard": "social/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a responsibility",
+   "a": "action",
+   "variants": [
+    "action"
+   ],
+   "standard": "social/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a anarchist federalism",
+   "a": "rejection",
+   "variants": [
+    "rejection"
+   ],
+   "standard": "social/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a conference",
+   "a": "meeting",
+   "variants": [
+    "meeting"
+   ],
+   "standard": "social/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a lee",
+   "a": "example",
+   "variants": [
+    "example"
+   ],
+   "standard": "social/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

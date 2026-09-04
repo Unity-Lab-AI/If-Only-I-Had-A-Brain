@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "civics",
+ "grade": "grade7",
+ "sample": 14,
+ "poolSize": 49,
+ "themes": 25,
+ "questions": [
+  {
+   "q": "what is a another example",
+   "a": "testament",
+   "variants": [
+    "testament"
+   ],
+   "standard": "civics/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a citizenship",
+   "a": "membership",
+   "variants": [
+    "membership"
+   ],
+   "standard": "civics/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a voting",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "civics/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a justice",
+   "a": "treatment",
+   "variants": [
+    "treatment"
+   ],
+   "standard": "civics/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a court",
+   "a": "institution",
+   "variants": [
+    "institution"
+   ],
+   "standard": "civics/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a election",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "civics/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a political party",
+   "a": "organization",
+   "variants": [
+    "organization"
+   ],
+   "standard": "civics/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a government",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "civics/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a constitutional violation",
+   "a": "act",
+   "variants": [
+    "act"
+   ],
+   "standard": "civics/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a civic education",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "civics/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a another virtue",
+   "a": "protection",
+   "variants": [
+    "protection"
+   ],
+   "standard": "civics/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a legislature",
+   "a": "assembly",
+   "variants": [
+    "assembly"
+   ],
+   "standard": "civics/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a executive",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "civics/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a judiciary",
+   "a": "system",
+   "variants": [
+    "system"
+   ],
+   "standard": "civics/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

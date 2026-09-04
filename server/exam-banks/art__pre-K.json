@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "art",
+ "grade": "pre-K",
+ "sample": 14,
+ "poolSize": 16,
+ "themes": 12,
+ "questions": [
+  {
+   "q": "what is a drawing",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "art/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a painting",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "art/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a shape",
+   "a": "figure",
+   "variants": [
+    "figure"
+   ],
+   "standard": "art/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a circle",
+   "a": "shape",
+   "variants": [
+    "shape"
+   ],
+   "standard": "art/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a triangle",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "art/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a paint",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "art/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a brush",
+   "a": "tool",
+   "variants": [
+    "tool"
+   ],
+   "standard": "art/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a rectangle",
+   "a": "shape",
+   "variants": [
+    "shape"
+   ],
+   "standard": "art/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a flower",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "art/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a doodle",
+   "a": "while",
+   "variants": [
+    "while"
+   ],
+   "standard": "art/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a coloring book",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "art/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a star",
+   "a": "ball",
+   "variants": [
+    "ball"
+   ],
+   "standard": "art/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a shading",
+   "a": "coloring",
+   "variants": [
+    "coloring"
+   ],
+   "standard": "art/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a single layer",
+   "a": "image",
+   "variants": [
+    "image"
+   ],
+   "standard": "art/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

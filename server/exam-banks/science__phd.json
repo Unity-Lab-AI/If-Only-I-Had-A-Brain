@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "science",
+ "grade": "phd",
+ "sample": 14,
+ "poolSize": 169,
+ "themes": 16,
+ "questions": [
+  {
+   "q": "what is a nest",
+   "a": "simulator",
+   "variants": [
+    "simulator"
+   ],
+   "standard": "science/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a population coding",
+   "a": "method",
+   "variants": [
+    "method"
+   ],
+   "standard": "science/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a synaptic plasticity",
+   "a": "ability",
+   "variants": [
+    "ability"
+   ],
+   "standard": "science/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a cerebral cortex",
+   "a": "covering",
+   "variants": [
+    "covering"
+   ],
+   "standard": "science/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a aluminum",
+   "a": "agent",
+   "variants": [
+    "agent"
+   ],
+   "standard": "science/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a central construction",
+   "a": "product",
+   "variants": [
+    "product"
+   ],
+   "standard": "science/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a retrograde signaling",
+   "a": "hypothesis",
+   "variants": [
+    "hypothesis"
+   ],
+   "standard": "science/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a heartbeat",
+   "a": "example",
+   "variants": [
+    "example"
+   ],
+   "standard": "science/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a neocortex",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "science/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a unsupervised learning",
+   "a": "machine",
+   "variants": [
+    "machine"
+   ],
+   "standard": "science/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a reason",
+   "a": "continuity",
+   "variants": [
+    "continuity"
+   ],
+   "standard": "science/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a attractor network",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "science/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a global workspace",
+   "a": "hub",
+   "variants": [
+    "hub"
+   ],
+   "standard": "science/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a spike",
+   "a": "slab",
+   "variants": [
+    "slab"
+   ],
+   "standard": "science/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

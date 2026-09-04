@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "research",
+ "grade": "grad",
+ "sample": 14,
+ "poolSize": 211,
+ "themes": 11,
+ "questions": [
+  {
+   "q": "what is a researcher",
+   "a": "who",
+   "variants": [
+    "who"
+   ],
+   "standard": "research/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a hypothesis",
+   "a": "knowledge",
+   "variants": [
+    "knowledge"
+   ],
+   "standard": "research/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a literature review",
+   "a": "overview",
+   "variants": [
+    "overview"
+   ],
+   "standard": "research/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a experiment",
+   "a": "procedure",
+   "variants": [
+    "procedure"
+   ],
+   "standard": "research/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a peer seminar",
+   "a": "method",
+   "variants": [
+    "method"
+   ],
+   "standard": "research/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a statistics",
+   "a": "discipline",
+   "variants": [
+    "discipline"
+   ],
+   "standard": "research/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a paper",
+   "a": "work",
+   "variants": [
+    "work"
+   ],
+   "standard": "research/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a method",
+   "a": "procedure",
+   "variants": [
+    "procedure"
+   ],
+   "standard": "research/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a first model",
+   "a": "regression",
+   "variants": [
+    "regression"
+   ],
+   "standard": "research/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a architecture",
+   "a": "hub",
+   "variants": [
+    "hub"
+   ],
+   "standard": "research/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a every mechanism",
+   "a": "parameter",
+   "variants": [
+    "parameter"
+   ],
+   "standard": "research/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a scientific research",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "research/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a scientific method",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "research/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a experimentation",
+   "a": "step",
+   "variants": [
+    "step"
+   ],
+   "standard": "research/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

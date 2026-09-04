@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "major",
+ "grade": "college3",
+ "sample": 14,
+ "poolSize": 73,
+ "themes": 27,
+ "questions": [
+  {
+   "q": "what is a heuristic",
+   "a": "approach",
+   "variants": [
+    "approach"
+   ],
+   "standard": "major/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a following",
+   "a": "description",
+   "variants": [
+    "description"
+   ],
+   "standard": "major/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a greedy algorithm",
+   "a": "case",
+   "variants": [
+    "case"
+   ],
+   "standard": "major/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a related result",
+   "a": "theorem",
+   "variants": [
+    "theorem"
+   ],
+   "standard": "major/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a instance",
+   "a": "number",
+   "variants": [
+    "number"
+   ],
+   "standard": "major/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a retrieval",
+   "a": "selection",
+   "variants": [
+    "selection"
+   ],
+   "standard": "major/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a software engineering",
+   "a": "branch",
+   "variants": [
+    "branch"
+   ],
+   "standard": "major/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a version control",
+   "a": "practice",
+   "variants": [
+    "practice"
+   ],
+   "standard": "major/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a fault localization",
+   "a": "technique",
+   "variants": [
+    "technique"
+   ],
+   "standard": "major/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a navigation",
+   "a": "space",
+   "variants": [
+    "space"
+   ],
+   "standard": "major/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a relational model",
+   "a": "approach",
+   "variants": [
+    "approach"
+   ],
+   "standard": "major/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a query optimization",
+   "a": "feature",
+   "variants": [
+    "feature"
+   ],
+   "standard": "major/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a database index",
+   "a": "structure",
+   "variants": [
+    "structure"
+   ],
+   "standard": "major/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a isolation",
+   "a": "goal",
+   "variants": [
+    "goal"
+   ],
+   "standard": "major/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

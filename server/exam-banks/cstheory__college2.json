@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "cstheory",
+ "grade": "college2",
+ "sample": 14,
+ "poolSize": 29,
+ "themes": 16,
+ "questions": [
+  {
+   "q": "what is a heuristic",
+   "a": "approach",
+   "variants": [
+    "approach"
+   ],
+   "standard": "cstheory/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a algorithm analysis",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "cstheory/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a recursion",
+   "a": "method",
+   "variants": [
+    "method"
+   ],
+   "standard": "cstheory/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a output",
+   "a": "permutation",
+   "variants": [
+    "permutation"
+   ],
+   "standard": "cstheory/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a linear time",
+   "a": "complexity",
+   "variants": [
+    "complexity"
+   ],
+   "standard": "cstheory/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sixteen minutes",
+   "a": "time",
+   "variants": [
+    "time"
+   ],
+   "standard": "cstheory/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a node",
+   "a": "pointer",
+   "variants": [
+    "pointer"
+   ],
+   "standard": "cstheory/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a following",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "cstheory/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a linear search",
+   "a": "algorithm",
+   "variants": [
+    "algorithm"
+   ],
+   "standard": "cstheory/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a position",
+   "a": "offset",
+   "variants": [
+    "offset"
+   ],
+   "standard": "cstheory/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a greedy algorithm",
+   "a": "case",
+   "variants": [
+    "case"
+   ],
+   "standard": "cstheory/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a accounting method",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "cstheory/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a relation",
+   "a": "equivalence",
+   "variants": [
+    "equivalence"
+   ],
+   "standard": "cstheory/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a data structure",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "cstheory/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

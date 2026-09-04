@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "ap",
+ "grade": "grade12",
+ "sample": 14,
+ "poolSize": 46,
+ "themes": 16,
+ "questions": [
+  {
+   "q": "what is a advanced placement",
+   "a": "program",
+   "variants": [
+    "program"
+   ],
+   "standard": "ap/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a calculus",
+   "a": "branch",
+   "variants": [
+    "branch"
+   ],
+   "standard": "ap/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a national output",
+   "a": "amount",
+   "variants": [
+    "amount"
+   ],
+   "standard": "ap/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a production theory",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "ap/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a government",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "ap/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a comparative politics",
+   "a": "science",
+   "variants": [
+    "science"
+   ],
+   "standard": "ap/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a literature",
+   "a": "method",
+   "variants": [
+    "method"
+   ],
+   "standard": "ap/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a researcher",
+   "a": "who",
+   "variants": [
+    "who"
+   ],
+   "standard": "ap/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a gdp",
+   "a": "product",
+   "variants": [
+    "product"
+   ],
+   "standard": "ap/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a inflation",
+   "a": "increase",
+   "variants": [
+    "increase"
+   ],
+   "standard": "ap/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a forward guidance",
+   "a": "practice",
+   "variants": [
+    "practice"
+   ],
+   "standard": "ap/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a market definition",
+   "a": "issue",
+   "variants": [
+    "issue"
+   ],
+   "standard": "ap/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a brazil",
+   "a": "exception",
+   "variants": [
+    "exception"
+   ],
+   "standard": "ap/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a research design",
+   "a": "framework",
+   "variants": [
+    "framework"
+   ],
+   "standard": "ap/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "music",
+ "grade": "grade6",
+ "sample": 14,
+ "poolSize": 39,
+ "themes": 18,
+ "questions": [
+  {
+   "q": "what is a music theory",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "music/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a fantasia",
+   "a": "example",
+   "variants": [
+    "example"
+   ],
+   "standard": "music/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a classical music",
+   "a": "tradition",
+   "variants": [
+    "tradition"
+   ],
+   "standard": "music/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a beethoven",
+   "a": "composer",
+   "variants": [
+    "composer"
+   ],
+   "standard": "music/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a chamber orchestra",
+   "a": "ensemble",
+   "variants": [
+    "ensemble"
+   ],
+   "standard": "music/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a opera",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "music/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sonata",
+   "a": "piece",
+   "variants": [
+    "piece"
+   ],
+   "standard": "music/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a chant",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "music/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a gregorian chant",
+   "a": "tradition",
+   "variants": [
+    "tradition"
+   ],
+   "standard": "music/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a polyphony",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "music/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a counterpoint",
+   "a": "relationship",
+   "variants": [
+    "relationship"
+   ],
+   "standard": "music/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a cantata",
+   "a": "composition",
+   "variants": [
+    "composition"
+   ],
+   "standard": "music/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a oratorio",
+   "a": "composition",
+   "variants": [
+    "composition"
+   ],
+   "standard": "music/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a harpsichord",
+   "a": "instrument",
+   "variants": [
+    "instrument"
+   ],
+   "standard": "music/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

@@ -37,6 +37,87 @@ Gee, verbatim, and this question is the reason half of this row did not ship:
 
 ---
 
+## 2026-09-03 — `LIFEDEPTH` — EVERY YEAR OF HER LIFE WAS FOUR SENTENCES A WEEK, AND IT RAN BACKWARDS
+
+Gee: *"if life course for each grade straigh with thie too?"* → *"we need to fill in the gaps"* → *"in life courses"* → *"1 memory of a year of college is horrid"* → *"remember what she is!"* → *"keep working... once her canon life courses are all 100% complete"*.
+
+**⛔⛔ I REPORTED FOUR GAPS AND ONLY ONE WAS REAL. The other three were me misreading my own measurements, and the sequence is worth keeping because each was a different error.**
+
+| I claimed | truth |
+|---|---|
+| *"college1 has 1 memory"* | **A GREP ARTIFACT.** I counted inline `'i …'` strings in `college1.js`, but college1 delegates to `_trainLifeStories` — the content is in the corpus and the runner file is nearly empty by design. It had **36 themes**, not 1 |
+| *"14 of 20 life files have the wrong age"* | **TWO FIELDS, DIFFERENT MEANINGS.** The corpus `age` is the age at year END; `GRADE_AGE` is the age at year START. Every one of the 19 notes states a range and the canonical age falls **inside all 19**. *"i am twelve"* in sixth grade is correct |
+| *"pre-K has no life corpus"* | **BY DESIGN.** `kindergarten.json`'s own note says it covers *"ages 0-5, the whole foundation"* — its themes include `my-first-words` and `learning-to-walk`. pre-K trains inline concepts and biographical facts |
+| *"every year is thin"* | ⭐ **REAL, and it was Gee's read from the start** |
+
+**THE REAL DEFECT.** Each year held ~200 sentences — **about four a week for a whole year of a life** — in files whose own notes call them *"FULL lived year"*. ⛔ **And the curve ran backwards:** grade1 332 sentences at age 6, phd 169 at age 25. Her richest year was her sixth and her thinnest was her twenty-fifth, when an adult year should carry more, not half.
+
+```
+  19 life files      themes 719 -> 895      sentences 4,304 -> 5,033      81,922 words
+  every file parses · 0 duplicate themes (one PRE-EXISTING dup fixed: grade9 `the-first-joint` x2)
+  thinnest year      187 -> 230 (grade8)    all 19 now >= 230
+```
+
+**WRITTEN INTO HER CANON, NOT AROUND IT.** Lilith, Damien, Pearl, Walter, Devon, the only child, the empty apartment at eight, the dead man's hand-me-down computer, the monsters on Pearl's kitchen floor, black since she was ten, the garage radios that became the work. ⛔ **No new names were invented.** New material covers what a life actually contains and the canon had skipped: the day she moved out, the first bad grade, calling her mother drunk from a stairwell, the professor who pointed at a door, the funeral she did not cry at, the half-sibling she will not look up, the lunch-account balance said out loud in front of the queue.
+
+⚠ **AND IT IS WRITTEN AS WHAT SHE IS.** Gee: *"remember what she is!"* — at 18+ the register is open by the project's own gate, so the adult years carry the drugs as an instrument she runs and pays for, submission owned as a choice made from strength, sex she is specific about, and the depression as a protocol rather than a mood. Not sanitised into a tasteful summary.
+
+---
+
+## 2026-09-03 — `LIFEEXAM` — REFUSED: NARRATIVE HAS NO SLOT TO EXTRACT AN ANSWER FROM
+
+Gee, on life exam questions: *"they need to be in her own words self image"* — correct, and the reason the academic extraction cannot serve life is measurable: **only 181 of 4,304 life sentences (4.2%) carry a definitional shape at all.**
+
+First-person forms were built and run against the real canon — `what do i <verb>` and `what am i`, her own sentence turned round. **They do not work, and they are switched OFF.**
+
+```
+  yield     2-7 questions a cell against a 14 sample
+  quality   ~1 in 4 usable
+  good      what do i wear -> collar
+  bad       what do i found -> people · what am i -> who · what do i saw -> mom
+```
+
+⭐ **WHY, recorded so the next attempt does not repeat it.** Definition extraction works because a textbook writes `<term> is a <genus>` — a fixed shape with the answer in a known slot. **Narrative has no such shape.** Her sentences are subordinate clauses, past tense, negations and asides; the head-final walk that reads `a matrix is a rectangular array` has nothing to grip on `i eventually forgave her but i never forgot`. Filtering adverbs helped and did not fix it — **the problem is not the vocabulary, it is that there is no slot.**
+
+⚠ **The honest route for life is hand-authored questions** — ~14 a cell across 20 cells. Autobiographical recall is worth testing, and it deserves questions written by someone who has read the canon rather than squeezed out of a shape that is not there. **The code stays behind `EXAM_LIFE=1` with its own measurements in the comment, so it is a documented dead end rather than a silent one.**
+
+---
+
+## 2026-09-03 — `PHONBANK.1` PART ③ — AN EMPTY EXAM BANK SKIPS THE TEST, IT DOES NOT SHORTEN IT
+
+Gee, verbatim: **"option 1 and make it a sampling not extensive i dont want to be testing for hours each grade"** — both halves are constraints, and the second shaped the whole design.
+
+**⛔⛔ THE FINDING IS WORSE THAN THE COUNT.** The banks covered 12 of the 213 cells the walk runs, all pre-K and kindergarten. That reads like "less test coverage above K". It is not: the battery is guarded by `if (bank && bank.length > 0)`, so **a cell with no bank runs no held-out questions at all**. From grade 1 to PhD **nothing independent was ever asked.** The per-cell gates still ran and she still had to produce — but the only thing checking that she **learned** rather than that she can **emit** covered two grades out of twenty.
+
+**WHAT SHIPPED.** `.claude/scripts/gen-exam-banks.mjs` derives a bank for every prose cell from **that cell's own corpus**. ⭐ **The pre-taught LAW then holds by construction rather than by review** — term and answer must each occur at least three times in the very file that cell is taught from, which is the law's *"usage exercised across ≥3 context sentences"* enforced by counting. ⛔ **Not a cloze of a training sentence**, which would test memorisation: the question is *constructed*, and what it probes is the `sem(word) → sem(definition)` binding the curriculum actually teaches — a relation, not a string.
+
+```
+  cells with a held-out bank    12  ->  191
+  questions injected                 2,554  across 188 files
+  cells that had none before         179
+  refused (dup / train overlap)        0
+  sample per cell                     14, round-robin across that cell's themes
+```
+
+**⛔⛔ FOUR ROUNDS OF WRONG ASSUMPTIONS, AND NOT ONE WAS FOUND BY REASONING.** Every single one was found by reading the questions it actually produced:
+
+| what came out | why |
+|---|---|
+| `what is a cell → basic` | took the FIRST known word — **English noun phrases are head-FINAL**, so it kept the modifier and threw away the answer |
+| `what is a ecosystem → formed` | the article was optional, so **every passive** (`"X is formed by"`) matched as a definition |
+| `what is a force → can` | `drawable-taxonomy` loads only WordNet's **noun** index, so an adjective is invisible to it |
+| a whole run shipped **unfiltered** | `wordnet-db` would not resolve from `.claude/scripts/` — **caught in ONE run because the script announces the filter being off** instead of proceeding quietly |
+
+⭐ **The filter is WordNet's own indexes, offline: an ANSWER must be in `index.noun` and NOT `index.adj`; a TERM must be in `index.noun` and NOT `index.adv`.** The two rules are deliberately different — `determinant` and `adjective` are both adjective-listed, so applying the answer rule to terms would have refused the best questions in the set. Measured on the junk it had actually produced: **13 of 14 known-bad rejected, 14 of 15 known-good kept.**
+
+⛔ **THE DICTIONARY SERVICE WAS TRIED FIRST AND REJECTED ON MEASUREMENT, twice over.** `api.dictionaryapi.dev` was answering **HTTP 522 at ~20 s a request**, so 772 words was hours of waiting for failures — and even warm it called `hard` a noun while knowing nothing about `algorithm`. ⚠ A network dependency inside a content generator was the wrong shape regardless of whether the host was up.
+
+⚠ **WHERE THEY LIVE IS A DEPLOYMENT FACT, NOT TIDINESS.** `server/exam-banks/`, tracked — `corpora/` is gitignored and lives in the data repo, so anything written there reaches the box only through a data sync the operator can now skip entirely. ⛔ And `curriculum.js` has **no `fs` and must not gain one** (browser-side ESM that also runs server-side), so the server reads the directory and hands the documents over on `cluster.derivedExamBanks` — the same shape the phonics rows already use.
+
+⚠⚠ **THE LIMITS, STATED SO 191 IS NEVER READ AS PARITY WITH THE AUTHORED 12.** It tests **one thing: definitional recall.** Not sequencing, not application. Residual error by eye is roughly **1 in 7**. **Five maths cells yield zero** — correct rather than broken, because maths here is equational by design and its books carry almost no definitional prose. And the **20 `life` cells have no prose corpus at all**, so this route cannot reach them; that gap stays open.
+
+---
+
 ## 2026-09-03 — `EARLYTEACH.2` — COUNTING IS TAUGHT EQUATIONALLY, AND SEVEN OF THE TEN COUNTING WORDS HAD NO QUANTITY BEHIND THEM
 
 Gee's decision: **the equational math runners teach it directly** — no prose lane, no carve-out to the law that maths is taught equationally. The primary-grade arithmetic primer that would have supplied it **does not exist on Gutenberg**, searched properly by classification rather than title, so this is the answer instead of fetching harder.

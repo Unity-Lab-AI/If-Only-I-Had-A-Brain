@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "pe",
+ "grade": "grade1",
+ "sample": 14,
+ "poolSize": 26,
+ "themes": 12,
+ "questions": [
+  {
+   "q": "what is a running",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "pe/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a weight throw",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "pe/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a heart",
+   "a": "people",
+   "variants": [
+    "people"
+   ],
+   "standard": "pe/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sway",
+   "a": "movement",
+   "variants": [
+    "movement"
+   ],
+   "standard": "pe/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a physical fitness",
+   "a": "ability",
+   "variants": [
+    "ability"
+   ],
+   "standard": "pe/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a jumping",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "pe/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a climbing",
+   "a": "activity",
+   "variants": [
+    "activity"
+   ],
+   "standard": "pe/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a last player",
+   "a": "winner",
+   "variants": [
+    "winner"
+   ],
+   "standard": "pe/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a one style",
+   "a": "dance",
+   "variants": [
+    "dance"
+   ],
+   "standard": "pe/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a gymnastics",
+   "a": "sport",
+   "variants": [
+    "sport"
+   ],
+   "standard": "pe/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a swimming",
+   "a": "movement",
+   "variants": [
+    "movement"
+   ],
+   "standard": "pe/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a water",
+   "a": "substance",
+   "variants": [
+    "substance"
+   ],
+   "standard": "pe/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a first stance",
+   "a": "leg",
+   "variants": [
+    "leg"
+   ],
+   "standard": "pe/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sport climbing",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "pe/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

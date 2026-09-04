@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "cs",
+ "grade": "grade8",
+ "sample": 14,
+ "poolSize": 27,
+ "themes": 16,
+ "questions": [
+  {
+   "q": "what is a strings",
+   "a": "sequence",
+   "variants": [
+    "sequence"
+   ],
+   "standard": "cs/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a complement",
+   "a": "operation",
+   "variants": [
+    "operation"
+   ],
+   "standard": "cs/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a logic gate",
+   "a": "device",
+   "variants": [
+    "device"
+   ],
+   "standard": "cs/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a computer science",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "cs/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a python",
+   "a": "language",
+   "variants": [
+    "language"
+   ],
+   "standard": "cs/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a variable name",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "cs/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sequential execution",
+   "a": "structure",
+   "variants": [
+    "structure"
+   ],
+   "standard": "cs/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a function",
+   "a": "unit",
+   "variants": [
+    "unit"
+   ],
+   "standard": "cs/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a integer",
+   "a": "number",
+   "variants": [
+    "number"
+   ],
+   "standard": "cs/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a machine precision",
+   "a": "quantity",
+   "variants": [
+    "quantity"
+   ],
+   "standard": "cs/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a text",
+   "a": "pointer",
+   "variants": [
+    "pointer"
+   ],
+   "standard": "cs/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a predication",
+   "a": "feature",
+   "variants": [
+    "feature"
+   ],
+   "standard": "cs/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a loop",
+   "a": "construct",
+   "variants": [
+    "construct"
+   ],
+   "standard": "cs/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a parameter",
+   "a": "while",
+   "variants": [
+    "while"
+   ],
+   "standard": "cs/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}
