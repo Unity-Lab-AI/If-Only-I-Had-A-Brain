@@ -132,7 +132,17 @@ The fields rsync is now `nice -n 19 ionice -c3` + `--bwlimit` (`UAL_FIELDS_BWLIM
 
 Deployed bytes were `diff`ed against the repo (`self-update.sh`, `brain-ctl.js`, **both** dashboard copies): **byte-identical**, so harness results apply to what is running. **The check that settles the last row: `grep WEDGED /opt/unity-brain/self-update.log` and confirm `git-lfs pull` actually died.**
 
-**Still open (a decision, not a command):** none of this changes the real structural problem — **the data sync shares the brain's cgroup.** Give it its own systemd unit with its own `MemoryMax` and these guards become a safety net instead of the mechanism. And see the root cause below: the box has no `BrainWaves` credential, so the pull grinds for data it can never get.
+### ⛔ STILL OPEN — the structural fix, and why I stopped short of it
+
+**Everything above is a safety net around one design flaw: the data sync runs inside `unity-brain.service`'s cgroup and shares her memory budget.** Four layers now sit on top of that flaw (wall clock, no-progress watchdog, `nice`/`ionice` on both the pull and the rsync, `--bwlimit`), and layer count is itself the smell. **The fix is to remove the flaw, not to add a fifth layer.**
+
+**The design I drafted and deliberately did NOT ship:** a `run-data-sync` verb on `brain-ctl-helper` that re-launches the sync through `systemd-run --scope --uid=unity -p MemoryMax=3G -p MemorySwapMax=0 -p CPUWeight=20 -p IOWeight=20`, so a runaway sync can only starve **itself**. It has to live in the helper because `systemd-run` needs root: `unity` has no user manager on this box (`loginctl show-user unity` → *"not logged in or lingering"*, and `systemd-run --user` fails with no `DBUS_SESSION_BUS_ADDRESS`), and its sudoers grants exactly two things — the helper and `systemctl restart unity-brain`.
+
+**Why I stopped:** that adds a **new privileged verb** to the one root-capable surface on a box that also hosts Forgejo and the whole lab's git, and it must run as `unity` (`--uid`/`--gid`) or it leaves root-owned files in `/opt/unity-brain` that the next unprivileged press cannot overwrite. **Adding a root verb late, on a box I had already destabilised twice in one session, is how the recovery becomes the incident.** The four layers hold the outage class closed; this is a correctness-and-hygiene improvement that deserves its own session, its own tests in `test-ctlplane-integration.mjs` (which asserts the helper's closed verb set), and a deliberate review of the sudoers surface.
+
+⭐ **Sequencing note for whoever picks this up:** do the **`BrainWaves` deploy key first**. The box has no credential for that repo, so the pull is grinding for data it can never fetch — fix that and the wedge may simply stop happening, which changes how much the isolation work is worth.
+
+
 
 ### 🔍 How to tell this class of outage apart, fast
 
