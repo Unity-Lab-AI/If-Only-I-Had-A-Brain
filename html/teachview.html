@@ -103,8 +103,60 @@
     display:flex;gap:16px;align-items:baseline;flex-wrap:wrap;background:var(--tv-panel)}
   h1{margin:0;font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--tv-accent)}
   .tv-sub{color:var(--tv-dim);font-size:12px}
-  .tv-wrap{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:14px;padding:14px}
-  @media(max-width:1000px){.tv-wrap{grid-template-columns:1fr}}
+  /* ⛔⛔ THE LAYOUT WAS A WALL. Two fixed columns, and the panel column carried
+     FOURTEEN cards against the reading column's two — so every instrument added
+     over the last week queued vertically down one side and ran metres off the
+     bottom of the screen, while the right half of a wide monitor sat empty.
+     ⭐ THE FIX IS FLOW, NOT MORE COLUMNS. The panel side is now an auto-fill
+     grid: cards pack across whatever width exists and REFLOW on resize, so a
+     wide window gets three abreast and a narrow one gets one, with no fixed
+     breakpoint deciding it. `align-content:start` stops the browser stretching
+     rows to fill the viewport, which is what turns a short card into a tall
+     empty box. */
+  /* ⚠ 1.4 / 2, not 1 / 2.1. The first cut gave the panels so much room that the
+     READING PANE — the page's whole subject, the exact text going into her —
+     shrank from 947px to 503px. Measured both ways; this keeps the panels
+     flowing two-abreast on a normal monitor without starving the pane the page
+     is named after. */
+  .tv-wrap{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,2fr);
+    gap:14px;padding:14px;align-items:start}
+  .tv-col{min-width:0}
+  /* ⚠ `min(340px,100%)` NOT a bare `340px`. A bare minimum makes the track
+     REFUSE to shrink below it, so a container narrower than one track overflows
+     the page sideways — measured at 1400px viewport: no single element was wider
+     than the viewport, yet document scrollWidth was 1626px. The `min()` lets the
+     last track collapse to the container instead of pushing past it. */
+  .tv-col-panels{display:grid;gap:14px;align-content:start;
+    grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr))}
+  /* ⚠ The panel cards carry their own `margin-top:14px` from when they were a
+     vertical stack. In a grid that margin becomes a second gap on every row but
+     the first, so rows drift apart unevenly. The grid `gap` owns the spacing. */
+  .tv-col-panels > .tv-card{margin-top:0 !important}
+  /* Cards whose content is genuinely wide — canvases, a 212-row knob list, a
+     paged ledger — take two tracks when two exist, and fall back to one when
+     they do not. `span 2` on a single-track grid is clamped by the browser, so
+     this needs no breakpoint of its own. */
+  .tv-col-panels > .tv-card.tv-card-wide{grid-column:span 2}
+  /* One column below the point where two 340px tracks plus the reading pane
+     stop fitting. Everything becomes a single flowing column, in order. */
+  /* ⛔⛔ THE KNOB LIST WAS 44,415px TALL ON ITS OWN — measured on the live page,
+     against a 47,874px document. 212 knobs, each with a description, an effect
+     class, a provenance badge and two controls, rendered in one unbounded run.
+     That single card WAS the wall: everything below it sat metres off-screen.
+     ⭐ Bounded with its own scroll, which is this project's standing dashboard
+     law — "bounded heights with overflow-y:auto; item count caps". The filter
+     checkboxes above it (only-overridden / only-with-a-reason) are the real way
+     to shorten it; this stops the page being unusable before anyone finds them.
+     ⚠ 70vh, not a pixel constant: the pane should use the screen it is given. */
+  #tvKnobs{max-height:70vh;overflow-y:auto;overscroll-behavior:contain}
+  @media(max-width:1180px){
+    .tv-wrap{grid-template-columns:1fr}
+    .tv-col-panels{grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr))}
+  }
+  @media(max-width:700px){
+    .tv-col-panels{grid-template-columns:1fr}
+    .tv-col-panels > .tv-card.tv-card-wide{grid-column:span 1}
+  }
   /* ⛔ DIMMED, NOT HIDDEN. A control that vanishes teaches a reader that it does
      not exist; a control that is visibly refused teaches them WHY. The server is
      the enforcement (`requireLoopback`) — this is only the page being honest, so
@@ -313,7 +365,7 @@
 <div id="tvAdmin" class="tv-sub" style="padding:6px 14px 0;line-height:1.5"></div>
 
 <div class="tv-wrap">
-  <div>
+  <div class="tv-col tv-col-read">
     <div class="tv-card">
       <h2>
         <span class="tv-tip"
@@ -378,7 +430,12 @@
     </div>
   </div>
 
-  <div>
+  <!-- ⛔ THIS COLUMN HELD FOURTEEN CARDS IN A SINGLE STACK against two in the
+       reading column, which is the "wall of cards down one side" the operator
+       reported. It is a FLOWING GRID now: cards wrap across the available width
+       and reflow on resize instead of queueing vertically off the bottom of a
+       fixed column. -->
+  <div class="tv-col tv-col-panels">
     <div class="tv-card">
       <h2><span class="tv-tip tip-l"
         title="The image she is holding, reconstructed from her own field C — not a thumbnail of a file."
@@ -509,7 +566,7 @@
          here is decorative motion — a dial with no data reads "no signal" and
          says so, because a gauge that idles at a plausible value is the exact
          instrument-that-lies shape this page exists to catch. -->
-    <div class="tv-card" style="margin-top:14px">
+    <div class="tv-card tv-card-wide" style="margin-top:14px">
       <h2><span class="tv-tip tip-l"
         title="Live gauges, an equalizer of teach lanes, and the throughput trace."
         data-tip="The live instrument deck.&#10;&#10;DIALS read the rates and set points the brain publishes right now.&#10;THE EQUALIZER is one column per teach lane, scaled to the busiest lane, so the SHAPE of the teaching is readable at a glance.&#10;THE TRACE is throughput over the last few minutes, sampled once per poll.&#10;&#10;⛔ The trace is a CLIENT-SIDE history — it starts empty on load and is lost on refresh, because the server publishes an instant, not a series.">Instruments</span><span class="tv-sub" id="tvInstrNote">—</span></h2>
@@ -611,7 +668,7 @@
          which is deliberate: with the walk stopped the knobs are exactly what
          you want to inspect, and a panel that vanishes when nothing is being
          taught would be useless at the only moment it matters. -->
-    <div class="tv-card" style="margin-top:14px">
+    <div class="tv-card tv-card-wide" style="margin-top:14px">
       <h2>
         <span class="tv-tip tip-l"
           title="Every knob governing how her weights are written — live value, default, and whether a write could take effect."
@@ -649,7 +706,7 @@
     <!-- ⭐ ALL OF IT, NOT A SAMPLE. The pane above is a paced 400-row window;
          this is the whole record for one cell, paged to the true end. The two
          are deliberately different instruments and the copy says so. -->
-    <div class="tv-card" style="margin-top:14px">
+    <div class="tv-card tv-card-wide" style="margin-top:14px">
       <h2>
         <span>Everything a cell ever taught</span>
         <span class="tv-sub" id="tvLedgerTotal">—</span>
@@ -2024,7 +2081,24 @@ function renderTrace(tv) {
     ctx.fillText('collecting — the trace starts empty on every load', w / 2, h / 2);
     return;
   }
-  const max = Math.max(...traceHist, 0.001);
+  /* ⛔⛔ A FLAT LINE AT ZERO IS INDISTINGUISHABLE FROM A DEAD CHART, and that is
+     the exact failure this page exists to catch. The dials already refuse to
+     idle at a plausible value — they say "no signal". This did not: with every
+     sample at 0 it drew a confident straight line along the bottom, which reads
+     as a broken graph rather than as "nothing is being taught".
+     ⚠ Reported as exactly that: the operator saw the line and concluded the
+     graph had been removed. It had not — it was drawing zero, honestly but
+     illegibly. Now it NAMES the state, and the walk-paused case names its cause,
+     because "no throughput" and "no donor" are different problems. */
+  const peak = Math.max(...traceHist);
+  if (!(peak > 0)) {
+    ctx.fillStyle = TV_C.dim; ctx.font = '11px ui-monospace,Menlo,Consolas,monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`no throughput — ${traceHist.length} samples, every one zero`, w / 2, h / 2 - 6);
+    ctx.fillText('nothing is being taught right now; this is not a dead chart', w / 2, h / 2 + 9);
+    return;
+  }
+  const max = Math.max(peak, 0.001);
   const dx = w / Math.max(1, traceHist.length - 1);
   const yOf = (v) => h - 6 - (h - 20) * (v / max);
   // Filled area under the line, then the line — the console look used elsewhere.
