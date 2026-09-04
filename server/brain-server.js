@@ -4379,6 +4379,32 @@ class ServerBrain {
       //
       // Dying here is the cheap outcome. The expensive one is a walk that runs
       // for days and has to be thrown away.
+      // ⭐⭐ PROVISION BEFORE LOADING. The load below is the boot's hardest
+      // precondition and its failure is fatal by design — so on 2026-09-04, when
+      // a press deleted `corpora/` and could not replace it, the brain came up
+      // with a dead language subsystem and no way to fix itself. The table has a
+      // public, unauthenticated source that this file's own error message
+      // already names; fetching it is strictly better than dying next to the
+      // instructions for fixing it.
+      //
+      // ⚠ Provisioning, NOT a capability fallback — the same table from its
+      // upstream publisher, byte-identical vectors. If it cannot be fetched the
+      // boot still dies exactly as it did before, with the same wording.
+      try {
+        const { ensureGloveTable } = require('./glove-provision.js');
+        const _gp = await ensureGloveTable({
+          corporaDir: path.join(process.cwd(), 'corpora'),
+          log: (m) => console.log('[GloVe] ' + m),
+        });
+        if (!_gp.ok && _gp.action !== 'disabled') {
+          console.warn(`[GloVe] could not provision the table (${_gp.action}: ${_gp.why || 'no reason recorded'}) — the load below will fail and say so.`);
+        }
+      } catch (e) {
+        // A broken provisioner must never be the reason the brain does not boot:
+        // if the table is already there, this whole block is irrelevant.
+        console.warn('[GloVe] provisioner threw (non-fatal, the load below is the real gate): ' + ((e && e.message) || e));
+      }
+
       try {
         await this.sharedEmbeddings.loadPreTrained();
         console.log('[Brain] Semantic embeddings ready:', this.sharedEmbeddings.stats);
