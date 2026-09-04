@@ -3849,6 +3849,22 @@ Ruling taken on the finding below (verbatim option): **"Harden first, then press
   - ✅ **The repo itself audits clean:** BrainWaves `main` `f750d208` · **26,359** fields tracked · 232 corpora files (193 academic) · GloVe a **plain 1,037,962,819-byte blob** · LFS objects confirmed **present on the server** via the batch API.
   - ⚠ **One observation, not a defect:** every one of the 26,359 delivered fields is `*.field.json` — **zero `.field.json.gz`**, though `ADMIN-CONTROLS.md` says fields are stored gzipped as of 2026-09-03. The delivered set predates that change and **the reader accepts both encodings**, which is what makes it safe; the doc describes the going-forward format, not the delivered one.
 
+- [x] `PRESSHARD.6` — ✅ **FIXED + MEASURED 2026-09-04 — `UAL_FIELDS=0` DID NOT SAVE THE DOWNLOAD IT IS NAMED FOR, and the comment claiming it did was in the script.**
+  - ⛔⛔ **THE FALSE CLAIM, verbatim from the code:** *"`git lfs pull` IS THE 114 GB, NOT THE CLONE. The clone is `--filter=blob:none` and therefore cheap whatever is in the repo… Restricting it with `-I` is what actually saves the download."*
+  - **`--filter=blob:none` makes the *git* blobs lazy and does NOTHING about LFS.** They are separate mechanisms: the `filter.lfs` **smudge filter runs during CHECKOUT** and downloads every payload before `git lfs pull` is ever reached.
+  - ⭐ **REHEARSED AGAINST THE LIVE REPO with the press's exact clone command, and the numbers are the finding:**
+
+| | without `GIT_LFS_SKIP_SMUDGE=1` | with it |
+|---|---|---|
+| on disk | **10 GB and climbing** (toward 114) | **2.1 GB, done in 2m56s** |
+| fields | **1,099 already smudged full-size** (one 75.8 MB) | **26,359 pointers at ~131 B**, 3.3 MB total |
+| `git lfs pull` called? | **no — never reached** | it is now the only thing that decides |
+
+  - ✅ **And the two things the walk cannot run without still arrive REAL through the fixed path:** GloVe **1,037,962,819 bytes with a sha256 matching the local file exactly**, and all **193** academic corpus JSONs.
+  - ⛔ **Verified the way `CONSTRAINTS.md §RE-PRICE` requires an escape hatch to be verified — by RUNNING it.** Same shape as `DREAM_PHASE_BUDGET_MS=0`: documented as doing one thing, measurably doing another. **A lever nobody has run is a claim, not a lever.**
+  - ⚠ **The floor is not zero.** GloVe is a plain 1.04 GB blob by design now, so it rides the checkout regardless — `UAL_FIELDS=0` costs **~1.4 GB**, not nothing. Stated so the lever is not oversold in the other direction.
+  - ⚠ **Owned: my first pointer detector was wrong.** `find -size -1k` reported **0 pointers** because GNU `find` rounds sizes **up** to whole 1k units, so a 131-byte file is 1 unit and not `< 1`. Re-measured by reading actual bytes. **The `-size +10k` half was right, which is what made the wrong half look plausible.**
+
 - [x] `INSTRDEAD.1` — ✅ **FIXED + VERIFIED 2026-09-04 — the viewer's "2 no signal" was true about the wrong thing.** Gee (verbatim): *"instraments 4/6 reading - 2 no signal IS THAT NORMAL? BEFORE WE PREESS CHACK IT OUT"*.
   - **No, and it is this ledger's most-repeated defect committed on the page built to catch it: a consumer still reading a producer that moved.** `firing` read `st.consciousness.firingPct` and `phi` read `st.consciousness.phi`; **the state publishes neither key.**
   - **Both numbers exist and always did**, elsewhere: `st.firing.pct` (with `targetPct`, `ema`, `driveScale` beside it) and `st.consciousness.phiProxy`.
