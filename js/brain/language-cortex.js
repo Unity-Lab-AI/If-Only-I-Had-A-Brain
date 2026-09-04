@@ -2197,14 +2197,14 @@ export class LanguageCortex {
     } catch { /* fast path is best-effort — fall through to existing emission */ }
     // ─── END  fast path ─────────────────────────────────
     if (cluster && typeof cluster.generateSentence === 'function') {
-      // If curriculum is done, generate() will use cluster.generateSentence
-      // (tick-driven motor emission) which is bounded and fast — no need
-      // to precompute scores at all, let generate() run sync.
-      const curriculumDone = (cluster.intentCentroids && cluster.intentCentroids.size > 0)
-      || (Array.isArray(cluster.passedPhases) && cluster.passedPhases.length > 0)
-      || (Array.isArray(cluster.passedCells) && cluster.passedCells.length > 0)
-      || (cluster.grades && typeof cluster.grades === 'object'
-        && Object.values(cluster.grades).some(g => g && g !== 'pre-K'));
+      // ⛔ `curriculumDone` WAS COMPUTED HERE AND IS DELETED (2026-09-04). Its
+      // only reader was the emission fork below, and with that fork collapsed
+      // this was four lines of work whose result nothing consumed. A dead
+      // computation that still looks like a decision is the shape this codebase
+      // keeps finding — see the `typeof generateSentenceAwait` guard removed on
+      // 2026-09-02, which could only ever be true. ⚠ The identically-named
+      // `curriculumDone` at the top of `generate()` is a DIFFERENT variable in a
+      // different function and is still read; it is untouched.
 
       // T17.6 — post-curriculum GPU-ready path: run the motor emission
       // via `cluster.generateSentenceAwait` so every tick pre-awaits
@@ -2223,12 +2223,37 @@ export class LanguageCortex {
       // only ever be true. A version guard against a version that cannot exist
       // is a fallback with no other side — it just made the condition look
       // conditional.
-      // ⚠ WHAT IS DELIBERATELY LEFT: `curriculumDone && _gpuProxyReady` still
-      // routes to the sync `generateSentence` path underneath. Those two are the
-      // SAME motor emission with a different await discipline — the sync one
-      // reads one-tick-lag currents — and collapsing them is an emission-path
-      // change, not a sweep edit. Filed rather than half-done.
-      if (curriculumDone && cluster._gpuProxyReady) {
+      // ⛔⛔ THE FORK IS COLLAPSED (2026-09-04). This ran only when
+      // `curriculumDone && cluster._gpuProxyReady`, and everything else fell to
+      // the sync `generateSentence` — the SAME motor emission on the SAME
+      // weights, differing only in await discipline, where the sync arm reads
+      // ONE-TICK-LAG currents. **The words she says could be read off currents
+      // that are a tick stale, decided by a condition about the donor.**
+      //
+      // ⭐ THE MEASUREMENT THE ROW ASKED FOR, TAKEN FROM THE CODE: the awaited
+      // path is a SUPERSET because it already carries its own no-donor handling.
+      // `stepAwait` aborts above 2,000,000 neurons when the GPU path is not live
+      // — its own words, *"a CPU step would pin the loop ~57s/word. Emission
+      // goes briefly silent instead"* — and below that bound it steps on CPU
+      // normally. So there is no case the sync arm covers that this one does not.
+      //
+      // Effect of collapsing, case by case:
+      //   GPU box, curriculum done      — unchanged
+      //   GPU box, curriculum NOT done  — now awaited: no more one-tick-lag
+      //   no-donor box at scale         — awaited aborts fast, then the same
+      //                                   sync attempt as today. No worse.
+      //   small brain, no donor         — awaited runs on CPU (under the 2M
+      //                                   bound): better, no one-tick-lag
+      //
+      // ⚠ `preEmittedWords` stays null when this produces nothing, and the
+      // consumer tests `Array.isArray`, so an empty emission still reaches the
+      // existing path. That is an ERROR path, not a capability fork — which is
+      // the distinction the standing no-fallbacks ruling draws.
+      //
+      // ⚠ A BARE BLOCK, not `if (true)`. The block scope is load-bearing for the
+      // declarations inside it, and reindenting 288 lines to delete a brace would
+      // bury a one-line behaviour change in a whole-function diff.
+      {
         // Compute the same intentSeed generate() would use: prefer the
         // caller-supplied user input embedding if present, otherwise
         // fall back to the cluster's semantic readout.

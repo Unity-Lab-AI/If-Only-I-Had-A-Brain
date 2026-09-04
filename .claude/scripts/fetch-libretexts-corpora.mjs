@@ -172,7 +172,32 @@ const AREA_MAP = {
   Literature_and_Literacy: 'ela', Composition: 'ela', Languages: 'ela', Journalism_and_Mass_Communication: 'ela',
   History: 'social', Geography: 'social', Anthropology: 'social', Sociology: 'social',
   Political_Science_and_Civics: 'social', Social_Work_and_Human_Services: 'social',
-  Computer_Science: 'cssystems', Engineering: 'cssystems',
+  // ⛔⛔ `Computer_Science` MOVED cssystems -> major 2026-09-04, AND THE ROUTE IT
+  // HAD WAS PRODUCING NOTHING.
+  //
+  // `--list cssystems` reports *"every cell already has its 2 books — no books
+  // taken"*: every `cssystems` cell is at the cap, so this area could not
+  // deliver a single book however many the shelf held. An unreachable subject
+  // and a thin one read identically on the board — the same shape as the maths
+  // finding below, where *"no library in LIBS mapped to `math` at all"*.
+  //
+  // ⚠⚠ IT WAS POINTED AT `cstheory` FIRST, AND THE BOOK TITLES DISPROVED THAT
+  // WITHIN ONE `--list` RUN. The eight books it offered were Pygame, Think Java,
+  // Think Python, Fortran 95, Linux, Python for Everybody, x86-64 assembly —
+  // **programming tutorials**, which are the MAJOR's own material. `cstheory`'s
+  // four cells are Discrete Mathematics, Algorithms, Theory of Computation and
+  // Advanced Algorithms; filling them with language tutorials would have hit the
+  // 2-book cap with the wrong subject and then reported the cells as fed.
+  // **A cell filled with the wrong content is worse than a cell left thin,
+  // because the thin one still says it is thin.**
+  //
+  // ⭐ `major` is where those books belong and it owes 373,432 words. `cstheory`
+  // gets the two areas below that genuinely ARE its courses.
+  //
+  // ⚠ `Engineering` STAYS on cssystems, so that subject keeps a lane. It is the
+  // better-fed of the two anyway: three of its four college cells are clear and
+  // the fourth owes 50,518.
+  Computer_Science: 'major', Engineering: 'cssystems',
   Biology: 'science', Chemistry: 'science', Physics: 'science', Geosciences: 'science', Astronomy__Cosmology: 'science',
   // ⭐ MATHEMATICS ADDED 2026-09-04. `math` owes 1,286,412 words across six
   // cells — the single largest debt in the corpus — and reading those cells'
@@ -180,10 +205,25 @@ const AREA_MAP = {
   // library in `LIBS` mapped to `math` at all, so the lane could never take a
   // maths book no matter how starved the cell was.
   Algebra: 'math', Analysis: 'math', Applied_Mathematics: 'math', Calculus: 'math',
-  Combinatorics_and_Discrete_Mathematics: 'math', Differential_Equations: 'math',
-  Geometry: 'math', Linear_Algebra: 'math', Mathematical_Logic_and_Proof: 'math',
+  Differential_Equations: 'math',
+  Geometry: 'math', Linear_Algebra: 'math',
   Precalculus: 'math', Probability_Theory: 'math', Abstract_and_Geometric_Algebra: 'math',
   Scientific_Computing_Simulations_and_Modeling: 'math',
+  // ⭐⭐ TWO MATHS AREAS RE-POINTED AT `cstheory` 2026-09-04, and they are not a
+  // borrowing — they ARE that subject's own courses. The cell comments in the CS
+  // textbook lane name them outright:
+  //     cstheory/college1 = Discrete Mathematics
+  //     cstheory/college3 = Theory of Computation
+  // Combinatorics-and-discrete-mathematics and logic-and-proof are exactly those
+  // two courses, and they were feeding a subject that no longer needs them.
+  //
+  // ⚠ THE RE-POINT WAS PRICED BEFORE IT WAS MADE, because moving a lane away
+  // from a starved subject is how a fix becomes a regression. `math` owed
+  // **1,286,412 words** when it was added to this map hours ago; it now owes
+  // **76,281 across a single cell** and keeps **eleven** areas. `cstheory` owes
+  // **612,443 across four**, and had no lane at all.
+  Combinatorics_and_Discrete_Mathematics: 'cstheory',
+  Mathematical_Logic_and_Proof: 'cstheory',
 };
 
 // ⛔⛔ THE CELL A SUBJECT LIVES IN AT COLLEGE IS NOT ITS OWN NAME — a trap this
