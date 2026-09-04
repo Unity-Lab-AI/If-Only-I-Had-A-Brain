@@ -507,7 +507,16 @@ else
   # fields are non-fatal by design (return 0), so a cap costs pointers, never a
   # press. Override with UAL_LFS_TIMEOUT (e.g. 0 to disable, or '2h' on a box that
   # genuinely needs the full ~114 GB hydrate).
-  _LFS_TIMEOUT="${UAL_LFS_TIMEOUT:-45m}"
+  # ⚠ DEFAULT LOWERED 45m → 8m ON EVIDENCE, 2026-09-04. The first guarded press
+  # was observed live: `timeout … 45m git lfs pull` was correctly wrapping the
+  # process, and it STILL starved the brain for 14 minutes (163 GB read, 0 bytes
+  # written) because a 45-minute wall clock is not a guard, it is a deadline
+  # nobody reaches. The brain was measured LISTENING-BUT-NOT-ANSWERING for 9 of
+  # 10 samples during that window. A cap only protects her if it is shorter than
+  # an outage anyone would care about. 8 minutes is still far longer than a
+  # healthy corpus-only pull needs, and the fields are non-fatal, so the cost of
+  # cutting it short is pointers — not a press, and not the books.
+  _LFS_TIMEOUT="${UAL_LFS_TIMEOUT:-8m}"
   _lfs_pull() {
     if [ "$_have_lfs" != "1" ]; then
       log "field blobs stay as pointers — no git-lfs on this box. The books are already checked out by the clone and are completely unaffected."
@@ -521,6 +530,59 @@ else
     elif [ "$_LFS_TIMEOUT" != "0" ]; then
       log "WARN — no \`timeout\` binary, so \`git lfs pull\` runs UNBOUNDED. It shares the brain's cgroup memory budget; if it wedges it can starve her event loop while systemd still reports her healthy. Watch with: pgrep -fa git-lfs"
     fi
+    # ⭐ NO-PROGRESS WATCHDOG — the check that actually matches the failure.
+    # A wall clock cannot tell "downloading 114 GB slowly" from "spinning on the
+    # same blocks forever", and the observed pathology is unmistakable in
+    # SECONDS, not minutes: /proc/<pid>/io showed read_bytes climbing by tens of
+    # GB while write_bytes stayed EXACTLY 0. A pull that is making real progress
+    # WRITES the payload to disk. So: sample write_bytes, and if the pull has
+    # written nothing for UAL_LFS_STALL_SEC (default 120s) while still burning
+    # reads, it is wedged — kill it and let the non-fatal path take over.
+    # ⚠ Deliberately requires BOTH conditions. A pull legitimately idle on a slow
+    # server writes nothing AND reads nothing; that is a slow network, not this
+    # bug, and it is left alone to be caught by the wall clock instead.
+    _stall_sec="${UAL_LFS_STALL_SEC:-120}"
+    _watch_pid=''
+    if [ "$_stall_sec" != "0" ] && [ -r /proc/self/io ]; then
+      (
+        _last_w=-1; _last_r=-1; _flat=0
+        while kill -0 $$ 2>/dev/null; do
+          sleep 15
+          # ⛔ PICK THE REAL git-lfs PROCESS, NOT A SHELL THAT MENTIONS IT.
+          # `pgrep -f 'git-lfs pull'` also matches the wrapper shell / this very
+          # script (their command lines contain the words), and `head -1` takes
+          # the LOWEST pid — i.e. the shell. A shell's /proc/<pid>/io never moves,
+          # so the watchdog watched the wrong process and never fired. Verified:
+          # that is exactly why the first version of this guard did nothing.
+          # Match on the EXECUTABLE name instead, which only the real binary has.
+          _lp="$(pgrep -x git-lfs 2>/dev/null | tail -1)"
+          [ -z "$_lp" ] && _lp="$(pgrep -f '(^|/)git-lfs ' 2>/dev/null | tail -1)"
+          [ -z "$_lp" ] && continue
+          _w="$(awk '/^write_bytes:/{print $2}' "/proc/$_lp/io" 2>/dev/null)"
+          _r="$(awk '/^read_bytes:/{print $2}'  "/proc/$_lp/io" 2>/dev/null)"
+          [ -z "$_w" ] && continue
+          if [ "$_w" = "$_last_w" ] && [ "$_r" != "$_last_r" ]; then
+            _flat=$((_flat + 15))
+          else
+            _flat=0
+          fi
+          _last_w="$_w"; _last_r="$_r"
+          if [ "$_flat" -ge "$_stall_sec" ]; then
+            log "WARN — \`git lfs pull\` is WEDGED, not slow: ${_flat}s with write_bytes FROZEN at ${_w} while read_bytes kept climbing (now ${_r}). That is the 2026-09-04 signature — it burned 2 TB of reads and wrote nothing while starving the brain's event loop in the same cgroup. Killing it now instead of waiting out the wall clock. Fields stay as POINTERS (non-fatal); THE BOOKS ARE UNAFFECTED."
+            # ⛔ KILL ONLY THE PULL, NEVER THE PRESS. `kill -TERM "$_lp"` targets
+            # the git-lfs pid; a process-GROUP kill (or killing the `timeout`
+            # wrapper) would take THIS SCRIPT down with it and abort the deploy —
+            # observed as the whole press exiting rc=15 in testing. The pull must
+            # die; the press must continue to the books and the restart.
+            kill -TERM "$_lp" 2>/dev/null || true
+            sleep 5
+            kill -KILL "$_lp" 2>/dev/null || true
+            exit 0
+          fi
+        done
+      ) &
+      _watch_pid=$!
+    fi
     # ⛔ `|| _lfs_rc=$?` IS LOAD-BEARING under `set -e`. A bare failing subshell
     # here would abort the whole press before the 124 branch below could turn a
     # deliberate timeout into the non-fatal outcome the fields are supposed to
@@ -533,9 +595,22 @@ else
     else
       ( cd "$FTMP/bw" && $_to git lfs pull -I 'corpora/**' >> "$LOG" 2>&1 ) || _lfs_rc=$?
     fi
-    # 124 = timeout fired. Name it, because "lfs pull failed" after 45 silent
-    # minutes is the least useful sentence a no-shell operator could receive.
-    if [ "$_lfs_rc" = "124" ] || [ "$_lfs_rc" = "137" ]; then
+    # ⛔ REAP THE WATCHDOG. It loops on `sleep 15`, so if it is not killed here it
+    # outlives the pull and keeps polling — and worse, a LATER press's `git lfs
+    # pull` matches its `pgrep -f 'git-lfs pull'` fallback, so a stale watchdog
+    # could kill a perfectly healthy future pull. Reap it the moment the pull
+    # returns, by whatever route it returned.
+    if [ -n "$_watch_pid" ]; then
+      kill "$_watch_pid" 2>/dev/null || true
+      wait "$_watch_pid" 2>/dev/null || true
+    fi
+    # 124 = `timeout` fired (wall clock). 137/143 = SIGKILL/SIGTERM, which is how
+    # the no-progress watchdog above ends a wedged pull. All three are DELIBERATE
+    # guard outcomes, not failures: the fields are optional by design, so the
+    # press continues to the books and the restart. Naming them matters — "lfs
+    # pull failed" after a long silent wait is the least useful sentence a
+    # no-shell operator could receive.
+    if [ "$_lfs_rc" = "124" ] || [ "$_lfs_rc" = "137" ] || [ "$_lfs_rc" = "143" ]; then
       log "WARN — \`git lfs pull\` EXCEEDED ${_LFS_TIMEOUT} and was killed on purpose. ⭐ THIS IS A GUARD, NOT A BUG: the pull runs in the brain's cgroup, and on 2026-09-04 a wedged one (2.07 TB read, 0 bytes written) throttled her event loop to 2% serviced while systemd and /ctl/status both still called her healthy. Fields stay as POINTERS (non-fatal by design — she transforms the figure live); THE BOOKS ARE UNAFFECTED. Raise with UAL_LFS_TIMEOUT=2h if the box really needs the full hydrate."
       return 0
     fi
