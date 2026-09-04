@@ -1,6 +1,47 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-09-04 EVENING (LATEST — PICK UP HERE) THE WALK IS NEARLY FED, AND THE END OF IT IS WATCHABLE FOR THE FIRST TIME
+> ## ⭐⭐⭐ 2026-09-04 NIGHT (LATEST — PICK UP HERE) THE LOCAL REHEARSAL FOUND SIX DEFECTS THAT WOULD HAVE SHIPPED, AND NONE WERE FINDABLE BY READING
+>
+> ### Read in this order: this block → `docs/TODO.md §PREWALK` → `docs/TODO.md §NOFALLBACK.5` → the blocks below.
+>
+> ### ⛔ STATE — the press is NOT taken yet, and the UI work is NOT cascaded
+> ```
+> main            4d7499c8   (pushed both remotes)
+> feature/tvlayout           layout + dashboard fix + fullscreen + def-miss — COMMITTED, NOT MERGED
+> corpus          71,256,751 words · owed 1,149,894 · BrainWaves 1e09d3d1 (26,359 fields verified)
+> RE-PRICE        done and written down — NO gate, bound or dedup was weakened
+> PREWALK         final pass CLEAN against 18f9c34b
+> ```
+>
+> ### ⭐⭐ THE WHOLE POINT: A LOCAL BOOT WITH A REAL DONOR FOUND SIX THINGS NO STATIC CHECK COULD
+> A brain was booted via `windows\start.bat /fresh` with the native donor attached, and the pages were **rendered and looked at**. Every one of these passed every text check beforehand:
+>
+> | found | why it mattered |
+> |---|---|
+> | **the donor binary was STALE** | source bumped to 0.3.36, **never rebuilt** — the running donor was 0.3.35, so checkpoints came from the CPU shadow, *"a DIFFERENT brain, not a lagging copy"* |
+> | **`updateGraduation` threw `$ is not defined`** | killed `updateDashboard` on EVERY state message — **every panel below it never rendered** |
+> | **the teach viewer had no route** | the only page in `html/` with no entry; the pages index's own link 404'd |
+> | **two CSS collisions** | the WIPE button was **red text on a red fill**, and every WARN flag was unreadable |
+> | **the layout was a wall** | 14 cards in one column, a **44,415px** knob card, **47,874px** page |
+> | **24 false `DEF-MISS` flags per walk** | all 26 letters are in K-vocab; only `a`/`i` are dictionary words |
+>
+> ⛔⛔ **THE `$` BUG IS THE ONE TO CARRY FORWARD, AND NOT FOR THE REASON IT LOOKS.** `$` is redeclared inside **six separate functions** in `dashboard.html` and is **not module-scoped**. `updateGraduation` — added the same day with the graduation record — used it without one. **Panels ABOVE the throw kept updating perfectly**, so the failure presented as *"some panels are stale"*, indistinguishable from a stale tab. **The operator said "I still don't see the donor" three times and I said "refresh" three times without opening the browser console, which was printing the answer throughout.** ⭐ **On this page, "some panels are stale" means OPEN THE CONSOLE FIRST** — this file already had a recorded history (NUMSCOPE) of one throw freezing everything after it.
+>
+> ### ✅ RESOLVED — the published donor asset is NOT stale
+> The local `.exe` was 0.3.35 under a correct 0.3.36 tag, and I extrapolated that the **release** might be too. **It is not.** `.forgejo/workflows/donor-release.yml` **refuses to build on a tag/Cargo version mismatch** and then **builds from source at tag time**. ⚠ **That extrapolation — from a working-copy file to a published artefact — is the same mistake as the bundle claim earlier the same day. Twice.**
+>
+> ### ⚠ THE BUNDLE "STALENESS" WAS ALWAYS LINE ENDINGS
+> A fresh build kept differing by **23,628 bytes**. The bundle has **exactly 23,628 newlines** — git checks out CRLF, esbuild writes LF. Three builds are byte-identical. **A byte-count comparison across a checkout boundary measures line endings, not staleness.**
+>
+> ### NEXT — in order
+> - **Cascade `feature/tvlayout`** — the dashboard `$` fix especially; without it half the panels blank on the box exactly when the walk is being watched hardest.
+> - **~226px horizontal overflow** on the teach viewer — 442px `.tv-tip` pseudo-elements count toward document width even when hidden. Pre-existing, widened by newly-tipped controls.
+> - **Then the press.** `PREWALK` wants one final pass against whatever commit is actually pressed.
+> - ⏳ **Watch on the walk:** `defQueue.lastWindow` is `null` — the pre-cell definition bootstrap is documented at ~2.4h before phase 1, so `passedCellsTotal: 0` is expected. **`lastWindow: null` an hour in is a real finding.**
+>
+> ---
+>
+> ## ⭐⭐⭐ 2026-09-04 EVENING — THE WALK IS NEARLY FED, AND THE END OF IT IS WATCHABLE FOR THE FIRST TIME
 >
 > ### Read in this order: this block → `docs/TODO.md §TEACHFINAL` → `docs/TODO.md §DEPLOYCHECK` → the blocks below.
 >
