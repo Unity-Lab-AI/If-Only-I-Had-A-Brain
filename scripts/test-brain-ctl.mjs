@@ -102,6 +102,23 @@ function startMockBrain({ answerShutdown = true } = {}) {
   })));
 }
 
+// ⛔ A STARVED BRAIN, NOT A DEAD ONE. This is the exact shape of the 2026-09-04
+// outage: the socket is LISTENING (so the kernel completes handshakes from the
+// backlog and any connect-based probe succeeds instantly) but the request handler
+// NEVER RUNS, because the real event loop was pinned by a runaway `git lfs pull`
+// sharing the brain's cgroup. Reproduced here by simply never replying.
+// A connect-only probe cannot tell this from a healthy brain — which is why
+// /ctl/status called a total outage "online and serving".
+function startStarvedBrain() {
+  const sockets = new Set();
+  const srv = http.createServer(() => { /* accept, then never respond */ });
+  srv.on('connection', (s) => { sockets.add(s); s.on('close', () => sockets.delete(s)); });
+  return new Promise((resolve) => srv.listen(BRAIN_PORT, '127.0.0.1', () => resolve({
+    srv,
+    close: () => new Promise((r) => { try { for (const s of sockets) s.destroy(); srv.close(() => r()); } catch { r(); } }),
+  })));
+}
+
 function startCtl(env = {}) {
   const child = spawn(process.execPath, [CTL_JS], {
     env: {
@@ -174,6 +191,44 @@ try {
     check('phase=unmanaged', s.json?.phase === 'unmanaged', `phase=${s.json?.phase}`);
     check('counts as online (site really works)', s.json?.brainOnline === true);
     check('explains it was hand-started', /by hand/i.test(s.json?.human || ''), s.json?.human);
+  }
+
+  console.log('\n2b. LISTENING BUT NOT ANSWERING — the outage a port probe cannot see');
+  {
+    // THE REGRESSION THIS EXISTS FOR (2026-09-04): a runaway `git lfs pull` in the
+    // brain's cgroup starved the event loop to "2% serviced". The port stayed open
+    // (the kernel accepts from the backlog), so /ctl/status reported
+    // `brainOnline:true, phase:"online", "Brain is online and serving."` while the
+    // site served NOTHING and the operator was told his report was wrong.
+    await brain.close();
+    await waitPort(BRAIN_PORT, false);
+    const starved = await startStarvedBrain();
+    await waitPort(BRAIN_PORT, true);
+    try {
+      const s = await req('GET', '/ctl/status');
+      check('/ctl/status still answers (never hangs on a hung brain)', s.code === 200, `code=${s.code}`);
+      check('portOpen is true — the connect probe IS fooled, as it always was',
+        s.json?.portOpen === true, `portOpen=${s.json?.portOpen}`);
+      // ⭐ The assertion that would have caught the outage.
+      check('brainOnline is FALSE despite the open port',
+        s.json?.brainOnline === false, `brainOnline=${s.json?.brainOnline}`);
+      check('loopPinned flags it for callers', s.json?.loopPinned === true, `loopPinned=${s.json?.loopPinned}`);
+      check('does NOT claim it is serving',
+        !/online and serving/i.test(s.json?.human || ''), s.json?.human);
+      check('says listening-but-not-answering in words',
+        /not answering/i.test(s.json?.human || ''), s.json?.human);
+      check('names the usual culprit so the operator can check it',
+        /git-lfs|git lfs/i.test(s.json?.human || ''), s.json?.human);
+      check('phase stays a POWER-CONTROL-ENABLING value (dashboard gates buttons on it)',
+        ['online', 'unmanaged'].includes(s.json?.phase), `phase=${s.json?.phase}`);
+      check('respondedMs is null when it never answered',
+        s.json?.respondedMs === null, `respondedMs=${s.json?.respondedMs}`);
+    } finally {
+      await starved.close();
+      await waitPort(BRAIN_PORT, false);
+      brain = await startMockBrain();
+      await waitPort(BRAIN_PORT, true);
+    }
   }
 
   console.log('\n3. graceful stop — the brain must be ASKED first, so it saves');

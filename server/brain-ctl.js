@@ -325,6 +325,49 @@ function probeBrainPort(timeoutMs = 2000) {
   });
 }
 
+// ⛔⛔ A TCP CONNECT IS NOT PROOF THE BRAIN IS SERVING, AND ON 2026-09-04 THAT
+// DISTINCTION WAS THE WHOLE OUTAGE. A runaway `git lfs pull` (spawned by the
+// brain, so sharing its cgroup and MemoryHigh budget) starved the event loop to
+// "2% serviced". Node never stopped LISTENING, so the KERNEL kept completing
+// handshakes from the listen backlog — `probeBrainPort()` connected instantly
+// and /ctl/status reported:
+//     { brainOnline: true, phase: "online", human: "Brain is online and serving." }
+// …while `curl http://127.0.0.1:7525/public-state.json` timed out at 20s and the
+// public site served nothing. Gee reported "it won't connect at all" and every
+// status surface contradicted him. HE WAS RIGHT AND THE PANEL WAS WRONG.
+//
+// ⭐ The accept queue is drained by the kernel; only a RESPONSE proves the
+// JavaScript thread is alive. So the status path now asks for one. This is the
+// single check that distinguishes "starved" from "serving", and nothing else in
+// the control plane could make that call.
+function probeBrainResponds(timeoutMs = 4000) {
+  return new Promise((resolve) => {
+    const started = Date.now();
+    let done = false;
+    const finish = (ok) => {
+      if (done) return;
+      done = true;
+      resolve({ ok, ms: Date.now() - started });
+    };
+    let req;
+    try {
+      req = http.request(
+        { host: BRAIN_HOST, port: BRAIN_PORT, path: '/public-state.json', method: 'GET', timeout: timeoutMs },
+        (res) => {
+          // Any status line at all means the event loop ran our handler. The
+          // BODY is irrelevant here and is deliberately discarded — this asks
+          // "is the loop alive", not "is the state good".
+          res.resume();
+          finish(true);
+        },
+      );
+    } catch { return finish(false); }
+    req.on('timeout', () => { try { req.destroy(); } catch { /* gone */ } finish(false); });
+    req.on('error', () => finish(false));
+    try { req.end(); } catch { finish(false); }
+  });
+}
+
 function journal(lines = 60) {
   // LOCAL MODE — no journald. The brain's own console ring is reachable over its
   // HTTP tunnel, but that requires the brain to be UP, and the times you most
@@ -406,6 +449,9 @@ async function buildStatus() {
   // so the returned object can publish it without re-deriving the timestamp.
   let _loopPinned = false;
   let _activeForSecOut = null;
+  // Round-trip ms of the responsiveness probe when it succeeded; null when the
+  // brain did not answer (or was never asked, because the port was closed).
+  let _respondedMs = null;
 
   // Distinguish the states that need DIFFERENT operator actions. The old
   // dashboard collapsed all of these into one "unreachable" banner, which is
@@ -413,8 +459,31 @@ async function buildStatus() {
   let phase;
   let human;
   if (active && portUp) {
-    phase = 'online';
-    human = 'Brain is online and serving.';
+    // ⛔ PORT-OPEN IS NOT SERVING. The kernel completes handshakes from the
+    // listen backlog whether or not the JS thread is alive, so this branch used
+    // to report "online and serving" through a total outage (see
+    // probeBrainResponds above). Ask for an actual RESPONSE before saying so.
+    const responded = await probeBrainResponds();
+    if (responded.ok) {
+      phase = 'online';
+      human = 'Brain is online and serving.';
+      _respondedMs = responded.ms;
+    } else {
+      // ⚠ PHASE STAYS A UI CONTRACT. `html/dashboard.html` enables Stop /
+      // Restart / Kick by POSITIVE match on 'online' || 'booting', so inventing
+      // a phase here would DISABLE every power control on exactly the brain an
+      // operator most needs to act on. Same reasoning as the booting branch
+      // below: the phase is the contract, the `human` string is the message.
+      phase = 'online';
+      _loopPinned = true;
+      _respondedMs = null;
+      human = 'Brain is LISTENING but NOT ANSWERING — the port accepts connections (the kernel does that) '
+        + `while requests time out after ${responded.ms}ms. The event loop is pinned or starved, so the site, `
+        + 'dashboard and chat will look disconnected even though the process is alive and training may be fine. '
+        + 'Usual cause: a long synchronous operation, or another process sharing this cgroup/disk — a `git lfs pull` '
+        + 'from a deploy has done exactly this (check `pgrep -fa git-lfs`). Prefer waiting or removing the competing '
+        + 'work over restarting; a restart abandons whatever it is holding.';
+    }
   } else if (active && !portUp) {
     // ⛔⛔ THIS BRANCH USED TO ASSERT "normal for the first minute or two after a
     // start" UNCONDITIONALLY, AND ON 2026-09-04 IT MISDIRECTED FOR OVER AN HOUR.
@@ -459,8 +528,23 @@ async function buildStatus() {
     // box). Reporting this as "offline" would be a lie the site would visibly
     // contradict, and offering Start would fail on an already-bound port. Say
     // exactly what is true instead.
+    // ⛔ SAME PORT-OPEN-IS-NOT-SERVING TRAP AS THE `online` BRANCH ABOVE. A
+    // hand-started brain can have a pinned event loop just as easily as a
+    // systemd-managed one — more easily, since that is often WHY someone is
+    // debugging it by hand. Asserting "something is serving" on the strength of
+    // a completed TCP handshake is the same wrong claim in a different branch.
+    const responded = await probeBrainResponds();
     phase = 'unmanaged';
-    human = `Something is serving on port ${BRAIN_PORT}, but systemd unit "${UNIT}" is ${activeState} — so the brain was most likely started by hand rather than by systemd. Power controls here drive the unit and will not affect a hand-started process; stop it the way it was started.`;
+    if (responded.ok) {
+      _respondedMs = responded.ms;
+      human = `Something is serving on port ${BRAIN_PORT}, but systemd unit "${UNIT}" is ${activeState} — so the brain was most likely started by hand rather than by systemd. Power controls here drive the unit and will not affect a hand-started process; stop it the way it was started.`;
+    } else {
+      _loopPinned = true;
+      human = `Something is LISTENING on port ${BRAIN_PORT} but NOT ANSWERING — requests time out after ${responded.ms}ms while the port still accepts connections (the kernel does that, not the app). `
+        + `systemd unit "${UNIT}" is ${activeState}, so this is a hand-started process with a pinned or starved event loop. `
+        + 'Usual cause: a long synchronous operation, or another process competing for the same cgroup/disk — a `git lfs pull` from a deploy has done exactly this (check `pgrep -fa git-lfs`). '
+        + 'Power controls here drive the unit and will not affect a hand-started process.';
+    }
   } else if (exitStatus === 42 && activeState === 'inactive') {
     // 42 is the deliberate-halt sentinel, and it is only meaningful while the
     // unit is genuinely stopped — ExecMainStatus lingers as the LAST exit code,
@@ -480,13 +564,23 @@ async function buildStatus() {
     ok: true,
     // Means SERVING, not merely "systemd says active" — that distinction is the
     // whole point. `unmanaged` counts as online because the site really works.
-    brainOnline: phase === 'online' || phase === 'unmanaged',
+    // ⛔ `&& !_loopPinned` IS LOAD-BEARING. A starved brain keeps `phase:'online'`
+    // ON PURPOSE (the dashboard gates its power buttons on that string, and
+    // disabling them here would strand the operator). But it is NOT online in any
+    // sense a caller cares about — on 2026-09-04 this field said `true` through a
+    // total outage. The phase is a UI contract; THIS is the honest answer.
+    brainOnline: (phase === 'online' || phase === 'unmanaged') && !_loopPinned,
     phase,
     // ⭐ THE FIELD THAT WOULD HAVE ENDED AN HOUR OF GUESSING. `phase:'booting'`
     // covers two situations that need opposite responses — wait, or investigate
     // a pinned loop — and only the unit's active-for duration separates them.
     // Published rather than folded into prose so a caller can branch on it.
+    // ⭐ It now ALSO fires for the listening-but-not-answering case, which is the
+    // one the port probe alone could never see.
     loopPinned: _loopPinned,
+    // Round-trip of the responsiveness probe (ms) when the brain answered.
+    // null = it did not answer, or was not asked because the port was closed.
+    respondedMs: _respondedMs,
     activeForSec: _activeForSecOut,
     human,
     unit: {
