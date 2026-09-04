@@ -6315,7 +6315,51 @@ class ServerBrain {
         // warning, so Tier promotion can never starve forever.
         const _inWalk = !!this._curriculumInProgress;
         const _emergencyMs = 7200000;
-        if (_inWalk && elapsedSincePassMs < _emergencyMs) {
+
+        // ── WAITING FOR A DONOR IS NOT "IDLE" ────────────────────────────────
+        //
+        // ⛔⛔ THIS BLOCK USED TO TREAT A DONOR-STARVED BRAIN AS A FREE MACHINE,
+        // AND THAT IS SELF-DEFEATING. `_inWalk` is false while the walk is
+        // paused for want of a donor, so the periodic pass fired on its normal
+        // cadence — measured live on the box: `duration=49708ms · DEADLINE-ABORT`
+        // every few minutes, ~50 s of PINNED EVENT LOOP each time.
+        //
+        // ⛔ AND THE LOOP IT PINS IS THE ONE THE DONOR CONNECTS THROUGH. The
+        // warning it produces says so in its own words: *"[EventLoop] BLOCKED
+        // 49708ms — /ws handshakes + donor frames stalled this long"*. So the
+        // pass that only runs BECAUSE no donor is connected can itself stall the
+        // handshake of the donor that would end the wait. no donor → "idle" →
+        // consolidate → 50 s pin → handshake stalls → no donor. **The operator
+        // spotted this from the outside: "is it using the cpu when it should be
+        // waiting for a doner".**
+        //
+        // ⚠ WORSE, THE WORK IS ALREADY KNOWN TO BE PARTIAL. The same run logs
+        // `CPU replay SKIPPED — intra-synapse nnz=452,481,510 > 5,000,000 cap,
+        // and NO GPU REPLAY ROUTE IS AVAILABLE`, then aborts at its deadline
+        // with `merge+schema-decay+tier3-promotion+episode-decay` unrun. It is
+        // paying the full loop-pin price for a deliberately reduced pass.
+        //
+        // ⭐ SO: defer while a donor is genuinely awaited — and keep the SAME 2 h
+        // emergency valve the in-walk branch uses, so Tier 1→2→3 promotion can
+        // never starve forever. This narrows *when* consolidation runs; it
+        // removes nothing.
+        //
+        // ⚠ GATED ON NEEDING A DONOR AT ALL, not merely on having none. A small
+        // local brain steps on CPU by design and must keep consolidating — the
+        // 2,000,000-neuron line is the same one `stepAwait` uses to decide a CPU
+        // step is affordable, so the two agree by construction rather than by a
+        // second guessed constant. `DREAM_CONSOLIDATE_WHILE_UNPOWERED=1` opts
+        // out for anyone who wants the old behaviour.
+        const _donorsNow = this._gpuClients ? this._gpuClients.size : 0;
+        const _needsDonor = (this.totalNeurons || 0) > 2000000;
+        const _awaitingDonor = !_inWalk && _needsDonor && _donorsNow === 0
+          && process.env.DREAM_CONSOLIDATE_WHILE_UNPOWERED !== '1';
+        if (_awaitingDonor && elapsedSincePassMs < _emergencyMs) {
+          if (!ce._lastUnpoweredLogMs || (Date.now() - ce._lastUnpoweredLogMs) > 600000) {
+            ce._lastUnpoweredLogMs = Date.now();
+            console.log(`[Consolidation] DEFERRED — no donor connected and this brain (${(this.totalNeurons || 0).toLocaleString()} neurons) needs one. A pass pins the event loop for ~50s, and that is the same loop a donor's /ws handshake arrives on, so consolidating now can prevent the very connection that would end the wait. Deferred until a donor attaches or the ${Math.round(_emergencyMs / 60000)}min emergency valve opens (no completed pass in ${Math.round(elapsedSincePassMs / 1000)}s). Set DREAM_CONSOLIDATE_WHILE_UNPOWERED=1 to restore the old behaviour.`);
+          }
+        } else if (_inWalk && elapsedSincePassMs < _emergencyMs) {
           // curriculum dream-windows own mid-walk passes — skip the periodic one
           // HONEST LOG — the old code announced "FORCING a pass" BEFORE this
           // gate deferred it, so a working defer read as a stuck engine (the
