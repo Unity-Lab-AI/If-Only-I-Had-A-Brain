@@ -64,7 +64,7 @@
 > - **Shut down the local rehearsal** before the press (Gee's own instruction).
 > - **Press 1 (keep weights) → press 2 (fresh walk).** Then Gee starts the pod.
 > - ⏳ **Watch on the walk:** `defQueue.lastWindow` is `null` — the ~2.4h pre-cell bootstrap makes that correct now. **`lastWindow: null` an hour into a cell is a real finding.**
-> - ⚠ **Open and unresolved:** `DEF-MISS "is" ×11` on the local run. There is **no lemma/inflection retry** in `server/definition-service.js` — a 404 is cached PERMANENT — so every inflected function word may bind nothing. Not press-blocking; worth measuring on the walk.
+> - ✅ **`DEF-MISS "is" ×11` — FIXED, and my earlier note about it was wrong.** I filed it as a possible lemma/inflection gap. **Measured: the dictionary already answers for irregular forms** (`feet`, `saw`, `been`, `were` → 200); only `is` and `was` **404**, and both are **copulas the grammar lane already teaches** as slot bindings with subject-verb agreement. The flag named the wrong lane, same class as the 24 letters. ⛔ **A lemma retry was REJECTED on that measurement** — it would re-query exactly the words that just failed, which is what `FC.11` exists to stop (429 death-spiral, 197 stalls in one K walk). ⚠ **And my first cut of the fix was too broad**: suppressing on table membership swept in `cat`/`dog`/`book`, which still owe definitions. **The slot TAG is the test** — only `copula`/`article`/`conjunction`/`qword`. 18 of 76 suppress, 58 still flag, teach table byte-identical.
 >
 > ---
 >

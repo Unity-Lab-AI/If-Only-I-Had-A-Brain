@@ -126,6 +126,89 @@ const SHORT_WORD_MAX_LEN = 3;
 // at whatever subject she's weakest in.
 export const SUBJECTS = ['ela', 'math', 'science', 'social', 'art', 'life'];
 
+// ─── The grammar lane's word-type → slot table ────────────────────────────────
+//
+// Hoisted to module scope from inside `_teachSentenceStructure`, which is still
+// its only consumer for TEACHING. It is up here because a SECOND consumer needs
+// to read it as an authority: `_teachWordDefinition` asks whether a word the
+// dictionary has no entry for is nonetheless taught — and this table is the
+// record of what the structure lane binds.
+//
+// ⛔ THIS IS NOT A WORD LIST BEING USED AS A CLASSIFIER. It is the producer's own
+// data, consulted by a consumer, which is the opposite of the defect this file
+// keeps paying for. Nothing was curated for the check; a word is "taught
+// elsewhere" precisely and only because this lane trains it, and the answer
+// changes automatically when the table does.
+//
+// ⚠ Move an entry into or out of here and BOTH behaviours change together — the
+// slot binding and the flag suppression. That coupling is deliberate: they are
+// the same claim.
+export const GRAMMAR_SLOT_PAIRS = [
+  // Pronouns — high-prior subject fillers
+  ['i','subject'], ['you','subject'], ['he','subject'], ['she','subject'],
+  ['it','subject'], ['we','subject'], ['they','subject'],
+  // Common K-vocab nouns — subject role
+  ['cat','subject'], ['dog','subject'], ['mom','subject'], ['dad','subject'],
+  ['bird','subject'], ['fish','subject'], ['baby','subject'],
+  ['boy','subject'], ['girl','subject'], ['sun','subject'], ['tree','subject'],
+  // Same nouns + object-only nouns — object role
+  ['cat','object'], ['dog','object'], ['ball','object'], ['book','object'],
+  ['food','object'], ['milk','object'], ['water','object'],
+  ['toy','object'], ['hand','object'], ['apple','object'], ['egg','object'],
+  // Verbs (verb_position)
+  ['run','verb'], ['jump','verb'], ['eat','verb'], ['sleep','verb'],
+  ['walk','verb'], ['sing','verb'], ['play','verb'], ['sit','verb'],
+  ['see','verb'], ['want','verb'], ['like','verb'], ['have','verb'],
+  ['read','verb'], ['write','verb'], ['help','verb'], ['know','verb'],
+  // Copulas (copula_slot — fills verb-position in copula templates)
+  ['is','copula'], ['am','copula'], ['are','copula'],
+  ['was','copula'], ['were','copula'],
+  // Adjectives (modifier_position)
+  ['big','modifier'], ['small','modifier'], ['red','modifier'],
+  ['blue','modifier'], ['green','modifier'], ['happy','modifier'],
+  ['sad','modifier'], ['hot','modifier'], ['cold','modifier'],
+  ['tall','modifier'], ['short','modifier'], ['fast','modifier'],
+  ['slow','modifier'], ['good','modifier'], ['bad','modifier'],
+  // Articles (article_slot — before-noun position)
+  ['a','article'], ['an','article'], ['the','article'],
+  // Question words (qword_position — sentence-initial in QUESTION template)
+  ['what','qword'], ['where','qword'], ['who','qword'],
+  ['when','qword'], ['why','qword'], ['how','qword'],
+  // Conjunctions (between_clause_slot)
+  ['and','conjunction'], ['but','conjunction'], ['or','conjunction'],
+  ['so','conjunction'],
+];
+
+// Derived once, from the table above and nothing else.
+export const GRAMMAR_TAUGHT_WORDS = new Set(GRAMMAR_SLOT_PAIRS.map(([w]) => w));
+
+// ⛔⛔ THE SLOT TAG IS THE TEST, NOT MEMBERSHIP IN THE TABLE — and getting that
+// wrong is a live example of the trap. The first cut suppressed the DEF-MISS
+// flag for every word the table mentions, which silently included `cat`, `dog`,
+// `book`, `apple` and every other CONTENT word the table carries as an example
+// filler. Those words appear here to demonstrate a slot; they still owe a real
+// definition, and hiding a dictionary failure on `cat` would be exactly the
+// instrument-that-lies this flag exists to be.
+//
+// ⭐ The distinction is grammatical and the table already encodes it. A word in
+// a FUNCTION-WORD slot has no meaning apart from its role — a copula, an
+// article, a conjunction and a question word ARE their slots, which is why the
+// dictionary has no entry for `is` and why that is not a shortfall. A word in a
+// content slot (`subject`, `object`, `verb`, `modifier`) means something the
+// slot does not supply.
+//
+// ⚠ These four are SLOT TAGS — grammatical categories — not words. Naming which
+// roles are function-word roles is a linguistic classification of the producer's
+// own taxonomy, the same shape as reading WordNet's lexicographer categories.
+const GRAMMAR_FUNCTION_SLOTS = new Set(['copula', 'article', 'conjunction', 'qword']);
+
+// The words whose meaning IS their grammatical role, and which therefore owe no
+// dictionary definition. Derived from the table and the slot taxonomy; nothing
+// is curated here.
+export const GRAMMAR_STRUCTURAL_WORDS = new Set(
+  GRAMMAR_SLOT_PAIRS.filter(([, slot]) => GRAMMAR_FUNCTION_SLOTS.has(slot)).map(([w]) => w),
+);
+
 // Prose-academic subjects that train the HYBRID downloaded real-curriculum
 // corpus (corpora/academic/<subject>/<grade>.json) for depth. Math is EXCLUDED
 // (taught equationally, not as prose). pe/music/art/health/language are skill/
@@ -16120,10 +16203,52 @@ export class Curriculum {
       // FLAG is suppressed, because the flags panel exists to surface a real
       // curriculum shortfall and 24 guaranteed false positives per walk is how a
       // panel stops being read.
-      if (String(w || '').length > 1) {
+      // ⛔⛔ AND THE SAME IS TRUE OF THE WORDS THE GRAMMAR LANE OWNS — reported
+      // live as `DEF-MISS ×11 … for "is"`. `is` has no dictionary entry (checked
+      // directly against the API: `is` and `was` both 404 while `are`, `were`,
+      // `been`, `feet` and `saw` all return 200, so this is not an outage and not
+      // an inflection problem — those two words simply have no entry).
+      //
+      // ⭐ AND `is` IS NOT UNTAUGHT. It is bound by `_teachSentenceStructure` as a
+      // COPULA — a word-type→slot binding plus subject-verb agreement — which is
+      // what a copula IS. Its meaning is structural, not definitional, and this
+      // file's own definition binder already lists it in the STOP set below. A
+      // flag saying "bound nothing" about `is` names the wrong lane, exactly as
+      // it did for the 24 letters above.
+      //
+      // ⚠ NO WORD LIST HERE EITHER. The authority is `GRAMMAR_STRUCTURAL_WORDS`,
+      // derived from the structure lane's OWN table — the producer, asked
+      // directly. Nothing was curated for this check, and the answer changes by
+      // itself when that table changes.
+      //
+      // ⛔ AND IT IS THE SLOT TAG, NOT TABLE MEMBERSHIP. The first cut of this
+      // check suppressed every word the table mentions, which silently included
+      // `cat`, `dog`, `book` and `apple` — content words the table carries as
+      // example fillers, which still owe a real definition. Hiding a dictionary
+      // failure on `cat` would have made this flag the thing it exists to catch.
+      // Only function-word slots qualify: a copula, an article, a conjunction
+      // and a question word ARE their slots.
+      //
+      // ⛔ A LEMMA RETRY WAS CONSIDERED AND REJECTED ON THE MEASUREMENT. The
+      // dictionary already answers for irregular forms, so there is no gap to
+      // close — and a retry would re-query precisely the words that just failed,
+      // which is what `FC.11` above exists to stop (a 429 death-spiral, 197
+      // stalls in one K walk). Adding calls to the failing set to fix a flag
+      // would trade a cosmetic problem for a walk-blocking one.
+      //
+      // ⛔ The lookup still happens and the miss is still cached; only the FLAG
+      // is suppressed, and the reason travels in the return value so a caller
+      // counting shortfalls can still tell the two cases apart.
+      const _taughtElsewhere = GRAMMAR_STRUCTURAL_WORDS.has(w);
+      if (String(w || '').length > 1 && !_taughtElsewhere) {
         try { this.teachFlag('warn', 'DEF-MISS', `no dictionary definition for "${w}" — bound nothing`, {}); } catch { /* nf */ }
       }
-      return { passes: 0, totalTrained: 0, defsBound: 0, skipped: 'no definition' };
+      return {
+        passes: 0, totalTrained: 0, defsBound: 0,
+        skipped: _taughtElsewhere
+          ? 'no definition — taught by the grammar lane as a slot-bound word'
+          : 'no definition',
+      };
     }
 
     // TEACHVIEW — the actual definition text she is about to bind. Reported
@@ -19466,47 +19591,19 @@ export class Curriculum {
     // _teachAssociationPairs. Multi-target nouns (cat as subject AND object)
     // appear twice — Hebbian accumulates both bindings, motor argmax at
     // generation time picks based on current sentence-position context.
-    const slotPairs = [
-      // Pronouns — high-prior subject fillers
-      ['i','subject'], ['you','subject'], ['he','subject'], ['she','subject'],
-      ['it','subject'], ['we','subject'], ['they','subject'],
-      // Common K-vocab nouns — subject role
-      ['cat','subject'], ['dog','subject'], ['mom','subject'], ['dad','subject'],
-      ['bird','subject'], ['fish','subject'], ['baby','subject'],
-      ['boy','subject'], ['girl','subject'], ['sun','subject'], ['tree','subject'],
-      // Same nouns + object-only nouns — object role
-      ['cat','object'], ['dog','object'], ['ball','object'], ['book','object'],
-      ['food','object'], ['milk','object'], ['water','object'],
-      ['toy','object'], ['hand','object'], ['apple','object'], ['egg','object'],
-      // Verbs (verb_position)
-      ['run','verb'], ['jump','verb'], ['eat','verb'], ['sleep','verb'],
-      ['walk','verb'], ['sing','verb'], ['play','verb'], ['sit','verb'],
-      ['see','verb'], ['want','verb'], ['like','verb'], ['have','verb'],
-      ['read','verb'], ['write','verb'], ['help','verb'], ['know','verb'],
-      // Copulas (copula_slot — fills verb-position in copula templates)
-      ['is','copula'], ['am','copula'], ['are','copula'],
-      ['was','copula'], ['were','copula'],
-      // Adjectives (modifier_position)
-      ['big','modifier'], ['small','modifier'], ['red','modifier'],
-      ['blue','modifier'], ['green','modifier'], ['happy','modifier'],
-      ['sad','modifier'], ['hot','modifier'], ['cold','modifier'],
-      ['tall','modifier'], ['short','modifier'], ['fast','modifier'],
-      ['slow','modifier'], ['good','modifier'], ['bad','modifier'],
-      // Articles (article_slot — before-noun position)
-      ['a','article'], ['an','article'], ['the','article'],
-      // Question words (qword_position — sentence-initial in QUESTION template)
-      ['what','qword'], ['where','qword'], ['who','qword'],
-      ['when','qword'], ['why','qword'], ['how','qword'],
-      // Conjunctions (between_clause_slot)
-      ['and','conjunction'], ['but','conjunction'], ['or','conjunction'],
-      ['so','conjunction'],
-    ];
+    // ⚠ The table itself now lives at module scope as GRAMMAR_SLOT_PAIRS. It was
+    // moved, not copied, and this lane still trains from exactly the same data —
+    // the second reader is `_teachWordDefinition`, which consults it to tell a
+    // word the dictionary cannot define from a word nothing teaches.
+    const slotPairs = GRAMMAR_SLOT_PAIRS;
     // Reps bumped 8 → 80 (10× deeper). Structure training was previously
     // 20× under-budgeted relative to vocabulary (~930 Hebbian writes for
     // ALL of grammar vs ~18,000 for word definitions). Bumping reps
     // brings grammar bindings into the load-bearing range where they
     // can actually carve basins at biological scale. Total slot-pair
-    // writes now ~6,000 (75 pairs × 80 reps).
+    // writes now ~6,240 (78 pairs × 80 reps). ⚠ The count said 75 until it was
+    // MEASURED off the table on 2026-09-04; the "~6,000" it fed was close enough
+    // to never look wrong, which is how a stale number survives.
     const r1 = await this._teachAssociationPairs(slotPairs, {
       reps: R(80),
       label: 'ELA-K-STRUCTURE-SLOTS',
