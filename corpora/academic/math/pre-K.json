@@ -1,0 +1,397 @@
+{
+  "version": 1,
+  "grade": "pre-K",
+  "subject": "math",
+  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
+  "note": "Hybrid academic-depth corpus for math/pre-K. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
+  "experiences": [
+    {
+      "theme": "number",
+      "story": "a number is a mathematical object used to count, measure, and label: people use symbols to represent numbers; they call them numerals. common places where numerals are used are for labeling, as in telephone numbers, for ordering, as in serial numbers, or to put a unique identifier, as in an isbn, a unique number that can identify a book. cardinal number ordinal number numbers are also used for other things like counting. numbers are used when things are measured. numbers are used to study how the world works. mathematics is a way to use numbers to learn about the world and make things. the study of the rules of the natural world is called science. the work that uses numbers to make things is called engineering. there are different ways of giving symbols to numbers. these methods are called number systems. the most common number system that people use is the base ten number system. the base ten number system is also called the decimal number system. the base ten number system is common because people have 10 fingers and 10 toes. there are 10 different symbols used in the base ten number system. these 10 symbols are called digits. a symbol for a number is made up of these 10 digits. the position of the digits shows how big the number is. for example, the number 23 in the decimal number system really means plus 3. similarly, 101 means 1 times a hundred plus 0 times 10 plus 1 times 1 . another number system is more common for machines. the machine number system is called the binary number system. the binary number system is also called the base two number system. there are two different symbols used in the base two number system. these two symbols are called bits. a symbol for a binary number is made up of these two bit symbols. the position of the bit symbols shows how big the number is. for example, the number 10 in the binary number system really means 1 times 2 plus 0, and 101 means 1 times four plus 0 times two plus 1 times 1 . the binary number 10 is the same as the decimal number 2. the binary number 101 is the same as the decimal number 5. english has special names for some of the numbers in the decimal number system that are \"powers of ten\". all of these power of ten numbers in the decimal number system use just the symbol \"1\" and the symbol \"0\". for example, ten tens is the same as ten times ten, or one hundred. also, ten hundreds is the same as ten times one hundred, or one thousand. some other powers of ten also have special names: 1 - one 10 - ten 100 - one hundred 1,000 - one thousand 1,000,000 - one million when dealing with larger numbers than this, there are two different ways of naming the numbers in english. under the \"long scale\", a new name is given every time the number is a million times larger than the last named number. it is also called the \"british standard\". this scale used to be common in britain, but is not often used in english-speaking countries today. it is still used in some other european nations. another scale is the \"short scale\", under which a new name is given every time a number is a thousand times larger than the last named number. this scale is a lot more common in most english-speaking nations today. 1,000,000,000 - one billion , one milliard 1,000,000,000,000 - one trillion , one billion 1,000,000,000,000,000 - one quadrillion , one billiard no number before 1,000 contains the letter a. natural numbers are the numbers which we normally use for counting: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, etc. some people say that 0 is a natural number, too. another name for these numbers is positive numbers. these numbers are sometimes written as +1 to show that they are different from the negative numbers. but not all positive numbers are natural . if 0 is called a natural number, then the natural numbers are the same as the whole numbers. if 0 is not called a natural number, then the natural numbers are the same as the counting numbers. so if the words \"natural numbers\" are not used, then there will be less confusion about whether zero is included or not. but unfortunately, some say that zero is not a whole number, while others say that whole numbers can be negative. \"positive integers\" and \"non-negative integers\" are another way to include zero or exclude zero, but only if people know those words. negative numbers are numbers less than zero. one way to think of negative numbers is to use a number line. we call one point on this line zero. then we will label every position on the line by how far to the right of the zero point is. for example, the point one is one centimeter to the right, and the point two is two centimeters to the right. however, the point one centimeter to the left of the zero point cannot be point one, since there is already a point called one. we therefore call this point minus one . a drawing of a number line is below. all the normal operations of mathematics can be done with negative numbers: adding a negative number to another is the same as taking away the positive number with the same numerals. for example, 5 + is the same as 5 - 3, and equals 2. taking away a negative number from another is the same as adding the positive number with the same numerals. for example, 5 - is the same as 5 + 3, and equals 8. multiplying two negative numbers together produces a positive number. for example, -5 times -3 is 15. multiplying a negative number by a positive number, or multiply a positive number by a negative number, produces a negative result. for example, 5 times -3 is -15. since finding the square root of a negative number is impossible for real numbers , the square root of -1 is given a special name: i. this is also called the imaginary unit. integers are all the natural numbers, all their opposites, and the number zero. decimal numbers and fractions are not integers. rational numbers are numbers which can be written as fractions. this means that they can be written as a divided by b, where the numbers a and b are integers, and b is not zero. some rational numbers, such as 1/10, need a finite number of digits after the decimal point to write them in decimal form. the number one tenth is written in decimal form as 0.1. numbers written with a finite decimal form are rational. some rational numbers, such as 1/11, need an infinite number of digits after the decimal point to write them in decimal form. there is a repeating pattern to the digits following the decimal point. the number one eleventh is written in decimal form as 0.0909090909 ... a percentage could be called a rational number, because a percentage like 7% can be written as the fraction 7/100. it can also be written as the decimal 0.07. sometimes, a ratio is considered as a rational number. irrational numbers are numbers which cannot be written as a fraction, but do not have imaginary parts . irrational numbers often occur in geometry. for example, if we have a square which has sides of 1 meter, the distance between opposite corners is the square root of two, which equals 1.414213 ... mathematicians have proved that the square root of every natural number is either an integer or an irrational number. one well-known irrational number is pi. this is the circumference of a circle divided by its diameter . this number is the same for every circle. the number pi is approximately 3.1415926535 ... an irrational number cannot be fully written down in decimal form. it would have an infinite number of digits after the decimal point, and unlike 0.333333 ..., these digits would not repeat forever. real numbers is a name for all the sets of numbers listed above: the rational numbers, including integers the irrational numbers the real numbers form the real line. this is all the numbers that do not involve imaginary numbers. imaginary numbers are formed by real numbers multiplied by the number i. this number is the square root of minus one . there is no number in the real numbers which when squared, makes the number -1. therefore, mathematicians invented a number. they called this number i, or the imaginary unit. imaginary numbers operate under the same rules as real numbers: the sum of two imaginary numbers is found by pulling out the i. for example, 2i + 3i = i = 5i. the difference of two imaginary numbers is found similarly. for example, 5i - 3i = i = 2i. imaginary numbers were called imaginary because when they were first found, many mathematicians did not think they existed. the person who discovered imaginary numbers was gerolamo cardano in the 1500s. the first to use the words imaginary number was rene descartes. the first people to use these numbers were leonard euler and carl friedrich gauss. both lived in the 18th century. complex numbers are numbers which have two parts; a real part and an imaginary part. every type of number written above is also a complex number. complex numbers are a more general form of numbers. the complex numbers can be drawn on a number plane. this is composed of a real number line, and an imaginary number line. to subtract one complex number from another, subtract the real and imaginary parts separately. for example, - = + i = 4 + 2i. to multiply two complex numbers is more complicated. it is easiest to describe in general terms, with two complex numbers a + bi and c + di. a real or complex number is called a transcendental number if it can not be obtained as a result of an algebraic equation with integer coefficients. each transcendental number is also an irrational number. the first people to see that there were transcendental numbers were gottfried wilhelm leibniz and leonhard euler. the first to actually prove there were transcendental numbers was joseph liouville.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/ae/NumberLineIntegers.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Number line -6 to 6",
+          "caption": "",
+          "context": "we therefore call this point minus one . a drawing of a number line is below. all the normal operations of mathematics can be done with negative numbers: adding a negative number to another is the same as taking away the positive number with the same numerals. for example, 5 + is the same as 5 - 3, and equals 2.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/f2/Square_root_of_2_triangle.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "√2 is irrational.",
+          "context": "sometimes, a ratio is considered as a rational number. irrational numbers change change source irrational numbers are numbers which cannot be written as a fraction, but do not have imaginary parts . irrational numbers often occur in geometry . for example, if we have a square which has sides of 1 meter, the distance between opposite corners is the square root of two, which equals 1.414213 ...",
+          "licence": "Public domain"
+        }
+      ]
+    },
+    {
+      "theme": "counting",
+      "story": "counting is something people do to find out how many things there are of any kind. the person counting in english usually starts with the number one, and gives this number to the first thing. the next thing is given the number two. then, the next thing is given the number three. if there is another thing, it gets the number four. if after this there is another thing, it gets the number five. each thing gets its own number in this way. the last number given to the last thing counted shows how many things there are. for example, to find out the number of hats in a group, a person counts the hats. the person gives a number to each hat. john has a black hat, a brown hat and a blue hat. mary asks john, \"how many hats do you have?\". john gives the number 1 to the black hat. john gives the number 2 to the brown hat. john gives the number 3 to the blue hat. the biggest number john gave was three, and each hat has a number. john tells mary, \"i have three hats\". there are the letters a, q, l, and s on a piece of paper. how many letters are there on the piece of paper? tom gives numbers to the letters. the letter a gets the number 1. the letter q gets the number 2. the letter l gets the number 3. the letter s gets the number 4. there are no more letters to count. there are 4 letters on the piece of paper. counting is starting at a number and changing it up or down a certain number of times. in the examples above, counting started at one and then it changed by one each time something was counted. so at first the count was one. then the count was changed by one, and one plus one is two, so the count was two. then the count of two was changed by one again, and two plus one is three, so the count was three. counting can be done on fingers. it has been shown that some birds are good at counting. crows are birds that are good at counting.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0"
+    },
+    {
+      "theme": "shape",
+      "story": "a shape is a geometric figure that can be made with mathematics. shapes are sorted into kinds based on how the shape looks, and what the shape is made of. for example, shapes can be classified by how many dimensions they use. two-dimensional shapes will fit into a flat plane. three-dimensional objects will not fit inside a plane, because they are not flat. shapes made from other shapes of any dimension are called polytopes. two shapes are said to be equal, if one can be changed into the other by turning, moving, growing, shrinking, or more than one of these at once. geometry is a section of mathematics which involves many shapes and sizes of different figures and their properties. these are two-dimensional shapes or flat plane geometry shapes. their sides are made of straight or curved lines. they can have any number of sides. plane figures made of lines are called polygons. triangles and squares are examples of polygons. circle polygon triangle quadrilateral square rectangle these are three-dimensional shapes. their sides are made of flat or curved surfaces. 3d shapes are often made of polygon faces. these 3d shapes are called polyhedra. sphere tetrahedron cube cone pyramid hemisphere cuboid cylinder prism four-dimensional shapes made of polyhedra are called polychorons. these shapes cannot be fully shown in the real world, but they are important ideas in geometry.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0"
+    },
+    {
+      "theme": "circle",
+      "story": "a circle is a round, two-dimensional shape. all points on the edge of the circle are at the same distance from the center. the center of a circle is the point in the very middle. the diameter of a circle is a straight line that goes from one side to the opposite and right through the center of the circle. it is the length of the circumference divided by the length of the diameter . however, they are hard to understand without knowing trigonometry and calculus.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/a0/Circle_-_black_simple.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A Circle",
+          "context": "a circle a circle is a round, two-dimensional shape. all points on the edge of the circle are at the same distance from the center.",
+          "licence": "Public domain"
+        }
+      ]
+    },
+    {
+      "theme": "square",
+      "story": "a square is a shape with four equal sides and four corners that are all right angles . the diagonals of a square also cross at right angles. the angle between any diagonal and a side of a square is 45 degrees. a square has rotational symmetry of four. it has four lines of regular symmetry. a square is a type of rectangle with all sides of equal length. however, while a square is a type of rectangle and rhombus, the opposite does not need to be true. a square is also the 2-dimensional surface of a cube.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b3/Geometrie_carre.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A square and its diagonals",
+          "context": "a square and its diagonals drawing a square a square is a shape with four equal sides and four corners that are all right angles .",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d1/01-Quadrat-Diagonale-gegeben.gif?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Drawing a square",
+          "context": "drawing a square a square is a shape with four equal sides and four corners that are all right angles . the diagonals of a square also cross at right angles.",
+          "licence": "CC BY-SA 4.0"
+        }
+      ]
+    },
+    {
+      "theme": "triangle",
+      "story": "a triangle is a shape, or a part of two dimensional space. it has three straight sides and three vertices. this can be proved when you put 3 of the same triangle together to make a trapezoid. it is the polygon with the least possible number of sides. the study of geometry related to triangles is called trigonometry. modern computers usually use triangles to make more complex drawings. triangles can be grouped according to how many of their sides are equal: if all the three sides of a triangle have the same length, then it is an equilateral triangle. if a triangle has two sides with the same length, then it is an isosceles triangle. if all the three sides of a triangle have different lengths, then we have a scalene triangle. the opposite side to the right angle is the hypotenuse. the area of a triangle is equal to base times height times one half. knowing this, you can divide any shape cake equally along the center by dividing the perimeter by the number of people, making sure everyone gets the same amount of toppings. to prove this, each of the 3 quadrilateral pieces can be divided further into triangles. after this, the 6 triangles can be measured to find that all 3 of the original pieces have the same area. different people have different ways of finding the center of the triangle. some people say the center of the biggest circle that fits inside the triangle is the center of the triangle, which is the same point as the intersection of the angle bisectors. some people say that when you draw lines from the corners to the middles of the opposite sides, that's the center. some people say that the center is the intersection of the altitudes of each side that touch the corners. this is called the orthocenter.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/0e/Black_triangle2.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A black triangle",
+          "context": "a black triangle a triangle is a shape , or a part of two dimensional space . it has three straight sides and three vertices .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/32/Isosceles-right-triangle.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "This is an isosceles right triangle , because it has a right angle and two of its sides have the same length.",
+          "context": "modern computers usually use triangles to make more complex drawings . this is an isosceles right triangle , because it has a right angle and two of its sides have the same length. triangles can be grouped according to how many of their sides are equal: if all the three sides of a triangle have the same length, then it is an equilateral triangle .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/96/Triangle.Equilateral.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Equilateral triangle",
+          "caption": "",
+          "context": "if all the three sides of a triangle have different lengths, then we have a scalene triangle . the opposite side to the right angle is the hypotenuse .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/14/Triangle.Isosceles.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Isosceles triangle",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/93/Triangle.Scalene.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Scalene triangle",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/72/Triangle.Right.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Right Angled triangle",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/05/Triangle.Obtuse.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Obtuse Angled triangle",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/33/Triangle_%28acute%29_bh.PNG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "b is base and h is height",
+          "context": "b is base and h is height the area of a triangle is equal to base times height times one half.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/62/Dividing_the_Square_into_Thirds.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "the area of a triangle is equal to base times height times one half.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/58/Triangle_Centers.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A triangle with circumcenter (blue,) orthocenter (red,) incenter (yellow,) and centroid (green)",
+          "context": "to prove this, each of the 3 quadrilateral pieces can be divided further into triangles. after this, the 6 triangles can be measured to find that all 3 of the original pieces have the same area. a triangle with circumcenter orthocenter incenter and centroid different people have different ways of finding the center of the triangle. some people say the center of the biggest circle that fits inside the triangle is the center of the triangle, which is the same point as the intersection of the angle bisectors.",
+          "licence": "CC BY-SA 4.0"
+        }
+      ]
+    },
+    {
+      "theme": "rectangle",
+      "story": "in geometry, a rectangle is a shape with four sides and four corners. the corners are all right angles. it follows that the pairs of sides opposite each other must be parallel and of the same length. people make many rectangular things, including most tables, boxes, books, and papers. the word comes from latin words meaning \"right\" and angle\". a rectangle whose four sides have the same length is called a square.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/bd/Geometry_Rectangle.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A rectangle",
+          "context": "a rectangle in geometry , a rectangle is a shape with four sides and four corners. the corners are all right angles .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/da/PerimeterRectangle.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "The formula for the perimeter of a rectangle.",
+          "context": "the word comes from latin words meaning \"right\" and angle\". a rectangle whose four sides have the same length is called a square . the formula for the perimeter of a rectangle.",
+          "licence": "CC0"
+        }
+      ]
+    },
+    {
+      "theme": "1",
+      "story": "the year 1 ad was a common year starting on saturday in the julian calendar. the year started on a monday in the gregorian calendar. it was the first year of the 1st century and 1st millennium. it is one of only seven years to use just one roman numeral. the seven are 1 ad , 5 ad , 10 ad , 50 ad , 100 ad , 500 ad , and 1000 ad . at the time, it was known as the year of the consulship of caesar and paullus. the denomination 1 for this year has been used since the early medieval period, when the anno domini calendar era became the main method in europe for naming years. the year before this is 1 bc in the widely used julian calendar. = = tiberius, under orders of augustus, stopped revolts in germany . rome: gaius caesar and lucius aemilius paullus became consuls, m. herennius picens replaces paullus in july . the poem metamorphoses is written by ovid. the aqua alsietina aqueduct is made in rome. = = start of the yuanshi era of the chinese han dynasty. confucius is given his first royal title of lord bao chengxun ni. buddhism is introduced into china. emperor ping of han china's reign begins. = = moxos ceases to be a significant religious area in south america . = = the poem metamorphoses is written by ovid. livy writes his monumental history of rome . = = birth of jesus as given by dionysius exiguus in his anno domini era according to at least one scholar. however, most scholars think dionysius placed the birth of jesus in the previous year, 1 bc.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/5c/%28Toulouse%29_Tib%C3%A8re_-_Mus%C3%A9e_Saint-Raymond_Ra_342_b.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A bust of Tiberius.",
+          "context": "the year before this is 1 bc in the widely used julian calendar .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e7/World_in_1_CE.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "The World in year one.",
+          "context": "tiberius , under orders of augustus , stopped revolts in germany . rome : gaius caesar and lucius aemilius paullus became consuls, m.",
+          "licence": "Public domain"
+        }
+      ]
+    },
+    {
+      "theme": "2",
+      "story": "the year 2 was a common year that started on sunday, according to the julian calendar. according to the gregorian calendar, it started on a tuesday. at the time, it was known as the year of the consulship of vinicius and varus. it was the 2nd year of the 1st century. following the death of lucius caesar, livia drusilla convinced augustus to allow her son tiberius back into rome as a private citizen. this was after six years in enforced retirement on rhodes. gaius caesar meets with phraates v, the king of parthia on the euphrates. publius alfenus varus and publius vinicius become roman consuls. cedeides becomes archon of athens. using roman military support, artavasdes iii, son of ariobarzanes ii, king of media atropatene, becomes the king of armenia. juba ii of mauretania joins gaius caesar in armenia as a military advisor. the first census is concluded in china. the census has begun the year before. final numbers show a population of nearly 60 million . the census is one of the most accurate surveys in chinese history. the chinese census shows nearly one million people living in vietnam. apollonius of tyana deng yu, han dynasty general and statesman lucius caesar, son of marcus vipsanius agrippa and julia the elder. he was also the heir to the throne in gaul.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0"
+    },
+    {
+      "theme": "3",
+      "story": "the year 3 was a common year which started on a monday. according to the julian calendar. according to the gregorian calendar, it started on a wednesday. at the time, it was known as the year of the consulship of lamia and servilius. the year is called 3 since the early medieval period, when the anno domini calendar era became the usual method in europe for naming years. it was the 3rd year of the 1st century. the rule of augustus is renewed for a ten-year period. augustus adopts his grandson, gaius caesar, with the expectation that he will succeed him. gaius is made proconsul and is sent on a special mission to the east. lucius aelius lamia is consul of rome marcus valerius messalla messallinus is consul of rome menneas becomes archon of athens five german tribes are unified by marbod, king of the marcomanni. the unification of the five tribes represents a direct threat to rome in the area that will become silesia and saxony. wang mang foils a plot by his son,wang yu, his brother-in-law, lu kuan, and the wei clan to remove him from the regent's position. wang yu and lu kuan are killed in the purge that follows.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e1/Rembrandt_-_Apostle_Paul_-_WGA19120.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A painting of Paul of Tarsus by Rembrandt",
+          "context": "china change change source wang mang foils a plot by his son,wang yu, his brother-in-law, lu kuan, and the wei clan to remove him from the regent's position. wang yu and lu kuan are killed in the purge that follows.",
+          "licence": "Public domain"
+        }
+      ]
+    },
+    {
+      "theme": "size",
+      "story": "the size of something is how much space the thing takes. it can also be described as how big or small something is. when a size is measured, it is given a number. it can be measured with different types of systems, example: the metric system. metric: 1 cm= 10 mm, 1 m= 100 cm, 1 km= 1000 m and so on... little smaller/little is very small, as in short. small means \"little\" very small means \"tiny\" big bigger/large is very big, as in long or tall. big means \"large\" very big means \"huge\" small and big are opposites. example 1 a yellow box is 2 metres long, 3 metres wide and 1 metre deep. the box has a volume of 6 cubic metres. a green box is 3 metres long, 3 metres wide and 1 metre deep. the size of the green box is 9 cubic metres. the green box is larger in size than the yellow box. example 2 a red box is 2 feet long, 3 feet wide and 1 foot deep. the box has a volume of 6 cubic feet. a blue box is 3 feet long, 3 feet wide and 1 foot deep. the size of the blue box is 9 cubic feet. the blue box is larger in size than the red box.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0"
+    },
+    {
+      "theme": "pattern",
+      "story": "a pattern is an idea, a concept or a model. the model is usually abstract, and can then be applied to the domain where it is used. pattern matching is checking if a certain pattern is present. many patterns can directly be recognised by the senses. some patterns are based on the fact that there are repetitions, that a certain thing occurs over and over again. an example of a simple pattern might be the tiling of a floor. for example, lots of bathrooms have a paisley or floral tiling pattern on the floor. in computer science, design patterns are model solutions for problems that occur often. sometimes people see patterns when there are none. in mathematics, there are many different patterns. for example, the fibonacci sequence is a complex type of pattern. there are some simple ones like: 1, 2, 4, 8, 16, ... in this pattern, the next number is the product of the previous number multiplied by 2. basically a mathematical pattern is a sequence of numbers which follows one rule.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/ef/Hexagonal_tessellation.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Hexagonal tiling of a floor in Rome . The tiling follows a simple pattern",
+          "context": "hexagonal tiling of a floor in rome . the tiling follows a simple pattern a pattern is an idea , a concept or a model .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
+    },
+    {
+      "theme": "sorting",
+      "story": "sorting refers to ordering data in an increasing or decreasing manner according to some linear relationship among the data items. ordering: arranging items in a sequence ordered by some criterion; categorizing: grouping items with similar properties. ordering items is the combination of categorizing them based on equivalent order, and ordering the categories themselves. in computer science, arranging in an ordered sequence is called \"sorting\". sorting is a common operation in many applications, and efficient algorithms have been developed to perform it. the most common uses of sorted sequences are: making lookup or search efficient; making merging of sequences efficient; enabling processing of data in a defined order. the opposite of sorting, rearranging a sequence of items in a random or meaningless order, is called shuffling. for sorting, either a weak order, \"should not come after\", can be specified, or a strict weak order, \"should come before\" . for the sorting to be unique, these two are restricted to a total order and a strict total order, respectively. sorting n-tuples can be done based on one or more of its components. more generally objects can be sorted based on a property. such a component or property is called a sort key. for example, the items are books, the sort key is the title, subject or author, and the order is alphabetical. a new sort key can be created from two or more sort keys by lexicographical order. the first is then called the primary sort key, the second the secondary sort key, etc. for example, addresses could be sorted using the city as primary sort key, and the street as secondary sort key. if the sort key values are totally ordered, the sort key defines a weak order of the items: items with the same sort key are equivalent with respect to sorting. if different items have different sort key values then this defines a unique order of the items. a standard order is often called ascending , the reverse order descending . for dates and times, ascending means that earlier values precede later ones e.g. 1/1/2000 will sort ahead of 1/1/2001. = = bubble/shell sort: exchange two adjacent elements if they are out of order. insertion sort: scan successive elements for an out-of-order item, then insert the item in the proper place. selection sort: find the smallest element in the array, and put it in the proper place. swap it with the value in the first position. quick sort: partition the array into two segments. in the first segment, all elements are less than or equal to the pivot value. in the second segment, all elements are greater than or equal to the pivot value. finally, sort the two segments recursively. merge sort: divide the list of elements in two parts, sort the two parts individually and then merge it. various sorting tasks are essential in industrial processes, such as mineral processing. for example, during the extraction of gold from ore, a device called a shaker table uses gravity, vibration, and flow to separate gold from lighter materials in the ore . sorting is also a naturally occurring process that results in the concentration of ore or sediment. sorting results from the application of some criterion or differential stressors to a mass to separate it into its components based on some variable quality. materials that are different, but only slightly so, such as the isotopes of uranium, are very difficult to separate. optical sorting is an automated process of sorting solid products using cameras and/or lasers and has widespread use in the food industry. sensor-based sorting is used in mineral processing. help:sorting in wikipedia tables.",
+      "source": "en.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/3e/Bundesarchiv_Bild_183-22350-0001%2C_Berlin%2C_Postamt_O_17%2C_P%C3%A4ckchenverteilung.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Workers sorting parcels in a postal facility",
+          "context": "if the sort key values are totally ordered , the sort key defines a weak order of the items: items with the same sort key are equivalent with respect to sorting. if different items have different sort key values then this defines a unique order of the items. workers sorting parcels in a postal facility a standard order is often called ascending , the reverse order descending . for dates and times, ascending means that earlier values precede later ones e.g.",
+          "licence": "CC BY-SA 3.0 de"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/ee/Potomac_Yard_-_aerial_1980s.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A railroad classification yard , used for sorting freight cars",
+          "context": "finally, sort the two segments recursively. merge sort : divide the list of elements in two parts, sort the two parts individually and then merge it. a railroad classification yard , used for sorting freight cars various sorting tasks are essential in industrial processes, such as mineral processing . for example, during the extraction of gold from ore, a device called a shaker table uses gravity , vibration , and flow to separate gold from lighter materials in the ore .",
+          "licence": "Public domain"
+        }
+      ]
+    },
+    {
+      "theme": "measurement",
+      "story": "measurement means compare to a fix standard value. to measure something is to give a number to some property of the thing. measuring something puts the amount of the thing into numbers. measurement can be written using many different units. for example, if we want to compare two different sized container for holding a given quantity of liquid, we can ask: are both containers the same size? will they hold the same amount of liquid? some properties of things that can be measured: distance: for example, distance measurements can be used to answer the following questions; how far is the city from here? how far apart are these two trees? weight: for example, weight measurements can be used to answer the following questions; what is heavier, this group of apples or that group of bananas? did john lose weight in the last year? will putting this rock in the boat make the boat sink? temperature: for example, temperature measurements can be used to answer the following questions; where is hotter today? will this ice turn into water if i put it inside? volume: for example, volume measurements can be used to answer the following questions; how many pails of water do i need to fill up the bath tub? how much olive oil do i put in this food i am making? how many blocks can i fit in this box? pressure: for example, pressure measurements can be used to answer the following questions; how much air should i put in this automobile tire? will the weather stay good or will we have a storm? will my ears pop when i climb that hill? one can measure many other things. most properties are measured using a number and a unit of measurement. the unit of measurement is a standard amount. the number compares the property to the standard amount. there is an advanced branch of mathematics that is about measuring things with unusual characteristics. this is called measure theory. this theory uses something called a \"lebesgue integral\". this takes the area under the curve differently than the more common riemann integral. it uses horizontal slabs instead of vertical ones. measurement can be the capacity, how long something is, or distance, etc.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0"
+    },
+    {
+      "theme": "length",
+      "story": "the length of something is the distance between two ends of the thing. for two dimensional things, length is usually the longer side. a ruler is a tool used to measure length. all the sides on shapes have a length. the length is between the two points of the side. you can also find the length of any two points on a shape, even if they are not on one side. a shape can have different lengths based on how many dimensions it takes. a line has one size measurement. this measurement is the length. a rectangle has two measurements that show its size. these two measurements are the length and the width of the rectangle. the length and width of a square are the same. a box has three measurements that show its size. these three measurements are the length, the width and the height of the box. a circle has diameter, the length across the circle. a circle also has circumference, the length around its side. the distance from the front of the bus to the back of the bus is 30 meters. the bus is 30 meters in length. a piece of wood is 10 meters x 10 cm x 15 cm. the piece of wood is 10 meters in length, 10 cm in breadth and 15 cm in height. length can also mean an amount of time. the length is measured by looking at the time at the start, then looking at the time at the end. you might sit down at one o'clock. if you stand up at three o'clock, you would be sitting for two hours. the length of time is two hours.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0"
+    },
+    {
+      "theme": "weight",
+      "story": "the weight of an object is the measure of the intensity of the force imposed on this object by the local gravitational field. weight should not be confused with the related but quite different concept of mass. for small objects on earth, the weight force is directed towards the center of the planet. for larger objects, such as the moon orbiting around the earth, the force is directed towards the center of mass of the combined system. in common language, the weight of something is typically understood to be the value measured at or near the earth's surface. unfortunately the common terms used to describe the weight of an object are units of mass such as kilograms or pounds . for almost all of human history, weight has been measured on the surface of the earth. here, the weight is proportional to the mass. objects which have the same mass have the same weight. an object with the twice the mass of another will also have twice the weight. as a consequence it is common practice to use the two words, mass and weight, as if they mean the same thing and to use kilograms and pounds as the units for both mass and weight. using the same terms to describe and measure the two different properties has led to confusion between these two properties, mass and weight. mass and weight are not the same thing. the unit of weight in the international system of units is the newton, which is represented by the symbol n. the weight of an object, or of an amount of matter, is typically measured with an instrument such as a spring scale. the scale includes a spring which provides a force to oppose the gravitational force on the object which is being weighed. the gravitational force pulls down, the spring pushes or pulls upwards. typically, the scale has a readout which gives not the weight but rather the mass of the object. spring scales are made with the assumption that they are being used on the surface of the earth. if a spring scale was taken to the moon it would give a misleading reading. a balance style weighing scale is a device that compares the weights of two object in the same gravitational field: it determines whether one object is heavier or lighter than the other. an arbitrary object on earth is also attracted by all other celestial bodies, such as the moon, for instance. hence, its weight will be less with the moon overhead than with the moon on the other side of the earth. weight is not defined exclusively to earth: an astronaut weighs 6 times less on the surface of the moon than on the surface of the earth. weightlessness is an apparent condition experienced by astronauts or satellites in orbit around a planet. in reality their weight is the force that keeps them in orbit. objects in orbit travel with very high speed. for satellites orbiting kilometres above the earth, this speed is about 27 000 km/h. without the gravitational pull of the earth they would fly off in a straight line. the gravitational pull keeps them falling towards the planet. the combination of high sideways velocity and constant pull toward the centre of the earth bends their path so they stay in orbit.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0"
+    },
+    {
+      "theme": "clock",
+      "story": "a clock is a device that tells the time. some clocks can only show the time. other clocks can show other things. for example, some clocks can show the date as well as the time, or show other information, like the timer temperature or the weather, some have stopwatch and some have alarm. clocks use different ways to measure time. clocks need some sort of steady beat or motion to track the change in time. ancient water clocks worked by the steady movement of water from a container with a hole in the bottom to another container without a hole. other clocks use pendulums, springs and gears to track the change in time correctly. digital clocks work by measuring the vibrations of quartz crystals when charged with electricity. the vibration frequency of the crystal does not change. atomic clocks use the electromagnetic waves absorbed and emitted by atoms such as caesium to measure time. they are the most precise clocks in the world. the two most common types of displays on clocks are \"analog\" and \"digital\". analog clocks use angles to tell time. they have hands that rotate around the clock's face . the position of the hands shows the time. the face of the clock is a flat disk. it will often have the numbers one through twelve on the face to make it easier to read. analog clocks commonly have two or three hands. if it has two, there is a large hand or minute hand and a smaller hand, the hour hand. clocks with three hands also have a second hand. this hand is usually about as long as the minute hand, but much thinner. each hand shows the time it is named for and moves around the face of the clock one complete rotation for each movement to the next larger hand. for example, the second hand moves around the face of the clock in 60 seconds. when it moves all the way around the clock, the minute hand moves forward one space. when the minute hand moves all the way around the face of the clock , the hour hand moves forward one section. the second and minute hands take 60 movements to move all around the face of the clock. the hour hand only needs 12 movements to do the same. digital clocks use numbers to show the time. lcds and leds are common for digital clocks. unlike analog clocks which are based on 12 hours, digital clocks can use either a 12-hour clock or a 24-hour clock. digital clocks are usually smaller and easier to both use and read than analog clocks but they can also be made much larger. new digital clocks can even correct themselves using the internet or radio signals. there are also clocks that use sound, usually along with a dial or some other means, to show the time. the sound could be as simple as a bell or so complex that it sounds the same as a person. many clocks that do this are old and are driven by springs or weights rather than batteries or other forms of electric power. some special clocks are often used by people who are blind or cannot see well enough to read an analog or digital clock. they can also be used by people with mental problems that cause them to be unable to read other clocks. there are many different types of clocks and watches. they are different in what they are used for, what they can do or how they are made. examples include: a watch, also called a watch, is worn on the wrist. it is held in place by two straps connected to the watch, and then wrapped around the wrist and connected to each other. a pocket watch is kept in a pocket. it usually has a small chainor a chain like cloth which is connected to the person's clothing. this helps people to not lose the watch. a radio clock is automatically synchronized to a time, transmitted by a radio transmitter. junghans mega is the name of the world's first radio-controlled wristwatch with hands. a sundial is an old form of a clock which uses the sun to tell time. an alarm clock is a clock that makes a sound or plays music at a certain time. it is used by people to wake up from sleep at a time they choose. a grandfather clock is a tall clock that stands on a floor. it uses a pendulum to tell time. a cuckoo clock is a pendulum based clock which makes a sound each hour on the hour. they often also have a small door. when the clock makes the sound, the door opens and a small toy bird or other item usually comes out of the door. an hourglass, also called a sandglass or sand timer, uses sand trickling slowly to measure time.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/8b/2010-07-20_Black_windup_alarm_clock_face.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Analog clock in 12-hour format",
+          "context": "",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/63/24-Hour_Clock_Aboard_the_USS_Midway_%288727193240%29.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Analog clock in 24-hour format",
+          "context": "analog clock in 24-hour format a clock is a device that tells the time . some clocks can only show the time.",
+          "licence": "CC BY 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/1b/Radiocontrolledclock.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A radio controlled digital clock",
+          "context": "the second and minute hands take 60 movements to move all around the face of the clock. the hour hand only needs 12 movements to do the same. a radio controlled digital clock digital clocks use numbers to show the time. lcds and leds are common for digital clocks.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/11/Wooden_hourglass.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Hourglass in wooden stand",
+          "context": "some special clocks are often used by people who are blind or cannot see well enough to read an analog or digital clock. they can also be used by people with mental problems that cause them to be unable to read other clocks. hourglass in wooden stand types of clocks change change source there are many different types of clocks and watches. they are different in what they are used for, what they can do or how they are made.",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
+    },
+    {
+      "theme": "calendar",
+      "story": "a calendar is a tool for organizing days. people use calendars to say when something happened, and for planning things that have not happened yet. the calendar gives the days names and numbers, called calendar dates. the dates are usually made based on how things in the sky seem to move. the year and month are based on motions of the sun and moon. by knowing what day something happened or will happen, people have an easier life. since the beginning of history, knowing when the seasons would start for crops was very important for farmers. calendar systems have a beginning time or era. the calendar era is often a religion-based event, such as the birth of jesus, but it may be a political event such as a coronation or the founding of a state. dates that are counted from the coronation are called \"regnal\". the three principal calendars most used today are the gregorian, hebrew, and islamic calendars. other calendar systems from many different parts of the world are also used. calendars are based on three natural things: the earth turns all the way around its axis. the moon goes all the way around the earth. the earth goes all the way around the sun. the earth turns all the way around its axis about 24 hours. days of most calendars are strongly based on the solar day. the moon turns all the way around the earth about 29 days, 12 hours, 44 minutes and 2 seconds. months of some calendars are still strongly based on the moon. these are called lunar calendars, which lasts about 354-355 days. solar calendars ignore the moon, and depend entirely on the sun. the earth goes all the way around the sun in about 365 days, 5 hours, 48 minutes and 46 seconds. this is called the solar year. years of most calendars are strongly based on the solar year.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0"
+    },
+    {
+      "theme": "money",
+      "story": "money, also sometimes called currency, can be defined as anything that people use to buy goods and services. money is what many people receive for selling their own things or services. there are lots of different kinds of money in the world. most countries have their own kind of money, such as the united states dollar or the iranian rial. the idea of bartering things is very old. a long time ago, people did not buy or sell with money. instead, they traded one thing for another to get what they wanted or needed. one person who owned many cows could trade with another person who had a lot of wheat. each would trade a little of what he had with the other. this would support the people on his farm. other things that were easier to carry around than cows also came to be held as valuable. this gave rise to trade items such as jewelry and spices. when people changed from trading in things like, for example, cows and wheat to using money instead, they needed things that would last a long time. they must still have a known value, and could be carried around. the first country in the world to make metal coins was called lydia. these first appeared during the 7th century bc, in the western part of what is now turkey. the lydian coins were made of a weighed amount of precious metal and were stamped with a picture of a lion. this idea soon spread to greece, the rest of the mediterranean, and the rest of the world. coins were all made to the same size and shape. in some parts of the world, different things have been used as money, like clam shells or blocks of salt. besides being easier to carry than cows, using money had many other advantages. money is easier to divide than many trade goods. if someone owns cows, and wants to trade for only \"half a cow's worth\" of wheat, he probably does not want to cut his cow in half. but if he sells his cow for money, and buys wheat with money, he can get exactly the amount he wants. but money lasts longer than most trade goods. if someone sells a cow for money, he can save that money away until he needs it. he can always leave it to his children when he dies. it can last a very long time, and he can use it at any time. not every cow is as good as another cow. some cows are sick and old, and others are healthy and young. some wheat is good and other wheat is moldy or stale. so if a person trades cows for wheat, he might have a hard time arguing over how much wheat each cow is worth. that means one dollar is worth the same as another dollar. it is easier to add up and count money, than to add up the value of different cows or amounts of wheat. later, after coins had been used for hundreds of years, paper money started out as a promise to pay in coin, much like an \"i.o.u.\" note. the first true paper money was used in china in the 10th century ad. paper money was also printed in sweden between 1660 and 1664. both times, it did not work well, and had to be stopped because the banks kept running out of coins to pay on the notes. massachusetts bay colony printed paper money in the 1690s. this time, the use became more common. today, most of what people think of as money is not even things you can hold. it is numbers in bank accounts, saved in computer memories. many people still feel more comfortable using coins and paper, and do not totally trust using electronic money on a computer memory. many types of money have been used at different times in history. these are: cowry shells commodity money convertible paper money inconvertible money bank deposits electronic money commodity money can be used for other purposes besides serving as a medium of exchange. we say it possesses intrinsic value, because it is useful or valuable by itself. some examples of commodity money are cattle, silk, gold and silver. convertible paper money is money that is convertible into gold and silver. gold and silver certificates are convertible paper money as they can be fully convertible into gold and silver. inconvertible money is money that cannot be converted into gold and silver. notes and coins are inconvertible money. they are inconvertible and are declared by the government money. such fiat money is a country's legal tender. today, notes and coins are the currencies used in bank deposits. types of bank deposits: demand deposits savings deposits time deposits negotiable certificate ferguson, niall . the ascent of money: a financial history of the world. isbn 9781846141065 davies, glyn . history of money: from ancient times to the present day . isbn 9780708317174 linguistic and commodity exchanges by elmer g. examines the structural differences between barter and monetary commodity exchanges and oral and written linguistic exchanges.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/65/Euro_coins_and_banknotes.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Euro coins and bank notes",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/63/USCurrency_Federal_Reserve.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "US banknotes",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/32/National-Debt-Gillray.jpeg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "In a 1786 James Gillray caricature, the plentiful money bags handed to King George III are contrasted with the beggar whose legs and arms were amputated, in the left corner",
+          "context": "money is what many people receive for selling their own things or services. there are lots of different kinds of money in the world.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/ae/BMC_06.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Early 6th century BC Lydian coin",
+          "context": "other things that were easier to carry around than cows also came to be held as valuable. this gave rise to trade items such as jewelry and spices . early 6th century bc lydian coin when people changed from trading in things like, for example, cows and wheat to using money instead, they needed things that would last a long time. they must still have a known value, and could be carried around.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/4a/US-%2410000-Certificate_of_Deposit-1875_%28Proof%29.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "US-$10,000 Certificate of Deposit, 1875",
+          "context": "it is numbers in bank accounts , saved in computer memories. many people still feel more comfortable using coins and paper, and do not totally trust using electronic money on a computer memory . us-$10,000 certificate of deposit, 1875 many types of money have been used at different times in history. these are: cowry shells commodity money convertible paper money inconvertible money bank deposits electronic money commodity money can be used for other purposes besides serving as a medium of exchange.",
+          "licence": "Public domain"
+        }
+      ]
+    },
+    {
+      "theme": "addition",
+      "story": "not to be confused with building extensions which are also called additions. addition can occur with simple objects such as numbers, and more complex objects and concepts such as vectors and matrices. addition has several important properties. it is commutative, meaning that the order of the operands does not matter , and it is associative, meaning that when one adds more than two numbers, the order in which addition is performed does not matter . repeated addition of 1 is the same as counting. addition of 0 does not change a number. addition also obeys predictable rules concerning related operations such as subtraction and multiplication. in arithmetic, addition is the operation where two or more numbers called \"addends\" are used to make a new number, which is the \"sum\" or total that is expressed with the equals sign. the symbol for addition, in infix notation, is the plus sign \"+\" placed between the operands. for example, there are objects in two groups . the objects are various shapes, where one group has 3 of them while the other has 2. when the two groups combine into one, the overall amount of the shapes become 5. = = the animation above demonstrates the addition of seven hundred eighty six and four hundred sixty seven. the problem's digits have been separated into units, tens and hundreds . first, the units 6 and 7 are added together to make 13, so 1 ten and 3 units, with the 3 written below and the 1 ten carried to the tens column. next, in the tens column, the 1, 8, and 6 are added together to make 15 tens, so 1 hundred and 5 tens, with the 5 written below and the 1 hundred carried to the hundreds column. finally, in the hundreds column, 1, 7, and 4 are added together to make 12 hundreds, so 1 thousand and 2 hundreds, with the 2 written below and the 1 thousand carried to the thousand column. the final answer is thus one thousand two hundred fifty three. tom wants to know the distance between his house and sally's house. bob's house is 300 m east of tom's house. the distance from tom's house to bob's house, added to the distance from bob's house to sally's house, is the same as the distance from tom's house to sally's house. addition is commutative, meaning that one can change the order of the numbers in a sum, but still get the same result. when addition is used together with other operations, the order of operations becomes important. in the standard order of operations, addition is to be computed later than exponentiation, roots, multiplication and division, but has equal importance as subtraction.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/ed/Addition.gif?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Addition",
+          "context": "",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/ab/AdditionShapes.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Two plus three is equal to five.",
+          "caption": "2 shapes + 3 shapes = 5 shapes",
+          "context": "arithmetic change change source in arithmetic , addition is the operation where two or more numbers called \"addends\" are used to make a new number, which is the \" sum \" or total that is expressed with the equals sign . the symbol for addition, in infix notation , is the plus sign \"+\" placed between the operands. 2 shapes + 3 shapes = 5 shapes counting examples change change source for example, there are objects in two groups . the objects are various shapes, where one group has 3 of them while the other has 2.",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
+    },
+    {
+      "theme": "subtraction",
+      "story": "subtraction is the arithmetic operation for finding the difference between two numbers, though it can also be generalized to other mathematical objects such as vectors and matrices. if the minuend is less than the subtrahend, the difference will be a negative number. this can be read as \"seventeen minus twenty-five equals negative eight\". subtraction is how cash registers determine the change a buyer receives, when the buyer pays with more money than the purchase cost. to resolve this issue, one must establish an order of operations, with different orders yielding different results.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0"
+    }
+  ]
+}
