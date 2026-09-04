@@ -1,4 +1,4 @@
-/* UNITY MACHINE GUN v3 - paste into the browser console (F12) on ANY page of
+/* UNITY MACHINE GUN v4 - paste into the browser console (F12) on ANY page of
  * https://if-only-i-had-a-brain.git.unityailab.com
  * ASCII only. Short lines. Nothing here can be broken by copy-wrap.
  *
@@ -59,6 +59,19 @@
  *     8 attempts x 5 min = 40 minutes re-sending a request that could never
  *     succeed, printing "not landed - re-arming" throughout. `busy` is the
  *     opposite case - transient - and still retries.
+ *
+ * ---------------------------------------------------------------------------
+ * v4 - THE WAIT NOW ABORTS WHEN THE BOX RESTARTS ITSELF
+ *
+ * freshWalkWhenReady() waited on portOpen alone. But a deploy's LAST step is
+ * restarting the brain, so the likeliest way that wait ends is the running
+ * self-update.sh simply finishing: she restarts into the fresh walk that was
+ * already armed, and starts serving. portOpen then goes true twice and the gun
+ * would fire a SECOND fresh walk on top of the one already running, wiping it.
+ *
+ * activeEnter is what separates "still deploying" from "deploy landed", and it
+ * was already the tool's only trusted signal everywhere else. Now the wait uses
+ * it too: if it moves while waiting, stand down - nobody needs to press.
  */
 (function () {
   'use strict';
@@ -266,17 +279,32 @@
    * brief serving windows inside long pinned stretches. A single portOpen=true
    * could be one of those windows rather than a real recovery, and firing into
    * it would put us straight back into the overlapping-deploy case.
+   *
+   * !! AND IT ABORTS IF THE BOX RESTARTS ON ITS OWN, WHICH IS THE LIKELIEST WAY
+   * THIS WAIT ENDS. A deploy's LAST step is restarting the brain. So the most
+   * probable future is: the running self-update.sh simply finishes, restarts her
+   * into the fresh walk that was already armed, and she starts serving.
+   * portOpen then goes true twice - and a gun watching only portOpen would fire
+   * a SECOND fresh walk on top of the one already running, wiping it.
+   *
+   * The signal that separates "the deploy is still going" from "the deploy
+   * landed" is the same one the rest of this tool is built on: activeEnter. If
+   * it moves while we are waiting, nobody needs to press anything. Waiting on
+   * portOpen alone cannot tell those two worlds apart.
    */
   G.armWhenReady = function (verb, label, query) {
     var CONSEC = 2;          // consecutive good readings required
     var GAP_MS = 300000;     // 5 min apart - a flap is far shorter than this
     var MAX_WAIT_MS = 21600000; // 6 h, then stop rather than wait forever
     var seen = 0;
+    var armEnter = null;     // set on the first readable poll, then watched
     var until = Date.now() + MAX_WAIT_MS;
     G.stop = false;
     log('WAITING for the box to be safe to press, then firing ' + label + '.');
     log('  needs portOpen=true on ' + CONSEC + ' consecutive checks '
       + (GAP_MS / 60000) + ' min apart.');
+    log('  ABORTS if activeEnter moves - that means the deploy landed and');
+    log('  restarted her by itself, so there is nothing left to press.');
     log('  kill switch: __mg.stop = true');
     function tick() {
       if (G.stop) { log('wait cancelled.', '#fc0'); return; }
@@ -286,6 +314,23 @@
         return;
       }
       getStatus().then(function (j) {
+        var e = j && !j.__auth && j.unit && j.unit.activeEnter;
+        if (e && armEnter === null) {
+          armEnter = e;
+          log('  watching activeEnter = ' + armEnter);
+        }
+        // THE ABORT. Checked BEFORE the ready counter, because a box that has
+        // just restarted is also a box that is about to report portOpen=true.
+        if (e && armEnter !== null && e !== armEnter) {
+          G.verdict = 'SELF-LANDED';
+          log('THE BOX RESTARTED ON ITS OWN - standing down, nothing fired.', '#6f6');
+          log('  ' + armEnter + '  ->  ' + e, '#6f6');
+          log('  The deploy finished and restarted her as its last step. If a', '#6f6');
+          log('  fresh walk was already armed, it is running now. Pressing', '#6f6');
+          log('  would wipe the walk that just started.', '#6f6');
+          log('  Check __mg.status(), then watch her come up.', '#6f6');
+          return;
+        }
         if (j && !j.__auth && j.portOpen === true) {
           seen++;
           log('  ready ' + seen + '/' + CONSEC + ' (portOpen=true, phase=' + j.phase + ')');
