@@ -1,32 +1,38 @@
-/* UNITY MACHINE GUN RESET v1 - paste into the dashboard tab console (F12).
+/* UNITY MACHINE GUN v2 - paste into the browser console (F12) on ANY page of
+ * https://if-only-i-had-a-brain.git.unityailab.com
  * ASCII only. Short lines. Nothing here can be broken by copy-wrap.
  *
- * Kill switch:  window.__mg.stop = true
+ *   PASTE          arms and reports. Fires NOTHING.
+ *   __mg.restart()    keeps weights. Safe. Use when she is wedged.
+ *   __mg.savestart()  pulls new code, keeps weights.
+ *   __mg.freshWalk()  pulls new code and WIPES ALL TRAINING. Asks twice.
+ *   __mg.status()     one reading, no firing.
+ *   __mg.stop = true  kill switch.
  *
  * scripts/machinegun-reset.js and "scripts/Machine Gun Reset.txt" carry the
- * SAME body on purpose - whichever copy gets pasted must be the safe one.
- * If you edit one, mirror the other.
+ * SAME body on purpose. If you edit one, mirror the other.
  *
  * ---------------------------------------------------------------------------
- * WHY THIS EXISTS, AND WHY IT IS NOT THE SAVESTART GATLING
+ * WHY IT EXISTS: THE BUTTONS ARE NOT THERE
  *
- * The gatling fires /admin/update from a pool of 6. That is the BRAIN's own
- * route, and on 2026-09-04 the brain spent hours ALIVE BUT PINNED - its event
- * loop stalled by a 114 GB transfer sharing the disk - so every brain route
- * timed out and the gatling would have had nothing to talk to.
+ * On 2026-09-04 the brain was alive but PINNED for hours - the event loop
+ * stalled by a 114 GB transfer sharing its disk - so every brain route timed
+ * out and the dashboard's Brain Power panel had no controls to offer. The
+ * operator could not press anything. This is the press, without the page.
  *
- * This one talks to the CONTROL PLANE (/ctl/*), a separate always-up service
- * that exists precisely for the moment the brain is unreachable.
+ * It talks ONLY to /ctl/*, the separate always-up control-plane service that
+ * exists precisely for the moment the brain is unreachable. The savestart
+ * gatling fires /admin/update - the BRAIN's own route - which is exactly what
+ * is dead when you need it most.
  *
  * ---------------------------------------------------------------------------
- * IT IS A RETRIER, NOT A FLOOD, AND THAT IS DELIBERATE
+ * IT IS A RETRIER, NOT A FLOOD
  *
- * A savestart POST is safe to duplicate. A RESTART is not:
- *   - self-update.sh runs DETACHED and does a --delete rsync overlay. A restart
- *     fired into the middle of that can interrupt an overlay half-written.
- *   - two restarts racing can SIGKILL a process that was already coming back.
- * So this fires ONE at a time, waits for a verdict, and only then re-arms.
- * Concurrency here buys nothing and can cost the deploy.
+ * A savestart POST is safe to duplicate. A restart or an update is not:
+ * self-update.sh runs DETACHED and does a --delete rsync overlay, so a press
+ * fired into the middle of one can interrupt a half-written overlay, and two
+ * racing restarts can SIGKILL a process that was already coming back.
+ * One at a time, wait for a verdict, then re-arm.
  *
  * ---------------------------------------------------------------------------
  * IT CONFIRMS BY ActiveEnterTimestamp, WHICH IS THE LESSON OF THAT NIGHT
@@ -34,12 +40,10 @@
  * "Did it restart?" was mis-answered for over an hour from portOpen, uptime and
  * the build stamp - all of which need the brain to be SERVING, which is exactly
  * what a broken brain is not. The unit's active-enter timestamp needs nothing
- * from the brain, cannot go backwards, and changes if and only if the unit
- * actually restarted. It is the only honest signal here.
- *
- * ⚠ NEVER GUESSES. If the baseline cannot be read it refuses to fire, because
- * a spotter with no baseline declares victory on its first poll - the exact bug
- * that killed the gatling's barrels before a single POST landed.
+ * from the brain, cannot go backwards, and moves if and only if the unit really
+ * restarted. A brain that merely starts answering again with the SAME
+ * activeEnter has NOT restarted - that case fooled a human that night and this
+ * tool reports it as not-landed.
  */
 (function () {
   'use strict';
@@ -47,54 +51,51 @@
   try { if (window.__mg) window.__mg.stop = true; } catch (e) {}
 
   var CTL = location.origin + '/ctl/';
-  var G = window.__mg = {
-    stop: false,
-    attempts: 0,
-    baseline: null,     // {activeEnter, nRestarts} read live at arm time
-    armed: false,
-    verdict: null
-  };
-
-  // Bounds. A restart that has not landed in this long has not landed.
   var MAX_ATTEMPTS = 8;
-  var WAIT_MS = 45000;    // how long to watch for activeEnter to move
-  var POLL_MS = 3000;
-  var VERB = 'restart';   // /ctl/restart - see NOTE ON VERBS at the bottom
+  var WAIT_MS = 300000;   // 5 min - an update overlays code before it restarts
+  var POLL_MS = 5000;
 
-  function log(msg, colour) {
-    try { console.log('%c[machinegun] ' + msg, 'color:' + (colour || '#8cf')); }
-    catch (e) { console.log('[machinegun] ' + msg); }
+  function log(m, c) {
+    try { console.log('%c[machinegun] ' + m, 'color:' + (c || '#8cf')); }
+    catch (e) { console.log('[machinegun] ' + m); }
   }
 
+  var G = window.__mg = {
+    stop: false, attempts: 0, baseline: null, busy: false, verdict: null
+  };
+
   function getStatus() {
-    // credentials come from the tab's existing Basic-auth session; /ctl/ is
-    // gated the same way /admin/ is.
     return fetch(CTL + 'status?cb=' + Date.now(), { cache: 'no-store' })
-      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (r) {
+        if (r.status === 401) { return { __auth: true }; }
+        return r.ok ? r.json() : null;
+      })
       .catch(function () { return null; });
   }
 
-  function armBaseline() {
+  G.status = function () {
     return getStatus().then(function (j) {
-      if (!j || !j.unit || !j.unit.activeEnter) {
-        log('REFUSING TO FIRE - could not read a baseline from /ctl/status.', '#f88');
-        log('A retrier with no baseline cannot tell a landed restart from a', '#f88');
-        log('failed one, and would report success on its first poll.', '#f88');
-        return false;
+      if (!j) { log('could not read /ctl/status.', '#f88'); return null; }
+      if (j.__auth) {
+        log('401 from /ctl/ - this tab has no admin session.', '#f88');
+        log('Open ' + CTL + 'status in a tab, enter the admin login, then', '#f88');
+        log('come back and paste this again.', '#f88');
+        return null;
       }
-      G.baseline = { activeEnter: j.unit.activeEnter, nRestarts: j.unit.nRestarts };
-      G.armed = true;
-      log('baseline: activeEnter=' + G.baseline.activeEnter
-        + ' nRestarts=' + G.baseline.nRestarts);
-      log('phase=' + j.phase + ' portOpen=' + j.portOpen);
-      return true;
+      var u = j.unit || {};
+      log('phase=' + j.phase + '  portOpen=' + j.portOpen
+        + '  activeEnter=' + u.activeEnter);
+      log('  activeState=' + u.activeState + '/' + u.subState
+        + '  exit=' + u.exitStatus + '  nRestarts=' + u.nRestarts
+        + '  mem=' + (u.memoryBytes ? (u.memoryBytes / 1073741824).toFixed(2) + ' GB' : '?'));
+      return j;
     });
-  }
+  };
 
-  // The verdict. activeEnter moving is the ONLY thing that means "it restarted".
+  // The verdict. Nothing else counts.
   function landed(j) {
-    return !!(j && j.unit && j.unit.activeEnter
-      && j.unit.activeEnter !== G.baseline.activeEnter);
+    return !!(j && j.unit && j.unit.activeEnter && G.baseline
+      && j.unit.activeEnter !== G.baseline);
   }
 
   function watch(deadline) {
@@ -102,71 +103,103 @@
     return getStatus().then(function (j) {
       if (landed(j)) {
         G.verdict = 'LANDED';
-        log('CONFIRMED - activeEnter moved ' + G.baseline.activeEnter
-          + '  ->  ' + j.unit.activeEnter, '#6f6');
-        log('phase=' + j.phase + ' portOpen=' + j.portOpen
+        log('CONFIRMED - activeEnter moved:', '#6f6');
+        log('  ' + G.baseline + '  ->  ' + j.unit.activeEnter, '#6f6');
+        log('  phase=' + j.phase + ' portOpen=' + j.portOpen
           + ' - the unit really restarted. Measured, not assumed.', '#6f6');
         return true;
       }
       if (Date.now() > deadline) return false;
-      return new Promise(function (res) { setTimeout(res, POLL_MS); }).then(function () {
-        return watch(deadline);
-      });
+      return new Promise(function (r) { setTimeout(r, POLL_MS); })
+        .then(function () { return watch(deadline); });
     });
   }
 
-  function fireOnce() {
-    if (G.stop) { log('stopped.', '#fc0'); return Promise.resolve(); }
+  function fire(verb, label) {
+    if (G.busy) { log('already firing - use __mg.stop=true first.', '#fc0'); return; }
+    G.busy = true; G.stop = false; G.attempts = 0; G.verdict = null;
+    return getStatus().then(function (j) {
+      if (!j || j.__auth || !j.unit || !j.unit.activeEnter) {
+        // !! NEVER GUESSES. A spotter with no baseline declares victory on its
+        // first poll - the exact bug that killed the gatling's barrels before a
+        // single POST could land.
+        log('REFUSING TO FIRE - no baseline from /ctl/status.', '#f88');
+        log('Without it, a landed press and a failed one look identical.', '#f88');
+        G.busy = false;
+        return;
+      }
+      G.baseline = j.unit.activeEnter;
+      log('baseline activeEnter = ' + G.baseline);
+      log('firing ' + label + ' (POST /ctl/' + verb + '), one at a time.');
+      return step(verb, label);
+    });
+  }
+
+  function step(verb, label) {
+    if (G.stop) { log('stopped.', '#fc0'); G.busy = false; return; }
     if (G.attempts >= MAX_ATTEMPTS) {
-      G.verdict = 'GAVE UP';
+      G.verdict = 'GAVE UP'; G.busy = false;
       log('GIVING UP after ' + MAX_ATTEMPTS + ' attempts.', '#f88');
-      log('activeEnter never moved. This is a CANNOT-TELL, not a success:', '#f88');
-      log('the unit may be stuck in a long synchronous operation, or a', '#f88');
-      log('self-update may still be running and holding the restart.', '#f88');
-      log('Check /ctl/status by hand before firing anything else.', '#f88');
-      return Promise.resolve();
+      log('activeEnter never moved. This is a CANNOT-TELL, not a failure', '#f88');
+      log('and not a success: a self-update may still be running and', '#f88');
+      log('holding the restart, or the unit is stuck in a long', '#f88');
+      log('synchronous operation. Check __mg.status() before firing more.', '#f88');
+      return;
     }
     G.attempts++;
-    log('attempt ' + G.attempts + '/' + MAX_ATTEMPTS + ' - POST /ctl/' + VERB);
-    return fetch(CTL + VERB, { method: 'POST', cache: 'no-store' })
-      .then(function (r) { return r.text().then(function (t) { return { s: r.status, t: t }; }); })
-      .catch(function (e) { return { s: 0, t: String(e && e.message || e) }; })
+    log('attempt ' + G.attempts + '/' + MAX_ATTEMPTS + ' - POST /ctl/' + verb);
+    return fetch(CTL + verb, { method: 'POST', cache: 'no-store' })
+      .then(function (r) {
+        return r.text().then(function (t) { return { s: r.status, t: t }; });
+      })
+      .catch(function (e) { return { s: 0, t: String((e && e.message) || e) }; })
       .then(function (res) {
-        // A dropped connection is what a WORKING restart looks like from a
+        // A dropped connection is what a WORKING press looks like from a
         // browser - and also what an unreachable server looks like. So the
-        // response is logged and then IGNORED; only activeEnter decides.
-        log('  -> http ' + res.s + ' ' + String(res.t).slice(0, 120));
-        log('  watching activeEnter for ' + (WAIT_MS / 1000) + 's...');
+        // response is logged and then IGNORED. Only activeEnter decides.
+        log('  -> http ' + res.s + ' ' + String(res.t).slice(0, 140));
+        log('  watching activeEnter for ' + (WAIT_MS / 60000) + ' min...');
         return watch(Date.now() + WAIT_MS);
       })
       .then(function (ok) {
-        if (ok || G.stop) return;
-        log('  not landed yet - re-arming.', '#fc0');
-        return fireOnce();
+        if (ok) { G.busy = false; return; }
+        if (G.stop) { G.busy = false; return; }
+        log('  not landed - re-arming.', '#fc0');
+        return step(verb, label);
       });
   }
 
-  armBaseline().then(function (ok) {
-    if (!ok) return;
-    log('ARMED. One restart at a time, confirmed by activeEnter.');
-    log('kill switch:  window.__mg.stop = true');
-    return fireOnce();
-  });
+  G.restart = function () { return fire('restart', 'RESTART (keeps weights)'); };
+  G.savestart = function () { return fire('update-savestart', 'UPDATE + SAVESTART (keeps weights)'); };
+
+  G.freshWalk = function () {
+    // !! THE ONLY IRREVERSIBLE VERB HERE. Two confirmations, and the second one
+    // states the consequence rather than asking a yes/no it is easy to click
+    // through.
+    if (!window.confirm('FRESH WALK - pull new code and WIPE ALL TRAINING?\n\n'
+      + 'Every trained weight, episode and schema is destroyed.\n'
+      + 'Identity anchors survive. Nothing she has LEARNED does.\n\n'
+      + 'There is no way back.')) { log('cancelled.', '#fc0'); return; }
+    var t = window.prompt('Type  WIPE  to confirm the fresh walk:');
+    if (String(t || '').trim().toUpperCase() !== 'WIPE') {
+      log('cancelled at the second confirmation.', '#fc0'); return;
+    }
+    return fire('update', 'FRESH WALK (WIPES ALL TRAINING)');
+  };
+
+  log('ARMED - nothing has been fired.');
+  log('  __mg.restart()     keeps weights');
+  log('  __mg.savestart()   new code, keeps weights');
+  log('  __mg.freshWalk()   new code, WIPES ALL TRAINING (asks twice)');
+  log('  __mg.status()      one reading');
+  log('  __mg.stop = true   kill switch');
+  G.status();
 
   /* -------------------------------------------------------------------------
-   * NOTE ON VERBS - read before changing VERB above.
-   *
-   *   restart           keeps trained weights. The safe default, and what this
-   *                     tool is for: a brain that is alive-but-wedged.
-   *   update-savestart  pulls new code, keeps weights.
-   *   update            pulls new code and WIPES ALL TRAINING. There is no way
-   *                     back. This tool deliberately does NOT default to it.
-   *
-   * ⛔ AND ONE HAZARD THAT IS NOT ABOUT THIS SCRIPT: the /update handler arms
-   * server/.force-fresh BEFORE it spawns the deploy. If a previous fresh-walk
-   * press was refused by a gate, that flag may still be on disk, and then even
-   * a plain `restart` here boots into a WIPE. self-update.sh disarms it on
-   * every refusal path as of 2026-09-04 - but if you are on an older build on
-   * the box, check for that file before firing.
+   * !! ONE HAZARD THAT IS NOT ABOUT THIS SCRIPT. The /update handler arms
+   * server/.force-fresh BEFORE it spawns the deploy. If an earlier fresh-walk
+   * press was refused by a gate, that flag can still be on disk - and then even
+   * a plain restart() boots into a WIPE. self-update.sh disarms it on every
+   * refusal path as of 2026-09-04; on an older box build, it does not.
    * ---------------------------------------------------------------------- */
 })();
