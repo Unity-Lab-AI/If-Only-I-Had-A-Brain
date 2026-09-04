@@ -3543,6 +3543,17 @@ Gee (verbatim):
   - **her letter shapes** — whether `letter:<ch>` has been learned, since a drawing with no words is correct behaviour when it has not been and must not read as a rendering failure.
   - ⛔ **No new surface ships without saying what a reader should CONCLUDE from each state** — the pages-page write-up in `TEACHFINAL.2` covers these too.
 
+- [ ] `PREWALK.1` — **ANYTHING OBVIOUS THAT MAY HAVE REGRESSED, BEFORE WE WALK.** Gee (verbatim): *"and any thing obvious thay may have regressed before we freshwalk"*. ⚠ **Narrower and earlier than `REGRESSION.1`**, which is the full review and is explicitly the LAST item on the board — this one is the obvious-breakage sweep that has to happen *before* the press, because a fresh walk teaches from zero using whatever the code does at that moment.
+  - **The changes to sweep are the ones that landed since the last press**, and the init-time ones matter most because they only ever take effect on this walk: the cross-projection wiring, the lamination change, the sem topographic removal, the attention head going live, the exam-gate split, the corrective teach, letter shapes, the graduation record, and the deferred-lane driver.
+  - ⛔ **The specific shape to hunt is the one this ledger is full of: a consumer still reading a producer that moved.** It renders a confident zero, not an error.
+  - ⭐ **Two checks already done in this batch and recorded so they are not repeated:** ① the lamination fix's memory cost is **+4.2% of cross-projection nnz** for bias-vs-veto measured directly, ~+10.7% against the pre-change build once the readout-band exemption is counted; ② **the boot sizing estimator still over-counts by 1.43×** (actual nnz is 0.70× the estimate at 60,000 neurons) **and no projection is under-counted**, so the extra wiring cannot make the box size a brain too large for its RAM. **The safe direction, verified rather than assumed.**
+
+- [ ] `SIZEEST.1` — ⚠ **THE BOOT SIZING ESTIMATOR IS WRONG IN THREE WAYS AT ONCE, ALL PRE-EXISTING, AND THEY PARTLY CANCEL.** `estimateLangCortexVramBytes` decides how many neurons the box builds. Measured against the real construction at 60,000 neurons it predicts **956,247** cross-projection entries where the actual is **670,860** — **0.70×**.
+  - It applies the DEFAULT fanout and cap to **every** pair, so it **under**-counts the six motor-bound pairs by 2×.
+  - It omits `betweenClusterDensityScale` entirely, so it **over**-counts every association↔output pair by 3.3×.
+  - Its own comment says *"14 cross-projections (7 pairs × 2 directions)"* and the list it walks has **8 pairs / 16 projections**.
+  - ⭐ **The net is conservative, which is the safe direction and why this is not urgent** — but it means the box builds a brain roughly **30% smaller on the cross-projection term than its RAM allows**, and the cancellation is a coincidence, not a design. ⛔ **A future fanout change could flip the sign silently**, and the failure mode on that side is an OOM at boot.
+
 - **Acceptance:** an operator can watch a walk finish, see every finalization step resolve with a reason, save the resulting weight set, drop it back in later, and have training resume from exactly where that set left off — with the write-up on the pages page describing all of it; **and every surface in the viewer has been re-checked against its live source, with a reason recorded for each one that had drifted.**
 
 
