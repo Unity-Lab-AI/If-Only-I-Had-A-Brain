@@ -105,6 +105,16 @@
   .tv-sub{color:var(--tv-dim);font-size:12px}
   .tv-wrap{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:14px;padding:14px}
   @media(max-width:1000px){.tv-wrap{grid-template-columns:1fr}}
+  /* ⛔ DIMMED, NOT HIDDEN. A control that vanishes teaches a reader that it does
+     not exist; a control that is visibly refused teaches them WHY. The server is
+     the enforcement (`requireLoopback`) — this is only the page being honest, so
+     the click still fires and still gets the server's real answer. */
+  body.tv-no-admin .tv-knob-set,
+  body.tv-no-admin #tvBuf,
+  body.tv-no-admin #tvBench{ opacity:.5; }
+  body.tv-no-admin .tv-knob-set::after,
+  body.tv-no-admin #tvBuf::after,
+  body.tv-no-admin #tvBench::after{ content:' (admin)'; font-size:9px; opacity:.8; }
   .tv-card{background:var(--tv-panel);border:1px solid var(--tv-line);border-radius:8px;overflow:hidden}
   .tv-card>h2{margin:0;padding:9px 12px;font-size:11px;letter-spacing:.13em;
     text-transform:uppercase;color:var(--tv-dim);border-bottom:1px solid var(--tv-line);
@@ -221,6 +231,14 @@
     title="The subject/grade cell being taught right now."
     data-tip="The subject/grade cell currently being taught, e.g. science/grade5.&#10;&#10;The walk resolves the LOWEST cell still owed and starts there, so this is not necessarily the highest grade she has reached.">—</span>
 </header>
+
+<!-- ⛔ THE ADMIN LANE, STATED. Every READING on this page comes from
+     /public-state.json and needs no auth by design — so the instruments are
+     never hidden. Only the three privileged writes are gated, server-side, and
+     this line exists so a refused control reads as "not your lane" instead of
+     "the brain is broken". It stays quiet until something has actually answered:
+     asserting a lane nobody has tested would be its own lie. -->
+<div id="tvAdmin" class="tv-sub" style="padding:6px 14px 0;line-height:1.5"></div>
 
 <div class="tv-wrap">
   <div>
@@ -551,7 +569,13 @@ $('tvBench').onclick = async () => {
   feed.scrollTop = feed.scrollHeight;
   try {
     const r = await fetch('/teach-bench', { cache: 'no-store' });
+    if (isForbidden(r)) {
+      markAdminLane(false, 'This browser is not calling from loopback.');
+      box.textContent = 'bench is an admin-only control and this page is not on the admin lane — the bench itself is fine, and every reading above is live. Run it from the box.';
+      return;
+    }
     const j = await r.json();
+    if (r.ok) markAdminLane(true);
     if (!j || j.ok !== true) {
       box.textContent = `bench FAILED — ${(j && j.error) || 'the brain returned no verdict'}`;
       return;
@@ -598,10 +622,42 @@ function renderBuf(b) {
   lbl.textContent = s;
   $('tvBuf').textContent = b.auto ? 'buffer on' : 'buffer';
 }
+/* ⛔⛔ AN AUTH FAILURE IS NOT A BRAIN FAILURE, AND THIS PAGE USED TO SAY IT WAS.
+   A 403 from a privileged endpoint rendered here as `buffer ERROR — forbidden…`,
+   which reads as the buffer being broken. It is not: the brain is fine, the
+   BUFFER is fine, and what failed is that this browser is not on the admin lane.
+   The dashboard already learned this exact lesson; the viewer had not.
+
+   ⚠ THE INSTRUMENTS ARE NOT GATED AND MUST NOT BE. Everything this page READS
+   comes from `/public-state.json`, which needs no auth by design — hiding the
+   dials behind an admin check would invent a restriction the server does not
+   have. Only the three privileged WRITES are gated, server-side, by
+   `requireLoopback`. This function only makes the page tell the truth about it. */
+let adminLane = null;   // null = not yet known, true/false once a call has answered
+function markAdminLane(ok, why) {
+  adminLane = ok;
+  document.body.classList.toggle('tv-no-admin', ok === false);
+  const el = $('tvAdmin');
+  if (!el) return;
+  el.textContent = ok
+    ? 'admin lane — the privileged controls on this page will work.'
+    : `admin lane NOT authenticated — the brain is UP and every reading on this page is live and correct. ${why || ''} Only the controls below are refused, because they are loopback-only on the server.`;
+  el.style.color = ok ? 'var(--tv-dim)' : 'var(--tv-warn)';
+}
+/* A 403 is the ONE status that means "not you", and it must never be reported
+   as a fault in the thing being called. */
+function isForbidden(r) { return r && r.status === 403; }
+
 async function bufPoke(action) {
   try {
     const r = await fetch(`/corpus-buffer?action=${encodeURIComponent(action)}`, { method: 'POST', cache: 'no-store' });
+    if (isForbidden(r)) {
+      markAdminLane(false, 'This browser is not calling from loopback.');
+      $('tvBufLbl').textContent = 'corpus buffer — admin-only control, and this page is not on the admin lane. Nothing is wrong with the buffer.';
+      return null;
+    }
     const j = await r.json();
+    if (r.ok) markAdminLane(true);
     if (!j || j.ok !== true) { $('tvBufLbl').textContent = `buffer ERROR — ${(j && j.error) || 'no reply'}`; return null; }
     renderBuf(j.buffer);
     return j.buffer;
@@ -1154,7 +1210,16 @@ function renderKnobs(k) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ key, value: input.value }),
         });
+        /* A 403 means "not you", never "the knob is broken" — reporting it in
+           red beside the knob would blame the brain for a lane problem. */
+        if (isForbidden(r)) {
+          markAdminLane(false, 'This browser is not calling from loopback.');
+          msg.style.color = 'var(--tv-warn)';
+          msg.textContent = ' ⚠ admin-only — this page is not on the admin lane. The knob is fine; the write was refused.';
+          return;
+        }
         const j = await r.json().catch(() => ({}));
+        if (r.ok) markAdminLane(true);
         if (!r.ok || !j.ok) {
           msg.style.color = 'var(--tv-bad)';
           msg.textContent = ` ⛔ ${j.why || ('HTTP ' + r.status)}`;
