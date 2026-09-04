@@ -1,6 +1,54 @@
 # RESUME — Session Pickup Brief
 
-> ## 🟢 2026-09-04 THE PRESS LANE IS OPEN — THE MACHINE GUN WAS FIRING BLANKS (LATEST — PICK UP HERE)
+> ## 🟢🟢 2026-09-04 SHE IS UP, THE LIBRARY IS THERE, AND THE THREE-HOUR WAIT WAS FOR A PROCESS THAT DIED AT 12:56 (LATEST — PICK UP HERE)
+>
+> ### ⭐⭐ THE READ THAT ENDED THE DAY'S BLINDNESS
+> `__mg.restart()` landed (`boundPort: true`), she came up serving, and the console ring — unreachable for hours — answered on the **first** probe:
+> ```
+> [Coverage]   213 cells run · 161 fed · 32 thin · 0 EMPTY · 71,021,647 words
+> [ExamVocab]  496,410 distinct corpus words · 0 exam words missing
+> [Embeddings] Reading corpora/glove.6B.300d.txt via streaming readline...
+> [Brain]      Binary weights applied — 17/17 sections (6,862 MB, saveVersion=59)
+> [Brain]      dictionary API ready — "test" -> "A challenge, trial."
+> ```
+> **This morning that same panel read `0 fed / 193 EMPTY` and `GloVe could not be loaded`.** Plus: 97 phase markers, a 1,944-word bucket map, 47 Tier-2 + 30 Tier-3 schemas, 152 episodes, MindSpace, endocrine, introspective drive. Language cortex pinned at 15,082,717 to match the weights on disk.
+>
+> ### ⛔⛔ WHY THE WAIT WAS FUTILE — AND GEE FOUND IT
+> Gee: *"the gattling scipts always worked before check it"*. **The route is the answer.** The same `self-update.sh` is reachable two ways and they are NOT equivalent:
+>
+> | route | how it runs the script | survives a 6-hour sync? |
+> |---|---|---|
+> | `POST /admin/update` (**brain**) | `spawn(..., {detached:true})` + `unref()` | **yes** — no timeout |
+> | `POST /ctl/update` (**ctl**) | `execFile(..., {timeout: 900000})` | **no** — SIGTERM at 15 min |
+>
+> The 12:41 press went down the ctl path and was **killed at 12:56.** The corpus rsync had already finished — it runs *before* the LFS pull — so the books and GloVe landed. But the restart is the script's LAST step and never happened.
+>
+> ⭐ **The proof is a flag that was never written.** `.force-fresh` is set at `self-update.sh:737`, **after every gate**, and the 16:17 boot logged `✓ CLEAN SHUTDOWN detected — RESUMING where it left off`. A deploy that reached its own restart step would have armed it. *I asked "is it still running?" for three hours; the flag that was never written had already answered.*
+>
+> ### ⚠ SHE RESUMED, SHE DID NOT FRESH-WALK
+> 2 passed cells, `ela=kindergarten math=kindergarten`. Not a wipe. **If a true fresh walk is wanted, it is now a deliberate press** — and the box will have `BOOTGLOVE.1` after the current deploy, so a boot can no longer die on a missing table.
+>
+> ### ⏳ A DEPLOY IS RUNNING RIGHT NOW — AND THIS ONE CAN FINISH
+> ```
+> [Brain]       HTTP /update?keep=1 — UPDATE + SAVESTART requested
+> [self-update] 16:18:52Z START — overlay main -> /opt/unity-brain
+> [self-update] 16:19:01Z deploy identity: 97caa246 (main)
+> [self-update] 16:19:02Z data sync — pulling books + wavelet fields
+> ```
+> Fired by the **gatling**, so it went through the brain's route: **detached, no guillotine.** Expect `[EventLoop] BLOCKED …` and 504s for a few hours, then a savestart restart onto `97caa246`. ⛔ **Do not press anything into it** — a second `rsync -a --delete` into the same directory is the one action that corrupts rather than fails.
+>
+> ### ✅ BUILT THIS ROUND
+> - **`GATFRESH.1/.2/.3`** — `scripts/gatling-freshwalk.js` (+ pasteable twin): the savestart gatling's body firing `/admin/update` with **no query**. Asks twice **before touching anything**. ⛔ **`"already updating/restarting"` is a HARD STOP here** — the brain clears `_brainShutdownRequested` after 5 min, so hammering through it arms a SECOND deploy. **36/36**, including a case that runs the *savestart* body on the identical mock and requires the opposite behaviour.
+> - **`MGCONFIRM.1/.2/.3`** — the machine gun collected the typed `WIPE` and never put it on the wire; and it retried a flat refusal 8×. **47/47.**
+> - **`MGSELFLAND.1`** — the press-wait now stands down when `activeEnter` moves, instead of pressing over a walk that just started.
+>
+> ### ⏳ OPEN, NEITHER BLOCKING
+> - **The ctl path's 15-minute guillotine** should detach like the brain's does.
+> - **Nothing can pass `UAL_FIELDS=0` through a press.** The flag exists at `self-update.sh:431` and would turn a 6-hour deploy into **~5 minutes** — the 114 GB of fields is the optional half, and a missing field is non-fatal by design.
+>
+> ---
+>
+> ## 🟢 2026-09-04 THE PRESS LANE IS OPEN — THE MACHINE GUN WAS FIRING BLANKS
 >
 > ### ⛔ STATE
 > ```
