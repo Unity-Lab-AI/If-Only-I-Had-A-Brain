@@ -69,6 +69,18 @@
 > ⛔ **My first re-route was wrong and the book TITLES caught it in one `--list` run** — it offered `cstheory` Pygame, Fortran and Linux. **A cell filled with the wrong content is worse than one left thin, because the thin one still says it is thin.** Corrected: programming → `major`, discrete-maths/logic → `cstheory`, re-priced first.
 > **`major` 514,295 → 55,144, four of six cells CLEARED. `cstheory` 652,874 → 283,988.** BrainWaves **`1e09d3d1`**, 0 deletions, **26,359 fields verified intact**.
 >
+> ### ✅✅ READY FOR THE PRESS — the pre-press sequence is complete at `main` `18f9c34b`
+> ```
+> corpus     71,256,751 words · 193 cells · 7,622 entries · ~3,639,666 sentences
+> owed       1,149,894   (4,951,331 this morning)
+> BrainWaves 1e09d3d1 — 0 deletions, 26,359 fields verified intact
+> remotes    origin + github both pushed, develop and main level
+> PREWALK    final pass CLEAN against the exact press commit
+> RE-PRICE   computed and written down — NO gate, bound or dedup was weakened
+> ```
+> ⛔ **The one thing that is NOT ready and cannot be: `NOFALLBACK.5`'s gate pass-rate without the oracle.** That number does not exist until a walk runs. **It is a post-press reading, not a pre-press calculation.**
+> ⭐ **The bundle mystery is solved and closes a claim I got wrong twice:** the recurring **23,628-byte** difference is **exactly the bundle's 23,628 newlines** — git checks out CRLF, esbuild writes LF. Three builds are byte-identical and `main` holds that file. **The bundle was never stale.** A byte-count comparison across a checkout boundary measures line endings, not staleness.
+>
 > ### NEXT — in order
 > - **`PREWALK.1`** — the obvious-regression sweep, which has to happen *before* the press.
 > - **`NOFALLBACK.5`** — the RE-PRICE, immediately before the press, by law.
