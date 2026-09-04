@@ -181,7 +181,7 @@ const WN = (() => {
       }
       return s;
     };
-    return { noun: load('index.noun'), adj: load('index.adj'), adv: load('index.adv') };
+    return { noun: load('index.noun'), adj: load('index.adj'), adv: load('index.adv'), verb: load('index.verb') };
   } catch { return null; }
 })();
 
@@ -212,7 +212,114 @@ function usableTerm(term) {
   return WN.noun.has(head) && !WN.adv.has(head);
 }
 
+// ── LIFE IS ASKED IN HER OWN VOICE ───────────────────────────────────────────
+//
+// Operator: *"they need to be in her own words self image"*. Life is
+// AUTOBIOGRAPHY, and *"what is a trust"* is the wrong question about it in two
+// separate ways — it is third-person about a first-person subject, and it treats
+// a memory as a definition.
+//
+// ⛔ THE ACADEMIC EXTRACTION WAS MEASURED AGAINST THE LIFE CORPUS BEFORE THIS
+// WAS WRITTEN, AND IT IS THE WRONG TOOL: only **181 of 4,304 life sentences
+// (4.2%)** carry a definitional shape at all. Her life is not written as
+// definitions and should not be.
+//
+// ⭐ What her life corpus IS written as is first-person statement — *"i want all
+// black, all the time"*, *"i guard my real self behind a screen name now"*,
+// *"i am building a self on purpose now"*. So the question is her own sentence
+// turned round, and the answer is her own word. **Recall of her own life is not
+// memorisation standing in for learning; for autobiography it IS the thing being
+// tested** — and it matches `self-frame.js`, where every lesson is something
+// SHE DID rather than something she was told.
+const LIFE_ACT = /^i (?:can |will |would |always |never |still |just |only )?([a-z]{3,14}) (?:my |the |a |an |all |it |that |them |about |to |for )?([a-z][a-z' -]{2,40})/;
+const LIFE_AM = /^i am (?:not )?(?:a |an |the )?([a-z][a-z' -]{2,40})/;
+
+function buildLifeCell(grade) {
+  const file = path.join(ROOT, 'corpora', 'life', `${grade}.json`);
+  let d;
+  try { d = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; }
+  const exps = Array.isArray(d.experiences) ? d.experiences : [];
+  if (!exps.length) return null;
+  // The same pre-taught bar as the academic side, counted against HER OWN life
+  // canon rather than a textbook.
+  const counts = new Map();
+  for (const e of exps) {
+    for (const w of String(e.story || '').split(/[^a-z']+/)) {
+      if (w.length >= 2) counts.set(w, (counts.get(w) || 0) + 1);
+    }
+  }
+  const taught = (w) => (counts.get(w) || 0) >= MIN_OCCURRENCES;
+  const byTheme = new Map();
+  const seenQ = new Set();
+  const answerUse = new Map();
+
+  for (const e of exps) {
+    const theme = String(e.theme || '').trim() || 'untitled';
+    for (const s of String(e.story || '').split(/(?<=[.!?])\s+/)) {
+      const t = s.trim().toLowerCase();
+      if (!/^i /.test(t)) continue;
+      let q = null, a = null;
+
+      const mAct = t.match(LIFE_ACT);
+      if (mAct && WN && WN.verb.has(mAct[1])) {
+        const ans = headNoun(mAct[2], new Set([mAct[1]]));
+        // ⚠ The question is HER sentence turned round, so it stays in her voice:
+        // "i guard my real self" -> "what do i guard".
+        if (ans) { q = `what do i ${mAct[1]}`; a = ans; }
+      }
+      if (!q) {
+        const mAm = t.match(LIFE_AM);
+        if (mAm) {
+          const ans = headNoun(mAm[1], new Set());
+          if (ans) { q = 'what am i'; a = ans; }
+        }
+      }
+      if (!q || !a) continue;
+      if (!taught(a)) continue;
+      if (!nounNotAdjective(a)) continue;
+      // ⛔ ADVERBS TOO, HERE AND NOT ON THE ACADEMIC SIDE. Her sentences END on
+      // adverbs constantly — *"i guard my real self behind a screen name NOW"*,
+      // *"i am building a self on purpose NOW"* — so the head-final walk lands on
+      // `now` and produces `what do i guard -> now`. Textbook prose does not do
+      // this, which is why the academic answers never needed the check.
+      if (WN && WN.adv.has(a)) continue;
+      if (seenQ.has(q)) continue;
+      if ((answerUse.get(a) || 0) >= 2) continue;
+      seenQ.add(q);
+      answerUse.set(a, (answerUse.get(a) || 0) + 1);
+      if (!byTheme.has(theme)) byTheme.set(theme, []);
+      byTheme.get(theme).push({
+        q, a, variants: [a],
+        standard: `life/${grade} self-recall`,
+        difficulty: 1,
+        source: 'derived-from-life-canon',
+      });
+    }
+  }
+  return byTheme;
+}
+
 async function buildCell(subject, grade) {
+  // Life takes the first-person extraction and returns the same theme map the
+  // sampler below consumes, so the sampling and the round-robin spread are
+  // shared rather than reimplemented.
+  if (subject === 'life') {
+    const byThemeLife = buildLifeCell(grade);
+    if (!byThemeLife || !byThemeLife.size) return null;
+    const themesL = [...byThemeLife.keys()];
+    const pickedL = [];
+    for (let i = 0; pickedL.length < SAMPLE; i++) {
+      let progressed = false;
+      for (const t of themesL) {
+        const list = byThemeLife.get(t);
+        if (i < list.length) { pickedL.push(list[i]); progressed = true; }
+        if (pickedL.length >= SAMPLE) break;
+      }
+      if (!progressed) break;
+    }
+    return { subject, grade, pool: [...byThemeLife.values()].reduce((n, l) => n + l.length, 0), themes: themesL.length, questions: pickedL };
+  }
+
   const file = path.join(CORPUS, subject, `${grade}.json`);
   let d;
   try { d = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; }
@@ -304,6 +411,41 @@ for (const subject of subjects) {
   for (const f of fs.readdirSync(path.join(CORPUS, subject))) {
     if (f.endsWith('.json')) cellList.push([subject, f.replace(/\.json$/, '')]);
   }
+}
+// ⭐ LIFE IS ITS OWN CORPUS AND ITS OWN QUESTION SHAPE. It does not live under
+// `corpora/academic`, it is not prose about a subject, and it is asked in her
+// own voice — so it is listed here explicitly rather than swept up by the
+// directory walk above, which would have applied the definitional extraction to
+// autobiography and produced nothing usable.
+// ⛔⛔ LIFE IS OFF BY DEFAULT BECAUSE THE EXTRACTION DOES NOT WORK, AND SAYING
+// SO IS THE POINT OF THIS BLOCK. `EXAM_LIFE=1` runs it anyway for further work.
+//
+// The first-person forms below are implemented and were measured on the real
+// canon. They produce **2-7 questions a cell against a 14 sample**, and by eye
+// roughly a quarter are usable: `what do i wear -> collar` is right, while
+// `what do i found -> people`, `what am i -> who`, `what do i saw -> mom` and
+// `what do i have -> run` are not.
+//
+// ⭐ WHY IT FAILS, RECORDED SO THE NEXT ATTEMPT DOES NOT REPEAT IT. Definition
+// extraction works because a textbook writes `<term> is a <genus>` — a fixed
+// shape carrying the answer in a known slot. **Narrative has no such shape.**
+// Her sentences are subordinate clauses, past tense, negations and asides, and
+// the head-final walk that works on `a matrix is a rectangular array` has
+// nothing to grip on `i eventually forgave her but i never forgot`. Filtering
+// adverbs helped and did not fix it, because the problem is not the vocabulary,
+// it is that there is no slot.
+//
+// ⚠ THE HONEST ROUTE FOR LIFE IS HAND-AUTHORED QUESTIONS — about 14 a cell,
+// 20 cells. Autobiographical recall is worth testing (a person should know her
+// own life) and it deserves questions written by someone who has read the canon,
+// not questions squeezed out of a shape that is not there.
+if (ONLY.includes('life') || process.env.EXAM_LIFE === '1') {
+  try {
+    for (const f of fs.readdirSync(path.join(ROOT, 'corpora', 'life'))) {
+      if (f.endsWith('.json')) cellList.push(['life', f.replace(/\.json$/, '')]);
+    }
+    console.log('[exam-banks] ⚠ life extraction ENABLED — it yields few questions and many are wrong. See the note in this file.');
+  } catch { console.log('[exam-banks] no life corpus at corpora/life.'); }
 }
 
 let cells = 0, withQ = 0, total = 0, thin = [];

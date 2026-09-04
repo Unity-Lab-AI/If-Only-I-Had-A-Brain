@@ -3,8 +3,8 @@
  "subject": "ela",
  "grade": "college1",
  "sample": 14,
- "poolSize": 33,
- "themes": 9,
+ "poolSize": 55,
+ "themes": 10,
  "questions": [
   {
    "q": "what is a film essay",
@@ -97,6 +97,16 @@
    "source": "derived-from-corpus"
   },
   {
+   "q": "what is a quotation marks",
+   "a": "tool",
+   "variants": [
+    "tool"
+   ],
+   "standard": "ela/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
    "q": "what is a argumentative essay",
    "a": "piece",
    "variants": [
@@ -131,16 +141,6 @@
    "a": "form",
    "variants": [
     "form"
-   ],
-   "standard": "ela/college1 key-term recall",
-   "difficulty": 1,
-   "source": "derived-from-corpus"
-  },
-  {
-   "q": "what is a collins",
-   "a": "man",
-   "variants": [
-    "man"
    ],
    "standard": "ela/college1 key-term recall",
    "difficulty": 1,

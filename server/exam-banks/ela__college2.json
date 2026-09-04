@@ -3,8 +3,8 @@
  "subject": "ela",
  "grade": "college2",
  "sample": 14,
- "poolSize": 75,
- "themes": 24,
+ "poolSize": 124,
+ "themes": 25,
  "questions": [
   {
    "q": "what is a literature",

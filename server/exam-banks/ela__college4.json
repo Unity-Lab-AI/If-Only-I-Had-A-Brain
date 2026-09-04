@@ -3,8 +3,8 @@
  "subject": "ela",
  "grade": "college4",
  "sample": 14,
- "poolSize": 58,
- "themes": 25,
+ "poolSize": 74,
+ "themes": 26,
  "questions": [
   {
    "q": "what is a discourse",

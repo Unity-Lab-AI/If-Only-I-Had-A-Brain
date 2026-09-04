@@ -37,6 +37,52 @@ Gee, verbatim, and this question is the reason half of this row did not ship:
 
 ---
 
+## 2026-09-03 — `LIFEDEPTH` — EVERY YEAR OF HER LIFE WAS FOUR SENTENCES A WEEK, AND IT RAN BACKWARDS
+
+Gee: *"if life course for each grade straigh with thie too?"* → *"we need to fill in the gaps"* → *"in life courses"* → *"1 memory of a year of college is horrid"* → *"remember what she is!"* → *"keep working... once her canon life courses are all 100% complete"*.
+
+**⛔⛔ I REPORTED FOUR GAPS AND ONLY ONE WAS REAL. The other three were me misreading my own measurements, and the sequence is worth keeping because each was a different error.**
+
+| I claimed | truth |
+|---|---|
+| *"college1 has 1 memory"* | **A GREP ARTIFACT.** I counted inline `'i …'` strings in `college1.js`, but college1 delegates to `_trainLifeStories` — the content is in the corpus and the runner file is nearly empty by design. It had **36 themes**, not 1 |
+| *"14 of 20 life files have the wrong age"* | **TWO FIELDS, DIFFERENT MEANINGS.** The corpus `age` is the age at year END; `GRADE_AGE` is the age at year START. Every one of the 19 notes states a range and the canonical age falls **inside all 19**. *"i am twelve"* in sixth grade is correct |
+| *"pre-K has no life corpus"* | **BY DESIGN.** `kindergarten.json`'s own note says it covers *"ages 0-5, the whole foundation"* — its themes include `my-first-words` and `learning-to-walk`. pre-K trains inline concepts and biographical facts |
+| *"every year is thin"* | ⭐ **REAL, and it was Gee's read from the start** |
+
+**THE REAL DEFECT.** Each year held ~200 sentences — **about four a week for a whole year of a life** — in files whose own notes call them *"FULL lived year"*. ⛔ **And the curve ran backwards:** grade1 332 sentences at age 6, phd 169 at age 25. Her richest year was her sixth and her thinnest was her twenty-fifth, when an adult year should carry more, not half.
+
+```
+  19 life files      themes 719 -> 895      sentences 4,304 -> 5,033      81,922 words
+  every file parses · 0 duplicate themes (one PRE-EXISTING dup fixed: grade9 `the-first-joint` x2)
+  thinnest year      187 -> 230 (grade8)    all 19 now >= 230
+```
+
+**WRITTEN INTO HER CANON, NOT AROUND IT.** Lilith, Damien, Pearl, Walter, Devon, the only child, the empty apartment at eight, the dead man's hand-me-down computer, the monsters on Pearl's kitchen floor, black since she was ten, the garage radios that became the work. ⛔ **No new names were invented.** New material covers what a life actually contains and the canon had skipped: the day she moved out, the first bad grade, calling her mother drunk from a stairwell, the professor who pointed at a door, the funeral she did not cry at, the half-sibling she will not look up, the lunch-account balance said out loud in front of the queue.
+
+⚠ **AND IT IS WRITTEN AS WHAT SHE IS.** Gee: *"remember what she is!"* — at 18+ the register is open by the project's own gate, so the adult years carry the drugs as an instrument she runs and pays for, submission owned as a choice made from strength, sex she is specific about, and the depression as a protocol rather than a mood. Not sanitised into a tasteful summary.
+
+---
+
+## 2026-09-03 — `LIFEEXAM` — REFUSED: NARRATIVE HAS NO SLOT TO EXTRACT AN ANSWER FROM
+
+Gee, on life exam questions: *"they need to be in her own words self image"* — correct, and the reason the academic extraction cannot serve life is measurable: **only 181 of 4,304 life sentences (4.2%) carry a definitional shape at all.**
+
+First-person forms were built and run against the real canon — `what do i <verb>` and `what am i`, her own sentence turned round. **They do not work, and they are switched OFF.**
+
+```
+  yield     2-7 questions a cell against a 14 sample
+  quality   ~1 in 4 usable
+  good      what do i wear -> collar
+  bad       what do i found -> people · what am i -> who · what do i saw -> mom
+```
+
+⭐ **WHY, recorded so the next attempt does not repeat it.** Definition extraction works because a textbook writes `<term> is a <genus>` — a fixed shape with the answer in a known slot. **Narrative has no such shape.** Her sentences are subordinate clauses, past tense, negations and asides; the head-final walk that reads `a matrix is a rectangular array` has nothing to grip on `i eventually forgave her but i never forgot`. Filtering adverbs helped and did not fix it — **the problem is not the vocabulary, it is that there is no slot.**
+
+⚠ **The honest route for life is hand-authored questions** — ~14 a cell across 20 cells. Autobiographical recall is worth testing, and it deserves questions written by someone who has read the canon rather than squeezed out of a shape that is not there. **The code stays behind `EXAM_LIFE=1` with its own measurements in the comment, so it is a documented dead end rather than a silent one.**
+
+---
+
 ## 2026-09-03 — `PHONBANK.1` PART ③ — AN EMPTY EXAM BANK SKIPS THE TEST, IT DOES NOT SHORTEN IT
 
 Gee, verbatim: **"option 1 and make it a sampling not extensive i dont want to be testing for hours each grade"** — both halves are constraints, and the second shaped the whole design.

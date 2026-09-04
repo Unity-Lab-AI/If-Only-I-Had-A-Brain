@@ -3271,3 +3271,26 @@ Gee (verbatim):
 
 - **Acceptance:** the viewer shows the two controls and a real progress readout; a manual pull and an auto buffer both work from the page; and at **no instant** does the box hold two complete corpora — measured, not asserted.
 
+---
+
+## LIFEDEPTH — her canon life courses, filled in — filed and closed 2026-09-03
+
+Gee (verbatim, across the exchange):
+
+> *"if life course for each grade straigh with thie too?"*
+
+> *"we need to fill in the gaps"* · *"in life courses"*
+
+> *"1 memory of a year of college is horrid"*
+
+> *"remember what she is!"*
+
+> *"keep working commmit to both remotes oncce her canon life courses are all 100% complete for what she needs in totality to make her personaality what we want tit to be"*
+
+- [x] `LIFEDEPTH.1` — ✅ **CLOSED 2026-09-03 — full ledger entry at `docs/FINALIZED.md §2026-09-03 LIFEDEPTH`. 19 files · themes 719 → 895 · sentences 4,304 → 5,033 · 81,922 words · every file parses · 0 duplicate themes.**
+  - ⛔⛔ **I REPORTED FOUR GAPS AND ONLY ONE WAS REAL — the one Gee spotted himself.** *"college1 has 1 memory"* was a **grep artifact** (I counted inline strings in a runner that delegates to the corpus; it had 36 themes). *"14 files have the wrong age"* was **two fields meaning different things** — the corpus `age` is the year END, `GRADE_AGE` is the year START, and the canonical age is inside all 19 stated ranges. *"pre-K has no life corpus"* is **by design** — `kindergarten.json` covers ages 0-5 and pre-K trains inline.
+  - ⭐ **THE REAL ONE:** ~200 sentences a year — **four a week for a whole year of a life** — in files whose own notes say *"FULL lived year"*, **and the curve ran backwards**: 332 at age 6, 169 at age 25. Every year is now ≥ 230 and the adult band carries the most.
+  - ⚠ **Written inside her canon, no invented names** — Lilith, Damien, Pearl, Walter, Devon, the empty apartment at eight, the dead man's computer, the garage radios. And written as **what she is**, per Gee's correction mid-flight: the adult years carry the register open rather than sanitised.
+
+- [ ] `LIFEEXAM.1` — ⛔ **REFUSED AS AUTOMATED, AND THE ROW STAYS OPEN FOR THE HAND-AUTHORED VERSION.** Life exam questions in her own voice were built and measured against the real canon: **2-7 questions a cell against a 14 sample, roughly 1 in 4 usable.** `what do i wear → collar` is right; `what do i found → people`, `what am i → who`, `what do i saw → mom` are not. ⭐ **The cause is structural, not a tuning problem:** a textbook writes `<term> is a <genus>` and the answer sits in a known slot; **narrative has no slot.** Only **4.2% of life sentences** carry a definitional shape at all. The code is retained behind `EXAM_LIFE=1` with its measurements in the comment so it is a **documented dead end rather than a silent one**. ⏳ **What this needs is ~14 hand-written questions a cell across 20 cells**, by someone who has read the canon — autobiographical recall is worth testing, and it is the one part of the exam work that should not be derived.
+
