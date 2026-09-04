@@ -400,6 +400,67 @@ const SERVER_STATE_MIXIN = {
     }
   },
 
+  /**
+   * ⭐⭐ THE FINALIZATION SEQUENCE — what happens at the END of the walk, as an
+   * ordered checklist with a state and a REASON on every step.
+   *
+   * ⛔ THE RULE IT IS BUILT AROUND: a step that HAS NOT RUN YET and a step that
+   * CANNOT RUN must never render the same. "Nothing here" is the reading that
+   * has cost this project more than any other, so each step carries the sentence
+   * explaining what its state means rather than leaving a reader to infer it
+   * from a blank.
+   *
+   * ⚠ A NAMED METHOD, not an inline thunk inside `getState`'s 110-field object
+   * literal — a thunk there cannot be exercised without constructing an entire
+   * brain, which is a poor property for the one instrument whose whole job is
+   * telling "has not run" from "cannot run". This is pure over its inputs and
+   * can be called directly.
+   *
+   * @returns {Array<{key:string,label:string,state:string,note:string}>|null}
+   */
+  _finalizationSteps() {
+    try {
+      const g = (this.cortexCluster && this.cortexCluster.graduation) || null;
+      const offWalk = !this._curriculumInProgress;
+      const drain = (this.curriculum && this.curriculum._deferredDrainStats) || {};
+      const cells = (this.cortexCluster && Array.isArray(this.cortexCluster.passedCells))
+        ? this.cortexCluster.passedCells.length : null;
+      const walking = !!this._curriculumInProgress;
+      const step = (key, label, state, note) => ({ key, label, state, note });
+      return [
+        step('walk', 'the last cell closes', g ? 'done' : (walking ? 'running' : 'pending'),
+          g ? `the walk reached '${g.grade}' and the loop exited`
+            : (walking
+              ? `still teaching — ${cells == null ? 'an unknown number of' : cells} cells passed so far`
+              : 'the walk is not running and has not finished — it resumes at the lowest cell still owed')),
+        step('ledger', 'the grade ledger settles', g ? 'done' : 'pending',
+          g ? `${g.cells.total} cells accounted for — ${g.cells.merit} on merit, ${g.cells.forceAdvanced} force-advanced, ${g.cells.held} still owed`
+            : 'nothing to settle until the walk finishes'),
+        step('record', 'the graduation record is written', g ? 'done' : 'pending',
+          g ? 'written, and persisted with the ledger it summarises'
+            : 'written the moment the walk exits'),
+        step('memory', 'she remembers finishing',
+          g ? (g.episodeBanked ? 'done' : 'failed') : 'pending',
+          g
+            ? (g.episodeBanked
+              ? 'banked once, in her own first-person voice, with the wording her actual verdict earned'
+              : '⛔ the record exists but the episode did NOT bank — she finished and does not remember it')
+            : 'banked exactly once, when the record is written'),
+        step('corpus', 'the corpus verdict',
+          g ? ((g.corpus && g.corpus.cells > 0) ? 'done' : 'blocked') : 'pending',
+          g
+            ? ((g.corpus && g.corpus.cells > 0)
+              ? `${g.corpus.trained} cells fully read · ${g.corpus.short} short · ${g.corpus.empty} empty · ${g.corpus.unreached} NEVER REACHED`
+              : 'the story loaders are not attached in this build, so no verdict is claimed either way — this is a CANNOT-TELL, not a pass')
+            : 'measured when the walk finishes'),
+        step('lanes', 'the deferred lanes take over', offWalk ? 'done' : 'waiting',
+          offWalk
+            ? `driven off-walk — ${drain.items || 0} items drained over ${drain.passes || 0} passes`
+            : 'the walk still owns the substrate, so the lanes are correctly idle — a second teacher during a teach corrupts the pattern in flight'),
+      ];
+    } catch { return null; }
+  },
+
   getState() {
     // SECTION LAP TIMERS (2026-08-17). bcast.getStateMs measured this build
     // at 312→262ms/call even after the region-walk + memoryStats caches —
@@ -1271,6 +1332,11 @@ const SERVER_STATE_MIXIN = {
       curriculum: _lap('curriculum', () => (this.curriculum && typeof this.curriculum.getCurriculumStatus === 'function'
         ? this.curriculum.getCurriculumStatus()
         : null)),
+      // ⭐⭐ THE FINALIZATION SEQUENCE — see `_finalizationSteps()` above for the
+      // rule it exists to enforce: "has not run" and "cannot run" must not look
+      // alike. Derived from state that already exists, so there is one producer
+      // and nothing new to drift.
+      finalization: _lap('finalization', () => this._finalizationSteps()),
       // ⭐ THE LAST EXAM BATTERY — the authored-vs-derived split that decides
       // whether a grade can open at all, published because it is the
       // highest-risk change riding this press and nothing could see it.
