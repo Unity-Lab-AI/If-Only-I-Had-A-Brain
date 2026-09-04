@@ -4065,6 +4065,19 @@ VM63:59
   - **The baseline is taken on the first READABLE poll, not at arm time** — a 401 or a dropped read must not pin `null` as a baseline, or every later reading looks like a move. Exercised.
   - ⚠ **Nothing was slowed down:** a stable `activeEnter` still fires, a flap still resets the counter, our own press moving `activeEnter` still reads `LANDED` and not `SELF-LANDED`, and the kill switch still stops the wait. All four asserted.
 
+## MGRESET — the cheap fresh walk, and the incoherent weights pair that argues for it — filed + built 2026-09-04
+
+- [x] `MGRESET.1` — ✅ **BUILT + 20/20 EXERCISED — `__mg.reset()`, and it is usually the verb you actually want.** ⛔ **A FRESH WALK DOES NOT REQUIRE A DEPLOY, AND WE HAD NO CHEAP WAY TO SAY SO.** `freshWalk()` runs `self-update.sh` first — clone, overlay, and a data sync that has cost **hours** on this box — and only then restarts. `/ctl/reset` writes `.force-fresh`, **deletes the resume marker** so the fresh boot cannot auto-resume the training being discarded, and restarts. **Identical outcome for her; about two minutes instead of an afternoon.**
+  - ⭐ **The decision rule, written into the script's own header:** *"If the build stamp already reads the commit you want, a deploy fetches nothing and costs everything."* That was exactly today's position — the box was already on `af23e4ff` and a fresh-walk press would have re-run the 114 GB for code it already had.
+  - Same interlock as the other destructive verb: two confirmations, and the typed `WIPE` goes **on the wire** as `?confirm=WIPE`.
+  - ⚠ **The other verbs are re-asserted, not assumed** — `restart` → `/ctl/restart` (no token), `savestart` → `/ctl/update-savestart` (no token), `freshWalk` → `/ctl/update` (token). ⚠ **The previous round's 47 cases were not re-run** — that harness was deleted in its own commit per the no-scripts LAW — so the load-bearing properties are re-asserted here instead of taken on trust.
+
+- [ ] `MGRESET.2` — ⛔ **THE LIVE BRAIN BOOTED ON AN INCOHERENT WEIGHTS PAIR, AND IT SAID SO.** Read off the console at ~17:00:
+  > `⛔ WEIGHTS PAIR INCOHERENT — brain-weights.json says savedAt 2026-09-04T16:49:38.244Z but brain-weights.bin was written 2026-09-04T16:17:56.042Z, a gap of 1902s (tolerance 600s). Her METADATA is ahead of her SYNAPSES: grade pointers and taught-word ledgers will claim progress the weights do not hold. … Booting anyway.`
+  - **Cause, named by the guard itself:** *"a save interrupted between the two writes"*. The `.json` is written every save and the `.bin` hourly, and a deploy's `systemctl restart` landed in the gap. ⭐ **The previous process's own breadcrumb corroborates it — `after 80s uptime`**, so there was restart churn, not a single clean cycle.
+  - ⭐ **THE INSTRUMENT DID ITS JOB PERFECTLY.** It named both timestamps, the tolerance, the consequence in her terms, the likely cause, the file to look for, and the fix — and then **booted anyway rather than refusing**, which is the right call for a warning about a state that is degraded but usable. **This is what `CHECKROT` was built for and it fired on a real event.**
+  - ⏳ **A fresh walk resolves it completely** (both halves discarded) and is the standing plan, so no repair is filed. **Left OPEN as the watch:** if the same warning appears on a boot that was NOT preceded by a deploy restart, the cause is something else and needs its own investigation.
+
 ## GATFRESH — a gatling that fresh-walks instead of savestarts — filed + built 2026-09-04
 
 > Gee (verbatim): *"cant u just make a gattling script thats a freshwalk instead of a savestart?"* → *"based on the savestart one"*
