@@ -362,6 +362,44 @@
       </div>
     </div>
 
+    <!-- ⭐⭐ THE WIRING AUDIT. How many incoming connections each cross-projection
+         actually gave a neuron — the number that decides whether a projection can
+         learn AT ALL, because the Hebbian update walks the entries that exist and
+         has no path to add one. A row that comes out of construction empty can
+         never learn anything for the life of the brain, and until this shipped
+         nothing anywhere reported it. -->
+    <div class="tv-card" style="margin-top:14px">
+      <h2><span class="tv-tip tip-l"
+        title="Wires per neuron on every cross-projection, set at construction and never grown."
+        data-tip="THE WIRING AUDIT.&#10;&#10;Each row is one cross-projection, and the number is how many incoming connections an average destination neuron got.&#10;&#10;Why it matters: the Hebbian update only adjusts connections that ALREADY EXIST — it cannot add one. So the wires a neuron receives at construction are its entire learning capacity for the life of the brain.&#10;&#10;EMPTY ROWS are the worst reading on this page. A neuron with no incoming connections can never learn anything, ever, and it fails silently — nothing else on any dashboard would show it.&#10;&#10;THIN (under 4 wires) means a neuron has almost no capacity to tell one input pattern from another.&#10;&#10;r= is the topographic radius, derived from the source region size rather than a fixed number, so it differs per projection and per brain size.">wiring audit <span class="tv-q">?</span></span></h2>
+      <div class="tv-body">
+        <div id="tvWiring" class="tv-sub">no audit published — this build reports no cross-projection wiring.</div>
+      </div>
+    </div>
+
+    <!-- ⭐⭐ THE END OF SCHOOL. Null until she finishes, and that is correct
+         rather than missing — the walk itself is the status while it runs. -->
+    <div class="tv-card" style="margin-top:14px">
+      <h2><span class="tv-tip tip-l"
+        title="The graduation record, and the per-course split the cell ledger cannot express."
+        data-tip="END OF SCHOOL.&#10;&#10;Empty until she finishes the last grade. While the walk is running that is the correct reading, not a missing one.&#10;&#10;PASSED ON MERIT — the cell cleared its own comprehension gate.&#10;&#10;FORCE-ADVANCED — the grade ran out of re-teach rounds and the cell was entered on capability evidence instead. That is deliberate: it stops one stuck course wedging the walk forever. But the cell ledger records both outcomes identically, so without this split &quot;all cells passed&quot; can quietly mean &quot;some were waved through&quot;.&#10;&#10;STILL OWED — never cleared at all. A bounded walk can genuinely end here.&#10;&#10;CORPUS answers a different question: did the trainer actually open the prose each cell owns? UNREACHED is a wiring fault. EMPTY is a content gap. SHORT means the corpus grew after the visit.">end of school <span class="tv-q">?</span></span></h2>
+      <div class="tv-body">
+        <div id="tvGrad" class="tv-sub">she has not finished yet — the walk above is the status.</div>
+      </div>
+    </div>
+
+    <!-- ⭐⭐ THE DEFERRED LANES. What she keeps doing when the walk is NOT running,
+         and the reason this panel exists at all: these queues had exactly one
+         driver and it was the walk. -->
+    <div class="tv-card" style="margin-top:14px">
+      <h2><span class="tv-tip tip-l"
+        title="Chat learning, percept grounding, her drawing and episode salience — the lanes that outlive the walk."
+        data-tip="DEFERRED LANES.&#10;&#10;Four queues carry work deliberately kept off the reply path, so nobody talking to her waits on bookkeeping, and off the walk, so only one thing ever teaches the cortex at a time.&#10;&#10;chat — what she learns from conversation&#10;jobs — the curiosity follow-up, AND the grounding that carries what she has SEEN into her semantic memory&#10;eye — her own drawing, her practice, and the redraw-after-reject chain&#10;salience — how surprising each memory was, which weights its consolidation&#10;&#10;These used to drain ONLY inside the walk, so the day she finished her doctorate all four would have stopped permanently and silently, filling up and discarding the oldest work.&#10;&#10;READ IT THIS WAY: while the walk owns the substrate these numbers standing still is CORRECT. Off the walk, queued work with a drained count that never moves is the regression.">deferred lanes <span class="tv-q">?</span></span></h2>
+      <div class="tv-body">
+        <div id="tvDeferred" class="tv-sub">no lane state published.</div>
+      </div>
+    </div>
+
     <!-- ⭐⭐ THE KNOBS. Every value that governs how her weights are written,
          published where the person operating this brain can actually read it.
          ⛔ These were reachable only from a shell on the box, and there is no
@@ -1579,9 +1617,99 @@ function renderTrace(tv) {
   ctx.fillText(`peak ${max.toFixed(1)}/s · now ${traceHist[traceHist.length - 1].toFixed(1)}/s · ${traceHist.length} samples`, 6, 11);
 }
 
+/* ⛔⛔ THE WIRING AUDIT — the number that decides whether a projection can learn.
+   Empty rows are reported FIRST and loudest, because a destination neuron with no
+   incoming connections can never learn anything for the life of the brain and
+   nothing else on any surface would say so. */
+function renderWiring(st) {
+  const el = $('tvWiring'); if (!el) return;
+  const a = st && st.wiringAudit;
+  if (!a) { el.textContent = 'no audit published — this build reports no cross-projection wiring.'; return; }
+  if (a.error) {
+    /* An audit that THREW is not an audit that found nothing. */
+    el.innerHTML = `<span style="color:var(--tv-bad)">the wiring audit FAILED — the projections are built, but nothing is reporting their wires: ${knobEsc(a.error)}</span>`;
+    return;
+  }
+  const rows = (a.projections || []).slice().sort((x, y) => x.mean - y.mean);
+  if (!rows.length) { el.textContent = 'audit ran and reported no projections.'; return; }
+  const floor = a.minWires || 4;
+  const empties = rows.reduce((n, r) => n + (r.empty || 0), 0);
+  const head = empties > 0
+    ? `<div style="color:var(--tv-bad);margin-bottom:7px">⛔ ${empties.toLocaleString()} rows across this cortex came out of construction EMPTY — those neurons can never learn, because the Hebbian update cannot add a connection that construction did not create.</div>`
+    : `<div style="color:var(--tv-good);margin-bottom:7px">no empty rows — every neuron in every projection has at least one incoming connection it can learn on.</div>`;
+  el.innerHTML = head + '<div style="display:grid;grid-template-columns:1fr auto auto auto;gap:2px 10px;font-family:var(--tv-font);font-size:11px">'
+    + rows.map((r) => {
+      const thin = r.mean < floor, bad = (r.empty || 0) > 0;
+      const col = bad ? 'var(--tv-bad)' : (thin ? 'var(--tv-warn)' : 'var(--tv-dim)');
+      const kind = r.topographic ? `topographic r=${r.radiusTopo}` : 'random';
+      return `<div style="color:${col}">${knobEsc(r.key)}</div>`
+        + `<div style="color:${col};text-align:right">${(r.mean || 0).toFixed(2)}/row</div>`
+        + `<div style="color:var(--tv-dim);text-align:right">min ${r.min}</div>`
+        + `<div style="color:var(--tv-dim)">${kind}${r.motorBound ? ' · motor-bound' : ''}${bad ? ` · ${r.empty.toLocaleString()} EMPTY` : ''}</div>`;
+    }).join('') + '</div>';
+}
+
+/* ⭐ END OF SCHOOL. The empty state says SHE HAS NOT FINISHED, never "no data" —
+   a blank panel during a live walk reads as a broken instrument. */
+function renderGrad(st) {
+  const el = $('tvGrad'); if (!el) return;
+  const g = st && st.graduation;
+  if (!g) { el.textContent = 'she has not finished yet — the walk above is the status.'; return; }
+  const c = g.cells || {};
+  const t = c.total || 0;
+  const pct = (n) => (t > 0 ? ((100 * (n || 0)) / t).toFixed(1) : '0.0');
+  const verdict = g.complete
+    ? (g.clean ? ['complete — every cell cleared its own gate', 'var(--tv-good)']
+      : ['complete — but force-advanced cells are in it', 'var(--tv-warn)'])
+    : ['NOT complete — cells are still owed', 'var(--tv-bad)'];
+  const cp = g.corpus;
+  const corpusLine = (cp && cp.cells > 0)
+    ? `<div style="margin-top:7px">corpus — <b>${(cp.sentencesTrained || 0).toLocaleString()}</b> of ${(cp.sentencesAvailable || 0).toLocaleString()} sentences read across ${cp.cells} cells</div>`
+      + `<div style="color:var(--tv-good)">${cp.trained || 0} fully read</div>`
+      + `<div style="color:${(cp.short || 0) ? 'var(--tv-warn)' : 'var(--tv-dim)'}">${cp.short || 0} short — the corpus grew after the visit</div>`
+      + `<div style="color:var(--tv-dim)">${cp.empty || 0} genuinely empty — a content gap, nothing owed</div>`
+      + `<div style="color:${(cp.unreached || 0) ? 'var(--tv-bad)' : 'var(--tv-dim)'}">${cp.unreached || 0} NEVER REACHED — a wiring fault${(cp.unreached || 0) ? `: ${knobEsc((cp.unreachedCells || []).join(', '))}` : ''}</div>`
+    : '<div style="margin-top:7px;color:var(--tv-dim)">corpus — no verdict; the story loaders are not attached, so nothing is claimed either way.</div>';
+  el.innerHTML = `<div style="font-size:14px;color:var(--tv-accent)"><b>finished ${knobEsc(g.grade || '—')} · age ${g.ageYears ?? '—'}</b></div>`
+    + `<div style="color:${verdict[1]};margin-top:2px">${verdict[0]}</div>`
+    + `<div style="margin-top:7px">cells <b>${t}</b></div>`
+    + `<div style="color:var(--tv-good)">passed on merit ${c.merit ?? 0} (${pct(c.merit)}%)</div>`
+    + `<div style="color:${(c.forceAdvanced || 0) ? 'var(--tv-warn)' : 'var(--tv-dim)'}">force-advanced ${c.forceAdvanced ?? 0} (${pct(c.forceAdvanced)}%)</div>`
+    + `<div style="color:${(c.held || 0) ? 'var(--tv-bad)' : 'var(--tv-dim)'}">still owed ${c.held ?? 0} (${pct(c.held)}%)</div>`
+    + corpusLine;
+}
+
+/* ⭐ DEFERRED LANES. Quiet-because-the-walk-owns-the-substrate and
+   quiet-because-nothing-is-driving-it must NOT render the same. */
+function renderLanes(st) {
+  /* ⚠ `tvDeferred`, NOT `tvLanes` — that id was already taken by the teach-lane
+     equalizer above, and reusing it made this renderer overwrite an existing
+     instrument with its own text. Caught by counting ids, not by looking. */
+  const el = $('tvDeferred'); if (!el) return;
+  const dl = st && st.deferredLanes;
+  if (!dl || !dl.queued) { el.textContent = 'no lane state published.'; return; }
+  const q = dl.queued;
+  const depth = (q.chatPairs || 0) + (q.chatJobs || 0) + (q.mindsEye || 0) + (q.salience || 0);
+  const age = dl.lastDrainAgeMs == null ? 'never' : `${Math.round(dl.lastDrainAgeMs / 1000)}s ago`;
+  const driver = dl.drivenOffWalk
+    ? '<span style="color:var(--tv-good)">driven off-walk</span>'
+    : '<span style="color:var(--tv-dim)">the walk owns the substrate — these standing still is correct</span>';
+  /* The one reading that is a real fault: work queued, running off-walk, and
+     nothing draining it. */
+  const stalled = dl.drivenOffWalk && depth > 0 && !dl.drainedItems;
+  el.innerHTML = `<div>${driver}</div>`
+    + `<div style="margin-top:6px;font-family:var(--tv-font)">queued <b>${depth}</b> — chat ${q.chatPairs || 0} · jobs ${q.chatJobs || 0} · eye ${q.mindsEye || 0} · salience ${q.salience || 0}</div>`
+    + `<div style="color:var(--tv-dim);font-family:var(--tv-font)">${(dl.drainedItems || 0).toLocaleString()} items drained over ${(dl.drainedPasses || 0).toLocaleString()} passes · last ${age}</div>`
+    + (stalled ? '<div style="color:var(--tv-bad);margin-top:5px">⛔ work is queued off-walk and nothing has drained — the driver is not firing.</div>' : '');
+}
+
 function renderInstruments(st, tv) {
   try { renderDials(st, tv); renderEq(tv); renderTrace(tv); }
   catch (e) { /* an instrument must never take the page down */ }
+  /* Separate try — a throw in one of the new panels must not cost the dials,
+     which is the failure mode a single shared catch would have created. */
+  try { renderWiring(st); renderGrad(st); renderLanes(st); }
+  catch (e) { /* same rule */ }
 }
 
 poll(); pollEye(); loadLedgerCells(); loadWeightsList();

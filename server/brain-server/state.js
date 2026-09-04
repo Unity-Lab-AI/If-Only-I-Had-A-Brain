@@ -1271,6 +1271,17 @@ const SERVER_STATE_MIXIN = {
       curriculum: _lap('curriculum', () => (this.curriculum && typeof this.curriculum.getCurriculumStatus === 'function'
         ? this.curriculum.getCurriculumStatus()
         : null)),
+      // ⛔⛔ THE WIRING AUDIT, PUBLISHED — and it was NOT, which is the exact
+      // producer/consumer split this project keeps paying for. The audit runs
+      // at construction and writes `cluster.wiringAudit`, and nothing carried it
+      // anywhere a reader could see it: the teach viewer's panel would have read
+      // "no audit published" forever while the audit was running fine.
+      //
+      // Bounded by construction — 16 projections, a handful of numbers each —
+      // and it never changes after boot, so publishing it every broadcast costs
+      // a reference copy rather than a computation.
+      wiringAudit: _lap('wiringAudit', () => ((this.cortexCluster && this.cortexCluster.wiringAudit)
+        ? this.cortexCluster.wiringAudit : null)),
       // END OF SCHOOL — the graduation record. Null until she finishes; after that it
       // is the one field that answers "did she actually finish, and how?"
       // without reading a log ring that spans ~45 seconds. `merit` vs
