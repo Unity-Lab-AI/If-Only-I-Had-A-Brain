@@ -5,6 +5,29 @@
 
 ---
 
+## 2026-09-04 — `NOFALLBACK.7` — THE LAST FORK IN THE EMISSION PATH, AND IT DECIDED WHICH CURRENTS HER WORDS CAME OFF
+
+⛔ **A CONDITION ABOUT THE DONOR WAS DECIDING HOW STALE HER WORDS WERE.** `generateAsync` ran the full-await cascade only when `curriculumDone && cluster._gpuProxyReady`; everything else fell through to the sync `generateSentence`. Both arms are **the same motor emission on the same weights** — they differ only in await discipline, and the sync one reads **one-tick-lag** currents and eats the cache-miss stall its own comment documents.
+
+⭐⭐ **THE ROW ASKED FOR A MEASUREMENT BEFORE COLLAPSING, AND THE CODE ANSWERS IT.** It said *"collapse to the awaited cascade always (it is a superset and correct on CPU) and measure what that costs on a box with no donor, because the sync arm exists for a latency reason that was real once."* The awaited path **already carries the no-donor handling**: `stepAwait` aborts above **2,000,000 neurons** when the GPU path is not live — *"a CPU step would pin the loop ~57s/word. Emission goes briefly silent instead"* — and below that bound it steps on CPU normally. **There is no case the sync arm covers that the awaited one does not.**
+
+**Case by case, which is the form the answer had to take:**
+
+| situation | before | after |
+|---|---|---|
+| GPU box, curriculum done | awaited | unchanged |
+| GPU box, curriculum **not** done | sync, one-tick-lag | **awaited — the lag is gone** |
+| no-donor box at biological scale | sync (CPU pin) | awaited aborts fast, then the same sync attempt. **No worse** |
+| small brain, no donor | sync, one-tick-lag | **awaited on CPU** (under the 2M bound) — better |
+
+⚠ **THE REMAINING SYNC ATTEMPT IS AN ERROR PATH, NOT A CAPABILITY FORK, AND THAT DISTINCTION IS THE WHOLE RULING.** `preEmittedWords` stays `null` when the awaited emission produces nothing, and the consumer tests `Array.isArray` — so an empty emission still reaches the existing path. The standing ruling forbids **capability degradation chosen up front**; it does not forbid a function returning nothing and the caller coping.
+
+⭐ **`curriculumDone` DELETED at that site.** The fork was its only reader, so it had become four lines of computation whose result nothing consumed — the same shape as the `typeof generateSentenceAwait` guard removed on 2026-09-02, which could only ever be true. ⚠ **The identically-named variable at the top of `generate()` is a different one in a different function, still read, and untouched** — checked before deleting, because two variables with one name is exactly how a correct deletion becomes a regression.
+
+**A bare block, not `if (true)`** — the block scope is load-bearing for the declarations inside it, and reindenting 288 lines to remove a brace would bury a one-line behaviour change inside a whole-function diff. **Verified:** `node --check`, ESM `import()` link, bundle rebuilt (it is a browser-path file, and this time the bundle genuinely changed).
+
+---
+
 ## 2026-09-04 — `TVLOOK` — THE PAGE WAS OPENED AND LOOKED AT FOR THE FIRST TIME, AND TWO CONTROLS WERE ILLEGIBLE
 
 Gee (verbatim): *"i still cant wait to see the rteaching viewer youve never opened or tested for me to see"*.
