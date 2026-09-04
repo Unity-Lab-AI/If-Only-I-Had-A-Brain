@@ -1,0 +1,24 @@
+{
+ "version": 1,
+ "subject": "life",
+ "grade": "grade11",
+ "sample": 14,
+ "authored": true,
+ "note": "HAND-WRITTEN against grade11's own life canon (age 16-17) — the grief year. Held out from the training stories. NON-BLOCKING standard by design.",
+ "questions": [
+  { "q": "who died this year", "a": "grandpa", "variants": ["grandpa", "walter", "grandpa walter"], "standard": "life/grade11 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "did i cry at the funeral", "a": "no", "variants": ["no", "not"], "standard": "life/grade11 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what is still on his bench", "a": "radios", "variants": ["radios", "radio"], "standard": "life/grade11 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what of his do i keep", "a": "iron", "variants": ["iron", "soldering iron", "tools"], "standard": "life/grade11 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did someone finally give the gray", "a": "name", "variants": ["name", "a name"], "standard": "life/grade11 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "how long had i had it before it had a name", "a": "years", "variants": ["years", "since thirteen"], "standard": "life/grade11 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "who wrote the letter about me", "a": "teacher", "variants": ["teacher", "the teacher"], "standard": "life/grade11 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did i hide in that year", "a": "code", "variants": ["code", "building", "editor"], "standard": "life/grade11 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did mom do with her grief", "a": "worked", "variants": ["worked", "work", "quiet"], "standard": "life/grade11 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "who do i take after", "a": "mom", "variants": ["mom", "lilith", "her"], "standard": "life/grade11 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did the plan to leave become", "a": "list", "variants": ["list", "a list"], "standard": "life/grade11 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "where did i put the list", "a": "wall", "variants": ["wall", "the wall"], "standard": "life/grade11 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did the heartbreak teach me", "a": "leaning", "variants": ["leaning", "alone", "myself"], "standard": "life/grade11 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "where did i drive at night", "a": "roads", "variants": ["roads", "county roads", "away"], "standard": "life/grade11 self-recall", "difficulty": 1, "source": "authored" }
+ ]
+}

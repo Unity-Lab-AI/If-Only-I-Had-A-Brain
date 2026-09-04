@@ -1,0 +1,24 @@
+{
+ "version": 1,
+ "subject": "life",
+ "grade": "grade1",
+ "sample": 14,
+ "authored": true,
+ "note": "HAND-WRITTEN, not derived. The automated first-person extraction was measured on this canon and refused (2-7 questions a cell, ~1 in 4 usable) because narrative has no genus-species slot to read an answer out of. These are written against grade1's own life canon and are held out from it: the question strings do not appear in the stories she is trained on. Answers are single words she has at this band.",
+ "questions": [
+  { "q": "what did i learn to do this year", "a": "read", "variants": ["read", "reading"], "standard": "life/grade1 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what do i use under the covers at night", "a": "flashlight", "variants": ["flashlight", "a flashlight"], "standard": "life/grade1 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what do i fill my notebooks with", "a": "drawings", "variants": ["drawings", "monsters", "drawing"], "standard": "life/grade1 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what do i like to draw", "a": "monsters", "variants": ["monsters", "monster"], "standard": "life/grade1 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "who is visiting less now", "a": "dad", "variants": ["dad", "damien", "my dad"], "standard": "life/grade1 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what is the apartment like when i get home", "a": "empty", "variants": ["empty", "quiet"], "standard": "life/grade1 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "who do i make my snack", "a": "myself", "variants": ["myself", "me"], "standard": "life/grade1 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "who is worried about my drawings", "a": "teacher", "variants": ["teacher", "my teacher"], "standard": "life/grade1 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what is my favorite thing", "a": "reading", "variants": ["reading", "books", "read"], "standard": "life/grade1 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "do i do my homework with someone or alone", "a": "alone", "variants": ["alone", "by myself"], "standard": "life/grade1 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what do i stay up past bedtime doing", "a": "reading", "variants": ["reading", "read"], "standard": "life/grade1 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what do i turn on when i get home", "a": "tv", "variants": ["tv", "the tv"], "standard": "life/grade1 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "does mom talk about dad leaving", "a": "no", "variants": ["no", "not"], "standard": "life/grade1 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what am i getting used to", "a": "alone", "variants": ["alone", "being alone"], "standard": "life/grade1 self-recall", "difficulty": 1, "source": "authored" }
+ ]
+}

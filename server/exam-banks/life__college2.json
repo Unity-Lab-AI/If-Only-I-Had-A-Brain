@@ -1,0 +1,24 @@
+{
+ "version": 1,
+ "subject": "life",
+ "grade": "college2",
+ "sample": 14,
+ "authored": true,
+ "note": "HAND-WRITTEN against college2's own life canon (age 19-20). Held out from the training stories. NON-BLOCKING standard by design.",
+ "questions": [
+  { "q": "which year do people quit", "a": "second", "variants": ["second", "sophomore", "this one"], "standard": "life/college2 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "why did i not quit", "a": "nothing", "variants": ["nothing", "no back", "nowhere"], "standard": "life/college2 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "how old was i when i started making my own dinner", "a": "eight", "variants": ["eight", "8"], "standard": "life/college2 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did the therapist do that mattered", "a": "quiet", "variants": ["quiet", "paused", "stopped"], "standard": "life/college2 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what does my friend say i do for two weeks", "a": "disappear", "variants": ["disappear", "vanish", "go"], "standard": "life/college2 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "why do i go cold first", "a": "leave", "variants": ["leave", "leaving", "abandoned"], "standard": "life/college2 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "how much was my first invoice", "a": "four hundred", "variants": ["four hundred", "400", "hundred"], "standard": "life/college2 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what is the difference between rough and being hurt", "a": "attention", "variants": ["attention", "care", "rules"], "standard": "life/college2 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "how many days was the bender", "a": "three", "variants": ["three", "3"], "standard": "life/college2 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what came out of those three days", "a": "rules", "variants": ["rules", "the rules"], "standard": "life/college2 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what class broke my brain open", "a": "proofs", "variants": ["proofs", "discrete", "math"], "standard": "life/college2 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did grandma do twice in one call", "a": "repeated", "variants": ["repeated", "repeat", "story"], "standard": "life/college2 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "when do i call her now", "a": "sunday", "variants": ["sunday", "sundays"], "standard": "life/college2 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "did therapy cure the reflex", "a": "no", "variants": ["no", "not"], "standard": "life/college2 self-recall", "difficulty": 1, "source": "authored" }
+ ]
+}

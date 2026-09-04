@@ -6045,6 +6045,13 @@ export class Curriculum {
         r.standard = q.standard || 'unspecified';
         r.difficulty = q.difficulty || 1;
         r.source = q.source || 'authored';
+        // ⭐ THE EXPECTED ANSWER TRAVELS WITH THE RESULT. It lived only on the
+        // QUESTION, so a consumer holding `battery.results` could see that she
+        // got something wrong and had no way to say what the right answer was —
+        // which is exactly what the corrective teach needs. Carried here rather
+        // than re-joined against the bank later, because a join by question text
+        // would break on the first question that was reworded.
+        r.expectedAnswer = q.expectedAnswer ?? q.expected ?? '';
         results.push(r);
         // EXAMTRANSCRIPT — every K-STUDENT battery Q→A joins the same ring
         // the production probes feed (the per-question {question, answer,
@@ -10621,6 +10628,58 @@ export class Curriculum {
           }
           cluster._probeGateActive = false;
           result.studentBattery = battery;
+
+          // ── A FAILED QUESTION IS TAUGHT, NOT JUST COUNTED ──────────────────
+          //
+          // Operator: *"each exam question failed needs to train her on the
+          // answer too"*. A test that finds a gap and then walks away from it
+          // has spent the probe and bought nothing — the whole point of finding
+          // out she does not know something is that she then learns it.
+          //
+          // ⛔⛔ THE HELD-OUT COST IS REAL AND IS PAID DELIBERATELY, so nobody
+          // discovers it later as a defect. Teaching from exam material means an
+          // item is no longer a clean unseen probe the second time it is asked.
+          // ⭐ What is taught is therefore the KNOWLEDGE, not the item: the
+          // answer word goes through the ordinary vocabulary lane and gets bound
+          // to the question's content words. The literal question string is
+          // never drilled, so the next asking still tests whether she KNOWS it
+          // rather than whether she has memorised that sentence — which is
+          // exactly the distinction `trainExamOverlap` exists to protect.
+          //
+          // ⚠ Best-effort by construction. A corrective teach that could throw
+          // would let a bad answer string take down a walk that had already
+          // finished its cell.
+          try {
+            const _missed = (battery.results || []).filter(r => r && (r.score || 0) < 0.5 && r.expectedAnswer);
+            if (_missed.length) {
+              const _answers = [...new Set(_missed
+                .map(r => String(r.expectedAnswer || '').toLowerCase().replace(/[^a-z0-9' -]/g, '').trim())
+                .filter(a => a && a.length >= 2 && a.split(/\s+/).length <= 2))];
+              const _pairs = [];
+              for (const r of _missed) {
+                const a = String(r.expectedAnswer || '').toLowerCase().replace(/[^a-z0-9' -]/g, '').trim();
+                if (!a) continue;
+                // The question's own content words, minus the interrogative
+                // frame — bound TO the answer so the concept reaches it.
+                for (const w of String(r.question || '').toLowerCase().split(/[^a-z0-9']+/)) {
+                  if (w.length < 3 || w === a) continue;
+                  _pairs.push([w, a]);
+                  if (_pairs.length >= 120) break;
+                }
+                if (_pairs.length >= 120) break;
+              }
+              if (_answers.length) await this._teachVocabList(_answers, ctx, { reps: 4 });
+              if (_pairs.length) {
+                await this._teachAssociationPairs(_pairs, {
+                  reps: 4, label: `${label}-CORRECTIVE`, relationTagId: 5,
+                });
+              }
+              battery.correctiveTaught = { answers: _answers.length, pairs: _pairs.length, missed: _missed.length };
+              this._hb(`[Curriculum][${label}] CORRECTIVE TEACH — ${_missed.length} missed question(s): ${_answers.length} answer word(s) + ${_pairs.length} binding(s) trained. She was told what she got wrong.`);
+            }
+          } catch (err) {
+            console.warn(`[Curriculum][${label}] corrective teach failed (battery result stands):`, err?.message || err);
+          }
           if (methodologyBattery) {
             result.methodologyBattery = methodologyBattery;
             // Fold the standalone methodology-bank rate into the battery
@@ -10709,11 +10768,59 @@ export class Curriculum {
           // blocker message names the failing standards instead of an
           // opaque count. Operator + dashboard see exactly which
           // sub-standards need reinforcement.
+          // ⛔ THE SUB-STANDARD CRITERION BLOCKS TOO, so a derived standard is
+          // excluded here for the same reason its questions are excluded from
+          // the aggregate below: `<subject>/<grade> key-term recall` has no
+          // norm-calibrated cut score, falls back to `__default__`, and would
+          // hold a grade shut on generated questions with a known error rate.
+          // It is still REPORTED — it just cannot block.
+          const _isDerivedStandard = (s) => typeof s === 'string' && (s.endsWith(' key-term recall') || s.endsWith(' self-recall'));
           const belowCutDetail = (battery.byStandard || [])
-            .filter(s => s.belowCut)
+            .filter(s => s.belowCut && !_isDerivedStandard(s.standard))
             .map(s => `${s.standard} ${(s.rate * 100).toFixed(0)}%<${(s.cut * 100).toFixed(0)}%`);
+          // ⛔⛔ A DERIVED QUESTION MEASURES, IT DOES NOT GRADUATE HER — AND
+          // WITHOUT THIS SPLIT THE WALK WOULD HAVE WEDGED AT GRADE 1 FOREVER.
+          //
+          // The banks that cover the other 191 cells are generated from each
+          // cell's own corpus, and generated questions carry a KNOWN residual
+          // error — measured at roughly one in seven. The blocking floor here is
+          // 90%. So the best score reachable on a derived-only bank is about
+          // 86%, `result.pass` is forced false, and the cell can never advance
+          // no matter how well she learned it. **She would have been failed by
+          // the questions being wrong, not by her being wrong.**
+          //
+          // ⭐ The criteria above were calibrated against AUTHORED, norm-
+          // referenced items (DIBELS 8 / AIMSweb / Fountas & Pinnell). Derived
+          // items have no such calibration and never earned the right to gate.
+          // So the aggregate is computed twice: `battery.rate` still reports
+          // EVERYTHING for the dashboard and the ledger, and the BLOCKING
+          // aggregate below counts authored items only.
+          //
+          // ⚠ A cell with no authored items has no blocking aggregate, which is
+          // vacuously satisfied — the same convention the methodology criterion
+          // already uses for a bank with no methodology-tagged questions. Those
+          // cells are still MEASURED, and the number still lands in the gate
+          // result; it just cannot hold the grade shut.
+          // ⚠ KEYED ON THE STANDARD RATHER THAN ON `source`, and the reason is
+          // narrower than it first looks. The main probe path DOES set
+          // `r.source` — but the deadline-exceeded, timed-out and threw paths
+          // push rows that set `standard` and NOT `source`. So a source-keyed
+          // check would read `undefined` on exactly the rows produced when the
+          // battery is under pressure, count them as authored, and let a timing
+          // failure block a grade. `standard` is set on every path, and the
+          // generator is the only writer of these two strings.
+          const _derivedStd = (s) => typeof s === 'string' && (s.endsWith(' key-term recall') || s.endsWith(' self-recall'));
+          const _authored = (battery.results || []).filter(r => !_derivedStd(r && r.standard));
+          const _authoredTotal = _authored.length;
+          const _authoredPass = _authored.filter(r => (r && r.score || 0) >= 0.5).length;
+          const _authoredRate = _authoredTotal > 0 ? _authoredPass / _authoredTotal : 0;
+          battery.authoredTotal = _authoredTotal;
+          battery.authoredPass = _authoredPass;
+          battery.authoredRate = _authoredRate;
+          battery.derivedTotal = (battery.results || []).length - _authoredTotal;
+
           const blockers = [];
-          if (battery.rate < AGGR_MIN) blockers.push(`answer aggregate ${(battery.rate * 100).toFixed(1)}% < ${AGGR_MIN * 100}%`);
+          if (_authoredTotal > 0 && _authoredRate < AGGR_MIN) blockers.push(`answer aggregate ${(_authoredRate * 100).toFixed(1)}% of ${_authoredTotal} authored < ${AGGR_MIN * 100}%`);
           if (belowCutDetail.length > 0) {
             blockers.push(`sub-standards below cut: [${belowCutDetail.join(', ')}]`);
           }
