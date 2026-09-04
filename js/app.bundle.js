@@ -17542,6 +17542,15 @@ var NeuronCluster = class {
       const logConstruction = this.size >= 5e4;
       if (logConstruction) console.log(`[Cluster ${name}] initializing ${pairs.length * 2} cross-projections at size=${this.size.toLocaleString()}...`);
       let _projIdx = 0;
+      const _topoFrac = (() => {
+        try {
+          const v = parseFloat(process?.env?.DREAM_TOPO_RADIUS_FRAC);
+          return Number.isFinite(v) && v > 0 && v <= 1 ? v : 1 / 52;
+        } catch {
+          return 1 / 52;
+        }
+      })();
+      const _radiusFor = (srcCols) => Math.max(30, Math.round(srcCols * _topoFrac));
       for (const [a, b] of pairs) {
         const aSize = this.regions[a].end - this.regions[a].start;
         const bSize = this.regions[b].end - this.regions[b].start;
@@ -17584,7 +17593,8 @@ var NeuronCluster = class {
         const dstMaskAB = this.lamination && bRegion && !_readoutBand(b) ? buildLayerMask(bRegion, 2) : null;
         if (TOPOGRAPHIC_PAIRS.has(abKey) && typeof ab.initTopographicProjection === "function") {
           ab.initTopographicProjection(abDensity, abExcitatory, 0.2, {
-            radiusTopo: 30,
+            radiusTopo: _radiusFor(aSize),
+            // source region is the column space
             srcLayerMask: srcMaskAB,
             dstLayerMask: dstMaskAB
           });
@@ -17600,7 +17610,8 @@ var NeuronCluster = class {
         const dstMaskBA = this.lamination && aRegion && !_readoutBand(a) ? buildLayerMask(aRegion, 2) : null;
         if (TOPOGRAPHIC_PAIRS.has(baKey) && typeof ba.initTopographicProjection === "function") {
           ba.initTopographicProjection(baDensity, baExcitatory, 0.2, {
-            radiusTopo: 30,
+            radiusTopo: _radiusFor(bSize),
+            // reverse direction — b is the column space
             srcLayerMask: srcMaskBA,
             dstLayerMask: dstMaskBA
           });
@@ -17630,14 +17641,26 @@ var NeuronCluster = class {
           const [srcName, dstName] = key.split("_to_");
           const topo = TOPOGRAPHIC_PAIRS.has(`${srcName}-${dstName}`);
           const bound = MOTOR_BOUND_PAIRS.has(`${srcName}-${dstName}`);
-          const rec = { key, rows: mx.rows, cols: mx.cols, nnz: mx.nnz, mean, min, max, empty, topographic: topo, motorBound: bound };
+          const rec = {
+            key,
+            rows: mx.rows,
+            cols: mx.cols,
+            nnz: mx.nnz,
+            mean,
+            min,
+            max,
+            empty,
+            topographic: topo,
+            motorBound: bound,
+            radiusTopo: topo ? Math.max(30, Math.round(mx.cols * _topoFrac)) : null
+          };
           _lines.push(rec);
           if (!_worst || mean < _worst.mean) _worst = rec;
         }
         this.wiringAudit = { minWires: _MIN_WIRES, projections: _lines, worst: _worst };
         for (const r of _lines) {
           const thin = r.mean < _MIN_WIRES;
-          const tag = `${r.topographic ? " topographic" : " random"}${r.motorBound ? " motor-bound" : ""}`;
+          const tag = `${r.topographic ? ` topographic r=${r.radiusTopo}` : " random"}${r.motorBound ? " motor-bound" : ""}`;
           const msg = `[Cluster ${name}] wiring ${r.key} \u2014 ${r.mean.toFixed(2)} wires/row (min ${r.min}, max ${r.max}) \xB7 ${r.rows.toLocaleString()}x${r.cols.toLocaleString()} \xB7 nnz ${r.nnz.toLocaleString()}${tag}`;
           if (r.empty > 0) {
             console.warn(`${msg} \xB7 \u26D4 ${r.empty.toLocaleString()} EMPTY ROWS \u2014 those rows can never learn, because ojaUpdate cannot insert an entry that construction did not create.`);
@@ -17651,7 +17674,8 @@ var NeuronCluster = class {
           console.log(`[Cluster ${name}] wiring audit \u2014 ${_lines.length} projections \xB7 thinnest is ${_worst.key} at ${_worst.mean.toFixed(2)} wires/row. A projection's wires-per-row is set at construction and never grows.`);
         }
       } catch (err) {
-        console.warn(`[Cluster ${name}] wiring audit failed (non-fatal \u2014 the projections are built either way): ${err && err.message ? err.message : err}`);
+        this.wiringAudit = { error: err && err.message ? err.message : String(err), projections: [] };
+        console.warn(`[Cluster ${name}] \u26D4 wiring audit FAILED (the projections are built either way, but nothing is reporting their wires): ${this.wiringAudit.error}`);
       }
     } else {
       this.crossProjections = {};
