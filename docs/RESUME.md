@@ -1,6 +1,42 @@
 # RESUME — Session Pickup Brief
 
-> ## 🟢🟢 2026-09-04 ~17:00 SHE IS ON `af23e4ff` AND TEACHING — AND THE EXPENSIVE VERB WAS NEVER THE ONE WE NEEDED (LATEST — PICK UP HERE)
+> ## ⛔⛔ 2026-09-04 ~17:30 SPONGE MEASURED WHAT I INFERRED, AND I WAS WRONG TWICE (LATEST — PICK UP HERE)
+>
+> ### ⛔ READ THIS BEFORE THE BLOCKS BELOW — THEY ASSERT A CAUSE THAT IS NOT THE CAUSE
+> Sponge pushed **10 commits** to `origin/main` while I was working. `main` is now **`0c0e9fc9`**; all three refs (`local`/`origin`/`github`) are back in sync, and ⚠ **GitHub had been left behind at our `6f3fee39`** until this merge.
+>
+> ### ⛔⛔ CORRECTION 1 — THE PIN WAS NOT DISK CONTENTION, AND THE PULL WAS NOT SLOW. IT WAS WEDGED.
+> I wrote, repeatedly, that the brain was pinned by *"a 114 GB transfer sharing its disk"* and estimated ~6.3 h, then ~12.5 h, from a disk-free delta. **Sponge sampled `/proc/<pid>/io` 20 s apart:**
+> ```
+> git lfs pull: 22 minutes running · 2.07 TB READ · ZERO BYTES WRITTEN
+> It sits in unity-brain.service's cgroup and shares MemoryHigh=20G, so the
+> kernel throttled node too: event loop 2% serviced, stalls up to 253s.
+> Killing it: 24G -> 15G instantly, site back to sub-second.
+> ```
+> ⛔ **There was no transfer rate to extrapolate, because nothing was being written.** My "4.87 GB consumed in 31 min ≈ 12.5 hours" was arithmetic on a number that meant the opposite of what I took it for — **that 4.87 GB was the clone and the corpus; the field pull contributed zero.** ⭐ **The mechanism was cgroup MemoryHigh throttling, not disk I/O contention** — which is why the box could report `active`, port 7525 `LISTENING`, and `/ctl/status` *"online and serving"* while nothing could connect.
+>
+> ### ⛔⛔ CORRECTION 2 — THE 15-MINUTE `execFile` TIMEOUT IS REAL, BUT IT IS NOT WHY THE 12:41 DEPLOY DIED
+> I concluded the ctl path's `execFile(..., {timeout: 900000})` killed it, and cited *"`.force-fresh` was never armed"* as proof. ⚠ **That evidence does not discriminate** — a clone that dies early leaves the flag unarmed too, and so does an abort at any gate. **The measured cause is `ProtectHome=true` on `unity-brain-ctl.service`:** it replaces `/home` with an empty tmpfs, so `/home/unity/.ssh` — deploy key *and* `known_hosts` — did not exist for anything ctl spawned. Clones died with *"Host key verification failed"*, and ⚠ **`self-update.sh`'s own WARN text actively misdirected toward data-repo key authorisation**, which is exactly where I went.
+> ⭐ **Second time this one directive has broken a critical path here** — `nightly-backup.service` failed silently for three months because it hid `/root/.restic-password`. **`ProtectHome` belongs on the suspect list for any "the file is there but the service cannot see it" symptom on this box.**
+> ⭐ **The timeout finding stands on its own merits** (the brain detaches, ctl does not) and the route advice in the blocks below is still correct — **it was the diagnosis of THIS incident that was wrong, not the observation.**
+>
+> ### ✅ WHAT SPONGE SHIPPED (all now on `main`, NOT yet on the box)
+> - **`ProtectHome=read-only`** on the ctl unit + a drop-in for boxes with hand-edited units. **Installed and verified on the box already.** Three assertions pin the value and were checked to FAIL when reverted.
+> - **`UAL_LFS_TIMEOUT` (default 45 m)** — a wall-clock cap on `git lfs pull`. Fields are non-fatal, so a fired guard returns 0 with a WARN saying it was deliberate, what was lost (pointers only), what was not (the books), and how to raise it. ⚠ `|| _lfs_rc=$?` is load-bearing under `set -e`.
+> - **`/ctl/status` probes for a RESPONSE, not a connect** — it called a total outage *"online and serving"*, which is precisely the lie that cost us the morning.
+> - Contract tests for `/start`, `/restart`, `/kick` — verbs that had none.
+>
+> ### ✅ BRAINWAVES IS FINE, AND WAS NEVER THE PROBLEM
+> `f750d208` — **unchanged** since our audit, so that audit still holds (26,359 fields tracked, GloVe a plain blob at 1,037,962,819 B, LFS objects verified present through the batch API). Re-probed live just now: `git-lfs-authenticate` returns a download token (`RepoID 278`), so **the LFS server is up and authorising.** ⭐ **Both failures were on the box — a hidden key and a wedged client. Neither was in the repo.**
+>
+> ### ⏳ THE BOX DOES NOT HAVE THE LFS BOUND YET
+> She is walking with a donor on `af23e4ff`; Sponge's fixes are newer (`0c0e9fc9`). **The bounded pull only takes effect once a deploy delivers `self-update.sh` — and a deploy is the thing that runs the pull.** ⛔ **Do not press for it now:** a deploy restarts her and interrupts a healthy walk, and the guard only matters when a pull is running. It lands with the next deliberate deploy.
+>
+> ---
+>
+> ## 🟢🟢 2026-09-04 ~17:00 SHE IS ON `af23e4ff` AND TEACHING — AND THE EXPENSIVE VERB WAS NEVER THE ONE WE NEEDED
+>
+> ⚠ **The "6.3 h / 12.5 h sync" and "killed by the 15-minute guillotine" claims in this block and the ones below it are CORRECTED by the block above. Retained as written, per the never-delete rule.**
 >
 > ### ⛔ STATE
 > ```
