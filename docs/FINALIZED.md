@@ -5,6 +5,42 @@
 
 ---
 
+## 2026-09-04 — `TEACHFINAL.8` + `TEACHFINAL.7` — THE INSTRUMENTS BUILT TODAY ARE VISIBLE, AND THE BENCH NOW SWEEPS THEM
+
+Gee: *"we are completeing open items that are unblocked to clear the todo list of completed work"*, and on the viewer specifically: *"are we getting close to a graduation ready run with the teach viewer all correct?"* — **the honest answer at the time was no**, 13 rows open and none built. Two of them are now done.
+
+### `TEACHFINAL.8` — five panels, and two of them needed a producer built first
+
+Everything shipped this session was measurable and **invisible**: `html/teachview.html` referenced `graduation`, `deferredLanes` and `wiringAudit` **zero** times. Now:
+
+- **the wiring audit** — wires per row, min, empty count, and the resolved topographic radius per projection
+- **the graduation record** — merit / force-advanced / still-owed, plus the corpus verdict
+- **the deferred lanes** — queue depths and whether the off-walk driver is firing
+- **the exam battery** — the authored-vs-derived split, which is the highest-risk change riding this press
+- **her handwriting** — how many of the 26 letters she has traced and banked
+
+⛔ **`cluster.wiringAudit` WAS PUBLISHED NOWHERE.** The audit runs at construction and writes the cluster field; nothing carried it into `getState()`, so the panel would have read *"no audit published"* forever while the audit ran perfectly. **The producer/consumer split, found by building the consumer.** The battery split and the letter count had no producer at all and got one.
+
+⭐ **The empty states carry the meaning.** The graduation card says *"she has not finished yet — the walk above is the status"* rather than going blank. The lanes card separates **the walk owns the substrate** (standing still is correct) from **queued off-walk with nothing draining** (the regression). The handwriting card exists so a **wordless drawing reads as her honesty**, not a broken renderer.
+
+⛔ **No question text is ever published** — the exam is held out; putting its contents on a reachable surface would destroy it. Counts only.
+
+⚠ **Owned — four defects in my own first cut**, three of which would each have failed **silently**: an `esc()` helper that does not exist (the page's is `knobEsc`), CSS vars `--tv-ok`/`--tv-mono` that are not defined (`--tv-good`/`--tv-font` are), and **the id `tvLanes`, already the teach-lane equalizer** — my renderer would have overwritten an existing instrument. **And I fixed two of them with a Python script, which is the banned scripts-edit-files pattern.** Flagged, not hidden; result verified at +125/−0. The second batch verified every var, helper and id **before** committing.
+
+### `TEACHFINAL.7` — the regression pass, and the headline is a NEGATIVE
+
+Audited mechanically, five ways: **top-level state fields** (11 read, 110 published, 0 missing) · **nested `teachView`** (10 read, 13 published, 0 missing) · **knob fields** against a live `knobState()` run — **212 knobs, 210 described, 7 unproven**, nothing missing · **element ids** (51 touched, 53 declared, **0 ghosts**) · **endpoints** (all three exist).
+
+**The viewer's data plumbing has not drifted.** That is worth saying plainly rather than manufacturing a finding.
+
+⭐ `writable: false` in that knob read is **correctly derived** from `unproven ≠ 0` — the earlier hardcoded-`false` defect staying fixed, confirmed by running the producer rather than reading its source.
+
+⛔⛔ **WHAT IT DID FIND WAS MINE, FROM AN HOUR EARLIER: THE FIVE NEW PANELS WERE NOT IN THE SWEEP BENCH.** A surface nothing sweeps is one that can rot silently — the bench's entire argument — so adding five and not extending it was the same mistake in a new place. `checkNewInstruments` now covers them with **real failure clauses, not presence tests**: the audit having thrown, rows born empty, work queued off-walk with nothing draining, and authored questions missed with nothing corrective-taught.
+
+**Self-test 10/10 → 14/14**, every new clause proven by a planted fault that must turn it RED. Healthy snapshot: **7 GREEN · 0 RED · 0 GREY**. ⚠ The healthy fixture had to grow alongside the bench — without the new fields the check reads GREY, and **grey does not pass**, so the self-test would have failed on its own first assertion.
+
+---
+
 ## 2026-09-04 — `PHONBANK.1` CLOSED + `MATHGAP.1` PART ① + THE BOARD WAS MISREPORTING WHAT BLOCKS THE WALK
 
 Gee: *"we are completeing the todos blcoking a freshwalk and graduation"* — so the first job was working out which rows genuinely block it, and **three of them turned out not to.**
