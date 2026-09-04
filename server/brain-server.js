@@ -2915,6 +2915,42 @@ class ServerBrain {
         // box reports, so the estimator now covers the whole allocation.
         ['sem', 'word_motor'], ['word_motor', 'sem'],
       ];
+      // ⛔⛔ THE TWO TERMS BELOW WERE MISSING, AND THEY ERRED IN OPPOSITE
+      // DIRECTIONS SO THE TOTAL LOOKED PLAUSIBLE. Measured against the real
+      // construction at 60,000 neurons, the old estimator predicted **956,247**
+      // cross-projection entries where the actual is **670,860** — 0.70×.
+      //
+      //   ① EVERY pair got the DEFAULT fanout and cap, so the eight motor-bound
+      //      projections were UNDER-counted 2× (`cluster.js` gives them
+      //      `crossTargetFanout * 2` and a 0.01 cap, not 0.005).
+      //   ② `betweenClusterDensityScale` was omitted entirely, so every pair
+      //      crossing a cluster boundary was OVER-counted 3.3× (the real
+      //      construction multiplies its density by 0.3).
+      //
+      // ⚠ THE NET WAS CONSERVATIVE, WHICH IS WHY THIS WAS NOT URGENT — but the
+      // cancellation was a coincidence, not a design, and this estimator decides
+      // how many neurons the box builds. **A fanout change can flip the sign
+      // silently, and the failure mode on that side is an OOM at boot.** The
+      // motor-bound set gained `sem-word_motor`/`word_motor-sem` on 2026-09-04,
+      // which is exactly such a change.
+      //
+      // ⭐ EVERY CONSTANT HERE IS READ FROM `js/brain/cluster.js`, not restated
+      // from memory: the ×2 fanout, the 0.01 cap, the 0.3 between-cluster scale
+      // and the cluster membership all mirror the construction they predict.
+      const EST_MOTOR_BOUND_PAIRS = new Set([
+        'sem-motor', 'motor-sem',
+        'sem-word_motor', 'word_motor-sem',
+        'letter-motor', 'motor-letter',
+        'phon-motor', 'motor-phon',
+      ]);
+      const EST_REGION_CLUSTER = {
+        visual: 'sensory', auditory: 'sensory', gustatory: 'sensory',
+        somatosensory: 'sensory', letter: 'sensory', phon: 'sensory',
+        sem: 'association', fineType: 'association', free: 'association',
+        motor: 'output', word_motor: 'output',
+      };
+      const EST_BETWEEN_CLUSTER_SCALE = 0.3;
+
       function estimateLangCortexVramBytes(trial) {
         if (trial <= 0) return 0;
         const regions = {};
@@ -2925,12 +2961,21 @@ class ServerBrain {
         const intraDensity = Math.min(INTRA_CONNECTIVITY_CAP, CORTEX_TARGET_FANOUT / Math.max(1, trial));
         const intraNnz = Math.floor(trial * intraDensity * trial);
         let total = intraNnz * BYTES_PER_NNZ + (trial + 1) * 4;
-        // 14 cross-projections (7 pairs × 2 directions)
+        // ⚠ 16 cross-projections (8 pairs × 2 directions). The old comment here
+        // said "14 (7 pairs × 2)" while the list beside it already held 8 pairs —
+        // a count that was wrong at the moment it was written.
         for (const [src, dst] of CROSS_PAIRS) {
           const srcSize = regions[src] || 0;
           const dstSize = regions[dst] || 0;
           if (srcSize <= 0 || dstSize <= 0) continue;
-          const density = Math.min(CROSS_DENSITY_CAP, CROSS_TARGET_FANOUT / Math.max(1, srcSize));
+          const key = `${src}-${dst}`;
+          const motorBound = EST_MOTOR_BOUND_PAIRS.has(key);
+          const fanout = motorBound ? CROSS_TARGET_FANOUT * 2 : CROSS_TARGET_FANOUT;
+          const cap = motorBound ? CROSS_DENSITY_CAP * 2 : CROSS_DENSITY_CAP;
+          const sc = EST_REGION_CLUSTER[src];
+          const dc = EST_REGION_CLUSTER[dst];
+          const betweenScale = (sc && dc && sc !== dc) ? EST_BETWEEN_CLUSTER_SCALE : 1.0;
+          const density = Math.min(cap, fanout / Math.max(1, srcSize)) * betweenScale;
           const nnz = Math.floor(dstSize * density * srcSize);
           total += nnz * BYTES_PER_NNZ + (dstSize + 1) * 4;
         }

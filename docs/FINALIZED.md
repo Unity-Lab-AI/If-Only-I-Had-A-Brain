@@ -5,6 +5,51 @@
 
 ---
 
+## 2026-09-04 — `SIZEEST.1` + `PREWALK.1` (PARTIAL) + THREE BOARD ROWS THAT WERE LYING ABOUT WHAT BLOCKS THE WALK
+
+### `SIZEEST.1` — two missing terms that erred in opposite directions, so the total looked plausible
+
+`estimateLangCortexVramBytes` decides **how many neurons the box builds**. It was wrong in three ways at once:
+
+- **Every pair got the DEFAULT fanout and cap**, so the eight motor-bound projections were **under-counted 2×** — the construction gives them `crossTargetFanout * 2` and a `0.01` cap, not `0.005`.
+- **`betweenClusterDensityScale` was omitted entirely**, so every pair crossing a cluster boundary was **over-counted 3.3×** — the construction multiplies its density by `0.3`.
+- Its own comment said *"14 cross-projections (7 pairs × 2 directions)"* while **the list beside it already held 8 pairs**. That count was wrong at the moment it was written.
+
+⭐ **EVERY CONSTANT IN THE FIX IS READ FROM `js/brain/cluster.js`, NOT RESTATED FROM MEMORY** — the ×2 fanout, the `0.01` cap, the `0.3` between-cluster scale and the full `regionClusterMap` membership all mirror the construction they predict, so the estimator and the builder now agree by construction rather than by coincidence.
+
+**Measured at 60,000 neurons:** the old formula, re-derived independently, reproduces **956,247** — *exactly* the number this row already recorded, which is what validates the method. The corrected one gives **735,327**. Against the row's recorded real construction figure of **670,860**, that is **1.425× → 1.096×**: from 43% over to under 10%.
+
+⚠ **STATED PRECISELY, BECAUSE IT MATTERS: I DID NOT INDEPENDENTLY RE-MEASURE THE REAL CONSTRUCTION.** Building the full region cluster needs an entry point that `NeuronCluster` alone is not — a direct instantiation produced one matrix with zero non-zeros. The **670,860** is this row's own prior measurement, cited as such. What I verified myself is the old formula's output and the new formula's output.
+
+⛔ **WHY IT WAS WORTH DOING NOW RATHER THAN "NOT URGENT":** the net error was conservative, which is the safe direction — but **the cancellation was a coincidence, not a design**, and a fanout change can flip the sign silently, where the failure mode is an **OOM at boot**. The motor-bound set gained `sem-word_motor` / `word_motor-sem` earlier the same day. That is exactly such a change.
+
+### `PREWALK.1` (partial) — the obvious-regression sweep, and it found one
+
+✅ **THE BROWSER BUNDLE IS CURRENT, AND THAT IS A REAL PASS — A FRESH BUILD REPRODUCES THE COMMITTED ONE BYTE-FOR-BYTE.** `js/app.bundle.js` at HEAD and a clean `npm run build` are both **1,012,014 bytes and byte-identical** (`Buffer.compare === 0`). So the artefact shipping to the box provably matches its sources.
+
+⛔⛔ **AND I CLAIMED THE OPPOSITE FIRST — RETRACTED THE SAME HOUR, BEFORE IT SHIPPED.** I saw the *worktree* file go **1,035,643 → 1,012,014** across the build and wrote *"the committed browser bundle was stale"* into this ledger, the board and a commit message. It was not: **HEAD already held 1,012,014**, the bundle was last rebuilt in `ca251a13`, and the 1,035,643 was a **stale local artefact left by a build under an earlier branch state**. The tell was that `git add` staged nothing — a file with no diff.
+⭐ **The lesson is specific and worth keeping: a size change in the WORKING TREE is not evidence about the COMMITTED artefact.** The comparison that answers the question is worktree-vs-HEAD, and I ran it only after the commit had already been written.
+
+⚠ **Two further checks of mine were wrong before they were right.** The first "parse" test used `vm.Script`, which treats an ESM bundle with top-level await as a syntax error — a false alarm from my detector, not the bundle. And a byte count read mid-write reported 1,005,393. Both corrected by re-reading the artefact.
+
+⭐ **Absent symbols investigated rather than assumed:** `drainDeferredLanes` and `_recordGraduation` are missing from the bundle, and that is **correct** — `js/brain/curriculum.js` is not in the browser import graph, and the 122 `curriculum` hits in the bundle are runtime property references and one comment.
+
+**Three sweeps came back CLEAN, and a clean negative is a result:**
+- **Dark state reads** — every `st.` / `state.` read across all 10 HTML pages against the 67 top-level keys `getState()` publishes. Every apparent hit was a false positive and each was opened: the message counters are an **explicitly optional** read the dashboard's own comment documents, `phase`/`portOpen` sit on a **local `st` parameter** from a donor status object, and two were inside comments.
+- **Runtime files that would not reach the box** — 29 distinct `__dirname` file references that exist on disk; 25 untracked, and **all 25 deliberately gitignored with recorded line numbers** (weights, logs, caches, dbs, the geometry pin, identity core). No accidental omissions.
+- **ESM link check** on `curriculum.js`, `cluster.js`, `sparse-matrix.js` — all three import cleanly, which `node --check` alone cannot prove.
+- **`DEPLOYCHECK.3` verified in passing:** `server/exam-banks/` is **206 on disk, 206 tracked**, not ignored, not excluded from the deploy overlay. It will reach the box.
+
+### Three rows that were misreporting what blocks the walk
+
+⛔ **This is the fourth, fifth and sixth instance today of a row left open after its work was done** — and the board's own standing complaint is that *"what blocks the walk"* is the exact question being asked of it.
+
+- **`EARLYTEACH.1` CLOSED.** Both halves are answered: the McGuffey reading spine landed with every id verified against Gutenberg's `Title:` headers, and the number half was **decided** 2026-09-03 — the equational math runners teach counting, numerals and reading a number sentence directly. Its successor `EARLYTEACH.2` is already `[x]`. **The negative results are kept deliberately**: *Ray's Arithmetic* returns 0 hits, the primary arithmetic primer is not on Gutenberg, and **`topic=counting` matches `accounting`** — a whole pass was spent learning that.
+- **`WAVESEE.6` STATUS CORRECTED.** All three parts are **built and verified against the row's own requirements**: the JSONL ledger written with `writeSync` to an open fd (so a killed run keeps what it learned), the PERMANENT/TRANSIENT/**UNKNOWN** classification, and a `--retry` pass reading only that ledger with bounded attempts. ⭐ `attempts` is **derived** by folding rows per key rather than stored, so it cannot go stale, and the reader tolerates a torn last line. ⛔ **What is actually owed is a RUN, not code** — there is no `failures.jsonl` anywhere, so the instrument is unexercised and the ~6,400 figures are still unnamed.
+- **`CURVEDEPTH.12` continued** — see its own entry below.
+
+---
+
 ## 2026-09-04 — `CURVEDEPTH.12` (PARTIAL) — THE LANE WAS ALREADY BUILT, AND EVERY STARVED CS CELL ALREADY HAD A BOOK
 
 ⛔⛔ **THE ROW'S PREMISE WAS OUT OF DATE IN TWO SEPARATE WAYS, AND BOTH WERE FOUND BY MEASURING RATHER THAN BY READING THE ROW.**
