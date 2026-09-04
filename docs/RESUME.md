@@ -1,6 +1,41 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-09-04 LATER (LATEST — PICK UP HERE) THE BAND THAT PRODUCES EVERY WORD SHE SAYS WAS THE THINNEST PROJECTION IN THE BRAIN
+> ## ⭐⭐⭐ 2026-09-04 LATEST (PICK UP HERE) THREE QUARTERS OF EVERY LAMINATED PROJECTION WAS BORN DEAD
+>
+> ### ⛔ STATE
+> ```
+> branch    feature/lamdead-0904 (cascaded)
+> job       LibreTexts corpus fetch still running (.scratch/libretexts.log)
+> built     LAMDEAD.1 · ATTNDEAD.1  (both were DECISIONS, both answered)
+> open      WORDWIRE.3 · SEMDENSE.1 · TEACHFINAL.1-.6 · the pre-existing press-blockers
+> ```
+>
+> ### ⭐⭐ TWO RULINGS, BOTH TAKEN AS "AIM AT THE ENDGAME"
+> **`LAMDEAD` — *"1 & 2 in line with the overacrching understanding of fully the whole endgame wanted"*.** Both halves, and with the endgame as the deciding frame they were never alternatives:
+> - ① **The mask comes OFF the engineered index bands.** `motor` and `letter` join `word_motor` — all three are a bucket per symbol read by argmax over bucket means, and none is laminated cortex. **The exemption `word_motor` already carried was always general and had only ever been applied once.**
+> - ② **Where the mask genuinely belongs it is a BIAS, not a veto.** An off-layer row gets 0.25 of the fanout with a floor of 1 instead of nothing, so the Felleman & Van Essen hierarchy survives as the gradient it actually is. `sem`/`phon`/`visual`/`auditory`/`free`/`fineType` keep their masks.
+>
+> ```
+> at 60,000 neurons          before                    after
+> letter_to_phon    2.50 wires/row, 9,000 EMPTY   ->   4.75/row, 0 empty
+> phon_to_letter    2.52,           2,244 EMPTY   ->  10.00/row, 0 empty
+> motor_to_letter   1.01,           2,244 EMPTY   ->   4.00/row, 0 empty
+> letter_to_motor   1.47,           1,040 EMPTY   ->   6.00/row, 0 empty
+> ```
+> ⭐ **`letter_to_phon` stops at 4.75 rather than 10 ON PURPOSE** — `phon` is still masked as the real cortex it is. **That gap is the hierarchy, expressed as a gradient instead of as three thousand dead rows.** `DREAM_LAMINATION_VETO=1` restores the old build. **9/9 harness**, including the negative that veto mode still reproduces exactly 75.0%.
+>
+> **`ATTNDEAD` — *"option 1"*: the attention head is ON** for the conversational lane (primary compose + continuations). ⚠ **Opt-in per caller and staying that way** — the ~30 gate and probe callers keep composing without it, because a gate number has to describe the trained matrix alone.
+>
+> ### ⛔ TWO MORE EMPTY-ROW SOURCES, FOUND WHILE FIXING THE FIRST — both would have survived the headline fix
+> - The **SOURCE** mask could leave a row *under* its fanout with no way to recover those wires. Third fill pass added; 0 of 500 short, min 10/10.
+> - **`initRandom` had no `Math.max(1, …)` at all**, where the topographic initialiser has carried one since it was written. Wherever `cols × density` rounds below 0.5, **every** row of that projection came out empty. ⚠ **It bites SMALL brains hardest — the 6,700-neuron browser build is exactly where it rounds to zero. The same scale-dependence trap as the fixed topographic radius, pointing the other way.**
+>
+> ### ⚠ WHAT TO CARRY FORWARD
+> **Two of this session's four biggest findings are the same bug shape: a CONSTANT that means one thing on a small brain and another on a big one.** `radiusTopo: 30` and a per-row target that rounds to zero. **Worth sweeping for deliberately** — anything expressed as an absolute cell count against a region that scales 6,700 → 671,000,000.
+>
+> ---
+>
+> ## ⭐⭐⭐ 2026-09-04 LATER — THE BAND THAT PRODUCES EVERY WORD SHE SAYS WAS THE THINNEST PROJECTION IN THE BRAIN
 >
 > ### Read in this order: this block → `docs/TODO.md §FORKFIND` → `docs/TODO.md §TEACHFINAL` → the block below.
 >

@@ -88,7 +88,24 @@ export class SparseMatrix {
     let totalPre = 0;
     const perRowK = new Uint32Array(rows);
     for (let i = 0; i < rows; i++) {
-      const kPerRow = Math.min(Math.round(cols * density), Math.max(0, cols - (noSelfConnect ? 1 : 0)));
+      // ⛔ A ROW MUST NEVER COME OUT OF CONSTRUCTION EMPTY (2026-09-04).
+      //
+      // `initTopographicProjection` has carried `Math.max(1, …)` since it was
+      // written; this one never has, so at any geometry where `cols × density`
+      // rounds below 0.5 every row of the projection comes out with zero
+      // entries — and `ojaUpdate` walks `rowPtr[i]..rowPtr[i+1]` with no
+      // insertion path, so those rows can never learn anything for the life of
+      // the brain. Nothing warned, because until the wiring audit shipped
+      // nothing anywhere reported wires-per-row.
+      //
+      // ⚠ It bites SMALL brains hardest — the browser build at 6,700 neurons is
+      // exactly where a per-row target rounds to zero — which is the same
+      // scale-dependence trap as the fixed topographic radius, pointing the
+      // other way. The `Math.min` against `cols` keeps it correct when a region
+      // is genuinely tiny.
+      const _kRaw = Math.round(cols * density);
+      const _kCap = Math.max(0, cols - (noSelfConnect ? 1 : 0));
+      const kPerRow = Math.min(Math.max(_kCap > 0 ? 1 : 0, _kRaw), _kCap);
       perRowK[i] = kPerRow;
       totalPre += kPerRow;
     }
@@ -426,6 +443,42 @@ export class SparseMatrix {
     const srcLayerMask = opts.srcLayerMask || null;
     const dstLayerMask = opts.dstLayerMask || null;
 
+    // ⛔⛔⛔ THE LAYER MASK IS A BIAS NOW, NOT A VETO (2026-09-04).
+    //
+    // What it used to do: a destination row outside `dstLayerMask` was SKIPPED
+    // and left with zero entries. L4 is 25% of a region, so **75% of the rows
+    // in every laminated projection came out of construction empty** — and
+    // `ojaUpdate` walks `rowPtr[i]..rowPtr[i+1]` with no insertion path, so an
+    // empty row can never learn anything for the life of the brain. The wiring
+    // audit measured exactly 75.0% at 8,000 / 20,000 / 60,000 and 400,000
+    // neurons, with `motor_to_letter` at 0.24 wires per row.
+    //
+    // ⚠ THE HIERARCHY IT ENCODES IS REAL and is NOT being discarded. Feed-forward
+    // cortico-cortical projections really do prefer L4 termination and L2/3
+    // origin (Felleman & Van Essen 1991). But "prefers" is a gradient, and a
+    // veto is what turned a gradient into three quarters of a projection that
+    // cannot participate in learning at all.
+    //
+    // So: an off-layer destination row gets FEWER wires (`maskBiasFrac`, floor
+    // 1) instead of none, and the source mask is a PREFERENCE — rows fill from
+    // masked columns first and fall back to any column rather than coming up
+    // short. Every row ends up non-empty; on-layer rows still get the full
+    // fanout and off-layer rows still get materially less, which is the
+    // hierarchy stated as a bias.
+    //
+    // `DREAM_LAMINATION_VETO=1` restores the old skip-the-row behaviour so the
+    // two can be compared on real walks rather than argued about.
+    const maskMode = (() => {
+      if (opts.maskMode === 'veto' || opts.maskMode === 'bias') return opts.maskMode;
+      try { return process?.env?.DREAM_LAMINATION_VETO === '1' ? 'veto' : 'bias'; }
+      catch { return 'bias'; }
+    })();
+    const maskBiasFrac = (() => {
+      const v = Number(opts.maskBiasFrac);
+      if (Number.isFinite(v) && v > 0 && v <= 1) return v;
+      return 0.25;
+    })();
+
     const totalPre = rows * fanout;
     this.values = new Float64Array(totalPre);
     this.colIdx = new Uint32Array(totalPre);
@@ -441,19 +494,27 @@ export class SparseMatrix {
     for (let i = 0; i < rows; i++) {
       // skip dest rows not in the dest layer mask.
       // Empty rows produce no connections (rowPtr[i+1] = rowPtr[i]).
-      if (dstLayerMask && !dstLayerMask[i]) {
+      const _offLayer = !!(dstLayerMask && !dstLayerMask[i]);
+      if (_offLayer && maskMode === 'veto') {
+        // The pre-2026-09-04 behaviour, kept only behind DREAM_LAMINATION_VETO=1:
+        // the row is left EMPTY and can never learn, because ojaUpdate has no
+        // insertion path. This is the branch that produced 75% dead rows.
         this.rowPtr[i + 1] = idx;
         continue;
       }
+      // BIAS, not veto: an off-layer row gets fewer wires, never none. The
+      // hierarchy survives as a gradient and every row can still learn.
+      const rowFanout = _offLayer ? Math.max(1, Math.round(fanout * maskBiasFrac)) : fanout;
+      const rowLocal = Math.min(rowFanout, _offLayer ? Math.max(1, Math.round(localCount * maskBiasFrac)) : localCount);
       picks.clear();
       let filled = 0;
       // Topographic center: where in cols this dest row maps to.
       const center = Math.floor(i * cols / Math.max(1, rows));
 
-      // Tier 1: localCount targets within ±radiusTopo of center
+      // Tier 1: rowLocal targets within ±radiusTopo of center
       let attempts = 0;
       const maxAttempts = fanout * 6;
-      while (filled < localCount && attempts < maxAttempts) {
+      while (filled < rowLocal && attempts < maxAttempts) {
         const offset = Math.floor((Math.random() * 2 - 1) * radiusTopo);
         let col = center + offset;
         if (col < 0) col += cols;
@@ -471,7 +532,7 @@ export class SparseMatrix {
 
       // Tier 2: random spread (30% Watts-Strogatz scattering)
       attempts = 0;
-      while (filled < fanout && attempts < maxAttempts) {
+      while (filled < rowFanout && attempts < maxAttempts) {
         const col = Math.floor(Math.random() * cols);
         if (picks.has(col)) { attempts++; continue; }
         if (srcLayerMask && !srcLayerMask[col]) { attempts++; continue; }
@@ -481,6 +542,29 @@ export class SparseMatrix {
         rowBufVal[filled] = sign * (0.1 + Math.random() * 0.4) * strength;
         filled++;
         attempts++;
+      }
+
+      // Tier 3: THE SOURCE MASK IS A PREFERENCE, SO IT MUST NOT LEAVE A ROW
+      // SHORT. Tiers 1 and 2 fill from L2/3 columns first, which is the whole
+      // point; if they cannot reach the row's fanout — because the mask left
+      // too few candidates near the centre, or because the attempt budget ran
+      // out — the remainder fills from anywhere rather than being abandoned.
+      // ⛔ Without this the src mask silently reintroduces exactly the defect
+      // the dst change above removes: a row that finishes under its fanout
+      // never gets those wires back, because construction is the only chance.
+      // Skipped entirely in veto mode, where being short IS the intent.
+      if (maskMode !== 'veto' && filled < rowFanout) {
+        attempts = 0;
+        while (filled < rowFanout && attempts < maxAttempts) {
+          const col = Math.floor(Math.random() * cols);
+          if (picks.has(col)) { attempts++; continue; }
+          picks.add(col);
+          rowBufCol[filled] = col;
+          const sign = Math.random() < excitatoryRatio ? 1 : -1;
+          rowBufVal[filled] = sign * (0.1 + Math.random() * 0.4) * strength;
+          filled++;
+          attempts++;
+        }
       }
 
       // Sort row's cols ascending per CSR contract

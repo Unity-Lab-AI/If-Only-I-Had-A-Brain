@@ -43,7 +43,9 @@ var init_sparse_matrix = __esm({
         let totalPre = 0;
         const perRowK = new Uint32Array(rows);
         for (let i = 0; i < rows; i++) {
-          const kPerRow = Math.min(Math.round(cols * density), Math.max(0, cols - (noSelfConnect ? 1 : 0)));
+          const _kRaw = Math.round(cols * density);
+          const _kCap = Math.max(0, cols - (noSelfConnect ? 1 : 0));
+          const kPerRow = Math.min(Math.max(_kCap > 0 ? 1 : 0, _kRaw), _kCap);
           perRowK[i] = kPerRow;
           totalPre += kPerRow;
         }
@@ -342,6 +344,19 @@ var init_sparse_matrix = __esm({
         const localCount = Math.max(1, Math.round(fanout * localFrac));
         const srcLayerMask = opts.srcLayerMask || null;
         const dstLayerMask = opts.dstLayerMask || null;
+        const maskMode = (() => {
+          if (opts.maskMode === "veto" || opts.maskMode === "bias") return opts.maskMode;
+          try {
+            return process?.env?.DREAM_LAMINATION_VETO === "1" ? "veto" : "bias";
+          } catch {
+            return "bias";
+          }
+        })();
+        const maskBiasFrac = (() => {
+          const v = Number(opts.maskBiasFrac);
+          if (Number.isFinite(v) && v > 0 && v <= 1) return v;
+          return 0.25;
+        })();
         const totalPre = rows * fanout;
         this.values = new Float64Array(totalPre);
         this.colIdx = new Uint32Array(totalPre);
@@ -353,16 +368,19 @@ var init_sparse_matrix = __esm({
         let idx = 0;
         this.rowPtr[0] = 0;
         for (let i = 0; i < rows; i++) {
-          if (dstLayerMask && !dstLayerMask[i]) {
+          const _offLayer = !!(dstLayerMask && !dstLayerMask[i]);
+          if (_offLayer && maskMode === "veto") {
             this.rowPtr[i + 1] = idx;
             continue;
           }
+          const rowFanout = _offLayer ? Math.max(1, Math.round(fanout * maskBiasFrac)) : fanout;
+          const rowLocal = Math.min(rowFanout, _offLayer ? Math.max(1, Math.round(localCount * maskBiasFrac)) : localCount);
           picks.clear();
           let filled = 0;
           const center = Math.floor(i * cols / Math.max(1, rows));
           let attempts = 0;
           const maxAttempts = fanout * 6;
-          while (filled < localCount && attempts < maxAttempts) {
+          while (filled < rowLocal && attempts < maxAttempts) {
             const offset = Math.floor((Math.random() * 2 - 1) * radiusTopo);
             let col = center + offset;
             if (col < 0) col += cols;
@@ -383,7 +401,7 @@ var init_sparse_matrix = __esm({
             attempts++;
           }
           attempts = 0;
-          while (filled < fanout && attempts < maxAttempts) {
+          while (filled < rowFanout && attempts < maxAttempts) {
             const col = Math.floor(Math.random() * cols);
             if (picks.has(col)) {
               attempts++;
@@ -399,6 +417,22 @@ var init_sparse_matrix = __esm({
             rowBufVal[filled] = sign * (0.1 + Math.random() * 0.4) * strength;
             filled++;
             attempts++;
+          }
+          if (maskMode !== "veto" && filled < rowFanout) {
+            attempts = 0;
+            while (filled < rowFanout && attempts < maxAttempts) {
+              const col = Math.floor(Math.random() * cols);
+              if (picks.has(col)) {
+                attempts++;
+                continue;
+              }
+              picks.add(col);
+              rowBufCol[filled] = col;
+              const sign = Math.random() < excitatoryRatio ? 1 : -1;
+              rowBufVal[filled] = sign * (0.1 + Math.random() * 0.4) * strength;
+              filled++;
+              attempts++;
+            }
           }
           for (let a = 1; a < filled; a++) {
             const keyCol = rowBufCol[a];
@@ -12220,6 +12254,25 @@ var LanguageCortex = class {
                 // returning silence, because a question scored as her answer would
                 // corrupt every gate that reads it.
                 curiosityAsk: true,
+                // ⭐⭐ THE THALAMIC RELAY IS ON (2026-09-04, Gee's call).
+                //
+                // `cluster/attention.js` — cosine → temperature softmax →
+                // weighted sum over the words already emitted in this utterance
+                // — has been built, wired into this exact path and DEAD since it
+                // shipped: the gate is `opts.attention === true` and nothing in
+                // the tree ever passed it. Built, documented, never called, which
+                // is the dormant class this project has a ledger full of.
+                //
+                // ⚠ IT IS OPT-IN PER CALLER AND STAYS THAT WAY. This is the
+                // CONVERSATIONAL lane. The ~30 gate and probe callers of the same
+                // method must keep composing without it, for the same reason they
+                // do not get `curiosityAsk`: a gate number has to describe the
+                // trained matrix alone, and a relay reading back her own recent
+                // words into sem would inflate exactly what the gate measures.
+                //
+                // ⛔ It changes what she says, so it lands with the fresh walk
+                // rather than quietly: the walk is the measurement.
+                attention: true,
                 // DONOR-DROP FIX (2026-07-16) — mid-walk, ONE candidate: each
                 // rerank candidate is a FULL sentence emission (~13s of GPU
                 // dispatches); 3 of them stacked on teach starved the event
@@ -12251,6 +12304,11 @@ var LanguageCortex = class {
                         topK: _topK,
                         coherenceCandidates: opts.curriculumBusy ? 1 : 2,
                         // donor-drop fix — see above
+                        // Same lane, same reply — a continuation sentence that
+                        // could not see the words the first sentence just
+                        // emitted would be the one place the relay is most
+                        // obviously supposed to help.
+                        attention: true,
                         gradeGate: true
                       });
                     } catch {
@@ -17521,8 +17579,9 @@ var NeuronCluster = class {
         };
         const aRegion = this.regions[a];
         const bRegion = this.regions[b];
-        const srcMaskAB = this.lamination && aRegion && a !== "word_motor" ? buildLayerMask(aRegion, 1) : null;
-        const dstMaskAB = this.lamination && bRegion && b !== "word_motor" ? buildLayerMask(bRegion, 2) : null;
+        const _readoutBand = (r) => r === "word_motor" || r === "motor" || r === "letter";
+        const srcMaskAB = this.lamination && aRegion && !_readoutBand(a) ? buildLayerMask(aRegion, 1) : null;
+        const dstMaskAB = this.lamination && bRegion && !_readoutBand(b) ? buildLayerMask(bRegion, 2) : null;
         if (TOPOGRAPHIC_PAIRS.has(abKey) && typeof ab.initTopographicProjection === "function") {
           ab.initTopographicProjection(abDensity, abExcitatory, 0.2, {
             radiusTopo: 30,
@@ -17537,8 +17596,8 @@ var NeuronCluster = class {
         if (logConstruction) console.log(`[Cluster ${name}]   ${_projIdx}/${pairs.length * 2} ${a}_to_${b}${TOPOGRAPHIC_PAIRS.has(abKey) ? " [topographic]" : ""} (${bSize.toLocaleString()}\xD7${aSize.toLocaleString()}, nnz=${ab.nnz.toLocaleString()}) in ${Date.now() - abTime}ms`);
         const baTime = Date.now();
         const ba = new SparseMatrix(aSize, bSize, { wMin: -_wMaxFor(`${b}_to_${a}`), wMax: _wMaxFor(`${b}_to_${a}`) });
-        const srcMaskBA = this.lamination && bRegion && b !== "word_motor" ? buildLayerMask(bRegion, 1) : null;
-        const dstMaskBA = this.lamination && aRegion && a !== "word_motor" ? buildLayerMask(aRegion, 2) : null;
+        const srcMaskBA = this.lamination && bRegion && !_readoutBand(b) ? buildLayerMask(bRegion, 1) : null;
+        const dstMaskBA = this.lamination && aRegion && !_readoutBand(a) ? buildLayerMask(aRegion, 2) : null;
         if (TOPOGRAPHIC_PAIRS.has(baKey) && typeof ba.initTopographicProjection === "function") {
           ba.initTopographicProjection(baDensity, baExcitatory, 0.2, {
             radiusTopo: 30,

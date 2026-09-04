@@ -5,6 +5,56 @@
 
 ---
 
+## 2026-09-04 — `LAMDEAD.1` + `ATTNDEAD.1` — 75% OF EVERY LAMINATED PROJECTION WAS BORN DEAD, AND THE RELAY THAT WAS NEVER CALLED IS ON
+
+Gee, asked as a decision because both change what she says, and answered:
+
+> **`LAMDEAD.1`** — *"1 & 2 in line with the overacrching understanding of fully the whole endgame wanted"*
+> **`ATTNDEAD.1`** — *"option 1 in line with the previous question's answer"*
+
+**Both halves of the lamination answer, and the relay switched on.** The two options were not alternatives once the endgame is the deciding frame: option ① removes the mask where it never belonged, option ② makes it survivable where it does.
+
+### ① The mask comes OFF the engineered index bands
+
+The `word_motor` exemption's own reasoning was always general and was only ever applied to one band. `motor` and `letter` are the same thing `word_motor` is — **a bucket per symbol, read by argmax over bucket means** — and neither is laminated cortex. `_readoutBand()` now covers all three, on both sides of every pair.
+
+⚠ **`sem`, `phon`, `visual`, `auditory`, `free` and `fineType` are NOT exempted.** They are real laminated cortex and they keep their masks. The hierarchy is not being discarded; it is being applied to the regions it describes.
+
+### ② And where the mask DOES belong, it is a bias instead of a veto
+
+`initTopographicProjection` used to **skip** an off-layer destination row and leave it with zero entries. `ojaUpdate` walks `rowPtr[i]..rowPtr[i+1]` and cannot insert, so those rows were dead for the life of the brain — **75.0% of them, measured identical at 8,000 / 20,000 / 60,000 and 400,000 neurons.**
+
+Feed-forward projections really do prefer L4 termination and L2/3 origin. **But "prefers" is a gradient, and a veto turned a gradient into three quarters of a projection that could not participate in learning at all.** Now an off-layer row gets `maskBiasFrac` (0.25, floor 1) of the fanout instead of none.
+
+⛔ **AND THE SOURCE MASK HAD THE SAME DEFECT ONE LEVEL DOWN, WHICH IS THE PART THAT WOULD HAVE BEEN MISSED.** Tiers 1 and 2 fill from L2/3 columns and give up at the attempt budget — so a row could finish **under** its fanout and never get those wires back, silently reintroducing exactly what the destination fix removes. A third pass now fills the remainder from anywhere. **Verified: 0 of 500 rows short, min 10/10, where the masked build had been leaving them short.**
+
+⛔ **`initRandom` had no `Math.max(1, …)` AT ALL** — where the topographic initialiser has carried one since it was written. At any geometry where `cols × density` rounds below 0.5, **every row of that projection came out empty**, and it bites **small** brains hardest: the 6,700-neuron browser build is exactly where a per-row target rounds to zero. **The same scale-dependence trap as the fixed topographic radius, pointing the other way.**
+
+**`DREAM_LAMINATION_VETO=1` restores the old skip-the-row behaviour**, so the two builds can be compared on real walks rather than argued about.
+
+**Measured, before → after, at 60,000 neurons:**
+
+```
+letter_to_phon    2.50 wires/row, 9,000 of 12,000 EMPTY   ->   4.75/row, 0 empty
+phon_to_letter    2.52 wires/row, 2,244 EMPTY             ->  10.00/row, 0 empty
+motor_to_letter   1.01 wires/row, 2,244 EMPTY             ->   4.00/row, 0 empty
+letter_to_motor   1.47 wires/row, 1,040 EMPTY             ->   6.00/row, 0 empty
+```
+
+⭐ **`letter_to_phon` lands at 4.75 and not 10 on purpose** — `phon` is still masked as the real cortex it is, so its off-layer rows take the 0.25 bias. That gap between 4.75 and `phon_to_letter`'s 10.00 **is** the hierarchy, now expressed as a gradient instead of as three thousand dead rows.
+
+**9/9 harness on the real cluster and the real matrix**, including the two negatives: veto mode still reproduces exactly 75.0% empty rows so the comparison is honest, and a one-column matrix does not ask for a wire it cannot have.
+
+### `ATTNDEAD.1` — the relay is on
+
+`js/brain/cluster/attention.js` — cosine → temperature softmax → weighted sum over the words already emitted in this utterance — was built, wired into `emit.js`, documented, and gated behind `opts.attention === true`, **which nothing in the tree ever passed.** It now rides the conversational lane: the primary compose and its continuations.
+
+⚠ **It stays opt-in per caller and that is deliberate.** The ~30 gate and probe callers of the same method keep composing without it, for the same reason they do not get `curiosityAsk` — a gate number has to describe the trained matrix alone, and a relay reading her own recent words back into sem would inflate precisely what the gate measures.
+
+⭐ **Checked rather than assumed, since the question invites it:** there is **no layer norm, no multi-head, no stacked block and no backprop anywhere in this brain.** The only matches in the tree are inside a third-party package under `node_modules`. One head, values === keys, and a softmax that is a weighted pick.
+
+---
+
 ## 2026-09-04 — `WIREAUDIT.1` + `WORDWIRE.1/.2` — THE BAND THAT PRODUCES EVERY WORD WAS THE THINNEST PROJECTION IN THE BRAIN
 
 Gee, verbatim:
