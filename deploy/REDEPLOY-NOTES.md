@@ -109,7 +109,17 @@ Both are non-fatal: a fired guard returns 0 and the press continues to the books
 - **The first fake reproduced nothing.** Re-reading a file served it from **page cache**, so `read_bytes` (real disk I/O) stayed 0 and the test looked like a healthy pull. Reproducing the box required `O_DIRECT` / `POSIX_FADV_DONTNEED`. **A test that cannot reproduce the bug proves nothing about the fix.**
 - Killing the pull **took the whole press down** (`rc=15`), because the fake `git` used `exec` and shared a pid. Now kills only the git-lfs pid.
 
-**✅ VERIFIED ON THE BOX, WHICH IS THE ONLY EVIDENCE THAT COUNTS.** After installing both guards, a press ran an LFS pull for **2+ minutes while the brain answered 200 on every single sample** — the same condition that previously produced wall-to-wall timeouts. Harness proof alongside it: a wedged pull is killed in ~30s with `FUNC_RC=0`, the press continues, no strays; a healthy pull is untouched and silent.
+**✅ WHAT IS VERIFIED — and, honestly, what is NOT.**
+
+| claim | evidence | strength |
+|---|---|---|
+| watchdog kills a wedged pull, press survives | harness with a faithful `O_DIRECT` wedge: killed in ~30s, `FUNC_RC=0`, no strays | **proven** |
+| a healthy pull is untouched and silent | same harness, writing fake: no warning, rc 0 | **proven** |
+| the guards do not themselves break a press | live press on the box completed, savestart resumed, `main@c70606ce` | **proven** |
+| brain stays served while an LFS pull runs | live: pull ran **2+ min, brain 200 on every sample**, where the same condition previously gave wall-to-wall timeouts | **proven** |
+| the watchdog fires **on the box** | ⚠ **NOT YET OBSERVED IN PRODUCTION.** Every wedge so far was killed by hand before the 120s trigger, or the press pre-dated the install | **inferred** |
+
+⭐ The deployed bytes were confirmed **byte-identical** to the repo (`diff` of `self-update.sh`, `brain-ctl.js` and BOTH dashboard copies), so the harness result applies to what is actually running — but *inferred* is not *observed*. **The first real wedge after this entry is the true test; check `grep WEDGED /opt/unity-brain/self-update.log`.**
 
 **Still open (a decision, not a command):** the pull should not share the brain's cgroup at all. Run the data sync as its **own systemd unit with its own `MemoryMax`**. And see the root cause below — the box has no `BrainWaves` credential, so this pull is grinding for data it can never get.
 
