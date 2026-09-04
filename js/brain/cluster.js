@@ -1321,8 +1321,25 @@ export class NeuronCluster {
         // additional nnz. The OTHER side of each pair keeps its mask: sem
         // stays laminated cortex. Init-time change: takes effect on the next
         // FRESH WALK; bucket geometry is unchanged so no bucket-map bump.
-        const srcMaskAB = (this.lamination && aRegion && a !== 'word_motor') ? buildLayerMask(aRegion, 1) : null; // L2/3 of source
-        const dstMaskAB = (this.lamination && bRegion && b !== 'word_motor') ? buildLayerMask(bRegion, 2) : null; // L4 of dest
+        // ⭐⭐ THE EXEMPTION IS NOW THE WHOLE FAMILY, NOT ONE BAND (2026-09-04).
+        //
+        // The reasoning above was written for `word_motor` and is just as true of
+        // `motor` and `letter`: all three are ENGINEERED INDEX BANDS — a bucket
+        // per symbol, read by argmax over bucket means — and none of them is
+        // laminated cortex. Masking their side of a projection to one lamina
+        // leaves 75% of their bucket rows with no incoming entry at all, and
+        // `ojaUpdate` cannot insert, so those rows are dead for the life of the
+        // brain. Measured by the wiring audit on real clusters at 8,000 /
+        // 20,000 / 60,000 / 400,000 neurons: EXACTLY 75.0% empty rows every
+        // time, with `motor_to_letter` reading 0.24 wires per row.
+        //
+        // ⚠ `sem`, `phon`, `visual`, `auditory`, `free` and `fineType` are NOT
+        // exempted. They are real laminated cortex and they keep their masks —
+        // as a BIAS now rather than a veto (see `maskMode` below), so the
+        // hierarchy is preserved as a gradient and no row is ever born dead.
+        const _readoutBand = (r) => (r === 'word_motor' || r === 'motor' || r === 'letter');
+        const srcMaskAB = (this.lamination && aRegion && !_readoutBand(a)) ? buildLayerMask(aRegion, 1) : null; // L2/3 of source
+        const dstMaskAB = (this.lamination && bRegion && !_readoutBand(b)) ? buildLayerMask(bRegion, 2) : null; // L4 of dest
         if (TOPOGRAPHIC_PAIRS.has(abKey) && typeof ab.initTopographicProjection === 'function') {
           ab.initTopographicProjection(abDensity, abExcitatory, 0.2, {
             radiusTopo: 30,
@@ -1338,8 +1355,8 @@ export class NeuronCluster {
         const baTime = Date.now();
         const ba = new SparseMatrix(aSize, bSize, { wMin: -_wMaxFor(`${b}_to_${a}`), wMax: _wMaxFor(`${b}_to_${a}`) });
         // reverse direction: src = L2/3 of b, dst = L4 of a.
-        const srcMaskBA = (this.lamination && bRegion && b !== 'word_motor') ? buildLayerMask(bRegion, 1) : null;
-        const dstMaskBA = (this.lamination && aRegion && a !== 'word_motor') ? buildLayerMask(aRegion, 2) : null;
+        const srcMaskBA = (this.lamination && bRegion && !_readoutBand(b)) ? buildLayerMask(bRegion, 1) : null;
+        const dstMaskBA = (this.lamination && aRegion && !_readoutBand(a)) ? buildLayerMask(aRegion, 2) : null;
         if (TOPOGRAPHIC_PAIRS.has(baKey) && typeof ba.initTopographicProjection === 'function') {
           ba.initTopographicProjection(baDensity, baExcitatory, 0.2, {
             radiusTopo: 30,
