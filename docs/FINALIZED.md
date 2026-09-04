@@ -46946,3 +46946,27 @@ Sponge pushed 10 commits to `origin/main` while today's work was in flight. Merg
 ⏳ **THE BOX DOES NOT HAVE THE LFS BOUND YET.** She is walking with a donor on `af23e4ff`; Sponge's fixes are `0c0e9fc9`. **The bounded pull only takes effect once a deploy delivers `self-update.sh`, and a deploy is the thing that runs the pull.** ⛔ **Deliberately NOT pressed:** a deploy restarts her and interrupts a healthy walk, and the guard only matters while a pull is running. It lands with the next deliberate deploy.
 
 **Docs shipped in this commit:** `docs/RESUME.md` (correction block at the top; the superseded blocks are retained as written per the never-delete rule, with a pointer) · `docs/FINALIZED.md` (this) · `docs/TODO.md` · `wiki/modules/deploy-and-ci.md` · `wiki/log.md`. **`deploy/REDEPLOY-NOTES.md` and `deploy/dropins/README.md` were shipped BY SPONGE in the merged commits and are already correct** — not re-edited.
+
+---
+
+## 2026-09-04 - FIELDSFLAG: the ctl timeout silently cancelled Sponge's fix, and the fields are WANTED - feature/fieldsflag
+
+Gee: *"make sure our local files are carring spongesd updates and then you fix that final thing and i can freshwalk press"* — then, correcting me mid-build: **"why are you saying skip fields we want to use the fields"**.
+
+- **`FIELDSFLAG.1` — ⛔⛔ TWO TIMEOUTS, TWO FILES, WRONG ORDER: THE CONTROL PLANE CANCELLED THE GUARD IT WAS SUPPOSED TO HONOUR.**
+  - `self-update.sh` now bounds `git lfs pull` at **45 m** (`UAL_LFS_TIMEOUT`, Sponge, `5b594357`). `brain-ctl.js` ran that same script under **`execFile(..., {timeout: 900000})` — 15 minutes**, unchanged since `CTLPLANE.2`. ⛔ **The parent is SIGTERMed half an hour before the guard can fire, so on the ctl path the bound is unreachable and a long deploy can never legally finish.**
+  - ⭐ **NEITHER NUMBER IS WRONG ON ITS OWN.** 15 minutes was a sane cap for a script that used to just rsync; 45 minutes is a sane cap for an LFS pull. **The defect is the relationship between them, which lived in no file** — and that is exactly the kind nobody finds by reading either one.
+  - ⭐ **FIXED BY DERIVING, NOT BY PICKING A BIGGER NUMBER.** `deployTimeoutMs()` = `UAL_LFS_TIMEOUT` + 20 min headroom for clone/overlay/restart, floored at 45 min. **A hand-chosen constant is only correct until somebody edits the other file**; a derived one cannot drift out of order.
+  - ⚠ **THE ONE CASE WHERE THE OBVIOUS ARITHMETIC GIVES THE DANGEROUS ANSWER:** `UAL_LFS_TIMEOUT=0` *disables* the LFS bound, so there is no upper bound to derive from. Naively that yields `0` — which `execFile` reads as **"no timeout at all"**, letting a wedged pull hold the control plane open forever. It falls back to the floor instead, and the comment says why.
+  - **16/16 exercised against the real functions lifted out of the file** (not a re-implementation): `45m → 65m` · `2h → 140m` · `0 → 45m floor` · bare seconds `900` · empty · unparseable → floor, never `NaN` · plus an explicit assertion that the old hardcoded `900000` sat **below** the 45 m bound.
+
+- **`FIELDSFLAG.2` — ✅ `fields=0` IS REACHABLE, AS AN EMERGENCY HATCH. ⛔ THE FIELDS ARE WANTED AND THAT IS THE DEFAULT.**
+  - ⛔⛔ **GEE CORRECTED MY FRAMING MID-BUILD AND HE WAS RIGHT.** I presented this as *"the fix that lets us skip the 114 GB"* and built a `__mg.freshWalkFast()` convenience verb for it. **The wavelet fields are her precomputed vision and are the reason the data repo exists.** This is the **second** time he has had to say it — *"we need to be able to use the fields or wtf!"*, *"we are still using the wavelets"*.
+  - ⭐ **THE VERB IS DELETED, THE CAPABILITY STAYS.** A one-word console verb for discarding her vision makes the wrong thing the easy thing. The machine gun now carries a comment saying it deliberately offers **no** shortcut, and that skipping is *"a thing you do once, on purpose, knowing what it costs"*.
+  - **What it is actually for, and it is a real gap:** `UAL_FIELDS` has existed in `self-update.sh` all along and **nothing could set it** — so on 2026-09-04, with a pull wedged at 2.07 TB read / 0 bytes written, **there was no way to deploy at all** while that payload misbehaved. Sponge's bound stops the wedge; this makes the deploy possible during one. **Use it once, then press again normally to bring the fields down.**
+  - **Wired on both routes**, body or query, **and forwarded down the ctl→brain delegation** — otherwise one press would mean two different things depending on whether the brain happened to be answering, which is the exact class of surprise the control plane exists to remove. Echoed back as `fields: "skipped" | "full"`.
+  - **13/13 on the parse, and the default is the assertion that matters:** no query · `keep=1` · `confirm=WIPE` · `fields=1` · body `{fields:1}` **all FETCH**; only an explicit `fields=0` skips; `xfields=0` does not partial-match.
+
+**Verified:** `node --check` on all three changed files · the timeout functions exercised for real · the parse exercised for real · **mirror confirmed by staged blob hash** (`e899ec5c…`) · `freshWalkFast` count in the tool: **0**.
+
+⏳ **THIS DOES NOT HELP THE FIRST PRESS, AND THAT IS WORTH SAYING PLAINLY.** A press runs **the BOX's** `self-update.sh` and **the box's** `brain-ctl.js` — both at `af23e4ff`, neither carrying the bound or the flag. **Press 1 delivers them; press 2 can use them.** The two-press structure is unchanged and unavoidable without a shell.
