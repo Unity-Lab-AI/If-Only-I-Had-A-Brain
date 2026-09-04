@@ -1271,6 +1271,29 @@ const SERVER_STATE_MIXIN = {
       curriculum: _lap('curriculum', () => (this.curriculum && typeof this.curriculum.getCurriculumStatus === 'function'
         ? this.curriculum.getCurriculumStatus()
         : null)),
+      // ⭐ THE LAST EXAM BATTERY — the authored-vs-derived split that decides
+      // whether a grade can open at all, published because it is the
+      // highest-risk change riding this press and nothing could see it.
+      // ⛔ Counts only, never question text: the exam is HELD OUT, so its
+      // contents must not travel onto a surface a reader can reach.
+      lastBattery: _lap('lastBattery', () => ((this.cortexCluster && this.cortexCluster.lastBattery)
+        ? this.cortexCluster.lastBattery : null)),
+      // ⭐ HER HANDWRITING — how many of the 26 letters she has actually looked
+      // at, traced and banked. ⚠ A drawing with NO WORDS on it is correct
+      // behaviour when this is low, not a rendering failure, and a reader needs
+      // this number to tell those two apart. A fresh walk wipes the visual
+      // store, so it starts at 0 every walk by design.
+      letterShapes: _lap('letterShapes', () => {
+        try {
+          if (typeof this.hasLetterShape !== 'function') return null;
+          const learned = [];
+          for (let i = 0; i < 26; i++) {
+            const ch = String.fromCharCode(97 + i);
+            if (this.hasLetterShape(ch)) learned.push(ch);
+          }
+          return { learned: learned.length, of: 26, letters: learned.join('') };
+        } catch { return null; }
+      }),
       // ⛔⛔ THE WIRING AUDIT, PUBLISHED — and it was NOT, which is the exact
       // producer/consumer split this project keeps paying for. The audit runs
       // at construction and writes `cluster.wiringAudit`, and nothing carried it
