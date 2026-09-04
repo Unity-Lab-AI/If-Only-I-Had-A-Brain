@@ -1,6 +1,55 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-09-04 (LATEST — PICK UP HERE) THE WALK HAD NO ENDING, AND ENDING IT WOULD HAVE SWITCHED HER OFF
+> ## ⭐⭐⭐ 2026-09-04 LATER (LATEST — PICK UP HERE) THE BAND THAT PRODUCES EVERY WORD SHE SAYS WAS THE THINNEST PROJECTION IN THE BRAIN
+>
+> ### Read in this order: this block → `docs/TODO.md §FORKFIND` → `docs/TODO.md §TEACHFINAL` → the block below.
+>
+> ### ⛔ STATE
+> ```
+> branch    feature/motorbind-0904
+> job       LibreTexts corpus fetch still running (.scratch/libretexts.log)
+> built     WIREAUDIT.1 · WORDWIRE.1 · WORDWIRE.2
+> open      LAMDEAD.1 (the big one, a DECISION) · WORDWIRE.3 · SEMDENSE.1 · ATTNDEAD.1 · TEACHFINAL.1-.6
+> ```
+>
+> ### ⭐ HOW THE FORK'S NOTES WERE HANDLED — the caveat was the instruction
+> **Nothing was adopted on the fork's word.** Every claim re-derived from this tree; every number re-measured by building the real `SparseMatrix` with the real density formula. **Four true, four stale or false.** Triage table on the board under `FORKFIND`. ⚠ **Two of the four "true" ones came with numbers that are wrong for our geometry** — see the 202× correction below.
+>
+> ### ⛔⛔⛔ THE FINDING
+> `ojaUpdate` walks `rowPtr[i]..rowPtr[i+1]` and **cannot insert**, so the wires a row gets at construction are its capacity **for life**. Nothing had ever printed that number. Built the instrument; on its first run:
+>
+> - **`sem_to_word_motor` was 3 wires/row against `sem_to_motor`'s 6.** The band that discriminates tens of thousands of WORDS had **half** the wiring of the one that picks between 26 letters — `word_motor` postdates both whitelists and was on neither, so it took the default fanout then the 0.3 haircut for crossing association→output. **Now 6/row, 606 → 1,212 wires per word.**
+> - **The `sem` pairs were topographic against the rule their own list's comment states.** `radiusTopo` is the fixed literal **30**, so at the deployed geometry a word's window is 1,107 sem cells = **0.630% of ONE GloVe dimension**, with 424 of its 606 wires inside it. Default is now random; `DREAM_SEM_TOPOGRAPHIC=1` restores the old build so two walks can be compared.
+>
+> ### ⛔⛔ THE BIGGER ONE, LEFT OPEN ON PURPOSE — `LAMDEAD.1`
+> `initTopographicProjection` **skips** rows outside the L4 destination mask, and L4 is 25% of a region, so **75.0% of every laminated topographic projection's rows come out EMPTY and can never learn.** Measured at 8,000 / 20,000 / 60,000 / 400,000 neurons — **exactly 75.0% every time**, `motor_to_letter` at 0.24 wires/row.
+> ⭐ **This project already wrote that mechanism down** when it exempted `word_motor` from the mask and measured `matrixDrivenPct 6%` live — and never applied it to `letter`, `phon` or `motor`, which are read by argmax over bucket means the same way.
+> ⛔ **Not fixed here: it changes what she says, the masks encode real cortical hierarchy, and they are only wired into the topographic branch — so lamination is currently a side-effect of initialiser choice rather than a property of the projection. That inconsistency is probably what to settle first.**
+>
+> ### ⚠ THE SCALE TABLE IS THE PART TO REMEMBER
+> ```
+>       6,700 neurons   topographic window >= 100% of a GloVe dim   harmless
+>     200,000                    52.6%
+>   2,000,000                     5.2%
+>  50,000,000                     0.79%
+> 306,458,816 (deployed)          0.630%
+> 671,000,000 (max tier)          0.613%
+> ```
+> **A fixed cell count against a region that scales 6,700 → 671,000,000.** The same line of code is benign on a browser brain and pathological on the box — **so no small-scale test could ever have caught it**, and that is a class of bug worth looking for elsewhere.
+>
+> ### ⚠ OWNED
+> - **The fork's headline number was wrong for our geometry by 202×** and I nearly carried it forward: it said *"about 3 connections per word"*; a word owns **202** bucket cells, so it is 3 per CELL and **606 per word**. I caught it by reading `wordBucketCellSizeFor` instead of trusting the sentence. **The mechanism survived; the number did not.**
+> - **My first attempt to reproduce the dimension-reach effect used a 1/4000 build and it was not a valid proxy** — at that scale the window already covers a whole dimension, so it showed 166/300 dims and hid the whole effect. The deployed ratio has to be computed from the real geometry; the toy build only shows the topographic-vs-random gap (95 vs 191 of 300).
+>
+> ### NEXT
+> - **`LAMDEAD.1` needs a ruling** — exempt the readout bands the way `word_motor` already is, or make the mask a bias rather than a veto. Both change what she says.
+> - **`ATTNDEAD.1`** — a built, wired, never-called attention head. Also a decision.
+> - **`SEMDENSE.1`** — the sem write has no sparsity at all; the fork's bench numbers are theirs and unreproduced here.
+> - **`TEACHFINAL.1-.6`** — the teach-viewer finalization work, filed this session, not started.
+>
+> ---
+>
+> ## ⭐⭐⭐ 2026-09-04 — THE WALK HAD NO ENDING, AND ENDING IT WOULD HAVE SWITCHED HER OFF
 >
 > ### Read in this order: this block → `docs/TODO.md §DEPLOYCHECK` → `docs/TODO.md` → the blocks below.
 >
