@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "music",
+ "grade": "grade3",
+ "sample": 14,
+ "poolSize": 16,
+ "themes": 11,
+ "questions": [
+  {
+   "q": "what is a fourth note",
+   "a": "lower",
+   "variants": [
+    "lower"
+   ],
+   "standard": "music/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a alto clef",
+   "a": "example",
+   "variants": [
+    "example"
+   ],
+   "standard": "music/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a orchestra",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "music/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a musical instrument",
+   "a": "device",
+   "variants": [
+    "device"
+   ],
+   "standard": "music/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a brass band",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "music/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a string quintet",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "music/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a classical music",
+   "a": "term",
+   "variants": [
+    "term"
+   ],
+   "standard": "music/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a beat",
+   "a": "unit",
+   "variants": [
+    "unit"
+   ],
+   "standard": "music/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a each bar",
+   "a": "amount",
+   "variants": [
+    "amount"
+   ],
+   "standard": "music/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a music education",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "music/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a song",
+   "a": "piece",
+   "variants": [
+    "piece"
+   ],
+   "standard": "music/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a lowest kind",
+   "a": "trumpet",
+   "variants": [
+    "trumpet"
+   ],
+   "standard": "music/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a lyre",
+   "a": "instrument",
+   "variants": [
+    "instrument"
+   ],
+   "standard": "music/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a symphony orchestra",
+   "a": "ensemble",
+   "variants": [
+    "ensemble"
+   ],
+   "standard": "music/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

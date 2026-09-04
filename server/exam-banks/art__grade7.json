@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "art",
+ "grade": "grade7",
+ "sample": 14,
+ "poolSize": 32,
+ "themes": 16,
+ "questions": [
+  {
+   "q": "what is a baroque",
+   "a": "style",
+   "variants": [
+    "style"
+   ],
+   "standard": "art/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a oil painting",
+   "a": "method",
+   "variants": [
+    "method"
+   ],
+   "standard": "art/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a printmaking",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "art/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a photography",
+   "a": "application",
+   "variants": [
+    "application"
+   ],
+   "standard": "art/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a graphic design",
+   "a": "branch",
+   "variants": [
+    "branch"
+   ],
+   "standard": "art/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a typography",
+   "a": "art",
+   "variants": [
+    "art"
+   ],
+   "standard": "art/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a word rococo",
+   "a": "derivation",
+   "variants": [
+    "derivation"
+   ],
+   "standard": "art/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a painting",
+   "a": "portrait",
+   "variants": [
+    "portrait"
+   ],
+   "standard": "art/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a religion",
+   "a": "theme",
+   "variants": [
+    "theme"
+   ],
+   "standard": "art/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a chiaroscuro",
+   "a": "use",
+   "variants": [
+    "use"
+   ],
+   "standard": "art/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a still life",
+   "a": "work",
+   "variants": [
+    "work"
+   ],
+   "standard": "art/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a portrait painting",
+   "a": "genre",
+   "variants": [
+    "genre"
+   ],
+   "standard": "art/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a watercolor paint",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "art/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a etching power",
+   "a": "source",
+   "variants": [
+    "source"
+   ],
+   "standard": "art/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

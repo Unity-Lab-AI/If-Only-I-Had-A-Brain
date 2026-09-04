@@ -1,0 +1,130 @@
+{
+ "version": 1,
+ "subject": "math",
+ "grade": "grade7",
+ "sample": 14,
+ "poolSize": 12,
+ "themes": 1,
+ "questions": [
+  {
+   "q": "what is a larger figure",
+   "a": "copy",
+   "variants": [
+    "copy"
+   ],
+   "standard": "math/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a light year",
+   "a": "distance",
+   "variants": [
+    "distance"
+   ],
+   "standard": "math/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a why",
+   "a": "relationship",
+   "variants": [
+    "relationship"
+   ],
+   "standard": "math/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a leftmost object",
+   "a": "wheel",
+   "variants": [
+    "wheel"
+   ],
+   "standard": "math/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a center object",
+   "a": "propellor",
+   "variants": [
+    "propellor"
+   ],
+   "standard": "math/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sales tax",
+   "a": "amount",
+   "variants": [
+    "amount"
+   ],
+   "standard": "math/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a tip",
+   "a": "amount",
+   "variants": [
+    "amount"
+   ],
+   "standard": "math/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a measurement error",
+   "a": "difference",
+   "variants": [
+    "difference"
+   ],
+   "standard": "math/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a two-dimensional face",
+   "a": "section",
+   "variants": [
+    "section"
+   ],
+   "standard": "math/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a volume volume",
+   "a": "number",
+   "variants": [
+    "number"
+   ],
+   "standard": "math/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a simulation",
+   "a": "experiment",
+   "variants": [
+    "experiment"
+   ],
+   "standard": "math/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a proportion",
+   "a": "number",
+   "variants": [
+    "number"
+   ],
+   "standard": "math/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "ela",
+ "grade": "grade8",
+ "sample": 14,
+ "poolSize": 18,
+ "themes": 10,
+ "questions": [
+  {
+   "q": "what is a literature",
+   "a": "method",
+   "variants": [
+    "method"
+   ],
+   "standard": "ela/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a persuasion",
+   "a": "act",
+   "variants": [
+    "act"
+   ],
+   "standard": "ela/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a spiritual autobiography",
+   "a": "account",
+   "variants": [
+    "account"
+   ],
+   "standard": "ela/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a each sutra",
+   "a": "rule",
+   "variants": [
+    "rule"
+   ],
+   "standard": "ela/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a logic",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "ela/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a symbolism",
+   "a": "practice",
+   "variants": [
+    "practice"
+   ],
+   "standard": "ela/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a tragic irony",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "ela/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a music",
+   "a": "thing",
+   "variants": [
+    "thing"
+   ],
+   "standard": "ela/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sea",
+   "a": "reservoir",
+   "variants": [
+    "reservoir"
+   ],
+   "standard": "ela/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a henry baker",
+   "a": "member",
+   "variants": [
+    "member"
+   ],
+   "standard": "ela/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a play",
+   "a": "work",
+   "variants": [
+    "work"
+   ],
+   "standard": "ela/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a propaganda",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "ela/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a comparative rhetoric",
+   "a": "practice",
+   "variants": [
+    "practice"
+   ],
+   "standard": "ela/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a statement form",
+   "a": "truth",
+   "variants": [
+    "truth"
+   ],
+   "standard": "ela/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

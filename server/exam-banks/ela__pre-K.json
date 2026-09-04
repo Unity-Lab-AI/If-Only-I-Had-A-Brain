@@ -1,0 +1,130 @@
+{
+ "version": 1,
+ "subject": "ela",
+ "grade": "pre-K",
+ "sample": 14,
+ "poolSize": 12,
+ "themes": 8,
+ "questions": [
+  {
+   "q": "what is a alphabet",
+   "a": "list",
+   "variants": [
+    "list"
+   ],
+   "standard": "ela/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a word",
+   "a": "collection",
+   "variants": [
+    "collection"
+   ],
+   "standard": "ela/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a one",
+   "a": "name",
+   "variants": [
+    "name"
+   ],
+   "standard": "ela/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a compression",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "ela/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a song",
+   "a": "piece",
+   "variants": [
+    "piece"
+   ],
+   "standard": "ela/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a fairy tale",
+   "a": "expression",
+   "variants": [
+    "expression"
+   ],
+   "standard": "ela/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a chamois",
+   "a": "beast",
+   "variants": [
+    "beast"
+   ],
+   "standard": "ela/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a who",
+   "a": "lass",
+   "variants": [
+    "lass"
+   ],
+   "standard": "ela/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a each letter",
+   "a": "symbol",
+   "variants": [
+    "symbol"
+   ],
+   "standard": "ela/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a rarefaction",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "ela/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a father",
+   "a": "man",
+   "variants": [
+    "man"
+   ],
+   "standard": "ela/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a syllabary",
+   "a": "system",
+   "variants": [
+    "system"
+   ],
+   "standard": "ela/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "social",
+ "grade": "grade4",
+ "sample": 14,
+ "poolSize": 24,
+ "themes": 18,
+ "questions": [
+  {
+   "q": "what is a state",
+   "a": "government",
+   "variants": [
+    "government"
+   ],
+   "standard": "social/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a geography",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "social/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a region",
+   "a": "ways",
+   "variants": [
+    "ways"
+   ],
+   "standard": "social/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a exploration",
+   "a": "act",
+   "variants": [
+    "act"
+   ],
+   "standard": "social/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a executive branch",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "social/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a appalachians",
+   "a": "watershed",
+   "variants": [
+    "watershed"
+   ],
+   "standard": "social/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a each district",
+   "a": "city",
+   "variants": [
+    "city"
+   ],
+   "standard": "social/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a wood",
+   "a": "resource",
+   "variants": [
+    "resource"
+   ],
+   "standard": "social/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a climate",
+   "a": "condition",
+   "variants": [
+    "condition"
+   ],
+   "standard": "social/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a pre-columbian era",
+   "a": "time",
+   "variants": [
+    "time"
+   ],
+   "standard": "social/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a transcontinental railroad",
+   "a": "network",
+   "variants": [
+    "network"
+   ],
+   "standard": "social/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a homestead acts",
+   "a": "series",
+   "variants": [
+    "series"
+   ],
+   "standard": "social/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a territory",
+   "a": "area",
+   "variants": [
+    "area"
+   ],
+   "standard": "social/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a prairie",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "social/grade4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

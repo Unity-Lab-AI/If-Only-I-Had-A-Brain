@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "science",
+ "grade": "college3",
+ "sample": 14,
+ "poolSize": 109,
+ "themes": 22,
+ "questions": [
+  {
+   "q": "what is a soma",
+   "a": "body",
+   "variants": [
+    "body"
+   ],
+   "standard": "science/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a brain",
+   "a": "organ",
+   "variants": [
+    "organ"
+   ],
+   "standard": "science/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a neuroscience",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "science/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a memory",
+   "a": "ability",
+   "variants": [
+    "ability"
+   ],
+   "standard": "science/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mathematics",
+   "a": "language",
+   "variants": [
+    "language"
+   ],
+   "standard": "science/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a neurotransmitter",
+   "a": "molecule",
+   "variants": [
+    "molecule"
+   ],
+   "standard": "science/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a synapse",
+   "a": "structure",
+   "variants": [
+    "structure"
+   ],
+   "standard": "science/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a action potential",
+   "a": "series",
+   "variants": [
+    "series"
+   ],
+   "standard": "science/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a cell excitability",
+   "a": "property",
+   "variants": [
+    "property"
+   ],
+   "standard": "science/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a myelin",
+   "a": "layer",
+   "variants": [
+    "layer"
+   ],
+   "standard": "science/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a neural circuit",
+   "a": "population",
+   "variants": [
+    "population"
+   ],
+   "standard": "science/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a spinal cord",
+   "a": "continuation",
+   "variants": [
+    "continuation"
+   ],
+   "standard": "science/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a cerebellum",
+   "a": "feature",
+   "variants": [
+    "feature"
+   ],
+   "standard": "science/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a hippocampus",
+   "a": "ridge",
+   "variants": [
+    "ridge"
+   ],
+   "standard": "science/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "cs",
+ "grade": "grade9",
+ "sample": 14,
+ "poolSize": 28,
+ "themes": 16,
+ "questions": [
+  {
+   "q": "what is a data structure",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "cs/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a array",
+   "a": "structure",
+   "variants": [
+    "structure"
+   ],
+   "standard": "cs/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a output",
+   "a": "permutation",
+   "variants": [
+    "permutation"
+   ],
+   "standard": "cs/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a recursion",
+   "a": "method",
+   "variants": [
+    "method"
+   ],
+   "standard": "cs/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a software engineering",
+   "a": "branch",
+   "variants": [
+    "branch"
+   ],
+   "standard": "cs/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a distributed system",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "cs/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a associative array",
+   "a": "function",
+   "variants": [
+    "function"
+   ],
+   "standard": "cs/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a set",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "cs/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a cocktail sort",
+   "a": "bubble",
+   "variants": [
+    "bubble"
+   ],
+   "standard": "cs/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a insertion sort",
+   "a": "algorithm",
+   "variants": [
+    "algorithm"
+   ],
+   "standard": "cs/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a node",
+   "a": "pointer",
+   "variants": [
+    "pointer"
+   ],
+   "standard": "cs/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a linear search",
+   "a": "algorithm",
+   "variants": [
+    "algorithm"
+   ],
+   "standard": "cs/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a specialized class",
+   "a": "sub",
+   "variants": [
+    "sub"
+   ],
+   "standard": "cs/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a object",
+   "a": "entity",
+   "variants": [
+    "entity"
+   ],
+   "standard": "cs/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

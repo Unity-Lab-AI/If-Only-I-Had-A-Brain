@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "science",
+ "grade": "grade10",
+ "sample": 14,
+ "poolSize": 111,
+ "themes": 67,
+ "questions": [
+  {
+   "q": "what is a chemical bond",
+   "a": "attraction",
+   "variants": [
+    "attraction"
+   ],
+   "standard": "science/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a chemical reaction",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "science/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a arrhenius acid",
+   "a": "substance",
+   "variants": [
+    "substance"
+   ],
+   "standard": "science/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a molecule",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "science/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a electron",
+   "a": "particle",
+   "variants": [
+    "particle"
+   ],
+   "standard": "science/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a chemical element",
+   "a": "species",
+   "variants": [
+    "species"
+   ],
+   "standard": "science/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a ion",
+   "a": "molecule",
+   "variants": [
+    "molecule"
+   ],
+   "standard": "science/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a chemical formula",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "science/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mole",
+   "a": "unit",
+   "variants": [
+    "unit"
+   ],
+   "standard": "science/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a oxidation",
+   "a": "loss",
+   "variants": [
+    "loss"
+   ],
+   "standard": "science/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a universal indicator",
+   "a": "mixture",
+   "variants": [
+    "mixture"
+   ],
+   "standard": "science/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a hydrogen",
+   "a": "element",
+   "variants": [
+    "element"
+   ],
+   "standard": "science/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a graphite",
+   "a": "lubricant",
+   "variants": [
+    "lubricant"
+   ],
+   "standard": "science/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a chemistry",
+   "a": "science",
+   "variants": [
+    "science"
+   ],
+   "standard": "science/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

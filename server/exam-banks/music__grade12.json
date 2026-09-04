@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "music",
+ "grade": "grade12",
+ "sample": 14,
+ "poolSize": 40,
+ "themes": 17,
+ "questions": [
+  {
+   "q": "what is a musicology",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "music/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a musical example",
+   "a": "emergence",
+   "variants": [
+    "emergence"
+   ],
+   "standard": "music/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a such compression",
+   "a": "feature",
+   "variants": [
+    "feature"
+   ],
+   "standard": "music/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a singing",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "music/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a goth",
+   "a": "subculture",
+   "variants": [
+    "subculture"
+   ],
+   "standard": "music/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a gothic rock",
+   "a": "offshoot",
+   "variants": [
+    "offshoot"
+   ],
+   "standard": "music/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a alternative rock",
+   "a": "category",
+   "variants": [
+    "category"
+   ],
+   "standard": "music/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a consonance",
+   "a": "feeling",
+   "variants": [
+    "feeling"
+   ],
+   "standard": "music/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a music education",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "music/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a popular music",
+   "a": "term",
+   "variants": [
+    "term"
+   ],
+   "standard": "music/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a folk music",
+   "a": "genre",
+   "variants": [
+    "genre"
+   ],
+   "standard": "music/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a world music",
+   "a": "phrase",
+   "variants": [
+    "phrase"
+   ],
+   "standard": "music/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a cultural appropriation",
+   "a": "adoption",
+   "variants": [
+    "adoption"
+   ],
+   "standard": "music/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a dance recital",
+   "a": "presentation",
+   "variants": [
+    "presentation"
+   ],
+   "standard": "music/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

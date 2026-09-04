@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "ela",
+ "grade": "college3",
+ "sample": 14,
+ "poolSize": 103,
+ "themes": 24,
+ "questions": [
+  {
+   "q": "what is a supposition",
+   "a": "opinion",
+   "variants": [
+    "opinion"
+   ],
+   "standard": "ela/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a citation",
+   "a": "reference",
+   "variants": [
+    "reference"
+   ],
+   "standard": "ela/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a bibliography",
+   "a": "word",
+   "variants": [
+    "word"
+   ],
+   "standard": "ela/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a peer review",
+   "a": "evaluation",
+   "variants": [
+    "evaluation"
+   ],
+   "standard": "ela/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a rhetoric",
+   "a": "art",
+   "variants": [
+    "art"
+   ],
+   "standard": "ela/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a argumentation theory",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "ela/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a copyright infringement",
+   "a": "violation",
+   "variants": [
+    "violation"
+   ],
+   "standard": "ela/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a quibble",
+   "a": "apple",
+   "variants": [
+    "apple"
+   ],
+   "standard": "ela/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a researcher",
+   "a": "who",
+   "variants": [
+    "who"
+   ],
+   "standard": "ela/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a secondary source",
+   "a": "recording",
+   "variants": [
+    "recording"
+   ],
+   "standard": "ela/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a literature review",
+   "a": "overview",
+   "variants": [
+    "overview"
+   ],
+   "standard": "ela/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a paraphrase",
+   "a": "restatement",
+   "variants": [
+    "restatement"
+   ],
+   "standard": "ela/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a formal fallacy",
+   "a": "pattern",
+   "variants": [
+    "pattern"
+   ],
+   "standard": "ela/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a second consideration",
+   "a": "degree",
+   "variants": [
+    "degree"
+   ],
+   "standard": "ela/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

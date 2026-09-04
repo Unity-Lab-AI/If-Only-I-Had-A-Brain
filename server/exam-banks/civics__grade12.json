@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "civics",
+ "grade": "grade12",
+ "sample": 14,
+ "poolSize": 48,
+ "themes": 25,
+ "questions": [
+  {
+   "q": "what is a constitution",
+   "a": "idea",
+   "variants": [
+    "idea"
+   ],
+   "standard": "civics/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a jimmy carter",
+   "a": "president",
+   "variants": [
+    "president"
+   ],
+   "standard": "civics/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a section nine",
+   "a": "list",
+   "variants": [
+    "list"
+   ],
+   "standard": "civics/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a judiciary",
+   "a": "system",
+   "variants": [
+    "system"
+   ],
+   "standard": "civics/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a another virtue",
+   "a": "protection",
+   "variants": [
+    "protection"
+   ],
+   "standard": "civics/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a constitutional violation",
+   "a": "act",
+   "variants": [
+    "act"
+   ],
+   "standard": "civics/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a democracy",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "civics/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a federalism",
+   "a": "mode",
+   "variants": [
+    "mode"
+   ],
+   "standard": "civics/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a indian act",
+   "a": "regulating",
+   "variants": [
+    "regulating"
+   ],
+   "standard": "civics/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a web service",
+   "a": "technology",
+   "variants": [
+    "technology"
+   ],
+   "standard": "civics/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a another example",
+   "a": "netherlands",
+   "variants": [
+    "netherlands"
+   ],
+   "standard": "civics/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a legislature",
+   "a": "assembly",
+   "variants": [
+    "assembly"
+   ],
+   "standard": "civics/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a executive",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "civics/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a winner",
+   "a": "who",
+   "variants": [
+    "who"
+   ],
+   "standard": "civics/grade12 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

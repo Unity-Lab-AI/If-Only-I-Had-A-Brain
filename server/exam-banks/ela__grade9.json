@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "ela",
+ "grade": "grade9",
+ "sample": 14,
+ "poolSize": 24,
+ "themes": 6,
+ "questions": [
+  {
+   "q": "what is a short story",
+   "a": "piece",
+   "variants": [
+    "piece"
+   ],
+   "standard": "ela/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a argumentative essay",
+   "a": "piece",
+   "variants": [
+    "piece"
+   ],
+   "standard": "ela/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a poetry",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "ela/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a metaphor",
+   "a": "figure",
+   "variants": [
+    "figure"
+   ],
+   "standard": "ela/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a plot",
+   "a": "sequence",
+   "variants": [
+    "sequence"
+   ],
+   "standard": "ela/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a dramatic structure",
+   "a": "philosophy",
+   "variants": [
+    "philosophy"
+   ],
+   "standard": "ela/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a essay",
+   "a": "sketch",
+   "variants": [
+    "sketch"
+   ],
+   "standard": "ela/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a prosody",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "ela/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a vehicle",
+   "a": "object",
+   "variants": [
+    "object"
+   ],
+   "standard": "ela/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a setting",
+   "a": "place",
+   "variants": [
+    "place"
+   ],
+   "standard": "ela/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a plot device",
+   "a": "means",
+   "variants": [
+    "means"
+   ],
+   "standard": "ela/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a alliteration",
+   "a": "repetition",
+   "variants": [
+    "repetition"
+   ],
+   "standard": "ela/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a reed",
+   "a": "vehicle",
+   "variants": [
+    "vehicle"
+   ],
+   "standard": "ela/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a odin",
+   "a": "author",
+   "variants": [
+    "author"
+   ],
+   "standard": "ela/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

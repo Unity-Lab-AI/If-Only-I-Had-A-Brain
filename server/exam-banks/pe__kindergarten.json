@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "pe",
+ "grade": "kindergarten",
+ "sample": 14,
+ "poolSize": 35,
+ "themes": 14,
+ "questions": [
+  {
+   "q": "what is a running",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "pe/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a jumping",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "pe/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a ball",
+   "a": "object",
+   "variants": [
+    "object"
+   ],
+   "standard": "pe/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sway",
+   "a": "movement",
+   "variants": [
+    "movement"
+   ],
+   "standard": "pe/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a crawling",
+   "a": "gait",
+   "variants": [
+    "gait"
+   ],
+   "standard": "pe/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a climbing",
+   "a": "activity",
+   "variants": [
+    "activity"
+   ],
+   "standard": "pe/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a weight throw",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "pe/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a heart",
+   "a": "people",
+   "variants": [
+    "people"
+   ],
+   "standard": "pe/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a diaphragm",
+   "a": "muscle",
+   "variants": [
+    "muscle"
+   ],
+   "standard": "pe/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a water",
+   "a": "substance",
+   "variants": [
+    "substance"
+   ],
+   "standard": "pe/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a play",
+   "a": "psychology",
+   "variants": [
+    "psychology"
+   ],
+   "standard": "pe/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a last player",
+   "a": "winner",
+   "variants": [
+    "winner"
+   ],
+   "standard": "pe/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a physical fitness",
+   "a": "ability",
+   "variants": [
+    "ability"
+   ],
+   "standard": "pe/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a body",
+   "a": "thing",
+   "variants": [
+    "thing"
+   ],
+   "standard": "pe/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

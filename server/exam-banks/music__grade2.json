@@ -1,0 +1,140 @@
+{
+ "version": 1,
+ "subject": "music",
+ "grade": "grade2",
+ "sample": 14,
+ "poolSize": 13,
+ "themes": 9,
+ "questions": [
+  {
+   "q": "what is a guitar",
+   "a": "instrument",
+   "variants": [
+    "instrument"
+   ],
+   "standard": "music/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a violin",
+   "a": "instrument",
+   "variants": [
+    "instrument"
+   ],
+   "standard": "music/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a fourth note",
+   "a": "lower",
+   "variants": [
+    "lower"
+   ],
+   "standard": "music/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a rest",
+   "a": "note",
+   "variants": [
+    "note"
+   ],
+   "standard": "music/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a orchestra",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "music/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a brass band",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "music/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a tenor trombone",
+   "a": "today",
+   "variants": [
+    "today"
+   ],
+   "standard": "music/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a music education",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "music/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a concert tour",
+   "a": "series",
+   "variants": [
+    "series"
+   ],
+   "standard": "music/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a lowest kind",
+   "a": "trumpet",
+   "variants": [
+    "trumpet"
+   ],
+   "standard": "music/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a contrabass trombone",
+   "a": "today",
+   "variants": [
+    "today"
+   ],
+   "standard": "music/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a gamelan music",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "music/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a soprano trombone",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "music/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "research",
+ "grade": "phd",
+ "sample": 14,
+ "poolSize": 215,
+ "themes": 13,
+ "questions": [
+  {
+   "q": "what is a nest",
+   "a": "simulator",
+   "variants": [
+    "simulator"
+   ],
+   "standard": "research/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a population coding",
+   "a": "method",
+   "variants": [
+    "method"
+   ],
+   "standard": "research/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a synaptic plasticity",
+   "a": "ability",
+   "variants": [
+    "ability"
+   ],
+   "standard": "research/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a neural network",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "research/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a brain",
+   "a": "organ",
+   "variants": [
+    "organ"
+   ],
+   "standard": "research/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a limbic lobe",
+   "a": "rim",
+   "variants": [
+    "rim"
+   ],
+   "standard": "research/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a reason",
+   "a": "continuity",
+   "variants": [
+    "continuity"
+   ],
+   "standard": "research/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a cognitive science",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "research/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a memory",
+   "a": "faculty",
+   "variants": [
+    "faculty"
+   ],
+   "standard": "research/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a learning",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "research/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a first model",
+   "a": "regression",
+   "variants": [
+    "regression"
+   ],
+   "standard": "research/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a architecture",
+   "a": "hub",
+   "variants": [
+    "hub"
+   ],
+   "standard": "research/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a every mechanism",
+   "a": "parameter",
+   "variants": [
+    "parameter"
+   ],
+   "standard": "research/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a vector coding",
+   "a": "example",
+   "variants": [
+    "example"
+   ],
+   "standard": "research/phd key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

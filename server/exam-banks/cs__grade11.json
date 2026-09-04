@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "cs",
+ "grade": "grade11",
+ "sample": 14,
+ "poolSize": 34,
+ "themes": 13,
+ "questions": [
+  {
+   "q": "what is a node",
+   "a": "structure",
+   "variants": [
+    "structure"
+   ],
+   "standard": "cs/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a graph theory",
+   "a": "branch",
+   "variants": [
+    "branch"
+   ],
+   "standard": "cs/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a following",
+   "a": "description",
+   "variants": [
+    "description"
+   ],
+   "standard": "cs/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a instance",
+   "a": "number",
+   "variants": [
+    "number"
+   ],
+   "standard": "cs/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a control unit",
+   "a": "component",
+   "variants": [
+    "component"
+   ],
+   "standard": "cs/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a token",
+   "a": "pair",
+   "variants": [
+    "pair"
+   ],
+   "standard": "cs/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a data mining",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "cs/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a binary tree",
+   "a": "structure",
+   "variants": [
+    "structure"
+   ],
+   "standard": "cs/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a position",
+   "a": "offset",
+   "variants": [
+    "offset"
+   ],
+   "standard": "cs/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a interesting example",
+   "a": "problem",
+   "variants": [
+    "problem"
+   ],
+   "standard": "cs/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a each instruction",
+   "a": "word",
+   "variants": [
+    "word"
+   ],
+   "standard": "cs/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a artificial intelligence",
+   "a": "capability",
+   "variants": [
+    "capability"
+   ],
+   "standard": "cs/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a neural network",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "cs/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a related result",
+   "a": "theorem",
+   "variants": [
+    "theorem"
+   ],
+   "standard": "cs/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

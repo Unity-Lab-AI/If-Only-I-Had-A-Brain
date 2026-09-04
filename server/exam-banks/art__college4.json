@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "art",
+ "grade": "college4",
+ "sample": 14,
+ "poolSize": 14,
+ "themes": 10,
+ "questions": [
+  {
+   "q": "what is a latter",
+   "a": "art",
+   "variants": [
+    "art"
+   ],
+   "standard": "art/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a performance art",
+   "a": "installation",
+   "variants": [
+    "installation"
+   ],
+   "standard": "art/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a video art",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "art/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sound art",
+   "a": "activity",
+   "variants": [
+    "activity"
+   ],
+   "standard": "art/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a interactive art",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "art/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a islamic art",
+   "a": "example",
+   "variants": [
+    "example"
+   ],
+   "standard": "art/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a electric sheep",
+   "a": "project",
+   "variants": [
+    "project"
+   ],
+   "standard": "art/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a critique",
+   "a": "method",
+   "variants": [
+    "method"
+   ],
+   "standard": "art/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a art school",
+   "a": "institution",
+   "variants": [
+    "institution"
+   ],
+   "standard": "art/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a virtual reality",
+   "a": "technology",
+   "variants": [
+    "technology"
+   ],
+   "standard": "art/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a land art",
+   "a": "movement",
+   "variants": [
+    "movement"
+   ],
+   "standard": "art/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a fractal art",
+   "a": "example",
+   "variants": [
+    "example"
+   ],
+   "standard": "art/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a philosophy",
+   "a": "application",
+   "variants": [
+    "application"
+   ],
+   "standard": "art/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a living theatre",
+   "a": "company",
+   "variants": [
+    "company"
+   ],
+   "standard": "art/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

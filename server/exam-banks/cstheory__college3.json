@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "cstheory",
+ "grade": "college3",
+ "sample": 14,
+ "poolSize": 34,
+ "themes": 12,
+ "questions": [
+  {
+   "q": "what is a following",
+   "a": "list",
+   "variants": [
+    "list"
+   ],
+   "standard": "cstheory/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a state",
+   "a": "description",
+   "variants": [
+    "description"
+   ],
+   "standard": "cstheory/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a result",
+   "a": "language",
+   "variants": [
+    "language"
+   ],
+   "standard": "cstheory/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a turing completeness",
+   "a": "ability",
+   "variants": [
+    "ability"
+   ],
+   "standard": "cstheory/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a numbering",
+   "a": "enumeration",
+   "variants": [
+    "enumeration"
+   ],
+   "standard": "cstheory/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a halting problem",
+   "a": "decision",
+   "variants": [
+    "decision"
+   ],
+   "standard": "cstheory/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a set",
+   "a": "subset",
+   "variants": [
+    "subset"
+   ],
+   "standard": "cstheory/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a first stage",
+   "a": "analysis",
+   "variants": [
+    "analysis"
+   ],
+   "standard": "cstheory/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a lexical token",
+   "a": "string",
+   "variants": [
+    "string"
+   ],
+   "standard": "cstheory/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a lambda calculus",
+   "a": "system",
+   "variants": [
+    "system"
+   ],
+   "standard": "cstheory/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a decision problem",
+   "a": "question",
+   "variants": [
+    "question"
+   ],
+   "standard": "cstheory/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a syntax",
+   "a": "detail",
+   "variants": [
+    "detail"
+   ],
+   "standard": "cstheory/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a atom",
+   "a": "point",
+   "variants": [
+    "point"
+   ],
+   "standard": "cstheory/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a related problem",
+   "a": "printing",
+   "variants": [
+    "printing"
+   ],
+   "standard": "cstheory/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

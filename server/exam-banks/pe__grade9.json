@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "pe",
+ "grade": "grade9",
+ "sample": 14,
+ "poolSize": 30,
+ "themes": 18,
+ "questions": [
+  {
+   "q": "what is a kinesiology",
+   "a": "area",
+   "variants": [
+    "area"
+   ],
+   "standard": "pe/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a anatomy",
+   "a": "branch",
+   "variants": [
+    "branch"
+   ],
+   "standard": "pe/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a benzedrine",
+   "a": "name",
+   "variants": [
+    "name"
+   ],
+   "standard": "pe/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a foraging",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "pe/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a dehydration",
+   "a": "lack",
+   "variants": [
+    "lack"
+   ],
+   "standard": "pe/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a muscle strength",
+   "a": "result",
+   "variants": [
+    "result"
+   ],
+   "standard": "pe/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a muscle contraction",
+   "a": "activation",
+   "variants": [
+    "activation"
+   ],
+   "standard": "pe/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a lymphatic system",
+   "a": "subsystem",
+   "variants": [
+    "subsystem"
+   ],
+   "standard": "pe/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a trachea",
+   "a": "area",
+   "variants": [
+    "area"
+   ],
+   "standard": "pe/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a anaerobic exercise",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "pe/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a endurance training",
+   "a": "act",
+   "variants": [
+    "act"
+   ],
+   "standard": "pe/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a flexibility",
+   "a": "range",
+   "variants": [
+    "range"
+   ],
+   "standard": "pe/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a season analysis",
+   "a": "attempt",
+   "variants": [
+    "attempt"
+   ],
+   "standard": "pe/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a physical therapy",
+   "a": "profession",
+   "variants": [
+    "profession"
+   ],
+   "standard": "pe/grade9 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

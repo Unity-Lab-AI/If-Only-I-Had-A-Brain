@@ -1,0 +1,130 @@
+{
+ "version": 1,
+ "subject": "language",
+ "grade": "grade5",
+ "sample": 14,
+ "poolSize": 12,
+ "themes": 11,
+ "questions": [
+  {
+   "q": "what is a grammatical gender",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "language/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a article",
+   "a": "word",
+   "variants": [
+    "word"
+   ],
+   "standard": "language/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mexico",
+   "a": "country",
+   "variants": [
+    "country"
+   ],
+   "standard": "language/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a latin america",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "language/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a present tense",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "language/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a copula",
+   "a": "word",
+   "variants": [
+    "word"
+   ],
+   "standard": "language/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a one",
+   "a": "construction",
+   "variants": [
+    "construction"
+   ],
+   "standard": "language/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a weather",
+   "a": "day",
+   "variants": [
+    "day"
+   ],
+   "standard": "language/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a shopping",
+   "a": "activity",
+   "variants": [
+    "activity"
+   ],
+   "standard": "language/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a restaurant",
+   "a": "place",
+   "variants": [
+    "place"
+   ],
+   "standard": "language/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a travel",
+   "a": "activity",
+   "variants": [
+    "activity"
+   ],
+   "standard": "language/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a portuguese",
+   "a": "language",
+   "variants": [
+    "language"
+   ],
+   "standard": "language/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "health",
+ "grade": "grade3",
+ "sample": 14,
+ "poolSize": 28,
+ "themes": 12,
+ "questions": [
+  {
+   "q": "what is a body",
+   "a": "thing",
+   "variants": [
+    "thing"
+   ],
+   "standard": "health/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a skeleton",
+   "a": "structure",
+   "variants": [
+    "structure"
+   ],
+   "standard": "health/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a heart",
+   "a": "people",
+   "variants": [
+    "people"
+   ],
+   "standard": "health/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a digestion",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "health/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a epidemiology",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "health/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a health",
+   "a": "state",
+   "variants": [
+    "state"
+   ],
+   "standard": "health/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a hygiene",
+   "a": "act",
+   "variants": [
+    "act"
+   ],
+   "standard": "health/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a dietary mineral",
+   "a": "element",
+   "variants": [
+    "element"
+   ],
+   "standard": "health/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a water",
+   "a": "substance",
+   "variants": [
+    "substance"
+   ],
+   "standard": "health/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a immunology",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "health/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a rna interference",
+   "a": "defence",
+   "variants": [
+    "defence"
+   ],
+   "standard": "health/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a asthma",
+   "a": "disease",
+   "variants": [
+    "disease"
+   ],
+   "standard": "health/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a circulatory system",
+   "a": "body",
+   "variants": [
+    "body"
+   ],
+   "standard": "health/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a solvent",
+   "a": "substance",
+   "variants": [
+    "substance"
+   ],
+   "standard": "health/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

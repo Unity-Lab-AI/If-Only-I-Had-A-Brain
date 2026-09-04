@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "ela",
+ "grade": "grade7",
+ "sample": 14,
+ "poolSize": 23,
+ "themes": 11,
+ "questions": [
+  {
+   "q": "what is a setting",
+   "a": "time",
+   "variants": [
+    "time"
+   ],
+   "standard": "ela/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a narration",
+   "a": "use",
+   "variants": [
+    "use"
+   ],
+   "standard": "ela/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a device",
+   "a": "term",
+   "variants": [
+    "term"
+   ],
+   "standard": "ela/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a adjective",
+   "a": "word",
+   "variants": [
+    "word"
+   ],
+   "standard": "ela/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a adverb",
+   "a": "expression",
+   "variants": [
+    "expression"
+   ],
+   "standard": "ela/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a drama",
+   "a": "mode",
+   "variants": [
+    "mode"
+   ],
+   "standard": "ela/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a egalitarian dialogue",
+   "a": "concept",
+   "variants": [
+    "concept"
+   ],
+   "standard": "ela/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a short story",
+   "a": "piece",
+   "variants": [
+    "piece"
+   ],
+   "standard": "ela/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a plot",
+   "a": "series",
+   "variants": [
+    "series"
+   ],
+   "standard": "ela/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a house",
+   "a": "muckle",
+   "variants": [
+    "muckle"
+   ],
+   "standard": "ela/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a strength",
+   "a": "outcome",
+   "variants": [
+    "outcome"
+   ],
+   "standard": "ela/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a one",
+   "a": "place",
+   "variants": [
+    "place"
+   ],
+   "standard": "ela/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a narrative perspective",
+   "a": "position",
+   "variants": [
+    "position"
+   ],
+   "standard": "ela/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a linguistic scheme",
+   "a": "device",
+   "variants": [
+    "device"
+   ],
+   "standard": "ela/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

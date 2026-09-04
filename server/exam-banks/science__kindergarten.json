@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "science",
+ "grade": "kindergarten",
+ "sample": 14,
+ "poolSize": 21,
+ "themes": 6,
+ "questions": [
+  {
+   "q": "what is a carpel",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "science/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a water",
+   "a": "substance",
+   "variants": [
+    "substance"
+   ],
+   "standard": "science/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a nuclear fusion",
+   "a": "reaction",
+   "variants": [
+    "reaction"
+   ],
+   "standard": "science/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a weather",
+   "a": "day",
+   "variants": [
+    "day"
+   ],
+   "standard": "science/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a tree",
+   "a": "plant",
+   "variants": [
+    "plant"
+   ],
+   "standard": "science/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a summer",
+   "a": "season",
+   "variants": [
+    "season"
+   ],
+   "standard": "science/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a solvent",
+   "a": "substance",
+   "variants": [
+    "substance"
+   ],
+   "standard": "science/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a chromosphere",
+   "a": "layer",
+   "variants": [
+    "layer"
+   ],
+   "standard": "science/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a trunk",
+   "a": "body",
+   "variants": [
+    "body"
+   ],
+   "standard": "science/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a winter",
+   "a": "season",
+   "variants": [
+    "season"
+   ],
+   "standard": "science/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a freezing point",
+   "a": "temperature",
+   "variants": [
+    "temperature"
+   ],
+   "standard": "science/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a corona",
+   "a": "atmosphere",
+   "variants": [
+    "atmosphere"
+   ],
+   "standard": "science/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a tree climbing",
+   "a": "activity",
+   "variants": [
+    "activity"
+   ],
+   "standard": "science/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a equinox",
+   "a": "time",
+   "variants": [
+    "time"
+   ],
+   "standard": "science/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

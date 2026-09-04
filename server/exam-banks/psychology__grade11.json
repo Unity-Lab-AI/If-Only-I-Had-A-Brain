@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "psychology",
+ "grade": "grade11",
+ "sample": 14,
+ "poolSize": 97,
+ "themes": 14,
+ "questions": [
+  {
+   "q": "what is a cognitive bias",
+   "a": "pattern",
+   "variants": [
+    "pattern"
+   ],
+   "standard": "psychology/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mixed state",
+   "a": "episode",
+   "variants": [
+    "episode"
+   ],
+   "standard": "psychology/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a schizophrenia",
+   "a": "disorder",
+   "variants": [
+    "disorder"
+   ],
+   "standard": "psychology/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a agoraphobia",
+   "a": "fear",
+   "variants": [
+    "fear"
+   ],
+   "standard": "psychology/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a behaviorism",
+   "a": "school",
+   "variants": [
+    "school"
+   ],
+   "standard": "psychology/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a dissociation",
+   "a": "ability",
+   "variants": [
+    "ability"
+   ],
+   "standard": "psychology/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a latest edition",
+   "a": "revision",
+   "variants": [
+    "revision"
+   ],
+   "standard": "psychology/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a psychotherapy",
+   "a": "treatment",
+   "variants": [
+    "treatment"
+   ],
+   "standard": "psychology/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a anxiety",
+   "a": "emotion",
+   "variants": [
+    "emotion"
+   ],
+   "standard": "psychology/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a community psychology",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "psychology/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a chronic stress",
+   "a": "term",
+   "variants": [
+    "term"
+   ],
+   "standard": "psychology/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a supervised learning",
+   "a": "subset",
+   "variants": [
+    "subset"
+   ],
+   "standard": "psychology/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a cue",
+   "a": "stimulus",
+   "variants": [
+    "stimulus"
+   ],
+   "standard": "psychology/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a second mechanism",
+   "a": "fluency",
+   "variants": [
+    "fluency"
+   ],
+   "standard": "psychology/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

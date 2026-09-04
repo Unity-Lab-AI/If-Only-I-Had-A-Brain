@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "major",
+ "grade": "college1",
+ "sample": 14,
+ "poolSize": 70,
+ "themes": 26,
+ "questions": [
+  {
+   "q": "what is a computer science",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "major/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a heuristic",
+   "a": "approach",
+   "variants": [
+    "approach"
+   ],
+   "standard": "major/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a algorithm",
+   "a": "sequence",
+   "variants": [
+    "sequence"
+   ],
+   "standard": "major/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a programming",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "major/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a record",
+   "a": "value",
+   "variants": [
+    "value"
+   ],
+   "standard": "major/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a variable name",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "major/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sequential execution",
+   "a": "structure",
+   "variants": [
+    "structure"
+   ],
+   "standard": "major/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a callable unit",
+   "a": "list",
+   "variants": [
+    "list"
+   ],
+   "standard": "major/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a complement",
+   "a": "operation",
+   "variants": [
+    "operation"
+   ],
+   "standard": "major/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a remainder",
+   "a": "bit",
+   "variants": [
+    "bit"
+   ],
+   "standard": "major/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a computer",
+   "a": "machine",
+   "variants": [
+    "machine"
+   ],
+   "standard": "major/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a web address",
+   "a": "piece",
+   "variants": [
+    "piece"
+   ],
+   "standard": "major/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a token",
+   "a": "pair",
+   "variants": [
+    "pair"
+   ],
+   "standard": "major/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a each instruction",
+   "a": "word",
+   "variants": [
+    "word"
+   ],
+   "standard": "major/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

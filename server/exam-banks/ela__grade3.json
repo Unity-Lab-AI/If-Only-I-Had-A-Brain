@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "ela",
+ "grade": "grade3",
+ "sample": 14,
+ "poolSize": 21,
+ "themes": 17,
+ "questions": [
+  {
+   "q": "what is a adjective",
+   "a": "word",
+   "variants": [
+    "word"
+   ],
+   "standard": "ela/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a example",
+   "a": "conflict",
+   "variants": [
+    "conflict"
+   ],
+   "standard": "ela/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a grammar",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "ela/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a necessity",
+   "a": "mother",
+   "variants": [
+    "mother"
+   ],
+   "standard": "ela/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a why",
+   "a": "desk",
+   "variants": [
+    "desk"
+   ],
+   "standard": "ela/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a laziness",
+   "a": "illness",
+   "variants": [
+    "illness"
+   ],
+   "standard": "ela/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a two tails",
+   "a": "coward",
+   "variants": [
+    "coward"
+   ],
+   "standard": "ela/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a everyday necessity",
+   "a": "pool",
+   "variants": [
+    "pool"
+   ],
+   "standard": "ela/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a who",
+   "a": "scarecrow",
+   "variants": [
+    "scarecrow"
+   ],
+   "standard": "ela/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a education",
+   "a": "thing",
+   "variants": [
+    "thing"
+   ],
+   "standard": "ela/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a conjunction",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "ela/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a simile",
+   "a": "figure",
+   "variants": [
+    "figure"
+   ],
+   "standard": "ela/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a metaphor",
+   "a": "term",
+   "variants": [
+    "term"
+   ],
+   "standard": "ela/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a prefix",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "ela/grade3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

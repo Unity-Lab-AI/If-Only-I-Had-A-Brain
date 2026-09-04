@@ -1,0 +1,120 @@
+{
+ "version": 1,
+ "subject": "health",
+ "grade": "grade5",
+ "sample": 14,
+ "poolSize": 11,
+ "themes": 10,
+ "questions": [
+  {
+   "q": "what is a puberty",
+   "a": "time",
+   "variants": [
+    "time"
+   ],
+   "standard": "health/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a hygiene",
+   "a": "act",
+   "variants": [
+    "act"
+   ],
+   "standard": "health/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mind",
+   "a": "term",
+   "variants": [
+    "term"
+   ],
+   "standard": "health/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a stress",
+   "a": "psychology",
+   "variants": [
+    "psychology"
+   ],
+   "standard": "health/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a fetus",
+   "a": "stage",
+   "variants": [
+    "stage"
+   ],
+   "standard": "health/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a adolescence",
+   "a": "time",
+   "variants": [
+    "time"
+   ],
+   "standard": "health/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a acne",
+   "a": "infection",
+   "variants": [
+    "infection"
+   ],
+   "standard": "health/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a anxiety",
+   "a": "emotion",
+   "variants": [
+    "emotion"
+   ],
+   "standard": "health/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a family",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "health/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a safety",
+   "a": "feeling",
+   "variants": [
+    "feeling"
+   ],
+   "standard": "health/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a psychology",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "health/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "science",
+ "grade": "grade2",
+ "sample": 14,
+ "poolSize": 45,
+ "themes": 29,
+ "questions": [
+  {
+   "q": "what is a habitat",
+   "a": "area",
+   "variants": [
+    "area"
+   ],
+   "standard": "science/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a pressure",
+   "a": "measure",
+   "variants": [
+    "measure"
+   ],
+   "standard": "science/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a carpel",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "science/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a plasma",
+   "a": "gas",
+   "variants": [
+    "gas"
+   ],
+   "standard": "science/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a melting",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "science/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a freezing",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "science/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a evaporation",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "science/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a water",
+   "a": "substance",
+   "variants": [
+    "substance"
+   ],
+   "standard": "science/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a ice",
+   "a": "name",
+   "variants": [
+    "name"
+   ],
+   "standard": "science/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a steam engine",
+   "a": "using",
+   "variants": [
+    "using"
+   ],
+   "standard": "science/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a temperature",
+   "a": "measure",
+   "variants": [
+    "measure"
+   ],
+   "standard": "science/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a another type",
+   "a": "thermometer",
+   "variants": [
+    "thermometer"
+   ],
+   "standard": "science/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a force",
+   "a": "can",
+   "variants": [
+    "can"
+   ],
+   "standard": "science/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a motion",
+   "a": "position",
+   "variants": [
+    "position"
+   ],
+   "standard": "science/grade2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

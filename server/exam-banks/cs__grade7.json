@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "cs",
+ "grade": "grade7",
+ "sample": 14,
+ "poolSize": 41,
+ "themes": 18,
+ "questions": [
+  {
+   "q": "what is a data",
+   "a": "collection",
+   "variants": [
+    "collection"
+   ],
+   "standard": "cs/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a retrieval",
+   "a": "selection",
+   "variants": [
+    "selection"
+   ],
+   "standard": "cs/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a internet",
+   "a": "system",
+   "variants": [
+    "system"
+   ],
+   "standard": "cs/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a html",
+   "a": "language",
+   "variants": [
+    "language"
+   ],
+   "standard": "cs/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a threat",
+   "a": "event",
+   "variants": [
+    "event"
+   ],
+   "standard": "cs/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a online advertising",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "cs/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a search engine",
+   "a": "website",
+   "variants": [
+    "website"
+   ],
+   "standard": "cs/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a spreadsheet",
+   "a": "application",
+   "variants": [
+    "application"
+   ],
+   "standard": "cs/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a narrative visualization",
+   "a": "method",
+   "variants": [
+    "method"
+   ],
+   "standard": "cs/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a fat link",
+   "a": "hyperlink",
+   "variants": [
+    "hyperlink"
+   ],
+   "standard": "cs/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a client-server model",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "cs/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a internet protocol",
+   "a": "component",
+   "variants": [
+    "component"
+   ],
+   "standard": "cs/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a encryption",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "cs/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a password",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "cs/grade7 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

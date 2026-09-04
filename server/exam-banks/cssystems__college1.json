@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "cssystems",
+ "grade": "college1",
+ "sample": 14,
+ "poolSize": 52,
+ "themes": 19,
+ "questions": [
+  {
+   "q": "what is a cost",
+   "a": "concern",
+   "variants": [
+    "concern"
+   ],
+   "standard": "cssystems/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a control unit",
+   "a": "component",
+   "variants": [
+    "component"
+   ],
+   "standard": "cssystems/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a virtual memory",
+   "a": "system",
+   "variants": [
+    "system"
+   ],
+   "standard": "cssystems/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a remainder",
+   "a": "bit",
+   "variants": [
+    "bit"
+   ],
+   "standard": "cssystems/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a logic gate",
+   "a": "device",
+   "variants": [
+    "device"
+   ],
+   "standard": "cssystems/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a memory cell",
+   "a": "block",
+   "variants": [
+    "block"
+   ],
+   "standard": "cssystems/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a bit",
+   "a": "unit",
+   "variants": [
+    "unit"
+   ],
+   "standard": "cssystems/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a file descriptor",
+   "a": "gateway",
+   "variants": [
+    "gateway"
+   ],
+   "standard": "cssystems/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a another example",
+   "a": "operation",
+   "variants": [
+    "operation"
+   ],
+   "standard": "cssystems/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a machine precision",
+   "a": "quantity",
+   "variants": [
+    "quantity"
+   ],
+   "standard": "cssystems/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a complement",
+   "a": "operation",
+   "variants": [
+    "operation"
+   ],
+   "standard": "cssystems/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a combinational logic",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "cssystems/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a setup time",
+   "a": "amount",
+   "variants": [
+    "amount"
+   ],
+   "standard": "cssystems/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a memory wall",
+   "a": "disparity",
+   "variants": [
+    "disparity"
+   ],
+   "standard": "cssystems/college1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "music",
+ "grade": "grade10",
+ "sample": 14,
+ "poolSize": 19,
+ "themes": 13,
+ "questions": [
+  {
+   "q": "what is a minimal music",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "music/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a musical theatre",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "music/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a copyright",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "music/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a recital",
+   "a": "concerto",
+   "variants": [
+    "concerto"
+   ],
+   "standard": "music/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a technique",
+   "a": "means",
+   "variants": [
+    "means"
+   ],
+   "standard": "music/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a serialism",
+   "a": "method",
+   "variants": [
+    "method"
+   ],
+   "standard": "music/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a open form",
+   "a": "term",
+   "variants": [
+    "term"
+   ],
+   "standard": "music/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sampler",
+   "a": "instrument",
+   "variants": [
+    "instrument"
+   ],
+   "standard": "music/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a latter",
+   "a": "piece",
+   "variants": [
+    "piece"
+   ],
+   "standard": "music/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a glass",
+   "a": "cousin",
+   "variants": [
+    "cousin"
+   ],
+   "standard": "music/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a opera",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "music/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a music publisher",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "music/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a music festival",
+   "a": "event",
+   "variants": [
+    "event"
+   ],
+   "standard": "music/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a parade",
+   "a": "exploration",
+   "variants": [
+    "exploration"
+   ],
+   "standard": "music/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

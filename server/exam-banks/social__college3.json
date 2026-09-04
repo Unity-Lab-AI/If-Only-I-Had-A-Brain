@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "social",
+ "grade": "college3",
+ "sample": 14,
+ "poolSize": 58,
+ "themes": 32,
+ "questions": [
+  {
+   "q": "what is a poverty",
+   "a": "condition",
+   "variants": [
+    "condition"
+   ],
+   "standard": "social/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a globalization",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "social/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a urbanization",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "social/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a human migration",
+   "a": "movement",
+   "variants": [
+    "movement"
+   ],
+   "standard": "social/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a chief",
+   "a": "person",
+   "variants": [
+    "person"
+   ],
+   "standard": "social/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a public health",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "social/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a ocean",
+   "a": "body",
+   "variants": [
+    "body"
+   ],
+   "standard": "social/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a book",
+   "a": "expression",
+   "variants": [
+    "expression"
+   ],
+   "standard": "social/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a demography",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "social/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a development economics",
+   "a": "branch",
+   "variants": [
+    "branch"
+   ],
+   "standard": "social/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sustainable development",
+   "a": "approach",
+   "variants": [
+    "approach"
+   ],
+   "standard": "social/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a deforestation",
+   "a": "contributor",
+   "variants": [
+    "contributor"
+   ],
+   "standard": "social/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a environmental sociology",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "social/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a registry statistics",
+   "a": "method",
+   "variants": [
+    "method"
+   ],
+   "standard": "social/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

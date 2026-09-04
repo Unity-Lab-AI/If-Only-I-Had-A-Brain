@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "pe",
+ "grade": "grade11",
+ "sample": 14,
+ "poolSize": 55,
+ "themes": 18,
+ "questions": [
+  {
+   "q": "what is a sport psychology",
+   "a": "science",
+   "variants": [
+    "science"
+   ],
+   "standard": "pe/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a motivation",
+   "a": "state",
+   "variants": [
+    "state"
+   ],
+   "standard": "pe/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a time management",
+   "a": "practice",
+   "variants": [
+    "practice"
+   ],
+   "standard": "pe/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a coaching",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "pe/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a recovery",
+   "a": "album",
+   "variants": [
+    "album"
+   ],
+   "standard": "pe/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a myoglobin",
+   "a": "protein",
+   "variants": [
+    "protein"
+   ],
+   "standard": "pe/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a cortisol",
+   "a": "hormone",
+   "variants": [
+    "hormone"
+   ],
+   "standard": "pe/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a group dynamics",
+   "a": "system",
+   "variants": [
+    "system"
+   ],
+   "standard": "pe/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a self-referent thought",
+   "a": "mediator",
+   "variants": [
+    "mediator"
+   ],
+   "standard": "pe/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a anxiety",
+   "a": "emotion",
+   "variants": [
+    "emotion"
+   ],
+   "standard": "pe/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a primary appraisal",
+   "a": "assessment",
+   "variants": [
+    "assessment"
+   ],
+   "standard": "pe/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sustained attention",
+   "a": "ability",
+   "variants": [
+    "ability"
+   ],
+   "standard": "pe/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a leadership",
+   "a": "term",
+   "variants": [
+    "term"
+   ],
+   "standard": "pe/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a dehydration",
+   "a": "lack",
+   "variants": [
+    "lack"
+   ],
+   "standard": "pe/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

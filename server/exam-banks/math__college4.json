@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "math",
+ "grade": "college4",
+ "sample": 14,
+ "poolSize": 65,
+ "themes": 26,
+ "questions": [
+  {
+   "q": "what is a real analysis",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "math/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mathematical analysis",
+   "a": "branch",
+   "variants": [
+    "branch"
+   ],
+   "standard": "math/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a derivative",
+   "a": "tool",
+   "variants": [
+    "tool"
+   ],
+   "standard": "math/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a riemann integral",
+   "a": "definition",
+   "variants": [
+    "definition"
+   ],
+   "standard": "math/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a compactness",
+   "a": "property",
+   "variants": [
+    "property"
+   ],
+   "standard": "math/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a manifold",
+   "a": "space",
+   "variants": [
+    "space"
+   ],
+   "standard": "math/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a each one",
+   "a": "case",
+   "variants": [
+    "case"
+   ],
+   "standard": "math/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a uniform convergence",
+   "a": "function",
+   "variants": [
+    "function"
+   ],
+   "standard": "math/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a isomorphism",
+   "a": "homomorphism",
+   "variants": [
+    "homomorphism"
+   ],
+   "standard": "math/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a ring",
+   "a": "structure",
+   "variants": [
+    "structure"
+   ],
+   "standard": "math/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a following example",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "math/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a symmetry operation",
+   "a": "rotation",
+   "variants": [
+    "rotation"
+   ],
+   "standard": "math/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a homomorphism",
+   "a": "map",
+   "variants": [
+    "map"
+   ],
+   "standard": "math/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a vector bundle",
+   "a": "family",
+   "variants": [
+    "family"
+   ],
+   "standard": "math/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

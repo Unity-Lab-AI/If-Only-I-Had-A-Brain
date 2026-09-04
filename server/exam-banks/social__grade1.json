@@ -1,0 +1,70 @@
+{
+ "version": 1,
+ "subject": "social",
+ "grade": "grade1",
+ "sample": 14,
+ "poolSize": 6,
+ "themes": 5,
+ "questions": [
+  {
+   "q": "what is a family",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "social/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a medical law",
+   "a": "body",
+   "variants": [
+    "body"
+   ],
+   "standard": "social/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mayor",
+   "a": "who",
+   "variants": [
+    "who"
+   ],
+   "standard": "social/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a city",
+   "a": "place",
+   "variants": [
+    "place"
+   ],
+   "standard": "social/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a thanksgiving",
+   "a": "holiday",
+   "variants": [
+    "holiday"
+   ],
+   "standard": "social/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a civil society",
+   "a": "people",
+   "variants": [
+    "people"
+   ],
+   "standard": "social/grade1 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

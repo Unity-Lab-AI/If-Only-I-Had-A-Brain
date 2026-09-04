@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "ela",
+ "grade": "college4",
+ "sample": 14,
+ "poolSize": 58,
+ "themes": 25,
+ "questions": [
+  {
+   "q": "what is a discourse",
+   "a": "theory",
+   "variants": [
+    "theory"
+   ],
+   "standard": "ela/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a comparative literature",
+   "a": "dealing",
+   "variants": [
+    "dealing"
+   ],
+   "standard": "ela/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a genre painting",
+   "a": "term",
+   "variants": [
+    "term"
+   ],
+   "standard": "ela/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a literary theory",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "ela/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a one",
+   "a": "use",
+   "variants": [
+    "use"
+   ],
+   "standard": "ela/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a semiotics",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "ela/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a culture",
+   "a": "critic",
+   "variants": [
+    "critic"
+   ],
+   "standard": "ela/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a who",
+   "a": "getting",
+   "variants": [
+    "getting"
+   ],
+   "standard": "ela/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a linguistic system",
+   "a": "series",
+   "variants": [
+    "series"
+   ],
+   "standard": "ela/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a formalism",
+   "a": "school",
+   "variants": [
+    "school"
+   ],
+   "standard": "ela/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a allusion",
+   "a": "reference",
+   "variants": [
+    "reference"
+   ],
+   "standard": "ela/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a every saying",
+   "a": "expression",
+   "variants": [
+    "expression"
+   ],
+   "standard": "ela/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a poetics",
+   "a": "theory",
+   "variants": [
+    "theory"
+   ],
+   "standard": "ela/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a beckett",
+   "a": "writer",
+   "variants": [
+    "writer"
+   ],
+   "standard": "ela/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

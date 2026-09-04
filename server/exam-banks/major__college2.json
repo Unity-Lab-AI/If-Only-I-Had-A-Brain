@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "major",
+ "grade": "college2",
+ "sample": 14,
+ "poolSize": 40,
+ "themes": 19,
+ "questions": [
+  {
+   "q": "what is a sixteen minutes",
+   "a": "time",
+   "variants": [
+    "time"
+   ],
+   "standard": "major/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a data structure",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "major/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a array",
+   "a": "structure",
+   "variants": [
+    "structure"
+   ],
+   "standard": "major/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a josephus problem",
+   "a": "method",
+   "variants": [
+    "method"
+   ],
+   "standard": "major/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a stack",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "major/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a name queue",
+   "a": "analogy",
+   "variants": [
+    "analogy"
+   ],
+   "standard": "major/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a output",
+   "a": "permutation",
+   "variants": [
+    "permutation"
+   ],
+   "standard": "major/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a language abstraction",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "major/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a effective communication",
+   "a": "now",
+   "variants": [
+    "now"
+   ],
+   "standard": "major/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a notable optimization",
+   "a": "tree",
+   "variants": [
+    "tree"
+   ],
+   "standard": "major/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a distance",
+   "a": "length",
+   "variants": [
+    "length"
+   ],
+   "standard": "major/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a node",
+   "a": "pointer",
+   "variants": [
+    "pointer"
+   ],
+   "standard": "major/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a former",
+   "a": "while",
+   "variants": [
+    "while"
+   ],
+   "standard": "major/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a linear search",
+   "a": "algorithm",
+   "variants": [
+    "algorithm"
+   ],
+   "standard": "major/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

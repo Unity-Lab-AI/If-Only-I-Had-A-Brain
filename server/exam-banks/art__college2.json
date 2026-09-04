@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "art",
+ "grade": "college2",
+ "sample": 14,
+ "poolSize": 45,
+ "themes": 19,
+ "questions": [
+  {
+   "q": "what is a computer graphics",
+   "a": "video",
+   "variants": [
+    "video"
+   ],
+   "standard": "art/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a graphic design",
+   "a": "discipline",
+   "variants": [
+    "discipline"
+   ],
+   "standard": "art/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a typography",
+   "a": "art",
+   "variants": [
+    "art"
+   ],
+   "standard": "art/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a desktop",
+   "a": "example",
+   "variants": [
+    "example"
+   ],
+   "standard": "art/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a photography",
+   "a": "application",
+   "variants": [
+    "application"
+   ],
+   "standard": "art/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a cutout",
+   "a": "use",
+   "variants": [
+    "use"
+   ],
+   "standard": "art/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a ray marching",
+   "a": "family",
+   "variants": [
+    "family"
+   ],
+   "standard": "art/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a vector graphics",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "art/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a bridge",
+   "a": "organizer",
+   "variants": [
+    "organizer"
+   ],
+   "standard": "art/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a visual effects",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "art/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a concept artist",
+   "a": "who",
+   "variants": [
+    "who"
+   ],
+   "standard": "art/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a interaction design",
+   "a": "component",
+   "variants": [
+    "component"
+   ],
+   "standard": "art/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a texture mapping",
+   "a": "graphics",
+   "variants": [
+    "graphics"
+   ],
+   "standard": "art/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a color space",
+   "a": "organization",
+   "variants": [
+    "organization"
+   ],
+   "standard": "art/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

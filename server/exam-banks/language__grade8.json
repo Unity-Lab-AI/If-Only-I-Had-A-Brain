@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "language",
+ "grade": "grade8",
+ "sample": 14,
+ "poolSize": 32,
+ "themes": 13,
+ "questions": [
+  {
+   "q": "what is a subjunctive",
+   "a": "feature",
+   "variants": [
+    "feature"
+   ],
+   "standard": "language/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a fidelity",
+   "a": "extent",
+   "variants": [
+    "extent"
+   ],
+   "standard": "language/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a poetry",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "language/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a short story",
+   "a": "piece",
+   "variants": [
+    "piece"
+   ],
+   "standard": "language/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a interpretation",
+   "a": "activity",
+   "variants": [
+    "activity"
+   ],
+   "standard": "language/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a dialect",
+   "a": "variety",
+   "variants": [
+    "variety"
+   ],
+   "standard": "language/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a spanish",
+   "a": "language",
+   "variants": [
+    "language"
+   ],
+   "standard": "language/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a football",
+   "a": "argentina",
+   "variants": [
+    "argentina"
+   ],
+   "standard": "language/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a baseball",
+   "a": "cuba",
+   "variants": [
+    "cuba"
+   ],
+   "standard": "language/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a rooster fighting",
+   "a": "sport",
+   "variants": [
+    "sport"
+   ],
+   "standard": "language/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a immigration",
+   "a": "movement",
+   "variants": [
+    "movement"
+   ],
+   "standard": "language/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a word",
+   "a": "combination",
+   "variants": [
+    "combination"
+   ],
+   "standard": "language/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a portmanteau sentence",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "language/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a transparency",
+   "a": "extent",
+   "variants": [
+    "extent"
+   ],
+   "standard": "language/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

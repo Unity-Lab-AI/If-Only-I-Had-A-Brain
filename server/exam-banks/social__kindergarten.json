@@ -1,0 +1,90 @@
+{
+ "version": 1,
+ "subject": "social",
+ "grade": "kindergarten",
+ "sample": 14,
+ "poolSize": 8,
+ "themes": 4,
+ "questions": [
+  {
+   "q": "what is a family",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "social/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a house",
+   "a": "building",
+   "variants": [
+    "building"
+   ],
+   "standard": "social/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a teacher",
+   "a": "who",
+   "variants": [
+    "who"
+   ],
+   "standard": "social/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a nurse",
+   "a": "who",
+   "variants": [
+    "who"
+   ],
+   "standard": "social/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mansion",
+   "a": "house",
+   "variants": [
+    "house"
+   ],
+   "standard": "social/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a nursing",
+   "a": "doctor",
+   "variants": [
+    "doctor"
+   ],
+   "standard": "social/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a palace",
+   "a": "house",
+   "variants": [
+    "house"
+   ],
+   "standard": "social/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a clay",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "social/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

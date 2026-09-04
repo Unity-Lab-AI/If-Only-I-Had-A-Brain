@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "civics",
+ "grade": "grade8",
+ "sample": 14,
+ "poolSize": 25,
+ "themes": 15,
+ "questions": [
+  {
+   "q": "what is a amendment",
+   "a": "basis",
+   "variants": [
+    "basis"
+   ],
+   "standard": "civics/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a federalism",
+   "a": "mode",
+   "variants": [
+    "mode"
+   ],
+   "standard": "civics/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a jimmy carter",
+   "a": "president",
+   "variants": [
+    "president"
+   ],
+   "standard": "civics/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a section nine",
+   "a": "list",
+   "variants": [
+    "list"
+   ],
+   "standard": "civics/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a ratification",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "civics/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a federalist",
+   "a": "collection",
+   "variants": [
+    "collection"
+   ],
+   "standard": "civics/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a another example",
+   "a": "netherlands",
+   "variants": [
+    "netherlands"
+   ],
+   "standard": "civics/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a state",
+   "a": "party",
+   "variants": [
+    "party"
+   ],
+   "standard": "civics/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a communication",
+   "a": "need",
+   "variants": [
+    "need"
+   ],
+   "standard": "civics/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a report",
+   "a": "product",
+   "variants": [
+    "product"
+   ],
+   "standard": "civics/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a winner",
+   "a": "who",
+   "variants": [
+    "who"
+   ],
+   "standard": "civics/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a veto",
+   "a": "power",
+   "variants": [
+    "power"
+   ],
+   "standard": "civics/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a impeachment",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "civics/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a electoral college",
+   "a": "body",
+   "variants": [
+    "body"
+   ],
+   "standard": "civics/grade8 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

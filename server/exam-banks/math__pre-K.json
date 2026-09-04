@@ -1,0 +1,100 @@
+{
+ "version": 1,
+ "subject": "math",
+ "grade": "pre-K",
+ "sample": 14,
+ "poolSize": 9,
+ "themes": 7,
+ "questions": [
+  {
+   "q": "what is a mathematics",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "math/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a circle",
+   "a": "shape",
+   "variants": [
+    "shape"
+   ],
+   "standard": "math/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a triangle",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "math/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a rectangle",
+   "a": "shape",
+   "variants": [
+    "shape"
+   ],
+   "standard": "math/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a clock",
+   "a": "device",
+   "variants": [
+    "device"
+   ],
+   "standard": "math/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a addition",
+   "a": "operation",
+   "variants": [
+    "operation"
+   ],
+   "standard": "math/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a subtraction",
+   "a": "operation",
+   "variants": [
+    "operation"
+   ],
+   "standard": "math/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a real numbers",
+   "a": "name",
+   "variants": [
+    "name"
+   ],
+   "standard": "math/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a complex numbers",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "math/pre-K key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

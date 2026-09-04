@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "art",
+ "grade": "grad",
+ "sample": 14,
+ "poolSize": 60,
+ "themes": 18,
+ "questions": [
+  {
+   "q": "what is a aesthetics",
+   "a": "branch",
+   "variants": [
+    "branch"
+   ],
+   "standard": "art/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a visual culture",
+   "a": "aspect",
+   "variants": [
+    "aspect"
+   ],
+   "standard": "art/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a semiotics",
+   "a": "study",
+   "variants": [
+    "study"
+   ],
+   "standard": "art/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a creativity",
+   "a": "ability",
+   "variants": [
+    "ability"
+   ],
+   "standard": "art/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a vision",
+   "a": "sense",
+   "variants": [
+    "sense"
+   ],
+   "standard": "art/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a color",
+   "a": "perception",
+   "variants": [
+    "perception"
+   ],
+   "standard": "art/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a religion",
+   "a": "theme",
+   "variants": [
+    "theme"
+   ],
+   "standard": "art/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a human life",
+   "a": "struggle",
+   "variants": [
+    "struggle"
+   ],
+   "standard": "art/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a nihilist",
+   "a": "judges",
+   "variants": [
+    "judges"
+   ],
+   "standard": "art/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a creative arts",
+   "a": "collection",
+   "variants": [
+    "collection"
+   ],
+   "standard": "art/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a world view",
+   "a": "result",
+   "variants": [
+    "result"
+   ],
+   "standard": "art/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a symbol",
+   "a": "word",
+   "variants": [
+    "word"
+   ],
+   "standard": "art/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a vehicle",
+   "a": "object",
+   "variants": [
+    "object"
+   ],
+   "standard": "art/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a representation",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "art/grad key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "music",
+ "grade": "grade11",
+ "sample": 14,
+ "poolSize": 45,
+ "themes": 22,
+ "questions": [
+  {
+   "q": "what is a synthesizer",
+   "a": "instrument",
+   "variants": [
+    "instrument"
+   ],
+   "standard": "music/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sampling",
+   "a": "element",
+   "variants": [
+    "element"
+   ],
+   "standard": "music/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mixer",
+   "a": "heart",
+   "variants": [
+    "heart"
+   ],
+   "standard": "music/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a acoustics",
+   "a": "branch",
+   "variants": [
+    "branch"
+   ],
+   "standard": "music/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sound",
+   "a": "phenomenon",
+   "variants": [
+    "phenomenon"
+   ],
+   "standard": "music/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a frequency",
+   "a": "number",
+   "variants": [
+    "number"
+   ],
+   "standard": "music/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a pulse amplitude",
+   "a": "magnitude",
+   "variants": [
+    "magnitude"
+   ],
+   "standard": "music/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a envelope",
+   "a": "structure",
+   "variants": [
+    "structure"
+   ],
+   "standard": "music/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a music box",
+   "a": "instrument",
+   "variants": [
+    "instrument"
+   ],
+   "standard": "music/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a former implementation",
+   "a": "experiment",
+   "variants": [
+    "experiment"
+   ],
+   "standard": "music/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a loudspeaker",
+   "a": "combination",
+   "variants": [
+    "combination"
+   ],
+   "standard": "music/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a rumble",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "music/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a limiter",
+   "a": "compressor",
+   "variants": [
+    "compressor"
+   ],
+   "standard": "music/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a reverberation time",
+   "a": "measure",
+   "variants": [
+    "measure"
+   ],
+   "standard": "music/grade11 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

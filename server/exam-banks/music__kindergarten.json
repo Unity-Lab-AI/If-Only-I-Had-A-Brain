@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "music",
+ "grade": "kindergarten",
+ "sample": 14,
+ "poolSize": 17,
+ "themes": 10,
+ "questions": [
+  {
+   "q": "what is a music",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "music/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a song",
+   "a": "piece",
+   "variants": [
+    "piece"
+   ],
+   "standard": "music/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a drum",
+   "a": "instrument",
+   "variants": [
+    "instrument"
+   ],
+   "standard": "music/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a loudness",
+   "a": "perception",
+   "variants": [
+    "perception"
+   ],
+   "standard": "music/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a dancing",
+   "a": "form",
+   "variants": [
+    "form"
+   ],
+   "standard": "music/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a lullaby",
+   "a": "song",
+   "variants": [
+    "song"
+   ],
+   "standard": "music/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a bell",
+   "a": "instrument",
+   "variants": [
+    "instrument"
+   ],
+   "standard": "music/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a music education",
+   "a": "field",
+   "variants": [
+    "field"
+   ],
+   "standard": "music/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a musical instrument",
+   "a": "device",
+   "variants": [
+    "device"
+   ],
+   "standard": "music/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a soundboard",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "music/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a rhythm",
+   "a": "way",
+   "variants": [
+    "way"
+   ],
+   "standard": "music/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a drum kit",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "music/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a loudness normalization",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "music/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a one style",
+   "a": "dance",
+   "variants": [
+    "dance"
+   ],
+   "standard": "music/kindergarten key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

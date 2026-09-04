@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "science",
+ "grade": "grade5",
+ "sample": 14,
+ "poolSize": 42,
+ "themes": 32,
+ "questions": [
+  {
+   "q": "what is a cell",
+   "a": "structure",
+   "variants": [
+    "structure"
+   ],
+   "standard": "science/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a chemical reaction",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "science/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a force",
+   "a": "can",
+   "variants": [
+    "can"
+   ],
+   "standard": "science/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a energy",
+   "a": "property",
+   "variants": [
+    "property"
+   ],
+   "standard": "science/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a solar system",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "science/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a cell membrane",
+   "a": "layer",
+   "variants": [
+    "layer"
+   ],
+   "standard": "science/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a organ",
+   "a": "group",
+   "variants": [
+    "group"
+   ],
+   "standard": "science/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a fungus",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "science/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a photosynthesis",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "science/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a atp",
+   "a": "molecule",
+   "variants": [
+    "molecule"
+   ],
+   "standard": "science/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a result",
+   "a": "element",
+   "variants": [
+    "element"
+   ],
+   "standard": "science/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a chemical element",
+   "a": "substance",
+   "variants": [
+    "substance"
+   ],
+   "standard": "science/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mixture",
+   "a": "substance",
+   "variants": [
+    "substance"
+   ],
+   "standard": "science/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a solution",
+   "a": "mixture",
+   "variants": [
+    "mixture"
+   ],
+   "standard": "science/grade5 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

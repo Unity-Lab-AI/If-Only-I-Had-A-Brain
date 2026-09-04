@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "health",
+ "grade": "grade6",
+ "sample": 14,
+ "poolSize": 35,
+ "themes": 19,
+ "questions": [
+  {
+   "q": "what is a puberty",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "health/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a adolescence",
+   "a": "stage",
+   "variants": [
+    "stage"
+   ],
+   "standard": "health/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a menstruation",
+   "a": "discharge",
+   "variants": [
+    "discharge"
+   ],
+   "standard": "health/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a example",
+   "a": "ability",
+   "variants": [
+    "ability"
+   ],
+   "standard": "health/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a anal hygiene",
+   "a": "practice",
+   "variants": [
+    "practice"
+   ],
+   "standard": "health/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a foraging",
+   "a": "process",
+   "variants": [
+    "process"
+   ],
+   "standard": "health/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a suicide",
+   "a": "cause",
+   "variants": [
+    "cause"
+   ],
+   "standard": "health/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a narcissism",
+   "a": "have",
+   "variants": [
+    "have"
+   ],
+   "standard": "health/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a menstrual cycle",
+   "a": "series",
+   "variants": [
+    "series"
+   ],
+   "standard": "health/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a menstrual pad",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "health/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a sexuality",
+   "a": "experience",
+   "variants": [
+    "experience"
+   ],
+   "standard": "health/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a spironolactone",
+   "a": "treatment",
+   "variants": [
+    "treatment"
+   ],
+   "standard": "health/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a anxiety",
+   "a": "emotion",
+   "variants": [
+    "emotion"
+   ],
+   "standard": "health/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a psychotherapy",
+   "a": "treatment",
+   "variants": [
+    "treatment"
+   ],
+   "standard": "health/grade6 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

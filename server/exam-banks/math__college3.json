@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "math",
+ "grade": "college3",
+ "sample": 14,
+ "poolSize": 37,
+ "themes": 21,
+ "questions": [
+  {
+   "q": "what is a data",
+   "a": "names",
+   "variants": [
+    "names"
+   ],
+   "standard": "math/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a quantitative data",
+   "a": "result",
+   "variants": [
+    "result"
+   ],
+   "standard": "math/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a statistic",
+   "a": "number",
+   "variants": [
+    "number"
+   ],
+   "standard": "math/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a following data",
+   "a": "heights",
+   "variants": [
+    "heights"
+   ],
+   "standard": "math/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a variance",
+   "a": "measure",
+   "variants": [
+    "measure"
+   ],
+   "standard": "math/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a histogram",
+   "a": "version",
+   "variants": [
+    "version"
+   ],
+   "standard": "math/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a mean",
+   "a": "measure",
+   "variants": [
+    "measure"
+   ],
+   "standard": "math/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a outlier",
+   "a": "observation",
+   "variants": [
+    "observation"
+   ],
+   "standard": "math/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a experiment",
+   "a": "operation",
+   "variants": [
+    "operation"
+   ],
+   "standard": "math/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a tree diagram",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "math/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a uniform distribution",
+   "a": "probability",
+   "variants": [
+    "probability"
+   ],
+   "standard": "math/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a probability",
+   "a": "area",
+   "variants": [
+    "area"
+   ],
+   "standard": "math/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a standard deviation",
+   "a": "root",
+   "variants": [
+    "root"
+   ],
+   "standard": "math/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a confidence level",
+   "a": "percent",
+   "variants": [
+    "percent"
+   ],
+   "standard": "math/college3 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

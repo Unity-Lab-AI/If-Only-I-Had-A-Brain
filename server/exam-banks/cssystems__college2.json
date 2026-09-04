@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "cssystems",
+ "grade": "college2",
+ "sample": 14,
+ "poolSize": 55,
+ "themes": 15,
+ "questions": [
+  {
+   "q": "what is a assembler",
+   "a": "program",
+   "variants": [
+    "program"
+   ],
+   "standard": "cssystems/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a similar case",
+   "a": "nec",
+   "variants": [
+    "nec"
+   ],
+   "standard": "cssystems/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a trace cache",
+   "a": "mechanism",
+   "variants": [
+    "mechanism"
+   ],
+   "standard": "cssystems/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a interrupt",
+   "a": "request",
+   "variants": [
+    "request"
+   ],
+   "standard": "cssystems/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a following",
+   "a": "example",
+   "variants": [
+    "example"
+   ],
+   "standard": "cssystems/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a computer architecture",
+   "a": "combination",
+   "variants": [
+    "combination"
+   ],
+   "standard": "cssystems/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a same",
+   "a": "case",
+   "variants": [
+    "case"
+   ],
+   "standard": "cssystems/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a analogy",
+   "a": "difference",
+   "variants": [
+    "difference"
+   ],
+   "standard": "cssystems/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a older mechanism",
+   "a": "gate",
+   "variants": [
+    "gate"
+   ],
+   "standard": "cssystems/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a token",
+   "a": "pair",
+   "variants": [
+    "pair"
+   ],
+   "standard": "cssystems/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a loader",
+   "a": "part",
+   "variants": [
+    "part"
+   ],
+   "standard": "cssystems/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a calling convention",
+   "a": "scheme",
+   "variants": [
+    "scheme"
+   ],
+   "standard": "cssystems/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a stack",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "cssystems/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a arm",
+   "a": "family",
+   "variants": [
+    "family"
+   ],
+   "standard": "cssystems/college2 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

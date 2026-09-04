@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "social",
+ "grade": "college4",
+ "sample": 14,
+ "poolSize": 52,
+ "themes": 24,
+ "questions": [
+  {
+   "q": "what is a fact",
+   "a": "phenomenon",
+   "variants": [
+    "phenomenon"
+   ],
+   "standard": "social/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a statistics",
+   "a": "discipline",
+   "variants": [
+    "discipline"
+   ],
+   "standard": "social/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a ethnography",
+   "a": "branch",
+   "variants": [
+    "branch"
+   ],
+   "standard": "social/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a case study",
+   "a": "examination",
+   "variants": [
+    "examination"
+   ],
+   "standard": "social/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a qualitative research",
+   "a": "type",
+   "variants": [
+    "type"
+   ],
+   "standard": "social/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a quantitative research",
+   "a": "strategy",
+   "variants": [
+    "strategy"
+   ],
+   "standard": "social/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a bias",
+   "a": "favor",
+   "variants": [
+    "favor"
+   ],
+   "standard": "social/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a batch",
+   "a": "population",
+   "variants": [
+    "population"
+   ],
+   "standard": "social/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a causality",
+   "a": "abstraction",
+   "variants": [
+    "abstraction"
+   ],
+   "standard": "social/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a experiment",
+   "a": "procedure",
+   "variants": [
+    "procedure"
+   ],
+   "standard": "social/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a validity",
+   "a": "extent",
+   "variants": [
+    "extent"
+   ],
+   "standard": "social/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a social fact",
+   "a": "product",
+   "variants": [
+    "product"
+   ],
+   "standard": "social/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a research design",
+   "a": "framework",
+   "variants": [
+    "framework"
+   ],
+   "standard": "social/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a hypothesis",
+   "a": "proposition",
+   "variants": [
+    "proposition"
+   ],
+   "standard": "social/college4 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}

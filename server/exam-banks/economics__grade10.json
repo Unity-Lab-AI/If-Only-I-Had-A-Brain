@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "subject": "economics",
+ "grade": "grade10",
+ "sample": 14,
+ "poolSize": 105,
+ "themes": 16,
+ "questions": [
+  {
+   "q": "what is a competition",
+   "a": "scenario",
+   "variants": [
+    "scenario"
+   ],
+   "standard": "economics/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a price",
+   "a": "quantity",
+   "variants": [
+    "quantity"
+   ],
+   "standard": "economics/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a monopoly",
+   "a": "market",
+   "variants": [
+    "market"
+   ],
+   "standard": "economics/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a demand",
+   "a": "quantity",
+   "variants": [
+    "quantity"
+   ],
+   "standard": "economics/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a supply",
+   "a": "amount",
+   "variants": [
+    "amount"
+   ],
+   "standard": "economics/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a cost",
+   "a": "value",
+   "variants": [
+    "value"
+   ],
+   "standard": "economics/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a revenue",
+   "a": "amount",
+   "variants": [
+    "amount"
+   ],
+   "standard": "economics/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a profit",
+   "a": "difference",
+   "variants": [
+    "difference"
+   ],
+   "standard": "economics/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a market definition",
+   "a": "issue",
+   "variants": [
+    "issue"
+   ],
+   "standard": "economics/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a market",
+   "a": "mechanism",
+   "variants": [
+    "mechanism"
+   ],
+   "standard": "economics/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a microeconomics",
+   "a": "branch",
+   "variants": [
+    "branch"
+   ],
+   "standard": "economics/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a total cost",
+   "a": "sum",
+   "variants": [
+    "sum"
+   ],
+   "standard": "economics/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a different approach",
+   "a": "use",
+   "variants": [
+    "use"
+   ],
+   "standard": "economics/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  },
+  {
+   "q": "what is a externality",
+   "a": "benefit",
+   "variants": [
+    "benefit"
+   ],
+   "standard": "economics/grade10 key-term recall",
+   "difficulty": 1,
+   "source": "derived-from-corpus"
+  }
+ ]
+}
