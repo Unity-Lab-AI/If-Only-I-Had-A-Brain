@@ -877,7 +877,51 @@ async function doSaveRerun() {
  * leaves the brain crash-looping can now be fixed by deploying the fix from the
  * dashboard instead of needing SSH.
  */
-async function doUpdate(keep, confirmToken) {
+/**
+ * How long this service may let `deploy/self-update.sh` run before SIGTERMing it.
+ *
+ * ⛔⛔ THIS MUST EXCEED `UAL_LFS_TIMEOUT`, AND IT DID NOT. The value was a
+ * hardcoded 900000 (15 min) while `self-update.sh` bounds `git lfs pull` at 45m
+ * by default — so on this path the parent was killed HALF AN HOUR before the
+ * guard could ever fire, and a deploy could never legally finish. Two timeouts
+ * in two files, in the wrong order, each looking reasonable alone.
+ *
+ * ⭐ Derived rather than picked, so the invariant cannot silently rot again: the
+ * LFS bound plus headroom for the clone, the overlay and the restart. A number
+ * chosen by hand is only correct until somebody edits the other file.
+ *
+ * ⚠ The brain's own /update route spawns DETACHED with no timeout at all, which
+ * is why a long deploy fired from the dashboard survives and the same deploy
+ * fired through here did not.
+ */
+function parseTimeoutToMs(spec) {
+  // Accepts GNU `timeout` syntax: bare seconds, or a s/m/h/d suffix. Anything
+  // unparseable returns null so the caller can fall back rather than compute a
+  // confident wrong number.
+  const s = String(spec == null ? '' : spec).trim().toLowerCase();
+  if (!s) return null;
+  const m = s.match(/^(\d+(?:\.\d+)?)\s*([smhd]?)$/);
+  if (!m) return null;
+  const n = parseFloat(m[1]);
+  if (!Number.isFinite(n)) return null;
+  const mult = { '': 1000, s: 1000, m: 60000, h: 3600000, d: 86400000 }[m[2]];
+  return n * mult;
+}
+
+const DEPLOY_HEADROOM_MS = 20 * 60 * 1000;   // clone + overlay + restart
+const DEPLOY_TIMEOUT_FLOOR_MS = 45 * 60 * 1000;
+
+function deployTimeoutMs() {
+  // `UAL_LFS_TIMEOUT=0` disables the LFS bound entirely (self-update.sh says so),
+  // so there is no upper bound to derive from — fall back to the floor rather
+  // than returning 0, which execFile reads as "no timeout" and would let a
+  // wedged pull hold this service open forever.
+  const lfs = parseTimeoutToMs(process.env.UAL_LFS_TIMEOUT || '45m');
+  if (!lfs) return DEPLOY_TIMEOUT_FLOOR_MS;
+  return Math.max(DEPLOY_TIMEOUT_FLOOR_MS, lfs + DEPLOY_HEADROOM_MS);
+}
+
+async function doUpdate(keep, confirmToken, skipFields) {
   const mode = keep ? 'savestart' : 'fresh-walk';
   log(`UPDATE requested (${mode})`);
 
@@ -961,7 +1005,11 @@ async function doUpdate(keep, confirmToken) {
   if (st.brainOnline) {
     // Let the brain drive it — it streams the script's output into its own
     // console, which the operator is already watching.
-    const asked = await askBrainToShutdown(keep ? '/update?keep=1' : '/update');
+    // Forward `fields=0` down the delegated path too, or the same press would
+    // mean two different things depending on whether the brain happened to be
+    // answering — the exact class of surprise this service exists to remove.
+    const _q = [keep ? 'keep=1' : null, skipFields ? 'fields=0' : null].filter(Boolean).join('&');
+    const asked = await askBrainToShutdown('/update' + (_q ? '?' + _q : ''));
     if (asked.reached && asked.status === 200) {
       const gone = await waitForPortClosed(Math.max(GRACEFUL_WAIT_MS, 120000));
       const bound = gone ? await waitForBrainBound() : await waitForBrainBound();
@@ -985,7 +1033,12 @@ async function doUpdate(keep, confirmToken) {
     const env = { ...process.env };
     if (keep) env.UAL_KEEP_STATE = '1';
     else delete env.UAL_KEEP_STATE;
-    execFile('bash', [SELF_UPDATE_SH], { timeout: 900000, maxBuffer: 8 * 1024 * 1024, env },
+    // ⛔ THE WAVELET FIELDS ARE WANTED, AND FETCHING THEM IS THE DEFAULT.
+    // `fields=0` is an emergency hatch for a pull that has wedged (see the
+    // brain's /update route for the incident it was built from), never the
+    // normal path. Absent = fetch them, so no existing caller changes.
+    if (skipFields) env.UAL_FIELDS = '0';
+    execFile('bash', [SELF_UPDATE_SH], { timeout: deployTimeoutMs(), maxBuffer: 8 * 1024 * 1024, env },
       async (err, stdout, stderr) => {
         const tail = (s) => String(s || '').split('\n').filter(Boolean).slice(-12).join('\n');
         if (err) {
@@ -1112,6 +1165,10 @@ const server = http.createServer(async (req, res) => {
       const body = await readJsonBody(req);
       const qs = (req.url.split('?')[1] || '');
       const confirm = body.confirm || (qs.match(/(?:^|&)confirm=([^&]*)/)?.[1] || '');
+      // `fields=0` — the emergency hatch, same two spellings as `confirm` so a
+      // shell and the dashboard drive it identically. ⛔ OPT-IN ONLY: absent
+      // means FETCH the wavelet fields, which is what every normal press wants.
+      const skipFields = String(body.fields ?? (qs.match(/(?:^|&)fields=([^&]*)/)?.[1] ?? '')) === '0';
 
       const table = {
         '/start': doStart, '/stop': doStop, '/restart': doRestart, '/kick': doKick,
@@ -1119,8 +1176,8 @@ const server = http.createServer(async (req, res) => {
         // brain too, and used to be reachable ONLY through the brain itself.
         '/reset': () => doReset(confirm),
         '/savererun': doSaveRerun,
-        '/update': () => doUpdate(false, confirm),   // UPDATE & FRESH WALK (wipes)
-        '/update-savestart': () => doUpdate(true),   // UPDATE & SAVESTART (keeps)
+        '/update': () => doUpdate(false, confirm, skipFields),   // UPDATE & FRESH WALK (wipes)
+        '/update-savestart': () => doUpdate(true, '', skipFields), // UPDATE & SAVESTART (keeps)
       };
       const fn = table[url];
       if (fn) {
