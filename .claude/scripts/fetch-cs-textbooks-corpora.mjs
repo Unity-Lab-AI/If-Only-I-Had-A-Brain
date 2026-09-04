@@ -177,6 +177,47 @@ const BOOKS = [
     linkRe: /href="((?:sec|ch)_[^"\/]*\.html)"/gi,
     subject: 'cstheory', grade: 'college1',    // Discrete Mathematics
   },
+  // ⭐⭐ THE THREE `major` CELLS THAT HAD NO BOOK AT ALL — added 2026-09-04.
+  //
+  // Measured off the corpus, not assumed: `major/college2`, `college3` and
+  // `college4` held ZERO entries from this lane and owed 177,101 / 180,954 /
+  // 205,742 words. Only `major/college1` had ever been given a book, so the
+  // subject that IS her degree was the least-fed one in the roster.
+  //
+  // ⚠ EVERY FIELD BELOW WAS READ OFF THE LIVE PAGE, NOT GUESSED. A wrong
+  // `linkRe` fails SILENTLY here — the Composing Programs note twenty lines up
+  // records exactly that, seven 404s and zero sentences — so each book's real
+  // link shape was fetched and inspected first, and each licence URL was
+  // confirmed to carry a machine-readable `creativecommons.org/licenses/...`
+  // slug, because `licenceOf` refuses anything that does not.
+  {
+    label: 'Eloquent JavaScript',
+    base: 'https://eloquentjavascript.net/',
+    index: 'index.html',
+    licenceUrl: 'https://eloquentjavascript.net/index.html',   // CC BY-NC 3.0, confirmed
+    linkRe: /href="([0-9]{2}_[a-z_]+\.html)"/gi,
+    subject: 'major', grade: 'college2',
+  },
+  {
+    label: 'Think Java (2nd edition)',
+    base: 'https://greenteapress.com/thinkjava7/html/',
+    index: 'index.html',
+    // ⚠ The licence lives on the INDEX, not the preface — the preface page
+    // carries no CC slug at all and would have been refused as undeclared.
+    licenceUrl: 'https://greenteapress.com/thinkjava7/html/index.html',   // CC BY-NC-SA, confirmed
+    linkRe: /href="(chapter-[0-9]+\.html)"/gi,
+    subject: 'major', grade: 'college3',
+  },
+  {
+    label: 'Automate the Boring Stuff with Python',
+    base: 'https://automatetheboringstuff.com/2e/',
+    index: '',
+    licenceUrl: 'https://automatetheboringstuff.com/2e/chapter0/',   // CC BY-NC-SA, confirmed
+    // Absolute paths with a trailing slash, no `.html` anywhere — the capture
+    // keeps the leading slash so it resolves against the origin.
+    linkRe: /href="(\/2e\/chapter[0-9]+\/)"/gi,
+    subject: 'major', grade: 'college4',
+  },
 ];
 
 async function fetchText(url, ms = 25000) {
