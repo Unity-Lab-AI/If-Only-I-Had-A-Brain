@@ -5,6 +5,62 @@
 
 ---
 
+## 2026-09-04 — `SEMDENSE.1` — SEM SPARSITY WAS NEVER MISSING, IT WAS IN THE WRONG LANE
+
+Gee, asked because it changes what she is taught and only takes effect on a fresh walk, and answered **"Build it and walk with it"**.
+
+### ⭐ THE DIAGNOSIS IS SHARPER THAN THE ONE THAT PROVOKED IT
+
+A month-old fork reported that the sem write has no sparsity and benched fixing it at recall@1 11%→30%. Re-derived here, the mechanism is confirmed and **the shape is different**: `_teachAssociationPairs` has **always** sparsified its sem side — `semWTA` on by default, `semTopK = 8`, with its own comment explaining that the point is to avoid *"the full GloVe bag"*. What it does not do is apply anywhere else.
+
+`_teachVocabList` and `_teachSentenceList` — **the two lanes that carry ~63 million of her words** — tiled the raw embedding straight in. And the spike test is `semPat[j] > 0`, so **every positive dimension of a GloVe vector fires every cell of its group.**
+
+⛔ **So the sparsification was being applied to the minority of her input and skipped on the majority — while `README.md` described "sem-side top-K sparsification" as a property of the brain.** True of one lane, false of the two that matter most. **The asymmetry was the defect, not the density on its own.**
+
+Fixed at the point the three call sites converge (`_semTeachEmbedding`), reusing the pair lane's option names and defaults so the lanes now agree **by construction rather than by coincidence**.
+
+### MEASURED — 3,000 real GloVe rows, through the real helper and the real spike test
+
+```
+                 dims lit    sem cells lit    % of sem
+DENSE (before)      150.5      26,415,376       50.2%
+top-K=8 (after)       8.0       1,404,600        2.7%
+
+mean Jaccard overlap between two DIFFERENT words' sem patterns
+  DENSE    0.4047      <- what an argmax has to tell apart
+  top-K=8  0.1058      3.8x less
+```
+
+### ⛔ AND THE MEASUREMENT CAUGHT A DEFECT IN MY OWN FIX BEFORE IT SHIPPED
+
+The obvious implementation delegates to `_topKEmbedding`, which keeps the K dims of largest **absolute** value. That is correct for the motor side and **wrong here**, because only `> 0` can spike: a negative dim survives the top-K and then writes nothing.
+
+**Measured: 3 of 400 words had all eight of their largest-magnitude dims negative, and came out with ZERO lit dimensions — unteachable, permanently, and silently.** 0.75% of the vocabulary, failing in the one way that never announces itself.
+
+Ranking by **value** instead keeps the K largest *positive* dims, and is strictly better on every axis: **8.0 dims used instead of 3.2**, overlap **3.8× better instead of 2.4×**, and **0 of 3,000 words unteachable**.
+
+⚠ **`_topKEmbedding` is deliberately untouched** — it has motor-side callers where magnitude is the right rank, and changing it would move a lane this row is not about. ⏳ **The same latent shape may exist on the pair lane's own sem side**, which still uses the magnitude helper; recorded on the board rather than fixed blind.
+
+⚠ **Teach-time only.** No gate moves, no bound weakens, walk length is unchanged, so **no RE-PRICE is owed** — and it takes effect on a fresh walk and nothing before it.
+
+---
+
+## 2026-09-04 — `CURVEDEPTH.12` (PARTIAL) — THE THREE `major` CELLS THAT HAD NO BOOK AT ALL
+
+`major` is her degree, and it was the least-fed subject in the roster: only `major/college1` had ever been given a textbook, while `college2`, `college3` and `college4` held **zero** entries from the CS lane and owed 177,101 / 180,954 / 205,742 words.
+
+**Three books added, and every field was read off the live page rather than guessed** — because a wrong `linkRe` fails **silently** here, which the file already records (`Composing Programs`: seven 404s and zero sentences). Each book's real link shape was fetched and inspected, and each licence URL confirmed to carry a machine-readable `creativecommons.org/licenses/...` slug, because `licenceOf` refuses anything that does not:
+
+- **Eloquent JavaScript** → `major/college2` (CC BY-NC 3.0)
+- **Think Java (2nd ed.)** → `major/college3` (CC BY-NC-SA). ⚠ Its licence lives on the **index**, not the preface — the preface carries no CC slug and would have been refused as undeclared.
+- **Automate the Boring Stuff with Python** → `major/college4` (CC BY-NC-SA)
+
+⛔ **The Rust Book was considered and rejected on the gate, not on taste** — MIT/Apache, no Creative Commons statement, so `licenceOf` would refuse it.
+
+**Result: `[cs] DONE — 1,417,044 words, 1,770 figures`, all three licence-verified at source.** `major`'s debt fell **769,650 → 514,969**. Coverage **150 OK / 43 THIN → 151 / 42**, owed **3,780,434 → 3,502,337**.
+
+---
+
 ## 2026-09-04 — `CURVEDEPTH.10` (PARTIAL) — THE TWELVE CHEAPEST THIN CELLS CLEARED, AND THE CONSTRAINT TURNED OUT NOT TO BE THE ONE ON RECORD
 
 Gee (verbatim):

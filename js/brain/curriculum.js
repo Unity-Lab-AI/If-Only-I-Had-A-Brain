@@ -17737,6 +17737,72 @@ export class Curriculum {
    * shrinks toward ~5%). Forces basin competition per Maass 2000 WTA
    * circuit theory. Returns the input unchanged when `feat.length <= K`.
    */
+  /**
+   * ⛔⛔⛔ THE SEM WRITE FOR A TEACH LANE — AND THE REASON THIS EXISTS IS THAT
+   * THE TWO BIGGEST LANES DISAGREED WITH THE THIRD FOR THEIR ENTIRE LIVES.
+   *
+   * `_teachAssociationPairs` has always sparsified its sem side: `semWTA` is on
+   * by default and `semTopK` is 8, so a word writes 8 of ~300 dimensions. Its
+   * own comment explains why — *"forces basin competition"*, *"the full GloVe
+   * bag"* is the thing being avoided.
+   *
+   * `_teachVocabList` and `_teachSentenceList` did not. They tiled the RAW
+   * embedding, and the spike test is `semPat[j] > 0`, so **every positive
+   * dimension of a GloVe vector fires every cell of its group** — roughly half
+   * of ~300 dims, which is ~50% of the sem region alight for a single word.
+   * Two words then look substantially alike to anything reading sem, and the
+   * argmax that has to tell them apart is reading mostly overlap.
+   *
+   * ⭐ THE ASYMMETRY IS THE DEFECT, NOT THE DENSITY ON ITS OWN. The prose lane
+   * is where ~63 million of her words arrive; the pair lane is far smaller. So
+   * the sparsification was being applied to the minority of her input and
+   * skipped on the majority — and `README.md` has described "sem-side top-K
+   * sparsification" as a property of the brain the whole time, which was true
+   * of one lane and false of the two that matter most.
+   *
+   * ⚠ Same helper, same option names, same defaults as the pair lane, so the
+   * lanes now agree by construction instead of by coincidence. `semWTA: false`
+   * restores the old dense write for a caller that genuinely wants it.
+   *
+   * ⚠ Teach-time only — no gate moves, no bound is weakened, walk length is
+   * unchanged, so no RE-PRICE is owed. It takes effect on a FRESH WALK.
+   */
+  _semTeachEmbedding(emb, opts = {}) {
+    if (!emb || !emb.length) return emb;
+    if (opts.semWTA === false) return emb;
+    const K = opts.semTopK ?? 8;
+    if (!(K > 0) || emb.length <= K) return emb;
+    // ⛔⛔ RANKED BY VALUE, NOT BY MAGNITUDE — AND THAT IS NOT A STYLE CHOICE.
+    //
+    // `_topKEmbedding` keeps the K dims of largest ABSOLUTE value, which is
+    // right for the motor side. It is wrong here, because the sem write only
+    // spikes on `feat[d] > 0`: a negative dim survives the top-K and then
+    // writes nothing. **Measured on 400 real GloVe rows: 3 of them had all
+    // eight of their largest-magnitude dims negative, so top-K-by-magnitude
+    // left those words with ZERO lit dimensions — unteachable, permanently,
+    // and silently.** 0.75% of the vocabulary is not a rounding error when the
+    // failure is "this word can never be written".
+    //
+    // Ranking by value keeps the K largest POSITIVE dims — the only ones that
+    // can fire — so every word with any positive dimension still writes.
+    //
+    // ⚠ `_topKEmbedding` is deliberately left alone: it has other callers on
+    // the motor side where magnitude IS the right rank, and changing it would
+    // move a lane this row is not about. The same latent shape may exist on the
+    // pair lane's sem side, which uses the magnitude helper — recorded on the
+    // board rather than fixed blind here.
+    let positives = 0;
+    for (let i = 0; i < emb.length; i++) if (emb[i] > 0) positives++;
+    if (positives === 0) return emb;          // nothing can fire either way — unchanged
+    if (positives <= K) return emb;           // already sparser than the target
+    const idx = new Array(emb.length);
+    for (let i = 0; i < emb.length; i++) idx[i] = i;
+    idx.sort((a, b) => emb[b] - emb[a]);
+    const out = emb.constructor ? new emb.constructor(emb.length) : new Float64Array(emb.length);
+    for (let i = 0; i < K; i++) out[idx[i]] = emb[idx[i]];
+    return out;
+  }
+
   _topKEmbedding(feat, K) {
     if (!feat || feat.length === 0 || K <= 0 || feat.length <= K) return feat;
     // Simple partial-sort: collect (absVal, index), sort by absVal desc,
@@ -24475,7 +24541,9 @@ export class Curriculum {
         // Sem: word embedding
         if (semRegion && wordEmb && wordEmb.length > 0) {
           const semSize = semRegion.end - semRegion.start;
-          const semPat = buildPattern(semSize, wordEmb);
+          // Sparsified to the same top-K the pair lane has always used — see
+          // `_semTeachEmbedding`. Dense here meant ~50% of sem alight per word.
+          const semPat = buildPattern(semSize, this._semTeachEmbedding(wordEmb, opts));
           for (let j = 0; j < semSize; j++) {
             cluster.lastSpikes[semRegion.start + j] = semPat[j] > 0 ? 1 : 0;
           }
@@ -24567,7 +24635,9 @@ export class Curriculum {
           }
           if (semRegion && wordEmb && wordEmb.length > 0) {
             const semSize = semRegion.end - semRegion.start;
-            const semPat = buildPattern(semSize, wordEmb);
+            // Sparsified to the same top-K the pair lane has always used — see
+          // `_semTeachEmbedding`. Dense here meant ~50% of sem alight per word.
+          const semPat = buildPattern(semSize, this._semTeachEmbedding(wordEmb, opts));
             for (let j = 0; j < semSize; j++) {
               cluster.lastSpikes[semRegion.start + j] = semPat[j] > 0 ? 1 : 0;
             }
@@ -25406,7 +25476,9 @@ export class Curriculum {
           // Sem
           if (semRegion && wordEmb && wordEmb.length > 0) {
             const semSize = semRegion.end - semRegion.start;
-            const semPat = buildPattern(semSize, wordEmb);
+            // Sparsified to the same top-K the pair lane has always used — see
+          // `_semTeachEmbedding`. Dense here meant ~50% of sem alight per word.
+          const semPat = buildPattern(semSize, this._semTeachEmbedding(wordEmb, opts));
             for (let j = 0; j < semSize; j++) {
               cluster.lastSpikes[semRegion.start + j] = semPat[j] > 0 ? 1 : 0;
             }
