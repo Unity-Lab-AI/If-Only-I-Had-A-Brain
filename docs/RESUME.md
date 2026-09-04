@@ -4,22 +4,25 @@
 >
 > ### Read in this order: this block → `docs/TODO.md §TEACHFINAL` → `docs/TODO.md §DEPLOYCHECK` → the blocks below.
 >
-> ### ⛔ ONE JOB IS STILL RUNNING — CHECK IT BEFORE BELIEVING ANY CORPUS NUMBER
+> ### ✅ NOTHING IS RUNNING — THE BOOK LANE FINISHED, AND THE CORPUS IS ON BRAINWAVES
 > ```
-> LibreTexts book lane   node .claude/scripts/fetch-libretexts-corpora.mjs
->    log: .scratch/libretexts2.log   ·   21 books taken so far, finishing its last subjects
->    ⚠ it writes into local corpora/, which is gitignored here and belongs to BrainWaves
+> LibreTexts book lane   DONE — 24 books · 4,725,357 words · 22,985 figures
+>    licence gate  24 admitted · 6 undeclared/unreadable · 0 ND · 0 non-CC · 0 unrecognised
+> BrainWaves sync  DONE — 55abd0de · 23 files modified · ZERO deletions
+>    all 26,359 fields verified still tracked after the push
 > ```
-> **Verify with** `powershell "Get-CimInstance Win32_Process -Filter \"Name='node.exe'\"" | grep libretexts` — do not assume it finished.
+> ⚠ **Three cells hold both their books and are still under the ladder floor** (`art/college2` 303k · `cssystems/college3` 258k · one maths cell) — **the fetcher's own closing line says that is a fact about the LADDER, not a reason to download more.** The book count is the rule.
 >
 > ### ⛔ STATE
 > ```
 > branch    develop (everything below is cascaded to main on BOTH remotes)
 > board     62 open · 94 closed
-> coverage  159 OK · 34 THIN · 0 EMPTY · 69,339,461 words · 7,596 entries
+> coverage  159 OK · 34 THIN · 0 EMPTY · 69,406,410 words · 7,597 entries
 > owed      1,896,737   (was 4,951,331 this morning)
-> corpus    on BrainWaves at 8e705652 — ⏳ A SECOND SYNC IS OWED once the book lane finishes
+> corpus    on BrainWaves at 55abd0de — both syncs done, nothing owed
 > ```
+> **What is still owed, by course:** `cstheory` 653,525 · `major` 514,969 · `music` 106,961 · `language` 106,783 · `pe` 105,140 · `art` 89,753 · `math` 76,388 · `cssystems` 72,236 · `health` 67,940 · `cs` 36,774 · `science` 34,004 · `ap` 32,264.
+> ⭐ **`cstheory` + `major` are 1.17M of the remaining 1.90M** — they are the last big block, and no Wikipedia lane reaches them. That is the hand-curated CS book list.
 >
 > ### ⭐⭐ WHAT MOVED TODAY, IN ONE LINE EACH
 > - **The corpus went 128 OK / 65 THIN → 159 / 34.** Maths has **dropped off the owed list entirely** — it was the single largest debt this morning at 1,286,412 words and every one of its six college-and-above cells held **zero books**.
@@ -39,7 +42,6 @@
 > - **`TEACHFINAL.6`** — restart/update buttons. Pairs with the position-restore just built, because a restored position **needs a restart to take effect**. ⛔ The box deploys via the dashboard buttons only; this surfaces those actions, it does not invent a deploy path.
 > - **`TEACHFINAL.2`** — the pages-page write-up · **`TEACHFINAL.4`** — buttons and navigation.
 > - **`CURVEDEPTH.12`** — `cstheory` and `major`, the last big corpus blocks, via the hand-curated CS book list (every field must be READ off the live page; a wrong `linkRe` fails **silently** here).
-> - **Second BrainWaves corpus sync** when the book lane stops.
 > - **`NOFALLBACK.5`** — the RE-PRICE, immediately before the press, by law.
 >
 > ### ⛔⛔ THE ONE THAT WILL BITE SOMEBODY: BRAINWAVES SHOWS ~26,238 DELETIONS AND THEY ARE NOT REAL
