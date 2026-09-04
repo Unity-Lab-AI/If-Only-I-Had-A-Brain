@@ -916,7 +916,20 @@ function deployTimeoutMs() {
   // so there is no upper bound to derive from — fall back to the floor rather
   // than returning 0, which execFile reads as "no timeout" and would let a
   // wedged pull hold this service open forever.
-  const lfs = parseTimeoutToMs(process.env.UAL_LFS_TIMEOUT || '45m');
+  //
+  // ⚠ THE '8m' HERE MIRRORS self-update.sh's OWN DEFAULT AND WILL GO STALE. It
+  // already did once inside a single afternoon: it shipped as '45m' and Sponge
+  // cut the script's default to 8m hours later, after measuring that a 45-minute
+  // deadline is one nobody reaches — the pull starved the brain for 14 minutes
+  // (163 GB read, 0 bytes written) INSIDE a correctly-working 45m guard.
+  //
+  // ⭐ THE FLOOR IS WHAT ACTUALLY KEEPS THIS CORRECT, NOT THE MIRROR. Whatever
+  // the script's default drifts to, the cap here stays >= 45 min, which is
+  // comfortably above any LFS bound anyone would sanely set. The mirror only
+  // matters when the operator raises UAL_LFS_TIMEOUT above the floor, and in
+  // that case the env var is set and read directly — so the literal is never
+  // consulted in the case where being wrong would hurt.
+  const lfs = parseTimeoutToMs(process.env.UAL_LFS_TIMEOUT || '8m');
   if (!lfs) return DEPLOY_TIMEOUT_FLOOR_MS;
   return Math.max(DEPLOY_TIMEOUT_FLOOR_MS, lfs + DEPLOY_HEADROOM_MS);
 }
