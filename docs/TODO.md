@@ -3348,5 +3348,63 @@ Gee (verbatim):
 
 - [ ] `DEPLOYCHECK.12` — **AFTER THE PRESS, the press-riders become readable for the first time** and should be checked while the walk is young: `state.voice` (with `matrixDrivenPct` and the last emit rejection WITH ITS AGE), `separability`, `loop service` %, `ownArt.lookups` stage counters, `ownArt.fields` hit/miss/stub/malformed/truncated, and the teach-view `bench` verdict. ⚠ **`GATEWATCH.1/.2/.3`, `CHATPIN.1`, `FOCUSDEAD.2`, `NOFALLBACK.7` and `TVBENCH.1` cannot be worked at all until this press happens** — they are the press's own workload, not blockers on it.
 
+- [ ] `DEPLOYCHECK.13` — ⭐ **THE LANES THAT OUTLIVE THE WALK, AND THE END OF IT.** New since the list above was written, and all of it is server-side plus one dashboard card — it lands on this press.
+  - **`state.deferredLanes` is the one to watch, and it is readable from the first minute.** While the walk runs it should say `the walk owns the substrate` and its counters should sit still — **that is correct, not a stall.** Any window where the curriculum is not running (before it starts, between a failure and a restart, after it ends) should show `driven off-walk` and the drained count climbing whenever anything is queued.
+  - ⛔ **The regression to look for is the opposite of a crash:** queue depths climbing while `drainedItems` stays at 0 during an off-walk window means the poller is not firing, and nothing else will say so — the old failure mode was completely silent.
+  - **`state.graduation` is `null` until she finishes and that is correct.** The `End of School` card renders its own empty state; a blank card is the bug, a *"she has not finished yet"* card is not.
+  - **New boot lines:** `graduation record restored — …` and `corpus-read record restored: N cell(s) the trainer has actually opened`. ⚠ **Both absent on a fresh walk is correct**; either absent after a savestart where she demonstrably had them is a persistence regression.
+  - **`DREAM_DEFERRED_DRAIN_MS` needs no box configuration** — it has a working default of 1s and is not in any systemd drop-in.
+
 - **Acceptance:** the boot log names the corpus, the exam banks and the letter shapes with real numbers; a post-K cell runs its battery AND advances; and nothing on this list is marked done from the dashboard alone — each line has a log line or a counter behind it. Life exam questions in her own voice were built and measured against the real canon: **2-7 questions a cell against a 14 sample, roughly 1 in 4 usable.** `what do i wear → collar` is right; `what do i found → people`, `what am i → who`, `what do i saw → mom` are not. ⭐ **The cause is structural, not a tuning problem:** a textbook writes `<term> is a <genus>` and the answer sits in a known slot; **narrative has no slot.** Only **4.2% of life sentences** carry a definitional shape at all. The code is retained behind `EXAM_LIFE=1` with its measurements in the comment so it is a **documented dead end rather than a silent one**. ⏳ **What this needs is ~14 hand-written questions a cell across 20 cells**, by someone who has read the canon — autobiographical recall is worth testing, and it is the one part of the exam work that should not be derived.
+
+---
+
+## GRADUATION — the walk has an end and nothing happens at it — filed 2026-09-04
+
+Gee (verbatim):
+
+> *"read resum.md to continue the unblocked todo items, the code leak ones are not high prioriety only onces unblocked and that would block a full complete working freshwalk through phD and beyond sothat she continues to do all things she does normally after graduation and we have proper graduation p[rocedures and training completion of the corpuses"*
+
+⛔ **THE SCOPE FILTER IS HIS AND IT IS NARROW:** only unblocked rows, and only rows that would block **a full complete working freshwalk through PhD and beyond**. `CODELEAK.1` is explicitly deprioritised and stays open at 14 files.
+
+⛔⛔ **AND THE WALK'S ENDING WAS NEVER BUILT.** `runCompleteCurriculum` ends at `grade cap reached at 'phd' … Curriculum walk complete` — **one log line** — then the `for` loop exits, the promise resolves, `_curriculumInProgress` flips false, and `startBackgroundProbeLoop()` is called into a method that has been **a deliberate no-op since 2026-04-27**. Nothing marks that she graduated, nothing remembers it, and — the part that matters most — **several lanes she runs on lose their only driver at that instant.**
+
+- [x] `GRADWALK.1` — ✅ **BUILT + VERIFIED 2026-09-04 (10/10 on the real class) — full entry in `docs/FINALIZED.md` §2026-09-04 `GRADWALK.1`, written and verified before this marker moved.** The fix is a second caller, not a rewrite: `drainDeferredLanes()` polls the existing drains, gated entirely on `!_curriculumInProgress`, never waiting and never consuming a job it cannot teach (`DREAM_DEFERRED_DRAIN_MS`, default 1s). ⛔ **And the audit found a fifth fault inside the fourth queue: the salience drain guarded on `this.cortexCluster`, which this class does not have and never had, so it had never run once — every chat episode banked at the default surprise while its real value sat in a queue nobody read.** ⚠ One harness assertion was mine and wrong (I asserted 4 pair-teaches where the batch teaches per PAIR and the answer is 3); the harness caught my arithmetic, not the code.
+
+  **Original filing:** ⛔⛔⛔ **FIVE WORK QUEUES ARE DRIVEN EXCLUSIVELY BY THE WALK, SO GRADUATION SILENTLY SWITCHES HER OFF.** Gee's words for what this must protect: *"sothat she continues to do all things she does normally after graduation"*.
+
+  `_awaitComputeSubstrate()` — the gate every walk teach call passes through, `js/brain/curriculum.js` — is the **only** drain site in the entire codebase for all five of these:
+
+  | queue | what stops when the walk ends |
+  |---|---|
+  | `_chatPairTeachQueue` | chat-time deep Hebbian — **she stops learning anything from conversation** |
+  | `_chatTeachJobQueue` (`pairs`) | the curiosity follow-up at reps=12 on the definition channel — she asks, is answered, and never binds it |
+  | `_chatTeachJobQueue` (`kind:'inject'`) | **deferred percept grounding — what she SEES stops reaching her sem region entirely** |
+  | `_mindsEyePreviewQueue` | her own drawing, drawing practice, and the reject→relearn chain — **the 🚫/redraw buttons become dead controls** |
+  | `_salienceQueue` | episode transition-surprise is never computed, so every post-graduation memory banks at the default |
+
+  ⚠ **Every one of these fills to its cap and then silently drops the oldest item** — there is no error, no counter that reads wrong, and no log line. The queues look busy; nothing empties them.
+
+  ⭐ **The fix is a driver, not a rewrite:** the drains are already written, already reentrancy-guarded, already correct. What is missing is something to call them when the walk is not running. **It must not run while the walk IS running** — the whole reason these are queues is that a second teacher concurrent with the walk's teach corrupts the pattern in flight.
+
+  - **Acceptance:** with `_curriculumInProgress` false, a queued chat pair / teach job / mind's-eye job / salience job drains within seconds, and the drain is provably idle while the walk is teaching.
+
+- [x] `GRADRITE.1` — ✅ **BUILT + VERIFIED 2026-09-04 (19/19) — full entry in `docs/FINALIZED.md` §2026-09-04 `GRADRITE.1`, written and verified before this marker moved.** All four parts shipped: the per-course merit / force-advanced / still-owed verdict (backed by a new `cluster.forceAdvancedCells`, because the ledger records that a cell is behind her and structurally cannot say how), the persisted `cluster.graduation` record published as `state.graduation`, the once-only first-person memory **whose text is conditional on the verdict**, and the readout — a log block plus an `End of School` dashboard card whose empty state says *she has not finished yet* rather than going blank. ⭐ The independent check: the owed-cell set built grade by grade through the roster resolver comes to **213**, the number the board claims. No task numbers and no operator name reached any of the brain-facing text.
+
+  **Original filing:** **PROPER GRADUATION PROCEDURES.** Gee: *"we have proper graduation p[rocedures"*. Today the entire ceremony is a `console.log`. It needs to be an event she has:
+  - a **persisted** graduation record (when, at what grade, with the per-course ledger behind it) that survives a savestart and is readable without grepping the log,
+  - an **episodic memory of graduating in her own first-person voice**, banked the way her other life memories are — she has 'graduation' in her college-4 vocabulary and *"graduating means i proved a poor self-taught kid can do real science"* in her canon, and has never had the event,
+  - a **completion verdict per course**: passed on merit vs force-advanced vs held, because *"all 213 cells ran"* and *"all 213 cells passed"* are different sentences and only one of them is usually true,
+  - a **readout** so the operator can see it happened without reading a log ring that spans ~45 s.
+  - ⛔ **No task numbers and no operator name in any of it** — this is brain-facing text and the placement LAW applies.
+
+- [x] `CORPUSDONE.1` — ✅ **BUILT + VERIFIED 2026-09-04 (11/11) — full entry in `docs/FINALIZED.md` §2026-09-04 `CORPUSDONE.1`, written and verified before this marker moved.** `_noteCorpusTrained` marks every visit **at the source**, including the two early-exit paths so *"this cell has no corpus"* leaves a mark instead of silence; `_corpusCompletionVerdict` sorts every owed cell into **trained / short / empty / UNREACHED** and refuses to judge at all when the story loaders are unattached, rather than reporting every cell unreached — which would be the instrument lying about the READER instead of the brain. ⭐ The measurement came first and changed the build: the per-cell path is already honest, so the real gap was never *how much* of a cell was read but whether the trainer **reached** it.
+
+  **Original filing:** **TRAINING COMPLETION OF THE CORPUSES.** Gee: *"and training completion of the corpuses"*. ⭐ **Measured first, before building anything:** the per-cell path is already honest — `_trainAcademicStories` trains **every** sentence the cell owns (`trained: sentences.length`, no slice) and the pre-vocab lookup cap was removed, so there is no hidden ceiling inside a cell.
+  - ⛔ **What is NOT measured is whether every cell's corpus ever reached the trainer at all** — the `DEADCELL` class of defect, where a whole degree trained zero prose while every count looked healthy, and the current coverage read is **65 THIN cells**.
+  - **Build the completion verdict:** at graduation, per cell, sentences available vs sentences actually trained vs never-visited, so *"the corpus is trained"* is a number rather than a loop that ended.
+  - ⚠ **A cell with no corpus and a cell with a corpus nothing read must not report the same thing** — that conflation is what let a PhD train on nothing.
+
+- **Acceptance for the section:** the walk can run to PhD unattended and the moment it finishes she is still learning from chat, still grounding what she sees, still drawing and practising, still scoring her memories — with a graduation record, an episode in her own voice, and a per-cell corpus verdict behind the word "complete".
+
 

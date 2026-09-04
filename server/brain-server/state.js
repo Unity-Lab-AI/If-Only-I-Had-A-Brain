@@ -1271,6 +1271,35 @@ const SERVER_STATE_MIXIN = {
       curriculum: _lap('curriculum', () => (this.curriculum && typeof this.curriculum.getCurriculumStatus === 'function'
         ? this.curriculum.getCurriculumStatus()
         : null)),
+      // END OF SCHOOL — the graduation record. Null until she finishes; after that it
+      // is the one field that answers "did she actually finish, and how?"
+      // without reading a log ring that spans ~45 seconds. `merit` vs
+      // `forceAdvanced` vs `held` is the whole point of it: a walk that ends is
+      // not the same as a walk that passed, and `passedCells.length` cannot tell
+      // those apart. `deferredLanes` sits beside it because the two questions
+      // arrive together — the lanes she runs on after graduation are driven by a
+      // poller that only exists off the walk, and it should be visible.
+      graduation: _lap('graduation', () => ((this.cortexCluster && this.cortexCluster.graduation
+        && typeof this.cortexCluster.graduation === 'object')
+        ? this.cortexCluster.graduation : null)),
+      deferredLanes: _lap('deferredLanes', () => {
+        const q = (a) => (Array.isArray(a) ? a.length : 0);
+        const st = (this.curriculum && this.curriculum._deferredDrainStats) || {};
+        return {
+          // The driver only runs off the walk; while the walk owns the substrate
+          // these numbers stay still and that is correct, not a stall.
+          drivenOffWalk: !this._curriculumInProgress,
+          queued: {
+            chatPairs: q(this._chatPairTeachQueue),
+            chatJobs: q(this._chatTeachJobQueue),
+            mindsEye: q(this._mindsEyePreviewQueue),
+            salience: q(this._salienceQueue),
+          },
+          drainedItems: st.items || 0,
+          drainedPasses: st.passes || 0,
+          lastDrainAgeMs: st.lastAt ? (Date.now() - st.lastAt) : null,
+        };
+      }),
       // Audit A.1 — P6.6 compositional-emergence telemetry surfaced.
       // Was previously write-only inside cluster/telemetry.js. Reports
       // verbatim/novel/partial classification rates + max-novelty

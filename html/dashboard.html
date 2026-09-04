@@ -435,6 +435,21 @@
       </div>
     </div>
 
+    <div class="card" style="margin-top:12px;" title="The end of the walk, as a record rather than a log line. Appears only once she has finished — until then the walk itself is the status above. Reads state.graduation, which is persisted with the cell ledger it summarises, so it survives a savestart. The three cell counts are the whole point: PASSED ON MERIT means the cell cleared its own comprehension gate; FORCE-ADVANCED means the grade ran out of re-teach rounds and the cell was entered on capability evidence instead, which the cell ledger alone cannot express — both outcomes are the same entry in it; STILL OWED means the cell was never cleared at all, which a bounded walk can genuinely end in, because the round bound is there to stop a single stuck course wedging the walk forever rather than to promise every cell passed. The CORPUS line is a separate question with a separate answer: per cell, did the trainer actually open the prose that cell owns? UNREACHED is a wiring fault (the cell has a corpus nobody read); EMPTY is a content gap (the cell has no corpus to read); SHORT means the corpus grew after the visit and a re-read is owed. The DEFERRED LANES row underneath is what keeps running afterwards — chat-time learning, percept grounding, her own drawing and her episode salience all drain on a poller that only runs while the curriculum is NOT running, because a second teacher concurrent with a teach corrupts the pattern in flight.">
+      <div class="card-title">End of School — the graduation record</div>
+      <div id="d-grad-panel" style="padding:10px 12px;font-family:monospace;font-size:12px;color:#ccc;">
+        <div id="d-grad-none" style="color:#666;font-size:11px;">She has not finished yet — the walk is the status above. This panel fills in when the last grade closes.</div>
+        <div id="d-grad-body" style="display:none;">
+          <div id="d-grad-head" style="font-size:15px;font-weight:bold;color:#a78bfa;">—</div>
+          <div id="d-grad-verdict" style="font-size:11px;color:#888;margin-top:3px;">—</div>
+          <div id="d-grad-cells" style="margin-top:8px;color:#bbb;line-height:1.6;font-size:11px;"></div>
+          <div id="d-grad-corpus" style="margin-top:8px;border-top:1px solid #222;padding-top:6px;color:#bbb;line-height:1.6;font-size:11px;"></div>
+          <div id="d-grad-courses" style="margin-top:8px;border-top:1px solid #222;padding-top:6px;font-size:10px;color:#777;line-height:1.5;"></div>
+        </div>
+        <div id="d-grad-lanes" style="margin-top:10px;border-top:1px solid #222;padding-top:6px;font-size:10px;color:#777;line-height:1.5;">deferred lanes: —</div>
+      </div>
+    </div>
+
     <div class="card" style="margin-top:12px;" title="Live event ring buffer surfacing what's firing in the brain RIGHT NOW — teach-phase entries, gate probe results, plasticity events, dream window opens/closes, drug schedule promotions, GPU shadow drops. Scrolls newest at top. Capped at 200 most-recent events to stay bounded.">
       <div class="card-title">Brain Events — what Unity is thinking RIGHT NOW</div>
       <div id="d-brain-events" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#ccc;line-height:1.6;max-height:200px;overflow-y:auto;">
@@ -1657,6 +1672,7 @@
       $('d-coherence-bar').style.width = ((s.coherence ?? 0) * 100) + '%';
       $('d-users').textContent = s.connectedUsers ?? 0;
       updateConversationStats(s);
+      updateGraduation(s);
       $('d-action').textContent = s.motor?.selectedAction ?? 'idle';
       $('d-drug').textContent = s.drugState ?? '—';
       $('d-uptime').textContent = fmtDur(s.time);
@@ -3546,6 +3562,75 @@
         rows.push(lines);
       }
       $('d-curr-subjects').innerHTML = rows.join('');
+    }
+
+    // The graduation record, and the lanes that outlive the walk.
+    //
+    // ⚠ Two independent readings, deliberately not merged into one verdict:
+    // "did she finish the cells?" and "did the trainer read the corpus?" are
+    // different questions with different failure modes, and a single green tick
+    // covering both would hide whichever one is false.
+    //
+    // ⛔ The empty state says SHE HAS NOT FINISHED, not "no data". A panel that
+    // reads blank while the walk is still running invites the reading that the
+    // instrument is broken.
+    function updateGraduation(s) {
+      const g = s.graduation;
+      const body = $('d-grad-body');
+      const none = $('d-grad-none');
+      if (g && typeof g === 'object') {
+        none.style.display = 'none';
+        body.style.display = '';
+        const c = g.cells || {};
+        const total = c.total || 0;
+        const pct = (n) => (total > 0 ? ((100 * (n || 0)) / total).toFixed(1) : '0.0');
+        $('d-grad-head').textContent = `finished ${g.grade || '—'} · age ${g.ageYears ?? '—'}`;
+        $('d-grad-verdict').textContent = g.complete
+          ? (g.clean
+            ? 'complete — every cell cleared its own gate'
+            : 'complete — but force-advanced cells are in it')
+          : 'NOT complete — cells are still owed';
+        $('d-grad-verdict').style.color = g.complete ? (g.clean ? '#22c55e' : '#eab308') : '#ff4d4d';
+        $('d-grad-cells').innerHTML = [
+          `<div>cells <b style="color:#eee;">${total}</b></div>`,
+          `<div style="color:#22c55e;">passed on merit ${c.merit ?? 0} (${pct(c.merit)}%)</div>`,
+          `<div style="color:${(c.forceAdvanced || 0) > 0 ? '#eab308' : '#555'};">force-advanced ${c.forceAdvanced ?? 0} (${pct(c.forceAdvanced)}%)</div>`,
+          `<div style="color:${(c.held || 0) > 0 ? '#ff4d4d' : '#555'};">still owed ${c.held ?? 0} (${pct(c.held)}%)</div>`,
+        ].join('');
+        const cp = g.corpus;
+        if (cp && cp.cells > 0) {
+          $('d-grad-corpus').innerHTML = [
+            `<div>corpus — <b style="color:#eee;">${(cp.sentencesTrained || 0).toLocaleString()}</b> of ${(cp.sentencesAvailable || 0).toLocaleString()} sentences read across ${cp.cells} cells</div>`,
+            `<div style="color:#22c55e;">${cp.trained || 0} fully read</div>`,
+            `<div style="color:${(cp.short || 0) > 0 ? '#eab308' : '#555'};">${cp.short || 0} short — the corpus grew after the visit, a re-read is owed</div>`,
+            `<div style="color:#888;">${cp.empty || 0} genuinely empty — a content gap, nothing owed</div>`,
+            `<div style="color:${(cp.unreached || 0) > 0 ? '#ff4d4d' : '#555'};">${cp.unreached || 0} NEVER REACHED — a wiring fault${(cp.unreached || 0) > 0 ? `: ${(cp.unreachedCells || []).join(', ')}` : ''}</div>`,
+          ].join('');
+        } else {
+          $('d-grad-corpus').innerHTML = '<div style="color:#666;">corpus — no verdict; the story loaders are not attached in this build, so nothing is claimed either way.</div>';
+        }
+        const courses = g.courses || {};
+        $('d-grad-courses').innerHTML = Object.keys(courses).length
+          ? Object.entries(courses).map(([name, x]) => {
+            const col = x.held ? '#ff4d4d' : (x.forced ? '#eab308' : '#666');
+            return `<span style="color:${col};margin-right:10px;">${name} ${x.merit}/${x.cells}${x.forced ? ` +${x.forced}f` : ''}${x.held ? ` ⛔${x.held}` : ''}</span>`;
+          }).join('')
+          : '';
+      } else {
+        none.style.display = '';
+        body.style.display = 'none';
+      }
+      // The lanes row renders whether or not she has graduated — it is exactly
+      // as informative before the end of the walk, and its numbers are how you
+      // tell "quiet because the walk owns the substrate" from "quiet because
+      // nothing is driving it".
+      const dl = s.deferredLanes;
+      if (dl && dl.queued) {
+        const q = dl.queued;
+        const depth = (q.chatPairs || 0) + (q.chatJobs || 0) + (q.mindsEye || 0) + (q.salience || 0);
+        const age = dl.lastDrainAgeMs == null ? 'never' : `${Math.round(dl.lastDrainAgeMs / 1000)}s ago`;
+        $('d-grad-lanes').innerHTML = `deferred lanes — ${dl.drivenOffWalk ? '<span style="color:#22c55e;">driven off-walk</span>' : '<span style="color:#888;">the walk owns the substrate</span>'} · queued ${depth} (chat ${q.chatPairs || 0} · jobs ${q.chatJobs || 0} · eye ${q.mindsEye || 0} · salience ${q.salience || 0}) · ${dl.drainedItems || 0} items drained over ${dl.drainedPasses || 0} passes, last ${age}`;
+      }
     }
 
     function formatEvents(n) {
