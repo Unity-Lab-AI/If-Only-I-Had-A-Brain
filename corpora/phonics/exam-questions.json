@@ -1,0 +1,1254 @@
+{
+ "version": 1,
+ "note": "Phonics exam questions GENERATED from corpora/phonics/gpc.json, not hand-authored. Every question is answerable from the rules themselves — no phoneme is spelled out, because a typed approximation table would be exactly the arbitrary word list the derived rules replaced. Rules are used only when confirmed against attested pronunciation AND when an example word actually contains its own grapheme, which is what excludes the scrape's known column-bleed tail.",
+ "source": [
+  {
+   "what": "grapheme inventory + context rules + example words",
+   "url": "https://en.wikipedia.org/wiki/English_orthography",
+   "licence": "CC-BY-SA"
+  },
+  {
+   "what": "phoneme ground truth per word (verification)",
+   "url": "https://github.com/cmusphinx/cmudict",
+   "licence": "BSD-2-Clause"
+  }
+ ],
+ "generated": {
+  "rulesUsable": 125,
+  "rulesTotal": 241,
+  "dropped": {
+   "unconfirmed": 45,
+   "exampleLacksGrapheme": 11,
+   "noKnownExample": 45
+  },
+  "graphemes": 95,
+  "multiSoundGraphemes": 21,
+  "lettersOfTheAlphabetCovered": 26,
+  "lettersMissing": [],
+  "questions": 110
+ },
+ "questions": [
+  {
+   "q": "in \"cat\" and \"ache\", does the letter \"a\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "does \"a\" in \"opaque\" sound like \"a\" in \"cat\" or in \"ache\"?",
+   "a": "ache",
+   "variants": [
+    "ache"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 3,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"ache\" and \"opaque\", does the letter \"a\" make the same sound?",
+   "a": "yes",
+   "variants": [
+    "yes",
+    "same",
+    "the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"daisy\" and \"bargain\", do the letters \"ai\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "does \"ai\" in \"mountain\" sound like \"ai\" in \"daisy\" or in \"bargain\"?",
+   "a": "bargain",
+   "variants": [
+    "bargain"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 3,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"daisy\" and \"laid\", do the letters \"ai\" make the same sound?",
+   "a": "yes",
+   "variants": [
+    "yes",
+    "same",
+    "the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"bargain\" and \"mountain\", do the letters \"ai\" make the same sound?",
+   "a": "yes",
+   "variants": [
+    "yes",
+    "same",
+    "the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"call\" and \"shallow\", do the letters \"all\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"call\" and \"smaller\", do the letters \"all\" make the same sound?",
+   "a": "yes",
+   "variants": [
+    "yes",
+    "same",
+    "the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letters make the same sound in \"change\" and \"strange\"?",
+   "a": "ange",
+   "variants": [
+    "ange"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letters make the same sound in \"marry\" and \"arrow\"?",
+   "a": "arr",
+   "variants": [
+    "arr"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letters make the same sound in \"cause\" and \"sauce\"?",
+   "a": "au",
+   "variants": [
+    "au"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letter makes the same sound in \"bit\" and \"blood\"?",
+   "a": "b",
+   "variants": [
+    "b"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"city\" and \"ocean\", does the letter \"c\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "does \"c\" in \"special\" sound like \"c\" in \"city\" or in \"ocean\"?",
+   "a": "ocean",
+   "variants": [
+    "ocean"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 3,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"city\" and \"cat\", does the letter \"c\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "does \"c\" in \"cross\" sound like \"c\" in \"city\" or in \"cat\"?",
+   "a": "cat",
+   "variants": [
+    "cat"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 3,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"ocean\" and \"cat\", does the letter \"c\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "does \"c\" in \"cross\" sound like \"c\" in \"ocean\" or in \"cat\"?",
+   "a": "cat",
+   "variants": [
+    "cat"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 3,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"city\" and \"face\", does the letter \"c\" make the same sound?",
+   "a": "yes",
+   "variants": [
+    "yes",
+    "same",
+    "the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"ocean\" and \"special\", does the letter \"c\" make the same sound?",
+   "a": "yes",
+   "variants": [
+    "yes",
+    "same",
+    "the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"cat\" and \"cross\", does the letter \"c\" make the same sound?",
+   "a": "yes",
+   "variants": [
+    "yes",
+    "same",
+    "the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"branch\" and \"chord\", do the letters \"ch\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "does \"ch\" in \"lichen\" sound like \"ch\" in \"branch\" or in \"chord\"?",
+   "a": "chord",
+   "variants": [
+    "chord"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 3,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"branch\" and \"machine\", do the letters \"ch\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"chord\" and \"machine\", do the letters \"ch\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"chord\" and \"lichen\", do the letters \"ch\" make the same sound?",
+   "a": "yes",
+   "variants": [
+    "yes",
+    "same",
+    "the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letter makes the same sound in \"dive\" and \"ladder\"?",
+   "a": "d",
+   "variants": [
+    "d"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letter makes the same sound in \"even\" and \"demon\"?",
+   "a": "e",
+   "variants": [
+    "e"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letters make the same sound in \"read\" and \"leaf\"?",
+   "a": "ea",
+   "variants": [
+    "ea"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letters make the same sound in \"bee\" and \"feed\"?",
+   "a": "ee",
+   "variants": [
+    "ee"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"weight\" and \"ceiling\", do the letters \"ei\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letter makes the same sound in \"fine\" and \"off\"?",
+   "a": "f",
+   "variants": [
+    "f"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"algae\" and \"go\", does the letter \"g\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "does \"g\" in \"great\" sound like \"g\" in \"algae\" or in \"go\"?",
+   "a": "go",
+   "variants": [
+    "go"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 3,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"algae\" and \"gentle\", does the letter \"g\" make the same sound?",
+   "a": "yes",
+   "variants": [
+    "yes",
+    "same",
+    "the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"go\" and \"great\", does the letter \"g\" make the same sound?",
+   "a": "yes",
+   "variants": [
+    "yes",
+    "same",
+    "the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letter makes the same sound in \"honey\" and \"house\"?",
+   "a": "h",
+   "variants": [
+    "h"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"bit\" and \"dive\", does the letter \"i\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "does \"i\" in \"rise\" sound like \"i\" in \"bit\" or in \"dive\"?",
+   "a": "dive",
+   "variants": [
+    "dive"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 3,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"dive\" and \"rise\", does the letter \"i\" make the same sound?",
+   "a": "yes",
+   "variants": [
+    "yes",
+    "same",
+    "the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"die\" and \"field\", do the letters \"ie\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"die\" and \"untie\", do the letters \"ie\" make the same sound?",
+   "a": "yes",
+   "variants": [
+    "yes",
+    "same",
+    "the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letters make the same sound in \"mirror\" and \"squirrel\"?",
+   "a": "irr",
+   "variants": [
+    "irr"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letter makes the same sound in \"key\" and \"bake\"?",
+   "a": "k",
+   "variants": [
+    "k"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letters make the same sound in \"knee\" and \"knife\"?",
+   "a": "kn",
+   "variants": [
+    "kn"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letter makes the same sound in \"almost\" and \"valley\"?",
+   "a": "l",
+   "variants": [
+    "l"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letters make the same sound in \"little\" and \"table\"?",
+   "a": "le",
+   "variants": [
+    "le"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letter makes the same sound in \"mine\" and \"hammer\"?",
+   "a": "m",
+   "variants": [
+    "m"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letter makes the same sound in \"nice\" and \"funny\"?",
+   "a": "n",
+   "variants": [
+    "n"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"strength\" and \"long\", do the letters \"ng\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "does \"ng\" in \"tongue\" sound like \"ng\" in \"strength\" or in \"long\"?",
+   "a": "long",
+   "variants": [
+    "long"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 3,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"strength\" and \"singly\", do the letters \"ng\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "does \"ng\" in \"finger\" sound like \"ng\" in \"strength\" or in \"singly\"?",
+   "a": "singly",
+   "variants": [
+    "singly"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 3,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"strength\" and \"stingy\", do the letters \"ng\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"long\" and \"singly\", do the letters \"ng\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "does \"ng\" in \"finger\" sound like \"ng\" in \"long\" or in \"singly\"?",
+   "a": "singly",
+   "variants": [
+    "singly"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 3,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"long\" and \"stingy\", do the letters \"ng\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"singly\" and \"stingy\", do the letters \"ng\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"long\" and \"tongue\", do the letters \"ng\" make the same sound?",
+   "a": "yes",
+   "variants": [
+    "yes",
+    "same",
+    "the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"singly\" and \"finger\", do the letters \"ng\" make the same sound?",
+   "a": "yes",
+   "variants": [
+    "yes",
+    "same",
+    "the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"doctor\" and \"grove\", does the letter \"o\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"doctor\" and \"purpose\", does the letter \"o\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"grove\" and \"purpose\", does the letter \"o\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"doctor\" and \"bother\", does the letter \"o\" make the same sound?",
+   "a": "yes",
+   "variants": [
+    "yes",
+    "same",
+    "the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letters make the same sound in \"boat\" and \"coal\"?",
+   "a": "oa",
+   "variants": [
+    "oa"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letters make the same sound in \"older\" and \"bold\"?",
+   "a": "old",
+   "variants": [
+    "old"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"cool\" and \"cook\", do the letters \"oo\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "does \"oo\" in \"wood\" sound like \"oo\" in \"cool\" or in \"cook\"?",
+   "a": "cook",
+   "variants": [
+    "cook"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 3,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"cool\" and \"boot\", do the letters \"oo\" make the same sound?",
+   "a": "yes",
+   "variants": [
+    "yes",
+    "same",
+    "the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"cook\" and \"wood\", do the letters \"oo\" make the same sound?",
+   "a": "yes",
+   "variants": [
+    "yes",
+    "same",
+    "the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"out\" and \"nervous\", do the letters \"ou\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letters make the same sound in \"brought\" and \"thought\"?",
+   "a": "ought",
+   "variants": [
+    "ought"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"owl\" and \"yellow\", do the letters \"ow\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"owl\" and \"bow\", do the letters \"ow\" make the same sound?",
+   "a": "yes",
+   "variants": [
+    "yes",
+    "same",
+    "the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letters make the same sound in \"boy\" and \"voyage\"?",
+   "a": "oy",
+   "variants": [
+    "oy"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letter makes the same sound in \"pill\" and \"happy\"?",
+   "a": "p",
+   "variants": [
+    "p"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letters make the same sound in \"photograph\" and \"sapphire\"?",
+   "a": "ph",
+   "variants": [
+    "ph"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letter makes the same sound in \"quack\" and \"quantity\"?",
+   "a": "q",
+   "variants": [
+    "q"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letter makes the same sound in \"cart\" and \"walker\"?",
+   "a": "r",
+   "variants": [
+    "r"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"phrases\" and \"song\", does the letter \"s\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "does \"s\" in \"ask\" sound like \"s\" in \"phrases\" or in \"song\"?",
+   "a": "song",
+   "variants": [
+    "song"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 3,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"phrases\" and \"prison\", does the letter \"s\" make the same sound?",
+   "a": "yes",
+   "variants": [
+    "yes",
+    "same",
+    "the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"song\" and \"ask\", does the letter \"s\" make the same sound?",
+   "a": "yes",
+   "variants": [
+    "yes",
+    "same",
+    "the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letters make the same sound in \"swore\" and \"swan\"?",
+   "a": "sw",
+   "variants": [
+    "sw"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letter makes the same sound in \"ten\" and \"bitter\"?",
+   "a": "t",
+   "variants": [
+    "t"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"thing\" and \"this\", do the letters \"th\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "does \"th\" in \"bother\" sound like \"th\" in \"thing\" or in \"this\"?",
+   "a": "this",
+   "variants": [
+    "this"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 3,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"this\" and \"bother\", do the letters \"th\" make the same sound?",
+   "a": "yes",
+   "variants": [
+    "yes",
+    "same",
+    "the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"student\" and \"support\", does the letter \"u\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"student\" and \"emu\", does the letter \"u\" make the same sound?",
+   "a": "yes",
+   "variants": [
+    "yes",
+    "same",
+    "the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"true\" and \"cue\", do the letters \"ue\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"guitar\" and \"juice\", do the letters \"ui\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "does \"ui\" in \"cruise\" sound like \"ui\" in \"guitar\" or in \"juice\"?",
+   "a": "juice",
+   "variants": [
+    "juice"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 3,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"juice\" and \"cruise\", do the letters \"ui\" make the same sound?",
+   "a": "yes",
+   "variants": [
+    "yes",
+    "same",
+    "the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letter makes the same sound in \"vine\" and \"heavy\"?",
+   "a": "v",
+   "variants": [
+    "v"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letter makes the same sound in \"waffle\" and \"wag\"?",
+   "a": "w",
+   "variants": [
+    "w"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"xylophone\" and \"example\", does the letter \"x\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "does \"x\" in \"exist\" sound like \"x\" in \"xylophone\" or in \"example\"?",
+   "a": "example",
+   "variants": [
+    "example"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 3,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"xylophone\" and \"next\", does the letter \"x\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "does \"x\" in \"six\" sound like \"x\" in \"xylophone\" or in \"next\"?",
+   "a": "next",
+   "variants": [
+    "next"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 3,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"example\" and \"next\", does the letter \"x\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "does \"x\" in \"six\" sound like \"x\" in \"example\" or in \"next\"?",
+   "a": "next",
+   "variants": [
+    "next"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 3,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"example\" and \"exist\", does the letter \"x\" make the same sound?",
+   "a": "yes",
+   "variants": [
+    "yes",
+    "same",
+    "the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"next\" and \"six\", does the letter \"x\" make the same sound?",
+   "a": "yes",
+   "variants": [
+    "yes",
+    "same",
+    "the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"yes\" and \"style\", does the letter \"y\" make the same sound?",
+   "a": "no",
+   "variants": [
+    "no",
+    "different",
+    "not the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "does \"y\" in \"by\" sound like \"y\" in \"yes\" or in \"style\"?",
+   "a": "style",
+   "variants": [
+    "style"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 3,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"yes\" and \"young\", does the letter \"y\" make the same sound?",
+   "a": "yes",
+   "variants": [
+    "yes",
+    "same",
+    "the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "in \"style\" and \"by\", does the letter \"y\" make the same sound?",
+   "a": "yes",
+   "variants": [
+    "yes",
+    "same",
+    "the same"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  },
+  {
+   "q": "which letter makes the same sound in \"zoo\" and \"quiz\"?",
+   "a": "z",
+   "variants": [
+    "z"
+   ],
+   "standard": "K.RF.3a",
+   "difficulty": 2,
+   "source": "derived-gpc"
+  }
+ ]
+}

@@ -265,7 +265,41 @@ corpora/glove.6B.*.txt
 # ⚠ STATED COST, so it is chosen rather than discovered: a clone of this
 # repository — including the PUBLIC one — no longer carries the books. Anyone
 # running the walk locally needs the data repo alongside it.
-corpora/
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# ⛔⛔ THE BOOKS COME BACK 2026-09-04, BECAUSE THE BOX CANNOT REACH THE DATA REPO.
+#
+# The reasoning above is still right about the FIELDS. It had one unexamined
+# premise: that the box can read `BrainWaves`. **It cannot, and it never could.**
+# Measured on the live box: `Forgejo: Public (Deploy) Key: 5:unity-box self…` —
+# Forgejo authenticates the box's key and refuses the repository. That key is
+# `unity-box self-update (read-only)`, scoped to THIS repo, created 2026-06-28 —
+# two months before the corpus moved out of it.
+#
+# So the move left the box able to clone its own code and unable to fetch
+# anything it is taught from. A press then deleted the on-box corpus and could
+# not replace it, and she booted with no library and no embeddings.
+#
+# ⛔ FOUR WAYS EXIST TO FIX THAT PROPERLY AND ALL FOUR WERE BLOCKED: the deploy
+# key's public text (Forgejo will not render it), an API token (three attempts,
+# all refused on scope or identity), shell on the box (nobody has one), and
+# reading Forgejo's own storage from disk (built, and a bounded filesystem
+# search proved the repo is not on that machine). The books ride here because
+# this is the one repository the box can already read.
+#
+# ⚠ THE SPLIT IS EXACTLY WHAT EACH REMOTE CAN CARRY — it is not a preference:
+#   • books  503 MB / 231 files, largest 25.6 MB → fits the PUBLIC remote ✓
+#   • GloVe  1.04 GB single file → over GitHub's 100 MB limit, so it stays
+#     ignored below and `self-update.sh` self-provisions it from Stanford
+#   • fields 114 GB of LFS → impossible on a public remote at any price.
+#     Data-repo only, forever. They attach the day that deploy key lands.
+#
+# ⚠ AND THE OVERLAY EXCLUDE MOVED WITH IT. `deploy/self-update.sh` excluded
+# `corpora` wholesale so a code overlay could not overwrite the data. Now that
+# the books ARE code-repo content it must exclude only `corpora/glove.6B.*` and
+# `fields`, or the overlay would delete the self-provisioned table on every
+# press — the identical bug that started all of this.
+# ─────────────────────────────────────────────────────────────────────────────
 
 # === OS junk ===
 .DS_Store
