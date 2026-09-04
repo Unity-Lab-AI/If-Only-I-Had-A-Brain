@@ -109,21 +109,30 @@ Both are non-fatal: a fired guard returns 0 and the press continues to the books
 - **The first fake reproduced nothing.** Re-reading a file served it from **page cache**, so `read_bytes` (real disk I/O) stayed 0 and the test looked like a healthy pull. Reproducing the box required `O_DIRECT` / `POSIX_FADV_DONTNEED`. **A test that cannot reproduce the bug proves nothing about the fix.**
 - Killing the pull **took the whole press down** (`rc=15`), because the fake `git` used `exec` and shared a pid. Now kills only the git-lfs pid.
 
-**✅ WHAT IS VERIFIED — and, honestly, what is NOT.**
+**✅ WHAT IS VERIFIED — including two things that were WRONG when first written here.**
+
+⛔ **This entry claimed "verified" twice before it was true. Both corrections came from watching a real press, not from re-reading the code.**
+
+**CORRECTION 1 — the watchdog fired in production and killed the WRONG PROCESS.** `pgrep -x git-lfs | tail -1` takes the HIGHEST pid, which during a real pull is **`git-lfs filter-process`**, a short-lived sibling. The log dutifully printed `WEDGED`, the actual `git-lfs pull` stayed alive at **276 GB read / 0 written**, and the outage continued. The version before that was wrong the other way (matched the wrapper shell, whose `io` never moves, so it never fired at all). ⭐ **A guard that logs success while the thing it guards against continues is worse than no guard.** Now anchored on `(^|/)git-lfs pull( |$)`, checked against the live process table so it matches `/usr/bin/git-lfs pull` and **nothing** else — not `filter-process`, not the shells, not the `timeout` wrapper (whose argv is `git lfs pull`, with a space).
+
+**CORRECTION 2 — bounding the LFS pull WAS NOT ENOUGH.** With **no git-lfs running at all**, the brain still timed out on every request. The culprit was the **fields `rsync`**. `node` was only **8.7 GB RSS** while the cgroup sat pinned at `MemoryHigh=20G`, because rsync had pulled **12.4 GB of PAGE CACHE** (`memory.stat file`) into the same cgroup — and the kernel throttles the **whole cgroup**. Killing it dropped 20G → 4G instantly.
+
+> ⭐⭐ **THE GENERAL LESSON, worth more than either fix:** it is not only CPU or disk contention. **ANY process in the brain's cgroup that touches a lot of file data can evict her working set through page cache alone — and `ps rss` looks innocent the entire time.** That is precisely why this was missed after the LFS pull had already been ruled out. When she is starved, check `memory.stat file`, not just RSS.
+
+The fields rsync is now `nice -n 19 ionice -c3` + `--bwlimit` (`UAL_FIELDS_BWLIMIT`, default `80M`, `0` disables). Fields are optional — she transforms live — so throttling them costs nothing.
 
 | claim | evidence | strength |
 |---|---|---|
-| watchdog kills a wedged pull, press survives | harness with a faithful `O_DIRECT` wedge: killed in ~30s, `FUNC_RC=0`, no strays | **proven** |
-| a healthy pull is untouched and silent | same harness, writing fake: no warning, rc 0 | **proven** |
-| the guards do not themselves break a press | live press on the box completed, savestart resumed, `main@c70606ce` | **proven** |
-| brain stays served while an LFS pull runs | live: pull ran **2+ min, brain 200 on every sample**, where the same condition previously gave wall-to-wall timeouts | **proven** |
-| the watchdog fires **on the box** | ⚠ **NOT YET OBSERVED IN PRODUCTION.** Every wedge so far was killed by hand before the 120s trigger, or the press pre-dated the install | **inferred** |
+| watchdog kills the wedged **pull**, not a sibling | harness spawning a higher-pid decoy: `pull_alive=0`, decoy survives, `FUNC_RC=0` | **proven** |
+| the watchdog fires on the box's own bytes | ran the box's `self-update.sh` guard block there: `WEDGED` logged, killed, press continued | **proven** |
+| a healthy pull is untouched and silent | harness with a writing fake: no warning, rc 0 | **proven** |
+| brain stays served while an LFS pull runs | live: pull ran **2+ min, brain 200 every sample** | **proven** |
+| the guards do not break a press | live press completed, savestart resumed | **proven** |
+| **the corrected** pid match fires in production | ⚠ **inferred** — proven in harness + verified against the live process table, but no real wedge has hit it since the fix | **inferred** |
 
-⭐ The deployed bytes were confirmed **byte-identical** to the repo (`diff` of `self-update.sh`, `brain-ctl.js` and BOTH dashboard copies), so the harness result applies to what is actually running — but *inferred* is not *observed*. **The first real wedge after this entry is the true test; check `grep WEDGED /opt/unity-brain/self-update.log`.**
+Deployed bytes were `diff`ed against the repo (`self-update.sh`, `brain-ctl.js`, **both** dashboard copies): **byte-identical**, so harness results apply to what is running. **The check that settles the last row: `grep WEDGED /opt/unity-brain/self-update.log` and confirm `git-lfs pull` actually died.**
 
-**Still open (a decision, not a command):** the pull should not share the brain's cgroup at all. Run the data sync as its **own systemd unit with its own `MemoryMax`**. And see the root cause below — the box has no `BrainWaves` credential, so this pull is grinding for data it can never get.
-
-⭐ **Root cause of the root cause:** authorising the box's deploy key on **`BrainWaves`** (read access) likely removes this failure mode entirely. The guards exist so the *next* unknown wedge cannot take the brain down with it.
+**Still open (a decision, not a command):** none of this changes the real structural problem — **the data sync shares the brain's cgroup.** Give it its own systemd unit with its own `MemoryMax` and these guards become a safety net instead of the mechanism. And see the root cause below: the box has no `BrainWaves` credential, so the pull grinds for data it can never get.
 
 ### 🔍 How to tell this class of outage apart, fast
 
