@@ -2492,6 +2492,195 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     if (this._figDrainTimer.unref) this._figDrainTimer.unref();
     console.log(`[FigureDrain] started — one figure every ${every}ms, off the teach lane (DREAM_FIGDRAIN_MS)`);
   },
+
+  // ── SHE LEARNS WHAT A LETTER LOOKS LIKE, THE SAME WAY SHE LEARNS EVERY OTHER
+  //    SHAPE ─────────────────────────────────────────────────────────────────
+  //
+  // Operator chose this as the end state (option ③): *"make the letterforms
+  // genuinely learned"* — the only answer that ever makes *"her own trained
+  // hand"* a true sentence rather than a caption wearing that claim.
+  //
+  // ⛔⛔ THE STARTING POINT IS WORSE THAN "SHE USES A FONT". `renderLetterTemplate`
+  // in `visual-cortex.js` — the thing named as her visual template for a letter —
+  // is a **trig hash of the codepoint**. It produces a deterministic 48-dim
+  // signature that is uncorrelated between letters and has NOTHING to do with
+  // the letter's shape. So she could tell `a` from `b` as tokens and **had never
+  // seen what either one looks like**, in any sense, anywhere in the system.
+  //
+  // ⭐ THE PIPELINE IS HOW A CHILD ACTUALLY DOES IT, and every step is a
+  // production path that already exists:
+  //   1. `glyphStrokes(ch)` draws the PRINTED letter — this is the letter in the
+  //      world, the one on the page. A font here is legitimate and is not the
+  //      thing being claimed as hers.
+  //   2. `sketch(...)` renders it and returns a field — **she looks at it.**
+  //   3. `traceLineArt(rec)` extracts HER trace of what she saw. It runs at a
+  //      bounded resolution over real pixels, so it is NOT the font back again:
+  //      it is her reading of it, and it differs.
+  //   4. the trace is banked under `letter:<ch>` in the ordinary visual store.
+  // Writing then composes from HER traces. The glyph constant is what she looked
+  // at; the strokes on the page are what she took away.
+  //
+  // ⛔ NO FALLBACK, per the standing law. A letter she has not learned is a
+  // letter she cannot write — not a letter quietly stamped from the font. That
+  // is the whole point: early on she writes little or nothing, and the caption
+  // becomes evidence of what she has been taught instead of a decoration that
+  // is always perfect.
+  async learnLetterShape(ch) {
+    const c = String(ch || '').toLowerCase().slice(0, 1);
+    if (!c || !/[a-z0-9]/.test(c)) return null;
+    const ms = this.mindSpace;
+    if (!ms || typeof ms.glyphStrokes !== 'function' || typeof ms.sketch !== 'function'
+        || typeof ms.traceLineArt !== 'function') return null;
+    const store = this._vmStore && this._vmStore();
+    if (!store) return null;
+    const key = `letter:${c}`;
+    try {
+      // Big and centred so the trace has real pixels to read. A letter drawn at
+      // caption size would trace to a handful of specks.
+      const printed = ms.glyphStrokes(c, { x: 0.22, y: 0.16, size: 0.62, bold: true, rgb: [235, 233, 238] });
+      if (!printed || !printed.length) return null;
+      const rec = await ms.sketch(printed, { maxSide: 256 });
+      if (!rec || !rec.channels) return null;
+      const mine = await ms.traceLineArt(rec, {
+        traceSide: 192, maxStrokes: 90, edgeThresh: 0.10, minLenFrac: 0.02, simplify: 1.0, ink: [232, 230, 236],
+      });
+      if (!mine || !mine.length) return null;
+      const prev = store.get(key);
+      store.set(key, {
+        rec,
+        at: Date.now(),
+        seen: (prev && prev.seen ? prev.seen : 0) + 1,
+        conf: true,
+        phrase: `the letter ${c}`,
+        // Her strokes, normalised to the unit box so writing can place and scale
+        // them anywhere without re-tracing.
+        letter: { ch: c, strokes: this._normaliseLetterStrokes(mine) },
+      });
+      this._vmTrimResident(store);
+      this._vmSaveSoon();
+      return c;
+    } catch { return null; }
+  },
+
+  // Fit a traced letter into [0,1]² so it can be placed at any size. ⚠ The
+  // ASPECT IS PRESERVED deliberately — squashing every letter into a square
+  // would make `i` as wide as `m` and undo the thing she just learned.
+  // ⚠ A TRACE POINT IS AN ARRAY `[x, y]`, NOT `{x, y}`. This read `p.x`/`p.y`
+  // first, got `undefined` on every point, and every bounding box stayed at
+  // Infinity — so all 26 letters "traced successfully" and normalised to zero
+  // strokes. The trace lane and the stroke lane genuinely use different point
+  // shapes (`traceLineArt` emits `{type:'poly', pts:[[x,y],…]}` while
+  // `glyphStrokes` emits `{type:'line', x0,y0,x1,y1}`), so this has to be read
+  // rather than assumed.
+  _normaliseLetterStrokes(strokes) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const s of strokes) {
+      for (const p of (s.pts || [])) {
+        const px = Array.isArray(p) ? p[0] : p.x;
+        const py = Array.isArray(p) ? p[1] : p.y;
+        if (!(Number.isFinite(px) && Number.isFinite(py))) continue;
+        if (px < minX) minX = px; if (px > maxX) maxX = px;
+        if (py < minY) minY = py; if (py > maxY) maxY = py;
+      }
+    }
+    const w = maxX - minX, h = maxY - minY;
+    // ⚠ ONE RETURN SHAPE ON EVERY PATH. This returned a bare `[]` on the
+    // degenerate case and `{strokes, aspect}` otherwise, so a caller reading
+    // `.strokes.strokes` got `undefined` and threw — on the failure path only,
+    // which is the path least likely to be exercised before it ships.
+    if (!(w > 0) || !(h > 0)) return { strokes: [], aspect: 0 };
+    const k = 1 / Math.max(w, h);
+    const out = [];
+    for (const s of strokes) {
+      // Kept in the SAME `[x, y]` array form the tracer emits, so the strokes
+      // stay drawable by the same rasteriser without a second conversion.
+      const pts = (s.pts || [])
+        .map((p) => (Array.isArray(p) ? [(p[0] - minX) * k, (p[1] - minY) * k] : [(p.x - minX) * k, (p.y - minY) * k]))
+        .filter((p) => Number.isFinite(p[0]) && Number.isFinite(p[1]));
+      if (pts.length >= 2) out.push({ ...s, pts });
+    }
+    return { strokes: out, aspect: w / h };
+  },
+
+  /** Has she learned this letter's shape? */
+  hasLetterShape(ch) {
+    const store = this._vmStore && this._vmStore();
+    if (!store) return false;
+    const e = store.get(`letter:${String(ch || '').toLowerCase().slice(0, 1)}`);
+    return !!(e && e.letter && e.letter.strokes && e.letter.strokes.strokes && e.letter.strokes.strokes.length);
+  },
+
+  /**
+   * Write a word IN HER OWN HAND — composed from the letter traces she has
+   * actually learned.
+   *
+   * ⛔ A letter she has not learned is SKIPPED, not substituted. The returned
+   * `wrote` / `skipped` counts are what let a caller say honestly how much of
+   * the word she could actually write, instead of showing a complete word and
+   * implying she knew all of it.
+   */
+  handwrittenStrokes(text, opts = {}) {
+    const store = this._vmStore && this._vmStore();
+    if (!store) return { strokes: [], wrote: 0, skipped: 0 };
+    const label = String(text || '').toLowerCase().slice(0, 14);
+    const size = Math.max(0.03, Math.min(0.3, opts.size ?? 0.08));
+    const gap = size * 0.28;
+    const rgb = opts.rgb || [226, 224, 230];
+    // Measure first: the word's width depends on which letters she can write and
+    // on their individual aspects, so it cannot be assumed uniform.
+    const cells = [];
+    let wrote = 0, skipped = 0, totalW = 0;
+    for (const ch of label) {
+      if (ch === ' ') { cells.push(null); totalW += size * 0.5 + gap; continue; }
+      const e = store.get(`letter:${ch}`);
+      const L = e && e.letter && e.letter.strokes;
+      if (!L || !L.strokes || !L.strokes.length) { skipped++; continue; }
+      const aspect = Number(L.aspect) > 0 ? L.aspect : 0.7;
+      const w = size * Math.min(1.4, Math.max(0.18, aspect));
+      cells.push({ L, w });
+      totalW += w + gap;
+      wrote++;
+    }
+    if (!wrote) return { strokes: [], wrote: 0, skipped };
+    totalW = Math.max(0, totalW - gap);
+
+    // ⛔ SHRINK TO FIT, because the operator already had this exact bug once on
+    // the typeset path — *"the last few letters of longer words are always being
+    // cut off"* — and a new writing lane that reintroduced it would be the same
+    // defect wearing new code. Her letters have INDIVIDUAL widths (an `i` is not
+    // an `m`), so the word's width is measured rather than assumed and the whole
+    // word is scaled down until it fits. A word is never truncated.
+    const MARGIN = 0.04;
+    const availW = 1 - 2 * MARGIN;
+    let sizeK = 1;
+    let drawGap = gap;
+    if (totalW > availW) {
+      sizeK = availW / totalW;
+      // ⚠ THE GAPS SCALE TOO. Scaling only the letter widths left the inter-letter
+      // gaps at full size, so the drawn word was WIDER than the width this
+      // function had just reported and a long word still ran off the canvas —
+      // measured at 0.92 and rendered past 1.0. The measurement and the drawing
+      // have to shrink the same quantities or the report is a different word
+      // from the one on the page.
+      for (const cell of cells) if (cell) cell.w *= sizeK;
+      drawGap = gap * sizeK;
+      totalW = availW;
+    }
+    const drawSize = size * sizeK;
+
+    let x = opts.x !== undefined ? opts.x : Math.max(0.02, 0.5 - totalW / 2);
+    const y = opts.y !== undefined ? opts.y : 0.86;
+    const out = [];
+    for (const cell of cells) {
+      if (!cell) { x += drawSize * 0.5 + drawGap; continue; }
+      for (const s of cell.L.strokes) {
+        const pts = s.pts.map((p) => [x + p[0] * cell.w, y + p[1] * drawSize]);
+        out.push({ ...s, pts, rgb, w: s.w ?? 0.006 });
+      }
+      x += cell.w + drawGap;
+    }
+    return { strokes: out, wrote, skipped, width: totalW };
+  },
 };
 
 module.exports = { SERVER_VISUAL_MEMORY_MIXIN };

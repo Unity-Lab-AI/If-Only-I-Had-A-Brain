@@ -3558,6 +3558,47 @@ export const K_MIXIN = {
     cluster._teachFinalRepSampleEveryN = 0;
     this._hb(`[Curriculum] ✓ ELA-K Phase 1 DONE in ${((Date.now() - _p1Start) / 1000).toFixed(1)}s (${_p1Done} cross-region Hebbian iterations across alphabet×${REPS})`);
 
+    // ── PHASE 1b — SHE LOOKS AT EACH LETTER AND LEARNS ITS SHAPE ────────────
+    //
+    // Phase 1 above teaches a letter as a SIGNAL: a one-hot into the letter
+    // region, its phoneme features, its motor slot. That is hearing and saying.
+    // ⛔ It is not seeing. Before this, the only thing in the system that called
+    // itself her visual template for a letter was `renderLetterTemplate`, which
+    // is a **trig hash of the codepoint** — a signature uncorrelated with the
+    // letter's shape. She could tell `a` from `b` and had never seen either.
+    //
+    // ⭐ Here she looks at the printed letter and keeps HER OWN trace of it, the
+    // same way she learns the shape of anything else. Writing then composes from
+    // those traces, which is what makes "her own hand" a description instead of
+    // a claim. Runs once per walk — a shape does not need re-learning every rep,
+    // and the store is the receipt.
+    //
+    // ⚠ Best-effort and OFF the critical path. A box with no mind-space simply
+    // does not learn letterforms, and the honest consequence is that she writes
+    // nothing on her drawings rather than stamping a font she never learned.
+    try {
+      const _brain = this.cluster && this.cluster._brain;
+      if (_brain && typeof _brain.learnLetterShape === 'function' && !this._letterShapesLearned) {
+        const _lsStart = Date.now();
+        let _learned = 0, _failed = 0;
+        for (const ch of ALPHABET) {
+          const got = await _brain.learnLetterShape(ch);
+          if (got) _learned++; else _failed++;
+          await new Promise((r) => setImmediate(r));   // never hold the loop
+        }
+        this._letterShapesLearned = true;
+        // ⚠ The failure count is reported, never swallowed. A letter she could
+        // not trace is a letter she will not be able to write, and that has to
+        // be visible as a fact rather than showing up later as a caption that
+        // is quietly missing characters.
+        this._hb(`[Curriculum] ✓ ELA-K Phase 1b — letter SHAPES learned: ${_learned}/${ALPHABET.length} traced and banked`
+          + (_failed ? `, ${_failed} could NOT be traced (she will not be able to write those)` : '')
+          + ` in ${((Date.now() - _lsStart) / 1000).toFixed(1)}s`);
+      }
+    } catch (err) {
+      console.warn('[Curriculum] letter-shape learning failed (she will write nothing rather than stamp a font):', err?.message || err);
+    }
+
     // SEQUENCE TEACHING — teach the INTRA-REGION recurrent weights
     // that letter N leads to letter N+1. Same direct-spike approach
     // but targeting cluster.synapses (the main 10K×10K matrix) instead
