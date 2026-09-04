@@ -5,6 +5,39 @@
 
 ---
 
+## 2026-09-04 — `CURVEDEPTH.12` (PARTIAL) — THE LANE WAS ALREADY BUILT, AND EVERY STARVED CS CELL ALREADY HAD A BOOK
+
+⛔⛔ **THE ROW'S PREMISE WAS OUT OF DATE IN TWO SEPARATE WAYS, AND BOTH WERE FOUND BY MEASURING RATHER THAN BY READING THE ROW.**
+
+**① The college2-4 textbook lane this row asks for already exists.** `fetch-saylor-corpora.mjs` is it, and its own header records the second of the "two biggest hosts" being probed and **refused with evidence**: UMN Open Publishing's Pressbooks REST `chapters` route returns `[]`, `/pressbooks/v2/toc` 404s, and its part pages carry no chapter links in raw HTML because the nav renders client-side. *"Start with the two biggest hosts and measure before adding a third"* was done — one of the two could not be walked.
+
+**② Every `cstheory` and `major` cell already had a book.** The board read them as starved; the true state was **fed once**, 31–48 entries per cell. **One book is not a college year against a 330,000-word floor.** So the fix was never a new host and never a new lane — it is a **second book** in the cells that own the debt. Together those two subjects held **1,167,169 of the 1,999,649 words owed across the entire corpus: 58% of the remaining debt in two subjects.**
+
+**Five added:**
+```
+  Think Python 2e      -> major/college1      58,133 w   26 fig   CC-BY-NC 3.0
+  Think Complexity 2e  -> cstheory/college4   40,418 w   57 fig   CC-BY-NC-SA 4.0
+  Think OS             -> cssystems/college3  21,718 w    2 fig   CC-BY-NC-SA 4.0
+  Think Stats 2e       -> major/college2      43,573 w   55 fig   CC-BY-NC-SA 4.0
+  Think Bayes          -> major/college3      39,157 w   48 fig   CC-BY-NC-SA 4.0
+```
+
+⭐ **EVERY FIELD WAS READ OFF THE LIVE PAGE BEFORE THE RUN, because a wrong `linkRe` yields zero sentences and REPORTS SUCCESS** — the failure this file has already taken twice (Composing Programs' `../`, Open Data Structures' one-level-down sections). Each index was fetched, its local hrefs extracted, the pattern derived from the real link shapes, and then **all five patterns re-verified against the live indexes: 84 chapters found, every first page carrying real prose.** The fetcher then verified every licence at source independently of my check.
+
+⛔ **THE LICENCE WAS READ AS A LINK, NOT AS PROSE.** `creativecommons.org/licenses/<slug>` is unambiguous; the phrase *"Creative Commons license"* in a paragraph **cannot distinguish NoDerivatives from anything else**, and ND is the one clause this corpus must refuse because it republishes a cleaned, excerpted adaptation. ⚠ **Two of the five declare on the landing page and not on the html index** — the exact shape this fetcher's own header already records as the trap that nearly lost it the best books in its first pass.
+
+**REFUSED, and recorded so nobody re-walks them:**
+- **Think Data Structures** — claims a Creative Commons licence in prose and publishes **no machine-readable licence link anywhere**. ND status unverifiable. **An unverifiable licence is a refusal, not a rounding error**: one 19-chapter book is not worth an unchecked claim.
+- **Erickson's *Algorithms*** — genuinely CC-BY 4.0 and the best theory text found, but **PDF-only**: two HTML links on its entire index, so there is no chapter walk to perform.
+
+**Measured: owed 1,999,649 → 1,796,637 · `major` 514,295 → 373,432 · `cssystems/college3` 72,236 → 50,518.** Synced to BrainWaves at **`140342d1`** — `corpora/` staged explicitly, **5 files, 0 deletions, nothing outside `corpora/`, and 26,359 fields verified still tracked after the push.**
+
+⏳ **STILL OWED AND NAMED: `cstheory` 612,443, the largest single debt left in the corpus**, concentrated in `college2` (213,160) and `college1` (182,433). Those two want **discrete mathematics, algorithms and theory-of-computation** texts specifically — the Green Tea set does not cover them, and the strongest theory candidate (Barak's *Introduction to Theoretical Computer Science*) is **CC-BY-NC-ND** and already on this file's refused list.
+
+⚠ **OWNED — THE SIXTH DETECTOR BUG OF THE DAY, AND THE WORST OF THEM.** My first two attempts to measure the corpus were both wrong: the first assumed a flat `subject__grade.json` layout when it is directories, and the second looked for prose in `sentences`/`text`/`prose`/`lines` when the field is **`story`**. Both reported **every cell at zero words** while the shipped auditor reported 69.4 million. **The fix each time was to open one real record and read its keys before writing the aggregator** — which is what I should have done first, and it is now the sixth instance of the same mistake in two days.
+
+---
+
 ## 2026-09-04 — `TRAINDEF.1/.2/.3` + `TEACHFINAL.4` + `TEACHFINAL.2` — DEFAULTS THAT SURVIVE A PRESS, SAFETIES BEFORE ONE, AND A PAGE WITH NO WAY OUT OF IT
 
 Gee (verbatim): *"and we need traing defaults we can set and obviously with the teachviewer we need it to have restart safties and be ablke to have defualts for the different setttings yand nobs you adjust"*.
