@@ -42,6 +42,61 @@ last-verified: "cd465955 2026-08-29"
 
 ---
 
+## 🔴 2026-09-04 — THE PRESS RUNS THE BOX'S OWN `self-update.sh`, AND THE ONE ON THE BOX WOULD HAVE DELETED THE CORPUS
+
+**Found during the final pre-press check, before the button was touched.** Nothing was
+lost; this entry exists so the shape is recognised the next time a press skips versions.
+
+### The mechanism, in one line
+
+`server/brain-server.js` resolves the deploy script from `__dirname`, so **a press
+executes whatever is already on the box — not what is on `main`.** The new script only
+takes effect on the press *after* the one that delivers it.
+
+### Why that was fatal this time
+
+| fact | read from |
+|---|---|
+| box was at `29a02f6f`, deployed `2026-09-01T17:14:36Z` | live `/public-state.json` → `state.build` |
+| that copy has **no `--exclude 'corpora'`**, no `--exclude 'fields'`, no data-sync, **no books gate** | `git show 29a02f6f:deploy/self-update.sh` — 139 lines shorter than `main`, insertions-only |
+| `corpora/` is **0 tracked files** on `main`, was **125** at `29a02f6f` | `41b36b59` (ONEREPO, 09-03) untracked 227 files; `.gitignore:268` |
+
+So the overlay's `rsync -a --delete` would find no `corpora/` in the source and **delete
+the destination's** — the books *and* `corpora/glove.6B.300d.txt`. `WorkingDirectory=/opt/unity-brain`
+and every GloVe candidate path resolves inside the delete zone.
+
+⛔ **The outcome is not "a walk on an empty library" — she never comes up.** GloVe load
+throws and the boot answers *"Boot STOPS here by design (NO FALLBACKS)"*; with
+`Restart=always` that is a crash loop, with `.force-fresh` already written.
+
+### What shipped so the sequence is survivable
+
+1. **The books no longer ride on `git-lfs`.** `BrainWaves/.gitattributes` LFS-tracks only
+   `*.field.json` — every corpus JSON is a plain blob. The old code skipped the *whole*
+   data sync when the extension was absent, throwing away the half that needs none.
+   `_lfs_pull` now **returns 0** on a box without LFS, because its exit status is what
+   decides whether the books get rsynced.
+2. **GloVe came off LFS** — BrainWaves `1e09d3d1 → f750d208`. Nothing on this box
+   provisions `git-lfs` (`bootstrap-backend.sh` has no install line), and the one file
+   whose absence is fatal must not depend on an unverified tool. 1.04 GB plain blob;
+   Forgejo-only, and the press clone is `--filter=blob:none` which fetches it on checkout
+   anyway. **Fields stay on LFS** — a missing field costs a live transform, not the walk.
+3. **The gate now gates GloVe too** (`UAL_GLOVE_MIN_BYTES`, default 100 MB). Existence is
+   not the check: a pointer stub is a real file, so both the size and the first 40 bytes
+   are read, and a stub and a half-finished transfer are reported as the different
+   failures they are. Aborts **before `.force-fresh`**, like the books gate.
+
+### ⭐ THE STANDING RULE THIS LEAVES BEHIND
+
+**Before any press, read `state.build.short` and diff that commit's
+`deploy/self-update.sh` against `main`'s.** The overlay's exclude list is a contract
+between two commits and **the older one is the one that runs**. When they differ, the
+press is a **TWO-PRESS sequence**: press 1 delivers the new script, press 2 runs it and
+repairs whatever the old exclude list did not know to protect. `unity-brain-ctl` is a
+separate always-up service, so `/ctl/update` fires the second press with the brain down.
+
+---
+
 ## 🔴 2026-08-26 — INCIDENT (Sponge, self-inflicted): I wiped the live brain with a `/ctl/update` probe. Root cause fixed + a SILENT 3-MONTH BACKUP OUTAGE found
 
 **Read this before touching `/ctl/update` or `/ctl/reset`.** Two things in this entry matter independently: (1) I destroyed live brain state and how that is now prevented; (2) **the nightly backup had been failing silently since 2026-05-20** — that one is unrelated to my mistake and is the more dangerous long-term finding.
