@@ -209,7 +209,59 @@ function checkFieldProducers(s) {
   return ok('rendered fields', `${r.length} rendered field(s), every one has a producer`);
 }
 
-const CHECKS = [checkKnobs, checkWriteLane, checkLedger, checkCorpusFeed, checkFigures, checkFieldProducers];
+/**
+ * ⭐ THE FIVE PANELS ADDED 2026-09-04 — the wiring audit, the graduation record,
+ * the deferred lanes, the exam battery and her handwriting.
+ *
+ * ⛔ THEY WERE ADDED TO THE PAGE AND NOT TO THIS BENCH, WHICH IS THE DEFECT
+ * THIS FILE EXISTS TO CATCH. A surface nothing sweeps is a surface that can
+ * rot silently — the bench's whole argument — so shipping five new ones without
+ * extending it would have been the same mistake in a new place.
+ *
+ * Each clause below is a REAL failure with a REAL consequence, not a presence
+ * test. Absent state is GREY, because "cannot tell" is not "working".
+ */
+function checkNewInstruments(s) {
+  const wa = s && s.wiringAudit;
+  const dl = s && s.deferredLanes;
+  const lb = s && s.lastBattery;
+  if (!wa && !dl && !lb) {
+    return grey('new instruments', 'none of the wiring audit, deferred lanes or exam battery were in the snapshot — cannot tell whether they work.');
+  }
+  // ⛔ An audit that THREW is not an audit that found nothing.
+  if (wa && wa.error) {
+    return bad('new instruments', `the wiring audit FAILED (${wa.error}) — the projections are built, but nothing is reporting how many wires each neuron got.`);
+  }
+  // ⛔ The worst reading on the page: a neuron with no incoming connection can
+  // never learn anything, because the Hebbian update cannot insert one.
+  if (wa && Array.isArray(wa.projections)) {
+    const empties = wa.projections.reduce((n, p) => n + (p.empty || 0), 0);
+    if (empties > 0) {
+      const worst = wa.projections.filter((p) => p.empty > 0).map((p) => p.key).slice(0, 4).join(', ');
+      return bad('new instruments', `${empties.toLocaleString()} destination rows came out of construction EMPTY (${worst}) — those neurons can never learn for the life of the brain.`);
+    }
+  }
+  // ⛔ Work queued off-walk with nothing draining means the poller is dead, and
+  // every one of those queues silently drops its oldest entry when full.
+  if (dl && dl.queued && dl.drivenOffWalk) {
+    const depth = (dl.queued.chatPairs || 0) + (dl.queued.chatJobs || 0)
+      + (dl.queued.mindsEye || 0) + (dl.queued.salience || 0);
+    if (depth > 0 && !dl.drainedItems) {
+      return bad('new instruments', `${depth} item(s) queued on the deferred lanes off-walk and NOTHING has drained — chat learning, percept grounding and her drawing are all stalled.`);
+    }
+  }
+  // ⛔ The missed-set bug's exact signature: questions missed, nothing taught.
+  if (lb && (lb.authoredTotal || 0) > (lb.authoredPass || 0) && !lb.correctiveTaught) {
+    return bad('new instruments', `${lb.cell || 'a cell'} missed authored questions and corrective-taught NOTHING — the missed-set is empty again.`);
+  }
+  const parts = [];
+  if (wa) parts.push(`wiring audit ${(wa.projections || []).length} projections, 0 empty rows`);
+  if (dl) parts.push(dl.drivenOffWalk ? 'deferred lanes driven off-walk' : 'deferred lanes held by the walk (correct)');
+  if (lb) parts.push(`last battery ${lb.cell}`);
+  return ok('new instruments', parts.join(' · '));
+}
+
+const CHECKS = [checkKnobs, checkWriteLane, checkLedger, checkCorpusFeed, checkFigures, checkFieldProducers, checkNewInstruments];
 
 /**
  * Run every surface check over a snapshot. Pure: no I/O, no globals.
@@ -279,6 +331,27 @@ function healthySnapshot() {
     corpus: { cellsWithProse: 189, emptyCells: 4, reachableWords: 56615176, missingLane: 0 },
     figures: { hit: 900, miss: 100, stub: 0, malformed: 0 },
     rendered: [{ name: 'teachRate', rendered: true, produced: true }],
+    // The five instruments added 2026-09-04, in their HEALTHY shape. Without
+    // these the new check reads GREY on a healthy snapshot — and grey does not
+    // pass, so the fixture has to grow with the bench or the self-test fails on
+    // its own first assertion.
+    wiringAudit: {
+      minWires: 4,
+      projections: [
+        { key: 'sem_to_word_motor', rows: 100, cols: 900, nnz: 600, mean: 6, min: 6, max: 6, empty: 0, topographic: false, motorBound: true, radiusTopo: null },
+        { key: 'letter_to_motor', rows: 100, cols: 900, nnz: 600, mean: 6, min: 6, max: 6, empty: 0, topographic: true, motorBound: true, radiusTopo: 30 },
+      ],
+    },
+    deferredLanes: {
+      drivenOffWalk: false,
+      queued: { chatPairs: 0, chatJobs: 0, mindsEye: 0, salience: 0 },
+      drainedItems: 0, drainedPasses: 0, lastDrainAgeMs: null,
+    },
+    lastBattery: {
+      cell: 'ela/kindergarten', at: 1, total: 20,
+      authoredTotal: 6, authoredPass: 6, authoredRate: 1, derivedTotal: 14,
+      gatedOnAuthored: true, correctiveTaught: 0,
+    },
   };
 }
 
@@ -301,6 +374,15 @@ const FAULTS = [
     (s) => { s.figures.stub = 12; }],
   ['a field the page renders that nothing produces',
     (s) => { s.rendered.push({ name: 'colorSurge', rendered: true, produced: false }); }],
+  // ── the five instruments added 2026-09-04, each fault a REAL consequence ──
+  ['the wiring audit itself threw (projections built, nothing reporting their wires)',
+    (s) => { s.wiringAudit = { error: 'radiusFrac is not defined', projections: [] }; }],
+  ['destination rows born EMPTY (those neurons can never learn, ever)',
+    (s) => { s.wiringAudit.projections[1].empty = 15000; s.wiringAudit.projections[1].mean = 1.5; }],
+  ['work queued off-walk with nothing draining (chat learning and her drawing stalled)',
+    (s) => { s.deferredLanes.drivenOffWalk = true; s.deferredLanes.queued.chatPairs = 24; s.deferredLanes.drainedItems = 0; }],
+  ['authored questions missed and NOTHING corrective-taught (the missed-set is empty again)',
+    (s) => { s.lastBattery.authoredPass = 3; s.lastBattery.authoredRate = 0.5; s.lastBattery.correctiveTaught = 0; }],
 ];
 
 /**
