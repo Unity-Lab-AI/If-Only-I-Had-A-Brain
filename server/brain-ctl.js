@@ -341,22 +341,56 @@ function journal(lines = 60) {
     return new Promise((resolve) => {
       fs.readFile(logPath, 'utf8', (err, txt) => {
         if (err) {
-          return resolve(
-            `No systemd journal on this host (local run), and no ${logPath} yet.\n`
-            + `The launchers write the brain's output there; it appears once ${IS_WIN ? 'start.bat / Savestart.bat' : 'start.sh / Savestart.sh'} has run.`
-          );
+          // Same rule as the journald path below: an absent file is not an
+          // empty log, and the shape says which it was.
+          return resolve({
+            ok: false,
+            log: '',
+            error: 'no-local-log',
+            detail: String((err && err.message) || err || ''),
+            human: `No systemd journal on this host (local run), and no ${logPath} yet. `
+              + `The launchers write the brain's output there; it appears once ${IS_WIN ? 'start.bat / Savestart.bat' : 'start.sh / Savestart.sh'} has run.`,
+          });
         }
         const all = String(txt).split('\n');
         // Tail only — this file grows for the whole walk and must never be
         // read into a response whole.
-        resolve(all.slice(Math.max(0, all.length - lines)).join('\n'));
+        resolve({ ok: true, log: all.slice(Math.max(0, all.length - lines)).join('\n') });
       });
     });
   }
   return new Promise((resolve) => {
     execFile('journalctl', ['-u', UNIT, '-n', String(lines), '--no-pager', '-o', 'short-iso'],
       { timeout: 15000, maxBuffer: 4 * 1024 * 1024 }, (err, stdout) => {
-        resolve(err ? `(journal unavailable: ${err.message})` : String(stdout || ''));
+        if (!err) return resolve({ ok: true, log: String(stdout || '') });
+        // ⛔⛔ A REFUSED READ IS NOT A READ, AND THIS ROUTE USED TO REPORT IT AS
+        // ONE. It returned the error text as the LOG BODY under `ok: true`, so a
+        // caller asking "what did the boot say?" got a 200, a truthy ok, and a
+        // string — which reads as output. On 2026-09-04, during a real outage
+        // with the brain unreachable, that is exactly how it presented: the one
+        // instrument that survives a dead brain answered `ok: true` and said
+        // nothing, and the actual message was buried inside the field meant for
+        // log lines.
+        //
+        // ⭐ THE PERMISSION CASE GETS ITS OWN VERDICT because it is the likely
+        // one and the fix is a single unit directive. journald denies a
+        // non-privileged service silently-ish: "No journal files were opened due
+        // to insufficient permissions", pointing at the 'adm' and
+        // 'systemd-journal' groups. The control plane runs as its own hardened
+        // user, so out of the box it CANNOT read the logs it exists to serve.
+        const msg = String((err && err.message) || err || '');
+        const denied = /insufficient permissions|No journal files were opened|Permission denied/i.test(msg);
+        resolve({
+          ok: false,
+          log: '',
+          error: denied ? 'journal-permission-denied' : 'journal-unavailable',
+          detail: msg,
+          human: denied
+            ? `This service cannot read the systemd journal, so there are no logs to show — this is a PERMISSIONS result, not an empty log. `
+              + `Fix: add "SupplementaryGroups=systemd-journal" to the ${UNIT}-ctl unit, then daemon-reload and restart the control plane. `
+              + `Until then, boot failures can only be read with shell access on the box.`
+            : `The journal could not be read (${msg.slice(0, 200)}). This says nothing about whether the brain logged anything.`,
+        });
       });
   });
 }
@@ -367,6 +401,12 @@ async function buildStatus() {
   const active = activeState === 'active';
   const exitStatus = show.ExecMainStatus ? parseInt(show.ExecMainStatus, 10) : null;
 
+  // Set by the active-but-not-serving branch below: whether the brain is
+  // plausibly still booting or has been up far too long for that. Declared here
+  // so the returned object can publish it without re-deriving the timestamp.
+  let _loopPinned = false;
+  let _activeForSecOut = null;
+
   // Distinguish the states that need DIFFERENT operator actions. The old
   // dashboard collapsed all of these into one "unreachable" banner, which is
   // why a deliberate halt looked identical to a crashed boot.
@@ -376,8 +416,43 @@ async function buildStatus() {
     phase = 'online';
     human = 'Brain is online and serving.';
   } else if (active && !portUp) {
+    // ⛔⛔ THIS BRANCH USED TO ASSERT "normal for the first minute or two after a
+    // start" UNCONDITIONALLY, AND ON 2026-09-04 IT MISDIRECTED FOR OVER AN HOUR.
+    // The brain had not started at all: `activeEnter` was hours old, the same
+    // process throughout, `exitStatus 0`, `result success`. The real state was a
+    // LIVE process with a PINNED EVENT LOOP — starved by a 114 GB transfer
+    // sharing its disk — which is a completely different situation with a
+    // completely different response, and the panel confidently called it a boot.
+    //
+    // ⭐ `ActiveEnterTimestamp` IS THE FIELD THAT SETTLES IT. "Booting" and
+    // "alive but not accepting" are indistinguishable from `portOpen:false`
+    // alone; they are trivially distinguishable from whether the unit's active
+    // timestamp is recent. So it is read, not assumed.
+    const _enterMs = Date.parse(show.ActiveEnterTimestamp || '') || 0;
+    const _activeForSec = _enterMs ? Math.round((Date.now() - _enterMs) / 1000) : null;
+    // 10 minutes: a cold biological-scale boot is ~15s of construction plus the
+    // GloVe stream (16.8s measured on a workstation, so under a minute on the
+    // box). Ten minutes is generous by an order of magnitude and still well
+    // inside "something else is wrong".
+    const _plausiblyBooting = _activeForSec == null || _activeForSec < 600;
+    // ⚠ THE PHASE STAYS `booting` ON PURPOSE — only the SENTENCE changes.
+    // A new phase value looked cleaner and would have broken the dashboard:
+    // `html/dashboard.html` enables Stop / Restart / Kick by POSITIVE match on
+    // `'online' || 'booting'` (≈:4323-4327), so an unrecognised phase silently
+    // DISABLES every power control — leaving an operator unable to act on
+    // exactly the brain this branch exists to describe. Worse than the wrong
+    // words. The phase is a UI contract; the `human` string is the message.
     phase = 'booting';
-    human = 'Brain process is running but has not bound its port yet — it loads ~5.4 GB of weights before listening. This is normal for the first minute or two after a start.';
+    // Published so a caller can distinguish the two cases without re-deriving
+    // it, and so the dashboard can colour it later without a protocol change.
+    _loopPinned = !_plausiblyBooting;
+    _activeForSecOut = _activeForSec;
+    human = _plausiblyBooting
+      ? 'Brain process is running but has not bound its port yet — it loads ~5.4 GB of weights before listening. This is normal for the first minute or two after a start.'
+      : `Brain process is ALIVE but not accepting connections, and it has been active for ${_activeForSec}s — far too long to still be booting. `
+        + `This is NOT a start-up delay and NOT a crash: the unit never restarted (exit ${exitStatus == null ? 'n/a' : exitStatus}, result ${show.Result || 'n/a'}). `
+        + `The event loop is pinned. The usual cause is a long synchronous operation or disk starvation — a weights save competing with a large transfer on the same volume will do it. `
+        + `Wait for the operation to finish; a restart here would abandon whatever it is holding.`;
   } else if (!active && portUp) {
     // Serving, but not via the unit we manage — typically a hand-started
     // `node server/brain-server.js` (local dev, or an admin debugging on the
@@ -407,6 +482,12 @@ async function buildStatus() {
     // whole point. `unmanaged` counts as online because the site really works.
     brainOnline: phase === 'online' || phase === 'unmanaged',
     phase,
+    // ⭐ THE FIELD THAT WOULD HAVE ENDED AN HOUR OF GUESSING. `phase:'booting'`
+    // covers two situations that need opposite responses — wait, or investigate
+    // a pinned loop — and only the unit's active-for duration separates them.
+    // Published rather than folded into prose so a caller can branch on it.
+    loopPinned: _loopPinned,
+    activeForSec: _activeForSecOut,
     human,
     unit: {
       name: UNIT,
@@ -924,7 +1005,11 @@ const server = http.createServer(async (req, res) => {
     }
     if (method === 'GET' && url === '/logs') {
       const n = Math.min(500, Math.max(10, parseInt((req.url.split('?')[1] || '').match(/n=(\d+)/)?.[1] || '80', 10)));
-      return sendJson(res, 200, { ok: true, unit: UNIT, lines: n, log: await journal(n) });
+      // ⚠ `journal()` returns a VERDICT OBJECT, not a string — it has to, because
+      // "here are the logs" and "I was refused permission to read them" are
+      // different answers and this route used to give both the same shape.
+      const j = await journal(n);
+      return sendJson(res, 200, { ok: j.ok, unit: UNIT, lines: n, log: j.log, ...(j.ok ? {} : { error: j.error, detail: j.detail, human: j.human }) });
     }
     if (method === 'POST') {
       // Confirmation token for the destructive verbs. Accepted in a JSON body
