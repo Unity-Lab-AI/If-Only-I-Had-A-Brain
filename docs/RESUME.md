@@ -1,6 +1,53 @@
 # RESUME — Session Pickup Brief
 
-> ## 🔴🔴 2026-09-04 THE PRESS RAN — AND THE BOX CANNOT REACH THE DATA REPO (LATEST — PICK UP HERE)
+> ## 🟡 2026-09-04 THE KEY IS GRANTED, THE CLONE SUCCEEDED, AND THE SYNC IS STILL RUNNING (LATEST — PICK UP HERE)
+>
+> ### ⛔ STATE — read `/ctl/status` FIRST, it is the only instrument that works while the brain is pinned
+> ```
+> main / origin / github   d3a07d61   (everything below is cascaded and pushed)
+> box code on disk         b2c4e7d8   (overlaid 12:41:30 — includes the books)
+> box REPORTS              fec05e56   ← the build stamp is read AT BOOT and there has been no boot
+> unit                     active/running, activeEnter 10:37:04 UTC, exitStatus 0, nRestarts 47
+> brain HTTP               mostly PINNED — rare brief serving windows
+> memory                   22.06 → 21.73 → 21.65 GB (drifting down; it IS executing)
+> weights                  INTACT — no restart has happened at all
+> .force-fresh             ARMED (handler-side, from the press)
+> ```
+>
+> ### ⭐⭐ THE BLOCKER IS SOLVED — the box's deploy key is authorised on the data repo
+> `BrainWaves` deploy key **id=3**, `read_only=true`, HTTP **201**. It is the SAME key the box already presents to the code repo (`If-Only-I-Had-A-Brain` id=1, `ssh-ed25519`, 131 chars) — **verified byte-identical**, both hashing to `55741666099a2f70dd789558…`, not trusted on the status code.
+>
+> ⭐ **ROOT CAUSE, worth keeping:** that key was created **2026-06-28** and is scoped to the code repo. `ONEREPO` moved the corpus to a second repo on **2026-09-03**. **The key was never broken — it was never asked to do this job.** `deploy/bootstrap-backend.sh` still provisions nothing for the data repo, so **a rebuilt box reproduces this exactly.**
+>
+> **The proof it worked:** the press at 12:41 produced the first `data sync` in this project's history with **NO `CLONE failed` line**. Every prior press failed within the same second.
+>
+> ### ⏳ WHAT IS HAPPENING RIGHT NOW
+> The `self-update.sh` from that press is **still running** — the restart is its LAST step, and `activeEnter` has not moved, so it has not reached it. It is pulling **114 GB** of LFS field payloads. The brain shares that disk, so its loop is pinned by contention (a 5.4 GB weights save already pins it ~44 s on an idle disk).
+>
+> ⚠ **WE ARE BLIND ON PROGRESS AND THAT IS THE UNCOMFORTABLE PART.** `git lfs pull` output goes to `self-update.log` on the box, and the console ring is served *by* the pinned brain. `state.disk.freeMB` would settle it (was **435,433 MB / 51.5%** before the press) but requires catching a serving window — 40 attempts over 4 minutes caught none.
+>
+> ### ⛔ DO NOT RESTART — the asymmetry decides it
+> - **Waiting costs only time.** No walk is running, nothing is being lost, weights are intact, the static site is fine.
+> - **Restarting risks a crash loop.** `.force-fresh` is armed, so a boot wipes the weights and then needs GloVe — and the code overlay **excludes `corpora/glove.6B.*`**, so GloVe is only on that box if the sync already fetched it. **The self-provisioning lives in the SCRIPT, not the boot path**, so a bare `/ctl/restart` does not get it.
+> - **Scale:** 114 GB at 5 MB/s is **6.3 hours**. `activeEnter` unchanged an hour from now does not yet mean failure.
+>
+> ### ✅ THE BOOKS NO LONGER DEPEND ON ANY OF THIS
+> `BOOKSINREPO` put **231 corpus files / 503 MB** into the code repo — the one the box already clones — and the 12:41 overlay delivered them. **`corpora/academic` is on that box now regardless of what the sync does.** GloVe stays ignored (1.04 GB, over GitHub's 100 MB limit) and self-provisions from Stanford; the fields stay data-repo-only (114 GB, impossible on a public remote).
+>
+> ### NEXT — in order
+> - **Watch `activeEnter`.** Changing = the sync finished and the fresh walk booted. That is the finish line; everything else is noise.
+> - **If it is still `10:37:04` after several more hours:** build a **boot-side** GloVe provision first (so a restart cannot die on it), *then* restart deliberately. She walks on books alone; the wavelets attach on a later press.
+> - ⏳ **`KEYGRANT.2`** — `SupplementaryGroups=systemd-journal` on the ctl unit. Needs box access. Until then a boot failure cannot be read remotely at all.
+> - ⏳ **`LOCALFIELDS.1` is UNEXERCISED, not disproven** — see the correction below.
+>
+> ### ⚠ THREE CORRECTIONS TO MY OWN CLAIMS FROM THIS SESSION
+> 1. **"The data repo is on this box"** — I wrote that as an established finding. **It never was.** Forgejo runs on that host (two docs say so); whether its *repository storage* is reachable is a different claim and the box answered `data repo not found on local disk (known paths AND a bounded search)`. ⚠ That search returned in **under a second** across seven roots at depth 6 — faster than the walk should take — so it likely hit permission denials and skipped. **"Not found" may mean "not permitted to look."**
+> 2. **"Press 1 landed clean"** — it did not. It deleted the corpus and GloVe, and the boot logged `⛔ FATAL — GloVe 300d could not be loaded` → `Language subsystem init FAILED`. I read `build=fec05e56` plus a climbing uptime as success and **never opened the boot log**, hours after the dashboard `$` bug taught exactly that lesson.
+> 3. **"It's a crash loop"** — it was not. `activeEnter` unchanged, `exitStatus 0`, `result success`. I went grinding → crash-loop → grinding across three messages. **`ActiveEnterTimestamp` settled it in one field and nothing was reading it** — now fixed in `KEYGRANT.3`.
+>
+> ---
+>
+> ## 🔴🔴 2026-09-04 THE PRESS RAN — AND THE BOX CANNOT REACH THE DATA REPO
 >
 > ### ⛔ STATE — DO NOT PRESS, DO NOT RESTART
 > ```
