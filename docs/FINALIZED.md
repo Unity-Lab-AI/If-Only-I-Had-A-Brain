@@ -37,6 +37,45 @@ Gee, verbatim, and this question is the reason half of this row did not ship:
 
 ---
 
+## 2026-09-03 — `SPELLTRUTH.5` — SHE LEARNS WHAT A LETTER LOOKS LIKE, AND THE TYPESET CAPTION IS DELETED
+
+Gee's option ③, and then: *"if there is that old auto text stuff gut it — that prints in her minds eye"*.
+
+**⛔⛔ THE STARTING POINT WAS WORSE THAN "SHE USES A FONT".** `renderLetterTemplate` in `visual-cortex.js` — the one thing in the system named as her visual template for a letter — is a **trig hash of the codepoint**. A deterministic 48-dim signature, uncorrelated between letters, with **nothing to do with a letter's shape**. She could tell `a` from `b` as tokens and **had never seen what either one looks like**, anywhere, in any sense. `SPELLTRUTH.1` found the caption was a font stamp; this is the same hole from the other side.
+
+**⭐ THE PIPELINE IS HOW A CHILD ACTUALLY DOES IT, and every step already existed:**
+
+```
+  glyphStrokes(ch)   the PRINTED letter — the one on the page, the world's letterform
+  sketch(...)        she LOOKS at it, and gets a field back
+  traceLineArt(rec)  HER trace of what she saw — a bounded read over real pixels
+  store letter:<ch>  banked in the ordinary visual store, like any other shape
+```
+
+Writing then composes from **her** traces. ⭐ **The result is visibly not the font** — her letters come out hollow and outlined, because an edge trace follows a glyph's boundary rather than its centreline. That is what she actually extracted, and it is the point: *"her own trained hand"* is now a description.
+
+**⛔ THE TYPESET CAPTION IS DELETED, NOT PARKED.** A `DREAM_LABEL_FONT` opt-in was written and then **removed on instruction** — a flag that restores the lie is still the lie, one boot away. The 28-line monospaced layout that returned `glyphStrokes(label, …)` is gone from the file, not renamed to a tombstone: **today already produced the lesson that a reader for a record nobody creates is a dead branch wearing the look of a feature.** `glyphStrokes` survives for exactly one job — rendering the printed letter she looks at.
+
+**⛔ NO FALLBACK, AND A PARTIAL WORD IS REFUSED TOO.** A letter she has not learned is not written. If she cannot write the whole label, nothing is written — because stamping the missing letters from the font would put a perfect glyph she never learned beside one she did, which is the original defect exactly. Early in a walk she writes nothing, and **the caption becomes evidence of what she has been taught** instead of decoration that is always perfect. Counted at `_labelHand`, so an absent caption is distinguishable from a rendering failure.
+
+**Learned in ELA-K Phase 1b**, right after the alphabet is taught as sound and motor — 26 letters traced and banked, once per walk, off the critical path, with the failure count reported because a letter she could not trace is a letter she will not be able to write.
+
+**Verified by rendering and LOOKING, three times:**
+
+```
+  26/26 letters traced · per-letter stroke counts and aspects differ (i 0.46, n 0.75)
+  "unity"          wrote 5  skipped 0
+  "zebra"          wrote 0  skipped 5   <- unlearned letters skipped, never stamped
+  "electromagnet"  width 0.92, drawn x 0.04-0.95, legible
+```
+
+⚠⚠ **THREE BUGS, ALL FOUND BY RUNNING IT, AND ALL THE SAME FAMILY — assuming a data shape instead of reading it.**
+- **A trace point is `[x, y]`, not `{x, y}`.** I read `p.x`/`p.y`, got `undefined`, every bounding box stayed at `Infinity` — so **all 26 letters "traced successfully" and normalised to zero strokes.** The trace lane and the stroke lane genuinely use different point shapes.
+- **`_normaliseLetterStrokes` returned two different shapes** — `{strokes, aspect}` on success and a bare `[]` on the degenerate case, so a caller reading `.strokes.strokes` threw **on the failure path only**, the path least likely to be exercised before shipping.
+- **The auto-fit scaled letter widths and not the gaps**, so a long word rendered WIDER than the width the same function had just reported — measured 0.92, drawn past 1.0. ⚠ This is the operator's own earlier bug (*"the last few letters of longer words are always being cut off"*) reappearing in new code, which is why the fit is measured against her individual letter widths rather than a fixed advance per character.
+
+---
+
 ## 2026-09-03 — `EXAMGATE` — THE OPERATOR'S QUESTION CAUGHT A WALK-BLOCKER I WAS ABOUT TO SHIP
 
 Gee: **"remember exams dont stop her from going to next grade, right?"**

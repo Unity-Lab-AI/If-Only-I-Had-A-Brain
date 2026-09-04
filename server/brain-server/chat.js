@@ -4266,35 +4266,91 @@ const SERVER_CHAT_MIXIN = {
   // composeFields all bake them in — never a separate overlay layer). Clean trained
   // hand + dynamic dazzle style (see _labelStyle). Returns styled glyph strokes.
   _labelStrokes(key) {
-    if (!key || !this.mindSpace || typeof this.mindSpace.glyphStrokes !== 'function') return [];
-    // FULL WORD, AUTO-FIT (Gee 2026-07-16: "the last few letters of longer words
-    // are always being cut off") — no more 10-char slice: the glyph size SHRINKS
-    // so the whole word always fits the available width. Never truncated.
-    const label = String(key).slice(0, 14);
-    const st = (typeof this._labelStyle === 'function') ? this._labelStyle(key) : { colors: [[222, 220, 226]], size: 0.075, anchor: 'bottom-center', silhouette: [16, 14, 20] };
-    const wideK = st.font === 'wide' ? 1.35 : st.font === 'tall' ? 0.8 : 1;
-    const advPerChar = (5 / 7) * wideK * 1.35;   // glyph advance per char, in units of `size` (mirrors glyphStrokes)
-    const MARGIN = 0.04;
-    const availW = 1 - 2 * MARGIN - (st.slant ? 0.05 : 0);
-    let size = st.size;
-    if (label.length * advPerChar * size > availW) size = availW / (label.length * advPerChar);
-    size = Math.max(0.032, size);
-    const wordW = label.length * advPerChar * size;
-    const ghK = st.font === 'tall' ? 1.3 : 1;
-    const wordH = size * ghK * (st.underline ? 1.2 : 1.05);
-    // VARIED PLACEMENT — anchor from the style seed, not a fixed bottom banner.
-    let x, y;
-    switch (st.anchor) {
-      case 'top-left':     x = MARGIN; y = MARGIN + 0.015; break;
-      case 'top-right':    x = 1 - MARGIN - wordW; y = MARGIN + 0.015; break;
-      case 'top-center':   x = 0.5 - wordW / 2; y = MARGIN + 0.015; break;
-      case 'bottom-left':  x = MARGIN; y = 1 - MARGIN - wordH; break;
-      case 'bottom-right': x = 1 - MARGIN - wordW; y = 1 - MARGIN - wordH; break;
-      default:             x = 0.5 - wordW / 2; y = 1 - MARGIN - wordH; break;   // bottom-center
+    // ⚠ The guard no longer asks for `glyphStrokes` — this function stopped
+    // calling it. A leftover guard on a dependency that is gone reads as if the
+    // dependency still matters, and would silently disable her handwriting on
+    // any build where the glyph lane were removed.
+    if (!key) return [];
+
+    // ── HER OWN HAND FIRST, AND IT IS NOT A STYLE CHOICE ────────────────────
+    //
+    // Every letter she has actually LEARNED — looked at as a printed shape,
+    // traced, and banked under `letter:<ch>` — is written from her own trace.
+    // This is what turns the comment above from a correction back into a
+    // description: when she has the alphabet, the words on her drawings really
+    // are in her hand.
+    //
+    // ⛔ NO MIXING AND NO SUBSTITUTION. If she can write the whole label from
+    // learned letters, she writes it. If she cannot write ANY of it, nothing is
+    // written — the caption is simply absent, which is the honest state for a
+    // mind that has not been taught to write yet. A partial word is refused too:
+    // stamping the missing letters from the font would put a perfect glyph she
+    // has never learned next to one she has, and that is exactly the lie this
+    // whole thread started with.
+    //
+    // ⛔⛔ THE TYPESET CAPTION IS GONE, AND THERE IS NO SWITCH TO BRING IT BACK.
+    // Operator: *"if there is that old auto text stuff gut it — that prints in
+    // her minds eye"*. It was the mechanism that put perfectly-spelled words on
+    // a pre-K drawing and made the code claim a hand she did not have. An env
+    // opt-in was written and then removed on that instruction: a flag that
+    // restores the lie is still the lie, one boot away.
+    //
+    // What is left is only her own hand. `glyphStrokes` survives ELSEWHERE and
+    // for one purpose — rendering the PRINTED letter she looks at in order to
+    // learn its shape. That is the letter in the world, not a caption.
+    if (typeof this.handwrittenStrokes !== 'function') return [];
+    try {
+      const st = (typeof this._labelStyle === 'function') ? this._labelStyle(key)
+        : { size: 0.075, anchor: 'bottom-center' };
+      const size = Math.max(0.032, st.size || 0.075);
+      const MARGIN = 0.04;
+      // Measured first so the anchor can be applied to HER width — her letters
+      // have individual widths, so the word's extent is not a function of its
+      // character count the way a monospaced stamp's was.
+      const probe = this.handwrittenStrokes(String(key).slice(0, 14), { size, x: 0, y: 0 });
+      if (!probe || probe.wrote === 0 || probe.skipped > 0) {
+        // ⚠ Counted, never silent. A caption that is absent because she cannot
+        // yet write those letters is a FACT about her training, and a reader has
+        // to be able to tell it from a rendering failure. A PARTIAL word is
+        // refused too: stamping the letters she lacks would put a glyph she
+        // never learned beside one she did, which is the original defect exactly.
+        this._labelHand = { wrote: probe ? probe.wrote : 0, skipped: probe ? probe.skipped : 0, refused: true, at: Date.now() };
+        return [];
+      }
+      const wordW = probe.width || 0;
+      const wordH = size * 1.05;
+      let x, y;
+      switch (st.anchor) {
+        case 'top-left':     x = MARGIN; y = MARGIN + 0.015; break;
+        case 'top-right':    x = 1 - MARGIN - wordW; y = MARGIN + 0.015; break;
+        case 'top-center':   x = 0.5 - wordW / 2; y = MARGIN + 0.015; break;
+        case 'bottom-left':  x = MARGIN; y = 1 - MARGIN - wordH; break;
+        case 'bottom-right': x = 1 - MARGIN - wordW; y = 1 - MARGIN - wordH; break;
+        default:             x = 0.5 - wordW / 2; y = 1 - MARGIN - wordH; break;
+      }
+      x = Math.max(0.012, Math.min(x, Math.max(0.012, 1 - MARGIN - wordW)));
+      const hand = this.handwrittenStrokes(String(key).slice(0, 14), { size, x, y, rgb: (st.colors && st.colors[0]) || [226, 224, 230] });
+      this._labelHand = { wrote: hand.wrote, skipped: hand.skipped, at: Date.now() };
+      return hand.strokes;
+    } catch {
+      // ⛔ Nothing rather than a font. A failure here means no caption, which is
+      // honest; falling back to typeset text would resurrect the exact claim
+      // this whole change exists to remove.
+      return [];
     }
-    x = Math.max(0.012, Math.min(x, 1 - MARGIN - wordW));
-    return this.mindSpace.glyphStrokes(label, { x, y, size, font: st.font, colors: st.colors, bold: st.bold, slant: st.slant, underline: st.underline, silhouette: st.silhouette, highlight: st.highlight }) || [];
   },
+
+  // ⛔⛔ THE TYPESET CAPTION BUILDER IS DELETED, NOT PARKED. It computed a
+  // monospaced layout and returned `glyphStrokes(label, …)` — the auto-text that
+  // printed a perfect word on her mind's eye. Operator: *"if there is that old
+  // auto text stuff gut it"*. It is not kept behind a flag and it is not kept as
+  // a renamed tombstone: today already produced the lesson that a reader for a
+  // record nobody creates is a dead branch wearing the look of a feature, and a
+  // caption path nobody calls would be the same thing with a worse failure mode.
+  // The layout logic it owned — auto-fit and anchored placement — lives on in
+  // `_labelStrokes` and in `handwrittenStrokes`, measured against HER letter
+  // widths instead of a fixed advance per character.
+  // (the 28-line typeset layout that stood here is gone — see above)
 
   // _stylizeStrokes — REMOVED (Gee 2026-07-15). It recolored EACH traced stroke a
   // hash-random goth warm/cool hue — that per-stroke rainbow WAS the "jumbled pile
