@@ -218,6 +218,88 @@ const BOOKS = [
     linkRe: /href="(\/2e\/chapter[0-9]+\/)"/gi,
     subject: 'major', grade: 'college4',
   },
+
+  // ══ SECOND BOOKS, ADDED 2026-09-04 ═══════════════════════════════════════
+  //
+  // ⛔ THE MEASUREMENT THAT PROVOKED THESE, AND IT CORRECTED THIS ROW'S OWN
+  // PREMISE. Every `cstheory` and `major` cell ALREADY HAD A BOOK — the board
+  // read them as starved and the real state was "fed once". Measured against the
+  // 330,000-word college floor:
+  //
+  //     cstheory college1 147,567   college2 116,840   college3 247,033   college4 155,686
+  //     major    college1 124,402   college2 249,080   college3 194,817   college4 237,406
+  //
+  // **One book is not a college year.** So the fix is not a new host and not a
+  // new lane — it is a SECOND book in the cells that own the debt. Together
+  // `cstheory` and `major` are 1,167,169 of the 1,999,649 words still owed
+  // across the whole corpus: 58% of the remaining debt in two subjects.
+  //
+  // ⭐ EVERY FIELD BELOW WAS READ OFF THE LIVE PAGE, because a wrong `linkRe`
+  // yields zero sentences and reports success — the failure this file has taken
+  // twice already (Composing Programs' `../`, Open Data Structures' one-level-
+  // down sections). The index of each book was fetched, its local hrefs
+  // extracted, and the pattern derived from the actual link shapes.
+  //
+  // ⛔ AND THE LICENCE WAS READ AS A LINK, NOT AS PROSE. `creativecommons.org/
+  // licenses/<slug>` is unambiguous; the phrase "Creative Commons license" in a
+  // paragraph is not, and cannot tell NoDerivatives from anything else.
+  //     Think Python 2e       by-nc 3.0      (on the WP landing page, NOT the html index)
+  //     Think Complexity 2e   by-nc-sa 4.0   (on the WP landing page, NOT the html index)
+  //     Think OS              by-nc-sa 4.0   (on the html index)
+  //     Think Stats 2e        by-nc-sa 4.0   (on the html index)
+  //     Think Bayes           by-nc-sa 4.0   (on the html index)
+  //
+  // ⛔ REFUSED IN THE SAME PASS, RECORDED SO NOBODY RE-WALKS IT:
+  //     Think Data Structures — its page claims "a Creative Commons license" in
+  //     prose and publishes NO machine-readable licence link anywhere. ND status
+  //     is therefore unverifiable, and this corpus republishes a cleaned,
+  //     excerpted adaptation. **An unverifiable licence is a refusal, not a
+  //     rounding error** — one 19-chapter book is not worth an unchecked claim.
+  //     Erickson's *Algorithms* (CC-BY 4.0, genuinely usable) is PDF-only: its
+  //     index carries two HTML links total, so there is no chapter walk to do.
+  {
+    label: 'Think Python (2nd edition)',
+    base: 'https://greenteapress.com/thinkpython2/html/',
+    index: 'index.html',
+    // ⚠ The html index carries NO licence link at all. The declaration lives on
+    // the book's landing page — the same shape as Think Java above, and the
+    // exact case this file's header records as "the best of the set".
+    licenceUrl: 'https://greenteapress.com/wp/think-python-2e/',   // CC BY-NC 3.0, read as a link
+    linkRe: /href="(thinkpython2[0-9]+\.html)"/gi,
+    subject: 'major', grade: 'college1',       // beside Composing Programs
+  },
+  {
+    label: 'Think Complexity (2nd edition)',
+    base: 'https://greenteapress.com/complexity2/html/',
+    index: 'index.html',
+    licenceUrl: 'https://greenteapress.com/wp/think-complexity-2e/',   // CC BY-NC-SA 4.0, read as a link
+    linkRe: /href="(thinkcomplexity2[0-9]+\.html)"/gi,
+    subject: 'cstheory', grade: 'college4',    // Advanced Algorithms — complexity is the course
+  },
+  {
+    label: 'Think OS',
+    base: 'https://greenteapress.com/thinkos/html/',
+    index: 'index.html',
+    licenceUrl: 'https://greenteapress.com/thinkos/html/index.html',   // CC BY-NC-SA 4.0, on the index
+    linkRe: /href="(thinkos[0-9]+\.html)"/gi,
+    subject: 'cssystems', grade: 'college3',   // Operating Systems — an exact course match
+  },
+  {
+    label: 'Think Stats (2nd edition)',
+    base: 'https://greenteapress.com/thinkstats2/html/',
+    index: 'index.html',
+    licenceUrl: 'https://greenteapress.com/thinkstats2/html/index.html',   // CC BY-NC-SA 4.0, on the index
+    linkRe: /href="(thinkstats2[0-9]+\.html)"/gi,
+    subject: 'major', grade: 'college2',
+  },
+  {
+    label: 'Think Bayes',
+    base: 'https://greenteapress.com/thinkbayes/html/',
+    index: 'index.html',
+    licenceUrl: 'https://greenteapress.com/thinkbayes/html/index.html',   // CC BY-NC-SA 4.0, on the index
+    linkRe: /href="(thinkbayes[0-9]+\.html)"/gi,
+    subject: 'major', grade: 'college3',
+  },
 ];
 
 async function fetchText(url, ms = 25000) {
