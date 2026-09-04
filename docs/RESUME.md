@@ -57,8 +57,14 @@
 > **Rulings taken:** *"Auto-apply, but loudly"* and *"Allowed like any other knob"* on the gate knobs. ⚠ **They compose better than the second option's own text implied** — no block, but a gate knob carrying a default is still **named at every boot**.
 > **Safeties** run **at the press, not off the 30 s poll** — a 30-second-old "no save running" is a guess with a timestamp.
 >
+> ### ⏳ `CURVEDEPTH.12` — PROGRESSED, AND ITS PREMISE WAS WRONG TWICE
+> ⭐ **The lane it asks for was already built** (`fetch-saylor-corpora.mjs`), and its header already records the second host **refused with evidence** (UMN's Pressbooks REST returns `[]`, nav is client-side).
+> ⛔⛔ **And every `cstheory`/`major` cell ALREADY HAD A BOOK** — the board read them as starved; the truth was **fed once**, 31-48 entries each. **One book is not a college year against a 330,000-word floor.** So the fix was a **SECOND book**, not a new host.
+> **Five added** (Think Python 2e · Think Complexity 2e · Think OS · Think Stats 2e · Think Bayes), **every pattern and every licence read off the LIVE page first** — 84 chapters verified, real prose on every first page — because a wrong `linkRe` yields zero and **reports success**. **Licence read as a LINK, never as prose**: *"Creative Commons license"* in a paragraph cannot tell ND from anything else.
+> **Owed 1,999,649 → 1,796,637 · `major` 514,295 → 373,432.** BrainWaves `140342d1`, **0 deletions, 26,359 fields verified intact.**
+> ⏳ **`cstheory` 612,443 is now the largest single debt left**, in `college2` (213,160) and `college1` (182,433). They want **discrete maths / algorithms / theory-of-computation** texts; the strongest candidate (Barak) is **CC-BY-NC-ND** and refused.
+>
 > ### NEXT — in order
-> - **`CURVEDEPTH.12`** — `cstheory` (653,525) and `major` (514,969), **1.17M of the remaining 1.90M owed**, via the hand-curated CS book list. No Wikipedia lane reaches either, and a wrong `linkRe` fails **silently** here, so every field must be READ off the live page.
 > - **`PREWALK.1`** — the obvious-regression sweep, which has to happen *before* the press.
 > - **`NOFALLBACK.5`** — the RE-PRICE, immediately before the press, by law.
 > - **`CURVEDEPTH.12`** — `cstheory` and `major`, the last big corpus blocks, via the hand-curated CS book list (every field must be READ off the live page; a wrong `linkRe` fails **silently** here).
