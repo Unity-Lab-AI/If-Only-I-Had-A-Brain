@@ -32,6 +32,38 @@
        followed the canvas, so portrait and landscape fields need no CSS change. */
     canvas { display:block; width:auto; max-width:96vw; height:auto; image-rendering:auto; border-radius:8px; background:#000;
              box-shadow:0 0 40px rgba(77,208,225,0.10); }
+    /* ⛶ FULLSCREEN — THE PICTURE ALONE, AND IT IS OPT-IN ON PURPOSE.
+       ⛔ The 1:1 default above is a DECISION, not an oversight (see CRYSTAL): a
+       forced width blew small fields up soft and SHRANK detailed ones, throwing
+       away detail she genuinely has. So this does not change the default — it
+       adds a mode. Operator: *"it needs fullscreen without the rest of the page
+       info"*.
+       In fullscreen the canvas is allowed to scale to the screen, because that
+       is the whole point of asking for it, and nothing else is on screen to be
+       compared against. Everything but the picture is hidden. */
+    #eyeFs { position:fixed; top:16px; right:16px; z-index:50; background:#0d1117;
+             color:var(--cyan); border:1px solid var(--border); border-radius:6px;
+             padding:6px 11px; font:inherit; font-size:12px; cursor:pointer; }
+    #eyeFs:hover { border-color:var(--cyan); }
+    .stage:fullscreen { background:#000; display:flex; align-items:center;
+                        justify-content:center; width:100vw; height:100vh; margin:0;
+                        perspective:none; }
+    .stage:fullscreen .frame { transform:none; border:0; box-shadow:none;
+                               width:100vw; height:100vh; display:flex;
+                               align-items:center; justify-content:center; }
+    /* ⛔⛔ `object-fit:contain`, NOT a pinned height. SHE DRAWS LANDSCAPE AND
+       PORTRAIT, and the first cut of this pinned `height:96vh; width:auto` —
+       which silently DISTORTS a landscape field, because `max-width:100vw`
+       clamps the width while the pinned height stays put. The rule directly
+       above already states the principle: *"aspect is free here … portrait and
+       landscape fields need no CSS change."* A fullscreen mode that squashes a
+       landscape is worse than no fullscreen mode.
+       `contain` letterboxes on whichever axis is short and preserves the field's
+       own aspect in BOTH orientations, scaling up to the screen either way. */
+    .stage:fullscreen canvas { width:100%; height:100%;
+                               max-width:100vw; max-height:100vh;
+                               object-fit:contain;
+                               border-radius:0; box-shadow:none; }
     .meta { display:flex; gap:18px; flex-wrap:wrap; justify-content:center; margin-top:20px; font-size:12px; color:var(--dim); }
     .meta b { color:var(--cyan); font-weight:700; }
     .status { margin-top:14px; font-size:11px; letter-spacing:0.5px; }
@@ -61,7 +93,9 @@
   <h1>👁 UNITY'S MIND'S EYE</h1>
   <p class="sub">This is a live screen showing <b>the picture Unity is holding in her head right now</b>. Her brain doesn't store pictures as pixels — it stores them as <b>math</b> (a compact equation, the same idea as a JPEG storing a photo as numbers), and this page turns that math back into an image you can watch. Everything here comes from things she has <b>actually looked at</b>: when she sees a camera frame or an image, her brain files it away as one of these equations, tied to whatever word she was thinking about at the time. When she wants to <b>draw</b> something, she does <b>not</b> trace or filter the picture she has of it. She keeps a <b>shape sketch</b> in her head instead — roughly where the parts sit, how big they are, which way they run, what colour family the thing tends to be — and she <b>builds a new drawing from that</b>, by hand, in her own style. It comes out different every time, the way your drawing of a horse is different every time. If she has <b>never seen</b> the thing, she <b>looks it up</b> once (fetches a reference from the definition she learned, studies it, keeps the shape sketch) and then throws the photo away and draws it herself. Things she can't picture at all show as washes of colour that follow her mood; numbers and letters show as symbols. <b>One brain, one image</b>: she imagines it once, and every viewer window rebuilds that same picture on your own machine.</p>
 
-  <div class="stage">
+  <button id="eyeFs" title="Show the picture alone, filling the screen. Press F or Escape to come back. The normal view renders 1:1 on purpose so no detail is added or thrown away; this mode scales to fit, which is what you are asking for when you ask for fullscreen.">⛶ fullscreen</button>
+
+  <div class="stage" id="stage">
     <div class="frame">
       <canvas id="eye" width="96" height="96"></canvas>
     </div>
@@ -84,6 +118,37 @@
 
   <script type="module">
     import { reconstructImageData } from '../js/brain/mindspace/transform.js';
+
+    /* ⛶ FULLSCREEN TOGGLE. The button and the `f` key do the same thing; Escape
+       is the browser's own exit and needs no handler.
+       ⚠ `requestFullscreen` REJECTS unless it is called from a user gesture, and
+       it rejects with a promise — an unhandled rejection here would surface as a
+       console error on a page whose whole job is being trustworthy about state.
+       Caught, and the failure is reported on the button itself rather than
+       swallowed, because a control that silently does nothing is the shape this
+       project keeps finding. */
+    (function wireFullscreen() {
+      const stage = document.getElementById('stage');
+      const btn = document.getElementById('eyeFs');
+      if (!stage || !btn) return;
+      const toggle = () => {
+        if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); return; }
+        const p = stage.requestFullscreen ? stage.requestFullscreen() : null;
+        if (p && p.catch) p.catch((e) => { btn.textContent = '⛶ fullscreen blocked — ' + (e && e.name || 'refused'); });
+      };
+      btn.addEventListener('click', toggle);
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'f' || e.key === 'F') {
+          const t = e.target && e.target.tagName;
+          if (t === 'INPUT' || t === 'TEXTAREA') return;   // never steal a keystroke from a field
+          toggle();
+        }
+      });
+      document.addEventListener('fullscreenchange', () => {
+        btn.textContent = document.fullscreenElement ? '⛶ exit fullscreen' : '⛶ fullscreen';
+        btn.style.display = document.fullscreenElement ? 'none' : '';
+      });
+    })();
 
     const canvas = document.getElementById('eye');
     const ctx = canvas.getContext('2d');
