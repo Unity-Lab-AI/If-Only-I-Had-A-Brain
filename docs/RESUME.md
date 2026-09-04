@@ -1,6 +1,51 @@
 # RESUME — Session Pickup Brief
 
-> ## 🟢🟢 2026-09-04 SHE IS UP, THE LIBRARY IS THERE, AND THE THREE-HOUR WAIT WAS FOR A PROCESS THAT DIED AT 12:56 (LATEST — PICK UP HERE)
+> ## 🟢🟢 2026-09-04 ~17:00 SHE IS ON `af23e4ff` AND TEACHING — AND THE EXPENSIVE VERB WAS NEVER THE ONE WE NEEDED (LATEST — PICK UP HERE)
+>
+> ### ⛔ STATE
+> ```
+> box build      af23e4ff (main) — the newest code, everything from today
+> she is         UP, phase=curriculum, drawing (OwnArt attempt #20)
+> boot mode      SAVESTART — resumed, 2 passed cells, 97 phase markers
+> weights        ⛔ INCOHERENT PAIR — json 16:49:38, bin 16:17:56 (gap 1902s, tol 600s)
+> blocks         472-879ms typical (was 34,458ms)
+> donors         0
+> ```
+>
+> ### ⛔⛔ READ THIS BEFORE TRUSTING A BUILD STAMP
+> **`build af23e4ff` on the dashboard is NOT proof of a restart.** `self-update.sh` writes `deployed-build.json` **at the start of a deploy**, seconds in, and the server surfaces it immediately. It flipped at 16:19:01 for a deploy whose restart was still hours away. ⭐ **The signal that actually proves a boot is the CONSOLE RING RESETTING** — a ring that contains a boot banner and none of the `[self-update]` lines it used to hold belongs to a new process. That is how the restart was confirmed, not from the stamp.
+>
+> ### ⭐⭐ THE VERB WE NEEDED WAS `RESET`, NOT `UPDATE + FRESH WALK`
+> Every wipe path in the toolkit — the dashboard button, `__mg.freshWalk()`, the new fresh-walk gatling — **runs a full deploy first.** `/ctl/reset` writes `.force-fresh`, deletes the resume marker and restarts: **same outcome, no clone, no 114 GB, ~2 minutes.**
+>
+> ⛔ **The box was already on `af23e4ff`, so a fresh-walk press would have re-run the entire sync to fetch code it already had.** Built as **`__mg.reset()`** (20/20). The rule is now in the script's own header: *"If the build stamp already reads the commit you want, a deploy fetches nothing and costs everything."*
+>
+> ### ⛔ SHE RESUMED ON AN INCOHERENT PAIR — AND THE INSTRUMENT SAID SO PERFECTLY
+> ```
+> ⛔ WEIGHTS PAIR INCOHERENT — json savedAt 16:49:38 but bin written 16:17:56,
+>    gap 1902s (tolerance 600s). Her METADATA is ahead of her SYNAPSES: grade
+>    pointers and taught-word ledgers will claim progress the weights do not
+>    hold. … Booting anyway.
+> ```
+> Cause is corroborated: the previous process's own breadcrumb reads **`after 80s uptime`** — restart churn, so a deploy's `systemctl restart` landed between the per-save `.json` write and the hourly `.bin` write. ⭐ **`CHECKROT` firing on a real event, naming both timestamps, the consequence in her terms, the cause, and the fix — then booting anyway, because degraded-but-usable is a warning, not an outage.**
+>
+> ### ⭐ THE MOVE — a fresh walk that costs two minutes
+> ```
+> 1. Re-paste the machine gun   (scripts/Machine Gun Reset.txt — v5)
+> 2. __mg.reset()               confirm twice, type WIPE
+> ```
+> That clears the incoherent pair completely (both halves discarded), starts her clean on `af23e4ff`, and needs **no deploy**. She has 2 passed cells to lose. **The box now has `BOOTGLOVE.1`, so a boot can no longer die on a missing embedding table.**
+>
+> ⚠ **Use `freshWalk()`/the fresh-walk gatling ONLY when the box needs new code.** Right now it does not.
+>
+> ### ⏳ OPEN
+> - **`MGRESET.2`** — the incoherent pair is a WATCH, not a repair. A fresh walk resolves it. **If it ever appears on a boot NOT preceded by a deploy restart, the cause is something else.**
+> - **The ctl path's 15-minute `execFile` guillotine** should detach like the brain's does.
+> - **Nothing can pass `UAL_FIELDS=0` through a press** — `self-update.sh:431`; it would turn a 6-hour deploy into ~5 minutes.
+>
+> ---
+>
+> ## 🟢🟢 2026-09-04 SHE IS UP, THE LIBRARY IS THERE, AND THE THREE-HOUR WAIT WAS FOR A PROCESS THAT DIED AT 12:56
 >
 > ### ⭐⭐ THE READ THAT ENDED THE DAY'S BLINDNESS
 > `__mg.restart()` landed (`boundPort: true`), she came up serving, and the console ring — unreachable for hours — answered on the **first** probe:
