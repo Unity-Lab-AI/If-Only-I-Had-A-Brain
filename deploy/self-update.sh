@@ -293,8 +293,14 @@ else
     if [ "$_want_fields" = "1" ]; then ( cd "$FTMP/bw" && git lfs pull >> "$LOG" 2>&1 );
     else ( cd "$FTMP/bw" && git lfs pull -I 'corpora/**' >> "$LOG" 2>&1 ); fi
   }
-  if git clone --depth 1 --branch main --filter=blob:none "$DATA_REMOTE" "$FTMP/bw" >> "$LOG" 2>&1 \
-     && _lfs_pull; then
+  # ⛔⛔ THE CLONE GATES THE BOOKS; THE LFS PULL GATES ONLY THE FIELDS.
+  # These were ONE condition — `if git clone … && _lfs_pull; then` — which made
+  # the corpus hostage to the field payload. ANY lfs failure (a missing object on
+  # the server, a dropped connection, a full disk) skipped the books rsync as
+  # well and dropped straight through to the books gate, aborting a press over a
+  # payload this block's own comment calls non-fatal four paragraphs above.
+  # ⭐ The dependency graph is: clone ⟹ books. lfs pull ⟹ fields. Nothing else.
+  if git clone --depth 1 --branch main --filter=blob:none "$DATA_REMOTE" "$FTMP/bw" >> "$LOG" 2>&1; then
     mkdir -p "$FIELDS_DIR" "$CORPORA_DIR"
     # THE BOOKS FIRST — this is the half the walk cannot run without.
     # --delete so a cell removed upstream disappears here too; this directory is
@@ -312,7 +318,14 @@ else
     # source directory is a tree of un-smudged pointers or absent entirely, and a
     # mirroring rsync would DELETE every field already on the box — turning "skip
     # a download" into "destroy the store". The skip path does not rsync at all.
-    if [ "$_want_fields" != "1" ]; then
+    # ⛔ THE PULL RUNS HERE, AFTER THE BOOKS ARE ALREADY ON DISK, so a failure
+    # costs exactly what it should and nothing more. Its own log line has to say
+    # that out loud — a bare "lfs pull failed" beside an aborted press is what
+    # sends someone hunting the corpus for a problem that was never in it.
+    if ! _lfs_pull; then
+      _fkept="$(find "$FIELDS_DIR" \( -name '*.field.json' -o -name '*.field.json.gz' \) 2>/dev/null | wc -l | tr -d ' ')"
+      log "WARN — git lfs pull FAILED (missing object, dropped connection or disk). ${_fkept} fields already on the box are LEFT UNTOUCHED and every figure without one is transformed live, which is the path that always existed. ⭐ THE BOOKS ABOVE ARE UNAFFECTED — they are plain git blobs and landed with the clone. This does not block the press."
+    elif [ "$_want_fields" != "1" ]; then
       _fkept="$(find "$FIELDS_DIR" \( -name '*.field.json' -o -name '*.field.json.gz' \) 2>/dev/null | wc -l | tr -d ' ')"
       # ⚠ THE REASON IS NAMED. "UAL_FIELDS=0" and "this box has no git-lfs" are
       # different facts with different fixes, and a log line that reports the
@@ -334,7 +347,7 @@ else
       log "WARN — field rsync failed; keeping whatever was already on disk (live transform covers the rest)."
     fi
   else
-    log "WARN — data clone/lfs-pull failed; keeping whatever books and fields are already on disk."
+    log "WARN — the data-repo CLONE failed (not the lfs pull, which is reported separately above when it is the problem); keeping whatever books and fields are already on disk. If the box has no corpus at all, the books gate below will abort the press rather than restart her into an empty library."
   fi
   rm -rf "$FTMP"
 fi
