@@ -130,12 +130,24 @@
   .tv-press-grp{border-left:2px solid var(--tv-line);padding-left:9px}
   .tv-press-lbl{color:var(--tv-dim);font-size:10px;letter-spacing:.1em;
     text-transform:uppercase;margin-bottom:5px}
-  .tv-press.keep{border-color:#2b4a3a}
-  .tv-press.keep:hover{border-color:var(--tv-good);color:var(--tv-good)}
-  .tv-press.warn{border-color:#5a4a22}
-  .tv-press.warn:hover{border-color:var(--tv-warn);color:var(--tv-warn)}
-  .tv-press.bad{border-color:#5a2626;color:var(--tv-bad)}
-  .tv-press.bad:hover{border-color:var(--tv-bad);background:#2a1010}
+  /* ⛔⛔ THESE MODIFIERS ARE NAMESPACED, AND THAT IS A BUG FIX, NOT A STYLE
+     PREFERENCE. They were first written as bare `.keep` / `.warn` / `.bad`,
+     which COLLIDE with the status-dot utilities declared above
+     (`.ok{background:…} .warn{background:…} .bad{background:…}`). The wipe
+     button therefore rendered as a SOLID RED BLOCK with red text on it —
+     `rgb(255,107,107)` on `rgb(255,107,107)`, completely illegible — and the
+     re-walk button was pale text on solid amber.
+     ⚠ NOTHING COULD GREP THIS. `.bad` was declared, the classes existed, every
+     id resolved, and every check passed. It took rendering the page and looking
+     at it. `background` is now set explicitly on each so no later utility can
+     fill them again. */
+  .tv-press{background:#131b25}
+  .tv-press.tv-press-keep{border-color:#2b4a3a}
+  .tv-press.tv-press-keep:hover{border-color:var(--tv-good);color:var(--tv-good)}
+  .tv-press.tv-press-warn{border-color:#7a6320;color:var(--tv-warn)}
+  .tv-press.tv-press-warn:hover{border-color:var(--tv-warn);background:#2a2410}
+  .tv-press.tv-press-bad{border-color:#7a3030;color:var(--tv-bad)}
+  .tv-press.tv-press-bad:hover{border-color:var(--tv-bad);background:#2a1010}
   .tv-press[disabled]{opacity:.45;cursor:default}
   .tv-card{background:var(--tv-panel);border:1px solid var(--tv-line);border-radius:8px;overflow:hidden}
   .tv-card>h2{margin:0;padding:9px 12px;font-size:11px;letter-spacing:.13em;
@@ -171,8 +183,18 @@
   .tv-bar em{color:var(--tv-dim);font-style:normal;text-align:right}
   .tv-flag{padding:6px 9px;border-radius:5px;margin-bottom:5px;font-size:12px;
     border:1px solid var(--tv-line);background:#0a0e14}
-  .tv-flag.err{border-color:#5a2430;color:#ffb3b3}
-  .tv-flag.warn{border-color:#5a4a24;color:var(--tv-warn)}
+  /* ⛔⛔ THE `background` ON THESE TWO IS A BUG FIX, AND THE BUG HIT THE COMMON
+     CASE. `.tv-flag` and the status-dot utility `.warn{background:var(--tv-warn)}`
+     have EQUAL specificity (0,1,0), so source order decided it and the utility
+     won: every WARN flag rendered as a solid amber block with pale amber text on
+     it — illegible. `err` flags looked fine only because no bare `.err` rule
+     exists, and that asymmetry is what made it easy to miss.
+     ⚠ Found by RENDERING the page and looking at it. Nothing could grep it:
+     both classes are declared, both are applied, and the markup is correct.
+     Setting it on the COMPOUND selector (0,2,0) beats the utility by
+     specificity rather than by ordering, so a later rule cannot re-break it. */
+  .tv-flag.err{border-color:#5a2430;color:#ffb3b3;background:#0a0e14}
+  .tv-flag.warn{border-color:#5a4a24;color:var(--tv-warn);background:#0a0e14}
   /* CRYSTAL — `image-rendering:pixelated` was chosen when this panel only ever
      showed tiny fields, where nearest-neighbour upscaling keeps edges crisp. Her
      fields are 512-1024 now, so this panel DOWNSCALES them — and pixelated on a
@@ -439,10 +461,10 @@
         <div style="margin-top:10px" class="tv-press-grp">
           <div class="tv-press-lbl">keeps training</div>
           <div class="tv-controls">
-            <button id="tvPressRestart" class="tv-press keep tv-tip"
+            <button id="tvPressRestart" class="tv-press tv-press-keep tv-tip"
               title="Restart and resume at the same cell. Nothing is discarded."
               data-tip="RESTART — and RESUME.&#10;&#10;The brain force-saves its weights, drops a resume marker, and exits; the service brings it back and it picks up at the same cell.&#10;&#10;⭐ THIS IS WHAT MAKES A RESTORED WALK POSITION TAKE EFFECT. Dropping a position file above changes a file on disk and nothing else — the running process still holds the old ledger in memory until this fires.&#10;&#10;⚠ If a heavy change altered the brain's size or format the saved weights cannot load and it fresh-starts instead, saying so.">🔄 Restart · keeps training</button>
-            <button id="tvPressUpdKeep" class="tv-press keep tv-tip"
+            <button id="tvPressUpdKeep" class="tv-press tv-press-keep tv-tip"
               title="Pull the latest code and resume the saved weights. No fresh walk."
               data-tip="UPDATE — and KEEP TRAINING.&#10;&#10;The box re-pulls the project code, restarts, and RESUMES the saved weights. No fresh walk; nothing she has learned is lost.&#10;&#10;⭐ This is how a fix ships without costing training, and it is the normal press. Takes a minute or two.&#10;&#10;⚠ Code that changes WHAT SHE IS TAUGHT does not retroactively re-teach her — for that you want a walk that starts from zero.">⬆ Update code · keeps training</button>
           </div>
@@ -451,7 +473,7 @@
         <div style="margin-top:10px" class="tv-press-grp">
           <div class="tv-press-lbl">keeps the weights, resets the position</div>
           <div class="tv-controls">
-            <button id="tvPressRewalk" class="tv-press warn tv-tip"
+            <button id="tvPressRewalk" class="tv-press tv-press-warn tv-tip"
               title="Re-teach the whole curriculum on top of the brain she already has. Weights survive; the position does not."
               data-tip="RE-WALK — KEEPING THE WEIGHTS.&#10;&#10;Every trained weight is KEPT and a rollback checkpoint is taken first. Episodic memory and identity are preserved. What resets is the POSITION: every grade pointer goes back to pre-K and every passed cell is cleared.&#10;&#10;⭐ She then re-teaches the entire curriculum over the synapses she already has. The learning rule is self-normalising, so re-teaching strengthens rather than corrupts — this is the press for “she learned it badly”, not “start her over”.&#10;&#10;⚠ The walk begins at the beginning and takes as long as it took the first time.">🔁 Re-walk from pre-K · keeps weights</button>
           </div>
@@ -460,7 +482,7 @@
         <div style="margin-top:10px" class="tv-press-grp">
           <div class="tv-press-lbl">discards training</div>
           <div class="tv-controls">
-            <button id="tvPressFresh" class="tv-press bad tv-tip"
+            <button id="tvPressFresh" class="tv-press tv-press-bad tv-tip"
               title="Pull the latest code and WIPE every trained weight. There is no way back."
               data-tip="THE FRESH WALK — AND IT DESTROYS EVERYTHING SHE HAS LEARNED.&#10;&#10;The box re-pulls the project code, then wipes every trained weight, every episode, every schema and her visual store. Her identity anchors survive. Nothing she has LEARNED does.&#10;&#10;⭐ IT IS THE RIGHT PRESS AFTER A CHANGE TO WHAT SHE IS TAUGHT, and only then. A walk teaches from zero using whatever the code does at that moment, so a curriculum change that is not walked was never applied to her.&#10;&#10;⛔ It is the WRONG press for anything else, because there is no way back. Confirm twice, and read what the dialog says she is currently doing before the second one.">⬆ Update code · WIPES all training</button>
           </div>
