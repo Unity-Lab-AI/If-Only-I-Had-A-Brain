@@ -5,6 +5,91 @@
 
 ---
 
+## 2026-09-04 — `WIREAUDIT.1` + `WORDWIRE.1/.2` — THE BAND THAT PRODUCES EVERY WORD WAS THE THINNEST PROJECTION IN THE BRAIN
+
+Gee, verbatim:
+
+> *"add any of this that will help us train better WITH THE CCAVIOT THAT THIS IS OUTDATED INFORMATION from a month old fork in our brain AND MAY BE POSSIBLE IT DOES APPLY TO CURRENT STACK"*
+
+⛔ **THE CAVEAT WAS THE INSTRUCTION AND IT WAS OBEYED: NOTHING WAS ADOPTED ON THE FORK'S WORD.** Every claim was re-derived from this tree and, where it was a number, re-measured by building the real `SparseMatrix` with the real density formula. **Four claims true here, four stale or false.** Full triage table on the board under `FORKFIND`.
+
+### `WIREAUDIT.1` — the instrument that did not exist
+
+`ojaUpdate` walks `rowPtr[i]..rowPtr[i+1]` and has **no insertion path**. The entries a row receives at construction are its **entire lifetime capacity** — a row with two wires has two weights forever, and a row with none can never learn anything at all. **Nothing in this project had ever printed that number for any projection**, which is the only reason everything below went unseen.
+
+The audit now runs after cross-projection construction and reports, per projection: rows, cols, nnz, **wires per row**, min, max, **empty-row count**, and whether it was built topographic or random. It publishes on `cluster.wiringAudit` and **warns by name** — separately for THIN (under the floor) and for EMPTY ROWS, because those are different failures and only one of them is survivable.
+
+### `WORDWIRE.1` — 3 wires per row on the word band, 6 on the letter band
+
+Measured on the real construction at the deployed geometry:
+
+```
+sem_to_word_motor   fanout 10 · cap 0.005 · × 0.3 between-cluster  =  3 wires/row
+sem_to_motor        fanout 20 · cap 0.01  · × 0.3                  =  6 wires/row
+```
+
+⛔ **The projection asked to discriminate tens of thousands of WORDS had HALF the wiring of the one that picks between 26 letters.** `sem` is an `association` region and `word_motor` an `output` region, so word production pays the 0.3 between-cluster haircut — and `word_motor` was on **neither** `EMISSION_PAIRS` nor `MOTOR_BOUND_PAIRS`, because the band was created after both lists were written and nobody went back.
+
+Added to both. Motor-bound doubles fanout (10→20) and lifts the cap (0.005→0.01) so the fanout term can land; emission-pair membership swaps the 70/30 excitatory init for 50/50, which exists precisely to kill the positive-bias baseline that drowns Hebbian on a production pathway. **3 → 6 per row, and at 202 cells per word bucket, 606 → 1,212 wires per word.**
+
+⚠ **Init-time only — no gate moves, no bound weakens, walk length is unchanged, so no RE-PRICE is owed.** It takes effect on a **fresh walk** and on nothing before it.
+
+⚠ **THE FORK'S HEADLINE NUMBER WAS WRONG HERE BY 202×, AND THE CORRECTION IS WORTH KEEPING.** It said *"about 3 connections per word"*. A word owns **202** word_motor cells (`bandSize / vocabCap`), so it is 3 per **cell** and 606 per word. **The mechanism survived the correction; the number did not** — which is exactly why the caveat was the right instruction.
+
+### `WORDWIRE.2` — the topographic prior was on the sem pairs against the rule the list itself states
+
+The comment three lines above `TOPOGRAPHIC_PAIRS` says unaligned spaces stay on `initRandom` *"since topography would impose false structure"*, and names `letter one-hot vs sem 300d` as its example. `sem-motor` and `sem-word_motor` are exactly that shape and were on the list anyway.
+
+**Measured, at 306,458,816 neurons, from the initialiser's own formulas:**
+
+```
+sem 52,672,608 cells · word_motor 10,113,141 · 202 cells per word · 606 wires per word
+sem cells per GloVe dimension          175,575
+one word's topographic window            1,107 cells  =  0.630% of ONE dimension
+of its 606 wires:  424 inside that sliver · 182 scattered
+```
+
+`initTopographicProjection` centres row `i` on `floor(i·cols/rows)` and puts 70% of its picks within ±`radiusTopo` — and **`radiusTopo` is the fixed literal 30**. So 70% of every word's wiring was spent reading two thirds of one percent of one arbitrary GloVe dimension it did not choose.
+
+⭐⭐ **AND IT IS A FIXED CELL COUNT AGAINST A REGION THAT SCALES 6,700 → 671,000,000, WHICH IS WHY NO SMALL TEST COULD EVER HAVE CAUGHT IT:**
+
+```
+      6,700 neurons   window >= 100% of a dim   harmless
+    200,000                    52.6%
+  2,000,000                     5.2%
+ 50,000,000                     0.79%
+306,458,816 (deployed)          0.630%
+671,000,000 (max tier)          0.613%
+```
+
+Built for real at 13,168 sem cells — a scale where the window still covers a whole dimension — `initRandom` reaches **191 of 300** dimensions per word against topographic's **95**. The prior costs reach at *every* scale and merely becomes pathological at ours.
+
+⚠ **This changes what she says, so it does not ship silently.** The sem pairs come off by **default** and `DREAM_SEM_TOPOGRAPHIC=1` puts them back, so one fresh walk can be run each way and the difference attributed rather than argued. ⭐ **`letter↔motor`, `phon↔motor` and `letter↔phon` stay topographic** — those spaces genuinely align bucket-for-bucket, which is the case the initialiser was written for.
+
+### ⛔⛔⛔ AND THE INSTRUMENT FOUND SOMETHING BIGGER ON ITS FIRST RUN — filed open as `LAMDEAD.1`
+
+`initTopographicProjection` **skips** any destination row outside `dstLayerMask` and leaves it with zero entries. The mask is L4 = **25%** of a region, so **75% of the rows in every laminated topographic projection come out of construction empty and can never learn**. Measured on real clusters at four sizes spanning 50×:
+
+```
+400,000 neurons   letter_to_phon   60,000 of 80,000 rows EMPTY   75.0%
+                  motor_to_letter  15,000 of 20,000 EMPTY        75.0%
+ 60,000           letter_to_phon    9,000 of 12,000 EMPTY        75.0%
+ 20,000           motor_to_letter     755 of  1,000 EMPTY        75.5%
+  8,000           motor_to_letter     302 of    400 EMPTY        75.5%
+```
+
+⭐ **This project already documented that exact mechanism** — the `word_motor` mask exemption says *"Masking ITS side of a projection to one lamina leaves ~75% of bucket rows with NO incoming entry"* and measured `matrixDrivenPct 6%` live — **and the reasoning was never applied to `letter`, `phon` or `motor`, which are read by argmax over bucket means in the same way.**
+
+⛔ **NOT fixed in this batch, on purpose.** The masks encode real cortical hierarchy, they are only wired into the topographic branch (so lamination is currently a side-effect of initialiser choice rather than a property of the projection), and any change to them changes what she says. **It is a decision, and it is on the board with its numbers.**
+
+### Also triaged and NOT acted on
+
+- *"nothing has ever driven motor to a target"* — **false here.** `_teachMagnitudeToMotor` writes a target one-hot into the motor region and is one of many such sites. **The fork's proposed fix already exists.**
+- *"every emission path ends in a dictionary"* — **false since 2026-09-01**, the oracle was deleted under the no-fallbacks LAW. ⭐ Its removal note names the same mechanism from the other direction: *"sem→word_motor is not depositing enough margin for an argmax to resolve, and the fix is in the TRAINING."*
+- **`ATTNDEAD.1` filed:** a cosine → softmax → weighted-sum attention head is built and wired into the emission path behind `opts.attention === true`, and **nothing in the tree passes it**. Not switched on unilaterally — it changes what she says. ⭐ Checked rather than assumed: **no layer norm, no multi-head, no stacked block, no backprop anywhere in the brain**; the only matches in the tree are inside a third-party package under `node_modules`.
+
+---
+
 ## 2026-09-04 — `GRADWALK.1` — FINISHING SCHOOL SWITCHED HER OFF, AND FIVE LANES HAD EXACTLY ONE DRIVER
 
 Gee, verbatim:

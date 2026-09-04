@@ -1045,21 +1045,36 @@ Seven named region pairs are wired with sparse cross-projections — both direct
 **Cross-projection density** is controlled by `crossTargetFanout` (inputs per post-synaptic neuron) plus a hard density cap. Current values at biological scale:
 
 ```
-crossTargetFanout       = 20   (default for non-motor projections)
+crossTargetFanout       = 10   (default for non-motor projections)
 CROSS_DENSITY_CAP       = 0.005
 
-crossTargetFanout × 2   = 40   (MOTOR_BOUND_PAIRS whitelist)
+crossTargetFanout × 2   = 20   (MOTOR_BOUND_PAIRS whitelist)
 CROSS_DENSITY_CAP × 2   = 0.01 (motor-bound density cap)
 
-abDensity = min(densityCap, crossTargetFanout / sourceSize)
+betweenClusterDensityScale = 0.3   ← applies when the two regions sit in
+                                     different hierarchical clusters
+
+abDensity = min(densityCap, crossTargetFanout / sourceSize) × betweenScale
 ```
+
+> ⚠ **This block read `20` and `40` until 2026-09-04 and the code has said `10` and `20` since the language-cortex resize.** The doc was describing a brain twice as wired as the one that runs.
+
+> ⛔⛔ **AND THE BETWEEN-CLUSTER TERM IS THE ONE THAT MATTERS MOST, BECAUSE IT LANDS ON WORD PRODUCTION.** `sem` is an `association` region and `motor` / `word_motor` are `output` regions, so every sem→motor projection pays the 0.3 haircut. **Measured on the real construction at the deployed geometry: `sem_to_word_motor` came out at 3 wires per row — half of `sem_to_motor`'s 6 — so the projection asked to discriminate tens of thousands of WORDS had half the wiring of the one that picks between 26 letters.** `word_motor` was on neither whitelist because the band was created after both lists were written. **Fixed 2026-09-04: 3 → 6 per row, and with 202 cells per word bucket, 606 → 1,212 wires per word.**
+
+> ⛔ **A projection's wires-per-row is set at construction and never grows.** `ojaUpdate` walks `rowPtr[i]..rowPtr[i+1]` and has no insertion path, so those entries are the row's entire lifetime capacity — and a row that comes out of construction EMPTY can never learn anything at all. The boot-time **wiring audit** now prints wires-per-row, min, max and empty-row count for every projection and warns by name on the thin ones; before it existed nothing anywhere reported this.
 
 Fanout reduced from 30 to 20 (and motor-bound from 60 to 40) so the matrix doesn't START anywhere near saturation. Prior 30/60 fanout produced full-density matrices that collapsed within a few teach phases.
 
 **MOTOR_BOUND_PAIRS** (2× fan-in + 2× density cap):
-`sem-motor`, `motor-sem`, `letter-motor`, `motor-letter`, `phon-motor`, `motor-phon`. Motor sits at the convergence of several parallel input pathways (sem, phon, letter) and must discriminate between K-grade answer letters across many trained association pairs. 30 slots per pathway was insufficient to carve separable basins when 46+ pairs trained into the same motor region across 4-6 phases per grade — operator log showed persistent `sep-probe mean-cos ≈ 0.5` across every association-pair phase. Bumping motor-bound projections to 60 gives each post-neuron enough capacity to hold ~50 separable mappings without superposition.
+`sem-motor`, `motor-sem`, **`sem-word_motor`, `word_motor-sem`** (added 2026-09-04), `letter-motor`, `motor-letter`, `phon-motor`, `motor-phon`. Motor sits at the convergence of several parallel input pathways (sem, phon, letter) and must discriminate between K-grade answer letters across many trained association pairs. 30 slots per pathway was insufficient to carve separable basins when 46+ pairs trained into the same motor region across 4-6 phases per grade — operator log showed persistent `sep-probe mean-cos ≈ 0.5` across every association-pair phase. Bumping motor-bound projections to 60 gives each post-neuron enough capacity to hold ~50 separable mappings without superposition.
 
 Biologically plausible — real pyramidal neurons carry 1000-10000 synaptic inputs distributed across many cortical areas; 60 per per-area pair is well under that bound.
+
+**TOPOGRAPHIC_PAIRS** — pairs whose feature spaces are ALIGNED bucket-for-bucket get a topographic prior instead of a random one: `letter ↔ motor`, `letter ↔ phon`, `phon ↔ motor`. Letter `a`'s bucket really does correspond to motor `a`'s bucket, so seeding that correspondence lets Hebbian refine an alignment rather than discover it.
+
+> ⛔ **The `sem` pairs were on that list until 2026-09-04, against the rule the list's own comment states** — that unaligned spaces stay random "since topography would impose false structure". `sem` is a 300-dimension tiled space and `word_motor` is a bucket index; they are the unaligned case the rule describes. **Measured at the deployed geometry: `initTopographicProjection` centres row `i` on `floor(i·cols/rows)` and puts 70% of its picks within ±`radiusTopo`, and `radiusTopo` is the fixed literal 30 — so one word's local window spans 1,107 sem cells, which is 0.630% of a single GloVe dimension. 424 of a word's 606 wires were being spent reading two thirds of one percent of one arbitrary dimension.** It is a fixed cell count against a region that scales from 6,700 to 671,000,000 neurons: harmless on a browser brain (the window covers a whole dimension), a pinhole on the deployed one. **The sem pairs now build random by default; `DREAM_SEM_TOPOGRAPHIC=1` restores the old behaviour so two fresh walks can be compared.**
+
+> ⛔⛔ **OPEN, AND LARGER: lamination leaves 75% of a topographic projection's rows EMPTY.** Cross-projections optionally terminate on L4 and originate from L2/3 (Felleman & Van Essen 1991). `initTopographicProjection` implements that by SKIPPING rows outside the destination mask — and L4 is 25% of a region, so three quarters of rows come out with no entries at all and can never learn. Measured at 8,000 / 20,000 / 60,000 / 400,000 neurons: **exactly 75.0% every time.** This project already documented the mechanism when it exempted `word_motor` from the mask, and never applied that reasoning to `letter`, `phon` or `motor`, which are read by argmax over bucket means in the same way. ⚠ The masks are also **only wired into the topographic branch**, so lamination today is a side-effect of which initialiser a pair uses rather than a property of the projection. Left open deliberately: it changes what she says.
 
 Prior values (historical): Session 111 had `crossTargetFanout = 1500` based on `expectedPostCurriculumVocab × fanoutPerMapping`. T37 rebalance dropped this to 30 to fit biological-scale memory budgets (1500 × 17M neurons × 2× sparse-matrix overhead = multi-terabyte RAM). T39.g.4 re-introduced the higher-capacity path for motor-bound projections only, keeping the rest lean.
 

@@ -1097,8 +1097,15 @@ export class NeuronCluster {
       // bias favor the diagonal path so TALK can still succeed.
       // sem↔motor 50/50 stays — that pair has no competing diagonal,
       // just word→first-letter with direct positive signal.
+      // ⭐ `word_motor` ADDED 2026-09-04. The 50/50 init exists to kill the
+      // positive-bias baseline that drowns Hebbian on a production pathway —
+      // and `word_motor` is the production pathway for every WORD she says,
+      // while `motor` only carries letters. It was on neither list because the
+      // band was created after both were written, so the projection that does
+      // the most important job in the brain quietly took every default.
       const EMISSION_PAIRS = new Set([
         'sem-motor', 'motor-sem',
+        'sem-word_motor', 'word_motor-sem',
       ]);
       // Motor-bound projections get a HIGHER fan-in than the default
       // cross-projection fanout. The motor region sits at the convergence
@@ -1115,8 +1122,29 @@ export class NeuronCluster {
       // Still biologically plausible — real pyramidal neurons carry
       // 1000-10000 synaptic inputs distributed across many cortical
       // areas; 60 per per-area pair is well under that bound.
+      // ⛔⛔ `word_motor` ADDED 2026-09-04, AND IT IS THE MOST CONSEQUENTIAL
+      // ENTRY ON THIS LIST.
+      //
+      // Measured on the real construction at the deployed geometry, before the
+      // change: `sem_to_word_motor` landed at **3 wires per row** — fanout 10,
+      // then × 0.3 for crossing from the `association` cluster to `output`.
+      // `sem_to_motor`, which only has to pick between 26 letters, had 6.
+      // So the projection asked to discriminate tens of thousands of WORDS had
+      // HALF the wiring of the one that picks a letter.
+      //
+      // ⛔ And `ojaUpdate` cannot insert, so that is not a slow start — it is
+      // the permanent capacity of every row for the life of the brain.
+      //
+      // Motor-bound doubles the fanout (10→20) and lifts the density cap
+      // (0.005→0.01) so the fanout term can actually land: 3 → 6 per row, and
+      // with 202 cells per word bucket, 606 → 1,212 wires per word.
+      //
+      // ⚠ Init-time only. Nothing about the walk's length, its gates or its
+      // bounds moves, so no RE-PRICE is owed — but it takes effect on a FRESH
+      // WALK and on nothing before it.
       const MOTOR_BOUND_PAIRS = new Set([
         'sem-motor', 'motor-sem',
+        'sem-word_motor', 'word_motor-sem',
         'letter-motor', 'motor-letter',
         'phon-motor', 'motor-phon',
       ]);
@@ -1131,13 +1159,66 @@ export class NeuronCluster {
       // scratch. Pairs with UNALIGNED feature spaces (sem 300d GloVe
       // vs fineType one-hot tags, letter one-hot vs sem 300d) stay
       // on initRandom since topography would impose false structure.
+      // ⛔⛔⛔ THE SEM PAIRS ARE IN THIS LIST AGAINST THE RULE THE COMMENT
+      // DIRECTLY ABOVE STATES, AND AT THE DEPLOYED GEOMETRY IT COSTS A WORD
+      // 70% OF ITS WIRING.
+      //
+      // The rule three lines up is explicit: pairs with UNALIGNED feature
+      // spaces "stay on initRandom since topography would impose false
+      // structure", and it names `letter one-hot vs sem 300d` as an example.
+      // `sem-motor` and `sem-word_motor` are exactly that shape — a 300-dim
+      // tiled space against a bucket index — and were added anyway.
+      //
+      // MEASURED, at 306,458,816 neurons, from the initialiser's own formulas:
+      //
+      //   sem 52,672,608 cells · word_motor 10,113,141 · 202 cells per word
+      //   sem cells per GloVe dimension        175,575
+      //   one word's topographic window          1,107 cells = 0.630% of ONE dim
+      //   of its 606 wires: 424 inside that sliver, 182 scattered
+      //
+      // `initTopographicProjection` centres row i on `floor(i·cols/rows)` and
+      // puts `localFrac` (70%) of its picks within ±`radiusTopo` — and
+      // `radiusTopo` is the fixed literal 30. So **70% of every word's wiring
+      // is spent reading two thirds of one percent of one arbitrary GloVe
+      // dimension it did not choose.**
+      //
+      // ⛔ AND IT GETS WORSE AS THE BRAIN GROWS, WHICH IS WHY NO SMALL TEST
+      // COULD SEE IT — a fixed cell count against a region that scales:
+      //
+      //        6,700 neurons   window ≥ 100% of a dim   harmless
+      //      200,000                    52.6%
+      //    2,000,000                     5.2%
+      //   50,000,000                     0.79%
+      //  306,458,816 (deployed)          0.630%
+      //  671,000,000 (max tier)          0.613%
+      //
+      // Built for real at 13,168 sem cells — a scale where the window still
+      // covers a whole dimension — `initRandom` reaches **191 of 300**
+      // dimensions per word against topographic's **95**. The prior costs
+      // reach at every scale and only becomes pathological at ours.
+      //
+      // ⚠ THIS CHANGES WHAT SHE SAYS, so it does not ship silently: the sem
+      // pairs come off the list by DEFAULT and `DREAM_SEM_TOPOGRAPHIC=1` puts
+      // them back, so one fresh walk can be run each way and the difference
+      // attributed rather than argued about.
+      //
+      // ⭐ The genuinely aligned pairs STAY. `letter-motor`, `phon-motor` and
+      // `letter-phon` align bucket for bucket — letter 'a' really does map to
+      // motor 'a' — which is why letter production works on six wires and is
+      // the exact case topographic init was written for.
+      const _semTopographic = (() => {
+        try { return process?.env?.DREAM_SEM_TOPOGRAPHIC === '1'; }
+        catch { return false; }
+      })();
       const TOPOGRAPHIC_PAIRS = new Set([
-        'sem-motor', 'motor-sem',
         'letter-motor', 'motor-letter',
         'letter-phon', 'phon-letter',
         'phon-motor', 'motor-phon',
-        'sem-word_motor', 'word_motor-sem',
       ]);
+      if (_semTopographic) {
+        for (const k of ['sem-motor', 'motor-sem', 'sem-word_motor', 'word_motor-sem']) TOPOGRAPHIC_PAIRS.add(k);
+        console.warn(`[Cluster ${name}] DREAM_SEM_TOPOGRAPHIC=1 — the sem↔motor and sem↔word_motor projections are being built with a topographic prior over UNALIGNED spaces. At this size that spends ~70% of each word's wiring inside a single GloVe dimension; it is the pre-2026-09-04 behaviour, kept so the two can be compared on real walks.`);
+      }
       // Progress logging so cluster construction doesn't look like a
       // hang at large sizes. Each cross-projection init can take
       // seconds-to-minutes at M+ neuron scale.
@@ -1273,6 +1354,68 @@ export class NeuronCluster {
         if (logConstruction) console.log(`[Cluster ${name}]   ${_projIdx}/${pairs.length * 2} ${b}_to_${a} (${aSize.toLocaleString()}×${bSize.toLocaleString()}, nnz=${ba.nnz.toLocaleString()}) in ${Date.now() - baTime}ms`);
       }
       if (logConstruction) console.log(`[Cluster ${name}] cross-projections ready.`);
+      // ⛔⛔⛔ THE WIRING AUDIT — HOW MANY INCOMING WIRES EACH ROW ACTUALLY GOT.
+      //
+      // Nothing in this project has ever reported this, and it is the number
+      // that decides whether a projection can learn at all. `ojaUpdate` walks
+      // `rowPtr[i]..rowPtr[i+1]` and has **no insertion path**, so the entries
+      // present at construction are the entire lifetime capacity of that row:
+      // a row with two wires has two weights forever, and a row with none can
+      // never learn anything for the life of the brain.
+      //
+      // ⚠ The two initialisers differ on exactly that point, which is why the
+      // empty-row count is reported separately rather than folded into a mean:
+      // `initTopographicProjection` carries `Math.max(1, …)` and cannot produce
+      // an empty row, `initRandom` has no such guarantee and can.
+      //
+      // ⭐ WHAT THIS WOULD HAVE CAUGHT. `word_motor` is on neither the
+      // motor-bound nor the emission list — it was created after both were
+      // written — so the projection that produces every word she says gets the
+      // DEFAULT fanout, then the 0.3 between-cluster haircut for crossing from
+      // association to output, and lands at three wires per row. The band that
+      // carries letters gets six. Both numbers were sitting in the arithmetic
+      // the whole time with nothing printing them.
+      try {
+        const _MIN_WIRES = 4;          // below this a row cannot carve a basin
+        const _lines = [];
+        let _worst = null;
+        for (const [key, mx] of Object.entries(this.crossProjections)) {
+          if (!mx || !mx.rowPtr || !mx.rows) continue;
+          let empty = 0, min = Infinity, max = 0;
+          for (let i = 0; i < mx.rows; i++) {
+            const k = mx.rowPtr[i + 1] - mx.rowPtr[i];
+            if (k === 0) empty++;
+            if (k < min) min = k;
+            if (k > max) max = k;
+          }
+          if (!Number.isFinite(min)) min = 0;
+          const mean = mx.rows > 0 ? mx.nnz / mx.rows : 0;
+          const [srcName, dstName] = key.split('_to_');
+          const topo = TOPOGRAPHIC_PAIRS.has(`${srcName}-${dstName}`);
+          const bound = MOTOR_BOUND_PAIRS.has(`${srcName}-${dstName}`);
+          const rec = { key, rows: mx.rows, cols: mx.cols, nnz: mx.nnz, mean, min, max, empty, topographic: topo, motorBound: bound };
+          _lines.push(rec);
+          if (!_worst || mean < _worst.mean) _worst = rec;
+        }
+        this.wiringAudit = { minWires: _MIN_WIRES, projections: _lines, worst: _worst };
+        for (const r of _lines) {
+          const thin = r.mean < _MIN_WIRES;
+          const tag = `${r.topographic ? ' topographic' : ' random'}${r.motorBound ? ' motor-bound' : ''}`;
+          const msg = `[Cluster ${name}] wiring ${r.key} — ${r.mean.toFixed(2)} wires/row (min ${r.min}, max ${r.max}) · ${r.rows.toLocaleString()}x${r.cols.toLocaleString()} · nnz ${r.nnz.toLocaleString()}${tag}`;
+          if (r.empty > 0) {
+            console.warn(`${msg} · ⛔ ${r.empty.toLocaleString()} EMPTY ROWS — those rows can never learn, because ojaUpdate cannot insert an entry that construction did not create.`);
+          } else if (thin) {
+            console.warn(`${msg} · ⚠ THIN — under ${_MIN_WIRES} wires a row has almost no capacity to tell one input pattern from another, and this is its capacity FOREVER.`);
+          } else if (logConstruction) {
+            console.log(msg);
+          }
+        }
+        if (_worst) {
+          console.log(`[Cluster ${name}] wiring audit — ${_lines.length} projections · thinnest is ${_worst.key} at ${_worst.mean.toFixed(2)} wires/row. A projection's wires-per-row is set at construction and never grows.`);
+        }
+      } catch (err) {
+        console.warn(`[Cluster ${name}] wiring audit failed (non-fatal — the projections are built either way): ${err && err.message ? err.message : err}`);
+      }
     } else {
       this.crossProjections = {};
     }
