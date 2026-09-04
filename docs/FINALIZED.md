@@ -103,6 +103,28 @@ Gee (verbatim): *"make sure brain wave repo is good too everything depends on it
 
 ⚠ **Owned: my first pointer detector was wrong.** `find -size -1k` reported **0 pointers** because GNU `find` rounds sizes **up** to whole 1k units, so a 131-byte file is 1 unit and not `< 1`. Re-measured by reading actual bytes. **The `-size +10k` half was correct, which is exactly what made the wrong half look plausible** — a detector half-right reads as a detector.
 
+### ✅ `DEFMISS.2` — THE SAME FALSE-POSITIVE CLASS AGAIN, ON THE GRAMMAR WORDS
+
+Gee (verbatim): *"can u fix that before the walk?"*
+
+The flag, reported live: `DEF-MISS ×11 — no dictionary definition for "is" — bound nothing`.
+
+⭐ **MEASURED AGAINST THE API RATHER THAN ASSUMED — 26 probes, spaced.** Of the 8 that returned a real answer: **404 ×2 (`is`, `was`) · 200 ×6 (`saw`, `feet`, `gave`, `knew`, `took`, `thought`)**, plus `are`, `were`, `been`, `had`, `did`, `done`, `better`, `best` at 200 in an earlier run. **Not one irregular content word 404'd, and both 404s are copulas.** So it is neither an outage nor an inflection problem — those two words simply have no dictionary entry.
+
+⚠ **The other 18 probes returned Cloudflare `522` — origin errors, not answers.** Recorded because it is an operational fact about this dependency: the API is flaky under even gentle load, the service caches a 5xx as `transient` with a 60-minute TTL, and **that is a second, independent reason not to add retry traffic to the failing set.**
+
+⭐ **AND `is` IS NOT UNTAUGHT.** `_teachSentenceStructure` binds it as a **copula** — a word-type→slot binding plus subject-verb agreement (`he→is`) — which is what a copula *is*. Its meaning is structural, not definitional, and the definition binder already lists it in its own `STOP` set. **The flag was naming the wrong lane, exactly as it did for the 24 letters earlier the same day.**
+
+**The authority is the producer's own table.** `GRAMMAR_SLOT_PAIRS` was hoisted to module scope so `_teachWordDefinition` can consult the lane that actually teaches these words — the producer, asked directly, rather than a curated set. ⚠ **The hoisted table was verified byte-identical to what the lane trained before: what she is taught did not change, only the flag.**
+
+⛔⛔ **THE SLOT TAG IS THE TEST, NOT TABLE MEMBERSHIP — AND MY FIRST CUT GOT IT WRONG.** Suppressing for every word the table mentions silently swept in `cat`, `dog`, `book`, `apple` and every other **content word the table carries as an example filler**. Those still owe a real definition, and **hiding a dictionary failure on `cat` would have made this flag the exact thing it exists to catch.** Only the four **function-word** slots qualify — `copula`, `article`, `conjunction`, `qword` — because a word in one of those *is* its slot. **18 of the table's 76 words suppress; the other 58 still flag.**
+
+⛔ **A LEMMA RETRY WAS CONSIDERED AND REJECTED, ON THE MEASUREMENT.** The dictionary already answers for irregular forms, so there is no gap to close — and a retry would re-query **precisely the words that just failed**, which is what `FC.11` exists to stop: a 429 death-spiral, **197 stalls in a single K walk, 5-12 s each**, blocking the walk from ever reaching cell content. **Trading a cosmetic flag for a walk-blocking rate-limit spiral is not a fix.**
+
+⚠ **Corrected while measuring:** the reps comment claimed *"75 pairs × 80 reps"*; the table holds **78**. The *"~6,000"* it fed was close enough to never look wrong, which is how a stale number survives being read.
+
+**Verified:** `node --check` + ESM import · teach table **byte-identical to HEAD** · 18/18 function words suppress · 9/9 content words still flag · 3/3 unknown words still flag · **bundle byte-identical** (`curriculum.js` is not in the browser import graph — this is server-side and lands on the press).
+
 ### ✅ `INSTRDEAD.1` — "2 NO SIGNAL" WAS TRUE, AND ABOUT THE WRONG THING
 
 Gee (verbatim): *"instraments 4/6 reading - 2 no signal IS THAT NORMAL? BEFORE WE PREESS CHACK IT OUT"*
