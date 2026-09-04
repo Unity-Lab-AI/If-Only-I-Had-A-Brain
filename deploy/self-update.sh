@@ -233,7 +233,7 @@ rsync -a --delete \
   --exclude '.loop-freeze.json' \
   --exclude 'server/.loop-freeze.json' \
   --exclude 'fields' \
-  --exclude 'corpora' \
+  --exclude 'corpora/glove.6B.*' \
   --exclude '.claude' \
   "$TMP/src/" "$BACKEND_DIR/" >> "$LOG" 2>&1 || { log "FATAL — rsync overlay failed; aborting."; exit 1; }
 
