@@ -418,6 +418,64 @@ const SERVER_STATE_MIXIN = {
    *
    * @returns {Array<{key:string,label:string,state:string,note:string}>|null}
    */
+  /**
+   * ⭐⭐ THE OPERATOR DEFAULTS — what this boot STARTED with, and what the next
+   * one will start with. Operator: *"we need traing defaults we can set"*.
+   *
+   * ⛔ THREE STATES THAT MUST NEVER RENDER ALIKE:
+   *   applied  — a stored default is governing this boot. On these knobs the
+   *              brain is NOT running code behaviour.
+   *   shadowed — stored, but the environment already set that knob, so the saved
+   *              value is doing NOTHING. This is the confusing one: the operator
+   *              sees their value in the file and different behaviour in the
+   *              brain, with nothing connecting the two.
+   *   pending  — saved since this boot began. In the file, not in this process;
+   *              it needs a restart and nothing else.
+   *
+   * ⚠ `applied` and `shadowed` come from the BOOT report and are NOT
+   * recomputable here: they record what `process.env` held at the instant the
+   * first module loaded, and that instant is gone. Re-deriving them now would
+   * produce a plausible answer that is not the one the brain booted with.
+   * `stored` is re-read from disk each call so a default saved a minute ago is
+   * visible without waiting for a restart.
+   *
+   * Pure over its inputs (the boot report and the file) and callable directly.
+   *
+   * @returns {object|null} null when nothing has ever been saved — no panel, correctly.
+   */
+  _knobDefaultsState() {
+    const boot = globalThis.__knobDefaultsBoot || null;
+    let stored = null, savedAt = null, readError = null;
+    try {
+      const fsx = require('fs');
+      const f = globalThis.__knobDefaultsFile;
+      if (f && fsx.existsSync(f)) {
+        const doc = JSON.parse(fsx.readFileSync(f, 'utf8'));
+        if (doc && doc.kind === 'unity-knob-defaults' && doc.defaults) {
+          stored = doc.defaults; savedAt = doc.savedAt || null;
+        } else readError = 'the file on disk is not a unity-knob-defaults document';
+      }
+    } catch (e) { readError = (e && e.message) || String(e); }
+    const bootSaidSomething = !!(boot && (boot.applied.length || boot.shadowed.length || boot.skipped.length || boot.error));
+    if (!bootSaidSomething && !stored && !readError) return null;
+    const appliedKeys = new Set(((boot && boot.applied) || []).map((x) => x.key));
+    const shadowKeys = new Set(((boot && boot.shadowed) || []).map((x) => x.key));
+    const pending = stored
+      ? Object.keys(stored).filter((k) => !appliedKeys.has(k) && !shadowKeys.has(k))
+      : [];
+    return {
+      storedCount: stored ? Object.keys(stored).length : 0,
+      savedAt,
+      applied: (boot && boot.applied) || [],
+      shadowed: (boot && boot.shadowed) || [],
+      skipped: (boot && boot.skipped) || [],
+      pending,
+      bootError: (boot && boot.error) || null,
+      readError,
+      stored: stored || {},
+    };
+  },
+
   _finalizationSteps() {
     try {
       const g = (this.cortexCluster && this.cortexCluster.graduation) || null;
@@ -1114,6 +1172,26 @@ const SERVER_STATE_MIXIN = {
         try { return require('../knob-registry.js').knobState(); }
         catch { return null; }
       }),
+      // ⭐⭐ THE OPERATOR DEFAULTS — what this boot STARTED with, and what the
+      // next one will. Operator: *"we need traing defaults we can set"*.
+      //
+      // ⛔ THREE DIFFERENT THINGS, AND THEY MUST NEVER RENDER ALIKE:
+      //   applied  — a stored default that governs this boot. The brain is NOT
+      //              running code behaviour on these knobs.
+      //   shadowed — stored, but the environment already spoke, so it is doing
+      //              NOTHING. This is the reading that confuses people, because
+      //              the value is saved and the panel shows something else.
+      //   pending  — saved since this boot began, so it is in the file and not
+      //              in this process. It needs a restart and nothing else.
+      //
+      // `applied`/`shadowed` come from the boot-time apply (which had to run
+      // before any require, so it stashed its report); `stored` is re-read from
+      // disk so a default saved a minute ago is visible immediately.
+      // ⭐ A NAMED METHOD, NOT AN INLINE THUNK — the same correction this file
+      // already took once. A thunk inside this 110-field object literal cannot be
+      // exercised without constructing an entire brain, which is a poor property
+      // for an instrument whose entire job is telling three states apart.
+      knobDefaults: _lap('knobDefaults', () => this._knobDefaultsState()),
       letterRead: _lap('letterRead', () => {
         try {
           const cur = this.curriculum;

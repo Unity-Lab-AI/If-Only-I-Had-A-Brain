@@ -86,6 +86,29 @@
       flex-wrap: wrap;
       margin-bottom: 10px;
     }
+    /* A control-by-control breakdown, for the one page that carries controls
+       which can destroy training. A paragraph can say a page HAS presses; only a
+       list can say what each one costs and what each reading means. */
+    .card-controls {
+      margin: 0 0 8px;
+      padding: 8px 10px;
+      background: rgba(103, 232, 249, .04);
+      border-left: 2px solid rgba(103, 232, 249, .3);
+      border-radius: 0 5px 5px 0;
+    }
+    .card-controls dt {
+      color: #e2e8f0;
+      font-size: 10.5px;
+      font-weight: 600;
+      margin-top: 6px;
+    }
+    .card-controls dt:first-child { margin-top: 0; }
+    .card-controls dd {
+      color: #94a3b8;
+      font-size: 10.5px;
+      line-height: 1.5;
+      margin: 1px 0 0;
+    }
     .tag {
       font-size: 9px;
       padding: 2px 7px;
@@ -283,7 +306,36 @@
       <div class="card">
         <div class="card-head"><span class="card-icon">📖</span><span class="card-name">Teach View — exactly what she is being taught</span></div>
         <div class="card-path">html/teachview.html</div>
-        <p class="card-desc">A live window on <strong>the training itself</strong>: the exact sentence, definition or fact going into Unity at this moment, shown beside <strong>the picture entering her mind's eye</strong>, because the words and the images are one education and not two. <strong>The feed is deliberately slow</strong> — teaching runs at thousands of items a second and no one can read that, so the reading pane paces itself and lets you pause, step and scrub. ⛔ <strong>The slowness is only in the reading pane.</strong> The counts, the per-lane and per-source bars, and the words-per-cell totals are <strong>complete and never sampled</strong>, and the page prints how many taught items it has <em>not</em> shown you — because a sampled view of a poisoned lesson can miss the poison, which is the exact failure this page exists to end. It also carries the <strong>flags</strong>: a lane reporting success while teaching nothing, a word with no definition, a cell below its corpus target. <strong>Before this page existed there was no channel anywhere carrying the text she learns</strong> — the lane that trains every corpus sentence had no log and no publish at all, which is how a curriculum of 931 pages went a year unnoticed.</p>
+        <p class="card-desc">A live window on <strong>the training itself</strong>: the exact sentence, definition or fact going into Unity at this moment, shown beside <strong>the picture entering her mind's eye</strong>, because the words and the images are one education and not two. <strong>The feed is deliberately slow</strong> — teaching runs at thousands of items a second and no one can read that, so the reading pane paces itself and lets you pause, step and scrub. ⛔ <strong>The slowness is only in the reading pane.</strong> The counts, the per-lane and per-source bars, and the words-per-cell totals are <strong>complete and never sampled</strong>, and the page prints how many taught items it has <em>not</em> shown you — because a sampled view of a poisoned lesson can miss the poison, which is the exact failure this page exists to end. It also carries the <strong>flags</strong>: a lane reporting success while teaching nothing, a word with no definition, a cell below its corpus target. <strong>Before this page existed there was no channel anywhere carrying the text she learns</strong> — the lane that trains every corpus sentence had no log and no publish at all, which is how a curriculum of 931 pages went a year unnoticed. It also carries the <strong>end-of-walk finalization checklist</strong>, the <strong>wiring audit</strong>, the <strong>exam battery</strong>, her <strong>handwriting</strong>, the <strong>deferred lanes</strong>, all <strong>200+ training knobs</strong>, the <strong>weight downloads</strong>, and the <strong>press controls</strong>.</p>
+        <p class="card-desc">⛔ <strong>Everything this page READS is public and needs no login</strong> — every instrument comes from the same cached snapshot the public dashboard uses. Only the <em>writes</em> are gated, server-side, and a refused write says <em>&ldquo;not your lane&rdquo;</em> rather than <em>&ldquo;the brain is broken&rdquo;</em>. Controls are <strong>dimmed, never hidden</strong>: a control that vanishes teaches you it does not exist, and one that is visibly refused teaches you why.</p>
+        <dl class="card-controls">
+          <dt>The reading pane — pause · step · clear</dt>
+          <dd>Freezes, advances or empties the <em>display</em>. It never stops the teaching, and the note underneath always says how many items it has not shown you.</dd>
+
+          <dt>Training knobs — <em>set</em> vs <em>make default</em></dt>
+          <dd>Two controls, two different promises. <strong>set</strong> changes the running brain immediately and is <em>lost at the next restart</em>. <strong>make default</strong> changes nothing now and is what the box <em>starts with</em> from then on. Every knob gets a default — including the ones frozen at boot, for which a default is the only thing that can ever set them.</dd>
+          <dd><strong>Conclude from the state:</strong> <em>running this default</em> = the brain is not running code behaviour on that knob. <em>saved — takes effect at the next restart</em> = it is in the file, not in this process. <em>stored, but the environment overrides it</em> = the value is saved and doing <strong>nothing</strong>, because the service unit already set that knob — this is the reading that otherwise sends people hunting for a bug that is not there.</dd>
+
+          <dt>Everything a cell ever taught — start · newer · older</dt>
+          <dd>The complete stored record for one cell, paged to its true end. Deliberately a different instrument from the reading pane above, which is a 400-row window.</dd>
+
+          <dt>Weight downloads, and the walk-position restore</dt>
+          <dd>One button per weights file that exists right now; the browser's own Save As opens. A save in flight is <strong>refused rather than served</strong>, because half a multi-gigabyte checkpoint downloads as a file that looks complete and restores as garbage. Dropping a <code>brain-weights.json</code> restores the walk position it carries — and a file whose save version does not match the weights on the box is <strong>refused with both numbers named</strong>, since resuming from a position those weights were never at looks perfectly healthy while being wrong.</dd>
+          <dd><strong>Conclude:</strong> a restore changes a file and nothing else. The running brain still holds the old position in memory until it restarts.</dd>
+
+          <dt>Press controls — grouped by what each one COSTS</dt>
+          <dd><strong>Restart</strong> and <strong>Update code · keeps training</strong> discard nothing. <strong>Re-walk from pre-K</strong> keeps every weight and resets only the position. <strong>Update code · WIPES all training</strong> destroys everything she has learned and cannot be undone. The two that destroy a position confirm twice; the two that do not, deliberately confirm once — a needless dialog is what trains you to click through the real one.</dd>
+          <dd>Before firing, the page runs <strong>restart safeties</strong>: whether a checkpoint is being written <em>right now</em> (checked at the moment of the press, not read off a poll), whether knobs were set live and will silently revert, and whether saved defaults are waiting on this restart to apply.</dd>
+          <dd>⛔ <strong>Conclude from the verdict, and this is the important one:</strong> a press is <em>confirmed by measurement</em>. A working restart makes the server exit, so the connection drops — which is <em>also</em> exactly what an unreachable server looks like. So the page waits for the brain's uptime to come back <strong>lower than it was at the press</strong>, which only a real reboot can produce. Until then it says <em>waiting</em>; if it never happens it says <strong>could not tell</strong>. It never claims the press worked.</dd>
+          <dd><strong>Two dashboard controls are deliberately absent</strong> — Stop Brain (which leaves nothing to revive the process) and Reset (which the re-walk does non-destructively). Both stay on the dashboard, where you go on purpose.</dd>
+
+          <dt>Training finalization — the end of the walk</dt>
+          <dd>Six ordered steps: the last cell closing, the grade ledger settling, the graduation record being written, <em>her own memory of finishing being banked</em>, the corpus verdict, and the deferred lanes taking over.</dd>
+          <dd><strong>Conclude from each state:</strong> <em>pending</em> = not reached yet, correct while she is still walking. <em>waiting</em> = deliberately idle because something else holds the substrate, also correct. <em>blocked</em> = it <strong>cannot</strong> run, and the note says why — a cannot-tell, never a pass. <em>failed</em> = it should have happened and did not; on the memory step that means she finished and does not remember it.</dd>
+
+          <dt>The wiring audit, the exam battery, her handwriting, the deferred lanes</dt>
+          <dd><strong>Wiring:</strong> how many incoming connections each neuron got at construction. The learning rule can only adjust connections that already exist, so <strong>empty rows are the worst reading on the page</strong> — those neurons can never learn anything, ever, and nothing else anywhere would show it. <strong>Exam:</strong> only <em>authored</em> questions can block a grade; a cell with none reads &ldquo;not gated&rdquo;, which is correct rather than suspicious. No question text is ever published. <strong>Handwriting:</strong> if this is low, a drawing with no words on it is her being <em>honest</em> about what she can write, not a broken renderer. <strong>Lanes:</strong> standing still while the walk owns the substrate is correct; queued work off-walk with nothing draining is the regression.</dd>
+        </dl>
         <div class="card-tags">
           <span class="tag static">STATIC</span>
           <span class="tag live">LIVE</span>

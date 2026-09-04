@@ -476,6 +476,29 @@ Two state blocks changed meaning on the fresh walk, and both are easy to misread
 
 ---
 
+## 🔄 THE PRESSES ARE IN THE TEACH VIEWER TOO — `html/teachview.html` (2026-09-04)
+
+⭐⭐ **Four of the presses above are now also in the Teach View**, on the **same routes and the same `requireLoopback` gate** — `POST /restart`, `POST /update?keep=1`, `POST /savererun`, `POST /update`. ⛔ **Nothing new was invented and there is no second deploy path.** The box still deploys by pressing a button; this is the same button in a second place.
+
+⭐ **They are there because of the weight-position restore on that page.** Dropping a `brain-weights.json` writes a walk position **to disk and nothing else** — the running process still holds the old ledger in memory, so **until it restarts the restore has had no effect while looking exactly like it had one.** A restart three pages away is how that gets believed and never applied.
+
+| Tier | Button | Route | What it costs |
+|---|---|---|---|
+| **keeps training** | 🔄 Restart · keeps training | `POST /restart` | Nothing. Weights force-saved, resume marker dropped, picks up at the same cell |
+| **keeps training** | ⬆ Update code · keeps training | `POST /update?keep=1` | Nothing. Re-pulls the code and RESUMES the saved weights |
+| **keeps the weights, resets the position** | 🔁 Re-walk from pre-K · keeps weights | `POST /savererun` | Every grade pointer and every passed cell. The weights and episodic memory survive; a rollback checkpoint is taken first |
+| **discards training** | ⬆ Update code · WIPES all training | `POST /update` | Everything she has learned. Identity anchors survive; nothing else does |
+
+⛔ **THE LABELS NAME THE COST, NOT THE VERB.** "Update" alone does not distinguish the press that preserves every hour of training from the one that discards all of it, and on the dashboard those two sit **one row apart**. Only the two presses that destroy a position double-confirm — **a confirmation dialog in front of a harmless action is what trains an operator to click through the one in front of a harmful one.**
+
+⭐ **Every confirm names where she actually is** — live course, grade, and cell count read from `curriculum.passedCellsTotal`, which is `cluster.passedCells.length`, the same array the graduation record is built from. When no position is published the panel **says so** rather than printing a confident zero in front of an irreversible button.
+
+⛔⛔ **A PRESS IS CONFIRMED BY MEASUREMENT HERE, AND THIS IS THE ONE REAL DIFFERENCE FROM THE DASHBOARD.** A working restart makes the server exit, so the request fails — **and that is also exactly what an unreachable server looks like.** The dashboard resolves the ambiguity by assuming success and printing `✓ restart sent`. The viewer instead watches wall-clock uptime: **uptime cannot decrease inside one process**, so a reading lower than the one taken at the press is proof of a new boot and proof of nothing else. Until that is seen it reports *waiting*; if it is never seen it reports **could not tell**, names the wait, and warns that pressing twice is how a fresh walk gets fired at a brain that was already restarting.
+
+⚠ **Two dashboard controls are deliberately NOT there, and the page says which and why.** **Stop Brain** halts the process with nothing to revive it, and recovery needs a shell on the box. **Reset** wipes the weights without pulling code, which the re-walk does non-destructively. Both remain on the dashboard, where an operator goes deliberately.
+
+---
+
 ## 🎛 THE KNOBS ARE ON SCREEN NOW — `html/teachview.html` (2026-09-02)
 
 ⭐⭐ **Every knob below, and every knob in the complete reference beneath it, is now rendered live in the Teach View's Training-knobs card** — with its **current value**, its **default**, whether the **environment overrides it**, its **read site**, and a tooltip carrying all of that plus the evidence behind its effect class. `server/knob-registry.js` → `state.knobs` → the card.
@@ -487,6 +510,44 @@ Two state blocks changed meaning on the fresh walk, and both are easy to misread
 ⚠ **Every row is labelled `live`, `boot-frozen`, or `???`.** A knob read once at module scope was frozen at boot: writing it later reads back correctly and **changes nothing about the training**. Only **4** are genuinely boot-frozen — including `DREAM_PHASE_BUDGET_MS` and `DREAM_STRUCTURE_DOSE`. ⛔ **A brace-depth classifier was written to decide this automatically and was discarded for reporting both of those as `live`**; effect class is hand-verified where it is claimed, and discovery never infers it.
 
 ⚠ **The panel is READ-ONLY and says so** rather than drawing a control that would not work. Write support waits on every effect class being proven, because a boot-frozen knob must **refuse** a write with that reason instead of accepting one silently.
+
+> ⭐ **SUPERSEDED 2026-09-03/04, kept for the reasoning.** The precondition was met: the write lane shipped (`POST /knob`, loopback-gated, a boot-frozen knob refused with a 409 rather than accepted silently), and **the defaults lane below now covers the boot-frozen knobs the live lane correctly refuses.**
+
+## ◎ TRAINING DEFAULTS YOU CAN SET — `server/knob-defaults.json` (2026-09-04)
+
+Settable training defaults, per knob, that survive a restart.
+
+⛔ **BEFORE THIS, THE ONLY "DEFAULT" THAT EXISTED WAS THE CODE LITERAL.** `↺ reset to default` compares against the **source fallback**; `⤓ save positions` writes a file the **browser** holds. Nothing on the box persisted an operator-chosen value, so **nothing survived a boot** — and `POST /knob` changes the running value and persists nothing, meaning **every knob tuned during a walk was silently discarded by the next press**.
+
+**Two controls per knob, two different promises, and the labels say which:**
+
+| Control | Route | Effect | Survives a restart? |
+|---|---|---|---|
+| **`set`** | `POST /knob` | Changes the **running** brain immediately | ❌ No — reverted at the next boot |
+| **`◎ make default`** | `POST /knob-default` | Changes **nothing** now; it is what the box **starts with** | ✅ Yes — applied at every boot |
+| **`✕ clear`** | `POST /knob-default` `{clear:true}` | Removes a stored default | — falls back to the code value |
+
+⭐ **THE DEFAULT CONTROL IS OFFERED ON EVERY KNOB, INCLUDING THE BOOT-FROZEN ONES.** The live lane refuses those with a 409, correctly, because a live write to one does nothing. **A default is the one thing that CAN set them**, because it is applied before any module loads. Withholding it would have left ~40 knobs with no settable path at all.
+
+⛔⛔ **THE APPLY RUNS BEFORE EVERY `require` IN `brain-server.js`.** A `boot` knob is read once at module scope, so its value is decided by whatever `process.env` holds when its module first loads. Applying anywhere later would work for the `live` knobs and **silently do nothing for the boot-frozen ones** — a settings panel where half the rows lie about having been applied.
+
+⭐ **A REAL ENVIRONMENT VALUE ALWAYS WINS.** The service unit and the launchers stay authoritative; a stored default only fills a knob nobody set.
+
+**Three states, and they never render alike** — in the panel, in `state.knobDefaults`, and in the sweep bench:
+
+| State | Meaning | What to conclude |
+|---|---|---|
+| **applied** | A stored default is governing this boot | On these knobs the brain is **not running code behaviour** |
+| **shadowed** | Stored, but the environment already set that knob | The saved value is doing **nothing**. This is the reading that otherwise sends someone hunting a bug that is not there |
+| **pending** | Saved since this boot began | In the file, not in this process. It needs a restart and nothing else |
+
+⛔ **`applied` and `shadowed` cannot be recomputed later.** They record what `process.env` held at the instant the first module loaded, and that instant is gone — re-deriving them would produce a plausible answer that is **not** the one the brain booted with. The boot report is stashed and published; only `stored` is re-read from disk.
+
+⚠ **THE BOOT LINE IS THE POINT OF "AUTO-APPLY, BUT LOUDLY".** Every applied default is named in the console at boot, and every shadowed one is warned about with **both** values. It is printed **after** the console ring installs, so it is readable through the public console tunnel on a box with no shell.
+
+**Operator data, protected like it:** gitignored, excluded from the deploy overlay, and **not in the fresh-walk wipe list** — settings are not training state.
+
+⚠ **The walk-bounding knobs (`DREAM_PHASE_BUDGET_MS`, `DREAM_STRUCTURE_DOSE`, the consolidation gate) may carry a default like any other**, by operator ruling. There is no pre-save re-price gate. **The boot announcement is what surfaces it** — a gate knob carrying a default is named at every boot, so a change to how long the walk takes is flagged rather than silent. `CONSTRAINTS.md §RE-PRICE THE WALK BEFORE REMOVING A GATE` still applies to the person setting it.
 
 ## 🎛 Env knobs that change TRAINING (2026-08-20)
 

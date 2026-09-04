@@ -5,6 +5,98 @@
 
 ---
 
+## 2026-09-04 — `TRAINDEF.1/.2/.3` + `TEACHFINAL.4` + `TEACHFINAL.2` — DEFAULTS THAT SURVIVE A PRESS, SAFETIES BEFORE ONE, AND A PAGE WITH NO WAY OUT OF IT
+
+Gee (verbatim): *"and we need traing defaults we can set and obviously with the teachviewer we need it to have restart safties and be ablke to have defualts for the different setttings yand nobs you adjust"*.
+
+Two rulings taken via ask-me-question: **"Auto-apply, but loudly"** on whether a saved default governs a boot, and **"Allowed like any other knob"** on whether the walk-bounding knobs may carry one. ⚠ **They compose better than the second option's own text implied** — no special handling for the gate knobs, but "loudly" means a gate knob carrying a default is still named at boot, so the 24-day-becomes-100-day scenario gets flagged rather than blocked.
+
+### `TRAINDEF.1` + `.3` — the only "default" that existed was the code literal
+
+`↺ reset to default` compared against the **source fallback**, and `⤓ save positions` wrote a file the **browser** held. Nothing on the box persisted an operator-chosen value, so **nothing survived a boot** — and `POST /knob` changes the running value and persists nothing, meaning every knob tuned during a walk was silently discarded by the next press.
+
+⛔⛔ **THE APPLY RUNS BEFORE EVERY `require` IN `brain-server.js`, AND THAT IS THE WHOLE DESIGN.** A knob classified `boot` is read **once at module scope**, so its value is decided by whatever `process.env` holds the instant its module first loads. Applying anywhere after the requires would work for the `live` knobs and **silently do nothing for the boot-frozen ones** — a settings panel where half the rows lie about having been applied. Same reasoning and same placement as the `TZ` pin directly above it: *before any Date is constructed anywhere in the process*.
+
+⭐ **A REAL ENVIRONMENT VALUE ALWAYS WINS.** The service unit and the launchers stay authoritative; a stored default only fills a knob nobody set. Otherwise a file written months ago could quietly override the deliberate `DREAM_*` a human put in the unit — a worse failure than having no defaults at all. **A default that loses this way is reported as `shadowed`, never dropped silently**, because it is the reading that otherwise sends someone hunting a bug that does not exist: the value is in the file, visible, and doing nothing.
+
+⚠ **THE ANNOUNCEMENT IS STASHED AND PRINTED LATER, DELIBERATELY.** The console ring is installed further down the file, so logging at the apply site would put the single most consequential boot line — **which knobs are not running code behaviour** — in the one place the public console tunnel cannot reach, on a box with no shell.
+
+⭐ **THE DEFAULT CONTROL IS OFFERED ON EVERY KNOB, INCLUDING THE BOOT-FROZEN ONES.** `POST /knob` refuses a live write to those with a 409, correctly, because such a write does nothing. **A default is the one thing that can actually set them.** Withholding it would have left ~40 knobs with no settable path at all, which is the opposite of what was asked for. The two controls make different promises and every surface says so: `set` changes her now and is lost on restart; `◎ make default` changes nothing now and is what she starts with from here on.
+
+**Three states that must never render alike**, in the panel, in the state block and in the bench: **applied** (governing this boot), **shadowed** (stored and doing nothing), **pending** (saved since boot, waiting on a restart). ⛔ **`applied` and `shadowed` cannot be recomputed later** — they record what `process.env` held at the instant the first module loaded, and that instant is gone; re-deriving them would produce a plausible answer that is not the one the brain booted with.
+
+**Operator data, protected like it:** gitignored, excluded from the deploy overlay, and **not in the fresh-walk wipe list** — verified, and true by construction rather than by luck, since that list is an explicit allowlist of named files rather than a pattern.
+
+### `TRAINDEF.2` — the safeties, checked at the press rather than read off a poll
+
+⛔ **A 30-SECOND-OLD "NO SAVE RUNNING" IS NOT A SAFETY, IT IS A GUESS WITH A TIMESTAMP.** The weights listing refreshes every 30 s, so the check re-asks the server immediately before firing. Three signals, each with a real consequence: a **checkpoint mid-write** (restarting through one leaves a half-written binary beside a complete ledger — the mismatched pair the restore route exists to refuse, except nobody would know to look); **live knob writes that will revert**, counted client-side because the server sees an environment value and *cannot tell a unit setting from a browser write a minute ago*; and **defaults waiting on this restart**, which is not a hazard but changes whether this is the press you wanted.
+
+⛔ **A SAFETY THAT CANNOT READ ITS OWN SIGNAL SAYS SO.** If the check itself fails the operator is told the check failed — never silently treated as all-clear, because that turns an unreadable instrument into a green light. A **STOP** finding gets its own dialog before the action's own confirm, phrased so the safe answer is the default one; burying "a checkpoint is being written right now" inside a paragraph the reader has learned to click through would defeat it.
+
+### `TEACHFINAL.4` — the buttons, and a page with no way out of it
+
+⛔⛔ **EVERY LINK IN THE ENTIRE DOCUMENT WAS A WEIGHTS DOWNLOAD.** No route to the pages index, none to the dashboard, none to the mind's eye — on a page that sits beside all three and which, since the presses landed, tells a reader in as many words that Stop and Reset *"remain on the dashboard"*. **A page that names another surface and cannot reach it is a dangling reference, and it was one I wrote myself that morning.** Four destinations now, each verified against the real contents of `html/`.
+
+**Eight buttons were shipping with no tooltip** on a page whose stated rule is that every control explains itself — the four presses, the three ledger pagers, and the per-knob `set`, which is **generated in a loop** and is a live write to a training knob. Now every button on the page carries one, and `set`'s names the knob, because "set" alone names nothing.
+
+⛔⛔ **TWO DROP HANDLERS WERE FIRING ON ONE DROP.** The knob loader registers a **window-level** drop listener so a knob file can be dropped anywhere; the position zone registered its own. `preventDefault()` does **not** stop propagation, so a `brain-weights.json` dropped on the restore zone was **also** handed to the knob loader, which reported a parse failure on a completely legitimate action. Nothing was destroyed — the knob loader only ever shows a diff — but a correct action must not produce an error message. `stopPropagation` on the zone, and the knob loader now **recognises a weights file and points at the right zone**, using `cortex.passedCells` — **the server's own witness**, so page and server agree by construction rather than by coincidence.
+
+**The position restore now confirms before it fires**, naming the walk position and the fact that a restart is required. It was the one control that changed something on the box with no confirmation at all.
+
+⭐ **Found by reading:** a `<span>` carrying **two `class` attributes**. The parser keeps the first and drops the second, so `tv-sub` had never applied and that message rendered at full brightness instead of dimmed since the day it was written. Also `fetch('/knob')` used a **bare path** while every other write lane on the page resolves through `WEIGHT_BASE` — opened from disk against a loopback brain it fired at the page's own origin and failed as a network error, which reads as *"the brain is down"*.
+
+### `TEACHFINAL.2` — the pages-page write-up
+
+The index card described a page that had since grown a finalization checklist, five instrument panels, a weights lane, a position restore, 200+ knobs and four presses. Rewritten to the row's own standard — **what it is for, what each control does, and what a reader should conclude from each state** — as a control-by-control breakdown rather than a longer paragraph, because a paragraph can say a page *has* presses and only a list can say what each one **costs**.
+
+⭐ **It states the split the page depends on:** everything the page **reads** is public and needs no login, and only the **writes** are gated. **32/32** verification, including that the index does not contradict the page it documents on any of five claims.
+
+### Verified
+
+**20/20** on the boot-apply, extracted from the shipped file and run against real temp files — including that a real environment value wins, that a shadowed default is reported rather than dropped, that a non-`DREAM_` key cannot become a route to setting `PATH`, that malformed JSON errors instead of throwing out of boot, and **that the apply block precedes the first `require` and the announcement follows the console ring**. **30/30** on the state publisher (called directly, as a **named method rather than an inline thunk** — the correction this file already took once) and the viewer's row decoration, including the case the whole method exists for: a default saved *after* boot must read `pending` and never `applied`. **26/26** on buttons and navigation. **32/32** on the index write-up. Bench **17/17 → 21/21** with `checkKnobDefaults`, its collector extended **in the same edit** — the direct lesson of `checkNewInstruments` spending a day GREY. `node --check` on three server files, `bash -n` on the deploy script, both page script blocks parse.
+
+⚠ **OWNED — TWO PROCESS FOULS AND FOUR DETECTOR BUGS.** I edited `docs/TODO.md` with **`sed -i`**, which is the banned scripts-edit-files pattern; flagged immediately, result verified, every later doc edit made by hand. And **four separate verification scripts reported failures that were mine, not the code's** — a too-narrow regex window, confusing confirm *call sites* with invocations, a slice that began *inside* the element it was testing for, and one that mangled eleven helper names. **Every one was resolved by reading the artefact directly. A detector written from an assumed format measures the assumption** — that is now four times in two days, and it is the single most repeated mistake in this batch.
+
+---
+
+## 2026-09-04 — `TEACHFINAL.6` — THE PRESS CONTROLS, AND THE SWEEP THAT WAS BUILT BLIND TO THE SURFACE IT SWEEPS
+
+Gee (verbatim, the original instruction): *"with proper restart buttons update ect ect"*.
+
+### The row: restart and update, beside the thing they act on
+
+Four presses now sit in the teach viewer, on the **exact routes the dashboard already fires** — `POST /restart`, `POST /update?keep=1`, `POST /savererun`, `POST /update` — every one behind the same `requireLoopback` gate as `/knob`, `/corpus-buffer`, `/teach-bench` and `/weights/position`. ⛔ **No second deploy path is invented and none was needed.** The standing rule is unchanged: the box deploys by pressing a button, and this is the same button in a second place.
+
+⭐ **WHY THEY BELONG ON THIS PAGE AT ALL, AND IT IS NOT CONVENIENCE.** The position-restore lane shipped an hour earlier writes a walk position **to disk and nothing else** — the running process still holds the old ledger in memory, so until it restarts the restore has had no effect **while looking exactly like it had one**. Putting the restart on a different page is how that restore gets believed and never applied.
+
+⛔⛔ **THE LABELS NAME THE COST, NOT THE VERB, AND THE GROUPING IS THE POINT.** "Update" alone does not distinguish the press that preserves every hour of training from the press that discards all of it, and on the dashboard those two live **one row apart**. Three tiers, by consequence: **keeps training** (restart · update-and-resume), **keeps the weights and resets the position** (the re-walk, on top of the synapses she already has), **discards training** (the fresh walk). Only the two that destroy a position double-confirm — and neither weight-preserving press does, deliberately, because a confirmation dialog in front of a harmless action is what trains an operator to click through the one in front of a harmful one.
+
+⭐ **EVERY CONFIRM NAMES WHERE SHE ACTUALLY IS** — the live course, the grade and the cell count read straight off `curriculum.passedCellsTotal`, which is `cluster.passedCells.length`, the same array the graduation record is built from. Summing the per-course rows was the first cut and is a **derived second opinion on a number that already has an authoritative source**; the two can disagree, because a course row is seeded from the declared roster whether or not it has been taught. The sum survives only as the fallback when the ledger field is absent. ⛔ And when **no** position is published the panel says so in those words rather than printing a confident zero in front of an irreversible button.
+
+⛔⛔ **A PRESS IS CONFIRMED BY MEASUREMENT HERE, NOT ASSUMED — and that is the difference from the dashboard.** A working restart makes the server exit, so the `fetch` fails; **that is also precisely what an unreachable server looks like**. The dashboard resolves the ambiguity by assuming success and printing `✓ restart sent`, which is the reassuring-blank shape this whole page exists to catch. So: the brain publishes wall-clock uptime, **uptime cannot decrease inside one process**, and therefore an uptime that comes back **lower than it was at the press** is proof of a new boot and proof of nothing else. Until that is seen the page says it is waiting; if it is never seen it says it **could not tell**, names the wait, and warns that pressing twice is how a fresh walk gets fired at a brain that was already restarting. It never says the press worked. ⚠ The watchdog runs on **its own timer**, because `poll()` returns early while the brain is unreachable — which is exactly the window a press lives in, so a timeout driven off the poll would never fire on the failure it exists to report.
+
+⭐ **Two dashboard controls are deliberately NOT here, and the page says which and why.** **Stop Brain** halts the process with nothing to revive it, and recovering needs a shell on the box — a bad thing to have one click away on a page whose job is watching training. **Reset** wipes the weights without pulling code, and the re-walk does that job non-destructively. Both remain on the dashboard, where an operator goes deliberately.
+
+### ⛔⛔ WHAT THE WORK EXPOSED, AND IT WAS MINE FROM THE DAY BEFORE: `checkNewInstruments` COULD ONLY EVER READ GREY
+
+`TEACHFINAL.7` added a sweep clause for the five new panels and self-tested it **14/14 against a hand-built fixture**. The clause is correct. **`collect()` was never extended**, so on the live box `wiringAudit`, `deferredLanes` and `lastBattery` were **never in the snapshot**, the clause hit its own "did I see anything?" guard, and it returned **GREY forever**. Measured, not inferred: `collect({brain:{}})` returned exactly `walk, knobs, ledger, corpus, figures, rendered`.
+
+**A sweep that cannot see the surface it sweeps is worse than no sweep** — the self-test says the clause works, and it does; it simply never runs on anything real. Producer written, consumer written, **nothing joining them**: the same split as `meanVoltage`, as `canSpeak`, and as `cluster.wiringAudit` itself the day before. Fixed by extending the collector to read the **same fields `getState()` already reads, from the same objects**, so no new computation lands on the loop the walk, the donor and the WS pump share.
+
+⚠ **AND THE FIX FOR THAT GREY IMMEDIATELY PRODUCED A FALSE GREEN, CAUGHT BY THE HARNESS BEFORE IT SHIPPED.** The first cut built the deferred-lanes object unconditionally, and every field defaulted to a healthy-looking zero — so a brain with **no curriculum attached at all** flipped the check from GREY to **GREEN**, because a truthy lanes object satisfies the guard. The object is now built only when a curriculum exists. **No curriculum means those queues do not exist yet, and saying nothing is the honest answer.**
+
+### The bench grew with it — 14/14 → 17/17
+
+`checkPressControls` guards the two fields the presses stand on, and neither is about the buttons: **`time`**, without which a press can only ever be assumed to have landed; and **`curriculum`**, without which the destructive confirm cannot name what it is about to discard. Both are long-standing published fields, so this guards **two old producers that a new consumer newly depends on** — precisely the coupling that rots unnoticed. Three planted faults, each proven to turn it RED: uptime unpublished, the position unpublished, and the ledger total gone (which silently demotes the position line to the derived sum).
+
+⭐ **Found and fixed en route:** `.tv-q` — the hint marker used in **six** card titles — **had never been declared in CSS**. Not a crash; the glyph rendered as bare unstyled text, reading as a stray `?` in a heading. Mine, from the previous batch, and the same invented-reference class as `esc()` and `--tv-ok`. Also: `loadWeightsList` returned on a 403 **without pinning `WEIGHT_BASE`** — and a 403 *proves* that base is the brain, since it answered and merely refused. Every other write lane on the page (the position restore, and now the presses) was therefore firing at the page's own origin instead, where the failure arrives as a network error and reads as *"the brain is down"* rather than as the refusal it is.
+
+**Verified.** 28/28 on the press logic, run against the **real published field shape read off `getCurriculumStatus()`'s return** rather than an assumed one; 16/16 on the collector wiring, including the empty-brain case that must stay GREY and three live faults that must go RED through the real `collect()` path; the bench self-test 17/17; both page script blocks parse; `node --check` on the bench. ⚠ **The harness caught two defects in my own work in one sitting** — the GREY-forever clause, and the false GREEN introduced while fixing it.
+
+⛔ **Owned: my first verification script was a broken detector** — it reported `knobEsc`, `isForbidden` and nine other helpers as undeclared, and `.tv-q` alongside them. Ten of the eleven were **regex mangling in my own checker**, not defects; only `.tv-q` was real. Rewritten to literal string matching, which found the one true positive and cleared the rest. **The lesson is the session's recurring one: a detector written from an assumed format measures the assumption.** Twice more in the same hour I mis-stated a fact from a too-short `awk` range — `perSubject` and `passedCellsTotal` are both in `getCurriculumStatus()`'s return at lines 4094–4095; my window stopped at 3990. **Read the artefact, and read all of it.**
+
+---
+
 ## 2026-09-04 — `TEACHFINAL.8` + `TEACHFINAL.7` — THE INSTRUMENTS BUILT TODAY ARE VISIBLE, AND THE BENCH NOW SWEEPS THEM
 
 Gee: *"we are completeing open items that are unblocked to clear the todo list of completed work"*, and on the viewer specifically: *"are we getting close to a graduation ready run with the teach viewer all correct?"* — **the honest answer at the time was no**, 13 rows open and none built. Two of them are now done.
