@@ -4026,3 +4026,17 @@ Gee pressed both buttons. **Neither the walk nor the corpus is on the box, and t
   - **Both confirmations are taken UP FRONT** — consent given now for a press that happens later — and it gives up after 6 h rather than waiting forever.
   - **Exercised 5/5 on top of v2's 15/15:** fires after two consecutive good reads · **never fires while pinned** · **a single flap does NOT fire** · reports the flap · a wrong confirmation word arms nothing.
   - ⚠ **The whole tool was run against its real body in a mocked browser with a VIRTUAL CLOCK**, so 5-minute deadlines resolve instantly without touching the logic. The first harness attempt OOM'd — I had swapped `setTimeout` for `setImmediate`, which spun a 5-minute deadline against a zero-delay timer. **That was the harness being wrong, not the script.**
+
+- [ ] `SHELLGAP.1` — ⛔ **THE BOX HAS NO SHELL, AND THAT — NOT ANY BUG — IS WHAT COST THE NIGHT.** Filed as its own row because it is a standing operational condition, not an incident. Gee (verbatim): *"document the issues and how box access could fix it"*.
+  - ⭐⭐ **THE PATTERN, STATED ONCE:** every diagnostic loop closes on itself. **The console ring is served BY the brain. `self-update.log` sits on a box with no shell. `/ctl/logs` exists precisely for a dead brain and cannot read the journal.** So the instrument that would answer the question always required the thing that was broken.
+  - **Seven blind spots, each with the command that ends it** — full table in `docs/RESUME.md`:
+    ① sync progress invisible (`tail -f self-update.log`) — **~5 hours lost to "working or wedged?"**
+    ② `/ctl/logs` journal-denied (`SupplementaryGroups=systemd-journal`) — **the boot failure could not be read remotely at all**
+    ③ disk headroom unknown (`df -h /opt /tmp`)
+    ④ is the deploy alive? (`ps aux | grep self-update`)
+    ⑤ Forgejo's repo path unknown, so `LOCALFIELDS.1` is **unexercised** (`find / -name brainwaves.git`)
+    ⑥ `.force-fresh` state unknowable (`ls server/.force-fresh`) — it decides whether the next boot wipes
+    ⑦ the box runs its OWN `self-update.sh`, so every fix takes two presses
+  - ⭐ **THE ONE-LINE VERSION: nothing tonight was hard; everything tonight was invisible.** The deploy key took **30 seconds** to fix once we could see it was the problem — and seeing that took hours, three failed token attempts, and a lucky window in a 60-line console ring.
+  - ⛔ **AND IT WILL RECUR EXACTLY.** `deploy/bootstrap-backend.sh` provisions **nothing** for the data repo, so a rebuilt box reproduces the whole night. That is the highest-value shell fix and it is two lines.
+  - ⚠ **NOT A REQUEST FOR SHELL ACCESS** — the dashboard-only constraint is deliberate and the instruments should be good enough without it. This row is the measured cost of the ones that were not, so the next round of instrument work is aimed by evidence rather than by taste.
