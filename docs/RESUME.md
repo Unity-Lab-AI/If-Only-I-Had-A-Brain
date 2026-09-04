@@ -38,9 +38,15 @@
 > **Detectors written from an assumed format, measuring the assumption instead of the artefact.** Four of them: a theme-slug guess, two letter-regexes that missed quoted letters, and a shell-mangled id counter. **Every one was caught by reading the artefact directly.**
 > Also: I invented three references in the teach viewer (`esc()`, `--tv-ok`, `--tv-mono`) that would each have failed **silently**, reused an id that was already an existing instrument, **edited a file with a Python script (banned pattern — flagged, not hidden)**, ran the corpus fetcher by accident via `import()` on a script, and mangled `state.js` with piecemeal edits badly enough to revert and redo. ⭐ **The correction that stuck: verify every var, helper and id EXISTS before committing, not after.**
 >
+> ### ✅ `TEACHFINAL.6` IS DONE — AND IT CAUGHT A BENCH THAT WAS BLIND TO ITS OWN SURFACES
+> The four presses the dashboard already fires now sit in the viewer, on the same routes behind the same loopback gate — grouped by what each one **costs**, not by its verb. They belong there because the position-restore above them writes to disk and nothing else: **until the process restarts, the restore has had no effect while looking exactly like it had one.**
+> ⛔ **A press is CONFIRMED BY MEASUREMENT.** A dropped connection is what a working restart *and* an unreachable server both look like, so the page waits for uptime to come back **lower than it was at the press** — which only a reboot can produce. It never says the press worked; it says waiting, or **could not tell**.
+> ⛔⛔ **The row exposed yesterday's defect:** `checkNewInstruments` shipped with a passing 14/14 self-test while `collect()` never populated the five fields it reads — **GREY forever on the live box.** *A sweep that cannot see the surface it sweeps is worse than no sweep.* Fixed; the fix then produced a **false GREEN** (an unconditional lanes object reads healthy on a brain with no curriculum), caught by the harness before it shipped. **Bench 14/14 → 17/17.**
+> ⭐ Also found: **`.tv-q` used in six card titles and never declared in CSS**, and a 403 returning **without pinning `WEIGHT_BASE`** — so every write lane fired at the page's own origin and a refusal arrived as *"the brain is down"*.
+> ⚠ **Owned:** my first verification script was a broken detector that reported eleven helpers as undeclared; **ten were regex mangling in my own checker.** Rewritten to literal matching, which found the one true positive. **A detector written from an assumed format measures the assumption.**
+>
 > ### NEXT — in order
-> - **`TEACHFINAL.6`** — restart/update buttons. Pairs with the position-restore just built, because a restored position **needs a restart to take effect**. ⛔ The box deploys via the dashboard buttons only; this surfaces those actions, it does not invent a deploy path.
-> - **`TEACHFINAL.2`** — the pages-page write-up · **`TEACHFINAL.4`** — buttons and navigation.
+> - **`TEACHFINAL.2`** — the pages-page write-up · **`TEACHFINAL.4`** — buttons and navigation. ⚠ `legend.html`'s Teach View card was amended **factually** today (finalization checklist, weight downloads, position restore, press controls) — **that is not `.2`'s write-up**, which is still owed to the same standard as the rest of the index.
 > - **`CURVEDEPTH.12`** — `cstheory` and `major`, the last big corpus blocks, via the hand-curated CS book list (every field must be READ off the live page; a wrong `linkRe` fails **silently** here).
 > - **`NOFALLBACK.5`** — the RE-PRICE, immediately before the press, by law.
 >

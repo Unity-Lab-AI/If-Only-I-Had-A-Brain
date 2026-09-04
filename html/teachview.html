@@ -111,10 +111,25 @@
      the click still fires and still gets the server's real answer. */
   body.tv-no-admin .tv-knob-set,
   body.tv-no-admin #tvBuf,
+  body.tv-no-admin .tv-press,
   body.tv-no-admin #tvBench{ opacity:.5; }
   body.tv-no-admin .tv-knob-set::after,
   body.tv-no-admin #tvBuf::after,
+  body.tv-no-admin .tv-press::after,
   body.tv-no-admin #tvBench::after{ content:' (admin)'; font-size:9px; opacity:.8; }
+  /* The press controls are TIERED BY CONSEQUENCE, not by verb. The border colour
+     is the same signal the label carries in words, so the destructive press does
+     not sit in an undifferentiated row beside the harmless one. */
+  .tv-press-grp{border-left:2px solid var(--tv-line);padding-left:9px}
+  .tv-press-lbl{color:var(--tv-dim);font-size:10px;letter-spacing:.1em;
+    text-transform:uppercase;margin-bottom:5px}
+  .tv-press.keep{border-color:#2b4a3a}
+  .tv-press.keep:hover{border-color:var(--tv-good);color:var(--tv-good)}
+  .tv-press.warn{border-color:#5a4a22}
+  .tv-press.warn:hover{border-color:var(--tv-warn);color:var(--tv-warn)}
+  .tv-press.bad{border-color:#5a2626;color:var(--tv-bad)}
+  .tv-press.bad:hover{border-color:var(--tv-bad);background:#2a1010}
+  .tv-press[disabled]{opacity:.45;cursor:default}
   .tv-card{background:var(--tv-panel);border:1px solid var(--tv-line);border-radius:8px;overflow:hidden}
   .tv-card>h2{margin:0;padding:9px 12px;font-size:11px;letter-spacing:.13em;
     text-transform:uppercase;color:var(--tv-dim);border-bottom:1px solid var(--tv-line);
@@ -179,6 +194,11 @@
      that sizes to its content runs off the right edge inside the narrow
      right-hand column. */
   .tv-tip{position:relative;border-bottom:1px dotted rgba(122,168,255,.5);cursor:help}
+  /* The hint marker on a card title. ⚠ Six headers were already using this class
+     and it had never been declared — the glyph rendered as bare unstyled text,
+     reading as a stray "?" in the title rather than as the affordance it is. */
+  .tv-q{display:inline-block;margin-left:3px;padding:0 4px;border:1px solid var(--tv-line);
+    border-radius:3px;font-size:9px;line-height:1.5;color:var(--tv-dim);vertical-align:1px}
   .tv-tip::after{
     content:attr(data-tip);
     position:absolute;left:0;bottom:calc(100% + 6px);z-index:40;
@@ -358,6 +378,63 @@
           <input id="tvDropIn" type="file" accept=".json,application/json" style="display:none">
         </div>
         <div id="tvDropMsg" class="tv-sub" style="margin-top:6px;line-height:1.5"></div>
+      </div>
+    </div>
+
+    <!-- ⭐⭐ THE PRESS CONTROLS. Operator: *"with proper restart buttons update ect ect"*.
+         ⛔ NO NEW DEPLOY PATH IS INVENTED HERE. Every button below POSTs the exact
+         route the dashboard's own press buttons POST, behind the same loopback gate.
+         The box still deploys by pressing a button; this is the same button, placed
+         beside the thing it acts on.
+         ⭐ WHY IT BELONGS ON THIS PAGE AT ALL: the restore lane directly above.
+         A restored walk position changes a file on disk and NOTHING else — the
+         running process still holds the old ledger in memory, so until it restarts
+         the restore has had no effect while looking like it had one. Putting the
+         restart on a different page is how that restore gets believed and never
+         applied. -->
+    <div class="tv-card" style="margin-top:14px">
+      <h2>
+        <span class="tv-tip tip-l"
+          title="Restart and update the box — the same presses the dashboard fires, beside the restore that needs them."
+          data-tip="THE PRESS CONTROLS.&#10;&#10;These are the same four presses the dashboard fires, on the same admin-gated routes. Nothing new is invented and there is no second deploy path.&#10;&#10;They are HERE because of the restore lane above: putting a walk position on disk does not move the running brain, which still holds the old ledger in memory. A restore that is never restarted has done nothing while looking like it worked.&#10;&#10;READ THE GROUPS, NOT THE VERBS. The label says what the press COSTS, because &quot;update&quot; alone does not distinguish the press that keeps every hour of training from the press that discards all of it.&#10;&#10;KEEPS TRAINING — the weights survive. Restart resumes exactly where she is. Update pulls new code and resumes.&#10;&#10;KEEPS THE WEIGHTS, RESETS THE POSITION — she re-walks the whole curriculum on top of the synapses she already has. The Oja rule is self-normalising, so re-teaching strengthens rather than corrupts.&#10;&#10;DISCARDS TRAINING — the fresh walk. Every weight, episode and schema is wiped and she starts from zero.&#10;&#10;⭐ A PRESS IS CONFIRMED BY MEASUREMENT, NOT ASSUMED. The connection dropping is what a working restart looks like from a browser — and also what an unreachable server looks like. So this watches for the brain's uptime to come back LOWER than it was at the press, which only a real reboot can produce. Until that happens it says it is waiting, and if it never happens it says it could not tell — never that the press worked.">press controls <span class="tv-q">?</span></span>
+        <span class="tv-sub" id="tvPressNote">—</span>
+      </h2>
+      <div class="tv-body">
+        <div id="tvPressPos" class="tv-sub" style="line-height:1.5">reading the walk position…</div>
+
+        <div style="margin-top:10px" class="tv-press-grp">
+          <div class="tv-press-lbl">keeps training</div>
+          <div class="tv-controls">
+            <button id="tvPressRestart" class="tv-press keep">🔄 Restart · keeps training</button>
+            <button id="tvPressUpdKeep" class="tv-press keep">⬆ Update code · keeps training</button>
+          </div>
+        </div>
+
+        <div style="margin-top:10px" class="tv-press-grp">
+          <div class="tv-press-lbl">keeps the weights, resets the position</div>
+          <div class="tv-controls">
+            <button id="tvPressRewalk" class="tv-press warn">🔁 Re-walk from pre-K · keeps weights</button>
+          </div>
+        </div>
+
+        <div style="margin-top:10px" class="tv-press-grp">
+          <div class="tv-press-lbl">discards training</div>
+          <div class="tv-controls">
+            <button id="tvPressFresh" class="tv-press bad">⬆ Update code · WIPES all training</button>
+          </div>
+        </div>
+
+        <div id="tvPressMsg" class="tv-sub" style="margin-top:9px;line-height:1.5">nothing pressed this session.</div>
+
+        <!-- ⛔ SAYING WHAT IS ABSENT AND WHY, rather than leaving a reader to wonder
+             whether it was forgotten. Both omissions are deliberate. -->
+        <div class="tv-note" style="margin-top:9px">
+          <b>Two dashboard controls are deliberately NOT here.</b>
+          <b>Stop Brain</b> halts the process with nothing to revive it — recovering from it needs a shell on the box,
+          which is a worse thing to have one click away on a page whose job is watching training.
+          <b>Reset</b> wipes the weights without pulling code, and the re-walk above does the same job non-destructively.
+          Both remain on the dashboard, which is where an operator goes deliberately.
+        </div>
       </div>
     </div>
 
@@ -1463,6 +1540,13 @@ async function loadWeightsList() {
          is admin-gated, so an unauthenticated page gets a refusal, not an empty
          list — reporting that as "none found" would be a lie about the brain. */
       if (r.status === 403) {
+        /* ⛔ PIN THE BASE ANYWAY. A 403 PROVES this base is the brain — it
+           answered, it just refused. Returning without pinning left every other
+           write lane on this page (the position restore, the press controls)
+           firing at the page's own origin instead, where the failure arrives as
+           a network error and reads as "the brain is down" rather than as the
+           refusal it actually is. */
+        WEIGHT_BASE = base;
         $('tvWeightsNote').textContent = 'admin lane not authenticated';
         host.innerHTML = '<div class="tv-note">⛔ <b>The weights lane refused this page (403).</b> '
           + 'That is an AUTH answer, not an empty box — the files are there, this page is not '
@@ -1940,12 +2024,239 @@ function renderLetters(st) {
       : '<div style="color:var(--tv-dim);margin-top:5px">she can write any letter of the alphabet in her own hand.</div>');
 }
 
+/* ────────────────────────────────────────────────────────────────────────────
+   ⭐⭐ THE PRESS CONTROLS — restart and update, on the routes the dashboard
+   already fires, placed beside the restore lane that cannot take effect
+   without them.
+
+   ⛔ NO SECOND DEPLOY PATH. Each action below POSTs a route that already
+   exists and is already gated by `requireLoopback` server-side — the same gate
+   as /knob, /corpus-buffer, /teach-bench and /weights/position. This page is
+   not the enforcement and does not pretend to be.
+
+   ⛔⛔ THE HARD PART IS NOT FIRING THE PRESS, IT IS KNOWING WHETHER IT LANDED.
+   A working restart makes the server exit, so the fetch fails — which is
+   ALSO exactly what an unreachable server looks like. The dashboard resolves
+   that ambiguity by assuming success and printing "✓ restart sent", which is
+   the reassuring-blank shape this whole page exists to catch.
+   So a press is CONFIRMED BY MEASUREMENT here: the brain publishes wall-clock
+   uptime, uptime cannot decrease inside one process, and therefore an uptime
+   that comes back LOWER than it was at the press is proof of a new boot and
+   nothing else. Until that is seen the page says it is waiting; if it is never
+   seen the page says it could not tell. It never says the press worked.
+   ──────────────────────────────────────────────────────────────────────────── */
+let PRESS_WATCH = null;    // { verb, firedAt, waitMs, uptimeAtPress } while a press is in flight
+let PRESS_UPTIME = null;   // last seen st.time — seconds since the brain booted
+let PRESS_POS = null;      // plain-text walk position, for the confirm dialogs
+const PRESS_LABELS = {};   // original button text, restored after a press resolves
+
+/* What a press would actually cost, in her terms, from fields the page already
+   receives. ⛔ There is no invented number here: when the state carries no
+   position this returns null and the panel SAYS so, because a confident zero in
+   front of an irreversible button is the worst reading it could produce. */
+function pressPosition(st) {
+  const g = st && st.graduation;
+  if (g && g.cells) {
+    return `She has FINISHED — ${g.cells.total} cells accounted for (${g.cells.merit} passed on merit, `
+      + `${g.cells.forceAdvanced} force-advanced, ${g.cells.held} still owed).`;
+  }
+  const c = st && st.curriculum;
+  if (!c) return null;
+  let courses = 0, summed = 0;
+  const per = c.perSubject;
+  if (per && typeof per === 'object') {
+    for (const k of Object.keys(per)) { courses++; summed += (per[k] && per[k].cellsPassed) | 0; }
+  }
+  /* ⭐ `passedCellsTotal` is `cluster.passedCells.length` — the LEDGER ITSELF,
+     which is the same array the graduation record is built from. Summing the
+     per-course rows would be a derived second opinion on a number that already
+     has an authoritative source, and the two can disagree: a course row is
+     seeded from the declared roster whether or not it has been taught. Sum only
+     when the ledger field is absent. */
+  const passed = Number.isFinite(c.passedCellsTotal) ? c.passedCellsTotal : summed;
+  const course = c.currentCourseName || c.currentSubject;
+  const grade = c.currentGradeLabel || c.currentGrade;
+  const at = course
+    ? `teaching ${course}${grade ? ' at ' + grade : ''}`
+    : (grade ? `at ${grade}, no cell active` : 'no cell active');
+  return `${at} — ${passed} cell${passed === 1 ? '' : 's'} passed across ${courses} course${courses === 1 ? '' : 's'}.`;
+}
+
+/* ⭐ THE LABELS NAME THE CONSEQUENCE, NOT THE VERB. "Update" alone does not
+   distinguish the press that preserves every hour of training from the one that
+   discards all of it — and those two live one row apart on the dashboard. */
+const PRESS_ACTIONS = [
+  {
+    id: 'tvPressRestart', path: 'restart', verb: 'restart', waitMs: 180000,
+    head: 'RESTART the brain and RESUME training?',
+    body: '✓ Weights are force-saved before it exits\n'
+        + '✓ A resume marker is dropped, so it picks up at the same cell\n'
+        + '✓ This is what makes a restored walk position actually take effect\n\n'
+        + 'Nothing is discarded. If a heavy change altered the brain size or format the saved '
+        + 'weights cannot load and it fresh-starts instead, saying so.',
+  },
+  {
+    id: 'tvPressUpdKeep', path: 'update?keep=1', verb: 'update (keep training)', waitMs: 300000,
+    head: 'UPDATE the box to the latest code and KEEP training?',
+    body: '✓ The box re-pulls the project code, then restarts\n'
+        + '✓ The saved weights are RESUMED — no fresh walk\n\n'
+        + 'This is how a fix ships without costing training. Takes a minute or two.',
+  },
+  {
+    id: 'tvPressRewalk', path: 'savererun', verb: 're-walk', waitMs: 240000,
+    head: 'RE-WALK the whole curriculum on top of the brain she already has?',
+    body: '✓ Every trained weight is KEPT, and a rollback checkpoint is taken first\n'
+        + '✓ Episodic memory and identity are preserved\n'
+        + '✗ Every grade pointer resets to pre-K and every passed cell is cleared\n\n'
+        + 'She re-teaches the entire curriculum over the synapses she already has. The learning '
+        + 'rule is self-normalising, so re-teaching strengthens rather than corrupts — but the '
+        + 'walk starts at the beginning and takes as long as it took the first time.',
+    confirm2: 'Confirm: every grade pointer goes back to pre-K. The weights survive; the position does not.',
+  },
+  {
+    id: 'tvPressFresh', path: 'update', verb: 'fresh walk', waitMs: 300000,
+    head: '⚠ UPDATE the box to the latest code and WIPE ALL TRAINING?',
+    body: '✓ The box re-pulls the project code\n'
+        + '✗ Every trained weight, every episode, every schema and her visual store are DESTROYED\n'
+        + '✗ Her identity anchors survive. Nothing she has LEARNED does\n\n'
+        + 'This is the fresh walk. It is the right press after shipping a change to what she is '
+        + 'TAUGHT, because a walk teaches from zero using whatever the code does at that moment — '
+        + 'and it is the wrong press for anything else, because there is no way back.',
+    confirm2: 'This CANNOT be undone. What is about to be discarded:',
+  },
+];
+
+function setPressEnabled(on) {
+  for (const a of PRESS_ACTIONS) { const b = $(a.id); if (b) b.disabled = !on; }
+}
+function restorePressLabels() {
+  for (const a of PRESS_ACTIONS) { const b = $(a.id); if (b && PRESS_LABELS[a.id]) b.textContent = PRESS_LABELS[a.id]; }
+}
+
+async function firePress(a) {
+  const msg = $('tvPressMsg'); if (!msg) return;
+  const btn = $(a.id);
+  /* ⛔ The position is shown in EVERY confirm, not only the destructive ones —
+     "where is she right now" is the question that decides whether any of these
+     is the right press, and a reader should not have to scroll to answer it. */
+  const pos = PRESS_POS
+    || 'This page cannot currently read the walk position, so it cannot tell you what this press would cost.';
+  if (!window.confirm(`${a.head}\n\n${a.body}\n\n--- where she is right now ---\n${pos}`)) return;
+  if (a.confirm2 && !window.confirm(`${a.confirm2}\n\n${pos}`)) return;
+
+  setPressEnabled(false);
+  if (btn) btn.textContent = '⏳ ' + a.verb + '…';
+  msg.style.color = 'var(--tv-dim)';
+  msg.textContent = `${a.verb} sent — waiting for the brain to come back on a new boot.`;
+  PRESS_WATCH = { verb: a.verb, firedAt: Date.now(), waitMs: a.waitMs, uptimeAtPress: PRESS_UPTIME };
+
+  try {
+    const r = await fetch((WEIGHT_BASE || '') + '/' + a.path, { method: 'POST', cache: 'no-store' });
+    /* ⛔ AN AUTH FAILURE IS NOT A BRAIN FAILURE — the same rule the rest of this
+       page and the dashboard already learned. Nothing was pressed. */
+    if (isForbidden(r)) {
+      markAdminLane(false, 'This browser is not calling from loopback.');
+      PRESS_WATCH = null; setPressEnabled(true); restorePressLabels();
+      msg.style.color = 'var(--tv-warn)';
+      msg.textContent = 'the press controls are admin-only and this page is not on the admin lane — '
+        + 'nothing was pressed, and this says nothing about the brain\'s health.';
+      return;
+    }
+    markAdminLane(true);
+    const j = await r.json().catch(() => ({}));
+    /* The server answers 200 with a FAILED status when the self-update script is
+       missing — a local dev brain has no deploy path at all. That is a refusal
+       with a reason, and it must not be swallowed by the 200. */
+    const refused = j && typeof j.status === 'string' && /FAILED|not found|already/i.test(j.status);
+    if (refused) {
+      PRESS_WATCH = null; setPressEnabled(true); restorePressLabels();
+      msg.style.color = 'var(--tv-bad)';
+      msg.textContent = `⛔ REFUSED — ${j.status}${j.hint ? ' · ' + j.hint : ''}`;
+      return;
+    }
+    msg.style.color = 'var(--tv-dim)';
+    msg.innerHTML = `${knobEsc(a.verb)} accepted — ${knobEsc(j.status || 'no status returned')}`
+      + '<br>Waiting for a NEW boot. Until the brain\'s uptime reads lower than it did at the press, this is not confirmed.';
+  } catch (e) {
+    /* ⛔ A DROPPED CONNECTION IS NEITHER A SUCCESS NOR A FAILURE HERE, and saying
+       either would be a guess. The brain exiting looks exactly like this from a
+       browser — and so does a server that was never reachable. The watcher below
+       is what tells them apart, so this line only reports what is known. */
+    msg.style.color = 'var(--tv-dim)';
+    msg.textContent = `${a.verb} sent and the connection dropped. That is what the brain exiting looks like `
+      + 'from here — and also what an unreachable server looks like. Waiting for a new boot to tell them apart.';
+  }
+}
+
+/* Uptime as a readable duration. Local to the press panel; the dashboard's own
+   formatter lives on a different page. */
+function fmtPressUp(sec) {
+  if (!Number.isFinite(sec)) return '—';
+  const s = Math.max(0, Math.floor(sec));
+  if (s < 90) return s + 's';
+  if (s < 5400) return Math.round(s / 60) + 'm';
+  return (s / 3600).toFixed(1) + 'h';
+}
+
+function renderPress(st) {
+  PRESS_POS = pressPosition(st);
+  const posEl = $('tvPressPos');
+  if (posEl) {
+    posEl.innerHTML = PRESS_POS
+      ? knobEsc(PRESS_POS)
+      : '<span style="color:var(--tv-warn)">⚠ This page cannot read the walk position right now, so it cannot say '
+        + 'what a press would cost. That is a CANNOT-TELL, not an empty brain — press nothing destructive until it reads.</span>';
+  }
+  const up = Number(st && st.time);
+  if (Number.isFinite(up)) {
+    /* THE CONFIRMATION. Uptime cannot decrease within a process, so a lower
+       reading than the one taken at the press is proof of a reboot. */
+    if (PRESS_WATCH && Number.isFinite(PRESS_WATCH.uptimeAtPress) && up < PRESS_WATCH.uptimeAtPress) {
+      const msg = $('tvPressMsg');
+      if (msg) {
+        msg.style.color = 'var(--tv-good)';
+        msg.textContent = `✓ ${PRESS_WATCH.verb} CONFIRMED — the brain is back on a new boot `
+          + `(uptime ${fmtPressUp(up)}, was ${fmtPressUp(PRESS_WATCH.uptimeAtPress)} at the press). Measured, not assumed.`;
+      }
+      PRESS_WATCH = null; setPressEnabled(true); restorePressLabels();
+      loadWeightsList();
+    }
+    PRESS_UPTIME = up;
+  }
+  const note = $('tvPressNote');
+  if (note) note.textContent = PRESS_WATCH ? 'press in flight' : `brain up ${fmtPressUp(PRESS_UPTIME)}`;
+}
+
+/* Its own timer, deliberately: `poll()` returns early when the brain is
+   unreachable, which is precisely the window a press lives in — so a timeout
+   driven from the poll would never fire on the failure it exists to report. */
+function pressWatchTick() {
+  if (!PRESS_WATCH) return;
+  if (Date.now() - PRESS_WATCH.firedAt < PRESS_WATCH.waitMs) return;
+  const msg = $('tvPressMsg');
+  if (msg) {
+    msg.style.color = 'var(--tv-warn)';
+    msg.textContent = `⚠ ${PRESS_WATCH.verb} was accepted but no new boot has been seen in `
+      + `${Math.round(PRESS_WATCH.waitMs / 1000)}s. That is a CANNOT-TELL, not a failure: the box may be slow to `
+      + 'come back, or the restart may never have happened. Check the dashboard before pressing again — '
+      + 'pressing twice is how a fresh walk gets fired at a brain that was already restarting.';
+  }
+  PRESS_WATCH = null; setPressEnabled(true); restorePressLabels();
+}
+
+for (const a of PRESS_ACTIONS) {
+  const b = $(a.id);
+  if (!b) continue;
+  PRESS_LABELS[a.id] = b.textContent;
+  b.addEventListener('click', () => firePress(a));
+}
+
 function renderInstruments(st, tv) {
   try { renderDials(st, tv); renderEq(tv); renderTrace(tv); }
   catch (e) { /* an instrument must never take the page down */ }
   /* Separate try — a throw in one of the new panels must not cost the dials,
      which is the failure mode a single shared catch would have created. */
-  try { renderWiring(st); renderGrad(st); renderLanes(st); renderBattery(st); renderLetters(st); renderFinal(st); }
+  try { renderWiring(st); renderGrad(st); renderLanes(st); renderBattery(st); renderLetters(st); renderFinal(st); renderPress(st); }
   catch (e) { /* same rule */ }
 }
 
@@ -1959,6 +2270,9 @@ setInterval(pollEye, 5000);
 /* Slow on purpose: the cell list is a GROUP BY over the whole ledger, and this
    pane is read on demand rather than watched. */
 setInterval(loadLedgerCells, 30000);
+/* The press watchdog. Cheap, and it must keep running while everything else is
+   failing — that is the exact window it reports on. */
+setInterval(pressWatchTick, 5000);
 </script>
 </body>
 </html>

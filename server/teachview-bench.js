@@ -261,7 +261,51 @@ function checkNewInstruments(s) {
   return ok('new instruments', parts.join(' · '));
 }
 
-const CHECKS = [checkKnobs, checkWriteLane, checkLedger, checkCorpusFeed, checkFigures, checkFieldProducers, checkNewInstruments];
+/**
+ * ⭐⭐ THE PRESS CONTROLS — restart and update, added to the viewer 2026-09-04.
+ *
+ * ⛔ THIS IS THE ONE PANEL ON THE PAGE THAT CAN DESTROY SOMETHING, so its
+ * failure modes are worse than a wrong number. Two fields carry the whole
+ * safety story and NEITHER of them is about the buttons themselves:
+ *
+ *   `time`       — wall-clock uptime. It is the ONLY evidence a press landed,
+ *                  because uptime cannot decrease inside one process. Without
+ *                  it every press falls back to "assume it worked", which is
+ *                  exactly the reassuring-blank shape this bench exists for.
+ *
+ *   `curriculum` — where she actually is. It is what the destructive confirm
+ *                  names as the thing being discarded. Without it an operator
+ *                  is asked to wipe a walk the page cannot describe.
+ *
+ * Both are LONG-STANDING published fields, so this check is not guarding a new
+ * producer — it is guarding two old ones that the press panel newly depends on,
+ * which is precisely the coupling that rots unnoticed.
+ */
+function checkPressControls(s) {
+  const hasTime = s && Number.isFinite(Number(s.time));
+  const c = s && s.curriculum;
+  const g = s && s.graduation;
+  if (!hasTime && !c && !g) {
+    return grey('press controls', 'neither uptime nor a curriculum position was in the snapshot — cannot tell whether a press could be confirmed.');
+  }
+  if (!hasTime) {
+    return bad('press controls', 'state.time is not published — a restart or update can never be CONFIRMED from the viewer, only assumed, which is the failure this panel was built to avoid.');
+  }
+  // A finished walk answers the position question through the graduation
+  // record instead, which is correct and not a gap.
+  if (!c && !g) {
+    return bad('press controls', 'state.curriculum is not published — the destructive presses cannot name what they would discard, so an operator would be asked to wipe a walk the page cannot describe.');
+  }
+  if (c && !g && !Number.isFinite(Number(c.passedCellsTotal))) {
+    return bad('press controls', 'curriculum.passedCellsTotal is gone — the position line falls back to summing per-course rows, which is a derived second opinion on the ledger and can disagree with it.');
+  }
+  const where = g
+    ? 'graduated — the record answers the position'
+    : `${c.currentCourseName || c.currentSubject || 'no cell active'} · ${c.passedCellsTotal} cells passed`;
+  return ok('press controls', `uptime ${Math.round(Number(s.time))}s · ${where}`);
+}
+
+const CHECKS = [checkKnobs, checkWriteLane, checkLedger, checkCorpusFeed, checkFigures, checkFieldProducers, checkNewInstruments, checkPressControls];
 
 /**
  * Run every surface check over a snapshot. Pure: no I/O, no globals.
@@ -352,6 +396,16 @@ function healthySnapshot() {
       authoredTotal: 6, authoredPass: 6, authoredRate: 1, derivedTotal: 14,
       gatedOnAuthored: true, correctiveTaught: 0,
     },
+    // The two fields the press controls stand on. Same rule as above: without
+    // them the press check reads GREY on a healthy snapshot, and grey does not
+    // pass.
+    time: 4820,
+    curriculum: {
+      currentSubject: 'ela', currentGrade: 'kindergarten',
+      currentCourseName: 'Reading', currentGradeLabel: 'Kindergarten',
+      passedCellsTotal: 7,
+      perSubject: { ela: { cellsPassed: 4 }, math: { cellsPassed: 3 } },
+    },
   };
 }
 
@@ -383,6 +437,14 @@ const FAULTS = [
     (s) => { s.deferredLanes.drivenOffWalk = true; s.deferredLanes.queued.chatPairs = 24; s.deferredLanes.drainedItems = 0; }],
   ['authored questions missed and NOTHING corrective-taught (the missed-set is empty again)',
     (s) => { s.lastBattery.authoredPass = 3; s.lastBattery.authoredRate = 0.5; s.lastBattery.correctiveTaught = 0; }],
+  // ── the press controls, added 2026-09-04. Both faults make a DESTRUCTIVE
+  //    button unsafe rather than making a number wrong. ──
+  ['uptime unpublished (a restart or update could only ever be ASSUMED to have landed, never confirmed)',
+    (s) => { delete s.time; }],
+  ['the walk position unpublished (the wipe confirm cannot name what it is about to discard)',
+    (s) => { delete s.curriculum; }],
+  ['the cell ledger total gone (the position line silently falls back to a derived sum that can disagree with it)',
+    (s) => { delete s.curriculum.passedCellsTotal; }],
 ];
 
 /**
@@ -459,6 +521,58 @@ function collect(ctx) {
   try {
     s.walk.active = !!(brain._curriculumRunning || (brain.curriculum && brain.curriculum.running));
   } catch { s.walk.active = false; }
+
+  // ⛔⛔ THIS BLOCK WAS THE DEFECT, AND IT IS THE ONE THIS FILE IS ABOUT.
+  // `checkNewInstruments` shipped 2026-09-04 with a self-test that passed 14/14
+  // against a hand-built fixture — and the COLLECTOR was never extended, so on
+  // the live box its five fields were never in the snapshot and the check could
+  // only ever read GREY. A sweep that cannot see the surface it sweeps is worse
+  // than no sweep: the self-test says the clause works, and it does; it simply
+  // never runs on anything real. Producer written, consumer written, nothing
+  // joining them — the same split as `meanVoltage`, `canSpeak` and
+  // `cluster.wiringAudit` itself.
+  //
+  // ⭐ EVERY READ BELOW IS A FIELD `getState()` ALREADY READS, from the same
+  // object, so this adds no new computation to the shared loop. The one call
+  // (`getCurriculumStatus`) is the one the broadcast loop already makes 10× a
+  // second.
+  const cl = brain.cortexCluster || null;
+  try { s.wiringAudit = (cl && cl.wiringAudit) || null; } catch { s.wiringAudit = null; }
+  try { s.lastBattery = (cl && cl.lastBattery) || null; } catch { s.lastBattery = null; }
+  // ⛔ ONLY WHEN THE CURRICULUM EXISTS. A first cut of this built the lanes
+  // object unconditionally, and every field defaulted to a healthy-looking zero
+  // — which flipped `checkNewInstruments` from GREY to GREEN on a brain that has
+  // not booted a curriculum at all, because a truthy lanes object satisfies its
+  // "did I see anything?" guard. That is the false green this bench exists to
+  // prevent, introduced by the fix for a grey. No curriculum means these queues
+  // do not exist yet, and saying nothing is the honest answer.
+  try {
+    if (!brain.curriculum) throw new Error('no curriculum attached');
+    const q = (a) => (Array.isArray(a) ? a.length : 0);
+    const dr = brain.curriculum._deferredDrainStats || {};
+    s.deferredLanes = {
+      drivenOffWalk: !brain._curriculumInProgress,
+      queued: {
+        chatPairs: q(brain._chatPairTeachQueue),
+        chatJobs: q(brain._chatTeachJobQueue),
+        mindsEye: q(brain._mindsEyePreviewQueue),
+        salience: q(brain._salienceQueue),
+      },
+      drainedItems: dr.items || 0,
+      drainedPasses: dr.passes || 0,
+      lastDrainAgeMs: dr.lastAt ? (Date.now() - dr.lastAt) : null,
+    };
+  } catch { s.deferredLanes = null; }
+
+  // The two the press controls stand on.
+  try {
+    s.time = brain._startedAt ? (Date.now() - brain._startedAt) / 1000 : undefined;
+  } catch { s.time = undefined; }
+  try {
+    s.curriculum = (brain.curriculum && typeof brain.curriculum.getCurriculumStatus === 'function')
+      ? brain.curriculum.getCurriculumStatus() : null;
+  } catch { s.curriculum = null; }
+  try { s.graduation = (cl && cl.graduation) || null; } catch { s.graduation = null; }
 
   return s;
 }

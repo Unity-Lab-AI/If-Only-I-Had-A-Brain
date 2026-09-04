@@ -5,6 +5,44 @@
 
 ---
 
+## 2026-09-04 — `TEACHFINAL.6` — THE PRESS CONTROLS, AND THE SWEEP THAT WAS BUILT BLIND TO THE SURFACE IT SWEEPS
+
+Gee (verbatim, the original instruction): *"with proper restart buttons update ect ect"*.
+
+### The row: restart and update, beside the thing they act on
+
+Four presses now sit in the teach viewer, on the **exact routes the dashboard already fires** — `POST /restart`, `POST /update?keep=1`, `POST /savererun`, `POST /update` — every one behind the same `requireLoopback` gate as `/knob`, `/corpus-buffer`, `/teach-bench` and `/weights/position`. ⛔ **No second deploy path is invented and none was needed.** The standing rule is unchanged: the box deploys by pressing a button, and this is the same button in a second place.
+
+⭐ **WHY THEY BELONG ON THIS PAGE AT ALL, AND IT IS NOT CONVENIENCE.** The position-restore lane shipped an hour earlier writes a walk position **to disk and nothing else** — the running process still holds the old ledger in memory, so until it restarts the restore has had no effect **while looking exactly like it had one**. Putting the restart on a different page is how that restore gets believed and never applied.
+
+⛔⛔ **THE LABELS NAME THE COST, NOT THE VERB, AND THE GROUPING IS THE POINT.** "Update" alone does not distinguish the press that preserves every hour of training from the press that discards all of it, and on the dashboard those two live **one row apart**. Three tiers, by consequence: **keeps training** (restart · update-and-resume), **keeps the weights and resets the position** (the re-walk, on top of the synapses she already has), **discards training** (the fresh walk). Only the two that destroy a position double-confirm — and neither weight-preserving press does, deliberately, because a confirmation dialog in front of a harmless action is what trains an operator to click through the one in front of a harmful one.
+
+⭐ **EVERY CONFIRM NAMES WHERE SHE ACTUALLY IS** — the live course, the grade and the cell count read straight off `curriculum.passedCellsTotal`, which is `cluster.passedCells.length`, the same array the graduation record is built from. Summing the per-course rows was the first cut and is a **derived second opinion on a number that already has an authoritative source**; the two can disagree, because a course row is seeded from the declared roster whether or not it has been taught. The sum survives only as the fallback when the ledger field is absent. ⛔ And when **no** position is published the panel says so in those words rather than printing a confident zero in front of an irreversible button.
+
+⛔⛔ **A PRESS IS CONFIRMED BY MEASUREMENT HERE, NOT ASSUMED — and that is the difference from the dashboard.** A working restart makes the server exit, so the `fetch` fails; **that is also precisely what an unreachable server looks like**. The dashboard resolves the ambiguity by assuming success and printing `✓ restart sent`, which is the reassuring-blank shape this whole page exists to catch. So: the brain publishes wall-clock uptime, **uptime cannot decrease inside one process**, and therefore an uptime that comes back **lower than it was at the press** is proof of a new boot and proof of nothing else. Until that is seen the page says it is waiting; if it is never seen it says it **could not tell**, names the wait, and warns that pressing twice is how a fresh walk gets fired at a brain that was already restarting. It never says the press worked. ⚠ The watchdog runs on **its own timer**, because `poll()` returns early while the brain is unreachable — which is exactly the window a press lives in, so a timeout driven off the poll would never fire on the failure it exists to report.
+
+⭐ **Two dashboard controls are deliberately NOT here, and the page says which and why.** **Stop Brain** halts the process with nothing to revive it, and recovering needs a shell on the box — a bad thing to have one click away on a page whose job is watching training. **Reset** wipes the weights without pulling code, and the re-walk does that job non-destructively. Both remain on the dashboard, where an operator goes deliberately.
+
+### ⛔⛔ WHAT THE WORK EXPOSED, AND IT WAS MINE FROM THE DAY BEFORE: `checkNewInstruments` COULD ONLY EVER READ GREY
+
+`TEACHFINAL.7` added a sweep clause for the five new panels and self-tested it **14/14 against a hand-built fixture**. The clause is correct. **`collect()` was never extended**, so on the live box `wiringAudit`, `deferredLanes` and `lastBattery` were **never in the snapshot**, the clause hit its own "did I see anything?" guard, and it returned **GREY forever**. Measured, not inferred: `collect({brain:{}})` returned exactly `walk, knobs, ledger, corpus, figures, rendered`.
+
+**A sweep that cannot see the surface it sweeps is worse than no sweep** — the self-test says the clause works, and it does; it simply never runs on anything real. Producer written, consumer written, **nothing joining them**: the same split as `meanVoltage`, as `canSpeak`, and as `cluster.wiringAudit` itself the day before. Fixed by extending the collector to read the **same fields `getState()` already reads, from the same objects**, so no new computation lands on the loop the walk, the donor and the WS pump share.
+
+⚠ **AND THE FIX FOR THAT GREY IMMEDIATELY PRODUCED A FALSE GREEN, CAUGHT BY THE HARNESS BEFORE IT SHIPPED.** The first cut built the deferred-lanes object unconditionally, and every field defaulted to a healthy-looking zero — so a brain with **no curriculum attached at all** flipped the check from GREY to **GREEN**, because a truthy lanes object satisfies the guard. The object is now built only when a curriculum exists. **No curriculum means those queues do not exist yet, and saying nothing is the honest answer.**
+
+### The bench grew with it — 14/14 → 17/17
+
+`checkPressControls` guards the two fields the presses stand on, and neither is about the buttons: **`time`**, without which a press can only ever be assumed to have landed; and **`curriculum`**, without which the destructive confirm cannot name what it is about to discard. Both are long-standing published fields, so this guards **two old producers that a new consumer newly depends on** — precisely the coupling that rots unnoticed. Three planted faults, each proven to turn it RED: uptime unpublished, the position unpublished, and the ledger total gone (which silently demotes the position line to the derived sum).
+
+⭐ **Found and fixed en route:** `.tv-q` — the hint marker used in **six** card titles — **had never been declared in CSS**. Not a crash; the glyph rendered as bare unstyled text, reading as a stray `?` in a heading. Mine, from the previous batch, and the same invented-reference class as `esc()` and `--tv-ok`. Also: `loadWeightsList` returned on a 403 **without pinning `WEIGHT_BASE`** — and a 403 *proves* that base is the brain, since it answered and merely refused. Every other write lane on the page (the position restore, and now the presses) was therefore firing at the page's own origin instead, where the failure arrives as a network error and reads as *"the brain is down"* rather than as the refusal it is.
+
+**Verified.** 28/28 on the press logic, run against the **real published field shape read off `getCurriculumStatus()`'s return** rather than an assumed one; 16/16 on the collector wiring, including the empty-brain case that must stay GREY and three live faults that must go RED through the real `collect()` path; the bench self-test 17/17; both page script blocks parse; `node --check` on the bench. ⚠ **The harness caught two defects in my own work in one sitting** — the GREY-forever clause, and the false GREEN introduced while fixing it.
+
+⛔ **Owned: my first verification script was a broken detector** — it reported `knobEsc`, `isForbidden` and nine other helpers as undeclared, and `.tv-q` alongside them. Ten of the eleven were **regex mangling in my own checker**, not defects; only `.tv-q` was real. Rewritten to literal string matching, which found the one true positive and cleared the rest. **The lesson is the session's recurring one: a detector written from an assumed format measures the assumption.** Twice more in the same hour I mis-stated a fact from a too-short `awk` range — `perSubject` and `passedCellsTotal` are both in `getCurriculumStatus()`'s return at lines 4094–4095; my window stopped at 3990. **Read the artefact, and read all of it.**
+
+---
+
 ## 2026-09-04 — `TEACHFINAL.8` + `TEACHFINAL.7` — THE INSTRUMENTS BUILT TODAY ARE VISIBLE, AND THE BENCH NOW SWEEPS THEM
 
 Gee: *"we are completeing open items that are unblocked to clear the todo list of completed work"*, and on the viewer specifically: *"are we getting close to a graduation ready run with the teach viewer all correct?"* — **the honest answer at the time was no**, 13 rows open and none built. Two of them are now done.

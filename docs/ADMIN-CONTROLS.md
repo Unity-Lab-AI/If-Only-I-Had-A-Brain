@@ -476,6 +476,29 @@ Two state blocks changed meaning on the fresh walk, and both are easy to misread
 
 ---
 
+## 🔄 THE PRESSES ARE IN THE TEACH VIEWER TOO — `html/teachview.html` (2026-09-04)
+
+⭐⭐ **Four of the presses above are now also in the Teach View**, on the **same routes and the same `requireLoopback` gate** — `POST /restart`, `POST /update?keep=1`, `POST /savererun`, `POST /update`. ⛔ **Nothing new was invented and there is no second deploy path.** The box still deploys by pressing a button; this is the same button in a second place.
+
+⭐ **They are there because of the weight-position restore on that page.** Dropping a `brain-weights.json` writes a walk position **to disk and nothing else** — the running process still holds the old ledger in memory, so **until it restarts the restore has had no effect while looking exactly like it had one.** A restart three pages away is how that gets believed and never applied.
+
+| Tier | Button | Route | What it costs |
+|---|---|---|---|
+| **keeps training** | 🔄 Restart · keeps training | `POST /restart` | Nothing. Weights force-saved, resume marker dropped, picks up at the same cell |
+| **keeps training** | ⬆ Update code · keeps training | `POST /update?keep=1` | Nothing. Re-pulls the code and RESUMES the saved weights |
+| **keeps the weights, resets the position** | 🔁 Re-walk from pre-K · keeps weights | `POST /savererun` | Every grade pointer and every passed cell. The weights and episodic memory survive; a rollback checkpoint is taken first |
+| **discards training** | ⬆ Update code · WIPES all training | `POST /update` | Everything she has learned. Identity anchors survive; nothing else does |
+
+⛔ **THE LABELS NAME THE COST, NOT THE VERB.** "Update" alone does not distinguish the press that preserves every hour of training from the one that discards all of it, and on the dashboard those two sit **one row apart**. Only the two presses that destroy a position double-confirm — **a confirmation dialog in front of a harmless action is what trains an operator to click through the one in front of a harmful one.**
+
+⭐ **Every confirm names where she actually is** — live course, grade, and cell count read from `curriculum.passedCellsTotal`, which is `cluster.passedCells.length`, the same array the graduation record is built from. When no position is published the panel **says so** rather than printing a confident zero in front of an irreversible button.
+
+⛔⛔ **A PRESS IS CONFIRMED BY MEASUREMENT HERE, AND THIS IS THE ONE REAL DIFFERENCE FROM THE DASHBOARD.** A working restart makes the server exit, so the request fails — **and that is also exactly what an unreachable server looks like.** The dashboard resolves the ambiguity by assuming success and printing `✓ restart sent`. The viewer instead watches wall-clock uptime: **uptime cannot decrease inside one process**, so a reading lower than the one taken at the press is proof of a new boot and proof of nothing else. Until that is seen it reports *waiting*; if it is never seen it reports **could not tell**, names the wait, and warns that pressing twice is how a fresh walk gets fired at a brain that was already restarting.
+
+⚠ **Two dashboard controls are deliberately NOT there, and the page says which and why.** **Stop Brain** halts the process with nothing to revive it, and recovery needs a shell on the box. **Reset** wipes the weights without pulling code, which the re-walk does non-destructively. Both remain on the dashboard, where an operator goes deliberately.
+
+---
+
 ## 🎛 THE KNOBS ARE ON SCREEN NOW — `html/teachview.html` (2026-09-02)
 
 ⭐⭐ **Every knob below, and every knob in the complete reference beneath it, is now rendered live in the Teach View's Training-knobs card** — with its **current value**, its **default**, whether the **environment overrides it**, its **read site**, and a tooltip carrying all of that plus the evidence behind its effect class. `server/knob-registry.js` → `state.knobs` → the card.
