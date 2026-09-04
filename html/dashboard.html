@@ -3575,6 +3575,25 @@
     // reads blank while the walk is still running invites the reading that the
     // instrument is broken.
     function updateGraduation(s) {
+      /* ⛔⛔ THIS LINE IS THE FIX FOR A LIVE DASHBOARD OUTAGE, NOT A TIDY-UP.
+         `$` is NOT module-scoped in this file — it is redeclared inside six
+         separate functions (1663, 1873, 2289, 2331, 2638, 2787). This function
+         used it without one, so it threw `ReferenceError: $ is not defined` on
+         EVERY WebSocket state message, `updateDashboard` died partway through,
+         and every panel rendered after this call never populated: the whole
+         Application Profiling section sat at "waiting for state…" and the donor
+         readout showed "— —" while the brain was broadcasting perfectly and the
+         donor was attached at 100% GPU utilisation.
+         ⭐ This is NUMSCOPE recurring — the same defect class this page's wiki
+         entry already records: *a helper scoped to one function called from
+         another, so the first non-null verdict kills the whole update pass.*
+         ⚠ THE PAGE LOOKED HEALTHY THROUGHOUT. Panels ABOVE the throw kept
+         updating (the autoscale card read `donors: 1` correctly all along), so
+         the failure presented as "some panels are stale", which is the hardest
+         shape to spot and the reason it survived a whole session.
+         ⚠ Scanned the rest of the file: `updateGraduation` is the ONLY function
+         that uses `$(` without defining it. One instance, not a class. */
+      const $ = (id) => document.getElementById(id);
       const g = s.graduation;
       const body = $('d-grad-body');
       const none = $('d-grad-none');
