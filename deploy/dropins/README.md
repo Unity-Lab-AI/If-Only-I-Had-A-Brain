@@ -100,3 +100,46 @@ sudo systemctl start nightly-backup      # verify: Result=success
 the repo is **on the same box** (`/var/backups/restic`) — a disk loss takes the
 backups with it. For a brain that takes weeks to train, consider
 `--keep-weekly/--keep-monthly` and an off-box destination.
+
+---
+
+## `unity-brain-ctl/` — `ProtectHome=true` hid the deploy key and broke every redeploy (2026-09-04)
+
+`10-fix-protecthome-deploykey.conf` is a drop-in for **`unity-brain-ctl.service`**.
+
+**What broke:** Gee's `/ctl/update` presses all aborted with
+`Host key verification failed. / fatal: Could not read from remote repository.`
+When the brain's event loop is starved it "accepts nothing" and ctl **falls back to
+running `deploy/self-update.sh` inside its OWN sandbox**. That unit had
+`ProtectHome=true`, which replaces `/home` with an **empty tmpfs**, so
+`/home/unity/.ssh` — the Forgejo deploy key and `known_hosts` — did not exist for
+the clone.
+
+**⚠ The trap:** the key and its permissions were always fine
+(`sudo -u unity -H ssh -T git@git.unityailab.com` authenticates). The error names
+ssh and git but **never systemd**, and `self-update.sh`'s own WARN text points you
+at "the deploy key is NOT authorised on the data repo" — a dead end. Prove it
+instead of theorising:
+
+```bash
+systemd-run -p ProtectHome=true      -p User=unity /bin/sh -c 'ls /home/unity/.ssh'  # Permission denied
+systemd-run -p ProtectHome=read-only -p User=unity /bin/sh -c 'ls /home/unity/.ssh'  # readable
+```
+
+`read-only` still denies **writes** to `/home` and still hides `/root`, so the
+hardening that matters is retained.
+
+```bash
+sudo mkdir -p /etc/systemd/system/unity-brain-ctl.service.d
+sudo install -o root -g root -m 644 deploy/dropins/unity-brain-ctl/*.conf \
+     /etc/systemd/system/unity-brain-ctl.service.d/
+sudo systemctl daemon-reload
+sudo systemctl restart unity-brain-ctl   # verify: systemctl show unity-brain-ctl -p ProtectHome
+```
+
+**⭐ Pattern, not a one-off — this is the SECOND time `ProtectHome=true` broke a
+critical path on this box** (`nightly-backup/` above: three months of silent
+backup failure because it hid `/root/.restic-password`). **If a unit reads a
+secret out of a home directory, `ProtectHome=true` will break it, and the error
+will implicate anything except systemd.** `scripts/test-ctlplane-integration.mjs`
+now fails if the repo unit ever goes back to `true`.

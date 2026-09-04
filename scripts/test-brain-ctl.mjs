@@ -295,7 +295,79 @@ try {
     check('update-savestart is still savestart mode', safe.json?.mode === 'savestart');
   }
 
-  console.log('\n10. control plane survived the whole run');
+  console.log('\n10. /start, /restart, /kick — the verbs that had NO contract test');
+  {
+    // TRACEABILITY GAP found by auditing endpoints-in-code against
+    // endpoints-in-tests: /start (the single most important verb in this
+    // feature), /restart and /kick were only ever exercised indirectly through
+    // the browser suite. If their response contract regressed, nothing here
+    // would have noticed.
+
+    // /start with the brain down must invoke the privileged helper with the
+    // right argv, and must report honestly that the port never bound (the mock
+    // helper does not really start anything).
+    const before = helperCalls().length;
+    const st = await req('POST', '/ctl/start');
+    check('/start answers 200 with the brain down', st.code === 200, `code=${st.code}`);
+    check('/start invoked the helper as `start <unit>`',
+      helperCalls().slice(before).some((c) => c === `start ${TEST_UNIT}`), JSON.stringify(helperCalls().slice(before)));
+    check('/start reports boundPort=false honestly (nothing really started)',
+      st.json?.boundPort === false, `boundPort=${st.json?.boundPort}`);
+    check('/start does NOT claim success when the port never bound',
+      !/is serving/i.test(st.json?.message || ''), st.json?.message);
+    check('/start says weights may still be loading', /not bound|loading weights/i.test(st.json?.message || ''), st.json?.message);
+    check('/start did NOT reload nginx (never bound)', st.json?.proxyReloaded === false, `proxyReloaded=${st.json?.proxyReloaded}`);
+    check('/start returns a full status block', typeof st.json?.status?.phase === 'string', JSON.stringify(st.json?.status)?.slice(0, 80));
+
+    // /restart with the brain down: the graceful path cannot work, so it must
+    // escalate to the process-level restart rather than silently doing nothing.
+    const b2 = helperCalls().length;
+    const rs = await req('POST', '/ctl/restart');
+    check('/restart answers 200', rs.code === 200, `code=${rs.code}`);
+    check('/restart escalated to `restart <unit>` when the brain was unreachable',
+      helperCalls().slice(b2).some((c) => c === `restart ${TEST_UNIT}`), JSON.stringify(helperCalls().slice(b2)));
+    check('/restart reports savestart=false (no graceful save was possible)',
+      rs.json?.savestart === false, `savestart=${rs.json?.savestart}`);
+
+    // /kick must NOT attempt a graceful save — that is the entire distinction
+    // from /restart, and the message must say so, since it costs training.
+    const b3 = helperCalls().length;
+    const kk = await req('POST', '/ctl/kick');
+    check('/kick answers 200', kk.code === 200, `code=${kk.code}`);
+    check('/kick issued a hard restart', helperCalls().slice(b3).some((c) => c === `restart ${TEST_UNIT}`), JSON.stringify(helperCalls().slice(b3)));
+    check('/kick warns that state since the checkpoint is LOST', /lost/i.test(kk.json?.message || ''), kk.json?.message);
+    check('/kick needs no confirm token (non-wiping, only loses since-checkpoint)', kk.json?.refused !== true);
+  }
+
+  console.log('\n11. HTTP contract edge cases');
+  {
+    // Wrong METHOD on a power verb must not act. A GET that fell through to a
+    // POST handler would make every power verb reachable by a browser prefetch,
+    // a crawler, or a link.
+    const g = await req('GET', '/ctl/start');
+    check('GET on a POST-only power verb 404s (not executed)', g.code === 404, `code=${g.code}`);
+    const g2 = await req('GET', '/ctl/reset');
+    check('GET /ctl/reset 404s (a crawler cannot wipe the brain)', g2.code === 404, `code=${g2.code}`);
+
+    // Prefix stripping must work both with and without the /ctl prefix, since
+    // nginx passes the full path and local debugging uses the bare one.
+    const bare = await req('GET', '/status');
+    check('works without the /ctl prefix too (nginx + local both fine)', bare.code === 200 && bare.json?.ok === true);
+
+    // A malformed body must not crash the service or bypass the interlock.
+    const badBody = await new Promise((resolve) => {
+      const payload = '{not json at all';
+      const r = http.request({ host: '127.0.0.1', port: CTL_PORT, path: '/ctl/reset', method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) } },
+        (res) => { let b = ''; res.on('data', d => b += d); res.on('end', () => { try { resolve({ code: res.statusCode, json: JSON.parse(b) }); } catch { resolve({ code: res.statusCode, json: null }); } }); });
+      r.on('error', () => resolve({ code: 0, json: null }));
+      r.write(payload); r.end();
+    });
+    check('malformed JSON body does not bypass the interlock', badBody.json?.refused === true, JSON.stringify(badBody.json)?.slice(0, 120));
+    check('malformed JSON body does not crash ctl', (await req('GET', '/ctl/health')).code === 200);
+  }
+
+  console.log('\n12. control plane survived the whole run');
   {
     const h = await req('GET', '/ctl/health');
     check('still alive at the end', h.code === 200 && h.json?.ok === true);
