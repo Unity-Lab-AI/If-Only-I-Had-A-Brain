@@ -377,6 +377,17 @@
       </div>
     </div>
 
+    <!-- ⭐⭐ TRAINING FINALIZATION. The walk now has an ending; this is it, as an
+         ordered checklist where every step says what its state MEANS. -->
+    <div class="tv-card" style="margin-top:14px">
+      <h2><span class="tv-tip tip-l"
+        title="What happens at the end of the walk, step by step, with a reason on every one."
+        data-tip="TRAINING FINALIZATION.&#10;&#10;The walk has an ending, and this is the sequence it runs through. Each step carries its own state and a sentence saying what that state MEANS.&#10;&#10;RUNNING — happening now.&#10;PENDING — has not been reached yet. Correct while she is still walking.&#10;WAITING — deliberately idle because something else holds the substrate. Also correct.&#10;BLOCKED — cannot run, and the note says why. This is a CANNOT-TELL, never a pass.&#10;DONE — happened, with the evidence beside it.&#10;FAILED — should have happened and did not.&#10;&#10;The reason each step spells itself out: a step that has NOT RUN YET and a step that CANNOT RUN must never look the same. A blank reads as &quot;fine&quot; and that reading has cost this project more than any other.">training finalization <span class="tv-q">?</span></span></h2>
+      <div class="tv-body">
+        <div id="tvFinal" class="tv-sub">no finalization state published.</div>
+      </div>
+    </div>
+
     <!-- ⭐⭐ THE EXAM BATTERY. The authored-vs-derived split is the highest-risk
          change riding this press, and without this panel nobody can confirm it
          is working until a grade fails to open days into a walk. -->
@@ -1727,6 +1738,35 @@ function renderLanes(st) {
     + (stalled ? '<div style="color:var(--tv-bad);margin-top:5px">⛔ work is queued off-walk and nothing has drained — the driver is not firing.</div>' : '');
 }
 
+/* ⭐⭐ TRAINING FINALIZATION — the end of the walk as an ordered checklist.
+   Every state gets its own colour AND its own sentence, because the whole point
+   is that "not yet" and "cannot" must not look alike. */
+const FINAL_STATE = {
+  done:    ['✓', 'var(--tv-good)'],
+  running: ['◆', 'var(--tv-accent)'],
+  waiting: ['·', 'var(--tv-dim)'],
+  pending: ['·', 'var(--tv-dim)'],
+  blocked: ['⚠', 'var(--tv-warn)'],
+  failed:  ['⛔', 'var(--tv-bad)'],
+};
+function renderFinal(st) {
+  const el = $('tvFinal'); if (!el) return;
+  const steps = st && st.finalization;
+  if (!Array.isArray(steps) || !steps.length) { el.textContent = 'no finalization state published.'; return; }
+  const done = steps.filter((s) => s.state === 'done').length;
+  const bad = steps.filter((s) => s.state === 'failed').length;
+  const head = bad
+    ? `<div style="color:var(--tv-bad);margin-bottom:6px">⛔ ${bad} finalization step(s) FAILED — read the note on each.</div>`
+    : `<div style="color:var(--tv-dim);margin-bottom:6px">${done} of ${steps.length} steps complete</div>`;
+  el.innerHTML = head + steps.map((s) => {
+    const [glyph, col] = FINAL_STATE[s.state] || ['·', 'var(--tv-dim)'];
+    return `<div style="display:grid;grid-template-columns:18px 1fr;gap:6px;margin-bottom:5px">`
+      + `<div style="color:${col}">${glyph}</div>`
+      + `<div><div style="color:${col}">${knobEsc(s.label)} <span style="color:var(--tv-dim);font-size:10px">${knobEsc(s.state)}</span></div>`
+      + `<div style="color:var(--tv-dim);font-size:10px;line-height:1.45">${knobEsc(s.note || '')}</div></div></div>`;
+  }).join('');
+}
+
 /* ⭐ THE EXAM BATTERY. The number that matters is the AUTHORED rate, because it
    is the only one that can stop a grade opening. */
 function renderBattery(st) {
@@ -1772,7 +1812,7 @@ function renderInstruments(st, tv) {
   catch (e) { /* an instrument must never take the page down */ }
   /* Separate try — a throw in one of the new panels must not cost the dials,
      which is the failure mode a single shared catch would have created. */
-  try { renderWiring(st); renderGrad(st); renderLanes(st); renderBattery(st); renderLetters(st); }
+  try { renderWiring(st); renderGrad(st); renderLanes(st); renderBattery(st); renderLetters(st); renderFinal(st); }
   catch (e) { /* same rule */ }
 }
 
