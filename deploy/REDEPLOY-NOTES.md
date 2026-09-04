@@ -95,29 +95,62 @@ Tests: `test-brain-ctl.mjs` **71/71**, `test-ctlplane-integration.mjs` **64/64**
 
 **`git lfs pull` for the ~114 GB field set runs in the brain's cgroup and can starve the brain to death without ever failing.**
 
-**✅ NOW BOUNDED (`main@5b594357`).** `_lfs_pull()` in `deploy/self-update.sh` wraps the pull in `timeout` (`UAL_LFS_TIMEOUT`, default **45m**). Fields are non-fatal by design, so a fired guard **returns 0** and the press continues, logging explicitly that the kill was deliberate, that only pointers were lost, and that the books are untouched. Verified with a fake `git` on `PATH`: a hanging pull is killed at the cap and the script survives `set -e`; a fast pull does not warn; a genuine `rc=2` failure still propagates to the existing `if ! _lfs_pull` handler.
+**✅ NOW BOUNDED — TWO GUARDS, and the second one exists because the first was NOT ENOUGH.**
 
-**⛔ IT REPRODUCED DURING THIS VERY FIX, AND THAT IS THE LESSON.** After deploying the guard I pressed `/ctl/update-savestart` and watched the pull wedge *again* — 78 GB → 109 GB read in 15 seconds, still **0 bytes written**. The guard did not fire because of **the two-press rule documented below**: `brain-server.js` resolves the deploy script from `__dirname`, so **press 1 only DELIVERS the new script; press 2 is the first one to RUN it.** I killed it by hand a second time (14 GB reclaimed, site instantly sub-second). The guard is now on the box and applies from the next press onward. **When you fix `self-update.sh`, budget two presses and expect the old behaviour once more.**
+1. **Wall clock** — `timeout` wraps the pull (`UAL_LFS_TIMEOUT`, now **8m**, was 45m).
+2. **⭐ No-progress watchdog** (`UAL_LFS_STALL_SEC`, default **120s**) — samples `/proc/<pid>/io` and kills the pull when **`write_bytes` stays FROZEN while `read_bytes` keeps climbing**. That is the real signature; a pull making progress WRITES. Requires BOTH conditions, so a genuinely slow server (no reads, no writes) is left to the wall clock instead.
 
-**Still open (a decision, not a command):** the pull should not share the brain's cgroup at all. Run the data sync as its **own systemd unit with its own `MemoryMax`**, so a wedged hydrate cannot touch the brain's budget. A **no-progress watchdog** would also beat a wall-clock cap — 2 TB read with 0 bytes written is diagnosable in seconds, and `timeout` still waits the full 45 minutes to notice. Until then: **before pressing Update, run `pgrep -fa git-lfs`.**
+Both are non-fatal: a fired guard returns 0 and the press continues to the books and the restart. Exit codes 124 (timeout), 137/143 (watchdog kill) are all treated as deliberate outcomes.
 
-⭐ **Root cause of the root cause, worth stating plainly:** the box has no credential for the `BrainWaves` data repo (see the entry below), so this pull is doing enormous work to fetch something it will never successfully get. **Authorising the deploy key on `BrainWaves` likely removes this failure mode entirely** — the guard exists so that the *next* unknown wedge cannot take the brain down with it.
+**⛔ WHY 45 MINUTES WAS THE WRONG NUMBER — measured, not guessed.** The first guarded press was watched live on the box: `timeout … 45m git lfs pull` was correctly wrapping the process, and the brain was **still starved for 14 minutes** (163 GB read, **0 bytes written**). Sampling `/ctl/status` against a direct `curl` during that window gave **9 of 10 samples LISTENING-BUT-NOT-ANSWERING**. **A wall-clock cap is not a guard, it is a deadline nobody reaches.** The `write_bytes`-frozen signal is diagnosable in seconds.
+
+**⛔ THREE BUGS THE WATCHDOG ONLY REVEALED BY BEING RUN.** Reading it would not have found any of them:
+- `pgrep -f 'git-lfs pull'` **also matches the wrapper shell and this very script** (their command lines contain the words), and `head -1` takes the LOWEST pid — so the watchdog polled a *shell*, whose `io` never moves, and never fired. Now matches the executable: `pgrep -x git-lfs`.
+- **The first fake reproduced nothing.** Re-reading a file served it from **page cache**, so `read_bytes` (real disk I/O) stayed 0 and the test looked like a healthy pull. Reproducing the box required `O_DIRECT` / `POSIX_FADV_DONTNEED`. **A test that cannot reproduce the bug proves nothing about the fix.**
+- Killing the pull **took the whole press down** (`rc=15`), because the fake `git` used `exec` and shared a pid. Now kills only the git-lfs pid.
+
+**✅ VERIFIED ON THE BOX, WHICH IS THE ONLY EVIDENCE THAT COUNTS.** After installing both guards, a press ran an LFS pull for **2+ minutes while the brain answered 200 on every single sample** — the same condition that previously produced wall-to-wall timeouts. Harness proof alongside it: a wedged pull is killed in ~30s with `FUNC_RC=0`, the press continues, no strays; a healthy pull is untouched and silent.
+
+**Still open (a decision, not a command):** the pull should not share the brain's cgroup at all. Run the data sync as its **own systemd unit with its own `MemoryMax`**. And see the root cause below — the box has no `BrainWaves` credential, so this pull is grinding for data it can never get.
+
+⭐ **Root cause of the root cause:** authorising the box's deploy key on **`BrainWaves`** (read access) likely removes this failure mode entirely. The guards exist so the *next* unknown wedge cannot take the brain down with it.
 
 ### 🔍 How to tell this class of outage apart, fast
 
 | check | says |
 |---|---|
 | `systemctl is-active unity-brain` | **lies by omission** — `active` while starved |
-| `curl /ctl/status` | **lies by omission** — port OPEN ≠ port ANSWERS |
-| `curl -m 10 http://127.0.0.1:7525/public-state.json` | ⭐ **the honest one** — times out when starved |
+| `curl -m 10 http://127.0.0.1:7525/public-state.json` | ⭐ **always honest** — times out when starved |
+| `curl /ctl/status` → `brainOnline` / `loopPinned` | ✅ **NOW honest** (was the worst liar — see below) |
 | `journalctl -u unity-brain \| grep EventLoop` | names it: `⛔ STARVED … 2% serviced` |
-| `pgrep -fa git-lfs` + `/proc/<pid>/io` | `read_bytes` climbing, `write_bytes` **0** = wedged |
+| `pgrep -x git-lfs` + `/proc/<pid>/io` | `read_bytes` climbing, `write_bytes` **0** = wedged |
 
-Also worth knowing: the walk is **DEADLOCKED independently of all this** — `[Curriculum] ⛔ runner quiet 20.7 min … cortexFullyReady=false uploadInFlight=false` with `donors=0`. It cannot train with no GPU donor attached, so this is expected on a headless box, but the upload re-arm watchdog appears not to fire. Separate issue, untouched here.
+### ✅ FIXED: `/ctl/status` was the most confidently wrong surface of all
+
+`buildStatus()` decided "online" from `probeBrainPort()` — a **bare TCP connect**. The **kernel** completes handshakes from the listen backlog whether or not the JS thread is alive, so through a total outage it reported:
+
+```
+{ brainOnline: true, phase: "online", human: "Brain is online and serving." }
+```
+
+**Gee said the brain would not connect, and every status surface contradicted him. He was right.**
+
+Now `probeBrainResponds()` issues a real `GET /public-state.json`; only a response proves the loop ran a handler. Measured live on the box during the wedge — ctl tracked reality sample-for-sample:
+
+```
+[ctl] online=False pinned=True  ms=None  | Brain is LISTENING but NOT ANSWERING …   direct-curl: TIMEOUT
+[ctl] online=True  pinned=False ms=21    | Brain is online and serving.             direct-curl: 200
+```
+
+⚠ **`phase` deliberately STAYS `online`/`unmanaged`.** `html/dashboard.html` gates Stop/Restart/Kick on a positive match, so a new phase value would **disable every power control on exactly the brain an operator needs to act on**. The phase is a **UI contract**; `brainOnline`, `loopPinned` and the `human` string carry the truth, and the dashboard meta line now shows `⛔ NOT ANSWERING (loop pinned)`.
+
+Also worth knowing: the walk was **DEADLOCKED independently of all this** while `donors=0` (`[Curriculum] ⛔ runner quiet 20.7 min`). With a donor attached it resumed normally, so that was the absent GPU, not a bug.
 
 ### Final state of the box after this session
 
-`main@867d2bc0` deployed via `/ctl/update-savestart`, brain `active` and serving, all four public URLs **200** in under 0.7s, `ProtectHome=read-only` confirmed live on `unity-brain-ctl`, no `git-lfs` running.
+`main@c70606ce` deployed via `/ctl/update-savestart`. Brain `active` and in the curriculum (`phase=curriculum cell=ela/kindergarten`); all five public URLs **200**. On the box: `ProtectHome=read-only`, `UAL_LFS_TIMEOUT=8m` + the no-progress watchdog in `self-update.sh`, and `probeBrainResponds` in `brain-ctl.js`.
+
+⚠ **`brain-ctl.js` and `self-update.sh` were installed DIRECTLY (scp + `systemctl restart unity-brain-ctl`), not via a press.** The two-press rule below means a press only *delivers* a change to those files; the *next* press runs it. For a fix to the deploy machinery itself, copy it in and restart ctl, or you will verify the old code and believe it failed.
 
 ⚠ **`passedCells` is 0 and every grade reads pre-K — that is NOT damage from this work.** **Gee pressed `/reset` himself at 17:02:17** (`[BrainCtl] /reset by user=Gee` → `⚠ FORCE-FRESH requested (dashboard /reset) — wiping all trained state`), which is the fresh walk he was asking for. The savestart deploys either side of it resumed cleanly and correctly (`✓ CLEAN SHUTDOWN detected — COMPATIBLE (formatVersion=6, 411,216,550 neurons). RESUMING`), and the 30 Tier-3 identity anchors are preserved throughout, as designed.
 
