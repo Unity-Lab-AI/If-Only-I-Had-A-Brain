@@ -58,6 +58,29 @@ The books gate counted `corpora/academic/*.json` **and nothing else**, so a box 
 
 ⚠ It aborts **before `.force-fresh` is written**, exactly like the books gate, so a refusal can never cost the trained weights.
 
+### ✅ `PRESSHARD.5` — THE CORPUS WAS HOSTAGE TO THE FIELD PAYLOAD
+
+Gee (verbatim): *"make sure brain wave repo is good too everything depends on it"* — and auditing the repo is what found this, not re-reading the fix.
+
+⛔⛔ **The clone and the LFS pull were ONE condition:** `if git clone … && _lfs_pull; then`. So **any** lfs failure — a missing object on the server, a dropped connection, a full disk — skipped the **books** rsync as well and dropped straight through to the books gate, **aborting the press over a payload this block's own comment calls non-fatal four paragraphs above.**
+
+⭐ **The dependency graph now reads: clone ⟹ books · lfs pull ⟹ fields. Nothing else.** The pull runs *after* the books are already on disk, so a failure costs exactly what it should and nothing more. Its log line says so explicitly, because a bare *"lfs pull failed"* beside an aborted press sends whoever reads it hunting the corpus for a problem that was never in it.
+
+⚠ **DIFFERENT CAUSE, SAME SHAPE AS `PRESSHARD.2`.** That row fixed *"the git-lfs binary is absent"*; this fixes *"the pull failed for any other reason"*. **Fixing the first did not fix the second** — one was a capability check, this is an exit status, and they sit in different places.
+
+**The repo audit itself came back clean:**
+
+| checked | result |
+|---|---|
+| `main` | `f750d208` |
+| fields tracked | **26,359** |
+| corpora files | 232 (193 academic) |
+| GloVe | **plain blob, 1,037,962,819 bytes** — the un-LFS landed |
+| `.gitattributes` | `*.field.json` LFS · `corpora/glove.6B.300d.txt -text` |
+| LFS objects on the server | **present** — confirmed through the batch API, not inferred from the pointers |
+
+⚠ **One observation, recorded rather than "fixed":** all 26,359 delivered fields are `*.field.json` — **zero `.field.json.gz`** — while `ADMIN-CONTROLS.md` says fields are stored gzipped as of 2026-09-03. The delivered set predates that change, and **the reader accepts both encodings**, which is exactly what makes a straddling set safe. The doc describes the going-forward format, not the delivered one.
+
 ### ✅ `INSTRDEAD.1` — "2 NO SIGNAL" WAS TRUE, AND ABOUT THE WRONG THING
 
 Gee (verbatim): *"instraments 4/6 reading - 2 no signal IS THAT NORMAL? BEFORE WE PREESS CHACK IT OUT"*

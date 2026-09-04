@@ -85,6 +85,23 @@ throws and the boot answers *"Boot STOPS here by design (NO FALLBACKS)"*; with
    not the check: a pointer stub is a real file, so both the size and the first 40 bytes
    are read, and a stub and a half-finished transfer are reported as the different
    failures they are. Aborts **before `.force-fresh`**, like the books gate.
+4. **The clone gates the books; the LFS pull gates only the fields.** They were one
+   condition — `if git clone … && _lfs_pull; then` — so **any** lfs failure (missing
+   object, dropped connection, full disk) skipped the books rsync too and aborted the
+   press at the books gate, over a payload the block's own comment calls non-fatal.
+   Found by auditing the data repo rather than by re-reading the fix; it is a different
+   cause from (1) with the same shape, and fixing (1) did not fix it.
+
+### The data repo audited clean the same day
+
+`UnityAILab/BrainWaves` `main` = `f750d208` · **26,359** fields tracked · 232 corpora
+files (193 academic) · GloVe a **plain 1,037,962,819-byte blob** · LFS objects confirmed
+**present on the server** through the batch API rather than inferred from the pointers.
+
+⚠ All 26,359 delivered fields are `*.field.json` — **zero `.field.json.gz`** — while
+`docs/ADMIN-CONTROLS.md` records fields as gzipped since 2026-09-03. The delivered set
+predates that change and the reader accepts both encodings, which is what makes a
+straddling set safe. Not a defect; noted so it is not re-discovered as one.
 
 ### ⭐ THE STANDING RULE THIS LEAVES BEHIND
 

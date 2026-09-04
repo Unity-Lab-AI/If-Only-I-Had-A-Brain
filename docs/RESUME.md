@@ -29,6 +29,16 @@
 > - **Books off the LFS gate.** `BrainWaves/.gitattributes` LFS-tracks only `*.field.json`; every corpus JSON is a plain blob. ⛔ **The subtle half: `_lfs_pull`'s EXIT STATUS** decides whether the books get rsynced, so it returns `0` on a box without LFS instead of taking the whole sync down its failure branch.
 > - **GloVe OFF LFS** — BrainWaves `1e09d3d1 → f750d208`, pushed. **2 files, 0 deletions, `fields` re-read at 26,359 after the commit.** Fields keep LFS: a missing field costs a live transform, a missing GloVe costs the boot.
 > - **The gate gates the embeddings** (`UAL_GLOVE_MIN_BYTES`, 100 MB) — **4/4 on real files**, size *and* first-40-bytes, because a pointer stub is a real file. Aborts before `.force-fresh`.
+> - **The clone gates the books; the LFS pull gates only the fields.** Gee: *"make sure brain wave repo is good too everything depends on it"* — and auditing the repo is what found this. They were ONE condition, so **any** lfs failure aborted the press at the books gate over a payload the block itself calls non-fatal. ⚠ **Different cause from the git-lfs-absent fix, same shape; fixing the first did not fix the second.**
+>
+> ### ✅ BrainWaves AUDITED — `f750d208`
+> ```
+> fields tracked   26,359          corpora  232 files (193 academic)
+> GloVe            PLAIN BLOB, 1,037,962,819 bytes   (the un-LFS landed)
+> .gitattributes   *.field.json LFS · glove -text
+> LFS objects      PRESENT on the server — checked through the batch API, not inferred from pointers
+> ```
+> ⚠ **All 26,359 delivered fields are `*.field.json` — ZERO `.gz`**, though `ADMIN-CONTROLS.md` records fields as gzipped since 09-03. **Not a defect:** the delivered set predates the change and the reader accepts both encodings. Noted so it is not re-found as a bug.
 >
 > ### ⛔ THE PRESS IS A TWO-PRESS SEQUENCE AND THAT IS STRUCTURAL
 > **Press 1 always runs the old script** — there is no way around it without a shell. It delivers the new one. **Press 2 runs the new one** and pulls corpus + GloVe + fields back from BrainWaves behind the books and embeddings gates. `unity-brain-ctl` is a **separate always-up service**, so `/ctl/update` fires press 2 with the brain in a crash loop.

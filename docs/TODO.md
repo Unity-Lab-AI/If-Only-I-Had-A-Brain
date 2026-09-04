@@ -3841,6 +3841,14 @@ Ruling taken on the finding below (verbatim option): **"Harden first, then press
 
   **Original filing:** **THE BOOKS GATE MUST GATE GloVe TOO.** It counts `corpora/academic/*.json` and nothing else, so a box with books and no embeddings passes the gate and restarts into a boot that cannot complete. A gate in front of an irreversible press must refuse **every** certain-crash it can see, not one of them.
 
+- [x] `PRESSHARD.5` — ✅ **FIXED 2026-09-04 — the corpus was hostage to the field payload, and the block's own comment said it must not be.** Gee (verbatim): *"make sure brain wave repo is good too everything depends on it"*.
+  - ⛔⛔ **THE CLONE AND THE LFS PULL WERE ONE CONDITION** — `if git clone … && _lfs_pull; then`. So **any** lfs failure — a missing object on the server, a dropped connection, a full disk — skipped the **books** rsync too and dropped straight through to the books gate, **aborting the press over a payload this block calls non-fatal four paragraphs above itself.**
+  - ⭐ **The dependency graph now reads: clone ⟹ books · lfs pull ⟹ fields. Nothing else.** The pull runs *after* the books are on disk, so a failure costs exactly what it should.
+  - **Its log line says so out loud** — a bare *"lfs pull failed"* beside an aborted press sends whoever reads it hunting the corpus for a problem that was never in it.
+  - ⚠ **This is a DIFFERENT cause from `PRESSHARD.2`, same shape.** That row fixed *"the git-lfs binary is absent"*; this one fixes *"the pull failed for any other reason"*. Fixing the first did not fix the second, and finding it took auditing the data repo rather than re-reading the fix.
+  - ✅ **The repo itself audits clean:** BrainWaves `main` `f750d208` · **26,359** fields tracked · 232 corpora files (193 academic) · GloVe a **plain 1,037,962,819-byte blob** · LFS objects confirmed **present on the server** via the batch API.
+  - ⚠ **One observation, not a defect:** every one of the 26,359 delivered fields is `*.field.json` — **zero `.field.json.gz`**, though `ADMIN-CONTROLS.md` says fields are stored gzipped as of 2026-09-03. The delivered set predates that change and **the reader accepts both encodings**, which is what makes it safe; the doc describes the going-forward format, not the delivered one.
+
 - [x] `INSTRDEAD.1` — ✅ **FIXED + VERIFIED 2026-09-04 — the viewer's "2 no signal" was true about the wrong thing.** Gee (verbatim): *"instraments 4/6 reading - 2 no signal IS THAT NORMAL? BEFORE WE PREESS CHACK IT OUT"*.
   - **No, and it is this ledger's most-repeated defect committed on the page built to catch it: a consumer still reading a producer that moved.** `firing` read `st.consciousness.firingPct` and `phi` read `st.consciousness.phi`; **the state publishes neither key.**
   - **Both numbers exist and always did**, elsewhere: `st.firing.pct` (with `targetPct`, `ema`, `driveScale` beside it) and `st.consciousness.phiProxy`.
