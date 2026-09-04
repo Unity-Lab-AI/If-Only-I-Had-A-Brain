@@ -10616,6 +10616,20 @@ const httpServer = http.createServer((req, res) => {
     // = the original UPDATE & FRESH WALK (writes .force-fresh → wipe).
     const _q = req.url.split('?')[1] || '';
     const keepState = /(?:^|&)keep=1(?:&|$)/.test(_q) || /(?:^|&)mode=savestart(?:&|$)/.test(_q);
+    // ⛔ THE WAVELET FIELDS ARE WANTED. They are her precomputed vision, they
+    // are what the data repo exists to carry, and EVERY press fetches them —
+    // that is the default and it is not changing.
+    //
+    // `?fields=0` is an EMERGENCY HATCH, opt-in and absent by default, for the
+    // one situation that actually happened on 2026-09-04: a `git lfs pull` that
+    // wedged — 22 min, 2.07 TB read, ZERO bytes written — inside the brain's own
+    // cgroup, throttling the event loop to 2% and making the box unreachable.
+    // `self-update.sh` has read UAL_FIELDS all along; nothing could set it, so
+    // there was no way to deploy at all while that payload was misbehaving.
+    // Sponge's UAL_LFS_TIMEOUT bounds the wedge; this makes it skippable when
+    // the deploy itself is what matters. Use it once, on purpose, then press
+    // again normally to bring the fields down.
+    const skipFields = /(?:^|&)fields=0(?:&|$)/.test(_q);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     // WL.4 — auto-clear a STALE update flag. If a prior /update's self-update script
     // died before restarting (e.g. the sudo restart was blocked), `_brainShutdownRequested`
@@ -10653,7 +10667,7 @@ const httpServer = http.createServer((req, res) => {
         }
       } catch (err) { console.warn('[Brain] /update?keep=1 — could not clear stale .force-fresh:', err && err.message); }
       console.log(`[Brain] HTTP /update?keep=1 — UPDATE + SAVESTART requested (dashboard). Spawning ${updateScript} detached with UAL_KEEP_STATE=1: overlay latest code → SKIP .force-fresh → systemctl restart (resumes saved weights via the unit's DREAM_KEEP_STATE=1).`);
-      res.end(JSON.stringify({ status: 'update armed — pulling latest code, RESUMING saved weights (savestart), restarting (~1-2 min)', mode: 'savestart', script: updateScript }));
+      res.end(JSON.stringify({ status: 'update armed — pulling latest code, RESUMING saved weights (savestart), restarting (~1-2 min)' + (skipFields ? ' — SKIPPING the wavelet field payload (fields=0)' : ''), mode: 'savestart', fields: skipFields ? 'skipped' : 'full', script: updateScript }));
     } else {
       // FRESHFLAG (2026-08-27) — write .force-fresh HERE, in the handler, into
       // the REAL server dir. The self-update script also writes it, but only
@@ -10674,12 +10688,13 @@ const httpServer = http.createServer((req, res) => {
         try { if (fs.existsSync(RESUME_MARKER_PATH)) fs.unlinkSync(RESUME_MARKER_PATH); } catch { /* best-effort */ }
       } catch (err) { console.warn('[Brain] /update — could not write .force-fresh in the handler (falling back to the script\'s own write):', err && err.message); }
       console.log(`[Brain] HTTP /update — UPDATE + FRESH WALK requested (dashboard). .force-fresh ARMED in the server dir (handler-side; survives any restart path). Spawning ${updateScript} detached: overlay latest code → write .force-fresh (box path) → systemctl restart.`);
-      res.end(JSON.stringify({ status: 'update armed — pulling latest code, clearing weights, restarting into a fresh walk (~1-2 min)', mode: 'fresh', script: updateScript }));
+      res.end(JSON.stringify({ status: 'update armed — pulling latest code, clearing weights, restarting into a fresh walk (~1-2 min)' + (skipFields ? ' — SKIPPING the wavelet field payload (fields=0)' : ''), mode: 'fresh', fields: skipFields ? 'skipped' : 'full', script: updateScript }));
     }
     try {
       const { spawn } = require('child_process');
       const env = { ...process.env };
       if (keepState) env.UAL_KEEP_STATE = '1';
+      if (skipFields) env.UAL_FIELDS = '0';
       const child = spawn('bash', [updateScript], { detached: true, stdio: ['ignore', 'pipe', 'pipe'], env });
       // WL.4 — stream the self-update script's output into the brain console (→ the
       // admin Server Console ring → dashboard) so the operator watches the deploy

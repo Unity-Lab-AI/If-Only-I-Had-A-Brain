@@ -264,6 +264,11 @@
       log('cancelled at the second confirmation.', '#fc0'); return;
     }
     // !! The typed word goes ON THE WIRE. v2 collected it and threw it away.
+    // !! AND IT FETCHES THE WAVELET FIELDS. That is the point of the press and
+    // it is NOT optional here. `self-update.sh` accepts UAL_FIELDS=0 as an
+    // emergency hatch for a pull that has genuinely wedged, and this tool
+    // deliberately offers NO convenience verb for it: skipping her precomputed
+    // vision is a thing you do once, on purpose, knowing what it costs.
     return fire('update', 'FRESH WALK (WIPES ALL TRAINING)', '?confirm=WIPE');
   };
 

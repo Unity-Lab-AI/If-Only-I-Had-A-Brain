@@ -29,8 +29,16 @@
 > ### ✅ BRAINWAVES IS FINE, AND WAS NEVER THE PROBLEM
 > `f750d208` — **unchanged** since our audit, so that audit still holds (26,359 fields tracked, GloVe a plain blob at 1,037,962,819 B, LFS objects verified present through the batch API). Re-probed live just now: `git-lfs-authenticate` returns a download token (`RepoID 278`), so **the LFS server is up and authorising.** ⭐ **Both failures were on the box — a hidden key and a wedged client. Neither was in the repo.**
 >
-> ### ⏳ THE BOX DOES NOT HAVE THE LFS BOUND YET
-> She is walking with a donor on `af23e4ff`; Sponge's fixes are newer (`0c0e9fc9`). **The bounded pull only takes effect once a deploy delivers `self-update.sh` — and a deploy is the thing that runs the pull.** ⛔ **Do not press for it now:** a deploy restarts her and interrupts a healthy walk, and the guard only matters when a pull is running. It lands with the next deliberate deploy.
+> ### ✅ AND THE THING THAT WOULD HAVE CANCELLED SPONGE'S FIX IS FIXED
+> `self-update.sh` bounds `git lfs pull` at **45 m**. `brain-ctl.js` ran that same script under a hardcoded **`execFile` timeout of 15 minutes** — so on the ctl path **the parent was killed half an hour before the guard could fire** and a long deploy could never legally finish. ⭐ **Neither number was wrong alone; the defect was the relationship between them, and it lived in no file.** Now **derived** — `UAL_LFS_TIMEOUT` + 20 min headroom, floored at 45 min. ⚠ `UAL_LFS_TIMEOUT=0` disables the bound, and the naive arithmetic yields `0`, which `execFile` reads as *"no timeout"* — it falls back to the floor instead. **16/16.**
+>
+> ### ⛔ THE WAVELET FIELDS ARE WANTED — `fields=0` IS AN EMERGENCY HATCH, NOT THE PLAN
+> Gee, correcting me mid-build: *"why are you saying skip fields we want to use the fields"*. **Every normal press fetches them; that is the default and 13/13 asserts it.** `UAL_FIELDS` had existed in the script all along with **nothing able to set it**, so with a pull wedged there was **no way to deploy at all**. That is the only situation it is for — use it once, then press again normally. ⛔ **I built a `__mg.freshWalkFast()` verb for it and deleted it on his correction:** a one-word verb for discarding her vision makes the wrong thing the easy thing.
+>
+> ### ⏳ NONE OF THIS HELPS THE **FIRST** PRESS — AND THAT IS THE THING TO KNOW BEFORE PRESSING
+> A press runs **the BOX's** `self-update.sh` and **the BOX's** `brain-ctl.js`, both at `af23e4ff`. **Press 1 delivers the bound and the flag; press 2 can use them.** The two-press structure is unchanged and unavoidable without a shell.
+> ⭐ **So press 1 still runs an UNBOUNDED `git lfs pull`** — the same call that wedged this afternoon. It may be fine; if it wedges, the symptom is the one we now recognise instantly (box `active`, port `LISTENING`, `/ctl/status` cheerful, nothing connects) and the answer is `__mg.restart()`, which killed it in seconds today.
+> ⚠ **And a fresh walk does not need a deploy at all** — `__mg.reset()` wipes and restarts on the code already there, in ~2 min, with none of this risk. **Nothing in Sponge's batch changes how she TRAINS**; it is all deploy/ops hardening.
 >
 > ---
 >
