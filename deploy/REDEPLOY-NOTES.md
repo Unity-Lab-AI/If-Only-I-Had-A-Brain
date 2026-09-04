@@ -138,6 +138,16 @@ Deployed bytes were `diff`ed against the repo (`self-update.sh`, `brain-ctl.js`,
 
 **The design I drafted and deliberately did NOT ship:** a `run-data-sync` verb on `brain-ctl-helper` that re-launches the sync through `systemd-run --scope --uid=unity -p MemoryMax=3G -p MemorySwapMax=0 -p CPUWeight=20 -p IOWeight=20`, so a runaway sync can only starve **itself**. It has to live in the helper because `systemd-run` needs root: `unity` has no user manager on this box (`loginctl show-user unity` → *"not logged in or lingering"*, and `systemd-run --user` fails with no `DBUS_SESSION_BUS_ADDRESS`), and its sudoers grants exactly two things — the helper and `systemctl restart unity-brain`.
 
+**✅ THE DESIGN IS PROVEN VIABLE ON THE BOX — it is unshipped, not unverified.** Rather than leave it as an untested idea, the exact invocation was run there:
+
+```bash
+sudo systemd-run --collect --wait --pipe --uid=unity --gid=unity \
+  -p MemoryMax=512M -p MemorySwapMax=0 -p Environment=HOME=/home/unity /bin/bash -c '…'
+  → user=unity  HOME=/home/unity  memmax=536870912  cansee_key=yes
+```
+
+So all four things it depends on hold: it runs **as `unity`**, `MemoryMax` is **actually enforced** by the kernel (`memory.max` = exactly the requested bytes), `HOME` is right, and **the deploy key is readable** from inside the scope. Whoever picks this up is implementing a verified design, not exploring one.
+
 **Why I stopped:** that adds a **new privileged verb** to the one root-capable surface on a box that also hosts Forgejo and the whole lab's git, and it must run as `unity` (`--uid`/`--gid`) or it leaves root-owned files in `/opt/unity-brain` that the next unprivileged press cannot overwrite. **Adding a root verb late, on a box I had already destabilised twice in one session, is how the recovery becomes the incident.** The four layers hold the outage class closed; this is a correctness-and-hygiene improvement that deserves its own session, its own tests in `test-ctlplane-integration.mjs` (which asserts the helper's closed verb set), and a deliberate review of the sudoers surface.
 
 ⭐ **Sequencing note for whoever picks this up:** do the **`BrainWaves` deploy key first**. The box has no credential for that repo, so the pull is grinding for data it can never fetch — fix that and the wedge may simply stop happening, which changes how much the isolation work is worth.
