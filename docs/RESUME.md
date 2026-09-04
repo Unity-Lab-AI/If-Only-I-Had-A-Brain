@@ -2,6 +2,11 @@
 
 > ## ⭐⭐⭐ 2026-09-04 LATEST (PICK UP HERE) THREE QUARTERS OF EVERY LAMINATED PROJECTION WAS BORN DEAD
 >
+> ### ✅ COVERAGE MOVED TWICE TODAY — 128/65 → 145 OK / 48 THIN / 0 EMPTY
+> LibreTexts landing took it to 133/60; **twelve hand-extended topic lists took it to 145/48.** ⛔ **And the auditor's own verdict is `PASS — every cell the walk runs has a lane and content`, so state it plainly: the walk can already run start to finish. THIN is about how much she learns, not whether the walk completes.**
+> ⛔ **The constraint on those cells was NOT the one the board had on record.** `CURVEBUILD.6` said the binding constraint is the topic LIST — true then, false for these: `pe/grade4` held **all 28** of its declared topics and still sat at 17,578, i.e. **~628 words per article.** The lists were not short, **the articles were.** ~150 topics added, `--only-missing`, **`SKIPPED BY REASON — none` on all thirteen runs.**
+> **What is left is a different problem:** 48 THIN cells owing **4,867,318 words**, concentrated in `math` 1.29M · `major` 770k · `cstheory` 654k · `art` 526k. ⚠ **Wikipedia topics will not close those — that is the textbook lane.**
+>
 > ### ✅ THE LIBRETEXTS CORPUS FETCH IS DONE — NOTHING IS RUNNING NOW
 > `DONE — 6,179,563 words and 15,047 figures written under corpora/academic/`. Licence gate: **32 admitted · 10 undeclared/unreadable · 0 ND · 0 non-CC · 0 unrecognised.** ⚠ Two cells hold both their books and are still under the 330,000-word ladder floor (`art/college2` 303k · `cssystems/college3` 258k) — **the fetcher's own closing line says that is a fact about the ladder, not a reason to download more.**
 > ⛔ **`corpora/` is gitignored here and belongs to BrainWaves — it still has to be pushed there before any press.**
