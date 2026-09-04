@@ -11575,6 +11575,17 @@ const httpServer = http.createServer((req, res) => {
     '/dashboard-public.html': path.join(__dirname, '..', 'html', 'dashboard-public.html'),
     '/html/webgpu-prep.html': path.join(__dirname, '..', 'html', 'webgpu-prep.html'),
     '/webgpu-prep.html': path.join(__dirname, '..', 'html', 'webgpu-prep.html'),
+    // ⛔⛔ THE TEACH VIEWER WAS THE ONE PAGE WITH NO ENTRY HERE AT ALL, and the
+    // consequence was a BROKEN LINK ON THE PAGES INDEX. Every other page has
+    // both forms; this one was reachable only as `/html/teachview.html`, via the
+    // generic handler. So `legend.html`'s own "→ Open" link, which is the
+    // relative `href="teachview.html"`, resolved to `/teachview.html` and 404'd
+    // for anyone who had arrived at the index by its bare alias `/legend.html`.
+    // ⚠ Found by the operator typing the obvious URL during a local boot — not
+    // by any check in this repo, because every check tested the page's CONTENT
+    // and none tested whether the SERVER would hand it over.
+    '/html/teachview.html': path.join(__dirname, '..', 'html', 'teachview.html'),
+    '/teachview.html': path.join(__dirname, '..', 'html', 'teachview.html'),
   };
   if (req.method === 'GET' && (req.url === '/unity-guide.html' || req.url === '/brain-equations.html')) {
     res.writeHead(301, { Location: `/html${req.url}`, 'Cache-Control': 'no-store' });
