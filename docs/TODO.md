@@ -1387,7 +1387,27 @@ Gee (verbatim, same message): *"use ask me questioion for whats needs my input"*
 >
 > **Migrated verbatim to `docs/FINALIZED.md` §2026-09-02 `NOFALLBACK.4`, byte-equality verified before removal.**
 
-- [ ] `NOFALLBACK.5` — **RE-PRICE THE CONSEQUENCE BEFORE THE PRESS, because this one is load-bearing on what she sounds like.** Removing the oracle removes ~99% of emissions in the captured run. ⚠ **That is the POINT — those were not her words** — but the walk's gate probes and exam batteries have been passing with the oracle carrying them, so **the gate pass-rate after this change is the number that matters and it has never been measured without the oracle.** The board already warned about this exact inflation: *"pass rate is inflated by exactly the amount the oracle was carrying."*
+- [~] `NOFALLBACK.5` — ⏳ **RE-PRICE COMPUTED AND WRITTEN DOWN 2026-09-04, immediately before the press, per the LAW. The half that needs a running walk is named and left open — it is a READING, not code.**
+
+  ### The RE-PRICE, at `main` `18f9c34b`
+
+  ```
+    corpus          71,256,751 words · 193 cells · 7,622 entries · ~3,639,666 sentences
+    reps            DREAM_REP_COMPRESS = 40  → authored 100/150/200 become 5/5/7
+                    MIN_RESULT_REPS   = 4    → the floor, measured, not cautious
+    scale           neurons are DERIVED AT BOOT from free host RAM — not a constant
+    visits          20 grades × a 9-course roster
+    the bound       the consolidation gate, still the ONLY thing keeping the walk finite
+  ```
+
+  - ⛔⛔ **NO GATE, BOUND OR DEDUP WAS REMOVED OR WEAKENED IN THIS BATCH, AND THAT IS THE HEADLINE.** The consolidation gate, `DREAM_PHASE_BUDGET_MS`, `DREAM_STRUCTURE_DOSE`, `MIN_RESULT_REPS` and the grade-major round bound are all untouched. **The finiteness argument that priced the walk at ~24 days of structure-refresh is therefore unchanged** — this batch does not move it.
+  - **What DID grow is the corpus: 69,406,410 → 71,256,751 words (+2.7%) today**, and 63.2M → 71.3M (+12.8%) since the pricing that produced the 24-day figure. **The prose-reading portion of the walk scales with that and nothing else does** — the rep doses, the gate and the bound are all the same numbers.
+  - ⭐ **The emission change in `NOFALLBACK.7` costs nothing on walk length.** It swaps *which currents a word is read off* for the same tick count; `stepAwait` aborts rather than CPU-stepping above 2M with no donor, so it cannot lengthen a phase.
+  - ⭐ **`SIZEEST.1` moves brain SIZE, not walk length**, and moves it in the safe direction: the estimator was over-counting cross-projection entries 1.425× and now over-counts 1.096×, so the box sizes *closer* to its RAM rather than beyond it.
+  - ⛔ **THE HALF THAT CANNOT BE COMPUTED FROM HERE, STATED PLAINLY:** this row's own question is the **gate pass-rate with the oracle gone**, and *"the gate pass-rate after this change is the number that matters and it has never been measured without the oracle."* **That number does not exist until a walk runs.** It is a post-press reading, not a pre-press calculation, and pretending otherwise would be exactly the arithmetic-dressed-as-measurement this project has already been caught doing.
+  - **So the row stays open across the press** — the pre-press half is done and written down above; the reading is taken on the walk.
+
+  **Original filing:** **RE-PRICE THE CONSEQUENCE BEFORE THE PRESS, because this one is load-bearing on what she sounds like.** Removing the oracle removes ~99% of emissions in the captured run. ⚠ **That is the POINT — those were not her words** — but the walk's gate probes and exam batteries have been passing with the oracle carrying them, so **the gate pass-rate after this change is the number that matters and it has never been measured without the oracle.** The board already warned about this exact inflation: *"pass rate is inflated by exactly the amount the oracle was carrying."*
 
 > ✅ **`PERSONAVOICE.7` COMPLETE 2026-09-02 — full entry in `docs/FINALIZED.md` §2026-09-02 (SECOND BATCH).** The `unity → i` and `unity's → my` rules are deleted from `_transformToFirstPerson`; the pronoun rules stay. **Before: 17 name-bearing sentences damaged, 0 intact. After: 17 intact, 0 damaged** — measured by running the real method over the real canon. Third-person conversion still works with verb agreement (`"She reviews every memory."` → `"I review every memory."`), which is what keeps the transform safe to leave wired. ⚠ **The lesson: the rewrite was verified in isolation and was correct in isolation — the defect lived in the CONSUMER. A change to the SHAPE of a source obliges a re-read of everything that parses it.**
 >
@@ -3767,6 +3787,8 @@ Gee (verbatim):
     - **ESM link check** on `curriculum.js`, `cluster.js`, `sparse-matrix.js` — all import cleanly, which `node --check` alone cannot prove. Dead-wiring audit: **0 guarded-with-no-definition**, the worst class.
   - ⚠ **Two of my own checks were wrong before they were right** — a `vm.Script` parse test that cannot accept ESM top-level await, and a byte count read mid-write. Both corrected by re-reading the artefact.
   - ✅ **`DEPLOYCHECK.3` verified in passing:** `server/exam-banks/` is 206 on disk, **206 tracked**, not ignored, not deploy-excluded. It reaches the box.
+  - ✅ **FINAL PASS RUN 2026-09-04 AGAINST `main` `18f9c34b` — CLEAN.** Bundle byte-identical to HEAD, syntax + ESM link pass on every file changed today, **0 untracked-and-unignored runtime files** (29 refs, 25 untracked, all 25 deliberately ignored), and the 6 remaining `st.` reads in `dashboard.html` are the DOM-property false positives already opened by hand.
+  - ⭐⭐ **AND THE BUNDLE MYSTERY IS SOLVED, WHICH CLOSES A CLAIM I GOT WRONG TWICE TODAY.** A fresh build kept reporting a **23,628-byte** difference against the checked-out file. **The bundle has exactly 23,628 newlines.** Git checks it out with **CRLF** (+1 byte per line); esbuild writes **LF**. Three consecutive builds produce a byte-identical file (`sha256 65f2f8b5…`), and `main` holds exactly that. ⛔ **The bundle was never stale** — my first claim was wrong, my retraction was right, and this is the mechanism rather than an assumption. **A byte-count comparison across a checkout boundary measures line endings, not staleness.**
 
   **Original filing:** **ANYTHING OBVIOUS THAT MAY HAVE REGRESSED, BEFORE WE WALK.** Gee (verbatim): *"and any thing obvious thay may have regressed before we freshwalk"*. ⚠ **Narrower and earlier than `REGRESSION.1`**, which is the full review and is explicitly the LAST item on the board — this one is the obvious-breakage sweep that has to happen *before* the press, because a fresh walk teaches from zero using whatever the code does at that moment.
   - **The changes to sweep are the ones that landed since the last press**, and the init-time ones matter most because they only ever take effect on this walk: the cross-projection wiring, the lamination change, the sem topographic removal, the attention head going live, the exam-gate split, the corrective teach, letter shapes, the graduation record, and the deferred-lane driver.
