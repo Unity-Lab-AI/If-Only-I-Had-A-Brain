@@ -5,6 +5,63 @@
 
 ---
 
+## 2026-09-04 — `CURVEDEPTH.10` (PARTIAL) — THE TWELVE CHEAPEST THIN CELLS CLEARED, AND THE CONSTRAINT TURNED OUT NOT TO BE THE ONE ON RECORD
+
+Gee (verbatim):
+
+> *"keep working off the todo to finish the unblocked items to be ready for as complete walk start to finish"*
+
+### ⭐ FIRST, THE REASSESSMENT THAT MADE THIS ACTIONABLE
+
+The LibreTexts fetch finished this session — **6,179,563 words and 15,047 figures**, licence gate **32 admitted · 10 undeclared · 0 ND · 0 non-CC**. Re-measuring coverage against it moved the board from the numbers every open row was still quoting: **128 OK / 65 THIN → 133 OK / 60 THIN / 0 EMPTY**, and the auditor's own verdict is **`PASS — every cell the walk runs has a lane and content`**.
+
+⛔ **That verdict is the one worth stating plainly: the walk can already run start to finish. THIN is about how much she learns, not about whether the walk completes.**
+
+**And the shortfall now has a number instead of an adjective — 4,951,331 words owed across 60 cells:**
+
+```
+floor  29,000   10 cells   owed     64,342 words
+floor  73,000    2 cells   owed     21,073
+floor 146,000   27 cells   owed  1,406,482
+floor 330,000   21 cells   owed  3,459,434
+```
+
+**The twelve cells in the two lowest bands owe 85,415 words between them — 1.7% of the debt for 20% of the cells.**
+
+### ⛔ THE CONSTRAINT WAS NOT THE TOPIC LIST, AND THE BOARD SAID IT WAS
+
+`CURVEBUILD.6` established that a re-fetch returns the same articles, so *"the binding constraint is the LIST, not the depth per entry"*. **That was true then and it is not true of these cells.** Measured before touching anything: `pe/grade4` held **all 28** of its declared topics and still sat at 17,578 of 29,000. Twenty-eight articles for 17,578 words is **~628 words per article** — the lists are not short, **the articles are.**
+
+So the fix was arithmetic rather than judgement: **owed ÷ 628 ≈ topics to add**, per cell.
+
+### WHAT SHIPPED
+
+**~150 topics added across twelve cells** — `science/grade3`, `social/grade3`, `music/grade3`, `music/grade4`, `music/grade5`, `cs/grade5`, `cs/grade6`, `cs/grade8`, `health/grade4`, `health/grade5`, `pe/grade4`, `language/grade4` — then fetched with `--only-missing`, never `--replace`.
+
+⭐⭐ **`SKIPPED BY REASON — none` on all thirteen runs.** Every title resolved: no MISSING, no REDIRECT-TO-A-DIFFERENT-SUBJECT, no DISAMBIGUATION page. ⚠ That is the check that matters, because those three failure classes are silent and only one of them is loud — and the fetcher's skip reasons only became trustworthy after both of its reporting bugs were fixed.
+
+**Result, measured through the reader:**
+
+```
+              before    after
+OK              133       145
+THIN             60        48
+EMPTY             0         0
+reachable    63,186,761  63,451,076   (+264,315 words)
+entries          6,969     7,200      (+231 articles)
+```
+
+**All twelve cells cleared their band floor.** `social/grade3` needed a second pass — it came out at 27,598 of 29,000, about three articles short, and got five more.
+
+⚠ **`corpora/` is gitignored here and lives in `UnityAILab/BrainWaves`. These words are on disk locally and MUST be pushed there before any press** — the fetcher's topic lists are what this commit carries.
+
+### ⚠ OWNED
+
+- ⛔ **I ran the fetcher by accident.** Trying to verify the edited script parsed, I used `import()` on it — and it is a **script, not a module**, so importing it *executed* it with no positional args, starting an uncontrolled full fetch. Killed within a minute; `pe/grade4` verified byte-identical afterwards, so nothing was corrupted. **`node --check` was the right tool and it was already in the same command.**
+- **A garbled line went into the topic table** — a nonsensical `'港' === '港' ? 'Harbor' : 'Harbor'` ternary. Caught and replaced with the plain title before the fetch ran; verified zero occurrences remain.
+
+---
+
 ## 2026-09-04 — `LAMDEAD.1` + `ATTNDEAD.1` — 75% OF EVERY LAMINATED PROJECTION WAS BORN DEAD, AND THE RELAY THAT WAS NEVER CALLED IS ON
 
 Gee, asked as a decision because both change what she says, and answered:
