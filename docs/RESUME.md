@@ -2,6 +2,16 @@
 
 > ## ⭐⭐⭐ 2026-09-04 LATEST (PICK UP HERE) THREE QUARTERS OF EVERY LAMINATED PROJECTION WAS BORN DEAD
 >
+> ### ⭐⭐ THREE RULINGS TAKEN AND EXECUTED — 2026-09-04
+> - **Field pull: "Pull the fields — take the 114 GB".** `UAL_FIELDS` stays **unset** at the press; every figure arrives precomputed. ⚠ Budget the download and the disk. `UAL_SKIP_FIELDS=1` is still the trap, not the lever.
+> - **Book fetcher: "Track it now".** `.claude/scripts/fetch-libretexts-corpora.mjs` is committed — the book lane reproduces from a clone now. It was plain untracked, never gitignored.
+> - **`SEMDENSE.1`: "Build it and walk with it".** Built, and **the diagnosis came out sharper than the fork's**.
+>
+> ### ⛔⛔ SEM SPARSITY WAS NEVER MISSING — IT WAS IN THE WRONG LANE
+> `_teachAssociationPairs` has **always** run `semWTA` on at `semTopK = 8`. `_teachVocabList` and `_teachSentenceList` — **the two lanes carrying ~63 million of her words** — tiled the raw embedding, and the spike test is `> 0`, so **half the sem region lit for a single word**. The sparsification was applied to the minority of her input and skipped on the majority, **while `README.md` described it as a property of the brain**. Fixed at the point the three sites converge, reusing the pair lane's names and defaults so the lanes agree by construction.
+> **Measured on 3,000 real GloVe rows:** dims lit **150.5 → 8.0**, sem alight **50.2% → 2.7%**, and the number that matters — **overlap between two different words 0.4047 → 0.1058, 3.8× less** for the argmax to separate.
+> ⛔ **The measurement caught a defect in my own fix before it shipped:** `_topKEmbedding` ranks by ABSOLUTE value, but only `> 0` can spike — **3 of 400 words had all eight largest-magnitude dims negative and came out with ZERO lit dims: unteachable, permanently, silently.** Ranking by VALUE is strictly better on every axis (8.0 dims not 3.2, 3.8× not 2.4×, **0 of 3,000 unteachable**). ⏳ **The pair lane's own sem side still uses the magnitude helper and may carry the same latent shape** — recorded, not fixed blind.
+>
 > ### ✅ THE CORPUS IS ON BRAINWAVES — `8e705652`, 212 cells · 8,447 entries · 65,794,913 words
 > Staged `corpora/` **explicitly**, per that repo's README. **4 added, 61 modified, ZERO deletions, nothing outside `corpora/`**; all **26,359 fields verified still tracked** afterwards.
 > ⛔⛔ **READ THIS BEFORE RUNNING ANY GIT COMMAND IN BRAINWAVES: the ~26,238 `D` entries `git status` shows there are NOT REAL.** The field producer writes a field, uploads it, and **deletes the local copy immediately** — by design, so a field exists exactly twice in the world. The working tree holds a few hundred files against **26,359 tracked**. **`git commit -a` or `git add -A` at that root would delete 114 GB of wavelet fields and look like a perfectly ordinary commit while doing it.** Stage paths explicitly, every time.
