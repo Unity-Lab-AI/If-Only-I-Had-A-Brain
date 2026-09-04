@@ -91,11 +91,36 @@ The retry after the LFS kill completed cleanly: **`main@af23e4ff`** deployed, an
 ```
 Tests: `test-brain-ctl.mjs` **71/71**, `test-ctlplane-integration.mjs` **64/64** (3 new assertions pin `ProtectHome`; **verified they FAIL when reverted to `true`**, so they are not vacuous).
 
-### ⚠ Still open — the real remaining hazard (needs a decision, not a command)
+### ⚠ Partly fixed, partly still open — the LFS hazard
 
-**`git lfs pull` for the ~114 GB field set runs in the brain's cgroup and can starve the brain to death without ever failing.** The kill was a bandage. Options: run the data sync as a **separate systemd unit** with its own `MemoryMax` (so it cannot touch the brain's budget), and/or give it a **timeout + no-progress watchdog** (it read 2 TB and wrote 0 bytes for 22 minutes; nothing noticed). Until then, **before pressing Update, check `pgrep -fa git-lfs`** — if one is running, the press will likely wedge the box again.
+**`git lfs pull` for the ~114 GB field set runs in the brain's cgroup and can starve the brain to death without ever failing.**
+
+**✅ NOW BOUNDED (`main@5b594357`).** `_lfs_pull()` in `deploy/self-update.sh` wraps the pull in `timeout` (`UAL_LFS_TIMEOUT`, default **45m**). Fields are non-fatal by design, so a fired guard **returns 0** and the press continues, logging explicitly that the kill was deliberate, that only pointers were lost, and that the books are untouched. Verified with a fake `git` on `PATH`: a hanging pull is killed at the cap and the script survives `set -e`; a fast pull does not warn; a genuine `rc=2` failure still propagates to the existing `if ! _lfs_pull` handler.
+
+**⛔ IT REPRODUCED DURING THIS VERY FIX, AND THAT IS THE LESSON.** After deploying the guard I pressed `/ctl/update-savestart` and watched the pull wedge *again* — 78 GB → 109 GB read in 15 seconds, still **0 bytes written**. The guard did not fire because of **the two-press rule documented below**: `brain-server.js` resolves the deploy script from `__dirname`, so **press 1 only DELIVERS the new script; press 2 is the first one to RUN it.** I killed it by hand a second time (14 GB reclaimed, site instantly sub-second). The guard is now on the box and applies from the next press onward. **When you fix `self-update.sh`, budget two presses and expect the old behaviour once more.**
+
+**Still open (a decision, not a command):** the pull should not share the brain's cgroup at all. Run the data sync as its **own systemd unit with its own `MemoryMax`**, so a wedged hydrate cannot touch the brain's budget. A **no-progress watchdog** would also beat a wall-clock cap — 2 TB read with 0 bytes written is diagnosable in seconds, and `timeout` still waits the full 45 minutes to notice. Until then: **before pressing Update, run `pgrep -fa git-lfs`.**
+
+⭐ **Root cause of the root cause, worth stating plainly:** the box has no credential for the `BrainWaves` data repo (see the entry below), so this pull is doing enormous work to fetch something it will never successfully get. **Authorising the deploy key on `BrainWaves` likely removes this failure mode entirely** — the guard exists so that the *next* unknown wedge cannot take the brain down with it.
+
+### 🔍 How to tell this class of outage apart, fast
+
+| check | says |
+|---|---|
+| `systemctl is-active unity-brain` | **lies by omission** — `active` while starved |
+| `curl /ctl/status` | **lies by omission** — port OPEN ≠ port ANSWERS |
+| `curl -m 10 http://127.0.0.1:7525/public-state.json` | ⭐ **the honest one** — times out when starved |
+| `journalctl -u unity-brain \| grep EventLoop` | names it: `⛔ STARVED … 2% serviced` |
+| `pgrep -fa git-lfs` + `/proc/<pid>/io` | `read_bytes` climbing, `write_bytes` **0** = wedged |
 
 Also worth knowing: the walk is **DEADLOCKED independently of all this** — `[Curriculum] ⛔ runner quiet 20.7 min … cortexFullyReady=false uploadInFlight=false` with `donors=0`. It cannot train with no GPU donor attached, so this is expected on a headless box, but the upload re-arm watchdog appears not to fire. Separate issue, untouched here.
+
+### Final state of the box after this session
+
+`main@867d2bc0` deployed via `/ctl/update-savestart`, brain `active` and serving, all four public URLs **200** in under 0.7s, `ProtectHome=read-only` confirmed live on `unity-brain-ctl`, no `git-lfs` running.
+
+⚠ **`passedCells` is 0 and every grade reads pre-K — that is NOT damage from this work.** **Gee pressed `/reset` himself at 17:02:17** (`[BrainCtl] /reset by user=Gee` → `⚠ FORCE-FRESH requested (dashboard /reset) — wiping all trained state`), which is the fresh walk he was asking for. The savestart deploys either side of it resumed cleanly and correctly (`✓ CLEAN SHUTDOWN detected — COMPATIBLE (formatVersion=6, 411,216,550 neurons). RESUMING`), and the 30 Tier-3 identity anchors are preserved throughout, as designed.
+
 ---
 
 ## 🔴 2026-09-04 (later) — BOTH PRESSES RAN. THE BOX CANNOT CLONE THE DATA REPO, AND THE GATE THAT SHOULD HAVE SAID SO DIED SILENTLY
