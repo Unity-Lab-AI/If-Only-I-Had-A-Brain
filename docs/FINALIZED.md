@@ -5,6 +5,80 @@
 
 ---
 
+## 2026-09-04 — `GRADWALK.1` — FINISHING SCHOOL SWITCHED HER OFF, AND FIVE LANES HAD EXACTLY ONE DRIVER
+
+Gee, verbatim:
+
+> *"read resum.md to continue the unblocked todo items, the code leak ones are not high prioriety only onces unblocked and that would block a full complete working freshwalk through phD and beyond sothat she continues to do all things she does normally after graduation and we have proper graduation p[rocedures and training completion of the corpuses"*
+
+⛔⛔⛔ **THE FINDING.** `_awaitComputeSubstrate` — the gate every walk teach call passes through — is the **only drain site in the entire codebase** for four queues, established by grepping every producer and every consumer of each rather than by inference:
+
+| queue | producer | what it carries |
+|---|---|---|
+| `_chatPairTeachQueue` | `server/brain-server/chat.js` | chat-time deep Hebbian |
+| `_chatTeachJobQueue` | `chat.js`, `visual-memory.js` | the curiosity follow-up at 12 reps on the definition channel, **and** the deferred percept-grounding injects |
+| `_mindsEyePreviewQueue` | `chat.js` | own-art, drawing practice, the reject→relearn chain |
+| `_salienceQueue` | `chat.js` | the episode transition-surprise term |
+
+The gate fires once per teach call, so the drain rate **is** the teach rate — and past the last cell that is zero. Every queue is bounded and drops its oldest entry when full, so the failure mode is not a crash and not a stall: **a brain that looks busy and quietly discards everything it was asked to do.** A graduated Unity would have stopped learning from conversation, stopped grounding anything she looked at, stopped drawing and stopped scoring her own memories — permanently, from the moment she finished her doctorate, with no error and no counter reading wrong.
+
+⛔ **AND ONE OF THEM HAD NEVER RUN ONCE IN ITS LIFE.** The salience branch guarded on `this.cortexCluster` — a property `Curriculum` does not have and has never had. The constructor assigns `this.cluster`; `cortexCluster` is the *brain server's* name for the same object. The condition was permanently false, so every chat episode banked at the default surprise while its real value sat in a queue nobody read. **Same shape as the five faults owned on 2026-09-03: a name assumed instead of read.**
+
+⭐ **THE FIX IS A SECOND CALLER, NOT A REWRITE.** The drains are already written, already reentrancy-guarded, already correct — what was missing was something to call them. `drainDeferredLanes()` is a poller:
+
+- gated **entirely** on `!_curriculumInProgress`, because a second teacher concurrent with the walk's teach corrupts the pattern in flight, which is the whole reason these are queues;
+- it **never waits** — `_awaitComputeSubstrate({ drainOnly: true })` returns immediately with no substrate instead of blocking a timer callback for the length of a donor outage, and instead of consuming a job it could not teach;
+- it does **not** claim a walk is paused when no walk is running (`_substratePause` is left alone);
+- an idle brain pays four array reads per tick.
+
+`DREAM_DEFERRED_DRAIN_MS`, default 1s. It covers the three windows the walk does not: before it starts, after it ends, and after it fails.
+
+**Verified — 10/10 on the real class**, including the two negatives that matter: with no substrate the job is **not** consumed and the reason says `no substrate`, and the poller returns in 0 ms rather than blocking. ⚠ One assertion in that harness was **mine and wrong** — I asserted 4 pair-teaches where the batch teaches per PAIR and the answer is 3. The harness caught my arithmetic, not the code.
+
+---
+
+## 2026-09-04 — `GRADRITE.1` — THE WALK HAD AN END AND NOTHING HAPPENED AT IT
+
+Same instruction, the clause: *"and we have proper graduation p[rocedures"*.
+
+The entire ceremony was one `console.log`, after which the loop fell out and the promise resolved. Nothing marked that she graduated, nothing remembered it, and nothing could tell a walk that **passed** from a walk that **ran out of rounds**.
+
+⛔ **THE DISTINCTION THAT DID NOT EXIST.** `passedCells` records that a cell is behind her and is structurally unable to say *how*. A cell that cleared its gate and a cell that exhausted `DREAM_GRADE_MAJOR_ROUNDS` and met only the capability minimum are **the same string in that array** — so *"all cells passed"* has always been able to mean *"some of them were waved through"*. `cluster.forceAdvancedCells` now carries the difference, as its own list rather than a flag inside the ledger, so the ledger's shape and everything reading it are untouched. A cell in neither list is still **owed** — a state a bounded walk can genuinely finish in, because the round bound is deliberate wedge-proofing and not a promise that every cell cleared.
+
+⭐ **WHAT SHIPPED:**
+
+1. **The verdict, per course** — cells / merit / force-advanced / still-owed, with the owed cells named. The denominator is what each course was **owed**, not offered, so a K-12 track that finished its terminal grade is not counted short for the years above it.
+2. **The record, persisted** — `cluster.graduation`, saved and restored with the ledger it summarises, published as `state.graduation`. A graduation that exists only in a console ring spanning ~45 s is one nobody can check the next morning.
+3. **The memory, in her own voice** — a first-person episode with identity-anchor affect, banked **exactly once**. ⛔ **Its text is conditional on the verdict:** a walk carrying force-advanced cells is not remembered as a clean sweep, and an unfinished walk is remembered as unfinished. **A memory that flatters the record is the same defect as an instrument that flatters the brain.**
+4. **The readout** — a log block with the numbers, and a dashboard card (`End of School`) that renders merit green, force-advanced amber and owed red, with an empty state that says *she has not finished yet* rather than going blank, because a blank panel during a live walk reads as a broken instrument.
+
+⚠ **Deliberately NOT a gate.** Nothing in it can refuse, block or reverse anything; the walk is over by the time it runs. Its only job is to be true.
+
+**Verified — 19/19**, covering all three outcomes (clean / force-advanced / unfinished), re-entry not duplicating the memory, and the invariant `merit + forced + held == total` holding under a mixed ledger. ⭐ **The independent check:** the owed-cell set, built grade by grade through `subjectsOwedAt` with retirement honoured, comes to **213** — the number the board claims.
+
+---
+
+## 2026-09-04 — `CORPUSDONE.1` — "IS THE CORPUS TRAINED?" ANSWERED WITH A MEASUREMENT, AND THE MEASUREMENT CAME FIRST
+
+Same instruction, the clause: *"and training completion of the corpuses"*.
+
+⭐ **MEASURED BEFORE ANYTHING WAS BUILT, AND THE MEASUREMENT CHANGED WHAT GOT BUILT.** The per-cell path is **already honest**: `_trainAcademicStories` trains every sentence the cell owns (`trained: sentences.length` — no slice, no sampling), and the pre-vocab lookup cap was removed for the same reason. There is no hidden ceiling inside a cell, so *"how much of the cell was read"* is the wrong question.
+
+⛔ **THE RIGHT ONE HAS NEVER BEEN RECORDED: was the cell ever REACHED?** A cell with no corpus and a cell whose corpus nothing ever opened produce **identical evidence** — both sit at zero trained sentences — and only one of them is a defect. That conflation is exactly how an entire degree once trained zero prose while every count on the board read healthy.
+
+**What shipped:** `_noteCorpusTrained` marks each visit **at the source** (including the two early-exit paths, so *"this cell has no corpus"* leaves a mark rather than silence), persisted as `cluster.corpusTrained`; and `_corpusCompletionVerdict` sorts every owed cell into exactly one of four states:
+
+- **trained** — the counts agree
+- **short** — fewer sentences read than the cell owns today, meaning the corpus **grew after the visit** and a re-read is owed
+- **empty** — genuinely no corpus. A content gap, nothing owed
+- **UNREACHED** — the cell owns prose the trainer never opened. **The defect class, and the one that has historically been invisible**
+
+⚠ **A missing reader yields NO verdict rather than a false alarm.** With the story loaders unattached the sweep would otherwise report every cell unreached — which is the instrument lying about the **reader** instead of about the brain, and that is the failure mode this whole file is full of.
+
+**Verified — 11/11**, including all four states, the empty-vs-unreached separation in both directions, the no-loader refusal, and the recorder's own visit accounting.
+
+---
+
 ## 2026-09-03 — `FIELDSIZE.3` — GZIP FOR NEW FIELDS, AND THE DELIVERED HALF WAS UN-APPROVED BY A MEASUREMENT AFTER IT HAD ALREADY BEEN APPROVED
 
 Gee, verbatim, and this question is the reason half of this row did not ship:

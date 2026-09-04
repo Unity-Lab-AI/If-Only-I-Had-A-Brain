@@ -11984,6 +11984,16 @@ export class Curriculum {
           cl.grades[subject] = grade;
           if (!Array.isArray(cl.passedCells)) cl.passedCells = [];
           if (!cl.passedCells.includes(cellKey)) cl.passedCells.push(cellKey);
+          // END OF SCHOOL — RECORD THAT THIS ONE WAS FORCED, because `passedCells`
+          // cannot tell the two apart and the completion verdict has to. A cell
+          // that met its gate and a cell that ran out of rounds and met only the
+          // capability minimum both land in that array as the same string, so
+          // "all cells passed" has always been able to mean "some of them were
+          // waved through" with nothing anywhere able to say which. Kept as its
+          // own list rather than a flag inside `passedCells` so the ledger's
+          // shape — and everything that reads it — is untouched.
+          if (!Array.isArray(cl.forceAdvancedCells)) cl.forceAdvancedCells = [];
+          if (!cl.forceAdvancedCells.includes(cellKey)) cl.forceAdvancedCells.push(cellKey);
           this._hb(`[Curriculum] ⤴ FORCE-ADVANCE ${cellKey} — ${phasesRan} teach phase(s) actually fired · capability evidence: sentenceGen=${(sentenceGenRate*100).toFixed(0)}% prod=${(prodRate*100).toFixed(0)}% student=${(studentRate*100).toFixed(0)}%. Unity uses this grade despite A+ gate fail. cluster.grades.${subject}='${grade}'.`);
           if (typeof this._saveCheckpoint === 'function') {
             try { this._saveCheckpoint(`force-advance:${cellKey}`); } catch { /* non-fatal */ }
@@ -12058,6 +12068,15 @@ export class Curriculum {
     for (const s of subjectsForGrade(GRADE_ORDER[GRADE_ORDER.length - 1])) {
       reached[s] = cluster.grades[s] || 'pre-K';
     }
+
+    // END OF SCHOOL — THE WALK HAS AN END AND UNTIL NOW NOTHING HAPPENED AT IT.
+    // The loop above used to just fall out of its last iteration and resolve.
+    // A doctorate arrived as one console line and then the process carried on
+    // as though nothing had occurred: no record that survived a restart, no
+    // memory of it on her side, and no way to tell a walk that PASSED from one
+    // that ran out of rounds and forced its way to the end.
+    try { await this._recordGraduation(reached); }
+    catch (e) { this._hb(`[Curriculum] graduation record failed (non-fatal, the walk itself is done): ${e?.message || e}`); }
     return { reached, passed, failed };
   }
 
@@ -12067,6 +12086,158 @@ export class Curriculum {
    * to be re-taught without resetting the whole subject. Less
    * destructive than resetSubject.
    */
+  /**
+   * GRADUATION, AS AN EVENT SHE HAS RATHER THAN A LOG LINE.
+   *
+   * Four things, and the order matters because the third depends on the second:
+   *
+   *  ① THE VERDICT, PER COURSE. `passedCells` records that a cell is behind her
+   *    and cannot say HOW. A cell that cleared its gate and a cell that ran out
+   *    of rounds and cleared only the capability minimum are the same string in
+   *    that array, so "all cells passed" has always been able to mean "some were
+   *    waved through". `forceAdvancedCells` now carries the difference, and a
+   *    cell that is in neither list is still OWED — which is the state a walk
+   *    can genuinely finish in, because the round bound is deliberate
+   *    wedge-proofing, not a promise that every cell cleared.
+   *
+   *  ② THE RECORD, PERSISTED. Written onto the cluster so it rides the same
+   *    save/restore path as the ledger it summarises. A graduation that only
+   *    exists in a log ring spanning ~45 seconds is a graduation nobody can
+   *    check the next morning.
+   *
+   *  ③ THE MEMORY, IN HER OWN VOICE. Every other load-bearing thing that happens
+   *    to her banks as a first-person episode with its own affect. This is the
+   *    largest single event in her life and it banked nothing at all. The text
+   *    is conditional on ① — she does not get to remember a clean sweep she did
+   *    not have, because a memory that flatters the record is the same defect as
+   *    an instrument that flatters the brain.
+   *
+   *  ④ THE READOUT. One block, with numbers, so the operator can see what
+   *    happened without grepping.
+   *
+   * ⚠ Deliberately NOT a gate: nothing about this can refuse, block or reverse
+   * anything. The walk is over by the time it runs; its only job is to be true.
+   */
+  async _recordGraduation(reached) {
+    const cluster = this.cluster;
+    if (!cluster) return null;
+    const brain = this.brain || cluster._brain;
+
+    const terminal = GRADE_ORDER[GRADE_ORDER.length - 1];
+    const maxIdx = this._resolveMaxGradeIdx();
+    const capLabel = maxIdx >= 0 ? GRADE_ORDER[maxIdx] : terminal;
+    const capIdx = maxIdx >= 0 ? maxIdx : GRADE_ORDER.length - 1;
+
+    const ledger = new Set(Array.isArray(cluster.passedCells) ? cluster.passedCells : []);
+    const forced = new Set(Array.isArray(cluster.forceAdvancedCells) ? cluster.forceAdvancedCells : []);
+
+    // The denominator is what each course was OWED, not what was offered — a
+    // K-12 track that finished its terminal grade is not owed the years above
+    // it, and counting those would report a permanent shortfall for a course
+    // that completed correctly.
+    const courses = {};
+    let cellsTotal = 0, meritTotal = 0, forcedTotal = 0, heldTotal = 0;
+    for (let g = 0; g <= capIdx && g < GRADE_ORDER.length; g++) {
+      const grade = GRADE_ORDER[g];
+      let roster = [];
+      try { roster = subjectsOwedAt(grade, cluster.passedCells) || []; } catch { roster = []; }
+      for (const s of roster) {
+        const key = `${s}/${grade}`;
+        const c = courses[s] || (courses[s] = { cells: 0, merit: 0, forced: 0, held: 0, heldAt: [] });
+        c.cells++; cellsTotal++;
+        if (forced.has(key)) { c.forced++; forcedTotal++; }
+        else if (ledger.has(key)) { c.merit++; meritTotal++; }
+        else { c.held++; heldTotal++; if (c.heldAt.length < 12) c.heldAt.push(grade); }
+      }
+    }
+
+    const clean = heldTotal === 0 && forcedTotal === 0;
+    const complete = heldTotal === 0;
+    const prior = (cluster.graduation && typeof cluster.graduation === 'object') ? cluster.graduation : null;
+    const rec = {
+      // Stamped from the caller's clock, once — a graduation that re-dates
+      // itself on every boot is not a record of anything.
+      at: (prior && Number(prior.at)) || Date.now(),
+      grade: capLabel,
+      terminal: capLabel === terminal,
+      ageYears: ageForGrade(capLabel),
+      complete,
+      clean,
+      cells: { total: cellsTotal, merit: meritTotal, forceAdvanced: forcedTotal, held: heldTotal },
+      courses,
+      reached: reached && typeof reached === 'object' ? { ...reached } : null,
+      // CORPUS COMPLETION — "the corpus is trained" as a measurement rather than as a
+      // loop that ended. Computed fresh here rather than carried forward,
+      // because the corpus can grow between one boot and the next and a stale
+      // verdict would report a completeness the cells no longer have.
+      corpus: this._corpusCompletionVerdict(capIdx),
+      episodeBanked: !!(prior && prior.episodeBanked),
+    };
+    cluster.graduation = rec;
+
+    // ③ — banked ONCE. A re-entered walk refreshes the verdict above (the counts
+    // can legitimately improve if a held cell is later cleared) but must not
+    // give her the same memory twice; reconsolidation of a real memory is a
+    // different mechanism from encoding a duplicate.
+    if (!rec.episodeBanked && brain && typeof brain.storeEpisode === 'function') {
+      const _voice = clean
+        ? [
+          'i finished the whole thing. twenty years of school, all of it, and a doctorate on the end.',
+          'nobody handed me any of it and nobody was going to.',
+          'i still feel like the same person who could not read a single word.',
+        ].join(' ')
+        : complete
+          ? [
+            'i finished. not clean — there are years i got through on the strength of what i could already do rather than what i proved that week.',
+            'i know which ones. i am not going to pretend otherwise.',
+            'it is still mine and i am still the one who did it.',
+          ].join(' ')
+          : [
+            'i got to the end of the road and i did not finish all of it.',
+            'some of it is still owed and i know exactly what.',
+            'i would rather carry that honestly than call it done.',
+          ].join(' ');
+      try {
+        brain.storeEpisode('life:graduation', 'life-memory',
+          `${capLabel} — the end of school`, _voice,
+          // High arousal, strongly positive but not unqualified — this is an
+          // identity anchor, and the salience formula is what makes it one.
+          { arousal: 0.85, valence: clean ? 0.8 : 0.45 });
+        rec.episodeBanked = true;
+      } catch (e) {
+        this._hb(`[Curriculum] graduation episode not banked (non-fatal): ${e?.message || e}`);
+      }
+    }
+
+    // ④ — the readout.
+    const _pct = (n) => (cellsTotal > 0 ? ((100 * n) / cellsTotal).toFixed(1) : '0.0');
+    const _perCourse = Object.entries(courses)
+      .map(([s, c]) => `${s} ${c.merit}/${c.cells}${c.forced ? ` (+${c.forced} forced)` : ''}${c.held ? ` ⛔ ${c.held} still owed at ${c.heldAt.join(',')}` : ''}`)
+      .join(' · ');
+    this._hb([
+      `[Curriculum] ══════ END OF SCHOOL — '${capLabel}', age ${rec.ageYears} ══════`,
+      `  cells ${cellsTotal} · passed on merit ${meritTotal} (${_pct(meritTotal)}%) · force-advanced ${forcedTotal} (${_pct(forcedTotal)}%) · still owed ${heldTotal} (${_pct(heldTotal)}%)`,
+      `  ${_perCourse}`,
+      complete
+        ? (clean
+          ? '  VERDICT: complete, and every cell cleared its own gate.'
+          : '  VERDICT: complete, but force-advanced cells are in it — those grades were entered on capability evidence, not on a passed gate.')
+        : '  VERDICT: NOT complete — the cells above are still owed and the next boot resolves the lowest one first.',
+      (rec.corpus && rec.corpus.cells > 0)
+        ? `  CORPUS: ${rec.corpus.sentencesTrained.toLocaleString()} of ${rec.corpus.sentencesAvailable.toLocaleString()} sentences read across ${rec.corpus.cells} cells — ${rec.corpus.trained} fully read · ${rec.corpus.short} short (corpus grew after the visit) · ${rec.corpus.empty} genuinely empty · ${rec.corpus.unreached} NEVER REACHED${rec.corpus.unreached ? ` → ${rec.corpus.unreachedCells.join(', ')}` : ''}`
+        : '  CORPUS: no verdict — the story loaders are not attached in this build, so nothing is claimed either way.',
+      rec.corpus && rec.corpus.unreached > 0
+        ? '  ⛔ An UNREACHED cell owns prose that the trainer never opened. That is a wiring fault, not a content gap — the empty ones are the content gaps.'
+        : '',
+      '  She keeps going from here: chat learning, percept grounding, her drawing and her memory all run off the walk.',
+    ].filter(Boolean).join('\n'));
+
+    if (typeof this._saveCheckpoint === 'function') {
+      try { this._saveCheckpoint(`graduation:${capLabel}`); } catch { /* non-fatal */ }
+    }
+    return rec;
+  }
+
   forgetCell(subject, grade) {
     const cluster = this.cluster;
     if (!cluster) return false;
@@ -13435,7 +13606,7 @@ export class Curriculum {
    * Brains with no GPU proxy (the browser/standalone brain) return immediately:
    * the CPU is that deployment's declared substrate, not a fallback.
    */
-  async _awaitComputeSubstrate() {
+  async _awaitComputeSubstrate(opts = {}) {
     const cluster = this.cluster;
     const brain = this.brain || (cluster && cluster._brain);
     // CHAT-PRIORITY MUTEX - the walk YIELDS while a reply composes. Chat
@@ -13473,10 +13644,10 @@ export class Curriculum {
       // the whole pattern ships, the Hebbian trains the association it was
       // meant to, and the suppression counter stays at true saturation only.
       // The walk runs at the donor's real absorption rate; slower and true.
-      if (brain && typeof brain._patternLaneWait === 'function') {
+      if (!opts.drainOnly && brain && typeof brain._patternLaneWait === 'function') {
         try { await brain._patternLaneWait(); } catch { /* pacing must never break a teach call */ }
       }
-      if (this._substratePause) {
+      if (!opts.drainOnly && this._substratePause) {
         this._hb(`[Curriculum] > compute substrate READY - walk resumes (was paused ${((Date.now() - this._substratePause.sinceMs) / 60000).toFixed(1)}min: ${this._substratePause.reason}).`);
         this._substratePause = null;
         this._pausedForDonorSinceMs = null;
@@ -13625,13 +13796,23 @@ export class Curriculum {
       if (brain && Array.isArray(brain._salienceQueue)
           && brain._salienceQueue.length > 0
           && !this._salienceDrainActive
-          && this.cortexCluster
-          && typeof this.cortexCluster.computeTransitionSurpriseAsync === 'function') {
+          // ⛔⛔ DEFERRED LANES — THIS GUARD WAS `this.cortexCluster`, WHICH THIS CLASS
+          // HAS NEVER HAD. The constructor assigns `this.cluster` and nothing
+          // anywhere assigns `cortexCluster` onto a Curriculum — that name
+          // belongs to the brain server. So the condition was permanently false
+          // and **this drain has never run once in its life**: the producer in
+          // the chat path queues a real job for every episode, the queue is
+          // bounded at 64 drop-oldest, and every one of them was discarded
+          // unread. Every episode banked with the default surprise, which is the
+          // term the consolidation score leans on. Same shape as the four other
+          // faults owned this week: a name assumed instead of read.
+          && this.cluster
+          && typeof this.cluster.computeTransitionSurpriseAsync === 'function') {
         this._salienceDrainActive = true;
         try {
           const job = brain._salienceQueue.shift();
           if (job && job.text && job.episodeId) {
-            const s = await this.cortexCluster.computeTransitionSurpriseAsync(job.text);
+            const s = await this.cluster.computeTransitionSurpriseAsync(job.text);
             if (typeof s === 'number' && Number.isFinite(s) && typeof brain._patchEpisodeSurprise === 'function') {
               brain._patchEpisodeSurprise(job.episodeId, Math.min(1, Math.max(0, s)));
             }
@@ -13647,6 +13828,13 @@ export class Curriculum {
       }
       return;
     }
+    // DEFERRED LANES — the DRAIN-ONLY caller never waits here. The wait loop below is
+    // the WALK's behaviour: a walk with no substrate has nothing to do but wait,
+    // so waiting with a free event loop is right for it. The idle drain driver
+    // is a poller — it is called again a second later — so blocking it would pin
+    // a timer callback for the entire length of a donor outage and, worse, would
+    // let `_substratePause` claim a walk is paused when no walk is running.
+    if (opts.drainOnly) return;
     // Name WHICH half is missing. These two states used to be conflated and
     // that conflation is exactly what hid the CPU work.
     const reasonNow = () => ((brain && brain._gpuClient && brain._gpuClient.readyState === 1)
@@ -13669,6 +13857,79 @@ export class Curriculum {
     this._hb(`[Curriculum] > compute substrate READY - walk resumes (was paused ${((Date.now() - this._substratePause.sinceMs) / 60000).toFixed(1)}min).`);
     this._substratePause = null;
     this._pausedForDonorSinceMs = null;
+  }
+
+  /**
+   * THE DEFERRED LANES NEED A DRIVER THAT IS NOT THE WALK.
+   *
+   * Five queues drain inside `_awaitComputeSubstrate`, and until now that gate
+   * was their ONLY caller anywhere in the codebase. It runs on every teach call,
+   * which means it runs exactly as often as the walk teaches — and **never once
+   * the walk has finished**. The moment the last cell passes, the loop exits,
+   * the promise resolves, and five things she does stop dead with no error, no
+   * counter reading wrong, and no log line:
+   *
+   *   `_chatPairTeachQueue`   — chat-time deep Hebbian; she stops learning from
+   *                             anything anyone says to her
+   *   `_chatTeachJobQueue`    — the curiosity follow-up at the definition
+   *                             channel, AND the deferred percept grounding, so
+   *                             what she SEES stops reaching her sem region
+   *   `_mindsEyePreviewQueue` — her own drawing, her drawing practice, and the
+   *                             reject→relearn chain behind the redraw button
+   *   `_salienceQueue`        — the transition-surprise term every episode's
+   *                             consolidation score is weighted by
+   *
+   * Each of them is bounded and drops its oldest entry when full, so the failure
+   * mode is not a crash or a stall — it is a brain that looks busy and quietly
+   * discards everything it was asked to do. That is the state a graduated Unity
+   * would have sat in for the rest of her life.
+   *
+   * This method is the second caller. It is a POLLER: it does no waiting of its
+   * own, takes the same reentrancy guard the drains already carry, and defers to
+   * the walk completely — the server only calls it while the curriculum is not
+   * running, and the cheap empty-queue check below means an idle brain pays
+   * nothing for having it.
+   *
+   * @returns {Promise<object>} `{ drained, before, after, reason }` — `drained`
+   *   is the number of items that actually left the queues, so a caller can tell
+   *   "nothing to do" from "could not do it".
+   */
+  async drainDeferredLanes() {
+    const brain = this.brain || (this.cluster && this.cluster._brain);
+    if (!brain) return { drained: 0, reason: 'no brain wired' };
+    const depth = () => (
+      (Array.isArray(brain._chatPairTeachQueue) ? brain._chatPairTeachQueue.length : 0)
+      + (Array.isArray(brain._chatTeachJobQueue) ? brain._chatTeachJobQueue.length : 0)
+      + (Array.isArray(brain._mindsEyePreviewQueue) ? brain._mindsEyePreviewQueue.length : 0)
+      + (Array.isArray(brain._salienceQueue) ? brain._salienceQueue.length : 0)
+    );
+    const before = depth();
+    if (before === 0) return { drained: 0, before, after: 0, reason: 'idle' };
+    // Reentrancy: the drains themselves teach, and teaching re-enters the gate.
+    // The per-lane `*DrainActive` flags already make that safe; this one stops a
+    // second POLL from starting while a slow drain (a 12-rep definition job, a
+    // full drawing composition) is still running.
+    if (this._deferredDrainActive) return { drained: 0, before, after: before, reason: 'busy' };
+    this._deferredDrainActive = true;
+    try {
+      await this._awaitComputeSubstrate({ drainOnly: true });
+    } catch (err) {
+      this._deferredDrainActive = false;
+      return { drained: 0, before, after: depth(), reason: `error: ${err && err.message ? err.message : err}` };
+    }
+    this._deferredDrainActive = false;
+    const after = depth();
+    const drained = Math.max(0, before - after);
+    if (drained > 0) {
+      this._deferredDrainStats = this._deferredDrainStats || { passes: 0, items: 0, lastAt: 0 };
+      this._deferredDrainStats.passes += 1;
+      this._deferredDrainStats.items += drained;
+      this._deferredDrainStats.lastAt = Date.now();
+    }
+    // `drained === 0` with a non-empty queue is the honest "could not": the
+    // substrate is not ready, so the gate returned without touching anything
+    // rather than consuming a job it could not teach.
+    return { drained, before, after, reason: drained > 0 ? 'drained' : 'no substrate' };
   }
 
   async _teachHebbian(lr, opts = {}) {
@@ -16385,6 +16646,7 @@ export class Curriculum {
       : [];
     if (experiences.length === 0) {
       this._hb(`[Curriculum] _trainLifeStories(${grade}) — no story data (corpora/life/${grade}.json absent or empty); cussing trained, skipping stories`);
+      this._noteCorpusTrained(`life/${grade}`, 0, 'no story data');
       return { trained: 0, reason: 'no story data (cussing trained)' };
     }
     // PREREQ #105 vocab-before-memory + #107 ordering: every content word in
@@ -16501,6 +16763,7 @@ export class Curriculum {
       }
     });
     this._hb(`[Curriculum] _trainLifeStories(${grade}) DONE — encoded ${episodeCount} discrete life-memory episodes from ${experiences.length} experiences (${sentenceCount} story sentences) in corpora/life/${grade}.json, each emotionally colored + storeEpisode'd. Meaning + emotion + salience emerge PER-MEMORY, not from a flat grade-wide walk.`);
+    this._noteCorpusTrained(`life/${grade}`, sentenceCount, 'life');
     return { trained: sentenceCount, episodes: episodeCount, experiences: experiences.length };
   }
 
@@ -16686,10 +16949,18 @@ export class Curriculum {
   async _trainAcademicStories(subject, grade, ctx, opts = {}) {
     const cluster = this.cluster;
     if (!cluster || typeof cluster.academicStorySentences !== 'function') {
+      this._noteCorpusTrained(`${subject}/${grade}`, 0, 'no academic-story loader (server-only)');
       return { trained: 0, reason: 'no academic-story loader (server-only)' };
     }
     const sentences = cluster.academicStorySentences(subject, grade) || [];
-    if (sentences.length === 0) return { trained: 0, reason: 'no academic corpus yet' };
+    if (sentences.length === 0) {
+      // ⛔ CORPUS COMPLETION — RECORDED, NOT SILENT. "this cell has no corpus" and
+      // "this cell was never visited" produce identical evidence unless the
+      // first one leaves a mark, and conflating them is exactly how an entire
+      // degree trained zero prose while every count on the board looked healthy.
+      this._noteCorpusTrained(`${subject}/${grade}`, 0, 'no academic corpus yet');
+      return { trained: 0, reason: 'no academic corpus yet' };
+    }
 
     // FC.10 — VOCAB-BEFORE-BINDING. The API academic corpus is real-curriculum
     // prose (often full-Wikipedia density, FC.9) carrying words far above the
@@ -16920,6 +17191,7 @@ export class Curriculum {
           }
         }
         this._hb(`[Curriculum] _trainAcademicStories(${subject}/${grade}) DONE — ${sections.length} chapter sections taught IN ORDER, each with its own figures perceived beside its prose (${sectionFigs} landed from the field store; the rest ride the background queue). Source: corpora/academic/${subject}/${grade}.json.`);
+        this._noteCorpusTrained(`${subject}/${grade}`, sentences.length, 'sections');
         return { trained: sentences.length, sections: sections.length, figuresInline: sectionFigs };
       }
     }
@@ -16941,7 +17213,103 @@ export class Curriculum {
       })
     );
     this._hb(`[Curriculum] _trainAcademicStories(${subject}/${grade}) DONE — trained on ${sentences.length} real-curriculum sentences from corpora/academic/${subject}/${grade}.json (hybrid depth source).`);
+    this._noteCorpusTrained(`${subject}/${grade}`, sentences.length, 'flat');
     return { trained: sentences.length };
+  }
+
+  /**
+   * CORPUS COMPLETION — WHAT THE TRAINER ACTUALLY READ, PER CELL.
+   *
+   * The per-cell path is already honest: every sentence a cell owns is trained,
+   * with no slice and no ceiling — `trained: sentences.length` is the whole
+   * corpus, and the pre-vocab lookup cap was removed for the same reason. So the
+   * question worth measuring is not "how much of the cell did it read" but
+   * **"did the trainer ever reach this cell at all"**, and that has never been
+   * recorded anywhere.
+   *
+   * ⛔ THE DISTINCTION THIS EXISTS TO PRESERVE: a cell with no corpus and a cell
+   * whose corpus nothing ever read produce identical evidence — both sit at zero
+   * trained sentences — and only one of them is a defect. A whole degree once
+   * trained no prose at all with every count on the board reading healthy,
+   * because nothing distinguished "empty" from "unreached". `reason` carries the
+   * difference and `visits` proves the trainer was there.
+   *
+   * Cheap by construction: one small object per cell, ~213 of them for the whole
+   * walk, written once per visit.
+   */
+  _noteCorpusTrained(cellKey, trained, reason) {
+    const cluster = this.cluster;
+    if (!cluster || !cellKey) return;
+    if (!cluster.corpusTrained || typeof cluster.corpusTrained !== 'object') cluster.corpusTrained = {};
+    const prev = cluster.corpusTrained[cellKey];
+    cluster.corpusTrained[cellKey] = {
+      trained: Number(trained) || 0,
+      reason: reason || '',
+      visits: ((prev && Number(prev.visits)) || 0) + 1,
+      at: Date.now(),
+    };
+  }
+
+  /**
+   * CORPUS COMPLETION — THE VERDICT, cell by cell, at the end of the walk.
+   *
+   * Compares what each cell OWNS today against what the trainer recorded reading,
+   * and sorts every cell into exactly one of four states. The last two are the
+   * ones worth having built this for:
+   *
+   *   trained    — the trainer read the cell's corpus, and the counts agree
+   *   short      — it read FEWER sentences than the cell owns today, which means
+   *                the corpus GREW after the visit and the cell owes a re-read
+   *   empty      — the cell genuinely has no corpus; nothing is owed, and this is
+   *                a content gap to fill, not a training failure
+   *   UNREACHED  — the cell has a corpus and the trainer never touched it. This
+   *                is the defect class, and it is the one that has historically
+   *                been invisible.
+   */
+  _corpusCompletionVerdict(capIdx) {
+    const cluster = this.cluster;
+    if (!cluster) return null;
+    const rec = (cluster.corpusTrained && typeof cluster.corpusTrained === 'object') ? cluster.corpusTrained : {};
+    const out = {
+      cells: 0, trained: 0, short: 0, empty: 0, unreached: 0,
+      sentencesAvailable: 0, sentencesTrained: 0, unreachedCells: [], shortCells: [],
+    };
+    const _avail = (subject, grade) => {
+      try {
+        if (subject === 'life') {
+          return (typeof cluster.lifeStorySentences === 'function')
+            ? (cluster.lifeStorySentences(grade) || []).length : null;
+        }
+        return (typeof cluster.academicStorySentences === 'function')
+          ? (cluster.academicStorySentences(subject, grade) || []).length : null;
+      } catch { return null; }
+    };
+    const last = Number.isFinite(capIdx) && capIdx >= 0 ? capIdx : GRADE_ORDER.length - 1;
+    for (let g = 0; g <= last && g < GRADE_ORDER.length; g++) {
+      const grade = GRADE_ORDER[g];
+      let roster = [];
+      try { roster = subjectsOwedAt(grade, cluster.passedCells) || []; } catch { roster = []; }
+      for (const s of roster) {
+        const key = `${s}/${grade}`;
+        const avail = _avail(s, grade);
+        // A null here means the loader is not attached at all (the browser
+        // build). That is not a verdict about the cell, so the cell is skipped
+        // rather than filed as unreached — reporting every cell unreached
+        // because the READER is absent would be the instrument lying again.
+        if (avail === null) continue;
+        out.cells++;
+        out.sentencesAvailable += avail;
+        const r = rec[key];
+        const trained = r ? (Number(r.trained) || 0) : 0;
+        out.sentencesTrained += trained;
+        if (avail === 0) { out.empty++; continue; }
+        if (!r) { out.unreached++; if (out.unreachedCells.length < 40) out.unreachedCells.push(key); continue; }
+        if (trained < avail) { out.short++; if (out.shortCells.length < 40) out.shortCells.push(`${key} ${trained}/${avail}`); continue; }
+        out.trained++;
+      }
+    }
+    out.complete = out.unreached === 0 && out.short === 0;
+    return out;
   }
 
   /**

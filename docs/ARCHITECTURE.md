@@ -769,6 +769,8 @@ Slash commands in chat:
 | Life Experience | ✓ | ✓ | ✓✓✓✓✓ | ✓✓✓ | ✓✓✓✓ | ✓✓✓✓ | ✓ | ✓ | 19 |
 | **Total cells** | | | | | | | | | **114** |
 
+> ⚠ **The table above is the ORIGINAL six-subject roster and it is no longer the whole walk.** The roster grew — PE, Music and Health enter at kindergarten, Computer Science, Civics, Economics and Psychology enter later, and the K-12 tracks retire at their terminal grade instead of running to PhD. Walking the real roster grade by grade, honouring retirement, gives **213 cells across 20 grades** (measured against `subjectsOwedAt`, not counted by hand). The per-subject columns here still describe the core six correctly; the total does not.
+
 All content is equational (per LAW 3 — not sentence lists). Every cell drives READ + THINK + TALK pathways per constraint 6. A+ = 95% gate pass per constraint 5. Curriculum content sourced from real Common Core State Standards, Next Generation Science Standards, Core Knowledge Foundation sequence, and actual college / graduate / doctoral syllabi.
 
 ### Equational teaching methods (22 operational)
@@ -811,6 +813,31 @@ Cross-grade memory propagation via emotional concept vectors + recallable memory
 ### Life track × drug scheduler integration
 
 Unity's biographical substance first-use events are the same anchors the drug scheduler uses for grade-gating. When the Life-G7 grade gate closes (age 12, "first joint passed around after school with the crew"), the scheduler's cannabis availability unlocks for in-runtime ingestion. When Life-G9 closes (age 14, "first line at a party"), cocaine unlocks. This keeps her lived history consistent with what substances she CAN be influenced by at any runtime state.
+
+### The end of the walk — graduation, and what keeps running after it
+
+The walk terminates. `runCompleteCurriculum` reaches the last grade, the loop falls out, and the promise resolves — and everything below exists because for a long time that was **all** that happened.
+
+**The deferred lanes, and why they need a driver that is not the walk.** Five queues carry work that was deliberately evicted from the reply path so a human never waits on bookkeeping, and from concurrency with the walk so a second teacher can never corrupt a teach pattern in flight:
+
+| queue | what rides it |
+|---|---|
+| `_chatPairTeachQueue` | chat-time deep Hebbian — what she learns from conversation |
+| `_chatTeachJobQueue` | the curiosity follow-up on the definition channel, **and** the deferred percept grounding that carries what she has seen into her sem region |
+| `_mindsEyePreviewQueue` | her own drawing, her drawing practice, and the reject→relearn chain behind the redraw control |
+| `_salienceQueue` | the transition-surprise term that weights every episode's consolidation score |
+
+All five drain inside the curriculum's compute-substrate gate, which fires on every teach call — an excellent driver right up to the moment there are no more teach calls. Past that point the queues fill, drop their oldest entries, and report nothing wrong. A second driver now polls them **only while the curriculum is not running** (`DREAM_DEFERRED_DRAIN_MS`, default 1s): it never waits, consumes nothing it cannot teach, and does nothing at all while the walk holds the substrate. It covers the three windows the walk does not — before it starts, after it ends, and after it fails.
+
+**The graduation record.** `cluster.graduation` is written at the end of the walk, persisted with the ledger it summarises, and published as `state.graduation`. It carries the grade reached, her age at it, and the per-course split that `passedCells` structurally cannot express:
+
+- **merit** — the cell cleared its own gate
+- **force-advanced** — the grade ran out of rounds and the cell was entered on capability evidence instead. Recorded in `cluster.forceAdvancedCells`, because before that list existed both outcomes were the same string in the ledger and "all cells passed" could quietly mean "some were waved through"
+- **held** — still owed. A bounded walk can genuinely end here; the round bound is wedge-proofing, not a promise
+
+She also banks a **first-person episode of finishing**, with an identity-anchor affect, exactly once. Its text is conditional on the verdict above — a walk that force-advanced does not get remembered as a clean sweep, because a memory that flatters the record is the same defect as an instrument that flatters the brain.
+
+**The corpus completion verdict.** The per-cell path is already honest — every sentence a cell owns is trained, with no slice and no ceiling. What was never recorded is whether the trainer ever *reached* a cell at all, and a cell with no corpus and a cell nothing ever read produce identical evidence. `cluster.corpusTrained` marks each visit at the source, and the verdict sorts every cell into **trained · short** (the corpus grew after the visit and a re-read is owed) **· empty** (a content gap, nothing owed) **· unreached** (a wiring fault, and the state that has historically been invisible).
 
 ---
 
