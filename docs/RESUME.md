@@ -33,9 +33,20 @@
 > ### ⚠ THE BUNDLE "STALENESS" WAS ALWAYS LINE ENDINGS
 > A fresh build kept differing by **23,628 bytes**. The bundle has **exactly 23,628 newlines** — git checks out CRLF, esbuild writes LF. Three builds are byte-identical. **A byte-count comparison across a checkout boundary measures line endings, not staleness.**
 >
+> ### ✅ THE VIEWER IS FIXED — cards interlock, tooltips are whole, scrollbar gone
+> ```
+>                  before      after
+>   tooltips     CLIPPED   ->  not clipped   (.tv-card overflow:hidden cut them in half)
+>   packing      row gaps  ->  81-96% filled (grid rows -> CSS multi-column, cards interlock)
+>   page @1920   47,874px  ->  2,428px
+>   h-overflow   true      ->  false
+>   DEF-MISS     24 false  ->  0             (letters are taught by the phonics lane, not the dictionary)
+> ```
+> ⛔⛔ **Un-clipping the cards EXPOSED the horizontal scrollbar, and I guessed its cause TWICE** before measuring. The answer came from **projecting all 271 tooltip extents**: only **three** reach past the viewport — `#tvCell`, `#tvStatus`, `#tvTheme`, the header controls pinned right by `margin-left:auto`. `#tvCell` projects to **1604 on a 1400px viewport — the 226px scrollbar exactly.**
+> ⭐ **The lesson: no element is ever wider than the screen, so scanning for oversized elements finds nothing. An absolutely-positioned pseudo-element extends the document WITHOUT being oversized. Project the extent instead.**
+>
 > ### NEXT — in order
 > - **Cascade `feature/tvlayout`** — the dashboard `$` fix especially; without it half the panels blank on the box exactly when the walk is being watched hardest.
-> - **~226px horizontal overflow** on the teach viewer — 442px `.tv-tip` pseudo-elements count toward document width even when hidden. Pre-existing, widened by newly-tipped controls.
 > - **Then the press.** `PREWALK` wants one final pass against whatever commit is actually pressed.
 > - ⏳ **Watch on the walk:** `defQueue.lastWindow` is `null` — the pre-cell definition bootstrap is documented at ~2.4h before phase 1, so `passedCellsTotal: 0` is expected. **`lastWindow: null` an hour in is a real finding.**
 >

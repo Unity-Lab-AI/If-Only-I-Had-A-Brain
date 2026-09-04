@@ -126,8 +126,23 @@
      the page sideways — measured at 1400px viewport: no single element was wider
      than the viewport, yet document scrollWidth was 1626px. The `min()` lets the
      last track collapse to the container instead of pushing past it. */
-  .tv-col-panels{display:grid;gap:14px;align-content:start;
-    grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr))}
+  /* ⛔⛔ COLUMNS, NOT A GRID — AND THAT IS THE WHOLE POINT.
+     A `grid` with `auto-fill` aligns items into ROWS, so a short card leaves a
+     dead gap beneath it until the TALLEST card in its row ends. With cards
+     ranging 139px to 921px that is most of the space, and it reads exactly as
+     reported: *"a lot of the cards are still stacked like a line instead of
+     fitting together perfectly."*
+     ⭐ CSS multi-column packs vertically and fills each column before the next,
+     so cards INTERLOCK — the masonry behaviour being asked for, with no library
+     and no JS. `column-width` (not `column-count`) means the number of columns
+     is derived from the available width, so it still reflows on resize.
+     ⚠ THE TRADE-OFF, STATED: multi-column reading order is top-to-bottom per
+     column, not left-to-right per row. For a wall of independent instrument
+     panels that is fine; it would not be for a sequence that must be read in
+     order. */
+  .tv-col-panels{column-width:340px;column-gap:14px}
+  .tv-col-panels > .tv-card{break-inside:avoid;-webkit-column-break-inside:avoid;
+    page-break-inside:avoid;margin:0 0 14px;display:inline-block;width:100%}
   /* ⚠ The panel cards carry their own `margin-top:14px` from when they were a
      vertical stack. In a grid that margin becomes a second gap on every row but
      the first, so rows drift apart unevenly. The grid `gap` owns the spacing. */
@@ -136,7 +151,10 @@
      paged ledger — take two tracks when two exist, and fall back to one when
      they do not. `span 2` on a single-track grid is clamped by the browser, so
      this needs no breakpoint of its own. */
-  .tv-col-panels > .tv-card.tv-card-wide{grid-column:span 2}
+  /* `column-span:all` is the multi-column equivalent of the old `grid-column:
+     span 2` — the wide cards (canvases, the 212-row knob list, the paged ledger)
+     break out across every column instead of being squeezed into one. */
+  .tv-col-panels > .tv-card.tv-card-wide{column-span:all;margin-bottom:14px}
   /* One column below the point where two 340px tracks plus the reading pane
      stop fitting. Everything becomes a single flowing column, in order. */
   /* ⛔⛔ THE KNOB LIST WAS 44,415px TALL ON ITS OWN — measured on the live page,
@@ -151,11 +169,11 @@
   #tvKnobs{max-height:70vh;overflow-y:auto;overscroll-behavior:contain}
   @media(max-width:1180px){
     .tv-wrap{grid-template-columns:1fr}
-    .tv-col-panels{grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr))}
+    .tv-col-panels{column-width:300px}
   }
   @media(max-width:700px){
-    .tv-col-panels{grid-template-columns:1fr}
-    .tv-col-panels > .tv-card.tv-card-wide{grid-column:span 1}
+    .tv-col-panels{column-width:auto;column-count:1}
+    .tv-col-panels > .tv-card.tv-card-wide{column-span:none}
   }
   /* ⛔ DIMMED, NOT HIDDEN. A control that vanishes teaches a reader that it does
      not exist; a control that is visibly refused teaches them WHY. The server is
@@ -201,7 +219,18 @@
   .tv-press.tv-press-bad{border-color:#7a3030;color:var(--tv-bad)}
   .tv-press.tv-press-bad:hover{border-color:var(--tv-bad);background:#2a1010}
   .tv-press[disabled]{opacity:.45;cursor:default}
-  .tv-card{background:var(--tv-panel);border:1px solid var(--tv-line);border-radius:8px;overflow:hidden}
+  /* ⛔⛔ `overflow:hidden` CLIPPED EVERY TOOLTIP AT THE CARD EDGE. The `?` popups
+     are `position:absolute` INSIDE the card, so the card cut them in half —
+     reported as "the question mark tooltips are half hidden cut off by the edge
+     of the cards". The clip existed only to keep content inside the 8px radius.
+     ⭐ `overflow:clip` with `overflow-clip-margin` would still cut them, so the
+     card must not clip at all; the two children that genuinely need clipping —
+     the feed pane and the knob list — already carry their own `overflow-y:auto`,
+     and the canvases are block elements that never exceed their box. */
+  .tv-card{background:var(--tv-panel);border:1px solid var(--tv-line);border-radius:8px;overflow:visible}
+  /* The radius still has to hold on the header, which is the only child that
+     paints to the card's own edge. */
+  .tv-card>h2{border-top-left-radius:8px;border-top-right-radius:8px}
   .tv-card>h2{margin:0;padding:9px 12px;font-size:11px;letter-spacing:.13em;
     text-transform:uppercase;color:var(--tv-dim);border-bottom:1px solid var(--tv-line);
     display:flex;justify-content:space-between;gap:10px;align-items:center}
@@ -295,6 +324,33 @@
   .tv-tip:hover::after,.tv-tip:focus-visible::after{opacity:1;visibility:visible}
   /* Triggers near the right edge open leftward so the bubble stays on screen. */
   .tv-tip.tip-l::after{left:auto;right:0}
+  /* ⛔⛔ EVERY TOOLTIP IN THE RIGHT-HAND COLUMN OPENS LEFTWARD, and this is what
+     removes the horizontal scrollbar. A tooltip is `position:absolute` at
+     `left:0` and up to 420px wide; the panel column sits against the right edge
+     of the viewport, so a left-anchored tooltip on a 340px card overhangs the
+     page by ~100px and EXTENDS THE DOCUMENT — measured at 1400px viewport as a
+     1626px scrollWidth with no single element wider than the screen.
+     ⚠ The card titles already used `tip-l` by hand; the controls tipped later
+     (the presses, the ledger pagers, the per-knob `set`) did not, which is how
+     the overflow survived. Doing it by CONTAINER rather than per element means
+     the next tipped control in this column cannot reintroduce it.
+     ⭐ This became visible only after `.tv-card` stopped clipping — the clip was
+     hiding the overhang by cutting the tooltip in half, which is the bug that
+     was reported. One fix exposed the other. */
+  .tv-col-panels .tv-tip::after{left:auto;right:0}
+  /* ⛔⛔ AND THE HEADER — WHICH IS WHERE THE OVERFLOW ACTUALLY WAS. Measured by
+     projecting every one of the 271 tooltips on the page: only THREE reach past
+     the viewport, and all three are the header controls pinned to the right edge
+     by `margin-left:auto` — `#tvCell` at x[1184..1382] with a left-anchored
+     420px tooltip projects to 1604 on a 1400px viewport, which is the 226px
+     scrollbar exactly. `#tvStatus` and `#tvTheme` are the same shape.
+     ⚠ I guessed the panels column first and was wrong; the rule above is still
+     correct for that column, but it was not the cause. The measurement was
+     projecting each tip's extent — `left + tooltip width`, or `right` when
+     `tip-l` flips it — rather than looking for an oversized element, because no
+     element is oversized: an absolutely-positioned pseudo-element extends the
+     document without ever being wider than the screen itself. */
+  header .tv-tip::after{left:auto;right:0}
   /* A card heading is the widest trigger on the page; its bubble hangs below
      instead, because there is nothing above the first card to hang into. */
   .tv-card>h2 .tv-tip::after{bottom:auto;top:calc(100% + 6px)}
