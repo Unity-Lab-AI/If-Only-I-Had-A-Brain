@@ -27,10 +27,21 @@
 >
 > ⚠ **The mirror check needed fixing too.** A raw `diff` of the `.js` and `.txt` copies reported **all 337 lines changed** — `core.autocrlf` had left one CRLF and one LF. **Both stage to the same blob (`6411c81e…`).** Same lesson as the bundle "staleness": *a byte comparison across a checkout boundary measures line endings, not content.* **Verify a mirror by staged blob hash.**
 >
+> ### ⛔⛔ THEN WATCHING v3 ARM FOUND A SECOND DEFECT, IN THE FUTURE IT WAS MOST LIKELY TO MEET
+> `armWhenReady` waited on `portOpen` alone — **and `portOpen` cannot tell the two possible outcomes apart.**
+>
+> **A deploy's LAST step is restarting the brain.** So the most probable way this wait ends is the running `self-update.sh` simply **succeeding**: it finishes the sync, restarts her into the fresh walk `.force-fresh` armed at 12:41, and she comes up serving. `portOpen` then goes true twice, five minutes apart — **every precondition the gun was watching for** — and it fires a SECOND fresh walk, **wiping the walk that had just started.**
+>
+> ⭐ **The signal was already in the tool and used everywhere except there.** `activeEnter` is what separates *"still deploying"* from *"deploy landed"*; `fire()` refuses to run without a baseline of it and `watch()` confirms by nothing else. **The wait phase was the one place it was missing.** v4 stands down when it moves, and **checks that BEFORE the ready counter** — because a box that just restarted is also a box about to report `portOpen=true`, possibly on the same reading.
+>
+> **47/47** (was 26/26), including: the abort beats the counter on a single moved-and-serving poll · a 401 first poll does not pin a false baseline · a stable `activeEnter` still fires · a flap still resets · our own press still reads `LANDED`, not `SELF-LANDED`.
+>
+> ⚠ **Two harness faults owned, both mine:** three cases were off by one because I never budgeted for the `G.status()` the script runs **on paste**, and one assertion matched my own new prose (`'ready '` inside *"al**ready** armed"*) and failed correct code. **A detector written from an assumed format measures the assumption — fifth time in this ledger, and this time the assumption was about text I had written minutes earlier.**
+>
 > ### NEXT
-> - **Cascade `feature/mgconfirm`**, then **re-paste the script** — the armed tab is running v2 and its delayed fire would refuse exactly the same way.
+> - **RE-PASTE THE SCRIPT — the armed tab is running v3 and will fire the redundant second wipe.** Fresh copy: `scripts/Machine Gun Reset.txt`. Then `__mg.freshWalkWhenReady()` again.
 > - ⏳ **We are ~3 h into a ~6.3 h estimate.** Nothing about the current reading says wedged; it also does not say working. That is `SHELLGAP.1`, unchanged.
-> - **The finish line is `activeEnter` leaving `10:37:04`.** Nothing else counts.
+> - **The finish line is `activeEnter` leaving `10:37:04`.** Nothing else counts — and now the gun knows that too.
 >
 > ---
 >
