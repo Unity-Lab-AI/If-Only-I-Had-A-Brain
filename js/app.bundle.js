@@ -17448,28 +17448,39 @@ var NeuronCluster = class {
       const crossTargetFanout = 10;
       const EMISSION_PAIRS = /* @__PURE__ */ new Set([
         "sem-motor",
-        "motor-sem"
+        "motor-sem",
+        "sem-word_motor",
+        "word_motor-sem"
       ]);
       const MOTOR_BOUND_PAIRS = /* @__PURE__ */ new Set([
         "sem-motor",
         "motor-sem",
+        "sem-word_motor",
+        "word_motor-sem",
         "letter-motor",
         "motor-letter",
         "phon-motor",
         "motor-phon"
       ]);
+      const _semTopographic = (() => {
+        try {
+          return process?.env?.DREAM_SEM_TOPOGRAPHIC === "1";
+        } catch {
+          return false;
+        }
+      })();
       const TOPOGRAPHIC_PAIRS = /* @__PURE__ */ new Set([
-        "sem-motor",
-        "motor-sem",
         "letter-motor",
         "motor-letter",
         "letter-phon",
         "phon-letter",
         "phon-motor",
-        "motor-phon",
-        "sem-word_motor",
-        "word_motor-sem"
+        "motor-phon"
       ]);
+      if (_semTopographic) {
+        for (const k of ["sem-motor", "motor-sem", "sem-word_motor", "word_motor-sem"]) TOPOGRAPHIC_PAIRS.add(k);
+        console.warn(`[Cluster ${name}] DREAM_SEM_TOPOGRAPHIC=1 \u2014 the sem\u2194motor and sem\u2194word_motor projections are being built with a topographic prior over UNALIGNED spaces. At this size that spends ~70% of each word's wiring inside a single GloVe dimension; it is the pre-2026-09-04 behaviour, kept so the two can be compared on real walks.`);
+      }
       const logConstruction = this.size >= 5e4;
       if (logConstruction) console.log(`[Cluster ${name}] initializing ${pairs.length * 2} cross-projections at size=${this.size.toLocaleString()}...`);
       let _projIdx = 0;
@@ -17542,6 +17553,47 @@ var NeuronCluster = class {
         if (logConstruction) console.log(`[Cluster ${name}]   ${_projIdx}/${pairs.length * 2} ${b}_to_${a} (${aSize.toLocaleString()}\xD7${bSize.toLocaleString()}, nnz=${ba.nnz.toLocaleString()}) in ${Date.now() - baTime}ms`);
       }
       if (logConstruction) console.log(`[Cluster ${name}] cross-projections ready.`);
+      try {
+        const _MIN_WIRES = 4;
+        const _lines = [];
+        let _worst = null;
+        for (const [key, mx] of Object.entries(this.crossProjections)) {
+          if (!mx || !mx.rowPtr || !mx.rows) continue;
+          let empty = 0, min = Infinity, max = 0;
+          for (let i = 0; i < mx.rows; i++) {
+            const k = mx.rowPtr[i + 1] - mx.rowPtr[i];
+            if (k === 0) empty++;
+            if (k < min) min = k;
+            if (k > max) max = k;
+          }
+          if (!Number.isFinite(min)) min = 0;
+          const mean = mx.rows > 0 ? mx.nnz / mx.rows : 0;
+          const [srcName, dstName] = key.split("_to_");
+          const topo = TOPOGRAPHIC_PAIRS.has(`${srcName}-${dstName}`);
+          const bound = MOTOR_BOUND_PAIRS.has(`${srcName}-${dstName}`);
+          const rec = { key, rows: mx.rows, cols: mx.cols, nnz: mx.nnz, mean, min, max, empty, topographic: topo, motorBound: bound };
+          _lines.push(rec);
+          if (!_worst || mean < _worst.mean) _worst = rec;
+        }
+        this.wiringAudit = { minWires: _MIN_WIRES, projections: _lines, worst: _worst };
+        for (const r of _lines) {
+          const thin = r.mean < _MIN_WIRES;
+          const tag = `${r.topographic ? " topographic" : " random"}${r.motorBound ? " motor-bound" : ""}`;
+          const msg = `[Cluster ${name}] wiring ${r.key} \u2014 ${r.mean.toFixed(2)} wires/row (min ${r.min}, max ${r.max}) \xB7 ${r.rows.toLocaleString()}x${r.cols.toLocaleString()} \xB7 nnz ${r.nnz.toLocaleString()}${tag}`;
+          if (r.empty > 0) {
+            console.warn(`${msg} \xB7 \u26D4 ${r.empty.toLocaleString()} EMPTY ROWS \u2014 those rows can never learn, because ojaUpdate cannot insert an entry that construction did not create.`);
+          } else if (thin) {
+            console.warn(`${msg} \xB7 \u26A0 THIN \u2014 under ${_MIN_WIRES} wires a row has almost no capacity to tell one input pattern from another, and this is its capacity FOREVER.`);
+          } else if (logConstruction) {
+            console.log(msg);
+          }
+        }
+        if (_worst) {
+          console.log(`[Cluster ${name}] wiring audit \u2014 ${_lines.length} projections \xB7 thinnest is ${_worst.key} at ${_worst.mean.toFixed(2)} wires/row. A projection's wires-per-row is set at construction and never grows.`);
+        }
+      } catch (err) {
+        console.warn(`[Cluster ${name}] wiring audit failed (non-fatal \u2014 the projections are built either way): ${err && err.message ? err.message : err}`);
+      }
     } else {
       this.crossProjections = {};
     }

@@ -3407,4 +3407,124 @@ Gee (verbatim):
 
 - **Acceptance for the section:** the walk can run to PhD unattended and the moment it finishes she is still learning from chat, still grounding what she sees, still drawing and practising, still scoring her memories — with a graduation record, an episode in her own voice, and a per-cell corpus verdict behind the word "complete".
 
+---
+
+## FORKFIND — a month-old fork's findings, checked one at a time against THIS tree — filed 2026-09-04
+
+Gee (verbatim):
+
+> *"add any of this that will help us train better WITH THE CCAVIOT THAT THIS IS OUTDATED INFORMATION from a month old fork in our brain AND MAY BE POSSIBLE IT DOES APPLY TO CURRENT STACK"*
+
+⛔ **THE CAVEAT IS THE INSTRUCTION: NOTHING HERE WAS ADOPTED ON THE FORK'S WORD.** Every claim was re-derived from this tree's own code and, where it is a number, re-measured by building the real `SparseMatrix` with the real density formula. **Four claims are true here, four are stale or false, and the measurement produced one finding neither tree had.**
+
+### ✅ TRUE OF THIS TREE — measured, not inferred
+
+| claim | what this tree actually does |
+|---|---|
+| `word_motor` is in neither `MOTOR_BOUND_PAIRS` nor `EMISSION_PAIRS` | **TRUE.** Both sets list only `sem/letter/phon ↔ motor`. The band was created after those lists were written and never added |
+| `sem_to_word_motor` is ~3 wires | **TRUE, exactly.** fanout 10 × between-cluster 0.3 = **3 per row**. `sem` is `association`, `word_motor` is `output`, so the 0.3 haircut applies to the one projection that carries word production |
+| `sem_to_motor` is ~6 | **TRUE, exactly.** fanout 20 × 0.3 = **6 per row** |
+| `ojaUpdate` only touches existing entries | **TRUE.** It walks `rowPtr[i]..rowPtr[i+1]`. No insertion path exists, so the wires present at init are the entire lifetime capacity |
+| the topographic prior sits on unaligned `sem` pairs | **TRUE — and the list contradicts its own comment**, which says in as many words that unaligned spaces *"stay on initRandom since topography would impose false structure"*, three lines above `sem-motor` and `sem-word_motor` being added to it |
+| the sem write fires all cells of a dim or none | **TRUE.** `injectEmbeddingToRegion` and the runners' `buildPattern` both tile `groupSize = floor(regionSize / dims)` cells per dimension and set every one of them |
+
+### ❌ NOT TRUE OF THIS TREE — the fork is stale here, and acting on it would have been a regression
+
+| claim | what this tree actually does |
+|---|---|
+| *"motor 0, word_motor 0 — nothing has ever driven it to a target"* | **FALSE.** `_teachMagnitudeToMotor` writes `{ region: motorRegion, feat: encodeLetter(digit) }` — a target one-hot — and it is one of many motor-writing teach sites. **The fix the fork proposes is already here** |
+| *"every emission path currently ends in a dictionary"* | **FALSE since 2026-09-01.** The oracle was deleted under the no-fallbacks LAW. ⭐ **And its removal note names exactly what the fork measured:** *"sem→word_motor is not depositing enough margin for an argmax to resolve, and the fix is in the TRAINING"* — the two findings converge on one mechanism from opposite directions |
+| the `TRAINING_COLLAPSE` warning and the wiring-audit boot line | **NEITHER EXISTS HERE.** We have no instrument that prints wires-per-row for any projection, which is why none of the above was visible |
+| *"ours passes `attention: true` on every chat compose"* | **FALSE.** `opts.attention === true` has **zero callers** in this tree. The attention head is built, wired into the emission path, and dead |
+
+### ⭐⭐ AND THE MEASUREMENT FOUND SOMETHING NEITHER TREE HAD
+
+`initTopographicProjection` centres row `i` on column `floor(i·cols/rows)` and puts **70% of that row's picks within ±`radiusTopo`** of it. `radiusTopo` is the fixed literal **30**. At the deployed geometry:
+
+```
+sem 52,672,608 cells · word_motor 10,113,141 · 202 cells per word · 606 wires per word
+sem cells per GloVe dimension          175,575
+one word's topographic window            1,107 cells  =  0.630% of ONE dimension
+of its 606 wires: 424 inside that sliver, 182 scattered
+```
+
+⛔ **70% of every word's wiring is spent reading 0.63% of one arbitrary GloVe dimension it did not choose** — and the same formula is harmless at small scale and gets worse as the brain grows:
+
+```
+      6,700 neurons   window >= 100% of a dim   fine
+    200,000                    52.6%
+  2,000,000                     5.2%
+ 50,000,000                     0.79%
+306,458,816 (deployed)          0.630%
+671,000,000 (max tier)          0.613%
+```
+
+**A FIXED CELL COUNT AGAINST A REGION THAT SCALES 6,700 → 671,000,000.** ⚠ **No small-scale test can see it** — at 13k sem cells the window already covers a whole dimension. Even there, built for real, `initRandom` reaches **191 of 300** dimensions per word against topographic's **95**, so the prior costs reach at *every* scale and merely becomes pathological at ours.
+
+- [x] `WIREAUDIT.1` — ✅ **BUILT 2026-09-04 — full entry in `docs/FINALIZED.md` §2026-09-04 `WIREAUDIT.1`, written and verified before this marker moved.** Runs after cross-projection construction, publishes `cluster.wiringAudit`, and warns SEPARATELY for THIN and for EMPTY ROWS because only one of those is survivable. ⭐ **It found `LAMDEAD.1` on its first run** — a bigger defect than the one it was built to see.
+
+  **Original filing:** **BUILD THE INSTRUMENT WE DO NOT HAVE.** Every finding above was invisible because nothing anywhere reports how many incoming wires a projection actually gives each row. At boot, after cross-projection construction, print per projection: rows, cols, nnz, **wires per row**, empty-row count, and whether it was topographic or random — and **WARN by name** when a projection lands under a floor. ⛔ **An empty row is worse than a thin one:** `ojaUpdate` cannot insert, so a row with zero entries can never learn anything for the life of the brain, and `initRandom` has **no `Math.max(1, …)` guarantee** where `initTopographicProjection` does.
+
+- [x] `WORDWIRE.1` — ✅ **SHIPPED 2026-09-04, VERIFIED ON REAL CLUSTERS AT FOUR SIZES — full entry in `docs/FINALIZED.md`.** `sem_to_word_motor` reads **6.00 wires/row** in the audit where it read 3 before. ⚠ **The fork's headline was wrong here by 202×** — it said 3 per WORD; a word owns 202 bucket cells, so it is 3 per CELL and 606 per word. The mechanism survived the correction, the number did not.
+
+  **Original filing:** **PUT `word_motor` ON THE MOTOR-BOUND AND EMISSION LISTS.** It is the band that produces words and it is the thinnest projection in the brain. Motor-bound doubles fanout (10→20) and lifts the density cap (0.005→0.01) → **3 → 6 wires per row, 606 → 1,212 per word.** Emission-pair membership swaps the 70/30 excitatory init for 50/50, which is there precisely to kill the positive-bias baseline that drowns Hebbian on a production pathway — `sem→motor` already has it and `sem→word_motor` does not. ⚠ **Init-time only: it changes nothing about walk length, no gate moves, no bound is weakened, so no RE-PRICE is owed** — but it takes effect on a FRESH WALK and not before.
+
+- [x] `WORDWIRE.2` — ✅ **SHIPPED 2026-09-04 BEHIND `DREAM_SEM_TOPOGRAPHIC` (default OFF = the new build) — full entry in `docs/FINALIZED.md`.** The audit now reports both sem pairs as `random motor-bound`. ⭐ The scale table is the evidence and it is the part worth keeping: a fixed `radiusTopo: 30` against a region that scales 6,700 → 671,000,000 means **the same line of code is harmless on a browser brain and a pinhole on the box** — which is why no small-scale test could ever have caught it.
+
+  **Original filing:** **TAKE THE SEM PAIRS OFF THE TOPOGRAPHIC LIST, PER THAT LIST'S OWN STATED RULE.** `sem-motor`, `motor-sem`, `sem-word_motor` and `word_motor-sem` all pair a 300-dimension tiled space against a bucket index; the comment above the list already says such pairs must stay random *"since topography would impose false structure"*. ⛔ **This one changes what she says, so it does not ship silently:** it lands behind a dial with the measurement in the comment, and the fresh walk is what decides it. ⚠ **`letter-motor` / `phon-motor` / `letter-phon` STAY topographic** — those spaces genuinely are aligned, bucket for bucket, which is why letter production works on 6 wires.
+
+- [ ] `WORDWIRE.3` — **THE `radiusTopo` CONSTANT SHOULD BE A FRACTION OF THE REGION, NOT A CELL COUNT.** Even for the genuinely-aligned pairs, a fixed 30 means the prior is broad on a browser brain and a pinhole on the deployed one — the same code doing two different things. Express it as a share of the source region (or of a bucket) so the prior means the same thing at every scale, and report the resolved value in the wiring audit.
+
+- [ ] `SEMDENSE.1` — **THE SEM WRITE HAS NO SPARSITY AT ALL, AND THE FORK MEASURED WHAT THAT COSTS.** Every positive dimension of a 300-d vector lights **every one of its 175,575 cells**, so a typical word turns on a large fraction of sem and different words look alike to any downstream argmax. The fork's offline bench claims recall@1 **11% → 30%** and recall@5 **40% → 64%** with sem density **61% → 10%**. ⚠ **Those numbers are THEIRS and are not reproduced here** — quoted as a reason to measure, never as a result. What is certain from this tree's own code is the mechanism: all-or-none dimension tiling, and an argmax over bucket means reading it.
+
+- [ ] `ATTNDEAD.1` — ⚠ **A TRANSFORMER-STYLE ATTENTION HEAD IS BUILT, WIRED INTO THE EMISSION PATH, AND HAS ZERO CALLERS.** `js/brain/cluster/attention.js` implements cosine → temperature softmax → weighted sum, `emit.js` calls `attentionPush` / `attentionRead` — behind `opts.attention === true`, which **nothing in the tree ever passes**. This is the built-but-switched-off class exactly. ⛔ **NOT switched on unilaterally: it changes what she says, and it is a decision, not a fix.** ⭐ For the record, checked rather than assumed: there is **no layer norm, no multi-head, no stacked block and no backprop anywhere in the brain** — the only matches in the tree are inside a third-party package under `node_modules`.
+
+- [ ] `LAMDEAD.1` — ⛔⛔⛔ **THE AUDIT FOUND SOMETHING ON ITS FIRST RUN THAT IS BIGGER THAN EVERYTHING ABOVE: 75% OF THE ROWS IN EVERY LAMINATED TOPOGRAPHIC PROJECTION CAN NEVER LEARN.**
+
+  `initTopographicProjection` **skips** a destination row that is not in `dstLayerMask` and leaves it with zero entries. The mask is L4, which is **25%** of a region — so three quarters of the rows come out of construction empty, and `ojaUpdate` cannot insert, so they are empty for the life of the brain. Measured on real clusters at three sizes:
+
+  ```
+  cortex 400,000  letter_to_phon    2.50 wires/row  60,000 of 80,000 rows EMPTY  (75.0%)
+                  motor_to_letter   1.50            15,000 of 20,000 EMPTY       (75.0%)
+                  letter_to_motor   1.50             6,900 of  9,200 EMPTY       (75.0%)
+  cortex 60,000   letter_to_phon    2.50 wires/row   9,000 of 12,000 rows EMPTY  (75.0%)
+                  motor_to_letter   1.01             2,244 of  3,000 EMPTY      (74.8%)
+                  letter_to_motor   1.47             1,040 of  1,380 EMPTY      (75.4%)
+  cortex 20,000   letter_to_phon    1.25             3,000 of  4,000 EMPTY      (75.0%)
+                  motor_to_letter   0.24               755 of  1,000 EMPTY      (75.5%)
+  cortex  8,000   motor_to_letter   0.24               302 of    400 EMPTY      (75.5%)
+  ```
+
+  **Exactly the L4 fraction — 75.0% — at all four sizes, spanning 50×.** `motor_to_letter` at **0.24 wires per row** on a small brain is not a thin projection, it is an absent one.
+
+  ⭐⭐ **AND THIS PROJECT ALREADY KNEW THE MECHANISM AND FIXED IT FOR EXACTLY ONE BAND.** The `word_motor` mask exemption in `cluster.js` says it in its own words — *"Masking ITS side of a projection to one lamina leaves ~75% of bucket rows with NO incoming entry, and `ojaUpdate` only adjusts existing CSR entries"* — and measured the consequence live at `matrixDrivenPct 6%`. **The exemption was written for `word_motor` and never applied to `letter`, `phon` or `motor`, which are read by argmax over bucket means in exactly the same way.**
+
+  ⚠ **Two things make this a DECISION and not a fix to ship blind.** ① The masks encode real cortical hierarchy — a non-L4 cell genuinely not receiving a feed-forward projection is the biology, not a bug. ② **The masks are only wired into the topographic branch**, so lamination today is a side-effect of which initialiser a pair happens to use rather than a property of the projection — which is its own inconsistency and probably the thing to settle first.
+
+  ⛔ **Do not "fix" this by deleting lamination.** The honest options are to exempt the READOUT bands the way `word_motor` already is (they are engineered argmax bands, not laminated cortex), or to make the mask a bias rather than a veto so a non-L4 row gets fewer wires instead of none. **Both change what she says, so both want a fresh walk to attribute.**
+
+- **Acceptance:** the boot log states wires-per-row for every projection with a named warning on the thin ones; word production is no longer the thinnest projection in the brain; no projection ships with rows that cannot learn unless that is a decision somebody made on purpose; and every number above is reproducible from a harness against the real construction rather than from a fork's notes.
+
+---
+
+## TEACHFINAL — training finalization in the teach viewer, and the viewer made a real console — filed 2026-09-04
+
+Gee (verbatim):
+
+> *"and also add to the todo training finalization steps to the teachviewer aand make sure it has proper write ups for it on pages page and is admin only and has proper buttons navigations and weight saves and such drag and drop(should start trasining form point left off on that weight set saved/ uploaded with proper restart buttons update ect ect"*
+
+- [ ] `TEACHFINAL.1` — **TRAINING FINALIZATION STEPS, IN THE TEACH VIEWER.** The walk now has an ending; the viewer has no idea. Surface the finalization sequence as an ordered, live checklist — the last cell closing, the grade ledger settling, the graduation record being written, her own memory of finishing being banked, the corpus verdict, and the deferred lanes taking over from the walk — each with its own state and its own reason when it has not happened yet. ⛔ **A step that has not run and a step that cannot run must not render the same.**
+
+- [ ] `TEACHFINAL.2` — **PROPER WRITE-UPS FOR IT ON THE PAGES PAGE.** Every surface this project ships is listed and explained on the pages index; the finalization view needs its entry there written to the same standard as the rest — what it is for, what each control does, and what a reader should conclude from each state.
+
+- [ ] `TEACHFINAL.3` — **ADMIN ONLY.** The viewer carries operator controls, so the finalization surface inherits the same gate as the rest of the admin lane. ⚠ **And it must fail the way the dashboard already learned to:** an auth failure renders as *"admin lane not authenticated"*, never as *"the brain is broken"*.
+
+- [ ] `TEACHFINAL.4` — **PROPER BUTTONS AND NAVIGATION.** Consistent placement, labels that name the consequence rather than the verb, and every irreversible control surfacing its consequence before it fires — the same rule the donor rows already follow.
+
+- [ ] `TEACHFINAL.5` — **WEIGHT SAVES, AND DRAG AND DROP.** Save the current weight set from the viewer, and accept one dropped onto it. ⛔ **The hard requirement is the one in his own words: *"should start trasining form point left off on that weight set"*** — an uploaded set must resume from the position that set actually holds, which means the cell ledger, the phase markers, the phase rep cursor and the force-advance list all travel WITH the weights, not beside them. ⚠ **A weight file whose ledger does not match its weights is the resume-indicator failure the boot banner already warns about**; the drop path must refuse a mismatched pair loudly rather than starting a walk from the wrong place.
+
+- [ ] `TEACHFINAL.6` — **RESTART AND UPDATE BUTTONS.** The press controls belong beside the thing they act on. ⛔ **The standing rule is unchanged: the box deploys via the dashboard buttons only** — this surfaces the same actions in the viewer, it does not invent a new deploy path.
+
+- **Acceptance:** an operator can watch a walk finish, see every finalization step resolve with a reason, save the resulting weight set, drop it back in later, and have training resume from exactly where that set left off — with the write-up on the pages page describing all of it.
+
 
