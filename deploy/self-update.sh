@@ -522,6 +522,17 @@ else
       log "field blobs stay as pointers — no git-lfs on this box. The books are already checked out by the clone and are completely unaffected."
       return 0
     fi
+    # ⭐ DEPRIORITISE THE PULL — it shares the brain's cgroup, so it must lose
+    # every CPU and disk arbitration against her. `nice -n 19` + `ionice -c3`
+    # (idle class) cost nothing when the box is quiet and matter enormously when
+    # it is not. This does NOT solve the page-cache problem (see the fields rsync
+    # below for that trap) — it is one more layer, not the fix.
+    # ⛔ THE REAL FIX IS STRUCTURAL and is NOT done: the data sync should run in
+    # its OWN cgroup with its OWN MemoryMax, not the brain's. Everything here is a
+    # safety net around a deploy that shares her memory budget. See REDEPLOY-NOTES.
+    _nice=''
+    command -v nice   >/dev/null 2>&1 && _nice="nice -n 19"
+    command -v ionice >/dev/null 2>&1 && _nice="$_nice ionice -c3"
     # `timeout` may be absent on a minimal box; degrade to an unbounded pull
     # rather than failing, but SAY SO, because the hazard above is then live.
     _to=''
@@ -598,9 +609,9 @@ else
     # that protection.
     _lfs_rc=0
     if [ "$_want_fields" = "1" ]; then
-      ( cd "$FTMP/bw" && $_to git lfs pull >> "$LOG" 2>&1 ) || _lfs_rc=$?
+      ( cd "$FTMP/bw" && $_nice $_to git lfs pull >> "$LOG" 2>&1 ) || _lfs_rc=$?
     else
-      ( cd "$FTMP/bw" && $_to git lfs pull -I 'corpora/**' >> "$LOG" 2>&1 ) || _lfs_rc=$?
+      ( cd "$FTMP/bw" && $_nice $_to git lfs pull -I 'corpora/**' >> "$LOG" 2>&1 ) || _lfs_rc=$?
     fi
     # ⛔ REAP THE WATCHDOG. It loops on `sleep 15`, so if it is not killed here it
     # outlives the pull and keeps polling — and worse, a LATER press's `git lfs
