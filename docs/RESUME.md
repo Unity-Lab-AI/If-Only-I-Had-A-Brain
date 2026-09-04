@@ -2,10 +2,14 @@
 
 > ## ⭐⭐⭐ 2026-09-04 LATEST (PICK UP HERE) THREE QUARTERS OF EVERY LAMINATED PROJECTION WAS BORN DEAD
 >
+> ### ✅ THE LIBRETEXTS CORPUS FETCH IS DONE — NOTHING IS RUNNING NOW
+> `DONE — 6,179,563 words and 15,047 figures written under corpora/academic/`. Licence gate: **32 admitted · 10 undeclared/unreadable · 0 ND · 0 non-CC · 0 unrecognised.** ⚠ Two cells hold both their books and are still under the 330,000-word ladder floor (`art/college2` 303k · `cssystems/college3` 258k) — **the fetcher's own closing line says that is a fact about the ladder, not a reason to download more.**
+> ⛔ **`corpora/` is gitignored here and belongs to BrainWaves — it still has to be pushed there before any press.**
+>
 > ### ⛔ STATE
 > ```
 > branch    feature/lamdead-0904 + feature/lam400-verify (both cascaded)
-> job       LibreTexts corpus fetch still running (.scratch/libretexts.log)
+> job       none — the LibreTexts fetch finished
 > built     LAMDEAD.1 · ATTNDEAD.1  (both were DECISIONS, both answered)
 > open      WORDWIRE.3 · SEMDENSE.1 · TEACHFINAL.1-.6 · the pre-existing press-blockers
 > ```

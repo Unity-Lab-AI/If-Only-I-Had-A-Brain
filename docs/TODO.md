@@ -3530,6 +3530,19 @@ Gee (verbatim):
 
 - [ ] `TEACHFINAL.6` — **RESTART AND UPDATE BUTTONS.** The press controls belong beside the thing they act on. ⛔ **The standing rule is unchanged: the box deploys via the dashboard buttons only** — this surfaces the same actions in the viewer, it does not invent a new deploy path.
 
-- **Acceptance:** an operator can watch a walk finish, see every finalization step resolve with a reason, save the resulting weight set, drop it back in later, and have training resume from exactly where that set left off — with the write-up on the pages page describing all of it.
+- [ ] `TEACHFINAL.7` — **CHECK REGRESSION IN THE TEACH VIEWER.** Gee (verbatim): *"add to todo to check regresson and new adds needed to the teach viewer"* — the first half. The viewer was built against a stack that has changed underneath it repeatedly since: the exam gate split, the corrective teach, letter shapes, the graduation record, the deferred-lane driver, the wiring audit, and the cross-projection changes all landed after it. **Go surface by surface and confirm each one still reads what it claims to read.**
+  - ⛔ **The failure mode this hunts is the project's own most common one: an instrument that still renders while its source has moved.** A panel wired to a field nothing publishes any more shows a confident zero, not an error — that is how `meanVoltage`, `canSpeak` and the donor rate all read healthy while describing nothing.
+  - ⭐ **`server/teachview-bench.js` + `GET /teach-bench` already exist for exactly this** and run **FROM a press, live during training** — that is the instrument, not a new one. ⚠ **GREY does not pass.**
+  - **Every surface that fails gets its reason written down**, not just a red mark: moved field, renamed producer, dead route, or genuinely broken.
+
+- [ ] `TEACHFINAL.8` — **THE NEW ADDS THE VIEWER NEEDS.** Gee (verbatim, same instruction): *"and new adds needed to the teach viewer"* — the second half, and it is its own row because it is a different question from the regression pass. **Everything shipped in the last few days has a live number the viewer cannot currently show:**
+  - **the wiring audit** — `cluster.wiringAudit`: wires-per-row, min, max and empty-row count per projection, with the thin ones named. ⛔ This one belongs on screen more than most: **it is the number that decides whether a projection can learn at all, and until it shipped nothing anywhere reported it.**
+  - **the deferred lanes** — `state.deferredLanes`: queue depths, whether the driver is running off-walk, drained totals and the age of the last drain. ⚠ **Quiet-because-the-walk-owns-the-substrate and quiet-because-nothing-is-driving-it must not render the same.**
+  - **the graduation record and the corpus verdict** — `state.graduation`, including the per-course merit / force-advanced / still-owed split and the trained / short / empty / **unreached** cell counts.
+  - **the exam battery** — authored vs derived items, the split that decides blocking, and the corrective-teach count per cell.
+  - **her letter shapes** — whether `letter:<ch>` has been learned, since a drawing with no words is correct behaviour when it has not been and must not read as a rendering failure.
+  - ⛔ **No new surface ships without saying what a reader should CONCLUDE from each state** — the pages-page write-up in `TEACHFINAL.2` covers these too.
+
+- **Acceptance:** an operator can watch a walk finish, see every finalization step resolve with a reason, save the resulting weight set, drop it back in later, and have training resume from exactly where that set left off — with the write-up on the pages page describing all of it; **and every surface in the viewer has been re-checked against its live source, with a reason recorded for each one that had drifted.**
 
 
