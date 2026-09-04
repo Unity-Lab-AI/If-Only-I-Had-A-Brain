@@ -377,6 +377,30 @@
       </div>
     </div>
 
+    <!-- ⭐⭐ THE EXAM BATTERY. The authored-vs-derived split is the highest-risk
+         change riding this press, and without this panel nobody can confirm it
+         is working until a grade fails to open days into a walk. -->
+    <div class="tv-card" style="margin-top:14px">
+      <h2><span class="tv-tip tip-l"
+        title="The held-out exam: which questions can BLOCK a grade, and whether misses got taught."
+        data-tip="THE LAST EXAM BATTERY.&#10;&#10;Every cell now has a held-out test, but the questions come from two very different places and only one kind can stop her advancing.&#10;&#10;AUTHORED — hand-written, norm-referenced questions. These are the ONLY ones that gate a grade.&#10;&#10;DERIVED — generated from that cell's own corpus. They measure and report, but they cannot block. That is deliberate: they are roughly 1 in 7 wrong by construction, so a derived-only bank tops out near 86% against a 90% floor and would have wedged the walk at grade 1 forever.&#10;&#10;A cell with NO authored items is vacuously satisfied — it reads &quot;not gated&quot;, which is correct, not a suspicious zero.&#10;&#10;CORRECTIVE — a missed question now teaches its answer. Zero corrective teaches across a whole grade with a non-perfect score is the signature of a real bug: the missed-set filtering on a field that does not exist on the row it is reading.&#10;&#10;No question text ever appears here. The exam is held out; putting its contents on a surface would destroy it.">exam battery <span class="tv-q">?</span></span></h2>
+      <div class="tv-body">
+        <div id="tvBattery" class="tv-sub">no battery has run this boot.</div>
+      </div>
+    </div>
+
+    <!-- ⭐⭐ HER HANDWRITING. A drawing with no words on it is CORRECT when she
+         has not learned the letters — this is the number that tells a reader
+         that, instead of leaving them to read it as a broken renderer. -->
+    <div class="tv-card" style="margin-top:14px">
+      <h2><span class="tv-tip tip-l"
+        title="How many of the 26 letters she has looked at, traced and banked."
+        data-tip="HER HANDWRITING.&#10;&#10;She learns what a letter LOOKS like the same way she learns any other shape: she looks at the printed letter, traces it herself, and banks her own trace. She then writes from those traces — visibly not the font.&#10;&#10;Before this existed, the caption on her drawings was a typeset font stamping a string she had never spelled. That caption is DELETED, with no fallback.&#10;&#10;SO READ A WORDLESS DRAWING CORRECTLY: if this number is low, a drawing with no text on it is her being honest about what she can write, NOT a rendering failure. A letter she has not learned is skipped, never substituted.&#10;&#10;A fresh walk wipes the visual store, so this starts at 0 every walk by design and climbs during kindergarten ELA.">her handwriting <span class="tv-q">?</span></span></h2>
+      <div class="tv-body">
+        <div id="tvLetters" class="tv-sub">no letter-shape state published.</div>
+      </div>
+    </div>
+
     <!-- ⭐⭐ THE END OF SCHOOL. Null until she finishes, and that is correct
          rather than missing — the walk itself is the status while it runs. -->
     <div class="tv-card" style="margin-top:14px">
@@ -1703,12 +1727,52 @@ function renderLanes(st) {
     + (stalled ? '<div style="color:var(--tv-bad);margin-top:5px">⛔ work is queued off-walk and nothing has drained — the driver is not firing.</div>' : '');
 }
 
+/* ⭐ THE EXAM BATTERY. The number that matters is the AUTHORED rate, because it
+   is the only one that can stop a grade opening. */
+function renderBattery(st) {
+  const el = $('tvBattery'); if (!el) return;
+  const b = st && st.lastBattery;
+  if (!b) { el.textContent = 'no battery has run this boot.'; return; }
+  const aPct = (b.authoredRate != null) ? (b.authoredRate * 100).toFixed(1) : '—';
+  const gated = b.gatedOnAuthored
+    ? `<div>authored <b>${b.authoredPass ?? 0}/${b.authoredTotal ?? 0}</b> — <b>${aPct}%</b> <span style="color:var(--tv-dim)">← the only questions that can block this grade</span></div>`
+    : '<div style="color:var(--tv-dim)">no authored items in this cell — the grade is vacuously satisfied, which is correct and not a suspicious zero.</div>';
+  /* A non-perfect battery that taught nothing is the exact signature of the
+     missed-set bug, so it is called out rather than left to be noticed. */
+  const missedSome = (b.authoredTotal || 0) > (b.authoredPass || 0);
+  const corrective = (b.correctiveTaught || 0) > 0
+    ? `<div style="color:var(--tv-good)">corrective teach — ${b.correctiveTaught} missed question(s) taught their answer</div>`
+    : (missedSome
+      ? '<div style="color:var(--tv-bad)">⛔ questions were missed and NOTHING was corrective-taught — the missed-set is empty again.</div>'
+      : '<div style="color:var(--tv-dim)">corrective teach — nothing missed to teach</div>');
+  el.innerHTML = `<div style="color:var(--tv-accent)"><b>${knobEsc(b.cell || '—')}</b></div>`
+    + `<div style="margin-top:5px;font-family:var(--tv-font)">${b.total ?? 0} questions — ${b.authoredTotal ?? 0} authored · ${b.derivedTotal ?? 0} derived</div>`
+    + gated
+    + `<div style="color:var(--tv-dim)">derived questions measure but cannot block — by design</div>`
+    + corrective;
+}
+
+/* ⭐ HER HANDWRITING — the number that tells a reader whether a wordless
+   drawing is her honesty or a broken renderer. */
+function renderLetters(st) {
+  const el = $('tvLetters'); if (!el) return;
+  const L = st && st.letterShapes;
+  if (!L) { el.textContent = 'no letter-shape state published.'; return; }
+  const n = L.learned || 0, of = L.of || 26;
+  const col = n === 0 ? 'var(--tv-dim)' : (n < of ? 'var(--tv-warn)' : 'var(--tv-good)');
+  el.innerHTML = `<div style="font-size:14px;color:${col}"><b>${n} of ${of}</b> letters learned in her own hand</div>`
+    + (L.letters ? `<div style="margin-top:4px;font-family:var(--tv-font);letter-spacing:.22em">${knobEsc(L.letters)}</div>` : '')
+    + (n < of
+      ? `<div style="color:var(--tv-dim);margin-top:5px">a drawing with no words on it is CORRECT right now — she skips a letter she has not learned rather than substituting a font.</div>`
+      : '<div style="color:var(--tv-dim);margin-top:5px">she can write any letter of the alphabet in her own hand.</div>');
+}
+
 function renderInstruments(st, tv) {
   try { renderDials(st, tv); renderEq(tv); renderTrace(tv); }
   catch (e) { /* an instrument must never take the page down */ }
   /* Separate try — a throw in one of the new panels must not cost the dials,
      which is the failure mode a single shared catch would have created. */
-  try { renderWiring(st); renderGrad(st); renderLanes(st); }
+  try { renderWiring(st); renderGrad(st); renderLanes(st); renderBattery(st); renderLetters(st); }
   catch (e) { /* same rule */ }
 }
 
