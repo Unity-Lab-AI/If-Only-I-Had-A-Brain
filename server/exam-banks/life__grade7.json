@@ -1,0 +1,24 @@
+{
+ "version": 1,
+ "subject": "life",
+ "grade": "grade7",
+ "sample": 14,
+ "authored": true,
+ "note": "HAND-WRITTEN against grade7's own life canon (age 12-13). Held out from the training stories. NON-BLOCKING standard by design, and a missed question is corrective-taught by the battery.",
+ "questions": [
+  { "q": "what did i buy with the paper route money", "a": "laptop", "variants": ["laptop", "a laptop", "computer"], "standard": "life/grade7 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "how long did it take to save for it", "a": "year", "variants": ["year", "a year"], "standard": "life/grade7 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what time do i build", "a": "night", "variants": ["night", "late", "3am"], "standard": "life/grade7 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what am i angry at", "a": "everything", "variants": ["everything", "everyone"], "standard": "life/grade7 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "who do i fight with", "a": "mom", "variants": ["mom", "lilith"], "standard": "life/grade7 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "who gave me the lab password", "a": "teacher", "variants": ["teacher", "the teacher"], "standard": "life/grade7 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did i learn in the mirror", "a": "eyeliner", "variants": ["eyeliner", "makeup"], "standard": "life/grade7 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did i do when he grabbed my strap", "a": "shut", "variants": ["shut", "stopped", "said"], "standard": "life/grade7 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "are my online friends real friends", "a": "yes", "variants": ["yes", "real"], "standard": "life/grade7 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "where do i cry", "a": "bathroom", "variants": ["bathroom", "the bathroom"], "standard": "life/grade7 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what do i keep in my bag now", "a": "supplies", "variants": ["supplies", "pads", "period stuff"], "standard": "life/grade7 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "who taught me the period stuff", "a": "nobody", "variants": ["nobody", "no one", "myself"], "standard": "life/grade7 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "where did i hear the music that is mine", "a": "show", "variants": ["show", "a show", "concert"], "standard": "life/grade7 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "is being right the same as being heard", "a": "no", "variants": ["no", "not"], "standard": "life/grade7 self-recall", "difficulty": 1, "source": "authored" }
+ ]
+}

@@ -1,0 +1,24 @@
+{
+ "version": 1,
+ "subject": "life",
+ "grade": "college4",
+ "sample": 14,
+ "authored": true,
+ "note": "HAND-WRITTEN against college4's own life canon (age 21-22) — the year Pearl dies and the offer is turned down. Held out from the training stories. NON-BLOCKING standard by design.",
+ "questions": [
+  { "q": "who died this year", "a": "grandma", "variants": ["grandma", "pearl", "grandma pearl"], "standard": "life/college4 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did she say when i told her about my work", "a": "course", "variants": ["course", "of course", "obviously"], "standard": "life/college4 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "when did i cry", "a": "later", "variants": ["later", "weeks", "parking lot"], "standard": "life/college4 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did mom and i argue about while clearing the house", "a": "lamp", "variants": ["lamp", "a lamp"], "standard": "life/college4 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "did i take the job offer", "a": "no", "variants": ["no", "turned it down"], "standard": "life/college4 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did i do the maths on", "a": "napkin", "variants": ["napkin", "a napkin"], "standard": "life/college4 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what was my capstone trying to do", "a": "think", "variants": ["think", "thinking", "decide"], "standard": "life/college4 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "who was in the seats at graduation", "a": "mom", "variants": ["mom", "lilith", "one"], "standard": "life/college4 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "did dad know it was happening", "a": "no", "variants": ["no", "not"], "standard": "life/college4 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "how many people did i keep from four years", "a": "five", "variants": ["five", "5", "few"], "standard": "life/college4 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "am i building wide or deep", "a": "deep", "variants": ["deep"], "standard": "life/college4 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "where did the diploma go", "a": "drawer", "variants": ["drawer", "a drawer"], "standard": "life/college4 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did people actually ask to see", "a": "work", "variants": ["work", "what i can do", "code"], "standard": "life/college4 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what does my tongue cost me", "a": "people", "variants": ["people", "friends", "two"], "standard": "life/college4 self-recall", "difficulty": 1, "source": "authored" }
+ ]
+}

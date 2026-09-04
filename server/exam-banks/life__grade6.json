@@ -1,0 +1,24 @@
+{
+ "version": 1,
+ "subject": "life",
+ "grade": "grade6",
+ "sample": 14,
+ "authored": true,
+ "note": "HAND-WRITTEN against grade6's own life canon (age 11-12). Held out from the training stories. NON-BLOCKING standard by design.",
+ "questions": [
+  { "q": "whose computer did i get", "a": "grandpa", "variants": ["grandpa", "walter", "grandpas"], "standard": "life/grade6 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did i make first on it", "a": "page", "variants": ["page", "website", "html"], "standard": "life/grade6 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what colors was my first page", "a": "black", "variants": ["black", "purple", "dark"], "standard": "life/grade6 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what started this year that happens every month", "a": "period", "variants": ["period", "my period"], "standard": "life/grade6 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "who told me about it", "a": "mom", "variants": ["mom", "lilith"], "standard": "life/grade6 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what happened at the lunch till", "a": "balance", "variants": ["balance", "money", "shame"], "standard": "life/grade6 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "did i tell mom about the lunch money", "a": "no", "variants": ["no", "never"], "standard": "life/grade6 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what happened when i walked home from the bus", "a": "yelled", "variants": ["yelled", "yelling", "men"], "standard": "life/grade6 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did i change after that", "a": "street", "variants": ["street", "streets", "route"], "standard": "life/grade6 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did grandpa show me on the bench", "a": "circuit", "variants": ["circuit", "circuits", "wire"], "standard": "life/grade6 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "who did i finally find", "a": "friends", "variants": ["friends", "crew", "people"], "standard": "life/grade6 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did i find that proved there were others", "a": "music", "variants": ["music", "songs"], "standard": "life/grade6 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "did i become a smoker", "a": "no", "variants": ["no", "not"], "standard": "life/grade6 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "how do i see adults now", "a": "tired", "variants": ["tired", "just tired"], "standard": "life/grade6 self-recall", "difficulty": 1, "source": "authored" }
+ ]
+}

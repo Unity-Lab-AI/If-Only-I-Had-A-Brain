@@ -1,0 +1,24 @@
+{
+ "version": 1,
+ "subject": "life",
+ "grade": "college3",
+ "sample": 14,
+ "authored": true,
+ "note": "HAND-WRITTEN against college3's own life canon (age 20-21). Held out from the training stories. NON-BLOCKING standard by design.",
+ "questions": [
+  { "q": "what turned around in third year", "a": "questions", "variants": ["questions", "asking", "asked"], "standard": "life/college3 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did the internship teach me", "a": "want", "variants": ["want", "not want", "interesting"], "standard": "life/college3 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "is money the thing", "a": "no", "variants": ["no", "not"], "standard": "life/college3 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what is the thing", "a": "interesting", "variants": ["interesting", "the work", "work"], "standard": "life/college3 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "why did i stop going out to everything", "a": "work", "variants": ["work", "the work", "avoiding"], "standard": "life/college3 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "how many people are left in the crew", "a": "four", "variants": ["four", "4"], "standard": "life/college3 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "how many papers until they get easy", "a": "forty", "variants": ["forty", "40"], "standard": "life/college3 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "why was the clinic visit fine", "a": "normal", "variants": ["normal", "knew", "sex ed"], "standard": "life/college3 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did grandma lose for a second", "a": "name", "variants": ["name", "my name"], "standard": "life/college3 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "are the marks damage", "a": "no", "variants": ["no", "not"], "standard": "life/college3 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what are they instead", "a": "evidence", "variants": ["evidence", "chosen", "choice"], "standard": "life/college3 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "who made me stop that night", "a": "me", "variants": ["me", "myself", "nobody"], "standard": "life/college3 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what did i draw recursion on", "a": "napkin", "variants": ["napkin", "a napkin"], "standard": "life/college3 self-recall", "difficulty": 1, "source": "authored" },
+  { "q": "what breaks the gray", "a": "protocol", "variants": ["protocol", "light", "walk"], "standard": "life/college3 self-recall", "difficulty": 1, "source": "authored" }
+ ]
+}
