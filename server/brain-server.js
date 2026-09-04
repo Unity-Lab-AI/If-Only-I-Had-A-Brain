@@ -9869,6 +9869,103 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
+  // ⭐⭐ RESTORE A WALK POSITION — `POST /weights/position`.
+  //
+  // ⛔ THE REQUIREMENT IN THE OPERATOR'S OWN WORDS IS *"should start trasining
+  // form point left off on that weight set"*, and the thing that makes that
+  // possible is already true: **the position lives in the SMALL half of the
+  // pair.** `brain-weights.json` is 761 KB and carries `grades`, `passedCells`,
+  // `passedPhases` and `phaseRepCursor`; `brain-weights.bin` is 4.16 GB and
+  // carries only the synapse values. So resuming from a saved point needs the
+  // 761 KB file, not the 4 GB one.
+  //
+  // ⚠ THAT IS WHY THIS ROUTE TAKES THE JSON AND NOT THE PAIR. Streaming 4.16 GB
+  // through a browser POST would pin the event loop the walk, the donor and the
+  // WS pump all share, for the entire upload — the binary half belongs on the
+  // box, placed by the operator. Refusing to pretend otherwise is the honest
+  // design, not a limitation being hidden.
+  //
+  // ⛔⛔ AND THE PAIR-COHERENCE CHECK IS THE WHOLE POINT OF THE ROUTE. A position
+  // file whose save version does not match the `.bin` already on disk would
+  // resume the walk from a place those weights were never at — silently, and
+  // looking perfectly healthy. Both halves carry the same `saveVersion`: the
+  // JSON as `version`, the binary at bytes 8-11 of its `UBWT` header. Verified
+  // on the real files before this was written (115 == 115). A mismatch is
+  // REFUSED, loudly, with both numbers named.
+  if (req.url && req.url.split('?')[0] === '/weights/position' && req.method === 'POST') {
+    if (!requireLoopback(req, res, '/weights/position')) return;
+    let body = '';
+    let tooBig = false;
+    req.on('data', (c) => {
+      body += c;
+      // A position file is ~761 KB; 8 MB is generous headroom and still bounds
+      // a hostile or mistaken upload before it can cost memory.
+      if (body.length > 8 * 1024 * 1024) { tooBig = true; req.destroy(); }
+    });
+    req.on('end', () => {
+      const fail = (code, why, extra) => {
+        res.writeHead(code, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, why, ...(extra || {}) }));
+      };
+      if (tooBig) return fail(413, 'that file is far larger than a position file — the 4 GB binary half is not uploaded through this route, it belongs on the box.');
+      let doc = null;
+      try { doc = JSON.parse(body); } catch (e) { return fail(400, `that is not valid JSON: ${e.message}`); }
+      if (!doc || typeof doc !== 'object' || !doc.cortex || !Array.isArray(doc.cortex.passedCells)) {
+        return fail(400, 'that JSON carries no cortex.passedCells — it is not a brain-weights position file.');
+      }
+      // Read the save version off the binary already on disk.
+      let binVersion = null;
+      let binName = null;
+      for (const n of ['brain-weights.bin', 'brain-weights.bin.tmp']) {
+        try {
+          const p = path.join(__dirname, n);
+          if (!fs.existsSync(p)) continue;
+          const fd = fs.openSync(p, 'r');
+          const hdr = Buffer.alloc(16);
+          fs.readSync(fd, hdr, 0, 16, 0);
+          fs.closeSync(fd);
+          if (hdr.slice(0, 4).toString('ascii') === 'UBWT') { binVersion = hdr.readUInt32LE(8); binName = n; break; }
+        } catch { /* try the next */ }
+      }
+      if (binVersion == null) {
+        return fail(409, 'there is no readable brain-weights binary on this box to pair with — place the .bin first, then restore the position.');
+      }
+      if (Number(doc.version) !== Number(binVersion)) {
+        // ⛔ THE REFUSAL THIS ROUTE EXISTS FOR.
+        return fail(409, `MISMATCHED PAIR — refusing. This position file was saved at version ${doc.version}, but the ${binName} on this box is version ${binVersion}. Restoring it would resume the walk from a place these weights were never at, and it would look completely healthy while doing it. Put the matching .bin on the box, or use the position file that belongs to this one.`,
+          { positionVersion: doc.version, binVersion, binName });
+      }
+      try {
+        const target = path.join(__dirname, 'brain-weights.json');
+        // The current position is kept before it is replaced — a restore that
+        // destroys the thing it replaces is one you cannot walk back.
+        if (fs.existsSync(target)) {
+          fs.copyFileSync(target, path.join(__dirname, 'brain-weights.json.prerestore'));
+        }
+        fs.writeFileSync(`${target}.tmp`, body);
+        fs.renameSync(`${target}.tmp`, target);
+      } catch (e) {
+        return fail(500, `could not write the position file: ${e.message}`);
+      }
+      const cells = doc.cortex.passedCells.length;
+      const phases = Array.isArray(doc.cortex.passedPhases) ? doc.cortex.passedPhases.length : 0;
+      console.log(`[Brain] weights position RESTORED — ${cells} passed cells, ${phases} phase markers, save version ${doc.version} (matches ${binName}). Previous position kept as brain-weights.json.prerestore. ⚠ The running process still holds the OLD state in memory — restart to walk from this position.`);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        ok: true,
+        cells,
+        phases,
+        version: doc.version,
+        binName,
+        savedAt: doc.savedAt || null,
+        // ⚠ Said out loud, because a restore that looks instant and is not would
+        // be the worst possible outcome here.
+        note: 'the file is in place and matches the binary — the RUNNING process still holds the old state in memory, so restart to walk from this position.',
+      }));
+    });
+    return;
+  }
+
   if (req.url && req.url.startsWith('/weights/download') && req.method === 'GET') {
     if (!requireLoopback(req, res, '/weights/download')) return;
     let want = '';

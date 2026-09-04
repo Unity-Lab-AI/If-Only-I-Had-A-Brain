@@ -349,6 +349,15 @@
       </h2>
       <div class="tv-body">
         <div id="tvWeights"><div class="tv-note">—</div></div>
+        <!-- ⭐⭐ RESTORE A WALK POSITION. Drop the SMALL half of a saved pair —
+             the 761 KB brain-weights.json, which is what actually carries where
+             she had got to. The 4 GB binary is not uploaded through a browser
+             and this says so rather than pretending. -->
+        <div id="tvDrop" style="margin-top:10px;border:1px dashed var(--tv-line);border-radius:6px;padding:12px;text-align:center;font-size:11px;color:var(--tv-dim);cursor:pointer">
+          drop a <b>brain-weights.json</b> here to restore a walk position — or click to choose
+          <input id="tvDropIn" type="file" accept=".json,application/json" style="display:none">
+        </div>
+        <div id="tvDropMsg" class="tv-sub" style="margin-top:6px;line-height:1.5"></div>
       </div>
     </div>
 
@@ -1801,6 +1810,65 @@ function renderLanes(st) {
     + `<div style="margin-top:6px;font-family:var(--tv-font)">queued <b>${depth}</b> — chat ${q.chatPairs || 0} · jobs ${q.chatJobs || 0} · eye ${q.mindsEye || 0} · salience ${q.salience || 0}</div>`
     + `<div style="color:var(--tv-dim);font-family:var(--tv-font)">${(dl.drainedItems || 0).toLocaleString()} items drained over ${(dl.drainedPasses || 0).toLocaleString()} passes · last ${age}</div>`
     + (stalled ? '<div style="color:var(--tv-bad);margin-top:5px">⛔ work is queued off-walk and nothing has drained — the driver is not firing.</div>' : '');
+}
+
+/* ⭐⭐ RESTORE A WALK POSITION — the drop lane.
+   ⛔ The one outcome this must never produce is a quiet success that did not
+   happen. A mismatched pair is REFUSED by the server and reported here in full,
+   with both save versions named, because restoring the wrong position resumes
+   the walk from a place those weights were never at and looks healthy doing it. */
+async function sendPosition(file) {
+  const msg = $('tvDropMsg'); if (!msg) return;
+  if (!file) return;
+  if (!/\.json$/i.test(file.name)) {
+    msg.style.color = 'var(--tv-warn)';
+    msg.textContent = `${file.name} is not a .json — the position lives in brain-weights.json (about 761 KB). The multi-gigabyte .bin is placed on the box, not uploaded through a browser.`;
+    return;
+  }
+  msg.style.color = 'var(--tv-dim)';
+  msg.textContent = `reading ${file.name} (${(file.size / 1024).toFixed(0)} KB)…`;
+  let text = '';
+  try { text = await file.text(); }
+  catch (e) { msg.style.color = 'var(--tv-bad)'; msg.textContent = `could not read that file: ${e && e.message}`; return; }
+  try {
+    const r = await fetch((WEIGHT_BASE || '') + '/weights/position', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: text,
+    });
+    if (isForbidden(r)) {
+      markAdminLane(false, 'This browser is not calling from loopback.');
+      msg.style.color = 'var(--tv-warn)';
+      msg.textContent = 'restoring a position is an admin-only control and this page is not on the admin lane — nothing was changed.';
+      return;
+    }
+    const j = await r.json().catch(() => ({}));
+    if (r.ok) markAdminLane(true);
+    if (!j.ok) {
+      msg.style.color = 'var(--tv-bad)';
+      msg.textContent = `⛔ REFUSED — ${j.why || ('HTTP ' + r.status)}`;
+      return;
+    }
+    msg.style.color = 'var(--tv-good)';
+    msg.innerHTML = `✓ position restored — <b>${j.cells}</b> passed cells, ${j.phases} phase markers, save version ${j.version} (matches ${knobEsc(j.binName || 'the binary')}).`
+      + `<br><span style="color:var(--tv-warn)">${knobEsc(j.note || '')}</span>`;
+    loadWeightsList();
+  } catch (e) {
+    msg.style.color = 'var(--tv-bad)';
+    msg.textContent = `could not reach the weights lane: ${e && e.message}`;
+  }
+}
+{
+  const drop = $('tvDrop'), input = $('tvDropIn');
+  if (drop && input) {
+    drop.onclick = () => input.click();
+    input.onchange = () => sendPosition(input.files && input.files[0]);
+    drop.ondragover = (e) => { e.preventDefault(); drop.style.borderColor = 'var(--tv-accent)'; };
+    drop.ondragleave = () => { drop.style.borderColor = 'var(--tv-line)'; };
+    drop.ondrop = (e) => {
+      e.preventDefault();
+      drop.style.borderColor = 'var(--tv-line)';
+      sendPosition(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]);
+    };
+  }
 }
 
 /* ⭐⭐ TRAINING FINALIZATION — the end of the walk as an ordered checklist.
