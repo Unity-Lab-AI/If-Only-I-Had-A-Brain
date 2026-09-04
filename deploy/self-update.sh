@@ -266,6 +266,55 @@ printf '{"sha":"%s","short":"%s","branch":"%s","deployedAt":"%s"}\n' \
 DATA_REMOTE="${UAL_FIELDS_REMOTE:-git@git.unityailab.com:UnityAILab/BrainWaves.git}"
 FIELDS_DIR="${UAL_FIELDS_DIR:-$BACKEND_DIR/fields}"
 CORPORA_DIR="${UAL_CORPORA_DIR:-$BACKEND_DIR/corpora}"
+
+# ── THE DATA REPO IS ON THIS MACHINE ──────────────────────────────────────────
+#
+# ⭐⭐ `git.unityailab.com` IS THIS BOX. Both `deploy/REDEPLOY-NOTES.md` ("shares
+# the host with Forgejo") and `deploy/README.md` ("sshd on this shared box") say
+# so, and it was the operator who pointed it out after a long chase down the
+# wrong path. **The SSH clone above loops back to the same machine**, which is
+# why it needs a credential at all — and why it does not have to.
+#
+# ⛔ WHAT THIS FIXES: on 2026-09-04 the box could not clone the data repo. The
+# `unity-box self-update (read-only)` deploy key is scoped to the CODE repo and
+# was created 2026-06-28 — two months before ONEREPO introduced a second repo.
+# It is not broken; it was never asked to do this. Reading the repository off
+# local disk needs no credential at all.
+#
+# ⚠ WHAT IT DOES AND DOES NOT GET, STATED PLAINLY:
+#   • the CORPUS — plain git blobs → arrives ✓
+#   • GloVe — a plain blob since it came off LFS today → arrives ✓
+#   • the wavelet FIELDS — git-LFS, which resolves over HTTP and NOT over a
+#     filesystem path → stays as pointers ✗
+# Those first two are the ones that stop the walk. A missing field is non-fatal
+# by design and always was: she transforms that figure live instead. So this
+# lands a correct walk, and the field cache reattaches later.
+#
+# ⚠ The path is DISCOVERED, not assumed — Forgejo/Gitea have used several repo
+# roots across versions and packagings, and guessing one and reporting failure
+# would be worse than the SSH path we already have. Every candidate is tested
+# with `git rev-parse`, so a directory that exists but is not a repository, or
+# is not readable by the service user, is rejected rather than half-used.
+# `UAL_DATA_LOCAL_PATH` overrides the search outright.
+_local_data=''
+for _cand in \
+  "${UAL_DATA_LOCAL_PATH:-}" \
+  /var/lib/forgejo/repositories/unityailab/brainwaves.git \
+  /var/lib/gitea/data/repositories/unityailab/brainwaves.git \
+  /var/lib/gitea/repositories/unityailab/brainwaves.git \
+  /home/git/gitea-repositories/unityailab/brainwaves.git \
+  /home/forgejo/forgejo-repositories/unityailab/brainwaves.git \
+  /data/git/repositories/unityailab/brainwaves.git \
+  /data/gitea/repositories/unityailab/brainwaves.git ; do
+  [ -n "$_cand" ] || continue
+  if git -C "$_cand" rev-parse --git-dir >/dev/null 2>&1; then _local_data="$_cand"; break; fi
+done
+if [ -n "$_local_data" ]; then
+  log "data repo found ON THIS BOX at ${_local_data} — cloning from local disk instead of ${DATA_REMOTE}. No credential is involved, and the corpus and embedding table are plain blobs so they arrive in full. ⚠ The LFS field payloads do NOT come over a filesystem path and stay as pointers; every figure without one is transformed live, which is the documented non-fatal path."
+  DATA_REMOTE="$_local_data"
+else
+  log "data repo not found on local disk (checked the usual Forgejo/Gitea repository roots) — using ${DATA_REMOTE} over SSH, which needs the box's deploy key to be authorised on that repo."
+fi
 _corpus_ok=0
 # ⛔⛔ THE TWO HALVES OF THIS SYNC ARE NOT THE SAME SIZE AND MUST NOT SHARE A
 # SWITCH. The books are ~400 MB and the walk CANNOT RUN without them; the fields
@@ -459,6 +508,75 @@ fi
 # refusal here can never cost the trained weights.
 _GLOVE="${CORPORA_DIR}/glove.6B.300d.txt"
 _GLOVE_MIN_BYTES="${UAL_GLOVE_MIN_BYTES:-100000000}"
+
+# ── SELF-PROVISION THE EMBEDDING TABLE ────────────────────────────────────────
+#
+# ⛔⛔ WHY THIS EXISTS: on 2026-09-04 the box could not clone the data repo, and
+# because GloVe lived ONLY there, a boot-fatal file was hostage to a credential
+# nobody had ever provisioned. The brain then came up with a dead language
+# subsystem. **The one file whose absence stops the boot should not depend on a
+# private repo when it has a public canonical source.**
+#
+# ⭐ AND THE CODE ALREADY NAMED THAT SOURCE. `js/brain/embeddings.js` throws with
+# *"download glove.6B.300d.txt from https://nlp.stanford.edu/data/glove.6B.zip"*.
+# The error message told an operator exactly what to do and the deploy could not
+# do it itself. This closes that gap.
+#
+# ⚠ THIS IS PROVISIONING, NOT A CAPABILITY FALLBACK. It fetches the SAME table
+# from its upstream publisher — identical vectors, no degraded substitute. The
+# NO-FALLBACKS law is about refusing a lesser capability (hash vectors instead of
+# semantic ones); a second download URL for a byte-identical artefact is not that.
+#
+# ⚠ Runs ONLY when the table is missing or short, so a healthy box pays nothing.
+# Both mirrors verified reachable and unauthenticated on 2026-09-04 (862,182,613
+# bytes, `content-type: application/zip`).
+_glove_now="$(_bytes "$_GLOVE")"
+if [ "${_glove_now:-0}" -lt "$_GLOVE_MIN_BYTES" ] && [ "${UAL_GLOVE_FETCH:-1}" = "1" ]; then
+  log "embeddings — GloVe is missing or short (${_glove_now} bytes). Fetching it from its public source; this is the file the boot cannot start without."
+  if ! command -v unzip >/dev/null 2>&1; then
+    # ⛔ SAID PLAINLY RATHER THAN FAILING VAGUELY. The gate below still refuses,
+    # so this cannot restart her into a dead boot — but the reason is named here.
+    log "WARN — cannot self-provision GloVe: 'unzip' is not installed on this box and both published mirrors ship a .zip. Install unzip, or place glove.6B.300d.txt at ${_GLOVE} by hand."
+  else
+    _gtmp="$(mktemp -d)"
+    _got=0
+    for _gurl in "https://nlp.stanford.edu/data/glove.6B.zip" \
+                 "https://huggingface.co/stanfordnlp/glove/resolve/main/glove.6B.zip"; do
+      log "embeddings — downloading ${_gurl} (~862 MB) …"
+      if curl -fsSL --retry 2 --retry-delay 5 -m 3600 -o "$_gtmp/glove.zip" "$_gurl" >> "$LOG" 2>&1; then
+        # -j flattens, and naming the member extracts ONLY the 300d table rather
+        # than the 50/100/200d ones we would immediately throw away.
+        if unzip -o -j "$_gtmp/glove.zip" 'glove.6B.300d.txt' -d "$_gtmp" >> "$LOG" 2>&1; then
+          _gsz="$(_bytes "$_gtmp/glove.6B.300d.txt")"
+          # ⛔ VERIFIED BEFORE IT IS TRUSTED — size AND shape. A truncated
+          # download and a wrong file both produce a real file, and the boot
+          # would read either one and die. The first line of a real table is a
+          # word followed by 300 floats.
+          _gcols="$(head -n 1 "$_gtmp/glove.6B.300d.txt" 2>/dev/null | wc -w | tr -d ' ' || true)"
+          if [ "${_gsz:-0}" -ge "$_GLOVE_MIN_BYTES" ] && [ "${_gcols:-0}" = "301" ]; then
+            mkdir -p "$CORPORA_DIR"
+            if mv -f "$_gtmp/glove.6B.300d.txt" "$_GLOVE" >> "$LOG" 2>&1; then
+              log "embeddings — GloVe PROVISIONED from ${_gurl} (${_gsz} bytes, first row has 300 dimensions). The boot's hardest precondition is now satisfied without the data repo."
+              _got=1
+            else
+              log "WARN — could not move the extracted table into ${_GLOVE}."
+            fi
+          else
+            log "WARN — the downloaded table failed verification (${_gsz} bytes, first row ${_gcols} fields against an expected 301). Discarding it rather than leaving a file the boot would die on."
+          fi
+        else
+          log "WARN — unzip could not extract glove.6B.300d.txt from ${_gurl}."
+        fi
+      else
+        log "WARN — download failed from ${_gurl}."
+      fi
+      [ "$_got" = "1" ] && break
+    done
+    rm -rf "$_gtmp"
+    [ "$_got" = "1" ] || log "WARN — every GloVe source failed. The gate below will refuse the restart and say so, rather than booting her without embeddings."
+  fi
+fi
+
 if [ ! -f "$_GLOVE" ]; then
   log "FATAL — the GloVe embedding table is MISSING at ${_GLOVE}. The boot reads it before anything else and stops hard without it (NO FALLBACKS), so restarting now would produce a crash loop rather than a walk. ABORTING before .force-fresh is written; the trained weights are untouched and the service keeps running. Fix the data repo pull (${DATA_REMOTE}) and press again."
   exit 1

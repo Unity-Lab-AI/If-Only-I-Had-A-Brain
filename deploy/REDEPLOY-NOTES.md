@@ -66,7 +66,28 @@ With that directory missing, `find` exits non-zero, `pipefail` carries it out of
 
 Eight sites had that shape. They now go through `_count` / `_size` / `_bytes` at the top of the script, which never fail (unknown count `0`, unknown size `?`). The clone's stderr is captured and its tail rides in the WARN, because it previously went only to `self-update.log` — **a file on a box whose operator has no shell.**
 
-### ⛔ THE BLOCKER: the box has no credential for the data repo
+### ✅ FIXED THE SAME NIGHT — the press no longer needs that credential for the fatal parts
+
+**① GloVe self-provisions.** It is the only file whose absence stops the boot, and it lived only
+in the data repo. The press now fetches it from `nlp.stanford.edu` (or the HuggingFace mirror)
+when missing or short — **the exact URL `js/brain/embeddings.js` already prints in its own fatal
+error.** Both verified live and unauthenticated, 862,182,613 bytes. Accepted only after a size
+**and** shape check (first row must be 301 fields): real → PASS, LFS stub (2) → REJECT,
+truncated (58) → REJECT, wrong-dimension (4) → REJECT. ⚠ Needs `unzip`; if absent it says so by
+name and lets the gate refuse.
+
+**② The clone reads the data repo off LOCAL DISK.** ⭐⭐ `git.unityailab.com` **is this box** —
+this very file says *"shares the host with Forgejo"* at the top, and `README.md` says *"sshd on
+this shared box"*. The SSH clone was looping back to the same machine. Eight candidate
+Forgejo/Gitea repository roots are probed with `git rev-parse` (a non-repo directory is rejected,
+not half-used); `UAL_DATA_LOCAL_PATH` overrides.
+
+⛔ **What the local route delivers:** corpus ✓ · GloVe ✓ (plain blobs) · **fields ✗** — git-LFS
+resolves over HTTP, not a filesystem path, so field payloads stay pointers. **That is still a
+correct walk:** a missing field is non-fatal by design and she transforms that figure live, which
+is the behaviour that predates the field cache entirely.
+
+### ⛔ THE ORIGINAL BLOCKER: the box has no credential for the data repo
 
 `bootstrap-backend.sh` provisions **nothing** for `BrainWaves`, and no page here mentions it. The code-repo clone works, so the box has a key for `If-Only-I-Had-A-Brain` — **a key that clones the code repo does not imply access to a second, separate Forgejo repo.**
 
