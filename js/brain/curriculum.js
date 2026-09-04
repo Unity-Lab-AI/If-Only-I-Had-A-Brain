@@ -10675,6 +10675,13 @@ export class Curriculum {
                 });
               }
               battery.correctiveTaught = { answers: _answers.length, pairs: _pairs.length, missed: _missed.length };
+              // Carried forward so the published battery record can report it —
+              // ⚠ zero corrective teaches across a whole grade with a
+              // non-perfect score is the exact signature of the bug that shipped
+              // once already, when the missed-set filtered on a field that lives
+              // on the QUESTION rather than on the result row and was therefore
+              // empty on every cell forever while reading as correct.
+              this._lastCorrectiveTaught = _missed.length;
               this._hb(`[Curriculum][${label}] CORRECTIVE TEACH — ${_missed.length} missed question(s): ${_answers.length} answer word(s) + ${_pairs.length} binding(s) trained. She was told what she got wrong.`);
             }
           } catch (err) {
@@ -10818,6 +10825,38 @@ export class Curriculum {
           battery.authoredPass = _authoredPass;
           battery.authoredRate = _authoredRate;
           battery.derivedTotal = (battery.results || []).length - _authoredTotal;
+
+          // ⭐ PUBLISH THE LAST BATTERY, because the split it just computed is
+          // the highest-risk change in this whole press and nothing could see it.
+          //
+          // Derived questions MEASURE but cannot BLOCK — only authored,
+          // norm-referenced items gate advancement — and a reader has no way to
+          // confirm that is working without this. ⛔ The failure it makes visible:
+          // a `BATTERY BLOCKS advancement` on a cell whose bank is derived-only
+          // means the split failed and the grade will never open, which would
+          // otherwise surface days into a walk looking like a training failure.
+          //
+          // Small and flat by construction — counts, not question text. The
+          // exam is HELD OUT, so its contents must not travel onto a surface.
+          try {
+            const _cl = this.cluster;
+            if (_cl) {
+              _cl.lastBattery = {
+                cell: `${subject}/${grade}`,
+                at: Date.now(),
+                total: (battery.results || []).length,
+                authoredTotal: _authoredTotal,
+                authoredPass: _authoredPass,
+                authoredRate: _authoredRate,
+                derivedTotal: battery.derivedTotal,
+                // A cell with no authored items is vacuously satisfied — that is
+                // the whole point of the split, and it should read as such
+                // rather than as a suspicious 0%.
+                gatedOnAuthored: _authoredTotal > 0,
+                correctiveTaught: this._lastCorrectiveTaught || 0,
+              };
+            }
+          } catch { /* an instrument must never break a gate */ }
 
           const blockers = [];
           if (_authoredTotal > 0 && _authoredRate < AGGR_MIN) blockers.push(`answer aggregate ${(_authoredRate * 100).toFixed(1)}% of ${_authoredTotal} authored < ${AGGR_MIN * 100}%`);
