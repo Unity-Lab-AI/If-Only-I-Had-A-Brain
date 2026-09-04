@@ -81,6 +81,28 @@ Gee (verbatim): *"make sure brain wave repo is good too everything depends on it
 
 ⚠ **One observation, recorded rather than "fixed":** all 26,359 delivered fields are `*.field.json` — **zero `.field.json.gz`** — while `ADMIN-CONTROLS.md` says fields are stored gzipped as of 2026-09-03. The delivered set predates that change, and **the reader accepts both encodings**, which is exactly what makes a straddling set safe. The doc describes the going-forward format, not the delivered one.
 
+### ✅ `PRESSHARD.6` — `UAL_FIELDS=0` DID NOT SAVE THE DOWNLOAD IT IS NAMED FOR
+
+⛔⛔ **The false claim was in the script itself**, verbatim: *"`git lfs pull` IS THE 114 GB, NOT THE CLONE. The clone is `--filter=blob:none` and therefore cheap whatever is in the repo… Restricting it with `-I` is what actually saves the download."*
+
+**`--filter=blob:none` makes the *git* blobs lazy and does NOTHING about LFS.** Two separate mechanisms: the `filter.lfs` **smudge filter runs during CHECKOUT**, downloading every payload before `git lfs pull` is ever reached.
+
+⭐ **REHEARSED AGAINST THE LIVE REPO with the press's exact clone command:**
+
+| | without `GIT_LFS_SKIP_SMUDGE=1` | with it |
+|---|---|---|
+| on disk | **10 GB and climbing** (toward 114) | **2.1 GB, done in 2m56s** |
+| fields | **1,099 already smudged at full size** (one 75.8 MB) | **26,359 pointers at ~131 B**, 3.3 MB total |
+| `git lfs pull` called? | **no — never reached** | it is now the only thing that decides |
+
+✅ **The two things the walk cannot run without still arrive REAL through the fixed path:** GloVe at **1,037,962,819 bytes with a sha256 matching the local file exactly**, and all **193** academic corpus JSONs.
+
+⛔ **Verified the way `CONSTRAINTS.md §RE-PRICE` requires an escape hatch to be verified — by RUNNING it.** Same shape as `DREAM_PHASE_BUDGET_MS=0`, which was documented as disabling a bound and actually produced the harshest cut possible. **A lever nobody has run is a claim, not a lever.**
+
+⚠ **The floor is not zero.** GloVe is a plain 1.04 GB blob by design now, so it rides the checkout regardless — `UAL_FIELDS=0` costs **~1.4 GB**. Said plainly so the lever is not oversold in the other direction.
+
+⚠ **Owned: my first pointer detector was wrong.** `find -size -1k` reported **0 pointers** because GNU `find` rounds sizes **up** to whole 1k units, so a 131-byte file is 1 unit and not `< 1`. Re-measured by reading actual bytes. **The `-size +10k` half was correct, which is exactly what made the wrong half look plausible** — a detector half-right reads as a detector.
+
 ### ✅ `INSTRDEAD.1` — "2 NO SIGNAL" WAS TRUE, AND ABOUT THE WRONG THING
 
 Gee (verbatim): *"instraments 4/6 reading - 2 no signal IS THAT NORMAL? BEFORE WE PREESS CHACK IT OUT"*

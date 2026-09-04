@@ -275,11 +275,31 @@ else
   else
     log "data sync — pulling BOOKS ONLY from ${DATA_REMOTE}. Field blobs are skipped; she will transform each figure live, which is slower per figure and costs no download."
   fi
-  # ⛔ `git lfs pull` IS THE 114 GB, NOT THE CLONE. The clone is
-  # `--filter=blob:none` and therefore cheap whatever is in the repo; it is the
-  # LFS fetch that pulls the field payloads. Restricting it with `-I` is what
-  # actually saves the download — skipping the rsync afterwards would still have
-  # paid for every byte.
+  # ⛔⛔ THE CLAIM THAT USED TO BE HERE WAS FALSE, AND IT WAS MEASURED FALSE
+  # 2026-09-04. It read: *"`git lfs pull` IS THE 114 GB, NOT THE CLONE. The clone
+  # is `--filter=blob:none` and therefore cheap whatever is in the repo…
+  # Restricting it with `-I` is what actually saves the download."*
+  #
+  # `--filter=blob:none` makes the *git* blobs lazy. It does NOTHING about LFS,
+  # which is a SEPARATE mechanism: the `filter.lfs` smudge filter runs during
+  # CHECKOUT and downloads every LFS payload before `git lfs pull` is ever
+  # reached. Rehearsed against the live repo with the exact clone command below:
+  # 10 GB on disk and climbing, **1,099 fields already at full size (one 75.8 MB),
+  # zero pointers** — and `git lfs pull` had not been called at all.
+  #
+  # ⭐ So `UAL_FIELDS=0` did not save the download it is named for. Verified the
+  # way this project's own LAW requires an escape hatch to be verified — by
+  # RUNNING it — and it was the `DREAM_PHASE_BUDGET_MS=0` shape again: a lever
+  # documented as doing one thing and measurably doing another.
+  #
+  # `GIT_LFS_SKIP_SMUDGE=1` on the clone is what makes the claim true. The
+  # checkout then writes pointers, and `_lfs_pull` below becomes the one place
+  # that decides what is actually fetched — which is what every comment in this
+  # block has always assumed.
+  #
+  # ⚠ THE FLOOR IS NOT ZERO. GloVe is a plain 1.04 GB blob now (deliberately —
+  # see the .gitattributes note in the data repo), so it rides the checkout
+  # either way. `UAL_FIELDS=0` costs ~1.4 GB, not nothing.
   # ⛔⛔ THIS FUNCTION'S EXIT STATUS DECIDES WHETHER THE BOOKS ARE RSYNCED, so on a
   # box with no git-lfs it MUST succeed rather than fail. `git lfs pull` there
   # exits non-zero ("git: 'lfs' is not a git command"), which would take the whole
@@ -300,7 +320,10 @@ else
   # well and dropped straight through to the books gate, aborting a press over a
   # payload this block's own comment calls non-fatal four paragraphs above.
   # ⭐ The dependency graph is: clone ⟹ books. lfs pull ⟹ fields. Nothing else.
-  if git clone --depth 1 --branch main --filter=blob:none "$DATA_REMOTE" "$FTMP/bw" >> "$LOG" 2>&1; then
+  # ⚠ `GIT_LFS_SKIP_SMUDGE=1` IS LOAD-BEARING, NOT TIDINESS — see the measurement
+  # above. Without it the checkout fetches every LFS payload and `_lfs_pull`
+  # decides nothing.
+  if GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 --branch main --filter=blob:none "$DATA_REMOTE" "$FTMP/bw" >> "$LOG" 2>&1; then
     mkdir -p "$FIELDS_DIR" "$CORPORA_DIR"
     # THE BOOKS FIRST — this is the half the walk cannot run without.
     # --delete so a cell removed upstream disappears here too; this directory is
