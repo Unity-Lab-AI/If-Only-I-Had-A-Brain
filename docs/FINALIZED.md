@@ -5,6 +5,54 @@
 
 ---
 
+## 2026-09-04 — `KEYGRANT` — THE PERMISSION THAT UNBLOCKED THE PRESS, AND TWO INSTRUMENTS THAT COULD NOT SEE
+
+Gee (verbatim): *"ill jsut giove you the fucking key and swap it out later and you set it up"* · *"token revoked and update freshwalk poressed"*
+
+### ✅ `KEYGRANT.1` — the box's deploy key is authorised on the data repo
+
+The same public key the box already presents to the code repo, registered a second time on `UnityAILab/BrainWaves` **read-only**. Nothing about the box changed; nothing about the existing key changed.
+
+| | |
+|---|---|
+| source | `If-Only-I-Had-A-Brain` key **id=1**, `ssh-ed25519`, 131 chars, `unity-box self-update (read-only) 2026-06-28` |
+| created | `BrainWaves` key **id=3**, `read_only=true` — HTTP **201** |
+| verified | both hash to `55741666099a2f70dd789558…` — **byte-identical, not trusted on the status code** |
+
+⛔ **THE ROOT CAUSE, PLAINLY:** that key was created **2026-06-28** and is scoped to the code repo. `ONEREPO` moved the corpus to a second repo on **2026-09-03** — two months later — and nothing granted the key access to it. **The key was never broken; it was never asked to do this job.** `deploy/bootstrap-backend.sh` still provisions nothing for the data repo, so a rebuilt box reproduces this exactly.
+
+⚠ **STATED LIMIT:** I confirmed registration and byte-identity. **I could not test it as the box** — that needs the private half. The proof came from the next press: the first `data sync` in this project's history with **no `CLONE failed` line**.
+
+⚠ The token was operator-supplied in-conversation and revoked immediately after, on his instruction; local copies were wiped in the same command that used them. **Rotation was the mitigation, and the exposure was accepted knowingly rather than overlooked.**
+
+### ⏳ `KEYGRANT.2` — the log route reported `ok: true` for a read it was refused
+
+Asked for the boot log mid-outage and got `{"ok": true, …, "log": "(journal unavailable: … insufficient permissions …)"}`. **The error text was returned in the field meant for log lines, under a truthy `ok`** — so the one instrument that survives a dead brain answered "success" and said nothing.
+
+⭐ **The control plane exists precisely for when the brain is down**, and the console ring is served *by* the brain, so a brain that never comes up publishes nothing. A log route that cannot read logs is worse than none: it looks like output.
+
+Now returns `ok:false` with `error:'journal-permission-denied'`, the raw `detail`, and a `human` line naming the fix. ⚠ **Both the journald and local-log paths were changed to the same verdict shape, and the caller with them** — changing one and not the other would have broken local runs. ⛔ The grant itself (`SupplementaryGroups=systemd-journal`) needs box access and is still owed.
+
+### ✅ `KEYGRANT.3` — the status sentence asserted a boot that never happened
+
+Mid-outage it read *"…has not bound its port yet — it loads ~5.4 GB of weights before listening. This is normal for the first minute or two after a start."*
+
+⛔ **There had been no start.** `activeEnter` was hours old, same process throughout, `exitStatus 0`, `result success`. The real state was **a live process with a pinned event loop**, starved by a 114 GB transfer sharing its disk — a different situation with a different response, and the panel confidently called it a boot. **It misdirected for over an hour**, including me.
+
+⭐ **`ActiveEnterTimestamp` is the field that settles it**, and nothing was reading it. Now read, with `loopPinned` and `activeForSec` published alongside. Exercised against the real payload: `activeEnter 10:37:04 UTC` → **`loopPinned=true, activeForSec=12644`**. A 20-second cold boot still reads as booting; 9 min inside the bound, 11 min outside; a missing timestamp defaults to **not** pinned so it never cries pinned without evidence.
+
+**The bound is derived:** ~15s construction (measured on the box — it served at uptime=15s with all 411M neurons) plus the GloVe stream (**16.8s measured on a workstation**). Ten minutes is an order of magnitude of headroom.
+
+⛔⛔ **AND I CAUGHT A REGRESSION IN MY OWN FIX BEFORE IT SHIPPED.** The first cut added `phase: 'pinned'` — which reads better and **would have disabled every power control**, because `html/dashboard.html` enables Stop / Restart / Kick by positive match on `'online' || 'booting'`. An unrecognised phase leaves an operator unable to act on exactly the brain the branch describes. **The phase is a UI contract; the `human` string is the message.**
+
+### ⛔ AND A CORRECTION TO `PRESSFAIL.7` BELOW — I OVERSTATED IT
+
+That entry says *"the data repo is on the same machine"* as an established finding. **It never was.** Forgejo runs on that host (two docs say so) — but the live box then ran the bounded search and answered `data repo not found on local disk (known paths AND a bounded search)`. **Those are different claims and I collapsed them.**
+
+⚠ The search returned in under a second across `/var/lib /home /data /srv /opt /mnt /var/opt` at depth 6, which is faster than that walk should take — so it most likely hit permission denials and skipped. **"Not found" here may well mean "not permitted to look"**, the exact distinction the LFS-store branch preserves and the repo branch does not. `LOCALFIELDS.1`'s hydration is therefore **unexercised, not disproven** — sound and simulated 1-for-1, but never run in production.
+
+---
+
 ## 2026-09-04 — `PRESSFAIL` — THE PRESS RAN, THE BOX CANNOT REACH THE DATA REPO, AND THE GATE THAT SHOULD HAVE SAID SO DIED SILENTLY
 
 Gee pressed both buttons. **Neither the walk nor the corpus is on the box, and the press reported almost none of it.**
