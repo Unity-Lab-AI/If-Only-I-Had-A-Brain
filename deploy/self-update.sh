@@ -46,6 +46,40 @@ LOG="${BACKEND_DIR}/self-update.log"
 # operator watches the deploy live instead of needing shell to read this file.
 log() { echo "[self-update] $(date -u +%Y-%m-%dT%H:%M:%SZ) $*" | tee -a "$LOG"; }
 
+# ⛔⛔ EVERY COUNT AND SIZE IN THIS SCRIPT GOES THROUGH THESE THREE, AND THAT IS
+# THE WHOLE POINT — THE SCRIPT DIED SILENTLY IN PRODUCTION FOR WANT OF THEM.
+#
+# 2026-09-04, on the box: the data-repo clone failed, so the books gate ran to
+# report it — and the gate's own first line was
+#
+#   _have="$(find "$CORPORA_DIR/academic" -name '*.json' 2>/dev/null | wc -l …)"
+#
+# With `set -euo pipefail` and `$CORPORA_DIR/academic` missing, `find` exits
+# non-zero, `pipefail` propagates it out of the pipeline, the ASSIGNMENT fails,
+# and `set -e` terminates the script — **before the FATAL line it was about to
+# print.** The press simply stopped, logging nothing after the clone warning.
+# Reproduced locally, exactly: exit 1, and the message never printed.
+#
+# ⭐ Not restarting was the correct outcome. Telling nobody why was not: a gate
+# whose entire job is to refuse loudly instead became the quietest failure in
+# the script, and it did it at the one moment anyone was watching.
+#
+# ⛔ THERE WERE EIGHT SITES OF THIS SHAPE, not one. Only the books gate had
+# fired; the other seven were the same bug waiting on a missing directory or a
+# `du` that cannot stat. They are all routed through here so a future count
+# cannot reintroduce it — a `|| true` sprinkled on the one that bit us would
+# have left seven.
+#
+# ⚠ These NEVER fail and never return empty. An unknown count reads 0 and an
+# unknown size reads `?`, which is the honest answer and a safe one to compare.
+_count() { local n; n="$( { find "$@" 2>/dev/null || true; } | wc -l | tr -d ' ' )" || n=0; printf '%s' "${n:-0}"; }
+_size()  { local s; s="$( { du -sh "$1" 2>/dev/null || true; } | cut -f1 )" || s='?'; printf '%s' "${s:-?}"; }
+# ⚠ THE REDIRECTION IS INSIDE THE SILENCED GROUP, not on `wc`. `wc -c < missing`
+# fails when the SHELL opens the file, before wc runs, so `wc … 2>/dev/null`
+# cannot suppress it and the deploy log gains a bare "No such file or directory"
+# with no context. The value was already correct; this stops the noise.
+_bytes() { local n; n="$( { wc -c < "$1"; } 2>/dev/null || true )" || n=0; printf '%s' "${n:-0}"; }
+
 log "START — overlay ${GIT_BRANCH} from ${GIT_REMOTE} -> ${BACKEND_DIR}"
 
 TMP="$(mktemp -d)"
@@ -323,14 +357,25 @@ else
   # ⚠ `GIT_LFS_SKIP_SMUDGE=1` IS LOAD-BEARING, NOT TIDINESS — see the measurement
   # above. Without it the checkout fetches every LFS payload and `_lfs_pull`
   # decides nothing.
-  if GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 --branch main --filter=blob:none "$DATA_REMOTE" "$FTMP/bw" >> "$LOG" 2>&1; then
+  # ⛔⛔ THE CLONE'S OWN ERROR REACHES THE OPERATOR NOW, AND IT DID NOT BEFORE.
+  # This line used to send stderr to `>> "$LOG" 2>&1` — the file on the box —
+  # while only the `log()` helper tees to stdout and therefore into the admin
+  # console ring. So on 2026-09-04 the press reported exactly this and nothing
+  # more: *"WARN — the data-repo CLONE failed"*. Git had said WHY, in one line,
+  # into a file nobody with a dashboard can read, on a box with no shell.
+  # ⭐ The output is captured and the tail of it goes into the WARN itself. A
+  # failure whose reason is unreadable costs a whole diagnosis cycle — this one
+  # cost the press.
+  _clone_out=''
+  if _clone_out="$(GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 --branch main --filter=blob:none "$DATA_REMOTE" "$FTMP/bw" 2>&1)"; then
+    printf '%s\n' "$_clone_out" >> "$LOG" 2>/dev/null || true
     mkdir -p "$FIELDS_DIR" "$CORPORA_DIR"
     # THE BOOKS FIRST — this is the half the walk cannot run without.
     # --delete so a cell removed upstream disappears here too; this directory is
     # OURS and holds nothing the server writes, so a full mirror is honest.
     if [ -d "$FTMP/bw/corpora" ] && rsync -a --delete "$FTMP/bw/corpora/" "$CORPORA_DIR/" >> "$LOG" 2>&1; then
-      _ccount="$(find "$CORPORA_DIR" -name '*.json' 2>/dev/null | wc -l | tr -d ' ')"
-      _csize="$(du -sh "$CORPORA_DIR" 2>/dev/null | cut -f1)"
+      _ccount="$(_count "$CORPORA_DIR" -name '*.json')"
+      _csize="$(_size "$CORPORA_DIR")"
       log "corpus sync OK — ${_ccount} corpus files (${_csize}) at ${CORPORA_DIR}; this is what she is taught from."
       _corpus_ok=1
     else
@@ -346,10 +391,10 @@ else
     # that out loud — a bare "lfs pull failed" beside an aborted press is what
     # sends someone hunting the corpus for a problem that was never in it.
     if ! _lfs_pull; then
-      _fkept="$(find "$FIELDS_DIR" \( -name '*.field.json' -o -name '*.field.json.gz' \) 2>/dev/null | wc -l | tr -d ' ')"
+      _fkept="$(_count "$FIELDS_DIR" \( -name '*.field.json' -o -name '*.field.json.gz' \))"
       log "WARN — git lfs pull FAILED (missing object, dropped connection or disk). ${_fkept} fields already on the box are LEFT UNTOUCHED and every figure without one is transformed live, which is the path that always existed. ⭐ THE BOOKS ABOVE ARE UNAFFECTED — they are plain git blobs and landed with the clone. This does not block the press."
     elif [ "$_want_fields" != "1" ]; then
-      _fkept="$(find "$FIELDS_DIR" \( -name '*.field.json' -o -name '*.field.json.gz' \) 2>/dev/null | wc -l | tr -d ' ')"
+      _fkept="$(_count "$FIELDS_DIR" \( -name '*.field.json' -o -name '*.field.json.gz' \))"
       # ⚠ THE REASON IS NAMED. "UAL_FIELDS=0" and "this box has no git-lfs" are
       # different facts with different fixes, and a log line that reports the
       # operator's own switch when the real cause is a missing tool sends whoever
@@ -363,14 +408,18 @@ else
       # ⚠ BOTH ENCODINGS COUNTED. Fields are written gzipped now, and a glob
       # anchored to the old name reported a healthy sync as zero fields — the
       # instrument saying nothing is there while everything is.
-      _fcount="$(find "$FIELDS_DIR" \( -name '*.field.json' -o -name '*.field.json.gz' \) 2>/dev/null | wc -l | tr -d ' ')"
-      _fsize="$(du -sh "$FIELDS_DIR" 2>/dev/null | cut -f1)"
+      _fcount="$(_count "$FIELDS_DIR" \( -name '*.field.json' -o -name '*.field.json.gz' \))"
+      _fsize="$(_size "$FIELDS_DIR")"
       log "field sync OK — ${_fcount} wavelet fields (${_fsize}) at ${FIELDS_DIR}; she reads these instead of re-transforming."
     else
       log "WARN — field rsync failed; keeping whatever was already on disk (live transform covers the rest)."
     fi
   else
-    log "WARN — the data-repo CLONE failed (not the lfs pull, which is reported separately above when it is the problem); keeping whatever books and fields are already on disk. If the box has no corpus at all, the books gate below will abort the press rather than restart her into an empty library."
+    printf '%s\n' "$_clone_out" >> "$LOG" 2>/dev/null || true
+    # The tail, flattened to one line so it survives the console ring intact.
+    _clone_why="$(printf '%s' "$_clone_out" | tr '\n' ' ' | tail -c 500 || true)"
+    log "WARN — the data-repo CLONE failed (not the lfs pull, which is reported separately above when it is the problem); keeping whatever books and fields are already on disk. GIT SAID: ${_clone_why:-(no output captured)}"
+    log "WARN — if that reads as auth / permission denied / repository not found, then the box's deploy key is NOT authorised on ${DATA_REMOTE}. The code repo and the data repo are SEPARATE Forgejo repos, and nothing in deploy/bootstrap-backend.sh grants the second one — a key that clones the code repo does not imply access to this one. Add the box's deploy key to the data repo (read access is enough) and press again."
   fi
   rm -rf "$FTMP"
 fi
@@ -382,7 +431,9 @@ fi
 # there" failure this project keeps paying for. Checked against the directory the
 # server actually reads, not against the exit code of the step above.
 if [ "$_corpus_ok" != "1" ]; then
-  _have="$(find "$CORPORA_DIR/academic" -name '*.json' 2>/dev/null | wc -l | tr -d ' ')"
+  # ⛔ THIS EXACT LINE KILLED THE PRESS ON 2026-09-04 — see the _count comment at
+  # the top of this file. It is the reason all three helpers exist.
+  _have="$(_count "$CORPORA_DIR/academic" -name '*.json')"
   if [ "${_have:-0}" -lt 1 ]; then
     log "FATAL — no corpus on the box (${CORPORA_DIR}/academic is empty or missing) and the data sync did not provide one. ABORTING before .force-fresh is written, so the trained weights are untouched and the service keeps running the old code. Fix the data repo pull (${DATA_REMOTE}) and press again."
     exit 1
@@ -412,7 +463,7 @@ if [ ! -f "$_GLOVE" ]; then
   log "FATAL — the GloVe embedding table is MISSING at ${_GLOVE}. The boot reads it before anything else and stops hard without it (NO FALLBACKS), so restarting now would produce a crash loop rather than a walk. ABORTING before .force-fresh is written; the trained weights are untouched and the service keeps running. Fix the data repo pull (${DATA_REMOTE}) and press again."
   exit 1
 fi
-_gbytes="$(wc -c < "$_GLOVE" 2>/dev/null | tr -d ' ')"
+_gbytes="$(_bytes "$_GLOVE")"
 if [ "${_gbytes:-0}" -lt "$_GLOVE_MIN_BYTES" ]; then
   if head -c 40 "$_GLOVE" 2>/dev/null | grep -q 'git-lfs'; then
     log "FATAL — ${_GLOVE} is a GIT-LFS POINTER STUB (${_gbytes} bytes), not the embedding table. It is a real file, so nothing else would have noticed; the boot would read it, fail to parse a single vector, and stop by design. Install git-lfs on this box or un-LFS that file in ${DATA_REMOTE}. ABORTING before .force-fresh — weights untouched."

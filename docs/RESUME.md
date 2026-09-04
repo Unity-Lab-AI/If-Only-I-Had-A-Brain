@@ -1,5 +1,49 @@
 # RESUME — Session Pickup Brief
 
+> ## 🔴🔴 2026-09-04 THE PRESS RAN — AND THE BOX CANNOT REACH THE DATA REPO (LATEST — PICK UP HERE)
+>
+> ### ⛔ STATE — DO NOT PRESS, DO NOT RESTART
+> ```
+> main / origin / github   fec05e56  (the press hardening + DEFMISS.2 all landed)
+> box running              fec05e56  booted 2026-09-04T10:37:30Z — and STILL UP
+> box corpus               0 fed / 193 EMPTY · entries 0 · reachableWords 0
+> box GloVe                GONE — "Language subsystem init FAILED" at boot
+> .force-fresh             ARMED on disk → the NEXT boot wipes the weights
+> donors                   0   (both stopped pods blocked by host capacity)
+> ```
+> ⛔ **`.force-fresh` is armed and there is no corpus. A restart from here wipes the weights AND has nothing to walk with.**
+>
+> ### THE SEQUENCE, read off the live console ring
+> | time | what |
+> |---|---|
+> | 04:37:30 | press 1 booted → `⛔ FATAL — GloVe 300d could not be loaded` → `Language subsystem init FAILED` |
+> | 04:39:14 | press 2 fired, `.force-fresh` ARMED, overlay to `fec05e56` **succeeded** |
+> | 04:39:19 | `WARN — the data-repo CLONE failed` — **then silence.** No gate FATAL, no restart |
+>
+> ### ⛔⛔ THE BLOCKER — AND IT IS THE GAP IN MY OWN AUDIT
+> **Nothing anywhere grants the box access to `BrainWaves`.** `bootstrap-backend.sh` has no key provisioning for it; no deploy doc mentions one. The code-repo clone succeeds, so the box has a working key for `If-Only-I-Had-A-Brain` — **and that does not imply access to a second, separate Forgejo repo.**
+>
+> ⛔ **I audited BrainWaves from MY machine with MY key** — tree census, LFS batch API, a full clone rehearsal — and called it *"audited clean, everything depends on it."* **I never verified the BOX could reach it.** This is `feedback_harness_production_wiring` made again in a new place: every check proved the repo was fine, none proved the thing that mattered.
+>
+> **The fix needs no shell:** copy the deploy key from `If-Only-I-Had-A-Brain → Settings → Deploy Keys` into `BrainWaves → Settings → Deploy Keys` (read is enough).
+>
+> ### ✅ FIXED SO THE NEXT PRESS IS DIAGNOSTIC INSTEAD OF SILENT
+> - **The books gate died silently** — `set -euo pipefail` + `find` on a missing dir → the assignment fails → `set -e` kills the script **before its own FATAL line.** Reproduced exactly. ⛔ **EIGHT sites of that shape**, all routed through three helpers (`_count`/`_size`/`_bytes`) that never fail: unknown count `0`, unknown size `?`. **A `|| true` on the one that bit us would have left seven.**
+> - **The clone's error now reaches the ring** — it went to a file on a box with no shell.
+>
+> ### ⚠ TWO THINGS I GOT WRONG, BOTH WORTH CARRYING
+> 1. **I reported press 1 as a clean success.** I read `build=fec05e56` + climbing uptime as proof and never opened the boot log — the *same day* the `$`-bug taught *"stale panels means OPEN THE CONSOLE FIRST"*. **A brain with a dead language subsystem serves state, draws and consolidates**, which is exactly what made it look fine.
+> 2. **`"Boot STOPS here by design (NO FALLBACKS)"` does not stop the boot.** It logs FATAL, throws, and something upstream catches it. Filed as `PRESSFAIL.5` and **deliberately NOT fixed yet** — hard-failing the boot right now would crash-loop a box that has no corpus, taking the brain's own `/update` with it and leaving only `/ctl/update`.
+>
+> ### NEXT — in order
+> - **Grant the box's deploy key read access to `BrainWaves`.** Everything else waits on this.
+> - **Then press `⬆ Update + Fresh Walk`** — the data sync succeeds, corpus + GloVe land, both gates pass, clean walk.
+> - **Verify before believing it:** `curriculumCoverage.entries > 0` and `empty` well below 193, plus `embeddings OK — GloVe present` in the ring.
+> - **Then the pod.** A40 stock is Medium at $0.35/hr fleet-wide, but **both existing stopped pods are blocked by their own hosts' capacity** — a new pod can pick any host. ⭐ Of the two existing, `i03ihi54kccu0l` is the good one (`keeping_existing_binary_never_downgrading` + a 300 s upgrade watchdog); `cl5i7k9gkge3hx` still carries the **0.3.26 pin** that downgrades on one unreachable release API.
+> - ⏳ **`PRESSFAIL.5`** — make the no-fallbacks boot guard actually stop the boot, once the corpus is back.
+>
+> ---
+
 > ## ⭐⭐⭐ 2026-09-04 LATE (LATEST — PICK UP HERE) THE FINAL CHECK FOUND THAT THE PRESS BRICKS THE BOX, AND IT WAS CAUGHT BEFORE THE BUTTON
 >
 > ### Read in this order: this block → `docs/TODO.md §PRESSHARD` → `deploy/REDEPLOY-NOTES.md` top entry → the blocks below.
