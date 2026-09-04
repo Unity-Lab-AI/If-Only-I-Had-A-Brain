@@ -352,6 +352,12 @@ server/visual-memory*.json
 visual-memory*.db*
 server/visual-memory*.db*
 art-notdrawable.json
+# The operator's training defaults. Experience data, not a code list: it is what
+# THIS box starts with, chosen by the person running it, and it must survive both
+# a deploy and a fresh walk. Tracking it would ship one box's tuning to every
+# clone as if it were the code's own behaviour.
+knob-defaults.json
+server/knob-defaults.json
 # The admin's Pollinations key — a CREDENTIAL. Never tracked.
 pollinations-admin.json
 server/pollinations-admin.json

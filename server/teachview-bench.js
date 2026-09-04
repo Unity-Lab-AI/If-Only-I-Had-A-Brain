@@ -261,7 +261,89 @@ function checkNewInstruments(s) {
   return ok('new instruments', parts.join(' · '));
 }
 
-const CHECKS = [checkKnobs, checkWriteLane, checkLedger, checkCorpusFeed, checkFigures, checkFieldProducers, checkNewInstruments];
+/**
+ * ⭐⭐ THE PRESS CONTROLS — restart and update, added to the viewer 2026-09-04.
+ *
+ * ⛔ THIS IS THE ONE PANEL ON THE PAGE THAT CAN DESTROY SOMETHING, so its
+ * failure modes are worse than a wrong number. Two fields carry the whole
+ * safety story and NEITHER of them is about the buttons themselves:
+ *
+ *   `time`       — wall-clock uptime. It is the ONLY evidence a press landed,
+ *                  because uptime cannot decrease inside one process. Without
+ *                  it every press falls back to "assume it worked", which is
+ *                  exactly the reassuring-blank shape this bench exists for.
+ *
+ *   `curriculum` — where she actually is. It is what the destructive confirm
+ *                  names as the thing being discarded. Without it an operator
+ *                  is asked to wipe a walk the page cannot describe.
+ *
+ * Both are LONG-STANDING published fields, so this check is not guarding a new
+ * producer — it is guarding two old ones that the press panel newly depends on,
+ * which is precisely the coupling that rots unnoticed.
+ */
+function checkPressControls(s) {
+  const hasTime = s && Number.isFinite(Number(s.time));
+  const c = s && s.curriculum;
+  const g = s && s.graduation;
+  if (!hasTime && !c && !g) {
+    return grey('press controls', 'neither uptime nor a curriculum position was in the snapshot — cannot tell whether a press could be confirmed.');
+  }
+  if (!hasTime) {
+    return bad('press controls', 'state.time is not published — a restart or update can never be CONFIRMED from the viewer, only assumed, which is the failure this panel was built to avoid.');
+  }
+  // A finished walk answers the position question through the graduation
+  // record instead, which is correct and not a gap.
+  if (!c && !g) {
+    return bad('press controls', 'state.curriculum is not published — the destructive presses cannot name what they would discard, so an operator would be asked to wipe a walk the page cannot describe.');
+  }
+  if (c && !g && !Number.isFinite(Number(c.passedCellsTotal))) {
+    return bad('press controls', 'curriculum.passedCellsTotal is gone — the position line falls back to summing per-course rows, which is a derived second opinion on the ledger and can disagree with it.');
+  }
+  const where = g
+    ? 'graduated — the record answers the position'
+    : `${c.currentCourseName || c.currentSubject || 'no cell active'} · ${c.passedCellsTotal} cells passed`;
+  return ok('press controls', `uptime ${Math.round(Number(s.time))}s · ${where}`);
+}
+
+/**
+ * ⭐⭐ THE OPERATOR DEFAULTS — added with the lane, not after it.
+ *
+ * ⛔ THE FAILURE THIS HUNTS IS A SAVED SETTING THAT IS DOING NOTHING. Three ways
+ * that happens, and none of them announces itself:
+ *   • the defaults file failed to parse at boot, so EVERY default silently
+ *     reverted to code behaviour while the file still sits there looking applied;
+ *   • a default is SHADOWED — the environment already sets that knob, so the
+ *     saved value is ignored, and the operator reads their own number in the
+ *     file while the brain does something else;
+ *   • an entry was REFUSED (not a DREAM_ key, or not a scalar) and dropped.
+ *
+ * ⚠ PENDING IS NOT A FAULT. A default saved since boot is waiting for a restart,
+ * which is correct and expected — it is reported, never flagged.
+ */
+function checkKnobDefaults(s) {
+  const d = s && s.knobDefaults;
+  // Nothing has ever been saved. There is no surface and nothing to sweep —
+  // that is a pass, not a grey, because the absence is fully explained.
+  if (d === null || d === undefined) return ok('knob defaults', 'none stored — the brain is running code behaviour plus the environment');
+  if (d.bootError) {
+    return bad('knob defaults', `the defaults file did NOT apply at boot (${d.bootError}) — every stored default silently reverted to code behaviour while the file still sits there.`);
+  }
+  if (d.readError) {
+    return bad('knob defaults', `the defaults file cannot be read now (${d.readError}) — the panel cannot show what this box will start with.`);
+  }
+  if (d.skipped && d.skipped.length) {
+    return bad('knob defaults', `${d.skipped.length} entr(ies) in the defaults file were REFUSED and are doing nothing: ${d.skipped.slice(0, 4).map((x) => `${x.key} (${x.why})`).join(', ')}`);
+  }
+  if (d.shadowed && d.shadowed.length) {
+    return bad('knob defaults', `${d.shadowed.length} stored default(s) are SHADOWED by the environment and doing nothing — the saved value is not what the brain is running: ${d.shadowed.slice(0, 3).map((x) => `${x.key} stored=${x.stored} env=${x.env}`).join(', ')}`);
+  }
+  const parts = [`${d.storedCount} stored`];
+  if (d.applied.length) parts.push(`${d.applied.length} governing this boot`);
+  if (d.pending.length) parts.push(`${d.pending.length} awaiting a restart`);
+  return ok('knob defaults', parts.join(' · '));
+}
+
+const CHECKS = [checkKnobs, checkWriteLane, checkLedger, checkCorpusFeed, checkFigures, checkFieldProducers, checkNewInstruments, checkPressControls, checkKnobDefaults];
 
 /**
  * Run every surface check over a snapshot. Pure: no I/O, no globals.
@@ -352,6 +434,25 @@ function healthySnapshot() {
       authoredTotal: 6, authoredPass: 6, authoredRate: 1, derivedTotal: 14,
       gatedOnAuthored: true, correctiveTaught: 0,
     },
+    // The two fields the press controls stand on. Same rule as above: without
+    // them the press check reads GREY on a healthy snapshot, and grey does not
+    // pass.
+    time: 4820,
+    // The defaults lane in its HEALTHY shape: some stored, some governing this
+    // boot, none shadowed and none refused.
+    knobDefaults: {
+      storedCount: 2, savedAt: '2026-09-04T00:00:00Z',
+      applied: [{ key: 'DREAM_CONTENT_LR', value: '0.02' }],
+      shadowed: [], skipped: [], pending: ['DREAM_INQUIRE_DEPTH'],
+      bootError: null, readError: null,
+      stored: { DREAM_CONTENT_LR: '0.02', DREAM_INQUIRE_DEPTH: '4' },
+    },
+    curriculum: {
+      currentSubject: 'ela', currentGrade: 'kindergarten',
+      currentCourseName: 'Reading', currentGradeLabel: 'Kindergarten',
+      passedCellsTotal: 7,
+      perSubject: { ela: { cellsPassed: 4 }, math: { cellsPassed: 3 } },
+    },
   };
 }
 
@@ -383,6 +484,24 @@ const FAULTS = [
     (s) => { s.deferredLanes.drivenOffWalk = true; s.deferredLanes.queued.chatPairs = 24; s.deferredLanes.drainedItems = 0; }],
   ['authored questions missed and NOTHING corrective-taught (the missed-set is empty again)',
     (s) => { s.lastBattery.authoredPass = 3; s.lastBattery.authoredRate = 0.5; s.lastBattery.correctiveTaught = 0; }],
+  // ── the press controls, added 2026-09-04. Both faults make a DESTRUCTIVE
+  //    button unsafe rather than making a number wrong. ──
+  ['uptime unpublished (a restart or update could only ever be ASSUMED to have landed, never confirmed)',
+    (s) => { delete s.time; }],
+  ['the walk position unpublished (the wipe confirm cannot name what it is about to discard)',
+    (s) => { delete s.curriculum; }],
+  ['the cell ledger total gone (the position line silently falls back to a derived sum that can disagree with it)',
+    (s) => { delete s.curriculum.passedCellsTotal; }],
+  // ── the operator defaults, added with the lane 2026-09-04. Every fault here
+  //    is a SAVED SETTING DOING NOTHING while the file still looks applied. ──
+  ['the defaults file failed to parse at boot (every stored default silently reverted to code behaviour)',
+    (s) => { s.knobDefaults.bootError = 'not a unity-knob-defaults file'; }],
+  ['a stored default SHADOWED by the environment (the saved value is not what the brain is running)',
+    (s) => { s.knobDefaults.shadowed = [{ key: 'DREAM_CONTENT_LR', stored: '0.02', env: '0.9' }]; }],
+  ['an entry in the defaults file REFUSED and dropped',
+    (s) => { s.knobDefaults.skipped = [{ key: 'PATH', why: 'not a DREAM_ knob' }]; }],
+  ['the defaults file unreadable now (the panel cannot say what the box will start with)',
+    (s) => { s.knobDefaults.readError = 'EACCES'; }],
 ];
 
 /**
@@ -459,6 +578,69 @@ function collect(ctx) {
   try {
     s.walk.active = !!(brain._curriculumRunning || (brain.curriculum && brain.curriculum.running));
   } catch { s.walk.active = false; }
+
+  // ⛔⛔ THIS BLOCK WAS THE DEFECT, AND IT IS THE ONE THIS FILE IS ABOUT.
+  // `checkNewInstruments` shipped 2026-09-04 with a self-test that passed 14/14
+  // against a hand-built fixture — and the COLLECTOR was never extended, so on
+  // the live box its five fields were never in the snapshot and the check could
+  // only ever read GREY. A sweep that cannot see the surface it sweeps is worse
+  // than no sweep: the self-test says the clause works, and it does; it simply
+  // never runs on anything real. Producer written, consumer written, nothing
+  // joining them — the same split as `meanVoltage`, `canSpeak` and
+  // `cluster.wiringAudit` itself.
+  //
+  // ⭐ EVERY READ BELOW IS A FIELD `getState()` ALREADY READS, from the same
+  // object, so this adds no new computation to the shared loop. The one call
+  // (`getCurriculumStatus`) is the one the broadcast loop already makes 10× a
+  // second.
+  const cl = brain.cortexCluster || null;
+  try { s.wiringAudit = (cl && cl.wiringAudit) || null; } catch { s.wiringAudit = null; }
+  try { s.lastBattery = (cl && cl.lastBattery) || null; } catch { s.lastBattery = null; }
+  // ⛔ ONLY WHEN THE CURRICULUM EXISTS. A first cut of this built the lanes
+  // object unconditionally, and every field defaulted to a healthy-looking zero
+  // — which flipped `checkNewInstruments` from GREY to GREEN on a brain that has
+  // not booted a curriculum at all, because a truthy lanes object satisfies its
+  // "did I see anything?" guard. That is the false green this bench exists to
+  // prevent, introduced by the fix for a grey. No curriculum means these queues
+  // do not exist yet, and saying nothing is the honest answer.
+  try {
+    if (!brain.curriculum) throw new Error('no curriculum attached');
+    const q = (a) => (Array.isArray(a) ? a.length : 0);
+    const dr = brain.curriculum._deferredDrainStats || {};
+    s.deferredLanes = {
+      drivenOffWalk: !brain._curriculumInProgress,
+      queued: {
+        chatPairs: q(brain._chatPairTeachQueue),
+        chatJobs: q(brain._chatTeachJobQueue),
+        mindsEye: q(brain._mindsEyePreviewQueue),
+        salience: q(brain._salienceQueue),
+      },
+      drainedItems: dr.items || 0,
+      drainedPasses: dr.passes || 0,
+      lastDrainAgeMs: dr.lastAt ? (Date.now() - dr.lastAt) : null,
+    };
+  } catch { s.deferredLanes = null; }
+
+  // The two the press controls stand on.
+  try {
+    s.time = brain._startedAt ? (Date.now() - brain._startedAt) / 1000 : undefined;
+  } catch { s.time = undefined; }
+  try {
+    s.curriculum = (brain.curriculum && typeof brain.curriculum.getCurriculumStatus === 'function')
+      ? brain.curriculum.getCurriculumStatus() : null;
+  } catch { s.curriculum = null; }
+  try { s.graduation = (cl && cl.graduation) || null; } catch { s.graduation = null; }
+
+  // ⭐ THE DEFAULTS, COLLECTED WITH THE CHECK RATHER THAN AFTER IT. Adding a
+  // clause and forgetting the collector is exactly how `checkNewInstruments`
+  // spent a day returning GREY on the live box; the two go in together now.
+  // ⚠ Same source the state builder uses, so the bench and the page cannot
+  // disagree about what is stored.
+  try {
+    s.knobDefaults = (typeof brain.getState === 'function' && brain._knobDefaultsState)
+      ? brain._knobDefaultsState()
+      : require('./brain-server/state.js').SERVER_STATE_MIXIN._knobDefaultsState.call(brain);
+  } catch { s.knobDefaults = undefined; }
 
   return s;
 }

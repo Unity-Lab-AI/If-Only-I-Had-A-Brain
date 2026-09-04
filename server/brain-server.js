@@ -28,6 +28,70 @@
 // deliberately set one are never overridden.
 if (!process.env.TZ) process.env.TZ = 'America/Denver';
 
+// ── OPERATOR TRAINING DEFAULTS (2026-09-04) ─────────────────────────────────
+//
+// Operator: *"we need traing defaults we can set … be ablke to have defualts for
+// the different setttings yand nobs you adjust"*.
+//
+// ⛔⛔ THIS RUNS BEFORE EVERY `require` IN THIS FILE, AND THAT IS THE WHOLE
+// DESIGN. A knob classified `boot` is read ONCE at module scope, so its value is
+// decided by whatever `process.env` holds at the instant its module first loads.
+// Applying defaults anywhere after the requires would take effect for the `live`
+// knobs and silently do nothing for the `boot` ones — a settings panel where
+// half the rows lie about having been applied. Same reasoning, same placement,
+// as the TZ pin directly above: *before any Date is constructed anywhere in the
+// process*.
+//
+// ⭐ A REAL ENVIRONMENT VALUE ALWAYS WINS. The service unit and the launchers
+// stay authoritative; a stored default only fills a knob nobody set. Otherwise a
+// file written months ago could quietly override the deliberate `DREAM_*` a
+// human put in the unit, which is a worse failure than having no defaults.
+//
+// ⚠ THE REPORT IS STASHED, NOT PRINTED. The console ring is installed further
+// down this file, so logging here would put the single most consequential boot
+// line — WHICH KNOBS ARE NOT RUNNING CODE BEHAVIOUR — in the one place the
+// remote console tunnel cannot reach. It is announced once the ring exists.
+const KNOB_DEFAULTS_FILE = require('path').join(__dirname, 'knob-defaults.json');
+const _knobDefaultsBoot = (() => {
+  const report = { file: KNOB_DEFAULTS_FILE, applied: [], shadowed: [], skipped: [], error: null, savedAt: null };
+  try {
+    const fsBoot = require('fs');
+    if (!fsBoot.existsSync(KNOB_DEFAULTS_FILE)) return report;
+    const doc = JSON.parse(fsBoot.readFileSync(KNOB_DEFAULTS_FILE, 'utf8'));
+    if (!doc || doc.kind !== 'unity-knob-defaults' || !doc.defaults || typeof doc.defaults !== 'object') {
+      report.error = 'not a unity-knob-defaults file — refusing to guess at its shape';
+      return report;
+    }
+    report.savedAt = doc.savedAt || null;
+    for (const [key, value] of Object.entries(doc.defaults)) {
+      // Only DREAM_* keys, and only scalars. A defaults file is operator data
+      // that survives a deploy; it must not be a route to setting PATH.
+      if (!/^DREAM_[A-Z0-9_]+$/.test(key)) { report.skipped.push({ key, why: 'not a DREAM_ knob' }); continue; }
+      if (value === null || typeof value === 'object') { report.skipped.push({ key, why: 'not a scalar value' }); continue; }
+      if (process.env[key] !== undefined && process.env[key] !== '') {
+        // The environment already speaks for this knob. Recorded, not applied —
+        // a default that was overridden is a thing an operator needs to SEE,
+        // because it explains why the panel does not show what they saved.
+        report.shadowed.push({ key, stored: String(value), env: String(process.env[key]) });
+        continue;
+      }
+      process.env[key] = String(value);
+      report.applied.push({ key, value: String(value) });
+    }
+  } catch (err) {
+    report.error = (err && err.message) || String(err);
+  }
+  return report;
+})();
+// ⚠ PUBLISHED ON `globalThis`, following `__consoleRing` above, because the state
+// builder lives in a DIFFERENT MODULE and a const here is invisible to it. The
+// boot report cannot be recomputed later by anyone: it is the record of what
+// `process.env` looked like at the instant the first module loaded, and that
+// instant is gone. Re-deriving it after the fact would produce a plausible
+// answer that is not the one the brain actually booted with.
+globalThis.__knobDefaultsBoot = _knobDefaultsBoot;
+globalThis.__knobDefaultsFile = KNOB_DEFAULTS_FILE;
+
 // Human-readable clock for anything a person reads: 12-hour with AM/PM,
 // explicitly en-US so no host locale can render 14:13 instead of 2:13 PM.
 const HUMAN_TIME_OPTS = { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true };
@@ -78,6 +142,38 @@ function humanStamp(ts) {
   console.log = wrap(console.log.bind(console), 'log');
   console.warn = wrap(console.warn.bind(console), 'warn');
   console.error = wrap(console.error.bind(console), 'error');
+})();
+
+// ── ANNOUNCE THE OPERATOR DEFAULTS (2026-09-04) ─────────────────────────────
+//
+// ⭐ THE RULING WAS "AUTO-APPLY, BUT LOUDLY", AND THIS IS THE LOUD PART. A stored
+// default means this boot is NOT running code behaviour, and that fact has to be
+// legible a month later to somebody asking why a walk behaves oddly. Silence
+// here is how a file written once quietly steers training forever.
+//
+// ⚠ Deliberately AFTER the console ring above and BEFORE anything else logs, so
+// the line lands in the ring and is readable through the public console tunnel
+// on a box with no shell. Applying happened at the top of this file, because a
+// boot-frozen knob is decided before these lines could run.
+(() => {
+  const r = _knobDefaultsBoot;
+  if (r.error) {
+    console.warn(`[Brain] knob defaults — NOT APPLIED: ${r.error} (${r.file}). This boot runs code defaults plus whatever the environment sets.`);
+    return;
+  }
+  if (!r.applied.length && !r.shadowed.length && !r.skipped.length) return;   // no file, or an empty one — silence is correct
+  if (r.applied.length) {
+    console.log(`[Brain] knob defaults — APPLIED ${r.applied.length} operator default(s) from ${r.file}${r.savedAt ? ` (saved ${r.savedAt})` : ''}. ⛔ THIS BOOT IS NOT RUNNING CODE BEHAVIOUR ON THESE KNOBS: ${r.applied.map((x) => `${x.key}=${x.value}`).join(' · ')}`);
+  }
+  // ⛔ A shadowed default is the one that confuses people: it is saved, it is in
+  // the file, and it is doing nothing, because the environment already spoke.
+  // Naming both values is what makes the panel's reading explainable.
+  if (r.shadowed.length) {
+    console.warn(`[Brain] knob defaults — ${r.shadowed.length} stored default(s) SHADOWED by the environment and doing nothing: ${r.shadowed.map((x) => `${x.key} stored=${x.stored} env=${x.env}`).join(' · ')}`);
+  }
+  if (r.skipped.length) {
+    console.warn(`[Brain] knob defaults — ${r.skipped.length} entr(ies) REFUSED: ${r.skipped.map((x) => `${x.key} (${x.why})`).join(' · ')}`);
+  }
 })();
 
 // ── HEAP SELF-CORRECTION — build to the HARDWARE, not Node defaults ──
@@ -9829,6 +9925,97 @@ const httpServer = http.createServer((req, res) => {
         caveat: knob.effect === 'cached'
           ? 'cached: read once behind a first-use guard. If that read has already happened this boot, the value is stored and will NOT take effect until restart.'
           : null,
+      });
+    });
+    return;
+  }
+
+  // ── POST /knob-default — SET, CLEAR OR CLEAR-ALL AN OPERATOR DEFAULT ────────
+  //
+  // Operator: *"we need traing defaults we can set"*. `POST /knob` above changes the
+  // RUNNING value and is lost at the next restart; this writes the value the box
+  // will start with, which is the part that survives a press.
+  //
+  // ⭐ DELIBERATELY SEPARATE FROM `/knob`, because they are different promises.
+  // One says "change her now"; the other says "start her this way from now on".
+  // Folding them into one route with a flag would make the more consequential of
+  // the two the easier to trigger by accident.
+  //
+  // ⛔ A DEFAULT IS ACCEPTED FOR A BOOT-FROZEN KNOB — AND ONLY HERE. `/knob`
+  // refuses one with a 409, correctly, because a live write to it does nothing.
+  // A DEFAULT on the same knob is the one thing that CAN work, since it is
+  // applied before any module loads. Refusing it here would have left the
+  // boot-frozen knobs with no settable path at all, which is the opposite of
+  // what was asked for.
+  if (req.url && req.url.split('?')[0] === '/knob-default' && req.method === 'POST') {
+    if (!requireLoopback(req, res, '/knob-default')) return;
+    let body = '';
+    req.on('data', (c) => { body += c; if (body.length > 65536) req.destroy(); });
+    req.on('end', () => {
+      const reply = (code, obj) => {
+        res.writeHead(code, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(obj));
+      };
+      let doc;
+      try { doc = JSON.parse(body || '{}'); } catch { return reply(400, { ok: false, why: 'body is not JSON' }); }
+
+      // Read what is stored now. A malformed file is REFUSED rather than
+      // silently replaced — overwriting a file we could not parse would destroy
+      // whatever an operator had saved without ever showing it to them.
+      let stored = { kind: 'unity-knob-defaults', savedAt: null, defaults: {} };
+      try {
+        if (fs.existsSync(KNOB_DEFAULTS_FILE)) {
+          const cur = JSON.parse(fs.readFileSync(KNOB_DEFAULTS_FILE, 'utf8'));
+          if (!cur || cur.kind !== 'unity-knob-defaults' || !cur.defaults || typeof cur.defaults !== 'object') {
+            return reply(409, { ok: false, why: 'the defaults file on the box is not a unity-knob-defaults document — refusing to overwrite a file I cannot read' });
+          }
+          stored = cur;
+        }
+      } catch (e) { return reply(500, { ok: false, why: `could not read the defaults file: ${e && e.message}` }); }
+
+      const had = Object.keys(stored.defaults).length;
+      if (doc.clearAll === true) {
+        stored.defaults = {};
+      } else {
+        const key = doc.key;
+        if (typeof key !== 'string' || !/^DREAM_[A-Z0-9_]+$/.test(key)) {
+          return reply(400, { ok: false, why: 'key must be a DREAM_* name' });
+        }
+        let rows;
+        try { rows = require('./knob-registry.js').knobState().groups.flatMap((g) => g.knobs); }
+        catch (e) { return reply(500, { ok: false, why: `registry unavailable: ${e && e.message}` }); }
+        const knob = rows.find((r) => r.key === key);
+        // Same rule as /knob: outside the registry is a knob nobody can say
+        // anything true about, so it gets no control.
+        if (!knob) return reply(404, { ok: false, why: `${key} is not a known knob — the registry has no read site for it` });
+        if (doc.clear === true) delete stored.defaults[key];
+        else if (doc.value === null || doc.value === undefined || doc.value === '') {
+          return reply(400, { ok: false, why: 'no value given — send {clear:true} to remove a default rather than storing an empty one' });
+        } else if (typeof doc.value === 'object') {
+          return reply(400, { ok: false, why: 'a default must be a scalar' });
+        } else {
+          stored.defaults[key] = String(doc.value);
+        }
+      }
+
+      stored.kind = 'unity-knob-defaults';
+      stored.savedAt = new Date().toISOString();
+      // Atomic temp-then-rename, like every other operator-data write here — a
+      // half-written defaults file would be read at the next boot and refused
+      // wholesale, losing every default rather than one.
+      try {
+        const tmp = KNOB_DEFAULTS_FILE + '.tmp';
+        fs.writeFileSync(tmp, JSON.stringify(stored, null, 2));
+        fs.renameSync(tmp, KNOB_DEFAULTS_FILE);
+      } catch (e) { return reply(500, { ok: false, why: `could not write the defaults file: ${e && e.message}` }); }
+
+      const now = Object.keys(stored.defaults).length;
+      console.log(`[Brain] knob default ${doc.clearAll ? 'CLEAR-ALL' : (doc.clear ? `CLEARED ${doc.key}` : `SET ${doc.key}=${doc.value}`)} — ${had} → ${now} stored default(s). ⚠ Takes effect at the NEXT restart; the running brain is unchanged.`);
+      return reply(200, {
+        ok: true, stored: now, was: had, savedAt: stored.savedAt,
+        // ⛔ THE ONE SENTENCE THIS ROUTE MUST NEVER OMIT. A default that looks
+        // applied and is not is the failure the whole row exists to prevent.
+        note: 'Saved. This does NOT change the running brain — it is what the box will start with. Restart to apply it.',
       });
     });
     return;
