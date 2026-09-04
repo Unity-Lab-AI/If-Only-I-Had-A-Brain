@@ -1,6 +1,62 @@
 # RESUME — Session Pickup Brief
 
-> ## 🟡 2026-09-04 THE KEY IS GRANTED, THE CLONE SUCCEEDED, AND THE SYNC IS STILL RUNNING (LATEST — PICK UP HERE)
+> ## 🟡 2026-09-04 ARMED AND WAITING — AND A CATALOGUE OF WHAT A SHELL WOULD HAVE FIXED IN MINUTES (LATEST — PICK UP HERE)
+>
+> ### ⛔ STATE
+> ```
+> main / origin / github   bffec004   (all cascaded and pushed)
+> box code on disk         b2c4e7d8   (overlaid 12:41:30 — includes the books)
+> box REPORTS              fec05e56   ← build stamp is read AT BOOT; there has been no boot
+> unit                     active/running · activeEnter 10:37:04 UTC · exit 0 · nRestarts 47
+> brain HTTP               PINNED — rare brief windows; mostly upstream-unreachable
+> memory                   22.06 → 21.73 → 21.65 → 20.06 GB (still moving: executing, not hung)
+> weights                  INTACT — no restart has happened at all
+> operator                 __mg.freshWalkWhenReady() ARMED in a browser tab, waiting for 2 clean reads
+> ```
+>
+> ### ⏳ WHAT IS HAPPENING
+> The `self-update.sh` spawned at **12:41** is still running — the restart is its LAST step and `activeEnter` has not moved, so it has not reached it. It is pulling **114 GB** of LFS field payloads. The brain shares that disk, so its loop is pinned by contention.
+>
+> ⚠ **WE ARE INFERRING THIS, NOT MEASURING IT** — see the catalogue below. That is the single biggest cost of the night.
+>
+> ---
+>
+> ## ⛔⛔ THE CATALOGUE — EVERY BLIND SPOT, AND WHAT A SHELL WOULD DO ABOUT IT
+>
+> **The pattern across all of them: the instrument that would answer the question requires the thing that is broken.** The console ring is served *by* the brain. `self-update.log` sits on a box with no shell. `/ctl/logs` exists for exactly this moment and cannot read the journal. Every diagnostic loop closes on itself.
+>
+> | # | The blind spot | What it cost | The shell command that ends it |
+> |---|---|---|---|
+> | 1 | **Sync progress is invisible.** `git lfs pull` writes to `self-update.log`; the ring that would surface it is served by the pinned brain | **~5 hours** of "is it working or wedged?" with no way to tell | `tail -f /opt/unity-brain/self-update.log` · `du -sh /tmp/tmp.*/bw` |
+> | 2 | **`/ctl/logs` cannot read the journal** — the ctl service user is not in `adm`/`systemd-journal`. The one instrument that survives a dead brain is blind | The boot failure could not be read remotely **at all**; we reconstructed it from a lucky console-ring window | `usermod -aG systemd-journal <ctl-user>` — or properly, `SupplementaryGroups=systemd-journal` in `deploy/unity-brain-ctl.service` + `daemon-reload` |
+> | 3 | **Disk headroom unknown.** `state.disk.freeMB` needs the brain to serve, which is exactly what it is not doing | Cannot confirm the 114 GB is landing, nor rule out a full partition | `df -h /opt /tmp` |
+> | 4 | **Is the deploy even alive?** No way to see the process | The entire "wait vs intervene" decision rests on an inference | `ps aux \| grep -E 'self-update\|git-lfs'` |
+> | 5 | **Forgejo's repo path is unknown**, so `LOCALFIELDS.1` is **unexercised**. A bounded search found nothing — and returned in under a second, which suggests permission denials, not absence | ~120 lines built on a doc line, never proven | `find / -name 'brainwaves.git' -maxdepth 8` · `ls -la /var/lib/forgejo` |
+> | 6 | **`.force-fresh` state unknowable** — it decides whether the next boot wipes the weights | Every restart recommendation had to hedge | `ls -la /opt/unity-brain/server/.force-fresh` |
+> | 7 | **The box runs its OWN `self-update.sh`**, so every fix needs two presses — one to deliver, one to run | Turned each fix into a 2-press, ~10-minute cycle all night | `cd /opt/unity-brain && git ... ` — or just run the current script by hand |
+>
+> ### ⭐ THE ONE-LINE VERSION
+> **Nothing tonight was hard. Everything tonight was invisible.** The deploy key took 30 seconds to fix once we could *see* it was the problem — and finding that out took hours, three failed token attempts, and a lucky window in a 60-line console ring.
+>
+> ---
+>
+> ## ✅ WHAT IS ALREADY FIXED AND ON `main` (lands at the next overlay)
+> - **`KEYGRANT.1`** — the box's deploy key is authorised on the data repo (`BrainWaves` id=3, verified byte-identical). **The original blocker, solved.**
+> - **`BOOTGLOVE.1`** — the brain provisions its own GloVe table at boot, with **zero external tools** (`zlib`, not `unzip`). **A missing embedding table can no longer brick it.** Zip reader exercised against a hand-built decoy archive *and* the real published one over HTTP range requests.
+> - **`UNPOWERED.1`** — consolidation no longer runs while a donor is awaited. It was pinning the loop ~50 s every few minutes, **and that is the same loop a donor's `/ws` handshake arrives on** — the pass that only ran because no donor was connected could prevent the donor connecting.
+> - **`PRESSFAIL.2/.3/.8`** — the books gate can speak instead of dying silently (8 fragile sites), the clone's real error reaches the ring, and every refusal path **disarms `.force-fresh`** instead of leaving a wipe armed for the next unrelated restart.
+> - **`KEYGRANT.2/.3`** — `/ctl/logs` stops reporting `ok:true` for a refused read; `/ctl/status` stops asserting a boot that never happened (`loopPinned`, `activeForSec`).
+> - **`BOOKSINREPO`** — 231 corpus files / 503 MB in the code repo, so **the books no longer depend on the data repo at all.**
+> - **`MACHINEGUN.1/.2/.3`** — `scripts/machinegun-reset.js`: the press without the page, confirmed by `activeEnter`, with a wait-then-fire mode. **20/20 exercised.**
+>
+> ### NEXT
+> - **The armed tab fires on its own** when the box gives two clean `portOpen=true` reads 5 min apart. Nothing else needed.
+> - **If it gives up after 6 h:** the sync is wedged. Fire `__mg.freshWalk()` deliberately — safe now, because `BOOTGLOVE.1` means a boot cannot die on a missing table.
+> - ⏳ **Owed, needs box access:** `SupplementaryGroups=systemd-journal` on the ctl unit (#2 above), and `bootstrap-backend.sh` provisioning the data-repo key so **a rebuilt box does not reproduce tonight exactly**.
+>
+> ---
+>
+> ## 🟡 2026-09-04 THE KEY IS GRANTED, THE CLONE SUCCEEDED, AND THE SYNC IS STILL RUNNING
 >
 > ### ⛔ STATE — read `/ctl/status` FIRST, it is the only instrument that works while the brain is pinned
 > ```
