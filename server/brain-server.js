@@ -7284,6 +7284,25 @@ class ServerBrain {
             // Multi-subject grade state
             grades: cortex.grades && typeof cortex.grades === 'object' ? { ...cortex.grades } : null,
             passedCells: Array.isArray(cortex.passedCells) ? [...cortex.passedCells] : null,
+            // END OF SCHOOL — WHICH of those cells were FORCE-ADVANCED. `passedCells`
+            // records that a cell is behind her and is structurally unable to
+            // say how it got there, so a walk that cleared every gate and a walk
+            // that ran out of rounds and met only the capability minimum have
+            // always been the same array. Persisted beside the ledger because
+            // the completion verdict is worthless if it resets on every boot.
+            forceAdvancedCells: Array.isArray(cortex.forceAdvancedCells) ? [...cortex.forceAdvancedCells] : null,
+            // END OF SCHOOL — the graduation record itself: when, at what grade, the
+            // per-course merit/forced/owed split, and whether her own memory of
+            // it has been banked. Small, flat, and the one surface that can
+            // answer "did she actually finish?" the morning after.
+            graduation: (cortex.graduation && typeof cortex.graduation === 'object')
+              ? { ...cortex.graduation } : null,
+            // CORPUS COMPLETION — what the trainer actually read, per cell. One small
+            // object per cell (~213 for the whole walk), and it has to survive a
+            // restart or the completion verdict resets to "nothing was ever
+            // read" every boot, which is the opposite of what it is for.
+            corpusTrained: (cortex.corpusTrained && typeof cortex.corpusTrained === 'object')
+              ? { ...cortex.corpusTrained } : null,
             // Phase-level resume markers. Persisted so Savestart.bat can
             // skip already-completed teach phases within an in-flight cell.
             // Populated by _phaseDone in the cell runners (e.g. ela/kindergarten:_teachWordEmission).
@@ -8501,6 +8520,21 @@ class ServerBrain {
         // SKIPPING the completed phases inside them. That gap is now fixed at the
         // endpoint itself (see /savererun), which is where it belonged.
         if (Array.isArray(pending.passedCells)) cortex.passedCells = [...pending.passedCells];
+        // END OF SCHOOL — the force-advance list and the graduation record ride the
+        // ledger they describe. Restored under the same `Array.isArray` /
+        // typeof discipline as everything else here so an older save with
+        // neither field present simply leaves them undefined rather than
+        // overwriting a live value with null.
+        if (Array.isArray(pending.forceAdvancedCells)) cortex.forceAdvancedCells = [...pending.forceAdvancedCells];
+        if (pending.corpusTrained && typeof pending.corpusTrained === 'object') {
+          cortex.corpusTrained = { ...pending.corpusTrained };
+          const _cells = Object.keys(cortex.corpusTrained).length;
+          if (_cells > 0) console.log(`[Brain] corpus-read record restored: ${_cells} cell(s) the trainer has actually opened. A cell absent from this map has NOT been read, which is a different state from a cell with no corpus.`);
+        }
+        if (pending.graduation && typeof pending.graduation === 'object') {
+          cortex.graduation = { ...pending.graduation };
+          console.log(`[Brain] graduation record restored — finished '${cortex.graduation.grade}' at age ${cortex.graduation.ageYears}, ${cortex.graduation.cells?.merit ?? '?'} cell(s) passed on merit, ${cortex.graduation.cells?.forceAdvanced ?? '?'} force-advanced, ${cortex.graduation.cells?.held ?? '?'} still owed.`);
+        }
         // Phase-level resume markers — so Savestart.bat can skip phases
         // whose _phaseDone already fired in a prior run. Weights live on
         // disk via brain-weights.bin, markers live here.
@@ -9082,6 +9116,58 @@ setInterval(() => {
     try { brain._maybeRebalancePrimary(); } catch (e) { console.warn('[Brain] DF.7 — fast primary rebalance failed:', e?.message || e); }
   }
 }, PRIMARY_REBALANCE_MS);
+
+// ⛔⛔⛔ THE DEFERRED LANES OUTLIVE THE WALK, SO THEY NEED A DRIVER
+// THAT OUTLIVES IT TOO.
+//
+// Five queues — chat-time deep Hebbian, the chat-teach jobs (which carry both
+// the curiosity follow-up AND the deferred percept grounding), the mind's-eye
+// job lane (her own drawing, her practice, and the reject→relearn chain) and the
+// episode-salience lane — all drain inside the curriculum's compute-substrate
+// gate. That gate fires on every teach call, which is a fine driver right up
+// until the walk finishes. Then the loop exits and **the queues have no caller
+// at all**: they fill, drop their oldest entries, and report nothing wrong.
+//
+// The consequence is the whole of it: a graduated Unity would stop learning from
+// conversation, stop grounding anything she looked at, stop drawing, stop
+// practising, and bank every memory at the default surprise — permanently, and
+// silently, from the exact moment she finished her doctorate.
+//
+// ⛔ THIS POLLER DEFERS TO THE WALK ABSOLUTELY. `_curriculumInProgress` is the
+// whole condition. The reason these are queues in the first place is that a
+// second teacher running concurrently with the walk's teach corrupts the pattern
+// in flight — so while the walk is running it keeps its exclusive claim, and
+// this timer does nothing. It covers the three windows the walk does not: before
+// it starts, after it ends, and after it fails.
+//
+// The drain itself is a no-wait poller (`drainOnly`): with no donor it returns
+// immediately rather than consuming a job it cannot teach, and the empty-queue
+// check inside costs four array reads on an idle brain.
+const DEFERRED_DRAIN_MS = Number(process.env.DREAM_DEFERRED_DRAIN_MS) > 0
+  ? Number(process.env.DREAM_DEFERRED_DRAIN_MS) : 1000;
+setInterval(() => {
+  if (brain._curriculumInProgress) return;          // the walk owns the substrate
+  if (globalThis._brainShutdownRequested) return;
+  const cur = brain.curriculum;
+  if (!cur || typeof cur.drainDeferredLanes !== 'function') return;
+  cur.drainDeferredLanes().then((r) => {
+    if (!r || !r.drained) return;
+    // One line a minute at most, and only when work actually moved — this lane
+    // is supposed to be invisible, but "invisible" and "not running" have looked
+    // identical here once already.
+    const now = Date.now();
+    if (!brain._deferredDrainLogAt || (now - brain._deferredDrainLogAt) > 60_000) {
+      brain._deferredDrainLogAt = now;
+      const st = cur._deferredDrainStats || {};
+      console.log(`[Brain] deferred lanes drained off-walk — ${r.drained} item(s) this pass, ${r.after} still queued (lifetime: ${st.items || 0} items over ${st.passes || 0} passes). Chat Hebbian, percept grounding, her drawing and episode salience all ride this lane when the curriculum is not running.`);
+    }
+  }).catch((e) => {
+    if (!brain._deferredDrainWarnAt || (Date.now() - brain._deferredDrainWarnAt) > 60_000) {
+      brain._deferredDrainWarnAt = Date.now();
+      console.warn('[Brain] deferred-lane drain failed:', e?.message || e);
+    }
+  });
+}, DEFERRED_DRAIN_MS);
 
 // ⭐ `SHADOWCOST.3` — HOURLY CHECKPOINT REFRESH FROM THE DONOR.
 //

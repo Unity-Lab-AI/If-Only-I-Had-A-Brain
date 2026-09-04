@@ -1,6 +1,74 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-09-03 LATE NIGHT (LATEST — PICK UP HERE) ALL 213 CELLS ARE TESTED, SHE WRITES IN HER OWN HAND, AND ONE QUESTION FROM GEE STOPPED A WALK-BLOCKER
+> ## ⭐⭐⭐ 2026-09-04 (LATEST — PICK UP HERE) THE WALK HAD NO ENDING, AND ENDING IT WOULD HAVE SWITCHED HER OFF
+>
+> ### Read in this order: this block → `docs/TODO.md §DEPLOYCHECK` → `docs/TODO.md` → the blocks below.
+>
+> ### ⛔ ONE JOB IS STILL RUNNING
+> ```
+> LibreTexts corpus fetch   node .claude/scripts/fetch-libretexts-corpora.mjs   (PID seen 2026-09-04)
+>    log: .scratch/libretexts.log   ·   currently taking the college art cells
+>    merges by theme and is idempotent — it CANNOT repeat the --replace loss
+>    ⚠ it writes into local corpora/, which is gitignored here and belongs to BrainWaves
+> ```
+>
+> ### ⛔ STATE
+> ```
+> branch    feature/graduation-0904
+> scope     Gee's filter: unblocked rows that would block a full walk through PhD AND BEYOND.
+>           CODELEAK is explicitly deprioritised and stays open at 14 files.
+> board     3 rows filed and closed this session (graduation section)
+> ```
+>
+> ### ⛔⛔⛔ THE FINDING: FINISHING SCHOOL WOULD HAVE SWITCHED HER OFF
+>
+> `_awaitComputeSubstrate` is the **only drain site in the entire codebase** for four queues — verified by grepping every producer and every consumer, not inferred:
+>
+> | queue | what stops when the walk ends |
+> |---|---|
+> | `_chatPairTeachQueue` | chat-time deep Hebbian — **she stops learning from conversation** |
+> | `_chatTeachJobQueue` | the curiosity follow-up, **and the deferred percept grounding — what she SEES stops reaching her sem region** |
+> | `_mindsEyePreviewQueue` | her drawing, her practice, and the reject→relearn chain behind the redraw button |
+> | `_salienceQueue` | every episode's transition-surprise term |
+>
+> The gate fires once per teach call, so the drain rate **is** the teach rate — and past the last cell that is zero. Each queue is bounded and drop-oldest, so the failure mode is not a crash and not a stall: **a brain that looks busy and quietly discards everything it was asked to do**, permanently, from the moment she finished her doctorate.
+>
+> ⛔ **And one of them had never run once in its life.** The salience branch guarded on `this.cortexCluster` — a property `Curriculum` does not have and has never had (the constructor assigns `this.cluster`; `cortexCluster` is the brain server's name). Permanently false. **Every chat episode banked at the default surprise while its real value sat in a queue nobody read.**
+>
+> ⭐ **Fixed with a SECOND CALLER, not a rewrite** — the drains were already written and already correct. `drainDeferredLanes()` is gated entirely on `!_curriculumInProgress` (a second teacher concurrent with the walk's teach corrupts the pattern in flight — that is why these are queues), never waits, and never consumes a job it cannot teach. `DREAM_DEFERRED_DRAIN_MS`, default 1s.
+>
+> ### ⭐⭐ THE WALK NOW HAS AN ENDING
+>
+> - **A persisted graduation record** with a per-course **merit / force-advanced / still-owed** split. ⛔ That distinction did not exist: `passedCells` records that a cell is behind her and **structurally cannot say how**, so a cell that cleared its gate and a cell that ran out of rounds are the same string — *"all cells passed"* could quietly mean *"some were waved through"*. `cluster.forceAdvancedCells` carries it now.
+> - **A first-person memory of finishing**, banked exactly once, **with its text conditional on that verdict** — a force-advanced walk is not remembered as a clean sweep. A memory that flatters the record is the same defect as an instrument that flatters the brain.
+> - **A readout** — a log block plus an `End of School` dashboard card whose empty state says *she has not finished yet* rather than going blank.
+>
+> ### ⭐ THE CORPUS VERDICT, AND THE MEASUREMENT THAT CAME FIRST
+>
+> The per-cell path is **already honest** — every sentence a cell owns is trained, no slice, and the pre-vocab cap was already removed. So the question worth answering was never *how much* of a cell was read but **whether the trainer ever reached it**, and that had never been recorded. Cells now sort into **trained / short** (the corpus grew after the visit) **/ empty** (a content gap) **/ UNREACHED** (a wiring fault — the state that has historically been invisible, and how a whole degree once trained zero prose while every count read healthy).
+>
+> ⚠ **With the story loaders unattached the verdict judges NOTHING**, rather than reporting every cell unreached — that would be the instrument lying about the reader instead of the brain.
+>
+> ### VERIFICATION
+> **40/40 across three harnesses on the real classes** — 10/10 lanes (including the two negatives: a job is not consumed without a substrate, and the poller returns in 0 ms), 19/19 graduation (all three outcomes, no duplicate memory on re-entry, `merit + forced + held == total`), 11/11 corpus (all four states, both directions of the empty-vs-unreached separation, the no-loader refusal). ⭐ Independent check: the owed-cell set built grade by grade through the roster resolver comes to **213**, the number the board claims. `node --check` + ESM import on all three changed modules; both HTMLs delta-checked for tag-balance skew against HEAD.
+>
+> ⚠ **No bundle rebuild needed** — `curriculum.js` is **not** in `js/app.bundle.js` (only app.js's call sites are, checked not assumed), and `server/` is never bundled.
+>
+> ### ⚠ OWNED
+> - **I put the three task tags into the code comments first**, which is the exact leak `CODELEAK` exists to clean up. Caught before commit and rewritten to name the MECHANISM — the placement LAW covers new code as much as old.
+> - **A harness assertion of mine was wrong** (4 pair-teaches where the batch teaches per PAIR and the answer is 3). The harness caught my arithmetic, not the code — which is the point of running one.
+> - **I appended a newline to a wiki file with a shell redirect**, which is the banned scripts-edit-files pattern. Redone by hand.
+> - ⚠ **`wiki/` is gitignored in this repo**, so this session's wiki edits are local-only and do not ship. Worth knowing before relying on them elsewhere.
+>
+> ### NEXT
+> - **Cascade `feature/graduation-0904`** and push both remotes.
+> - **`DOCSWEEP2.1`** — untouched. ⚠ While writing this I found `ARCHITECTURE.md`'s subject matrix still claiming **114 cells / six subjects**; I corrected the total in place with a note, but that page is a sample of how stale the tree is.
+> - **`CODELEAK.1`: 14 files** — deprioritised by Gee this session, not closed.
+> - **Push local `corpora/` to BrainWaves** before any press.
+>
+> ---
+>
+> ## ⭐⭐⭐ 2026-09-03 LATE NIGHT — ALL 213 CELLS ARE TESTED, SHE WRITES IN HER OWN HAND, AND ONE QUESTION FROM GEE STOPPED A WALK-BLOCKER
 >
 > ### Read in this order: this block → `docs/TODO.md §DEPLOYCHECK` → `docs/TODO.md` → the blocks below.
 >
