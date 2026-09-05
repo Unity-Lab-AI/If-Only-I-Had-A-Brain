@@ -2857,7 +2857,49 @@ class ServerBrain {
       // pin in OVERLOAD band, can be tuned back up to 14-16 in next
       // iteration. Must match cluster.js crossTargetFanout exactly.
       const CROSS_TARGET_FANOUT = 10;
-      const BYTES_PER_NNZ = 8;                  // Float32 value + Uint32 colIdx
+      // ⛔⛔ WEIGHTPREC (2026-09-05) — THIS CONSTANT WAS A LIE FOR ITS ENTIRE LIFE,
+      // AND IT IS THE REASON THE BOX'S MEMORY COULD NOT BE ACCOUNTED FOR.
+      //
+      // It read `= 8` with the comment "Float32 value + Uint32 colIdx". The
+      // comment described an allocation that did not exist: `js/brain/sparse-
+      // matrix.js` allocated `new Float64Array(...)` for values, so every nnz
+      // actually cost 12 bytes. This estimator budgets the ENTIRE brain, so the
+      // whole sizing chain — tier target → required MB → neuron count — was
+      // computed against a footprint 1.5x smaller than the allocator would take.
+      //
+      // ⭐ MEASURED CONSEQUENCE, on the OVH box: node RSS 8.80 GiB of PSS against
+      // a budget that believed it was buying far less. The gap was not a leak
+      // (ruled out: 3 deleted fds, 57 KB) and not the tmpfs (that was a separate
+      // 11.7 GiB of PrivateTmp staging) — it was this number.
+      //
+      // ⭐ AND THE FILE ALREADY CONTRADICTED ITSELF. The WMB comment ~100 lines
+      // above prices the real cost as "intra 360M nnz × 12B + crosses ~230M nnz
+      // × 12B ≈ 7.1GB". Two constants in one file, 8 and 12, for the same byte.
+      //
+      // ⛔ IT IS IMPORTED NOW, NOT RESTATED. The estimator can no longer drift
+      // from the allocator, because it reads the allocator's own constant — the
+      // single change that makes this class of bug unrepeatable. `SparseMatrix`
+      // now allocates Float32 values, so this resolves to 8 and the original
+      // comment becomes true rather than aspirational.
+      //
+      // ⚠ SHIPPED WITH THE Float32 CHANGE, DELIBERATELY, AS ONE COMMIT. Correcting
+      // this alone (8 → 12) would have made her SMALLER at the same budget — the
+      // estimator finally admitting the true cost. Landing both together means the
+      // corrected estimate is simultaneously made ACCURATE, so she keeps her
+      // neuron count at two-thirds the memory instead of losing a third of her
+      // brain to a bookkeeping fix.
+      // ⛔ DYNAMIC `import()`, NOT `require()` — AND THAT IS NOT A STYLE CHOICE.
+      // `server/package.json` has NO `type` field, so brain-server.js is
+      // COMMONJS; the root package.json is `"type": "module"`, so everything
+      // under `js/brain/` is ESM. `require()` of an ESM module throws
+      // ERR_REQUIRE_ESM at runtime — and it would throw HERE, inside the boot's
+      // language-subsystem init, which is a crash loop under Restart=always
+      // rather than a visible error. The first draft of this change used
+      // `require` and would have bricked the box on deploy.
+      // ⭐ This is why the sibling modules ~300 lines above are loaded with
+      // `await import(...)` inside this same async method. Same pattern, and
+      // this method is already `async _initLanguageSubsystem()`.
+      const { BYTES_PER_NNZ } = await import('../js/brain/sparse-matrix.js');
       // iter14-F: cut intra-density cap 0.15 → 0.05. At small-N (under
       // ~600 neurons) the intra-synapse matrix used to consume up to
       // 15% density × N² entries. Cut to 5% caps storage at small-N

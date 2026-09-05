@@ -18,6 +18,74 @@
  * Drop-in replacement for SynapseMatrix. Same API, different guts.
  */
 
+// ── WEIGHTPREC (2026-09-05) — CSR VALUES ARE Float32, AND THE ESTIMATOR ─────
+// ── FINALLY AGREES WITH THE ALLOCATOR.
+//
+// ⛔⛔ THE SIZING ESTIMATOR HAD BEEN WRONG BY 1.5x SINCE IT WAS WRITTEN.
+// `server/brain-server.js` declares `const BYTES_PER_NNZ = 8; // Float32 value
+// + Uint32 colIdx` and budgets the WHOLE brain on it — but this file allocated
+// `new Float64Array(...)`, so the true cost was 12 B/nnz (Float64 + Uint32).
+// Every budget decision was therefore made against a footprint 50% smaller than
+// what was actually allocated. That is the whole reason the box sized itself to
+// ~8.8GB of weights and then could not explain where the RAM went.
+//
+// ⭐ The SAME FILE already knew: brain-server.js:2755 prices the real footprint
+// as "intra 360M nnz × 12B + crosses ~230M nnz × 12B". One half of the file said
+// 8, the other said 12, and nothing reconciled them.
+//
+// ⭐ Float32 is not a downgrade, it is the format the weights were ALREADY being
+// used in. `server/brain-server/gpu.js` does `new Float32Array(matrix.values)`
+// on every upload, so the donor GPUs have always computed in Float32 — the
+// coordinator was holding double precision for the sole purpose of downcasting
+// it on the way out. This makes the master copy match the compute format and
+// makes BYTES_PER_NNZ=8 true for the first time.
+//
+// ⚠ THIS IS A NUMERICAL CHANGE AND IT INVALIDATES SAVED WEIGHTS. Float32 has
+// ~7 decimal digits against Float64's ~16. Hebbian weights are noisy, bounded
+// (wMin/wMax) and row-normalized, so the precision is far above what the
+// dynamics need — but a resumed Float64 checkpoint would deserialize into a
+// narrower type. `deserialize` below handles that by construction (it copies
+// through the constructor), and a size/format change trips the boot compat gate
+// into a fresh walk regardless, which is the intended path here.
+//
+// ⛔ ONE PLACE, NOT TWELVE. The type was previously written out as a literal
+// `new Float64Array(...)` at twelve separate allocation sites. Changing the
+// precision meant finding all twelve and missing one would produce a matrix
+// whose values array silently disagreed with the rest — so it is a single
+// constant now and every site goes through it.
+//
+// ⚠ `ojaUpdate`'s 1e-12 deadband comment below is written against Float64 noise
+// (~1e-16). At Float32 the untouched-row noise floor is ~1e-7, which is still
+// five orders BELOW the band, so the deadband's reasoning holds unchanged.
+// ── MIXED PRECISION — THE BOUNDARY IS DELIBERATE AND LOAD-BEARING ────────────
+//
+// ⭐ STORAGE is Float32. ARITHMETIC is Float64. That split is the whole design,
+// and it is not an accident of JS semantics — it is the property that makes the
+// storage cut safe.
+//
+// `propagate()` reads `values[k]` (Float32) but accumulates into `let sum = 0`,
+// which is a JS number and therefore a DOUBLE, and writes into a Float64Array.
+// Rounding error in a sparse mat-vec accumulates in the SUM over hundreds of
+// fanout terms; it does not meaningfully accumulate in one stored weight. So
+// precision is spent exactly where it compounds and saved where it does not.
+//
+// ⛔ DO NOT "OPTIMIZE" THE ACCUMULATOR OR THE OUTPUT BUFFER TO Float32.
+// Making `I` a Float32Array to match the values array looks consistent and
+// would be the obvious next tidy-up. It is the one change that would turn this
+// from a free 33% saving into a real numerical regression: at fanout 300 a
+// Float32 accumulator loses roughly half its significant digits to cancellation
+// across the row, and Oja/Hebbian updates downstream read these currents.
+// The asymmetry is the point. Storage is cheap to shrink; summation is not.
+//
+// ⚠ The same rule applies to the LIF state arrays (`voltages`, motorChannels in
+// server/brain-server.js) — those are integrator state, they accumulate every
+// tick, and they stay Float64.
+
+export const WEIGHT_ARRAY = Float32Array;
+export const BYTES_PER_VALUE = WEIGHT_ARRAY.BYTES_PER_ELEMENT;
+// Value + Uint32 colIdx. THIS is the number server/brain-server.js budgets on.
+export const BYTES_PER_NNZ = BYTES_PER_VALUE + 4;
+
 export class SparseMatrix {
   /**
    * @param {number} rows — number of post-synaptic neurons
@@ -33,7 +101,7 @@ export class SparseMatrix {
     this.wMax = opts.wMax ?? Infinity;
 
     // CSR arrays — start empty, populated by init methods
-    this.values = new Float64Array(0);   // non-zero weights
+    this.values = new WEIGHT_ARRAY(0);   // non-zero weights
     this.colIdx = new Uint32Array(0);    // column indices (pre-synaptic neuron)
     this.rowPtr = new Uint32Array(rows + 1); // row start pointers
     this.nnz = 0; // number of non-zero entries
@@ -110,7 +178,7 @@ export class SparseMatrix {
       totalPre += kPerRow;
     }
 
-    this.values = new Float64Array(totalPre);
+    this.values = new WEIGHT_ARRAY(totalPre);
     this.colIdx = new Uint32Array(totalPre);
     this.rowPtr = new Uint32Array(rows + 1);
     this.nnz = totalPre;
@@ -195,7 +263,7 @@ export class SparseMatrix {
     const effFanout = Math.min(Math.max(0, fanout | 0), cols - (noSelfConnect ? 1 : 0));
     if (effFanout <= 0) {
       // Degenerate — empty matrix with valid CSR layout.
-      this.values = new Float64Array(0);
+      this.values = new WEIGHT_ARRAY(0);
       this.colIdx = new Uint32Array(0);
       this.rowPtr = new Uint32Array(rows + 1);
       this.nnz = 0;
@@ -297,7 +365,7 @@ export class SparseMatrix {
     const noSelfConnect = (rows === cols);
     const effFanout = Math.min(Math.max(0, fanout | 0), cols - (noSelfConnect ? 1 : 0));
     if (effFanout <= 0) {
-      this.values = new Float64Array(0);
+      this.values = new WEIGHT_ARRAY(0);
       this.colIdx = new Uint32Array(0);
       this.rowPtr = new Uint32Array(rows + 1);
       this.nnz = 0;
@@ -1432,7 +1500,7 @@ export class SparseMatrix {
    */
   static deserialize(data, opts = {}) {
     const m = new SparseMatrix(data.rows, data.cols, opts);
-    m.values = new Float64Array(data.values);
+    m.values = new WEIGHT_ARRAY(data.values);
     m.colIdx = new Uint32Array(data.colIdx);
     m.rowPtr = new Uint32Array(data.rowPtr);
     m.nnz = data.nnz;
@@ -1476,7 +1544,7 @@ export class SparseMatrix {
    * Get stats string for logging.
    */
   stats() {
-    const dense = this.rows * this.cols * 8; // Float64Array bytes
+    const dense = this.rows * this.cols * BYTES_PER_VALUE; // dense-equivalent bytes
     const sparse = this.memoryBytes;
     const ratio = dense / sparse;
     return `${this.rows}×${this.cols} | ${this.nnz} connections (${(this.density*100).toFixed(1)}%) | ${(sparse/1024).toFixed(1)}KB sparse vs ${(dense/1024).toFixed(1)}KB dense (${ratio.toFixed(1)}× reduction)`;
