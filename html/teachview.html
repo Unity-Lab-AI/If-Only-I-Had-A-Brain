@@ -2537,6 +2537,45 @@ const PRESS_ACTIONS = [
   },
 ];
 
+/* ⭐⭐ THE CONTROL-PLANE LANE — the press that works when the brain does not.
+
+   ⛔⛔ EVERY BUTTON ABOVE USED TO POST ONLY TO THE BRAIN'S OWN ROUTE, WHICH IS
+   EXACTLY WHAT IS UNAVAILABLE WHEN A RESTART IS WANTED. A blocked event loop
+   never accepts the request, so the press cannot land — and a blocked loop is
+   the most common reason to reach for one of these buttons at all. Measured
+   2026-09-05: an `update (keep training)` press left uptime at 62,893 s and
+   climbing, a console ring with no boot banner, and not one `[self-update]`
+   line. Nothing happened, and the panel could only say "waiting for a boot".
+
+   `unity-brain-ctl` is a separate always-up service on the same origin behind
+   nginx. It answered instantly all through the outage that produced that press.
+
+   ⚠ THE MAPPING IS NOT ONE-TO-ONE AND THAT IS THE POINT. `update?keep=1` on the
+   brain is `update-savestart` on ctl, and ctl's fresh-walk verb REFUSES without
+   an explicit `confirm=WIPE` token — an interlock added after a bare probe of
+   that endpoint destroyed a running walk's weights. */
+const CTL_ROUTE = {
+  'restart': 'restart',
+  'update?keep=1': 'update-savestart',
+  'savererun': 'savererun',
+  'update': 'update?confirm=WIPE',
+};
+
+/* ⛔ A PRESS THAT CANNOT TIME OUT CANNOT FALL BACK. The original fetch had no
+   bound, so a pinned brain held it until nginx gave up ~60 s later and the page
+   reported a dropped connection. Short enough to reach the working lane while
+   the operator is still watching; long enough that a healthy brain — which
+   answers this route in milliseconds because it spawns detached — is never
+   cut off mid-accept. */
+const PRESS_FETCH_MS = 20000;
+
+async function pressFetch(url) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), PRESS_FETCH_MS);
+  try { return await fetch(url, { method: 'POST', cache: 'no-store', signal: ctl.signal }); }
+  finally { clearTimeout(t); }
+}
+
 function setPressEnabled(on) {
   for (const a of PRESS_ACTIONS) { const b = $(a.id); if (b) b.disabled = !on; }
 }
@@ -2594,6 +2633,86 @@ async function pressSafeties() {
   return out;
 }
 
+/* ⭐⭐ ROUTE THE PRESS THROUGH THE ALWAYS-UP CONTROL PLANE.
+
+   Called only when the brain's own route did not answer. Returns 'done' when it
+   has handled the press (landed or refused, message written), or 'continue' to
+   let the caller report the original network failure.
+
+   ⛔⛔ THE DEPLOY VERBS ASK FIRST, AND THAT IS NOT TIMIDITY. A timeout means
+   NGINX stopped waiting — it does NOT mean the brain never received the request.
+   If it processes that request later while a ctl-spawned deploy is already
+   running, the box gets TWO `self-update.sh` processes doing `rsync -a --delete`
+   into the same directory, which is the one failure mode that corrupts an
+   install rather than merely failing.
+
+   ⭐ `restart` is exempt because it cannot double-fire into that shape: it takes
+   no overlay and no data sync, and a second restart of a process that is already
+   restarting is a no-op. The cost asymmetry is the whole reason the two classes
+   are treated differently — an extra click on the destructive verbs, none on the
+   safe one. */
+async function pressViaCtl(a, msg, netErr) {
+  const route = CTL_ROUTE[a.path];
+  if (!route) return 'continue';
+  const why = (netErr && netErr.name === 'AbortError')
+    ? `the brain did not answer within ${Math.round(PRESS_FETCH_MS / 1000)}s`
+    : `the request to the brain failed (${(netErr && netErr.message) || netErr})`;
+
+  if (a.path !== 'restart') {
+    if (!window.confirm(
+      `${why}.\n\n`
+      + 'That is what a BLOCKED EVENT LOOP looks like from here — and it is exactly what the '
+      + 'always-up control plane is for. It can run this press without the brain.\n\n'
+      + '⚠ BEFORE YOU DO: a timeout means nginx stopped waiting, NOT that the brain never got '
+      + 'the request. If it wakes up and runs this press too, the box ends up with TWO deploys '
+      + 'writing into the same directory at once, which can corrupt the install.\n\n'
+      + 'Only continue if the brain has been unresponsive for a while — not if it just went quiet.\n\n'
+      + `OK = run "${a.verb}" through the control plane.  Cancel = do nothing.`)) {
+      PRESS_WATCH = null; setPressEnabled(true); restorePressLabels();
+      msg.style.color = 'var(--tv-warn)';
+      msg.textContent = `${why} — and the control-plane lane was declined. NOTHING was pressed.`;
+      return 'done';
+    }
+  }
+
+  msg.style.color = 'var(--tv-dim)';
+  msg.textContent = `${why} — routing "${a.verb}" through the always-up control plane…`;
+  try {
+    const r = await pressFetch('/ctl/' + route);
+    /* 401 here is the admin lane, not the brain. Say so — an auth failure read
+       as a brain failure is a bug this page has already been bitten by twice. */
+    if (r.status === 401 || r.status === 403) {
+      PRESS_WATCH = null; setPressEnabled(true); restorePressLabels();
+      msg.style.color = 'var(--tv-warn)';
+      msg.textContent = `the control plane answered ${r.status} — this page is not authenticated on the admin lane. `
+        + 'NOTHING was pressed, and this says nothing about the brain\'s health.';
+      return 'done';
+    }
+    const j = await r.json().catch(() => ({}));
+    /* ⛔ ctl states a REFUSAL in the body with a 200. Its fresh-walk verb refuses
+       without confirm=WIPE, and every verb refuses while another power action is
+       already in flight. Both are answers, not noise. */
+    if (j && (j.refused === true || j.busy === true)) {
+      PRESS_WATCH = null; setPressEnabled(true); restorePressLabels();
+      msg.style.color = 'var(--tv-bad)';
+      msg.textContent = `⛔ the control plane REFUSED — ${j.message || (j.busy ? 'another power action is already running' : 'no reason given')}`;
+      return 'done';
+    }
+    msg.style.color = 'var(--tv-dim)';
+    msg.innerHTML = `${knobEsc(a.verb)} accepted <b>via the control plane</b> (/ctl/${knobEsc(route)}) — `
+      + `${knobEsc(j.message || j.status || 'no status returned')}`
+      + '<br>⚠ This lane does NOT stream the deploy into the console ring, so expect silence there.'
+      + '<br>Waiting for a NEW boot. Until uptime reads lower than it did at the press, this is not confirmed.';
+    return 'done';
+  } catch (e) {
+    PRESS_WATCH = null; setPressEnabled(true); restorePressLabels();
+    msg.style.color = 'var(--tv-bad)';
+    msg.textContent = `${why}, and the control plane did not answer either (${(e && e.message) || e}). `
+      + 'NOTHING was pressed. Both lanes are unreachable — that is a box-level problem, not a brain one.';
+    return 'done';
+  }
+}
+
 async function firePress(a) {
   const msg = $('tvPressMsg'); if (!msg) return;
   const btn = $(a.id);
@@ -2644,7 +2763,16 @@ async function firePress(a) {
   PRESS_WATCH = { verb: a.verb, firedAt: Date.now(), waitMs: a.waitMs, uptimeAtPress: PRESS_UPTIME };
 
   try {
-    const r = await fetch((WEIGHT_BASE || '') + '/' + a.path, { method: 'POST', cache: 'no-store' });
+    let r;
+    try {
+      r = await pressFetch((WEIGHT_BASE || '') + '/' + a.path);
+    } catch (netErr) {
+      /* ⛔ THE BRAIN DID NOT ANSWER. This is the case the control plane exists
+         for, and until now the panel just waited for a boot nobody had armed. */
+      const landed = await pressViaCtl(a, msg, netErr);
+      if (landed !== 'continue') return;
+      throw netErr;   // operator declined the ctl lane — report honestly below
+    }
     /* ⛔ AN AUTH FAILURE IS NOT A BRAIN FAILURE — the same rule the rest of this
        page and the dashboard already learned. Nothing was pressed. */
     if (isForbidden(r)) {
@@ -2656,6 +2784,27 @@ async function firePress(a) {
       return;
     }
     markAdminLane(true);
+    /* ⛔⛔ A 504 IS A RESPONSE, NOT AN EXCEPTION, AND THIS IS THE BUG THE
+       OPERATOR ACTUALLY HIT. When the brain's loop is blocked, nginx gives up
+       and returns `504 Gateway Time-out` with an HTML body — so the fetch
+       RESOLVES. `r.json()` then fails, the catch turns it into `{}`, the refusal
+       test finds no `status` field, and the panel printed:
+
+           "update (keep training) accepted — no status returned"
+
+       for a press that was never delivered. ⭐ A press that reports ACCEPTED
+       while nothing happened is worse than one that reports failure: it sends
+       the reader off to wait for a boot that was never armed. `r.ok` was never
+       consulted; now a non-OK status routes to the lane that can actually
+       serve it. */
+    if (!r.ok) {
+      const landed = await pressViaCtl(a, msg, new Error(`the brain answered HTTP ${r.status}`));
+      if (landed !== 'continue') return;
+      PRESS_WATCH = null; setPressEnabled(true); restorePressLabels();
+      msg.style.color = 'var(--tv-bad)';
+      msg.textContent = `⛔ the brain answered HTTP ${r.status} — NOTHING was pressed.`;
+      return;
+    }
     const j = await r.json().catch(() => ({}));
     /* The server answers 200 with a FAILED status when the self-update script is
        missing — a local dev brain has no deploy path at all. That is a refusal
