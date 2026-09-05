@@ -5,6 +5,90 @@
 
 ---
 
+## 2026-09-05 — `WEIGHTPREC-COMPLETION` + `DOCLEAK` — THE Float32 CUT REACHED 5 OF 12 SITES, AND THE CHECKPOINT WRITER THREW ON THE ONES IT REACHED
+
+Gee (verbatim): *"pull main to local Sponge fixed a bunch of stuff and might have asome specific work he wants done and tested before he can ever push the brain to the box again"*
+
+Gee (verbatim, mid-batch): *"AND sum 1 studk a bunch of horse shit into my reademe:"*
+
+`main` pulled clean to `12c844e1` — twelve commits from Sponge: `WEIGHTPREC`, `STAGEDISK`+`ONEPRESS`, `OWNCGROUP`, plus `docs/MEMORY-MAP.md` and `docs/RUST-MIGRATION.md`. ⭐ **The three deploy-memory fixes are sound and I found nothing wrong with them** — the tmpfs staging, the `flock`, and the own-cgroup spawn each name a real measured cause. **`WEIGHTPREC` is the one that was incomplete**, and in its shipped state the next press would have trained and never checkpointed.
+
+### ✅ `WEIGHTPREC.1` — the cut reached 5 of 12 allocation sites, and missed the matrix the incident was about
+
+The change's own comment warns: *"ONE PLACE, NOT TWELVE … missing one would produce a matrix whose values array silently disagreed with the rest."* **Seven were missed.** Converted: constructor, `initRandom`, two degenerate-empty branches, `deserialize`. Not converted: `initTopographic` (`:286`), `initSmallWorld` (`:397`), the laminated cross init (`:564`), `fromDense` (`:689`), and the three rebuild paths (`:1254`, `:1346`, `:1454`).
+
+⛔ **THE FRESH-WALK PATH GOES STRAIGHT THROUGH ONE OF THE MISSES.** `brain-server.js:3432` sets `_topoOn = true` unconditionally on a fresh walk (*"pin does not bind a wiped brain"*), and `cluster.js:623` routes `topographic && size >= 10_000` to `initTopographic`. The language cortex is pinned at 12M. **So the 360M-nnz intra matrix — the 8.80 GiB PSS that started the hunt — is allocated by the one init the fix did not touch, on the exact boot the next press performs.**
+
+| path | before | after |
+|---|---|---|
+| `initRandom` | Float32Array, 8.0 B/nnz | unchanged |
+| `initTopographic` | **Float64Array, 12.0 B/nnz** | Float32Array, 8.0 |
+| `initSmallWorld` | **Float64Array, 12.0 B/nnz** | Float32Array, 8.0 |
+| `fromDense` | **Float64Array** | Float32Array |
+| after `prune` / `pruneTopKPerRow` / `grow` | **Float64Array — widened BACK** | Float32Array |
+
+⭐ **The rebuild paths were the subtler half.** They allocate a fresh values array and assign it over `this.values`, so a correctly-Float32 matrix came back Float64 the first time it was pruned. **`pruneTopKPerRow` runs during the curriculum walk** on cross-projections (`curriculum.js:15709`, `:19388`), which made the widening progressive and silent. ⚠ `maintainConnectivity` — the `prune`+`grow` caller — has **no call sites**; those two are latent, not live. Recorded so nobody re-derives it.
+
+### ✅ `WEIGHTPREC.2` — the binary weight save THREW on any Float32 matrix
+
+`_writeView(s.values, s.nnz * 8)` (sync) and `_viewChunks(s.values, s.nnz * 8)` (async) both hand a byte length of `nnz × 8` to `Buffer.from(arr.buffer, arr.byteOffset + off, len)`. **A `Float32Array` of `nnz` elements owns only `nnz × 4` bytes.**
+
+⛔ **MEASURED, NOT INFERRED: it throws, it does not clamp** — `ERR_BUFFER_OUT_OF_BOUNDS — "length" is outside of buffer bounds`.
+
+⛔ **AND THE CONSEQUENCE IS NAMED IN THAT SAME FUNCTION'S OWN COMMENT.** `BIGSAVE` (2026-08-23) records it: *"the save ABORTED and the brain fell back to its previous checkpoint, silently losing everything learned since."* **This is BIGSAVE's failure mode returning through a different door.** ⭐ And it is reached on the FIRST save: `_collectBinarySections` pushes every `crossProjections` entry, and the crosses are built by `initRandom` — **the half the fix DID convert is exactly the half that makes the save throw.**
+
+Fixed by deriving the width from the array: `s.nnz * s.values.BYTES_PER_ELEMENT`, at all three sites including the `totalBytes` disk-headroom estimate. **A constant can go stale; an array cannot.**
+
+### ✅ `WEIGHTPREC.3` — the loader was hardcoded Float64 and its version gate could not see the dtype
+
+`const values = new Float64Array(nnz)` against a format comment reading `values nnz*float64`, and a `formatVersion` compared to a **hardcoded `1`** — a completely separate number from `WEIGHTS_FORMAT_VERSION` (`6`), so bumping the weights format version **does not gate the binary reader at all.**
+
+Now: `BIN_FORMAT_VERSION = 2` written by both save paths, `_BIN_VALUES_ARRAY_FOR(v)` mapping v1→Float64Array, v2→Float32Array, unknown→refuse. ⭐ **v1 files are READ, not refused** — a v1 file is a valid Float64 checkpoint holding real training, and discarding a walk to avoid one array copy is the wrong trade.
+
+⛔ **AND THE APPLY PATH HAD TO BE FIXED TOO, WHICH THE COMMIT'S REASONING MISSED.** It argues `deserialize` handles a narrowing *"by construction (it copies through the constructor)"* — true of `deserialize`, and **the binary path does not use it.** `_applyPendingCortexWeights` does a direct `m.values = s.values`, so a v1 array would have been assigned as-is, leaving ONE matrix double-width beside every other. It now coerces to `m.values.constructor` — read off the matrix the constructor just built, so it is whatever the allocator uses today, with no constant to keep in sync.
+
+### ✅ `WEIGHTPREC.4` — CORRECTION TO THE COMMIT MESSAGE: THE BOOT COMPAT GATE DOES NOT TRIP
+
+The commit states *"a size/format change trips the boot compat gate into a fresh walk regardless, which is the intended path here."* **Neither input to that gate moved.** `WEIGHTS_FORMAT_VERSION` is still `6` (unchanged at `:1234`) and the estimator's value went from a hardcoded `8` to an **imported `8`** — the same number — so the tier maths and neuron count are byte-identical. The gate compares `formatVersion` and neuron count; it sees nothing.
+
+⭐ **Not a nitpick about wording.** It is the difference between *"the next press wipes and rebuilds cleanly"* and *"the next press RESUMES onto a half-converted weight set"*. With the on-disk format version now in place, **a resume is genuinely safe — which is better than the wipe that was assumed.**
+
+### ✅ `WEIGHTPREC.5` — verified by round-trip against the SHIPPED bodies, 22/22
+
+The harness extracted `_collectBinarySections`, `_writeBinarySection`, `_saveBinaryWeightsSync`, `_loadBinaryWeights` and `_applyPendingCortexWeights` from `server/brain-server.js` **by brace-matched line range and executed them** — never retyped, because a detector written from an assumed format measures the assumption.
+
+Covered: uniform value width across sections · `totalBytes` against a hand-computed f32 layout · **the old `nnz*8` still throws / the new derived width does not** · save→load→apply bit-identical on all three sections · header declares v2 · a hand-built **v1** file is read as Float64, narrowed to Float32 on apply, values preserved exactly · a v9 file queues nothing. Plus: all 8 init/rebuild paths read back `Float32Array`, `node --check` on three files, ESM `import()`, and the app bundle rebuilt and confirmed carrying `WEIGHT_ARRAY` with zero residual `Float64Array` on a values array. ⚠ **The harness was deleted in this commit**, per the no-scripts rule.
+
+### ✅ `WEIGHTPREC.6` — three sites audited CLEAN, recorded so they are not re-checked
+
+`brain-server.js:12303` `expectedLen = 20 + nnz * 8` is the **sparse propagate WIRE frame** (u32 index + f32 value = 8 B per pair), unrelated to CSR storage. `gpu.js` streams the donor readback **by element index** (`startElem = byteOffset / 4`), so it is dtype-agnostic and was correct either way — only its comment was stale. `gpu.js` `_syncedBytes += _nnz * 8` is telemetry; corrected to read the width off the array, since a stale literal there over-reports every synced matrix by 33% — **a telemetry lie, not a crash, which is the kind that survives longest.**
+
+⭐ **One place gets better for free**, exactly as `MEMORY-MAP.md` claims: `gpu.js` `matrix.values instanceof Float32Array ? … : new Float32Array(…)` now takes the pass-through branch, removing a ~2.68 GiB transient from the donor-join path. **That benefit only lands on matrices the fix actually reaches — which, until this batch, excluded the intra matrix.**
+
+### ✅ `DOCLEAK.1` — 43 lines of internal audit prose were sitting on the public front door
+
+`README.md` opened with a YAML provenance block carrying **`DOCPROV.3`, `DOCPROV.4`, `NUMSCOPE`, `FRESHFLAG`, `PSITEACH` and `TEACHCREDIT`** — six task tags plus narrative about which lines had and had not been re-read. **Task numbers are banned from public docs, and README is the most public document in the repo.**
+
+⛔ **It was VISIBLE, not merely present** — both hosts render leading YAML frontmatter as a table, so the first thing a visitor saw was our doc-audit ceremony, above the title. ⭐ **The block's own text named the problem and shipped anyway:** *"⚠ This is the PUBLIC front door, so a wrong claim here is the most expensive kind."*
+
+⚠ **CHECKED BEFORE DELETING, because there are two consumers.** `scripts/doc-drift-check.mjs` and `scripts/doc-prov-stop-check.mjs` both read this frontmatter — and **both treat a page without it as `uncovered`, not failing** (*"⚠ Frontmatter is OPTIONAL. A page without it is UNCOVERED, not failing"*; the enforcement half does `if (!fm) { uncovered++; continue; }`). Nothing breaks; the provenance system keeps running on `docs/` and `deploy/`.
+
+### ✅ `DOCLEAK.2` — two more tags were buried in the body, and the obvious sweep missed both
+
+`(WMB 2026-07-14 …)` in the word-emission paragraph and `(TEACHCREDIT)` in the leaderboard paragraph. ⛔ **A regex for `NAME.number` finds neither** — they are bare all-caps tags with no version suffix, so the first sweep reported "2 hits, both in the frontmatter" and would have left them in place.
+
+⭐ **The lesson is the tag SHAPE, not the tag list.** Swept with `\b(ALLCAPS)\b` as well, and read the hits by eye — `(OPFS)` matched the same pattern and is a real technical acronym that stays. Both removed without losing a word of content: the sentences still say what changed and when, they simply no longer name the ticket. **A reader cannot look up `TEACHCREDIT`.** README now returns **zero** hits for task tags, `Gee`, `last-verified` and `verified-scope`; no `DOCPROV.*` anywhere in `html/` or `index.html`.
+
+### Docs shipped in this same commit (docs-before-push, every tree named)
+
+`docs/TODO.md` · `docs/FINALIZED.md` (this) · `docs/RESUME.md` · `README.md` · **`docs/MEMORY-MAP.md`** and **`docs/RUST-MIGRATION.md`** (Sponge's own two — both claimed the fix had landed complete) · **`docs/THEORY-PAPER.md`** (*"the CPU shadow is float64"* — now false) · **`docs/WEBSOCKET.md`** ×2 (*"widened f32→f64 straight into matrix.values"*, and the `Math.fround` rationale) · **`deploy/REDEPLOY-NOTES.md`** (`12B/nnz` → 8).
+
+⚠ **The wiki was updated but is NOT in this commit, and that is by design, not an omission.** `wiki/modules/neural-substrate.md` (the f32-storage/f64-arithmetic boundary, the exported constant, the 5-of-12 miss, the `UBWT` format version, plus corrected line numbers now that `sparse-matrix.js` is 1,588 lines), `wiki/index.md` and `wiki/log.md` were all edited — but **`.gitignore:428` excludes `wiki/`**, with its own note that ignoring it does not break staleness checking because `last-verified` hashes and every `sources:` path refer to tracked files. `wiki/modules/brain-server.md` was checked and left alone: it makes no claim about the checkpoint byte format.
+
+⚠ **Named and NOT edited, with the reason:** `wiki/modules/brain-server.md` makes no claim about the checkpoint byte format. `docs/NOW.md`, `docs/KNOWN_ISSUES.md`, `docs/ARCHITECTURE.md`, `docs/SKILL_TREE.md`, `docs/EQUATIONS.md`, `docs/SENSORY.md`, `docs/HTML-ENTRY-POINTS.md` — every `Float64` hit in them is LIF state, propagate output buffers, or region spike arrays, **all of which stay Float64 by the mixed-precision rule.** `html/*.html` carry no weight-dtype claim.
+
+---
+
 ## 2026-09-04 — `KEYGRANT` — THE PERMISSION THAT UNBLOCKED THE PRESS, AND TWO INSTRUMENTS THAT COULD NOT SEE
 
 Gee (verbatim): *"ill jsut giove you the fucking key and swap it out later and you set it up"* · *"token revoked and update freshwalk poressed"*

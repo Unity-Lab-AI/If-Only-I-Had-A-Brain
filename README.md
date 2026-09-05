@@ -1,47 +1,3 @@
----
-# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
-# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
-# ⚠ This is the PUBLIC front door, so a wrong claim here is the most expensive
-# kind. Its sources are the entry points a visitor actually lands on.
-# DOCPROV.4 (2026-08-27) — re-verified. `status` stays `draft` on purpose:
-# the numeric and command claims below were checked against source AND against
-# the LIVE brain, but 597 lines were not read line-by-line against all four
-# sources. `verified-scope` says exactly what was checked, so `draft` is not a
-# shrug — it is the honest ceiling on what one pass established.
-status: draft
-verified-scope: >
-  Cluster fractions and neuron shares checked against the live payload
-  (/public-state.json) and server/brain-server.js DEFAULT_BIO_WEIGHTS; cortex
-  sub-region count and cross-projection count against js/brain/cluster.js;
-  every `node scripts/*` and `npm run *` command swept for existence.
-  NOT re-read: the setup/running narrative, the curriculum roster detail.
-  Drift pass 2026-08-29 — two sources moved since the prior stamp, read as
-  diffs: html/dashboard.html (NUMSCOPE — a num() formatter scope fix in
-  updateDashboard; no claim here touches it) and server/brain-server.js
-  (+455 lines: walk heartbeat, firing controller, FRESHFLAG, PSITEACH, and
-  TEACHCREDIT — the last one changes what the leaderboard credits, so the
-  leaderboard paragraph gained the teach-lane sentence; every other claim
-  checked against the diff holds, including the boot-derived neuron-count
-  hedge and the endpoints named here).
-sources:
-  - index.html
-  - html/dashboard.html
-  - package.json
-  - js/version.js
-  - server/brain-server.js
-  - js/brain/cluster.js
-  Doc-sweep pass 2026-08-31 (the fresh-walk night). The dream-cycle
-  paragraph in "How she learns" described a consolidation pass that ran
-  correctly over an empty store: the three writers into Tier 1 were all
-  inert during a curriculum walk, so the "encode awake" half of the CLS
-  loop never happened and replay had never executed. Corrected in place with
-  the live numbers from the fresh walk rather than deleting the paragraph —
-  the mechanism description was right, the outcome claim was not.
-  ⚠ STILL NOT re-read this pass: the setup/running narrative, the curriculum
-  roster detail, and the cluster fraction table.
-last-verified: "c031cac9 2026-08-31"
----
-
 # IF ONLY I HAD A BRAIN
 
 A brain that *is* the application — not a chatbot wrapped around a language model. Hundreds of millions of artificial neurons running real neuroscience equations on the GPU, organized into eight biologically-weighted clusters, learning to read and speak the way a human child does: alphabet → phonemes → words → sentences. There is no text-AI in the cognition path. Every word she says falls out of live spike patterns.
@@ -160,7 +116,7 @@ When a curriculum cell trains sem→motor or sem→word_motor, the Hebbian write
 
 When Unity speaks, three things can happen, tried in priority order.
 
-**Path A — single-tick word emission via `word_motor`.** A dedicated `word_motor` sub-region (~6% of the cortex cluster) is ONE unified band with a single bucket per unique word (WMB 2026-07-14 — it previously split into six per-subject sub-bands that each replicated the full dictionary and overflowed, silently silencing learned words; it was unified and the dense language cortex grown ~349K→~1.5M, then ~1.5M→~12M — language-growth hop 1, 2026-08-16, staged toward biological proportion — so the band holds the full K→PhD vocab with 12× headroom). The `sem→word_motor` cross-projection learns Q→A bindings during curriculum and word→word autoassociation during `_teachWordEmissionDirect`. At chat time the helper injects the intent seed into the `sem` region, propagates through `sem→word_motor`, and argmaxes (mean signal per bucket cell) over the persisted bucket map maintained by teach + emit + write. If the winning bucket clears the `minSignal` floor (0.001), Unity emits that word as a single-tick utterance — no letter chain, no attractor settling. This is wired as the PRIMARY chat production path. The mean argmax + persistent `cluster.wordBucketWords_<subject>` ensure teach + emit + write all agree on bucket layout (the alignment bug that made early prototypes emit "squares" for arithmetic Q-A is fixed). The physical neuron band each word occupies is **frozen** — cells-per-word is fixed once per subject (`cluster.wordBucketCellSizeFor`) rather than re-divided from the live word count on every emit, so a word trained in an early grade keeps the exact same band as the dictionary grows through later grades. Without that freeze, each newly-learned word silently shifted every prior word's band, and the accumulated drift across a dozen grades of vocabulary turned late-grade speech into topically-nearby but sequence-scrambled output; the frozen geometry keeps every grade's trained emission weights addressable.
+**Path A — single-tick word emission via `word_motor`.** A dedicated `word_motor` sub-region (~6% of the cortex cluster) is ONE unified band with a single bucket per unique word (it previously split into six per-subject sub-bands that each replicated the full dictionary and overflowed, silently silencing learned words; it was unified and the dense language cortex grown ~349K→~1.5M, then ~1.5M→~12M — language-growth hop 1, 2026-08-16, staged toward biological proportion — so the band holds the full K→PhD vocab with 12× headroom). The `sem→word_motor` cross-projection learns Q→A bindings during curriculum and word→word autoassociation during `_teachWordEmissionDirect`. At chat time the helper injects the intent seed into the `sem` region, propagates through `sem→word_motor`, and argmaxes (mean signal per bucket cell) over the persisted bucket map maintained by teach + emit + write. If the winning bucket clears the `minSignal` floor (0.001), Unity emits that word as a single-tick utterance — no letter chain, no attractor settling. This is wired as the PRIMARY chat production path. The mean argmax + persistent `cluster.wordBucketWords_<subject>` ensure teach + emit + write all agree on bucket layout (the alignment bug that made early prototypes emit "squares" for arithmetic Q-A is fixed). The physical neuron band each word occupies is **frozen** — cells-per-word is fixed once per subject (`cluster.wordBucketCellSizeFor`) rather than re-divided from the live word count on every emit, so a word trained in an early grade keeps the exact same band as the dictionary grows through later grades. Without that freeze, each newly-learned word silently shifted every prior word's band, and the accumulated drift across a dozen grades of vocabulary turned late-grade speech into topically-nearby but sequence-scrambled output; the frozen geometry keeps every grade's trained emission weights addressable.
 
 **Path B — the dictionary oracle.** When word_motor returns empty (novel intent, sub-band signal below threshold), the helper falls back to a per-subject persona-first dictionary cosine scan over `cluster.dictionary` against the intent seed. An append-only bucket map keeps trained `sem→word_motor` weights valid as new words land via chat. Caches `entry.normSquared` on first scan so subsequent oracle calls skip inner-loop normalization.
 
@@ -509,7 +465,7 @@ The endpoint stays loopback-only (`requireLoopback` gate at the HTTP layer) just
 
 The dashboard ships a **public read-only mode** built for crowds. Rather than every viewer opening a live WebSocket and streaming the full state (which doesn't scale to hundreds of watchers), the server caches one state snapshot per broadcast cadence and serves it at a public `GET /public-state.json` endpoint; the public page polls that single cached file. Open `html/dashboard-public.html` (or `html/dashboard.html?public=1`) — it renders the same panels as the admin dashboard but with **every admin control force-hidden** (`body.public-mode .admin-only { display:none }`) and no admin WebSocket. nginx should serve/proxy `/public-state.json` publicly; a 2–3 s `proxy_cache` makes any number of viewers cost ~one backend hit per window. The same path also carries the read-only console tail under `?console=N` (the deployed proxy forwards only known endpoints, so auxiliary public reads ride its query parameters).
 
-**Neuron leaderboard.** Connected GPU donors are ranked by cumulative compute contribution (Gneuron-seconds). Each donor keeps a persistent `donorId` in `localStorage` (maintained across reconnects + reloads) and can set a display name; the server accumulates their contribution on every `gpu_telemetry` tick into `brain._neuronLeaderboard`. And as of 2026-08-27 (TEACHCREDIT) the **teach lane counts too**: during a walk the compute lane is deliberately paused behind the probe gate, so a donor saturated with the walk's own training used to bank zero — now each full-matrix teach frame credits its measured giga-ops (matrix nnz × reps, recorded at the send chokepoint) into the primary donor's row on the same telemetry drain, with the teach share kept visible as its own field. Scatter frames credit nothing — under-crediting is the right rounding for a competed number — and idle cards still earn nothing on either lane. The leaderboard **persists with the brain weights** (saved + restored) and **resets on a fresh walk** (force-fresh clears it). It surfaces in `state.leaderboard` (top-20 + totals) on the dashboard, the public dashboard, and `compute.html`, where a donor sees their own "neurons created" plus the top contributors.
+**Neuron leaderboard.** Connected GPU donors are ranked by cumulative compute contribution (Gneuron-seconds). Each donor keeps a persistent `donorId` in `localStorage` (maintained across reconnects + reloads) and can set a display name; the server accumulates their contribution on every `gpu_telemetry` tick into `brain._neuronLeaderboard`. And as of 2026-08-27 the **teach lane counts too**: during a walk the compute lane is deliberately paused behind the probe gate, so a donor saturated with the walk's own training used to bank zero — now each full-matrix teach frame credits its measured giga-ops (matrix nnz × reps, recorded at the send chokepoint) into the primary donor's row on the same telemetry drain, with the teach share kept visible as its own field. Scatter frames credit nothing — under-crediting is the right rounding for a competed number — and idle cards still earn nothing on either lane. The leaderboard **persists with the brain weights** (saved + restored) and **resets on a fresh walk** (force-fresh clears it). It surfaces in `state.leaderboard` (top-20 + totals) on the dashboard, the public dashboard, and `compute.html`, where a donor sees their own "neurons created" plus the top contributors.
 
 **Update buttons.** Two admin-only dashboard buttons ship the latest code without a terminal. **⬆ Update & Fresh Walk** (`POST /update`) overlays the latest code and wipes weights for a clean walk — one click to ship a fix and restart training from scratch. **⬆ Update & Savestart** (`POST /update?keep=1`) overlays the latest code but RESUMES the saved weights, so you can deploy a fix without losing training. Both run `deploy/self-update.sh`: a git-archive overlay of the latest code → `systemctl restart` (fresh adds `.force-fresh` to clear weights, savestart skips it). The backend dir has no `.git` (deploys are archive overlays), so the script clones the remote fresh and rsync-overlays it, preserving runtime state + secrets. See `deploy/REDEPLOY-NOTES.md` for box setup (deploy key + `sudo` restart permission + the `UAL_*` env vars).
 

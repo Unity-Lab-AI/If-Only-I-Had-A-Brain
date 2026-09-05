@@ -89,6 +89,49 @@ Fixed by making values `Float32` (matching what donors already compute in, see
 either half alone would have been wrong: correcting only the constant shrinks
 the brain by a third, changing only the type leaves the estimator lying.
 
+### ⛔⛔ That fix reached 5 of 12 allocation sites — completed 2026-09-05
+
+The change's own comment warned that *"missing one would produce a matrix whose
+values array silently disagreed with the rest"*, and seven were missed. **The
+misses included the largest matrix in the system**, so on its own the change
+moved almost nothing:
+
+| what was missed | why it mattered |
+|---|---|
+| `initTopographic`, `initSmallWorld` | build the **intra** matrix. `brain-server.js` forces `topographic = true` on a fresh walk, and the cortex is 12M — so the 360M-nnz allocation whose unexplained 8.80 GiB started this document was allocated at 12 B/nnz while the estimator budgeted 8 |
+| the laminated cross init, `fromDense` | same class, smaller matrices |
+| `prune`, `pruneTopKPerRow`, `grow` | **rebuild** paths: they allocate a fresh values array and assign it over `this.values`, so a correctly-Float32 matrix came back Float64 the first time it was pruned. `pruneTopKPerRow` runs on cross-projections during the curriculum walk, making the widening progressive and silent |
+
+⛔ **And the binary checkpoint writer THREW on every Float32 matrix.** Both save
+paths sized the values write as `nnz * 8` and handed that to
+`Buffer.from(arr.buffer, off, len)`, which raises `ERR_BUFFER_OUT_OF_BOUNDS`
+rather than clamping when the length runs past the ArrayBuffer — and a Float32
+array of `nnz` elements owns exactly half of `nnz * 8`. Per the BIGSAVE comment
+in that same function, an aborted save **falls back to the previous checkpoint
+and silently loses everything learned since**. The half of the fix that DID land
+(cross-projections, built by `initRandom`) is precisely the half that would have
+triggered it, so the brain would have walked and never checkpointed.
+
+⭐ **All twelve sites now route through `WEIGHT_ARRAY`, and the file format
+carries its own width.** The writer derives the value width from
+`values.BYTES_PER_ELEMENT` — a constant can go stale, an array cannot — and the
+`UBWT` header gained `BIN_FORMAT_VERSION` (v1 = f64, v2 = f32), **a different
+number from `WEIGHTS_FORMAT_VERSION` and not gated by it.** v1 files are still
+read and narrowed on apply rather than refused, because a v1 checkpoint holds
+real training.
+
+⚠ **Correction to the change's own claim that *"a size/format change trips the
+boot compat gate into a fresh walk regardless"*: it does not.**
+`WEIGHTS_FORMAT_VERSION` did not move and the estimator's value went from a
+hardcoded `8` to an imported `8` — the same number — so neither input to that
+gate changed. It sees nothing. With the format version above in place a resume
+is now genuinely safe, which is better than the wipe that was assumed.
+
+⭐ **The lesson for the next width change:** a grep for the allocation is not a
+check of the result. What settled this was constructing a matrix through every
+init and rebuild path and reading back `values.constructor.name` — twelve sites
+is exactly the count at which "I changed them all" stops being verifiable by eye.
+
 ## Mixed precision boundary
 
 **On the coordinator: storage Float32, arithmetic Float64.** `propagate()` reads

@@ -1828,7 +1828,13 @@ const SERVER_GPU_MIXIN = {
                 const _m = entry.matrix;
                 const _nnz = (_m && _m.values && _m.values.length) || 0;
                 const _rows = (_m && _m.rows) || 0;
-                _syncedBytes += _nnz * 8 + (_rows + 1) * 4;
+                // Value width read off the array, not assumed. It was a literal
+                // 8 while the CPU master was Float64; the master is Float32 now
+                // and a stale literal would over-report every synced matrix by
+                // 33% — a telemetry lie, not a crash, which is the kind that
+                // survives longest.
+                const _vw = (_m && _m.values && _m.values.BYTES_PER_ELEMENT) || 4;
+                _syncedBytes += _nnz * _vw + (_rows + 1) * 4;
               } catch { /* accounting must never break a sync */ }
               if (_cc) {
                 _cc.heldMatrices.add(name);
@@ -5112,7 +5118,11 @@ const SERVER_GPU_MIXIN = {
     const n = payload.length >> 2;
     const vals = st.matrix.values;
     if (startElem + n > vals.length) { st.overrun++; return false; }
-    // Read f32 LE out of the frame and widen into the CPU's f64 store.
+    // Read f32 LE out of the frame into the CPU store. ⭐ This loop is
+    // dtype-agnostic by construction — it indexes by ELEMENT (`startElem`,
+    // `n`), never by byte offset into the values array — so it was correct
+    // when the CPU store was f64 and stays correct now that it is f32. Since
+    // WEIGHTPREC the two sides are the same width and nothing is widened.
     for (let k = 0; k < n; k++) vals[startElem + k] = payload.readFloatLE(k * 4);
     st.chunks++;
     st.bytes += payload.length;
@@ -5287,9 +5297,11 @@ const SERVER_GPU_MIXIN = {
 
   /**
    * FNV-1a-64 over the CPU master's weights in the SAME f32 representation the
-   * GPU received (matrix.values is Float64 on the CPU but gpuSparseUpload
-   * downcasts to Float32 — so hashing the f32 view is what matches the donor's
-   * digest). Chunked + setImmediate-yielded so a 14MB matrix hash never pins the
+   * GPU received. ⭐ Since WEIGHTPREC (2026-09-05) the CPU master IS Float32, so
+   * this hashes the stored array directly instead of a downcast view — the two
+   * sides are now the same numbers, not merely the same after rounding, which
+   * removes a whole class of "parity says divergent but it is only precision".
+   * Chunked + setImmediate-yielded so a 14MB matrix hash never pins the
    * event loop (TU.20.2 discipline). Returns a decimal string (u64 via BigInt).
    */
   async _cpuMasterMatrixChecksum(name, sampleCount = 0) {
