@@ -54,6 +54,29 @@
 // whose values array silently disagreed with the rest — so it is a single
 // constant now and every site goes through it.
 //
+// ⛔⛔ AND THAT WARNING CAME TRUE IN ITS OWN COMMIT — COMPLETED 2026-09-05.
+// The first cut converted FIVE sites (constructor, `initRandom`, the two
+// degenerate-empty branches, `deserialize`) and left SEVEN, so the sentence
+// above described an intent rather than the code. The misses were not
+// cosmetic: `initTopographic` and `initSmallWorld` build the LARGEST matrix in
+// the system, and `brain-server.js` turns topographic ON unconditionally on a
+// fresh walk — so the 360M-nnz intra matrix, the exact allocation whose
+// unexplained 8.80 GiB started the investigation, was the one the fix missed.
+//
+// ⚠ THE THREE REBUILD PATHS WERE THE SUBTLER HALF. `prune`, `pruneTopKPerRow`
+// and `grow` each allocate a fresh values array and assign it over
+// `this.values` — so a matrix built correctly at Float32 came back Float64 the
+// first time it was pruned. `pruneTopKPerRow` runs on cross-projections during
+// the curriculum walk, which made the widening PROGRESSIVE and silent: the
+// footprint would have drifted back toward 12 B/nnz over a walk while the
+// estimator kept budgeting 8.
+//
+// ⭐ THE LESSON, AND IT IS WHY THE CONSTANT EXISTS AT ALL: a grep for the
+// allocation is not the same as a check of the RESULT. What actually settled
+// it was constructing a matrix through each init and rebuild path and reading
+// back `values.constructor.name` — twelve sites is exactly the count at which
+// "I changed them all" stops being verifiable by eye.
+//
 // ⚠ `ojaUpdate`'s 1e-12 deadband comment below is written against Float64 noise
 // (~1e-16). At Float32 the untouched-row noise floor is ~1e-7, which is still
 // five orders BELOW the band, so the deadband's reasoning holds unchanged.
@@ -283,7 +306,7 @@ export class SparseMatrix {
       return;
     }
     const totalPre = rows * effFanout;
-    this.values = new Float64Array(totalPre);
+    this.values = new WEIGHT_ARRAY(totalPre);
     this.colIdx = new Uint32Array(totalPre);
     this.rowPtr = new Uint32Array(rows + 1);
     this.nnz = totalPre;
@@ -394,7 +417,7 @@ export class SparseMatrix {
     const longCount = Math.max(0, effFanout - localCount - medCount);
 
     const totalPre = rows * effFanout;
-    this.values = new Float64Array(totalPre);
+    this.values = new WEIGHT_ARRAY(totalPre);
     this.colIdx = new Uint32Array(totalPre);
     this.rowPtr = new Uint32Array(rows + 1);
     this.nnz = totalPre;
@@ -402,7 +425,7 @@ export class SparseMatrix {
     // Reusable per-row buffers — picks are unique-deduped via Set.
     const picks = new Set();
     const rowBufCol = new Uint32Array(effFanout);
-    const rowBufVal = new Float64Array(effFanout);
+    const rowBufVal = new WEIGHT_ARRAY(effFanout);
 
     let idx = 0;
     this.rowPtr[0] = 0;
@@ -561,14 +584,14 @@ export class SparseMatrix {
     })();
 
     const totalPre = rows * fanout;
-    this.values = new Float64Array(totalPre);
+    this.values = new WEIGHT_ARRAY(totalPre);
     this.colIdx = new Uint32Array(totalPre);
     this.rowPtr = new Uint32Array(rows + 1);
     this.nnz = totalPre;
 
     const picks = new Set();
     const rowBufCol = new Uint32Array(fanout);
-    const rowBufVal = new Float64Array(fanout);
+    const rowBufVal = new WEIGHT_ARRAY(fanout);
 
     let idx = 0;
     this.rowPtr[0] = 0;
@@ -686,7 +709,7 @@ export class SparseMatrix {
       if (Math.abs(W[i]) > threshold) nnz++;
     }
 
-    sparse.values = new Float64Array(nnz);
+    sparse.values = new WEIGHT_ARRAY(nnz);
     sparse.colIdx = new Uint32Array(nnz);
     sparse.rowPtr = new Uint32Array(rows + 1);
     sparse.nnz = nnz;
@@ -1251,7 +1274,7 @@ export class SparseMatrix {
 
     if (newNnz === oldNnz) return 0; // nothing to prune
 
-    const newValues = new Float64Array(newNnz);
+    const newValues = new WEIGHT_ARRAY(newNnz);
     const newColIdx = new Uint32Array(newNnz);
     const newRowPtr = new Uint32Array(rows + 1);
 
@@ -1343,7 +1366,7 @@ export class SparseMatrix {
     }
     if (newNnz === oldNnz) return 0; // nothing to prune
 
-    const newValues = new Float64Array(newNnz);
+    const newValues = new WEIGHT_ARRAY(newNnz);
     const newColIdx = new Uint32Array(newNnz);
     const newRowPtr = new Uint32Array(rows + 1);
 
@@ -1451,7 +1474,7 @@ export class SparseMatrix {
 
     // Rebuild CSR with new entries merged in
     const totalNnz = this.nnz + newEntries.length;
-    const newValues = new Float64Array(totalNnz);
+    const newValues = new WEIGHT_ARRAY(totalNnz);
     const newColIdx = new Uint32Array(totalNnz);
     const newRowPtr = new Uint32Array(rows + 1);
 

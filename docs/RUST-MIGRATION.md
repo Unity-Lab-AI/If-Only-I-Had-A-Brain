@@ -261,6 +261,41 @@ restate it.** In JS this is now `await import(...)`; in Rust make it
 `size_of::<Weight>()` so the two *cannot* drift. This is the single most
 important structural lesson from that bug.
 
+⛔⛔ **AND THE SECOND LESSON, WHICH COST MORE: THE JS FIX REACHED 5 OF 12
+ALLOCATION SITES.** Completed 2026-09-05 — see `MEMORY-MAP.md`. `initTopographic`
+and `initSmallWorld` (which build the **intra** matrix, the entire reason the bug
+was being chased) plus `fromDense` and the three rebuild paths — `prune`,
+`pruneTopKPerRow`, `grow` — all still allocated `Float64Array`. The rebuild paths
+were the nastier half: they widened a correct matrix **back** on first use, and
+one of them runs during the curriculum walk, so the footprint drifted silently
+over days.
+
+⭐ **Rust makes this class of bug unrepresentable, and that is a real argument
+for the port.** `pub type Weight = f32` used consistently means there is no
+second place to state the type — `Vec<Weight>` in every constructor, and a stray
+`Vec<f64>` is a compile error, not a matrix that quietly disagrees with its
+siblings. **This is the strongest concrete case in this document for the
+rewrite:** the JS fix needed twelve correct edits and a harness that reads back
+`values.constructor.name` per code path; the Rust equivalent needs one `type`
+alias.
+
+⛔ **CARRY THE ON-DISK FORMAT VERSION ACROSS — it is separate from
+`WEIGHTS_FORMAT_VERSION`.** The `UBWT` checkpoint header now holds
+`BIN_FORMAT_VERSION` (v1 = f64 values, v2 = f32). Bumping the *brain* format
+version does **not** gate the binary reader; conflating them means a file read at
+the wrong width, and that misaligns every section after the first **without
+raising a parse error**. Two more rules learned by measurement:
+
+- **Derive the write width from the array, not a constant.** `Buffer.from(buf,
+  off, len)` *throws* `ERR_BUFFER_OUT_OF_BOUNDS` when `len` overruns — it does
+  not clamp — so a stale width aborts the save entirely, and an aborted save
+  falls back to the previous checkpoint and loses everything since. In Rust the
+  same discipline is `nnz * size_of::<Weight>()`, never a literal.
+- **Read old versions, do not refuse them.** A v1 file is a valid f64 checkpoint
+  holding real training; the loader picks the array type from the version it
+  finds and the apply step converts to the live weight type. Refusing would
+  discard a walk to avoid one array copy.
+
 **Mixed precision boundary — deliberate, do not "tidy":**
 - **Storage** `f32`.
 - **Accumulation** `f64`. In JS this is implicit (`let sum = 0` is a double).
