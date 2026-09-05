@@ -30,6 +30,7 @@ members = [
   "crates/unity-weights",
   "crates/unity-donor-session",
   "crates/unity-sizing",
+  "crates/unity-http",
   "donor-app",
 ]
 
