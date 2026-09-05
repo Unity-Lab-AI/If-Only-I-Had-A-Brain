@@ -5,6 +5,54 @@
 
 ---
 
+## 2026-09-05 — `SPONGEHAND` — SECTION A OF SPONGE'S HANDOFF: A WRITE CEILING FOR THE RUNAWAY, AND A WEDGE WATCHDOG FOR THE RSYNC
+
+Gee (verbatim): *"Sponge said.txt we need to do what Sponge said!"*
+
+Pulled to his named targets — `main` = `61c85155`, `develop` = `e102fe12` — and synced both remotes. ⭐ **He independently hit the checkpoint bug LIVE on the box** (*"Binary weights save failed: length is outside of buffer bounds … she trained 2 hours and persisted NOTHING"*) and credits the fix already landed. No duplicate work, no conflict. **Section A of his task list is the immediate work; B is the Rust rewrite and is not started without an explicit go.**
+
+### ✅ `SPONGEHAND.A2` — a write ceiling for the LFS runaway
+
+Sponge (verbatim): *"**A2. Diagnose the `git lfs pull` runaway. Undiagnosed on purpose.** Wrote **212 GB** from a store `du` measures at **110 GB**, at a textbook 4.7 GB/10s, before the 8-minute timeout caught it. Candidates are recorded in `MEMORY-MAP.md` without one being picked. Add a **bytes-written** bound against store size, not just wall clock."*
+
+`UAL_LFS_MAX_WRITE_PCT` (default **150**, `0` disables). At arm time the guard sizes Forgejo's LFS store with `du -sb` and logs the ceiling; the existing watchdog loop kills the pull the moment `write_bytes` crosses it.
+
+⭐ **THE STALL WATCHDOG WAS STRUCTURALLY BLIND TO THIS.** It fires on `write_bytes` FROZEN while reads climb — the 2026-09-04 wedge. A runaway is the exact opposite: writes climbing beautifully, forever, so `_flat` sits at 0 for its entire duration and the guard never inspects the total. **Two opposite pathologies; neither guard can catch the other.**
+
+⚠ **`write_bytes` IS THE RIGHT SIGNAL FOR A CEILING AND THE WRONG ONE FOR A STALL — this is the whole subtlety.** Page cache makes the counter lag reality. For a **ceiling** that lag is harmless and self-correcting: it can only make the guard fire LATE, never early, so a healthy pull is never killed by it. For a **stall detector** the same lag is fatal, because *"not accounted yet"* and *"not happening"* become one reading. **A conservative-late bound is safe; a conservative-late detector is a lie.**
+
+⛔ **CAUGHT IN MY OWN FIRST CUT:** I gated the watchdog subshell on `_stall_sec != 0`, which would have let `UAL_LFS_STALL_SEC=0` — the documented way to disable the *stall* detector — **silently disarm the ceiling as well.** One knob quietly disabling a different knob's guard is precisely the class of bug the ceiling exists to catch. The gate now arms if **either** guard is live, and the stall branch re-checks its own knob.
+
+⚠ **ROOT CAUSE STILL NOT DIAGNOSED, AND NOT GUESSED AT.** Both of his candidates stay open. ⭐ What this adds is *evidence*: the kill line prints bytes written against store size, so the next occurrence arrives carrying its own numbers instead of needing to be caught by hand. ⚠ **If the store cannot be sized there is no bound and the log says so** rather than inventing a number — `/var/lib/forgejo` is mode 750 `git:git`, so on a box where the service user is not in the `git` group that is a PERMISSIONS result, not an absence.
+
+### ✅ `SPONGEHAND.A3` — a wedge watchdog for the fields rsync, on destination growth
+
+Sponge (verbatim): *"**A3. Give the fields rsync a wedge watchdog.** The LFS pull got one after 2026-09-04; the rsync never did and failed the same way. ⚠ **Do not use `write_bytes == 0` as the signal** — a healthy rsync shows exactly that while its destination grows, because writes sit in page cache. I killed a working transfer on that reading. Use **destination growth**."*
+
+`_fields_rsync()` backgrounds the transfer and samples `du -sb "$FIELDS_DIR"`; zero growth for `UAL_FIELDS_STALL_SEC` (default **300s**, sampled every `UAL_FIELDS_SAMPLE_SEC`, default **30s**) while the process is still alive is a wedge.
+
+⭐ **DESTINATION GROWTH IS THE OUTCOME, NOT A PROXY FOR IT.** If the destination is bigger than it was, work happened, whatever any counter says. It costs one `du` per sample — more expensive than reading `/proc`, and the only measure that is actually true. ⚠ Five minutes rather than seconds because a genuinely idle network shows no growth either; at the `80M` bwlimit a live transfer moves ~24 GB in that window.
+
+⛔ **IT KILLS THE RSYNC'S OWN PID, NEVER THE PRESS AND NEVER A PROCESS GROUP.** The transfer is backgrounded and its `$!` is what the watchdog targets — **no `pgrep`**, which is exactly where the LFS guard shipped wrong twice (matching a wrapper shell once, and `git-lfs filter-process` the next time, killing the wrong process both times).
+
+**EXERCISED, NOT REASONED ABOUT — 25/25** against the shipped `_fields_rsync` body extracted by brace-matched line range and run with a fake rsync. ⭐ **The case that matters most is the false positive that killed a working transfer: a GROWING destination runs to completion untouched, rc=0, with no warning emitted.** Also verified: a frozen destination dies in 3s via SIGTERM *before* the SIGKILL escalation; a genuine rsync failure propagates its own exit status (23) instead of being misreported as a wedge; `STALL_SEC=0` disables it; no sampler outlives the function; and the harness itself — standing in for the press — survived every kill.
+
+⚠ **TWO CASES FAILED ON THE FIRST RUN, BOTH FAULTS IN MY HARNESS RATHER THAN THE GUARD**, which is the same class I have hit repeatedly: an undefined `$LOG` (the shipped body redirects there, so rsync never ran and every case "failed" for an unrelated reason), and a foreground `sleep` in the fake — bash defers a trap until the foreground child returns, so the fake swallowed SIGTERM and the escalation ended it, meaning the assertion was measuring the fake. ⭐ `UAL_FIELDS_SAMPLE_SEC` exists so this guard can be exercised at all: at the 30s default one case takes five minutes, **which is how guards end up shipping unrun** — and both of this script's earlier watchdogs did exactly that.
+
+### ⛔ `SPONGEHAND.A2b` — LEFT OPEN ON PURPOSE: his correction may undermine the LFS stall watchdog
+
+His CORRECTION 1 says `write_bytes == 0` is not a wedge signal. **The LFS stall watchdog fires on exactly that reading.** The evidence is genuinely mixed — the guard also requires `read_bytes` climbing, and the 2026-09-05 runaway's 212 GB *was* measured off that same counter, so accounting clearly works on this path. ⭐ **The discriminator for the next press: if a `WEDGED` line fires while the fields directory is still GROWING, the signal is wrong and that guard should move to destination growth too.** Until that is observed, changing a guard that has caught a real outage would be trading a known-good for a theory. Filed, not fixed.
+
+### ⏳ `SPONGEHAND.A1` / `.A4` / `.B` — not mine, nothing to do, and awaiting a scope call
+
+**A1** (*"Watch the next Update press. SELFFIRST has never run on OVH."*) needs a press, and a press is Gee's. **A4** (*"Fields are at ~44 GB of ~100 GB … Non-fatal by design, low priority."*) has nothing to build. **B0–B7**, the Rust rewrite against ~42,700 lines of coordinator JS, is a multi-week program that his own sequencing puts after section A; **not started without an explicit go.**
+
+### Docs shipped in this same commit
+
+`deploy/self-update.sh` (the code) · `deploy/REDEPLOY-NOTES.md` (both guards, in the existing LFS-hazard section, matching its format) · `docs/MEMORY-MAP.md` (the two sections he left open — the runaway and the rsync) · `docs/TODO.md` · `docs/FINALIZED.md` (this) · `docs/RESUME.md`. ⚠ **`wiki/modules/deploy-and-ci.md` updated but gitignored** by `.gitignore:428`, as before. ⚠ **`Sponge said.txt` deliberately left untracked** — it is a handoff paste carrying internal task tags, and this repo's `.claude/` remote is public.
+
+---
+
 ## 2026-09-05 — `WEIGHTPREC-COMPLETION` + `DOCLEAK` — THE Float32 CUT REACHED 5 OF 12 SITES, AND THE CHECKPOINT WRITER THREW ON THE ONES IT REACHED
 
 Gee (verbatim): *"pull main to local Sponge fixed a bunch of stuff and might have asome specific work he wants done and tested before he can ever push the brain to the box again"*

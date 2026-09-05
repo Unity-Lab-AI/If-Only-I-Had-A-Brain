@@ -878,8 +878,70 @@ else
     # server writes nothing AND reads nothing; that is a slow network, not this
     # bug, and it is left alone to be caught by the wall clock instead.
     _stall_sec="${UAL_LFS_STALL_SEC:-120}"
+    # ⛔⛔ A2 (2026-09-05) — A WRITE CEILING, BECAUSE THE RUNAWAY LOOKS EXACTLY
+    # LIKE HEALTH AND THE STALL CHECK ABOVE CANNOT SEE IT.
+    #
+    # Observed live the same day the disk staging landed: with space finally
+    # available, `git lfs pull` wrote **~4.7 GB every 10 s — textbook progress by
+    # every signal this script had** — until it had written **212 GB** out of a
+    # store `du` measures at **110 GB**, and was still going. The 8-minute wall
+    # clock did stop it, but only after it burned whatever disk 8 minutes buys;
+    # on a fast disk that is enough to fill the volume.
+    #
+    # ⭐ THE STALL WATCHDOG IS STRUCTURALLY BLIND TO THIS. It fires on
+    # `write_bytes` FROZEN while reads climb — the 2026-09-04 wedge. A runaway is
+    # the exact opposite: writes climbing beautifully, forever. **Two opposite
+    # pathologies, and neither guard can catch the other.** Both are needed.
+    #
+    # ⭐ WHY `write_bytes` IS THE RIGHT SIGNAL *HERE* AND THE WRONG ONE FOR A
+    # STALL — this is the whole subtlety, and getting it backwards cost a healthy
+    # transfer earlier today. Page cache means `write_bytes` LAGS the real work:
+    # it can read low while data is genuinely landing. For a **ceiling** that lag
+    # is harmless and self-correcting — it can only make this fire LATE, never
+    # early, so a healthy pull is never killed by it. For a **stall** the same lag
+    # is fatal, because "not accounted yet" and "not happening" are indistinct.
+    # A conservative-late guard is safe; a conservative-late detector is a lie.
+    #
+    # ⚠ THE ROOT CAUSE IS STILL NOT DIAGNOSED, AND THIS DOES NOT DIAGNOSE IT.
+    # `MEMORY-MAP.md` records two candidates without picking one (more LFS history
+    # than the store's deduplicated size, or a retry loop re-fetching objects it
+    # has already written). This bounds the PATHOLOGY, not its cause. ⭐ It also
+    # makes the cause observable for the first time: the kill line prints bytes
+    # written against store size, so the next occurrence arrives with its own
+    # evidence instead of needing to be caught by hand.
+    #
+    # ⚠ IF THE STORE CANNOT BE SIZED, THERE IS NO BOUND — and it says so rather
+    # than inventing a number. `/var/lib/forgejo` is mode 750 `git:git`; on a box
+    # where `unity` is not in the `git` group this is unreadable, which is a
+    # PERMISSIONS result and not an absence. The wall clock remains the backstop.
+    _max_ratio="${UAL_LFS_MAX_WRITE_PCT:-150}"
+    _store_bytes=0
+    if [ "$_max_ratio" != "0" ]; then
+      _lfs_store_probe="$(_search_lfs_store || true)"
+      if [ -n "$_lfs_store_probe" ]; then
+        # `du -sb` is GNU; the fallback keeps a non-GNU box on the wall clock
+        # instead of failing the press over an optional guard.
+        _store_bytes="$( { du -sb "$_lfs_store_probe" 2>/dev/null || true; } | cut -f1 )"
+        case "$_store_bytes" in (''|*[!0-9]*) _store_bytes=0 ;; esac
+      fi
+      if [ "$_store_bytes" -gt 0 ]; then
+        _write_cap=$(( _store_bytes / 100 * _max_ratio ))
+        log "lfs write ceiling ARMED — store at ${_lfs_store_probe} measures $(( _store_bytes / 1073741824 )) GiB, so the pull is killed if it writes more than $(( _write_cap / 1073741824 )) GiB (${_max_ratio}% of the store). On 2026-09-05 it wrote 212 GB from a 110 GB store while every progress signal read healthy."
+      else
+        _write_cap=0
+        log "WARN — lfs write ceiling NOT armed: could not size Forgejo's LFS store (not found, or not readable — /var/lib/forgejo is mode 750 git:git, so this is a PERMISSIONS result on a box where the service user is not in the git group). The 8-minute wall clock is the only bound on a runaway. Set UAL_LFS_STORE to the store path to arm it."
+      fi
+    else
+      _write_cap=0
+      log "lfs write ceiling DISABLED (UAL_LFS_MAX_WRITE_PCT=0) — only the wall clock bounds a runaway."
+    fi
     _watch_pid=''
-    if [ "$_stall_sec" != "0" ] && [ -r /proc/self/io ]; then
+    # ⛔ THE TWO GUARDS ARE INDEPENDENT AND THE GATE MUST NOT COUPLE THEM. A first
+    # cut gated the whole watchdog on `_stall_sec != 0`, so `UAL_LFS_STALL_SEC=0`
+    # — the documented way to turn OFF the stall detector — would silently have
+    # disarmed the write ceiling too. One knob quietly disabling a different
+    # knob's guard is exactly the class of bug the ceiling exists to catch.
+    if { [ "$_stall_sec" != "0" ] || [ "$_write_cap" -gt 0 ]; } && [ -r /proc/self/io ]; then
       (
         _last_w=-1; _last_r=-1; _flat=0
         while kill -0 $$ 2>/dev/null; do
@@ -904,13 +966,25 @@ else
           _w="$(awk '/^write_bytes:/{print $2}' "/proc/$_lp/io" 2>/dev/null)"
           _r="$(awk '/^read_bytes:/{print $2}'  "/proc/$_lp/io" 2>/dev/null)"
           [ -z "$_w" ] && continue
+          # ⭐ A2 — THE CEILING, CHECKED BEFORE THE STALL. A runaway is writing
+          # hard, so `_flat` is 0 and the stall branch below will never look at
+          # it. Order matters only for clarity here (the conditions are disjoint
+          # by construction), but reading the ceiling first keeps the two
+          # pathologies visibly separate: frozen-writes vs unbounded-writes.
+          if [ "$_write_cap" -gt 0 ] && [ "$_w" -gt "$_write_cap" ]; then
+            log "WARN — \`git lfs pull\` is a RUNAWAY, not a big download: it has written $(( _w / 1073741824 )) GiB against an LFS store of $(( _store_bytes / 1073741824 )) GiB (ceiling ${_max_ratio}%). ⭐ THIS IS THE 2026-09-05 SIGNATURE AND IT LOOKS EXACTLY LIKE HEALTH — 4.7 GB every 10s of textbook progress, all the way to 212 GB from a 110 GB store. Killing it before it fills the volume. Fields stay as POINTERS (non-fatal) and are hydrated from the local store below; THE BOOKS ARE UNAFFECTED. ⚠ Root cause still undiagnosed — candidates are in docs/MEMORY-MAP.md; this line is the evidence the next diagnosis starts from."
+            kill -TERM "$_lp" 2>/dev/null || true
+            sleep 5
+            kill -KILL "$_lp" 2>/dev/null || true
+            exit 0
+          fi
           if [ "$_w" = "$_last_w" ] && [ "$_r" != "$_last_r" ]; then
             _flat=$((_flat + 15))
           else
             _flat=0
           fi
           _last_w="$_w"; _last_r="$_r"
-          if [ "$_flat" -ge "$_stall_sec" ]; then
+          if [ "$_stall_sec" != "0" ] && [ "$_flat" -ge "$_stall_sec" ]; then
             log "WARN — \`git lfs pull\` is WEDGED, not slow: ${_flat}s with write_bytes FROZEN at ${_w} while read_bytes kept climbing (now ${_r}). That is the 2026-09-04 signature — it burned 2 TB of reads and wrote nothing while starving the brain's event loop in the same cgroup. Killing it now instead of waiting out the wall clock. Fields stay as POINTERS (non-fatal); THE BOOKS ARE UNAFFECTED."
             # ⛔ KILL ONLY THE PULL, NEVER THE PRESS. `kill -TERM "$_lp"` targets
             # the git-lfs pid; a process-GROUP kill (or killing the `timeout`
@@ -1030,6 +1104,78 @@ else
     # ⚠ Politeness, not correctness. UAL_FIELDS_BWLIMIT=0 disables the cap.
     _bwflag=''
     [ "${UAL_FIELDS_BWLIMIT:-80M}" != "0" ] && _bwflag="--bwlimit=${UAL_FIELDS_BWLIMIT:-80M}"
+    # ⛔⛔ A3 (2026-09-05) — THE FIELDS RSYNC GETS A WEDGE WATCHDOG, AND IT MUST
+    # NOT USE THE SIGNAL THE LFS ONE USES.
+    #
+    # The lfs pull got a no-progress guard after 2026-09-04. **The rsync never
+    # did, and it failed the same way** — it starved the brain through page cache
+    # while `ps rss` looked innocent, and nothing was watching it.
+    #
+    # ⛔⛔ `write_bytes == 0` IS NOT A WEDGE, AND BELIEVING IT COST A HEALTHY
+    # TRANSFER. This repo recorded the 2026-09-04 signature as "read climbing,
+    # write frozen at 0". On 2026-09-05 a **perfectly healthy** fields rsync
+    # showed exactly that reading while its destination grew 4.5G → 11G → 19G →
+    # 28G. Writes land in PAGE CACHE and are not accounted to the process until
+    # writeback, so for a file-copy the counter can sit at zero while gigabytes
+    # are genuinely landing. A working transfer was killed on that reading alone.
+    #
+    # ⭐ THE SIGNAL THAT CANNOT LIE IS DESTINATION GROWTH. It is the outcome, not
+    # a proxy for the outcome: if the destination is bigger than it was, work
+    # happened, whatever any counter says. It costs one `du` per sample — more
+    # expensive than reading /proc, and the only measure that is actually true.
+    #
+    # ⚠ WHY THIS IS SAFE TO ACT ON WHERE THE OTHER WAS NOT: a genuinely idle
+    # network shows no destination growth too. That is why the window is minutes,
+    # not seconds — at an 80 MB/s bwlimit a live transfer moves ~24 GB in five
+    # minutes, so five minutes of ZERO growth is not slowness, it is a wedge.
+    # ⚠ And an rsync that has legitimately finished its last file is not caught:
+    # the watchdog only samples while the rsync process is still alive.
+    _fields_stall_sec="${UAL_FIELDS_STALL_SEC:-300}"
+    # ⚠ The sample interval is a knob so this guard can be EXERCISED rather than
+    # reasoned about — at the 30s default a test would take five minutes per
+    # case, which is how guards end up shipping unrun. Both of this script's
+    # earlier watchdogs shipped broken and were caught by running them.
+    _fields_sample_sec="${UAL_FIELDS_SAMPLE_SEC:-30}"
+    # ⛔ KILL ONLY THE RSYNC, NEVER THE PRESS — the same lesson the lfs watchdog
+    # records against itself. A process-group kill takes this script down with it
+    # and aborts the deploy; the transfer must die, the press must continue to the
+    # books gate and the restart. So the rsync is backgrounded and its OWN pid is
+    # what the watchdog targets — no `pgrep`, which is where the lfs guard shipped
+    # wrong twice (it matched a wrapper shell once and a short-lived sibling the
+    # next time, and killed the wrong process both times).
+    _fields_rsync() {
+      local _rc=0 _wd='' _dst_start
+      # shellcheck disable=SC2086  # _rsync_nice and _bwflag are deliberately word-split
+      $_rsync_nice rsync -a --delete $_bwflag "$FTMP/bw/fields/" "$FIELDS_DIR/" >> "$LOG" 2>&1 &
+      local _rp=$!
+      if [ "$_fields_stall_sec" != "0" ] && command -v du >/dev/null 2>&1; then
+        (
+          _last_sz=-1; _flat=0
+          while kill -0 "$_rp" 2>/dev/null; do
+            sleep "$_fields_sample_sec"
+            kill -0 "$_rp" 2>/dev/null || break
+            _sz="$( { du -sb "$FIELDS_DIR" 2>/dev/null || true; } | cut -f1 )"
+            case "$_sz" in (''|*[!0-9]*) continue ;; esac
+            if [ "$_sz" = "$_last_sz" ]; then _flat=$((_flat + _fields_sample_sec)); else _flat=0; fi
+            _last_sz="$_sz"
+            if [ "$_flat" -ge "$_fields_stall_sec" ]; then
+              log "WARN — the FIELDS RSYNC is WEDGED, not slow: ${_flat}s with the destination FROZEN at $(( _sz / 1073741824 )) GiB while the process is still alive. ⭐ Measured by DESTINATION GROWTH, never write_bytes — a healthy rsync reads write_bytes=0 while its destination grows, because writes sit in page cache, and killing a working transfer on that reading is a mistake already made once here. At the ${UAL_FIELDS_BWLIMIT:-80M} bwlimit a live transfer moves ~24 GB in five minutes, so zero growth for this long is a wedge. Killing the rsync only — the press continues. Fields already on disk are UNTOUCHED and every figure without one is transformed live; THE BOOKS ARE UNAFFECTED."
+              kill -TERM "$_rp" 2>/dev/null || true
+              sleep 5
+              kill -KILL "$_rp" 2>/dev/null || true
+              exit 0
+            fi
+          done
+        ) &
+        _wd=$!
+      fi
+      # ⛔ `|| _rc=$?` IS LOAD-BEARING under `set -e` — a bare failing `wait`
+      # aborts the whole press, which is precisely what the non-fatal contract
+      # for the fields forbids.
+      wait "$_rp" || _rc=$?
+      [ -n "$_wd" ] && { kill "$_wd" 2>/dev/null || true; wait "$_wd" 2>/dev/null || true; }
+      return "$_rc"
+    }
     # ⛔ NO `--delete` WHEN THE FIELDS WERE NOT FETCHED. With UAL_FIELDS=0 the
     # source directory is a tree of un-smudged pointers or absent entirely, and a
     # mirroring rsync would DELETE every field already on the box — turning "skip
@@ -1083,7 +1229,7 @@ EOF
       else
         log "field sync SKIPPED (UAL_FIELDS=0) — ${_fkept} fields already on the box are LEFT UNTOUCHED; every figure without one is transformed live."
       fi
-    elif $_rsync_nice rsync -a --delete $_bwflag "$FTMP/bw/fields/" "$FIELDS_DIR/" >> "$LOG" 2>&1; then
+    elif _fields_rsync; then
       # ⚠ BOTH ENCODINGS COUNTED. Fields are written gzipped now, and a glob
       # anchored to the old name reported a healthy sync as zero fields — the
       # instrument saying nothing is there while everything is.
