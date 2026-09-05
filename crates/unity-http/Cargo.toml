@@ -1,0 +1,14 @@
+[package]
+name = "unity-http"
+version = "0.1.0"
+edition = "2021"
+description = "The Unity brain's HTTP control surface — route table, privilege gate, auth model. Migration phase B5."
+license = "MIT"
+
+# ⛔ ZERO DEPENDENCIES, and for this crate that is a security property rather
+# than a preference. §5.2: unity-http owns "routing, auth, request/response
+# shapes" and must NOT own "direct weight or donor mutation (call the crates)".
+# The privilege gate is the highest-stakes code in the whole migration — getting
+# it wrong exposes /shutdown and /reset to the internet — so it is plain Rust
+# over plain inputs, with nothing between the decision and the test.
+[dependencies]
