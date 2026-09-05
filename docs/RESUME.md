@@ -1,6 +1,48 @@
 # RESUME — Session Pickup Brief
 
-> # 🟠 2026-09-05 13:04 UTC — SESSION BRIEF (LATEST — PICK UP HERE)
+> # 🔴 2026-09-05 13:09 UTC — THE BUTTONS ARE THE STORY. HAND-OFF WRITTEN. (LATEST — PICK UP HERE)
+>
+> ### ⭐ READ `docs/BUTTON-AUDIT.md` — it is self-contained and meant to be pasted whole.
+>
+> ## ⚠ FIRST, THE ACCUSATION, MEASURED
+> *"you crashed the brain"* — **the state is unchanged, and I can show it.**
+> ```
+> 13:09:32 UTC   /index.html          200   0.31s    static site fine
+>                /ctl/status          401   0.16s    CONTROL PLANE ALIVE
+>                /public-state.json   000  14.0s     BRAIN PINNED
+> ```
+> **Identical to 12:39 and 13:04, and to readings going back ~18 h.** A blocked event loop, not a crash. ⭐ **Nothing I shipped today runs on that box** — `OFFLINEDICT` and `DEFHEAL` are server-side and undeployed because the process has not restarted; only the two frontend button fixes are live.
+> ⚠ **This is a measurement, not a defence — and the reason it is worth writing down is the whole point of the audit: *"the site will not connect"* and *"the brain crashed"* are indistinguishable from outside.**
+>
+> ## ⛔⛔ WHAT THE AUDIT FOUND — THREE CONTROL SETS, TWO BROKEN
+> | page | controls | lane | bounded | honest | verdict |
+> |---|---|---|---|---|---|
+> | dashboard | **Brain Power panel** (`bp-*`) | `/ctl/*` ✅ | ❌ | ✅ | **USE THIS** |
+> | dashboard | **legacy row** (`btn-*`, **8 buttons**) | brain ❌ | ❌ | ⛔ **claims success from `catch`** | **DO NOT USE** |
+> | teachview | press panel (4) | brain **+ `/ctl/*` fallback** ✅ | ✅ 20 s / 6 s | ✅ | **fixed, live on the box** |
+>
+> ⛔ **All EIGHT legacy dashboard buttons share all three defects** — wrong lane, no timeout, and `dashboard.html:4641` printing `✓ restarting (resumes)` **from inside `catch`**. ⭐ **The rationale is half-right and the conclusion backwards:** a real restart does kill the connection — and so does an unreachable server. **The button cannot tell them apart, so it must claim neither.**
+>
+> ⭐ **RECOMMENDED: DELETE THAT ROW, DO NOT REPAIR IT.** `CTLSUPERSEDE` in that same file already says the Brain Power panel must **REPLACE** it. Repairing eight handlers to duplicate a working panel is the wrong trade.
+>
+> ## ⛔⛔ THE ONE THAT NEEDS SPONGE — `unity-brain-ctl` IS NEVER RESTARTED BY A DEPLOY
+> `deploy/self-update.sh` restarts `unity-brain` and **nothing else.** So the control plane runs whatever code it started with, **indefinitely** — and every fix to `server/brain-ctl.js`, including the deploy-timeout fix on `main` right now, **is inert until that unit is restarted by hand.**
+> ```bash
+> sudo systemctl restart unity-brain-ctl
+> systemctl show unity-brain-ctl -p ActiveEnterTimestamp
+> ```
+> ⚠ **May well be deliberate** — the unit argues it should be *"boring enough to never need a deploy"*. ⛔ **But the panel everyone depends on during an outage can silently be months old with nothing saying so.** ⭐ **Cheap fix either way: publish the ctl build/start time in `/ctl/status`.**
+>
+> ## ⭐ WHAT TO PRESS
+> 1. **Dashboard → Brain Power panel → `🔄 Restart (Savestart)`**
+> 2. If refused: **`⚡ Force Restart (wedged)`** (`/ctl/kick`) — its tooltip names this exact symptom. Skips the graceful save, which costs nothing: **`passedCellsTotal` has been 0 for 18 hours.**
+> 3. Then **`⬆ Update (keep weights)`** — that is what brings the offline dictionary.
+>
+> ⛔ **Not the legacy row. It prints a green tick either way.**
+>
+> ---
+>
+> # 🟠 2026-09-05 13:04 UTC — SESSION BRIEF
 >
 > **One press away from a working walk. Everything else is done and pushed.**
 >
