@@ -435,6 +435,81 @@ CORPORA_DIR="${UAL_CORPORA_DIR:-$BACKEND_DIR/corpora}"
 # is not readable by the service user, is rejected rather than half-used.
 # `UAL_DATA_LOCAL_PATH` overrides the search outright.
 _local_data=''
+# ⛔⛔ BWLOCAL (2026-09-05) — THE SEARCH FAILED FOR A **PERMISSIONS** REASON, AND
+# THE LOG SAID "NOT FOUND", WHICH SENT EVERY INVESTIGATION TO THE WRONG PLACE.
+#
+# Measured on the live box. The repo is at
+#   /var/lib/forgejo/data/forgejo-repositories/unityailab/brainwaves.git
+# and BOTH halves of the old lookup missed it:
+#   1. the fixed candidate list has `/var/lib/forgejo/repositories/...` and
+#      `/home/forgejo/forgejo-repositories/...` — but never
+#      `/var/lib/forgejo/data/forgejo-repositories/...`, the actual layout; and
+#   2. `_search_local_repo`'s `find` could not have found it either, because
+#      **`/var/lib/forgejo` is mode 750 git:git** and the service runs as
+#      `unity`. The find is silenced with `2>/dev/null`, so a permission denial
+#      and a genuine absence produce the IDENTICAL log line.
+#
+# ⭐ THE COST OF THAT ONE MISSING PATH WAS THE WHOLE DEPLOY STORY. Falling back
+# to SSH meant every press cloned ~12 GB from git.unityailab.com — which IS THIS
+# BOX — over the network, needing a deploy key that was never scoped to this
+# repo. Both of 2026-09-05's failures happened in that fallback: a press wedged
+# for 4.5 HOURS, and a `git lfs pull` wrote 212 GB out of a 110 GB store before
+# it was killed.
+#
+# ⭐⭐ THE FIX IS GROUP MEMBERSHIP, AND IT NEEDS NO PERMISSION CHANGES AT ALL.
+# 750 = `rwxr-x---`, so the GROUP already has r-x. Adding `unity` to `git` is
+# sufficient to traverse; nothing about Forgejo's data is loosened, no mode is
+# widened, and Forgejo is not touched. Verified live with `setpriv` before this
+# was written:
+#   • without the group → `Permission denied`
+#   • with the group    → `fatal: detected dubious ownership` (i.e. git REACHED
+#     the repo and only objected to the owner)
+#   • with the group + `safe.directory` → resolves, and `git log` reads real
+#     history off local disk
+#   • the LFS store at /var/lib/forgejo/data/lfs becomes readable too, so the
+#     FIELDS hydrate from disk with no credential and no network.
+#
+# ⚠ `safe.directory` IS REQUIRED, NOT OPTIONAL. The repo is owned by `git` and
+# we read it as `unity`, which git refuses by default since CVE-2022-24765.
+#
+# ⛔⛔ AND `-c safe.directory=…` DOES NOT WORK FOR THE CLONE — MEASURED, AFTER
+# THE FIRST DRAFT SHIPPED IT. A local clone spawns a CHILD `git upload-pack`, and
+# the parent's `-c` overrides do not reach it, so the clone dies with "detected
+# dubious ownership" even though discovery just succeeded. That failure mode is
+# WORSE than not finding the repo: the SSH fallback is chosen BEFORE the clone,
+# so there is nothing left to fall back to.
+# `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0` does not work either — `upload-pack`
+# honours it, but the clone's own ownership check does not. Both were tried
+# against the live repo; both failed.
+#
+# ⭐ WHAT DOES WORK: `GIT_CONFIG_GLOBAL` pointed at a THROWAWAY config file. It
+# is a real global config as far as every child process is concerned, and it is
+# written inside `$FTMP` so it dies with the deploy — no system gitconfig is
+# touched, nothing persists, and no other user is affected. Verified on the box:
+# a full clone of the data repo off local disk in **9 seconds**, 228 corpus
+# files, 2.4 GB, no credential and no network — against an SSH path that wedged
+# for 4.5 hours.
+#
+# ⚠ `--depth`/`--filter` ARE SILENTLY IGNORED on a local-path clone ("warning:
+# --depth is ignored in local clones"), so they are dropped when the source is
+# local. `file://` would honour them but re-introduces the transport we are
+# trying to avoid. A local clone hardlinks/copies objects and is fast anyway.
+#
+# ⚠ ONE-TIME SETUP, AND IT IS NOT DONE BY THIS SCRIPT: `sudo usermod -aG git
+# unity && sudo systemctl restart unity-brain`. That needs root, which this
+# script does not have. Until it is run, everything below degrades to the SSH
+# path exactly as before — so this change is SAFE to deploy first and enable
+# second. `_local_probe` reports which side of that line the box is on, in one
+# line, so an operator with no shell can SEE the difference.
+# Probe a candidate as the deploy user really will: resolve the git dir AND read
+# a ref. `rev-parse --git-dir` alone passes on a directory whose objects are
+# unreadable, which is the failure that would show up later as a broken clone.
+_local_probe() {
+  [ -n "${1:-}" ] || return 1
+  git -c "safe.directory=$1" -C "$1" rev-parse --git-dir >/dev/null 2>&1 || return 1
+  git -c "safe.directory=$1" -C "$1" rev-parse HEAD      >/dev/null 2>&1 || return 1
+  return 0
+}
 # ⭐⭐ SEARCH, DO NOT JUST GUESS. The first cut of this probed eight hardcoded
 # paths, found nothing on the live box, and reported "not found on local disk" —
 # which was true of my guesses and told us nothing about the machine. Forgejo's
@@ -447,12 +522,13 @@ _search_local_repo() {
   for root in /var/lib /home /data /srv /opt /mnt /var/opt; do
     [ -d "$root" ] || continue
     p="$( { find "$root" -maxdepth 6 -type d -name 'brainwaves.git' -print -quit 2>/dev/null || true; } )"
-    if [ -n "$p" ] && git -C "$p" rev-parse --git-dir >/dev/null 2>&1; then printf '%s' "$p"; return 0; fi
+    if [ -n "$p" ] && _local_probe "$p"; then printf '%s' "$p"; return 0; fi
   done
   return 1
 }
 for _cand in \
   "${UAL_DATA_LOCAL_PATH:-}" \
+  /var/lib/forgejo/data/forgejo-repositories/unityailab/brainwaves.git \
   /var/lib/forgejo/repositories/unityailab/brainwaves.git \
   /var/lib/gitea/data/repositories/unityailab/brainwaves.git \
   /var/lib/gitea/repositories/unityailab/brainwaves.git \
@@ -461,17 +537,48 @@ for _cand in \
   /data/git/repositories/unityailab/brainwaves.git \
   /data/gitea/repositories/unityailab/brainwaves.git ; do
   [ -n "$_cand" ] || continue
-  if git -C "$_cand" rev-parse --git-dir >/dev/null 2>&1; then _local_data="$_cand"; break; fi
+  if _local_probe "$_cand"; then _local_data="$_cand"; break; fi
 done
 if [ -z "$_local_data" ]; then
   log "data repo not at any known path — searching the filesystem for it (bounded, first hit wins)…"
   _local_data="$(_search_local_repo || true)"
 fi
+# ⛔⛔ DISTINGUISH "ABSENT" FROM "UNREADABLE" — the whole reason this took two days
+# to find. If a forge data root EXISTS but we cannot enter it, say so explicitly
+# and name the one command that fixes it, because the operator has no shell and
+# "not found" is the message that sent everyone looking for a missing repo.
+#
+# ⛔ THE OBVIOUS PROBE DOES NOT WORK, AND THAT IS THE WHOLE DIFFICULTY. The first
+# draft tested `[ -d /var/lib/forgejo/data/forgejo-repositories/…/brainwaves.git ]`
+# and it returned FALSE — not because the repo is absent (it is right there) but
+# because **we cannot traverse `/var/lib/forgejo` to even ask the question**. A
+# path test on the far side of an unreadable parent is indistinguishable from
+# absence, which is the same "silence looks like a clean result" failure as the
+# `2>/dev/null` on the find above. `sudo -n test -d` is no help either: the
+# deploy user has no passwordless sudo (verified — "a password is required").
+#
+# ⭐ WHAT WE **CAN** OBSERVE, verified as the real service user on the box:
+#   [ -d /var/lib/forgejo ] → yes      (the root itself is visible)
+#   [ -x /var/lib/forgejo ] → NO       (cannot traverse — this is the signal)
+#   stat -c %a%U:%G         → 750 git:git
+# So: root visible + not executable-by-us = a permissions wall, and the group
+# that owns it is the group to join. That is a positive detection of the actual
+# condition rather than an inference from a failed search.
+if [ -z "$_local_data" ]; then
+  for _root in /var/lib/forgejo /var/lib/gitea /data/gitea /data/forgejo /home/git; do
+    [ -d "$_root" ] || continue
+    [ -x "$_root" ] && continue          # traversable — not the permissions case
+    _rgrp="$( { stat -c '%G' "$_root" 2>/dev/null || true; } )"
+    _rmode="$( { stat -c '%a' "$_root" 2>/dev/null || true; } )"
+    log "⛔ PERMISSIONS, NOT ABSENCE — ${_root} EXISTS on this box but $(id -un 2>/dev/null || echo 'the deploy user') cannot enter it (mode ${_rmode:-?}, group ${_rgrp:-?}). The data repo is almost certainly inside it; the search above could not even LOOK. ⭐ ONE-TIME FIX — no mode changes, Forgejo untouched, because ${_rmode:-750} already grants the GROUP r-x: sudo usermod -aG ${_rgrp:-git} $(id -un 2>/dev/null || echo unity) && sudo systemctl restart ${SERVICE}. Until that is run every press clones ~12 GB over SSH from THIS SAME BOX and needs a deploy key scoped to the data repo — the path where the 2026-09-05 failures happened."
+    break
+  done
+fi
 if [ -n "$_local_data" ]; then
-  log "data repo found ON THIS BOX at ${_local_data} — cloning from local disk instead of over SSH. No credential is involved, and the corpus and embedding table are plain blobs so they arrive in full."
+  log "⭐ data repo found ON THIS BOX at ${_local_data} — cloning from LOCAL DISK. No credential, no network, no SSH round trip to ourselves. The corpus and the embedding table are plain blobs so they arrive in full, and Forgejo's LFS store is readable by the same group so the fields hydrate from disk too."
   DATA_REMOTE="$_local_data"
 else
-  log "data repo not found on local disk (known paths AND a bounded search) — using ${DATA_REMOTE} over SSH, which needs the box's deploy key to be authorised on that repo."
+  log "data repo not readable on local disk — using ${DATA_REMOTE} over SSH, which needs the box's deploy key to be authorised on that repo. ⚠ This is the path where the 2026-09-05 failures happened (a press wedged 4.5h; a git lfs pull wrote 212 GB from a 110 GB store). If the line above says PERMISSIONS, run the usermod it names and this stops happening."
 fi
 
 # ── FORGEJO'S LFS STORE, FOR THE WAVELET FIELDS ───────────────────────────────
@@ -771,7 +878,23 @@ else
   # failure whose reason is unreadable costs a whole diagnosis cycle — this one
   # cost the press.
   _clone_out=''
-  if _clone_out="$(GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 --branch main --filter=blob:none "$DATA_REMOTE" "$FTMP/bw" 2>&1)"; then
+  # ⛔⛔ THE OWNERSHIP EXCEPTION MUST REACH THE CHILD `upload-pack`, WHICH IS WHY
+  # THIS IS A CONFIG FILE AND NOT `-c` — see the BWLOCAL block above for the two
+  # approaches that were measured and failed. The file lives in $FTMP and is
+  # deleted with it; no persistent gitconfig anywhere is modified.
+  _git_env=''
+  _clone_extra='--depth 1 --filter=blob:none'
+  case "$DATA_REMOTE" in
+    /*)
+      # Local path: write a throwaway global config carrying the exception.
+      printf '[safe]\n\tdirectory = %s\n' "$DATA_REMOTE" > "$FTMP/gitconfig" 2>/dev/null || true
+      _git_env="GIT_CONFIG_GLOBAL=$FTMP/gitconfig"
+      # ⚠ git IGNORES these on a local clone and says so; dropping them keeps the
+      # log clean and makes the intent honest.
+      _clone_extra=''
+      ;;
+  esac
+  if _clone_out="$(env GIT_LFS_SKIP_SMUDGE=1 ${_git_env} git clone ${_clone_extra} --branch main "$DATA_REMOTE" "$FTMP/bw" 2>&1)"; then
     printf '%s\n' "$_clone_out" >> "$LOG" 2>/dev/null || true
     mkdir -p "$FIELDS_DIR" "$CORPORA_DIR"
     # THE BOOKS FIRST — this is the half the walk cannot run without.
