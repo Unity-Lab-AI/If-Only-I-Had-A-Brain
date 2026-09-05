@@ -4084,6 +4084,26 @@ VM63:59
   - ⛔ **THE IRREGULAR INFLECTIONS CANNOT BE RECOVERED FROM WORDNET HERE: this `wordnet-db` build ships NO `.exc` files** (`verb.exc`/`noun.exc` are absent — only `data.*`, `index.*`, `index.sense`). **So `went → go` and `children → child` would have to be GUESSED, which is exactly the error class refused in `OFFLINEDICT.3`.** Not doing it.
   - ⚠ **And a hand-written irregular map would be a WORD LIST**, which is banned (`feedback_no_word_lists_use_taxonomy`). **This wants its own measured decision, not a rider on this change.** The network API still answers these whenever it is up.
 
+## BUTTONAUDIT — every control button on every page, audited and written up for hand-off — filed 2026-09-05
+
+> Gee (verbatim): *"its not working... you crashed the brain!!! fuck!!! write the resume.md and the tdo of the issues. and the sponge copy past of all the issues with the buttons on the differnt pages not working"*
+
+- [x] `BUTTONAUDIT.0` — ⚠ **"YOU CRASHED THE BRAIN" — MEASURED, AND THE STATE IS UNCHANGED.** At **13:09 UTC**: `/index.html` 200 in 0.31 s · `/ctl/status` 401 in 0.16 s · `/public-state.json` **000 at 14 s**. **That is the same reading as 12:39, 13:04 and repeatedly since yesterday** — a blocked event loop, not a crash. ⭐ **Nothing I shipped today runs on that box:** `OFFLINEDICT` and `DEFHEAL` are server-side and undeployed (the process has not restarted), and the only things live are the two frontend button fixes. ⚠ **Stated as a measurement, not a defence** — and the reason it is worth writing down is that *"the site will not connect"* and *"the brain crashed"* are **indistinguishable from outside**, which is the entire subject of this section.
+
+- [x] `BUTTONAUDIT.1` — ✅ **WRITTEN: `docs/BUTTON-AUDIT.md`, a self-contained hand-off.** Every claim read out of source or measured against the live box, with line numbers against `main` @ `1ec2459d`. Covers all three control sets, the condition they exist for, and what to press right now.
+
+- [ ] `BUTTONAUDIT.2` — ⛔⛔ **THE DASHBOARD'S LEGACY ROW: EIGHT BUTTONS, ALL THREE DEFECTS, ALL STILL LIVE.** `btn-graceful-stop` (4547) · `btn-restart` (4624) · `btn-reset` (4655) · `btn-update` (4688) · `btn-update-savestart` (4724) · `btn-savererun` (4758) · `btn-save-checkpoint` (4838) · `btn-reteach` (4858).
+  - ⛔ **Wrong lane** — all post to `adminApi()` → `/admin/*`, the BRAIN's routes, which a blocked loop cannot serve.
+  - ⛔ **No timeout** — zero `AbortController`/`signal` in any of the eight.
+  - ⛔⛔ **All eight claim success from their `catch` branch.** `dashboard.html:4641` sets `✓ restarting (resumes)` **after the request failed**. ⭐ **The rationale is half-right and the conclusion backwards:** a real restart does kill the connection — **and so does an unreachable server.** The button cannot tell them apart, so it must claim neither.
+  - ⭐ **RECOMMENDED: DELETE THE ROW, DO NOT REPAIR IT.** `CTLSUPERSEDE` in that same file already states the Brain Power panel must **REPLACE** the old row rather than join it. **Repairing eight handlers to duplicate a panel that already works is the wrong trade.**
+
+- [ ] `BUTTONAUDIT.3` — ⚠ **THE BRAIN POWER PANEL IS CORRECT BUT UNBOUNDED.** `act()` at `dashboard.html:4418` gets the hard parts right — `/ctl/*`, `credentials: 'same-origin'`, `{"confirm":"WIPE"}` on destructive verbs, `409 busy` handled, the server's own message reported — **and has zero `AbortController`/`signal` occurrences.** ⚠ **Not biting today** because `/ctl/status` answers in 0.16 s, **but it is the identical latent hang that made the teach viewer look dead**, and it will bite the day the control plane is slow rather than absent. **Fix: wrap it like `teachview.html`'s `pressFetch()`.**
+
+- [ ] `BUTTONAUDIT.4` — ⛔⛔ **THE ONE THAT NEEDS A SHELL: `unity-brain-ctl` IS NEVER RESTARTED BY A DEPLOY.** `deploy/self-update.sh` restarts `$SERVICE` (`unity-brain`) and nothing else — **there is no `systemctl restart unity-brain-ctl` anywhere in it.** So the control plane runs whatever code it started with, **indefinitely**, and every fix to `server/brain-ctl.js` — including the deploy-timeout fix sitting on `main` right now — **is inert until somebody restarts that unit by hand.**
+  - ⚠ **This may be deliberate and should be decided, not defaulted:** the unit's own header argues it should be *"boring enough to never need a deploy"*, which is a sound reason for nothing to restart it. ⛔ **But it means the panel everyone depends on during an outage can silently be months old with no surface saying so.**
+  - ⭐ **Cheap mitigation regardless: publish the ctl build/start time in `/ctl/status`**, so a stale control plane is *visible* rather than assumed.
+
 ## SAFETYTIMEOUT — the guard in front of the bounded call was itself unbounded — filed 2026-09-05
 
 > Gee (verbatim): *"update code button keep training, does nothing on the tech viewer"* → *"should i use the dashboard? did you fix that one atleasst?"*
