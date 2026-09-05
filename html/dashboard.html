@@ -4421,9 +4421,27 @@
         busy = true;
         render({ phase: lastPhase || 'unknown', human: elHuman.textContent, unit: {} });
         setResult(`⏳ ${o.pending || action}… (a start waits for ~5.4 GB of weights to load, so this can take minutes — leave the page open)`, '');
+        // ⛔ BOUNDED (2026-09-05). This function got every hard part right —
+        // `/ctl/*` rather than the brain's own routes, `credentials`, the
+        // confirm token, 409 handled, the server's own message reported — and
+        // had **zero `AbortController`**. It was not biting because `/ctl/status`
+        // answers in ~0.16 s, but it is the identical latent hang that made the
+        // teach viewer look dead, and it would bite the day the control plane is
+        // SLOW rather than absent — which is precisely an outage day.
+        //
+        // ⚠ THE BOUND IS GENEROUS ON PURPOSE, AND MUST STAY THAT WAY. This
+        // function's own status line says a start *"waits for ~5.4 GB of weights
+        // to load, so this can take minutes"*. A short timeout here would abort
+        // healthy long operations and teach the operator to distrust the panel —
+        // worse than no bound. 5 minutes bounds a genuine hang without touching
+        // any legitimate press.
+        const _ctrl = new AbortController();
+        const _ms = o.timeoutMs || 300000;
+        const _to = setTimeout(() => _ctrl.abort(), _ms);
         try {
           const r = await fetch(ctlUrl(action), {
             method: 'POST', cache: 'no-store', credentials: 'same-origin',
+            signal: _ctrl.signal,
             headers: o.confirmToken ? { 'Content-Type': 'application/json' } : undefined,
             // The destructive verbs REFUSE server-side without this token, so a
             // stray request (a probe, a retried curl, a bookmarked URL) cannot
@@ -4444,9 +4462,19 @@
         } catch (err) {
           // A stop/restart legitimately kills the connection mid-flight when
           // running against the brain's own host; that is not a failure.
-          setResult('✗ request failed: ' + err.message
-            + '\n(If you just pressed Stop or Restart this can be expected — press Refresh to read the real state.)', 'err');
+          // ⚠ A client-side ABORT is a third thing again — it says nothing about
+          // whether the action landed, only that we stopped waiting. Reporting
+          // it as a plain failure would be the same lie the legacy row told, in
+          // the opposite direction.
+          if (err && (err.name === 'AbortError' || _ctrl.signal.aborted)) {
+            setResult(`? no answer in ${Math.round(_ms / 1000)}s — the control plane did not respond in time.`
+              + '\nThis does NOT mean the action failed; it may still be running. Press Refresh to read the real state.', 'err');
+          } else {
+            setResult('✗ request failed: ' + err.message
+              + '\n(If you just pressed Stop or Restart this can be expected — press Refresh to read the real state.)', 'err');
+          }
         } finally {
+          clearTimeout(_to);
           busy = false;
           await poll();
         }
@@ -4543,6 +4571,95 @@
     // exits in 500ms. Equivalent to stop.bat without needing terminal
     // access. confirm() prompt prevents accidental fat-finger; button
     // disables during the handshake so double-clicks don't double-fire.
+    // ── BUTTONFIX (2026-09-05) — ONE CHOKEPOINT FOR THE LEGACY `/admin/*` ROW ──
+    //
+    // ⛔⛔ THESE BUTTONS PRINTED A CHECKMARK FOR A PRESS THAT NEVER HAPPENED,
+    // AND THEY DID IT IN THREE DIFFERENT WAYS.
+    //
+    // ① **`catch` claimed success.** `'✓ restart sent (reviving)'` was set on the
+    //    FAILURE path. The rationale was half-right and the conclusion backwards:
+    //    a real restart DOES kill the connection — **and so does an unreachable
+    //    server.** The button cannot tell those apart, so it must claim NEITHER.
+    // ② **`r.ok` was never checked.** nginx returns `504 Gateway Time-out` as a
+    //    real HTTP response, so `fetch` RESOLVES; `r.json()` then throws on the
+    //    HTML body, `.catch(() => ({}))` turns it into `{}`, and the success line
+    //    ran anyway. This is the exact bug already fixed in the teach viewer.
+    // ③ **No timeout.** Zero `AbortController` in any of the eight, so a blocked
+    //    event loop left the button on `⏳ …` forever — which the operator
+    //    correctly reported as *"does nothing"*.
+    //
+    // ⭐ FIXED AT THE CHOKEPOINT, NOT PER BUTTON. Eight handlers repeated the
+    // same shape, which is how they acquired the same three defects; repairing
+    // them eight times would have preserved that. One function now owns the
+    // verdict and every button reports what it returns.
+    //
+    // ⛔ THE ROW IS **NOT** DELETED, AND THAT WAS THE FIRST PLAN. `CTLSUPERSEDE`
+    // above already hides it whenever the control plane answers, and keeps it
+    // when `/ctl` is DOWN — because then it is *"the ONLY way to control the
+    // brain and hiding it would leave a dashboard with no controls at all"*.
+    // **Deleting the fallback removes control during exactly the outage it
+    // exists for.** So it stays, and it stays honest instead.
+    //
+    // ⚠ `exitsOnSuccess` is the whole reason this needs a flag rather than a
+    // constant. For `restart`/`reset`/`update`/`shutdown`/`savererun` a dropped
+    // connection is genuinely AMBIGUOUS — the server exiting looks identical to
+    // the server being gone — so those report **could-not-confirm**. For
+    // `checkpoint` and `curriculum/forget` the server is supposed to stay up, so
+    // a dropped connection is a genuine **failure** and says so.
+    const LEGACY_PRESS_MS = 20000;
+    async function adminPress(path, opts = {}) {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), opts.timeoutMs || LEGACY_PRESS_MS);
+      try {
+        const r = await fetch(adminApi(path), {
+          method: 'POST',
+          cache: 'no-store',
+          signal: ctrl.signal,
+          ...(opts.body ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(opts.body) } : {}),
+        });
+        // ⛔ CHECKED BEFORE THE BODY IS TRUSTED. A 502/504 carries an HTML body
+        // that fails JSON parsing, and the old `.catch(() => ({}))` made that
+        // indistinguishable from an empty success.
+        if (!r.ok) {
+          const txt = await r.text().catch(() => '');
+          return { verdict: 'refused', status: r.status, why: `HTTP ${r.status}`, raw: txt.slice(0, 200) };
+        }
+        const j = await r.json().catch(() => ({}));
+        return { verdict: 'ok', status: r.status, j };
+      } catch (err) {
+        const aborted = err && (err.name === 'AbortError' || ctrl.signal.aborted);
+        const why = aborted
+          ? `no answer in ${(opts.timeoutMs || LEGACY_PRESS_MS) / 1000}s (the event loop is probably blocked — which is usually why you are pressing this)`
+          : (err?.message || String(err));
+        // The ambiguity is REPORTED, never resolved in the button's favour.
+        return { verdict: opts.exitsOnSuccess ? 'unconfirmed' : 'failed', why, aborted: !!aborted };
+      } finally {
+        clearTimeout(t);
+      }
+    }
+
+    // Renders a verdict onto a button + the log in one place, so no handler can
+    // invent its own wording for a state it did not establish.
+    function adminPressRender(btn, label, res, okText) {
+      btn.classList.add('shutdown-fired');
+      if (res.verdict === 'ok') {
+        btn.textContent = typeof okText === 'function' ? okText(res.j) : okText;
+        log(`${label} → ${JSON.stringify(res.j)}`);
+      } else if (res.verdict === 'refused') {
+        btn.textContent = `⚠ ${res.why} — NOT accepted`;
+        log(`${label} REFUSED → ${res.why}${res.raw ? ' :: ' + res.raw : ''}`);
+      } else if (res.verdict === 'unconfirmed') {
+        // ⭐ NOT a checkmark and NOT a cross. The press may well have landed and
+        // taken the connection with it; the page has no way to know, and saying
+        // so is the only honest option. Confirm with the build badge or uptime.
+        btn.textContent = '? sent — could NOT confirm';
+        log(`${label} — could not confirm (${res.why}). If the server was exiting this is expected; check the build badge / uptime to see whether it actually restarted.`);
+      } else {
+        btn.textContent = '✗ failed';
+        log(`${label} FAILED → ${res.why}`);
+      }
+    }
+
     (function wireGracefulStop() {
       const btn = document.getElementById('btn-graceful-stop');
       if (!btn) return;
@@ -4593,27 +4710,14 @@
         if (!ok) return;
         btn.disabled = true;
         btn.textContent = '⏳ shutting down...';
-        try {
-          const r = await fetch(adminApi('shutdown'), {
-            method: 'POST',
-            cache: 'no-store',
-          });
-          const j = await r.json().catch(() => ({}));
-          btn.classList.add('shutdown-fired');
-          btn.textContent = j.status === 'already shutting down'
-            ? '✓ already stopping'
-            : '✓ shutdown sent';
-          log(`Shutdown POST → ${JSON.stringify(j)}`);
-        } catch (err) {
-          // Server already gone? That's fine — the brain.stop() exit
-          // handler kills the HTTP listener before the response can
-          // round-trip in some race windows. Treat fetch failure as
-          // "shutdown probably succeeded" since the alternative is
-          // operator manually verifying.
-          btn.classList.add('shutdown-fired');
-          btn.textContent = '✓ stopped (no response)';
-          log(`Shutdown fetch failed (server likely already exited): ${err?.message || err}`);
-        }
+        // ⚠ The old catch here reasoned that the exit handler can kill the HTTP
+        // listener before the response round-trips, and concluded "treat fetch
+        // failure as shutdown probably succeeded". The race is real; the
+        // conclusion is not — an unreachable server produces the identical
+        // failure, so `✓ stopped (no response)` was a guess wearing a checkmark.
+        const res = await adminPress('shutdown', { exitsOnSuccess: true });
+        adminPressRender(btn, 'Shutdown POST', res,
+          (j) => (j && j.status === 'already shutting down') ? '✓ already stopping' : '✓ shutdown sent');
       });
     })();
 
@@ -4634,17 +4738,8 @@
         if (!ok) return;
         btn.disabled = true;
         btn.textContent = '⏳ restarting...';
-        try {
-          const r = await fetch(adminApi('restart'), { method: 'POST', cache: 'no-store' });
-          const j = await r.json().catch(() => ({}));
-          btn.classList.add('shutdown-fired');
-          btn.textContent = '✓ restarting (resumes)';
-          log(`Restart POST → ${JSON.stringify(j)}`);
-        } catch (err) {
-          btn.classList.add('shutdown-fired');
-          btn.textContent = '✓ restart sent (reviving)';
-          log(`Restart fetch failed (server exiting, systemd reviving): ${err?.message || err}`);
-        }
+        const res = await adminPress('restart', { exitsOnSuccess: true });
+        adminPressRender(btn, 'Restart POST', res, '✓ restarting (resumes)');
       });
     })();
 
@@ -4666,17 +4761,8 @@
         if (!ok2) return;
         btn.disabled = true;
         btn.textContent = '⏳ resetting...';
-        try {
-          const r = await fetch(adminApi('reset'), { method: 'POST', cache: 'no-store' });
-          const j = await r.json().catch(() => ({}));
-          btn.classList.add('shutdown-fired');
-          btn.textContent = '✓ reset (fresh boot)';
-          log(`Reset POST → ${JSON.stringify(j)}`);
-        } catch (err) {
-          btn.classList.add('shutdown-fired');
-          btn.textContent = '✓ reset sent (reviving)';
-          log(`Reset fetch failed (server exiting, systemd reviving fresh): ${err?.message || err}`);
-        }
+        const res = await adminPress('reset', { exitsOnSuccess: true });
+        adminPressRender(btn, 'Reset POST', res, '✓ reset (fresh boot)');
       });
     })();
 
@@ -4700,17 +4786,9 @@
         if (!ok2) return;
         btn.disabled = true;
         btn.textContent = '⏳ updating + fresh walk...';
-        try {
-          const r = await fetch(adminApi('update'), { method: 'POST', cache: 'no-store' });
-          const j = await r.json().catch(() => ({}));
-          btn.classList.add('shutdown-fired');
-          btn.textContent = (j && j.status && /FAILED/i.test(j.status)) ? '✗ update failed (see log)' : '✓ updating (fresh walk ~1-2m)';
-          log(`Update POST → ${JSON.stringify(j)}`);
-        } catch (err) {
-          btn.classList.add('shutdown-fired');
-          btn.textContent = '✓ update sent (restarting)';
-          log(`Update fetch failed (server restarting into new code): ${err?.message || err}`);
-        }
+        const res = await adminPress('update', { exitsOnSuccess: true });
+        adminPressRender(btn, 'Update POST', res,
+          (j) => (j && j.status && /FAILED/i.test(j.status)) ? '✗ update failed (see log)' : '✓ updating (fresh walk ~1-2m)');
       });
     })();
 
@@ -4734,17 +4812,9 @@
         if (!ok) return;
         btn.disabled = true;
         btn.textContent = '⏳ updating + savestart...';
-        try {
-          const r = await fetch(adminApi('update?keep=1'), { method: 'POST', cache: 'no-store' });
-          const j = await r.json().catch(() => ({}));
-          btn.classList.add('shutdown-fired');
-          btn.textContent = (j && j.status && /FAILED/i.test(j.status)) ? '✗ update failed (see log)' : '✓ updating (savestart ~1-2m)';
-          log(`Update+Savestart POST → ${JSON.stringify(j)}`);
-        } catch (err) {
-          btn.classList.add('shutdown-fired');
-          btn.textContent = '✓ update sent (restarting)';
-          log(`Update+Savestart fetch failed (server restarting into new code): ${err?.message || err}`);
-        }
+        const res = await adminPress('update?keep=1', { exitsOnSuccess: true });
+        adminPressRender(btn, 'Update+Savestart POST', res,
+          (j) => (j && j.status && /FAILED/i.test(j.status)) ? '✗ update failed (see log)' : '✓ updating (savestart ~1-2m)');
       });
     })();
 
@@ -4769,17 +4839,9 @@
         if (!ok) return;
         btn.disabled = true;
         btn.textContent = '⏳ savererun...';
-        try {
-          const r = await fetch(adminApi('savererun'), { method: 'POST', cache: 'no-store' });
-          const j = await r.json().catch(() => ({}));
-          btn.classList.add('shutdown-fired');
-          btn.textContent = j && j.ok ? `✓ re-walking (rollback ckpt v${j.checkpointVersion})` : '✗ savererun failed (see log)';
-          log(`Savererun POST → ${JSON.stringify(j)}`);
-        } catch (err) {
-          btn.classList.add('shutdown-fired');
-          btn.textContent = '✓ savererun sent (reviving)';
-          log(`Savererun fetch failed (server exiting, systemd reviving into re-walk): ${err?.message || err}`);
-        }
+        const res = await adminPress('savererun', { exitsOnSuccess: true });
+        adminPressRender(btn, 'Savererun POST', res,
+          (j) => (j && j.ok) ? `✓ re-walking (rollback ckpt v${j.checkpointVersion})` : '✗ savererun failed (see log)');
       });
     })();
 
@@ -4839,12 +4901,14 @@
       if (!btn) return;
       btn.addEventListener('click', async () => {
         btn.disabled = true; const orig = btn.textContent; btn.textContent = '⏳ saving...';
-        try {
-          const r = await fetch(adminApi('checkpoint'), { method: 'POST', cache: 'no-store' });
-          const j = await r.json().catch(() => ({}));
-          log(`Checkpoint POST → ${JSON.stringify(j)}`);
-          btn.textContent = j.ok ? `✓ saved ${j.slot || ''}` : '✗ failed';
-        } catch (err) { log(`Checkpoint failed: ${err?.message || err}`); btn.textContent = '✗ failed'; }
+        // ⚠ NOT `exitsOnSuccess` — the server is supposed to stay up through a
+        // checkpoint, so a dropped connection here is a real failure, not the
+        // ambiguity the restart verbs carry. Same helper, honest difference.
+        // ⚠ A big checkpoint is a slow, legitimate write, so it gets a longer
+        // bound than the restart verbs rather than the shared 20 s.
+        const res = await adminPress('checkpoint', { timeoutMs: 120000 });
+        adminPressRender(btn, 'Checkpoint POST', res,
+          (j) => (j && j.ok) ? `✓ saved ${j.slot || ''}` : '✗ failed');
         setTimeout(() => { btn.disabled = false; btn.textContent = orig; }, 2500);
         refreshMilestone();
       });
@@ -4871,12 +4935,12 @@
         btn.disabled = true; const orig = btn.textContent; btn.textContent = '⏳ requesting...';
         if (resultEl) { resultEl.style.color = '#888'; resultEl.textContent = `forgetting + re-teaching ${subject}/${grade}…`; }
         try {
-          const r = await fetch(adminApi('curriculum/forget'), {
-            method: 'POST', cache: 'no-store',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ subject, grade }),
-          });
-          const j = await r.json().catch(() => ({}));
+          // ⚠ NOT `exitsOnSuccess` — a re-teach leaves the server up, so a lost
+          // connection is a genuine failure rather than the restart verbs'
+          // ambiguity. Bounded like the rest; the old call had no timeout.
+          const _res = await adminPress('curriculum/forget', { body: { subject, grade } });
+          const r = { status: _res.status || 0, ok: _res.verdict === 'ok' };
+          const j = _res.verdict === 'ok' ? _res.j : { error: _res.why };
           log(`Re-teach ${subject}/${grade} → ${r.status} ${JSON.stringify(j)}`);
           if (r.status === 202 && j.ok) {
             if (resultEl) { resultEl.style.color = '#22c55e'; resultEl.textContent = `✓ re-teaching ${subject}/${grade} live (no reset) — watch Current Training.`; }
