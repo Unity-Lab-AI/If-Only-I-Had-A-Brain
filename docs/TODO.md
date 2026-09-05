@@ -4084,6 +4084,17 @@ VM63:59
   - ⛔ **THE IRREGULAR INFLECTIONS CANNOT BE RECOVERED FROM WORDNET HERE: this `wordnet-db` build ships NO `.exc` files** (`verb.exc`/`noun.exc` are absent — only `data.*`, `index.*`, `index.sense`). **So `went → go` and `children → child` would have to be GUESSED, which is exactly the error class refused in `OFFLINEDICT.3`.** Not doing it.
   - ⚠ **And a hand-written irregular map would be a WORD LIST**, which is banned (`feedback_no_word_lists_use_taxonomy`). **This wants its own measured decision, not a rider on this change.** The network API still answers these whenever it is up.
 
+## SAFETYTIMEOUT — the guard in front of the bounded call was itself unbounded — filed 2026-09-05
+
+> Gee (verbatim): *"update code button keep training, does nothing on the tech viewer"* → *"should i use the dashboard? did you fix that one atleasst?"*
+
+- [x] `SAFETYTIMEOUT.1` — ⛔⛔ **I BOUNDED THE PRESS AND LEFT THE PRE-FLIGHT UNBOUNDED, SO THE PANEL STILL LOOKED DEAD.** ✅ **FIXED + 17/17.** `pressSafeties()` runs **before any dialog** and asks the BRAIN (`/weights/list`) whether a checkpoint is mid-write — **with no timeout.** With the loop blocked, that hung. The panel printed `checking restart safeties…` and stopped: no dialog, no press, no error. **His report was "does nothing", and it was exactly right.**
+  - ⭐ **THE GENERALISABLE RULE: a guard in front of a bounded call has to be bounded too, or it becomes the new hang.** `PRESSCTL` fixed the request that mattered and left the check standing in front of it — **the fix was unreachable behind its own safety.**
+  - **6 s bound**, deliberately shorter than the press's 20 s: this is a liveness question about a healthy server, not a deploy. A timeout produces the `unknown` verdict `pressSafeties` already had — **a CANNOT-TELL, never an all-clear** — and now names the cause in plain words (*"the brain did not answer within 6s (its event loop is probably blocked — which is usually why you are pressing this)"*) instead of printing a bare `AbortError`.
+  - **Nothing else moved:** a live checkpoint write still STOPS the press · a 500 is still a CANNOT-TELL · a 403 is still not a failure · the knob-write warn and pending-defaults info still ride along. All asserted.
+
+- [ ] `SAFETYTIMEOUT.2` — ⛔ **THE DASHBOARD'S LEGACY BUTTONS STILL CLAIM SUCCESS FROM THEIR CATCH BRANCH, AND THEY ARE STILL LIVE.** `html/dashboard.html:4641` sets `✓ restarting (resumes)` **inside `catch`**, so a failed request reports success — the same assume-success defect just removed from the teach viewer. ⚠ **Not fixed in this change and not bundled into it**; the Brain Power panel on the same page is correct (`/ctl/*`, `credentials: 'same-origin'`, `{"confirm":"WIPE"}`, `409` handled, server message reported), so **the working control already exists two panels away.** ⭐ **The right fix is probably to RETIRE the legacy row rather than repair it** — `CTLSUPERSEDE` already says the new panel must replace the old one, not join it.
+
 ## PRESSCTL — the viewer's restart buttons fire at the one route a wedged brain cannot serve — filed 2026-09-05
 
 > Gee (verbatim): *"i pressed update keep weights in the teacvh viewer, did it properly restart? sasys itsd been up for 17hrs still"* → *"we arent using mg we are fixing the control buttons for the restarts!"*

@@ -1,6 +1,37 @@
 # RESUME — Session Pickup Brief
 
-> ## ✅✅ 2026-09-05 DEFINITIONS NO LONGER NEED THE NETWORK — THE WALK IS UNBLOCKED (LATEST — PICK UP HERE)
+> ## ⭐ 2026-09-05 USE THE DASHBOARD'S BRAIN POWER PANEL — IT ALREADY WORKS (LATEST — PICK UP HERE)
+>
+> ### ⛔ SHE IS PINNED RIGHT NOW
+> ```
+> /public-state.json   http=000  timed out at 12s     <- brain, blocked loop
+> /ctl/status          http=401  0.15s                <- control plane, ALIVE
+> ```
+>
+> ### ⭐⭐ THE BUTTON TO PRESS
+> **Dashboard → Brain Power panel → `⚡ Force Restart (wedged)`** (`/ctl/kick`). Its own tooltip names this exact symptom: *"process alive but not answering — e.g. a long GC pin."* Try **`🔄 Restart (Savestart)`** first — it saves before exiting. ⚠ Force Restart skips the graceful save, which right now costs nothing (`passedCellsTotal` has been 0 for 17 h).
+>
+> Then **`⬆ Update (keep weights)`** to pull `66cd0958` and get the offline dictionary.
+>
+> ⛔ **DO NOT use the older buttons higher up that page** (`♻ Reset Brain (fresh)` and the legacy restart). They post to the BRAIN's routes, and `dashboard.html:4641` sets **`✓ restarting (resumes)` from inside its `catch`** — a failed request reports success. Filed as `SAFETYTIMEOUT.2`, not fixed.
+>
+> ### ⛔⛔ WHY THE TEACH VIEWER STILL DID NOTHING — MY MISS, AND IT IS THE LESSON
+> `PRESSCTL` bounded the press fetch this morning. **It was unreachable**, because `pressSafeties()` runs BEFORE any dialog and asked the brain `/weights/list` **with no timeout**. On a pinned brain it hung: the panel printed `checking restart safeties…` and stopped. **No dialog, no press, no error.**
+>
+> ⭐ **THE RULE: a guard in front of a bounded call has to be bounded too, or it becomes the new hang.** I fixed the request that mattered, left the check standing in front of it, and told him to press the button. **Fixed — 6 s bound, 17/17** — and a timeout now names the blocked loop instead of leaking `AbortError`.
+>
+> ### ⚠ WHY THE BUILD STAMP READS `236eafc7`
+> **Build stamps only move on a DEPLOY.** `self-update.sh` writes `deployed-build.json`; `deploy.yml` rsyncs the frontend on every push and never touches it. So every push today changed code on disk **without** changing the stamp. **It is not showing the wrong build — it is showing the last one deployed, which is what the process is still running.**
+>
+> ### ⏳ WHAT IS WHERE
+> | | ships by | on the box? |
+> |---|---|---|
+> | press-button fixes (frontend) | `deploy.yml` rsync on push | ✅ **verified live** — markers matched byte-for-byte |
+> | offline dictionary (server) | needs a deploy + restart | ❌ **not yet — this is what the press is for** |
+>
+> ---
+>
+> ## ✅✅ 2026-09-05 DEFINITIONS NO LONGER NEED THE NETWORK — THE WALK IS UNBLOCKED
 >
 > ### ⛔ WHAT WAS WRONG
 > `api.dictionaryapi.dev` returned **`000` — no response at all — on every word, all day.** The walk sat **17.5 h on `ela/kindergarten`** with `passedCellsTotal 0`, `totalWords 0`, `vocabPermMiss 67`. She could not bind a definition, so vocabulary never landed and the gate could never clear. ⚠ **`wiki/modules/curriculum.md` has warned for months that this lane had one source and no SLA.** Today it cost the whole day.
