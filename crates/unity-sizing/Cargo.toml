@@ -1,0 +1,21 @@
+[package]
+name = "unity-sizing"
+version = "0.1.0"
+edition = "2021"
+description = "The Unity brain's neuron-count arithmetic — tier ladder, budget selection, required-MB. One authoritative home. Migration phase B4."
+license = "MIT"
+
+# ⛔ ZERO DEPENDENCIES, DELIBERATELY. §5.2: this crate owns "tier ladder, budget
+# arithmetic, BYTES_PER_NNZ consumption" and must NOT own "reading files, env
+# fallbacks scattered inline". Every input arrives as a parameter, which is what
+# makes the whole thing unit-testable against fixed inputs without booting
+# anything — the property §5.1 says is the entire reason it is its own crate.
+[dependencies]
+
+[[bin]]
+name = "unity-sizing"
+path = "src/main.rs"
+
+[lib]
+name = "unity_sizing"
+path = "src/lib.rs"
