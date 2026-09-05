@@ -1232,6 +1232,32 @@ if (BUNDLE_FRESHNESS.ok === false) {
 const CURRENT_DONOR_VERSION = '0.3.36';
 
 const WEIGHTS_FORMAT_VERSION = 6;   // language-growth hop 2 (2026-08-29): WORD_MOTOR_TARGET_LANG_CORTEX 12M→20M with per-host AFFORDABLE geometry (each host hops as far as its own RAM/VRAM bounds allow, ≤ target) — saved lang-cortex geometry no longer matches, old weights auto-refuse → fresh walk both directions, per the operator's word. (v5 was ENDO 2026-08-25: `brainstem` cluster added (monoamine nuclei) — cluster set + cerebellum fraction changed. v4 was language-growth hop 1 2026-08-16: langCortexSize 1.5M→12M. v3 was WMB 2026-07-14: word_motor unified band.)
+// ⛔⛔ THE `UBWT` BINARY WEIGHT FILE'S OWN FORMAT VERSION — A DIFFERENT NUMBER
+// FROM `WEIGHTS_FORMAT_VERSION` ABOVE, AND CONFLATING THEM IS A DATA-LOSS BUG.
+//
+// `WEIGHTS_FORMAT_VERSION` describes the BRAIN's geometry (cluster set, cortex
+// size) and gates resume-vs-wipe at boot. This number describes the BYTE LAYOUT
+// of `brain-weights.bin`. They move for different reasons and neither implies
+// the other — the loader below compares against THIS one, so bumping the other
+// does not gate the binary reader at all.
+//
+// ⛔ v1 → v2 (2026-09-05, WEIGHTPREC completion): the `values` array narrowed
+// from Float64 to Float32. That is an ON-DISK width change, so it MUST carry a
+// version — a v1 file read as v2 (or the reverse) misreads every section after
+// the first and the misalignment is silent, not a parse error.
+//
+// ⭐ WHY v1 IS STILL READ RATHER THAN REFUSED: a v1 file on a running box is a
+// genuinely valid Float64 checkpoint. Refusing it would discard real training
+// to avoid a conversion that costs one array copy. The loader picks the array
+// type from the version it finds; the apply path coerces to whatever the live
+// `SparseMatrix` allocates today.
+//
+// ⚠ ANY FUTURE CHANGE TO THE ON-DISK WIDTH BUMPS THIS AND ADDS A CASE TO
+// `_BIN_VALUES_ARRAY_FOR`. The version IS the dtype declaration; there is no
+// other record of what is in the file.
+const BIN_FORMAT_VERSION = 2;
+const _BIN_VALUES_ARRAY_FOR = (v) => (v === 1 ? Float64Array : v === 2 ? Float32Array : null);
+
 const RESUME_MARKER_PATH = path.join(__dirname, '.resume-marker.json');
 
 // #112.11 — checkpoint slot cap. Keep only the last N rolling save slots
@@ -8127,10 +8153,23 @@ class ServerBrain {
   //     'SECT' magic (4) + nameLen uint32 (4) + name bytes (padded to
   //     uint32 boundary) + rows uint32 (4) + cols uint32 (4) +
   //     nnz uint32 (4) + rowPtr (rows+1)*uint32 + colIdx nnz*uint32 +
-  //     values nnz*float64
+  //     values nnz*float32   (v1 files: nnz*float64 — see BIN_FORMAT_VERSION)
   // All values are host-byte-order (little-endian on x86/x64). The file
   // is only consumed on the same machine that wrote it, so endianness
   // swap is not needed.
+  //
+  // ⛔⛔ THE VALUE WIDTH IS READ OFF THE ARRAY, NEVER RESTATED AS A LITERAL.
+  // Every `values` write below uses `s.values.BYTES_PER_ELEMENT`, because a
+  // hardcoded width here does not merely mis-size the file — it THROWS.
+  // `Buffer.from(arr.buffer, off, len)` raises ERR_BUFFER_OUT_OF_BOUNDS when
+  // `len` runs past the ArrayBuffer, and a Float32Array of `nnz` elements owns
+  // exactly half of `nnz * 8`. Measured: it does not clamp, it throws.
+  //
+  // ⛔ AND AN ABORTED SAVE IS THE WORST FAILURE THIS FILE HAS. Per BIGSAVE
+  // below, the save aborts and the brain falls back to its previous checkpoint,
+  // "silently losing everything learned since" — so a stale width here means she
+  // walks for days and never checkpoints, with no error the operator can see.
+  // ⭐ Deriving from the array cannot go stale by construction; a constant can.
   // Shared section collector for the binary save paths — reference-only
   // (no copies): each section holds live views of the CSR arrays. Values
   // may keep training during a time-sliced write; the resulting snapshot
@@ -8161,7 +8200,7 @@ class ServerBrain {
       totalBytes += 4 + 4 + padded + 4 + 4 + 4;
       totalBytes += (s.rows + 1) * 4;
       totalBytes += s.nnz * 4;
-      totalBytes += s.nnz * 8;
+      totalBytes += s.nnz * s.values.BYTES_PER_ELEMENT;
     }
     return { sections, totalBytes };
   }
@@ -8208,7 +8247,7 @@ class ServerBrain {
       fd = fs.openSync(TMP_FILE, 'w');
       const hdr = Buffer.alloc(16);
       hdr.write('UBWT', 0, 4, 'ascii');
-      hdr.writeUInt32LE(1, 4);
+      hdr.writeUInt32LE(BIN_FORMAT_VERSION, 4);
       hdr.writeUInt32LE(this._saveVersion || 0, 8);
       hdr.writeUInt32LE(sections.length, 12);
       fs.writeSync(fd, hdr);
@@ -8243,7 +8282,7 @@ class ServerBrain {
         };
         _writeView(s.rowPtr, (s.rows + 1) * 4);
         _writeView(s.colIdx, s.nnz * 4);
-        _writeView(s.values, s.nnz * 8);
+        _writeView(s.values, s.nnz * s.values.BYTES_PER_ELEMENT);
       }
       // fsync BEFORE the swap so the bytes are on the platter, not just in the
       // page cache — a power loss between rename and writeback would otherwise
@@ -8369,7 +8408,7 @@ class ServerBrain {
       fd = fs.openSync(TMP_FILE, 'w');
       const hdr = Buffer.alloc(16);
       hdr.write('UBWT', 0, 4, 'ascii');
-      hdr.writeUInt32LE(1, 4);
+      hdr.writeUInt32LE(BIN_FORMAT_VERSION, 4);
       hdr.writeUInt32LE(this._saveVersion || 0, 8);
       hdr.writeUInt32LE(sections.length, 12);
       await writeAsync(hdr);
@@ -8391,7 +8430,7 @@ class ServerBrain {
         };
         for (const b of _viewChunks(s.rowPtr, (s.rows + 1) * 4)) await writeSliced(b);
         for (const b of _viewChunks(s.colIdx, s.nnz * 4)) await writeSliced(b);
-        for (const b of _viewChunks(s.values, s.nnz * 8)) await writeSliced(b);
+        for (const b of _viewChunks(s.values, s.nnz * s.values.BYTES_PER_ELEMENT)) await writeSliced(b);
       }
       // Flush ALL dirty pages on the threadpool so the rename below has nothing
       // to write back (kills the ext4 flush-on-rename main-thread stall) AND the
@@ -8470,10 +8509,20 @@ class ServerBrain {
       const formatVersion = header.readUInt32LE(4);
       const saveVersion = header.readUInt32LE(8);
       const sectionCount = header.readUInt32LE(12);
-      if (formatVersion !== 1) {
-        console.warn(`[Brain] Binary weights format version ${formatVersion} unsupported (expected 1)`);
+      // ⛔ THE VERSION IS THE ONLY RECORD OF THE VALUE WIDTH ON DISK. v1 = f64,
+      // v2 = f32. Read the wrong one and every section after the first lands at
+      // the wrong offset — which does NOT surface as a parse error, it surfaces
+      // as a brain that loaded successfully and holds garbage.
+      const ValuesArray = _BIN_VALUES_ARRAY_FOR(formatVersion);
+      if (!ValuesArray) {
+        console.warn(`[Brain] Binary weights format version ${formatVersion} unsupported (this build reads 1 and 2, writes ${BIN_FORMAT_VERSION}) — skipping, weights NOT restored`);
         fs.closeSync(fd); fd = -1;
         return;
+      }
+      if (formatVersion !== BIN_FORMAT_VERSION) {
+        // Not a fault. A v1 file is a valid Float64 checkpoint written before
+        // WEIGHTPREC; it holds real training and is read rather than discarded.
+        console.log(`[Brain] Binary weights are format v${formatVersion} (${ValuesArray.name}); this build writes v${BIN_FORMAT_VERSION}. Reading at the on-disk width — the apply step converts to the live weight type, and the next save rewrites as v${BIN_FORMAT_VERSION}.`);
       }
       const decoder = new TextDecoder();
       const sections = [];
@@ -8500,7 +8549,7 @@ class ServerBrain {
         readIntoTypedArray(rowPtr);
         const colIdx = new Uint32Array(nnz);
         readIntoTypedArray(colIdx);
-        const values = new Float64Array(nnz);
+        const values = new ValuesArray(nnz);
         readIntoTypedArray(values);
         sections.push({ name, rows, cols, nnz, rowPtr, colIdx, values });
       }
@@ -8533,7 +8582,17 @@ class ServerBrain {
     for (const s of pending.sections) {
       try {
         const m = new SparseMatrix(s.rows, s.cols);
-        m.values = s.values;
+        // ⛔ COERCE TO THE LIVE WEIGHT TYPE. This is a DIRECT assignment, not
+        // `SparseMatrix.deserialize` — so nothing here narrows a loaded array
+        // the way the constructor would. A v1 (Float64) checkpoint applied
+        // as-is would leave that ONE matrix double-width while every other
+        // matrix in the brain is Float32: the estimator's budget silently wrong
+        // again, and the next save writing mixed widths into one file.
+        // ⭐ The target is read from the matrix the constructor just built, so
+        // it is whatever `sparse-matrix.js` allocates TODAY — no constant to
+        // keep in sync, and it self-corrects if the width ever changes again.
+        const TargetValues = m.values.constructor;
+        m.values = (s.values instanceof TargetValues) ? s.values : new TargetValues(s.values);
         m.colIdx = s.colIdx;
         m.rowPtr = s.rowPtr;
         m.nnz = s.nnz;

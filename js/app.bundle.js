@@ -9,9 +9,12 @@ var __export = (target, all) => {
 };
 
 // ../js/brain/sparse-matrix.js
-var SparseMatrix;
+var WEIGHT_ARRAY, BYTES_PER_VALUE, BYTES_PER_NNZ, SparseMatrix;
 var init_sparse_matrix = __esm({
   "../js/brain/sparse-matrix.js"() {
+    WEIGHT_ARRAY = Float32Array;
+    BYTES_PER_VALUE = WEIGHT_ARRAY.BYTES_PER_ELEMENT;
+    BYTES_PER_NNZ = BYTES_PER_VALUE + 4;
     SparseMatrix = class _SparseMatrix {
       /**
        * @param {number} rows — number of post-synaptic neurons
@@ -25,7 +28,7 @@ var init_sparse_matrix = __esm({
         this.cols = cols ?? rows;
         this.wMin = opts.wMin ?? -Infinity;
         this.wMax = opts.wMax ?? Infinity;
-        this.values = new Float64Array(0);
+        this.values = new WEIGHT_ARRAY(0);
         this.colIdx = new Uint32Array(0);
         this.rowPtr = new Uint32Array(rows + 1);
         this.nnz = 0;
@@ -49,7 +52,7 @@ var init_sparse_matrix = __esm({
           perRowK[i] = kPerRow;
           totalPre += kPerRow;
         }
-        this.values = new Float64Array(totalPre);
+        this.values = new WEIGHT_ARRAY(totalPre);
         this.colIdx = new Uint32Array(totalPre);
         this.rowPtr = new Uint32Array(rows + 1);
         this.nnz = totalPre;
@@ -118,14 +121,14 @@ var init_sparse_matrix = __esm({
         const noSelfConnect = rows === cols;
         const effFanout = Math.min(Math.max(0, fanout | 0), cols - (noSelfConnect ? 1 : 0));
         if (effFanout <= 0) {
-          this.values = new Float64Array(0);
+          this.values = new WEIGHT_ARRAY(0);
           this.colIdx = new Uint32Array(0);
           this.rowPtr = new Uint32Array(rows + 1);
           this.nnz = 0;
           return;
         }
         const totalPre = rows * effFanout;
-        this.values = new Float64Array(totalPre);
+        this.values = new WEIGHT_ARRAY(totalPre);
         this.colIdx = new Uint32Array(totalPre);
         this.rowPtr = new Uint32Array(rows + 1);
         this.nnz = totalPre;
@@ -203,7 +206,7 @@ var init_sparse_matrix = __esm({
         const noSelfConnect = rows === cols;
         const effFanout = Math.min(Math.max(0, fanout | 0), cols - (noSelfConnect ? 1 : 0));
         if (effFanout <= 0) {
-          this.values = new Float64Array(0);
+          this.values = new WEIGHT_ARRAY(0);
           this.colIdx = new Uint32Array(0);
           this.rowPtr = new Uint32Array(rows + 1);
           this.nnz = 0;
@@ -217,13 +220,13 @@ var init_sparse_matrix = __esm({
         const medCount = Math.max(0, Math.round(effFanout * medFrac));
         const longCount = Math.max(0, effFanout - localCount - medCount);
         const totalPre = rows * effFanout;
-        this.values = new Float64Array(totalPre);
+        this.values = new WEIGHT_ARRAY(totalPre);
         this.colIdx = new Uint32Array(totalPre);
         this.rowPtr = new Uint32Array(rows + 1);
         this.nnz = totalPre;
         const picks = /* @__PURE__ */ new Set();
         const rowBufCol = new Uint32Array(effFanout);
-        const rowBufVal = new Float64Array(effFanout);
+        const rowBufVal = new WEIGHT_ARRAY(effFanout);
         let idx = 0;
         this.rowPtr[0] = 0;
         for (let i = 0; i < rows; i++) {
@@ -358,13 +361,13 @@ var init_sparse_matrix = __esm({
           return 0.25;
         })();
         const totalPre = rows * fanout;
-        this.values = new Float64Array(totalPre);
+        this.values = new WEIGHT_ARRAY(totalPre);
         this.colIdx = new Uint32Array(totalPre);
         this.rowPtr = new Uint32Array(rows + 1);
         this.nnz = totalPre;
         const picks = /* @__PURE__ */ new Set();
         const rowBufCol = new Uint32Array(fanout);
-        const rowBufVal = new Float64Array(fanout);
+        const rowBufVal = new WEIGHT_ARRAY(fanout);
         let idx = 0;
         this.rowPtr[0] = 0;
         for (let i = 0; i < rows; i++) {
@@ -466,7 +469,7 @@ var init_sparse_matrix = __esm({
         for (let i = 0; i < W.length; i++) {
           if (Math.abs(W[i]) > threshold) nnz++;
         }
-        sparse.values = new Float64Array(nnz);
+        sparse.values = new WEIGHT_ARRAY(nnz);
         sparse.colIdx = new Uint32Array(nnz);
         sparse.rowPtr = new Uint32Array(rows + 1);
         sparse.nnz = nnz;
@@ -858,7 +861,7 @@ var init_sparse_matrix = __esm({
           if (Math.abs(values[k]) >= threshold) newNnz++;
         }
         if (newNnz === oldNnz) return 0;
-        const newValues = new Float64Array(newNnz);
+        const newValues = new WEIGHT_ARRAY(newNnz);
         const newColIdx = new Uint32Array(newNnz);
         const newRowPtr = new Uint32Array(rows + 1);
         let idx = 0;
@@ -941,7 +944,7 @@ var init_sparse_matrix = __esm({
           newNnz += Math.min(k, rowLen);
         }
         if (newNnz === oldNnz) return 0;
-        const newValues = new Float64Array(newNnz);
+        const newValues = new WEIGHT_ARRAY(newNnz);
         const newColIdx = new Uint32Array(newNnz);
         const newRowPtr = new Uint32Array(rows + 1);
         let maxRowLen = 0;
@@ -1028,7 +1031,7 @@ var init_sparse_matrix = __esm({
         }
         if (newEntries.length === 0) return 0;
         const totalNnz = this.nnz + newEntries.length;
-        const newValues = new Float64Array(totalNnz);
+        const newValues = new WEIGHT_ARRAY(totalNnz);
         const newColIdx = new Uint32Array(totalNnz);
         const newRowPtr = new Uint32Array(rows + 1);
         newEntries.sort((a, b) => a[0] - b[0]);
@@ -1079,7 +1082,7 @@ var init_sparse_matrix = __esm({
        */
       static deserialize(data, opts = {}) {
         const m = new _SparseMatrix(data.rows, data.cols, opts);
-        m.values = new Float64Array(data.values);
+        m.values = new WEIGHT_ARRAY(data.values);
         m.colIdx = new Uint32Array(data.colIdx);
         m.rowPtr = new Uint32Array(data.rowPtr);
         m.nnz = data.nnz;
@@ -1118,7 +1121,7 @@ var init_sparse_matrix = __esm({
        * Get stats string for logging.
        */
       stats() {
-        const dense = this.rows * this.cols * 8;
+        const dense = this.rows * this.cols * BYTES_PER_VALUE;
         const sparse = this.memoryBytes;
         const ratio = dense / sparse;
         return `${this.rows}\xD7${this.cols} | ${this.nnz} connections (${(this.density * 100).toFixed(1)}%) | ${(sparse / 1024).toFixed(1)}KB sparse vs ${(dense / 1024).toFixed(1)}KB dense (${ratio.toFixed(1)}\xD7 reduction)`;

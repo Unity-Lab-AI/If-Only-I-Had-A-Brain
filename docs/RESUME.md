@@ -1,6 +1,45 @@
 # RESUME — Session Pickup Brief
 
-> # 🔴🔴 2026-09-05 13:52 UTC — ROOT CAUSE FOUND: SHE IS THROTTLED BY HER OWN CGROUP (LATEST — PICK UP HERE)
+> # 🟢 2026-09-05 — SPONGE'S MEMORY FIXES PULLED, AND THE ONE THAT WAS INCOMPLETE (LATEST — PICK UP HERE)
+>
+> **Gee (verbatim):** *"pull main to local Sponge fixed a bunch of stuff and might have asome specific work he wants done and tested before he can ever push the brain to the box again"*
+>
+> ## ✅ Pulled clean. `main` = `12c844e1`, twelve commits from Sponge.
+> `WEIGHTPREC` · `STAGEDISK`+`ONEPRESS` · `OWNCGROUP` · plus two new docs, `docs/MEMORY-MAP.md` and `docs/RUST-MIGRATION.md`. **⚠ `github/main` was 12 behind and has been synced.**
+>
+> ### ⭐ The three deploy-memory fixes are sound — I found nothing wrong with them
+> They close the block below. `mktemp -d` under `PrivateTmp=true` was staging ~12 GB into **RAM** (tmpfs pages are unreclaimable, so all the reclaim pressure landed on her working set); three presses were running concurrently, each `rsync --delete`-ing the same destination; and `detached: true` starts a new *session*, not a new *cgroup*, so every heavy thing a deploy did was charged to her `MemoryHigh=20G`. **Same bug three times — work that is not the brain, spending the brain's budget.**
+>
+> ## ⛔⛔ THE ANSWER TO HIS QUESTION IS YES — `WEIGHTPREC` IS INCOMPLETE, AND AS SHIPPED THE NEXT PRESS TRAINS AND NEVER CHECKPOINTS
+>
+> | # | finding | evidence |
+> |---|---|---|
+> | 1 | **The Float32 cut reached 5 of 12 allocation sites.** Its own comment warns *"missing one would produce a matrix whose values array silently disagreed with the rest"* | measured through the real module: `initRandom` → Float32 **8.0 B/nnz**; `initTopographic` → **Float64, 12.0**; `initSmallWorld` → **Float64, 12.0** |
+> | 2 | **And it missed the matrix the incident was about.** `brain-server.js:3432` forces `topographic = true` on a fresh walk; `cluster.js:623` routes 12M ≥ 10,000 to `initTopographic` | the 360M-nnz intra matrix — the 8.80 GiB PSS that started the hunt — takes the one init the fix did not touch, **on the exact boot the next press performs** |
+> | 3 | **The binary save THROWS on any Float32 matrix.** Both paths size the write `nnz * 8` | `Buffer.from(f32.buffer, 0, nnz*8)` → **`ERR_BUFFER_OUT_OF_BOUNDS`**. It throws, it does not clamp. Cross-projections use `initRandom`, so **the half that WAS converted is the half that breaks the save** |
+> | 4 | Per `BIGSAVE`'s own comment in that function, an aborted save *"falls back to its previous checkpoint, silently losing everything learned since"* | she would walk for days with nothing to show for it, and no error on the dashboard |
+> | 5 | **`prune` / `pruneTopKPerRow` / `grow` widen a correct matrix BACK.** `pruneTopKPerRow` runs in the walk (`curriculum.js:15709`, `:19388`) | measured: `initRandom` Float32 → `prune(0.35)` → **Float64**. Progressive and silent |
+>
+> ### ⚠ And one claim in the commit message is false, which changes what the press does
+> *"a size/format change trips the boot compat gate into a fresh walk regardless."* **It does not.** `WEIGHTS_FORMAT_VERSION` is still `6` and the estimator's value went from a hardcoded `8` to an **imported `8`** — the same number. Nothing the gate reads moved. So the press would have RESUMED onto a half-converted weight set, not wiped.
+>
+> ## ✅ ALL OF IT FIXED THIS BATCH — branch `feature/weightprec-completion`
+> - **All 12 sites** route through `WEIGHT_ARRAY`. Verified 8/8 init and rebuild paths read back `Float32Array`.
+> - **The writer derives its width from `values.BYTES_PER_ELEMENT`** at all three sites. *A constant can go stale; an array cannot.*
+> - **`BIN_FORMAT_VERSION`** on the `UBWT` header — v1 = f64, v2 = f32, **a different number from `WEIGHTS_FORMAT_VERSION` and not gated by it.** v1 files are **read and narrowed**, not refused: a v1 checkpoint holds real training.
+> - **`_applyPendingCortexWeights` coerces** — it assigns `m.values` directly and never goes through `deserialize`, which is what the commit's reasoning had assumed.
+> - **22/22 on a round-trip harness built from the shipped method bodies**, extracted by brace-matched line range and executed — never retyped, because a detector written from an assumed format measures the assumption. Harness deleted in the same commit.
+>
+> ### ⭐ Consequence for the press: a RESUME is now safe
+> The geometry did not change, so there is no reason to force a wipe. **Savestart works**; the box's v1 checkpoint reads, narrows, and gets rewritten as v2 on the next save.
+>
+> ## ⛔ Also fixed on Gee's word, mid-batch
+> **Gee (verbatim):** *"AND sum 1 studk a bunch of horse shit into my reademe:"* — 43 lines of internal YAML provenance were sitting at the top of `README.md`, carrying six task tags (`DOCPROV.3/.4`, `NUMSCOPE`, `FRESHFLAG`, `PSITEACH`, `TEACHCREDIT`). Both hosts render leading frontmatter as a table, so **it was the first thing a visitor saw.** Removed; two more bare tags found buried in the body (`WMB`, `TEACHCREDIT`) that a `NAME.number` regex could never have caught. ⚠ Checked before deleting — the two provenance scripts treat a page without frontmatter as *uncovered, not failing*.
+>
+> ## ▶ NEXT
+> **1.** Cascade this branch and push both remotes. **2.** Then the press — and read the block below first, because the box is still throttled and that is what actually has to clear.
+
+> # 🔴🔴 2026-09-05 13:52 UTC — ROOT CAUSE FOUND: SHE IS THROTTLED BY HER OWN CGROUP (previous)
 >
 > ### ⭐ Full write-up leads `docs/BUTTON-AUDIT.md`. It is the hand-off; paste it whole.
 >
