@@ -11,3 +11,7 @@ license = "MIT"
 # via donor-app, so it costs nothing new.
 [dependencies]
 clap = { version = "4", features = ["derive"] }
+# For the read-only ".force-fresh armed?" check. ⛔ preflight answers "would a
+# restart boot?" — and "would it WIPE?" is the other half of that question, on a
+# box where the next restart from ANY cause honours that flag.
+unity-state = { path = "../unity-state" }

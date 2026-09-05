@@ -1,0 +1,12 @@
+[package]
+name = "unity-state"
+version = "0.1.0"
+edition = "2021"
+description = "Flags, resume markers, boot-reason history, and the boot decision they drive. Migration phase B4."
+license = "MIT"
+
+# ⛔ ZERO DEPENDENCIES. §5.2 gives this crate "sqlite, markers, boot-reason
+# history, flag files" and forbids it "business logic about WHEN to wipe". The
+# decision here is a PURE FUNCTION of what is on disk, and it is pure because
+# this is the decision that destroys a multi-week walk when it is wrong.
+[dependencies]
