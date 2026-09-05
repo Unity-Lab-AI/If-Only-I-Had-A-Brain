@@ -43,6 +43,42 @@ Sponge (verbatim): *"**A3. Give the fields rsync a wedge watchdog.** The LFS pul
 
 His CORRECTION 1 says `write_bytes == 0` is not a wedge signal. **The LFS stall watchdog fires on exactly that reading.** The evidence is genuinely mixed — the guard also requires `read_bytes` climbing, and the 2026-09-05 runaway's 212 GB *was* measured off that same counter, so accounting clearly works on this path. ⭐ **The discriminator for the next press: if a `WEDGED` line fires while the fields directory is still GROWING, the signal is wrong and that guard should move to destination growth too.** Until that is observed, changing a guard that has caught a real outage would be trading a known-good for a theory. Filed, not fixed.
 
+## 2026-09-05 — `BUTTONFIX` — THE LEGACY ROW LIED THREE WAYS, AND THE TICKET'S OWN FIX WOULD HAVE DELETED THE FALLBACK
+
+Gee (verbatim): *"get abck to work"* · and the reports that produced these rows: *"update code button keep training, does nothing on the tech viewer"* → *"should i use the dashboard? did you fix that one atleasst?"*
+
+### ✅ `BUTTONAUDIT.2` — eight buttons kept, fixed at one chokepoint
+
+⛔⛔ **THE ROW SAID "DELETE THE ROW, DO NOT REPAIR IT". THAT WOULD HAVE REMOVED CONTROL DURING THE EXACT OUTAGE THE ROW EXISTS FOR.** `CTLSUPERSEDE`, ten lines above the code, already settles it: the legacy row is hidden *"ONLY once the control plane has actually answered. If /ctl is not installed or not running, the legacy row is the ONLY way to control the brain and hiding it would leave a dashboard with no controls at all — strictly worse than a duplicate."* **It is the fallback.**
+
+⛔⛔ **AND ONLY SIX OF THE EIGHT WERE EVER SUPERSEDED.** Checked against `server/brain-ctl.js`'s actual route list rather than assumed: `/ctl` exposes `health · kick · logs · reset · restart · savererun · start · status · stop · update · update-savestart`. **There is no `checkpoint` route and no `curriculum/forget` route.** `btn-save-checkpoint` and `btn-reteach` have **no control-plane equivalent**, so deleting all eight would have silently destroyed two live capabilities on top of removing the fallback.
+
+**Three defects, all fixed at one chokepoint** (`adminPress()` + `adminPressRender()`), because eight handlers repeating one shape is *how* they acquired one set of defects:
+
+- **① `catch` claimed success.** `'✓ restart sent (reviving)'` was set on the failure path. ⭐ **The old rationale was half-right and the conclusion backwards:** a real restart does kill the connection — **and so does an unreachable server.** The button cannot distinguish them, so it now claims **neither**: `? sent — could NOT confirm`, with the log naming what to check.
+- **② `r.ok` was never checked — a defect the row did not name.** nginx returns `504` as a real HTTP response, so `fetch` RESOLVES; `r.json()` throws on the HTML body, `.catch(() => ({}))` makes it `{}`, and the success line ran regardless. **The identical bug already fixed in the teach viewer.** Non-2xx now renders `⚠ HTTP <status> — NOT accepted`.
+- **③ No timeout.** 20 s on the restart verbs; **120 s for `checkpoint`**, because a large checkpoint is a slow *legitimate* write and a short bound would abort healthy work.
+
+⭐ **`exitsOnSuccess` is why this needed a flag and not a constant.** For `restart`/`reset`/`update`/`shutdown`/`savererun` a dropped connection is genuinely ambiguous → could-not-confirm. For `checkpoint`/`curriculum/forget` the server is supposed to stay up → a dropped connection is a **real failure** and says so. **The same helper, with an honest difference.**
+
+### ✅ `BUTTONAUDIT.3` — `act()` bounded, and deliberately generously
+
+The Brain Power panel got every hard part right — `/ctl/*`, `credentials`, the confirm token, `409` handled, the server's own message reported — and had **zero `AbortController`**. Now bounded, with the timer cleared in `finally`, and **an abort rendered as could-not-confirm rather than failure**.
+
+⚠ **The bound is 5 MINUTES on purpose and must stay generous.** The function's own status line says a start *"waits for ~5.4 GB of weights to load, so this can take minutes"* — **a short timeout would abort healthy long presses and teach the operator to distrust the panel, which is worse than no bound at all.**
+
+### ✅ `SAFETYTIMEOUT.2` — closed by the same change
+
+Its recommendation to retire rather than repair was **not** taken, for the reasons above.
+
+### ⚠ `BUTTONAUDIT.5` filed — seven more unbounded admin POSTs, found by sweeping
+
+`autoscale` ×2 · `resync` · `rollback` · `auto-advance` · `grade-advance` · `grade-signoff`. **None of them lies** — the whole-file audit confirms no catch branch anywhere claims success — so the only remaining defect is the missing bound. ⛔ **Deliberately not swept in the same commit:** three of them render their own result shapes, and changing fifteen handlers at once would mean a regression could not be attributed. **The eight fixed here are the ones that bit the operator; these are the ones that would bite next.**
+
+**Verified:** every inline `<script>` block parses (the edited one is 4,219 lines); a 17-check audit passes — no catch branch in the file claims success, the helper is bounded and checks `r.ok`, and **all eight button ids are still present**, which is the check that would have caught the delete-the-row plan.
+
+---
+
 ### ✅ `PRESSHARD.1` — CLOSED on a live read: the press hazard is gone, and a grep would have said otherwise
 
 Gee (verbatim): *"okay get back to work"*
