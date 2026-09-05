@@ -43,6 +43,32 @@ Sponge (verbatim): *"**A3. Give the fields rsync a wedge watchdog.** The LFS pul
 
 His CORRECTION 1 says `write_bytes == 0` is not a wedge signal. **The LFS stall watchdog fires on exactly that reading.** The evidence is genuinely mixed — the guard also requires `read_bytes` climbing, and the 2026-09-05 runaway's 212 GB *was* measured off that same counter, so accounting clearly works on this path. ⭐ **The discriminator for the next press: if a `WEDGED` line fires while the fields directory is still GROWING, the signal is wrong and that guard should move to destination growth too.** Until that is observed, changing a guard that has caught a real outage would be trading a known-good for a theory. Filed, not fixed.
 
+## 2026-09-05 — `B7 RE-PRICE` — THE TASK DOES NOT PAY, AND THE MIGRATION IS BIGGER THAN ITS OWN PLAN SAYS
+
+Gee (verbatim): *"keep working everything sponge said till its done"*
+
+Sponge (verbatim): *"**B7. Extract curriculum/vocabulary data** — do this early, it shrinks everything … ~3.37 MB of `js/brain/*-vocabulary.js` and `curriculum.js` is **data wearing a `.js` extension**. Move to JSON/sqlite. Worth doing even if the rewrite stalls."*
+
+**Investigated and closed as not-worth-doing. Every premise failed on measurement.**
+
+| claim | measured |
+|---|---|
+| *"3.37 MB total across vocab files"* | **0.625 MB** — 655,438 bytes across all twenty. **5.4× overstated** |
+| *"`curriculum.js` ← DATA wearing a `.js` extension"* | **~1,672 of 31,589 lines (≈5%)** look like string-array content. Overwhelmingly logic |
+| *"`student-question-banks.js` ← DATA"* | **Mixed** — `curriculum.js:43` imports seven FUNCTIONS from it, not just the banks |
+| *"shrinks everything"* | **Not in the browser bundle at all** — `grep -c 'K_VOCABULARY' js/app.bundle.js` → `0` |
+| *"worth doing even if the rewrite stalls"* | **No runtime payoff exists to collect** |
+
+⭐ **THE BENEFIT IT ASKS FOR IS ALREADY THERE, BUILT A DIFFERENT WAY.** `grade-vocabulary.js` loads each grade through a **dynamic `import()`**, and its own header states the reason: *"Dynamic import per grade keeps the curriculum module graph lean — only the active grade's vocab loads when that grade starts."* **The lazy-loading JSON extraction would buy is what the code already does.** `fullJourneyVocabularyStats()` does touch all twenty — **memoised, once per boot, for a dashboard denominator.**
+
+⛔ **So converting would replace a working, deliberately-designed load path with a filesystem read, for zero measured gain — and introduce a path that behaves differently under the deploy overlay.** That is a straight loss.
+
+⛔⛔ **THE FINDING THAT OUTLIVES THE TASK, AND IT IS THE REASON THIS WAS WORTH THE HOUR: THE RUST PORT IS BIGGER THAN §3 IMPLIES.** That section exists to argue the port is smaller than 72,700 lines suggests, on the strength of most of it being content. **It is not.** Genuinely-extractable data is **~0.9 MB of ~11 MB of JS**, and the single largest file is 95% logic. **The port surface IS logic; the "extract the data first" shortcut is not available at the size assumed.** `RUST-MIGRATION.md` §3 corrected in place, with the instruction to **re-price B1–B6 rather than inherit that estimate.**
+
+⚠ **Closed as NOT-WORTH-DOING, not as skipped.** The one real benefit — not compiling lesson content into a Rust binary — is entirely conditional on the rewrite reaching the curriculum, which is the last thing it would reach and is explicitly listed under *"Leave in JS"* in §2.
+
+---
+
 ## 2026-09-05 — `BUTTONFIX` — THE LEGACY ROW LIED THREE WAYS, AND THE TICKET'S OWN FIX WOULD HAVE DELETED THE FALLBACK
 
 Gee (verbatim): *"get abck to work"* · and the reports that produced these rows: *"update code button keep training, does nothing on the tech viewer"* → *"should i use the dashboard? did you fix that one atleasst?"*
