@@ -29,6 +29,7 @@ members = [
   "crates/unity-deploy",
   "crates/unity-weights",
   "crates/unity-donor-session",
+  "crates/unity-sizing",
   "donor-app",
 ]
 
