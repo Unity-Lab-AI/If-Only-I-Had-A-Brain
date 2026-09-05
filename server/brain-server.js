@@ -3869,6 +3869,23 @@ class ServerBrain {
       } catch { /* inventory attach best-effort — the authored facts stand alone */ }
       this.cortexCluster.lookupDefinitionFull = (word, opts) =>
         definitionService.getDefinitions(word, opts);
+      // ⛔⛔ WHY A LOOKUP FAILED, WHICH NOTHING COULD ASK UNTIL NOW.
+      // `lookupStatus` distinguishes "the API positively said 404, this word has
+      // no entry" ('noDef') from "the lookup did not come back" ('error' — 5xx,
+      // network, timeout, 429) and "never looked up" ('unknown'). Every other
+      // definition call was attached here; the one that says WHY was not, so
+      // curriculum.js could only ever see an empty result and had to guess.
+      //
+      // It guessed "the word has no definition", and on 2026-09-05 that printed
+      // DEF-MISS x1420 during a dictionary OUTAGE — including for `for`, which
+      // plainly has an entry. The service already had the answer.
+      //
+      // ⚠ The same mis-read has bitten once before and the docstring on
+      // lookupStatus records it: treating a rate-limited miss as no-definition
+      // PURGED real words. The function was written to stop that, and stopping
+      // it in the purge did not stop it in the flag.
+      this.cortexCluster.lookupDefinitionStatus = (word) =>
+        definitionService.lookupStatus(word);
       this.cortexCluster.prefetchDefinitions = (words, opts) =>
         definitionService.prefetch(words, opts);
       this.cortexCluster.getDefinitionCacheStats = () =>

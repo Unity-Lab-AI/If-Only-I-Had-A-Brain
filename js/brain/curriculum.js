@@ -4407,6 +4407,32 @@ export class Curriculum {
     if (tv.flags.length > 60) tv.flags.splice(0, tv.flags.length - 60);
   }
 
+  /**
+   * Retire a flag whose condition has actually been RESOLVED.
+   *
+   * ⛔⛔ THERE WAS NO WAY TO CLEAR A FLAG. Once raised it sat in the panel for
+   * the rest of the walk, so a transient problem that fixed itself looked
+   * identical to one that never did (2026-09-05). A warning that cannot retire
+   * is a warning that teaches the reader to ignore the panel.
+   *
+   * ⚠ CALL THIS ONLY WHEN THE CONDITION IS MEASURABLY GONE, never to tidy up.
+   * A flag removed while its cause is live is strictly worse than one that
+   * over-stays: it converts a visible problem into an invisible one, which is
+   * the failure mode every instrument in this file exists to prevent.
+   *
+   * Returns true if a flag was actually retired, so callers can log the
+   * transition rather than assuming it happened.
+   */
+  teachFlagClear(code, meta) {
+    const tv = this._teachView;
+    if (!tv || !Array.isArray(tv.flags)) return false;
+    const key = `${code}:${(meta && meta.subject) || ''}/${(meta && meta.grade) || ''}`;
+    const i = tv.flags.findIndex((f) => f.key === key);
+    if (i < 0) return false;
+    tv.flags.splice(i, 1);
+    return true;
+  }
+
   _hb(msg) {
     // 114.19er.4 — watchdog timestamp. Every `[Curriculum]` line
     // refreshes _lastCurriculumLogTs so the runner-level watchdog can
@@ -5321,9 +5347,29 @@ export class Curriculum {
     const taughtNow = cluster._definitionTaughtWords instanceof Set
       ? cluster._definitionTaughtWords : new Set();
     const stillMissing = todo.filter((w) => !taughtNow.has(w));
-    if (stillMissing.length) {
+    // ⛔⛔ A SET NAMED `_vocabPermanentMiss` MUST ONLY EVER RECEIVE
+    // PERMANENT MISSES. It used to receive every unlearned word, so a dictionary
+    // OUTAGE wrote perfectly ordinary words into a lifetime record of words that
+    // have no definition. On 2026-09-05 that was 67 words in one cell while the
+    // API was returning nothing at all — `for`, `the`, `and` are not permanent
+    // misses, and a set that says they are is worse than no set.
+    //
+    // ⭐ THE SPLIT IS THE SERVICE'S OWN VERDICT, not a guess: 404 → the word has
+    // no entry (permanent, and worth recording forever); anything else → the
+    // lookup did not come back (transient, and the word is retried by the next
+    // cell's pass because it is still untaught).
+    const _permanentMiss = [];
+    const _deferredMiss = [];
+    for (const w of stillMissing) {
+      let why = 'unknown';
+      try {
+        if (typeof cluster.lookupDefinitionStatus === 'function') why = cluster.lookupDefinitionStatus(w);
+      } catch { /* unattached → unknown → treated as transient, deliberately */ }
+      (why === 'noDef' ? _permanentMiss : _deferredMiss).push(w);
+    }
+    if (_permanentMiss.length) {
       if (!(cluster._vocabPermanentMiss instanceof Set)) cluster._vocabPermanentMiss = new Set();
-      for (const w of stillMissing) cluster._vocabPermanentMiss.add(w);
+      for (const w of _permanentMiss) cluster._vocabPermanentMiss.add(w);
       // Bounded like every other resident set here — the newest misses matter,
       // and an unbounded set on a 49.9K-word walk is a leak wearing a diagnosis.
       if (cluster._vocabPermanentMiss.size > 5000) {
@@ -5331,22 +5377,69 @@ export class Curriculum {
         cluster._vocabPermanentMiss = new Set(keep);
       }
     }
+    if (_deferredMiss.length) {
+      // Kept separately and bounded the same way. ⚠ This set is a WATCH, not a
+      // queue: nothing drains it, because the pre-cell pass already retries any
+      // word that is still untaught. Its job is to let the board say how many of
+      // this cell's misses were the service rather than the words.
+      if (!(cluster._vocabDeferredMiss instanceof Set)) cluster._vocabDeferredMiss = new Set();
+      for (const w of _deferredMiss) cluster._vocabDeferredMiss.add(w);
+      if (cluster._vocabDeferredMiss.size > 5000) {
+        cluster._vocabDeferredMiss = new Set([...cluster._vocabDeferredMiss].slice(-5000));
+      }
+    } else if (cluster._vocabDeferredMiss instanceof Set) {
+      // Everything that was deferred for THIS cell's words has since landed.
+      for (const w of todo) cluster._vocabDeferredMiss.delete(w);
+    }
     const verdict = stillMissing.length === 0
       ? '📚 PRE-CELL VOCAB DONE'
       : (totalWordsBound === 0
         ? '⛔ PRE-CELL VOCAB TAUGHT NOTHING'
         : '⚠ PRE-CELL VOCAB INCOMPLETE');
+    // ⚠ The split is named here too. The old line said only "STILL UNLEARNED",
+    // which is true of both cases and useful in neither: one wants a person, the
+    // other wants five minutes. ⛔ `_vocabPermanentMiss` may not exist yet when
+    // every miss this pass was transient, so it is read defensively rather than
+    // dereferenced — the old line assumed the set had been created above.
+    const _permSetSize = cluster._vocabPermanentMiss instanceof Set ? cluster._vocabPermanentMiss.size : 0;
     const shortfall = stillMissing.length
-      ? ` · ⛔ ${stillMissing.length} of ${todo.length} owed words STILL UNLEARNED (${stillMissing.slice(0, 12).join(', ')}${stillMissing.length > 12 ? `, +${stillMissing.length - 12} more` : ''}) · lifetime miss list ${cluster._vocabPermanentMiss.size}`
+      ? ` · ${_permanentMiss.length ? `⛔ ${_permanentMiss.length} with NO DICTIONARY ENTRY (${_permanentMiss.slice(0, 8).join(', ')}${_permanentMiss.length > 8 ? `, +${_permanentMiss.length - 8} more` : ''})` : '⛔ 0 with no dictionary entry'}${_deferredMiss.length ? ` · ⏳ ${_deferredMiss.length} DEFERRED — service did not answer, retried next pass (${_deferredMiss.slice(0, 8).join(', ')}${_deferredMiss.length > 8 ? `, +${_deferredMiss.length - 8} more` : ''})` : ''} · of ${todo.length} owed · lifetime no-entry list ${_permSetSize}`
       : '';
     this._hb(`[Curriculum] ${verdict} — ${subject}/${grade}: ${totalTrained} Hebbian fires across ${totalWordsBound}/${todo.length} words (${totalDefsBound} definition senses) in ${((Date.now() - t0) / 1000).toFixed(0)}s${stall}${shortfall}. Cell teach phases begin.`);
-    if (stillMissing.length) {
-      try {
+    // ⛔⛔ TWO DIFFERENT FACTS, TWO DIFFERENT FLAGS, AND BOTH RETIRE THEMSELVES.
+    // The single PRECELL-MISS warn conflated "the dictionary has no entry for
+    // these words" (a real curriculum shortfall that wants a person) with "the
+    // dictionary is down right now" (a service outage that fixes itself).
+    // A warning that cannot retire trains its reader to stop looking (2026-09-05).
+    try {
+      if (_permanentMiss.length) {
         this.teachFlag('warn', 'PRECELL-MISS',
-          `${subject}/${grade}: ${stillMissing.length} of ${todo.length} owed vocabulary words were not learned — the cell's bindings will train on words with no definition behind them`,
-          { subject, grade, missing: stillMissing.length, owed: todo.length });
-      } catch { /* flagging is best-effort; the log line above already carries it */ }
-    }
+          `${subject}/${grade}: ${_permanentMiss.length} of ${todo.length} owed vocabulary words have NO dictionary entry (the API positively said 404) — the cell's bindings will train on words with no definition behind them`,
+          { subject, grade, missing: _permanentMiss.length, owed: todo.length });
+      } else {
+        // Nothing permanent this pass — retire any earlier claim for this cell
+        // rather than leaving a resolved warning to rot in the panel.
+        this.teachFlagClear('PRECELL-MISS', { subject, grade });
+      }
+
+      if (_deferredMiss.length) {
+        // ⚠ `info`, not `warn`. Nothing is wrong with the curriculum and nothing
+        // needs a person: these words are still untaught, so the next cell's
+        // pass picks them up automatically once the service answers again.
+        this.teachFlag('info', 'PRECELL-DEFER',
+          `${subject}/${grade}: ${_deferredMiss.length} of ${todo.length} owed words could not be looked up — the dictionary service did not answer (not a missing word). They stay untaught, so the next cell's vocab pass retries them automatically.`,
+          { subject, grade, deferred: _deferredMiss.length, owed: todo.length });
+      } else {
+        this.teachFlagClear('PRECELL-DEFER', { subject, grade });
+        // The outage flag is global (no subject/grade), so it may only retire
+        // once a pass completes with zero deferrals anywhere.
+        if (!(cluster._vocabDeferredMiss instanceof Set) || cluster._vocabDeferredMiss.size === 0) {
+          if (this.teachFlagClear('DEF-DEFER', {})) {
+            this._hb('[Curriculum] 📚 DEF-DEFER cleared — the dictionary service is answering again and every deferred word has since been learned.');
+          }
+        }
+      }
+    } catch { /* flagging is best-effort; the log line above already carries it */ }
     this._currentMacroPhase = null;
     this._macroPhaseProgress = null;
   }
@@ -16239,12 +16332,65 @@ export class Curriculum {
       // ⛔ The lookup still happens and the miss is still cached; only the FLAG
       // is suppressed, and the reason travels in the return value so a caller
       // counting shortfalls can still tell the two cases apart.
+      // ⛔⛔ ASK WHY BEFORE ACCUSING THE WORD. This branch used to
+      // fire DEF-MISS on ANY empty result, which says "this word has no
+      // dictionary definition". On 2026-09-05 that printed `DEF-MISS ×1420`
+      // during a dictionary OUTAGE — the example word was `for`, which plainly
+      // has an entry. Her own cache agreed: errs 1518 against 1420 flags.
+      //
+      // `definition-service.js` has ALWAYS known the difference — 404 → `noDef`
+      // (permanent), 5xx/network/timeout → transient, 429 → backoff — and
+      // exposes lookupStatus() for exactly this question. Nothing here could ask
+      // it, because it was the one definition call never attached to the
+      // cluster. It is now (`lookupDefinitionStatus`).
+      //
+      // ⚠ THIS IS THE THIRD TIME THIS EXACT CONFUSION HAS COST SOMETHING. The
+      // docstring on lookupStatus records the first: a rate-limited miss read as
+      // no-definition PURGED real words (`prevent`, `password`, `overflow`). The
+      // second is the permanent-miss set in the pre-cell pass. A transient
+      // failure is a fact about the SERVICE; only a 404 is a fact about the WORD.
+      //
+      // ⚠ 'unknown' counts as transient DELIBERATELY. It means no cache entry —
+      // never looked up, or evicted — so we do not know that the word lacks a
+      // definition, and claiming so is the very error being fixed. Default to
+      // the honest answer, not the tidy one.
+      let _why = 'unknown';
+      try {
+        if (typeof cluster.lookupDefinitionStatus === 'function') {
+          _why = cluster.lookupDefinitionStatus(w);
+        }
+      } catch { /* unattached or throwing → treat as unknown, i.e. transient */ }
+      const _transient = (_why !== 'noDef');
       const _taughtElsewhere = GRAMMAR_STRUCTURAL_WORDS.has(w);
+
+      if (_transient) {
+        // NOT a curriculum shortfall and NOT this word's fault. No per-word
+        // warn: 1,420 identical lines is how a panel stops being read, which is
+        // the same argument that retired the 24 letter false-positives.
+        // ⭐ AND IT SELF-HEALS WITH NO NEW MACHINERY: `todo` in the pre-cell
+        // pass is filtered against `_definitionTaughtWords`, so a word that
+        // failed here is still untaught and is retried by the NEXT cell's pass.
+        // The cache's own TTLs (60 min transient, 6 h on 429) are the rate
+        // limit, so a retry inside the window costs a cache read, not a call.
+        // ⛔ This is why no retry queue was added: one already exists, and the
+        // standing FC.11 rejection of re-querying 404s is untouched — `noDef`
+        // still never comes back here.
+        try {
+          this.teachFlag('info', 'DEF-DEFER',
+            `the dictionary service did not answer for "${w}" (${_why}) — this is a SERVICE outage, not a missing word; it stays unlearned and the next cell's vocab pass retries it`,
+            {});
+        } catch { /* nf */ }
+        return {
+          passes: 0, totalTrained: 0, defsBound: 0, transient: true,
+          skipped: `lookup unavailable (${_why}) — queued by remaining untaught; retried next pass`,
+        };
+      }
+
       if (String(w || '').length > 1 && !_taughtElsewhere) {
         try { this.teachFlag('warn', 'DEF-MISS', `no dictionary definition for "${w}" — bound nothing`, {}); } catch { /* nf */ }
       }
       return {
-        passes: 0, totalTrained: 0, defsBound: 0,
+        passes: 0, totalTrained: 0, defsBound: 0, transient: false,
         skipped: _taughtElsewhere
           ? 'no definition — taught by the grammar lane as a slot-bound word'
           : 'no definition',
