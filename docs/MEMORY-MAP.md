@@ -91,14 +91,34 @@ the brain by a third, changing only the type leaves the estimator lying.
 
 ## Mixed precision boundary
 
-**Storage Float32, arithmetic Float64.** `propagate()` reads Float32 values and
-accumulates into `let sum = 0` (a JS double), writing a `Float64Array`. Error
-compounds in the sum across fanout, not in one stored weight.
+**On the coordinator: storage Float32, arithmetic Float64.** `propagate()` reads
+Float32 values and accumulates into `let sum = 0` (a JS double), writing a
+`Float64Array`. Error compounds in the sum across fanout, not in one stored
+weight.
 
 Do **not** "tidy" the accumulator or output buffer to Float32 for consistency.
 That is the one edit that turns a free 33% saving into a real regression.
 Same rule for LIF state (`voltages`, `motorChannels`) — integrator state stays
 Float64.
+
+⚠ **The donors are f32 end to end, and cannot be otherwise.**
+`donor-app/src/shaders/synapse_propagate.wgsl:16` binds `values: array<f32>`
+and accumulates in `var sum: f32` — **WGSL has no f64 storage type at all**.
+`donor-app/src/frames.rs:28` takes `values: Vec<f32>` on the wire. So the
+"arithmetic stays Float64" rule above describes the *coordinator's CPU path
+only*. The real compute substrate has always been single precision, which is
+the strongest evidence that Float32 storage costs nothing: the numbers were
+being rounded to f32 the instant they left the box regardless.
+
+⭐ Side effect worth knowing: `gpu.js:2541` reads
+
+    matrix.values instanceof Float32Array ? matrix.values : new Float32Array(matrix.values || [])
+
+Before WEIGHTPREC that ternary **always** took the right branch, allocating a
+fresh full-size Float32 copy (~2.68 GiB for the intra matrix) on *every* upload.
+It now takes the left branch and passes through with zero copy — removing a
+multi-GiB transient from the donor-join path, which is exactly when memory is
+tightest.
 
 Measured cost of Float32 storage at the real fanout-300 geometry
 (`tools/weight-precision-probe.mjs`): relative RMS error 2.7e-8, SNR 151.4 dB,
