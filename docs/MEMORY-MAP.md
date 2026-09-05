@@ -218,6 +218,121 @@ Open questions that need answering before writing it:
   already-correct behaviour rather than a new hazard, but it must be confirmed
   rather than assumed
 
+## Field notes from the 2026-09-05 deploy (observed, not theorised)
+
+The STAGEDISK/ONEPRESS/OWNCGROUP fixes were deployed and watched. What actually
+happened, including two things the earlier analysis got wrong.
+
+### The fixes work, and here is the measurement
+
+Same press, same box, before and after the new `self-update.sh` was in place:
+
+| | old script (18:39 press) | new script (19:00 press) |
+|---|---|---|
+| staging location | `/tmp` tmpfs | `/opt/unity-brain/.staging` (disk) |
+| `/tmp` during deploy | **12 GiB (77%)** | **65 MiB (1%)** |
+| PSI memory full avg10 | **72.2** | **0.00 - 0.69** |
+| brain HTTP during deploy | **timed out >20s** | **200 in 1.2 ms** |
+| staging peak | capped by a 16 GiB tmpfs | **203 GiB on disk** |
+
+⭐ The 203 GiB number is the point. The old script could *never* have completed
+this deploy — the full LFS payload does not fit in a 16 GiB tmpfs. It only ever
+"worked" because the pull wedged or timed out first. Staging to disk did not
+just relieve memory pressure, it made the operation possible at all.
+
+### ⛔ CORRECTION: `write_bytes == 0` IS NOT SUFFICIENT TO CALL A WEDGE
+
+The 2026-09-04 wedge signature is recorded elsewhere in this repo as
+"`read_bytes` climbing while `write_bytes` stays frozen at 0". **On 2026-09-05
+a perfectly healthy fields rsync showed exactly that signature** — `write_bytes`
+flat at 0 across repeated 10-12 s samples — while the destination directory grew
+4.5G → 11G → 19G → 28G.
+
+The reason: writes land in page cache and are not always accounted to the
+process's `write_bytes` until writeback. A process can be making excellent
+progress with `write_bytes` at zero.
+
+⚠ **The reliable progress signal is DESTINATION GROWTH** (`du -sh` on the
+target), not `/proc/<pid>/io`. An earlier call in this session killed a healthy
+rsync on the `write_bytes` reading alone. The in-script watchdog
+(`UAL_LFS_STALL_SEC`) requires BOTH flat writes AND climbing reads, which is
+better, but destination size is the signal that cannot lie.
+
+### ⛔ A REAL RUNAWAY: `git lfs pull` wrote 212 GB from a 110 GB store
+
+Distinct from the wedge, and the opposite failure. With disk space finally
+available (the old tmpfs staging always died first), the pull ran freely and
+was observed writing ~4.7 GB every 10 s — genuine progress by any measure —
+until it had written **212 GB**.
+
+`sudo du -sh /var/lib/forgejo/data/lfs` = **110 GB**. It had written nearly
+twice the total size of the source it was reading from, and was still going.
+
+⚠ **Bound the LFS pull by BYTES WRITTEN against the known store size, not only
+by wall clock.** The existing `UAL_LFS_TIMEOUT` (8m) does catch it, but only
+after it has burned however much disk 8 minutes buys — on a fast disk that is
+enough to fill the volume. A `written > 1.5 × store_size` check would catch the
+pathology itself rather than its duration.
+
+⚠ Root cause not yet identified. Candidates: the repo genuinely contains more
+LFS history than the store's current size (the store is deduplicated by OID,
+the checkout is not), or a retry loop re-fetching objects it has already
+written. **Not diagnosed — do not assume.**
+
+### The BrainWaves local-path discovery fails on the box
+
+Every press logs:
+
+```
+data repo not at any known path — searching the filesystem for it …
+data repo not found on local disk (known paths AND a bounded search) —
+using git@git.unityailab.com:UnityAILab/BrainWaves.git over SSH
+```
+
+The script's own comment says `git.unityailab.com` **is this box**, so the
+clone loops back over SSH to the same machine for data sitting on local disk.
+Both the 4.5-hour wedged press and the 212 GB runaway happened in that SSH
+clone path. `_search_local_repo()` probes `/var/lib /home /data /srv /opt /mnt
+/var/opt` at `-maxdepth 6` for `brainwaves.git`; Forgejo's LFS store is at
+`/var/lib/forgejo/data/lfs`, so the repository root is likely
+`/var/lib/forgejo/data/` — **which the fixed candidate list does not include**
+(it tries `/var/lib/forgejo/repositories/...`, not `/var/lib/forgejo/data/
+repositories/...`).
+
+⭐ Fixing this is probably the single highest-value remaining deploy change: it
+removes the SSH round trip, the credential dependency, and both observed
+failure modes in one edit. **Verify the real path on the box before changing
+the list** — `sudo find /var/lib/forgejo -maxdepth 4 -name '*.git' -type d`.
+
+### The checkpoint bug that shipped with WEIGHTPREC
+
+The Float32 change reached 5 of 12 allocation sites, and the binary checkpoint
+writer hardcoded `s.nnz * 8` as the values width. With Float32 values that
+buffer is `nnz * 4`, so `Buffer.from(values.buffer, 0, nnz*8)` throws
+`"length" is outside of buffer bounds`.
+
+**Observed live on the box** after the 18:39 deploy:
+
+```
+[Brain] Binary weights save failed: "length" is outside of buffer bounds
+[Brain] Binary weights async save failed: "length" is outside of buffer bounds
+```
+
+She trained for ~2 hours and wrote **no checkpoint at all**. `brain-weights.bin`
+did not exist. A crash in that window would have lost everything since the
+deploy.
+
+⛔ **The lesson is bigger than the bug.** The dtype of a stored array is a
+*format* decision, and every place that computes a byte offset or length from
+`nnz` is coupled to it. Changing the type without auditing every width
+computation produces a system that boots, trains, and looks healthy while
+silently never persisting. Fixed by `BIN_FORMAT_VERSION = 2` with a
+`_BIN_VALUES_ARRAY_FOR(v)` map so v1 (f64) files still load and migrate.
+
+⚠ **Which also means: the "0 threshold flips" precision measurement was true
+and irrelevant to this failure.** A numerical-accuracy probe cannot catch a
+serialisation-width bug. Both kinds of check are needed.
+
 ## Deploy memory (fixed 2026-09-05)
 
 Three incidents, one root cause: work that is not the brain, spending the
