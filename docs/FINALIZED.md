@@ -43,6 +43,46 @@ Sponge (verbatim): *"**A3. Give the fields rsync a wedge watchdog.** The LFS pul
 
 His CORRECTION 1 says `write_bytes == 0` is not a wedge signal. **The LFS stall watchdog fires on exactly that reading.** The evidence is genuinely mixed — the guard also requires `read_bytes` climbing, and the 2026-09-05 runaway's 212 GB *was* measured off that same counter, so accounting clearly works on this path. ⭐ **The discriminator for the next press: if a `WEDGED` line fires while the fields directory is still GROWING, the signal is wrong and that guard should move to destination growth too.** Until that is observed, changing a guard that has caught a real outage would be trading a known-good for a theory. Filed, not fixed.
 
+## 2026-09-05 — `B1 GATES` — THE DEPLOY'S OWN GUARDS ARE NATIVE NOW
+
+Gee (verbatim): *"if need need to build the doner and deploy do it we arnet waiting on that all is getting done i told you this"*
+
+`unity-deploy` at **42 tests**; workspace **103**.
+
+### ✅ Both press gates ported, and both refuse before anything is armed
+
+⛔ **The books gate.** A press that leaves an empty corpus *"produces a walk of empty cells and reports it as a successful deploy"* — the exact *instrument-says-fine-while-nothing-is-there* failure. Checked against the directory the server actually reads, **never against the exit code of the step that was supposed to fill it**: an exit code says a command finished, not that the books are there.
+
+⛔ **The GloVe gate, with three distinct verdicts because they have three different fixes** — **missing** (the pull did not deliver), **pointer stub** (install git-lfs, or un-LFS upstream), **truncated** (partial transfer, press again). ⚠ **Existence is not the check.** An LFS stub is a real, readable file that nothing else would notice; the boot reads it, parses zero vectors, and stops by design. Detected by reading the file's HEAD for `git-lfs`, not by its name or size alone.
+
+⛔⛔ **Both abort BEFORE `.force-fresh` is armed, and that ordering is the safety property.** A refusal leaves the service on the old code with the weights untouched. **A gate that refused *after* arming would convert "I declined to deploy" into "the next restart from any cause wipes her."**
+
+### ✅ The exclude set is data, with assertions on it
+
+A test walks every path an overlay `--delete` could destroy — weights, identity-core, the episodic db, fields, GloVe, `.staging`, the lock — and asserts each is protected.
+
+⭐ **And one test asserts the books are DELIBERATELY NOT excluded wholesale.** The data sync repopulates them and the books gate then verifies them, so `--exclude 'corpora'` is absent *on purpose*. **That is now a permanent regression test against the exact false alarm closed earlier today** — grepping for that string is how a stale audit "confirms" a corpus-deletion hazard that does not exist.
+
+### ✅ Both transfer guards, as pure decision functions
+
+The LFS **write ceiling** and the fields **destination-growth** watch, with the lesson in the module header: **`write_bytes` is the right signal for a BOUND and the wrong one for a DETECTOR.** Page-cache lag can only make a bound fire late (harmless, self-correcting); it makes a detector confuse *"not accounted yet"* with *"not happening"*, which is how a healthy transfer got killed. **A conservative-late bound is safe; a conservative-late detector is a lie.**
+
+⭐ **One test asserts the two catch OPPOSITE pathologies:** through the real 212 GB runaway the growth watch reports `Growing` the entire way — correctly, the destination *is* growing — and **only the ceiling can see it.**
+
+⚠ Sampling is the caller's job; these are decisions on sampled numbers. **The decision is what was wrong twice, not the polling.**
+
+### ✅ New verb: `unity-deploy preflight`
+
+Read-only. Answers *"would a restart actually boot?"* without deploying anything.
+
+⭐ It earns its own verb because `.force-fresh` means the next restart from **any** cause wipes the weights — so *"is the box in a state where a boot completes?"* is a question an operator needs to ask **before** touching anything, and with no shell they currently cannot. Exercised across all five box states — empty · books-only · LFS stub · truncated · healthy — with exit 1 on refuse so a caller can gate on it rather than parse prose.
+
+⚠ **Deliberately NOT run before the deploy.** In the script the books gate runs *after* the data sync, because it verifies the sync worked; pre-checking would refuse a legitimate first deploy onto a fresh box.
+
+⚠ **Third assertion-fault of the session, same class:** my opposite-pathologies test first ran 20 × 4 GB = 80 GB against a 165 GB cap and asserted a runaway that had not happened. Corrected to 53 iterations — the actual observed 212 GB. **The arithmetic was mine, not the guard's.**
+
+---
+
 ## 2026-09-05 — `B3 v1` — `unity-donor-session`: THE READBACK ASSEMBLER IS BYTE-IDENTICAL TO THE SHIPPED JS
 
 Gee (verbatim): *"get to it all"*

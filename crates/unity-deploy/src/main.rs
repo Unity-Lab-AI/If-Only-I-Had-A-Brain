@@ -38,6 +38,8 @@
 //! for rather than a big-bang rewrite of the one script that can delete the
 //! corpus.
 
+mod gates;
+mod guards;
 mod lock;
 mod scope;
 mod staging;
@@ -89,6 +91,24 @@ enum Cmd {
         #[arg(long)]
         dry_run: bool,
     },
+    /// Answer "would a restart actually boot?" without deploying anything.
+    ///
+    /// ⭐ Read-only, and worth having as its own verb because the dangerous
+    /// question is asked at the wrong time otherwise. `.force-fresh` means the
+    /// next restart from ANY cause wipes the weights, so *"is the box in a state
+    /// where a boot completes?"* is something an operator needs to be able to
+    /// ask **before** touching anything — and with no shell, they currently
+    /// cannot.
+    ///
+    /// ⚠ These are the same two gates the deploy runs, checked against the
+    /// directories the server actually reads rather than any step's exit code.
+    Preflight {
+        #[arg(long)]
+        backend: Option<PathBuf>,
+        /// Override the GloVe floor. The real table is ~1.04 GB.
+        #[arg(long)]
+        glove_min_bytes: Option<u64>,
+    },
     /// Report whether a deploy currently holds the lock, and whose it is.
     /// ⭐ Exists because "is a press running?" had no answer an operator with no
     /// shell could get.
@@ -106,6 +126,23 @@ fn backend_dir(explicit: Option<PathBuf>) -> PathBuf {
 
 fn main() -> ExitCode {
     match Cli::parse().cmd {
+        Cmd::Preflight { backend, glove_min_bytes } => {
+            let b = backend_dir(backend);
+            let (corpora, glove) = gates::default_paths(&b);
+            let floor = glove_min_bytes.unwrap_or(gates::GLOVE_MIN_BYTES);
+            match gates::preflight(&corpora, &glove, floor) {
+                Ok(ok) => {
+                    for line in ok { println!("[unity-deploy] ✓ {line}"); }
+                    println!("[unity-deploy] PREFLIGHT PASS — a restart has what it needs to boot.");
+                    ExitCode::SUCCESS
+                }
+                Err(why) => {
+                    // ⛔ Non-zero, so a caller can gate on it rather than parse prose.
+                    eprintln!("[unity-deploy] PREFLIGHT REFUSE — {why}");
+                    ExitCode::from(1)
+                }
+            }
+        }
         Cmd::LockStatus { backend } => {
             let b = backend_dir(backend);
             let p = b.join(".unity-deploy.lock");
