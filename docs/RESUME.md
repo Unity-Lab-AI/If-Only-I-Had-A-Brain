@@ -33,6 +33,15 @@
 > ## ✅ POD STOPPED
 > `q0ydaakrqcz48n` — exit runtime `gpu.util 0%` · `cpu.util 0%` · **uptime 21.5 h**. **21.5 hours billed on an idle card** at $0.49/hr. Restart it only once she is serving.
 >
+> ## ⭐⭐ THE STANDING PLAN IS NOW FILED — `docs/TODO.md §BOXCAP`
+> **One box, three tenants, one budget:** Forgejo (the lab's git), the brain, and the brain's own deploys. `31.1 GB RAM · 8c/16t · no GPU · 877 GB disk / 420 GB free`.
+> - **`BOXCAP.1`** — the brain budgets from **host RAM** and is enforced against a **cgroup**. Read `/sys/fs/cgroup/memory.high` and budget against the smallest of those. ⚠ `--max-old-space-size=16384` is **not** a bound on RSS — off-heap `ArrayBuffer`s are counted by the cgroup and not by V8, which is how a "16 GB heap cap" produced a 21.3 GB process.
+> - **`BOXCAP.2`** — ⛔ **the deploy runs INSIDE her cgroup, and `detached: true` does not change that** — it is a process-group flag; systemd membership is inherited by every descendant. Run it under `systemd-run --scope` with its own limits so a runaway deploy starves itself.
+> - **`BOXCAP.3`** — the throttle band has **no alarm and no escape**. `memory.pressure` (PSI) is the kernel's own signal; publish it, and let `loopPinned && activeForSec` escalate from *wait* to *restart*.
+> - **`BOXCAP.4`** — ⛔⛔ **the 114 GB is stored TWICE on one disk and fetched over the network from itself.** `git.unityailab.com` **is this box.** Read them in place, or hydrate by OID from Forgejo's own store (`LOCALFIELDS.1`, built and still unexercised), or materialise on demand.
+> - **`BOXCAP.5`** — Forgejo has **no reservation of its own**; it just gets what is left. A `MemoryMin`/`CPUWeight` floor would make the "never take Forgejo down" guarantee real. **Sponge's service, Sponge's call.**
+> - **`BOXCAP.6`** — the **five shell commands** that end five two-day-old guesses, smallest first.
+>
 > ---
 >
 > # 🔴 2026-09-05 13:09 UTC — THE BUTTONS ARE THE STORY. HAND-OFF WRITTEN.

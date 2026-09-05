@@ -4084,6 +4084,55 @@ VM63:59
   - ⛔ **THE IRREGULAR INFLECTIONS CANNOT BE RECOVERED FROM WORDNET HERE: this `wordnet-db` build ships NO `.exc` files** (`verb.exc`/`noun.exc` are absent — only `data.*`, `index.*`, `index.sense`). **So `went → go` and `children → child` would have to be GUESSED, which is exactly the error class refused in `OFFLINEDICT.3`.** Not doing it.
   - ⚠ **And a hand-written irregular map would be a WORD LIST**, which is banned (`feedback_no_word_lists_use_taxonomy`). **This wants its own measured decision, not a rider on this change.** The network API still answers these whenever it is up.
 
+## BOXCAP — how the box must hold and use the Forgejo/BrainWaves data, and how to stop it locking up and pegging — filed 2026-09-05
+
+> Gee (verbatim): *"formulate the todo to note all of these issues and how we need the box to hold/ use the forgio brain waves and how we can keep it from locking up like this and pegging"*
+
+**The measured shape of the box.** One machine does three jobs — **Forgejo (the lab's git), the brain, and the brain's own deploys** — and they share one RAM budget, one CPU budget and one disk.
+
+```
+RAM     31,831 MB (31.1 GB)   ·  8c/16t  ·  NO GPU
+disk    877 GB total · 420 GB free · 457 GB used   (state.disk, 2026-09-04)
+brain   MemoryHigh=20G · MemoryMax=24G · CPUQuota=1200%   (unity-brain.service:89-96)
+ctl     MemoryMax=256M · CPUQuota=25%               (unity-brain-ctl.service)
+```
+
+### ⛔ THE THREE FAILURE MODES SEEN IN 48 HOURS, ALL THE SAME SHAPE
+
+- [ ] `BOXCAP.1` — ⛔⛔ **THE BRAIN SIZES ITSELF FROM HOST RAM AND IS ENFORCED AGAINST A CGROUP.** She derived 411,216,550 neurons + a 15,082,717 language cortex from **free host RAM** (`raising brain budget 16384MB -> 18519MB`), landed at **21.28 GB**, and crossed `MemoryHigh=20G`. **Nothing in that calculation reads the cgroup limit.** Full detail in `MEMTHROTTLE` below.
+  - ⭐ **THE FIX IS ONE INPUT, NOT A NEW SUBSYSTEM:** read the effective limit from `/sys/fs/cgroup/memory.high` (falling back to `memory.max`, then host RAM) and budget against **the smallest of those**, not the host. **A process that cannot see its own cage will keep walking into it.**
+  - ⚠ **And leave real headroom below it.** Off-heap `ArrayBuffer`s are counted by the cgroup but not by `--max-old-space-size=16384`, so the V8 flag is not a bound on RSS — **which is exactly how a "16 GB heap cap" produced a 21.3 GB process.**
+
+- [ ] `BOXCAP.2` — ⛔⛔ **THE DEPLOY RUNS INSIDE THE BRAIN'S CGROUP, AND `detached: true` DOES NOT CHANGE THAT.** `brain-server.js:10715` spawns `self-update.sh` with `{ detached: true }` — ⚠ **that is a PROCESS-GROUP flag, not a cgroup escape. systemd cgroup membership is inherited by every descendant regardless.** So `git clone`, `rsync` and a 114 GB `git lfs pull` all charge against **her** `MemoryHigh=20G` and **her** `CPUQuota=1200%`.
+  - ⛔ **Measured consequence (Sponge, 2026-09-04): a wedged `git lfs pull` — 22 min, 2.07 TB read, ZERO bytes written — throttled the cgroup and dropped her event loop to 2% serviced with stalls to 253 s.** *"Killing it took the box 24G → 15G instantly and the site back to sub-second."*
+  - ⭐ **THE FIX: run the deploy in its OWN transient unit**, e.g. `systemd-run --unit=unity-deploy --scope -p MemoryHigh=2G -p CPUQuota=400% -p IOWeight=20 …`, so a runaway deploy starves **itself** and the brain never notices. ⚠ **Needs `brain-ctl-helper` to grow a `deploy` verb** — it currently allows only `start|stop|restart unity-brain` and `reload-nginx`, deliberately. **That narrowness is a feature; extend it with the same care (fixed unit name, no arguments interpolated).**
+
+- [ ] `BOXCAP.3` — ⛔ **THE THROTTLE BAND HAS NO ALARM AND NO ESCAPE.** Below `MemoryHigh` she runs; above `MemoryMax` she is OOM-killed **alone** and `Restart=always` revives her in seconds. **Between the two she is stalled indefinitely — nothing kills her, nothing recovers her, and no event fires.** She sat there **19.5 hours** and the only reason we know is that a human pasted `/ctl/status`.
+  - ⭐ **The kernel already publishes the signal: `memory.pressure` (PSI).** `some avg60` climbing while `portOpen` is false is the throttle, distinguishable from a busy-but-healthy brain. **Publish it in `/ctl/status` and the state block.**
+  - **And make it actionable:** `loopPinned && activeForSec > <any plausible operation>` should escalate from *"wait"* to *"restart"* — see `MEMTHROTTLE.3`, where the instrument currently advises waiting after 19 hours.
+
+### ⭐⭐ HOW THE BOX SHOULD HOLD AND USE THE BRAINWAVES DATA
+
+- [ ] `BOXCAP.4` — ⛔⛔ **THE 114 GB IS STORED TWICE ON ONE DISK, AND THE SECOND COPY IS FETCHED OVER THE NETWORK FROM ITSELF.** `git.unityailab.com` **is this box** — Forgejo's LFS object store already holds all 26,359 field objects here. The deploy then clones `BrainWaves` over SSH **to localhost**, pulls the same objects over HTTP **from localhost**, and rsyncs them into `/opt/unity-brain/fields`. **~228 GB of disk for one dataset, plus a full transfer, to move bytes that never left the machine.**
+  - ⭐ **`LOCALFIELDS.1` was built for exactly this** — hydrate each field from Forgejo's local LFS store by OID, no credential and no network, because *"each pointer names its object and the object is a file on this disk."* ⚠ **It is UNEXERCISED:** the bounded search returned `data repo not found on local disk` **in under a second across seven roots**, which smells like permission denials, not absence. **`find / -name '*.git' -path '*BrainWaves*'` and `ls -la /var/lib/forgejo` settle it — one shell command, and this whole class goes away.**
+  - **Better still, in order of preference:**
+    1. **Read them in place.** A read-only bind-mount or symlink from `/opt/unity-brain/fields` to a Forgejo-backed path — **zero copy, zero transfer, 114 GB of disk back.**
+    2. **Hydrate by OID from the local store** (`LOCALFIELDS.1`) — one copy, no network.
+    3. **Materialise on demand.** ⭐ `DREAM_VM_CAP` already bounds the resident visual store to 25,000 entries; **the disk-side set does not need to be complete either.** A field is non-fatal by design — a miss costs one live transform.
+    4. **Full copy over the wire.** ⛔ **What we do today, and the most expensive option available.**
+  - ⚠ **Whatever is chosen, the fields must not ride the same code path as the books.** They already do not — *clone ⟹ books, lfs pull ⟹ fields* — and that separation is what let her keep her corpus through every failure this week. **Do not re-couple them.**
+
+- [ ] `BOXCAP.5` — ⚠ **AND FORGEJO IS THE OTHER TENANT NOBODY BUDGETS FOR.** The brain is capped at 24 GB of 31.1 GB and 12 of 16 threads *"so it can NEVER peg the CPU or OOM the box and take Forgejo down"* (`unity-brain.service:78-84`). ⛔ **But Forgejo has no reservation of its own** — it simply gets what is left, and "what is left" is whatever the brain and any in-cgroup deploy have not taken. **A `MemoryMin`/`CPUWeight` floor on the Forgejo unit would make that guarantee real rather than assumed.** ⚠ **Not ours to change unilaterally — it is Sponge's service.**
+
+### ⭐ WHAT ACTUALLY NEEDS A SHELL (the rest is code)
+
+- [ ] `BOXCAP.6` — **The five shell answers, smallest first.** Each ends a question we have been guessing at for two days.
+  1. `systemctl restart unity-brain-ctl` — **every control-plane fix on `main` is inert until this runs** (`BUTTONAUDIT.4`); `self-update.sh` restarts `unity-brain` and nothing else.
+  2. `find / -name '*.git' -path '*BrainWaves*' 2>/dev/null` + `ls -la /var/lib/forgejo` — **settles `LOCALFIELDS.1` and `BOXCAP.4`.**
+  3. `cat /sys/fs/cgroup/system.slice/unity-brain.service/memory.{current,high,max,pressure}` — **the throttle, from the kernel's own mouth.**
+  4. `du -sh /opt/unity-brain/fields` + `df -h /opt` — **how much of the 114 GB actually landed, and what it cost.**
+  5. `SupplementaryGroups=systemd-journal` on the ctl unit — **still owed from `SHELLGAP.1`**; `/ctl/logs` cannot read the journal, so a boot failure is unreadable remotely.
+
 ## MEMTHROTTLE — she is 6.4% over her cgroup's MemoryHigh and the kernel has throttled her for 19.5 hours — filed 2026-09-05
 
 > Gee (verbatim): *"turn the pod off its not connecting"* → *"write it to the button audit"*. Found from the `/ctl/status` payload he pasted after authenticating.

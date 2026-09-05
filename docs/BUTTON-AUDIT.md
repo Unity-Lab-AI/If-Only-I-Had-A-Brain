@@ -83,6 +83,37 @@ to 411,216,550 neurons plus a 15,082,717-neuron language cortex, landed at
 20 GB and re-pins, that is the confirmation — and the fix is a config decision,
 not another restart.
 
+## ⭐ THE BOX IS DOING THREE JOBS WITH ONE BUDGET — see `docs/TODO.md §BOXCAP`
+
+Forgejo (the lab's git), the brain, and the brain's own deploys share one RAM
+budget, one CPU budget and one disk:
+
+```
+RAM   31.1 GB · 8c/16t · no GPU     disk  877 GB total · 420 GB free
+brain MemoryHigh=20G · MemoryMax=24G · CPUQuota=1200%
+```
+
+Three things follow, and all three bit us this week:
+
+1. ⛔ **The deploy runs inside the brain's cgroup.** `brain-server.js:10715`
+   spawns `self-update.sh` with `{ detached: true }` — ⚠ **that is a
+   process-group flag, not a cgroup escape. systemd membership is inherited by
+   every descendant.** So a 114 GB `git lfs pull` charges against *her*
+   `MemoryHigh` and *her* `CPUQuota`. **Fix: `systemd-run --scope` with its own
+   limits** (needs a new verb on `brain-ctl-helper`, which today allows only
+   `start|stop|restart unity-brain` and `reload-nginx`).
+2. ⛔ **The 114 GB is stored twice on one disk, and fetched over the network from
+   itself.** `git.unityailab.com` **is this box** — Forgejo's LFS store already
+   holds all 26,359 field objects here, and the deploy clones over SSH to
+   localhost and pulls them over HTTP from localhost. **~228 GB for one dataset.**
+   **Fix, best first:** read them in place (bind-mount/symlink), hydrate by OID
+   from the local store (`LOCALFIELDS.1`, built but unexercised), materialise on
+   demand, or — what we do today — copy the lot over the wire.
+3. ⚠ **Forgejo has no reservation of its own.** The brain is capped *"so it can
+   NEVER peg the CPU or OOM the box and take Forgejo down"* — but Forgejo simply
+   gets what is left. **A `MemoryMin`/`CPUWeight` floor on its unit would make
+   that guarantee real instead of assumed.** Sponge's call; it is his service.
+
 ## What to do
 
 1. **Restart her.** `/ctl/restart`, or the dashboard's Brain Power panel. Nothing
