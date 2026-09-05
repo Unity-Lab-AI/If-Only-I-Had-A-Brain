@@ -1,6 +1,30 @@
 # RESUME — Session Pickup Brief
 
-> # 🟢 2026-09-05 — SPONGE'S HANDOFF, SECTION A DONE (LATEST — PICK UP HERE)
+> # 🟢 2026-09-05 — THE BOX IS FIXED, THE PRESS IS SAFE, AND SHE HAS NO DONOR (LATEST — PICK UP HERE)
+>
+> ## ⭐ Live read of `/public-state.json`, not a log line
+> ```
+> HTTP 200 in 0.40s          eventLoopLagMs 1
+> build fb05ff15 · deployed 2026-09-05T19:43:48Z · booted 19:47:23Z · main
+> totalNeurons 411,216,550   tier 4   capacityNeurons 1,681,679,974
+> donorCount 0               passedCellsTotal 0   all six subjects pre-K
+> ```
+> **Yesterday she timed out at 20 s with a 253 s worst stall. Sponge's STAGEDISK / ONEPRESS / OWNCGROUP fixes did what they claimed** — measured from outside the box rather than from its own logs.
+>
+> ## ⛔ THE `0/0` IS NOT A FAULT — IT IS `donorCount: 0`
+> Teaching is GPU-only at biological scale; the CPU fallback was deliberately removed in 2026-08-14 (`requireGpuSubstrate` — a proxied brain REQUIRES its proxy). **No donor means no walk, by design.** Every zero on that dashboard follows from one field. Nothing in the weight or deploy work caused it.
+>
+> ## ✅ `PRESSHARD.1` CLOSED — the press is safe now
+> It was the gate in front of ~30 press-blocked rows, and its premise expired: it assumed the box sat at `29a02f6f` (2026-09-01) with a script that would `rsync --delete` the corpus away. **The box is at `fb05ff15` from today, and its overlay exclude set is BYTE-IDENTICAL to `main`'s.**
+>
+> ⚠ **A grep would have said the opposite.** `--exclude 'corpora'` is absent from the box — **and from `main` too**; neither excludes it wholesale, because the data sync repopulates the books and the books gate verifies they came back. **The comparison had to be box-against-main, not box-against-the-row's-prose.**
+>
+> Box has: data sync · `_lfs_pull` · books gate · GloVe gate · STAGEDISK · ONEPRESS. Box lacks: **SELFFIRST**, the **LFS write ceiling**, the **fields rsync wedge watchdog** — all three additional safety, none a prerequisite. **Two-press structure still applies; press 1 is now safe rather than fatal.**
+>
+> ## ▶ NEXT
+> **1.** **Source the GPU** — that is the actual blocker on training, not code. It will be the ONLY donor, so it is also the PRIMARY and carries her imagery; if it cannot clear the `max_storage_buffer_binding_size` gate, nothing trains. `unity-donor --list-gpus` prints that exact number. **2.** Press when ready — watch for the SELFFIRST line, and check `/opt/unity-brain/server/.force-fresh` first. **3.** B7 or B1-onward scope call.
+
+> # 🟢 2026-09-05 — SPONGE'S HANDOFF, SECTION A DONE (previous)
 >
 > **Gee (verbatim):** *"Sponge said.txt we need to do what Sponge said!"*
 >
