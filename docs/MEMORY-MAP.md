@@ -279,6 +279,61 @@ LFS history than the store's current size (the store is deduplicated by OID,
 the checkout is not), or a retry loop re-fetching objects it has already
 written. **Not diagnosed — do not assume.**
 
+### ✅ The bound is built (2026-09-05). The diagnosis still is not.
+
+`UAL_LFS_MAX_WRITE_PCT` (default **150**, `0` disables). At arm time the guard
+sizes the store with `du -sb` and logs the ceiling; the existing watchdog loop
+then kills the pull the moment `write_bytes` crosses it.
+
+⭐ **The stall watchdog is structurally blind to this, and vice versa.** A wedge
+is `write_bytes` FROZEN while reads climb. A runaway is writes climbing
+beautifully, forever — so the stall counter sits at 0 for its entire duration
+and never inspects the total. **Two opposite pathologies; both guards needed.**
+
+⚠ **`write_bytes` is the correct signal here and the wrong one for a stall.**
+Page cache makes it lag reality. For a **ceiling** that lag is harmless and
+self-correcting — it can only fire late, never early, so a healthy pull is never
+killed by it. For a **stall detector** the same lag is fatal, because "not
+accounted yet" and "not happening" become the same reading. **A conservative-late
+bound is safe; a conservative-late detector is a lie.** (That distinction is why
+the fields rsync guard below uses destination growth instead.)
+
+⚠ **This bounds the pathology, not its cause.** Both candidates above remain
+open. ⭐ What it does add is *evidence*: the kill line prints bytes written
+against store size, so the next occurrence arrives with its own numbers instead
+of needing to be caught by hand at the moment it happens.
+
+⚠ **If the store cannot be sized there is no bound, and the log says so** rather
+than inventing a number — `/var/lib/forgejo` is mode 750 `git:git`, so on a box
+where the service user is not in the `git` group this is a **permissions**
+result, not an absence. `UAL_LFS_STORE` sets the path explicitly.
+
+⛔ **The two guards' gates are deliberately decoupled.** A first cut gated the
+whole watchdog on `_stall_sec != 0`, so `UAL_LFS_STALL_SEC=0` — the documented
+way to turn off the *stall* detector — would silently have disarmed the *ceiling*
+too. One knob quietly disabling another knob's guard is the exact class of bug
+the ceiling exists to catch.
+
+### ✅ The fields rsync has a wedge watchdog now (2026-09-05)
+
+The LFS pull got a no-progress guard after 2026-09-04. **The rsync never did,
+and it failed the same way** — starving the brain through page cache while
+`ps rss` looked innocent, with nothing watching it.
+
+⛔⛔ **It does NOT use `write_bytes`, deliberately.** A perfectly healthy fields
+rsync showed `write_bytes` frozen at 0 while its destination grew 4.5G → 11G →
+19G → 28G. **A working transfer was killed on that reading.** The signal that
+cannot lie is **destination growth** — the outcome rather than a proxy for it.
+
+`UAL_FIELDS_STALL_SEC` (default **300s**) with `UAL_FIELDS_SAMPLE_SEC` (default
+**30s**). Five minutes because at the `80M` bwlimit a live transfer moves ~24 GB
+in that time, so zero growth for that long is a wedge and not slowness. It kills
+the **rsync's own pid** — the process is backgrounded rather than found with
+`pgrep`, which is where the LFS guard shipped wrong twice.
+
+**25/25 exercised against the shipped function body**, including the case that
+matters most: a *growing* destination runs to completion untouched.
+
 ### The BrainWaves local-path discovery fails on the box
 
 Every press logs:

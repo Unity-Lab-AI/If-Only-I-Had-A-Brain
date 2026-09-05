@@ -1,6 +1,35 @@
 # RESUME — Session Pickup Brief
 
-> # 🟢 2026-09-05 — SPONGE'S MEMORY FIXES PULLED, AND THE ONE THAT WAS INCOMPLETE (LATEST — PICK UP HERE)
+> # 🟢 2026-09-05 — SPONGE'S HANDOFF, SECTION A DONE (LATEST — PICK UP HERE)
+>
+> **Gee (verbatim):** *"Sponge said.txt we need to do what Sponge said!"*
+>
+> ## Pulled to his named targets — `main` = `61c85155`, `develop` = `e102fe12`. Both remotes synced.
+> Four more commits since the last block: **SELFFIRST** (the updater fetches/validates/installs *itself* first, then re-execs), **BWLOCAL** (data repo clones off local disk instead of SSH-ing to the same box), field notes from the live deploy, and the full Rust architecture in `RUST-MIGRATION.md` §5.
+>
+> ### ⭐ He hit our checkpoint bug LIVE and credits the fix that already landed
+> *"Binary weights save failed: length is outside of buffer bounds … she trained 2 hours and persisted NOTHING."* `MEMORY-MAP.md` now records it as fixed by `BIN_FORMAT_VERSION = 2` + `_BIN_VALUES_ARRAY_FOR`. **No duplicate work, no conflict.**
+>
+> ## ✅ SECTION A — the immediate work, done this batch
+>
+> | | ask | state |
+> |---|---|---|
+> | **A1** | watch the next press; SELFFIRST has never run on OVH | ⏳ **Gee's** — needs a press. Success line: `⭐ SELFFIRST — a NEWER deploy/self-update.sh was fetched, validated … Re-exec'ing` |
+> | **A2** | bytes-written bound on the LFS pull | ✅ `UAL_LFS_MAX_WRITE_PCT` (150) — sizes the store with `du -sb`, kills past the ceiling |
+> | **A3** | wedge watchdog on the fields rsync, **not** `write_bytes` | ✅ `UAL_FIELDS_STALL_SEC` (300s) on **destination growth**. 25/25 exercised |
+> | **A4** | fields at ~44 GB of ~100 GB | ⏳ nothing to build, non-fatal by design |
+> | **B0–B7** | the Rust rewrite | ⏳ **awaiting a scope call** — multi-week, ~42,700 lines of coordinator JS |
+>
+> ### ⭐ The one idea worth carrying out of this batch
+> **`write_bytes` is the right signal for a CEILING and the wrong signal for a STALL.** Page cache makes it lag reality. For a ceiling that lag can only fire the guard LATE — harmless, self-correcting, a healthy pull is never killed. For a stall detector the same lag makes *"not accounted yet"* and *"not happening"* the same reading. **A conservative-late bound is safe; a conservative-late detector is a lie.** That is why A2 uses `write_bytes` and A3 refuses to.
+>
+> ### ⛔ ONE THING LEFT OPEN ON PURPOSE — `SPONGEHAND.A2b`
+> His CORRECTION 1 (*"`write_bytes == 0` is not a wedge"*) may undermine **the LFS stall watchdog**, which fires on exactly that reading. Evidence is mixed — it also requires reads climbing, and the runaway's 212 GB *was* measured off that counter. **The discriminator: if a `WEDGED` line ever fires while the fields directory is still growing, that guard should move to destination growth too.** I did not change his guard on a theory.
+>
+> ## ▶ NEXT
+> **1.** `sudo usermod -aG git unity` on OVH — ⚠ he says this is **already done and verified live** (`Groups: 104 984`), but a running process keeps its old groups until restart. **2.** Press, and watch for the SELFFIRST line. ⛔ **Check `/opt/unity-brain/server/.force-fresh` first** — if it exists, the next restart from *any* cause wipes the weights and `DREAM_KEEP_STATE=1` does not protect you. **3.** Then the B-scope call.
+
+> # 🟢 2026-09-05 — SPONGE'S MEMORY FIXES PULLED, AND THE ONE THAT WAS INCOMPLETE (previous)
 >
 > **Gee (verbatim):** *"pull main to local Sponge fixed a bunch of stuff and might have asome specific work he wants done and tested before he can ever push the brain to the box again"*
 >
