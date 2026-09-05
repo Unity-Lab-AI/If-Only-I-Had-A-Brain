@@ -107,11 +107,22 @@ pub struct Route {
     pub access: Access,
     /// True when the path is a prefix (e.g. `/rollback/<slot>`).
     pub prefix: bool,
+    /// ⛔⛔ **A MUTATING ENDPOINT MUST NOT BE REACHABLE BY GET.** A `GET
+    /// /shutdown` is a drive-by: an `<img src="http://127.0.0.1:7525/shutdown">`
+    /// on any page the operator visits is enough to fire it, and the browser
+    /// sends it happily from loopback with no script involved.
+    ///
+    /// ⭐ The privilege gate cannot catch that — the request genuinely IS from
+    /// loopback. **Requiring POST is what makes the gate meaningful**, because a
+    /// cross-origin POST cannot be issued without CORS the server never grants.
+    pub post_only: bool,
 }
 
-const fn pub_(path: &'static str) -> Route { Route { path, access: Access::Public, prefix: false } }
-const fn priv_(path: &'static str) -> Route { Route { path, access: Access::Privileged, prefix: false } }
-const fn priv_prefix(path: &'static str) -> Route { Route { path, access: Access::Privileged, prefix: true } }
+const fn pub_(path: &'static str) -> Route { Route { path, access: Access::Public, prefix: false, post_only: false } }
+const fn priv_(path: &'static str) -> Route { Route { path, access: Access::Privileged, prefix: false, post_only: true } }
+const fn priv_prefix(path: &'static str) -> Route { Route { path, access: Access::Privileged, prefix: true, post_only: true } }
+/// Privileged but readable — a GET is legitimate (it changes nothing).
+const fn priv_read(path: &'static str) -> Route { Route { path, access: Access::Privileged, prefix: false, post_only: false } }
 
 /// The control surface, transcribed from `brain-server.js`.
 ///
@@ -133,7 +144,10 @@ pub const ROUTES: &[Route] = &[
     priv_("/grade-advance"), priv_("/grade-signoff"), priv_("/auto-advance"),
     priv_("/autoscale"), priv_("/resync"), priv_("/learn-from-web"),
     priv_("/knob"), priv_("/knob-default"), priv_("/corpus-buffer"),
-    priv_("/derived-memory"), priv_("/teach-bench"), priv_("/pollinations-key"),
+    // ⚠ These three are privileged but READ-shaped — the shipped server answers
+    // them to a GET, and forcing POST would break the dashboard's own polling.
+    // Privilege and mutation are different questions.
+    priv_read("/derived-memory"), priv_read("/teach-bench"), priv_read("/pollinations-key"),
     // ── public: observation + assets ──────────────────────────────────────
     pub_("/health"), pub_("/public-state.json"), pub_("/console-tail.json"),
     pub_("/donor-latest.json"), pub_("/minds-eye.json"), pub_("/teach-ledger.json"),
@@ -167,6 +181,41 @@ pub fn authorize(url: &str, addr: &str, proxy_auth: bool, ual_user: Option<&str>
         Ok(()) => Ok(route),
         Err(d) => Err(Some(d)),
     }
+}
+
+/// Is this method allowed for this route?
+///
+/// ⛔ Checked SEPARATELY from privilege, because they refuse different things:
+/// the gate answers *"are you allowed to ask?"* and this answers *"is this a way
+/// of asking that could have been forged?"*
+pub fn method_allowed(route: &Route, method: &str) -> bool {
+    if !route.post_only { return true; }
+    method.eq_ignore_ascii_case("POST")
+}
+
+/// The whole decision, including the method. ⭐ The form a server should call —
+/// it is impossible to use this and forget the method check.
+pub fn authorize_request(method: &str, url: &str, addr: &str, proxy_auth: bool, ual_user: Option<&str>)
+    -> Result<&'static Route, RequestDenied>
+{
+    let route = match authorize(url, addr, proxy_auth, ual_user) {
+        Ok(r) => r,
+        Err(Some(d)) => return Err(RequestDenied::Forbidden(d)),
+        Err(None) => return Err(RequestDenied::NotFound),
+    };
+    if !method_allowed(route, method) {
+        return Err(RequestDenied::MethodNotAllowed { allowed: "POST" });
+    }
+    Ok(route)
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum RequestDenied {
+    NotFound,
+    Forbidden(Denied),
+    /// ⚠ 405, not 403 — the caller may well be authorized; the METHOD is wrong,
+    /// and saying "forbidden" would send them looking for a permissions problem.
+    MethodNotAllowed { allowed: &'static str },
 }
 
 #[cfg(test)]
@@ -312,6 +361,75 @@ mod tests {
         for p in ["/public-state.json", "/health", "/console-tail.json", "/donor-latest.json"] {
             assert!(authorize(p, "203.0.113.7", true, None).is_ok(),
                 "{p} is what a public viewer polls — tightening it silently would break the dashboard");
+        }
+    }
+
+    // ── the method gate ──────────────────────────────────────────────────────
+    #[test]
+    fn a_get_cannot_fire_a_destructive_verb() {
+        // ⛔⛔ THE DRIVE-BY. `<img src="http://127.0.0.1:7525/shutdown">` on any
+        // page the operator visits sends a GET from loopback with no script
+        // involved — and the privilege gate CANNOT catch it, because the request
+        // genuinely is from loopback.
+        for p in ["/shutdown", "/reset", "/update", "/restart", "/savererun",
+                  "/grade-advance", "/checkpoint", "/rollback"] {
+            assert_eq!(authorize_request("GET", p, "127.0.0.1", false, None),
+                       Err(RequestDenied::MethodNotAllowed { allowed: "POST" }),
+                       "GET {p} must be refused — an <img> tag is enough to send one");
+            assert!(authorize_request("POST", p, "127.0.0.1", false, None).is_ok(),
+                       "but POST {p} from loopback is the real control path");
+        }
+    }
+
+    #[test]
+    fn method_refusal_is_405_not_403_because_they_send_you_different_places() {
+        let e = authorize_request("GET", "/shutdown", "127.0.0.1", false, None).unwrap_err();
+        assert!(matches!(e, RequestDenied::MethodNotAllowed { .. }),
+            "the caller may well be authorized; reporting 'forbidden' would send them hunting a permissions problem");
+    }
+
+    #[test]
+    fn privilege_is_still_checked_before_the_method() {
+        // A remote GET must be refused for being remote — otherwise a 405 tells
+        // an unauthorized caller that POST would have worked.
+        assert!(matches!(authorize_request("GET", "/shutdown", "8.8.8.8", false, None),
+                         Err(RequestDenied::Forbidden(_))));
+    }
+
+    #[test]
+    fn read_shaped_privileged_endpoints_still_accept_get() {
+        // ⚠ Privilege and mutation are different questions. Forcing POST on
+        // these would break the dashboard's own polling.
+        for p in ["/derived-memory", "/teach-bench", "/pollinations-key"] {
+            assert!(authorize_request("GET", p, "127.0.0.1", false, None).is_ok(),
+                "{p} is privileged but read-shaped — the shipped server answers a GET");
+        }
+    }
+
+    #[test]
+    fn public_reads_accept_get_as_they_must() {
+        for p in ["/health", "/public-state.json", "/console-tail.json"] {
+            assert!(authorize_request("GET", p, "203.0.113.7", true, None).is_ok());
+        }
+    }
+
+    #[test]
+    fn an_unknown_path_is_not_found_regardless_of_method() {
+        assert_eq!(authorize_request("POST", "/nope", "127.0.0.1", false, None), Err(RequestDenied::NotFound));
+        assert_eq!(authorize_request("GET", "/nope", "127.0.0.1", false, None), Err(RequestDenied::NotFound));
+    }
+
+    #[test]
+    fn every_mutating_route_is_post_only_and_no_public_route_is() {
+        for r in ROUTES {
+            if r.post_only {
+                assert_eq!(r.access, Access::Privileged,
+                    "{} is post-only but public — that combination has no meaning here", r.path);
+            }
+        }
+        // Spot-check the destructive set is actually flagged.
+        for p in ["/shutdown", "/reset", "/update"] {
+            assert!(resolve(p).unwrap().post_only, "{p} must be POST-only");
         }
     }
 

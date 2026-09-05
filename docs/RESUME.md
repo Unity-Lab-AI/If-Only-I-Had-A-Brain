@@ -1,6 +1,51 @@
 # RESUME — Session Pickup Brief
 
-> # 🟢 2026-09-05 — THE BOX IS FIXED, THE PRESS IS SAFE, AND SHE HAS NO DONOR (LATEST — PICK UP HERE)
+> # 🟢 2026-09-05 — THE RUST MIGRATION IS REAL NOW: EIGHT CRATES, 159 TESTS, AND A COORDINATOR THAT SERVES (LATEST — PICK UP HERE)
+>
+> ## ⛔ READ THIS FIRST: NOTHING IS CUT OVER YET, AND THAT IS DELIBERATE
+>
+> Gee (verbatim): *"make sure you dont delete my stacks code with out correctly portiung it to rust"*.
+>
+> **Zero lines of JavaScript have been deleted.** `brain-server.js` and `gpu.js` are still what runs the brain. Every Rust crate is proven against the shipped implementation *before* anything is replaced — that is the whole discipline, and it is what will make the cutover survivable.
+>
+> | | measured 2026-09-05 |
+> |---|---|
+> | `.js` | 156,541 |
+> | `.mjs` | 13,867 |
+> | `.cjs` | 2,363 |
+> | `.rs` | **13,008** (~8,500 of it the pre-existing `donor-app`) |
+>
+> ⭐ **The language counter moves when `unity-coordinator` can SERVE — not before.** Nothing else makes `brain-server.js` deletable.
+>
+> ## ✅ What exists, and what each one is proven against
+>
+> | crate | phase | proof |
+> |---|---|---|
+> | `unity-protocol` | B0 | donor builds + 4/4 frame tests; `--version` still `0.3.36` |
+> | `unity-deploy` | B1 | 42 tests; both press gates, both transfer guards, `preflight` verb |
+> | `unity-weights` | B2 | probe **2.661e-8 / 151.5 dB / 0 flips** vs JS's 2.7e-8 / 151.4 / 0; `UBWT` read by the **real JS loader 11/11** |
+> | `unity-donor-session` | B3 | readback assembler **byte-identical by digest** to the shipped `_applyValuesChunk` |
+> | `unity-sizing` | B4 | **18/18 parity** vs the shipped JS arithmetic |
+> | `unity-http` | B5 | privilege gate **180/180 parity** vs the shipped `requireLoopback` |
+> | `unity-coordinator` | B5 | **runs and serves** — pages 200, unknown 404, gate enforced live |
+>
+> ## ⛔⛔ TWO SECURITY FINDINGS THIS SESSION, BOTH IN THE NEW CODE
+>
+> **① `GET /shutdown` passed the privilege gate** — found by a *dead-code warning* that `method` was parsed and never checked. That is a drive-by: `<img src="http://127.0.0.1:7525/shutdown">` on any page you visit fires it from loopback, no script needed, **and the gate cannot catch it because the request genuinely IS loopback.** Mutating routes are POST-only now; `GET /shutdown` → 405 `Allow: POST`.
+>
+> **② Deployed, loopback alone is NOT authorization** — behind the Forgejo proxy *every* caller is loopback. A port implementing only that layer looks perfect locally and is wide open in production. Both layers ported, 180/180.
+>
+> ## ⚠ Two process failures worth carrying forward
+>
+> - **I nearly reported a STALE BINARY as a result.** `cargo build` had failed (a leftover process held the `.exe` lock) and `pkill` had not killed it. Caught by comparing binary mtime to the clock. **`taskkill //F`, rebuild, retest.**
+> - **curl normalises `/../x` client-side.** An early traversal test looked like a pass while testing nothing. **Raw sockets for anything path-shaped.**
+>
+> ## ▶ NEXT
+> **1.** The endpoints' actual behaviour — they answer **501 by design** right now (gate allows, action still in JS). **2.** The WS lane. **3.** Weights in-process. **Only then is `brain-server.js` deletable.** ⚠ **B6 is gated behind B2 and `dlopen` hot-reload is explicitly forbidden** — unstable ABI, failure mode is silent memory corruption.
+>
+> ⚠ **Unchanged and still true: she has NO DONOR** (`donorCount: 0`), so nothing is training. The press is safe (`PRESSHARD.1` closed on a live read) and the box is healthy — 0.40 s response, 1 ms loop lag.
+
+> # 🟢 2026-09-05 — THE BOX IS FIXED, THE PRESS IS SAFE, AND SHE HAS NO DONOR (previous)
 >
 > ## ⭐ Live read of `/public-state.json`, not a log line
 > ```
