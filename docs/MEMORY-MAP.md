@@ -1,0 +1,257 @@
+# Where the brain's memory actually goes (OVH coordinator)
+
+Written 2026-09-05 while chasing "node is holding 8.80 GiB and nothing explains
+it". Two plausible-sounding models were wrong before the right one held up.
+Both wrong models are recorded here, because each cost a rebuild of the plan and
+each would have produced a *worse* system if acted on.
+
+## The short version
+
+On the deployed box (`UAL_PROXY_AUTH=1`, no GPU) the resident weight bytes are
+**the language cortex CSR master copy**, not the main brain.
+
+| structure | where it lives | size | access pattern |
+|---|---|---|---|
+| main brain LIF state (21 B/neuron) | **donor GPUs** | not resident | n/a on the coordinator |
+| language cortex CSR (12M neurons) | **host RAM** | 6.28 GiB @ Float64, 4.18 GiB @ Float32 | cold: init, upload, hourly readback |
+| deploy staging (`FTMP/bw`) | PrivateTmp = **RAM** | ~11.7 GiB | fixed 2026-09-05, now on disk |
+
+Sum of the first two against the observed 8.80 GiB PSS is consistent once V8
+overhead and scratch buffers are counted.
+
+## Wrong model #1: "the main brain is the 8.8 GiB, and it's cold, so mmap it"
+
+The reasoning was that `_tierTargetNeurons = 357M` at 21 B/neuron is ~7.5 GB, and
+`brain-server.js:734` calls the CPU CSR copy authoritative, so it must be
+resident and cold.
+
+**Why it is wrong:** `brain-server.js:2482` — *"GPU maintains the real voltage
+state. Server only needs voltages for injectText()"* — and `_injectionSize` is
+`min(10000, CLUSTER_SIZES.cortex)`. The main brain's per-neuron state is on the
+donors. The coordinator holds ~10K neurons of it, not 178M.
+
+The 21 B/neuron figure is real but it is a *budgeting* unit used to derive a
+VRAM/tier target. It is not a coordinator-side allocation.
+
+## Wrong model #2: "the language cortex is hot, so mmap would starve her"
+
+Having found the cortex is the resident thing, the next reflex was that
+`cluster.js:2631` calls it a CPU-side `NeuronCluster` that computes locally
+every tick, so paging it to disk would reproduce the 2026-09-04 event-loop
+starvation.
+
+**Why it is wrong:** every CPU compute path in the cortex is *gated off* above
+2M neurons, and the cortex is pinned at 12M:
+
+- `cluster.js:2952`, `:3030`, `:3202` — `if (this.size > 2000000) return` with
+  the GATESTEP comment: *"each carries the full synaptic propagate on the CPU
+  (measured: seconds per tick); no CPU cortex path at biological scale."*
+- `cluster.js:349` — `this.requireGpuSubstrate = !!this._gpuProxy`. A brain
+  wired with a GPU proxy **requires** it; the "silent CPU fallback" was
+  deliberately removed in 2026-08-14 because donors disconnecting used to leave
+  the host doing 306M-neuron Hebbian by hand.
+
+So at 12M the CPU paths refuse by design. The arrays are touched by:
+1. **init** — one sequential fill (`initRandom`)
+2. **donor upload** — bulk sequential read (`gpu.js` chunked upload)
+3. **hourly readback** — bulk write (`refreshCheckpointFromDonor`, 1-hour gap,
+   5-minute tick, so 11 of 12 calls refuse as routine)
+
+That is a cold, streaming access pattern. Measured locally: sequential read of a
+0.75 GiB Float32 array off disk runs ~9 GiB/s warm, far above what a donor
+upload can consume.
+
+## Why the language cortex does not scale with the tier
+
+`langCortexSize` is **pinned at 12M** by the WMB floor
+(`WORD_MOTOR_TARGET_LANG_CORTEX`, `brain-server.js:3106`), and
+`brain-server.js:988` states it directly: *"langCortexSize is PINNED at 12M by
+the WMB floor, so this footprint does not grow with the main brain."*
+
+A naive `tier x language_cortex weight (0.50)` gives 178M neurons and ~62 GiB,
+which cannot fit a 31 GiB box. If a calculation produces that, the WMB pin has
+been missed.
+
+## The sizing bug that made all of this hard to see
+
+Until 2026-09-05 the estimator and the allocator disagreed by 1.5x:
+
+- `brain-server.js:2860` — `const BYTES_PER_NNZ = 8;  // Float32 + Uint32`
+- `sparse-matrix.js` — `this.values = new Float64Array(...)` → really 12 B
+
+Every budget decision was made against a footprint 50% smaller than what got
+allocated. The same file already knew: the WMB comment at `:2755` prices it as
+`nnz x 12B`. Two constants, 8 and 12, for the same byte.
+
+Fixed by making values `Float32` (matching what donors already compute in, see
+`gpu.js` `new Float32Array(matrix.values)`) **and** having the estimator
+`await import` the constant from the allocator instead of restating it. Shipping
+either half alone would have been wrong: correcting only the constant shrinks
+the brain by a third, changing only the type leaves the estimator lying.
+
+## Mixed precision boundary
+
+**On the coordinator: storage Float32, arithmetic Float64.** `propagate()` reads
+Float32 values and accumulates into `let sum = 0` (a JS double), writing a
+`Float64Array`. Error compounds in the sum across fanout, not in one stored
+weight.
+
+Do **not** "tidy" the accumulator or output buffer to Float32 for consistency.
+That is the one edit that turns a free 33% saving into a real regression.
+Same rule for LIF state (`voltages`, `motorChannels`) — integrator state stays
+Float64.
+
+⚠ **The donors are f32 end to end, and cannot be otherwise.**
+`donor-app/src/shaders/synapse_propagate.wgsl:16` binds `values: array<f32>`
+and accumulates in `var sum: f32` — **WGSL has no f64 storage type at all**.
+`donor-app/src/frames.rs:28` takes `values: Vec<f32>` on the wire. So the
+"arithmetic stays Float64" rule above describes the *coordinator's CPU path
+only*. The real compute substrate has always been single precision, which is
+the strongest evidence that Float32 storage costs nothing: the numbers were
+being rounded to f32 the instant they left the box regardless.
+
+⭐ Side effect worth knowing: `gpu.js:2541` reads
+
+    matrix.values instanceof Float32Array ? matrix.values : new Float32Array(matrix.values || [])
+
+Before WEIGHTPREC that ternary **always** took the right branch, allocating a
+fresh full-size Float32 copy (~2.68 GiB for the intra matrix) on *every* upload.
+It now takes the left branch and passes through with zero copy — removing a
+multi-GiB transient from the donor-join path, which is exactly when memory is
+tightest.
+
+Measured cost of Float32 storage at the real fanout-300 geometry
+(`tools/weight-precision-probe.mjs`): relative RMS error 2.7e-8, SNR 151.4 dB,
+**0 threshold flips in 20,000 neurons**, and among the 18,398 rows carrying real
+signal the max relative error is 8.1e-7 with none above 1e-6.
+
+⚠ Probe trap: building the Float64 "reference" by *widening* an already-Float32
+array measures exactly zero deviation by construction. That is a tautology, not
+a pass. The probe must draw at Float64 and round a copy **down**.
+
+## The next fix, and why it is NOT mmap
+
+The obvious idea — back the cortex CSR with `mmap` so the kernel can evict cold
+weight pages — was investigated and **rejected**. Three reasons, in the order
+they killed it:
+
+1. **Node has no native `mmap`.** A file-backed typed array needs a native
+   addon. The box runs `npm install --omit=dev` unattended inside the deploy,
+   with no shell to recover from a failed build. That is a new failure mode on
+   the exact path the operator cannot debug, bought with memory.
+2. **The arrays are already off-heap.** Measured: a 400 MiB `Float32Array` puts
+   381 MiB in `external`/`arrayBuffers` and ~0 in `heapUsed`. So "get it out of
+   the V8 heap" was *already true* — `--max-old-space-size` never bounded these
+   and GC never moved them. Only *evictability* was ever actually on offer.
+3. **The codebase already models the better answer.** `sparse-matrix.js:744`
+   warns *"Matrix is likely GPU-bound with CPU arrays freed"* and
+   `gpu.js:5624` sets `proj._gpuBound = true`. There is already a concept for
+   "the donor holds this matrix, the CPU copy is not needed".
+
+### The design that should happen instead
+
+**Free the CPU CSR arrays for `_gpuBound` matrices; restream them from the
+checkpoint when a donor actually needs them.** Same memory win (~4.18 GiB after
+WEIGHTPREC), no native dependency, and it extends a lifecycle the code already
+has rather than inventing one.
+
+Cost: one sequential read when a donor joins or a readback lands. At the box's
+**measured** 3248 MiB/s that is ~1.3 s for the full 4.23 GiB CSR — against an
+upload that already takes far longer over the wire.
+
+⚠ Benchmark trap, in case someone re-measures: writing a `Buffer.allocUnsafe`
+buffer to a file and timing it produces nonsense (682 GiB/s observed) because
+the buffer is sparse/untouched and the filesystem elides the write. Fill the
+buffer with real data, and prefer the box's own measured disk rate over any
+warm-cache number.
+
+Open questions that need answering before writing it:
+- what exactly re-materialises the arrays, and who blocks while it happens
+- whether a partial readback can interleave with a free (see
+  `refreshCheckpointFromDonor`: *"a partial transfer leaves `matrix.values` a
+  mix of old-CPU and new-GPU rows"* — freeing mid-readback must be impossible)
+- what happens when the LAST donor disconnects and no CPU copy exists;
+  `cluster.js:349` says a proxied brain REQUIRES its proxy, so this may be
+  already-correct behaviour rather than a new hazard, but it must be confirmed
+  rather than assumed
+
+## Deploy memory (fixed 2026-09-05)
+
+Three incidents, one root cause: work that is not the brain, spending the
+brain's cgroup budget, because `spawn(..., {detached:true})` starts a new
+session but **not a new cgroup**.
+
+- 2026-09-04 — `git lfs pull` wedged: 2.07 TB read, 0 bytes written, event loop
+  2% serviced. The unit stayed `active`, port 7525 stayed LISTENING, and
+  `/ctl/status` said "online and serving" while curl timed out at 20s.
+  **`/ctl/status` checks that the port is OPEN, not that it ANSWERS.**
+- 2026-09-04 — the fields rsync pulled 12.4 GiB of *page cache* into the cgroup
+  while `node` RSS was only 8.7 GiB. Killing it dropped the cgroup 20G → 4G.
+  `ps rss` looks innocent the whole time.
+- 2026-09-05 — `mktemp -d` under `PrivateTmp=true` staged ~12 GiB into **RAM**.
+  tmpfs pages are *unreclaimable*: the kernel can only swap them, swap was
+  99.99% full, so all reclaim pressure landed on the brain's working set. A
+  deploy was starving the process it was deploying.
+
+Now: `TMPDIR` exported to `$BACKEND_DIR/.staging` (disk), an `flock` making
+presses mutually exclusive, and the deploy launched in its own
+`systemd-run --user --scope` with `MemoryMax` (`UAL_DEPLOY_MEM_MAX`, default 2G).
+
+### Traps found while fixing that, all by running it
+
+- **`kill -9` does not release an `flock`.** Children (rsync, git, a watchdog's
+  `sleep`) inherit fd 9 and the kernel holds the lock until the last holder
+  closes it. The first version left a SIGKILLed press holding the lock forever,
+  so every later press printed REFUSED — a permanently dead Update button for an
+  operator with no shell. The lock file now carries the owner PID so a refusal
+  can distinguish "really running" from "stale, break it and proceed".
+- **A bare `systemd-run --scope` targets the SYSTEM manager and prompts for a
+  password via polkit.** Six property probes produced six prompts. From the box
+  that would be far worse: `User=unity`, `NoNewPrivileges=true`, spawned from an
+  HTTP handler with no terminal — the prompt asks nobody and the press hangs.
+  Use `--user` (own manager, real cgroup, no privilege) and keep
+  `--no-ask-password` as a permanent interlock.
+- **`IOSchedulingClass=idle` and `MemoryAccounting=true` are not valid here.**
+  The first is ionice's syscall interface, not a unit property (cgroup-v2
+  spelling is `IOWeight`); the second is implicit under v2 and returns "Access
+  denied" on a transient scope. A rejected property means the unit never starts,
+  so the press printed "deploy spawned" and deployed **nothing**. Probe any new
+  property first:
+  `systemd-run --user --scope --collect --quiet --unit=probe-$RANDOM --property='X=y' true`
+  (silence = accepted).
+- **Two failure modes need two handlers.** A missing binary fires `'error'`
+  (ENOENT, asynchronously — it does not throw). A *present-but-refusing*
+  `systemd-run` spawns fine, never fires `'error'`, and exits non-zero having
+  started nothing. Only the first handler existed at first, which is exactly how
+  the invalid properties got through.
+- `.staging/` and `.self-update.lock` must be on the overlay rsync's
+  `--exclude` list — they live under `BACKEND_DIR`, so `--delete` would remove
+  the staging directory the script is reading from, mid-deploy.
+- `FTMP` (the ~12 GiB clone) belongs in the `EXIT` trap. Its only cleanup was at
+  the bottom of the block, so every abort path (books gate, embeddings gate, a
+  kill, `set -e`) leaked the full 12 GiB.
+
+## Sizing chain, for reference
+
+`SELF-SEEDING BOOT` (`brain-server.js:854`) computes a tier from an **assumed**
+donor baseline (`donorBaselineMB` default 16384, `donorBytesPerNeuron` 20), not
+from any donor that is actually connected:
+
+    cap = (16384 * 0.75 - 2048) * 1MiB / 20 = 536,870,912  ->  clears tier 3
+    tierRequiredMB = 357M * 21 / 0.5 / 1MiB + 2048 ~= 16,348 MB
+    _safeMB = hostRAM - 13312 = 18,519 MB   (not binding)
+
+⚠ `deploy/dropins/10-pin-brain-size.conf` sets `DREAM_DONOR_FIT_MB=4096` and its
+comment says it exists so a default change *"cannot silently resize -> wipe
+again"*. **It is dead code.** The tier branch (`:892`) is tested *before* the
+donor-fit branch (`:896`), and self-seeding writes `community-tier.json` on
+every deployed boot, so a tier always exists and donor-fit is unreachable. The
+only override that beats the tier path is `DREAM_BRAIN_BUDGET_MB`.
+
+## Restart hazard
+
+The `/update` handler writes `server/.force-fresh` **before** spawning the
+script. `_abort` disarms it, but a plain `systemctl restart` mid-press does not.
+If that file exists, the next restart from *any* cause boots into a weight wipe,
+and `DREAM_KEEP_STATE=1` does not protect you — `autoClearStaleState` honours
+the flag regardless. Check for it before restarting.
