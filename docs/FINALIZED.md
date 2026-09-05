@@ -43,6 +43,42 @@ Sponge (verbatim): *"**A3. Give the fields rsync a wedge watchdog.** The LFS pul
 
 His CORRECTION 1 says `write_bytes == 0` is not a wedge signal. **The LFS stall watchdog fires on exactly that reading.** The evidence is genuinely mixed — the guard also requires `read_bytes` climbing, and the 2026-09-05 runaway's 212 GB *was* measured off that same counter, so accounting clearly works on this path. ⭐ **The discriminator for the next press: if a `WEDGED` line fires while the fields directory is still GROWING, the signal is wrong and that guard should move to destination growth too.** Until that is observed, changing a guard that has caught a real outage would be trading a known-good for a theory. Filed, not fixed.
 
+## 2026-09-05 — `B3 v1` — `unity-donor-session`: THE READBACK ASSEMBLER IS BYTE-IDENTICAL TO THE SHIPPED JS
+
+Gee (verbatim): *"get to it all"*
+
+`crates/unity-donor-session` — **21/21**, workspace now **80 passing**. §5.2 gives this crate *"WebSocket sessions, upload/readback lifecycle, `_gpuBound` state"* and forbids *"HTTP routing, checkpoint policy"* — so there are **no sockets and no save decisions here**, which is exactly what makes it testable without a live donor.
+
+⚠ **Named `unity-donor-session`, not `unity-donor`.** §5.1 calls it `unity-donor`; `donor-app`'s binary already owns that name, and two things with one name in one workspace is the drift this migration exists to remove.
+
+### ⭐⭐ Pinned to the shipped JS by digest, not by reading
+
+`_applyValuesChunk` was extracted from `server/brain-server/gpu.js` by brace-matched line range and executed on the same byte sequences the Rust port is tested on. The port reproduces its digests **exactly**: in-order `6861181660107991221`, shuffled `16787698341258038776`, `outOfOrder == 2` for the shuffled case.
+
+⛔ **THE ORDERING THAT LOOKS LIKE A BUG AND IS NOT: the hash accumulates BEFORE the bounds check.** A chunk that overruns the CPU array is hashed and *then* refused.
+
+⭐ **The JS run proved it directly** — the digest after a **refused** overrunning chunk equalled the digest after an accepted one (`10352097795870096280` both ways). **The donor hashes what it SENT**, so the receiver must hash what **ARRIVED**, including bytes it declines to store; otherwise a *length* disagreement masquerades as a *data* disagreement, and the overrun counter already answers the length question precisely. ⚠ **A port that "tidied" this would pass every local test and silently disagree with every donor.**
+
+### ✅ Five failure classes, named separately
+
+Donor-not-found · chunk-count mismatch · out-of-order · overrun · checksum — a `Vec<String>` of problems rather than a bool, because *"it failed"* is not an actionable thing to put in a log at 3am, and an operator with no shell gets one line that has to carry everything.
+
+⭐ **A byte count is not a completeness proof, and there is a test that says so:** a stream arriving **whole, intact and shuffled** has a perfect byte count and is still wrong. It is caught twice on purpose — the `outOfOrder` counter *and* the digest, because arrival-order hashing makes reordering visible. ⚠ Framing faults (a misaligned offset, or a payload that is not a whole number of values) are their **own** outcome: conflating them with an overrun sends someone hunting a sizing bug when the fault is framing.
+
+### ✅ The session registry encodes the partial-replica trap
+
+`join()` returns an **eligibility verdict carrying the shortfall**, because the failure mode is invisible: a donor that *"receives no matrices at all, while still showing healthy cluster coverage and a real Gn/s rate"* looks exactly like a working one. ⚠ **The gate is `max_storage_buffer_binding_size`, not VRAM** — a driver/API limit, so 32 GB you cannot bind in a single buffer buys nothing.
+
+⛔ **Promotion does not inherit residency.** When the PRIMARY drops and another eligible donor is promoted, `primary_bound()` is **empty** — the new PRIMARY holds nothing until it is uploaded to. Claiming otherwise is how a dashboard reports residency nobody has. `mark_bound` on a non-primary is refused for the same reason.
+
+⛔ **Version gating is NUMERIC, and the test says why:** string comparison puts `0.3.9` above `0.3.36` — a gate that fails open on precisely the newest donors. An older donor silently ignores an unknown opcode and the request *"burns 10 minutes proving nothing"*.
+
+⭐ **Losing the last donor is its own verdict, not a failure** — consistent with the residency rule landed earlier today: the walk holds at the current weights and the next donor runs from the last save.
+
+⚠ **NOT built, deliberately: dispatch scheduling and the wire.** Those need a live donor to mean anything, and **a scheduler that has never scheduled is the same artifact class as a deploy binary that has never deployed.**
+
+---
+
 ## 2026-09-05 — `B2 LIFECYCLE` — §6.2's THREE "OPEN QUESTIONS" WERE NEVER OPEN; THE CODE ALREADY ANSWERED THEM
 
 Gee (verbatim): *"obvious we know what needs to rematerialize a freed matix the code says what it needs and partials need to be handled if they are used and when the last doner drops the wain stays at current weights and any doner runs it(the last weight save before all doners drop) get to work!"*

@@ -1,0 +1,18 @@
+[package]
+name = "unity-donor-session"
+version = "0.1.0"
+edition = "2021"
+description = "Donor session lifecycle and readback assembly for the Unity brain — primary eligibility, gpu-bound state, chunk verification. Migration phase B3."
+license = "MIT"
+
+# ⚠ NAMED `unity-donor-session`, NOT `unity-donor`. `donor-app`'s binary is
+# already called `unity-donor`, and two things with one name in one workspace is
+# the drift this migration exists to remove. §5.1 calls the crate `unity-donor`;
+# the binary got there first.
+
+[dependencies]
+# For `Weight` and the FNV-1a-64 the donor's completeness proof uses.
+# ⛔ §5.2: this crate owns "WebSocket sessions, upload/readback lifecycle,
+# _gpuBound state" and must NOT own "HTTP routing, checkpoint policy". Depending
+# on unity-weights for the value type is fine; deciding WHEN to checkpoint is not.
+unity-weights = { path = "../unity-weights" }

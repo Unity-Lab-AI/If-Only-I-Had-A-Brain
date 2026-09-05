@@ -6,8 +6,14 @@ Rust in this repo is `donor-app/`, which predates this plan.
 with `BYTES_PER_NNZ` derived from it, an explicit-and-tested f64 accumulator, the
 precision probe ported (**2.661e-8 · 151.5 dB · 0 flips**, corroborating the JS
 probe's 2.7e-8 · 151.4 dB · 0), a `memmap2` store, and the `UBWT` format proven
-**byte-compatible against the shipped JS reader, 11/11**. §6.2's lifecycle
-questions remain open by design.
+**byte-compatible against the shipped JS reader, 11/11**. §6.2's three lifecycle
+questions are **answered and built** — see the block in §6.2.
+**⭐ PHASE B3 v1 EXISTS (2026-09-05)** — `crates/unity-donor-session`: readback
+assembly pinned **byte-identical to the shipped `_applyValuesChunk` by digest**,
+the five failure classes named separately, and the partial-replica trap encoded
+as an eligibility verdict that carries the shortfall. ⚠ Dispatch scheduling and
+the wire are deliberately **not** built — they need a live donor to mean
+anything.
 **⭐ PHASE B1 v1 EXISTS (2026-09-05)** — `crates/unity-deploy` takes the lock, the
 staging decision and the own-cgroup launch natively (19/19 tests, exercised end
 to end) and **hands the script's 84 branches to the script**. It is the strangler
