@@ -2576,6 +2576,33 @@ async function pressFetch(url) {
   finally { clearTimeout(t); }
 }
 
+/* ⛔⛔ THE SAFETY PROBE MUST BE BOUNDED TOO, AND MISSING THIS MADE THE WHOLE
+   PANEL LOOK DEAD.
+
+   `pressSafeties()` runs BEFORE any confirm dialog, and it asks the BRAIN
+   (`/weights/list`) whether a checkpoint is mid-write. With the brain's event
+   loop blocked — the exact condition these buttons exist for — that request
+   hangs, so the panel printed "checking restart safeties…" and stopped there.
+   No dialog, no press, no error: the operator's report was simply *"does
+   nothing"*, and they were right.
+
+   ⚠ Bounding the PRESS while leaving the PRE-FLIGHT unbounded fixed the half
+   nobody could reach. A guard in front of a bounded call has to be bounded, or
+   it becomes the new hang.
+
+   Short on purpose: this is a liveness question about a healthy server, not a
+   deploy. If it cannot answer in 6 s the honest verdict is CANNOT-TELL, which
+   pressSafeties already reports correctly — and which the operator can then
+   click through knowingly. */
+const SAFETY_FETCH_MS = 6000;
+
+async function safetyFetch(url) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), SAFETY_FETCH_MS);
+  try { return await fetch(url, { cache: 'no-store', signal: ctl.signal }); }
+  finally { clearTimeout(t); }
+}
+
 function setPressEnabled(on) {
   for (const a of PRESS_ACTIONS) { const b = $(a.id); if (b) b.disabled = !on; }
 }
@@ -2600,7 +2627,7 @@ async function pressSafeties() {
   //    binary beside a full JSON — the mismatched pair the restore route exists
   //    to refuse, except nobody would know to look.
   try {
-    const r = await fetch((WEIGHT_BASE || '') + '/weights/list', { cache: 'no-store' });
+    const r = await safetyFetch((WEIGHT_BASE || '') + '/weights/list');
     if (r.ok) {
       const j = await r.json();
       if (j && j.writing) {
@@ -2611,7 +2638,13 @@ async function pressSafeties() {
       out.push({ level: 'unknown', text: `Could not check whether a weights save is running (HTTP ${r.status}). This is a CANNOT-TELL, not an all-clear.` });
     }
   } catch (e) {
-    out.push({ level: 'unknown', text: `Could not check whether a weights save is running (${(e && e.message) || e}). This is a CANNOT-TELL, not an all-clear.` });
+    /* ⚠ An AbortError here means the BRAIN is not answering — which is almost
+       certainly why a press is being attempted. Name that, rather than printing
+       a bare "AbortError" the reader has to decode. */
+    const why = (e && e.name === 'AbortError')
+      ? `the brain did not answer within ${Math.round(SAFETY_FETCH_MS / 1000)}s (its event loop is probably blocked — which is usually why you are pressing this)`
+      : ((e && e.message) || e);
+    out.push({ level: 'unknown', text: `Could not check whether a weights save is running: ${why}. This is a CANNOT-TELL, not an all-clear.` });
   }
   // ② Live knob writes made from this page. `POST /knob` changes the RUNNING
   //    value and persists nothing, so a restart silently reverts every one of

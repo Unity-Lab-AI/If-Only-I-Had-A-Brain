@@ -47081,3 +47081,26 @@ Gee (verbatim): *"so wtf are you telling me there is no way to fuckign fix it?"*
 ⚠ **The module never throws into the teach path** — a load failure logs one loud warning naming this incident and leaves the API lane intact, because a dictionary that cannot load must not stop the walk *and* must not fail silently.
 
 **Docs shipped in this commit:** `docs/TODO.md` · `docs/FINALIZED.md` (this) · `docs/RESUME.md` · `wiki/modules/curriculum.md` · `wiki/log.md`.
+
+---
+
+## 2026-09-05 - SAFETYTIMEOUT: the guard in front of the bounded call was itself unbounded - feature/safetytimeout
+
+Gee (verbatim): *"update code button keep training, does nothing on the tech viewer"* → *"should i use the dashboard? did you fix that one atleasst?"*
+
+- **`SAFETYTIMEOUT.1` — ⛔⛔ I BOUNDED THE PRESS AND LEFT THE PRE-FLIGHT UNBOUNDED, SO THE PANEL STILL LOOKED DEAD.** ✅ **FIXED + 17/17.**
+  - `pressSafeties()` runs **before any confirm dialog** and asks the BRAIN — `fetch(WEIGHT_BASE + '/weights/list')` — whether a checkpoint is mid-write. **No timeout.** With the event loop blocked it hung there: the panel printed `checking restart safeties…` and stopped. No dialog, no press, no error. **He reported *"does nothing"* and that was precisely accurate.**
+  - ⭐⭐ **THE GENERALISABLE RULE, AND THE REASON THIS IS EMBARRASSING RATHER THAN UNLUCKY: a guard in front of a bounded call has to be bounded too, or it becomes the new hang.** `PRESSCTL` bounded the request that mattered **and left a safety check standing in front of it** — so the fix was unreachable behind its own guard. **I shipped a fix that could not be reached and then told him to press the button.**
+  - **6 s, deliberately shorter than the press's 20 s.** This is a liveness question about a healthy server, not a deploy; if it cannot answer in six seconds the honest verdict is CANNOT-TELL. ⭐ **The `unknown` branch `pressSafeties` already had is exactly right for this** — it refuses to read an unreadable check as an all-clear and shows a dialog phrased so the safe answer is the default. **The bug was never the verdict logic; it was that the verdict was never reached.**
+  - **It names the cause now instead of leaking an exception:** *"the brain did not answer within 6s (its event loop is probably blocked — which is usually why you are pressing this)"* rather than a bare `AbortError`.
+  - **Nothing else moved, and that is asserted rather than assumed:** a live checkpoint write still STOPS the press · a 500 is still a CANNOT-TELL · a 403 is still not a failure (admin lane, handled elsewhere) · the live-knob warn and pending-defaults info still ride along · a healthy brain still produces zero findings.
+
+- **`SAFETYTIMEOUT.2` — ⛔ FILED OPEN: THE DASHBOARD'S LEGACY BUTTONS STILL CLAIM SUCCESS FROM THEIR CATCH BRANCH.** `html/dashboard.html:4641` sets `✓ restarting (resumes)` **inside `catch`** — a failed request reports success. Same assume-success defect just removed from the teach viewer, and the same one the teachview wiki page has cited as its CONTRAST case for months.
+  - ⚠ **Deliberately NOT bundled into this change.** The Brain Power panel on the same page is already correct — `/ctl/*`, `credentials: 'same-origin'`, `{"confirm":"WIPE"}` on the destructive verbs, `409 busy` handled, the server's own message reported — so **a working control already exists two panels away.**
+  - ⭐ **The right fix is probably to RETIRE the legacy row, not repair it.** `CTLSUPERSEDE` in that file already states the new panel must REPLACE the old row rather than join it; the old row surviving is the actual defect.
+
+**VERIFIED — 17/17 against the REAL `safetyFetch` and `pressSafeties` bodies** lifted out of the HTML by brace matching and executed. **The decisive case: `pressSafeties()` RESOLVES against a brain that never answers**, aborts its own request, returns inside the bound, and yields exactly one `unknown` finding that names the blocked loop and never prints `AbortError`.
+
+**ANSWERING HIS SECOND QUESTION HONESTLY: no, the dashboard was not fixed — because it did not need fixing.** Its Brain Power panel has been on `/ctl/*` since `CTLPLANE.2` and works today; `/ctl/status` answers in **0.15 s** while `/public-state.json` times out at 12 s. ⭐ **`⚡ Force Restart (wedged)` → `/ctl/kick` is the button for a pinned brain, and its own tooltip describes his exact symptom.** The legacy row above it is the part to avoid.
+
+**Docs shipped in this commit:** `docs/TODO.md` · `docs/FINALIZED.md` (this) · `docs/RESUME.md` · `wiki/modules/teachview.md` · `wiki/log.md`.
