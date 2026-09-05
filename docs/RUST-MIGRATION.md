@@ -121,6 +121,45 @@ to JSON or sqlite.** It is not logic, it should not be compiled, and it should
 not be rewritten in Rust. This alone makes the remaining port dramatically
 smaller and is worth doing *even if the Rust migration never happens*.
 
+### ⛔⛔ MEASURED 2026-09-05 — B7 DOES NOT PAY, AND THE PORT IS BIGGER THAN THIS SECTION IMPLIES
+
+Every premise above fails when measured. Recorded rather than acted on, because
+the conclusion changes the *whole migration estimate*, not just this task.
+
+| claim | measured |
+|---|---|
+| *"3.37 MB total across vocab files"* | **0.625 MB** across all 20 (`wc -c js/brain/*vocabulary*.js`). **5.4× overstated** |
+| *"`curriculum.js` ← DATA wearing a `.js` extension"*, 31,589 lines | **~1,672 lines look like string-array content — about 5%.** The file is overwhelmingly logic |
+| *"`student-question-banks.js` ← DATA"*, 2,323 lines | **Mixed.** It also exports `injectGeneratedExamQuestions`, `cutScoreFor`, `trainExamOverlap`, `examVocabCoverage`, `extractVocabFromBank`, `methodologyBankFor`, `scoreMethodologyAnswer` — that is logic, and `curriculum.js:43` imports those functions, not just the banks |
+| *"makes the remaining port dramatically smaller"* | Genuinely-extractable data is **~0.9 MB of ~11 MB of JS**, and the largest file is 95% logic. **The port surface is logic; there is no data escape hatch** |
+| *"worth doing even if the Rust migration never happens"* | **No runtime payoff exists to collect.** See below |
+
+⭐ **THE RUNTIME BENEFIT IS ALREADY THERE, ACHIEVED A DIFFERENT WAY.**
+`grade-vocabulary.js` loads each grade's list through a **dynamic `import()`**,
+and says so in its own header: *"Dynamic import per grade keeps the curriculum
+module graph lean — only the active grade's vocab loads when that grade starts."*
+So the lazy-loading that JSON extraction would buy **is what the code already
+does.** `fullJourneyVocabularyStats()` does touch all twenty — once, memoised,
+for a dashboard denominator: 0.625 MB, one time, per boot.
+
+⭐ **AND NONE OF IT IS IN THE BROWSER BUNDLE.** `grep -c 'K_VOCABULARY' js/app.bundle.js`
+→ **0**; same for the question banks. These are server-side modules, so "shrinks
+everything" has no browser cost to shrink. Converting them to JSON would replace
+a working, deliberately-designed load path with a filesystem read, for zero
+measured gain — and add a path that behaves differently under the deploy overlay.
+
+⛔ **WHAT THIS MEANS FOR THE MIGRATION, WHICH IS THE PART THAT MATTERS.** §3
+exists to argue the port is smaller than 72,700 lines suggests. **It is not.**
+`curriculum.js` cannot be set aside as content — porting the coordinator means
+porting its logic, and the "extract the data first" shortcut is not available at
+the size this section assumes. **Re-price B1–B6 accordingly rather than
+inheriting this estimate.**
+
+⚠ **B7 is therefore CLOSED AS NOT-WORTH-DOING, not skipped.** The one real
+benefit — not compiling lesson content into a Rust binary — is *entirely*
+conditional on the rewrite reaching the curriculum, which is the last thing it
+would reach and is explicitly listed under "Leave in JS" in §2.
+
 The genuine model logic worth porting:
 
 | File | Lines | Notes |
