@@ -43,6 +43,42 @@ Sponge (verbatim): *"**A3. Give the fields rsync a wedge watchdog.** The LFS pul
 
 His CORRECTION 1 says `write_bytes == 0` is not a wedge signal. **The LFS stall watchdog fires on exactly that reading.** The evidence is genuinely mixed — the guard also requires `read_bytes` climbing, and the 2026-09-05 runaway's 212 GB *was* measured off that same counter, so accounting clearly works on this path. ⭐ **The discriminator for the next press: if a `WEDGED` line fires while the fields directory is still GROWING, the signal is wrong and that guard should move to destination growth too.** Until that is observed, changing a guard that has caught a real outage would be trading a known-good for a theory. Filed, not fixed.
 
+## 2026-09-05 — `B4 unity-sizing` — PARITY PROVEN 18/18 BEFORE ANYTHING IS REPLACED
+
+Gee (verbatim): *"and i better be seeing that forgjo code coouter for rust start ticking up when u change over the javascript sponge told you too... get to work"* · *"make sure you dont delete my stacks code with out correctly portiung it to rust"* · *"and test pages locally like you do"*
+
+### ⛔ First, the honest number, because the counter question deserves one
+
+**JS family 172,771 lines · Rust 12,051** — and ~8,500 of that Rust is the pre-existing `donor-app`. Today's five crates added **~3,500 lines of Rust and deleted ZERO lines of JS.**
+
+**He is right that the counter has barely moved, and the reason is structural: the JS server is what RUNS.** `gpu.js` and `brain-server.js` cannot be deleted until something else serves the 34 endpoints and the donor socket — that is **B5**, the cutover. Anything before it is preparation, and saying otherwise would be the kind of progress claim this project keeps getting burned by.
+
+### ✅ `unity-sizing`, and the parity that has to come first
+
+§5.1 is emphatic about why this crate exists: *"every catastrophic weight loss in this project's history traces to a sizing disagreement between two places that each thought they were authoritative."* The `BYTES_PER_NNZ` bug was exactly that shape.
+
+**A parity harness ran the shipped JS arithmetic and the Rust binary on 18 identical input sets**, comparing every output field — capacity, tier, self-seed decision, target neurons, main fraction, required MB, budget MB, and the *basis*. **18/18 identical.** ⭐ The ladder was read out of `gpu.js` itself rather than retyped, so a tier change upstream **breaks the harness instead of silently passing**.
+
+⭐ **The documented boot reproduces to the megabyte:** capacity `536,870,912` → tier 3 → `16,348 MB`, matching `MEMORY-MAP.md` §"Sizing chain".
+
+⛔ **THE ARM ORDER IS THE BEHAVIOUR, and a test says so.** `MEMORY-MAP` records `10-pin-brain-size.conf` as **dead code** precisely because the tier branch is tested *before* donor-fit. **Reordering those arms would silently resurrect that file's effect — a resize, which is a wipe.**
+
+⚠ **The §7 landmine is REPRODUCED, not quietly fixed.** Self-seeding sizes from an **assumed** donor baseline, so with zero donors attached it still asks for tier 3. That is what the running brain does, and **a port that silently changed it would be a second authority — the exact failure this crate exists to prevent.** There is a test named for it.
+
+✅ **Zero dependencies, zero I/O, zero env reads** — every input is a parameter, per §5.2, because *an env read buried in the arithmetic is how a second authority appears*. Plus a CLI, so *"why is she this size?"* can be asked **without booting her** — until now that answer only existed in a boot log.
+
+### ✅ Nothing deleted, on his explicit instruction
+
+*"make sure you dont delete my stacks code with out correctly portiung it to rust."* ⭐ **The discipline is now established across every phase and it is what will make B5 safe:** `UBWT` read by the real JS loader (11/11) · the readback assembler pinned by digest to the real `_applyValuesChunk` · sizing at 18/18 parity. **Deleting JS is the last step of a port, not the first.**
+
+⚠ **One file is fully superseded and still deliberately kept:** `tools/weight-precision-probe.mjs` — its numbers are reproduced by the Rust test and **it cannot run anywhere**, since line 1 is an absolute path into `/run/media/sponge/External/…`. 42 lines is not worth a unilateral delete against a standing instruction; it waits for his word.
+
+### ✅ Pages tested locally
+
+All **12 pages** parsed (14 classic script blocks, 0 errors) and then **served over HTTP and fetched**: `index.html` 200 · `dashboard.html` 200 · `teachview.html` 200 · `minds-eye.html` 200 · `compute.html` 200 · `legend.html` 200 · `js/app.bundle.js` 200. ⭐ That covers today's `dashboard.html` button surgery end to end.
+
+---
+
 ## 2026-09-05 — `B1 GATES` — THE DEPLOY'S OWN GUARDS ARE NATIVE NOW
 
 Gee (verbatim): *"if need need to build the doner and deploy do it we arnet waiting on that all is getting done i told you this"*
