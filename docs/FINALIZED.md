@@ -43,6 +43,42 @@ Sponge (verbatim): *"**A3. Give the fields rsync a wedge watchdog.** The LFS pul
 
 His CORRECTION 1 says `write_bytes == 0` is not a wedge signal. **The LFS stall watchdog fires on exactly that reading.** The evidence is genuinely mixed — the guard also requires `read_bytes` climbing, and the 2026-09-05 runaway's 212 GB *was* measured off that same counter, so accounting clearly works on this path. ⭐ **The discriminator for the next press: if a `WEDGED` line fires while the fields directory is still GROWING, the signal is wrong and that guard should move to destination growth too.** Until that is observed, changing a guard that has caught a real outage would be trading a known-good for a theory. Filed, not fixed.
 
+### ✅ `PRESSHARD.1` — CLOSED on a live read: the press hazard is gone, and a grep would have said otherwise
+
+Gee (verbatim): *"okay get back to work"*
+
+This row was the gate in front of ~30 press-blocked items, and it was built on a build stamp that has since moved. Filed premise: *"the box reports `build.sha 29a02f6f`, deployed `2026-09-01T17:14:36Z`"* — with a script 139 lines shorter than `main`'s, no `--exclude 'corpora'`, no data sync, no books gate, so an overlay `rsync -a --delete` would take the books and GloVe with it and she would never boot again.
+
+**The box now reports `fb05ff15`, deployed `2026-09-05T19:43:48Z`, booted `19:47:23Z`.** Sponge pressed it repeatedly today landing STAGEDISK / ONEPRESS / OWNCGROUP / BWLOCAL.
+
+⭐ **THE DECIDING CHECK, AND IT IS A DIFF RATHER THAN A GREP: the box's overlay exclude set is BYTE-IDENTICAL to `main`'s.** `git show fb05ff15:deploy/self-update.sh` against the working copy, compared on every `exclude '…'` token — **zero difference.** `fields`, `corpora/glove.6B.*`, `.staging`, `.self-update.lock` all protected on the box. **The chain this row describes cannot execute.**
+
+⚠ **AND A SINGLE GREP WOULD HAVE "CONFIRMED" THE HAZARD.** `--exclude 'corpora'` returns **0 on the box — and 0 on `main` too.** Neither excludes `corpora` wholesale: `main` excludes `corpora/glove.6B.*` and lets the data sync repopulate the books, with the books gate verifying they returned. **Searching for the exact string the row happens to name would have reproduced a two-day-old conclusion instead of testing it.** The comparison had to be *box against main*, not *box against the row's prose*.
+
+**Feature-by-feature, box copy (1,202 lines) vs `main` (1,449):**
+
+| | box | main |
+|---|---|---|
+| BrainWaves data sync · `_lfs_pull` · books gate · `UAL_GLOVE_MIN_BYTES` | ✅ | ✅ |
+| STAGEDISK (`STAGE_ROOT`) · ONEPRESS (`flock`) | ✅ | ✅ |
+| SELFFIRST · `UAL_LFS_MAX_WRITE_PCT` · `_fields_rsync` | ✗ | ✅ |
+
+All three missing items are *additional* safety that lands on the next press; none is a prerequisite for the press being safe. (`systemd-run` reads 0 in both — OWNCGROUP lives in `brain-server.js`, not this script.)
+
+⭐ **THE TWO-PRESS STRUCTURE STILL HOLDS, BUT IT IS NOW BENIGN.** Press 1 runs the box's current script and delivers SELFFIRST plus both new guards; press 2 runs them. **What changed since the row was filed is that press 1 is safe rather than fatal.**
+
+### ⭐ `LIVESTATE.1` — she is up and healthy, she has no donor, and that is the entire `0/0`
+
+Gee (verbatim, reading the dashboard): *"okay i see them all 0/0"*
+
+Live `/public-state.json`, 2026-09-05: **`donorCount: 0`.** Teaching is GPU-only at biological scale and the CPU fallback was deliberately removed in 2026-08-14 (`requireGpuSubstrate` — a proxied brain REQUIRES its proxy). **So `passedCellsTotal: 0`, all six subjects at `pre-K` and `minGradeCleared: false` are the CONSEQUENCE of having no GPU attached — not a defect, and not anything the weight work changed.**
+
+⭐ **AND THE BOX IS MEASURABLY FIXED, FROM OUTSIDE ITS OWN LOGS.** `HTTP 200 in 0.40 s` with `eventLoopLagMs: 1`, against yesterday's *curl timed out at 20 s* and a 253 s worst stall. **Sponge's three deploy-memory fixes did what they claimed.**
+
+**Recorded with the boot that produced them:** build `fb05ff15` · `totalNeurons 411,216,550` ⚠ derived at boot from free host RAM, never a constant · tier 4 · `capacityNeurons 1,681,679,974` · `sizeDriverMB 45,498`.
+
+⚠ **`sizeDriverMB 45,498` beside `donorCount 0` is the self-seeding boot sizing itself from an ASSUMED donor baseline rather than a connected one** — exactly the landmine `MEMORY-MAP.md` §7 names. Worth knowing before reading any capacity number as a promise.
+
 ### ✅ `SPONGEHAND.B0` — `unity-protocol` extracted; the wire contract has one home
 
 Gee (verbatim): *"continue then"* · Sponge (verbatim): *"**B0. `unity-protocol`** — risk: none … Extract `donor-app/src/frames.rs` + `protocol.rs` into a shared crate; make `donor-app` depend on it. Zero behaviour change. Kills the duplicated protocol. **Start here.**"*
