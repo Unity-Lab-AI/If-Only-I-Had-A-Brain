@@ -1,6 +1,41 @@
 # RESUME — Session Pickup Brief
 
-> # 🔴 2026-09-05 13:09 UTC — THE BUTTONS ARE THE STORY. HAND-OFF WRITTEN. (LATEST — PICK UP HERE)
+> # 🔴🔴 2026-09-05 13:52 UTC — ROOT CAUSE FOUND: SHE IS THROTTLED BY HER OWN CGROUP (LATEST — PICK UP HERE)
+>
+> ### ⭐ Full write-up leads `docs/BUTTON-AUDIT.md`. It is the hand-off; paste it whole.
+>
+> ## ⛔⛔⛔ IT WAS NEVER THE BUTTONS
+> `/ctl/status`, once authenticated:
+> ```
+> memoryBytes   22,851,215,360  =  21.28 GB
+> MemoryHigh    20 GB     (unity-brain.service:92)   <- 1.28 GB / 6.4% OVER
+> MemoryMax     24 GB     (:94)                      <- 2.7 GB below, so no OOM kill
+> loopPinned    true · portOpen false · exitStatus 0 · nRestarts 6
+> activeForSec  70168  = 19.5 h · activeEnter Fri 2026-09-04 18:22:48 UTC
+> ```
+> ⭐ **`MemoryHigh` is a THROTTLE, not a cap.** Above it the kernel stalls the whole cgroup — which is exactly *alive, exit 0, never restarted, port never binds, loop pinned.*
+>
+> ⛔⛔ **SHE IS IN THE ONE BAND WITH NO ESCAPE.** Below `High` she runs. Above `Max` she is **OOM-killed alone and `Restart=always` revives her in seconds** — loud, self-healing. **Between them: throttled indefinitely, nothing kills her, nothing recovers her, no event fires.**
+>
+> ⚠ **Every symptom today was downstream of this** — the dead `/admin/ws` handshake, the timed-out presses, *"the buttons do nothing"*. **Fixing every button defect would not have started her.** ⭐ Sponge measured the same mechanism yesterday from the other side (a wedged LFS pull over the same limit; *"killing it took the box 24G → 15G instantly"*). **This time nothing else is running — she is over on her own.**
+>
+> ## ⛔ THE LIKELY REAL BUG
+> `unity-brain.service:82-84` says the in-app budget *"sizes the brain well under these so the hard cap is only a backstop."* **That assumption failed.** The size derives from **free HOST RAM** (`raising brain budget 16384MB -> 18519MB`), and **nothing in that calculation reads `MemoryHigh`** — it reasons about the host while the kernel enforces against the cgroup. She sized to 411M neurons + a 15M language cortex, landed at 21.3 GB, and walked into a limit she cannot see.
+>
+> ## ⭐ WHAT TO DO
+> 1. **Restart** — `/ctl/restart` or the Brain Power panel. **Nothing is lost:** `passedCellsTotal` has been 0 for 19 h.
+> 2. **Watch two numbers:** `activeEnter` leaving `Fri 2026-09-04 18:22:48 UTC`, and `memoryBytes` settling.
+> 3. **Under ~20 GB** → fixed. **Past 20 GB again** → ⛔ **the sizing bug is confirmed; do NOT just restart again.** Then decide: raise `MemoryHigh`, make the budget read the cgroup, or lower `DREAM_BRAIN_BUDGET_MB`. ⚠ **Not blindly — these caps exist so she can never take Forgejo down, and Forgejo shares this host.**
+>
+> ## ⚠ AND MY OWN INSTRUMENT GAVE BAD ADVICE
+> `/ctl/status` still ends with *"a restart here would abandon whatever it is holding."* **Right after minutes, wrong after 19 hours** — and `activeForSec` is in the same payload, with the text already saying *"far too long to still be booting"*. **The advice must turn over past any plausible operation length.** `MEMTHROTTLE.3`.
+>
+> ## ✅ POD STOPPED
+> `q0ydaakrqcz48n` — exit runtime `gpu.util 0%` · `cpu.util 0%` · **uptime 21.5 h**. **21.5 hours billed on an idle card** at $0.49/hr. Restart it only once she is serving.
+>
+> ---
+>
+> # 🔴 2026-09-05 13:09 UTC — THE BUTTONS ARE THE STORY. HAND-OFF WRITTEN.
 >
 > ### ⭐ READ `docs/BUTTON-AUDIT.md` — it is self-contained and meant to be pasted whole.
 >
