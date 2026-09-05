@@ -32,6 +32,28 @@
 # clone the remote.
 set -euo pipefail
 
+# ── `--self-test` — THE CONTRACT SELFFIRST VALIDATES AGAINST ──────────────────
+#
+# ⛔⛔ THIS MUST BE THE FIRST EXECUTABLE STATEMENT IN THE FILE, BEFORE ANY
+# VARIABLE READS ANY ENVIRONMENT AND BEFORE ANYTHING TOUCHES DISK. SELFFIRST
+# runs `bash <candidate> --self-test` on a file it has just downloaded and has
+# not yet trusted; if that invocation did any deploy work, validating a script
+# would BE a deploy — from an unvalidated file, outside the lock, with no
+# staging directory set up. Keep this at the top.
+#
+# ⭐ It asserts the two things SELFFIRST actually depends on: that the file
+# parses (guaranteed by reaching this line at all) and that it understands the
+# self-test contract. A future version that drops this flag will FAIL validation
+# on every box, and those boxes will keep their working updater and say so —
+# which is the correct outcome, not a regression.
+#
+# ⚠ `exit 0` before `set -u` can bite anything below: this runs before any
+# `${VAR}` expansion, so it is safe on a box with no environment at all.
+if [ "${1:-}" = "--self-test" ]; then
+  echo "self-update.sh: self-test OK (SELFFIRST contract v1)"
+  exit 0
+fi
+
 BACKEND_DIR="${UAL_BACKEND_DIR:-/opt/unity-brain}"
 GIT_REMOTE="${UAL_GIT_REMOTE:-git@git.unityailab.com:UnityAILab/If-Only-I-Had-A-Brain.git}"
 GIT_BRANCH="${UAL_GIT_BRANCH:-main}"
@@ -111,6 +133,85 @@ _size()  { local s; s="$( { du -sh "$1" 2>/dev/null || true; } | cut -f1 )" || s
 _bytes() { local n; n="$( { wc -c < "$1"; } 2>/dev/null || true )" || n=0; printf '%s' "${n:-0}"; }
 
 log "START — overlay ${GIT_BRANCH} from ${GIT_REMOTE} -> ${BACKEND_DIR}"
+
+# ── SELFFIRST (2026-09-05) — THE UPDATER UPDATES ITSELF FIRST, THEN RE-EXECS ──
+#
+# ⛔⛔ EVERY PRESS RAN THE **PREVIOUS** VERSION'S LOGIC, AND IT COST TWO REAL
+# INCIDENTS IN ONE DAY. This script overlays the repo (including ITSELF) partway
+# down, but everything above that point — the staging decision, the lock, the
+# data-repo discovery — has already run by then. So a fix to any of those lands
+# on disk during press N and only takes effect on press N+1.
+#
+# Observed twice on 2026-09-05, both times as "the fix didn't work":
+#   • the press that DELIVERED STAGEDISK still staged ~12 GB into tmpfs and
+#     drove PSI to 72, because its own staging decision was made by the old code;
+#   • the press that DELIVERED BWLOCAL still cloned over SSH and had to be
+#     killed, for the same reason.
+# Both were correct code behaving exactly as written, which is what made them
+# confusing rather than obviously broken.
+#
+# ⭐ THE FIX: fetch just this one file first, VALIDATE it, install it
+# atomically, and `exec` it. The deploy then runs entirely under the newest
+# updater. `UAL_SELF_REPLACED=1` marks the second generation so it cannot loop.
+#
+# ⛔⛔ THE ATOMIC INSTALL IS NOT A DETAIL — IT IS THE WHOLE SAFETY OF THIS BLOCK.
+# **bash reads a script incrementally, by byte offset, while it runs.** Writing
+# over this file IN PLACE (`cat >`, `cp`) keeps the same inode, so the running
+# shell's next read lands at its old offset inside NEW content and it executes
+# whatever text happens to be there. Reproduced deliberately before writing
+# this: an in-place overwrite made a running script SKIP a line and then execute
+# a fragment of another as a command —
+#     line A (original)
+#     victim.sh: line 3: line B (NEW) — …: command not found
+#     line C (NEW)
+# `mv -f` REPLACES THE DIRECTORY ENTRY and leaves the running process on the old
+# inode, which it holds open until it exits. Verified: the running script
+# completes on the original text, and the next invocation gets the new file.
+# NEVER change this to `cp`/`cat >` over the live path.
+#
+# ⚠ VALIDATED BEFORE IT IS TRUSTED, because a broken updater is unrecoverable
+# from a dashboard: `bash -n` for syntax, then `--self-test` so the new file
+# gets to assert its own basic sanity. Either check failing means the staged
+# file is DISCARDED and this press continues on the current updater — the exact
+# behaviour that shipped before, which is the correct fallback.
+#
+# ⚠ NON-FATAL BY CONSTRUCTION. Every step is `|| true`-shaped: no network, a
+# missing git, a read-only dir, a failed clone — all fall through to the normal
+# deploy. This block can only ever make the press MORE current, never break it.
+if [ "${UAL_SELF_REPLACED:-0}" != "1" ] && [ "${UAL_SELF_UPDATE_FIRST:-1}" = "1" ]; then
+  _self_path="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/$(basename "$0")"
+  _self_stage="$(mktemp -d 2>/dev/null || true)"
+  if [ -n "$_self_stage" ] && [ -w "$(dirname "$_self_path")" ]; then
+    # Fetch ONLY this file — a blobless, treeless, single-file checkout is a few
+    # KB and a second or two, against the ~12 GB the full clone below costs.
+    if git clone --depth 1 --branch "$GIT_BRANCH" --filter=blob:none --no-checkout \
+         "$GIT_REMOTE" "$_self_stage/repo" >>"$LOG" 2>&1 \
+       && git -C "$_self_stage/repo" checkout "$GIT_BRANCH" -- deploy/self-update.sh >>"$LOG" 2>&1 \
+       && [ -s "$_self_stage/repo/deploy/self-update.sh" ]; then
+      _new="$_self_stage/repo/deploy/self-update.sh"
+      if cmp -s "$_new" "$_self_path"; then
+        log "self-update is already the latest ${GIT_BRANCH} version — no re-exec needed."
+      elif bash -n "$_new" 2>>"$LOG" && bash "$_new" --self-test >/dev/null 2>&1; then
+        # ⚠ Preserve the mode, and install by RENAME (see the trap above).
+        chmod --reference="$_self_path" "$_new" 2>/dev/null || chmod 0755 "$_new" 2>/dev/null || true
+        if mv -f "$_new" "$_self_path" 2>>"$LOG"; then
+          log "⭐ SELFFIRST — a NEWER deploy/self-update.sh was fetched, validated (syntax + self-test) and installed ATOMICALLY. Re-exec'ing so THIS press runs the new logic instead of delivering it for next time. Every step below — staging, locking, data-repo discovery — now uses the current code."
+          rm -rf "$_self_stage" 2>/dev/null || true
+          # ⛔ `exec` REPLACES this process: no orphan, no double press, and the
+          # lock below is taken exactly once because it has not been taken yet.
+          export UAL_SELF_REPLACED=1
+          exec bash "$_self_path" "$@"
+        fi
+        log "WARN — could not install the newer self-update.sh (rename failed); continuing with the current one."
+      else
+        log "⛔ WARN — the fetched self-update.sh FAILED validation (bash -n or --self-test) and was DISCARDED. This press continues on the CURRENT updater, which is the safe outcome. Fix the script on ${GIT_BRANCH}; nothing on this box is broken."
+      fi
+    else
+      log "self-update self-refresh skipped (could not fetch ${GIT_BRANCH}:deploy/self-update.sh) — continuing with the on-box updater."
+    fi
+  fi
+  rm -rf "$_self_stage" 2>/dev/null || true
+fi
 
 # ⛔⛔ STAGEDISK (2026-09-05) — `mktemp -d` STAGED ~12 GB INTO RAM, EVERY PRESS.
 #
