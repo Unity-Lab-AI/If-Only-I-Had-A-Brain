@@ -10754,7 +10754,163 @@ const httpServer = http.createServer((req, res) => {
       const env = { ...process.env };
       if (keepState) env.UAL_KEEP_STATE = '1';
       if (skipFields) env.UAL_FIELDS = '0';
-      const child = spawn('bash', [updateScript], { detached: true, stdio: ['ignore', 'pipe', 'pipe'], env });
+      // ── OWNCGROUP (2026-09-05) — THE DEPLOY MUST NOT SPEND HER MEMORY BUDGET.
+      //
+      // ⛔⛔ `detached: true` STARTS A NEW SESSION, NOT A NEW CGROUP. The child
+      // stays in `unity-brain.service`'s cgroup and therefore shares her
+      // `MemoryHigh=20G` — so every heavy thing the deploy does is charged to
+      // the brain, and the kernel throttles the WHOLE cgroup, node included.
+      // `deploy/self-update.sh` has said so in a comment since the LFS guard
+      // was written: *"THE REAL FIX IS STRUCTURAL and is NOT done: the data sync
+      // should run in its OWN cgroup with its OWN MemoryMax, not the brain's.
+      // Everything here is a safety net around a deploy that shares her memory
+      // budget."* This is that fix; the safety nets stay as defence in depth.
+      //
+      // ⭐ IT IS THE ROOT CAUSE OF A WHOLE CLASS OF INCIDENT, all three of which
+      // were previously patched one at a time INSIDE the script:
+      //   • 2026-09-04 — `git lfs pull` wedged (2.07 TB read, 0 bytes written)
+      //     and starved her event loop to 2% serviced. Patched with a timeout +
+      //     a no-progress watchdog.
+      //   • 2026-09-04 — the fields rsync pulled 12.4 GB of PAGE CACHE into the
+      //     cgroup with node at only 8.7 GB RSS; killing it dropped the cgroup
+      //     20G → 4G instantly. Patched with nice/ionice/bwlimit.
+      //   • 2026-09-05 — ~12 GB staged into PrivateTmp (RAM), charged to the
+      //     cgroup as unreclaimable tmpfs. Patched by STAGEDISK above.
+      // Every one of those is the same bug: work that is not the brain, spending
+      // the brain's budget. Capping the deploy's own cgroup fixes the CLASS.
+      //
+      // ⚠ AND IT IS WHAT MAKES THE PLANNED mmap SAFE. Once the weight master
+      // copy is file-backed, an unbounded rsync in the same cgroup would evict
+      // her weight pages through page-cache pressure alone — the 2026-09-04
+      // failure again, with a new mechanism. The deploy needs its own budget
+      // before that lands.
+      //
+      // ⚠ DEGRADES, NEVER BLOCKS. `systemd-run` may be absent, may lack the
+      // caller's privilege (the unit runs NoNewPrivileges=true, and a --user
+      // manager may not exist for the service account), or may fail for reasons
+      // we cannot enumerate from in here. A deploy that cannot escape the cgroup
+      // is exactly what shipped before, so it falls back to the plain spawn and
+      // SAYS which path it took — an operator reading a starved box needs to
+      // know whether the deploy was contained or not.
+      const _scopeMemMax = process.env.UAL_DEPLOY_MEM_MAX || '2G';
+      const _useScope = process.env.UAL_DEPLOY_OWN_CGROUP !== '0';
+      let child = null;
+      let _spawnPath = 'plain';
+      if (_useScope) {
+        try {
+          // --scope runs it as a transient unit under the CALLER's privileges
+          // (no new privilege is gained); --collect reaps the unit when it
+          // exits so a failed deploy cannot leave a stuck unit behind.
+          // ⛔⛔ EVERY PROPERTY HERE WAS VERIFIED AGAINST A REAL `systemd-run`,
+          // BECAUSE THE FIRST DRAFT SILENTLY DEPLOYED NOTHING.
+          // It passed `IOSchedulingClass=idle` (the ionice concept the script
+          // uses elsewhere) and `MemoryAccounting=true`. systemd rejected BOTH —
+          // "Unknown assignment: IOSchedulingClass=idle" and, for the accounting
+          // flag on a *scope*, "Access denied" — and a rejected invocation means
+          // the unit never starts, so **the press produced no output and no
+          // deploy at all**. Observed exactly that in testing: "spawn path =
+          // systemd-run scope" printed, and nothing ran.
+          //   • IOSchedulingClass / IOSchedulingPriority are ionice's syscall
+          //     interface, NOT unit properties. The cgroup-v2 equivalent is
+          //     `IOWeight` (1-10000, default 100).
+          //   • MemoryAccounting is implicit under cgroup v2 and cannot be set
+          //     on a transient scope by an unprivileged caller.
+          // ⚠ If you add a property, RUN IT FIRST:
+          //     systemd-run --scope --collect --quiet --unit=probe-$RANDOM \
+          //       --property='NewThing=value' true
+          // Silence means accepted; any output means the deploy would not run.
+          // ⛔⛔ `--user` AND `--no-ask-password` ARE BOTH MANDATORY, AND THE
+          // SECOND ONE IS A SAFETY INTERLOCK, NOT A CONVENIENCE.
+          //
+          // A bare `systemd-run --scope` targets the SYSTEM manager, which for a
+          // non-root caller means a **polkit authentication prompt**. Found the
+          // hard way while probing which properties this systemd accepts: six
+          // probe invocations produced six password prompts on the developer's
+          // machine, and the run had to be cancelled.
+          //
+          // ⛔ ON THE BOX THAT WOULD BE FAR WORSE THAN AN ANNOYANCE. The service
+          // runs as `User=unity` with `NoNewPrivileges=true`, spawned from an
+          // HTTP handler with no terminal attached. A polkit prompt there does
+          // not ask anyone anything — it BLOCKS, or fails after a timeout, and
+          // the Update button hangs or silently no-ops for an operator who has
+          // no shell to investigate with. The one sudoers grant the box has is
+          // scoped to `/usr/local/sbin/brain-ctl-helper` and does not cover this.
+          //
+          // ⭐ `--user` runs the scope under the caller's OWN systemd manager:
+          // no privilege, no polkit, no prompt, and still a real cgroup with a
+          // real MemoryMax. Verified: the payload lands in
+          // `user.slice/user-N.slice/user@N.service/app.slice/<unit>.scope`.
+          //
+          // ⚠ `--no-ask-password` is belt-and-braces: if this ever does end up
+          // on a path that WOULD prompt, it must fail fast and fall back to the
+          // plain spawn instead of hanging the deploy on a prompt nobody can
+          // answer. NEVER remove it.
+          //
+          // ⚠ A --user manager requires a user session/lingering for the service
+          // account. If there is none, systemd-run exits non-zero, which the
+          // exit handler below turns into the plain-spawn fallback — the deploy
+          // still runs, just uncontained, and says so.
+          const _args = ['--user', '--scope', '--collect', '--quiet', '--no-ask-password',
+            `--unit=unity-brain-selfupdate-${Date.now()}`,
+            `--property=MemoryMax=${_scopeMemMax}`,
+            // Lowest practical IO + CPU share, so the deploy loses every
+            // arbitration against her rather than merely being capped.
+            '--property=IOWeight=10',
+            '--property=CPUWeight=10',
+            'bash', updateScript];
+          child = spawn('systemd-run', _args, { detached: true, stdio: ['ignore', 'pipe', 'pipe'], env });
+          // ⛔⛔ TWO DIFFERENT FAILURES, TWO DIFFERENT HANDLERS, AND MISSING
+          // EITHER ONE MEANS THE UPDATE BUTTON SILENTLY DOES NOTHING.
+          //
+          //  (a) `systemd-run` ABSENT → spawn emits 'error' (ENOENT)
+          //      asynchronously; it does NOT throw at the call site.
+          //  (b) `systemd-run` PRESENT BUT REFUSING (a bad --property, an
+          //      access-denied, a taken unit name) → spawn SUCCEEDS, no 'error'
+          //      ever fires, and the process just exits NON-ZERO having started
+          //      nothing. This is the one that bit in testing: the first draft
+          //      had only handler (a), the properties were invalid, and the
+          //      press printed its cheerful "deploy spawned" line while
+          //      deploying absolutely nothing.
+          //
+          // ⭐ A DEPLOY THAT DOES NOT RUN MUST NEVER LOOK LIKE ONE THAT DID.
+          // The operator has no shell — a silent no-op press is the single most
+          // expensive failure this endpoint can have. So a non-zero exit from
+          // the scope wrapper falls back to the plain spawn, and says why.
+          let _fellBack = false;
+          const _fallbackToPlain = (why) => {
+            if (_fellBack) return;         // 'error' and 'exit' can both fire
+            _fellBack = true;
+            console.warn(`[Brain] /update — cgroup-isolated spawn did not take (${why}); falling back to a plain detached spawn. ⚠ The deploy will run INSIDE the brain's cgroup and share her MemoryHigh budget: expect memory pressure during the press (this is the pre-2026-09-05 behaviour).`);
+            try {
+              const fb = spawn('bash', [updateScript], { detached: true, stdio: ['ignore', 'pipe', 'pipe'], env });
+              const _pipe = (buf) => String(buf).split(/\r?\n/).forEach(l => { if (l.trim()) console.log(l); });
+              if (fb.stdout) fb.stdout.on('data', _pipe);
+              if (fb.stderr) fb.stderr.on('data', _pipe);
+              fb.unref();
+            } catch (e2) {
+              console.error('[Brain] /update fallback spawn failed — THE DEPLOY DID NOT RUN:', e2 && e2.message);
+            }
+          };
+          child.on('error', (e) => _fallbackToPlain(`systemd-run unavailable: ${e && e.message}`));
+          child.on('exit', (code) => {
+            // ⚠ A scope that STARTED fine also exits 0 here only when the whole
+            // deploy finished, which is minutes later — by then _fellBack is
+            // irrelevant because the work happened. Only a FAST non-zero exit
+            // means it never started. Guarded by _fellBack so a late failure of
+            // a real deploy cannot launch a second one.
+            if (code !== 0 && !_fellBack) _fallbackToPlain(`systemd-run exited ${code} without starting the unit — usually a rejected --property or a name collision`);
+          });
+          _spawnPath = `systemd-run scope (MemoryMax=${_scopeMemMax})`;
+        } catch (e) {
+          console.warn('[Brain] /update — could not launch via systemd-run:', e && e.message);
+          child = null;
+        }
+      }
+      if (!child) {
+        child = spawn('bash', [updateScript], { detached: true, stdio: ['ignore', 'pipe', 'pipe'], env });
+        _spawnPath = 'plain detached (shares the brain cgroup)';
+      }
+      console.log(`[Brain] /update — deploy spawned via ${_spawnPath}. ${_useScope ? 'Its memory is capped separately from the brain, so a heavy clone/rsync/LFS pull can no longer throttle her cgroup.' : 'UAL_DEPLOY_OWN_CGROUP=0 — cgroup isolation DISABLED by config; the deploy shares her budget.'}`);
       // WL.4 — stream the self-update script's output into the brain console (→ the
       // admin Server Console ring → dashboard) so the operator watches the deploy
       // live (clone → overlay → restart, or the exact failure) instead of needing
