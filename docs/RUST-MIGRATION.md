@@ -2,6 +2,12 @@
 
 **Status:** planning document. **No Rust coordinator code exists yet** — the only
 Rust in this repo is `donor-app/`, which predates this plan.
+**⭐ PHASE B2 v1 EXISTS (2026-09-05)** — `crates/unity-weights`: `Weight = f32`
+with `BYTES_PER_NNZ` derived from it, an explicit-and-tested f64 accumulator, the
+precision probe ported (**2.661e-8 · 151.5 dB · 0 flips**, corroborating the JS
+probe's 2.7e-8 · 151.4 dB · 0), a `memmap2` store, and the `UBWT` format proven
+**byte-compatible against the shipped JS reader, 11/11**. §6.2's lifecycle
+questions remain open by design.
 **⭐ PHASE B1 v1 EXISTS (2026-09-05)** — `crates/unity-deploy` takes the lock, the
 staging decision and the own-cgroup launch natively (19/19 tests, exercised end
 to end) and **hands the script's 84 branches to the script**. It is the strangler
