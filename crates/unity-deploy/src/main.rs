@@ -130,10 +130,36 @@ fn main() -> ExitCode {
             let b = backend_dir(backend);
             let (corpora, glove) = gates::default_paths(&b);
             let floor = glove_min_bytes.unwrap_or(gates::GLOVE_MIN_BYTES);
+            // ⛔⛔ THE OTHER HALF OF THE QUESTION. "Would a restart boot?" and
+            // "would a restart WIPE?" are both live on this box, and the second
+            // one is the expensive surprise: `.force-fresh` means the next
+            // restart from ANY cause — an OOM kill, a power cut, a hand-typed
+            // systemctl — wipes the trained weights, and DREAM_KEEP_STATE=1 does
+            // NOT protect you. A press that armed it and then aborted leaves a
+            // trap that fires whenever the next reboot happens to be.
+            //
+            // ⭐ Checked READ-ONLY, so asking does not consume the flag.
+            let server_dir = b.join("server");
+            let armed = unity_state::StateDir::new(&server_dir).force_fresh_armed()
+                || unity_state::StateDir::new(&b).force_fresh_armed();
+            if armed {
+                println!("[unity-deploy] ⚠ .force-fresh IS ARMED — the next restart from ANY cause will WIPE the trained weights \
+                          (DREAM_KEEP_STATE=1 does NOT protect you). If that is not what you intend, disarm it before restarting.");
+            } else {
+                println!("[unity-deploy] ✓ no wipe armed — a restart resumes or starts per the usual rules.");
+            }
+
             match gates::preflight(&corpora, &glove, floor) {
                 Ok(ok) => {
                     for line in ok { println!("[unity-deploy] ✓ {line}"); }
-                    println!("[unity-deploy] PREFLIGHT PASS — a restart has what it needs to boot.");
+                    if armed {
+                        // ⚠ Still a PASS — the gates are satisfied. But the
+                        // headline must not read "all clear" while a wipe is
+                        // pending, because that is the sentence someone acts on.
+                        println!("[unity-deploy] PREFLIGHT PASS — a restart has what it needs to boot, ⚠ AND IT WILL WIPE (.force-fresh armed).");
+                    } else {
+                        println!("[unity-deploy] PREFLIGHT PASS — a restart has what it needs to boot.");
+                    }
                     ExitCode::SUCCESS
                 }
                 Err(why) => {
