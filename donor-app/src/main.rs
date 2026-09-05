@@ -18,12 +18,23 @@ mod config;
 #[cfg(feature = "cuda")]
 mod cuda;
 mod donor;
-mod frames;
 mod gpu;
 #[cfg(feature = "gui")]
 mod gui;
 mod mindspace;
-mod protocol;
+
+// ⭐ `frames` and `protocol` MOVED OUT on 2026-09-05 (migration phase B0) into
+// the shared `unity-protocol` crate, so a Rust coordinator can depend on the
+// same wire definitions instead of restating them — the protocol existed twice
+// (Rust + JS) and was kept in step by hand.
+//
+// ⚠ RE-EXPORTED AT THE CRATE ROOT ON PURPOSE. Every existing `crate::frames::…`
+// and `crate::protocol::…` path across this binary keeps resolving unchanged,
+// so the extraction is a MOVE and not a rewrite — which is the whole reason it
+// can be verified by building. Changing ten call sites in the same commit that
+// relocates the code would have meant a compile failure could not distinguish
+// "the move is wrong" from "a call site is wrong".
+pub use unity_protocol::{frames, protocol};
 
 use clap::Parser;
 

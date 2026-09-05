@@ -6,6 +6,13 @@ description = "Native GPU compute donor for the Unity brain — versatile headle
 license = "MIT"
 
 [dependencies]
+# The wire contract, extracted 2026-09-05 (migration phase B0). `frames.rs` and
+# `protocol.rs` used to live in this crate's `src/`; they are now shared so a
+# Rust coordinator depends on the same definitions instead of restating them.
+# ⚠ `donor-app` re-exports them at its crate root (`pub use unity_protocol::…`
+# in main.rs) so every existing `crate::frames::…` path still resolves — the
+# extraction is deliberately zero-churn at the call sites.
+unity-protocol = { path = "../crates/unity-protocol" }
 clap = { version = "4", features = ["derive"] }
 wgpu = "24"
 serde = { version = "1", features = ["derive"] }

@@ -1,0 +1,22 @@
+[package]
+name = "unity-protocol"
+version = "0.1.0"
+edition = "2021"
+description = "The Unity brain's donor wire protocol — SPRS frames, opcodes and JSON message types. Shared by donor-app and (eventually) the Rust coordinator."
+license = "MIT"
+
+# ⛔ DEPENDENCIES ARE DELIBERATELY MINIMAL, AND THAT IS THE POINT OF THE CRATE.
+# `unity-protocol` owns frame encode/decode and wire types and MUST NOT own any
+# I/O or any socket (RUST-MIGRATION.md §5.2). It needs exactly what the two
+# modules already used: `serde` for the JSON message shapes and `std` for the
+# byte packing. If a future edit here wants `tokio`, `wgpu` or a websocket
+# crate, the code being added belongs in `unity-donor`, not in this crate.
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+# ⚠ NEEDED, AND ALMOST MISSED. A grep for `use serde_json` found nothing here,
+# because the only use is a fully-qualified TYPE in a struct field
+# (`payload: serde_json::Map<String, serde_json::Value>`) rather than an import.
+# ⭐ The compiler caught it on the first build of the extracted crate — which is
+# the whole reason this phase is "move the code, change nothing else": a build
+# failure could only mean the move was incomplete.
+serde_json = "1"

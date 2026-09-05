@@ -2,6 +2,11 @@
 
 **Status:** planning document. **No Rust coordinator code exists yet** — the only
 Rust in this repo is `donor-app/`, which predates this plan.
+**✅ PHASE B0 IS DONE (2026-09-05).** `crates/unity-protocol` exists, a Cargo
+workspace at the repo root makes `donor-app` a member depending on it by path,
+and the donor builds (headless *and* the default gui+cuda release) with its four
+frame tests passing and `--version` still reporting `0.3.36`. **Everything from
+B1 onward is still plan.** See §9 for what the extraction actually cost.
 **Written:** 2026-09-05
 **Audience:** an engineer picking this up cold, with no prior context on this
 repo.
@@ -669,10 +674,77 @@ Each phase should be able to state:
 
 ## 9. Suggested first task
 
+### ✅ DONE 2026-09-05 — and it was not free. Read this before B1.
+
 Phase 0. Extract `donor-app/src/frames.rs` and `protocol.rs` into a
 `unity-protocol` crate, have `donor-app` depend on it, and confirm the donor
 still builds and connects. Zero behaviour change, no risk to the brain, and it
 establishes the shared-contract pattern everything else relies on.
+
+**What shipped:** `crates/unity-protocol` (deps: `serde`, `serde_json` — nothing
+else, per the §5.2 boundary), a `[workspace]` root, `donor-app` as a member.
+`main.rs` re-exports the two modules at its crate root
+(`pub use unity_protocol::{frames, protocol};`) so **all ten existing
+`crate::frames::…` / `crate::protocol::…` call sites resolve unchanged.** That
+was deliberate: relocating the code *and* rewriting its call sites in one commit
+means a compile error cannot distinguish "the move is wrong" from "a call site
+is wrong". Verified by `cargo build --no-default-features`, `cargo build
+--release` (the default gui+cuda profile CI actually ships), `cargo test -p
+unity-protocol` (4/4), and running the release binary: `unity-donor 0.3.36`.
+
+⛔⛔ **THE EXTRACTION HAD TWO TRAPS, AND BOTH WOULD HAVE SHIPPED SILENTLY.**
+
+**1. `env!("CARGO_PKG_VERSION")` in `GpuRegister::new`.** It expands to the
+version of *the crate the code lives in*. Moving the file would have made the
+donor advertise **`unity-protocol`'s `0.1.0`** as its `appVersion`.
+
+⚠ The brain **version-gates** on that field, and `donor-release.yml` refuses to
+build on a tag/`Cargo.toml` mismatch. **Neither defence would have fired** — the
+value would have been a *truthful report of the wrong crate*, and both checks
+compare text files rather than asking the binary. Fixed by making it a
+caller-supplied parameter; the only thing that knows what version the donor is,
+is the binary that IS the donor. ⭐ **The release workflow now also runs the
+built Linux binary and compares `--version` to the tag**, which is the only check
+that could have caught this class at all.
+
+**2. `crate::mindspace::OPS`** — the sole cross-module reference. Moving the
+constant into the protocol crate would have compiled and been wrong: the
+advertised op list must track the code that *implements* those ops, which this
+crate cannot see, and **advertising a capability the donor lacks is worse than
+omitting one it has** because the server routes work on that list. Also
+caller-supplied.
+
+⭐ Both fixes are the same shape and it is the shape §5.2 wants: **the protocol
+crate describes the message; it does not know the facts that go in it.** Expect
+the same question at every later boundary — B3 in particular, where "what does
+`unity-donor` know that `unity-protocol` must not?" is the whole design.
+
+⚠ **`serde_json` was almost missed.** A grep for `use serde_json` found nothing,
+because the only use is a fully-qualified type in a struct field. The compiler
+caught it on the first build — which is precisely why this phase is "move the
+code, change nothing else."
+
+⛔⛔ **AND THE WORKSPACE MOVED THE BUILD OUTPUT, WHICH ALMOST BROKE RELEASES.**
+A workspace member does **not** build into `<member>/target/`; it builds into the
+workspace root's. `donor-release.yml` copied the shipped binary from
+`donor-app/target/release/…`. ⭐ **The danger was never a failed build — it was a
+successful one:** a stale `donor-app/target/` on a runner would have let that
+copy keep working and published a months-old binary under a new tag, every step
+green. (This repo has both `donor-app/target/` and `donor-app/target-v35/` on
+disk right now, and has already shipped a release lane that logged all-green
+while publishing nothing — KI-22.) The workflow now resolves the path from
+`cargo metadata`, deletes both the artifact and the destination before building,
+and verifies the binary's own `--version` before publishing.
+
+⚠ **`[profile.release]` had to be mirrored to the workspace root.** Cargo
+**ignores** a profile declared in a member and only warns — so leaving it only in
+`donor-app/Cargo.toml` would have quietly dropped `lto`/`strip`/`opt-level` from
+every released binary. The member's copy is retained so a standalone
+`--manifest-path` build outside the workspace still optimises.
+
+⚠ **`/target/` and `/Cargo.lock` added to `.gitignore`.** The existing rule was
+`donor-app/target/`, which stopped covering the donor's output the moment the
+workspace landed.
 
 Then write a `unity-weights` CSR type with `Weight = f32`,
 `BYTES_PER_NNZ = size_of::<Weight>() + size_of::<u32>()`, an f64 accumulator,

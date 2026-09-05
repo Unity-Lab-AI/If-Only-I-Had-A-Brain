@@ -96,20 +96,68 @@ jobs:
           rustup target add x86_64-pc-windows-gnu
           rustc --version && cargo --version
 
+      # ⛔⛔ THE ARTIFACT PATH IS RESOLVED FROM CARGO, NEVER HARDCODED.
+      #
+      # `donor-app` became a member of a Cargo workspace on 2026-09-05 (migration
+      # phase B0 — it now shares `crates/unity-protocol` instead of carrying its
+      # own copy of the wire types). A workspace member does NOT build into
+      # `<member>/target/`; it builds into the WORKSPACE ROOT's `target/`. Every
+      # path below used to read `donor-app/target/…` and would now miss.
+      #
+      # ⭐ THE DANGER IS NOT A FAILED BUILD — IT IS A SUCCESSFUL ONE. A stale
+      # `donor-app/target/` left by a cache or an earlier checkout would let the
+      # old `cp` keep working and publish a MONTHS-OLD binary under a new tag,
+      # with every step green. This lane has already shipped that class of
+      # failure once (KI-22: the release job logged all-green while publishing
+      # nothing), and "publishes the wrong artifact" is the same bug wearing a
+      # success message. `cargo metadata` answers where the binary actually is.
+      # ⚠ TARGET_DIR IS RESOLVED INSIDE EACH STEP, NOT PASSED BETWEEN THEM.
+      # `$GITHUB_ENV` cross-step propagation is used nowhere else in this repo's
+      # workflows, so it is unexercised on this runner — and this lane is not the
+      # place to find out. Two duplicated lines beat a release job that fails (or
+      # worse, resolves an empty path) on a feature nobody here has tested.
       - name: Build Linux (x86-64)
         run: |
+          set -euo pipefail
           . "$HOME/.cargo/env"
+          TARGET_DIR="$(cargo metadata --format-version 1 --no-deps | jq -r '.target_directory')"
+          [ -n "$TARGET_DIR" ] && [ "$TARGET_DIR" != "null" ] || { echo "::error::could not resolve cargo target_directory"; exit 1; }
+          echo "cargo builds into: ${TARGET_DIR}"
+          mkdir -p donor-app/dist-ci
+          # ⚠ Remove BOTH artifacts before building. If the build fails, the copy
+          # must fail too — never silently ship whatever happened to be there.
+          rm -f "${TARGET_DIR}/release/unity-donor" donor-app/dist-ci/unity-donor-linux-x86_64
           cargo build --release --manifest-path donor-app/Cargo.toml
-          cp donor-app/target/release/unity-donor donor-app/dist-ci/unity-donor-linux-x86_64 2>/dev/null \
-            || { mkdir -p donor-app/dist-ci && cp donor-app/target/release/unity-donor donor-app/dist-ci/unity-donor-linux-x86_64; }
+          cp "${TARGET_DIR}/release/unity-donor" donor-app/dist-ci/unity-donor-linux-x86_64
 
       - name: Build Windows (x86-64, cross via mingw)
         run: |
+          set -euo pipefail
           . "$HOME/.cargo/env"
-          cargo build --release --target x86_64-pc-windows-gnu --manifest-path donor-app/Cargo.toml
+          TARGET_DIR="$(cargo metadata --format-version 1 --no-deps | jq -r '.target_directory')"
+          [ -n "$TARGET_DIR" ] && [ "$TARGET_DIR" != "null" ] || { echo "::error::could not resolve cargo target_directory"; exit 1; }
           mkdir -p donor-app/dist-ci
-          cp donor-app/target/x86_64-pc-windows-gnu/release/unity-donor.exe \
+          rm -f "${TARGET_DIR}/x86_64-pc-windows-gnu/release/unity-donor.exe" donor-app/dist-ci/unity-donor-windows-x86_64.exe
+          cargo build --release --target x86_64-pc-windows-gnu --manifest-path donor-app/Cargo.toml
+          cp "${TARGET_DIR}/x86_64-pc-windows-gnu/release/unity-donor.exe" \
             donor-app/dist-ci/unity-donor-windows-x86_64.exe
+
+      # ⭐ THE BINARY MUST SAY ITS OWN NAME BEFORE IT IS PUBLISHED. The tag/Cargo
+      # check above compares two TEXT FILES; this runs the thing that is actually
+      # about to ship and asks it. It is the only check that can catch a stale or
+      # mis-resolved artifact, which is exactly the failure mode the workspace
+      # move introduced. ⚠ Linux only — the Windows binary is cross-compiled and
+      # cannot be executed on this runner, so it is verified by build provenance
+      # (same cargo invocation, same resolved target dir) rather than by running.
+      - name: Verify the built binary reports the tag version
+        run: |
+          got="$(donor-app/dist-ci/unity-donor-linux-x86_64 --version 2>/dev/null | awk '{print $NF}')"
+          ver="${TAG#donor-v}"
+          echo "binary reports '${got}', tag expects '${ver}'"
+          if [ "$got" != "$ver" ]; then
+            echo "::error::the built binary reports ${got} but the tag is ${ver}. That means a STALE or WRONG artifact was picked up — refusing to publish it. Check the resolved TARGET_DIR above."
+            exit 1
+          fi
 
       - name: Publish assets to the release (create-if-missing + replace)
         run: |
