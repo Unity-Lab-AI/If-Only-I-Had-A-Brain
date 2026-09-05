@@ -774,6 +774,24 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
         utilization_pct,
         donated_mb,
         0.0, // WSQ.4 — link bandwidth unknown at register; telemetry reports it once data flows.
+        // ⛔ THESE TWO ARE SUPPLIED HERE BECAUSE ONLY THIS CRATE KNOWS THEM.
+        // `GpuRegister::new` used to build them itself, and both broke when
+        // `protocol.rs` moved into `unity-protocol` (2026-09-05, phase B0):
+        //
+        // ⚠ `env!("CARGO_PKG_VERSION")` expands to the version of the crate the
+        // code SITS IN, so from the protocol crate it would have advertised
+        // `0.1.0` as the donor's appVersion instead of this binary's. The brain
+        // version-gates on that field and the release workflow refuses a
+        // tag/Cargo mismatch — and NEITHER would have caught it, because the
+        // value would have been a truthful report of the wrong crate. Read here,
+        // it is this binary's own version by construction.
+        //
+        // ⚠ `mindspace::OPS` is the list of ops this donor actually implements.
+        // It must track the code that implements them, which the protocol crate
+        // cannot see; advertising an op the donor lacks is worse than omitting
+        // one it has, because the server routes work on this list.
+        env!("CARGO_PKG_VERSION").to_string(),
+        crate::mindspace::OPS.iter().map(|s| s.to_string()).collect(),
     );
     tx.send(Message::text(serde_json::to_string(&reg).unwrap()))
         .await

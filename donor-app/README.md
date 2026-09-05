@@ -27,14 +27,32 @@ This said "M0 (scaffold)" for a long time after it stopped being true. Current r
 **One thing the flags cannot fix:** if your card cannot hold the FULL running brain it will never be PRIMARY, and **the canonical weight upload only ever targets the PRIMARY** — so it joins as a partial replica and receives no matrices at all, while still showing healthy cluster coverage and a real Gn/s rate. The brain logs the number at register (`needs ~NMB`), and the dashboard now prints `⛔ N GB SHORT of PRIMARY`.
 
 ## Build (per OS — compiled per-platform)
+
+⚠ **The binary lands at the REPO ROOT's `target/`, not `donor-app/target/`.**
+Since 2026-09-05 this crate is a member of a Cargo workspace defined at the repo
+root, so it shares `crates/unity-protocol` (the wire frames and message types,
+which used to live in `donor-app/src/`) instead of carrying its own copy. Cargo
+walks up to the workspace root and puts every member's output there. The
+commands below are unchanged — only the output path moved. **Resolve it with
+`cargo metadata --format-version 1 --no-deps` rather than hardcoding it**; the
+release workflow does exactly that, because a stale `donor-app/target/` left on
+a runner would otherwise let an old binary be published under a new tag.
+
 ```
-# Linux
-cargo build --release                      # → target/release/unity-donor
+# Linux  (from anywhere in the repo)
+cargo build --release                      # → <repo root>/target/release/unity-donor
 # Windows (from Linux, cross): rustup target add x86_64-pc-windows-gnu
 cargo build --release --target x86_64-pc-windows-gnu
 # Pure-headless server build (no GUI/windowing deps — ideal for RunPod):
 cargo build --release --no-default-features
 ```
+
+⚠ `[profile.release]` is declared at the **workspace root** as well as here.
+Cargo **ignores** a profile declared in a workspace member and warns about it, so
+the root's copy is the one that applies — without it every released binary would
+quietly lose `lto`/`strip`/`opt-level`. Keep the two in step; this crate's copy
+is retained so a standalone `--manifest-path donor-app/Cargo.toml` build outside
+the workspace still optimises.
 
 ## Run
 ```

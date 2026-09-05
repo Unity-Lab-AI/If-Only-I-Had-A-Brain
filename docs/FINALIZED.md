@@ -43,9 +43,35 @@ Sponge (verbatim): *"**A3. Give the fields rsync a wedge watchdog.** The LFS pul
 
 His CORRECTION 1 says `write_bytes == 0` is not a wedge signal. **The LFS stall watchdog fires on exactly that reading.** The evidence is genuinely mixed — the guard also requires `read_bytes` climbing, and the 2026-09-05 runaway's 212 GB *was* measured off that same counter, so accounting clearly works on this path. ⭐ **The discriminator for the next press: if a `WEDGED` line fires while the fields directory is still GROWING, the signal is wrong and that guard should move to destination growth too.** Until that is observed, changing a guard that has caught a real outage would be trading a known-good for a theory. Filed, not fixed.
 
-### ⏳ `SPONGEHAND.A1` / `.A4` / `.B` — not mine, nothing to do, and awaiting a scope call
+### ✅ `SPONGEHAND.B0` — `unity-protocol` extracted; the wire contract has one home
 
-**A1** (*"Watch the next Update press. SELFFIRST has never run on OVH."*) needs a press, and a press is Gee's. **A4** (*"Fields are at ~44 GB of ~100 GB … Non-fatal by design, low priority."*) has nothing to build. **B0–B7**, the Rust rewrite against ~42,700 lines of coordinator JS, is a multi-week program that his own sequencing puts after section A; **not started without an explicit go.**
+Gee (verbatim): *"continue then"* · Sponge (verbatim): *"**B0. `unity-protocol`** — risk: none … Extract `donor-app/src/frames.rs` + `protocol.rs` into a shared crate; make `donor-app` depend on it. Zero behaviour change. Kills the duplicated protocol. **Start here.**"*
+
+Shipped: `crates/unity-protocol` (deps `serde` + `serde_json`, nothing else, per the §5.2 boundary *"must NOT own any I/O, any socket"*), a `[workspace]` root, `donor-app` as a member. **Verified by building — the only verification a zero-behaviour-change move admits:** `cargo build --no-default-features`, `cargo build --release` (the default gui+cuda profile CI actually ships), `cargo test -p unity-protocol` **4/4** on the moved frame encoders, and the release binary run: **`unity-donor 0.3.36`**.
+
+⭐ **ALL TEN `crate::frames::…` / `crate::protocol::…` CALL SITES RESOLVE UNCHANGED**, via `pub use unity_protocol::{frames, protocol};` at the donor's crate root. Deliberate: relocating code *and* rewriting its call sites in one commit means a compile error cannot distinguish *"the move is wrong"* from *"a call site is wrong"*.
+
+⛔⛔ **TRAP 1 — `env!("CARGO_PKG_VERSION")` WAS A SILENT WIRE LIE WAITING TO HAPPEN.** It expands at compile time to the version of *the crate the code lives in*, so the instant `protocol.rs` moved, `GpuRegister::new` would have advertised **`unity-protocol`'s `0.1.0`** as the donor's `appVersion` instead of `0.3.36`.
+
+⚠ **The brain version-gates on that exact field, and `donor-release.yml` refuses to build on a tag/`Cargo.toml` mismatch — and NEITHER would have fired.** The value would have been a *truthful report of the wrong crate*, and both defences compare **text files**; nothing asked the binary. Fixed by making it caller-supplied. ⭐ **The workflow now also runs the built Linux binary and compares `--version` to the tag** — the only check in the lane that could have caught this class at all.
+
+⛔ **TRAP 2 — `crate::mindspace::OPS`**, the one cross-module reference. Moving the constant into the protocol crate would have compiled and been wrong: the advertised op list must track the code that *implements* those ops, which this crate cannot see. **Advertising a capability the donor lacks is worse than omitting one it has** — the server routes work on that list. Caller-supplied too, and still declared next to its implementation.
+
+⭐ **Both fixes are the same shape, and it is the shape the whole boundary wants: the protocol crate describes the MESSAGE; it does not know the FACTS that go in it.** Expect that question again at every later phase — B3 especially, where *"what does `unity-donor` know that `unity-protocol` must not?"* is the entire design.
+
+⚠ **`serde_json` was almost missed.** A grep for `use serde_json` returns nothing here — the only use is a fully-qualified type in a struct field (`payload: serde_json::Map<…>`). The compiler caught it on the first build of the extracted crate, which is precisely why this phase is *move the code, change nothing else*.
+
+⛔⛔ **AND THE WORKSPACE MOVED THE BUILD OUTPUT, WHICH ALMOST BROKE RELEASES.** A workspace member does **not** build into `<member>/target/` — it builds into the workspace root's. `donor-release.yml` copied the shipped binary from `donor-app/target/release/…`.
+
+⭐ **THE DANGER WAS NEVER A FAILED BUILD — IT WAS A SUCCESSFUL ONE.** A stale `donor-app/target/` left by a cache or an earlier checkout would have let that `cp` keep working and published a **months-old binary under a new tag, with every step green**. This box has both `donor-app/target/` and `donor-app/target-v35/` on disk right now, and this lane has already shipped the same class once — **KI-22, where the release job logged all-green while publishing nothing.** *Publishes the wrong artifact* is that bug wearing a success message. Now: `cargo metadata` resolves the path, both the artifact and the destination are removed **before** building so a failed build cannot ship a stale one, and the binary's own `--version` gates publication.
+
+⚠ **`[profile.release]` had to be mirrored to the workspace root.** Cargo **ignores** a profile declared in a workspace member and only emits a warning — so leaving it solely in `donor-app/Cargo.toml` would have quietly dropped `lto` / `strip` / `opt-level` from every released binary, with nothing in the build log calling it an error. The member's copy is retained so a standalone `--manifest-path` build outside the workspace still optimises.
+
+⚠ **`/target/` and `/Cargo.lock` added to `.gitignore`** — the existing rule was `donor-app/target/`, which stopped covering the donor's output the moment the workspace landed. `/Cargo.lock` mirrors the pre-existing choice in `donor-app/.gitignore`.
+
+### ⏳ `SPONGEHAND.A1` / `.A4` / `.B1-B7` — not mine, nothing to do, and awaiting a scope call
+
+**A1** (*"Watch the next Update press. SELFFIRST has never run on OVH."*) needs a press, and a press is Gee's. **A4** (*"Fields are at ~44 GB of ~100 GB … Non-fatal by design, low priority."*) has nothing to build. **B1–B6**, the Rust rewrite against ~42,700 lines of coordinator JS, is a multi-week program; **not started without an explicit go.** ⭐ **B7 is the exception worth naming separately** — Sponge: *"do this early, it shrinks everything … Worth doing even if the rewrite stalls."* ~3.37 MB of `js/brain/*-vocabulary.js` and `curriculum.js` is data wearing a `.js` extension, and extracting it to JSON/sqlite pays whether or not the port ever happens.
 
 ### Docs shipped in this same commit
 
