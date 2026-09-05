@@ -1,6 +1,44 @@
 # RESUME — Session Pickup Brief
 
-> # 🟢 2026-09-05 — THE RUST MIGRATION IS REAL NOW: EIGHT CRATES, 159 TESTS, AND A COORDINATOR THAT SERVES (LATEST — PICK UP HERE)
+> # 🟢 2026-09-05 — BINARY GloVe IS 173× FASTER, AND THE JS AUDIT FOUND EXACTLY ONE DELETABLE FILE (LATEST — PICK UP HERE)
+>
+> **`main` @ pushed, both remotes. Nine crates, 182 tests.**
+>
+> ## ⭐⭐ B6(a) — measured on the REAL 1.04 GB table, both paths, this box
+>
+> | | JS (the shipped path) | Rust binary |
+> |---|---|---|
+> | load | **19,761 ms** | **114 ms** |
+> | memory | **1,350 MB heap** | a mapping — vectors not resident until touched |
+> | on disk | 1,037,962,819 B | **484,956,514 B** |
+>
+> **173×.** §5.4 guessed this was *"probably sufficient alone since she's unreachable 30-60s today"* — measured, it is. ⭐ **And the JS path is already the FIXED version:** its own comment records `readFileSync` + `split('\n')` exceeding V8's string limit and **OOM'ing silently** while reporting *"GloVe not found"*. Streaming fixed the crash; it is simply the wrong shape of work — 400,000 lines × 300 `parseFloat` = 120 million parses before she can do anything.
+>
+> ✅ **All 400,000 vectors verified bit-exact** against the text table. ⛔ **The text file stays the source of truth — this is a cache**, and the header carries the source's byte length so a stale one can be detected. That matters because the file is **boot-fatal** and the deploy's GloVe gate only checks presence and size: a silently-stale binary would walk straight past it.
+>
+> ⚠ **NOT WIRED IN.** `embeddings.js` still reads the text. Collecting the win is a live-path change and belongs with the cutover.
+>
+> ## ✅ The JS clear-out — one file qualified, and the audit is the result
+>
+> **Deleted: `tools/weight-precision-probe.mjs`.** Superseded by the Rust test, **zero callers**, no npm script, and unrunnable (line 1 is a hardcoded path to Sponge's machine). **Tested after removal** — 182 Rust tests, `node --check` on `brain-server.js` + `gpu.js`, ESM import, bundle rebuilt.
+>
+> ⛔ **Nothing else qualified, and not from timidity.** Every other crate shadows code **the running server executes**. There is **no FFI and no sidecar wired in**, so deleting `sparse-matrix.js` or `gpu.js`'s readback removes the implementation and leaves nothing calling the replacement. The remaining `scripts/*.mjs` are not duplicated by any crate.
+>
+> ⭐ **"We have Rust for it" and "it is safe to delete" are different claims. Only the second licenses a removal.**
+>
+> ## Where Sponge's list actually stands
+>
+> **Done:** A2 · A3 · A4 · B0 · B4 · B6(a) · B7 (closed as not-worth-doing, with the measurement that §3's "it's mostly data" premise is false).
+> **Partial:** B1 (never done a real deploy — his gate) · B3 (dispatch/wire need a live donor) · B5 (endpoints answer **501 by design**, no WS lane).
+> **Blocked on Gee:** A1 (a press).
+> **Not started:** the rest of B6.
+>
+> ## ▶ NEXT
+> **1.** A press — closes A1 and B1's acceptance gate. **2.** `usermod -aG git unity` (he says done; a running process keeps old groups until restart). **3.** A ruling on `SPONGEHAND.A2b` — his own CORRECTION 1 undermines the LFS stall watchdog's `write_bytes` signal, and I filed it rather than changing a guard that caught a real outage.
+>
+> ⚠ **Still true: `donorCount: 0`.** Nothing is training. Box healthy — 0.40 s response, 1 ms loop lag.
+
+> # 🟢 2026-09-05 — THE RUST MIGRATION IS REAL NOW: EIGHT CRATES, 159 TESTS, AND A COORDINATOR THAT SERVES (previous)
 >
 > ## ⛔ READ THIS FIRST: NOTHING IS CUT OVER YET, AND THAT IS DELIBERATE
 >
