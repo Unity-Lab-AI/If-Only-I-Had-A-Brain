@@ -28,6 +28,12 @@
 // (sem-region embeddings, Hebbian co-activation, motor emission).
 // Cognition stays 100% equational.
 
+/* ⭐ The offline dictionary, consulted BEFORE the network in getDefinition().
+   Required at module scope, not lazily inside the hot path, so a missing file
+   is a boot-time complaint rather than a surprise on the first word taught.
+   The module itself loads WordNet lazily and never throws — see its header. */
+const offlineDict = require('./offline-dictionary.js');
+
 const API_BASE = 'https://api.dictionaryapi.dev/api/v2/entries/en/';
 
 // fetch availability check at module load.
@@ -128,11 +134,54 @@ function _cacheGet(key) {
  * @returns {Promise<string|null>}
  */
 async function getDefinition(word, opts = {}) {
-  if (!HAS_FETCH) return null;
   const key = _normalize(word);
   if (!key) return null;
   const cached = _cacheGet(key);
   if (cached) return cached.error ? null : cached.definition;
+
+  /* ⭐⭐ THE OFFLINE DICTIONARY ANSWERS FIRST, AND THAT ORDER IS THE FIX.
+   *
+   * ⛔ On 2026-09-05 `api.dictionaryapi.dev` returned `000` on every word for a
+   * whole day and the walk sat 17.5 hours on one kindergarten cell with
+   * `passedCellsTotal 0` — she could not bind a definition, so vocabulary never
+   * landed and the gate could never clear. A lane with one source and no SLA is
+   * a lane that stops the walk when that source blinks.
+   *
+   * ⭐ MEASURED on her real K vocabulary: 96.1% answered (2,134/2,221), 13,139
+   * senses, 57 ms for the ENTIRE vocabulary, in-process, no network. Putting it
+   * FIRST means ~96% of lookups never touch the wire at all — which also makes
+   * the FC.11 429 death-spiral unreachable for the common case, instead of
+   * merely bounded.
+   *
+   * ⚠ IT IS A PEER SOURCE, NOT A FALLBACK. The banned "last-resort single-def"
+   * arm taught ONE sense per word; this returns MULTI-SENSE entries with part of
+   * speech — the same shape the network path builds below, averaging 6.1 senses
+   * per word. Same capability, different transport.
+   *
+   * ⚠ AND IT RUNS BEFORE THE `HAS_FETCH` GUARD ON PURPOSE: a runtime with no
+   * fetch used to mean no definitions at all. Now it means no NETWORK
+   * definitions.
+   */
+  try {
+    const offline = offlineDict.lookup(key);
+    if (offline && offline.length) {
+      const definitions = offline.map((d) => ({
+        partOfSpeech: d.partOfSpeech || '',
+        definition: d.definition,
+        example: '',
+        synonyms: [],
+        source: 'wordnet-offline',
+      }));
+      const first = definitions[0].definition;
+      _cachePut(key, { definition: first, definitions, fetchedAt: Date.now() });
+      return first;
+    }
+  } catch (err) {
+    /* Never let the offline lane break the network lane. It is an addition. */
+    console.warn('[OfflineDict] lookup threw (non-fatal, falling through to the API):', (err && err.message) || err);
+  }
+
+  if (!HAS_FETCH) return null;
   if (inFlight.has(key)) return inFlight.get(key);
 
   const timeoutMs = opts.timeoutMs ?? 5000;
@@ -265,7 +314,10 @@ function getDefinitionsSync(word) {
  * @returns {Promise<Array>}
  */
 async function getDefinitions(word, opts = {}) {
-  if (!HAS_FETCH) return [];
+  /* ⛔ The `HAS_FETCH` early-return used to live here too, which meant a runtime
+     without fetch got NO definitions from any source. getDefinition() now
+     answers from the offline dictionary before it ever looks at the network, so
+     gating this on fetch would discard 96% of the vocabulary for no reason. */
   const key = _normalize(word);
   if (!key) return [];
   const cached = _cacheGet(key);
