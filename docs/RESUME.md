@@ -33,6 +33,17 @@
 > ```
 > ⚠ **May well be deliberate** — the unit argues it should be *"boring enough to never need a deploy"*. ⛔ **But the panel everyone depends on during an outage can silently be months old with nothing saying so.** ⭐ **Cheap fix either way: publish the ctl build/start time in `/ctl/status`.**
 >
+> ## ⚠ THE WEBSOCKET ERROR IS THE SAME WEDGE — AND THE PANEL THAT SURVIVES IT IS THE ONE TO PRESS
+> ```
+> dashboard.html:1378  WebSocket connection to 'wss://…/admin/ws' failed:
+>                      WebSocket opening handshake timed out
+> ```
+> **Not a second bug.** The brain's own log says it outright: `[EventLoop] BLOCKED …ms — /ws handshakes + donor frames stalled this long`. ⛔ **Every live panel goes blank because `updateDashboard` is driven off that socket** (`connect()` at `:1376`) — **so "the page looks dead" says nothing about which buttons work.**
+>
+> ⭐⭐ **VERIFIED BY READING BOTH PATHS: the Brain Power panel does NOT use the WebSocket.** It polls `fetch(ctlUrl('status'))` on its own HTTP timer (`poll()` at `:4381`, every 3–15 s at `:4535`). **The page can look lifeless while that panel is live and pressable.**
+>
+> ⚠ **If the panel is MISSING rather than idle, that is AUTH** — it renders only after `/ctl/status` answers once, and `/ctl/` is behind `auth_basic`. **Open `/ctl/status` directly, log in, reload the dashboard.**
+>
 > ## ⭐ WHAT TO PRESS
 > 1. **Dashboard → Brain Power panel → `🔄 Restart (Savestart)`**
 > 2. If refused: **`⚡ Force Restart (wedged)`** (`/ctl/kick`) — its tooltip names this exact symptom. Skips the graceful save, which costs nothing: **`passedCellsTotal` has been 0 for 18 hours.**
