@@ -208,6 +208,23 @@ the buffer is sparse/untouched and the filesystem elides the write. Fill the
 buffer with real data, and prefer the box's own measured disk rate over any
 warm-cache number.
 
+> ## ✅ ANSWERED AND BUILT 2026-09-05 — `crates/unity-weights/src/residency.rs`
+>
+> All three were answered from the code and the operator's standing rules, and
+> are now enforced as a state machine with 13 tests. Full write-up in
+> `docs/RUST-MIGRATION.md` §6.2. In short:
+>
+> **①** The two consumers ARE the answer — an upload reads `matrix.values`, a
+> readback writes into it (and refuses when it is absent). Restream is a
+> sequential read of the backing file; the caller blocks, synchronously.
+> **②** `free()` is **refused** mid-readback, and a readback ending without a
+> **verified checksum** (not a byte count — that cannot detect reordering) marks
+> the matrix `Torn`, which the checkpoint path then refuses.
+> **③** Losing the last donor changes **nothing**: the walk holds at the current
+> weights and the next donor runs from the last save. A `free()` with no donor
+> attached is refused, because a free is only safe when something can ask for it
+> back.
+
 Open questions that need answering before writing it:
 - what exactly re-materialises the arrays, and who blocks while it happens
 - whether a partial readback can interleave with a free (see
