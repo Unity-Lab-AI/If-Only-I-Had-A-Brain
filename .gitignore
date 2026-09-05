@@ -356,6 +356,22 @@ unity-donor-*-x86_64*
 unity-donor-*.exe
 donor-app/target/
 
+# ⛔ THE WORKSPACE ROOT'S BUILD OUTPUT. `donor-app` became a Cargo workspace
+# member on 2026-09-05 (migration phase B0), and a member does NOT build into
+# `<member>/target/` — it builds into the WORKSPACE ROOT's. So the rule above
+# stopped covering the donor's artifacts the moment the workspace landed, and
+# multi-GB of build output would have shown up as untracked at the repo root.
+# ⚠ Anchored with a leading `/` so it only matches the repo root, never some
+# future source directory that happens to be called `target`.
+/target/
+
+# Cargo's resolved dependency lockfile. Mirrors the existing choice in
+# `donor-app/.gitignore`, which has ignored `Cargo.lock` since before the
+# workspace existed — the workspace root's lockfile supersedes the member's
+# (cargo ignores a member's lock entirely), so tracking one and not the other
+# would be the drift, not the consistency.
+/Cargo.lock
+
 # Claude task scheduler runtime lock (session-specific PID)
 .claude/scheduled_tasks.lock
 

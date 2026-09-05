@@ -100,6 +100,34 @@ pub struct GpuRegister {
 }
 
 impl GpuRegister {
+    /// ⛔⛔ `app_version` AND `mindspace_ops` ARE CALLER-SUPPLIED, AND BOTH USED
+    /// TO BE READ FROM INSIDE THIS FILE. Extracting this module into
+    /// `unity-protocol` (2026-09-05, migration phase B0) is what forced the
+    /// change, and each one was a trap rather than a formality.
+    ///
+    /// ⛔ **`app_version` was `env!("CARGO_PKG_VERSION")`.** That macro expands
+    /// at compile time to the version of *whatever crate the code lives in*, so
+    /// the instant this file moved it would have reported **`unity-protocol`'s**
+    /// version as the donor's `appVersion` — `0.1.0` instead of `0.3.36`.
+    ///
+    /// ⚠ Not cosmetic: the brain runs a **version gate** on this exact field,
+    /// and `donor-release.yml` refuses to build when the git tag and
+    /// `donor-app/Cargo.toml` disagree — both defences exist because a
+    /// mislabelled binary is a failure that looks like health. **Neither would
+    /// have fired**, because the file would have been honestly reporting the
+    /// version of the crate it had been moved into. The only thing that knows
+    /// what version the donor is, is the binary that IS the donor.
+    ///
+    /// ⛔ **`mindspace_ops` was `crate::mindspace::OPS`.** Moving that constant
+    /// into this crate would have compiled and would have been wrong: the
+    /// advertised list has to track the code that *implements* those ops, and
+    /// this crate cannot see it. **Advertising a capability the donor does not
+    /// have is worse than failing to advertise one it does** — the server
+    /// routes work on this list. It stays declared next to its implementation.
+    ///
+    /// ⭐ Both fixes are the same shape, and it is the shape §5.2 asks for:
+    /// **this crate describes the message; it does not know the facts that go
+    /// in it.**
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         vram_mb: u64,
@@ -114,6 +142,8 @@ impl GpuRegister {
         utilization_pct: u8,
         donated_mb: u64,
         link_down_mbps: f64,
+        app_version: String,
+        mindspace_ops: Vec<String>,
     ) -> Self {
         Self {
             msg_type: "gpu_register",
@@ -129,9 +159,9 @@ impl GpuRegister {
             utilization_pct,
             donated_mb,
             link_down_mbps,
-            app_version: env!("CARGO_PKG_VERSION").to_string(),
+            app_version,
             mindspace_v1: true,
-            mindspace_ops: crate::mindspace::OPS.iter().map(|s| s.to_string()).collect(),
+            mindspace_ops,
         }
     }
 }

@@ -1,0 +1,42 @@
+# Cargo workspace root for the Unity brain's Rust code.
+#
+# Added 2026-09-05 as migration phase B0 (`docs/RUST-MIGRATION.md` §5.1: "A
+# single Cargo workspace at the repo root, so `donor-app` and the coordinator
+# share crates instead of maintaining two copies of the same definitions").
+#
+# ⚠ THIS REPO IS PRIMARILY A NODE PROJECT. A `Cargo.toml` at the root does not
+# change that — cargo only looks at the members below, and nothing in the Node
+# build reads this file. The crates live under `crates/`; `donor-app/` is the
+# pre-existing binary and is a member so it can share `unity-protocol` by path
+# rather than by copy.
+#
+# ⛔⛔ A WORKSPACE MOVES `target/` TO THE ROOT, AND THAT BREAKS ANY HARDCODED
+# ARTIFACT PATH. `donor-app` used to build to `donor-app/target/release/`; as a
+# member it builds to `./target/release/`. `.forgejo/workflows/donor-release.yml`
+# copied the shipped binary from the old path and was updated in the same commit.
+#
+# ⭐ THE DANGER IS NOT A FAILED BUILD, IT IS A SUCCESSFUL ONE. A stale
+# `donor-app/target/` left on a runner (or a dev box — this repo has both
+# `donor-app/target/` and `donor-app/target-v35/`) would let that `cp` keep
+# working and publish a MONTHS-OLD binary as a new release. This project has
+# already shipped a release lane that logged all-green while publishing nothing
+# (KI-22); a lane that publishes the wrong artifact is the same failure wearing
+# a success message. The workflow now resolves the path from cargo itself.
+[workspace]
+resolver = "2"
+members = [
+  "crates/unity-protocol",
+  "donor-app",
+]
+
+# ⚠ The donor's own `[profile.release]` is INTENTIONALLY MIRRORED HERE. Cargo
+# ignores profile settings declared in a workspace *member* and only honours the
+# workspace root's — so leaving these in `donor-app/Cargo.toml` alone would have
+# silently dropped `lto`/`strip`/`opt-level` from every released binary, making
+# it larger and slower with nothing in the build log to say so. Cargo does warn,
+# but a warning in a CI log is not a guard. Keep these in step with the member's
+# copy, which is retained there for a standalone `--manifest-path` build.
+[profile.release]
+opt-level = 3
+lto = "thin"
+strip = true

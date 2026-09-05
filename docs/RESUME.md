@@ -18,7 +18,13 @@
 > | **A2** | bytes-written bound on the LFS pull | ✅ `UAL_LFS_MAX_WRITE_PCT` (150) — sizes the store with `du -sb`, kills past the ceiling |
 > | **A3** | wedge watchdog on the fields rsync, **not** `write_bytes` | ✅ `UAL_FIELDS_STALL_SEC` (300s) on **destination growth**. 25/25 exercised |
 > | **A4** | fields at ~44 GB of ~100 GB | ⏳ nothing to build, non-fatal by design |
-> | **B0–B7** | the Rust rewrite | ⏳ **awaiting a scope call** — multi-week, ~42,700 lines of coordinator JS |
+> | **B0** | `unity-protocol` — *"Start here"* | ✅ **done on *"continue then"*.** Crate + workspace + donor as a member; builds headless *and* release, 4/4 frame tests, binary still `0.3.36` |
+> | **B1–B7** | the rest of the Rust rewrite | ⏳ **awaiting a scope call** — multi-week, ~42,700 lines of coordinator JS. ⭐ **B7 (extract the 3.37 MB of vocab/curriculum data) is worth doing alone**, by his own note |
+>
+> ### ⛔⛔ B0 was "risk: none" and still had three ways to ship a silent lie
+> **①** `env!("CARGO_PKG_VERSION")` expands to *the crate the code lives in* — the donor would have advertised `unity-protocol`'s `0.1.0` as its `appVersion`, and **neither the brain's version gate nor the release workflow's tag check would have fired**, because both compare text files and the value would have been a truthful report of the wrong crate. **②** `crate::mindspace::OPS` would have compiled if moved and been wrong — the server routes work on that list, so advertising an op the donor lacks is worse than omitting one it has. **③** A workspace moves `target/` to the repo root, and `donor-release.yml` copied from `donor-app/target/`. **The danger was a SUCCESSFUL build**: a stale target dir would have published a months-old binary under a new tag, every step green — the KI-22 failure wearing a success message.
+>
+> ⭐ **All three are now guarded by one new step: the release lane runs the built binary and compares `--version` to the tag.** Text files checking text files is what let ① through.
 >
 > ### ⭐ The one idea worth carrying out of this batch
 > **`write_bytes` is the right signal for a CEILING and the wrong signal for a STALL.** Page cache makes it lag reality. For a ceiling that lag can only fire the guard LATE — harmless, self-correcting, a healthy pull is never killed. For a stall detector the same lag makes *"not accounted yet"* and *"not happening"* the same reading. **A conservative-late bound is safe; a conservative-late detector is a lie.** That is why A2 uses `write_bytes` and A3 refuses to.
@@ -27,7 +33,9 @@
 > His CORRECTION 1 (*"`write_bytes == 0` is not a wedge"*) may undermine **the LFS stall watchdog**, which fires on exactly that reading. Evidence is mixed — it also requires reads climbing, and the runaway's 212 GB *was* measured off that counter. **The discriminator: if a `WEDGED` line ever fires while the fields directory is still growing, that guard should move to destination growth too.** I did not change his guard on a theory.
 >
 > ## ▶ NEXT
-> **1.** `sudo usermod -aG git unity` on OVH — ⚠ he says this is **already done and verified live** (`Groups: 104 984`), but a running process keeps its old groups until restart. **2.** Press, and watch for the SELFFIRST line. ⛔ **Check `/opt/unity-brain/server/.force-fresh` first** — if it exists, the next restart from *any* cause wipes the weights and `DREAM_KEEP_STATE=1` does not protect you. **3.** Then the B-scope call.
+> **1.** `sudo usermod -aG git unity` on OVH — ⚠ he says this is **already done and verified live** (`Groups: 104 984`), but a running process keeps its old groups until restart. **2.** Press, and watch for the SELFFIRST line. ⛔ **Check `/opt/unity-brain/server/.force-fresh` first** — if it exists, the next restart from *any* cause wipes the weights and `DREAM_KEEP_STATE=1` does not protect you. **3.** Then the B-scope call: **B7 alone** (extract the vocab/curriculum data — pays off regardless) or **B1 onward** (the full port).
+>
+> ⚠ **The next `donor-v*` tag is the first release built under the workspace.** The lane was updated and reasoned through, but it has not run yet — **watch that the published binary's `--version` matches the tag**, which is now an explicit failing step rather than something nobody checked.
 
 > # 🟢 2026-09-05 — SPONGE'S MEMORY FIXES PULLED, AND THE ONE THAT WAS INCOMPLETE (previous)
 >
