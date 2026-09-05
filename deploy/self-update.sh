@@ -112,6 +112,112 @@ _bytes() { local n; n="$( { wc -c < "$1"; } 2>/dev/null || true )" || n=0; print
 
 log "START — overlay ${GIT_BRANCH} from ${GIT_REMOTE} -> ${BACKEND_DIR}"
 
+# ⛔⛔ STAGEDISK (2026-09-05) — `mktemp -d` STAGED ~12 GB INTO RAM, EVERY PRESS.
+#
+# The unit sets `PrivateTmp=true`, so this service's /tmp is a namespaced
+# **tmpfs — which is RAM.** Measured on the box: 11.70 GiB of tmpfs, effectively
+# all of it one directory (`…/tmp.Ger4KQLTkh/bw`, the data-repo clone below),
+# and /tmp 77% full. That single line was the largest memory consumer on a
+# 31 GiB machine — larger than the brain herself (8.80 GiB PSS).
+#
+# ⭐ AND IT EXPLAINED THE READING THAT STARTED THE HUNT: the cgroup reported
+# MemoryCurrent 20.4 GiB against node's 8.8 GiB RSS. A cgroup is CHARGED for its
+# tmpfs pages, so 8.8 + ~11.6 ≈ 20.4 — pinned exactly at MemoryHigh=20G, which
+# is why the kernel reclaimed continuously and PSI memory-full avg10 sat at
+# **51.3** (healthy is ~0) with swap 99.99% full.
+#
+# ⛔ TMPFS IS THE WORST POSSIBLE PLACE FOR THIS, and not merely because it is
+# RAM: tmpfs pages are UNRECLAIMABLE. The kernel cannot drop them under
+# pressure, it can only swap them, and swap was full. So the reclaim pressure
+# landed entirely on the only evictable thing in the cgroup — the brain's own
+# working set. A deploy staged into /tmp starves the process it is deploying.
+#
+# ⭐ THE FIX IS TO USE THE DISK WE ALREADY HAVE. The box's SSD reads at
+# ~3.2 GB/s (RAID1 mirror, ~1.2 GB/s write), so staging to disk costs a deploy
+# a few seconds and costs the running brain nothing. `$BACKEND_DIR` is on that
+# array.
+#
+# ⚠ `TMPDIR` IS EXPORTED, not just used here. `git clone` writes pack files
+# through its own temp handling and the data-repo clone below is the 12 GB half
+# — setting only this script's variable would have moved the small half and left
+# the large one in RAM.
+#
+# ⚠ Falls back to the old behaviour if the staging dir cannot be created, rather
+# than aborting: a deploy that still works and uses RAM beats a box that cannot
+# deploy at all.
+STAGE_ROOT="${UAL_STAGE_DIR:-${BACKEND_DIR}/.staging}"
+if mkdir -p "$STAGE_ROOT" 2>/dev/null && [ -w "$STAGE_ROOT" ]; then
+  export TMPDIR="$STAGE_ROOT"
+  log "staging to DISK at ${STAGE_ROOT} (not /tmp — PrivateTmp makes that a RAM-backed tmpfs, and the ~12 GB data clone below used to live there, pinning the cgroup at its 20G MemoryHigh and starving the brain)."
+else
+  log "WARN — cannot create/write ${STAGE_ROOT}; falling back to \$TMPDIR/tmpfs staging. ⚠ On this unit PrivateTmp=true means that is RAM: expect ~12 GB of tmpfs and heavy memory pressure during this press. Set UAL_STAGE_DIR to a writable path on disk."
+fi
+
+# ⛔⛔ ONEPRESS (2026-09-05) — THREE OF THESE WERE RUNNING AT ONCE ON THE BOX.
+#
+# Nothing here was mutually exclusive, and the `/update` endpoint spawns this
+# script DETACHED. A press whose rsync is slow (the fields half moves ~114 GB at
+# an 80 MB/s bwlimit) is still running when an operator — seeing no visible
+# progress on the dashboard — presses again. Observed live: **three concurrent
+# rsync drains**, each staging its own ~12 GB copy, all writing the SAME
+# `--delete` destination.
+#
+# ⛔ CONCURRENT `rsync --delete` INTO ONE DESTINATION IS NOT JUST WASTEFUL, IT IS
+# UNSAFE. Each run believes it owns the mirror, so one press's freshly written
+# file is another's "deleted upstream" — with the excludes above being the only
+# thing standing between that race and the trained weights.
+#
+# `flock` on a lock file, non-blocking: a second press REFUSES rather than
+# queues. Queuing would be worse — it hides the pile-up and still runs N drains,
+# just serially, long after anyone expected them.
+#
+# ⚠ The lock is held for the LIFE of the script via fd 9, so it releases on any
+# exit path including a gate abort or a kill. `flock` may be absent on a minimal
+# box; the deploy proceeds unguarded rather than failing, but says so.
+#
+# ⛔⛔ A KILLED PRESS USED TO WEDGE THE BUTTON FOREVER — FOUND BY TESTING THE
+# KILL PATH, NOT BY READING. `kill -9` on this script does NOT release the lock:
+# every CHILD (the `sleep` in a watchdog, a running `rsync`, `git`) INHERITS
+# fd 9, and the kernel holds the flock until the LAST holder closes it. So a
+# SIGKILLed deploy left an orphaned child owning the lock, every later press
+# printed REFUSED, and the operator — who has no shell — had a permanently dead
+# Update button and no way to see why.
+#
+# ⭐ THE STALE-HOLDER CHECK IS WHAT MAKES THE REFUSAL HONEST. The lock file
+# carries the owning PID, so a refusal can distinguish "a press really is
+# running" (says which pid, and the log to watch) from "the holder is gone and
+# this lock is stale" — and in the stale case it BREAKS the lock and proceeds
+# rather than refusing forever. A guard that can deadlock the only control
+# surface the operator has is worse than the pile-up it prevents.
+#
+# ⚠ `flock -o` (--close) on the child side would be the other half of this, but
+# it is not portable to every util-linux on a minimal box; the PID stamp works
+# everywhere and also tells a human what to look at.
+if command -v flock >/dev/null 2>&1; then
+  _LOCKF="${BACKEND_DIR}/.self-update.lock"
+  exec 9>>"$_LOCKF" 2>/dev/null || true
+  if ! flock -n 9 2>/dev/null; then
+    # Someone holds it. Is that someone actually alive?
+    _held_pid="$( { head -n1 "$_LOCKF" 2>/dev/null || true; } | tr -dc '0-9' )"
+    if [ -n "${_held_pid:-}" ] && kill -0 "$_held_pid" 2>/dev/null; then
+      log "REFUSED — another self-update is ALREADY RUNNING (pid ${_held_pid}, lock ${_LOCKF}). ⭐ THIS IS THE GUARD WORKING: three concurrent presses were observed on the box on 2026-09-05, each staging ~12 GB and all three rsyncing --delete into the SAME destination. Watch the running one in this log; it will restart her when it finishes."
+      # NOT _abort: this press never armed anything and the RUNNING one owns the
+      # .force-fresh flag. Disarming here would sabotage the deploy in flight.
+      exit 0
+    fi
+    log "WARN — lock ${_LOCKF} is held but its owner (pid ${_held_pid:-unknown}) is GONE. That is a KILLED press whose child process still holds the fd — breaking the stale lock and proceeding, because refusing forever would leave the dashboard Update button permanently dead with no shell to clear it."
+    rm -f "$_LOCKF" 2>/dev/null || true
+    exec 9>>"$_LOCKF" 2>/dev/null || true
+    flock -n 9 2>/dev/null || log "WARN — could not take the lock even after breaking it; proceeding UNGUARDED."
+  fi
+  # Stamp the owner so the check above can tell running from stale.
+  : >"$_LOCKF" 2>/dev/null || true
+  echo "$$" >"$_LOCKF" 2>/dev/null || true
+  log "lock acquired (${_LOCKF}, pid $$) — this is the only self-update running."
+else
+  log "WARN — no \`flock\` binary; this press is NOT mutually exclusive. If another is already running, both will rsync --delete into the same destination. Check with: pgrep -fa self-update.sh"
+fi
+
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
@@ -235,6 +341,8 @@ rsync -a --delete \
   --exclude 'fields' \
   --exclude 'corpora/glove.6B.*' \
   --exclude '.claude' \
+  --exclude '.staging' \
+  --exclude '.self-update.lock' \
   "$TMP/src/" "$BACKEND_DIR/" >> "$LOG" 2>&1 || { log "FATAL — rsync overlay failed; aborting."; exit 1; }
 
 # Stamp the deploy identity into the backend (AFTER overlay so --delete can't
@@ -447,6 +555,15 @@ if [ "${UAL_SKIP_FIELDS:-0}" = "1" ]; then
   log "data sync SKIPPED ENTIRELY (UAL_SKIP_FIELDS=1) — using whatever books and fields are already on the box. NOTE: this skips the BOOKS too; use UAL_FIELDS=0 if you only meant to skip the 114 GB of field blobs."
 else
   FTMP="$(mktemp -d)"
+  # ⛔ CLEAN UP THE BIG STAGE ON *ANY* EXIT, NOT JUST THE HAPPY ONE. `FTMP` is
+  # the ~12 GB data-repo clone, and the only `rm -rf "$FTMP"` is at the very
+  # bottom of this block — so every abort path between here and there (the books
+  # gate, the embeddings gate, a kill, `set -e` on an unexpected failure) left
+  # the whole 12 GB behind. On tmpfs that was 12 GB of RAM leaked per failed
+  # press, which is how three stacked presses reached 11.7 GiB; on disk it is
+  # merely 12 GB of disk, but it still accumulates until something notices.
+  # The trap chains TMP's cleanup so both stages go, whatever happens.
+  trap 'rm -rf "$TMP" "$FTMP"' EXIT
   if [ "$_have_lfs" != "1" ]; then
     # ⛔ NOT A SKIP. The clone still runs and the books still land; only the LFS
     # payloads are unavailable, and every one of those is non-fatal by design.
