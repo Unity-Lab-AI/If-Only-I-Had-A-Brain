@@ -109,6 +109,52 @@ signal the max relative error is 8.1e-7 with none above 1e-6.
 array measures exactly zero deviation by construction. That is a tautology, not
 a pass. The probe must draw at Float64 and round a copy **down**.
 
+## The next fix, and why it is NOT mmap
+
+The obvious idea — back the cortex CSR with `mmap` so the kernel can evict cold
+weight pages — was investigated and **rejected**. Three reasons, in the order
+they killed it:
+
+1. **Node has no native `mmap`.** A file-backed typed array needs a native
+   addon. The box runs `npm install --omit=dev` unattended inside the deploy,
+   with no shell to recover from a failed build. That is a new failure mode on
+   the exact path the operator cannot debug, bought with memory.
+2. **The arrays are already off-heap.** Measured: a 400 MiB `Float32Array` puts
+   381 MiB in `external`/`arrayBuffers` and ~0 in `heapUsed`. So "get it out of
+   the V8 heap" was *already true* — `--max-old-space-size` never bounded these
+   and GC never moved them. Only *evictability* was ever actually on offer.
+3. **The codebase already models the better answer.** `sparse-matrix.js:731`
+   warns *"Matrix is likely GPU-bound with CPU arrays freed"* and
+   `gpu.js:5624` sets `proj._gpuBound = true`. There is already a concept for
+   "the donor holds this matrix, the CPU copy is not needed".
+
+### The design that should happen instead
+
+**Free the CPU CSR arrays for `_gpuBound` matrices; restream them from the
+checkpoint when a donor actually needs them.** Same memory win (~4.18 GiB after
+WEIGHTPREC), no native dependency, and it extends a lifecycle the code already
+has rather than inventing one.
+
+Cost: one sequential read when a donor joins or a readback lands. At the box's
+**measured** 3248 MiB/s that is ~1.3 s for the full 4.23 GiB CSR — against an
+upload that already takes far longer over the wire.
+
+⚠ Benchmark trap, in case someone re-measures: writing a `Buffer.allocUnsafe`
+buffer to a file and timing it produces nonsense (682 GiB/s observed) because
+the buffer is sparse/untouched and the filesystem elides the write. Fill the
+buffer with real data, and prefer the box's own measured disk rate over any
+warm-cache number.
+
+Open questions that need answering before writing it:
+- what exactly re-materialises the arrays, and who blocks while it happens
+- whether a partial readback can interleave with a free (see
+  `refreshCheckpointFromDonor`: *"a partial transfer leaves `matrix.values` a
+  mix of old-CPU and new-GPU rows"* — freeing mid-readback must be impossible)
+- what happens when the LAST donor disconnects and no CPU copy exists;
+  `cluster.js:349` says a proxied brain REQUIRES its proxy, so this may be
+  already-correct behaviour rather than a new hazard, but it must be confirmed
+  rather than assumed
+
 ## Deploy memory (fixed 2026-09-05)
 
 Three incidents, one root cause: work that is not the brain, spending the
