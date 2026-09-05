@@ -1,6 +1,47 @@
 # RESUME — Session Pickup Brief
 
-> ## ⛔⛔ 2026-09-05 `DEF-MISS ×1420` WAS AN OUTAGE, NOT 1,420 WORDLESS WORDS (LATEST — PICK UP HERE)
+> ## ⛔⛔ 2026-09-05 THE RESTART BUTTONS NEVER WORKED, AND THE PANEL SAID "ACCEPTED" (LATEST — PICK UP HERE)
+>
+> ### ⛔ THE PRESS DID NOTHING — measured three ways before touching anything
+> ```
+> uptime   62,893 s and CLIMBING          (uptime cannot rise across a boot)
+> ring     500 lines, NO boot banner      (a restart resets the ring)
+> ring     ZERO [self-update] lines       (no deploy spawned either)
+> ```
+> ⚠ **The `236eafc7` build stamp did NOT contradict this** — `deployed-build.json` is written at deploy *start*, so it was from the deploy that produced this boot 17 hours earlier. **A build stamp never proves a restart.**
+>
+> ### ⛔⛔ DEFECT 1 — THE PANEL REPORTED SUCCESS FOR A PRESS THAT NEVER HAPPENED
+> `nginx` returns **`504` as a real HTTP response**, not a network error — so the fetch **resolves**. `r.json()` throws on the HTML body, `.catch(() => ({}))` makes it `{}`, the refusal test finds no `status`, and the panel printed:
+> > `update (keep training) accepted — no status returned`
+>
+> ⛔ **`r.ok` was never consulted anywhere in `firePress`.** ⭐ **A press that reports ACCEPTED while nothing happened is worse than one that reports failure — it sends you off to wait for a boot nobody armed. That is where the 17 hours went.**
+>
+> ### ⛔⛔ DEFECT 2 — ALL FOUR BUTTONS FIRE AT THE ONE ROUTE A WEDGED BRAIN CANNOT SERVE
+> `firePress` posted to `WEIGHT_BASE + '/' + path` for every verb. **A blocked event loop never accepts the request — and a blocked loop is the most common reason to press these buttons.** ⭐ **`teachview.html` contained ZERO references to `/ctl/`**: it did not know the always-up control plane existed, the service that answered instantly all through yesterday's outage. **And the fetch had no timeout**, so a pinned brain held it until nginx gave up.
+>
+> ### ✅ FIXED — bounded fetch, `r.ok` checked, `/ctl/*` fallback
+> - **20 s `AbortController`** — *a press that cannot time out cannot fall back.*
+> - ⚠ **The route map is deliberately NOT one-to-one:** `update?keep=1` → **`update-savestart`**, `update` → **`update?confirm=WIPE`** (ctl refuses the fresh walk without the token). **A naive `'/ctl/' + path` would silently refuse one verb and WIPE on another.**
+> - ⛔ **`restart` falls back automatically; the deploy verbs ask first.** A 504 means nginx stopped waiting, **not** that the brain never got the request — if it wakes and runs the press while a ctl deploy is going, that is two `self-update.sh` runs `rsync -a --delete`-ing the same directory. `restart` carries no overlay and cannot make that shape.
+> - **The panel names the lane**, warns that ctl does not stream into the console ring, reads `401/403` as an admin-lane failure that says nothing about her health, and surfaces `refused`/`busy` with the server's own reason. ⛔ **Verdict unchanged: uptime coming back LOWER than at the press.**
+>
+> **36/36** against the real function bodies lifted out of the HTML and executed.
+>
+> ### ⏳ IT LANDS WITHOUT A RESTART
+> **`deploy.yml` rsyncs the frontend on every push, so the buttons are fixed on the next page load** — no press needed to get the fix that makes presses work. `/ctl/*` has been live throughout, so the fallback works today.
+>
+> ### ⛔ AND SHE IS STILL NOT LEARNING — the walk is the real problem
+> ```
+> cell ela/kindergarten · in-progress · 17.5 h · passedCellsTotal 0
+> wordsBucketed 0 · oracleHits 0 · matrixHits 0 · totalWords 0 · vocabPermMiss 67
+> ```
+> ⛔ **`api.dictionaryapi.dev` is STILL returning `000` on every word** (`for`, `cat`, `apple` — all 10 s timeouts). She cannot bind definitions, so vocabulary never lands and the cell cannot clear its gate. **She is not frozen — phases advance — but she is on a treadmill.** ⚠ **A press now brings DEFHEAL and the LFS watchdog, but will NOT make her learn**; she would restart into the same starvation. **The dictionary coming back is the gate.**
+>
+> ⭐ **`DOCLINE.1` SOLVED IN PRACTICE: a SHORT UNIQUE PREFIX is a valid `Edit` anchor.** `teachview.md`'s 5,992-character `last-verified` was updated by anchoring on ~30 characters of it. **The whole value never needs reproducing — yesterday's script was never necessary.**
+>
+> ---
+>
+> ## ⛔⛔ 2026-09-05 `DEF-MISS ×1420` WAS AN OUTAGE, NOT 1,420 WORDLESS WORDS
 >
 > ### ⛔ THE FLAGS ON THE BOARD, AND WHAT THEY ACTUALLY MEANT
 > ```
