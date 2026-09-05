@@ -50,6 +50,7 @@
 //! process, whatever the CPU array's type happened to be.
 
 pub mod checkpoint;
+pub mod glove;
 pub mod mmap_store;
 pub mod residency;
 
