@@ -51,6 +51,7 @@
 
 pub mod checkpoint;
 pub mod mmap_store;
+pub mod residency;
 
 /// The stored weight type. **One home.** Everything else derives from it.
 pub type Weight = f32;
