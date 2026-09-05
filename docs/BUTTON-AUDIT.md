@@ -7,7 +7,120 @@ Every claim below was read out of the source or measured against the live box on
 
 ---
 
+# ⛔⛔⛔ ROOT CAUSE FOUND — READ THIS FIRST. IT IS NOT THE BUTTONS.
+
+**The brain is parked above its cgroup's `MemoryHigh` and the kernel has been
+throttling it for 19.5 hours.** Every other symptom in this document — the dead
+WebSocket, the timed-out presses, the "does nothing" buttons — is downstream of
+this one fact.
+
+## The reading
+
+`GET /ctl/status`, 2026-09-05 13:52 UTC:
+
+```json
+"brainOnline": false,
+"loopPinned": true,
+"portOpen": false,
+"activeForSec": 70168,
+"unit": {
+  "activeState": "active",  "subState": "running",
+  "result": "success",      "exitStatus": 0,
+  "nRestarts": 6,
+  "activeEnter": "Fri 2026-09-04 18:22:48 UTC",
+  "memoryBytes": 22851215360
+}
+```
+
+## The arithmetic
+
+| | value | source |
+|---|---|---|
+| brain RSS | **21.28 GB** | `memoryBytes` above |
+| `MemoryHigh` | **20 GB** | `deploy/unity-brain.service:92` |
+| `MemoryMax` | **24 GB** | `deploy/unity-brain.service:94` |
+| box total | 31.1 GB | boot line `memTotalMB 31831` |
+
+**She is 1.28 GB (6.4%) over the soft limit, and 2.7 GB below the hard one.**
+
+## Why that is the worst of the three states
+
+`MemoryHigh` is **a throttle, not a cap.** Above it the kernel puts the whole
+cgroup under heavy reclaim pressure and **stalls the processes in it**. That
+produces exactly what we see: process alive, `exitStatus 0`, never restarted,
+port never binds, event loop pinned.
+
+- **Below `MemoryHigh`** → she runs.
+- **Above `MemoryMax`** → OOM-killed **alone**, and `Restart=always` revives her
+  in seconds. Loud, self-healing.
+- **Between the two** → ⛔ **throttled indefinitely. Nothing kills her, nothing
+  recovers her, and no event fires that anything reacts to.**
+
+She has been in that band since **18:22:48 UTC on 2026-09-04**.
+
+⭐ **Sponge measured this same mechanism from the other direction yesterday** — a
+wedged `git lfs pull` pushed the same cgroup over the line, and *"killing it took
+the box 24G → 15G instantly and the site back to sub-second."* **Same throttle.
+This time nothing else is running: she is over on her own.**
+
+## ⛔ The likely underlying bug: the sizing does not know about the cgroup
+
+`unity-brain.service:82-84` states the design intent plainly:
+
+> *"The in-app budget (`DREAM_BRAIN_BUDGET_MB` / the RAM-safe auto-cap) sizes the
+> brain well under these so the hard cap is only a backstop."*
+
+**That assumption is what failed.** The neuron count is derived at boot from
+**free host RAM** — the boot log says so: `SERVER-RAM SAFETY — no GPU on host
+(31831MB RAM, shared with Forgejo): raising brain budget 16384MB -> 18519MB`.
+
+⛔ **Nothing in that calculation reads `MemoryHigh`.** It reasons about the
+*host*, while the kernel enforces against the *cgroup*. So the brain sized itself
+to 411,216,550 neurons plus a 15,082,717-neuron language cortex, landed at
+21.3 GB, and walked straight into a limit it does not know exists.
+
+⚠ **A restart may therefore reproduce this exactly.** If she boots, climbs past
+20 GB and re-pins, that is the confirmation — and the fix is a config decision,
+not another restart.
+
+## What to do
+
+1. **Restart her.** `/ctl/restart`, or the dashboard's Brain Power panel. Nothing
+   is lost: `passedCellsTotal` has been **0** for 19 hours.
+2. **Watch two numbers on the way up** — `activeEnter` leaving
+   `Fri 2026-09-04 18:22:48 UTC`, and `memoryBytes` settling.
+3. **If she settles under ~20 GB** — fixed, and the sizing got lucky.
+4. **If she climbs past 20 GB again** — the sizing bug is confirmed. Then pick
+   one, deliberately:
+   - raise `MemoryHigh` (24 GB `MemoryMax` on a 31 GB box leaves room), **or**
+   - make the boot-time budget read the cgroup limit instead of host free RAM,
+     **or**
+   - lower `DREAM_BRAIN_BUDGET_MB` so the derived size lands under 20 GB.
+
+⚠ **Do not just raise the limits without deciding.** The whole point of these
+caps is that the brain can never take Forgejo or the box down with it — and
+Forgejo shares this host.
+
+## ⚠ And the instrument gave bad advice — my text, my error
+
+`/ctl/status` currently ends its `human` field with:
+
+> *"Wait for the operation to finish; a restart here would abandon whatever it is
+> holding."*
+
+**That is correct for a save that is minutes from finishing and wrong after 19
+hours.** `activeForSec: 70168` is in the same payload, and the message even says
+*"far too long to still be booting"* — then still counsels waiting. **The advice
+should turn over once `activeForSec` passes any plausible operation length.**
+Filed; not yet fixed.
+
+---
+
 ## TL;DR
+
+⛔ **The root cause is above, not here: she is 6.4% over `MemoryHigh` and the
+kernel has throttled her for 19.5 hours.** The button defects below are real and
+worth fixing, but **fixing every one of them would not have started her.**
 
 | page | control set | lane | bounded? | reports honestly? | verdict |
 |---|---|---|---|---|---|
@@ -216,6 +329,22 @@ control plane is visible instead of assumed.
 - **The console ring holds ~6 minutes during a walk** (500 lines / 376 s
   measured). Diagnosis has to happen within minutes of an event or the evidence
   is gone.
+
+---
+
+## ⚠ THE GPU DONOR POD — STOPPED 2026-09-05
+
+`q0ydaakrqcz48n` (A40 48 GB, CA-MTL-1, $0.49/hr) was **stopped** because it could
+not reach her. Its own runtime figures on the way out:
+
+```
+gpu.util 0%   gpu.memoryUtil 0%   cpu.util 0%   uptime 77,336s (21.5 h)
+```
+
+**21.5 hours of billing on an idle card.** It attached and uploaded its matrices
+on 2026-09-04, then the brain crossed `MemoryHigh` at 18:22 and never spoke to it
+again. **Start it again only once she is serving** — `start-pod q0ydaakrqcz48n`;
+disk and config persist.
 
 ---
 
