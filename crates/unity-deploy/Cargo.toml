@@ -1,0 +1,13 @@
+[package]
+name = "unity-deploy"
+version = "0.1.0"
+edition = "2021"
+description = "The Unity brain's deploy worker — single-instance locking, disk staging, own-cgroup launch, and self-replacement by rename. Migration phase B1."
+license = "MIT"
+
+# ⛔ DEPENDENCIES STAY SMALL ON PURPOSE. This binary runs on a box with no shell
+# access during an outage, installed by an unattended deploy. Every dependency is
+# a thing that can fail to build there. `clap` is already in the workspace lock
+# via donor-app, so it costs nothing new.
+[dependencies]
+clap = { version = "4", features = ["derive"] }

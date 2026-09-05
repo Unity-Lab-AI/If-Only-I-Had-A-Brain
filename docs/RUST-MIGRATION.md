@@ -2,6 +2,11 @@
 
 **Status:** planning document. **No Rust coordinator code exists yet** — the only
 Rust in this repo is `donor-app/`, which predates this plan.
+**⭐ PHASE B1 v1 EXISTS (2026-09-05)** — `crates/unity-deploy` takes the lock, the
+staging decision and the own-cgroup launch natively (19/19 tests, exercised end
+to end) and **hands the script's 84 branches to the script**. It is the strangler
+step, not the replacement: the acceptance gate is still *"until this has done a
+real deploy on a real box"*. See §9.
 **✅ PHASE B0 IS DONE (2026-09-05).** `crates/unity-protocol` exists, a Cargo
 workspace at the repo root makes `donor-app` a member depending on it by path,
 and the donor builds (headless *and* the default gui+cuda release) with its four
