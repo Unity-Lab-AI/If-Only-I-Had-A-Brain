@@ -1,0 +1,16 @@
+[package]
+name = "unity-coordinator"
+version = "0.1.0"
+edition = "2021"
+description = "The Unity brain's Rust control surface — routing, privilege gate, static serving. Migration phase B5."
+license = "MIT"
+
+# ⛔ NO ASYNC RUNTIME, NO WEB FRAMEWORK, DELIBERATELY. This process guards
+# /shutdown, /reset and /grade-advance. The parser that decides what path a
+# request is asking for is part of that guard, and a few hundred auditable lines
+# beat a framework whose behaviour on a malformed request has to be looked up.
+# The workload does not need async either: the control plane serves a handful of
+# endpoints to a small number of callers, and the public dashboard polls ONE
+# cached snapshot precisely so a crowd costs one backend hit per window.
+[dependencies]
+unity-http = { path = "../unity-http" }
