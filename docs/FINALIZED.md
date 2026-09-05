@@ -47052,3 +47052,32 @@ Gee (verbatim): *"i pressed update keep weights in the teacvh viewer, did it pro
 ⏳ **THIS IS FRONTEND CODE, SO IT REACHES THE BOX WITHOUT A RESTART** — `deploy.yml` rsyncs the frontend on every push. **The buttons are fixed on the next page load.** ⚠ The routes they call are only as good as the box's server build, and `/ctl/*` has been live and answering throughout — so the fallback works today.
 
 **Docs shipped in this commit:** `docs/TODO.md` · `docs/FINALIZED.md` (this) · `docs/RESUME.md` · `wiki/modules/teachview.md` · `wiki/log.md`.
+
+---
+
+## 2026-09-05 - OFFLINEDICT: the walk stopped because one third-party API blinked, so definitions no longer need the network - feature/offlinedict
+
+Gee (verbatim): *"so wtf are you telling me there is no way to fuckign fix it?"* → *"what to do to fix it?"* → *"we are not adding dependancies just use a fucking dictionary you fuck!"*
+
+- **`OFFLINEDICT.1` — ✅ BUILT + 25/25 EXERCISED WITH THE NETWORK FORCED DEAD.**
+  - ⛔⛔ **THE WALK WAS BLOCKED ON A SINGLE THIRD-PARTY HOST WITH NO SLA, AND IT RETURNED `000` ON EVERY WORD ALL DAY.** 17.5 h on `ela/kindergarten` · `passedCellsTotal 0` · `totalWords 0` · `vocabPermMiss 67`. She could not bind a definition, so vocabulary never landed and the gate could never clear. ⚠ **`wiki/modules/curriculum.md` has carried the warning for months** — *"the definition lane depends on a third-party API with no SLA"* — and it finally cost a whole day.
+  - ⚠ **NOTHING NEW WAS INSTALLED, AND I SAID THIS BADLY THE FIRST TIME.** `wordnet-db` is **already** in `server/package.json`, already on disk at `server/node_modules/`, and already read by `drawable-taxonomy.js` and the exam-bank generator. **Its payload is plain index/data files.** The new module reads files that were already there.
+  - ⭐ **MEASURED ON HER REAL K VOCABULARY, NOT ESTIMATED: 2,137 of 2,221 = 96.2%, 13,139 senses (avg 6.1/word), 57 ms for the ENTIRE vocabulary** in-process with no network. 155,467 lemmas across noun/verb/adj/adv.
+  - ⚠ **A 56 MB `wordset-dictionary` DOWNLOAD WAS EVALUATED AND REJECTED ON THE NUMBERS** — 93.7% coverage, 12,468 senses, and a network fetch, against 96.2% and 13,139 from a file already on disk. **I downloaded all 26 shards and measured them rather than picking on vibes.**
+
+- **`OFFLINEDICT.2` — ⭐ IT IS A PEER SOURCE, NOT A FALLBACK, AND IT GOES FIRST.**
+  - ⛔ **The distinction is the LAW.** `curriculum.js:16151` records a banned *"last-resort single-def"* arm that quietly taught **one sense per word** — *"only having one definiton is fucking limiting"*. **WordNet returns MULTI-SENSE entries with part of speech**, averaging 6.1 senses per word: the same shape the network path builds, often with more senses. **Same capability, different transport** — the identical argument the hyphenated-compound retry already makes in that file.
+  - ⭐ **ORDERING IS THE ACTUAL FIX.** Offline answers first, so **~96% of lookups never touch the wire at all** — which makes the `FC.11` 429 death-spiral *unreachable* for the common case rather than merely bounded, and means an outage like today's can no longer stall the walk.
+  - **Shape parity asserted, not assumed:** `definition` · `partOfSpeech` · `example` · `synonyms`, plus `source: 'wordnet-offline'` so a reader can tell which lane taught a word. ⚠ **The gloss is split at the first `;` to drop WordNet's quoted usage examples** — a usage example bound as part of a meaning is noise in the vector.
+  - ⛔ **The `HAS_FETCH` early-return was removed from `getDefinitions`.** A runtime without `fetch` used to mean no definitions from any source; leaving that guard would now discard 96% of the vocabulary for no reason.
+
+- **`OFFLINEDICT.3` — ⛔⛔ A NAIVE COMPOUND SPLIT TEACHES NONSENSE, AND MEASURING CAUGHT IT BEFORE IT SHIPPED.** The recovery pass matched the corpus typo **`suprise` → `sup` + `rise`** and would have bound her *broth* plus *ascend* — and counted it a success. **Only joined compounds WordNet itself confirms (`living_room`) are accepted; arbitrary splits are refused.** That costs nine recoveries and is worth every one. **A harness case asserts `suprise` returns nothing while `livingroom` resolves to a room.**
+
+- **`OFFLINEDICT.4` — ⚠ I OVERSTATED THE REMAINDER AND THE MEASUREMENT CORRECTED ME.** I claimed the misses were *"almost all function words the grammar lane already teaches."* **Measured: of 84 misses, only NINE are in `GRAMMAR_STRUCTURAL_WORDS`; 75 are taught by nothing today.** ⛔ `GRAMMAR_SLOT_PAIRS` has **no preposition and no pronoun slot at all**, so adding `preposition` to `GRAMMAR_FUNCTION_SLOTS` would have changed nothing — the words are simply not in the table. **Filed open with the 75 enumerated by kind.**
+  - ⛔ **AND THE IRREGULAR INFLECTIONS CANNOT BE RECOVERED HERE: this `wordnet-db` build ships NO `.exc` files.** `verb.exc`/`noun.exc` are absent — only `data.*`, `index.*`, `index.sense`. **So `went → go` and `children → child` would have to be GUESSED, which is precisely the error class refused in `.3`.** ⚠ **And a hand-written irregular map would be a WORD LIST**, which is banned. **That wants its own measured decision, not a rider on this change.**
+
+**VERIFIED — 25/25 against the REAL `definition-service`, with `globalThis.fetch` replaced by a function that throws on every call** — i.e. today's live condition, not a mock of the happy path. The decisive case: **all seven test words answered, multi-sense, with ZERO network calls made.** Plus shape parity · `lookupStatus` reading `hasDef` after an offline hit · the `suprise` refusal · capitalisation and regular-plural retries · a genuine non-word still returning nothing · empty/null input safe · **and a WordNet miss still reaching for the network, where a failure is correctly `error` and not `noDef`** (the DEFHEAL distinction, still holding).
+
+⚠ **The module never throws into the teach path** — a load failure logs one loud warning naming this incident and leaves the API lane intact, because a dictionary that cannot load must not stop the walk *and* must not fail silently.
+
+**Docs shipped in this commit:** `docs/TODO.md` · `docs/FINALIZED.md` (this) · `docs/RESUME.md` · `wiki/modules/curriculum.md` · `wiki/log.md`.
