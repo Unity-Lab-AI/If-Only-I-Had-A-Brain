@@ -143,7 +143,7 @@ they killed it:
    381 MiB in `external`/`arrayBuffers` and ~0 in `heapUsed`. So "get it out of
    the V8 heap" was *already true* — `--max-old-space-size` never bounded these
    and GC never moved them. Only *evictability* was ever actually on offer.
-3. **The codebase already models the better answer.** `sparse-matrix.js:731`
+3. **The codebase already models the better answer.** `sparse-matrix.js:744`
    warns *"Matrix is likely GPU-bound with CPU arrays freed"* and
    `gpu.js:5624` sets `proj._gpuBound = true`. There is already a concept for
    "the donor holds this matrix, the CPU copy is not needed".
