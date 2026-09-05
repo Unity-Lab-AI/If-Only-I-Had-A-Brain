@@ -522,6 +522,17 @@ else
       log "field blobs stay as pointers — no git-lfs on this box. The books are already checked out by the clone and are completely unaffected."
       return 0
     fi
+    # ⭐ DEPRIORITISE THE PULL — it shares the brain's cgroup, so it must lose
+    # every CPU and disk arbitration against her. `nice -n 19` + `ionice -c3`
+    # (idle class) cost nothing when the box is quiet and matter enormously when
+    # it is not. This does NOT solve the page-cache problem (see the fields rsync
+    # below for that trap) — it is one more layer, not the fix.
+    # ⛔ THE REAL FIX IS STRUCTURAL and is NOT done: the data sync should run in
+    # its OWN cgroup with its OWN MemoryMax, not the brain's. Everything here is a
+    # safety net around a deploy that shares her memory budget. See REDEPLOY-NOTES.
+    _nice=''
+    command -v nice   >/dev/null 2>&1 && _nice="nice -n 19"
+    command -v ionice >/dev/null 2>&1 && _nice="$_nice ionice -c3"
     # `timeout` may be absent on a minimal box; degrade to an unbounded pull
     # rather than failing, but SAY SO, because the hazard above is then live.
     _to=''
@@ -548,15 +559,22 @@ else
         _last_w=-1; _last_r=-1; _flat=0
         while kill -0 $$ 2>/dev/null; do
           sleep 15
-          # ⛔ PICK THE REAL git-lfs PROCESS, NOT A SHELL THAT MENTIONS IT.
-          # `pgrep -f 'git-lfs pull'` also matches the wrapper shell / this very
-          # script (their command lines contain the words), and `head -1` takes
-          # the LOWEST pid — i.e. the shell. A shell's /proc/<pid>/io never moves,
-          # so the watchdog watched the wrong process and never fired. Verified:
-          # that is exactly why the first version of this guard did nothing.
-          # Match on the EXECUTABLE name instead, which only the real binary has.
-          _lp="$(pgrep -x git-lfs 2>/dev/null | tail -1)"
-          [ -z "$_lp" ] && _lp="$(pgrep -f '(^|/)git-lfs ' 2>/dev/null | tail -1)"
+          # ⛔ PICK THE `git-lfs pull`, NOT A SHELL AND NOT ITS FILTER SIBLING.
+          # TWO wrong versions of this line shipped, BOTH observed on the box:
+          #  1. `pgrep -f 'git-lfs pull' | head -1` also matches the wrapper shell
+          #     and this very script (their command lines contain the words), and
+          #     head takes the LOWEST pid — a shell, whose /proc/<pid>/io never
+          #     moves. The watchdog polled the wrong process and NEVER FIRED.
+          #  2. `pgrep -x git-lfs | tail -1` takes the HIGHEST pid — which during a
+          #     real pull is `git-lfs filter-process`, a short-lived SIBLING. On
+          #     2026-09-04 the guard fired and killed exactly that: the log said
+          #     WEDGED, `git-lfs pull` stayed alive, and the outage continued.
+          # Anchor on the binary path AND require the `pull` verb, which uniquely
+          # identifies the real process. Verified against the live process table:
+          # matches `/usr/bin/git-lfs pull` and nothing else — not
+          # `git-lfs filter-process`, not the shells, not the `timeout` wrapper
+          # (whose argv is `git lfs pull`, with a SPACE, deliberately not matched).
+          _lp="$(pgrep -f '(^|/)git-lfs pull( |$)' 2>/dev/null | head -1)"
           [ -z "$_lp" ] && continue
           _w="$(awk '/^write_bytes:/{print $2}' "/proc/$_lp/io" 2>/dev/null)"
           _r="$(awk '/^read_bytes:/{print $2}'  "/proc/$_lp/io" 2>/dev/null)"
@@ -591,9 +609,9 @@ else
     # that protection.
     _lfs_rc=0
     if [ "$_want_fields" = "1" ]; then
-      ( cd "$FTMP/bw" && $_to git lfs pull >> "$LOG" 2>&1 ) || _lfs_rc=$?
+      ( cd "$FTMP/bw" && $_nice $_to git lfs pull >> "$LOG" 2>&1 ) || _lfs_rc=$?
     else
-      ( cd "$FTMP/bw" && $_to git lfs pull -I 'corpora/**' >> "$LOG" 2>&1 ) || _lfs_rc=$?
+      ( cd "$FTMP/bw" && $_nice $_to git lfs pull -I 'corpora/**' >> "$LOG" 2>&1 ) || _lfs_rc=$?
     fi
     # ⛔ REAP THE WATCHDOG. It loops on `sleep 15`, so if it is not killed here it
     # outlives the pull and keeps polling — and worse, a LATER press's `git lfs
@@ -651,6 +669,26 @@ else
       log "WARN — corpus rsync failed or the data repo has no corpora/; falling back to whatever is already on the box."
     fi
     # THE FIELDS SECOND — her precomputed view of every picture. Non-fatal.
+    # ⛔⛔ THE FIELDS RSYNC STARVES THE BRAIN TOO — the LFS guard alone is NOT enough.
+    # 2026-09-04, observed live AFTER the lfs watchdog had already done its job:
+    # with NO git-lfs running at all, the brain still timed out on every request.
+    # The culprit was the fields rsync below. `node` was only 8.7 GB RSS, but the
+    # cgroup sat pinned at its MemoryHigh=20G ceiling because rsync had pulled
+    # **12.4 GB of PAGE CACHE** (`memory.stat file`) into the same cgroup, and the
+    # kernel throttles the WHOLE cgroup — node included. Killing the rsync dropped
+    # the cgroup 20G → 4G instantly and she came back.
+    # ⭐ THE LESSON: it is not only CPU or disk contention. ANY process in the
+    # brain's cgroup that touches a lot of FILE DATA can evict her working set
+    # through page cache alone — and `ps rss` looks innocent the entire time, which
+    # is exactly why this was missed after the lfs pull was already ruled out.
+    # Fields are OPTIONAL (she transforms live), so throttling them costs nothing.
+    # Everything degrades to a plain rsync if the helpers are missing.
+    _rsync_nice=''
+    command -v nice   >/dev/null 2>&1 && _rsync_nice="nice -n 19"
+    command -v ionice >/dev/null 2>&1 && _rsync_nice="$_rsync_nice ionice -c3"
+    # ⚠ Politeness, not correctness. UAL_FIELDS_BWLIMIT=0 disables the cap.
+    _bwflag=''
+    [ "${UAL_FIELDS_BWLIMIT:-80M}" != "0" ] && _bwflag="--bwlimit=${UAL_FIELDS_BWLIMIT:-80M}"
     # ⛔ NO `--delete` WHEN THE FIELDS WERE NOT FETCHED. With UAL_FIELDS=0 the
     # source directory is a tree of un-smudged pointers or absent entirely, and a
     # mirroring rsync would DELETE every field already on the box — turning "skip
@@ -704,7 +742,7 @@ EOF
       else
         log "field sync SKIPPED (UAL_FIELDS=0) — ${_fkept} fields already on the box are LEFT UNTOUCHED; every figure without one is transformed live."
       fi
-    elif rsync -a --delete "$FTMP/bw/fields/" "$FIELDS_DIR/" >> "$LOG" 2>&1; then
+    elif $_rsync_nice rsync -a --delete $_bwflag "$FTMP/bw/fields/" "$FIELDS_DIR/" >> "$LOG" 2>&1; then
       # ⚠ BOTH ENCODINGS COUNTED. Fields are written gzipped now, and a glob
       # anchored to the old name reported a healthy sync as zero fields — the
       # instrument saying nothing is there while everything is.
