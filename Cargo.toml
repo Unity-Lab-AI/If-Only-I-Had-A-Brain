@@ -27,6 +27,7 @@ resolver = "2"
 members = [
   "crates/unity-protocol",
   "crates/unity-deploy",
+  "crates/unity-weights",
   "donor-app",
 ]
 
