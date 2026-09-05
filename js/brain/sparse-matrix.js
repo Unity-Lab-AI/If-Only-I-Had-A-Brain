@@ -80,6 +80,19 @@
 // ⚠ The same rule applies to the LIF state arrays (`voltages`, motorChannels in
 // server/brain-server.js) — those are integrator state, they accumulate every
 // tick, and they stay Float64.
+//
+// ⛔ THIS RULE IS ABOUT THE COORDINATOR'S CPU PATH ONLY — THE DONORS ARE f32
+// END TO END AND CANNOT BE ANYTHING ELSE. `donor-app/src/shaders/
+// synapse_propagate.wgsl` binds `values: array<f32>` and accumulates in
+// `var sum: f32`; **WGSL has no f64 storage type at all**, and
+// `donor-app/src/frames.rs` takes `values: Vec<f32>` on the wire.
+//
+// ⭐ That is the strongest argument that Float32 STORAGE costs nothing here:
+// on the deployed box the real compute substrate is the donor GPUs
+// (`cluster.js` — `requireGpuSubstrate = !!this._gpuProxy`), so these weights
+// were being rounded to f32 the instant they left the process, whatever the
+// CPU array's type happened to be. Holding f64 bought precision that was
+// discarded at the socket.
 
 export const WEIGHT_ARRAY = Float32Array;
 export const BYTES_PER_VALUE = WEIGHT_ARRAY.BYTES_PER_ELEMENT;
