@@ -155,9 +155,16 @@ worth fixing, but **fixing every one of them would not have started her.**
 
 | page | control set | lane | bounded? | reports honestly? | verdict |
 |---|---|---|---|---|---|
-| `dashboard.html` | **Brain Power panel** (`bp-*`) | `/ctl/*` ✅ | ❌ no timeout | ✅ yes | **USE THIS ONE** |
-| `dashboard.html` | **legacy row** (`btn-*`, 8 buttons) | brain `/admin/*` ❌ | ❌ no timeout | ⛔ **claims success from `catch`** | **DO NOT USE** |
-| `teachview.html` | press panel (4 buttons) | brain, **now falls back to `/ctl/*`** ✅ | ✅ 20 s + 6 s | ✅ yes | **fixed today, live on the box** |
+| `dashboard.html` | **Brain Power panel** (`bp-*`) | `/ctl/*` ✅ | ✅ **5 min** (2026-09-05) | ✅ yes | **USE THIS ONE** |
+| `dashboard.html` | **legacy row** (`btn-*`, 8 buttons) | brain `/admin/*` — **the FALLBACK, on purpose** | ✅ **20 s / 120 s** (2026-09-05) | ✅ **yes** (2026-09-05) | **fallback for when `/ctl` is down** |
+| `teachview.html` | press panel (4 buttons) | brain, **now falls back to `/ctl/*`** ✅ | ✅ 20 s + 6 s | ✅ yes | **fixed 2026-09-05, live on the box** |
+| `dashboard.html` | 7 other admin POSTs (`autoscale` ×2, `resync`, `rollback`, `auto-advance`, `grade-advance`, `grade-signoff`) | brain `/admin/*` | ❌ **no timeout** | ✅ yes | **`BUTTONAUDIT.5` — filed, not yet swept** |
+
+> ## ✅ UPDATED 2026-09-05 — PROBLEMS 1 AND 2 BELOW ARE FIXED. The prose is kept as the finding.
+>
+> **The legacy row was NOT retired, and the recommendation to retire it was wrong.** `CTLSUPERSEDE` already hides it whenever the control plane answers and keeps it when `/ctl` is **down** — where it is *"the ONLY way to control the brain"*. ⛔ **And only six of the eight were ever superseded:** `/ctl` has **no `checkpoint` route and no `curriculum/forget` route**, so `btn-save-checkpoint` and `btn-reteach` are unique capabilities. Deleting the row would have removed the fallback *and* two live controls.
+>
+> **All three defects fixed at one chokepoint** (`adminPress()` / `adminPressRender()`): `catch` no longer claims success (it reports `? sent — could NOT confirm`, because a real restart and an unreachable server are indistinguishable from the browser); **`r.ok` is now checked** — a `504` from nginx resolves as a real response and used to print a checkmark, which this audit did not name; and every press is bounded. ⭐ `exitsOnSuccess` separates the two honest cases: restart verbs report *could-not-confirm*, `checkpoint`/`reteach` report a real *failure*, because the server is meant to survive those.
 
 **The short version:** the only controls that can work while the brain is
 unresponsive are the ones that talk to `unity-brain-ctl` — and until today only
@@ -253,6 +260,19 @@ comment block named `CTLSUPERSEDE` stating that the new Brain Power panel must
 **REPLACE** the old row, not join it. The old row surviving is the defect.
 Repairing eight handlers to duplicate a panel that already works is the wrong
 trade.
+
+> ⛔⛔ **THAT CONCLUSION WAS WRONG, AND THE CODE IT CITES SAYS SO 15 LINES FURTHER DOWN.**
+> `CTLSUPERSEDE` does not say *delete* — it says **hide, and only once `/ctl` has
+> actually answered**, because *"if /ctl is not installed or not running, the
+> legacy row is the ONLY way to control the brain and hiding it would leave a
+> dashboard with no controls at all — strictly worse than a duplicate."*
+> **The row is the fallback for exactly the outage this document was written
+> during.** ⭐ And the "duplicate a panel that already works" premise is false for
+> two of the eight: `/ctl` exposes no `checkpoint` and no `curriculum/forget`, so
+> `btn-save-checkpoint` and `btn-reteach` duplicate nothing — deleting them
+> destroys capability. **Fixed 2026-09-05 by making all eight honest at one
+> chokepoint instead.** I quoted the comment's headline and did not read its
+> caveat; the caveat was the whole argument.
 
 ---
 
