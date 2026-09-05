@@ -99,6 +99,15 @@ Tests: `test-brain-ctl.mjs` **71/71**, `test-ctlplane-integration.mjs` **64/64**
 
 1. **Wall clock** — `timeout` wraps the pull (`UAL_LFS_TIMEOUT`, now **8m**, was 45m).
 2. **⭐ No-progress watchdog** (`UAL_LFS_STALL_SEC`, default **120s**) — samples `/proc/<pid>/io` and kills the pull when **`write_bytes` stays FROZEN while `read_bytes` keeps climbing**. That is the real signature; a pull making progress WRITES. Requires BOTH conditions, so a genuinely slow server (no reads, no writes) is left to the wall clock instead.
+3. **⭐ Write ceiling** (`UAL_LFS_MAX_WRITE_PCT`, default **150**, `0` disables) — sizes Forgejo's LFS store with `du -sb` at arm time and kills the pull once it has written more than that percentage of it. **Added 2026-09-05 because a runaway is invisible to guard 2.** On the day disk staging landed, the pull wrote **212 GB from a 110 GB store** at a textbook 4.7 GB/10s — every progress signal read healthy, and the 8-minute wall clock only stopped it after it had burned whatever disk 8 minutes buys.
+
+> ⭐⭐ **GUARDS 2 AND 3 CATCH OPPOSITE PATHOLOGIES AND NEITHER CAN CATCH THE OTHER.** A wedge is writes FROZEN while reads climb; a runaway is writes climbing beautifully, forever. Guard 2's `_flat` counter is 0 for the entire runaway and never looks at the total.
+>
+> ⚠ **AND `write_bytes` IS THE RIGHT SIGNAL FOR ONE AND THE WRONG SIGNAL FOR THE OTHER** — this is the subtlety, and getting it backwards cost a healthy transfer on 2026-09-05. Page cache means `write_bytes` LAGS reality. For a **ceiling** that lag is harmless and self-correcting: it can only make the guard fire late, never early, so a healthy pull is never killed by it. For a **stall detector** the same lag is fatal, because *"not accounted yet"* and *"not happening"* become indistinguishable. **A conservative-late bound is safe; a conservative-late detector is a lie.**
+>
+> ⚠ **The root cause of the runaway is still NOT diagnosed and this does not diagnose it** — `docs/MEMORY-MAP.md` records two candidates without picking one. This bounds the pathology. ⭐ It also makes the cause *observable*: the kill line prints bytes written against store size, so the next occurrence arrives carrying its own evidence.
+>
+> ⚠ **If the store cannot be sized, there is no bound, and it says so** rather than inventing a number. `/var/lib/forgejo` is mode 750 `git:git`; on a box where the service user is not in the `git` group this is a **permissions** result, not an absence. `UAL_LFS_STORE` sets the path explicitly.
 
 Both are non-fatal: a fired guard returns 0 and the press continues to the books and the restart. Exit codes 124 (timeout), 137/143 (watchdog kill) are all treated as deliberate outcomes.
 
@@ -120,6 +129,18 @@ Both are non-fatal: a fired guard returns 0 and the press continues to the books
 > ⭐⭐ **THE GENERAL LESSON, worth more than either fix:** it is not only CPU or disk contention. **ANY process in the brain's cgroup that touches a lot of file data can evict her working set through page cache alone — and `ps rss` looks innocent the entire time.** That is precisely why this was missed after the LFS pull had already been ruled out. When she is starved, check `memory.stat file`, not just RSS.
 
 The fields rsync is now `nice -n 19 ionice -c3` + `--bwlimit` (`UAL_FIELDS_BWLIMIT`, default `80M`, `0` disables). Fields are optional — she transforms live — so throttling them costs nothing.
+
+**✅ AND AS OF 2026-09-05 IT HAS A WEDGE WATCHDOG OF ITS OWN** (`UAL_FIELDS_STALL_SEC`, default **300s**; `UAL_FIELDS_SAMPLE_SEC`, default **30s**). The LFS pull got a no-progress guard after 2026-09-04; **the rsync never did, and it failed the same way.**
+
+⛔⛔ **IT DELIBERATELY DOES NOT USE `write_bytes`, AND THAT IS THE WHOLE POINT.** This file records the 2026-09-04 signature as *"read climbing, write frozen at 0"*. On 2026-09-05 a **perfectly healthy** fields rsync showed exactly that reading while its destination grew **4.5G → 11G → 19G → 28G** — writes sit in page cache and are not accounted to the process until writeback. **A working transfer was killed on that reading alone.**
+
+⭐ **The signal that cannot lie is DESTINATION GROWTH.** It is the outcome rather than a proxy for it: if the destination is bigger than it was, work happened, whatever any counter says. It costs one `du -sb` per sample — more expensive than reading `/proc`, and the only measure that is actually true.
+
+⚠ **Why a 5-minute window and not seconds:** a genuinely idle network also shows no destination growth. At the `80M` bwlimit a live transfer moves ~24 GB in five minutes, so five minutes of **zero** growth is a wedge rather than slowness. An rsync that has legitimately finished is never caught — the sampler only runs while the process is alive.
+
+⛔ **It kills the rsync and NEVER the press.** The rsync is backgrounded and the watchdog targets its **own pid** — no `pgrep`, which is exactly where the LFS guard shipped wrong twice (it matched a wrapper shell once and a short-lived sibling the next time, and killed the wrong process both times).
+
+**Exercised, not reasoned about — 25/25 against the shipped `_fields_rsync` body** extracted by brace-matched line range and run with a fake rsync: a frozen destination is killed in 3s with SIGTERM before SIGKILL; a **growing** destination runs to completion untouched with no warning emitted; a real rsync failure propagates its exit status instead of being misreported as a wedge; `UAL_FIELDS_STALL_SEC=0` disables it; no sampler outlives the function; and the press survives every kill. ⚠ Two of those cases failed on the first run for faults in the **harness**, not the guard — an undefined `$LOG` and a foreground `sleep` that swallowed SIGTERM. `UAL_FIELDS_SAMPLE_SEC` exists so this can be exercised at all; at the 30s default a single case takes five minutes, which is how guards end up shipping unrun.
 
 | claim | evidence | strength |
 |---|---|---|
