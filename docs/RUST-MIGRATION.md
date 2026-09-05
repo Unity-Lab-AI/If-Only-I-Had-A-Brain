@@ -1,13 +1,23 @@
 # Rust Migration Guide — the coordinator (`server/`)
 
-**Status:** planning document. No Rust coordinator code exists yet.
+**Status:** planning document. **No Rust coordinator code exists yet** — the only
+Rust in this repo is `donor-app/`, which predates this plan.
 **Written:** 2026-09-05
 **Audience:** an engineer picking this up cold, with no prior context on this
 repo.
 
 Read [`docs/MEMORY-MAP.md`](MEMORY-MAP.md) first. It explains where the
-coordinator's memory actually goes and records two plausible-but-wrong models
-that cost real time. This document assumes it.
+coordinator's memory actually goes and records several plausible-but-wrong
+models that cost real time. This document assumes it.
+
+**How to use this document.** §1-4 are the survey: what moves, what stays, and
+the contracts that cannot break. **§5 is the architecture** — workspace layout,
+module boundaries, the separate-binary question, and minimum-downtime restart.
+§6 is the list of memory fixes that must be carried across rather than
+rediscovered. §7 is the landmines. §8-9 are how to start.
+
+⚠ **The single most important paragraph in this file is the "what a rewrite will
+NOT fix" note at the end of §1.** Read it before committing anyone's time.
 
 ---
 
@@ -221,16 +231,143 @@ Reproduce this exactly or the Update button breaks in a way that looks like
 
 ## 5. Suggested crate layout
 
+### 5.1 Workspace layout
+
+A single Cargo workspace at the repo root, so `donor-app` and the coordinator
+share crates instead of maintaining two copies of the same definitions.
+
 ```
-unity-protocol/     # phase 0 — SPRS frames, opcodes, shared with donor-app
-unity-weights/      # phase 1 — SparseMatrix (CSR), checkpoint I/O, mmap store
-unity-donor/        # phase 2 — donor sessions, dispatch, readback
-unity-state/        # phase 3 — sqlite stores, resume markers, boot reason
-unity-http/         # phase 4 — the 34 endpoints, auth model
-unity-coordinator/  # binary that wires it together
+Cargo.toml                  # [workspace] members = [...]
+crates/
+  unity-protocol/           # SPRS frames, opcodes, wire types.  SHARED with donor-app.
+  unity-weights/            # CSR SparseMatrix, checkpoint I/O, mmap store
+  unity-sizing/             # the budget/tier allocator (see §7 landmines)
+  unity-donor/              # donor sessions, dispatch, readback, health
+  unity-state/              # sqlite stores, resume marker, boot reason, .force-fresh
+  unity-deploy/             # self-update: staging, flock, cgroup scope, local-repo discovery
+  unity-http/               # the 34 endpoints, auth model, static serving
+  unity-coordinator/        # the binary; wires the above together
+donor-app/                  # existing; switches to depend on unity-protocol
 ```
 
-`donor-app/` then depends on `unity-protocol` instead of carrying its own copy.
+⚠ **`unity-sizing` is deliberately its own crate.** Every catastrophic weight
+loss in this project's history traces to a sizing disagreement between two
+places that each thought they were authoritative (§7). Isolating it means the
+neuron-count arithmetic has exactly one home and can be unit-tested against
+fixed inputs without booting anything.
+
+### 5.2 Module responsibilities and boundaries
+
+| Crate | Owns | Must NOT own |
+|---|---|---|
+| `unity-protocol` | frame encode/decode, opcode enums, version negotiation | any I/O, any socket |
+| `unity-weights` | CSR layout, `Weight = f32`, checkpoint format + version, mmap/free-restream | knowing what a donor is |
+| `unity-sizing` | tier ladder, budget arithmetic, `BYTES_PER_NNZ` consumption | reading files, env fallbacks scattered inline |
+| `unity-donor` | WebSocket sessions, upload/readback lifecycle, `_gpuBound` state | HTTP routing, checkpoint policy |
+| `unity-state` | sqlite, markers, boot-reason history, flag files | business logic about *when* to wipe |
+| `unity-deploy` | fetch, stage, lock, cgroup, restart escalation | anything about brains |
+| `unity-http` | routing, auth, request/response shapes | direct weight or donor mutation (call the crates) |
+
+⭐ The single most valuable boundary is **`unity-weights` not knowing what a
+donor is.** Today `gpu.js` (5,702 lines) mixes transport, weight lifetime and
+checkpoint policy, which is exactly why a dtype change (§6.1) could silently
+break persistence in a file nobody associated with dtypes.
+
+### 5.3 The separate-binaries idea, and where it pays
+
+Splitting into independently built and deployed binaries is worth doing, but
+**only along boundaries that already exist in the runtime.** The two that do:
+
+**1. `unity-deploy` as its own binary — do this first, it is the clear win.**
+It is already a separate process (`self-update.sh` spawned detached), already
+needs its own cgroup (§6.4), and is the thing most likely to change while the
+brain must keep running. As a standalone binary:
+- it is a few hundred KB, so fetching and atomically replacing it is instant;
+- **it solves SELFFIRST properly.** The shell version must re-exec itself
+  mid-run to pick up its own fix (see the SELFFIRST block in `self-update.sh`,
+  and the byte-offset trap it documents). A separate binary is simply replaced
+  by rename and the *next* invocation is the new one — no re-exec, no
+  self-modification hazard, no partially-read script.
+- it can be version-checked (`unity-deploy --version`) before being trusted.
+
+**2. `unity-coordinator` stays one binary.** Do **not** split the brain across
+processes to chase hot-reload. The weights are multi-GB and live in this
+process's address space; moving them across a process boundary means either
+copying gigabytes or building shared-memory plumbing, and the whole point of
+§6.2 is to *stop* moving those bytes around.
+
+### 5.4 Minimal-downtime restart — what actually works here
+
+The goal is real, but the usual "hot reload a module" answer does not fit a
+process whose state is 4-8 GB of weights. Three options, honestly priced:
+
+**(a) Faster cold restart — the cheapest real win.** Boot time today is
+dominated by loading GloVe (1.04 GB, streamed line-by-line) and rebuilding the
+CSR. Measured on the box: she is unreachable for roughly 30-60 s after restart,
+and the event loop logs `RECOVERED after 32162ms`. In Rust:
+- memory-map the checkpoint instead of parsing it (§6.2) — the weights become
+  available without a decode pass;
+- store GloVe in a binary format (`f32` matrix + an index) instead of parsing
+  text every boot.
+Target: seconds, not a minute. **This alone probably satisfies "minimal
+downtime" without any hot-restart machinery.**
+
+**(b) Socket handover (`SO_REUSEPORT` / systemd socket activation).** The new
+process binds before the old one exits, so no connection is refused during the
+swap. Donors reconnect to the new process, which they already handle (donor
+reconnect is an existing, tested path). This is a genuine improvement and is
+**independent of the weights problem** — worth doing after (a).
+
+**(c) True zero-downtime weight handover.** The new process mmaps the same
+checkpoint file the old one was using, so both see identical bytes with no copy,
+and the old process exits once the new one is serving. This is the only design
+where multi-GB state survives a restart without a re-read — and it falls out of
+§6.2 almost for free, because mmap is already the plan.
+
+⚠ **What is NOT worth building: dynamic module reloading (`dlopen`, hot-swapped
+`.so`).** Rust's ABI is unstable, the failure modes are silent memory
+corruption rather than a clean error, and this system's entire logging
+philosophy exists because *silent* failures are the expensive kind. The
+restart-with-handover path in (c) gets the same benefit with a failure mode you
+can see.
+
+### 5.5 Build and deploy sequence
+
+```
+cargo build --release --workspace
+# binaries: target/release/unity-coordinator, target/release/unity-deploy
+```
+
+Deploy, mirroring the discipline already in `self-update.sh`:
+1. fetch new binaries to `$BACKEND_DIR/.staging` (disk, never tmpfs — §6.3);
+2. verify: `<binary> --version` and `--self-test` **before** trusting either;
+3. install by **`rename(2)`**, never by writing over the live path;
+4. restart via the socket-handover path in 5.4(b).
+
+⛔ **Step 3 is not stylistic.** The SELFFIRST block documents a reproduced
+failure where overwriting a *running* file in place made it execute corrupted
+content. A binary is mmap'd by the kernel, so in-place overwrite is worse than
+for a script: it can `SIGBUS` a running process. `mv` swaps the directory entry
+and leaves the running process on its original inode.
+
+⭐ Keep `deploy/self-update.sh` working throughout the migration. It is the only
+thing standing between the operator and a box he cannot reach; it should be
+retired only when `unity-deploy` has done a real deploy on a real box.
+
+### 5.6 Suggested phase order
+
+| Phase | Deliverable | Risk | Independently useful? |
+|---|---|---|---|
+| 0 | `unity-protocol` extracted; `donor-app` depends on it | none (no behaviour change) | yes — kills the duplicate protocol |
+| 1 | `unity-deploy` binary, replacing the shell script | low — separate process, revert by not installing | yes — solves SELFFIRST properly |
+| 2 | `unity-weights` + mmap/free-restream, called from JS via a sidecar | medium | yes — the memory win |
+| 3 | `unity-donor` — dispatch and readback | medium-high — hottest path | yes — the CPU win |
+| 4 | `unity-state`, `unity-sizing` | medium | yes — one home for the wipe-causing arithmetic |
+| 5 | `unity-http` + `unity-coordinator`; JS coordinator retired | high | the cutover |
+
+⚠ Phases 2-4 are where a mistake costs a walk. Every one of them should ship
+behind a flag with the JS path intact, so a bad boot is one restart from the old
+behaviour.
 
 ---
 
@@ -433,6 +570,48 @@ button silently does nothing.
 unbounded rsync in the same cgroup would evict them through page-cache pressure
 alone — the same failure with a new mechanism.
 
+### 6.5 SELFFIRST — the updater must update itself before it acts
+
+Shipped in `deploy/self-update.sh` on 2026-09-05 and **must be preserved by
+`unity-deploy`**, because it is the reason a deploy fix can ever take effect on
+the press that delivers it.
+
+The problem: the script overlays the repo (including itself) partway down, but
+the staging decision, the lock and the data-repo discovery have already run. So
+a fix to any of those lands on disk during press N and only works on press N+1.
+This bit twice in one day — the press that delivered STAGEDISK still staged
+12 GB into tmpfs, and the press that delivered BWLOCAL still cloned over SSH.
+Both were correct code behaving exactly as written.
+
+The shell fix fetches just that one file, validates it (`bash -n` plus
+`--self-test`), installs it by **rename**, and `exec`s it.
+
+⛔⛔ **THE TRAP, REPRODUCED BEFORE RELYING ON IT: bash reads a script
+incrementally by BYTE OFFSET while running.** Overwriting it in place (`cp`,
+`cat >`) keeps the same inode, so the running shell's next read lands at its old
+offset inside the *new* content:
+
+```
+line A (original)
+victim.sh: line 3: line B (NEW) — ...: command not found
+line C (NEW)
+```
+
+It skipped a line and executed a fragment of another as a command. `mv -f`
+replaces the directory entry and leaves the running process on its original
+inode, which it holds open until exit.
+
+⭐ **A Rust `unity-deploy` binary makes this structurally simpler** — replace by
+rename, and the *next* invocation is the new one; no re-exec and no
+self-modification hazard. But the rename discipline becomes *more* critical, not
+less: a running binary is mmap'd by the kernel, so an in-place overwrite can
+`SIGBUS` the running process rather than merely confusing it.
+
+⚠ Keep the validate-before-trust step. `--self-test` must remain the **first**
+executable statement, before any deploy work, or validating a candidate would
+itself be a deploy — from an unvalidated file, outside the lock, with no staging
+set up.
+
 ---
 
 ## 7. Landmines specific to this system
@@ -499,3 +678,48 @@ Then write a `unity-weights` CSR type with `Weight = f32`,
 `BYTES_PER_NNZ = size_of::<Weight>() + size_of::<u32>()`, an f64 accumulator,
 and a `memmap2`-backed store — and port
 `tools/weight-precision-probe.mjs` to a Rust test asserting the SNR floor.
+
+---
+
+## 10. Working agreements for whoever picks this up
+
+These are not style preferences. Each one is a scar.
+
+1. **Measure on the box, not in your head.** Two confident memory models in
+   §MEMORY-MAP were wrong, and each would have made the system worse if built.
+   The 8.8 GiB was not what anyone assumed it was.
+
+2. **A test that passes for the wrong reason is worse than no test.** The first
+   precision probe reported *exactly zero* deviation — because it built its f64
+   "reference" by widening an already-f32 array. A tautology. Ask what result
+   would falsify the check before trusting a pass.
+
+3. **Silence is not success.** `find … 2>/dev/null` made a permission wall
+   indistinguishable from an absent repo and cost two days. `systemd-run` with an
+   invalid property printed "deploy spawned" and deployed nothing. When a check
+   can fail invisibly, make the failure say so.
+
+4. **Run the failure path, not just the happy path.** `kill -9` does not release
+   an `flock` (children inherit the fd), which would have left a permanently dead
+   Update button for an operator with no shell. That was found by killing the
+   process on purpose, not by reading the code.
+
+5. **`write_bytes == 0` is not a wedge.** A healthy rsync shows it while the
+   destination grows, because writes sit in page cache. Progress means the
+   destination is growing. This mistake killed a working transfer.
+
+6. **The operator has no shell.** Every failure must be legible from the
+   dashboard, and every diagnostic should name the exact command that fixes it.
+   The JS is full of long log strings for this reason — port the *intent*, not
+   just the code.
+
+7. **Changing a stored type is a format change.** The Float32 cut reached 5 of
+   12 allocation sites and left a hardcoded `nnz * 8` in the checkpoint writer.
+   Result: she trained for two hours and persisted **nothing**, while looking
+   completely healthy. Audit every byte-width computation, and bump a format
+   version with an explicit reader for the old one.
+
+8. **Ship the estimator and the allocator together, or not at all.** They
+   disagreed by 1.5x for the life of the project. In Rust, derive the constant
+   from the type (`size_of::<Weight>()`) so they *cannot* drift.
+
