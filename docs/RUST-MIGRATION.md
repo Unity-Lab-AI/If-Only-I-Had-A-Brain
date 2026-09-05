@@ -551,15 +551,43 @@ Two designs, either acceptable:
   demand. ~1.3 s for the full 4.23 GiB at the box's measured 3248 MiB/s, against
   a donor upload that takes far longer on the wire anyway.
 
-⚠ Open questions either design must answer:
-- what re-materialises the arrays, and who blocks while it happens;
-- freeing must be **impossible mid-readback** —
-  `refreshCheckpointFromDonor` warns that a partial transfer "leaves
-  `matrix.values` a mix of old-CPU and new-GPU rows", and a checkpoint written
-  from that is "a third brain";
-- what happens when the last donor disconnects and no CPU copy exists.
-  `cluster.js:349` says a proxied brain *requires* its proxy, so this may
-  already be correct — confirm, do not assume.
+### ✅ ANSWERED AND BUILT 2026-09-05 — `crates/unity-weights/src/residency.rs`
+
+The three questions below were never really open; **the answers were already in
+the code and in the operator's standing rules, only unwritten.** Gee, verbatim:
+*"obvious we know what needs to rematerialize a freed matix the code says what it
+needs and partials need to be handled if they are used and when the last doner
+drops the wain stays at current weights and any doner runs it(the last weight
+save before all doners drop)"*.
+
+**Q1 — what re-materialises the arrays, and who blocks?** `gpu.js` names both
+consumers: an upload READS `matrix.values`, and a readback WRITES into it —
+`gpuReadbackMatrixValues` refuses outright with *"no CPU master matrix '<name>'
+to write into"*. So a matrix must be resident before either runs, and the
+restream is a sequential read of the backing file. **Who blocks: whoever asked.**
+`ensure_resident()` is synchronous and returns only when the values are there;
+a caller proceeding on a not-yet-restreamed matrix is the bug.
+
+**Q2 — can a partial readback interleave with a free?** ⛔ **No, and it is a
+state machine rather than a convention.** `free()` is *refused* while a readback
+is in flight, and a readback that ends without a **verified checksum** leaves the
+matrix `Torn`, which `checkpointable()` then refuses with the reason. ⚠ The proof
+is a **checksum, not a byte count** — a byte count cannot detect reordering. An
+older coherent snapshot beats a newer incoherent one, and CHECKROT keeps three.
+
+**Q3 — what happens when the last donor disconnects?** **The walk stays at the
+current weights, and any donor that arrives runs from the last save before they
+all dropped.** ⭐ That makes it a *residency* rule, not a failure path:
+`on_last_donor_lost()` deliberately does nothing but set the donor count — no
+free, no wipe, no invalidation. **The weights are the brain; donors are
+interchangeable compute that borrow them.** ⛔ And with no donor attached a
+`free()` is *refused*, because a free is only safe when something can ask for it
+back. ⚠ This does not contradict `requireGpuSubstrate` — teaching still stops
+without a proxy. The weights simply survive it.
+
+**13 tests cover exactly these three**, including that a matrix freed while
+donors existed stays restreamable after they all drop — which is the operator's
+rule stated as an assertion.
 
 ⚠ Benchmark trap: timing a write of an untouched `Buffer::allocUnsafe`-style
 buffer measures nothing (682 GiB/s observed) because the pages are sparse and

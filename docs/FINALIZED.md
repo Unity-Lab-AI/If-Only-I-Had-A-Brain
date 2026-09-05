@@ -43,6 +43,40 @@ Sponge (verbatim): *"**A3. Give the fields rsync a wedge watchdog.** The LFS pul
 
 His CORRECTION 1 says `write_bytes == 0` is not a wedge signal. **The LFS stall watchdog fires on exactly that reading.** The evidence is genuinely mixed — the guard also requires `read_bytes` climbing, and the 2026-09-05 runaway's 212 GB *was* measured off that same counter, so accounting clearly works on this path. ⭐ **The discriminator for the next press: if a `WEDGED` line fires while the fields directory is still GROWING, the signal is wrong and that guard should move to destination growth too.** Until that is observed, changing a guard that has caught a real outage would be trading a known-good for a theory. Filed, not fixed.
 
+## 2026-09-05 — `B2 LIFECYCLE` — §6.2's THREE "OPEN QUESTIONS" WERE NEVER OPEN; THE CODE ALREADY ANSWERED THEM
+
+Gee (verbatim): *"obvious we know what needs to rematerialize a freed matix the code says what it needs and partials need to be handled if they are used and when the last doner drops the wain stays at current weights and any doner runs it(the last weight save before all doners drop) get to work!"*
+
+**He was right, and I had filed them as open on the strength of the plan's wording rather than reading what the code says.** `crates/unity-weights/src/residency.rs` — **13 tests**, workspace now at **59 green**.
+
+### Q1 — what re-materialises a freed matrix, and who blocks?
+
+**The two consumers ARE the answer, and `gpu.js` names both.** An upload READS `matrix.values` to send to a donor; a readback WRITES into it — `gpuReadbackMatrixValues` refuses outright with *"no CPU master matrix '<name>' to write into"*. So a matrix must be resident before either runs, and the restream is a sequential read of the backing file (**~1.3 s for the full 4.23 GiB at the box's measured 3248 MiB/s**, against an upload that takes far longer on the wire).
+
+⚠ **Who blocks: whoever asked.** `ensure_resident()` is synchronous and returns only when the values are there — a caller that proceeds on a not-yet-restreamed matrix is the bug, so the API does not offer that shape.
+
+### Q2 — can a partial readback interleave with a free?
+
+⛔ **No, and it is a state machine rather than a convention.** `free()` is **refused** while a readback is in flight. A readback that ends without a **verified checksum** leaves the matrix `Torn`, and `checkpointable()` then refuses it, naming the reason in the code's own words: both halves are real trained weights, *"but a checkpoint written from them is a THIRD BRAIN."*
+
+⚠ **The proof is a checksum, not a byte count** — a byte count cannot detect reordering. ⭐ **An older coherent snapshot beats a newer incoherent one**, and CHECKROT keeps three.
+
+### Q3 — what happens when the LAST donor disconnects?
+
+**The walk stays at the current weights, and any donor that arrives runs from the last save before they all dropped.**
+
+⭐ **That makes it a residency rule, not a failure path.** `on_last_donor_lost()` deliberately does nothing but drop the count — no free, no wipe, no invalidation. **The weights are the brain; donors are interchangeable compute that borrow them.** ⛔ And a `free()` with **no donor attached is refused**, because a free is only safe when something can ask for it back — otherwise it trades resident weights for a restream nobody requested.
+
+⚠ **This does not contradict `requireGpuSubstrate`** (`cluster.js:349`): a proxied brain still *requires* a proxy to compute, so teaching stops. The weights simply survive it. The test `a_matrix_freed_while_donors_existed_stays_restreamable_after_they_all_drop` states the operator's rule as an assertion.
+
+### ⭐ The checksum is cross-checked against the JS arithmetic, and my own constant was the thing that was wrong
+
+`fnv1a64` is verified against the two-limb form `gpu.js` uses (`hashHi`/`hashLo` seeded `0xcbf29ce4`/`0x84222325`, because JS has no u64) — *"the same function"* **asserted, not assumed**.
+
+⚠ **And the known-vector test failed on the first run because I hand-typed `foobar`'s hash wrong.** The function returned the correct `0x85944171f73967e8`; my assertion carried a mistyped constant. ⭐ **I verified against an independent BigInt computation before correcting it, rather than pasting whatever the code produced** — the latter makes a test agree with any implementation, including a broken one. ⚠ Third assertion-fault of this session, all the same class: the harness measuring itself.
+
+---
+
 ## 2026-09-05 — `B2 v1` — `unity-weights`: THE DTYPE BUG MADE UNREPRESENTABLE, AND THE FORMAT PROVEN AGAINST THE OTHER IMPLEMENTATION
 
 Gee (verbatim): *"get to it"*
