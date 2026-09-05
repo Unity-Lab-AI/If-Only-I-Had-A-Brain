@@ -43,6 +43,54 @@ Sponge (verbatim): *"**A3. Give the fields rsync a wedge watchdog.** The LFS pul
 
 His CORRECTION 1 says `write_bytes == 0` is not a wedge signal. **The LFS stall watchdog fires on exactly that reading.** The evidence is genuinely mixed — the guard also requires `read_bytes` climbing, and the 2026-09-05 runaway's 212 GB *was* measured off that same counter, so accounting clearly works on this path. ⭐ **The discriminator for the next press: if a `WEDGED` line fires while the fields directory is still GROWING, the signal is wrong and that guard should move to destination growth too.** Until that is observed, changing a guard that has caught a real outage would be trading a known-good for a theory. Filed, not fixed.
 
+## 2026-09-05 — `B2 v1` — `unity-weights`: THE DTYPE BUG MADE UNREPRESENTABLE, AND THE FORMAT PROVEN AGAINST THE OTHER IMPLEMENTATION
+
+Gee (verbatim): *"get to it"*
+
+`crates/unity-weights` — **20 tests + a doc-test**, and the whole workspace green at **46 tests across four crates**.
+
+### ⭐ The constant is derived, so the estimator and the allocator cannot drift
+
+`pub type Weight = f32` and `BYTES_PER_NNZ = size_of::<Weight>() + size_of::<u32>()`, exactly as §6.1 asks. **The JS bug is unrepresentable here:** the estimator said `8` while the allocator took `12`, and correcting it needed **twelve** correct edits plus a harness reading back `values.constructor.name` per code path. One `pub type` has one home; a stray `Vec<f64>` is a compile error rather than a matrix that quietly disagrees with its siblings.
+
+### ⭐ The f64 accumulator is explicit AND tested to matter
+
+§6.1 warns that the accumulator was free and invisible in JS (`let sum = 0` is a double) and **must be written in Rust**, where `let mut sum: f32` would look tidier and be a real regression. The test sums 4,096 terms and asserts the f32 version **loses** the tail — so it proves something instead of passing vacuously.
+
+### ⭐⭐ The precision probe corroborates independently
+
+Ported from `tools/weight-precision-probe.mjs`. Measured at the real fanout-300 geometry, 6,000,000 nnz:
+
+| | this port (Rust) | Sponge's probe (JS) |
+|---|---|---|
+| relative RMS error | **2.661e-8** | 2.7e-8 |
+| SNR | **151.5 dB** | 151.4 dB |
+| threshold flips | **0 / 20,000** | 0 / 20,000 |
+
+⭐ **Different language, different RNG, same numbers — that is corroboration, not a re-run.** ⚠ And the original **cannot run anywhere but its author's machine**: its first line is an absolute path into `/run/media/sponge/External/…`. The port makes the claim reproducible by anyone, which is the point of having it. ⛔ **Its self-recorded trap is preserved:** the values are drawn at f64 and a copy rounded **DOWN**, never widened from f32 — widening measures exactly zero *by construction*, which is a tautology rather than a result.
+
+### ⭐⭐ The `UBWT` format is proven byte-compatible against the SHIPPED JS reader — 11/11
+
+A Rust-written checkpoint was read by `_loadBinaryWeights`, **extracted from `server/brain-server.js` by brace-matched line range and executed**. Bit-exact on every axis, chosen to be awkward on purpose: both sections · a name whose length is **not** a multiple of 4 (padding) · an **EMPTY row** in `rowPtr` · values read back as `Float32Array` · `saveVersion` preserved.
+
+⛔ **A Rust round-trip could not have tested this. A reader and a writer that share a bug agree perfectly.** §4 lists this among *"the contracts that must not break"*, and the only check with teeth is the other implementation reading the file.
+
+✅ **v1 (f64) files are read and narrowed at the boundary**, so nothing downstream ever holds a mixed-width matrix — the defect the JS apply path had to be taught to avoid, because it assigned `m.values` directly and never went through a constructor. An unknown version is **refused, never guessed**: reading at the wrong width misaligns every later section **without** raising a parse error.
+
+⭐ **And the write width comes from the type.** The JS writer's hardcoded `nnz * 8` against an f32 array is what threw, aborted the save, fell back to the previous checkpoint — and **let her train for two hours while persisting nothing, looking healthy the whole time.**
+
+### ✅ mmap store built — the win JS structurally could not have
+
+`memmap2`. §6.2 records mmap being investigated and **rejected** for JS, not because it was wrong but because Node needs a native addon built by an unattended `npm install` on a shell-less box — *"a new failure mode on the exact path the operator cannot debug."*
+
+⚠ **"Get it off the heap" was never the prize — it was already true.** Measured: a 400 MiB `Float32Array` puts 381 MiB in `external`/`arrayBuffers` and ~0 in `heapUsed`; GC never moved those bytes. **Only evictability was ever actually on offer**, which is exactly what a file mapping buys.
+
+⛔ **B1's own-cgroup launch is a PRECONDITION, not a nicety:** once these pages are file-backed, an unbounded rsync in the same cgroup would evict her weights through page-cache pressure alone — the same starvation with a new mechanism.
+
+⚠ **NOT solved, and stated rather than implied:** §6.2's three open questions — what re-materialises a freed matrix and who blocks while it happens; whether a partial readback can interleave with a free (`refreshCheckpointFromDonor` warns a partial transfer leaves values *"a mix of old-CPU and new-GPU rows"*, so freeing mid-readback must be impossible); and what happens when the **last** donor disconnects. **This crate provides the mapping. The lifecycle policy belongs with whoever owns donor state — §5.2 says `unity-weights` must not know what a donor is.**
+
+---
+
 ## 2026-09-05 — `B1 v1` — `unity-deploy` EXISTS, ORCHESTRATES, AND DELIBERATELY DOES NOT YET REIMPLEMENT THE DEPLOY
 
 Gee (verbatim): *"we are doing it all"*

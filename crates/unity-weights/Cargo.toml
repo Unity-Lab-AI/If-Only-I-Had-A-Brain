@@ -1,0 +1,19 @@
+[package]
+name = "unity-weights"
+version = "0.1.0"
+edition = "2021"
+description = "CSR weight storage for the Unity brain — f32 values, f64 accumulation, UBWT checkpoint I/O, and an mmap-backed store. Migration phase B2."
+license = "MIT"
+
+# ⛔ `memmap2` IS THE WHOLE REASON THIS PHASE IS IN RUST. `docs/MEMORY-MAP.md`
+# records mmap being investigated and REJECTED for the JS coordinator — not
+# because it was the wrong idea, but because Node has no native mmap and adding
+# a build dependency to an unattended `npm install` on a shell-less box is a new
+# failure mode on the exact path the operator cannot debug. In Rust it is a
+# regular dependency compiled ahead of time.
+[dependencies]
+memmap2 = "0.9"
+
+# ⚠ NO `rand`. The precision probe is a test asserting a FLOOR, so it must be
+# deterministic — a probabilistic test that fails once a month teaches people to
+# re-run it rather than read it. The generator is a fixed-seed xorshift below.
