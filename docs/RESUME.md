@@ -1,6 +1,40 @@
 # RESUME — Session Pickup Brief
 
-> ## ⛔⛔ 2026-09-05 THE RESTART BUTTONS NEVER WORKED, AND THE PANEL SAID "ACCEPTED" (LATEST — PICK UP HERE)
+> ## ✅✅ 2026-09-05 DEFINITIONS NO LONGER NEED THE NETWORK — THE WALK IS UNBLOCKED (LATEST — PICK UP HERE)
+>
+> ### ⛔ WHAT WAS WRONG
+> `api.dictionaryapi.dev` returned **`000` — no response at all — on every word, all day.** The walk sat **17.5 h on `ela/kindergarten`** with `passedCellsTotal 0`, `totalWords 0`, `vocabPermMiss 67`. She could not bind a definition, so vocabulary never landed and the gate could never clear. ⚠ **`wiki/modules/curriculum.md` has warned for months that this lane had one source and no SLA.** Today it cost the whole day.
+>
+> ### ✅ THE FIX — `server/offline-dictionary.js`, and NOTHING was installed
+> WordNet's own index/data files, read directly, answering **before** the network.
+> ```
+> K vocabulary answered   2,137 / 2,221 = 96.2%
+> senses available        13,139   (avg 6.1 per word)
+> whole vocabulary in     57 ms    in-process, no network
+> lemmas loaded           155,467
+> ```
+> ⚠ **`wordnet-db` was ALREADY in `server/package.json`, already on disk, already read by `drawable-taxonomy.js`.** Its payload is plain files. **No dependency was added** — I said that badly the first time and he was right to push back.
+>
+> ⚠ **A 56 MB `wordset-dictionary` download was evaluated and REJECTED on the numbers** — 93.7% and 12,468 senses for 56 MB and a network fetch, against 96.2% and 13,139 from a file already there. **All 26 shards were downloaded and measured, not judged on appearance.**
+>
+> ### ⭐ IT IS A PEER SOURCE, NOT A FALLBACK — and it goes FIRST
+> The banned *"last-resort single-def"* arm taught **one sense per word**. This returns **multi-sense entries with part of speech**, averaging **6.1**, in the same shape the API path builds. **Ordering is the actual fix: ~96% of lookups never touch the wire**, so the `FC.11` 429 death-spiral is now *unreachable* for the common case rather than merely bounded.
+>
+> ### ⛔ ONE TRAP CAUGHT BEFORE IT SHIPPED
+> A compound-split recovery matched the corpus typo **`suprise` → `sup` + `rise`** and would have bound her **broth plus ascend**, counted as a success. **Only joined compounds WordNet itself holds (`living_room`) are accepted.** Costs nine recoveries; worth every one. A harness case pins it.
+>
+> ### ⚠ I OVERSTATED THE REMAINDER AND THE MEASUREMENT CORRECTED ME
+> I claimed the misses were *"almost all function words the grammar lane already teaches."* **Of 84 misses, only NINE are in `GRAMMAR_STRUCTURAL_WORDS`. 75 are taught by nothing today** — pronouns, prepositions, auxiliaries, subordinators, irregular inflections. ⛔ **`GRAMMAR_SLOT_PAIRS` has no preposition or pronoun slot at all**, so adding one to `GRAMMAR_FUNCTION_SLOTS` would change nothing. ⛔ **And this `wordnet-db` build ships no `.exc` files**, so `went → go` and `children → child` would have to be **guessed** — the same error class just refused. **Filed open, enumerated, not bodged.**
+>
+> **25/25 against the real `definition-service` with `globalThis.fetch` throwing on every call** — today's live condition, not a mock of the happy path. **Decisive case: all seven words answered, multi-sense, ZERO network calls.**
+>
+> ### ⏳ NEXT
+> ⛔ **This is SERVER code — it needs a restart to take effect.** The press buttons were fixed in the same session and land without one (`deploy.yml` rsyncs the frontend), **so the buttons will work before the dictionary does.**
+> **Order:** press `update (keep training)` → she restarts onto code where definitions come off disk → the walk should finally start passing cells. ⭐ **`DEFHEAL.4`'s read closes at the same time:** watch for `⏳ N DEFERRED` instead of `⛔ N with NO DICTIONARY ENTRY`, and `passedCellsTotal` leaving 0.
+>
+> ---
+>
+> ## ⛔⛔ 2026-09-05 THE RESTART BUTTONS NEVER WORKED, AND THE PANEL SAID "ACCEPTED"
 >
 > ### ⛔ THE PRESS DID NOTHING — measured three ways before touching anything
 > ```
