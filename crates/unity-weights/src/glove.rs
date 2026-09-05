@@ -72,7 +72,29 @@ pub struct Header {
 ///
 /// Returns the header written. ⚠ Streams the source, exactly as the JS loader
 /// learned to — the file is larger than any sensible single allocation.
+/// ⛔⛔ THE CONSUMER WANTS **L2-NORMALISED** VECTORS, AND THAT IS NOT OPTIONAL.
+///
+/// `js/brain/embeddings.js` normalises every vector inline as it parses:
+/// `norm = sqrt(Σ v²)`, then `v[i] /= norm`. Every cosine downstream — the
+/// dictionary oracle, schema retrieval, the semantic top-K — assumes unit
+/// vectors.
+///
+/// ⚠ **A converter that stored the raw table would be "faithful to the source"
+/// and would silently change her semantics** — every similarity score would
+/// scale by an arbitrary per-word magnitude. Faithfulness to the FILE is not
+/// the goal; faithfulness to what the program consumed is.
+///
+/// ⚠ Words are lowercased for the same reason: the JS keys the map on
+/// `parts[0].toLowerCase()`.
+pub const NORMALIZE_DEFAULT: bool = true;
+
 pub fn convert(text_path: &Path, out_path: &Path) -> std::io::Result<Header> {
+    convert_opts(text_path, out_path, NORMALIZE_DEFAULT)
+}
+
+/// `normalize` = L2-normalise each row and lowercase its word, matching what
+/// `embeddings.js` does at parse time.
+pub fn convert_opts(text_path: &Path, out_path: &Path, normalize: bool) -> std::io::Result<Header> {
     let src_bytes = std::fs::metadata(text_path)?.len();
     let f = std::fs::File::open(text_path)?;
     let rdr = BufReader::with_capacity(1 << 20, f);
@@ -113,8 +135,19 @@ pub fn convert(text_path: &Path, out_path: &Path) -> std::io::Result<Header> {
             return Err(std::io::Error::new(std::io::ErrorKind::InvalidData,
                 format!("line {lines}: {got} dimensions, expected {dim} — a ragged row would shift every later vector")));
         }
+        if normalize {
+            // Exactly the JS arithmetic: sum of squares, sqrt, divide — with the
+            // same `|| 1` guard so an all-zero row does not become NaN.
+            let row = &mut vecs[before..];
+            let mut n = 0.0f32;
+            for v in row.iter() { n += v * v; }
+            let n = n.sqrt();
+            let n = if n == 0.0 { 1.0 } else { n };
+            for v in row.iter_mut() { *v /= n; }
+        }
         offsets.push(vocab.len() as u32);
-        vocab.extend_from_slice(word.as_bytes());
+        let key = if normalize { word.to_lowercase() } else { word.to_string() };
+        vocab.extend_from_slice(key.as_bytes());
         vocab.push(0);
     }
 
@@ -229,6 +262,13 @@ impl GloveMap {
 /// ⚠ Expensive by design — this is the check you run once after a conversion,
 /// not on every boot. `matches_source` is the boot-time one.
 pub fn verify_against_text(bin: &GloveMap, text_path: &Path) -> std::io::Result<Result<usize, String>> {
+    verify_against_text_opts(bin, text_path, NORMALIZE_DEFAULT)
+}
+
+/// ⚠ `normalize` must match what the binary was BUILT with, or every row
+/// "differs" and the check reports a corruption that is really a mismatch of
+/// expectations.
+pub fn verify_against_text_opts(bin: &GloveMap, text_path: &Path, normalize: bool) -> std::io::Result<Result<usize, String>> {
     let f = std::fs::File::open(text_path)?;
     let mut checked = 0usize;
     for line in BufReader::with_capacity(1 << 20, f).lines() {
@@ -237,8 +277,17 @@ pub fn verify_against_text(bin: &GloveMap, text_path: &Path) -> std::io::Result<
         if line.is_empty() { continue; }
         let mut it = line.split_whitespace();
         let Some(word) = it.next() else { continue };
-        let want: Vec<f32> = it.filter_map(|t| t.parse::<f32>().ok()).collect();
+        let mut want: Vec<f32> = it.filter_map(|t| t.parse::<f32>().ok()).collect();
         if want.is_empty() { continue; }
+        if normalize {
+            let mut n = 0.0f32;
+            for v in want.iter() { n += v * v; }
+            let n = n.sqrt();
+            let n = if n == 0.0 { 1.0 } else { n };
+            for v in want.iter_mut() { *v /= n; }
+        }
+        let word = if normalize { word.to_lowercase() } else { word.to_string() };
+        let word = word.as_str();
         match bin.get(word) {
             None => return Ok(Err(format!("'{word}' is in the text table and missing from the binary"))),
             Some(got) => {
@@ -325,11 +374,26 @@ mod tests {
         convert(&txt, &bin).unwrap();
         let g = GloveMap::open(&bin).unwrap();
 
+        // ⚠ Vectors are stored L2-NORMALISED, matching what embeddings.js does
+        // at parse time — so the assertion is on unit length, not on the raw
+        // source values. A test asserting the raw numbers would be asserting the
+        // FILE; what matters is what the program consumes.
         let a = g.get("alpha").unwrap();
         assert_eq!(a.len(), 8);
-        assert_eq!(a[0], -0.5, "first value of the first row");
+        let norm: f32 = a.iter().map(|v| v * v).sum::<f32>().sqrt();
+        assert!((norm - 1.0).abs() < 1e-5, "rows must be unit length, got {norm}");
+
+        // The DIRECTION must still be the source's — normalisation scales, it
+        // does not reorder.
+        let raw: Vec<f32> = (0..8).map(|k| k as f32 * 0.001 - 0.5).collect();
+        let rn: f32 = raw.iter().map(|v| v * v).sum::<f32>().sqrt();
+        for (i, v) in a.iter().enumerate() {
+            assert!((v - raw[i] / rn).abs() < 1e-6, "dim {i}: {v} vs {}", raw[i] / rn);
+        }
+
         let b = g.get("beta").unwrap();
-        assert_eq!(b[0], (8f32) * 0.001 - 0.5, "row 1 starts at index dim");
+        let bn: f32 = b.iter().map(|v| v * v).sum::<f32>().sqrt();
+        assert!((bn - 1.0).abs() < 1e-5, "row 1 must be unit length too");
         assert!(g.get("not-a-word").is_none(), "a miss must be None, never a zero vector");
     }
 
