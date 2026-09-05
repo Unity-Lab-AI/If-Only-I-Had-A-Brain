@@ -38,6 +38,35 @@ cannot be served.**
 
 ---
 
+## ⚠ THE WEBSOCKET ERROR YOU WILL SEE, AND WHY IT IS NOT A SEPARATE BUG
+
+```
+dashboard.html:1378  WebSocket connection to
+'wss://…/admin/ws' failed: WebSocket opening handshake timed out
+```
+
+**Same wedge, different surface.** The brain's own log names it in as many
+words: `[EventLoop] BLOCKED …ms — /ws handshakes + donor frames stalled this
+long`. A blocked loop never completes the handshake, so the socket times out.
+
+⛔ **Consequence: every live panel on the dashboard goes blank or stale**, because
+`updateDashboard` is driven off that socket (`connect()` at `dashboard.html:1376`).
+**The page looking dead is not evidence about which buttons work.**
+
+⭐⭐ **THE BRAIN POWER PANEL DOES NOT USE THE WEBSOCKET AND KEEPS WORKING.** It
+polls `fetch(ctlUrl('status'))` on its own HTTP timer — `poll()` at
+`dashboard.html:4381`, rescheduled every 3 s / 15 s at `:4535`. **Verified by
+reading both paths.** So when the socket is dead and the page looks lifeless,
+**that panel is still live and still pressable.**
+
+⚠ **If the panel is missing entirely, that is AUTH, not the brain.** It only
+renders once `/ctl/status` has answered at least once, and `/ctl/` sits behind
+`auth_basic "Unity admin"`. Open
+`https://if-only-i-had-a-brain.git.unityailab.com/ctl/status` directly, enter the
+admin login, then reload the dashboard.
+
+---
+
 ## ⛔ PROBLEM 1 — the dashboard's legacy row: 8 buttons, all three defects
 
 `html/dashboard.html`. Every one of these posts to `adminApi(path)` →

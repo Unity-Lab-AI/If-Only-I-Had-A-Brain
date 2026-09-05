@@ -4092,6 +4092,13 @@ VM63:59
 
 - [x] `BUTTONAUDIT.1` — ✅ **WRITTEN: `docs/BUTTON-AUDIT.md`, a self-contained hand-off.** Every claim read out of source or measured against the live box, with line numbers against `main` @ `1ec2459d`. Covers all three control sets, the condition they exist for, and what to press right now.
 
+- [x] `BUTTONAUDIT.5` — ✅ **THE WEBSOCKET FAILURE IS THE SAME WEDGE, NOT A SECOND BUG — AND THE PANEL THAT SURVIVES IT IS THE ONE TO USE.** Gee (verbatim): *"dashboard.html:1378 WebSocket connection to 'wss://…/admin/ws' failed: WebSocket opening handshake timed out --- Dashboard is showing this!"*
+  - ⭐ **The brain's own log names it in as many words:** `[EventLoop] BLOCKED …ms — /ws handshakes + donor frames stalled this long`. A blocked loop never completes the handshake.
+  - ⛔ **Consequence: every live panel goes blank or stale**, because `updateDashboard` is driven off that socket (`connect()` at `dashboard.html:1376`, `new WebSocket` at `:1378`). ⚠ **So "the page looks dead" is not evidence about which buttons work** — which is exactly the confusion this whole section exists to remove.
+  - ⭐⭐ **VERIFIED BY READING BOTH PATHS: the Brain Power panel does NOT use the WebSocket.** It polls `fetch(ctlUrl('status'))` on its own HTTP timer — `poll()` at `:4381`, rescheduled 3 s / 15 s at `:4535`. **When the socket is dead and the page looks lifeless, that panel is still live and still pressable.**
+  - ⚠ **If the panel is MISSING rather than idle, that is AUTH, not the brain** — it renders only once `/ctl/status` has answered once, and `/ctl/` is behind `auth_basic`. Open `/ctl/status` directly, log in, reload.
+  - **All four new line references re-verified mechanically** before shipping, as with the original ten.
+
 - [ ] `BUTTONAUDIT.2` — ⛔⛔ **THE DASHBOARD'S LEGACY ROW: EIGHT BUTTONS, ALL THREE DEFECTS, ALL STILL LIVE.** `btn-graceful-stop` (4547) · `btn-restart` (4624) · `btn-reset` (4655) · `btn-update` (4688) · `btn-update-savestart` (4724) · `btn-savererun` (4758) · `btn-save-checkpoint` (4838) · `btn-reteach` (4858).
   - ⛔ **Wrong lane** — all post to `adminApi()` → `/admin/*`, the BRAIN's routes, which a blocked loop cannot serve.
   - ⛔ **No timeout** — zero `AbortController`/`signal` in any of the eight.
