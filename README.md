@@ -586,6 +586,7 @@ The mystery module `Ψ = √(1/n) · N³ · [α·Id + β·Ego + γ·Left + δ·R
 | **[WebGPU Setup](html/webgpu-prep.html)** | Browser-by-browser pre-flight enablement instructions (required before first connect) |
 | **[Equation Reference](docs/EQUATIONS.md)** | Source-accurate equation cheatsheet |
 | **[Architecture](docs/ARCHITECTURE.md)** | Canonical system architecture + directory structure |
+| **[Memory Map](docs/MEMORY-MAP.md)** | Where the coordinator's RAM actually goes — which structures are resident, which live on donors, the sizing chain, and the traps that made two plausible models wrong. **Read before changing any sizing constant, weight dtype, or deploy spawn.** |
 | **[Roadmap](docs/ROADMAP.md)** | Milestones, phases, current status |
 | **[Skill Tree](docs/SKILL_TREE.md)** | Capabilities matrix by domain and complexity |
 | **[Sensory Contract](docs/SENSORY.md)** | Peripheral interface, cognition vs. sensory boundary |
