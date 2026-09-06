@@ -209,4 +209,115 @@ class TeachLedger {
   }
 }
 
-module.exports = { TeachLedger, DB_FILE, TEXT_CAP, FLUSH_ROWS, FLUSH_MS };
+/**
+ * ⏱ THE RETENTION SERIES — because the console ring holds about four minutes.
+ *
+ * ⛔ THE PROBLEM IS NOT HYPOTHETICAL AND IT COST SOMETHING TODAY. The walk runs
+ * for weeks and the interesting evidence is usually hours old by the time anyone
+ * wants it, but the ring rotates in minutes: the boot line proving the glyph pass
+ * had run was already gone when it was looked for, and a wedge's own lane line
+ * was lost the same way. **Everything the dashboard shows is instantaneous, so a
+ * question about what happened an hour ago has no surface at all.**
+ *
+ * ⭐ The ledger beside this answers *"what did she TEACH"*. This answers *"what
+ * was the machine DOING"* — one sampled row of live counters, so the shape of a
+ * stall, a ramp or a queue draining is readable after the fact instead of only
+ * while it happens.
+ *
+ * ⚠ BOUNDED BY ROW COUNT, PRUNED ON WRITE. An append-only diagnostic that grows
+ * with uptime is one that eventually fills the disk on the box that also hosts
+ * the lab's git — the same shared-host reasoning as the memory reserve. At the
+ * default sample gap this keeps roughly a week and then discards oldest-first.
+ *
+ * ⚠ Fail-soft in the same way as the ledger: a box without the native module
+ * still teaches, and the failure is COUNTED rather than silent.
+ */
+const SERIES_MAX_ROWS = 20000;      // ~1 week at the default 30s gap
+const SERIES_GAP_MS = 30000;
+
+class TeachSeries {
+  constructor(ledger) {
+    this._ledger = ledger;          // shares the ledger's database file and handle
+    this._ready = undefined;
+    this._insert = null;
+    this._lastAt = 0;
+    this._written = 0;
+    this._dropped = 0;
+  }
+
+  _init() {
+    if (this._ready !== undefined) return this._ready;
+    const db = this._ledger && this._ledger.db();
+    if (!db) { this._ready = null; return null; }
+    try {
+      db.exec(`CREATE TABLE IF NOT EXISTS series (
+        n    INTEGER PRIMARY KEY AUTOINCREMENT,
+        at   INTEGER NOT NULL,
+        json TEXT NOT NULL
+      )`);
+      db.exec('CREATE INDEX IF NOT EXISTS series_at ON series (at)');
+      this._insert = db.prepare('INSERT INTO series (at, json) VALUES (?, ?)');
+      this._prune = db.prepare('DELETE FROM series WHERE n <= (SELECT MAX(n) FROM series) - ?');
+      this._ready = db;
+    } catch (e) {
+      this._ready = null;
+      console.warn('[TeachSeries] unavailable — nothing about this boot will be readable after it ends:', e?.message || e);
+    }
+    return this._ready;
+  }
+
+  /**
+   * Record one sample. Rate-limited internally, so a caller may invoke this as
+   * often as it likes — the heartbeat is the natural site and it fires every 10s
+   * against a 30s gap.
+   */
+  sample(obj, now = Date.now()) {
+    if (!obj) return false;
+    if (now - this._lastAt < SERIES_GAP_MS) return false;
+    const db = this._init();
+    if (!db) { this._dropped += 1; return false; }
+    try {
+      this._insert.run(now, JSON.stringify(obj));
+      this._lastAt = now;
+      this._written += 1;
+      // Prune on a cadence rather than every write — the delete is a scan and
+      // paying it 20,000 times to stay exactly at the cap buys nothing.
+      if (this._written % 200 === 0) { try { this._prune.run(SERIES_MAX_ROWS); } catch { /* nf */ } }
+      return true;
+    } catch { this._dropped += 1; return false; }
+  }
+
+  /** Newest-first window, for a reader asking what happened around some time. */
+  range({ since = 0, until = 0, limit = 500 } = {}) {
+    const db = this._init();
+    if (!db) return { available: false, rows: [], total: 0 };
+    try {
+      const lim = Math.max(1, Math.min(5000, limit | 0));
+      const u = until > 0 ? until : Date.now();
+      const rows = db.prepare('SELECT at, json FROM series WHERE at >= ? AND at <= ? ORDER BY at DESC LIMIT ?')
+        .all(since | 0, u, lim)
+        .map((r) => { try { return { at: r.at, ...JSON.parse(r.json) }; } catch { return { at: r.at }; } });
+      const total = db.prepare('SELECT COUNT(*) c FROM series WHERE at >= ? AND at <= ?').get(since | 0, u).c;
+      // ⚠ `total` beside `returned` for the same reason the ledger carries it:
+      // a window that shows part of something while reading as the whole is the
+      // defect this whole instrument family exists to end.
+      return { available: true, rows, returned: rows.length, total, more: total > rows.length };
+    } catch { return { available: false, rows: [], total: 0 }; }
+  }
+
+  stats() {
+    const db = this._init();
+    if (!db) return { available: false, written: this._written, dropped: this._dropped };
+    try {
+      const r = db.prepare('SELECT COUNT(*) c, MIN(at) a, MAX(at) b FROM series').get();
+      return {
+        available: true, rows: r.c, oldestAt: r.a || null, newestAt: r.b || null,
+        spanMs: (r.a && r.b) ? (r.b - r.a) : 0,
+        written: this._written, dropped: this._dropped,
+        capRows: SERIES_MAX_ROWS, gapMs: SERIES_GAP_MS,
+      };
+    } catch { return { available: false, written: this._written, dropped: this._dropped }; }
+  }
+}
+
+module.exports = { TeachLedger, TeachSeries, DB_FILE, TEXT_CAP, FLUSH_ROWS, FLUSH_MS, SERIES_MAX_ROWS, SERIES_GAP_MS };

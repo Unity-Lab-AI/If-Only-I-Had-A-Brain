@@ -4154,8 +4154,13 @@ class ServerBrain {
       // filesystem, and `teachBus` keeps a no-I/O contract. The browser simply
       // never sees this function and the guard there fails closed.
       if (!this._teachLedger) {
-        const { TeachLedger } = require('./teach-ledger.js');
+        const { TeachLedger, TeachSeries } = require('./teach-ledger.js');
         this._teachLedger = new TeachLedger();
+        // ⏱ RETENTION — the ledger says what she TAUGHT; this says what the
+        // machine was DOING, sampled, so an hours-old stall is still readable.
+        // Shares the ledger's database handle: one file, one WAL, one thing to
+        // clean up.
+        this._teachSeries = new TeachSeries(this._teachLedger);
       }
       this.cortexCluster.teachLedgerAppend = (row) => this._teachLedger.append(row);
       // ⭐⭐ THE FIGURE QUEUE BRIDGE — every illustration gets seen, off the cell
@@ -10095,7 +10100,25 @@ const httpServer = http.createServer((req, res) => {
         return;
       }
       let body;
-      if (u.searchParams.get('stats')) body = led.stats();
+      // ⏱ RETENTION — `?series=1` reads the sampled machine-state history, and
+      // `?series=1&stats=1` reports how far back it actually reaches. Served on
+      // the ledger's existing route on purpose: the public vhost forwards only a
+      // fixed set of locations, so a NEW path would answer 200 with the SPA's
+      // HTML and die at `r.json()` — the failure shape this file has a standing
+      // warning about, and the reason ten of this page's routes once silently
+      // died. An existing forwarded route with a query parameter cannot.
+      if (u.searchParams.get('series')) {
+        const ser = this._teachSeries;
+        body = !ser
+          ? { available: false, reason: 'series not attached — the curriculum has not booted yet' }
+          : (u.searchParams.get('stats')
+            ? ser.stats()
+            : ser.range({
+              since: parseInt(u.searchParams.get('since') || '0', 10) || 0,
+              until: parseInt(u.searchParams.get('until') || '0', 10) || 0,
+              limit: parseInt(u.searchParams.get('limit') || '500', 10) || 500,
+            }));
+      } else if (u.searchParams.get('stats')) body = led.stats();
       else if (u.searchParams.get('cells')) body = led.cells();
       else {
         body = led.page({

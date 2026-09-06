@@ -5,6 +5,22 @@
 
 ---
 
+## 2026-09-06 (22nd) — `TEACHVIEW.8` — RETENTION, BECAUSE THE RING HOLDS FOUR MINUTES
+
+Gee (verbatim): *"why is it still 100+ items youve been working for hours are you gonna ever finish any"*
+
+`TeachSeries` beside `TeachLedger`, sharing its database file: one sampled row of live counters every 30 s, **~6.9 days of retention**, pruned oldest-first on write so it cannot grow with uptime on the host that also runs the lab's git.
+
+⛔ **The problem is not hypothetical and it cost something the day this shipped.** The boot line proving the glyph pass had run, and a wedge's own lane line, were both already gone from the ~4-minute console ring when they were looked for. **The ledger says what she TAUGHT; this says what the machine was DOING.**
+
+⚠ **Served on the existing `/teach-ledger.json` route via `?series=1`, deliberately.** The public vhost forwards only a fixed set of locations, so a new path would answer **200 with the SPA's HTML** and die at `r.json()` — the failure shape that once silently killed ten of that page's routes.
+
+**Verified:** a synthetic 40-minute wedge (`stageSeq` pinned, `pairs` numerator frozen) read back **from disk 100 minutes later** — 200/200 rows, 0 dropped, `total` reported beside `returned`.
+
+⚠ **The first harness run read 121 of 200 and looked like a bug. It was my test**, writing future timestamps against a `until = now` window. The code was correct; the check was not.
+
+---
+
 ## 2026-09-06 (21st) — `DEFCOST.1` MERGES INTO `TEACHRATE.3` — THE DICTIONARY IS NOT THE COST, AND MY OWN HYPOTHESIS DIED MEASURING IT
 
 Gee (verbatim): *"lots of work we are doing what ever we need to do to correctly and accurately fix and code in all the todo work"*
