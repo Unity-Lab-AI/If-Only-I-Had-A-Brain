@@ -946,8 +946,51 @@ else
     if { [ "$_stall_sec" != "0" ] || [ "$_write_cap" -gt 0 ]; } && [ -r /proc/self/io ]; then
       (
         _last_w=-1; _last_r=-1; _flat=0
+        _last_dsz=-1; _dflat=0
         while kill -0 $$ 2>/dev/null; do
           sleep 15
+          # ── A2b — DESTINATION GROWTH, THE CORROBORATING WITNESS ──────────────
+          #
+          # Sponge, verbatim, in A3: *"Do not use `write_bytes == 0` as the
+          # signal — a healthy rsync shows exactly that while its destination
+          # grows, because writes sit in page cache. I killed a working transfer
+          # on that reading. Use destination growth."*
+          #
+          # ⛔ HE WROTE THAT ABOUT THE RSYNC AND IT INDICTS THIS WATCHDOG TOO.
+          # This detector fires on `write_bytes` FROZEN while reads climb, which
+          # is the reading he says killed a live transfer. I filed that as a
+          # question for him instead of acting on it — but the ruling is already
+          # in the sentence above, and a guard that can kill a healthy pull does
+          # not get to wait for a second opinion.
+          #
+          # ⭐ THE FIX IS NOT TO DELETE THE DETECTOR — it caught a REAL outage on
+          # 2026-09-04 (2.07 TB read, zero written, 22 minutes, brain starved in
+          # the same cgroup). Deleting it would trade a false positive for a
+          # false negative on a pathology that has actually happened here.
+          # Instead the kill now needs TWO witnesses that fail in different ways:
+          # `write_bytes` frozen (page-cache-blind) AND the destination tree not
+          # growing (page-cache-IMMUNE, because `du` reads the filesystem, not
+          # the process's accounting). A healthy-but-cached transfer trips the
+          # first and clears the second, so it survives. A genuine wedge trips
+          # both.
+          #
+          # ⚠ IF `du` IS ABSENT THE SECOND WITNESS CANNOT TESTIFY, and the honest
+          # response is to NOT KILL on one signal Sponge has already shown to be
+          # unreliable. The wall clock stays the backstop. Silence beats a
+          # confident wrong verdict.
+          _dsz=-1
+          if command -v du >/dev/null 2>&1 && [ -d "$FTMP/bw" ]; then
+            _dsz="$( { du -sb "$FTMP/bw" 2>/dev/null || true; } | cut -f1 )"
+            case "$_dsz" in (''|*[!0-9]*) _dsz=-1 ;; esac
+          fi
+          if [ "$_dsz" -ge 0 ] 2>/dev/null; then
+            if [ "$_dsz" = "$_last_dsz" ]; then _dflat=$((_dflat + 15)); else _dflat=0; fi
+            _last_dsz="$_dsz"
+          else
+            # No measurement — never let an unmeasured witness look like a
+            # corroborating one.
+            _dflat=0
+          fi
           # ⛔ PICK THE `git-lfs pull`, NOT A SHELL AND NOT ITS FILTER SIBLING.
           # TWO wrong versions of this line shipped, BOTH observed on the box:
           #  1. `pgrep -f 'git-lfs pull' | head -1` also matches the wrapper shell
@@ -986,8 +1029,11 @@ else
             _flat=0
           fi
           _last_w="$_w"; _last_r="$_r"
-          if [ "$_stall_sec" != "0" ] && [ "$_flat" -ge "$_stall_sec" ]; then
-            log "WARN — \`git lfs pull\` is WEDGED, not slow: ${_flat}s with write_bytes FROZEN at ${_w} while read_bytes kept climbing (now ${_r}). That is the 2026-09-04 signature — it burned 2 TB of reads and wrote nothing while starving the brain's event loop in the same cgroup. Killing it now instead of waiting out the wall clock. Fields stay as POINTERS (non-fatal); THE BOOKS ARE UNAFFECTED."
+          # ⛔ BOTH WITNESSES, OR NO KILL. `_flat` is the page-cache-blind one and
+          # `_dflat` is the page-cache-immune one; requiring both is what stops
+          # this guard from repeating the mistake that killed a healthy transfer.
+          if [ "$_stall_sec" != "0" ] && [ "$_flat" -ge "$_stall_sec" ] && [ "$_dflat" -ge "$_stall_sec" ]; then
+            log "WARN — \`git lfs pull\` is WEDGED, not slow: ${_flat}s with write_bytes FROZEN at ${_w} while read_bytes kept climbing (now ${_r}), AND ${_dflat}s with the destination tree ${FTMP}/bw frozen at $(( _last_dsz / 1048576 )) MiB. ⭐ TWO INDEPENDENT WITNESSES, and that is the point: write_bytes alone is page-cache-blind and reads zero on a healthy transfer — killing on it alone is a mistake already made once here — while \`du\` reads the filesystem and cannot be fooled the same way. This is the 2026-09-04 signature: 2 TB of reads, nothing written, brain starved in the same cgroup. Killing it now instead of waiting out the wall clock. Fields stay as POINTERS (non-fatal); THE BOOKS ARE UNAFFECTED."
             # ⛔ KILL ONLY THE PULL, NEVER THE PRESS. `kill -TERM "$_lp"` targets
             # the git-lfs pid; a process-GROUP kill (or killing the `timeout`
             # wrapper) would take THIS SCRIPT down with it and abort the deploy —

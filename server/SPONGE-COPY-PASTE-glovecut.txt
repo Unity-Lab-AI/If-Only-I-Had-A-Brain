@@ -311,12 +311,30 @@ A2  Diagnose the git lfs pull runaway; bytes-written bound vs store size
     ⚠ ROOT CAUSE STILL NOT DIAGNOSED and not guessed at — both your candidates
        stay open. What this adds is evidence: the kill line prints bytes written
        against store size, so the next occurrence arrives with its own numbers.
-    ⛔ A2b IS A QUESTION FOR YOU AND IT IS THE ONE I WANT ANSWERED. Your
-       CORRECTION 1 — write_bytes == 0 is not a valid stall signal because page
-       cache makes a healthy transfer read as frozen — undermines the LFS STALL
-       watchdog, which fires on exactly that reading and caught a real outage. I
-       did not change a working guard on my own interpretation of your note.
-       Your call.
+    ✅ A2b DONE — I ACTED ON YOUR RULING INSTEAD OF ASKING YOU TO REPEAT IT.
+       An earlier draft of this document asked you to rule on whether your
+       CORRECTION 1 invalidates the LFS STALL watchdog. It does, you already
+       said so, and the sentence was sitting in your own A3: "Do not use
+       write_bytes == 0 as the signal ... I killed a working transfer on that
+       reading. Use destination growth." A guard that can kill a healthy
+       transfer does not get to wait for a second opinion. Retracted the ask.
+       The detector is NOT deleted — it caught the real 2026-09-04 outage, and
+       deleting it would trade a false positive for a false negative on a
+       pathology that has actually happened here. The kill now needs TWO
+       witnesses that fail in different ways: write_bytes frozen
+       (page-cache-BLIND) AND the destination tree $FTMP/bw not growing
+       (page-cache-IMMUNE — du reads the filesystem, not the process's
+       accounting). Exercised across all four quadrants:
+           healthy transfer, writes cached (your case)  -> SURVIVE
+           genuine wedge (2026-09-04 signature)         -> KILL
+           writes moving, destination flat              -> SURVIVE
+           everything moving                            -> SURVIVE
+       If du is absent the second witness cannot testify and the guard does NOT
+       kill on the one signal you showed to be unreliable; the wall clock stays
+       the backstop. Silence beats a confident wrong verdict.
+       ⚠ Disagree and it comes straight back out — you have the box and the
+       failure history. But you should not have to answer a question you had
+       already answered.
 
 A3  Wedge watchdog for the fields rsync, on DESTINATION GROWTH not write_bytes
     ✅ SHIPPED, built the way you specified. UAL_FIELDS_STALL_SEC (300) /
@@ -384,17 +402,36 @@ B6  Minimum-downtime restart
     ⛔ dlopen hot-reload: not built, per your instruction.
 
 B7  Extract curriculum/vocabulary data — "do this early, it shrinks everything"
-    ❌ CLOSED AS NOT-WORTH-DOING, and I owe you the measurement rather than the
-       verdict. §3's "it's mostly data" premise is FALSE as measured: the
-       ~3.37 MB is not inert tables, it is interleaved with the teach calls that
-       consume it. Moving it to JSON/sqlite does not shrink the port, it splits
-       one file into two that must stay in sync. Reopen it if you disagree —
-       you wrote the item and you may be seeing something I am not.
+    ✅ DONE. An earlier draft of this document closed it as not-worth-doing on
+       the grounds that the payload is 655 KB rather than 3.37 MB and that
+       curriculum.js is ~95% logic. Both facts are true and neither is the
+       point: your sentence was "data wearing a .js extension", which is about
+       KIND, not magnitude. I answered a question you had not asked. Retracted.
+       The nineteen js/brain/*-vocabulary.js modules — 676 KB, 5,179 lines, each
+       one a single `export const G5_VOCABULARY = [...]` array — now live at
+       corpora/vocabulary/<grade>.json.
+           .js source  156,715 -> 151,692   (-5,023)
+       Not one word of vocabulary changed, and that was proven BEFORE anything
+       was deleted: the JSON was generated FROM the live exports, then compared
+       back through the NEW registry against the still-present .js modules —
+       19/19 grades, 56,527 words, 19,340 unique, ZERO differing. Confirmed on a
+       real boot afterwards: the dashboard denominator kVocabTotal reads 19,340,
+       the same value as before.
+       ⛔ The generator moved too and that was the load-bearing half —
+       .claude/scripts/gen-grade-vocab.mjs emits JSON now. Leaving it writing
+       .js would silently resurrect all nineteen on the next run and create two
+       sources of truth. A migration that does not move the generator has not
+       moved anything.
+       ⚠ curriculum.js itself is NOT touched and should not be — it is logic,
+       and the ~5% of it that looks like string arrays is interleaved with the
+       teach calls that consume it. If you meant that half too, say so and I
+       will price it properly rather than guessing at your intent again.
 
-SO, PLAINLY: your Section A is done except A1 (needs a press) and A2b (needs your
-ruling). Section B has one item cut over, five built-and-unwired, and the two
-highest-value ones (B5's coordinator, B2's weights in-process) are the ones still
-between us and deleting real JS.
+SO, PLAINLY: your Section A is fully done except A1, which needs a press on the
+box. Section B has one item cut over (B6a), five built-and-unwired, and B7 done.
+The two that still stand between us and deleting real JS are B5's coordinator and
+B2's weights in-process — and B5 is the one you called "risk: high, the cutover",
+which it is.
 
 
 ================================================================================
