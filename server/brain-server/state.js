@@ -1550,20 +1550,45 @@ const SERVER_STATE_MIXIN = {
               return Number.isFinite(n) && n > 0 ? n : null;
             } catch { return null; }
           };
-          const cur = readNum('/sys/fs/cgroup/memory.current');
+          // ⛔⛔ `/sys/fs/cgroup/memory.current` IS THE ROOT CGROUP, AND THE ROOT
+          // CGROUP HAS NO SUCH FILE. The first cut of this read those paths
+          // directly, shipped, and returned `null` on a Linux box that plainly
+          // has cgroups — caught by the live read minutes after the press. In
+          // cgroup v2 the root has no `memory.current`/`memory.max` at all, so
+          // the reader looked like a clean "not applicable" while being simply
+          // pointed at the wrong directory. **A null that means "wrong path"
+          // and a null that means "no cgroup" are the same value**, which is
+          // exactly the ambiguity this instrument was built to remove.
+          //
+          // ⭐ `/proc/self/cgroup` is the authority and needs no guessing. On v2
+          // it is a single `0::/system.slice/unity-brain.service` line, and the
+          // real directory is that suffix under the mount point. This resolves
+          // correctly whatever the slice is named and whether or not a cgroup
+          // namespace is in play, instead of hardcoding a unit name the way the
+          // control process does.
+          const base = (() => {
+            try {
+              for (const line of fs.readFileSync('/proc/self/cgroup', 'utf8').split('\n')) {
+                const m = /^0::(.*)$/.exec(line.trim());          // cgroup v2
+                if (m) return `/sys/fs/cgroup${m[1] === '/' ? '' : m[1]}`;
+              }
+              return '/sys/fs/cgroup';
+            } catch { return '/sys/fs/cgroup'; }
+          })();
+          const cur = readNum(`${base}/memory.current`);
           if (cur === null) { this._cgMemCache = { at: now, v: null }; return null; }
-          const high = readNum('/sys/fs/cgroup/memory.high');
-          const max = readNum('/sys/fs/cgroup/memory.max');
+          const high = readNum(`${base}/memory.high`);
+          const max = readNum(`${base}/memory.max`);
           let some60 = null, full60 = null;
           try {
-            for (const line of fs.readFileSync('/sys/fs/cgroup/memory.pressure', 'utf8').split('\n')) {
+            for (const line of fs.readFileSync(`${base}/memory.pressure`, 'utf8').split('\n')) {
               const m = /^(some|full)\s+.*avg60=([0-9.]+)/.exec(line.trim());
               if (m) { if (m[1] === 'some') some60 = Number(m[2]); else full60 = Number(m[2]); }
             }
           } catch { /* PSI absent on some kernels — the counters below still answer */ }
           let evHigh = null;
           try {
-            const m = /^high\s+(\d+)/m.exec(fs.readFileSync('/sys/fs/cgroup/memory.events', 'utf8'));
+            const m = /^high\s+(\d+)/m.exec(fs.readFileSync(`${base}/memory.events`, 'utf8'));
             if (m) evHigh = Number(m[1]);
           } catch { /* events file absent — leave null rather than report zero */ }
           const MB = (b) => (b === null ? null : Math.round(b / 1048576));

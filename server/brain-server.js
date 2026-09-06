@@ -892,10 +892,25 @@ const BRAIN_VRAM_ALLOC = (function () {
           return (mb <= 0 || mb >= _hostRamMB) ? null : mb;
         } catch { return null; }
       };
+      // ⛔ THE ROOT CGROUP IS NOT THIS PROCESS'S CGROUP, and reading it was the
+      // first cut's bug — in v2 the root has no `memory.max` at all, so this
+      // returned null on a box that plainly has limits and the sizing silently
+      // fell back to host-only. `/proc/self/cgroup` names the real directory
+      // (`0::/system.slice/unity-brain.service` on v2) with no unit name to
+      // guess and no assumption about cgroup namespacing.
+      const _cgBase = (() => {
+        try {
+          for (const line of fs.readFileSync('/proc/self/cgroup', 'utf8').split('\n')) {
+            const m = /^0::(.*)$/.exec(line.trim());
+            if (m) return `/sys/fs/cgroup${m[1] === '/' ? '' : m[1]}`;
+          }
+          return '/sys/fs/cgroup';
+        } catch { return '/sys/fs/cgroup'; }
+      })();
       const found = [
-        readLimit('/sys/fs/cgroup/memory.high'),           // v2 — throttle point, the one that bit
-        readLimit('/sys/fs/cgroup/memory.max'),            // v2 — hard cap
-        readLimit('/sys/fs/cgroup/memory/memory.limit_in_bytes'),   // v1
+        readLimit(`${_cgBase}/memory.high`),               // v2 — throttle point, the one that bit
+        readLimit(`${_cgBase}/memory.max`),                // v2 — hard cap
+        readLimit('/sys/fs/cgroup/memory/memory.limit_in_bytes'),   // v1 — a fixed path by design
       ].filter((v) => v !== null);
       return found.length ? Math.min(...found) : null;
     })();
