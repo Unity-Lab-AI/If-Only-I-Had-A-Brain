@@ -56,6 +56,28 @@
 >
 > ⛔ **Same batch: `docs/HTML-ENTRY-POINTS.md` claims an EXACT 11-page inventory; `git ls-files '*.html'` returns 12.** `teachview.html` shipped 2026-09-01 and was never listed — and **the check that would have caught it is written at the top of that doc.** `legend.html` had it carded all along, so it was invisible only in the doc that inventories everything. Both counts corrected to 12 with the sets named.
 >
+> ## ✅ `DEFPOS.1` SHIPPED — AND IT NEEDS NO FRESH WALK
+>
+> `index.sense` ships in the `wordnet-db` payload already on disk and carries a per-sense `tag_cnt`. **`be`'s copula verb scores 10,742 against a noun scoring nothing.** Senses now return most-attested-first: `be` → *"have the quality of being"*, `look` → *"perceive with attention"*. Held as a **Buffer and binary-searched, never parsed** — the neuron count derives from free host RAM, so a 207k-entry Map would be paid for in neurons.
+>
+> ```
+>   multi-sense lemmas      26,930
+>     all tag_cnt 0         15,176  (56.4%)  <- cannot change; stable sort is a no-op
+>     carry evidence        11,754
+>     first sense CHANGED    2,292  (19.5% of those with evidence)
+>   cost                    21.6 us/word · ~1 s per K→PhD vocabulary · 7.0 MB resident
+> ```
+>
+> ⭐ **No fresh walk needed, checked not assumed:** `defIdx` is used for a display label and to defer diagnostics to the last iteration — nothing weights a sense by position. **The set she learns is unchanged; only the headline moves.**
+>
+> ⚠ Refused: a blanket "prefer verbs" (breaks the 70 the old order got right) and a minimum-margin threshold (`net` flips on 6 vs 4; every named threshold owes a derivation). ⛔ A missing `index.sense` would have disabled **every** offline definition — caught separately, warns, falls to POS order.
+>
+> ⚠ **My first impact measurement said 9.0% and was wrong** — it tie-sorted from file order while the real path ties from POS-block order. Real figure **8.5%**.
+>
+> ## ✅ `CODELEAK` — 18 files → 14, and two hits were mine
+>
+> Scanner at **1,773 lines across 14 files**; the *"verbatim Gee, no ticket"* category is now **0**. Four cleared whole (`mindspace/gpu.js`, `knob-registry.js`, `rep-compression.js`, `sparse-matrix.js`). ⛔ **Two of those were mine, added the same day** — the glyph work put its own ticket in a comment twice. **A sweep whose own commits re-seed what it sweeps never converges:** replace the ticket with the mechanism at *write* time. Remaining 14 are large and concentrated (`curriculum.js` 425, `brain-server.js` 307, `chat.js` 167).
+>
 > ## ⏭ NEXT
 >
 > - **On the next press, check `glyph shapes: 94/94`** in the first minute. Anything below 94 prints its own failure list. `DEPLOYCHECK.6`'s expected reading moved 26 → 42 → **94** in one day; both earlier numbers are left standing in the row with the reason.
