@@ -122,11 +122,45 @@ function humanStamp(ts) {
 // after the fact, by anyone debugging her, without SSH and without a live tail.
 // Bounded: 2,000 lines × ≤600 chars; the wrap never throws and never
 // alters what reaches stdout/journald.
+// ⛔⛔ AND A SECOND RING THAT A LOG FLOOD CANNOT EVICT (2026-09-06).
+//
+// ONE FIFO ring is not enough, and the reason is arithmetic rather than taste.
+// The ring holds 2,000 lines. Measured on the box mid-walk at ~23,000 teach
+// calls/minute, the window it covers is **EIGHT SECONDS**. Routine per-bucket
+// `DONE —` chatter evicts everything.
+//
+// ⭐ SO EVERY HIGH-SIGNAL LINE THIS CODEBASE CAREFULLY WRITES IS UNREADABLE BY
+// THE TIME ANYONE LOOKS, AND THAT COST REAL DIAGNOSES TODAY:
+//   · the `⛔ FATAL — GloVe … Boot STOPS here by design` block had rolled off
+//     before it could be read, and the brain ran 23 minutes looking healthy;
+//   · the `SPRR ack parse FAILED` check came back "0 hits" over a window that
+//     no longer reached the incident;
+//   · the newest CPU profile could not be retrieved at all — the 400-line pull
+//     spanned 8 seconds and contained neither a profile nor a single warning.
+// On a box with NO SHELL this ring is the only diagnostic surface there is. A
+// warning that scrolls away in eight seconds may as well not have been logged.
+//
+// ⚠ THE FIX IS A SECOND RING, NOT A BIGGER ONE. Raising RING_CAP buys a linear
+// multiple of eight seconds and costs memory proportional to the flood; it does
+// not change the fact that the loudest lines are the rarest and are evicted by
+// the quietest lines being the most numerous. Separating by SIGNAL is what makes
+// retention independent of volume.
+//
+// ⭐ ADMISSION RULE, DELIBERATELY NARROW SO IT CANNOT ITSELF BE FLOODED:
+// every `warn`/`error`, plus any line carrying `⛔` — this codebase uses that
+// glyph consistently and only for a hard finding, so it is a real signal and not
+// a heuristic guess. Nothing else is admitted, so a chatty `log` lane can never
+// push a warning out of it.
 (() => {
   const RING_CAP = 2000;
   const LINE_CAP = 600;
+  // 500 alerts at ~23k teach lines/min is DAYS of retention rather than seconds,
+  // because alerts are rare by construction — that asymmetry is the whole design.
+  const ALERT_CAP = 500;
   const ring = [];
+  const alerts = [];
   globalThis.__consoleRing = ring;
+  globalThis.__consoleAlerts = alerts;
   const wrap = (orig, level) => (...args) => {
     try {
       let line = '';
@@ -134,8 +168,13 @@ function humanStamp(ts) {
         line += (typeof a === 'string' ? a : (a && a.message) ? a.message : String(a)) + ' ';
         if (line.length > LINE_CAP) break;
       }
-      ring.push({ ts: Date.now(), level, line: line.slice(0, LINE_CAP) });
+      const entry = { ts: Date.now(), level, line: line.slice(0, LINE_CAP) };
+      ring.push(entry);
       if (ring.length > RING_CAP) ring.shift();
+      if (level !== 'log' || entry.line.indexOf('⛔') !== -1) {
+        alerts.push(entry);
+        if (alerts.length > ALERT_CAP) alerts.shift();
+      }
     } catch { /* the ring must never break logging */ }
     return orig.apply(console, args);
   };
@@ -9694,6 +9733,15 @@ const httpServer = http.createServer((req, res) => {
         // memory, just not addressable. Paging is now `before=<ts of the oldest
         // line you have>`, repeated, walking backwards to the ring's floor.
         const before = parseInt(qs.get('before') || '0', 10) || 0;
+        // ⚠ The alert ring honours the SAME since/before window as the verbatim
+        // tail, so a caller paging backwards gets the alerts from that window
+        // too rather than a fixed newest-N that ignores where they are looking.
+        const alertRing = globalThis.__consoleAlerts || [];
+        const alertsN = Math.min(200, Math.max(1, parseInt(qs.get('alerts') || '60', 10) || 60));
+        let alertsSel = alertRing;
+        if (since > 0) alertsSel = alertsSel.filter((e) => e.ts > since);
+        if (before > 0) alertsSel = alertsSel.filter((e) => e.ts < before);
+        alertsSel = alertsSel.slice(-alertsN);
         let sel = ring;
         if (since > 0) sel = sel.filter((e) => e.ts > since);
         if (before > 0) sel = sel.filter((e) => e.ts < before);
@@ -9710,6 +9758,18 @@ const httpServer = http.createServer((req, res) => {
           ringSize: ring.length,
           oldestTs: lines.length ? lines[0].ts : null,
           more: sel.length > lines.length,
+          // ⭐⭐ THE ALERT RING, SHIPPED ON EVERY CALL — the whole point is that
+          // it is reachable WITHOUT knowing when the incident happened. `lines`
+          // above is the verbatim tail and spans ~8 seconds under teach load;
+          // these are the `warn`/`error`/`⛔` lines, which are rare by
+          // construction and therefore cover hours or days in the same 500 slots.
+          // ⚠ `alertsSpanMs` is published so a reader can SEE the difference
+          // rather than assume it — the two windows differ by orders of
+          // magnitude and that fact is the reason this exists.
+          alerts: alertsSel.map((e) => ({ ...e, tsLabel: humanTime(e.ts) })),
+          alertsTotal: alertRing.length,
+          alertsSpanMs: alertRing.length > 1 ? (alertRing[alertRing.length - 1].ts - alertRing[0].ts) : 0,
+          linesSpanMs: lines.length > 1 ? (lines[lines.length - 1].ts - lines[0].ts) : 0,
         }));
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -9886,8 +9946,20 @@ const httpServer = http.createServer((req, res) => {
       const lines = (since > 0 ? ring.filter((e) => e.ts > since) : ring)
         .slice(-n)
         .map((e) => ({ ...e, tsLabel: humanTime(e.ts) }));
+      // ⭐ Same alert ring as the public tunnel — the loopback caller must not
+      // get a WORSE view than the one reachable from outside.
+      const alertRing = globalThis.__consoleAlerts || [];
+      const alerts = (since > 0 ? alertRing.filter((e) => e.ts > since) : alertRing)
+        .slice(-Math.min(200, n))
+        .map((e) => ({ ...e, tsLabel: humanTime(e.ts) }));
       res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
-      res.end(JSON.stringify({ now: Date.now(), nowLabel: humanStamp(), tz: process.env.TZ || 'system', count: lines.length, lines }));
+      res.end(JSON.stringify({
+        now: Date.now(), nowLabel: humanStamp(), tz: process.env.TZ || 'system',
+        count: lines.length, lines,
+        alerts, alertsTotal: alertRing.length,
+        alertsSpanMs: alertRing.length > 1 ? (alertRing[alertRing.length - 1].ts - alertRing[0].ts) : 0,
+        linesSpanMs: lines.length > 1 ? (lines[lines.length - 1].ts - lines[0].ts) : 0,
+      }));
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: err && err.message }));
