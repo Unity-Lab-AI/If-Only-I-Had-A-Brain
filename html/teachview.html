@@ -1333,6 +1333,68 @@ function eyeAgo(ts) {
 }
 
 let _tvEyeAt = 0;
+/* ⏱ TRAINING OVER TIME — the retention series, drawn.
+   ⛔ The markup for this panel shipped one commit before this renderer existed,
+   which made it a dead panel: present, titled, and permanently empty. That is
+   the same defect class this page keeps catching elsewhere, caught here on
+   myself. A panel with no producer must not exist. */
+function tvSpark(vals, w, h) {
+  if (!vals.length) return '';
+  let lo = Infinity, hi = -Infinity;
+  for (const v of vals) { if (v < lo) lo = v; if (v > hi) hi = v; }
+  const span = (hi - lo) || 1;
+  const pts = vals.map((v, i) => `${(i / Math.max(1, vals.length - 1)) * w},${h - ((v - lo) / span) * h}`).join(' ');
+  // ⚠ A FLAT LINE IS A REAL ANSWER and must not look like a rendering failure,
+  // so the min/max are printed beside it: flat-at-12000 and flat-at-0 are
+  // completely different facts and the shape alone cannot tell them apart.
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:${h}px;display:block">
+    <polyline points="${pts}" fill="none" stroke="var(--tv-good)" stroke-width="1.5" vector-effect="non-scaling-stroke"/>
+  </svg>`;
+}
+async function pollSeries() {
+  const el = $('tvSeries'); if (!el) return;
+  let d = null;
+  try {
+    const r = await fetch(LEDGER_URLS[0] + '?series=1&limit=300', { cache: 'no-store' });
+    if (r.ok) d = await r.json();
+  } catch (e) { /* fall through to the honest label below */ }
+  if (!d) { $('tvSeriesLbl').textContent = 'unreachable'; return; }
+  if (d.available === false) {
+    $('tvSeriesLbl').textContent = 'no series yet';
+    el.innerHTML = `<div style="color:var(--tv-dim)">${knobEsc(d.reason || 'the series has not been attached yet')}</div>`;
+    return;
+  }
+  const rows = (d.rows || []).slice().reverse();   // oldest -> newest for drawing
+  if (!rows.length) {
+    $('tvSeriesLbl').textContent = '0 samples';
+    el.innerHTML = '<div style="color:var(--tv-dim)">nothing sampled yet — the first row lands within 30s of a cell opening.</div>';
+    return;
+  }
+  const spanMin = Math.round((rows[rows.length - 1].at - rows[0].at) / 60000);
+  $('tvSeriesLbl').textContent = `${d.returned} of ${d.total} samples · ${spanMin} min`;
+  const SERIES = [
+    ['pairs taught', 'pairs', 'the NUMERATOR. Flat = teaching has stopped, whatever any rate says.'],
+    ['hebbian calls', 'hebbianCalls', 'frozen here is the wedge signature.'],
+    ['stage sequence', 'stageSeq', 'frozen = the stage tag is STALE and the blocker is unmarked code.'],
+    ['definition queue', 'defQueueDepth', 'the pre-phase bootstrap draining.'],
+    ['sem→sem write ms', 'defSemSemMs', 'the once-per-definition intra write, cumulative.'],
+    ['heap MB', 'heapMb', 'V8 heap only — off-heap buffers are not in this line.'],
+  ];
+  el.innerHTML = SERIES.map(([label, key, tip]) => {
+    const vals = rows.map((r) => Number(r[key])).filter((v) => Number.isFinite(v));
+    if (!vals.length) return '';
+    const lo = Math.min(...vals), hi = Math.max(...vals);
+    const flat = hi === lo;
+    return `<div style="border:1px solid var(--tv-line);border-radius:6px;padding:7px">
+      <div class="tv-tip" data-tip="${knobEsc(tip)}" style="font-size:10px;letter-spacing:.1em;color:var(--tv-dim)">${knobEsc(label.toUpperCase())}</div>
+      ${tvSpark(vals, 200, 34)}
+      <div style="font-family:var(--tv-font);font-size:11px;margin-top:3px;color:${flat ? 'var(--tv-warn)' : 'var(--tv-good)'}">
+        ${flat ? 'FLAT at ' + lo.toLocaleString() : lo.toLocaleString() + ' → ' + hi.toLocaleString()}
+      </div>
+    </div>`;
+  }).join('');
+}
+
 async function pollEye() {
   const d = await grab(EYE_URLS);
   if (!d) { $('tvEyeLbl').textContent = 'unreachable'; return; }
@@ -3198,13 +3260,14 @@ function renderInstruments(st, tv) {
   catch (e) { /* same rule */ }
 }
 
-poll(); pollEye(); loadLedgerCells(); loadWeightsList();
+poll(); pollEye(); pollSeries(); loadLedgerCells(); loadWeightsList();
 /* Slow on purpose: a weights file changes on a save, not on a tick, and the
    listing stats several multi-gigabyte files. 30s is far more often than a save
    happens and costs nothing. */
 setInterval(loadWeightsList, 30000);
 setInterval(poll, 2000);
 setInterval(pollEye, 5000);
+setInterval(pollSeries, 30000);
 /* Slow on purpose: the cell list is a GROUP BY over the whole ledger, and this
    pane is read on demand rather than watched. */
 setInterval(loadLedgerCells, 30000);
