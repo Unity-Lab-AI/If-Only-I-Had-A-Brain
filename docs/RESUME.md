@@ -1,6 +1,6 @@
 # RESUME — Session Pickup Brief
 
-> # 🟢 2026-09-06 (latest, 7th) — THE WEDGE HAD A CAUSE AND IT IS BOUNDED; SHE IS TEACHING AGAIN; THE BOARD IS MID-CLEANUP (PICK UP HERE)
+> # 🟢 2026-09-06 (latest, 7th) — THE WEDGE HAD A CAUSE AND IT IS BOUNDED; SHE IS TEACHING AGAIN; THE BOARD IS TEMPLATE + OPEN ITEMS ONLY (PICK UP HERE)
 >
 > Gee (verbatim): *"okay get on fixing all of that"* → *"update freshwalk pressed, keep workking the items we need done for her to be done"* → *"i need you to do the actual work to be done not maske shit up to do while waiting on the brain to start up"* → *"clean up the todo, move all finished items to finalized.md There shall be nothing left in the todo but open items only PERIOD FULL STOP"* → *"make sure that only the file templete info and open items are the only two things in the todo"*
 >
@@ -66,15 +66,19 @@
 >
 > ⚠ **The 22 high-school elective cells will NOT be fixed by any fetcher** — open textbooks are thin for pe/music/art/health. **That is topic-list authoring, and it is the next real curriculum work.**
 >
-> ## ⛔ ④ THE BOARD IS MID-CLEANUP — finish this
+> ## ✅ ④ THE BOARD IS DONE — template info + open items, nothing else
 >
-> **81 closed rows → 28 remaining. All 76 open rows intact** (47 `[ ]` + 29 `[~]`), verified by count after every deletion. Board 664 KB → 565 KB. Committed twice; **valid at every checkpoint.**
+> **81 closed rows → 0. 54 dead sections → 0. All 76 open rows intact and BYTE-IDENTICAL** (47 `[ ]` + 29 `[~]`), diffed row-for-row against the pre-cleanup commit: **0 lost, 0 altered, 0 added.** Board **664 KB → 375 KB**, CRLF preserved throughout, **0 bare LF**.
 >
-> Every removed row went into `docs/FINALIZED.md` **verbatim first**, string-match verified, **then** deleted — FINALIZED-before-DELETE in that order. The archive section is `§2026-09-06 (17th) — BOARD CLEANUP`, with a `<!-- BOARDCLEAN-APPEND-POINT -->` marker so later batches append in order.
+> ⛔⛔ **THE TRAP THE LAW WARNS ABOUT WAS LIVE, AND MY OWN EARLIER NOTE HAD FALLEN INTO IT.** The line above used to read *"22 of those are already archived (safe to delete outright)"*. **It was wrong.** A slice match against the ledger found **only 4 of 28** genuinely archived — every other row's *tag* appeared in `FINALIZED.md` while its **body appeared nowhere**. That is `CONSTRAINTS.md` verbatim: **"Audit by string match; a matching task TAG proves nothing."** All 24 were migrated verbatim before a single deletion.
 >
-> **The remaining 28:** `REPCOMP.2` `GATEWATCH.2/.3` `TEACHVIEW.8/.9` `CHATPIN.1/.2` `TEACHKNOB.3` `KNOBUI.5` `CORPUSCALE.2` `FOCUSDEAD.2` `TVBENCH.1` `PRESSFAIL.5` `OFFLINEDICT.4` `BOXCAP.1/.3` `MEMTHROTTLE.2/.3` `BUTTONAUDIT.5` `STALEBRANCH.1` `DOCLINE.5/.2` `DEFHEAL.4` `LIVESTATE.1` `TEACHRATE.1/.2` `WEDGELIVE.1` + one untagged. ⚠ **22 of those are already archived** (safe to delete outright); the rest need migrating first — check with a slice match, never by tag.
+> ⭐ **VERIFIED LINE-BY-LINE, NOT ROW-BY-ROW:** every one of the **268 lines** across the 28 closed blocks was string-matched into the ledger first. `TEACHVIEW.8` passed a first-line probe and **failed the full check** — the archive held a prose write-up, not the row. It was migrated too.
 >
-> **The end state Gee asked for: template info + open items, nothing else.** Section scaffolding around closed rows goes too.
+> ⚠ **The emptied section scaffolding was checked the same way before it went:** of **880 lines** across 54 sections, **6 were not in the ledger** — the `TEACHVIEW` banner lines written earlier the same day. Archived first, then stripped.
+>
+> ⭐ **ONE `- [x]` SURVIVES ON PURPOSE and must not be swept:** `ACAD-API-2`, inside a **fenced code block** — the *quotation* of the false completion record that `LEDGERLIE.1` exists to preserve. **A pattern strip would destroy the finding**, which is exactly why the law says match strings, not patterns.
+>
+> Archive: `docs/FINALIZED.md §2026-09-06 (24th) — BOARD CLEANUP, FINAL BATCH`, with the `<!-- BOARDCLEAN-APPEND-POINT -->` marker still in place for later batches.
 >
 > ## ⛔⛔ ⑤ THE PROCESS FAILURES ARE ENFORCED IN CODE NOW — and one of them cost half a session
 >
