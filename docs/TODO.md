@@ -1664,6 +1664,16 @@ ctl     MemoryMax=256M · CPUQuota=25%               (unity-brain-ctl.service)
 
 
 - [ ] `SPONGEHAND.A4` — ⏳ **NOTHING TO DO, RECORDED SO IT IS NOT RE-OPENED.** Sponge (verbatim): *"**A4. Fields are at ~44 GB of ~100 GB.** I stopped the drain to land the checkpoint fix. Non-fatal by design, low priority."*
+  - ⭐ **MEASURED IN FIELDS RATHER THAN GIGABYTES, 2026-09-06, during a BrainWaves audit** — the same fact in the unit the walk actually cares about, because "44 of 100 GB" cannot say how many pictures she can reach:
+  ```
+    distinct figure URLs cited by the corpus   75,587
+    field files present in BrainWaves          26,359   (34.9%)
+    expected but ABSENT                        61,519   (81.4% of citations)
+  ```
+  ⚠ **CONSISTENT WITH SPONGE'S NUMBER, NOT A NEW LOSS** — ~44/100 GB against 34.9% of files is what you get when the un-drained tail holds the larger plates. **This is the deliberate stop, quantified; nothing regressed.**
+  - ⛔ **THE DERIVATION WAS VALIDATED BEFORE THE NUMBER WAS BELIEVED.** A wrong `figKey` would manufacture exactly this shortfall, so three known `url → file` pairs from BrainWaves' own `index.json` were run through the production `figure-identity.cjs` — **3/3 exact match** — before any of the above was written down.
+  - ⚠ **AND TODAY'S CORPUS GROWTH WIDENED IT.** The 193/193 floor work added topics, and topics bring figures; every new plate is a citation with no field until the drain resumes. **The percentage above is therefore a moving target that gets worse with every corpus win** — which is an argument for resuming the drain, not for stopping the corpus.
+  - ⚠ **12,291 fields exist that the CURRENT corpus never cites** (46.6% of what is banked). Explicable — re-ingests change figure URLs, so a field made for an older URL is simply orphaned — but it means the store is not a subset of what is needed, it OVERLAPS it. ⛔ **Do not "clean" them without a real check:** a URL that is absent today can return on the next re-ingest, and deleting the field would force a re-transform of a plate that was already paid for.
 
 
 
