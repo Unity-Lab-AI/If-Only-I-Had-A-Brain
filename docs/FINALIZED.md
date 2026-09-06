@@ -5,6 +5,64 @@
 
 ---
 
+## 2026-09-06 — `PROBEWEDGE` — ONE `await` THAT NEVER CAME BACK STOPPED THE ENTIRE WALK, WITH AN IDLE CPU AND NOT ONE ERROR ANYWHERE
+
+Gee (verbatim): *"well im not updating again till we fix the shit and do what needs done to everything everywhere"*
+
+### What happened
+
+Teaching stopped **26 seconds after the cell opened** and did not resume for 24+ minutes. The box looked completely healthy: donor attached and answering `real batch` at 261 ms, `stepsPerSec 42`, `eventLoopLagMs 0`, no errors, no warnings, 52 identical `CELL ALIVE` heartbeats.
+
+**Measured, twice, 75 seconds apart:**
+
+```
+sample 1: hebbian.calls=1603  lateral.calls=1603  activeSum=9,877,312
+sample 2: hebbian.calls=1603  lateral.calls=1603  activeSum=9,877,312
+```
+
+Not one Hebbian operation. `cpuPercent: 6`, `(idle) 30%`, every deferred queue at 0, `boundHebbian` 15,550 enqueued / 15,550 flushed. **Nothing computing, nothing queued — one `await` simply never returned.**
+
+### The blocker, and the instrument that pointed away from it
+
+`_probePropagate` → `await cluster._gpuProxy.gateProbe(...)`, with `_tstage('gate:probe-gpu')` stamped immediately before it.
+
+⛔ **I FIRST CALLED THAT STAGE TAG STALE AND THAT WAS WRONG.** I reasoned that `teachStageAgeMs` of 428,408 against a `teachStageMaxMs` of **365** proved the tag was left over from a stage that never runs long. The opposite was true: `teachStageMax` records the longest **completed** run, and a stage that never completes never updates it. **The tag was accurate the entire time and my reasoning sent us away from it.**
+
+### The mechanism — a promise nothing could ever settle
+
+`gpuGateProbe` passes an **8-second** timeout down to `_sparseSendBinary`, which arms:
+
+```js
+const timeout = setTimeout(() => {
+  if (this._gpuSparsePending && this._gpuSparsePending.has(reqId)) {   // ⛔
+    this._gpuSparsePending.delete(reqId);
+    resolve(null);
+  }
+}, timeoutMs);
+```
+
+⛔ **The resolve is behind a `has()` guard**, so the timer is a no-op whenever the entry has already been popped. And the binary ack handler pops it — *and clears its timer* — **before parsing a single byte**:
+
+```js
+brain._gpuSparsePending.delete(reqId);
+clearTimeout(pending.timeout);      // timer destroyed
+... then parse ...
+```
+
+Its catch block then states the false assumption in as many words: *"A popped pending resolves via its own timeout."* **It cannot.** The timer is gone and the map entry is gone, so the guarded callback finds nothing and deliberately does nothing. **The caller awaits forever.**
+
+⚠ **HONESTY ABOUT WHAT THIS EXPLAINS.** The ring covering the stall (9:33:56 → 9:58:33) shows **zero** `SPRR ack parse FAILED` lines and zero error-level lines, so this specific throw did **not** fire here. **The hang path is real and proven by reading; it is not proven to be THIS stall's trigger.** What is certain is that an 8-second deadline did not fire in 24 minutes, which means a promise never settled.
+
+### The fixes — one for the class, one that does not depend on knowing the trigger
+
+1. **All three timers resolve unconditionally.** Resolving an already-settled promise is a no-op by spec, so the guard bought nothing and cost a permanent wedge. The `delete` stays guarded — that is the only part that ever needed a check.
+2. **The ack handler settles what it popped.** `_poppedPending` is hoisted so the catch resolves it with `{ error: 'ack parse failed' }`, and the log line no longer claims a timeout will save it.
+3. ⭐ **A CALLER-OWNED DEADLINE ON THE PROBE (`DREAM_PROBE_DEADLINE_MS`, 20 s).** ⚠ **This is not a duplicate of the 8 s below it, and that distinction is the whole point: a timeout living INSIDE the thing that can hang cannot bound the thing that can hang.** The 8 s deadline is armed by the same layer that failed to settle. This one is owned by the caller and fires whatever the ack layer does — falling through to the CPU path the code has always promised: *"a probe is never skipped, only relocated."* Rate-limited log names it as a finding, with a counter.
+
+✅ **Verified:** `node --check` on all three files, ESM `import()` of `curriculum.js`, CRLF preserved (14,763 / 5,713 / 31,744, 0 bare LF), and a **5/5 harness on the race** — including the exact failure (a promise that never settles is rescued to `null`), a fast success passing through untouched, a slow-but-in-time success still winning, a rejection still reaching the caller's catch, and the timer cleared on the fast path so it cannot hold the process.
+
+---
+
 ## 2026-09-06 — `CORTEXQUIET` — THE DASHBOARD BLAMED THE DONOR FOR A VALUE THE SERVER NEVER ASKED FOR, AND `gpuHits: 0` READ AS A DEAD CARD
 
 Gee (verbatim): *"all that needs fixed"*
