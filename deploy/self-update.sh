@@ -443,6 +443,8 @@ rsync -a --delete \
   --exclude 'corpora/glove.6B.*' \
   --exclude '.claude' \
   --exclude '.staging' \
+  --exclude '/.cargo-target' \
+  --exclude '/bin' \
   --exclude '.self-update.lock' \
   "$TMP/src/" "$BACKEND_DIR/" >> "$LOG" 2>&1 || { log "FATAL — rsync overlay failed; aborting."; exit 1; }
 
@@ -1367,6 +1369,126 @@ if [ "${_gbytes:-0}" -lt "$_GLOVE_MIN_BYTES" ]; then
   _abort
 fi
 log "embeddings OK — GloVe present at ${_GLOVE} (${_gbytes} bytes); the boot's hardest precondition is satisfied."
+
+# ── THE BINARY EMBEDDING TABLE — BUILT HERE, OR THE PRESS DOES NOT PROCEED ────
+#
+# ⛔⛔ THE SERVER NO LONGER PARSES THE TEXT TABLE. `js/brain/embeddings.js` reads
+# `corpora/glove.6B.300d.bin` — the same 400,000 vectors packed as f32 by the
+# Rust converter (`crates/unity-weights`, binary `unity-glove`). Proven identical
+# to what the text loader produced: 400,000/400,000 vectors bit-for-bit, and the
+# load goes from ~19 s to ~0.5 s.
+#
+# ⛔ THAT MAKES THIS FILE BOOT-FATAL, EXACTLY LIKE THE TEXT TABLE ABOVE, so it
+# gets exactly the same treatment: build it BEFORE the restart, and if it cannot
+# be built or cannot be made current, ABORT the press. She keeps running on the
+# old code with her weights untouched. **A missing build tool must never be able
+# to take her down** — and it cannot, because nothing is restarted past here.
+#
+# ⚠ THERE IS NO "PARSE THE TEXT INSTEAD" BRANCH, DELIBERATELY. That would be a
+# capability fallback: the boot would succeed, and the only symptom of a broken
+# converter would be a 20-second boot nobody ever looks at. One path, and its
+# absence is loud.
+_GLOVE_BIN="${CORPORA_DIR}/glove.6B.300d.bin"
+
+# Is the cache present, the right layout, and built from the text that is on disk
+# RIGHT NOW? ⚠ This deliberately re-implements the loader's checks in shell
+# rather than trusting presence and size — the deploy's own GloVe gate above is
+# satisfied by presence and size, which is precisely what a silently-stale cache
+# looks like. `od` reads native-endian; the box and the format are both
+# little-endian x86_64.
+_glove_bin_ok() {
+  [ -f "$_GLOVE_BIN" ] || return 1
+  local _magic _ver _dim _count _vocab _src _len _want
+  _magic="$( { head -c 8 "$_GLOVE_BIN"; } 2>/dev/null || true )"
+  [ "$_magic" = "UGLOVE01" ] || return 1
+  _ver="$(   { od -An -tu4 -j8  -N4 "$_GLOVE_BIN"; } 2>/dev/null | tr -d ' \n' || true )"
+  _dim="$(   { od -An -tu4 -j12 -N4 "$_GLOVE_BIN"; } 2>/dev/null | tr -d ' \n' || true )"
+  _count="$( { od -An -tu4 -j16 -N4 "$_GLOVE_BIN"; } 2>/dev/null | tr -d ' \n' || true )"
+  _vocab="$( { od -An -tu4 -j20 -N4 "$_GLOVE_BIN"; } 2>/dev/null | tr -d ' \n' || true )"
+  _src="$(   { od -An -tu8 -j24 -N8 "$_GLOVE_BIN"; } 2>/dev/null | tr -d ' \n' || true )"
+  [ "${_ver:-0}" = "2" ] || return 1
+  [ "${_dim:-0}" = "300" ] || return 1
+  [ "${_count:-0}" -gt 0 ] 2>/dev/null || return 1
+  # STALENESS: the header records the byte length of the text it was built from.
+  [ "${_src:-0}" = "${_gbytes:-x}" ] || return 1
+  # EXACT length — the layout is fully determined by the header, so there is one
+  # correct size. An off-by-four in a binary reader does not fail, it lies.
+  _len="$(_bytes "$_GLOVE_BIN")"
+  _want=$(( 40 + _count * 4 + _vocab + _count * _dim * 4 ))
+  [ "${_len:-0}" = "$_want" ] || return 1
+  return 0
+}
+
+if _glove_bin_ok; then
+  log "embeddings — binary table already current at ${_GLOVE_BIN} ($(_bytes "$_GLOVE_BIN") bytes, built from this exact ${_gbytes}-byte source). Nothing to build."
+else
+  # Locate the converter. ⚠ Every candidate below is THE SAME TOOL — this is
+  # finding one binary, not choosing between implementations.
+  _glove_tool=""
+  for _c in "${BACKEND_DIR}/bin/unity-glove" \
+            "${BACKEND_DIR}/.cargo-target/release/unity-glove" \
+            "${BACKEND_DIR}/target/release/unity-glove"; do
+    if [ -x "$_c" ]; then _glove_tool="$_c"; break; fi
+  done
+  if [ -z "$_glove_tool" ] && command -v unity-glove >/dev/null 2>&1; then
+    _glove_tool="$(command -v unity-glove)"
+  fi
+
+  # Not shipped as a binary? Build it from the source the overlay just placed.
+  # ⭐ This is the moment Rust arrives on this box, and it is the structural
+  # prerequisite for every later phase of the migration — not a detail of this
+  # one. `CARGO_TARGET_DIR` is pinned inside the backend dir so the artefacts
+  # survive the overlay's `--delete` and the second press costs nothing.
+  if [ -z "$_glove_tool" ] && [ -f "${BACKEND_DIR}/Cargo.toml" ]; then
+    _cargo=""
+    if command -v cargo >/dev/null 2>&1; then _cargo="$(command -v cargo)"
+    elif [ -x "${HOME}/.cargo/bin/cargo" ]; then _cargo="${HOME}/.cargo/bin/cargo"
+    fi
+    if [ -z "$_cargo" ] && [ "${UAL_RUST_BOOTSTRAP:-1}" = "1" ]; then
+      log "embeddings — no cargo on this box; installing the minimal Rust toolchain into \$HOME/.cargo (one time, ~200 MB). Set UAL_RUST_BOOTSTRAP=0 to refuse this and ship ${BACKEND_DIR}/bin/unity-glove yourself instead."
+      if curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+           | sh -s -- -y --profile minimal --default-toolchain stable >> "$LOG" 2>&1 \
+         && [ -x "${HOME}/.cargo/bin/cargo" ]; then
+        _cargo="${HOME}/.cargo/bin/cargo"
+        log "embeddings — Rust toolchain installed ($("${_cargo}" --version 2>/dev/null || echo 'version unknown'))."
+      else
+        log "WARN — the Rust toolchain install did not complete. The gate below will refuse the restart and say so."
+      fi
+    fi
+    if [ -n "$_cargo" ]; then
+      log "embeddings — building the converter (cargo build --release -p unity-weights --bin unity-glove) …"
+      if ( cd "$BACKEND_DIR" && CARGO_TARGET_DIR="${BACKEND_DIR}/.cargo-target" \
+             "$_cargo" build --release -p unity-weights --bin unity-glove ) >> "$LOG" 2>&1 \
+         && [ -x "${BACKEND_DIR}/.cargo-target/release/unity-glove" ]; then
+        _glove_tool="${BACKEND_DIR}/.cargo-target/release/unity-glove"
+        log "embeddings — converter built at ${_glove_tool}."
+      else
+        log "WARN — the converter did not build. The gate below will refuse the restart and say so."
+      fi
+    fi
+  fi
+
+  if [ -z "$_glove_tool" ] || [ ! -x "$_glove_tool" ]; then
+    log "FATAL — the binary embedding table at ${_GLOVE_BIN} is missing or stale, and the converter that builds it (unity-glove) is neither installed nor buildable on this box. The server reads the BINARY table at boot and stops hard without it (NO FALLBACKS), so restarting now would produce a crash loop. ABORTING: the service keeps running on the current code, the trained weights are untouched, and the pending wipe is disarmed below. Fix by installing cargo (or setting UAL_RUST_BOOTSTRAP=1), or by placing a prebuilt binary at ${BACKEND_DIR}/bin/unity-glove, then press again."
+    _abort
+  fi
+
+  log "embeddings — converting the table with ${_glove_tool} (one-time, ~4 s per press that changes the source) …"
+  if ! "$_glove_tool" ensure "$_GLOVE" "$_GLOVE_BIN" >> "$LOG" 2>&1; then
+    log "FATAL — ${_glove_tool} could not produce ${_GLOVE_BIN}. Its output is in this log above. The boot reads that file and stops hard without it, so ABORTING — service untouched, weights untouched, pending wipe disarmed below."
+    _abort
+  fi
+
+  # ⛔ RE-CHECK RATHER THAN TRUST THE EXIT CODE. The converter writes to a
+  # temporary and renames, so a zero exit and an absent file should be
+  # impossible — but this file is boot-fatal, and "should be impossible" is not
+  # a gate. The identical check that just failed is the one that must now pass.
+  if ! _glove_bin_ok; then
+    log "FATAL — ${_glove_tool} exited 0 but ${_GLOVE_BIN} still does not pass the layout/staleness check (magic, version 2, dim 300, source ${_gbytes} bytes, exact length). Refusing to restart into a table the loader will reject. ABORTING — weights untouched."
+    _abort
+  fi
+  log "embeddings — binary table READY at ${_GLOVE_BIN} ($(_bytes "$_GLOVE_BIN") bytes). The boot's language substrate is a file open now, not a 20-second parse."
+fi
 
 # SAVESTART vs FRESH WALK. In fresh-walk mode (default) we write .force-fresh
 # so the brain-server's autoClearStaleState wipes trained state at boot

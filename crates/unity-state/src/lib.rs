@@ -27,7 +27,7 @@
 //! the wipe happens exactly once. An unreadable flag **still wipes** — the file
 //! existing is the signal, not its contents.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 /// What this boot is going to do to the trained state.
 #[derive(Debug, Clone, PartialEq, Eq)]

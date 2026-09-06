@@ -243,6 +243,15 @@ corpora/glove.6B.300d.txt
 corpora/glove.6B.zip
 corpora/glove.6B.*.txt
 
+# The BINARY table (`unity-glove ensure` output) is a DERIVED CACHE of the text
+# above — same data, packed as f32 so the boot is a file open instead of 120
+# million `parseFloat` calls. ~485 MB, rebuilt from the text in ~4 s, and
+# rebuilt automatically by the press when the source's byte length no longer
+# matches the header. ⛔ Never commit it: a committed cache is a second
+# authority that nothing checks against its source.
+corpora/glove.6B.*.bin
+corpora/glove.6B.*.bin.partial
+
 # ⛔⛔ THE CORPUS LIVES IN ONE REPO, AND IT IS NOT THIS ONE.
 #
 # Operator: *"we need to makes suure there is only one repo with all the corpus

@@ -1,6 +1,98 @@
 # RESUME — Session Pickup Brief
 
-> # 🟢 2026-09-05 — BINARY GloVe IS 173× FASTER, AND THE JS AUDIT FOUND EXACTLY ONE DELETABLE FILE (LATEST — PICK UP HERE)
+> # 🟢 2026-09-05 (later) — THE FIRST CRATE IS ACTUALLY CUT OVER: THE SERVER STOPPED PARSING GloVe (LATEST — PICK UP HERE)
+>
+> ## ⭐ What changed, in one line
+>
+> **`js/brain/embeddings.js` no longer parses the text table.** The `readline` + `parseFloat` loop is **deleted**; the server opens `corpora/glove.6B.300d.bin`, an `f32` pack of the same 400,000 vectors written by `unity-glove` (`crates/unity-weights`). The banner below this one said *"I built eight crates and wired none of them in"* — **one of them is wired in now.**
+>
+> | | measured in-process, same box, back to back |
+> |---|---|
+> | text via `readline` + `parseFloat` | **19,085 ms**, 745 MB RSS |
+> | binary | **549 ms**, 616 MB RSS |
+>
+> **Proven against the code that was actually running** — the old loader came from `git show HEAD:js/brain/embeddings.js`, both instantiated side by side over the whole table: **400,000/400,000 identical · 0 components differing · 0 missing · 0 extra.**
+>
+> **Booted through `windows/start.bat` and read live:** `400,000 vectors mapped in 378 ms`, brain up at 459,775,607 neurons, `kwiring {"ok":true,"gaps":[]}`, pages 200 (`/`, `/dashboard.html`, `/compute.html`, `/minds-eye.html`, `/teachview.html`).
+>
+> ## ⛔ THE COUNTER WENT THE WRONG WAY, AND HERE IT IS BEFORE YOU FIND IT
+>
+> | | before | after |
+> |---|---:|---:|
+> | `.js` (source, excl. bundles) | 156,541 | **156,715** |
+> | `.rs` | 14,454 | **14,661** |
+>
+> **The parse loop is gone and the file still grew by 174 lines**, because the documented binary reader is longer than the loop it replaced. **This cutover moves ~19 seconds of work per boot into Rust; it does not move thousands of lines.** The lines move when `unity-coordinator` can serve — nothing before that makes `brain-server.js` deletable.
+>
+> ## ⛔⛔ THREE TRAPS, ALL WORTH CARRYING INTO THE NEXT PHASE
+>
+> **① The consumer's ARITHMETIC is part of the contract, not just its data.** `embeddings.js` L2-normalises and lowercases inline, accumulating the sum of squares in **f64** while storing **f32**, and parses via `parseFloat`-then-store (**double rounding**). A converter storing the raw table would be *"faithful to the file"* and would silently change every cosine in the walk. ⭐ The earlier *"bit-exact"* verification proved less than it sounded — the verifier used the converter's own f32 accumulation, so it **compared this code against itself.**
+>
+> **② An off-by-four in a binary reader does not fail, it LIES.** The first draft wrote the header length as 36 instead of `8+4+4+4+4+8+8 = 40`. It loaded 400,000 vectors at the right dimension, **reported success**, and scored ~0.00 cosine against the real table on every probe word. The size check is **exact equality now, not `>=`** — which catches it without needing a parity harness at all.
+>
+> **③ A format decision that is free in the writing language can be the whole cost in the reading one.** v1 did not pad the vocabulary, putting the matrix at offset 2 mod 4 — invisible to Rust's `from_le_bytes`, and **fatal** to `new Float32Array(buf, off, n)`, which throws unless the offset is 4-aligned. v2 pads; the matrix is viewed, not copied.
+>
+> ## ⭐ Testing it the RIGHT way found a second bug — the boot was re-downloading 862 MB it already had
+>
+> Gee (verbatim): *"okay you are doing it wrong again and not using the correct start.bat options when testing and incorrectly starting webgpu"* — **he was right, and being right about the method is what surfaced this.** I had used a bare `node server/brain-server.js` (wrong cwd, wrong heap flags, no control plane, `DREAM_NO_AUTO_GPU` unset so it tried to auto-launch a browser donor). Re-run through the launcher — which `cd server` first — the boot immediately began fetching `glove.6B.zip`, **caught at 246 MB of 862 MB.**
+>
+> **Cause:** the provisioner was passed `path.join(process.cwd(), 'corpora')` and every launcher `cd server`, so it looked in `server/corpora`, missed the 1.04 GB table one directory up, and fetched a second copy. ⭐ **`embeddings.js` has always walked a ladder to find that file; the provisioner not walking it is how the two disagreed about whether it exists.** Fixed — verified `already-present` from a `server/` cwd.
+>
+> ## ▶ WHAT IS OPEN
+>
+> **1. `GLOVECUT.10` — the box has never run this, and it is a TWO-PRESS sequence by construction.** `brain-server.js` resolves `self-update.sh` from `__dirname`, so the press runs the **box's** copy: the new gate takes effect on the press *after* the one that delivers it. Verify with `embeddings — binary table READY` in `self-update.log`, then a `/public-state.json` build that advanced. ⚠ **Rust arrives on the box on this press** (minimal toolchain into `$HOME/.cargo` unless `UAL_RUST_BOOTSTRAP=0`).
+>
+> **2. `GLOVECUT.11` — the boot-dependency question is answered, and the answer does NOT generalise.** It was answered by **not shelling out at boot at all**: the Rust tool runs at build/deploy time and writes a file; the boot only *reads* it with plain `fs`. ⛔ **`unity-sizing` and `unity-state` do not have that shape** — they compute a decision rather than producing an artefact, so wiring them means a real subprocess or an FFI boundary, and NO-FALLBACKS forbids a *"use the JS then"* branch either way. **Decide it when one of them is actually started, not by analogy to this one.**
+>
+> **3. Everything below still stands** — `SPONGEHAND.A1` needs a press, `A2b` needs Sponge's ruling, B1's acceptance gate needs one real deploy, B3/B5/B6 are unfinished.
+>
+> ⚠ **`donorCount: 0` on the box — nothing is training.**
+
+> # 🔴 2026-09-05 — I BUILT EIGHT CRATES AND WIRED NONE OF THEM IN. THE CUTOVER IS THE WORK. (previous)
+>
+> ## ⛔⛔ THE HONEST STATE, FIRST, BECAUSE THE REST IS EASY TO MISREAD AS PROGRESS
+>
+> Gee (verbatim): *"wtf!!! you didnt actually do the fuckign work!!!! >>> Zero JS deleted except one dead file"* → *"yeas that why u were to test it to make sure all the fucxking JS u gut still works as rust!!!"*
+>
+> **He is right.** Eight Rust crates exist, 182 tests pass, parity is proven against the shipped implementation in five places — **and nothing calls any of it.** `brain-server.js` does not invoke `unity-sizing`; it runs its own copy. There is **no FFI, no sidecar, no process boundary wired up.**
+>
+> ⭐ **Parity that is never connected is a very well-tested pile of unused code.** Proving equivalence was the right discipline and it was not the deliverable. **The deliverable is: cut the JS over, then test that it still works as Rust.** That is what remains.
+>
+> ## ▶ THE CUTOVER SEQUENCE — smallest and safest first
+>
+> **1. Binary GloVe** ⬅ *in progress on `feature/glove-cutover`, tree is GREEN at 182 tests*
+> Deletes the streaming parse loop in `embeddings.js` **and** is the only one with a measured win: **19,761 ms → 114 ms (173×)**, 1,350 MB heap → a mapping, 1.04 GB → 485 MB on disk. All 400,000 vectors verified bit-exact.
+>
+> ⛔ **A trap already caught during this work:** `embeddings.js` **L2-normalises inline** and lowercases the key as it parses. A converter storing the raw table would be *"faithful to the source"* and would **silently change her semantics** — every cosine downstream (dictionary oracle, schema retrieval, semantic top-K) assumes unit vectors. The converter now normalises and lowercases to match, and the verifier compares against normalised text. **Faithfulness to the FILE is not the goal; faithfulness to what the program consumed is.**
+>
+> ⚠ **Still owed on this one:** replace the JS parse loop with a binary reader, then test that her vectors are unchanged.
+>
+> **2. `unity-sizing`** — pure arithmetic, 18/18 parity, runs once at boot. Safest, but buys nothing visible.
+> **3. `unity-state`** — the flag/marker decision, same shape.
+>
+> ## ⚠ ONE DESIGN QUESTION THAT MUST BE ANSWERED BEFORE STEPS 2–3
+>
+> Shelling out to a binary at boot **adds a process dependency to the boot path**. If the binary is missing, boot fails — and NO-FALLBACKS forbids a *"well, use the JS then"* branch. **Hard-fail on a missing binary, or is this the one place a fallback is acceptable?** Guessing either way is how the brain stops booting.
+>
+> ## What actually landed today (all on `main` @ `5bfcf50c`, both remotes)
+>
+> | | |
+> |---|---|
+> | **Deleted** | `tools/weight-precision-probe.mjs` — zero callers, no npm script, unrunnable (hardcoded path to Sponge's box). Tested after removal. **The only file that qualified.** |
+> | **Sponge's A2/A3** | LFS write ceiling + fields destination-growth watchdog, shipped in `self-update.sh` |
+> | **Dashboard buttons** | `GET /shutdown` drive-by closed; catch-claims-success removed; all presses bounded |
+> | **8 crates** | protocol · deploy · weights · donor-session · sizing · state · http · coordinator |
+> | **Proven parity** | UBWT 11/11 · readback by digest · sizing 18/18 · privilege gate 180/180 · GloVe 400k vectors |
+>
+> ## Counter
+> `.js` **156,541** · `.mjs` 13,825 · `.cjs` 2,363 · `.rs` **14,454**. **It moves when the cutover lands, not before.**
+>
+> ## Blocked on Gee
+> **1.** A press — closes A1 and B1's acceptance gate. **2.** A ruling on `SPONGEHAND.A2b` (his CORRECTION 1 undermines the LFS stall watchdog's `write_bytes` signal; I filed it rather than changing a guard that caught a real outage). **3.** The boot-dependency question above.
+>
+> ⚠ **`donorCount: 0`** — nothing is training. Box healthy: 0.40 s response, 1 ms loop lag.
+
+> # 🟢 2026-09-05 — BINARY GloVe IS 173× FASTER, AND THE JS AUDIT FOUND EXACTLY ONE DELETABLE FILE (previous)
 >
 > **`main` @ pushed, both remotes. Nine crates, 182 tests.**
 >

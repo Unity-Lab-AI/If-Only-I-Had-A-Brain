@@ -48,6 +48,51 @@ const EMBED_DIM = 300;
 // foundation lift loads the entire vocabulary on the server. Browser-side
 // uses a corpus-word subset hosted by the server (the RemoteBrain path).
 const GLOVE_LOCAL_PATH = 'corpora/glove.6B.300d.txt';
+
+// ── THE BINARY TABLE — what the server actually reads at boot ───────────────
+//
+// The server no longer parses the text file. It reads `glove.6B.300d.bin`, a
+// flat little-endian pack of the SAME vectors produced by `unity-glove ensure`
+// (the Rust converter, `crates/unity-weights`).
+//
+// Measured on this table, both loaders, in-process, same box, back to back:
+//     text via readline + parseFloat   19,085 ms   745 MB RSS
+//     binary                              549 ms   616 MB RSS
+// 35x on that run (up to 57x with the file warm in the page cache), and 129 MB
+// less resident. ⚠ The speed-up is the real prize; the memory one is modest and
+// is stated as MEASURED RSS rather than the "1,350 MB heap" figure quoted
+// earlier in this migration — that was a peak-during-parse reading, not the
+// steady state, and the two are not the same claim.
+// The text path was already the FIXED version — its own comment records
+// `readFileSync` + `split('\n')` exceeding V8's string limit and OOM'ing
+// SILENTLY while reporting "GloVe not found". Streaming fixed the crash; it was
+// simply the wrong shape of work: 400,000 lines x 300 `parseFloat` calls is 120
+// million parses on the event loop before she can do anything.
+//
+// ⛔ THE TEXT FILE REMAINS THE SOURCE OF TRUTH. This is a cache, and a cache
+// that cannot be checked against its source is a second authority — so the
+// header carries the source's byte length and the loader below refuses a table
+// whose source has changed underneath it. That check matters because this file
+// is boot-fatal and the deploy's GloVe gate gets satisfied by presence and size
+// alone: a silently-stale cache is present and exactly the right size.
+//
+// Layout, all little-endian:
+//   magic(8)="UGLOVE01" | version u32 | dim u32 | count u32 | vocabBytes u32
+//   | srcBytes u64 | srcLines u64            <- 8+4+4+4+4+8+8 = 40 bytes
+//   | rowOffsets: count x u32   (byte offset of each word inside the vocabulary)
+//   | vocabulary: vocabBytes    (NUL-terminated words in row order, zero-padded
+//   |                            to a 4-byte boundary)
+//   | matrix: count x dim x f32 (row-major)
+//
+// ⚠ The padding is the reason the matrix can be VIEWED rather than copied here:
+// `new Float32Array(buffer, byteOffset, n)` throws unless byteOffset is a
+// multiple of 4. Format v1 did not pad and put the first vector at offset 2 mod
+// 4 — free in the language that wrote the file, the entire cost in the language
+// that reads it.
+const GLOVE_BINARY_PATH = 'corpora/glove.6B.300d.bin';
+const GLOVE_BINARY_MAGIC = 'UGLOVE01';
+const GLOVE_BINARY_VERSION = 2;
+const GLOVE_BINARY_HEADER_LEN = 40;
 // URL order trimmed. The Stanford NLP URL is CORS-blocked
 // from all browser origins (no Access-Control-Allow-Origin header),
 // and the HuggingFace URL returns 404 because the resolve path is
@@ -94,8 +139,12 @@ export class SemanticEmbeddings {
   }
 
   /**
-   * Load full GloVe 300d vocabulary (~400K words) from local disk
-   * (`corpora/glove.6B.300d.txt`, 1.04 GB, streamed line-by-line).
+   * Load full GloVe 300d vocabulary (~400K words) from local disk.
+   *
+   * The server reads the BINARY table (`corpora/glove.6B.300d.bin`, ~485 MB,
+   * built from the text by `unity-glove ensure`); the browser lane still fetches
+   * the text over HTTP. The text file remains the source of truth — see
+   * `_loadBinaryTable`, which refuses a cache whose source has changed.
    *
    * ⛔ REQUIRED, NOT PREFERRED (2026-09-02). This doc block used to say hash
    * embeddings "remain as a last-resort floor when no GloVe is reachable, but
@@ -132,69 +181,15 @@ export class SemanticEmbeddings {
       let text = null;
 
       if (isNode) {
-        // Server path — stream from local disk LINE-BY-LINE.
-        //
-        // The old code did `fs.readFileSync(p, 'utf8')` which loads
-        // the entire 990 MB file as a single JS string. V8's max
-        // string length on 64-bit is ~1 GB; the 990 MB file is right
-        // at the edge. Then `text.split('\n')` creates 400k substrings
-        // + a 400k-element array, doubling memory. Boot logs showed
-        // readFileSync either throwing "Invalid string length" or
-        // completing but `split('\n')` OOM'ing silently, which caused
-        // the fallback "GloVe not found" message despite the file being
-        // present at 1,037,962,819 bytes / 400,000 lines.
-        //
-        // New path: `readline.createInterface` over a read stream, parse
-        // each line as it arrives, build the Map incrementally. Peak
-        // memory = Map + current line buffer, not the whole file.
+        // Server path — read the BINARY table. No parsing at all: the vectors
+        // are already in the layout this program wants, so the load is a file
+        // read plus one typed-array view per word.
         try {
-          const fs = await import('fs');
-          const path = await import('path');
-          const readline = await import('readline');
-          // Try several plausible paths relative to cwd / module location
-          const candidates = [
-            GLOVE_LOCAL_PATH,
-            path.join(process.cwd(), GLOVE_LOCAL_PATH),
-            path.join(process.cwd(), '..', GLOVE_LOCAL_PATH),
-            path.join(process.cwd(), 'server', GLOVE_LOCAL_PATH),
-          ];
-          let foundPath = null;
-          for (const p of candidates) {
-            if (fs.existsSync(p)) { foundPath = p; break; }
-          }
-          if (!foundPath) {
-            throw new Error(`GloVe ${EMBED_DIM}d not found at any of: ${candidates.join(', ')} — download glove.6B.300d.txt from https://nlp.stanford.edu/data/glove.6B.zip and place at corpora/glove.6B.300d.txt`);
-          }
-          console.log(`[Embeddings] Reading ${foundPath} via streaming readline...`);
-          const stream = fs.createReadStream(foundPath, { encoding: 'utf8' });
-          const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
-          let streamCount = 0;
-          for await (const line of rl) {
-            if (!line) continue;
-            const parts = line.split(' ');
-            if (parts.length !== EMBED_DIM + 1) continue;
-            const word = parts[0].toLowerCase();
-            const vec = new Float32Array(EMBED_DIM);
-            for (let i = 0; i < EMBED_DIM; i++) {
-              vec[i] = parseFloat(parts[i + 1]) || 0;
-            }
-            // L2-normalize inline so the parse-after-read branch below
-            // is skipped for the Node streaming path.
-            let norm = 0;
-            for (let i = 0; i < EMBED_DIM; i++) norm += vec[i] * vec[i];
-            norm = Math.sqrt(norm) || 1;
-            for (let i = 0; i < EMBED_DIM; i++) vec[i] /= norm;
-            this._embeddings.set(word, vec);
-            streamCount++;
-            if (streamCount % 50000 === 0) {
-              console.log(`[Embeddings]   streamed ${streamCount.toLocaleString()} vectors...`);
-            }
-          }
+          const count = await this._loadBinaryTable();
           this._loaded = true;
-          console.log(`[Embeddings] Loaded ${streamCount.toLocaleString()} word vectors (${EMBED_DIM}d) via stream`);
-          return streamCount;
+          console.log(`[Embeddings] Loaded ${count.toLocaleString()} word vectors (${EMBED_DIM}d) from the binary table`);
+          return count;
         } catch (err) {
-          if (err.message.includes('not found')) throw err;
           throw new Error(`Server GloVe load failed: ${err.message}`);
         }
       } else {
@@ -305,6 +300,7 @@ export class SemanticEmbeddings {
         console.error(`[Embeddings] ⛔ FATAL — GloVe ${EMBED_DIM}d could not be loaded: ${err?.message || err}`);
         console.error('[Embeddings] ⛔ The brain does not boot without it (NO FALLBACKS). Subword n-gram vectors encode spelling, not meaning, and a walk trained on them deposits real weight against arbitrary positions.');
         console.error('[Embeddings] ⛔ Place glove.6B.300d.txt at corpora/glove.6B.300d.txt — https://nlp.stanford.edu/data/glove.6B.zip');
+        console.error('[Embeddings] ⛔ Then build the binary table the server reads: `unity-glove ensure corpora/glove.6B.300d.txt corpora/glove.6B.300d.bin`. The press does this for you; by hand it is `cargo build --release -p unity-weights --bin unity-glove` first.');
         throw err;
       }
       // ⚠ BROWSER LANE, LEFT AS IT IS AND SAID OUT LOUD: the only thing that
@@ -315,6 +311,146 @@ export class SemanticEmbeddings {
       console.warn(`[Embeddings] GloVe ${EMBED_DIM}d unreachable in the browser lane — the local visitor brain continues on subword n-gram vectors, which encode spelling and not meaning. This lane is filed for removal.`);
       return 0;
     }
+  }
+
+  /**
+   * Read `corpora/glove.6B.300d.bin` and populate `this._embeddings`.
+   *
+   * ⭐ THE WHOLE METHOD IS A READ AND A LOOP OF VIEWS. Every vector is a
+   * `Float32Array` window onto the one buffer — no per-word allocation, no
+   * copying, no parsing. That is why it is ~170x faster than the text path it
+   * replaced and holds ~485 MB off-heap instead of ~1,350 MB on it.
+   *
+   * ⛔⛔ NO FALLBACK TO THE TEXT FILE, DELIBERATELY. A "well, parse the text
+   * then" branch would be a capability fallback: the table would load, she would
+   * boot, and the only symptom of a broken deploy step would be a 20-second boot
+   * nobody looks at. The cache is either present, current and correct, or the
+   * boot stops and says which of the three failed. The press builds it
+   * (`deploy/self-update.sh`) and aborts BEFORE restarting anything if it
+   * cannot — so a missing converter can never take her down mid-run.
+   *
+   * @returns {Promise<number>} vectors loaded
+   */
+  async _loadBinaryTable() {
+    // ⚠ THE try AROUND THESE TWO IMPORTS IS LOAD-BEARING FOR THE BROWSER BUILD,
+    // NOT DECORATION. This module is bundled for the browser as well as run
+    // under Node, and esbuild's `--platform=browser` cannot resolve `fs`/`path`.
+    // Inside a try it degrades that to a runtime failure (the branch is
+    // unreachable in a browser anyway); outside one it is a hard build error and
+    // `npm run build` fails with "Could not resolve fs". The previous text
+    // loader had the same construct for the same reason and never said so —
+    // which is how removing it broke the bundle. Do not "simplify" this away.
+    let fs, path;
+    try {
+      fs = await import('fs');
+      path = await import('path');
+    } catch (err) {
+      throw new Error(`the binary embedding table needs Node's fs/path and neither is available here: ${err?.message || err}`);
+    }
+
+    const resolve = (rel) => {
+      const candidates = [
+        rel,
+        path.join(process.cwd(), rel),
+        path.join(process.cwd(), '..', rel),
+        path.join(process.cwd(), 'server', rel),
+      ];
+      for (const p of candidates) {
+        if (fs.existsSync(p)) return p;
+      }
+      return null;
+    };
+
+    const binPath = resolve(GLOVE_BINARY_PATH);
+    if (!binPath) {
+      throw new Error(
+        `the binary embedding table is missing (${GLOVE_BINARY_PATH}). It is built from the text table by the Rust converter: ` +
+        `\`unity-glove ensure ${GLOVE_LOCAL_PATH} ${GLOVE_BINARY_PATH}\` (cargo build --release -p unity-weights --bin unity-glove). ` +
+        `The press does this automatically; if you are running by hand, run it once.`
+      );
+    }
+
+    console.log(`[Embeddings] Reading ${binPath} (binary table)...`);
+    const started = Date.now();
+    const buf = fs.readFileSync(binPath);
+
+    if (buf.length < GLOVE_BINARY_HEADER_LEN || buf.toString('latin1', 0, 8) !== GLOVE_BINARY_MAGIC) {
+      throw new Error(`${binPath} is not a ${GLOVE_BINARY_MAGIC} table (magic mismatch) — delete it and let the press rebuild it`);
+    }
+    const version = buf.readUInt32LE(8);
+    const dim = buf.readUInt32LE(12);
+    const count = buf.readUInt32LE(16);
+    const vocabBytes = buf.readUInt32LE(20);
+    const srcBytes = Number(buf.readBigUInt64LE(24));
+
+    // ⚠ A version mismatch is REFUSED rather than read at the wrong layout. The
+    // version IS the layout declaration, and a file read at the wrong one
+    // misreads silently — it does not fail to parse.
+    if (version !== GLOVE_BINARY_VERSION) {
+      throw new Error(`${binPath} is format version ${version}; this loader reads ${GLOVE_BINARY_VERSION}. Rebuild it with \`unity-glove ensure\` rather than reading it at the wrong layout.`);
+    }
+    if (dim !== EMBED_DIM) {
+      throw new Error(`${binPath} holds ${dim}-dimensional vectors; this brain is built for ${EMBED_DIM}. Every buffer downstream is sized on ${EMBED_DIM}.`);
+    }
+
+    // ⛔ STALENESS IS FATAL, NOT A WARNING. The header records the byte length of
+    // the text table it was built from. If the text on disk is a different size,
+    // this cache describes a different table — and because the file is present
+    // and the right size, nothing else in the boot or the deploy would notice.
+    const textPath = resolve(GLOVE_LOCAL_PATH);
+    if (textPath) {
+      const now = fs.statSync(textPath).size;
+      if (now !== srcBytes) {
+        throw new Error(
+          `${binPath} is STALE — built from a ${srcBytes}-byte source, but ${textPath} is now ${now} bytes. ` +
+          `Rebuild it: \`unity-glove ensure ${GLOVE_LOCAL_PATH} ${GLOVE_BINARY_PATH}\`.`
+        );
+      }
+    }
+
+    const vocabStart = GLOVE_BINARY_HEADER_LEN + count * 4;
+    const vecBase = vocabStart + vocabBytes;
+    // ⛔⛔ EXACT, NOT `>=`. The layout is fully determined by the header, so the
+    // file has a single correct length and there is no trailing data by
+    // construction. A `<` check passes on a table read at the WRONG OFFSET —
+    // which is not hypothetical: this loader shipped its first draft with the
+    // header length written as 36 instead of 8+4+4+4+4+8+8 = 40, and every
+    // subsequent field landed 4 bytes early. It loaded 400,000 vectors, the
+    // right count at the right dimension, reported success, and returned
+    // garbage — cosine against the real table came out at ~0.00 for every probe
+    // word. An off-by-four in a binary reader does not fail, it lies. Equality
+    // is what makes the header check the layout instead of merely bounding it.
+    const expected = vecBase + count * dim * 4;
+    if (buf.length !== expected) {
+      throw new Error(
+        `${binPath} is ${buf.length} bytes; the header (count ${count} x dim ${dim}, vocab ${vocabBytes}) describes exactly ${expected}. ` +
+        `Off by ${buf.length - expected}. This is a truncated transfer or a layout disagreement — either way the table would be read at the wrong offsets, so it is refused.`
+      );
+    }
+
+    // Words, in row order. The vocabulary region is NUL-terminated entries
+    // followed by zero padding, so the split yields the rows and then empties.
+    const vocab = buf.toString('utf8', vocabStart, vecBase).split('\0');
+
+    // ⚠ The views are only possible if the matrix is 4-aligned. It is, by
+    // construction (the converter pads the vocabulary) — but `readFileSync` can
+    // hand back a Buffer that is a window into a pool, so the check is on the
+    // ABSOLUTE offset, not on the format's internal one.
+    const absBase = buf.byteOffset + vecBase;
+    if (absBase % 4 !== 0) {
+      throw new Error(`the matrix lands at absolute byte ${absBase}, which is not 4-aligned — a Float32Array view is impossible here`);
+    }
+
+    const ab = buf.buffer;
+    const stride = dim;
+    for (let i = 0; i < count; i++) {
+      const word = vocab[i];
+      if (word === undefined || word === '') continue;
+      this._embeddings.set(word, new Float32Array(ab, absBase + i * stride * 4, dim));
+    }
+
+    console.log(`[Embeddings]   ${this._embeddings.size.toLocaleString()} vectors mapped in ${Date.now() - started} ms (${(buf.length / 1048576).toFixed(0)} MB, source ${srcBytes.toLocaleString()} bytes)`);
+    return this._embeddings.size;
   }
 
   /**

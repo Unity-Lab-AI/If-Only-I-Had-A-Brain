@@ -175,6 +175,30 @@ if [ ! -f "$DIR/corpora/glove.6B.300d.txt" ]; then
     cd "$DIR/server" || exit 1
 fi
 echo "  GloVe substrate present."
+
+# ── THE BINARY TABLE — what the server actually reads ────────────────────────
+# Since 2026-09-05 the server opens corpora/glove.6B.300d.bin (an f32 pack of the
+# same 400,000 vectors, written by crates/unity-weights' unity-glove) instead of
+# parsing the text: ~19 s of parseFloat becomes ~0.4 s, vectors verified
+# identical. A build step, not a runtime fallback; `ensure` no-ops when the cache
+# is current, so a warm box pays nothing.
+if [ -f "$DIR/corpora/glove.6B.300d.txt" ]; then
+    _CARGO=""
+    if command -v cargo >/dev/null 2>&1; then _CARGO="cargo"
+    elif [ -x "$HOME/.cargo/bin/cargo" ]; then _CARGO="$HOME/.cargo/bin/cargo"
+    fi
+    if [ -z "$_CARGO" ]; then
+        echo "  [!] cargo not found — skipping the binary GloVe table build."
+        echo "      If corpora/glove.6B.300d.bin is missing the server stops at boot"
+        echo "      and names this exact command. Install Rust from https://rustup.rs"
+    elif ( cd "$DIR" && "$_CARGO" build --release -p unity-weights --bin unity-glove ) >/dev/null 2>&1; then
+        ( cd "$DIR" && ./target/release/unity-glove ensure corpora/glove.6B.300d.txt corpora/glove.6B.300d.bin ) || \
+            echo "  [!] the converter ran and did not finish — the boot will say why."
+    else
+        echo "  [!] the unity-glove converter did not build — re-run cargo by hand to see why."
+    fi
+    cd "$DIR/server" || exit 1
+fi
 echo ""
 
 # Step 6/7: rebuild js/app.bundle.js

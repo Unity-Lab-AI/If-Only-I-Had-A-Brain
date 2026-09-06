@@ -196,8 +196,40 @@ function _extract(zipPath, outPath, log) {
  * exception from in here.
  */
 async function ensureGloveTable(opts = {}) {
-  const corporaDir = opts.corporaDir || path.join(process.cwd(), 'corpora');
   const log = opts.log || ((m) => console.log(`[GloVe] ${m}`));
+
+  // ⛔⛔ RESOLVE THE DIRECTORY THE WAY THE LOADER DOES, NOT FROM `cwd` ALONE.
+  //
+  // The launchers `cd server` before starting node, so `process.cwd()` is
+  // `<repo>/server` on every local run — while the table lives at
+  // `<repo>/corpora`. A single `path.join(cwd, 'corpora')` therefore looked in
+  // `server/corpora`, found nothing, and re-downloaded 862 MB that was already
+  // on disk one directory up. Caught on a local `start.bat` boot: the download
+  // was at 246 MB before it was stopped, and it would have finished by writing a
+  // SECOND full copy of a 1.04 GB file.
+  //
+  // ⚠ `js/brain/embeddings.js` has always walked the same ladder (cwd, cwd/..,
+  // cwd/server) to find the file it reads. The provisioner not walking it is how
+  // the two disagreed about whether the table exists — one of them fetching a
+  // file the other was already reading.
+  //
+  // A caller-supplied `corporaDir` still wins; the ladder is what happens when
+  // nobody said.
+  let corporaDir = opts.corporaDir;
+  if (!corporaDir) {
+    const cwd = process.cwd();
+    const candidates = [
+      path.join(cwd, 'corpora'),
+      path.join(cwd, '..', 'corpora'),
+      path.join(cwd, 'server', 'corpora'),
+    ];
+    // Prefer a directory that ALREADY holds a real table; only then fall back to
+    // the first candidate as the place to put one.
+    corporaDir = candidates.find((d) => tableLooksReal(path.join(d, MEMBER)).ok)
+      || candidates.find((d) => { try { return fs.statSync(d).isDirectory(); } catch { return false; } })
+      || candidates[0];
+  }
+
   const file = path.join(corporaDir, MEMBER);
 
   const have = tableLooksReal(file);

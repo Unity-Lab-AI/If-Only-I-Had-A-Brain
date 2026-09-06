@@ -155,6 +155,31 @@ popd
 echo   GloVe 6B.300d installed at corpora\glove.6B.300d.txt.
 :glove_done
 echo   GloVe substrate present.
+
+REM ── THE BINARY TABLE — what the server actually reads ────────────────────────
+REM Since 2026-09-05 the server opens corpora\glove.6B.300d.bin (an f32 pack of
+REM the same 400,000 vectors, written by crates\unity-weights' unity-glove)
+REM instead of parsing the text: ~19 s of parseFloat becomes ~0.4 s, vectors
+REM verified identical. A build step, not a runtime fallback; `ensure` no-ops
+REM when the cache is current, so a warm box pays nothing.
+if not exist "%~dp0..\corpora\glove.6B.300d.txt" goto glovebin_done
+where cargo >nul 2>&1
+if errorlevel 1 (
+    echo   [!] cargo not found - skipping the binary GloVe table build.
+    echo       If corpora\glove.6B.300d.bin is missing the server will stop at boot
+    echo       and tell you this exact command. Install Rust from https://rustup.rs
+    goto glovebin_done
+)
+pushd "%~dp0.."
+cargo build --release -p unity-weights --bin unity-glove >nul 2>&1
+if errorlevel 1 (
+    echo   [!] the unity-glove converter did not build - see cargo output.
+    popd
+    goto glovebin_done
+)
+target\release\unity-glove.exe ensure corpora\glove.6B.300d.txt corpora\glove.6B.300d.bin
+popd
+:glovebin_done
 echo.
 
 echo [Savestart] step 6/7: rebuilding js/app.bundle.js...
