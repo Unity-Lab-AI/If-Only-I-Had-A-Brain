@@ -10617,6 +10617,57 @@ export class Curriculum {
           oracleLabel = ` · oracle=${oh} matrix=${mh} (oracleRatio=${ratio}%)`;
         }
       } catch { /* ignore */ }
+      // ⛔⛔ A WEDGE WATCHDOG, BECAUSE 52 IDENTICAL HEARTBEATS SAID NOTHING.
+      //
+      // On 2026-09-06 teaching stopped 26s after a cell opened and stayed
+      // stopped for 24 minutes. This heartbeat printed `phase=(between-phases /
+      // gate-probe)` fifty-two times and named nothing: `_activePhase` is null
+      // between declared phases, so the label is a placeholder, not a diagnosis.
+      // Every genuinely useful number — how long since a teach call, whether the
+      // substrate is ready, whether the inner counters are advancing — existed
+      // already and none of it was on the line.
+      //
+      // ⭐ THE RULE THIS ENCODES: a cell that is ALIVE and not TEACHING is a
+      // different state from a cell that is working, and the two must not print
+      // the same line. Below the threshold this stays exactly as quiet as
+      // before; above it, one line carries what a forensic dig had to assemble
+      // by hand from five separate state fields.
+      //
+      // ⚠ The threshold is deliberately well past the slowest legitimate single
+      // teach call ever measured here — one `_teachAssociationPairs` over 7,250
+      // corpus pairs took 380,470 ms — so a merely slow phase never trips it.
+      try {
+        const _wedgeMs = (typeof process !== 'undefined' && Number(process.env?.DREAM_WEDGE_WARN_MS) > 0)
+          ? Number(process.env.DREAM_WEDGE_WARN_MS) : 600000;
+        const _sinceTeach = this._lastTeachAtMs ? (Date.now() - this._lastTeachAtMs) : null;
+        if (_sinceTeach !== null && _sinceTeach > _wedgeMs) {
+          const _b = this.brain || (cluster && cluster._brain);
+          // ⚠ `this._teachStageProfile.hebbian.calls` — READ from its writer
+          // (`e.calls += 1` in the Hebbian stage recorder), not guessed. A name
+          // assumed instead of read is how a drain in this same file went its
+          // entire life without running once.
+          const _sp = this._teachStageProfile || null;
+          const _heb = _sp && _sp.hebbian ? (_sp.hebbian.calls | 0) : null;
+          // Advancing-or-frozen is the ONE fact that separates "inside a long
+          // call" from "wedged", and it is the check that settled it live.
+          const _frozen = (this._wedgeLastHeb !== null && this._wedgeLastHeb !== undefined && _heb !== null)
+            ? (_heb === this._wedgeLastHeb) : null;
+          this._wedgeLastHeb = _heb;
+          if (!this._wedgeWarnAt || (Date.now() - this._wedgeWarnAt) > 60000) {
+            this._wedgeWarnAt = Date.now();
+            console.warn(`[Curriculum] ⛔ NOT TEACHING for ${(_sinceTeach / 60000).toFixed(1)}min while the cell is ALIVE — this is a WEDGE, not a slow phase. `
+              + `stage=${(_b && _b._teachStage) || 'none'} (age ${_b && _b._teachStageAt ? Math.round((Date.now() - _b._teachStageAt) / 1000) + 's' : '?'}) · `
+              + `hebbian.calls=${_heb === null ? '?' : _heb}${_frozen === null ? '' : (_frozen ? ' FROZEN since last check' : ' advancing')} · `
+              + `activePhase=${(cluster && cluster._activePhase && cluster._activePhase.name) || 'none'} · `
+              + `substrate=${(cluster && cluster._gpuProxyReady === true && _b && _b._gpuClient && _b._gpuClient.readyState === 1) ? 'ready' : 'NOT ready'} · `
+              + `pausedForDonor=${this._substratePause ? this._substratePause.reason : 'no'} · `
+              + `probeDeadlineHits=${this._probeDeadlineHits || 0}. `
+              + `⚠ A stage tag whose age climbs while teachStageMax stays small is ACCURATE, not stale — max records only COMPLETED runs.`);
+          }
+        } else if (_sinceTeach !== null && _sinceTeach <= _wedgeMs) {
+          this._wedgeLastHeb = null;   // healthy again — forget the frozen baseline
+        }
+      } catch { /* the watchdog must never take the heartbeat down */ }
       this._hb(`[Curriculum] ▶ CELL ALIVE ${subject}/${grade} — +${elapsedS}s elapsed (heartbeat #${_aliveTick})${phaseLabel}${memLabel}${oracleLabel}`);
     }, 10000);
     if (_aliveHbId && typeof _aliveHbId.unref === 'function') _aliveHbId.unref();

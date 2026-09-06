@@ -847,6 +847,9 @@ const fmt = (n) => (n == null ? '—' : Number(n).toLocaleString());
    drain at a rate a person can actually read. The queue depth is shown, so a
    long backlog is visible rather than silently discarded. */
 let queue = [], paused = false, rate = 4, seen = 0, drained = 0;
+/* Bounded-queue overflow, COUNTED and printed rather than silent — a pane that
+   quietly discards is the same failure as a pane that quietly lags. */
+let queueDropped = 0;
 
 $('tvPause').onclick = () => {
   paused = !paused;
@@ -1091,6 +1094,27 @@ async function poll() {
   for (const it of (tv.feed || [])) {
     if (it.n > seen) { seen = it.n; queue.push(it); }
   }
+  /* ⛔⛔ THE CLIENT QUEUE IS BOUNDED, AND THIS IS A REGRESSION FIX FOR A CHANGE
+     MADE THE SAME DAY. Publishing was extended to the corpus lane, which ships
+     THOUSANDS of sentences in one pass — 3,424 in a single burst, measured. The
+     pane drains at `rate` (4/s by default), so that burst became a ~14-MINUTE
+     backlog: the reading pane kept scrolling long after teaching had STOPPED,
+     and a genuinely wedged walk looked alive because text was still moving.
+
+     ⭐ The counts were never wrong — `ageMs` correctly read 649,604 and the
+     status chip said "last taught 649s ago" the whole time. It was the SCROLL
+     that lied, and a scroll is what a human actually watches.
+
+     ⚠ DROP THE OLDEST, NEVER THE NEWEST. The pane's job is "what is she being
+     taught RIGHT NOW"; keeping stale head-of-queue items and discarding fresh
+     ones would preserve the exact defect. The complete record lives in the
+     ledger pane, and the analytics above are unsampled — so nothing is lost by
+     bounding what one person can physically read. */
+  const QUEUE_CAP = 240;
+  if (queue.length > QUEUE_CAP) {
+    queueDropped += (queue.length - QUEUE_CAP);
+    queue.splice(0, queue.length - QUEUE_CAP);
+  }
 
   const cells = Object.entries(tv.byCell || {});
   const activeCell = cells.length ? cells[cells.length - 1][0] : null;
@@ -1112,6 +1136,7 @@ async function poll() {
     `Counts are <b>complete</b> — every item is counted. This reading pane is <b>paced</b> at ${rate}/s and holds the last 120 rows`
     + ` (server ring caps at ${tv.ringCap}). <b>${fmt(tv.total - drained)}</b> taught items have not been displayed here.`
     + (tv.feedDropped ? ` ${fmt(tv.feedDropped)} rolled past between polls.` : '')
+    + (queueDropped ? ` <b>${fmt(queueDropped)}</b> dropped from this pane's own queue (capped at ${QUEUE_CAP} so the scroll tracks live teaching instead of trailing a corpus burst by minutes).` : '')
     + ` The feed is for reading; the analytics are the whole picture.`;
 
   bars($('tvLanes'), tv.byLane, 8);
