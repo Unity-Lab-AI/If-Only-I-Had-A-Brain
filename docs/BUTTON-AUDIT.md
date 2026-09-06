@@ -157,7 +157,8 @@ worth fixing, but **fixing every one of them would not have started her.**
 |---|---|---|---|---|---|
 | `dashboard.html` | **Brain Power panel** (`bp-*`) | `/ctl/*` ✅ | ✅ **5 min** (2026-09-05) | ✅ yes | **USE THIS ONE** |
 | `dashboard.html` | **legacy row** (`btn-*`, 8 buttons) | brain `/admin/*` — **the FALLBACK, on purpose** | ✅ **20 s / 120 s** (2026-09-05) | ✅ **yes** (2026-09-05) | **fallback for when `/ctl` is down** |
-| `teachview.html` | press panel (4 buttons) | brain, **now falls back to `/ctl/*`** ✅ | ✅ 20 s + 6 s | ✅ yes | **fixed 2026-09-05, live on the box** |
+| `teachview.html` | press panel (4 buttons) | brain lane **SPA-swallowed when deployed** until 2026-09-06 → `/ctl/*` ✅ | ✅ 20 s + 6 s | ✅ yes | ⚠ **the `/ctl` fallback was carrying this alone. Brain lane fixed 2026-09-06 — see PROBLEM 4** |
+| `teachview.html` | buffer · bench · ledger · weights · knob writes · position restore | brain, **bare paths → nginx SPA** ⛔ | n/a | ⛔ **no — blamed the brain** | ⛔ **10 of 12 routes dead when deployed. Fixed 2026-09-06 (`TVADMIN`)** |
 | `dashboard.html` | 7 other admin POSTs (`autoscale` ×2, `resync`, `rollback`, `auto-advance`, `grade-advance`, `grade-signoff`) | brain `/admin/*` | ❌ **no timeout** | ✅ yes | **`BUTTONAUDIT.5` — filed, not yet swept** |
 
 > ## ✅ UPDATED 2026-09-05 — PROBLEMS 1 AND 2 BELOW ARE FIXED. The prose is kept as the finding.
@@ -299,6 +300,57 @@ trade.
 
 **Suggested fix:** wrap it the way `teachview.html` now does — see
 `pressFetch()` there, ~20 s for power verbs.
+
+---
+
+## ⛔ PROBLEM 4 — teachview.html: ten of twelve routes never reached the brain when deployed (fixed 2026-09-06)
+
+**Reported off the live page:** `buffer ERROR — could not reach the brain (Unexpected token '<', "<html>…" is not valid JSON)`.
+
+**The brain was never asked.** The public nginx vhost forwards exactly **five**
+locations — `= /public-state.json`, `= /minds-eye.json`, `/ws`, `/admin/ws`,
+`/admin/`. Everything else falls through to the static SPA, which answers
+**HTTP 200 with an HTML body**. A bare `fetch('/corpus-buffer')` therefore does
+not fail — it *succeeds*, returns a web page, and dies at `r.json()`.
+
+⭐ **A 200-with-HTML is the worst failure shape there is, because every status
+check passes.** `r.ok` is true and there is no error status to branch on.
+
+Measured against the live box rather than read off the config:
+
+| route | live result | verdict |
+|---|---|---|
+| `/public-state.json` | `200 application/json` | forwarded |
+| `/teach-ledger.json?cells=1` | **`200 text/html`** | SPA — never reached the brain |
+| `/weights/list` | **`200 text/html`** | SPA |
+| `/teach-bench` | **`200 text/html`** | SPA |
+| `/admin/teach-ledger.json?cells=1` | **`401`** | **forwarded — the fix path** |
+
+**The `401` is the proof, and it is why no nginx change was needed.** A 401 is
+nginx reaching for the brain and challenging you; a `200 text/html` is nginx
+handing back the SPA. `location /admin/` uses `proxy_pass http://unity_brain/;`
+— the **trailing slash strips the prefix** — so `/admin/weights/list` arrives at
+the brain as `/weights/list` with `X-UAL-User` set from the login.
+
+**Root cause: the page was built and exercised on localhost, where a bare path
+works.** `dashboard.html` has had an `adminApi()` helper for exactly this since
+it was written; Teach View had no equivalent and its deployed case was never
+run. One line held nine of the ten routes — `WEIGHT_BASES` resolved to `['']`
+when deployed, and `WEIGHT_BASE` is reused by `/weights/list`,
+`/weights/download`, `/weights/position`, `/knob`, `/knob-default` and all four
+press verbs.
+
+⛔ **The second bug, which the fix would otherwise have walked into.**
+`isForbidden()` tested `403` only — the brain's `requireLoopback` answer. nginx's
+`auth_basic` answers **`401`**. Prefixing without widening that would have
+converted every unauthenticated control from a clean 403 into a 401 that falls
+through to `r.json()` and reports *"could not reach the brain"* — **the same
+false accusation by a new door.** Widened at the one function all seven call
+sites converge on, plus the two places still comparing the number by hand.
+
+**Suggested fix for any new page:** resolve privileged routes through a single
+base constant declared at the top of the script, never a bare literal at the
+call site. See `TV_IS_LOCAL` / `TV_ADMIN` in `teachview.html`.
 
 ---
 

@@ -5,6 +5,47 @@
 
 ---
 
+## 2026-09-06 — `TVADMIN` — TEN OF TEACH VIEW'S TWELVE ROUTES WERE DEAD ON THE DEPLOYED PAGE, AND EVERY ONE OF THEM BLAMED THE BRAIN
+
+Gee (verbatim): *"moniter her make sure shes doing everything correctly without errors take nots of issues"*
+
+Gee (verbatim, pasted off the live page): *"buffer ERROR — could not reach the brain (Unexpected token '<', "<html>*
+*<h"... is not valid JSON)"*
+
+⚠ **PROCESS DEVIATION, NAMED RATHER THAN BACK-DATED.** The board rule is task-first, work-second. This was found mid-monitoring and fixed in one pass, so the row is being written at completion. That is the wrong order and it is recorded as such.
+
+⛔ **THE BRAIN WAS NEVER ASKED.** The public nginx vhost forwards exactly **five** locations — `= /public-state.json`, `= /minds-eye.json`, `/ws`, `/admin/ws`, `/admin/`. Everything else falls through to the static SPA, which answers **HTTP 200 with an HTML body**. So `fetch('/corpus-buffer')` did not fail; it *succeeded*, returned a web page, and died at `r.json()` on the `<` of `<html>`. The page's catch then printed *"could not reach the brain"* about a brain that was up, GPU-attached and teaching.
+
+⭐ **A 200-WITH-HTML IS THE WORST FAILURE SHAPE THERE IS, because every status check passes.** `r.ok` is true. There is no error status to branch on. The only witness is the body, and by the time you are looking at the body you are already inside a parse exception.
+
+⛔ **AND IT WAS NOT ONE BUTTON — IT WAS TEN OF TWELVE ROUTES.** Measured against the live box rather than read off the config file:
+
+| route | live result | verdict |
+|---|---|---|
+| `/public-state.json` | `200 application/json` | forwarded |
+| `/minds-eye.json` | `200 application/json` | forwarded |
+| `/teach-ledger.json?cells=1` | **`200 text/html`** | SPA — never reached the brain |
+| `/weights/list` | **`200 text/html`** | SPA |
+| `/teach-bench` | **`200 text/html`** | SPA |
+| `/ctl/status` | `401` | forwarded, gated |
+| `/admin/teach-ledger.json?cells=1` | **`401`** | **forwarded — the fix path** |
+
+⭐ **The `401` is the proof and it is why the fix needs no nginx change.** A 401 is nginx reaching for the brain and challenging the caller; a `200 text/html` is nginx handing back the SPA. `location /admin/` uses `proxy_pass http://unity_brain/;` — the **trailing slash strips the prefix** — so `/admin/weights/list` arrives at the brain as `/weights/list` with `X-UAL-User` set from the authenticated login. `/admin` is not a second API; it is the same routes reached through the only open door.
+
+⛔ **ROOT CAUSE: THE PAGE WAS BUILT AND EXERCISED ON LOCALHOST, WHERE A BARE PATH WORKS.** `dashboard.html` has carried an `adminApi()` helper for exactly this since it was written. Teach View had no equivalent at all — its deployed case was never run. One line held nine of the ten routes: `WEIGHT_BASES` resolved to `['']` when deployed, and `WEIGHT_BASE` is reused by `/weights/list`, `/weights/download`, `/weights/position`, `/knob`, `/knob-default` and all four press verbs.
+
+✅ **Fixed at the choke points, not the call sites.** `TV_IS_LOCAL` / `TV_ADMIN` declared once at the top of the script (above `bufPoke('state')`, which runs at module scope — `const` is in a temporal dead zone until its line executes and a `typeof` guard does not shield it, a shape this codebase has already taken a crash-loop from); `WEIGHT_BASES` → `['/admin']` when deployed; `LEDGER_URLS`, `/teach-bench` and `/corpus-buffer` prefixed the same way.
+
+⛔ **A SECOND BUG THE FIX WOULD OTHERWISE HAVE WALKED STRAIGHT INTO.** `isForbidden()` tested `403` only — the brain's `requireLoopback` answer. nginx's `auth_basic` answers **`401`**. Routing through `/admin` therefore converts every unauthenticated control from a clean 403 into a 401 that falls through to `r.json()`, throws on the HTML, and reports *"could not reach the brain"* — **the identical false accusation, arriving by a new door.** Widened at the single function all seven call sites converge on, plus the two places that still compared the number by hand (`loadWeightsList`, `pressSafeties`). A per-site fix is enforced only by discipline, and the next control added to the page would have missed it.
+
+✅ **Verified:** both `<script>` blocks parse; all twelve routes now resolve through `TV_ADMIN` or `WEIGHT_BASE`, with only `/ctl/` and the two whitelisted readers left bare (both measured as forwarded); CRLF preserved at 3,044 with 0 bare LF.
+
+⭐ **NO PRESS IS NEEDED AND THE RUNNING WALK IS NOT DISTURBED.** `deploy.yml` rsyncs the FRONTEND on every push while the node process restarts only on a press — and this change is frontend only. It lands on the live page at push time, with the fresh walk still running underneath it.
+
+⚠ **What this does NOT fix:** an unauthenticated browser still gets a 401 from `/admin/`. That now renders as *"admin lane NOT authenticated — the brain is UP and every reading on this page is live and correct"*, which is the honest answer and already the page's own copy. Signing in to the admin lane once makes the controls work.
+
+---
+
 ## 2026-09-05 — `FRONTDOOR` — THE COORDINATOR BECOMES THE FRONT DOOR: RUST OWNS THE SOCKET, THE GATE AND THE STATIC FILES, AND FORWARDS COGNITION TO NODE
 
 Gee (verbatim): *"yes he wants the next big push!!! why didnt you do it.. is he have items blocvking it?"*

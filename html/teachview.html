@@ -799,6 +799,40 @@
    sampled, the reading pane is deliberately slow, and BOTH facts are printed
    on screen so the pane can never be mistaken for the whole.
    ──────────────────────────────────────────────────────────────────────────── */
+/* ⛔⛔ EVERY PRIVILEGED ROUTE ON THIS PAGE MUST CARRY THE `/admin` PREFIX WHEN
+   DEPLOYED, AND WITHOUT IT TEN OF THIS PAGE'S TWELVE ROUTES SILENTLY DIE.
+
+   The public nginx vhost forwards exactly FIVE locations to the brain:
+   `= /public-state.json`, `= /minds-eye.json`, `/ws`, `/admin/ws` and `/admin/`.
+   Anything else falls through to the static SPA — which answers **HTTP 200 with
+   an HTML body**. So a bare `fetch('/teach-bench')` does not fail: it succeeds,
+   returns a page, and dies at `r.json()` with `Unexpected token '<'`, which this
+   page then reported as *"could not reach the brain"*. The brain was never
+   asked. ⭐ A 200-with-HTML is the worst possible failure shape, because every
+   status check passes.
+
+   Measured against the live box rather than read off the config:
+     /public-state.json          200 application/json   ← forwarded
+     /teach-ledger.json?cells=1  200 text/html          ← SPA, never reached the brain
+     /weights/list               200 text/html          ← SPA
+     /teach-bench                200 text/html          ← SPA
+     /admin/teach-ledger.json    401                    ← FORWARDED, and challenging
+
+   The 401 is the proof: nginx strips the `/admin/` prefix (`proxy_pass
+   http://unity_brain/;` — the trailing slash is what does it) and hands the rest
+   to the brain with `X-UAL-User` set from the authenticated login. So `/admin`
+   is not a different API, it is the SAME routes reached through the only door
+   that is open. `dashboard.html` has always done this via its own `adminApi()`;
+   this page was written against localhost, where a bare path works, and the
+   deployed case was never exercised.
+
+   ⚠ DECLARED HERE, AT THE TOP, ON PURPOSE. `const` sits in a temporal dead zone
+   until its line runs and a `typeof` guard does NOT shield it — this codebase
+   has already taken a crash-loop from exactly that shape. `bufPoke('state')`
+   runs at module scope further down, so this must be above it. */
+const TV_IS_LOCAL = (location.protocol === 'file:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+const TV_ADMIN = TV_IS_LOCAL ? '' : '/admin';
+
 const STATE_URLS = ['/public-state.json'];
 const EYE_URLS = ['/minds-eye.json'];
 if (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.protocol === 'file:') {
@@ -837,7 +871,7 @@ $('tvBench').onclick = async () => {
   feed.appendChild(box);
   feed.scrollTop = feed.scrollHeight;
   try {
-    const r = await fetch('/teach-bench', { cache: 'no-store' });
+    const r = await fetch(TV_ADMIN + '/teach-bench', { cache: 'no-store' });
     if (isForbidden(r)) {
       markAdminLane(false, 'This browser is not calling from loopback.');
       box.textContent = 'bench is an admin-only control and this page is not on the admin lane — the bench itself is fine, and every reading above is live. Run it from the box.';
@@ -915,11 +949,21 @@ function markAdminLane(ok, why) {
 }
 /* A 403 is the ONE status that means "not you", and it must never be reported
    as a fault in the thing being called. */
-function isForbidden(r) { return r && r.status === 403; }
+/* ⛔ 401 COUNTS TOO, AND OMITTING IT WOULD HAVE RE-BROKEN THE PAGE THE MOMENT THE
+   `/admin` PREFIX LANDED. The brain's own `requireLoopback` answers 403; nginx's
+   `auth_basic` on the `/admin/` lane answers **401** with an HTML body. Routing
+   through `/admin` therefore turns every unauthenticated control from a clean
+   403 into a 401 that falls through to `r.json()`, throws on the HTML, and
+   reports "could not reach the brain" — the exact false accusation this
+   function exists to prevent, arriving by a new door.
+   ⭐ Widened HERE rather than at the seven call sites, because that is where all
+   of them converge; a per-site fix is enforced only by discipline, and the next
+   control added to this page would miss it. */
+function isForbidden(r) { return !!r && (r.status === 403 || r.status === 401); }
 
 async function bufPoke(action) {
   try {
-    const r = await fetch(`/corpus-buffer?action=${encodeURIComponent(action)}`, { method: 'POST', cache: 'no-store' });
+    const r = await fetch(`${TV_ADMIN}/corpus-buffer?action=${encodeURIComponent(action)}`, { method: 'POST', cache: 'no-store' });
     if (isForbidden(r)) {
       markAdminLane(false, 'This browser is not calling from loopback.');
       $('tvBufLbl').textContent = 'corpus buffer — admin-only control, and this page is not on the admin lane. Nothing is wrong with the buffer.';
@@ -1197,8 +1241,14 @@ async function pollEye() {
    reads as "this cell taught nothing", which is a different and much worse
    claim.
    ──────────────────────────────────────────────────────────────────────────── */
-const LEDGER_URLS = ['/teach-ledger.json'];
-if (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.protocol === 'file:') {
+/* ⚠ `/teach-ledger.json` LOOKS like the two public JSON readers above and is
+   NOT one of them — the nginx vhost forwards `/public-state.json` and
+   `/minds-eye.json` by exact match, and nothing else. Bare, this route returned
+   the SPA with a 200, `r.json()` threw, `grabLedger` swallowed it, and the pane
+   printed "Ledger route unreachable — the brain may be offline." about a brain
+   that was up and teaching. It carries the prefix like every other route. */
+const LEDGER_URLS = [TV_ADMIN + '/teach-ledger.json'];
+if (TV_IS_LOCAL) {
   LEDGER_URLS.push('http://localhost:7525/teach-ledger.json');
 }
 
@@ -1861,9 +1911,16 @@ $('tvKnobReset').onclick = () => {
    in a temporal dead zone until their line executes, and a `typeof` guard does
    NOT shield them — this codebase has already taken a crash-loop from exactly
    that shape. Hoisting only saves function declarations, never these. */
-const WEIGHT_BASES = (location.protocol === 'file:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+/* ⛔ THE DEPLOYED BASE IS `/admin`, NOT `''`, AND THIS ONE LINE CARRIES NINE
+   ROUTES. `WEIGHT_BASE` is pinned from this list and then reused by
+   `/weights/list`, `/weights/download`, `/weights/position`, `/knob`,
+   `/knob-default` and all four press verbs. With `''` every one of them fired at
+   the page's own origin, got the SPA back with a 200, and failed in whatever way
+   that route happened to parse — which is why the weights card read "Could not
+   reach the weights lane" while the brain was up. */
+const WEIGHT_BASES = TV_IS_LOCAL
   ? ['http://localhost:7525', '']
-  : [''];
+  : ['/admin'];
 let WEIGHT_BASE = '';
 
 function fmtBytes(b) {
@@ -1884,7 +1941,7 @@ async function loadWeightsList() {
       /* ⛔ 403 IS A DISTINCT ANSWER AND MUST NOT READ AS "no weights". The route
          is admin-gated, so an unauthenticated page gets a refusal, not an empty
          list — reporting that as "none found" would be a lie about the brain. */
-      if (r.status === 403) {
+      if (isForbidden(r)) {
         /* ⛔ PIN THE BASE ANYWAY. A 403 PROVES this base is the brain — it
            answered, it just refused. Returning without pinning left every other
            write lane on this page (the position restore, the press controls)
@@ -2634,7 +2691,7 @@ async function pressSafeties() {
         out.push({ level: 'stop', text: `A WEIGHTS SAVE IS IN FLIGHT RIGHT NOW (${j.writing.name}, ${fmtBytes(j.writing.bytes)} written so far). `
           + 'Restarting through a checkpoint write leaves a half-written binary beside a complete ledger. Wait for it to finish.' });
       }
-    } else if (r.status !== 403) {
+    } else if (!isForbidden(r)) {
       out.push({ level: 'unknown', text: `Could not check whether a weights save is running (HTTP ${r.status}). This is a CANNOT-TELL, not an all-clear.` });
     }
   } catch (e) {
