@@ -2637,7 +2637,16 @@ export const K_CONCRETE_SENTENCES = [
   'i feel lucky today', 'mom says i am her good luck',
 
   // ── Final orphan cleanup — base forms of conjugated K vocab ──
-  'what a fun suprise', 'a big suprise for mom',
+  // ⛔ `suprise` -> `surprise`. This was a MISSPELLING IN A TEACHING SENTENCE,
+  // and it did not stay cosmetic: `gen-grade-vocab.mjs` reads these sentences to
+  // build the per-grade word lists, so the typo was promoted to a real
+  // kindergarten vocabulary WORD — `corpora/vocabulary/kindergarten.json` carried
+  // `suprise` and did NOT carry `surprise`. The dictionary then correctly 404s
+  // it, which is the `DEF-MISS` the trainer has been flagging.
+  // ⭐ The flag was right and the data was wrong. A word list generated FROM
+  // content inherits every defect in that content, so a typo here becomes a word
+  // she is expected to know, look up, and fail to define.
+  'what a fun surprise', 'a big surprise for mom',
   'grandpa will snore loud', 'i hear snore at night',
   'we grill the food outside', 'dad will grill the burger',
   'i love a pancake for breakfast', 'a pancake is round',
