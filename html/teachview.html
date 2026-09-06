@@ -1185,6 +1185,13 @@ async function poll() {
         `<div class="tv-flag ${f.level === 'err' ? 'err' : 'warn'}"><b>${f.code}</b>`
         + (f.subject ? ` <span class="tv-src">${f.subject}/${f.grade || ''}</span>` : '')
         + (f.count > 1 ? ` <span class="tv-src">×${f.count}</span>` : '')
+        // FLAGSAMPLE.1 — ×N alone cannot tell "eight words missed once each"
+        // from "one word missed eight times", and those want completely
+        // different responses: the first is a class of words, the second is one
+        // stubborn word. Show the distinct-subject count whenever it disagrees
+        // with the raw count.
+        + ((f.distinct > 1 && f.distinct !== f.count)
+            ? ` <span class="tv-src" title="distinct subjects, as opposed to total occurrences">${f.distinct} words</span>` : '')
         + `<div>${f.message}</div></div>`).join('')
     : '<div class="tv-note">No flags raised.</div>';
 

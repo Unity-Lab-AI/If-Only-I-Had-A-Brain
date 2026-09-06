@@ -4551,12 +4551,53 @@ export class Curriculum {
     if (!tv) return;
     const key = `${code}:${(meta && meta.subject) || ''}/${(meta && meta.grade) || ''}`;
     const existing = tv.flags.find((f) => f.key === key);
-    if (existing) { existing.count++; existing.lastAt = Date.now(); return; }
+    // ⭐⭐ `FLAGSAMPLE.1` — THE COUNT AND THE NAMED SUBJECT WERE UNRELATED, AND
+    // THAT MADE THIS PANEL POINT AT THE WRONG WORD.
+    //
+    // The key is `code:subject/grade`, and `DEF-MISS` passes neither — so EVERY
+    // missing word in the entire walk collapsed into the single flag
+    // `DEF-MISS:/`. The first miss set the message; every later miss of ANY word
+    // incremented `count` and returned early **without touching it**.
+    //
+    // ⛔ So `DEF-MISS ×8 — no dictionary definition for "for"` did not mean
+    // `for` missed eight times. It meant **eight words missed and `for` was
+    // merely the first**, which sends the reader to investigate a word that may
+    // have failed exactly once. Reported live, and acted on as if it were about
+    // `for`.
+    //
+    // ⭐ `samples` fixes it WITHOUT unbounding the panel: the aggregate stays one
+    // row (an outage that misses 1,420 words must not become 1,420 flags — the
+    // dashboard law is aggregates, not enumeration), but it now carries up to 8
+    // DISTINCT subjects and a `distinct` count, so the row says what actually
+    // happened. `message` is refreshed too, since a frozen first-message is the
+    // same lie in a different field.
+    if (existing) {
+      existing.count++;
+      existing.lastAt = Date.now();
+      const _s = (meta && meta.sample) ? String(meta.sample) : null;
+      if (_s) {
+        if (!existing.samples) existing.samples = [];
+        if (!existing.samples.includes(_s)) {
+          existing.distinct = (existing.distinct || existing.samples.length) + 1;
+          if (existing.samples.length < 8) existing.samples.push(_s);
+        }
+        // Keep the headline honest once more than one distinct subject is in
+        // play: naming one word for a multi-word condition is what broke this.
+        if ((existing.distinct || 1) > 1) {
+          existing.message = `${existing.distinct} distinct: ${existing.samples.join(', ')}`
+            + (existing.distinct > existing.samples.length ? ` (+${existing.distinct - existing.samples.length} more)` : '');
+        }
+      }
+      return;
+    }
+    const _s0 = (meta && meta.sample) ? String(meta.sample) : null;
     tv.flags.push({
       key, level: level || 'warn', code: code || 'UNKNOWN',
       message: String(message || '').slice(0, 300),
       subject: (meta && meta.subject) || null,
       grade: (meta && meta.grade) || null,
+      samples: _s0 ? [_s0] : [],
+      distinct: _s0 ? 1 : 0,
       count: 1, firstAt: Date.now(), lastAt: Date.now(),
     });
     // Bounded — a flag list that grows without limit is a hang, and the dashboard
@@ -16808,9 +16849,13 @@ export class Curriculum {
         // standing FC.11 rejection of re-querying 404s is untouched — `noDef`
         // still never comes back here.
         try {
+          // `FLAGSAMPLE.1` — carries `sample` for the same reason DEF-MISS does:
+          // without it this row names the FIRST word the service failed on and
+          // then counts every word since, which reads as one stubborn word
+          // rather than an outage affecting N of them.
           this.teachFlag('info', 'DEF-DEFER',
             `the dictionary service did not answer for "${w}" (${_why}) — this is a SERVICE outage, not a missing word; it stays unlearned and the next cell's vocab pass retries it`,
-            {});
+            { sample: w });
         } catch { /* nf */ }
         return {
           passes: 0, totalTrained: 0, defsBound: 0, transient: true,
@@ -16819,7 +16864,10 @@ export class Curriculum {
       }
 
       if (String(w || '').length > 1 && !_taughtElsewhere) {
-        try { this.teachFlag('warn', 'DEF-MISS', `no dictionary definition for "${w}" — bound nothing`, {}); } catch { /* nf */ }
+        // `FLAGSAMPLE.1` — pass the WORD so the aggregated row can name what
+        // actually missed. Without this the panel reported the first word that
+        // ever missed alongside a count belonging to every word since.
+        try { this.teachFlag('warn', 'DEF-MISS', `no dictionary definition for "${w}" — bound nothing`, { sample: w }); } catch { /* nf */ }
       }
       return {
         passes: 0, totalTrained: 0, defsBound: 0, transient: false,
