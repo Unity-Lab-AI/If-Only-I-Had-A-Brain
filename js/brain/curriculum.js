@@ -4026,6 +4026,21 @@ export class Curriculum {
         unresolved: (cluster && cluster._kVocabUnresolved instanceof Set) ? cluster._kVocabUnresolved.size : 0,
         lastWindow: this._trickleLastWindow || null,
       },
+      // ⛔⛔ THE WEDGE THAT STOPPED THE WALK FOR 110 MINUTES, MADE READABLE.
+      // The forced consolidation pass was awaited with no bound; when it stopped
+      // making progress the walk parked on it, and because a `finally` does not
+      // run until its `try` settles, the brain stayed flagged asleep and the
+      // curriculum flagged not-in-progress — silently disabling teaching, the
+      // deferred-lane drains, drawing and the mind's eye at once.
+      // ⚠ `trips: 0` is the healthy reading and is NOT the same as "the bound is
+      // absent"; `watchdogMs` is published beside it so a reader can tell a
+      // brain that never needed the bound from one that never had it.
+      consolidationWatchdog: {
+        trips: this._consolWatchdogTrips | 0,
+        last: this._consolWatchdogLast || null,
+        watchdogMs: (typeof process !== 'undefined' && Number(process.env?.DREAM_CONSOLIDATION_WATCHDOG_MS) > 0)
+          ? Number(process.env.DREAM_CONSOLIDATION_WATCHDOG_MS) : 300000,
+      },
       liveness: (() => {
         const now = Date.now();
         const count = this._teachTickCount | 0;
@@ -5056,14 +5071,69 @@ export class Curriculum {
       const engine = brain?.consolidationEngine;
       if (engine && typeof engine.runConsolidationPass === 'function') {
         // Signal-driven wait: AWAIT the pass to actually complete.
-        // No wall-clock timer. The promise resolves only when the
-        // ConsolidationEngine has finished its full sweep (candidate
-        // selection, cluster-by-cosine, schema build / reinforce,
-        // replay Hebbian, Tier 3 promotion check).
-        await engine.runConsolidationPass({ forced: true });
+        // The promise resolves only when the ConsolidationEngine has finished
+        // its full sweep (candidate selection, cluster-by-cosine, schema build
+        // / reinforce, replay Hebbian, Tier 3 promotion check).
+        //
+        // ⛔⛔ THIS AWAIT WAS UNBOUNDED, AND IT IS THE MECHANISM OF THE LIVE
+        // WEDGE. The comment here used to read "No wall-clock timer", stated as
+        // a design choice. Measured on the box: the walk sat between phases for
+        // **110 minutes** with `hebbian.calls` frozen, the cell heartbeat still
+        // printing, the donor healthy at 259 ms per batch and the event loop
+        // clean — nothing had crashed and nothing was pinned. Execution was
+        // parked on this line.
+        //
+        // ⚠ AND THE COST IS NOT JUST THE PAUSE. The `finally` below restores
+        // `_curriculumInProgress` and `_operatorSleepRequested`, and a `finally`
+        // does not run until its `try` SETTLES — so an await that never returns
+        // leaves the brain permanently flagged as sleeping and the curriculum
+        // permanently flagged as not-in-progress. Every downstream lane reads
+        // those flags. **One unbounded await silently disabled teaching, the
+        // deferred-lane drains, drawing and the mind's eye at once.**
+        //
+        // ⛔ THE ENGINE ALREADY PROMISES A BOUND AND IT DID NOT HOLD. A forced
+        // pass carries `DREAM_CONSOLIDATION_FORCE_MAX_MS` (120 s) as its own
+        // deadline; this await outlived it by ~55×. **A bound that lives inside
+        // the thing being bounded cannot catch the case where that thing stops
+        // making progress**, which is exactly why the watchdog is out here.
+        //
+        // Derivation for 300 s (also in `docs/THRESHOLD-DERIVATION.md`): the
+        // engine's own forced-pass contract is 120 s, its deadline is checked
+        // BETWEEN items so a single long item overshoots (measured overshoot
+        // 48.5 s against a 45 s cap = 7.8%), and 300 s is 2.5× the contract —
+        // far past any legitimate overshoot, while still bounded. Past five
+        // minutes the pass has broken its own promise and is definitionally
+        // hung.
+        //
+        // ⚠ THE RACE DOES NOT CANCEL THE PASS, and pretending otherwise would
+        // be the lie. The pass keeps running; what is bounded is how long the
+        // WALK waits on it. That is safe because `runConsolidationPass` opens
+        // with an `_inFlight` guard returning `already-in-flight`, so the next
+        // window declines instantly instead of starting a second sweep.
+        const _consolWatchdogMs = (typeof process !== 'undefined' && Number(process.env?.DREAM_CONSOLIDATION_WATCHDOG_MS) > 0)
+          ? Number(process.env.DREAM_CONSOLIDATION_WATCHDOG_MS) : 300000;
+        let _consolTimedOut = false;
+        await Promise.race([
+          engine.runConsolidationPass({ forced: true }),
+          new Promise((resolve) => {
+            const _t = setTimeout(() => { _consolTimedOut = true; resolve(); }, _consolWatchdogMs);
+            // A pending watchdog must never be the reason the process refuses
+            // to exit, same rule as every other timer in this tree.
+            if (_t && typeof _t.unref === 'function') _t.unref();
+          }),
+        ]);
         const passMs = Date.now() - startedAt;
         const passCount = engine.passCount || 0;
-        this._hb(`[Curriculum] ⚙ dream pass complete in ${(passMs / 1000).toFixed(1)}s — ConsolidationEngine passCount=${passCount} · entering ${(settleMs / 1000).toFixed(0)}s settle window for V8 + native drain`);
+        if (_consolTimedOut) {
+          // ⛔ Counted and published, not just logged — a wedge that is only
+          // visible in a rotating console ring is one nobody can answer
+          // questions about an hour later.
+          this._consolWatchdogTrips = (this._consolWatchdogTrips || 0) + 1;
+          this._consolWatchdogLast = { at: Date.now(), waitedMs: passMs, passCount };
+          this._hb(`[Curriculum] ⛔⛔ CONSOLIDATION WATCHDOG TRIPPED after ${(passMs / 1000).toFixed(0)}s — the forced pass exceeded its own ${(_consolWatchdogMs / 1000).toFixed(0)}s bound and the walk is no longer waiting on it. The pass is STILL RUNNING in the background and the engine's in-flight guard will decline the next one; this window skips its remaining stages and the curriculum RESUMES. Trips this boot: ${this._consolWatchdogTrips}. Before this bound existed the walk simply stopped here forever.`);
+        } else {
+          this._hb(`[Curriculum] ⚙ dream pass complete in ${(passMs / 1000).toFixed(1)}s — ConsolidationEngine passCount=${passCount} · entering ${(settleMs / 1000).toFixed(0)}s settle window for V8 + native drain`);
+        }
         let _dwT = Date.now();
         // TRICKLE FIRST, IMMEDIATELY AFTER CONSOLIDATION (2026-08-14).
         //
@@ -5075,7 +5145,17 @@ export class Curriculum {
         // the dictionary, ZERO bound, because execution never once reached this
         // block before the budget was spent. It now has first claim; the
         // exploratory stages are what get squeezed when a window runs long.
-        _dwBudgetFrom = Date.now();
+        // ⛔ ON A WATCHDOG TRIP, EVERY REMAINING STAGE SKIPS — and it is done by
+        // back-dating the existing budget origin rather than by adding a second
+        // control path. The enrichment stages already know how to skip and how
+        // to say so; reusing that gate means the trip is reported by the same
+        // machinery, one line per stage, instead of by a new branch that would
+        // have to be kept in step with it.
+        // ⚠ The reason to skip rather than continue is CONCURRENCY, not tidiness:
+        // the abandoned pass is still running, and the trickle below teaches.
+        // Running them together is two teachers on one substrate, which is the
+        // hazard the deferred-lane drain is gated against elsewhere.
+        _dwBudgetFrom = _consolTimedOut ? (Date.now() - _dwBudgetMs - 1) : Date.now();
 
         // Background-trickle K_VOCABULARY multi-def Hebbian during
         // dream cycles. Session 114.19ei bumped batch size 1 → 25

@@ -414,6 +414,23 @@ Two named constants shipped with the rep-pricing publication and the lateral-inh
 - **Drift trigger:** re-derive if mean cell duration falls below ~10 minutes, or if the verdict is ever wired to STEER compression (`DREAM_REP_AUTOPRICE=1`) rather than only to report — a steering input earns a tighter interval than a reporting one.
 - ⛔⛔ **CORRECTION 2026-09-06 — THE INTERVAL WAS RIGHT AND ITS SCOPE WAS WRONG, AND THE SCOPE IS WHAT MADE THE INSTRUMENT USELESS.** The derivation above is sound for *how often a lane should be re-measured*. It was implemented against **one global clock and one sticky slot for the whole brain**, so the interval did not pace a lane — it paced the ENTIRE instrument, and in any window exactly one teach lane could be measured at all. **Read off the live box after 76 minutes of teaching: `measurements: 1`.** ⭐ The interval is now applied **per teach lane**, which is the quantity this derivation was always about; the arithmetic is unchanged and now describes what the code does.
 
+### Consolidation-pass watchdog
+
+- **Constant:** `DREAM_CONSOLIDATION_WATCHDOG_MS`, default **300,000 ms** (5 min).
+- **What it bounds:** how long the *walk* waits on a forced consolidation pass inside the dream window. ⚠ It does **not** bound the pass itself — the pass keeps running; what is bounded is the wait.
+- ⛔ **Why it had to exist:** the await was unbounded by explicit design (*"No wall-clock timer"* in its own comment). Measured live on the box: the walk sat between phases for **110 minutes** with `hebbian.calls` frozen, the heartbeat still printing, the donor healthy at 259 ms/batch and the event loop clean. ⚠ **And the cost was larger than the pause** — the window's `finally` restores `_curriculumInProgress` and `_operatorSleepRequested`, and a `finally` does not run until its `try` settles, so **one unbounded await left the brain flagged asleep and silently disabled teaching, the deferred-lane drains, drawing and the mind's eye at once.**
+- **Math justification:** the engine already carries its own forced-pass deadline, `DREAM_CONSOLIDATION_FORCE_MAX_MS` = **120,000 ms**, so a healthy pass is bounded at 120 s *by the engine's own contract*. That deadline is checked **between items**, so a single long item overshoots — the measured overshoot on the routine path was **48.5 s against a 45 s cap = 7.8%**. A watchdog must therefore sit strictly above 120 s plus a realistic overshoot:
+  ```
+    engine contract   120 s
+    observed overshoot  7.8%   ->  ~129 s worst legitimate case
+    watchdog 300 s     = 2.5x the contract, ~2.3x the worst legitimate case
+  ```
+  **Past five minutes the pass has broken its own promise by more than double and is definitionally hung.** The live wedge exceeded the contract by **~55×**, so the bound has enormous separation from the failure it catches.
+- ⛔ **Why the bound cannot live inside the engine:** it already does, and it did not hold. **A bound inside the thing being bounded cannot catch the case where that thing stops making progress.** The watchdog is outside for that reason alone.
+- **Safety of abandoning the wait:** `runConsolidationPass` opens with an `_inFlight` guard returning `already-in-flight`, so the next window declines instantly rather than starting a second concurrent sweep. On a trip the window **skips its remaining stages** — not for tidiness but because the abandoned pass is still running and the trickle stage teaches; running both is two teachers on one substrate.
+- **RE-PRICE:** none owed. This **adds** a bound to an unbounded wait; it removes and weakens nothing. In the healthy case (pass completes inside 120 s) walk cost is bit-identical. In the failing case it converts an unbounded stall into a bounded, logged, recoverable skip — strictly finite-making.
+- **Drift trigger:** re-derive if `DREAM_CONSOLIDATION_FORCE_MAX_MS` moves, since this is defined as a multiple of it.
+
 ### Rep-pricing lane book bound
 
 - **Constant:** `_repPriceByLabel` cap, **96 lanes**, evicting the oldest measurement.
