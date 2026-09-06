@@ -5,6 +5,55 @@
 
 ---
 
+## 2026-09-06 (21st) — `DEFCOST.1` MERGES INTO `TEACHRATE.3` — THE DICTIONARY IS NOT THE COST, AND MY OWN HYPOTHESIS DIED MEASURING IT
+
+Gee (verbatim): *"lots of work we are doing what ever we need to do to correctly and accurately fix and code in all the todo work"*
+
+### The bottleneck, re-read live
+
+`definitionQueue` **2,155 deep**, `lastWindow` **7 processed in 200,496 ms = 28.6 s per word** — worse than the 12.4 s the row was filed at. `cellPhasesStarted` **2 of 25**, `passedCellsTotal` **0**. At that rate the bootstrap alone is **7+ hours** before a single phase runs, which is why no cell passes.
+
+### ⛔ ① Dictionary lookup — not the cost, by four orders of magnitude
+
+**34 µs/word** measured over the real vocabulary through the production path = **0.07 s for all 2,137 words.** The lane under suspicion is effectively free.
+
+### ⛔⛔ ② Sense count — my hypothesis, and it was a good one, and it is dead
+
+The reasoning: the offline dictionary replaced the API on 2026-09-05, it returns far more senses per word, and `_teachWordDefinition` loops **every** sense — so the switch should have multiplied per-word cost, and *"3× its recorded cost"* is exactly the shape of a sense-count multiplier. It even had a date that lined up.
+
+**Measured on her real kindergarten vocabulary:**
+
+```
+  words answered offline   2,137 of 2,221  (96.2%)
+  total senses to bind    13,031
+  average per word          6.10
+  heaviest        break=75 · cut=70 · run=57 · play=52 · make=51
+  94 words carry 20+ senses
+```
+
+At the measured 69.2 ms per assoc call that is **15 minutes for the ENTIRE vocabulary**, against **442 minutes** live. **29× too small. Refuted.**
+
+⚠ Worth keeping *why* it was worth testing: the numbers it predicted were real (6.10 senses/word genuinely is several times what the API returned), the mechanism genuinely exists, and the dates genuinely matched. **A hypothesis can be well-formed, well-motivated and simply wrong**, and the only way to know is to price it.
+
+### ⭐⭐ ③ What remains is the residual, and that merges the two rows
+
+```
+  modelled per word   6.10 senses × 69.2 ms  =   0.42 s
+  measured per word                          =  12.4 – 28.6 s
+  gap                                        =  29× – 68×
+  live watch                       resid 75.7%, frozen across 45 minutes
+```
+
+**These are not two bottlenecks. They are one.** The next person to open `DEFCOST.1` should not spend time on the dictionary — it is now measured twice, from two directions.
+
+⭐ **Seven theories were already dead on this residual; these two make nine.** The standing rule holds and gets stronger each time: **stop explaining the residual with what is visible and enumerate what is UNWRAPPED**, because every candidate that has actually been *timed* has come back far too cheap to matter.
+
+### The deliverable here is the elimination, not a fix
+
+Both candidates were plausible enough to cost real time — one of them mine, argued from a mechanism that exists and a date that matched. **Both are now closed with arithmetic instead of opinion.**
+
+---
+
 ## 2026-09-06 (20th) — `WRITEWARM.3` — SHE HAS A HAND NOW, NOT JUST LETTERFORMS
 
 Gee (verbatim): *"she still isnt drawing correctly and writing her letters and words…"* → *"yes the lest presses and the more shit we get done of the todo work the better"*
