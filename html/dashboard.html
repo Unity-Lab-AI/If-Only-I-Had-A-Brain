@@ -2718,9 +2718,9 @@
         if (!window.confirm('Manually downscale the brain NOW?\n\nThis RETRAINS at a smaller size that fits the currently-connected compute. The current size’s training is LOST and the curriculum re-walks from the start at the smaller tier. The brain restarts.\n\nProceed?')) return;
         const statusEl = document.getElementById('d-as-status');
         try {
-          const r = await fetch(adminApi('autoscale'), {
+          const r = await adminFetch('autoscale', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'downscale' }), cache: 'no-store',
+            body: JSON.stringify({ action: 'downscale' }),
           });
           const j = await r.json().catch(() => ({}));
           if (statusEl) { statusEl.textContent = r.ok ? ('⤓ ' + (j.note || 'downscaling')) : ('✗ ' + (j.error || r.status)); statusEl.style.color = r.ok ? '#f59e0b' : '#ff6b6b'; }
@@ -2737,9 +2737,9 @@
           downStabilityMin: Number(downstab.value),
         };
         try {
-          const r = await fetch(adminApi('autoscale'), {
+          const r = await adminFetch('autoscale', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body), cache: 'no-store',
+            body: JSON.stringify(body),
           });
           const j = await r.json().catch(() => ({}));
           if (r.ok) {
@@ -2761,7 +2761,7 @@
         const st = document.getElementById('d-as-resync-status');
         if (st) { st.textContent = '… arming'; st.style.color = '#888'; }
         try {
-          const r = await fetch(adminApi('resync'), { method: 'POST', cache: 'no-store' });
+          const r = await adminFetch('resync', { method: 'POST' });
           const j = await r.json().catch(() => ({}));
           if (st) {
             if (r.ok && j.ok) { st.textContent = '✓ ' + (j.note || 'armed'); st.style.color = '#22c55e'; }
@@ -4607,6 +4607,39 @@
     // `checkpoint` and `curriculum/forget` the server is supposed to stay up, so
     // a dropped connection is a genuine **failure** and says so.
     const LEGACY_PRESS_MS = 20000;
+    /* ⛔⛔ A BOUNDED `fetch` FOR THE SEVEN ADMIN POSTS THAT ARE NOT PRESSES.
+       `BUTTONAUDIT.5` swept the file and found seven more admin POSTs outside
+       the named eight — autoscale ×2, resync, rollback, auto-advance,
+       grade-advance, grade-signoff — every one an unbounded `fetch`. None of
+       them LIES (no catch branch claims success), so the only defect is the
+       missing bound: **the same latent hang that made the teach viewer look
+       dead**, sitting on seven controls nobody has pressed during an outage
+       yet. A pinned event loop is exactly when someone reaches for these.
+
+       ⚠ DELIBERATELY NOT `adminPress`. That chokepoint also OWNS the rendering,
+       and these seven each draw their own result shape — rollback, grade-advance
+       and grade-signoff especially. Converting rendering and bounding in one
+       change would mean a regression could not be attributed to either, which is
+       the row's own stated reason for keeping them separate. This wrapper adds
+       the bound and NOTHING else: same arguments, same return, same exceptions,
+       so every existing `.json()` / catch at the call sites keeps working
+       untouched.
+
+       ⭐ An abort surfaces as a normal fetch rejection, which every one of these
+       sites already handles as a failure — so a timeout becomes the honest
+       "✗ …" they already render, instead of a spinner that never resolves.
+       `function` declaration, not `const`: three of the call sites appear
+       EARLIER in the file than this line, and only a declaration hoists. */
+    async function adminFetch(path, init = {}, timeoutMs = LEGACY_PRESS_MS) {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), timeoutMs);
+      try {
+        return await fetch(adminApi(path), { cache: 'no-store', ...init, signal: ctrl.signal });
+      } finally {
+        clearTimeout(t);
+      }
+    }
+
     async function adminPress(path, opts = {}) {
       const ctrl = new AbortController();
       const t = setTimeout(() => ctrl.abort(), opts.timeoutMs || LEGACY_PRESS_MS);
@@ -4885,7 +4918,7 @@
             if (!window.confirm(`Rollback active weights to ${to}? It takes effect after the next restart.`)) return;
             b.disabled = true; b.textContent = '⏳';
             try {
-              const rr = await fetch(adminApi('rollback'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to }), cache: 'no-store' });
+              const rr = await adminFetch('rollback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to }) });
               const jj = await rr.json().catch(() => ({}));
               log(`Rollback → ${JSON.stringify(jj)}`);
               b.textContent = jj.ok ? '✓ restart to apply' : '✗';
@@ -5044,11 +5077,10 @@
         }
         cb.disabled = true;
         try {
-          const r = await fetch(adminApi('auto-advance'), {
+          const r = await adminFetch('auto-advance', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ enabled: next }),
-            cache: 'no-store',
           });
           const j = await r.json().catch(() => ({}));
           if (!r.ok) {
@@ -5221,7 +5253,7 @@
                   btn.textContent = 'advancing...';
                   btn.style.opacity = '0.5';
                   try {
-                    await fetch(adminApi('grade-advance'), {
+                    await adminFetch('grade-advance', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ subject: null, grade: pausedGrade }),
@@ -5273,7 +5305,7 @@
                   btn.textContent = 'signing...';
                   btn.style.opacity = '0.5';
                   try {
-                    const res = await fetch(adminApi('grade-signoff'), {
+                    const res = await adminFetch('grade-signoff', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ subject, grade, note }),
