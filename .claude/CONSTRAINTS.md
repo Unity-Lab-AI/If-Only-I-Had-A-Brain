@@ -592,6 +592,24 @@ The rule above was written when every question was hand-authored, so "ship a tea
 - ⚠ **Injection must be idempotent and must count refusals BY REASON.** A boot that injected twice would double the bank and halve every per-standard rate while every log line still read healthy. `rejectedTrainOverlap` / `rejectedDuplicate` / `rejectedEmpty` are separate because *"refused N"* cannot distinguish a working held-out filter from a second injection landing on itself.
 - ⚠ **A bank that GROWS at boot breaks any reader that explains its size from the authored arrays alone.** The `[Curriculum] Held-out eval check` line therefore carries `removed at source load` **and** `injected from generated sets`; `docs/TRAJECTORY-CAPTURE.md` records that the sanitize line by itself is no longer sufficient.
 
+## Corollary — SOME WORDS MUST STAY UNTAUGHT, AND THE CODE HAD TO BE TOLD (2026-09-06)
+
+⛔⛔ **THE DOCTRINE ABOVE WAS ALREADY RIGHT AND THE ENFORCING CODE CONTRADICTED IT FOR FOUR DAYS.** The corollary added 2026-09-02 named this exact case — *"a grapheme is the SUBJECT of a phonics question, not vocabulary the question presumes… the same class as the `buh / fff / vib` false alarm the exam-vocab sweep raised"* — and meanwhile `Curriculum._pregateEnrichment` and the upfront vocab pass were **taking `report.missing` and teaching every word in it**, `vib` included. **A LAW that the implementation disagrees with is a LAW nobody is following.**
+
+**The rule, stated so code can obey it:**
+
+1. **A `nonsense: true` exam item's answer must NEVER be pre-taught.** K.RF.3b nonsense-word fluency measures **decoding** — blending a letter string she has never seen. `jop` / `vib` / `ped` are absent from every corpus **by design**. ⛔ **A pre-taught nonsense word is a SIGHT word: the probe silently stops measuring decoding and starts measuring recall, and then PASSES.** It does not fail, it does not warn, and nothing downstream can tell the difference.
+2. **`expectedVariants` are TOLERANCES, not required vocabulary.** They are answers the scorer would ACCEPT, not answers she must be able to produce. The canonical `expectedAnswer` is the one she must know. Sweeping variants into the required set had the pre-gate **drilling `buh` / `guh` / `juh` / `nuh` / `puh` / `yuh` into her as words**.
+3. **The question text still counts in full.** She must understand *"read this nonsense word"* — `read`, `nonsense` and `word` remain required. Only the answer token is withheld, including where it appears inside the question.
+
+**Where it's enforced (two independent barriers, deliberately):**
+- `extractVocabFromBank` excludes nonsense answers and all variants from the required set, and reports untrained variants separately as `acceptedUntrained` — visible, never taught.
+- `NEVER_TEACH_EXAM_TOKENS` is consulted at **both** pre-teach call sites, so a future change to the extractor cannot silently re-open it. **Two sites existed and guarding one would have left the hole open.**
+
+⚠ **A guard built from a derived table can be EMPTY and still read correctly.** The first cut set `nonsense: true` on the authored rows, but `toProbeShape` builds a new object from a fixed field list and drops anything not named — so `EXAM_BANKS` never carried the flag and the guard protected nothing. **Caught by printing the set, not by re-reading the code.** Verify a derived guard by evaluating it, always.
+
+**This does not weaken the LAW — it is what the LAW requires.** The intent is *"no surprise vocab in tests"*. It cannot also mean *"teach her the answer to a decoding probe"*, because that destroys the probe the LAW exists to protect.
+
 ## iter25-M.17 — User-driven vocab exemption
 
 User-introduced words via chat ("what is X" with X not in curriculum vocab) trigger lazy `_teachWordDefinition(X)` Hebbian binding (iter25-L.A2). This is USER-DRIVEN learning, not curriculum-driven, and is exempted from the test-words pre-taught LAW. If X later appears in a gate probe, the lazy chat-time binding is sufficient — the LAW only mandates pre-teach for CURRICULUM-introduced exam vocabulary.

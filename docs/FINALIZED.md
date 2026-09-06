@@ -5,6 +5,135 @@
 
 ---
 
+## 2026-09-06 (2nd) — `EXAMINTEG` + `LATSCAN` + `REPPRICE` + `DEFCOST` + `DONORFIX` — THE GATE TAUGHT THE ANSWERS TO ITS OWN PROBE, AND THE NUMBER THAT PRICES EVERY REP WENT TO A DEAD FIELD
+
+Gee (verbatim): *"okay continue the work and clean up is at the end after fulkl and complete doc sweep(you do remember what the vastness of a doc swwep intails and isnt limited to docs)"*
+
+Gee (verbatim): *"if we need tio chang donor algorithms or anything to be propper make sure thats done too"*
+
+Gee (verbatim, on where the name-in-source item belongs): *"but that question falls under clean up after doc sweep entirety"*
+
+Gee (verbatim, still governing): *"we adjust the nobs not accept a weak deposit"* · *"and remembr we are not doing 10s of passes on anything anymore a brain learns stuff once.. it doesnta person doesnt read every text in their life 10x they read it once and usually never again"*
+
+⛔ **Standing safety constraint, still in force:** *"make sure you dont delete my stacks code with out correctly portiung it to rust"*
+
+### `EXAMINTEG` — the pre-gate was teaching Unity the answers to her own decoding probes
+
+Found while reading the live `examVocabSweep` for something else: `ela/kindergarten` coverage **0.966**, missing `buh · guh · juh · nuh · puh · vib · yuh`.
+
+**`vib` is not an oversight.** It is `{ q: 'read this nonsense word: vib', a: 'vib', standard: 'K.RF.3b' }`, and `jop` / `ped` are its siblings. K.RF.3b measures **decoding** — can she blend a letter string she has never seen? Their answers are absent from every corpus **by design**.
+
+⛔ **`extractVocabFromBank` reported those answers as "missing exam vocabulary" — which they are, permanently — and BOTH pre-teach call sites teach every word the audit calls missing.** A pre-taught nonsense word is a **sight word**: the probe silently stopped measuring decoding, started measuring recall, and **passed for the wrong reason while reporting nothing wrong.**
+
+⛔⛔ **The doctrine was already written down correctly, four days earlier.** `CONSTRAINTS.md §TEST WORDS PRE-TAUGHT` gained a corollary on 2026-09-02 naming this exact case — *"a grapheme is the SUBJECT of a phonics question, not vocabulary the question presumes… the same class as the `buh / fff / vib` false alarm the exam-vocab sweep raised"* — and the enforcing code disagreed with it the whole time. **A LAW the implementation contradicts is not a weaker LAW; it is an absent one.**
+
+**Second finding, same function:** `expectedVariants` were being swept into the required set. They are answers the scorer would **accept**, not answers she must **produce** — the canonical answer to *"what sound does the letter b make?"* is `b`, which was always trained. So the pre-gate was **drilling six nonsense syllables into her as vocabulary**.
+
+**Shipped:** `nonsense: true` on the three items; the extractor excludes nonsense answers **and their occurrence inside the question text** (the question literally contains the answer) and excludes all variants; untrained variants report separately as `acceptedUntrained` — visible, never taught; `NEVER_TEACH_EXAM_TOKENS` consulted at **both** pre-teach sites, because there are two and guarding one leaves the hole open.
+
+**Measured after:** `ela/kindergarten` required **207 → 140**, trained **200 → 140**, coverage **0.966 → 1.0000**, missing **7 → 0**; full-bank audit **1,353 required across 12 cells, 0 nonsense tokens leaking into any cell's missing list**; question words (`read`, `nonsense`, `word`) still required. ⚠ **The gate was never blocked by this** — `DREAM_BC_VOCAB_MIN` is 0.85 against a 0.966 reading — so the cost was corrupted probes and wasted teaching, not a stall.
+
+⛔ **MY FIRST CUT SHIPPED AN EMPTY GUARD THAT READ CORRECTLY IN THE DIFF.** `NEVER_TEACH_EXAM_TOKENS` derives from `EXAM_BANKS`, which is the output of `toProbeShape` — **a mapper that builds a new object from a fixed field list and silently drops anything not named in it.** The flag was set on the authored rows and never arrived, so the guard was an **empty Set** protecting nothing while every line of it looked right. **Caught by printing the finished set, not by re-reading the code.**
+
+### `LATSCAN` — the lateral pass walked 346,902 cells to rediscover what it had just been handed
+
+`_teachLateralInhibition` opens with a scan over the **entire motor region**, once per pair per rep, to find the few thousand cells `_writeTiledPattern` set three lines earlier. Live: **`lateral.scanMs` 380,300 ms across 170,334 calls — 11.8% of the whole boot's wall clock**, 2.23 ms/call.
+
+⭐ **The comment directly above that scan already records the same fix applied one level down** — *"the second walk was re-deriving a list it had already seen."* This is the remaining level of an argument the file had already made and won.
+
+**Shipped:** `_writeTiledPattern(region, feat, binarize, { collectInto })` emits the region-relative indices it activates; the assoc pair loop passes them as `opts.activeHint`. **One source of the tiling arithmetic** — a second copy is how two implementations drift apart silently.
+
+⛔ **A wrong hint does not throw. It trains anti-Hebbian against the wrong rows and every instrument reads healthy.** `_teachHebbian` runs between the caller's write and this call, and reasoning about whether it perturbs `lastSpikes` is exactly the class of inference that has been wrong twice in one day here. **So both paths run and are compared for the first 500 calls, and ONE mismatch permanently disables the hint for the process and says so on the console.** Counters `hintUsed` / `hintVerified` / `hintMismatch` / `hintDisabled` / `scannedCalls` at `stageProfile.lateral`. `DREAM_LATERAL_HINT=0` restores the scan.
+
+⚠ **The hint is passed at ONE of the two lateral call sites.** The other writes a different pattern and correctly keeps scanning — a hint is sound only where the caller owns the write.
+
+**Harness: 85/85 on the real `_writeTiledPattern` through its real prototype** — index-for-index equality against a full scan across 40 randomised top-K features, bucket-count equality, plus all-zero / all-negative / null / ascending-order / in-range edges.
+
+⏳ **The saving is PREDICTED, not measured — it is not quoted as fact.** Read after the press: `hintVerified` reaches 500, then `hintUsed` climbs while `scannedCalls` goes flat, and `scanMs` per call is the number that proves it. **`hintMismatch` non-zero is the failure case, and then the finding is that, not the speedup.**
+
+### `REPPRICE` — the deciding number was published to a field nothing reads
+
+`rep-compression.js` prices the rep count from the brain's own **measured** collision load, and was deliberately shipped default-off on an explicit promise written into the code: *"unarmed it still measures and still publishes, so one press produces the evidence."*
+
+The press happened. The measurement ran. ⛔ **The verdict was assigned to `cluster._repCompressionVerdict` — and a whole-tree grep found exactly ONE reference to that name: the assignment itself.** No serializer, no panel, no view; `state.repCompression` read `null` off the live box. The only other outlet was one `_hb` line at `log` level into a ring that retains about **eight seconds** at walk speed.
+
+⛔ **And it was not free while being unreadable.** It sampled up to **512** patterns per call — each a fresh `Float64Array(300)`, a GloVe lookup, five hash stripes and a top-K pass — on **every** qualifying `_teachAssociationPairs` call, of which the live box logged **25,603**.
+
+**Shipped:** published at `state.curriculum.repPricing` carrying `measuredAt`, `measurements`, the calling label, the per-cell density beside the per-pattern load, and `sweepFloorReps`; re-measure throttled to `DREAM_REP_AUTOPRICE_GAP_MS` (60 s), derived in `docs/THRESHOLD-DERIVATION.md`.
+
+### `REPPRICE.2` — the n=1 regime measured for the first time, and the rep count was never the knob
+
+⛔ **The sweep that set the constant could not have found this.** Its production row reads **1.000 at every compression including 20×** because its post patterns were effectively separable — retrieval succeeded no matter how little weight landed. **A surface that cannot go down cannot locate a cliff.**
+
+Re-run with **overlapping** posts (6 active of a 32-row pool), real `SparseMatrix`, real `ojaUpdate`, rep-major ordering, scoring retrieval against all 500 candidates. Landed as `OVERLAP_*` in `js/brain/rep-compression.js`, **beside** the original rather than replacing it.
+
+| collision load | n=1 | n=2 | n=3 | n=5 | n=8 | n=20 | n=100 |
+|---|---|---|---|---|---|---|---|
+| 0.056 | 89.8 | **97.2** | 97.2 | 97.2 | 97.2 | — | — |
+| 0.264 | 80.8 | 87.6 | 87.6 | 87.6 | 88.0 | 89.0 | 95.2 |
+| 0.560 | 67.8 | 75.6 | 75.6 | 75.6 | 75.8 | — | — |
+| 1.036 | 59.2 | 61.2 | 61.2 | 61.2 | 61.6 | 64.6 | **86.6** |
+| 2.220 | 36.4 | 38.0 | 38.0 | 38.0 | 40.4 | — | — |
+| 4.000 | 24.0 | 24.2 | 24.2 | 24.2 | 26.2 | — | — |
+
+⭐⭐ **Two presentations at load 0.056 retrieve at 97.2%; one hundred presentations at load 1.036 retrieve at 86.6%.** The cheap low-load pair wins by **10.6 points while doing 1/50th of the work.** **Repetition buys single digits. Load buys tens.**
+
+⭐ **The rep plateau is real but bounded.** At every load ≤ 1.036, n=2 through n=8 are flat to within **0.4 points**. ⚠ **At loads 2.220 and 4.000 they are worth 2.0–2.4 points again** — exactly what the interference account predicts: once collisions reliably trample a single write, extra interleaving buys back part of the loss. **Repetition is the remedy for interference you failed to prevent, which is why preventing it is the better lever.**
+
+⛔ **A first draft of the write-up claimed the plateau held "at every single load". It does not.** Caught by a check that re-derived the claim from the table it cites rather than re-reading the sentence. The bound is now a field with the measured spreads either side of it.
+
+⛔ **This names the knob; it does not move it.** The live load is a measured quantity and `REPPRICE.1` is its prerequisite — no gate moves off a synthetic grid.
+
+### `DEFCOST` — the pre-phase bootstrap is the walk's current bottleneck, instrumented rather than guessed
+
+Live: `definitionQueue.depth` **2,123**, `lastWindow` **15 processed in 185,780 ms = 12.4 s per definition** against the **~3.9 s** in the verdict that declared this phase normal; `cellPhasesStarted` **0** of **25** after **52 minutes** of cell time. ⛔ **That verdict is still right about the phase and wrong about the price.**
+
+The profile names the cost centre and it is not the dictionary: `_teachWordDefinition` **1,281 ms/call**, of which `_teachAssociationPairs` is **~1,113 ms (87%)**; its two instrumented children account for only ~a quarter of that. ⚠ **The remainder was "derived" by hand twice and both derivations produced a wrong theory** — the first blamed `_writeTiledPattern` for writing the whole 1.88M sem region, and reading it showed a `feat[d] <= 0 continue` that makes it write ~50K. **A second theory would have been the third guess in a row**, so segment timers went in instead: `embedMs` / `wtaMs` / `clearMs` / `tileMs` / `pairMs` / `residualMs` / `residualPct` / `semActiveMean` at `stageProfile.pairSegments`, **flushed at all three exits** because the two early ones are the long calls.
+
+**`DEFCOST.3` closed by derivation.** `lateral.activeSum` **1,089,587,894** over **170,334** calls = **6,397 cross-bucket actives per call**. Derived: `gSize = floor(346,902 / 300) = 1,156`, actives = `positiveDims × gSize`, cross-bucket = that minus the primary bucket. With `motorTopK = 15`, WTA by magnitude and the non-positive skip, ~45% survive ⟹ ~6.75 positive dims, ~1 in the primary ⟹ **~5.75 cross-bucket dims ≈ 6,647**. **Measured 5.53 dims. Predicted 5.75. Within 4%.** ⭐ Confirmed empirically in the same harness: a trial with 19 random dims of which 9 were positive produced **exactly 10,404 = 9 × 1,156**. **A long-carried "active-set inflation" watch closes with a number and a reason instead of a vibe** — and the threshold it always lacked now exists: expected active count is `positiveDims × 1,156`.
+
+### `DONORFIX` — donor work was authorised, and the honest answer was that none was needed
+
+⛔⛔ **`DONORFIX.1` RETRACTED IN THE SAME SESSION IT WAS FILED, AND THE ROW I FILED IT FROM IS WHAT DISPROVED IT.** I wrote *"its sole blocker was: needs a new donor opcode"* off **the board's summary table**, which still read that way. **The actual `SHADOWCOST.3` row says the opposite:** the opcode was built, `cargo check`ed on both feature sets, released as **`donor-v0.3.36`**, all four surfaces verified, and the shipped binary downloaded and run. ⭐ **The instruction I put in my own filing — *"Read the row's own verdict before writing any Rust"* — is the only reason no Rust got written.** ⚠ **A digest that outlives its source is the instruments-that-lie pattern in documentation form**; the stale summary line is corrected in place with the original struck rather than deleted.
+
+**`SHADOWCOST.3` CLOSES ON LIVE EVIDENCE.** Off the box: `donorLatest.tag` **`donor-v0.3.36`** and `profiling.readback` = `lastOkMatrices` **17** · `lastOkMB` **2450** · `lastOkSecs` **63.78** · `okCount` **1** · `lastRefusal` **null** · `overdue` **false**. **All 17 matrices pulled off the GPU in one clean hourly transfer.** ⭐ **2,450 MB in 63.78 s = 38.4 MB/s against the 39 MB/s the cadence was PRICED at before shipping** — estimate and production agree within 2%. **The checkpoint on disk is now the brain the GPU trained.**
+
+**`GATEWATCH.2` ANSWERED BY ITS OWN INSTRUCTION: no readback change.** That row recorded pulls **timing out** — `okCount` 2 in 5.3 h, three aborts at 80–132 chunks, `secsMax` **664 s** — and left the rule: *"if pulls succeed once the generate wall stops, the fix is GATEWATCH.1's, not a readback change."* Read again on a quiet loop: **`secsMax` 664 s → 63.78 s, aborts → 0.** ⭐ **It was congestion, exactly as that row suspected.** ⛔ **A chunk-timeout raise would have "fixed" a healthy transfer and hidden the real blocker.** No Rust, no tag, no release.
+
+### `FIRSTPERSON.3` — closed on the reading it was built to make possible
+
+Live `curriculum.liveness.selfFrame` 52 minutes into one cell: `skippedCapped` **115** · `skippedReentrant` **16** · `unitsThisCell` **16** · `cap` **16** · `capped` **true**. **The per-cell budget refused 115 units while the by-design reentrancy guard refused 16.** Demand in that single unfinished cell is therefore **≥ 131 against a 16-unit budget**. ⭐ **The filed suspicion that `16` matching `_cap` was "suggestive and NOT proof" was right on both halves** — it *was* the cap, and the counter that proved it did not exist when the question was asked. ⚠ **The fix is committed and NOT on the box** — the cap raise to 512 sits in the 9 commits the running server is behind.
+
+### `TIPQUOTE` — an apostrophe in a tooltip killed the donor page's entire script for twelve days
+
+⛔⛔ **`html/compute.html` has not run its script since 2026-08-25.** Line 324 builds a `data-tip` inside a **single-quoted** JS string containing `…not your card's speed…`. **The apostrophe closes the string.** `SyntaxError: Unexpected identifier 's'` — and **a syntax error anywhere in a `<script type="module">` block kills the entire block**, which here spans **lines 105–1605: 1,500 lines**. Verified by extracting the block and running `node --input-type=module --check` on it.
+
+⛔ **What was dead:** **11 `WebSocket` references and 4 `gpu_register` calls** — the browser donor's whole connect-and-register path — plus the neuron leaderboard, the donor-name input and the `donor-you` panel. **Browser GPU donation was broken the entire time.**
+
+✅ **What survived, checked rather than assumed:** both binary download links are static `<a href>` at **lines 46 and 56, OUTSIDE the block**, so downloads kept working; and the native donor is a standalone Rust binary that never loads this page, which is exactly why the pod connected and computed normally throughout. **The failure was invisible from every surface we watch** — dashboard, console ring and donor telemetry could not have shown it.
+
+⭐⭐ **INTRODUCED BY A DOC SWEEP AND FOUND BY A DOC SWEEP.** `git log -S"card's speed"` names **`377d06a7`, 2026-08-25, *"feat(tooltips): shared data-tip component across all 11 pages"***. A pass that added explanatory tooltips broke the page it was explaining — and this pass found it only because it checked that the HTMLs still **PARSE**, not merely that their prose was current. **That is the durable lesson.**
+
+⚠ **AND THE DETECTION WAS NEARLY LOST TO ITS OWN FALSE POSITIVES.** The first run reported **four** failures — `compute.html`, `dashboard.html`, `minds-eye.html`, `webgpu-prep.html`, all *"Cannot use import statement outside a module"*. Three were `new Function()` being handed ESM: **my extractor's defect, not theirs.** Re-run with `SourceTextModule` for `type="module"` blocks: **4 → 1, and the 1 was real.** ⛔ Three false alarms beside one true one is the shape that gets an entire check dismissed.
+
+✅ Fixed by escaping (`card\'s`). **All 14 inline script blocks across all 11 pages parse, 0 failures.** ⭐ **Rides the frontend rsync on push — no press needed**, unlike everything else in this batch.
+
+### The doc sweep, tree by tree
+
+⛔ **Named individually, per the standing rule that the wiki is ONE tree and not the answer.**
+
+**Updated:** `docs/ARCHITECTURE.md` (new banner) · `docs/NOW.md` (new Current) · `docs/SKILL_TREE.md` (new banner) · `docs/EQUATIONS.md` (new sweep stamp + the active-set derivation beside the lateral-inhibition equation) · `docs/ADMIN-CONTROLS.md` (**12 env rows** — 4 new flags plus **8 that were undocumented before today**) · `docs/THRESHOLD-DERIVATION.md` (both new constants derived; three cited files added to `sources:` because the drift checker was right that the page made line-precise claims about files it never declared) · `docs/KNOWN_ISSUES.md` (KI-40 new; **KI-29 CLOSED by derivation**; KI-39 new) · `docs/TODO-full-syllabus.md` (the RF-4 nonsense-word row carries the never-pre-teach rule where the syllabus states it) · `docs/RUST-MIGRATION.md` (the "data file" verdict now names the policy a port would drop) · `README.md` (the load-versus-repetition finding, in public prose) · `html/compute.html` (the fix above) · `html/brain-equations.html` (the equation page's own tooltip + the derivation) · `.claude/CONSTRAINTS.md` (a new corollary to the pre-taught LAW) · `.claude/CLAUDE.md` (its LAW-index one-liner) · `wiki/modules/curriculum.md`, `wiki/modules/language-emission.md`, `wiki/gotchas/instruments-that-lie.md`, `wiki/gotchas/declared-but-never-enforced.md`, `wiki/index.md`, `wiki/log.md` · `docs/TODO.md`, `docs/FINALIZED.md`, `docs/RESUME.md` · `scripts/doc-drift-check.mjs` (two false-positive "flags" excluded — they are a regex branch and a comment in `knob-registry.js`, and the exclusion is used rather than narrowing the deliberately-broad match that once found 139 undocumented flags).
+
+**Unaffected, and why:** `deploy/*.md` — nothing in this batch touches the press, the box, the backup posture or the CI lane; the only greps that hit were unrelated prose. The other nine HTMLs — no claim of theirs moved; they were **parse-checked anyway**, which is what caught `compute.html`. The remaining ~28 `docs/*.md` — none makes a claim this batch invalidates, checked by grepping every changed symbol and env flag across the whole tree rather than by memory.
+
+⚠ **`last-verified` stamps NOT bumped on pages whose full claim set I did not re-verify.** The drift checker reports 31 such pages; bumping a stamp asserts every claim on that page was re-read against its sources, and **clearing a drift row without doing that is the exact failure the checker exists to catch.** The 31 remain honestly stale.
+
+### Verification
+
+`node --check` on every changed module · ESM `import()` on `curriculum.js`, `rep-compression.js`, `student-question-banks.js` · **all 14 inline script blocks across 11 HTML pages parse (0 failures), with module blocks parsed AS modules** · **env-flag coverage 226/236 → 234/234** · wiki: **0 broken wikilinks, 0 orphans, index in sync** · bundle rebuilt and **byte-identical at 1,015,298** (these three are server-side and not reachable from the browser entry) · exam-bank audit re-run through the real module · 85/85 `_writeTiledPattern` harness · every numeric claim in the new sweep tables re-derived from the tables themselves, which is what caught the plateau overclaim.
+
+---
+
 ## 2026-09-06 — `ALERTRING` — THE ONLY DIAGNOSTIC SURFACE ON A SHELL-LESS BOX RETAINED EIGHT SECONDS
 
 Gee (verbatim): *"okay keep watch and dont stop till you get what u need to keep working out whats left to do and optimize the issues with good fixed code"*
