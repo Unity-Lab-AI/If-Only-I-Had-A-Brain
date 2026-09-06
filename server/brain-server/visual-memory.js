@@ -2714,12 +2714,37 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
 
     let x = opts.x !== undefined ? opts.x : Math.max(0.02, 0.5 - totalW / 2);
     const y = opts.y !== undefined ? opts.y : 0.86;
+    /* ⭐ THE TRAINABLE HAND — three parameters, and every one of them is a thing
+       a person's handwriting actually HAS.
+         weight — pen pressure / nib width
+         slant  — the consistent lean of the script
+         commit — how much of a learned stroke she follows through
+       They default to exactly the previous behaviour (`weight` 1, `slant` 0,
+       `commit` 1), so an untrained caller draws precisely what it drew before.
+       ⛔ THERE IS NO WOBBLE PARAMETER AND THERE MUST NEVER BE ONE. An artificial
+       tremor faking childish writing is dumbing her down, which is banned, and it
+       would also make the practice loop optimise toward a lie: the score below
+       measures resemblance to the PRINTED form, so any parameter that degrades
+       resemblance on purpose can only ever lose. Her hand improves because the
+       loop keeps what measurably improves it, or it does not improve at all. */
+    const hw = Math.max(0.3, Math.min(3, Number(opts.weight) > 0 ? Number(opts.weight) : 1));
+    const hs = Math.max(-0.4, Math.min(0.4, Number(opts.slant) || 0));
+    const hc = Math.max(0.5, Math.min(1, Number(opts.commit) > 0 ? Number(opts.commit) : 1));
     const out = [];
     for (const cell of cells) {
       if (!cell) { x += drawSize * 0.5 + drawGap; continue; }
       for (const s of cell.L.strokes) {
-        const pts = s.pts.map((p) => [x + p[0] * cell.w, y + p[1] * drawSize]);
-        out.push({ ...s, pts, rgb, w: s.w ?? 0.006 });
+        // `commit` trims the TAIL of a stroke rather than sampling it randomly:
+        // a hand that does not follow through leaves the end of the mark short,
+        // it does not drop pieces out of the middle.
+        const src = hc >= 1 ? s.pts : s.pts.slice(0, Math.max(2, Math.round(s.pts.length * hc)));
+        const pts = src.map((p) => {
+          const py = y + p[1] * drawSize;
+          // slant shears toward the top of the line, the way a real slant does
+          const sx = x + p[0] * cell.w + hs * ((y + drawSize) - py);
+          return [sx, py];
+        });
+        if (pts.length >= 2) out.push({ ...s, pts, rgb, w: (s.w ?? 0.006) * hw });
       }
       x += cell.w + drawGap;
     }

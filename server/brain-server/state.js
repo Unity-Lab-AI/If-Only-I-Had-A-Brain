@@ -1621,6 +1621,18 @@ const SERVER_STATE_MIXIN = {
       // behaviour when this is low, not a rendering failure, and a reader needs
       // this number to tell those two apart. A fresh walk wipes the visual
       // store, so it starts at 0 every walk by design.
+      // ✍ WRITING PRACTICE — the trained skill on top of the letterforms.
+      //
+      // ⚠ `letterShapes` below says how many shapes she HAS; this says whether
+      // she is getting better at using them. The two were conflated in the live
+      // complaint — all 94 shapes banked and still *"not writing her letters and
+      // words"* — because having a trace and having a hand are different things
+      // and only one of them had a number.
+      //
+      // ⚠ `null` before the first session is honest: the ladder is queued at cell
+      // entry and drains on the walk lane, so nothing to report early in a boot
+      // is the expected reading, not a fault.
+      writingPractice: _lap('writingPractice', () => (this._writePracticeStats || null)),
       letterShapes: _lap('letterShapes', () => {
         try {
           if (typeof this.hasLetterShape !== 'function') return null;
