@@ -3516,30 +3516,6 @@ export class Curriculum {
             this._phaseWorkInflight = null;
             cl._phaseDeadlineAt = 0;
             cl._phaseDeadlineName = null;
-            // ⛔⛔ THE PHASE GAP IS THE ONE REGION NOTHING STAMPS, AND A LIVE
-            // WEDGE SAT IN IT FOR 34+ MINUTES READING `_teachSentenceList-done`.
-            //
-            // The exit stamp above names what FINISHED. The moment an OUTERMOST
-            // phase retires, control returns to the cell runner to resolve the
-            // next phase — and that resolution code stamps nothing, so the tag
-            // stays on the retired teach while its age climbs. Read live on the
-            // box: `stage=_teachSentenceList-done (age 1576s)` with every teach
-            // counter frozen across a 194 s paired read, 2 of 25 phases done.
-            //
-            // ⭐ THE TAG CARRIES BOTH FACTS ON PURPOSE. `cell:phase-gap:<name>`
-            // says WHERE execution is (between phases) and WHAT it just left,
-            // which neither half can say alone — a bare `-done` names a method
-            // that already returned, and a bare `cell:phase-gap` throws away the
-            // only clue about which phase preceded the stall.
-            //
-            // ⚠ ONLY ON THE OUTERMOST RETIREMENT. A nested teach exiting is not
-            // a phase boundary; stamping there would fire thousands of times per
-            // cell and bury the signal it exists to raise.
-            //
-            // ⚠ This is an INSTRUMENT, not curriculum — it changes nothing about
-            // what she is taught, so it may land on any press under the
-            // fresh-walk-is-last rule.
-            try { if (typeof this._tstage === 'function') this._tstage(`cell:phase-gap:${name}`); } catch { /* never break a teach */ }
           } else if (workSeen && (!workExpect || workExpect.has(name))) {
             // A nested teach call is one unit of the enclosing phase's work,
             // credited on EXIT so an in-flight unit is never counted as done.
@@ -3550,6 +3526,42 @@ export class Curriculum {
             if (this._phaseWorkInflight && this._phaseWorkInflight.name === name) {
               this._phaseWorkInflight = null;
             }
+          }
+          // ⛔⛔ THE PHASE GAP — AND MY FIRST PLACEMENT OF THIS STAMP WAS WRONG,
+          // WHICH THE VERY NEXT WEDGE PROVED.
+          //
+          // The exit stamp above names what FINISHED. What nothing named is the
+          // region AFTER the last teach returns, while the runner resolves what
+          // to do next — so the tag sits on a method that already exited and its
+          // age climbs. Live on the box, twice: `stage=_teachSentenceList-done`
+          // with every teach counter frozen across a paired read.
+          //
+          // ⛔ I FIRST PUT THIS INSIDE THE `_outermostPhase` TEARDOWN, and it
+          // could never fire for the actual case. `isCellPhase` requires
+          // `!stack.some(t => t.ledger || t.teach)`, so a teach called from
+          // inside another teach is NEVER the outermost phase — and
+          // `_teachSentenceList`, the method both wedges parked behind, is
+          // exactly that. It exits through the work-credit branch above, which
+          // has no stamp. **The fix was in a branch the defect does not use.**
+          //
+          // ⭐ THE RIGHT CONDITION IS "NOTHING IS RUNNING", NOT "A PHASE ENDED".
+          // An empty stack after a removal means no tracked teach is on the
+          // stack at all — which is the definition of the gap, and it catches
+          // the nested exit and the outermost retirement with one test.
+          //
+          // ⚠ It cannot fire thousands of times per cell: a nested teach leaves
+          // its PARENT on the stack, so the stack is only empty when the last
+          // one out has left. That was the real worry behind putting it in the
+          // outermost branch, and emptiness answers it directly.
+          //
+          // ⭐ The tag carries both facts on purpose — `cell:phase-gap:<name>`
+          // says WHERE execution is and WHAT it just left. A bare `-done` names
+          // a method that already returned; a bare gap throws away the only clue.
+          //
+          // ⚠ INSTRUMENT ONLY. Changes nothing she is taught, so it lands on any
+          // press under the fresh-walk-is-last rule.
+          if (!stack || stack.length === 0) {
+            try { if (typeof this._tstage === 'function') this._tstage(`cell:phase-gap:${name}`); } catch { /* never break a teach */ }
           }
         }
       };
