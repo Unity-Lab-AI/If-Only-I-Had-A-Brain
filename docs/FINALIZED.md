@@ -5,6 +5,42 @@
 
 ---
 
+## 2026-09-06 (19th) — THE PRESS CAUGHT TWO BUGS I SHIPPED THIS MORNING, WITHIN MINUTES
+
+Gee (verbatim): *"she still isnt drawing correctly and writing her letters and words…"* and, pasting the live flags: *"DEF-MISS ×96 · 94 distinct: for, be, your, their, look, our, america, every (+86 more)"*.
+
+### What the press confirmed first
+
+⭐ **`✍ WRITEWARM — glyph shapes: 94/94 traced and banked in 9.9s`**, and `letterShapes` reads **94 of 94 — letters 52/52 · digits 10/10 · marks 32/32**. Every printable key, both cases. That is the reading the row was gated on, and it landed exactly as predicted. Resume kept the weights: `mode: resume · neurons 411,216,550 · formatVersion 6`.
+
+### ⛔⛔ BUG ONE — `prefetch` bypassed the chokepoint, so the offline heal did nothing where it mattered most
+
+I predicted `DEF-MISS ×4` after the press. It read **94 distinct, with `be`, `look`, `america` and `every` still named** — all four of which resolve correctly through `getDefinition` on a fresh cache, verified locally.
+
+The cause: `prefetch` tested **`cache.has(key)` on the raw Map**. A poisoned permanent-miss entry makes that true, so the word was counted *already cached*, `getDefinition` was never called, `_cacheGet` was never called, **and the offline dictionary that can define it was never consulted.** That is the path the pre-cell pass runs over all ~2,247 grade words — the path that mattered most, and the one reader left outside the chokepoint after `lookupStatus` was brought in.
+
+⛔ **The audit error is the finding.** I checked the readers by grepping `_cacheGet(` — a search that **by construction cannot find the readers that do not use it.** The correct search was for raw `cache.` access, which turns up `has`, `get`, `set` and `delete` in one pass. **Looking for users of the fix cannot find the code that needs it.**
+
+⭐ **And it fixes a second bug in the same line.** `cache.has` is also true for an **expired** transient error, so a word whose lookup failed on a network blip was skipped here *forever* rather than retried when its TTL lapsed — silently converting *"the service blipped"* into *"this word is never fetched again."* `_cacheGet` deletes an expired error and returns null, so the word correctly re-enters the fetch list.
+
+**Verified through the exact path that failed** — `prefetch` over the real poisoned cache: **80 of 195 healed**, `be`/`look`/`america`/`every` → `hasDef`, and `for`/`your`/`their`/`our` correctly still `noDef`.
+
+### ⛔ BUG TWO — the cgroup reader was pointed at the root cgroup
+
+`state.cgroupMemory` read **`null` on a Linux box that plainly has cgroups.** The reader used `/sys/fs/cgroup/memory.current` — **that is the ROOT cgroup, and in v2 the root has no such file at all.** So it looked like a clean "not applicable" while being simply pointed at the wrong directory. **A null meaning "wrong path" and a null meaning "no cgroup" are the same value** — precisely the ambiguity this instrument was built to remove.
+
+The same mistake was in the boot sizing, which therefore fell back to host-only without saying so.
+
+⭐ **`/proc/self/cgroup` is the authority and needs no guessing** — on v2 a single `0::/system.slice/unity-brain.service` line whose suffix is the real directory. Resolves correctly whatever the slice is named and whether or not a cgroup namespace is in play, instead of hardcoding a unit name. Verified against four shapes: systemd service, user slice, namespaced container, and a v1-only file with no `0::` line.
+
+⚠ **Note the asymmetry that hid it:** `brain-ctl.js` used `/sys/fs/cgroup/system.slice/<unit>.service` and would have worked. **Two readers of the same data, written the same hour, one right and one wrong** — and only the wrong one was on the path that reported.
+
+### The honest summary
+
+**Both bugs were mine, both shipped this morning, and the press surfaced both within minutes.** That is the argument for pressing rather than reasoning: a fresh-cache local test passed for the heal, and it passed because a fresh cache never exercises the branch that was broken.
+
+---
+
 ## 2026-09-06 (18th) — THE WEDGE, CAUGHT LIVE — AND A RATE THAT FELL WHILE THE TOTAL WAS FROZEN
 
 Gee (verbatim): *"pressed update savestart so go ahead and monitor and get what u need after she ramps up"*
