@@ -2530,7 +2530,15 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
   // is always perfect.
   async learnLetterShape(ch) {
     const c = String(ch || '').toLowerCase().slice(0, 1);
-    if (!c || !/[a-z0-9]/.test(c)) return null;
+    // ⭐ `WRITEWARM.1` — THE ACCEPT SET IS THE FONT'S SET, NOT AN ALPHABET.
+    // `FONT5X7` carries `A-Z`, `0-9` and `. , ! ? ' -` (42 glyphs), and
+    // `glyphStrokes` upper-cases, so lowercase folds onto the same forms. The
+    // guard used to be `[a-z0-9]`, which refused the six punctuation marks the
+    // renderer can already draw — so a full stop was unwritable even though the
+    // strokes for one existed. ⚠ Anything OUTSIDE the font must stay refused:
+    // `glyphStrokes` falls back to the space glyph, and accepting an unknown
+    // character would bank a BLANK trace that reads as a learned shape.
+    if (!c || !/[a-z0-9.,!?'-]/.test(c)) return null;
     const ms = this.mindSpace;
     if (!ms || typeof ms.glyphStrokes !== 'function' || typeof ms.sketch !== 'function'
         || typeof ms.traceLineArt !== 'function') return null;
