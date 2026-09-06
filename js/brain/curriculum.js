@@ -4090,6 +4090,23 @@ export class Curriculum {
         watchdogMs: (typeof process !== 'undefined' && Number(process.env?.DREAM_CONSOLIDATION_WATCHDOG_MS) > 0)
           ? Number(process.env.DREAM_CONSOLIDATION_WATCHDOG_MS) : 300000,
       },
+
+      // ⛔ THE SECOND UNBOUNDED AWAIT IN THE SAME WINDOW, published beside the
+      // first because reading one without the other is what made the last stall
+      // unreadable: `consolidationWatchdog` said `trips: 0` and `inFlight: false`
+      // — both TRUE and both irrelevant, because the walk was parked one stage
+      // further on, in the dictionary trickle's per-word teach. A guard that
+      // correctly reports "not me" is only useful next to the guard that covers
+      // the place it is not.
+      // ⚠ `trips: 0` is the healthy reading here too, and `watchdogMs` is
+      // published so a reader can tell a brain that never needed this bound from
+      // one running a build that never had it.
+      trickleWordWatchdog: {
+        trips: this._trickleWordTrips | 0,
+        last: this._trickleWordLast || null,
+        watchdogMs: (typeof process !== 'undefined' && Number(process.env?.DREAM_TRICKLE_WORD_MS) > 0)
+          ? Number(process.env.DREAM_TRICKLE_WORD_MS) : 60000,
+      },
       liveness: (() => {
         const now = Date.now();
         const count = this._teachTickCount | 0;
@@ -5308,10 +5325,60 @@ export class Curriculum {
               processed++;
               let didBind = false;
               try {
-                // 20s per word: the slowest dictionaryapi.dev responses observed
-                // during the seed phase were ~15s, and those are exactly the
-                // words that land back here needing a retry.
-                const r = await this._teachWordDefinition(word, { reps: 4, label: 'DREAM-DEF-TRICKLE', timeoutMs: 20000 });
+                // ⛔⛔ `timeoutMs` DOES NOT BOUND THIS CALL, AND THE COMMENT THAT
+                // STOOD HERE SAID IT DID. It read "20s per word", and the option
+                // reaches exactly one line — `lookupDefinitionFull(w, {timeoutMs})`
+                // at the top of `_teachWordDefinition`. **It bounds the dictionary
+                // FETCH.** Everything after the fetch — the multi-sense Hebbian
+                // binds, `_teachAssociationPairs`, and the `_teachSelfFramed` call
+                // that closes the lesson in her own voice — runs with no bound of
+                // any kind.
+                //
+                // ⭐ THE LIVE EVIDENCE THAT NAMED IT: the teach view's last row
+                // before a 39.5-minute stall was `_teachConcreteSentences ·
+                // runner-literal` teaching *"I am Unity and I know books"* — a
+                // `selfClose` line, which is the LAST thing `_teachSelfFramed`
+                // emits, which is the LAST thing `_teachWordDefinition` does.
+                // Execution stopped at the far end of the unbounded region, one
+                // step past where the option people trusted stops applying.
+                //
+                // ⛔ AND NOTHING ELSE COVERS IT. The consolidation watchdog bounds
+                // the consolidation pass only — read live at the stall,
+                // `consolidationWatchdog.now.inFlight` was **false** and `trips`
+                // was **0**, so the pass had already returned and the walk was
+                // parked somewhere it cannot see. `_dwOverBudget` is checked
+                // BETWEEN items, so a single item that never returns is never
+                // re-checked. Three guards, none of them looking here.
+                //
+                // ⚠ THE RACE DOES NOT CANCEL THE CALL — same honest limit as the
+                // consolidation watchdog. What is bounded is how long the WALK
+                // waits. The abandoned call keeps running, which is why a trip
+                // BREAKS the loop rather than moving to the next word: two
+                // teachers on one substrate is the hazard this file guards
+                // against everywhere else.
+                //
+                // Derivation for 60 s: the fetch carries its own 20 s bound, and
+                // the whole call is measured at **1.19 s mean** live (2,337 calls
+                // / 2,787 s), so the post-fetch work is small. 60 s is 3× the
+                // fetch bound alone and ~50× the mean whole call — past it the
+                // word is not slow, it is stuck. It is also ⅓ of the window's own
+                // 180 s budget, so one wedged word can never eat the window.
+                const _wdMs = (typeof process !== 'undefined' && Number(process.env?.DREAM_TRICKLE_WORD_MS) > 0)
+                  ? Number(process.env.DREAM_TRICKLE_WORD_MS) : 60000;
+                let _wdTripped = false;
+                const r = await Promise.race([
+                  this._teachWordDefinition(word, { reps: 4, label: 'DREAM-DEF-TRICKLE', timeoutMs: 20000 }),
+                  new Promise((resolve) => {
+                    const _t = setTimeout(() => { _wdTripped = true; resolve(null); }, _wdMs);
+                    if (_t && typeof _t.unref === 'function') _t.unref();
+                  }),
+                ]);
+                if (_wdTripped) {
+                  this._trickleWordTrips = (this._trickleWordTrips || 0) + 1;
+                  this._trickleWordLast = { at: Date.now(), word, waitedMs: _wdMs };
+                  this._hb(`[Curriculum] ⛔⛔ DREAM-TRICKLE WORD WATCHDOG TRIPPED on "${word}" after ${(_wdMs / 1000).toFixed(0)}s — the per-word teach exceeded its bound and the walk has stopped waiting on it. ⚠ the timeoutMs option only ever bounded the dictionary FETCH; the Hebbian binds and the self-frame that follow it had no bound at all, which is how a walk could sit here indefinitely with the consolidation watchdog reading 0 trips. The abandoned call is still running, so this window's trickle STOPS here rather than teaching a second word beside it; the queue persists and the next window resumes. Trips this boot: ${this._trickleWordTrips}.`);
+                  break;
+                }
                 if (r && r.defsBound > 0) { bound += r.defsBound; didBind = true; }
               } catch { /* per-word failure falls through to the retry path */ }
               cluster._kVocabQueue.shift();
