@@ -5,6 +5,36 @@
 
 ---
 
+## 2026-09-06 — `BOARDSWEEP` — TWO BOARD ROWS CLOSED: SEVEN UNBOUNDED ADMIN POSTS, AND AN INSTRUMENT THAT COUNSELLED PATIENCE FOR NINETEEN HOURS
+
+Gee (verbatim): *"work on the board then"*
+
+### ① `MEMTHROTTLE.3` — the advice never turned over, and it was my text
+
+`/ctl/status`'s `human` field ended *"Wait for the operation to finish; a restart here would abandon whatever it is holding."* Correct for a save minutes from completing. **Read live at `activeForSec: 70168` — nineteen hours** — while the very same sentence already said *"far too long to still be booting"*. The payload named the reason not to wait and counselled waiting anyway, in one breath.
+
+⭐ **Counselling patience past every plausible operation is not caution; it is an instrument telling an operator to do nothing while nothing happens.**
+
+✅ **The turnover point is DERIVED, not picked.** The longest legitimate event-loop pin ever measured on this box is the shutdown weights save at **~112 s**, with the forced-consolidation cap next at **120 s** and a routine 5.4 GB binary save at **~19 s** of wall. **1800 s is 15× the longest pin anyone has recorded here**, so past it the operation is not running long — it is not going to finish. The message now flips to *"This will NOT clear on its own. RESTART IT. Whatever it was holding is already lost; waiting only adds to it"*, and the WAIT tier now tells the reader **when to stop waiting** instead of leaving them to guess. `UAL_CTL_STUCK_AFTER_SEC` overrides for slower disk.
+
+✅ **8/8 harness across the tier boundaries** — `null`/5/599 → BOOTING, 600/1799/1800 → WAIT, 1801 → RESTART-IT, and the live reading that exposed the bug, **70,168 s → RESTART-IT** (was: WAIT).
+
+⚠ **This is inert until `unity-brain-ctl` is restarted by hand** — `BUTTONAUDIT.4`, still open: `deploy/self-update.sh` restarts `unity-brain` and nothing else, so the control plane runs whatever code it started with indefinitely. **The fix is correct and it will not take effect on a press.** Said here so nobody reads a deploy as delivery.
+
+### ② `BUTTONAUDIT.5` — seven controls that would hang exactly when you reach for them
+
+`autoscale` ×2, `resync`, `rollback`, `auto-advance`, `grade-advance`, `grade-signoff` — every one an unbounded `fetch`. **None of them lies** (the whole-file audit found no catch branch claiming success), so the only defect was the missing bound: **the same latent hang that made the teach viewer look dead**, sitting on seven controls nobody has pressed during an outage yet. A pinned event loop is precisely when someone reaches for these.
+
+✅ **Bounded via a new `adminFetch(path, init, timeoutMs)` wrapper — deliberately NOT `adminPress`.** That chokepoint also owns the *rendering*, and these seven each draw their own result shape (`rollback`, `grade-advance` and `grade-signoff` especially). Converting rendering and bounding in one change would mean a regression could not be attributed to either — **which is this row's own stated reason for keeping them separate.** The wrapper adds the bound and nothing else: same arguments, same return, same exceptions, so every existing `.json()` and catch keeps working untouched, and an abort surfaces as the honest "✗ …" each site already renders.
+
+⚠ **`function` declaration, not `const`** — three of the call sites appear EARLIER in the file than the wrapper, and only a declaration hoists.
+
+✅ **Verified mechanically:** **0 unbounded admin POSTs remain** (the one the scan still flags is `adminPress`'s own fetch, which carries its own `AbortController`), exactly **7** `adminFetch` call sites, both `<script>` blocks parse, CRLF preserved at 5,504 / 0 bare LF.
+
+⚠ **FOUND IN PASSING, FILED RATHER THAN SILENTLY SWEPT:** five admin **GET**s are still direct and unbounded — `auto-advance` and `autoscale` status reads, `versions`, `milestone`. The row scoped the seven POSTs; a read that hangs is a milder version of the same defect and gets its own row rather than being folded into someone else's closure.
+
+---
+
 ## 2026-09-06 — `BOOTFATAL` — "BOOT STOPS HERE BY DESIGN" DID NOT STOP THE BOOT, AND NOTHING ANYWHERE SAID SHE COULD NOT LEARN
 
 Gee (verbatim): *"okay sop update again and you get to work on the next items"*
