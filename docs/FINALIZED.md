@@ -128,6 +128,22 @@ Live `curriculum.liveness.selfFrame` 52 minutes into one cell: `skippedCapped` *
 
 ⚠ **`last-verified` stamps NOT bumped on pages whose full claim set I did not re-verify.** The drift checker reports 31 such pages; bumping a stamp asserts every claim on that page was re-read against its sources, and **clearing a drift row without doing that is the exact failure the checker exists to catch.** The 31 remain honestly stale.
 
+### `DOCLINE` + `SCRATCHCLEAN` — the cleanup, run LAST and in the ordered position it was given
+
+⭐ **Sequencing was explicit and was followed:** *"clean up is at the end after fulkl and complete doc sweep"*, and then, when the name question came up mid-work, *"but that question falls under clean up after doc sweep entirety"*. The doc sweep landed in its own commit first; only then did any of this run.
+
+**`DOCLINE.2` — 273 sites → 0.** 183 lines carrying the name across 14 source files, plus 90 `Operator: "…"` verbatim-quote lines across 25. ⛔ **A rename could not satisfy both rules** — the placement LAW bans the name from source and a separate rule bans substituting "operator" for it — so the ruling was to strip BOTH and keep every word of the reasoning. Comments now state the standing instruction in their own prose; the verbatim record stays in the board, the ledger and RESUME, where it belongs.
+
+⛔ **ONE OF THE 183 WAS NOT A COMMENT.** `curriculum.js` printed the name inside a runtime `_hb` log line, so it reached the console ring and every reader of it.
+
+⭐ **`js/app.bundle.js` was a 15th file and is DERIVED — deliberately not hand-edited.** Rebuilt, and its name count went **to 0 with the md5 moving**, which is what proves the bundle carries these comments and repairs itself. ⚠ Two adjacent scrubs done in passing, both banned by the same placement rule: an example word in a `chat.js` comment, and a first-person canon example quoted verbatim in `curriculum.js`.
+
+**`SCRATCHCLEAN.1` — `.scratch/` cleared: 128 files, 18 MB → 0.** 48 logs · 37 json · 21 scripts · 14 png · a 7.6 MB `decoded.raw`. Every one had run, including today's three harnesses, whose numbers now live in `rep-compression.js` and this ledger instead of in a file nobody would reopen. One of the 21 scripts WROTE files, which is the banned class outright.
+
+⛔⛔ **AND ONE WAS A CREDENTIAL.** `.scratch/lfstok.txt` — 181 bytes, three dot-separated base64 segments: **a JWT**, an LFS auth token. ✅ **It never shipped** — `git ls-files .scratch` returns **0** and the directory is gitignored. **But an ignored directory is precisely where a secret survives unnoticed**: it appears in no `git status`, no diff and no review. It was found only because the cleanup read the file names rather than running a blanket delete.
+
+⚠ **`Sponge said.txt` IS NOT DEBRIS AND WAS NOT TOUCHED.** 6,541 bytes, 95 lines, titled *"Handoff: OVH memory work + full Rust rewrite"*. **A blanket cleanup would have destroyed it.** Left in place, with the decision it needs written onto the board.
+
 ### Verification
 
 `node --check` on every changed module · ESM `import()` on `curriculum.js`, `rep-compression.js`, `student-question-banks.js` · **all 14 inline script blocks across 11 HTML pages parse (0 failures), with module blocks parsed AS modules** · **env-flag coverage 226/236 → 234/234** · wiki: **0 broken wikilinks, 0 orphans, index in sync** · bundle rebuilt and **byte-identical at 1,015,298** (these three are server-side and not reachable from the browser entry) · exam-bank audit re-run through the real module · 85/85 `_writeTiledPattern` harness · every numeric claim in the new sweep tables re-derived from the tables themselves, which is what caught the plateau overclaim.

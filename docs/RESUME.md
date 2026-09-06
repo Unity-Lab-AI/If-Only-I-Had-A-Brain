@@ -45,7 +45,9 @@
 >
 > ## Still open, deliberately
 >
-> - **`DOCLINE.2`** — 183 lines carry the name across 14 source files plus 90 `Operator: "…"` quote lines. **Ruled: strip both, keep every word of the reasoning.** ⛔ **Runs at CLEANUP, after the doc sweep in its entirety, by explicit instruction.** `js/app.bundle.js` is a 15th hit and is DERIVED — it fixes itself on rebuild and must not be hand-edited.
+> - ✅ **`DOCLINE.2` DONE at cleanup, in the ordered position it was given** — 273 sites → 0 (183 name lines across 14 files + 90 quote lines across 25). One of them was a **runtime log string**, not a comment. The bundle is derived and repaired itself on rebuild.
+> - ⚠ **`Sponge said.txt` NEEDS A DECISION and was deliberately left alone.** Untracked at the repo root, 95 lines, titled *"Handoff: OVH memory work + full Rust rewrite"* — substantive engineering content that a blanket cleanup would have destroyed. Promote it into `docs/` (it overlaps `RUST-MIGRATION.md` and the donor scope opened today) or keep it out of the tree on purpose.
+> - ⛔ **A JWT was sitting in `.scratch/`** (`lfstok.txt`, an LFS auth token). It **never shipped** — that directory is gitignored and `git ls-files` returns 0 — but an ignored directory is exactly where a secret survives unnoticed, since it appears in no status, diff or review. Deleted with the other 127 files (18 MB).
 > - **`LATSCAN.2`** — the saving is predicted, not measured.
 > - **`DEFCOST.1/.2`** — instrumented; needs a press to read. The pre-phase bootstrap is **12.4 s/definition against a recorded ~3.9 s**, with 2,123 queued before phase 1 of 25.
 > - **`MEMTHROTTLE.3`** — fixed but **inert until `unity-brain-ctl` is restarted by hand**.
