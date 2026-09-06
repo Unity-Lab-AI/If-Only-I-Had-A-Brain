@@ -23619,6 +23619,7 @@ function startEyeIris(canvas, visualCortex) {
   const ctx = canvas.getContext("2d");
   let frameCount = 0;
   let focusX = 0.5, focusY = 0.5;
+  let lastGazeX = null, lastGazeY = null, lastGazeMovedAt = 0;
   function render() {
     frameCount++;
     const rect = canvas.parentElement.getBoundingClientRect();
@@ -23630,28 +23631,72 @@ function startEyeIris(canvas, visualCortex) {
     }
     const w = canvas.width, h = canvas.height;
     ctx.clearRect(0, 0, w, h);
-    const gaze = visualCortex?.getState() || {};
-    focusX += ((gaze.gazeX ?? 0.5) - focusX) * 0.06;
-    focusY += ((gaze.gazeY ?? 0.5) - focusY) * 0.06;
-    focusX += (Math.random() - 0.5) * 8e-3;
-    focusY += (Math.random() - 0.5) * 8e-3;
+    const gazeState = visualCortex && typeof visualCortex.getState === "function" ? visualCortex.getState() : null;
+    const gaze = gazeState || {};
+    const haveGaze = typeof gaze.gazeX === "number" && typeof gaze.gazeY === "number" && Number.isFinite(gaze.gazeX) && Number.isFinite(gaze.gazeY);
+    if (haveGaze) {
+      if (gaze.gazeX !== lastGazeX || gaze.gazeY !== lastGazeY) {
+        lastGazeMovedAt = frameCount;
+        lastGazeX = gaze.gazeX;
+        lastGazeY = gaze.gazeY;
+      }
+    }
+    const gazeFrozen = haveGaze && frameCount - lastGazeMovedAt > 240;
+    const gazeLive = haveGaze && !gazeFrozen;
+    if (haveGaze) {
+      focusX += (gaze.gazeX - focusX) * 0.06;
+      focusY += (gaze.gazeY - focusY) * 0.06;
+      focusX += (Math.random() - 0.5) * 8e-3;
+      focusY += (Math.random() - 0.5) * 8e-3;
+    } else {
+      focusX += (0.5 - focusX) * 0.06;
+      focusY += (0.5 - focusY) * 0.06;
+    }
     const px = focusX * w, py = focusY * h;
     const scale = Math.min(w, h) / 120;
     const pulse = Math.sin(frameCount * 0.03) * 0.15 + 0.85;
-    ctx.strokeStyle = `rgba(255,77,154,${0.5 * pulse})`;
-    ctx.lineWidth = 2 * scale;
-    ctx.beginPath();
-    ctx.arc(px, py, 20 * scale * pulse, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.strokeStyle = `rgba(168,85,247,${0.6 * pulse})`;
-    ctx.lineWidth = 1.5 * scale;
-    ctx.beginPath();
-    ctx.arc(px, py, 12 * scale * pulse, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.fillStyle = `rgba(255,77,154,${0.8 * pulse})`;
-    ctx.beginPath();
-    ctx.arc(px, py, 4 * scale, 0, Math.PI * 2);
-    ctx.fill();
+    if (gazeLive) {
+      ctx.setLineDash([]);
+      ctx.strokeStyle = `rgba(255,77,154,${0.5 * pulse})`;
+      ctx.lineWidth = 2 * scale;
+      ctx.beginPath();
+      ctx.arc(px, py, 20 * scale * pulse, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = `rgba(168,85,247,${0.6 * pulse})`;
+      ctx.lineWidth = 1.5 * scale;
+      ctx.beginPath();
+      ctx.arc(px, py, 12 * scale * pulse, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = `rgba(255,77,154,${0.8 * pulse})`;
+      ctx.beginPath();
+      ctx.arc(px, py, 4 * scale, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (gazeFrozen) {
+      ctx.setLineDash([]);
+      ctx.strokeStyle = `rgba(255,77,154,${0.18 * pulse})`;
+      ctx.lineWidth = 1.5 * scale;
+      ctx.beginPath();
+      ctx.arc(px, py, 20 * scale, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = `rgba(168,85,247,0.22)`;
+      ctx.lineWidth = 1 * scale;
+      ctx.beginPath();
+      ctx.arc(px, py, 12 * scale, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(255,77,154,0.35)";
+      ctx.lineWidth = 1 * scale;
+      ctx.beginPath();
+      ctx.arc(px, py, 4 * scale, 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      ctx.setLineDash([4 * scale, 4 * scale]);
+      ctx.strokeStyle = "rgba(168,85,247,0.20)";
+      ctx.lineWidth = 1 * scale;
+      ctx.beginPath();
+      ctx.arc(px, py, 16 * scale, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
     requestAnimationFrame(render);
   }
   render();

@@ -5,6 +5,47 @@
 
 ---
 
+## 2026-09-06 (17th) — `FOCUSDEAD.2` — THE IRIS WAS PARKED DEAD CENTRE BY ITS OWN DEFAULT
+
+Gee (verbatim, on filing): *"the Unity vision 'focus tracker' never moves anymore to follow what she sees… it used to work… but it died of regression."*
+
+### Every listed candidate eliminated, and the defect was somewhere else
+
+⛔ **① the deployed path DOES init and DOES drive frames.** On deploy `brain` is a `RemoteBrain`, which constructs its own `visualCortex` (`remote-brain.js:90`), calls `init(vid)` behind a `typeof` guard **that passes** — `init()` genuinely exists at `visual-cortex.js:187`, so this is *not* the missing-method-behind-a-typeof-guard trap this tree has paid for before — and starts its **own** RAF loop calling `processFrame`. The bare-`return`-with-no-reschedule bug that lane once had is fixed and commented in place.
+
+⛔ **The stale-reference theory dies too.** `startEyeIris` captures `brain.visualCortex` **by value** inside a 600 ms timeout, which would hold a dead cortex forever if `brain` were ever swapped. It is not: `brain` is assigned exactly once (`app.js:2341`), before both the camera connect and the widget start. The canvas exists (`index.html:570`) and the `if (!canvas) return` guard passes.
+
+### ⛔⛔ The actual defect: `?? 0.5`
+
+```js
+const gaze = visualCortex?.getState() || {};
+focusX += ((gaze.gazeX ?? 0.5) - focusX) * 0.06;
+```
+
+A cortex that is absent, uninitialised or throwing rendered as **a confident iris sitting perfectly still in the middle of the frame** — indistinguishable from her genuinely looking straight ahead.
+
+⭐ **That is exactly what "the focus tracker never moves anymore" looks like.** The default was the defect, not a safety net: **it converted a dead lane into a plausible reading**, which is the one thing an instrument must never do.
+
+### And frozen was a third state that looked like the other two
+
+A cortex whose `processFrame` stopped being called keeps returning its **last** gaze forever, which reads as a perfectly steady stare. Movement is tracked over a rolling ~4 s window now — long enough not to accuse a genuinely still subject, short enough to name a dead lane while the operator is still looking.
+
+### The three states render differently, which is the whole fix
+
+```
+  tracking   full colour, solid centre dot
+  frozen     dimmed, HOLLOW centre        <- last gaze is stale, nothing refreshes it
+  no signal  faint dashed ring, NO centre <- there is no gaze to draw
+```
+
+Verified across five cases. **The two that used to render identically — a live centred gaze and a five-second-stale one — are now distinct.** A glance at the page answers the question that previously required a console session, which is what made this row need a live read at all.
+
+⚠ **Client-side: this lands on a PAGE RELOAD, not on an Update press.** Easy to bundle with a press by habit; it should not be.
+
+**Verified:** `node --check` · bundle rebuilt · three-state classifier exercised across all five inputs.
+
+---
+
 ## 2026-09-06 (16th) — `CHATPIN.2` — TWO RINGS THAT CANNOT COLLIDE, NOT ONE RING WITH A DISCIPLINE
 
 Gee (verbatim): *"get to the rest of the todos we need to do"*
