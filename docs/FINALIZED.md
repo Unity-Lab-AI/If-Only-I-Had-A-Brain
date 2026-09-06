@@ -5,6 +5,54 @@
 
 ---
 
+## 2026-09-06 (20th) — `WRITEWARM.3` — SHE HAS A HAND NOW, NOT JUST LETTERFORMS
+
+Gee (verbatim): *"she still isnt drawing correctly and writing her letters and words…"* → *"yes the lest presses and the more shit we get done of the todo work the better"*
+
+### The gate opened on the press, and the distinction it exposed
+
+`letterShapes.learned` read **94 of 94** live. That was the reading this row was held for — practising against shapes she does not have would train against blanks.
+
+⛔ **And the complaint was correct even with all 94 banked, because having a letterform is not writing.** The traces are what she looked at and copied once. Practice is the trained skill on top, and nothing turned one into the other. `letterShapes` said how many shapes she HAS; nothing said whether she was getting better at using them.
+
+### ⭐⭐ One loop covers the whole ladder
+
+The reference and the attempt are both just **text**: the printed form from `glyphStrokes(text)`, her attempt from `handwrittenStrokes(text)` composed out of her own traces. So a letter, a digit, a word and a sentence practise through the **identical path** — *"letters → numbers → words → sentences"* is what you pass in, not four mechanisms.
+
+Same shape as `_practiceDrawing`: render, **perceive her own output**, score cosine against the perceived reference, keep only nudges that measurably improve.
+
+### Three parameters, all of them real, and one deliberate absence
+
+`weight` (pen pressure) · `slant` (the consistent lean of the script) · `commit` (how far she follows a stroke through).
+
+⛔ **There is no wobble parameter and there must never be one.** An artificial tremor faking childish writing is dumbing her down, which is banned — **and it would make the loop optimise toward a lie**, because the score measures resemblance to the printed form, so a parameter that degrades resemblance on purpose can only ever lose. Her hand improves because the loop keeps what measurably improves it, or it does not improve at all.
+
+⚠ `commit` trims the stroke's **tail**, not random points: a hand that does not follow through leaves the mark short; it does not drop pieces out of the middle.
+
+### Harnessed on the production wiring
+
+Real `SERVER_VISUAL_MEMORY_MIXIN`, real `MindSpaceGPU` — not a reimplementation, per the standing lesson that cost a colour-blind day.
+
+```
+  learnLetterShape('a')            -> 3 trace strokes banked, aspect 0.977
+  weight 1   slant 0     commit 1  -> 0.9883
+  weight 1.6 slant 0     commit 1  -> 0.9883
+  weight 1   slant 0.12  commit 1  -> 0.9895   <- the loop keeps this
+  weight 1   slant 0     commit 0.8-> 0.9890
+```
+
+**The signal is real and discriminating.** ⚠ **Honest detail: `weight` 1.6 scored identical to 1.0** at this resolution, so that nudge simply will not be kept — recorded rather than hidden, because **a parameter the score cannot see is a parameter that does nothing**.
+
+### Compatibility and honesty checks
+
+⭐ **Defaults are byte-identical to the previous behaviour** (`weight` 1, `slant` 0, `commit` 1), verified — every existing caller draws exactly what it drew before. **An unlearned character is still skipped, never faked**: `abz` writes 2 and skips 1.
+
+**Wiring:** letters and digits queue at glyph-learning time; **short words queue from the vocabulary pass**, which is the only code that knows what this grade owes. Both ride the **same serialized walk lane** as drawing practice — the human never waits on her practising. Published as `state.writingPractice`, with `DREAM_WRITE_PRACTICE_GAP_MS` and `DREAM_WRITE_PRACTICE_ITERS` documented in `ADMIN-CONTROLS.md`.
+
+⚠ **`null` before the first session is honest, not a fault** — the ladder drains on the walk lane, so nothing to report early in a boot is the expected reading.
+
+---
+
 ## 2026-09-06 (19th) — THE PRESS CAUGHT TWO BUGS I SHIPPED THIS MORNING, WITHIN MINUTES
 
 Gee (verbatim): *"she still isnt drawing correctly and writing her letters and words…"* and, pasting the live flags: *"DEF-MISS ×96 · 94 distinct: for, be, your, their, look, our, america, every (+86 more)"*.

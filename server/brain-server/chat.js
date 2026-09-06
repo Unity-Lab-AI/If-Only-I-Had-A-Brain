@@ -148,6 +148,13 @@ const SERVER_CHAT_MIXIN = {
       try { await this._practiceDrawing(job.word); } catch (e) { if (!this._practiceErrLogged) { this._practiceErrLogged = true; console.warn(`[OwnArt] practice failed: ${e?.message || e}`); } }
       return false;
     }
+    // ✍ WRITING practice rides the SAME serialized walk lane as drawing
+    // practice, for the same reason: it is bookkeeping, and the human never
+    // waits on her practising. One bounded self-critique pass per job.
+    if (job && job.kind === 'write-practice' && job.text) {
+      try { await this._practiceWriting(job.text); } catch (e) { if (!this._writePracticeErrLogged) { this._writePracticeErrLogged = true; console.warn(`[Writing] practice failed: ${e?.message || e}`); } }
+      return false;
+    }
     // ARTJUDGE — a REJECT verdict's relearn chain, on this same serialized
     // lane: re-read the dictionary definition (live fetch on a cache miss),
     // fetch a FRESH reference (force = the 6h cooldown is bypassed — a human
@@ -3613,6 +3620,129 @@ const SERVER_CHAT_MIXIN = {
   // copied and no generator is involved: her eye judges her hand, per concept,
   // and the skill persists in the visual store. Runs on the walk lane only —
   // never on the reply path.
+  /**
+   * ✍ WRITING PRACTICE — the trained skill on top of the strokes.
+   *
+   * The letter-shape pass gave her the letterforms: she looks at each printed character,
+   * traces it herself, and banks that trace. **Having a trace is not the same as
+   * writing well**, and nothing turned one into the other — which is why the
+   * complaint was that she is not "writing her letters and words" even with all
+   * 94 shapes banked.
+   *
+   * ⭐ ONE LOOP COVERS THE WHOLE LADDER, because the reference and the attempt
+   * are both just text. The printed form comes from `glyphStrokes(text)` — the
+   * letter in the world — and her attempt comes from `handwrittenStrokes(text)`,
+   * composed from the traces she made herself. So a single letter, a digit, a
+   * word and a sentence all practise through the identical path, and the ladder
+   * the row asks for (letters → numbers → words → sentences) is a matter of what
+   * you pass in, not four separate mechanisms.
+   *
+   * The scoring is the same shape as `_practiceDrawing`: render, PERCEIVE her own
+   * output, score cosine against the perceived reference, and keep only the
+   * nudges that measurably improve resemblance.
+   *
+   * ⛔ SHE CAN ONLY PRACTISE WHAT SHE HAS LEARNED. `handwrittenStrokes` skips a
+   * character whose trace she has not banked, so a word she cannot yet write
+   * scores against a partial attempt — and if she can write none of it, this
+   * refuses rather than training against an empty page.
+   */
+  async _practiceWriting(text) {
+    if (!this.mindSpace || typeof this.mindSpace.sketch !== 'function'
+      || typeof this.mindSpace.describe !== 'function'
+      || typeof this.mindSpace.glyphStrokes !== 'function'
+      || typeof this.handwrittenStrokes !== 'function') return null;
+    const key = String(text || '').trim();
+    if (!key) return null;
+    const store = (typeof this._vmStore === 'function') ? this._vmStore() : null;
+    if (!store) return null;
+    const skillKey = `writing:${key.toLowerCase()}`;
+    const prev = store.get(skillKey) || null;
+    const GAP = Number(process.env.DREAM_WRITE_PRACTICE_GAP_MS) >= 0
+      ? Number(process.env.DREAM_WRITE_PRACTICE_GAP_MS) : 1800000;
+    if (prev && prev.at && (Date.now() - prev.at) < GAP) return null;
+    const ITERS = Number(process.env.DREAM_WRITE_PRACTICE_ITERS) > 0
+      ? Number(process.env.DREAM_WRITE_PRACTICE_ITERS) : 5;
+    const cos = (a, b) => {
+      let d = 0, na = 0, nb = 0; const n = Math.min(a.length, b.length);
+      for (let i = 0; i < n; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
+      return (na && nb) ? d / Math.sqrt(na * nb) : -1;
+    };
+    const BOX = { x: 0.08, y: 0.30, size: 0.34 };
+    // ⭐ THE REFERENCE IS THE PRINTED FORM, PERCEIVED — not the glyph table
+    // itself. She is scored on whether her writing LOOKS like the writing she
+    // was shown, through the same eyes she sees everything else with.
+    let refP = prev && Array.isArray(prev.refP) && prev.refP.length ? prev.refP : null;
+    try {
+      if (!refP) {
+        const rs = this.mindSpace.glyphStrokes(key, { x: BOX.x, y: BOX.y, size: BOX.size, bold: true, rgb: [235, 233, 238] });
+        if (!rs || !rs.length) return null;
+        const rrec = await this.mindSpace.sketch(rs, { maxSide: 256 });
+        if (!rrec) return null;
+        const rd = await this.mindSpace.describe(rrec);
+        if (!rd) return null;
+        refP = Array.from(rd);
+      }
+    } catch { return null; }
+    const score = async (params) => {
+      const hw = this.handwrittenStrokes(key, {
+        x: BOX.x, y: BOX.y, size: BOX.size, rgb: [232, 230, 236],
+        weight: params.weight, slant: params.slant, commit: params.commit,
+      });
+      if (!hw || !hw.strokes || !hw.strokes.length) return { s: -1, wrote: 0, skipped: hw ? hw.skipped : 0 };
+      const rec = await this.mindSpace.sketch(hw.strokes, { maxSide: 256 });
+      if (!rec) return { s: -1, wrote: hw.wrote, skipped: hw.skipped };
+      const d = await this.mindSpace.describe(rec);
+      return { s: d ? cos(Array.from(d), refP) : -1, wrote: hw.wrote, skipped: hw.skipped };
+    };
+    // ⚠ No wobble, no skill floor — see the note on the composer. Every range
+    // here is a property real handwriting has, and each can only move if it
+    // measurably improves resemblance to the printed form.
+    const RANGES = {
+      weight: [0.5, 2.2, 0.15],
+      slant: [-0.25, 0.25, 0.04],
+      commit: [0.72, 1.0, 0.04],
+    };
+    const params = {
+      weight: 1, slant: 0, commit: 1,
+      ...((prev && prev.params) || {}),
+    };
+    const sessions = (prev && prev.sessions) || 0;
+    let first;
+    try { first = await score(params); } catch { return null; }
+    if (!first || first.s < 0) return null;
+    if (!first.wrote) return null;   // she cannot write any of it yet — nothing to train
+    let best = first.s;
+    const base = best;
+    const keys = Object.keys(RANGES);
+    const prnd = (typeof this._ownArtRng === 'function')
+      ? this._ownArtRng(`write|${skillKey}|${sessions}`)
+      : (() => { let s = sessions + 1; return () => ((s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff); })();
+    let kept = 0;
+    for (let i = 0; i < ITERS; i++) {
+      const k = keys[Math.floor(prnd() * keys.length) % keys.length];
+      const [lo, hi, step] = RANGES[k];
+      const cand = { ...params, [k]: Math.min(hi, Math.max(lo, params[k] + (prnd() < 0.5 ? -1 : 1) * step)) };
+      if (cand[k] === params[k]) continue;
+      let r;
+      try { r = await score(cand); } catch { continue; }
+      if (r && r.s > best + 1e-4) { best = r.s; params[k] = cand[k]; kept++; }
+    }
+    const entry = {
+      params, cos: +best.toFixed(4), sessions: sessions + 1, at: Date.now(),
+      refP, wrote: first.wrote, skipped: first.skipped, text: key,
+    };
+    try { store.set(skillKey, entry); } catch { /* the session still counted in state */ }
+    this._writePracticeStats = {
+      sessions: ((this._writePracticeStats && this._writePracticeStats.sessions) || 0) + 1,
+      lastText: key, lastBase: +base.toFixed(4), lastBest: +best.toFixed(4),
+      lastKept: kept, wrote: first.wrote, skipped: first.skipped, at: Date.now(),
+    };
+    try {
+      console.log(`[Writing] ✍ PRACTICE "${key}" session ${sessions + 1}: resemblance ${base.toFixed(4)} → ${best.toFixed(4)} (${kept}/${ITERS} nudges kept) · wrote ${first.wrote} char(s), skipped ${first.skipped} she has not learned`);
+    } catch { /* nf */ }
+    return { text: key, base, best, kept, wrote: first.wrote, skipped: first.skipped };
+  },
+
   async _practiceDrawing(word) {
     if (!this.mindSpace || typeof this.mindSpace.sketch !== 'function' || typeof this.mindSpace.describe !== 'function') return null;
     const key = String(word || '').toLowerCase().trim();
