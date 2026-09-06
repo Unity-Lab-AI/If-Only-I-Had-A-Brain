@@ -5,6 +5,36 @@
 
 ---
 
+## 2026-09-06 (7th) — `WEDGELIVE` — THE PROBE HELPER STAMPED ENTRY ONLY, SO ITS TAG WAS THE RESTING STATE OF THE WHOLE GATE LANE
+
+Gee (verbatim): *"we cnat have the shit to fix her runing be blocked by a broken run"*
+
+Gee (verbatim): *"start knock ing off those todo s in droves!"*
+
+### What was done without waiting for the press
+
+The row says not to guess which await hangs, and that stands. **Enumerating what is BOUNDED is not guessing** — it is the rule that killed the teach residual, and it eliminates candidates rather than inventing one.
+
+**Every await on the probe path is bounded.** The gate probe and the proxy propagate both sit under caller-owned `Promise.race` deadlines (`DREAM_PROBE_DEADLINE_MS`, default 20 s). `gpuDrainWait` — the only other await the curriculum makes on the GPU proxy, at three call sites — carries a **30 s** `TIMEOUT_MS` that the loop condition genuinely enforces. **So `probeDeadlineHits=6` is not evidence about this wedge:** it is six rescues across a whole boot, behind rate-limited logging.
+
+### ⛔⛔ The defect that made the tag point at the probe
+
+All four exits from the shared probe helper returned **without re-stamping**, so `gate:probe-gpu` was the **resting tag of the entire gate lane** — the last thing stamped before any unmarked code. That is exactly what was reported for two hours as `stage=gate:probe-gpu (age 6957s)` while `probeDeadlineHits` proved no probe was hanging.
+
+Stamped now: `gate:probe-gpu-done` · `gate:probe-prop-done` · `gate:probe-proxy-done` · `gate:probe-dead`, matching the `cell:runner-done` / `gate:readiness-done` convention the batteries already use. **A climbing age on `gate:probe-gpu` means genuinely stuck IN the probe; a climbing age on `gate:probe-gpu-done` means the blocker is AFTER it, in code nothing stamps.** The `-dead` exit is stamped too, and it is the one that matters most because it is silent — a caller reaching it got a zero vector from a probe that never ran, and used to leave `gate:probe-gpu` behind as though one had been in flight.
+
+### ⭐ It repairs a measurement nobody had questioned
+
+`_tstage` banks the **outgoing** stage's held duration into `teachStageMax`. With entry-only stamping, the probe's banked time therefore included **every millisecond of unmarked code that ran after it** until the next stamp. **Any past `teachStageMax=gate:probe-gpu` reading was over-attributed by exactly that amount.** The probe's banked max is now the probe alone.
+
+### Verified
+
+`node --check` · ESM `import()` link · bundle rebuilt (996.0 kb) · 5 new stamps in place.
+
+⚠ **The press is still the diagnostic for the wedge itself.** This narrows where the reading will point; it does not name the blocker, and the row stays open with that unchanged.
+
+---
+
 ## 2026-09-06 (6th) — `FLAGSAMPLE.2` — A PERMANENT `noDef` WAS SHADOWING THE PEER SOURCE THAT COULD ANSWER, AND IT WAS 80 WORDS, NOT 4
 
 Gee (verbatim): *"start knock ing off those todo s in droves!"*

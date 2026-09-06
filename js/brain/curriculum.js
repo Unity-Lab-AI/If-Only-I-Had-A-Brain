@@ -15516,6 +15516,21 @@ export class Curriculum {
             // the CPU path output (same conversion the legacy branch does).
             const o64 = new Float64Array(out.length);
             for (let i = 0; i < out.length; i++) o64[i] = out[i];
+            // ⛔⛔ STAMP THE EXIT, BECAUSE ENTRY-ONLY STAMPING MAKES THIS TAG THE
+            // RESTING STATE OF THE WHOLE GATE LANE. Every exit from this helper
+            // used to return with `gate:probe-gpu` still set, so it was simply
+            // the last thing stamped before any unmarked code — which is exactly
+            // how a wedge in unmarked code got reported for two hours as
+            // `stage=gate:probe-gpu (age 6957s)` while `probeDeadlineHits` proved
+            // no probe was hanging. **A tag that is never cleared cannot say
+            // whether it is current**, and this file's own `_tstage` docstring
+            // records getting that call wrong in BOTH directions in one day.
+            // With `-done` the two cases separate by reading alone: a climbing
+            // age on `gate:probe-gpu` means genuinely stuck IN the probe; a
+            // climbing age on `gate:probe-gpu-done` means the blocker is AFTER
+            // it, in code nothing stamps. Same convention already used by
+            // `cell:runner-done`, `gate:readiness-done` and the two batteries.
+            this._tstage('gate:probe-gpu-done');   // LOOPNAME
             return o64;
           }
         } catch { /* fall through to the CPU path */ }
@@ -15526,9 +15541,11 @@ export class Curriculum {
     // its synchronous propagate was a multi-second loop pin at grown matrices.
     if (proj.values && proj.colIdx && proj.rowPtr && proj.values.length > 0) {
       this._tstage('gate:probe-prop');   // LOOPNAME
-      return (typeof proj.propagateChunked === 'function')
+      const _propOut = (typeof proj.propagateChunked === 'function')
         ? await proj.propagateChunked(srcVec, { chunkRows: 250000 })
         : proj.propagate(srcVec);
+      this._tstage('gate:probe-prop-done');   // LOOPNAME — see the exit-stamp note above
+      return _propOut;
     }
     // GPU proxy fallback for freed CSR on non-whitelisted probe paths.
     if (cluster._gpuProxyReady && cluster._gpuProxy && typeof cluster._gpuProxy.propagate === 'function') {
@@ -15555,11 +15572,18 @@ export class Curriculum {
           // arithmetic is uniform with the CPU path output.
           const out = new Float64Array(result.length);
           for (let i = 0; i < result.length; i++) out[i] = result[i];
+          this._tstage('gate:probe-proxy-done');   // LOOPNAME — see the exit-stamp note above
           return out;
         }
       } catch { /* non-fatal — fall through to zero vector */ }
     }
     // Dead fallback — match null-CSR guard shape so callers don't NPE.
+    // ⚠ STAMPED TOO, and this exit matters MOST: it is the silent one. A caller
+    // that reaches here got a zero vector from a probe that never ran, and with
+    // entry-only stamping it left `gate:probe-gpu` behind as though a probe had
+    // been in flight. `-dead` says which exit was taken without inventing a
+    // failure — reaching here is legitimate when no CSR and no proxy exist.
+    this._tstage('gate:probe-dead');   // LOOPNAME
     return new Float64Array(proj.rows || 0);
   }
 
