@@ -12360,11 +12360,15 @@ var LanguageCortex = class {
               } catch {
               }
               const _lcBrain = cluster && cluster._brain;
-              const _lcOnChatLane = opts && opts.lapLane === "chat";
+              const _lcLane = opts && typeof opts.lapLane === "string" ? opts.lapLane : null;
               const _lcStamp = (s) => {
-                if (!_lcOnChatLane) return;
+                if (!_lcLane || !_lcBrain) return;
                 try {
-                  if (_lcBrain && typeof _lcBrain._chatStamp === "function") _lcBrain._chatStamp(s);
+                  if (_lcLane === "chat") {
+                    if (typeof _lcBrain._chatStamp === "function") _lcBrain._chatStamp(s);
+                  } else if (typeof _lcBrain._laneStamp === "function") {
+                    _lcBrain._laneStamp(_lcLane, s);
+                  }
                 } catch {
                 }
               };
@@ -13220,6 +13224,10 @@ var InnerVoice = class {
             // DONOR-DROP FIX (2026-07-16) — inner thoughts mid-walk compose with
             // ONE candidate (each rerank candidate = a full ~13s emission; the
             // 3-candidate default stacked on teach starved the loop → donor EPIPE).
+            // ⭐ Declares its lane so its emission time is billed to IT. This
+            // lane's continuations were landing in the chat reply's lap ring,
+            // which made a working guard look broken.
+            lapLane: "inner-voice",
             curriculumBusy: state.curriculumBusy === true,
             predictionError: state.predictionError ?? 0,
             motorConfidence: state.motorConfidence ?? 0,

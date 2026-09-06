@@ -5,6 +5,41 @@
 
 ---
 
+## 2026-09-06 (16th) — `CHATPIN.2` — TWO RINGS THAT CANNOT COLLIDE, NOT ONE RING WITH A DISCIPLINE
+
+Gee (verbatim): *"get to the rest of the todos we need to do"*
+
+### Filed and closed the same day, on purpose
+
+`CHATPIN.1` stopped the background lanes writing into the chat reply's lap ring, and that left them with **no** instrument at all. The gap was filed immediately rather than left to be rediscovered — with one instruction attached: **do not fix it by widening the chat ring again.**
+
+That is honoured. `_chatStamp` keeps its own fields and **ChatPin's output is byte-identical**; every other lane gets its own entry via `_laneStamp(lane, stage)`. **The chat lane is refused by that function outright** — verified, it cannot write to the lane ring even when asked. Two rings that cannot collide, rather than one ring with a rule about who may write to it.
+
+### All four call sites declare their lane
+
+```
+  server/brain-server/chat.js   -> 'chat'          (keeps _chatStamp)
+  js/brain/inner-voice.js       -> 'inner-voice'
+  js/brain/engine.js            -> 'inner-voice'   <- the SECOND entry point
+  js/brain/curriculum.js        -> 'dream'
+```
+
+⚠ **The inner voice has two entry points**, and labelling only one would have left half its time unattributed — which is a subtler version of the original defect, not a fix for it.
+
+### Bounded by construction, and absent means something
+
+Six fixed keys per lane, verified: a lane keeps its slowest stage and its most recent one, and nothing accumulates per call. **An instrument that grows with traffic is one somebody eventually turns off**, and this project has already retired panels for exactly that.
+
+Published as `state.laneLaps` with slowest / last / in-flight per lane. ⚠ **An absent lane means it has not emitted since boot, and during a walk that is the CORRECT reading** — the inner voice is deliberately held while she has no word she can say, so silence there is the design working.
+
+### ⛔ A comment that had been true for exactly one edit
+
+The block above the stamp still read *"everything else is silent by default, which is the safe direction"*. **That stopped being true the moment this shipped.** Caught in the same pass and rewritten to record both the original reasoning and its supersession — a stale comment contradicting the code beside it is the defect class this tree keeps paying for, and writing one while closing a row about misleading instruments would have been its own small joke.
+
+**Verified:** `node --check` ×6 · ESM `import()` · four lane declarations in the tree · chat refused by `_laneStamp` · ring bounded at six keys.
+
+---
+
 ## 2026-09-06 (15th) — `REPCOMP.2` + `DEFHEAL.4` — TWO ROWS CLOSED ON READINGS THAT ALREADY EXISTED
 
 Gee (verbatim): *"get to the rest of the todos we need to do"*

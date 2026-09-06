@@ -1481,6 +1481,38 @@ const SERVER_STATE_MIXIN = {
       // contents must not travel onto a surface a reader can reach.
       lastBattery: _lap('lastBattery', () => ((this.cortexCluster && this.cortexCluster.lastBattery)
         ? this.cortexCluster.lastBattery : null)),
+      // ⭐ THE BACKGROUND EMISSION LANES, TIMED SEPARATELY AT LAST.
+      //
+      // The inner voice and the dream sentence run the same generation path the
+      // chat reply does, and until now their seconds were either billed to the
+      // chat reply (which made a working guard look broken) or, after that was
+      // stopped, not billed at all. Neither is a measurement.
+      //
+      // ⚠ PUBLISHED AS THE SLOWEST STAGE PER LANE, NOT A LOG. A lane keeps its
+      // worst stage and its most recent one and nothing else, so this cannot
+      // grow with traffic — the failure mode that has already retired two panels
+      // on this project.
+      //
+      // ⚠ An ABSENT lane means it has not emitted since boot, which is a real
+      // answer during a walk: the inner voice is held while she has no word she
+      // can say, so nothing to report is the correct reading, not a broken one.
+      laneLaps: _lap('laneLaps', () => {
+        const L = this._laneLaps;
+        if (!L || typeof L !== 'object') return null;
+        const out = {};
+        for (const [lane, v] of Object.entries(L)) {
+          if (!v) continue;
+          out[lane] = {
+            slowestStage: v.maxStage || null,
+            slowestMs: v.maxMs || 0,
+            lastStage: v.lastStage || null,
+            lastMs: v.lastMs === undefined ? null : v.lastMs,
+            inFlight: v.stage || null,
+            inFlightForMs: v.stage && v.at ? (Date.now() - v.at) : null,
+          };
+        }
+        return Object.keys(out).length ? out : null;
+      }),
       // ⛔⛔ THE THROTTLE BAND HAD NO ALARM, AND SHE SAT IN IT FOR 19.5 HOURS.
       //
       // Below `MemoryHigh` she runs. Above `MemoryMax` she is OOM-killed ALONE

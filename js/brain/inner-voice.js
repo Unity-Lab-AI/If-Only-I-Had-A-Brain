@@ -271,6 +271,10 @@ export class InnerVoice {
             // DONOR-DROP FIX (2026-07-16) — inner thoughts mid-walk compose with
             // ONE candidate (each rerank candidate = a full ~13s emission; the
             // 3-candidate default stacked on teach starved the loop → donor EPIPE).
+            // ⭐ Declares its lane so its emission time is billed to IT. This
+            // lane's continuations were landing in the chat reply's lap ring,
+            // which made a working guard look broken.
+            lapLane: 'inner-voice',
             curriculumBusy: state.curriculumBusy === true,
             predictionError: state.predictionError ?? 0,
             motorConfidence: state.motorConfidence ?? 0,
