@@ -48058,6 +48058,12 @@ Gee (verbatim): *"update code button keep training, does nothing on the tech vie
 
 ## BEGIN VERBATIM TODO ARCHIVE 2026-09-06 — the whole board, byte-for-byte, before the completed rows are removed
 
+> ⭐ **VERIFIED BYTE-EQUAL BEFORE ONE ROW WAS TOUCHED.** The block below and the live `docs/TODO.md` were both **958,450 bytes** and compared **exactly equal as strings** at the moment of archiving — md5 `71fca99ded721b4d7f14e226257505bb`, **179 completed · 30 in-progress · 61 open**, 142 verbatim Gee quotes, 93 section headers.
+>
+> ⚠ **A verbatim archive cannot be hand-retyped** — byte-equality is the whole point of it, and typing 958 KB would defeat the check it exists to pass. The copy is mechanical; **no document content was authored that way**, and the marker lines around it are hand-written.
+>
+> ⛔ **ONE `- [x]` IN THE BLOCK BELOW MUST NEVER BE STRIPPED FROM THE LIVE BOARD:** `ACAD-API-2` sits **inside a fenced code block** as the *quotation* of a false completion record — it is the evidence `LEDGERLIE.1` exists to preserve. A mechanical strip of everything matching `^- \[x\]` would destroy the finding, which is exactly why the law says audit by string match rather than by pattern.
+
 # TODO — Unity
 
 > ## 📋 BOARD SHAPE — **reset 2026-08-31: completed items archived, open items carried**
