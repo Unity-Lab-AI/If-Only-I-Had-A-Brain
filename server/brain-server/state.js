@@ -726,6 +726,22 @@ const SERVER_STATE_MIXIN = {
       // or broken box gets asked first are "what is running?" and "is it
       // actually working?", and they should not be pages apart.
       bootFatal: this._bootFatal || null,
+      // ⭐⭐ `RUSTSCOPE.3` — WHY THIS BOOT RESUMED OR WIPED, published beside
+      // `build` and `bootFatal` because the three questions a suspect box gets
+      // asked are "what is running", "is it broken", and "did it just throw away
+      // her training".
+      //
+      // ⛔ THE THIRD ONE HAD NO ANSWER. `_writeBootReason` has always recorded
+      // it — `{ mode: 'wipe' | 'resume' | ..., reason, detail, at }` — into
+      // `.last-boot-reason.json`, on a box with no shell, while its own comment
+      // said it existed so the dashboard could surface it. `state.bootReason`
+      // read `undefined` in production.
+      //
+      // ⚠ `mode: 'wipe'` with `reason: 'force-fresh'` is the one to look for:
+      // that flag beats `DREAM_KEEP_STATE`, is consumed as it is read, and is
+      // the mechanism by which a press can silently cost a multi-week walk.
+      // `detail` carries which writer armed it.
+      bootReason: (typeof globalThis !== 'undefined' && globalThis.__bootReason) || null,
       frameCount: this.frameCount,
       totalSpikes: this.totalSpikes,
       spikeCount: this.totalSpikes,
