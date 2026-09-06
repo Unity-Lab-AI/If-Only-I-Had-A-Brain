@@ -78,6 +78,15 @@
 >
 > Scanner at **1,773 lines across 14 files**; the *"verbatim Gee, no ticket"* category is now **0**. Four cleared whole (`mindspace/gpu.js`, `knob-registry.js`, `rep-compression.js`, `sparse-matrix.js`). ⛔ **Two of those were mine, added the same day** — the glyph work put its own ticket in a comment twice. **A sweep whose own commits re-seed what it sweeps never converges:** replace the ticket with the mechanism at *write* time. Remaining 14 are large and concentrated (`curriculum.js` 425, `brain-server.js` 307, `chat.js` 167).
 >
+> ## ✅ BOARD BATCH — four more, batched on one branch and pushed once
+>
+> Gee: *"we dont have to push every fucking fix"* — so these went as one cascade rather than four.
+>
+> - **`OFFLINEDICT.4`** — the grammar table had **no pronoun, preposition, auxiliary or subordinator role**, so the commonest words in English got nothing from either lane. All four added: 78 pairs → **187**, structural words **18 → 118**, **43 of 71** previously-untaught words now taught. The 28 left are the categories the row already refused. ⛔ **The derivation I tried first was rigorous and wrong:** *"zero WordNet senses = closed-class"* rejected 42 candidates including `i`, `in`, `on`, `over`, `can`, `must` — **a word can be a function word AND have an open-class homograph**, the same shape as `be`/beryllium. Membership is the ROLE. ⚠ Priced: +8,720 writes = **+1.6 min per visit**. **Changes what she is taught → lands on the NEXT fresh walk.**
+> - **`CHATPIN.1`** — the guard was never broken. `_chatStamp` is **one ring per brain** and **four call sites** reach it (chat, inner voice ×2, dream), so background-lane continuations were billed to the chat reply. ⛔ Gating on "is a chat pass active" would **not** have worked — the lanes run concurrently. Lane is now declared by the caller (`lapLane: 'chat'`). Residual filed as **`CHATPIN.2`**: the three background lanes now have no lap instrument at all, and must not be fixed by widening the chat ring again.
+> - **`GATEWATCH.3`** — the residue retried forever because **`_vocabPermanentMiss` was write-only.** Words the dictionary positively 404s were re-asked every pass, re-missed, re-counted as failures — the `processed 67 / bound 0 / failed 67` block. Now read. ⭐ **Safe only because that set does not survive a boot** (checked): each boot still asks once, so the offline heal still gets its chance; a persistent skip would have frozen the miss.
+> - **`CODELEAK`** — 18 files → **14**, `Gee`-only category now **0**. ⛔ Two of the four cleared hits were **mine, added the same day**.
+>
 > ## ⏭ NEXT
 >
 > - **On the next press, check `glyph shapes: 94/94`** in the first minute. Anything below 94 prints its own failure list. `DEPLOYCHECK.6`'s expected reading moved 26 → 42 → **94** in one day; both earlier numbers are left standing in the row with the reason.

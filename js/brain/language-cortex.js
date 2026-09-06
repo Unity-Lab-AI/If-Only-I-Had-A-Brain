@@ -2371,8 +2371,35 @@ export class LanguageCortex {
               // is reused so the ChatPin split and the BLOCKED line's banked
               // maximum both pick it up; absent in the browser bundle, where
               // there is no server brain — the typeof check is the contract.
+              // ⛔⛔ THE LAP RING IS ONE RING PER BRAIN, AND FOUR LANES RUN THIS CODE.
+              //
+              // `_chatStamp` writes to `_chatStage` / `_chatStageT0` / `_chatLaps` —
+              // single fields on the brain instance, not per-lane state. But this
+              // generation path is reached by FOUR callers: the chat reply, the
+              // inner voice (twice, via the engine and directly) and the dream
+              // sentence. Every one of them was stamping into the chat reply's ring.
+              //
+              // ⚠ THE SYMPTOM LOOKED LIKE A BROKEN GUARD, AND IT WAS NOT. A reply to
+              // a question-shaped input carried `generate:continuation-1 = 42,913 ms`
+              // in a pass where the question guard should have forced zero
+              // continuations — and the guard was fine. The background lanes do not
+              // pass `questionInput`, so THEY run continuations, and their laps were
+              // being billed to the chat pass. Every `BLOCKED` line in that window
+              // carried `innerVoiceInFlight=true` beside the chat stage, which is the
+              // two lanes overlapping, not one lane misbehaving.
+              //
+              // ⚠ GATING ON "IS A CHAT PASS ACTIVE" WOULD NOT HAVE FIXED IT — the
+              // lanes run CONCURRENTLY, so a pass is active in exactly the case that
+              // goes wrong. The lane has to be declared by the caller; it cannot be
+              // inferred here.
+              //
+              // ⭐ The chat lane opts in with `lapLane: 'chat'`. Everything else is
+              // silent by default, which is the safe direction: a missing lap is a
+              // gap, a wrong lap is a lie that sends someone after the wrong guard.
               const _lcBrain = cluster && cluster._brain;
+              const _lcOnChatLane = opts && opts.lapLane === 'chat';
               const _lcStamp = (s) => {
+                if (!_lcOnChatLane) return;
                 try { if (_lcBrain && typeof _lcBrain._chatStamp === 'function') _lcBrain._chatStamp(s); } catch { /* stamping must never break emission */ }
               };
               _lcStamp(`generate:primary(${opts.curriculumBusy ? 1 : 3}cand)`);
