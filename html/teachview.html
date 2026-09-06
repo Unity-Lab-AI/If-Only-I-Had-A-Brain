@@ -2550,13 +2550,20 @@ function renderLetters(st) {
   const el = $('tvLetters'); if (!el) return;
   const L = st && st.letterShapes;
   if (!L) { el.textContent = 'no letter-shape state published.'; return; }
-  const n = L.learned || 0, of = L.of || 26;
+  const n = L.learned || 0, of = L.of || 94;
   const col = n === 0 ? 'var(--tv-dim)' : (n < of ? 'var(--tv-warn)' : 'var(--tv-good)');
-  el.innerHTML = `<div style="font-size:14px;color:${col}"><b>${n} of ${of}</b> letters learned in her own hand</div>`
-    + (L.letters ? `<div style="margin-top:4px;font-family:var(--tv-font);letter-spacing:.22em">${knobEsc(L.letters)}</div>` : '')
+  // The breakdown is the point: one number over 94 cannot tell you whether she is
+  // missing every capital or every punctuation mark, and those are different jobs.
+  const parts = [];
+  if (L.lettersOf) parts.push(`letters ${L.lettersLearned || 0}/${L.lettersOf}`);
+  if (L.digitsOf) parts.push(`numbers ${L.digitsLearned || 0}/${L.digitsOf}`);
+  if (L.marksOf) parts.push(`marks ${L.marksLearned || 0}/${L.marksOf}`);
+  el.innerHTML = `<div style="font-size:14px;color:${col}"><b>${n} of ${of}</b> characters learned in her own hand</div>`
+    + (parts.length ? `<div style="color:var(--tv-dim);margin-top:3px">${parts.join(' &middot; ')}</div>` : '')
+    + (L.letters ? `<div style="margin-top:4px;font-family:var(--tv-font);letter-spacing:.22em;word-break:break-all">${knobEsc(L.letters)}</div>` : '')
     + (n < of
-      ? `<div style="color:var(--tv-dim);margin-top:5px">a drawing with no words on it is CORRECT right now — she skips a letter she has not learned rather than substituting a font.</div>`
-      : '<div style="color:var(--tv-dim);margin-top:5px">she can write any letter of the alphabet in her own hand.</div>');
+      ? `<div style="color:var(--tv-dim);margin-top:5px">a drawing with no words on it is CORRECT right now — she skips a character she has not learned rather than substituting a font.</div>`
+      : '<div style="color:var(--tv-dim);margin-top:5px">she can write anything on a keyboard in her own hand — every case, every number, every mark.</div>');
 }
 
 /* ────────────────────────────────────────────────────────────────────────────

@@ -219,6 +219,14 @@ background took the SAME `moodTint` (her valence parked mid-low → hue ~0.27 �
   now.** `glyphStrokes` renders the PRINTED letter she looks at; she traces it herself and writes from her own trace,
   and the typeset caption path is **deleted**. ⚠ So this paragraph has been wrong in two opposite directions and both
   are kept: it claimed a hand she did not have, then denied one she was about to be given.
+  ④ ⭐ **2026-09-06 — the shared bitmap set is now the WHOLE KEYBOARD.** `FONT5X7` carried 42 of the 94 printable keys;
+  the 26 lowercase letterforms and the 26 missing symbols were authored, so every key on a QWERTY has a shape she can
+  look at and trace. ⛔ **Case is no longer folded away either** — both raster paths upper-cased their input before
+  indexing, which was correct while lowercase had no glyphs and became a trap the moment it did: 26 new letterforms
+  would have been unreachable, and the letter-learning path would have banked the lowercase trace under every uppercase
+  request. The fold survives only as a **fallback** (own letterform → case sibling → nothing), so a shape she banked
+  before still answers and `cat` renders as `cat`. **Lowercase and uppercase are different letterforms and bank
+  separate traces.**
 - **Viewer** — the mind's-eye `source` label now carries the stage + subject (`canvas:scene:cat`,
   `canvas:figure:mom`, `canvas:shapes:blue`, `…?` when she's asking). Equational end-to-end; ≤96px cap and
   no-fractalize invariants intact.

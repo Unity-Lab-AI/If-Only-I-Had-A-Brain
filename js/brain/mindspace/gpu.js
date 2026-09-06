@@ -173,7 +173,75 @@ const FONT5X7 = {
   "'": ['00100','00100','01000','00000','00000','00000','00000'],
   '-': ['00000','00000','00000','01110','00000','00000','00000'],
   ' ': ['00000','00000','00000','00000','00000','00000','00000'],
+  // ── WRITEWARM.2 — the rest of a QWERTY keyboard ────────────────────────────────────────────
+  // The table above covered A-Z, 0-9 and six marks: 42 of the 94 printable keys. The other 52
+  // (26 lowercase forms + 26 symbols) resolved to the SPACE glyph, so anything typed on them
+  // rasterized blank and banked a blank trace — a silent wrong answer, not a missing feature.
+  // Lowercase uses the standard 5x7 metrics: ascenders from the top row, x-height body on rows
+  // 2-6, descenders (g j p q y) dropping through the last row. Correctness by inspection, per
+  // the no-tests LAW — every glyph below is legible as its own character in the source.
+  'a': ['00000','00000','01110','00001','01111','10001','01111'],
+  'b': ['10000','10000','11110','10001','10001','10001','11110'],
+  'c': ['00000','00000','01110','10001','10000','10001','01110'],
+  'd': ['00001','00001','01111','10001','10001','10001','01111'],
+  'e': ['00000','00000','01110','10001','11111','10000','01110'],
+  'f': ['00110','01001','01000','11100','01000','01000','01000'],
+  'g': ['00000','01111','10001','10001','01111','00001','01110'],
+  'h': ['10000','10000','11110','10001','10001','10001','10001'],
+  'i': ['00100','00000','01100','00100','00100','00100','01110'],
+  'j': ['00010','00000','00110','00010','00010','10010','01100'],
+  'k': ['10000','10000','10010','10100','11000','10100','10010'],
+  'l': ['01100','00100','00100','00100','00100','00100','01110'],
+  'm': ['00000','00000','11010','10101','10101','10101','10101'],
+  'n': ['00000','00000','10110','11001','10001','10001','10001'],
+  'o': ['00000','00000','01110','10001','10001','10001','01110'],
+  'p': ['00000','11110','10001','10001','11110','10000','10000'],
+  'q': ['00000','01111','10001','10001','01111','00001','00001'],
+  'r': ['00000','00000','10110','11001','10000','10000','10000'],
+  's': ['00000','00000','01111','10000','01110','00001','11110'],
+  't': ['01000','01000','11100','01000','01000','01001','00110'],
+  'u': ['00000','00000','10001','10001','10001','10011','01101'],
+  'v': ['00000','00000','10001','10001','10001','01010','00100'],
+  'w': ['00000','00000','10001','10001','10101','10101','01010'],
+  'x': ['00000','00000','10001','01010','00100','01010','10001'],
+  'y': ['00000','10001','10001','10001','01111','00001','01110'],
+  'z': ['00000','00000','11111','00010','00100','01000','11111'],
+  '`': ['01000','00100','00000','00000','00000','00000','00000'],
+  '~': ['00000','00000','01001','10110','00000','00000','00000'],
+  '@': ['01110','10001','10111','10101','10111','10000','01110'],
+  '#': ['01010','01010','11111','01010','11111','01010','01010'],
+  '$': ['00100','01111','10100','01110','00101','11110','00100'],
+  '%': ['11001','11010','00010','00100','01000','01011','10011'],
+  '^': ['00100','01010','10001','00000','00000','00000','00000'],
+  '&': ['01100','10010','10100','01000','10101','10010','01101'],
+  '*': ['00000','10101','01110','11111','01110','10101','00000'],
+  '(': ['00010','00100','01000','01000','01000','00100','00010'],
+  ')': ['01000','00100','00010','00010','00010','00100','01000'],
+  '_': ['00000','00000','00000','00000','00000','00000','11111'],
+  '=': ['00000','00000','11111','00000','11111','00000','00000'],
+  '+': ['00000','00100','00100','11111','00100','00100','00000'],
+  '[': ['01110','01000','01000','01000','01000','01000','01110'],
+  ']': ['01110','00010','00010','00010','00010','00010','01110'],
+  '{': ['00110','01000','01000','11000','01000','01000','00110'],
+  '}': ['01100','00010','00010','00011','00010','00010','01100'],
+  '\\': ['10000','01000','01000','00100','00010','00010','00001'],
+  '|': ['00100','00100','00100','00100','00100','00100','00100'],
+  ';': ['00000','00100','00000','00000','00100','00100','01000'],
+  ':': ['00000','00100','00000','00000','00100','00000','00000'],
+  '"': ['01010','01010','00000','00000','00000','00000','00000'],
+  '<': ['00010','00100','01000','10000','01000','00100','00010'],
+  '>': ['01000','00100','00010','00001','00010','00100','01000'],
+  '/': ['00001','00010','00010','00100','01000','01000','10000'],
 };
+
+// WRITEWARM.2 — case-exact lookup. Both raster paths used to fold the whole string to
+// uppercase BEFORE indexing, which was the only sane thing to do while lowercase had no
+// glyphs. Now that it does, the fold demotes to a FALLBACK: take the character's own
+// letterform when one exists, otherwise its upper-case sibling, otherwise blank. A caption
+// that says "cat" renders "cat", and nothing that resolved before stops resolving.
+function fontGlyph(ch) {
+  return FONT5X7[ch] || FONT5X7[String(ch).toUpperCase()] || null;
+}
 
 // TU.29.1 — full-color palette for color-word detection: when her thought NAMES a color
 // ("a solid red sheet", "yellow banana") the plane takes that color — no grayscale-only
@@ -236,7 +304,7 @@ function symbolGlyphText(text) {
 function renderThoughtPlane(glyphText, stateVector, W, H, mood, tintText) {
   const N = W * H;
   const data = new Uint8ClampedArray(N * 4);
-  const txt = String(glyphText || '').toUpperCase().replace(/\s+/g, ' ').trim().slice(0, 180);
+  const txt = String(glyphText || '').replace(/\s+/g, ' ').trim().slice(0, 180);   // case preserved — fontGlyph folds only as a fallback
   // color-word detection on the FULL thought (tintText) — a non-symbolic thought
   // contributes no glyphs but its named color still paints the field.
   const tintSrc = String(tintText || glyphText || '').toLowerCase();
@@ -330,7 +398,7 @@ function renderThoughtPlane(glyphText, stateVector, W, H, mood, tintText) {
     const line = used[li];
     const x0 = Math.max(2, Math.floor((W - line.length * gw) / 2));
     for (let ci = 0; ci < line.length; ci++) {
-      const glyph = FONT5X7[line[ci]] || FONT5X7[' '];
+      const glyph = fontGlyph(line[ci]) || FONT5X7[' '];
       for (let r = 0; r < 7; r++) {
         const rowBits = glyph[r];
         for (let cc = 0; cc < 5; cc++) {
@@ -787,7 +855,7 @@ export class MindSpaceGPU {
   // is filed as curriculum work. Until it ships, nothing here may call this hers.
   // Normalized [0,1] canvas coords, bounded 12 chars.
   glyphStrokes(text, opts = {}) {
-    const t = String(text || '').toUpperCase().slice(0, 16);
+    const t = String(text || '').slice(0, 16);   // case preserved — fontGlyph folds only as a fallback
     if (!t) return [];
     const x0 = Math.max(0, Math.min(1, opts.x ?? 0.1));
     const y0 = Math.max(0, Math.min(1, opts.y ?? 0.78));
@@ -829,7 +897,7 @@ export class MindSpaceGPU {
       strokes.push({ type: 'point', x: shx(x, y), y, r: font === 'bubble' ? 1 : 0, rgb, w: thick });
     };
     for (const ch of t) {
-      const glyph = FONT5X7[ch] || null;
+      const glyph = fontGlyph(ch);
       const col = colors ? colors[li % colors.length] : baseRgb;
       if (glyph && font === 'dots') {
         // DOT-MATRIX letterform — every lit cell is a dot; no runs at all.

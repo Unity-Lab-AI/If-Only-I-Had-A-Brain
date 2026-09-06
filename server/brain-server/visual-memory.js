@@ -2529,16 +2529,21 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
   // becomes evidence of what she has been taught instead of a decoration that
   // is always perfect.
   async learnLetterShape(ch) {
-    const c = String(ch || '').toLowerCase().slice(0, 1);
+    // ⭐ `WRITEWARM.2` — CASE IS NO LONGER FOLDED AWAY, and that correction is the
+    // whole reason this line changed. `FONT5X7` now carries every printable key on
+    // a QWERTY keyboard (94 glyphs plus space), so `A` and `a` are DIFFERENT
+    // letterforms with different traces. Lower-casing here would have quietly
+    // banked the lowercase trace under every uppercase request — a wrong shape
+    // filed under a right-looking key, which is worse than a refusal.
+    //
     // ⭐ `WRITEWARM.1` — THE ACCEPT SET IS THE FONT'S SET, NOT AN ALPHABET.
-    // `FONT5X7` carries `A-Z`, `0-9` and `. , ! ? ' -` (42 glyphs), and
-    // `glyphStrokes` upper-cases, so lowercase folds onto the same forms. The
-    // guard used to be `[a-z0-9]`, which refused the six punctuation marks the
-    // renderer can already draw — so a full stop was unwritable even though the
-    // strokes for one existed. ⚠ Anything OUTSIDE the font must stay refused:
-    // `glyphStrokes` falls back to the space glyph, and accepting an unknown
-    // character would bank a BLANK trace that reads as a learned shape.
-    if (!c || !/[a-z0-9.,!?'-]/.test(c)) return null;
+    // The guard was `[a-z0-9]`, which refused punctuation the renderer could
+    // already draw — so a full stop was unwritable even though the strokes for one
+    // existed. ⚠ Anything OUTSIDE the font must stay refused: `glyphStrokes` falls
+    // back to blank for an unknown character, and accepting one would bank a BLANK
+    // trace that reads as a learned shape.
+    const c = String(ch || '').slice(0, 1);
+    if (!c || c === ' ' || c.charCodeAt(0) < 33 || c.charCodeAt(0) > 126) return null;
     const ms = this.mindSpace;
     if (!ms || typeof ms.glyphStrokes !== 'function' || typeof ms.sketch !== 'function'
         || typeof ms.traceLineArt !== 'function') return null;
@@ -2562,7 +2567,11 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         at: Date.now(),
         seen: (prev && prev.seen ? prev.seen : 0) + 1,
         conf: true,
-        phrase: `the letter ${c}`,
+        // ⚠ A DIGIT IS NOT A LETTER AND NEITHER IS A DOLLAR SIGN. The phrase is
+        // what she recalls this shape AS, so calling every glyph "the letter" would
+        // teach her a false name for two thirds of the set.
+        phrase: /[A-Za-z]/.test(c) ? `the letter ${c}`
+          : (/[0-9]/.test(c) ? `the number ${c}` : `the mark ${c}`),
         // Her strokes, normalised to the unit box so writing can place and scale
         // them anywhere without re-tracing.
         letter: { ch: c, strokes: this._normaliseLetterStrokes(mine) },
@@ -2613,13 +2622,32 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     return { strokes: out, aspect: w / h };
   },
 
-  /** Has she learned this letter's shape? */
-  hasLetterShape(ch) {
+  /**
+   * Has she learned this character's shape?
+   *
+   * ⚠ `WRITEWARM.2` — EXACT CASE FIRST, other case as a fallback. Keys became
+   * case-sensitive when the font gained real lowercase letterforms; falling back
+   * to the sibling case means a shape banked before that change still answers,
+   * and a caller asking for `A` before the uppercase pass has run gets her `a`
+   * rather than a refusal. The fallback reports a shape she genuinely has —
+   * it never invents one.
+   */
+  _letterEntry(ch, exact = false) {
     const store = this._vmStore && this._vmStore();
-    if (!store) return false;
-    const e = store.get(`letter:${String(ch || '').toLowerCase().slice(0, 1)}`);
-    return !!(e && e.letter && e.letter.strokes && e.letter.strokes.strokes && e.letter.strokes.strokes.length);
+    if (!store) return null;
+    const c = String(ch || '').slice(0, 1);
+    if (!c) return null;
+    const alt = c === c.toLowerCase() ? c.toUpperCase() : c.toLowerCase();
+    const e = store.get(`letter:${c}`) || (exact || alt === c ? null : store.get(`letter:${alt}`));
+    return (e && e.letter && e.letter.strokes && e.letter.strokes.strokes && e.letter.strokes.strokes.length) ? e : null;
   },
+
+  // ⚠ `exact` EXISTS FOR THE INSTRUMENT, and it is not optional politeness. The
+  // sibling-case fallback is right for WRITING — she should use her `a` when asked
+  // for an `A` she has not traced yet — but a coverage count that took the fallback
+  // would report 52 letterforms banked the moment 26 were, which is the precise
+  // shape of an instrument reading green over an unfinished job.
+  hasLetterShape(ch, exact = false) { return !!this._letterEntry(ch, exact); },
 
   /**
    * Write a word IN HER OWN HAND — composed from the letter traces she has
@@ -2633,7 +2661,12 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
   handwrittenStrokes(text, opts = {}) {
     const store = this._vmStore && this._vmStore();
     if (!store) return { strokes: [], wrote: 0, skipped: 0 };
-    const label = String(text || '').toLowerCase().slice(0, 14);
+    // ⭐ `WRITEWARM.2` — CASE PRESERVED. This lower-cased the whole label, which was
+    // correct while every uppercase form was the only form she had; now that she has
+    // both, flattening the case would make her unable to write a capital at all.
+    // `_letterEntry` still falls back to the sibling case per character, so a word
+    // she could write before is still a word she can write.
+    const label = String(text || '').slice(0, 14);
     const size = Math.max(0.03, Math.min(0.3, opts.size ?? 0.08));
     const gap = size * 0.28;
     const rgb = opts.rgb || [226, 224, 230];
@@ -2643,7 +2676,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     let wrote = 0, skipped = 0, totalW = 0;
     for (const ch of label) {
       if (ch === ' ') { cells.push(null); totalW += size * 0.5 + gap; continue; }
-      const e = store.get(`letter:${ch}`);
+      const e = this._letterEntry(ch);
       const L = e && e.letter && e.letter.strokes;
       if (!L || !L.strokes || !L.strokes.length) { skipped++; continue; }
       const aspect = Number(L.aspect) > 0 ? L.aspect : 0.7;

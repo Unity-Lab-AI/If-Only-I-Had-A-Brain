@@ -5501,21 +5501,27 @@ export class Curriculum {
     if (!_brain || typeof _brain.learnLetterShape !== 'function') return;
     this._letterShapesLearned = true;   // set FIRST — a failed pass must not loop every cell
     // ⭐ EXACTLY WHAT THE RENDERER CAN ACTUALLY DRAW, AND NOT ONE CHARACTER MORE.
-    // `FONT5X7` (js/brain/mindspace/gpu.js:132) carries **42** glyphs: `A-Z`,
-    // `0-9` and `. , ! ? ' -`. `glyphStrokes` upper-cases its input, so the
-    // lowercase alphabet folds onto the same 26 forms — she writes in capitals,
-    // which is where a real kindergartener starts.
     //
     // ⛔ THE OLD CALLER LOOPED `ALPHABET_ORDER` ALONE, so **sixteen glyphs the
     // font already held were never taught** — every digit and every punctuation
     // mark. "Write the number 7" and "end the sentence with a full stop" had no
-    // stroke to draw, at any grade, for the life of the project.
+    // stroke to draw, at any grade, for the life of the project. Pinning the set
+    // to the font instead of to an alphabet is what fixed that, and it is why the
+    // set is derived here rather than typed out.
     //
-    // ⚠ Asking for a character the font lacks would bank a BLANK trace, so the
-    // set is pinned to the font rather than to an alphabet we wish it had. The
-    // remaining QWERTY characters (lowercase forms and ~53 symbols) do not
-    // exist in `FONT5X7` and are a font-authoring job, filed rather than faked.
-    const GLYPHS = `${ALPHABET_ORDER}${DIGIT_ORDER}.,!?'-`;
+    // ⭐ `WRITEWARM.2` — the font now holds **every printable key on a QWERTY**:
+    // the 26 lowercase letterforms and the 26 symbols it was missing were
+    // authored, and `glyphStrokes` no longer folds case away. So the set is the
+    // whole keyboard, `!` (33) through `~` (126), space excluded because a space
+    // has no shape to trace. Lowercase is a genuinely different letterform from
+    // its capital and banks its own trace.
+    //
+    // ⚠ Asking for a character the font lacks would bank a BLANK trace — a wrong
+    // answer wearing the shape of a right one — so this range and the accept guard
+    // in `learnLetterShape` have to move together. They do, and the pass below
+    // NAMES anything that fails rather than swallowing it.
+    let GLYPHS = '';
+    for (let _cc = 33; _cc <= 126; _cc++) GLYPHS += String.fromCharCode(_cc);
     const t0 = Date.now();
     let learned = 0, failed = 0;
     const failedChars = [];

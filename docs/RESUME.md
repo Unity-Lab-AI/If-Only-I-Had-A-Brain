@@ -1,6 +1,49 @@
 # RESUME — Session Pickup Brief
 
-> # 🟢 2026-09-06 (latest, 4th) — THE EVENT-LOOP THEORY IS DEAD AT 5.7%, HALF THE DEF-MISS FLAGS ARE A REAL DEFECT, AND THE KNOB PANEL IS WRITABLE (PICK UP HERE)
+> # 🟢 2026-09-06 (latest, 5th) — SEVEN THEORIES DEAD ON THE RESIDUAL, AND SHE NOW HAS A SHAPE FOR EVERY KEY ON A KEYBOARD (PICK UP HERE)
+>
+> Gee (verbatim): *"we cnat have the shit to fix her runing be blocked by a broken run"*
+> Gee (verbatim): *"start knock ing off those todo s in droves!"*
+> Gee (verbatim): *"should be ab;le to do everything on a qwerty"*
+>
+> ## ⛔ FIRST — THE STRUCTURAL CORRECTION, BECAUSE IT CHANGES HOW TO WORK
+>
+> I had been gating fixes on a healthy walk: measure on the box, wait for a press, then act. Gee named it — **a broken run must not block the work that fixes the run.** Theory seven died the same hour by timing the post-loop diagnostics **locally** instead of waiting, which is what that correction looks like in practice.
+>
+> ## THEORY SEVEN IS DEAD — `pruneTopKPerRow` IS IDEMPOTENT
+>
+> Timed on `sem_to_fineType` at production geometry (633,474 rows · 3,800,844 nnz):
+>
+> ```
+>   prune #1   removed 1,266,948     430.6 ms   nnz now 2,533,896
+>   prune #2   removed         0       1.1 ms
+>   prune #3   removed         0      12.6 ms   (after 200 ojaUpdate passes)
+> ```
+>
+> ⭐ **It short-circuits after the first pass — 430 ms → 1.1 ms — and `ojaUpdate` cannot insert, because CSR structure is fixed at construction.** So a prune that cannot remove anything changes **zero** weights. `normalizeRows` (25.7 ms) was confirmed gated by `!_deferDiag`. **Post-loop work is ~2-3 ms/call amortised, not 27.** Seven theories now dead on the 68% residual; the standing answer remains the one from the fourth entry — enumerate what is **unwrapped** in the loop rather than explaining with what is visible.
+>
+> ## ✅ `WRITEWARM.2` SHIPPED — THE OTHER 52 KEYS
+>
+> `FONT5X7` held **42 of the 94** printable keys. All 52 missing authored: the lowercase alphabet on standard 5×7 metrics (ascenders from the top row, x-height body rows 2-6, descenders on `g j p q y` through the last row) and `` ` ~ @ # $ % ^ & * ( ) _ = + [ ] { } \ | ; : " < > / ``.
+>
+> ⚠ **The board's own count was off by one** — it said 53 / 27 symbols; counted from the table it is **52 / 26**. The symbol list was already right; the total carried the error. Corrected in the verdict, original filing left standing.
+>
+> ⛔⛔ **THE FONT WAS THE EASY HALF.** Both raster paths upper-cased the string **before** indexing, so 26 new letterforms would have sat in the table unreachable — and `learnLetterShape` lower-cased its argument, so asking for `A` would have traced the lowercase `a` and banked it under a key that reads right. **A wrong shape under a correct-looking key is worse than a refusal.** Fixed as a **fallback**, not a flip: `fontGlyph(ch)` → own letterform → case sibling → nothing. Store keys are case-sensitive; `_letterEntry(ch, exact)` keeps the sibling fallback for **writing** and refuses it for **counting**.
+>
+> ⭐ **AND THE PANEL WOULD HAVE READ GREEN OVER A THIRD OF THE JOB.** It looped `a`..`z` against `of: 26`, so with 94 glyphs banked it shows a **full bar** while every capital, digit and mark goes uncounted — and the new fallback would have made 26 traces report as 52. Now `of: 94`, counted with `exact`, broken out letters / numbers / marks in the teach viewer.
+>
+> **Verified in code:** 95/95 keys present · 0 malformed rows · every new glyph rendered to ASCII and read by eye · `glyphStrokes` real strokes for **94/94, 0 empty** · `A` vs `a` structurally distinct (4 vs 5 strokes) · `node --check` ×4 · ESM `import()` · bundle rebuilt (996.0 kb).
+>
+> ## ⏭ NEXT
+>
+> - **On the next press, check `glyph shapes: 94/94`** in the first minute. Anything below 94 prints its own failure list. `DEPLOYCHECK.6`'s expected reading moved 26 → 42 → **94** in one day; both earlier numbers are left standing in the row with the reason.
+> - **`WRITEWARM.3`** — the writing-practice loop (ABCs, numbers, words, sentences), same shape as `_practiceDrawing`. **Still gated on `letterShapes.learned` reading 94 on the box**, because practising against shapes she does not have trains against blanks.
+> - **`FLAGSAMPLE.2`** — why `be` / `look` / `every` / `america` miss a dictionary that holds them (14/14/2/2 senses). Eliminated: lazy-load race, STOP set, case.
+> - **`WEDGELIVE.1`** — the probe deadline has fired 6× without freeing the walk.
+>
+> ---
+>
+> # 🟡 2026-09-06 (4th) — THE EVENT-LOOP THEORY IS DEAD AT 5.7%, HALF THE DEF-MISS FLAGS ARE A REAL DEFECT, AND THE KNOB PANEL IS WRITABLE (PICK UP HERE)
 >
 > Gee (verbatim): *"shes ramping up"*
 > Gee (verbatim): *"Flags, issues & warnings — DEF-MISS ×6 — 6 distinct: for, be, your, their, look, our"*

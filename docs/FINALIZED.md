@@ -5,6 +5,42 @@
 
 ---
 
+## 2026-09-06 (5th) — `WRITEWARM.2` — THE OTHER 52 KEYS, AND THE CASE FOLD THAT WOULD HAVE HIDDEN HALF OF THEM
+
+Gee (verbatim): *"should be ab;le to do everything on a qwerty"*
+
+Gee (verbatim): *"start knock ing off those todo s in droves!"*
+
+### What was missing, and the count in the filing was off by one
+
+`FONT5X7` held **42** of the **94** printable keys (space aside). The filing said the gap was **53 characters — 26 lowercase and 27 symbols**. Counted from the table rather than from memory, it is **52 — 26 lowercase and 26 symbols**. The symbol list in the filing was already correct at 26 entries; the total carried the error.
+
+All 52 authored: the lowercase alphabet on standard 5×7 metrics (ascenders from the top row, x-height body rows 2-6, descenders on `g j p q y` dropping through the last row) and `` ` ~ @ # $ % ^ & * ( ) _ = + [ ] { } \ | ; : " < > / ``. **Verified 95/95 printable keys present, zero malformed rows, and every new glyph rendered to ASCII and read by eye.**
+
+### ⛔ THE FOLD WAS LOAD-BEARING, AND ADDING GLYPHS ALONE WOULD HAVE BEEN A SILENT WRONG ANSWER
+
+Both raster paths — `renderThoughtPlane` and `glyphStrokes` — upper-cased the whole string **before** indexing the table. That was the only sane thing to do while lowercase had no glyphs, and it is exactly what `WRITEWARM.1` correctly identified as "not a defect". **The moment lowercase forms exist it inverts**: 26 new letterforms would sit in the table unreachable by any caller.
+
+Worse downstream: `learnLetterShape` lower-cased its argument, so with case-preserving glyphs a request for `A` would have traced the **lowercase** `a` and banked it under a key that reads right. A wrong shape filed under a correct-looking key is worse than a refusal.
+
+**Fixed as a fallback, not a flip:** `fontGlyph(ch)` takes the character's own letterform, else its case sibling, else blank. Nothing that resolved before stops resolving; `"cat"` now renders `cat`. Store keys became case-sensitive, and `_letterEntry(ch, exact)` keeps the sibling-case fallback for **writing** — she should use her `a` when asked for an `A` she has not traced yet — while refusing it for **counting**.
+
+### The instrument would have read green over a third of the job
+
+`state.js` looped `a`..`z` and published `of: 26`. With 94 glyphs banked it would have shown **26 of 26, full bar**, while every capital, digit and mark went uncounted — and the new sibling-case fallback would have made 26 lowercase traces report as 52 letterforms. **That is the exact defect class this project keeps paying for, caught before it shipped rather than after.** Now `of: 94` counted with `exact`, broken out as letters / numbers / marks, and the teach viewer renders the breakdown because one number over 94 cannot say whether she is missing every capital or every mark.
+
+### Also corrected in the same pass
+
+`phrase` was `` `the letter ${c}` `` for all 42 glyphs. A digit is not a letter and neither is a dollar sign — the phrase is what she recalls the shape **as**, so it now names letter / number / mark correctly. And `handwrittenStrokes` stopped flattening its label to lowercase, which would have left her unable to write a capital at all.
+
+### Verified
+
+`node --check` ×4 · ESM `import()` link · **`glyphStrokes` produces real strokes for 94 of 94, zero empty** · `A` and `a` confirmed structurally distinct (4 strokes vs 5) · bundle rebuilt (996.0 kb).
+
+⚠ **Not claimed: confirmed on the box.** The count is a code fact; `letterShapes.learned` reading **94** is a press fact, and `WRITEWARM.3` stays gated on it exactly as filed.
+
+---
+
 ## 2026-09-06 (4th) — `TEACHRATE` — THE REPS WERE NEVER THE PROBLEM, THE PROFILE WAS TRUNCATED, AND MY OWN LOAD ALARM WAS AN ARTEFACT
 
 Gee (verbatim): *"okay now is there anyway to massively speead up traing anything at all to go from the 2k teaches to near 200k"*
