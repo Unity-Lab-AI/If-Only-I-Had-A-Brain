@@ -1894,4 +1894,43 @@ Shipped and closed the same day — full record in `docs/FINALIZED.md` §`GLOVEC
 
 - [ ] `DONORFIX.2` — ⚠ **DOES THE `REPPRICE.2` OUTCOME NEED DONOR WORK AT ALL? ANSWER IT BEFORE WRITING ANY.** Lowering `semTopK` shrinks the active set the donor receives; the sparse/template spike wire carries indices and a group size, so **fewer active dims is fewer entries through the SAME opcode** and needs no new Rust. **The honest answer is probably "no donor change" — and that is a finding to state, not a step to skip silently.** If the measurement instead points at the lateral-inhibition scan (`lateral.gpu` 170,334 dispatches, `scanMs` 380,300 = 11.8% of uptime), *that* is GPU-side and *that* would be the donor change.
 
+---
+
+## WEDGE2 — she is wedged AGAIN with the watchdog at zero trips, so it is a SECOND cause — found live 2026-09-06
+
+Found by reading the deployed box after the board cleanup, not by being told. **Build `a2a74a14` (`main`), booted 18:56:56Z, 94.5 min up — and it carries BOTH of today's fixes**, which is what makes the reading worth this much.
+
+- [ ] `WEDGE2.1` — ⛔⛔ **IT IS A REAL WEDGE AND IT IS NOT THE ONE WE BOUNDED. Every teach counter is FROZEN across a 194-second paired read, and `consolidationWatchdog.trips` is `0`.**
+  ```
+                          t=0            t=194s
+    _teachAssociationPairs 25,796 calls   25,796   FROZEN
+    _teachWordDefinition    2,339 calls    2,339   FROZEN
+    _teachSentenceList          2 calls        2   FROZEN (782,965 ms across those 2)
+    definitionQueue.depth       2,155        2,155  FROZEN
+    lastWindow bound/ms       160/197,229  160/197,229  FROZEN
+    sinceLastTeachMs        1,511,582    1,705,753   CLIMBING (+194s, exactly wall)
+  ```
+  - ⭐⭐ **THE PAIRED READ IS WHAT MAKES THIS A FINDING INSTEAD OF A SUSPICION.** A single sample cannot tell a wedged brain from a slow one — that ambiguity has cost this project two retractions in opposite directions. **Two samples 194 s apart with byte-identical counters and a wall-clock-exact `sinceLastTeach` settle it.** ⚠ The *definition drain lane is frozen too*, which kills the most attractive benign reading: that the walk lane was merely parked while the drain worked.
+  - ⭐⭐⭐ **THE EXIT-STAMP CHOKEPOINT SHIPPED TODAY IS WHAT LOCALIZED IT, ON ITS FIRST RECURRENCE.** The stage reads **`_teachSentenceList-done` (age 1,576 s and climbing)** — not `cell:runner`, not `gate:probe-gpu`. **That is the fix working exactly as designed:** the `-done` suffix means the method RETURNED and the blocker is unmarked code AFTER it. Before today this same wedge would have read `cell:runner` and pointed at the whole cell.
+  - ⭐ **THE WATCHDOG IS CORRECT TO READ ZERO, and the console says why:** `[Consolidation] force PENDING (no completed pass in 3002s; passCount=7) — deferred to the curriculum's own dream windows`. **Consolidation is DEFERRED, not hanging** — the opposite arrangement from the bounded wedge, where the walk sat inside the dream window's await. **So the bound we added is not being tested here and is not the fix here.** ⛔ **Do not widen it. It is not implicated.**
+  - ⚠ **THE ONE SIGNAL THAT IS NEW AND HAS NO EXPLANATION YET: the heap CLIMBS while nothing progresses.** Across ~2.5 min of heartbeats: `314 → 361 → 409 → 455 → 496 → 555 → 588 → 638 → 688 → 738 MB`, sawtoothing on GC but trending up ~50 MB per 10 s heartbeat. **Something is allocating hard in the unmarked region.** ⛔ **That is a clue, not a cause, and I am not naming a call from it** — guessing which await hangs is precisely how the probe deadline once landed on the wrong one.
+  - ✅ **ELIMINATED, so the next reader does not re-check them:** the event loop is ALIVE (heartbeat every 10 s, uninterrupted), the donor is HEALTHY (`compute_batch` round-trip 277 ms, `donor=260 ms`, `UNACCOUNTED=17 ms`, `MIRRORDIAG pool=1 → NVIDIA A40:PRIMARY(real batch)`), and state saves are landing (`State saved v31 … trigger=periodic-curriculum-checkpoint`). **This is not a block, not a donor stall, and not a dead process.** It is an async path that does not return.
+  - ⚠ **A SEPARATE ODDITY IN THE SAME PAYLOAD, recorded rather than folded in:** the last definition window read **197,229 ms to process 9 words — 21.9 s per word**, against a profile average of 1,212 ms per `_teachWordDefinition` call. **18× slower than its own average**, on the window immediately before everything froze. Whether that is the same defect slowing down before it stopped, or an unrelated one, **is not established and must not be assumed.**
+  - **THE READ THAT MOVES THIS FORWARD:** the region between `_teachSentenceList` returning and the next stamp. `_teachSentenceList` shows **2 calls / 782,965 ms** — 6.5 min average — so the lane itself is enormously expensive and what follows it is unmarked. **Stamp that region before theorising about it**, the same way the `-done` suffix turned `cell:runner` from a shrug into a location.
+
+- [ ] `WEDGE2.2` — ⛔⛔ **THE PROSE LANES HAVE FINALLY BEEN PRICED, AND THE ANSWER CONFIRMS THE WARNING `CORPUSCALE.2` LEFT BEHIND.** The open question was *"every one of the 96 measured lanes is `SELF:DEF-*` — the PROSE lanes still have not been measured."* **They are measured now: 40 of the 96 rows are non-`SELF:DEF`,** and they hold every one of the top loads.
+  ```
+    457.58  ELA-STRUCTURE-GLUE-REINFORCE-FIRST-PERSON-LEAD   factor 1  reps 100
+    385.80  SPEAK3-CONTENT-TRANSITIONS-LO                    factor 1  reps 100
+    326.14  ELA-K-STRUCTURE-CONCRETE-SENTENCES-LO            factor 1  reps 100
+    269.35  ELA-K-STRUCTURE-SLOTS                            factor 1  reps 100
+    221.68  ELA-K-STRUCTURE-CONCRETE-SENTENCES-MID           factor 1  reps 100
+       ...
+      9.00  SELF:DEF-counting-QA-MID                    (the floor, all SELF:DEF)
+  ```
+  - ⭐⭐ **THE SYNTHETIC PREDICTION WAS RIGHT, AND IT WAS WRITTEN DOWN BEFORE THE MEASUREMENT EXISTED.** `CORPUSCALE.2` recorded: *"A synthetic model of the live encoding (2,000 pairs, 8 dims of 300) measures a load of **431** — far off the top of the sweep's table, whose highest row is **25**."* **The live prose reading is 457.58.** A prediction of 431 against a measurement of 457 is within 6%, and it was made from the encoding's geometry alone.
+  - ⛔⛔⛔ **THE CONSEQUENCE IS THE IMPORTANT PART: ARMING `DREAM_REP_AUTOPRICE` WOULD MAKE THE WALK ~20-30× LONGER, NOT SHORTER.** Every priced row returns `factor: 1, reps: 100`. The steer sets `REP_COMPRESS = max(1, factor)` → **1**, which *disables* the shipped 40× compression and restores the full authored 100/150/200 doses. **The flag reads like a speed-up and at these loads is the largest slow-down available.** ⛔ **It stays unarmed, and the reason is now measured rather than cautious.**
+  - ⭐ **AND IT SETTLES WHICH OF THE TWO THINGS IS WRONG.** The sweep's table tops out at load 25 and calls `0.246` "PRODUCTION". **The real encoding sits at 9-458.** So the sweep's production figure never described this encoding — exactly as that row warned — and **the table cannot index these lanes at all.** ⚠ **This does NOT mean her retrieval is broken:** she is banking letterforms 94/94 and passing phases, so whatever the counted load means here, it is not the sweep's quantity. **The instrument and the table are measuring different things, and the table is the one that does not apply.**
+  - **What this row owes:** either a re-derivation of the accuracy-vs-load table against the REAL tiled encoding, or an honest statement in the code that the table does not index this geometry and the verdict must be ignored. ⛔ **What it must not do is leave a published `expectedRetrieval: 0.3479` that nobody can act on** — a number with a decision attached and no valid basis is the defect `CORPUSCALE.2` was filed about in the first place.
+
 
