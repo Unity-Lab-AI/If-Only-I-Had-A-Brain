@@ -12323,6 +12323,11 @@ wss.on('connection', (ws, req) => {
       // the pending (if already popped) rides its own timeout, and the walk
       // survives.
       try {
+      // ⭐ Declared OUTSIDE the parse so the catch can settle whatever this
+      // handler already popped. See the note at the pop site below: the entry is
+      // removed and its timer cleared before parsing, so a throw after that
+      // point leaves the caller awaiting a promise nothing can ever resolve.
+      let _poppedPending = null;
       const typeByte = data[4];
       // SPRR header layout (16 bytes for propagate, 9 bytes for
       // upload_ack/hebbian_ack):
@@ -12358,6 +12363,22 @@ wss.on('connection', (ws, req) => {
       if (brain._gpuSparsePending) {
         const pending = brain._gpuSparsePending.get(reqId);
         if (pending) {
+          // ⛔⛔ HOISTED SO THE CATCH BELOW CAN SETTLE IT. The handler POPS the
+          // pending and CLEARS ITS TIMER on the next two lines, before a single
+          // byte of the response has been parsed. If anything downstream throws,
+          // the catch block's comment claims "a popped pending resolves via its
+          // own timeout" — and that is FALSE: the timer it would rely on was
+          // destroyed here, and the map entry it would look for is gone, so the
+          // timeout callback's `has(reqId)` guard finds nothing and deliberately
+          // does nothing. The caller's `await` then never settles, for the life
+          // of the process.
+          //
+          // ⭐ A PROMISE THAT CANNOT TIME OUT AND CANNOT BE ANSWERED IS A
+          // PERMANENT WEDGE, and the caller here is the walk: `_probePropagate`
+          // awaits this to grade a basin, so one malformed frame freezes every
+          // teach call behind it with a completely idle event loop — no error,
+          // no CPU, no log, nothing to grep.
+          _poppedPending = pending;
           brain._gpuSparsePending.delete(reqId);
           clearTimeout(pending.timeout);
           if (typeByte === 2) {
@@ -12443,7 +12464,19 @@ wss.on('connection', (ws, req) => {
       } catch (err) {
         // ALIGNKILL — the frame is dropped, the process lives, and the line
         // names the frame so the next such crash is a grep instead of a hunt.
-        console.error(`[Brain] ⛔ SPRR ack parse FAILED (type=${data[4]} len=${data.length} byteOffset=${data.byteOffset}) — frame DROPPED, process alive. A popped pending resolves via its own timeout. ${err?.message || err}`);
+        // ⛔ THE OLD LINE HERE CLAIMED "A popped pending resolves via its own
+        // timeout." IT DOES NOT, AND THAT SENTENCE WAS THE BUG. The pop above
+        // deletes the map entry AND clears the timer before parsing, so after a
+        // throw there is no timer left to fire and nothing for the timeout's
+        // `has(reqId)` guard to find. The caller's `await` hangs for the life of
+        // the process — and the caller is the walk, so teaching stops dead with
+        // an idle event loop and no error anywhere.
+        if (_poppedPending) {
+          try { _poppedPending.resolve({ error: 'ack parse failed' }); }
+          catch { /* caller already settled */ }
+          _poppedPending = null;
+        }
+        console.error(`[Brain] ⛔ SPRR ack parse FAILED (type=${data[4]} len=${data.length} byteOffset=${data.byteOffset}) — frame DROPPED, process alive. The popped pending is RESOLVED here with an error result: it can no longer resolve via its own timeout, because this handler cleared that timer before parsing. ${err?.message || err}`);
       }
       return;
     }

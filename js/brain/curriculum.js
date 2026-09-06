@@ -14992,7 +14992,47 @@ export class Curriculum {
         const srcRegion = projName.slice(0, projName.indexOf('_to_'));
         try {
           this._tstage('gate:probe-gpu');   // LOOPNAME
-          const out = await cluster._gpuProxy.gateProbe(`${cluster.name}_${projName}`, srcRegion, idx);
+          // ⛔⛔ A HARD DEADLINE ON THE PROBE, BECAUSE THIS AWAIT FROZE THE WHOLE
+          // WALK FOR 24 MINUTES AND COUNTING.
+          //
+          // Measured live: teaching stopped 26s after a cell opened, `teachStage`
+          // pinned at `gate:probe-gpu`, `hebbian.calls` frozen at 1603 across a
+          // 75s sample, `cpuPercent` 6 with a completely free event loop, every
+          // deferred queue at 0, the donor healthy and answering `real batch`.
+          // Nothing was computing and nothing was queued — one `await` simply
+          // never came back.
+          //
+          // ⚠ THE DEADLINE BELOW IS NOT A DUPLICATE OF THE ONE UNDERNEATH IT.
+          // `gpuGateProbe` already passes 8s down to the ack layer, and that is
+          // exactly the point: the 8s deadline DID NOT SAVE US, because the
+          // failure was a promise that never settled at all rather than one that
+          // settled late. A timeout living inside the thing that can hang cannot
+          // bound the thing that can hang. This one is owned by the CALLER and
+          // fires whatever the ack layer does.
+          //
+          // ⭐ Falling through costs nothing but speed, and the code below has
+          // always said so: "Any null (no donor / lane busy / kill switch /
+          // timeout) falls through to the CPU chunked path — a probe is never
+          // skipped, only relocated." This makes that promise true for the one
+          // case it did not cover.
+          const _probeDeadlineMs = (typeof process !== 'undefined' && Number(process.env?.DREAM_PROBE_DEADLINE_MS) > 0)
+            ? Number(process.env.DREAM_PROBE_DEADLINE_MS) : 20000;
+          let _probeTimer = null;
+          const out = await Promise.race([
+            cluster._gpuProxy.gateProbe(`${cluster.name}_${projName}`, srcRegion, idx),
+            new Promise((res) => { _probeTimer = setTimeout(() => res(null), _probeDeadlineMs); }),
+          ]).finally(() => { if (_probeTimer) clearTimeout(_probeTimer); });
+          if (!out) {
+            // Counted and named — a probe that had to be rescued by the caller's
+            // deadline means the ack layer failed to honour its own, and that is
+            // a finding rather than a hiccup. Rate-limited so a bad donor cannot
+            // flood the ring.
+            this._probeDeadlineHits = (this._probeDeadlineHits || 0) + 1;
+            if (!this._probeDeadlineLogAt || (Date.now() - this._probeDeadlineLogAt) > 60000) {
+              this._probeDeadlineLogAt = Date.now();
+              this._hb(`[Curriculum] ⛔ GPU probe exceeded the caller deadline (${_probeDeadlineMs}ms) on ${projName} and was abandoned to the CPU path — ${this._probeDeadlineHits} time(s) this boot. The ack layer's own 8s timeout did NOT fire, which means a pending promise never settled. Teaching continues; this is the guard that stops one probe wedging the entire walk.`);
+            }
+          }
           if (out && out.length) {
             // f32 ack → f64 so downstream probe arithmetic is uniform with
             // the CPU path output (same conversion the legacy branch does).
