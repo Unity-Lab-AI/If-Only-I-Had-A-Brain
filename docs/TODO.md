@@ -2907,6 +2907,23 @@ Shipped and closed the same day — full record in `docs/FINALIZED.md` §`GLOVEC
   - **Original filing follows, unchanged:**
   - ⏳ **RULED, SEQUENCED, NOT YET DONE. Do NOT execute this before the doc sweep is complete in its entirety.** Measured 2026-09-06: **183 lines carrying the name** across **14 source files** (`js/brain/cluster/{emit,hebbian}.js`, `js/brain/cluster.js`, `js/brain/curriculum.js`, `js/brain/curriculum/kindergarten.js`, `js/brain/{drug-scheduler,language-cortex}.js`, `server/brain-ctl.js`, `server/brain-server.js`, `server/brain-server/{chat,gpu,state,visual-memory}.js`, `html/dashboard.html`) **plus 90 `Operator: "…"` verbatim-quote lines.** ⛔ **A rename cannot satisfy both rules** — the placement LAW bans the name from source, and `feedback_call_him_Gee` bans substituting "operator" for it. **RULING: strip BOTH, keep every word of the reasoning** — a comment states the standing instruction in neutral prose, and the verbatim original stays where it belongs, in `TODO` / `FINALIZED` / `RESUME`. ⚠ **`js/app.bundle.js` is a 15th hit and is DERIVED** — it carries the name because the sources do, and it is served to every visitor and tracked on the PUBLIC remote, so it fixes itself on the rebuild and must not be hand-edited. **Comments only; zero behaviour change; verify the bundle md5 moves and nothing else does.**
 
+## WEDGELIVE — she has been wedged for two hours, the instrument named it, and the probe deadline is NOT sufficient — filed 2026-09-06
+
+> Gee (verbatim): *"obviously do wehat ever we need to do in the right order"*
+
+- [x] `STAGESEQ.3` — ✅ **CLOSED ON THE LIVE READING IT WAS HELD OPEN FOR, AND THE VERDICT IS `FROZEN`.** The row said to close only on a reading showing `stageSeq` frozen or advancing. Read off the box at 02:36 on build `67561281`:
+  ```
+  ⛔ NOT TEACHING for 115.9min while the cell is ALIVE — this is a WEDGE, not a slow phase.
+  stage=gate:probe-gpu (age 6957s) · hebbian.calls=241215 FROZEN since last check ·
+  activePhase=none · substrate=ready · pausedForDonor=no · probeDeadlineHits=6 ·
+  stageSeq=1466047 FROZEN → THE TAG IS STALE: the blocker is UNMARKED code AFTER the stage named above.
+  ```
+  ⭐ **The counter did exactly the job it was built for.** The age alone was ambiguous by construction — a climbing age means either "this stage is still running" or "this was the last stage before a hang in unmarked code", and that ambiguity cost two retractions in one day in opposite directions. **`stageSeq` FROZEN settles it: the tag is stale, and the blocker is code that runs AFTER `gate:probe-gpu` and stamps nothing.**
+
+- [ ] `WEDGELIVE.1` — ⛔⛔ **LIVE AND UNSOLVED: no teaching for ~116 minutes, `hebbian.calls` frozen at 241,215, `activePhase=none`.** ⚠ **AND THE PROBE DEADLINE IS NOT THE ANSWER** — `probeDeadlineHits=6` proves `DREAM_PROBE_DEADLINE_MS` **is on this build and HAS fired six times**, and she is wedged anyway. **A bound that fires and does not free the walk is bounding the wrong await.** ⛔ Not a donor pause (`substrate=ready`, `pausedForDonor=no`) and not a slow phase (`activePhase=none`).
+  - ⭐ **THE PRESS IS THE DIAGNOSTIC.** The unpressed build adds stage stamps to exactly the unmarked region the verdict names — `gate:readiness`, `gate:student-battery(-done)`, `gate:methodology-battery(-done)`, `cell:runner(-done)` — so the next boot's wedge line names the blocker instead of pointing at the last stamped stage before it. **Nothing here needs designing until that reading exists; guessing which await hangs is how the deadline landed on the wrong one.**
+  - ⚠ **`skippedCapped` climbed 115 → 136 during the wedge**, and `latMs/call` sits at **2.64 ms** — the pre-fix lateral baseline, captured for comparison against the hint path after the press.
+
 ## RUSTSCOPE — the handoff was read as a work order, and most of it is already built — filed 2026-09-06
 
 > Gee (verbatim): *"obviously do wehat ever we need to do in the right order"* — answering a question about whether `Sponge said.txt` should be filed as a doc or treated as NEW SCOPE. **Treated as scope.**
