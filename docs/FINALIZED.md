@@ -349,6 +349,74 @@ Both rows were closeable without writing a line of code, on evidence that had be
 
 ---
 
+## 2026-09-06 (16th) — `WEDGELIVE` — THE WEDGE IS AN UNBOUNDED AWAIT, CAUGHT LIVE, AND THE TWO PROCESS FAILURES ARE NOW STRUCTURAL
+
+Gee (verbatim): *"okay get on fixing all of that"* — and, mid-work: *"teach viewer still isnt showing her hand writing and stuff:Her mind's eye / nothing held / Unity has not imagined yet — her mind's eye warms up once the brain is idle (not mid-teach)."*
+
+### ⭐ FIRST: THE GLYPHS LANDED. The box confirms it
+
+```
+letterShapes: learned 94 of 94 · letters 52/52 · digits 10/10 · marks 32/32
+```
+
+**She has a shape for every printable key.** That was the reading the resume said to watch for, and it is now true in production.
+
+### ⛔⛔ THE MIND'S EYE IS A SYMPTOM. SHE WAS WEDGED
+
+The pane's message is the server's own honest note about being mid-teach — but she was not mid-teach. Read off the box at 113 minutes uptime:
+
+```
+sinceLastTeachMs  6,615,046   = 110 minutes since the last teach call
+teachCallsPerMin  0           activePhase null · phasesStarted 2 / completed 2
+ownArt.attempts   0           drawn 0 · previewsDrained 0
+definitionQueue   depth 67 · unresolved 0 · lastWindow NULL
+```
+
+And the console named it outright:
+
+```
+⛔ NOT TEACHING for 110.3min while the cell is ALIVE — this is a WEDGE, not a slow phase.
+   stage=cell:runner (age 6620s) · hebbian.calls=2303 FROZEN
+```
+
+⚠ **The brain was otherwise perfectly healthy** — donor A40 computing every 30 s at 259 ms/batch, event loop clean (worst 435 ms teach-chunk block), heap cycling 400–900 MB. **Nothing had crashed and nothing was pinned.**
+
+### ⛔⛔⛔ THE MECHANISM: ONE UNBOUNDED AWAIT, AND ITS COMMENT SAID SO
+
+```js
+// Signal-driven wait: AWAIT the pass to actually complete.
+// No wall-clock timer. …
+await engine.runConsolidationPass({ forced: true });
+```
+
+`_trickleLastWindow` is assigned **after** that line, and it reads `null` — execution never got past it. `phase=(between-phases / gate-probe)` is where `_dreamWindow` runs. Everything downstream sits behind it.
+
+⚠⚠ **AND THE DAMAGE IS BIGGER THAN THE PAUSE, WHICH IS THE PART WORTH CARRYING.** The window's `finally` restores `_curriculumInProgress` and `_operatorSleepRequested` — and **a `finally` does not run until its `try` settles.** So an await that never returns leaves the brain permanently flagged asleep and the curriculum flagged not-in-progress, and **every downstream lane reads those flags.** One unbounded await silently disabled teaching, the deferred-lane drains, drawing and the mind's eye *at once*. **That is why the operator's report was about the mind's eye and the cause was three subsystems away.**
+
+⛔ **The engine already promised a bound and it did not hold.** A forced pass carries `DREAM_CONSOLIDATION_FORCE_MAX_MS` = 120 s as its own deadline; the await outlived it by **~55×**. ⭐ **A bound that lives inside the thing being bounded cannot catch the case where that thing stops making progress** — which is the whole argument for putting the watchdog outside.
+
+**Shipped:** `DREAM_CONSOLIDATION_WATCHDOG_MS` (300 s, derived as 2.5× the engine's own contract against a measured 7.8% overshoot — full arithmetic in `docs/THRESHOLD-DERIVATION.md`). On a trip the walk stops waiting, the trip is counted and published at `curriculum.consolidationWatchdog`, and the window **skips its remaining stages** — not for tidiness but because the abandoned pass is still running and the trickle teaches; two teachers on one substrate is the hazard the drain lane is gated against elsewhere. ⚠ **The race does not cancel the pass and the comment says so** — pretending otherwise would be the lie; the engine's `_inFlight` guard makes the next window decline instantly.
+
+**RE-PRICE: none owed, and checked rather than assumed.** This ADDS a bound to an unbounded wait and removes nothing. Healthy-case walk cost is bit-identical.
+
+**Harnessed 3/3 on the SHIPPED text** sliced out of `curriculum.js`: ① a pass that never resolves trips at the bound and RETURNS, back-dates the budget so every stage skips, counts the trip and logs it honestly · ② a healthy pass does not trip and logs normal completion · ③ a slow-but-legal pass under the bound does not trip. ⚠ **The harness also caught a real property of the fix:** the watchdog timer is `unref`'d, so a bare harness exits before it fires — correct in production, where the brain always has work pending, and worth knowing.
+
+### ⭐⭐ THE TWO PROCESS FAILURES ARE NOW STRUCTURAL, NOT PROMISES
+
+The ledger's own conclusion on the second banned-write offence was *"a doc shape that punishes the sanctioned tool will keep producing violations no matter how many times the lesson is written down"* — and the lesson was then written down three more times. **Discipline is not the mechanism.**
+
+**`.claude/hooks/pre-tool-write-method-guard.cjs`** — a blocking PreToolUse hook. Blocks `sed -i`, `perl -i`, `>`/`>>` redirects into a repo path, `tee` into one, and `node -e`/`python -c` that writes into the tree. ⭐ **Reading is untouched** — `sed -n`, `grep`, `cat`, and a `node -e` that only measures all still work, because a guard that over-blocks gets turned off and a disabled guard is worse than a narrow one. `/tmp`, `$TMPDIR`, `.scratch/` and `/dev/null` are allowed sinks; heredocs to a command's **stdin** (`git commit -F -`) are not file writes and pass.
+
+⛔ **THE GUARD IS EXERCISED, NOT READ — because this project has already shipped a guard that was an EMPTY SET and looked correct in the diff.** It carries all five historical offences plus fourteen legitimate commands as a `--selftest`: **24/24**. It also **refuses to run silently broken** — if its own known offences stop matching it says so and passes the call through rather than blocking everything on a bug in itself.
+
+⚠ **Its own self-test caught a real miss during development:** extracting balanced string literals from `node -e '…require("fs")…'` breaks on the mixed quoting these one-liners always have, so offence #4 walked straight through. Replaced with a repo-tree-prefix test, which a temp path cannot produce. ⚠ **One residual is NAMED rather than hidden:** an inline write to a bare filename at the repo root has neither a tree prefix nor a `cwd` call and is not caught.
+
+⭐ **Verified live end to end** — it blocked the very first Bash command that contained a banned pattern, which happened to be my own test harness.
+
+**`STALEBRANCH.1`** — the stale-branch check now fires in the prompt-state hook: on a feature branch it reports how many commits `develop` holds that this branch does not, and states the reason plainly — ***"is it in the tree?" is not a question a working directory can answer.*** Reported, never blocking, because branching from an older point is sometimes deliberate; what is not acceptable is not knowing. ⚠ **My first cut of it reached for `sh()` and `optIn`, neither of which exists in that file** — a ReferenceError straight into my own catch, leaving a guard that never fires while reading perfectly. **The same dead-guard shape, caught by checking the bindings against the file instead of assuming them.**
+
+---
+
 ## 2026-09-06 (15th) — THE PRICING CLOCK PACED THE INSTRUMENT INSTEAD OF THE LANE · THE EXPORT HALF · AND A DAY'S WORK DONE TWICE ON A STALE BRANCH
 
 Gee (verbatim): *"we jsut have to properly adjust the nobs to rectify all that"*
