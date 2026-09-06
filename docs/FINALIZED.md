@@ -5,6 +5,99 @@
 
 ---
 
+## 2026-09-06 (14th) — `BOXCAP.3` — THE THROTTLE BAND HAS AN ALARM NOW, AND IT IS READ FROM OUTSIDE HER
+
+Gee (verbatim): *"get on it lets make some progress"*
+
+### The band where nothing happens
+
+Below `MemoryHigh` she runs. Above `MemoryMax` she is OOM-killed **alone** and `Restart=always` revives her in seconds. **Between the two, nothing kills her and nothing recovers her** — the kernel simply reclaims against her until she crawls. She sat there **19.5 hours**, and the only reason anyone knows is that a human pasted `/ctl/status` into a chat.
+
+Built as the row specified: PSI `some avg60` from `memory.pressure`, plus `memory.current` / `memory.high` / `memory.max` and the `memory.events` `high` throttle counter — published in **both** places it named, `state.cgroupMemory` and `/ctl/status`.
+
+### ⭐⭐ The `/ctl/status` half is the one that matters
+
+**A throttled brain is precisely the one whose own broadcast does not arrive.** `brain-ctl` is a separate unit with its own tiny cgroup, so it still answers — and it reads the brain's cgroup files directly, because **cgroup membership is a filesystem path, not a permission the brain has to grant.**
+
+### PSI is the right signal and RSS is not
+
+A large brain sitting comfortably under its limit reads **~0** pressure; a brain being reclaimed against reads high **no matter how big it is**. RSS cannot tell those apart — PSI can. That is why the row asked for it specifically.
+
+Paired with `loopPinned` + `activeForSec` it closes the question the status line could not answer: **a pinned loop with pressure climbing is a throttle** (restart, or raise the limit) **and a pinned loop with none is a genuine long operation** (wait). Those looked identical before, and the instrument counselled patience for both.
+
+### The verdict names the band, because a number does not tell you what to do
+
+```
+  healthy                       -> below-high
+  21.3 GB against a 20G limit   -> THROTTLED-IN-THE-BAND
+  23.8 GB against a 24G limit   -> AT-MAX-ABOUT-TO-BE-OOM-KILLED
+  no limits set                 -> below-high
+```
+
+`THROTTLED-IN-THE-BAND` reads: *"Nothing kills her in this band and nothing revives her… RESTART, or raise the limit. Waiting does not end it."*
+
+⚠ **`null` on a host with no cgroup is "not applicable", not "healthy"** — the field is absent rather than reporting a comfortable zero. Cached 5 s in the state block: tiny virtual files, but the block broadcasts far more often than the numbers move, and an instrument that costs a syscall storm is one somebody eventually turns off.
+
+### ⛔ A dead instrument, caught before it shipped
+
+The first cut called `fsSync.readFileSync` in `brain-ctl.js`, where the binding is `fs`. That is a `ReferenceError` straight into my own `catch`, returning `null` forever while reading perfectly plausibly in the diff.
+
+**An alarm that silently reports "nothing to see" is worse than no alarm** — which is the entire subject of this row. Found by checking the binding rather than assuming it.
+
+**Verified:** `node --check` ×2 · zero `fsSync` references remain · band logic exercised against all four scenarios · returns `null` on win32 as designed.
+
+---
+
+## 2026-09-06 (13th) — `MEMTHROTTLE.2` + `BOXCAP.1` — SHE COULD NOT SEE HER OWN CAGE, AND THE OVERSHOOT IS SUBTRACTION
+
+Gee (verbatim): *"get on it lets make some progress"*
+
+Gee, on the config fork put to him with both options priced: **"Raise MemoryHigh to 22G"**.
+
+### The overshoot stopped being a suspicion and became arithmetic
+
+```
+  host RAM                      31,831 MB
+  Forgejo/OS reserve          - 13,312 MB
+  = weights budget              18,519 MB   <- matches the boot log verbatim
+  + measured non-weights RSS   + 2,867 MB   <- V8 heap, buffers, corpus
+  = process RSS                 21,386 MB   <- the board's reading was 21.3 GB
+  MemoryHigh                    20,480 MB
+  OVERSHOOT                        906 MB   over the throttle point
+```
+
+The 2,867 MB is **derived, not picked**: it is the gap between the live 18,519 MB budget and the 21.3 GB RSS it produced. ⭐ **Two independent records agree on the symptom** — this row's reading, and `self-update.sh:226`'s own note that the cgroup sat *"pinned exactly at MemoryHigh=20G"*.
+
+### Built exactly as `BOXCAP.1` specified
+
+*"Read the effective limit from `/sys/fs/cgroup/memory.high` (falling back to `memory.max`, then host RAM) and budget against the smallest of those."* That is the implementation, with cgroup-v1's `memory.limit_in_bytes` as a third source.
+
+⚠ **The two ceilings are independent and both apply.** The Forgejo reserve is about the HOST — Forgejo lives **outside** this cgroup, so subtracting it from the cgroup limit would double-count a reserve for a process that is not in it. The cgroup limit is what the kernel enforces on *this* process.
+
+⛔ **The boot names which ceiling is binding**, because *"the brain is smaller than I expected"* and *"the kernel is throttling her"* look identical from outside and have opposite fixes.
+
+⚠ **No cgroup means no ceiling to apply — not a degraded mode.** Verified on this platform: the read returns null and the host clause decides alone, exactly as before.
+
+### The reserve came from this row's own warning
+
+`BOXCAP.1`'s second bullet is what set it: off-heap `ArrayBuffer`s are counted by the cgroup but **not** by `--max-old-space-size=16384`, which is precisely how a "16 GB heap cap" produced a 21.3 GB process. So the headroom below the limit is measured RSS overhead, not a V8 flag.
+
+### The config half, and what it costs
+
+`MemoryHigh` **20G → 22G**; `MemoryMax` unchanged at **24G**, so the OOM backstop protecting Forgejo is untouched — the brain still dies alone. At 22G the **host reserve binds again, which is how this was designed to work**, and she keeps all **411,216,550** neurons. The alternative — leave 20G and size down to fit — cost **20,117,835 neurons (−4.9%)**. Leaves **9,303 MB** of host at peak against a measured ~4,000 MB of actual non-brain usage.
+
+⚠ The unit file records, beside the value, that the one number still unmeasured is the peak during a Forgejo Actions Rust cross-build on donor-release day — and that if it ever measures above ~9 GB, this is the directive to reconsider first.
+
+### ⛔⛔ Half of this does not ship on a press, and saying so is the point
+
+`self-update.sh` runs `systemctl restart "$SERVICE"` and **never copies the unit file**, so the `MemoryHigh` change is **inert until the unit is installed and `daemon-reload` runs on the box** — the same class as `BUTTONAUDIT.4` and `SHELLGAP.1`.
+
+⭐ **The code half ships by itself and is strictly better meanwhile.** With the unit still at 20G the cgroup becomes the binding ceiling and she sizes to ~391M neurons **without throttling**, instead of overshooting by 906 MB. Once the unit lands she returns to 411M.
+
+**Verified:** `node --check` · cgroup reader returns null on win32 with the host clause unchanged · unit file carries **no inline comments on any directive** (the trap that silently voids a cap) · arithmetic reproduces both the boot log's 18,519 MB and the reported 21.3 GB.
+
+---
+
 ## 2026-09-06 (12th) — `GATEWATCH.3` — THE RESIDUE RETRIED FOREVER BECAUSE THE SET RECORDING IT WAS WRITE-ONLY
 
 Gee (verbatim): *"96 lots to do get to it and start making some reall progreass"*

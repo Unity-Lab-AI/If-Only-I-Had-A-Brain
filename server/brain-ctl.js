@@ -605,6 +605,63 @@ async function buildStatus() {
     // null = it did not answer, or was not asked because the port was closed.
     respondedMs: _respondedMs,
     activeForSec: _activeForSecOut,
+    // ⭐⭐ READ FROM OUTSIDE THE BRAIN, WHICH IS THE ENTIRE POINT.
+    //
+    // Between `MemoryHigh` and `MemoryMax` nothing kills the brain and nothing
+    // revives her: the kernel just reclaims against her until she crawls. She
+    // sat in that band for **19.5 hours** and the only reason anyone noticed is
+    // that a human pasted this endpoint into a chat.
+    //
+    // ⛔ THE BRAIN'S OWN STATE BLOCK CANNOT BE TRUSTED TO REPORT THIS, because a
+    // throttled brain is precisely the one whose broadcast does not arrive. This
+    // process is a SEPARATE unit with its own tiny cgroup, so it still answers —
+    // and it can read the brain's cgroup files directly, since cgroup membership
+    // is a filesystem path, not a permission the brain has to grant.
+    //
+    // ⚠ Together with `loopPinned` + `activeForSec` this closes the question the
+    // status line could not answer: a pinned loop with memory pressure climbing
+    // is a THROTTLE and needs a restart or a bigger limit, while a pinned loop
+    // with no pressure is a genuine long operation and needs patience. Those two
+    // looked identical before, and the instrument counselled patience for both.
+    cgroupMemory: (() => {
+      try {
+        const base = `/sys/fs/cgroup/system.slice/${UNIT}.service`;
+        const num = (f) => {
+          try {
+            const raw = fs.readFileSync(`${base}/${f}`, 'utf8').trim();
+            if (!raw || raw === 'max') return null;
+            const n = Number(raw);
+            return Number.isFinite(n) && n > 0 ? n : null;
+          } catch { return null; }
+        };
+        const cur = num('memory.current');
+        if (cur === null) return null;   // no cgroup visible — not applicable, not healthy
+        const high = num('memory.high');
+        const max = num('memory.max');
+        let some60 = null;
+        try {
+          const m = /^some\s+.*avg60=([0-9.]+)/m.exec(fs.readFileSync(`${base}/memory.pressure`, 'utf8'));
+          if (m) some60 = Number(m[1]);
+        } catch { /* PSI absent on some kernels */ }
+        let evHigh = null;
+        try {
+          const m = /^high\s+(\d+)/m.exec(fs.readFileSync(`${base}/memory.events`, 'utf8'));
+          if (m) evHigh = Number(m[1]);
+        } catch { /* events absent — null beats a reassuring zero */ }
+        const MB = (b) => (b === null ? null : Math.round(b / 1048576));
+        const band = (max !== null && cur >= max * 0.98) ? 'AT-MAX-ABOUT-TO-BE-OOM-KILLED'
+          : (high !== null && cur >= high) ? 'THROTTLED-IN-THE-BAND' : 'below-high';
+        return {
+          currentMB: MB(cur), highMB: MB(high), maxMB: MB(max),
+          pressureSome60: some60, throttleEvents: evHigh, band,
+          human: band === 'THROTTLED-IN-THE-BAND'
+            ? 'ABOVE MemoryHigh — the kernel is reclaiming against her. Nothing kills her in this band and nothing revives her; this is where she once sat for 19.5 hours. RESTART, or raise the limit. Waiting does not end it.'
+            : band === 'AT-MAX-ABOUT-TO-BE-OOM-KILLED'
+              ? 'at the hard cap — the kernel is about to OOM-kill the brain alone; systemd restarts it'
+              : 'under the soft limit',
+        };
+      } catch { return null; }
+    })(),
     human,
     unit: {
       name: UNIT,
