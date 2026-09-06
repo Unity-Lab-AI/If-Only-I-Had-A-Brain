@@ -1,6 +1,100 @@
 # RESUME — Session Pickup Brief
 
-> # 🟢 2026-09-06 (latest, 7th) — THE WEDGE HAD A CAUSE AND IT IS BOUNDED; SHE IS TEACHING AGAIN; THE BOARD IS TEMPLATE + OPEN ITEMS ONLY (PICK UP HERE)
+> # 🟡 2026-09-06 (latest, 8th) — THE CORPUS LADDER IS CLOSED 193/193, AND THE STAMP CHAIN FINALLY CORNERED THE WEDGE INTO TWO CALLS (PICK UP HERE)
+>
+> Gee (verbatim): *"okay lets get to whats lest so we can update and zero the todo whhen its all done"* → *"keep working on stuff needed to be completed in the mean time"* → *"cascade to main both remotes and make sure brainwaves repo has everyhting still properly"* → *"yeay those logs are treadh clean it then get back to finiahing the work"* → *"save start didnt work i think she went straight to wedge idk shes up just not training"* → *"wedged again"*
+>
+> ## ⛔ READ THIS FIRST — SHE IS STALLED AND ONE PRESS ENDS THE HUNT
+>
+> ```
+>   build a7b06555 · resume · 27.4 min up · 388,597,268 neurons
+>   stage  skip:_teachLanguageMechanics   age 24.9 min   seq 15428 FROZEN
+>   teach/min 0 · phases 2/25 · defQueue 14 · phase stack EMPTY
+>   consolidationWatchdog 0 trips · trickleWordWatchdog 0 trips
+> ```
+>
+> **The next press produces the answer directly.** Three stamps shipped today and the box has none of them yet. Read the stage tag after the boot:
+>
+> | tag | verdict |
+> |---|---|
+> | `runner:stories` + climbing age | she is INSIDE `_trainAcademicStories` — and the real problem is a kindergarten cell 56× its floor, not a hang |
+> | `runner:rehearse` + climbing age | `_rehearseEarlierGrades` is the blocker |
+> | `runner:stories-done`, still stalled | it is past all three and somewhere new |
+>
+> ## ⭐ ① THE CORPUS LADDER IS FINISHED — 193 of 193 CELLS OVER FLOOR
+>
+> ```
+>   start of day   193 cells · 71,256,751 words · MEET 161 · SHORT 32
+>   now            193 cells · 73,546,285 words · MEET 193 · SHORT  0
+> ```
+>
+> ⛔⛔ **AND `CORPUSFLOOR.1`'s DIAGNOSIS OF *WHY* THEY WERE SHORT WAS WRONG.** It concluded *"the topics are short and exhausted… the cells need MORE TOPICS or a richer SOURCE"*, resting on `stored entries ≈ topics offered`. **That comparison cannot see a duplicate.** Resolving all 940 titles through the API found **105 slots (11.2%) producing nothing** — and `entries ≈ topics` is exactly what that looks like from outside. **No new fetcher and no new source were needed; the gap was mostly self-inflicted.**
+>
+> **Three defect classes, none visible by reading the source:**
+> - **literal repeats** — an appended block re-listing the one above it (`health/grade12` had SEVEN, which is why it sat at 77%)
+> - **redirect collisions** — `Colour`/`Color theory` · `Darkwave`/`Dark wave` · `Magic`/`Magical realism` · `Musical mode`→`Mode (music)` · `Linear perspective`→`Perspective (graphical)` · `Binary search algorithm`→`Binary search` · `Infectious disease`→`Infection` · `Antibiotic`→`Antimicrobial resistance`
+> - **disambiguation pages that pass an existence check** — `Fitness` 1,006 B → 466 words · `Posture` 406 B → **nothing**
+>
+> ⭐ **The gate is DERIVED:** 45 live topics sampled against the words each actually produced → **~1 word per 18 bytes**, so the 15,000-byte floor ≈ 1,100 words. It rejected real articles that would have added nothing (`Melody` 9.7k, `Agility` 5.0k, `Anaerobic exercise` 10.9k).
+>
+> ⚠ **SIX of the duplicates removed were MINE**, introduced while fixing the others. Every one caught by **re-resolving each cell after the edit** rather than trusting it. Without that step this batch ships six fresh instances of the defect it was removing.
+>
+> ⚠ **NOT CLAIMED — the floors are not "enough".** `FLOORLIE.1` measured them at ~13% of a real course year. **`CORPUSDEPTH.1` was spawned to carry that**, so the board does not read as "curriculum done" when what is done is the floor.
+>
+> ## ⭐ ② THE STAMP CHAIN — THREE FIXES, TWO OF THEM CORRECTING THE ONE BEFORE
+>
+> This is the honest sequence, because each step was wrong in a way the next one found:
+>
+> 1. **Phase-gap stamp** (morning) — placed inside the `_outermostPhase` teardown. ⛔ **Could never fire.** `isCellPhase` requires `!stack.some(t => t.ledger || t.teach)`, so a teach called from inside another teach is never outermost — and `_teachSentenceList`, where two wedges parked, is exactly that.
+> 2. **Corrected** to fire when the teach stack EMPTIES. Right condition, and still silent — because **a skipped phase never enters, so there is no exit to hang it on.**
+> 3. **Skip stamp** — the skip branch returns BEFORE the entry stamp, so on a resume every already-passed phase passes through invisibly. **This one worked and named the region.**
+> 4. **Runner stamps** — `_rehearseEarlierGrades`, `_trainAcademicStories`, `_perceiveCellFigures` are invisible to the stage instrument **purely because of their names** (`TRACKED` wraps `_teach*`).
+>
+> ⭐ **ELIMINATED BY READING, NOT GUESSING:** `_perceiveCellFigures` is bounded (cap 6/cell, 24 attempts) **and the field store on the box reads `enabled: null, root: null, hit: 0, miss: 0` — never consulted**, because fields live only in BrainWaves and the box cannot read that repo. ⚠ My wavelet-field theory for the heap climb was wrong and is retracted.
+>
+> ## ⛔⛔ ③ THE QUESTION IS "SLOW OR STUCK", AND IT HAS NEVER BEEN ASKABLE
+>
+> **`ela/kindergarten` holds 411,226 words against a 7,300-word early-band floor — 56×.** `_trainAcademicStories` trains that through `_teachSentenceList`, whose measured average is **6.5 minutes per call**. **A frozen teach counter there may be ONE LONG CALL, not a hung one** — and everything else fits work rather than a hang: heap climbing, event loop alive, donor healthy at 219 ms.
+>
+> ⚠ **"Wedged" and "grinding a kindergarten cell sized like a college one, with no progress reporting" are indistinguishable from outside.** That is why the runner stamps matter more than another watchdog.
+>
+> ✅ **NOT caused by today's corpus work** — that cell has been 411,226 words since before today; the 193/193 pass touched grade9+ and college only. Verified against git, not memory.
+>
+> ## ⭐ ④ A SECOND UNBOUNDED AWAIT FOUND AND BOUNDED
+>
+> ⛔ **`timeoutMs` NEVER BOUNDED THE WORD — ONLY THE FETCH.** The dream-trickle calls `_teachWordDefinition(word, {timeoutMs: 20000})` and its comment said *"20s per word"*. The option reaches exactly one line — `lookupDefinitionFull(w, {timeoutMs})`. **The Hebbian binds, the association pairs and the self-frame that follow have no bound at all.** Gee's teach-view line — *"I am Unity and I know books"* — is a `selfClose` line, the LAST thing the self-frame emits, at the far end of that unbounded region.
+>
+> Bounded now (`trickleWordWatchdog`, 60 s derived: fetch carries its own 20 s, whole call measures **1.19 s mean** live, so 60 s is ~50× the mean and ⅓ of the window budget). **RE-PRICE: none owed** — it adds a bound and removes nothing.
+>
+> ## ⭐ ⑤ BRAINWAVES AUDITED AND CLEANED
+>
+> ```
+>   fields    26,359 files, ALL *.field.json so ALL LFS-tracked
+>   index     22,120 entries, ZERO broken refs
+>   push logs 23 -> 0, .gitignore added (repo had none)
+> ```
+>
+> ⭐ **The field drain quantified in FIELDS, not gigabytes** — the corpus cites **75,587** distinct figures, **26,359** have fields (**34.9%**), **61,519 absent**. Consistent with Sponge's *"~44 GB of ~100 GB"*; **the deliberate stop, not a regression.** ⛔ **The derivation was validated before the number was believed** — three known `url → file` pairs from BrainWaves' own index run through the production `figure-identity.cjs`, **3/3 exact**, because a wrong `figKey` manufactures exactly that shortfall.
+>
+> ⚠ **12,291 banked fields the current corpus never cites** (re-ingest URL drift). **Do not "clean" them** — a URL absent today can return, and the transform was already paid for.
+>
+> ## ⭐ ⑥ THE TRAINER'S FLAGS — 7 OF 8 EXPECTED, 1 WAS OURS
+>
+> `presidentsday · mlk · diwali · chinesenewyear · airbnb · grayhair · toystore` are the residue `OFFLINEDICT.4` already measured and deliberately refused. **`suprise` was a real typo in a teaching sentence** (`curriculum.js:2640`), and `gen-grade-vocab.mjs` builds word lists FROM those sentences — so the typo was promoted to a kindergarten vocabulary WORD. Verified through the production service: `surprise → "cause to be surprised"`, `suprise → NO DEFINITION`. **The flag was right and the data was wrong.**
+>
+> ⭐ **The lesson generalises: a word list generated from content inherits every defect in that content.**
+>
+> ## ⛔ ⑦ WHAT IS STILL OPEN
+>
+> **Board: 77 open (50 pending · 27 in-progress), 1 `[x]` — the fenced quotation that must never be swept.** Two rows closed today on measurement: `FIGTEXT.3` (both lanes it called image-blind harvest images — 782 + 829 figures) and `CORPUSFLOOR.1`.
+>
+> ⚠ **The board will not go to zero soon and pretending otherwise is the defect the reset just undid.** Of the 77: **7 walk-gated**, **4 shell-gated** (no press can deliver them), **13 multi-batch programmes** (`REGRESSION.1` is explicitly LAST). ~50 are genuinely workable.
+>
+> ⛔ **`CORPUSDEPTH.1` is the one to read before celebrating 193/193.** Re-deriving the floors from real courses **will push cells back below floor, and that is correct, not a regression.**
+>
+> ---
+>
+> # 🟢 2026-09-06 (7th) — THE WEDGE HAD A CAUSE AND IT IS BOUNDED; SHE IS TEACHING AGAIN; THE BOARD IS TEMPLATE + OPEN ITEMS ONLY
 >
 > Gee (verbatim): *"okay get on fixing all of that"* → *"update freshwalk pressed, keep workking the items we need done for her to be done"* → *"i need you to do the actual work to be done not maske shit up to do while waiting on the brain to start up"* → *"clean up the todo, move all finished items to finalized.md There shall be nothing left in the todo but open items only PERIOD FULL STOP"* → *"make sure that only the file templete info and open items are the only two things in the todo"*
 >
