@@ -492,6 +492,18 @@
        and reflow on resize instead of queueing vertically off the bottom of a
        fixed column. -->
   <div class="tv-col tv-col-panels">
+    <div class="tv-card tv-card-wide">
+      <h2><span class="tv-tip tip-l"
+        title="The training over time, read back from disk — not the live instant."
+        data-tip="Every other panel on this page shows the live INSTANT. This one shows the SHAPE over time, sampled every 30s and kept on disk for about a week.&#10;&#10;⛔ It exists because the console ring holds about four minutes and rotates: a boot line proving the letter pass had run, and a wedge's own lane line, were both already gone when they were looked for.&#10;&#10;⭐ A flat pairs line with a climbing stage age is a WEDGE. A climbing pairs line is a ramp. Those look identical in a single instant and completely different here.">Training over time</span><span class="tv-sub" id="tvSeriesLbl">—</span></h2>
+      <div class="tv-body">
+        <div id="tvSeries" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px"></div>
+        <div class="tv-note" id="tvSeriesNote">
+          Sampled every 30s and kept on disk, so an hour-old stall is still readable.
+        </div>
+      </div>
+    </div>
+
     <div class="tv-card">
       <h2><span class="tv-tip tip-l"
         title="The image she is holding, reconstructed from her own field C — not a thumbnail of a file."
