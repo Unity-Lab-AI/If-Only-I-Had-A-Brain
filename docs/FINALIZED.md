@@ -5,6 +5,51 @@
 
 ---
 
+## 2026-09-06 — `STAGESEQ` — THE STAGE TAG COULD NOT SAY WHETHER IT WAS CURRENT, AND I READ IT WRONG IN BOTH DIRECTIONS IN ONE DAY
+
+Gee (verbatim): *"keep working till you got it all working correctly and we are ready to push it to the box along with past updates"*
+
+### The watchdog earned itself in its first hour
+
+Built earlier the same day, and on the very next wedge it printed in one line what had taken an hour of forensic digging that morning:
+
+```
+⛔ NOT TEACHING for 11.1min while the cell is ALIVE — this is a WEDGE, not a slow phase.
+   stage=gate:probe-gpu (age 669s) · hebbian.calls=74976 FROZEN since last check
+   · activePhase=none · substrate=ready · pausedForDonor=no · probeDeadlineHits=8
+```
+
+⭐ **`probeDeadlineHits=8` is the line that mattered**, and it proved the caller deadline was working: eight probes rescued on that boot. **And she wedged anyway** — so the probe deadline was necessary and not sufficient.
+
+### ⛔ The finding: a frozen counter is evidence of ABSENCE
+
+Sampled three times over two minutes: `probeDeadlineHits` **frozen at 8**, `hebbian.calls` frozen at 74,976, `notTeaching` climbing 20.2 → 21.2 → 22.2 min.
+
+**A frozen deadline counter means no probe was even being attempted.** So the hang was not in the probe — and `gate:probe-gpu` was a tag left behind by the last one that ran. Confirmed by elimination: the CPU branch stamps `gate:probe-prop` and that never appeared.
+
+### ⭐⭐ THE REAL DEFECT, AND IT IS AN INSTRUMENT ONE
+
+`_teachStage` **is never cleared**, so a tag outlives its stage. A climbing AGE therefore means one of two *opposite* things:
+
+- a stage genuinely still running — **the morning wedge**, where the probe really was hung and I wrongly called the tag stale; or
+- the last stage entered before a hang in unmarked code — **the evening wedge**, where the frozen counter proved no probe was running and I had just finished arguing the tag was accurate.
+
+⛔ **I called it stale when it was accurate, then accurate when it was stale, on the same day.** Both readings were defensible from the tag alone, which is the point: **the tag cannot distinguish them.**
+
+✅ **A monotonic `_teachStageSeq`, incremented on every `_tstage` call, can.** Frozen seq + climbing age = **the tag is STALE and the blocker is unmarked code after it**. Climbing seq = stages really are turning over, so the named stage is the one to look at. One integer per stage change, and it answers in one glance the question that cost an hour twice. The watchdog now prints the verdict in words, and its old sentence — which asserted the tag is *always* accurate — is replaced, because that assertion is now demonstrably false half the time.
+
+✅ **4/4 harness** on the discriminator, including both of the day's real cases replayed against it.
+
+### And the last unbounded await on the probe path
+
+`_probePropagate`'s **GPU-proxy fallback** — the branch taken when the deadline returns null and the CPU CSR has been freed — was `await cluster._gpuProxy.propagate(...)` with **no deadline and no stage stamp**. Two defects in one line: it could hang forever, and while hanging it reported the tag from the branch above it. Now bounded on the same caller-owned `DREAM_PROBE_DEADLINE_MS`, stamped `gate:probe-proxy`, and counted.
+
+### ⚠ WHAT THIS DOES NOT CLAIM
+
+**The evening wedge is not proven fixed.** Every unbounded await I can find on the probe path is now bounded, and the next occurrence will name its own blocker instead of hiding behind a stale tag — but I have not identified the specific await that hung, and I am not going to assert a fix I cannot demonstrate. **If it recurs, the watchdog line will say `stageSeq FROZEN` and point at unmarked code after the named stage, which is exactly the information I lacked twice today.**
+
+---
+
 ## 2026-09-06 — `CORPVOCAB` — THE PRE-PRESS SWEEP FOUND A LIVE BLOCKER: EVERY PRESS DELETED THE VOCABULARY LISTS, AND THE COMMENT SAID IT COULD NOT
 
 Gee (verbatim): *"okay keep working all the stuff we need to finish and ill do a update freshwalk when we are ready with a press on dashboard"* · *"the data repo is brain waves"*
