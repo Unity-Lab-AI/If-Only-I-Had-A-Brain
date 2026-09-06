@@ -5501,21 +5501,27 @@ export class Curriculum {
     if (!_brain || typeof _brain.learnLetterShape !== 'function') return;
     this._letterShapesLearned = true;   // set FIRST — a failed pass must not loop every cell
     // ⭐ EXACTLY WHAT THE RENDERER CAN ACTUALLY DRAW, AND NOT ONE CHARACTER MORE.
-    // `FONT5X7` (js/brain/mindspace/gpu.js:132) carries **42** glyphs: `A-Z`,
-    // `0-9` and `. , ! ? ' -`. `glyphStrokes` upper-cases its input, so the
-    // lowercase alphabet folds onto the same 26 forms — she writes in capitals,
-    // which is where a real kindergartener starts.
     //
     // ⛔ THE OLD CALLER LOOPED `ALPHABET_ORDER` ALONE, so **sixteen glyphs the
     // font already held were never taught** — every digit and every punctuation
     // mark. "Write the number 7" and "end the sentence with a full stop" had no
-    // stroke to draw, at any grade, for the life of the project.
+    // stroke to draw, at any grade, for the life of the project. Pinning the set
+    // to the font instead of to an alphabet is what fixed that, and it is why the
+    // set is derived here rather than typed out.
     //
-    // ⚠ Asking for a character the font lacks would bank a BLANK trace, so the
-    // set is pinned to the font rather than to an alphabet we wish it had. The
-    // remaining QWERTY characters (lowercase forms and ~53 symbols) do not
-    // exist in `FONT5X7` and are a font-authoring job, filed rather than faked.
-    const GLYPHS = `${ALPHABET_ORDER}${DIGIT_ORDER}.,!?'-`;
+    // ⭐ `WRITEWARM.2` — the font now holds **every printable key on a QWERTY**:
+    // the 26 lowercase letterforms and the 26 symbols it was missing were
+    // authored, and `glyphStrokes` no longer folds case away. So the set is the
+    // whole keyboard, `!` (33) through `~` (126), space excluded because a space
+    // has no shape to trace. Lowercase is a genuinely different letterform from
+    // its capital and banks its own trace.
+    //
+    // ⚠ Asking for a character the font lacks would bank a BLANK trace — a wrong
+    // answer wearing the shape of a right one — so this range and the accept guard
+    // in `learnLetterShape` have to move together. They do, and the pass below
+    // NAMES anything that fails rather than swallowing it.
+    let GLYPHS = '';
+    for (let _cc = 33; _cc <= 126; _cc++) GLYPHS += String.fromCharCode(_cc);
     const t0 = Date.now();
     let learned = 0, failed = 0;
     const failedChars = [];
@@ -15510,6 +15516,21 @@ export class Curriculum {
             // the CPU path output (same conversion the legacy branch does).
             const o64 = new Float64Array(out.length);
             for (let i = 0; i < out.length; i++) o64[i] = out[i];
+            // ⛔⛔ STAMP THE EXIT, BECAUSE ENTRY-ONLY STAMPING MAKES THIS TAG THE
+            // RESTING STATE OF THE WHOLE GATE LANE. Every exit from this helper
+            // used to return with `gate:probe-gpu` still set, so it was simply
+            // the last thing stamped before any unmarked code — which is exactly
+            // how a wedge in unmarked code got reported for two hours as
+            // `stage=gate:probe-gpu (age 6957s)` while `probeDeadlineHits` proved
+            // no probe was hanging. **A tag that is never cleared cannot say
+            // whether it is current**, and this file's own `_tstage` docstring
+            // records getting that call wrong in BOTH directions in one day.
+            // With `-done` the two cases separate by reading alone: a climbing
+            // age on `gate:probe-gpu` means genuinely stuck IN the probe; a
+            // climbing age on `gate:probe-gpu-done` means the blocker is AFTER
+            // it, in code nothing stamps. Same convention already used by
+            // `cell:runner-done`, `gate:readiness-done` and the two batteries.
+            this._tstage('gate:probe-gpu-done');   // LOOPNAME
             return o64;
           }
         } catch { /* fall through to the CPU path */ }
@@ -15520,9 +15541,11 @@ export class Curriculum {
     // its synchronous propagate was a multi-second loop pin at grown matrices.
     if (proj.values && proj.colIdx && proj.rowPtr && proj.values.length > 0) {
       this._tstage('gate:probe-prop');   // LOOPNAME
-      return (typeof proj.propagateChunked === 'function')
+      const _propOut = (typeof proj.propagateChunked === 'function')
         ? await proj.propagateChunked(srcVec, { chunkRows: 250000 })
         : proj.propagate(srcVec);
+      this._tstage('gate:probe-prop-done');   // LOOPNAME — see the exit-stamp note above
+      return _propOut;
     }
     // GPU proxy fallback for freed CSR on non-whitelisted probe paths.
     if (cluster._gpuProxyReady && cluster._gpuProxy && typeof cluster._gpuProxy.propagate === 'function') {
@@ -15549,11 +15572,18 @@ export class Curriculum {
           // arithmetic is uniform with the CPU path output.
           const out = new Float64Array(result.length);
           for (let i = 0; i < result.length; i++) out[i] = result[i];
+          this._tstage('gate:probe-proxy-done');   // LOOPNAME — see the exit-stamp note above
           return out;
         }
       } catch { /* non-fatal — fall through to zero vector */ }
     }
     // Dead fallback — match null-CSR guard shape so callers don't NPE.
+    // ⚠ STAMPED TOO, and this exit matters MOST: it is the silent one. A caller
+    // that reaches here got a zero vector from a probe that never ran, and with
+    // entry-only stamping it left `gate:probe-gpu` behind as though a probe had
+    // been in flight. `-dead` says which exit was taken without inventing a
+    // failure — reaching here is legitimate when no CSR and no proxy exist.
+    this._tstage('gate:probe-dead');   // LOOPNAME
     return new Float64Array(proj.rows || 0);
   }
 

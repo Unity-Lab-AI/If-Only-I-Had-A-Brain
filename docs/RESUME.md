@@ -1,6 +1,62 @@
 # RESUME — Session Pickup Brief
 
-> # 🟢 2026-09-06 (latest, 4th) — THE EVENT-LOOP THEORY IS DEAD AT 5.7%, HALF THE DEF-MISS FLAGS ARE A REAL DEFECT, AND THE KNOB PANEL IS WRITABLE (PICK UP HERE)
+> # 🟢 2026-09-06 (latest, 5th) — SEVEN THEORIES DEAD ON THE RESIDUAL, AND SHE NOW HAS A SHAPE FOR EVERY KEY ON A KEYBOARD (PICK UP HERE)
+>
+> Gee (verbatim): *"we cnat have the shit to fix her runing be blocked by a broken run"*
+> Gee (verbatim): *"start knock ing off those todo s in droves!"*
+> Gee (verbatim): *"should be ab;le to do everything on a qwerty"*
+>
+> ## ⛔ FIRST — THE STRUCTURAL CORRECTION, BECAUSE IT CHANGES HOW TO WORK
+>
+> I had been gating fixes on a healthy walk: measure on the box, wait for a press, then act. Gee named it — **a broken run must not block the work that fixes the run.** Theory seven died the same hour by timing the post-loop diagnostics **locally** instead of waiting, which is what that correction looks like in practice.
+>
+> ## THEORY SEVEN IS DEAD — `pruneTopKPerRow` IS IDEMPOTENT
+>
+> Timed on `sem_to_fineType` at production geometry (633,474 rows · 3,800,844 nnz):
+>
+> ```
+>   prune #1   removed 1,266,948     430.6 ms   nnz now 2,533,896
+>   prune #2   removed         0       1.1 ms
+>   prune #3   removed         0      12.6 ms   (after 200 ojaUpdate passes)
+> ```
+>
+> ⭐ **It short-circuits after the first pass — 430 ms → 1.1 ms — and `ojaUpdate` cannot insert, because CSR structure is fixed at construction.** So a prune that cannot remove anything changes **zero** weights. `normalizeRows` (25.7 ms) was confirmed gated by `!_deferDiag`. **Post-loop work is ~2-3 ms/call amortised, not 27.** Seven theories now dead on the 68% residual; the standing answer remains the one from the fourth entry — enumerate what is **unwrapped** in the loop rather than explaining with what is visible.
+>
+> ## ✅ `WRITEWARM.2` SHIPPED — THE OTHER 52 KEYS
+>
+> `FONT5X7` held **42 of the 94** printable keys. All 52 missing authored: the lowercase alphabet on standard 5×7 metrics (ascenders from the top row, x-height body rows 2-6, descenders on `g j p q y` through the last row) and `` ` ~ @ # $ % ^ & * ( ) _ = + [ ] { } \ | ; : " < > / ``.
+>
+> ⚠ **The board's own count was off by one** — it said 53 / 27 symbols; counted from the table it is **52 / 26**. The symbol list was already right; the total carried the error. Corrected in the verdict, original filing left standing.
+>
+> ⛔⛔ **THE FONT WAS THE EASY HALF.** Both raster paths upper-cased the string **before** indexing, so 26 new letterforms would have sat in the table unreachable — and `learnLetterShape` lower-cased its argument, so asking for `A` would have traced the lowercase `a` and banked it under a key that reads right. **A wrong shape under a correct-looking key is worse than a refusal.** Fixed as a **fallback**, not a flip: `fontGlyph(ch)` → own letterform → case sibling → nothing. Store keys are case-sensitive; `_letterEntry(ch, exact)` keeps the sibling fallback for **writing** and refuses it for **counting**.
+>
+> ⭐ **AND THE PANEL WOULD HAVE READ GREEN OVER A THIRD OF THE JOB.** It looped `a`..`z` against `of: 26`, so with 94 glyphs banked it shows a **full bar** while every capital, digit and mark goes uncounted — and the new fallback would have made 26 traces report as 52. Now `of: 94`, counted with `exact`, broken out letters / numbers / marks in the teach viewer.
+>
+> **Verified in code:** 95/95 keys present · 0 malformed rows · every new glyph rendered to ASCII and read by eye · `glyphStrokes` real strokes for **94/94, 0 empty** · `A` vs `a` structurally distinct (4 vs 5 strokes) · `node --check` ×4 · ESM `import()` · bundle rebuilt (996.0 kb).
+>
+> ## ✅ `FLAGSAMPLE.2` SHIPPED — AND IT WAS 80 WORDS, NOT 4
+>
+> `getDefinition` consults the offline dictionary before the network — but it reads the **cache** before both. `noDef` has TTL **Infinity** by design and the disk cache restores it every boot, so **any word cached `noDef` before the offline lane existed is answered "no definition" forever and the offline dictionary is never consulted for it again.**
+>
+> ⭐ **Measured on the real 4,135-entry cache:** 195 permanent `noDef`, **80 of them words the loaded WordNet defines right now** — `touch` (27 senses), `tight` (16), `net` (12), `hell`, `american`, `australia`, `egypt`, `greece`, `rome`, plus the four the row named (`be` 14 · `look` 14 · `every` 2 · `america` 2). **All four stamped `2026-06-20T06:28:14Z`.**
+>
+> ⚠ **The 404s were correct.** `is` and `was` 404 while `are`, `were` and `been` return 200 — that API's coverage is uneven. **What was wrong is treating one source's 404 as the answer**, when the module's own header calls offline *"a peer source, not a fallback"*.
+>
+> ⭐ **`_rescueNoDefFromOffline` sits inside `_cacheGet` and HEALS rather than purges** — the offline answer replaces the stale entry, so the word is fixed permanently, the disk cache repairs itself on the next flush, and nothing is migrated or deleted. Self-extinguishing. ⛔ **`lookupStatus` read the raw Map** and was the one answer that could still say `noDef` about a definable word — **DEF-MISS keys on exactly that value.** Routed through the chokepoint now.
+>
+> **Verified against the poisoned cache:** `195 loaded → 80 healed (234 senses) → 115 still noDef`, and all 115 are correct — typos (`constpated`, `swalled`, `dumn`), contractions (`dont`, `thats`), hyphenates (`sun-rise`). `for` / `your` / `their` / `our` correctly stay `noDef`.
+>
+> ## ⏭ NEXT
+>
+> - **On the next press, check `glyph shapes: 94/94`** in the first minute. Anything below 94 prints its own failure list. `DEPLOYCHECK.6`'s expected reading moved 26 → 42 → **94** in one day; both earlier numbers are left standing in the row with the reason.
+> - **`WRITEWARM.3`** — the writing-practice loop (ABCs, numbers, words, sentences), same shape as `_practiceDrawing`. **Still gated on `letterShapes.learned` reading 94 on the box**, because practising against shapes she does not have trains against blanks.
+> - **`DEFPOS.1`** — new, filed with numbers not guesses. The offline dictionary orders senses **noun-first always**: across the 80 healed words the first sense is a noun **70×**, a verb **once**, so `be` leads with *beryllium*. Pre-existing across ~96% of her vocabulary. All senses still bind, so her knowledge is fine — **the damage is `_emitDefinition`, which is what she SAYS.** ⛔ Fix from WordNet's own tag counts, never a POS-preference table.
+> - **`DEFPOS.2`** — the `SELF:DEF-*` lane reports collision loads **19.8 → 37.3** live. The dedup fix is working (58-78 distinct, arithmetic checks out) and the load is high because the region is **tiny**, not because a counter broke. But the `OVERLAP` sweep's top row is **load 4.000 at 24.0% retrieval** — an order of magnitude below these. **Measure that lane's retrieval before concluding anything.**
+> - **`WEDGELIVE.1`** — still open and still **press-gated**, but narrowed locally this session. **Every await on the probe path is bounded** (both probes under caller-owned 20 s races; `gpuDrainWait`, the only other proxy await, enforces its own 30 s), so **`probeDeadlineHits=6` is not evidence about this wedge.** ⛔ **And the helper stamped ENTRY ONLY** — all four exits returned with `gate:probe-gpu` still set, making it the resting tag of the whole gate lane, which is why the wedge line pointed there. Now stamps `-done` on every exit (`gate:probe-gpu-done` / `-prop-done` / `-proxy-done` / `gate:probe-dead`). ⭐ **Side effect worth knowing: `_tstage` banks the OUTGOING stage's held time, so every past `teachStageMax=gate:probe-gpu` was over-attributed by all the unmarked code that ran after the probe.** Read `stageSeq` frozen-or-advancing first; the tag alone still cannot say whether it is current.
+>
+> ---
+>
+> # 🟡 2026-09-06 (4th) — THE EVENT-LOOP THEORY IS DEAD AT 5.7%, HALF THE DEF-MISS FLAGS ARE A REAL DEFECT, AND THE KNOB PANEL IS WRITABLE (PICK UP HERE)
 >
 > Gee (verbatim): *"shes ramping up"*
 > Gee (verbatim): *"Flags, issues & warnings — DEF-MISS ×6 — 6 distinct: for, be, your, their, look, our"*
