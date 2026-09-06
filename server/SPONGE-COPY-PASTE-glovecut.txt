@@ -1,0 +1,461 @@
+================================================================================
+FOR SPONGE — THE BOX NEEDS ONE MANUAL STEP BEFORE THE NEXT PRESS
+GLOVECUT · main @ 7c77f521 · both remotes · 2026-09-05
+================================================================================
+
+SHORT VERSION
+-------------
+The server stopped parsing the 1.04 GB GloVe text file at boot. It now reads a
+binary f32 pack of the same vectors, built by a small Rust tool. Load went from
+~19 s to ~0.5 s, and all 400,000 vectors were verified identical to what the old
+loader produced.
+
+⛔ THAT FILE IS BOOT-FATAL, AND THE COPY OF self-update.sh ON YOUR BOX CANNOT
+BUILD IT. If you press Update right now, the overlay lands the new code, the
+service restarts, the boot looks for a file nothing created, and you get a crash
+loop.
+
+So: ONE manual step first, then press normally. Details below, with the reason
+for each line so you can disagree with any of it.
+
+
+================================================================================
+WHY THE PRESS IS NOT SAFE AS-IS — the measurement, not a guess
+================================================================================
+
+Your box reports build fb05ff15 (committed 2026-09-05 12:39:00 -0700).
+
+  fb05ff15's deploy/self-update.sh   1,202 lines   0 occurrences of "SELFFIRST"
+  main's    deploy/self-update.sh    1,571 lines   has SELFFIRST + the new gate
+
+SELFFIRST — the block that makes the updater fetch main's copy of itself,
+validate it, install it atomically and re-exec so THIS press runs the new logic —
+landed at 1604c751, 2026-09-05 12:56:28 -0700. That is SEVENTEEN MINUTES after
+the commit your box is running. Neither commit is an ancestor of the other.
+
+⭐ The consequence: brain-server.js resolves the script from __dirname, so a press
+runs THE BOX'S COPY. Your copy predates both SELFFIRST and the new gate, so
+press #1 would deliver them and act on neither.
+
+⚠ Once you have done the one step below, this is permanently self-correcting —
+SELFFIRST keeps the updater current from then on, and no future change to
+self-update.sh will ever need a manual step again.
+
+
+================================================================================
+⚠ THIS CONTRADICTS YOUR A1 — CHECK IT YOURSELF BEFORE BELIEVING ME
+================================================================================
+
+Your A1, verbatim: "Watch the next Update press. SELFFIRST has never run on OVH.
+The box is one commit behind main. By SELFFIRST's own design the next press
+adopts and re-execs the new updater."
+
+That last sentence only holds if the box's copy ALREADY CONTAINS SELFFIRST — the
+block cannot fetch itself into existence. My read of fb05ff15 says it does not,
+and fb05ff15 is what /public-state.json reports as the deployed build. But I am
+reading git from a laptop; you are reading the box. One command settles it:
+
+    grep -c SELFFIRST /opt/unity-brain/deploy/self-update.sh
+    wc -l            /opt/unity-brain/deploy/self-update.sh
+
+  • non-zero count (and ~1303+ lines) → I am WRONG, SELFFIRST is on the box, the
+    next press re-execs into main's updater, the new gate runs, and STEP 1 BELOW
+    IS UNNECESSARY. Skip to Step 2/3.
+  • zero (and ~1202 lines)            → the box predates it. Do Step 1 first, or
+    the press restarts into a boot that needs a file the old script never built.
+
+⭐ Your own gotcha list already says this better than I can: "A press runs the
+PREVIOUS version's guards — what SELFFIRST fixes. It bit twice today." This is
+that same shape, with a boot-fatal file on the other end of it instead of a
+12 GB tmpfs stage.
+
+⭐ And doing Step 1 gives A1 its answer as a side effect: the very next press
+becomes SELFFIRST's first real run on OVH, and it should log "already the latest"
+rather than re-exec'ing — because you will have just made it the latest by hand.
+
+
+================================================================================
+STEP 1 — REQUIRED (unless the grep above came back non-zero).
+         Replace the box's updater with main's copy.
+================================================================================
+
+Run as whoever owns /opt/unity-brain (the deploy user, not root, unless root is
+what owns it). The brain keeps running throughout — this touches one file.
+
+    cd /tmp && rm -rf ual-selfupd && mkdir ual-selfupd && cd ual-selfupd
+    git clone --depth 1 --branch main --filter=blob:none --no-checkout \
+        git@git.unityailab.com:UnityAILab/If-Only-I-Had-A-Brain.git repo
+    git -C repo checkout main -- deploy/self-update.sh
+
+    # validate BEFORE installing — same two checks SELFFIRST itself uses
+    bash -n repo/deploy/self-update.sh && \
+    bash repo/deploy/self-update.sh --self-test && \
+    echo "VALIDATED — safe to install"
+
+    # install by RENAME, never cp/cat over the live path
+    cp -p /opt/unity-brain/deploy/self-update.sh /opt/unity-brain/deploy/self-update.sh.bak-fb05ff15
+    chmod --reference=/opt/unity-brain/deploy/self-update.sh repo/deploy/self-update.sh
+    mv -f repo/deploy/self-update.sh /opt/unity-brain/deploy/self-update.sh
+
+    grep -c SELFFIRST /opt/unity-brain/deploy/self-update.sh   # expect a non-zero count
+    wc -l /opt/unity-brain/deploy/self-update.sh               # expect 1571
+
+⚠ mv, not cp. bash reads a script by byte offset as it executes; overwriting a
+running script in place makes the shell resume at its old offset inside NEW text
+and execute whatever fragment is there. mv replaces the directory entry and
+leaves any running process on the old inode. (That trap is documented in the
+script itself — I did not discover it, I am repeating it so nobody "simplifies"
+this line.)
+
+
+================================================================================
+STEP 2 — RECOMMENDED, NOT REQUIRED. Pre-build the converter.
+================================================================================
+
+If you skip this, the press will install a minimal Rust toolchain into the
+service user's ~/.cargo (one time, ~200 MB) and build the tool itself. That works,
+but it needs two things rustup does NOT provide:
+
+  • a C linker — Rust links with cc. Without build-essential the toolchain
+    installs fine and the BUILD fails with a linker error that never mentions
+    the linker as the cause. The new script now checks and says so in one line,
+    but it still cannot fix it.
+  • a writable $HOME for the service user, for ~/.cargo and ~/.rustup.
+
+Either satisfy those:
+
+    sudo apt-get install -y build-essential
+    # and confirm the service user has a real, writable home
+
+…or dodge the whole branch by handing the press a finished binary:
+
+    cd /tmp && rm -rf ual-glove && git clone --depth 1 --branch main \
+        git@git.unityailab.com:UnityAILab/If-Only-I-Had-A-Brain.git ual-glove
+    cd ual-glove
+    cargo build --release -p unity-weights --bin unity-glove
+    mkdir -p /opt/unity-brain/bin
+    install -m 0755 target/release/unity-glove /opt/unity-brain/bin/unity-glove
+    /opt/unity-brain/bin/unity-glove --help      # sanity
+
+The press looks for /opt/unity-brain/bin/unity-glove FIRST and skips the
+toolchain install entirely if it is there.
+
+⚠ /bin and /.cargo-target were added to the overlay's exclude list in this same
+change, so rsync --delete will not wipe either on future presses. Without that
+exclude the "second press costs nothing" claim would have been false — worth
+knowing that I checked rather than assumed.
+
+⭐ You can also build the table yourself right now and the press will find it
+already current and do nothing:
+
+    /opt/unity-brain/bin/unity-glove ensure \
+        /opt/unity-brain/corpora/glove.6B.300d.txt \
+        /opt/unity-brain/corpora/glove.6B.300d.bin
+
+    # ~4 s, writes ~485 MB. Optional full check (~5 s, reads the text back):
+    /opt/unity-brain/bin/unity-glove verify \
+        /opt/unity-brain/corpora/glove.6B.300d.bin \
+        /opt/unity-brain/corpora/glove.6B.300d.txt
+
+
+================================================================================
+STEP 3 — PRESS. Update & SAVESTART, not fresh walk.
+================================================================================
+
+Savestart because there is nothing to lose by keeping state and something to
+lose by wiping it, and because a fresh walk arms .force-fresh before the script
+even starts. Every gate in the script disarms it on abort, but not arming it is
+better than relying on that.
+
+WATCH FOR, in /opt/unity-brain/self-update.log:
+
+    SELFFIRST — a NEWER deploy/self-update.sh was fetched…      (or "already the latest")
+    embeddings OK — GloVe present at …
+    embeddings — binary table READY at …/corpora/glove.6B.300d.bin (484956516 bytes)
+
+Then in the service log:
+
+    [Embeddings] Reading …/corpora/glove.6B.300d.bin (binary table)...
+    [Embeddings]   400,000 vectors mapped in ~400 ms
+    [Brain] Semantic embeddings ready: { pretrained: 400000, … loaded: true }
+
+And from outside:
+
+    curl -s https://if-only-i-had-a-brain.git.unityailab.com/public-state.json \
+      | head -c 300      # state.build.short should have advanced past fb05ff15
+
+
+================================================================================
+IF IT REFUSES — that is the gate working, and nothing is broken
+================================================================================
+
+Every failure path in the new gate calls _abort, which does NOT restart the
+service and DOES disarm .force-fresh. She keeps running. The log names which of
+the five checks failed: magic, format version 2, dim 300, source byte length
+(staleness), exact file length.
+
+⚠ ONE HONEST CAVEAT, because it is the one thing I would want told to me: the
+gate runs AFTER the rsync overlay, like the existing books and GloVe gates. So an
+abort leaves the NEW code on disk with the OLD process still running it from
+memory. She is up and fine — but the next restart from ANY cause (reboot, OOM,
+systemd) would boot the new code and stop on the missing table. If the press
+aborts here, fix it before you walk away; do not leave it aborted overnight.
+
+The fix is always the same and the log prints it:
+
+    cd /opt/unity-brain && ./bin/unity-glove ensure \
+        corpora/glove.6B.300d.txt corpora/glove.6B.300d.bin
+
+Full rollback, if you want the old behaviour back for any reason:
+
+    mv -f /opt/unity-brain/deploy/self-update.sh.bak-fb05ff15 \
+          /opt/unity-brain/deploy/self-update.sh
+    # then redeploy from a commit before 7c77f521
+
+
+================================================================================
+NO NEW BINARY RELEASE IS NEEDED
+================================================================================
+
+To be explicit, because "a new binary" is ambiguous here:
+
+  • THE DONOR (unity-donor-*.exe, donor-v* tags) — UNCHANGED. No new release, no
+    version bump, no re-download for donors. Nothing in this change touches the
+    donor protocol, the frame format, or the version gate.
+  • THE ONLY new executable is unity-glove, and it is a BUILD-TIME TOOL that runs
+    on the box during a press and writes a file. It is not a service, it does not
+    listen on anything, and nothing calls it at runtime.
+  • No nginx change, no systemd change, no new port, no new env var you must set.
+    (UAL_RUST_BOOTSTRAP=0 exists if you want to REFUSE the toolchain install; the
+    default 1 is the permissive one.)
+
+
+================================================================================
+WHAT ACTUALLY CHANGED, IF YOU WANT TO REVIEW RATHER THAN TRUST
+================================================================================
+
+js/brain/embeddings.js
+    The Node branch's readline + parseFloat loop is DELETED. It reads the binary
+    table, builds one Float32Array VIEW per word over a single buffer, and
+    refuses on: wrong magic, wrong format version, wrong dim, stale source, or a
+    length that is not EXACTLY what the header describes.
+
+crates/unity-weights/src/glove.rs + src/bin/unity-glove.rs
+    The converter and its CLI (ensure / convert / verify / info). Exit codes are
+    distinct on purpose: 2 = "I could not read it", 3 = "I read it and it is
+    wrong" — those call for opposite responses and one non-zero would merge them.
+
+deploy/self-update.sh
+    The new gate, plus two overlay excludes (/bin, /.cargo-target).
+
+server/glove-provision.js + server/brain-server.js
+    A SEPARATE BUG, found while testing this properly. The launchers cd server
+    before starting node, so the boot provisioner resolved corpora/ from cwd
+    alone, missed the 1.04 GB table one directory up, and started downloading a
+    SECOND COPY (caught at 246 MB of 862 MB). embeddings.js has always walked a
+    ladder — cwd, cwd/.., cwd/server — to find that same file; the provisioner
+    not walking it is how the two disagreed about whether it exists. Fixed. This
+    would have been hitting every local launch, and possibly the box depending on
+    its WorkingDirectory.
+
+windows/start.bat, windows/Savestart.bat, linux/start.sh, linux/Savestart.sh
+    Build the table at step 5, beside the existing GloVe download. Warns rather
+    than failing when cargo is absent.
+
+
+================================================================================
+THINGS I DID WRONG THAT ARE WORTH KNOWING
+================================================================================
+
+1. The first draft of the JS reader wrote the header length as 36 bytes instead
+   of 8+4+4+4+4+8+8 = 40. Every field landed four bytes early. It loaded 400,000
+   vectors at the right dimension, REPORTED SUCCESS, and scored ~0.00 cosine
+   against the real table on every probe word. An off-by-four in a binary reader
+   does not fail, it lies. The length check is exact equality now, which catches
+   that with no harness at all.
+
+2. The original "bit-exact" verification proved less than it sounded: the
+   verifier used the converter's own f32 accumulation, so it compared the code
+   against itself. The real check runs the shipped loader (from
+   git show HEAD:js/brain/embeddings.js) against the new one over the whole
+   table — 400,000/400,000 identical, 0 differing, 0 missing, 0 extra.
+
+3. Format v1 did not pad the vocabulary, so the matrix started at offset 2 mod 4.
+   Invisible to Rust (from_le_bytes does not care) and fatal to
+   new Float32Array(buf, off, n), which throws unless the offset is 4-aligned.
+   v2 pads. A format decision that is free in the language that WRITES the file
+   can be the entire cost in the language that READS it.
+
+4. I first tested by running node server/brain-server.js by hand — wrong cwd,
+   wrong heap flags, no control plane, and DREAM_NO_AUTO_GPU unset so it tried to
+   auto-launch a browser donor. Gee caught it. Re-running through the real
+   launcher is what exposed the 862 MB re-download in item 3 of the change list.
+
+
+================================================================================
+YOUR WHOLE LIST, ITEM BY ITEM — AND NO, IT IS NOT ALL DONE
+================================================================================
+
+Straight answer first: ONE of the six JS subsystems you listed is actually cut
+over. The other five are ported, tested against the shipped implementation, and
+WIRED TO NOTHING. brain-server.js and gpu.js still run the brain.
+
+A1  Watch the next Update press / SELFFIRST has never run on OVH
+    ⏳ NEEDS YOU. And see the section above — I think your premise is off by one
+       commit, and the grep decides it.
+
+A2  Diagnose the git lfs pull runaway; bytes-written bound vs store size
+    ✅ SHIPPED. UAL_LFS_MAX_WRITE_PCT (default 150, 0 disables). Sizes the LFS
+       store with du -sb at arm time; the existing loop kills the pull when
+       write_bytes crosses it.
+    ⚠ ROOT CAUSE STILL NOT DIAGNOSED and not guessed at — both your candidates
+       stay open. What this adds is evidence: the kill line prints bytes written
+       against store size, so the next occurrence arrives with its own numbers.
+    ✅ A2b DONE — I ACTED ON YOUR RULING INSTEAD OF ASKING YOU TO REPEAT IT.
+       An earlier draft of this document asked you to rule on whether your
+       CORRECTION 1 invalidates the LFS STALL watchdog. It does, you already
+       said so, and the sentence was sitting in your own A3: "Do not use
+       write_bytes == 0 as the signal ... I killed a working transfer on that
+       reading. Use destination growth." A guard that can kill a healthy
+       transfer does not get to wait for a second opinion. Retracted the ask.
+       The detector is NOT deleted — it caught the real 2026-09-04 outage, and
+       deleting it would trade a false positive for a false negative on a
+       pathology that has actually happened here. The kill now needs TWO
+       witnesses that fail in different ways: write_bytes frozen
+       (page-cache-BLIND) AND the destination tree $FTMP/bw not growing
+       (page-cache-IMMUNE — du reads the filesystem, not the process's
+       accounting). Exercised across all four quadrants:
+           healthy transfer, writes cached (your case)  -> SURVIVE
+           genuine wedge (2026-09-04 signature)         -> KILL
+           writes moving, destination flat              -> SURVIVE
+           everything moving                            -> SURVIVE
+       If du is absent the second witness cannot testify and the guard does NOT
+       kill on the one signal you showed to be unreliable; the wall clock stays
+       the backstop. Silence beats a confident wrong verdict.
+       ⚠ Disagree and it comes straight back out — you have the box and the
+       failure history. But you should not have to answer a question you had
+       already answered.
+
+A3  Wedge watchdog for the fields rsync, on DESTINATION GROWTH not write_bytes
+    ✅ SHIPPED, built the way you specified. UAL_FIELDS_STALL_SEC (300) /
+       UAL_FIELDS_SAMPLE_SEC (30); samples du -sb on the destination.
+
+A4  Fields at ~44 GB of ~100 GB
+    ✅ Acknowledged as low priority per your own note. Untouched.
+
+B0  unity-protocol
+    ✅ DONE. frames.rs + protocol.rs moved out of donor-app by git mv; donor
+       still builds and still self-reports 0.3.36. Two couplings had to break:
+       env!("CARGO_PKG_VERSION") (would have compiled and reported the WRONG
+       crate) and crate::mindspace::OPS. Both are caller-supplied parameters now.
+       The rule that fell out: the protocol crate describes the MESSAGE, it does
+       not know the FACTS that go in it.
+
+B1  unity-deploy binary
+    🟡 BUILT, 42 tests — both press gates, both transfer guards, a preflight
+       verb. NOT ACCEPTED: it has never done a real deploy, which is your gate,
+       not mine.
+
+B2  unity-weights + mmap
+    🟡 BUILT, 43 tests. Precision probe reproduces your numbers independently
+       (2.661e-8 / 151.5 dB / 0 flips vs your 2.7e-8 / 151.4 / 0). UBWT
+       checkpoints written by Rust are read by the REAL JS loader, 11/11.
+       NOT WIRED IN — the running server still uses its own CSR code.
+
+B3  unity-donor
+    🟡 BUILT, 21 tests. The readback assembler is pinned BY DIGEST to the
+       shipped _applyValuesChunk (in-order 6861181660107991221, shuffled
+       16787698341258038776). Dispatch/wire need a live donor, and donorCount is
+       still 0.
+
+B4  unity-state + unity-sizing
+    🟡 BUILT, 15 + 15 tests. Sizing is 18/18 parity against the shipped JS
+       arithmetic and reproduces the documented boot exactly (capacity
+       536,870,912 → tier 3 → 16,348 MB). NOT WIRED IN.
+    ⚠ It reproduces the §7 landmine rather than quietly fixing it: self-seeding
+       still sizes from an ASSUMED donor baseline, so with zero donors it asks
+       for tier 3. That is what the running brain does, and a port that silently
+       changed it would be a second authority.
+
+B5  unity-http + unity-coordinator — "risk: high, the cutover"
+    🟡 STARTED, 24 + 17 tests. The privilege gate is 180/180 against the shipped
+       requireLoopback over 15 addresses × proxy-auth on/off × 6 header values,
+       matching the exit AND the 403 body. The coordinator RUNS and SERVES.
+    ⛔ TWO SECURITY FINDINGS, BOTH IN THE NEW CODE, BOTH CLOSED:
+       (1) GET /shutdown passed the privilege gate — found by a dead-code
+           warning that `method` was parsed and never checked. That is a
+           drive-by: an <img src> on any page the operator visits fires it from
+           loopback, and the gate CANNOT catch it because the request genuinely
+           is loopback. Mutating routes are POST-only now; GET → 405 Allow: POST.
+       (2) Deployed, loopback ALONE is not authorization — behind the Forgejo
+           proxy every caller is loopback. A port implementing only that layer
+           looks perfect locally and is wide open in production.
+    ⛔ THE ENDPOINTS ANSWER 501 BY DESIGN. The gate allows, the action still
+       lives in brain-server.js. No WS lane. The JS coordinator cannot retire
+       until that is real, and NOTHING before it makes brain-server.js
+       deletable.
+
+B6  Minimum-downtime restart
+    (a) binary GloVe  ✅ DONE AND CUT OVER — this document.
+    (b) socket handover                 ⏳ not started
+    (c) shared mmap'd checkpoint        ⏳ not started
+    ⛔ dlopen hot-reload: not built, per your instruction.
+
+B7  Extract curriculum/vocabulary data — "do this early, it shrinks everything"
+    ✅ DONE. An earlier draft of this document closed it as not-worth-doing on
+       the grounds that the payload is 655 KB rather than 3.37 MB and that
+       curriculum.js is ~95% logic. Both facts are true and neither is the
+       point: your sentence was "data wearing a .js extension", which is about
+       KIND, not magnitude. I answered a question you had not asked. Retracted.
+       The nineteen js/brain/*-vocabulary.js modules — 676 KB, 5,179 lines, each
+       one a single `export const G5_VOCABULARY = [...]` array — now live at
+       corpora/vocabulary/<grade>.json.
+           .js source  156,715 -> 151,692   (-5,023)
+       Not one word of vocabulary changed, and that was proven BEFORE anything
+       was deleted: the JSON was generated FROM the live exports, then compared
+       back through the NEW registry against the still-present .js modules —
+       19/19 grades, 56,527 words, 19,340 unique, ZERO differing. Confirmed on a
+       real boot afterwards: the dashboard denominator kVocabTotal reads 19,340,
+       the same value as before.
+       ⛔ The generator moved too and that was the load-bearing half —
+       .claude/scripts/gen-grade-vocab.mjs emits JSON now. Leaving it writing
+       .js would silently resurrect all nineteen on the next run and create two
+       sources of truth. A migration that does not move the generator has not
+       moved anything.
+       ⚠ curriculum.js itself is NOT touched and should not be — it is logic,
+       and the ~5% of it that looks like string arrays is interleaved with the
+       teach calls that consume it. If you meant that half too, say so and I
+       will price it properly rather than guessing at your intent again.
+
+SO, PLAINLY: your Section A is fully done except A1, which needs a press on the
+box. Section B has one item cut over (B6a), five built-and-unwired, and B7 done.
+The two that still stand between us and deleting real JS are B5's coordinator and
+B2's weights in-process — and B5 is the one you called "risk: high, the cutover",
+which it is.
+
+
+================================================================================
+STILL OPEN, NOT ASKING YOU TO DO ANYTHING ABOUT IT
+================================================================================
+
+• SPONGEHAND.A2b — your CORRECTION 1 (write_bytes is not a valid stall signal,
+  page cache makes a healthy transfer read as frozen) undermines the LFS stall
+  watchdog that caught a real outage. I filed it rather than changing a guard on
+  my own reading. Your ruling.
+
+• The remaining crates — sizing, state, donor-session, http, coordinator — are
+  proven against the shipped JS and still not wired in. This was the first one
+  cut over. Wiring the next two is a different shape of problem: this one works
+  because the Rust tool produces a FILE at deploy time and the boot merely reads
+  it, so there is no process dependency in the boot path. sizing and state
+  compute a DECISION, not an artefact, so they need a real subprocess or an FFI
+  boundary, and no-fallbacks bans a "use the JS then" branch either way. Not
+  guessing that one — it gets decided when one of them is actually started.
+
+• Counter, honestly: .js 156,541 → 156,715, .rs 14,454 → 14,661. The parse loop
+  is gone and the file still GREW by 174 lines, because the documented binary
+  reader is longer than the loop it replaced. This cutover moves ~19 seconds of
+  work per boot into Rust; it does not move thousands of lines. Those move when
+  unity-coordinator can serve.
+
+================================================================================

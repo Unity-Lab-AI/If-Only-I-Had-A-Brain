@@ -4782,8 +4782,9 @@ export class Curriculum {
               const _g = this._currentGrade || 'kindergarten';
               let _words = [];
               if (_g === 'kindergarten' || _g === 'pre-K') {
-                const { K_VOCABULARY } = await import('./k-vocabulary.js');
-                if (Array.isArray(K_VOCABULARY)) _words = K_VOCABULARY;
+                const { kVocabulary } = await import('./grade-vocabulary.js');
+                const _kv = await kVocabulary();
+                if (Array.isArray(_kv)) _words = _kv;
               } else {
                 const { gradeVocabularyFor } = await import('./grade-vocabulary.js');
                 const _gv = await gradeVocabularyFor(_g);
@@ -5278,8 +5279,9 @@ export class Curriculum {
     let words = [];
     try {
       if (grade === 'kindergarten' || grade === 'pre-K') {
-        const { K_VOCABULARY } = await import('./k-vocabulary.js');
-        if (Array.isArray(K_VOCABULARY)) words = K_VOCABULARY;
+        const { kVocabulary } = await import('./grade-vocabulary.js');
+        const kv = await kVocabulary();
+        if (Array.isArray(kv)) words = kv;
       } else {
         const { gradeVocabularyFor } = await import('./grade-vocabulary.js');
         const gv = await gradeVocabularyFor(grade);
@@ -11461,8 +11463,9 @@ export class Curriculum {
     // 2. K_VOCABULARY definition-seed list (dynamic import — matches how
     //    the rest of the curriculum loads it).
     try {
-      const { K_VOCABULARY } = await import('./k-vocabulary.js');
-      if (Array.isArray(K_VOCABULARY)) for (const w of K_VOCABULARY) addTok(w);
+      const { kVocabulary } = await import('./grade-vocabulary.js');
+      const _kv = await kVocabulary();
+      if (Array.isArray(_kv)) for (const w of _kv) addTok(w);
     } catch { /* non-fatal — TRAIN_BANKS alone still blocks the bleed */ }
     // 3. Runtime taught-sets — grows the allow-set as she actually
     //    learns more (chat learnWord of grade-appropriate words, per-cell
@@ -11710,7 +11713,8 @@ export class Curriculum {
           // populated. The macro-phase fills the gap — dashboard reads
           // this when no real cell is active.
           this._currentMacroPhase = '📚 K-VOCAB-PREFETCH (background warm)';
-          const { K_VOCABULARY } = await import('./k-vocabulary.js');
+          const { kVocabulary } = await import('./grade-vocabulary.js');
+          const K_VOCABULARY = await kVocabulary();
           if (Array.isArray(K_VOCABULARY) && K_VOCABULARY.length > 0) {
             // Prefetch fires FIRE-AND-FORGET in the background — does NOT
             // block curriculum progress. Earlier blocking variant could
