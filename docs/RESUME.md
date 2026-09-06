@@ -1,6 +1,53 @@
 # RESUME — Session Pickup Brief
 
-> # 🟢 2026-09-06 (latest) — THE FRESH WALK IS RUNNING, AND THE FIRST PRESS BOOTED HER WITHOUT A LANGUAGE SUBSYSTEM (PICK UP HERE)
+> # 🟢 2026-09-06 (latest, night) — ONE PASS FAILS ON INTERFERENCE, NOT ON DEPOSIT SIZE — THAT IS THE NEXT PIECE OF WORK (PICK UP HERE)
+>
+> Gee (verbatim): *"and remembr we are not doing 10s of passes on anything anymore a brain learns stuff once.. it doesnta person doesnt read every text in their life 10x they read it once and usually never again"*
+> Gee (verbatim, correcting my framing): *"we adjust the nobs not accept a weak deposit"*
+>
+> ## ⛔ START HERE — THE ONE THING TO CARRY FORWARD
+>
+> **She is already NOT doing tens of passes.** `DREAM_REP_COMPRESS=40` with `DREAM_REP_COMPRESS_FLOOR=4` and `DREAM_REP_COMPRESS_LR_CEIL=0.60` means an authored `reps: 100` is **already 4 actual presentations**. Convergence, computed: authored `100 @ lr 0.0468 → 99.2%` of asymptote; actual `4 @ lr 0.60 → 97.4%`.
+>
+> ⛔ **I FIRST PRESENTED THE REMAINING GAP AS A MENU OF WEAKER DEPOSITS (1 rep = 60%, 2 = 84%, 3 = 93.6%). THAT FRAMING WAS WRONG AND WAS CORRECTED.** The design rule is *adjust the knobs so one pass acts like many* — never accept a weaker deposit.
+>
+> ⭐⭐ **AND THE CODE ALREADY SAYS WHICH KNOB.** From `curriculum.js`, verbatim: *"THE RISK IS NOT CONVERGENCE, IT IS INTERFERENCE. Reps run rep-major … that interleaving is what stops pair 7,250 flattening pair 1."* and *"at n=1 there is no interleaved reinforcement left at all — a pair writes once and every later pair's interference lands on it with no chance to re-assert."*
+>
+> **So a single pass does not fail because the step is too small. It fails because later pairs trample it and it never comes back.** `lr` is therefore the WRONG knob — it is already at a MEASURED ceiling (0.60 is *"the highest value that is MEASURED clean"*, and raising it *"trades ~6% retrieval for two presentations"*).
+>
+> ⭐ **THE RIGHT KNOB IS COLLISION LOAD:** `P · K² / COLS`, dominated by `K²`. Production = `7,250 × 8² / 1,885,340 = 0.246` (`semTopK` = 8). **Halving K to 4 quarters the collision load**, and the existing REPCOMP sweep shows retrieval improves as collision load falls. **The n=1 regime was never measured** — `REPCOMP.4` says so explicitly and forbids collapsing to a single rep *for that reason*, not on principle.
+>
+> ## ▶ THE NEXT PIECE OF WORK, ALREADY SCOPED
+>
+> Extend the REPCOMP.3 experiment to **n = 1**, sweeping `semTopK` (and region width) rather than `lr`, scoring **retrieval accuracy** — given a pre pattern, does the correct post still win the argmax against every other candidate. Use the REAL `SparseMatrix` + REAL `ojaUpdate` (both confirmed importable from `js/brain/sparse-matrix.js`; `SparseMatrix.prototype.ojaUpdate` exists). ⚠ **Overlapping post patterns are mandatory** — the first REPCOMP run used one-hot posts, scored 100% everywhere including 1×, and was thrown out as *"a harness that cannot fail"*.
+>
+> ## ✅ WHAT SHIPPED TODAY AND IS LIVE — `main` @ `871a73a0`, both remotes
+>
+> | shipped | what it fixes |
+> |---|---|
+> | probe caller deadline + unconditional ack timers | the wedge that froze the walk 39 min with an idle CPU |
+> | `_teachStageSeq` | ⭐ **frozen seq + climbing age = the tag is STALE**; I read that tag wrong in BOTH directions in one day |
+> | wedge watchdog | `NOT TEACHING for Nmin` with frozen/advancing verdict, instead of 52 identical heartbeats |
+> | gate-block + cell-runner stage stamps | the unwrapped regions where BOTH wedges lived |
+> | identity injection 30 → 1 traversals | 23–46% of the main thread returned; `stepsPerSec` 17→60 → **1,364** |
+> | alert ring | the console ring retained **8 SECONDS** under teach load; alerts now survive a flood |
+> | `bootFatal` + teach-view banner | a brain that cannot learn can no longer read healthy |
+> | first-person course identity + all-cells-framed | the frame cap had become the binding constraint |
+> | teach bus → 6 lanes | her first-person training is visible for the first time |
+> | `--exclude 'vocabulary'` | ⛔ **every press was deleting her word lists** |
+> | 11 admin calls bounded | no control hangs during the outage you'd press it in |
+>
+> ## ⚠ OPEN, AND DELIBERATELY NOT CLOSED
+>
+> - **`STAGESEQ.3`** — the evening wedge is **not proven fixed**. Every unbounded await I could find is bounded and the next one will name itself. **Close on a live reading, never on reasoning.**
+> - **`FIRSTPERSON.3`** — answered: the cap DID bind (`skippedCapped` 9→13 while `skippedReentrant` stayed flat). Cap raised; **units-per-cell is still unmeasured** — read `selfFrame.maxUnitsAnyCell` / `avgUnitsPerCell` after a cell completes and RE-PRICE.
+> - **`MEMTHROTTLE.3`** is fixed but **INERT** until `unity-brain-ctl` is restarted **by hand** (`BUTTONAUDIT.4`) — the deploy restarts `unity-brain` and nothing else. **A press does not deliver it.**
+> - **`DOCLINE.2`** — 182 lines carry the operator's name in source across 15 files (row says 89; it counted two files). ⚠ Needs a ruling: the placement LAW bans the name from source, `feedback_call_him_Gee` bans "operator". **Not swept unilaterally.**
+> - Board: **59 open · 30 in-progress · 1 fenced quotation**, after 178 completed rows were archived byte-for-byte (md5 `71fca99ded721b4d7f14e226257505bb`, verified equal before removal).
+>
+> ---
+>
+> # 2026-09-06 — THE FRESH WALK IS RUNNING, AND THE FIRST PRESS BOOTED HER WITHOUT A LANGUAGE SUBSYSTEM
 >
 > Gee (verbatim): *"it deployed: build 568ee61e · main --- is that correct? you ready to connect the pod?"*
 > Gee (verbatim): *"moniter her make sure shes doing everything correctly without errors take nots of issues"*
