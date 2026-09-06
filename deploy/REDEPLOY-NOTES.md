@@ -327,6 +327,18 @@ throws and the boot answers *"Boot STOPS here by design (NO FALLBACKS)"*; with
    installs the minimal toolchain (`UAL_RUST_BOOTSTRAP=0` refuses that and demands a
    prebuilt binary instead). Artefacts go to `$BACKEND_DIR/.cargo-target`, inside the
    overlay's exclude zone, so the second press costs nothing.
+2c. ⛔⛔ **NOT LIVE YET, AND WHEN IT GOES LIVE IT HAS A PRECONDITION: `unity-coordinator` AS THE
+   FRONT DOOR MEANS THERE ARE TWO DOORS TO THE BRAIN.** Built 2026-09-05 and proven against the
+   running brain locally — the Rust coordinator owns the socket, the routing table, the privilege
+   gate and the static files, and forwards anything needing cognition to Node on loopback
+   (`--upstream=<port>`, which is also the rollback: without it nothing changes). **Today nginx
+   talks to Node directly; after the cutover nginx talks to the coordinator AND NODE IS STILL
+   LISTENING.** Before pointing nginx at it: **bind Node loopback-only and make the coordinator
+   the only thing nginx proxies to.** Otherwise the old door stays open and the new gate is
+   decoration — and the gate is the point, since it is the audited implementation that closed the
+   `GET /shutdown` drive-by. ⚠ Also set `UAL_PROXY_AUTH=1` on **both** processes: behind the hop
+   every request Node sees is loopback, so its own loopback check is satisfied by construction and
+   the vouched `X-UAL-User` is the only thing left deciding.
 3. **The gate now gates GloVe too** (`UAL_GLOVE_MIN_BYTES`, default 100 MB). Existence is
    not the check: a pointer stub is a real file, so both the size and the first 40 bytes
    are read, and a stub and a half-finished transfer are reported as the different

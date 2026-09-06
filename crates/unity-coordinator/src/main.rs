@@ -18,6 +18,7 @@
 
 mod http;
 mod static_files;
+mod upstream;
 
 use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
@@ -38,6 +39,10 @@ struct Ctx {
     proxy_auth: bool,
     statics: Option<static_files::StaticRoot>,
     started: std::time::Instant,
+    /// Where the Node brain listens. `None` = no upstream configured, and every
+    /// cognition endpoint then answers **501 naming that fact** rather than a
+    /// plausible empty shape.
+    upstream: Option<upstream::Upstream>,
 }
 
 fn main() {
@@ -67,7 +72,38 @@ fn main() {
         if proxy_auth { "privileged endpoints ALSO require a proxy-vouched X-UAL-User" }
         else { "privileged endpoints are loopback-only (local dev)" });
 
-    let ctx = std::sync::Arc::new(Ctx { proxy_auth, statics, started: std::time::Instant::now() });
+    // ⭐ THE CUTOVER LEVER. With `--upstream=<port>` this process becomes the
+    // FRONT DOOR: it owns the socket, the routing table, the privilege gate and
+    // the static files, and forwards anything that needs cognition to the Node
+    // brain. Without it, nothing changes and the endpoints still say 501 — so
+    // the flag is also the rollback.
+    let upstream = arg("upstream")
+        .and_then(|v| v.parse::<u16>().ok())
+        .map(upstream::Upstream::loopback);
+    match &upstream {
+        Some(u) => println!(
+            "[coordinator] upstream: {}:{} — cognition endpoints are FORWARDED to the Node brain; this process is the front door",
+            u.host, u.port
+        ),
+        None => println!(
+            "[coordinator] upstream: none (--upstream=<port> to enable) — cognition endpoints answer 501 by design"
+        ),
+    }
+    if upstream.is_some() && !proxy_auth {
+        // ⚠ Said out loud because the combination is safe locally and wrong in
+        // production: behind the proxy EVERY request the brain sees is loopback,
+        // so if the brain is also running without proxy-auth its own gate is
+        // satisfied by construction and this process is the only thing left
+        // guarding /shutdown.
+        println!("[coordinator] ⚠ upstream set with proxy-auth OFF — fine for local dev, and in production it means THIS process is the only gate the brain has. Set UAL_PROXY_AUTH=1 on both.");
+    }
+
+    let ctx = std::sync::Arc::new(Ctx {
+        proxy_auth,
+        statics,
+        started: std::time::Instant::now(),
+        upstream,
+    });
 
     for conn in listener.incoming() {
         match conn {
@@ -115,10 +151,31 @@ fn route(req: &http::Request, peer: &str, ctx: &Ctx) -> http::Response {
                 "/health" => http::Response::json(200, format!(
                     r#"{{"ok":true,"service":"unity-coordinator","uptimeSec":{},"proxyAuth":{}}}"#,
                     ctx.started.elapsed().as_secs(), ctx.proxy_auth)).no_store(),
-                _ if r.access == Access::Privileged => http::Response::json(501, format!(
-                    r#"{{"error":"not implemented in unity-coordinator yet","path":"{path}","note":"the privilege gate ALLOWED this caller; the action itself still lives in brain-server.js"}}"#)),
-                _ => http::Response::json(501, format!(
-                    r#"{{"error":"not implemented in unity-coordinator yet","path":"{path}"}}"#)),
+                // ⭐ EVERYTHING ELSE NEEDS THE BRAIN, so it goes to the brain.
+                //
+                // ⛔⛔ THE IDENTITY WE FORWARD IS THE ONE **WE** VALIDATED, AND
+                // ONLY FOR A ROUTE WHOSE GATE ACTUALLY CHECKED IT. `check()`
+                // validates `x-ual-user` only on a Privileged route with
+                // proxy-auth on; on a Public route it is never examined, so
+                // vouching for it there would be laundering an unvalidated
+                // client header into a trusted one. That is the whole
+                // header-smuggling hazard, and the narrowness of this condition
+                // is the fix — see `upstream::hop_by_hop`, which drops the
+                // inbound copy unconditionally.
+                _ => match &ctx.upstream {
+                    Some(up) => {
+                        let vouched = if ctx.proxy_auth && r.access == Access::Privileged {
+                            ual
+                        } else {
+                            None
+                        };
+                        upstream::forward(req, up, peer, vouched)
+                    }
+                    None if r.access == Access::Privileged => http::Response::json(501, format!(
+                        r#"{{"error":"not implemented in unity-coordinator yet","path":"{path}","note":"the privilege gate ALLOWED this caller; the action itself still lives in brain-server.js. Start with --upstream=<port> to forward it there."}}"#)),
+                    None => http::Response::json(501, format!(
+                        r#"{{"error":"not implemented in unity-coordinator yet","path":"{path}","note":"start with --upstream=<port> to forward this to the Node brain"}}"#)),
+                },
             }
         }
         Err(RequestDenied::MethodNotAllowed { allowed }) => {

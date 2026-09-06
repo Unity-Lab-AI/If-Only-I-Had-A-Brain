@@ -469,6 +469,35 @@ retired only when `unity-deploy` has done a real deploy on a real box.
 | 4 | `unity-state`, `unity-sizing` | medium | yes — one home for the wipe-causing arithmetic |
 | 5 | `unity-http` + `unity-coordinator`; JS coordinator retired | high | the cutover |
 
+> ### ⭐ PHASE 5 — THE FRONT DOOR MOVES FIRST, AND THE PLAN'S OWN ORDERING WAS THE THING TO FIX (2026-09-05)
+>
+> *"34 endpoints, the `UAL_PROXY_AUTH` / `X-UAL-User` model, then retire the JS
+> coordinator"* — **the first and third clauses have the entire brain between
+> them.** Every one of those endpoints reads cognition state, and that state is
+> **34,060 lines of `server/`** plus `js/brain/`. **Porting the endpoints
+> natively IS the rewrite; it is not a step toward it**, so treating phase 5 as
+> "write 34 handlers" would stall until phases 2-4 finished the brain.
+>
+> **Inverted: the front door moves first and the cognition follows.**
+> `unity-coordinator` takes the socket, the routing table, the privilege gate and
+> the static files. Anything needing the brain is forwarded to the Node process
+> on a loopback port (`--upstream=<port>`, which is also the rollback). This
+> deletes the JS HTTP layer *now*, puts the gate that guards `/shutdown` in the
+> audited implementation *in production*, and lets each endpoint migrate from
+> proxied to native later **without the front door changing at all**.
+>
+> ⚠ It costs one loopback hop, and it introduces a real precondition:
+> **⛔ THERE ARE NOW TWO DOORS.** nginx talks to the coordinator and Node is
+> still listening. **Node must bind loopback-only and nginx must point at the
+> coordinator alone**, or the old door is open and the new gate is decoration.
+>
+> ⛔ **A framing bug shipped for ten minutes here and only a body-parse caught
+> it:** Node answers chunked, and stripping the connection-scoped
+> `Transfer-Encoding` header *without decoding the body* returns HTTP 200 with a
+> plausible byte count and raw chunk framing inside it. **A wrong answer in a
+> framing layer does not fail, it lies** — the same shape as the GloVe header
+> off-by-four the same day.
+
 ⚠ Phases 2-4 are where a mistake costs a walk. Every one of them should ship
 behind a flag with the JS path intact, so a bad boot is one restart from the old
 behaviour.
