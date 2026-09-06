@@ -43,6 +43,20 @@ const { execSync } = require('child_process');
 // exported so the BOOT allocator (brain-server.js SELF-SEEDING BOOT) and the
 // runtime decision layer read the SAME ladder (no drift). Size gates on the
 // size-driver capacity; minCommunityMB/minDonors are telemetry/legacy fields.
+/* ⏱ THE READBACK IDLE WINDOW — how long the donor may go SILENT before a values
+ * pull is abandoned. Not a total-transfer budget: the deadline re-arms on every
+ * chunk, so a slow-but-moving transfer is never killed.
+ *
+ * ⚠ DERIVED, NOT PICKED. The measured wire rate is ~39 MB/s and the chunk size
+ * is well under a megabyte, so chunks arrive milliseconds apart while a transfer
+ * is healthy. 120 s is therefore ~4 orders of magnitude above the normal
+ * inter-chunk gap — comfortably past any GC pause, teach-loop block or flood-lane
+ * queueing delay, while still failing fast when the donor genuinely stops.
+ * `DREAM_READBACK_IDLE_MS` overrides.
+ */
+const READBACK_IDLE_MS = (typeof process !== 'undefined' && Number(process.env.DREAM_READBACK_IDLE_MS) > 0)
+  ? Number(process.env.DREAM_READBACK_IDLE_MS) : 120_000;
+
 const DF7_MILESTONES = [
   { minCommunityMB: 0,       minDonors: 1,  neurons: 6_000_000 },   // tier 0 — bootstrap, fits a modest GPU
   { minCommunityMB: 24_000,  minDonors: 3,  neurons: 40_000_000 },  // tier 1 — a few mid GPUs
@@ -5064,7 +5078,28 @@ const SERVER_GPU_MIXIN = {
     // queue it behind teach work. A too-tight timeout here would abandon a
     // transfer that is progressing, and the donor would keep streaming into a
     // pending nobody owns.
-    const timer = setTimeout(() => { if (st.done) { const d = st.done; st.done = null; d({ ok: false, reason: `timed out after ${st.chunks} chunk(s) / ${st.bytes} bytes` }); } }, 600_000);
+    /* ⛔⛔ AN IDLE DEADLINE, NOT A WALL-CLOCK ONE — AND THE COMMENT ABOVE ALREADY
+       SAID WHY, WHILE THE CODE DID THE OPPOSITE.
+       It reads *"a too-tight timeout here would abandon a transfer that is
+       progressing"*. That is exactly what happened: the live box aborted three
+       pulls **"after 80–132 chunk(s) / 0.67–1.1 GB"** — chunks were ARRIVING when
+       it fired. A fixed deadline cannot tell a stalled transfer from a slow one,
+       so the biggest matrix on the box could never finish and `okCount` read 2 in
+       5.3 h against an expected ~5.
+       ⭐ Re-armed on every chunk (`_applyValuesChunk`), so a transfer that is
+       moving is never abandoned and one that genuinely stops still fails fast.
+       The bound now measures the thing it was always meant to: silence.
+       ⚠ The abort itself was never the bug — it is the DESIGNED safe path and
+       nothing corrupts. What decayed is the checkpoint's system of record, which
+       is why this matters. */
+    st.idleMs = READBACK_IDLE_MS;
+    st.rearm = () => {
+      if (!st.done) return;                       // already settled — never re-arm a finished pull
+      clearTimeout(st.timer);
+      st.timer = setTimeout(st.onIdle, st.idleMs);
+    };
+    st.onIdle = () => { if (st.done) { const d = st.done; st.done = null; d({ ok: false, reason: `idle ${Math.round(st.idleMs / 1000)}s after ${st.chunks} chunk(s) / ${(st.bytes / 1048576).toFixed(1)} MB — the donor stopped sending` }); } };
+    const timer = st.timer = setTimeout(st.onIdle, st.idleMs);
     try {
       ws.send(JSON.stringify({ type: 'readback_matrix_values', reqId, name, chunkBytes: chunkBytes | 0 }));
     } catch (e) {
@@ -5088,6 +5123,12 @@ const SERVER_GPU_MIXIN = {
   _applyValuesChunk(reqId, byteOffset, payload) {
     const st = this._valuesReadbacks && this._valuesReadbacks.get(reqId);
     if (!st) return false;
+    // ⭐ PROGRESS RESETS THE DEADLINE. This is what makes the bound an IDLE
+    // timeout rather than a wall clock: a transfer that is moving can never be
+    // abandoned, and one that stops still fails within the idle window. The old
+    // fixed deadline killed three pulls on the live box while chunks were still
+    // arriving — 80–132 of them, 0.67–1.1 GB in.
+    if (typeof st.rearm === 'function') st.rearm();
     if (byteOffset !== st.nextOffset) st.outOfOrder++;
     /**
      * ⭐⭐ `REBINDWAIT.4` — THE VERIFICATION WAS THE BOTTLENECK, NOT THE WIRE.
