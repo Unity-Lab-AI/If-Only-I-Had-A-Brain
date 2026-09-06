@@ -1,11 +1,17 @@
 ---
 # DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
 # ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
-# ⛔ HONEST CAVEAT, and it is this page's entire reason for existing: its subject
-# is `.claude/hooks/*`, which is UNVERSIONED (`.gitignore:48`). `git diff` cannot
-# see those files, so the drift check can only ever report on the tracked WIRING
-# below. A hook body changing is invisible here by construction — that is the
-# gap this page is the manual compensation for.
+# ⛔⛔ THAT CAVEAT IS DEAD AS OF 2026-09-01 AND THE CORRECTION IS THE HEADLINE:
+# `.claude/hooks/*` IS TRACKED NOW — 23 files in the index, and `git check-ignore`
+# returns nothing for them. The blanket `.claude/` exclude was removed when it was
+# found to be hiding 497 of 521 files, so `git diff` CAN see hook bodies and the
+# drift check is no longer structurally blind to them.
+# ⚠ THE PAGE STILL EARNS ITS KEEP, for a different and smaller reason: a hook can
+# be REPLACED WHOLESALE by a `/unity-update` framework refresh, which is a clean
+# diff rather than an invisible one. The manual recipes below are how a reader
+# confirms a fix survived that, without reading every hook.
+# ⭐ This caveat was stale for five days and was caught by testing it, not by
+# reading it — the exact failure mode the page was written to document.
 status: draft
 sources:
   - .claude/settings.json
@@ -232,3 +238,30 @@ function appendUsage(file, entry) {
 ```
 
 **Verified when it shipped** (on throwaway copies — the live ledger was never touched): 6,700 entries / 2.31MB → 2,000 / 0.69MB, tail preserved, every line parses, no temp file left behind, under-ceiling files untouched.
+
+---
+
+## FIX 3 — the write-method guard's two NAMED residuals, one of them an over-block
+
+**File:** `.claude/hooks/pre-tool-write-method-guard.cjs`
+**Purpose:** a BLOCKING `PreToolUse` hook that refuses `sed -i`, `perl -i`, `>`/`>>` into a repo path, `tee` into one, and `node -e`/`python -c` that writes into the tree. Built after the banned-write LAW was broken five times by five different rationalisations.
+
+**Verification recipe** (the same shape as FIX 1 and FIX 2 — two commands, no reading required):
+
+```
+node .claude/hooks/pre-tool-write-method-guard.cjs --selftest
+  -> [write-method-guard] selftest 24/24 — all pass
+grep -c 'NAMED RESIDUAL' .claude/hooks/pre-tool-write-method-guard.cjs
+  -> 2   (expect 2; a drop to 0 means a refresh replaced the file)
+```
+
+⭐ **The guard EXERCISES itself rather than trusting a read.** All five historical offences plus fourteen legitimate commands run as `--selftest`, and at runtime it re-runs its own offence list before every decision — **if it stops matching its own known offences it says so loudly and lets the call through**, because a guard that quietly stopped guarding is the exact failure this whole page documents.
+
+**Both residuals are NAMED in the file rather than hidden, and they point in opposite directions:**
+
+| # | direction | what escapes / what is caught wrongly | why it is left |
+|---|---|---|---|
+| 1 | **under-block** | an inline write to a bare filename at the repo ROOT (`writeFileSync("notes.md", …)`) — no tree prefix, no `cwd` call | catching it means blocking every temp-file harness, which gets the guard turned off |
+| 2 | **over-block** | a one-liner that READS a repo file and WRITES to an allowed sink (`.scratch/`, `/tmp`) is refused, and the message names the read path as the target | the fix is per-call argument binding — **the balanced-literal parse this guard's own self-test already caught failing on mixed quoting**, which is how one offence walked through a version that read correctly |
+
+⛔ **Residual #2 was found the way it should be — the guard blocked its own author**, on a command that read `docs/TODO.md` and wrote `.scratch/dropspans.json`. **The guard was not weakened to make the command work**; the command was split. ⭐ **An over-block that costs a keystroke and an under-block that costs the LAW are not the same kind of bug, and this file prefers the first.**

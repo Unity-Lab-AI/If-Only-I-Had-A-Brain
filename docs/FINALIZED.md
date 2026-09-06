@@ -665,6 +665,18 @@ Gee (verbatim): *"clean up the todo, move all finished items to finalized.md The
 
 > ⛔⛔ **AND THE RETENTION HALF SHIPPED WITH ITS SAMPLE GAP SET FOR A THIRD OF THE WALK — `SERIES_GAP_MS` 30 s → 120 s.** At 30 s, 20,000 rows is **~6.9 days** (the code's own comment said *"roughly a week"*) against a walk priced at **~24 days**. ⚠ **So the ring filled about a third of the way through a run and then discarded oldest-first, silently throwing away THE START OF THE WALK** — precisely the evidence a long-run instrument is kept for, and invisible because a full ring and a correct ring look identical. Derived: `2,073,600 s / 20,000 rows = 103.7 s`, so **120 s covers 27.8 days** with headroom. ⚠ **A shorter gap does not buy detail, it buys a shorter memory**; sub-two-minute detail belongs to the client-side throughput trace, which is a different instrument with a different lifetime. Arithmetic in `docs/THRESHOLD-DERIVATION.md`.
 
+### The write-method guard blocked its own author, and a five-day-stale caveat fell out of checking it
+
+⛔ **THE GUARD I SHIPPED THIS MORNING REFUSED ONE OF MY OWN COMMANDS, AND IT WAS RIGHT TO BE SUSPICIOUS AND WRONG ABOUT THE TARGET.** The command read `docs/TODO.md` and wrote `.scratch/dropspans.json` — an allowed sink — and the block message named `docs/` as what it was writing to. Cause: `TREE_PREFIX.test(cmd)` tests the **whole command string**, so any mention of a repo tree anywhere trips it once a write call is present.
+
+⭐ **THE GUARD WAS NOT WEAKENED TO MAKE MY COMMAND WORK — the command was split.** The obvious fix is to bind each write call to its own argument, and that is **precisely the balanced-literal extraction this guard's own self-test already caught failing on mixed quoting**, which is how offence #4 walked through a version that read perfectly. ⛔ **An over-block costs a keystroke; an under-block costs the LAW.** Named as residual #2 in the file, alongside the bare-root-filename under-block already recorded there. Self-test still **24/24**.
+
+⭐⭐ **AND CHECKING WHERE TO RECORD IT FOUND A DOC THAT HAD BEEN WRONG FOR FIVE DAYS.** `deploy/HOOK-FIXES.md` opens with a caveat calling itself *"the tracked record of code that cannot be tracked"*, on the stated grounds that `.claude/hooks/*` is **UNVERSIONED (`.gitignore:48`)**. ⛔ **That stopped being true on 2026-09-01** when the blanket `.claude/` exclude came out — **23 hook files are in the index and `git check-ignore` returns nothing for them.** The page's whole premise was stale.
+
+⚠ **THE PAGE STILL EARNS ITS KEEP, for a smaller and now-correct reason** — a hook can be replaced wholesale by a `/unity-update` refresh, which is a clean diff rather than an invisible one, and the manual recipes are how a reader confirms a fix survived that. **Corrected in place rather than deleted**, with the reason it survives written next to the reason it was wrong.
+
+⭐ **The stale caveat was caught by TESTING it (`git ls-files` + `git check-ignore`), not by reading it** — which is the exact failure mode that page exists to document, found in the page itself. `FIX 3` added in the doc's own two-command recipe format, and **the recipe was run as written before it was published**: `24/24`, `NAMED RESIDUAL` × 2, `UNVERSIONED` × 0.
+
 <!-- BOARDCLEAN-APPEND-POINT -->
 
 ---
