@@ -9805,7 +9805,7 @@ var FONT5X7 = {
   "'": ["00100", "00100", "01000", "00000", "00000", "00000", "00000"],
   "-": ["00000", "00000", "00000", "01110", "00000", "00000", "00000"],
   " ": ["00000", "00000", "00000", "00000", "00000", "00000", "00000"],
-  // ── WRITEWARM.2 — the rest of a QWERTY keyboard ────────────────────────────────────────────
+  // ── THE REST OF A QWERTY KEYBOARD ──────────────────────────────────────────────────────────
   // The table above covered A-Z, 0-9 and six marks: 42 of the 94 printable keys. The other 52
   // (26 lowercase forms + 26 symbols) resolved to the SPACE glyph, so anything typed on them
   // rasterized blank and banked a blank trace — a silent wrong answer, not a missing feature.

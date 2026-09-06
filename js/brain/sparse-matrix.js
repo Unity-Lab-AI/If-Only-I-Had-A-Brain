@@ -18,7 +18,7 @@
  * Drop-in replacement for SynapseMatrix. Same API, different guts.
  */
 
-// ── WEIGHTPREC (2026-09-05) — CSR VALUES ARE Float32, AND THE ESTIMATOR ─────
+// ── CSR VALUES ARE Float32, AND THE ESTIMATOR ──────────────────────────────
 // ── FINALLY AGREES WITH THE ALLOCATOR.
 //
 // ⛔⛔ THE SIZING ESTIMATOR HAD BEEN WRONG BY 1.5x SINCE IT WAS WRITTEN.

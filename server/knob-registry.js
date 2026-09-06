@@ -641,7 +641,7 @@ const KNOBS = [
     what: 'Reps when a drawing outcome is written back as weight.',
   },
 
-  // ─── `KNOBSCAN.2` — THE TWELVE THAT HELD THE WHOLE PANEL READ-ONLY ────────
+  // ─── THE TWELVE THAT HELD THE WHOLE PANEL READ-ONLY ──────────────────────
   //
   // ⛔⛔ `writable` is `unproven === 0` — ALL OR NOTHING. Twelve knobs with no
   // proven effect class made every one of the other 205 read-only, and the knob

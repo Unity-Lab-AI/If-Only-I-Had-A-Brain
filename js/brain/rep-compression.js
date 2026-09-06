@@ -165,7 +165,7 @@ export const OVERLAP_REFERENCE = {
  * full authored 100 adds more (a further 7–25, at 50× the cost).
  *
  * ⛔ WHAT THIS DOES NOT SAY: it does not say to set the rep count to 2 today.
- * The live load is a MEASURED quantity that `REPPRICE` now publishes, the
+ * The live load is a MEASURED quantity that the rep-pricing pass now publishes, the
  * `semTopK` that produces it is one of several inputs, and no gate should move
  * off a synthetic grid. **It says which knob to turn, and that the knob is not
  * `lr` and not the rep count.**
