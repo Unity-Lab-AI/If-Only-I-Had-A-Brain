@@ -1052,7 +1052,9 @@ const TOPICS = {
       'Advertising', 'Product design', 'Furniture', 'Interior design', 'Fashion design', 'Textile', 'Typography',
       'Graphic design', 'Logo',
       // TOPICDEDUP — `Typography` repeated from the line above.
-      'Layout (computing)', 'Visual hierarchy', 'Brand', 'Modern art', 'Visual arts'],
+      'Layout (computing)', 'Visual hierarchy', 'Brand', 'Modern art', 'Visual arts',
+      // Second pass: first landed at 98% of floor.
+      'Neoclassicism', 'Rococo', 'Futurism', 'Dada'],
     grade11: ['Contemporary art', 'Pop art', 'Andy Warhol', 'Minimalism', 'Conceptual art', 'Performance art', 'Installation art', 'Street art', 'Photography', 'Film',
       'Abstract expressionism', 'Land art', 'Video art', 'Digital art', 'New media art', 'Graffiti', 'Banksy',
       'Jean-Michel Basquiat', 'Keith Haring', 'Cindy Sherman', 'Yayoi Kusama', 'Ai Weiwei', 'Marina Abramović',
@@ -1520,7 +1522,11 @@ const TOPICS = {
       'Poetry analysis',
       'Mexican literature', 'Argentine literature', 'Hispanic America',
       'Culture of Spain', 'Culture of Mexico', 'Juana Inés de la Cruz',
-      'Grammar', 'Noun', 'Verb', 'Adjective', 'Pronoun'],
+      'Grammar', 'Noun', 'Verb', 'Adjective', 'Pronoun',
+      // Second pass: first landed at 91% of floor.
+      'Cuban literature', 'Chilean literature', 'Peruvian literature',
+      'Gabriela Mistral', 'Mario Vargas Llosa', 'Julio Cortázar',
+      'Carlos Fuentes', 'Rubén Darío', 'Culture of Latin America'],
     grade11: ['Second-language acquisition', 'Linguistics', 'Phonetics', 'Syntax', 'Semantics', 'Multilingualism', 'Language contact', 'Dialect',
       'Phonology', 'Morphology (linguistics)', 'Pragmatics', 'Sociolinguistics', 'Language acquisition',
       'Universal grammar', 'Noam Chomsky', 'Ferdinand de Saussure', 'Sign (semiotics)', 'Discourse analysis',
@@ -1532,6 +1538,10 @@ const TOPICS = {
       'International Phonetic Alphabet',
       'Grammatical number', 'Grammatical gender', 'Grammatical tense',
       'Grammatical mood', 'Adposition', 'Language education', 'Vocabulary',
+      // Second pass: first landed at 96% of floor.
+      // ⚠ `Bilingual education` was mine again — already in this cell. Fifth
+      // self-inflicted repeat, fifth time the post-edit re-resolve caught it.
+      'Language immersion', 'Translation studies', 'Hispanophone', 'Nahuatl',
       'Etymology', 'Historical linguistics', 'Vulgar Latin', 'Creole language',
       'Standard language', 'Language attrition', 'Heritage language', 'Linguistic prescription'],
     grade12: ['Linguistics', 'Language', 'Etymology', 'Historical linguistics', 'Romance languages', 'Latin', 'Language family', 'Sociolinguistics',
@@ -1546,6 +1556,8 @@ const TOPICS = {
       // opening line. Caught by re-resolving after the edit, which is exactly why
       // that step runs on every cell rather than only on the ones I changed.
       'Adposition', 'Multilingualism', 'Code-switching',
+      // Second pass: first landed at 99% of floor — one article closes it.
+      'Nahuatl', 'Chicano',
       'Psycholinguistics', 'Language acquisition', 'Universal grammar',
       'Generative grammar', 'Noam Chomsky', 'Ferdinand de Saussure',
       'Structuralism', 'Semiotics', 'Speech act', 'Politeness theory',
