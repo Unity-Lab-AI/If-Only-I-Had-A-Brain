@@ -940,7 +940,12 @@ function renderBuf(b) {
    have. Only the three privileged WRITES are gated, server-side, by
    `requireLoopback`. This function only makes the page tell the truth about it. */
 let adminLane = null;   // null = not yet known, true/false once a call has answered
+/* ⛔ A BOOT-FATAL OWNS THE BANNER. `markAdminLane` writes the SAME element, and
+   an auth note overwriting "she is not learning" would reproduce the exact
+   failure the banner exists to end — a true, minor message hiding a fatal one. */
+let bootFatalActive = false;
 function markAdminLane(ok, why) {
+  if (bootFatalActive) { adminLane = ok; document.body.classList.toggle('tv-no-admin', ok === false); return; }
   adminLane = ok;
   document.body.classList.toggle('tv-no-admin', ok === false);
   const el = $('tvAdmin');
@@ -1062,6 +1067,32 @@ async function poll() {
   const st = (j.state || j) || {};
   const tv = st.teachView;
 
+  /* ⛔⛔ A BOOT-FATAL OUTRANKS EVERY OTHER READING ON THIS PAGE, AND ON
+     2026-09-06 THERE WAS NO SURFACE THAT SAID SO. The GloVe guard logged
+     `⛔ FATAL` and `Boot STOPS here by design`, the throw was caught, and she
+     ran 23 minutes with no language subsystem — `runCompleteCurriculum` lives
+     inside the block that threw, so nothing was ever taught. This page showed
+     a healthy brain the whole time, because every field it reads WAS healthy.
+     The teach bus simply had nothing to publish, which is indistinguishable
+     from a quiet moment unless something names the cause.
+
+     ⭐ It is drawn FIRST and it is not dismissible: a reader who opens this
+     page during a dead boot must not have to infer it from a zero. */
+  bootFatalActive = !!st.bootFatal;
+  if (st.bootFatal) {
+    const bf = st.bootFatal;
+    const ageMin = bf.at ? ((Date.now() - bf.at) / 60000).toFixed(1) : '?';
+    const el = $('tvAdmin');
+    if (el) {
+      el.innerHTML = `<span style="color:var(--tv-bad)"><b>⛔ BOOT-FATAL — SHE IS UP AND SHE IS NOT LEARNING (${ageMin} min).</b></span> `
+        + `<span class="tv-src">${String(bf.what || 'unknown')}</span> — ${String(bf.why || 'no reason recorded').replace(/[<>&]/g, '')}`
+        + `<br><span style="color:var(--tv-warn)">${String(bf.consequence || '').replace(/[<>&]/g, '')}</span>`
+        + `<br><span class="tv-sub">Nothing on this process recovers on its own. Fix the cause and restart. Every other reading below is live and correct — that is exactly what makes this dangerous.</span>`;
+      el.style.color = 'var(--tv-bad)';
+    }
+    $('tvStatus').innerHTML = '<span class="tv-dot bad"></span>BOOT-FATAL — not learning';
+  }
+
   /* ⭐ KNOBS FIRST, AND ABOVE THE TEACH-BUS GUARD ON PURPOSE. The bus is silent
      whenever the walk is stopped, and that is precisely when these values want
      reading. Rendering them below the `return` would hide them at the only
@@ -1077,14 +1108,18 @@ async function poll() {
        nothing — it means the teach bus has not reported, which on a stopped
        walk is the correct and expected reading. Saying so is the difference
        between an instrument and a reassuring blank. */
-    $('tvStatus').innerHTML = '<span class="tv-dot warn"></span>brain up · teach bus silent';
+    /* ⚠ A boot-fatal already owns the chip and says something strictly more
+       important. "teach bus silent" is TRUE here and would be the wrong
+       headline: it reads as a quiet moment, which is precisely how a dead boot
+       passed for a healthy one. */
+    if (!bootFatalActive) $('tvStatus').innerHTML = '<span class="tv-dot warn"></span>brain up · teach bus silent';
     $('tvPaceNote').textContent =
       'The teach bus has published nothing this boot. If the walk is stopped, that is correct — she is not being taught anything right now.';
     return;
   }
 
   const stale = tv.ageMs != null && tv.ageMs > 60000;
-  $('tvStatus').innerHTML = stale
+  if (!bootFatalActive) $('tvStatus').innerHTML = stale
     ? `<span class="tv-dot warn"></span>last taught ${Math.round(tv.ageMs / 1000)}s ago`
     : '<span class="tv-dot ok"></span>teaching';
 
