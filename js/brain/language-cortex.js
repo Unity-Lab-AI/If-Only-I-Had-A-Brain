@@ -2393,14 +2393,29 @@ export class LanguageCortex {
               // goes wrong. The lane has to be declared by the caller; it cannot be
               // inferred here.
               //
-              // ⭐ The chat lane opts in with `lapLane: 'chat'`. Everything else is
-              // silent by default, which is the safe direction: a missing lap is a
-              // gap, a wrong lap is a lie that sends someone after the wrong guard.
+              // ⭐ Every lane declares itself with `lapLane`. That started as
+              // chat-only, with the others silent on the reasoning that a missing
+              // lap is a gap while a wrong lap is a lie that sends someone after
+              // the wrong guard — true, and the gap was filed the same day rather
+              // than left to be rediscovered. It is closed below: the background
+              // lanes now have rings of their own instead of no instrument.
+              // ⭐ EVERY LANE IS TIMED NOW, AND NO TWO SHARE A RING. The chat
+              // lane keeps `_chatStamp` and its ChatPin output is unchanged; the
+              // background lanes stamp into their own entry via `_laneStamp`,
+              // keyed by the name their caller declares. A lane that declares
+              // nothing is still silent — which is the safe default, because a
+              // lap attributed to the wrong lane is what created this problem.
               const _lcBrain = cluster && cluster._brain;
-              const _lcOnChatLane = opts && opts.lapLane === 'chat';
+              const _lcLane = (opts && typeof opts.lapLane === 'string') ? opts.lapLane : null;
               const _lcStamp = (s) => {
-                if (!_lcOnChatLane) return;
-                try { if (_lcBrain && typeof _lcBrain._chatStamp === 'function') _lcBrain._chatStamp(s); } catch { /* stamping must never break emission */ }
+                if (!_lcLane || !_lcBrain) return;
+                try {
+                  if (_lcLane === 'chat') {
+                    if (typeof _lcBrain._chatStamp === 'function') _lcBrain._chatStamp(s);
+                  } else if (typeof _lcBrain._laneStamp === 'function') {
+                    _lcBrain._laneStamp(_lcLane, s);
+                  }
+                } catch { /* stamping must never break emission */ }
               };
               _lcStamp(`generate:primary(${opts.curriculumBusy ? 1 : 3}cand)`);
               composedSentence = await cluster.composeSentence(intentSeed, {

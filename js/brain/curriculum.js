@@ -5184,6 +5184,10 @@ export class Curriculum {
               const dreamSentence = await brain.languageCortex.generateAsync(
                 brain.dictionary, brain.arousal, brain.coherence,
                 {
+                  // ⭐ The dream sentence is its own lane — it runs during
+                  // consolidation, not on anyone's reply, and its seconds
+                  // belong to it.
+                  lapLane: 'dream',
                   predictionError: 0,
                   motorConfidence: 0,
                   psi: brain.psi,
