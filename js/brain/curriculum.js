@@ -10653,6 +10653,12 @@ export class Curriculum {
           const _frozen = (this._wedgeLastHeb !== null && this._wedgeLastHeb !== undefined && _heb !== null)
             ? (_heb === this._wedgeLastHeb) : null;
           this._wedgeLastHeb = _heb;
+          // ⭐ THE FIELD THAT SETTLES "IS THIS TAG CURRENT OR LEFT OVER?" — the
+          // question that cost an hour twice in one day, answered in one word.
+          const _seq = (_b && _b._teachStageSeq) || 0;
+          const _seqFrozen = (this._wedgeLastSeq !== null && this._wedgeLastSeq !== undefined)
+            ? (_seq === this._wedgeLastSeq) : null;
+          this._wedgeLastSeq = _seq;
           if (!this._wedgeWarnAt || (Date.now() - this._wedgeWarnAt) > 60000) {
             this._wedgeWarnAt = Date.now();
             console.warn(`[Curriculum] ⛔ NOT TEACHING for ${(_sinceTeach / 60000).toFixed(1)}min while the cell is ALIVE — this is a WEDGE, not a slow phase. `
@@ -10661,8 +10667,9 @@ export class Curriculum {
               + `activePhase=${(cluster && cluster._activePhase && cluster._activePhase.name) || 'none'} · `
               + `substrate=${(cluster && cluster._gpuProxyReady === true && _b && _b._gpuClient && _b._gpuClient.readyState === 1) ? 'ready' : 'NOT ready'} · `
               + `pausedForDonor=${this._substratePause ? this._substratePause.reason : 'no'} · `
-              + `probeDeadlineHits=${this._probeDeadlineHits || 0}. `
-              + `⚠ A stage tag whose age climbs while teachStageMax stays small is ACCURATE, not stale — max records only COMPLETED runs.`);
+              + `probeDeadlineHits=${this._probeDeadlineHits || 0} · `
+              + `stageSeq=${_seq}${_seqFrozen === null ? '' : (_seqFrozen ? ' FROZEN → THE TAG IS STALE: no new stage was entered, so the blocker is UNMARKED code AFTER the stage named above' : ' advancing → the tag is CURRENT: stages really are turning over, so the named stage is the one to look at')}. `
+              + `⚠ Read the SEQ, not the age. A climbing age means one of two opposite things and the tag cannot tell them apart — a stage genuinely still running, or the last stage entered before a hang in code that stamps nothing. This was called stale when it was accurate and accurate when it was stale, on the same day, before the sequence existed.`);
           }
         } else if (_sinceTeach !== null && _sinceTeach <= _wedgeMs) {
           this._wedgeLastHeb = null;   // healthy again — forget the frozen baseline
@@ -14674,6 +14681,24 @@ export class Curriculum {
     const brain = this.brain || (this.cluster && this.cluster._brain);
     if (!brain) return;
     const now = Date.now();
+    // ⛔⛔ A MONOTONIC SEQUENCE, BECAUSE THE TAG ALONE CANNOT SAY WHETHER IT IS
+    // CURRENT — AND I GOT THAT WRONG IN BOTH DIRECTIONS IN ONE DAY.
+    //
+    // `_teachStage` is never cleared, so a tag outlives its stage. Reading a
+    // climbing AGE on a tag therefore has two completely different meanings:
+    //   · a stage genuinely still running (the 2026-09-06 morning wedge — the
+    //     probe really was hung, and I wrongly called the tag stale), or
+    //   · the LAST stage entered before a hang in unmarked code (the same
+    //     evening — `probeDeadlineHits` frozen proved no probe was even being
+    //     attempted, so the tag really was stale).
+    // I called it stale when it was accurate, then accurate when it was stale.
+    // **The tag cannot distinguish them. A sequence number can.**
+    //
+    // ⭐ Frozen seq + climbing age = the tag is STALE and the blocker is UNMARKED
+    // code after it. Climbing seq = stages really are turning over. That is a
+    // one-glance answer to the question that has twice cost an hour of digging,
+    // and it costs one integer increment per stage change.
+    brain._teachStageSeq = (brain._teachStageSeq || 0) + 1;
     // LOOPNAME v2 — BANK THE OUTGOING STAGE. v1 printed only the CURRENT stage and
     // could never name a block, because of a race it did not account for: the lag
     // monitor is a 1000ms setInterval, so it reports AFTER the loop frees — and the
@@ -15108,7 +15133,21 @@ export class Curriculum {
       try {
         const pre = new Uint32Array(srcVec.length);
         for (let i = 0; i < srcVec.length; i++) pre[i] = srcVec[i] > 0 ? 1 : 0;
-        const result = await cluster._gpuProxy.propagate(`${cluster.name}_${projName}`, pre);
+        // ⛔ THE LAST UNBOUNDED AWAIT ON THE PROBE PATH, AND IT HAD NO STAGE TAG
+        // EITHER — so a hang here reported as `gate:probe-gpu`, the tag left by
+        // the branch ABOVE it. Two defects in one line: it could hang forever,
+        // and while hanging it named the wrong culprit. Bounded on the same
+        // caller-owned deadline as the gate probe, for the same reason: a
+        // timeout living inside the thing that can hang cannot bound it.
+        this._tstage('gate:probe-proxy');   // LOOPNAME
+        const _ppDeadline = (typeof process !== 'undefined' && Number(process.env?.DREAM_PROBE_DEADLINE_MS) > 0)
+          ? Number(process.env.DREAM_PROBE_DEADLINE_MS) : 20000;
+        let _ppTimer = null;
+        const result = await Promise.race([
+          cluster._gpuProxy.propagate(`${cluster.name}_${projName}`, pre),
+          new Promise((res) => { _ppTimer = setTimeout(() => res(null), _ppDeadline); }),
+        ]).finally(() => { if (_ppTimer) clearTimeout(_ppTimer); });
+        if (!result) this._probeDeadlineHits = (this._probeDeadlineHits || 0) + 1;
         if (result && result.length > 0) {
           // Convert Float32Array → Float64Array so downstream probe
           // arithmetic is uniform with the CPU path output.
