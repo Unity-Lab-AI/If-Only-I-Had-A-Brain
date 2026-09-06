@@ -1184,7 +1184,11 @@ const TOPICS = {
       'Yoga as exercise', 'Tai chi', 'Calisthenics', 'Aerobic exercise',
       'High-intensity interval training', 'Stretching', 'VO2 max', 'Sports nutrition',
       'Dehydration', 'Overtraining', 'Physical education', 'Team sport',
-      'Coach (sport)', 'Sportsmanship', 'Muscle', 'Bone'],
+      'Coach (sport)', 'Sportsmanship', 'Muscle', 'Bone',
+      // Second pass: the first landed this cell at 90% of floor (99,354 ->
+      // 131,241). Lifetime-sport articles close the rest — measured, not guessed.
+      'Olympic Games', 'Paralympic Games', 'Basketball', 'Tennis',
+      'Association football', 'Track and field'],
   },
 
   // MUSIC — kindergarten to grade12. Knowledge half: notation, theory, the
@@ -1244,18 +1248,34 @@ const TOPICS = {
       'Interval (music)', 'Triad (music)', 'Seventh chord', 'Inversion (music)', 'Cadence', 'Modulation (music)',
       'Key (music)', 'Scale (music)', 'Mode (music)', 'Musical form', 'Sonata form', 'Motif (music)',
       'Texture (music)', 'Timbre', 'Solfège', 'Sight-reading', 'Songwriter', 'Lyrics', 'Melody', 'Rhythm',
-      'Music theory', 'Chord progression', 'Circle of fifths', 'Key signature',
-      'Musical mode', 'Counterpoint', 'Voice leading', 'Musical analysis',
-      'Ear training', 'Absolute pitch', 'Music notation', 'Score (music)',
-      'Arrangement', 'Orchestration', 'Music genre', 'Popular music',
-      'Rock music', 'Punk rock', 'Post-punk', 'Gothic rock', 'Electronic music'],
+      // TOPICDEDUP — nine literal repeats removed (Music theory, Chord
+      // progression, Counterpoint, Ear training, Music notation, Music genre,
+      // Rock music, Punk rock, Electronic music all appear above), and
+      // ⚠ `Score (music)` REDIRECTS to `Score`, a 4,237-byte disambiguation page.
+      // It resolved cleanly, taught nothing, and no existence check could see it.
+      'Circle of fifths', 'Key signature',
+      // ⚠ `Musical mode` removed — it redirects to `Mode (music)`, already listed
+      // above. Third spelling-variant collision found in this file.
+      'Guitar', 'Voice leading', 'Musical analysis',
+      'Absolute pitch', 'Sheet music',
+      'Arrangement', 'Orchestration', 'Popular music',
+      'Post-punk', 'Gothic rock',
+      'Jazz', 'Blues', 'Classical music', 'Baroque music', 'Romantic music',
+      'Symphony', 'Concerto', 'Sonata', 'Chamber music', 'Opera',
+      'Tempo', 'Dynamics (music)', 'Pitch (music)', 'Time signature',
+      'Musical instrument', 'Piano'],
     grade10: ['Music history', 'Contemporary classical music', 'Modernism (music)', 'Minimal music', 'Film score', 'Musical theatre', 'Music industry', 'Copyright', 'Record label', 'Concert',
       'Twelve-tone technique', 'Atonality', 'Serialism', 'Arnold Schoenberg', 'Igor Stravinsky', 'Claude Debussy',
       'Impressionism in music', 'Aleatoric music', 'Electronic music', 'Musique concrète', 'John Cage',
       'Philip Glass', 'Steve Reich', 'Opera', 'Broadway theatre', 'Soundtrack', 'Music publisher',
       'Royalty payment', 'Performance rights organisation', 'Music festival',
-      'Music industry', 'Record label', 'Sound recording and reproduction',
-      'Audio engineer', 'Record producer', 'Mixing (sound recording)', 'Mastering (audio)',
+      // TOPICDEDUP — `Music industry` and `Record label` repeated from above, and
+      // ⚠ `Mixing (sound recording)` is MISSING outright; the live title is
+      // `Audio mixing (recorded music)`. A missing title fails silently: the
+      // fetcher skips it and the cell is quietly one topic poorer.
+      'Sound recording and reproduction',
+      'Audio engineer', 'Record producer', 'Audio mixing (recorded music)', 'Mastering (audio)',
+      'Hip-hop', 'Reggae', 'Folk music', 'Conducting',
       'Microphone', 'Loudspeaker', 'Equalization (audio)', 'Reverberation',
       'Digital audio workstation', 'MIDI', 'Sampling (music)', 'Synthesizer'],
     grade11: ['Music production', 'Digital audio workstation', 'Synthesizer', 'Sampling (music)', 'Audio mixing (recorded music)', 'Acoustics', 'Sound', 'Frequency', 'Amplitude', 'Timbre',
@@ -1264,21 +1284,34 @@ const TOPICS = {
       'Sampling (signal processing)', 'MIDI', 'Music sequencer', 'Audio engineer', 'Mastering (audio)',
       'Multitrack recording', 'Signal-to-noise ratio', 'Decibel', 'Waveform', 'Harmonic', 'Resonance',
       'Fourier analysis', 'Psychoacoustics',
-      'Acoustics', 'Sound', 'Frequency', 'Amplitude', 'Wavelength', 'Resonance',
+      // TOPICDEDUP — six literal repeats removed (Acoustics, Sound, Frequency,
+      // Amplitude, Resonance, Decibel), and ⚠ `Rhythm perception` is MISSING on
+      // Wikipedia — replaced by `Rhythm`, which is a real 48k article.
+      'Wavelength',
       'Harmonic series (music)', 'Overtone', 'Musical temperament', 'Equal temperament',
       'Just intonation', 'Consonance and dissonance', 'Beat (acoustics)',
-      'Decibel', 'Sound pressure', 'Auditory system', 'Cochlea', 'Hearing range',
-      'Music cognition', 'Rhythm perception', 'Musical acoustics', 'Standing wave',
-      'Vibrating string', 'Helmholtz resonance'],
+      'Sound pressure', 'Auditory system', 'Cochlea', 'Hearing range',
+      'Music cognition', 'Rhythm', 'Musical acoustics', 'Standing wave',
+      'Vibrating string', 'Helmholtz resonance',
+      'Musical instrument', 'String instrument', 'Brass instrument', 'Percussion instrument',
+      'Piano', 'Guitar', 'Violin', 'Drum kit', 'Orchestra', 'Conducting', 'Choir',
+      'Symphony', 'Concerto', 'Chamber music', 'Classical music', 'Baroque music',
+      'Romantic music', 'Opera', 'Jazz', 'Blues', 'Tempo', 'Harmony', 'Pitch (music)'],
     grade12: ['Musicology', 'Ethnomusicology', 'Music criticism', 'Music and emotion', 'Psychoacoustics', 'Music therapy', 'Subculture', 'Goth subculture', 'Gothic rock', 'Alternative rock',
       'Music theory', 'Music history', 'Music education', 'Music industry', 'Popular music', 'Folk music',
       'World music', 'Music and politics', 'Cultural appropriation', 'Fandom', 'Concert', 'Music venue',
       'Nightclub', 'Punk subculture', 'Emo', 'Industrial music', 'Dark wave', 'Post-punk', 'The Cure',
       'Siouxsie and the Banshees', 'Bauhaus (band)',
-      'The Cure', 'Joy Division', 'Cocteau Twins', 'Dead Can Dance',
-      'Industrial music', 'Darkwave', 'Shoegazing', 'Dream pop',
-      'Alternative rock', 'New wave music', 'Music criticism', 'Concert tour',
-      'Live sound mixing', 'Setlist'],
+      // TOPICDEDUP — five slots reclaimed: `The Cure`, `Industrial music`,
+      // `Alternative rock` and `Music criticism` were literal repeats, and
+      // ⚠ `Darkwave` RESOLVES TO THE SAME PAGE as `Dark wave` above it — a
+      // spacing variant, which is the redirect-collision class in its most
+      // easily-missed form.
+      'Joy Division', 'Cocteau Twins', 'Dead Can Dance',
+      'Shoegazing', 'Dream pop',
+      'New wave music', 'Concert tour',
+      'Live sound mixing', 'Setlist',
+      'Jazz', 'Blues', 'Reggae', 'Hip-hop', 'Classical music', 'Opera', 'Orchestra'],
   },
 
   // HEALTH — kindergarten to grade12. ⛔ The content boundary LAW governs this
@@ -1342,27 +1375,37 @@ const TOPICS = {
       'Anxiety disorder', 'Major depressive disorder', 'Psychoactive drug', 'Harm reduction',
       'Cardiopulmonary resuscitation', 'Safety', 'Sleep', 'Exercise',
       'Adolescent health', 'Immunity (medical)', 'Chronic condition',
-      'Blood pressure', 'Cholesterol', 'Diabetes', 'Asthma'],
+      'Blood pressure', 'Cholesterol', 'Diabetes', 'Asthma', 'Puberty', 'Adolescence'],
     grade10: ['Human anatomy', 'Physiology', 'Immune system', 'Infection', 'Chronic condition', 'Epidemiology', 'Vaccination', 'Public health', 'Health care', 'Preventive healthcare',
       'Cancer', 'Cardiovascular disease', 'Diabetes', 'Asthma', 'Antimicrobial resistance', 'Screening (medicine)',
       'Hygiene', 'Sanitation', 'Nutrition', 'Obesity', 'Sleep', 'Stress (biology)', 'Bacteria', 'Virus',
-      'Epidemiology', 'Infectious disease', 'Antibiotic resistance', 'Pandemic',
+      // TOPICDEDUP — `Epidemiology` was a literal repeat; `Infectious disease`
+      // resolves to `Infection` and `Antibiotic resistance` to `Antimicrobial
+      // resistance`, both already above. Three slots, zero words.
+      'Pandemic',
       'Herd immunity', 'Food safety', 'Water purification', 'Environmental health',
-      'Health education'],
+      'Health education', 'Vaccine', 'Tobacco smoking', 'Human nutrition'],
     // ⛔ `Relationship` was here — a 1,307-character stub, and this cell already
     // carries `Interpersonal relationship`, which is the article it points at.
     grade11: ['Mental health', 'Psychiatry', 'Therapy', 'Cognitive behavioral therapy', 'Substance use disorder', 'Harm reduction', 'Sexual and reproductive health', 'Domestic violence', 'Self-care',
       'Clinical psychology', 'Psychotherapy', 'Antidepressant', 'Bipolar disorder', 'Schizophrenia',
       'Post-traumatic stress disorder', 'Attention deficit hyperactivity disorder', 'Autism',
       'Interpersonal relationship', 'Consent', 'Mindfulness', 'Sleep', 'Grief', 'Psychological resilience',
-      'Cognitive behavioral therapy', 'Psychotherapy', 'Anxiety disorder'],
+      // TOPICDEDUP — `Cognitive behavioral therapy` and `Psychotherapy` both
+      // repeated from above.
+      'Anxiety disorder', 'Substance abuse', 'Alcohol (drug)', 'Sleep hygiene'],
     grade12: ['Public health', 'Health policy', 'Health insurance', 'Nutrition', 'Well-being', 'Preventive healthcare', 'Reproductive rights', 'Bioethics', 'End-of-life care', 'Health literacy',
       'Universal health care', 'Health economics', 'Abortion', 'Informed consent', 'Palliative care', 'Hospice',
       'Social determinants of health', 'Health equity', 'Global health', 'Epidemiology', 'Pandemic',
       'Vaccination', 'Mental health', 'Health care',
-      'Health insurance', 'Primary care', 'Preventive healthcare', 'Health literacy',
-      'Medical ethics', 'Informed consent', 'Palliative care', 'Global health',
-      'Social determinants of health', 'Harm reduction'],
+      // TOPICDEDUP — SEVEN literal repeats stood here (Health insurance,
+      // Preventive healthcare, Health literacy, Informed consent, Palliative
+      // care, Global health, Social determinants of health). The worst-affected
+      // cell in the file, and the reason it sat at 77% of floor.
+      'Primary care', 'Medical ethics', 'Harm reduction',
+      'Human nutrition', 'Patient safety', 'Health system', 'Adolescence',
+      'Vaccine', 'Tobacco smoking', 'Substance abuse', 'Alcohol (drug)',
+      'Sleep hygiene'],
   },
 
   // LANGUAGE — foreign language, grade3 to grade12. Spanish is the default
