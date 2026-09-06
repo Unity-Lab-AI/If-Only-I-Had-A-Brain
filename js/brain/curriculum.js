@@ -5609,6 +5609,31 @@ export class Curriculum {
     // ⛔ THE FAILURE IS NAMED, NEVER SWALLOWED. A glyph she cannot trace is a
     // glyph she cannot write, and that has to read as a fact rather than
     // surfacing later as a caption with characters quietly missing.
+    // ✍ THE PRACTICE LADDER, QUEUED THE MOMENT THE SHAPES EXIST.
+    //
+    // ⛔ HAVING A LETTERFORM IS NOT WRITING. The traces above are what she looked
+    // at and copied once; practice is the trained skill on top, and without it
+    // she has 94 shapes and no hand. That was the live complaint — *"she still
+    // isn't… writing her letters and words"* — with all 94 already banked.
+    //
+    // ⭐ THE LADDER IS DATA, NOT FOUR MECHANISMS. Reference and attempt are both
+    // just text, so a letter, a digit, a word and a sentence practise through one
+    // identical path: the alphabet first, then the digits, then short real words
+    // she is being taught, then a sentence. Ordered smallest-first so the letters
+    // are steady before a word composed FROM them is judged.
+    //
+    // ⚠ Queued onto the walk lane rather than run here — the cell must not wait
+    // on practice, and the queue is already the single serialized teacher.
+    try {
+      const _q = _brain._mindsEyePreviewQueue;
+      if (Array.isArray(_q)) {
+        const ladder = [
+          ...ALPHABET_ORDER.split(''),
+          ...DIGIT_ORDER.split(''),
+        ];
+        for (const t of ladder) _q.push({ kind: 'write-practice', text: t });
+      }
+    } catch { /* practice is never allowed to block the pencil */ }
     this._hb(`[Curriculum] ✍ WRITEWARM — glyph shapes: ${learned}/${GLYPHS.length} traced and banked in ${((Date.now() - t0) / 1000).toFixed(1)}s`
       + (failed ? ` · ⚠ ${failed} could NOT be traced (${failedChars.join('')}) — she will write nothing for those rather than stamp a font she never learned` : '')
       + ` — run at CELL ENTRY, before the definition bootstrap, so she can form letters and numbers from the first minute.`);
@@ -5672,6 +5697,23 @@ export class Curriculum {
       this._hb(`[Curriculum] 📚 PRE-CELL VOCAB ${subject}/${grade} — all ${words.length} grade words already learned (a sibling cell paid the pass)${_skippedPerma ? `, apart from ${_skippedPerma} the dictionary positively has no entry for` : ''}. Cell starts now.`);
       return;
     }
+    // ✍ THE WORD RUNG OF THE WRITING LADDER, queued where the vocabulary
+    // actually is. Letters and digits are queued at glyph-learning time; a WORD
+    // is only worth practising once she has letters to compose it from, and this
+    // is the one place that knows which words this grade owes.
+    //
+    // ⚠ SHORT WORDS ONLY, AND A HANDFUL. The score is resemblance to the printed
+    // form over a fixed box, so a long word shrinks to fit and the per-letter
+    // detail — the thing being trained — stops dominating the percept. A dozen
+    // is enough for the hand to generalise; the queue is a shared serialized
+    // lane and this must not flood it.
+    try {
+      const _qb = cluster && cluster._brain && cluster._brain._mindsEyePreviewQueue;
+      if (Array.isArray(_qb)) {
+        const short = words.filter((w) => typeof w === 'string' && /^[a-z]{2,5}$/.test(w)).slice(0, 12);
+        for (const w of short) _qb.push({ kind: 'write-practice', text: w });
+      }
+    } catch { /* practice never blocks the vocabulary pass */ }
     this._currentMacroPhase = `📚 PRE-CELL VOCAB — ${subject}/${grade}`;
     this._macroPhaseProgress = { current: 0, total: todo.length, label: `PRE-CELL VOCAB ${subject}/${grade}` };
     this._hb(`[Curriculum] 📚 PRE-CELL VOCAB START — ${subject}/${grade}: ${todo.length} of ${words.length} grade words unlearned${_skippedPerma ? ` (${_skippedPerma} skipped — the dictionary positively has NO ENTRY for them, so re-asking costs a pass and binds nothing; they re-enter on the next boot in case a source has since gained them)` : ''}; multi-def Hebbian at reps:1, 300-word chunks with dream windows between. Definitions land BEFORE the cell's bindings train on these words.`);
