@@ -1,5 +1,70 @@
 # RESUME — Session Pickup Brief
 
+> # 🟢 2026-09-06 (latest, 4th) — THE EVENT-LOOP THEORY IS DEAD AT 5.7%, HALF THE DEF-MISS FLAGS ARE A REAL DEFECT, AND THE KNOB PANEL IS WRITABLE (PICK UP HERE)
+>
+> Gee (verbatim): *"shes ramping up"*
+> Gee (verbatim): *"Flags, issues & warnings — DEF-MISS ×6 — 6 distinct: for, be, your, their, look, our"*
+> Gee (verbatim): *"check thew instraments inthe tgeachvioiewer and stuff .. figure out what u can of what looks off like it saying only 6 nobs are set"*
+>
+> ## ⛔⛔ START HERE — MY OWN SIXTH THEORY IS DEAD, MEASURED
+>
+> The previous entry said `awaitOverheadPct` would decide whether the walk is loop-bound or wire-bound, and that if it were large, optimising teach primitives would be pointless. **It is 4–6%.** Read live on build `6943aabf`:
+>
+> ```
+> TOTAL per pair-rep   7.229 ms
+>   named              2.310 ms
+>   ├ tile   0.533   ├ clear 0.155   ├ wta 0.089   ├ embed 0.006
+>   ├ anti   0.729  (10.4%)   ← now timed, real but NOT dominant
+>   ├ lateral 0.750  (was 2.63 before the hint verification completed)
+>   └ hebbian 0.047
+>   awaitOverhead      0.414 ms = 5.7%   ← THE THEORY, DEAD
+>   RESIDUAL           4.919 ms = 68%    ← STILL UNEXPLAINED
+> ```
+>
+> ⛔ **Six theories about this residual are now dead**: the tiled write, the spike clear, the sparse index array, `_checkSemBasinSeparation` (never runs on the def path), the anti-pair pass (10%, measured not deduced), and event-loop scheduling (5.7%). **Everything inside the pair loop is now timed and the residual survived all of it.**
+>
+> ⭐ **Which relocates it: the residual is PER-CALL work OUTSIDE the pair loop.** `perCallMs` **38–57** against `pairsPerCall` **5.5**. **The prime suspect is the post-loop prune + normalize** — a full-matrix CSR rebuild that `deferDiagnostics` runs once per WORD (1 call in ~13), which is exactly the shape that hides in a per-pair average. ⛔ **Do not act on that** — it is theory seven. Time it the way the others were timed.
+>
+> ⚠ **And it means lever ② is dead too:** collapsing the 13 per-sense calls will NOT remove a cost that runs once per word either way.
+>
+> ## ✅ SHE IS RAMPING, AND THE LATERAL FIX IS VISIBLY DOING IT
+>
+> `pairs/min` **1,472 → 3,187 → 4,289 → 4,993** over the first five minutes, against a **3,979/min** baseline before today. And in the same window `lateral` fell **2.63 → 0.75 ms/call** as the 500-call hint verification completed and the scan switched off — **`hintMismatch` still 0**, now over 128k uses across two boots.
+>
+> ## ⛔⛔ HALF THE `DEF-MISS` FLAGS ARE A REAL DEFECT — and only the samples fix could show it
+>
+> The flag now names what actually missed. **8 distinct words, and they split cleanly in two:**
+>
+> | verdict | words | WordNet |
+> |---|---|---|
+> | **EXPECTED — closed-class** | `for` · `your` · `their` · `our` | **0 senses** — WordNet holds only noun/verb/adj/adv, so a function word having no entry is correct by construction |
+> | ⛔ **REAL DEFECT** | `be` · `look` · `every` · `america` | **14 · 14 · 2 · 2 senses** — the offline dictionary can define all four **right now** |
+>
+> ⛔ **Four words the loaded WordNet answers for were reported as "no dictionary definition — bound nothing."** ⚠ Not a lazy-load race: the flag fired from **boot+91 s to boot+212 s**, long after the table loads. ⚠ Not the STOP set: that filters words *inside* a definition, not the headword. ⚠ Not case: `america` and `America` both return 2. **Cause unknown — do not suppress the flag; find why the lookup path misses words the offline table holds.**
+>
+> ⭐ **Before today this flag said `DEF-MISS ×5 — "for"` and nothing else** — one word, a count belonging to every other word, and no way to see that half of them were a bug. **The instrument fix is what turned a shrug into a defect.**
+>
+> ## ✅ THE KNOB PANEL WAS READ-ONLY AND NOW IS NOT
+>
+> *"Only 6 knobs are set"* is **correct and was never the problem** — six carry non-default values and the group counts sum to it exactly. **What was wrong sat beside it:** `writable` is `unproven === 0`, **all-or-nothing**, so twelve unproven knobs held the other 205 read-only — on a box with no shell, in a panel built for that reason.
+>
+> **total 217 → 219 · unproven 12 → 0 · described 211 → 219 · `writable` false → TRUE · `UNSORTED` group gone.** ⛔ Effect classes were **read at each site, never inferred from indentation** — this codebase already discarded a brace-depth classifier for misreporting two knobs as `live`. The test used: *does writing this NOW change behaviour LATER?* Hence three are `boot` despite being read inside functions (`DREAM_SEM_TOPOGRAPHIC`, `DREAM_TOPO_RADIUS_FRAC`, `DREAM_LAMINATION_VETO` all decide how a matrix is **built**).
+>
+> ⚠ **Two knobs were invisible because I aliased `process.env`** — discovery matches `process.env.X` or a helper call, and `const _env = process.env; … _env.DREAM_LATERAL_HINT` is a third pattern neither regex sees. The registry's own comment predicted this class on 2026-09-02 and I re-opened it four days later.
+>
+> ## Next, in order
+>
+> 1. **Time the post-loop prune/normalize.** It is theory seven and the last unmeasured region; six predecessors died to measurement and one more guess is not worth a Rust opcode.
+> 2. **Find why `be` / `look` / `every` / `america` miss** a dictionary that holds them. Four words is a small enough set to trace end to end.
+> 3. **Only then** decide between donor-frame batching and worker-threading — the numbers do not yet name a winner, and `awaitOverheadPct` has already disproved one favourite.
+>
+> ## Confirmed live this session
+>
+> `examVocabSweep` **0.966 → 1.0000**, 0 missing (EXAMINTEG) · `bootReason` publishing `{mode:'wipe',reason:'force-fresh'}` on an intentional wipe where it read `undefined` this morning · `repPricing` **declining** rather than publishing the degenerate `56` · `teachStageSeq` advancing · the two-hour wedge cleared.
+>
+> ⚠ **Still open and unexplained:** during that wedge `probeDeadlineHits` was **6** — the probe deadline fired six times and did **not** free the walk, so it bounds the wrong await. The press cleared it; the cause was never found.
+
+
 > # 🟢 2026-09-06 (latest, 3rd) — THE 50× ANSWER IS "NOT BY TUNING", ONE FIELD ON THE NEXT PRESS DECIDES WHICH LEVER IS EVEN CORRECT, AND A PANEL FLAG WAS NAMING THE WRONG WORD (PICK UP HERE)
 >
 > Gee (verbatim, last): *"DEF-MISS ×5 / no dictionary definition for "for" — bound nothing"*
