@@ -3297,6 +3297,31 @@ export class Curriculum {
         // runner declares it, and whether a declared phase is already in
         // flight above it.
         if (isCellPhase && Array.isArray(cl.passedPhases) && cl.passedPhases.includes(phaseKey)) {
+          // ⛔⛔ A SKIP IS A STAGE TRANSITION AND IT STAMPED NOTHING, WHICH IS
+          // WHY A SAVESTART STALL WAS UNREADABLE.
+          //
+          // This branch returns BEFORE the entry stamp, so on a resumed walk
+          // every already-passed phase passes through here invisibly and the
+          // stage tag stays on whatever ran last — `cell:runner`, the tag for
+          // the whole cell. Read live after a savestart: `stage=cell:runner`
+          // with a climbing age, `teachStageSeq` FROZEN at 15,012, an EMPTY
+          // phase stack, and no teach entered. By this file's own rule — frozen
+          // seq plus climbing age — the tag was stale and the blocker was in
+          // unmarked code. **This branch is that unmarked code.**
+          //
+          // ⭐ IT IS ALSO WHY THE PHASE-GAP STAMP COULD NOT HELP. That one fires
+          // when a teach EXITS and leaves the stack empty; a skipped phase never
+          // enters, so there is no exit to hang it on. Two different silences,
+          // and only one of them was covered.
+          //
+          // ⚠ Bounded by construction: gated on `isCellPhase`, so it fires once
+          // per declared phase (~25 per cell), never per primitive. That
+          // distinction is the one this wrapper was rebuilt around after the
+          // 90,000-line skip flood, and it is preserved exactly.
+          //
+          // ⭐ The tag NAMES THE PHASE, so a run of skips reads as a moving
+          // sequence and the LAST one names where the runner actually stopped.
+          try { if (typeof this._tstage === 'function') this._tstage(`skip:${name}`); } catch { /* never break a skip */ }
           this._hb(`[Curriculum] PHASE SKIPPED - ${phaseKey} (already passed; resumed from persisted passedPhases - weights carried forward via brain-weights.bin)`);
           return;
         }
