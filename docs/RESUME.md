@@ -49,16 +49,20 @@
 > ## ⭐ ③ WHAT IS ACTUALLY LEFT FOR HER TO BE DONE — measured cell by cell
 >
 > ```
->   193 cells · 72,042,806 words · ZERO empty
->   MEET floor 165   SHORT 28        (was 161 / 32 this morning)
+>   193 cells · 72,327,157 words · ZERO empty
+>   MEET floor 167   SHORT 26        (was 161 / 32 this morning, 165 / 28 mid-session)
 >   early · middle · upper · grad  =  100% COMPLETE
 > ```
 >
-> **The bottom of the ladder is finished.** What is owed is **28 cells**, all grade 9+: the non-core high-school courses (`pe` `music` `language` `art` `health` `ap` `cs`) plus `cstheory` in all four college years. Worst: `cstheory/college2` 61% · `pe/grade12` 68% · `music/grade11` 69%.
+> **The bottom of the ladder is finished.** What is owed is **26 cells**, all grade 9+: the non-core high-school courses (`pe` `music` `language` `art` `health` `ap` `cs`) plus **two** of the four `cstheory` college years.
+>
+> ⭐ **THE GATED INGEST RAN AGAIN AND CLEARED TWO MORE — `cstheory/college3` and `cstheory/college4`.** Nine books admitted across the four cstheory years (+284,351 words in the tree). ⚠ **`cstheory/college1` (325k) and `cstheory/college2` (311k) now hold their FOUR-book cap and are still under the 330,000 floor** — the run says so in its own words: *"That is a fact about the ladder, not a reason to download more — the book count is the rule here."* **Raising the cap again is a decision, not a retry**, and it wants the same starvation gate and the same RE-PRICE.
+>
+> ⚠ **AND THE LICENCE GATE REFUSED ONE BOOK THAT IS AT LEAST AS PERMISSIVE AS WHAT IT ADMITTED** — 66 pages under the **GNU Free Documentation Licence**, declined only because the gate tests for "Creative Commons". Public-domain and GNU FDL are operator calls to widen; the gate is correct to refuse by default and correct to name what it refused.
 >
 > ⛔⛔ **THE WIKIPEDIA LANE IS EXHAUSTED — PROVEN, NOT ASSUMED.** Twelve cells re-fetched, every one logging thousands of cleaned sentences and `SKIPPED BY REASON — none`. Re-measured: **corpus 71,256,751 → 71,256,423 (DOWN 328 words)** and all 32 cells at identical percentages. ⭐ **The log is not lying, it answers a different question** — it counts sentences *fetched and cleaned*, not *written*; the merge correctly refuses to shorten an existing entry, so re-fetching an ingested topic is a no-op indistinguishable from success. **The verdict is the re-measurement, never the fetch log.** Stored entries ≈ topics offered (35 vs 32, 32 vs 41, 48 vs 55) and the depth cap is not binding either (median entry 1,453–3,057 words against a 600-sentence cap). **The topics are short and exhausted; the cells need more topics or a richer source.**
 >
-> ⭐ **`BOOKS_PER_CELL` 2 → 4 on Gee's call, AND gated on starvation** — the filter was book-count only, so a flat raise would have taken two more books for **every** college/grad cell across six subjects (~36 cells, **+33M words against a 71.3M corpus**), five to ten times what was authorised. Gating on the floor delivers the approved outcome and is this file's own doctrine. **RE-PRICE: ~527k owed, worst case +2.8%, ~+16 h on a ~24-day walk. No gate weakened.** ✅ **It is working: +786,383 words landed and four cells cleared** (`math/college4` · `major/college1` · `major/college3` · `art/college2`).
+> ⭐ **`BOOKS_PER_CELL` 2 → 4 on Gee's call, AND gated on starvation** — the filter was book-count only, so a flat raise would have taken two more books for **every** college/grad cell across six subjects (~36 cells, **+33M words against a 71.3M corpus**), five to ten times what was authorised. Gating on the floor delivers the approved outcome and is this file's own doctrine. **RE-PRICE: ~527k owed, worst case +2.8%, ~+16 h on a ~24-day walk. No gate weakened.** ✅ **It is working: +1,070,734 words landed across two runs and six cells cleared** (`math/college4` · `major/college1` · `major/college3` · `art/college2` · `cstheory/college3` · `cstheory/college4`). ⚠ **The ingest log's own total (1,197,759 words "written") is LARGER than what reached the tree**, for the same reason the Wikipedia lane looked healthy: the merge refuses to shorten an existing entry, so a re-offered book counts as written and changes nothing. **Trust the re-measurement, never the run log** — the doctrine two paragraphs up, applying to my own fetcher this time.
 >
 > ⚠ **The 22 high-school elective cells will NOT be fixed by any fetcher** — open textbooks are thin for pe/music/art/health. **That is topic-list authoring, and it is the next real curriculum work.**
 >
