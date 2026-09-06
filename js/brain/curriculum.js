@@ -3955,14 +3955,32 @@ export class Curriculum {
           if (eSpan >= 60000) this._emitRateWindow = { atMs: now, count: ec };
           sinceEmit = cluster._lastEmitTickMs ? (now - cluster._lastEmitTickMs) : null;
         }
-        // EM.1 - top-8 wall-ms offenders from the per-method profile, so the
+        // EM.1 - top wall-ms offenders from the per-method profile, so the
         // next optimization is chosen by numbers read off this payload.
+        //
+        // ⭐⭐ `TEACHRATE.5` — 8 → 24, BECAUSE THE TRUNCATION WAS HIDING THE
+        // ANSWER. `TRACKED` auto-wraps EVERY `_teach*` method on the prototype,
+        // so the profile already knows what every one of them costs — but only
+        // the top 8 were published, and the top 2 are the CONTAINERS
+        // (`_teachWordDefinition`, `_teachAssociationPairs`). That left six slots
+        // for every child, and the 8th was already at 35,958 ms while the
+        // unattributed residual inside the assoc call is **587,215 ms**.
+        //
+        // ⛔ A LIST CUT AT 8 CANNOT DISTINGUISH "this method is cheap" FROM
+        // "this method is invisible", and four separate theories about that
+        // residual were argued — and three of them measured and killed —
+        // against a profile that was simply not showing the relevant rows.
+        // The cost of publishing 24 instead of 8 is a few hundred bytes per
+        // broadcast; the cost of NOT publishing them has been most of a day.
+        //
+        // ⚠ Still bounded, and deliberately so: one entry per TRACKED method
+        // name, sorted, capped. This raises a cap; it does not remove one.
         let teachProfile = null;
         if (this._teachProfile) {
           teachProfile = Object.entries(this._teachProfile)
             .map(([n, p]) => ({ name: n, ms: p.ms | 0, calls: p.calls | 0 }))
             .sort((a, b) => b.ms - a.ms)
-            .slice(0, 8);
+            .slice(0, 24);
         }
         // LIVETEACH (2026-08-23) — TEACH-CHUNK rate beside the wrapped-call rate.
         // `teachCallsPerMin` counts COMPLETED wrapped teach calls, so a phase
@@ -4111,9 +4129,32 @@ export class Curriculum {
             if (psx && psx.n > 0) {
               const heb = (out.hebbian && (out.hebbian.substrateMs + out.hebbian.crossMs + out.hebbian.intraMs)) || 0;
               const lat = (out.lateral && (out.lateral.substrateMs + out.lateral.scanMs + out.lateral.antiMs)) || 0;
-              const named = psx.embedMs + psx.wtaMs + psx.clearMs + psx.tileMs + heb + lat;
+              const named = psx.embedMs + psx.wtaMs + psx.clearMs + psx.tileMs + (psx.antiMs || 0) + heb + lat;
               out.pairSegments = {
                 ...psx,
+                // ⭐ `DEFCOST.5` — the per-CALL / per-PAIR split. `_teachWordDefinition`
+                // makes ~14 assoc calls per word (one per dictionary SENSE), so
+                // anything fixed per call is paid 14× per word and collapses to
+                // 1× if the senses are concatenated into a single call — while a
+                // per-pair cost is unaffected by that change. Publishing both
+                // means the decision is a read rather than an argument.
+                perCallMs: psx.calls ? +(psx.pairMs / psx.calls).toFixed(3) : null,
+                pairsPerCall: psx.calls ? +(psx.n / psx.calls).toFixed(2) : null,
+                antiPerPairMs: psx.antiN ? +(psx.antiMs / psx.antiN).toFixed(4) : null,
+                antiPct: psx.pairMs > 0 ? +(100 * psx.antiMs / psx.pairMs).toFixed(1) : null,
+                // ⭐⭐ `TEACHRATE.6` — THE SCHEDULING BILL, ISOLATED. `*WallMs` is
+                // measured at the call site; `heb`/`lat` above are the callees'
+                // own inclusive totals. **The difference is what the `await`
+                // cost beyond the work it wrapped** — i.e. time spent waiting
+                // for an event loop that is also running the brain tick.
+                // If `awaitOverheadMs` is large, no amount of optimising the
+                // teach primitives helps and the loop itself is the target.
+                hebWallPerPairMs: psx.n ? +((psx.hebWallMs || 0) / psx.n).toFixed(4) : null,
+                latWallPerPairMs: psx.n ? +((psx.latWallMs || 0) / psx.n).toFixed(4) : null,
+                awaitOverheadMs: Math.max(0, Math.round(((psx.hebWallMs || 0) + (psx.latWallMs || 0)) - (heb + lat))),
+                awaitOverheadPct: psx.pairMs > 0
+                  ? +(100 * Math.max(0, ((psx.hebWallMs || 0) + (psx.latWallMs || 0)) - (heb + lat)) / psx.pairMs).toFixed(1)
+                  : null,
                 embedPerPairMs: +(psx.embedMs / psx.n).toFixed(4),
                 wtaPerPairMs: +(psx.wtaMs / psx.n).toFixed(4),
                 clearPerPairMs: +(psx.clearMs / psx.n).toFixed(4),
@@ -19220,9 +19261,33 @@ export class Curriculum {
         const _sampleN = Math.min(pairs.length, 512);
         const _stride = Math.max(1, Math.floor(pairs.length / _sampleN));
         const _sets = [];
+        // ⛔⛔ `REPPRICE.4` — DISTINCT INPUT WORDS ONLY, AND THIS IS A REAL BUG
+        // THIS INSTRUMENT SHIPPED WITH. Collision load is "how many OTHER
+        // patterns share my cells", so it is only meaningful across DIFFERENT
+        // patterns. In the definition lane every pair is `[word, defWord]` —
+        // **the input word is the SAME for every pair in the call** — so
+        // sampling `pairs[i][0]` sampled ONE word N times, produced N identical
+        // patterns, and reported the maximum possible collision.
+        //
+        // ⛔ It published `load 56` against the sweep's 0.246 production row and
+        // read as a 228× alarm that would have justified refusing all
+        // compression. **It was an artefact of the sampler, not a property of
+        // the brain.** Caught by asking how 8 patterns could possibly share all
+        // 8 of their dims when the identity-hash stripe gives every word 5
+        // unique dims at double weight — the answer being that they were not 8
+        // words.
+        //
+        // ⚠ A load computed from fewer than 8 DISTINCT patterns is not a weak
+        // measurement, it is a meaningless one, so the pricing now declines
+        // rather than publishing a number. **Declining to measure is a result;
+        // publishing a degenerate number is a lie with a decision attached.**
+        const _seenWords = new Set();
         for (let i = 0; i < pairs.length && _sets.length < _sampleN; i += _stride) {
           const _w = Array.isArray(pairs[i]) ? pairs[i][0] : null;
           if (!_w) continue;
+          const _wk = String(_w).toLowerCase();
+          if (_seenWords.has(_wk)) continue;
+          _seenWords.add(_wk);
           const _e = this._dictionaryPatternFor(_w);
           if (!_e || !_e.length) continue;
           const _t = this._topKEmbedding(_e, _k);
@@ -19232,11 +19297,20 @@ export class Curriculum {
         }
         if (_sets.length >= 8) {
           const _m = _repMeasureCollisionLoad(_sets);
-          // load ∝ P, so a sample of n scales by pairs/n.
-          const _scaled = _m.load * (pairs.length / _sets.length);
+          // ⚠ `REPPRICE.4` — SCALED BY DISTINCT WORDS, NOT BY PAIR COUNT. Load
+          // rises with the number of distinct PATTERNS, and `pairs.length`
+          // counts pair-teaches; in the definition lane those differ by the
+          // number of definition words, which is where the 228× artefact came
+          // from. `_seenWords.size` is the real population.
+          const _scaled = _m.load * (Math.max(_sets.length, _seenWords.size) / _sets.length);
           const _verdict = _repSafeCompressionFor(_scaled, 0.95);
           _autoPrice = {
             sampled: _sets.length, pairs: pairs.length,
+            // ⭐ `REPPRICE.4` — the population the load was actually computed
+            // over. `distinctWords` far below `pairs` is the signature of the
+            // definition lane (one input word, many definition words), and is
+            // the fact that makes a within-call load figure meaningless there.
+            distinctWords: _seenWords.size,
             sampleLoad: _m.load, load: _scaled,
             meanActiveDims: _m.meanActive, maxSharers: _m.maxSharers,
             distinctDims: _m.cellsTouched,
@@ -19539,6 +19613,13 @@ export class Curriculum {
     // as the `lateral` and `hebbian` rows already published there).
     let _psEmbedMs = 0, _psWtaMs = 0, _psClearMs = 0, _psTileMs = 0, _psN = 0;
     let _semActiveSum = 0, _semActiveN = 0;
+    // `DEFCOST.4` — the contrastive pass's own clock. It is a second full
+    // write-and-dispatch cycle per pair and appears in no profile.
+    let _psAntiMs = 0, _psAntiN = 0;
+    // `TEACHRATE.6` — wall time at the two hot call sites, to be compared
+    // against the callees' own inclusive profile. wall minus inclusive = the
+    // scheduling cost of the `await` itself.
+    let _psHebWallMs = 0, _psLatWallMs = 0;
     // `LATSCAN.1` — reused across every pair-rep in this call; cleared at each
     // motor write. One array, not one per pair, because the alloc churn this
     // file already fought over (`_crossBucketPostScratch`) is the same lesson.
@@ -19554,6 +19635,7 @@ export class Curriculum {
         const sp = this._teachStageProfile || (this._teachStageProfile = {});
         const e = sp.pairSegments || (sp.pairSegments = {
           n: 0, embedMs: 0, wtaMs: 0, clearMs: 0, tileMs: 0, pairMs: 0,
+          antiMs: 0, antiN: 0, calls: 0,
           semActiveSum: 0, semActiveN: 0,
         });
         e.n += _psN;
@@ -19561,6 +19643,15 @@ export class Curriculum {
         e.wtaMs += _psWtaMs;
         e.clearMs += _psClearMs;
         e.tileMs += _psTileMs;
+        e.antiMs += _psAntiMs;
+        e.antiN += _psAntiN;
+        e.hebWallMs = (e.hebWallMs || 0) + _psHebWallMs;
+        e.latWallMs = (e.latWallMs || 0) + _psLatWallMs;
+        // ⭐ `DEFCOST.5` — CALL COUNT, so per-CALL and per-PAIR cost can be told
+        // apart. That distinction decides whether collapsing the per-sense calls
+        // helps at all: a fixed per-call cost paid 14 times per word collapses
+        // to once, while a per-pair cost does not move.
+        e.calls += 1;
         e.pairMs += Date.now() - startMs;
         e.semActiveSum += _semActiveSum;
         e.semActiveN += _semActiveN;
@@ -19754,10 +19845,28 @@ export class Curriculum {
           // Letter region is silent during association-pair writes so
           // legacy fan-out through letter_to_motor / letter_to_phon
           // decayed weights those phases had carved cleanly.
+          // ⭐⭐ `TEACHRATE.6` — WALL TIME AT THE CALL SITE, against the callee's
+          // own INCLUSIVE profile. The difference between these two numbers is
+          // scheduling: how long the `await` took beyond the work it wrapped.
+          //
+          // ⛔ THIS IS MEASURED BECAUSE EVERY NAMED ALTERNATIVE IS NOW ELIMINATED.
+          // The residual inside this loop is 587,215 ms. `TRACKED` auto-wraps
+          // every `_teach*` method, so any single child costing that much would
+          // rank THIRD in the profile — above `_teachWordDefinitions` at 439,536
+          // — and none does. The timed segments account for 0.784 ms/pair. So
+          // the time is not in a function; it is in the gaps between them, and
+          // the gaps are `await` boundaries on an event loop that is also
+          // running the brain tick at ~1,359 steps/s.
+          //
+          // ⚠ Deduction, not yet fact — which is exactly why it gets a counter
+          // instead of a fix. Four theories about this residual have already
+          // been argued and three measured to death.
+          const _ah0 = Date.now();
           await this._teachHebbian(lr, {
             projectionsWhitelist: this._associationPairsWhitelist(opts.subject),
             skipIntraSynapses: false, // intra-cluster recurrent still benefits
           });
+          _psHebWallMs += (Date.now() - _ah0);
           // Runtime lateral inhibition overlay — depress recurrent
           // weights that drive activity across different "buckets" of
           // motor. GABAergic cross-inhibition functional shape without
@@ -19766,8 +19875,10 @@ export class Curriculum {
           // call site that just wrote the motor pattern itself. The other
           // lateral call site writes a different pattern and correctly keeps
           // scanning; a hint is only safe where the caller owns the write.
+          const _al0 = Date.now();
           try { await this._teachLateralInhibition(lr, 26, { activeHint: _motorActiveHint }); }
           catch { /* non-fatal */ }
+          _psLatWallMs += (Date.now() - _al0);
           trained++;
         } catch (err) {
           skipped++;
@@ -19776,6 +19887,19 @@ export class Curriculum {
         // Contrastive negative-pair pass — sample a different pair and
         // use its output as the WRONG answer for the current input. Push
         // that combination apart on the intra-cluster recurrent matrix.
+        //
+        // ⭐⭐ `DEFCOST.4` — TIMED, BECAUSE IT IS A COMPLETE SECOND COPY OF THE
+        // WRITE-AND-DISPATCH CYCLE AND NOTHING HAS EVER MEASURED IT. Everything
+        // below repeats per pair: a `_clearSpikes`, TWO `_writeTiledPattern`
+        // calls, a relation-tag write, and a full `_teachAntiHebbian` dispatch —
+        // and `_teachAntiHebbian` does not appear in `teachProfile` at all, so
+        // every millisecond of this lands in the unattributed residual.
+        //
+        // ⛔ The residual is 84.7% of the pair loop, measured live. Three
+        // theories about it have already been killed by measurement (the tiled
+        // write, the spike clear, the sparse index array), so this is being
+        // MEASURED rather than assumed to be the answer.
+        const _apt0 = antiPairs ? Date.now() : 0;
         if (antiPairs) {
           let wrongIdx = Math.floor(Math.random() * pairs.length);
           if (wrongIdx === pairIdx) wrongIdx = (wrongIdx + 1) % pairs.length;
@@ -19810,6 +19934,8 @@ export class Curriculum {
               }
             }
           }
+          _psAntiMs += (Date.now() - _apt0);
+          _psAntiN += 1;
         }
       }
       await _microtask();
