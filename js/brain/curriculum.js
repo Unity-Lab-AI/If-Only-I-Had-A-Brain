@@ -5467,9 +5467,79 @@ export class Curriculum {
    *
    * DREAM_PRECELL_VOCAB=0 skips it (trickle-only, the old shape); default ON.
    */
+  /**
+   * ⭐⭐ `WRITEWARM.1` — SHE LEARNS TO FORM LETTERS AND DIGITS BEFORE ANYTHING
+   * ELSE, because a child who cannot hold a pencil is not waiting on vocabulary.
+   *
+   * ⛔ WHERE THIS USED TO SIT, AND WHY THAT WAS HOURS TOO LATE. Letter-shape
+   * learning lived in **ELA-K Phase 1b** — one of the cell's 25 phases — and the
+   * phases do not begin until the pre-phase definition bootstrap has drained.
+   * Measured live: `cellPhasesStarted` **0 of 25** after 431 s of cell time with
+   * `definitionQueue.depth` **2,235** still to go at ~12 s each. **So
+   * `letterShapes` read `learned: 0 of 26` and her mind's eye read "nothing
+   * held", and it would have stayed that way for HOURS.** The code's own words:
+   * *"a letter she could not trace is a letter she will not be able to write"*.
+   *
+   * ⛔⛔ AND SHE COULD NEVER WRITE A DIGIT AT ALL. `learnLetterShape` accepts
+   * `[a-z0-9]`, and the only caller looped `ALPHABET_ORDER` — **a–z**. Ten
+   * numerals were reachable by the function and unreachable by the curriculum,
+   * so "write the number 7" had no stroke to draw, at any grade, forever.
+   *
+   * ⚠ THIS ADDS NO TRAINING AND REMOVES NONE — it MOVES the same 36 traces
+   * earlier and widens the set by the ten that were always meant to be there.
+   * `_letterShapesLearned` already made it once-per-walk, so the Phase-1b call
+   * becomes a no-op rather than a repeat. No gate is weakened; no dose changes.
+   *
+   * ⭐ AND IT TURNS A SILENT ZERO INTO AN EARLY VERDICT. With this at cell
+   * entry, a box whose mind-space failed to build says so in the first minute
+   * instead of presenting `learned: 0` with no explanation because the phase
+   * that would have reported it never ran.
+   */
+  async _learnGlyphShapesOnce() {
+    if (this._letterShapesLearned) return;
+    const _brain = this.cluster && this.cluster._brain;
+    if (!_brain || typeof _brain.learnLetterShape !== 'function') return;
+    this._letterShapesLearned = true;   // set FIRST — a failed pass must not loop every cell
+    // ⭐ EXACTLY WHAT THE RENDERER CAN ACTUALLY DRAW, AND NOT ONE CHARACTER MORE.
+    // `FONT5X7` (js/brain/mindspace/gpu.js:132) carries **42** glyphs: `A-Z`,
+    // `0-9` and `. , ! ? ' -`. `glyphStrokes` upper-cases its input, so the
+    // lowercase alphabet folds onto the same 26 forms — she writes in capitals,
+    // which is where a real kindergartener starts.
+    //
+    // ⛔ THE OLD CALLER LOOPED `ALPHABET_ORDER` ALONE, so **sixteen glyphs the
+    // font already held were never taught** — every digit and every punctuation
+    // mark. "Write the number 7" and "end the sentence with a full stop" had no
+    // stroke to draw, at any grade, for the life of the project.
+    //
+    // ⚠ Asking for a character the font lacks would bank a BLANK trace, so the
+    // set is pinned to the font rather than to an alphabet we wish it had. The
+    // remaining QWERTY characters (lowercase forms and ~53 symbols) do not
+    // exist in `FONT5X7` and are a font-authoring job, filed rather than faked.
+    const GLYPHS = `${ALPHABET_ORDER}${DIGIT_ORDER}.,!?'-`;
+    const t0 = Date.now();
+    let learned = 0, failed = 0;
+    const failedChars = [];
+    for (const ch of GLYPHS) {
+      let got = null;
+      try { got = await _brain.learnLetterShape(ch); } catch { got = null; }
+      if (got) learned++; else { failed++; failedChars.push(ch); }
+      await new Promise((r) => setImmediate(r));   // never hold the loop
+    }
+    this._glyphShapeStats = { learned, failed, of: GLYPHS.length, at: Date.now() };
+    // ⛔ THE FAILURE IS NAMED, NEVER SWALLOWED. A glyph she cannot trace is a
+    // glyph she cannot write, and that has to read as a fact rather than
+    // surfacing later as a caption with characters quietly missing.
+    this._hb(`[Curriculum] ✍ WRITEWARM — glyph shapes: ${learned}/${GLYPHS.length} traced and banked in ${((Date.now() - t0) / 1000).toFixed(1)}s`
+      + (failed ? ` · ⚠ ${failed} could NOT be traced (${failedChars.join('')}) — she will write nothing for those rather than stamp a font she never learned` : '')
+      + ` — run at CELL ENTRY, before the definition bootstrap, so she can form letters and numbers from the first minute.`);
+  }
+
   async _preCellVocabSetup(subject, grade) {
     const cluster = this.cluster;
     if (!cluster || typeof this._teachWordDefinitions !== 'function') return;
+    // `WRITEWARM.1` — BEFORE the vocabulary bootstrap, not after. This is the
+    // warm-up: forming the strokes comes first, exactly as it does for a child.
+    try { await this._learnGlyphShapesOnce(); } catch { /* never block a cell on the pencil */ }
     if (typeof process !== 'undefined' && process?.env?.DREAM_PRECELL_VOCAB === '0') {
       this._hb(`[Curriculum] 📚 PRE-CELL VOCAB skipped for ${subject}/${grade} — DREAM_PRECELL_VOCAB=0 (trickle-only mode).`);
       return;
