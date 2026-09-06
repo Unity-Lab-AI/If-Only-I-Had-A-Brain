@@ -640,6 +640,43 @@ const KNOBS = [
     proof: 'read at the art-weight site',
     what: 'Reps when a drawing outcome is written back as weight.',
   },
+
+  // ─── `KNOBSCAN.2` — THE TWELVE THAT HELD THE WHOLE PANEL READ-ONLY ────────
+  //
+  // ⛔⛔ `writable` is `unproven === 0` — ALL OR NOTHING. Twelve knobs with no
+  // proven effect class made every one of the other 205 read-only, and the knob
+  // panel exists precisely because the deployed box has no shell. The gate is
+  // right (*"an unproven knob must not be offered a control on a guess"*), and
+  // the way through it is to PROVE them, which is what these entries do.
+  //
+  // ⚠ EVERY ONE WAS READ AT ITS SITE. The effect class is NOT inferred from
+  // indentation — this file already records a brace-depth classifier being
+  // written and discarded for misreporting two knobs as `live`. The test used
+  // here is the only one that matters: **does writing this value NOW change
+  // behaviour LATER?**
+  //
+  // ⛔ WHICH IS WHY THREE OF THESE ARE `boot` DESPITE BEING READ INSIDE A
+  // FUNCTION. `DREAM_SEM_TOPOGRAPHIC` and `DREAM_TOPO_RADIUS_FRAC` are read in
+  // `cluster.js`'s `constructor(name, size, opts)`, and `DREAM_LAMINATION_VETO`
+  // in a projection-init path — all three decide how a matrix is BUILT. A later
+  // write reads back correctly and changes nothing, which is exactly the
+  // silent-no-op this classification exists to prevent.
+
+  { key: 'DREAM_CORPUS_BUFFER_BATCH', effect: 'boot', site: 'server/corpus-sync.js:60', proof: 'column-0 `const BATCH = …` — top-level, evaluated once at import' },
+  { key: 'DREAM_CORPUS_BUFFER_GAP_MS', effect: 'boot', site: 'server/corpus-sync.js:62', proof: 'column-0 `const GAP_MS = …` — top-level, evaluated once at import' },
+  { key: 'DREAM_DEFERRED_DRAIN_MS', group: 'Curriculum, gates & schedule', effect: 'boot', site: 'server/brain-server.js:9620', proof: 'column-0 `const DEFERRED_DRAIN_MS = …`, then baked into the `setInterval` period on the next line — the timer is armed once', what: 'Poll period for the deferred-lane drain — the SECOND caller that keeps chat-time Hebbian, the curiosity follow-up, percept grounding, the minds-eye queue and salience alive once the walk has finished and stopped driving them.' },
+  { key: 'DREAM_SEM_TOPOGRAPHIC', effect: 'boot', site: 'js/brain/cluster.js:1210', proof: 'read inside `constructor(name, size, opts)` (cluster.js:318) — it selects how the sem projections are BUILT, so a later write cannot move an already-constructed matrix' },
+  { key: 'DREAM_TOPO_RADIUS_FRAC', group: 'Brain dynamics', effect: 'boot', site: 'js/brain/cluster.js:1237', proof: 'same constructor as DREAM_SEM_TOPOGRAPHIC — a construction-time radius, frozen once the projection exists', what: 'Topographic window as a fraction of the source region, used when the sem projections are built topographically. Construction-time: it shapes which rows can ever connect, so it cannot be moved on a running brain.' },
+  { key: 'DREAM_LAMINATION_VETO', effect: 'boot', site: 'js/brain/sparse-matrix.js:577', proof: 'read on the projection-init path that chooses veto-vs-bias for the L4 mask — decides how rows are laid down at build time' },
+
+  { key: 'DREAM_GLOVE_FETCH', effect: 'live', site: 'server/glove-provision.js:238', proof: 're-read inside the provision function on every call, after the already-present short-circuit — a write takes effect on the next provision attempt' },
+  { key: 'DREAM_CONSOLIDATE_WHILE_UNPOWERED', effect: 'live', site: 'server/brain-server.js:6612', proof: 'read inside the consolidation tick, in the `_awaitingDonor` expression evaluated every pass' },
+  { key: 'DREAM_CORPORA_DIR', group: 'Persistence & checkpoints', effect: 'live', site: 'server/corpus-sync.js:52', proof: '`function corporaRoot()` re-reads `process.env` on every call and memoizes nothing — verified by reading the whole four-line body', what: 'Absolute override for the corpus root. Exists because the box keeps its corpus outside the code tree; unset resolves relative to the module. ⚠ Not the same lever as UAL_FIELDS, which decides what a PRESS downloads.' },
+  { key: 'DREAM_PROBE_DEADLINE_MS', effect: 'live', site: 'js/brain/curriculum.js:15416', proof: 'read at the probe call site inside the method, so each probe takes the current value into its own `Promise.race` deadline' },
+  { key: 'DREAM_WEDGE_WARN_MS', group: 'Watchdogs, bounds & safety', effect: 'live', site: 'js/brain/curriculum.js:10804', proof: 'read inside the CELL ALIVE heartbeat, which re-evaluates it every beat', what: 'Above this, a cell that is ALIVE but not TEACHING prints ONE diagnostic line carrying stage, age, whether hebbian.calls and teachStageSeq are frozen or advancing, the active phase, substrate readiness and probe-deadline hits. Set past the slowest legitimate single teach call ever measured here (380,470 ms) so a slow phase never trips it.' },
+  { key: 'DREAM_REP_AUTOPRICE_GAP_MS', group: 'Teaching dose & repetition', effect: 'live', site: 'js/brain/curriculum.js:19320', proof: 'read inside `_teachAssociationPairs` on every call, as the throttle test against `cluster._repPriceAt`', what: 'How often the collision-load measurement re-runs. It previously ran on EVERY qualifying call — 25,603 of them in one boot — sampling up to 512 patterns each to compute a number that was then discarded. The quantity is a property of the corpus and the encoding, and neither moves between two calls a millisecond apart.' },
+  { key: 'DREAM_LATERAL_HINT', group: 'Teaching dose & repetition', effect: 'live', site: 'js/brain/curriculum.js:14820', proof: 'read at the top of `_teachLateralInhibition`, which runs once per pair per rep — a write is honoured on the next pair', what: 'Lets the lateral pass use the motor active-index list the caller already wrote instead of scanning all 346,902 motor cells to rediscover it. The scan it replaces measured 380,300 ms across 170,334 calls — 11.8% of a boot. Set 0 to restore the scan.' },
+  { key: 'DREAM_LATERAL_HINT_VERIFY', group: 'Teaching dose & repetition', effect: 'live', site: 'js/brain/curriculum.js:14822', proof: 'read in the same call as DREAM_LATERAL_HINT and compared against a per-process counter, so raising it mid-run genuinely re-arms verification', what: 'How many times the hint is checked against the full scan before the scan is skipped. ONE mismatch disables the hint permanently and says so, because a wrong hint does not throw — it trains anti-Hebbian against the wrong rows while every instrument reads healthy. Measured live: 500 verifications, 0 mismatches.' },
 ];
 
 /**
