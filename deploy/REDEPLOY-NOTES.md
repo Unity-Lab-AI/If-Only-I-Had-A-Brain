@@ -314,6 +314,19 @@ throws and the boot answers *"Boot STOPS here by design (NO FALLBACKS)"*; with
    whose absence is fatal must not depend on an unverified tool. 1.04 GB plain blob;
    Forgejo-only, and the press clone is `--filter=blob:none` which fetches it on checkout
    anyway. **Fields stay on LFS** — a missing field costs a live transform, not the walk.
+2b. **And since 2026-09-05 the press BUILDS the binary table the boot actually reads.**
+   `js/brain/embeddings.js` no longer parses the text — it opens
+   `corpora/glove.6B.300d.bin`, an `f32` pack of the same 400,000 vectors written by
+   `unity-glove` (`crates/unity-weights`). ~19 s of `parseFloat` becomes ~0.4 s of file
+   open. **That makes the `.bin` boot-fatal exactly like the text table**, so it gets the
+   same treatment: built after the GloVe gate, verified by the same layout/staleness check
+   the loader applies, and **aborted before `.force-fresh` if it cannot be made current**.
+   A missing build tool therefore leaves her running on the old code with her weights
+   intact — it can never take her down. ⚠ **Rust arrives on this box here:** if no
+   `unity-glove` is shipped at `$BACKEND_DIR/bin/` and no `cargo` is present, the press
+   installs the minimal toolchain (`UAL_RUST_BOOTSTRAP=0` refuses that and demands a
+   prebuilt binary instead). Artefacts go to `$BACKEND_DIR/.cargo-target`, inside the
+   overlay's exclude zone, so the second press costs nothing.
 3. **The gate now gates GloVe too** (`UAL_GLOVE_MIN_BYTES`, default 100 MB). Existence is
    not the check: a pointer stub is a real file, so both the size and the first 40 bytes
    are read, and a stub and a half-finished transfer are reported as the different

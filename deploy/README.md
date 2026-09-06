@@ -115,7 +115,10 @@ messages from registered pool donors.
 
 1. **Backend service** — `deploy/bootstrap-backend.sh` does steps 1–6 (service
    user, code sync, `npm ci`, **required GloVe** (the brain exits at boot
-   without `corpora/glove.6B.300d.txt` — no-fallbacks), auto-advance seed,
+   without `corpora/glove.6B.300d.txt` — no-fallbacks; and since 2026-09-05 it
+   reads the `f32` pack `corpora/glove.6B.300d.bin` built from that table by
+   `unity-glove`, which `self-update.sh` produces on the press and refuses to
+   restart without), auto-advance seed,
    systemd unit, sudoers). It **prints** the nginx steps by default (does NOT
    auto-touch nginx — safe on the SNI-split box):
    ```bash

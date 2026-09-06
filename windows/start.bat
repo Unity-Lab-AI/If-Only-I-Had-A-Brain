@@ -264,6 +264,38 @@ popd
 echo   GloVe 6B.300d installed at corpora\glove.6B.300d.txt.
 :glove_done
 echo   GloVe substrate present.
+
+REM ── THE BINARY TABLE — what the server actually reads ────────────────────────
+REM The server stopped parsing the text table on 2026-09-05. It opens
+REM corpora\glove.6B.300d.bin, an f32 pack of the same 400,000 vectors written by
+REM the Rust converter (crates\unity-weights, binary unity-glove). Same vectors,
+REM verified 400,000/400,000 identical; ~19 s of parseFloat becomes ~0.4 s.
+REM
+REM This is a BUILD STEP in a build script, exactly like the npm install and the
+REM esbuild bundle above -- not a runtime fallback. `ensure` is a no-op when the
+REM cache is already current, so a warm box pays nothing.
+REM
+REM If cargo is absent this only WARNS: the boot's own error message names the
+REM command, and failing the launcher here would be a worse experience than a
+REM clear message from the process that actually needs the file.
+if not exist "%~dp0..\corpora\glove.6B.300d.txt" goto glovebin_done
+where cargo >nul 2>&1
+if errorlevel 1 (
+    echo   [!] cargo not found - skipping the binary GloVe table build.
+    echo       If corpora\glove.6B.300d.bin is missing the server will stop at boot
+    echo       and tell you this exact command. Install Rust from https://rustup.rs
+    goto glovebin_done
+)
+pushd "%~dp0.."
+cargo build --release -p unity-weights --bin unity-glove >nul 2>&1
+if errorlevel 1 (
+    echo   [!] the unity-glove converter did not build - see cargo output.
+    popd
+    goto glovebin_done
+)
+target\release\unity-glove.exe ensure corpora\glove.6B.300d.txt corpora\glove.6B.300d.bin
+popd
+:glovebin_done
 echo.
 
 echo [start] step 6/7: rebuilding js/app.bundle.js...

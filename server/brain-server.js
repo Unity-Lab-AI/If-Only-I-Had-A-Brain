@@ -4477,8 +4477,14 @@ class ServerBrain {
       // boot still dies exactly as it did before, with the same wording.
       try {
         const { ensureGloveTable } = require('./glove-provision.js');
+        // ⛔ NO `corporaDir` HERE ON PURPOSE. This used to pass
+        // `path.join(process.cwd(), 'corpora')`, and the launchers `cd server`
+        // first — so on every local boot it looked in `server/corpora`, missed
+        // the table sitting in `<repo>/corpora`, and started re-downloading
+        // 862 MB it already had. The provisioner now walks the same ladder the
+        // loader in `embeddings.js` walks; letting it decide is what keeps the
+        // two from disagreeing about whether the file exists.
         const _gp = await ensureGloveTable({
-          corporaDir: path.join(process.cwd(), 'corpora'),
           log: (m) => console.log('[GloVe] ' + m),
         });
         if (!_gp.ok && _gp.action !== 'disabled') {

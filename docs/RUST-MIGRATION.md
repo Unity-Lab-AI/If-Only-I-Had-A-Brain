@@ -373,6 +373,49 @@ and the event loop logs `RECOVERED after 32162ms`. In Rust:
 Target: seconds, not a minute. **This alone probably satisfies "minimal
 downtime" without any hot-restart machinery.**
 
+> ### ✅ THE GloVe HALF IS DONE AND CUT OVER — 2026-09-05
+>
+> **The server no longer parses the text table.** `js/brain/embeddings.js` reads
+> `corpora/glove.6B.300d.bin` — the same 400,000 vectors packed as `f32` with a
+> vocabulary index, written by `unity-glove` (`crates/unity-weights`). The
+> `readline` + `parseFloat` loop is **deleted**, not bypassed.
+>
+> | | measured in-process, same box, back to back |
+> |---|---|
+> | text via `readline` + `parseFloat` | **19,085 ms**, 745 MB RSS |
+> | binary | **549 ms**, 616 MB RSS |
+>
+> ⭐ **The proof is the part that matters:** the shipped loader and the new one
+> were run side by side over the whole table — **400,000/400,000 vectors
+> identical, zero components differing, zero words missing, zero extra.** The old
+> implementation came from `git show HEAD:js/brain/embeddings.js`, so the
+> comparison is against the code that was actually running, not a
+> re-implementation of it.
+>
+> ⛔ **Three traps this hit, all worth carrying into the remaining phases:**
+> - **The consumer's arithmetic is part of the contract.** `embeddings.js`
+>   L2-normalises and lowercases inline, accumulating the sum of squares in f64
+>   while storing f32, and parses via `parseFloat`-then-store (double rounding).
+>   A converter that stored the raw table, or summed in f32, would be *faithful
+>   to the file* and would silently change every cosine in the walk.
+> - **An off-by-four in a binary reader does not fail, it lies.** The first draft
+>   wrote the header as 36 bytes instead of 40. It loaded 400,000 vectors at the
+>   right dimension and reported success; cosine against the real table was ~0.00
+>   for every probe word. The length check is now **exact equality**, not `>=`,
+>   which catches it without needing a parity harness.
+> - **A format decision that is free in the writing language can be the whole
+>   cost in the reading one.** v1 did not pad the vocabulary, so the matrix
+>   started at offset 2 mod 4 — invisible to Rust's `from_le_bytes`, and fatal to
+>   `new Float32Array(buf, off, n)`, which throws unless `off` is 4-aligned. v2
+>   pads; the matrix is viewed, not copied.
+>
+> **Deployment:** the press builds the table (`deploy/self-update.sh`, after the
+> existing GloVe gate) and **aborts before restarting anything** if it cannot —
+> so a missing converter leaves her running on the old code with her weights
+> untouched, rather than restarting into a boot that stops by design. Rust
+> arrives on the box here, which is the structural prerequisite for every later
+> phase, not a detail of this one.
+
 **(b) Socket handover (`SO_REUSEPORT` / systemd socket activation).** The new
 process binds before the old one exits, so no connection is refused during the
 swap. Donors reconnect to the new process, which they already handle (donor
