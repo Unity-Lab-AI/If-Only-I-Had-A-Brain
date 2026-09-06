@@ -110,9 +110,58 @@ function _cachePut(key, value) {
   }
 }
 
+/* ⛔⛔ A PERMANENT `noDef` IS A CLAIM ABOUT ONE SOURCE'S COVERAGE, NOT ABOUT THE
+ * WORD — and it was shadowing the peer source that can answer.
+ *
+ * `getDefinition` consults the offline dictionary before the network, but it
+ * reads the CACHE before both. So any word cached `noDef` before the offline
+ * lane existed is answered "no definition" forever and **the offline dictionary
+ * is never consulted for it again** — `noDef` has TTL Infinity by design, and the
+ * disk cache restores it on every boot.
+ *
+ * ⭐ MEASURED on the local 4,135-entry cache: 195 permanent `noDef` entries, of
+ * which **80 are words the loaded WordNet can define right now** — `touch` (27
+ * senses), `tight` (16), `net` (12), `hell`, `american`, `australia`, `egypt`,
+ * `greece`, `rome`, and the four the flag surfaced (`be` 14, `look` 14, `every` 2,
+ * `america` 2), all stamped 2026-06-20, months before the offline lane shipped.
+ * Those are content words she could never have learned a definition for.
+ *
+ * ⚠ THE 404 ITSELF WAS NEVER WRONG. This file already records that `is` and `was`
+ * both 404 while `are`, `were` and `been` return 200 — the API's coverage is
+ * genuinely uneven. What was wrong is treating one source's 404 as the answer
+ * when the module's own header calls offline **"a peer source, not a fallback"**.
+ *
+ * ⭐ IT HEALS RATHER THAN PURGES. On a `noDef` hit the offline dictionary gets
+ * asked; if it answers, the entry is REPLACED with the positive one, so the word
+ * is fixed permanently, the disk cache repairs itself on the next flush, and no
+ * stored data has to be migrated or deleted. The branch is self-extinguishing —
+ * a healed entry is no longer an error and never re-enters it — and it is the
+ * CHOKEPOINT: `getDefinition`, `getDefinitionSync`, `getDefinitionsSync`,
+ * `getDefinitions` and `lookupStatus` all read through here, so none of them can
+ * disagree about whether a word is definable.
+ */
+function _rescueNoDefFromOffline(key, entry) {
+  if (!entry || !entry.error || !entry.noDef) return null;
+  let offline = null;
+  try { offline = offlineDict.lookup(key); } catch { return null; }
+  if (!offline || !offline.length) return null;
+  const definitions = offline.map((d) => ({
+    partOfSpeech: d.partOfSpeech || '',
+    definition: d.definition,
+    example: '',
+    synonyms: [],
+    source: 'wordnet-offline',
+  }));
+  const healed = { definition: definitions[0].definition, definitions, fetchedAt: Date.now(), healedFromNoDef: true };
+  _cachePut(key, healed);
+  return healed;
+}
+
 function _cacheGet(key) {
   const entry = cache.get(key);
   if (!entry) return null;
+  const healed = _rescueNoDefFromOffline(key, entry);
+  if (healed) return healed;
   // error entries expire after a type-aware TTL (FC.11 — no-def permanent,
   // 429 long backoff, transient moderate retry).
   if (_errorEntryExpired(entry)) {
@@ -476,7 +525,14 @@ function flushCacheToDisk() {
 function lookupStatus(word) {
   const key = _normalize(word);
   if (!key) return 'unknown';
-  const entry = cache.get(key);
+  // ⚠ THROUGH `_cacheGet`, NOT `cache.get`. This read the raw Map, so it was the
+  // one status answer that could still say `noDef` about a word the offline
+  // dictionary defines — and DEF-MISS keys on exactly this value, which is how
+  // four definable words got reported as having no dictionary entry. Reading
+  // through the chokepoint also means an EXPIRED transient error now reports
+  // `unknown` instead of `error`; every caller treats both as transient
+  // (`_why !== 'noDef'`), so nothing downstream changes behaviour.
+  const entry = _cacheGet(key);
   if (!entry) return 'unknown';
   if (!entry.error) return 'hasDef';
   return entry.noDef ? 'noDef' : 'error';

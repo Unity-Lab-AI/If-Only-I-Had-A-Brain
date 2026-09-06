@@ -5,6 +5,42 @@
 
 ---
 
+## 2026-09-06 (6th) — `FLAGSAMPLE.2` — A PERMANENT `noDef` WAS SHADOWING THE PEER SOURCE THAT COULD ANSWER, AND IT WAS 80 WORDS, NOT 4
+
+Gee (verbatim): *"start knock ing off those todo s in droves!"*
+
+### The mechanism, traced end to end as the row asked
+
+`getDefinition` consults the offline dictionary **before** the network — but it reads the **cache** before both. `noDef` has TTL **Infinity** by design (`_errorEntryExpired` returns false for it), and the disk cache restores it on every boot. So **any word cached `noDef` before the offline lane existed is answered "no definition" forever, and the offline dictionary is never consulted for it again.**
+
+⭐ **Measured on the real 4,135-entry cache, not reasoned about:** 195 permanent `noDef` entries, **80 of which the loaded WordNet can define right now** — `touch` (27 senses), `tight` (16), `net` (12), `hell`, `american`, `australia`, `egypt`, `greece`, `rome`, and the four the flag surfaced (`be` 14 · `look` 14 · `every` 2 · `america` 2). **All four stamped `2026-06-20T06:28:14Z`** — months before the offline lane shipped. **Content words she could never have learned a definition for.**
+
+⚠ **The 404 itself was never wrong.** This file already records that `is` and `was` both 404 while `are`, `were` and `been` return 200 — the API's coverage is genuinely uneven. What was wrong is treating **one source's 404 as the answer** when the module's own header calls offline *"a peer source, not a fallback"*. **A 404 is a fact about that API's coverage; only the absence of any source's entry is a fact about the word.**
+
+### Fixed at the chokepoint, and it heals instead of purging
+
+`_rescueNoDefFromOffline` sits inside `_cacheGet`: on a `noDef` hit the offline dictionary is asked, and if it answers the entry is **replaced** with the positive one. So the word is fixed permanently, the disk cache repairs itself on the next flush, and **no stored data is migrated or deleted.** The branch is self-extinguishing — a healed entry is no longer an error and never re-enters it.
+
+⛔ **`_cacheGet` is the chokepoint on purpose:** `getDefinition`, `getDefinitionSync`, `getDefinitionsSync` and `getDefinitions` all read through it, so none of them can disagree about whether a word is definable. **`lookupStatus` did not** — it read the raw Map, which made it the one answer that could still say `noDef` about a definable word, **and DEF-MISS keys on exactly that value.** Now routed through the same chokepoint.
+
+### Verified against the poisoned cache itself
+
+```
+permanent noDef loaded from disk : 195
+healed to hasDef                 :  80   (234 senses recovered)
+still noDef                      : 115
+```
+
+The 115 that stay are **correct**: typos (`constpated`, `swalled`, `dumn`, `prews`), contractions (`dont`, `thats`, `whats`), hyphenates (`sun-rise`, `new-spaper`), nonsense (`foo`). And `for` · `your` · `their` · `our` **stay `noDef`**, which was the expected half of the original split and is unchanged.
+
+### ⛔ AND A NEW DEFECT FOUND WHILE VERIFYING, FILED NOT FIXED
+
+The offline dictionary returns senses in **POS-block order — noun first, always** — not by usage frequency. Across the 80 healed words the first sense is a **noun 70 times**, adjective 8, adverb 1, **verb 1**. So `be` leads with *"a light strong brittle grey toxic bivalent metallic element"* (**beryllium**) and `look` with *"the feelings expressed on a person's face"*.
+
+⚠ **Pre-existing and wider than this change** — it applies to all ~2,134 words the offline lane already answers, so this batch widens exposure by 80 rather than causing it. The multi-sense teach path binds **all** senses, so her knowledge lands complete; the single-string first-sense path is `_emitDefinition`, **which is what she SAYS when asked what a word means.** Filed as `DEFPOS.1` with these numbers rather than guessed at.
+
+---
+
 ## 2026-09-06 (5th) — `WRITEWARM.2` — THE OTHER 52 KEYS, AND THE CASE FOLD THAT WOULD HAVE HIDDEN HALF OF THEM
 
 Gee (verbatim): *"should be ab;le to do everything on a qwerty"*

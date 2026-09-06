@@ -34,11 +34,24 @@
 >
 > **Verified in code:** 95/95 keys present · 0 malformed rows · every new glyph rendered to ASCII and read by eye · `glyphStrokes` real strokes for **94/94, 0 empty** · `A` vs `a` structurally distinct (4 vs 5 strokes) · `node --check` ×4 · ESM `import()` · bundle rebuilt (996.0 kb).
 >
+> ## ✅ `FLAGSAMPLE.2` SHIPPED — AND IT WAS 80 WORDS, NOT 4
+>
+> `getDefinition` consults the offline dictionary before the network — but it reads the **cache** before both. `noDef` has TTL **Infinity** by design and the disk cache restores it every boot, so **any word cached `noDef` before the offline lane existed is answered "no definition" forever and the offline dictionary is never consulted for it again.**
+>
+> ⭐ **Measured on the real 4,135-entry cache:** 195 permanent `noDef`, **80 of them words the loaded WordNet defines right now** — `touch` (27 senses), `tight` (16), `net` (12), `hell`, `american`, `australia`, `egypt`, `greece`, `rome`, plus the four the row named (`be` 14 · `look` 14 · `every` 2 · `america` 2). **All four stamped `2026-06-20T06:28:14Z`.**
+>
+> ⚠ **The 404s were correct.** `is` and `was` 404 while `are`, `were` and `been` return 200 — that API's coverage is uneven. **What was wrong is treating one source's 404 as the answer**, when the module's own header calls offline *"a peer source, not a fallback"*.
+>
+> ⭐ **`_rescueNoDefFromOffline` sits inside `_cacheGet` and HEALS rather than purges** — the offline answer replaces the stale entry, so the word is fixed permanently, the disk cache repairs itself on the next flush, and nothing is migrated or deleted. Self-extinguishing. ⛔ **`lookupStatus` read the raw Map** and was the one answer that could still say `noDef` about a definable word — **DEF-MISS keys on exactly that value.** Routed through the chokepoint now.
+>
+> **Verified against the poisoned cache:** `195 loaded → 80 healed (234 senses) → 115 still noDef`, and all 115 are correct — typos (`constpated`, `swalled`, `dumn`), contractions (`dont`, `thats`), hyphenates (`sun-rise`). `for` / `your` / `their` / `our` correctly stay `noDef`.
+>
 > ## ⏭ NEXT
 >
 > - **On the next press, check `glyph shapes: 94/94`** in the first minute. Anything below 94 prints its own failure list. `DEPLOYCHECK.6`'s expected reading moved 26 → 42 → **94** in one day; both earlier numbers are left standing in the row with the reason.
 > - **`WRITEWARM.3`** — the writing-practice loop (ABCs, numbers, words, sentences), same shape as `_practiceDrawing`. **Still gated on `letterShapes.learned` reading 94 on the box**, because practising against shapes she does not have trains against blanks.
-> - **`FLAGSAMPLE.2`** — why `be` / `look` / `every` / `america` miss a dictionary that holds them (14/14/2/2 senses). Eliminated: lazy-load race, STOP set, case.
+> - **`DEFPOS.1`** — new, filed with numbers not guesses. The offline dictionary orders senses **noun-first always**: across the 80 healed words the first sense is a noun **70×**, a verb **once**, so `be` leads with *beryllium*. Pre-existing across ~96% of her vocabulary. All senses still bind, so her knowledge is fine — **the damage is `_emitDefinition`, which is what she SAYS.** ⛔ Fix from WordNet's own tag counts, never a POS-preference table.
+> - **`DEFPOS.2`** — the `SELF:DEF-*` lane reports collision loads **19.8 → 37.3** live. The dedup fix is working (58-78 distinct, arithmetic checks out) and the load is high because the region is **tiny**, not because a counter broke. But the `OVERLAP` sweep's top row is **load 4.000 at 24.0% retrieval** — an order of magnitude below these. **Measure that lane's retrieval before concluding anything.**
 > - **`WEDGELIVE.1`** — the probe deadline has fired 6× without freeing the walk.
 >
 > ---
