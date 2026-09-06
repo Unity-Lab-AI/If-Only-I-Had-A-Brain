@@ -5,6 +5,52 @@
 
 ---
 
+## 2026-09-06 (9th) — `DEFPOS.1` + `CODELEAK` — "BE" NO LONGER MEANS BERYLLIUM, AND THE LEAK SCANNER CAUGHT ITS OWN AUTHOR
+
+Gee (verbatim): *"get to work"*
+
+### `DEFPOS.1` — ordered by WordNet's own attestation
+
+`_rawSenses` walked parts of speech in a fixed **noun → verb → adjective → adverb** order, so the headline sense of a verb-dominant word was its noun reading. Across the 80 words healed earlier today the first sense came back a **noun 70 times and a verb once**: `be` led with *"a light strong brittle grey toxic bivalent metallic element"* — **beryllium** — and `look` with *"the feelings expressed on a person's face"*.
+
+⭐ **The fix uses data already on disk.** `index.sense` ships in the same `wordnet-db` payload and carries a per-sense `tag_cnt`: how often that exact sense was attested in the tagged corpora. **`be`'s copula verb scores 10,742 against a noun scoring nothing.** Senses now return most-attested-first — **`be` → *"have the quality of being"*, `look` → *"perceive with attention"*** — while `america`, `every`, `cat`, `dog`, `tree` and `water` are untouched because the old order already had them right.
+
+⭐ **Held as a Buffer and binary-searched, never parsed.** That is not a style choice: **the neuron count is derived at boot from free host RAM**, so a 207,235-entry resident Map would have been paid for in neurons. The file is byte-sorted ascending (verified), so a lookup is ~18 seeks and no allocation.
+
+### The arithmetic that makes it surgical
+
+```
+  multi-sense lemmas        26,930
+    all senses tag_cnt 0    15,176  (56.4%)  <- CANNOT change; stable sort is a no-op
+    carry evidence          11,754
+    first sense CHANGED      2,292  (19.5% of those with evidence, 8.5% of all)
+  cost                      21.6 us/word · ~1 s across a K→PhD vocabulary · 7.0 MB resident
+```
+
+**A word with no evidence cannot be reordered by evidence.** Samples, all corrections: `abandon` noun→verb · `abdominal` noun→adjective · `about` adjective→adverb · `academic` noun→adjective · `accord` noun→verb · `absent` verb→adjective.
+
+### ⭐ It does not need the fresh walk, and that was checked rather than assumed
+
+`defIdx` appears in exactly two places — a display label and `deferDiagnostics` on the final iteration. **Every sense is taught identically and the SET is unchanged.** Only the headline moves, and the headline is the single-string path `_emitDefinition` answers from. **What she learns is untouched; what she says is fixed.**
+
+### What was refused, and what went wrong on the way
+
+⚠ **No threshold was invented.** `net` flips noun→adjective on a thin margin (6 vs 4) where `be` flips on 10,742 vs 0. A minimum-margin rule was considered and refused — every named threshold owes a derivation, and the row's instruction was to let the data decide. Recorded so the narrow case is visible rather than buried.
+
+⛔ **A blanket "prefer verbs" rule was refused too.** `look` and `be` are verb-dominant; `net`, `hell` and `america` are not, and a POS preference would break the 70 the old order got right.
+
+⛔ **A missing `index.sense` must not take the dictionary down.** The read sits inside the same `try` as the four indexes, so a build without it would have set `_loadError` and disabled **every** offline definition — trading a sense-ordering improvement for the exact outage this module exists to end. Caught separately and warned. **A missing INPUT, not a degraded capability.**
+
+⚠ **My first impact measurement was wrong and is recorded.** It reported **9.0%** because it tie-sorted from file order while the real path ties from POS-block order, counting all-zero lemmas as changed that cannot change. Re-run against the real logic: **8.5%**. Two of its own samples showed `tag 0`, which is what gave it away.
+
+### `CODELEAK` — four whole files cleared, and two of the hits were mine
+
+Scanner at **1,773 lines across 14 files** (was 18). Cleared whole — the row's own unit of progress, since a half-swept file still breaks the LAW: `mindspace/gpu.js`, `knob-registry.js`, `rep-compression.js`, `sparse-matrix.js`. The *"verbatim Gee, no ticket"* category is now **0**.
+
+⛔⛔ **Two of those four hits were mine, added the same day** — the QWERTY-glyph work put its own ticket into a comment twice, in a commit that shipped. **The instrument caught its author.** Recorded rather than quietly swept, because a sweep whose own commits re-seed what it is sweeping never converges. The cause is worth naming: **a ticket is the natural handle while the work is live and stops being one the moment it lands**, so it has to be replaced with the mechanism at *write* time, not at sweep time.
+
+---
+
 ## 2026-09-06 (8th) — `EYEONE` — THE TRAINING VIEWER'S MIND'S EYE HAD NEVER DRAWN A FRAME, AND ITS TOOLTIP DESCRIBED THE THING IT WAS NOT DOING
 
 Gee (verbatim): *"and in the traing viewer minds eye they shoudl be one in the same"*
