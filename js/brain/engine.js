@@ -1279,6 +1279,10 @@ export class UnityBrain extends EventEmitter {
         brainArousal,
         brainCoherence,
         {
+          // ⭐ The engine's inner-voice call is a SECOND entry point into the
+          // same lane, and it needs the same label or half this lane's time
+          // stays unattributed.
+          lapLane: 'inner-voice',
           predictionError: state.cortex?.predictionError ?? 0,
           motorConfidence: state.motor?.confidence ?? 0,
           psi,

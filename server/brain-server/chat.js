@@ -89,6 +89,43 @@ const SERVER_CHAT_MIXIN = {
   },
 
   /**
+   * A LAP RING PER LANE, because the chat one is not shareable.
+   *
+   * ⛔ THIS EXISTS BECAUSE THE ALTERNATIVE ALREADY COST A FILED SUSPICION.
+   * `_chatStamp` writes to single fields on this object, and four lanes reach
+   * the generation path that stamps it — the chat reply, the inner voice twice,
+   * and the dream sentence. They were all writing into the reply's ring, which
+   * is how a 42,913 ms continuation appeared on a question-shaped reply whose
+   * guard had correctly forced the continuation count to zero. Somebody then
+   * spent real effort suspecting a guard that was working.
+   *
+   * ⛔ THE ROW THAT ASKED FOR THIS SAID EXPLICITLY: DO NOT FIX IT BY WIDENING
+   * THE CHAT RING AGAIN. So the chat lane is untouched — `_chatStamp` keeps its
+   * own fields and ChatPin's output is byte-identical — and every OTHER lane
+   * gets its own entry here, keyed by lane name. Two rings that cannot collide,
+   * rather than one ring with a discipline about who may write to it.
+   *
+   * ⚠ BOUNDED BY CONSTRUCTION. A lane keeps only its slowest stage and its most
+   * recent one; nothing accumulates per call. An instrument that grows with
+   * traffic is one that eventually has to be turned off, and this project has
+   * already retired two panels for exactly that.
+   */
+  _laneStamp(lane, stage) {
+    if (!lane || lane === 'chat') return;   // the chat lane owns _chatStamp; never both
+    const now = Date.now();
+    if (!this._laneLaps) this._laneLaps = {};
+    const L = this._laneLaps[lane] || (this._laneLaps[lane] = { stage: null, at: 0, maxMs: 0, maxStage: null, lastMs: null });
+    if (L.stage && L.at) {
+      const held = now - L.at;
+      L.lastMs = held;
+      L.lastStage = L.stage;
+      if (held > L.maxMs) { L.maxMs = held; L.maxStage = L.stage; }
+    }
+    L.stage = stage || null;
+    L.at = now;
+  },
+
+  /**
    * SURPRISECPU.2 — the mind's-eye image preview, drained OFF the reply path.
    *
    * Moved verbatim out of `_processAndRespondInner`'s img-detect stage, where it

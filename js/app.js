@@ -3546,6 +3546,10 @@ function startEyeIris(canvas, visualCortex) {
   const ctx = canvas.getContext('2d');
   let frameCount = 0;
   let focusX = 0.5, focusY = 0.5;
+  // Movement watch — see the gaze block in render(). A frozen gaze and a steady
+  // one are the same picture, so the last CHANGE is tracked rather than the last
+  // value.
+  let lastGazeX = null, lastGazeY = null, lastGazeMovedAt = 0;
 
   function render() {
     frameCount++;
@@ -3557,22 +3561,85 @@ function startEyeIris(canvas, visualCortex) {
     ctx.clearRect(0, 0, w, h);
 
     // Get gaze from visual cortex (salience-driven, not AI-driven)
-    const gaze = visualCortex?.getState() || {};
-    focusX += ((gaze.gazeX ?? 0.5) - focusX) * 0.06;
-    focusY += ((gaze.gazeY ?? 0.5) - focusY) * 0.06;
-    focusX += (Math.random() - 0.5) * 0.008;
-    focusY += (Math.random() - 0.5) * 0.008;
+    // ⛔⛔ `?? 0.5` PARKED THE IRIS DEAD CENTRE AND CALLED IT A GAZE.
+    //
+    // This read `visualCortex?.getState() || {}` and then defaulted a missing
+    // `gazeX`/`gazeY` to 0.5 — so a cortex that is absent, uninitialised or
+    // throwing rendered as a confident iris sitting perfectly still in the
+    // middle of the frame. **"The focus tracker never moves anymore" is what
+    // that looks like**, and it is indistinguishable from her genuinely looking
+    // straight ahead. The widget could not tell "no signal" from "centred".
+    //
+    // ⭐ THE DEFAULT IS THE DEFECT, not a safety net: it converted a dead lane
+    // into a plausible reading, which is the one thing an instrument must never
+    // do. A missing gaze is now DRAWN AS MISSING — the iris goes hollow and
+    // stops claiming a position — so a glance at the page answers the question
+    // that previously needed a console session.
+    const gazeState = (visualCortex && typeof visualCortex.getState === 'function')
+      ? visualCortex.getState() : null;
+    const gaze = gazeState || {};
+    const haveGaze = typeof gaze.gazeX === 'number' && typeof gaze.gazeY === 'number'
+      && Number.isFinite(gaze.gazeX) && Number.isFinite(gaze.gazeY);
+    // ⚠ FROZEN IS ALSO A FAILURE, AND IT LOOKS IDENTICAL TO STILLNESS. A cortex
+    // whose `processFrame` stopped being called keeps returning its LAST gaze
+    // forever, which reads as a perfectly steady stare. Movement is tracked over
+    // a rolling window so a stuck value is reported rather than admired.
+    if (haveGaze) {
+      if (gaze.gazeX !== lastGazeX || gaze.gazeY !== lastGazeY) {
+        lastGazeMovedAt = frameCount;
+        lastGazeX = gaze.gazeX; lastGazeY = gaze.gazeY;
+      }
+    }
+    // ~4s at 60fps. Long enough that a genuinely still subject is not accused,
+    // short enough that a dead lane is named while the operator is still looking.
+    const gazeFrozen = haveGaze && (frameCount - lastGazeMovedAt) > 240;
+    const gazeLive = haveGaze && !gazeFrozen;
+    if (haveGaze) {
+      focusX += (gaze.gazeX - focusX) * 0.06;
+      focusY += (gaze.gazeY - focusY) * 0.06;
+      focusX += (Math.random() - 0.5) * 0.008;
+      focusY += (Math.random() - 0.5) * 0.008;
+    } else {
+      // No signal: sit centred but do NOT pretend to track. The hollow render
+      // below is what distinguishes this from a real centred gaze.
+      focusX += (0.5 - focusX) * 0.06;
+      focusY += (0.5 - focusY) * 0.06;
+    }
 
     const px = focusX * w, py = focusY * h;
     const scale = Math.min(w, h) / 120;
     const pulse = Math.sin(frameCount * 0.03) * 0.15 + 0.85;
 
-    ctx.strokeStyle = `rgba(255,77,154,${0.5 * pulse})`; ctx.lineWidth = 2 * scale;
-    ctx.beginPath(); ctx.arc(px, py, 20 * scale * pulse, 0, Math.PI * 2); ctx.stroke();
-    ctx.strokeStyle = `rgba(168,85,247,${0.6 * pulse})`; ctx.lineWidth = 1.5 * scale;
-    ctx.beginPath(); ctx.arc(px, py, 12 * scale * pulse, 0, Math.PI * 2); ctx.stroke();
-    ctx.fillStyle = `rgba(255,77,154,${0.8 * pulse})`;
-    ctx.beginPath(); ctx.arc(px, py, 4 * scale, 0, Math.PI * 2); ctx.fill();
+    // ⭐ THE THREE STATES LOOK DIFFERENT, WHICH IS THE WHOLE FIX. Previously all
+    // three drew the identical confident iris, so a dead tracker and a watchful
+    // one were the same picture.
+    //   tracking — full colour, solid centre dot: she is following something
+    //   frozen   — dimmed, hollow centre: the last gaze is stale, nothing is
+    //              updating it, and the steady stare is not attention
+    //   no signal— faint dashed ring, no centre at all: there is no gaze to draw
+    if (gazeLive) {
+      ctx.setLineDash([]);
+      ctx.strokeStyle = `rgba(255,77,154,${0.5 * pulse})`; ctx.lineWidth = 2 * scale;
+      ctx.beginPath(); ctx.arc(px, py, 20 * scale * pulse, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = `rgba(168,85,247,${0.6 * pulse})`; ctx.lineWidth = 1.5 * scale;
+      ctx.beginPath(); ctx.arc(px, py, 12 * scale * pulse, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = `rgba(255,77,154,${0.8 * pulse})`;
+      ctx.beginPath(); ctx.arc(px, py, 4 * scale, 0, Math.PI * 2); ctx.fill();
+    } else if (gazeFrozen) {
+      ctx.setLineDash([]);
+      ctx.strokeStyle = `rgba(255,77,154,${0.18 * pulse})`; ctx.lineWidth = 1.5 * scale;
+      ctx.beginPath(); ctx.arc(px, py, 20 * scale, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = `rgba(168,85,247,0.22)`; ctx.lineWidth = 1 * scale;
+      ctx.beginPath(); ctx.arc(px, py, 12 * scale, 0, Math.PI * 2); ctx.stroke();
+      // hollow centre — the gaze exists but nothing is refreshing it
+      ctx.strokeStyle = 'rgba(255,77,154,0.35)'; ctx.lineWidth = 1 * scale;
+      ctx.beginPath(); ctx.arc(px, py, 4 * scale, 0, Math.PI * 2); ctx.stroke();
+    } else {
+      ctx.setLineDash([4 * scale, 4 * scale]);
+      ctx.strokeStyle = 'rgba(168,85,247,0.20)'; ctx.lineWidth = 1 * scale;
+      ctx.beginPath(); ctx.arc(px, py, 16 * scale, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+    }
 
     requestAnimationFrame(render);
   }

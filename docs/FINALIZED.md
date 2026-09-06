@@ -5,6 +5,114 @@
 
 ---
 
+## 2026-09-06 (17th) — `FOCUSDEAD.2` — THE IRIS WAS PARKED DEAD CENTRE BY ITS OWN DEFAULT
+
+Gee (verbatim, on filing): *"the Unity vision 'focus tracker' never moves anymore to follow what she sees… it used to work… but it died of regression."*
+
+### Every listed candidate eliminated, and the defect was somewhere else
+
+⛔ **① the deployed path DOES init and DOES drive frames.** On deploy `brain` is a `RemoteBrain`, which constructs its own `visualCortex` (`remote-brain.js:90`), calls `init(vid)` behind a `typeof` guard **that passes** — `init()` genuinely exists at `visual-cortex.js:187`, so this is *not* the missing-method-behind-a-typeof-guard trap this tree has paid for before — and starts its **own** RAF loop calling `processFrame`. The bare-`return`-with-no-reschedule bug that lane once had is fixed and commented in place.
+
+⛔ **The stale-reference theory dies too.** `startEyeIris` captures `brain.visualCortex` **by value** inside a 600 ms timeout, which would hold a dead cortex forever if `brain` were ever swapped. It is not: `brain` is assigned exactly once (`app.js:2341`), before both the camera connect and the widget start. The canvas exists (`index.html:570`) and the `if (!canvas) return` guard passes.
+
+### ⛔⛔ The actual defect: `?? 0.5`
+
+```js
+const gaze = visualCortex?.getState() || {};
+focusX += ((gaze.gazeX ?? 0.5) - focusX) * 0.06;
+```
+
+A cortex that is absent, uninitialised or throwing rendered as **a confident iris sitting perfectly still in the middle of the frame** — indistinguishable from her genuinely looking straight ahead.
+
+⭐ **That is exactly what "the focus tracker never moves anymore" looks like.** The default was the defect, not a safety net: **it converted a dead lane into a plausible reading**, which is the one thing an instrument must never do.
+
+### And frozen was a third state that looked like the other two
+
+A cortex whose `processFrame` stopped being called keeps returning its **last** gaze forever, which reads as a perfectly steady stare. Movement is tracked over a rolling ~4 s window now — long enough not to accuse a genuinely still subject, short enough to name a dead lane while the operator is still looking.
+
+### The three states render differently, which is the whole fix
+
+```
+  tracking   full colour, solid centre dot
+  frozen     dimmed, HOLLOW centre        <- last gaze is stale, nothing refreshes it
+  no signal  faint dashed ring, NO centre <- there is no gaze to draw
+```
+
+Verified across five cases. **The two that used to render identically — a live centred gaze and a five-second-stale one — are now distinct.** A glance at the page answers the question that previously required a console session, which is what made this row need a live read at all.
+
+⚠ **Client-side: this lands on a PAGE RELOAD, not on an Update press.** Easy to bundle with a press by habit; it should not be.
+
+**Verified:** `node --check` · bundle rebuilt · three-state classifier exercised across all five inputs.
+
+---
+
+## 2026-09-06 (16th) — `CHATPIN.2` — TWO RINGS THAT CANNOT COLLIDE, NOT ONE RING WITH A DISCIPLINE
+
+Gee (verbatim): *"get to the rest of the todos we need to do"*
+
+### Filed and closed the same day, on purpose
+
+`CHATPIN.1` stopped the background lanes writing into the chat reply's lap ring, and that left them with **no** instrument at all. The gap was filed immediately rather than left to be rediscovered — with one instruction attached: **do not fix it by widening the chat ring again.**
+
+That is honoured. `_chatStamp` keeps its own fields and **ChatPin's output is byte-identical**; every other lane gets its own entry via `_laneStamp(lane, stage)`. **The chat lane is refused by that function outright** — verified, it cannot write to the lane ring even when asked. Two rings that cannot collide, rather than one ring with a rule about who may write to it.
+
+### All four call sites declare their lane
+
+```
+  server/brain-server/chat.js   -> 'chat'          (keeps _chatStamp)
+  js/brain/inner-voice.js       -> 'inner-voice'
+  js/brain/engine.js            -> 'inner-voice'   <- the SECOND entry point
+  js/brain/curriculum.js        -> 'dream'
+```
+
+⚠ **The inner voice has two entry points**, and labelling only one would have left half its time unattributed — which is a subtler version of the original defect, not a fix for it.
+
+### Bounded by construction, and absent means something
+
+Six fixed keys per lane, verified: a lane keeps its slowest stage and its most recent one, and nothing accumulates per call. **An instrument that grows with traffic is one somebody eventually turns off**, and this project has already retired panels for exactly that.
+
+Published as `state.laneLaps` with slowest / last / in-flight per lane. ⚠ **An absent lane means it has not emitted since boot, and during a walk that is the CORRECT reading** — the inner voice is deliberately held while she has no word she can say, so silence there is the design working.
+
+### ⛔ A comment that had been true for exactly one edit
+
+The block above the stamp still read *"everything else is silent by default, which is the safe direction"*. **That stopped being true the moment this shipped.** Caught in the same pass and rewritten to record both the original reasoning and its supersession — a stale comment contradicting the code beside it is the defect class this tree keeps paying for, and writing one while closing a row about misleading instruments would have been its own small joke.
+
+**Verified:** `node --check` ×6 · ESM `import()` · four lane declarations in the tree · chat refused by `_laneStamp` · ring bounded at six keys.
+
+---
+
+## 2026-09-06 (15th) — `REPCOMP.2` + `DEFHEAL.4` — TWO ROWS CLOSED ON READINGS THAT ALREADY EXISTED
+
+Gee (verbatim): *"get to the rest of the todos we need to do"*
+
+### `REPCOMP.2` — the row was not wrong, it was uncarried
+
+Its watch was *"`tier1.totalEpisodes` leaving 0"*. It left. The `GATE READ 2026-09-01` entry (`ec723c41`, 5.5 h in) records **`tier1 57 · tier2 30 schemas · replaySchemas 68 · replayWrites 272 · replayRefused 0 · consolidation passCount 5`**.
+
+**Replay has been proven real in production for five days**, and the headline this row was filed under — *"hers has never run"* — stopped being true a day after it was written.
+
+⛔⛔ **The answer landed in a DIFFERENT row and nothing brought it back.** `REPLAYGATE.1` fixed the cause on 2026-08-31; `REPLAYOFF.4` recorded the confirming numbers on 2026-09-01; this row went on telling every reader that replay had never run. **A board can be wrong by being out of date as easily as by being mistaken**, and this failure mode is the worse one, because the row reads as live investigation rather than as history.
+
+⚠ **Closed on the primary condition only, and the second is named rather than claimed.** The watch had two halves; `[EventLoop] BLOCKED` **not** gaining a new ~30 s-periodic entry was never separately measured. No reading in that window reports such a pattern, but **absence-in-a-report is not a measurement**, and this project has already paid for treating it as one. If a ~30 s-periodic block ever appears, the consolidation timer is the first suspect.
+
+⭐ The consequence that matters: `REPLAYOFF.4` held the rep re-pricing behind *"only after replay is proven real"*, because interleaved replay is what SEPARATES representations. **That gate is now open on evidence.**
+
+### `DEFHEAL.4` — the prediction held, and the escalation trigger was not met
+
+The row could not be confirmed when it shipped because the API was returning `000` for every word. Read live off the box: dictionary cache **17,394 entries · 15,727 hits · `rateLimited` 0 · `fetchAvailable` true**. **It is up.**
+
+⭐ **The flag that fires is the proof.** With the service answering, the live flag is **`DEF-MISS`** (permanent, no entry), not **`DEF-DEFER`** (service outage) — exactly the discrimination this row predicted. The classifier is telling the two apart on live traffic.
+
+⭐⭐ **The row's own escalation trigger is not met.** It said *"if `PRECELL-MISS` still fires with a large count once the dictionary is up, the 67 are genuinely undefined and this needs its own investigation."* **The live count is 8 distinct, not 67** — and that investigation was done the same day by `OFFLINEDICT.4`, which measured the whole population rather than sampling it: **71 → 43 now taught by the grammar lane → 28 genuinely undefinable**, in four named categories.
+
+⚠ Of the 8 live-flagged words, **4 are closed-class** (correct by construction) and **4 were the healable ones** that `FLAGSAMPLE.2` fixed at the cache chokepoint the same day. **Expected after the next press: `DEF-MISS ×4`.**
+
+### What this pair is really about
+
+Both rows were closeable without writing a line of code, on evidence that had been sitting in the tree for days. **An audit of the open board for "waiting on a reading that already arrived" found only these**, which is the reassuring half — but the cost of the two that existed was real, because a stale row does not look stale.
+
+---
+
 ## 2026-09-06 (14th) — `BOXCAP.3` — THE THROTTLE BAND HAS AN ALARM NOW, AND IT IS READ FROM OUTSIDE HER
 
 Gee (verbatim): *"get on it lets make some progress"*
