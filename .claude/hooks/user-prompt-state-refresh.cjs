@@ -94,6 +94,39 @@ function countByStatus(filePath, marker) {
     if (protected_.indexOf(branch) !== -1) {
       lines.push('');
       lines.push('⚠ **On protected branch `' + branch + '`** — branch into `feature/<descriptor>` before editing per CONSTRAINTS.md §GIT FLOW.');
+    } else {
+      // ⛔⛔ THE STALE-BRANCH CHECK. Half a session was once spent rebuilding two
+      // features that already existed on `develop`, because work resumed onto a
+      // feature branch cut from an older integration point and nothing ever
+      // asked whether it had moved. It had — by 20+ commits.
+      //
+      // ⚠ THE REASON A GREP CANNOT CATCH THIS: "is it in the tree?" is not a
+      // question a working directory can answer. A grep answers "is it in THIS
+      // checkout", and a checkout is a POSITION IN HISTORY. An empty grep on a
+      // stale branch and an empty grep on a current one are indistinguishable
+      // and mean opposite things — so the check has to be about the branch, and
+      // it has to fire before the first edit rather than at merge time.
+      //
+      // Reported, never blocking: branching from an older point is sometimes
+      // deliberate, and a hook that refused it would be wrong. What is not
+      // acceptable is not KNOWING.
+      // ⚠ Uses this file's OWN `safe()` helper and its own `root`. Reaching for
+      // a binding that does not exist here would throw a ReferenceError straight
+      // into the catch below and leave a guard that never fires while reading
+      // perfectly — the dead-guard shape this project has already paid for twice.
+      // The names were checked against the file, not assumed.
+      try {
+        const devBranch = (env && env.git_flow_opt_in && env.git_flow_opt_in.develop_branch) || 'develop';
+        const missing = parseInt(safe('git rev-list --count HEAD..' + devBranch, { cwd: root }) || '0', 10) || 0;
+        if (missing > 0) {
+          lines.push('');
+          lines.push('⛔ **This branch is BEHIND `' + devBranch + '` by ' + missing + ' commit(s).**'
+            + ' Work already on `' + devBranch + '` will not be visible here, and a `grep` that comes back empty'
+            + ' proves nothing about whether the thing exists — only that it is absent from THIS checkout.'
+            + ' Check `git log --oneline ' + devBranch + ' --not HEAD` before building anything,'
+            + ' and `git show ' + devBranch + ':<path>` when a search comes back empty.');
+        }
+      } catch (e) { /* the check must never break the prompt */ }
     }
   }
 
