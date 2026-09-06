@@ -1,6 +1,8 @@
 # RESUME — Session Pickup Brief
 
-> # 🟢 2026-09-06 (latest, 3rd) — THE 50× ANSWER IS "NOT BY TUNING", AND ONE FIELD ON THE NEXT PRESS DECIDES WHICH LEVER IS EVEN CORRECT (PICK UP HERE)
+> # 🟢 2026-09-06 (latest, 3rd) — THE 50× ANSWER IS "NOT BY TUNING", ONE FIELD ON THE NEXT PRESS DECIDES WHICH LEVER IS EVEN CORRECT, AND A PANEL FLAG WAS NAMING THE WRONG WORD (PICK UP HERE)
+>
+> Gee (verbatim, last): *"DEF-MISS ×5 / no dictionary definition for "for" — bound nothing"*
 >
 > Gee (verbatim): *"okay now is there anyway to massively speead up traing anything at all to go from the 2k teaches to near 200k"*
 > Gee (verbatim, pasting the live teach log): *"and it still looks like its doing a shit tone of reps of everyhting"*
@@ -56,7 +58,22 @@
 > | `pairSegments.antiPerPairMs` + `antiPct` | The contrastive pass, finally timed rather than deduced |
 > | `teachProfile` rows **9–24** | Whatever the top-8 cut was hiding |
 > | `curriculum.repPricing.distinctWords` | Must be **≥ 8** for the load figure to mean anything at all |
+> | `teachView.flags[].samples` + `distinct` | **Which words are actually missing** — the reading that did not exist before, and the prerequisite for touching `FLAGSAMPLE.2` |
 > | `state.bootReason` | ⛔ `mode: 'wipe'` + `reason: 'force-fresh'` = her training was just destroyed. **`.force-fresh` beats `DREAM_KEEP_STATE`, is tested first, and is unlinked as it is read** |
+>
+> ## ⛔⛔ THE PANEL FLAG WAS NAMING THE WRONG WORD — fixed, but the underlying miss is still open
+>
+> `DEF-MISS ×5 — "for"` **did not mean `for` missed five times.** `teachFlag` keys on `` `${code}:${meta.subject||''}/${meta.grade||''}` `` and the DEF-MISS site passed `{}`, so **every missing word in the walk collapsed into one row keyed `DEF-MISS:/`** — confirmed live. The first miss set the message; every later miss of **any** word incremented `count` and **returned early without touching it**. **So the number and the word in the same sentence described different things**, sending the reader after a word that may have failed once. ⚠ **Worse than a bare count:** an unlabelled `×5` invites a question; `×5 … "for"` answers it wrongly.
+>
+> ✅ **Fixed without unbounding the panel** (a 1,420-word outage must not become 1,420 flags): one row, up to **8 distinct** samples, a `distinct` count, message refreshed once more than one subject is involved. `DEF-DEFER` had the identical defect; `PRECELL-MISS` was checked and is fine. The teach view shows `N words` beside `×N` when they disagree, because **`×8` cannot distinguish "eight words once each" from "one word eight times"**. **17/17 on the production `teachFlag`.** ⛔ **Needs a press.**
+>
+> ### ⏳ `FLAGSAMPLE.2` — why `for` misses AT ALL is still unanswered
+>
+> ⭐ **The structural fact, measured:** the offline dictionary holds **155,467 WordNet lemmas across noun/verb/adj/adv ONLY**, and returns **0 senses** for `for` / `is` / `the` / `and` against **10** for `cat` and **57** for `run`. **WordNet contains no closed-class words by construction, so "zero WordNet senses" is an exact structural test for a function word** — no list needed, the same shape as reading its lexicographer categories. ⛔ **NOT sufficient alone** — a typo scores zero too, and suppressing on it would hide real misses.
+>
+> **Three things checked rather than assumed, each killing a candidate:** the offline lane is **not** the cause (`definition-service.js:166` does `if (offline && offline.length)` and **falls through** to the network); my direct API probe was **worthless** (`cat` and `run` also returned `000` — my sandbox cannot reach the host, so it said nothing about the API); and **the network is up** — **294** definitions from `dictionaryapi.dev` this boot with `vocabPermanentMiss` at **0**, so `for` is not being written off as permanently undefined.
+>
+> **Remaining candidate:** a transient/429 during the post-wipe definition storm, which `DEF-DEFER` exists to name. ⛔ **Do not suppress the flag until the fixed samples say which words are actually missing** — that reading now exists and did not before.
 >
 > ## ✅ Two of today's fixes proved themselves on the 03:31 fresh-walk press
 >
