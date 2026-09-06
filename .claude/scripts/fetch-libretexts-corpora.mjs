@@ -280,7 +280,32 @@ function gradesFor(home) {
 // two whole books and still sits under the ladder's floor is a fact the coverage
 // auditor should say out loud — but it is a fact about the LADDER, not a licence
 // to keep downloading. The run prints the shortfall and stops anyway.
-const BOOKS_PER_CELL = 2;
+// ⭐⭐ RAISED 2 -> 4 ON THE OPERATOR'S CALL, 2026-09-06, TO CLEAR THE TEN COLLEGE
+// CELLS STILL UNDER THE LADDER FLOOR. The old value is kept in the comment
+// because it is the number every prior run in the ledger was taken at.
+//
+// ⛔⛔ AND THE CAP ALONE IS NOT THE CHANGE — THE TAKE IS NOW GATED ON STARVATION
+// TOO, WHICH IS WHAT MAKES THIS SAFE. The filter below was `mine < BOOKS_PER_CELL`
+// and nothing else, so raising the cap would have taken two more books for EVERY
+// college and grad cell across all six subjects this lane feeds — roughly 36
+// cells, on the order of **+33M words against a 71.3M-word corpus**, five to ten
+// times the size the change was authorised at.
+//
+// ⭐ Gating on the floor delivers exactly the approved outcome: the ten cells
+// that owe words get books until they clear, and a cell already at its floor is
+// never visited. **It is also this file's own doctrine** — the library-selection
+// comment already says "scan a library only if it feeds a STARVED subject"; the
+// per-cell filter simply never implemented the same rule one level down.
+//
+// ⚠ RE-PRICE, computed BEFORE the number moved, per the standing LAW:
+//   owed across the ten starved cells      ~527,000 words
+//   corpus today                         71,256,751 words
+//   worst case if every take overshoots     ~2M words  = +2.8%
+//   walk priced at ~24 days  ->  +2.8%  =  ~+16 hours
+// **No gate, bound or dedup is removed or weakened.** The cap RISES, which adds
+// content and therefore wall clock; the walk stays finite by the same
+// consolidation gate as before.
+const BOOKS_PER_CELL = 4;   // was 2
 const BAND_FLOOR = 330000;
 
 // What a cell already holds: words, and how many books THIS lane has put there.
@@ -502,23 +527,32 @@ for (const [subject, list] of Object.entries(bySubject)) {
   // DISK. A cell already at its floor is not visited at all, so a re-run costs
   // nothing for work already done.
   const home = collegeCellFor(subject);
+  // ⛔ TWO CONDITIONS, NOT ONE. A cell is visited only if it is BELOW the book
+  // cap AND still under the ladder floor. Either alone is wrong: the cap alone
+  // downloads into cells that are already fed (the +33M-word overshoot), and the
+  // floor alone would ignore the operator's book rule entirely.
+  const _starved = (c) => c.mine < BOOKS_PER_CELL && c.words < BAND_FLOOR;
   const need = gradesFor(home)
     .map((g) => ({ grade: g, ...cellState(home, g) }))
-    .filter((c) => c.mine < BOOKS_PER_CELL);
+    .filter(_starved);
   if (!need.length) {
-    console.log(`[libretexts] ${home}: every cell already has its ${BOOKS_PER_CELL} books — no books taken`);
+    console.log(`[libretexts] ${home}: no cell is both under ${BOOKS_PER_CELL} books and under the ${BAND_FLOOR.toLocaleString()}-word floor — no books taken`);
     continue;
   }
   const want = need.reduce((a, c) => a + (BOOKS_PER_CELL - c.mine), 0);
-  console.log(`[libretexts] ${home}: taking ${want} book(s) — `
-    + need.map((c) => `${c.grade} has ${c.mine}/${BOOKS_PER_CELL}`).join(' · '));
+  console.log(`[libretexts] ${home}: up to ${want} book(s) — `
+    + need.map((c) => `${c.grade} has ${c.mine}/${BOOKS_PER_CELL} books, ${c.words.toLocaleString()}/${BAND_FLOOR.toLocaleString()} words`).join(' · '));
 
   let idx = 0;
   for (const b of list) {
-    // ⛔ STOP AT TWO BOOKS A GRADE, not when the catalogue runs out.
-    const owing = need.filter((c) => c.mine < BOOKS_PER_CELL);
+    // ⛔ STOP AT THE CAP **OR** AT THE FLOOR, not when the catalogue runs out.
+    // `target.words` is re-read from disk after every write, so a cell that
+    // clears the floor mid-run stops taking books immediately — which is what
+    // keeps the overshoot to the single book that crossed the line rather than
+    // to the whole remaining allowance.
+    const owing = need.filter(_starved);
     if (!owing.length) {
-      console.log(`[libretexts] ${home}: every cell has its ${BOOKS_PER_CELL} books — ${list.length - idx} further books NOT downloaded`);
+      console.log(`[libretexts] ${home}: every cell is at its ${BOOKS_PER_CELL}-book cap or over the ${BAND_FLOOR.toLocaleString()}-word floor — ${list.length - idx} further books NOT downloaded`);
       break;
     }
     const rootHtml = await fetchText(b.root);

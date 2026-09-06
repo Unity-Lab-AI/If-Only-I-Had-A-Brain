@@ -136,11 +136,28 @@ function findViolation(cmd) {
           detail: 'writes a path derived from the working directory',
         };
       }
-      // ⚠ NAMED RESIDUAL, not a silent gap: an inline write to a bare filename
-      // at the repo ROOT (`writeFileSync("notes.md", …)`) has neither a tree
-      // prefix nor a cwd call and is NOT caught here. Tightening it would mean
-      // blocking every temp-file harness, which would get the guard disabled —
-      // and a disabled guard is worse than a narrow one.
+      // ⚠ NAMED RESIDUAL #1 (UNDER-BLOCK), not a silent gap: an inline write to
+      // a bare filename at the repo ROOT (`writeFileSync("notes.md", …)`) has
+      // neither a tree prefix nor a cwd call and is NOT caught here. Tightening
+      // it would mean blocking every temp-file harness, which would get the
+      // guard disabled — and a disabled guard is worse than a narrow one.
+      //
+      // ⚠ NAMED RESIDUAL #2 (OVER-BLOCK), measured 2026-09-06 when this guard
+      // blocked its own author: `TREE_PREFIX.test(cmd)` tests the WHOLE command,
+      // so a one-liner that READS a repo file and WRITES to an allowed sink —
+      //   node -e 'readFileSync("docs/TODO.md"); writeFileSync(".scratch/x.json",…)'
+      // — is refused, and the message names `docs/` as the target it is not.
+      //
+      // ⛔ LEFT AS-IS DELIBERATELY. The obvious fix is to bind each write call to
+      // its own argument, which is EXACTLY the balanced-literal extraction that
+      // this guard's own self-test already caught failing on mixed quoting — it
+      // is what let offence #4 walk through a version that read correctly. The
+      // cost of the over-block is one extra command (split the read from the
+      // write, or drop the repo path from the writing one); the cost of getting
+      // the parse wrong again is a guard that silently stops guarding.
+      //
+      // ⭐ An over-block that costs a keystroke and an under-block that costs the
+      // LAW are not the same kind of bug, and this file prefers the first.
     }
   }
 

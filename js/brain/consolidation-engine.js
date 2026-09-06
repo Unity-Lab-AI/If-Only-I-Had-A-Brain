@@ -63,6 +63,42 @@ export class ConsolidationEngine {
 
   // Main pass entry point. Async because it runs Hebbian replay
   // through cluster._teachHebbianAsymmetric which awaits GPU dispatch.
+  /**
+   * ⛔⛔ WHERE THE PASS CURRENTLY IS — the instrument that did not exist when a
+   * forced pass stopped making progress and parked the whole walk for 110
+   * minutes. The only evidence then was "the promise did not resolve", which
+   * names a function, not a cause.
+   *
+   * ⚠ IT BOUNDS NOTHING. There is no timeout here and this cannot free a stuck
+   * pass; the bound lives in the caller's watchdog. What it provides is
+   * ATTRIBUTION — the step and the item, with the time it started, so a stage
+   * whose age keeps climbing identifies the stuck work directly.
+   *
+   * Returns `true` so it can be threaded into an `if` chain without changing
+   * that chain's meaning.
+   */
+  _stage(name, detail) {
+    this._consolStage = { name, detail: detail || null, at: Date.now(), passId: this.passCount };
+    return true;
+  }
+
+  /**
+   * The stage with its age, for publication. ⚠ Age is what makes it readable:
+   * a stage alone cannot distinguish slow from stuck, and this project has
+   * already been sent after the wrong culprit by a tag with no age.
+   */
+  stageReport() {
+    const s = this._consolStage;
+    if (!s) return { inFlight: !!this._inFlight, stage: null, ageMs: null };
+    return {
+      inFlight: !!this._inFlight,
+      stage: s.name,
+      detail: s.detail,
+      passId: s.passId,
+      ageMs: Date.now() - s.at,
+    };
+  }
+
   async runConsolidationPass(opts = {}) {
     if (this._inFlight) return { skipped: 'already-in-flight' };
     if (!this.brain || !this.cluster || !this.schemaStore) {
@@ -197,11 +233,29 @@ export class ConsolidationEngine {
         stats.saturationVeto = true;
       }
 
+      // ⛔⛔ STAGE STAMPS — because a pass that stops making progress used to be
+      // unattributable, and that cost 110 minutes of a live walk.
+      //
+      // The deadline above is checked BETWEEN clusters and BETWEEN the late
+      // steps, so **any single item that never returns is outside its reach** —
+      // and Steps 1 and 2 have no check at all. When that happened the only
+      // evidence was "the pass did not resolve", naming a whole function.
+      //
+      // ⚠ THE STAMP IS NOT A FIX AND MUST NOT READ AS ONE. It carries no
+      // timeout and cannot free anything; the bound lives in the caller's
+      // watchdog. What this buys is that the NEXT trip names the step and the
+      // item, so the cause is a field read rather than a re-run.
+      //
+      // Same discipline as the teach-stage tags: the stamp records what is
+      // STARTING and its own start time, so a reader can tell a slow stage from
+      // a stuck one by whether its age keeps climbing.
+      this._stage('step1:fetch-candidates');
       // Step 1 — fetch promotion candidates from Tier 1
       const candidates = (typeof this.brain.findPromotionCandidates === 'function')
         ? this.brain.findPromotionCandidates(PROMOTION_CANDIDATES_LIMIT)
         : [];
       stats.candidatesFound = candidates.length;
+      this._stage('step1:hydrate-embeddings', `${candidates.length} candidates`);
 
       // Hydrate embeddings on candidates so we can cluster them.
       // brain._deserializeEmbedding turns the input_embedding BLOB into
@@ -219,13 +273,20 @@ export class ConsolidationEngine {
       }
 
       // Step 2 — cluster by cosine > SCHEMA_GROUP_COSINE
+      this._stage('step2:cluster-by-cosine', `${hydratedCandidates.length} hydrated`);
       const clusters = this._clusterByEmbeddingCosine(hydratedCandidates, SCHEMA_GROUP_COSINE);
       stats.clustersFormed = clusters.length;
 
       // Step 3 + 4 — for each cluster, create or reinforce a schema, then replay
       let _abortedForDeadline = false;
+      let _clusterIdx = 0;
       for (const cluster of clusters) {
+        _clusterIdx++;
         if (cluster.length === 0) continue;
+        // Stamped per cluster: the deadline can only act at THIS boundary, so a
+        // stamp here is what distinguishes "stuck on cluster 3 of 40" from
+        // "never reached the loop".
+        this._stage('step3:schema', `cluster ${_clusterIdx}/${clusters.length} (${cluster.length} eps)`);
         // I.8 deadline check — abort gracefully at cluster boundary if
         // we've blown the DREAM_CONSOLIDATION_MAX_MS budget. The next
         // pass picks up remaining clusters fresh.
@@ -305,6 +366,14 @@ export class ConsolidationEngine {
           // Schemas before the cursor were already replayed by the previous
           // pass; they wait their turn so the tail of the store gets served.
           const _pastCursor = this._gpuReplaySeen > (this._gpuReplayCursor | 0);
+          // ⛔ THE PRIME SUSPECT, STAMPED. This is the ONLY genuinely awaited
+          // call in the whole pass — the other two awaits are `setTimeout`
+          // sleeps and cannot hang — and it sits INSIDE the cluster loop, past
+          // the deadline check at the loop head. **A replay that never returns
+          // is therefore unreachable by the pass's own deadline**, which is the
+          // exact shape of the observed wedge. The stamp names the schema, so
+          // the next occurrence identifies the item rather than the function.
+          this._stage('step4:replay', `schema ${schema && schema.id} · cluster ${_clusterIdx}/${clusters.length}${_pastCursor ? '' : ' (cursor-skipped budget)'}`);
           const replayResult = await this._replaySchema(schema, cluster, {
             ...opts,
             gpuReplayBudget: _pastCursor ? this._gpuReplayBudgetLeft : 0,
@@ -336,11 +405,17 @@ export class ConsolidationEngine {
       // (all four are idempotent maintenance sweeps, not one-shot work).
       const _pastDeadline = () => !!(this._consolidationDeadlineMs && Date.now() > this._consolidationDeadlineMs);
       const _tailSkipped = [];
-      
+
+      // ⚠ THE TAIL STEPS ARE DEADLINE-GUARDED AND STILL WORTH STAMPING. The
+      // guard decides whether a step STARTS; it cannot end one that has begun.
+      // `mergeOverlappingSchemas` is O(N²) over the schema store and
+      // `decayEpisodes` sweeps the episodic DB, so either can run long on a
+      // large store after passing its own check.
       // Step 7 — merge overlapping schemas
       if (_pastDeadline()) {
         _tailSkipped.push('merge');
       } else {
+        this._stage('step7:merge-schemas');
         stats.schemasMerged = this.schemaStore.mergeOverlappingSchemas();
       }
 
@@ -348,13 +423,14 @@ export class ConsolidationEngine {
       if (_pastDeadline()) {
         _tailSkipped.push('schema-decay');
       } else {
+        this._stage('step8:schema-decay');
         stats.schemasDecayed = this.schemaStore.applyDecay();
       }
 
       // Step 9 — Tier 3 promotion check
       if (_pastDeadline()) {
         _tailSkipped.push('tier3-promotion');
-      } else if (this.tier3Store && typeof this.tier3Store.checkPromotions === 'function') {
+      } else if (this._stage('step9:tier3-promotion') && this.tier3Store && typeof this.tier3Store.checkPromotions === 'function') {
         const promoted = this.tier3Store.checkPromotions(this.schemaStore);
         stats.tier3Promotions = promoted;
       } else {
@@ -398,6 +474,12 @@ export class ConsolidationEngine {
       stats.error = err.message;
     } finally {
       this._inFlight = false;
+      // ⚠ CLEARED ONLY ON A REAL EXIT, WHICH IS THE WHOLE POINT. A pass that
+      // stops making progress never reaches this line, so the stage it died in
+      // SURVIVES as the evidence — the same reason the teach-stage tags are not
+      // nulled. A cleared stage means the pass genuinely finished; a stage whose
+      // age keeps climbing names the work that is stuck.
+      this._consolStage = null;
       // Advance the rotation and REPORT IT. If this pass spent its
       // whole budget there is more store than budget, so the next pass starts
       // where this one stopped; if it got all the way through, the cursor wraps.

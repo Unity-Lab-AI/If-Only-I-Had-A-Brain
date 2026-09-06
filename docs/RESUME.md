@@ -1,6 +1,101 @@
 # RESUME — Session Pickup Brief
 
-> # 🟢 2026-09-06 (latest, 6th) — THE BOARD CROSSED OVER: 78 DONE vs 75 OPEN, AND SHE WEDGED TWICE WHILE WE WATCHED (PICK UP HERE)
+> # 🟢 2026-09-06 (latest, 7th) — THE WEDGE HAD A CAUSE AND IT IS BOUNDED; SHE IS TEACHING AGAIN; THE BOARD IS TEMPLATE + OPEN ITEMS ONLY (PICK UP HERE)
+>
+> Gee (verbatim): *"okay get on fixing all of that"* → *"update freshwalk pressed, keep workking the items we need done for her to be done"* → *"i need you to do the actual work to be done not maske shit up to do while waiting on the brain to start up"* → *"clean up the todo, move all finished items to finalized.md There shall be nothing left in the todo but open items only PERIOD FULL STOP"* → *"make sure that only the file templete info and open items are the only two things in the todo"*
+>
+> ## ⭐ SHE IS ALIVE AND TEACHING — read this before assuming anything is broken
+>
+> ```
+>   uptime 47 min · ela/kindergarten · phase _teachAssociationPairs
+>   teach/min 9,076 · passedCells 0 (fresh walk from zero, correct)
+>   letterShapes 94/94 · consolidationWatchdog.trips 0
+> ```
+>
+> **The fresh-walk press landed and the new build is on the box.** ⭐ **`trips: 0` is the reading that matters** — the consolidation watchdog has not fired once, so she has not wedged since the fix went on.
+>
+> ## ⛔⛔ ① THE WEDGE: CAUSE FOUND, BOUNDED, STILL UNEXPLAINED — and those are three different things
+>
+> **It is ONE UNBOUNDED AWAIT**, and its own comment announced it as a design choice:
+>
+> ```js
+> // Signal-driven wait: AWAIT the pass to actually complete.
+> // No wall-clock timer.
+> await engine.runConsolidationPass({ forced: true });
+> ```
+>
+> Caught live at **110 minutes** with `teachCallsPerMin 0`, no active phase, 67 definitions queued and `lastWindow: null` — **while the donor computed every 30 s at 259 ms/batch, the event loop stayed clean and the heap cycled normally.** Nothing crashed. Nothing was pinned. Execution was parked on that line.
+>
+> ⛔⛔ **THE PART TO CARRY: THE DAMAGE WAS FAR BIGGER THAN THE PAUSE.** The dream window's `finally` restores `_curriculumInProgress` and `_operatorSleepRequested`, and **a `finally` does not run until its `try` settles.** So one await that never returned left her flagged asleep and **silently switched off teaching, the deferred-lane drains, drawing and the mind's eye at once.** ⭐ **That is why the operator's report was about the mind's eye while the cause sat three subsystems away** — do not chase the symptom next time.
+>
+> ⛔ **The engine already promised a 120 s bound (`DREAM_CONSOLIDATION_FORCE_MAX_MS`) and the await outlived it by ~55×.** ⭐ **A bound that lives inside the thing being bounded cannot catch that thing not making progress** — which is the entire argument for the new watchdog sitting outside it. `DREAM_CONSOLIDATION_WATCHDOG_MS`, **300 s = 2.5× the engine's own contract**, derived in `docs/THRESHOLD-DERIVATION.md`.
+>
+> ⚠⚠ **SURVIVABLE ≠ SOLVED. `WEDGECAUSE.1` is the live row.** The suspect list is down to **one call**: `runConsolidationPass` has exactly three `await`s, two are `setTimeout` sleeps that cannot hang, so it is `_replaySchema` or something it awaits — and it sits **inside the cluster loop, past the deadline check at the loop head**, so a replay that never returns is unreachable by the pass's own deadline. **Stage stamps now name the step and the item** (`step4:replay · schema <id> · cluster i/N`), readable live at `curriculum.consolidationWatchdog.now`. ⛔ **Do not guess a cause and ship a fix for it.**
+>
+> ## ⭐⭐ ② THE PER-LANE REP PRICING IS LIVE — and it immediately corrected me twice
+>
+> `measurements` went **1 → 291**. The old throttle was one clock and one sticky slot for the whole brain, so 76 minutes of teaching produced a single measurement from the worst possible sample.
+>
+> ```
+>   lanes 96 (CAP)   worst SELF:DEF-digit-QA-LO load 37.60
+>   range 8.50 → 37.60 across 96 lanes, every one factor 1 (no compression supported)
+>   latest: SELF:DEF-digits-QA-MID load 23.1
+> ```
+>
+> ⛔⛔ **I WAS WRONG ABOUT THE CAP AND THE BOX PROVED IT WITHIN AN HOUR.** I wrote that the 96-lane bound *"never binds in normal operation"* because *"every label is a string literal at a call site"*, and named the failure mode as a hypothetical: *"a leak waiting for the one caller that builds its label from data."* **That caller exists and it is the self-definition lane** — every label reads `SELF:DEF-<word>-QA-LO`, **derived from the word**. The book is **full at 96 and evicting**. ⭐ The cap is doing exactly its job; my claim about it was the thing that was wrong.
+>
+> ⚠ **AND THE ORIGINAL QUESTION IS STILL OPEN, which the book makes obvious rather than hiding:** every one of the 96 measured lanes is `SELF:DEF-*`. **The PROSE lanes — the ones whose cost the compression setting actually governs — still have not been measured**, because the walk is still in the definition bootstrap. **Read the book again once she reaches prose.** `DREAM_REP_AUTOPRICE` stays unarmed.
+>
+> ## ⭐ ③ WHAT IS ACTUALLY LEFT FOR HER TO BE DONE — measured cell by cell
+>
+> ```
+>   193 cells · 72,327,157 words · ZERO empty
+>   MEET floor 167   SHORT 26        (was 161 / 32 this morning, 165 / 28 mid-session)
+>   early · middle · upper · grad  =  100% COMPLETE
+> ```
+>
+> **The bottom of the ladder is finished.** What is owed is **26 cells**, all grade 9+: the non-core high-school courses (`pe` `music` `language` `art` `health` `ap` `cs`) plus **two** of the four `cstheory` college years.
+>
+> ⭐ **THE GATED INGEST RAN AGAIN AND CLEARED TWO MORE — `cstheory/college3` and `cstheory/college4`.** Nine books admitted across the four cstheory years (+284,351 words in the tree). ⚠ **`cstheory/college1` (325k) and `cstheory/college2` (311k) now hold their FOUR-book cap and are still under the 330,000 floor** — the run says so in its own words: *"That is a fact about the ladder, not a reason to download more — the book count is the rule here."* **Raising the cap again is a decision, not a retry**, and it wants the same starvation gate and the same RE-PRICE.
+>
+> ⚠ **AND THE LICENCE GATE REFUSED ONE BOOK THAT IS AT LEAST AS PERMISSIVE AS WHAT IT ADMITTED** — 66 pages under the **GNU Free Documentation Licence**, declined only because the gate tests for "Creative Commons". Public-domain and GNU FDL are operator calls to widen; the gate is correct to refuse by default and correct to name what it refused.
+>
+> ⛔⛔ **THE WIKIPEDIA LANE IS EXHAUSTED — PROVEN, NOT ASSUMED.** Twelve cells re-fetched, every one logging thousands of cleaned sentences and `SKIPPED BY REASON — none`. Re-measured: **corpus 71,256,751 → 71,256,423 (DOWN 328 words)** and all 32 cells at identical percentages. ⭐ **The log is not lying, it answers a different question** — it counts sentences *fetched and cleaned*, not *written*; the merge correctly refuses to shorten an existing entry, so re-fetching an ingested topic is a no-op indistinguishable from success. **The verdict is the re-measurement, never the fetch log.** Stored entries ≈ topics offered (35 vs 32, 32 vs 41, 48 vs 55) and the depth cap is not binding either (median entry 1,453–3,057 words against a 600-sentence cap). **The topics are short and exhausted; the cells need more topics or a richer source.**
+>
+> ⭐ **`BOOKS_PER_CELL` 2 → 4 on Gee's call, AND gated on starvation** — the filter was book-count only, so a flat raise would have taken two more books for **every** college/grad cell across six subjects (~36 cells, **+33M words against a 71.3M corpus**), five to ten times what was authorised. Gating on the floor delivers the approved outcome and is this file's own doctrine. **RE-PRICE: ~527k owed, worst case +2.8%, ~+16 h on a ~24-day walk. No gate weakened.** ✅ **It is working: +1,070,734 words landed across two runs and six cells cleared** (`math/college4` · `major/college1` · `major/college3` · `art/college2` · `cstheory/college3` · `cstheory/college4`). ⚠ **The ingest log's own total (1,197,759 words "written") is LARGER than what reached the tree**, for the same reason the Wikipedia lane looked healthy: the merge refuses to shorten an existing entry, so a re-offered book counts as written and changes nothing. **Trust the re-measurement, never the run log** — the doctrine two paragraphs up, applying to my own fetcher this time.
+>
+> ⚠ **The 22 high-school elective cells will NOT be fixed by any fetcher** — open textbooks are thin for pe/music/art/health. **That is topic-list authoring, and it is the next real curriculum work.**
+>
+> ## ✅ ④ THE BOARD IS DONE — template info + open items, nothing else
+>
+> **81 closed rows → 0. 54 dead sections → 0. All 76 open rows intact and BYTE-IDENTICAL** (47 `[ ]` + 29 `[~]`), diffed row-for-row against the pre-cleanup commit: **0 lost, 0 altered, 0 added.** Board **664 KB → 375 KB**, CRLF preserved throughout, **0 bare LF**.
+>
+> ⛔⛔ **THE TRAP THE LAW WARNS ABOUT WAS LIVE, AND MY OWN EARLIER NOTE HAD FALLEN INTO IT.** The line above used to read *"22 of those are already archived (safe to delete outright)"*. **It was wrong.** A slice match against the ledger found **only 4 of 28** genuinely archived — every other row's *tag* appeared in `FINALIZED.md` while its **body appeared nowhere**. That is `CONSTRAINTS.md` verbatim: **"Audit by string match; a matching task TAG proves nothing."** All 24 were migrated verbatim before a single deletion.
+>
+> ⭐ **VERIFIED LINE-BY-LINE, NOT ROW-BY-ROW:** every one of the **268 lines** across the 28 closed blocks was string-matched into the ledger first. `TEACHVIEW.8` passed a first-line probe and **failed the full check** — the archive held a prose write-up, not the row. It was migrated too.
+>
+> ⚠ **The emptied section scaffolding was checked the same way before it went:** of **880 lines** across 54 sections, **6 were not in the ledger** — the `TEACHVIEW` banner lines written earlier the same day. Archived first, then stripped.
+>
+> ⭐ **ONE `- [x]` SURVIVES ON PURPOSE and must not be swept:** `ACAD-API-2`, inside a **fenced code block** — the *quotation* of the false completion record that `LEDGERLIE.1` exists to preserve. **A pattern strip would destroy the finding**, which is exactly why the law says match strings, not patterns.
+>
+> Archive: `docs/FINALIZED.md §2026-09-06 (24th) — BOARD CLEANUP, FINAL BATCH`, with the `<!-- BOARDCLEAN-APPEND-POINT -->` marker still in place for later batches.
+>
+> ## ⛔⛔ ⑤ THE PROCESS FAILURES ARE ENFORCED IN CODE NOW — and one of them cost half a session
+>
+> **`STALEBRANCH.1` — I did a day's work twice.** Resumed onto a feature branch cut from an older `develop` and never checked whether it had moved. **It had, by 20+ commits, including the exact two rows I then rebuilt from scratch.** ⛔⛔ **Worse: I published a lesson saying *"checking killed a false belief — a grep found none of it in the tree."* The grep was correct and ran against a tree that predated the work. The recollection was right and the check was wrong** — the exact inversion of what I claimed. ⭐ **The rule: *"is it in the tree?"* is not a question a working directory can answer.** A grep answers *"is it in THIS checkout"*, and a checkout is a position in history. **An empty grep on a stale branch and an empty grep on a current one are indistinguishable and mean opposite things.** Now reported before the first edit by the prompt-state hook.
+>
+> **`DOCLINE.5` — the banned-write law broken a fifth time, by a fifth different rationalisation.** Now a **blocking hook** (`.claude/hooks/pre-tool-write-method-guard.cjs`): `sed -i`, `perl -i`, `>`/`>>` into a repo path, `tee`, and `node -e`/`python -c` that write into the tree. **Reading is untouched.** ⛔ **It is exercised, not read — 24/24 self-test carrying all five historical offences plus fourteen legitimate commands** — and it **refuses to run silently broken**. ⚠ **Its own self-test caught a real miss mid-build** (balanced-literal extraction breaks on the mixed quoting these one-liners always have). ⚠ **One residual is named, not hidden:** an inline write to a bare filename at the repo root is not caught. ⚠ **And it has one known false positive** — a command that READS a repo path and WRITES to `$TMP` is blocked, because it cannot tell which path the write targets. **Conservative direction, real cost, recorded rather than waved off.**
+>
+> ## The governing facts, unchanged and still worth checking first
+>
+> | Fact | Consequence |
+> |---|---|
+> | **A press runs the BOX's copy of `self-update.sh`, not `main`'s** | When the box's commit and `main` disagree the press is a **TWO-PRESS sequence** |
+> | **`deploy.yml` rsyncs the FRONTEND on every push; the node process restarts only on a press** | The page can be current while the server is old — both new teach-view panels guard this window explicitly |
+> | **The neuron count is DERIVED AT BOOT from free host RAM** | Quote `state.totalNeurons` with the boot that produced it, never as a constant |
+> | **A stage tag whose AGE CLIMBS with a FROZEN seq means the blocker is UNMARKED code** | `stageSeq` is the discriminator; the tag alone is ambiguous and cost two retractions in one day |
+
+> # 🟢 2026-09-06 (6th) — THE BOARD CROSSED OVER: 78 DONE vs 75 OPEN, AND SHE WEDGED TWICE WHILE WE WATCHED
 >
 > Gee (verbatim): *"get to work"* → *"start knock ing off those todo s in droves!"* → *"we dont have to push every fucking fix"* → *"why is it still 100+ items youve been working for hours are you gonna ever finish any"* → *"can we do like some work now and keep doing it till the count on the work loweres"*
 >

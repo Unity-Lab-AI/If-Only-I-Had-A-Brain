@@ -3516,6 +3516,30 @@ export class Curriculum {
             this._phaseWorkInflight = null;
             cl._phaseDeadlineAt = 0;
             cl._phaseDeadlineName = null;
+            // ⛔⛔ THE PHASE GAP IS THE ONE REGION NOTHING STAMPS, AND A LIVE
+            // WEDGE SAT IN IT FOR 34+ MINUTES READING `_teachSentenceList-done`.
+            //
+            // The exit stamp above names what FINISHED. The moment an OUTERMOST
+            // phase retires, control returns to the cell runner to resolve the
+            // next phase — and that resolution code stamps nothing, so the tag
+            // stays on the retired teach while its age climbs. Read live on the
+            // box: `stage=_teachSentenceList-done (age 1576s)` with every teach
+            // counter frozen across a 194 s paired read, 2 of 25 phases done.
+            //
+            // ⭐ THE TAG CARRIES BOTH FACTS ON PURPOSE. `cell:phase-gap:<name>`
+            // says WHERE execution is (between phases) and WHAT it just left,
+            // which neither half can say alone — a bare `-done` names a method
+            // that already returned, and a bare `cell:phase-gap` throws away the
+            // only clue about which phase preceded the stall.
+            //
+            // ⚠ ONLY ON THE OUTERMOST RETIREMENT. A nested teach exiting is not
+            // a phase boundary; stamping there would fire thousands of times per
+            // cell and bury the signal it exists to raise.
+            //
+            // ⚠ This is an INSTRUMENT, not curriculum — it changes nothing about
+            // what she is taught, so it may land on any press under the
+            // fresh-walk-is-last rule.
+            try { if (typeof this._tstage === 'function') this._tstage(`cell:phase-gap:${name}`); } catch { /* never break a teach */ }
           } else if (workSeen && (!workExpect || workExpect.has(name))) {
             // A nested teach call is one unit of the enclosing phase's work,
             // credited on EXIT so an in-flight unit is never counted as done.
@@ -4038,6 +4062,19 @@ export class Curriculum {
       consolidationWatchdog: {
         trips: this._consolWatchdogTrips | 0,
         last: this._consolWatchdogLast || null,
+        // ⭐ LIVE, not only on a trip. The stage is readable WHILE a pass runs,
+        // so a wedge can be named at minute two instead of after the five-minute
+        // bound expires — and a stage whose age keeps climbing is the signature
+        // of stuck work rather than slow work.
+        // ⚠ `stage: null` with `inFlight: false` is the healthy resting state;
+        // `stage: null` with `inFlight: true` means the pass has not reached its
+        // first stamped step, which is itself a finding.
+        now: (() => {
+          try {
+            const eng = (this.brain || (cluster && cluster._brain))?.consolidationEngine;
+            return (eng && typeof eng.stageReport === 'function') ? eng.stageReport() : null;
+          } catch { return null; }
+        })(),
         watchdogMs: (typeof process !== 'undefined' && Number(process.env?.DREAM_CONSOLIDATION_WATCHDOG_MS) > 0)
           ? Number(process.env.DREAM_CONSOLIDATION_WATCHDOG_MS) : 300000,
       },
@@ -5129,8 +5166,17 @@ export class Curriculum {
           // visible in a rotating console ring is one nobody can answer
           // questions about an hour later.
           this._consolWatchdogTrips = (this._consolWatchdogTrips || 0) + 1;
-          this._consolWatchdogLast = { at: Date.now(), waitedMs: passMs, passCount };
-          this._hb(`[Curriculum] ⛔⛔ CONSOLIDATION WATCHDOG TRIPPED after ${(passMs / 1000).toFixed(0)}s — the forced pass exceeded its own ${(_consolWatchdogMs / 1000).toFixed(0)}s bound and the walk is no longer waiting on it. The pass is STILL RUNNING in the background and the engine's in-flight guard will decline the next one; this window skips its remaining stages and the curriculum RESUMES. Trips this boot: ${this._consolWatchdogTrips}. Before this bound existed the walk simply stopped here forever.`);
+          // ⭐ THE STAGE TRAVELS WITH THE TRIP. A trip that says only "the pass
+          // did not finish" names a function; this names the step and the item.
+          // The engine clears its stage only on a real exit, so a stuck pass
+          // still carries the work it died in.
+          let _stageAtTrip = null;
+          try { if (typeof engine.stageReport === 'function') _stageAtTrip = engine.stageReport(); } catch { /* attribution is best-effort */ }
+          this._consolWatchdogLast = { at: Date.now(), waitedMs: passMs, passCount, stage: _stageAtTrip };
+          const _stageTxt = _stageAtTrip && _stageAtTrip.stage
+            ? ` STUCK IN: ${_stageAtTrip.stage}${_stageAtTrip.detail ? ` (${_stageAtTrip.detail})` : ''} — that stage has been running ${((_stageAtTrip.ageMs || 0) / 1000).toFixed(0)}s.`
+            : ' ⚠ No stage was recorded, which itself means the pass never reached its first stamped step.';
+          this._hb(`[Curriculum] ⛔⛔ CONSOLIDATION WATCHDOG TRIPPED after ${(passMs / 1000).toFixed(0)}s — the forced pass exceeded its own ${(_consolWatchdogMs / 1000).toFixed(0)}s bound and the walk is no longer waiting on it.${_stageTxt} The pass is STILL RUNNING in the background and the engine's in-flight guard will decline the next one; this window skips its remaining stages and the curriculum RESUMES. Trips this boot: ${this._consolWatchdogTrips}. Before this bound existed the walk simply stopped here forever.`);
         } else {
           this._hb(`[Curriculum] ⚙ dream pass complete in ${(passMs / 1000).toFixed(1)}s — ConsolidationEngine passCount=${passCount} · entering ${(settleMs / 1000).toFixed(0)}s settle window for V8 + native drain`);
         }
