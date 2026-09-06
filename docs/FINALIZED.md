@@ -5,6 +5,44 @@
 
 ---
 
+## 2026-09-06 — `CORTEXQUIET` — THE DASHBOARD BLAMED THE DONOR FOR A VALUE THE SERVER NEVER ASKED FOR, AND `gpuHits: 0` READ AS A DEAD CARD
+
+Gee (verbatim): *"all that needs fixed"*
+
+Two readings I had listed as suspected defects. **Both turned out to be correct behaviour reported dishonestly — the code was right and the instruments were lying about it.**
+
+### The finding
+
+Live, reproducible across three boots: every cluster reads a real `spikeCount` and a real `meanVoltage` from `gpu-donor-readback` — **except the 82M-neuron language cortex**, which reads `spikeCount: 0`, `meanVoltage: null`, `meanVoltageSource: "unreported-by-this-donor (native donor sends mean_voltage: None — GOTCHA.3b)"`. Alongside it, `gpuHits: 0` while `TICK-GAP` logged real `compute_batch` round-trips and `MIRRORDIAG` reported `NVIDIA A40:PRIMARY(real batch)`.
+
+### The cause — one line, and it is deliberate
+
+`server/brain-server.js`, inside `_walkHeartbeat`:
+
+```js
+const _hbParams = clusterParams.filter((cp) => cp.name !== 'cortex');
+```
+
+**The walk heartbeat excludes the cortex on purpose — during a walk the teach lane owns it.** So the cortex is never in the request, and comes back with nothing. And `_gpuHits++` lives in the **main tick's** compute_batch loop, not this one, so during a walk it sits at 0 while the card services every batch.
+
+⛔ **THE REASON STRING WAS FALSE, AND FALSE IN THE MOST EXPENSIVE DIRECTION.** `unreported-by-this-donor` blames the peer. The donor reports `meanVoltage` perfectly well — **it does so for five other clusters, on the same card, in the same batch.** The branch saw "donor connected + number missing" and guessed at the donor's behaviour, because it had no concept of *"this cluster was not stepped"*. That reading would send someone hunting a donor bug that does not exist, or worse, recreating a pod to fix it.
+
+⭐ **"NOT ASKED" AND "ASKED AND NOT ANSWERED" ARE DIFFERENT FINDINGS.** That is the whole entry.
+
+### The fix
+
+- The exclusion is now **recorded at the filter** (`_walkTickExcluded` + `_walkTickExcludedAt`) and the state publisher reports `not-stepped-this-tick (the walk heartbeat excludes this cluster because the teach lane owns it — this is NOT a donor fault)`.
+- ⚠ **Time-stamped, and only a recent stamp counts** (120 s). A stale exclusion from a walk that has since ended must not keep excusing a genuinely silent cluster — that would convert one lying instrument into another.
+- `walkTickAcks` published beside `gpuHits`. ⚠ **A separate field, NOT a redefinition of `gpuHits`** — changing what an existing number means in order to fix how it looks is how the next reader gets misled.
+
+### ⚠ And a retraction in the same batch
+
+I listed the shed teach frames as ⛔ *"real learning was dropped."* **Over-stated.** What I saw was two shed log lines on an earlier boot, and I inferred the cost from the log's own "THIS COSTS TEACHING" wording **without ever reading `hebbianSuppressedStale`**. Measured now: `patternSheds: 0`, `hebbianSuppressedStale: 0`, `patternLaneStale: false`, `bufferedAmount: 0`. The design is already correct — a shed marks the lane stale and *refuses* the dependent Hebbian rather than firing it on the previous iteration's pattern (*"losing an update is acceptable; training a lie is not"*), and the walk already paces to the donor's absorption rate. **Nothing to fix; it is a watch on `wsPressure.hebbianSuppressedStale`, which is the number that would prove real loss.**
+
+✅ **Verified:** `node --check` on both files, CRLF preserved (14,730 / 3,026, 0 bare LF), and the loop variable confirmed as `name` from `for (const [name, cluster] of Object.entries(this.clusters))` — a wrong identifier there would have silently never matched and left the false string in place.
+
+---
+
 ## 2026-09-06 — `INNERHOLD` — THE INNER VOICE SPENT ~6 SECONDS EVERY ~8 SECONDS DISCOVERING IT HAD NOTHING TO SAY
 
 Gee (verbatim): *"all that needs fixed"* · *"moniter her make sure shes doing everything correctly without errors take nots of issues"*
