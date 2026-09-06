@@ -274,6 +274,192 @@ pub fn parse_upstream_response(raw: &[u8]) -> Option<http::Response> {
     Some(resp)
 }
 
+/// Is this request asking to become a WebSocket?
+///
+/// ⚠ Both conditions, and both case-insensitively. `Connection` is a
+/// comma-separated list (`keep-alive, Upgrade`) so it is searched, not compared;
+/// a strict equality test here would refuse real browsers.
+pub fn is_websocket_upgrade(req: &http::Request) -> bool {
+    let up = req.header("upgrade").unwrap_or("").to_ascii_lowercase();
+    let conn = req.header("connection").unwrap_or("").to_ascii_lowercase();
+    up == "websocket" && conn.split(',').any(|t| t.trim() == "upgrade")
+}
+
+/// Build the upgrade request to send upstream.
+///
+/// ⛔⛔ **`Upgrade` AND `Connection` MUST SURVIVE THIS HOP, AND THEY ARE ON THE
+/// HOP-BY-HOP DROP LIST FOR EVERY OTHER REQUEST.** That is not a contradiction:
+/// they are connection-scoped, and on an upgrade the connection they scope is
+/// exactly the one being established. Dropping them here makes the upstream
+/// answer 200 with a normal body instead of 101, and the client then waits
+/// forever for a handshake that already failed.
+///
+/// ⛔ The `Sec-WebSocket-*` headers pass through **untouched**. The upstream
+/// derives `Sec-WebSocket-Accept` from the client's `Sec-WebSocket-Key` by
+/// SHA-1; altering, regenerating or normalising the key would produce an accept
+/// value the client rejects — and the failure surfaces in the browser as a
+/// silent close, not as an error naming this proxy.
+pub fn build_upgrade_request(
+    req: &http::Request,
+    up: &Upstream,
+    peer: &str,
+    vouched_user: Option<&str>,
+) -> Vec<u8> {
+    let mut out = Vec::with_capacity(512);
+    out.extend_from_slice(format!("GET {} HTTP/1.1\r\n", req.target).as_bytes());
+    out.extend_from_slice(format!("Host: {}:{}\r\n", up.host, up.port).as_bytes());
+    for (k, v) in &req.headers {
+        // Same hygiene as the normal path — including the unconditional drop of
+        // any client-supplied identity — except that the two upgrade-carrying
+        // headers are re-added below from the client's own values.
+        if hop_by_hop(k) {
+            continue;
+        }
+        out.extend_from_slice(format!("{k}: {v}\r\n").as_bytes());
+    }
+    out.extend_from_slice(b"Upgrade: websocket\r\nConnection: Upgrade\r\n");
+    if let Some(u) = vouched_user {
+        out.extend_from_slice(format!("X-UAL-User: {u}\r\n").as_bytes());
+    }
+    out.extend_from_slice(format!("X-Forwarded-For: {peer}\r\n").as_bytes());
+    out.extend_from_slice(b"\r\n");
+    out
+}
+
+/// Proxy a WebSocket: perform the upgrade upstream, relay the 101 back, then
+/// pump bytes both ways until either side closes.
+///
+/// ⭐ **After the 101 this is a byte relay, not a protocol implementation.** The
+/// frames, the masking, the ping/pong, the 2 GB `maxPayload` the donor lane uses
+/// — none of it is parsed here, and none of it should be. Anything this process
+/// understood about the frame format would be a second implementation to keep in
+/// sync with the one that matters.
+///
+/// ⛔ **NO READ TIMEOUT ON THE RELAY.** A WebSocket is legitimately idle for long
+/// stretches — a donor between batches, a dashboard between snapshots — and a
+/// timeout here would drop healthy connections in a way that looks exactly like
+/// the brain going away. The connection ends when a peer closes it, and the
+/// close is propagated to the other side with `shutdown()` so neither half is
+/// left waiting on a socket that will never speak again.
+pub fn proxy_websocket(
+    mut client: TcpStream,
+    req: &http::Request,
+    up: &Upstream,
+    peer: &str,
+    vouched_user: Option<&str>,
+) {
+    let addr = format!("{}:{}", up.host, up.port);
+    let mut server = match addr.parse().ok().and_then(|a| {
+        TcpStream::connect_timeout(&a, up.connect_timeout).ok()
+    }) {
+        Some(s) => s,
+        None => {
+            let _ = http::write_response(
+                &mut client,
+                &http::Response::json(
+                    502,
+                    r#"{"error":"brain unreachable for websocket upgrade"}"#.to_string(),
+                ),
+            );
+            return;
+        }
+    };
+
+    if server.write_all(&build_upgrade_request(req, up, peer, vouched_user)).is_err() {
+        return;
+    }
+    let _ = server.flush();
+
+    // Read exactly the upstream's response head, byte at a time, so that not one
+    // byte of the frames that follow it is consumed into a buffer we then drop.
+    // ⚠ A BufReader here would swallow the first frames — they arrive
+    // immediately after the 101 on a busy lane, and they would be gone.
+    let head = match read_head_exact(&mut server) {
+        Some(h) => h,
+        None => return,
+    };
+    if client.write_all(&head).is_err() {
+        return;
+    }
+    let _ = client.flush();
+
+    // Not a 101 — the upstream refused the upgrade. Its answer has been relayed
+    // verbatim; there is no tunnel to pump.
+    if !head.starts_with(b"HTTP/1.1 101") {
+        return;
+    }
+
+    // ⚠ Timeouts cleared explicitly: `read_request` set a 30 s read timeout on
+    // the client socket for slowloris protection, and leaving it on would kill
+    // every idle WebSocket after thirty seconds.
+    let _ = client.set_read_timeout(None);
+    let _ = client.set_write_timeout(None);
+    let _ = server.set_read_timeout(None);
+    let _ = server.set_write_timeout(None);
+
+    let (mut c_read, mut c_write) = match (client.try_clone(), client) {
+        (Ok(a), b) => (a, b),
+        _ => return,
+    };
+    let (mut s_read, mut s_write) = match (server.try_clone(), server) {
+        (Ok(a), b) => (a, b),
+        _ => return,
+    };
+
+    // client → upstream on its own thread; upstream → client on this one.
+    let up_pump = std::thread::spawn(move || {
+        pump(&mut c_read, &mut s_write);
+        let _ = s_write.shutdown(std::net::Shutdown::Both);
+    });
+    pump(&mut s_read, &mut c_write);
+    let _ = c_write.shutdown(std::net::Shutdown::Both);
+    let _ = up_pump.join();
+}
+
+/// Copy until EOF or error. 64 KiB buffer — large enough that the donor's bulk
+/// frames are not chopped into hundreds of syscalls, small enough to be
+/// irrelevant per connection.
+fn pump(from: &mut TcpStream, to: &mut TcpStream) {
+    let mut buf = vec![0u8; 64 * 1024];
+    loop {
+        match from.read(&mut buf) {
+            Ok(0) => return,
+            Ok(n) => {
+                if to.write_all(&buf[..n]).is_err() {
+                    return;
+                }
+                let _ = to.flush();
+            }
+            Err(_) => return,
+        }
+    }
+}
+
+/// Read an HTTP response head (through the blank line) one byte at a time.
+///
+/// ⛔ Byte-at-a-time is deliberate. Any buffered reader would read AHEAD of the
+/// blank line and swallow the first WebSocket frames, which on a busy lane
+/// arrive in the same packet as the 101. Those bytes would be silently lost and
+/// the symptom would be a socket that connects and then misses its opening
+/// messages — the hardest possible thing to attribute back to here.
+fn read_head_exact(s: &mut TcpStream) -> Option<Vec<u8>> {
+    let mut head = Vec::with_capacity(512);
+    let mut b = [0u8; 1];
+    while head.len() < 64 * 1024 {
+        match s.read(&mut b) {
+            Ok(0) => return None,
+            Ok(_) => {
+                head.push(b[0]);
+                if head.ends_with(b"\r\n\r\n") {
+                    return Some(head);
+                }
+            }
+            Err(_) => return None,
+        }
+    }
+    None
+}
+
 /// Decode an RFC 7230 §4.1 chunked body into the bytes it represents.
 ///
 /// `<hex-size>[;ext]CRLF <data> CRLF … 0 CRLF [trailers] CRLF`
@@ -506,6 +692,72 @@ mod tests {
     #[test]
     fn an_empty_chunked_body_decodes_to_nothing_rather_than_failing() {
         assert_eq!(decode_chunked(b"0\r\n\r\n").unwrap(), Vec::<u8>::new());
+    }
+
+    #[test]
+    fn an_upgrade_is_recognised_from_both_headers_case_insensitively() {
+        assert!(is_websocket_upgrade(&req(
+            "GET", "/ws",
+            &[("Upgrade", "websocket"), ("Connection", "Upgrade")]
+        )));
+        // Browsers send a LIST here; a strict equality test would refuse them.
+        assert!(is_websocket_upgrade(&req(
+            "GET", "/ws",
+            &[("Upgrade", "WebSocket"), ("Connection", "keep-alive, Upgrade")]
+        )));
+    }
+
+    #[test]
+    fn a_normal_request_is_not_mistaken_for_an_upgrade() {
+        assert!(!is_websocket_upgrade(&req("GET", "/public-state.json", &[])));
+        // Half a handshake is not a handshake.
+        assert!(!is_websocket_upgrade(&req("GET", "/ws", &[("Upgrade", "websocket")])));
+        assert!(!is_websocket_upgrade(&req("GET", "/ws", &[("Connection", "Upgrade")])));
+        assert!(!is_websocket_upgrade(&req(
+            "GET", "/ws",
+            &[("Upgrade", "h2c"), ("Connection", "Upgrade")]
+        )));
+    }
+
+    /// ⛔ `Upgrade`/`Connection` are dropped on every OTHER request and must
+    /// survive this one — otherwise the upstream answers 200 instead of 101 and
+    /// the client waits forever for a handshake that already failed.
+    #[test]
+    fn the_upgrade_headers_survive_the_hop_on_an_upgrade() {
+        let r = req(
+            "GET", "/ws",
+            &[("Upgrade", "websocket"), ("Connection", "Upgrade"),
+              ("Sec-WebSocket-Key", "dGhlIHNhbXBsZSBub25jZQ=="),
+              ("Sec-WebSocket-Version", "13")],
+        );
+        let up = Upstream::loopback(7525);
+        let wire = String::from_utf8(build_upgrade_request(&r, &up, "127.0.0.1", None)).unwrap();
+        assert!(wire.contains("Upgrade: websocket"), "{wire}");
+        assert!(wire.contains("Connection: Upgrade"), "{wire}");
+        // ⛔ The key must pass through byte-for-byte — the accept value is
+        // derived from it, so any change makes the client reject the handshake.
+        assert!(wire.contains("dGhlIHNhbXBsZSBub25jZQ=="), "{wire}");
+        assert!(wire.contains("13"), "the version must survive:\n{wire}");
+        assert!(wire.starts_with("GET /ws HTTP/1.1\r\n"), "{wire}");
+    }
+
+    /// The identity hygiene is the same on this path as on the normal one.
+    #[test]
+    fn a_forged_identity_is_dropped_on_the_upgrade_path_too() {
+        let r = req(
+            "GET", "/ws",
+            &[("Upgrade", "websocket"), ("Connection", "Upgrade"),
+              ("X-UAL-User", "attacker")],
+        );
+        let up = Upstream::loopback(7525);
+        let wire = String::from_utf8(build_upgrade_request(&r, &up, "8.8.8.8", None)).unwrap();
+        assert!(!wire.to_ascii_lowercase().contains("x-ual-user"), "{wire}");
+
+        // ...and the vouched one replaces it rather than joining it.
+        let wire2 =
+            String::from_utf8(build_upgrade_request(&r, &up, "127.0.0.1", Some("GFourteen"))).unwrap();
+        assert!(wire2.contains("X-UAL-User: GFourteen"), "{wire2}");
+        assert!(!wire2.contains("attacker"), "{wire2}");
     }
 
     #[test]

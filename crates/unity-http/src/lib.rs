@@ -116,13 +116,39 @@ pub struct Route {
     /// loopback. **Requiring POST is what makes the gate meaningful**, because a
     /// cross-origin POST cannot be issued without CORS the server never grants.
     pub post_only: bool,
+    /// ⛔⛔ **A PUBLIC ROUTE THAT MUST STILL CARRY A PROXY-VOUCHED IDENTITY.**
+    ///
+    /// Exactly one route needs this and it is `/ws`. The shipped nginx config
+    /// proxies BOTH lanes to the same backend endpoint —
+    /// `location /ws` for the public donor/visitor socket, and
+    /// `location /admin/ws` which Forgejo-authenticates, sets `X-UAL-User`, and
+    /// then `proxy_pass`es to `http://unity_brain/ws`, **the same path**. The
+    /// brain distinguishes them by nothing but that header: *"Donor/public
+    /// routes carry no such header."*
+    ///
+    /// ⚠ So marking `/ws` `Privileged` would break every anonymous donor, and
+    /// dropping the identity on it — the default for a public route — would
+    /// **silently downgrade the admin socket to a public one.** The admin
+    /// dashboard would connect, work, and quietly lack its own lane.
+    ///
+    /// ⭐ The carve-out is safe only because of a precondition the deployment
+    /// already relies on: **nginx strips any client-supplied `X-UAL-User` on
+    /// every route**, so a header arriving at this process is one nginx vouched
+    /// for. It is therefore honoured **only when `UAL_PROXY_AUTH=1`** — that
+    /// flag is what asserts nginx is in front. With it off (local dev, or a
+    /// directly-reachable port) the identity is dropped like any other public
+    /// route, and there is simply no admin WS lane locally.
+    pub forward_identity: bool,
 }
 
-const fn pub_(path: &'static str) -> Route { Route { path, access: Access::Public, prefix: false, post_only: false } }
-const fn priv_(path: &'static str) -> Route { Route { path, access: Access::Privileged, prefix: false, post_only: true } }
-const fn priv_prefix(path: &'static str) -> Route { Route { path, access: Access::Privileged, prefix: true, post_only: true } }
+const fn pub_(path: &'static str) -> Route { Route { path, access: Access::Public, prefix: false, post_only: false, forward_identity: false } }
+const fn priv_(path: &'static str) -> Route { Route { path, access: Access::Privileged, prefix: false, post_only: true, forward_identity: false } }
+const fn priv_prefix(path: &'static str) -> Route { Route { path, access: Access::Privileged, prefix: true, post_only: true, forward_identity: false } }
 /// Privileged but readable — a GET is legitimate (it changes nothing).
-const fn priv_read(path: &'static str) -> Route { Route { path, access: Access::Privileged, prefix: false, post_only: false } }
+const fn priv_read(path: &'static str) -> Route { Route { path, access: Access::Privileged, prefix: false, post_only: false, forward_identity: false } }
+/// Public, but the upstream reads a proxy-vouched identity off it to decide
+/// which LANE the caller gets. See `Route::forward_identity`.
+const fn pub_ident(path: &'static str) -> Route { Route { path, access: Access::Public, prefix: false, post_only: false, forward_identity: true } }
 
 /// The control surface, transcribed from `brain-server.js`.
 ///
@@ -156,6 +182,10 @@ pub const ROUTES: &[Route] = &[
     pub_("/weights/list"), pub_("/weights/download"),
     pub_("/download/donor-linux"), pub_("/download/donor-windows"),
     pub_("/brain-equations.html"), pub_("/unity-guide.html"),
+    // ⭐ THE WEBSOCKET LANE — one backend path serving two lanes, told apart
+    // only by a proxy-vouched identity. See `Route::forward_identity`; this is
+    // the single route in the table that sets it.
+    pub_ident("/ws"),
 ];
 
 /// Resolve a request path to a route.
@@ -273,6 +303,28 @@ mod tests {
                    Err(Denied::NoProxyIdentity),
                    "proxy-auth on + no identity MUST be refused even from loopback");
         assert!(check(&Access::Privileged, "127.0.0.1", true, Some("GFourteen")).is_ok());
+    }
+
+    /// ⛔ `/ws` is the ONE route that is public and still carries an identity,
+    /// and both halves of that matter. Public, or every anonymous donor is
+    /// refused. Identity-carrying, or the Forgejo-authenticated admin socket
+    /// silently becomes a public one — it would connect, work, and be the wrong
+    /// lane, which is worse than failing.
+    #[test]
+    fn the_websocket_route_is_public_and_carries_its_identity() {
+        let r = resolve("/ws").expect("/ws must be a known route");
+        assert_eq!(r.access, Access::Public, "an anonymous donor must be able to connect");
+        assert!(r.forward_identity, "the admin lane is told apart by this header alone");
+        assert!(!r.post_only, "a WebSocket upgrade is a GET");
+    }
+
+    /// And nothing else may claim that carve-out by accident.
+    #[test]
+    fn only_the_websocket_route_forwards_an_identity_on_a_public_path() {
+        for r in ROUTES.iter().filter(|r| r.access == Access::Public && r.forward_identity) {
+            assert_eq!(r.path, "/ws",
+                "{} claims the identity carve-out; only /ws may, and only because nginx sends both WS lanes to the same backend path", r.path);
+        }
     }
 
     #[test]

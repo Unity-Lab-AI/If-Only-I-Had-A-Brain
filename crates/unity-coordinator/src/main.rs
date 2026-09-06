@@ -131,8 +131,70 @@ fn handle(mut stream: TcpStream, ctx: &Ctx) {
         }
     };
 
+    // ⭐ THE WEBSOCKET LANE FORKS BEFORE THE NORMAL RESPONSE PATH, because an
+    // upgrade does not have one: after the 101 this connection stops being
+    // request/response and becomes a tunnel, so it can never be handed to
+    // `write_response`.
+    //
+    // ⛔ It still goes through the SAME gate first. A socket is not exempt from
+    // the privilege model — `/ws` is public, and the identity that separates the
+    // admin lane from the donor lane is decided here, once, by the same code
+    // that decides it for every other route.
+    if upstream::is_websocket_upgrade(&req) {
+        if let Some(up) = &ctx.upstream {
+            match authorize_request(&req.method, &req.target, &peer, ctx.proxy_auth, req.header("x-ual-user")) {
+                Ok(r) => {
+                    let vouched = vouched_identity(r, ctx.proxy_auth, req.header("x-ual-user"));
+                    upstream::proxy_websocket(stream, &req, up, &peer, vouched);
+                }
+                Err(_) => {
+                    let _ = http::write_response(&mut stream,
+                        &http::Response::json(403, r#"{"error":"forbidden"}"#));
+                }
+            }
+            return;
+        }
+        let _ = http::write_response(&mut stream, &http::Response::json(501,
+            r#"{"error":"websocket upgrade needs an upstream","note":"start with --upstream=<port>"}"#));
+        return;
+    }
+
     let resp = route(&req, &peer, ctx);
     let _ = http::write_response(&mut stream, &resp);
+}
+
+/// The identity this process will vouch for to the brain — **and the only
+/// source of `X-UAL-User` upstream.**
+///
+/// ⛔⛔ TWO CASES, AND BOTH ARE NARROW ON PURPOSE.
+///
+/// **① A privileged route with proxy-auth on.** `check()` actually examined the
+/// header to let the caller through, so relaying it is relaying a decision this
+/// process made.
+///
+/// **② `/ws`, which is PUBLIC and still needs it.** The shipped nginx sends the
+/// public donor socket and the Forgejo-authenticated admin socket to the *same*
+/// backend path, and the brain tells them apart by this header alone. Dropping
+/// it — the default for a public route — would silently downgrade the admin
+/// lane to a public one: it would connect, work, and quietly be the wrong lane.
+///
+/// ⚠ Case ② is honoured **only when `proxy_auth` is on**, because its safety
+/// rests entirely on nginx stripping client-supplied copies. With the flag off
+/// there is no nginx guarantee, so nothing is vouched and there is simply no
+/// admin socket locally.
+fn vouched_identity<'a>(
+    route: &unity_http::Route,
+    proxy_auth: bool,
+    ual: Option<&'a str>,
+) -> Option<&'a str> {
+    if !proxy_auth {
+        return None;
+    }
+    if route.access == Access::Privileged || route.forward_identity {
+        ual
+    } else {
+        None
+    }
 }
 
 fn route(req: &http::Request, peer: &str, ctx: &Ctx) -> http::Response {
@@ -164,11 +226,7 @@ fn route(req: &http::Request, peer: &str, ctx: &Ctx) -> http::Response {
                 // inbound copy unconditionally.
                 _ => match &ctx.upstream {
                     Some(up) => {
-                        let vouched = if ctx.proxy_auth && r.access == Access::Privileged {
-                            ual
-                        } else {
-                            None
-                        };
+                        let vouched = vouched_identity(r, ctx.proxy_auth, ual);
                         upstream::forward(req, up, peer, vouched)
                     }
                     None if r.access == Access::Privileged => http::Response::json(501, format!(
