@@ -10099,6 +10099,72 @@ const httpServer = http.createServer((req, res) => {
         res.end(JSON.stringify({ available: false, reason: 'ledger not attached — the curriculum has not booted yet' }));
         return;
       }
+      // ⭐⭐ THE EXPORT — a cell's COMPLETE taught-content record, for auditing
+      // the corpus offline against the per-cell source table in the curriculum
+      // gap ledger. Deliberately NOT a bigger page of the reading ring: the ring
+      // is the live window, and the question this answers is "everything this
+      // cell ever taught", which only the ledger can serve.
+      //
+      // ⛔ NDJSON, STREAMED, AND THAT IS THE WHOLE DESIGN. Line 1 is the summary
+      // (per-source / per-lane / per-phase items and words, with the storage cap
+      // and the truncated-row count named so the word total cannot be mistaken
+      // for exact); every later line is one taught item; the last line is a
+      // `wrote` vs `expected` receipt. A cell can hold hundreds of thousands of
+      // rows, so building one JSON array of them on the process that also
+      // teaches would make the monitor the outage.
+      //
+      //   /teach-ledger.json?export=math/grade1              summary + every row
+      //   /teach-ledger.json?export=math/grade1&summary=1    summary only, as JSON
+      //   /teach-ledger.json?export=*                        the whole store
+      const exportCell = u.searchParams.get('export');
+      if (exportCell) {
+        const cell = exportCell === '*' ? null : exportCell;
+        const sum = led.summary({ cell });
+        if (u.searchParams.get('summary')) {
+          res.writeHead(200, head);
+          res.end(JSON.stringify({ now: Date.now(), nowLabel: humanStamp(), ...sum }));
+          return;
+        }
+        const safe = String(exportCell).replace(/[^a-zA-Z0-9._-]+/g, '-');
+        res.writeHead(200, {
+          'Content-Type': 'application/x-ndjson',
+          'Cache-Control': 'no-cache',
+          'Access-Control-Allow-Origin': '*',
+          'Content-Disposition': `attachment; filename="taught-${safe}.ndjson"`,
+        });
+        res.write(`${JSON.stringify({ kind: 'summary', now: Date.now(), nowLabel: humanStamp(), ...sum })}\n`);
+        const rowIter = led.iterate({
+          cell,
+          lane: u.searchParams.get('lane') || null,
+          source: u.searchParams.get('source') || null,
+        });
+        // ⚠ BACK-PRESSURE IS AWAITED, NOT IGNORED. A slow reader on a
+        // 300,000-row cell would otherwise buffer the whole export inside the
+        // process that is teaching — the export would become the outage. The
+        // pump is async purely so `drain` can be waited on; the SQLite cursor
+        // itself stays lazy, so at most one row is ever materialised.
+        (async () => {
+          let wrote = 0;
+          try {
+            for (const row of rowIter) {
+              wrote++;
+              if (!res.write(`${JSON.stringify(row)}\n`)) {
+                await new Promise((resolve) => res.once('drain', resolve));
+              }
+              // A client that walked away must stop the cursor, not finish it.
+              if (res.writableEnded || res.destroyed) return;
+            }
+          } catch (e) {
+            // ⛔ A truncated export announces itself IN the file. A partial dump
+            // that ends silently is indistinguishable from a complete one.
+            try { res.write(`${JSON.stringify({ kind: 'error', wrote, error: e?.message || String(e) })}\n`); } catch { /* socket gone */ }
+          }
+          // ⭐ The last line is the receipt: what actually left, against what the
+          // summary said to expect. Equal is the only clean read.
+          try { res.end(`${JSON.stringify({ kind: 'end', wrote, expected: sum.items })}\n`); } catch { /* socket gone */ }
+        })();
+        return;
+      }
       let body;
       // ⏱ RETENTION — `?series=1` reads the sampled machine-state history, and
       // `?series=1&stats=1` reports how far back it actually reaches. Served on
