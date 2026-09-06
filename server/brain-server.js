@@ -4498,7 +4498,15 @@ class ServerBrain {
 
       try {
         await this.sharedEmbeddings.loadPreTrained();
-        console.log('[Brain] Semantic embeddings ready:', this.sharedEmbeddings.stats);
+        // ⚠ FIELDS, NOT THE OBJECT. This printed `[object Object]` on the live box
+        // — `console.log` with a second argument stringifies it that way through
+        // the console-ring capture, so the one line confirming the embedding table
+        // loaded carried no numbers at all. A log line that prints nothing is the
+        // same defect class as a dial that idles at a plausible value.
+        {
+          const _es = this.sharedEmbeddings.stats || {};
+          console.log(`[Brain] Semantic embeddings ready: ${(_es.pretrained || 0).toLocaleString()} pretrained · ${(_es.learned || 0).toLocaleString()} learned · ${_es.dim}d · loaded=${_es.loaded}`);
+        }
       } catch (err) {
         console.error('[Brain] ⛔ FATAL — GloVe embeddings failed to load: ' + (err?.message || err));
         console.error('[Brain] ⛔ Boot STOPS here by design (NO FALLBACKS). Every word would otherwise train on hash vectors, which is worse than not training: the semantic geometry would be arbitrary and every deposit made against it wasted.');

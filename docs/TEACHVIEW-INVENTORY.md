@@ -46,7 +46,7 @@ The part most under-served today, and what separates this page from the dashboar
 
 | what | can we show it? |
 |---|---|
-| Every teaching item, split by which lane taught it | **yes** |
+| Every teaching item, split by which lane taught it | ⛔ **NO until 2026-09-06 — this row was FALSE and is the reason it is now dated.** `teachBus` was wired to exactly **two** teaching sites in the whole curriculum (`_teachWordDefinition`, `_teachSentenceList`). Measured live mid-walk: **5 items published in 18.3 minutes** while `teachCallsPerMin` read **10,769** — so the feed went silent mid-cell and read as the walk having stopped. Silent lanes: `_teachAssociationPairs`, `_teachConcreteSentences`, `_teachVocabList`, `_teachHebbian`, `_teachSelfFramed`, `_teachWordIntegrated`. ✅ **Now yes for the content lanes** — publishing added at the `_teachConcreteSentences` chokepoint (which also carries her self-framed first-person lines, the self-pronoun grounding, the perspective-contrast set and the self-architecture facts) and per word in `_teachVocabList`. ⚠ `_teachHebbian` stays unpublished on purpose: it is a substrate primitive with no human-readable text, and 50,020 calls of it would be noise, not content |
 | The actual sentences, live, as they go in | **yes** — a rolling 400-item reading feed, 24 pushed per update |
 | Where each item came from — a corpus file, a hand-written runner line, or the dictionary | **yes** |
 | How many repetitions each item got, and which relation channel it trained | **yes** |
@@ -107,7 +107,7 @@ afterwards.**
 
 | what | can we show it? |
 |---|---|
-| Complete per-lane, per-cell, per-source counts | **yes** — never sampled |
+| Complete per-lane, per-cell, per-source counts | **yes for the lanes that publish** — never sampled. ⚠ **"Complete" was doing more work than it could carry until 2026-09-06:** the counts were never *sampled*, which is true and is not the same as covering every lane. Six lanes reported nothing at all, so a complete count of two lanes read as a complete count of the teaching. See the corrected row above |
 | Totals that survive a restart | **yes** — added today; they accumulate across reboots and reset only on a fresh walk |
 | **Everything a single cell ever taught** | ✅ **BUILT** — an append-only ledger keeps every item, paged to the true end, with the complete count printed beside every page. It is **not** a bigger reading window: the live ring stays bounded at 400 while the ledger holds all of it |
 | **Test words that appear nowhere in the whole corpus** | ✅ **ON THE PAGE** — the sweep moved out of the CLI script into `server/curriculum-coverage.js`, the module the state publish already shares, so the command line and the page cannot disagree. Latest: **1,788 exam words required, 10 present nowhere** across a 386,996-distinct-word corpus |

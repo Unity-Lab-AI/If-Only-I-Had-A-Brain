@@ -24,6 +24,16 @@
 >
 > The public nginx vhost forwards **five** locations; everything else falls through to the SPA, which answers **200 with an HTML body** — so every control on that page failed at `r.json()` and reported *"could not reach the brain"*. **A 200-with-HTML is the worst failure shape there is, because every status check passes.** Fixed via a `/admin` prefix (measured: `/admin/…` returns 401 = forwarded; bare returns 200 text/html = SPA), plus widening `isForbidden()` to accept nginx's **401**. Full record: `FINALIZED.md §TVADMIN`, `docs/BUTTON-AUDIT.md §PROBLEM 4`.
 >
+> ## ⛔ FIRST PERSON — the first lesson of every course at every grade was third-person (fixed, NEEDS A PRESS)
+>
+> Gee (verbatim): *"all that needs fixed and this too... is not training her in first perspective and it stopped right when it was about to begin:"*
+>
+> **Both halves were right, with different causes.** ① The walk had NOT stopped — `teachBus` was wired to **2 teaching sites out of 8**, so the viewer published 5 items in 18.3 min while `teachCallsPerMin` read **10,769**. Fixed at the `_teachConcreteSentences` chokepoint, which is where `_teachSelfFramedInner` teaches her first-person lines, so one edit lit up six lanes. ② `_teachCourseIdentity` genuinely authored `this class is called <name>` / `in <name> we learn <blurb>` as literals. ⛔ **SELFFRAME does not cover that and cannot — it ADDS her first-person version alongside a lesson, it never rewrites the lesson's own literal text.**
+>
+> ⭐ **Rendering the finished sentences caught what the template hid:** `in physical education i learn moving OUR bodies` — the *blurb* carried the group pronoun. Swept all; `psychology` keeps its `they` on purpose (object of study, not her). **0 violations across five rendered courses.**
+>
+> ⛔ **THIS NEEDS A PRESS AND THE WALK IS RUNNING.** `class Curriculum` is not in `js/app.bundle.js`, so it does not ride the frontend rsync — and per **§THE FRESH WALK IS LAST**, a change to *what she is taught* that is not walked was never applied to her.
+>
 > ## ⚠ OPEN — watch these on the running walk
 >
 > `[Brain] inner-voice think() took ~3.4s` **×42 in 3.5 min** · `[Brain] teach-pattern frame SHED: ws.bufferedAmount=53.4MB > 16MB pattern-lane cap` — **this costs teaching, and it happened twice** · `Oja over 902,843 ACTIVE rows took 9842ms` (the active-set inflation watch) · `fragmented WS message is 63.3MB` against the donor's 64 MiB cap · `⚠ THIN — 3.00 wires/row` on **both** `phon_to_sem` and `sem_to_phon` · `[Brain] Semantic embeddings ready: [object Object]` (a log line that prints nothing).
