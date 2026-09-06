@@ -1,6 +1,36 @@
 # RESUME — Session Pickup Brief
 
-> # 🟢 2026-09-05 (latest) — B5 STARTED FOR REAL: THE COORDINATOR IS THE FRONT DOOR AND PROXIES THE LIVE BRAIN (PICK UP HERE)
+> # 🟢 2026-09-06 (latest) — THE FRESH WALK IS RUNNING, AND THE FIRST PRESS BOOTED HER WITHOUT A LANGUAGE SUBSYSTEM (PICK UP HERE)
+>
+> Gee (verbatim): *"it deployed: build 568ee61e · main --- is that correct? you ready to connect the pod?"*
+> Gee (verbatim): *"moniter her make sure shes doing everything correctly without errors take nots of issues"*
+> Gee (verbatim): *"pressed update freshwalk... no point for savestart"*
+>
+> ## ⛔⛔ THE CORRECTION TO CARRY FORWARD: A CAUGHT THROW LEAVES EVERY INSTRUMENT GREEN
+>
+> I said a successful boot was itself proof the GloVe cutover had landed, reasoning that NO-FALLBACKS makes a missing table boot-fatal. **Wrong.** `_initLanguageSubsystem`'s throw is **caught** — the process survives, the tick loop runs, the donor attaches, `/update` answers and the dashboard reads healthy, while `runCompleteCurriculum` (`server/brain-server.js:4788`, *below* the throw) is never called. The box ran 23 minutes at `currentSubject: null`, `cellPhasesStarted: 0`, `sinceLastTeachMs: null` with an A40 billing against it. ⭐ **A crash loop would have been the MILDER outcome, because it is visible.**
+>
+> ## ✅ RESOLVED BY THE SECOND PRESS — the two-press sequence, exactly as filed
+>
+> Press #1 ran the box's **old** `self-update.sh` (no binary-table gate) and, in doing so, delivered `main`'s updater onto the box. Press #2 ran that one: Rust bootstrapped, the table built, and the boot at 02:19:20Z logged **`400,000 vectors mapped in 353 ms`** against the 19,085 ms text parse it replaced — **zero error-level lines in the whole ring.** The walk opened `ela/kindergarten` (*Foundational Reading*) at uptime 127 s and `sinceLastTeachMs` went numeric.
+>
+> ⭐ **One warning of mine was over-stated in the safe direction:** I told Sponge the old updater's missing `--exclude 'corpora'` could `--delete` the books off the box. `[ExamVocab] 496,410 distinct corpus words` — they survived.
+>
+> ## ✅ THE DONOR — and the resume trap worth knowing
+>
+> **Both stopped pods refused to start** (`not enough free GPUs on the host machine`): a stopped pod is pinned to its host, and both hosts had filled. A new one from template `unity-donor-launcher-v2` (no version pin, atomic `.new` + `mv -f`, watchdog killing by captured PID rather than `pkill -f`, which would match the supervisor's own command line). `donor-v0.3.36`, `17/17` matrices, `gpuMisses 0`, substeps adapting `36 → 54 → 81`, `TICK-GAP` attributing 2,339 ms of 2,356 ms to `compute` with `queue=0ms`. ⭐ `meanVoltage` reads `gpu-donor-readback` on a **CUDA 13.0** host — the `donor-v0.3.33` PTX regeneration confirmed in production.
+>
+> ## ⛔ TEACH VIEW: TEN OF TWELVE ROUTES NEVER REACHED THE BRAIN (fixed, frontend-only)
+>
+> The public nginx vhost forwards **five** locations; everything else falls through to the SPA, which answers **200 with an HTML body** — so every control on that page failed at `r.json()` and reported *"could not reach the brain"*. **A 200-with-HTML is the worst failure shape there is, because every status check passes.** Fixed via a `/admin` prefix (measured: `/admin/…` returns 401 = forwarded; bare returns 200 text/html = SPA), plus widening `isForbidden()` to accept nginx's **401**. Full record: `FINALIZED.md §TVADMIN`, `docs/BUTTON-AUDIT.md §PROBLEM 4`.
+>
+> ## ⚠ OPEN — watch these on the running walk
+>
+> `[Brain] inner-voice think() took ~3.4s` **×42 in 3.5 min** · `[Brain] teach-pattern frame SHED: ws.bufferedAmount=53.4MB > 16MB pattern-lane cap` — **this costs teaching, and it happened twice** · `Oja over 902,843 ACTIVE rows took 9842ms` (the active-set inflation watch) · `fragmented WS message is 63.3MB` against the donor's 64 MiB cap · `⚠ THIN — 3.00 wires/row` on **both** `phon_to_sem` and `sem_to_phon` · `[Brain] Semantic embeddings ready: [object Object]` (a log line that prints nothing).
+>
+> ---
+>
+> # 2026-09-05 — B5 STARTED FOR REAL: THE COORDINATOR IS THE FRONT DOOR AND PROXIES THE LIVE BRAIN
 >
 > Gee (verbatim): *"yes he wants the next big push!!! why didnt you do it.. is he have items blocvking it?"*
 >
