@@ -402,7 +402,25 @@ async function prefetch(words, opts = {}) {
   for (const w of words) {
     const key = _normalize(w);
     if (!key) continue;
-    if (cache.has(key)) { alreadyCached += 1; continue; }
+    /* ⛔⛔ THIS READ THE RAW MAP AND BYPASSED THE CHOKEPOINT, WHICH IS THE WHOLE
+       REASON THE OFFLINE HEAL DID NOTHING FOR THE VOCABULARY PASS.
+       `cache.has(key)` is true for a POISONED permanent-miss entry, so the word
+       was counted "already cached", `getDefinition` was never called, `_cacheGet`
+       was never called — and the offline dictionary that can define the word was
+       never consulted. This is the path the pre-cell pass runs over all ~2,247
+       grade words, so it is the path that mattered most, and it was the one
+       reader left outside the chokepoint after `lookupStatus` was brought in.
+       ⚠ MEASURED CONSEQUENCE: the live flag read `DEF-MISS ×96 · 94 distinct`
+       with `be`, `look`, `america` and `every` still named — all four of which
+       resolve correctly through `getDefinition` on a fresh cache.
+       ⭐ AND IT FIXES A SECOND BUG IN THE SAME LINE. `cache.has` is true for an
+       EXPIRED transient error too, so a word whose lookup failed on a network
+       blip was skipped here FOREVER rather than retried when its TTL lapsed —
+       silently converting "the service was down for a moment" into "this word is
+       never fetched again". `_cacheGet` deletes an expired error and returns
+       null, so the word correctly re-enters the fetch list. */
+    const _hit = _cacheGet(key);
+    if (_hit) { alreadyCached += 1; continue; }
     if (inFlight.has(key)) { alreadyCached += 1; continue; }
     todo.push(key);
   }
@@ -415,7 +433,11 @@ async function prefetch(words, opts = {}) {
       // After fetch settles, check cache for rateLimited flag set inside getDefinition.
     }
     for (const k of batch) {
-      const c = cache.get(k);
+      // Through the chokepoint for the same reason as the skip-check above: a
+      // word healed from the offline dictionary during this batch must count as
+      // PREFETCHED, not vanish from both tallies because the raw entry still
+      // looked like an error at the moment it was read.
+      const c = _cacheGet(k);
       if (c && c.rateLimited) { rateLimited += 1; batchHit429 = true; }
       else if (c && !c.error) prefetched += 1;
     }

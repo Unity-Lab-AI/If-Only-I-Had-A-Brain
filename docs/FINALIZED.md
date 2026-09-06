@@ -5,6 +5,86 @@
 
 ---
 
+## 2026-09-06 (19th) — THE PRESS CAUGHT TWO BUGS I SHIPPED THIS MORNING, WITHIN MINUTES
+
+Gee (verbatim): *"she still isnt drawing correctly and writing her letters and words…"* and, pasting the live flags: *"DEF-MISS ×96 · 94 distinct: for, be, your, their, look, our, america, every (+86 more)"*.
+
+### What the press confirmed first
+
+⭐ **`✍ WRITEWARM — glyph shapes: 94/94 traced and banked in 9.9s`**, and `letterShapes` reads **94 of 94 — letters 52/52 · digits 10/10 · marks 32/32**. Every printable key, both cases. That is the reading the row was gated on, and it landed exactly as predicted. Resume kept the weights: `mode: resume · neurons 411,216,550 · formatVersion 6`.
+
+### ⛔⛔ BUG ONE — `prefetch` bypassed the chokepoint, so the offline heal did nothing where it mattered most
+
+I predicted `DEF-MISS ×4` after the press. It read **94 distinct, with `be`, `look`, `america` and `every` still named** — all four of which resolve correctly through `getDefinition` on a fresh cache, verified locally.
+
+The cause: `prefetch` tested **`cache.has(key)` on the raw Map**. A poisoned permanent-miss entry makes that true, so the word was counted *already cached*, `getDefinition` was never called, `_cacheGet` was never called, **and the offline dictionary that can define it was never consulted.** That is the path the pre-cell pass runs over all ~2,247 grade words — the path that mattered most, and the one reader left outside the chokepoint after `lookupStatus` was brought in.
+
+⛔ **The audit error is the finding.** I checked the readers by grepping `_cacheGet(` — a search that **by construction cannot find the readers that do not use it.** The correct search was for raw `cache.` access, which turns up `has`, `get`, `set` and `delete` in one pass. **Looking for users of the fix cannot find the code that needs it.**
+
+⭐ **And it fixes a second bug in the same line.** `cache.has` is also true for an **expired** transient error, so a word whose lookup failed on a network blip was skipped here *forever* rather than retried when its TTL lapsed — silently converting *"the service blipped"* into *"this word is never fetched again."* `_cacheGet` deletes an expired error and returns null, so the word correctly re-enters the fetch list.
+
+**Verified through the exact path that failed** — `prefetch` over the real poisoned cache: **80 of 195 healed**, `be`/`look`/`america`/`every` → `hasDef`, and `for`/`your`/`their`/`our` correctly still `noDef`.
+
+### ⛔ BUG TWO — the cgroup reader was pointed at the root cgroup
+
+`state.cgroupMemory` read **`null` on a Linux box that plainly has cgroups.** The reader used `/sys/fs/cgroup/memory.current` — **that is the ROOT cgroup, and in v2 the root has no such file at all.** So it looked like a clean "not applicable" while being simply pointed at the wrong directory. **A null meaning "wrong path" and a null meaning "no cgroup" are the same value** — precisely the ambiguity this instrument was built to remove.
+
+The same mistake was in the boot sizing, which therefore fell back to host-only without saying so.
+
+⭐ **`/proc/self/cgroup` is the authority and needs no guessing** — on v2 a single `0::/system.slice/unity-brain.service` line whose suffix is the real directory. Resolves correctly whatever the slice is named and whether or not a cgroup namespace is in play, instead of hardcoding a unit name. Verified against four shapes: systemd service, user slice, namespaced container, and a v1-only file with no `0::` line.
+
+⚠ **Note the asymmetry that hid it:** `brain-ctl.js` used `/sys/fs/cgroup/system.slice/<unit>.service` and would have worked. **Two readers of the same data, written the same hour, one right and one wrong** — and only the wrong one was on the path that reported.
+
+### The honest summary
+
+**Both bugs were mine, both shipped this morning, and the press surfaced both within minutes.** That is the argument for pressing rather than reasoning: a fresh-cache local test passed for the heal, and it passed because a fresh cache never exercises the branch that was broken.
+
+---
+
+## 2026-09-06 (18th) — THE WEDGE, CAUGHT LIVE — AND A RATE THAT FELL WHILE THE TOTAL WAS FROZEN
+
+Gee (verbatim): *"pressed update savestart so go ahead and monitor and get what u need after she ramps up"*
+
+### Read off the box at 14:02 UTC, 2.7 h up, on `68b07439`
+
+```
+⛔ NOT TEACHING for 95.0min while the cell is ALIVE — this is a WEDGE, not a slow phase.
+stage=gate:probe-gpu (age 5697s) · hebbian.calls=259160 FROZEN since last check ·
+activePhase=none · substrate=ready · pausedForDonor=no · probeDeadlineHits=37 ·
+stageSeq=1576054 FROZEN → THE TAG IS STALE
+cell: ela/kindergarten · passedCellsTotal 0 · phase=(between-phases / gate-probe)
+```
+
+⭐⭐ **`stageSeq` FROZEN is the field earning its keep.** It exists because a climbing stage AGE means two opposite things and the tag cannot tell them apart. Here it answers without ambiguity: **no new stage was entered, so the blocker is UNMARKED code AFTER `gate:probe-gpu`.**
+
+⭐ **The probe is eliminated by argument as well as by the tag.** Its `Promise.race` carries a `setTimeout` guaranteeing resolution in 20 s, and the event loop is provably alive — heartbeats every 10 s, donor round-trips 296 ms — so the timer must fire and execution cannot be inside the race. `probeDeadlineHits=37` are **historical** rescues (6 at filing), each of which would have advanced `stageSeq`; a frozen seq proves none is in flight.
+
+### ⛔⛔ The instrument lesson: a rate that falls while the total is frozen
+
+A 45-minute background watch logged `pairs/min` sliding **1832 → 1600**. That reads as gradual degradation — something slowly getting worse, worth a look later.
+
+**It was a dead stop.** The figure is a cumulative average — total pairs over uptime — and the total was pinned at **~259,127 in every sample** while uptime grew, so the quotient decayed smoothly with nothing running at all.
+
+⭐ **The corroborating tell was in the same lines:** `perCall=116.339`, `resid=75.7%`, `anti=12.4%`, `lat/call=0.47` — **identical to six decimal places, sample after sample.** Live values do not repeat to six decimals; frozen ones do.
+
+**The rule:** a per-unit-time figure computed over a lifetime denominator can only decay toward zero, so a smooth decline is exactly what a stopped producer looks like. **Read the numerator before believing the rate.** ⚠ It fails in reverse too — a lifetime average under-reports a lane that just sped up — so it is the wrong instrument in both directions. A windowed rate would have shown a cliff.
+
+### The second fix the live read paid for
+
+`phase=(between-phases / gate-probe)` is **not a location** — it is a statement that `_activePhase` is null, which it is for the entire gate lane. That string printed **52 times through the earlier 24-minute wedge and through all 95 minutes of this one, naming nothing both times.**
+
+⛔ **The stage tag was set the whole time and that line could already see it** — the wedge warn eight lines below reads the same field. The heartbeat now prints `stage=<tag> +<age>s` every 10 s, so the reading that previously required tripping a wedge threshold is on every heartbeat.
+
+⚠ **The age prints with the tag deliberately:** a tag alone cannot say whether it is current, and a tag whose age climbs across heartbeats is the signature of a blocker in unstamped code. ⭐ And when nothing is stamped at all it now says **that**, in those words, instead of implying a location.
+
+### Two numbers carried forward
+
+The definition queue sat **2,155 deep** with `vocabPermanentMiss` **67** — the exact population the same-day permanent-miss skip addresses — and its last window took **200,496 ms to process 7 words**. The heartbeat reported **`ext=7440MB ab=9107MB`**: 9.1 GB of ArrayBuffers, the off-heap memory counted by the cgroup but **not** by `--max-old-space-size`, which is the mechanism behind the same-day `MemoryHigh` work.
+
+**Verified:** `node --check` · ESM `import()` · bundle rebuilt · heartbeat label exercised across all four states.
+
+---
+
 ## 2026-09-06 (17th) — `FOCUSDEAD.2` — THE IRIS WAS PARKED DEAD CENTRE BY ITS OWN DEFAULT
 
 Gee (verbatim, on filing): *"the Unity vision 'focus tracker' never moves anymore to follow what she sees… it used to work… but it died of regression."*
