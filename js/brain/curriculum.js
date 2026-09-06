@@ -11081,6 +11081,36 @@ export class Curriculum {
           this._wedgeLastHeb = null;   // healthy again — forget the frozen baseline
         }
       } catch { /* the watchdog must never take the heartbeat down */ }
+      // ⏱ RETENTION SAMPLE — every number on this heartbeat line is thrown away
+      // the moment the console ring rotates, which is about four minutes. That
+      // is how a wedge's own lane line and a boot's glyph verdict were both lost
+      // while being looked for. One row here makes the SHAPE of a stall, a ramp
+      // or a draining queue readable hours later instead of only live.
+      //
+      // ⚠ The sampler rate-limits itself (30 s against this 10 s heartbeat), so
+      // calling it every beat is correct and costs a timestamp comparison.
+      try {
+        const _bs = this.brain || (cluster && cluster._brain);
+        if (_bs && _bs._teachSeries) {
+          const _sp = this._teachStageProfile || {};
+          const _ps = _sp.pairSegments || null;
+          _bs._teachSeries.sample({
+            cell: `${subject}/${grade}`,
+            elapsedS: Number(elapsedS) || 0,
+            stage: _bs._teachStage || null,
+            stageAgeS: _bs._teachStageAt ? Math.round((Date.now() - _bs._teachStageAt) / 1000) : null,
+            stageSeq: _bs._teachStageSeq || 0,
+            activePhase: (cluster && cluster._activePhase && cluster._activePhase.name) || null,
+            hebbianCalls: (_sp.hebbian && _sp.hebbian.calls) || 0,
+            pairs: _ps ? _ps.n : 0,
+            pairCalls: _ps ? _ps.calls : 0,
+            defSemSemMs: _sp.defSemSem ? _sp.defSemSem.ms : 0,
+            defSemSemN: _sp.defSemSem ? _sp.defSemSem.n : 0,
+            defQueueDepth: (cluster && cluster._definitionQueue && cluster._definitionQueue.length) || 0,
+            heapMb: (typeof process !== 'undefined' && process.memoryUsage) ? Math.round(process.memoryUsage().heapUsed / 1048576) : null,
+          });
+        }
+      } catch { /* retention must never take the heartbeat down */ }
       this._hb(`[Curriculum] ▶ CELL ALIVE ${subject}/${grade} — +${elapsedS}s elapsed (heartbeat #${_aliveTick})${phaseLabel}${memLabel}${oracleLabel}`);
     }, 10000);
     if (_aliveHbId && typeof _aliveHbId.unref === 'function') _aliveHbId.unref();
