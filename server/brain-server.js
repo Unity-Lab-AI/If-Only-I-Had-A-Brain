@@ -848,7 +848,74 @@ const BRAIN_VRAM_ALLOC = (function () {
     // That peak has never been measured. Spending someone else's headroom on an
     // unmeasured peak is how you take down git and the public site together.
     // DREAM_BRAIN_BUDGET_MB still overrides for a deliberate experiment.
-    const _safeMB = Math.max(1024, _hostRamMB - 13312);
+    // ⛔⛔ THE HOST RESERVE PROTECTS FORGEJO. IT DOES NOT PROTECT HER FROM THE
+    // CGROUP — AND THE CGROUP IS WHAT THE KERNEL ACTUALLY ENFORCES.
+    //
+    // Everything above reasons about the HOST: total RAM, a reserve for Forgejo
+    // and the OS, a budget derived from what is left. But this process runs
+    // inside a systemd cgroup with `MemoryHigh` / `MemoryMax` set, and **nothing
+    // in the calculation ever read them**. The unit file states the intent
+    // plainly — *"the in-app budget sizes the brain well under these so the hard
+    // cap is only a backstop"* — and that assumption cannot hold when the budget
+    // is computed from a number the limit has no relationship to. She sized to
+    // 411,216,550 neurons, landed at 21.3 GB, and walked into a wall she had no
+    // way to see: the boot log said `31831MB RAM` while the kernel was enforcing
+    // something smaller.
+    //
+    // ⭐ THE TWO CEILINGS ARE INDEPENDENT AND BOTH APPLY.
+    //   · host  — total minus the Forgejo/OS reserve. Forgejo lives OUTSIDE this
+    //             cgroup, so this reserve is about the host and stays as it is.
+    //   · cgroup — what the kernel will actually let this process hold, minus the
+    //             part of that ceiling which is not weights.
+    // Subtracting the Forgejo reserve from the cgroup limit would be wrong twice
+    // over: it double-counts a reserve for a process that is not in this cgroup.
+    //
+    // ⚠ THE NON-WEIGHTS RESERVE IS DERIVED FROM THE LIVE READING THAT EXPOSED
+    // THIS, not picked. Budget **18,519 MB** produced an RSS of **21.3 GB**, so
+    // V8 heap, buffers and corpus outside the weights measured **~2.8 GB**. That
+    // is the number used, and it is named so the next reader can re-measure it
+    // rather than inherit it. `DREAM_CGROUP_OVERHEAD_MB` overrides.
+    //
+    // ⚠ NO CGROUP MEANS NO CEILING TO APPLY — not a degraded mode. Local dev on
+    // Windows or macOS has no cgroup files at all, so this reads null and the
+    // host clause decides alone, exactly as it did before.
+    const _cgroupLimitMB = (() => {
+      const readLimit = (p) => {
+        try {
+          const raw = fs.readFileSync(p, 'utf8').trim();
+          if (!raw || raw === 'max') return null;           // v2 unlimited
+          const n = Number(raw);
+          if (!Number.isFinite(n) || n <= 0) return null;
+          // cgroup v1 writes a sentinel near 2^63 for "unlimited"; anything at or
+          // above the host's own RAM is not a constraint worth reporting.
+          const mb = Math.floor(n / 1048576);
+          return (mb <= 0 || mb >= _hostRamMB) ? null : mb;
+        } catch { return null; }
+      };
+      const found = [
+        readLimit('/sys/fs/cgroup/memory.high'),           // v2 — throttle point, the one that bit
+        readLimit('/sys/fs/cgroup/memory.max'),            // v2 — hard cap
+        readLimit('/sys/fs/cgroup/memory/memory.limit_in_bytes'),   // v1
+      ].filter((v) => v !== null);
+      return found.length ? Math.min(...found) : null;
+    })();
+    const _cgroupOverheadMB = Number(process.env.DREAM_CGROUP_OVERHEAD_MB) > 0
+      ? Number(process.env.DREAM_CGROUP_OVERHEAD_MB) : 2867;   // 2.8 GB, measured
+    const _hostSafeMB = Math.max(1024, _hostRamMB - 13312);
+    const _cgroupSafeMB = _cgroupLimitMB !== null
+      ? Math.max(1024, _cgroupLimitMB - _cgroupOverheadMB) : null;
+    const _safeMB = _cgroupSafeMB !== null ? Math.min(_hostSafeMB, _cgroupSafeMB) : _hostSafeMB;
+    // ⛔ SAY WHICH CEILING IS BINDING, because "the brain is smaller than I
+    // expected" and "the kernel is throttling her" look identical from the
+    // outside and have opposite fixes. If the cgroup is binding, the answer is a
+    // config decision — raise the limit, or accept the smaller brain — and NOT
+    // another restart hoping for a different number.
+    if (_cgroupSafeMB !== null) {
+      const _binding = _cgroupSafeMB < _hostSafeMB ? 'CGROUP' : 'host reserve';
+      console.log(`[Brain] CGROUP-AWARE SIZING — kernel limit ${_cgroupLimitMB}MB (minus ${_cgroupOverheadMB}MB measured non-weights overhead = ${_cgroupSafeMB}MB) vs host reserve ${_hostSafeMB}MB → budget basis ${_safeMB}MB, bound by the ${_binding}. The host reserve protects Forgejo, which lives OUTSIDE this cgroup; the cgroup limit is what the kernel enforces on this process. Both apply.`);
+    } else {
+      console.log(`[Brain] CGROUP-AWARE SIZING — no cgroup memory limit visible (${process.platform}); the host reserve decides alone: ${_hostSafeMB}MB.`);
+    }
     // #112.2 — DONOR-COMPUTE SIZING. On the DEPLOYED box (UAL_PROXY_AUTH=1) the
     // brain's real compute lives on DONOR browser GPUs, not host RAM. Sizing the
     // BOOT brain to 45% of a 32 GB host (→306M) seeded a brain a single modest

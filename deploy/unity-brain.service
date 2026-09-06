@@ -89,7 +89,24 @@ RestartPreventExitStatus=42
 MemoryAccounting=true
 CPUAccounting=true
 # soft limit — kernel reclaims aggressively above this
-MemoryHigh=20G
+# RAISED 20G -> 22G on the operator's decision, against measured arithmetic
+# rather than a hunch. The in-app budget derives from HOST RAM: 31,831 total
+# minus the 13,312 Forgejo/OS reserve = 18,519 MB of weights, and the measured
+# non-weights overhead (V8 heap, buffers, corpus) is ~2,867 MB — so RSS lands at
+# ~21.4 GB, which was 906 MB OVER the old 20G soft limit. She was throttled by a
+# ceiling the sizing could not see, and two independent records agree on the
+# number: the board's 21.3 GB reading and self-update.sh's own note that the
+# cgroup sat "pinned exactly at MemoryHigh=20G".
+# At 22G the HOST reserve binds again, which is how this was designed to work,
+# and she keeps all 411,216,550 neurons. The alternative — leaving 20G and
+# sizing down to fit — cost 20,117,835 neurons (-4.9%).
+# ⚠ This leaves 9,303 MB of host for Forgejo + OS at peak, against a MEASURED
+# ~4,000 MB of actual non-brain usage. MemoryMax stays 24G, so the OOM backstop
+# that protects Forgejo is unchanged: the brain still dies alone.
+# ⛔ The one number still unmeasured is the peak during a Forgejo Actions Rust
+# cross-build on donor-release day. If that is ever measured and exceeds ~9 GB,
+# this is the directive to reconsider first.
+MemoryHigh=22G
 # HARD cap (~75% of 32 GB) — brain OOM-killed alone if exceeded; box + Forgejo survive
 MemoryMax=24G
 # <=12 of 16 threads — always leaves cores for Forgejo + OS

@@ -5,6 +5,56 @@
 
 ---
 
+## 2026-09-06 (13th) — `MEMTHROTTLE.2` + `BOXCAP.1` — SHE COULD NOT SEE HER OWN CAGE, AND THE OVERSHOOT IS SUBTRACTION
+
+Gee (verbatim): *"get on it lets make some progress"*
+
+Gee, on the config fork put to him with both options priced: **"Raise MemoryHigh to 22G"**.
+
+### The overshoot stopped being a suspicion and became arithmetic
+
+```
+  host RAM                      31,831 MB
+  Forgejo/OS reserve          - 13,312 MB
+  = weights budget              18,519 MB   <- matches the boot log verbatim
+  + measured non-weights RSS   + 2,867 MB   <- V8 heap, buffers, corpus
+  = process RSS                 21,386 MB   <- the board's reading was 21.3 GB
+  MemoryHigh                    20,480 MB
+  OVERSHOOT                        906 MB   over the throttle point
+```
+
+The 2,867 MB is **derived, not picked**: it is the gap between the live 18,519 MB budget and the 21.3 GB RSS it produced. ⭐ **Two independent records agree on the symptom** — this row's reading, and `self-update.sh:226`'s own note that the cgroup sat *"pinned exactly at MemoryHigh=20G"*.
+
+### Built exactly as `BOXCAP.1` specified
+
+*"Read the effective limit from `/sys/fs/cgroup/memory.high` (falling back to `memory.max`, then host RAM) and budget against the smallest of those."* That is the implementation, with cgroup-v1's `memory.limit_in_bytes` as a third source.
+
+⚠ **The two ceilings are independent and both apply.** The Forgejo reserve is about the HOST — Forgejo lives **outside** this cgroup, so subtracting it from the cgroup limit would double-count a reserve for a process that is not in it. The cgroup limit is what the kernel enforces on *this* process.
+
+⛔ **The boot names which ceiling is binding**, because *"the brain is smaller than I expected"* and *"the kernel is throttling her"* look identical from outside and have opposite fixes.
+
+⚠ **No cgroup means no ceiling to apply — not a degraded mode.** Verified on this platform: the read returns null and the host clause decides alone, exactly as before.
+
+### The reserve came from this row's own warning
+
+`BOXCAP.1`'s second bullet is what set it: off-heap `ArrayBuffer`s are counted by the cgroup but **not** by `--max-old-space-size=16384`, which is precisely how a "16 GB heap cap" produced a 21.3 GB process. So the headroom below the limit is measured RSS overhead, not a V8 flag.
+
+### The config half, and what it costs
+
+`MemoryHigh` **20G → 22G**; `MemoryMax` unchanged at **24G**, so the OOM backstop protecting Forgejo is untouched — the brain still dies alone. At 22G the **host reserve binds again, which is how this was designed to work**, and she keeps all **411,216,550** neurons. The alternative — leave 20G and size down to fit — cost **20,117,835 neurons (−4.9%)**. Leaves **9,303 MB** of host at peak against a measured ~4,000 MB of actual non-brain usage.
+
+⚠ The unit file records, beside the value, that the one number still unmeasured is the peak during a Forgejo Actions Rust cross-build on donor-release day — and that if it ever measures above ~9 GB, this is the directive to reconsider first.
+
+### ⛔⛔ Half of this does not ship on a press, and saying so is the point
+
+`self-update.sh` runs `systemctl restart "$SERVICE"` and **never copies the unit file**, so the `MemoryHigh` change is **inert until the unit is installed and `daemon-reload` runs on the box** — the same class as `BUTTONAUDIT.4` and `SHELLGAP.1`.
+
+⭐ **The code half ships by itself and is strictly better meanwhile.** With the unit still at 20G the cgroup becomes the binding ceiling and she sizes to ~391M neurons **without throttling**, instead of overshooting by 906 MB. Once the unit lands she returns to 411M.
+
+**Verified:** `node --check` · cgroup reader returns null on win32 with the host clause unchanged · unit file carries **no inline comments on any directive** (the trap that silently voids a cap) · arithmetic reproduces both the boot log's 18,519 MB and the reported 21.3 GB.
+
+---
+
 ## 2026-09-06 (12th) — `GATEWATCH.3` — THE RESIDUE RETRIED FOREVER BECAUSE THE SET RECORDING IT WAS WRITE-ONLY
 
 Gee (verbatim): *"96 lots to do get to it and start making some reall progreass"*
