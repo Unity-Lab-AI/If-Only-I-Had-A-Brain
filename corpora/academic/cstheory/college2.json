@@ -2,8 +2,8 @@
   "version": 1,
   "grade": "college2",
   "subject": "cstheory",
-  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
-  "note": "Hybrid academic-depth corpus for cstheory/college2. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
+  "source": "hybrid: LibreTexts open textbooks + prior sources, cleaned + sentence-segmented",
+  "note": "Textbook corpus for cstheory/college2. Trained via curriculum._trainAcademicStories. Every book here carries a licence read from its own page.",
   "experiences": [
     {
       "theme": "algorithm",
