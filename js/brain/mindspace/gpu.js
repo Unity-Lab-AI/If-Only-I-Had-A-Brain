@@ -173,7 +173,7 @@ const FONT5X7 = {
   "'": ['00100','00100','01000','00000','00000','00000','00000'],
   '-': ['00000','00000','00000','01110','00000','00000','00000'],
   ' ': ['00000','00000','00000','00000','00000','00000','00000'],
-  // ── WRITEWARM.2 — the rest of a QWERTY keyboard ────────────────────────────────────────────
+  // ── THE REST OF A QWERTY KEYBOARD ──────────────────────────────────────────────────────────
   // The table above covered A-Z, 0-9 and six marks: 42 of the 94 printable keys. The other 52
   // (26 lowercase forms + 26 symbols) resolved to the SPACE glyph, so anything typed on them
   // rasterized blank and banked a blank trace — a silent wrong answer, not a missing feature.
@@ -234,7 +234,7 @@ const FONT5X7 = {
   '/': ['00001','00010','00010','00100','01000','01000','10000'],
 };
 
-// WRITEWARM.2 — case-exact lookup. Both raster paths used to fold the whole string to
+// CASE-EXACT LOOKUP. Both raster paths used to fold the whole string to
 // uppercase BEFORE indexing, which was the only sane thing to do while lowercase had no
 // glyphs. Now that it does, the fold demotes to a FALLBACK: take the character's own
 // letterform when one exists, otherwise its upper-case sibling, otherwise blank. A caption
