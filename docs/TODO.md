@@ -2736,6 +2736,16 @@ Shipped and closed the same day — full record in `docs/FINALIZED.md` §`GLOVEC
   - ⭐ **Answered by NOT SHELLING OUT AT BOOT AT ALL.** The Rust tool runs at **build/deploy** time and writes a file; the boot only *reads* that file with plain `fs`. There is no process dependency in the boot path, so the question dissolves rather than being decided. **A missing tool costs a refused press, never a crash loop.**
   - ⛔ **`unity-sizing` and `unity-state` do NOT have this shape and must not copy this answer by analogy.** They compute a decision, they do not produce an artefact — so wiring them the same way means either a real boot-time subprocess or an FFI boundary, and **NO-FALLBACKS forbids a "use the JS then" branch either way.** The honest options are (a) a sidecar/FFI whose absence is fatal and loudly named, or (b) leave them until `unity-coordinator` serves, at which point the question is moot because the coordinator IS the process. **Not decided here; decided when one of them is actually started.**
 
+## ALERTRING — the only diagnostic surface on a shell-less box retained eight seconds — filed 2026-09-06
+
+> Gee (verbatim): *"okay keep watch and dont stop till you get what u need to keep working out whats left to do and optimize the issues with good fixed code"*
+
+- [x] `ALERTRING.1` — ✅ **FIXED. MEASURED, NOT SUSPECTED: a 400-line pull off the live box spanned `11:32:29 PM -> 11:32:37 PM` — EIGHT SECONDS.** One FIFO of 2,000 lines against ~23,000 teach-calls/minute; routine per-bucket `DONE —` chatter evicts everything. ⭐ **On a box with no shell this is the ONLY diagnostic surface, and it cost three real diagnoses TODAY:** the `⛔ FATAL — GloVe … Boot STOPS here` block rolled off before it could be read (she ran 23 min looking healthy), the `SPRR ack parse FAILED` check returned "0 hits" over a window that no longer reached the incident, and the newest CPU profile could not be retrieved at all.
+  - ⚠ **A SECOND RING, NOT A BIGGER ONE.** Raising `RING_CAP` buys a linear multiple of eight seconds and costs memory proportional to the flood; it does not touch the asymmetry that **the loudest lines are the rarest and are evicted by the quietest being the most numerous**. Separating by SIGNAL makes retention independent of volume — 500 alert slots is **days** at the same rate the main ring is seconds.
+  - ⭐ **Admission deliberately narrow so the alert ring cannot itself be flooded:** every `warn`/`error` plus any line carrying `⛔` — a glyph used consistently in this codebase for a hard finding, so it is real signal not a guess.
+  - ✅ Served on **both** routes with the same `since`/`before` window, plus `alertsSpanMs` / `linesSpanMs` so a reader can **see** the difference instead of trusting it. **6/6 harness:** after 25,000 teach lines the main ring evicts both the `FATAL` and `WEDGE` lines (reproducing the bug) while the alert ring keeps both and holds only those two.
+  - ⭐ **Closes the live half of `WATCH.8`**, which recorded the ring at ~45s; it is now measured at 8s and structurally fixed.
+
 ## STAGESEQ — the stage tag could not say whether it was current, and I read it wrong in both directions in one day — filed 2026-09-06
 
 > Gee (verbatim): *"keep working till you got it all working correctly and we are ready to push it to the box along with past updates"*
