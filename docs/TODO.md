@@ -4551,6 +4551,17 @@ Shipped and closed the same day — full record in `docs/FINALIZED.md` §`GLOVEC
   - ⭐ **Answered by NOT SHELLING OUT AT BOOT AT ALL.** The Rust tool runs at **build/deploy** time and writes a file; the boot only *reads* that file with plain `fs`. There is no process dependency in the boot path, so the question dissolves rather than being decided. **A missing tool costs a refused press, never a crash loop.**
   - ⛔ **`unity-sizing` and `unity-state` do NOT have this shape and must not copy this answer by analogy.** They compute a decision, they do not produce an artefact — so wiring them the same way means either a real boot-time subprocess or an FFI boundary, and **NO-FALLBACKS forbids a "use the JS then" branch either way.** The honest options are (a) a sidecar/FFI whose absence is fatal and loudly named, or (b) leave them until `unity-coordinator` serves, at which point the question is moot because the coordinator IS the process. **Not decided here; decided when one of them is actually started.**
 
+## INNERHOLD — the inner voice spent ~6s every ~8s discovering it had nothing to say — filed 2026-09-06
+
+> Gee (verbatim): *"all that needs fixed"*
+
+- [x] `INNERHOLD.1` — ✅ **FIXED 2026-09-06.** ⚠ **Process deviation, named not back-dated: filed at completion, found while monitoring.** `_shouldEmitInnerThought` is pure rhythm (min 6s / max 75s, probability from arousal / coherence / curriculum-active / elapsed) with **no capability check at all**. Measured live: `inner-voice think() took 6082ms` (also 6391 / 5782 / 6274 / 6556), each aligned with `[EventLoop] BLOCKED ~3000ms`, each followed by `🧠 inner-thought SILENT — wordsBucketed=0, passedCells=0`. **~6 seconds of teach-loop time every ~8 seconds to emit nothing.**
+  - ⭐ **Provably a no-op, which is why gating it is a capability check and not a fallback:** both paths need bucketed words, and the showcase's own comment already stated *"When no training has landed yet (truly fresh brain), still silent — sampling returns null, showcase-broadcast skips."* The code documented that it could not work and ran it anyway.
+  - ✅ Gated on `getTrainedCapability()` — **the same primitive and the same test the chat silence-gate already uses**, so the two lanes cannot drift apart on whether she can speak; documented as no-probing / no-GPU / safe per tick.
+  - ⛔ **Loud, counted and self-re-arming** — announces the hold once, the resume once with the held count, and un-holds the instant the first word is bucketed. Published as `voice.innerVoiceHeld` / `voice.innerVoiceHeldSkips`.
+  - ⚠ **Self-limiting, which is why it survived:** it only bites while `wordsBucketed === 0`, but the previous boot still read 0 at **43 minutes** — hours of teach loop, and it vanishes on its own before anyone investigates.
+  - ⚠ **Needs a restart, NOT a fresh walk** — nothing here changes what she is taught. Full entry in `docs/FINALIZED.md` §`INNERHOLD`.
+
 ## FIRSTPERSON — the course-identity lesson is third-person at source, and the teach bus cannot show the first-person training that DOES happen — filed 2026-09-06
 
 > Gee (verbatim): *"all that needs fixed and this too... is not training her in first perspective and it stopped right when it was about to begin:"* — followed by the Teach View feed pasted back, showing `this class is called foundational reading` · `in foundational reading we learn reading and writing and words and stories` · `foundational reading is about reading and writing and words and stories` · `ela is short for english language arts`.

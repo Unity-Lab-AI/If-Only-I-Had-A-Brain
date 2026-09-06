@@ -1318,6 +1318,15 @@ const SERVER_STATE_MIXIN = {
             // answered for her on a test. A rising count beside falling
             // scores is the truth arriving, not a regression.
             oracleRefusedInGate: (cc && cc._oracleRefusedInGate) | 0,
+            // ⭐ INNER-VOICE HELD — how many inner-voice ticks were skipped
+            // because she provably had no word to emit, and whether the hold is
+            // on right now. Published because the hold is a real behavioural
+            // change to the teach loop and a change nobody can see is the thing
+            // this file keeps being corrected for. `held: true` beside
+            // `wordsBucketed: 0` is the CORRECT reading on a fresh walk; `held:
+            // true` beside a non-zero bucket count would be a real defect.
+            innerVoiceHeld: !!(this._innerVoiceMutedNoWords),
+            innerVoiceHeldSkips: (this._innerVoiceMuteSkips || 0),
             // VOICELIE.1 — the DENOMINATOR. `emitRejection` below is a single
             // last-value: it can say what went wrong most recently but never
             // how often, and "one stray refusal" and "refused continuously for
