@@ -5,6 +5,39 @@
 
 ---
 
+## 2026-09-06 — `BOOTFATAL` — "BOOT STOPS HERE BY DESIGN" DID NOT STOP THE BOOT, AND NOTHING ANYWHERE SAID SHE COULD NOT LEARN
+
+Gee (verbatim): *"okay sop update again and you get to work on the next items"*
+
+Closes `PRESSFAIL.5`, filed 2026-09-04 and **deliberately deferred** — *"Making the boot hard-fail right now would put the box into a real crash loop while it has no corpus … Filed to ship after the corpus is back, not before."* **That precondition is now gone:** the corpus is back (496,410 distinct words), the GloVe binary builds on the box, and she is teaching. So it ships.
+
+### The defect, which this session paid for in full
+
+The GloVe guard printed `⛔ FATAL`, printed `Boot STOPS here by design (NO FALLBACKS)`, and threw. **The catch swallowed it.** The process came up, the tick loop ran, the donor attached and uploaded 17/17 matrices, `/update` answered, and every field on the dashboard read healthy — while `runCompleteCurriculum` sits **inside** the block that threw and was therefore never called. She ran **23 minutes with no language subsystem**, and it cost a whole press to discover.
+
+⭐ **A BRAIN THAT LOOKS ALIVE AND CANNOT LEARN IS STRICTLY WORSE THAN ONE THAT DIES, because the lie is what costs the press.**
+
+### ⚠ A deliberate divergence from what the row proposed, stated rather than slipped in
+
+The row asked for a **hard fail**. Hard-failing takes the brain's **own `/update` down with it**, and this box has no shell — the only remaining lane would be `/ctl/update`. So the fix is not to make her die; it is to make her **stop claiming to be fine**. The door stays open, the lie does not. `UAL_BOOT_FATAL_EXIT=1` opts into the hard exit for anyone with a shell, and is off here on purpose.
+
+### What ships
+
+- **`_bootFatal`** — `what` / `why` / `at` / **`consequence`**, the last spelling out what is *not* happening ("runCompleteCurriculum was never called … every other subsystem will report healthy, which is exactly why this field exists") rather than leaving it to be inferred from a stack trace.
+- **Re-announced every 120 s**, because the console ring spans only minutes under teach load and **rolled past this exact line the last time it mattered**.
+- **Published top-level as `state.bootFatal`, beside `build`** — the two questions a broken box gets asked first are *"what is running?"* and *"is it actually working?"*, and they should not be pages apart.
+- **A loud, non-dismissible banner on the teach view**, drawn first. ⛔ **And guarded against its own overwriters:** `markAdminLane` writes the same element and `poll()` writes the same status chip — an auth note or a "teach bus silent" would have replaced *"she is not learning"* with something true and minor, reproducing the very failure the banner exists to end. `brain unreachable` is deliberately left unguarded: if state cannot be fetched, we cannot know the boot-fatal still holds.
+
+### ⛔ AND A BUG OF MY OWN, CAUGHT LIVE IN THE SAME PASS
+
+`walkTickAcks` — shipped yesterday in `CORTEXQUIET.2` — **published `undefined` on the box.** I had added it beside a `gpuHits`, but that `gpuHits` lives in the **`profiling`** block (next to `uplink` and `gateProbes`), while the one the dashboard reads as `state.perf.gpuHits` is assembled in **`_perfStats` in `chat.js`**. Two fields, same name, two objects; the copy that mattered was never written.
+
+⭐ **It read, in source, exactly like a correct fix.** It was caught only by checking the live field off the box — `walkAcks=-` in a poll — rather than trusting the diff. **This is the same producer/consumer mismatch class this session has been fixing all day, committed by me while fixing it.** Moved beside its real sibling, with a note left at the wrong site so nobody helpfully adds it back.
+
+✅ **Verified:** `node --check` on `brain-server.js`, `state.js` and `chat.js`; both teach-view `<script>` blocks parse; all three `tvStatus` writers audited for overwrite.
+
+---
+
 ## 2026-09-06 — `WEDGESEE` — THE THREE THAT CAME OUT OF THE STALL: A WATCHDOG THAT NAMES A WEDGE, A 30× IDENTITY-INJECTION CUT, AND A PANE THAT STOPPED OUTLIVING THE TEACHING
 
 Gee (verbatim): *"lets do em all no point in reseting the brain a bunch"*

@@ -1282,6 +1282,22 @@ const SERVER_CHAT_MIXIN = {
       gpuComputeConnected: !!(this._gpuConnected && this._gpuClient?.readyState === 1),
       gpuHits: this._gpuHits || 0,
       gpuMisses: this._gpuMisses || 0,
+      // ⭐ WHY `gpuHits` CAN READ 0 ON A PERFECTLY HEALTHY CARD. `_gpuHits++`
+      // lives only in the MAIN TICK's compute_batch loop. During a walk the
+      // WALK HEARTBEAT is the path that runs, and it has its own loop — so
+      // `gpuHits: 0` beside a donor doing thousands of batches is the normal
+      // mid-walk reading, not a dead GPU. This counter is that second loop.
+      //
+      // ⛔ IT LIVES HERE, NEXT TO ITS SIBLING, BECAUSE I FIRST PUT IT IN THE
+      // WRONG OBJECT. The first cut added it beside a DIFFERENT `gpuHits` —
+      // the one inside the `profiling` block, next to `uplink` and
+      // `gateProbes` — so `perf.walkTickAcks` published `undefined` while
+      // reading, in source, exactly like a correct fix. `s.perf` is
+      // `this._perfStats`, assembled HERE. **Caught by reading the live field
+      // off the box rather than trusting the diff** — the same
+      // producer/consumer mismatch this session has been fixing all day,
+      // committed by me while fixing it.
+      walkTickAcks: this._walkTickAcks || 0,
       // #30 donor pool + #32 upload-failure banner — surfaced to the dashboard.
       gpuPool,
       cortexUploadFailure: this._cortexUploadFailure || null,
