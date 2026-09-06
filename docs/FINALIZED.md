@@ -5,6 +5,42 @@
 
 ---
 
+## 2026-09-06 — `ALERTRING` — THE ONLY DIAGNOSTIC SURFACE ON A SHELL-LESS BOX RETAINED EIGHT SECONDS
+
+Gee (verbatim): *"okay keep watch and dont stop till you get what u need to keep working out whats left to do and optimize the issues with good fixed code"*
+
+### The measurement that started it
+
+Asked the live box for its newest CPU profile and its warning classes. **Both came back empty** — and the reason was not that there were none:
+
+```
+ring window: 11:32:29 PM -> 11:32:37 PM      ← EIGHT SECONDS, from a 400-line pull
+```
+
+The console ring is one FIFO of 2,000 lines. At the ~23,000 teach-calls/minute this walk sustains, routine per-bucket `DONE —` chatter fills it in **eight seconds**.
+
+### ⭐ Why that is a real defect and not a log-tidiness nit
+
+**On a box with no shell this ring is the only diagnostic surface that exists**, and it has already cost real diagnoses *today*:
+
+- the `⛔ FATAL — GloVe … Boot STOPS here by design` block had rolled off before it could be read, and she ran **23 minutes looking healthy** while unable to learn;
+- the `SPRR ack parse FAILED` check returned "0 hits" over a window that **no longer reached the incident**, so a hang path could be neither confirmed nor cleared;
+- the newest CPU profile could not be retrieved at all.
+
+**A warning that scrolls away in eight seconds may as well not have been logged.**
+
+### ⚠ The fix is a SECOND ring, not a bigger one
+
+Raising `RING_CAP` buys a linear multiple of eight seconds and costs memory proportional to the flood. It does not touch the actual asymmetry: **the loudest lines are the rarest, and they are evicted by the quietest lines being the most numerous.** Separating by SIGNAL makes retention independent of volume — 500 alert slots at this rate is **days**, in the same process, for the same reason the main ring is seconds.
+
+✅ **Admission rule, deliberately narrow so the alert ring cannot itself be flooded:** every `warn`/`error`, plus any line carrying `⛔` — a glyph this codebase uses consistently and only for a hard finding, so it is a real signal rather than a heuristic guess. Nothing else is admitted, so a chatty `log` lane can never push a warning out.
+
+✅ Served on **both** routes — the public `?console=` tunnel and loopback `/console-tail.json` — honouring the same `since`/`before` window as the verbatim tail, so paging backwards returns the alerts *from that window*. `alertsSpanMs` and `linesSpanMs` ship beside them so a reader can **see** the orders-of-magnitude difference rather than take it on trust.
+
+✅ **6/6 harness against a realistic flood:** one `⛔ FATAL` and one `NOT TEACHING` line, then 25,000 teach lines. The main ring **evicts both** (reproducing the bug exactly) while the alert ring retains both and holds only those two — proving it is not floodable.
+
+---
+
 ## 2026-09-06 — `STAGESEQ` — THE STAGE TAG COULD NOT SAY WHETHER IT WAS CURRENT, AND I READ IT WRONG IN BOTH DIRECTIONS IN ONE DAY
 
 Gee (verbatim): *"keep working till you got it all working correctly and we are ready to push it to the box along with past updates"*
