@@ -1447,7 +1447,9 @@ const TOPICS = {
       'Interpersonal relationship', 'Consent', 'Mindfulness', 'Sleep', 'Grief', 'Psychological resilience',
       // TOPICDEDUP — `Cognitive behavioral therapy` and `Psychotherapy` both
       // repeated from above.
-      'Anxiety disorder', 'Substance abuse', 'Alcohol (drug)', 'Sleep hygiene'],
+      'Anxiety disorder', 'Substance abuse', 'Alcohol (drug)', 'Sleep hygiene',
+      // Second pass: first landed at 97% of floor. Three more, same gate.
+      'Adolescence', 'Tobacco smoking', 'Human nutrition'],
     grade12: ['Public health', 'Health policy', 'Health insurance', 'Nutrition', 'Well-being', 'Preventive healthcare', 'Reproductive rights', 'Bioethics', 'End-of-life care', 'Health literacy',
       'Universal health care', 'Health economics', 'Abortion', 'Informed consent', 'Palliative care', 'Hospice',
       'Social determinants of health', 'Health equity', 'Global health', 'Epidemiology', 'Pandemic',

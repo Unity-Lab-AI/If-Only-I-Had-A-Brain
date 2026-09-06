@@ -677,6 +677,32 @@ Gee (verbatim): *"clean up the todo, move all finished items to finalized.md The
 
 ⭐ **The stale caveat was caught by TESTING it (`git ls-files` + `git check-ignore`), not by reading it** — which is the exact failure mode that page exists to document, found in the page itself. `FIX 3` added in the doc's own two-command recipe format, and **the recipe was run as written before it was published**: `24/24`, `NAMED RESIDUAL` × 2, `UNVERSIONED` × 0.
 
+### `FIGTEXT.3` — CLOSED 2026-09-06 AS ALREADY BUILT, and the row's own prescription is what shipped
+
+⛔ **THE ROW SAYS THE WIKIPEDIA LANE HARVESTS NO IMAGES. IT HARVESTS 782 IN A SINGLE CELL.** Closed on measurement, not on reading — and the measurement was taken because the fetch logs running in front of me were printing `15 fig`, `24 fig`, `no fig (licence-lookup-http-414)` while the board said the capability did not exist.
+
+⭐ **EVERY REQUIREMENT THE ROW NAMED IS MET, AND IT IS THE ROW'S OWN DESIGN:**
+
+| the row asked for | live evidence |
+|---|---|
+| `/api/rest_v1/page/media-list/<title>` | present in `fetch-academic-corpora.mjs`, 24 figure-handling references |
+| the image's rendered caption | `caption` field — *"Soir Bleu by Edward Hopper, c.1914"* |
+| the surrounding section prose | `context` field, 292 chars on the sampled figure |
+| ⚠ **licence per FILE, not per article** | `licence` per figure, and the spread proves per-file lookup: **Public domain ×449 · CC BY-SA 3.0 ×109 · CC BY-SA 4.0 ×76 · CC0 ×36 · PD-US ×24 · CC BY 4.0 ×23** |
+| refuse what cannot be banked | reason codes `no-labelled-images`, `licence-lookup-<kind>`, `all-refused`, `no-host`, `no-html` |
+
+**Measured in `art/grade9` after a live fetch: 61 entries, 53 carrying figures, 782 figures total.**
+
+⚠ **THE STALENESS IS THE FINDING, NOT THE FIGURES.** The row was filed with *"grepped, not assumed"* — and it was true when written. The capability landed afterwards and nothing came back to close the row, so the board went on advertising a gap that the tree had already filled. **This is the same defect class as `REPCOMP.2`** (a row that kept saying replay had never run for five days after it ran) and the same one the `LEDGERLIE` LAW exists for, pointed the other way: **a board can be wrong by being out of date as easily as by being mistaken**, and an open row nobody can close is as costly as a closed row nobody re-reads.
+
+⚠ **NOT CLAIMED:** that every cell now carries pictures, or that `FIGALL.1`'s separate finding is answered.
+
+⭐ **AND THE SECOND LANE WAS THEN CHECKED RATHER THAN LEFT HANGING — IT WORKS TOO.** I filed `FIGTEXT.7` to carry the unchecked half honestly, then immediately measured it instead of banking the row: `fetch-wikibooks-corpora.mjs` carries **17 figure-handling references**, and the corpus holds **829 figures across 25 of 80 wikibooks-sourced entries**. **So BOTH lanes `FIGTEXT.3` named as image-blind are harvesting images**, and `FIGTEXT.7` closed the same minute it was written. ⚠ **Filing it was still right** — the alternative was closing a two-lane claim on one lane's evidence, which is the exact over-reach that let this row go stale. **The row cost one grep; the wrong closure would have cost another five days of a board advertising a gap that is not there.**
+
+**Original filing follows, unchanged:**
+
+- [~] `FIGTEXT.3` — ⛔ **THE TWO LANES THAT FEED MOST OF THE CELLS HARVEST NO IMAGES AT ALL.** Every figure in the corpus comes from exactly three ingests — OpenStax, Saylor and Gutenberg. **`fetch-academic-corpora.mjs` (Wikipedia) and `fetch-wikibooks-corpora.mjs` (open textbooks) contain no `<img>` handling, no figure array, and no image request of any kind** — grepped, not assumed. Those are the lanes that reach the **131 cells with no textbook**, so the cells with the LEAST prose also have the FEWEST pictures, which is exactly backwards from what a thin cell needs. ⭐ **MediaWiki hands both the picture and its text over cleanly:** `/api/rest_v1/page/media-list/<title>` returns each image with its rendered `caption.text` and the `section_id` it sits in, and `action=parse&section=N` returns that section's prose — so the image and the corpus text around it come from the same API in the same shape the other three lanes now produce. ⚠ **Licence is per FILE on Commons, not per article** — an article under CC-BY-SA can carry a fair-use image, so each file's own licence has to be read before it is banked, the same rule the book lanes already follow.
+
 <!-- BOARDCLEAN-APPEND-POINT -->
 
 ---
