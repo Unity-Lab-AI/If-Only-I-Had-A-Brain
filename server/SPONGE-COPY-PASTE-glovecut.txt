@@ -1,11 +1,11 @@
 ================================================================================
 FOR SPONGE — THE BOX NEEDS ONE MANUAL STEP BEFORE THE NEXT PRESS
-GLOVECUT + SPONGECLOSE · main @ dde0fbf1 · both remotes · 2026-09-05
+GLOVECUT + SPONGECLOSE + FRONTDOOR · main @ cb9e5baa · both remotes · 2026-09-05
 ================================================================================
 
 SHORT VERSION
 -------------
-Re-pull main first — dde0fbf1. Three things landed since your handoff.
+Re-pull main first — cb9e5baa. Four things landed since your handoff.
 
 1. The server stopped parsing the 1.04 GB GloVe text file at boot. It now reads a
    binary f32 pack of the same vectors, built by a small Rust tool. Load went
@@ -20,6 +20,13 @@ Re-pull main first — dde0fbf1. Three things landed since your handoff.
 
 3. A2b done — I applied your own A3 ruling to the LFS stall watchdog instead of
    asking you to repeat it. Details in the A2 block below.
+
+4. B5 STARTED FOR REAL — unity-coordinator is now a working front door: it owns
+   the socket, the routing table, the privilege gate and the static files, and
+   proxies everything that needs cognition to Node, WEBSOCKETS INCLUDED. Proven
+   against a live brain (HTTP keys identical to direct; WS 50 msgs / ~9.33 MB
+   each way with client->server confirmed). 205 tests. NOT live on the box, and
+   it has a precondition you own — see the B5 block below, "TWO DOORS".
 
 ⛔ THAT FILE IS BOOT-FATAL, AND THE COPY OF self-update.sh ON YOUR BOX CANNOT
 BUILD IT. If you press Update right now, the overlay lands the new code, the
@@ -401,10 +408,61 @@ B5  unity-http + unity-coordinator — "risk: high, the cutover"
        (2) Deployed, loopback ALONE is not authorization — behind the Forgejo
            proxy every caller is loopback. A port implementing only that layer
            looks perfect locally and is wide open in production.
-    ⛔ THE ENDPOINTS ANSWER 501 BY DESIGN. The gate allows, the action still
-       lives in brain-server.js. No WS lane. The JS coordinator cannot retire
-       until that is real, and NOTHING before it makes brain-server.js
-       deletable.
+    ✅ THE FRONT DOOR IS BUILT AND PROXIES THE LIVE BRAIN, INCLUDING WEBSOCKETS.
+       Your ordering was the thing to fix: "34 endpoints ... then retire the JS
+       coordinator" has the ENTIRE BRAIN between its first and last clause.
+       Every one of those endpoints reads cognition state, and that state is
+       34,060 lines of server/ plus js/brain/. Porting them natively IS the
+       rewrite, not a step toward it. So the front door moves first and the
+       cognition follows: unity-coordinator now owns the socket, the routing
+       table, the privilege gate and the static files, and forwards anything
+       needing the brain to Node on loopback. --upstream=<port> is the lever AND
+       the rollback — without it nothing changes and the endpoints still 501.
+       Live against a running brain, HTTP: /public-state.json proxied 200 with
+       68 top-level and 24 consciousness keys IDENTICAL to direct; static files
+       200; GET /shutdown still 405 Allow: POST; unknown 404.
+       Live, WEBSOCKETS, direct vs proxied 8s each:
+           messages  50   vs  50
+           bytes     9,328,840  vs  9,328,424
+           types     identical (6, incl. definitionResult)
+           client->server PROVEN — sent lookupDefinition("cat") through the
+           proxy and got its definitionResult back.
+       205 tests total, 0 warnings.
+    ⛔ THREE FRAMING TRAPS, ALL OF WHICH FAIL INVISIBLY, ALL FIXED:
+       (1) Node answers /public-state.json CHUNKED. Stripping the
+           connection-scoped Transfer-Encoding header is correct; stripping it
+           WITHOUT DECODING THE BODY returns HTTP 200 with a plausible byte
+           count and raw chunk framing inside it. Shipped for ten minutes and
+           only a body-parse caught it.
+       (2) Upgrade/Connection must SURVIVE the hop on a WebSocket while being
+           dropped on every other request. Drop them and the upstream answers
+           200 instead of 101 and the client waits forever.
+       (3) The 101 is read one byte at a time. A BufReader reads AHEAD of the
+           blank line and swallows the first frames, which arrive in the same
+           packet on a busy lane — a socket that connects and then misses its
+           opening messages.
+    ⛔⛔ /ws IS THE ONE ROUTE THAT IS PUBLIC **AND** CARRIES AN IDENTITY, AND
+       YOUR NGINX IS WHY. It sends `location /ws` (anonymous donor) and
+       `location /admin/ws` (Forgejo-authed, sets X-UAL-User) to the SAME
+       backend path, and the brain separates them by that header alone. Marking
+       /ws privileged refuses every donor; dropping the identity — the
+       public-route default, and my first cut — SILENTLY DOWNGRADES THE ADMIN
+       SOCKET TO A PUBLIC ONE. It connects, it works, it is the wrong lane.
+       Route.forward_identity now exists, set on exactly one route, with a test
+       asserting no other public route may claim it, and honoured only when
+       UAL_PROXY_AUTH=1 because its safety rests on nginx stripping
+       client-supplied copies — which your config does on every route.
+    ⛔⛔ NOT LIVE, AND IT HAS A PRECONDITION YOU OWN: THERE ARE NOW TWO DOORS.
+       Today nginx talks to Node directly. After the cutover nginx talks to the
+       coordinator AND NODE IS STILL LISTENING. Before pointing nginx at it:
+       bind Node loopback-only and make the coordinator the only upstream nginx
+       has. Otherwise the old door is open and the new gate is decoration — and
+       the gate is the point, since it is the implementation that closed the
+       GET /shutdown drive-by. Set UAL_PROXY_AUTH=1 on BOTH processes.
+    ⚠ .js IS STILL 151,692 AND THIS IS THE ONE PLACE B5 GENUINELY WAITS ON YOU.
+       brain-server.js still serves everything. Deleting the JS HTTP layer
+       before the front door runs on the box would leave no server at all, so
+       that deletion is gated on a deploy, which is gated on the press.
 
 B6  Minimum-downtime restart
     (a) binary GloVe  ✅ DONE AND CUT OVER — this document.
@@ -439,10 +497,16 @@ B7  Extract curriculum/vocabulary data — "do this early, it shrinks everything
        will price it properly rather than guessing at your intent again.
 
 SO, PLAINLY: your Section A is fully done except A1, which needs a press on the
-box. Section B has one item cut over (B6a), five built-and-unwired, and B7 done.
-The two that still stand between us and deleting real JS are B5's coordinator and
-B2's weights in-process — and B5 is the one you called "risk: high, the cutover",
-which it is.
+box. Section B: B0, B4, B6a and B7 done; B6a is cut over and live in the code;
+B5's front door is built, tested and waiting on a deploy; B1 needs one real
+deploy (your gate); B3 needs a live donor; B2's weights-in-process and B6 b/c are
+not started.
+
+⚠ EVERYTHING THAT WAS BLOCKED ON ME IS DONE. What is left is blocked on the box:
+a press, a deploy, and a donor. That is not a way of saying "your turn" — it is
+the honest reason the .js counter has stopped moving at 151,692. The JS HTTP
+layer cannot be deleted until the Rust front door actually runs in front of the
+brain, and that needs a deploy.
 
 
 ================================================================================
