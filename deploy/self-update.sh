@@ -1444,6 +1444,25 @@ else
     if command -v cargo >/dev/null 2>&1; then _cargo="$(command -v cargo)"
     elif [ -x "${HOME}/.cargo/bin/cargo" ]; then _cargo="${HOME}/.cargo/bin/cargo"
     fi
+    # ⛔ NAME THE MISSING PREREQUISITE RATHER THAN FAILING INSIDE cargo.
+    #
+    # `rustup` does NOT install a C linker, and Rust links its final binary with
+    # `cc`. On a box without build-essential the build dies with a linker error
+    # buried in a cargo log — a message that sends an operator hunting a Rust
+    # problem when the answer is one `apt-get`. Same for `$HOME`: a service user
+    # with a non-existent or read-only home cannot host `~/.cargo`, and rustup's
+    # failure there does not mention the home directory either.
+    #
+    # ⚠ Checked BEFORE the install is attempted, so a box that cannot succeed
+    # says why in one line instead of spending two minutes proving it.
+    if [ -z "$_cargo" ]; then
+      if ! command -v cc >/dev/null 2>&1 && ! command -v gcc >/dev/null 2>&1; then
+        log "WARN — no C linker on this box (neither 'cc' nor 'gcc'). Rust links with cc, and rustup does NOT install it, so a toolchain install would succeed and the BUILD would then fail with a linker error that never mentions this. Install it first:  sudo apt-get install -y build-essential  — or ship a prebuilt binary at ${BACKEND_DIR}/bin/unity-glove and this whole branch is skipped."
+      fi
+      if [ -z "${HOME:-}" ] || [ ! -d "${HOME}" ] || [ ! -w "${HOME}" ]; then
+        log "WARN — \$HOME is unset, missing or not writable ('${HOME:-<unset>}'), so rustup has nowhere to put ~/.cargo and ~/.rustup. Either give this service user a writable home, or ship a prebuilt binary at ${BACKEND_DIR}/bin/unity-glove."
+      fi
+    fi
     if [ -z "$_cargo" ] && [ "${UAL_RUST_BOOTSTRAP:-1}" = "1" ]; then
       log "embeddings — no cargo on this box; installing the minimal Rust toolchain into \$HOME/.cargo (one time, ~200 MB). Set UAL_RUST_BOOTSTRAP=0 to refuse this and ship ${BACKEND_DIR}/bin/unity-glove yourself instead."
       if curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
