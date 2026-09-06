@@ -3460,6 +3460,36 @@ export class Curriculum {
             _pf.ms += Date.now() - phaseEntry.startAt;
             _pf.calls += 1;
           }
+          // ⛔⛔ EXIT-STAMP EVERY TRACKED TEACH, BECAUSE THE GAPS BETWEEN THEM
+          // ARE WHERE THE WEDGES LIVE AND NOTHING COULD NAME THEM.
+          //
+          // Each teach method stamps its own stage on ENTRY, so while one is
+          // running the tag is useful. The moment one RETURNS the tag goes stale,
+          // and the next thing visible is whatever the enclosing frame stamped —
+          // which for the cell runner is the useless `cell:runner`, a tag that
+          // covers the entire cell. The runner's own comment says exactly this:
+          // the tag "is only ever visible in the gaps BETWEEN them — which is
+          // precisely the region both of today's wedges occupied".
+          //
+          // ⭐ MEASURED CONSEQUENCE, twice in one day. A 95-minute wedge reported
+          // `stage=gate:probe-gpu` and a 31-minute one reported `stage=cell:runner`
+          // — neither naming anything, both with `stageSeq` FROZEN proving the tag
+          // was stale. The teach viewer had the answer the console did not: the
+          // last row it showed was the self-framed lesson. **That should have been
+          // readable from the stage tag, and now it is.**
+          //
+          // ⭐⭐ ONE OWNER, EVERY METHOD. `TRACKED` already wraps every `_teach*`
+          // method, so stamping here gives exit attribution to ALL of them at once
+          // rather than hand-placing `-done` calls and missing the one that
+          // matters. A frozen `X-done` now names the last teach that COMPLETED,
+          // so the blocker is bounded to what runs after it.
+          //
+          // ⚠ Cost is one `_tstage` per teach call — an integer bump and two
+          // property writes, against calls that already cost milliseconds to
+          // seconds. It also gives `teachStageMax` an honest denominator: without
+          // an exit stamp, a method's banked duration silently absorbed every gap
+          // that followed it.
+          try { if (typeof this._tstage === 'function') this._tstage(`${name}-done`); } catch { /* never break a teach */ }
           // Remove THIS call BY IDENTITY - never by position, never by
           // overwriting with a value saved before an await. A call that
           // finishes out of order can then only remove itself; whatever is
