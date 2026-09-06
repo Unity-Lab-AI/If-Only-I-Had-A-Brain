@@ -1312,9 +1312,27 @@ const LAST_BOOT_REASON_PATH = path.join(__dirname, '.last-boot-reason.json');
 // from autoClearStaleState's decision points; NEVER affects the resume/wipe
 // decision itself.
 function _writeBootReason(info) {
+  const rec = { ...info, at: new Date().toISOString() };
+  // ⭐⭐ `RUSTSCOPE.3` — PUBLISH IT, DO NOT ONLY FILE IT. The comment above states
+  // this exists "so the admin dashboard can surface ... instead of it only
+  // living in the console log" — and it reached NEITHER. It was written to
+  // `.last-boot-reason.json` on a box with no shell, and `state.bootReason` read
+  // `undefined` in production, so the single highest-stakes fact in the system —
+  // WHETHER THIS BOOT WIPED HER TRAINED WEIGHTS, AND WHY — was unobservable from
+  // outside.
+  //
+  // ⛔ `.force-fresh` is what makes this urgent. It is tested FIRST at boot, it
+  // BEATS `DREAM_KEEP_STATE` entirely, and it is unlinked as it is read — so a
+  // marker armed by a press whose restart never completed wipes the weights on
+  // the next restart from ANY cause, and nothing anywhere would say so.
+  //
+  // A global rather than a field on the brain, because this fires during module
+  // init in `autoClearStaleState`, well before any brain instance exists — the
+  // same reason the console ring uses one.
+  try { globalThis.__bootReason = rec; } catch { /* never let a diagnostic throw */ }
   try {
-    fs.writeFileSync(LAST_BOOT_REASON_PATH, JSON.stringify({ ...info, at: new Date().toISOString() }, null, 2));
-  } catch { /* non-fatal — dashboard hint only */ }
+    fs.writeFileSync(LAST_BOOT_REASON_PATH, JSON.stringify(rec, null, 2));
+  } catch { /* non-fatal — the state field above is the one that gets read */ }
 }
 
 // #112.11 — delete rolling backup slots ABOVE the cap (e.g. legacy v3/v4 after

@@ -5,6 +5,53 @@
 
 ---
 
+## 2026-09-06 (3rd) — `RUSTSCOPE` + `DEFCOST.2` — THE HANDOFF WAS ALREADY EXECUTED, THREE COST THEORIES DIED, AND "DID THIS BOOT WIPE HER?" HAD NO ANSWER
+
+Gee (verbatim): *"obviously do wehat ever we need to do in the right order"* — answering whether `Sponge said.txt` should be filed as a doc or treated as new scope. **Treated as scope.**
+
+⛔ **Standing safety constraint, quoted with it:** *"make sure you dont delete my stacks code with out correctly portiung it to rust"*
+
+### `RUSTSCOPE.1` — the handoff's central claim was stale within a day, and reading the tree is the only reason no finished work got re-filed
+
+The note (2026-09-05 14:31) states: *"No Rust coordinator code exists yet. The only Rust in the repo is `donor-app/`."* **Not true any more.** All eight crates from its own phase plan exist and hold **8,675 lines of Rust with ZERO `todo!()` / `unimplemented!()`** — `unity-weights` 2,201 · `unity-protocol` 1,430 · `unity-coordinator` 1,492 · `unity-deploy` 1,490 · `unity-donor-session` 684 · `unity-http` 573 · `unity-sizing` 436 · `unity-state` 369. Commits confirm **B4**, **B5** (FRONTDOOR, including the WebSocket lane) and **B6(a)** (binary GloVe, *"173× faster to load, verified bit-exact"*) all landed, and `unity-glove` is genuinely **wired** — `deploy/self-update.sh` invokes it.
+
+⭐ **This is the `DONORFIX.1` lesson from this morning, applied within hours.** That failure was filing work off a stale summary table without opening the row. Here the same shape appeared — a document asserting nothing exists — and the tree was read first. `docs/RUST-MIGRATION.md` is **953 lines**, not the 725 the note cites.
+
+### `RUSTSCOPE.4` — the byte-width audit the note demands: clean, and checked rather than assumed
+
+The note warns that a Float32 cut *"reached 5 of 12 sites and left a hardcoded `nnz * 8` in the checkpoint writer"*, after which *"she trained two hours and persisted **nothing**, while looking healthy"*. **Two literal `* 8` sites survive and both are correct.** The checkpoint writer derives its width from the array with the reasoning written in — *"a Float32Array of `nnz` elements owns exactly half of `nnz * 8`. Measured: it does not clamp, it throws"* — and `brain-server.js:12543`'s `expectedLen = 20 + nnz * 8` is the sparse-propagate **wire** format (`u32 index + f32 value` = 8 B/entry), a fixed layout rather than a weight dtype. `BYTES_PER_NNZ` is imported from the allocator instead of restated, which is the structural form of the fix.
+
+### `DEFCOST.2` — the local CPU primitives are NOT the cost, and that kills all three candidate theories
+
+Benchmarked the real functions off the real prototype at production geometry (sem **1,885,340** · motor **346,902** · fineType **633,474** · cluster **15,082,717**; `gSize(sem) = 6,284`):
+
+| primitive | ms/call |
+|---|---|
+| `_topKEmbedding` (300 dims, k=8) | 0.0479 |
+| `_dictionaryPatternFor` (alloc + hash stripes) | 0.0121 |
+| `_writeTiledPattern` sem, template path | 0.0847 |
+| `_writeTiledPattern` sem, **index-array** path | 0.3518 |
+| `_writeTiledPattern` motor | 0.0304 |
+| `_clearSpikes([sem, motor, fineType])` | 0.1371 |
+
+**Whole per-pair-rep cost, excluding the two already-profiled children: 0.36 ms (template) / 0.63 ms (index array)** — so **2.4–4.2 ms of a 103 ms call**, leaving **74.8–76.6 ms unexplained**. ⛔ `_writeTiledPattern` is not it. `_clearSpikes` is not it. The sparse index array is real but small (0.35 ms, 4× the template path — worth knowing, nowhere near 75 ms).
+
+⭐ **A measured side-fact worth keeping:** winner-take-all asks for **8** sem dims and **4 survive**; asks for **15** motor dims and **8 survive**. The non-positive skip halves K — and K is the term squared in `P·K²/COLS`, so the encoder already sits at about a quarter of the collision load its parameters name.
+
+⚠ **Stated so it is not mistaken for a full answer:** the GloVe table is not loaded in the bench, and `writeSpikeSlice` was stubbed to a no-op, so **the donor wire is excluded** — on a pod measured at ~205 ms RTT that is now the strongest remaining candidate. ⛔ **Not filed as the answer.** Three theories have already died here; `stageProfile.pairSegments.residualPct` ships for exactly this.
+
+### `RUSTSCOPE.3` — the highest-stakes fact in the system was filed to a file nobody can read
+
+`_writeBootReason` records why a boot resumed or wiped. Its own comment says it exists *"so the admin dashboard can surface … instead of it only living in the console log."* **It reached neither** — it wrote `.last-boot-reason.json` on a box with **no shell**, and `state.bootReason` read `undefined` in production.
+
+⛔ **`.force-fresh` is what makes that urgent rather than untidy.** It is tested FIRST at boot, **beats `DREAM_KEEP_STATE` entirely**, and is **unlinked as it is read** — so a marker armed by a press whose restart never completed wipes the weights on the next restart from *any* cause, and the evidence is consumed in the act. ⭐ The Rust `unity-state` crate already models it correctly, **but the box runs the Node coordinator, and a fix that exists only in the replacement is not a fix for what is running.** Now published at `state.bootReason` beside `build` and `bootFatal`.
+
+### Still open from the handoff, and none of it is rewrite work
+
+**A1** — watch the next press; the self-updating deploy path has never run on this box. **Armed: two watches polling the state fields and the console ring.** ⚠ **My console watch was silently broken on its first attempt** — it read `j.console` where the tunnel returns `j.lines` at top level, so it reported nothing rather than erroring. **Same defect class as everything else today, in my own instrument, within the hour.** Fixed and re-armed. **A2** — the LFS runaway wrote **212 GB** from a **110 GB** store; the bound must be bytes-written against store size, not wall clock. **A3** — the fields rsync needs a wedge watchdog, and ⛔ **`write_bytes == 0` is the WRONG signal** (a healthy rsync reads exactly that while its destination grows, because writes sit in page cache; a working transfer was killed on that reading) — use destination growth. **B7** — ~3.37 MB of `js/brain/*-vocabulary.js` and `curriculum.js` is *"data wearing a `.js` extension"*.
+
+---
+
 ## 2026-09-06 (2nd) — `EXAMINTEG` + `LATSCAN` + `REPPRICE` + `DEFCOST` + `DONORFIX` — THE GATE TAUGHT THE ANSWERS TO ITS OWN PROBE, AND THE NUMBER THAT PRICES EVERY REP WENT TO A DEAD FIELD
 
 Gee (verbatim): *"okay continue the work and clean up is at the end after fulkl and complete doc sweep(you do remember what the vastness of a doc swwep intails and isnt limited to docs)"*
