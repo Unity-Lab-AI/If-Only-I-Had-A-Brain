@@ -826,6 +826,13 @@ const SERVER_CHAT_MIXIN = {
             // 3 full emissions per reply (~39s) stacked on teach + a weights save
             // starved the event loop 47s → donor socket EPIPE → donor dead.
             curriculumBusy: !!this._curriculumInProgress,
+            // ⭐ THE CHAT LANE DECLARES ITSELF, because the lap ring it writes to is
+            // ONE ring per brain and four lanes reach the same generation code. The
+            // inner voice and the dream sentence were stamping their continuation
+            // times into this reply's laps, which is how a 42,913 ms continuation
+            // appeared on a question-shaped reply whose guard had correctly set the
+            // continuation count to zero. Only this call site is a reply to a person.
+            lapLane: 'chat',
             // Question-shaped input: compose answers in ONE sentence — the
             // continuation clauses are for conversation, not factual asks.
             questionInput: _questionShaped,

@@ -12360,7 +12360,9 @@ var LanguageCortex = class {
               } catch {
               }
               const _lcBrain = cluster && cluster._brain;
+              const _lcOnChatLane = opts && opts.lapLane === "chat";
               const _lcStamp = (s) => {
+                if (!_lcOnChatLane) return;
                 try {
                   if (_lcBrain && typeof _lcBrain._chatStamp === "function") _lcBrain._chatStamp(s);
                 } catch {

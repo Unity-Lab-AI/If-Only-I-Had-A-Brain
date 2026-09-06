@@ -5,6 +5,32 @@
 
 ---
 
+## 2026-09-06 (11th) — `CHATPIN.1` — ONE LAP RING, FOUR LANES, AND A GUARD THAT WAS NEVER BROKEN
+
+Gee (verbatim): *"96 lots to do get to it and start making some reall progreass we dont have to push every fucking fix"*
+
+### The row said establish which before coding either fix. Established by reading.
+
+`_chatStamp` writes to `_chatStage`, `_chatStageT0` and `_chatLaps` — **single fields on the brain instance. One ring per brain.** And **four call sites** reach the generation path that stamps it: the chat reply (`chat.js:819`), the inner voice twice (`inner-voice.js:266`, `engine.js:1277`), and the dream sentence (`curriculum.js:5184`).
+
+The background lanes do not pass `questionInput`, so **they** run continuations — and their laps were landing in the chat reply's ring. **The 42,913 ms `generate:continuation-1` on a question-shaped reply was another lane's time wearing this lane's name. `maxExtra = 0` was doing its job the entire time.**
+
+### ⛔ The obvious fix would not have worked
+
+Gating on *"is a chat pass currently active"* is the natural chokepoint and fails on the actual case. The row's own evidence is `innerVoiceInFlight=true` **beside** `chatStage=generate:continuation-N` — the lanes running **concurrently** — so a chat pass is active in precisely the situation that goes wrong.
+
+**The lane has to be declared by the caller; it cannot be inferred at the stamp.** Chat opts in with `lapLane: 'chat'`: one declaring call site, one gate, everything else silent.
+
+⭐ **Silent by default is the safe direction here.** A missing lap is a gap; a wrong lap is a lie that sends the next reader after a guard that was never broken. This one had already cost a filed suspicion and a warning not to act on it.
+
+### The residual, named rather than left to be rediscovered
+
+The three background lanes now have **no** lap instrument. They never had a correct one — their seconds were billed to another lane — so nothing that was ever right has been removed. But an inner-voice `generateAsync` that takes 42 s now takes it invisibly. Filed as `CHATPIN.2`, with the explicit instruction not to fix it by widening the chat ring again.
+
+**Verified:** `node --check` ×2 · ESM `import()` · exactly one `lapLane` declaration and one gate in the tree.
+
+---
+
 ## 2026-09-06 (10th) — `OFFLINEDICT.4` — THE MOST COMMON WORDS IN ENGLISH WERE TAUGHT BY NOTHING AT ALL
 
 Gee (verbatim): *"96 lots to do get to it and start making some reall progreass we dont have to push every fucking fix"*
