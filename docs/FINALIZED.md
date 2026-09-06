@@ -5,6 +5,44 @@
 
 ---
 
+## 2026-09-06 (8th) — `EYEONE` — THE TRAINING VIEWER'S MIND'S EYE HAD NEVER DRAWN A FRAME, AND ITS TOOLTIP DESCRIBED THE THING IT WAS NOT DOING
+
+Gee (verbatim): *"and in the traing viewer minds eye they shoudl be one in the same"*
+
+### One source, two reconstructions, and one of them could never work
+
+Both pages poll the same `/minds-eye.json`, so the **data** was already one source. The **reconstruction** was two.
+
+`/minds-eye.json` carries a **field C** — a sparse quantized wavelet record with `channels`, `pad_w`, `pad_h`, `equation_count` — and **all five builders write that shape**. The training viewer's local `reconstruct()` read `rec.rgba || rec.pixels`, which **no builder has ever written**. It returned false on every real snapshot. **Whenever she WAS holding an image, the pane printed the label "imagining" beside a blank canvas.**
+
+⚠ **The heading's tooltip claimed the pane worked *"by running the inverse CDF 9/7 transform over her own field C"*.** That is in-page copy asserting a capability the code beneath it did not have — and it is true only as of this change.
+
+⛔ **Nothing ever looked wrong, and that is the point.** Blank is also the *correct* answer most of the time, and the panel's own note says so. A failure whose output is indistinguishable from the expected output does not get found by looking at the page.
+
+### Fixed by deleting the second implementation, not porting it
+
+`minds-eye.html` has always imported `reconstructImageData` from the mind-space transform — the same function the brain itself uses. The training viewer now imports **that** function (lazily, since its script is classic rather than a module) instead of carrying a second copy. **One owner, two callers, no second copy to drift.**
+
+⛔ **The server was sending the reason and the pane discarded it.** The snapshot carries a `note`, verified live: *"Unity has not imagined yet — her mind's eye warms up once the brain is idle (not mid-teach)."* The public viewer has always shown it; this one replaced it with a bare `nothing held`. **A blank with a reason attached is answered; a blank without one gets investigated.** Source, equation count and frame age now appear here too — the same facts on both pages.
+
+### ⛔ And the doc that inventories the pages was off by one, for five days, on this exact page
+
+`docs/HTML-ENTRY-POINTS.md` describes itself as matching the live tree **exactly** at 11 pages. `git ls-files '*.html'` returns **12**. `html/teachview.html` shipped 2026-09-01 (`5cafe92b`) and was never added.
+
+⚠ **The check that would have caught it is written at the top of that very doc** — *"the 11-page inventory vs `git ls-files '*.html'` (exact match)"*. **A verification procedure that is documented and never run is not a verification procedure.**
+
+⭐ **`html/legend.html` was not missing it.** The page has been carded there since the day it shipped and the drift check reads 10/10 — so it was reachable by anyone browsing, and invisible only in the doc that claims to inventory everything. **That is the harder failure to notice, because nothing breaks.**
+
+⚠ **The two "11"s in that doc were counting different sets** — the table counts every page, the legend cards every page plus a download link — which is why neither number caught the gap. Both corrected to 12 with the sets named; historical dated entries left standing.
+
+### Verified
+
+Both script blocks parse · both pages now name the same module and the same function · `rec.rgba`/`rec.pixels` gone from live code (one remaining match is inside the explaining comment) · live payload confirms `rec: null` with `note` present · `reconstructImageData(rec, dev)` reads exactly `width`/`height`/`pad_w`/`pad_h`/`channels`, which is what the wire record carries · inventory re-checked 12/12 against `git ls-files`.
+
+⚠ **Not claimed: a rendered frame.** She is holding nothing right now, so the render path cannot be exercised until she imagines. The reconstruction is the same call the public page makes, which is the strongest evidence available without a frame.
+
+---
+
 ## 2026-09-06 (7th) — `WEDGELIVE` — THE PROBE HELPER STAMPED ENTRY ONLY, SO ITS TAG WAS THE RESTING STATE OF THE WHOLE GATE LANE
 
 Gee (verbatim): *"we cnat have the shit to fix her runing be blocked by a broken run"*
