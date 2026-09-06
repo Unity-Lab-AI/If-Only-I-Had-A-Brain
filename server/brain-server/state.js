@@ -709,6 +709,22 @@ const SERVER_STATE_MIXIN = {
       // version.js FULL as last resort. Surfaces on /public-state.json + the
       // dashboard header so a glance / one curl tells you what's live.
       build: this._deployBuild || null,
+      // ⛔⛔ PUBLISHED HIGH AND UNCONDITIONALLY, BECAUSE ITS ABSENCE IS WHAT
+      // COST A PRESS. On 2026-09-06 the GloVe guard logged `⛔ FATAL` and `Boot
+      // STOPS here by design`, the throw was caught, and the process ran for 23
+      // minutes with **no language subsystem** — `runCompleteCurriculum` sits
+      // inside the block that threw, so nothing was ever taught. Meanwhile the
+      // tick loop ran, the donor attached, `/update` answered and every field
+      // on this object read healthy. **There was no surface anywhere that said
+      // "this brain cannot learn".** This is that surface.
+      //
+      // ⭐ `null` on a healthy boot, an object with `what` / `why` /
+      // `consequence` / `at` when the boot lost something structural. A reader
+      // who checks one field learns more than the whole dashboard told us that
+      // day. ⚠ It sits beside `build` deliberately — the two questions a stale
+      // or broken box gets asked first are "what is running?" and "is it
+      // actually working?", and they should not be pages apart.
+      bootFatal: this._bootFatal || null,
       frameCount: this.frameCount,
       totalSpikes: this.totalSpikes,
       spikeCount: this.totalSpikes,
@@ -1975,15 +1991,13 @@ const SERVER_STATE_MIXIN = {
         })(),
         gpuDispatchPerSec,
         gpuHits: perf.gpuHits || 0,
-        // ⭐ WHY `gpuHits` CAN READ 0 ON A PERFECTLY HEALTHY CARD. `gpuHits` is
-        // incremented only in the MAIN TICK's compute_batch loop. During a walk
-        // the WALK HEARTBEAT is the path that runs, and it has its own loop —
-        // so `gpuHits: 0` beside a donor doing thousands of batches is the
-        // normal reading mid-walk, not a dead GPU. This counter is that second
-        // loop's acks. ⚠ Published as a SEPARATE field rather than folded into
-        // `gpuHits`, because changing what an existing number means in order to
-        // fix how it looks is how the next reader gets misled.
-        walkTickAcks: this._walkTickAcks || 0,
+        // ⚠ `walkTickAcks` DELIBERATELY IS NOT HERE. It was here first, and that
+        // was the bug: this `gpuHits` belongs to the `profiling` block, while
+        // the one the dashboard reads as `state.perf.gpuHits` is assembled in
+        // `_perfStats` (chat.js). Two fields with the same name in two objects,
+        // and the copy that mattered published `undefined`. It now sits beside
+        // its real sibling in `_perfStats`; this note stays so the next person
+        // does not "helpfully" add it back here.
         gpuMisses: perf.gpuMisses || 0,
         totalSpikes: this._lastTotalSpikes || perf.totalSpikes || 0,
         phaseTimingMs: perf.phaseTimingMs || null,

@@ -4840,6 +4840,51 @@ class ServerBrain {
       console.error(err.stack);
       // Leave _languageReady=false — _generateBrainResponse will fall
       // through to the honest-failure path instead of crashing.
+      //
+      // ⛔⛔ AND RECORD IT AS A BOOT-FATAL, BECAUSE "Boot STOPS here by design
+      // (NO FALLBACKS)" DID NOT STOP THE BOOT — AND THAT COST A WHOLE PRESS.
+      //
+      // Measured 2026-09-06: the GloVe guard printed `⛔ FATAL`, printed `Boot
+      // STOPS here by design`, threw — and this catch swallowed it. The process
+      // came up, the tick loop ran, the donor attached, `/update` answered, the
+      // dashboard read green, and she sat for 23 minutes with **no language
+      // subsystem at all** because `runCompleteCurriculum` is called INSIDE the
+      // block that threw. Every instrument said healthy. Nothing said dead.
+      //
+      // ⭐ A BRAIN THAT LOOKS ALIVE AND CANNOT LEARN IS STRICTLY WORSE THAN ONE
+      // THAT DIES, because the lie costs a press to discover.
+      //
+      // ⚠ THIS DELIBERATELY DOES NOT `process.exit()`, AND THE REASON IS THE BOX.
+      // The filed row proposed a hard fail. Hard-failing takes the brain's OWN
+      // `/update` down with it, and this box has no shell — the only remaining
+      // lane would be `/ctl/update`. So the fix is not to make her die; it is to
+      // make her STOP CLAIMING TO BE FINE. The door stays open, the lie does not.
+      // `UAL_BOOT_FATAL_EXIT=1` opts into the hard-exit behaviour for anyone who
+      // wants it (a dev box with a shell), and is off here on purpose.
+      this._bootFatal = {
+        what: 'language-subsystem',
+        why: String(err && err.message ? err.message : err).slice(0, 400),
+        at: Date.now(),
+        // Named so a reader knows what is NOT happening, rather than having to
+        // infer it from a stack trace: this is the block that calls the walk.
+        consequence: 'runCompleteCurriculum was never called — she is not being taught, and no gate, phase or teach lane will ever start on this boot. Every other subsystem (tick loop, donor, dashboard, /update) is unaffected and will report healthy, which is exactly why this field exists.',
+      };
+      // Re-announced on a timer so the fact survives the console ring, which
+      // spans only minutes under teach load and rolled past this line the last
+      // time it mattered.
+      if (!this._bootFatalTimer) {
+        const _bfSay = () => {
+          console.error(`[Brain] ⛔⛔ BOOT-FATAL STILL IN EFFECT — ${this._bootFatal.what}: ${this._bootFatal.why}`);
+          console.error('[Brain] ⛔ She is UP and she is NOT LEARNING. The curriculum was never started on this boot. Fix the cause and restart; nothing on this process will recover on its own.');
+        };
+        _bfSay();
+        this._bootFatalTimer = setInterval(_bfSay, 120000);
+        if (typeof this._bootFatalTimer.unref === 'function') this._bootFatalTimer.unref();
+      }
+      if (typeof process !== 'undefined' && process.env && process.env.UAL_BOOT_FATAL_EXIT === '1') {
+        console.error('[Brain] UAL_BOOT_FATAL_EXIT=1 — exiting rather than running as a brain that cannot learn.');
+        process.exit(1);
+      }
     }
   }
 
