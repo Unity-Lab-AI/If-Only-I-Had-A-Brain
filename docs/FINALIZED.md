@@ -5,6 +5,30 @@
 
 ---
 
+## 2026-09-06 (12th) — `GATEWATCH.3` — THE RESIDUE RETRIED FOREVER BECAUSE THE SET RECORDING IT WAS WRITE-ONLY
+
+Gee (verbatim): *"96 lots to do get to it and start making some reall progreass"*
+
+### The row's candidate was right, and the cause is one unread field
+
+`_vocabPermanentMiss` receives words the dictionary **positively** answered 404 for — its own guard comment shouts that it must only ever receive those, because it once received every unlearned word during an outage and wrote `for`, `the` and `and` into a lifetime record of undefined words.
+
+**Nothing in the tree ever read it.** The pre-cell filter tested `!taught.has(w)` and nothing else. So the same words came back through it on every pre-cell pass of every cell, were looked up again, missed again, and were re-counted as failures again — **the `processed 67 / bound 0 / failed 67` block repeating window after window.** The `1 ms` reading the row spotted is the confirmation: served from the error cache, never reaching the wire.
+
+**A correct number written where nothing reads it** — the same shape as the rep-pricing verdict and the boot reason before them.
+
+### ⭐ Safe only because the set does not survive a boot, which was checked
+
+It is in-memory and rebuilt from live lookups. So every boot still asks for each word **once** — which is exactly where the offline-dictionary heal shipped earlier today gets its chance — and only a word that misses **after both sources have answered** enters the set and is skipped for the rest of that boot.
+
+**A permanent skip across restarts would have frozen the miss and denied the heal.** That is the row's own warning about the two different owners, and it is why the fix reads the set rather than persisting it.
+
+⚠ **`_vocabDeferredMiss` is deliberately not consulted.** A service outage is a fact about the SERVICE; those words are still owed, and the next pass retrying them is the auto-heal working as designed.
+
+**Verified:** `node --check` · ESM `import()` · bundle rebuilt · leak scanner unchanged at 1,773.
+
+---
+
 ## 2026-09-06 (11th) — `CHATPIN.1` — ONE LAP RING, FOUR LANES, AND A GUARD THAT WAS NEVER BROKEN
 
 Gee (verbatim): *"96 lots to do get to it and start making some reall progreass we dont have to push every fucking fix"*

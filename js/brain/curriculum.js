@@ -5641,14 +5641,36 @@ export class Curriculum {
     try { this._enqueueDefinitionSeed(cluster, words, grade); } catch { /* non-fatal */ }
     const taught = cluster._definitionTaughtWords instanceof Set
       ? cluster._definitionTaughtWords : new Set();
-    const todo = words.filter(w => w && typeof w === 'string' && !taught.has(w));
+    /* ⛔⛔ A SET NAMED `_vocabPermanentMiss` WAS WRITE-ONLY — the residue retried
+       every pass, forever.
+       It is populated a few lines below with words the dictionary POSITIVELY
+       said it has no entry for, and its own guard comment shouts that it must
+       only ever receive those. Nothing ever read it. So the same words came back
+       through this filter on every pre-cell pass of every cell, were looked up
+       again, missed again, and were re-counted as failures again — the
+       `processed 67 / bound 0 / failed 67` block that repeated window after
+       window. **A correct number written where nothing reads it**, which is the
+       shape this project keeps paying for.
+       ⭐ SKIPPING IS SAFE PRECISELY BECAUSE THE SET DOES NOT SURVIVE A BOOT.
+       It is in-memory and rebuilt from live lookups, so every boot still asks
+       for each word once — which is where the offline-dictionary heal gets its
+       chance — and only a word that misses AFTER both sources have answered
+       enters the set and is skipped for the rest of that boot. A permanent skip
+       across restarts would have frozen the miss and denied the heal.
+       ⚠ `_vocabDeferredMiss` is deliberately NOT consulted here: a service
+       outage is a fact about the SERVICE, those words are still owed, and the
+       next pass retrying them is the auto-heal working as designed. */
+    const permaMiss = cluster._vocabPermanentMiss instanceof Set
+      ? cluster._vocabPermanentMiss : new Set();
+    const todo = words.filter(w => w && typeof w === 'string' && !taught.has(w) && !permaMiss.has(w));
+    const _skippedPerma = words.filter(w => w && typeof w === 'string' && !taught.has(w) && permaMiss.has(w)).length;
     if (todo.length === 0) {
-      this._hb(`[Curriculum] 📚 PRE-CELL VOCAB ${subject}/${grade} — all ${words.length} grade words already learned (a sibling cell paid the pass). Cell starts now.`);
+      this._hb(`[Curriculum] 📚 PRE-CELL VOCAB ${subject}/${grade} — all ${words.length} grade words already learned (a sibling cell paid the pass)${_skippedPerma ? `, apart from ${_skippedPerma} the dictionary positively has no entry for` : ''}. Cell starts now.`);
       return;
     }
     this._currentMacroPhase = `📚 PRE-CELL VOCAB — ${subject}/${grade}`;
     this._macroPhaseProgress = { current: 0, total: todo.length, label: `PRE-CELL VOCAB ${subject}/${grade}` };
-    this._hb(`[Curriculum] 📚 PRE-CELL VOCAB START — ${subject}/${grade}: ${todo.length} of ${words.length} grade words unlearned; multi-def Hebbian at reps:1, 300-word chunks with dream windows between. Definitions land BEFORE the cell's bindings train on these words.`);
+    this._hb(`[Curriculum] 📚 PRE-CELL VOCAB START — ${subject}/${grade}: ${todo.length} of ${words.length} grade words unlearned${_skippedPerma ? ` (${_skippedPerma} skipped — the dictionary positively has NO ENTRY for them, so re-asking costs a pass and binds nothing; they re-enter on the next boot in case a source has since gained them)` : ''}; multi-def Hebbian at reps:1, 300-word chunks with dream windows between. Definitions land BEFORE the cell's bindings train on these words.`);
     const CHUNK = 300;
     let totalTrained = 0, totalWordsBound = 0, totalDefsBound = 0, totalTimeouts = 0, totalSlowWords = 0;
     const t0 = Date.now();
