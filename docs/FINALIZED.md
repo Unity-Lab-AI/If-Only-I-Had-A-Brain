@@ -653,6 +653,18 @@ Gee (verbatim): *"clean up the todo, move all finished items to finalized.md The
   - **Verified:** a synthetic 40-minute wedge — `stageSeq` pinned, `pairs` numerator frozen — read back **from disk 100 minutes later**, 200/200 rows, 0 dropped. ⚠ The first harness run looked wrong (121 of 200) and was **my test writing future timestamps** against a `until = now` window; the code was correct.
   - **Original filing follows, unchanged:** **RETENTION + EXPORT.** The walk runs for weeks; the interesting evidence is usually hours old by the time it is wanted. Persist the analytics series and a bounded sample of the feed across restarts (the console ring holds ~4 minutes and rotates, which is how the `"D"` question's own lane line was lost), and allow export of a cell's full taught-content record so a corpus can be audited offline against `docs/CURRICULUM-GAP.md`.
 
+### The six `TEACHVIEW` banner lines written this session, archived before the section was stripped
+
+⛔ **These were the ONLY substantive lines in the 54 emptied sections that a string match could not find in this ledger** — everything else in those 880 lines came in with the 2026-09-06 byte-for-byte board archive. Written today, so nothing had carried them yet. Verbatim:
+
+> ✅⭐ **THE EXPORT HALF IS BUILT 2026-09-06 — the warning below is RESOLVED, not carried.** ⛔ **It was a completed row whose own body still said something was owed**, which is the defect `CONSTRAINTS.md` names outright: a record that looks complete stops being read, so anything left inside it stops existing. Full entry in `docs/FINALIZED.md`.
+> - **Its stated prerequisite was already satisfied** — *"decide where that is captured before building an exporter"* — because `TeachLedger` retains every item a cell ever taught. The exporter reads the ledger, so it is not a bigger dump of the ring.
+> - `GET /teach-ledger.json?export=<cell>` streams **NDJSON**: an audit summary first, one taught item per line, a `wrote` vs `expected` **receipt last**. Split by **source / lane / phase** — the shape `docs/CURRICULUM-GAP.md` is written in, so a cell's real content sets directly beside what that ledger says must close it. `&summary=1` returns the breakdown alone; `export=*` covers the whole store.
+> - ⛔ **The word total names its own floor** (`truncated` beside `words`, because stored text is capped per item) and ⛔ **a truncated export announces itself IN the file** — a partial dump that ends silently is indistinguishable from a complete one.
+> - ⭐ **It streams and awaits back-pressure.** A cell can hold hundreds of thousands of rows on the process that also teaches; materialising them would make the monitor the outage.
+
+> ⛔⛔ **AND THE RETENTION HALF SHIPPED WITH ITS SAMPLE GAP SET FOR A THIRD OF THE WALK — `SERIES_GAP_MS` 30 s → 120 s.** At 30 s, 20,000 rows is **~6.9 days** (the code's own comment said *"roughly a week"*) against a walk priced at **~24 days**. ⚠ **So the ring filled about a third of the way through a run and then discarded oldest-first, silently throwing away THE START OF THE WALK** — precisely the evidence a long-run instrument is kept for, and invisible because a full ring and a correct ring look identical. Derived: `2,073,600 s / 20,000 rows = 103.7 s`, so **120 s covers 27.8 days** with headroom. ⚠ **A shorter gap does not buy detail, it buys a shorter memory**; sub-two-minute detail belongs to the client-side throughput trace, which is a different instrument with a different lifetime. Arithmetic in `docs/THRESHOLD-DERIVATION.md`.
+
 <!-- BOARDCLEAN-APPEND-POINT -->
 
 ---
