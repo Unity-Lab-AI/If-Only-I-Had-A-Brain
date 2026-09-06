@@ -516,12 +516,34 @@ async function buildStatus() {
     // it, and so the dashboard can colour it later without a protocol change.
     _loopPinned = !_plausiblyBooting;
     _activeForSecOut = _activeForSec;
+    // ⛔⛔ THE ADVICE HAS TO TURN OVER, AND IT DID NOT. This message ended
+    // "Wait for the operation to finish; a restart here would abandon whatever
+    // it is holding" — correct for a save minutes from completing, and WRONG
+    // after nineteen hours. It was read live at `activeForSec: 70168` while the
+    // very same sentence already said "far too long to still be booting", so
+    // the payload counselled patience and named the reason not to, in one
+    // breath. **Counselling patience past every plausible operation is not
+    // caution, it is an instrument telling an operator to do nothing while
+    // nothing happens.**
+    //
+    // ⭐ THE TURNOVER POINT IS DERIVED, NOT PICKED. The longest legitimate
+    // event-loop pin measured on this box is the shutdown weights save at
+    // ~112 s, with the forced-consolidation cap next at 120 s
+    // (`DREAM_CONSOLIDATION_FORCE_MAX_MS`) and a routine 5.4 GB binary save at
+    // ~19 s of wall. 1800 s is **15× the longest pin anyone has recorded here**,
+    // so anything past it is not an operation running long — it is an operation
+    // that is not going to finish. Env-overridable for a box with slower disk.
+    const _stuckAfterSec = (Number(process.env.UAL_CTL_STUCK_AFTER_SEC) > 0)
+      ? Number(process.env.UAL_CTL_STUCK_AFTER_SEC) : 1800;
+    const _beyondAnyOperation = _activeForSec != null && _activeForSec > _stuckAfterSec;
     human = _plausiblyBooting
       ? 'Brain process is running but has not bound its port yet — it loads ~5.4 GB of weights before listening. This is normal for the first minute or two after a start.'
       : `Brain process is ALIVE but not accepting connections, and it has been active for ${_activeForSec}s — far too long to still be booting. `
         + `This is NOT a start-up delay and NOT a crash: the unit never restarted (exit ${exitStatus == null ? 'n/a' : exitStatus}, result ${show.Result || 'n/a'}). `
         + `The event loop is pinned. The usual cause is a long synchronous operation or disk starvation — a weights save competing with a large transfer on the same volume will do it. `
-        + `Wait for the operation to finish; a restart here would abandon whatever it is holding.`;
+        + (_beyondAnyOperation
+          ? `⛔ It has now been pinned for ${(_activeForSec / 3600).toFixed(1)} hours, which is past every operation this brain performs — the longest pin ever measured here is the shutdown weights save at ~112s. This will NOT clear on its own. RESTART IT. Whatever it was holding is already lost; waiting only adds to it.`
+          : `Wait for the operation to finish; a restart here would abandon whatever it is holding. ⚠ If this is still true past ${Math.round(_stuckAfterSec / 60)} minutes, stop waiting — that is beyond every operation this brain performs, and this message will say so.`);
   } else if (!active && portUp) {
     // Serving, but not via the unit we manage — typically a hand-started
     // `node server/brain-server.js` (local dev, or an admin debugging on the
