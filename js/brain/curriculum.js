@@ -4018,6 +4018,16 @@ export class Curriculum {
             skippedCapped: this._sfSkipCapped || 0,
             skippedReentrant: this._sfSkipReentrant || 0,
             unitsThisCell: this._sfUnitsThisCell || 0,
+            // ⭐ THE NUMBERS THAT PRICE THE UNCAPPED FRAME. `maxUnitsAnyCell` is
+            // the high-water demand across every completed cell — the figure the
+            // cap was guessed at without. `avgUnitsPerCell` is what to multiply
+            // by 400 cells × the measured 3.9s/unit to get the walk cost.
+            // ⚠ Both read 0 until the FIRST cell completes; a zero here means
+            // "not measured yet", never "cells want nothing".
+            maxUnitsAnyCell: this._sfMaxUnitsAnyCell || 0,
+            lastCellUnits: this._sfLastCellUnits || 0,
+            cellsMeasured: this._sfCellsMeasured || 0,
+            avgUnitsPerCell: this._sfCellsMeasured ? Math.round((this._sfUnitsTotal || 0) / this._sfCellsMeasured) : 0,
             cap: (typeof process !== 'undefined' && process.env && Number(process.env.DREAM_SELF_FRAME_MAX_UNITS) > 0)
               ? Number(process.env.DREAM_SELF_FRAME_MAX_UNITS) : 16,
             off: !!(typeof process !== 'undefined' && process.env && process.env.DREAM_SELF_FRAME === '0'),
@@ -10757,7 +10767,13 @@ export class Curriculum {
     let _runnerThrew = false;
     try {
       const runner = this._cellRunner(subject, grade);
+      // ⭐ The single biggest await in the cell, and it stamped nothing. Every
+      // teach call INSIDE it stamps its own stage, so this tag is only ever
+      // visible in the gaps BETWEEN them — which is precisely the region both
+      // of today's wedges occupied and the region no instrument could name.
+      this._tstage('cell:runner');   // LOOPNAME
       result = await runner(ctx);
+      this._tstage('cell:runner-done');   // LOOPNAME
     } catch (err) {
       _runnerThrew = true;
       result = { pass: false, reason: `${subject}/${grade} threw: ${err?.message || err}` };
@@ -10828,7 +10844,25 @@ export class Curriculum {
           // output on 5 simple single-letter cues, the full battery is
           // noise on noise. Skip it, mark the cell's gate-result with
           // the skip reason, continue teach in the next cycle.
+          // ⛔⛔ THE GATE BLOCK IS THE ONE REGION THE PHASE WRAPPER DOES NOT
+          // COVER, AND THAT IS WHERE BOTH OF TODAY'S WEDGES LIVED.
+          //
+          // The cell-alive heartbeat's own comment says it: "the gate probe
+          // block which is not wrapped". So while execution is in here,
+          // `_activePhase`, `_phaseWorkInflight` and `phaseChain` are ALL null —
+          // and the wedge watchdog could only report `activePhase=none`, which
+          // narrows the blocker to "somewhere in the cell runner". Twice today
+          // that cost an hour of inference.
+          //
+          // ⭐ STAMPING IT COSTS ONE CALL AND MAKES THE NEXT WEDGE NAME ITSELF.
+          // `_tstage` also bumps `_teachStageSeq`, so the watchdog's
+          // stale-vs-current verdict starts working inside this region too —
+          // before this, a hang here left the tag from the LAST teach call and
+          // read as stale-with-no-successor, which is exactly the shape that
+          // sent me looking at the probe when the probe was not running.
+          this._tstage('gate:readiness');   // LOOPNAME
           const readiness = await this._measureEmissionCapability();
+          this._tstage('gate:readiness-done');   // LOOPNAME
           this._hb(`[Curriculum][${label}] readiness probe — recognizedLetters=${readiness.recognizedLetters}/5 · maxEmissionLen=${readiness.maxEmissionLen} · canTalkAtAll=${readiness.canTalkAtAll}`);
           let battery;
           if (!readiness.canTalkAtAll) {
@@ -10870,7 +10904,11 @@ export class Curriculum {
                 skipped: true, skipReason: `emission-too-short maxEmissionLen=${readiness.maxEmissionLen} noAnswerableQuestions=true`,
               };
             } else {
+              // Same reason as the readiness probe above — this is the longest
+              // await in the unwrapped gate block and it stamped nothing.
+              this._tstage('gate:student-battery');   // LOOPNAME
               battery = await this._runStudentBattery(filtered, label);
+              this._tstage('gate:student-battery-done');   // LOOPNAME
             }
           }
           // Methodology battery — separate HOW-question probe loop
@@ -10890,7 +10928,9 @@ export class Curriculum {
           let methodologyBattery = null;
           if (!battery.skipped) {
             try {
+              this._tstage('gate:methodology-battery');   // LOOPNAME
               methodologyBattery = await this._runMethodologyBattery(cellKey);
+              this._tstage('gate:methodology-battery-done');   // LOOPNAME
             } catch (err) {
               console.warn(`[Curriculum][${label}] methodology battery failed:`, err?.message || err);
               methodologyBattery = { cellKey, total: 0, passed: 0, rate: 0, results: [], elapsedMs: 0 };
@@ -25580,9 +25620,50 @@ export class Curriculum {
     // regression wearing a feature's name. So the frame is capped per cell and says so
     // when it stops. The cap resets on the cell key, so every cell gets its own budget.
     const _ck = (this.cluster && this.cluster._currentCellKey) || '(no-cell)';
-    if (this._sfCellKey !== _ck) { this._sfCellKey = _ck; this._sfUnitsThisCell = 0; this._sfCapLogged = false; }
+    if (this._sfCellKey !== _ck) {
+      // ⭐ BANK THE OUTGOING CELL'S DEMAND BEFORE RESETTING IT — this is the
+      // number that prices the uncapped frame, and it exists nowhere else. The
+      // counter was reset per cell and thrown away, so "how many framed units
+      // does a cell actually want?" was unanswerable, which is why the cap could
+      // only ever be guessed at. Same pattern as `_tstage` banking the outgoing
+      // stage: the value is recorded by the call that would otherwise destroy it.
+      if (this._sfUnitsThisCell > 0) {
+        this._sfMaxUnitsAnyCell = Math.max(this._sfMaxUnitsAnyCell || 0, this._sfUnitsThisCell);
+        this._sfLastCellUnits = this._sfUnitsThisCell;
+        this._sfCellsMeasured = (this._sfCellsMeasured || 0) + 1;
+        this._sfUnitsTotal = (this._sfUnitsTotal || 0) + this._sfUnitsThisCell;
+      }
+      this._sfCellKey = _ck; this._sfUnitsThisCell = 0; this._sfCapLogged = false;
+    }
+    // ⛔⛔ ALL CELLS ARE FRAMED — Gee (verbatim): *"all cells are freamed"*.
+    //
+    // The cap was 16, and on 2026-09-06 it became the BINDING constraint for the
+    // first time, live: `unitsThisCell 16/16` with `skippedCapped` climbing 9 →
+    // 13 while `skippedReentrant` sat flat at 16. Past that point every
+    // remaining lesson in the cell trained UNFRAMED — third person — which is
+    // exactly the condition originally reported as *"is not training her in
+    // first perspective"*. The frame layer was working; it simply ran out of
+    // budget early in a cell and everything after it was third-person.
+    //
+    // ⭐ RE-PRICED BEFORE RAISING IT, PER THE LAW — AND MEASURING BEAT QUOTING.
+    // The comment above prices a unit at "~42s at the 12M cortex". Measured off
+    // the live 82M box from `_teachSelfFramedInner` (16 calls / 62,384 ms):
+    // **3.9 s per framed unit — ~11× cheaper than the constant the decision to
+    // cap was originally based on.** The 16 was not wrong when it was chosen; it
+    // was priced against a number that has since stopped being true.
+    //
+    // ⚠ WHAT IS PRICED AND WHAT IS NOT, STATED PLAINLY. The per-unit RATE is
+    // measured. The units-per-CELL total is NOT, because no cell has yet run
+    // uncapped — this one wanted 29 units while still at phase 0 of 25. So the
+    // ceiling below is NOT a derived bound; it is a runaway stop, deliberately
+    // far above observed demand, and the high-water instrumentation beside it is
+    // what will make the real price knowable on the next cell instead of guessed.
+    // At the measured rate: 30 units/cell ≈ +6.1 h over the 400-cell walk (1.1%),
+    // 120 ≈ +45 h (7.8%). If the high-water climbs toward the ceiling, RE-PRICE
+    // again before trusting it — an unpriced per-unit multiplier is exactly what
+    // CELLBOUND was filed for, and this is a per-unit multiplier.
     const _cap = (typeof process !== 'undefined' && process.env && Number(process.env.DREAM_SELF_FRAME_MAX_UNITS) > 0)
-      ? Number(process.env.DREAM_SELF_FRAME_MAX_UNITS) : 16;
+      ? Number(process.env.DREAM_SELF_FRAME_MAX_UNITS) : 512;
     if ((this._sfUnitsThisCell || 0) >= _cap) {
       if (!this._sfCapLogged) {
         this._sfCapLogged = true;
