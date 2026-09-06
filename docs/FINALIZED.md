@@ -59,9 +59,49 @@ Today nginx talks to Node directly. After this cutover nginx talks to the coordi
 
 `.js` **151,692** (unchanged this batch — the JS HTTP layer is not deleted until the front door runs in production) · `.rs` **14,874 → 14,936**. ⚠ **The JS deletion is the NEXT step, not this one:** the proxy has to run on the box before `brain-server.js`'s routing and static-file serving can come out.
 
-### Still open on B5
+### ✅ THE WS LANE — SHIPPED THE SAME DAY, AND PROVEN AGAINST THE LIVE BRAIN
 
-The **WS lane** (donor socket + dashboard live feed) is not proxied yet — that is the remaining hard half, and it is byte relay after the 101, not protocol parsing. Then the endpoints migrate from proxied to native as the brain moves, which is B2 and beyond.
+Gee (verbatim): *"get to it"* · *"dont forget testing"*
+
+**Live comparison, direct against proxied, 8 s each:**
+
+| | DIRECT | PROXIED |
+|---|---|---|
+| messages | 50 | **50** |
+| bytes relayed | 9,328,840 | **9,328,424** |
+| message types | `definitionResult, modeAssigned, serverLog, serverLogBacklog, state, welcome` | **identical** |
+| client→server | `lookupDefinition("cat")` → `definitionResult` | **same, through the proxy** |
+
+⭐ **The client→server half is asserted on purpose.** The brain talks first, so a downstream-only relay would look perfect while the upstream pump was dead. Sending a word and getting its definition back is what proves both directions.
+
+⚠ **The first run of that harness reported no reply on BOTH sides** — the handler requires a `reqId` and `break`s silently without one. **Because direct failed identically, it was identifiably a harness fault rather than a proxy fault**; a test that only ran the proxied side would have been read as a bug in the proxy.
+
+**Three things the implementation had to get right:**
+
+- ⛔ **`Upgrade` and `Connection` must SURVIVE this hop and are dropped on every other request.** Not a contradiction — they are connection-scoped and on an upgrade the connection they scope is the one being established. Drop them and the upstream answers 200 with a body instead of 101, and the client waits forever for a handshake that already failed.
+- ⛔ **`Sec-WebSocket-Key` passes through byte-for-byte.** The accept value is a SHA-1 of it, so normalising or regenerating the key produces an accept the client rejects — and the browser shows a silent close, not an error naming this proxy.
+- ⛔ **The 101 is read one byte at a time, not through a buffered reader.** A `BufReader` reads *ahead* of the blank line and would swallow the first frames, which on a busy lane arrive in the same packet as the handshake. The symptom would be a socket that connects and then misses its opening messages — the hardest possible thing to attribute back here.
+
+⚠ **And the read timeout is explicitly cleared.** `read_request` sets 30 s for slowloris protection; leaving it on would kill every idle WebSocket after thirty seconds — a donor between batches, a dashboard between snapshots — and it would look exactly like the brain going away.
+
+### ⛔⛔ `/ws` IS THE ONE ROUTE THAT IS PUBLIC **AND** CARRIES AN IDENTITY, AND BOTH HALVES MATTER
+
+The shipped nginx sends **both** WebSocket lanes to the same backend path: `location /ws` for the anonymous donor socket, and `location /admin/ws` which Forgejo-authenticates, sets `X-UAL-User`, and `proxy_pass`es to `http://unity_brain/ws`. The brain tells them apart by that header alone — its own comment says *"Donor/public routes carry no such header."*
+
+- Marking `/ws` **Privileged** would refuse every anonymous donor.
+- Dropping the identity — **the default for a public route, and what my first cut did** — would **silently downgrade the admin socket to a public one.** It would connect, work, and quietly be the wrong lane. **That is worse than failing.**
+
+⭐ So `Route` gained `forward_identity`, set on exactly one route, with a test asserting **no other public route may claim it**. ⚠ It is honoured **only when `UAL_PROXY_AUTH=1`**, because its safety rests entirely on nginx stripping client-supplied copies — which the deployed config does on every route. With the flag off nothing is vouched and there is simply no admin socket locally.
+
+### Counter after the WS lane
+
+`.js` **151,692** (still unchanged — see below) · `.rs` **15,821**. **205 tests, 0 warnings.**
+
+### ⚠ Still open on B5 — and the honest reason the JS number has not moved
+
+**`brain-server.js` still serves everything.** The front door is built and proven locally; it has **not run on the box**, and deleting the JS HTTP layer before it does would leave no server at all. **The deletion is gated on a deploy, which is gated on the press** — so this is the one place where B5 genuinely does wait on the box.
+
+What remains after that: the endpoints migrate from proxied to native as the brain itself moves into Rust, which is B2 and beyond.
 
 ---
 

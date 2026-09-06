@@ -30,9 +30,21 @@
 >
 > nginx talks to the coordinator and **Node is still listening**. **Node must bind loopback-only and nginx must point at the coordinator alone**, or the old door is open and the new gate is decoration. Deployment precondition — it cannot be enforced in code.
 >
+> ## ✅ THE WS LANE SHIPPED THE SAME DAY — proven against the live brain
+>
+> Direct vs proxied, 8 s each: **50 messages each · 9,328,840 vs 9,328,424 bytes · identical message types** · **client→server proven** (sent `lookupDefinition("cat")` through the proxy, got its `definitionResult` back).
+>
+> ⭐ **The client→server assertion is the point** — the brain talks first, so a downstream-only relay would look perfect while the upstream pump was dead. ⚠ The harness's first run showed no reply on **BOTH** sides (the handler needs a `reqId`); **direct failing identically is what made it a harness fault rather than a proxy fault.**
+>
+> ⛔ Three things that had to be right: **`Upgrade`/`Connection` must survive this hop** while being dropped on every other request · **`Sec-WebSocket-Key` passes byte-for-byte** (the accept is a SHA-1 of it) · **the 101 is read one byte at a time**, because a `BufReader` reads ahead of the blank line and would swallow the first frames. ⚠ And the 30 s slowloris timeout is cleared on the tunnel, or every idle socket dies after thirty seconds looking exactly like the brain going away.
+>
+> ⛔⛔ **`/ws` is the one route that is public AND carries an identity.** nginx sends both lanes to the same backend path; the brain separates them by `X-UAL-User` alone. Privileged refuses every donor; **dropping the identity — the public-route default, and my first cut — silently downgrades the admin socket to a public one**, which connects, works, and is the wrong lane. `Route.forward_identity`, set on exactly one route, with a test that no other public route may claim it.
+>
 > ## ▶ NEXT
 >
-> **1.** The **WS lane** — donor socket + dashboard live feed. Byte relay after the 101, not protocol parsing. **2.** Then `brain-server.js`'s routing and static serving can actually be deleted — ⚠ **`.js` is unchanged this batch (151,692); the deletion needs the front door running on the box first.** **3.** Endpoints migrate proxied → native as the brain moves (B2 and beyond).
+> ⚠ **`.js` is still 151,692, and this is the one place B5 genuinely waits on the box.** `brain-server.js` still serves everything. The front door is proven locally but **has not run on the box**, and deleting the JS HTTP layer before it does would leave no server at all. **The deletion is gated on a deploy, which is gated on the press** (`GLOVECUT.10` — and that press needs the one manual step first).
+>
+> After that: endpoints migrate proxied → native as the brain itself moves into Rust (B2 and beyond). **205 tests, 0 warnings, `.rs` 15,821.**
 
 > # 🟢 2026-09-05 — THE COUNTER FINALLY MOVED: −4,849 LINES OF JS, AND THE TWO ITEMS I WAS THE BLOCKER ON ARE CLOSED (PICK UP HERE)
 >
