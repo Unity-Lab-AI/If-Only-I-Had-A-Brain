@@ -58,6 +58,18 @@
 > | `curriculum.repPricing.distinctWords` | Must be **≥ 8** for the load figure to mean anything at all |
 > | `state.bootReason` | ⛔ `mode: 'wipe'` + `reason: 'force-fresh'` = her training was just destroyed. **`.force-fresh` beats `DREAM_KEEP_STATE`, is tested first, and is unlinked as it is read** |
 >
+> ## ✅ Two of today's fixes proved themselves on the 03:31 fresh-walk press
+>
+> **The wipe was intentional** (confirmed) — and it is the first one this project could SEE from outside:
+> ```
+> bootReason {"mode":"wipe","reason":"force-fresh",
+>             "detail":"dashboard /update self-update.sh",
+>             "at":"2026-09-06T09:31:11.507Z"}
+> ```
+> That field read `undefined` in production this morning. ⭐ It names the writer, so an INTENDED fresh walk and a `.force-fresh` marker left over from an incomplete press are now distinguishable — which is the whole hazard, since that flag beats `DREAM_KEEP_STATE` and is unlinked as it is read.
+>
+> **And `repPricing` reads `null`** — the sampler now **declines** rather than publishing the degenerate `56`. Refusing to measure is the correct output when the population is one word repeated.
+>
 > ## ✅ Verified live this session
 >
 > **`LATSCAN` shipped and the hint was never once wrong** — `hintVerified` **500** · `hintMismatch` **0** · `hintUsed` **128,562**; `scanMs` **2.230 → 0.445 ms/call**, whole lateral pass **2.640 → 0.67**. **`DEFCOST.3`'s derivation held** — predicted `activeSum/call` 6,647, measured **6,396** (3.8%). **`teachStageSeq` publishes and advances**, and **the two-hour wedge cleared with the press.**
@@ -66,7 +78,8 @@
 >
 > ## Still open, deliberately
 >
-> - **`RUSTSCOPE`** — the handoff note is stale: all eight crates exist, **8,675 lines, zero `todo!()`**, B4/B5/B6(a) landed, `unity-glove` wired. Genuinely left and **not rewrite work**: the LFS runaway needs a **bytes-written** bound (212 GB from a 110 GB store), the fields rsync needs a watchdog on **destination growth** — ⛔ **not `write_bytes == 0`, that killed a healthy transfer** — and **B7**, the ~3.37 MB of vocabulary that is *"data wearing a `.js` extension"*.
+> - ✅ **`RUSTSCOPE` — THE HANDOFF IS CLOSED, and my first read of it was wrong.** Gee: *"it should be old and we should of already have done everything it says unless youve been slacking"* — **correct.** All eight crates exist (**8,675 lines, zero `todo!()`**), B4/B5/B6(a) landed, `unity-glove` wired. ⛔ **And the three items I filed as "genuinely left" were already done:** **A2** the LFS bytes-written ceiling (`self-update.sh:897`, sizes the LFS store with `du -sb`), **A3** the fields-rsync wedge watchdog (`:1192`, with the `write_bytes == 0` warning quoted verbatim at `:968`), and **B7** the vocabulary extraction (`js/brain/*-vocabulary.js` is now **8 KB in 1 file**, with **20 JSON files** in `corpora/vocabulary/`). **A1** is unverifiable from outside — the re-exec line goes to the deploy log, not the console ring. **Only A4 remains** (fields ~44 GB of ~100 GB, drain stopped deliberately, marked low priority in the note itself).
+>   - ⛔⛔ **THE LESSON, AND IT IS MINE THREE TIMES IN ONE DAY.** `DONORFIX.1` was filed off a stale summary table without opening the row. `RUSTSCOPE.1` caught the same shape and I wrote *"reading the tree instead of the digest is the DONORFIX.1 lesson applied within hours"* — **and then in the very next row filed A2/A3/B7 as open on the note's prose without greping for them.** **Naming a lesson is not applying it.** The check took four greps.
 > - **`SCRATCHCLEAN.2`** — `Sponge said.txt` still untracked at root, still needs a decision.
 > - **`MEMTHROTTLE.3`** — fixed but inert until `unity-brain-ctl` is restarted by hand.
 >
