@@ -2740,7 +2740,9 @@ Shipped and closed the same day — full record in `docs/FINALIZED.md` §`GLOVEC
 
 > Gee (verbatim): *"work on the board then"*
 
-- [ ] `BOARDSWEEP.1` — ⚠ **FIVE ADMIN GETs ARE STILL DIRECT AND UNBOUNDED — found by sweeping while bounding the seven POSTs, filed rather than silently swept into someone else's closure.** `html/dashboard.html`: the `auto-advance` and `autoscale` STATUS reads, `versions`, `milestone`.
+- [x] `BOARDSWEEP.1` — ✅ **DONE 2026-09-06, IN ITS OWN COMMIT — which was the entire point of filing it separately.** All four routed through `adminFetch`. ⚠ **AND MY OWN COUNT WAS WRONG: I wrote FIVE, it is FOUR.** The fifth my scan reported was `adminFetch`'s own internal `fetch`, which the regex could not tell from a call site — the same shape of miscount as expecting one residual direct fetch and finding two (both wrappers keep an internal one, and **both carry an abort signal**, verified line by line rather than by count). ✅ **`html/dashboard.html` now has ZERO unbounded admin calls:** 11 wrapped sites (7 POSTs + 4 GETs), the only two direct `fetch(adminApi(...))` left are the wrappers' own and both are bounded, both `<script>` blocks parse, CRLF 5,504 / 0 bare LF.
+  - **Original filing follows, unchanged:**
+  - ⚠ **FIVE ADMIN GETs ARE STILL DIRECT AND UNBOUNDED — found by sweeping while bounding the seven POSTs, filed rather than silently swept into someone else's closure.** `html/dashboard.html`: the `auto-advance` and `autoscale` STATUS reads, `versions`, `milestone`.
   - ⭐ **Milder than the POSTs and the same defect class:** a read that hangs leaves a panel spinning rather than an action in limbo, but on a pinned event loop — the exact condition these pages exist to report — it is still a control surface that never answers.
   - ⭐ **Cheap now that the chokepoint exists:** `adminFetch(path, init, timeoutMs)` takes them unchanged; each is a bare `fetch(adminApi('x'), { cache: 'no-store' })`.
   - ⛔ **NOT done in the same commit, deliberately, for the reason `BUTTONAUDIT.5` itself gave:** the seven POSTs were the filed scope, and a regression in a read should be attributable to the change that touched reads.
