@@ -1,14 +1,25 @@
 ================================================================================
 FOR SPONGE — THE BOX NEEDS ONE MANUAL STEP BEFORE THE NEXT PRESS
-GLOVECUT · main @ 7c77f521 · both remotes · 2026-09-05
+GLOVECUT + SPONGECLOSE · main @ dde0fbf1 · both remotes · 2026-09-05
 ================================================================================
 
 SHORT VERSION
 -------------
-The server stopped parsing the 1.04 GB GloVe text file at boot. It now reads a
-binary f32 pack of the same vectors, built by a small Rust tool. Load went from
-~19 s to ~0.5 s, and all 400,000 vectors were verified identical to what the old
-loader produced.
+Re-pull main first — dde0fbf1. Three things landed since your handoff.
+
+1. The server stopped parsing the 1.04 GB GloVe text file at boot. It now reads a
+   binary f32 pack of the same vectors, built by a small Rust tool. Load went
+   from ~19 s to ~0.5 s, and all 400,000 vectors were verified identical to what
+   the old loader produced. This is B6(a), and it is the first crate actually
+   cut over rather than built beside the JS.
+
+2. B7 done — your "data wearing a .js extension". The nineteen
+   js/brain/*-vocabulary.js modules (676 KB, 5,179 lines) are now
+   corpora/vocabulary/*.json. .js source 156,715 -> 151,692. Zero words changed
+   and it was proven before deletion: 19/19 grades, 56,527 words, zero differing.
+
+3. A2b done — I applied your own A3 ruling to the LFS stall watchdog instead of
+   asking you to repeat it. Details in the A2 block below.
 
 ⛔ THAT FILE IS BOOT-FATAL, AND THE COPY OF self-update.sh ON YOUR BOX CANNOT
 BUILD IT. If you press Update right now, the overlay lands the new code, the
