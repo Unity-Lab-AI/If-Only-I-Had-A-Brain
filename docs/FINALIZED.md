@@ -703,6 +703,71 @@ Gee (verbatim): *"clean up the todo, move all finished items to finalized.md The
 
 - [~] `FIGTEXT.3` — ⛔ **THE TWO LANES THAT FEED MOST OF THE CELLS HARVEST NO IMAGES AT ALL.** Every figure in the corpus comes from exactly three ingests — OpenStax, Saylor and Gutenberg. **`fetch-academic-corpora.mjs` (Wikipedia) and `fetch-wikibooks-corpora.mjs` (open textbooks) contain no `<img>` handling, no figure array, and no image request of any kind** — grepped, not assumed. Those are the lanes that reach the **131 cells with no textbook**, so the cells with the LEAST prose also have the FEWEST pictures, which is exactly backwards from what a thin cell needs. ⭐ **MediaWiki hands both the picture and its text over cleanly:** `/api/rest_v1/page/media-list/<title>` returns each image with its rendered `caption.text` and the `section_id` it sits in, and `action=parse&section=N` returns that section's prose — so the image and the corpus text around it come from the same API in the same shape the other three lanes now produce. ⚠ **Licence is per FILE on Commons, not per article** — an article under CC-BY-SA can carry a fair-use image, so each file's own licence has to be read before it is banked, the same rule the book lanes already follow.
 
+### `CORPUSFLOOR.1` — CLOSED 2026-09-06. THE LADDER IS FINISHED: 193 OF 193 CELLS OVER FLOOR, ZERO SHORT
+
+⭐⭐ **THE ROW ASKED "WHAT IS LEFT" AND THE ANSWER IS NOW NOTHING.** Measured with the row's own instrument against the same band floors:
+
+```
+  filed        193 cells · 71,256,751 words · MEET 161 · SHORT 32
+  mid-session  193 cells · 72,327,157 words · MEET 167 · SHORT 26
+  CLOSED       193 cells · 73,546,285 words · MEET 193 · SHORT  0
+```
+
+⛔⛔ **AND THE ROW'S OWN DIAGNOSIS OF *WHY* THEY WERE SHORT WAS WRONG, WHICH IS THE FINDING WORTH KEEPING.** It concluded *"the topics are short and exhausted… the cells need MORE TOPICS or a richer SOURCE"* — on the strength of `stored entries ≈ topics offered`. **That comparison cannot see a duplicate.** Measured by resolving every one of the 940 titles through the API: **105 slots (11.2%) were spent on titles that produce nothing** — literal repeats of a title already in the same array, plus redirect collisions where two distinct-looking strings resolve to one page. **The merge dedupes by source id, so a repeated title costs a fetch and banks zero words** — and `entries ≈ topics` is exactly what that looks like from outside.
+
+⭐ **`health/grade12` is the proof: SEVEN of its topics were literal repeats, and it sat at 77% of floor.**
+
+**THE THREE DEFECT CLASSES, none visible by reading the source:**
+
+| class | examples | why it survived |
+|---|---|---|
+| **literal repeats** | an appended block re-listing the one above it | reads as a longer list |
+| **redirect collisions** | `Colour`/`Color theory` · `Darkwave`/`Dark wave` · `Magic`/`Magical realism` · `Musical mode`→`Mode (music)` · `Linear perspective`→`Perspective (graphical)` · `Binary search algorithm`→`Binary search` · `Infectious disease`→`Infection` · `Antibiotic`→`Antimicrobial resistance` | two strings, one page |
+| **disambiguation pages** | `Fitness` 1,006 B → 466 words · `Posture` 406 B → **nothing** | they *exist*, so an existence check passes them |
+
+⭐ **THE GATE IS DERIVED, NOT PICKED.** Sampled 45 live topics against the words each actually produced in the corpus: yield is **~1 word per 18 bytes** of page wikitext, so the **15,000-byte floor ≈ 1,100 words** — the median entry contribution. It rejected real articles that would have added nothing: `Melody` 9.7k · `Agility` 5.0k · `Anaerobic exercise` 10.9k · `Stereochemistry` · `Breadth-first search` 14.7k · `Modernismo`.
+
+⚠ **SIX OF THE DUPLICATES REMOVED WERE MINE**, introduced while fixing the others — `Romance languages`, `SQL`, `Critical thinking`, `Argumentation theory`, `Bilingual education`, and one more. **Every one was caught by re-resolving each cell AFTER the edit rather than trusting it.** Without that step this batch would have shipped six fresh instances of the exact defect it was removing.
+
+⚠ **ONE NEAR-MISS RECORDED BECAUSE THE NEXT PERSON WILL HIT IT:** `science/college3`'s BOOK source is `the-basics-of-general-organic-and-biological-chemistry` (157k words) while every one of its TOPICS is neuroscience. I read the book name first and began authoring organic chemistry into a neuroscience cell. **Caught by reading the topic list before writing.** The mismatch itself is left alone and noted in place — which subject that cell should teach is a curriculum decision, not a topic one.
+
+⚠ **NOT CLAIMED: that the floors are ENOUGH.** `FLOORLIE.1` measured these same floors at roughly **13% of one real course year**, and that judgement is untouched by this row. **"Over floor" means over the floor this project set, not "a real course year taught."** Saying otherwise would be the precise error `FLOORLIE.1` exists to name.
+
+**Original filing follows, unchanged:**
+
+- [~] `CORPUSFLOOR.1` — ⭐ **THE ANSWER TO "WHAT IS LEFT" IS 32 CELLS, AND EVERY OTHER CELL IS DONE.** Every corpus file measured against the band floor in `docs/CURRICULUM-GAP.md §THE TARGET LADDER`:
+  ```
+    193 cells · 71,256,751 words · ZERO empty
+    MEET floor 161   SHORT 32
+      early   29 ok / 0 short      high     32 ok / 22 short
+      middle  28 ok / 0 short      college  26 ok / 10 short
+      upper   32 ok / 0 short      grad     14 ok / 0 short
+  ```
+  - ⭐ **THE WHOLE BOTTOM OF THE LADDER IS FINISHED.** early, middle, upper and grad are **100%**. What is owed is concentrated in exactly the two bands where a degree gets finished.
+  - **The 32, worst ratio first:** `cstheory/college2` 61% · `pe/grade12` 68% · `music/grade11` 69% · `language/grade10` 72% · `music/grade9` 74% · `art/grade9` 76% · `math/college4` 77% · `pe/grade10` 77% · `health/grade12` 77% · `ap/grade12` 78% · `language/grade11` 78% · `cstheory/college1` 78% · `cstheory/college4` 80% · `cs/grade10` 82% · `pe/grade11` 83% · `cssystems/college3` 85% · `major/college1` 87% · `language/grade9` 87% · `music/grade12` 88% · `art/grade12` 89% · `science/college3` 90% · `language/grade12` 90% · `health/grade11` 90% · `health/grade10` 92% · `art/college2` 92% · `cs/grade11` 93% · `health/grade9` 95% · `cstheory/college3` 95% · `art/grade10` 96% · `music/grade10` 96% · `art/grade11` 96% · `major/college3` 97%.
+  - ⭐ **THE SHAPE IS ONE FINDING, NOT 32:** the shortfall is almost entirely the **non-core high-school courses** (`pe`, `music`, `language`, `art`, `health`, `ap`) plus **`cstheory` in all four college years**. The core academic ladder is fed; her *electives* and her *CS theory track* are the thin part.
+  - ⭐ **SAFE TO TOP UP DURING THE RUNNING WALK, and the reason is the arithmetic, not optimism.** `§THE FRESH WALK IS LAST` exists because corpus that changes what she is taught must land before the teaching. **Every one of these 32 cells is grade9 or above and the walk is at `ela/kindergarten`** — they land weeks before she arrives. ⚠ A cell at or below her current position would NOT be safe to touch, and that is the test to re-apply each time.
+  - ⛔⛔ **THE TOP-UP RAN, REPORTED SUCCESS, AND WROTE NOTHING — AND THE RE-MEASUREMENT IS THE ONLY REASON ANYONE KNOWS.** Four cells re-fetched via `fetch-academic-corpora.mjs <subject> <grade>`, each logging thousands of cleaned sentences and `SKIPPED BY REASON — none`:
+  ```
+    cstheory/college2   200,344 -> 200,344   (log: "~10,865 cleaned sentences")
+    pe/grade12           99,354 ->  99,354
+    music/grade11       100,402 -> 100,402
+    language/grade10    104,717 -> 104,768   (+51 words)
+  ```
+  ⭐ **The log is not wrong, it is answering a different question** — it counts sentences FETCHED AND CLEANED, not sentences WRITTEN. The merge is monotonic and correctly declines to shorten an existing entry, so re-fetching a topic that is already ingested is a no-op that looks exactly like a successful ingest. ⚠ **This is the instrument-that-lies shape in the content pipeline**, and it is precisely why this row was filed with *"the verdict is the re-run of the measurement, not the fetch log"* **before** the fetch was started.
+  - ⛔⛔ **THE BOUND IS THE TOPIC LIST, NOT THE FETCH — measured, not inferred.** Stored entries ≈ topics offered, so every topic in the list is already in the corpus:
+  ```
+    cstheory/college2   35 entries vs 32 topics offered
+    pe/grade12          32 entries vs 41
+    music/grade11       48 entries vs 55
+  ```
+  **And the depth cap is NOT what is limiting them either** — median entry is **1,453 / 2,938 / 3,057 words** (~100-200 sentences) against a **600-sentence** college cap, with only **3-5 entries per cell** anywhere near it. ⭐ **The topics are short and exhausted, not truncated. More depth is unavailable from these topics; the cells need MORE TOPICS or a richer SOURCE.**
+  - ⏳ **SO THE REAL WORK SPLITS BY BAND, and running the same fetcher again on any of the remaining 28 would produce the same no-op:**
+    - **College band (10 cells)** → the textbook ingests (`fetch-libretexts-corpora.mjs`, `fetch-saylor-corpora.mjs`). A real open textbook is 150k-880k words against a Wikipedia article's ~1.5k, which is the yield gap that matters. This is the path that already fed `major` to 285k-904k.
+    - **High band (22 cells, all electives)** → these are `pe` / `music` / `language` / `art` / `health` / `ap`, where open textbooks are thin. **Expanding the curated topic lists is the honest route**, and it is authoring work, not a re-run.
+  - ⛔ **RE-MEASURE AFTER, DO NOT ASSUME.** The ingest merges monotonically (it cannot regress a cell) but throttling silently thins a run — a previous full re-ingest lost 147 topics to the wiki API's burst limit and reported success. **The verdict is the re-run of this measurement, not the fetch log.**
+  - ⚠ **MY FIRST MEASUREMENT OF THIS READ `0 WORDS` FOR ALL 193 FILES AND I ALMOST FILED IT.** The corpus shape is `{experiences:[{theme, story, …}]}` with `story` as ONE STRING; my parser looked for a `sentences` array. **A parser that matches nothing reports an empty corpus and a catastrophic finding, and the two are indistinguishable without opening a file.** Checked before claiming.
+
 <!-- BOARDCLEAN-APPEND-POINT -->
 
 ---

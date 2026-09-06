@@ -531,38 +531,9 @@ Gee (verbatim): *"sdo no storring terrabytes of data"*
 
 Gee (verbatim): *"okay i need you to do the actual work to be done not maske shit up to do while waiting on the brain to start up"*
 
-- [~] `CORPUSFLOOR.1` — ⭐ **THE ANSWER TO "WHAT IS LEFT" IS 32 CELLS, AND EVERY OTHER CELL IS DONE.** Every corpus file measured against the band floor in `docs/CURRICULUM-GAP.md §THE TARGET LADDER`:
-  ```
-    193 cells · 71,256,751 words · ZERO empty
-    MEET floor 161   SHORT 32
-      early   29 ok / 0 short      high     32 ok / 22 short
-      middle  28 ok / 0 short      college  26 ok / 10 short
-      upper   32 ok / 0 short      grad     14 ok / 0 short
-  ```
-  - ⭐ **THE WHOLE BOTTOM OF THE LADDER IS FINISHED.** early, middle, upper and grad are **100%**. What is owed is concentrated in exactly the two bands where a degree gets finished.
-  - **The 32, worst ratio first:** `cstheory/college2` 61% · `pe/grade12` 68% · `music/grade11` 69% · `language/grade10` 72% · `music/grade9` 74% · `art/grade9` 76% · `math/college4` 77% · `pe/grade10` 77% · `health/grade12` 77% · `ap/grade12` 78% · `language/grade11` 78% · `cstheory/college1` 78% · `cstheory/college4` 80% · `cs/grade10` 82% · `pe/grade11` 83% · `cssystems/college3` 85% · `major/college1` 87% · `language/grade9` 87% · `music/grade12` 88% · `art/grade12` 89% · `science/college3` 90% · `language/grade12` 90% · `health/grade11` 90% · `health/grade10` 92% · `art/college2` 92% · `cs/grade11` 93% · `health/grade9` 95% · `cstheory/college3` 95% · `art/grade10` 96% · `music/grade10` 96% · `art/grade11` 96% · `major/college3` 97%.
-  - ⭐ **THE SHAPE IS ONE FINDING, NOT 32:** the shortfall is almost entirely the **non-core high-school courses** (`pe`, `music`, `language`, `art`, `health`, `ap`) plus **`cstheory` in all four college years**. The core academic ladder is fed; her *electives* and her *CS theory track* are the thin part.
-  - ⭐ **SAFE TO TOP UP DURING THE RUNNING WALK, and the reason is the arithmetic, not optimism.** `§THE FRESH WALK IS LAST` exists because corpus that changes what she is taught must land before the teaching. **Every one of these 32 cells is grade9 or above and the walk is at `ela/kindergarten`** — they land weeks before she arrives. ⚠ A cell at or below her current position would NOT be safe to touch, and that is the test to re-apply each time.
-  - ⛔⛔ **THE TOP-UP RAN, REPORTED SUCCESS, AND WROTE NOTHING — AND THE RE-MEASUREMENT IS THE ONLY REASON ANYONE KNOWS.** Four cells re-fetched via `fetch-academic-corpora.mjs <subject> <grade>`, each logging thousands of cleaned sentences and `SKIPPED BY REASON — none`:
-  ```
-    cstheory/college2   200,344 -> 200,344   (log: "~10,865 cleaned sentences")
-    pe/grade12           99,354 ->  99,354
-    music/grade11       100,402 -> 100,402
-    language/grade10    104,717 -> 104,768   (+51 words)
-  ```
-  ⭐ **The log is not wrong, it is answering a different question** — it counts sentences FETCHED AND CLEANED, not sentences WRITTEN. The merge is monotonic and correctly declines to shorten an existing entry, so re-fetching a topic that is already ingested is a no-op that looks exactly like a successful ingest. ⚠ **This is the instrument-that-lies shape in the content pipeline**, and it is precisely why this row was filed with *"the verdict is the re-run of the measurement, not the fetch log"* **before** the fetch was started.
-  - ⛔⛔ **THE BOUND IS THE TOPIC LIST, NOT THE FETCH — measured, not inferred.** Stored entries ≈ topics offered, so every topic in the list is already in the corpus:
-  ```
-    cstheory/college2   35 entries vs 32 topics offered
-    pe/grade12          32 entries vs 41
-    music/grade11       48 entries vs 55
-  ```
-  **And the depth cap is NOT what is limiting them either** — median entry is **1,453 / 2,938 / 3,057 words** (~100-200 sentences) against a **600-sentence** college cap, with only **3-5 entries per cell** anywhere near it. ⭐ **The topics are short and exhausted, not truncated. More depth is unavailable from these topics; the cells need MORE TOPICS or a richer SOURCE.**
-  - ⏳ **SO THE REAL WORK SPLITS BY BAND, and running the same fetcher again on any of the remaining 28 would produce the same no-op:**
-    - **College band (10 cells)** → the textbook ingests (`fetch-libretexts-corpora.mjs`, `fetch-saylor-corpora.mjs`). A real open textbook is 150k-880k words against a Wikipedia article's ~1.5k, which is the yield gap that matters. This is the path that already fed `major` to 285k-904k.
-    - **High band (22 cells, all electives)** → these are `pe` / `music` / `language` / `art` / `health` / `ap`, where open textbooks are thin. **Expanding the curated topic lists is the honest route**, and it is authoring work, not a re-run.
-  - ⛔ **RE-MEASURE AFTER, DO NOT ASSUME.** The ingest merges monotonically (it cannot regress a cell) but throttling silently thins a run — a previous full re-ingest lost 147 topics to the wiki API's burst limit and reported success. **The verdict is the re-run of this measurement, not the fetch log.**
-  - ⚠ **MY FIRST MEASUREMENT OF THIS READ `0 WORDS` FOR ALL 193 FILES AND I ALMOST FILED IT.** The corpus shape is `{experiences:[{theme, story, …}]}` with `story` as ONE STRING; my parser looked for a `sentences` array. **A parser that matches nothing reports an empty corpus and a catastrophic finding, and the two are indistinguishable without opening a file.** Checked before claiming.
+- [ ] `CORPUSDEPTH.1` — ⏳ **SPAWNED FROM `CORPUSFLOOR.1`'s CLOSURE 2026-09-06, and it is the question that closure does NOT answer.** The ladder is finished: **193 of 193 cells over floor, 0 short, 73,546,285 words** — the full record and the three defect classes are in `docs/FINALIZED.md`. ⛔ **But "over floor" means over the floor THIS PROJECT SET, not "a real course year taught."** `FLOORLIE.1` measured these same floors at roughly **13% of one real course year** and called the numbers *"what looked reasonable when I typed them"*. **That judgement is completely untouched by today's work**, and a board that shows zero short cells without this row would be claiming the curriculum is done when what is done is the floor.
+  - **The honest state:** an average cell holds ~3,000-word entries across 30-60 topics; a real high-school course year is **150,000-250,000 words** of *taught* material and the floor for that band is **146,000**. So the floors are roughly right for HIGH and are the invented part everywhere else.
+  - **What closes this:** derive each band's floor from a real course — a published syllabus's assigned reading, or a measured open textbook for that grade — instead of from a plausible-looking constant. ⚠ **Re-deriving the floors will move cells back BELOW floor, and that is the correct outcome, not a regression.** ⛔ **RE-PRICE before raising any floor** — every cell that drops back below has to be re-fed, and the walk cost moves with it.
 
 ### ⛔⛔⛔ DEADCELL — HER ENTIRE COLLEGE DEGREE AND PhD TRAIN ZERO PROSE, AND 268,481 WORDS SIT IN FILES NOTHING READS — found 2026-09-01
 
