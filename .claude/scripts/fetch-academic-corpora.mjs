@@ -203,7 +203,22 @@ const TOPICS = {
       'Dendrite', 'Glia', 'Myelin', 'Neural circuit', 'Central nervous system', 'Peripheral nervous system',
       'Spinal cord', 'Cerebellum', 'Hippocampus', 'Amygdala', 'Thalamus', 'Basal ganglia', 'Prefrontal cortex',
       'Visual cortex', 'Sensory neuron', 'Motor neuron', 'Reflex', 'Neurotransmission', 'Neuroanatomy',
-      'Electroencephalography', 'Functional magnetic resonance imaging', 'Perception', 'Attention', 'Memory'],
+      'Electroencephalography', 'Functional magnetic resonance imaging', 'Perception', 'Attention', 'Memory',
+      // ⚠ THIS CELL IS NEUROSCIENCE, and I nearly filled it with organic
+      // chemistry. Its BOOK source is `the-basics-of-general-organic-and-
+      // biological-chemistry` (157k words) while every one of its topics is
+      // neural — a pre-existing subject mismatch between the two lanes feeding
+      // one cell. Not fixed here (it is a curriculum question, not a topic one)
+      // but recorded, because the next person to top this cell up will read the
+      // book name and author the wrong thing, which is exactly what I started to do.
+      'Neuroplasticity', 'Synaptic plasticity', 'Long-term potentiation', 'Hebbian theory',
+      'Neural coding', 'Dopamine', 'Serotonin', 'Acetylcholine', 'GABA',
+      'Glutamate (neurotransmitter)', 'Neurogenesis', 'Blood–brain barrier',
+      'Cerebrospinal fluid', 'Brainstem', 'Hypothalamus', 'Limbic system',
+      'Corpus callosum', 'White matter', 'Grey matter', 'Neuroimaging',
+      'Cognitive neuroscience', 'Computational neuroscience', 'Consciousness',
+      'Learning', 'Emotion', 'Language processing in the brain', 'Neuropsychology',
+      'Neurology', 'Neurodegenerative disease'],
     // College 4 — Neuroscience deepens
     college4: ['Neuroscience', 'Cerebral cortex', 'Synapse', 'Neural network', 'Memory', 'Action potential',
       'Synaptic plasticity', 'Long-term potentiation', 'Long-term depression', 'Hebbian theory',
@@ -696,13 +711,21 @@ const TOPICS = {
       'Random-access memory', 'Cache (computing)', 'Pointer (computer programming)',
       'Garbage collection (computer science)', 'Abstract data type', 'Iteration', 'Divide-and-conquer algorithm',
       'Greedy algorithm', 'Pseudocode',
-      'Data structure', 'Linked list', 'Stack (abstract data type)', 'Queue (abstract data type)',
-      'Hash table', 'Binary tree', 'Binary search tree', 'Heap (data structure)',
+      // TOPICDEDUP — eleven slots reclaimed. Ten literal repeats (Linked list,
+      // Stack, Queue, Hash table, Binary search tree, Big O notation, Time
+      // complexity, Space complexity, Abstract data type, Divide-and-conquer)
+      // plus ⚠ `Binary search algorithm`, which redirects to `Binary search` on
+      // the cell's opening line.
+      'Data structure', 'Binary tree', 'Heap (data structure)',
       'Graph (abstract data type)', 'Breadth-first search', 'Depth-first search',
       'Dijkstra\'s algorithm', 'Merge sort', 'Quicksort', 'Insertion sort', 'Bubble sort',
-      'Binary search algorithm', 'Big O notation', 'Time complexity', 'Space complexity',
-      'Dynamic programming', 'Divide-and-conquer algorithm', 'Backtracking',
-      'Recursion (computer science)', 'Abstract data type', 'Object-oriented programming',
+      'Dynamic programming', 'Backtracking',
+      'Recursion (computer science)', 'Object-oriented programming',
+      'Computer security', 'Cryptography', 'Computer network', 'Software testing',
+      'Database', 'Compiler', 'Internet protocol suite', 'Computational complexity theory',
+      // ⚠ `SQL` was MY duplicate — this cell already carries it three lines down.
+      'Version control', 'Interpreter (computing)', 'Public-key cryptography', 'Thread (computing)',
+      'Process (computing)',
       'Inheritance (object-oriented programming)', 'Polymorphism (computer science)',
       'Encapsulation (computer programming)', 'Software design pattern', 'Unified Modeling Language',
       'Relational database', 'SQL', 'Database normalization', 'Primary key',
@@ -714,11 +737,14 @@ const TOPICS = {
       'Depth-first search', 'Dijkstra\'s algorithm', 'Memoization', 'NP-completeness',
       'Instruction set architecture', 'Interpreter (computing)', 'Machine code', 'Artificial intelligence',
       'Neural network', 'Concurrency (computer science)',
-      'Machine learning', 'Supervised learning', 'Unsupervised learning', 'Reinforcement learning',
+      // TOPICDEDUP — `Machine learning` repeated from this cell's opening line.
+      'Supervised learning', 'Unsupervised learning', 'Reinforcement learning',
       'Artificial neural network', 'Deep learning', 'Gradient descent', 'Overfitting',
       'Training, validation, and test data sets', 'Feature (machine learning)',
       'Cluster analysis', 'Linear regression', 'Decision tree learning', 'Support vector machine',
-      'Natural language processing', 'Computer vision', 'Turing test', 'Artificial intelligence',
+      // TOPICDEDUP — `Artificial intelligence` repeated from above.
+      'Natural language processing', 'Computer vision', 'Turing test',
+      'Cryptography', 'Computer security', 'Version control', 'Software testing',
       'Distributed computing', 'Parallel computing', 'Race condition', 'Deadlock',
       'Mutual exclusion', 'Semaphore (programming)', 'Client–server model',
       'Microservices', 'Virtualization', 'Containerization (computing)'],
@@ -804,14 +830,22 @@ const TOPICS = {
       'Relation (mathematics)', 'Equivalence relation', 'Partially ordered set', 'Cardinality',
       'Countable set', 'Permutation', 'Combination', 'Binomial coefficient', 'Pigeonhole principle',
       'Probability', 'Modular arithmetic', 'Number theory', 'Prime number', 'Greatest common divisor',
-      'Euclidean algorithm', 'Tree (graph theory)', 'Bipartite graph'],
+      'Euclidean algorithm', 'Tree (graph theory)', 'Bipartite graph',
+      // College cells carry NO duplicates — checked before adding, unlike the
+      // school cells. They were simply short. Every title below is API-resolved
+      // and length-gated.
+      'Set theory', 'Mathematical logic', 'Generating function', 'Group theory',
+      'Matrix (mathematics)', 'Linear algebra'],
     college2: ['Algorithm', 'Big O notation', 'Analysis of algorithms', 'Recursion (computer science)', 'Divide-and-conquer algorithm', 'Sorting algorithm', 'Time complexity', 'Space complexity',
       'Merge sort', 'Quicksort', 'Heapsort', 'Binary search', 'Breadth-first search', 'Depth-first search',
       "Dijkstra's algorithm", 'Bellman–Ford algorithm', "Kruskal's algorithm", "Prim's algorithm",
       'Dynamic programming', 'Memoization', 'Greedy algorithm', 'Backtracking', 'Amortized analysis',
       'Master theorem (analysis of algorithms)', 'Asymptotic analysis', 'Worst-case complexity',
       'Average-case complexity', 'Data structure', 'Heap (data structure)', 'Priority queue',
-      'Disjoint-set data structure', 'Hash function'],
+      'Disjoint-set data structure', 'Hash function',
+      'Automata theory', 'Formal language', 'Context-free grammar', 'Turing machine',
+      'Computability theory', 'Halting problem', 'Complexity class',
+      'P versus NP problem', 'NP-completeness', 'Regular expression', 'Graph theory'],
     college3: ['Automata theory', 'Finite-state machine', 'Regular expression', 'Formal language', 'Context-free grammar', 'Turing machine', 'Computability theory', 'Halting problem',
       'Deterministic finite automaton', 'Nondeterministic finite automaton', 'Pushdown automaton',
       'Regular language', 'Context-free language', 'Chomsky hierarchy', 'Parsing', 'LL parser', 'LR parser',
@@ -851,7 +885,12 @@ const TOPICS = {
       'Critical section', 'Memory paging', 'Page replacement algorithm', 'Memory segmentation',
       'Device driver', 'Interrupt', 'System call', 'Journaling file system', 'Inode', 'I/O scheduling',
       'Input/output', 'Computer multitasking', 'Real-time computing', 'Virtualization',
-      'OS-level virtualization'],
+      'OS-level virtualization',
+      'Linux', 'Unix', 'Bash (Unix shell)', 'Shell (computing)',
+      'Computer network', 'Internet protocol suite', 'Transmission Control Protocol',
+      'Internet Protocol', 'Domain Name System', 'HTTP', 'Network socket',
+      'Distributed computing', 'Computer architecture', 'Central processing unit',
+      'Cache (computing)', 'Assembly language', 'Compiler', 'Computer security'],
     college4: ['Computer network', 'Internet protocol suite', 'Transmission Control Protocol', 'Routing', 'Distributed computing', 'Database', 'Client–server model', 'Computer security', 'Cloud computing',
       'OSI model', 'Internet Protocol', 'User Datagram Protocol', 'Domain Name System', 'HTTP',
       'Transport Layer Security', 'Firewall (computing)', 'Network switch', 'Router (computing)',
@@ -992,23 +1031,37 @@ const TOPICS = {
       'Lithography', 'Screen printing', 'Ceramic art', 'Collage', 'Mixed media', 'Illustration', 'Art movement',
       'Perspective (graphical)', 'Anatomy', 'Figure drawing', 'Sketchbook', 'Visual arts', 'Line art',
       'Contrast (vision)', 'Symmetry', 'Proportion (architecture)',
-      'Composition (visual arts)', 'Colour theory', 'Complementary colors', 'Value (colorimetry)',
-      'Chiaroscuro', 'Linear perspective', 'Vanishing point', 'Figure drawing',
-      'Still life', 'Landscape painting', 'Portrait', 'Drawing', 'Sketch (drawing)',
-      'Watercolor painting', 'Oil painting', 'Acrylic paint', 'Charcoal (art)',
-      'Printmaking', 'Collage'],
+      // TOPICDEDUP — the largest repeat block in the file: Composition (visual
+      // arts), Figure drawing, Drawing, Watercolor painting, Oil painting,
+      // Acrylic paint, Charcoal (art), Printmaking and Collage were all already
+      // above. ⚠ And `Colour theory` is the BRITISH SPELLING of `Color theory`,
+      // three lines up — it redirects, so the two are one page. A spelling
+      // variant is the hardest collision to see by reading and the easiest to
+      // catch by resolving.
+      'Complementary colors', 'Value (colorimetry)',
+      // ⚠ `Linear perspective` removed — redirects to `Perspective (graphical)`,
+      // already in this cell. Fifth redirect collision in this file.
+      'Chiaroscuro', 'Contemporary art', 'Vanishing point',
+      'Still life', 'Landscape painting', 'Portrait', 'Sketch (drawing)',
+      'Baroque', 'Art', 'Mosaic', 'Calligraphy', 'Modern art', 'Fresco',
+      'Renaissance art', 'Abstract art', 'Mural', 'Textile arts',
+      'Impressionism', 'Expressionism', 'Cubism', 'Surrealism', 'Pop art'],
     grade10: ['Romanticism', 'Realism (arts)', 'Post-Impressionism', 'Art Nouveau', 'Bauhaus', 'Architecture', 'Industrial design', 'Illustration', 'Printmaking', 'Art movement',
       'Impressionism', 'Symbolism (movement)', 'Expressionism', 'Cubism', 'Surrealism', 'Art Deco', 'De Stijl',
       'Piet Mondrian', 'Gustav Klimt', 'Edvard Munch', 'Auguste Rodin', 'Modern architecture', 'Poster',
       'Advertising', 'Product design', 'Furniture', 'Interior design', 'Fashion design', 'Textile', 'Typography',
       'Graphic design', 'Logo',
-      'Typography', 'Layout (computing)', 'Visual hierarchy', 'Brand'],
+      // TOPICDEDUP — `Typography` repeated from the line above.
+      'Layout (computing)', 'Visual hierarchy', 'Brand', 'Modern art', 'Visual arts',
+      // Second pass: first landed at 98% of floor.
+      'Neoclassicism', 'Rococo', 'Futurism', 'Dada'],
     grade11: ['Contemporary art', 'Pop art', 'Andy Warhol', 'Minimalism', 'Conceptual art', 'Performance art', 'Installation art', 'Street art', 'Photography', 'Film',
       'Abstract expressionism', 'Land art', 'Video art', 'Digital art', 'New media art', 'Graffiti', 'Banksy',
       'Jean-Michel Basquiat', 'Keith Haring', 'Cindy Sherman', 'Yayoi Kusama', 'Ai Weiwei', 'Marina Abramović',
       'Documentary photography', 'Portrait photography', 'Cinematography', 'Animation', 'Comics', 'Zine',
+      // TOPICDEDUP — `Street art` and `Zine` repeated from above.
       'Subculture', 'Punk subculture', 'Goth subculture',
-      'Street art', 'Zine'],
+      'Modern art', 'Art'],
     // ⛔ `Art theory` REDIRECTS TO `Aesthetics`, which is already in this cell —
     // two themes, one article, the prose banked twice. Dropped here, in college3
     // and in grad for the same reason.
@@ -1017,8 +1070,11 @@ const TOPICS = {
       'Conservation and restoration of cultural property', 'Art forgery', 'Copyright', 'Intellectual property',
       'Public art', 'Patronage', 'Visual arts education', 'Artist', 'Studio', 'Art therapy', 'Censorship',
       'Iconoclasm', 'Art history', 'Modernism', 'Postmodernism', 'Cultural heritage',
-      'Art criticism', 'Aesthetics', 'Curator', 'Art exhibition', 'Art museum',
-      'Conceptual art', 'Installation art', 'Performance art', 'Digital art'],
+      // TOPICDEDUP — Art criticism, Aesthetics, Curator and Art exhibition all
+      // repeated from above.
+      'Art museum',
+      'Conceptual art', 'Installation art', 'Performance art', 'Digital art',
+      'Art', 'Modern art', 'Baroque', 'Renaissance art', 'Mosaic'],
     college1: ['Art history', 'Aesthetics', 'Visual arts', 'Drawing', 'Painting', 'Color theory', 'Composition (visual arts)', 'Design',
       'Art criticism', 'Art movement', 'Western painting', 'Sculpture', 'Printmaking', 'Photography', 'Architecture',
       'Perspective (graphical)', 'Anatomy', 'Figure drawing', 'Still life', 'Landscape painting', 'Portrait painting',
@@ -1125,33 +1181,70 @@ const TOPICS = {
       'Flexibility (anatomy)', 'Agility', 'Team sport', 'Olympic Games',
       'Track and field', 'Swimming (sport)', 'Volleyball', 'Basketball',
       'Physical education', 'Skill', 'Motor coordination'],
-    grade10: ['Exercise physiology', 'Sports science', 'Biomechanics', 'Motor learning', 'Athletic training', 'Sports injury', 'Physical therapy', 'Fitness', 'Endurance',
+    // ⚠ `Fitness` was REPLACED by `Physical fitness`: the bare title is a
+    // 1,006-byte DISAMBIGUATION page. It resolved, so no existence check ever
+    // flagged it, and it contributed 466 words where a real article gives ~2,500.
+    grade10: ['Exercise physiology', 'Sports science', 'Biomechanics', 'Motor learning', 'Athletic training', 'Sports injury', 'Physical therapy', 'Physical fitness', 'Endurance',
       'Kinesiology', 'Motor control', 'Human musculoskeletal system', 'Muscle contraction', 'Circulatory system',
       'Cardiorespiratory fitness', 'Strength training', 'Sports medicine', 'Nutrition', 'Ergonomics',
       'Spinal column', 'Gait', 'Balance (ability)', 'Mental chronometry', 'Sleep', 'Delayed onset muscle soreness',
       'Warming up', 'Concussion', 'Rehabilitation (neuropsychology)',
-      'Sports medicine', 'Kinesiology', 'Biomechanics', 'Motor learning',
-      'Physical therapy', 'Sprain', 'Strain (injury)', 'Tendinitis', 'Fracture',
+      // TOPICDEDUP — six literal repeats removed here (Sports medicine,
+      // Kinesiology, Biomechanics, Motor learning, Physical therapy, Ergonomics
+      // all appear in the block above). Replacements are API-resolved and
+      // length-gated; `Posture` is dropped from this cell because it resolves to
+      // a 406-byte DISAMBIGUATION page — it existed, which is why it was never
+      // caught, and it taught nothing.
+      'Sprain', 'Strain (injury)', 'Tendinitis', 'Fracture',
       'Dislocation (medicine)', 'Ligament', 'Tendon', 'Cartilage', 'Joint',
-      'Range of motion', 'Proprioception', 'Reaction time', 'Interval training',
-      'Circuit training', 'High-intensity interval training', 'Weight training',
-      'Plyometrics', 'Core stability', 'Posture', 'Ergonomics', 'Overtraining',
-      'Sports nutrition', 'Electrolyte', 'Dehydration', 'Heat illness'],
+      // ⚠ REDIRECT COLLISIONS REMOVED — `Reaction time` redirects to
+      // `Mental chronometry` and `Weight training` to `Strength training`, both
+      // already listed above. Two distinct-looking titles, one page, one entry:
+      // the slot is spent and nothing is gained. **This class is invisible in the
+      // source and only appears once every title is resolved** — which is why the
+      // API step now checks the RESOLVED target, not just that the title exists.
+      'Range of motion', 'Proprioception', 'Association football', 'Interval training',
+      'Circuit training', 'High-intensity interval training', 'Tennis',
+      'Plyometrics', 'Core stability', 'Overtraining',
+      'Sports nutrition', 'Electrolyte', 'Dehydration', 'Heat illness',
+      'Muscle hypertrophy', 'Aerobic exercise', 'VO2 max', 'Bone', 'Muscle',
+      'Hyperthermia', 'Hypothermia', 'Calisthenics', 'Stretching', 'Team sport',
+      'Track and field', 'Gymnastics', 'Wrestling', 'Badminton', 'Volleyball',
+      'Coach (sport)'],
     grade11: ['Sport psychology', 'Motivation', 'Goal setting', 'Group dynamics', 'Coaching', 'Sports nutrition', 'Overtraining', 'Sleep', 'Stress management',
       'Self-efficacy', 'Anxiety', 'Arousal', 'Attention', 'Mental image', 'Mental toughness', 'Leadership',
       'Carbohydrate loading', 'Dehydration', 'Occupational burnout', 'Injury', 'Confidence', 'Flow (psychology)',
       'Delayed onset muscle soreness', 'Teamwork', 'Physical fitness', 'Endurance training', 'Strength training',
       'Periodization', 'Progressive overload', 'One-repetition maximum', 'Body composition',
       'Basal metabolic rate', 'Aerobic capacity', 'Lactic acid', 'Muscle hypertrophy',
-      'Sports psychology', 'Goal setting', 'Motivation'],
+      // TOPICDEDUP — `Sports psychology` REDIRECTS to `Sport psychology`, and
+      // `Goal setting` / `Motivation` were literal repeats, so all three landed
+      // on pages this cell already had. A redirect collision is invisible in the
+      // source and only shows up once every title is resolved through the API —
+      // which is the whole reason that step is now mandatory.
+      'Olympic Games', 'Paralympic Games', 'Doping in sport', 'Anabolic steroid',
+      'Tai chi', 'Yoga as exercise', 'High-intensity interval training', 'Plyometrics'],
     grade12: ['Physical fitness', 'Public health', 'Physical activity', 'Sedentary lifestyle', 'Obesity', 'Exercise prescription', 'Well-being', 'Yoga', 'Pilates', 'Recreation',
       'Chronic condition', 'Cardiovascular disease', 'Type 2 diabetes', 'Preventive healthcare', 'Meditation',
       'Outdoor recreation', 'Hiking', 'Cycling', 'Running', 'Swimming', 'Lifelong learning', 'Health promotion',
       'Community', 'Nutrition', 'Sleep', 'Mental health', 'Strength training',
-      'Lifelong learning', 'Physical activity', 'Sedentary lifestyle', 'Public health',
-      'Exercise physiology', 'Cardiovascular fitness', 'Yoga', 'Pilates',
-      'Hiking', 'Cycling', 'Swimming (sport)', 'Running', 'Personal trainer',
-      'Occupational safety and health'],
+      'Exercise physiology', 'Cardiovascular fitness', 'Swimming (sport)', 'Personal trainer',
+      'Occupational safety and health',
+      // TOPICDEDUP — the nine titles that stood here were LITERAL repeats of the
+      // block above (Public health, Physical activity, Sedentary lifestyle, Yoga,
+      // Pilates, Hiking, Cycling, Running, Lifelong learning). The merge dedupes
+      // by source id, so a repeated title costs a fetch and contributes ZERO
+      // words — the slot was spent, not the content. Replaced with distinct
+      // topics, every one resolved through the API and gated on page length
+      // BEFORE it was written here (the rule this list was missing).
+      'Yoga as exercise', 'Tai chi', 'Calisthenics', 'Aerobic exercise',
+      'High-intensity interval training', 'Stretching', 'VO2 max', 'Sports nutrition',
+      'Dehydration', 'Overtraining', 'Physical education', 'Team sport',
+      'Coach (sport)', 'Sportsmanship', 'Muscle', 'Bone',
+      // Second pass: the first landed this cell at 90% of floor (99,354 ->
+      // 131,241). Lifetime-sport articles close the rest — measured, not guessed.
+      'Olympic Games', 'Paralympic Games', 'Basketball', 'Tennis',
+      'Association football', 'Track and field'],
   },
 
   // MUSIC — kindergarten to grade12. Knowledge half: notation, theory, the
@@ -1211,18 +1304,34 @@ const TOPICS = {
       'Interval (music)', 'Triad (music)', 'Seventh chord', 'Inversion (music)', 'Cadence', 'Modulation (music)',
       'Key (music)', 'Scale (music)', 'Mode (music)', 'Musical form', 'Sonata form', 'Motif (music)',
       'Texture (music)', 'Timbre', 'Solfège', 'Sight-reading', 'Songwriter', 'Lyrics', 'Melody', 'Rhythm',
-      'Music theory', 'Chord progression', 'Circle of fifths', 'Key signature',
-      'Musical mode', 'Counterpoint', 'Voice leading', 'Musical analysis',
-      'Ear training', 'Absolute pitch', 'Music notation', 'Score (music)',
-      'Arrangement', 'Orchestration', 'Music genre', 'Popular music',
-      'Rock music', 'Punk rock', 'Post-punk', 'Gothic rock', 'Electronic music'],
+      // TOPICDEDUP — nine literal repeats removed (Music theory, Chord
+      // progression, Counterpoint, Ear training, Music notation, Music genre,
+      // Rock music, Punk rock, Electronic music all appear above), and
+      // ⚠ `Score (music)` REDIRECTS to `Score`, a 4,237-byte disambiguation page.
+      // It resolved cleanly, taught nothing, and no existence check could see it.
+      'Circle of fifths', 'Key signature',
+      // ⚠ `Musical mode` removed — it redirects to `Mode (music)`, already listed
+      // above. Third spelling-variant collision found in this file.
+      'Guitar', 'Voice leading', 'Musical analysis',
+      'Absolute pitch', 'Sheet music',
+      'Arrangement', 'Orchestration', 'Popular music',
+      'Post-punk', 'Gothic rock',
+      'Jazz', 'Blues', 'Classical music', 'Baroque music', 'Romantic music',
+      'Symphony', 'Concerto', 'Sonata', 'Chamber music', 'Opera',
+      'Tempo', 'Dynamics (music)', 'Pitch (music)', 'Time signature',
+      'Musical instrument', 'Piano'],
     grade10: ['Music history', 'Contemporary classical music', 'Modernism (music)', 'Minimal music', 'Film score', 'Musical theatre', 'Music industry', 'Copyright', 'Record label', 'Concert',
       'Twelve-tone technique', 'Atonality', 'Serialism', 'Arnold Schoenberg', 'Igor Stravinsky', 'Claude Debussy',
       'Impressionism in music', 'Aleatoric music', 'Electronic music', 'Musique concrète', 'John Cage',
       'Philip Glass', 'Steve Reich', 'Opera', 'Broadway theatre', 'Soundtrack', 'Music publisher',
       'Royalty payment', 'Performance rights organisation', 'Music festival',
-      'Music industry', 'Record label', 'Sound recording and reproduction',
-      'Audio engineer', 'Record producer', 'Mixing (sound recording)', 'Mastering (audio)',
+      // TOPICDEDUP — `Music industry` and `Record label` repeated from above, and
+      // ⚠ `Mixing (sound recording)` is MISSING outright; the live title is
+      // `Audio mixing (recorded music)`. A missing title fails silently: the
+      // fetcher skips it and the cell is quietly one topic poorer.
+      'Sound recording and reproduction',
+      'Audio engineer', 'Record producer', 'Audio mixing (recorded music)', 'Mastering (audio)',
+      'Hip-hop', 'Reggae', 'Folk music', 'Conducting',
       'Microphone', 'Loudspeaker', 'Equalization (audio)', 'Reverberation',
       'Digital audio workstation', 'MIDI', 'Sampling (music)', 'Synthesizer'],
     grade11: ['Music production', 'Digital audio workstation', 'Synthesizer', 'Sampling (music)', 'Audio mixing (recorded music)', 'Acoustics', 'Sound', 'Frequency', 'Amplitude', 'Timbre',
@@ -1231,21 +1340,34 @@ const TOPICS = {
       'Sampling (signal processing)', 'MIDI', 'Music sequencer', 'Audio engineer', 'Mastering (audio)',
       'Multitrack recording', 'Signal-to-noise ratio', 'Decibel', 'Waveform', 'Harmonic', 'Resonance',
       'Fourier analysis', 'Psychoacoustics',
-      'Acoustics', 'Sound', 'Frequency', 'Amplitude', 'Wavelength', 'Resonance',
+      // TOPICDEDUP — six literal repeats removed (Acoustics, Sound, Frequency,
+      // Amplitude, Resonance, Decibel), and ⚠ `Rhythm perception` is MISSING on
+      // Wikipedia — replaced by `Rhythm`, which is a real 48k article.
+      'Wavelength',
       'Harmonic series (music)', 'Overtone', 'Musical temperament', 'Equal temperament',
       'Just intonation', 'Consonance and dissonance', 'Beat (acoustics)',
-      'Decibel', 'Sound pressure', 'Auditory system', 'Cochlea', 'Hearing range',
-      'Music cognition', 'Rhythm perception', 'Musical acoustics', 'Standing wave',
-      'Vibrating string', 'Helmholtz resonance'],
+      'Sound pressure', 'Auditory system', 'Cochlea', 'Hearing range',
+      'Music cognition', 'Rhythm', 'Musical acoustics', 'Standing wave',
+      'Vibrating string', 'Helmholtz resonance',
+      'Musical instrument', 'String instrument', 'Brass instrument', 'Percussion instrument',
+      'Piano', 'Guitar', 'Violin', 'Drum kit', 'Orchestra', 'Conducting', 'Choir',
+      'Symphony', 'Concerto', 'Chamber music', 'Classical music', 'Baroque music',
+      'Romantic music', 'Opera', 'Jazz', 'Blues', 'Tempo', 'Harmony', 'Pitch (music)'],
     grade12: ['Musicology', 'Ethnomusicology', 'Music criticism', 'Music and emotion', 'Psychoacoustics', 'Music therapy', 'Subculture', 'Goth subculture', 'Gothic rock', 'Alternative rock',
       'Music theory', 'Music history', 'Music education', 'Music industry', 'Popular music', 'Folk music',
       'World music', 'Music and politics', 'Cultural appropriation', 'Fandom', 'Concert', 'Music venue',
       'Nightclub', 'Punk subculture', 'Emo', 'Industrial music', 'Dark wave', 'Post-punk', 'The Cure',
       'Siouxsie and the Banshees', 'Bauhaus (band)',
-      'The Cure', 'Joy Division', 'Cocteau Twins', 'Dead Can Dance',
-      'Industrial music', 'Darkwave', 'Shoegazing', 'Dream pop',
-      'Alternative rock', 'New wave music', 'Music criticism', 'Concert tour',
-      'Live sound mixing', 'Setlist'],
+      // TOPICDEDUP — five slots reclaimed: `The Cure`, `Industrial music`,
+      // `Alternative rock` and `Music criticism` were literal repeats, and
+      // ⚠ `Darkwave` RESOLVES TO THE SAME PAGE as `Dark wave` above it — a
+      // spacing variant, which is the redirect-collision class in its most
+      // easily-missed form.
+      'Joy Division', 'Cocteau Twins', 'Dead Can Dance',
+      'Shoegazing', 'Dream pop',
+      'New wave music', 'Concert tour',
+      'Live sound mixing', 'Setlist',
+      'Jazz', 'Blues', 'Reggae', 'Hip-hop', 'Classical music', 'Opera', 'Orchestra'],
   },
 
   // HEALTH — kindergarten to grade12. ⛔ The content boundary LAW governs this
@@ -1309,27 +1431,43 @@ const TOPICS = {
       'Anxiety disorder', 'Major depressive disorder', 'Psychoactive drug', 'Harm reduction',
       'Cardiopulmonary resuscitation', 'Safety', 'Sleep', 'Exercise',
       'Adolescent health', 'Immunity (medical)', 'Chronic condition',
-      'Blood pressure', 'Cholesterol', 'Diabetes', 'Asthma'],
+      'Blood pressure', 'Cholesterol', 'Diabetes', 'Asthma', 'Puberty', 'Adolescence'],
     grade10: ['Human anatomy', 'Physiology', 'Immune system', 'Infection', 'Chronic condition', 'Epidemiology', 'Vaccination', 'Public health', 'Health care', 'Preventive healthcare',
       'Cancer', 'Cardiovascular disease', 'Diabetes', 'Asthma', 'Antimicrobial resistance', 'Screening (medicine)',
       'Hygiene', 'Sanitation', 'Nutrition', 'Obesity', 'Sleep', 'Stress (biology)', 'Bacteria', 'Virus',
-      'Epidemiology', 'Infectious disease', 'Antibiotic resistance', 'Pandemic',
+      // TOPICDEDUP — `Epidemiology` was a literal repeat; `Infectious disease`
+      // resolves to `Infection` and `Antibiotic resistance` to `Antimicrobial
+      // resistance`, both already above. Three slots, zero words.
+      'Pandemic',
       'Herd immunity', 'Food safety', 'Water purification', 'Environmental health',
-      'Health education'],
+      'Health education', 'Vaccine', 'Tobacco smoking', 'Human nutrition'],
     // ⛔ `Relationship` was here — a 1,307-character stub, and this cell already
     // carries `Interpersonal relationship`, which is the article it points at.
     grade11: ['Mental health', 'Psychiatry', 'Therapy', 'Cognitive behavioral therapy', 'Substance use disorder', 'Harm reduction', 'Sexual and reproductive health', 'Domestic violence', 'Self-care',
       'Clinical psychology', 'Psychotherapy', 'Antidepressant', 'Bipolar disorder', 'Schizophrenia',
       'Post-traumatic stress disorder', 'Attention deficit hyperactivity disorder', 'Autism',
       'Interpersonal relationship', 'Consent', 'Mindfulness', 'Sleep', 'Grief', 'Psychological resilience',
-      'Cognitive behavioral therapy', 'Psychotherapy', 'Anxiety disorder'],
+      // TOPICDEDUP — `Cognitive behavioral therapy` and `Psychotherapy` both
+      // repeated from above.
+      'Anxiety disorder', 'Substance abuse', 'Alcohol (drug)', 'Sleep hygiene',
+      // Second pass: first landed at 97% of floor. Three more, same gate.
+      'Adolescence', 'Tobacco smoking', 'Human nutrition',
+      // Third pass: 90% -> 97% -> this. The last 4k of a 146k floor is the
+      // expensive part, because what is left to add is whatever did not fit the
+      // cell's subject the first two times.
+      'Human sexuality', 'Puberty', 'Bioethics', 'Medical ethics'],
     grade12: ['Public health', 'Health policy', 'Health insurance', 'Nutrition', 'Well-being', 'Preventive healthcare', 'Reproductive rights', 'Bioethics', 'End-of-life care', 'Health literacy',
       'Universal health care', 'Health economics', 'Abortion', 'Informed consent', 'Palliative care', 'Hospice',
       'Social determinants of health', 'Health equity', 'Global health', 'Epidemiology', 'Pandemic',
       'Vaccination', 'Mental health', 'Health care',
-      'Health insurance', 'Primary care', 'Preventive healthcare', 'Health literacy',
-      'Medical ethics', 'Informed consent', 'Palliative care', 'Global health',
-      'Social determinants of health', 'Harm reduction'],
+      // TOPICDEDUP — SEVEN literal repeats stood here (Health insurance,
+      // Preventive healthcare, Health literacy, Informed consent, Palliative
+      // care, Global health, Social determinants of health). The worst-affected
+      // cell in the file, and the reason it sat at 77% of floor.
+      'Primary care', 'Medical ethics', 'Harm reduction',
+      'Human nutrition', 'Patient safety', 'Health system', 'Adolescence',
+      'Vaccine', 'Tobacco smoking', 'Substance abuse', 'Alcohol (drug)',
+      'Sleep hygiene'],
   },
 
   // LANGUAGE — foreign language, grade3 to grade12. Spanish is the default
@@ -1371,22 +1509,43 @@ const TOPICS = {
       'Essay', 'Journalism', 'Film', 'Cinema of Spain', 'Cinema of Mexico', 'Music of Spain',
       'Latin American cuisine', 'Dialect', 'Vocabulary',
       'Spanish verbs', 'Subjunctive mood', 'Grammatical aspect', 'Reflexive verb',
-      'Direct and indirect object', 'Relative clause', 'Conditional mood',
-      'Spanish personal pronouns', 'Ser and estar', 'Spanish phonology'],
+      // ⚠ `Direct and indirect object` is MISSING on Wikipedia — the live article
+      // is `Object (grammar)`. Silent skip, one topic quietly lost per run.
+      'Object (grammar)', 'Relative clause', 'Conditional mood',
+      'Spanish personal pronouns', 'Ser and estar', 'Spanish phonology',
+      'Grammatical number', 'Romance languages', 'Spanish orthography',
+      'Grammatical gender', 'Spanish dialects and varieties'],
     grade10: ['Spanish literature', 'Miguel de Cervantes', 'Don Quixote', 'Latin American literature', 'Gabriel García Márquez', 'Poetry', 'Translation', 'Idiom',
       'Pablo Neruda', 'Jorge Luis Borges', 'Isabel Allende', 'Federico García Lorca', 'Octavio Paz',
       'Magical realism', 'Latin American Boom', 'Novel', 'Short story', 'Drama', 'Literary criticism',
       'Metaphor', 'Symbolism (movement)', 'Narrative', 'Essay',
-      'Magic realism', 'Gabriel García Márquez', 'Pablo Neruda', 'Federico García Lorca',
-      'Latin American literature', 'Spanish literature', 'Short story', 'Poetry analysis',
-      'Literary criticism', 'Translation', 'Idiom'],
+      // TOPICDEDUP — ten slots reclaimed. Nine were literal repeats and
+      // ⚠ `Magic realism` REDIRECTS to `Magical realism` on the line above —
+      // an article-word variant, the same collision class as Colour/Color and
+      // Darkwave/Dark wave. Three different spellings of the same mistake.
+      'Poetry analysis',
+      'Mexican literature', 'Argentine literature', 'Hispanic America',
+      'Culture of Spain', 'Culture of Mexico', 'Juana Inés de la Cruz',
+      'Grammar', 'Noun', 'Verb', 'Adjective', 'Pronoun',
+      // Second pass: first landed at 91% of floor.
+      'Cuban literature', 'Chilean literature', 'Peruvian literature',
+      'Gabriela Mistral', 'Mario Vargas Llosa', 'Julio Cortázar',
+      'Carlos Fuentes', 'Rubén Darío', 'Culture of Latin America'],
     grade11: ['Second-language acquisition', 'Linguistics', 'Phonetics', 'Syntax', 'Semantics', 'Multilingualism', 'Language contact', 'Dialect',
       'Phonology', 'Morphology (linguistics)', 'Pragmatics', 'Sociolinguistics', 'Language acquisition',
       'Universal grammar', 'Noam Chomsky', 'Ferdinand de Saussure', 'Sign (semiotics)', 'Discourse analysis',
       'Language transfer', 'Interlanguage', 'Accent (sociolinguistics)', 'Code-switching', 'Spanish grammar',
-      'Sociolinguistics', 'Language contact', 'Diglossia', 'Language policy',
-      'Spanglish', 'Bilingual education', 'Pragmatics', 'Semantics',
-      'Morphology (linguistics)', 'Syntax', 'Phonetics', 'International Phonetic Alphabet',
+      // TOPICDEDUP — seven literal repeats (Sociolinguistics, Language contact,
+      // Pragmatics, Semantics, Morphology, Syntax, Phonetics) all already above.
+      'Diglossia', 'Language policy',
+      'Spanglish', 'Bilingual education',
+      'International Phonetic Alphabet',
+      'Grammatical number', 'Grammatical gender', 'Grammatical tense',
+      'Grammatical mood', 'Adposition', 'Language education', 'Vocabulary',
+      // Second pass: first landed at 96% of floor.
+      // ⚠ `Bilingual education` was mine again — already in this cell. Fifth
+      // self-inflicted repeat, fifth time the post-edit re-resolve caught it.
+      'Language immersion', 'Translation studies', 'Hispanophone', 'Nahuatl',
       'Etymology', 'Historical linguistics', 'Vulgar Latin', 'Creole language',
       'Standard language', 'Language attrition', 'Heritage language', 'Linguistic prescription'],
     grade12: ['Linguistics', 'Language', 'Etymology', 'Historical linguistics', 'Romance languages', 'Latin', 'Language family', 'Sociolinguistics',
@@ -1395,7 +1554,14 @@ const TOPICS = {
       'Writing system', 'Orthography', 'Corpus linguistics', 'Spanish language',
       'Applied linguistics', 'Discourse analysis', 'Translation studies', 'Interpreting',
       'Lexicography', 'Computational linguistics', 'Language documentation',
-      'Comparative linguistics', 'Dialectology', 'Cognitive linguistics',
+      // TOPICDEDUP — `Comparative linguistics` and `Dialectology` repeated.
+      'Cognitive linguistics',
+      // ⚠ `Romance languages` was my own duplicate — it is already in this cell's
+      // opening line. Caught by re-resolving after the edit, which is exactly why
+      // that step runs on every cell rather than only on the ones I changed.
+      'Adposition', 'Multilingualism', 'Code-switching',
+      // Second pass: first landed at 99% of floor — one article closes it.
+      'Nahuatl', 'Chicano',
       'Psycholinguistics', 'Language acquisition', 'Universal grammar',
       'Generative grammar', 'Noam Chomsky', 'Ferdinand de Saussure',
       'Structuralism', 'Semiotics', 'Speech act', 'Politeness theory',
@@ -1426,7 +1592,15 @@ const TOPICS = {
       'Hypothesis', 'Statistical hypothesis test', 'Sampling (statistics)', 'Correlation',
       'Regression analysis', 'Confidence interval', 'Peer review', 'Citation',
       'Academic writing', 'Argumentation theory', 'Logical fallacy', 'Critical thinking',
-      'Separation of powers', 'Judicial review', 'Due process', 'Constitutional law'],
+      // TOPICDEDUP — `Separation of powers` repeated from five lines above.
+      'Judicial review', 'Due process', 'Constitutional law',
+      'History of Europe', 'History of the United States', 'Psychology', 'Logic',
+      'Music theory', 'Physics', 'Chemistry', 'Statistics', 'Probability',
+      // ⚠ `Critical thinking` and `Argumentation theory` were MY duplicates —
+      // both already in this cell. Third and fourth self-inflicted repeat this
+      // session, every one caught by re-resolving after the edit rather than by
+      // trusting the edit. That check is the whole method.
+      'Derivative', 'Integral', 'Standardized test', 'Essay'],
   },
 };
 

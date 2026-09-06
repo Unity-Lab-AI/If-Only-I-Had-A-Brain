@@ -91,7 +91,18 @@ function findViolation(cmd) {
   //    Split on redirect operators and inspect only the TARGET fragment, so a
   //    repo path appearing as an ARGUMENT (`grep x docs/a.md > /dev/null`) does
   //    not trip it.
-  const redirects = flat.split(/(?:^|[^0-9<>&])(>>?)(?![>&])/);
+  // ⛔ `=` IS EXCLUDED BEFORE THE OPERATOR BECAUSE `=>` IS AN ARROW FUNCTION,
+  // NOT A REDIRECT — and this was a real, repeated over-block, not a theory.
+  // `node -e '...fetch(u).then(r=>r.json())...'` split on the `>` in `=>`, took
+  // `r.json()` as the redirect TARGET, matched it against the `.json` extension
+  // rule and refused a read-only measurement. Arrow functions appear in almost
+  // every measuring one-liner, so this single character was blocking the
+  // largest legitimate class the guard sees.
+  // ⭐ It cannot weaken a real catch: a shell redirect is never written `=>`.
+  // Every genuine form — `cmd > f`, `cmd>f`, `2>f`, `cmd >> f` — is preceded by
+  // a space, a digit or a word character, all still in the class. Both are in
+  // the exercised list below so the boundary is proven, not asserted.
+  const redirects = flat.split(/(?:^|[^0-9<>&=])(>>?)(?![>&])/);
   for (let i = 1; i < redirects.length; i += 2) {
     const target = (redirects[i + 1] || '').trimStart().split(/[\s;|&)]/)[0];
     if (targetsRepo(target)) {
@@ -214,11 +225,24 @@ const LEGITIMATE = [
   `git add -A && git status --short`,
   `echo "note" > /dev/null`,
   `cat docs/NOW.md | head -20`,
+  // ⭐ ARROW FUNCTIONS — the over-block this list exists to prevent recurring.
+  // Both of these are pure READS and both were refused before the `=` exclusion.
+  `node -e 'fetch(u).then(r=>r.json()).then(j=>console.log(j.query))'`,
+  `node -e 'const a=JSON.parse(s);a.forEach(x=>console.log(x.theme))'`,
+];
+
+// ⛔ MUST STILL BLOCK — the other side of the `=>` boundary. Without these the
+// exclusion above is an untested claim, and a guard whose loosening is unproven
+// is how an under-block ships wearing a comment that says it cannot.
+const OFFENCES_BOUNDARY = [
+  `node -e 'const f=x=>x' > docs/NOW.md`,
+  `printf '%s' "$x">server/brain-server.js`,
+  `node -e 'a.map(x=>x)' >> wiki/log.md`,
 ];
 
 function selftest() {
   let pass = 0; let fail = 0;
-  for (const c of OFFENCES) {
+  for (const c of OFFENCES.concat(OFFENCES_BOUNDARY)) {
     const v = findViolation(c);
     if (v) { pass++; } else { fail++; console.log(`  MISSED (should block): ${c.split('\n')[0]}`); }
   }
@@ -226,7 +250,8 @@ function selftest() {
     const v = findViolation(c);
     if (!v) { pass++; } else { fail++; console.log(`  FALSE POSITIVE (should pass): ${c.split('\n')[0]}  -> ${v.rule}`); }
   }
-  console.log(`[write-method-guard] selftest ${pass}/${OFFENCES.length + LEGITIMATE.length}` + (fail ? ` — ${fail} FAILED` : ' — all pass'));
+  const total = OFFENCES.length + OFFENCES_BOUNDARY.length + LEGITIMATE.length;
+  console.log(`[write-method-guard] selftest ${pass}/${total}` + (fail ? ` — ${fail} FAILED` : ' — all pass'));
   return fail === 0;
 }
 
@@ -254,7 +279,10 @@ function selftest() {
   // stopped matching is the failure mode this whole file exists to prevent.
   let healthy = true;
   try {
-    for (const c of OFFENCES) if (!findViolation(c)) { healthy = false; break; }
+    // Boundary cases included DELIBERATELY: the `=>` exclusion is a loosening,
+    // and the runtime health check has to cover the place the rule was loosened
+    // or it certifies a guard it never tested at its weakest point.
+    for (const c of OFFENCES.concat(OFFENCES_BOUNDARY)) if (!findViolation(c)) { healthy = false; break; }
   } catch { healthy = false; }
   if (!healthy) {
     process.stderr.write('[write-method-guard] ⚠ SELF-TEST FAILING — the guard is not matching its own known offences and is letting this through. Fix the hook.\n');
