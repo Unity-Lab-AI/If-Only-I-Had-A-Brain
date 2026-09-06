@@ -696,13 +696,21 @@ const TOPICS = {
       'Random-access memory', 'Cache (computing)', 'Pointer (computer programming)',
       'Garbage collection (computer science)', 'Abstract data type', 'Iteration', 'Divide-and-conquer algorithm',
       'Greedy algorithm', 'Pseudocode',
-      'Data structure', 'Linked list', 'Stack (abstract data type)', 'Queue (abstract data type)',
-      'Hash table', 'Binary tree', 'Binary search tree', 'Heap (data structure)',
+      // TOPICDEDUP — eleven slots reclaimed. Ten literal repeats (Linked list,
+      // Stack, Queue, Hash table, Binary search tree, Big O notation, Time
+      // complexity, Space complexity, Abstract data type, Divide-and-conquer)
+      // plus ⚠ `Binary search algorithm`, which redirects to `Binary search` on
+      // the cell's opening line.
+      'Data structure', 'Binary tree', 'Heap (data structure)',
       'Graph (abstract data type)', 'Breadth-first search', 'Depth-first search',
       'Dijkstra\'s algorithm', 'Merge sort', 'Quicksort', 'Insertion sort', 'Bubble sort',
-      'Binary search algorithm', 'Big O notation', 'Time complexity', 'Space complexity',
-      'Dynamic programming', 'Divide-and-conquer algorithm', 'Backtracking',
-      'Recursion (computer science)', 'Abstract data type', 'Object-oriented programming',
+      'Dynamic programming', 'Backtracking',
+      'Recursion (computer science)', 'Object-oriented programming',
+      'Computer security', 'Cryptography', 'Computer network', 'Software testing',
+      'Database', 'Compiler', 'Internet protocol suite', 'Computational complexity theory',
+      // ⚠ `SQL` was MY duplicate — this cell already carries it three lines down.
+      'Version control', 'Interpreter (computing)', 'Public-key cryptography', 'Thread (computing)',
+      'Process (computing)',
       'Inheritance (object-oriented programming)', 'Polymorphism (computer science)',
       'Encapsulation (computer programming)', 'Software design pattern', 'Unified Modeling Language',
       'Relational database', 'SQL', 'Database normalization', 'Primary key',
@@ -714,11 +722,14 @@ const TOPICS = {
       'Depth-first search', 'Dijkstra\'s algorithm', 'Memoization', 'NP-completeness',
       'Instruction set architecture', 'Interpreter (computing)', 'Machine code', 'Artificial intelligence',
       'Neural network', 'Concurrency (computer science)',
-      'Machine learning', 'Supervised learning', 'Unsupervised learning', 'Reinforcement learning',
+      // TOPICDEDUP — `Machine learning` repeated from this cell's opening line.
+      'Supervised learning', 'Unsupervised learning', 'Reinforcement learning',
       'Artificial neural network', 'Deep learning', 'Gradient descent', 'Overfitting',
       'Training, validation, and test data sets', 'Feature (machine learning)',
       'Cluster analysis', 'Linear regression', 'Decision tree learning', 'Support vector machine',
-      'Natural language processing', 'Computer vision', 'Turing test', 'Artificial intelligence',
+      // TOPICDEDUP — `Artificial intelligence` repeated from above.
+      'Natural language processing', 'Computer vision', 'Turing test',
+      'Cryptography', 'Computer security', 'Version control', 'Software testing',
       'Distributed computing', 'Parallel computing', 'Race condition', 'Deadlock',
       'Mutual exclusion', 'Semaphore (programming)', 'Client–server model',
       'Microservices', 'Virtualization', 'Containerization (computing)'],
@@ -992,23 +1003,35 @@ const TOPICS = {
       'Lithography', 'Screen printing', 'Ceramic art', 'Collage', 'Mixed media', 'Illustration', 'Art movement',
       'Perspective (graphical)', 'Anatomy', 'Figure drawing', 'Sketchbook', 'Visual arts', 'Line art',
       'Contrast (vision)', 'Symmetry', 'Proportion (architecture)',
-      'Composition (visual arts)', 'Colour theory', 'Complementary colors', 'Value (colorimetry)',
-      'Chiaroscuro', 'Linear perspective', 'Vanishing point', 'Figure drawing',
-      'Still life', 'Landscape painting', 'Portrait', 'Drawing', 'Sketch (drawing)',
-      'Watercolor painting', 'Oil painting', 'Acrylic paint', 'Charcoal (art)',
-      'Printmaking', 'Collage'],
+      // TOPICDEDUP — the largest repeat block in the file: Composition (visual
+      // arts), Figure drawing, Drawing, Watercolor painting, Oil painting,
+      // Acrylic paint, Charcoal (art), Printmaking and Collage were all already
+      // above. ⚠ And `Colour theory` is the BRITISH SPELLING of `Color theory`,
+      // three lines up — it redirects, so the two are one page. A spelling
+      // variant is the hardest collision to see by reading and the easiest to
+      // catch by resolving.
+      'Complementary colors', 'Value (colorimetry)',
+      // ⚠ `Linear perspective` removed — redirects to `Perspective (graphical)`,
+      // already in this cell. Fifth redirect collision in this file.
+      'Chiaroscuro', 'Contemporary art', 'Vanishing point',
+      'Still life', 'Landscape painting', 'Portrait', 'Sketch (drawing)',
+      'Baroque', 'Art', 'Mosaic', 'Calligraphy', 'Modern art', 'Fresco',
+      'Renaissance art', 'Abstract art', 'Mural', 'Textile arts',
+      'Impressionism', 'Expressionism', 'Cubism', 'Surrealism', 'Pop art'],
     grade10: ['Romanticism', 'Realism (arts)', 'Post-Impressionism', 'Art Nouveau', 'Bauhaus', 'Architecture', 'Industrial design', 'Illustration', 'Printmaking', 'Art movement',
       'Impressionism', 'Symbolism (movement)', 'Expressionism', 'Cubism', 'Surrealism', 'Art Deco', 'De Stijl',
       'Piet Mondrian', 'Gustav Klimt', 'Edvard Munch', 'Auguste Rodin', 'Modern architecture', 'Poster',
       'Advertising', 'Product design', 'Furniture', 'Interior design', 'Fashion design', 'Textile', 'Typography',
       'Graphic design', 'Logo',
-      'Typography', 'Layout (computing)', 'Visual hierarchy', 'Brand'],
+      // TOPICDEDUP — `Typography` repeated from the line above.
+      'Layout (computing)', 'Visual hierarchy', 'Brand', 'Modern art', 'Visual arts'],
     grade11: ['Contemporary art', 'Pop art', 'Andy Warhol', 'Minimalism', 'Conceptual art', 'Performance art', 'Installation art', 'Street art', 'Photography', 'Film',
       'Abstract expressionism', 'Land art', 'Video art', 'Digital art', 'New media art', 'Graffiti', 'Banksy',
       'Jean-Michel Basquiat', 'Keith Haring', 'Cindy Sherman', 'Yayoi Kusama', 'Ai Weiwei', 'Marina Abramović',
       'Documentary photography', 'Portrait photography', 'Cinematography', 'Animation', 'Comics', 'Zine',
+      // TOPICDEDUP — `Street art` and `Zine` repeated from above.
       'Subculture', 'Punk subculture', 'Goth subculture',
-      'Street art', 'Zine'],
+      'Modern art', 'Art'],
     // ⛔ `Art theory` REDIRECTS TO `Aesthetics`, which is already in this cell —
     // two themes, one article, the prose banked twice. Dropped here, in college3
     // and in grad for the same reason.
@@ -1017,8 +1040,11 @@ const TOPICS = {
       'Conservation and restoration of cultural property', 'Art forgery', 'Copyright', 'Intellectual property',
       'Public art', 'Patronage', 'Visual arts education', 'Artist', 'Studio', 'Art therapy', 'Censorship',
       'Iconoclasm', 'Art history', 'Modernism', 'Postmodernism', 'Cultural heritage',
-      'Art criticism', 'Aesthetics', 'Curator', 'Art exhibition', 'Art museum',
-      'Conceptual art', 'Installation art', 'Performance art', 'Digital art'],
+      // TOPICDEDUP — Art criticism, Aesthetics, Curator and Art exhibition all
+      // repeated from above.
+      'Art museum',
+      'Conceptual art', 'Installation art', 'Performance art', 'Digital art',
+      'Art', 'Modern art', 'Baroque', 'Renaissance art', 'Mosaic'],
     college1: ['Art history', 'Aesthetics', 'Visual arts', 'Drawing', 'Painting', 'Color theory', 'Composition (visual arts)', 'Design',
       'Art criticism', 'Art movement', 'Western painting', 'Sculpture', 'Printmaking', 'Photography', 'Architecture',
       'Perspective (graphical)', 'Anatomy', 'Figure drawing', 'Still life', 'Landscape painting', 'Portrait painting',
@@ -1447,22 +1473,35 @@ const TOPICS = {
       'Essay', 'Journalism', 'Film', 'Cinema of Spain', 'Cinema of Mexico', 'Music of Spain',
       'Latin American cuisine', 'Dialect', 'Vocabulary',
       'Spanish verbs', 'Subjunctive mood', 'Grammatical aspect', 'Reflexive verb',
-      'Direct and indirect object', 'Relative clause', 'Conditional mood',
-      'Spanish personal pronouns', 'Ser and estar', 'Spanish phonology'],
+      // ⚠ `Direct and indirect object` is MISSING on Wikipedia — the live article
+      // is `Object (grammar)`. Silent skip, one topic quietly lost per run.
+      'Object (grammar)', 'Relative clause', 'Conditional mood',
+      'Spanish personal pronouns', 'Ser and estar', 'Spanish phonology',
+      'Grammatical number', 'Romance languages', 'Spanish orthography',
+      'Grammatical gender', 'Spanish dialects and varieties'],
     grade10: ['Spanish literature', 'Miguel de Cervantes', 'Don Quixote', 'Latin American literature', 'Gabriel García Márquez', 'Poetry', 'Translation', 'Idiom',
       'Pablo Neruda', 'Jorge Luis Borges', 'Isabel Allende', 'Federico García Lorca', 'Octavio Paz',
       'Magical realism', 'Latin American Boom', 'Novel', 'Short story', 'Drama', 'Literary criticism',
       'Metaphor', 'Symbolism (movement)', 'Narrative', 'Essay',
-      'Magic realism', 'Gabriel García Márquez', 'Pablo Neruda', 'Federico García Lorca',
-      'Latin American literature', 'Spanish literature', 'Short story', 'Poetry analysis',
-      'Literary criticism', 'Translation', 'Idiom'],
+      // TOPICDEDUP — ten slots reclaimed. Nine were literal repeats and
+      // ⚠ `Magic realism` REDIRECTS to `Magical realism` on the line above —
+      // an article-word variant, the same collision class as Colour/Color and
+      // Darkwave/Dark wave. Three different spellings of the same mistake.
+      'Poetry analysis',
+      'Mexican literature', 'Argentine literature', 'Hispanic America',
+      'Culture of Spain', 'Culture of Mexico', 'Juana Inés de la Cruz',
+      'Grammar', 'Noun', 'Verb', 'Adjective', 'Pronoun'],
     grade11: ['Second-language acquisition', 'Linguistics', 'Phonetics', 'Syntax', 'Semantics', 'Multilingualism', 'Language contact', 'Dialect',
       'Phonology', 'Morphology (linguistics)', 'Pragmatics', 'Sociolinguistics', 'Language acquisition',
       'Universal grammar', 'Noam Chomsky', 'Ferdinand de Saussure', 'Sign (semiotics)', 'Discourse analysis',
       'Language transfer', 'Interlanguage', 'Accent (sociolinguistics)', 'Code-switching', 'Spanish grammar',
-      'Sociolinguistics', 'Language contact', 'Diglossia', 'Language policy',
-      'Spanglish', 'Bilingual education', 'Pragmatics', 'Semantics',
-      'Morphology (linguistics)', 'Syntax', 'Phonetics', 'International Phonetic Alphabet',
+      // TOPICDEDUP — seven literal repeats (Sociolinguistics, Language contact,
+      // Pragmatics, Semantics, Morphology, Syntax, Phonetics) all already above.
+      'Diglossia', 'Language policy',
+      'Spanglish', 'Bilingual education',
+      'International Phonetic Alphabet',
+      'Grammatical number', 'Grammatical gender', 'Grammatical tense',
+      'Grammatical mood', 'Adposition', 'Language education', 'Vocabulary',
       'Etymology', 'Historical linguistics', 'Vulgar Latin', 'Creole language',
       'Standard language', 'Language attrition', 'Heritage language', 'Linguistic prescription'],
     grade12: ['Linguistics', 'Language', 'Etymology', 'Historical linguistics', 'Romance languages', 'Latin', 'Language family', 'Sociolinguistics',
@@ -1471,7 +1510,12 @@ const TOPICS = {
       'Writing system', 'Orthography', 'Corpus linguistics', 'Spanish language',
       'Applied linguistics', 'Discourse analysis', 'Translation studies', 'Interpreting',
       'Lexicography', 'Computational linguistics', 'Language documentation',
-      'Comparative linguistics', 'Dialectology', 'Cognitive linguistics',
+      // TOPICDEDUP — `Comparative linguistics` and `Dialectology` repeated.
+      'Cognitive linguistics',
+      // ⚠ `Romance languages` was my own duplicate — it is already in this cell's
+      // opening line. Caught by re-resolving after the edit, which is exactly why
+      // that step runs on every cell rather than only on the ones I changed.
+      'Adposition', 'Multilingualism', 'Code-switching',
       'Psycholinguistics', 'Language acquisition', 'Universal grammar',
       'Generative grammar', 'Noam Chomsky', 'Ferdinand de Saussure',
       'Structuralism', 'Semiotics', 'Speech act', 'Politeness theory',
@@ -1502,7 +1546,15 @@ const TOPICS = {
       'Hypothesis', 'Statistical hypothesis test', 'Sampling (statistics)', 'Correlation',
       'Regression analysis', 'Confidence interval', 'Peer review', 'Citation',
       'Academic writing', 'Argumentation theory', 'Logical fallacy', 'Critical thinking',
-      'Separation of powers', 'Judicial review', 'Due process', 'Constitutional law'],
+      // TOPICDEDUP — `Separation of powers` repeated from five lines above.
+      'Judicial review', 'Due process', 'Constitutional law',
+      'History of Europe', 'History of the United States', 'Psychology', 'Logic',
+      'Music theory', 'Physics', 'Chemistry', 'Statistics', 'Probability',
+      // ⚠ `Critical thinking` and `Argumentation theory` were MY duplicates —
+      // both already in this cell. Third and fourth self-inflicted repeat this
+      // session, every one caught by re-resolving after the edit rather than by
+      // trusting the edit. That check is the whole method.
+      'Derivative', 'Integral', 'Standardized test', 'Essay'],
   },
 };
 
