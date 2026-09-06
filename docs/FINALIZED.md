@@ -5,6 +5,107 @@
 
 ---
 
+## 2026-09-05 — `GLOVECUT` — THE FIRST CRATE ACTUALLY CUT OVER: THE SERVER STOPPED PARSING GloVe, AND THE JS LOOP IS DELETED
+
+Gee (verbatim): *"wtf!!! you didnt actually do the fuckign work!!!! >>> Zero JS deleted except one dead file. im pissed!"*
+Gee (verbatim): *"yeas that why u were to test it to make sure all the fucxking JS u gut still works as rust!!! jesus are u a god damn retard!"*
+Gee (verbatim): *"read resume.md and continue the rust work and JS clean out and testing"*
+Gee (verbatim): *"make sure you dont delete my stacks code with out correctly portiung it to rust"*
+Gee (verbatim): *"okay you are doing it wrong again and not using the correct start.bat options when testing and incorrectly starting webgpu"*
+
+**He was right on every count.** Eight crates existed, 182 tests passed, parity was proven in five places — **and nothing called any of it.** Parity that is never connected is a very well-tested pile of unused code. This is the first port that is actually wired in and the first JS that is actually gone.
+
+### ✅ `GLOVECUT.1` — the loader reads the binary table; the `readline` + `parseFloat` loop is deleted
+
+`js/brain/embeddings.js` opened `corpora/glove.6B.300d.txt`, streamed 400,000 lines through `readline`, and ran **120 million `parseFloat` calls** before she could do anything. It now opens `corpora/glove.6B.300d.bin` — the same 400,000 vectors packed as `f32` with a vocabulary index, written by `unity-glove` (`crates/unity-weights`). Every vector is a `Float32Array` **view** onto one buffer: no per-word allocation, no copying, **no parsing at all**.
+
+| | measured in-process, same box, back to back |
+|---|---|
+| text via `readline` + `parseFloat` | **19,085 ms**, 745 MB RSS |
+| binary | **549 ms**, 616 MB RSS |
+
+⚠ **The memory claim is stated as MEASURED RSS, and it is smaller than the number this migration had been quoting.** The earlier *"1,350 MB heap"* was a peak-during-parse reading, not the steady state, and the two are not the same claim. The honest steady-state saving is **129 MB**; the prize is the ~35× on load time.
+
+### ✅ `GLOVECUT.2` — proven against the code that was actually running, not against a re-implementation
+
+The shipped loader and the new one were instantiated side by side and compared over the whole table. The old one came from `git show HEAD:js/brain/embeddings.js`, so both sides are production code.
+
+**400,000/400,000 vectors identical · 0 components differing · 0 words missing · 0 extra · max |delta| 0.**
+
+⭐ **And the harness earned its keep immediately — it caught a bug that no amount of reading would have.** See `GLOVECUT.4`.
+
+### ✅ `GLOVECUT.3` — the converter had to reproduce the consumer's ARITHMETIC, not the file
+
+⛔ `embeddings.js` L2-normalises and lowercases **inline as it parses**, and every cosine downstream — the dictionary oracle, schema retrieval, semantic top-K — assumes unit vectors. A converter storing the raw table would have been *"faithful to the source"* and would have **silently changed her semantics**, scaling every similarity by an arbitrary per-word magnitude.
+
+Two further details that are contract, not pedantry:
+
+- **The accumulator is `f64` while the storage is `f32`,** because that is what the JS does: the row lives in a `Float32Array` but `let norm = 0` is a JavaScript number. Summing 300 squares in `f32` instead produces a *different unit vector* — small (~1e-7 relative) and everywhere, which is worse than large and localised, because every cosine in the walk would shift by an amount nobody could attribute to anything. **Measured, not assumed: on 256 realistic rows the two accumulations disagree on essentially every row**, and there is now a test that fails if they ever stop disagreeing.
+- **Floats are parsed as `f64` and then cast,** because `parseFloat` yields the nearest `f64` and the `Float32Array` store rounds *that* to `f32` — double rounding. `tok.parse::<f32>()` rounds in one step and disagrees on values near an `f32` tie after the first rounding.
+
+⭐ **The earlier "bit-exact" verification proved less than it sounded:** the verifier used the same `f32` accumulation as the converter, so it compared this code **against itself**. It runs the shared function now, and the claim it supports is the honest one — *the binary matches what the JS loader would have produced from the same text*.
+
+### ✅ `GLOVECUT.4` — an off-by-four in a binary reader does not fail, it LIES
+
+The first draft of the JS reader wrote the header length as **36** instead of `8+4+4+4+4+8+8 = 40`. Every subsequent field landed four bytes early. It **loaded 400,000 vectors at the right dimension and reported success** — and cosine against the real table came out at **~0.00 for every probe word**. Nothing in the boot, the log, or the count would ever have said so.
+
+The size check is now **exact equality, not `>=`**. The layout is fully determined by the header, so the file has one correct length and no trailing data by construction — and equality catches a wrong-offset read *without needing a parity harness at all*. A `<` check passes on exactly this failure.
+
+### ✅ `GLOVECUT.5` — the format grew a pad, because alignment is free to the writer and the whole cost to the reader
+
+Format v1 did not pad the vocabulary, putting the first vector at absolute byte **4,956,510** — offset 2 mod 4. Rust did not care; it reads with `from_le_bytes`. The consumer does: **`new Float32Array(buffer, byteOffset, n)` throws unless `byteOffset` is a multiple of 4**, so an unaligned matrix forces the JS loader to *copy* 485 MB instead of viewing it. **v2 pads the vocabulary to a 4-byte boundary**, and a test asserts the matrix starts aligned.
+
+### ✅ `GLOVECUT.6` — the press builds it, and refuses rather than restarting into a boot that stops
+
+The `.bin` is boot-fatal exactly like the text table, so `deploy/self-update.sh` gives it exactly the same treatment: build it after the existing GloVe gate, and **`_abort` before `.force-fresh`** if it cannot be made current. She keeps running on the old code with her weights untouched. **A missing build tool can never take her down.**
+
+The freshness gate re-implements the loader's checks in shell (`magic`, version 2, dim 300, source byte length, **exact** file length) rather than trusting presence and size — because presence and size is precisely what a silently-stale cache looks like, and the deploy's own GloVe gate is satisfied by both. **Exercised against four damaged files** (missing, truncated by one byte, wrong magic, version 1) plus a stale-source case: refused all five, and the JS loader refused the same files for the same reasons.
+
+⛔ **There is deliberately no "parse the text instead" branch.** That would be a capability fallback whose only symptom is a 20-second boot nobody looks at.
+
+⭐ **Rust arrives on the box here.** If no prebuilt `bin/unity-glove` and no `cargo` are present, the press installs the minimal toolchain (`UAL_RUST_BOOTSTRAP=0` refuses and demands a prebuilt binary). `CARGO_TARGET_DIR` is pinned to `$BACKEND_DIR/.cargo-target`, and **two excludes were added to the overlay** (`/.cargo-target`, `/bin`) because `rsync --delete` would otherwise wipe both on every press — which would have made the "second press costs nothing" claim false.
+
+### ✅ `GLOVECUT.7` — testing it the RIGHT way found a second, unrelated bug: the boot was re-downloading 862 MB it already had
+
+Gee (verbatim): *"okay you are doing it wrong again and not using the correct start.bat options when testing and incorrectly starting webgpu"*.
+
+**He was right, and being right about the method is what surfaced this.** I had booted with a bare `node server/brain-server.js` from the repo root — wrong cwd, wrong heap flags, no control plane, and `DREAM_NO_AUTO_GPU` unset so it tried to auto-launch a browser donor. Re-run through `windows/start.bat`, which `cd server` first, the boot immediately started **downloading `glove.6B.zip` (~862 MB) into `server/corpora/`** — caught at 246 MB.
+
+⛔ **Cause:** the boot provisioner was called with `corporaDir: path.join(process.cwd(), 'corpora')`, and every launcher `cd server` before starting node — so it looked in `server/corpora`, found nothing, and fetched a **second full copy** of a 1.04 GB file that was sitting one directory up. ⭐ **`embeddings.js` has always walked a ladder (cwd, cwd/.., cwd/server) to find that file. The provisioner not walking it is how the two disagreed about whether the table exists — one of them fetching a file the other was already reading.** The provisioner walks the same ladder now, preferring a directory that already holds a real table. Verified from a `server/` cwd: `already-present`, no download.
+
+### ✅ `GLOVECUT.8` — the launchers build the table, so a fresh clone still works
+
+All four (`windows/start.bat`, `windows/Savestart.bat`, `linux/start.sh`, `linux/Savestart.sh`) build the converter and run `ensure` at step 5, beside the existing GloVe download. **This is a build step in a build script**, the same class as `npm install` and the esbuild bundle — not a runtime fallback — and `ensure` is a no-op when the cache is current, so a warm box pays nothing. Without `cargo` it **warns rather than failing**: the boot's own error names the exact command, and a clear message from the process that needs the file beats a launcher that dies.
+
+### ✅ `GLOVECUT.9` — booted through the launcher and read live
+
+```
+[Embeddings] Reading …\corpora\glove.6B.300d.bin (binary table)...
+[Embeddings]   400,000 vectors mapped in 378 ms
+[Brain] Semantic embeddings ready: { pretrained: 400000, learned: 0, dim: 300, loaded: true }
+```
+
+Brain came all the way up — 459,775,607 neurons, cortical wiring verified (`kwiring {"ok":true,"gaps":[]}`), 229,279 microcolumns, dictionary API ready. Pages served: `/` 200 · `/dashboard.html` 200 · `/compute.html` 200 · `/minds-eye.html` 200 · `/teachview.html` 200. (`/chat.html` 404 is correct — there is no such page; chat is on the landing page.)
+
+### ⚠ THE COUNTER, MEASURED HONESTLY — JS WENT **UP**
+
+Gee (verbatim): *"and i better be seeing that forgjo code coouter for rust start ticking up when u change over the javascript sponge told you too"*.
+
+| | before | after |
+|---|---:|---:|
+| `.js` (source, excl. bundles) | 156,541 | **156,715** |
+| `.rs` | 14,454 | **14,661** |
+
+⛔ **The parse loop is gone and the file still grew by 174 lines**, because the binary reader plus the documentation of *why* it is shaped this way is longer than the loop it replaced. **This cutover moves ~19 seconds of work per boot into Rust; it does not move thousands of lines.** The lines move when `unity-coordinator` can serve — nothing before that makes `brain-server.js` deletable. Said plainly rather than left for him to find.
+
+### ✅ Verification run
+
+182 Rust tests (+2 new, pinning the accumulator width and the parse path) · `node --check` on `embeddings.js`, `glove-provision.js`, `brain-server.js` · ESM `import()` · `bash -n` on `self-update.sh`, `start.sh`, `Savestart.sh` · bundle rebuilt · converter round-trip on the real 1.04 GB table (convert 4.0 s, verify 400,000 in 4.6 s, `ensure` idempotent) · deploy gate exercised on five damage modes · full boot through the launcher.
+
+⚠ **One thing the bundle build taught, recorded because removing it broke `npm run build`:** the dynamic `import('fs')`/`import('path')` **must stay inside a `try`**. This module is bundled for the browser too, and esbuild's `--platform=browser` cannot resolve them — inside a `try` that degrades to a runtime failure on an unreachable branch, outside one it is a hard build error. The old text loader had the same construct for the same reason and never said so.
+
+---
+
 ## 2026-09-05 — `SPONGEHAND` — SECTION A OF SPONGE'S HANDOFF: A WRITE CEILING FOR THE RUNAWAY, AND A WEDGE WATCHDOG FOR THE RSYNC
 
 Gee (verbatim): *"Sponge said.txt we need to do what Sponge said!"*

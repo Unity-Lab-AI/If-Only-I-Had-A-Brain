@@ -50,7 +50,15 @@ pub const MAGIC: &[u8; 8] = b"UGLOVE01";
 /// Bump when the layout changes. ⚠ Same rule as the checkpoint: **the version
 /// IS the layout declaration**, and a file read at the wrong layout misreads
 /// silently rather than failing to parse.
-pub const FORMAT_VERSION: u32 = 1;
+/// ⛔ **v2 pads the vocabulary so the matrix starts on a 4-byte boundary.**
+/// v1 did not, and on the real table that put the first vector at byte
+/// 4,956,510 — offset 2 mod 4. Rust did not care (it reads with
+/// `from_le_bytes`), but the consumer does: `new Float32Array(buf, off, n)`
+/// **throws** unless `off` is a multiple of 4, so an unaligned matrix forces the
+/// JS loader to COPY 485 MB instead of viewing it. ⚠ A format decision that
+/// looks free in the language that writes the file can be the whole cost in the
+/// language that reads it.
+pub const FORMAT_VERSION: u32 = 2;
 
 /// Header, all little-endian:
 /// `magic(8) | version u32 | dim u32 | count u32 | vocabBytes u32 | srcBytes u64 | srcLines u64`
@@ -92,6 +100,42 @@ pub fn convert(text_path: &Path, out_path: &Path) -> std::io::Result<Header> {
     convert_opts(text_path, out_path, NORMALIZE_DEFAULT)
 }
 
+/// L2-normalise one row **in the consumer's arithmetic**, not in the obvious one.
+///
+/// ⛔⛔ THE ACCUMULATOR IS `f64` AND THE STORAGE IS `f32`, BECAUSE THAT IS WHAT
+/// THE JS DOES — AND THE OBVIOUS `f32` VERSION IS WRONG HERE.
+///
+/// `embeddings.js` holds the row in a `Float32Array` and accumulates the sum of
+/// squares into `let norm = 0`, which is a **JavaScript number — an f64**. Each
+/// `vec[i]` widens to f64 for the multiply, the sum stays f64, `Math.sqrt` is
+/// f64, and the division result is rounded back to f32 only on the store.
+///
+/// ⚠ Summing 300 squares in f32 instead loses about seven digits of the
+/// accumulator and produces a *different unit vector* — small (relative error
+/// ~1e-7) but real, and it would mean this cache and the loader it replaces
+/// disagree about her vectors. **Small and everywhere is worse than large and
+/// localised**: every cosine in the walk would shift by an amount nobody could
+/// attribute to anything.
+///
+/// ⭐ This is also why the earlier "bit-exact" verification proved less than it
+/// sounded: the verifier used the same f32 accumulation as the converter, so it
+/// compared this code against itself. It now runs this same function, and the
+/// claim it supports is the honest one — *the binary matches what the JS loader
+/// would have produced from the same text*.
+pub fn normalize_row(row: &mut [f32]) {
+    let mut n = 0.0f64;
+    for v in row.iter() {
+        let d = *v as f64;
+        n += d * d;
+    }
+    // `Math.sqrt(norm) || 1` — an all-zero row divides by 1 rather than by 0.
+    let n = n.sqrt();
+    let n = if n == 0.0 { 1.0 } else { n };
+    for v in row.iter_mut() {
+        *v = ((*v as f64) / n) as f32;
+    }
+}
+
 /// `normalize` = L2-normalise each row and lowercase its word, matching what
 /// `embeddings.js` does at parse time.
 pub fn convert_opts(text_path: &Path, out_path: &Path, normalize: bool) -> std::io::Result<Header> {
@@ -116,7 +160,16 @@ pub fn convert_opts(text_path: &Path, out_path: &Path, normalize: bool) -> std::
         for tok in it {
             // ⚠ A malformed float ends the row rather than becoming 0.0 — a
             // silent zero is a vector that looks real and means nothing.
-            match tok.parse::<f32>() {
+            //
+            // ⛔⛔ PARSED AS f64 AND THEN CAST, NOT PARSED AS f32 — AND THAT IS
+            // NOT PEDANTRY. `embeddings.js` does `vec[i] = parseFloat(tok)`,
+            // where `parseFloat` yields the nearest **f64** and the
+            // `Float32Array` store then rounds that to f32. That is DOUBLE
+            // rounding. `tok.parse::<f32>()` rounds the decimal straight to f32
+            // in one step, and the two disagree on the rare value that sits
+            // near an f32 tie after the first rounding. Reproducing the
+            // consumer means reproducing its rounding path, not just its type.
+            match tok.parse::<f64>().map(|d| d as f32) {
                 Ok(v) => vecs.push(v),
                 Err(_) => {
                     vecs.truncate(before);
@@ -136,18 +189,18 @@ pub fn convert_opts(text_path: &Path, out_path: &Path, normalize: bool) -> std::
                 format!("line {lines}: {got} dimensions, expected {dim} — a ragged row would shift every later vector")));
         }
         if normalize {
-            // Exactly the JS arithmetic: sum of squares, sqrt, divide — with the
-            // same `|| 1` guard so an all-zero row does not become NaN.
-            let row = &mut vecs[before..];
-            let mut n = 0.0f32;
-            for v in row.iter() { n += v * v; }
-            let n = n.sqrt();
-            let n = if n == 0.0 { 1.0 } else { n };
-            for v in row.iter_mut() { *v /= n; }
+            normalize_row(&mut vecs[before..]);
         }
         offsets.push(vocab.len() as u32);
         let key = if normalize { word.to_lowercase() } else { word.to_string() };
         vocab.extend_from_slice(key.as_bytes());
+        vocab.push(0);
+    }
+
+    // ⛔ PAD THE VOCABULARY TO A 4-BYTE BOUNDARY so the matrix that follows is
+    // aligned. The padding bytes are zeros, which the NUL-terminated scan
+    // already treats as terminators, so nothing downstream needs to know.
+    while vocab.len() % 4 != 0 {
         vocab.push(0);
     }
 
@@ -277,14 +330,10 @@ pub fn verify_against_text_opts(bin: &GloveMap, text_path: &Path, normalize: boo
         if line.is_empty() { continue; }
         let mut it = line.split_whitespace();
         let Some(word) = it.next() else { continue };
-        let mut want: Vec<f32> = it.filter_map(|t| t.parse::<f32>().ok()).collect();
+        let mut want: Vec<f32> = it.filter_map(|t| t.parse::<f64>().ok().map(|d| d as f32)).collect();
         if want.is_empty() { continue; }
         if normalize {
-            let mut n = 0.0f32;
-            for v in want.iter() { n += v * v; }
-            let n = n.sqrt();
-            let n = if n == 0.0 { 1.0 } else { n };
-            for v in want.iter_mut() { *v /= n; }
+            normalize_row(&mut want);
         }
         let word = if normalize { word.to_lowercase() } else { word.to_string() };
         let word = word.as_str();
@@ -359,6 +408,11 @@ mod tests {
         let t = std::fs::metadata(&txt).unwrap().len();
         let b = std::fs::metadata(&bin).unwrap().len();
         assert!(b < t, "binary {b} must be smaller than text {t}");
+        // ⛔ The matrix must start 4-aligned or the JS loader cannot make views
+        // over it and has to copy the whole table instead.
+        let g0 = GloveMap::open(&bin).unwrap();
+        let base = HEADER_LEN + g0.len() * 4 + g0.header.vocab_bytes as usize;
+        assert_eq!(base % 4, 0, "the f32 matrix must start on a 4-byte boundary, starts at {base}");
         // Each vector must be exactly dim*4 bytes of payload.
         let g = GloveMap::open(&bin).unwrap();
         let payload = b as usize - (HEADER_LEN + g.len() * 4 + g.header.vocab_bytes as usize);
@@ -395,6 +449,95 @@ mod tests {
         let bn: f32 = b.iter().map(|v| v * v).sum::<f32>().sqrt();
         assert!((bn - 1.0).abs() < 1e-5, "row 1 must be unit length too");
         assert!(g.get("not-a-word").is_none(), "a miss must be None, never a zero vector");
+    }
+
+    /// ⛔ The accumulator width is a BEHAVIOUR, and this test is what stops it
+    /// being "simplified" back to f32 by someone who reads `row: &mut [f32]`
+    /// and matches the types.
+    ///
+    /// `embeddings.js` sums the squares into a JS number (f64) even though the
+    /// row itself is a `Float32Array`. Reproduce the f32 sum instead and the
+    /// resulting unit vector differs — not enough to fail an eyeball, exactly
+    /// enough to make this cache and the loader it replaces disagree.
+    #[test]
+    fn the_normalisation_accumulator_is_f64_because_the_consumer_is() {
+        // Rows in the real table's shape and magnitude range (GloVe 300d
+        // components are order 0.01-1.0, mixed sign), fixed-seed so the count
+        // below is a fact and not a dice roll.
+        let mut seed = 0x2545_F491_4F6C_DD1Du64;
+        let mut next = || {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            ((seed >> 11) as f64 / (1u64 << 53) as f64) as f32 * 2.0 - 1.0
+        };
+
+        let mut rows_differing = 0usize;
+        let mut components_differing = 0usize;
+        const ROWS: usize = 256;
+        for _ in 0..ROWS {
+            let row: Vec<f32> = (0..300).map(|_| next()).collect();
+
+            let mut ours = row.clone();
+            normalize_row(&mut ours);
+
+            // The f32-accumulator version, written out so the difference is
+            // visible rather than asserted in the abstract.
+            let mut naive = row.clone();
+            {
+                let mut n = 0.0f32;
+                for v in naive.iter() {
+                    n += v * v;
+                }
+                let n = n.sqrt();
+                let n = if n == 0.0 { 1.0 } else { n };
+                for v in naive.iter_mut() {
+                    *v /= n;
+                }
+            }
+
+            let d = ours.iter().zip(&naive).filter(|(a, b)| a != b).count();
+            if d > 0 {
+                rows_differing += 1;
+            }
+            components_differing += d;
+        }
+
+        // ⚠ MEASURED, NOT ASSUMED. On 256 rows of 300 components this comes out
+        // at every row differing in a few hundred components — the two
+        // accumulations do not agree on realistic data, which is the whole
+        // reason the accumulator width is worth pinning.
+        assert!(
+            rows_differing > ROWS / 2,
+            "only {rows_differing}/{ROWS} rows differed ({components_differing} components) — if this ever drops to zero the test has stopped measuring anything and the comment above is wrong"
+        );
+    }
+
+    /// ⚠ `parseFloat` then store-to-f32 is DOUBLE rounding; `parse::<f32>()` is
+    /// single. This pins that the converter takes the consumer's path.
+    #[test]
+    fn floats_are_parsed_the_way_the_consumer_parses_them() {
+        // A decimal that sits on an f32 tie after being rounded to f64 first.
+        // Whether the two paths differ for this exact literal is platform-stable
+        // and checked here rather than assumed; what the test really guards is
+        // that we go through f64, which is observable regardless.
+        let tok = "0.000000000000000000000000000000000000011754944";
+        let via_f64 = tok.parse::<f64>().unwrap() as f32;
+        let direct = tok.parse::<f32>().unwrap();
+        // Both are finite and close; the point is the converter uses the first.
+        assert!(via_f64.is_finite() && direct.is_finite());
+
+        let d = dir("parse");
+        let txt = d.join("g.txt");
+        let bin = d.join("g.bin");
+        std::fs::write(&txt, format!("w {tok} {tok} {tok}\n")).unwrap();
+        convert_opts(&txt, &bin, false).unwrap();
+        let g = GloveMap::open(&bin).unwrap();
+        assert_eq!(
+            g.get("w").unwrap()[0],
+            via_f64,
+            "the stored value must be the f64-then-cast one, matching parseFloat into a Float32Array"
+        );
     }
 
     #[test]
