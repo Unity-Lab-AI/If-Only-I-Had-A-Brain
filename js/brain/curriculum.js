@@ -40,7 +40,7 @@
 
 import { sharedEmbeddings } from './embeddings.js';
 import { ensureLetter, ensureLetters, encodeLetter, decodeLetter, inventorySize, inventorySnapshot } from './letter-input.js';
-import { EXAM_BANKS, TRAIN_BANKS, _examSanitizeReport, _examInjectReport, injectGeneratedExamQuestions, cutScoreFor, trainExamOverlap, examVocabCoverage, extractVocabFromBank, methodologyBankFor, scoreMethodologyAnswer } from './student-question-banks.js';
+import { EXAM_BANKS, TRAIN_BANKS, _examSanitizeReport, _examInjectReport, injectGeneratedExamQuestions, cutScoreFor, trainExamOverlap, examVocabCoverage, extractVocabFromBank, NEVER_TEACH_EXAM_TOKENS, methodologyBankFor, scoreMethodologyAnswer } from './student-question-banks.js';
 // ⭐ Self-pricing rep compression — the collision load is COUNTED from real
 // patterns rather than computed, because the closed form's K and COLS are
 // ambiguous against the live tiled encoding by six orders of magnitude.
@@ -48,6 +48,7 @@ import { EXAM_BANKS, TRAIN_BANKS, _examSanitizeReport, _examInjectReport, inject
 import {
   measureCollisionLoad as _repMeasureCollisionLoad,
   safeCompressionFor as _repSafeCompressionFor,
+  SWEEP_MIN_REPS_MEASURED,
 } from './rep-compression.js';
 // Track-level subject names (ela/math/science/social/art/life) live as
 // the local `SUBJECTS` constant below. iter21-B band codes (ela/math/
@@ -4059,6 +4060,23 @@ export class Curriculum {
             const _b = this.brain || (this.cluster && this.cluster._brain);
             return (_b && _b._teachStageAt) ? (Date.now() - _b._teachStageAt) : null;
           })(),
+          // ⭐⭐ `STAGESEQ.3` — THE MONOTONIC STAGE COUNTER, PUBLISHED SO THE
+          // STALE-TAG QUESTION IS A POLL AND NOT AN INFERENCE. `_teachStage` is
+          // never cleared, so a tag with a climbing age means one of two
+          // opposite things — "this stage is still running" or "this was the
+          // last stage before a hang in UNMARKED code" — and the field alone
+          // cannot separate them. That ambiguity has now cost two retractions
+          // in one day, in both directions: the same tag was called stale when
+          // it was accurate, and accurate when it was stale.
+          //
+          // `_teachStageSeq` bumps on every `_tstage` call, so two polls settle
+          // it with no console ring involved: the tag is STALE when the seq is
+          // frozen, CURRENT when it advances. The wedge watchdog already prints
+          // this verdict, but it prints at `log` level into a ring that retains
+          // about eight seconds — which is exactly why the last live reading
+          // had to infer staleness by eye from `teachStageAgeMs` 69,626 sitting
+          // beside `sinceLastTeachMs` 44.
+          teachStageSeq: (this.brain || (this.cluster && this.cluster._brain) || {})._teachStageSeq || 0,
           // LOOPNAME v2 — the LONGEST-HELD sub-op since the last report. This is the
           // one that names a stall; the current stage is almost always the recovery.
           teachStageMax: (this.brain || (this.cluster && this.cluster._brain) || {})._teachStageMaxName || null,
@@ -4077,7 +4095,41 @@ export class Curriculum {
             //   never persisted, gates nothing.
             const io = cluster && cluster._intraOjaStats;
             if (!sp && !hp && !io) return null;
-            return { ...(sp || {}), chunkerHops: hp || null, intraOja: io || null };
+            const out = { ...(sp || {}), chunkerHops: hp || null, intraOja: io || null };
+            // ⭐⭐ `DEFCOST.2` — THE DIVISION IS DONE HERE, ONCE, INSTEAD OF BY
+            // WHOEVER READS IT. The unattributed cost of the pair loop was
+            // "derived" twice by hand from cumulative sums — 103 ms per call
+            // minus its two instrumented children — and both derivations
+            // produced a wrong theory about where the time went. A profile that
+            // requires arithmetic to interpret will get that arithmetic wrong.
+            //
+            // `residualMs` is the honest unknown: whole-call wall time minus
+            // every segment named here and the two children already profiled.
+            // If it stays large after this lands, the missing work is inside
+            // `_teachPredictiveError` or the anti-pair pass, and that is a
+            // READING rather than the next guess.
+            const psx = out.pairSegments;
+            if (psx && psx.n > 0) {
+              const heb = (out.hebbian && (out.hebbian.substrateMs + out.hebbian.crossMs + out.hebbian.intraMs)) || 0;
+              const lat = (out.lateral && (out.lateral.substrateMs + out.lateral.scanMs + out.lateral.antiMs)) || 0;
+              const named = psx.embedMs + psx.wtaMs + psx.clearMs + psx.tileMs + heb + lat;
+              out.pairSegments = {
+                ...psx,
+                embedPerPairMs: +(psx.embedMs / psx.n).toFixed(4),
+                wtaPerPairMs: +(psx.wtaMs / psx.n).toFixed(4),
+                clearPerPairMs: +(psx.clearMs / psx.n).toFixed(4),
+                tilePerPairMs: +(psx.tileMs / psx.n).toFixed(4),
+                residualMs: Math.max(0, Math.round(psx.pairMs - named)),
+                residualPct: psx.pairMs > 0
+                  ? +(100 * Math.max(0, psx.pairMs - named) / psx.pairMs).toFixed(1) : null,
+                // ⭐ The K that actually fires. `semTopK` is what WTA is ASKED
+                // for; this is what survives it and the non-positive skip in
+                // `_writeTiledPattern`, and it is the K in `P·K²/COLS`.
+                semActiveMean: psx.semActiveN > 0
+                  ? +(psx.semActiveSum / psx.semActiveN).toFixed(2) : null,
+              };
+            }
+            return out;
           })(),
         };
       })(),
@@ -4260,6 +4312,27 @@ export class Curriculum {
       // the full per-section reason string, timestamp) so the board answers
       // "did it pass and which section failed" without ring archaeology.
       lastGateVerdict: this._lastGateVerdict || null,
+      // ⭐⭐ REPPRICE.1 — THE SELF-PRICING VERDICT, PUBLISHED WHERE IT CAN BE
+      // READ. The rep-compression module was deliberately shipped default-OFF
+      // on an explicit promise: "unarmed it still measures and still publishes,
+      // so one press produces the evidence." It measured. It published — to
+      // `cluster._repCompressionVerdict`, which a whole-tree grep showed had
+      // exactly ONE reference in the codebase: the write itself. No serializer,
+      // no panel, no view consumed it, so the press produced the evidence and
+      // then threw it away, and the deciding number for every rep count in the
+      // walk was only ever visible in one `_hb` line inside a ring that retains
+      // about eight seconds.
+      //
+      // ⛔ THE NUMBER MATTERS MORE THAN MOST: the sweep's "production" row is
+      // 8 active cells drawn from 1,885,340, and this encoder is semTopK=8 over
+      // a ~300-dim embedding. The module says so in its own caveat and COUNTS
+      // the live load rather than computing it — but a counted load nobody can
+      // read is worth exactly as much as the assumption it replaced.
+      //
+      // Sticky by construction (it is overwritten per assoc call, not cleared),
+      // same shape as lastGateVerdict above, and carries `armed` so a reader can
+      // tell a measurement from a steering decision without checking the env.
+      repPricing: (cluster && cluster._repCompressionVerdict) || null,
       // EXAMTRANSCRIPT — the last 80 Q→A pairs from production probes +
       // K-STUDENT batteries ({cell, kind, q, expected, got, pass, failMode?})
       // so "what is she answering to which questions" is a field read.
@@ -10707,8 +10780,23 @@ export class Curriculum {
     try {
       const report = examVocabCoverage(cellKey, this._trainedVocabularySet(cellKey));
       if (report && Array.isArray(report.missing) && report.missing.length > 0) {
+        // ⛔⛔ THE SECOND BARRIER — and it is on BOTH teach sites, because there
+        // are two and only guarding one leaves the hole open. `extractVocabFromBank`
+        // already refuses to report a `nonsense: true` answer as missing, but
+        // THIS loop is what actually teaches, and it teaches whatever it is
+        // handed. A nonsense-word-fluency probe measures blending a letter
+        // string she has never seen; drilling `jop`/`vib`/`ped` into her first
+        // turns it into a sight-word probe that passes for the wrong reason and
+        // reports nothing wrong while doing it. Refusing here as well means a
+        // later change to the extractor cannot silently re-open it.
         const words = report.missing.filter(w =>
-          typeof w === 'string' && /^[a-z][a-z']*$/i.test(w) && w.length >= 2 && w.length <= 20);
+          typeof w === 'string' && /^[a-z][a-z']*$/i.test(w) && w.length >= 2 && w.length <= 20
+          && !NEVER_TEACH_EXAM_TOKENS.has(w.toLowerCase()));
+        const _refusedNonsense = report.missing.filter(w =>
+          typeof w === 'string' && NEVER_TEACH_EXAM_TOKENS.has(w.toLowerCase()));
+        if (_refusedNonsense.length) {
+          console.warn(`[Curriculum][${cellKey}] EXAMINTEG — REFUSED to pre-teach ${_refusedNonsense.length} nonsense-word answer(s) the coverage audit listed as missing: ${_refusedNonsense.join(', ')}. They are missing BY DESIGN — a nonsense-word-fluency item measures decoding an unfamiliar string, and teaching it first converts the probe to recall.`);
+        }
         if (words.length > 0 && typeof this._teachVocabList === 'function') {
           const ctx = { arousal: 0.7, valence: 0.2 };
           const CHUNK = 25;
@@ -12959,8 +13047,23 @@ export class Curriculum {
       const trained = this._trainedVocabularySet(cellKey);
       const report = examVocabCoverage(cellKey, trained);
       if (report && Array.isArray(report.missing) && report.missing.length > 0) {
+        // ⛔⛔ THE SECOND BARRIER — and it is on BOTH teach sites, because there
+        // are two and only guarding one leaves the hole open. `extractVocabFromBank`
+        // already refuses to report a `nonsense: true` answer as missing, but
+        // THIS loop is what actually teaches, and it teaches whatever it is
+        // handed. A nonsense-word-fluency probe measures blending a letter
+        // string she has never seen; drilling `jop`/`vib`/`ped` into her first
+        // turns it into a sight-word probe that passes for the wrong reason and
+        // reports nothing wrong while doing it. Refusing here as well means a
+        // later change to the extractor cannot silently re-open it.
         const words = report.missing.filter(w =>
-          typeof w === 'string' && /^[a-z][a-z']*$/i.test(w) && w.length >= 2 && w.length <= 20);
+          typeof w === 'string' && /^[a-z][a-z']*$/i.test(w) && w.length >= 2 && w.length <= 20
+          && !NEVER_TEACH_EXAM_TOKENS.has(w.toLowerCase()));
+        const _refusedNonsense = report.missing.filter(w =>
+          typeof w === 'string' && NEVER_TEACH_EXAM_TOKENS.has(w.toLowerCase()));
+        if (_refusedNonsense.length) {
+          console.warn(`[Curriculum][${cellKey}] EXAMINTEG — REFUSED to pre-teach ${_refusedNonsense.length} nonsense-word answer(s) the coverage audit listed as missing: ${_refusedNonsense.join(', ')}. They are missing BY DESIGN — a nonsense-word-fluency item measures decoding an unfamiliar string, and teaching it first converts the probe to recall.`);
+        }
         if (words.length > 0 && typeof this._teachVocabList === 'function') {
           const ctx = { arousal: 0.7, valence: 0.2 };
           const CHUNK = 25;
@@ -13749,8 +13852,16 @@ export class Curriculum {
   // standalone cluster.lastSpikes write still happens so the CPU-
   // shadow Hebbian path stays consistent during the C→E transition
   // for equivalence verification.
-  _writeTiledPattern(region, feat, binarize = true) {
+  // ⭐⭐ `LATSCAN.1` — `opts.collectInto` receives the REGION-RELATIVE indices
+  // this call activates. The set is fully determined by `(region, feat)`, and a
+  // consumer that needs it (the lateral-inhibition pass, which currently
+  // rediscovers it with a full 346,902-cell scan per pair-rep) must not
+  // re-derive it with a second copy of this arithmetic — two implementations of
+  // the same tiling is how they drift apart silently. One source of truth: the
+  // writer hands out what it wrote. Caller owns clearing the array.
+  _writeTiledPattern(region, feat, binarize = true, opts = null) {
     const cluster = this.cluster;
+    const collectInto = opts && opts.collectInto;
     if (!cluster || !region || !feat || feat.length === 0) return;
     const size = region.end - region.start;
     const gSize = Math.max(1, Math.floor(size / feat.length));
@@ -13789,6 +13900,7 @@ export class Curriculum {
         if (idx >= region.end) continue;
         cluster.lastSpikes[idx] = 1;
         if (sparseIndices) sparseIndices.push(idx - region.start);
+        if (collectInto) collectInto.push(idx - region.start);
       }
     }
     if (haveProxy) {
@@ -14555,7 +14667,27 @@ export class Curriculum {
    * in the intra-matrix, but shipped as a runtime training signal so
    * no cluster reconstruction is needed.
    */
-  async _teachLateralInhibition(lr, numBuckets = 26) {
+  // ⭐⭐ `LATSCAN.1` — `opts.activeHint` is the motor-relative active-index list
+  // the CALLER already wrote, supplied so this pass can skip rediscovering it.
+  //
+  // ⛔ THE COST IT REMOVES IS REAL AND MEASURED, NOT ESTIMATED. `lateral.scanMs`
+  // reads **380,300 ms across 170,334 calls** on the live box — **11.8% of the
+  // whole boot's wall clock** — and every millisecond of it is a walk over all
+  // 346,902 motor cells looking for the few thousand the caller set three lines
+  // earlier. The comment above this scan already records the SAME fix being
+  // applied one level down ("the second walk was re-deriving a list it had
+  // already seen"); this is the remaining level.
+  //
+  // ⛔⛔ AND IT PROVES ITSELF INSTEAD OF ASKING TO BE TRUSTED. A wrong hint does
+  // not throw — it trains anti-Hebbian against the wrong rows and looks fine.
+  // `_teachHebbian` runs between the caller's write and this call, and reasoning
+  // about whether it perturbs `lastSpikes` is exactly the kind of inference that
+  // has been wrong twice today. So for the first `DREAM_LATERAL_HINT_VERIFY`
+  // calls (default 500) BOTH paths run and are compared; **one mismatch
+  // permanently disables the hint for the process and says so.** After that many
+  // clean comparisons the scan is skipped. `DREAM_LATERAL_HINT=0` opts out
+  // entirely.
+  async _teachLateralInhibition(lr, numBuckets = 26, opts = null) {
     const _lp0 = Date.now();
     this._tstage('lateral:substrate');   // LOOPNAME
     await this._awaitComputeSubstrate();   // no-donor gate — pause with a free loop instead of CPU-grinding
@@ -14582,14 +14714,54 @@ export class Curriculum {
     // below iterates that small list instead of the full span. Same rows, same
     // math, same order — only the rediscovery is gone.
     const bucketCounts = new Array(numBuckets).fill(0);
-    const _actIdx = [];
-    const _actBucket = [];
-    for (let i = 0; i < motorSize; i++) {
-      if (cluster.lastSpikes[motorRegion.start + i]) {
-        const b = Math.min(numBuckets - 1, Math.floor(i / bucketSize));
-        bucketCounts[b]++;
-        _actIdx.push(i);
-        _actBucket.push(b);
+    let _actIdx = [];
+    let _actBucket = [];
+    // `LATSCAN.1` — hint path, verification path, or the original scan.
+    const _env = (typeof process !== 'undefined' && process.env) ? process.env : {};
+    const _hintOn = _env.DREAM_LATERAL_HINT !== '0';
+    const _hint = (_hintOn && opts && Array.isArray(opts.activeHint)) ? opts.activeHint : null;
+    const _verifyBudget = Math.max(0, Number(_env.DREAM_LATERAL_HINT_VERIFY ?? 500) || 0);
+    const _st = cluster._lateralHintStats
+      || (cluster._lateralHintStats = { used: 0, verified: 0, mismatch: 0, scanned: 0, disabled: false });
+    const _mustScan = !_hint || _st.disabled || _st.verified < _verifyBudget;
+    if (_mustScan) {
+      _st.scanned++;
+      for (let i = 0; i < motorSize; i++) {
+        if (cluster.lastSpikes[motorRegion.start + i]) {
+          const b = Math.min(numBuckets - 1, Math.floor(i / bucketSize));
+          bucketCounts[b]++;
+          _actIdx.push(i);
+          _actBucket.push(b);
+        }
+      }
+    }
+    if (_hint && !_st.disabled) {
+      // Build the hint's view. `_writeTiledPattern` emits ascending indices, so
+      // no sort is needed — but a DUPLICATE would double-count a bucket, and the
+      // comparison below is what would catch that too.
+      const hIdx = _hint, hBucket = new Array(hIdx.length);
+      const hCounts = new Array(numBuckets).fill(0);
+      for (let a = 0; a < hIdx.length; a++) {
+        const b = Math.min(numBuckets - 1, Math.floor(hIdx[a] / bucketSize));
+        hBucket[a] = b; hCounts[b]++;
+      }
+      if (_mustScan) {
+        // VERIFY — element-for-element against the scan that just ran.
+        let same = _actIdx.length === hIdx.length;
+        if (same) for (let a = 0; a < hIdx.length; a++) if (_actIdx[a] !== hIdx[a]) { same = false; break; }
+        if (same) {
+          _st.verified++;
+          if (_st.verified === _verifyBudget) {
+            console.warn(`[Curriculum] LATSCAN.1 — the motor active-index hint matched the full scan on ${_verifyBudget} consecutive calls; the ${motorSize}-cell rediscovery scan is now SKIPPED when a hint is supplied. Set DREAM_LATERAL_HINT=0 to restore the scan.`);
+          }
+        } else {
+          _st.mismatch++; _st.disabled = true;
+          console.warn(`[Curriculum] ⛔ LATSCAN.1 — HINT MISMATCH on call ${_st.scanned}: the caller-supplied motor active set (${hIdx.length}) disagrees with the full scan (${_actIdx.length}). The hint is DISABLED for this process and every lateral pass falls back to scanning. This is the failure the verification exists to catch — something writes motor spikes between the caller's write and this call.`);
+        }
+      } else {
+        _actIdx = hIdx; _actBucket = hBucket;
+        for (let b = 0; b < numBuckets; b++) bucketCounts[b] = hCounts[b];
+        _st.used++;
       }
     }
     let primaryBucket = 0;
@@ -14692,6 +14864,17 @@ export class Curriculum {
       e.activeSum += crossCount;
       if (_gpuCarried) e.gpu = (e.gpu || 0) + 1;
       if (_runCpuShadow) e.cpuShadow = (e.cpuShadow || 0) + 1;
+      // `LATSCAN.1` — the hint's own record, published so the skip is provable
+      // rather than assumed. `scanned` falling behind `used` is the saving;
+      // `mismatch` non-zero means the hint was WRONG and disabled itself, and
+      // that is the number to look at first if anything about lateral
+      // inhibition looks off.
+      const hs = cluster._lateralHintStats;
+      if (hs) {
+        e.hintUsed = hs.used; e.hintVerified = hs.verified;
+        e.hintMismatch = hs.mismatch; e.hintDisabled = hs.disabled;
+        e.scannedCalls = hs.scanned;
+      }
     }
   }
 
@@ -19011,7 +19194,28 @@ export class Curriculum {
       const _armed = (typeof process !== 'undefined' && process.env
         && process.env.DREAM_REP_AUTOPRICE === '1');
       const _semRegionEarly = cluster.regions && cluster.regions.sem;
-      if (_semRegionEarly && pairs.length >= 8 && typeof this._topKEmbedding === 'function') {
+      // ⭐⭐ REPPRICE.1 — THROTTLED, BECAUSE THE MEASUREMENT IS NOT FREE AND WAS
+      // RUNNING ON EVERY CALL. Each sample costs a `_dictionaryPatternFor`
+      // (a fresh Float64Array(300) plus a GloVe lookup plus five hash stripes)
+      // and a `_topKEmbedding` over it, up to 512 of them — and
+      // `_teachAssociationPairs` is called 25,603 times per definition sweep on
+      // the live box. Nothing throttled it and nothing consumed its output, so
+      // the brain was paying a per-call sampling tax to compute a number it
+      // then discarded.
+      //
+      // ⛔ THE ANSWER IS NOT TO DELETE THE MEASUREMENT — it is the only thing
+      // that can tell us whether the sweep's "production" row ever described
+      // this encoder. It is to take it on a CLOCK instead of on every call: the
+      // collision load is a property of the corpus and the encoding, and
+      // neither of those changes between two assoc calls a millisecond apart.
+      // The verdict is sticky on the cluster, so a throttled measurement is
+      // continuously readable; only the re-measure is rate-limited.
+      const _priceGapMs = Math.max(0, Number(
+        (typeof process !== 'undefined' && process.env && process.env.DREAM_REP_AUTOPRICE_GAP_MS) || 60000,
+      ) || 60000);
+      const _priceDue = !cluster._repPriceAt
+        || (Date.now() - cluster._repPriceAt) >= _priceGapMs;
+      if (_priceDue && _semRegionEarly && pairs.length >= 8 && typeof this._topKEmbedding === 'function') {
         const _k = opts.semTopK ?? 8;
         const _sampleN = Math.min(pairs.length, 512);
         const _stride = Math.max(1, Math.floor(pairs.length / _sampleN));
@@ -19036,13 +19240,38 @@ export class Curriculum {
             sampleLoad: _m.load, load: _scaled,
             meanActiveDims: _m.meanActive, maxSharers: _m.maxSharers,
             distinctDims: _m.cellsTouched,
+            // ⚠ The per-CELL density, carried beside the per-PATTERN load
+            // because the sweep's prose and its formula disagree about which
+            // one "collision load" means and the two differ by exactly K.
+            // The per-pattern figure is the one that indexes the table; this
+            // one is the more intuitive number someone WILL quote.
+            cellDensity: _m.cellDensity,
             factor: _verdict.factor, reps: _verdict.reps,
             expectedRetrieval: _verdict.expectedRetrieval,
             reason: _verdict.reason, armed: _armed,
+            // ⭐ REPPRICE.1 — the age and the caller travel WITH the verdict.
+            // A sticky field with no timestamp is the `_tstage` failure again:
+            // a reader cannot tell a live measurement from one taken before
+            // the corpus changed underneath it, and this project has already
+            // spent two retractions on exactly that ambiguity.
+            measuredAt: Date.now(),
+            measurements: ((cluster && cluster._repPriceCount) | 0) + 1,
+            label: opts.label || 'ASSOC',
+            // The sweep's own bounds, restated where the verdict is read, so
+            // nobody has to open the module to know what was never measured.
+            sweepFloorReps: SWEEP_MIN_REPS_MEASURED,
           };
-          // Published for the knob panel and the teach view — the number that
-          // did not exist before today.
-          if (cluster) cluster._repCompressionVerdict = _autoPrice;
+          // ⭐⭐ REPPRICE.1 — published where it can actually be READ. This
+          // assignment used to be the ONLY reference to
+          // `_repCompressionVerdict` in the whole tree: nothing serialized it,
+          // so the press that was supposed to "produce the evidence" produced
+          // it into a dead field. It is now surfaced at
+          // `state.curriculum.repPricing` (see the curriculum state block).
+          if (cluster) {
+            cluster._repCompressionVerdict = _autoPrice;
+            cluster._repPriceAt = _autoPrice.measuredAt;
+            cluster._repPriceCount = _autoPrice.measurements;
+          }
           this._hb(`[Curriculum][${opts.label || 'ASSOC'}] REPPRICE — measured collision load ${_scaled.toFixed(3)} over ${pairs.length} pairs (sampled ${_sets.length}, ${_m.meanActive.toFixed(1)} active dims each, ${_m.cellsTouched} distinct, max ${_m.maxSharers} patterns on one dim). The sweep supports ${_verdict.factor}× → ${_verdict.reps} reps at ${(100 * _verdict.expectedRetrieval).toFixed(1)}% retrieval. ${_armed ? 'ARMED — steering compression.' : 'NOT armed (DREAM_REP_AUTOPRICE=1 to steer); the hand-set ' + REP_COMPRESS + '× stands.'} ⚠ The sweep\'s 0.246 "production" row used 8 cells of 1,885,340; this brain uses 8 dims of ~300, so compare before trusting.`);
           if (_armed) REP_COMPRESS = Math.max(1, _verdict.factor);
         }
@@ -19305,6 +19534,38 @@ export class Curriculum {
     // of 50%+.
     const semTopK = opts.semTopK ?? 8;
     let trained = 0, skipped = 0, antiFires = 0, wtaApplied = 0, semWtaApplied = 0;
+    // `DEFCOST.2` — per-segment accumulators for the pair loop (flushed into
+    // `_teachStageProfile.pairSegments` at the end of the call, the same shape
+    // as the `lateral` and `hebbian` rows already published there).
+    let _psEmbedMs = 0, _psWtaMs = 0, _psClearMs = 0, _psTileMs = 0, _psN = 0;
+    let _semActiveSum = 0, _semActiveN = 0;
+    // `LATSCAN.1` — reused across every pair-rep in this call; cleared at each
+    // motor write. One array, not one per pair, because the alloc churn this
+    // file already fought over (`_crossBucketPostScratch`) is the same lesson.
+    const _motorActiveHint = [];
+    // ⛔ FLUSHED AT ALL THREE EXITS, NOT JUST THE CLEAN ONE. This method
+    // returns from three places — shutdown, budget-stop, and normal completion
+    // — and the two early ones are precisely the LONG calls. Flushing only on
+    // the clean exit would drop the slowest samples and leave a profile that
+    // reads faster than the loop actually is, which is the shape of instrument
+    // this file has already been burned by.
+    const _flushPairSegments = () => {
+      try {
+        const sp = this._teachStageProfile || (this._teachStageProfile = {});
+        const e = sp.pairSegments || (sp.pairSegments = {
+          n: 0, embedMs: 0, wtaMs: 0, clearMs: 0, tileMs: 0, pairMs: 0,
+          semActiveSum: 0, semActiveN: 0,
+        });
+        e.n += _psN;
+        e.embedMs += _psEmbedMs;
+        e.wtaMs += _psWtaMs;
+        e.clearMs += _psClearMs;
+        e.tileMs += _psTileMs;
+        e.pairMs += Date.now() - startMs;
+        e.semActiveSum += _semActiveSum;
+        e.semActiveN += _semActiveN;
+      } catch { /* instrumentation must never be able to stop a teach */ }
+    };
     const startMs = Date.now();
     this._hb(`[Curriculum][${label}] START — ${pairs.length} pairs × ${reps} reps · soft-writes=${!binarize} · row-norm=${normalizeAfter} · anti-pairs=${antiPairs} · motor-WTA=${motorWTA}/${motorTopK} · sem-WTA=${semWTA}/${semTopK}`);
     try { this._pushBrainEvent?.('teach', 'sem', `ASSOC START: ${label} · ${pairs.length}×${reps}`, { label, pairs: pairs.length, reps }); } catch {}
@@ -19365,6 +19626,7 @@ export class Curriculum {
         const _owedNow = reps - rep;
         console.warn(`[Curriculum][${label}] PHASELOOP.1 - SHUTDOWN at a clean rep boundary, rep ${rep}/${reps} (${trained} pair-teaches landed). ${_cursorKey ? `Cursor BANKED as '${_cursorKey}' = ${_owedNow} rep(s) owed — the next boot RESUMES the remainder instead of repeating the whole dose.` : 'NO CURSOR KEY on this call, so this remainder CANNOT be banked and the next visit repeats the dose.'}`);
         _acRow.ms += Date.now() - startMs;
+        _flushPairSegments();   // `DEFCOST.2` — the early exits are the LONG calls
         return { trained, skipped, repsDone: rep, deferredReps: _owedNow, shutdownStopped: true };
       }
       // CELLBOUND.A - THE PHASE DEADLINE, honoured on a CLEAN REP BOUNDARY.
@@ -19396,6 +19658,7 @@ export class Curriculum {
         }
         console.warn(`[Curriculum][${label}] CELLBOUND - phase '${cluster._phaseDeadlineName || '?'}' spent its ${(PHASE_BUDGET_MS / 60000).toFixed(0)}min budget after ${_heldS}s; stopping on a clean rep boundary at rep ${rep}/${reps} (${trained} pair-teaches landed). DEFERRED ${_deferred} rep(s) to the next visit to this phase - training is spread, NOT discarded${_cursorKey ? ` · cursor BANKED as '${_cursorKey}' = ${_deferred} rep(s) owed (persisted, so a reboot resumes rather than repeats)` : ''}. DREAM_PHASE_BUDGET_MS raises the budget; 0 disables the bound.`);
         _acRow.ms += Date.now() - startMs;   // ASSOCBOUND.1 — budget-stop exit still owns its time
+        _flushPairSegments();   // `DEFCOST.2` — the early exits are the LONG calls
         return { trained, skipped, repsDone: rep, deferredReps: _deferred, budgetStopped: true };
       }
       // GINTRA (2026-08-16) — the final-rep CPU-shadow flag cycle, the SAME
@@ -19419,10 +19682,23 @@ export class Curriculum {
         // same trained mapping. Motor side stays as raw GloVe because
         // motor-region tiling decodes via letter-bucket argmax, not
         // identity discrimination.
+        // ⭐⭐ `DEFCOST.2` — SEGMENT TIMERS, BECAUSE THE COST OF THIS LOOP HAS
+        // TWICE BEEN GUESSED AND ONCE BEEN GUESSED WRONG. `_teachAssociationPairs`
+        // measures 103 ms per call on the live box, and its two instrumented
+        // children — `_teachHebbian` (1.0 ms) and `_teachLateralInhibition`
+        // (2.6 ms) — account for only about a quarter of it. Everything else in
+        // here was unattributed, so the first theory blamed `_writeTiledPattern`
+        // for writing the whole 1.88M sem region per pair; reading it showed a
+        // `feat[d] <= 0 continue` that makes it write ~50K. **A second theory
+        // would have been the third guess in a row.** These are the same shape
+        // as the `lateral` timers below: cumulative, fixed keys, rebuilt each
+        // boot, gating nothing.
+        const _ps0 = Date.now();
         const inEmb = this._dictionaryPatternFor(inputWord);
         const outEmb = sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function'
           ? sharedEmbeddings.getEmbedding(outputWord) : null;
         if (!inEmb || !outEmb || inEmb.length === 0 || outEmb.length === 0) { skipped++; continue; }
+        const _ps1 = Date.now();
         // Pre-compute WTA-filtered motor embedding (top-K by magnitude).
         const outEmbMotor = motorWTA ? this._topKEmbedding(outEmb, motorTopK) : outEmb;
         if (motorWTA && outEmbMotor !== outEmb) wtaApplied++;
@@ -19431,14 +19707,40 @@ export class Curriculum {
         // raw GloVe would. Fires the same _topKEmbedding helper as motor.
         const inEmbSem = semWTA ? this._topKEmbedding(inEmb, semTopK) : inEmb;
         if (semWTA && inEmbSem !== inEmb) semWtaApplied++;
+        const _ps2 = Date.now();
+        // ⭐ ACTIVE-DIM COUNT, RECORDED WHERE IT IS ACTUALLY DECIDED. `semTopK`
+        // is the K in `P·K²/COLS`, but the WTA keeps the top K by MAGNITUDE
+        // while `_writeTiledPattern` then skips every non-positive dim — so the
+        // number of dims that really fire is `semTopK` minus however many of the
+        // survivors were negative, and it has never been counted. It is the
+        // input to every rep-count decision, so it is now a field and not an
+        // assumption.
+        {
+          let _act = 0;
+          for (let _d = 0; _d < inEmbSem.length; _d++) if (inEmbSem[_d] > 0) _act++;
+          _semActiveSum += _act;
+          _semActiveN += 1;
+        }
         try {
           // FIX 2 — scoped clear for def binds: only sem+motor+fineType are
           // written below, and defs skip the full-vector predictive-error
           // read, so the whole-cluster zero is pure waste at 1.5M.
           this._clearSpikes(skipPredictiveError ? ['sem', 'motor', 'fineType'] : null);
+          const _ps3 = Date.now();
           this._writeTiledPattern(semRegion, inEmbSem, binarize);
-          this._writeTiledPattern(motorRegion, outEmbMotor, binarize);
+          // `LATSCAN.1` — collect the motor actives as they are written so the
+          // lateral pass does not walk all 346,902 motor cells to find them
+          // again. Reused array, cleared here; the writer is the single source
+          // of the tiling arithmetic.
+          _motorActiveHint.length = 0;
+          this._writeTiledPattern(motorRegion, outEmbMotor, binarize, { collectInto: _motorActiveHint });
           this._writeRelationTag(cluster, fineTypeRegion, relationTagId, binarize);
+          const _ps4 = Date.now();
+          _psEmbedMs += (_ps1 - _ps0);
+          _psWtaMs += (_ps2 - _ps1);
+          _psClearMs += (_ps3 - _ps2);
+          _psTileMs += (_ps4 - _ps3);
+          _psN += 1;
           // Predictive-coding error-gradient pass BEFORE the main teach
           // so the delta-rule correction fires against the current
           // weights' prediction, not the post-Oja state. Skipped for
@@ -19460,7 +19762,11 @@ export class Curriculum {
           // weights that drive activity across different "buckets" of
           // motor. GABAergic cross-inhibition functional shape without
           // rebuilding the synapse matrix at init.
-          try { await this._teachLateralInhibition(lr); }
+          // `LATSCAN.1` — the hint is passed ONLY here, because this is the one
+          // call site that just wrote the motor pattern itself. The other
+          // lateral call site writes a different pattern and correctly keeps
+          // scanning; a hint is only safe where the caller owns the write.
+          try { await this._teachLateralInhibition(lr, 26, { activeHint: _motorActiveHint }); }
           catch { /* non-fatal */ }
           trained++;
         } catch (err) {
@@ -19833,6 +20139,14 @@ export class Curriculum {
     this._hb(`[Curriculum][${label}] DONE — ${trained} Hebbian updates across ${pairs.length} pairs × ${reps} reps in ${elapsedSec}s (skipped ${skipped})${antiReport}${wtaReport}${pruneReport}${rescaleReport}${normReport}${sepReport}${weightReport}`);
     try { this._pushBrainEvent?.('teach', 'motor', `ASSOC DONE: ${label} · ${trained}/${antiFires}`, { label, trained, antiFires, wtaApplied, elapsedSec }); } catch {}
     _acRow.ms += Date.now() - startMs;   // ASSOCBOUND.1 — clean-finish exit
+    // `DEFCOST.2` — flush the pair-loop segment timers. `pairMs` is this call's
+    // WHOLE wall time, so the residual (`pairMs` minus the named segments minus
+    // hebbian minus lateral) is itself readable rather than being something a
+    // reader has to derive — the derivation is exactly what produced two wrong
+    // theories about this loop. `semActiveMean` is the K that actually fires
+    // after WTA and the non-positive skip, which is the number every
+    // collision-load figure depends on.
+    _flushPairSegments();
     return { trained, skipped };
   }
 

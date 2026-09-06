@@ -356,9 +356,20 @@ const ELA_KINDERGARTEN_EXAM = [
   { q: 'read the word: her', a: 'her', variants: ['her'], standard: 'K.RF.3c', difficulty: 1, source: 'Wilson-Fundations-K-sample' },
   { q: 'read the word: on', a: 'on', variants: ['on'], standard: 'K.RF.3c', difficulty: 1, source: 'Wilson-Fundations-K-sample' },
   { q: 'read the word: of', a: 'of', variants: ['of'], standard: 'K.RF.3c', difficulty: 1, source: 'Wilson-Fundations-K-sample' },
-  { q: 'read this nonsense word (blend it): jop', a: 'jop', variants: ['jop'], standard: 'K.RF.3b', difficulty: 2, source: 'Wilson-Fundations-K-sample' },
-  { q: 'read this nonsense word: vib', a: 'vib', variants: ['vib'], standard: 'K.RF.3b', difficulty: 2, source: 'Wilson-Fundations-K-sample' },
-  { q: 'read this nonsense word: ped', a: 'ped', variants: ['ped'], standard: 'K.RF.3b', difficulty: 2, source: 'Wilson-Fundations-K-sample' },
+  // ⛔⛔ `nonsense: true` — THESE THREE ANSWERS MUST NEVER BE PRE-TAUGHT, AND
+  // THEY WERE BEING PRE-TAUGHT. Nonsense-word fluency measures DECODING: can
+  // she blend an unfamiliar letter string she has never seen? The coverage
+  // audit listed `jop`/`vib`/`ped` as "missing exam vocabulary" — which they
+  // are, permanently and by design, because no corpus contains them — and the
+  // pre-gate vocab pass obediently taught every word the audit called missing.
+  // ⛔ A pre-taught nonsense word is a SIGHT word, so the probe stopped
+  // measuring decoding and started measuring recall, and then PASSED for the
+  // wrong reason. This flag is what tells the extractor to leave them alone;
+  // the token is also stripped out of the question text, since the question
+  // literally contains the answer.
+  { q: 'read this nonsense word (blend it): jop', a: 'jop', variants: ['jop'], nonsense: true, standard: 'K.RF.3b', difficulty: 2, source: 'Wilson-Fundations-K-sample' },
+  { q: 'read this nonsense word: vib', a: 'vib', variants: ['vib'], nonsense: true, standard: 'K.RF.3b', difficulty: 2, source: 'Wilson-Fundations-K-sample' },
+  { q: 'read this nonsense word: ped', a: 'ped', variants: ['ped'], nonsense: true, standard: 'K.RF.3b', difficulty: 2, source: 'Wilson-Fundations-K-sample' },
 
   // Lexia Core5 K — phonics application
   { q: 'read this word family: bat, cat, hat. what is the same?', a: 'at', variants: ['at', 'at ending', 'at sound'], standard: 'K.RF.2c', difficulty: 2, source: 'Lexia-Core5-K-sample' },
@@ -1446,6 +1457,14 @@ function toProbeShape(bank) {
       difficulty: entry.difficulty || 1,
       source: entry.source || 'authored',
     };
+    // ⛔⛔ `nonsense` MUST SURVIVE THE SHAPE CONVERSION. This mapper builds a
+    // NEW object with a fixed field list, so any flag not named here is dropped
+    // silently — which is exactly what happened on the first cut of the
+    // exam-integrity fix: the flag was set on the authored rows, `EXAM_BANKS`
+    // never saw it, `NEVER_TEACH_EXAM_TOKENS` came out EMPTY, and the guard
+    // protected nothing while looking correct in the diff. Caught by running
+    // the real bank through it rather than by reading it.
+    if (entry.nonsense) out.nonsense = true;
     if (methodology) out.methodology = methodology;
     return out;
   });
@@ -2156,18 +2175,93 @@ const AMBIENT_STOPWORDS = new Set([
 
 // Extract the unique content-word set from a question bank. Lowercase,
 // strip punctuation, drop ambient stopwords. Returns a Set<string>.
+//
+// ⛔⛔ WHAT COUNTS AS "REQUIRED" IS A TEST-INTEGRITY DECISION, AND THE OLD
+// ANSWER WAS WRONG IN TWO WAYS THAT BOTH ENDED IN THE SAME PLACE: the pre-gate
+// vocab pass teaches every word this function reports as missing, so anything
+// swept in here gets DRILLED INTO HER before the exam that uses it.
+//
+// ① `variants` ARE NOT REQUIRED. They are answers we would ACCEPT, not answers
+//    she must be able to produce. "what sound does the letter b make?" has the
+//    canonical answer `b`, which is taught; `buh` and `bee` are tolerances. The
+//    audit was reporting `buh`/`guh`/`juh`/`nuh`/`puh`/`yuh` as missing exam
+//    vocabulary and the pre-gate was teaching those syllables to her as words.
+//    They are now collected separately by `extractAcceptedVocabFromBank` and
+//    REPORTED, never required — the information is not lost, it just stops
+//    driving a teach.
+//
+// ② A `nonsense: true` ITEM'S ANSWER MUST STAY UNFAMILIAR. Its whole
+//    measurement is whether she can blend letters she has never met. Teaching
+//    it converts the probe from decoding to recall and manufactures a pass.
+//    Both the answer AND its occurrence inside the question text are excluded —
+//    the question is literally "read this nonsense word: vib".
+//
+// ⚠ THIS DOES NOT WEAKEN THE TEST-WORDS-PRE-TAUGHT LAW, IT IS WHAT THE LAW
+//   ACTUALLY REQUIRES. The law exists so she is never asked a question built on
+//   a word nobody taught her. It cannot mean "teach her the answer to a
+//   decoding probe", because that defeats the probe the law is protecting.
+//   Every word she must COMPREHEND (the question) or PRODUCE (the canonical
+//   answer) is still required, for every non-nonsense item.
 export function extractVocabFromBank(bank) {
   const words = new Set();
   for (const entry of bank || []) {
-    const text = `${entry.question || entry.q || ''} ${entry.expectedAnswer || entry.a || ''} ${(entry.expectedVariants || entry.variants || []).join(' ')}`;
+    const answer = String(entry.expectedAnswer || entry.a || '');
+    const isNonsense = !!entry.nonsense;
+    // The tokens this item's design forbids teaching — its answer and its
+    // variants — so they can be subtracted from the question text too.
+    const forbidden = new Set();
+    if (isNonsense) {
+      for (const t of `${answer} ${(entry.expectedVariants || entry.variants || []).join(' ')}`
+        .toLowerCase().split(/[^a-z']+/).filter(Boolean)) forbidden.add(t);
+    }
+    const text = `${entry.question || entry.q || ''} ${isNonsense ? '' : answer}`;
     const entryWords = text.toLowerCase().split(/[^a-z']+/).filter(Boolean);
     for (const w of entryWords) {
       if (AMBIENT_STOPWORDS.has(w)) continue;
       if (w.length < 2) continue;
+      if (forbidden.has(w)) continue;
       words.add(w);
     }
   }
   return words;
+}
+
+// ⛔⛔ THE HARD LIST — every token that a `nonsense: true` item depends on
+// staying unfamiliar, across every bank. Exported so the PRE-GATE TEACH can
+// refuse it directly instead of trusting that the extractor upstream got it
+// right. Two independent barriers, because the failure mode is silent: a
+// pre-taught nonsense word does not error, it just makes a decoding probe pass
+// for the wrong reason, and nothing downstream can tell the difference.
+export const NEVER_TEACH_EXAM_TOKENS = (() => {
+  const out = new Set();
+  for (const bank of Object.values(EXAM_BANKS || {})) {
+    for (const entry of bank || []) {
+      if (!entry || !entry.nonsense) continue;
+      for (const t of `${entry.expectedAnswer || entry.a || ''} ${(entry.expectedVariants || entry.variants || []).join(' ')}`
+        .toLowerCase().split(/[^a-z']+/).filter(Boolean)) out.add(t);
+    }
+  }
+  return out;
+})();
+
+// The accepted-but-not-required set: every variant token that is not already
+// a required word. Reported beside the coverage so an untrained variant is
+// VISIBLE without being treated as a gap that must be closed by teaching.
+// Nonsense answers never appear here either — nothing about them may be taught.
+export function extractAcceptedVocabFromBank(bank) {
+  const required = extractVocabFromBank(bank);
+  const accepted = new Set();
+  for (const entry of bank || []) {
+    if (entry.nonsense) continue;
+    for (const w of (entry.expectedVariants || entry.variants || []).join(' ')
+      .toLowerCase().split(/[^a-z']+/).filter(Boolean)) {
+      if (AMBIENT_STOPWORDS.has(w)) continue;
+      if (w.length < 2) continue;
+      if (required.has(w)) continue;
+      accepted.add(w);
+    }
+  }
+  return accepted;
 }
 
 // Coverage audit — given the set of words Unity has been trained on,
@@ -2198,12 +2292,25 @@ export function examVocabCoverage(cellKey, trainedVocab) {
   }
   const coverage = required.size > 0 ? trained / required.size : 1;
   missing.sort();
+  // ⭐ The accepted-only tokens that are untrained. NOT part of `missing`, and
+  // deliberately not part of `coverage` — the pre-gate teaches `missing`, and
+  // an accepted variant is something we tolerate her saying, not something she
+  // must be drilled on. Published so the fact stays visible instead of being
+  // silently dropped when it stopped driving a teach.
+  const acceptedUntrained = [];
+  for (const w of extractAcceptedVocabFromBank(bank)) {
+    if (!(trainedVocab && (trainedVocab.has ? trainedVocab.has(w) : (w in trainedVocab)))) {
+      acceptedUntrained.push(w);
+    }
+  }
+  acceptedUntrained.sort();
   return {
     cellKey,
     required: required.size,
     trained,
     missing,
     coverage,
+    acceptedUntrained,
   };
 }
 
