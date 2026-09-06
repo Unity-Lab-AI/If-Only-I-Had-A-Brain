@@ -1512,7 +1512,7 @@
         if (isAdmin) {
           (async () => {
             try {
-              const r = await fetch(adminApi('auto-advance'), { cache: 'no-store' });
+              const r = await adminFetch('auto-advance');
               if (r.ok) {
                 const j = await r.json();
                 if (typeof j.enabled === 'boolean') applyAutoAdvanceState(j.enabled);
@@ -1529,7 +1529,7 @@
           // telemetry from it so refresh AND cross-admin both reflect the truth.
           (async () => {
             try {
-              const r = await fetch(adminApi('autoscale'), { cache: 'no-store' });
+              const r = await adminFetch('autoscale');
               if (r.ok) renderAutoScale(await r.json());
             } catch { /* server may be transitioning — panel stays at HTML default until the next autoScaleChanged WS */ }
           })();
@@ -4882,7 +4882,7 @@
     // Hoisted (function declaration) so refreshMilestone can call it.
     async function refreshCheckpoints() {
       try {
-        const r = await fetch(adminApi('versions'), { cache: 'no-store' });
+        const r = await adminFetch('versions');
         if (!r.ok) return;
         const v = await r.json();
         const el = document.getElementById('d-ms-checkpoints');
@@ -5127,7 +5127,7 @@
       // and resumes automatically on reconnect.
       if (!ws || ws.readyState !== 1) return;
       try {
-        const r = await fetch(adminApi('milestone'), { cache: 'no-store' });
+        const r = await adminFetch('milestone');
         if (!r.ok) return;
         const m = await r.json();
         const bootEl = document.getElementById('d-ms-boot');
