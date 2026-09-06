@@ -494,6 +494,15 @@
   <div class="tv-col tv-col-panels">
     <div class="tv-card tv-card-wide">
       <h2><span class="tv-tip tip-l"
+        title="One verdict: is the training actually working right now, or not."
+        data-tip="Runs LIVE, against the running brain, and answers the question directly instead of handing back numbers to interpret.&#10;&#10;⛔ A bench of this page with the brain DOWN would measure almost nothing that matters — whether a lane is quiet or dead, whether the feed is feeding, whether teaching is advancing are all properties of a RUNNING walk. An offline pass would print green over a stopped brain and carry authority it had not earned.&#10;&#10;⭐ Every FAIL names what to do about it.">Bench — is it working?</span><span class="tv-sub" id="tvBenchLbl">—</span></h2>
+      <div class="tv-body">
+        <div id="tvBench" style="font-family:var(--tv-font);font-size:12px"></div>
+      </div>
+    </div>
+
+    <div class="tv-card tv-card-wide">
+      <h2><span class="tv-tip tip-l"
         title="The training over time, read back from disk — not the live instant."
         data-tip="Every other panel on this page shows the live INSTANT. This one shows the SHAPE over time, sampled every 30s and kept on disk for about a week.&#10;&#10;⛔ It exists because the console ring holds about four minutes and rotates: a boot line proving the letter pass had run, and a wedge's own lane line, were both already gone when they were looked for.&#10;&#10;⭐ A flat pairs line with a climbing stage age is a WEDGE. A climbing pairs line is a ramp. Those look identical in a single instant and completely different here.">Training over time</span><span class="tv-sub" id="tvSeriesLbl">—</span></h2>
       <div class="tv-body">
@@ -1077,6 +1086,9 @@ async function poll() {
     return;
   }
   const st = (j.state || j) || {};
+  // Handed to the bench, which also needs the retention series and so runs from
+  // the series poll. One fetch each, no third poll.
+  window._tvLastState = st;
   const tv = st.teachView;
 
   /* ⛔⛔ A BOOT-FATAL OUTRANKS EVERY OTHER READING ON THIS PAGE, AND ON
@@ -1333,6 +1345,83 @@ function eyeAgo(ts) {
 }
 
 let _tvEyeAt = 0;
+/* ⛔⛔ THE BENCH — one verdict, live, against a RUNNING brain.
+   The acceptance test is the operator's own words: *"a bench readout to know if
+   shit is working or not"*. So this answers THAT question and never hands back a
+   number for someone else to interpret.
+   ⛔ It runs live on purpose. This row was once filed as an offline auditor and
+   corrected immediately: an offline pass would print green over a stopped brain,
+   because whether a lane is quiet or DEAD, whether the feed is feeding, and
+   whether teaching is advancing are all properties of a walk that is running.
+   ⚠ EVERY FAIL NAMES THE ACTION. A verdict a reader cannot act on is a number
+   wearing a colour. */
+let _benchPrev = null;
+function tvBench(st, series) {
+  const C = [];
+  const add = (name, ok, detail, action) => C.push({ name, ok, detail, action });
+  const cur = st && st.curriculum;
+  const tv = st && st.teachView;
+
+  // ── IS SHE TEACHING AT ALL? the one that matters most, and the one a single
+  // instant cannot answer — it needs two readings, which is why the previous
+  // sample is kept.
+  const seq = (st && st.teachStageSeq) || 0;
+  const advanced = _benchPrev ? (seq !== _benchPrev.seq) : null;
+  if (advanced === null) add('teaching advancing', null, 'first sample — needs one more to compare', '');
+  else add('teaching advancing', advanced,
+    advanced ? `stage sequence moved (${_benchPrev.seq} → ${seq})` : `stage sequence FROZEN at ${seq}`,
+    advanced ? '' : 'WEDGE. Read the stage tag: an X-done tag means the blocker is after that teach. Restart via Update & Savestart.');
+  _benchPrev = { seq };
+
+  // ── the teach bus: is anything arriving?
+  const busAge = tv && tv.ageMs != null ? Math.round(tv.ageMs / 1000) : null;
+  add('teach bus fresh', busAge !== null && busAge < 300,
+    busAge === null ? 'no teachView published' : `last item ${busAge}s ago`,
+    'Nothing has been taught recently. Check the wedge line and the stage tag.');
+
+  // ── her hand
+  const ls = st && st.letterShapes;
+  add('letterforms banked', !!(ls && ls.learned >= ls.of && ls.of > 0),
+    ls ? `${ls.learned} of ${ls.of}` : 'not published',
+    'She cannot write characters she has not traced. Expected 94/94 after cell entry.');
+
+  // ── the dictionary lane
+  const dq = cur && cur.definitionQueue;
+  add('definition lane', !!(dq && dq.lastWindow && dq.lastWindow.bound > 0),
+    dq ? `depth ${dq.depth}, last window bound ${dq.lastWindow ? dq.lastWindow.bound : '?'}` : 'not published',
+    'Definitions are not binding. Check the dictionary cache and DEF-MISS flags.');
+
+  // ── retention: can we still see what happened an hour ago?
+  add('history retained', !!(series && series.available && (series.returned || 0) > 1),
+    series && series.available ? `${series.total} samples on disk` : 'series unavailable',
+    'Without retention an hours-old stall is unreadable. Check better-sqlite3 on the box.');
+
+  // ── the substrate
+  const v = st && st.voice;
+  add('substrate ready', !!(cur && cur.cellStatus),
+    cur ? `cell ${cur.currentCellKey || '?'} · ${cur.cellStatus}` : 'no cell',
+    'No cell is running.');
+
+  const fails = C.filter(c => c.ok === false);
+  const unknown = C.filter(c => c.ok === null);
+  return { checks: C, fails, unknown, verdict: fails.length ? 'NOT WORKING' : (unknown.length ? 'INCONCLUSIVE' : 'WORKING') };
+}
+function renderBench(st, series) {
+  const el = $('tvBench'); if (!el) return;
+  const b = tvBench(st, series);
+  const colour = b.verdict === 'WORKING' ? 'var(--tv-good)' : b.verdict === 'NOT WORKING' ? 'var(--tv-bad)' : 'var(--tv-warn)';
+  $('tvBenchLbl').textContent = `${b.checks.length - b.fails.length - b.unknown.length}/${b.checks.length} passing`;
+  el.innerHTML = `<div style="font-size:20px;letter-spacing:.08em;color:${colour};margin-bottom:8px">${b.verdict}</div>`
+    + b.checks.map(c => {
+      const mark = c.ok === true ? '✔' : c.ok === false ? '✘' : '…';
+      const col = c.ok === true ? 'var(--tv-good)' : c.ok === false ? 'var(--tv-bad)' : 'var(--tv-dim)';
+      return `<div style="margin:3px 0"><span style="color:${col};display:inline-block;width:14px">${mark}</span>`
+        + `<b>${knobEsc(c.name)}</b> <span style="color:var(--tv-dim)">— ${knobEsc(c.detail)}</span>`
+        + (c.ok === false && c.action ? `<div style="color:var(--tv-warn);margin:2px 0 6px 14px">→ ${knobEsc(c.action)}</div>` : '')
+        + `</div>`;
+    }).join('');
+}
+
 /* ⏱ TRAINING OVER TIME — the retention series, drawn.
    ⛔ The markup for this panel shipped one commit before this renderer existed,
    which made it a dead panel: present, titled, and permanently empty. That is
@@ -1364,6 +1453,10 @@ async function pollSeries() {
     el.innerHTML = `<div style="color:var(--tv-dim)">${knobEsc(d.reason || 'the series has not been attached yet')}</div>`;
     return;
   }
+  // ⚠ The bench needs BOTH the live state and the series, and this is the only
+  // place that has the series in hand. Wiring it here rather than giving the
+  // bench its own poll keeps one fetch per 30s instead of two.
+  try { if (window._tvLastState) renderBench(window._tvLastState, d); } catch (e) { /* the bench must never take the page down */ }
   const rows = (d.rows || []).slice().reverse();   // oldest -> newest for drawing
   if (!rows.length) {
     $('tvSeriesLbl').textContent = '0 samples';
