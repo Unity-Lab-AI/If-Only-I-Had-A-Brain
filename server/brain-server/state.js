@@ -1489,12 +1489,24 @@ const SERVER_STATE_MIXIN = {
       letterShapes: _lap('letterShapes', () => {
         try {
           if (typeof this.hasLetterShape !== 'function') return null;
+          // ⭐ THE WHOLE KEYBOARD, COUNTED EXACTLY. This looped `a`..`z` and reported
+          // `of: 26`, so the panel would have gone green on the alphabet while every
+          // digit, every mark and every capital sat unbanked — a full bar over a third
+          // of the job. The font now holds all 94 printable keys, so the count covers
+          // all 94, and `exact` refuses the sibling-case fallback so 26 lowercase
+          // traces cannot report as 52 letterforms.
           const learned = [];
-          for (let i = 0; i < 26; i++) {
-            const ch = String.fromCharCode(97 + i);
-            if (this.hasLetterShape(ch)) learned.push(ch);
+          for (let cc = 33; cc <= 126; cc++) {
+            const ch = String.fromCharCode(cc);
+            if (this.hasLetterShape(ch, true)) learned.push(ch);
           }
-          return { learned: learned.length, of: 26, letters: learned.join('') };
+          const _isL = (c) => /[A-Za-z]/.test(c), _isD = (c) => /[0-9]/.test(c);
+          return {
+            learned: learned.length, of: 94, letters: learned.join(''),
+            lettersLearned: learned.filter(_isL).length, lettersOf: 52,
+            digitsLearned: learned.filter(_isD).length, digitsOf: 10,
+            marksLearned: learned.filter((c) => !_isL(c) && !_isD(c)).length, marksOf: 32,
+          };
         } catch { return null; }
       }),
       // ⛔⛔ THE WIRING AUDIT, PUBLISHED — and it was NOT, which is the exact

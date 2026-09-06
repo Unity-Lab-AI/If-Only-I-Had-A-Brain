@@ -5,6 +5,108 @@
 
 ---
 
+## 2026-09-06 (7th) — `WEDGELIVE` — THE PROBE HELPER STAMPED ENTRY ONLY, SO ITS TAG WAS THE RESTING STATE OF THE WHOLE GATE LANE
+
+Gee (verbatim): *"we cnat have the shit to fix her runing be blocked by a broken run"*
+
+Gee (verbatim): *"start knock ing off those todo s in droves!"*
+
+### What was done without waiting for the press
+
+The row says not to guess which await hangs, and that stands. **Enumerating what is BOUNDED is not guessing** — it is the rule that killed the teach residual, and it eliminates candidates rather than inventing one.
+
+**Every await on the probe path is bounded.** The gate probe and the proxy propagate both sit under caller-owned `Promise.race` deadlines (`DREAM_PROBE_DEADLINE_MS`, default 20 s). `gpuDrainWait` — the only other await the curriculum makes on the GPU proxy, at three call sites — carries a **30 s** `TIMEOUT_MS` that the loop condition genuinely enforces. **So `probeDeadlineHits=6` is not evidence about this wedge:** it is six rescues across a whole boot, behind rate-limited logging.
+
+### ⛔⛔ The defect that made the tag point at the probe
+
+All four exits from the shared probe helper returned **without re-stamping**, so `gate:probe-gpu` was the **resting tag of the entire gate lane** — the last thing stamped before any unmarked code. That is exactly what was reported for two hours as `stage=gate:probe-gpu (age 6957s)` while `probeDeadlineHits` proved no probe was hanging.
+
+Stamped now: `gate:probe-gpu-done` · `gate:probe-prop-done` · `gate:probe-proxy-done` · `gate:probe-dead`, matching the `cell:runner-done` / `gate:readiness-done` convention the batteries already use. **A climbing age on `gate:probe-gpu` means genuinely stuck IN the probe; a climbing age on `gate:probe-gpu-done` means the blocker is AFTER it, in code nothing stamps.** The `-dead` exit is stamped too, and it is the one that matters most because it is silent — a caller reaching it got a zero vector from a probe that never ran, and used to leave `gate:probe-gpu` behind as though one had been in flight.
+
+### ⭐ It repairs a measurement nobody had questioned
+
+`_tstage` banks the **outgoing** stage's held duration into `teachStageMax`. With entry-only stamping, the probe's banked time therefore included **every millisecond of unmarked code that ran after it** until the next stamp. **Any past `teachStageMax=gate:probe-gpu` reading was over-attributed by exactly that amount.** The probe's banked max is now the probe alone.
+
+### Verified
+
+`node --check` · ESM `import()` link · bundle rebuilt (996.0 kb) · 5 new stamps in place.
+
+⚠ **The press is still the diagnostic for the wedge itself.** This narrows where the reading will point; it does not name the blocker, and the row stays open with that unchanged.
+
+---
+
+## 2026-09-06 (6th) — `FLAGSAMPLE.2` — A PERMANENT `noDef` WAS SHADOWING THE PEER SOURCE THAT COULD ANSWER, AND IT WAS 80 WORDS, NOT 4
+
+Gee (verbatim): *"start knock ing off those todo s in droves!"*
+
+### The mechanism, traced end to end as the row asked
+
+`getDefinition` consults the offline dictionary **before** the network — but it reads the **cache** before both. `noDef` has TTL **Infinity** by design (`_errorEntryExpired` returns false for it), and the disk cache restores it on every boot. So **any word cached `noDef` before the offline lane existed is answered "no definition" forever, and the offline dictionary is never consulted for it again.**
+
+⭐ **Measured on the real 4,135-entry cache, not reasoned about:** 195 permanent `noDef` entries, **80 of which the loaded WordNet can define right now** — `touch` (27 senses), `tight` (16), `net` (12), `hell`, `american`, `australia`, `egypt`, `greece`, `rome`, and the four the flag surfaced (`be` 14 · `look` 14 · `every` 2 · `america` 2). **All four stamped `2026-06-20T06:28:14Z`** — months before the offline lane shipped. **Content words she could never have learned a definition for.**
+
+⚠ **The 404 itself was never wrong.** This file already records that `is` and `was` both 404 while `are`, `were` and `been` return 200 — the API's coverage is genuinely uneven. What was wrong is treating **one source's 404 as the answer** when the module's own header calls offline *"a peer source, not a fallback"*. **A 404 is a fact about that API's coverage; only the absence of any source's entry is a fact about the word.**
+
+### Fixed at the chokepoint, and it heals instead of purging
+
+`_rescueNoDefFromOffline` sits inside `_cacheGet`: on a `noDef` hit the offline dictionary is asked, and if it answers the entry is **replaced** with the positive one. So the word is fixed permanently, the disk cache repairs itself on the next flush, and **no stored data is migrated or deleted.** The branch is self-extinguishing — a healed entry is no longer an error and never re-enters it.
+
+⛔ **`_cacheGet` is the chokepoint on purpose:** `getDefinition`, `getDefinitionSync`, `getDefinitionsSync` and `getDefinitions` all read through it, so none of them can disagree about whether a word is definable. **`lookupStatus` did not** — it read the raw Map, which made it the one answer that could still say `noDef` about a definable word, **and DEF-MISS keys on exactly that value.** Now routed through the same chokepoint.
+
+### Verified against the poisoned cache itself
+
+```
+permanent noDef loaded from disk : 195
+healed to hasDef                 :  80   (234 senses recovered)
+still noDef                      : 115
+```
+
+The 115 that stay are **correct**: typos (`constpated`, `swalled`, `dumn`, `prews`), contractions (`dont`, `thats`, `whats`), hyphenates (`sun-rise`, `new-spaper`), nonsense (`foo`). And `for` · `your` · `their` · `our` **stay `noDef`**, which was the expected half of the original split and is unchanged.
+
+### ⛔ AND A NEW DEFECT FOUND WHILE VERIFYING, FILED NOT FIXED
+
+The offline dictionary returns senses in **POS-block order — noun first, always** — not by usage frequency. Across the 80 healed words the first sense is a **noun 70 times**, adjective 8, adverb 1, **verb 1**. So `be` leads with *"a light strong brittle grey toxic bivalent metallic element"* (**beryllium**) and `look` with *"the feelings expressed on a person's face"*.
+
+⚠ **Pre-existing and wider than this change** — it applies to all ~2,134 words the offline lane already answers, so this batch widens exposure by 80 rather than causing it. The multi-sense teach path binds **all** senses, so her knowledge lands complete; the single-string first-sense path is `_emitDefinition`, **which is what she SAYS when asked what a word means.** Filed as `DEFPOS.1` with these numbers rather than guessed at.
+
+---
+
+## 2026-09-06 (5th) — `WRITEWARM.2` — THE OTHER 52 KEYS, AND THE CASE FOLD THAT WOULD HAVE HIDDEN HALF OF THEM
+
+Gee (verbatim): *"should be ab;le to do everything on a qwerty"*
+
+Gee (verbatim): *"start knock ing off those todo s in droves!"*
+
+### What was missing, and the count in the filing was off by one
+
+`FONT5X7` held **42** of the **94** printable keys (space aside). The filing said the gap was **53 characters — 26 lowercase and 27 symbols**. Counted from the table rather than from memory, it is **52 — 26 lowercase and 26 symbols**. The symbol list in the filing was already correct at 26 entries; the total carried the error.
+
+All 52 authored: the lowercase alphabet on standard 5×7 metrics (ascenders from the top row, x-height body rows 2-6, descenders on `g j p q y` dropping through the last row) and `` ` ~ @ # $ % ^ & * ( ) _ = + [ ] { } \ | ; : " < > / ``. **Verified 95/95 printable keys present, zero malformed rows, and every new glyph rendered to ASCII and read by eye.**
+
+### ⛔ THE FOLD WAS LOAD-BEARING, AND ADDING GLYPHS ALONE WOULD HAVE BEEN A SILENT WRONG ANSWER
+
+Both raster paths — `renderThoughtPlane` and `glyphStrokes` — upper-cased the whole string **before** indexing the table. That was the only sane thing to do while lowercase had no glyphs, and it is exactly what `WRITEWARM.1` correctly identified as "not a defect". **The moment lowercase forms exist it inverts**: 26 new letterforms would sit in the table unreachable by any caller.
+
+Worse downstream: `learnLetterShape` lower-cased its argument, so with case-preserving glyphs a request for `A` would have traced the **lowercase** `a` and banked it under a key that reads right. A wrong shape filed under a correct-looking key is worse than a refusal.
+
+**Fixed as a fallback, not a flip:** `fontGlyph(ch)` takes the character's own letterform, else its case sibling, else blank. Nothing that resolved before stops resolving; `"cat"` now renders `cat`. Store keys became case-sensitive, and `_letterEntry(ch, exact)` keeps the sibling-case fallback for **writing** — she should use her `a` when asked for an `A` she has not traced yet — while refusing it for **counting**.
+
+### The instrument would have read green over a third of the job
+
+`state.js` looped `a`..`z` and published `of: 26`. With 94 glyphs banked it would have shown **26 of 26, full bar**, while every capital, digit and mark went uncounted — and the new sibling-case fallback would have made 26 lowercase traces report as 52 letterforms. **That is the exact defect class this project keeps paying for, caught before it shipped rather than after.** Now `of: 94` counted with `exact`, broken out as letters / numbers / marks, and the teach viewer renders the breakdown because one number over 94 cannot say whether she is missing every capital or every mark.
+
+### Also corrected in the same pass
+
+`phrase` was `` `the letter ${c}` `` for all 42 glyphs. A digit is not a letter and neither is a dollar sign — the phrase is what she recalls the shape **as**, so it now names letter / number / mark correctly. And `handwrittenStrokes` stopped flattening its label to lowercase, which would have left her unable to write a capital at all.
+
+### Verified
+
+`node --check` ×4 · ESM `import()` link · **`glyphStrokes` produces real strokes for 94 of 94, zero empty** · `A` and `a` confirmed structurally distinct (4 strokes vs 5) · bundle rebuilt (996.0 kb).
+
+⚠ **Not claimed: confirmed on the box.** The count is a code fact; `letterShapes.learned` reading **94** is a press fact, and `WRITEWARM.3` stays gated on it exactly as filed.
+
+---
+
 ## 2026-09-06 (4th) — `TEACHRATE` — THE REPS WERE NEVER THE PROBLEM, THE PROFILE WAS TRUNCATED, AND MY OWN LOAD ALARM WAS AN ARTEFACT
 
 Gee (verbatim): *"okay now is there anyway to massively speead up traing anything at all to go from the 2k teaches to near 200k"*
