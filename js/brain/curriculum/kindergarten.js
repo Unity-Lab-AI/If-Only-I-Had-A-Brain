@@ -3576,26 +3576,30 @@ export const K_MIXIN = {
     // ⚠ Best-effort and OFF the critical path. A box with no mind-space simply
     // does not learn letterforms, and the honest consequence is that she writes
     // nothing on her drawings rather than stamping a font she never learned.
-    try {
-      const _brain = this.cluster && this.cluster._brain;
-      if (_brain && typeof _brain.learnLetterShape === 'function' && !this._letterShapesLearned) {
-        const _lsStart = Date.now();
-        let _learned = 0, _failed = 0;
-        for (const ch of ALPHABET) {
-          const got = await _brain.learnLetterShape(ch);
-          if (got) _learned++; else _failed++;
-          await new Promise((r) => setImmediate(r));   // never hold the loop
-        }
-        this._letterShapesLearned = true;
-        // ⚠ The failure count is reported, never swallowed. A letter she could
-        // not trace is a letter she will not be able to write, and that has to
-        // be visible as a fact rather than showing up later as a caption that
-        // is quietly missing characters.
-        this._hb(`[Curriculum] ✓ ELA-K Phase 1b — letter SHAPES learned: ${_learned}/${ALPHABET.length} traced and banked`
-          + (_failed ? `, ${_failed} could NOT be traced (she will not be able to write those)` : '')
-          + ` in ${((Date.now() - _lsStart) / 1000).toFixed(1)}s`);
-      }
-    } catch (err) {
+    // ⭐⭐ `WRITEWARM.1` — ONE OWNER, AND IT NOW RUNS EARLIER THAN THIS PHASE.
+    //
+    // This block used to carry its own 26-letter loop. It has been replaced by
+    // a call to the shared `_learnGlyphShapesOnce()`, which `_preCellVocabSetup`
+    // already invokes at CELL ENTRY — so by the time this phase is reached the
+    // shapes are long since banked and this is a no-op.
+    //
+    // ⛔ WHY IT MOVED. Phase 1b is one of the cell's 25 phases, and the phases
+    // do not start until the pre-phase definition bootstrap drains. Measured
+    // live: `cellPhasesStarted` **0 of 25** after 431 s with
+    // `definitionQueue.depth` **2,235** left at ~12 s each — so `letterShapes`
+    // read `learned: 0 of 26` and would have for HOURS. A child forms letters on
+    // day one; she was waiting on a dictionary.
+    //
+    // ⛔ AND THE OLD LOOP TAUGHT 26 OF THE FONT'S 42. It walked `ALPHABET` only,
+    // so every digit and every punctuation mark the renderer can already draw
+    // went untaught — "write the number 7" had no stroke, at any grade.
+    //
+    // ⚠ Kept as a CALL rather than deleted: this phase is the ELA-K contract
+    // that letterforms exist before letter work, and a second caller costs
+    // nothing behind the once-per-walk guard while keeping that contract true
+    // if the pre-cell hook is ever bypassed.
+    try { await this._learnGlyphShapesOnce(); }
+    catch (err) {
       console.warn('[Curriculum] letter-shape learning failed (she will write nothing rather than stamp a font):', err?.message || err);
     }
 
