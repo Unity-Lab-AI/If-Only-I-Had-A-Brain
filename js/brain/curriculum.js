@@ -4111,9 +4111,19 @@ export class Curriculum {
             if (psx && psx.n > 0) {
               const heb = (out.hebbian && (out.hebbian.substrateMs + out.hebbian.crossMs + out.hebbian.intraMs)) || 0;
               const lat = (out.lateral && (out.lateral.substrateMs + out.lateral.scanMs + out.lateral.antiMs)) || 0;
-              const named = psx.embedMs + psx.wtaMs + psx.clearMs + psx.tileMs + heb + lat;
+              const named = psx.embedMs + psx.wtaMs + psx.clearMs + psx.tileMs + (psx.antiMs || 0) + heb + lat;
               out.pairSegments = {
                 ...psx,
+                // ⭐ `DEFCOST.5` — the per-CALL / per-PAIR split. `_teachWordDefinition`
+                // makes ~14 assoc calls per word (one per dictionary SENSE), so
+                // anything fixed per call is paid 14× per word and collapses to
+                // 1× if the senses are concatenated into a single call — while a
+                // per-pair cost is unaffected by that change. Publishing both
+                // means the decision is a read rather than an argument.
+                perCallMs: psx.calls ? +(psx.pairMs / psx.calls).toFixed(3) : null,
+                pairsPerCall: psx.calls ? +(psx.n / psx.calls).toFixed(2) : null,
+                antiPerPairMs: psx.antiN ? +(psx.antiMs / psx.antiN).toFixed(4) : null,
+                antiPct: psx.pairMs > 0 ? +(100 * psx.antiMs / psx.pairMs).toFixed(1) : null,
                 embedPerPairMs: +(psx.embedMs / psx.n).toFixed(4),
                 wtaPerPairMs: +(psx.wtaMs / psx.n).toFixed(4),
                 clearPerPairMs: +(psx.clearMs / psx.n).toFixed(4),
@@ -19539,6 +19549,9 @@ export class Curriculum {
     // as the `lateral` and `hebbian` rows already published there).
     let _psEmbedMs = 0, _psWtaMs = 0, _psClearMs = 0, _psTileMs = 0, _psN = 0;
     let _semActiveSum = 0, _semActiveN = 0;
+    // `DEFCOST.4` — the contrastive pass's own clock. It is a second full
+    // write-and-dispatch cycle per pair and appears in no profile.
+    let _psAntiMs = 0, _psAntiN = 0;
     // `LATSCAN.1` — reused across every pair-rep in this call; cleared at each
     // motor write. One array, not one per pair, because the alloc churn this
     // file already fought over (`_crossBucketPostScratch`) is the same lesson.
@@ -19554,6 +19567,7 @@ export class Curriculum {
         const sp = this._teachStageProfile || (this._teachStageProfile = {});
         const e = sp.pairSegments || (sp.pairSegments = {
           n: 0, embedMs: 0, wtaMs: 0, clearMs: 0, tileMs: 0, pairMs: 0,
+          antiMs: 0, antiN: 0, calls: 0,
           semActiveSum: 0, semActiveN: 0,
         });
         e.n += _psN;
@@ -19561,6 +19575,13 @@ export class Curriculum {
         e.wtaMs += _psWtaMs;
         e.clearMs += _psClearMs;
         e.tileMs += _psTileMs;
+        e.antiMs += _psAntiMs;
+        e.antiN += _psAntiN;
+        // ⭐ `DEFCOST.5` — CALL COUNT, so per-CALL and per-PAIR cost can be told
+        // apart. That distinction decides whether collapsing the per-sense calls
+        // helps at all: a fixed per-call cost paid 14 times per word collapses
+        // to once, while a per-pair cost does not move.
+        e.calls += 1;
         e.pairMs += Date.now() - startMs;
         e.semActiveSum += _semActiveSum;
         e.semActiveN += _semActiveN;
@@ -19776,6 +19797,19 @@ export class Curriculum {
         // Contrastive negative-pair pass — sample a different pair and
         // use its output as the WRONG answer for the current input. Push
         // that combination apart on the intra-cluster recurrent matrix.
+        //
+        // ⭐⭐ `DEFCOST.4` — TIMED, BECAUSE IT IS A COMPLETE SECOND COPY OF THE
+        // WRITE-AND-DISPATCH CYCLE AND NOTHING HAS EVER MEASURED IT. Everything
+        // below repeats per pair: a `_clearSpikes`, TWO `_writeTiledPattern`
+        // calls, a relation-tag write, and a full `_teachAntiHebbian` dispatch —
+        // and `_teachAntiHebbian` does not appear in `teachProfile` at all, so
+        // every millisecond of this lands in the unattributed residual.
+        //
+        // ⛔ The residual is 84.7% of the pair loop, measured live. Three
+        // theories about it have already been killed by measurement (the tiled
+        // write, the spike clear, the sparse index array), so this is being
+        // MEASURED rather than assumed to be the answer.
+        const _apt0 = antiPairs ? Date.now() : 0;
         if (antiPairs) {
           let wrongIdx = Math.floor(Math.random() * pairs.length);
           if (wrongIdx === pairIdx) wrongIdx = (wrongIdx + 1) % pairs.length;
@@ -19810,6 +19844,8 @@ export class Curriculum {
               }
             }
           }
+          _psAntiMs += (Date.now() - _apt0);
+          _psAntiN += 1;
         }
       }
       await _microtask();
