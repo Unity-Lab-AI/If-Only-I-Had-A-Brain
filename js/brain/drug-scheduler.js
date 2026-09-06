@@ -589,7 +589,7 @@ function comboKey(a, b) {
 // — and the hardcoded entry was landing on top of it. Stacked stimulants
 // over-contributed.
 //
-// ⭐ Gee's call: superposition is the truth. But NOT a blanket delete —
+// ⭐ Settled by ruling: superposition is the truth. But NOT a blanket delete —
 // deleting the whole table would throw away real information, so the filter
 // is PER AXIS:
 //

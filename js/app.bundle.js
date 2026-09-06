@@ -3307,8 +3307,8 @@ var VoiceIO = class {
   // =========================================================================
   //  Speaking — Equation Unity One, and nothing else
   //
-  // ⛔ THE OLD TTS CONFIG IS GUTTED (2026-09-02, operator: *"make sure u gut
-  // the old tts it used that we dont need anymore"*). `setVoice`,
+  // ⛔ THE OLD TTS CONFIG IS GUTTED (2026-09-02, on an instruction to gut the
+  // old text-to-speech path that is no longer needed). `setVoice`,
   // `_pollinationsVoice`, `_voiceOverride`, `setApiKey` and `_apiKey` are gone:
   // they configured a NETWORK audio model that was deleted long ago, and
   // `_apiKey` in particular was written twice and read NEVER — dead state kept
@@ -3414,8 +3414,8 @@ var VoiceIO = class {
   // What it used to do, kept as one line of history rather than a page: it
   // POSTed her text to an outside chat model with an instruction to repeat it
   // verbatim and played back the returned audio — an outside model producing
-  // her voice. The operator: "we do not use pollinations tts we use the unity one
-  // equations".
+  // her voice. The rule: no third-party text-to-speech — her voice comes from
+  // the project's own equations.
   //
   // ⚠ `_pollTtsDead` went with it. It was READ at two sites and ASSIGNED at
   // none: the 401 handler that used to set it left with the lane, so both
@@ -3424,8 +3424,8 @@ var VoiceIO = class {
   // below both have ZERO callers. They decoded a compressed `arrayBuffer` (an
   // mp3/opus response body), which only the deleted external-TTS lane ever
   // produced; her own lanes carry raw Float32 PCM and play through `_playPcm`.
-  // ⛔ DELETED 2026-09-02 (operator: *"make sure u gut the old tts it used that
-  // we dont need anymore"*). Keeping a dead lane so a warning has somewhere to
+  // ⛔ DELETED 2026-09-02 (on an instruction to gut the old text-to-speech path
+  // that is no longer needed). Keeping a dead lane so a warning has somewhere to
   // live is how the warning outlives the reason for it. The note stays, the
   // code goes. `_currentAudioElement` went too — it was set ONLY by
   // `_playWithAudioElement`, so the branch in `stopSpeaking` that checked it
@@ -12316,7 +12316,7 @@ var LanguageCortex = class {
                 // returning silence, because a question scored as her answer would
                 // corrupt every gate that reads it.
                 curiosityAsk: true,
-                // ⭐⭐ THE THALAMIC RELAY IS ON (2026-09-04, Gee's call).
+                // ⭐⭐ THE THALAMIC RELAY IS ON (2026-09-04, by ruling).
                 //
                 // `cluster/attention.js` — cosine → temperature softmax →
                 // weighted sum over the words already emitted in this utterance
@@ -16409,8 +16409,8 @@ var CLUSTER_EMIT_MIXIN = {
   },
   // ── WORDSALAD.3 — WHEN SHE CANNOT SAY IT, SHE ASKS ABOUT IT ────────────────
   //
-  // Operator: "being inqusitive asking questions and not just that but all
-  // learning needs it through her eyes". This is the consuming half of the
+  // The rule: she is INQUISITIVE and asks questions — and beyond that, all
+  // learning goes through her own eyes. This is the consuming half of the
   // curiosity gap recorded at the signal-floor rejection: the compose produced
   // NOTHING, and a moment ago the argmax had a word it could not hold above the
   // floor. Silence is the wrong output for that state — a person asks.

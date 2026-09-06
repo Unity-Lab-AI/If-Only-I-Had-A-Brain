@@ -1,8 +1,8 @@
 /**
  * hearing.js — HER EARS, as a rolling buffer of real sound.
  *
- * Operator: *"she need to be able to hear too when talked too not just a TTS
- * wrapper on a text chain"*.
+ * The requirement: she must be able to HEAR when spoken to, not merely carry a
+ * text-to-speech wrapper over a text chain.
  *
  * ⛔ THE GAP THIS FILLS, stated exactly. She already HAD ears and already had
  * the mathematics:

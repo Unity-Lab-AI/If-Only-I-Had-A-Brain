@@ -1287,7 +1287,7 @@ export class NeuronCluster {
         // the trained-signal headroom doubles. Paired with the rescale
         // FLOOR at wMax × 0.25 = 0.1 added to `_teachAssociationPairs` +
         // `_teachQABinding` so rescale stops before trained signal drowns.
-        // sem→motor saturation prevention (Option B, Gee 2026-06-27) — the
+        // sem→motor saturation prevention (Option B, ruled 2026-06-27) — the
         // motor-emission projections can be given a tighter weight ceiling to
         // limit how far the dominant basin runs above the others. Default
         // UNCHANGED (0.4, the bisected value); DREAM_SM_WMAX>0 opts a tighter
@@ -4828,7 +4828,7 @@ export class NeuronCluster {
     const negLr = opts.negLr ?? -this.learningRate * 5;
     const reps = opts.reps ?? 100;
 
-    // CELL-TEACH SPEED (Gee 2026-07-15) — was the ~2s/letter WORD-INT cost. This
+    // CELL-TEACH SPEED (2026-07-15) — was the ~2s/letter WORD-INT cost. This
     // is fired (letters-1)× per rep from _teachWordIntegrated; the old body
     // allocated THREE Float64Array(this.size) (=1.5M at the grown cortex) per call
     // AND ran `reps` (default 100) full-1.5M-row ojaUpdate passes over the intra

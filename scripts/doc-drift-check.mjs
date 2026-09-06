@@ -59,6 +59,19 @@ const note = (title, items, detail) => {
   for (const s of src) for (const m of s.matchAll(/DREAM_[A-Z0-9_]+/g)) inCode.add(m[0]);
   // Prefix artifacts — built up in code, not real variables. Documented as such.
   for (const p of ['DREAM_CONSOLIDATION_', 'DREAM_SAT_', 'DREAM_KEEP_']) inCode.delete(p);
+  // ⛔ NOT FLAGS — identifier-shaped strings the broad match cannot tell from one.
+  // The pattern above scans raw source, so it sees names inside COMMENTS and
+  // inside REGEX LITERALS as readily as inside `process.env.X`. Both of these
+  // live in `server/knob-registry.js` and neither is ever read from the
+  // environment: `DREAM_CYCLE` is an alternation branch in the grouping regex
+  // `/CONSOLIDAT|REPLAY|SLEEP|DREAM_CYCLE|SCHEMA|TIER/`, and
+  // `DREAM_MAX_REPLAY_NNZ` appears once, in prose, as an example.
+  // ⚠ EXCLUDED RATHER THAN NARROWING THE MATCH, deliberately: the broad scan is
+  // what found 139 of 178 undocumented flags including `DREAM_KEEP_STATE`, and
+  // requiring a `process.env.` prefix would re-hide anything read by
+  // destructuring or by `env[name]`. A false positive that never resolves is
+  // still a lying instrument — but the cure must not cost the detection.
+  for (const p of ['DREAM_CYCLE', 'DREAM_MAX_REPLAY_NNZ']) inCode.delete(p);
   const doc = read('docs/ADMIN-CONTROLS.md');
   const missing = [...inCode].filter((f) => !doc.includes(f)).sort();
   note(`env flags documented (${inCode.size - missing.length}/${inCode.size})`, missing,

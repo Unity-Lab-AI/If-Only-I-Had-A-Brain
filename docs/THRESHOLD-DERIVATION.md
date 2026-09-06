@@ -10,6 +10,13 @@ sources:
   - js/brain/cluster/emit.js
   - js/brain/curriculum.js
   - js/brain/consolidation-engine.js
+  # Added 2026-09-06 — the drift checker was right: this page makes LINE-PRECISE
+  # claims about these files and did not declare them, so check 8 could never
+  # flag it when they moved. `rep-compression.js` joins them with the
+  # self-pricing + lateral-hint derivations added the same day.
+  - server/brain-server.js
+  - donor-app/src/donor.rs
+  - js/brain/rep-compression.js
 verified-scope: |
   CHECKED 2026-08-27 — every named constant on this page looked up in source:
     - CORRECTED (5): BACK_INJECT_BASE 0.15->0.24, BACK_INJECT_DECAY 0.85->0.92,
@@ -393,3 +400,24 @@ Live-test follow-up shipped 20 atomic fixes — several introduced new named con
 - **Math justification:** At biological scale `_teachHebbian` dispatches ~1000-5000 ops/sec via `_sparseSendBinary`. 30s × 5000/sec = 150,000 entries worst-case if window grows unbounded. 5000-entry soft-cap triggers cutoff prune (anything older than 30s removed) before memory pressure. Lazy because main prune happens in `_updatePerfStats` every 1s.
 
 See `docs/ARCHITECTURE.md § Live-test follow-up close` for cross-module summary of all 20 fixes.
+
+## Self-pricing + lateral-hint additions (2026-09-06)
+
+Two named constants shipped with the rep-pricing publication and the lateral-inhibition active-index hint. Both are derived from live measurements taken off the box the same day, so the numbers they rest on are recorded here rather than in a commit message.
+
+### Rep-pricing re-measure interval
+
+- **Constant:** `DREAM_REP_AUTOPRICE_GAP_MS`, default **60,000 ms**.
+- **What it bounds:** how often the collision-load measurement re-runs. Previously it ran on **every** `_teachAssociationPairs` call with ≥8 pairs — **25,603 calls** in one live boot — sampling up to **512** patterns per call, each sample costing one `_dictionaryPatternFor` (a fresh `Float64Array(300)`, a GloVe lookup and five hash stripes) plus one `_topKEmbedding`.
+- **Math justification:** the measured quantity is a property of **the corpus and the encoding**, neither of which changes between two calls a millisecond apart. The fastest thing that legitimately moves it is a grade transition, and cells run for **tens of minutes** (`cellElapsedMs` read **3,148,555 ms = 52 min** live, mid-cell). A 60 s interval is therefore **~52× finer than the fastest real change**, while cutting the sampling work by the call rate: 25,603 calls over a 3,233 s boot = **7.9 calls/s**, so 60 s collapses ~475 measurements into 1 — a **475× reduction** with no loss of resolution against anything that actually varies.
+- **Theoretical optimum:** one measurement per cell entry, which is what this approximates without needing a cell-boundary hook. Lower is pure waste; much higher risks a stale verdict spanning a grade change, which is why the verdict now carries `measuredAt` so its age is readable rather than assumed.
+- **Drift trigger:** re-derive if mean cell duration falls below ~10 minutes, or if the verdict is ever wired to STEER compression (`DREAM_REP_AUTOPRICE=1`) rather than only to report — a steering input earns a tighter interval than a reporting one.
+
+### Lateral active-index hint verification budget
+
+- **Constant:** `DREAM_LATERAL_HINT_VERIFY`, default **500** calls.
+- **What it bounds:** how many times the caller-supplied motor active-index list is checked against the full scan before the scan is skipped. One mismatch disables the hint permanently for the process.
+- **Math justification:** the failure this guards is **deterministic, not stochastic** — either something writes motor spikes between the caller's `_writeTiledPattern` and the lateral call, or nothing does. A deterministic disagreement shows up on the **first** call, so the budget is not a statistical confidence level; it is a margin against **path variety**. The assoc loop reaches this code under distinguishable conditions — `skipPredictiveError` true or false, `binarize` true or false, def-bind vs corpus-pair callers, and the anti-pair branch taken or not — a handful of binary axes, so **on the order of 16–32 distinct paths**. At the measured **170,334 lateral calls per boot**, 500 is **~15× the path count** and **0.29% of the calls**, so every path is exercised many times over while the verification costs well under one percent of the very scan it exists to remove.
+- **Cost of being wrong in the safe direction:** 500 double-runs × 2.23 ms = **1.1 s per boot**, against the **380,300 ms** the scan currently spends. The verification is 0.0003 of what it protects.
+- **Theoretical optimum:** unmeasurable without knowing the true path count; 500 is deliberately generous because the failure is silent (a wrong hint trains anti-Hebbian against the wrong rows and reports nothing), and a silent failure justifies paying more than the minimum for evidence.
+- **Drift trigger:** re-derive if the assoc pair loop gains a new conditional branch around the motor write, or if a **second** call site is ever given a hint — the path count is the input, and it is the thing that changes.

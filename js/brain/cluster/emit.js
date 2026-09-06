@@ -803,9 +803,9 @@ export const CLUSTER_EMIT_MIXIN = {
     // word that legitimately WON its bucket argmax above NOISE_FLOOR was
     // still rejected for being below the content-calibrated adaptive floor
     // → emitWordDirect returned '' → composeSentence broke the loop → ZERO
-    // function-word syntax ever emerged. Gee 2026-07-07: "she does not use
-    // connecting words like i am, that, this, i want... a kindergardner
-    // knows all this in real life." Fix: when the argmax WINNER is a
+    // function-word syntax ever emerged. Reported 2026-07-07: she was not using
+    // connecting words at all — no copulas, no determiners, no first-person
+    // wants — which a real kindergartener has. Fix: when the argmax WINNER is a
     // function word, gate it against the HARD NOISE_FLOOR only, not the
     // adaptive component. This is NOT a template / slot prescription — the
     // brain's own trained sem→word_motor argmax still decides IF and WHICH
@@ -841,8 +841,8 @@ export const CLUSTER_EMIT_MIXIN = {
         ts: Date.now(),
       };
       // ── WORDSALAD.3 — A QUESTION IS THE CORRECT OUTPUT OF LOW CONFIDENCE ────
-      // Operator: "being inqusitive asking questions ... all learning needs it
-      // through her eyes". This branch is the exact moment she reaches for a
+      // The rule: she is INQUISITIVE and asks questions, and all learning goes
+      // through her own eyes. This branch is the exact moment she reaches for a
       // word and cannot hold it: the argmax found something, but not strongly
       // enough to clear the floor. Today that produces SILENCE. A person in that
       // state asks — and her Tier 3 curiosity anchor already says so in her own
@@ -1721,8 +1721,8 @@ export const CLUSTER_EMIT_MIXIN = {
 
   // ── WORDSALAD.3 — WHEN SHE CANNOT SAY IT, SHE ASKS ABOUT IT ────────────────
   //
-  // Operator: "being inqusitive asking questions and not just that but all
-  // learning needs it through her eyes". This is the consuming half of the
+  // The rule: she is INQUISITIVE and asks questions — and beyond that, all
+  // learning goes through her own eyes. This is the consuming half of the
   // curiosity gap recorded at the signal-floor rejection: the compose produced
   // NOTHING, and a moment ago the argmax had a word it could not hold above the
   // floor. Silence is the wrong output for that state — a person asks.
@@ -1985,9 +1985,9 @@ export const CLUSTER_EMIT_MIXIN = {
     //
     // Removing the oracle does not mean accepting a mute brain — it means the
     // emission path is now the ONLY thing being measured, so a gate that fails
-    // is a BUG REPORT ABOUT THE TEACHING, not an acceptable outcome. Gee:
-    // "the gates shouldnt fail tho if we do it all correctly inventing this new
-    // brain as we go."
+    // is a BUG REPORT ABOUT THE TEACHING, not an acceptable outcome. The
+    // standing position: if this is being invented correctly as it is built,
+    // the gates should not be failing in the first place.
     //
     // ⛔ So a failing probe from here on is read as: sem→word_motor is not
     // depositing enough margin for an argmax to resolve, and the fix is in the

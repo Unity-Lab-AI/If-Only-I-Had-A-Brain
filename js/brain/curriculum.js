@@ -40,7 +40,7 @@
 
 import { sharedEmbeddings } from './embeddings.js';
 import { ensureLetter, ensureLetters, encodeLetter, decodeLetter, inventorySize, inventorySnapshot } from './letter-input.js';
-import { EXAM_BANKS, TRAIN_BANKS, _examSanitizeReport, _examInjectReport, injectGeneratedExamQuestions, cutScoreFor, trainExamOverlap, examVocabCoverage, extractVocabFromBank, methodologyBankFor, scoreMethodologyAnswer } from './student-question-banks.js';
+import { EXAM_BANKS, TRAIN_BANKS, _examSanitizeReport, _examInjectReport, injectGeneratedExamQuestions, cutScoreFor, trainExamOverlap, examVocabCoverage, extractVocabFromBank, NEVER_TEACH_EXAM_TOKENS, methodologyBankFor, scoreMethodologyAnswer } from './student-question-banks.js';
 // ⭐ Self-pricing rep compression — the collision load is COUNTED from real
 // patterns rather than computed, because the closed form's K and COLS are
 // ambiguous against the live tiled encoding by six orders of magnitude.
@@ -48,6 +48,7 @@ import { EXAM_BANKS, TRAIN_BANKS, _examSanitizeReport, _examInjectReport, inject
 import {
   measureCollisionLoad as _repMeasureCollisionLoad,
   safeCompressionFor as _repSafeCompressionFor,
+  SWEEP_MIN_REPS_MEASURED,
 } from './rep-compression.js';
 // Track-level subject names (ela/math/science/social/art/life) live as
 // the local `SUBJECTS` constant below. iter21-B band codes (ela/math/
@@ -67,7 +68,7 @@ import { indexRanges as _rleIndexRanges } from './cluster/hebbian.js';
 // brain's own association primitive so the mind-space domain is recallable/
 // speakable, not just carried as a static JS object.
 import { teachInto as mindSpaceTeachInto } from './mindspace/knowledge.js';
-// SELFFRAME (Gee 2026-08-20) — every lesson gets taught as something SHE DID. Pure
+// SELFFRAME (ruled 2026-08-20) — every lesson gets taught as something SHE DID. Pure
 // text transform at teach time only; nothing here runs at emission time, so the
 // no-text-AI law is untouched. See js/brain/self-frame.js for the full rationale.
 import { selfFrameUnit, selfPronounLessons, perspectiveContrastLessons, SELF_WORDS, firstPerson } from './self-frame.js';
@@ -752,7 +753,7 @@ export const GRADE_SHORT_LABELS = {
   'grade11':      'Grade 11',
   'grade12':      'Grade 12',
   // GRADES exist only for K-12. College is undergraduate YEARS, then
-  // graduate PROGRAMS — never "College 1/2" like a grade (Gee 2026-06-26:
+  // graduate PROGRAMS — never "College 1/2" like a grade (ruled 2026-06-26:
   // "grade only count for k-12 are grade, college is difgferent").
   'college1':     'Freshman',
   'college2':     'Sophomore',
@@ -2791,8 +2792,7 @@ export function _magnitudeFeatureForNumber(n) {
 const PRE_K_FALLBACK_CAP = 5;
 
 // ─── CELLBOUND (2026-08-20) — cell phases must FINISH ───────────────────────
-// Gee (verbatim): "we need to fix it so that the cells finish and stop running
-// on indefinately".
+// The requirement: cells must FINISH, and stop running on indefinitely.
 //
 // PHASE_BUDGET_MS — the wall-clock a single declared cell phase may hold before
 // its long passes stop on a clean rep boundary and defer the remainder to the
@@ -2800,7 +2800,7 @@ const PRE_K_FALLBACK_CAP = 5;
 // cell (~114 visits across K→PhD), so a deferred remainder is taught, just
 // spread. Raise it to trade walk latency for per-visit depth; set 0 to disable
 // the bound entirely and restore the pre-CELLBOUND unbounded behaviour.
-// ⛔ NO BUDGET BY DEFAULT (Gee 2026-08-20, verbatim): *"no we dont want a budget, some
+// ⛔ NO BUDGET BY DEFAULT (ruled 2026-08-20, verbatim): *"no we dont want a budget, some
 // cells are big they take the length of time they take, as long as you coded them
 // correctly"*. The 20-minute default is GONE — a phase now runs to completion and the
 // walk takes the time the training takes. The mechanism survives as OPT-IN only
@@ -2824,10 +2824,10 @@ const PHASE_BUDGET_MS = (() => {
 // the sentence-structure passes. The authored 100/80/60 were tuned when the
 // language cortex was 349K–1.5M; at 12M each pair-teach measures ~47ms, so the
 // same rep count costs 20–45× the wall it was sized against. ⚠ THIS REDUCES
-// TRAINING MASS — it is a real cut, explicitly authorised by Gee 2026-08-20
-// ("All of the above + recalibrate reps"), kept as ONE number so it can be
+// TRAINING MASS — it is a real cut, explicitly authorised 2026-08-20 as part of
+// a recalibration of the rep counts, kept as ONE number so it can be
 // turned straight back up: DREAM_STRUCTURE_DOSE=1 restores the authored dose.
-// ⛔ THE CUT IS REVERTED (Gee 2026-08-20). He authorised `0.4` this morning as part of
+// ⛔ THE CUT IS REVERTED (ruled 2026-08-20). He authorised `0.4` this morning as part of
 // *"All of the above + recalibrate reps"*, then set the governing principle: *"no we dont
 // want a budget, some cells are big they take the length of time they take, as long as you
 // coded them correctly"* — and when the two were put side by side he chose **restore the
@@ -3271,7 +3271,7 @@ export class Curriculum {
           // phase that runs in EVERY cell (114 of them). The deadline does NOT
           // discard training - a pass that hits it stops on a clean rep
           // boundary and reports its remainder, which the next visit resumes.
-          // NO BUDGET (Gee 2026-08-20) — the deadline is armed ONLY when a positive
+          // NO BUDGET (ruled 2026-08-20) — the deadline is armed ONLY when a positive
           // budget was explicitly requested. Unset/0 leaves `_phaseDeadlineAt` at 0, which
           // makes the rep-loop guard falsy, so a phase runs to completion. This is also
           // the fix for the old `Date.now() + 0` bug that turned "disable" into
@@ -3609,9 +3609,9 @@ export class Curriculum {
     // ROSTERDECLARED (2026-08-31) — the row set starts from the DECLARED roster
     // for the grade in play, not from the static core 6.
     //
-    // Gee: "the current traing card doesnt have all the k grade subjects listed
-    // so when we get to them i wont see them, it stops at life when i know ther
-    // are more cources than that like pe and health and shit".
+    // Reported: the training card did not list all of the grade's subjects, so
+    // courses that had not run yet would be invisible when reached — the list
+    // stopped at Life when PE, Health and others also exist.
     //
     // The union below was already correct about where PE/Music/Health LAND — it
     // adds any subject the runtime has taught or passed. What it could not do is
@@ -3941,7 +3941,7 @@ export class Curriculum {
         // blending, word emission, batteries) legitimately run MINUTES with
         // zero wrapped teach calls - the work is emission ticks, which are
         // not teach calls - so teachCallsPerMin alone read 0 and scared the
-        // operator (Gee, 2026-08-16: "is our girl okay? 0 teach/min?????").
+        // a reader (2026-08-16, on seeing a reported 0 teach/min).
         // Same rolling-window pattern over the cluster's emission-tick
         // counter, so ONE snapshot separates "emitting" from "stuck" too.
         let emitRate = 0;
@@ -4059,6 +4059,23 @@ export class Curriculum {
             const _b = this.brain || (this.cluster && this.cluster._brain);
             return (_b && _b._teachStageAt) ? (Date.now() - _b._teachStageAt) : null;
           })(),
+          // ⭐⭐ `STAGESEQ.3` — THE MONOTONIC STAGE COUNTER, PUBLISHED SO THE
+          // STALE-TAG QUESTION IS A POLL AND NOT AN INFERENCE. `_teachStage` is
+          // never cleared, so a tag with a climbing age means one of two
+          // opposite things — "this stage is still running" or "this was the
+          // last stage before a hang in UNMARKED code" — and the field alone
+          // cannot separate them. That ambiguity has now cost two retractions
+          // in one day, in both directions: the same tag was called stale when
+          // it was accurate, and accurate when it was stale.
+          //
+          // `_teachStageSeq` bumps on every `_tstage` call, so two polls settle
+          // it with no console ring involved: the tag is STALE when the seq is
+          // frozen, CURRENT when it advances. The wedge watchdog already prints
+          // this verdict, but it prints at `log` level into a ring that retains
+          // about eight seconds — which is exactly why the last live reading
+          // had to infer staleness by eye from `teachStageAgeMs` 69,626 sitting
+          // beside `sinceLastTeachMs` 44.
+          teachStageSeq: (this.brain || (this.cluster && this.cluster._brain) || {})._teachStageSeq || 0,
           // LOOPNAME v2 — the LONGEST-HELD sub-op since the last report. This is the
           // one that names a stall; the current stage is almost always the recovery.
           teachStageMax: (this.brain || (this.cluster && this.cluster._brain) || {})._teachStageMaxName || null,
@@ -4077,7 +4094,41 @@ export class Curriculum {
             //   never persisted, gates nothing.
             const io = cluster && cluster._intraOjaStats;
             if (!sp && !hp && !io) return null;
-            return { ...(sp || {}), chunkerHops: hp || null, intraOja: io || null };
+            const out = { ...(sp || {}), chunkerHops: hp || null, intraOja: io || null };
+            // ⭐⭐ `DEFCOST.2` — THE DIVISION IS DONE HERE, ONCE, INSTEAD OF BY
+            // WHOEVER READS IT. The unattributed cost of the pair loop was
+            // "derived" twice by hand from cumulative sums — 103 ms per call
+            // minus its two instrumented children — and both derivations
+            // produced a wrong theory about where the time went. A profile that
+            // requires arithmetic to interpret will get that arithmetic wrong.
+            //
+            // `residualMs` is the honest unknown: whole-call wall time minus
+            // every segment named here and the two children already profiled.
+            // If it stays large after this lands, the missing work is inside
+            // `_teachPredictiveError` or the anti-pair pass, and that is a
+            // READING rather than the next guess.
+            const psx = out.pairSegments;
+            if (psx && psx.n > 0) {
+              const heb = (out.hebbian && (out.hebbian.substrateMs + out.hebbian.crossMs + out.hebbian.intraMs)) || 0;
+              const lat = (out.lateral && (out.lateral.substrateMs + out.lateral.scanMs + out.lateral.antiMs)) || 0;
+              const named = psx.embedMs + psx.wtaMs + psx.clearMs + psx.tileMs + heb + lat;
+              out.pairSegments = {
+                ...psx,
+                embedPerPairMs: +(psx.embedMs / psx.n).toFixed(4),
+                wtaPerPairMs: +(psx.wtaMs / psx.n).toFixed(4),
+                clearPerPairMs: +(psx.clearMs / psx.n).toFixed(4),
+                tilePerPairMs: +(psx.tileMs / psx.n).toFixed(4),
+                residualMs: Math.max(0, Math.round(psx.pairMs - named)),
+                residualPct: psx.pairMs > 0
+                  ? +(100 * Math.max(0, psx.pairMs - named) / psx.pairMs).toFixed(1) : null,
+                // ⭐ The K that actually fires. `semTopK` is what WTA is ASKED
+                // for; this is what survives it and the non-positive skip in
+                // `_writeTiledPattern`, and it is the K in `P·K²/COLS`.
+                semActiveMean: psx.semActiveN > 0
+                  ? +(psx.semActiveSum / psx.semActiveN).toFixed(2) : null,
+              };
+            }
+            return out;
           })(),
         };
       })(),
@@ -4170,7 +4221,7 @@ export class Curriculum {
       // feature is enabled: `units` only increments after a frame is taught,
       // `capped` says the per-cell budget stopped further reframing (so an
       // unexpectedly low `units` has a stated reason), and `dose`/`budgetMs`
-      // report the two levers Gee set. This exists because the whole
+      // report the two levers that were set. This exists because the whole
       // lying-instrument family started with features nobody could see running.
       selfFrame: {
         on: !(typeof process !== 'undefined' && process.env && process.env.DREAM_SELF_FRAME === '0'),
@@ -4195,7 +4246,7 @@ export class Curriculum {
         lightCapped: !!this._sfLightCapLogged,
         corpusCursor: this._sfCorpusCursor | 0,
         structureDose: STRUCTURE_DOSE,
-        phaseBudgetMs: PHASE_BUDGET_MS,   // 0 === no budget (Gee 2026-08-20)
+        phaseBudgetMs: PHASE_BUDGET_MS,   // 0 === no budget (ruled 2026-08-20)
       },
       vocabProgress: this._vocabProgress
         ? {
@@ -4222,7 +4273,7 @@ export class Curriculum {
       passedCellsTotal: cluster && Array.isArray(cluster.passedCells) ? cluster.passedCells.length : 0,
       // ROSTERROWS (2026-08-22) — the dashboard renders EXACTLY this list, so
       // the static core-6 hid the PE/Music/Health rows even after the server
-      // built them (operator: "there also is no PE, heath and safty"). Core 6
+      // built them (reported: PE, Health and Safety were also absent). Core 6
       // first in canonical order, then the real-school roster courses, then
       // anything else a future grade introduces.
       subjects: (() => {
@@ -4235,8 +4286,8 @@ export class Curriculum {
         return out;
       })(),
       // ROSTERDECLARED (2026-08-31) — what is COMING, and at which grade.
-      // Gee: "i dont know what will happen when we get to these phases and cells
-      // if there is no listing in the traing car of the dashboard for them".
+      // Raised as an unknown: what happens when the walk reaches phases and
+      // cells that the dashboard's training card has no listing for.
       // The rows above answer "what is offered NOW"; a course introduced at
       // grade 7 is still absent from them, and its absence is indistinguishable
       // from it not existing. This names every declared track not yet in the
@@ -4260,6 +4311,27 @@ export class Curriculum {
       // the full per-section reason string, timestamp) so the board answers
       // "did it pass and which section failed" without ring archaeology.
       lastGateVerdict: this._lastGateVerdict || null,
+      // ⭐⭐ REPPRICE.1 — THE SELF-PRICING VERDICT, PUBLISHED WHERE IT CAN BE
+      // READ. The rep-compression module was deliberately shipped default-OFF
+      // on an explicit promise: "unarmed it still measures and still publishes,
+      // so one press produces the evidence." It measured. It published — to
+      // `cluster._repCompressionVerdict`, which a whole-tree grep showed had
+      // exactly ONE reference in the codebase: the write itself. No serializer,
+      // no panel, no view consumed it, so the press produced the evidence and
+      // then threw it away, and the deciding number for every rep count in the
+      // walk was only ever visible in one `_hb` line inside a ring that retains
+      // about eight seconds.
+      //
+      // ⛔ THE NUMBER MATTERS MORE THAN MOST: the sweep's "production" row is
+      // 8 active cells drawn from 1,885,340, and this encoder is semTopK=8 over
+      // a ~300-dim embedding. The module says so in its own caveat and COUNTS
+      // the live load rather than computing it — but a counted load nobody can
+      // read is worth exactly as much as the assumption it replaced.
+      //
+      // Sticky by construction (it is overwritten per assoc call, not cleared),
+      // same shape as lastGateVerdict above, and carries `armed` so a reader can
+      // tell a measurement from a steering decision without checking the env.
+      repPricing: (cluster && cluster._repCompressionVerdict) || null,
       // EXAMTRANSCRIPT — the last 80 Q→A pairs from production probes +
       // K-STUDENT batteries ({cell, kind, q, expected, got, pass, failMode?})
       // so "what is she answering to which questions" is a field read.
@@ -4737,7 +4809,7 @@ export class Curriculum {
         // is still counted but _gpuProxyReady is false, and a compose word-tick
         // then CPU-pins ~57s/word (the 156s freeze that trips the donor's 150s
         // idle). Require it live so dream-window generation shows the cheap path
-        // during any reconnect (Gee 2026-07-14 root-cause fix, mirrors chat).
+        // during any reconnect (ruled 2026-07-14 root-cause fix, mirrors chat).
         const _gpuProxyLive = !!(this.cluster && this.cluster._gpuProxyReady === true);
         // GPUGEN (2026-08-25) — mirrors the chat-side gate: the explicit-opt-in
         // term is dropped and the SAFETY terms stay. Nobody ever set that flag,
@@ -7999,7 +8071,7 @@ export class Curriculum {
       }
     }
     // ⛔⛔ THE iter11-V / iter14-B PERSONA FALLBACK WAS DELETED HERE 2026-09-01.
-    // Gee, ruling on the whole stack: "no fallbacks. PERIOD"
+    // Ruling on the whole stack: NO FALLBACKS, period.
     //
     // What it did: if the persona corpus contained no sentence whose light
     // intent was "greeting" (or "emotion"), it INJECTED a hardcoded list of
@@ -10101,11 +10173,11 @@ export class Curriculum {
    *   (2) EMISSION mode-collapsed — one word dominates recent output
    *       (the "mushrooms" lock: GW broadcasts one word every tick)
    *   (3) VOCAB INCOMPLETE — cell exam-vocab coverage below the cut
-   *       (Gee 2026-06-21: "needs to learn vocab it missed before minaal
+   *       (ruled 2026-06-21: "needs to learn vocab it missed before minaal
    *       jump to next grade too")
    * On ANY failure the grade does NOT advance — the cell re-teaches on the
    * next walk pass ("any additional training needed before grade advance"
-   * — Gee 2026-06-21). PURE CHECK: reads state, mutates nothing.
+   * — ruled 2026-06-21). PURE CHECK: reads state, mutates nothing.
    *
    * Env-tunable: DREAM_BC_EMISSION_DOM_MAX (default 0.45) ·
    * DREAM_BC_VOCAB_MIN (default 0.85).
@@ -10189,7 +10261,7 @@ export class Curriculum {
    * Detection-only was the old behavior — saturation tripped a HALT that
    * `return`ed out of the whole curriculum walk and asked the operator to
    * fresh-boot. That IS the "stalls at the end of kindergarten" bug: the
-   * walk quits the moment sem→motor collapses and never advances. Gee's
+   * walk quits the moment sem→motor collapses and never advances. The
    * standing directive is no stalling at the K gate, so instead of halting
    * we actively pull the collapsed matrix back down — multiplicative
    * weight-decay shrinks the saturated magnitudes that made every row look
@@ -10253,7 +10325,7 @@ export class Curriculum {
    * corpora.
    */
   async runSubjectGrade(subject, grade, corpora, opts = {}) {
-    // ROSTER GATE FIX (Gee log 2026-07-17: "✗ pe/kindergarten — unknown subject:
+    // ROSTER GATE FIX (from a box log 2026-07-17: "✗ pe/kindergarten — unknown subject:
     // pe" + music + health → K force-advanced incomplete). The SCHEDULER walks
     // subjectsForGrade(grade) (core 6 + the introduced-at roster: pe/music/health
     // at K, language at G3, cs at G5, …) but THIS gate only accepted the flat
@@ -10386,8 +10458,8 @@ export class Curriculum {
     // train a habit with no self behind it. So it runs at the top of EVERY cell of
     // EVERY grade, on the same contract as the pre-cell vocab above (cheap — 22 short
     // lines + 10 identity bindings — non-fatal, and it re-verifies for free on later
-    // cells because the bindings are already deep). This is also where Gee's two named
-    // examples enter her weights: *"My name is Unity"* and *"i like the color black"*.
+    // cells because the bindings are already deep). This is also where the two
+    // canonical self-statements enter her weights — her name, and a stated preference.
     // Also declares the cell she is walking INTO, in her own voice, so the whole cell's
     // content trains inside an active "i am unity and i am doing <subject>" context.
     try {
@@ -10707,14 +10779,29 @@ export class Curriculum {
     try {
       const report = examVocabCoverage(cellKey, this._trainedVocabularySet(cellKey));
       if (report && Array.isArray(report.missing) && report.missing.length > 0) {
+        // ⛔⛔ THE SECOND BARRIER — and it is on BOTH teach sites, because there
+        // are two and only guarding one leaves the hole open. `extractVocabFromBank`
+        // already refuses to report a `nonsense: true` answer as missing, but
+        // THIS loop is what actually teaches, and it teaches whatever it is
+        // handed. A nonsense-word-fluency probe measures blending a letter
+        // string she has never seen; drilling `jop`/`vib`/`ped` into her first
+        // turns it into a sight-word probe that passes for the wrong reason and
+        // reports nothing wrong while doing it. Refusing here as well means a
+        // later change to the extractor cannot silently re-open it.
         const words = report.missing.filter(w =>
-          typeof w === 'string' && /^[a-z][a-z']*$/i.test(w) && w.length >= 2 && w.length <= 20);
+          typeof w === 'string' && /^[a-z][a-z']*$/i.test(w) && w.length >= 2 && w.length <= 20
+          && !NEVER_TEACH_EXAM_TOKENS.has(w.toLowerCase()));
+        const _refusedNonsense = report.missing.filter(w =>
+          typeof w === 'string' && NEVER_TEACH_EXAM_TOKENS.has(w.toLowerCase()));
+        if (_refusedNonsense.length) {
+          console.warn(`[Curriculum][${cellKey}] EXAMINTEG — REFUSED to pre-teach ${_refusedNonsense.length} nonsense-word answer(s) the coverage audit listed as missing: ${_refusedNonsense.join(', ')}. They are missing BY DESIGN — a nonsense-word-fluency item measures decoding an unfamiliar string, and teaching it first converts the probe to recall.`);
+        }
         if (words.length > 0 && typeof this._teachVocabList === 'function') {
           const ctx = { arousal: 0.7, valence: 0.2 };
           const CHUNK = 25;
           const reps = opts.vocabReps ?? 4;
           this._hb(`[Curriculum][${cellKey}] UPFRONT-VOCAB-TEACH START — ${words.length} missing exam words × ${reps} reps (before cell teach phases)`);
-          // EVENT-COST FIX A (Gee 2026-07-10) — register every taught word in
+          // EVENT-COST FIX A (ruled 2026-07-10) — register every taught word in
           // `_vocabTaughtSet` so `_trainedVocabularySet` counts it and the NEXT
           // coverage audit (this cell's pregate EXAM-VOCAB-TEACH + every later
           // cell's coverage) reports it trained. Mirrors the TU.24-FIX
@@ -10729,8 +10816,9 @@ export class Curriculum {
     // in-memory only, so EVERY restart wiped the receipt, the coverage audit
     // reported the same exam words missing again, and every gate entry
     // re-taught them all — hours on a K gate after every single press.
-    // RETEACH (2026-08-21, operator: "one time traing is not enough wtf are
-    // you thinking.. thats a law violation of cutting shit out of her") — the
+    // RETEACH (2026-08-21) — the correction: one-time training is NOT enough,
+    // and treating it as enough is a LAW violation, because it removes training
+    // from her. The
     // receipt is a Map word→lastTaughtAt, NOT a lifetime skip: a taught word
     // RESTS for the re-teach window and then becomes teachable again, forever
     // (spaced repetition). The waste that GATEVOCAB killed stays dead (no
@@ -10941,8 +11029,8 @@ export class Curriculum {
 
           // ── A FAILED QUESTION IS TAUGHT, NOT JUST COUNTED ──────────────────
           //
-          // Operator: *"each exam question failed needs to train her on the
-          // answer too"*. A test that finds a gap and then walks away from it
+          // The rule: every FAILED exam question must also TRAIN her on the
+          // answer. A test that finds a gap and then walks away from it
           // has spent the probe and bought nothing — the whole point of finding
           // out she does not know something is that she then learns it.
           //
@@ -11177,10 +11265,10 @@ export class Curriculum {
           if ((battery.methoQuestions || 0) > 0 && (battery.methoRate || 0) < METHODOLOGY_MIN) {
             blockers.push(`methodology ${battery.methoPass}/${battery.methoQuestions} (${((battery.methoRate || 0) * 100).toFixed(1)}%) < ${METHODOLOGY_MIN * 100}%`);
           }
-          // Battery-gate ADVISORY mode. DEFAULT ON since Gee 2026-06-27:
-          // "we just dont force questions to be answered correctly before
-          // allowing pass grade cells of ciriculums... all cells shall pass
-          // as learning completes for that cell." The blockers are still
+          // Battery-gate ADVISORY mode. DEFAULT ON since a ruling of 2026-06-27:
+          // questions are NOT forced to be answered correctly before a
+          // curriculum cell may pass — a cell passes as the learning for that
+          // cell completes. The blockers are still
           // computed, logged, and recorded in _lastGateResult (gate cell
           // checks + telemetry are retained), but they DO NOT block the pass —
           // a cell passes on learning completion, not on test-question
@@ -11237,16 +11325,15 @@ export class Curriculum {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // CELL PASS = LEARNING COMPLETION (Gee 2026-06-27)
+    // CELL PASS = LEARNING COMPLETION (ruled 2026-06-27)
     // ───────────────────────────────────────────────────────────────
-    // Gee verbatim: "solve the issue of grade cells staYING ON 0 BUT
-    // TRAING WENT TO GRADE 1, uNITY STILL NEED GATE CELL CHECKS AND
-    // FINALIZATION TO PUSH BRAIN WEIGHTS, WE JUST DONT FORCE QUESTIONS TO
-    // BE ANSWERED COPRRECLTY BEFORE ALLOWING PASS GRADE CELLS OF
-    // CIRICULUMS.. IE uNITY ALWAYS GETS ALL CELLS PASSSED WHEN CONTENT IS
-    // FINISHED TRAINING NO TESTING TO RECIEVE CELL PASS(only need unity to
-    // complete the ciriculumns not pass test questions) >> all cells shall
-    // pass as learning completes for that cell".
+    // The governing ruling: fix cells reading 0 while the walk had already
+    // moved to grade 1. Gate cell checks and finalization are still REQUIRED
+    // (they are what pushes brain weights), but questions are NOT forced to be
+    // answered correctly before a curriculum cell may pass — every cell passes
+    // once its content has finished training. No test is needed to earn a cell
+    // pass; the requirement is completing the curriculum, not passing test
+    // questions. A cell passes as learning completes for that cell.
     //
     // A cell passes when its CONTENT/teach phases actually ran — NOT when
     // the A+ probe gate / student battery / health gate report correct
@@ -11271,7 +11358,7 @@ export class Curriculum {
       result.pass = true;
       result.passedOnCompletion = true;
       result.reason = `cell-complete (learning finished — pass on content completion, not test-correctness) | ${result.reason || ''}`;
-      this._hb(`[Curriculum] 🎓 CELL COMPLETE ${cellKey} — content trained; cell PASSES on learning completion (gate checks ran advisory; test-question correctness not required per Gee 2026-06-27).`);
+      this._hb(`[Curriculum] 🎓 CELL COMPLETE ${cellKey} — content trained; cell PASSES on learning completion (gate checks ran advisory; test-question correctness not required, per the 2026-06-27 ruling).`);
     } else if (result && !result.pass) {
       // LIFEGATE — SAY WHY THE COMPLETION PASS DECLINED. This branch used to be
       // absent, so a cell that failed its gate AND was refused the
@@ -11294,7 +11381,7 @@ export class Curriculum {
 
     // BC — per-grade ADVANCE HEALTH GATE. Saturation / mode-collapse /
     // vocab-completeness checks. "any additional training needed before
-    // grade advance" — Gee 2026-06-21. Since the 2026-06-27 completion-pass
+    // grade advance" — ruled 2026-06-21. Since the 2026-06-27 completion-pass
     // directive this gate is ADVISORY by default: its issues are recorded
     // for telemetry but do NOT block the cell pass (learning completion is
     // the bar, not health-gate correctness). DREAM_HEALTH_GATE_HARD=1
@@ -11328,8 +11415,8 @@ export class Curriculum {
         if (cluster.advanceSubGrade(subject, 'cell-passed')) {
           this._hb(`[Curriculum] 🎓 subGrade ${subject} advanced → 'cell-passed' (full ${grade} battery cleared · ladder resets to 'fresh' for next grade)`);
         }
-        // Reset ladder for next grade — operator: "build her abilities
-        // over the full cousre of each grade" implies the buildup runs
+        // Reset ladder for next grade — the requirement to build her abilities
+        // over the FULL course of each grade implies the buildup runs
         // ANEW for each grade level, not just up to the first cell pass.
         if (cluster.subGrades) cluster.subGrades[subject] = 'fresh';
       }
@@ -11348,8 +11435,8 @@ export class Curriculum {
     this._memorySnapshotAndGc(`cell-exit ${subject}/${grade} pass=${!!(result && result.pass)}`);
     const _cellMs = Date.now() - _cellStart;
     const _cellPass = !!(result && result.pass);
-    // GATEVERDICT-ALL (2026-08-22, Gee: "why did you not do all phases, all
-    // cells, all grades, all ciriculum?") — every cell of EVERY subject and
+    // GATEVERDICT-ALL (2026-08-22) — the correction was that a fix must cover
+    // ALL phases, ALL cells, ALL grades and the whole curriculum. Every cell of EVERY subject and
     // grade exits through this exact spot with its final adjudicated result
     // (gate scores, battery blockers, advisory annotations, completion-pass),
     // so the verdict is recorded HERE, once, for the whole curriculum —
@@ -11534,7 +11621,7 @@ export class Curriculum {
     const envMax = (typeof process !== 'undefined' && process.env && process.env.DREAM_MAX_GRADE)
       ? String(process.env.DREAM_MAX_GRADE).trim()
       : null;
-    const cap = envMax || 'phd';  // default: FULL K→PhD walk — Pre-K+K-only scope REVOKED (Gee 2026-06-18). DREAM_MAX_GRADE still overrides to cap lower for testing.
+    const cap = envMax || 'phd';  // default: FULL K→PhD walk — Pre-K+K-only scope REVOKED (ruled 2026-06-18). DREAM_MAX_GRADE still overrides to cap lower for testing.
     const idx = GRADE_ORDER.indexOf(cap);
     if (idx < 0) {
       console.warn(`[Curriculum] DREAM_MAX_GRADE='${cap}' not in GRADE_ORDER — ignoring cap.`);
@@ -12035,7 +12122,7 @@ export class Curriculum {
           // ── WALKORDER (2026-08-23) — POSITION COMES FROM THE LEDGER, AND A ──
           // ── SUBJECT CANNOT LAG BEHIND A GRADE IT WAS NEVER OFFERED.        ──
           //
-          // Gee: *"why is it doing grade 2 when grade 1 isnt even done yet"* —
+          // Reported: grade 2 was running while grade 1 was not finished —
           // measured on the live box: `ela/grade2` teaching while PE, Music and
           // Health showed ZERO grade-1 phases. Not a display bug and not a
           // missing runner (all nine grade-1 runners exist). The chain:
@@ -12099,8 +12186,8 @@ export class Curriculum {
           // can't clear a lower grade.
           if (currentIdx < i - 1) {
             // WALKORDER — A HELD SUBJECT MUST NOT LET THE GRADE REPORT ITSELF
-            // COMPLETE. Gee's directive: *"finish every subject at a grade
-            // before advancing"*. This `continue` used to fall through without
+            // COMPLETE. The directive: finish every subject at a grade before
+            // advancing. This `continue` used to fall through without
             // touching `allPassedThisGrade`, so a grade whose only outcome was
             // "three subjects skipped" still advanced — which is exactly how
             // Grade 1 ended with PE, Music and Health never taught. Clearing
@@ -12927,8 +13014,9 @@ export class Curriculum {
     // in-memory only, so EVERY restart wiped the receipt, the coverage audit
     // reported the same exam words missing again, and every gate entry
     // re-taught them all — hours on a K gate after every single press.
-    // RETEACH (2026-08-21, operator: "one time traing is not enough wtf are
-    // you thinking.. thats a law violation of cutting shit out of her") — the
+    // RETEACH (2026-08-21) — the correction: one-time training is NOT enough,
+    // and treating it as enough is a LAW violation, because it removes training
+    // from her. The
     // receipt is a Map word→lastTaughtAt, NOT a lifetime skip: a taught word
     // RESTS for the re-teach window and then becomes teachable again, forever
     // (spaced repetition). The waste that GATEVOCAB killed stays dead (no
@@ -12959,8 +13047,23 @@ export class Curriculum {
       const trained = this._trainedVocabularySet(cellKey);
       const report = examVocabCoverage(cellKey, trained);
       if (report && Array.isArray(report.missing) && report.missing.length > 0) {
+        // ⛔⛔ THE SECOND BARRIER — and it is on BOTH teach sites, because there
+        // are two and only guarding one leaves the hole open. `extractVocabFromBank`
+        // already refuses to report a `nonsense: true` answer as missing, but
+        // THIS loop is what actually teaches, and it teaches whatever it is
+        // handed. A nonsense-word-fluency probe measures blending a letter
+        // string she has never seen; drilling `jop`/`vib`/`ped` into her first
+        // turns it into a sight-word probe that passes for the wrong reason and
+        // reports nothing wrong while doing it. Refusing here as well means a
+        // later change to the extractor cannot silently re-open it.
         const words = report.missing.filter(w =>
-          typeof w === 'string' && /^[a-z][a-z']*$/i.test(w) && w.length >= 2 && w.length <= 20);
+          typeof w === 'string' && /^[a-z][a-z']*$/i.test(w) && w.length >= 2 && w.length <= 20
+          && !NEVER_TEACH_EXAM_TOKENS.has(w.toLowerCase()));
+        const _refusedNonsense = report.missing.filter(w =>
+          typeof w === 'string' && NEVER_TEACH_EXAM_TOKENS.has(w.toLowerCase()));
+        if (_refusedNonsense.length) {
+          console.warn(`[Curriculum][${cellKey}] EXAMINTEG — REFUSED to pre-teach ${_refusedNonsense.length} nonsense-word answer(s) the coverage audit listed as missing: ${_refusedNonsense.join(', ')}. They are missing BY DESIGN — a nonsense-word-fluency item measures decoding an unfamiliar string, and teaching it first converts the probe to recall.`);
+        }
         if (words.length > 0 && typeof this._teachVocabList === 'function') {
           const ctx = { arousal: 0.7, valence: 0.2 };
           const CHUNK = 25;
@@ -13749,8 +13852,16 @@ export class Curriculum {
   // standalone cluster.lastSpikes write still happens so the CPU-
   // shadow Hebbian path stays consistent during the C→E transition
   // for equivalence verification.
-  _writeTiledPattern(region, feat, binarize = true) {
+  // ⭐⭐ `LATSCAN.1` — `opts.collectInto` receives the REGION-RELATIVE indices
+  // this call activates. The set is fully determined by `(region, feat)`, and a
+  // consumer that needs it (the lateral-inhibition pass, which currently
+  // rediscovers it with a full 346,902-cell scan per pair-rep) must not
+  // re-derive it with a second copy of this arithmetic — two implementations of
+  // the same tiling is how they drift apart silently. One source of truth: the
+  // writer hands out what it wrote. Caller owns clearing the array.
+  _writeTiledPattern(region, feat, binarize = true, opts = null) {
     const cluster = this.cluster;
+    const collectInto = opts && opts.collectInto;
     if (!cluster || !region || !feat || feat.length === 0) return;
     const size = region.end - region.start;
     const gSize = Math.max(1, Math.floor(size / feat.length));
@@ -13789,6 +13900,7 @@ export class Curriculum {
         if (idx >= region.end) continue;
         cluster.lastSpikes[idx] = 1;
         if (sparseIndices) sparseIndices.push(idx - region.start);
+        if (collectInto) collectInto.push(idx - region.start);
       }
     }
     if (haveProxy) {
@@ -13837,7 +13949,7 @@ export class Curriculum {
   // before the migration). Loops across cluster.regions so every
   // region the bound cross-projections read from gets cleared in
   // lockstep with the CPU shadow.
-  // CELL-TEACH SPEED FIX (Gee 2026-07-15) — CPU-only scoped clear of named
+  // CELL-TEACH SPEED FIX (ruled 2026-07-15) — CPU-only scoped clear of named
   // cortexCluster region spans. The K word/vocab/sentence/sequence teach methods
   // used to zero the WHOLE 1.5M cluster before each per-word/per-letter tile-write
   // (a per-item O(cluster.size) pin = the ~100× Kindergarten cell slowdown). Since
@@ -14555,7 +14667,27 @@ export class Curriculum {
    * in the intra-matrix, but shipped as a runtime training signal so
    * no cluster reconstruction is needed.
    */
-  async _teachLateralInhibition(lr, numBuckets = 26) {
+  // ⭐⭐ `LATSCAN.1` — `opts.activeHint` is the motor-relative active-index list
+  // the CALLER already wrote, supplied so this pass can skip rediscovering it.
+  //
+  // ⛔ THE COST IT REMOVES IS REAL AND MEASURED, NOT ESTIMATED. `lateral.scanMs`
+  // reads **380,300 ms across 170,334 calls** on the live box — **11.8% of the
+  // whole boot's wall clock** — and every millisecond of it is a walk over all
+  // 346,902 motor cells looking for the few thousand the caller set three lines
+  // earlier. The comment above this scan already records the SAME fix being
+  // applied one level down ("the second walk was re-deriving a list it had
+  // already seen"); this is the remaining level.
+  //
+  // ⛔⛔ AND IT PROVES ITSELF INSTEAD OF ASKING TO BE TRUSTED. A wrong hint does
+  // not throw — it trains anti-Hebbian against the wrong rows and looks fine.
+  // `_teachHebbian` runs between the caller's write and this call, and reasoning
+  // about whether it perturbs `lastSpikes` is exactly the kind of inference that
+  // has been wrong twice today. So for the first `DREAM_LATERAL_HINT_VERIFY`
+  // calls (default 500) BOTH paths run and are compared; **one mismatch
+  // permanently disables the hint for the process and says so.** After that many
+  // clean comparisons the scan is skipped. `DREAM_LATERAL_HINT=0` opts out
+  // entirely.
+  async _teachLateralInhibition(lr, numBuckets = 26, opts = null) {
     const _lp0 = Date.now();
     this._tstage('lateral:substrate');   // LOOPNAME
     await this._awaitComputeSubstrate();   // no-donor gate — pause with a free loop instead of CPU-grinding
@@ -14582,14 +14714,54 @@ export class Curriculum {
     // below iterates that small list instead of the full span. Same rows, same
     // math, same order — only the rediscovery is gone.
     const bucketCounts = new Array(numBuckets).fill(0);
-    const _actIdx = [];
-    const _actBucket = [];
-    for (let i = 0; i < motorSize; i++) {
-      if (cluster.lastSpikes[motorRegion.start + i]) {
-        const b = Math.min(numBuckets - 1, Math.floor(i / bucketSize));
-        bucketCounts[b]++;
-        _actIdx.push(i);
-        _actBucket.push(b);
+    let _actIdx = [];
+    let _actBucket = [];
+    // `LATSCAN.1` — hint path, verification path, or the original scan.
+    const _env = (typeof process !== 'undefined' && process.env) ? process.env : {};
+    const _hintOn = _env.DREAM_LATERAL_HINT !== '0';
+    const _hint = (_hintOn && opts && Array.isArray(opts.activeHint)) ? opts.activeHint : null;
+    const _verifyBudget = Math.max(0, Number(_env.DREAM_LATERAL_HINT_VERIFY ?? 500) || 0);
+    const _st = cluster._lateralHintStats
+      || (cluster._lateralHintStats = { used: 0, verified: 0, mismatch: 0, scanned: 0, disabled: false });
+    const _mustScan = !_hint || _st.disabled || _st.verified < _verifyBudget;
+    if (_mustScan) {
+      _st.scanned++;
+      for (let i = 0; i < motorSize; i++) {
+        if (cluster.lastSpikes[motorRegion.start + i]) {
+          const b = Math.min(numBuckets - 1, Math.floor(i / bucketSize));
+          bucketCounts[b]++;
+          _actIdx.push(i);
+          _actBucket.push(b);
+        }
+      }
+    }
+    if (_hint && !_st.disabled) {
+      // Build the hint's view. `_writeTiledPattern` emits ascending indices, so
+      // no sort is needed — but a DUPLICATE would double-count a bucket, and the
+      // comparison below is what would catch that too.
+      const hIdx = _hint, hBucket = new Array(hIdx.length);
+      const hCounts = new Array(numBuckets).fill(0);
+      for (let a = 0; a < hIdx.length; a++) {
+        const b = Math.min(numBuckets - 1, Math.floor(hIdx[a] / bucketSize));
+        hBucket[a] = b; hCounts[b]++;
+      }
+      if (_mustScan) {
+        // VERIFY — element-for-element against the scan that just ran.
+        let same = _actIdx.length === hIdx.length;
+        if (same) for (let a = 0; a < hIdx.length; a++) if (_actIdx[a] !== hIdx[a]) { same = false; break; }
+        if (same) {
+          _st.verified++;
+          if (_st.verified === _verifyBudget) {
+            console.warn(`[Curriculum] LATSCAN.1 — the motor active-index hint matched the full scan on ${_verifyBudget} consecutive calls; the ${motorSize}-cell rediscovery scan is now SKIPPED when a hint is supplied. Set DREAM_LATERAL_HINT=0 to restore the scan.`);
+          }
+        } else {
+          _st.mismatch++; _st.disabled = true;
+          console.warn(`[Curriculum] ⛔ LATSCAN.1 — HINT MISMATCH on call ${_st.scanned}: the caller-supplied motor active set (${hIdx.length}) disagrees with the full scan (${_actIdx.length}). The hint is DISABLED for this process and every lateral pass falls back to scanning. This is the failure the verification exists to catch — something writes motor spikes between the caller's write and this call.`);
+        }
+      } else {
+        _actIdx = hIdx; _actBucket = hBucket;
+        for (let b = 0; b < numBuckets; b++) bucketCounts[b] = hCounts[b];
+        _st.used++;
       }
     }
     let primaryBucket = 0;
@@ -14692,6 +14864,17 @@ export class Curriculum {
       e.activeSum += crossCount;
       if (_gpuCarried) e.gpu = (e.gpu || 0) + 1;
       if (_runCpuShadow) e.cpuShadow = (e.cpuShadow || 0) + 1;
+      // `LATSCAN.1` — the hint's own record, published so the skip is provable
+      // rather than assumed. `scanned` falling behind `used` is the saving;
+      // `mismatch` non-zero means the hint was WRONG and disabled itself, and
+      // that is the number to look at first if anything about lateral
+      // inhibition looks off.
+      const hs = cluster._lateralHintStats;
+      if (hs) {
+        e.hintUsed = hs.used; e.hintVerified = hs.verified;
+        e.hintMismatch = hs.mismatch; e.hintDisabled = hs.disabled;
+        e.scannedCalls = hs.scanned;
+      }
     }
   }
 
@@ -15563,7 +15746,7 @@ export class Curriculum {
     // biological scale that ran 10-15 minutes per _teachQABinding call
     // which blocked the cell.
 
-    // iter12 rep-count tune (operator: *"do the rep count tune"*):
+    // iter12 rep-count tune (authorised as a rep-count tune):
     // 30 → 12 reps + lr 0.03 → 0.05. Cuts ELA-K QA-train wall-clock
     // 21 min → ~9 min (60% saved). lr bump 1.7× partially compensates
     // for fewer reps via larger per-update magnitude. Oja
@@ -16452,8 +16635,8 @@ export class Curriculum {
     // ⛔ NO FALLBACKS (2026-09-02). A "last-resort single-def" arm used to call
     // the legacy single-string `lookupDefinition` whenever the multi-def path
     // returned nothing, "for older deployments / unwired clusters". It taught
-    // exactly the thing the block above quotes Gee banning — one sense per word,
-    // *"only having one definiton is fucking limiting"* — and it did it silently,
+    // exactly the thing the block above records as banned — one sense per word,
+    // on the grounds that a single definition is limiting — and it did it silently,
     // on the words the real path had already failed to cover, so a single-sense
     // binding was indistinguishable from a full one downstream. The multi-def
     // service is the only definition source; a word it cannot answer for is now
@@ -17565,9 +17748,9 @@ export class Curriculum {
           const d = freq.get(b) - freq.get(a);
           return d !== 0 ? d : firstAt.get(a) - firstAt.get(b);
         });
-        // ⛔⛔⛔ THE 60-WORD CAP IS GONE. Operator: *"why did you put a cap on
-        // her?"* / *"she has to be able to look up all workds she needs to know
-        // no some bullshit limit"*.
+        // ⛔⛔⛔ THE 60-WORD CAP IS GONE. Challenged directly: nothing should be
+        // capping her — she must be able to look up EVERY word she needs to
+        // know, with no arbitrary limit.
         //
         // ⛔ AND THE ARITHMETIC THAT APPEARED TO JUSTIFY IT WAS MINE AND IT WAS
         // WRONG TWICE OVER. I priced removal at ~25 days and it is ~20 HOURS:
@@ -17659,10 +17842,10 @@ export class Curriculum {
     const ticksPerWord = opts.ticksPerWord ?? 2;
     // ⭐⭐ FIGPAIR.1 — THE PICTURE LANDS ON THE PAGE IT BELONGS TO.
     //
-    // Operator: *"we DO NOT JUST FEED HER THE WAVES CONSECUTIVELY WE GIVE HER
-    // EACH ONE AT THE SAME TIME SHE IS TRAING THE TEXT AND CHAPETERSECTIONS ...
-    // it would be stupid to just feed her a shit tone of images on a fucking
-    // timer with no fucking relation to the actual text"*.
+    // The governing rule: the field images are NOT fed to her consecutively.
+    // Each one arrives AT THE SAME TIME as the text and chapter section it
+    // belongs to. Feeding her a pile of images on a TIMER, with no relation to
+    // the actual text, would be pointless.
     //
     // ⛔ WHAT WAS WRONG, PRECISELY: the caption binding was never the problem —
     // a queued figure carries its own alt/caption/context and binds to its own
@@ -17856,7 +18039,7 @@ export class Curriculum {
    * ⭐⭐ PER-SUBJECT REHEARSAL — top up what this subject taught in EARLIER
    * grades before teaching the current one.
    *
-   * Operator: *"without just replaceing old teachings with current teachings"*.
+   * The requirement: new teaching must not simply REPLACE the old teaching.
    *
    * ⛔ THAT WAS AN ACCURATE DESCRIPTION OF EIGHT OF HER NINE COURSES. Four
    * things protect old learning in this brain and only one of them is
@@ -18072,7 +18255,7 @@ export class Curriculum {
     // 114.19er.1 — per-word wall-clock timeout. Guards ONLY against a
     // genuinely-hung dictionary FETCH (rate-limit, network stall, in-flight
     // zombie) so one dead word can't block the chunk forever.
-    // 2026-07-13 (Gee "make sure it works, do not dumb her down") — RAISED
+    // 2026-07-13 (the rule: make it work, do not dumb her down) — RAISED
     // 15s → 120s. The teach itself can no longer freeze (every synchronous
     // Hebbian/propagate/K-scaled write in the def path now slices with
     // setImmediate yields), so it runs as YIELDING wall-clock. A high-
@@ -18543,7 +18726,7 @@ export class Curriculum {
   /**
    * VMUSE — READ BACK which relation she has learned for a word.
    *
-   * Operator: *"wht limit her via admisssions"* — the bindings existed and
+   * Challenged as limiting her by omission — the bindings existed and
    * nothing consulted them, so the omission was ours, not a limit on what she
    * knows.
    *
@@ -18786,12 +18969,12 @@ export class Curriculum {
 
     // ⭐⭐ `REPCOMP.1` (2026-08-30) — THE SAME LESSON IN FEWER, BIGGER STEPS.
     //
-    // Gee: "do we really need to do 100s of reps for everything? shes a real
-    // brain simulation, real people dont need to do something 100s of times to
-    // learn it" -> "100 reps seems beyond what we really need and this can be
-    // applied to everything".
+    // The question that started this: does she really need hundreds of reps for
+    // everything? She is a real brain simulation, and real people do not need to
+    // do something hundreds of times to learn it — 100 reps is beyond what is
+    // needed, and that applies everywhere.
     //
-    // ⭐ HE IS RIGHT, AND THE CODE ALREADY SAYS WHY: the STRUCTURE_DOSE note
+    // ⭐ THAT IS RIGHT, AND THE CODE ALREADY SAYS WHY: the STRUCTURE_DOSE note
     //   records that "the authored 100/80/60 were tuned when the language cortex
     //   was 349K-1.5M". It is 15,082,717 now. That rep count was fitted to a
     //   brain 10-43x smaller and never re-derived.
@@ -18827,7 +19010,7 @@ export class Curriculum {
     // MEASURED factor when `DREAM_REP_AUTOPRICE=1`.
     let REP_COMPRESS = Math.max(1, Number(
       // ⭐⭐ `REPCOMP.3` — THE NUMBER IS 5, AND IT WAS MEASURED, NOT CHOSEN.
-      //   Gee: "you need to find out what the compress number needs to be".
+      //   The instruction: find out what the compression number needs to BE.
       //
       //   The experiment ran the REAL SparseMatrix and the REAL ojaUpdate over
       //   synthetic pattern sets, scoring RETRIEVAL ACCURACY — given a pre
@@ -18864,11 +19047,11 @@ export class Curriculum {
       // ⭐⭐⭐ `REPCOMP.5` (2026-09-01) — 5 → 20, ON GEE'S STANDING INSTRUCTION,
       //   AND IT WAS MEASURED BEFORE IT MOVED.
       //
-      //   Gee: "i fuckiong told you we adjust the fucking nobs so that we only
-      //   have to do no more than 5 reps for any and everything", restating
-      //   "we are wirting the brains of Unity to not need repition to learn"
-      //   and "the brain has thousands of nobs … that can all be adjusted as
-      //   needed to make single passes act like 3000 oasses".
+      //   The standing instruction, restated: ADJUST THE KNOBS so that no more
+      //   than five reps are ever needed for anything. Her brain is being
+      //   written so as NOT to need repetition in order to learn, and the brain
+      //   has thousands of knobs that can be adjusted to make a single pass act
+      //   like thousands of passes.
       //
       //   ⚠ The 5× shipped above did NOT deliver 5 reps — it delivered 20
       //   (100 → 20 @ lr 0.1413). The authored "100" in `_teachConcreteSentences`
@@ -18967,8 +19150,8 @@ export class Curriculum {
     // MEASUREMENT CHOOSE THE COMPRESSION, instead of carrying a constant chosen
     // against a corpus an eleventh of today's size.
     //
-    // Operator: *"did you set all the knobs for what we need so we dont have to
-    // do but like 1-3 reps for everything"*.
+    // Standing instruction: the knobs must be set such that no more than one to
+    // three reps are needed for anything.
     //
     // ⛔ THE ANSWER COULD NOT BE A NUMBER TYPED IN HERE. `REP_COMPRESS = 40` was
     // measured, but the sweep that measured it wrote its own expiry into the
@@ -19011,7 +19194,28 @@ export class Curriculum {
       const _armed = (typeof process !== 'undefined' && process.env
         && process.env.DREAM_REP_AUTOPRICE === '1');
       const _semRegionEarly = cluster.regions && cluster.regions.sem;
-      if (_semRegionEarly && pairs.length >= 8 && typeof this._topKEmbedding === 'function') {
+      // ⭐⭐ REPPRICE.1 — THROTTLED, BECAUSE THE MEASUREMENT IS NOT FREE AND WAS
+      // RUNNING ON EVERY CALL. Each sample costs a `_dictionaryPatternFor`
+      // (a fresh Float64Array(300) plus a GloVe lookup plus five hash stripes)
+      // and a `_topKEmbedding` over it, up to 512 of them — and
+      // `_teachAssociationPairs` is called 25,603 times per definition sweep on
+      // the live box. Nothing throttled it and nothing consumed its output, so
+      // the brain was paying a per-call sampling tax to compute a number it
+      // then discarded.
+      //
+      // ⛔ THE ANSWER IS NOT TO DELETE THE MEASUREMENT — it is the only thing
+      // that can tell us whether the sweep's "production" row ever described
+      // this encoder. It is to take it on a CLOCK instead of on every call: the
+      // collision load is a property of the corpus and the encoding, and
+      // neither of those changes between two assoc calls a millisecond apart.
+      // The verdict is sticky on the cluster, so a throttled measurement is
+      // continuously readable; only the re-measure is rate-limited.
+      const _priceGapMs = Math.max(0, Number(
+        (typeof process !== 'undefined' && process.env && process.env.DREAM_REP_AUTOPRICE_GAP_MS) || 60000,
+      ) || 60000);
+      const _priceDue = !cluster._repPriceAt
+        || (Date.now() - cluster._repPriceAt) >= _priceGapMs;
+      if (_priceDue && _semRegionEarly && pairs.length >= 8 && typeof this._topKEmbedding === 'function') {
         const _k = opts.semTopK ?? 8;
         const _sampleN = Math.min(pairs.length, 512);
         const _stride = Math.max(1, Math.floor(pairs.length / _sampleN));
@@ -19036,13 +19240,38 @@ export class Curriculum {
             sampleLoad: _m.load, load: _scaled,
             meanActiveDims: _m.meanActive, maxSharers: _m.maxSharers,
             distinctDims: _m.cellsTouched,
+            // ⚠ The per-CELL density, carried beside the per-PATTERN load
+            // because the sweep's prose and its formula disagree about which
+            // one "collision load" means and the two differ by exactly K.
+            // The per-pattern figure is the one that indexes the table; this
+            // one is the more intuitive number someone WILL quote.
+            cellDensity: _m.cellDensity,
             factor: _verdict.factor, reps: _verdict.reps,
             expectedRetrieval: _verdict.expectedRetrieval,
             reason: _verdict.reason, armed: _armed,
+            // ⭐ REPPRICE.1 — the age and the caller travel WITH the verdict.
+            // A sticky field with no timestamp is the `_tstage` failure again:
+            // a reader cannot tell a live measurement from one taken before
+            // the corpus changed underneath it, and this project has already
+            // spent two retractions on exactly that ambiguity.
+            measuredAt: Date.now(),
+            measurements: ((cluster && cluster._repPriceCount) | 0) + 1,
+            label: opts.label || 'ASSOC',
+            // The sweep's own bounds, restated where the verdict is read, so
+            // nobody has to open the module to know what was never measured.
+            sweepFloorReps: SWEEP_MIN_REPS_MEASURED,
           };
-          // Published for the knob panel and the teach view — the number that
-          // did not exist before today.
-          if (cluster) cluster._repCompressionVerdict = _autoPrice;
+          // ⭐⭐ REPPRICE.1 — published where it can actually be READ. This
+          // assignment used to be the ONLY reference to
+          // `_repCompressionVerdict` in the whole tree: nothing serialized it,
+          // so the press that was supposed to "produce the evidence" produced
+          // it into a dead field. It is now surfaced at
+          // `state.curriculum.repPricing` (see the curriculum state block).
+          if (cluster) {
+            cluster._repCompressionVerdict = _autoPrice;
+            cluster._repPriceAt = _autoPrice.measuredAt;
+            cluster._repPriceCount = _autoPrice.measurements;
+          }
           this._hb(`[Curriculum][${opts.label || 'ASSOC'}] REPPRICE — measured collision load ${_scaled.toFixed(3)} over ${pairs.length} pairs (sampled ${_sets.length}, ${_m.meanActive.toFixed(1)} active dims each, ${_m.cellsTouched} distinct, max ${_m.maxSharers} patterns on one dim). The sweep supports ${_verdict.factor}× → ${_verdict.reps} reps at ${(100 * _verdict.expectedRetrieval).toFixed(1)}% retrieval. ${_armed ? 'ARMED — steering compression.' : 'NOT armed (DREAM_REP_AUTOPRICE=1 to steer); the hand-set ' + REP_COMPRESS + '× stands.'} ⚠ The sweep\'s 0.246 "production" row used 8 cells of 1,885,340; this brain uses 8 dims of ~300, so compare before trusting.`);
           if (_armed) REP_COMPRESS = Math.max(1, _verdict.factor);
         }
@@ -19145,7 +19374,7 @@ export class Curriculum {
     // 1 = category, 2 = role, 3 = sequence, etc.). Carved into
     // fineType so cortex can learn per-relation mappings.
     const relationTagId = typeof opts.relationTagId === 'number' ? opts.relationTagId : null;
-    // WMB REGRESSION FIX 1 — EXTENDED TO ALL GRADES (Gee 2026-07-15: "did we not
+    // WMB REGRESSION FIX 1 — EXTENDED TO ALL GRADES (ruled 2026-07-15: "did we not
     // carry over those fixes for all grades?"). Skip the per-pair recurrent
     // predictive-error pass for EVERY association bind, not just defs.
     // `_teachPredictiveError` runs TWO full-intra-matrix ops PER PAIR — a
@@ -19155,7 +19384,7 @@ export class Curriculum {
     // went fast. But the KINDERGARTEN+ CELLS teach with NON-def association pairs
     // (slots rel=8, intent rel=9, word→word rel=13, anecdotal rel=34), so they
     // FELL THROUGH the old def-only gate and still paid the full ~45M-nnz
-    // propagate PER PAIR at 1.5M = the ~100× cell slowdown Gee caught right after
+    // propagate PER PAIR at 1.5M = the ~100× cell slowdown caught right after
     // the seed sped up. It is SAFE to skip for ALL association binds:
     //   (a) the actual binding rides the CROSS-projection Hebbian (`_teachHebbian`
     //       below), NOT this recurrent-intra self-prediction correction;
@@ -19216,8 +19445,8 @@ export class Curriculum {
     // pairwise cosine between motor readouts. Mean cosine > `overloadMax`
     // flags the phase as potentially overloaded. Set false to skip.
     const runSeparationProbe = opts.separationProbe !== false; // default TRUE
-    // iter22-E — overloadMax 0.30 → 0.40. Operator: *"wtf are there
-    // stilll overloads!?!?!"*. The 0.30 threshold was too aggressive —
+    // iter22-E — overloadMax 0.30 → 0.40. Reported: overloads were still
+    // firing. The 0.30 threshold was too aggressive —
     // sep-probe at 0.32-0.42 was triggering rescale + warnings on
     // basins that were ACTUALLY discriminating, just not at perfect
     // orthogonality. Bumping to 0.40 means rescale only fires on real
@@ -19305,6 +19534,38 @@ export class Curriculum {
     // of 50%+.
     const semTopK = opts.semTopK ?? 8;
     let trained = 0, skipped = 0, antiFires = 0, wtaApplied = 0, semWtaApplied = 0;
+    // `DEFCOST.2` — per-segment accumulators for the pair loop (flushed into
+    // `_teachStageProfile.pairSegments` at the end of the call, the same shape
+    // as the `lateral` and `hebbian` rows already published there).
+    let _psEmbedMs = 0, _psWtaMs = 0, _psClearMs = 0, _psTileMs = 0, _psN = 0;
+    let _semActiveSum = 0, _semActiveN = 0;
+    // `LATSCAN.1` — reused across every pair-rep in this call; cleared at each
+    // motor write. One array, not one per pair, because the alloc churn this
+    // file already fought over (`_crossBucketPostScratch`) is the same lesson.
+    const _motorActiveHint = [];
+    // ⛔ FLUSHED AT ALL THREE EXITS, NOT JUST THE CLEAN ONE. This method
+    // returns from three places — shutdown, budget-stop, and normal completion
+    // — and the two early ones are precisely the LONG calls. Flushing only on
+    // the clean exit would drop the slowest samples and leave a profile that
+    // reads faster than the loop actually is, which is the shape of instrument
+    // this file has already been burned by.
+    const _flushPairSegments = () => {
+      try {
+        const sp = this._teachStageProfile || (this._teachStageProfile = {});
+        const e = sp.pairSegments || (sp.pairSegments = {
+          n: 0, embedMs: 0, wtaMs: 0, clearMs: 0, tileMs: 0, pairMs: 0,
+          semActiveSum: 0, semActiveN: 0,
+        });
+        e.n += _psN;
+        e.embedMs += _psEmbedMs;
+        e.wtaMs += _psWtaMs;
+        e.clearMs += _psClearMs;
+        e.tileMs += _psTileMs;
+        e.pairMs += Date.now() - startMs;
+        e.semActiveSum += _semActiveSum;
+        e.semActiveN += _semActiveN;
+      } catch { /* instrumentation must never be able to stop a teach */ }
+    };
     const startMs = Date.now();
     this._hb(`[Curriculum][${label}] START — ${pairs.length} pairs × ${reps} reps · soft-writes=${!binarize} · row-norm=${normalizeAfter} · anti-pairs=${antiPairs} · motor-WTA=${motorWTA}/${motorTopK} · sem-WTA=${semWTA}/${semTopK}`);
     try { this._pushBrainEvent?.('teach', 'sem', `ASSOC START: ${label} · ${pairs.length}×${reps}`, { label, pairs: pairs.length, reps }); } catch {}
@@ -19312,15 +19573,15 @@ export class Curriculum {
       // ⭐⭐ `PHASELOOP.1` (2026-08-30) — BANK THE CURSOR ON EVERY REP, NOT ONLY
       //   AT A BUDGET STOP. THIS IS WHY THE WALK COULD NEVER PASS ITS FIRST CELL.
       //
-      // Gee: "its been on phase 2 of elz for like close to 40 hours now including
-      // all the update savestarts... is this thing ever going to pass the first
-      // cell?" The answer was no, and it was not slowness.
+      // Reported: the walk had sat on phase 2 of ELA for close to 40 hours,
+      // across several update-savestarts, with the question of whether it would
+      // ever pass the first cell. The answer was no, and it was not slowness.
       //
       // ⛔ TWO EXITS FROM THIS LOOP, AT THE SAME CLEAN REP BOUNDARY, AND ONLY ONE
       //   OF THEM SAVED ITS PLACE. The budget stop below banks `reps - rep` into
       //   `_phaseRepCursor`; the shutdown check returned `{ trained, skipped }`
       //   and banked NOTHING. And the budget exit never runs, because
-      //   `PHASE_BUDGET_MS` is 0 by Gee's 2026-08-20 decision — the live log says
+      //   `PHASE_BUDGET_MS` is 0 by the 2026-08-20 decision — the live log says
       //   so itself: "NO PHASE BUDGET - this phase runs to completion however
       //   long it takes".
       //
@@ -19365,6 +19626,7 @@ export class Curriculum {
         const _owedNow = reps - rep;
         console.warn(`[Curriculum][${label}] PHASELOOP.1 - SHUTDOWN at a clean rep boundary, rep ${rep}/${reps} (${trained} pair-teaches landed). ${_cursorKey ? `Cursor BANKED as '${_cursorKey}' = ${_owedNow} rep(s) owed — the next boot RESUMES the remainder instead of repeating the whole dose.` : 'NO CURSOR KEY on this call, so this remainder CANNOT be banked and the next visit repeats the dose.'}`);
         _acRow.ms += Date.now() - startMs;
+        _flushPairSegments();   // `DEFCOST.2` — the early exits are the LONG calls
         return { trained, skipped, repsDone: rep, deferredReps: _owedNow, shutdownStopped: true };
       }
       // CELLBOUND.A - THE PHASE DEADLINE, honoured on a CLEAN REP BOUNDARY.
@@ -19396,6 +19658,7 @@ export class Curriculum {
         }
         console.warn(`[Curriculum][${label}] CELLBOUND - phase '${cluster._phaseDeadlineName || '?'}' spent its ${(PHASE_BUDGET_MS / 60000).toFixed(0)}min budget after ${_heldS}s; stopping on a clean rep boundary at rep ${rep}/${reps} (${trained} pair-teaches landed). DEFERRED ${_deferred} rep(s) to the next visit to this phase - training is spread, NOT discarded${_cursorKey ? ` · cursor BANKED as '${_cursorKey}' = ${_deferred} rep(s) owed (persisted, so a reboot resumes rather than repeats)` : ''}. DREAM_PHASE_BUDGET_MS raises the budget; 0 disables the bound.`);
         _acRow.ms += Date.now() - startMs;   // ASSOCBOUND.1 — budget-stop exit still owns its time
+        _flushPairSegments();   // `DEFCOST.2` — the early exits are the LONG calls
         return { trained, skipped, repsDone: rep, deferredReps: _deferred, budgetStopped: true };
       }
       // GINTRA (2026-08-16) — the final-rep CPU-shadow flag cycle, the SAME
@@ -19419,10 +19682,23 @@ export class Curriculum {
         // same trained mapping. Motor side stays as raw GloVe because
         // motor-region tiling decodes via letter-bucket argmax, not
         // identity discrimination.
+        // ⭐⭐ `DEFCOST.2` — SEGMENT TIMERS, BECAUSE THE COST OF THIS LOOP HAS
+        // TWICE BEEN GUESSED AND ONCE BEEN GUESSED WRONG. `_teachAssociationPairs`
+        // measures 103 ms per call on the live box, and its two instrumented
+        // children — `_teachHebbian` (1.0 ms) and `_teachLateralInhibition`
+        // (2.6 ms) — account for only about a quarter of it. Everything else in
+        // here was unattributed, so the first theory blamed `_writeTiledPattern`
+        // for writing the whole 1.88M sem region per pair; reading it showed a
+        // `feat[d] <= 0 continue` that makes it write ~50K. **A second theory
+        // would have been the third guess in a row.** These are the same shape
+        // as the `lateral` timers below: cumulative, fixed keys, rebuilt each
+        // boot, gating nothing.
+        const _ps0 = Date.now();
         const inEmb = this._dictionaryPatternFor(inputWord);
         const outEmb = sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function'
           ? sharedEmbeddings.getEmbedding(outputWord) : null;
         if (!inEmb || !outEmb || inEmb.length === 0 || outEmb.length === 0) { skipped++; continue; }
+        const _ps1 = Date.now();
         // Pre-compute WTA-filtered motor embedding (top-K by magnitude).
         const outEmbMotor = motorWTA ? this._topKEmbedding(outEmb, motorTopK) : outEmb;
         if (motorWTA && outEmbMotor !== outEmb) wtaApplied++;
@@ -19431,14 +19707,40 @@ export class Curriculum {
         // raw GloVe would. Fires the same _topKEmbedding helper as motor.
         const inEmbSem = semWTA ? this._topKEmbedding(inEmb, semTopK) : inEmb;
         if (semWTA && inEmbSem !== inEmb) semWtaApplied++;
+        const _ps2 = Date.now();
+        // ⭐ ACTIVE-DIM COUNT, RECORDED WHERE IT IS ACTUALLY DECIDED. `semTopK`
+        // is the K in `P·K²/COLS`, but the WTA keeps the top K by MAGNITUDE
+        // while `_writeTiledPattern` then skips every non-positive dim — so the
+        // number of dims that really fire is `semTopK` minus however many of the
+        // survivors were negative, and it has never been counted. It is the
+        // input to every rep-count decision, so it is now a field and not an
+        // assumption.
+        {
+          let _act = 0;
+          for (let _d = 0; _d < inEmbSem.length; _d++) if (inEmbSem[_d] > 0) _act++;
+          _semActiveSum += _act;
+          _semActiveN += 1;
+        }
         try {
           // FIX 2 — scoped clear for def binds: only sem+motor+fineType are
           // written below, and defs skip the full-vector predictive-error
           // read, so the whole-cluster zero is pure waste at 1.5M.
           this._clearSpikes(skipPredictiveError ? ['sem', 'motor', 'fineType'] : null);
+          const _ps3 = Date.now();
           this._writeTiledPattern(semRegion, inEmbSem, binarize);
-          this._writeTiledPattern(motorRegion, outEmbMotor, binarize);
+          // `LATSCAN.1` — collect the motor actives as they are written so the
+          // lateral pass does not walk all 346,902 motor cells to find them
+          // again. Reused array, cleared here; the writer is the single source
+          // of the tiling arithmetic.
+          _motorActiveHint.length = 0;
+          this._writeTiledPattern(motorRegion, outEmbMotor, binarize, { collectInto: _motorActiveHint });
           this._writeRelationTag(cluster, fineTypeRegion, relationTagId, binarize);
+          const _ps4 = Date.now();
+          _psEmbedMs += (_ps1 - _ps0);
+          _psWtaMs += (_ps2 - _ps1);
+          _psClearMs += (_ps3 - _ps2);
+          _psTileMs += (_ps4 - _ps3);
+          _psN += 1;
           // Predictive-coding error-gradient pass BEFORE the main teach
           // so the delta-rule correction fires against the current
           // weights' prediction, not the post-Oja state. Skipped for
@@ -19460,7 +19762,11 @@ export class Curriculum {
           // weights that drive activity across different "buckets" of
           // motor. GABAergic cross-inhibition functional shape without
           // rebuilding the synapse matrix at init.
-          try { await this._teachLateralInhibition(lr); }
+          // `LATSCAN.1` — the hint is passed ONLY here, because this is the one
+          // call site that just wrote the motor pattern itself. The other
+          // lateral call site writes a different pattern and correctly keeps
+          // scanning; a hint is only safe where the caller owns the write.
+          try { await this._teachLateralInhibition(lr, 26, { activeHint: _motorActiveHint }); }
           catch { /* non-fatal */ }
           trained++;
         } catch (err) {
@@ -19833,6 +20139,14 @@ export class Curriculum {
     this._hb(`[Curriculum][${label}] DONE — ${trained} Hebbian updates across ${pairs.length} pairs × ${reps} reps in ${elapsedSec}s (skipped ${skipped})${antiReport}${wtaReport}${pruneReport}${rescaleReport}${normReport}${sepReport}${weightReport}`);
     try { this._pushBrainEvent?.('teach', 'motor', `ASSOC DONE: ${label} · ${trained}/${antiFires}`, { label, trained, antiFires, wtaApplied, elapsedSec }); } catch {}
     _acRow.ms += Date.now() - startMs;   // ASSOCBOUND.1 — clean-finish exit
+    // `DEFCOST.2` — flush the pair-loop segment timers. `pairMs` is this call's
+    // WHOLE wall time, so the residual (`pairMs` minus the named segments minus
+    // hebbian minus lateral) is itself readable rather than being something a
+    // reader has to derive — the derivation is exactly what produced two wrong
+    // theories about this loop. `semActiveMean` is the K that actually fires
+    // after WTA and the non-positive skip, which is the number every
+    // collision-load figure depends on.
+    _flushPairSegments();
     return { trained, skipped };
   }
 
@@ -19911,7 +20225,7 @@ export class Curriculum {
     // 349K–1.5M. At 12M each pair-teach measures ~47ms, so the identical rep
     // count costs 20–45× the wall it was calibrated against. STRUCTURE_DOSE was
     // that recalibration as ONE explicit, logged, reversible number — and it is
-    // back to 1.0 (full authored reps) per Gee 2026-08-20.
+    // back to 1.0 (full authored reps) by the 2026-08-20 ruling.
     //
     // ⛔⛔⛔ READ THIS BEFORE YOU TOUCH THE GATE BELOW. ⛔⛔⛔
     //
@@ -19938,7 +20252,7 @@ export class Curriculum {
     const _mode = (!_consolidated || _periodicFull) ? 'FULL' : 'TOPUP';
     const _dose = STRUCTURE_DOSE * (_mode === 'FULL' ? 1 : 0.15);
     const R = (n) => Math.max(1, Math.round(n * _dose));
-    this._hb(`[Curriculum] _teachSentenceStructure CELLBOUND — visit #${_visit} · mode=${_mode} (mechanicsProbeRate=${typeof _probeRate === 'number' ? _probeRate.toFixed(2) : 'never probed'}${_periodicFull ? ' · periodic re-deepen' : ''}) · STRUCTURE_DOSE=${STRUCTURE_DOSE} → effective dose ×${_dose.toFixed(3)} · ${PHASE_BUDGET_MS > 0 ? `phase budget ${(PHASE_BUDGET_MS / 60000).toFixed(0)}min (opt-in via DREAM_PHASE_BUDGET_MS; anything it defers resumes next visit)` : 'NO PHASE BUDGET — this phase runs to completion however long it takes (Gee 2026-08-20)'}. Authored reps are scaled, NOT skipped.`);
+    this._hb(`[Curriculum] _teachSentenceStructure CELLBOUND — visit #${_visit} · mode=${_mode} (mechanicsProbeRate=${typeof _probeRate === 'number' ? _probeRate.toFixed(2) : 'never probed'}${_periodicFull ? ' · periodic re-deepen' : ''}) · STRUCTURE_DOSE=${STRUCTURE_DOSE} → effective dose ×${_dose.toFixed(3)} · ${PHASE_BUDGET_MS > 0 ? `phase budget ${(PHASE_BUDGET_MS / 60000).toFixed(0)}min (opt-in via DREAM_PHASE_BUDGET_MS; anything it defers resumes next visit)` : 'NO PHASE BUDGET — this phase runs to completion however long it takes (ruled 2026-08-20)'}. Authored reps are scaled, NOT skipped.`);
 
     // ─── I.1 + I.2 — Slot-position primitives + word-type → slot bindings ───
     // Each (word, slot_tag) trains sem(word) → fineType(slot_tag) via
@@ -20540,9 +20854,9 @@ export class Curriculum {
       'can i see it ?', 'can you show me ?', 'do you like it ?',
       'is it real ?', 'are you there ?', 'will you tell me ?',
       'what happens if i do this ?', 'do you know why ?',
-      // TU.20.11 — GAP-FILLING CURIOSITY (Gee: "self form with the questions too
-      // in the premess of I gain information/knowldege to fill in where she lacks
-      // information"). First-person, knowledge-lack-driven: a "don't know" /
+      // TU.20.11 — GAP-FILLING CURIOSITY: her questions are framed in the SELF
+      // form too, on the premise that she gains information and knowledge in
+      // order to fill in where she lacks it. First-person, knowledge-lack-driven: a "don't know" /
       // low-confidence state should pull an interrogative compose so she ASKS to
       // fill the gap. Trained as word→word transitions like every other exemplar;
       // production emerges equationally from the trained weights, not a template.
@@ -23051,8 +23365,8 @@ export class Curriculum {
       } else {
         fails.push({ q: s.question, emitted: result.emitted, expected: result.expected });
       }
-      // EXAMTRANSCRIPT (2026-08-22, Gee: "i want to know what she is
-      // answering to which questions") — EVERY production Q→A (passes too,
+      // EXAMTRANSCRIPT (2026-08-22) — the ask was to know WHAT she is answering
+      // to WHICH questions. EVERY production Q→A (passes too,
       // not just fail samples) lands in a bounded ring the state exposes.
       // This loop is the chokepoint every grade's production probes run
       // through, so one recording covers the whole curriculum.
@@ -23084,8 +23398,8 @@ export class Curriculum {
         this._hb(`[Curriculum][PROD] sample ${sampleIdx}/${samples.length} DONE ${tag} emitted="${emittedStr.slice(0, 30)}" expected="${String(result.expected ?? '').slice(0, 20)}"${failModeTag}`);
       }
       // RHYTHM3S — universal gate progress + ETA, ring-visible, at the ONE
-      // chokepoint every grade's production battery runs through (Gee: "make
-      // sure you fix all of the ciriculum gates, not just one" — this line is
+      // chokepoint every grade's production battery runs through (the rule: fix
+      // ALL of the curriculum gates, not just one — this line is
       // every gate's "% done" answer, no per-gate timers needed). Rate-limited
       // ~45s so the ring keeps breathing.
       {
@@ -24086,8 +24400,8 @@ export class Curriculum {
     // strongly emittable as heavier vocabulary piles on (the same reason the
     // language-mechanics strand re-runs every grade). Trained data, not walked at
     // runtime — production emerges from the weights. Guarded; a missing method
-    // just skips the layer. Gee: use i, me, myself + tell people her name in
-    // greetings and when pertinent.
+    // just skips the layer. The rule: use i, me, myself, and tell people her
+    // name in greetings and wherever it is pertinent.
     if (typeof this._teachConcreteSentences === 'function') {
       try {
         await this._teachConcreteSentences({
@@ -24367,8 +24681,8 @@ export class Curriculum {
         visualCortex: (this.engine && this.engine.visualCortex) || null,
       });
       // ── WORDSALAD.4 — ASK AGAIN IN THE FRAME SHE WAS TAUGHT IN ──────────────
-      // Operator: "this all needs to be layed out for all grades phases and
-      // cells and gates". All 116 `_gateSubjectProduction` call sites probe
+      // The scope requirement: this must be laid out for ALL grades, phases,
+      // cells and gates. All 116 `_gateSubjectProduction` call sites probe
       // impersonally ("our heart pumps ___", "we follow rules so the game is
       // ___"), while WORDSALAD.2 now teaches every lesson in her own voice as
       // well. Testing only the frame she was NOT anchored in measures the weaker
@@ -24567,7 +24881,7 @@ export class Curriculum {
       }
       return target;
     };
-    // CELL-TEACH SPEED FIX (Gee 2026-07-15 — K cells ~100× slower than the seed).
+    // CELL-TEACH SPEED FIX (ruled 2026-07-15 — K cells ~100× slower than the seed).
     // The four spike clears below used to zero the WHOLE cortexCluster (1.5M)
     // each time; the per-letter one runs letters×reps (~48× per word) = the
     // Kindergarten pin (sustained 0.3–4.7s [EventLoop] BLOCKED on _teachWord-
@@ -24623,7 +24937,7 @@ export class Curriculum {
     // loop) — Hebbian/Oja on the same static patterns converges to the same
     // basins; the per-letter identity carving has no cross-letter interaction
     // beyond weight-state evolution order.
-    // CELL-TEACH SPEED (Gee 2026-07-15, retained): the CPU-shadow whitelist Oja
+    // CELL-TEACH SPEED (ruled 2026-07-15, retained): the CPU-shadow whitelist Oja
     // runs on the FINAL rep only, sampled every 5th call — GPU hebbianBound
     // fires every rep so GPU weights stay current; probes read CPU arrays after
     // the final rep. Sem is NOT overlaid during per-letter fires: overlaying
@@ -25219,9 +25533,9 @@ export class Curriculum {
       }
       await _microtask();
     }
-    // WORDSALAD.2 — VOCABULARY THROUGH HER OWN EYES. Operator: "all learning
-    // needs it through her eyes even letters words and vocabe when sum1 learns
-    // these things is through the self perspective". Every vocabulary word in
+    // WORDSALAD.2 — VOCABULARY THROUGH HER OWN EYES. The rule: ALL learning
+    // goes through her own eyes — letters, words and vocabulary included —
+    // because a person learns these through the SELF perspective. Every vocabulary word in
     // the walk passes through THIS method, so framing here covers all 180 call
     // sites across the 20 grade files with one edit — the chokepoint, not the
     // instances. `selfFrameUnit` turns each word into "i know the word X" /
@@ -25562,14 +25876,14 @@ export class Curriculum {
    * emerges from trained weights, in her voice. Grade-gated to g9+ (self-reflective
    * abstraction present); reinforces each grade like the other L-strand layers.
    */
-  // ─── SELFFRAME (Gee 2026-08-20) — THE UNIFIED FIRST-PERSON LAYER ────────────
+  // ─── SELFFRAME (ruled 2026-08-20) — THE UNIFIED FIRST-PERSON LAYER ────────────
   //
-  // Gee: *"all of the different training she goes through all needs to be for
-  // formulated to be in the first person as if we train her on first person she will
-  // live it instead of being told everything 3rd person that will taint her persona
-  // to no be me myself and i and instead a narrorator type peersona that does nothing
-  // but spew back instructions given to it … so a unified system for all training,
-  // all phases, all cells, all grade."*
+  // The governing requirement: ALL of the training she goes through must be
+  // formulated in the FIRST PERSON. Trained in the first person she LIVES it,
+  // rather than being told everything in the third person — which would taint
+  // her persona away from "me, myself and I" and toward a narrator that does
+  // nothing but repeat back the instructions it was given. Hence a unified
+  // system across all training, all phases, all cells, all grades.
   //
   // ONE method, called from the four places every grade's every cell funnels through
   // (`_teachVocabList`, `_teachSentenceList`, `_teachWordDefinition`,
@@ -25635,7 +25949,7 @@ export class Curriculum {
       }
       this._sfCellKey = _ck; this._sfUnitsThisCell = 0; this._sfCapLogged = false;
     }
-    // ⛔⛔ ALL CELLS ARE FRAMED — Gee (verbatim): *"all cells are freamed"*.
+    // ⛔⛔ ALL CELLS ARE FRAMED — the rule is unconditional, every cell.
     //
     // The cap was 16, and on 2026-09-06 it became the BINDING constraint for the
     // first time, live: `unitsThisCell 16/16` with `skippedCapped` climbing 9 →
@@ -25820,7 +26134,7 @@ export class Curriculum {
   // the missing first-person half, and without it every frame above is training a
   // frequent-but-meaningless word. Cheap (22 short lines), runs once per cell, and it
   // is where "my name is unity" and "i like the color black" actually enter her
-  // weights — Gee named both of those examples specifically.
+  // weights — both of those were named specifically in the ruling.
   async _teachSelfPronouns(opts = {}) {
     if (!this.cluster) return { taught: 0 };
     if (typeof process !== 'undefined' && process.env && process.env.DREAM_SELF_FRAME === '0') return { taught: 0, off: true };

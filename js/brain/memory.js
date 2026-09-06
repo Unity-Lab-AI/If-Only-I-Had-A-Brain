@@ -24,8 +24,8 @@ const MAX_EPISODES = 100;      // max stored episodic memories
 // Tier 0 isn't the lone hold-out with an arbitrary 7-item ceiling.
 const WORKING_MEMORY_SIZE = Infinity;
 // WM_DECAY_RATE was 0.98 per tick. Engine ticks ~50ms → items expire
-// in ~5.7 seconds (operator: "what the fuck is this it cant just
-// instant decay"). At 0.9995 per tick an unreinforced item lasts
+// in ~5.7 seconds — rejected outright, because memory cannot decay
+// that fast. At 0.9995 per tick an unreinforced item lasts
 // ~4.0 minutes (4600 ticks × 50ms ≈ 230s) before strength drops
 // below the 0.1 forget threshold. Items refresh on cosine-match in
 // addToWorkingMemory so anything actively rementioned never decays.
@@ -155,9 +155,9 @@ export class MemorySystem {
   /**
    * Add an item to working memory. WM is the front end of the
    * consolidation pipeline (Tier 0 → Tier 1 episodic → Tier 2 schemas
-   * → Tier 3 identity). Operator: "if i told someone something and
-   * asked them about it 10 minutes or even a day later... most
-   * people can recall that". Path that makes recall work:
+   * → Tier 3 identity). The standard being held to: tell a person
+   * something and ask them about it ten minutes — or a day — later,
+   * and most people can recall it. Path that makes recall work:
    *
    *   1. Add fires Hebbian on hippocampus.synapses with the pattern —
    *      the cortex actually learns the WM content the moment it

@@ -694,8 +694,8 @@ export class MindSpaceGPU {
       data[o + 3] = 255;
     };
     const dot = (x, y, r, rgb, a) => { for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (dx * dx + dy * dy <= r * r) px(x + dx / (W - 1), y + dy / (H - 1), rgb, a); };
-    // stroke.w = normalized thickness (label bold/silhouette — operator: "not just
-    // pencil style text"). Painted as discs along the sampled line so thick
+    // stroke.w = normalized thickness (label bold/silhouette — the requirement
+    // was weight, not thin pencil-style text). Painted as discs along the sampled line so thick
     // strokes are FILLED, not 1px pencil. w absent → 1px exactly as before.
     const wRad = (w) => (typeof w === 'number' && w > 0) ? Math.max(1, Math.round(w * (W - 1) * 0.5)) : 0;
     const line = (x0, y0, x1, y1, rgb, w, a) => {   // sampled DDA in normalized space

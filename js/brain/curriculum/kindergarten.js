@@ -2154,8 +2154,8 @@ export const K_MIXIN = {
       // start (see runFullSubjectCurriculum's _teachKVocabularyDefinitions
       // phase) where it teaches the FULL ~2000-word K vocabulary ONCE
       // for all 6 cells. Per-subject 20-word lists were rejected by
-      // operator: "A LIST OF 20 FUCKING WORDS IS HORSE SHIT AND IN NO
-      // WAY TH PROPRER 2000 WORDS A KINDERGARDENR WEOULD KNOW".
+      // The correction: a list of twenty words is nowhere near the roughly two
+      // thousand a real kindergartener knows.
 
       this._socKRemakeDone = true;
     }
@@ -8137,7 +8137,7 @@ export const K_MIXIN = {
           const hbInterval = (_nowHb - _t18_13_lastHbMs) / 1000;
           const opsPerSec = (_t18_13_opsSinceHb / hbInterval).toFixed(1);
           // PHONPROG.1a (2026-08-23) — PUBLISH the cursor, don't just print it.
-          // Gee asked for "a percentage of how far along it is" and the exact
+          // A percentage of how far along the pass is was asked for, and the exact
           // number existed here every 5 seconds while every remote channel saw
           // nothing (part (b), the console-ring blind spot, is fixed by HBRING
           // routing `_hb` through console.log). This is part (a): the same
@@ -8853,9 +8853,9 @@ export const K_MIXIN = {
     }
     const words = bucketState.words;
 
-    // EVENT-COST FIX (Gee 2026-07-10 "we dont want millions of events to
-    // run endlessly ... 12 subjects trailing into the Millions and millions
-    // of events"). `_ensureWordBucketMap` returns the ENTIRE accumulated
+    // EVENT-COST FIX (2026-07-10) — the requirement is that events must not run
+    // endlessly, with twelve subjects trailing into millions upon millions of
+    // them. `_ensureWordBucketMap` returns the ENTIRE accumulated
     // subject-band dictionary, which GROWS every grade — so the pre-fix
     // loop re-drilled emission for EVERY previously-learned word on EVERY
     // cell at EVERY grade, an O(dictionary × reps) cost that compounds
