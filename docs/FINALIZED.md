@@ -5,6 +5,48 @@
 
 ---
 
+## 2026-09-06 (4th) — `TEACHRATE` — THE REPS WERE NEVER THE PROBLEM, THE PROFILE WAS TRUNCATED, AND MY OWN LOAD ALARM WAS AN ARTEFACT
+
+Gee (verbatim): *"okay now is there anyway to massively speead up traing anything at all to go from the 2k teaches to near 200k"*
+
+Gee (verbatim, pasting the live teach log): *"and it still looks like its doing a shit tone of reps of everyhting"*
+
+Gee (verbatim): *"okay best get on that"*
+
+### The premise was wrong, and the paste is what corrected it
+
+`4×1` is four pairs × **ONE rep**. The multiplier in the log is `#8/10` — **SENSES**. `_teachWordDefinition` calls `_teachAssociationPairs` **once per dictionary sense**, measured live at **13.1 per word**. ⭐ **That is curriculum, not waste** — binding every meaning is a standing rule. But every fixed per-CALL cost is paid ~13 times per word.
+
+### Where the time goes, live on `a7b7a6e6`
+
+`_teachWordDefinition` **90.6% of uptime** at **1,175 ms/word** · assoc call **69.2 ms** over **6.34 pairs** · **per pair-rep 10.9 ms** = named 0.783 + hebbian 0.536 + lateral 0.836, leaving **9.24 ms residual (84.7%)**. Rate **66.3/s = 3,979/min**.
+
+**200k/min = 3,333/s = 50×, and it is not reachable by tuning.** Even at zero residual the named work caps at **~27,800/min**. 0.3 ms/pair is below the lateral pass and the tiled write **combined**, so the per-pair write-and-dispatch cycle has to stop being per-pair — a donor opcode, now authorised.
+
+### The residual killed a fourth theory, then a fifth, and the profile was hiding the answer
+
+⛔ **Four eliminated by measurement or deduction:** the tiled write (**0.085 ms**), the spike clear (**0.137 ms**), the sparse index array (**0.352 ms**), and `_checkSemBasinSeparation` — which **never runs on the definition path at all**, because `deferDiagnostics` gates the prune while the probe is gated by `probeMotorPath`, and definition binding routes to `sem↔fineType`; the per-rep probe additionally needs `rep >= 1` and the def path uses **reps=1**.
+
+⛔ **The anti-pair pass is eliminated by arithmetic, not opinion:** `TRACKED` auto-wraps **every** `_teach*` method, so a child costing 587,215 ms would rank **third** in the profile, above `_teachWordDefinitions` at 439,536. None does.
+
+⭐⭐ **AND THE PROFILE ITSELF WAS THE OBSTACLE: it publishes only the top 8 by ms, and the top TWO are the containers.** Six slots for every child, with the 8th already at 35,958 ms. **A list cut at 8 cannot distinguish "this method is cheap" from "this method is invisible"**, and four theories were argued against a profile that was not showing the relevant rows. Raised **8 → 24**.
+
+**What remains, by elimination:** the time is not inside any named function. It is in the **gaps between them** — `await` boundaries on an event loop also running the brain tick at ~1,359 steps/s. ⚠ **Filed as a deduction with a counter, not as a fact:** `hebWallPerPairMs` / `latWallPerPairMs` measure wall time at the call site against the callees' own inclusive totals, and the difference **is** the scheduling bill (`awaitOverheadMs` / `awaitOverheadPct`).
+
+### `REPPRICE.4` — my own instrument published a 228× alarm that could not physically be true
+
+The sampler reported **collision load 56** against the sweep's 0.246, with the verdict *"supports NO compression at a 95% retrieval floor"* — a live input to the rep count.
+
+⛔ **Artefact.** Collision load is defined across **different** patterns. In the definition lane every pair is `[word, defWord]`, so **the input word is identical for every pair in the call**; sampling `pairs[i][0]` sampled one word N times and reported the maximum collision achievable. **Through the real `measureCollisionLoad`: 8 identical patterns → load exactly `56`, the published figure to the digit.** 8 distinct patterns → `5.000`.
+
+⭐ **Caught by an impossibility check rather than a re-read:** the identity-hash stripe gives every word five unique dims at double weight, so eight words cannot share all eight dims — they were not eight words. ✅ Fixed: dedupe input words, require **≥ 8 DISTINCT** patterns before pricing at all, scale by the distinct-word population, and publish `distinctWords`. **Declining to measure is a result; publishing a degenerate number with a decision attached is not.**
+
+### Verified live from the previous batch
+
+`LATSCAN`: `hintVerified` **500** · `hintMismatch` **0** · `hintUsed` **128,562** · `scanMs` **2.230 → 0.445 ms/call**, whole lateral pass **2.640 → 0.67 ms/call**. `DEFCOST.3`'s derivation held: predicted `activeSum/call` **6,647**, measured **6,396** (3.8%). `teachStageSeq` publishes and advances — **and the two-hour wedge cleared with the press.**
+
+---
+
 ## 2026-09-06 (3rd) — `RUSTSCOPE` + `DEFCOST.2` — THE HANDOFF WAS ALREADY EXECUTED, THREE COST THEORIES DIED, AND "DID THIS BOOT WIPE HER?" HAD NO ANSWER
 
 Gee (verbatim): *"obviously do wehat ever we need to do in the right order"* — answering whether `Sponge said.txt` should be filed as a doc or treated as new scope. **Treated as scope.**
