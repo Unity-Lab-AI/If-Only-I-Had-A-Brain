@@ -90,7 +90,11 @@ budget, one CPU budget and one disk:
 
 ```
 RAM   31.1 GB · 8c/16t · no GPU     disk  877 GB total · 420 GB free
-brain MemoryHigh=20G · MemoryMax=24G · CPUQuota=1200%
+brain MemoryHigh=22G · MemoryMax=24G · CPUQuota=1200%
+      (raised from 20G on 2026-09-06 — the in-app budget derives from HOST RAM
+       and landed 906 MB over the old soft limit; the sizing now reads the
+       cgroup too. INERT until the unit is installed + daemon-reload on the box:
+       a press restarts the service, it never copies the unit file.)
 ```
 
 Three things follow, and all three bit us this week:
