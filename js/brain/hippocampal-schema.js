@@ -1224,17 +1224,58 @@ export class Tier3Store {
     if (!this.cluster || typeof this.cluster.injectEmbeddingToRegion !== 'function') return 0;
     if (this.identitySchemas.size === 0) return 0;
     let injected = 0;
+    const perSchemaStrength = strengthMultiplier / Math.max(1, this.identitySchemas.size);
+    // ⛔⛔ ONE SEM INJECTION FOR ALL N ANCHORS, NOT N OF THEM — AND IT IS THE SAME
+    // ARITHMETIC, NOT AN APPROXIMATION.
+    //
+    // `injectEmbeddingToRegion` costs `emb.length × groupSize ≈ regionSize` per
+    // call — its own comment says so — and this method was calling it ONCE PER
+    // TIER-3 SCHEMA. At 30 anchors against a 1.88M-neuron sem region that is
+    // ~56 million writes per invocation, and the invocation fires on every
+    // cell pass, every gate-probe question and every chat turn. Two live CPU
+    // profiles named it: **23.0%** of a 45s main-thread sample, and **46.4%**
+    // on an earlier boot — in both, `injectEmbeddingToRegion` with
+    // `injectIdentityBaseline` as ~100% of its callers.
+    //
+    // ⭐ ADDITIVE INJECTION IS LINEAR, SO THE SUM IS EXACT. The write is
+    // `externalCurrent[i] += emb[d] · GAIN · s`, so N vectors each at `s = S/N`
+    // deposit `Σᵢ(embᵢ[d]) · GAIN · S/N` — identical, to the last float, to one
+    // injection of the summed vector at that same strength. This is not a
+    // sampling shortcut or a cheaper approximation; it is the same number
+    // arrived at with 1/N of the traversals.
+    //
+    // ⚠ ONLY VECTORS OF THE COMMON LENGTH ARE COMBINED. `groupSize` is derived
+    // from `emb.length`, so two embeddings of different lengths tile the region
+    // differently and CANNOT be summed — any odd one out is injected on its own
+    // below, exactly as before, rather than silently distorted into the sum.
+    let _sum = null, _sumLen = 0, _sumCount = 0;
+    for (const schema of this.identitySchemas.values()) {
+      const e = schema.conceptEmbedding;
+      if (!e || e.length === 0) continue;
+      if (_sum === null) { _sumLen = e.length; _sum = new Float64Array(_sumLen); }
+      if (e.length !== _sumLen) continue;   // injected individually in the loop below
+      for (let d = 0; d < _sumLen; d++) _sum[d] += e[d];
+      _sumCount++;
+    }
+    if (_sum && _sumCount > 0) {
+      try { this.cluster.injectEmbeddingToRegion('sem', _sum, perSchemaStrength); }
+      catch { /* non-fatal — the per-schema motor bumps below still run */ }
+    }
     // (the local SUBJECTS list died with the per-subject bucket loop —
     // the unified word_motor band has no per-subject geometry)
     for (const schema of this.identitySchemas.values()) {
       if (!schema.conceptEmbedding || schema.conceptEmbedding.length === 0) continue;
       try {
-        // Each schema injection scaled to (strength / N) so total injected
-        // amplitude across all Tier 3 schemas equals strengthMultiplier
-        // regardless of how many schemas we have. Prevents identity-baseline
-        // from drowning the user-input intent seed.
-        const perSchemaStrength = strengthMultiplier / Math.max(1, this.identitySchemas.size);
-        this.cluster.injectEmbeddingToRegion('sem', schema.conceptEmbedding, perSchemaStrength);
+        // ⚠ The sem injection for this schema has ALREADY been made above, as
+        // part of the combined vector — unless its length differs from the
+        // common one, in which case it was excluded from the sum and is
+        // injected here on its own. The per-schema `word_motor` bump below is
+        // NOT combinable and still runs for every anchor: it targets that
+        // anchor's own bucket, derived from `schema.label`, so there is no
+        // single vector that expresses all of them.
+        if (schema.conceptEmbedding.length !== _sumLen) {
+          this.cluster.injectEmbeddingToRegion('sem', schema.conceptEmbedding, perSchemaStrength);
+        }
 
         // 114.19fg.Tier11 — ALSO bias word_motor sub-band buckets when
         // schema's anchor word is in trained vocab. Sem-layer injection

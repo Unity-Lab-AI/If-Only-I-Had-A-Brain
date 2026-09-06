@@ -5,6 +5,42 @@
 
 ---
 
+## 2026-09-06 — `WEDGESEE` — THE THREE THAT CAME OUT OF THE STALL: A WATCHDOG THAT NAMES A WEDGE, A 30× IDENTITY-INJECTION CUT, AND A PANE THAT STOPPED OUTLIVING THE TEACHING
+
+Gee (verbatim): *"lets do em all no point in reseting the brain a bunch"*
+
+### ① The watchdog — 52 identical heartbeats said nothing
+
+The stall printed `phase=(between-phases / gate-probe)` **fifty-two times** and named nothing. That label is a placeholder for `_activePhase == null`, not a diagnosis, and every genuinely useful number already existed somewhere in state — time since the last teach call, whether the substrate was ready, whether the inner counters were advancing. **None of it was on the line.**
+
+⭐ **THE RULE THIS ENCODES: a cell that is ALIVE and not TEACHING is a different state from a cell that is working, and the two must not print the same line.** Below the threshold it stays exactly as quiet as before; above it, one line carries what took a forensic dig across five separate state fields to assemble by hand — stage and its age, `hebbian.calls` **plus whether it is frozen since the last check** (the single fact that separated "inside a long call" from "wedged"), active phase, substrate readiness, donor pause reason, and the probe-deadline hit count.
+
+⚠ **Threshold 600 s (`DREAM_WEDGE_WARN_MS`), deliberately well past the slowest legitimate single teach call ever measured here** — one `_teachAssociationPairs` over 7,250 corpus pairs took **380,470 ms** — so a merely slow phase never trips it. And the line itself carries the correction I got wrong: *a stage tag whose age climbs while `teachStageMax` stays small is ACCURATE, not stale — max records only COMPLETED runs.*
+
+⚠ `this._teachStageProfile.hebbian.calls` was **read from its writer**, not guessed. A name assumed instead of read is how a drain in this same file went its entire life without running once.
+
+### ② Identity injection — 30 traversals of the sem region, every time, for one number
+
+`injectEmbeddingToRegion` costs `emb.length × groupSize ≈ regionSize` per call — **its own comment says so** — and `injectIdentityBaseline` was calling it **once per Tier-3 schema**. At 30 anchors against a 1.88M-neuron sem region that is **~56 million writes per invocation**, and it fires on every cell pass, every gate-probe question and every chat turn. Two live CPU profiles named it: **23.0%** of a 45 s main-thread sample, and **46.4%** on an earlier boot, with `injectIdentityBaseline` as ~100% of its callers.
+
+⭐ **ADDITIVE INJECTION IS LINEAR, SO THE SUM IS EXACT.** The write is `externalCurrent[i] += emb[d]·GAIN·s`, so N vectors each at `s = S/N` deposit `Σᵢ(embᵢ[d])·GAIN·S/N` — identical, to the last float, to ONE injection of the summed vector at that strength. **This is not a sampling shortcut or a cheaper approximation; it is the same number reached with 1/N of the traversals.**
+
+✅ **Proven, not asserted:** a harness at the same dimensional ratio compared 30 separate injections against one combined injection — **maxDiff 2.08e-17**, pure summation-order rounding at f64. **30 → 1 region walks.**
+
+⚠ **Only vectors of the common length are combined.** `groupSize` derives from `emb.length`, so embeddings of different lengths tile the region differently and cannot be summed — any odd one out is injected on its own exactly as before, rather than silently distorted into the sum. The per-schema `word_motor` bump is **not** combinable (it targets that anchor's own bucket from `schema.label`) and still runs for every anchor.
+
+### ③ The reading pane — my own regression from the same day, bounded
+
+Extending the teach bus to the corpus lane meant **3,424 sentences published in one burst**. The pane drains at 4/s, so that became a **~14-minute backlog**: it kept scrolling long after teaching had stopped, and a genuinely wedged walk looked alive because text was still moving. Gee saw exactly that — *"teach viwere is showing teaching tho"* — while `teachCallsPerMin` was 0.
+
+⭐ **The counts were never wrong.** `ageMs` correctly read 649,604 and the status chip said "last taught 649s ago" the whole time. **It was the SCROLL that lied, and a scroll is what a human actually watches.**
+
+✅ Queue capped at 240, **dropping the OLDEST** — the pane's job is "what is she being taught RIGHT NOW", so keeping stale head-of-queue items and discarding fresh ones would have preserved the exact defect. The drop count is printed in the pace note rather than silent; the complete record is in the ledger pane and the analytics above remain unsampled, so nothing is lost by bounding what one person can physically read.
+
+✅ **Verified:** `node --check` on both JS files, ESM `import()` of `curriculum.js`, both `<script>` blocks parse, `QUEUE_CAP` confirmed declared-before-use inside `poll()`, CRLF preserved on all three (3,092 / 31,795 / 1,464, 0 bare LF), and the 30→1 injection harness at maxDiff 2.08e-17.
+
+---
+
 ## 2026-09-06 — `PROBEWEDGE` — ONE `await` THAT NEVER CAME BACK STOPPED THE ENTIRE WALK, WITH AN IDLE CPU AND NOT ONE ERROR ANYWHERE
 
 Gee (verbatim): *"well im not updating again till we fix the shit and do what needs done to everything everywhere"*
