@@ -5,6 +5,52 @@
 
 ---
 
+## 2026-09-06 (10th) — `OFFLINEDICT.4` — THE MOST COMMON WORDS IN ENGLISH WERE TAUGHT BY NOTHING AT ALL
+
+Gee (verbatim): *"96 lots to do get to it and start making some reall progreass we dont have to push every fucking fix"*
+
+### The gap was exactly as filed
+
+`GRAMMAR_SLOT_PAIRS` had **no pronoun, preposition, auxiliary or subordinator role**. So `of`, `to`, `with`, `would`, `because`, `them`, `their`, `which` got nothing from the dictionary lane — WordNet holds open-class words only — and nothing from the grammar lane either, because they were not in the table. Adding a slot NAME would have changed nothing; the words were simply absent.
+
+All four slots added with the words that fill them: **78 pairs → 187**, structural words **18 → 118**, and **43 of the 71 previously-untaught words are now taught**.
+
+### ⛔⛔ The derivation I tried first, measured, and threw away
+
+I built membership as *"zero WordNet senses means closed-class"*, on the strength of this project's own note that the offline dictionary holds only noun/verb/adj/adv. It looked rigorous — a structural test, no hand list, exactly the pattern the drawable taxonomy uses.
+
+**It rejected 42 of the candidates**, including `i` (4 noun senses: the letter, iodine, the Roman numeral), `in`, `on`, `over`, `about`, `can`, `may`, `must`, `will`, `be`, `have`, `do`.
+
+⭐ **A word can be a function word AND have an open-class homograph** — the identical shape to `be` meaning beryllium, found hours earlier in the same session. **The dictionary's silence is evidence that a word owes no definition; it is not the definition of a function word.** Membership is the ROLE, which is what this table has encoded from the start: `am` and `are` carry noun senses and have always been tagged `copula` regardless.
+
+### The coupling was respected, and checked rather than assumed
+
+Naming a slot in `GRAMMAR_FUNCTION_SLOTS` also silences the missing-definition flag for every word in it — the file's own header says the two behaviours are the same claim. So `subject` / `object` / `verb` / `modifier` stay **out**: `cat` sits in the table as an example filler and still owes a real definition.
+
+**Verified after the change:** `cat` · `dog` · `book` · `apple` · `run` · `jump` · `big` · `red` all still flaggable · **zero** exact duplicate (word, slot) pairs · ESM import clean.
+
+### What remains, and why
+
+```
+  dictionary cannot answer        71
+  now taught by the grammar lane  43
+  still taught by nothing         28
+    irregular inflections         14   refused - no .exc files, so went->go is a GUESS
+    closed compounds               6
+    modern proper nouns            7   WordNet 3.0 predates smartphone / app / airbnb
+    corpus typo                    1
+```
+
+Every one of the 28 falls in a category this row had already reasoned about and declined. The network API answers the last three groups whenever it is up.
+
+### Priced, because it widens a taught set
+
+Slot-pair writes **6,240 → 14,960** (+8,720) = **+1.6 min per visit** to this phase at the measured 10.9 ms per pair-rep. **No gate removed or weakened.**
+
+⛔ **It changes what she is taught, so it lands on the NEXT fresh walk, not the one running** — the fresh-walk LAW working as intended.
+
+---
+
 ## 2026-09-06 (9th) — `DEFPOS.1` + `CODELEAK` — "BE" NO LONGER MEANS BERYLLIUM, AND THE LEAK SCANNER CAUGHT ITS OWN AUTHOR
 
 Gee (verbatim): *"get to work"*

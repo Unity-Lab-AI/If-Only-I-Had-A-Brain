@@ -178,6 +178,60 @@ export const GRAMMAR_SLOT_PAIRS = [
   // Conjunctions (between_clause_slot)
   ['and','conjunction'], ['but','conjunction'], ['or','conjunction'],
   ['so','conjunction'],
+  // ── THE FOUR CLOSED CLASSES THAT WERE TAUGHT BY NOTHING AT ALL ──────────────
+  //
+  // ⛔ MEASURED, NOT ASSUMED: of the 84 words the offline dictionary cannot
+  // answer, only NINE were in the structural set. **75 were taught by nothing** —
+  // no dictionary entry, and no slot in this table either, because the table had
+  // no pronoun, preposition, auxiliary or subordinator role. Adding a slot name
+  // to the function-slot set below would have changed nothing; the words were
+  // simply absent. These are the most common words in English, and she was
+  // getting them from neither lane.
+  //
+  // ⚠ MEMBERSHIP IS THE ROLE, NOT THE DICTIONARY'S SILENCE — and testing that the
+  // other way round is a mistake I made and measured before writing this. A
+  // "zero WordNet senses means closed-class" gate REJECTED 42 of these, including
+  // `i` (4 noun senses: the letter, iodine, the numeral), `in`, `on`, `over`,
+  // `about`, `can`, `may`, `must` and `will`. **A word can be a function word AND
+  // have an open-class homograph** — the same shape as `be` meaning beryllium.
+  // The dictionary's silence is evidence that a word owes no definition; it is
+  // not the definition of a function word. This table already knew that: `am` and
+  // `are` carry noun senses and have always been tagged `copula` regardless.
+  //
+  // ⚠ Words appearing twice are deliberate and the mechanism supports it — the
+  // header says so for `cat` as subject and object. `you`/`we`/`they` are subject
+  // fillers AND pronouns; `is`/`was`/`were` are copulas AND auxiliaries; `that`
+  // is a pronoun AND a subordinator. Hebbian accumulates both bindings and
+  // position context decides at generation time.
+  ['i','pronoun'], ['you','pronoun'], ['he','pronoun'], ['she','pronoun'],
+  ['it','pronoun'], ['we','pronoun'], ['they','pronoun'],
+  ['me','pronoun'], ['him','pronoun'], ['her','pronoun'], ['us','pronoun'], ['them','pronoun'],
+  ['my','pronoun'], ['your','pronoun'], ['his','pronoun'], ['its','pronoun'],
+  ['our','pronoun'], ['their','pronoun'],
+  ['mine','pronoun'], ['yours','pronoun'], ['hers','pronoun'], ['ours','pronoun'], ['theirs','pronoun'],
+  ['this','pronoun'], ['that','pronoun'], ['these','pronoun'], ['those','pronoun'],
+  ['who','pronoun'], ['whom','pronoun'], ['whose','pronoun'], ['which','pronoun'],
+  ['myself','pronoun'], ['yourself','pronoun'], ['himself','pronoun'], ['herself','pronoun'],
+  ['itself','pronoun'], ['ourselves','pronoun'], ['themselves','pronoun'],
+  ['of','preposition'], ['to','preposition'], ['for','preposition'], ['with','preposition'],
+  ['from','preposition'], ['into','preposition'], ['during','preposition'], ['without','preposition'],
+  ['onto','preposition'], ['upon','preposition'], ['among','preposition'], ['beside','preposition'],
+  ['at','preposition'], ['by','preposition'], ['in','preposition'], ['on','preposition'],
+  ['over','preposition'], ['under','preposition'], ['after','preposition'], ['before','preposition'],
+  ['between','preposition'], ['through','preposition'], ['about','preposition'], ['against','preposition'],
+  ['across','preposition'], ['behind','preposition'], ['below','preposition'], ['near','preposition'],
+  ['around','preposition'], ['off','preposition'], ['out','preposition'], ['up','preposition'],
+  ['down','preposition'], ['toward','preposition'],
+  ['is','auxiliary'], ['am','auxiliary'], ['are','auxiliary'], ['was','auxiliary'], ['were','auxiliary'],
+  ['be','auxiliary'], ['been','auxiliary'], ['being','auxiliary'],
+  ['have','auxiliary'], ['has','auxiliary'], ['had','auxiliary'],
+  ['do','auxiliary'], ['does','auxiliary'], ['did','auxiliary'],
+  ['will','auxiliary'], ['would','auxiliary'], ['shall','auxiliary'], ['should','auxiliary'],
+  ['can','auxiliary'], ['could','auxiliary'], ['may','auxiliary'], ['might','auxiliary'], ['must','auxiliary'],
+  ['because','subordinator'], ['than','subordinator'], ['if','subordinator'], ['until','subordinator'],
+  ['whether','subordinator'], ['since','subordinator'], ['although','subordinator'], ['while','subordinator'],
+  ['unless','subordinator'], ['though','subordinator'], ['when','subordinator'], ['where','subordinator'],
+  ['as','subordinator'], ['that','subordinator'],
 ];
 
 // Derived once, from the table above and nothing else.
@@ -201,7 +255,23 @@ export const GRAMMAR_TAUGHT_WORDS = new Set(GRAMMAR_SLOT_PAIRS.map(([w]) => w));
 // ⚠ These four are SLOT TAGS — grammatical categories — not words. Naming which
 // roles are function-word roles is a linguistic classification of the producer's
 // own taxonomy, the same shape as reading WordNet's lexicographer categories.
-const GRAMMAR_FUNCTION_SLOTS = new Set(['copula', 'article', 'conjunction', 'qword']);
+//
+// ⭐ FOUR MORE CLOSED CLASSES ADDED with the words that fill them. A pronoun, a
+// preposition, an auxiliary and a subordinator all pass the same test the
+// original four pass: the word has no meaning apart from its role. `of` is not a
+// thing, `would` is not an action, `because` is a relation between clauses. That
+// is exactly why the dictionary has no entry for them, and — until they were
+// added to the table above — why they were taught by nothing at all.
+//
+// ⚠ THE COUPLING IS THE POINT AND IT CUTS BOTH WAYS. Naming a slot here also
+// silences the missing-definition flag for every word in it, so a slot must not
+// be listed unless its words genuinely owe no definition. `subject`, `object`,
+// `verb` and `modifier` stay OUT for that reason: `cat` sits in this table as an
+// example filler and still owes a real definition.
+const GRAMMAR_FUNCTION_SLOTS = new Set([
+  'copula', 'article', 'conjunction', 'qword',
+  'pronoun', 'preposition', 'auxiliary', 'subordinator',
+]);
 
 // The words whose meaning IS their grammatical role, and which therefore owe no
 // dictionary definition. Derived from the table and the slot taxonomy; nothing
