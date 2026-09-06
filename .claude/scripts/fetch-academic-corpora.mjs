@@ -1451,7 +1451,11 @@ const TOPICS = {
       // repeated from above.
       'Anxiety disorder', 'Substance abuse', 'Alcohol (drug)', 'Sleep hygiene',
       // Second pass: first landed at 97% of floor. Three more, same gate.
-      'Adolescence', 'Tobacco smoking', 'Human nutrition'],
+      'Adolescence', 'Tobacco smoking', 'Human nutrition',
+      // Third pass: 90% -> 97% -> this. The last 4k of a 146k floor is the
+      // expensive part, because what is left to add is whatever did not fit the
+      // cell's subject the first two times.
+      'Human sexuality', 'Puberty', 'Bioethics', 'Medical ethics'],
     grade12: ['Public health', 'Health policy', 'Health insurance', 'Nutrition', 'Well-being', 'Preventive healthcare', 'Reproductive rights', 'Bioethics', 'End-of-life care', 'Health literacy',
       'Universal health care', 'Health economics', 'Abortion', 'Informed consent', 'Palliative care', 'Hospice',
       'Social determinants of health', 'Health equity', 'Global health', 'Epidemiology', 'Pandemic',
