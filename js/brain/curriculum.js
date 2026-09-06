@@ -10930,7 +10930,35 @@ export class Curriculum {
             : `+${(phaseMs / 1000).toFixed(0)}s`;
           phaseLabel = ` · phase=${ap.name} ${phaseSnap}`;
         } else {
-          phaseLabel = ` · phase=(between-phases / gate-probe)`;
+          // ⛔⛔ THIS PRINTED A PLACEHOLDER 52 TIMES DURING A 24-MINUTE WEDGE,
+          // AND AGAIN THROUGH A 95-MINUTE ONE, AND NAMED NOTHING EITHER TIME.
+          //
+          // `_activePhase` is null between declared phases — which includes the
+          // whole gate lane — so `(between-phases / gate-probe)` is a statement
+          // that the label is unavailable, dressed as a location. Every heartbeat
+          // through both wedges carried it.
+          //
+          // ⭐ THE STAGE TAG WAS SET THE ENTIRE TIME AND THIS LINE COULD SEE IT.
+          // The gate lane stamps `gate:readiness`, `gate:student-battery`,
+          // `gate:probe-gpu`, `cell:runner` and their `-done` counterparts into
+          // `_teachStage`; the wedge warn below already reads them. Printing the
+          // stage here costs one property read and turns an uninformative
+          // heartbeat into one that says where she actually is — every 10 s,
+          // instead of only after a wedge threshold trips.
+          //
+          // ⚠ THE AGE IS PRINTED WITH IT AND THE PAIR IS THE POINT. A stage tag
+          // alone cannot say whether it is current; a stage tag whose age keeps
+          // climbing across heartbeats is the signature of a blocker in code that
+          // stamps nothing. Read the two together, and read `stageSeq` on the
+          // wedge line to settle it.
+          const _hbBrain = this.brain || (cluster && cluster._brain);
+          const _hbStage = _hbBrain && _hbBrain._teachStage;
+          if (_hbStage) {
+            const _hbAge = _hbBrain._teachStageAt ? Math.round((Date.now() - _hbBrain._teachStageAt) / 1000) : null;
+            phaseLabel = ` · phase=(no declared phase) · stage=${_hbStage}${_hbAge === null ? '' : ` +${_hbAge}s`}`;
+          } else {
+            phaseLabel = ` · phase=(between-phases, and NO stage tag is set either — she is in code that marks nothing)`;
+          }
         }
       } catch { /* ignore */ }
       // Research-honesty oracle/matrix ratio. Counters live on the
