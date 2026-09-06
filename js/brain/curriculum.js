@@ -178,6 +178,60 @@ export const GRAMMAR_SLOT_PAIRS = [
   // Conjunctions (between_clause_slot)
   ['and','conjunction'], ['but','conjunction'], ['or','conjunction'],
   ['so','conjunction'],
+  // ── THE FOUR CLOSED CLASSES THAT WERE TAUGHT BY NOTHING AT ALL ──────────────
+  //
+  // ⛔ MEASURED, NOT ASSUMED: of the 84 words the offline dictionary cannot
+  // answer, only NINE were in the structural set. **75 were taught by nothing** —
+  // no dictionary entry, and no slot in this table either, because the table had
+  // no pronoun, preposition, auxiliary or subordinator role. Adding a slot name
+  // to the function-slot set below would have changed nothing; the words were
+  // simply absent. These are the most common words in English, and she was
+  // getting them from neither lane.
+  //
+  // ⚠ MEMBERSHIP IS THE ROLE, NOT THE DICTIONARY'S SILENCE — and testing that the
+  // other way round is a mistake I made and measured before writing this. A
+  // "zero WordNet senses means closed-class" gate REJECTED 42 of these, including
+  // `i` (4 noun senses: the letter, iodine, the numeral), `in`, `on`, `over`,
+  // `about`, `can`, `may`, `must` and `will`. **A word can be a function word AND
+  // have an open-class homograph** — the same shape as `be` meaning beryllium.
+  // The dictionary's silence is evidence that a word owes no definition; it is
+  // not the definition of a function word. This table already knew that: `am` and
+  // `are` carry noun senses and have always been tagged `copula` regardless.
+  //
+  // ⚠ Words appearing twice are deliberate and the mechanism supports it — the
+  // header says so for `cat` as subject and object. `you`/`we`/`they` are subject
+  // fillers AND pronouns; `is`/`was`/`were` are copulas AND auxiliaries; `that`
+  // is a pronoun AND a subordinator. Hebbian accumulates both bindings and
+  // position context decides at generation time.
+  ['i','pronoun'], ['you','pronoun'], ['he','pronoun'], ['she','pronoun'],
+  ['it','pronoun'], ['we','pronoun'], ['they','pronoun'],
+  ['me','pronoun'], ['him','pronoun'], ['her','pronoun'], ['us','pronoun'], ['them','pronoun'],
+  ['my','pronoun'], ['your','pronoun'], ['his','pronoun'], ['its','pronoun'],
+  ['our','pronoun'], ['their','pronoun'],
+  ['mine','pronoun'], ['yours','pronoun'], ['hers','pronoun'], ['ours','pronoun'], ['theirs','pronoun'],
+  ['this','pronoun'], ['that','pronoun'], ['these','pronoun'], ['those','pronoun'],
+  ['who','pronoun'], ['whom','pronoun'], ['whose','pronoun'], ['which','pronoun'],
+  ['myself','pronoun'], ['yourself','pronoun'], ['himself','pronoun'], ['herself','pronoun'],
+  ['itself','pronoun'], ['ourselves','pronoun'], ['themselves','pronoun'],
+  ['of','preposition'], ['to','preposition'], ['for','preposition'], ['with','preposition'],
+  ['from','preposition'], ['into','preposition'], ['during','preposition'], ['without','preposition'],
+  ['onto','preposition'], ['upon','preposition'], ['among','preposition'], ['beside','preposition'],
+  ['at','preposition'], ['by','preposition'], ['in','preposition'], ['on','preposition'],
+  ['over','preposition'], ['under','preposition'], ['after','preposition'], ['before','preposition'],
+  ['between','preposition'], ['through','preposition'], ['about','preposition'], ['against','preposition'],
+  ['across','preposition'], ['behind','preposition'], ['below','preposition'], ['near','preposition'],
+  ['around','preposition'], ['off','preposition'], ['out','preposition'], ['up','preposition'],
+  ['down','preposition'], ['toward','preposition'],
+  ['is','auxiliary'], ['am','auxiliary'], ['are','auxiliary'], ['was','auxiliary'], ['were','auxiliary'],
+  ['be','auxiliary'], ['been','auxiliary'], ['being','auxiliary'],
+  ['have','auxiliary'], ['has','auxiliary'], ['had','auxiliary'],
+  ['do','auxiliary'], ['does','auxiliary'], ['did','auxiliary'],
+  ['will','auxiliary'], ['would','auxiliary'], ['shall','auxiliary'], ['should','auxiliary'],
+  ['can','auxiliary'], ['could','auxiliary'], ['may','auxiliary'], ['might','auxiliary'], ['must','auxiliary'],
+  ['because','subordinator'], ['than','subordinator'], ['if','subordinator'], ['until','subordinator'],
+  ['whether','subordinator'], ['since','subordinator'], ['although','subordinator'], ['while','subordinator'],
+  ['unless','subordinator'], ['though','subordinator'], ['when','subordinator'], ['where','subordinator'],
+  ['as','subordinator'], ['that','subordinator'],
 ];
 
 // Derived once, from the table above and nothing else.
@@ -201,7 +255,23 @@ export const GRAMMAR_TAUGHT_WORDS = new Set(GRAMMAR_SLOT_PAIRS.map(([w]) => w));
 // ⚠ These four are SLOT TAGS — grammatical categories — not words. Naming which
 // roles are function-word roles is a linguistic classification of the producer's
 // own taxonomy, the same shape as reading WordNet's lexicographer categories.
-const GRAMMAR_FUNCTION_SLOTS = new Set(['copula', 'article', 'conjunction', 'qword']);
+//
+// ⭐ FOUR MORE CLOSED CLASSES ADDED with the words that fill them. A pronoun, a
+// preposition, an auxiliary and a subordinator all pass the same test the
+// original four pass: the word has no meaning apart from its role. `of` is not a
+// thing, `would` is not an action, `because` is a relation between clauses. That
+// is exactly why the dictionary has no entry for them, and — until they were
+// added to the table above — why they were taught by nothing at all.
+//
+// ⚠ THE COUPLING IS THE POINT AND IT CUTS BOTH WAYS. Naming a slot here also
+// silences the missing-definition flag for every word in it, so a slot must not
+// be listed unless its words genuinely owe no definition. `subject`, `object`,
+// `verb` and `modifier` stay OUT for that reason: `cat` sits in this table as an
+// example filler and still owes a real definition.
+const GRAMMAR_FUNCTION_SLOTS = new Set([
+  'copula', 'article', 'conjunction', 'qword',
+  'pronoun', 'preposition', 'auxiliary', 'subordinator',
+]);
 
 // The words whose meaning IS their grammatical role, and which therefore owe no
 // dictionary definition. Derived from the table and the slot taxonomy; nothing
@@ -5571,14 +5641,36 @@ export class Curriculum {
     try { this._enqueueDefinitionSeed(cluster, words, grade); } catch { /* non-fatal */ }
     const taught = cluster._definitionTaughtWords instanceof Set
       ? cluster._definitionTaughtWords : new Set();
-    const todo = words.filter(w => w && typeof w === 'string' && !taught.has(w));
+    /* ⛔⛔ A SET NAMED `_vocabPermanentMiss` WAS WRITE-ONLY — the residue retried
+       every pass, forever.
+       It is populated a few lines below with words the dictionary POSITIVELY
+       said it has no entry for, and its own guard comment shouts that it must
+       only ever receive those. Nothing ever read it. So the same words came back
+       through this filter on every pre-cell pass of every cell, were looked up
+       again, missed again, and were re-counted as failures again — the
+       `processed 67 / bound 0 / failed 67` block that repeated window after
+       window. **A correct number written where nothing reads it**, which is the
+       shape this project keeps paying for.
+       ⭐ SKIPPING IS SAFE PRECISELY BECAUSE THE SET DOES NOT SURVIVE A BOOT.
+       It is in-memory and rebuilt from live lookups, so every boot still asks
+       for each word once — which is where the offline-dictionary heal gets its
+       chance — and only a word that misses AFTER both sources have answered
+       enters the set and is skipped for the rest of that boot. A permanent skip
+       across restarts would have frozen the miss and denied the heal.
+       ⚠ `_vocabDeferredMiss` is deliberately NOT consulted here: a service
+       outage is a fact about the SERVICE, those words are still owed, and the
+       next pass retrying them is the auto-heal working as designed. */
+    const permaMiss = cluster._vocabPermanentMiss instanceof Set
+      ? cluster._vocabPermanentMiss : new Set();
+    const todo = words.filter(w => w && typeof w === 'string' && !taught.has(w) && !permaMiss.has(w));
+    const _skippedPerma = words.filter(w => w && typeof w === 'string' && !taught.has(w) && permaMiss.has(w)).length;
     if (todo.length === 0) {
-      this._hb(`[Curriculum] 📚 PRE-CELL VOCAB ${subject}/${grade} — all ${words.length} grade words already learned (a sibling cell paid the pass). Cell starts now.`);
+      this._hb(`[Curriculum] 📚 PRE-CELL VOCAB ${subject}/${grade} — all ${words.length} grade words already learned (a sibling cell paid the pass)${_skippedPerma ? `, apart from ${_skippedPerma} the dictionary positively has no entry for` : ''}. Cell starts now.`);
       return;
     }
     this._currentMacroPhase = `📚 PRE-CELL VOCAB — ${subject}/${grade}`;
     this._macroPhaseProgress = { current: 0, total: todo.length, label: `PRE-CELL VOCAB ${subject}/${grade}` };
-    this._hb(`[Curriculum] 📚 PRE-CELL VOCAB START — ${subject}/${grade}: ${todo.length} of ${words.length} grade words unlearned; multi-def Hebbian at reps:1, 300-word chunks with dream windows between. Definitions land BEFORE the cell's bindings train on these words.`);
+    this._hb(`[Curriculum] 📚 PRE-CELL VOCAB START — ${subject}/${grade}: ${todo.length} of ${words.length} grade words unlearned${_skippedPerma ? ` (${_skippedPerma} skipped — the dictionary positively has NO ENTRY for them, so re-asking costs a pass and binds nothing; they re-enter on the next boot in case a source has since gained them)` : ''}; multi-def Hebbian at reps:1, 300-word chunks with dream windows between. Definitions land BEFORE the cell's bindings train on these words.`);
     const CHUNK = 300;
     let totalTrained = 0, totalWordsBound = 0, totalDefsBound = 0, totalTimeouts = 0, totalSlowWords = 0;
     const t0 = Date.now();
