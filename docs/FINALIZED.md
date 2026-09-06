@@ -5,6 +5,38 @@
 
 ---
 
+## 2026-09-06 (15th) — `REPCOMP.2` + `DEFHEAL.4` — TWO ROWS CLOSED ON READINGS THAT ALREADY EXISTED
+
+Gee (verbatim): *"get to the rest of the todos we need to do"*
+
+### `REPCOMP.2` — the row was not wrong, it was uncarried
+
+Its watch was *"`tier1.totalEpisodes` leaving 0"*. It left. The `GATE READ 2026-09-01` entry (`ec723c41`, 5.5 h in) records **`tier1 57 · tier2 30 schemas · replaySchemas 68 · replayWrites 272 · replayRefused 0 · consolidation passCount 5`**.
+
+**Replay has been proven real in production for five days**, and the headline this row was filed under — *"hers has never run"* — stopped being true a day after it was written.
+
+⛔⛔ **The answer landed in a DIFFERENT row and nothing brought it back.** `REPLAYGATE.1` fixed the cause on 2026-08-31; `REPLAYOFF.4` recorded the confirming numbers on 2026-09-01; this row went on telling every reader that replay had never run. **A board can be wrong by being out of date as easily as by being mistaken**, and this failure mode is the worse one, because the row reads as live investigation rather than as history.
+
+⚠ **Closed on the primary condition only, and the second is named rather than claimed.** The watch had two halves; `[EventLoop] BLOCKED` **not** gaining a new ~30 s-periodic entry was never separately measured. No reading in that window reports such a pattern, but **absence-in-a-report is not a measurement**, and this project has already paid for treating it as one. If a ~30 s-periodic block ever appears, the consolidation timer is the first suspect.
+
+⭐ The consequence that matters: `REPLAYOFF.4` held the rep re-pricing behind *"only after replay is proven real"*, because interleaved replay is what SEPARATES representations. **That gate is now open on evidence.**
+
+### `DEFHEAL.4` — the prediction held, and the escalation trigger was not met
+
+The row could not be confirmed when it shipped because the API was returning `000` for every word. Read live off the box: dictionary cache **17,394 entries · 15,727 hits · `rateLimited` 0 · `fetchAvailable` true**. **It is up.**
+
+⭐ **The flag that fires is the proof.** With the service answering, the live flag is **`DEF-MISS`** (permanent, no entry), not **`DEF-DEFER`** (service outage) — exactly the discrimination this row predicted. The classifier is telling the two apart on live traffic.
+
+⭐⭐ **The row's own escalation trigger is not met.** It said *"if `PRECELL-MISS` still fires with a large count once the dictionary is up, the 67 are genuinely undefined and this needs its own investigation."* **The live count is 8 distinct, not 67** — and that investigation was done the same day by `OFFLINEDICT.4`, which measured the whole population rather than sampling it: **71 → 43 now taught by the grammar lane → 28 genuinely undefinable**, in four named categories.
+
+⚠ Of the 8 live-flagged words, **4 are closed-class** (correct by construction) and **4 were the healable ones** that `FLAGSAMPLE.2` fixed at the cache chokepoint the same day. **Expected after the next press: `DEF-MISS ×4`.**
+
+### What this pair is really about
+
+Both rows were closeable without writing a line of code, on evidence that had been sitting in the tree for days. **An audit of the open board for "waiting on a reading that already arrived" found only these**, which is the reassuring half — but the cost of the two that existed was real, because a stale row does not look stale.
+
+---
+
 ## 2026-09-06 (14th) — `BOXCAP.3` — THE THROTTLE BAND HAS AN ALARM NOW, AND IT IS READ FROM OUTSIDE HER
 
 Gee (verbatim): *"get on it lets make some progress"*
