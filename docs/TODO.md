@@ -892,6 +892,43 @@ Gee (verbatim): *"sdo no storring terrabytes of data"*
 > ```
 > ⭐ **The measured sub-linear model held on the real result: the expensive transition lane grows ~6.4×, not 10.2×.** ⚠ **147 topics were throttled out by the wiki API mid-run** (`CORPUSGAP.7`'s in-cell burst limit, still real at 3s spacing) and kept their previous thin entries under the monotonic keep-longer merge — which is exactly why per-entry licence coverage reads **695/874 (79.5%)** rather than 100%. **A re-run tops those up and can only improve them; the merge cannot regress a cell.**
 
+### ⭐⭐ CORPUSFLOOR — WHAT IS ACTUALLY LEFT FOR HER TO FINISH, MEASURED CELL BY CELL — 2026-09-06
+
+Gee (verbatim): *"okay i need you to do the actual work to be done not maske shit up to do while waiting on the brain to start up"*
+
+- [~] `CORPUSFLOOR.1` — ⭐ **THE ANSWER TO "WHAT IS LEFT" IS 32 CELLS, AND EVERY OTHER CELL IS DONE.** Every corpus file measured against the band floor in `docs/CURRICULUM-GAP.md §THE TARGET LADDER`:
+  ```
+    193 cells · 71,256,751 words · ZERO empty
+    MEET floor 161   SHORT 32
+      early   29 ok / 0 short      high     32 ok / 22 short
+      middle  28 ok / 0 short      college  26 ok / 10 short
+      upper   32 ok / 0 short      grad     14 ok / 0 short
+  ```
+  - ⭐ **THE WHOLE BOTTOM OF THE LADDER IS FINISHED.** early, middle, upper and grad are **100%**. What is owed is concentrated in exactly the two bands where a degree gets finished.
+  - **The 32, worst ratio first:** `cstheory/college2` 61% · `pe/grade12` 68% · `music/grade11` 69% · `language/grade10` 72% · `music/grade9` 74% · `art/grade9` 76% · `math/college4` 77% · `pe/grade10` 77% · `health/grade12` 77% · `ap/grade12` 78% · `language/grade11` 78% · `cstheory/college1` 78% · `cstheory/college4` 80% · `cs/grade10` 82% · `pe/grade11` 83% · `cssystems/college3` 85% · `major/college1` 87% · `language/grade9` 87% · `music/grade12` 88% · `art/grade12` 89% · `science/college3` 90% · `language/grade12` 90% · `health/grade11` 90% · `health/grade10` 92% · `art/college2` 92% · `cs/grade11` 93% · `health/grade9` 95% · `cstheory/college3` 95% · `art/grade10` 96% · `music/grade10` 96% · `art/grade11` 96% · `major/college3` 97%.
+  - ⭐ **THE SHAPE IS ONE FINDING, NOT 32:** the shortfall is almost entirely the **non-core high-school courses** (`pe`, `music`, `language`, `art`, `health`, `ap`) plus **`cstheory` in all four college years**. The core academic ladder is fed; her *electives* and her *CS theory track* are the thin part.
+  - ⭐ **SAFE TO TOP UP DURING THE RUNNING WALK, and the reason is the arithmetic, not optimism.** `§THE FRESH WALK IS LAST` exists because corpus that changes what she is taught must land before the teaching. **Every one of these 32 cells is grade9 or above and the walk is at `ela/kindergarten`** — they land weeks before she arrives. ⚠ A cell at or below her current position would NOT be safe to touch, and that is the test to re-apply each time.
+  - ⛔⛔ **THE TOP-UP RAN, REPORTED SUCCESS, AND WROTE NOTHING — AND THE RE-MEASUREMENT IS THE ONLY REASON ANYONE KNOWS.** Four cells re-fetched via `fetch-academic-corpora.mjs <subject> <grade>`, each logging thousands of cleaned sentences and `SKIPPED BY REASON — none`:
+  ```
+    cstheory/college2   200,344 -> 200,344   (log: "~10,865 cleaned sentences")
+    pe/grade12           99,354 ->  99,354
+    music/grade11       100,402 -> 100,402
+    language/grade10    104,717 -> 104,768   (+51 words)
+  ```
+  ⭐ **The log is not wrong, it is answering a different question** — it counts sentences FETCHED AND CLEANED, not sentences WRITTEN. The merge is monotonic and correctly declines to shorten an existing entry, so re-fetching a topic that is already ingested is a no-op that looks exactly like a successful ingest. ⚠ **This is the instrument-that-lies shape in the content pipeline**, and it is precisely why this row was filed with *"the verdict is the re-run of the measurement, not the fetch log"* **before** the fetch was started.
+  - ⛔⛔ **THE BOUND IS THE TOPIC LIST, NOT THE FETCH — measured, not inferred.** Stored entries ≈ topics offered, so every topic in the list is already in the corpus:
+  ```
+    cstheory/college2   35 entries vs 32 topics offered
+    pe/grade12          32 entries vs 41
+    music/grade11       48 entries vs 55
+  ```
+  **And the depth cap is NOT what is limiting them either** — median entry is **1,453 / 2,938 / 3,057 words** (~100-200 sentences) against a **600-sentence** college cap, with only **3-5 entries per cell** anywhere near it. ⭐ **The topics are short and exhausted, not truncated. More depth is unavailable from these topics; the cells need MORE TOPICS or a richer SOURCE.**
+  - ⏳ **SO THE REAL WORK SPLITS BY BAND, and running the same fetcher again on any of the remaining 28 would produce the same no-op:**
+    - **College band (10 cells)** → the textbook ingests (`fetch-libretexts-corpora.mjs`, `fetch-saylor-corpora.mjs`). A real open textbook is 150k-880k words against a Wikipedia article's ~1.5k, which is the yield gap that matters. This is the path that already fed `major` to 285k-904k.
+    - **High band (22 cells, all electives)** → these are `pe` / `music` / `language` / `art` / `health` / `ap`, where open textbooks are thin. **Expanding the curated topic lists is the honest route**, and it is authoring work, not a re-run.
+  - ⛔ **RE-MEASURE AFTER, DO NOT ASSUME.** The ingest merges monotonically (it cannot regress a cell) but throttling silently thins a run — a previous full re-ingest lost 147 topics to the wiki API's burst limit and reported success. **The verdict is the re-run of this measurement, not the fetch log.**
+  - ⚠ **MY FIRST MEASUREMENT OF THIS READ `0 WORDS` FOR ALL 193 FILES AND I ALMOST FILED IT.** The corpus shape is `{experiences:[{theme, story, …}]}` with `story` as ONE STRING; my parser looked for a `sentences` array. **A parser that matches nothing reports an empty corpus and a catastrophic finding, and the two are indistinguishable without opening a file.** Checked before claiming.
+
 ### ⛔⛔⛔ DEADCELL — HER ENTIRE COLLEGE DEGREE AND PhD TRAIN ZERO PROSE, AND 268,481 WORDS SIT IN FILES NOTHING READS — found 2026-09-01
 
 Gee (verbatim): *"okay so whats next? get to it"*
@@ -3203,6 +3240,10 @@ Shipped and closed the same day — full record in `docs/FINALIZED.md` §`GLOVEC
   - ⭐ **The suspect list is short, and that is the value of having measured it:** `runConsolidationPass` contains exactly **three** `await`s — `await this._replaySchema(schema, cluster, …)` and two spindle `setTimeout` sleeps. **The sleeps cannot hang.** So the hang is inside `_replaySchema` or something it awaits.
   - ⚠ **`_replaySchema` has a size guard and a GPU path**, and the box was donor-attached throughout — a donor round-trip that never settles would produce exactly this signature (healthy ticks on the brain's own lane, one parked await on the curriculum's).
   - **What closes this:** stage stamps INSIDE the pass, so the next trip names the item it died on instead of the function it died in. ⛔ **Do not guess a cause and ship a fix for it** — that is how `SUBSTEPS.5` shipped wrong. The watchdog now buys the time to instrument properly, which is the point of bounding it first.
+  - ✅ **THE STAMPS SHIPPED 2026-09-06 — the next occurrence names its own culprit.** `_stage(name, detail)` + `stageReport()` on the engine, stamped at **step1 fetch · step1 hydrate · step2 cluster · step3 per-cluster (`cluster i/N`) · step4 replay (`schema <id> · cluster i/N`) · step7 merge · step8 decay · step9 tier3**. The watchdog trip line now carries `STUCK IN: <stage> (<detail>) — that stage has been running Ns`, and `curriculum.consolidationWatchdog.now` publishes it **live**, so a wedge is nameable at minute two instead of after the five-minute bound expires.
+    - ⭐ **Step 4 is stamped with the schema id because it is the prime suspect by elimination** — it is the only genuinely awaited call in the pass, and it sits INSIDE the cluster loop, PAST the deadline check at the loop head. **A replay that never returns is unreachable by the pass's own deadline**, which is the exact shape observed.
+    - ⚠ **The stage is cleared ONLY on a real exit**, deliberately — a pass that never finishes leaves its stage standing as the evidence, the same rule as the teach-stage tags. **`stage: null` with `inFlight: true` is its own distinct finding**: the pass never reached its first stamped step.
+    - ⚠ **It bounds nothing and must not be read as a fix.** 4/4 on the real class.
   - ⚠ **The watchdog is a survival bound, NOT the fix**, and the board must not read as though the wedge is solved.
 
 - [x] `WEDGELIVE.1` — ✅⛔⛔ **CAUSE FOUND AND BOUNDED 2026-09-06 — IT IS AN UNBOUNDED AWAIT ON THE FORCED CONSOLIDATION PASS, AND THIS ROW'S OWN CLUE WAS THE ONE THAT SOLVED IT. Full entry in `docs/FINALIZED.md` §2026-09-06 (16th).**
