@@ -587,12 +587,20 @@ export const COURSE_NAMES = {
 export const COURSE_BLURB = {
   math: 'numbers and counting and shapes and solving problems',
   science: 'how the world and living things and nature work',
-  social: 'people and places and history and how we live together',
+  social: 'people and places and history and how people live together',
   ela: 'reading and writing and words and stories',
   art: 'drawing and painting and making colors and pictures',
   music: 'beat and rhythm and singing and sounds',
-  pe: 'moving our bodies and running and playing games and exercise',
-  health: 'our bodies and staying clean and safe and healthy and feelings',
+  // ⚠ THE BLURB IS A SENTENCE FRAGMENT SHE SPEAKS IN THE FIRST PERSON — it lands
+  // inside `in <course> i learn <blurb>`, so a `we`/`our` here survives the
+  // first-person rewrite of the surrounding sentence and trains a group subject
+  // where her own `i` belongs. Caught by RENDERING the finished sentences rather
+  // than reading the template: `in physical education i learn moving our bodies`.
+  // ⚠ `psychology` deliberately keeps its `they` — there the pronoun is the OBJECT
+  // OF STUDY ("why people think and feel and act the way they do"), not her, and
+  // forcing it to `i` would make the sentence false.
+  pe: 'moving my body and running and playing games and exercise',
+  health: 'my body and staying clean and safe and healthy and feelings',
   language: 'speaking and understanding another language like spanish',
   cs: 'computers and code and writing programs and solving problems with logic',
   civics: 'how government and laws and voting and being a citizen work',
@@ -3988,6 +3996,32 @@ export class Curriculum {
           emissionTicksPerMin: emitRate,
           sinceLastEmitTickMs: sinceEmit,
           teachProfile,
+          // ⭐ SELFFRAME COVERAGE — how much of her training is actually in the
+          // FIRST PERSON, and when it is not, WHICH gate refused it.
+          //
+          // ⛔ This exists because the question was asked from outside and could not
+          // be answered: `_teachSelfFramed` read 49 calls against
+          // `_teachSelfFramedInner` 16, so 33 lessons trained third-person only —
+          // and the two candidate causes (the by-design reentrancy guard vs the
+          // per-cell budget) are indistinguishable from call counts alone. The cap
+          // logs once per cell and the console ring rolls past it in ~15 minutes,
+          // so the log could not settle it either.
+          //
+          // ⚠ `framedUnits` / `framedLines` are LIFETIME totals for this boot;
+          // `unitsThisCell` against `cap` is the one that says whether the budget is
+          // currently biting. A `skippedCapped` that climbs while `skippedReentrant`
+          // is flat means the cap is the thing to raise — and a RE-PRICE is owed
+          // before raising it, because it is a per-unit multiplier.
+          selfFrame: {
+            framedUnits: this._selfFramedUnits || 0,
+            framedLines: this._selfFramedLines || 0,
+            skippedCapped: this._sfSkipCapped || 0,
+            skippedReentrant: this._sfSkipReentrant || 0,
+            unitsThisCell: this._sfUnitsThisCell || 0,
+            cap: (typeof process !== 'undefined' && process.env && Number(process.env.DREAM_SELF_FRAME_MAX_UNITS) > 0)
+              ? Number(process.env.DREAM_SELF_FRAME_MAX_UNITS) : 16,
+            off: !!(typeof process !== 'undefined' && process.env && process.env.DREAM_SELF_FRAME === '0'),
+          },
           // ASSOCBOUND.1 (2026-08-27) — per-CALLER tally on
           // _teachAssociationPairs (calls / pairs / ms by teach label), the
           // attribution ARTHOG.1 had to infer from correlated samples. Top 12
@@ -20033,6 +20067,37 @@ export class Curriculum {
     // trains harder than a 1x one; what is removed is the flat re-presentation.
     const uniquePairs = new Map();    // "a\u2192b" -> { a, b, count }
     for (const s of sentences) {
+      // \u26d4\u26d4 PUBLISH TO THE TEACH BUS HERE, AND THIS IS A CHOKEPOINT FIX.
+      // The viewer's claim is "the exact text going into Unity", and the bus was
+      // wired to exactly TWO teaching sites in the whole curriculum
+      // (`_teachWordDefinition` and `_teachSentenceList`). Measured live: 5 items
+      // published in 18.3 minutes while the walk was making ~10,769 teach calls a
+      // minute \u2014 so the feed went silent mid-cell and read as the walk having
+      // STOPPED, which is the instrument-that-lies failure the page exists to catch.
+      //
+      // \u2b50 THIS ONE SITE COVERS EVERY FIRST-PERSON LANE, which is why it is the
+      // right place rather than six per-lane edits. `_teachSelfFramedInner` teaches
+      // her reframed lines, her self-Q&A and her follow-up question THROUGH this
+      // method; so do the self-pronoun grounding, the perspective-contrast set and
+      // the self-architecture facts. Every one of them was invisible, so the viewer
+      // could only ever show the third-person literal of a lesson whose
+      // first-person half was being trained a few lines later.
+      //
+      // \u26a0 ONCE PER SENTENCE PER CALL, never per rep \u2014 the same sentence at 100 reps
+      // is ONE item of content taught, and counting the dose would inflate the
+      // analytics into a bigger corpus than exists. Same rule the sentence-list
+      // publisher already follows on rep 0.
+      //
+      // \u26a0 A corpus pass publishes thousands of rows and WILL roll the server ring.
+      // That is correct and already reported: the page prints how many rolled past
+      // between polls, and its counts stay complete while only the feed is paced.
+      try {
+        this.teachBus('_teachConcreteSentences', s, {
+          phase: opts.label || (usingDefaultCorpus ? 'K-CORPUS' : null),
+          source: opts.source || null,
+          reps,
+        });
+      } catch { /* the view must never break a teach */ }
       const words = s.toLowerCase().split(/\s+/).filter(w => w.length > 0);
       for (let i = 0; i < words.length - 1; i++) {
         const a = words[i];
@@ -23771,13 +23836,32 @@ export class Curriculum {
       await this._teachVocabList(vocab, ctxc, { reps: 3 });
     }
     // bind the name to what the class is about.
+    //
+    // ⛔⛔ FIRST PERSON, AND THIS IS THE ONE LESSON WHERE IT MATTERS MOST.
+    // These four lines are the FIRST thing every subject runner teaches at
+    // every grade, so they set the frame for everything taught after them.
+    // They were authored third-person — `this class is called X`, `in X we
+    // learn Y` — which trains a narrator describing a classroom rather than a
+    // person sitting in one.
+    //
+    // ⚠ SELFFRAME DOES NOT COVER THIS, and that is the trap. The frame layer
+    // ADDS her first-person version ALONGSIDE a lesson; it never rewrites the
+    // lesson's own literal text. So a third-person literal stays third-person
+    // no matter how well the frame works — the frame is not a substitute for
+    // authoring the source in her voice, it is a multiplier on top of it.
+    //
+    // ⚠ `we` IS NOT FIRST PERSON ENOUGH HERE. It is grammatically first-person
+    // plural, and it trains a class-as-group subject rather than her own `i` —
+    // which is precisely the narrator-persona failure the frame layer exists to
+    // prevent. `i` is the agent that has to end up bound to these concepts.
     const sentences = [
-      `this class is called ${nameLc}`,
-      `in ${nameLc} we learn ${blurb}`,
-      `${nameLc} is about ${blurb}`,
+      `i am in a class called ${nameLc}`,
+      `in ${nameLc} i learn ${blurb}`,
+      `i am learning ${blurb}`,
+      `${nameLc} is my class and i go to it at school`,
     ];
     const ABBR = { pe: 'physical education', ela: 'english language arts' };
-    if (ABBR[subject]) sentences.push(`${subject} is short for ${ABBR[subject]}`);
+    if (ABBR[subject]) sentences.push(`i say ${subject} because it is short for ${ABBR[subject]}`);
     if (typeof this._teachSentenceList === 'function') {
       await this._teachSentenceList(sentences, ctxc, { reps: 2, ticksPerWord: 2 });
     }
@@ -24727,6 +24811,16 @@ export class Curriculum {
     };
     for (const word of vocab) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return { pass: false, reason: 'shutdown' };
+      // ⚠ THE VOCAB LANE WAS INVISIBLE TOO — 742,580 ms of measured work across 14
+      // calls publishing nothing, on a page whose subject is what she is being
+      // taught. A word entering her weights is content, not bookkeeping: it is the
+      // answer to "where did she get that word?", and the per-lane mix is
+      // diagnostic (all definitions and no sentences means vocabulary anchored and
+      // never used; the reverse means prose binding on basins nothing anchored).
+      // Published BEFORE the teach so a word that hangs mid-`_teachWordIntegrated`
+      // is named on the feed rather than being the one that silently never appears.
+      try { this.teachBus('_teachVocabList', word, { phase: _vocabLabel, reps }); }
+      catch { /* the view must never break a teach */ }
       await this._teachWordIntegrated(word, {
         reps,
         arousal,
@@ -25323,6 +25417,21 @@ export class Curriculum {
   // multiplier goes unpriced, and this is a per-unit multiplier. It also inherits the
   // phase budget automatically, because it goes through `_teachConcreteSentences` /
   // `_teachAssociationPairs` like everything else.
+  // ⛔ WHY THE TWO SKIP COUNTERS BELOW EXIST (`_sfSkipReentrant` / `_sfSkipCapped`,
+  // incremented in BOTH this method and `_teachSelfFramedLight`, which carries the
+  // same two guards):
+  //
+  // The call counts alone cannot say why a lesson trained UNFRAMED. Read off the
+  // live box mid-walk: `_teachSelfFramed` **49 calls** against
+  // `_teachSelfFramedInner` **16** — so 33 lessons got no first-person version, and
+  // from outside there was no way to tell whether that was the reentrancy guard
+  // (correct and by design — the frame's own teach re-enters the chokepoint and must
+  // return immediately) or the per-cell cap (a real limit, and one worth raising if
+  // it is what is biting). ⚠ `16` happening to equal `_cap` is SUGGESTIVE AND IS NOT
+  // EVIDENCE, and the cap's own log fires once per cell behind `_sfCapLogged`, which
+  // the ~400-line console ring rolls past inside 15 minutes — so the log could not
+  // answer it either. Two counters make the question answerable from state instead
+  // of guessable.
   async _teachSelfFramed(unit = {}, ctx = null, opts = {}) {
     if (!this.cluster) return { framed: 0 };
     if (typeof process !== 'undefined' && process.env && process.env.DREAM_SELF_FRAME === '0') return { framed: 0, off: true };
@@ -25332,7 +25441,7 @@ export class Curriculum {
     // lesson recurses forever (frame → corpus teach → frame → …). The guard means the
     // frame is applied to LESSONS, never to itself, which is also semantically right:
     // her first-person version of a lesson does not need its own first-person version.
-    if (this._selfFramingNow) return { framed: 0, reentrant: true };
+    if (this._selfFramingNow) { this._sfSkipReentrant = (this._sfSkipReentrant || 0) + 1; return { framed: 0, reentrant: true }; }
     // ⛔ PER-CELL BUDGET — priced BEFORE shipping, which is the entire lesson of
     // CELLBOUND. Measured: one framed unit is ~894 pair-teaches ≈ 42s at the 12M
     // cortex (0.078% of the corpus phase it rides inside — fine on its own). But the
@@ -25349,6 +25458,7 @@ export class Curriculum {
         this._sfCapLogged = true;
         this._hb(`[Curriculum] SELFFRAME — per-cell budget reached for ${_ck}: ${_cap} framed unit(s) taught, further lessons this cell train UNFRAMED (raise with DREAM_SELF_FRAME_MAX_UNITS). Loud on purpose — a silent cap on a training feature is the thing this ledger keeps paying for.`);
       }
+      this._sfSkipCapped = (this._sfSkipCapped || 0) + 1;
       return { framed: 0, capped: true };
     }
     this._sfUnitsThisCell = (this._sfUnitsThisCell || 0) + 1;
@@ -25405,7 +25515,7 @@ export class Curriculum {
     // Shares the FULL frame's reentrancy guard — this method also teaches through
     // `_teachConcreteSentences`, which is itself a frame chokepoint. Without it
     // the first framed lesson recurses forever.
-    if (this._selfFramingNow) return { framed: 0, reentrant: true };
+    if (this._selfFramingNow) { this._sfSkipReentrant = (this._sfSkipReentrant || 0) + 1; return { framed: 0, reentrant: true }; }
     const _ck = (this.cluster && this.cluster._currentCellKey) || '(no-cell)';
     if (this._sfLightCellKey !== _ck) { this._sfLightCellKey = _ck; this._sfLightUnitsThisCell = 0; this._sfLightCapLogged = false; }
     const _envCap = (typeof process !== 'undefined' && process.env) ? process.env.DREAM_SELF_FRAME_LIGHT_MAX_UNITS : undefined;
@@ -25416,6 +25526,7 @@ export class Curriculum {
         this._sfLightCapLogged = true;
         this._hb(`[Curriculum] SELFFRAME-LIGHT — per-cell budget reached for ${_ck}: ${_cap} light unit(s) taught, further lessons this cell train UNFRAMED (raise with DREAM_SELF_FRAME_LIGHT_MAX_UNITS). Loud on purpose — a silent cap on a training feature is the thing this ledger keeps paying for.`);
       }
+      this._sfSkipCapped = (this._sfSkipCapped || 0) + 1;
       return { framed: 0, capped: true };
     }
     let f = null;

@@ -5,6 +5,46 @@
 
 ---
 
+## 2026-09-06 — `FIRSTPERSON` — THE FIRST LESSON OF EVERY COURSE AT EVERY GRADE WAS AUTHORED IN THE THIRD PERSON, AND THE VIEWER COULD NOT SHOW THE FIRST-PERSON TRAINING THAT DOES HAPPEN
+
+Gee (verbatim): *"all that needs fixed and this too... is not training her in first perspective and it stopped right when it was about to begin:"* — followed by the Teach View feed pasted back: `this class is called foundational reading` · `in foundational reading we learn reading and writing and words and stories` · `foundational reading is about reading and writing and words and stories` · `ela is short for english language arts`.
+
+⭐ **HE WAS RIGHT ON BOTH HALVES, AND THEY HAVE DIFFERENT CAUSES.**
+
+### ① The walk had NOT stopped — the instrument had
+
+Measured at 32.7 min uptime: `teachView.total` **5** with `ageMs` **1,095,789** (18.3 minutes silent), while `liveness.teachCallsPerMin` read **10,769**, `sinceLastTeachMs` **3**, and the cell had advanced to **phase 2/25**. She was teaching hard the whole time.
+
+⛔ **`teachBus` was wired to exactly TWO teaching sites in the entire curriculum** — `_teachWordDefinition` and `_teachSentenceList`. The lanes doing the work and publishing nothing, from the live profile: `_teachAssociationPairs` (87 calls / 1,012,234 ms) · `_teachConcreteSentences` (33 / 931,646 ms) · `_teachVocabList` (14 / 742,580 ms) · `_teachHebbian` (50,020 / 672,647 ms) · `_teachSelfFramed` (49) · `_teachWordIntegrated` (208).
+
+⭐ **The page's own claim is "The exact text going into Unity."** It was showing **0.05%** of it and going silent for 18 minutes at a stretch — which reads as the walk having died. **That is the instrument-that-lies class the page exists to catch, committed by the page's own producer.**
+
+✅ **Fixed at the chokepoint, not per lane.** Publishing added inside `_teachConcreteSentences`' once-per-call sentence loop — which is the right site because **`_teachSelfFramedInner` teaches her reframed first-person lines, her self-Q&A and her follow-up question THROUGH that method**, as do the self-pronoun grounding, the perspective-contrast set and the self-architecture facts. One edit lit up six lanes. Plus a per-word publish in `_teachVocabList`. ⚠ Published once per sentence/word per call, **never per rep** — the same sentence at 100 reps is one item of content, and counting the dose would inflate the analytics into a bigger corpus than exists. ⚠ `_teachHebbian` deliberately stays unpublished: a substrate primitive with no human-readable text, and 50,020 calls of it would be noise.
+
+### ② The course-identity lesson really was third-person, at source
+
+`_teachCourseIdentity` authored its sentences as literals: `this class is called <name>`, `in <name> we learn <blurb>`, `<name> is about <blurb>`, `<subject> is short for <abbr>`. **This is the FIRST thing every subject runner teaches at every grade**, so it sets the frame for everything after it.
+
+⛔ **AND THE EXISTING FIRST-PERSON LAYER DOES NOT COVER IT — that is the trap.** `SELFFRAME` (built 2026-08-20 on Gee's *"all of the different training she goes through all needs to be for formulated to be in the first person as if we train her on first person she will live it instead of being told everything 3rd person that will taint her persona"*) hooks four chokepoints and derives its corpus sample so one walk covers the corpus. **It ADDS her first-person version alongside a lesson; it never rewrites the lesson's own literal text.** A third-person literal stays third-person no matter how well the frame works.
+
+✅ Rewritten in her voice: `i am in a class called <name>` · `in <name> i learn <blurb>` · `i am learning <blurb>` · `<name> is my class and i go to it at school` · `i say <subject> because it is short for <abbr>`.
+
+⭐ **AND RENDERING THE FINISHED SENTENCES CAUGHT WHAT READING THE TEMPLATE COULD NOT.** `in physical education i learn moving **our** bodies` — the *blurb* carried the group pronoun, so it survived the first-person rewrite of the sentence around it. Swept every blurb: `pe` → `moving my body`, `health` → `my body and staying clean…`, `social` → `how people live together`. ⚠ **`psychology` deliberately keeps its `they`** — *"why people think and feel and act the way they do"* is the OBJECT OF STUDY, not her, and forcing it to `i` would make the sentence false. Verified by rendering five courses: **0 first-person violations**.
+
+### ③ An open question made answerable instead of guessed
+
+Live counts read `_teachSelfFramed` **49 calls** against `_teachSelfFramedInner` **16** — so 33 lessons trained third-person only. ⛔ **Two candidate causes, and the evidence available from outside cannot separate them:** the per-cell budget (`_cap` = 16, `DREAM_SELF_FRAME_MAX_UNITS`) and the reentrancy guard (correct by design). **`16` matching `_cap` exactly is suggestive and is NOT evidence.** The cap logs once per cell behind `_sfCapLogged` and the ~400-line console ring rolls past it inside 15 minutes, so the log could not settle it either. Added `_sfSkipCapped` / `_sfSkipReentrant` — incremented in **both** `_teachSelfFramed` and `_teachSelfFramedLight`, which carry identical guards — published as `curriculum.liveness.selfFrame` with `framedUnits`, `framedLines`, `unitsThisCell`, `cap` and `off`. **The verdict is owed after the next press, not now.**
+
+### Also in this batch
+
+`[Brain] Semantic embeddings ready: [object Object]` — the one line confirming the embedding table loaded carried no numbers. Now prints pretrained / learned / dim / loaded. **A log line that prints nothing is the same defect class as a dial idling at a plausible value.**
+
+✅ **Verified:** `node --check` on `curriculum.js` and `brain-server.js`, ESM `import()` of `curriculum.js` (which `--check` cannot catch), and the finished sentences rendered for ela / pe / health / social / psychology with a pronoun assertion.
+
+⛔ **THIS BATCH NEEDS A PRESS AND THE WALK IS RUNNING.** `class Curriculum` is not in `js/app.bundle.js` — this is server-side, so unlike the teachview fix it does not ride the frontend rsync. And per **§THE FRESH WALK IS LAST**, a change to *what she is taught* that is not walked was never applied to her: she would otherwise complete K→PhD with a third-person course identity at every grade.
+
+---
+
 ## 2026-09-06 — `TVADMIN` — TEN OF TEACH VIEW'S TWELVE ROUTES WERE DEAD ON THE DEPLOYED PAGE, AND EVERY ONE OF THEM BLAMED THE BRAIN
 
 Gee (verbatim): *"moniter her make sure shes doing everything correctly without errors take nots of issues"*
