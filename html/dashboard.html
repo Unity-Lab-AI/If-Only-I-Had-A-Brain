@@ -2381,7 +2381,7 @@
         };
 
         // Render unbounded cap as ∞ when hardCap is null.
-        // Operator: "unity has a whole life ahead not eroonous limits".
+        // She has a whole life ahead of her — no arbitrary limits.
         const fmtCap = (n, cap) => cap == null ? n.toLocaleString() : n.toLocaleString() + ' / ' + cap.toLocaleString();
         $('d-mem-working').textContent = fmtCap(work.items ?? 0, work.cap);
         // Render Tier 0 items grouped (server side dedups consecutive

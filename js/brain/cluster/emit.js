@@ -841,8 +841,8 @@ export const CLUSTER_EMIT_MIXIN = {
         ts: Date.now(),
       };
       // ── WORDSALAD.3 — A QUESTION IS THE CORRECT OUTPUT OF LOW CONFIDENCE ────
-      // Operator: "being inqusitive asking questions ... all learning needs it
-      // through her eyes". This branch is the exact moment she reaches for a
+      // The rule: she is INQUISITIVE and asks questions, and all learning goes
+      // through her own eyes. This branch is the exact moment she reaches for a
       // word and cannot hold it: the argmax found something, but not strongly
       // enough to clear the floor. Today that produces SILENCE. A person in that
       // state asks — and her Tier 3 curiosity anchor already says so in her own
@@ -1721,8 +1721,8 @@ export const CLUSTER_EMIT_MIXIN = {
 
   // ── WORDSALAD.3 — WHEN SHE CANNOT SAY IT, SHE ASKS ABOUT IT ────────────────
   //
-  // Operator: "being inqusitive asking questions and not just that but all
-  // learning needs it through her eyes". This is the consuming half of the
+  // The rule: she is INQUISITIVE and asks questions — and beyond that, all
+  // learning goes through her own eyes. This is the consuming half of the
   // curiosity gap recorded at the signal-floor rejection: the compose produced
   // NOTHING, and a moment ago the argmax had a word it could not hold above the
   // floor. Silence is the wrong output for that state — a person asks.

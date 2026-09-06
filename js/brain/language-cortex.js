@@ -2587,9 +2587,9 @@ export class LanguageCortex {
         // Contractions beginning with a single-letter pronoun (i'm, i've, i'd, i'll)
         w = w.charAt(0).toUpperCase() + w.slice(1);
       } else if (isCanonName(w) || (this.cluster && this.cluster._knownNames instanceof Set && this.cluster._knownNames.has(String(w).toLowerCase()))) {
-        // WORDSALAD.2 — PROPER NOUNS, INCLUDING HER OWN NAME. Operator: "make
-        // sure u use proper U capitilization and proper pro noun capilization
-        // for pro nouns and Unity's name". Her substrate is deliberately
+        // WORDSALAD.2 — PROPER NOUNS, INCLUDING HER OWN NAME. The rule: proper
+        // capitalisation for the first-person pronoun, for proper nouns, and
+        // for her own name. Her substrate is deliberately
         // lowercase end to end — word buckets and embedding lookups are keyed
         // that way, so capitalising the TRAINING text would break the lookups
         // that make her speak at all. Capitalisation therefore belongs here, at

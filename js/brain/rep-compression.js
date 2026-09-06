@@ -3,10 +3,10 @@
  * the brain's OWN measured collision load, instead of carrying a constant that
  * was chosen against a corpus an eleventh of today's size.
  *
- * Operator: *"sop did you set all the knobs for what we need so we dont have to
- * do but like 1-3 reps for everything"* — restating a standing instruction
- * (*"we only have to do no more than 5 reps for any and everything"*,
- * *"make single passes act like 3000 passes"*).
+ * Standing instruction: the knobs must be set such that no more than one to
+ * three reps are needed for anything — restating the broader rule that no more
+ * than five reps should ever be required, and that the brain's thousands of
+ * knobs can be adjusted to make a single pass act like thousands of passes.
  *
  * ⛔ THE ANSWER COULD NOT BE A NUMBER I TYPE IN. `DREAM_REP_COMPRESS=40` was
  * measured — but it was measured when the corpus held **4.48M words**, and the

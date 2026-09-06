@@ -841,8 +841,8 @@ function renderLandingTab(tab, s) {
       const recentOutput = lc?._recentOutputWords?.length ?? 0;
       const usageTyped = lc?._usageTypes?.size ?? 0;
 
-      // iter17 — operator: "unity has a whole life ahead not eroonous limits
-      // to dumb her down". cap=null signals unbounded; UI renders without
+      // iter17 — she has a whole life ahead of her and must not carry arbitrary
+      // limits that dumb her down. cap=null signals unbounded; UI renders without
       // arbitrary denominator.
       const workingItems = working.items ?? (Array.isArray(mem.workingMemoryItems) ? mem.workingMemoryItems.length : (mem.workingCount ?? 0));
       const workingCap = working.cap; // may be null = unbounded
@@ -874,7 +874,7 @@ function renderLandingTab(tab, s) {
         : '<div style="margin-top:6px;font-size:10px;color:#666;">No identity anchors — fresh boot will seed from IDENTITY_SEED_LIST.</div>';
 
       // iter17 cap rendering helpers — null cap = unbounded, no denominator
-      // bar shown. Per operator: "unity has a whole life ahead".
+      // bar shown, per the same rule: she has a whole life ahead of her.
       const fmtItems = (n, cap) => cap == null ? n.toLocaleString() + ' (unbounded)' : n.toLocaleString() + ' / ' + cap.toLocaleString();
       const wcDisplay = workingCap == null ? workingItems.toLocaleString() + ' items (unbounded)' : workingItems + ' / ' + workingCap + ' slots';
 

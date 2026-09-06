@@ -30,8 +30,8 @@ if (!process.env.TZ) process.env.TZ = 'America/Denver';
 
 // ── OPERATOR TRAINING DEFAULTS (2026-09-04) ─────────────────────────────────
 //
-// Operator: *"we need traing defaults we can set … be ablke to have defualts for
-// the different setttings yand nobs you adjust"*.
+// The requirement: settable TRAINING DEFAULTS — a persisted default for each of
+// the settings and knobs that get adjusted.
 //
 // ⛔⛔ THIS RUNS BEFORE EVERY `require` IN THIS FILE, AND THAT IS THE WHOLE
 // DESIGN. A knob classified `boot` is read ONCE at module scope, so its value is
@@ -4219,8 +4219,8 @@ class ServerBrain {
       //
       // It booted a "right brain" (GPT-2/distilgpt2 via @xenova/transformers)
       // alongside her own cortex and could RETURN THE TRANSFORMER'S TEXT as her
-      // answer. Operator: "look for those llm artifacts all over still left that
-      // we arent using and properly guut them".
+      // answer. The instruction: find the text-model artifacts still left across
+      // the tree that nothing uses, and gut them properly.
       //
       // ⚠ This reverses an explicit earlier directive of his (2026-04-22: "we
       // can have both and UUnity weighs best option left brain right brain"),
@@ -4364,8 +4364,8 @@ class ServerBrain {
         // memory) so her mental imagery has continuity across reboot.
         // RINGWIPE (2026-08-21) — v1 → v2: the ring is IMAGE-EQUATION memory,
         // and it was the lane that carried the old drawings straight through
-        // every visual-store reset (operator: "why did all her old visions and
-        // drawings persist through the save start"). The rename orphans the
+        // every visual-store reset (reported: old visions and drawings persisted
+        // straight through a savestart). The rename orphans the
         // colorless-era imagery the same way the visual store versions do;
         // she re-imagines from the color-complete pipeline.
         try {
@@ -10105,9 +10105,8 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
-  // ⭐⭐ WEIGHTS DOWNLOAD — operator: *"i do want some download model weights
-  // buttons in the traingviewer so at any point i can click a button and a save
-  // as opens"*.
+  // ⭐⭐ WEIGHTS DOWNLOAD — the ask: download-weights buttons in the training
+  // viewer, so that at any point a click opens a save-as dialog.
   //
   // Two routes: `/weights/list` enumerates what is downloadable right now, and
   // `/weights/download?file=` streams one back as an attachment so the browser
@@ -10145,9 +10144,10 @@ const httpServer = http.createServer((req, res) => {
   // that keeps a newly-discovered knob from being writable before it is read.
   // ── THE TEACH-VIEW BENCH, FIRED FROM A PRESS, LIVE DURING TRAINING ─────────
   //
-  // Operator: *"runnable from a press and live running during brain training"*.
-  // He has no server access — only dashboard buttons — so a command-line bench
-  // would be one nobody who needs it can run, on the box where the answer lives.
+  // The requirement: runnable from a press, and live while the brain is
+  // training. The box is driven from dashboard buttons and not from a shell, so
+  // a command-line bench would be one nobody who needs it can run, on the very
+  // box where the answer lives.
   //
   // ⛔ IT MUST NOT DISTURB THE WALK IT REPORTS ON. Every read behind this is of
   // ALREADY-PUBLISHED state: the cached `_curriculumCoverage` (computed once at
@@ -10240,9 +10240,9 @@ const httpServer = http.createServer((req, res) => {
 
   // ── THE CORPUS BUFFER, DRIVEN FROM THE TEACH VIEWER ───────────────────────
   //
-  // Operator: *"lets have buttons in the trainer virewr for download of couprus
-  // like buffer on auto"*, bounded by *"a max of one complete copy on the box"*
-  // and scoped by his own clarification *"not counting forgejo"*.
+  // The ask: buttons in the training viewer to download the corpus, buffered
+  // automatically — bounded to a maximum of ONE complete copy on the box, and
+  // that bound explicitly does not count the copy held by the git host.
   //
   // ⛔ AUTO ONLY. A manual pull button was asked for and then WITHDRAWN the same
   // day (*"okay no manual then"*), so there is deliberately no on-demand action
@@ -10325,7 +10325,7 @@ const httpServer = http.createServer((req, res) => {
 
   // ── POST /knob-default — SET, CLEAR OR CLEAR-ALL AN OPERATOR DEFAULT ────────
   //
-  // Operator: *"we need traing defaults we can set"*. `POST /knob` above changes the
+  // The requirement: settable TRAINING DEFAULTS. `POST /knob` above changes the
   // RUNNING value and is lost at the next restart; this writes the value the box
   // will start with, which is the part that survives a press.
   //
@@ -12805,8 +12805,8 @@ wss.on('connection', (ws, req) => {
 
         case 'heard': {
           // ⭐⭐ HEARING.1 — SHE HEARS, AND WHAT SHE HEARD MOVES HER WEIGHTS.
-          // Operator: *"she need to be able to hear too when talked too not
-          // just a TTS wrapper on a text chain"*.
+          // The requirement: she must be able to HEAR when spoken to, not merely
+          // carry a text-to-speech wrapper over a text chain.
           //
           // The client perceived the microphone PCM into a CDF 9/7 field-A and
           // read it as an octave-band percept; what arrives here is a few KB of

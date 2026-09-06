@@ -640,8 +640,8 @@ export class RemoteBrain extends EventEmitter {
           // guard was simultaneously the only way to stop the loop and the only
           // way to break it: one frame in which the cortex was not active and
           // the eye stopped being driven FOREVER, with nothing anywhere able to
-          // restart it. Operator: *"the focus tracker never moves anymore to
-          // follow what she sees … it died of regression"*.
+          // restart it. Reported: the focus tracker no longer moved to follow
+          // what she sees — a regression that had killed it outright.
           //
           // ⭐ The two are now separate concerns:
           //   • STOP  — an explicit flag set by teardown. Terminal, on purpose.

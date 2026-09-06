@@ -49,7 +49,7 @@ function loadStories(domain, grade) {
 //
 // The story corpora are authored lowercase (~800 stories across 20 life grades
 // plus the coding and academic domains), so every sentence read out of them
-// said "i" and "unity". Operator: "its her name properly capitalize it".
+// said "i" and "unity" — her name is a name, so it is properly capitalised.
 //
 // Fixed HERE rather than by rewriting the corpus files, because this is the one
 // place every domain and every grade passes through — the chokepoint, not the

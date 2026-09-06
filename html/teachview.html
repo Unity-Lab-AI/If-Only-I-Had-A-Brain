@@ -520,9 +520,9 @@
       <div class="tv-body" id="tvCoverage"><div class="tv-note">—</div></div>
     </div>
 
-    <!-- ⭐⭐ DOWNLOAD HER WEIGHTS. Operator: *"i do want some download model
-         weights buttons in the traingviewer so at any point i can click a button
-         and a save as opens"*. One button per file that actually exists right
+    <!-- ⭐⭐ DOWNLOAD HER WEIGHTS. The ask: download-weights buttons in the
+         training viewer, so that at any point a click opens a save-as dialog.
+         One button per file that actually exists right
          now; the browser's Save As opens because the route sends
          Content-Disposition: attachment. -->
     <div class="tv-card" style="margin-top:14px">
@@ -546,7 +546,7 @@
       </div>
     </div>
 
-    <!-- ⭐⭐ THE PRESS CONTROLS. Operator: *"with proper restart buttons update ect ect"*.
+    <!-- ⭐⭐ THE PRESS CONTROLS. The ask: proper restart and update buttons.
          ⛔ NO NEW DEPLOY PATH IS INVENTED HERE. Every button below POSTs the exact
          route the dashboard's own press buttons POST, behind the same loopback gate.
          The box still deploys by pressing a button; this is the same button, placed
@@ -1602,8 +1602,8 @@ function renderKnobs(k) {
             + `⛔ not settable while running — ${x.effect === 'boot'
               ? 'captured at boot; set it in the launcher and restart, or give it a DEFAULT below'
               : 'no verified effect class, so no write could be honest'}</div>`)
-        /* ⭐⭐ THE DEFAULT LANE — Operator: *"be ablke to have defualts for the
-           different setttings yand nobs you adjust"*.
+        /* ⭐⭐ THE DEFAULT LANE — the requirement: a settable DEFAULT for each of
+           the settings and knobs that get adjusted.
            ⛔ OFFERED ON EVERY KNOB, INCLUDING THE BOOT-FROZEN ONES, and that is
            deliberate rather than sloppy. The live-write control above is refused
            on a boot knob because a write to it would change nothing — but a
@@ -2727,8 +2727,8 @@ function restorePressLabels() {
   for (const a of PRESS_ACTIONS) { const b = $(a.id); if (b && PRESS_LABELS[a.id]) b.textContent = PRESS_LABELS[a.id]; }
 }
 
-/* ⭐⭐ RESTART SAFETIES. Operator: *"with the teachviewer we need it to have
-   restart safties"*.
+/* ⭐⭐ RESTART SAFETIES. The requirement: the teach viewer must carry restart
+   safeties.
 
    ⛔ EACH ONE IS CHECKED AT THE MOMENT OF THE PRESS, NOT READ OFF A POLL. The
    weights listing refreshes every 30 s, and a 30-second-old "no save running" is

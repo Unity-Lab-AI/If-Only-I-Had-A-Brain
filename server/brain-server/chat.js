@@ -390,8 +390,8 @@ const SERVER_CHAT_MIXIN = {
         // fetches Pollinations from the SAME PUBLIC IP as this server — so the
         // background reference-look lane and the operator's own image request
         // are competing for one anonymous quota, and the background errand was
-        // winning. Operator: *"it doesnt error out image gen in chat and will
-        // eventually generate the image"*.
+        // winning. Reported behaviour: chat image generation does not error out
+        // and will eventually produce the image.
         //
         // Stamping the window HERE is what makes that possible: this is the
         // exact instant the intent becomes real, and it is server-side, so the
@@ -2745,8 +2745,8 @@ const SERVER_CHAT_MIXIN = {
     // variation inside the subject builder.
     const layout = this._ownArtLayout(plan.subjects.length, rnd);
     const boxes = [];
-    // LABELTRUTH (2026-08-21, operator: "the word blow was added to a drawing
-    // of a cat") — only subjects that actually CONTRIBUTE strokes ride the
+    // LABELTRUTH (2026-08-21) — reported: a word that drew nothing was appearing
+    // on the label of a drawing it had not contributed to. Only subjects that actually CONTRIBUTE strokes ride the
     // label/log; a schema-less, definition-less word used to draw NOTHING yet
     // still wear the artwork's name.
     const contributed = [];
@@ -2764,9 +2764,9 @@ const SERVER_CHAT_MIXIN = {
         h: b0.h * (0.9 + rnd() * 0.2),
       };
       boxes.push(box);
-      // ⛔ SHADOWKILL — the grounding cast shadow is GONE. Operator: *"the
-      // shadow effect in her drawings that is just a dark tinted oval below
-      // everything she draws need to go: it crappy and looks like shit"*.
+      // ⛔ SHADOWKILL — the grounding cast shadow is GONE. Judged and rejected:
+      // a dark tinted oval sitting under everything she draws is not a shadow,
+      // it looks bad, and it had to go.
       //
       // It was a `blob` at rgb(16,15,19) alpha 0.35 under every subject, and
       // that is exactly what it looked like — a flat tinted ellipse, not
@@ -2851,8 +2851,8 @@ const SERVER_CHAT_MIXIN = {
       });
     } catch { return null; }
     if (!drawn) return null;
-    // DRAWNCOUNT (2026-08-21, operator: "her art: 0 drawn... why does this say
-    // zero? she has 25+ seen") — count every born piece HERE, at the single
+    // DRAWNCOUNT (2026-08-21) — reported as "0 drawn" on the board against 25+
+    // seen. Count every born piece HERE, at the single
     // point all lanes flow through. The old counter lived in one drain lane
     // while the mind's-eye tick published art all day: 0 drawn, 56 attempts.
     this._ownArtDrawn = (this._ownArtDrawn | 0) + 1;
@@ -2862,8 +2862,8 @@ const SERVER_CHAT_MIXIN = {
     // calls. `_practiceDrawing` writes `e.skill` — params, cosine, session
     // count — into the visual STORE, and store state is not synapses. So she
     // could draw the same subject a hundred times and not one synapse moved.
-    // Operator: *"an image one sees and art they make has real effects on all
-    // kinds of brain processes"*.
+    // The stated model: an image someone SEES and art they MAKE both have real
+    // effects on all kinds of brain processes.
     //
     // ⭐ The act of drawing is now a bind, on the same drain VMRELATE uses:
     // the subject she drew binds to the PARTS she built it from, both ways.
@@ -3485,7 +3485,7 @@ const SERVER_CHAT_MIXIN = {
           const a = e.art || { up: 0, down: 0 };
           if (verdict === 'accept') a.up = (a.up | 0) + 1; else a.down = (a.down | 0) + 1;
           a.lastVerdict = verdict; a.at = now;
-          // ARTLEARN (2026-08-21, operator: "and learn from her drawing") —
+          // ARTLEARN (2026-08-21) — the requirement: she LEARNS from her drawing.
           // an ACCEPT teaches her which HAND works for this subject: the
           // winning style banks a per-concept preference the style picker
           // reads, and her current technique params are marked validated.
@@ -3520,8 +3520,8 @@ const SERVER_CHAT_MIXIN = {
         if (!this._artRelearnAt) this._artRelearnAt = new Map();
         if ((now - (this._artRelearnAt.get(w) || 0)) < GAPR) continue;
         this._artRelearnAt.set(w, now);
-        // REJECTGONE (2026-08-21, operator: "she keeps displaying her drawings
-        // even tho i marked redraw") — the WHOLE memory of the word dies, not
+        // REJECTGONE (2026-08-21) — reported: rejected drawings kept being
+        // displayed after being marked for redraw. The WHOLE memory of the word dies, not
         // just the schema: the stored look (rec/percept) survived the first
         // build and the recall/favorite lanes kept re-displaying the rejected
         // imagery while the relearn was still in flight. A rejected look is a
@@ -3944,9 +3944,9 @@ const SERVER_CHAT_MIXIN = {
       const _structN = Math.max(6, Math.ceil(_budget * 0.4));
       const _drawSet = new Set(_keepIdx.slice(0, _budget));
       const _structSet = new Set(_keepIdx.slice(0, _structN));
-      // COLORLINE (2026-08-21, operator: "she is still using white lines to
-      // outline when she should be using the colors of the image that the
-      // outline is made of") — EVERY stroke wears its sampled real color, the
+      // COLORLINE (2026-08-21) — reported: she was still outlining in white
+      // when the outline should carry the colours of the thing it is drawn
+      // from. EVERY stroke wears its sampled real color, the
       // mono exception included. The read is protected by shifting VALUE, not
       // by abandoning hue: a structural stroke keeps its own color but goes
       // darker on a light body / lighter on a dark one, so the outline is the
@@ -4088,9 +4088,9 @@ const SERVER_CHAT_MIXIN = {
     if (!attr || (!attr.shape && !attr.colors.length)) return null;
     if (!style) style = this._artStyles()[0];
     const out = [];
-    // NEONKILL (2026-08-21, operator: "she is using neon pink to draw a
-    // leopaard... she needs to match colors up correctly not just use nothing
-    // but hot pink neon") — when the definition names NO color, the body is a
+    // NEONKILL (2026-08-21) — reported: neon pink was being used for an animal
+    // that is nothing like it; colours must be matched correctly rather than
+    // defaulting to one hot tint. When the definition names NO color, the body is a
     // NEUTRAL sketch tone: an honest "I don't know its colors yet". Her pink
     // is identity ink for labels and accents, never a claim about a subject's
     // color. The real palette takes over the moment she LOOKS at the thing.
@@ -4305,8 +4305,8 @@ const SERVER_CHAT_MIXIN = {
     // whole thread started with.
     //
     // ⛔⛔ THE TYPESET CAPTION IS GONE, AND THERE IS NO SWITCH TO BRING IT BACK.
-    // Operator: *"if there is that old auto text stuff gut it — that prints in
-    // her minds eye"*. It was the mechanism that put perfectly-spelled words on
+    // The instruction: gut the old automatic text layer entirely — it printed
+    // into her mind's eye. It was the mechanism that put perfectly-spelled words on
     // a pre-K drawing and made the code claim a hand she did not have. An env
     // opt-in was written and then removed on that instruction: a flag that
     // restores the lie is still the lie, one boot away.
@@ -4358,8 +4358,8 @@ const SERVER_CHAT_MIXIN = {
 
   // ⛔⛔ THE TYPESET CAPTION BUILDER IS DELETED, NOT PARKED. It computed a
   // monospaced layout and returned `glyphStrokes(label, …)` — the auto-text that
-  // printed a perfect word on her mind's eye. Operator: *"if there is that old
-  // auto text stuff gut it"*. It is not kept behind a flag and it is not kept as
+  // printed a perfect word on her mind's eye. The instruction was to gut the old
+  // automatic text layer. It is not kept behind a flag and it is not kept as
   // a renamed tombstone: today already produced the lesson that a reader for a
   // record nobody creates is a dead branch wearing the look of a feature, and a
   // caption path nobody calls would be the same thing with a worse failure mode.
@@ -4441,9 +4441,9 @@ const SERVER_CHAT_MIXIN = {
     // ARTJUDGE 🚫 — the operator taught her this word is not a drawing
     // subject; that verdict outranks every other judge.
     try { if (this._artBanSet().has(w)) return false; } catch { /* ban set best-effort */ }
-    // STYLEBLEED (2026-08-29, operator: "ist always looks up color crisp which
-    // is a green pallat neom colored full screen that taints every image she
-    // tries to combine with it") — SELF-CONTAMINATION guard, by PROVENANCE not
+    // STYLEBLEED (2026-08-29) — reported: one recurring full-screen neon-green
+    // reference kept being looked up and then tainted every image it was
+    // combined with. SELF-CONTAMINATION guard, by PROVENANCE not
     // opinion: a subject whose content words ALL come from her own
     // code-authored style vocabulary ("color", "crisp", "saturated"...) is her
     // prompt talking to itself, not a thought — WordNet honestly calls those
@@ -4721,10 +4721,11 @@ const SERVER_CHAT_MIXIN = {
       }
     } catch { /* association enrichment is best-effort — bare concept stands */ }
     // live-affect style tail — equational readout of her state, not cognition.
-    // MOODPOP (2026-08-21, operator: "i dont like these, they make the images
-    // dark and foggy make it more inline with our crazy chick Unity.. not the
-    // goth stuff on over kill.. we dont want 1000s of dark tinted images with
-    // fog in them") — the old vocabulary ("dark moody"/"eerie"/"hazy surreal")
+    // MOODPOP (2026-08-21) — judged and rejected: the mood words were making
+    // every image dark and foggy. The look should match her actual character —
+    // chaotic and vivid — rather than laying the goth register on so heavily
+    // that thousands of images come out dark-tinted and hazy. The old
+    // vocabulary ("dark moody"/"eerie"/"hazy surreal")
     // fired fog on nearly every image because her baseline valence sits low.
     // Same state readout, NEW WORDS: crisp, saturated, electric — her chaos is
     // neon-on-black energy, never fog. Every branch keeps "crisp"/"clean"
@@ -4822,8 +4823,8 @@ const SERVER_CHAT_MIXIN = {
       // WORDSALAD.1b — AGE-WRONG GARMENTS, not just nudity. The strip above only
       // ever removed EXPOSURE words, so a request naming fishnets, a corset or a
       // leather mini skirt passed straight through onto a six-year-old's
-      // self-portrait. Operator: "not wearing leater skirts in kindergarten..
-      // obviously.... fishnets and tube tops are later". Adult garments are
+      // self-portrait. The age rule: no adult garments at kindergarten age —
+      // those pieces belong to later grades. Adult garments are
       // removed below 18; the mature-but-covered teen pieces are allowed from 14.
       const ADULT_GARMENT_RE = /\b(fishnets?|corsets?|bustiers?|tube top|leather (?:skirt|dress|pants|outfit|corset)|garter|stockings|heels|stilettos|micro ?skirt|crop top)\b/g;
       const TEEN_GARMENT_RE = /\b(mini ?skirt|choker|ripped (?:jeans|tights)|combat boots|band tee)\b/g;
@@ -4894,7 +4895,7 @@ const SERVER_CHAT_MIXIN = {
       const WARDROBE = age < 14 ? WARDROBE_CHILD : (age < 18 ? WARDROBE_TEEN : WARDROBE_ADULT);
       // MOODPOP — the CORE noun already carries her identity; the tail only
       // steers image quality: crisp + rich color, never smeared, no aesthetic
-      // doubling (operator: "take out goth asthetic i already told u this")
+      // doubling (the aesthetic term is not to be added a second time)
       const TAIL = require('./eye-style.js').EYE_STYLE.chatTail;   // STYLEBLEED — one owner
       // her stated wear — INCLUDING bare skin / named body parts — replaces
       // the wardrobe entirely so clothing never collides with exposed skin

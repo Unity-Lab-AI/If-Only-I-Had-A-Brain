@@ -52,13 +52,14 @@ const path = require('path');
 // monolithic JSON measured at 761ms pins @10k entries and hard-fails @100k).
 // The v4 json name never shipped a boot, so nothing migrates; v1-v3 json stay
 // on disk, orphaned. FRESHEYES sweeps `visual-memory*` by pattern (json AND db).
-// v8 → v9 (2026-08-21, operator: "and dont forget to clear the visual memory
-// again") — v8's session predates COLORLINE (color-true outlines), the trace
+// v8 → v9 (2026-08-21, on an instruction to clear the visual memory again)
+// — v8's session predates COLORLINE (color-true outlines), the trace
 // scenery filter, BGPART (backdrop cells paint no mass) and STYLECULL; v9
 // boots at 0 seen / 0 drawn behind the full stack. (v8 was the pre-BLOBSTORE
 // base64 era's replacement; v7/v6 earlier eras.) Training untouched.
-// v9 → v10 (2026-08-26, operator: *"lets clear local visual memory too so now
-// minds eye is fixed it wont have a hundred backpack images"*) — v9 was banked
+// v9 → v10 (2026-08-26, on an instruction to clear the LOCAL visual memory too,
+// so that a fixed mind's eye is not left holding a hundred stale images of one
+// subject) — v9 was banked
 // by the PRE-EYEPIN subject picker, which drew whatever sat at the tail of
 // `_innerThoughtChain` and so hammered ONE concept for as long as that thought
 // dwelled: 8 of 8 sampled frames were `backpack`, and before that `church`,
@@ -519,7 +520,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
   // ⛔ A bare noun-noun bind would repeat the loss VMPHRASE.3 was filed for,
   // one level up: the size, the colour, the articles and the preposition are
   // all part of what she SAW, and reducing the label to its two nouns throws
-  // them away again. Operator: *"make sure the full thing is taught"*.
+  // them away again. The requirement: make sure the FULL thing is taught.
   //
   // So the label trains twice, on two channels, from one look:
   //   • THE ORDER — every consecutive pair across the phrase INCLUDING the
@@ -610,8 +611,8 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
   // callers fire-and-forget.
   // ⭐⭐ HEARING.1 — WHAT SHE HEARD, BANKED AND BOUND.
   //
-  // Operator: *"she need to be able to hear too when talked too not just a TTS
-  // wrapper on a text chain"*. This is the audio twin of
+  // The requirement: she must be able to HEAR when spoken to, not merely carry
+  // a text-to-speech wrapper over a text chain. This is the audio twin of
   // `_perceiveTextbookFigure`, and it runs the SAME four steps a picture takes
   // — perceive, describe, store, teach — so hearing and seeing are one
   // mechanism rather than two that drift apart.
@@ -798,9 +799,9 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
 
     // concept binding — the LABEL names what the frame shows, and NOTHING
     // else ever does. CAMPOISON cut camera frames from fusing with her
-    // thoughts; WORDLOCK (2026-08-21, operator: "there is still something
-    // wrong that not lining up between the word [she] is drawing or imagining
-    // and what is put into the url") finishes the job: an unlabeled frame of
+    // thoughts; WORDLOCK (2026-08-21) — reported: the word she was drawing or
+    // imagining still did not line up with the word that went into the request
+    // URL. That finishes the job: an unlabeled frame of
     // ANY source binds to NOTHING — the thought-chain fallback fused
     // unlabeled generated images with whatever word she happened to be
     // thinking, the single biggest word/image mismatch machine. She still
@@ -1181,9 +1182,9 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // COLORART (2026-08-21) — ONE reconstruction, sampled three ways: the
     // global palette, a color PER PART (where the colors GO — the layer the
     // drawings were missing), and a color PER TRACE STROKE (fine contours in
-    // their real colors instead of one monotone ink). Operator: "she isnt
-    // using any color in the image like real images have... there are color
-    // layers depth detail fine contoners".
+    // their real colors instead of one monotone ink). Reported: she was using
+    // no colour at all, where a real image has colour LAYERS, depth, detail and
+    // fine contours.
     let _img = null;
     try { if (this.mindSpace && typeof this.mindSpace.imagine === 'function') _img = await this.mindSpace.imagine(rec, 0); } catch { _img = null; }
     try { palette = await this._schemaPaletteFromRec(rec, _img); } catch { palette = []; }
@@ -1362,8 +1363,9 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
           // one), but never lose contours a prior look banked if this trace was thin.
           if ((!schema.outlines || !schema.outlines.length) && Array.isArray(prev.outlines) && prev.outlines.length) schema.outlines = prev.outlines;
         }
-        // FORMBANK (2026-08-21, operator: "she can look at an orange cat and a
-        // black cat sitting, then she can draw a browen cat standing") — the
+        // FORMBANK (2026-08-21) — the capability asked for: having seen two
+        // differently-coloured instances of a subject in one pose, she can draw
+        // a THIRD colour in a DIFFERENT pose. The
         // weighted merge smears every look into ONE average form; the BANK
         // keeps each look's schema as a distinct VARIANT (a distinct pose/
         // form of the thing) so drawing can pick a form and recombine colors.
@@ -1550,8 +1552,8 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     } catch { /* taxonomy unavailable — the un-steered prompt stands */ }
     // ⛔ PROMPTBLEED — THE TAIL WAS A PORTRAIT RECIPE, APPLIED TO EVERYTHING.
     //
-    // Operator: *"every concept she looks up is just a profile image of a
-    // younge person"*. The concept words were CLEAN — printed for eight
+    // Reported: every concept she looked up came back as a profile image of a
+    // young person. The concept words were CLEAN — printed for eight
     // concepts, and object words carried no person steering at all, so the
     // age-steer was not misfiring. The bleed was the shared tail:
     // *"documentary photography, natural lighting, single centered subject,
@@ -2095,9 +2097,9 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     this._vmRefFetchAt.set(key, now);
     this._vmLook().attempts++;
     try {
-      // WORDLOCK (2026-08-21, operator: "there is still something wrong that
-      // not lining up between the word [she] is drawing or imagining and what
-      // is put into the url for pollinations") — the prompt built from the
+      // WORDLOCK (2026-08-21) — reported: the word she was drawing or imagining
+      // still did not line up with the word that reached the image-request URL.
+      // The prompt built from the
       // FULL concept (often a whole thought sentence) while the store bound
       // under only its FIRST content word: the URL asked for one thing, the
       // label claimed another. The prompt now builds from the KEY — the exact
@@ -2208,8 +2210,8 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         return this._vmLookFail(key, 'blankRefs');
       }
       rec.fidelity = { psnr_db: null, source: 'reference-lookup' };
-      // LOOKTWICE (2026-08-21, operator: "the images are 80%ish of the time
-      // nothing like the atached word") — the generator is a NOISY oracle,
+      // LOOKTWICE (2026-08-21) — reported: roughly 80% of the images were
+      // nothing like the word attached to them. The generator is a NOISY oracle,
       // and a single render bound-then-shown meant a random wrong image wore
       // the word on the viewer and seeded her schema. A NEW concept now needs
       // TWO independent renders (different seeds) that AGREE (percept cosine

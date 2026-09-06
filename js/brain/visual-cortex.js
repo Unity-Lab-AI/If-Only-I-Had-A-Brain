@@ -595,8 +595,8 @@ export class VisualCortex {
     let imagined = a;
     // (operator, 2026-07-10) — NO two-image morph overlay in imagine-time
     // recall. Blending two REMEMBERED field-Cs is a static superposition of
-    // seen frames, not imagination (operator: "this is noise pollution" /
-    // "MINDS EYE = UNITYS IMAGINATION ... not a map of her neurons"). Her
+    // seen frames, not imagination — judged as noise pollution, on the rule that
+    // the mind's eye IS her imagination and not a map of her neurons. Her
     // imagination transforms her OWN single recalled field (abstract/dream,
     // a within-field thought-op) or dreams DE-NOVO from her thought/concept
     // state (imagineDeNovo) — never a composite of two camera memories. The

@@ -421,7 +421,7 @@ const SERVER_STATE_MIXIN = {
    */
   /**
    * ⭐⭐ THE OPERATOR DEFAULTS — what this boot STARTED with, and what the next
-   * one will start with. Operator: *"we need traing defaults we can set"*.
+   * one will start with. The requirement: settable TRAINING DEFAULTS.
    *
    * ⛔ THREE STATES THAT MUST NEVER RENDER ALIKE:
    *   applied  — a stored default is governing this boot. On these knobs the
@@ -1197,8 +1197,8 @@ const SERVER_STATE_MIXIN = {
       }),
       // ⭐⭐ THE KNOBS. Every training / weight / saturation knob with its LIVE
       // value, its default, and whether a write could take effect at all.
-      // Operator: *"we have all the knobs in the teachview ... you willl be the
-      // one setting all the knobs"*. ⛔ These were readable only from a shell on
+      // The arrangement: every knob is surfaced in the teach view, and they are
+      // set from there. ⛔ These were readable only from a shell on
       // the box, and there is no shell — so the values that govern how she
       // learns could not be READ, let alone turned. Static data plus an env
       // read: no measurement, nothing to slow down, safe at 10fps.
@@ -1207,7 +1207,7 @@ const SERVER_STATE_MIXIN = {
         catch { return null; }
       }),
       // ⭐⭐ THE OPERATOR DEFAULTS — what this boot STARTED with, and what the
-      // next one will. Operator: *"we need traing defaults we can set"*.
+      // next one will. The requirement: settable TRAINING DEFAULTS.
       //
       // ⛔ THREE DIFFERENT THINGS, AND THEY MUST NEVER RENDER ALIKE:
       //   applied  — a stored default that governs this boot. The brain is NOT

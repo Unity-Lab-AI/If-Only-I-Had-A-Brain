@@ -4273,7 +4273,7 @@ export class Curriculum {
       passedCellsTotal: cluster && Array.isArray(cluster.passedCells) ? cluster.passedCells.length : 0,
       // ROSTERROWS (2026-08-22) — the dashboard renders EXACTLY this list, so
       // the static core-6 hid the PE/Music/Health rows even after the server
-      // built them (operator: "there also is no PE, heath and safty"). Core 6
+      // built them (reported: PE, Health and Safety were also absent). Core 6
       // first in canonical order, then the real-school roster courses, then
       // anything else a future grade introduces.
       subjects: (() => {
@@ -10816,8 +10816,9 @@ export class Curriculum {
     // in-memory only, so EVERY restart wiped the receipt, the coverage audit
     // reported the same exam words missing again, and every gate entry
     // re-taught them all — hours on a K gate after every single press.
-    // RETEACH (2026-08-21, operator: "one time traing is not enough wtf are
-    // you thinking.. thats a law violation of cutting shit out of her") — the
+    // RETEACH (2026-08-21) — the correction: one-time training is NOT enough,
+    // and treating it as enough is a LAW violation, because it removes training
+    // from her. The
     // receipt is a Map word→lastTaughtAt, NOT a lifetime skip: a taught word
     // RESTS for the re-teach window and then becomes teachable again, forever
     // (spaced repetition). The waste that GATEVOCAB killed stays dead (no
@@ -11028,8 +11029,8 @@ export class Curriculum {
 
           // ── A FAILED QUESTION IS TAUGHT, NOT JUST COUNTED ──────────────────
           //
-          // Operator: *"each exam question failed needs to train her on the
-          // answer too"*. A test that finds a gap and then walks away from it
+          // The rule: every FAILED exam question must also TRAIN her on the
+          // answer. A test that finds a gap and then walks away from it
           // has spent the probe and bought nothing — the whole point of finding
           // out she does not know something is that she then learns it.
           //
@@ -11414,8 +11415,8 @@ export class Curriculum {
         if (cluster.advanceSubGrade(subject, 'cell-passed')) {
           this._hb(`[Curriculum] 🎓 subGrade ${subject} advanced → 'cell-passed' (full ${grade} battery cleared · ladder resets to 'fresh' for next grade)`);
         }
-        // Reset ladder for next grade — operator: "build her abilities
-        // over the full cousre of each grade" implies the buildup runs
+        // Reset ladder for next grade — the requirement to build her abilities
+        // over the FULL course of each grade implies the buildup runs
         // ANEW for each grade level, not just up to the first cell pass.
         if (cluster.subGrades) cluster.subGrades[subject] = 'fresh';
       }
@@ -13013,8 +13014,9 @@ export class Curriculum {
     // in-memory only, so EVERY restart wiped the receipt, the coverage audit
     // reported the same exam words missing again, and every gate entry
     // re-taught them all — hours on a K gate after every single press.
-    // RETEACH (2026-08-21, operator: "one time traing is not enough wtf are
-    // you thinking.. thats a law violation of cutting shit out of her") — the
+    // RETEACH (2026-08-21) — the correction: one-time training is NOT enough,
+    // and treating it as enough is a LAW violation, because it removes training
+    // from her. The
     // receipt is a Map word→lastTaughtAt, NOT a lifetime skip: a taught word
     // RESTS for the re-teach window and then becomes teachable again, forever
     // (spaced repetition). The waste that GATEVOCAB killed stays dead (no
@@ -15744,7 +15746,7 @@ export class Curriculum {
     // biological scale that ran 10-15 minutes per _teachQABinding call
     // which blocked the cell.
 
-    // iter12 rep-count tune (operator: *"do the rep count tune"*):
+    // iter12 rep-count tune (authorised as a rep-count tune):
     // 30 → 12 reps + lr 0.03 → 0.05. Cuts ELA-K QA-train wall-clock
     // 21 min → ~9 min (60% saved). lr bump 1.7× partially compensates
     // for fewer reps via larger per-update magnitude. Oja
@@ -17746,9 +17748,9 @@ export class Curriculum {
           const d = freq.get(b) - freq.get(a);
           return d !== 0 ? d : firstAt.get(a) - firstAt.get(b);
         });
-        // ⛔⛔⛔ THE 60-WORD CAP IS GONE. Operator: *"why did you put a cap on
-        // her?"* / *"she has to be able to look up all workds she needs to know
-        // no some bullshit limit"*.
+        // ⛔⛔⛔ THE 60-WORD CAP IS GONE. Challenged directly: nothing should be
+        // capping her — she must be able to look up EVERY word she needs to
+        // know, with no arbitrary limit.
         //
         // ⛔ AND THE ARITHMETIC THAT APPEARED TO JUSTIFY IT WAS MINE AND IT WAS
         // WRONG TWICE OVER. I priced removal at ~25 days and it is ~20 HOURS:
@@ -17840,10 +17842,10 @@ export class Curriculum {
     const ticksPerWord = opts.ticksPerWord ?? 2;
     // ⭐⭐ FIGPAIR.1 — THE PICTURE LANDS ON THE PAGE IT BELONGS TO.
     //
-    // Operator: *"we DO NOT JUST FEED HER THE WAVES CONSECUTIVELY WE GIVE HER
-    // EACH ONE AT THE SAME TIME SHE IS TRAING THE TEXT AND CHAPETERSECTIONS ...
-    // it would be stupid to just feed her a shit tone of images on a fucking
-    // timer with no fucking relation to the actual text"*.
+    // The governing rule: the field images are NOT fed to her consecutively.
+    // Each one arrives AT THE SAME TIME as the text and chapter section it
+    // belongs to. Feeding her a pile of images on a TIMER, with no relation to
+    // the actual text, would be pointless.
     //
     // ⛔ WHAT WAS WRONG, PRECISELY: the caption binding was never the problem —
     // a queued figure carries its own alt/caption/context and binds to its own
@@ -18037,7 +18039,7 @@ export class Curriculum {
    * ⭐⭐ PER-SUBJECT REHEARSAL — top up what this subject taught in EARLIER
    * grades before teaching the current one.
    *
-   * Operator: *"without just replaceing old teachings with current teachings"*.
+   * The requirement: new teaching must not simply REPLACE the old teaching.
    *
    * ⛔ THAT WAS AN ACCURATE DESCRIPTION OF EIGHT OF HER NINE COURSES. Four
    * things protect old learning in this brain and only one of them is
@@ -18724,7 +18726,7 @@ export class Curriculum {
   /**
    * VMUSE — READ BACK which relation she has learned for a word.
    *
-   * Operator: *"wht limit her via admisssions"* — the bindings existed and
+   * Challenged as limiting her by omission — the bindings existed and
    * nothing consulted them, so the omission was ours, not a limit on what she
    * knows.
    *
@@ -19148,8 +19150,8 @@ export class Curriculum {
     // MEASUREMENT CHOOSE THE COMPRESSION, instead of carrying a constant chosen
     // against a corpus an eleventh of today's size.
     //
-    // Operator: *"did you set all the knobs for what we need so we dont have to
-    // do but like 1-3 reps for everything"*.
+    // Standing instruction: the knobs must be set such that no more than one to
+    // three reps are needed for anything.
     //
     // ⛔ THE ANSWER COULD NOT BE A NUMBER TYPED IN HERE. `REP_COMPRESS = 40` was
     // measured, but the sweep that measured it wrote its own expiry into the
@@ -19443,8 +19445,8 @@ export class Curriculum {
     // pairwise cosine between motor readouts. Mean cosine > `overloadMax`
     // flags the phase as potentially overloaded. Set false to skip.
     const runSeparationProbe = opts.separationProbe !== false; // default TRUE
-    // iter22-E — overloadMax 0.30 → 0.40. Operator: *"wtf are there
-    // stilll overloads!?!?!"*. The 0.30 threshold was too aggressive —
+    // iter22-E — overloadMax 0.30 → 0.40. Reported: overloads were still
+    // firing. The 0.30 threshold was too aggressive —
     // sep-probe at 0.32-0.42 was triggering rescale + warnings on
     // basins that were ACTUALLY discriminating, just not at perfect
     // orthogonality. Bumping to 0.40 means rescale only fires on real
@@ -24679,8 +24681,8 @@ export class Curriculum {
         visualCortex: (this.engine && this.engine.visualCortex) || null,
       });
       // ── WORDSALAD.4 — ASK AGAIN IN THE FRAME SHE WAS TAUGHT IN ──────────────
-      // Operator: "this all needs to be layed out for all grades phases and
-      // cells and gates". All 116 `_gateSubjectProduction` call sites probe
+      // The scope requirement: this must be laid out for ALL grades, phases,
+      // cells and gates. All 116 `_gateSubjectProduction` call sites probe
       // impersonally ("our heart pumps ___", "we follow rules so the game is
       // ___"), while WORDSALAD.2 now teaches every lesson in her own voice as
       // well. Testing only the frame she was NOT anchored in measures the weaker
@@ -25531,9 +25533,9 @@ export class Curriculum {
       }
       await _microtask();
     }
-    // WORDSALAD.2 — VOCABULARY THROUGH HER OWN EYES. Operator: "all learning
-    // needs it through her eyes even letters words and vocabe when sum1 learns
-    // these things is through the self perspective". Every vocabulary word in
+    // WORDSALAD.2 — VOCABULARY THROUGH HER OWN EYES. The rule: ALL learning
+    // goes through her own eyes — letters, words and vocabulary included —
+    // because a person learns these through the SELF perspective. Every vocabulary word in
     // the walk passes through THIS method, so framing here covers all 180 call
     // sites across the 20 grade files with one edit — the chokepoint, not the
     // instances. `selfFrameUnit` turns each word into "i know the word X" /

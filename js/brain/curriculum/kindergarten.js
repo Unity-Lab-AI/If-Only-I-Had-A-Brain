@@ -2154,8 +2154,8 @@ export const K_MIXIN = {
       // start (see runFullSubjectCurriculum's _teachKVocabularyDefinitions
       // phase) where it teaches the FULL ~2000-word K vocabulary ONCE
       // for all 6 cells. Per-subject 20-word lists were rejected by
-      // operator: "A LIST OF 20 FUCKING WORDS IS HORSE SHIT AND IN NO
-      // WAY TH PROPRER 2000 WORDS A KINDERGARDENR WEOULD KNOW".
+      // The correction: a list of twenty words is nowhere near the roughly two
+      // thousand a real kindergartener knows.
 
       this._socKRemakeDone = true;
     }

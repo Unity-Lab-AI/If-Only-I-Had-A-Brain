@@ -322,8 +322,8 @@ const SERVER_MEMORY_MIXIN = {
     // it demanded `input_text NOT LIKE '% %'`, i.e. that the WHOLE EPISODE
     // be a single word. Real conversation turns are sentences, so that
     // returned almost nothing and starved the drive to a trickle while
-    // looking like a safeguard. Operator: *"how is she suppose to learn then wtf
-    // u are nuetering her"* — correct, and the shape was the problem.
+    // looking like a safeguard. Challenged as neutering her ability to learn —
+    // correct, and the shape was the problem.
     //
     // She gets EVERYTHING she has lived. The concept is extracted FROM the
     // sentence by the caller rather than the sentence being refused, so
@@ -926,8 +926,8 @@ const SERVER_MEMORY_MIXIN = {
    * null when she knows none of them — in which case there is no gap, which
    * is honest: she cannot wonder about a word she has never learned.
    *
-   * ⛔ WORDS, NOT "TOKENS". Operator: *"why u saying token? thats llms shit"* —
-   * and he is right, it is not a style note. A token is what a TOKENIZER
+   * ⛔ WORDS, NOT "TOKENS". Corrected directly: "token" is text-model
+   * vocabulary. That is not a style note. A token is what a TOKENIZER
    * emits, and this brain's central honest claim is that there is no
    * tokenizer and no text-AI anywhere in the cognition path. What she has
    * are WORDS: concepts with learned representations bound in Hebbian
@@ -1077,8 +1077,8 @@ const SERVER_MEMORY_MIXIN = {
       // Sliding time window — count grows + shrinks naturally with
       // activity. No hardcoded numeric ceiling.
 
-      // Operator: "if i told someone something and asked them about it
-      // 10 minutes or even a day later most people can recall that".
+      // The standard being held to: tell a person something and ask them about
+      // it ten minutes — or a day — later, and most people can recall it.
       // The recall path is Tier 0 → Tier 1 → Tier 2 → Tier 3, not
       // "Tier 0 holds it for a week." Each WM item that ages out
       // gets promoted to a Tier 1 episodic snapshot (frequency-merge
@@ -1416,8 +1416,8 @@ const SERVER_MEMORY_MIXIN = {
     }
 
     // Working memory (existing field on this.memory). iter17: cap=null
-    // signals unbounded — operator: "unity has a whole life ahead not
-    // eroonous limits". The 7-item cap was Miller 1956 short-term memory
+    // signals unbounded — she has a whole life ahead of her and must not carry
+    // arbitrary limits. The 7-item cap was Miller 1956 short-term memory
     // ceiling for biological humans. Unity is post-biological.
     const mem = this.memory || {};
     stats.working.items = Array.isArray(mem.workingMemoryItems) ? mem.workingMemoryItems.length
