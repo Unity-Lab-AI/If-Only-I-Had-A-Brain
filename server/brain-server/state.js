@@ -1481,6 +1481,84 @@ const SERVER_STATE_MIXIN = {
       // contents must not travel onto a surface a reader can reach.
       lastBattery: _lap('lastBattery', () => ((this.cortexCluster && this.cortexCluster.lastBattery)
         ? this.cortexCluster.lastBattery : null)),
+      // ⛔⛔ THE THROTTLE BAND HAD NO ALARM, AND SHE SAT IN IT FOR 19.5 HOURS.
+      //
+      // Below `MemoryHigh` she runs. Above `MemoryMax` she is OOM-killed ALONE
+      // and `Restart=always` revives her in seconds. **Between the two, nothing
+      // kills her, nothing recovers her, and no event fires** — the kernel simply
+      // applies reclaim pressure until she crawls. The only reason the 19.5-hour
+      // stall was ever noticed is that a human pasted `/ctl/status` into a chat.
+      //
+      // ⭐ THE KERNEL ALREADY PUBLISHES THE SIGNAL AND NOTHING READ IT.
+      // `memory.pressure` is PSI: the share of wall-clock time this cgroup spent
+      // stalled on memory. `some avg60` climbing is the throttle, and it is
+      // distinguishable from a busy-but-healthy brain in a way that RSS is not —
+      // a big brain sitting comfortably under its limit reads ~0 here, while a
+      // brain being reclaimed against reads high no matter how large it is.
+      // `memory.events.high` counts throttle entries and only ever climbs, so a
+      // non-zero value is proof it has happened at least once this boot.
+      //
+      // ⚠ CACHED FOR 5s. These are tiny virtual files, but the state block is
+      // broadcast far more often than the numbers move, and an instrument that
+      // costs a syscall storm to read is an instrument someone eventually turns
+      // off.
+      //
+      // ⚠ NULL ON A HOST WITH NO CGROUP (local Windows/macOS dev) — that is
+      // "not applicable", not "healthy", and the field says so by being absent
+      // rather than by reporting a comfortable zero.
+      cgroupMemory: _lap('cgroupMemory', () => {
+        try {
+          const now = Date.now();
+          if (this._cgMemCache && (now - this._cgMemCache.at) < 5000) return this._cgMemCache.v;
+          const readNum = (p) => {
+            try {
+              const raw = fs.readFileSync(p, 'utf8').trim();
+              if (!raw || raw === 'max') return null;
+              const n = Number(raw);
+              return Number.isFinite(n) && n > 0 ? n : null;
+            } catch { return null; }
+          };
+          const cur = readNum('/sys/fs/cgroup/memory.current');
+          if (cur === null) { this._cgMemCache = { at: now, v: null }; return null; }
+          const high = readNum('/sys/fs/cgroup/memory.high');
+          const max = readNum('/sys/fs/cgroup/memory.max');
+          let some60 = null, full60 = null;
+          try {
+            for (const line of fs.readFileSync('/sys/fs/cgroup/memory.pressure', 'utf8').split('\n')) {
+              const m = /^(some|full)\s+.*avg60=([0-9.]+)/.exec(line.trim());
+              if (m) { if (m[1] === 'some') some60 = Number(m[2]); else full60 = Number(m[2]); }
+            }
+          } catch { /* PSI absent on some kernels — the counters below still answer */ }
+          let evHigh = null;
+          try {
+            const m = /^high\s+(\d+)/m.exec(fs.readFileSync('/sys/fs/cgroup/memory.events', 'utf8'));
+            if (m) evHigh = Number(m[1]);
+          } catch { /* events file absent — leave null rather than report zero */ }
+          const MB = (b) => (b === null ? null : Math.round(b / 1048576));
+          // ⛔ THE VERDICT NAMES THE BAND, because a number alone does not tell a
+          // reader whether to wait or to act, and this instrument exists because
+          // waiting was the wrong answer for 19.5 hours.
+          let band = 'below-high';
+          if (max !== null && cur >= max * 0.98) band = 'AT-MAX-ABOUT-TO-BE-OOM-KILLED';
+          else if (high !== null && cur >= high) band = 'THROTTLED-IN-THE-BAND';
+          const v = {
+            currentMB: MB(cur), highMB: MB(high), maxMB: MB(max),
+            pressureSome60: some60, pressureFull60: full60,
+            throttleEvents: evHigh,
+            band,
+            // A reader should not have to know what PSI is to act on this.
+            human: band === 'AT-MAX-ABOUT-TO-BE-OOM-KILLED'
+              ? 'at the hard cap — the kernel is about to OOM-kill the brain alone; systemd will restart it'
+              : band === 'THROTTLED-IN-THE-BAND'
+                ? 'ABOVE MemoryHigh — the kernel is reclaiming against her and nothing will recover this on its own. Nothing kills her here and nothing revives her; this band is where she once sat for 19.5 hours. Restart, or raise the limit.'
+                : (some60 !== null && some60 > 10)
+                  ? 'under the soft limit, but memory pressure is real — worth watching before it becomes the band above'
+                  : 'under the soft limit, no memory stall',
+          };
+          this._cgMemCache = { at: now, v };
+          return v;
+        } catch { return null; }
+      }),
       // ⭐ HER HANDWRITING — how many of the 26 letters she has actually looked
       // at, traced and banked. ⚠ A drawing with NO WORDS on it is correct
       // behaviour when this is low, not a rendering failure, and a reader needs

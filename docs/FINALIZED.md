@@ -5,6 +5,49 @@
 
 ---
 
+## 2026-09-06 (14th) — `BOXCAP.3` — THE THROTTLE BAND HAS AN ALARM NOW, AND IT IS READ FROM OUTSIDE HER
+
+Gee (verbatim): *"get on it lets make some progress"*
+
+### The band where nothing happens
+
+Below `MemoryHigh` she runs. Above `MemoryMax` she is OOM-killed **alone** and `Restart=always` revives her in seconds. **Between the two, nothing kills her and nothing recovers her** — the kernel simply reclaims against her until she crawls. She sat there **19.5 hours**, and the only reason anyone knows is that a human pasted `/ctl/status` into a chat.
+
+Built as the row specified: PSI `some avg60` from `memory.pressure`, plus `memory.current` / `memory.high` / `memory.max` and the `memory.events` `high` throttle counter — published in **both** places it named, `state.cgroupMemory` and `/ctl/status`.
+
+### ⭐⭐ The `/ctl/status` half is the one that matters
+
+**A throttled brain is precisely the one whose own broadcast does not arrive.** `brain-ctl` is a separate unit with its own tiny cgroup, so it still answers — and it reads the brain's cgroup files directly, because **cgroup membership is a filesystem path, not a permission the brain has to grant.**
+
+### PSI is the right signal and RSS is not
+
+A large brain sitting comfortably under its limit reads **~0** pressure; a brain being reclaimed against reads high **no matter how big it is**. RSS cannot tell those apart — PSI can. That is why the row asked for it specifically.
+
+Paired with `loopPinned` + `activeForSec` it closes the question the status line could not answer: **a pinned loop with pressure climbing is a throttle** (restart, or raise the limit) **and a pinned loop with none is a genuine long operation** (wait). Those looked identical before, and the instrument counselled patience for both.
+
+### The verdict names the band, because a number does not tell you what to do
+
+```
+  healthy                       -> below-high
+  21.3 GB against a 20G limit   -> THROTTLED-IN-THE-BAND
+  23.8 GB against a 24G limit   -> AT-MAX-ABOUT-TO-BE-OOM-KILLED
+  no limits set                 -> below-high
+```
+
+`THROTTLED-IN-THE-BAND` reads: *"Nothing kills her in this band and nothing revives her… RESTART, or raise the limit. Waiting does not end it."*
+
+⚠ **`null` on a host with no cgroup is "not applicable", not "healthy"** — the field is absent rather than reporting a comfortable zero. Cached 5 s in the state block: tiny virtual files, but the block broadcasts far more often than the numbers move, and an instrument that costs a syscall storm is one somebody eventually turns off.
+
+### ⛔ A dead instrument, caught before it shipped
+
+The first cut called `fsSync.readFileSync` in `brain-ctl.js`, where the binding is `fs`. That is a `ReferenceError` straight into my own `catch`, returning `null` forever while reading perfectly plausibly in the diff.
+
+**An alarm that silently reports "nothing to see" is worse than no alarm** — which is the entire subject of this row. Found by checking the binding rather than assuming it.
+
+**Verified:** `node --check` ×2 · zero `fsSync` references remain · band logic exercised against all four scenarios · returns `null` on win32 as designed.
+
+---
+
 ## 2026-09-06 (13th) — `MEMTHROTTLE.2` + `BOXCAP.1` — SHE COULD NOT SEE HER OWN CAGE, AND THE OVERSHOOT IS SUBTRACTION
 
 Gee (verbatim): *"get on it lets make some progress"*
