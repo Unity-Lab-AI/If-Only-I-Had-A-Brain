@@ -1,6 +1,76 @@
 # RESUME — Session Pickup Brief
 
-> # 🟢 2026-09-06 (latest, 2nd) — THE EXPERIMENT THE ENTRY BELOW SCOPED IS DONE, AND THE ANSWER INVERTS THE QUESTION (PICK UP HERE)
+> # 🟢 2026-09-06 (latest, 3rd) — THE 50× ANSWER IS "NOT BY TUNING", AND ONE FIELD ON THE NEXT PRESS DECIDES WHICH LEVER IS EVEN CORRECT (PICK UP HERE)
+>
+> Gee (verbatim): *"okay now is there anyway to massively speead up traing anything at all to go from the 2k teaches to near 200k"*
+> Gee (verbatim, pasting the live teach log): *"and it still looks like its doing a shit tone of reps of everyhting"*
+> Gee (verbatim): *"okay best get on that"*
+> Gee (verbatim, on ordering): *"obviously do wehat ever we need to do in the right order"*
+> Gee (verbatim, scope): *"if we need tio chang donor algorithms or anything to be propper make sure thats done too"*
+> ⛔ **Standing safety constraint:** *"make sure you dont delete my stacks code with out correctly portiung it to rust"*
+>
+> ## ⛔ START HERE — READ ONE FIELD BEFORE BUILDING ANYTHING
+>
+> **`stageProfile.pairSegments.awaitOverheadPct` on the next press decides which lever is correct, and the two candidates lead opposite ways.** If it is large, the time is event-loop scheduling and **optimising the teach primitives is pointless** — the target is getting the teach loop off the shared loop (lever 4). If it is small, the wire is the wall and the donor batching opcode (lever 3) is right. ⛔ **Do not build the opcode first.** Five theories about this residual have already died; building on a sixth would be the same mistake with a Rust price tag.
+>
+> ## The answer to the 50×, priced
+>
+> Measured live on `a7b7a6e6`: **66.3 pair-teaches/s = 3,979/min.** Target 200k/min = **3,333/s = 50×**.
+>
+> | | |
+> |---|---|
+> | `_teachWordDefinition` | **90.6% of all uptime**, 1,175 ms/word |
+> | assoc calls per word | **13.1** — one per dictionary SENSE |
+> | per assoc call | 69.2 ms over 6.34 pairs |
+> | **per pair-rep** | **10.9 ms** — named 0.783 + hebbian 0.536 + lateral 0.836 |
+> | **residual** | **9.24 ms = 84.7%** |
+>
+> ⛔ **Not reachable by tuning.** Even at ZERO residual the named work alone caps at **~27,800/min**. 0.3 ms/pair is below the lateral pass and the tiled write **combined** — so the per-pair write-and-dispatch cycle must stop being per-pair. **The four levers:** ① the 84.7% residual (~7×) · ② collapse the 13.1 per-sense calls (pays only against per-CALL cost — `perCallMs`/`pairsPerCall` ship to say how much) · ③ **batch the donor frames** — 1,372 frames/s to a pod at ~205 ms RTT; N pairs per frame applied in order device-side is identical math over 1/N round trips, and is the only lever that reaches 0.3 ms/pair · ④ move the teach loop off the shared event loop.
+>
+> ## ⭐ THE PREMISE WAS WRONG AND THE PASTE IS WHAT FIXED IT
+>
+> **`4×1` is four pairs × ONE rep.** The multiplier in the log is `#8/10` — **SENSES**, 13.1 per word. Binding every meaning is a standing rule, so that is **curriculum, not waste**. The reps were never the problem. But it means every fixed per-CALL cost is paid ~13 times per word, which is why the per-call/per-pair split is the deciding number for lever ②.
+>
+> ## ⛔⛔ TWO ARTEFACTS CAUGHT, BOTH MINE
+>
+> **① The 228× collision-load alarm was my own sampler, proved to the digit.** It published **load 56** with the verdict *"supports NO compression at a 95% retrieval floor"* — a live input to the rep count, on its way to justifying refusing compression permanently. Collision load is defined across **different** patterns; in the definition lane every pair is `[word, defWord]`, so **the input word is identical for every pair in the call** and sampling `pairs[i][0]` sampled one word N times. Through the real `measureCollisionLoad`: **8 identical patterns → load exactly `56`**; 8 distinct → `5.000`. ⭐ **Caught by an impossibility check, not a re-read** — the identity-hash stripe gives every word five unique dims at double weight, so eight words cannot share all eight dims. Fixed: dedupe inputs, require **≥ 8 DISTINCT** patterns, else decline. **Declining to measure is a result.**
+>
+> **② The profile was truncated at 8 and was hiding the answer.** `teachProfile` publishes the top 8 by ms and the top **two are the containers** — six slots for every child, with the 8th already at 35,958 ms against a **587,215 ms** residual. **A list cut at 8 cannot distinguish "this method is cheap" from "this method is invisible."** Four theories were argued against a profile that was not showing the relevant rows. Raised **8 → 24**.
+>
+> ## How the residual was cornered (five theories dead)
+>
+> | eliminated | how |
+> |---|---|
+> | tiled write · spike clear · index array | benchmarked at production geometry: **0.085 / 0.137 / 0.352 ms** |
+> | `_checkSemBasinSeparation` | **never runs on the def path** — `deferDiagnostics` gates the prune, the probe is gated by `probeMotorPath`, and def binding routes to `sem↔fineType`; the per-rep probe needs `rep >= 1` and the def path is **reps=1** |
+> | the anti-pair pass | **arithmetic** — `TRACKED` auto-wraps every `_teach*`, so a 587,215 ms child would rank **third**, above `_teachWordDefinitions` at 439,536. None does |
+>
+> **What remains: the gaps between the functions** — `await` boundaries on an event loop also running the brain tick at ~1,359 steps/s. Filed as a **deduction with a counter, not a fact**.
+>
+> ## What to read after the next press, in order
+>
+> | Field | What it settles |
+> |---|---|
+> | `pairSegments.awaitOverheadPct` | **THE decider.** Loop-bound (lever ④) vs wire-bound (lever ③) |
+> | `pairSegments.perCallMs` + `pairsPerCall` | Whether collapsing the 13.1 per-sense calls is worth anything |
+> | `pairSegments.antiPerPairMs` + `antiPct` | The contrastive pass, finally timed rather than deduced |
+> | `teachProfile` rows **9–24** | Whatever the top-8 cut was hiding |
+> | `curriculum.repPricing.distinctWords` | Must be **≥ 8** for the load figure to mean anything at all |
+> | `state.bootReason` | ⛔ `mode: 'wipe'` + `reason: 'force-fresh'` = her training was just destroyed. **`.force-fresh` beats `DREAM_KEEP_STATE`, is tested first, and is unlinked as it is read** |
+>
+> ## ✅ Verified live this session
+>
+> **`LATSCAN` shipped and the hint was never once wrong** — `hintVerified` **500** · `hintMismatch` **0** · `hintUsed` **128,562**; `scanMs` **2.230 → 0.445 ms/call**, whole lateral pass **2.640 → 0.67**. **`DEFCOST.3`'s derivation held** — predicted `activeSum/call` 6,647, measured **6,396** (3.8%). **`teachStageSeq` publishes and advances**, and **the two-hour wedge cleared with the press.**
+>
+> ⚠ **`WEDGELIVE.1` is still open and still unexplained:** before the press she sat **116 minutes not teaching** with `probeDeadlineHits=6` — **the probe deadline fired six times and did not free the walk**, so it is bounding the wrong await. The press cleared it; the cause was not found. **If it recurs, the new stage stamps name the unmarked region.**
+>
+> ## Still open, deliberately
+>
+> - **`RUSTSCOPE`** — the handoff note is stale: all eight crates exist, **8,675 lines, zero `todo!()`**, B4/B5/B6(a) landed, `unity-glove` wired. Genuinely left and **not rewrite work**: the LFS runaway needs a **bytes-written** bound (212 GB from a 110 GB store), the fields rsync needs a watchdog on **destination growth** — ⛔ **not `write_bytes == 0`, that killed a healthy transfer** — and **B7**, the ~3.37 MB of vocabulary that is *"data wearing a `.js` extension"*.
+> - **`SCRATCHCLEAN.2`** — `Sponge said.txt` still untracked at root, still needs a decision.
+> - **`MEMTHROTTLE.3`** — fixed but inert until `unity-brain-ctl` is restarted by hand.
+>
+> # 🟢 2026-09-06 (earlier, 2nd) — THE EXPERIMENT THE ENTRY BELOW SCOPED IS DONE, AND THE ANSWER INVERTS THE QUESTION
 >
 > Gee (verbatim): *"okay continue the work and clean up is at the end after fulkl and complete doc sweep(you do remember what the vastness of a doc swwep intails and isnt limited to docs)"*
 > Gee (verbatim): *"if we need tio chang donor algorithms or anything to be propper make sure thats done too"*
