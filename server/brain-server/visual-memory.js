@@ -36,7 +36,7 @@ const path = require('path');
 // eyes start clean under the new gates. v1 stays on disk, unused.
 // 2026-07-15 — bumped to v3: the v2 store cached MONOCHROME references (old
 // "simple ... high contrast" prompt → black-on-white line drawings), whose field
-// renders looked like white pencil (Gee: "NO MORE PENCIL ART"). v3 orphans those
+// renders looked like white pencil, which was ruled out entirely. v3 orphans those
 // so she re-grounds every concept with the new COLOURFUL reference prompt. v2 stays
 // on disk, unused.
 // 2026-08-21 — bumped to v4 (the one-time clear, operator-requested): everything
@@ -75,8 +75,8 @@ const path = require('path');
 // `.gitignore` pattern `server/visual-memory*.db*` both cover v10 automatically
 // — nothing to add for either, which is the whole point of versioning by name.
 const VM_DB = path.join(__dirname, '..', 'visual-memory-v10.db');
-// NOLIMIT (Gee 2026-08-20: *"the equations for images in the Unity minds eye are
-// not limited"*). 384 concepts was a small number for a mind that will walk K→PhD
+// NOLIMIT (ruled 2026-08-20: the equations behind her mind's-eye imagery are
+// not to be limited). 384 concepts was a small number for a mind that will walk K→PhD
 // and see everything on the way — she would start FORGETTING what things look like
 // while still learning new words. Raised to 4096 (env-tunable), which is still an
 // LRU floor rather than a cage: the store is ~0.3-3KB per field C, so 4096 is a
@@ -1078,13 +1078,13 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     return null;   // all matches degenerate → de-novo mood field (never black)
   },
 
-  // ── OWNART (Gee 2026-08-20) — WHAT SHE *LEARNS* FROM A LOOK, not what she copies ──
+  // ── OWNART (2026-08-20) — WHAT SHE *LEARNS* FROM A LOOK, not what she copies ──
   //
-  // Gee: *"she will attemp completely new creations trying to replicate similar
-  // types of images but in ther own unique style outlay and apperance, NOT JUST
-  // APPLY LAYERS AND FILTERS to a pollinations image and calling it a draw"*.
+  // The requirement: she attempts completely NEW creations, trying to render
+  // similar KINDS of images in her own style, layout and appearance — never
+  // applying layers and filters to a fetched image and calling that a drawing.
   //
-  // He is right about what the old path did: `_drawConcept` default style was
+  // That is an accurate description of what the old path did: `_drawConcept` default style was
   // `field` → `stylizeField(rec)` = a 7-band posterize of the perceived reference,
   // and the line-art style was `traceLineArt(rec)` = an edge-trace of the same
   // frame. Both are transforms of a downloaded photo. A filter is not a drawing.
@@ -1473,7 +1473,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     return n;
   },
 
-  // ── DRAW-ENGINE (Gee 2026-07-15) — SHE LOOKS IT UP ───────────────────────────────────────────
+  // ── DRAW-ENGINE (2026-07-15) — SHE LOOKS IT UP ───────────────────────────────────────────
   // Definition-driven Pollinations REFERENCE prompt for a concept she wants to
   // draw but has NOT seen. Her LEARNED definition's content words ride the prompt
   // (horse → "large animal four legs mane tail"), and the frame is steered CLEAN
@@ -1515,18 +1515,18 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         if (words.length) defTail = ' ' + [...new Set(words)].slice(0, 6).join(' ');
       }
     } catch { /* bare concept prompt */ }
-    // COLOURFUL, not monochrome (Gee 2026-07-15: "NO MORE PENCIL ART"). The old
+    // COLOURFUL, not monochrome (ruled 2026-07-15: no more pencil art). The old
     // "simple ... high contrast" biased Pollinations toward black-on-white LINE
     // drawings — the field render of a monochrome reference looks like pencil.
     // Bias vibrant FULL-COLOUR + soft shading so her recreations are beautiful and
     // coloured; keep single-centred-subject + clean background for legible tracing.
-    // REALISTIC, not cutesy (Gee 2026-07-17: "too many kittens puppies and funky
-    // characters... like there is some meta prompt that is way to strong making
-    // all the look up drawling sorta outlandish and non Unity canon"). The word
+    // REALISTIC, not cutesy (reported 2026-07-17: far too many kittens, puppies
+    // and funky characters, as though some meta prompt were strong enough to
+    // make every look-up outlandish and off-canon). The word
     // "illustration" dragged the generator into cartoon-mascot/cute-character
     // territory on anything ambiguous. Steer PHOTOGRAPHIC + true-to-life: her
     // look-ups are LEARNING references (what the thing actually looks like);
-    // colour stays, the cutesy stylization dies. POSITIVE terms ONLY (Gee: an
+    // colour stays, the cutesy stylization dies. POSITIVE terms ONLY (an
     // image model attends to the nouns — writing "no cartoon" PAINTS cartoons);
     // her own interpretation still happens on the DRAWING side, never here.
     // AGESTEER (2026-08-21) — MEASURED root cause of the children look-ups:
@@ -1586,7 +1586,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
   // Fetch a Pollinations REFERENCE for a concept, perceive it into a field C
   // HEADLESSLY (no browser — the box decodes the render itself), and bind it
   // PROVISIONALLY into visual memory. Returns the rec so the caller draws from
-  // what she just looked at. Reference-not-fact (Gee): binds conf:false on first
+  // what she just looked at. Reference-not-fact, by ruling: binds conf:false on first
   // sight (a one-off render never becomes grounded truth), confirmed only when a
   // later independent render AGREES (percept cosine ≥ 0.45) — the same noisy-
   // oracle discipline as _ingestVisualFrame. Node fetch + jpeg-js/pngjs decode
@@ -1903,8 +1903,8 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         if (phrase && typeof this._queuePhraseTeach === 'function') this._queuePhraseTeach(phrase);
       } catch { /* non-fatal — perceiving a figure must never fail on its teach */ }
 
-      // ⭐ TEXTFIG.7 — SHE SEES IT. Gee: "yeah these images need to appear in
-      // her minds eye too". Same publish the look lane uses, so a figure is a
+      // ⭐ TEXTFIG.7 — SHE SEES IT. Corpus figures must appear in her mind's eye
+      // as well, not only be perceived. Same publish the look lane uses, so a figure is a
       // grounded frame exactly like a looked-up reference.
       if (opts.show !== false) {
         try {
@@ -2019,8 +2019,9 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // against a tier that serves about one. The lane was not merely fast, it
     // was PARALLEL, and that is what starved the chat request.
     //
-    // ⚠ Concurrency 1, NOT a time budget — this is not the global gap Gee
-    // revoked (*"its the anonymous free"*). Nothing here says "look less
+    // ⚠ Concurrency 1, NOT a time budget — this is not the global gap that was
+    // revoked on the grounds that the tier is the anonymous free one and costs
+    // nothing to use. Nothing here says "look less
     // often"; it says "finish the one you started before beginning another",
     // which is what a single-lane pipe means. Over an hour she still looks just
     // as many times, and each look now actually completes.
@@ -2051,8 +2052,8 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     if (!opts.force && GAP > 0 && this._vmLastRefFetchAt && (now - this._vmLastRefFetchAt) < GAP) { this._vmLook().gapSkips++; return null; }
     // ⛔ LOOKBACKOFF.1 (2026-08-26) — HONOUR A 429. NOT A BUDGET.
     //
-    // ⚠ This is deliberately NOT a re-arming of the global gap Gee revoked on
-    // 2026-08-21 (*"its the anonymous free"*). That was a SELF-IMPOSED spend
+    // ⚠ This is deliberately NOT a re-arming of the global gap revoked on
+    // 2026-08-21, on the grounds that the tier is the anonymous free one. That was a SELF-IMPOSED spend
     // budget from the keyed-account era, and revoking it was right. This is the
     // generator explicitly answering **HTTP 429 — stop**. Ignoring an explicit
     // refusal is not generosity toward her ability; it wins nothing, because a
@@ -2133,7 +2134,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         // A person waiting outranks a background errand.
         this._vmRefAbort = ctrl;
         this._vmRefAbortKey = key;
-        // timeout 25s→60s (Gee log 2026-07-17: EVERY reference fetch aborting on
+        // timeout 25s→60s (from a box log 2026-07-17: EVERY reference fetch aborting on
         // the box while Pollinations itself answers in ~2.5s — the box's uplink
         // sits at 16-19MB buffered under the teach-pattern flood, starving other
         // connections past 25s. 60s lets fetches land in the drain windows; the
@@ -2266,8 +2267,8 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
             this._queuePhraseTeach(concept);
           }
         } catch { /* non-fatal — a look must never fail on its teach */ }
-        // MIND'S-EYE — she SEES the reference she looked up (Gee 2026-07-15: "the
-        // minds eye shows the shit she sees period"). The looked-up image IS what
+        // MIND'S-EYE — she SEES the reference she looked up (ruled 2026-07-15:
+        // the mind's eye shows what she sees, full stop). The looked-up image IS what
         // her eyes receive, so publish the perceived field C to the shared viewer
         // (reconstructs to the reference image she's looking at) — a grounded
         // frame, exactly like a camera/generated frame ingested via
@@ -2420,8 +2421,8 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
   // ⭐⭐ THE BACKGROUND FIGURE DRAIN — every illustration in the corpus gets
   // seen, without any cell pass paying for it.
   //
-  // Gee chose this over perceiving inline: *"option 1 ... but they have to link
-  // to thhe text corrctly"*. The measurement behind it — 37,592 figures at 6 per
+  // Chosen over perceiving inline, on the condition that figures link to their
+  // text correctly. The measurement behind it — 37,592 figures at 6 per
   // cell visit meant `math/grade10` needed **462 visits** to finish 2,769, and a
   // cell is visited a handful of times.
   //

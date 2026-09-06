@@ -379,7 +379,7 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       const dst = name.slice(idx + 4);
       if (!this.regions[src] || !this.regions[dst]) continue;
 
-      // ─── sem→motor saturation prevention (Option B, Gee 2026-06-27) ───
+      // ─── sem→motor saturation prevention (Option B, ruled 2026-06-27) ───
       // The motor-emission cross-projections collapse under Hebbian over-
       // strengthening: sem→motor meanCos pins > 0.7 (saturated) because one
       // dominant basin races to wMax faster than the contrastive anti-Hebbian
@@ -1057,9 +1057,9 @@ export const CLUSTER_HEBBIAN_MIXIN = {
               // Trading 4.1GB of RAM for silently unsaved intra weights is
               // strictly worse than paying the RAM.
               //
-              // AND THE DEEPER REASON (Gee, 2026-08-18): "This woundnt work tho
-              // becasueu of ransom or user controlled drop outs, right?" — right,
-              // and this is the argument that actually settles it. A values-only
+              // AND THE DEEPER REASON (2026-08-18): it cannot work against
+              // random or user-controlled drop-outs — and that is the argument
+              // which actually settles it. A values-only
               // donor readback was drafted here as "the real cure"; it is not.
               // The donor is a VOLUNTEER GPU in a browser tab that can vanish
               // mid-tick with no notice. Freeing this array makes that tab the
@@ -1159,8 +1159,8 @@ export const CLUSTER_HEBBIAN_MIXIN = {
   async intraSynapsesHebbian(pre, post, lr) {
     if (!this.synapses) return;
     if (!this._teachSubstrateReady('intraSynapsesHebbian')) return;
-    // GINTRA (2026-08-16, Gee: "Do it correctly so that it fucking runs fast
-    // ... no cutting shit") — the intra matrix is GPU-BOUND to the donor's
+    // GINTRA (2026-08-16) — the requirement was speed WITHOUT removing any
+    // training: do it correctly and fast, cut nothing. The intra matrix is GPU-BOUND to the donor's
     // langCortex pseudo-cluster whose spike space the teach-frame TWINS keep
     // current. Dispatch the bound Hebbian EVERY call (full training mass on
     // the substrate, ~30 bytes/op through the SAME stale-guarded type-5 lane

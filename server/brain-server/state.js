@@ -282,8 +282,9 @@ const SERVER_STATE_MIXIN = {
       const c = this.cortexCluster;
       const now = Date.now();
       if (this._lcEverFired && c && c.regions) {
-        // 12M BROADCAST STALL FIX (2026-08-16, Gee: "1/5 the time its fucking
-        // stalled") — this per-region bitset walk is O(cortex × region overlap)
+        // 12M BROADCAST STALL FIX (2026-08-16) — reported from the live site as
+        // the page being unresponsive roughly a fifth of the time. This
+        // per-region bitset walk is O(cortex × region overlap)
         // ≈ ~14M byte-reads at the 12M cortex (regions + sem/word_motor
         // sub-bands re-walk their parents' spans), and it ran UNTHROTTLED on
         // every getState() — which the broadcast loop calls at 10fps. ~50ms ×

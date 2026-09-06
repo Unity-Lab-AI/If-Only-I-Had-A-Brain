@@ -12316,7 +12316,7 @@ var LanguageCortex = class {
                 // returning silence, because a question scored as her answer would
                 // corrupt every gate that reads it.
                 curiosityAsk: true,
-                // ⭐⭐ THE THALAMIC RELAY IS ON (2026-09-04, Gee's call).
+                // ⭐⭐ THE THALAMIC RELAY IS ON (2026-09-04, by ruling).
                 //
                 // `cluster/attention.js` — cosine → temperature softmax →
                 // weighted sum over the words already emitted in this utterance

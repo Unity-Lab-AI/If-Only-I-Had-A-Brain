@@ -729,10 +729,10 @@ const BRAIN_VRAM_ALLOC = (function () {
     const _hardMaxMB = Math.max(1024, _hwMB - _hardReserveMB);
     // ── LOCALSCALE (2026-08-23) — A STALE PIN MUST NOT OUT-RANK REAL HARDWARE ──
     //
-    // Gee, booting locally on a 128GB / RTX 4070 Ti SUPER workstation: *"its not
-    // scalling right... if im hosting it locally on a GPUbox with much better cpu
-    // and 4x the RAM is should not be less nusrons it should be more"* — and he
-    // was right: that machine booted 230,087,532 neurons while the 32GB CPU-only
+    // Reported from a local boot on a 128GB / RTX 4070 Ti SUPER workstation: the
+    // sizing was not scaling right — a local GPU box with a far better CPU and
+    // four times the RAM should produce MORE neurons, not fewer. That report was
+    // correct: that machine booted 230,087,532 neurons while the 32GB CPU-only
     // deployed box boots 425M.
     //
     // Cause, read off his own boot log: `server/resource-config.json` is
@@ -817,8 +817,8 @@ const BRAIN_VRAM_ALLOC = (function () {
     // ── RAMHEAD (2026-08-20) — THE 45% CLAUSE WAS THE BINDING CAP AND IT WAS ──
     // ── ARBITRARY. The 13GB reserve is the one with a REASON behind it.       ──
     //
-    // Gee: "leave enough for forgio but i want the doner pod running as dfast as
-    // possible with out crashing the server from ram lock up". Both clauses
+    // The requirement: leave enough headroom for Forgejo, but run the donor pod
+    // as fast as possible without crashing the server on RAM lock-up. Both clauses
     // below existed to protect Forgejo; only the second one was ever REASONED
     // ("leave >=13 GB for Forgejo + OS + page cache"). The 45% fraction is a
     // round number, and on this 31,831MB box it is the smaller of the two —
@@ -857,7 +857,7 @@ const BRAIN_VRAM_ALLOC = (function () {
     // the all-night loop that never left kindergarten. Boot instead at a
     // conservative DONOR-FIT budget so ONE modest donor holds + re-uploads it
     // quickly; DF.7 community-compute scaling grows it as the donor POOL grows
-    // ("scales with donors", per Gee). Explicit DREAM_BRAIN_BUDGET_MB still wins;
+    // ("scales with donors", by ruling). Explicit DREAM_BRAIN_BUDGET_MB still wins;
     // host-RAM safety still caps the top; local dev (no proxy-auth) is unchanged.
     const _deployDonorMode = process.env.UAL_PROXY_AUTH === '1';
     const _donorFitDefaultMB = Number(process.env.DREAM_DONOR_FIT_MB) > 0
@@ -978,9 +978,9 @@ const BRAIN_VRAM_ALLOC = (function () {
   // ── LANGVRAM (2026-08-23) — ON A GPU HOST, `language_cortex` MUST BE ──────
   // ── BUDGETED BY ITS REAL VRAM FOOTPRINT, NOT BY ITS RAM SHARE.           ──
   //
-  // Gee: *"thats not fucking correct!!!! 203M??????? the web version is fucking
-  // bigger... local run on its own system with no web should mean that"* — and
-  // the arithmetic proves him right. A 128GB / 16GB-card workstation was sizing
+  // Reported as plainly wrong: 203M locally, while the hosted version was
+  // BIGGER — a local run on its own system with no web traffic should be the
+  // larger of the two. The arithmetic proves that report right. A 128GB / 16GB-card workstation was sizing
   // to 230M neurons while the 32GB CPU-ONLY box sizes to 425M. Indefensible.
   //
   // The chain, all measured off his own boot log:
@@ -1658,11 +1658,11 @@ function autoClearStaleState() {
     path.join(__dirname, 'figure-queue.db-shm'),
   ];
 
-  // ── FRESHEYES (Gee 2026-08-20) — NO IMAGE STATE SURVIVES A FRESH WALK ──────
+  // ── FRESHEYES (ruled 2026-08-20) — NO IMAGE STATE SURVIVES A FRESH WALK ──────
   //
-  // Gee: *"they shall not persist through a fresh walk, so that all image
-  // equations drawing canvas and word image gens from pollinations are all
-  // fresh and none persist through a fresh walk"*.
+  // The rule: none of it may persist through a fresh walk, so that the image
+  // equations, the drawing canvas and the generated word images all come back
+  // fresh and nothing survives from the previous run.
   //
   // The list above named `visual-memory.json` — and NOTHING WRITES THAT FILE.
   // The live store is `visual-memory-v3.json` (`VM_FILE` in
@@ -1689,7 +1689,7 @@ function autoClearStaleState() {
     console.warn(`[Brain] FRESHEYES — could not scan the state dir for image stores (${e.message}); only the literally-named files will be cleared.`);
   }
   // Pollinations renders she has fetched (the reference look-ups + generated
-  // images) are the "word image gens" Gee named: they are experiential input,
+  // images) are the "word image gens" named in the rule: they are experiential input,
   // not identity, and a fresh walk must not inherit a previous walk's pictures.
   // The OUTPUT dir is emptied; the API KEY file (`.claude/pollinations-user.json`)
   // is NEVER touched — that is a standing LAW and it lives outside this tree.
@@ -1873,7 +1873,7 @@ let COMMUNITY_TIER_RUNNING = 0;
   // tier file existed, and DF.7 writes one the moment a donor connects, even on
   // a laptop. So a local run created its own clamp and then obeyed it.
   //
-  // Measured on Gee's box: hardware sizing produced 562,036,734 neurons and the
+  // Measured on a local box: hardware sizing produced 562,036,734 neurons and the
   // very next line read *"community tier 3 target ~357,000,000 neurons → scaled
   // main-brain DOWN"*. The ladder's rungs are calibrated to a POOL of volunteer
   // GPUs (tier 3 wants 256GB across 10 donors); applying that to one private
@@ -2093,7 +2093,7 @@ function _envPositive(name, fallback) {
 const BRAIN_TICK_MS = _envPositive('DREAM_TICK_MS', _TICK_MS_AUTO);
 const SUBSTEPS = Math.max(1, Math.floor(_envPositive('DREAM_SUBSTEPS', _SUBSTEPS_AUTO)));
 // SUBSTEPS.1 — the native tier. An EXPLICIT DREAM_SUBSTEPS wins for both tiers:
-// if Gee pins a number, that number is what runs, and the capability logic does
+// if an admin pins a number, that number is what runs, and the capability logic does
 // not quietly override a deliberate act (the LANGRAM lesson).
 const _SUBSTEPS_EXPLICIT = process.env.DREAM_SUBSTEPS !== undefined && process.env.DREAM_SUBSTEPS !== '';
 const SUBSTEPS_NATIVE = _SUBSTEPS_EXPLICIT
@@ -2101,9 +2101,9 @@ const SUBSTEPS_NATIVE = _SUBSTEPS_EXPLICIT
   : Math.max(1, Math.floor(_SUBSTEPS_NATIVE_AUTO));
 // ── SUBSTEPS.2 — DRIVE THE CARD TO THE WALL, AND LET IT FIND ITS OWN WALL ──
 //
-// Gee: "i just want the fucking doner to be able to run 100% to the wall doing
-// max work.. not these bullshit limits.. im paying for a GPU i best be using
-// 110% of all of it". He is right that 24 was a limit I picked, not a limit the
+// The requirement: the donor should run flat out at maximum work, without
+// artificial limits — a paid-for GPU is expected to be fully used.
+// That is right — 24 was a limit picked here, not a limit the
 // hardware has: at 24 substeps a batch is ~347ms of GPU math against a
 // TIMEOUT_MS of 180,000 — we were using 0.2% of the deadline we allow.
 //
@@ -2146,7 +2146,7 @@ const SUBSTEPS_ADAPT_MS = 12000;   // one decision per 12s — long enough for a
  * internally. Returns the substep count to use for THIS tick.
  */
 function adaptSubsteps(brain, ws, floorValue) {
-  if (_SUBSTEPS_EXPLICIT) return floorValue;              // Gee pinned it — never touch
+  if (_SUBSTEPS_EXPLICIT) return floorValue;              // explicitly pinned — never touch
   if (floorValue === SUBSTEPS) return floorValue;         // browser/unknown donor stays put
   const now = Date.now();
   if (brain._adaptSubsteps === undefined) {
@@ -2188,7 +2188,7 @@ function adaptSubsteps(brain, ws, floorValue) {
   // took the SHRINK branch, `Math.max(floorValue, …)` clamped it back to 24, and
   // `next === prev` meant it never logged. The controller looked absent. It ran
   // perfectly and decided "too slow, back off" forever, against a card that was
-  // idling — the exact opposite of what Gee asked for, invisibly.
+  // idling — the exact opposite of what was asked for, invisibly.
   //
   // WHY THE SIMULATION MISSED IT, and this is the lesson worth keeping: I fed
   // the harness `mathMs + OVERHEAD` as `stepTimeMs`, i.e. I mocked the very
@@ -2806,7 +2806,7 @@ class ServerBrain {
       // limit that is not biologically correct.
       // Size is now bounded by VRAM allocator + V8 heap + free RAM only.
       const os = require('os');
-      // WMB (Gee 2026-07-14): the old 40000 B/neuron coefficient was a ~10x
+      // WMB (ruled 2026-07-14): the old 40000 B/neuron coefficient was a ~10x
       // over-estimate that FALSELY pinned langCortexSize at ~349K on the box
       // (freemem×0.5 / 40000). Real CPU-side footprint at 349K is ~370 B/neuron
       // (live: 85MB intra + ~30MB cross at 354K = ~325 B/neuron; the stale
@@ -3133,7 +3133,7 @@ class ServerBrain {
       const projectedBytesFinal = projectedBytes;
 
       const autoSize = Math.min(configuredCortex, ramBasedMax, v8BasedMax, vramBasedMax);
-      // WMB (Gee 2026-07-14) — target langCortexSize so word_motor (6% of s)
+      // WMB (ruled 2026-07-14) — target langCortexSize so word_motor (6% of s)
       // holds the FULL K→PhD UNIFIED vocab (one bucket per unique word, no
       // per-subject replication) + headroom: ~90K word_motor cells ⟹ s ≈ 1.5M
       // (word_motor span = 0.06 × s). Cap autoSize at this target so the fixed
@@ -3169,7 +3169,7 @@ class ServerBrain {
       // allow, loudly, and the pin freezes that geometry. Geometry change ⟹
       // WEIGHTS_FORMAT_VERSION 5→6 ⟹ FRESH WALK required both directions.
       const WORD_MOTOR_TARGET_LANG_CORTEX = 20_000_000;
-      // WMB FLOOR (Gee 2026-07-14, fix v2): the VRAM-budget rescale (vramBasedMax)
+      // WMB FLOOR (ruled 2026-07-14, fix v2): the VRAM-budget rescale (vramBasedMax)
       // clamps langCortexSize to whatever fits `LANG_CORTEX_VRAM_BUDGET_BYTES` — a
       // badly under-provisioned ~115MB slice that pinned the language cortex at
       // ~349K (85MB intra) even though its REAL footprint at 1.5M is only ~490MB
@@ -3390,7 +3390,7 @@ class ServerBrain {
       // (the size the weights are meant to be). Below it, the pin is WITHHELD and
       // says why; a later boot that clears the target takes it, and from then on
       // the pin protects the good geometry. An explicit act (DREAM_LANG_CORTEX /
-      // DREAM_LANG_UNPIN) always writes, because that is Gee deciding rather than
+      // DREAM_LANG_UNPIN) always writes, because that is a deliberate act rather than
       // free RAM deciding.
       // LANGRAM.7 — `_weightsOnDisk` REMOVED from this condition. It made the
       // guard unable to fire on the one boot type that writes a pin from
@@ -3556,7 +3556,7 @@ class ServerBrain {
       const heapLimitGb = (v8BasedMax === Infinity ? 'unlimited' : ((v8BasedMax * LANG_CLUSTER_BYTES_PER_NEURON) / 1e9).toFixed(1) + 'GB');
       const projectedMB = Math.round(projectedBytesFinal / 1024 / 1024);
       console.log(`[Brain] Language cortex auto-scaled to ${langCortexSize.toLocaleString()} neurons (~${langMemGb} GB RAM, projected ${projectedMB}MB GPU footprint via geometry estimator, ${rescaleIterations} rescale iter${rescaleIterations === 1 ? '' : 's'}). Bounds: free RAM ${(freeRamBytes/1e9).toFixed(1)}GB × ${(LANG_RAM_FRACTION*100).toFixed(0)}% = ${(ramBudget/1e9).toFixed(1)}GB → ${ramBasedMax.toLocaleString()} neurons | V8 heap cluster-budget → ${heapLimitGb} → ${v8BasedMax === Infinity ? '∞' : v8BasedMax.toLocaleString()} neurons | GPU VRAM budget from unified allocator → ${vramCortexMB}MB = ${(BRAIN_VRAM_ALLOC.weights.language_cortex*100).toFixed(1)}% of ${BRAIN_VRAM_ALLOC.brainBudgetMB}MB brain budget → ${vramBasedMax.toLocaleString()} neurons AFTER geometric rescale (static seed was ${vramStaticSeed.toLocaleString()}) | configured cortex ${configuredCortex.toLocaleString()} neurons. Main GPU brain at ${TOTAL_NEURONS.toLocaleString()} neurons. Sparse matmul ON GPU.${envOverride > 0 ? ' DREAM_LANG_CORTEX override active.' : ''}`);
-      // WMB.6 boot capacity assertion (Gee 2026-07-14) — word_motor is the top
+      // WMB.6 boot capacity assertion (ruled 2026-07-14) — word_motor is the top
       // 6% of langCortexSize and must hold the full K→PhD UNIFIED vocab (one
       // bucket per unique word). Surface the capacity HERE so an undersized band
       // is caught at boot, never silently at emit time (the old overflow bug).
@@ -3736,7 +3736,7 @@ class ServerBrain {
         gpuProxy, // T17.3.d — proxy used for cross-region ops when GPU ready
         sparsePool: this.sparsePool, // T18.4.e — CPU-fallback parallel sparse matmul
       });
-      // Auto-advance toggle — default ON. Gee's standing intent is an
+      // Auto-advance toggle — default ON. The standing intent is an
       // unattended K→PhD walk that proceeds through every grade without
       // pausing at each boundary for a manual signoff (the per-grade LAW-6
       // Part-2 pause defeated the overnight walk). The single switch governs
@@ -3787,7 +3787,7 @@ class ServerBrain {
         sem:       [0.750, 0.917],
         fineType:  [0.917, 0.967],
         motor:     [0.967, 0.984],
-        // WMB word_motor band (Gee 2026-07-15) — the unified emission band added by
+        // WMB word_motor band (ruled 2026-07-15) — the unified emission band added by
         // the WMB grow had no main-cortex home, so sem_to_word_motor / word_motor_to_sem
         // never bound (14/16) and emission teach ran CPU. Maps into the tail of the
         // motor sub-region: motor (langCortex 34.5K) uses only the FIRST-N of the
@@ -4286,7 +4286,7 @@ class ServerBrain {
             const json = JSON.parse(raw);
             const loaded = this.tier3Store.loadFromJSON(json);
             console.log(`[Tier3Store] boot — ${loaded} Tier 3 identity-bound schemas restored from identity-core.json (permanent — never auto-cleared; missing seed anchors topped up after embeddings load)`);
-            // FRESH-WALK RESET (Gee 2026-07-12): consolidation PROMOTES episodes
+            // FRESH-WALK RESET (ruled 2026-07-12): consolidation PROMOTES episodes
             // to Tier 3 during the walk; those promoted anchors get persisted
             // into identity-core.json and — because the file is never auto-
             // cleared — survive a fresh walk, polluting her identity with
@@ -4346,7 +4346,7 @@ class ServerBrain {
         // init() probes WebGPU; in Node it returns false and we stay on the CPU
         // reference path. Await so _useGpu() is settled before first imagine.
         try { await this.mindSpace.init(); } catch { /* CPU path */ }
-        // ONE PROCESS (Gee 2026-07-17) — wire the DONOR bridge into the proxy:
+        // ONE PROCESS (ruled 2026-07-17) — wire the DONOR bridge into the proxy:
         // when a mindspace-capable donor (compute.html / donor-v0.3.11+) is
         // connected, her imagery computes on the SAME GPU as her brain. The
         // local worker path remains ONLY as the rollout ramp until v0.3.11 is
@@ -4688,7 +4688,7 @@ class ServerBrain {
         console.warn('[Brain] persona-cosmic.txt unreadable:', err.message);
       }
 
-      // FIX B (corpus-bleed grade-defer, Gee 2026-07-10 / set-up 2026-07-14):
+      // FIX B (corpus-bleed grade-defer, ruled 2026-07-10 / set-up 2026-07-14):
       // gate the ADVANCED corpus boot loaders on the SAVED mastered grade so
       // academic/dev vocab (quantum/sentient/piezo/python/code) isn't dumped
       // into the dictionary candidate pool while Unity is at kindergarten —
@@ -4704,7 +4704,7 @@ class ServerBrain {
       // register unlocks). The saved grade is stashed by _loadWeights (runs in
       // the constructor, before this boot block); a fresh/pre-K brain defers,
       // and the savestart-heavy workflow reloads the corpus at the first boot
-      // AFTER the walk crosses the threshold (Gee 2026-07-14: savestarts are
+      // AFTER the walk crosses the threshold (ruled 2026-07-14: savestarts are
       // the norm, fresh walks rare). A single zero-savestart pre-K→PhD walk
       // would need a mid-walk lazy-load — documented follow-up, not the
       // operational reality.
@@ -5610,8 +5610,8 @@ class ServerBrain {
   // Called from BOTH walk-time tick
   // paths: the probe-gate hold and the gate-clear _curriculumInProgress
   // branch — one cadence, one stats object (`state.walkTick`).
-  // FIREKNOB (2026-08-28, Gee: the brain "should be like 5-10% of the brain at
-  // any moment" firing) — a self-calibrating firing-rate controller, the same
+  // FIREKNOB (2026-08-28) — the target is roughly 5-10% of the brain firing at
+  // any moment. A self-calibrating firing-rate controller, the same
   // idiom as psiGain and SUBSTEPS.2: never a hand-tuned constant. Every
   // answered step batch samples the true fired fraction, EMA-smooths it, and
   // nudges a bounded multiplicative scale on tonicDrive toward the target.
@@ -5887,7 +5887,7 @@ class ServerBrain {
     if (this.cortexCluster && typeof this.cortexCluster.computePhi === 'function') {
       try {
         phiRaw = this.cortexCluster.computePhi();
-        // ── PHISCALE.1 (2026-08-25, Gee's call: rescale to her operating range)
+        // ── PHISCALE.1 (2026-08-25, by ruling: rescale to her operating range)
         //
         // Binary entropy peaks at p = 0.5, and her cortex is DELIBERATELY
         // sparse — so H sits in the low tenths and the old 0.1 floor clamped it
@@ -6728,7 +6728,7 @@ class ServerBrain {
           // compute dispatch until every cluster's ack comes back.
           const needsSend = allClusters.filter(c => !this._gpuInitialized[c]);
           if (needsSend.length > 0) {
-            // LOG-SPAM FIX (Gee 2026-07-16: "GPU init send" machine-gunning ~9/s) —
+            // LOG-SPAM FIX (ruled 2026-07-16: "GPU init send" machine-gunning ~9/s) —
             // _gpuStep() NO-OPS while the canonical cortex weight upload is in
             // flight (its first guard), so during a post-reconnect upload this
             // branch retried + LOGGED every tick without sending anything. Mirror
@@ -7286,7 +7286,7 @@ class ServerBrain {
               this._probeGateCellKey = null;
             }
 
-            // PSITEACH.3 (2026-08-28, Gee: 0 neurons firing) — DURING THE WALK,
+            // PSITEACH.3 (2026-08-28, reported as 0 neurons firing) — DURING THE WALK,
             // THE STEP LANE IS ALWAYS THE HEARTBEAT, gate held or not. The gate
             // clears briefly between cells and inside some teach windows, and in
             // those moments this tick used to dispatch a FULL 8-cluster batch —
@@ -8382,7 +8382,7 @@ class ServerBrain {
         this._writeBinarySection(fd, s);
         // ── BIGSAVE (2026-08-23) — A SINGLE WRITE CANNOT EXCEED 2GiB−1. ─────
         //
-        // Caught on Gee's local brain the moment it grew big enough:
+        // Caught on a local brain the moment it grew big enough:
         //   *"Binary weights save failed (previous checkpoint left intact):
         //    The value of "length" is out of range. It must be >= 0 &&
         //    <= 2147483647. Received 2880000000"*
@@ -8477,7 +8477,7 @@ class ServerBrain {
     const SLICE = 8 * 1048576;
     const t0 = Date.now();
     let fd;
-    // DONOR-STARVATION FIX (Gee 2026-07-16) — the old tail blocked the event loop
+    // DONOR-STARVATION FIX (ruled 2026-07-16) — the old tail blocked the event loop
     // ~32s at EVERY save completion (the exact signature in the box log: a ~32s
     // [EventLoop] BLOCKED span ending at "Binary weights saved"). Two blockers:
     //   (1) fs.writeSync per 8MB slice — synchronous; when the OS write-back
@@ -8967,8 +8967,8 @@ class ServerBrain {
         // synapses.
         //
         // So the flag was REMOVED rather than left as a second mechanism for one job:
-        // duplicate paths drift, and this one had the wrong interface anyway — Gee
-        // drives the box from the dashboard, not a shell env var (standing rule: box
+        // duplicate paths drift, and this one had the wrong interface anyway — the
+        // box is driven from the dashboard, not a shell env var (standing rule: box
         // changes go through the dashboard buttons).
         //
         // The flag did earn its keep once: building it exposed that `/savererun`
@@ -9376,7 +9376,7 @@ let _serverLogSeq = 0;
 // re-arming the flag makes it fully re-upload to the new primary on the next
 // warm tick (the warmup-batch counter is cumulative, so it fires promptly).
 function _rearmCortexGpuUpload(reason) {
-  // RECONNECT-CHURN COALESCE (Gee 2026-07-14 "the doner keeps dropping") —
+  // RECONNECT-CHURN COALESCE (ruled 2026-07-14 "the doner keeps dropping") —
   // every reconnect/failover/promote funnels here and (via the reset below)
   // fires a fresh FULL 85MB cortex_intraSynapses + cross-projection upload.
   // When a donor churn-drops (a 12-29s GC pin at 61M starves the proxied WS →
@@ -10657,7 +10657,7 @@ const httpServer = http.createServer((req, res) => {
   // concrete cause: STALE (dropped uploads) vs GPU-DIVERGENT (shader/precision) vs
   // MATH-ERROR (CPU matmul) vs CLEAN. Loopback-only (diagnostic, reads live state).
   // `?name=<matrix>&samples=<n>` optional. This is the "secondary script" instrument
-  // Gee asked for, served in-process so it sees the live donor + CPU master together.
+  // asked for, served in-process so it sees the live donor + CPU master together.
   if (req.url && req.url.startsWith('/diag/parity') && req.method === 'GET') {
     if (!requireLoopback(req, res, '/diag/parity')) return;
     // Async work runs in an IIFE — the outer request handler is a sync arrow.
@@ -11568,7 +11568,7 @@ const httpServer = http.createServer((req, res) => {
 
   // DF.7 — community-compute auto-scale controls (admin). GET returns the
   // current dead-zone settings + live community-compute telemetry; POST updates
-  // the toggle / dead-zone buffer / stability window. Gee 2026-06-20: the auto-
+  // the toggle / dead-zone buffer / stability window. Ruled 2026-06-20: the auto-
   // relearn must be admin-controllable with a dead-zone buffer so a single
   // donor connecting/disconnecting never downgrades the brain.
   //   GET  /autoscale  → { settings, community }
@@ -12315,9 +12315,9 @@ wss.on('connection', (ws, req) => {
     // DEPLOY VERSION HANDSHAKE — donor tabs survive deploys running old code;
     // they compare this stamp across reconnects and reload on change.
     buildStamp: (global.__ualBuildStamp || (global.__ualBuildStamp = (() => { try { return String(Math.floor(fs.statSync(__filename).mtimeMs)); } catch { return String(process.pid); } })())),
-    // ── DONOR UPGRADE HANDSHAKE (2026-08-25, Gee: "when the pod disconnects
-    // after the update is pressed, it shall upgrade to the updated most
-    // updated doner version before reconnecting attempts").
+    // ── DONOR UPGRADE HANDSHAKE (2026-08-25) — the rule: when the pod
+    // disconnects after an update is pressed, it must upgrade to the newest
+    // donor version BEFORE it attempts to reconnect.
     //
     // ⭐ WHY IT RIDES `welcome` RATHER THAN AN HTTP CHECK: the donor has no
     // HTTP client — only a WebSocket — and adding one would fight the
@@ -13062,7 +13062,7 @@ wss.on('connection', (ws, req) => {
           // defaulted to a HARDCODED 16384 — so tier selection never once
           // looked at the card actually attached. A rented 45,488MB A6000 was
           // sized as if it were a 16GB card, which is half of why the pod sat
-          // at 21% VRAM while Gee was paying by the hour for the other 79%.
+          // at 21% VRAM while the other 79% was being paid for by the hour.
           //
           // Boot genuinely cannot read a donor (none is connected yet), so the
           // only honest fix is to REMEMBER: when a donor registers with more
@@ -13312,7 +13312,7 @@ wss.on('connection', (ws, req) => {
             const lb = brain._neuronLeaderboard[_lbKey] || { name: client.donorName || null, neurons: 0, lastSeen: 0, _lastTs: Date.now() };
             const now = Date.now();
             const dt = Math.min(10, Math.max(0, (now - (lb._lastTs || now)) / 1000));
-            // MIRRORID.6 (2026-08-20, Gee's call: "credit real work only") — GATE
+            // MIRRORID.6 (2026-08-20, by ruling: credit real work only) — GATE
             // THE ACCRUAL ON WORK ACTUALLY DONE. `gneuronsPerSec` is a PERSISTENT
             // donor-side field: it keeps its last value forever, so this line
             // used to bank credit for a card that had stopped computing entirely
@@ -14285,8 +14285,8 @@ const _lagTimer = setInterval(() => {
     const consol = !!(brain.consolidationEngine && brain.consolidationEngine._inFlight);
     const innerVoice = !!brain._innerVoiceInFlight;
     const syncing = brain._replicaSyncInFlight ? brain._replicaSyncInFlight.size : 0;
-    // UPLOAD-WINDOW HONESTY (2026-08-16, Gee: "is all this event loop Blocked
-    // shit ... lots of time just being burnt up") — during the canonical
+    // UPLOAD-WINDOW HONESTY (2026-08-16) — raised as a question about whether
+    // the event-loop BLOCKED lines meant time was simply being burnt up. During the canonical
     // upload the tick is PAUSED by design and these sub-second blocks are the
     // loop shoveling chunk buffers (the GC driver itself is fixed by the
     // upload scratch-buffer reuse in gpu.js). A wall of identical lines every
@@ -14312,9 +14312,9 @@ const _lagTimer = setInterval(() => {
       brain._lagUploadSuppressed = 0;
       brain._lagUploadWorstMs = 0;
     }
-    // ── BLOCKREAD.1 (2026-08-21) — THE TEACH-CHUNK WALL, SUMMARISED. Gee, on a
-    // night of these: "i dont like the page wall of blocked notices.. it looks
-    // like pages and pages of errors." He is right about the look and the wall
+    // ── BLOCKREAD.1 (2026-08-21) — THE TEACH-CHUNK WALL, SUMMARISED. After a
+    // night of these, the complaint was the page's wall of blocked notices
+    // looking like pages and pages of errors. That is right about the look, and the wall
     // is wrong about the meaning: a sub-2s block during an active teach phase
     // is a CPU teach slab — the chunked Hebbian/Oja/propagate math landing just
     // over the 250ms warn floor. It is real work, not an error, and printing an
@@ -14338,7 +14338,7 @@ const _lagTimer = setInterval(() => {
       // LIVETEACH (2026-08-23) — MONOTONIC teach-chunk counter for the liveness
       // rate. `_lagTeachN` resets every 60s window, so it cannot answer "is she
       // working right now"; this one only ever climbs and the curriculum's
-      // liveness block windows it. Gee: *"1 teach /min ewwwww! gross!"* — a
+      // liveness block windows it. Reported from the page as 1 teach/min — a
       // 70-minute single-call phase (_teachTenseMorphology, _teachMorphology)
       // completes ONE wrapped teach call, so the wrapped-call rate reads 0-1/min
       // while 37 of these chunks per minute prove the math is grinding.

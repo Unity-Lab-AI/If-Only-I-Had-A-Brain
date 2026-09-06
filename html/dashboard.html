@@ -3473,8 +3473,8 @@
         // the third way this line lied. A grade-depth phase can run 40-70
         // minutes inside ONE wrapped teach call, so `teach/min` reads 0-1 and
         // `last teach` climbs into the thousands of seconds while the CPU
-        // grinds ~37 teach chunks a minute (Gee: "1 teach /min ewwwww! gross!"
-        // and "how can it not be teaching when shes doint 2700 teach/min").
+        // grinds ~37 teach chunks a minute — reported from the live page as a
+        // rate of 1 teach/min, against a console showing 2,700 teach/min.
         // Alive = teaching OR emitting OR chunking, and the chunk rate is
         // shown BY NAME so a long single call can never read as a stall.
         const chunkRate = lv.teachChunksPerMin | 0;
@@ -4224,9 +4224,9 @@
       // hidden when this panel shipped, so both sets render at once: two
       // "Update & Savestart" buttons, two restarts, two resets — pointing at
       // two DIFFERENT backends (the brain's own admin routes vs the control
-      // plane). Gee, looking at a local run: "its still showing the old
-      // buttons". It was showing both, and the old row is the one in the
-      // header where the eye lands.
+      // plane). Reported from a local run as still showing the old buttons.
+      // It was showing both, and the old row is the one in the header where
+      // the eye lands.
       //
       // ⚠ Hidden ONLY once the control plane has actually answered. If /ctl is
       // not installed or not running, the legacy row is the ONLY way to control
@@ -4252,7 +4252,7 @@
           // inline-block !important }`. A stylesheet `!important` outranks a
           // normal inline declaration, so `el.style.display = 'none'` was
           // silently overridden on every render and the old row stayed on
-          // screen — which is exactly what Gee kept seeing after three
+          // screen — which is exactly what kept being reported after three
           // "fixes" that were all correct except for this one line.
           // Only an inline declaration that is ITSELF `!important` wins.
           if (on) el.style.setProperty('display', 'none', 'important');

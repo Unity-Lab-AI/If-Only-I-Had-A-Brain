@@ -50,8 +50,8 @@ const DF7_MILESTONES = [
   { minCommunityMB: 256_000, minDonors: 10, neurons: 357_000_000 }, // tier 3 — top-computer scale
   // ── TIERTOP (2026-08-20) — THE LADDER USED TO END HERE, AND THAT WAS THE CAP ──
   //
-  // Gee, four times over, on a rented A6000 reading 21% VRAM: "im paying for a
-  // GPU i best be using 110% of all of it". Tier 3 was the last rung, we were
+  // Raised four times over, on a rented A6000 reading 21% VRAM: a paid-for GPU
+  // is expected to be fully used. Tier 3 was the last rung, we were
   // already standing on it (306,458,816 after the host-RAM trim), so NO donor
   // however large could move the brain — a 45,488MB card qualifies
   // ~1,681,286,758 neurons of capacity and the ladder had nowhere to put them.
@@ -611,10 +611,10 @@ const SERVER_GPU_MIXIN = {
    * DF.7 — load admin-configurable auto-scale settings (toggle + dead-zone
    * buffer + stability window) from server/autoscale-settings.json, defaulting
    * sanely on first boot. These govern WHEN the community-compute milestone
-   * resize is allowed to fire. Gee 2026-06-20: the auto-relearn must be gated
-   * WITH A BUFFER (a dead-zone) + admin-controllable so it "doesnt try to
-   * relearn the second it hits a gate of available users compute connected so
-   * that any one person disconnecting doesnt downgrade the brains fucntioning".
+   * resize is allowed to fire. Ruled 2026-06-20: the auto-relearn must be gated
+   * WITH A BUFFER (a dead-zone) + admin-controllable so it does not try to
+   * relearn the second it hits a gate of available connected user compute, so
+   * that any one person disconnecting does not downgrade the brain's functioning.
    */
   _getAutoScaleSettings() {
     if (this._autoScale) return this._autoScale;
@@ -781,7 +781,7 @@ const SERVER_GPU_MIXIN = {
     // DF.7 DEAD-ZONE — UPGRADE tier uses a BUFFERED capacity gate. To count as
     // "entered" for the purpose of triggering a resize, the size-driver
     // capacity must exceed the tier's neuron target by bufferPct headroom
-    // (hysteresis). This is Gee's dead-zone: hovering right at a gate (one
+    // (hysteresis). This is the ruled dead-zone: hovering right at a gate (one
     // donor flapping connect/disconnect) never trips a resize — only a genuine,
     // sustained surplus past the buffer does. With bufferPct=0 it reduces to
     // the raw gate. Donor-count gates are retired for SIZING (the baseline
@@ -1111,9 +1111,9 @@ const SERVER_GPU_MIXIN = {
   },
 
   // ── DF.7 multi-GPU fan-out (DEFAULT ON · env kill-switch) ──────────────────
-  // Master switch. DEFAULT ON (Gee 2026-06-28: "we need fanout=1 set auto … when
-  // I do the update and fresh walk" + Sponge asleep, so it can't depend on a
-  // manual systemd-unit env edit). Enables: strongest-donor primary promotion +
+  // Master switch. DEFAULT ON (ruled 2026-06-28: fan-out must be set automatic
+  // in time for the next update and fresh walk, and with no second admin awake
+  // it cannot depend on a manual systemd-unit env edit). Enables: strongest-donor primary promotion +
   // cortex resident-write mirroring to replicas + round-robin of the standalone
   // & bound forward-propagate + the bound-Hebbian teach batch, so every idle
   // replica GPU actually computes (and lands on the leaderboard) instead of just
@@ -1400,7 +1400,7 @@ const SERVER_GPU_MIXIN = {
   /**
    * DF.7 — data-parallel fan-out primitive. Distributes INDEPENDENT work units
    * round-robin across every live donor GPU and awaits them all. This is the
-   * mechanism that stops the brain being "stuck on one GPU" (Gee 2026-06-20):
+   * mechanism that stops the brain being stuck on one GPU (ruled 2026-06-20):
    * the parallelizable training passes (per-word definition binding, academic-
    * corpus stories, association-pair Hebbian) hand their work list here and it
    * spreads across all donated GPUs at once. `perItemFn(item, donorWs, idx)`
@@ -1602,8 +1602,8 @@ const SERVER_GPU_MIXIN = {
       console.log(`[Brain] DF.7 SYNCEMPTY — registry populated after ${((Date.now() - _waitStart) / 1000).toFixed(1)}s of waiting (${this._replicaMatrixRegistry.size} matrices registered); replica sync proceeding with real work to do.`);
     }
     // DF.7 — DEFER the full replica sync while the curriculum is actively teaching
-    // (Gee 2026-07-15, "the cpu should not be fucking up the gpus trying to do
-    // work"). Pushing the full ~366MB cortex_intraSynapses + 16 matrices to a
+    // (ruled 2026-07-15: the CPU must not disrupt the GPUs while they are doing
+    // work). Pushing the full ~366MB cortex_intraSynapses + 16 matrices to a
     // replica donor mid-teach jams the event loop in 3–5s bursts (the 366MB intra
     // upload times out at 180s + retries; every [EventLoop] BLOCKED line during
     // the K cells showed replicaSyncing=1), starving the teach loop → WORD-INT
@@ -2774,7 +2774,8 @@ const SERVER_GPU_MIXIN = {
             ? [hdr, chunkMeta, firstMeta, rowPtrBuf, bindingBlock, valuesHdr, valuesSlice, colIdxHdr, colIdxSlice]
             : [hdr, chunkMeta, firstMeta, rowPtrBuf, valuesHdr, valuesSlice, colIdxHdr, colIdxSlice])
         : [hdr, chunkMeta, valuesHdr, valuesSlice, colIdxHdr, colIdxSlice];
-      // UPLOAD GC FIX (2026-08-16, Gee: "lots of time just being burnt up") —
+      // UPLOAD GC FIX (2026-08-16) — reported as large amounts of time simply
+      // being burnt up during uploads.
       // Buffer.concat allocated a FRESH 6-15MB frame for EVERY chunk (480+
       // chunks × ~7MB ≈ 3.4GB of transient garbage per canonical upload at
       // the 12M cortex), and V8 collected it in the ~300ms [EventLoop] BLOCKED
@@ -3086,8 +3087,8 @@ const SERVER_GPU_MIXIN = {
   },
 
   /**
-   * ONE PROCESS (Gee 2026-07-17: "the minds eye and voice go on the GPU ...
-   * its one process not bolted together shit") — mind-space op dispatch to the
+   * ONE PROCESS (ruled 2026-07-17: the mind's eye and the voice run on the GPU,
+   * as ONE process rather than separate pieces bolted together) — mind-space op dispatch to the
    * DONOR GPU. The donor that computes her brain also computes her imagery:
    * the CDF 9/7 lifting + trace/stylize/imagine ops run donor-side (browser
    * donor = MindSpaceGPU in compute.html; native donor = mindspace.rs WGSL,
@@ -3839,7 +3840,7 @@ const SERVER_GPU_MIXIN = {
       // DEFER TO A NON-TEACH PAUSE. The pattern lane holds the buffer at its
       // 16MB operating point — BELOW this half-softCap gate (32MB) — so the
       // gate alone passes mid-chunk and the 42s canonical re-upload fired as a
-      // fresh teach freeze on top of active teaching (Gee's "freeze for 30").
+      // fresh teach freeze on top of active teaching (the reported 30s freeze).
       // A pattern-frame shed is EPHEMERAL (next iteration supersedes) and the
       // cross-projections stay GPU-current via hebbianBound dispatch, so this
       // shadow refresh is never urgent — hold it until teach is already paused.
@@ -3970,7 +3971,7 @@ const SERVER_GPU_MIXIN = {
     if (this._cortexUploadInFlight) return false;
     // CHAT PRIORITY (CHAT.3, 2026-07-16) — while Unity is composing a live
     // reply, teach pattern frames yield the socket to the emission dispatches
-    // (Gee: replies took up to 30s with chat stuck behind the teach firehose).
+    // (reported: replies took up to 30s with chat stuck behind the teach firehose).
     // Shed-safe by the same contract as the backpressure shed below: patterns
     // are per-iteration ephemeral, CPU authoritative, shadow re-converges.
     if (this._chatPriorityActive && this._chatPriorityActive()) return false;
@@ -4528,8 +4529,8 @@ const SERVER_GPU_MIXIN = {
     e.frames += 1;
     e.bytes += bytes;
     if (savedBytes > 0) this._teachOutBytesSaved = (this._teachOutBytesSaved || 0) + savedBytes;
-    // TEACHCREDIT (2026-08-27, Gee: the donor is "fucking using my GPU i
-    // should be on the board") — teach frames carry REAL GPU work (a full-
+    // TEACHCREDIT (2026-08-27) — a donor whose GPU is genuinely being used
+    // expects to appear on the board. Teach frames carry REAL GPU work (a full-
     // matrix Hebbian pass touches every stored synapse) but the leaderboard
     // credited only compute_batch steps, so a donor saturated with the walk's
     // training banked ZERO. The same blind spot TEACHMIRROR.1 fixed on the
@@ -5598,7 +5599,7 @@ const SERVER_GPU_MIXIN = {
       sem:       [0.750, 0.917],
       fineType:  [0.917, 0.967],
       motor:     [0.967, 0.984],
-      // WMB word_motor band (Gee 2026-07-15) — lockstep with brain-server.js
+      // WMB word_motor band (2026-07-15) — lockstep with brain-server.js
       // CORTEX_SUBREGION_LAYOUT. word_motor (langCortex 90K) drops into the unused
       // tail of the motor sub-region (motor uses only ~34.5K of the [0.967,1.0]
       // ~2.02M territory) → main-cortex start ~60.31M, no overlap, no shift to any

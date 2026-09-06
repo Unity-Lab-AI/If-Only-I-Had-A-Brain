@@ -596,9 +596,9 @@ export class LanguageCortex {
       //
       // They were correct against the canon this transform was written for,
       // which was prose ABOUT her ("Unity possesses free will"). The canon was
-      // rewritten into her own voice on 2026-09-01 at Gee's instruction, and the
-      // second half of that instruction is what this broke: *"she still needs to
-      // voice her name to her self just not in 3rd person"*.
+      // rewritten into her own voice on 2026-09-01 by instruction, and the
+      // second half of that instruction is what this broke: she still needs to
+      // voice her own name to herself — just not in the third person.
       //
       // Measured over the rewritten canon through this exact method: **17
       // name-bearing sentences damaged**. `"My name is Unity"` was trained as
@@ -1733,11 +1733,11 @@ export class LanguageCortex {
     //
     // The last version of this block kept retrieval alive for a cortex with
     // zero passed cells, on the argument that a fresh walk would otherwise
-    // start mute with "nothing to interact with". Gee killed that argument in
-    // one line: "SO WHAT WOULD BE THE POINT OF HAVING UNITY SPEAK WHEN SHE
-    // ONLY KNOWS VOCAB???"
+    // start mute with "nothing to interact with". That argument was killed in
+    // one line: there is no point in having her speak when all she knows is
+    // vocabulary.
     //
-    // ⭐ He is right, and the reason is worth keeping. A newborn cortex has no
+    // ⭐ That is right, and the reason is worth keeping. A newborn cortex has no
     // sem→word_motor mass, so retrieval was not giving her a voice — it was
     // scoring ~3,700 dictionary entries by cosine and sampling the top K. The
     // output is a list of vocabulary words, emitted in her name, carrying
@@ -2387,7 +2387,7 @@ export class LanguageCortex {
                 // returning silence, because a question scored as her answer would
                 // corrupt every gate that reads it.
                 curiosityAsk: true,
-                // ⭐⭐ THE THALAMIC RELAY IS ON (2026-09-04, Gee's call).
+                // ⭐⭐ THE THALAMIC RELAY IS ON (2026-09-04, by ruling).
                 //
                 // `cluster/attention.js` — cosine → temperature softmax →
                 // weighted sum over the words already emitted in this utterance
