@@ -2040,11 +2040,14 @@ const SERVER_GPU_MIXIN = {
     ws.send(JSON.stringify(msg));
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        if (this._gpuSparsePending && this._gpuSparsePending.has(reqId)) {
-          this._gpuSparsePending.delete(reqId);
-          console.warn(`[Brain] sparse dispatch reqId=${reqId} type=${msg.type} timed out after ${timeoutMs}ms`);
-          resolve(null);
-        }
+        // ⛔ Resolve UNCONDITIONALLY — see the note on the propagate timer. A
+        // `has()`-guarded resolve is a no-op exactly when the ack handler has
+        // already popped the entry and cleared this timer mid-parse, which is
+        // the one case where the promise has nothing else left to settle it.
+        // The warn stays guarded so a normal already-answered request is quiet.
+        const _wasPending = !!(this._gpuSparsePending && this._gpuSparsePending.delete(reqId));
+        if (_wasPending) console.warn(`[Brain] sparse dispatch reqId=${reqId} type=${msg.type} timed out after ${timeoutMs}ms`);
+        resolve(null);
       }, timeoutMs);
       this._gpuSparsePending.set(reqId, { resolve, reject, timeout, ws }); // TU.25.D — target-tagged for cancel-on-disconnect
     });
@@ -2353,11 +2356,20 @@ const SERVER_GPU_MIXIN = {
       }
     });
     return new Promise((resolve, reject) => {
+      // ⛔⛔ THE RESOLVE IS UNCONDITIONAL, AND THE `has()` GUARD USED TO MAKE IT
+      // CONDITIONAL. That guard turned this timer into a no-op whenever the
+      // pending had already been popped by the ack handler — which pops and
+      // clears the timer BEFORE parsing the frame. So a throw mid-parse left a
+      // promise with no timer and no map entry: nothing could ever settle it,
+      // and the caller awaited it for the life of the process.
+      //
+      // ⭐ Resolving a promise that is already settled is a NO-OP by spec, so
+      // firing unconditionally is free and removes the hang by construction.
+      // The delete stays guarded because deleting a key that is not there is
+      // the only part that ever needed a check.
       const timeout = setTimeout(() => {
-        if (this._gpuSparsePending && this._gpuSparsePending.has(reqId)) {
-          this._gpuSparsePending.delete(reqId);
-          resolve(null);
-        }
+        if (this._gpuSparsePending) this._gpuSparsePending.delete(reqId);
+        resolve(null);
       }, timeoutMs);
       // COMP.1b — `reuseKey` (when the caller opted in) tells the ack handler it
       // may scatter into that matrix's persistent buffer instead of allocating.
@@ -2640,11 +2652,10 @@ const SERVER_GPU_MIXIN = {
         timeoutMs = Math.min(_capMs, Math.max(45_000, _scaledMs));
       }
       const timeout = setTimeout(() => {
-        if (this._gpuSparsePending && this._gpuSparsePending.has(reqId)) {
-          this._gpuSparsePending.delete(reqId);
-          console.warn(`[Brain] sparse chunked upload reqId=${reqId} name=${name} timed out after ${timeoutMs}ms`);
-          resolve(null);
-        }
+        // ⛔ Resolve UNCONDITIONALLY — same reason as the other two timers.
+        const _wasPending = !!(this._gpuSparsePending && this._gpuSparsePending.delete(reqId));
+        if (_wasPending) console.warn(`[Brain] sparse chunked upload reqId=${reqId} name=${name} timed out after ${timeoutMs}ms`);
+        resolve(null);
       }, timeoutMs);
       this._gpuSparsePending.set(reqId, { resolve, reject, timeout, ws }); // TU.25.D — target-tagged for cancel-on-disconnect
     });
