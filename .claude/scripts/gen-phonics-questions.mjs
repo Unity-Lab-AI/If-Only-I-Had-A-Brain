@@ -51,11 +51,13 @@ const gpc = JSON.parse(fs.readFileSync(path.join(ROOT, 'corpora', 'phonics', 'gp
 
 // Her vocabulary at the band these questions serve.
 const vocab = new Set();
-for (const f of ['k-vocabulary.js', 'grade1-vocabulary.js']) {
-  const m = await import(pathToFileURL(path.join(ROOT, 'js', 'brain', f)).href);
-  for (const k of Object.keys(m)) {
-    if (Array.isArray(m[k])) for (const w of m[k]) vocab.add(String(w).toLowerCase());
-  }
+// ⚠ Reads the JSON store — the nineteen `*-vocabulary.js` modules were retired
+// 2026-09-05 and their words now live in `corpora/vocabulary/*.json`, byte-for-
+// byte the same lists (verified 19/19, zero words differing, before deletion).
+for (const g of ['kindergarten', 'grade1']) {
+  const words = JSON.parse(
+    fs.readFileSync(path.join(ROOT, 'corpora', 'vocabulary', `${g}.json`), 'utf8'));
+  for (const w of words) vocab.add(String(w).toLowerCase());
 }
 console.log(`[phonics] vocabulary she has: ${vocab.size.toLocaleString()} words`);
 

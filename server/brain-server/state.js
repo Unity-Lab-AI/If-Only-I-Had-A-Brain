@@ -2641,8 +2641,12 @@ const SERVER_STATE_MIXIN = {
     // once read 2,287 against "2,247 total"). Warm the real total once
     // (async — the state getter is sync); publish null until it lands so
     // the dashboard shows "still computing" instead of an invented number.
-    // The real figure: 19 grade lists, 49,921 words summed, 18,017 unique
-    // (the AoA bands overlap by design; a word taught once is taught).
+    // The real figure, re-measured 2026-09-05 when the lists moved to JSON:
+    // 19 grade lists, 56,527 words summed, 19,340 unique (the AoA bands overlap
+    // by design; a word taught once is taught). ⚠ The previous numbers here —
+    // 49,921 / 18,017 — were stale by 6,606 and 1,323; the denominator is
+    // computed at runtime from the lists themselves, so the comment drifted
+    // while the value stayed correct.
     if (!this._defVocabJourneyWarm) {
       this._defVocabJourneyWarm = true;
       import('../../js/brain/grade-vocabulary.js')
