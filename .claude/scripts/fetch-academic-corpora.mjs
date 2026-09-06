@@ -203,7 +203,22 @@ const TOPICS = {
       'Dendrite', 'Glia', 'Myelin', 'Neural circuit', 'Central nervous system', 'Peripheral nervous system',
       'Spinal cord', 'Cerebellum', 'Hippocampus', 'Amygdala', 'Thalamus', 'Basal ganglia', 'Prefrontal cortex',
       'Visual cortex', 'Sensory neuron', 'Motor neuron', 'Reflex', 'Neurotransmission', 'Neuroanatomy',
-      'Electroencephalography', 'Functional magnetic resonance imaging', 'Perception', 'Attention', 'Memory'],
+      'Electroencephalography', 'Functional magnetic resonance imaging', 'Perception', 'Attention', 'Memory',
+      // ⚠ THIS CELL IS NEUROSCIENCE, and I nearly filled it with organic
+      // chemistry. Its BOOK source is `the-basics-of-general-organic-and-
+      // biological-chemistry` (157k words) while every one of its topics is
+      // neural — a pre-existing subject mismatch between the two lanes feeding
+      // one cell. Not fixed here (it is a curriculum question, not a topic one)
+      // but recorded, because the next person to top this cell up will read the
+      // book name and author the wrong thing, which is exactly what I started to do.
+      'Neuroplasticity', 'Synaptic plasticity', 'Long-term potentiation', 'Hebbian theory',
+      'Neural coding', 'Dopamine', 'Serotonin', 'Acetylcholine', 'GABA',
+      'Glutamate (neurotransmitter)', 'Neurogenesis', 'Blood–brain barrier',
+      'Cerebrospinal fluid', 'Brainstem', 'Hypothalamus', 'Limbic system',
+      'Corpus callosum', 'White matter', 'Grey matter', 'Neuroimaging',
+      'Cognitive neuroscience', 'Computational neuroscience', 'Consciousness',
+      'Learning', 'Emotion', 'Language processing in the brain', 'Neuropsychology',
+      'Neurology', 'Neurodegenerative disease'],
     // College 4 — Neuroscience deepens
     college4: ['Neuroscience', 'Cerebral cortex', 'Synapse', 'Neural network', 'Memory', 'Action potential',
       'Synaptic plasticity', 'Long-term potentiation', 'Long-term depression', 'Hebbian theory',
@@ -815,14 +830,22 @@ const TOPICS = {
       'Relation (mathematics)', 'Equivalence relation', 'Partially ordered set', 'Cardinality',
       'Countable set', 'Permutation', 'Combination', 'Binomial coefficient', 'Pigeonhole principle',
       'Probability', 'Modular arithmetic', 'Number theory', 'Prime number', 'Greatest common divisor',
-      'Euclidean algorithm', 'Tree (graph theory)', 'Bipartite graph'],
+      'Euclidean algorithm', 'Tree (graph theory)', 'Bipartite graph',
+      // College cells carry NO duplicates — checked before adding, unlike the
+      // school cells. They were simply short. Every title below is API-resolved
+      // and length-gated.
+      'Set theory', 'Mathematical logic', 'Generating function', 'Group theory',
+      'Matrix (mathematics)', 'Linear algebra'],
     college2: ['Algorithm', 'Big O notation', 'Analysis of algorithms', 'Recursion (computer science)', 'Divide-and-conquer algorithm', 'Sorting algorithm', 'Time complexity', 'Space complexity',
       'Merge sort', 'Quicksort', 'Heapsort', 'Binary search', 'Breadth-first search', 'Depth-first search',
       "Dijkstra's algorithm", 'Bellman–Ford algorithm', "Kruskal's algorithm", "Prim's algorithm",
       'Dynamic programming', 'Memoization', 'Greedy algorithm', 'Backtracking', 'Amortized analysis',
       'Master theorem (analysis of algorithms)', 'Asymptotic analysis', 'Worst-case complexity',
       'Average-case complexity', 'Data structure', 'Heap (data structure)', 'Priority queue',
-      'Disjoint-set data structure', 'Hash function'],
+      'Disjoint-set data structure', 'Hash function',
+      'Automata theory', 'Formal language', 'Context-free grammar', 'Turing machine',
+      'Computability theory', 'Halting problem', 'Complexity class',
+      'P versus NP problem', 'NP-completeness', 'Regular expression', 'Graph theory'],
     college3: ['Automata theory', 'Finite-state machine', 'Regular expression', 'Formal language', 'Context-free grammar', 'Turing machine', 'Computability theory', 'Halting problem',
       'Deterministic finite automaton', 'Nondeterministic finite automaton', 'Pushdown automaton',
       'Regular language', 'Context-free language', 'Chomsky hierarchy', 'Parsing', 'LL parser', 'LR parser',
@@ -862,7 +885,12 @@ const TOPICS = {
       'Critical section', 'Memory paging', 'Page replacement algorithm', 'Memory segmentation',
       'Device driver', 'Interrupt', 'System call', 'Journaling file system', 'Inode', 'I/O scheduling',
       'Input/output', 'Computer multitasking', 'Real-time computing', 'Virtualization',
-      'OS-level virtualization'],
+      'OS-level virtualization',
+      'Linux', 'Unix', 'Bash (Unix shell)', 'Shell (computing)',
+      'Computer network', 'Internet protocol suite', 'Transmission Control Protocol',
+      'Internet Protocol', 'Domain Name System', 'HTTP', 'Network socket',
+      'Distributed computing', 'Computer architecture', 'Central processing unit',
+      'Cache (computing)', 'Assembly language', 'Compiler', 'Computer security'],
     college4: ['Computer network', 'Internet protocol suite', 'Transmission Control Protocol', 'Routing', 'Distributed computing', 'Database', 'Client–server model', 'Computer security', 'Cloud computing',
       'OSI model', 'Internet Protocol', 'User Datagram Protocol', 'Domain Name System', 'HTTP',
       'Transport Layer Security', 'Firewall (computing)', 'Network switch', 'Router (computing)',
