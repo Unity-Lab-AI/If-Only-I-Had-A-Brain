@@ -1125,33 +1125,66 @@ const TOPICS = {
       'Flexibility (anatomy)', 'Agility', 'Team sport', 'Olympic Games',
       'Track and field', 'Swimming (sport)', 'Volleyball', 'Basketball',
       'Physical education', 'Skill', 'Motor coordination'],
-    grade10: ['Exercise physiology', 'Sports science', 'Biomechanics', 'Motor learning', 'Athletic training', 'Sports injury', 'Physical therapy', 'Fitness', 'Endurance',
+    // ⚠ `Fitness` was REPLACED by `Physical fitness`: the bare title is a
+    // 1,006-byte DISAMBIGUATION page. It resolved, so no existence check ever
+    // flagged it, and it contributed 466 words where a real article gives ~2,500.
+    grade10: ['Exercise physiology', 'Sports science', 'Biomechanics', 'Motor learning', 'Athletic training', 'Sports injury', 'Physical therapy', 'Physical fitness', 'Endurance',
       'Kinesiology', 'Motor control', 'Human musculoskeletal system', 'Muscle contraction', 'Circulatory system',
       'Cardiorespiratory fitness', 'Strength training', 'Sports medicine', 'Nutrition', 'Ergonomics',
       'Spinal column', 'Gait', 'Balance (ability)', 'Mental chronometry', 'Sleep', 'Delayed onset muscle soreness',
       'Warming up', 'Concussion', 'Rehabilitation (neuropsychology)',
-      'Sports medicine', 'Kinesiology', 'Biomechanics', 'Motor learning',
-      'Physical therapy', 'Sprain', 'Strain (injury)', 'Tendinitis', 'Fracture',
+      // TOPICDEDUP — six literal repeats removed here (Sports medicine,
+      // Kinesiology, Biomechanics, Motor learning, Physical therapy, Ergonomics
+      // all appear in the block above). Replacements are API-resolved and
+      // length-gated; `Posture` is dropped from this cell because it resolves to
+      // a 406-byte DISAMBIGUATION page — it existed, which is why it was never
+      // caught, and it taught nothing.
+      'Sprain', 'Strain (injury)', 'Tendinitis', 'Fracture',
       'Dislocation (medicine)', 'Ligament', 'Tendon', 'Cartilage', 'Joint',
-      'Range of motion', 'Proprioception', 'Reaction time', 'Interval training',
-      'Circuit training', 'High-intensity interval training', 'Weight training',
-      'Plyometrics', 'Core stability', 'Posture', 'Ergonomics', 'Overtraining',
-      'Sports nutrition', 'Electrolyte', 'Dehydration', 'Heat illness'],
+      // ⚠ REDIRECT COLLISIONS REMOVED — `Reaction time` redirects to
+      // `Mental chronometry` and `Weight training` to `Strength training`, both
+      // already listed above. Two distinct-looking titles, one page, one entry:
+      // the slot is spent and nothing is gained. **This class is invisible in the
+      // source and only appears once every title is resolved** — which is why the
+      // API step now checks the RESOLVED target, not just that the title exists.
+      'Range of motion', 'Proprioception', 'Association football', 'Interval training',
+      'Circuit training', 'High-intensity interval training', 'Tennis',
+      'Plyometrics', 'Core stability', 'Overtraining',
+      'Sports nutrition', 'Electrolyte', 'Dehydration', 'Heat illness',
+      'Muscle hypertrophy', 'Aerobic exercise', 'VO2 max', 'Bone', 'Muscle',
+      'Hyperthermia', 'Hypothermia', 'Calisthenics', 'Stretching', 'Team sport',
+      'Track and field', 'Gymnastics', 'Wrestling', 'Badminton', 'Volleyball',
+      'Coach (sport)'],
     grade11: ['Sport psychology', 'Motivation', 'Goal setting', 'Group dynamics', 'Coaching', 'Sports nutrition', 'Overtraining', 'Sleep', 'Stress management',
       'Self-efficacy', 'Anxiety', 'Arousal', 'Attention', 'Mental image', 'Mental toughness', 'Leadership',
       'Carbohydrate loading', 'Dehydration', 'Occupational burnout', 'Injury', 'Confidence', 'Flow (psychology)',
       'Delayed onset muscle soreness', 'Teamwork', 'Physical fitness', 'Endurance training', 'Strength training',
       'Periodization', 'Progressive overload', 'One-repetition maximum', 'Body composition',
       'Basal metabolic rate', 'Aerobic capacity', 'Lactic acid', 'Muscle hypertrophy',
-      'Sports psychology', 'Goal setting', 'Motivation'],
+      // TOPICDEDUP — `Sports psychology` REDIRECTS to `Sport psychology`, and
+      // `Goal setting` / `Motivation` were literal repeats, so all three landed
+      // on pages this cell already had. A redirect collision is invisible in the
+      // source and only shows up once every title is resolved through the API —
+      // which is the whole reason that step is now mandatory.
+      'Olympic Games', 'Paralympic Games', 'Doping in sport', 'Anabolic steroid',
+      'Tai chi', 'Yoga as exercise', 'High-intensity interval training', 'Plyometrics'],
     grade12: ['Physical fitness', 'Public health', 'Physical activity', 'Sedentary lifestyle', 'Obesity', 'Exercise prescription', 'Well-being', 'Yoga', 'Pilates', 'Recreation',
       'Chronic condition', 'Cardiovascular disease', 'Type 2 diabetes', 'Preventive healthcare', 'Meditation',
       'Outdoor recreation', 'Hiking', 'Cycling', 'Running', 'Swimming', 'Lifelong learning', 'Health promotion',
       'Community', 'Nutrition', 'Sleep', 'Mental health', 'Strength training',
-      'Lifelong learning', 'Physical activity', 'Sedentary lifestyle', 'Public health',
-      'Exercise physiology', 'Cardiovascular fitness', 'Yoga', 'Pilates',
-      'Hiking', 'Cycling', 'Swimming (sport)', 'Running', 'Personal trainer',
-      'Occupational safety and health'],
+      'Exercise physiology', 'Cardiovascular fitness', 'Swimming (sport)', 'Personal trainer',
+      'Occupational safety and health',
+      // TOPICDEDUP — the nine titles that stood here were LITERAL repeats of the
+      // block above (Public health, Physical activity, Sedentary lifestyle, Yoga,
+      // Pilates, Hiking, Cycling, Running, Lifelong learning). The merge dedupes
+      // by source id, so a repeated title costs a fetch and contributes ZERO
+      // words — the slot was spent, not the content. Replaced with distinct
+      // topics, every one resolved through the API and gated on page length
+      // BEFORE it was written here (the rule this list was missing).
+      'Yoga as exercise', 'Tai chi', 'Calisthenics', 'Aerobic exercise',
+      'High-intensity interval training', 'Stretching', 'VO2 max', 'Sports nutrition',
+      'Dehydration', 'Overtraining', 'Physical education', 'Team sport',
+      'Coach (sport)', 'Sportsmanship', 'Muscle', 'Bone'],
   },
 
   // MUSIC — kindergarten to grade12. Knowledge half: notation, theory, the
