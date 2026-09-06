@@ -14799,10 +14799,31 @@ export class Curriculum {
     let _actIdx = [];
     let _actBucket = [];
     // `LATSCAN.1` — hint path, verification path, or the original scan.
-    const _env = (typeof process !== 'undefined' && process.env) ? process.env : {};
-    const _hintOn = _env.DREAM_LATERAL_HINT !== '0';
+    // ⛔⛔ `KNOBSCAN.1` — READ `process.env` DIRECTLY, NEVER THROUGH AN ALIAS.
+    // These two were written as `_env.DREAM_LATERAL_HINT` against a local
+    // `const _env = process.env`, and that made them **INVISIBLE TO THE KNOB
+    // REGISTRY** — its discovery scan matches `process.env.X` on the line, or a
+    // helper call like `_envNum('DREAM_<KNOB>', …)`, and an alias is neither.
+    // ⚠ The placeholder is written `DREAM_<KNOB>` and not with a bare letter,
+    // because the env-coverage checker scans raw source for `DREAM_[A-Z0-9_]+`
+    // and would report an example in a COMMENT as a real undocumented flag —
+    // which it did, on the first draft of this very comment. The
+    // panel's whole claim is that it lists every knob, and it silently held 217
+    // of 219.
+    //
+    // ⚠ The registry's own comment predicted this class when the HELPER form was
+    // added on 2026-09-02: *"a registry that silently omits an access pattern is
+    // the same defect class as a counter that double-counts — it reports a
+    // complete set and holds a partial one."* An alias is a THIRD access
+    // pattern, and it re-opened the same hole four days later.
+    //
+    // ⭐ Fixed at the CALL SITE rather than by teaching the scanner to chase
+    // arbitrary aliases: `process.env.X` is the convention every other knob in
+    // this codebase already follows, and a scanner that tries to resolve
+    // aliases would be guessing.
+    const _hintOn = process.env.DREAM_LATERAL_HINT !== '0';
     const _hint = (_hintOn && opts && Array.isArray(opts.activeHint)) ? opts.activeHint : null;
-    const _verifyBudget = Math.max(0, Number(_env.DREAM_LATERAL_HINT_VERIFY ?? 500) || 0);
+    const _verifyBudget = Math.max(0, Number(process.env.DREAM_LATERAL_HINT_VERIFY ?? 500) || 0);
     const _st = cluster._lateralHintStats
       || (cluster._lateralHintStats = { used: 0, verified: 0, mismatch: 0, scanned: 0, disabled: false });
     const _mustScan = !_hint || _st.disabled || _st.verified < _verifyBudget;
