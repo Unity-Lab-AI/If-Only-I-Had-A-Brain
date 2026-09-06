@@ -9928,8 +9928,24 @@ export class Curriculum {
       //
       // ⚠ Non-fatal like every other prepended phase — a refresh of old
       // material can never be allowed to cost a cell its new material.
+      // ⛔⛔ THE THREE BIGGEST AWAITS IN THIS RUNNER STAMP NOTHING, BECAUSE
+      // `TRACKED` WRAPS `_teach*` AND NONE OF THEM IS NAMED `_teach*`.
+      //
+      // `_rehearseEarlierGrades`, `_trainAcademicStories` and
+      // `_perceiveCellFigures` are invisible to the stage instrument purely
+      // because of their names. On a resumed walk the phases above them SKIP,
+      // so the tag sat on `skip:_teachLanguageMechanics` for 21 minutes while
+      // execution was inside one of these three and no reader could tell which.
+      //
+      // ⚠ AND THE POINT IS NOT ONLY "WEDGE OR NOT" — IT IS "SLOW OR STUCK",
+      // WHICH THESE THREE CANNOT CURRENTLY BE ASKED. `ela/kindergarten` holds
+      // **411,226 words** against a 7,300-word early-band floor (56×), and
+      // `_trainAcademicStories` trains it through `_teachSentenceList`, whose
+      // measured average is **6.5 minutes per call**. A frozen teach counter
+      // there means one long call, not necessarily a hung one — and the stage
+      // tag is what separates those two readings.
       if (PROSE_ACADEMIC_SUBJECTS.has(subject)) {
-        try { await this._rehearseEarlierGrades(subject, grade, ctx); }
+        try { this._tstage?.('runner:rehearse'); await this._rehearseEarlierGrades(subject, grade, ctx); this._tstage?.('runner:rehearse-done'); }
         catch (e) { if (this._hb) this._hb(`[Curriculum] _rehearseEarlierGrades(${subject}/${grade}) non-fatal: ${e?.message || e}`); }
       }
       // HYBRID depth: prose-academic subjects train the downloaded real-
@@ -9937,13 +9953,13 @@ export class Curriculum {
       // bespoke runner — the operator 2026-06-18 hybrid decision. Math stays equational;
       // lived-year stays bespoke; absent corpus trains nothing (no-op).
       if (PROSE_ACADEMIC_SUBJECTS.has(subject)) {
-        try { await this._trainAcademicStories(subject, grade, ctx); }
+        try { this._tstage?.('runner:stories'); await this._trainAcademicStories(subject, grade, ctx); this._tstage?.('runner:stories-done'); }
         catch (e) { if (this._hb) this._hb(`[Curriculum] _trainAcademicStories(${subject}/${grade}) non-fatal: ${e?.message || e}`); }
         // TEXTFIG.3 / .7 — the pictures that came with this chapter's prose.
         // Runs AFTER the text so a figure is perceived while the words it
         // illustrates are the freshest thing in the cell, and so a failure
         // here can never cost the teach that already succeeded.
-        try { await this._perceiveCellFigures(subject, grade); }
+        try { this._tstage?.('runner:figures'); await this._perceiveCellFigures(subject, grade); this._tstage?.('runner:figures-done'); }
         catch (e) { if (this._hb) this._hb(`[Curriculum] _perceiveCellFigures(${subject}/${grade}) non-fatal: ${e?.message || e}`); }
       }
       return await raw(ctx);
