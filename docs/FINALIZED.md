@@ -349,6 +349,62 @@ Both rows were closeable without writing a line of code, on evidence that had be
 
 ---
 
+## 2026-09-06 (15th) — THE PRICING CLOCK PACED THE INSTRUMENT INSTEAD OF THE LANE · THE EXPORT HALF · AND A DAY'S WORK DONE TWICE ON A STALE BRANCH
+
+Gee (verbatim): *"we jsut have to properly adjust the nobs to rectify all that"*
+
+His standing instruction is recorded verbatim in the code this touches: *"ADJUST THE KNOBS so that no more than five reps are ever needed for anything. Her brain is being written so as NOT to need repetition in order to learn, and the brain has thousands of knobs that can be adjusted to make a single pass act like thousands of passes."*
+
+### ⭐⭐ THE NUMBER THAT HAD NEVER EXISTED, READ OFF THE LIVE BOX
+
+The self-pricing path shipped default-off on an explicit promise: *"one press produces the number."* The press happened and the number was read:
+
+```
+  load               74.83        maxSharers    36
+  meanActiveDims      8           distinctDims  85
+  expectedRetrieval   0.159       factor         1
+  measurements        1           label         SELF-PRONOUN-LO
+  reason  "load 74.833 supports NO compression at a 95% retrieval floor"
+```
+
+### ⛔ AND IT MUST NOT BE ACTED ON — THAT IS THE FINDING
+
+The reading came from the **pronoun lane**: 36 words of a **closed class** whose embeddings are near-identical by construction, `maxSharers 36`, every pattern on one dim. ⚠ **The SKEW case this counter was written to catch, arriving dressed as the corpus.** `expectedRetrieval 0.159` is a **table-clamped extrapolation** — the sweep's highest measured row is load **25**, and 74.8 is three times past its end.
+
+⛔ Setting a global rep count from it repeats the sweep's own recorded mistake: its first run used a model **127× harsher than production** and would have killed a good change. **A model harsher than production answers a different question.**
+
+### ⛔⛔ TWO DEFECTS MADE THE KNOB UNSETTABLE. BOTH FIXED
+
+**① THE THROTTLE WAS PER BRAIN, NOT PER LANE.** One `_repPriceAt` clock against one sticky verdict slot, so in any window exactly ONE teach lane could be measured and whichever called first took it. **76 minutes of live teaching produced `measurements: 1`** — and the lane that won was the worst possible sample, while ⚠ **the prose lanes, the only ones whose cost the setting governs, had never been measured once.** Now throttled and stored per lane, bounded at 96 with oldest-eviction, published at `state.curriculum.repPricingByLabel` with `worstLabel` **named rather than averaged**.
+
+**② ARMED, THE STEER APPLIED ONLY ON THE CALL THAT MEASURED.** The assignment sat *inside* the throttled branch, so `DREAM_REP_AUTOPRICE=1` would have governed roughly one call per lane per window while every call in between silently used the hand-set 40 — **the same lesson taught at two doses depending on where a call fell in the clock**, which is the interference regime nobody has measured. The sticky per-lane verdict is now read back on **every** call. ⭐ *A measurement kept for a dashboard and not consulted by the decision it was taken for is an instrument that only looks like a control.*
+
+**Harnessed on the SHIPPED block text** (sliced out of `curriculum.js` and executed, not re-typed), 6/6 — and it shows the point immediately: a spread lane reads **5.45** where a skewed lane reads **312** in the same brain. **57×**, which no single slot can represent.
+
+### ⭐ THE EXPORT HALF — and the row it closes was marked complete while its body said otherwise
+
+`TEACHVIEW.8` sat `[x]` with a standing *"STILL OWED — THE EXPORT HALF"* note above it: **a completion record containing an unresolved warning**, the defect `CONSTRAINTS.md` names outright. Its stated prerequisite was already satisfied — `TeachLedger` retains every item a cell ever taught, so the exporter has a real source and is not a bigger dump of the ring.
+
+`?export=<cell>` streams **NDJSON**: audit summary first, one taught item per line, a `wrote` vs `expected` **receipt last**. Split by **source / lane / phase** — the shape the corpus gap ledger is written in. ⛔ **The word total names its own floor** (`truncated` beside `words`), ⛔ **a truncated export announces itself IN the file**, and ⭐ **back-pressure is awaited** so a slow reader on a 300,000-row cell cannot buffer the export inside the teaching process.
+
+### ⛔⛔ AND THE RETENTION HALF SHIPPED SET FOR A THIRD OF THE WALK — `SERIES_GAP_MS` 30 s → 120 s
+
+At 30 s, 20,000 rows is **~6.9 days**; the code's own comment said *"roughly a week"*. The walk is priced at **~24 days**. ⚠ **So the ring filled about a third of the way through a run and then discarded oldest-first, silently throwing away the START of the walk** — precisely the evidence a long-run instrument is kept for, and invisible, because **a full ring and a correct ring look identical.** Derived: `2,073,600 / 20,000 = 103.7 s`, so 120 s covers **27.8 days**. ⚠ A shorter gap buys a shorter memory, not more detail.
+
+### ⛔⛔⛔ THE PROCESS FAILURE THAT COST HALF THE SESSION — filed as `STALEBRANCH.1`
+
+I resumed onto an existing feature branch cut from an older `develop` and never checked whether `develop` had moved. **It had, by 20+ commits, including the exact rows I then rebuilt from scratch** — the retention series and the per-lane chat rings.
+
+⛔⛔ **And the verification I was proudest of is the thing that went wrong.** I wrote, in this ledger and in a commit message, *"I carried a false belief into this and checking killed it — a grep found none of the three in the tree."* **The grep was real, it was correct, and it ran against a tree that predated the work. The recollection was RIGHT and the check was WRONG** — the exact inversion of what I published as a lesson. **That claim is retracted here.**
+
+⭐⭐ **The rule it produces: *"is it in the tree?"* is not a question a working directory can answer.** A grep answers *"is it in THIS checkout"*, and a checkout is a position in history. Ask the integration branch — `git log --oneline develop --not HEAD` before the first edit, `git show develop:<path>` when a grep comes back empty. **An empty grep on a stale branch and an empty grep on a current one are indistinguishable and mean opposite things**, which is the instruments-that-lie shape committed against my own source control.
+
+**The merge was ABORTED rather than resolved** — nine conflicted files, and resolving them would have meant choosing between two versions of work whose provenance I did not yet understand. Nothing was lost from `develop`. The duplicated work was discarded and only the genuinely-new pieces re-applied onto a fresh branch cut from current `develop`.
+
+**Also owned:** a fifth banned-write-method offence (`DOCLINE.5` — a heredoc append to the wiki log), and my own comments putting ticket names into source, caught by the leak scanner at 1,773 → 1,784 and returned to the baseline exactly.
+
+---
+
 ## 2026-09-06 (14th) — `BOXCAP.3` — THE THROTTLE BAND HAS AN ALARM NOW, AND IT IS READ FROM OUTSIDE HER
 
 Gee (verbatim): *"get on it lets make some progress"*

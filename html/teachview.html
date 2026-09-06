@@ -801,9 +801,16 @@
             title="Page toward what was taught earlier."
             data-tip="Page toward OLDER items — earlier in the cell's teaching.&#10;&#10;⭐ This pages to the TRUE end of the record. “Everything a cell ever taught” means everything; the reading pane above is a 400-row window and this is not.">older</button>
           <label class="tv-sub">rows <input id="tvLedgerLimit" type="number" min="20" max="500" step="20" value="100" style="width:64px" /></label>
+          <button id="tvLedgerAudit" class="tv-tip"
+            title="Break this cell's record down by source, lane and phase — the shape the corpus gap ledger is written in."
+            data-tip="THE AUDIT SUMMARY — what this cell actually taught, split by SOURCE, by LANE and by PHASE.&#10;&#10;⭐ It is broken down by source because that is how the corpus gap ledger is written: that document says which source must close each cell's gap, and this says which sources actually reached her. The two are meant to be read side by side.&#10;&#10;⚠ THE WORD COUNT IS A FLOOR, NOT A TOTAL. Stored text is capped per item, so anything longer contributes only its first 400 characters. The number of capped rows is printed beside the count for exactly that reason — a total that quietly understates is worse than no total.">audit</button>
+          <button id="tvLedgerExport" class="tv-tip"
+            title="Download this cell's complete taught-content record as a file."
+            data-tip="EXPORT — the cell's COMPLETE record, downloaded as one file.&#10;&#10;NDJSON: one JSON object per line. Line 1 is the audit summary; every line after it is one item this cell taught, in the order it was taught; the last line states rows written vs expected.&#10;&#10;⭐ This is the offline half of the ledger. The pager beside it answers questions at the page; a file answers questions the page cannot — diffing a cell against the corpus gap ledger, or against the same cell on a later walk.&#10;&#10;⭐ It STREAMS. A cell can hold hundreds of thousands of items, and nothing builds the whole thing in memory on the process that is teaching.&#10;&#10;⛔ A truncated export says so IN the file rather than just ending.">export</button>
         </div>
         <div id="tvLedgerRows" style="max-height:340px;overflow-y:auto;margin-top:9px"></div>
         <div class="tv-note" id="tvLedgerNote">Pick a cell to read back everything it taught.</div>
+        <div class="tv-note" id="tvLedgerAuditOut" style="display:none"></div>
       </div>
     </div>
   </div>
@@ -1639,6 +1646,71 @@ $('tvLedgerNext').onclick = async () => {
 $('tvLedgerPrev').onclick = () => {
   if (ledCursors.length > 1) ledCursors.pop();
   loadLedgerPage();
+};
+
+/* ⭐⭐ THE AUDIT SUMMARY — the same breakdown the corpus gap ledger is written
+   in (per source, per lane, per phase), so a cell's REAL taught content can be
+   set beside what that document says the cell must hold.
+
+   ⛔ The word total prints its own floor. Stored text is capped per item, so a
+   long item contributes only its first cap characters — the capped-row count is
+   rendered next to the total rather than left for a reader to discover. */
+function ledAuditTable(title, rows) {
+  if (!rows || !rows.length) return '';
+  return `<div style="margin-top:6px"><b>${title}</b> — `
+    + rows.map((r) => `${r.key || '(none)'}: <b>${fmt(r.items)}</b> items / ${fmt(r.words || 0)} words`).join(' · ')
+    + '</div>';
+}
+
+$('tvLedgerAudit').onclick = async () => {
+  const cell = $('tvLedgerCell').value;
+  const out = $('tvLedgerAuditOut');
+  out.style.display = '';
+  if (!cell) { out.innerHTML = 'Pick a cell first — the audit is per cell.'; return; }
+  out.innerHTML = 'Reading the whole record for this cell…';
+  const d = await grabLedger(`?export=${encodeURIComponent(cell)}&summary=1`);
+  if (!d) { out.innerHTML = 'Ledger route unreachable.'; return; }
+  if (d.available === false) {
+    out.innerHTML = '⛔ <b>The ledger store is unavailable on this boot.</b> This is not "this cell taught nothing".';
+    return;
+  }
+  /* ⛔ SHAPE CHECK, AND IT COVERS A REAL WINDOW. This page rides the frontend
+     rsync on every push; the export route lands on the next PRESS. In between,
+     `?export=…` falls through to the ledger PAGER on the old server, which
+     answers 200 with a perfectly valid object that has no `items` and no
+     `textCap` — rendering it would print "undefined items" beside a real cell
+     name. "Not deployed yet" and a lie are different answers. */
+  if (d.textCap == null || d.items == null) {
+    out.innerHTML = '⏳ <b>The audit summary is not on the running brain yet.</b> '
+      + 'This page deploys on a push; the export route lands on the next press. '
+      + 'The pager beside it works now and reads the same ledger.';
+    return;
+  }
+  const span = d.firstAt && d.lastAt
+    ? `${new Date(d.firstAt).toLocaleString()} → ${new Date(d.lastAt).toLocaleString()}`
+    : 'no timestamps on record';
+  out.innerHTML =
+    `<b>${cell}</b> — <b>${fmt(d.items)}</b> items, <b>${fmt(d.words)}</b> words`
+    + ` <span class="tv-src">(a FLOOR: ${fmt(d.truncated)} item(s) hit the ${fmt(d.textCap)}-character storage cap, so their tails are not counted)</span>`
+    + `<div style="margin-top:4px" class="tv-src">${span}</div>`
+    + ledAuditTable('by source', d.bySource)
+    + ledAuditTable('by lane', d.byLane)
+    + ledAuditTable('by phase', d.byPhase)
+    + '<div style="margin-top:6px" class="tv-src">Set the per-source split against what the corpus gap ledger says must close this cell.</div>';
+};
+
+/* The export is a plain navigation to the streaming route — deliberately NOT a
+   fetch-then-blob. A cell can hold hundreds of thousands of rows, and buffering
+   the whole file in the tab before writing it is the same mistake on the client
+   that materialising it would be on the server. */
+$('tvLedgerExport').onclick = () => {
+  const cell = $('tvLedgerCell').value;
+  const out = $('tvLedgerAuditOut');
+  out.style.display = '';
+  if (!cell) { out.innerHTML = 'Pick a cell first — the export is per cell.'; return; }
+  out.innerHTML = `Downloading the complete record for <b>${cell}</b>. `
+    + 'The first line of the file is the audit summary; the last line states rows written vs expected.';
+  window.location.href = LEDGER_URLS[0] + `?export=${encodeURIComponent(cell)}`;
 };
 
 /* ────────────────────────────────────────────────────────────────────────────

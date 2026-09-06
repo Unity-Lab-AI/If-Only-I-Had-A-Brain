@@ -4472,7 +4472,50 @@ export class Curriculum {
       // Sticky by construction (it is overwritten per assoc call, not cleared),
       // same shape as lastGateVerdict above, and carries `armed` so a reader can
       // tell a measurement from a steering decision without checking the env.
+      //
+      // ⛔⛔ AND ONE VERDICT WAS NOT ENOUGH TO SET THE KNOB WITH, WHICH THE LIVE
+      // BOX PROVED. The single sticky slot holds whichever lane measured most
+      // recently, and the throttle was global — so 76 minutes of teaching
+      // produced `measurements: 1`, from a CLOSED-CLASS lane of 36 words with
+      // every pattern sharing one dim, reporting a load of 74.8. ⚠ That is the
+      // skew case the counter exists to catch, arriving dressed as the corpus.
+      // Setting a global rep count from it would repeat the sweep's own recorded
+      // mistake — its first run used a model 127× harsher than production and
+      // would have killed a good change.
+      //
+      // ⭐ `byLabel` is therefore the field that makes the knob settable: a load
+      // and a verdict PER TEACH LANE, so the prose lanes that actually carry the
+      // walk's cost can be read on their own terms instead of being represented
+      // by whichever call won a race. `worstLabel` names the highest load so a
+      // reader is never handed an average across incomparable lanes.
       repPricing: (cluster && cluster._repCompressionVerdict) || null,
+      repPricingByLabel: (() => {
+        const book = cluster && cluster._repPriceByLabel;
+        if (!book) return null;
+        const keys = Object.keys(book);
+        if (!keys.length) return null;
+        let worst = keys[0];
+        for (const k of keys) if ((book[k].load || 0) > (book[worst].load || 0)) worst = k;
+        return {
+          lanes: keys.length,
+          worstLabel: worst,
+          worstLoad: book[worst].load,
+          // Every lane, its counted load, the compression the sweep supports
+          // there, and the population the load was computed over — because a
+          // load from few distinct patterns is a different quality of evidence
+          // and has to say so.
+          rows: keys.map((k) => ({
+            label: k,
+            load: book[k].load,
+            distinctWords: book[k].distinctWords,
+            maxSharers: book[k].maxSharers,
+            factor: book[k].factor,
+            reps: book[k].reps,
+            expectedRetrieval: book[k].expectedRetrieval,
+            measuredAt: book[k].measuredAt,
+          })),
+        };
+      })(),
       // EXAMTRANSCRIPT — the last 80 Q→A pairs from production probes +
       // K-STUDENT batteries ({cell, kind, q, expected, got, pass, failMode?})
       // so "what is she answering to which questions" is a field read.
@@ -19684,8 +19727,28 @@ export class Curriculum {
       const _priceGapMs = Math.max(0, Number(
         (typeof process !== 'undefined' && process.env && process.env.DREAM_REP_AUTOPRICE_GAP_MS) || 60000,
       ) || 60000);
-      const _priceDue = !cluster._repPriceAt
-        || (Date.now() - cluster._repPriceAt) >= _priceGapMs;
+      // ⛔⛔ THROTTLED PER LANE, NOT PER BRAIN — and the single global clock it
+      // replaces is why this instrument had never answered the question it was
+      // built for. `_repPriceAt` was ONE timestamp for the whole brain, so in
+      // any window exactly one teach lane could be measured and whichever
+      // called first took it. Read off the live box after 76 minutes of
+      // teaching: `measurements: 1`.
+      //
+      // ⛔ AND THE ONE LANE THAT WON IS THE WORST POSSIBLE SAMPLE — a CLOSED
+      // CLASS of 36 words whose embeddings are near-identical by construction,
+      // reporting `maxSharers 36` (every pattern sharing one dim) for a load of
+      // 74.8. That is the SKEW case this counter was written to catch, being
+      // mistaken for the corpus. ⚠ The prose lanes — the only ones whose cost
+      // the compression setting actually changes — had never been measured once.
+      //
+      // ⭐ Per-lane throttling means every lane gets its own measurement and its
+      // own verdict, so the knob can be set from the lane that carries the walk
+      // instead of from whichever call won a race.
+      const _priceLabel = opts.label || 'ASSOC';
+      const _priceBook = cluster._repPriceByLabel || (cluster._repPriceByLabel = {});
+      const _priceRow = _priceBook[_priceLabel];
+      const _priceDue = !_priceRow
+        || (Date.now() - (_priceRow.measuredAt || 0)) >= _priceGapMs;
       if (_priceDue && _semRegionEarly && pairs.length >= 8 && typeof this._topKEmbedding === 'function') {
         const _k = opts.semTopK ?? 8;
         const _sampleN = Math.min(pairs.length, 512);
@@ -19775,10 +19838,45 @@ export class Curriculum {
             cluster._repCompressionVerdict = _autoPrice;
             cluster._repPriceAt = _autoPrice.measuredAt;
             cluster._repPriceCount = _autoPrice.measurements;
+            // ⭐ THE PER-LANE BOOK. The latest verdict above is kept for readers
+            // that already consume it; this is the one that makes the knob
+            // settable, because it holds a load per teach lane instead of
+            // whichever lane measured most recently.
+            // ⚠ Bounded. Labels are a fixed set in practice, but an unbounded
+            // map keyed by a caller-supplied string is a leak waiting for the
+            // one caller that builds its label from data.
+            _priceBook[_priceLabel] = _autoPrice;
+            const _pk = Object.keys(_priceBook);
+            if (_pk.length > 96) {
+              let _oldest = _pk[0];
+              for (const k of _pk) {
+                if ((_priceBook[k].measuredAt || 0) < (_priceBook[_oldest].measuredAt || 0)) _oldest = k;
+              }
+              delete _priceBook[_oldest];
+            }
           }
           this._hb(`[Curriculum][${opts.label || 'ASSOC'}] REPPRICE — measured collision load ${_scaled.toFixed(3)} over ${pairs.length} pairs (sampled ${_sets.length}, ${_m.meanActive.toFixed(1)} active dims each, ${_m.cellsTouched} distinct, max ${_m.maxSharers} patterns on one dim). The sweep supports ${_verdict.factor}× → ${_verdict.reps} reps at ${(100 * _verdict.expectedRetrieval).toFixed(1)}% retrieval. ${_armed ? 'ARMED — steering compression.' : 'NOT armed (DREAM_REP_AUTOPRICE=1 to steer); the hand-set ' + REP_COMPRESS + '× stands.'} ⚠ The sweep\'s 0.246 "production" row used 8 cells of 1,885,340; this brain uses 8 dims of ~300, so compare before trusting.`);
-          if (_armed) REP_COMPRESS = Math.max(1, _verdict.factor);
         }
+      }
+      // ⛔⛔ THE STEER IS APPLIED ON EVERY CALL, NOT ONLY ON THE CALL THAT
+      // MEASURED — and that it was not is the second reason arming this knob
+      // could not have delivered what it promises.
+      //
+      // The assignment used to sit INSIDE the `_priceDue` block, so with
+      // `DREAM_REP_AUTOPRICE=1` the measured factor governed roughly one call
+      // per lane per throttle window and every call in between silently used
+      // the hand-set value. **Armed, the compression would alternate between
+      // the measured value and the hand-set one depending on where a call fell
+      // in the clock** — the same lesson taught at two different doses, which
+      // is the interference regime nobody has measured.
+      //
+      // ⭐ The verdict is sticky per lane precisely so it can be READ back. A
+      // measurement kept for a dashboard and not consulted by the decision it
+      // was taken for is an instrument that only looks like a control.
+      if (_armed) {
+        const _steer = (cluster && cluster._repPriceByLabel
+          && cluster._repPriceByLabel[opts.label || 'ASSOC']) || _autoPrice;
+        if (_steer && _steer.factor >= 1) REP_COMPRESS = Math.max(1, _steer.factor);
       }
     } catch (e) {
       // Pricing must never be able to stop a teach.

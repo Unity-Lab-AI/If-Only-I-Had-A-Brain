@@ -184,6 +184,87 @@ class TeachLedger {
     return { rows, available: true };
   }
 
+  // ⭐⭐ THE EXPORT SUMMARY — a cell's FULL taught-content record, shaped so it
+  // can be diffed OFFLINE against the per-cell source table in the curriculum
+  // gap ledger. That document says what a cell must hold and which source must
+  // close the difference; this says what the cell actually taught, broken down
+  // the same way.
+  //
+  // ⛔ THE WORD COUNT IS A FLOOR AND THE ROW SAYS SO. Text is stored capped, so
+  // any item longer than the cap contributes only its first cap characters.
+  // `truncated` is returned beside `words` for exactly that reason — a count
+  // that silently understates is the instrument-that-lies defect, and a count
+  // that names its own floor is evidence.
+  //
+  // ⚠ Words are whitespace-delimited runs, counted in SQL — the same definition
+  // the corpus ingest uses when it reports a cell's word total, which is the
+  // number this export exists to be compared against.
+  summary({ cell = null } = {}) {
+    const db = this.db();
+    // Same field set on both paths, so a reader never has to branch on
+    // availability to know which keys exist.
+    if (!db) return { cell, available: false, items: 0, words: 0, truncated: 0, firstAt: 0, lastAt: 0, textCap: TEXT_CAP, bySource: [], byLane: [], byPhase: [] };
+    this.flush();
+    const where = cell ? 'WHERE cell = ?' : '';
+    const args = cell ? [cell] : [];
+    // TRIM first so a leading/trailing space cannot invent a word; the empty
+    // case is stated explicitly because `LENGTH('') - LENGTH('') + 1` is 1.
+    const WORDS = "SUM(CASE WHEN TRIM(text) = '' THEN 0 ELSE LENGTH(TRIM(text)) - LENGTH(REPLACE(TRIM(text), ' ', '')) + 1 END)";
+    const group = (col) => {
+      try {
+        return db.prepare(
+          `SELECT ${col} AS key, COUNT(*) AS items, ${WORDS} AS words, MIN(at) AS firstAt, MAX(at) AS lastAt
+           FROM taught ${where} GROUP BY ${col} ORDER BY items DESC`,
+        ).all(...args);
+      } catch { return []; }
+    };
+    let totals = { items: 0, words: 0, truncated: 0, firstAt: 0, lastAt: 0 };
+    try {
+      const r = db.prepare(
+        `SELECT COUNT(*) AS items, ${WORDS} AS words,
+                SUM(CASE WHEN LENGTH(text) >= ${TEXT_CAP} THEN 1 ELSE 0 END) AS truncated,
+                MIN(at) AS firstAt, MAX(at) AS lastAt
+         FROM taught ${where}`,
+      ).get(...args);
+      totals = {
+        items: r.items | 0,
+        words: r.words | 0,
+        truncated: r.truncated | 0,
+        firstAt: r.firstAt || 0,
+        lastAt: r.lastAt || 0,
+      };
+    } catch { /* an unreadable summary reports zeros rather than inventing rows */ }
+    return {
+      cell,
+      available: true,
+      ...totals,
+      textCap: TEXT_CAP,
+      bySource: group('source'),
+      byLane: group('lane'),
+      byPhase: group('phase'),
+    };
+  }
+
+  // The evidence behind the summary, streamed rather than materialised. A cell
+  // can hold hundreds of thousands of rows and this runs on the same process
+  // that teaches — building one array of them is how a monitor becomes the
+  // outage it was built to detect.
+  *iterate({ cell = null, lane = null, source = null } = {}) {
+    const db = this.db();
+    if (!db) return;
+    this.flush();
+    const where = [];
+    const args = [];
+    if (cell) { where.push('cell = ?'); args.push(cell); }
+    if (lane) { where.push('lane = ?'); args.push(lane); }
+    if (source) { where.push('source = ?'); args.push(source); }
+    const filter = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    const stmt = db.prepare(
+      `SELECT n, at, cell, lane, phase, source, reps, rel, text FROM taught ${filter} ORDER BY n`,
+    );
+    yield* stmt.iterate(...args);
+  }
+
   stats() {
     const db = this.db();
     if (!db) {
@@ -232,8 +313,29 @@ class TeachLedger {
  * ⚠ Fail-soft in the same way as the ledger: a box without the native module
  * still teaches, and the failure is COUNTED rather than silent.
  */
-const SERIES_MAX_ROWS = 20000;      // ~1 week at the default 30s gap
-const SERIES_GAP_MS = 30000;
+// ⛔⛔ THE GAP IS DERIVED FROM THE WALK LENGTH, AND AT 30 s IT WAS NOT.
+//
+// This ring exists so a WEEKS-LONG walk can be read back after the fact. At a
+// 30 s gap, 20,000 rows is ~6.9 days — its own comment said "roughly a week" —
+// against a walk priced at **~24 days** of structure refresh. So the ring filled
+// about a third of the way through a run and then discarded oldest-first,
+// silently throwing away THE START OF THE WALK: exactly the evidence a
+// long-run instrument is kept for, and the loss is invisible because a full
+// ring and a correct ring look identical.
+//
+//   24 days = 2,073,600 s ;  20,000 rows  ->  103.7 s per sample
+//
+// 120 s covers **27.8 days** with ~16% headroom, at ~20 MB on disk — the axis
+// this project has repeatedly established is the cheap one.
+//
+// ⚠ A SHORTER GAP DOES NOT BUY DETAIL, IT BUYS A SHORTER MEMORY. The signal
+// this ring is for is a stall, and the stalls of interest run tens of minutes
+// (the recorded wedges are 31 min and ~116 min), so 2 min resolves them with
+// ~15x margin. Sub-two-minute detail belongs to the client-side throughput
+// trace, which is deliberately a different instrument with a different lifetime.
+// Full arithmetic in `docs/THRESHOLD-DERIVATION.md`.
+const SERIES_MAX_ROWS = 20000;      // 27.8 days at the 120s gap below
+const SERIES_GAP_MS = 120000;
 
 class TeachSeries {
   constructor(ledger) {

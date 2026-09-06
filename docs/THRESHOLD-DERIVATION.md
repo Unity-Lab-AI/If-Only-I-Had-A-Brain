@@ -412,6 +412,28 @@ Two named constants shipped with the rep-pricing publication and the lateral-inh
 - **Math justification:** the measured quantity is a property of **the corpus and the encoding**, neither of which changes between two calls a millisecond apart. The fastest thing that legitimately moves it is a grade transition, and cells run for **tens of minutes** (`cellElapsedMs` read **3,148,555 ms = 52 min** live, mid-cell). A 60 s interval is therefore **~52× finer than the fastest real change**, while cutting the sampling work by the call rate: 25,603 calls over a 3,233 s boot = **7.9 calls/s**, so 60 s collapses ~475 measurements into 1 — a **475× reduction** with no loss of resolution against anything that actually varies.
 - **Theoretical optimum:** one measurement per cell entry, which is what this approximates without needing a cell-boundary hook. Lower is pure waste; much higher risks a stale verdict spanning a grade change, which is why the verdict now carries `measuredAt` so its age is readable rather than assumed.
 - **Drift trigger:** re-derive if mean cell duration falls below ~10 minutes, or if the verdict is ever wired to STEER compression (`DREAM_REP_AUTOPRICE=1`) rather than only to report — a steering input earns a tighter interval than a reporting one.
+- ⛔⛔ **CORRECTION 2026-09-06 — THE INTERVAL WAS RIGHT AND ITS SCOPE WAS WRONG, AND THE SCOPE IS WHAT MADE THE INSTRUMENT USELESS.** The derivation above is sound for *how often a lane should be re-measured*. It was implemented against **one global clock and one sticky slot for the whole brain**, so the interval did not pace a lane — it paced the ENTIRE instrument, and in any window exactly one teach lane could be measured at all. **Read off the live box after 76 minutes of teaching: `measurements: 1`.** ⭐ The interval is now applied **per teach lane**, which is the quantity this derivation was always about; the arithmetic is unchanged and now describes what the code does.
+
+### Rep-pricing lane book bound
+
+- **Constant:** `_repPriceByLabel` cap, **96 lanes**, evicting the oldest measurement.
+- **Math justification:** the label set is fixed by the code, not by data — every label is a string literal at an `_teachAssociationPairs` call site, and the distinct count is well under 96, so in normal operation **the bound never binds** and the map holds one entry per real lane. The cap guards the failure mode where a caller builds a label from content (a word, a cell key, a sentence), which would make an unbounded map keyed by a caller-supplied string — the same leak shape the reading ring and console ring are both bounded against.
+- **Cost:** ~96 × 10 numeric fields ≈ a few KB resident, rebuilt from zero each boot, never persisted.
+- **Drift trigger:** re-derive if any call site starts deriving its label from data — at that point the bound stops being a safety margin and starts being a working limit, and eviction would begin discarding real lanes.
+
+### Retained analytics sample interval
+
+- **Constant:** `SERIES_GAP_MS`, **30,000 → 120,000 ms** (2026-09-06), against `SERIES_MAX_ROWS` = **20,000**.
+- **What it bounds:** how often the training/machine counters are sampled into the retained series, and therefore **how much of a walk one fixed-size ring can cover**.
+- ⛔ **Why the shipped 30 s was wrong for its own purpose.** 20,000 rows × 30 s = **~6.9 days** — the code's comment said *"roughly a week"* — against a walk priced at **~24 days** of structure refresh. ⚠ **The ring therefore filled about a third of the way through a run and then discarded oldest-first, silently throwing away THE START OF THE WALK**, which is the evidence a long-run instrument exists to hold. **A full ring and a correct ring look identical**, so nothing would ever have reported the loss.
+- **Math justification:**
+  ```
+    24 days = 2,073,600 s ;  ring = 20,000 rows  ->  103.7 s per sample
+  ```
+  **120 s covers 27.8 days** with ~16% headroom, at ~1 KB/row ≈ **20 MB** — the axis this project has repeatedly established is the cheap one.
+- **Theoretical optimum:** the largest interval that still resolves the target signal. The target is a **stall**, and stalls of interest run tens of minutes (the recorded wedges are 31 min and ~116 min), so 2 min resolves them with ~15× margin.
+- ⚠ **Cost of a SHORTER interval is not finer detail, it is a shorter memory.** Sub-two-minute detail belongs to the client-side throughput trace, deliberately a different instrument with a different lifetime.
+- **Drift trigger:** re-derive if the walk re-prices past ~27 days, or if the ring is ever asked about events shorter than two minutes.
 
 ### Lateral active-index hint verification budget
 
