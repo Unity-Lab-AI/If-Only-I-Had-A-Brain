@@ -123,7 +123,12 @@ fn read_line_capped(r: &mut impl BufRead, out: &mut String, cap: usize) -> Resul
 
 pub struct Response {
     pub status: u16,
-    pub content_type: &'static str,
+    /// ⚠ `String`, not `&'static str`. It was the latter while every response
+    /// this process produced came from its own fixed table — and the moment a
+    /// PROXIED response arrives, the content type is whatever the upstream said
+    /// and cannot be a compile-time literal. Widening the type is what lets a
+    /// forwarded body keep its declared type instead of being relabelled.
+    pub content_type: String,
     pub body: Vec<u8>,
     /// ⚠ Extra headers, used for the no-store the dashboard polling relies on.
     pub extra: Vec<(String, String)>,
@@ -131,13 +136,13 @@ pub struct Response {
 
 impl Response {
     pub fn json(status: u16, body: impl Into<Vec<u8>>) -> Self {
-        Response { status, content_type: "application/json", body: body.into(), extra: Vec::new() }
+        Response { status, content_type: "application/json".into(), body: body.into(), extra: Vec::new() }
     }
     pub fn text(status: u16, body: impl Into<Vec<u8>>) -> Self {
-        Response { status, content_type: "text/plain; charset=utf-8", body: body.into(), extra: Vec::new() }
+        Response { status, content_type: "text/plain; charset=utf-8".into(), body: body.into(), extra: Vec::new() }
     }
-    pub fn bytes(status: u16, ct: &'static str, body: Vec<u8>) -> Self {
-        Response { status, content_type: ct, body, extra: Vec::new() }
+    pub fn bytes(status: u16, ct: impl Into<String>, body: Vec<u8>) -> Self {
+        Response { status, content_type: ct.into(), body, extra: Vec::new() }
     }
     pub fn no_store(mut self) -> Self {
         self.extra.push(("Cache-Control".into(), "no-store".into()));

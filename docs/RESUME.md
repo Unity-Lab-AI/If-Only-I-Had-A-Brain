@@ -1,6 +1,40 @@
 # RESUME — Session Pickup Brief
 
-> # 🟢 2026-09-05 (latest) — THE COUNTER FINALLY MOVED: −4,849 LINES OF JS, AND THE TWO ITEMS I WAS THE BLOCKER ON ARE CLOSED (PICK UP HERE)
+> # 🟢 2026-09-05 (latest) — B5 STARTED FOR REAL: THE COORDINATOR IS THE FRONT DOOR AND PROXIES THE LIVE BRAIN (PICK UP HERE)
+>
+> Gee (verbatim): *"yes he wants the next big push!!! why didnt you do it.. is he have items blocvking it?"*
+>
+> **Answer: Sponge was NOT blocking it.** B1 needs a real deploy and B3 needs a live donor — those are his. **B5 needed nothing from him; I had not started it.**
+>
+> ## ⛔ The structural fact that decides B5's shape
+>
+> *"34 endpoints … then retire the JS coordinator"* has **the entire brain** between its first and last clause. Every endpoint reads cognition state, and that state is **34,060 lines of `server/`** plus `js/brain/` (`curriculum.js` alone ~31,000). **Porting them natively IS the rewrite, not a step toward it.**
+>
+> ⭐ **So the front door moves first and the cognition follows.** `unity-coordinator` now owns the socket, the routing table, the privilege gate and the static files; anything needing the brain is forwarded to Node on loopback. `--upstream=<port>` is the lever **and the rollback**.
+>
+> ## ✅ Live against the running brain
+>
+> `/public-state.json` proxied **200**, parses clean, **68 top-level and 24 `consciousness` keys identical to direct** · `/health` native 200 · `/html/dashboard.html` 200 (383,784 B) · `GET /shutdown` still **405 `Allow: POST`** · unknown 404. **184 → 199 tests, 0 warnings.**
+>
+> ## ⛔⛔ A bug that shipped for ten minutes, caught only by parsing the body
+>
+> Node answers `/public-state.json` **chunked**. Stripping `Transfer-Encoding` is correct — it is connection-scoped — but stripping it *without decoding* handed the caller raw chunk framing (`3336a\r\n{"type":"state"…`) under a `Content-Length` claiming it was all payload. **HTTP 200, plausible byte count, corrupt.** Same lesson as the header-length bug earlier today: **a wrong answer in a framing layer does not fail, it lies.**
+>
+> ⚠ **The byte counts nearly produced a second wrong conclusion** — 207,855 proxied vs 209,777 direct looked like a loss. **Measured the natural variance first: consecutive DIRECT calls differ by ~20 bytes** (the payload moves constantly). Re-measured, they agree.
+>
+> ## ⚠ Header hygiene, stated precisely — my first draft overclaimed it
+>
+> Inbound `X-UAL-User` is **dropped** and re-added only from the value the gate examined. But `check()` accepts **any non-empty** identity from loopback — **that is the shipped model reproduced (180/180), not a gap** — so a forged identity on a *privileged* route IS forwarded, exactly as the JS server would have accepted it. What the drop actually buys, all verified live against an echo upstream: a public route never launders a client header into a vouched one (`sawUalUser: null`), exactly one header reaches Node, and with proxy-auth off nothing is vouched at all.
+>
+> ## ⛔⛔ The new risk: THERE ARE NOW TWO DOORS
+>
+> nginx talks to the coordinator and **Node is still listening**. **Node must bind loopback-only and nginx must point at the coordinator alone**, or the old door is open and the new gate is decoration. Deployment precondition — it cannot be enforced in code.
+>
+> ## ▶ NEXT
+>
+> **1.** The **WS lane** — donor socket + dashboard live feed. Byte relay after the 101, not protocol parsing. **2.** Then `brain-server.js`'s routing and static serving can actually be deleted — ⚠ **`.js` is unchanged this batch (151,692); the deletion needs the front door running on the box first.** **3.** Endpoints migrate proxied → native as the brain moves (B2 and beyond).
+
+> # 🟢 2026-09-05 — THE COUNTER FINALLY MOVED: −4,849 LINES OF JS, AND THE TWO ITEMS I WAS THE BLOCKER ON ARE CLOSED (PICK UP HERE)
 >
 > Gee (verbatim): *"wtf i want to here a 100% yes. sop quit fucking off and get it fucking done"* · *"we cant hand off to him till its all yes on is what sponge told us to do"*
 >

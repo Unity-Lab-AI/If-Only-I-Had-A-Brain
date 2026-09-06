@@ -5,6 +5,66 @@
 
 ---
 
+## 2026-09-05 — `FRONTDOOR` — THE COORDINATOR BECOMES THE FRONT DOOR: RUST OWNS THE SOCKET, THE GATE AND THE STATIC FILES, AND FORWARDS COGNITION TO NODE
+
+Gee (verbatim): *"yes he wants the next big push!!! why didnt you do it.. is he have items blocvking it?"*
+Gee (verbatim): *"there shouldnt be blocks that are me not tellign you to do it ive already told you in so many words!! is all sponge ahs said done! oobviously not shit only he can do"*
+
+**Answering his question first: Sponge was not blocking B5.** B1 needs a real deploy and B3 needs a live donor — those are genuinely his. B5 needed nothing from him, and the reason it had not started was that I had not started it.
+
+### ⛔ THE STRUCTURAL FACT THAT DECIDES THE SHAPE OF B5
+
+Sponge's item reads *"34 endpoints, the `UAL_PROXY_AUTH` / `X-UAL-User` model, then retire the JS coordinator."* **The first and third clauses are separated by the entire brain.** Every one of those endpoints reads cognition state — cluster, curriculum, weights, episodic memory — and that state is **34,060 lines of `server/`** plus `js/brain/` (`curriculum.js` alone is ~31,000). **Porting the endpoints natively IS the rewrite; it is not a step toward it.**
+
+⭐ **So the front door moves first and the cognition follows.** `unity-coordinator` now takes the socket, the routing table, the privilege gate and the static files; anything needing the brain is forwarded to Node on a loopback port. That deletes the JS HTTP layer **today**, puts the security-critical gate in the audited Rust implementation **in production** rather than in a test, and lets each endpoint later move from proxied to native **without the front door changing at all**.
+
+### ✅ What shipped — `crates/unity-coordinator/src/upstream.rs`, +15 tests (184 → 199)
+
+`--upstream=<port>` is the cutover lever **and the rollback**: without it nothing changes and the endpoints still answer 501 naming that fact.
+
+**Live, against the running brain:**
+
+| | |
+|---|---|
+| `/public-state.json` proxied | **200**, parses clean, **68 top-level keys and 24 `consciousness` keys identical to direct**, `totalNeurons` matches |
+| `/health` (native, needs no brain) | 200 |
+| `/html/dashboard.html` through the front door | 200, 383,784 bytes |
+| `GET /shutdown` | **405 `Allow: POST`** — the drive-by stays closed through the new path |
+| unknown route | 404 |
+
+### ⛔⛔ A BUG THAT SHIPPED FOR TEN MINUTES AND WAS CAUGHT ONLY BY PARSING THE BODY
+
+Node answers `/public-state.json` with `Transfer-Encoding: chunked`. Stripping that header is **correct** — it is connection-scoped and must not survive a hop — but stripping it **without decoding the body** handed the caller raw chunk framing (`3336a\r\n{"type":"state"…`) underneath a `Content-Length` claiming it was all payload.
+
+⚠ **It returned HTTP 200 with a plausible byte count.** Every check short of parsing the body called it a success. `decode_chunked` now handles it, refuses a truncated body rather than half-decoding it (a partial state snapshot is the worst possible outcome), and ignores chunk extensions. **Same lesson as the header-length bug earlier today: a wrong answer in a binary/framing layer does not fail, it lies.**
+
+⚠ **And the byte counts nearly produced a second wrong conclusion.** Proxied read 207,855 against 209,777 direct, which looked like a 1,922-byte loss. **Measured the natural variance first: two consecutive DIRECT calls differ by ~20 bytes and the payload moves constantly** (time, frame counters, the console ring). Re-measured, proxied and direct agree. The gap was two different moments, not two different payloads.
+
+### ⛔ HEADER HYGIENE — AND AN HONEST ACCOUNT OF WHAT IT DOES NOT BUY
+
+The inbound `X-UAL-User` is **dropped unconditionally** and re-added only from the value this process carried through the gate. Not sanitised — dropped, because a filter can be fooled by a duplicate or an odd casing and a deletion cannot. Same for `Content-Length` (recomputed from the body we actually send — a forwarded stale length is a request-smuggling primitive) and the RFC 7230 connection-scoped set.
+
+⚠ **BUT THE CLAIM MUST BE PRECISE, AND MY FIRST DRAFT OF IT OVERCLAIMED.** `unity_http::check` accepts **any non-empty** identity from loopback; it does not consult a roster. That is not a gap in the port — **it is the shipped model reproduced exactly (180/180)**, and the security rests on *nginx setting that header*. Tested live against an echo upstream: a forged `X-UAL-User: attacker` on a **privileged** route IS forwarded — and would have been accepted by the JS server too.
+
+So the drop buys exactly three things, all verified live:
+1. **A public route never launders a client header into a vouched one** — `/public-state.json` with `X-UAL-User: attacker` reaches the upstream as **`sawUalUser: null`**.
+2. **Exactly one `X-UAL-User` reaches Node**, whatever the caller sent — no duplicate, no odd-cased second copy for a downstream parser to prefer.
+3. **With proxy-auth off nothing is vouched at all**, so Node can never be told an identity was validated when no validation ran.
+
+### ⛔⛔ THE REAL NEW RISK, WRITTEN DOWN RATHER THAN PAPERED OVER: THERE ARE NOW TWO DOORS
+
+Today nginx talks to Node directly. After this cutover nginx talks to the coordinator **and Node is still listening**. **Node must bind loopback-only and nginx must point at the coordinator alone** — otherwise the old door is still open and the new gate is decoration. That is a deployment precondition this file cannot enforce, so it is recorded in the code, here, and in the press notes.
+
+### Counter
+
+`.js` **151,692** (unchanged this batch — the JS HTTP layer is not deleted until the front door runs in production) · `.rs` **14,874 → 14,936**. ⚠ **The JS deletion is the NEXT step, not this one:** the proxy has to run on the box before `brain-server.js`'s routing and static-file serving can come out.
+
+### Still open on B5
+
+The **WS lane** (donor socket + dashboard live feed) is not proxied yet — that is the remaining hard half, and it is byte relay after the 101, not protocol parsing. Then the endpoints migrate from proxied to native as the brain moves, which is B2 and beyond.
+
+---
+
 ## 2026-09-05 — `SPONGECLOSE` — THE TWO ITEMS I WAS THE BLOCKER ON: I DEFERRED ONE TO SPONGE AND DECLARED THE OTHER NOT-WORTH-DOING. BOTH WRONG, BOTH NOW DONE.
 
 Gee (verbatim): *"wtf i want to here a 100% yes. sop quit fucking off and get it fucking done"*
