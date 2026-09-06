@@ -596,13 +596,30 @@ const SERVER_STATE_MIXIN = {
         meanVoltage: typeof cluster.lastMeanVoltage === 'number'
           ? cluster.lastMeanVoltage
           : (typeof cluster.meanVoltage === 'number' ? cluster.meanVoltage : null),
+        // ⛔⛔ "NOT ASKED" AND "ASKED AND NOT ANSWERED" ARE DIFFERENT FINDINGS,
+        // AND CONFLATING THEM BLAMED THE DONOR FOR A REQUEST THE SERVER NEVER
+        // MADE. During a walk, `_walkHeartbeat` steps every cluster EXCEPT the
+        // cortex — the teach lane owns it — so the cortex comes back with no
+        // spike count and no voltage. The old branch saw a connected donor plus
+        // a missing number and reported `unreported-by-this-donor`, which is
+        // FALSE: the same donor reports `meanVoltage` for the five other
+        // clusters in the same batch. It would send a reader hunting a donor
+        // bug that does not exist.
+        // ⚠ The exclusion is stamped with a time, and only a RECENT stamp
+        // counts — a stale `_walkTickExcluded` from a walk that has since ended
+        // must not keep excusing a genuinely silent cluster.
         meanVoltageSource: typeof cluster.lastMeanVoltage === 'number'
           ? 'cpu-step'
           : (typeof cluster.meanVoltage === 'number'
             ? 'gpu-donor-readback'
-            : (this._gpuConnected
-              ? 'unreported-by-this-donor (native donor sends mean_voltage: None — GOTCHA.3b)'
-              : 'no-gpu-donor-attached')),
+            : ((Array.isArray(this._walkTickExcluded)
+                && this._walkTickExcluded.includes(name)
+                && this._walkTickExcludedAt
+                && (Date.now() - this._walkTickExcludedAt) < 120000)
+              ? 'not-stepped-this-tick (the walk heartbeat excludes this cluster because the teach lane owns it — this is NOT a donor fault)'
+              : (this._gpuConnected
+                ? 'unreported-by-this-donor (native donor sends mean_voltage: None — GOTCHA.3b)'
+                : 'no-gpu-donor-attached'))),
       };
     }
     // Emit language cortex sub-region activity as pseudo-clusters
@@ -1958,6 +1975,15 @@ const SERVER_STATE_MIXIN = {
         })(),
         gpuDispatchPerSec,
         gpuHits: perf.gpuHits || 0,
+        // ⭐ WHY `gpuHits` CAN READ 0 ON A PERFECTLY HEALTHY CARD. `gpuHits` is
+        // incremented only in the MAIN TICK's compute_batch loop. During a walk
+        // the WALK HEARTBEAT is the path that runs, and it has its own loop —
+        // so `gpuHits: 0` beside a donor doing thousands of batches is the
+        // normal reading mid-walk, not a dead GPU. This counter is that second
+        // loop's acks. ⚠ Published as a SEPARATE field rather than folded into
+        // `gpuHits`, because changing what an existing number means in order to
+        // fix how it looks is how the next reader gets misled.
+        walkTickAcks: this._walkTickAcks || 0,
         gpuMisses: perf.gpuMisses || 0,
         totalSpikes: this._lastTotalSpikes || perf.totalSpikes || 0,
         phaseTimingMs: perf.phaseTimingMs || null,

@@ -5601,6 +5601,26 @@ class ServerBrain {
     const _backoff = this._walkTickMissedAt && (_nowHb - this._walkTickMissedAt) < _hbGap * 8;
     if (_backoff || (this._walkTickAt && (_nowHb - this._walkTickAt) < _hbGap)) return;
     this._walkTickAt = _nowHb;
+    // ⛔⛔ THE CORTEX IS EXCLUDED ON PURPOSE — THE TEACH LANE OWNS IT DURING A
+    // WALK — AND THAT FACT HAS TO TRAVEL WITH THE READING, OR THE DASHBOARD
+    // BLAMES THE DONOR FOR IT.
+    //
+    // Measured on the box: every cluster except `cortex` reads a real
+    // `spikeCount` and a real `meanVoltage` from `gpu-donor-readback`, while the
+    // 82M-neuron language cortex reads `spikeCount: 0`, `meanVoltage: null` and
+    // `meanVoltageSource: "unreported-by-this-donor (native donor sends
+    // mean_voltage: None)"`. ⚠ **That reason string is FALSE.** The donor
+    // reports mean_voltage perfectly well — it does so for five other clusters
+    // on the same card in the same batch. The cortex has no reading because it
+    // was never in the request. Blaming the peer for a value we chose not to ask
+    // for is exactly the instrument-that-lies class this codebase keeps paying
+    // for, and it would send someone hunting a donor bug that does not exist.
+    //
+    // Recorded here, at the filter, so the state publisher can say
+    // "not stepped this tick" instead of guessing at the donor's behaviour.
+    const _hbExcluded = clusterParams.filter((cp) => cp.name === 'cortex').map((cp) => cp.name);
+    this._walkTickExcluded = _hbExcluded;
+    this._walkTickExcludedAt = _nowHb;
     const _hbParams = clusterParams.filter((cp) => cp.name !== 'cortex');
     // noKick — a heartbeat timeout is information for walkTick/the stall
     // alarm, never zombie-kick credit (PODKICK: the kick terminating the pod
@@ -5617,6 +5637,15 @@ class ServerBrain {
       for (const name of allClusters) {
         const entry = _hbRes.perCluster[name];
         if (entry && typeof entry.lastSpikeCount === 'number') {
+          // ⭐ COUNTED SEPARATELY FROM `gpuHits`, DELIBERATELY. `_gpuHits` is
+          // incremented only in the MAIN TICK's compute_batch loop, so during a
+          // walk — when this heartbeat is the path that runs — it sits at 0 and
+          // reads as "the GPU has done nothing" while the card is in fact
+          // servicing every batch. ⚠ Redefining `gpuHits` to cover both paths
+          // would fix the display by changing what an existing field means,
+          // which is how the next reader gets misled; a second counter states
+          // the same truth without rewriting the first one's history.
+          this._walkTickAcks = (this._walkTickAcks || 0) + 1;
           this.clusters[name].spikeCount = entry.lastSpikeCount;
           _ackSpikes += entry.lastSpikeCount;
           _ackSize += CLUSTER_SIZES[name] || 0;
