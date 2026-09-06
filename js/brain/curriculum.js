@@ -17331,9 +17331,44 @@ export class Curriculum {
               } catch { _gpuCarried = false; }
             }
             this._defSemSemShadowCounter = (this._defSemSemShadowCounter | 0) + 1;
+            // ⛔⛔ THE LARGEST UNPROFILED CALL IN THE DEFINITION LOOP, AND IT WAS
+            // LANDING ENTIRELY IN THE RESIDUAL.
+            //
+            // `TRACKED` auto-wraps `_teach*` METHODS. This is a raw
+            // `cluster.synapses.ojaUpdate` sitting in the hot loop, so it is
+            // wrapped by nothing and its cost has been anonymous the whole time.
+            // The standing rule from nine dead theories on that residual is to
+            // stop explaining it with what is visible and **enumerate what is
+            // UNWRAPPED** — this is what that enumeration found.
+            //
+            // ⭐ MEASURED at production geometry (50,272 active rows × ~300
+            // nnz/row = **15,081,600 weight updates**): **155 ms per call**,
+            // which is 2.2× an entire `_teachAssociationPairs` call. It fires
+            // ONCE PER DEFINITION, so at 6.10 senses/word that is ~0.19 s/word
+            // when the donor carries it and ~0.95 s/word when it does not.
+            //
+            // ⚠ IT IS NOT THE RESIDUAL EITHER — 13–30× short of the live
+            // 12.4–28.6 s/word. Recording that here so the next reader does not
+            // re-discover it as a fresh suspect: it is real, it is substantial,
+            // and it is still not the answer. **What it IS, is a known quantity
+            // that no longer has to be guessed at**, which is worth more than
+            // another theory.
+            //
+            // ⚠ The carry flag is recorded beside the time because the SAME code
+            // costs five times more with no donor, and a profile that cannot
+            // tell those apart would read as noise between boots.
             if (!_gpuCarried || (this._defSemSemShadowCounter % 5 === 0)) {
               const _ojaOpts = kScales ? { kScales, activeRows } : { activeRows };
+              const _dssT0 = Date.now();
               cluster.synapses.ojaUpdate(preFull, postFull, lrK, _ojaOpts);
+              try {
+                const _sp = this._teachStageProfile || (this._teachStageProfile = {});
+                const _d = _sp.defSemSem || (_sp.defSemSem = { n: 0, ms: 0, carried: 0, cpuOnly: 0, activeSum: 0 });
+                _d.n += 1;
+                _d.ms += Date.now() - _dssT0;
+                if (_gpuCarried) _d.carried += 1; else _d.cpuOnly += 1;
+                _d.activeSum += (activeRows && activeRows.length) || 0;
+              } catch { /* profiling must never break the teach */ }
             }
           } catch { /* non-fatal */ }
         }

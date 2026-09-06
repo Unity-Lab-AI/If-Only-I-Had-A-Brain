@@ -48,6 +48,29 @@ At the measured 69.2 ms per assoc call that is **15 minutes for the ENTIRE vocab
 
 ⭐ **Seven theories were already dead on this residual; these two make nine.** The standing rule holds and gets stronger each time: **stop explaining the residual with what is visible and enumerate what is UNWRAPPED**, because every candidate that has actually been *timed* has come back far too cheap to matter.
 
+### ⭐⭐ The enumeration was actually run, and it found the biggest unprofiled call in the loop
+
+The rule those nine deaths produced is *"stop explaining the residual with what is visible and enumerate what is UNWRAPPED."* Run properly, it surfaced one immediately.
+
+`_teachWordDefinition` makes a raw `cluster.synapses.ojaUpdate` on the intra matrix **once per definition**. **`TRACKED` auto-wraps `_teach*` METHODS** — a bare matrix call sitting in the hot loop is wrapped by nothing, so its cost has been anonymous the entire time.
+
+**Measured at production geometry** — 50,272 active rows (semTopK 8 × gSize 6,284) × ~300 nnz/row = **15,081,600 weight updates**:
+
+```
+  one ojaUpdate call                     155.1 ms      (2.2x a whole _teachAssociationPairs call)
+  per word, GPU-carried (5th shadow)       0.19 s
+  per word, NO donor (every definition)    0.95 s
+  live measured per word                  12.4 - 28.6 s
+```
+
+⚠ **Candidate ten is dead too — 13–30× short.** Recorded so nobody re-discovers it as a fresh suspect.
+
+⭐ **But it is a KNOWN quantity now instead of a guessed one.** Published as `teachProfile.defSemSem` with `n / ms / carried / cpuOnly / activeSum`. **The carry split sits beside the time deliberately**: the same code costs five times more with no donor, and a profile that cannot tell those apart reads as unexplained noise between boots.
+
+⛔ **And `activeSum` is published on purpose** — the `activeSum 1.06B` Oja active-set inflation WATCH is still open from the block-wall work, and **this is precisely the call that would inflate it.** The watch gets a number instead of an inference.
+
+⚠ **The verification that mattered before shipping:** `activeRows` genuinely bounds the outer loop (`for (idx…) { const i = activeRows ? activeRows[idx] : rowStart + idx; }`), so the comment's claim that the pass is O(active) rather than O(cluster.size) is **true as written** — checked rather than trusted, because a false claim there would have made this call thousands of times worse than measured.
+
 ### The deliverable here is the elimination, not a fix
 
 Both candidates were plausible enough to cost real time — one of them mine, argued from a mechanism that exists and a date that matched. **Both are now closed with arithmetic instead of opinion.**
