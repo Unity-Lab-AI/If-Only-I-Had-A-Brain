@@ -5,6 +5,36 @@
 
 ---
 
+## 2026-09-06 — `INNERHOLD` — THE INNER VOICE SPENT ~6 SECONDS EVERY ~8 SECONDS DISCOVERING IT HAD NOTHING TO SAY
+
+Gee (verbatim): *"all that needs fixed"* · *"moniter her make sure shes doing everything correctly without errors take nots of issues"*
+
+⛔ **THE GATE KNEW *WHEN* SHE SHOULD THINK AND NEVER ASKED WHETHER SHE *COULD*.** `_shouldEmitInnerThought` is pure rhythm — `MIN_GAP_MS 6000`, `MAX_GAP_MS 75000`, a probability modulated by arousal, coherence, curriculum-active and time-since-last. **No capability check anywhere in it.**
+
+**Measured on the box during the fresh walk**, consecutive lines seconds apart:
+
+```
+[Brain] inner-voice think() took 6082ms   ← and 6391 / 5782 / 6274 / 6556
+[EventLoop] BLOCKED 2938ms — phase=_teachWordIntegrated cell=ela/kindergarten
+[Brain] 🧠 inner-thought SILENT — wordsBucketed=0, bucketSubjects=0, passedCells=0
+```
+
+Roughly **6 seconds of work every ~8 seconds, on the teach loop, to produce silence** — while she was mid-kindergarten with nothing learned yet.
+
+⭐ **IT IS PROVABLE THAT NOTHING COULD COME OUT, which is what makes this a capability check and not a fallback.** Both output paths need bucketed words: matrix generation reads the word-motor buckets, and the never-silent showcase samples those same buckets. **The showcase's own comment already said so** — *"When no training has landed yet (truly fresh brain), still silent — sampling returns null, showcase-broadcast skips, only silence-reason log fires."* The code had documented that the whole path was a guaranteed no-op on a fresh brain, and still ran it every few seconds.
+
+✅ **Gated on the SAME test the chat lane already uses.** `getTrainedCapability()` — documented as *"All numbers — no probing, no GPU dispatches. O(subjects) cost, ~6 lookups. Safe to call on every chat turn / popup tick / heartbeat"* — is exactly what `chat.js`'s own silence gate calls to compute `isFresh`. Reusing it means the two lanes cannot drift into disagreeing about whether she can speak, and the pre-check costs ~6 lookups against the ~6 seconds it avoids.
+
+⛔ **NOT A SILENT DISABLE, because a training feature that turns itself off quietly is what this ledger keeps paying for.** It announces the hold once, announces the resume once with the count it held, and **re-arms by itself the instant the first word is bucketed**. Published as `voice.innerVoiceHeld` / `voice.innerVoiceHeldSkips`, so `held: true` beside `wordsBucketed: 0` reads as correct on a fresh walk while `held: true` beside a non-zero bucket count would be a real defect.
+
+⚠ **THE WASTE IS SELF-LIMITING AND THAT IS WHY IT SURVIVED.** It only occurs while `wordsBucketed === 0`, which is "early in the walk" — but word bucketing happens in a later phase, and the previous boot still read `wordsBucketed: 0` at 43 minutes. It is hours of teach loop, not minutes, and it disappears on its own before anyone goes looking for it.
+
+✅ **Verified:** `node --check` on both files, ESM `import()` of `chat.js`, CRLF preserved (6,211 / 3,000, 0 bare LF), and the cross-file `this` binding confirmed — both are `Object.assign`-ed onto `ServerBrain.prototype` and `state.js` already reads `this.cortexCluster` 45 times, so the flag set in `chat.js` is readable where it is published.
+
+⚠ **Needs a restart, NOT a fresh walk.** Nothing here changes what she is taught, so `Update & Savestart` applies it and keeps the training already banked.
+
+---
+
 ## 2026-09-06 — `FIRSTPERSON` — THE FIRST LESSON OF EVERY COURSE AT EVERY GRADE WAS AUTHORED IN THE THIRD PERSON, AND THE VIEWER COULD NOT SHOW THE FIRST-PERSON TRAINING THAT DOES HAPPEN
 
 Gee (verbatim): *"all that needs fixed and this too... is not training her in first perspective and it stopped right when it was about to begin:"* — followed by the Teach View feed pasted back: `this class is called foundational reading` · `in foundational reading we learn reading and writing and words and stories` · `foundational reading is about reading and writing and words and stories` · `ela is short for english language arts`.

@@ -5702,6 +5702,56 @@ const SERVER_CHAT_MIXIN = {
    * @returns {boolean} true if this tick should produce an emission
    */
   _shouldEmitInnerThought(now) {
+    // ⛔⛔ CAPABILITY BEFORE RHYTHM — THE GATE KNEW *WHEN* SHE SHOULD THINK AND
+    // NEVER ASKED WHETHER SHE *COULD*.
+    //
+    // Measured on the box during a fresh walk: `inner-voice think() took 6082ms
+    // / 6391ms / 5782ms / 6274ms / 6556ms`, firing roughly every 8 seconds, each
+    // one lining up with an `[EventLoop] BLOCKED ~3000ms` — and the line beside
+    // it read `🧠 inner-thought SILENT — wordsBucketed=0, bucketSubjects=0,
+    // passedCells=0`. She was spending most of the wall clock in `generateAsync`
+    // to discover, every time, that she has no word she can emit.
+    //
+    // ⭐ IT IS PROVABLE THAT NOTHING CAN COME OUT, which is why this is a
+    // capability check and not a fallback. Both output paths need bucketed
+    // words: matrix generation reads the word-motor buckets, and the
+    // never-silent showcase samples those same buckets — the showcase's own
+    // comment says so ("When no training has landed yet (truly fresh brain),
+    // still silent — sampling returns null, showcase-broadcast skips"). With
+    // zero words, zero passed cells and zero active subGrades, the entire path
+    // is a guaranteed no-op that costs seconds of the teach loop.
+    //
+    // ⚠ SAME TEST THE CHAT SILENCE-GATE ALREADY USES (`isFresh`), through the
+    // same primitive, so the two lanes cannot drift into disagreeing about
+    // whether she can speak. `getTrainedCapability()` is documented as "All
+    // numbers — no probing, no GPU dispatches … safe to call on every chat turn
+    // / popup tick / heartbeat", so the pre-check costs ~6 lookups against the
+    // ~6 seconds it avoids.
+    //
+    // ⛔ NOT A SILENT DISABLE. It announces itself once when it starts skipping
+    // and once when it resumes, counts what it skipped, and re-arms
+    // automatically the instant she buckets her first word — a training feature
+    // that turns itself off quietly is the exact thing this ledger keeps paying
+    // for.
+    try {
+      const _cap = (this.cortexCluster && typeof this.cortexCluster.getTrainedCapability === 'function')
+        ? this.cortexCluster.getTrainedCapability() : null;
+      if (_cap && (_cap.wordsBucketed | 0) === 0
+        && (_cap.passedCellCount | 0) === 0
+        && (_cap.subGradesActive | 0) === 0) {
+        this._innerVoiceMuteSkips = (this._innerVoiceMuteSkips || 0) + 1;
+        if (!this._innerVoiceMutedNoWords) {
+          this._innerVoiceMutedNoWords = true;
+          console.log('[Brain] 🔇 inner-voice HELD — she has no word she can emit yet (wordsBucketed=0, passedCells=0, subGrades=0), and both the matrix path and the vocabulary showcase need one. Each attempt was costing seconds of the teach loop to produce silence. It re-arms by itself the moment the first word is bucketed.');
+        }
+        return false;
+      }
+      if (this._innerVoiceMutedNoWords) {
+        this._innerVoiceMutedNoWords = false;
+        console.log(`[Brain] 🔊 inner-voice RESUMED — first word(s) bucketed (${_cap ? _cap.wordsBucketed : '?'} words, ${_cap ? _cap.passedCellCount : '?'} cells passed). ${this._innerVoiceMuteSkips || 0} attempt(s) were held while she had nothing to say.`);
+      }
+    } catch { /* a capability read must never take the inner voice down */ }
+
     const MIN_GAP_MS = 6000;
     const MAX_GAP_MS = 75000;
     const lastAt = this._lastInnerThoughtEmittedAt || 0;
