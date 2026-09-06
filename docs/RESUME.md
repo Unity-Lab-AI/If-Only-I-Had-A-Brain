@@ -46,6 +46,16 @@
 >
 > **Verified against the poisoned cache:** `195 loaded → 80 healed (234 senses) → 115 still noDef`, and all 115 are correct — typos (`constpated`, `swalled`, `dumn`), contractions (`dont`, `thats`), hyphenates (`sun-rise`). `for` / `your` / `their` / `our` correctly stay `noDef`.
 >
+> ## ✅ `EYEONE` SHIPPED — THE TRAINING VIEWER'S EYE HAD NEVER DRAWN A FRAME
+>
+> Both pages poll the same `/minds-eye.json`, so the **data** was one source. The **reconstruction** was two. The snapshot carries a **field C** (`channels`/`pad_w`/`pad_h`/`equation_count`) — the shape all five builders write — and the training viewer's local `reconstruct()` read `rec.rgba || rec.pixels`, **which no builder has ever written**. It returned false on every real snapshot, so whenever she *was* holding an image the pane showed the label "imagining" beside a blank canvas. ⚠ **The heading's tooltip claimed it ran the inverse CDF 9/7 over her field C** — copy asserting a capability the code lacked.
+>
+> ⛔ **Nothing ever looked wrong, and that is the point:** blank is also the correct answer most of the time and the panel's own note says so, so the failure was indistinguishable from the expected output.
+>
+> ⭐ Fixed by **deleting** the second implementation — the page now imports `reconstructImageData` from the mind-space transform, the same call the public viewer and the brain both make. **The server's `note` is shown too** (*"her mind's eye warms up once the brain is idle (not mid-teach)"*), which the public page always displayed and this one replaced with a bare `nothing held`.
+>
+> ⛔ **Same batch: `docs/HTML-ENTRY-POINTS.md` claims an EXACT 11-page inventory; `git ls-files '*.html'` returns 12.** `teachview.html` shipped 2026-09-01 and was never listed — and **the check that would have caught it is written at the top of that doc.** `legend.html` had it carded all along, so it was invisible only in the doc that inventories everything. Both counts corrected to 12 with the sets named.
+>
 > ## ⏭ NEXT
 >
 > - **On the next press, check `glyph shapes: 94/94`** in the first minute. Anything below 94 prints its own failure list. `DEPLOYCHECK.6`'s expected reading moved 26 → 42 → **94** in one day; both earlier numbers are left standing in the row with the reason.

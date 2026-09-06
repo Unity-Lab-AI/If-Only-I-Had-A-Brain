@@ -1266,28 +1266,91 @@ async function poll() {
 }
 
 /* Her mind's eye, beside the text — the images she is trained on, in the same
-   view as the words, because they are one education and not two. */
-function reconstruct(rec, canvas) {
+   view as the words, because they are one education and not two.
+   ────────────────────────────────────────────────────────────────────────────
+   ⛔⛔ THIS PANEL HAD NEVER DRAWN A FRAME, AND THE TOOLTIP BESIDE IT DESCRIBED
+   THE THING IT WAS NOT DOING.
+
+   `/minds-eye.json` carries a FIELD C — a sparse quantized wavelet record with
+   `channels`, `pad_w`, `pad_h` and `equation_count`. Every one of its five
+   builders writes that shape and **no builder has ever written `rgba` or
+   `pixels`**. The reconstruction here read `rec.rgba || rec.pixels`, found
+   neither, and returned false on every real snapshot — so whenever she WAS
+   holding an image this pane printed the label "imagining" beside a blank
+   canvas. Meanwhile the heading's own tooltip claimed the pane worked "by
+   running the inverse CDF 9/7 transform over her own field C", which is exactly
+   the thing it did not do. **A blank that reads as "she is holding nothing" is
+   the worst possible shape for this failure**, because blank is also the
+   correct answer most of the time and the panel's own note says so.
+
+   ⭐ ONE OWNER, TWO CALLERS. `minds-eye.html` has always reconstructed properly
+   by importing `reconstructImageData` from the mind-space transform — the same
+   function the brain itself uses. This page now imports THE SAME function
+   rather than carrying a second implementation, so the two views cannot drift
+   into disagreeing about what she is picturing. They are one and the same read
+   of one field C, which is what they were always described as.
+
+   ⚠ Imported lazily with a dynamic `import()` because this is a classic script,
+   not a module, and the promise is cached so the module is fetched once.
+   ──────────────────────────────────────────────────────────────────────────── */
+let _eyeMod = null;
+function eyeTransform() {
+  if (!_eyeMod) _eyeMod = import('../js/brain/mindspace/transform.js');
+  return _eyeMod;
+}
+
+async function reconstruct(rec, canvas) {
   try {
-    const ctx = canvas.getContext('2d');
-    if (!rec || !rec.width || !rec.height) return false;
+    if (!rec || !rec.channels || !rec.width || !rec.height) return false;
+    const { reconstructImageData } = await eyeTransform();
+    const img = reconstructImageData(rec, 0);
+    if (!img) return false;
     canvas.width = rec.width; canvas.height = rec.height;
-    const img = ctx.createImageData(rec.width, rec.height);
-    const px = rec.rgba || rec.pixels;
-    if (!px) return false;
-    for (let i = 0; i < img.data.length && i < px.length; i++) img.data[i] = px[i];
-    ctx.putImageData(img, 0, 0);
+    canvas.getContext('2d').putImageData(img, 0, 0);
     return true;
   } catch (e) { return false; }
 }
 
+/* ⚠ AGE IS SHOWN THE SAME WAY ON BOTH PAGES. A frame with no age reads as
+   "now", and a stale frame that reads as now is the same class of lie as a
+   stale stage tag. */
+function eyeAgo(ts) {
+  if (!ts) return '';
+  const s = Math.max(0, Math.round((Date.now() - ts) / 1000));
+  return s < 60 ? ` · ${s}s ago` : ` · ${Math.floor(s / 60)}m ago`;
+}
+
+let _tvEyeAt = 0;
 async function pollEye() {
   const d = await grab(EYE_URLS);
   if (!d) { $('tvEyeLbl').textContent = 'unreachable'; return; }
-  if (d.brainOffline === true || d.brainOnline === false) { $('tvEyeLbl').textContent = 'brain offline'; return; }
+  if (d.brainOffline === true || d.brainOnline === false) {
+    $('tvEyeLbl').textContent = 'brain offline';
+    if ($('tvEyeNote')) $('tvEyeNote').textContent = d.human || 'the brain is not running right now.';
+    return;
+  }
   const rec = d.rec || d.record || d.snapshot;
-  $('tvEyeLbl').textContent = d.label || d.concept || (rec ? 'imagining' : 'nothing held');
-  if (rec) reconstruct(rec, $('tvEye'));
+  if (!rec || !rec.channels) {
+    // ⛔ THE SERVER SENDS THE REASON AND THIS PANE USED TO DISCARD IT. The
+    // snapshot's `note` says WHY she is holding nothing — "her mind's eye warms
+    // up once the brain is idle (not mid-teach)" — which turns a blank panel
+    // from something to investigate into something already answered. It is the
+    // same string `minds-eye.html` has always shown.
+    $('tvEyeLbl').textContent = 'nothing held';
+    if ($('tvEyeNote')) $('tvEyeNote').textContent = d.note || 'she is holding no image right now — blank is a real answer, not a broken panel.';
+    return;
+  }
+  const label = d.label || d.concept || d.source || 'imagining';
+  $('tvEyeLbl').textContent = label + eyeAgo(d.at);
+  if (d.at !== _tvEyeAt) {
+    const ok = await reconstruct(rec, $('tvEye'));
+    if (ok) _tvEyeAt = d.at;
+    if ($('tvEyeNote')) {
+      $('tvEyeNote').textContent = ok
+        ? `${(d.terms || rec.equation_count || 0).toLocaleString()} equations · ${d.source || 'mindspace'} — reconstructed from her own field C.`
+        : 'could not reconstruct this field C.';
+    }
+  }
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
