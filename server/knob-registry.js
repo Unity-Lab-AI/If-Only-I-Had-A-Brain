@@ -5,10 +5,8 @@
  * reads, with its LIVE value, its default, and whether a write to it can
  * actually take effect.
  *
- * Operator: *"we have all the knobs in the teachview so with the knobs that you
- * will know how to set and asjust perfectly for what we need you willl be the
- * one setting all the knobs and monitoring them and keeping them proper as we do
- * the test of the brain"*.
+ * The arrangement: every knob is surfaced in the teach view, and they are set,
+ * adjusted, monitored and kept correct from there as the brain is tested.
  *
  * ⛔ THE PROBLEM THIS SOLVES IS NOT "THERE IS NO UI". The knobs are read from
  * `process.env`, which on the deployed box means the systemd unit, which means a
@@ -1151,7 +1149,7 @@ function plain(s) {
 function knobState() {
   // ══ THE CANONICAL CATEGORIES, AND THE GROUP DISPLAY ORDER ═════════════════
   //
-  // Operator: *"proper orgainaization and catorigzations"*.
+  // The requirement: proper organisation and categorisation.
   //
   // ⛔ THE OLD GROUPS WERE NAMED AS ENTRIES WERE WRITTEN, so they answered
   // different questions. `Bounds & budgets` (33) is a cross-cutting SHAPE — a

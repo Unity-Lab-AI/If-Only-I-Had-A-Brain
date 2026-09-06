@@ -3,10 +3,10 @@
  * the brain's OWN measured collision load, instead of carrying a constant that
  * was chosen against a corpus an eleventh of today's size.
  *
- * Operator: *"sop did you set all the knobs for what we need so we dont have to
- * do but like 1-3 reps for everything"* — restating a standing instruction
- * (*"we only have to do no more than 5 reps for any and everything"*,
- * *"make single passes act like 3000 passes"*).
+ * Standing instruction: the knobs must be set such that no more than one to
+ * three reps are needed for anything — restating the broader rule that no more
+ * than five reps should ever be required, and that the brain's thousands of
+ * knobs can be adjusted to make a single pass act like thousands of passes.
  *
  * ⛔ THE ANSWER COULD NOT BE A NUMBER I TYPE IN. `DREAM_REP_COMPRESS=40` was
  * measured — but it was measured when the corpus held **4.48M words**, and the
@@ -52,6 +52,28 @@ export const SWEEP_COMPRESSIONS = [
   { factor: 12.5, reps: 8 },
   { factor: 20, reps: 5 },
 ];
+/**
+ * ⭐⭐ THE FLOOR OF WHAT WAS EVER MEASURED — derived from the table, never typed.
+ *
+ * ⛔ THIS IS THE NUMBER THAT ANSWERS *"a brain learns stuff once"* WITH "not yet
+ * measured" INSTEAD OF WITH A GUESS. The sweep's smallest dose is 5
+ * presentations. There is no row for 2 and no row for 1, so `safeCompressionFor`
+ * cannot price a single pass — it can only decline to, which is the correct
+ * behaviour and is also why the question stays open.
+ *
+ * ⚠ Reading a 1-rep or 2-rep figure off this surface would mean extrapolating
+ * past the last measured column, which is the precise failure this module was
+ * written to end. **Extending the table requires a new measurement run, not a
+ * new constant** — and the run must use OVERLAPPING post patterns: one-hot posts
+ * score 100% at every compression including 1×, producing a harness that cannot
+ * fail and a number that means nothing.
+ *
+ * Derived from the table so it can never drift away from it: if a 1-rep row is
+ * ever measured and appended, this follows automatically.
+ */
+export const SWEEP_MIN_REPS_MEASURED = SWEEP_COMPRESSIONS
+  .reduce((m, c) => Math.min(m, c.reps), Infinity);
+
 /** retrieval[loadIndex][compressionIndex] */
 export const SWEEP_RETRIEVAL = [
   [1.000, 1.000, 1.000, 1.000, 1.000],   // 0.246 — production, as the sweep defined it
@@ -59,6 +81,108 @@ export const SWEEP_RETRIEVAL = [
   [0.728, 0.240, 0.165, 0.118, 0.080],   // 6.25  — 25× harder
   [0.159, 0.048, 0.038, 0.023, 0.016],   // 25    — 100× harder
 ];
+
+/**
+ * ⭐⭐⭐ THE OVERLAPPING-POST SWEEP — the measurement the table above could not
+ * make, run 2026-09-06 to answer *"a brain learns stuff once"* with a number.
+ *
+ * ⛔⛔ WHY A SECOND TABLE INSTEAD OF NEW ROWS ON THE FIRST: the original sweep
+ * scored **1.000 across its entire production row, at every compression
+ * including 20×**. A surface that cannot go down cannot tell you where the
+ * cliff is. Its posts were effectively separable, so retrieval succeeded no
+ * matter how little weight landed — a harness that cannot fail. **This run uses
+ * OVERLAPPING posts (6 active of a 32-row pool, so patterns genuinely compete
+ * for the same output rows) and the numbers move.** The two tables measure
+ * different things and are kept apart rather than merged.
+ *
+ * Same instrument as before otherwise: real `SparseMatrix`, real `ojaUpdate`,
+ * rep-major ordering, scoring RETRIEVAL (does the correct post win the argmax
+ * against all 500 candidates) and not margin.
+ *
+ * Geometry: 128 post × 32,768 pre · P = 500 · `lr` ceiling 0.60 · authored dose
+ * 100 reps × 0.0468, so the target asymptote is 99.171%.
+ *
+ * ⚠ THE `*` REGIME IS REAL AND IS THE WHOLE POINT. Preserving the asymptote at
+ * n presentations needs `lr = 1-(1-target)^(1/n)`, which exceeds the 0.60
+ * ceiling for every n below 8. So at n ≤ 5 the deposit is genuinely short —
+ * n=1 reaches 60.0% of the target weight, n=2 84.0%, n=3 93.6%, n=5 99.0% —
+ * and the question these rows answer is whether that shortfall MATTERS. Mostly
+ * it does not; the load does.
+ */
+export const OVERLAP_LOADS = [0.056, 0.264, 0.560, 1.036, 2.220, 4.000];
+export const OVERLAP_K = [2, 4, 6, 8, 12, 16];
+export const OVERLAP_REPS = [1, 2, 3, 5, 8];
+/** retrieval[loadIndex][repIndex] — rep counts are OVERLAP_REPS */
+export const OVERLAP_RETRIEVAL = [
+  [0.898, 0.972, 0.972, 0.972, 0.972],   // load 0.056
+  [0.808, 0.876, 0.876, 0.876, 0.880],   // load 0.264 ← the production row
+  [0.678, 0.756, 0.756, 0.756, 0.758],   // load 0.560
+  [0.592, 0.612, 0.612, 0.612, 0.616],   // load 1.036
+  [0.364, 0.380, 0.380, 0.380, 0.404],   // load 2.220
+  [0.240, 0.242, 0.242, 0.242, 0.262],   // load 4.000
+];
+/** The full authored dose, measured only at the two loads the decision is between. */
+export const OVERLAP_REFERENCE = {
+  0.264: { 20: 0.890, 100: 0.952 },
+  1.036: { 20: 0.646, 100: 0.866 },
+};
+
+/**
+ * ⭐⭐⭐ THE FINDING, STATED PLAINLY BECAUSE IT INVERTS THE OBVIOUS READING.
+ *
+ * **Two presentations at load 0.056 retrieve at 97.2%. One hundred
+ * presentations at load 1.036 retrieve at 86.6%.** The low-load pair wins by
+ * 10.6 points while doing 1/50th of the work.
+ *
+ * Reading down a column instead of across a row is what makes it obvious:
+ *
+ *   n = 2 :  0.056 → 97.2%   0.264 → 87.6%   0.560 → 75.6%   1.036 → 61.2%
+ *   n = 100:                 0.264 → 95.2%                   1.036 → 86.6%
+ *
+ * **Repetition buys single-digit points. Load buys tens of points.** Across the
+ * whole grid, going from n=2 to n=100 is worth ~8 points at best, while halving
+ * the load is worth 12–26. That is the same thing the module's own prose said
+ * before any of this was measured — *"THE RISK IS NOT CONVERGENCE, IT IS
+ * INTERFERENCE"* — now with the arithmetic attached.
+ *
+ * ⭐ AND IT LARGELY SETTLES THE REP QUESTION — WITH ONE EXCEPTION THAT IS ITSELF
+ * INFORMATIVE. At every load **at or below 1.036**, `n=2` through `n=8` are flat
+ * to within **0.4 points**: 97.2/97.2/97.2/97.2 · 87.6/87.6/87.6/88.0 ·
+ * 75.6/75.6/75.6/75.8 · 61.2/61.2/61.2/61.6. **Presentations three through eight
+ * buy nothing measurable there.**
+ *
+ * ⚠ **At the two HIGHEST loads they start to matter again** — 38.0 → 40.4 at
+ * load 2.220 and 24.2 → 26.2 at 4.000, so n=8 is worth **2.0–2.4 points** over
+ * n=2. A first draft of this comment claimed the plateau held "at every single
+ * load"; **the data says otherwise and the claim was wrong.** ⭐ It is also
+ * exactly what the interference account predicts: once collisions are severe
+ * enough that a single write is reliably trampled, extra interleaved
+ * presentations begin to buy back some of what was lost. **Repetition is the
+ * remedy for interference you failed to prevent — which is why preventing it is
+ * the better lever.**
+ *
+ * Only the step from 1 → 2 is worth much (2–7 points), and only the jump to the
+ * full authored 100 adds more (a further 7–25, at 50× the cost).
+ *
+ * ⛔ WHAT THIS DOES NOT SAY: it does not say to set the rep count to 2 today.
+ * The live load is a MEASURED quantity that `REPPRICE` now publishes, the
+ * `semTopK` that produces it is one of several inputs, and no gate should move
+ * off a synthetic grid. **It says which knob to turn, and that the knob is not
+ * `lr` and not the rep count.**
+ */
+export const OVERLAP_VERDICT = Object.freeze({
+  bestCheap: { load: 0.056, reps: 2, retrieval: 0.972 },
+  worstExpensive: { load: 1.036, reps: 100, retrieval: 0.866 },
+  repsPlateauFrom: 2,
+  repsPlateauTo: 8,
+  // The plateau is bounded, and the bound is stated rather than rounded away.
+  repsPlateauHoldsUpToLoad: 1.036,
+  repsPlateauMaxSpreadBelowBound: 0.004,
+  repsPlateauMaxSpreadAboveBound: 0.024,
+  note: 'load dominates repetition; n=2..8 flat within 0.4 points at loads <= 1.036, '
+    + 'but worth 2.0-2.4 points at loads 2.220 and 4.000 — repetition buys back '
+    + 'interference you did not prevent',
+});
 
 /**
  * Collision load — `P · K² / COLS`, the expected number of other patterns

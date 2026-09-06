@@ -282,8 +282,9 @@ const SERVER_STATE_MIXIN = {
       const c = this.cortexCluster;
       const now = Date.now();
       if (this._lcEverFired && c && c.regions) {
-        // 12M BROADCAST STALL FIX (2026-08-16, Gee: "1/5 the time its fucking
-        // stalled") — this per-region bitset walk is O(cortex × region overlap)
+        // 12M BROADCAST STALL FIX (2026-08-16) — reported from the live site as
+        // the page being unresponsive roughly a fifth of the time. This
+        // per-region bitset walk is O(cortex × region overlap)
         // ≈ ~14M byte-reads at the 12M cortex (regions + sem/word_motor
         // sub-bands re-walk their parents' spans), and it ran UNTHROTTLED on
         // every getState() — which the broadcast loop calls at 10fps. ~50ms ×
@@ -420,7 +421,7 @@ const SERVER_STATE_MIXIN = {
    */
   /**
    * ⭐⭐ THE OPERATOR DEFAULTS — what this boot STARTED with, and what the next
-   * one will start with. Operator: *"we need traing defaults we can set"*.
+   * one will start with. The requirement: settable TRAINING DEFAULTS.
    *
    * ⛔ THREE STATES THAT MUST NEVER RENDER ALIKE:
    *   applied  — a stored default is governing this boot. On these knobs the
@@ -1196,8 +1197,8 @@ const SERVER_STATE_MIXIN = {
       }),
       // ⭐⭐ THE KNOBS. Every training / weight / saturation knob with its LIVE
       // value, its default, and whether a write could take effect at all.
-      // Operator: *"we have all the knobs in the teachview ... you willl be the
-      // one setting all the knobs"*. ⛔ These were readable only from a shell on
+      // The arrangement: every knob is surfaced in the teach view, and they are
+      // set from there. ⛔ These were readable only from a shell on
       // the box, and there is no shell — so the values that govern how she
       // learns could not be READ, let alone turned. Static data plus an env
       // read: no measurement, nothing to slow down, safe at 10fps.
@@ -1206,7 +1207,7 @@ const SERVER_STATE_MIXIN = {
         catch { return null; }
       }),
       // ⭐⭐ THE OPERATOR DEFAULTS — what this boot STARTED with, and what the
-      // next one will. Operator: *"we need traing defaults we can set"*.
+      // next one will. The requirement: settable TRAINING DEFAULTS.
       //
       // ⛔ THREE DIFFERENT THINGS, AND THEY MUST NEVER RENDER ALIKE:
       //   applied  — a stored default that governs this boot. The brain is NOT

@@ -1,6 +1,59 @@
 # RESUME — Session Pickup Brief
 
-> # 🟢 2026-09-06 (latest, night) — ONE PASS FAILS ON INTERFERENCE, NOT ON DEPOSIT SIZE — THAT IS THE NEXT PIECE OF WORK (PICK UP HERE)
+> # 🟢 2026-09-06 (latest, 2nd) — THE EXPERIMENT THE ENTRY BELOW SCOPED IS DONE, AND THE ANSWER INVERTS THE QUESTION (PICK UP HERE)
+>
+> Gee (verbatim): *"okay continue the work and clean up is at the end after fulkl and complete doc sweep(you do remember what the vastness of a doc swwep intails and isnt limited to docs)"*
+> Gee (verbatim): *"if we need tio chang donor algorithms or anything to be propper make sure thats done too"*
+> Gee (verbatim, on the name-in-source item): *"but that question falls under clean up after doc sweep entirety"*
+>
+> ## ⛔ START HERE — THE THREE THINGS TO CARRY FORWARD
+>
+> **① The rep count was never the knob, and it is now measured rather than argued.** The entry below scoped the n=1 experiment; it ran. With **overlapping** post patterns — mandatory, because the old sweep's separable posts scored 1.000 everywhere and could not fail — the production-regime numbers are: **two presentations at collision load 0.056 retrieve at 97.2%, one hundred presentations at load 1.036 retrieve at 86.6%.** The cheap pair wins by 10.6 points at 1/50th the work. **Repetition buys single digits; load buys tens.** `n=2..8` are flat within 0.4 points at every load ≤ 1.036, and worth 2.0–2.4 points above it — because when collisions reliably trample a single write, extra interleaving buys back part of the loss. Table lives in `js/brain/rep-compression.js` as `OVERLAP_*`, beside the original, not replacing it. ⛔ **It names the knob and does not move it** — the live load is measured and no gate moves off a synthetic grid.
+>
+> **② The prerequisite is now shipped but UNVERIFIED ON THE BOX.** The self-pricing verdict was going to `cluster._repCompressionVerdict`, a property whose only reference in the entire tree was its own write; `state.repCompression` read `null`. It publishes at `state.curriculum.repPricing` now, with `measuredAt`. **Nothing about the load has been read off production yet** — that needs a press, and it is the gate on every rep decision.
+>
+> **③ Nothing here is on the box.** The running server was **9 commits behind `main`** when these were written, and all of this is server-side (`class Curriculum` is not in `js/app.bundle.js`, which rebuilt **byte-identical**). **It needs a press to exist anywhere but the repo.**
+>
+> ## What to read after a press, in order
+>
+> | Field | What it settles |
+> |---|---|
+> | `curriculum.repPricing.load` + `.measuredAt` | The first live collision-load reading this project has ever taken. Every rep decision waits on it |
+> | `stageProfile.lateral.hintVerified` → 500, then `hintUsed` climbing while `scannedCalls` flat | The lateral scan skip is live. ⛔ **`hintMismatch` non-zero means the hint was WRONG and disabled itself — that is the finding, not the speedup** |
+> | `stageProfile.lateral.scanMs` per call | Proves or refutes the predicted recovery of ~11.8% of wall clock. **Predicted, not measured — do not quote it as fact** |
+> | `stageProfile.pairSegments.residualPct` | Where the unattributed 87% of the definition cost actually goes. If it stays large, the work is inside `_teachPredictiveError` or the anti-pair pass — **a reading, not the next guess** |
+> | `curriculum.selfFrame.capPerCell` = **512**, `skippedCapped` → 0 | Confirms the frame-cap raise landed. Demand measured at **≥131 units in one unfinished cell** against the old 16 |
+> | `curriculum.liveness.teachStageSeq` frozen vs advancing across two polls | Settles the stale-tag question **by poll instead of by eye**. It cost two retractions in one day, in opposite directions |
+>
+> ## ⛔⛔ THE ONE THING THAT SHIPS WITHOUT A PRESS — browser GPU donation has been dead for twelve days
+>
+> `html/compute.html:324` builds a tooltip inside a **single-quoted** JS string containing `…not your card's speed…`. **The apostrophe closes the string.** A syntax error anywhere in a `<script type="module">` block kills the **whole** block, and this one spans **lines 105–1605 — 1,500 lines** holding **11 `WebSocket` references and 4 `gpu_register` calls**, the browser donor's entire connect-and-register path, plus the leaderboard.
+>
+> ✅ **The download links are static `<a href>` at lines 46 and 56, outside the block, and the native donor is a Rust binary that never loads this page** — which is exactly why the pod kept computing and nothing on any dashboard looked wrong. **The failure was invisible from every surface we watch.**
+>
+> ⭐⭐ **A doc sweep broke it (`377d06a7`, 2026-08-25, *"feat(tooltips): shared data-tip component across all 11 pages"*) and a doc sweep found it** — because this one checked the HTMLs still **PARSE**, not only that their prose was current. ⚠ My first check reported **4** failures; 3 were `new Function()` being handed ESM, my own extractor's defect. **4 → 1, and the 1 was real.**
+>
+> **Fixed and verified: all 14 inline script blocks across 11 pages parse, 0 failures. This rides the frontend rsync on push — it does NOT need a press.**
+>
+> ## What was found on the way, that nobody was looking for
+>
+> ⛔⛔ **The pre-gate was teaching Unity the answers to her own decoding probes.** Nonsense-word-fluency items measure blending a letter string she has **never seen**, so `jop`/`vib`/`ped` are absent from every corpus **by design** — the coverage audit called them missing vocabulary and **both** pre-teach sites teach whatever it calls missing. **A pre-taught nonsense word is a sight word: the probe stopped measuring decoding, started measuring recall, and PASSED**, with no failure and no warning. Answer-*variants* were counted as required vocabulary too, so six nonsense syllables were drilled into her as words. Coverage **0.966 → 1.0000**. ⚠ **The gate was never blocked by it** (`DREAM_BC_VOCAB_MIN` 0.85 vs 0.966) — the cost was corrupted probes, not a stall. ⛔ **The doctrine had been written down correctly four days earlier and the code disagreed with it the whole time.**
+>
+> ⚠ **And my first guard was an EMPTY SET that read perfectly in the diff** — the bank's shape-converter builds a new object from a fixed field list and dropped the flag. **Caught by printing the guard, not by re-reading it.**
+>
+> ⛔ **`DONORFIX.1` was filed and retracted the same session, and donor work turned out not to be needed.** I wrote *"blocked on a new donor opcode"* off **the board's stale summary table**; the actual row says it shipped as `donor-v0.3.36`. Live: **17/17 matrices, 2,450 MB in 63.78 s = 38.4 MB/s against a 39 MB/s estimate.** `SHADOWCOST.3` closes; `GATEWATCH.2`'s readback timeouts were **congestion** (`secsMax` 664 s → 63.78 s on a quiet loop) and a timeout raise would have hidden the real blocker.
+>
+> ## Still open, deliberately
+>
+> - ✅ **`DOCLINE.2` DONE at cleanup, in the ordered position it was given** — 273 sites → 0 (183 name lines across 14 files + 90 quote lines across 25). One of them was a **runtime log string**, not a comment. The bundle is derived and repaired itself on rebuild.
+> - ⚠ **`Sponge said.txt` NEEDS A DECISION and was deliberately left alone.** Untracked at the repo root, 95 lines, titled *"Handoff: OVH memory work + full Rust rewrite"* — substantive engineering content that a blanket cleanup would have destroyed. Promote it into `docs/` (it overlaps `RUST-MIGRATION.md` and the donor scope opened today) or keep it out of the tree on purpose.
+> - ⛔ **A JWT was sitting in `.scratch/`** (`lfstok.txt`, an LFS auth token). It **never shipped** — that directory is gitignored and `git ls-files` returns 0 — but an ignored directory is exactly where a secret survives unnoticed, since it appears in no status, diff or review. Deleted with the other 127 files (18 MB).
+> - **`LATSCAN.2`** — the saving is predicted, not measured.
+> - **`DEFCOST.1/.2`** — instrumented; needs a press to read. The pre-phase bootstrap is **12.4 s/definition against a recorded ~3.9 s**, with 2,123 queued before phase 1 of 25.
+> - **`MEMTHROTTLE.3`** — fixed but **inert until `unity-brain-ctl` is restarted by hand**.
+> - **`.scratch/`** — 120 loose gitignored files, and `Sponge said.txt` untracked at the root. Cleanup scope.
+>
+> # 🟢 2026-09-06 (earlier, night) — ONE PASS FAILS ON INTERFERENCE, NOT ON DEPOSIT SIZE — THAT IS THE NEXT PIECE OF WORK
 >
 > Gee (verbatim): *"and remembr we are not doing 10s of passes on anything anymore a brain learns stuff once.. it doesnta person doesnt read every text in their life 10x they read it once and usually never again"*
 > Gee (verbatim, correcting my framing): *"we adjust the nobs not accept a weak deposit"*

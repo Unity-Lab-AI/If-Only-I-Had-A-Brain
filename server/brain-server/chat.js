@@ -300,11 +300,11 @@ const SERVER_CHAT_MIXIN = {
     // turns the prompt into an actual image via Pollinations.
     if (text) {
       this._chatStamp('img-detect');
-      // ── DRAWCTX (Gee 2026-08-20) — "DRAW" MEANS *HER HAND*, NOT A GENERATOR ────
+      // ── DRAWCTX (ruled 2026-08-20) — "DRAW" MEANS *HER HAND*, NOT A GENERATOR ────
       //
-      // Gee: *"when Unity is told to 'draw' she should draw the topic, thing, place,
-      // person, in context in the message from the user"* — and the deepest form of
-      // his complaint about filtered photos was right here: `VISUAL` matched the word
+      // The rule: when she is told to "draw", she draws the topic, thing, place
+      // or person in context in the user's message — and the deepest form of
+      // the complaint about filtered photos was right here: `VISUAL` matched the word
       // `draw`, so "draw me a <subject> on a <place>" was routed to Pollinations and the
       // returned PHOTO was presented as her drawing. Her hand was never involved.
       //
@@ -390,8 +390,8 @@ const SERVER_CHAT_MIXIN = {
         // fetches Pollinations from the SAME PUBLIC IP as this server — so the
         // background reference-look lane and the operator's own image request
         // are competing for one anonymous quota, and the background errand was
-        // winning. Operator: *"it doesnt error out image gen in chat and will
-        // eventually generate the image"*.
+        // winning. Reported behaviour: chat image generation does not error out
+        // and will eventually produce the image.
         //
         // Stamping the window HERE is what makes that possible: this is the
         // exact instant the intent becomes real, and it is server-side, so the
@@ -720,7 +720,7 @@ const SERVER_CHAT_MIXIN = {
     // driven by live brain state (arousal, valence, psi, cortex
     // pattern, fear, reward, drug state). Same signature the client
     // uses at engine.js:775.
-    // DONOR-FREEZE GUARD (Gee 2026-07-14, confirmed root cause) — at
+    // DONOR-FREEZE GUARD (ruled 2026-07-14, confirmed root cause) — at
     // biological scale generateAsync ticks the 61M cortex per word, and when
     // the GPU proxy isn't ready (donor mid-reconnect) `cluster.stepAwait`
     // falls back to a SYNCHRONOUS CPU step ~57s/WORD (cluster.js ~3697). A few
@@ -821,7 +821,7 @@ const SERVER_CHAT_MIXIN = {
           this.arousal,
           this.coherence,
           {
-            // DONOR-DROP FIX (Gee 2026-07-16) — while the curriculum is walking,
+            // DONOR-DROP FIX (ruled 2026-07-16) — while the curriculum is walking,
             // compose reranking drops to ONE candidate (see language-cortex):
             // 3 full emissions per reply (~39s) stacked on teach + a weights save
             // starved the event loop 47s → donor socket EPIPE → donor dead.
@@ -1067,10 +1067,10 @@ const SERVER_CHAT_MIXIN = {
           this._chatTimeHebbianStats.jobsQueued = this._chatTeachJobQueue.length;
           this._chatTimeHebbianStats.jobsEnqueued = (this._chatTimeHebbianStats.jobsEnqueued || 0) + 1;
         }
-        // ── INQUIRE (Gee 2026-08-20) — SHE FOLLOWS UP ON THE ANSWER ──────────────
+        // ── INQUIRE (ruled 2026-08-20) — SHE FOLLOWS UP ON THE ANSWER ──────────────
         //
-        // Gee: *"we need to make Unity inquisitive alweays asking questions and follow
-        // ups to the answers to those questions."* Until now the loop ENDED here: she
+        // The requirement: she must be inquisitive — always asking questions, and
+        // following up on the answers to them. Until now the loop ENDED here: she
         // asked, you answered, the answer was bound, and the pending concept was
         // cleared. One question, no curiosity.
         //
@@ -1460,8 +1460,8 @@ const SERVER_CHAT_MIXIN = {
     // TU.29.11 — imagination is CONTINUOUS consciousness, never a blank rest
     // state. The old 120s mid-teach gap left her mind's-eye dead for 2-minute
     // stretches while she walks the curriculum (she is ALWAYS mid-walk on the
-    // deployed box) — Gee: "its a part and process of her thinking ... it
-    // should never be blank". Now she free-wheels every ~8s even mid-teach
+    // deployed box) — the mind's eye is a part and process of her thinking and
+    // should never be blank. Now she free-wheels every ~8s even mid-teach
     // (the CPU CDF 9/7 on a ≤96² plane is microseconds; still VIEW-ONLY
     // mid-teach — no sem re-injection — so the walk's Hebbian stays pristine).
     // Idle (not walking) she daydreams every ~6s.
@@ -1541,7 +1541,7 @@ const SERVER_CHAT_MIXIN = {
             // DRAW.4 — sometimes she DRAWS what she remembers instead of just
             // re-seeing it (a recall-hit has a 35% chance of becoming a DRAWING
             // OF THE MEMORY, so her sketchbook includes learned imagery).
-            // AUDIT FIX (Gee 2026-07-16 "make sure weve been doing everything
+            // AUDIT FIX (ruled 2026-07-16 "make sure weve been doing everything
             // correct"): this branch used _practiceDrawFromMemory → white-ink
             // traceLineArt strokes = the LAST leftover white-pencil publisher
             // ("NO MORE PENCIL ART"). Now it draws via _drawConcept — the field
@@ -1567,7 +1567,7 @@ const SERVER_CHAT_MIXIN = {
       // thing" into truth (after the first generate). Gated hard so it's
       // curiosity, not spam: concrete-noun head only, not already seen, cooldown,
       // low probability, never mid-teach-perturbing (broadcast only).
-      // DRAW-ENGINE (Gee 2026-07-15) — NON-BLOCKING GROUND + DRAW. Grounding a
+      // DRAW-ENGINE (ruled 2026-07-15) — NON-BLOCKING GROUND + DRAW. Grounding a
       // never-seen concept needs a network fetch (slow: up to 25s). AWAITING that
       // fetch inside the tick froze the mind's-eye on the last grounded frame for
       // MINUTES ("stuck on recall: taxi for 10+ minutes") — the in-flight fetch
@@ -1589,16 +1589,16 @@ const SERVER_CHAT_MIXIN = {
       // equational canvas — not just a passive readout. Fires on a fraction of
       // recall-miss ticks (she doodles when there's nothing to re-see), never
       // when a real memory recalled.
-      // DRAW-ENGINE (Gee 2026-07-15) — she DRAWS the concept she couldn't re-see.
+      // DRAW-ENGINE (ruled 2026-07-15) — she DRAWS the concept she couldn't re-see.
       // Recall a grounded field C, else LOOK IT UP (definition-driven reference,
       // perceived headlessly into a field C), then TRACE it into her hand's
       // strokes + her goth palette. No shape-per-word stamp, no stage machine, no
       // rain/house furniture — the FORM comes from an image she actually looked
       // at. _drawConcept returns null when she can nothing to ground (never seen,
       // no reference) → honest no-drawing, and the de-novo mood field renders below.
-      // IMAGINATIVE DRAWING — open-ended, from her own head (Gee: "she needs to
-      // imagine too and draw things not always what she sees ... open ended
-      // dynamically to infinity"). Fired DETACHED/background (it may fetch parts, so
+      // IMAGINATIVE DRAWING — open-ended, from her own head: she must be able to
+      // IMAGINE as well, drawing things she has not seen, open-ended and
+      // dynamically unbounded. Fired DETACHED/background (it may fetch parts, so
       // awaiting would freeze the viewer) on a fraction of ticks — regular enough to
       // actually SEE (the old grounded-only + 15% version never fired: starved), but
       // reference drawings stay primary. It composes drawable nouns from her stream
@@ -1607,7 +1607,7 @@ const SERVER_CHAT_MIXIN = {
         this._imagineAndDraw().catch(() => { /* background imagine best-effort */ });
       }
       if (!rec && _recallMissed && typeof this._drawConcept === 'function') {
-        // LOOK UP → DRAW, in the background (Gee 2026-07-15: "she shall draw more
+        // LOOK UP → DRAW, in the background (ruled 2026-07-15: "she shall draw more
         // often"). Detached from the tick (never holds `_imagineInFlight`, so the
         // slow fetch can't freeze the viewer — that was the earlier bug). It fetches
         // the reference (self-publishes the `lookup:` frame as she SEES it) and then
@@ -1664,7 +1664,7 @@ const SERVER_CHAT_MIXIN = {
             }
           } catch { /* draw best-effort */ }
         }
-        // FAVORITE fallback (Gee 2026-07-15) — the current thought couldn't ground
+        // FAVORITE fallback (ruled 2026-07-15) — the current thought couldn't ground
         // (never seen + no reference yet), but she can still DRAW a concept she HAS
         // grounded so the mind's-eye shows a REAL picture instead of falling to the
         // de-novo texture. Pick a random grounded concept; no fetch (draw from what
@@ -1677,8 +1677,8 @@ const SERVER_CHAT_MIXIN = {
             // A few random tries, each gated; none pass → no favorite this tick.
             const _favKeys = Array.from(this._visualMemory.keys());
             // ── VMUSE.5 — THE RELATION IS FINALLY CONSUMED ───────────────────
-            // Gee: "art concepts are stored with text concepts the brain
-            // consciousness interjects". Both halves are true in the code: art
+            // The stated model: art concepts are stored alongside text concepts,
+            // and the brain's consciousness interjects. Both halves are true in the code: art
             // percepts bind through the SAME channels as text (ARTWEIGHT writes
             // tag 35 / 13 when she draws, VMRELATE the same when she sees), into
             // the same sem region — so a concept she has SEEN and a concept she
@@ -1831,7 +1831,7 @@ const SERVER_CHAT_MIXIN = {
   // caches the SINGLE current field C as the public snapshot the read-only viewer
   // polls (GET /minds-eye.json → reconstructs client-side; one compute, N viewers
   // free) + pings the dashboard indicator over WS.
-  // GROUNDED-ONLY VIEWER (Gee 2026-07-15) — the de-novo thought-blend / sem-state
+  // GROUNDED-ONLY VIEWER (ruled 2026-07-15) — the de-novo thought-blend / sem-state
   // field is a raw-semantic-state mood TEXTURE (the "solid-color line-vector
   // neuron-map blob" — no detail, not a drawing). It must NEVER be the public
   // image: publish ONLY grounded frames (recall / draw / lookup / impression /
@@ -1981,7 +1981,7 @@ const SERVER_CHAT_MIXIN = {
     if (this._eyePubSeq === seq) this._mindsEyeJson = finalJson;
   },
 
-  // LOOK UP → DRAW (Gee 2026-07-15: "she shall draw more often!!!! ... twn -
+  // LOOK UP → DRAW (ruled 2026-07-15: "she shall draw more often!!!! ... twn -
   // twenty lookups in a row and not one single drawing has been attempted").
   // Runs DETACHED from the imagine tick (never touches _imagineInFlight) so the
   // slow Pollinations fetch can never freeze the viewer. She fetches the
@@ -1994,8 +1994,8 @@ const SERVER_CHAT_MIXIN = {
     if (typeof this._fetchReferenceAndGround !== 'function') return;
     // DRAWABILITY GATE (dynamic POS) — only look up + draw concepts that are OBJECTS
     // (nouns). An abstract/function word ("nicknamed", "because") fetches a reference
-    // that traces to garbage vector scatter (Gee: "stop her basic vector ...
-    // drawings"). Non-drawable → don't fetch, don't draw; the tick shows a grounded
+    // that traces to garbage vector scatter — the basic scattered vector
+    // drawings had to stop. Non-drawable → don't fetch, don't draw; the tick shows a grounded
     // favorite instead. Gated at the source (the fetch path), so non-nouns never get
     // grounded in the first place.
     if (typeof this._conceptIsDrawable === 'function' && !(await this._conceptIsDrawable(concept))) {
@@ -2009,7 +2009,7 @@ const SERVER_CHAT_MIXIN = {
     // HOLD — she LOOKS at the reference (its `lookup:` frame is live) for a beat
     // before she draws it: the viewer shows what she SEES, then what she MAKES,
     // paced like a person studying then sketching — not the draw clobbering the
-    // lookup in 1ms (Gee: "im not seeing her lookups any more"). The hold window
+    // lookup in 1ms (reported as her look-ups no longer appearing). The hold window
     // also suppresses the tick's random favorite draw (see _publishMindsEyeFrame).
     const HOLD = Number(process.env.DREAM_LOOKUP_HOLD_MS) || 4500;
     this._lookupHoldUntil = Date.now() + HOLD;
@@ -2019,8 +2019,8 @@ const SERVER_CHAT_MIXIN = {
     try { drawn = await this._drawConcept(concept, { allowFetch: false }); } catch { drawn = null; }
     if (drawn && drawn.rec) {
       this._publishMindsEyeFrame(drawn.rec, drawn.source || drawn.label);
-      // REMEMBER-IN-RELATION (Gee: "she should be remembering what she looks up and
-      // draws in relation like real") — bind her DRAWING to the concept alongside
+      // REMEMBER-IN-RELATION — she should remember what she looks up and what she
+      // draws IN RELATION to each other, the way a person does. Bind her DRAWING to the concept alongside
       // the reference, so recall surfaces both what she saw + what she made, and it
       // sharpens with practice (best-resemblance kept).
       try { await this._rememberDrawing(concept, drawn.rec); } catch { /* remember best-effort */ }
@@ -2063,13 +2063,13 @@ const SERVER_CHAT_MIXIN = {
     }
   },
 
-  // TU.29.13 GROUNDING LOOPS — REMOVED (Gee 2026-07-15). _conceptImageryLoop
+  // TU.29.13 GROUNDING LOOPS — REMOVED (ruled 2026-07-15). _conceptImageryLoop
   // (browser-broadcast a generate so a feeder could harvest it back) and the
   // stage-0 _scribbleStrokes neuron-doodle are superseded by the DRAW-ENGINE:
   // grounding now runs HEADLESS via _fetchReferenceAndGround (no browser), and
   // she draws real traced form via _drawConcept, not a neuron constellation.
 
-  // ── DRAW-ENGINE (Gee 2026-07-15) — SHE DRAWS WHAT SHE LOOKED AT ──────────────────────────────
+  // ── DRAW-ENGINE (ruled 2026-07-15) — SHE DRAWS WHAT SHE LOOKED AT ──────────────────────────────
   // The creativity engine that IS her mind — NOT a menu of shapes she's allowed
   // to draw. She draws any concept dynamically: recall the field C of a thing she
   // has SEEN (grounded), or LOOK IT UP (definition-driven Pollinations reference,
@@ -2403,26 +2403,26 @@ const SERVER_CHAT_MIXIN = {
 
     if (!rec) return null;   // nothing grounded to draw from → honest no-drawing (never a fake shape)
 
-    // 4) STYLE — she is NOT limited to one way of drawing (Gee: "not subject to
-    //    limits on how or what she draws"). She varies her artistic style, STABLE
+    // 4) STYLE — she is NOT limited to one way of drawing, and not subject to
+    //    limits on how or what she draws. She varies her artistic style, STABLE
     //    per subject (a name-hash picks it, so re-drawing a thing stays consistent)
     //    across an extensible repertoire — more styles can join this list, no cap:
     //      • lineart   — clean single-ink contour sketch (her hand)
     //      • field     — a DETAILED posterized field render (her high-fidelity mode)
-    // COLORFILL DROPPED (Gee 2026-07-15: "stop doing her basic vector crayon
+    // COLORFILL DROPPED (ruled 2026-07-15: "stop doing her basic vector crayon
     // drawings they are terrible"). The flat-colour-block style read as crude crayon
     // vectors; her TRACE (line-art) + detailed FIELD render + imagination are the
     // ideal. The traceColorFill primitive stays available (opts.style) but is out of
     // her auto-rotation.
     const side = (typeof this._drawCanvasSide === 'function') ? this._drawCanvasSide() : 96;
     // FIELD is her DEFAULT — the beautiful, detailed, COLORED recreation of what she
-    // sees (Gee 2026-07-15: "WTF happened to her beautiful reacreations of seen
+    // sees (ruled 2026-07-15: "WTF happened to her beautiful reacreations of seen
     // things! ... its all just white pencil drawlings on green the shit i told you
     // to get rid of originally"). The white-pencil line-art is NO LONGER auto-picked
     // for a single concept — it's a fallback only if the field render can't build,
     // and it's what imagination composition uses (strokes can't overlap as images).
     // Caller may still force a style via opts.style.
-    // OWNART (Gee 2026-08-20) — HER OWN VERSION IS NOW THE DEFAULT for every
+    // OWNART (ruled 2026-08-20) — HER OWN VERSION IS NOW THE DEFAULT for every
     // internal draw call too (practice, favourites, spontaneous art), not just the
     // chat ask. `field` and `lineart` remain reachable via `opts.style` because they
     // are still useful for SHOWING WHAT SHE SAW — they are just not a drawing, and
@@ -2449,7 +2449,7 @@ const SERVER_CHAT_MIXIN = {
       if (fr) { this._lastSketchLabel = 'canvas:draw:' + key; return { rec: fr, label: this._lastSketchLabel, source: 'canvas:draw:' + key, from: source || ('draw:' + key), style }; }
     }
 
-    // ZERO DUMBING (Gee 2026-07-15: "rip out BOTH gates ... always max detail, new
+    // ZERO DUMBING (ruled 2026-07-15: "rip out BOTH gates ... always max detail, new
     // concept = mastered concept, K quality == PhD quality, zero intentional
     // limits"). Every drawing is her FULL capability — NO per-concept skill floor,
     // NO grade cap. Max-detail trace params, constant: a never-seen concept draws as
@@ -2504,15 +2504,15 @@ const SERVER_CHAT_MIXIN = {
     return { rec: drawn, label: this._lastSketchLabel, source: 'canvas:draw:' + key, from: source || ('draw:' + key), style };
   },
 
-  // ── OWNART (Gee 2026-08-20) — SHE DRAWS HER OWN VERSION, NOT A FILTERED PHOTO ──
+  // ── OWNART (ruled 2026-08-20) — SHE DRAWS HER OWN VERSION, NOT A FILTERED PHOTO ──
   //
-  // Gee, verbatim: *"she needs to not just copy it completely only to add filters to
-  // them and say she drew them, instead she will attemp completely new creations
-  // trying to replicate similar types of images but in ther own unique style outlay
-  // and apperance, NOT JUST APPLY LAYERS AND FILTERS to a pollinations image and
-  // calling it a draw... Unity needs to create new and her owen versions xcompletely
-  // unique learning from what shes seen and understands via dictionary and
-  // apperances of the word"*.
+  // The governing requirement: she must not copy a reference and add filters to
+  // it and call that drawing. She attempts completely NEW creations, trying to
+  // render similar KINDS of images in her own style, layout and appearance —
+  // never applying layers and filters to a fetched image and calling it a
+  // drawing. She creates her own entirely unique versions, learning from what
+  // she has SEEN and from what she understands of the word through its
+  // definition and its appearance.
   //
   // HE IS RIGHT ABOUT THE OLD PATH. `_drawConcept`'s default style was `field` →
   // `stylizeField(rec)`, a 7-band posterize of the perceived reference; the
@@ -2745,8 +2745,8 @@ const SERVER_CHAT_MIXIN = {
     // variation inside the subject builder.
     const layout = this._ownArtLayout(plan.subjects.length, rnd);
     const boxes = [];
-    // LABELTRUTH (2026-08-21, operator: "the word blow was added to a drawing
-    // of a cat") — only subjects that actually CONTRIBUTE strokes ride the
+    // LABELTRUTH (2026-08-21) — reported: a word that drew nothing was appearing
+    // on the label of a drawing it had not contributed to. Only subjects that actually CONTRIBUTE strokes ride the
     // label/log; a schema-less, definition-less word used to draw NOTHING yet
     // still wear the artwork's name.
     const contributed = [];
@@ -2764,9 +2764,9 @@ const SERVER_CHAT_MIXIN = {
         h: b0.h * (0.9 + rnd() * 0.2),
       };
       boxes.push(box);
-      // ⛔ SHADOWKILL — the grounding cast shadow is GONE. Operator: *"the
-      // shadow effect in her drawings that is just a dark tinted oval below
-      // everything she draws need to go: it crappy and looks like shit"*.
+      // ⛔ SHADOWKILL — the grounding cast shadow is GONE. Judged and rejected:
+      // a dark tinted oval sitting under everything she draws is not a shadow,
+      // it looks bad, and it had to go.
       //
       // It was a `blob` at rgb(16,15,19) alpha 0.35 under every subject, and
       // that is exactly what it looked like — a flat tinted ellipse, not
@@ -2851,8 +2851,8 @@ const SERVER_CHAT_MIXIN = {
       });
     } catch { return null; }
     if (!drawn) return null;
-    // DRAWNCOUNT (2026-08-21, operator: "her art: 0 drawn... why does this say
-    // zero? she has 25+ seen") — count every born piece HERE, at the single
+    // DRAWNCOUNT (2026-08-21) — reported as "0 drawn" on the board against 25+
+    // seen. Count every born piece HERE, at the single
     // point all lanes flow through. The old counter lived in one drain lane
     // while the mind's-eye tick published art all day: 0 drawn, 56 attempts.
     this._ownArtDrawn = (this._ownArtDrawn | 0) + 1;
@@ -2862,8 +2862,8 @@ const SERVER_CHAT_MIXIN = {
     // calls. `_practiceDrawing` writes `e.skill` — params, cosine, session
     // count — into the visual STORE, and store state is not synapses. So she
     // could draw the same subject a hundred times and not one synapse moved.
-    // Operator: *"an image one sees and art they make has real effects on all
-    // kinds of brain processes"*.
+    // The stated model: an image someone SEES and art they MAKE both have real
+    // effects on all kinds of brain processes.
     //
     // ⭐ The act of drawing is now a bind, on the same drain VMRELATE uses:
     // the subject she drew binds to the PARTS she built it from, both ways.
@@ -2890,7 +2890,7 @@ const SERVER_CHAT_MIXIN = {
     return { rec: drawn, label, source: label, from: 'own:' + contributed.map(s => s.word).join('+'), style: styleName, plan: { subjects: contributed.map(s => s.word), place: plan.place ? plan.place.word : null } };
   },
 
-  // DRAWCTX (Gee 2026-08-20: *"when Unity is told to 'draw' she should draw the
+  // DRAWCTX (ruled 2026-08-20: *"when Unity is told to 'draw' she should draw the
   // topic, thing, place, person, in context in the message from the user"*).
   //
   // The old path took `_vmContentWords(seed)[0]` — the FIRST content word — so
@@ -3047,9 +3047,9 @@ const SERVER_CHAT_MIXIN = {
       // identity was the scribble stroke, so it leaves the roster with its
       // brush (STYLECULL precedent: pointillism + crosshatch).
       // ⛔ ARTGROW (2026-08-25) — THESE NUMBERS WERE A CAP ON HER ABILITY AND
-      // THEY ARE NOT ANY MORE. Gee: *"dont limit stroke counts too much cant
-      // make a art work in only 20 strokes it should increase in ability as she
-      // learns in art and stuff"*. The old budgets (doodle 22, watercolor 40)
+      // THEY ARE NOT ANY MORE. The rule: stroke counts must not be tightly
+      // limited — no artwork can be made in twenty strokes, and her capacity
+      // should GROW as she learns art. The old budgets (doodle 22, watercolor 40)
       // were sized as a NOISE defence — and noise is no longer what they are
       // defending against: `_traceSurvivors` gates the jagged tracer fragments
       // at the source now, for the body AND the redraw, so a high budget adds
@@ -3371,9 +3371,9 @@ const SERVER_CHAT_MIXIN = {
   // the constants the hand used before practice existed — a concept she has
   // never practiced draws identically to yesterday.
   _skillDefaults() {
-    // ARTGROW (2026-08-25, Gee: *"dont limit stroke counts too much cant make a
-    // art work in only 20 strokes it should increase in ability as she learns
-    // in art and stuff"*) — `budgetMul` is the sixth TRAINABLE param: how much
+    // ARTGROW (2026-08-25) — stroke counts must not be tightly limited, since no
+    // artwork can be made in twenty strokes, and her capacity should GROW as she
+    // learns art. `budgetMul` is the sixth TRAINABLE param: how much
     // of her remembered trace this hand commits to the page. It is her DRAWING
     // ABILITY, so it belongs in the practice loop with the rest of the hand,
     // not frozen in a style constant. Starts at 1.0 (the untrained hand already
@@ -3485,7 +3485,7 @@ const SERVER_CHAT_MIXIN = {
           const a = e.art || { up: 0, down: 0 };
           if (verdict === 'accept') a.up = (a.up | 0) + 1; else a.down = (a.down | 0) + 1;
           a.lastVerdict = verdict; a.at = now;
-          // ARTLEARN (2026-08-21, operator: "and learn from her drawing") —
+          // ARTLEARN (2026-08-21) — the requirement: she LEARNS from her drawing.
           // an ACCEPT teaches her which HAND works for this subject: the
           // winning style banks a per-concept preference the style picker
           // reads, and her current technique params are marked validated.
@@ -3520,8 +3520,8 @@ const SERVER_CHAT_MIXIN = {
         if (!this._artRelearnAt) this._artRelearnAt = new Map();
         if ((now - (this._artRelearnAt.get(w) || 0)) < GAPR) continue;
         this._artRelearnAt.set(w, now);
-        // REJECTGONE (2026-08-21, operator: "she keeps displaying her drawings
-        // even tho i marked redraw") — the WHOLE memory of the word dies, not
+        // REJECTGONE (2026-08-21) — reported: rejected drawings kept being
+        // displayed after being marked for redraw. The WHOLE memory of the word dies, not
         // just the schema: the stored look (rec/percept) survived the first
         // build and the recall/favorite lanes kept re-displaying the rejected
         // imagery while the relearn was still in flight. A rejected look is a
@@ -3944,9 +3944,9 @@ const SERVER_CHAT_MIXIN = {
       const _structN = Math.max(6, Math.ceil(_budget * 0.4));
       const _drawSet = new Set(_keepIdx.slice(0, _budget));
       const _structSet = new Set(_keepIdx.slice(0, _structN));
-      // COLORLINE (2026-08-21, operator: "she is still using white lines to
-      // outline when she should be using the colors of the image that the
-      // outline is made of") — EVERY stroke wears its sampled real color, the
+      // COLORLINE (2026-08-21) — reported: she was still outlining in white
+      // when the outline should carry the colours of the thing it is drawn
+      // from. EVERY stroke wears its sampled real color, the
       // mono exception included. The read is protected by shifting VALUE, not
       // by abandoning hue: a structural stroke keeps its own color but goes
       // darker on a light body / lighter on a dark one, so the outline is the
@@ -4088,16 +4088,16 @@ const SERVER_CHAT_MIXIN = {
     if (!attr || (!attr.shape && !attr.colors.length)) return null;
     if (!style) style = this._artStyles()[0];
     const out = [];
-    // NEONKILL (2026-08-21, operator: "she is using neon pink to draw a
-    // leopaard... she needs to match colors up correctly not just use nothing
-    // but hot pink neon") — when the definition names NO color, the body is a
+    // NEONKILL (2026-08-21) — reported: neon pink was being used for an animal
+    // that is nothing like it; colours must be matched correctly rather than
+    // defaulting to one hot tint. When the definition names NO color, the body is a
     // NEUTRAL sketch tone: an honest "I don't know its colors yet". Her pink
     // is identity ink for labels and accents, never a claim about a subject's
     // color. The real palette takes over the moment she LOOKS at the thing.
     const body = attr.colors[0] || [142, 132, 118];
     const dark = [Math.round(body[0] * 0.55), Math.round(body[1] * 0.55), Math.round(body[2] * 0.55)];
     const green = [70, 150, 60];
-    // Sometimes she draws MORE THAN ONE (Gee: "or draw multiple tomotoes").
+    // Sometimes she draws MORE THAN ONE — a plural ask means several of the subject.
     const count = rnd() < 0.3 ? 2 + Math.floor(rnd() * 2) : 1;
     for (let i = 0; i < count; i++) {
       const scale = count === 1 ? 1 : 0.55 + 0.15 * rnd();
@@ -4150,8 +4150,8 @@ const SERVER_CHAT_MIXIN = {
     return out;
   },
 
-  // IMAGINATIVE DRAWING (Gee: "she needs to imagine too and draw things not always
-  // what she sees ... open ended dynamically to infinity") — she draws from her OWN
+  // IMAGINATIVE DRAWING — she must be able to IMAGINE as well, drawing things
+  // she has not seen, open-ended and dynamically unbounded. She draws from her OWN
   // HEAD by COMPOSING drawable concepts into one invented scene (a dragon AND a
   // castle; a thing that has no single reference). OPEN-ENDED: each part is grounded
   // recall → provisional → LOOK IT UP (fetch a reference she's never seen), so she
@@ -4160,7 +4160,7 @@ const SERVER_CHAT_MIXIN = {
   // parts — NOT field-morphing (blending two percepts = the banned noise). Only
   // DRAWABLE (noun) parts. Needs ≥2 or it declines (honest — no fake combination).
   // SLOW (may fetch) → always call DETACHED (background), never awaited in the tick.
-  // IMAGINATION = A GENUINELY NEW IMAGE (Gee 2026-07-16: "chicken and sand are
+  // IMAGINATION = A GENUINELY NEW IMAGE (ruled 2026-07-16: "chicken and sand are
   // jsut ... two older pics put cookie cutter like into one image... this is
   // wrong.. instead of correctly makeing new images"). The old composeFields
   // collage pasted each part's field into its own region — copy-paste by
@@ -4192,7 +4192,7 @@ const SERVER_CHAT_MIXIN = {
     } catch { /* store peek best-effort */ }
     if (!rec && typeof this._fetchReferenceAndGround === 'function') {
       const phrase = keys.join(' and ');
-      // Same realistic steer as _referenceImagePrompt (Gee 2026-07-17: "too many
+      // Same realistic steer as _referenceImagePrompt (ruled 2026-07-17: "too many
       // kittens puppies and funky characters" — "illustration" pulled the
       // generator cutesy/cartoon; her imagined scenes ground TRUE-TO-LIFE too).
       // POSITIVE terms ONLY (a model attends to the nouns — "no cartoon" paints one).
@@ -4211,7 +4211,7 @@ const SERVER_CHAT_MIXIN = {
   },
 
   // Fire an imaginative drawing from her STREAM OF THOUGHT — open-ended + dynamic to
-  // infinity (Gee). Candidate concepts are the drawable nouns across her current +
+  // infinity, by ruling. Candidate concepts are the drawable nouns across her current +
   // recent inner-thoughts (an infinite, ever-changing source — "what a person might
   // want to draw" = what she's turning over in her head), NOT a fixed list. Picks a
   // couple, composes them via _drawImagined (which look-up-grounds parts she hasn't
@@ -4236,7 +4236,7 @@ const SERVER_CHAT_MIXIN = {
     }
   },
 
-  // DYNAMIC LABEL STYLE (Gee 2026-07-16: "wheres all the different fonts and styles
+  // DYNAMIC LABEL STYLE (ruled 2026-07-16: "wheres all the different fonts and styles
   // and colors bond underline dazzle and pizzaz into infinity") — she writes the
   // word in a DIFFERENT style every drawing, open-ended, NO fixed set: vibrant
   // per-letter colours via hue rotation (infinite palette), optional bold / italic
@@ -4255,11 +4255,11 @@ const SERVER_CHAT_MIXIN = {
     else if (mode === 1) { const h2 = baseHue + 70 + (seed % 130); colors = Array.from({ length: 6 }, (_, i) => hsl(baseHue + (h2 - baseHue) * (i / 5), 0.82, 0.6)); }  // two-tone gradient
     else if (mode === 2) colors = [hsl(baseHue, 0.92, 0.6)];                                                 // single vibrant hue
     else colors = [hsl(45, 0.9, 0.62), hsl(35, 0.95, 0.55), hsl(50, 0.85, 0.66)];                            // gold shimmer
-    // ALTERNATE LETTERFORMS (Gee 2026-07-16: "yes alternat leter forms") — the
+    // ALTERNATE LETTERFORMS (ruled 2026-07-16: "yes alternat leter forms") — the
     // letter SHAPE itself varies too: block / serif / dots / bubble / tall / wide
     // (rendered differently from the one FONT5X7 grid in glyphStrokes).
     const FONTS = ['block', 'serif', 'dots', 'bubble', 'tall', 'wide'];
-    // PLACEMENT (Gee 2026-07-16: "in differnt places on the image to fit so its
+    // PLACEMENT (ruled 2026-07-16: "in differnt places on the image to fit so its
     // not always a banner at the bottom") — seeded anchor around the page.
     const ANCHORS = ['bottom-center', 'top-left', 'top-right', 'bottom-left', 'bottom-right', 'top-center'];
     return {
@@ -4305,8 +4305,8 @@ const SERVER_CHAT_MIXIN = {
     // whole thread started with.
     //
     // ⛔⛔ THE TYPESET CAPTION IS GONE, AND THERE IS NO SWITCH TO BRING IT BACK.
-    // Operator: *"if there is that old auto text stuff gut it — that prints in
-    // her minds eye"*. It was the mechanism that put perfectly-spelled words on
+    // The instruction: gut the old automatic text layer entirely — it printed
+    // into her mind's eye. It was the mechanism that put perfectly-spelled words on
     // a pre-K drawing and made the code claim a hand she did not have. An env
     // opt-in was written and then removed on that instruction: a flag that
     // restores the lie is still the lie, one boot away.
@@ -4358,8 +4358,8 @@ const SERVER_CHAT_MIXIN = {
 
   // ⛔⛔ THE TYPESET CAPTION BUILDER IS DELETED, NOT PARKED. It computed a
   // monospaced layout and returned `glyphStrokes(label, …)` — the auto-text that
-  // printed a perfect word on her mind's eye. Operator: *"if there is that old
-  // auto text stuff gut it"*. It is not kept behind a flag and it is not kept as
+  // printed a perfect word on her mind's eye. The instruction was to gut the old
+  // automatic text layer. It is not kept behind a flag and it is not kept as
   // a renamed tombstone: today already produced the lesson that a reader for a
   // record nobody creates is a dead branch wearing the look of a feature, and a
   // caption path nobody calls would be the same thing with a worse failure mode.
@@ -4368,12 +4368,12 @@ const SERVER_CHAT_MIXIN = {
   // widths instead of a fixed advance per character.
   // (the 28-line typeset layout that stood here is gone — see above)
 
-  // _stylizeStrokes — REMOVED (Gee 2026-07-15). It recolored EACH traced stroke a
+  // _stylizeStrokes — REMOVED (ruled 2026-07-15). It recolored EACH traced stroke a
   // hash-random goth warm/cool hue — that per-stroke rainbow WAS the "jumbled pile
   // of multicolored yarn". Superseded: traceLineArt draws ONE coherent chalk ink,
   // traceColorFill fills from the real image colours. No per-stroke recolor.
 
-  // DRAW.2 SCHEMA STAMP — REMOVED (Gee 2026-07-15). The developmental
+  // DRAW.2 SCHEMA STAMP — REMOVED (ruled 2026-07-15). The developmental
   // shape composer (_sketchFromState) mapped each word to one of 12 fixed
   // schemas (house/rain/tree/flower/sun/moon/heart/monster/…) wrapped in a
   // hardcoded scene template (ground line + mood sky + context furniture).
@@ -4385,14 +4385,14 @@ const SERVER_CHAT_MIXIN = {
   // the form comes from an image she looked at, never a table. No stages,
   // no allow-list, no furniture.
 
-  // DRAW.5 _drawPracticeBump — RETIRED (Gee 2026-07-16 audit): its only caller was
+  // DRAW.5 _drawPracticeBump — RETIRED (ruled 2026-07-16 audit): its only caller was
   // the retired white-ink practice loop; the layout-hash it fed died with the old
   // schema composer. No-vestigial.
 
   // DRAW.8 — full-resolution canvas, always (the old grade-gated 96..512 ladder
   // was ripped out per the zero-dumbing directive).
   _drawCanvasSide() {
-    // ZERO DUMBING (Gee 2026-07-15: "rip out BOTH gates ... K quality == PhD
+    // ZERO DUMBING (ruled 2026-07-15: "rip out BOTH gates ... K quality == PhD
     // quality, zero intentional limits"). NO grade cap on canvas resolution — every
     // drawing renders at the full canvas regardless of grade. Her drawing quality is
     // her FULL capability, not gated by how far she's walked. (env override for a
@@ -4411,7 +4411,7 @@ const SERVER_CHAT_MIXIN = {
   },
 
   // Is this a DRAWABLE concept? DYNAMIC — works for ANY word including never-seen
-  // ones, NO hardcoded word list (Gee 2026-07-15: "it has to be dynamic for never
+  // ones, NO hardcoded word list (ruled 2026-07-15: "it has to be dynamic for never
   // seen words"). A drawable concept denotes a physical OBJECT = a NOUN. She reads
   // the part-of-speech from the SAME dictionary she queries for every definition
   // (dictionaryapi.dev via the definition service, cached). A word whose senses are
@@ -4441,9 +4441,9 @@ const SERVER_CHAT_MIXIN = {
     // ARTJUDGE 🚫 — the operator taught her this word is not a drawing
     // subject; that verdict outranks every other judge.
     try { if (this._artBanSet().has(w)) return false; } catch { /* ban set best-effort */ }
-    // STYLEBLEED (2026-08-29, operator: "ist always looks up color crisp which
-    // is a green pallat neom colored full screen that taints every image she
-    // tries to combine with it") — SELF-CONTAMINATION guard, by PROVENANCE not
+    // STYLEBLEED (2026-08-29) — reported: one recurring full-screen neon-green
+    // reference kept being looked up and then tainted every image it was
+    // combined with. SELF-CONTAMINATION guard, by PROVENANCE not
     // opinion: a subject whose content words ALL come from her own
     // code-authored style vocabulary ("color", "crisp", "saturated"...) is her
     // prompt talking to itself, not a thought — WordNet honestly calls those
@@ -4544,7 +4544,7 @@ const SERVER_CHAT_MIXIN = {
   },
 
   // DRAW.7 _practiceDrawFromMemory + DRAW.4 _drawFromMemoryStrokes — RETIRED
-  // (Gee 2026-07-16 audit). The practice loop rendered the memory as WHITE-INK
+  // (ruled 2026-07-16 audit). The practice loop rendered the memory as WHITE-INK
   // traceLineArt strokes and published them as canvas:memory: — the last leftover
   // white-pencil publisher after "NO MORE PENCIL ART". The recall-hit draw branch
   // now goes through _drawConcept (field default = her beautiful COLOURED
@@ -4721,10 +4721,11 @@ const SERVER_CHAT_MIXIN = {
       }
     } catch { /* association enrichment is best-effort — bare concept stands */ }
     // live-affect style tail — equational readout of her state, not cognition.
-    // MOODPOP (2026-08-21, operator: "i dont like these, they make the images
-    // dark and foggy make it more inline with our crazy chick Unity.. not the
-    // goth stuff on over kill.. we dont want 1000s of dark tinted images with
-    // fog in them") — the old vocabulary ("dark moody"/"eerie"/"hazy surreal")
+    // MOODPOP (2026-08-21) — judged and rejected: the mood words were making
+    // every image dark and foggy. The look should match her actual character —
+    // chaotic and vivid — rather than laying the goth register on so heavily
+    // that thousands of images come out dark-tinted and hazy. The old
+    // vocabulary ("dark moody"/"eerie"/"hazy surreal")
     // fired fog on nearly every image because her baseline valence sits low.
     // Same state readout, NEW WORDS: crisp, saturated, electric — her chaos is
     // neon-on-black energy, never fog. Every branch keeps "crisp"/"clean"
@@ -4822,8 +4823,8 @@ const SERVER_CHAT_MIXIN = {
       // WORDSALAD.1b — AGE-WRONG GARMENTS, not just nudity. The strip above only
       // ever removed EXPOSURE words, so a request naming fishnets, a corset or a
       // leather mini skirt passed straight through onto a six-year-old's
-      // self-portrait. Operator: "not wearing leater skirts in kindergarten..
-      // obviously.... fishnets and tube tops are later". Adult garments are
+      // self-portrait. The age rule: no adult garments at kindergarten age —
+      // those pieces belong to later grades. Adult garments are
       // removed below 18; the mature-but-covered teen pieces are allowed from 14.
       const ADULT_GARMENT_RE = /\b(fishnets?|corsets?|bustiers?|tube top|leather (?:skirt|dress|pants|outfit|corset)|garter|stockings|heels|stilettos|micro ?skirt|crop top)\b/g;
       const TEEN_GARMENT_RE = /\b(mini ?skirt|choker|ripped (?:jeans|tights)|combat boots|band tee)\b/g;
@@ -4894,7 +4895,7 @@ const SERVER_CHAT_MIXIN = {
       const WARDROBE = age < 14 ? WARDROBE_CHILD : (age < 18 ? WARDROBE_TEEN : WARDROBE_ADULT);
       // MOODPOP — the CORE noun already carries her identity; the tail only
       // steers image quality: crisp + rich color, never smeared, no aesthetic
-      // doubling (operator: "take out goth asthetic i already told u this")
+      // doubling (the aesthetic term is not to be added a second time)
       const TAIL = require('./eye-style.js').EYE_STYLE.chatTail;   // STYLEBLEED — one owner
       // her stated wear — INCLUDING bare skin / named body parts — replaces
       // the wardrobe entirely so clothing never collides with exposed skin
@@ -5114,7 +5115,7 @@ const SERVER_CHAT_MIXIN = {
     // (~57s/word) while it's false. Without this term the env-only gate passed
     // during a reconnect and generation CPU-ticked → the 156s freeze that trips
     // the donor's 150s idle. Requiring _gpuProxyReady forces the cheap showcase
-    // during any reconnect window (Gee 2026-07-14 root-cause fix).
+    // during any reconnect window (ruled 2026-07-14 root-cause fix).
     const _gpuProxyLive = !!(this.cortexCluster && this.cortexCluster._gpuProxyReady === true);
     // ── GPUGEN (2026-08-25) — HER INNER VOICE IS ON BY DEFAULT NOW ───────────
     //
@@ -6189,7 +6190,7 @@ const SERVER_CHAT_MIXIN = {
   },
 
   // ── ONE PROCESS, the last mile — HER VOICE FROM HER PROCESS ──────────────
-  // (Gee 2026-07-17: "what the fuck, she still drops the doner connection
+  // (ruled 2026-07-17: "what the fuck, she still drops the doner connection
   // every time she speaks" + "its all gpu now right? voice, minds eye and the
   // brain! one unified system".) Listener browsers used to synthesize every
   // reply themselves (per-visitor onnxruntime worker) — on the operator's

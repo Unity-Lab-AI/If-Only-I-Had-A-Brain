@@ -1,10 +1,9 @@
 // teachview-bench.js — IS THE TEACH VIEWER ACTUALLY WORKING, RIGHT NOW?
 //
-// Operator: *"the teacherviewer needsd a full sweep bench that you can perfectly
-// work yourself easily have a bennchmarking for all of it so a bench readout and
-// all of that to know if shit is working or not"*, and then, correcting a first
-// filing that had it exactly backwards: *"IT SHOULD BE : runnable from a press
-// and live running during brain training"*.
+// The ask: the teach viewer needs a full sweep bench — a benchmark across all of
+// it, with a readout that says whether things are actually working. And then a
+// correction to a first filing that had it exactly backwards: it must be
+// RUNNABLE FROM A PRESS and run LIVE during brain training.
 //
 // ⛔⛔ THAT CORRECTION IS THE WHOLE DESIGN. The first version of this was going
 // to be an offline command-line auditor, in the shape of the corpus and

@@ -333,8 +333,9 @@ function probeBrainPort(timeoutMs = 2000) {
 // and /ctl/status reported:
 //     { brainOnline: true, phase: "online", human: "Brain is online and serving." }
 // …while `curl http://127.0.0.1:7525/public-state.json` timed out at 20s and the
-// public site served nothing. Gee reported "it won't connect at all" and every
-// status surface contradicted him. HE WAS RIGHT AND THE PANEL WAS WRONG.
+// public site served nothing. The site was reported as not connecting at all,
+// and every status surface contradicted that report.
+// THE REPORT WAS RIGHT AND THE PANEL WAS WRONG.
 //
 // ⭐ The accept queue is drained by the kernel; only a RESPONSE proves the
 // JavaScript thread is alive. So the status path now asks for one. This is the

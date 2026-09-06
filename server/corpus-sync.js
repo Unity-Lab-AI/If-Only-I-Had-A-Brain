@@ -1,9 +1,9 @@
 // corpus-sync.js — THE BOOKS ARRIVE ONE FILE AT A TIME, AND THE BOX NEVER HOLDS
 // TWO CORPORA.
 //
-// Operator: *"lets have buttons in the trainer virewr for download of couprus
-// like buffer on auto ... but a max of one complete copy on the box"*, and then
-// the boundary, in his words: *"not counting forgejo"*. So Forgejo keeping its
+// The ask: buttons in the training viewer to download the corpus, buffered
+// automatically, bounded to a maximum of ONE complete copy on the box — with
+// the boundary stated explicitly as not counting the git host's copy. So Forgejo keeping its
 // own copy is the design and always was; the invariant is about THIS BOX.
 //
 // ⛔⛔ WHY THE EXISTING PRESS PATH CANNOT SATISFY THAT. `deploy/self-update.sh`
