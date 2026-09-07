@@ -1,6 +1,64 @@
 # RESUME — Session Pickup Brief
 
-> # 🟢 2026-09-07 (latest, 10th) — THE FULL DOC SWEEP: SIXTEEN FILES, AND THE DOCUMENTS WERE LYING ABOUT THE BRAIN'S OWN SHAPE (PICK UP HERE)
+> # 🟢 2026-09-07 (latest, 11th) — THE MIND'S EYE: THE DECORATION ATE THE READOUT, THE FULLSCREEN HAD NO EXIT, AND THE STUCK FRAME WAS THE HONEST ONE (PICK UP HERE)
+>
+> Gee (verbatim): *"the minds eye is stuck on the same image and the actual image shown in the minds eye is like tilted or something and covering up the information when it tilts … it needs to not tilt and just be  non titlting image when moused over and actually fit the area and the fullscreen option i asked for days ago just made it much much bigger windoe for the image and i still dont have option to switch betweeen normal and fullscreen"*
+>
+> ## ⛔ READ THIS FIRST — THE PICTURE WAS RIGHT TO BE STILL
+>
+> ```
+>   build 60479ed5 · booted 00:38Z · 388,597,268 neurons · Ψ 21.07 · lag 1 ms
+>   ela/kindergarten · phases 2/25 · passedCells 0 · stage _teachAssociationPairs-done
+>   frame  figure:story-11xp30d · 1920x1467 · 104,233 terms · 361 MINUTES OLD
+>   voice  innerVoiceHeld TRUE · 24,269 skips · wordsBucketed 0 · emitAttempts 0
+>   art    0 drawn · 0 schemas · 95 seen        fields  hit 1 · miss 6 · STUB 1
+> ```
+>
+> ⭐⭐ **THE VIEWER IS GROUNDED-ONLY BY A STANDING RULE** — a formless mood texture must never take the screen — and the one frame the imagination tick can ground is an **impression**, which needs words out of her inner-thought chain to aim with. ⛔ **`wordsBucketed` is 0, so the chain is empty, so nothing qualifies, so the last real picture correctly holds.** **The mechanism worked exactly as designed and the eye is not broken.** It will start moving on its own when she banks her first words; **nothing was built to force it.**
+>
+> ⛔ **What WAS broken is that the page said `live` over a six-hour-old frame** — a status string assigned outside a conditional, which is a label, not a status. Past **five minutes** it now reads **held**, with the reason read out of `state.voice` rather than guessed.
+>
+> ## ⛔ ① THE TILT WAS NOT COSMETIC — A CSS TRANSFORM DOES NOT CHANGE LAYOUT
+>
+> `.frame` carried `rotateX(8deg) rotateY(-9deg)` under a perspective stage. The element kept its **upright box in flow** while the browser painted it tipped, so the projected bottom edge landed **on top of the readout** — equation terms, source, frame age, her art. ⚠ **Hover made it worse rather than better:** it swapped in a *second* tilt instead of releasing, so pointing at the picture moved it.
+>
+> ✅ Both gone, and ⭐ **`perspective` removed with them** — leaving that property would silently re-arm the identical defect the moment anyone adds a transform back. Hover now responds through **border and glow**, which change no geometry.
+>
+> ## ⛔⛔ ② THE FULLSCREEN BUTTON WAS NOT HIDDEN — IT WAS NEVER PAINTED, AND THE FILING BLAMED THE WRONG LINE
+>
+> The code carried `btn.style.display = 'none'` on entering fullscreen, and that is what I filed against. **It was not the cause.** The button was a `position:fixed` **SIBLING** of the `.stage` being fullscreened, and **the browser paints only the fullscreen element's own subtree** — so it was already invisible regardless of `display`. ⛔⛔ **A line that appears to cause the effect it was written to tidy up is how a three-day-old defect keeps its cover.**
+>
+> ✅ The button is a **child of the stage** now, so it goes fullscreen with the picture; label flips to `⤢ exit fullscreen`, restyled for contrast because a switch nobody can see against her artwork is not a switch.
+>
+> ## ⭐ ③ "FIT THE AREA" WAS TWO PROBLEMS, AND THE PROSE WAS THE BIGGER ONE
+>
+> `max-height:52vh` added beside the existing `max-width:96vw`. ⛔ **It must be `max-height`, never a pinned `height`** — a max-width/max-height pair that both bite is resolved **in ratio**, whereas a pinned height is exactly the landscape-squash the fullscreen mode already had to fix once. ⭐ **And a `max-*` bound never upscales, so the 1:1 `CRYSTAL` decision survives intact.** **Where 52vh comes from is arithmetic:** ~227px above and ~220px below must stay on screen with the picture, leaving ~493px of a 940px content height; 52vh is 489.
+>
+> ⛔ **Then the other half, which was not in the filing:** **1,335 characters of prose above the frame and 2,374 below it**, on a page whose entire job is showing one image. Neither is padding — one explains the page, one is the `source:` legend. ✅ **Not one word deleted; both fold into `<details>`**, verified by string-probing five distinctive phrases through the rewrite. ⚠ **The two source lines are still over 1,200 chars and that is stated rather than hidden** — the wall metric counts source length; what changed is what the rendered page pushes at you.
+>
+> ## ⛔ ④ A SUCCESS THAT REPORTED ITSELF AS A FAILURE, FOUND WHILE READING THE LANE THAT MADE THE STUCK FRAME
+>
+> `_perceiveTextbookFigure`'s success log reads `small.w`, and `const small` is declared **inside the `if (!rec)` NETWORK branch**. On the field path the rec arrives already made, so the log threw `ReferenceError: small is not defined` — **after** the store write, the mind's-eye publish, the counter increment and the phrase-teach had all succeeded. The outer `catch` then counted a fully successful perception as `figPerceiveFails` and returned `null`.
+>
+> ⭐ **This was live on the box as `lastErr: "figure store: small is not defined"`, which reads as a storage fault and is nothing of the kind.** ⚠ **`node --check` cannot see it** — the code is syntactically perfect and only one of two paths reaches the line. ✅ Fixed to read `rec.width`/`rec.height`, which both paths carry, and to name which path ran (~50 ms vs ~7.7 s — the useful half of the message). **The reference lane was checked for the same shape and is clean.**
+>
+> ## ⚠ ⑤ REPORTED, NOT FIXED — AND BOTH ARE DELIBERATE
+>
+> - ⛔ **The box's field store is answering LFS pointer stubs** (`hit 1 · miss 6 · stub 1`; `figFieldOnlyMiss` 7 of 8 attempts). **This is the OTHER reason her eyes have had nothing new to show.** The hydration machinery already exists in `deploy/self-update.sh`. **A press, not a code change** — box work is dashboard-only.
+> - **`innerVoiceHeld` clears itself** when she banks words. **No fallback imagination seed was invented** — *empty thought = no image* is a standing decision, and inventing one would put a picture on screen that nothing in her head asked for.
+>
+> ## ⭐ WHAT TO WATCH AFTER THE NEXT PRESS
+>
+> | Field | What it tells you |
+> |---|---|
+> | `voice.wordsBucketed` leaving **0** | the inner-voice hold lifts and the mind's eye starts advancing on its own |
+> | `ownArt.lookups.lastErr` | should stop reading `figure store: small is not defined`; if a NEW string appears it names a real stage |
+> | `ownArt.lookups.figGrounded` vs `figPerceiveFails` | grounded should now climb without a matching fail on every field hit |
+> | `fields.stub` | still climbing ⟹ the box needs `git lfs pull`; the code cannot fix this |
+>
+> ---
+
+> # 🟢 2026-09-07 (10th) — THE FULL DOC SWEEP: SIXTEEN FILES, AND THE DOCUMENTS WERE LYING ABOUT THE BRAIN'S OWN SHAPE (PICK UP HERE)
 >
 > Gee (verbatim): *"full doc sweep evey bad layout post that doesnt match style every text wall every mention of my name in public facing docs pages and the like every code refrence name in public facing documents all needs cleaned up and all equations, laymans pages how tos readmes, workflows docs, tooltips everywhere(add them) and every documented capability in archeticeure brain equations readme how to all shall be updated and corrected especiallly correcting text walls that dont match the style format and beautiful layouts we want"* → *"just mass move the rubble to finalixzed with a niote"* → *"then properly write the archeteture thats fucked up"* → *"make it beautiful"* → *"now can be reset to templet.. its not a history archive and nothing in there is needed dont argue"* → *"i want you to fix the teach viewewr card on the pages pages its a fucking text wall"*
 >

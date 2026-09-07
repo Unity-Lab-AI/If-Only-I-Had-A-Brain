@@ -23,7 +23,7 @@ verified-scope: |
       git show e1d05673:docs/NOW.md
 
   This file is now what its title always claimed: a SNAPSHOT.
-last-verified: "e1d05673 2026-09-07"
+last-verified: "5698d8e1 2026-09-07 (2nd) — snapshot refreshed against the same boot (60479ed5): Ψ re-read, the stage tag re-read, and a new 'Her eyes' block added from live reads of state.ownArt, state.voice and the field-store counters. Two trap rows added, both earned the same day."
 ---
 
 # NOW — Session Snapshot
@@ -69,15 +69,30 @@ last-verified: "e1d05673 2026-09-07"
 | Cells passed | **0** |
 | Lowest grade cleared | none — still `pre-K` |
 | Teach rate | **4,645** pairs/min |
-| Current stage | `gate:probe-gpu` |
+| Current stage | `_teachAssociationPairs-done` |
 
 ⚠ **She is at the start of the road, not partway down it.** Cells-passed is the honest measure of progress, and it reads zero.
+
+### Her eyes
+
+| | | |
+|---|---:|---|
+| Things she has seen | **95** | concepts with a banked percept |
+| Shapes she can draw from | **0** | |
+| Drawings made | **0** | |
+| Mind's-eye frame age | **6 h** | ⚠ **held, and correctly so — see below** |
+| Inner voice | `held` | **24,269** skips, because **0** words are banked |
+| Precomputed field store | `1 hit · 6 miss · 1 stub` | ⛔ the stub is an **LFS pointer**, not a field |
+
+⛔ **A still mind's-eye frame is normally right, not stuck.** That screen publishes only something real she saw or drew — never the formless mood texture — and the only frame the imagination tick can ground needs words out of her inner-thought chain to aim with. **She has banked none yet**, so nothing qualifies to replace the last real picture. It will start moving on its own when she banks her first words.
+
+⛔ **The field store on the box is answering pointer stubs.** `git lfs pull` has not run there, so the figure lane misses almost everything it asks for — which is the *other* reason her eyes have had nothing new. **This is a press, not a code change**; the hydration is already in the deploy script.
 
 ### Vitals
 
 | | | |
 |---|---:|---|
-| Ψ (log scale) | **20.97** | absolute size means nothing; deviation from its own recent average is what the brain responds to |
+| Ψ (log scale) | **21.07** | absolute size means nothing; deviation from its own recent average is what the brain responds to |
 | Φ̂ | `live` | genuinely measuring and moving — it was pinned at a floor for months while looking healthy |
 | Coherence | **0.90** | the real synchrony measure, not the placeholder that preceded it |
 | Event-loop lag | **1 ms** | |
@@ -106,6 +121,8 @@ These are the traps this project has actually fallen into. Each one cost real ti
 | **A stage tag whose age climbs while its sequence stays frozen means the blocker is in unmarked code** | The tag alone is ambiguous. **The sequence number is the discriminator.** |
 | **A teach rate of zero is not necessarily a fault** | Before prose training, a cell anchors every unlearned word it uses — a serial pass that can legitimately run tens of minutes with the teach counter at zero. **Read the stage tag first.** |
 | **The GPU is not the throughput ceiling** | Utilisation sits low with essentially no queue wait, so a faster card buys idle silicon. The cost is elsewhere in the round trip. |
+| **A mind's-eye frame that stops moving is usually correct** | The viewer refuses to publish anything but a real percept, so a still frame means *nothing new qualified* — not that the eye is broken. **Read the inner-voice hold before investigating the viewer.** |
+| **An error string names where it was CAUGHT, not what failed** | A figure that was perceived, stored, published and taught reported itself as a storage failure for six hours, because the throw came from the success log at the tail of the same `try`. |
 
 ---
 
