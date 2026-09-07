@@ -9953,6 +9953,33 @@ export class Curriculum {
       // bespoke runner — the operator 2026-06-18 hybrid decision. Math stays equational;
       // lived-year stays bespoke; absent corpus trains nothing (no-op).
       if (PROSE_ACADEMIC_SUBJECTS.has(subject)) {
+        // ⛔⛔ THE ENQUEUE MOVED AHEAD OF THE PROSE, AND THE QUEUE HAD NEVER HELD
+        // A SINGLE ROW BECAUSE OF WHERE IT USED TO SIT.
+        //
+        // The background figure lane exists so that no cell pass is ever pinned
+        // by image work — the pass enqueues, a drain works through the rows at
+        // its own pace, and every illustration eventually gets seen. That design
+        // is sound. What defeated it is that the ONLY thing that enqueues,
+        // `_perceiveCellFigures`, ran AFTER the `await` below.
+        //
+        // ⛔ `_trainAcademicStories` on `ela/kindergarten` walks 411,226 words.
+        // Measured live: it holds `runner:stories` for tens of minutes and has
+        // never once completed a cell on this walk — so the enqueue line was
+        // never reached, the queue read `total 0` on a RESUMED boot (the queue is
+        // persistent sqlite, so zero is not a reset, it is *never*), the drain
+        // had nothing to drain, and her mind's eye had no source of a frame for
+        // the entire prose phase.
+        //
+        // ⚠ THE FAILURE THE QUEUE WAS BUILT TO PREVENT, ONE LAYER UP: the work
+        // came off the cell pass and the thing that FEEDS it was left behind the
+        // longest await in that same pass.
+        //
+        // ⭐ Moving it costs the teach lane nothing. The enqueue is a metadata
+        // `INSERT OR IGNORE` in one transaction — no fetch, no decode, no
+        // transform — and the drain is a separate `unref`'d timer that has always
+        // run independently. Non-fatal like every other prepended phase.
+        try { this._tstage?.('runner:fig-enqueue'); await this._enqueueCellFigures(subject, grade); this._tstage?.('runner:fig-enqueue-done'); }
+        catch (e) { if (this._hb) this._hb(`[Curriculum] _enqueueCellFigures(${subject}/${grade}) non-fatal: ${e?.message || e}`); }
         try { this._tstage?.('runner:stories'); await this._trainAcademicStories(subject, grade, ctx); this._tstage?.('runner:stories-done'); }
         catch (e) { if (this._hb) this._hb(`[Curriculum] _trainAcademicStories(${subject}/${grade}) non-fatal: ${e?.message || e}`); }
         // TEXTFIG.3 / .7 — the pictures that came with this chapter's prose.
@@ -9964,6 +9991,46 @@ export class Curriculum {
       }
       return await raw(ctx);
     };
+  }
+
+  /**
+   * Put this cell's whole figure list on the background queue.
+   *
+   * ⭐ SEPARATED FROM PERCEPTION ON PURPOSE, so it can run BEFORE the prose
+   * phase instead of after it. Enqueueing is a metadata insert — no fetch, no
+   * decode, no transform — and the drain that consumes it is an independent
+   * timer, so this is safe to do at the very top of a cell and is the only way
+   * the background lane has rows while the cell's long teach is still running.
+   *
+   * ⚠ Fails closed and never throws into the teach path. The queue accessor is
+   * attached onto the cluster by the server at boot, exactly like the figure
+   * accessor beside it; in the browser build neither exists, so both guards are
+   * `typeof` checks rather than a reach for a host object.
+   *
+   * `figs` may be passed by a caller that already has the list, to avoid asking
+   * the corpus for it twice in one pass.
+   */
+  async _enqueueCellFigures(subject, grade, figs = null) {
+    const cluster = this.cluster;
+    if (!cluster) return 0;
+    const enq = cluster.figureQueueEnqueue;
+    if (typeof enq !== 'function') return 0;
+    // ⛔ The per-visit cap governs how many are PERCEIVED INLINE, never how many
+    // are queued — the queue exists because a cap on what is queued is a ceiling
+    // on what she can ever see. `=0` disables the whole figure lane, and that
+    // must disable the queue too or the drain works on a lane the operator
+    // switched off.
+    const capRaw = (typeof process !== 'undefined' && process.env && process.env.DREAM_TEXTFIG_PER_CELL);
+    const cap = capRaw === undefined || capRaw === '' ? 6 : Math.max(0, Number(capRaw) || 0);
+    if (cap === 0) return 0;
+    let list = figs;
+    if (!Array.isArray(list)) {
+      if (typeof cluster.academicStoryFigures !== 'function') return 0;
+      try { list = cluster.academicStoryFigures(subject, grade) || []; } catch { list = []; }
+    }
+    if (!list.length) return 0;
+    try { return enq(subject, grade, list) | 0; }
+    catch { return 0; }   /* the view must never break a teach */
   }
 
   /**
@@ -10008,10 +10075,15 @@ export class Curriculum {
     try { figs = cluster.academicStoryFigures(subject, grade) || []; } catch { figs = []; }
     if (!figs.length) return { perceived: 0 };
 
-    // ⭐⭐ ENQUEUE THE WHOLE CELL FIRST, so nothing depends on how many visits
-    // this cell gets. The inline loop below still perceives the first few
+    // ⭐⭐ THE WHOLE CELL IS QUEUED, so nothing depends on how many visits this
+    // cell gets. The inline loop below still perceives the first few
     // immediately — those bind while the prose is freshest — and the background
     // lane works through the remainder at its own pace.
+    //
+    // ⛔ THE QUEUEING NOW HAPPENS AT THE TOP OF THE CELL, NOT HERE. "First" was
+    // only ever first within THIS method, and this method runs after the cell's
+    // multi-hour prose phase — so the rows arrived, if at all, long after the
+    // lane that needed them had gone hungry. See `_enqueueCellFigures`.
     //
     // ⛔ THE CAP WAS A CEILING ON WHAT SHE CAN EVER SEE, NOT A COST CONTROL.
     // Measured: 37,592 figures on disk, and at 6 per visit `math/grade10` needed
@@ -10021,10 +10093,13 @@ export class Curriculum {
     //
     // ⚠ The enqueue is a metadata insert and is idempotent on the figure's own
     // address, so re-teaching a cell costs nothing and cannot duplicate.
-    const enq = cluster.figureQueueEnqueue;
-    if (typeof enq === 'function') {
-      try { enq(subject, grade, figs); } catch { /* the view must never break a teach */ }
-    }
+    // The enqueue itself now lives in `_enqueueCellFigures`, which the runner
+    // calls BEFORE the prose phase — see the note at that call site for why the
+    // old placement meant the queue never received a row. It is still called
+    // here so this method remains correct when invoked on its own; the DB insert
+    // is `INSERT OR IGNORE` on each figure's own address, so the second call in
+    // a pass adds nothing and cannot duplicate.
+    await this._enqueueCellFigures(subject, grade, figs);
 
     // ⛔⛔ A RESUME CURSOR, BECAUSE "TAKEN IN ORDER SO A RE-VISIT RESUMES" WAS
     // WHAT THE COMMENT SAID AND NOT WHAT THE CODE DID (fixed 2026-09-02).

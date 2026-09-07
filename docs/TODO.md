@@ -2105,5 +2105,17 @@ Found by reading the deployed box after the board cleanup, not by being told. **
 
 ⚠ **Two things were reported and deliberately NOT fixed, and they are in the ledger entry rather than left open here:** the box's field store is answering **LFS pointer stubs** (a press, not a code change — box work is dashboard-only), and `innerVoiceHeld` clears itself once she banks her first words, so **no fallback imagination seed was invented** — *empty thought = no image* is a standing decision.
 
+---
+
+## FIGORDER — the figure queue has never held a single row, because the enqueue sits behind the hours-long prose phase — filed 2026-09-07
+
+✅ **CLOSED THE DAY IT WAS FILED, TOGETHER WITH `FIELDHYDRATE`.** Both rows' verbatim text — Gee's two instructions, the post-press live reads, and each `Original filing:` — was archived to **`docs/FINALIZED.md §2026-09-07 (3rd)`** and **string-probed 10/10 present** before one line was removed from this board.
+
+⭐ **The defect was confirmed reproducing in real time while the fix was being written:** sampled every 55 s across the press, `figureQueue.total` read **0** for the whole window on a cell she had been inside since boot, while `prevocab:ela-kindergarten` climbed 1/662 → 49/662 chunks at 0.127 chunks/s — roughly **80 minutes of prefetch still ahead of the anchoring pass**, which is itself ahead of the prose phase, which is ahead of where the enqueue used to sit.
+
+⚠ **One row reported and deliberately NOT fixed, recorded in the ledger:** with git-lfs present, `UAL_FIELDS=0` and a failing pull, the operator's opt-out loses to the failure. **That was true before this change too** — changing more of a deploy script than the defect requires is how a press turns into an incident.
+
+⛔ **Both fixes need TWO presses to take full effect** — the deploy half runs the BOX's copy of `self-update.sh`, so it lands on the press after the one that delivers it.
+
 
 

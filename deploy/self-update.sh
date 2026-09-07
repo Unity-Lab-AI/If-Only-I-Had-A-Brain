@@ -761,6 +761,19 @@ _corpus_ok=0
 # minutes instead of hours, at the price of live-transforming figures during the
 # walk. Default stays 1 so nothing changes for a box that wants them.
 _want_fields="${UAL_FIELDS:-1}"
+# ⛔ THE OPERATOR'S SWITCH IS RECORDED SEPARATELY FROM THE DERIVED ONE. Below,
+# a missing git-lfs also drives `_want_fields` to 0 — so by the time anything
+# downstream reads it, "he asked us not to" and "we cannot" are the same value.
+# They are NOT the same decision: the first must be obeyed, and the second is
+# exactly the case the credential-free local-store hydration exists to cover.
+# Collapsing them is how that hydration ended up unreachable.
+#
+# ⚠ An explicit `if`, not `[ … ] && _x=1`. Bash does exempt a failing left-hand
+# side of an AND-list from `set -e` (probed, it survives), but that exemption is
+# a shell detail nobody should have to know to read a deploy script that runs
+# under `set -euo pipefail`.
+_fields_opt_out=0
+if [ "${UAL_FIELDS:-1}" = "0" ]; then _fields_opt_out=1; fi
 # ⛔⛔ git-lfs IS NOT A PRECONDITION FOR THE BOOKS, AND GATING THEM ON IT WAS A
 # BRICK WAITING TO HAPPEN. `BrainWaves/.gitattributes` LFS-tracks exactly two
 # patterns — `*.field.json` and (historically) the GloVe table. EVERY corpus JSON
@@ -1269,13 +1282,37 @@ else
     # costs exactly what it should and nothing more. Its own log line has to say
     # that out loud — a bare "lfs pull failed" beside an aborted press is what
     # sends someone hunting the corpus for a problem that was never in it.
-    if ! _lfs_pull; then
-      _fkept="$(_count "$FIELDS_DIR" \( -name '*.field.json' -o -name '*.field.json.gz' \))"
-      log "WARN — git lfs pull FAILED or was unavailable. ${_fkept} fields already on the box are LEFT UNTOUCHED. ⭐ THE BOOKS ABOVE ARE UNAFFECTED — they are plain git blobs and landed with the clone. This does not block the press."
-      # ⭐⭐ THE FIELDS STILL ARRIVE, FROM FORGEJO'S OWN STORE ON THIS DISK.
-      # This is the whole point of the block above: LFS speaks HTTP and we have
-      # no credential, but the objects are local files named by their OID and the
-      # pointers we just checked out carry those OIDs.
+    # ⛔⛔ THE LOCAL-STORE HYDRATION IS A FUNCTION NOW, BECAUSE AS AN INLINE BLOCK
+    # IT WAS UNREACHABLE IN THE ONE CASE IT WAS WRITTEN FOR.
+    #
+    # It used to live only inside `if ! _lfs_pull; then`. But `_lfs_pull` RETURNS
+    # 0 when git-lfs is absent — deliberately, and for a good reason stated in its
+    # own comment: its exit status decides whether the books are rsynced, and the
+    # books must never be lost over an optional payload. The consequence was that
+    # on a box with no git-lfs the flow read:
+    #
+    #     _have_lfs=0  ->  _want_fields=0
+    #     _lfs_pull    ->  returns 0 (success)
+    #     ! _lfs_pull  ->  FALSE, so the hydration branch is skipped
+    #     elif [ "$_want_fields" != "1" ]  ->  TRUE
+    #     log "field sync SKIPPED — no git-lfs on this box"
+    #
+    # ⛔ So the credential-free path — the one that needs no git-lfs, no network
+    # and no deploy key, and exists precisely because those are unavailable — was
+    # gated behind git-lfs having tried and failed. **A fallback whose trigger is
+    # a failure cannot fire when the thing that would fail is never attempted.**
+    # And the premise was already written down thirty lines up: *"NOTHING ON THIS
+    # BOX PROVISIONS git-lfs."*
+    #
+    # ⚠ Measured on the deployed box 2026-09-07: `fields hit 1 · miss 6 · stub 1`
+    # with `lastErr "LFS pointer stub — git lfs pull has not run for the field
+    # store"`, against a corpus of 102,372 figures of which 101,002 are reachable
+    # and NO cell has zero. The fields were never arriving on their own.
+    #
+    # ⭐ A checkout with no git-lfs filter writes POINTERS, which is exactly the
+    # input this needs — so the absent tool costs nothing here except the branch
+    # that used to reach it.
+    _hydrate_fields_from_local_store() {
       _lfs_store="$(_search_lfs_store || true)"
       if [ -z "$_lfs_store" ]; then
         log "WARN — could not find (or read) Forgejo's LFS object store on this box, so the field payloads cannot be hydrated from disk either. Every figure without a field is transformed live. ⚠ If Forgejo's data directory is mode 0700 and owned by another user, this is a PERMISSIONS result, not an absence — say so rather than assuming the fields are gone."
@@ -1303,17 +1340,32 @@ $( { find "$FTMP/bw/fields" -name '*.field.json' -type f 2>/dev/null || true; } 
 EOF
         log "fields — hydrated ${_fh} from the local store, ${_fs} already present, ${_fm} unresolved. ⚠ The unresolved ones are transformed live; that is the documented non-fatal path and not a failed press."
       fi
-    elif [ "$_want_fields" != "1" ]; then
+    }
+
+    if ! _lfs_pull; then
       _fkept="$(_count "$FIELDS_DIR" \( -name '*.field.json' -o -name '*.field.json.gz' \))"
+      log "WARN — git lfs pull FAILED or was unavailable. ${_fkept} fields already on the box are LEFT UNTOUCHED. ⭐ THE BOOKS ABOVE ARE UNAFFECTED — they are plain git blobs and landed with the clone. This does not block the press."
+      _hydrate_fields_from_local_store
+    elif [ "$_fields_opt_out" = "1" ]; then
+      # ⭐ THE OPERATOR'S OWN SWITCH — OBEYED, AND NOTHING ELSE IS ATTEMPTED.
+      # This is the one branch that must not reach for the local store: he asked
+      # for a press that costs minutes, and hydrating 114 GB off local disk
+      # behind his back is not honouring that.
+      _fkept="$(_count "$FIELDS_DIR" \( -name '*.field.json' -o -name '*.field.json.gz' \))"
+      log "field sync SKIPPED (UAL_FIELDS=0) — ${_fkept} fields already on the box are LEFT UNTOUCHED; every figure without one is transformed live."
+    elif [ "$_want_fields" != "1" ]; then
       # ⚠ THE REASON IS NAMED. "UAL_FIELDS=0" and "this box has no git-lfs" are
       # different facts with different fixes, and a log line that reports the
       # operator's own switch when the real cause is a missing tool sends whoever
-      # reads it looking in the wrong place.
-      if [ "$_have_lfs" != "1" ]; then
-        log "field sync SKIPPED — no git-lfs on this box, so the source tree holds POINTER STUBS, not fields. ${_fkept} fields already on the box are LEFT UNTOUCHED (mirroring stubs over them would destroy the store); every figure without one is transformed live."
-      else
-        log "field sync SKIPPED (UAL_FIELDS=0) — ${_fkept} fields already on the box are LEFT UNTOUCHED; every figure without one is transformed live."
-      fi
+      # reads it looking in the wrong place. The opt-out is handled above, so
+      # reaching here means the tool is missing and nobody asked us to skip.
+      _fkept="$(_count "$FIELDS_DIR" \( -name '*.field.json' -o -name '*.field.json.gz' \))"
+      log "no git-lfs on this box, so the source tree holds POINTER STUBS, not fields. The RSYNC is skipped — mirroring stubs over ${_fkept} real fields would destroy the store. ⭐ HYDRATING FROM FORGEJO'S LOCAL OBJECT STORE INSTEAD, which needs no git-lfs, no network and no credential."
+      # ⛔ THIS IS THE CALL THAT WAS MISSING. It is safe precisely where the
+      # rsync is not: the copy is per-file and skips any destination already at
+      # full size, so it can only ADD fields — it can never overwrite a real one
+      # with a stub, which is the hazard that made the rsync unsafe here.
+      _hydrate_fields_from_local_store
     elif _fields_rsync; then
       # ⚠ BOTH ENCODINGS COUNTED. Fields are written gzipped now, and a glob
       # anchored to the old name reported a healthy sync as zero fields — the
