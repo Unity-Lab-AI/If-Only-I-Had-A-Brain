@@ -57,15 +57,48 @@ verified-scope: |
 last-verified: "f06ea30e 2026-08-31"
 ---
 
-# ADMIN CONTROLS — dashboard Stop / Restart / Reset, and the one-backend model
+# ADMIN CONTROLS — the power buttons, the knobs, and the one-backend model
+
+## ⛔ IF YOU ARE HERE IN A HURRY
+
+| You want to | Go to |
+|---|---|
+| **Press a button and know what it destroys** | [The three admin-only buttons](#the-three-admin-only-buttons-htmldashboardhtml) |
+| Understand why the site and the server are **not two brains** | [There is ONE backend, not two](#there-is-one-backend-not-two) |
+| Roll back to a checkpoint | [Checkpoints, versioning & rollback](#checkpoints-versioning--rollback) |
+| Re-teach one cell without a reset | [Live single-cell re-teach](#live-single-cell-re-teach-no-reset) |
+| Find an endpoint this page used to omit | [The seven loopback-gated endpoints](#the-seven-loopback-gated-endpoints) |
+| Change how she trains | [Training defaults](#-training-defaults-you-can-set--serverknob-defaultsjson) · [Env knobs that change TRAINING](#-env-knobs-that-change-training) · [Full `DREAM_*` reference](#-complete-dream_-reference--the-other-139) |
+| Press something from the teach viewer | [The presses are in the teach viewer too](#-the-presses-are-in-the-teach-viewer-too--htmlteachviewhtml) · [The knobs are on screen](#-the-knobs-are-on-screen--htmlteachviewhtml) |
+| Read the dashboard correctly | [Reading the training card](#-reading-the-training-card-and-the-memory-lane) · [Application Profiling](#-application-profiling-section-admin-only--stateprofiling) |
+| Deploy the unit file | [systemd unit requirements](#systemd-unit-requirements-box) |
+
+> ⛔⛔ **THE ONE THING TO KNOW BEFORE PRESSING ANYTHING.** The deployed website and the brain server are **one backend**, not two — there is no second brain to fall back on. And **the state wipe at boot is unconditional**: the ordinary start path always boots FRESH, and only the save-start path resumes. **Pressing the wrong one costs the entire run.**
 
 > Clarifies what the admin-only dashboard power buttons actually control, how
 > the "deployed website" and "the server" relate (they are NOT two brains), and
-> the #112.10 fix that makes **Stop** truly stop.
+> the fix that makes **Stop** truly stop.
 >
 > Last updated: **2026-08-20** (🔁 Savererun now clears **passedPhases** too — it was re-walking cells while skipping the phases inside them; plus the env-flag reference table).
 >
-> **Re-verified 2026-08-27 (DOCPROV.4, 5 of 22).** ⭐ **THE ENV-FLAG TABLE IS EXACT, and that is the headline** — every `DREAM_*` flag referenced in `server/`, `js/` and `scripts/` was enumerated and diffed against every flag named on this page: **194 in the code, 194 on the page, zero difference in EITHER direction.** ⛔ **That result is worth stating loudly because a 194-row table is precisely where drift is invisible** — nobody re-reads it, and this project's worst doc failures have all been lists that quietly stopped matching. This one had not. ⚠ **Two apparent gaps were investigated and BOTH were mine, not the page's:** (1) `DREAM_WANT_BROWSER_GPU` appears in the launchers but not here — it is a **batch-script local**, set from `start.bat /browser` and consumed by the same `.bat` to decide `DREAM_NO_AUTO_GPU`; **node never reads it**, so a server env reference correctly excludes it, and the `DREAM_` prefix made it merely *look* like one. (2) A route sweep reported `/update` as documented-but-nonexistent — it exists at `:8875`, dispatched as `req.url.split('?')[0] === '/update'`, a shape the first pattern did not match. ⭐ **What the sweep DID find: seven loopback-gated endpoints this page never listed, including `/grade-advance` — the endpoint that bypasses the LAW-6 operator signoff gate.** They now have their own section. ⚠ **Only one of the three sources had actually moved** (`js/brain/curriculum.js`, +18 lines — the `GOTCHA.2` spike-clear fix), and it **strengthens** rather than contradicts the `teachOps` row below, since it removes up to 24 bogus wire frames per clear from the very counter that row tells you to trust.
+> ### ⭐ The env-flag table below is EXACT, and that is the headline
+>
+> Every `DREAM_*` flag referenced anywhere in `server/`, `js/` and `scripts/` was enumerated and diffed against every flag named on this page:
+>
+> ```
+>   194 in the code   ·   194 on the page   ·   zero difference in EITHER direction
+> ```
+>
+> ⛔ **Worth stating loudly, because a 194-row table is exactly where drift is invisible.** Nobody re-reads it, and **this project's worst documentation failures have all been lists that quietly stopped matching.** This one had not.
+>
+> ⚠ **Two apparent gaps were investigated and both were the auditor's error, not the page's:**
+>
+> - `DREAM_WANT_BROWSER_GPU` appears in the launchers but not here. It is a **batch-script local** — set by the launcher and consumed by the same launcher; **node never reads it.** A *server* env reference correctly excludes it, and the `DREAM_` prefix merely made it look like one.
+> - A route sweep reported `/update` as documented-but-nonexistent. **It exists** — dispatched by an exact-path comparison the sweep's pattern did not match.
+>
+> ⭐ **What the sweep DID find:** seven loopback-gated endpoints this page had never listed — **including the one that bypasses the operator signoff gate entirely.** They now have [their own section](#the-seven-loopback-gated-endpoints).
+>
+> ⚠ **Only one of the three sources had actually moved since the last check**, and it *strengthens* the `teachOps` row below rather than contradicting it: it removes up to 24 bogus wire frames per clear from the very counter that row tells you to trust.
 
 ---
 
@@ -223,7 +256,7 @@ neurons). Restart (exit 0) and crashes still auto-revive.
 
 ---
 
-## Checkpoints, versioning & rollback (#112.11)
+## Checkpoints, versioning & rollback
 
 The brain **auto-checkpoints every 5 minutes** while running (plus forced saves on
 each passed cell / grade-advance / clean shutdown), and **resumes** from the latest
@@ -254,7 +287,9 @@ previous checkpoint was INCOMPATIBLE"** banner (from the persisted
   Routine changes (telemetry, UI, donor lane) must NOT bump it (it forces a fresh start
   that discards trained weights).
 
-## The seven loopback-gated endpoints this page did NOT list — added 2026-08-27
+## The seven loopback-gated endpoints
+
+> ⚠ **This page did not list any of these for a long time.** An operational reference that omits seven live endpoints is not incomplete — it is **wrong about what exists**, which is worse.
 
 ⛔ **A page titled ADMIN CONTROLS was missing the grade-advance and auto-advance
 endpoints** — both admin-only, both brain-mutating, both wired to dashboard buttons
@@ -411,7 +446,7 @@ ping-stamp). All reads defensive — missing sources degrade to `—`, never thr
 
 ---
 
-## 🔑 TWO POLLINATIONS LANES, TWO WALLETS (2026-08-25)
+## 🔑 Two image lanes, two wallets
 
 ⛔ **The rule, because this is the thing to get wrong:** the brain's own Pollinations use and a visitor's chat image are **separate lanes with separate keys**, and neither may ever spend the other's pollen.
 
@@ -430,7 +465,9 @@ ping-stamp). All reads defensive — missing sources degrade to `—`, never thr
 
 ---
 
-## ✅ THE FIVE DARK INSTRUMENTS — now rendered (fixed 2026-08-25)
+## ✅ The five instruments that were computed and never rendered
+
+> ⭐ **This is the defect class that costs this project the most, so it has its own section.** A value can be produced correctly, every tick, and be **read by nothing** — and the dashboard renders state *by name*, so a published field with no row ships dark while a rendered field with no producer prints a reassuring default. **Adding the row is not the check; proving the field arrives is the check.**
 
 **All five below are now on the board.** Kept as a section rather than deleted, because *how* they were dark is the reusable lesson, and because the rendering rule at the top is the thing that makes this class of defect findable at all.
 
@@ -460,7 +497,7 @@ ping-stamp). All reads defensive — missing sources degrade to `—`, never thr
 
 ---
 
-## 📚 Reading the training card and the memory lane (2026-08-31)
+## 📚 Reading the training card and the memory lane
 
 Two state blocks changed meaning on the fresh walk, and both are easy to misread.
 
@@ -476,7 +513,7 @@ Two state blocks changed meaning on the fresh walk, and both are easy to misread
 
 ---
 
-## 🔄 THE PRESSES ARE IN THE TEACH VIEWER TOO — `html/teachview.html` (2026-09-04)
+## 🔄 The presses are in the teach viewer too — `html/teachview.html`
 
 ⭐⭐ **Four of the presses above are now also in the Teach View**, on the **same routes and the same `requireLoopback` gate** — `POST /restart`, `POST /update?keep=1`, `POST /savererun`, `POST /update`. ⛔ **Nothing new was invented and there is no second deploy path.** The box still deploys by pressing a button; this is the same button in a second place.
 
@@ -499,7 +536,7 @@ Two state blocks changed meaning on the fresh walk, and both are easy to misread
 
 ---
 
-## 🎛 THE KNOBS ARE ON SCREEN NOW — `html/teachview.html` (2026-09-02)
+## 🎛 The knobs are on screen — `html/teachview.html`
 
 ⭐⭐ **Every knob below, and every knob in the complete reference beneath it, is now rendered live in the Teach View's Training-knobs card** — with its **current value**, its **default**, whether the **environment overrides it**, its **read site**, and a tooltip carrying all of that plus the evidence behind its effect class. `server/knob-registry.js` → `state.knobs` → the card.
 
@@ -519,7 +556,7 @@ Two state blocks changed meaning on the fresh walk, and both are easy to misread
 
 > ⭐ **SUPERSEDED 2026-09-03/04, kept for the reasoning.** The precondition was met: the write lane shipped (`POST /knob`, loopback-gated, a boot-frozen knob refused with a 409 rather than accepted silently), and **the defaults lane below now covers the boot-frozen knobs the live lane correctly refuses.**
 
-## ◎ TRAINING DEFAULTS YOU CAN SET — `server/knob-defaults.json` (2026-09-04)
+## ◎ Training defaults you can set — `server/knob-defaults.json`
 
 Settable training defaults, per knob, that survive a restart.
 
@@ -555,7 +592,7 @@ Settable training defaults, per knob, that survive a restart.
 
 ⚠ **The walk-bounding knobs (`DREAM_PHASE_BUDGET_MS`, `DREAM_STRUCTURE_DOSE`, the consolidation gate) may carry a default like any other**, by operator ruling. There is no pre-save re-price gate. **The boot announcement is what surfaces it** — a gate knob carrying a default is named at every boot, so a change to how long the walk takes is flagged rather than silent. `CONSTRAINTS.md §RE-PRICE THE WALK BEFORE REMOVING A GATE` still applies to the person setting it.
 
-## 🎛 Env knobs that change TRAINING (2026-08-20)
+## 🎛 Env knobs that change TRAINING
 
 Every one of these is opt-in with a stated default. **The buttons above are the normal
 way to drive the box** — these exist for a diagnostic run or a deliberate one-off, and
@@ -622,10 +659,10 @@ each is listed with what it actually costs.
 | `DREAM_PERCEPT_GROUND_MAX_QUEUE` | **16** | Cap on percept-grounding jobs waiting for the chat-teach drain. Grounding is DEFERRED rather than dropped mid-walk: injecting a percept into `sem` while a teach pattern is in flight corrupts the pattern, so it waits for the gap between teach calls. ⛔ **This row said `200` until 2026-09-02; the code reads `|| 16`** — off by 13×. ⚠ **And the queue's real over-cap rule is DROP-AND-COUNT, not defer** — a percept that cannot find room is dropped and counted, because a stale percept is worth less than a fresh one and this queue must never become the thing that pins the walk |
 | `DREAM_OWNART_INGEST_WALK_MS` | **60000** | How often the schema-learn may run DURING the walk (idle runs use 5s). ⛔ The gate used to be idle-only — **and she is never idle**, so it never ran. A cost gate that resolves to "never" is a deletion, not a bound; this is the mid-walk allowance that fixed it |
 | `DREAM_REL_USE_MIN_MARGIN` | **0.15** | `VMUSE.5` — how far the winning relation band must lead the runner-up, as a fraction of its own score, before a relation is treated as KNOWN. Below it the read reports `flat` and every consumer gets `null`. ⚠ Lowering this does not make her know more; it makes her act on noise |
-| `DREAM_REP_COMPRESS` | **40** ⭐ *(re-measured, `REPCOMP.5` 2026-09-01 — was 5)* | **THE NUMBER WAS MEASURED, NOT CHOSEN.** Gee: *"you need to find out what the compress number needs to be"*. The experiment ran the **real `SparseMatrix` and real `ojaUpdate`**, scoring **RETRIEVAL ACCURACY** — given a pre pattern, does the correct post still win the argmax against every other candidate. ⛔ **That metric matters because the aggregate MARGIN is preserved at every compression (1.908 → 1.911) while retrieval can still collapse** — margin alone would have green-lit a setting that destroys recall. The governing variable is **collision load** = `P·K²/COLS` (how many other patterns share a pre cell); production is `7,250 × 64 / 1,885,340` = **0.246**. Results — `load: 5× / 8×` → `25.0: 95.5%/78.5%` · `6.25: 100%/89.5%` · `1.56: 100%/95.5%` · **`0.391 (1.6× harder than production): 100%/99.0%`**. **5× holds at 100% from 25× the production load downward**; 8× is worse at every level for 1.6× more speed. ⚠ The first run of the experiment used 500 pairs in 1024 columns — collision load 31, **127× production** — and reported 5× at 48.8%; quoting that would have killed a good change, because a model harsher than production answers a different question. Effect: **100 reps @ 0.03 → 20 reps @ 0.1413**, same 95.24% asymptote. `=1` restores the authored form exactly. ⭐ `REPCOMP.1` (2026-08-30) — teach the same lesson in **fewer, bigger steps**, at the `_teachAssociationPairs` chokepoint so it reaches EVERY caller. Gee: *"do we really need to do 100s of reps for everything? shes a real brain simulation, real people dont need to do something 100s of times to learn it"*. ⛔ **This is NOT `STRUCTURE_DOSE`, and the difference is the whole point.** Oja with binary spikes is `w = w(1-lr) + lr·x`, so n reps reach `x·(1-(1-lr)ⁿ)`: **100 @ 0.03 → 95.2%**, but **20 @ 0.03 → only 45.6%** — scaling reps alone deletes half the training, which is exactly why the earlier `STRUCTURE_DOSE=0.4` was reverted. This solves for the lr that lands the **same asymptote**: **20 @ 0.1413 → 95.2%, identical**. ⭐ Rationale from the code's own record: *"the authored 100/80/60 were tuned when the language cortex was 349K–1.5M"* — it is **15,082,717** now, so the rep count was fitted to a brain 10–43× smaller and never re-derived. The count was never a biological quantity; it is an integration step count. ⚠ **The risk is INTERFERENCE, not convergence** — reps run rep-major and that interleaving is what stops pair 7,250 flattening pair 1; bigger steps disturb shared weights more per write. **Unmeasured, which is why it ships OFF.** Watch `separability` / basin-separation margins after enabling |
+| `DREAM_REP_COMPRESS` | **40** ⭐ *(re-measured, `REPCOMP.5` 2026-09-01 — was 5)* | **THE NUMBER WAS MEASURED, NOT CHOSEN.** Operator instruction: *"you need to find out what the compress number needs to be"*. The experiment ran the **real `SparseMatrix` and real `ojaUpdate`**, scoring **RETRIEVAL ACCURACY** — given a pre pattern, does the correct post still win the argmax against every other candidate. ⛔ **That metric matters because the aggregate MARGIN is preserved at every compression (1.908 → 1.911) while retrieval can still collapse** — margin alone would have green-lit a setting that destroys recall. The governing variable is **collision load** = `P·K²/COLS` (how many other patterns share a pre cell); production is `7,250 × 64 / 1,885,340` = **0.246**. Results — `load: 5× / 8×` → `25.0: 95.5%/78.5%` · `6.25: 100%/89.5%` · `1.56: 100%/95.5%` · **`0.391 (1.6× harder than production): 100%/99.0%`**. **5× holds at 100% from 25× the production load downward**; 8× is worse at every level for 1.6× more speed. ⚠ The first run of the experiment used 500 pairs in 1024 columns — collision load 31, **127× production** — and reported 5× at 48.8%; quoting that would have killed a good change, because a model harsher than production answers a different question. Effect: **100 reps @ 0.03 → 20 reps @ 0.1413**, same 95.24% asymptote. `=1` restores the authored form exactly. ⭐ `REPCOMP.1` (2026-08-30) — teach the same lesson in **fewer, bigger steps**, at the `_teachAssociationPairs` chokepoint so it reaches EVERY caller. Operator instruction: *"do we really need to do 100s of reps for everything? shes a real brain simulation, real people dont need to do something 100s of times to learn it"*. ⛔ **This is NOT `STRUCTURE_DOSE`, and the difference is the whole point.** Oja with binary spikes is `w = w(1-lr) + lr·x`, so n reps reach `x·(1-(1-lr)ⁿ)`: **100 @ 0.03 → 95.2%**, but **20 @ 0.03 → only 45.6%** — scaling reps alone deletes half the training, which is exactly why the earlier `STRUCTURE_DOSE=0.4` was reverted. This solves for the lr that lands the **same asymptote**: **20 @ 0.1413 → 95.2%, identical**. ⭐ Rationale from the code's own record: *"the authored 100/80/60 were tuned when the language cortex was 349K–1.5M"* — it is **15,082,717** now, so the rep count was fitted to a brain 10–43× smaller and never re-derived. The count was never a biological quantity; it is an integration step count. ⚠ **The risk is INTERFERENCE, not convergence** — reps run rep-major and that interleaving is what stops pair 7,250 flattening pair 1; bigger steps disturb shared weights more per write. **Unmeasured, which is why it ships OFF.** Watch `separability` / basin-separation margins after enabling |
 | `DREAM_REP_COMPRESS_MIN_DOSE` | **6** | `REPCOMP.4` — only doses of at least this many authored reps are compressed. ⛔ Added on the FIRST live boot after `REPCOMP.3`, from the box's own log: `[ARTWEIGHT-STRUCTURE] REPCOMP.1 — 4 reps → 1 reps × lr 0.1147`. The arithmetic was right (asymptote preserved exactly) but the **regime was never validated** — retrieval was measured at the 100-rep scale, and collapsing a 4-rep dose to ONE presentation is a different question, because at `n=1` there is no interleaved reinforcement left and a pair writes once with no chance to re-assert against later interference. ⭐ **And compressing small doses buys nothing** — the cost is entirely in the big calls (7,250 pairs × 100 reps against ARTWEIGHT's 24 × 4), so skipping them costs no measurable wall clock and removes an unvalidated regime |
 | `DREAM_REP_COMPRESS_FLOOR` | **4** | `REPCOMP.4` — never compress below this many presentations, whatever `DREAM_REP_COMPRESS` asks for, so the rep-major interleaving that stops pair 7,250 flattening pair 1 always survives. ⚠ **That note described the old 5× setting. At the shipped 40× this floor BINDS on almost everything** — it is now the reason nearly every site lands on exactly 4 presentations rather than fewer. Live table (authored → effective, deposit unchanged): 200→**7** (HI tier, ceiling-limited), 150→**5**, 100→**4**, 80→**4**, 60→**4**, 40→**4**, 24→**4**, 12→**4**, 8→**4**, 6→**4**, ≤5 untouched. ⭐ **Worst case anywhere in the tree is 7, and every other site is 4–5** |
-| `DREAM_REP_COMPRESS_LR_CEIL` | **0.60** | Stability ceiling for the above. ⛔ If the required lr would exceed it the **compression is reduced, never the lr clamped** — clamping would silently deliver less training than authored, i.e. the exact cut this is designed not to be. ⭐ **RAISED 0.35 → 0.60 on 2026-09-01 (`REPCOMP.5`), and 0.60 is where the measurement stopped it.** Gee: *"we adjust the fucking nobs so that we only have to do no more than 5 reps for any and everything"*. `_teachConcreteSentences` multiplies its dose by tier, so the real authored doses are 100/150/200; forcing each to five presentations measured **LOW 100% · MID 100% · HI 93.8%** at production collision load — **the HI tier BREAKS at the lr 0.7043 it would need**, because one write dominates a row before the decay term answers. 0.60 is the highest ceiling measured clean (MID at lr 0.599 = 100%), landing LOW/MID at **5** and backing HI off to **7**. ⚠ Raising it further to force HI to 5 trades ~6% retrieval for two presentations |
+| `DREAM_REP_COMPRESS_LR_CEIL` | **0.60** | Stability ceiling for the above. ⛔ If the required lr would exceed it the **compression is reduced, never the lr clamped** — clamping would silently deliver less training than authored, i.e. the exact cut this is designed not to be. ⭐ **RAISED 0.35 → 0.60 on 2026-09-01 (`REPCOMP.5`), and 0.60 is where the measurement stopped it.** Operator instruction: *"we adjust the fucking nobs so that we only have to do no more than 5 reps for any and everything"*. `_teachConcreteSentences` multiplies its dose by tier, so the real authored doses are 100/150/200; forcing each to five presentations measured **LOW 100% · MID 100% · HI 93.8%** at production collision load — **the HI tier BREAKS at the lr 0.7043 it would need**, because one write dominates a row before the decay term answers. 0.60 is the highest ceiling measured clean (MID at lr 0.599 = 100%), landing LOW/MID at **5** and backing HI off to **7**. ⚠ Raising it further to force HI to 5 trades ~6% retrieval for two presentations |
 | `DREAM_JPEG_MAX_MB` | **2048** | `maxMemoryUsageInMB` handed to the JPEG decoder. ⛔ **The library's own default of 512 was refusing real corpus figures and reporting it as a decode failure** — `decode failed: maxMemoryUsageInMB limit exceeded` records as *undecodable*, which reads as a broken file rather than as a ceiling we chose. **Measured: 11 of 30 corpus figures refused at 512.** Env-tunable so a small box can put it back without editing code |
 | `DREAM_PROBE_DEADLINE_MS` | **20000** (20s) | A CALLER-OWNED deadline on `_probePropagate`, applied by `Promise.race` at both the gate-probe and GPU-proxy-fallback sites. ⛔ **A timeout inside the thing that can hang cannot bound it** — the awaited call is what stops returning, so the bound has to live outside it. This is what turned a walk-stopping wedge into a logged, recoverable decline; `probeDeadlineHits` counts them |
 | `DREAM_WEDGE_WARN_MS` | **600000** (10min) | Above this, the CELL ALIVE heartbeat prints ONE diagnostic line carrying stage + age, whether `hebbian.calls` is frozen or advancing since the last check, whether `teachStageSeq` is frozen or advancing, the active phase, substrate readiness, donor-pause reason and probe-deadline hits. ⭐ **The rule it enforces: a cell that is ALIVE and not TEACHING is a different state from a cell that is working, and the two must not print the same line** — the stall it was built for printed a placeholder 52 times and named nothing. ⚠ Set well past the slowest legitimate single teach call ever measured here (**380,470 ms** over 7,250 corpus pairs) so a slow phase never trips it |
