@@ -1338,7 +1338,35 @@ else
     # at full size, so it is incremental by construction: each press hydrates
     # another batch and the remainder waits. A field that has not arrived is
     # transformed live — the documented non-fatal path.
+    # ⛔⛔⛔ DEFAULT OFF AS OF 2026-09-07, AFTER ITS FIRST REAL RUN COINCIDED WITH A
+    # 20-MINUTE OUTAGE. Making this reachable was correct — the fields genuinely
+    # never arrive without it — and turning it on by default was NOT, because
+    # this loop copies up to ~100k files and ~114 GB **inside the brain's own
+    # cgroup**, and the page-cache hazard recorded in REDEPLOY-NOTES applies to
+    # every byte of it.
+    #
+    # Observed the first time it ran: the brain answered `/health` 200 and
+    # `/ctl/status` in 0.16s while `/public-state.json` timed out for 20+
+    # minutes — the exact listening-but-not-answering signature that hazard
+    # produces, and past the ~15 min a savestart-resume is allowed. ⚠ NOT PROVEN
+    # to be the cause (that signature is also a normal long resume, and it cannot
+    # be told apart from outside), but the boot 4 minutes earlier answered state
+    # in 2.5 minutes and the only difference was this loop.
+    #
+    # ⭐ SO IT IS OPT-IN UNTIL IT RUNS SOMEWHERE THAT IS NOT HER MEMORY BUDGET.
+    # The fields are non-fatal by design — a missing one is transformed live —
+    # and the brain being unreachable is not. That asymmetry decides the default.
+    # The structural fix is already named in REDEPLOY-NOTES and is NOT done: the
+    # data sync belongs in its OWN cgroup with its OWN MemoryMax. Everything here
+    # is a safety net around a deploy that shares her memory budget.
+    #
+    # `UAL_FIELDS_HYDRATE=1` runs it. Do that once the sync is out of her cgroup,
+    # or on a box where nothing is served from the same budget.
     _hydrate_fields_from_local_store() {
+      if [ "${UAL_FIELDS_HYDRATE:-0}" != "1" ]; then
+        log "fields — local-store hydration is OFF by default (UAL_FIELDS_HYDRATE=1 enables it). The copy runs inside the brain's cgroup and can throttle her through page cache alone; its first run coincided with a 20-minute listening-but-not-answering outage. Every figure without a field is transformed live, which is the documented non-fatal path. ⭐ The real fix is to run the data sync in its own cgroup with its own MemoryMax — see REDEPLOY-NOTES."
+        return 0
+      fi
       _hyd_max="${UAL_FIELDS_HYDRATE_MAX_SEC:-480}"
       _hyd_started="$(date +%s)"
       # Explicit `if`, not `cmd && var=…`, for the reason given at `_fields_opt_out`.
