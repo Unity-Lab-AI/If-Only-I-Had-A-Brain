@@ -1372,12 +1372,30 @@ function tvBench(st, series) {
   // ── IS SHE TEACHING AT ALL? the one that matters most, and the one a single
   // instant cannot answer — it needs two readings, which is why the previous
   // sample is kept.
-  const seq = (st && st.teachStageSeq) || 0;
+  /* ⛔⛔ THIS READ `st.teachStageSeq` AND THAT FIELD HAS NEVER EXISTED. The
+     sequence is published at `curriculum.liveness.teachStageSeq`; the top-level
+     read returned `undefined`, `|| 0` made it `0`, and `0 !== 0` is false — so
+     from the SECOND sample onward this row reported **"stage sequence FROZEN at
+     0 — WEDGE"** on every refresh, for a brain teaching perfectly, and told the
+     operator to restart. **The check this page calls the one that matters most
+     was a constant**, and its recommended action destroys the work in flight.
+     ⚠ Verified against a live payload before the fix: every `teachStage*` key in
+     the whole snapshot sits under `curriculum.liveness`, and there is no
+     top-level one. The old path is kept only as a trailing fallback so a future
+     promotion of the field cannot silently break this again. */
+  const _live = (st && st.curriculum && st.curriculum.liveness) || null;
+  const seq = (_live && _live.teachStageSeq) || (st && st.teachStageSeq) || 0;
+  const tag = (_live && _live.teachStage) || '';
   const advanced = _benchPrev ? (seq !== _benchPrev.seq) : null;
   if (advanced === null) add('teaching advancing', null, 'first sample — needs one more to compare', '');
   else add('teaching advancing', advanced,
-    advanced ? `stage sequence moved (${_benchPrev.seq} → ${seq})` : `stage sequence FROZEN at ${seq}`,
-    advanced ? '' : 'WEDGE. Read the stage tag: an X-done tag means the blocker is after that teach. Restart via Update & Savestart.');
+    advanced ? `stage sequence moved (${_benchPrev.seq} → ${seq})` : `stage sequence FROZEN at ${seq}${tag ? ` · stage "${tag}"` : ''}`,
+    /* ⚠ THE ACTION NAMES A READ BEFORE IT NAMES A RESTART. A frozen sequence
+       inside a stamped region is impossible by construction — the stamps bump
+       the sequence — so a frozen one really does mean unmarked code. But
+       "restart" was the FIRST instruction on a page that could not tell the two
+       apart, and a restart throws away whatever the walk had anchored. */
+    advanced ? '' : `Read the stage tag first${tag ? ` (currently "${tag}")` : ''}. A "prevocab:" tag is definition anchoring and is WORK — leave it alone. An "X-done" tag means the blocker is after that teach. Only restart via Update & Savestart once the tag says the walk is genuinely stopped.`);
   _benchPrev = { seq };
 
   // ── the teach bus: is anything arriving?
