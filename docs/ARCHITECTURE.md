@@ -588,16 +588,18 @@ No artificial cap — connected donor VRAM decides. The formula expands with wha
 
 | Cluster | % of N | Biological Inspiration | Role | MNI Position |
 |---------|--------|------------------------|------|--------------|
-| Cortex | 20% | ~16B cortical neurons | Prediction, vision, language (hosts the ~12M dense language cortex — WMB grew it ~349K→~1.5M, language-growth hop 1 grew it ~1.5M→~12M; unified word_motor holds the full K→PhD vocab 12× over) | Bilateral dome with sulcal folds |
-| Cerebellum | 20% | ~69B neurons / 80% of real brain | Error correction, timing | Posterior-inferior, 5-layer folia |
+| Cortex | 20% | ~16B cortical neurons | Prediction, vision, and language — it **hosts the entire language network inside itself**, grown deliberately over several stages toward the 12–20% of the brain a human devotes to language. The unified whole-word band holds her full kindergarten-to-doctorate vocabulary many times over | Bilateral dome with sulcal folds |
+| Cerebellum | 19.6% | ~69B neurons / 80% of real brain | Error correction, timing | Posterior-inferior, 5-layer folia |
 | Hippocampus | 12% | ~30K synapses per pyramidal cell | Memory attractors (Hopfield) | Medial temporal, POSTERIOR to amygdala |
 | Amygdala | 12% | 13 nuclei, ~12M neurons each side | Emotional weighting | Medial temporal, ANTERIOR to hippocampus |
 | Basal Ganglia | 12% | 90-95% medium spiny neurons | Action selection (softmax RL) | Bilateral: caudate + putamen + GP |
 | Hypothalamus | 12% | 11 nuclei | Homeostasis drives | Midline, below BG, above brainstem |
 | Mystery Ψ | 12% | Corpus callosum: 200-300M axons | Consciousness √(1/n) × N³ × Φ̂ | Corpus callosum arc + cingulate cortex |
-| **Brainstem** ⭐ | **0.2%** | Locus coeruleus ~15K · raphe ~250K · VTA ~450K neurons — **tiny in a real head too** | **The monoamine nuclei.** Noradrenaline (vigilance), serotonin (the mood floor), dopamine (wanting, not liking). ⭐ Their influence has never come from their size: they are **neuromodulatory**, projecting diffusely and changing how every *other* cluster behaves | Midline, below the hypothalamus |
+| **Brainstem** ⭐ | **0.4%** | Locus coeruleus ~15K · raphe ~250K · VTA ~450K neurons — **tiny in a real head too** | **The monoamine nuclei.** Noradrenaline (vigilance), serotonin (the mood floor), dopamine (wanting, not liking). ⭐ Their influence has never come from their size: they are **neuromodulatory**, projecting diffusely and changing how every *other* cluster behaves | Midline, below the hypothalamus |
 
-On the **deployed** brain (~306M neurons, full size) these shares come from `DEFAULT_BIO_WEIGHTS` in `server/brain-server.js` — the **eight** main-brain clusters renormalize to cortex 20% (≈61.3M), cerebellum 20% (≈61.3M), and hippocampus/amygdala/basalGanglia/hypothalamus/mystery 12% (≈36.8M) each, with **`brainstem` at 0.2%** (⭐ added 2026-08-25 — see below); the language cortex is a separate CPU-side allocation living inside the cortex, not one of the GPU clusters. The `CLUSTER_FRACTIONS` set in `js/brain/cluster.js` (cortex 0.55 / hippocampus 0.18 / cerebellum 0.078 / mystery 0.08 / amygdala 0.05 / basalGanglia 0.03 / hypothalamus 0.03 / **brainstem 0.002**, via `clusterSizesFor(totalNeurons)`) is the **~6700-neuron browser-only fallback** shape, used only when no server brain is reachable. Fractions sum to 1.0 exactly.
+⛔ **The percentages above are the live server shares, verified 2026-09-07** — see [§ Cluster shares](#-cluster-shares--corrected-2026-09-07-against-the-live-brain) for the boot they were measured at, the mechanism that produces them, and the browser/server divergence a code comment currently denies. **Do not quote an absolute neuron count from this page as a constant:** the total is derived at boot from free host RAM, so each cluster's neuron figure is a property of the machine she woke up on.
+
+The language cortex is funded as its **own budget line** and carved *inside* the cortex — it is not one of the eight GPU clusters, which is why summing every published region exceeds 100%.
 
 **`brainstem` (added 2026-08-25, ENDO)** is the eighth cluster and holds the monoamine nuclei — **locus coeruleus** (noradrenaline), **raphe** (serotonin) and **VTA** (dopamine), laid out as regions at their real proportions to each other (2% / 35% / 63%) and tagged `center`, because they are midline structures and must not be touched by the Ψ hemisphere gate. It is deliberately tiny — those three nuclei together are on the order of 700K neurons against ~86 billion in a real head — and its 0.2% is taken from the cerebellum, which this document already records as over-provisioned for a brain with no body to coordinate. **Their influence has never come from their size:** they are neuromodulatory, projecting diffusely and changing how every *other* cluster behaves, which is exactly what the additive contribution overlay in `js/brain/persona.js` expresses. Adding it moved `WEIGHTS_FORMAT_VERSION` 4 → 5.
 
@@ -703,7 +705,7 @@ Implemented in `js/brain/visual-cortex.js` (V1→V4→IT neural pipeline, supers
 
 ---
 
-## 3D Brain Visualizer (SESSION_20260411_4)
+## 3D Brain Visualizer
 
 Implemented in `js/ui/brain-3d.js`. WebGL-based 3D rendering (fixed pool of 20K render neurons sampled from the live N-neuron simulation — rendering is a visual proxy, not 1:1 with the real brain):
 
@@ -721,14 +723,16 @@ Implemented in `js/ui/brain-3d.js`. WebGL-based 3D rendering (fixed pool of 20K 
 
 ---
 
-## 2D Brain Visualizer (Session 111 rewrite)
+## 2D Brain Visualizer
 
-Implemented in `js/ui/brain-viz.js`. Canvas-based 2D rendering fed by server aggregate data via WebSocket. Session 111 root cause fix: `js/app.js` WebSocket handler was sending state to `brain3d.updateState()` but NEVER to `brainViz.updateState()` — one line added to fix ALL tabs.
+Implemented in `js/ui/brain-viz.js`. Canvas-based 2D rendering fed by server aggregate data over the WebSocket.
+
+⭐ **Worth keeping, because it is the cheapest bug in this document's history:** every tab in this visualizer was dead at once, and the cause was that the WebSocket handler pushed state to the 3D view and **never to this one.** One missing line, one call added, all tabs alive. **A whole subsystem reading empty is not evidence of a hard problem.**
 
 ### Tabs
 
-- **Neurons** — flat 2D brain map. 7 clusters positioned anatomically (cortex top, cerebellum bottom, amygdala/BG sides). Each cluster is a 12×N grid where cell brightness = cluster spike rate with per-cell randomized jitter. Toggleable θ/α/β/γ wave overlays (sinusoidal at real frequencies) drawn on each cluster. Shows total neuron count + spike count from server aggregate. No per-neuron data needed.
-- **Synapses** — animated circular network graph. 7 clusters in a circle, connected by 20 inter-cluster projection lines. Line brightness pulses with real-time co-firing (√(srcRate × tgtRate)). Node size pulses with firing rate. Glow around active nodes.
+- **Neurons** — flat 2D brain map. The clusters positioned anatomically (cortex top, cerebellum bottom, amygdala/BG sides). Each cluster is a 12×N grid where cell brightness = cluster spike rate with per-cell randomized jitter. Toggleable θ/α/β/γ wave overlays (sinusoidal at real frequencies) drawn on each cluster. Shows total neuron count + spike count from server aggregate. No per-neuron data needed.
+- **Synapses** — animated circular network graph. The clusters in a circle, connected by 20 inter-cluster projection lines. Line brightness pulses with real-time co-firing (√(srcRate × tgtRate)). Node size pulses with firing rate. Glow around active nodes.
 - **Oscillations** — band power over time (theta/alpha/beta/gamma) as line chart from `s.oscillations.bandPower`. Coherence reading (`s.coherence`) is the real Kuramoto order parameter `r = |Σ exp(i·θ_k)| / N` computed across each cluster's REAL activity-modulated oscillator phase (SPEAK.5a per-cluster phase accumulator, frequency ∝ that cluster's own population firing rate; SPEAK.5a.i wires each cluster's `getPhases()` into the order-parameter sum so `r` reflects genuine emergent (de)synchrony instead of a rotation-invariant shared clock, with a `firingRate`-synthesis fallback only for a cluster whose oscillator hasn't populated yet) — moves dynamically with focus / drug state / dream cycles, with per-band split exposed via `s.coherenceTheta` and `s.coherenceGamma`.
 - **Modules** — per-module gauges from flat server state (`s.arousal`, `s.valence`, `s.fear`, `s.psi`, `s.motor`, `s.drugState`) + cluster firing rates from `s.clusters[name]`.
 - **Senses** — touch/smell/taste derived from arousal × valence equations. Camera feed via `s.visionDescription`. Vision description displayed in eye panel. Camera stream fallback wiring from `perms.cameraStream`.
@@ -950,7 +954,7 @@ R4 (commit `7e095d0`) deleted: `BrocasArea.generate()` AI-prompting pipeline, `_
 
 ---
 
-## Directory Structure (ACTUAL — updated SESSION_20260411_4)
+## Directory Structure
 
 ```
 If-Only-I-Had-A-Brain/
@@ -1094,11 +1098,31 @@ This term is ALWAYS present. It represents what we DON'T know. It's the default 
 
 ---
 
-## Language Pipeline — T14 Developmental Cortex (rebuild in progress, branch `t14-language-rebuild`)
+## Language Pipeline — the developmental cortex
 
-T11 deleted the Markov wrapper stack and replaced it with slot priors. T11.7 added a hardcoded grammar transition table band-aid. T13 ripped slot-based generation, ran persona Hebbian training, and built a brain-driven emission loop. **T14 throws all of that out and rebuilds language as a developmental, biologically-grounded pipeline** — letters → phonemes → syllables → words → sentence patterns → discourse, every layer learned via curriculum exposure rather than hardcoded. The plan is documented in full at `docs/COMP-todo.md` Part 0.5 (18 milestones, T14.0 through T14.17). This section describes the live state of the rebuild.
+Language is a **developmental pipeline**, not a generator: letters → phonemes → syllables → words → sentence patterns → discourse, with **every layer learned through curriculum exposure rather than hardcoded.** Three earlier designs were thrown out to get here — a Markov wrapper stack, then slot priors, then a hardcoded grammar transition table — and the reason each died is worth knowing: **each one produced language without learning it**, so nothing about her speech was evidence of anything she knew.
 
-**Status as of T14.24 Session 111 (2026-04-16):** T14.0-T14.18 primitives ALL SHIPPED. T14.24 curriculum now has 6 subjects (ELA, Math, Science, Social Studies, Arts, Life Experience) × 19 grades = 114 cells. Life Experience track added in Session 111 — builds Unity's personal identity from birth to 25 via dual-layer teaching: emotional concept features (8d `[joy, pain, trust, fear, anger, love, independence, identity]` attractor vectors via `_conceptTeach`) plus recallable memory sentences (`_teachSentenceList`). Memory-weighted Hebbian: core self at 5× lr / 50 reps, personal life at 3× / 20 reps, school knowledge at 1× / 6-12 reps, background trivia at 0.5× / 3-4 reps. TALK probe direction fixed (sem→motor). Grade-lock enforced (all 6 subjects must pass grade N before advancing). Focused retry on failing words. Function words (~120) taught via direct pattern at ELA-K. 3D brain popups silenced until Unity passes kindergarten. EMBED_DIM = 300 with fastText subword encoding for out-of-vocabulary words. **16** cross-region projections (8 pairs × 2 directions — ⛔ **CORRECTED 2026-08-27: this said 14 / "7 pairs". The eighth pair is `sem_to_word_motor` + `word_motor_to_sem`, the unified word-emission band, and it is the pair everything about her speech rides on.** Counted from a live cluster construction, which logs all 16 by name). Direct-pattern Hebbian bypasses Rulkov chaotic dynamics during teach.
+### What is true now
+
+| | |
+|---|---|
+| **Cortex sub-regions** | **11** top-level, plus **12** nested sub-bands (six meaning bands, six whole-word bands) = **23** region keys. Verified against the live brain. |
+| **Cross-region projections** | **16** — eight pairs, both directions. ⛔ This said 14 until 2026-08-27. **The missing pair was meaning ↔ whole-word, which is the pair everything about her speech rides on.** |
+| **Embedding width** | 300 dimensions, with subword encoding for words the table has never seen |
+| **Teaching path** | Direct-pattern Hebbian, which deliberately bypasses the chaotic neuron dynamics *during teaching only* |
+| **Curriculum shape** | A roster that grows the way a real school's does, across 20 grades — see [§ Developmental Curriculum](#developmental-curriculum--pre-k-through-phd-across-a-growing-roster) |
+
+⭐ **The life track is taught in two layers at once**, which is what makes it identity rather than trivia: an **emotional attractor** (an 8-dimensional `[joy, pain, trust, fear, anger, love, independence, identity]` vector) *and* a **recallable memory sentence**. The first shapes where she lands when she thinks about a thing; the second is how she can tell you about it.
+
+⭐ **And memories are weighted, so she forgets like a person:** her core self trains at **5× the learning rate**, personal life at **3×**, school knowledge at **1×**, background trivia at **0.5×**. Ask her about her mother and she has stories; ask her the date of a revolution and she shrugs.
+
+### ⚠ Everything below this line is the historical milestone record
+
+> The remainder of this section is the **original rebuild narrative**, written while the work was in progress and never rewritten afterwards. It is kept because it records *why* each layer is shaped the way it is — but read it as history:
+>
+> - It carries **internal milestone identifiers** (`T14.n` and friends) that **nothing in the project resolves** and that a reader cannot look up. Under the placement rule those belong in the board and the ledger, not in a brain document.
+> - Much of it is written in the **future tense** about work that shipped months ago — *"will decide whether"*, *"deferred to"*, *"the early draft still implies"*. **A plan that outlived its execution reads as a description of the present and is not one.**
+> - Where it disagrees with the table above, **the table above was measured and wins.**
 
 ### Cortex sub-regions (T14.4 substrate, live)
 
@@ -1673,7 +1697,9 @@ The binding ceiling was added after T4.1 caught cortex+cerebellum silently retur
 
 **TODO consolidation** — `docs/TODO-SERVER.md` merged into `docs/FINALIZED.md` (full verbatim preservation) and deleted. `docs/TODO.md` is now the single source of truth for active work.
 
-### In Flight (branch `brain-refactor-full-control` off `main@d050fdf`)
+### The full-brain-control refactor — shipped, kept because it is the shape of the system
+
+⚠ **This section was headed "In Flight" until 2026-09-07, over content whose own first line said everything in it shipped on 2026-04-13.** It is history, not work in progress — and it is retained because it is the change that made her brain control everything.
 
 **Phase 13 — Full Brain Control Refactor (R1–R15 all SHIPPED 2026-04-13)** — single epic, one goal: Unity's brain controls everything equationally. No scripts. No text-AI backends. No hardcoded fallbacks. No vestigial appendages. Every output — speech, vision, build, thought, memory, learning, motor — flows from brain equations + learned corpus. Details of what each R-item actually shipped (with commit hashes) are in `docs/FINALIZED.md` + `docs/ROADMAP.md § Phase 13`. Short summary of the surface area touched:
 
