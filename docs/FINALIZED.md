@@ -5,6 +5,86 @@
 
 ---
 
+## 2026-09-06 (25th) — SHE WAS NEVER WEDGED: THE SILENT PREFETCH, THE DICTIONARY THAT COULD NOT INFLECT, AND THE BENCH THAT CRIED WEDGE ON A CONSTANT
+
+Gee (verbatim): *"shes up again doner is connecting see if she wedges read resume.md first"* → *"read resume.md and whats next? is she wedged again?"* → *"so u r telling me its not wedged it just stopped reporting on the dashboard and teach viewer?"* → *"anything u need to check or check off in the todo work"*
+
+**Three rows close on LIVE evidence from the deployed build, not on a diff.** `WEDGE2.5` stays open and is named in each verdict rather than absorbed.
+
+### ⭐ THE VERDICT THAT CLOSES ALL THREE — measured on the box after the cascade
+
+The fix shipped, the box booted onto it (`60479ed5`, booted `2026-09-07T00:38:15Z`), and the previously-dark region **reported its own progress for the first time**:
+
+```
+  stage  prevocab:ela-kindergarten:138/539 chunks · 690/2691 words
+  ->     prevocab:ela-kindergarten:153/539 chunks · 765/2691 words
+  seq    15,017 FROZEN (39 min)  ->  15,122 -> 15,137 -> 182,516 -> 239,117 CLIMBING
+```
+
+⭐ **Rate measured over a controlled 100 s window: 0.150 chunks/s and 0.75 words/s — exactly 5.0 words per chunk, which matches `PREFETCH_CONCURRENCY = 5` to the digit.** Two independent series (chunks and words) both projected **43 minutes remaining**, and the constant cross-check is what makes that a measurement rather than a plausible number.
+
+✅ **AND SHE CAME OUT THE OTHER SIDE.** Later reads show `_teachAntiHebbian-done` with the sequence at 239,117 and `letterShapes 94/94` — the walk is past definition anchoring and doing Hebbian binding. **The await was work, exactly as claimed, and the claim is now retired by observation.**
+
+⭐ **The queue itself shrank, and the honest split is stated:** the pre-fix measurement of this cell was **5,288 network words / 1,058 chunks**; the live run shows **2,691 / 539**. ⚠ **That is Morphy AND a warmed disk cache together — it is NOT evidence for Morphy alone**, and the isolated Morphy figure remains the offline before/after below.
+
+✅ **Both frontend fixes verified LIVE on the deployed site** by fetching them: `teachview.html` serves the corrected read depth and the new action copy; `unity-guide.html` serves the offline-dictionary lane and `prefetch concurrency 5`, and **the stale `concurrency 20` string is gone from what is served.**
+
+### The three rows, verbatim as they stood on the board
+
+- [x] `WEDGE2.3` — ✅ **CLOSED 2026-09-06 on live evidence: the stamps shipped, the region reported `138/539 chunks`, the sequence climbed off 15,017, and she exited into Hebbian binding.** Original filing follows, unchanged:
+- [ ] `WEDGE2.3` — ⛔⛔ **THE RUNNER STAMPS PAID OFF ON THEIR FIRST BOOT: SHE IS NOT WEDGED, SHE IS IN AN UNINSTRUMENTED NETWORK GAUNTLET, AND IT IS THE THIRD INSTANCE OF ONE DEFECT SHAPE.** Read live on build `424ce6af`, four paired samples over 18 minutes.
+
+  > Gee (verbatim): *"shes up again doner is connecting see if she wedges read resume.md first"* → *"read resume.md and whats next? is she wedged again?"*
+
+  ```
+    stage  runner:stories   age 0.5 -> 2.3 -> 6.2 -> 18.4 min   seq 15017 FROZEN throughout
+    _teachWordDefinition.calls   13   FROZEN across every sample
+    cell ela/kindergarten · phases 2/25 · teach/min 0 · loop lag 17 ms · both watchdogs 0 trips
+  ```
+  - ⭐⭐ **THE FROZEN CALL COUNT IS THE WHOLE FINDING, AND IT IS A LOCATION, NOT A SUSPICION.** `_trainAcademicStories` opens with a two-part pre-vocab step: a batched `prefetchDefinitions(...)`, then a **serial** per-word `_teachWordDefinition` loop. If she were in the loop that counter would tick once per word. It never moved. **She is parked on the single line before it** — `await cluster.prefetchDefinitions(batch, { timeoutMs: 8000 })`.
+  - ⛔ **`timeoutMs` BOUNDS THE INDIVIDUAL FETCH, NOT THE CALL — the identical defect this project already found in the dream-trickle lane.** `prefetch()` chunks the list and `await`s each chunk in sequence; nothing bounds the total, and **there is not one stamp inside the loop**, so a half-hour of real work is indistinguishable from a hang from outside.
+  - ⭐ **PRICED FROM THE REAL CONSTANTS, NOT THE DOCUMENTED ONES.** `ela/kindergarten` = 411,226 words / **17,873 distinct content words**; the offline dictionary answers **12,585 (70.4%) in 1.5 s** and **5,288 (29.6%) miss to the network**. With `PREFETCH_CONCURRENCY = 5` and `RATE_LIMIT_BACKOFF_MS = 5000` that is **1,058 sequential batches ≈ 5 min best / ~26 min typical / 2.6 h if the API rate-limits hard.**
+  - ⛔⛔ **THE RE-PRICE THAT JUSTIFIED REMOVING THE VOCAB CAP CITES CONCURRENCY 20. THE CODE HAS ALWAYS RUN AT 5.** Both `curriculum.js` and `server/knob-registry.js` carry *"prefetchDefinitions already batches at concurrency 20"* in the arithmetic that retired the 60-word cap. **`PREFETCH_CONCURRENCY = 5`** — the constant was lowered because dictionaryapi.dev rate-limits aggressively, and the re-price was never redone against it. **The published 19.8 h figure is understated by the ratio.** ⚠ It also priced only the prefetch and **never priced the serial `_teachWordDefinition` loop that follows it**, which is where the Hebbian binding actually happens.
+  - ✅ **ELIMINATED BY MEASUREMENT, so the next reader does not re-check them:** `_definitionTaughtWords` is **already uncapped** (the old `slice(0,5000)` is gone), the definition cache is **100,000 entries with an interval disk flush**, so there is **no LRU thrash and no cold-start-every-boot**. ⚠ **Both were mine, both were plausible, both are wrong.**
+  - **What closes this:** a progress stamp INSIDE the prefetch chunk loop, so the stage reads the batch it is on out of how many instead of going dark. ⛔ **Not another watchdog** — the await is doing real work and killing it would delete the anchoring the prose depends on. **Make it report; do not bound it.**
+
+- [x] `WEDGE2.4` — ✅ **CLOSED 2026-09-06: shipped as POS-scoped WordNet Morphy, index-verified, corpus-wide 15.2% → 17.7% (+11,811 words, 0 regressions).** ⚠ **Two defects in my own first cut, both caught by reading the OUTPUT rather than the diff, both recorded:** the partition made `spelled` headline as the noun *"a psychological state induced by a magic spell"* (the `be`→beryllium shape, reappearing in the arm added to fix a different problem), and once fixed it made `comes` headline as the vulgar noun because the table tries noun rules first and `-s` matched there. **Resolved by applying the POS partition ONLY to suffixes that identify a part of speech** — `-ed`/`-ing`/`-er`/`-est` do, `-s`/`-es`/`-ies` are shared between noun plurals and verb third-person, so those keep WordNet's attested order. Original filing follows, unchanged:
+- [ ] `WEDGE2.4` — ⭐ **THE OFFLINE DICTIONARY DOES NO VERB MORPHOLOGY, SO A THIRD OF EVERY CELL'S VOCABULARY GOES TO THE NETWORK FOR WORDS WORDNET ALREADY HOLDS.** `called`, `depending`, `spelled`, `languages`, `comes`, `oldest`, `created`, `smallest` all miss offline and hit the API — WordNet has `call`, `depend`, `spell`, `language`, `come`, `old`, `create`, `small`.
+  - **Why it misses:** `lookup()` handles the exact lemma, the capitalised proper noun, closed compounds, and **regular plurals only** (`-ies`/`-es`/`-s`). There is no `-ed` / `-ing` / `-er` / `-est` detachment at all.
+  - ⭐ **MEASURED, POS-scoped WordNet Morphy with every candidate verified against the index: 1,806 of the 5,288 misses recovered — 34.2%.** Network batches for this cell fall **1,058 → 697**.
+  - ⭐⭐ **IT KEEPS THE FILE'S OWN DOCTRINE INTACT.** That module deliberately refuses to invent stems (*"an inflection rule that invents stems is the same class of error as the compound split"*) — and Morphy does not invent: it **proposes a detachment and accepts it only if the stem is in the index**, exactly the propose-and-verify shape the plural arm already uses.
+  - ⛔ **THE IRREGULARS CANNOT BE FIXED THIS WAY AND MUST NOT BE FAKED.** `went`, `came`, `caught`, `children`, `became`, `arose`, `shown` need WordNet's `.exc` exception files — and **`wordnet-db` ships none**: the payload is nine files (four `index.*`, four `data.*`, `index.sense`), verified by listing it. A hand-authored irregular table is the banned shape. **Say so and leave them on the network.**
+
+- [x] `WEDGE2.6` — ✅ **CLOSED 2026-09-06: fixed, replayed against two real payloads (old expression gives `0 → 0` forever, new gives 15,017 plus the live tag), and VERIFIED ON THE DEPLOYED PAGE** — the served `teachview.html` carries the corrected read depth and the new action copy. ⚠ **The unknowable stays unknowable and is not quietly dropped:** how many of the operator's "wedged again" reports this manufactured cannot be recovered, because the check could not distinguish a real wedge from a healthy walk by construction. Original filing follows, unchanged:
+- [ ] `WEDGE2.6` — ⛔⛔⛔ **THE BENCH HAS BEEN REPORTING "WEDGE" ON EVERY REFRESH SINCE IT SHIPPED, FOR A BRAIN TEACHING PERFECTLY, AND ITS RECOMMENDED ACTION DESTROYS THE WORK IN FLIGHT.** Found while updating the in-page copy for `WEDGE2.3`, not by being told.
+  ```
+    html/teachview.html:1375   const seq = (st && st.teachStageSeq) || 0;
+    live payload               state.teachStageSeq                  -> undefined
+                               state.curriculum.liveness.teachStageSeq -> 15017
+  ```
+  - ⭐⭐ **THE ARITHMETIC OF THE LIE:** the field is read from the wrong depth, `undefined || 0` yields `0`, and the freshness test is `seq !== _benchPrev.seq` → **`0 !== 0` → false**. So from the **second sample onward** the row renders `stage sequence FROZEN at 0` and the action string **`WEDGE. … Restart via Update & Savestart.`** — unconditionally, forever, whatever the walk is doing.
+  - ⛔ **IT IS THE CHECK THE PAGE ITSELF CALLS THE MOST IMPORTANT ONE**, introduced by a comment about needing two readings because *"a single instant cannot answer it"*. **It took two readings of a constant.**
+  - ⛔⛔ **AND THE ACTION IT RECOMMENDS IS DESTRUCTIVE.** A restart during the pre-vocab pass throws away every definition anchored so far and re-pays the same 30 minutes — so an instrument that cannot be wrong in the safe direction was wrong in the expensive one. ⚠ **This plausibly accounts for a share of the "wedged again" reports**, and that possibility must not be quietly dropped: some were real (`WEDGE2.1` has a paired read with byte-identical counters) and **this one cannot distinguish itself from those by construction.**
+  - ✅ **FIXED:** reads `curriculum.liveness.teachStageSeq` with the old top-level path kept as a trailing fallback, the verdict now carries the stage tag, and the action **names a read before it names a restart** — a `prevocab:` tag is anchoring work and must be left alone. Verified by replaying two real payloads through both the old and new expressions: old gives `0 → 0` (permanent WEDGE), new gives `15017` and the live tag. Inline scripts re-parsed clean (2 blocks).
+  - ⚠ **`grep`ed for the same wrong-depth read across every HTML and JS: this file was the only one.**
+  - ⭐ **THE GENERAL LESSON, which is the third instance today:** a field read at the wrong depth does not throw, it returns `undefined`, and `|| 0` converts a missing input into a confident answer. **The same shape produced the "offline dictionary answers 0.0%" measurement an hour earlier** — a `try/catch` swallowed a module that had failed to load, and the zero read as data.
+
+### ⚠ WHAT DID **NOT** CLOSE, AND WHY — stated so no reader infers it did
+
+- **`WEDGE2.5` STAYS OPEN.** The corpus extraction damage (`addedp`, `pictographicp`, `pronunciationp`, `twoword`, `wellknown`) is untouched. Those words can never resolve and are re-fetched on every visit forever, and the fix belongs at the fetcher.
+- **`WEDGE2.1` STAYS OPEN AND MUST NOT BE FOLDED INTO THIS.** That row is a **real** wedge — a paired read 194 s apart with byte-identical teach counters *including a frozen definition drain*, at stage `_teachSentenceList-done`. **Today's finding is a DIFFERENT region** (the prefetch, which runs *before* `_teachSentenceList` is ever called) and does not explain it. ⭐ What today gives that row is instrumentation: the runner and pre-vocab regions now stamp, so its next occurrence names its own location.
+- **THE PROSE REP-PRICING QUESTION IS STILL UNANSWERED.** Read live after the fix: **96 priced lanes, 0 of them non-`SELF:DEF`**, cap full and evicting. An earlier boot that got further did show prose lanes; this boot has not reached prose. **The reading is boot-dependent, so it is re-checked, not inherited.** ⚠ **My first pass at this misread `repPricingByLabel` and nearly reported `lanes`/`worstLabel`/`worstLoad`/`rows` — the object's own field names — as four prose lanes.** Caught before it was stated.
+
+### Files
+
+`js/brain/curriculum.js` · `server/definition-service.js` · `server/offline-dictionary.js` · `server/knob-registry.js` · `html/teachview.html` · `html/unity-guide.html` · `docs/TODO.md` · `docs/NOW.md` · `docs/RESUME.md`. Wiki pages updated on disk and deliberately not shipped — `wiki/` is gitignored by design.
+
+Verified: `node --check` on all four JS files, ESM `import()` of `curriculum.js`, teachview inline scripts re-parsed (2 blocks), both bench expressions replayed against real payloads, Morphy probed across recovered / unchanged / refused classes, full 193-cell corpus sweep with a sanity-probed baseline, and both deployed HTMLs fetched and string-checked.
+
+Commit `cb99365b` · merged `72f5899f` → `main` `60479ed5`, pushed to both remotes.
+
+---
+
 ## 2026-09-06 (17th) — BOARD CLEANUP: EVERY CLOSED ROW AND EVERY CROSS-REFERENCE MIGRATED OFF THE BOARD, VERBATIM
 
 Gee (verbatim): *"clean up the todo, move all finished items to finalized.md There shall be nothing left in the todo but open items only PERIOD FULL STOP, Do you fi=ucking understnad!"*
