@@ -1,6 +1,70 @@
 # RESUME — Session Pickup Brief
 
-> # 🟢 2026-09-07 (latest, 11th) — THE MIND'S EYE: THE DECORATION ATE THE READOUT, THE FULLSCREEN HAD NO EXIT, AND THE STUCK FRAME WAS THE HONEST ONE (PICK UP HERE)
+> # 🟢 2026-09-07 (latest, 12th) — BOTH OF HER PICTURE LANES WERE SHUT BY AN ORDERING DEFECT, AND THE SECOND ONE WAS FOUND BY BEING CORRECTED (PICK UP HERE)
+>
+> Gee (verbatim): *"update savestart pressed, she should be comming back up in the next 5 minutes and we will see if her minds eye is back to normal use/operation"* → then, after I asked him to run a manual pull: *"the field store is suppoose to be downlosaded auto like and the box is to use brain waves repo"*
+>
+> ## ⛔ SHE IS UP AND WALKING — READ THIS FIRST
+>
+> ```
+>   build d7445071 · booted 23:01:49Z · resume · formatVersion 6 compatible
+>   388,597,268 neurons · ela/kindergarten · minGrade pre-K · 95 seen concepts SURVIVED
+>   23:05:03Z  prevocab:ela-kindergarten:  1/662 chunks ·   5/3308 words   q[tot=0]
+>   23:11:32Z  prevocab:ela-kindergarten: 49/662 chunks · 245/3308 words   q[tot=0]
+>            0.127 chunks/s -> ~80 min of prefetch still ahead of the anchoring pass
+> ```
+>
+> ⭐ **The stale frame is gone on its own** — `_mindsEyeJson` lives in memory, so the six-hour-old picture died with the process. `/minds-eye.json` returns `rec: null` and the viewer shows the honest warming-up state.
+>
+> ## ⛔⛔ ① ALL THREE OF HER FRAME SOURCES WERE SHUT, AND TWO WERE ORDERING DEFECTS
+>
+> | Lane | Was | Why |
+> |---|---|---|
+> | imagination's **impression anchor** | shut | needs words out of the inner-thought chain; `wordsBucketed 0`. **Clears itself** — nothing was built to force it |
+> | the **inline** figure lane | mostly shut | gated `fieldOnly`, needs a **field hit** — the box has pointer stubs, 7 of 8 missed |
+> | the **background drain** (~1 frame/1.5 s) | shut | **the queue was empty** |
+>
+> ## ⛔ ② THE QUEUE HAD NEVER HELD ONE ROW, AND `total 0` ON A RESUMED BOOT IS THE PROOF
+>
+> `_perceiveCellFigures` — **the only site that enqueues** — runs *after* `await _trainAcademicStories(...)`. On `ela/kindergarten` that walks **411,226 words** and has **never completed a cell on this walk**. The queue is persistent sqlite that survives a Savestart, so **zero is not a reset, it is *never*.**
+>
+> ⚠ **This is the failure the queue was built to prevent, one layer up:** perception was moved off the cell pass so nothing pins it — and then the enqueue that feeds it was left behind the longest await in that same pass.
+>
+> ✅ Extracted to `_enqueueCellFigures` and called at the **top** of the cell under `runner:fig-enqueue`. Costs the teach lane nothing — it is a metadata `INSERT OR IGNORE` in one transaction, and the drain has always been a separate `unref`'d timer. ⛔ **The per-visit cap deliberately does NOT bound the queue** (a cap on what is queued is a ceiling on what she can ever see) — but `DREAM_TEXTFIG_PER_CELL=0` disables the queue too, because that switch means the lane is off. **8/8 on the real prototype.**
+>
+> ## ⛔⛔ ③ THE FIELD HYDRATION WAS GATED BEHIND A FAILURE THAT CANNOT HAPPEN — AND HIS CORRECTION IS WHAT FOUND IT
+>
+> **I asked him to run `git lfs pull` by hand. He answered that it is supposed to be automatic from BrainWaves. He was right, the automatic path was already written, and looking for it is what found it unreachable.** A manual pull would have produced fields and left the defect in place, invisible until the next box.
+>
+> The credential-free path — read each pointer's `oid sha256:…`, copy Forgejo's own object off local disk — has its **only call site inside `if ! _lfs_pull; then`**. And `_lfs_pull` **returns 0** when git-lfs is absent, *deliberately*, because its exit status decides whether the **books** get rsynced. So:
+>
+> ```
+>   _have_lfs=0  ->  _want_fields=0
+>   _lfs_pull    ->  returns 0        ->  ! _lfs_pull is FALSE  ->  hydration SKIPPED
+>   elif [ "$_want_fields" != "1" ]   ->  "field sync SKIPPED — no git-lfs on this box"
+> ```
+>
+> ⛔⛔ **The one condition the OID copy exists for is the one condition that skips it.** ⭐ **The general form, worth more than the fix: a fallback whose trigger is a FAILURE cannot fire when the thing that would fail is never attempted.** And it was a side effect of a *correct* change made three days earlier to protect the books — a second, unrelated branch was reading the same exit status as a signal about the fields.
+>
+> ⚠ **A second collapse fed it:** `_want_fields` went to 0 for BOTH *"he set `UAL_FIELDS=0`"* and *"this box has no git-lfs"*. **Not the same decision** — the first must be obeyed, the second is what the copy covers. Now recorded separately as `_fields_opt_out`.
+>
+> ✅ **Truth-tabled over all 8 combinations.** The box's row (`_have_lfs=0`, no opt-out) now hydrates where it used to print SKIPPED; opt-out is obeyed; the git-lfs-present rows are unchanged. ⚠ **One row reported and untouched:** git-lfs present + `UAL_FIELDS=0` + failing pull hydrates despite the opt-out — **true before this change too.**
+>
+> ## ⛔ WHAT TO DO NEXT — IT IS A TWO-PRESS SEQUENCE
+>
+> **A press runs the BOX's copy of `deploy/self-update.sh`, not `main`'s.** The press that delivers this fix cannot run it. **The one after it can.**
+>
+> | On press 2, read | Meaning |
+> |---|---|
+> | `fields — hydrated N from the local store, M already present, K unresolved` | ✅ working |
+> | `could not find (or read) Forgejo's LFS object store` | the `/var/lib/forgejo` mode-750 `git:git` case — the script names the `usermod`; `UAL_LFS_STORE` sets the path |
+> | `figureQueue.total` leaving **0** within minutes of a cell start | ✅ the enqueue reorder landed |
+> | `ownArt.lookups.figAttempts` climbing ~1 per 1.5 s | ✅ the drain finally has rows |
+> | `voice.wordsBucketed` leaving **0** | the inner-voice hold lifts and the imagination lane opens on its own |
+>
+> ---
+
+> # 🟢 2026-09-07 (11th) — THE MIND'S EYE: THE DECORATION ATE THE READOUT, THE FULLSCREEN HAD NO EXIT, AND THE STUCK FRAME WAS THE HONEST ONE (PICK UP HERE)
 >
 > Gee (verbatim): *"the minds eye is stuck on the same image and the actual image shown in the minds eye is like tilted or something and covering up the information when it tilts … it needs to not tilt and just be  non titlting image when moused over and actually fit the area and the fullscreen option i asked for days ago just made it much much bigger windoe for the image and i still dont have option to switch betweeen normal and fullscreen"*
 >

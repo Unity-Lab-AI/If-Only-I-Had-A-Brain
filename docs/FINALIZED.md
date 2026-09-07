@@ -5,6 +5,106 @@
 
 ---
 
+## 2026-09-07 (3rd) — FIGORDER + FIELDHYDRATE: BOTH OF HER PICTURE LANES WERE SHUT BY AN ORDERING DEFECT, AND THE SECOND ONE WAS FOUND BY BEING CORRECTED
+
+Gee (verbatim): *"update savestart pressed, she should be comming back up in the next 5 minutes and we will see if her minds eye is back to normal use/operation"* → then, after I asked him to run a manual pull: *"the field store is suppoose to be downlosaded auto like and the box is to use brain waves repo"*
+
+### The post-press live reads — `build d7445071`, booted `2026-09-07T23:01:49Z`, resume mode, `formatVersion 6` compatible
+
+```
+  minds-eye.json   rec NULL — "Unity has not imagined yet"  (the stale frame died with the process)
+  figureQueue      available true · pending 0 · seen 0 · held 0 · failed 0 · TOTAL 0
+  ownArt           drawn 0 · schemas 0 · seen 95 (survived on disk) · queued 0
+  voice            innerVoiceHeld TRUE · wordsBucketed 0
+  corpus           figures 102,372 · reachable 101,002 · noFigures 0  (EVERY cell has some)
+```
+
+⭐ **The stale frame is gone on its own** — `_mindsEyeJson` is in-memory, so the six-hour-old picture died with the process. The viewer now shows the honest warming-up state rather than a frozen figure.
+
+**Her mind's eye has exactly THREE sources of a frame, and all three were shut:**
+
+| Lane | State | Why |
+|---|---|---|
+| ① imagination's **impression anchor** | shut | needs words out of the inner-thought chain; `wordsBucketed 0` |
+| ② the **inline** figure lane in the prose walk | mostly shut | gated `fieldOnly`, so it needs a **field hit** — the box has pointer stubs, 7 of 8 missed |
+| ③ the **background drain** (publishes ~every 1.5 s) | shut | **the queue was empty** |
+
+---
+
+### ✅ `FIGORDER.1` — **the queue is empty and it is an ORDERING defect, not a broken drain**
+
+**Original filing:** her mind's eye has exactly **three** frame sources and all three are currently shut. ① the imagination tick's **impression anchor**, which needs words out of the inner-thought chain — `wordsBucketed` is **0**. ② the **inline** figure lane inside the prose walk, which is gated `fieldOnly` and so needs a **field hit** — the box's field store is LFS pointer stubs, 7 of 8 missed. ③ the **background drain**, which publishes a frame every ~1.5 s and had **nothing to drain**.
+
+⛔ **`_perceiveCellFigures` — the only site that enqueues a cell's figures — runs AFTER `await _trainAcademicStories(...)` returns.** On `ela/kindergarten` that call walks **411,226 words** and is the phase that sat at `runner:stories` for 37+ minutes. **It has never completed a cell on this walk**, so the enqueue line has never been reached, so the queue has never received one row. `figureQueue.total 0` on a RESUMED boot proves it: the queue is a persistent sqlite DB that survives a Savestart, so zero is not a reset — it is *never*.
+
+⭐ **The enqueue is a metadata `INSERT OR IGNORE` inside one transaction and the drain is a separate `unref`'d 1.5 s timer**, so moving the enqueue ahead of the prose costs the teach lane nothing and gives the background lane rows from minute one instead of from hour three.
+
+⚠ **This is exactly the failure the queue was built to prevent, one layer up.** The design note says perception comes off the cell pass so no pass is ever pinned — and then the enqueue that feeds it was placed behind the longest await in the pass.
+
+**VERDICT — FIXED.** The enqueue is extracted into `_enqueueCellFigures(subject, grade, figs?)` and called from the runner **before** `_trainAcademicStories`, under its own stage tag `runner:fig-enqueue`. `_perceiveCellFigures` still calls the same helper so it stays correct when invoked alone; the DB insert keys on each figure's own address, so the second call in a pass adds nothing and cannot duplicate.
+
+⛔ **The cap does NOT bound the queue, and that is deliberate** — a cap on what is queued is a ceiling on what she can ever see, which is the measurement that created this lane. But `DREAM_TEXTFIG_PER_CELL=0` disables the queue too, because that switch means *the figure lane is off* and a drain working a lane the operator switched off is worse than either state.
+
+**Harnessed 8/8 on the real prototype** — whole-list enqueue (not a capped slice), subject/grade carried, caller-supplied list honoured, empty cell enqueues nothing, missing queue accessor fails closed, missing figure accessor fails closed, a throwing queue never reaches the teach path, and `=0` disables the queue.
+
+⭐ **CONFIRMED AGAINST THE LIVE WALK WHILE THIS WAS BEING WRITTEN.** Sampled every 55 s across the press:
+
+```
+  23:05:03Z  prevocab:ela-kindergarten:  1/662 chunks ·   5/3308 words   q[tot=0]
+  23:11:32Z  prevocab:ela-kindergarten: 49/662 chunks · 245/3308 words   q[tot=0]
+      0.127 chunks/s  ->  ~80 minutes of prefetch still ahead of the anchoring pass,
+      which is itself ahead of the prose phase, which is ahead of the old enqueue site
+```
+
+**The queue read 0 for the entire window, on a cell she has been inside since boot.** That is the defect reproducing in real time, not an inference from the source.
+
+---
+
+### ✅ `FIELDHYDRATE.1` — **the OID copy runs ONLY when `git lfs pull` fails, and it cannot fail on a box with no git-lfs**
+
+**Original filing:** the hydration that needs no credential and no network — walk the checked-out **pointers**, read each one's `oid sha256:…`, and copy Forgejo's local object at `<store>/<oid[0:2]>/<oid[2:4]>/<oid>` into place — exists precisely because the deploy key is scoped to the code repo and `git lfs` speaks HTTP. **Its only call site is inside `if ! _lfs_pull; then`.**
+
+⛔ **`_lfs_pull` RETURNS 0 WHEN git-lfs IS ABSENT** — deliberately, and for a good reason stated in its own comment: its exit status decides whether the books are rsynced, and the books must never be lost over an optional payload. **But that same `return 0` makes `if ! _lfs_pull` false**, so the flow falls through to `elif [ "$_want_fields" != "1" ]` — which is true, because `_have_lfs=0` set `_want_fields=0` five hundred lines earlier — and logs *"field sync SKIPPED — no git-lfs on this box"*. **The local-store copy never runs.**
+
+⛔⛔ **The one condition the OID path was written for is the one condition that skips it.** And the script's own comment already records the premise: *"NOTHING ON THIS BOX PROVISIONS git-lfs. `deploy/bootstrap-backend.sh` has no install line for it"*. **A fallback whose trigger is a failure cannot fire when the thing that would fail is never attempted.**
+
+⭐ **A checkout with no git-lfs filter writes POINTERS, which is exactly the input the OID copy needs** — so the absent tool does not cost the hydration anything except the branch that reaches it.
+
+**Live evidence:** `fields: hit 1 · miss 6 · stub 1`, `lastErr "LFS pointer stub — git lfs pull has not run for the field store"`, against a corpus of **102,372 figures, 101,002 reachable, `noFigures: 0`**.
+
+⚠ **Two-press rule applies:** a press runs the BOX's copy of `self-update.sh`, so this fix takes effect on the press *after* the one that delivers it.
+
+**VERDICT — FIXED, and the finding belongs to Gee's correction.** I had just asked him to run `git lfs pull` by hand and he answered that it is supposed to be automatic from BrainWaves. ⭐ **He was right, the automatic path was already written, and looking for it is what found it unreachable.** A manual pull would have produced fields and left the defect in place, invisible until the next box.
+
+**What shipped:**
+- The hydration is now a function, `_hydrate_fields_from_local_store`, called from **both** the pull-failed branch and the no-git-lfs branch.
+- ⛔ **`_fields_opt_out` records the operator's own switch separately from the derived one.** `_want_fields` was driven to `0` by BOTH *"he set `UAL_FIELDS=0`"* and *"this box has no git-lfs"* — **not the same decision**: the first must be obeyed, the second is exactly what the local copy covers. Collapsing them is how the hydration became unreachable in the first place, so they are kept apart at the source.
+- The no-git-lfs log line stops reading as a dead end and names what it does instead.
+
+⭐ **Safe precisely where the rsync is not.** The rsync is skipped on this path because mirroring a tree of stubs over real fields would destroy the store; the OID copy is **per-file and skips any destination already at full size**, so it can only ADD fields.
+
+**Truth-tabled over all 8 combinations of (git-lfs present, `UAL_FIELDS`, pull exit):**
+
+| `_have_lfs` | `UAL_FIELDS` | pull rc | outcome |
+|---|---|---|---|
+| **0** | **1** | 0 | **hydrate from local store** ⭐ *the box's actual state — previously "SKIPPED"* |
+| 0 | 1 | 1 | hydrate from local store |
+| 0 | 0 | 0 / 1 | skip — operator opt-out, obeyed |
+| 1 | 1 | 0 | rsync (unchanged) |
+| 1 | 1 | 1 | hydrate from local store (unchanged) |
+| 1 | 0 | 0 | skip — operator opt-out, obeyed |
+| 1 | 0 | 1 | hydrate ⚠ **pre-existing and deliberately untouched** |
+
+⚠ **That last row is reported rather than fixed:** with git-lfs present, `UAL_FIELDS=0` and a failing pull, the opt-out loses to the failure. **It did before this change too** — I did not alter it, and changing more of a deploy script than the defect requires is how a press turns into an incident.
+
+⚠ **`bash -n` clean.** Also replaced `[ … ] && _x=1` with an explicit `if` — bash does exempt a failing left-hand side of an AND-list from `set -e` (probed, it survives), but that exemption is a shell detail nobody should need to know to read a script running under `set -euo pipefail`.
+
+### Docs updated in the same atomic commit
+
+`docs/TODO.md` (filed, then migrated here) · `docs/FINALIZED.md` (this entry) · `docs/NOW.md` · `docs/RESUME.md` · `deploy/REDEPLOY-NOTES.md` (a dated entry with the truth table and the two-press instruction) · plus the local wiki tree.
+
+---
+
 ## 2026-09-07 (2nd) — MINDSEYE: THE DECORATION ATE THE READOUT, THE FULLSCREEN HAD NO EXIT, AND THE STUCK FRAME WAS THE HONEST ONE
 
 Gee (verbatim): *"read resume.md to continue... problem im having is the minds eye is stuck on the same image and the actual image shown in the minds eye is like tilted or something and covering up the information when it tilts :equation terms: 104,233 / source: figure:story-11xp30d / imagined: 361m ago / her art: 0 drawn · 0 shapes she can draw from · 95 seen / ✓ good — keep it / ✗ bad — relook & redraw / 🚫 not a drawable word / buttons arm when one of her drawings or look-ups is on screen , it needs to not tilt and just be  non titlting image when moused over and actually fit the area and the fullscreen option i asked for days ago just made it much much bigger windoe for the image and i still dont have option to switch betweeen normal and fullscreen"*

@@ -42,6 +42,58 @@ last-verified: "cd465955 2026-08-29"
 
 ---
 
+## ⛔ 2026-09-07 — THE FIELDS NEVER ARRIVED, AND THE CREDENTIAL-FREE PATH THAT WOULD HAVE DELIVERED THEM WAS GATED BEHIND A FAILURE THAT CANNOT HAPPEN
+
+**Reported:** the field store is supposed to hydrate automatically from **BrainWaves**, and the box is supposed to use it. It was not. Live on the deployed box, `build 60479ed5`:
+
+```
+  fields   hit 1 · miss 6 · stub 1
+  lastErr  "LFS pointer stub — `git lfs pull` has not run for the field store"
+  corpus   102,372 figures · 101,002 reachable · noFigures 0  (no cell has none)
+```
+
+### The mechanism — and it is a side effect of a CORRECT fix made three days earlier
+
+`self-update.sh` carries a credential-free hydration written for exactly this box: the clone leaves LFS **pointers**, each pointer names its object's `oid sha256:…`, Forgejo's LFS objects are files on this same disk at `<store>/<oid[0:2]>/<oid[2:4]>/<oid>`, so they are **copied into place with no git-lfs, no network and no deploy key.**
+
+⛔ **Its only call site was inside `if ! _lfs_pull; then`.** And entry **①** in the 2026-09-05 section below records why `_lfs_pull` **returns 0** on a box without LFS — *"because its exit status is what decides whether the books get rsynced"*. That was the right call and the books were genuinely at risk. **What went unnoticed is that a second, unrelated branch was reading the same exit status as a signal about the FIELDS.** The flow became:
+
+```
+  _have_lfs=0                      ->  _want_fields=0
+  _lfs_pull                        ->  returns 0  (success, by design)
+  ! _lfs_pull                      ->  FALSE  ->  hydration branch SKIPPED
+  elif [ "$_want_fields" != "1" ]  ->  TRUE
+  log "field sync SKIPPED — no git-lfs on this box"
+```
+
+⛔⛔ **The one condition the local-store copy exists for is the one condition that skips it.** A fallback whose trigger is a *failure* cannot fire when the thing that would fail is never attempted — and the premise was already written in the script: *"NOTHING ON THIS BOX PROVISIONS git-lfs."*
+
+⚠ **And a second collapse fed it:** `_want_fields` is driven to `0` by BOTH *"the operator set `UAL_FIELDS=0`"* and *"this box has no git-lfs"*. **Those are not the same decision** — the first must be obeyed, the second is precisely what the local copy covers — and by the time anything downstream read the variable they were the same value.
+
+### What shipped
+
+- The hydration is a function, `_hydrate_fields_from_local_store`, called from **both** the pull-failed branch and the no-git-lfs branch.
+- `_fields_opt_out` records the operator's own switch separately, so `UAL_FIELDS=0` is obeyed and never hydrates behind his back.
+- The no-git-lfs log line stops reading as a dead end and names what it is doing instead.
+
+⭐ **Safe exactly where the rsync is not.** The rsync is skipped on this path because mirroring a tree of stubs over real fields would destroy the store; the OID copy is **per-file and skips any destination already at full size**, so it can only ADD fields.
+
+**Truth-tabled over all eight combinations of (git-lfs present, `UAL_FIELDS`, pull exit):**
+
+| `_have_lfs` | `UAL_FIELDS` | pull rc | outcome |
+|---|---|---|---|
+| **0** | **1** | 0 | **hydrate from local store** ⭐ *the box's actual state — previously "SKIPPED"* |
+| 0 | 1 | 1 | hydrate from local store |
+| 0 | 0 | 0 / 1 | skip — operator opt-out, obeyed |
+| 1 | 1 | 0 | rsync (unchanged) |
+| 1 | 1 | 1 | hydrate from local store (unchanged) |
+| 1 | 0 | 0 | skip — operator opt-out, obeyed |
+| 1 | 0 | 1 | hydrate ⚠ **pre-existing and deliberately untouched** — the opt-out loses to a failed pull here, and it did before this change too |
+
+> ⛔⛔ **TWO-PRESS SEQUENCE.** A press runs the **box's** copy of `self-update.sh`, not `main`'s. This fix takes effect on the press **after** the one that delivers it. **What to read on the second press:** the log line `fields — hydrated N from the local store, M already present, K unresolved`. If instead it says it *could not find (or read)* the store, that is the `/var/lib/forgejo` mode-750 `git:git` permissions case — the script names the `usermod` that fixes it, and `UAL_LFS_STORE` sets the path explicitly.
+
+---
+
 ## ✅ 2026-09-04 — RESOLVED: Gee's redeploy + fresh walk "wouldn't connect at all". TWO independent bugs; the visible one was NOT the deploy failure
 
 **Symptom as reported:** Gee pressed Update repeatedly, then said the brain "won't connect at all". Both halves were real, and they had **different causes** — chasing one hides the other.
