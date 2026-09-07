@@ -2097,5 +2097,13 @@ Found by reading the deployed box after the board cleanup, not by being told. **
     - **What actually closes this:** an inline affordance inside each card to hang the rich tooltip from — a design change across ~10 long cards, **not an attribute swap.** ⚠ **Filed rather than half-done**, because converting card-level titles by hand would have shipped a dotted line under every card and called it a tooltip fix.
     - ✅ **`dashboard-public.html` needs no tooltips and that is correct, not a gap** — it is a **pure redirect stub** that replaces its own location on load. Its fallback text now says so, for the only case anyone ever reads it: when the redirect failed.
 
+---
+
+## MINDSEYE — the viewer tilts over its own readout, will not fit, has no way back out of fullscreen, and the frame has not moved in six hours — filed + closed 2026-09-07
+
+✅ **ALL SIX ROWS CLOSED THE DAY THEY WERE FILED.** Every row's verbatim text — Gee's instruction, the pre-work live reads, and each `Original filing:` — was archived to **`docs/FINALIZED.md §2026-09-07 (2nd)`** and **string-probed 10/10 present** before one line was removed from this board.
+
+⚠ **Two things were reported and deliberately NOT fixed, and they are in the ledger entry rather than left open here:** the box's field store is answering **LFS pointer stubs** (a press, not a code change — box work is dashboard-only), and `innerVoiceHeld` clears itself once she banks her first words, so **no fallback imagination seed was invented** — *empty thought = no image* is a standing decision.
+
 
 

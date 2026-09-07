@@ -12,16 +12,34 @@
     body { display:flex; flex-direction:column; align-items:center; min-height:100%; padding:28px 16px 40px; }
     h1 { font-size:18px; letter-spacing:1px; margin:0 0 4px; color:var(--pink); font-weight:700; }
     .sub { color:var(--dim); font-size:12px; margin:0 0 22px; text-align:center; max-width:620px; line-height:1.5; }
-    /* the "3D world" stage — a perspective-tilted frame so her mind's eye sits in space */
-    .stage { perspective:1100px; margin-top:6px; }
+    /* ⛔⛔ THE STAGE NO LONGER TILTS, AND THE TILT WAS NOT A COSMETIC CHOICE — IT
+       ATE THE READOUT. The frame carried `rotateX(8deg) rotateY(-9deg)` under a
+       `perspective:1100px` stage, and a CSS transform DOES NOT CHANGE LAYOUT: the
+       element keeps its upright box in flow while the browser paints it rotated,
+       so the projected bottom edge landed ON TOP of the `.meta` line below —
+       equation terms, source, imagined, her art. The decoration covered the data.
+       Hover made it worse rather than better: it swapped in a SECOND tilt
+       (`rotateX(3deg) rotateY(-3deg)`) instead of releasing, so pointing at the
+       picture made it move.
+       There is now no transform anywhere in the normal view, so nothing can
+       overhang anything. The stage keeps no `perspective` either — with no
+       rotation there is nothing to project, and leaving it would be a property
+       that quietly re-enables the defect the moment anyone adds a transform.
+       Hover still responds, through colour rather than geometry: the border and
+       the glow lift, the picture does not move a pixel. */
+    /* `position:relative` anchors the fullscreen toggle (see its block below);
+       `padding-top` reserves that toggle a row of its own rather than floating
+       it over the picture. One rule, not two — a selector written twice in one
+       stylesheet is how a later edit lands on the copy nobody is reading. */
+    .stage { position:relative; margin-top:6px; padding-top:34px; }
     .frame {
-      transform: rotateX(8deg) rotateY(-9deg);
-      transition: transform 0.4s ease;
       border:1px solid var(--border); border-radius:14px; padding:14px;
       background:var(--surface);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
       box-shadow:0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,77,154,0.08), inset 0 0 60px rgba(255,77,154,0.04);
     }
-    .frame:hover { transform: rotateX(3deg) rotateY(-3deg); }
+    .frame:hover { border-color:rgba(255,77,154,0.45);
+                   box-shadow:0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,77,154,0.22), inset 0 0 60px rgba(255,77,154,0.07); }
     /* CRYSTAL — SHOWN AT ITS OWN SIZE. `width:512px` forced every field to 512
        on screen no matter what it actually was: a small field was blown up
        soft, and now that her fields render at 512-1024 a detailed one was being
@@ -30,7 +48,28 @@
        than the viewport, and `image-rendering:auto` means that rare case AVERAGES
        rather than dropping pixels. Aspect is free here — `height:auto` already
        followed the canvas, so portrait and landscape fields need no CSS change. */
-    canvas { display:block; width:auto; max-width:96vw; height:auto; image-rendering:auto; border-radius:8px; background:#000;
+    /* ⭐ AND IT HAS TO FIT THE AREA. The live field is 1920x1467, so at 1:1 the
+       picture was taller than the window and pushed the entire readout below the
+       fold — you could not see the image and what it was at the same time.
+       `max-height` is the honest bound: a `max-*` constraint NEVER upscales, it
+       only clamps a field that is genuinely bigger than the space, so the CRYSTAL
+       decision above survives intact — small fields still render 1:1 and are not
+       blown up soft.
+       ⛔ AND IT MUST BE `max-height`, NEVER A PINNED `height`. On a replaced
+       element with an intrinsic ratio, a max-width/max-height pair that both
+       bite is resolved by the browser IN RATIO — the picture shrinks, it does not
+       squash. A pinned height is not part of that rule and silently distorts a
+       landscape field, which is the exact trap the fullscreen block below was
+       written to document after it happened there.
+       WHERE 52vh COMES FROM — the rest of the page has to fit around it, so the
+       figure is the leftover after everything that must stay on screen with the
+       picture. On a 940px content height: ~227px above (page padding, title, the
+       folded lead, the toggle's reserved row) and ~220px below (the readout, the
+       three critique buttons, their note, the status line, the folded legend,
+       page padding) leaves ~493px, and 52vh is 489. Anyone re-checking this can
+       count the same blocks; it is arithmetic, not taste. */
+    canvas { display:block; width:auto; max-width:96vw; height:auto; max-height:52vh;
+             image-rendering:auto; border-radius:8px; background:#000;
              box-shadow:0 0 40px rgba(77,208,225,0.10); }
     /* ⛶ FULLSCREEN — THE PICTURE ALONE, AND IT IS OPT-IN ON PURPOSE.
        ⛔ The 1:1 default above is a DECISION, not an oversight (see CRYSTAL): a
@@ -40,15 +79,33 @@
        information around it.
        In fullscreen the canvas is allowed to scale to the screen, because that
        is the whole point of asking for it, and nothing else is on screen to be
-       compared against. Everything but the picture is hidden. */
-    #eyeFs { position:fixed; top:16px; right:16px; z-index:50; background:#0d1117;
+       compared against. Everything but the picture is hidden — ⛔ EXCEPT THE
+       TOGGLE, deliberately, because the mode has to be leaveable by the same
+       control that entered it. */
+    /* ⛔⛔ THE TOGGLE LIVES INSIDE THE STAGE, AND THAT IS THE WHOLE FIX. It used
+       to be a `position:fixed` SIBLING of the stage with
+       `btn.style.display = 'none'` on entering fullscreen — and the hiding line
+       was papering over something it did not cause. **In fullscreen the browser
+       paints only the fullscreen element's own subtree**, so a button outside
+       `.stage` was already invisible no matter what its `display` said. The
+       result was a mode with no visible way back out of it: Escape and `f` both
+       worked and neither was written anywhere on the screen.
+       Now it is a child of the stage, so it goes fullscreen WITH the picture and
+       stays a real switch in both directions. The stage reserves a row for it in
+       the normal view instead of floating it over the artwork — a control that
+       covers the thing it controls is the defect one line up. */
+    #eyeFs { position:absolute; top:0; right:0; z-index:50; background:#0d1117;
              color:var(--cyan); border:1px solid var(--border); border-radius:6px;
              padding:6px 11px; font:inherit; font-size:12px; cursor:pointer; }
     #eyeFs:hover { border-color:var(--cyan); }
     .stage:fullscreen { background:#000; display:flex; align-items:center;
                         justify-content:center; width:100vw; height:100vh; margin:0;
-                        perspective:none; }
-    .stage:fullscreen .frame { transform:none; border:0; box-shadow:none;
+                        padding-top:0; }
+    /* Over a full-bleed picture the button needs its own contrast, or the switch
+       out of fullscreen is invisible against whatever she happens to be seeing. */
+    .stage:fullscreen #eyeFs { top:16px; right:16px; background:rgba(7,9,12,0.82);
+                               border-color:var(--cyan); padding:8px 14px; }
+    .stage:fullscreen .frame { border:0; box-shadow:none; background:none;
                                width:100vw; height:100vh; display:flex;
                                align-items:center; justify-content:center; }
     /* ⛔⛔ `object-fit:contain`, NOT a pinned height. SHE DRAWS LANDSCAPE AND
@@ -73,6 +130,25 @@
     .err .dot { background:#e0533a; }
     a.back { position:fixed; top:16px; left:16px; color:var(--pink); text-decoration:none; font-size:12px; border:1px solid var(--border); padding:6px 12px; border-radius:8px; background:var(--surface); }
     .note { margin-top:20px; font-size:11px; color:#5d6875; max-width:560px; text-align:center; line-height:1.55; }
+    /* ⭐ THE PROSE FOLDS AWAY, AND THAT IS PART OF "FIT THE AREA". Two blocks of
+       running text — 1,335 characters above the picture and 2,374 below it —
+       were pushing the image and its readout off the bottom of the window on a
+       page whose entire job is to show one picture. Neither is padding: the
+       first explains what you are looking at, the second is the legend for every
+       `source:` prefix. So NOT ONE WORD IS DELETED — they fold, opening on a
+       click and staying open, and the lead line above each stays visible so the
+       page still introduces itself at a glance. */
+    details.fold { max-width:620px; margin:0 0 18px; text-align:left; }
+    details.fold[data-note] { max-width:560px; margin:10px 0 0; }
+    details.fold > summary { cursor:pointer; color:var(--cyan); font-size:11px;
+                             letter-spacing:0.5px; list-style:none; padding:5px 0;
+                             text-align:center; opacity:0.85; }
+    details.fold > summary:hover { opacity:1; }
+    details.fold > summary::-webkit-details-marker { display:none; }
+    details.fold > summary::before { content:'▸ '; }
+    details.fold[open] > summary::before { content:'▾ '; }
+    details.fold > p { margin:6px 0 0; font-size:11px; line-height:1.6; color:var(--dim); }
+    details.fold[data-note] > p { color:#5d6875; }
     /* ARTJUDGE — the critique row: tell her whether the piece is good.
        Always visible so the critic knows the tools exist; dimmed + disabled
        when the current frame isn't one of her judgeable pieces. */
@@ -91,11 +167,15 @@
 <body>
   <a class="back" href="../index.html">← back to the brain</a>
   <h1>👁 UNITY'S MIND'S EYE</h1>
-  <p class="sub">This is a live screen showing <b>the picture Unity is holding in her head right now</b>. Her brain doesn't store pictures as pixels — it stores them as <b>math</b> (a compact equation, the same idea as a JPEG storing a photo as numbers), and this page turns that math back into an image you can watch. Everything here comes from things she has <b>actually looked at</b>: when she sees a camera frame or an image, her brain files it away as one of these equations, tied to whatever word she was thinking about at the time. When she wants to <b>draw</b> something, she does <b>not</b> trace or filter the picture she has of it. She keeps a <b>shape sketch</b> in her head instead — roughly where the parts sit, how big they are, which way they run, what colour family the thing tends to be — and she <b>builds a new drawing from that</b>, by hand, in her own style. It comes out different every time, the way your drawing of a horse is different every time. If she has <b>never seen</b> the thing, she <b>looks it up</b> once (fetches a reference from the definition she learned, studies it, keeps the shape sketch) and then throws the photo away and draws it herself. Things she can't picture at all show as washes of colour that follow her mood; numbers and letters show as symbols. <b>One brain, one image</b>: she imagines it once, and every viewer window rebuilds that same picture on your own machine.</p>
+  <p class="sub">This is a live screen showing <b>the picture Unity is holding in her head right now</b> — kept in her brain as <b>math</b> rather than pixels, and turned back into an image here on your own machine. <b>One brain, one image</b>: she imagines it once, and every viewer window rebuilds that same picture.</p>
 
-  <button id="eyeFs" title="Show the picture alone, filling the screen. Press F or Escape to come back. The normal view renders 1:1 on purpose so no detail is added or thrown away; this mode scales to fit, which is what you are asking for when you ask for fullscreen.">⛶ fullscreen</button>
+  <details class="fold">
+    <summary>where these pictures come from, and how she draws</summary>
+    <p>Her brain doesn't store pictures as pixels — it stores them as <b>math</b> (a compact equation, the same idea as a JPEG storing a photo as numbers), and this page turns that math back into an image you can watch. Everything here comes from things she has <b>actually looked at</b>: when she sees a camera frame or an image, her brain files it away as one of these equations, tied to whatever word she was thinking about at the time. When she wants to <b>draw</b> something, she does <b>not</b> trace or filter the picture she has of it. She keeps a <b>shape sketch</b> in her head instead — roughly where the parts sit, how big they are, which way they run, what colour family the thing tends to be — and she <b>builds a new drawing from that</b>, by hand, in her own style. It comes out different every time, the way your drawing of a horse is different every time. If she has <b>never seen</b> the thing, she <b>looks it up</b> once (fetches a reference from the definition she learned, studies it, keeps the shape sketch) and then throws the photo away and draws it herself. Things she can't picture at all show as washes of colour that follow her mood; numbers and letters show as symbols.</p>
+  </details>
 
   <div class="stage" id="stage">
+    <button id="eyeFs" title="Switch between the normal view and the picture on its own, filling the screen. This same button switches back — it stays on screen in fullscreen, and F or Escape also come back. The normal view never enlarges a picture beyond its own size, so no detail is invented; fullscreen scales it to the screen, which is the point of asking for it.">⛶ fullscreen</button>
     <div class="frame">
       <canvas id="eye" width="96" height="96"></canvas>
     </div>
@@ -104,8 +184,8 @@
   <div class="meta">
     <div><span class="tip tip--below tip--wide" tabindex="0" data-tip="How many wavelet terms this picture is made of. It is a measure of DETAIL, not of quality — a simple shape genuinely needs fewer terms than a busy scene. This number is the picture: there is no image file behind it, only the equation, which is reconstructed in your browser to draw what you are looking at.">equation terms</span>: <b id="terms">—</b></div>
     <div><span class="tip tip--below tip--wide" tabindex="0" data-tip="What KIND of picture this is — read the note under the frame for the full list. The short version: seen: = coming in through her eyes, recall: = a memory she is re-seeing, lookup: = a reference she just fetched to study something new, canvas:own: = she DREW it, canvas:imagine: = she invented it by combining her own ideas.">source</span>: <b id="source">—</b></div>
-    <div><span class="tip tip--below" tabindex="0" data-tip="How long ago this picture formed. A frame that stops updating means she is mid-lesson — during teaching the picture deliberately holds still rather than flickering.">imagined</span>: <b id="age">—</b></div>
-    <div title="How many of her own drawings she has made this session, and how many things she has learned the SHAPE of. A shape sketch is what lets her draw something without copying it — she has one for each of these. 'seen' counts every picture she holds; 'shapes' counts the ones she could draw from.">her art: <b id="art">—</b></div>
+    <div><span class="tip tip--below" tabindex="0" data-tip="How long ago this picture formed. A frame that stops moving is usually correct rather than broken: this screen only ever shows something REAL she saw or drew, never the formless mood texture her mind makes when she has nothing particular in view — so when there is nothing new that qualifies, the last real picture stays up instead of being replaced by a wash of colour. Once the number here passes a few minutes the status line below the frame says so in words, and says why.">imagined</span>: <b id="age">—</b></div>
+    <div><span class="tip tip--below tip--wide" tabindex="0" data-tip="How many of her own drawings she has made this session, and how many things she has learned the SHAPE of. A shape sketch is what lets her draw something without copying it — she has one for each of these. 'seen' counts every picture she holds; 'shapes' counts the ones she could draw from. All three reading zero while 'seen' climbs is the normal shape of an early walk: she is banking what things look like well before she has the hand to draw them.">her art</span>: <b id="art">—</b></div>
   </div>
   <div class="judge" id="judge">
     <button id="btn-accept" title="This is a good drawing — she holds it as a good one.">✓ good — keep it</button>
@@ -114,7 +194,12 @@
   </div>
   <div class="judge-note" id="judge-note"></div>
   <div class="status warm" id="status"><span class="dot"></span><span id="status-text">connecting…</span></div>
-  <p class="note">The <b>source</b> line tells you what kind of picture you're looking at: <b>seen:&lt;word&gt;</b> = a picture of hers coming back through her eyes (camera frames are experienced but never shown here or filed under words — a webcam can't know what she's thinking) · <b>recall:&lt;word&gt;</b> = a memory — she's re-seeing something she saw before · <b>lookup:&lt;word&gt;</b> = a reference she just fetched to study a thing she'd never seen · <b>canvas:own:&lt;words&gt;</b> = <b>she DREW this</b> — built stroke by stroke from her shape sketch of the thing, not traced over a photo. Ask her to "draw a black cat on a gravestone" and she composes the cat AND the gravestone, in her own layout and colours. Two goes at the same word give you two different drawings, because it is an attempt and not a saved file. The word on the end — <b>canvas:own:&lt;word&gt;:&lt;style&gt;</b> — is the <b>hand she drew it with</b>: poster, pencil, ink, watercolour, pointillism, crosshatch, crayon or doodle. It is the same knowledge and the same shape sketch every time; only the hand changes, the way you'd draw the same cat with a biro or a brush. She picks by mood and deliberately never uses the same hand twice running, and if you mark a drawing <b>good</b> she leans toward that hand for that subject next time · <b>canvas:draw:&lt;word&gt;</b> = a <b>render of what she LOOKED AT</b> — the reference redrawn in her palette. Useful for seeing what she studied, but it is her showing you the source, not her artwork · <b>draw:fav:&lt;word&gt;</b> = same, from a favourite memory while her current thought couldn't be pictured · <b>canvas:imagine:&lt;a&gt;+&lt;b&gt;</b> = pure imagination — a scene she invented by combining ideas from her own train of thought into ONE new picture · <b>thought / thought-blend / sem-state</b> = a formless daydream, just her mood as colour. When she's never seen a thing she looks it up ONCE, studies it, and remembers it for next time — treated as a reference, not gospel. She daydreams whenever her brain has a free moment (mid-lesson the picture holds still). There is <b>no arbitrary size cap</b> on what she can picture any more — the only ceiling left is what the maths engine can physically process in one pass. What keeps her from pouring the whole machine into one daydream is her own sense of proportion: she decides how much a thought is worth and spends accordingly, the way you can imagine a whole city without trying to picture every brick.</p>
+  <p class="note">The <b>source</b> line above tells you what kind of picture you're looking at.</p>
+
+  <details class="fold" data-note>
+    <summary>what every source prefix means</summary>
+    <p><b>seen:&lt;word&gt;</b> = a picture of hers coming back through her eyes (camera frames are experienced but never shown here or filed under words — a webcam can't know what she's thinking) · <b>recall:&lt;word&gt;</b> = a memory — she's re-seeing something she saw before · <b>lookup:&lt;word&gt;</b> = a reference she just fetched to study a thing she'd never seen · <b>canvas:own:&lt;words&gt;</b> = <b>she DREW this</b> — built stroke by stroke from her shape sketch of the thing, not traced over a photo. Ask her to "draw a black cat on a gravestone" and she composes the cat AND the gravestone, in her own layout and colours. Two goes at the same word give you two different drawings, because it is an attempt and not a saved file. The word on the end — <b>canvas:own:&lt;word&gt;:&lt;style&gt;</b> — is the <b>hand she drew it with</b>: poster, pencil, ink, watercolour, pointillism, crosshatch, crayon or doodle. It is the same knowledge and the same shape sketch every time; only the hand changes, the way you'd draw the same cat with a biro or a brush. She picks by mood and deliberately never uses the same hand twice running, and if you mark a drawing <b>good</b> she leans toward that hand for that subject next time · <b>canvas:draw:&lt;word&gt;</b> = a <b>render of what she LOOKED AT</b> — the reference redrawn in her palette. Useful for seeing what she studied, but it is her showing you the source, not her artwork · <b>draw:fav:&lt;word&gt;</b> = same, from a favourite memory while her current thought couldn't be pictured · <b>canvas:imagine:&lt;a&gt;+&lt;b&gt;</b> = pure imagination — a scene she invented by combining ideas from her own train of thought into ONE new picture · <b>thought / thought-blend / sem-state</b> = a formless daydream, just her mood as colour. When she's never seen a thing she looks it up ONCE, studies it, and remembers it for next time — treated as a reference, not gospel. She daydreams whenever her brain has a free moment (mid-lesson the picture holds still). There is <b>no arbitrary size cap</b> on what she can picture any more — the only ceiling left is what the maths engine can physically process in one pass. What keeps her from pouring the whole machine into one daydream is her own sense of proportion: she decides how much a thought is worth and spends accordingly, the way you can imagine a whole city without trying to picture every brick.</p>
+  </details>
 
   <script type="module">
     import { reconstructImageData } from '../js/brain/mindspace/transform.js';
@@ -144,9 +229,14 @@
           toggle();
         }
       });
+      // ⛔ THE BUTTON IS NOT HIDDEN IN FULLSCREEN ANY MORE. It used to set
+      // `display:none` here, which left the mode with no visible exit — and the
+      // line was not even the cause of its own disappearance: the button was a
+      // sibling of the stage, and only the fullscreen element's subtree is
+      // painted, so it was already gone. It is a child of the stage now, so it
+      // survives the transition and the label is the switch in both directions.
       document.addEventListener('fullscreenchange', () => {
-        btn.textContent = document.fullscreenElement ? '⛶ exit fullscreen' : '⛶ fullscreen';
-        btn.style.display = document.fullscreenElement ? 'none' : '';
+        btn.textContent = document.fullscreenElement ? '⤢ exit fullscreen' : '⛶ fullscreen';
       });
     })();
 
@@ -170,6 +260,16 @@
     }
 
     let lastAt = 0;
+    // How old a frame has to be before the page stops calling it live. The
+    // imagine tick free-wheels every ~8s while she is walking, so anything past
+    // a few minutes means no GROUNDED frame has published in that whole window —
+    // which is a real fact about her, not a fault, and belongs on the screen.
+    const FRAME_HELD_MS = 5 * 60 * 1000;
+    // Filled by pollArt from her own published state: the reason the frame is
+    // not advancing, in her terms. Null when there is nothing specific to say,
+    // in which case the status falls back to the generic held wording — never to
+    // a guess about a cause.
+    let heldReason = null;
     function setStatus(cls, text) { elStatus.className = 'status ' + cls; elStatusText.textContent = text; }
     function ago(ts) {
       if (!ts) return '—';
@@ -214,7 +314,23 @@
         elTerms.textContent = (data.terms || 0).toLocaleString();
         elSource.textContent = data.source || 'mindspace';
         elAge.textContent = ago(data.at);
-        setStatus('live', 'live — reconstructed from her current field C');
+        // ⛔⛔ A HELD FRAME IS NOT A LIVE ONE, AND THIS LINE USED TO SAY IT WAS.
+        // The status read a green "live — reconstructed from her current field C"
+        // unconditionally, so a picture six hours old sat under a live dot with
+        // nothing anywhere on the page contradicting it. That is the instrument
+        // shape this project keeps finding: it reads most reassuring exactly when
+        // the thing it measures has stopped.
+        // The frame holding still is usually CORRECT — the viewer is grounded-only
+        // by design, so a mood texture never takes the screen and the last real
+        // thing she saw stays up instead. What was missing was saying so, and
+        // saying WHY, which `heldReason` reads out of her own published state.
+        const ageMs = data.at ? (Date.now() - data.at) : 0;
+        if (data.at && ageMs > FRAME_HELD_MS) {
+          setStatus('warm', 'held ' + ago(data.at) + ' — ' + (heldReason
+            || 'nothing new has been grounded since; the viewer holds the last real thing she saw rather than showing a mood texture'));
+        } else {
+          setStatus('live', 'live — reconstructed from her current field C');
+        }
         // ARTJUDGE — the critique buttons arm on judgeable frames (her
         // drawings and the references behind them); on daydreams they dim
         // with an honest note instead of vanishing.
@@ -279,7 +395,22 @@
           const r = await fetch(url, { cache: 'no-store' });
           if (!r.ok) continue;
           const j = await r.json();
-          const a = ((j && (j.state || j)) || {}).ownArt;
+          const st = (j && (j.state || j)) || {};
+          const a = st.ownArt;
+          // WHY THE PICTURE IS NOT MOVING, read from the same snapshot rather
+          // than inferred from the age. The only grounded frame the imagine tick
+          // can make is an IMPRESSION — the nearest thing she has actually seen
+          // to what she is currently thinking — and it needs words out of her
+          // inner-thought chain to aim with. While she has banked no words the
+          // chain is empty, the tick produces only a mood texture, and the
+          // grounded-only viewer correctly publishes nothing. Reading the two
+          // fields that state this outright beats a page-side guess.
+          const v = st.voice;
+          if (v && typeof v.innerVoiceHeld === 'boolean') {
+            heldReason = (v.innerVoiceHeld && !(v.wordsBucketed > 0))
+              ? 'she has not banked a word yet, so she has no thought to picture with — the last real thing she saw is held on screen until she does'
+              : null;
+          }
           if (!a) continue;
           elArt.textContent = `${a.drawn | 0} drawn · ${a.schemas | 0} shapes she can draw from · ${a.seenConcepts | 0} seen`;
           return;

@@ -1765,11 +1765,13 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // error. `figFieldStub` is the one that matters — see the module.
     let rec = null;
     let fieldPhrase = null;
+    let recFromField = false;
     try {
       const ff = require('../figure-field-store.js').loadField(fig.url);
       if (ff && ff.rec) {
         rec = ff.rec;
         fieldPhrase = ff.phrase || null;
+        recFromField = true;
         st.figFromField = (st.figFromField | 0) + 1;
       }
     } catch (e) {
@@ -1921,7 +1923,21 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       // console.log, not process.stdout.write — the console ring only captures
       // console.*, and a success that the ring cannot see is a success nobody
       // can diagnose remotely (the LOOKEYES blind spot, third occurrence).
-      console.log(`[VisualMemory] FIGURE perceived "${label}" — ${rec.equation_count || 0} terms, ${small.w}x${small.h}${phrase ? ` — "${phrase.slice(0, 60)}"` : ''}`);
+      // ⛔⛔ THE DIMENSIONS COME OFF THE REC, NOT OFF `small`. `const small` is
+      // declared INSIDE the `if (!rec)` network branch above, so on the FIELD
+      // path — where the rec arrives already made — this line threw
+      // `ReferenceError: small is not defined`. It threw AFTER the store write,
+      // the mind's-eye publish and the phrase-teach had all succeeded, and the
+      // outer catch then counted the whole call as `figPerceiveFails` and
+      // returned null. **A figure that was perceived, stored, published and
+      // taught was reported to its caller as a failure**, and the only visible
+      // trace was `lastErr: "figure store: small is not defined"` on the
+      // dashboard. The rec carries its own geometry on BOTH paths (the network
+      // path perceives at exactly `small.w`x`small.h`), so reading it here is
+      // both correct and identical to what this line used to print.
+      // The path is named because a field read and a live transform cost ~50ms
+      // and ~7.7s respectively — which one ran is the useful half of this line.
+      console.log(`[VisualMemory] FIGURE perceived "${label}" — ${rec.equation_count || 0} terms, ${rec.width}x${rec.height}, ${recFromField ? 'from field' : 'transformed live'}${phrase ? ` — "${phrase.slice(0, 60)}"` : ''}`);
       return rec;
     } catch (e) {
       st.figPerceiveFails = (st.figPerceiveFails | 0) + 1;
