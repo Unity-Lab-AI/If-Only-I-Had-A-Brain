@@ -22,7 +22,19 @@
 > | `runner:stories` + `defWordCalls` climbing | past it, in the **anchoring loop** — that is progress, leave it |
 > | `prevocab:…:N/M chunks` (after the next press) | the countdown; **frozen there means the NETWORK stopped, not the walk** |
 >
-> ⚠ **STILL OPEN AT HANDOFF:** 36.8 min against a priced band of **5 min best / ~26 min typical / 2.6 h throttled**. **The threshold I set is one hour** — past that, the prefetch itself is hung and is a different bug. **That verdict was not reached before this was written and must not be assumed either way.**
+> ✅ **RESOLVED THE SAME SESSION — SHE CAME OUT THE OTHER SIDE, AND THE FIX IS LIVE.** The cascade deployed (`60479ed5`, booted `00:38:15Z`) and the previously-dark region reported itself for the first time:
+>
+> ```
+>   prevocab:ela-kindergarten:138/539 chunks · 690/2691 words
+>   ->                        153/539 chunks · 765/2691 words   (100 s window)
+>   0.150 chunks/s · 0.75 words/s · exactly 5.0 words per chunk = PREFETCH_CONCURRENCY
+>   seq  15,017 FROZEN -> 15,122 -> 15,137 -> 182,516 -> 239,117 CLIMBING
+>   then _teachAntiHebbian-done · letterShapes 94/94 · loop lag 1 ms
+> ```
+>
+> **Both projections (chunks and words) agreed at 43 minutes remaining, and she cleared it.** ⭐ **The queue also halved — 5,288 words / 1,058 chunks before the fix, 2,691 / 539 live.** ⚠ **That is Morphy AND a warm disk cache together, not Morphy alone.**
+>
+> ⭐ **Both frontend fixes verified on the DEPLOYED site by fetching them** — the corrected read depth and new action copy are being served, and the stale `concurrency 20` string is gone.
 >
 > ## ⛔⛔ ① THE PRICE, MEASURED — AND THE PUBLISHED ONE IS WRONG IN THREE PLACES
 >
@@ -77,9 +89,12 @@
 >
 > ## ⛔ ⑤ WHAT IS STILL OPEN
 >
-> - **The one-hour verdict** on whether the prefetch is merely slow or genuinely hung.
+> **Three rows closed on live evidence** and are archived verbatim in `FINALIZED.md §2026-09-06 (25th)` — all 30 non-blank lines string-matched into the ledger before one was removed from the board. **What did NOT close is named here so nobody infers it did:**
+>
+> - **`WEDGE2.1` STAYS OPEN AND MUST NOT BE FOLDED INTO THIS.** That is a **real** wedge — a paired read 194 s apart with byte-identical teach counters *including a frozen definition drain*, at stage `_teachSentenceList-done`. ⛔ **Today's finding is a DIFFERENT region** — the prefetch runs *before* `_teachSentenceList` is ever called — and does not explain it. What today gives that row is instrumentation: its next occurrence names its own location.
 > - **`WEDGE2.5`** — corpus extraction damage (`addedp`, `pictographicp`, `twoword`) that can never resolve and is re-fetched on **every visit forever**. Fix at the fetcher, not the dictionary; a miss-list was already rejected in this exact code path.
-> - Everything shipped here is **server-side and needs a press.** The frontend fix (`teachview.html`, `unity-guide.html`) rides the rsync and is live on the next push.
+> - **`WEDGE2.7` (new)** — the prose rep-pricing lanes are **still unmeasured**: 96 priced lanes live, **0 of them non-`SELF:DEF`**, cap full and evicting. An earlier boot showed prose lanes; this one has not reached prose. ⛔ **The reading is boot-dependent — re-check it, never inherit it.**
+> - **Where she actually is:** `passedCells 0 of 193`, every subject still pre-K, phases 2/25 of the first cell. **She is at the start of the road, not partway down it.**
 >
 > ---
 
