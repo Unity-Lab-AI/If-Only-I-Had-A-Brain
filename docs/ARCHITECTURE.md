@@ -77,7 +77,61 @@ last-verified: "4bc99291 2026-08-31"
 
 # ARCHITECTURE — IF ONLY I HAD A BRAIN
 
-> Last updated: 2026-09-06 (**THE SAME DEFECT A FOURTH TIME, A GATE THAT TAUGHT ITS OWN ANSWERS, AND A DECIDING NUMBER WRITTEN TO A FIELD NOTHING READS**). No equation changed; no geometry changed; no weight format changed. **(1) The rediscovery pattern reaches its fourth level.** The 2026-08-25 banner below names it three times — a CPU shadow nobody reads, then `_teachLateralInhibition` walking the motor span *twice* for the same sparse bits. **The remaining level is that the FIRST walk was also unnecessary:** the caller writes the motor pattern via `_writeTiledPattern` and then, three lines later, the lateral pass scans all **346,902** motor cells to find what was just written. Measured live: **380,300 ms across 170,334 calls — 11.8% of a whole boot's wall clock.** The writer now hands out the indices it wrote, so there is one copy of the tiling arithmetic instead of two that can drift. ⛔ **A wrong hint does not throw — it trains anti-Hebbian against the wrong rows and every instrument still reads healthy** — so both paths run and are compared for the first 500 calls, and a single mismatch permanently disables the hint and says so. **(2) A gate was teaching the answers to its own decoding probe.** Nonsense-word-fluency items measure blending a letter string never seen before; their answers are absent from every corpus **by design**. The exam-vocabulary audit reported them as *missing vocabulary*, and the pre-gate teaches everything that audit calls missing — so the probe silently stopped measuring decoding, started measuring recall, and **passed for the wrong reason without reporting anything wrong**. ⚠ The doctrine had already been written down correctly four days earlier; **the enforcing code disagreed with it, which is the same thing as not having the rule.** Answer-variants were also being swept in as required vocabulary and drilled into her as words — they are tolerances the scorer accepts, not answers she must produce. Coverage on the affected cell **0.966 → 1.0000**, and a second independent barrier now sits at both pre-teach sites so a change to the extractor cannot re-open it. **(3) The self-pricing verdict was published to nowhere.** The rep-compression module measures its own collision load and was shipped deliberately unarmed on the promise that *"one press produces the evidence"* — and the verdict was written to a property with **exactly one reference in the entire tree: the write itself.** The press happened, the measurement ran, and the number went into a dead field while the sampling that produced it ran on **every** qualifying call. Now published in state with its age, and re-measured on a clock rather than per call. **(4) The n=1 question is answered, and the answer is that repetition was never the knob.** Re-measured with **overlapping post patterns** — the earlier sweep scored 1.000 across its whole production row because its posts were separable, a harness that could not fail. Real result: **two presentations at collision load 0.056 retrieve at 97.2%, while one hundred presentations at load 1.036 retrieve at 86.6%.** Repetition buys single-digit points; load buys tens. Presentations three through eight are flat to within 0.4 points at every load at or below 1.036 — and worth 2.0–2.4 points above it, because once collisions are severe enough to trample a single write, extra interleaving buys back some of the loss. ⛔ **This names the knob; it does not move it.** The live load is a measured quantity, and no gate moves off a synthetic grid.
+## ⛔ START HERE — WHERE THE ARCHITECTURE ACTUALLY IS
+
+**The architecture begins at [§ Overview](#overview).** Everything between here and there is **change history**, newest first.
+
+| If you want | Go to |
+|---|---|
+| What the system *is*, right now | [§ Overview](#overview) · [§ System Architecture](#system-architecture) |
+| The brain's regions and what each does | [§ Brain Modules](#brain-modules-specialized-dynamical-systems) |
+| How a message becomes a reply | [§ Data Flow](#data-flow) · [§ Language Pipeline](#language-pipeline) |
+| How it scales across machines | [§ Clustered Architecture](#clustered-architecture-scales-to-hardware) · [§ Deployment & Distributed Compute](#deployment--distributed-compute) |
+| Why something is the way it is | the change history immediately below |
+
+⭐ **THE DOC IS THE MAP, THE CODE IS THE TERRITORY.** Every claim here is a cached observation that may have gone stale. **On conflict, trust the code and fix the page.**
+
+⚠ **ONE FACT TO CHECK BEFORE BELIEVING ANY NEURON FIGURE ON THIS PAGE:** the neuron count is **derived at boot from free host RAM**. It is a property of the machine she woke up on, not of her — the same code has booted at 425,436,550 and at 411,216,550 and at 388,597,268. **Every figure below is quoted with the boot that produced it, and the live value is a field read.**
+
+---
+
+## Change history — newest first
+
+> ⚠ **THIS SECTION IS HISTORY, NOT CURRENT STATE.** It records what changed and why, in the order it happened, and the oldest entries describe a system several rebuilds behind the one running today. **Read the sections after [§ Overview](#overview) for what is true now.**
+>
+> ⛔ **KNOWN LAYOUT DEBT, STATED RATHER THAN HIDDEN:** these entries are single-paragraph walls carrying internal ticket and branch identifiers, and **68 of them exist nowhere else in the project** — not in the ledger, not in the resume brief. They cannot be deleted, and relocating them is a migration rather than a formatting pass. **The most recent entries have been rebuilt into readable form; the older ones are still walls.**
+
+### 2026-09-06 — the same defect a fourth time, a gate that taught its own answers, and a deciding number written to a field nothing reads
+
+**No equation changed · no geometry changed · no weight format changed.**
+
+**① The rediscovery pattern reaches its fourth level.** The 2026-08-25 entry below already names it three times — a CPU shadow nobody reads, then `_teachLateralInhibition` walking the motor span *twice* for the same sparse bits. **The remaining level is that the FIRST walk was also unnecessary.** The caller writes the motor pattern via `_writeTiledPattern`, and then three lines later the lateral pass scans all **346,902** motor cells to find what was just written.
+
+```
+  measured live   380,300 ms across 170,334 calls
+                  = 11.8% of a whole boot's wall clock
+```
+
+The writer now hands out the indices it wrote, so there is **one** copy of the tiling arithmetic instead of two that can drift apart. ⛔ **A wrong hint does not throw** — it trains anti-Hebbian against the wrong rows while every instrument still reads healthy. So both paths run and are compared for the first 500 calls, and a single mismatch permanently disables the hint and says so out loud.
+
+**② A gate was teaching the answers to its own decoding probe.** Nonsense-word-fluency items measure blending a letter string never seen before, so their answers are absent from every corpus **by design**. The exam-vocabulary audit reported them as *missing vocabulary* — and the pre-gate teaches everything that audit calls missing.
+
+**So the probe silently stopped measuring decoding, started measuring recall, and passed for the wrong reason without reporting anything wrong.**
+
+⚠ **The doctrine had already been written down correctly four days earlier.** The enforcing code disagreed with it, **which is the same thing as not having the rule.** Answer-variants were also being swept in as required vocabulary and drilled into her as words — they are *tolerances the scorer accepts*, not answers she must produce. Coverage on the affected cell went **0.966 → 1.0000**, and a second independent barrier now sits at both pre-teach sites so a change to the extractor cannot re-open it.
+
+**③ The self-pricing verdict was published to nowhere.** The rep-compression module measures its own collision load and shipped deliberately unarmed, on the promise that *"one press produces the evidence"*. The verdict was written to a property with **exactly one reference in the entire tree: the write itself.** The press happened, the measurement ran, and the number went into a dead field — while the sampling that produced it ran on **every** qualifying call. Now published in state with its age, and re-measured on a clock rather than per call.
+
+**④ The n=1 question is answered, and the answer is that repetition was never the knob.** Re-measured with **overlapping** post patterns — the earlier sweep scored 1.000 across its whole production row because its posts were separable, which is a harness that cannot fail.
+
+```
+    2 presentations @ collision load 0.056  ->  97.2% retrieval
+  100 presentations @ collision load 1.036  ->  86.6% retrieval
+```
+
+**Repetition buys single-digit points; load buys tens.** Presentations three through eight are flat to within 0.4 points at every load at or below 1.036, and worth 2.0–2.4 points above it — because once collisions are severe enough to trample a single write, extra interleaving buys back part of the loss.
+
+⛔ **This names the knob; it does not move it.** The live load is a measured quantity, and no gate moves off a synthetic grid.
 >
 > Last updated: 2026-08-31 (**REPLAY RAN FOR THE FIRST TIME IN THIS PROJECT'S HISTORY, AND THE THING THAT STOPPED IT WAS ONE CONDITION**; fresh walk pressed 07:23Z on `b1a5eb01`). **(1) The defect, and it is architectural rather than incidental:** the three-tier consolidation system described in the 2026-05-04 banner below has been complete and wired since it shipped, and **`tier1.totalEpisodes` read `0` on every boot in this project's history.** Tier 1 has exactly three writers and all three were dead during a walk — `_recordPhaseEpisode` fires on phase COMPLETION — and phases were not completing, because the teach loop's shutdown exit banked no rep cursor and every press restarted the phase from zero — while the WM age-out and the 30-second thinking heartbeat were both gated on **`!this._curriculumInProgress`**. ⛔ **`_curriculumInProgress` is true for the ENTIRE multi-week walk, so gating on "not mid-walk" means the writer never runs.** With no Tier-1 episodes there were no consolidation candidates, so Tier 2 stayed empty, so **interleaved replay — the mechanism that SEPARATES representations — never ran once**, and the 100-rep waking dose was partly compensating for its absence. **(2) The gate was DELIBERATE and its removal was priced, not guessed:** `e27caa90` added it against a real 8-27 s main-loop freeze, and it comes out only because an earlier fix had already made that 2 s term structurally unreachable above a 2M cortex — the condition now tests whether the expensive term COULD run (`computeTransitionSurprise` present AND `size ≤ 2,000,000`) rather than whether a walk is in progress. ⚠ Its second justification had gone **circular**: zero promotion candidates *because the writes were suspended*. **(3) Verified end to end, live, 18 minutes into the fresh walk:** `tier1` **4** · `freqMergedCount` **21** · `promotedToTier2` **4** · Tier 2 holding real labels (`hebbian-ela-kindergarten`, `association-pairs-ela`). Tier-1 write → consolidation pass → Tier-2 schema, for the first time. ⚠ **The raw episode count is NOT the health signal** — the exact-text frequency merge folds repeated contexts by design, so a *small* `totalEpisodes` with `freqMergedCount` climbing is the correct shape and hundreds would be the surprise. **(4) The dashboard published the courses that had already RUN, not the roster.** A subject's position came from `cluster.grades`, which seeds only the core five, so the training card stopped at six and a course could not appear until after it first taught. The card now derives its row set from `subjectsForGrade()` — the DECLARED roster — and publishes `state.curriculum.subjects` **9** plus a new **`rosterUpcoming`** field (**11**) naming courses introduced at higher grades; `SUBJECT_LABELS` grew to 20 entries. **(5) The academic corpus went 65 → 89/89 cells, 874/874 topics, 12,075 sentences** (from 729 topics / 10,083 sentences). ⛔ **`cs` held ZERO corpus for all eight of its K-12 grades**, and `ela/kindergarten` — the cell this very walk starts in — held **1 of 6** topics on the night before the press. **(6) Why the rep count did not have to fall:** under Oja with binary spikes, `n` reps reach `x·(1−(1−lr)ⁿ)`, so the dose is a property of the ASYMPTOTE, not the count — 100 reps at lr 0.03 and 20 reps at lr 0.1413 both land **95.24%**. The 5× walk-cost saving was therefore already banked dose-neutrally, and the competing proposal to simply cut reps 100 → 20 at the authored lr was closed as moot rather than implemented: it reaches only 45.6%, which is removing teaching, not saving time.
 >
@@ -250,7 +304,7 @@ The unknown — what we can't model, what makes consciousness CONSCIOUSNESS — 
 | **Database** | SQLite (better-sqlite3) for episodic memory, JSON for weights + conversations |
 | **AI Backends** | **Sensory-OUTPUT only** — image gen (custom/auto-detected local/env.js/Pollinations), TTS/STT. Vision is now 100% EQUATIONAL (CDF 9/7 field C → `describeEquational` percept; the LLM/VLM vision describer is RETIRED). Zero text-AI for cognition — language cortex generates every word equationally. |
 | **Embeddings** | GloVe 300d word vectors — **REQUIRED, the brain exits at boot without the table**; fastText-style subword n-grams encode out-of-vocabulary words only and are not a substitute for it (they carry spelling, not meaning), and ⭐ **online context refinement that actually runs** — she reshapes her own semantic geometry from the corpus she reads, so the imported vectors are a STARTING SHAPE she grows out of rather than the fixed answer. Two derived terms make it learn instead of collapse: mean-centring and a 0.5 delta cap. ⚠ The refinement machinery existed for a long time with **one call site, browser-only** — the server had never refined a single embedding — and that call site was poisoning 250/300 dimensions with NaN. Both fixed 2026-08-25; see `EQUATIONS.md §Learned semantic geometry` |
-| **Voice I/O** | Web Speech API (listen) + "Equation Unity One": Piper `en_US-hfc_female-medium` synthesized **in-browser** via onnxruntime-web (WebGPU → CPU-wasm, in a Web Worker on the visitor's machine — never a server GPU) from a self-hosted model (`voice-engine/`, downloaded once at setup, OPFS-cached) → CDF 9/7 wavelet equational voice pipeline → playback (speak). No cloud TTS, no external API. Pollinations TTS retired; banked word/phrase set + SpeechSynthesis are last-ditch fallbacks. |
+| **Voice I/O** | Web Speech API (listen) + "Equation Unity One" (speak). ⛔ **CORRECTED 2026-09-07 — this row described in-browser synthesis, which is the RETIRED lane.** Synthesis runs on **her own process**: a `voiceSynth`-capable donor GPU when one is connected, otherwise the box's own worker thread (`VoiceSynthProxy` → `server/voice-synth-worker.mjs`, piper VITS + espeak phonemiser + field perceive). The waveform is folded into the CDF 9/7 equations server-side and the visitor receives **a few-KB equation record**, which their browser turns back into sound and plays. **The listener never synthesises and never touches their own GPU** — the in-browser lane could seize the same card a donor was lending, and killing that class of failure is why the lane moved. No cloud TTS, no external API, no key. ⚠ The module header in `js/io/voice.js` still documents the old in-browser lane and contradicts its own later code; flagged, not yet fixed. |
 | **Image Gen** | Pollinations API (flux, photorealistic, anime, cyberpunk + 20 more models) |
 | **Storage** | localStorage (browser) + disk persistence (server) with sparse CSR serialization |
 | **Config** | `js/env.js` (gitignored) for API keys, `js/brain/persona.js` for personality params |
@@ -274,20 +328,22 @@ The unknown — what we can't model, what makes consciousness CONSCIOUSNESS — 
 │                                                                  │
 │  ┌────────────────────────────────────────────────────────┐      │
 │  │              BRAIN SIMULATION LOOP                      │      │
-│  │  N Rulkov-map neurons in 7 CLUSTERS (GPU / WGSL)       │      │
+│  │  N Rulkov-map neurons in 8 CLUSTERS (GPU / WGSL)       │      │
 │  │  20 inter-cluster projection pathways                  │      │
 │  │  Server tick cadence: BRAIN_TICK_MS (~50 ms), each    │      │
 │  │  tick = batched compute_batch(SUBSTEPS) on compute.html│      │
 │  │                                                        │      │
-│  │  CLUSTER FRACTIONS of total N (CLUSTER_FRACTIONS):    │      │
-│  │    Cortex       0.55 — language + working memory,     │      │
-│  │                       11 sub-regions + 16 x-proj      │      │
-│  │    Hippocampus  0.18 — memory attractors + episodic   │      │
-│  │    Cerebellum   0.08 — error correction + timing      │      │
-│  │    Mystery      0.08 — consciousness gain Ψ           │      │
-│  │    Amygdala     0.05 — emotional gate modulation      │      │
-│  │    Basal Gang.  0.03 — action gate selection          │      │
-│  │    Hypothalamus 0.03 — drive baseline homeostasis     │      │
+│  │  CLUSTER SHARES on the SERVER — measured live, not    │      │
+│  │  quoted from a constant (see §Cluster shares below):   │      │
+│  │    Cortex       20.0% — prediction + the whole         │      │
+│  │                        language network inside it      │      │
+│  │    Cerebellum   19.6% — error correction + timing      │      │
+│  │    Hippocampus  12.0% — memory attractors + episodic   │      │
+│  │    Amygdala     12.0% — emotional gate modulation      │      │
+│  │    Basal Gang.  12.0% — action gate selection          │      │
+│  │    Hypothalamus 12.0% — drive baseline homeostasis     │      │
+│  │    Mystery      12.0% — consciousness gain Ψ           │      │
+│  │    Brainstem     0.4% — the three chemical nuclei      │      │
 │  │                                                        │      │
 │  │  Each cluster: own Rulkov pop, synapse matrix, tonic  │      │
 │  │  drive, noise amplitude, connectivity density,        │      │
@@ -462,9 +518,9 @@ INPUT (text/voice/vision/API)
     ▼
 [Action Output] → a = π(x)
     │
-    ├──→ Text response (via AI backend)
-    ├──→ Voice output (via TTS)
-    ├──→ Image generation (via Pollinations)
+    ├──→ Text response — from HER OWN weights, never an AI backend
+    ├──→ Voice output (synthesized in her own process, sent as equations)
+    ├──→ Image generation (sensory output only)
     ├──→ Code execution (via tools)
     └──→ Emotional/physical state update
     │
@@ -495,7 +551,30 @@ Unity's persona files (unity-persona.md, unity-coder.md) don't just describe beh
 
 ## Clustered Architecture (scales to hardware)
 
-N neurons (scales to GPU + RAM) organized in 7 biologically-proportioned clusters. Auto-scaled at server boot via `detectResources()` in `brain-server.js`:
+### ⛔ Cluster shares — corrected 2026-09-07 against the live brain
+
+**This section published seven clusters at `0.55 / 0.18 / 0.08 / 0.08 / 0.05 / 0.03 / 0.03` and every one of those figures was wrong for the running brain.** Measured from the deployed server at a boot of **388,597,268** neurons:
+
+| Cluster | Neurons (that boot) | Share | Role |
+|---|---:|---:|---|
+| **Cortex** | 77,719,454 | **20.00%** | prediction + the entire language network, which lives *inside* it |
+| **Cerebellum** | 76,165,065 | **19.60%** | error correction + timing |
+| **Hippocampus** | 46,631,672 | **12.00%** | memory attractors, episodic + schematic + identity tiers |
+| **Amygdala** | 46,631,672 | **12.00%** | emotional gate modulation |
+| **Basal ganglia** | 46,631,672 | **12.00%** | action-channel selection |
+| **Hypothalamus** | 46,631,672 | **12.00%** | drive baseline homeostasis |
+| **Mystery Ψ** | 46,631,672 | **12.00%** | consciousness gain |
+| **Brainstem** | 1,554,389 | **0.40%** | the three chemical nuclei — deliberately tiny, see §Brain Modules |
+
+**Eight clusters, not seven** — the brainstem was added and this section never learned about it. Inside the cortex sit a further **23 named language sub-regions** (`lang_*`), which is why naïvely summing every published region exceeds 100%: **the language regions are carved out of the cortex, not added beside it.**
+
+⭐ **THE MECHANISM, so the table can be re-derived rather than trusted.** The server's share table funds the language cortex as its own line and then normalises the *remaining* entries across the top-level clusters. Excluding the language line and renormalising the rest reproduces the live percentages **exactly** — 20.0 / 19.6 / 12.0 ×5 / 0.4. That is the check to run if these numbers ever look wrong again.
+
+⛔⛔ **AND THE TWO RUNTIMES DO NOT AGREE, WHILE A COMMENT SAYS THEY DO.** The browser-side table in `js/brain/cluster.js` still reads `cortex 0.55 · hippocampus 0.18 · cerebellum 0.078 · mystery 0.08 · amygdala 0.05 · basalGanglia 0.03 · hypothalamus 0.03 · brainstem 0.002`, and the server's own source carries the instruction *"KEEP IN SYNC … Both sides use the same fractions so cluster sizes return identical shapes in both runtimes."* **They return different shapes.** The browser fallback brain is a differently-proportioned animal from the deployed one — hippocampus 18% against 12%, cortex 55% against 20%. **The divergence may well be harmless, since the browser path is a small dev fallback; the comment asserting parity is not harmless, because it is the thing that stops anyone checking.**
+
+### Sizing
+
+N neurons (scales to GPU + RAM) organized in those eight biologically-proportioned clusters. Auto-scaled at server boot via `detectResources()` in `brain-server.js`:
 
 ```
 N_vram = floor(VRAM_bytes × 0.85 / 12)   // Rulkov layout: 12 bytes/neuron (vec2<f32> state + spikes u32)

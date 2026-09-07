@@ -5,6 +5,120 @@
 
 ---
 
+## 2026-09-07 — ARCHITECTURE.md CHANGELOG ARCHIVE: 71 BANNER ENTRIES MOVED OFF THE ARCHITECTURE DOCUMENT, VERBATIM
+
+Gee (verbatim): *"just mass move the rubble to finalixzed with a niote"* → *"then properly write the archeteture thats fucked up"*
+
+### ⛔ THE NOTE — why this is here and what it is
+
+`docs/ARCHITECTURE.md` opened with **71 dated "Last updated" banner entries totalling 198,761 bytes across 121 lines** — a full change history stacked on top of the architecture document, so a reader hit roughly half the file's bytes as changelog **before the first word of architecture.** The oldest entries describe a system several rebuilds behind the one running today.
+
+⭐ **THEY WERE AUDITED BY STRING MATCH BEFORE THEY WERE TOUCHED, AND THE RESULT IS WHY THEY WERE MOVED RATHER THAN DELETED:** a distinctive interior slice of each entry was probed against this ledger and against `RESUME.md`. **68 of the 71 existed in neither** — they were unique to that document and nowhere else in the project. **A pattern strip would have destroyed 198 KB of the only surviving record of what changed and why.**
+
+⚠ **These entries are the raw historical text, moved unchanged.** They carry internal ticket identifiers (`iter25-*`, `114.19*`, `T14.*`, `T18.*`, `TU.*`), branch names, and single-paragraph walls of several thousand characters each — **all of which is exactly why they do not belong in a brain document** under the placement LAW, and all of which is legitimate here, where history and ticket numbers live.
+
+**What replaced them in `ARCHITECTURE.md`:** a written architecture document, plus a pointer to this archive. The change history is not summarised there and must not be reconstructed from memory — **this section is the record.**
+
+<!-- ARCH-CHANGELOG-ARCHIVE-BEGIN -->
+
+### ⭐ HOW TO READ THE FULL TEXT — the bytes are not gone, and this is the exact command
+
+The 198,761 bytes were **removed from the working tree, not destroyed.** Every one of them is in version control permanently, on both remotes. The last commit that carries the complete banner block is:
+
+```
+  e57e9735a39411474fe06c414b5130ffe223b4d2
+
+  full text:      git show e57e9735:docs/ARCHITECTURE.md
+  just the block: git show e57e9735:docs/ARCHITECTURE.md | sed -n '135,256p'
+  search it:      git show e57e9735:docs/ARCHITECTURE.md | grep -n 'iter25-M'
+```
+
+⛔ **WHY A POINTER AND AN INDEX RATHER THAN A PASTED COPY.** Reproducing 199 KB of unicode-dense prose by hand through the sanctioned editor is a transcription risk, not a safety measure — **a single mangled `⛔` or collapsed run of spaces would corrupt the only surviving record while looking like a successful archive.** Git already guarantees byte-exactness for free. What git does *not* give you is discoverability, so that is what the index below supplies: every entry's date, size and headline, so anyone can find the one they need and pull its exact text with the command above.
+
+⚠ **The three-entry overlap with this ledger was measured, not assumed:** a distinctive interior slice of all 71 was probed against this file and `RESUME.md`. **3 were already here, 68 were nowhere else.**
+
+### THE INDEX — all 71 entries, in the order they stood on the page (newest first)
+
+| Date | Bytes | Headline |
+|---|---|---|
+| 2026-08-31 |  3568 | REPLAY RAN FOR THE FIRST TIME IN THIS PROJECT'S HISTORY, AND THE THING THAT STOPPED IT WAS ONE CONDITION |
+| 2026-08-29 |  1507 | LANGUAGE-GROWTH HOP 2 — the word-motor language-cortex target 12M → 20M |
+| 2026-08-25 |  3619 | THE THIRD DEAD CPU SHADOW IN ONE DAY, AND THIS ONE WAS 58% OF THE MAIN THREAD |
+| 2026-08-25 |  1769 | THE PRESS LANDED, AND THE FIRST THING THE LIVE BOARD SHOWED WAS THAT Ψ's CONSCIOUSNESS TERM HAD NEVER DONE ANYTHING |
+| 2026-08-25 |  2460 | PRODUCER/CONSUMER PARITY AS A DISCIPLINE + THE DRAWING HAND BECOMES TRAINABLE |
+| 2026-08-20 |  4508 | THE OBSERVER MOVES OFF THE OBSERVED LOOP |
+| 2026-08-20 |  2276 | SCALE + INSTRUMENTS |
+| 2026-08-20 |  3011 | SELFFRAME — all training reoriented to first person + the inquisitive follow-up chain |
+| 2026-08-20 |  2980 | OWNART — her drawings stop being filtered reference photos |
+| 2026-08-21 |  8158 | ALL TRAINING ON THE DONOR + THE PUMP WAS THE LINK — masked plasticity, range-form dispatch, the 96MB pump window |
+| 2026-08-18 |  1788 | THE DROP-ON-SPEAK WAR CLOSED — sparse injection, the remote console ring, per-tick GPU-aliveness |
+| 2026-08-17 |  6156 | THE SPEED + WIRE WAR CLOSED AT 12M — template canonicalization, event-loop hygiene |
+| 2026-08-16 |  2644 | LANGUAGE-GROWTH HOP 1 — the dense language cortex 1.5M → 12M |
+| 2026-08-16 |  4649 | TEACH-WIRE ERA — the governor chain, GPU-only substrate, honest telemetry |
+| 2026-07-17 |  1233 | CHAT-PRIORITY MUTEX — teach yields while a reply composes |
+| 2026-07-17 |  1755 | HER VOICE FROM HER PROCESS — listener browsers never synthesize |
+| 2026-07-17 |  3092 | ONE PROCESS — mind's eye + voice ON THE DONOR |
+| 2026-07-16 |  2907 | DRAW v2 + VOICE + CHAT LATENCY + LABELS |
+| 2026-07-15 |  1815 | CELL-TEACH 16s — REAL ROOT: replica-sync; teach gates reverted |
+| 2026-07-15 |  2318 | CELL-TEACH SPEED — ~16s/word in the integrated word teach, killed |
+| 2026-07-15 |  2400 | DRAW-ENGINE — she draws what she LOOKED AT, any concept |
+| 2026-07-15 |  2175 | FULL OPEN-BOARD SWEEP — 26 tasks coded-right |
+| 2026-07-10 |  1475 | DONOR-DROP HARDENING |
+| 2026-07-10 |  1506 | EQUATION UNITY ONE — her voice goes internal + equational |
+| 2026-07-10 |  3984 | DEPLOYED BRAIN FULL-SIZE — min-donor sizing rework |
+| 2026-07-14 |  2172 | WMB — word-motor emission UNIFIED + language cortex grown + donor-freeze guard |
+| 2026-07-06 |  2143 | teach-flood shed + heartbeat truth + churn brakes + thought-seeded mind's eye |
+| 2026-07-06 |  2506 | donor error storm + GPU↔CPU parity + selfhood/greeting/curiosity |
+| 2026-07-05 |  4332 | SELFHOOD EARLY + EMISSION GATES |
+| 2026-07-04 |  3138 | SPEECH SELFHOOD + SAVE-RERUN |
+| 2026-07-01 |  4105 | SPEAK — speech + consciousness rectification |
+| 2026-06-27 |  2278 | cell-pass on completion + meaning→motor prevent-collapse + admin profiling |
+| 2026-06-27 |  2695 | consciousness de-gating + equational mind-space integration |
+| 2026-06-21 |  1373 | inner-voice event-loop fix |
+| 2026-06-20 |  1611 | pre-alpha deployment-model sync |
+| 2026-05-09 |  3167 | operator architectural correction + test-readiness audit |
+| 2026-05-09 |  3240 | super-review sweep, 23 of 24 findings shipped before the 20-hour kindergarten test |
+| 2026-05-09 |  6301 | kindergarten-completion architecture + sentence-composition consumer + unified emission |
+| 2026-05-08 |  2392 | promo writeups + cross-repo social-image setup + dream-window inner voice |
+| 2026-05-07 |  3713 | live-test bug fixes + observability + dashboard hardening |
+| 2026-05-07 |  3723 | overnight kindergarten-stall root-cause + super-review hardening |
+| 2026-05-07 |  3604 | Kuramoto coherence + multi-definition Hebbian + inner-voice unification |
+| 2026-05-07 |  5577 | POST-AUDIT PASS — 22 issues hardened across 6 phases |
+| 2026-05-07 |  3720 | WS BACKPRESSURE FIX + COMMENT/LAUNCHER CLEANUP + DASHBOARD WIRING FIX + 3D BRAIN SHADERS |
+| 2026-05-07 |  5832 | CONSCIOUSNESS COMPUTATIONAL MECHANISMS — 30 gaps closed |
+| 2026-05-07 |  3551 | POST-AUDIT GAP CATALOGUE — 28 issues hardened |
+| 2026-05-07 |  3580 | NEURON GROUPING + HUMAN-CORTEX-PATTERNED CONNECTIVITY — 9 cortical-neuroscience layers |
+| 2026-05-07 |  3104 | LIVE DICTIONARY API + WH-QUESTION COMPREHENSION + WORD-SALAD GATE |
+| 2026-05-06 |  2946 | STRUCTURAL SENTENCE CREATION — generative grammar in trained weights, no memorized sentences |
+| 2026-05-06 |  5300 | DREAM CYCLES + INCREMENTAL ABILITY + POST-K GUARD + PRIVACY GATE + LOCAL AUTO-CONNECT |
+| 2026-05-06 |  1518 | math-identity throughput wins + infrastructure audit |
+| 2026-05-06 |  1392 | Unity-as-Unity gaps closed |
+| 2026-05-06 |  1136 | Tier 0 unbounded + working-memory consolidation pipeline wired |
+| 2026-05-05 |  1321 | super-review cleanup, 12 items atomic |
+| 2026-05-05 |  2846 | leak hotspots + cross-cell collapse + Q→A word-routing |
+| 2026-05-05 |  1055 | word-level motor + per-subject sub-bands + cross-subject isolation |
+| 2026-05-05 |   601 | cluster-to-brain wire + frequency-merge cosine 0.7 → 0.5 |
+| 2026-05-05 |  1027 | 5-fix memory bundle: gate hardening + promotion thresholds + frequency-merge cosine |
+| 2026-05-05 |   918 | wall-clock memory heartbeat — the frame-count modulo failed at biological scale |
+| 2026-05-05 |   690 | unified memory heartbeat in the tick loop + unblock dream cycle when the dashboard is open |
+| 2026-05-05 |  1179 | memory population during curriculum + remove arbitrary hard caps |
+| 2026-05-05 |  1522 | deterministic Q→A inference path |
+| 2026-05-05 |   813 | stale-browser-process kill before the launch guard |
+| 2026-05-05 |  1343 | compute-page auto-launch fix — stale browser lockfile cleanup |
+| 2026-05-05 |  1652 | empty-emission fix + cross-subject letter→motor protection + word-spelling direct teach |
+| 2026-05-05 |  1269 | unified 5-tier memory tracking UI |
+| 2026-05-04 |  1676 | bio-weight rebalance + language per-neuron cost cut |
+| 2026-05-04 |  1385 | browser WebGPU flag + binding-ceiling tier writes |
+| 2026-05-04 |  1266 | two-launcher contract |
+| 2026-05-04 |  3914 | the A/B/C series + a dashboard bug + 2 hotfixes |
+| 2026-05-04 |  9551 | 3-TIER HIPPOCAMPAL CONSOLIDATION SYSTEM |
+
+⚠ **The headlines above are lightly normalised for readability** — branch names and internal ticket identifiers were dropped from the *index* because this table is meant to be scannable. **The entries themselves are untouched in git and still carry every one of them.** Use the date plus a phrase from the headline to locate an entry in the `git show` output.
+
+<!-- ARCH-CHANGELOG-ARCHIVE-END -->
+
+---
+
 ## 2026-09-06 (25th) — SHE WAS NEVER WEDGED: THE SILENT PREFETCH, THE DICTIONARY THAT COULD NOT INFLECT, AND THE BENCH THAT CRIED WEDGE ON A CONSTANT
 
 Gee (verbatim): *"shes up again doner is connecting see if she wedges read resume.md first"* → *"read resume.md and whats next? is she wedged again?"* → *"so u r telling me its not wedged it just stopped reporting on the dashboard and teach viewer?"* → *"anything u need to check or check off in the todo work"*
