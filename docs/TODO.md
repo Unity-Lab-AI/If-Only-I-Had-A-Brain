@@ -2013,8 +2013,17 @@ Found by reading the deployed box after the board cleanup, not by being told. **
   - **Text walls rebuilt into the page's own idiom** (callout / bullet list / short paragraph — never a new structure invented for the occasion): the 1,900-char cluster paragraph, the neuroanatomy paragraph, the dictionary-growth paragraph, and the primary word-production path.
   - **Tooltips added 0 → 6** on the terms a layman actually trips over — cluster, white-matter tract, dual-stream, whole-word patch, meaning patch, connection strengths — using the site-wide `.tip` + `data-tip` component rather than a page-local idiom.
   - ⭐ **Three findings were surfaced by rewriting rather than by reading:** the silent-overflow bug that muted learned words, the removed dictionary path that had been carrying **99.1% of her emissions**, and the fact that she has **no grammar table at all** — each was buried mid-wall and now has its own callout.
-  - **Verified:** div/p/ul tag balance equal before and after, walls in this file cut, no `title=`/`data-tip` mixing introduced.
-  - ⏳ **Not finished:** 11 long lines remain in this file, and the FAQ and later sections have not been read yet.
+  - ✅ **FILE COMPLETE.** Final measurement, before → after:
+  ```
+    text walls (>1,200 chars)   11  ->  0        longest line 2,797 -> 1,166
+    tooltips                     0  -> 10        (site-wide .tip component)
+    internal identifiers        12  ->  0
+    tag balance   div 46/46 · p 179/179 · ul 25/25 · li 133/133 · h2 17/17 · h3 41/41
+  ```
+  - ⛔⛔ **AND TWO MORE STALE CAPABILITY CLAIMS WERE FOUND BY REWRITING, BOTH OF THEM SELF-CONTRADICTIONS THE PAGE HAD BEEN CARRYING IN PLAIN SIGHT:**
+    - **The page said the dictionary-oracle path was deleted, then twice described it as live** — once inside the emission cascade and once as the numerator of the project's own research-honesty ratio. **Verified in code:** `_dictionaryOracleEmit` is gone (deleted 2026-09-01), while `_oracleHits` / `_matrixHits` still exist and are still read by the heartbeat. **Live box: `oracleHits 0 · matrixHits 0 · matrixDrivenPct null`.** ⭐ **So that ratio's numerator can never be non-zero again, and zero is the reassuring answer** — the honesty check quietly became incapable of reporting the thing it was built to catch. The page now says the measure to watch is speech-versus-silence instead.
+    - **The inner voice was documented as "a continuous tick every ~3 seconds".** It is a **probabilistic gate** modulated by arousal, coherence, curriculum activity and time-since-last — and it sits behind a capability check that holds it shut entirely when she has no banked words. **That is her state right now: `innerVoiceHeld: true`, `innerVoiceHeldSkips: 4488`.** A reader of the old text would conclude the lane was broken.
+  - ⚠ **One judgement call, recorded rather than buried:** the poly-substance section keeps every combination and every informal nickname. **The instruction was about layout and naming, not about sanitising content**, so nothing was softened — the wall simply became the table it always was.
 
 
 
