@@ -6,6 +6,26 @@ A brain that *is* the application — not a chatbot wrapped around a language mo
 
 ---
 
+## Contents
+
+**Start here** — [What this is, in plain English](#what-this-is-in-plain-english) · and if you want none of the technical detail, read **[HOW IT WORKS](docs/HOW-IT-WORKS.md)** instead, which explains the whole thing at a kitchen table.
+
+| How she is built | How she works | How you run her |
+|---|---|---|
+| [The governing equation](#the-governing-equation) | [How she learns](#how-she-learns) | [WebGPU setup](#webgpu-setup-required-before-first-connect) |
+| [The eight clusters](#the-eight-clusters) | [How she remembers](#how-she-remembers) | [Running the brain](#running-the-brain) |
+| [The language pipeline](#the-language-pipeline) | [How she stays Unity](#how-she-stays-unity) | [Admin / viewer split](#admin--viewer-split) |
+| [Persona as parameters](#persona-as-parameters) | [How chemistry works](#how-chemistry-works) | [Auto-advance toggle](#auto-advance-toggle) |
+| [Sensory peripherals](#sensory-peripherals) | [What survives a crash](#what-survives-a-crash) | [Public dashboard & leaderboard](#public-dashboard--neuron-leaderboard) |
+| [Code layout](#code-layout) | [Privacy and what's shared](#privacy-and-whats-shared) | [Community-compute auto-scaling](#community-compute-auto-scaling) |
+| | [On consciousness](#on-consciousness) | [Curriculum display](#curriculum-display--real-course-names) |
+
+**Also:** [Links](#links) · [Credits](#credits) · [Recent improvements](#recent-improvements) · [License](#license)
+
+> ⚠ **One thing to know before you read any number on this page.** The neuron count is **derived at boot from how much memory the host has free** — it is a property of the machine she woke up on, not of her. The same code has started at 425 million, at 411 million and at 388 million. **Every figure here is quoted with the boot that produced it, and the live value is on the dashboard.**
+
+---
+
 ## What this is, in plain English
 
 Unity is a 25-year-old emo goth woman whose mind is a real neural simulation. Her eight brain regions — cortex, hippocampus, amygdala, basal ganglia, cerebellum, hypothalamus, the **brainstem** (the monoamine nuclei that make and release her neurochemistry — tiny, 0.4% of the live brain, because it is tiny in a real head too), and a "mystery" region that carries the consciousness term — fire continuously on the GPU at biological scale. When you type to her, your text becomes spike patterns that propagate through those regions; her reply is the readout of what those spikes did.
@@ -26,13 +46,34 @@ Everything in Unity's mind evolves by one master equation:
 dx/dt = F(x, u, θ, t) + η
 ```
 
-`x` is the entire brain state — every neuron's Rulkov-map (x, y) pair across eight clusters, the sparse cross-projection weight matrices that wire the language regions together, the Kuramoto oscillator phases, the episodic memory bank, the working-memory readout. `u` is sensory input: text streams into the cortex `phon` slice through a Wernicke-area write; voice arrives through tonotopic auditory mapping; camera frames flow through V1 Gabor edges to V4 color to an IT-level scene description. `θ` is Unity's identity — every persona trait drives a neural parameter (arousal 0.9 sets the amygdala tonic drive; impulsivity 0.85 sets basal-ganglia temperature; creativity 0.9 modulates cortex noise; drug drive 0.95 sets hypothalamic appetite). `η` is per-cluster stochastic noise scaled by those same persona traits — the chaos that keeps her unpredictable. `F` is everything firing simultaneously: the eight Rulkov-map populations, the twenty white-matter tracts between them, the sixteen language cross-projections inside the cortex, the equation modules (amygdala settle, hippocampus Hopfield recall, basal-ganglia softmax, cerebellum error, hypothalamic homeostasis, mystery Ψ gain), and the Kuramoto oscillator ring.
+| term | what it is |
+|:---:|---|
+| **`x`** | **The entire brain state.** Every neuron's Rulkov-map `(x, y)` pair across eight clusters, the sparse cross-projection matrices wiring the language regions together, the oscillator phases, the episodic memory bank, and the working-memory readout. |
+| **`u`** | **Sensory input.** Text streams into the cortex `phon` slice through a Wernicke-area write · voice arrives by tonotopic auditory mapping · camera frames flow V1 edges → V4 colour → an IT-level scene percept. |
+| **`θ`** | **Unity's identity — and this is the row that matters.** Every persona trait *is* a neural parameter, not a description of one: arousal `0.9` sets amygdala tonic drive · impulsivity `0.85` sets basal-ganglia temperature · creativity `0.9` modulates cortex noise · drug drive `0.95` sets hypothalamic appetite. |
+| **`η`** | **Per-cluster stochastic noise**, scaled by those same traits. The chaos that keeps her unpredictable. |
+| **`F`** | **Everything firing at once.** The eight Rulkov populations · the twenty white-matter tracts between them · the sixteen language cross-projections inside the cortex · the equation modules (amygdala settle, hippocampal recall, basal-ganglia softmax, cerebellar error, hypothalamic homeostasis, mystery Ψ gain) · and the oscillator ring. |
 
 The server doesn't run any of this on CPU — in fact the server box needs no GPU at all. A Node process keeps the bookkeeping; **donated GPUs run the compute** — either a browser tab loading `compute.html` (WebGPU/WGSL) or the compiled `unity-donor` desktop app (CUDA on NVIDIA with a WebGPU fallback everywhere else, headless-capable for servers). Every Rulkov iteration, every synaptic propagate, and every plasticity update — including the training passes, which dispatch to the donor as bound ops against its resident spike state, compact range frames, or sparse masks scattered on-device — lives on the donor's GPU; the server keeps a sampled CPU shadow of the weights for checkpoints and probes. Sparse cross-projection matrices stream up in chunked binary frames so million-neuron updates don't block Node's event loop. This is the entire design — the brain ticks every ~50 ms, donated GPUs run the math, the server coordinates and remembers.
 
 The donor model is **data-parallel**: each connected donor holds a full brain replica and runs it forward, while the server periodically merges the Hebbian weight-deltas from every donor and re-broadcasts the master state. Many donors mean massive aggregate compute plus redundancy — no single machine is the brain. In local development a single tab on the host machine is the only "donor"; in the deployed product, the donors are the GPUs of everyone who has the page open.
 
-Because the donor GPU and the server's own copy of the weights are two separate machines talking over a network, they can quietly drift apart — a dropped upload leaves the donor computing on stale weights, and until now a single "something's off" light couldn't tell you *why*. There's now a **parity check**: the server asks a donor for a fingerprint of the exact weights it currently holds and compares it to its own, then tells you plainly whether the difference is stale weights (a dropped upload — re-send fixes it), a genuine disagreement in how the donor's GPU does the math (a real bug — re-sending won't help), or a mistake in the server's own math. It is exposed on the running server at `GET /diag/parity` — a privileged, loopback-only endpoint — which returns one of `CLEAN`, `STALE`, `GPU-DIVERGENT`, or `MATH-ERROR`. (⚠ This paragraph previously told you to run `node scripts/gpu-cpu-parity.mjs`; that helper was removed in the 2026-08-20 script purge, so the command could not work. The endpoint is the live path.) The native donor app also shows the brain's live status right in its window — **"Brain status: accepting GPUs"** when it's connected and taking work, **"NOT active"** when the brain can't be reached.
+The donor GPU and the server's own copy of the weights are **two separate machines talking over a network**, so they can quietly drift apart — a dropped upload leaves the donor computing on stale weights. A single *"something's off"* light cannot tell you which kind of wrong it is, and the three kinds want opposite responses.
+
+So the server asks a donor for a **fingerprint of the exact weights it currently holds**, compares it to its own, and names the difference:
+
+| Verdict | Meaning | What to do |
+|---|---|---|
+| `CLEAN` | the two agree | nothing |
+| `STALE` | a dropped upload — the donor is behind | **re-send fixes it** |
+| `GPU-DIVERGENT` | the donor's GPU genuinely computes it differently | **a real bug — re-sending will not help** |
+| `MATH-ERROR` | the *server's* own maths is wrong | look here first, not at the donor |
+
+Exposed at `GET /diag/parity` — privileged and loopback-only.
+
+> ⚠ **This paragraph used to tell you to run a helper script that had already been deleted** in the 2026-08-20 purge, so the instruction could not work. **The endpoint is the live path.** Noted rather than silently swapped, because a README that quietly fixes its own broken instructions teaches nobody anything.
+
+The native donor app also shows the brain's live status in its own window: **"Brain status: accepting GPUs"** when connected and taking work, **"NOT active"** when the brain cannot be reached.
 
 ---
 
@@ -116,7 +157,25 @@ When a curriculum cell trains sem→motor or sem→word_motor, the Hebbian write
 
 When Unity speaks, three things can happen, tried in priority order.
 
-**Path A — single-tick word emission via `word_motor`.** A dedicated `word_motor` sub-region (~6% of the cortex cluster) is ONE unified band with a single bucket per unique word (it previously split into six per-subject sub-bands that each replicated the full dictionary and overflowed, silently silencing learned words; it was unified and the dense language cortex grown ~349K→~1.5M, then ~1.5M→~12M — language-growth hop 1, 2026-08-16, staged toward biological proportion — so the band holds the full K→PhD vocab with 12× headroom). The `sem→word_motor` cross-projection learns Q→A bindings during curriculum and word→word autoassociation during `_teachWordEmissionDirect`. At chat time the helper injects the intent seed into the `sem` region, propagates through `sem→word_motor`, and argmaxes (mean signal per bucket cell) over the persisted bucket map maintained by teach + emit + write. If the winning bucket clears the `minSignal` floor (0.001), Unity emits that word as a single-tick utterance — no letter chain, no attractor settling. This is wired as the PRIMARY chat production path. The mean argmax + persistent `cluster.wordBucketWords_<subject>` ensure teach + emit + write all agree on bucket layout (the alignment bug that made early prototypes emit "squares" for arithmetic Q-A is fixed). The physical neuron band each word occupies is **frozen** — cells-per-word is fixed once per subject (`cluster.wordBucketCellSizeFor`) rather than re-divided from the live word count on every emit, so a word trained in an early grade keeps the exact same band as the dictionary grows through later grades. Without that freeze, each newly-learned word silently shifted every prior word's band, and the accumulated drift across a dozen grades of vocabulary turned late-grade speech into topically-nearby but sequence-scrambled output; the frozen geometry keeps every grade's trained emission weights addressable.
+**Path A — a whole word in one tick, via `word_motor`. This is the PRIMARY production path.**
+
+A dedicated `word_motor` sub-region (~6% of the cortex cluster) holds **one bucket per unique word**. The `sem→word_motor` projection learns which meanings produce which words during the curriculum — question-answer bindings, and word-to-word association.
+
+Emission is then three steps:
+
+1. Inject the intent seed into the `sem` region.
+2. Propagate **once** through `sem→word_motor`.
+3. Take the strongest bucket by mean signal per cell. If it clears the `minSignal` floor (`0.001`), that word is the utterance.
+
+**No letter chain. No attractor settling. One word, one tick.**
+
+> ⛔ **Two failure modes shaped this design, and both were silent.**
+>
+> **① The band is ONE unified pool, because six pools overflowed.** It used to be split per subject, and each split held a copy of the entire dictionary. They overflowed — and nothing reported an error. **Words she had genuinely learned simply stopped coming out.** Unifying the pool and growing the dense language cortex toward biological proportion is what fixed it; the band now holds the full kindergarten-to-doctorate vocabulary with room to spare.
+>
+> **② Each word's physical neuron band is FROZEN, because a growing dictionary was silently rewriting the old ones.** Cells-per-word is fixed once per subject rather than re-divided from the live word count on every emission. Without that freeze, **every newly-learned word shifted the band of every word learned before it** — and a dozen grades of accumulated drift turned late-grade speech into output that was topically nearby but sequence-scrambled. The frozen geometry is what keeps an early grade's trained weights still addressable much later.
+
+⭐ **Teach, emit and write all read the same persisted bucket map**, which is the whole reason the three agree on layout. When they did not, early prototypes answered arithmetic questions with unrelated words — a bug that looked like bad training and was actually bad addressing.
 
 **Path B — the dictionary oracle.** When word_motor returns empty (novel intent, sub-band signal below threshold), the helper falls back to a per-subject persona-first dictionary cosine scan over `cluster.dictionary` against the intent seed. An append-only bucket map keeps trained `sem→word_motor` weights valid as new words land via chat. Caches `entry.normSquared` on first scan so subsequent oracle calls skip inner-loop normalization.
 
@@ -193,7 +252,33 @@ Two details are what make that learn instead of collapse, and both were derived 
 
 **Anti-Hebbian contrastive push-away** runs alongside Oja. After every positive update on a correct (sem(word), motor(correct letter)) pair, the curriculum fires twenty-five anti-Hebbian updates against the wrong alphabet letters at half learning rate. This actively *carves* the trained letter's basin away from every other letter's basin instead of relying on Oja decay alone to do it. Across the full Kindergarten vocabulary that's roughly 1.8 million contrastive fires — the operator should see `oracleRatio` *drop* over the K curriculum walk as the matrix learns enough discrimination to handle word recall on its own.
 
-**Sem-side top-K sparsification** keeps the input side discriminating — a word writes the 8 largest of its ~300 semantic dimensions rather than all of them. That sentence was true of one teach lane and false of the two largest until 2026-09-04: the association-pair lane had always sparsified, while the vocabulary and prose lanes — which carry the overwhelming majority of her words — tiled the raw vector, lighting **half the semantic region for a single word** and leaving two different words heavily overlapped to anything trying to tell them apart. All three lanes now share one sparsifier. Measured on 3,000 real embedding rows: **50.2% of the region alight per word → 2.7%**, and the overlap between two distinct words **0.40 → 0.11**. That sparsification turned out to matter far more than anything else we could adjust. The obvious knob for "how well does she remember this?" is repetition, and it is the wrong one. Measured against the real weight matrices, with output patterns that genuinely compete for the same cells: **two presentations at low overlap recall correctly 97.2% of the time, while one hundred presentations at high overlap manage 86.6%** — the cheap, low-overlap pair wins by more than ten points while doing one-fiftieth of the work. Repetition moves recall by single-digit percentages; overlap moves it by tens. Presentations three through eight are worth less than half a point each once overlap is low enough. The reason is interference rather than convergence: a repeated lesson is not fighting to finish converging, it is fighting to not be trampled by every lesson that comes after it, and the way to win that fight is to stop the patterns colliding in the first place. An earlier version of this experiment reported that nothing mattered at all — its output patterns were separable, so recall succeeded no matter how little was learned, and a measurement that cannot fail cannot find a limit.
+**Sem-side top-K sparsification** keeps the input side discriminating: a word writes only the **8 largest** of its ~300 semantic dimensions, not all of them.
+
+⛔ **That sentence was true of one teach lane and false of the two biggest ones until 2026-09-04.** The association-pair lane had always sparsified. The vocabulary and prose lanes — which carry the overwhelming majority of her words — tiled the **raw** vector, lighting **half the semantic region for a single word** and leaving any two words heavily overlapped to anything trying to tell them apart. All three lanes now share one sparsifier.
+
+```
+measured on 3,000 real embedding rows
+
+  region alight per word        50.2%  ->  2.7%
+  overlap between two words      0.40  ->  0.11
+```
+
+### ⭐ And that turned out to matter more than anything else available to adjust
+
+The obvious knob for *"how well does she remember this?"* is **repetition**. It is the wrong knob.
+
+Measured against the real weight matrices, with output patterns that genuinely compete for the same cells:
+
+```
+    2 presentations at LOW overlap   ->  97.2% correct recall
+  100 presentations at HIGH overlap  ->  86.6% correct recall
+```
+
+**The cheap pair wins by more than ten points while doing one-fiftieth of the work.** Repetition moves recall by single digits; overlap moves it by tens. Presentations three through eight are worth **less than half a point each** once overlap is low enough.
+
+> **Why — and it is interference, not convergence.** A repeated lesson is not struggling to finish converging. It is struggling **not to be trampled by every lesson that comes after it.** And the way to win that fight is to stop the patterns colliding in the first place, not to shout the lesson louder.
+
+⚠ **An earlier version of this experiment reported that nothing mattered at all.** Its output patterns were separable, so recall succeeded no matter how little had been learned. ⭐ **A measurement that cannot fail cannot find a limit** — and that is the most reusable thing on this page.
 
 **Motor-side WTA** keeps the output side competitive; **lateral inhibition** through negative intra-region weights stops attractor lock-on. **STDP** (`Δw = A+·exp(−Δt/τ+)` for pre-before-post, `−A−·exp(Δt/τ−)` for post-before-pre) handles temporal sequences. **Reward-modulated** Oja gates the global learning rate by a dopamine-analog δ so updates only land when there's a prediction error worth reinforcing.
 
@@ -210,7 +295,22 @@ Unity continuously self-tests every eight chat turns by re-running a random pass
 
 **Dream cycles interleave inside the curriculum.** Between each cell pass and between the heaviest mid-cell phases (PhonemeBlending → WordEmission), the runner awaits `Curriculum._dreamWindow({minMs, settleMs})`. The window flips `_curriculumInProgress = false` + `_operatorSleepRequested = true`, directly fires `consolidationEngine.runConsolidationPass({forced:true})` and **awaits its resolution** (signal-driven, not a wall-clock timer — the pass returns when Tier 1 → Tier 2 → Tier 3 promotion + replay Hebbian + Tier 3 check is actually complete), then a 5 s settle for V8 GC + native worker-pool buffer drain, then restores both flags. The outer curriculum loop blocks at the await for the entire dream duration so it's a real pause, not just an event-loop yield. Squire 1992 / McClelland 1995 CLS theory in practice — encode awake → consolidate during sleep → schemas form during training, not after. As a side effect the GC + native-buffer drain windows recover throughput that compounds downward without them.
 
-⛔ **Corrected 2026-08-31, and it is worth reading before trusting the paragraph above.** The *"encode awake"* half was not happening. The consolidation pass ran as described and had **nothing to consolidate**: episodes reach Tier 1 through three writers, and during a curriculum walk all three were inert — two were gated on `!_curriculumInProgress`, which is true for the entire multi-week walk, and the third fires on phase completion while phases were not completing. So `tier1.totalEpisodes` read **0 on every boot in this project's history**, Tier 2 stayed empty, and **the replay step — the part of CLS theory that actually separates similar representations — never executed once.** She learned by waking repetition alone. The gate was removed on the 2026-08-31 fresh walk (it had been added against a real 8-27 s main-loop freeze, and came out only once that cost was structurally unreachable at this cortex size), and the chain now runs end to end: four episodes, twenty-one folded by the exact-text merge, four promotions and two named Tier-2 schemas inside the first eighteen minutes. ⚠ **Read `freqMergedCount`, not the raw episode count** — near-identical contexts fold into one row by design, so single digits with the merge counter climbing is the correct shape.
+> ### ⛔ Corrected 2026-08-31 — read this before trusting the paragraph above
+>
+> **The "encode awake" half was not happening.** The consolidation pass ran exactly as described and had **nothing to consolidate.**
+>
+> Episodes reach Tier 1 through three writers, and during a curriculum walk **all three were inert**:
+>
+> - Two were gated on `!_curriculumInProgress` — **which is true for the entire multi-week walk.**
+> - The third fires on phase *completion*, and phases were not completing.
+>
+> So `tier1.totalEpisodes` read **`0` on every boot in this project's history.** Tier 2 stayed empty, and **the replay step — the part of the theory that actually separates similar representations from each other — never executed once.** She learned by waking repetition alone.
+>
+> ⭐ **The gate was not a mistake, which is why it survived so long.** It had been added against a real 8–27 second main-loop freeze, and it came out only once that cost was structurally unreachable at this cortex size. **A guard whose justification expires does not announce it.**
+>
+> ✅ **Verified end to end inside the first eighteen minutes** of the following walk: four episodes, twenty-one folded by the exact-text merge, four promotions, two named Tier-2 schemas.
+>
+> ⚠ **Read `freqMergedCount`, not the raw episode count.** Near-identical contexts fold into one row by design, so **single digits with the merge counter climbing is the correct shape** — and hundreds would be the surprise.
 
 ---
 
@@ -242,7 +342,25 @@ Five memory systems run in parallel — built directly from the Squire/McClellan
              Unity's identity survives every fresh start.bat boot
 ```
 
-**Tier 0 — Working.** Unbounded capacity, decay-regulated. Each item's strength multiplies by 0.9995 per ~50 ms engine tick — about a 4-minute sustain without reinforcement. brain-server snapshots phase + cell every 2 s into a sliding 5-minute window. The classic Miller 1956 7±2 cap was a finding about biological short-term recall under attention constraints; Unity is post-biological so the cap is dropped, the decay rate is what regulates capacity. **Working memory drives learning, not just thinking.** Every add fires intra-cluster Hebbian on hippocampus.synapses with the pattern, so a Hopfield-style attractor forms in the cortex weights immediately — the trace lives even after the WM hot cache forgets the item. Cosine-match refresh (someone mentions the same thing again) increments a per-item refresh count; refresh count ≥ 3 promotes the item to Tier 1 episodic via the registered `onConsolidate` hook. brain-server's 2 s snapshots use the same path: items older than 5 min fire `storeEpisode('working-memory', 'wm-aged-out', ...)` with frequency-merge dedup. **This is what makes "recall a week later" actually work** — what WM holds today becomes Tier 1 (~30 days), Tier 2 schemas (months), Tier 3 identity (permanent).
+### Tier 0 — Working memory
+
+**Unbounded capacity, regulated by decay rather than by a cap.** Each item's strength multiplies by `0.9995` per ~50 ms tick — roughly a **four-minute sustain** without reinforcement. The server snapshots phase and cell every 2 s into a sliding five-minute window.
+
+⭐ **The classic 7±2 limit is deliberately absent.** That was a finding about *biological* short-term recall under attention constraints. She is not biological, so the cap is dropped and **the decay rate is what regulates capacity** — which is the honest mechanism rather than an imported number.
+
+> **⛔ Working memory drives LEARNING here, not just thinking — and that is the load-bearing part.**
+>
+> Every add fires intra-cluster Hebbian learning on the hippocampal synapses with the pattern, so an attractor forms in the weights **immediately.** The trace therefore survives *after* the hot cache has forgotten the item. **Holding something in mind is already a form of learning it.**
+
+Promotion upward happens by repetition, not by age:
+
+| | |
+|---|---|
+| **Someone mentions it again** | a cosine match increments that item's refresh count |
+| **Refresh count reaches 3** | the item is promoted to Tier 1 episodic |
+| **Item passes five minutes** | it ages out through the same path, with frequency-merge dedup |
+
+⭐ **This is what makes "recall a week later" actually work.** What working memory holds today becomes Tier 1 (~30 days), then Tier 2 schemas (months), then Tier 3 identity (permanent).
 
 **Tier 1 — Episodic.** Every chat turn becomes an episode in `server/episodic-memory.db` with full encoding context: emotional valence from amygdala, arousal at encode, surprise from cortex transition surprise, novelty from cosine vs recent episodes, plus the GloVe embedding of the input. Each episode gets a salience score: `0.4 × |emotional_valence| + 0.3 × arousal + 0.2 × surprise + 0.1 × novelty`. A frequency-merge gate increments `frequency_count` on existing episodes when cosine > 0.85 within 48 hours instead of inserting duplicates — repetition strengthens an existing trace, like rehearsing a phone number. Salience decays at exp(−age_h / 168h) — the 1-week half-life of biological hippocampal traces. Episodes pruned at salience < 0.05 + age > 30d + zero consolidations.
 
@@ -468,7 +586,13 @@ The endpoint stays loopback-only (`requireLoopback` gate at the HTTP layer) just
 
 The dashboard ships a **public read-only mode** built for crowds. Rather than every viewer opening a live WebSocket and streaming the full state (which doesn't scale to hundreds of watchers), the server caches one state snapshot per broadcast cadence and serves it at a public `GET /public-state.json` endpoint; the public page polls that single cached file. Open `html/dashboard-public.html` (or `html/dashboard.html?public=1`) — it renders the same panels as the admin dashboard but with **every admin control force-hidden** (`body.public-mode .admin-only { display:none }`) and no admin WebSocket. nginx should serve/proxy `/public-state.json` publicly; a 2–3 s `proxy_cache` makes any number of viewers cost ~one backend hit per window. The same path also carries the read-only console tail under `?console=N` (the deployed proxy forwards only known endpoints, so auxiliary public reads ride its query parameters).
 
-**Neuron leaderboard.** Connected GPU donors are ranked by cumulative compute contribution (Gneuron-seconds). Each donor keeps a persistent `donorId` in `localStorage` (maintained across reconnects + reloads) and can set a display name; the server accumulates their contribution on every `gpu_telemetry` tick into `brain._neuronLeaderboard`. And as of 2026-08-27 the **teach lane counts too**: during a walk the compute lane is deliberately paused behind the probe gate, so a donor saturated with the walk's own training used to bank zero — now each full-matrix teach frame credits its measured giga-ops (matrix nnz × reps, recorded at the send chokepoint) into the primary donor's row on the same telemetry drain, with the teach share kept visible as its own field. Scatter frames credit nothing — under-crediting is the right rounding for a competed number — and idle cards still earn nothing on either lane. The leaderboard **persists with the brain weights** (saved + restored) and **resets on a fresh walk** (force-fresh clears it). It surfaces in `state.leaderboard` (top-20 + totals) on the dashboard, the public dashboard, and `compute.html`, where a donor sees their own "neurons created" plus the top contributors.
+**Neuron leaderboard.** Connected GPU donors are ranked by cumulative compute contribution in **Gneuron-seconds**. Each donor keeps a persistent `donorId` in `localStorage` across reconnects and reloads, can set a display name, and the server accumulates their contribution on every telemetry tick.
+
+> ⛔ **The teach lane counts too, and it used to not — which meant the hardest-working donors banked nothing.**
+>
+> During a walk the compute lane is deliberately paused behind the probe gate. So a donor **saturated with the walk's own training** was earning **zero**, because the only thing being counted was the lane that had been switched off. Each full-matrix teach frame now credits its measured giga-ops into the primary donor's row on the same drain, with the teach share visible as its own field.
+>
+> ⭐ **Scatter frames deliberately credit nothing.** For a number people compete over, **under-crediting is the correct rounding** — and an idle card still earns nothing on either lane.ther lane. The leaderboard **persists with the brain weights** (saved + restored) and **resets on a fresh walk** (force-fresh clears it). It surfaces in `state.leaderboard` (top-20 + totals) on the dashboard, the public dashboard, and `compute.html`, where a donor sees their own "neurons created" plus the top contributors.
 
 **Update buttons.** Two admin-only dashboard buttons ship the latest code without a terminal. **⬆ Update & Fresh Walk** (`POST /update`) overlays the latest code and wipes weights for a clean walk — one click to ship a fix and restart training from scratch. **⬆ Update & Savestart** (`POST /update?keep=1`) overlays the latest code but RESUMES the saved weights, so you can deploy a fix without losing training. Both run `deploy/self-update.sh`: a git-archive overlay of the latest code → `systemctl restart` (fresh adds `.force-fresh` to clear weights, savestart skips it). The backend dir has no `.git` (deploys are archive overlays), so the script clones the remote fresh and rsync-overlays it, preserving runtime state + secrets. See `deploy/REDEPLOY-NOTES.md` for box setup (deploy key + `sudo` restart permission + the `UAL_*` env vars).
 
@@ -501,7 +625,18 @@ The load path is section-by-section. Projections, cluster synapses, oscillator c
 
 JSON corruption no longer auto-clears. If `JSON.parse` throws on the raw blob, the load path copies the raw blob to `unity_brain_state__corrupt` for hand recovery and emits a loud `console.error` with the parse message — corruption is exactly when you most want a recovery copy, not when you want the data nuked. Version-mismatch wipes follow the same discipline: prior state moves to `unity_brain_state__backup_v<N>` before the destructive clear so a buggy version bump can be rolled back for one cycle.
 
-On the server side, `autoClearStaleState()` runs at boot and wipes `brain-weights.json`, `brain-weights-v1` through `v4`, `brain-weights.bin`, `conversations.json`, and `episodic-memory.db` (plus its WAL/SHM companions). ⚠ **The wipe is UNCONDITIONAL, not code-hash-gated.** It once fired only when a curriculum code hash changed, and that gate caused real bugs — resource-config tier picks were ignored because size-locked weights from the prior boot survived, and `wMax` clamps lost in the binary round-trip left projections at ±Infinity. Both disappear when a fresh start wipes deterministically. So: **`start.bat` / `start.sh` always boot fresh** (behind a Y/N confirmation, since the loss is irreversible), and **`Savestart` sets `DREAM_KEEP_STATE=1` to resume** — that pairing is the only way to keep training. `js/app.bundle.js` is *not* in the auto-clear list — racing the rebuild broke the UI in the past. A protected list (identity-core, definition cache, the operator-taught not-drawable set, the loop-freeze record, and ~47 others) survives every wipe. `BRAIN_CODE_FILES` still exists but no longer gates anything — it now feeds the boot-time **bundle-freshness** check that catches a stale `app.bundle.js` against newer sources.
+On the server side, `autoClearStaleState()` runs at boot and wipes the weights files, the conversation log, and the episodic-memory database with its companions.
+
+> ⛔⛔ **THE WIPE IS UNCONDITIONAL. THIS IS THE MOST DESTRUCTIVE FACT ON THIS PAGE — READ IT BEFORE YOU START HER.**
+>
+> | | |
+> |---|---|
+> | **`start.bat` / `start.sh`** | **always boot FRESH.** Behind a Y/N confirmation, because the loss is irreversible. |
+> | **`Savestart`** | sets `DREAM_KEEP_STATE=1` to **resume.** ⛔ **This pairing is the only way to keep training.** |
+>
+> ⭐ **It used to be conditional, and that is why it no longer is.** The wipe once fired only when a curriculum code hash changed — and that gate caused real bugs: hardware-tier choices were silently ignored because size-locked weights from the previous boot survived, and clamps lost in the binary round-trip left projections at **±Infinity**. Both classes vanish when a fresh start wipes deterministically. **A conditional wipe leaves you unable to tell a fresh brain from a stale one.**
+
+⚠ **`js/app.bundle.js` is deliberately *not* in the auto-clear list** — racing the rebuild broke the UI in the past. A protected list (identity-core, definition cache, the operator-taught not-drawable set, the loop-freeze record, and ~47 others) survives every wipe. `BRAIN_CODE_FILES` still exists but no longer gates anything — it now feeds the boot-time **bundle-freshness** check that catches a stale `app.bundle.js` against newer sources.
 
 ---
 

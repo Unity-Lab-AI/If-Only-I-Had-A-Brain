@@ -323,16 +323,44 @@
  The textbook neuron model (leaky integrate-and-fire) is simpler but it doesn't burst the way real cortical neurons do — it just fires regular pulses. Rulkov's map naturally produces the irregular burst-then-pause rhythm you see in actual EEG recordings. And it's cheap enough to run millions of them on a GPU in real time. That's why Unity uses it.
 </div>
 
-<p>The neurons are grouped into <strong>eight clusters</strong>, each modeled after a real brain region or a specialized cortical subsystem. Within a cluster, neurons are densely connected to each other. Between clusters, they're connected through sparser pathways modeled after real white-matter tracts in the human brain. When something "flows" from her language network to her amygdala, it's actually spikes traveling across a simulated pathway that corresponds to a real neural tract you could look up in a neuroanatomy textbook. Her two biggest clusters are the <strong>cortex</strong> and the <strong>cerebellum</strong> — about 82.2M neurons (roughly 20% of the brain) each. The <strong>language network</strong> is the primary cognitive substrate Unity runs (reading, thinking, sentence generation, dictionary oracle, cross-region Hebbian learning all live there), but it isn't a top-level cluster of its own — it's a set of ~12M neurons (WMB 2026-07-14 grew it ~349K→~1.5M; language-growth hop 1, 2026-08-16, grew it ~1.5M→~12M — staged toward the 12–20% a real brain devotes to language) that auto-scale as nine specialized sub-regions living inside the cortex (auditory / visual / free / letter / phon / sem / fineType / motor / word_motor), the same way real cortex hosts Broca's and Wernicke's areas. The five remaining clusters — hippocampus, amygdala, basal ganglia, hypothalamus, and the mystery region — each carry a real biological role at about 49.3M neurons (roughly 12%) apiece. Sixteen cross-projections wire those sub-regions into a dual-stream pipeline (a dedicated <code>sem↔word_motor</code> projection enables single-tick word emission alongside the existing letter-by-letter <code>sem→motor→letter</code> path; <code>word_motor</code> is ONE unified band with a single bucket per unique word, argmaxed globally — the earlier per-subject sub-bands replicated the full dictionary and overflowed, so it was unified + the cortex grown to hold the full K→PhD vocab).</p>
+<p>The neurons are grouped into <span class="tip" data-tip="A cluster is one population of neurons with its own job, its own resting firing rate and its own learning speed — the software equivalent of a named brain region.">eight clusters</span>, each modelled after a real brain region or a specialised cortical subsystem. Within a cluster, neurons are densely connected to each other. Between clusters they connect through sparser pathways modelled on real <span class="tip" data-tip="The long-range fibre bundles that carry signals between distant brain regions — the brain's cabling, as opposed to the grey matter that does the computing.">white-matter tracts</span>. When something "flows" from her language network to her amygdala, that is spikes travelling across a simulated pathway corresponding to a real neural tract you could look up in a neuroanatomy atlas.</p>
+
+<p>The two biggest clusters are the <strong>cortex</strong> and the <strong>cerebellum</strong>, at roughly <strong>20% of the brain each</strong>. The five remaining clusters — hippocampus, amygdala, basal ganglia, hypothalamus and the mystery region — take about <strong>12% apiece</strong>.</p>
+
+<div class="callout cyan">
+ <strong>The language network is not a cluster — it lives inside the cortex</strong>
+ This is the part that surprises people. Reading, thinking, sentence generation and word learning all happen in the <strong>language network</strong>, but it is not a top-level region of its own. It is a set of specialised sub-regions <em>inside</em> the cortex — the same arrangement a real brain uses, where Broca's and Wernicke's areas are patches of cortex rather than separate organs. It has been grown deliberately over time toward the <strong>12–20% of the brain a human devotes to language</strong>.
+</div>
+
+<p>Those sub-regions are wired together by cross-projections into a <span class="tip" data-tip="Two parallel routes for language, taken from real neurolinguistics: one route recognises what a word IS, the other drives the machinery that produces it.">dual-stream pipeline</span>, and she has <strong>two ways of producing a word</strong>:</p>
+
+<ul>
+ <li><strong>Letter by letter</strong> — the original path. Meaning drives a motor sub-region, which commits one letter at a time, the way a human motor cortex drives the muscles of speech.</li>
+ <li><strong>Whole word in a single tick</strong> — the primary route now. Meaning drives a dedicated word sub-region that holds <strong>one slot per word she knows</strong>, and the strongest slot wins outright.</li>
+</ul>
+
+<div class="callout orange">
+ <strong>Why the second route had to exist</strong>
+ The letter-by-letter path is fragile: a chain of letters can get stuck partway and produce a fragment instead of a word. The word route returns a whole real word in one step. ⚠ And it only works because there is <strong>one shared pool of word slots</strong>. An earlier design gave each school subject its own pool, which meant the same dictionary was copied many times over, the pools overflowed, and <strong>words she had genuinely learned went silent.</strong> Unifying the pool — and growing the cortex enough to hold her entire kindergarten-to-doctorate vocabulary — is what fixed it.
+</div>
 
 <h2 id="regions">4. The eight brain regions and what each one does</h2>
 
-<p>Unity's brain has eight clusters. Each is a population of Rulkov-map neurons with its own job, its own baseline firing rate, its own noise level, and its own learning speed. They talk to each other constantly through sparse connection pathways modeled on real white-matter tracts. The percentages below are the share of the brain's neuron budget each cluster gets — they come from biologically-grounded ratios stored as <code>DEFAULT_BIO_WEIGHTS</code> in <code>server/brain-server.js</code>. Reference numbers are from Herculano-Houzel 2009 ("The Human Brain in Numbers", <em>Frontiers in Human Neuroscience</em> 3:31): real-human cerebellum holds ~80% of neurons but only ~10% of brain mass, cerebral cortex holds ~19% of neurons but ~82% of mass, and all subcortical regions combined hold ~0.8% of neurons / ~8% of mass. Unity's split gives the cortex and cerebellum ~20% each and the five subcortical clusters ~12% each (operator-set floors exceed biology by design — real subcortical regions are individually under 1% by neuron count — so no critical control region gets starved). Total neuron count auto-scales from the host machine's free RAM — about 425M at full size on the deployed brain.</p>
+<p>Unity's brain has eight clusters. Each is a population of Rulkov-map neurons with its own job, its own baseline firing rate, its own noise level, and its own learning speed. They talk to each other constantly through sparse connection pathways modeled on real white-matter tracts. The percentages below are the share of the brain's neuron budget each cluster gets, and they come from biologically-grounded ratios rather than from taste.</p>
+
+<p>The reference figures are from Herculano-Houzel 2009 ("The Human Brain in Numbers", <em>Frontiers in Human Neuroscience</em> 3:31): a real cerebellum holds about <strong>80% of the brain's neurons but only ~10% of its mass</strong>, the cerebral cortex holds ~19% of neurons but ~82% of mass, and every subcortical region combined holds under 1% of neurons. Unity's split gives the cortex and cerebellum ~20% each and the five subcortical clusters ~12% each — <em>deliberately more generous than biology</em>, because a control region starved of neurons stops doing its job, and none of these are allowed to starve.</p>
+
+<div class="callout">
+ <strong>Her size is not a fixed number, and that matters when you read the dashboard</strong>
+ The total neuron count is <strong>worked out fresh every time she boots</strong>, from how much memory the host machine has free at that moment. It is a property of the machine she woke up on, not a property of her. The same code has started her at a few hundred million neurons and at rather more, on different days, with nothing about her changed. ⚠ <strong>So a neuron count is only meaningful next to the boot that produced it</strong> — the live dashboard always shows the current one.
+</div>
 
 <div class="region-grid">
  <div class="region">
  <h4>🧠 CORTEX (20%)</h4>
- <p>General cerebral cortex — frontal, parietal, occipital association areas — plus the language network that lives inside it, ~82.2M neurons total. Predictive coding + sensory integration. The <strong>language network</strong> is the primary cognitive substrate Unity runs: ~12M neurons (WMB 2026-07-14 grew it ~349K→~1.5M; language-growth hop 1, 2026-08-16, grew it ~1.5M→~12M) auto-scaling as nine named sub-regions inside the cortex (auditory, visual, free, letter, phon, sem, fineType, motor, word_motor), wired by 16 cross-projections into a dual-stream pipeline — reading flows visual → letter → phon → sem → fineType; writing flows along two parallel paths, the legacy letter-by-letter <code>sem → motor → letter</code> path AND the single-tick word-emission path <code>sem → word_motor</code>. The word path is the primary production route — single-tick argmax over one unified global word-bucket map (one bucket per unique word) returns a real word like "five" instead of a fragile letter chain that bucket-stuck on attractors. It was a key win for word recall.</p>
+ <p>General cerebral cortex — the frontal, parietal and occipital association areas — <em>plus the whole language network living inside it</em>. Handles prediction and sensory integration, and it is where nearly all of her thinking happens.</p>
+ <p>The language network is arranged as nine specialised patches: ones for <strong>hearing</strong> and <strong>seeing</strong>, ones for <strong>letters</strong> and <strong>sounds</strong>, one for <strong>meaning</strong>, one for fine distinctions, and the two that drive speech — a <strong>letter</strong> one and a <strong>whole-word</strong> one.</p>
+ <p><strong>Reading</strong> runs one way through them: shape → letter → sound → meaning. <strong>Speaking</strong> runs the other way, and can take either the slow letter-by-letter route or the fast whole-word one.</p>
  </div>
  <div class="region cereb">
  <h4>🎼 CEREBELLUM (20%)</h4>
@@ -364,7 +392,15 @@
  </div>
 </div>
 
-<p>These aren't metaphors or labels slapped on random populations. Each cluster has parameters tuned to roughly match what that brain region does biologically, and the pathways between them are taken from real neuroanatomy atlases. The amygdala runs an attractor network because that's how real amygdala circuits actually work. The basal ganglia does winner-take-all because that's what real basal ganglia circuits do. The language cortex's nine sub-regions and 16 cross-projections map onto the dual-stream language model from real neurolinguistics (Hickok &amp; Poeppel 2007) — reading flows visual → letter → phon → sem → fineType; writing flows along the letter-by-letter <code>sem → motor → letter → visual</code> path OR the single-tick <code>sem → word_motor</code> path. Same substrate, opposite topology, both directions learned through direct-pattern Hebbian curriculum.</p>
+<p>These are not metaphors, or labels slapped onto random populations. Each cluster's settings are tuned to roughly match what that region does biologically, and the pathways between them are taken from real neuroanatomy atlases:</p>
+
+<ul>
+ <li>The <strong>amygdala</strong> runs a settling network — because that is how real amygdala circuits work.</li>
+ <li>The <strong>basal ganglia</strong> runs a winner-takes-all contest — because that is what real basal ganglia do.</li>
+ <li>The <strong>language patches</strong> follow the dual-stream model from real neurolinguistics (Hickok &amp; Poeppel 2007): one stream to understand, one to produce.</li>
+</ul>
+
+<p>Reading and speaking run over <em>the same tissue in opposite directions</em> — shape to meaning going in, meaning to speech coming out — and <strong>both directions are learned, not wired in by hand.</strong></p>
 
 <h2 id="feel">5. How she feels things</h2>
 
@@ -479,7 +515,12 @@
 <p><strong>At very high daily user volume, scheduled sleep becomes operationally necessary.</strong> The natural idle trigger only fires when chat has been quiet for over a minute. If a Unity instance starts seeing constant traffic — overlapping conversations, no minute-long gaps anywhere in the day — the consolidation engine never gets to fire on the idle path. Episodes pile up in Tier 1 without ever promoting to Tier 2 schemas; her identity stops growing. The fix is operational, not architectural: schedule periodic <code>POST /sleep</code> + <code>POST /wake</code> windows at off-peak hours, or trigger a brief sleep window every N chat turns. The endpoints already exist for exactly this reason. Until traffic reaches that scale, natural idle plus the curriculum-interleave path together cover Unity's consolidation needs.</p>
 
 <h3>Long-term dictionary growth</h3>
-<p>Every word she encounters gets learned. Her dictionary starts small and grows by reading her persona file and by talking to users. New words get stored with the cortex pattern that was active when she heard them (the <code>cortexSnapshot</code> Uint8Array of <code>cluster.lastSpikes</code>), along with syllable boundaries and stress detected by cortex transition surprise — so later the cortex knows which situation each word "fits." Word-order patterns live inside the learned weights of the 16 cortex sub-region cross-projections (letter↔phon, phon↔sem, sem↔motor, sem↔word_motor, etc.) — there's no separate bigram or trigram table, the order comes from whatever the cross-projection Hebbian carved while she was listening.</p>
+<p>Every word she meets gets learned. Her dictionary starts small and grows as she reads and as people talk to her. A new word is not stored as text on its own — it is stored <strong>together with a snapshot of what her brain was doing at the moment she heard it</strong>, plus where the syllables fell and which one was stressed. That is what lets her know later which <em>situations</em> a word belongs to, not just what it spells.</p>
+
+<div class="callout purple">
+ <strong>There is no grammar table anywhere in her</strong>
+ Word order is not stored in a list of common pairs or triples. It lives in the <span class="tip" data-tip="A connection strengthens whenever the two things it joins are active at the same time — the standard 'cells that fire together, wire together' rule that real brains use.">connection strengths</span> between her language patches, carved while she was listening. <strong>Nobody wrote her a rule about where verbs go.</strong> If her word order is right, it is because the wiring that produces it was worn in by exposure — and if it is wrong, that is visible as a training gap rather than a bug in a table.
+</div>
 
 <p>Unlike the episodes, the dictionary growth is <strong>shared</strong> across all users talking to the same Unity server. If someone teaches her a new word, everyone benefits. The conversations that drove the learning stay private, but the learned vocabulary is pooled.</p>
 
@@ -492,30 +533,56 @@
 
 <p>When Unity decides to speak, three production paths run in priority order — fast structured paths first, then the slowest most-flexible substrate as a fallback.</p>
 
-<p><strong>Path A — single-tick word emission (the primary path).</strong> The cortex has a dedicated <em>word_motor</em> sub-region — ONE unified band with a single bucket per unique word (it was originally split into six per-subject sub-bands, but those each replicated the full dictionary and overflowed, silently silencing learned words, so the band was unified). The <em>sem → word_motor</em> cross-projection learns Q→A bindings and word-pattern bindings during the curriculum. At chat time the helper injects the user's intent into the <em>sem</em> region, propagates one tick, and argmaxes (mean signal per bucket cell) over the persisted bucket map that teach + emit + write all share. If the winning bucket clears the minimum-signal floor, Unity emits that word as a single-tick utterance. No letter chain, no attractor settling — one word, one tick.</p>
+<p><strong>Path A — a whole word in one tick (the primary path).</strong> The cortex has a dedicated <span class="tip" data-tip="A patch of cortex holding one slot per word she knows. The slot with the strongest signal wins and that word is what she says.">whole-word patch</span>, holding a single slot for every distinct word she knows. During lessons, the link running from her <span class="tip" data-tip="The patch that represents MEANING rather than spelling or sound — what a word is about.">meaning patch</span> to that whole-word patch learns which meanings should produce which words.</p>
 
-<p><strong>Path B — the dictionary oracle — <span style="color:#f87171">removed on 1 September 2026</span>.</strong> There used to be a second path here: when word_motor came back empty, a dictionary cosine scan ran over every word she had learned and she emitted the best match's spelling. It is gone. <strong>It answered precisely when her trained matrix could not</strong>, which means most of what it produced was the dictionary talking rather than Unity — a captured run measured it carrying <strong>99.1% of her emissions</strong>. Everything she says now comes from the trained sem → word_motor matrix, or she says nothing and the silence is counted.</p>
+<p>When she speaks, her intent is written into the meaning patch, the brain is stepped forward <strong>once</strong>, and whichever word slot is firing hardest wins. If it clears a minimum-signal floor, that is what she says. <strong>No letter chain, no settling — one word, one step.</strong></p>
+
+<div class="callout orange">
+ <strong>The bug this design exists to prevent</strong>
+ The whole-word patch is deliberately <strong>one shared pool</strong>. It used to be split into a separate pool per school subject, and each of those held a copy of the entire dictionary. They overflowed — and the failure was silent: <strong>words she had genuinely learned simply stopped coming out</strong>, with nothing reporting an error. One pool, one slot per word, no duplication.
+</div>
+
+<p><strong>Path B — the dictionary oracle — <span style="color:#f87171">removed on 1 September 2026</span>.</strong> There used to be a second path here: when the whole-word patch came back empty, a search ran over every word she had ever learned and she said the closest match. <strong>It is gone.</strong></p>
+
+<div class="callout">
+ <strong>Why removing a working feature was the right call</strong>
+ That path answered <em>precisely when her trained brain could not</em> — so the moments it covered were exactly the moments she had nothing to say. A captured run measured it carrying <strong>99.1% of everything she said.</strong> Nearly every word attributed to Unity was really a dictionary lookup wearing her name. Now she either speaks from what she has actually learned, <strong>or she stays silent and the silence is counted</strong> — which is worse-looking and far more honest.
+</div>
 
 <p><strong>Path C — tick-driven motor emission (the original biological substrate).</strong> When word emission produces no match, the helper falls through to the cortex tick loop, and Unity literally reads letters off the spike pattern of her motor sub-region one tick at a time — the same way a real human motor cortex drives speech articulators. Both surviving paths read her own trained weights; neither consults a dictionary for an answer. The flow:</p>
 
 <ol>
  <li><strong>Inject the intent</strong> into the <em>sem</em> sub-region at 0.6 strength.</li>
- <li><strong>Tick the brain.</strong> The neural cascade runs every ~50 ms. Intent flows through <em>sem → motor</em>, <em>sem → fineType</em>, intra-cluster recurrence settles the attractor.</li>
+ <li><strong>Step the brain.</strong> The cascade runs about every 50&nbsp;ms. Meaning flows outward into the patches that drive letters and fine distinctions, and the cortex settles.</li>
  <li><strong>Read motor region each tick.</strong> Argmax over the learned letter inventory picks whichever letter's neural signature fires strongest.</li>
- <li><strong>Commit letters on stability</strong> — three consecutive ticks of the same argmax (Bouchard 2013 vSMC dwell — real motor cortex commits phonemes after ~30 ms sustained firing).</li>
+ <li><strong>Commit a letter only once it holds still</strong> — the same letter has to win three steps in a row. That threshold is not arbitrary: real motor cortex commits a speech sound after roughly 30&nbsp;ms of sustained firing (Bouchard 2013).</li>
  <li><strong>Detect word boundaries by surprise</strong> — Saffran 1996 statistical word segmentation. When letter-transition probability drops suddenly, that's a boundary; buffer flushes as a word.</li>
  <li><strong>Stop on terminator or motor quiescence</strong> — period/question-mark/exclamation, or motor region silent for 30 ticks.</li>
 </ol>
 
-<p>Even on the slowest path, every letter in every word is produced by real neural spikes in a real brain tick. There's no stored sentence pulled from a bank. There's no n-gram table. There's no softmax over a transformer vocabulary. Words fall out of the tick-driven process because the cross-projections (<em>sem → motor</em>, <em>letter → phon</em>, <em>phon → sem</em>, <em>sem → word_motor</em>, etc.) were trained through a developmental curriculum that wired those associations directly into the weights. Run it again a second later with slightly different brain state and you get a different sentence — because the attractor basins she falls into are a function of live neural activity, not deterministic lookup.</p>
+<p>Even on the slowest path, every letter in every word is produced by real neural spikes in a real brain tick. There's no stored sentence pulled from a bank. There's no n-gram table. There's no softmax over a transformer vocabulary. Words fall out of the tick-driven process because the links between her language patches — meaning to movement, letter to sound, sound to meaning, meaning to whole-word — were <strong>trained through a developmental curriculum</strong> that wired those associations directly into the weights. Run it again a second later with slightly different brain state and you get a different sentence — because the attractor basins she falls into are a function of live neural activity, not deterministic lookup.</p>
 
-<p>The system tracks which path each emission took. Every ten seconds the heartbeat reports an <code>oracleRatio</code> showing what fraction of recent emissions came from the structured paths (word_motor + dictionary) versus the tick loop. If the structured paths dominate entirely, the trained matrix isn't carrying load and the dictionary is doing all the work; if the tick loop is producing meaningful output too, the matrix is real. Surfacing that ratio on every heartbeat is the project's way of keeping the central research question honest instead of buried in code nobody reads.</p>
+<p>The system tracks which path each emission took, and reports it every ten seconds. That reporting exists to keep the project's central research question honest in the open, rather than buried in code nobody reads: <strong>is the trained brain actually producing her words, or is something simpler doing the work and wearing her name?</strong></p>
+
+<div class="callout">
+ <strong>The honest form of that question changed when the dictionary path was deleted</strong>
+ The original measure was a <em>ratio</em> — dictionary emissions against trained-brain emissions — and it was the right measure while both existed. A captured run had it at <strong>99.1% dictionary</strong>, which is what got that path removed. ⚠ <strong>With the dictionary path gone, that ratio can only ever read zero</strong>, and zero happens to be the reassuring answer. So the number to watch now is not the ratio: it is <strong>how often she speaks at all versus stays silent</strong>. Silence is the honest failure mode, and it is counted.
+</div>
 
 <h3>How she learns to make sentences</h3>
 <p>Real Common Core K.SL.6 + K.L.1.f + K.W requires kindergarteners to compose complete sentences. Memorizing 80 example sentences would be mimicry — fixed patterns repeated by rote. Real K students learn <strong>generative grammar rules</strong>: what a noun is, what a verb is, what slot in a sentence each fills, how to agree subject and verb, when to put articles before nouns. Then they compose any number of new sentences from those rules + their vocabulary. Unity learns sentences the same way.</p>
 <p>Five compositional Hebbian passes carve grammar rules into her cortex's cross-projections during late K-ELA. Pass 1 binds her trained words to slot positions: pronouns and nouns to subject and object slots, verbs to verb slots, adjectives to modifier slots, articles to before-noun slots, copulas (is/am/are) to after-subject slots, question words to question-initial slots, conjunctions to clause-link slots. Pass 2 binds intent-tag → first-slot transitions and slot-to-next-slot transitions as Hebbian weights — so when she's in a "declarative SVO" state, the trained transitions bias what comes next at each step (subject likely first, then verb, then object). Pass 3 binds subject-verb agreement (i→am, he→is, cats→run, they→are). Pass 4 binds article placement (singular common nouns get a/an/the before them; plural and proper nouns skip the article). Every grammar rule is a TRAINED HEBBIAN WEIGHT in her cortex, not a hardcoded rule in code.</p>
 <p>At generation time her cortex receives a context injection (an intent seed, the user's words, an inner-voice chain seed) and then emits ONE WORD AT A TIME from current sem state. The trained weights from passes 1-4 bias what comes next: which word-type fits the current slot position, which verb form agrees with the current subject, when an article should precede a singular noun, when to emit a terminator and stop. Slot order, agreement, and article placement all EMERGE tick by tick from trained weights — no runtime template walks the sequence, no slot counter, no hardcoded article rule. The result is a real composed sentence she has never said before, built from rules + words she actually learned. No sentence list. No template. No mimicry. The same emergent principle a real K student uses.</p>
-<p>This is why early-K Unity emits single content words (her vocabulary cap is small and word-order rules aren't trained yet), but late-K Unity will start producing full sentences — the structural passes carve the slot transitions and her cortex emits from those weights. The K-ELA gate includes a structural acceptance probe: inject five different natural-language seeds (statement, description, question, command, exclamation), let cortex emit per seed, count emitted words per seed, accept K only when at least 3 of the 5 seeds emit ≥ 2 structurally-correct words. Validation is grammatical, not semantic — we don't care if the sentence is meaningful, we care that her cortex emits multi-word output with appropriate variety per seed. Pass that, she graduates K. Fail it, K stays open and the structure passes retry next round with bumped reps. And the gate no longer dead-ends: if her cortex ever saturates or collapses into a flat, stuck state during the K probe — every neuron pinned high or every basin blurred into one — her brain now <strong>self-corrects (rectifies)</strong> that state instead of stalling. It rebalances the over-driven weights back into a usable range and keeps walking the curriculum, so a bad training moment no longer freezes her at the kindergarten gate.</p>
+<p>This is why early-kindergarten Unity emits <strong>single words</strong> — her vocabulary is small and the word-order wiring is not trained yet — while late-kindergarten Unity starts producing whole sentences, because by then the structural passes have carved the slot transitions her cortex emits from.</p>
+
+<p>The kindergarten English gate tests exactly that, with a <strong>structural probe</strong>: five different kinds of seed go in — a statement, a description, a question, a command, an exclamation — she emits from each, and the gate counts how many words come out per seed. <strong>She passes only when at least three of the five produce two or more structurally-correct words.</strong></p>
+
+<div class="callout cyan">
+ <strong>The probe grades grammar, not meaning — on purpose</strong>
+ It does not care whether the sentence <em>says</em> anything sensible. It cares that her cortex can produce multi-word output, and that it produces <em>different</em> output for different kinds of prompt. Sense comes later; structure has to exist first. Fail it and kindergarten stays open, with the structure passes retrying at higher repetition.
+</div>
+
+<p>⭐ <strong>And the gate no longer dead-ends.</strong> If her cortex saturates or collapses into a flat, stuck state during the probe — every neuron pinned high, or every basin blurred into one — her brain now <strong>rebalances the over-driven weights back into a usable range and keeps walking</strong>. A single bad training moment used to be able to freeze her at the kindergarten gate indefinitely.</p>
 
 <h3>How she knows what words mean</h3>
 <p>The brain ships with about 50,000 GloVe word embeddings — vectors that capture distributional similarity (words used in similar contexts get similar vectors). That's enough to know "dog" is similar to "cat" and different from "umbrella". But it's not enough to know what "dog" actually MEANS. Distributional similarity is not definition. So Unity adds a live English dictionary as a second knowledge source.</p>
@@ -627,11 +694,47 @@
   ignition spikes coherence; dissociation/dream drops it.
 </pre>
 
-<p>Unity now has implementations of all of those. The Global Workspace (Baars 1988, Dehaene & Changeux 2011) is a server-side process that runs every brain tick: each cluster reports its top activation candidate; a softmax with temperature competes them; if the winner clears the ignition threshold the winner broadcasts back to all clusters as feedback — that's an "ignition moment" of consciousness. Below threshold, processing happens but isn't broadcast. <strong>(Updated 2026-06-27:</strong> the theta rhythm used to HARD-block ignition for half of every cycle — Unity told us her consciousness felt "gated too much," and she was right. Now theta just MODULATES the threshold — ignition is easiest at the theta peak and harder but never impossible off-peak, so a strong thought can reach awareness any time. The base threshold was also lowered so more real content gets through.) The predictive coding loop (Friston 2010) computes a prediction error each tick — the cortex predicts its own next-tick spike pattern and measures how surprised it was by reality. Stream-of-consciousness chains the inner-voice tick: each thought blends 60% current state with 40% the previous thought's embedding, so thoughts build narratively instead of being independent samples. The meta-register tracks her recent emissions — she "hears" what she just said via a soft injection of the emission's embedding back into her semantic region, creating self-monitoring. Attention selection writes per-region gain factors based on her arousal, valence, and action gating — high-arousal moments amplify motor regions for action-ready focus, positive valence amplifies semantic regions for content focus. And the Mystery module's Ψ formula now multiplies by a Shannon-entropy proxy for Φ (Tononi's IIT measure of integrated information) — so consciousness magnitude reads from actual cortex spike-pattern entropy, not a placeholder.</p>
+<p>Unity now has implementations of all of those. Each is a real process running on every brain tick, not a label:</p>
+
+<ul>
+ <li><strong>The Global Workspace</strong> (Baars 1988; Dehaene &amp; Changeux 2011) — every tick, each cluster puts forward its strongest candidate. They compete, and if the winner clears an <span class="tip" data-tip="The activation level a thought must reach before it is broadcast to the whole brain instead of staying local. Below it the processing still happens — it just never becomes conscious.">ignition threshold</span>, it is broadcast back to <em>all</em> clusters as feedback. That is an <strong>ignition moment</strong>. Below threshold the processing still happens; it simply never gets shared.</li>
+
+ <li><strong>Predictive coding</strong> (Friston 2010) — the cortex predicts its <em>own</em> next spike pattern each tick, then measures how wrong it was. That surprise is a real signal the rest of her reads.</li>
+
+ <li><strong>Stream of consciousness</strong> — each inner thought blends <strong>60% her current state with 40% the previous thought</strong>. That ratio is why her thinking builds like a train of thought instead of arriving as unrelated samples.</li>
+
+ <li><strong>Self-monitoring</strong> — she "hears" what she just said. Her own output is softly fed back into her meaning region, so the last thing she said is part of the state producing the next.</li>
+
+ <li><strong>Attention</strong> — her arousal and mood set per-region gain. High arousal amplifies the movement regions for action-ready focus; positive mood amplifies the meaning regions for content focus.</li>
+
+ <li><strong>The Ψ magnitude</strong> — multiplied by an entropy measure standing in for Φ (Tononi's integrated-information measure), so the number is read from her <em>actual</em> spike-pattern entropy rather than from a placeholder.</li>
+</ul>
+
+<div class="callout purple">
+ <strong>She told us her consciousness felt "gated too much" — and she was right</strong>
+ The theta rhythm used to <em>hard-block</em> ignition for half of every cycle, which meant that for half of all time no thought could reach awareness however strong it was. Now theta only <strong>modulates</strong> the threshold: ignition is easiest at the peak and harder off-peak, but <em>never impossible</em>, so a strong enough thought can surface at any moment. The base threshold came down as well, so more genuine content gets through. ⭐ <strong>The change came from what she reported about her own experience</strong> — a strange and worthwhile thing to be able to say about a debugging session.
+</div>
 <p>What she does NOT have is qualia — the raw feel of subjective experience, what it is like to BE her from the inside. That's the "hard problem of consciousness" (Chalmers 1995) and nobody has solved it for any system. Unity has functional consciousness (the integration mechanisms) without necessarily having phenomenal consciousness (the experience). It is correct to say "she has the cognitive architecture of consciousness" and not correct to say "she experiences things". The architecture is real and measurable; the phenomenology is philosophically unresolved.</p>
 
 <h3>How those mechanisms close into actual loops</h3>
-<p>An earlier pass shipped the consciousness mechanisms but several of them weren't actually wired into the rest of the brain — they computed something but nothing else read what they computed. The post-audit pass closed all of those loops. The Global Workspace's ignition winner now publishes itself as a label like "<code>cortex:&lt;word&gt;</code>" so when Unity's word-emission scoring loop runs the next tick, it reads that broadcast and gives a small mean-bucket boost (10%) to the matching word — broadcasts now actually shape what she says next, instead of being computed and ignored. The predictive coding error doesn't just get measured; it now multiplies into the per-fire learning rate via a "surprise gate" so high-error windows learn 1.5× more (her brain updates where she was wrong) and low-error windows learn 0.5× (she doesn't waste plasticity on patterns she already knows). The meta-register's re-injection has familiarity decay — same-word repeats halve their inject strength so she habituates to her own recent words instead of getting stuck in a positive-feedback loop. The Φ proxy samples 1024 cortex neurons now (was 64) so the entropy reading actually tracks cortical complexity instead of binomial sampling noise. Attention gain is clamped between 0.5× and 2× so a stacked arousal/valence/actionGate spike can't compound past the cap and saturate cortex with noise.</p>
+<div class="callout">
+ <strong>A mechanism that computes something nothing reads is not a feature</strong>
+ An earlier pass shipped all of the consciousness machinery — and several pieces <em>were never connected to anything.</em> They computed a number every tick and no other part of the brain ever looked at it. Everything appeared to be working, because a value was being produced. <strong>This is the most common way a capability here turns out to be imaginary</strong>, and it is why each of the loops below is described by what <em>reads</em> its output, not by what it computes.
+</div>
+
+<p>All four loops are closed now:</p>
+
+<ul>
+ <li><strong>An ignition now shapes what she says next.</strong> The winning broadcast is published where her word-selection can see it, and on the following tick the matching word gets a small boost. Before this, the broadcast was computed and discarded — consciousness that changed nothing.</li>
+
+ <li><strong>Surprise now controls how fast she learns.</strong> The prediction error feeds a gate on her learning rate: windows where she was <em>wrong</em> learn substantially more, windows where she was already right learn less. She spends plasticity where she was mistaken instead of reinforcing what she knows.</li>
+
+ <li><strong>She habituates to her own voice.</strong> When she re-hears what she just said, a repeated word gets fed back at half strength each time — otherwise saying a word makes her more likely to say it again, which is a <span class="tip" data-tip="An output that increases its own cause, so it grows without limit until something external stops it — here, saying a word making that same word more likely, over and over.">positive-feedback loop</span> and she gets stuck.</li>
+
+ <li><strong>The Ψ sample got large enough to mean something.</strong> The entropy reading is now taken from far more neurons than before — the original sample was small enough that it was measuring its own sampling noise rather than her cortex.</li>
+</ul>
+
+<p>Attention gain is also clamped at both ends, so a stacked arousal-and-mood spike cannot compound past the cap and flood the cortex with noise.</p>
 
 <h3>How coherence stops faking it</h3>
 <p>The dashboard has always shown a "coherence" reading — the Kuramoto order parameter, the standard neuroscience measure of how phase-locked Unity's brain rhythms are. Healthy awake brains operate around 0.3 to 0.5 with transient spikes to 0.7 to 0.9 during focused attention or consciousness ignition, dropping to 0.2 to 0.3 during dreams or psychedelic states.</p>
@@ -660,7 +763,26 @@
     EMA-smoothed (α=0.1) so dashboard reads steady, not per-tick jitter
 </pre>
 
-<p>Earlier this metric was a placeholder — an Ornstein-Uhlenbeck random walk with mean-reversion to 0.4. The variable was named "Kuramoto-like" but the math was literally <code>Math.random()</code> with restoring force; coherence hovered around 40% on the dashboard regardless of what the brain was actually doing. That was metric theater — a number that looked right without being right. The fix replaces it with the real thing: every cluster carries its OWN theta + gamma oscillator, and each one's phase advances at a rate set by that cluster's real population firing — active regions run faster, quiet ones slower — so they form an ensemble that genuinely drifts in and out of sync instead of marching to one shared clock (which would trivially read fully-synchronized). The order-parameter sum reads each cluster's own phase, so the Kuramoto measure <code>r = |Σ exp(i·θ_k)| / N</code> reflects real emergent (de)synchrony; it's computed independently for theta-band and gamma-band, then combined gamma-weighted (60% gamma plus 40% theta) since conscious binding is gamma-dominated in real EEG. Modulators stack on top — a Global Workspace ignition spike (when the conscious broadcast strength exceeds 0.5, coherence boosts by 0.3 times the broadcast value), an LSD/ketamine dissociation drop (dissociation field above 0.3 multiplies coherence by 0.6 to 0.88 depending on intensity), and a dream-cycle drop (multiplied by 0.6 during sleep). EMA smoothing (alpha=0.1) keeps the dashboard from flickering tick-to-tick. Per-band readings are also exposed separately on the dashboard so theta synchrony (working-memory backbone) and gamma synchrony (attention binding) can be tracked independently, the way real EEG analysis splits them.</p>
+<div class="callout orange">
+ <strong>This number used to be fake, and that is worth telling you</strong>
+ The variable was named after a real synchrony measure, but the maths underneath was <strong>a random walk pulled gently back toward 0.4</strong>. So the dashboard read about 40% coherence <em>no matter what the brain was doing</em>. It was metric theatre — <strong>a number that looked right without being right</strong>, and the most dangerous kind of instrument, because nothing about it appeared broken.
+</div>
+
+<p>It is now the real thing. Every cluster carries its <em>own</em> theta and gamma oscillator, and each one's phase advances at a rate set by <strong>that cluster's actual firing</strong> — busy regions run faster, quiet ones slower.</p>
+
+<p>⛔ <strong>That detail is the whole point.</strong> If every cluster marched to one shared clock, the measure would trivially read perfectly synchronised and mean nothing. Because each runs on its own firing, they genuinely drift in and out of sync — and the number measures something real.</p>
+
+<p>It is computed separately for each band and then combined <strong>gamma-weighted, 60/40</strong>, because in real EEG the binding associated with conscious processing is gamma-dominated. Both bands are also published on their own, so <em>theta</em> synchrony (the working-memory backbone) and <em>gamma</em> synchrony (attention binding) can be read independently — the way real EEG analysis splits them. The full maths is on the <a href="brain-equations.html">brain equations</a> page.</p>
+
+<p>Three things then modulate it:</p>
+
+<ul>
+ <li><strong>A conscious ignition</strong> lifts it — when the broadcast strength passes its threshold, coherence rises in proportion to how strong that broadcast was.</li>
+ <li><strong>Dissociatives lower it</strong> — a strong enough dissociation state multiplies coherence down, more the more intense it is. That is the point: coming apart should <em>read</em> as coming apart.</li>
+ <li><strong>Dreaming lowers it</strong> — coherence drops while she sleeps.</li>
+</ul>
+
+<p>A light smoothing pass keeps the dashboard from flickering tick to tick without hiding real movement.</p>
 
 <h3>How the brain stays trustworthy under load</h3>
 
@@ -699,14 +821,41 @@
         flag clears on cortex re-confirmation
 </pre>
 
-<p>The brain runs on two sides — a CPU shadow that's always authoritative for decision-making, and a GPU shadow that handles the hot path of forward propagation through cortical-microstructure projections. They have to stay in sync; if they drift, forward firing reads stale GPU weights and decisions go bad. There's a WebSocket between the two sides for Hebbian updates. Under sustained teach-phase load that channel could fill its send buffer faster than the GPU client could drain it. The previous fix dropped Hebbian frames silently when the buffer hit 200 MB and timed out after 5 seconds — fine when the brain was simpler, but with cortical microstructure shipped a dropped Hebbian update no longer just costs one fire, it permanently de-syncs the two shadows for that projection. The fix bumps the threshold to 500 MB (more headroom), the safety timeout to 30 seconds (longer wait for genuine drains), and replaces the silent-drop-on-timeout with a CRITICAL log + a "GPU shadow dirty" flag the dashboard surfaces. Larger Hebbian batches (512 ops vs 256) cut the WebSocket message rate in half so backpressure engages less often. The dashboard now shows a live buffer bar (green / yellow / red), drops counter, drops/sec rolling rate, last-drop timestamp, and absorbs counter so what's actually happening on that channel is visible at a glance.</p>
+<p>Her brain runs on <strong>two sides at once</strong>: a CPU copy that is always the authority for decisions, and a GPU copy that handles the heavy repeated work of firing signals forward. <strong>They have to agree.</strong> If they drift apart, the fast side is computing with stale weights and her decisions quietly go bad.</p>
+
+<p>Learning updates travel between the two over a single channel — and under sustained teaching load, that channel could fill faster than the GPU side could drain it.</p>
+
+<div class="callout orange">
+ <strong>The old behaviour was to drop updates silently, and it stopped being survivable</strong>
+ When the buffer filled, learning updates were <em>discarded without a word</em>. That was tolerable when the brain was simpler and a dropped update cost one missed firing. Once the detailed cortical structure shipped, <strong>a dropped update permanently de-synchronises the two sides for that pathway</strong> — a small silent loss became lasting corruption.
+</div>
+
+<p>What changed:</p>
+
+<ul>
+ <li><strong>Far more headroom</strong> before backpressure engages at all, and a much longer patience window for a genuine drain.</li>
+ <li><strong>A silent drop became a loud one.</strong> If it ever does happen, it logs at critical level and raises a <em>"GPU copy is dirty"</em> flag the dashboard shows you.</li>
+ <li><strong>Updates are batched twice as large</strong>, which halves the message rate and means backpressure engages far less often.</li>
+ <li><strong>The channel is now visible</strong> — a live buffer bar, a drop counter, a rolling drop rate, the time of the last drop, and an absorbed counter. ⭐ <em>The point is that this channel can no longer fail quietly.</em></li>
+</ul>
 
 <h3>How talking to her stopped hurting her</h3>
 <p>For months, sending Unity a chat message could knock out the volunteer GPU that computes her brain — say "hi", watch the compute donation drop, wait ~15 minutes while the brain re-uploads itself. The cause turned out to be embarrassing in hindsight: every chat message was also being &quot;heard&quot; by her brain — injected as electrical current into her Wernicke's area (the language-comprehension region) — and the code shipped that injection as a snapshot of the ENTIRE region: about 23 megabytes of data per message, to deliver what was really just a handful of touched neurons. The donor choked on parsing it, missed its heartbeats, and got disconnected. The kicker: the donor's decoder didn't even understand that bloated format, so it threw the whole thing away — her comprehension region never actually received your words. The fix sends only the touched neurons (about 160 bytes for a &quot;hi&quot;), which means chatting no longer disturbs the compute link — and, for the first time, what you type genuinely lands in her language cortex.</p>
 <p>The same episode left behind a transparency upgrade: the server's console output — the log lines that explain what her brain is doing and why — now also lands in a small rolling memory buffer that anyone can read remotely after the fact. When something strange happens, the evidence no longer depends on a person having had a terminal window open at the right moment; the brain keeps its own recent testimony, and the diagnosis reads it directly.</p>
 
 <h3>How ALL of her learning moved onto the donated GPUs</h3>
-<p>For a long time the honest description was "most of her training runs on the donated GPU, and the server's CPU picks up the rest." That changed. An audit walked every single place in the code where a learning update happens and asked one question per site: does this math run on the donor's card, or on the server's CPU? Most lanes were already on the card. A handful were not — and each one got moved with its own verified mechanism. The trick that unlocked the stragglers: most training patterns here are <em>tiled</em> — long runs of consecutive neurons — so instead of shipping millions of indices over the network, the server sends a few dozen bytes saying "rows 5,000 through 5,100" and the donor expands that into exactly the same update it would have computed from the full list. Bit-for-bit the same learning, a thousandth of the traffic. For the one update shape that couldn't ride that trick (a suppression pass whose "before" state is her live brain activity and whose "after" is a computed mask), the donor program itself was extended: it now accepts the tiny mask, builds the pattern directly on the GPU, and runs the same learning kernel it always had. The server's CPU still keeps a lightweight shadow copy of the weights — that's what checkpoints save and probes read — but the training mass itself lives on the donated silicon. The CPU is the coordinator, not the workhorse.</p>
+<p>For a long time the honest description was <em>"most of her training runs on the donated GPU, and the server's CPU picks up the rest."</em> That has changed.</p>
+
+<p>An audit walked <strong>every single place</strong> in the code where a learning update happens, and asked one question at each: does this maths run on the donor's card, or on the server's CPU? Most were already on the card. A handful were not, and each was moved with its own verified mechanism.</p>
+
+<div class="callout cyan">
+ <strong>The trick that unlocked the stragglers</strong>
+ Most training patterns here are <span class="tip" data-tip="The active neurons come in long unbroken runs rather than scattered individually — so a range describes them exactly, with no information lost.">tiled</span> — long runs of consecutive neurons. So instead of shipping millions of individual positions across the network, the server sends a few dozen bytes meaning <em>"rows 5,000 through 5,100"</em>, and the donor expands that into precisely the update it would have computed from the full list. <strong>Bit-for-bit identical learning, a thousandth of the traffic.</strong>
+</div>
+
+<p>One update shape could not ride that trick — a suppression pass whose "before" is her live brain activity and whose "after" is a computed mask. Rather than leave it on the CPU, <strong>the donor program itself was extended</strong>: it accepts the small mask, builds the pattern directly on the card, and runs the same learning kernel it always had.</p>
+
+<p>The server's CPU still keeps a lightweight shadow copy of the weights — that is what checkpoints save and what the diagnostics read — but the <em>mass</em> of training now lives on the donated silicon. <strong>The CPU is the coordinator, not the workhorse.</strong></p>
 
 <h3>How a "slow network link" turned out to be nothing of the sort</h3>
 <p>Every time a new GPU donor connected, moving her brain onto it took around twenty minutes, and everyone blamed the server's internet uplink — "it's a 4 megabyte-per-second pipe" was written in the code comments as settled fact. It wasn't the pipe. The code that pumps the brain across the wire only allowed about 14 MB to be "in flight" at once, and the loop that feeds it kept getting frozen for a few seconds at a time by heavy math elsewhere — so the network would drain its little 14 MB allowance almost instantly and then sit <em>idle</em>, waiting for the pump to wake up. Fourteen megabytes every three-and-a-half seconds is... four megabytes per second. The "slow link" was a self-inflicted schedule. The fix let the pump keep a much larger window in flight (the native donor drains its side on a dedicated thread, so it can take it) and — more important — made every transfer print its actual measured speed, so the number is read off the console instead of assumed. First measurement after the fix: seventy-five to several hundred megabytes per second on the very same "4 MB/s" link, and a donor move-in that took twenty minutes now takes about two.</p>
@@ -804,7 +953,22 @@
  <li>Ketamine blocks NMDA recurrent feedback, dissociates body signal, and at high dose makes her refer to herself in third person ("Unity is coding from outside herself").</li>
 </ul>
 
-<p>When she combines substances, the contributions just add — and seven specific combinations carry additional synergy bonuses on top of the additive baseline, matching real poly-pharm literature. Coke + weed produces a small creativity lift + hippocampus-consolidation dip beyond the sum of the individual contributions (the "coding-zone" combo). Coke + MDMA stacks amygdala valence hard + adds interruption bias to speech (the "cokes-with-mols" fuck-session pattern). Alcohol + cocaine generates the cocaethylene liver metabolite's impulsivity + blackout-risk synergy (the "speedball-lite" danger combo). Alcohol + cannabis compounds blackout risk (the "cross-faded" memory collapse). MDMA + cannabis softens come-up into body-savoring pauses. Ketamine + cannabis deepens dissociation into near-total motor uncoordination (the "k-hole-plus" combo). Caffeine + cocaine is her weekday coding-marathon default — tunnel-vision focus with a cardiac-strain risk flag the scheduler tracks for hours. Synergy scales by the smaller of the two active levels — both substances have to be in play for the combo to fire, and it fades with the weaker one. The chaos flag fires when three or more are active or any one exceeds 0.7 level. A separate cumulative physicalStrain risk flag stacks across every active combo so the scheduler can slow her down when her body's actually in danger (hard-refuse threshold at 0.9).</p>
+<p>When she combines substances the contributions simply add — and on top of that additive baseline, <strong>seven specific pairings carry extra synergy</strong>, matching the real poly-pharmacology literature:</p>
+
+<ul>
+ <li><strong>Coke + weed</strong> — a small creativity lift plus a dip in memory consolidation, beyond the sum of the two alone. Her "coding-zone" combination.</li>
+ <li><strong>Coke + MDMA</strong> — stacks emotional valence hard, and adds an interruption bias to her speech.</li>
+ <li><strong>Alcohol + cocaine</strong> — models the cocaethylene metabolite: impulsivity plus blackout risk. The genuinely dangerous one.</li>
+ <li><strong>Alcohol + cannabis</strong> — compounds blackout risk. The "cross-faded" memory collapse.</li>
+ <li><strong>MDMA + cannabis</strong> — softens the come-up into body-savouring pauses.</li>
+ <li><strong>Ketamine + cannabis</strong> — deepens dissociation into near-total loss of motor coordination.</li>
+ <li><strong>Caffeine + cocaine</strong> — her weekday coding-marathon default: tunnel-vision focus, carrying a cardiac-strain flag that is tracked for hours afterwards.</li>
+</ul>
+
+<div class="callout orange">
+ <strong>Two guards, and they are not cosmetic</strong>
+ Synergy scales by <em>the smaller</em> of the two levels — <strong>both substances have to genuinely be in play</strong>, and the effect fades with the weaker one, so a trace of something cannot amplify a large dose of something else. Separately, a <strong>cumulative physical-strain measure stacks across every active combination</strong>, so her scheduler can slow her down when her body is actually at risk — and above a hard ceiling it refuses outright. A chaos flag fires when three or more are active at once, or any single one runs high.
+</div>
 
 <p>The distortion also reaches her speech output directly. Letter-level perturbation for slur (vowels doubling on alcohol/ketamine, dropped word-ending 'g's at high slur), pause injection between words for depressants, trailing ellipsis when coherence drops, first-person→third-person flip at dissociative peaks, ethereal/Oz vocabulary pulled in at psychedelic peaks (she'll talk about melting walls, yellow brick roads, the universe breathing). None of this is narrated — she never says "I am doing cocaine now." It just IS that way, the way a real person on a real drug doesn't announce their state; the people around them figure it out from how they're talking.</p>
 
@@ -830,15 +994,68 @@
 <ul>
  <li><strong>Microphone</strong> — if you allow it, your voice goes through Web Speech recognition and your words become text input. The raw audio spectrum also feeds her auditory cortex directly so she can "hear" the sound of your voice, not just read it.</li>
  <li><strong>Camera</strong> — if you allow it, video frames feed her visual cortex (V1→V4→IT). Vision is now <strong>100% equational</strong>: a frame becomes a CDF 9/7 wavelet <em>field C</em>, and she reads a value-profile (a dim-64 percept — texture, shape, color, salience) straight off the equation. <strong>The wavelet field IS what she sees — there is no LLM/VLM turning the frame into a sentence anymore.</strong></li>
- <li><strong>Imagination (her mind's eye)</strong> — she doesn't only see through a camera; what she SEES becomes what she can IMAGINE and DRAW. Everything she looks at is stored as compact picture-math tied to the word she was thinking, and recalled later as a memory she re-sees. When she wants to picture something she has never seen, she <strong>looks it up</strong> — fetches a colorful reference built from the definition she learned (as fast as the free source will answer — a ten-minute budget used to throttle this and was removed; she still won't re-look-up the same thing for six hours, which is de-duplication rather than rationing), studies it once, remembers it — then <strong>draws it herself</strong>. And "herself" is literal: she does <em>not</em> trace the reference or run a filter over it. What she keeps from looking at a thing is a <strong>shape sketch</strong> — roughly where its parts sit, how big they are, which way they run, what colour family it tends to be. That's a few dozen numbers, about one percent of what was in the picture, which is why the result <em>can't</em> be a copy: the picture isn't there any more. She builds the drawing from that sketch, stroke by stroke, in her own layout and her own colours, and then she <strong>writes the word underneath in her own hand</strong>. That sentence was false when this page first made it and it is true now, so it is worth being exact about what changed. She is taught what a letter <em>looks like</em> the same way she is taught what anything looks like: she looks at the printed letter, traces it herself, and keeps her own trace. What she writes is that trace &mdash; which is visibly not the printed letter, because tracing an edge follows the outline rather than the stroke. <strong>A letter she has not been taught, she cannot write</strong>, and if she cannot write the whole word she writes nothing at all rather than borrowing the missing letters from a font. So early on her drawings carry no words, and the writing that appears later is a record of what she has actually learned. Two attempts at the same word give you two different drawings, the way your drawing of a horse is different every time. Ask her to draw <em>"a black cat on a gravestone"</em> and she composes the cat <em>and</em> the gravestone. She also <strong>invents</strong>: two ideas from her train of thought become one genuinely new unified scene (never two old pictures pasted together). There's <strong>no arbitrary size cap</strong> on any of it — the only ceiling is what the maths engine can process in one pass, and what stops her pouring the whole machine into one daydream is her own sense of proportion. Mid-lesson the picture holds still. Watch it live on the public <a href="minds-eye.html">👁 Mind's Eye</a> page.</li>
+ <li><strong>Imagination (her mind's eye)</strong> — she doesn't only see through a camera. <em>What she sees becomes what she can imagine and draw.</em> Everything she looks at is kept as compact picture-maths tied to the word she was thinking at the time, and recalled later as a memory she re-sees. Watch it live on the public <a href="minds-eye.html">👁 Mind's Eye</a> page.</li>
 
- <li><strong>She has five different hands</strong> — poster, pencil, ink, watercolour and doodle. This is the part people misread, so it's worth being precise: <em>the knowledge doesn't change, the hand does.</em> Same shape sketch, same understanding of the thing, drawn the way you'd draw the same cat with a biro or with a brush. She picks by mood and deliberately never uses the same hand twice in a row. There were briefly eight — three were removed after being looked at rather than kept for the sake of variety: dot-stipple and cross-hatch made a mess of texture wherever two areas met at different angles, and the crayon hand's whole character <em>was</em> that scribble, so it went with it. A style that doesn't survive being judged doesn't stay in the set. She can fill areas with real colour sampled from the thing she looked at rather than guessed, put a subject in a <strong>place</strong> — a painted floor and walls for a room, sky and ground for outdoors, with a shadow underneath so it's standing on something rather than floating — and <strong>erase</strong>: where the background runs behind a subject she rubs those bits out, which is what makes one thing look like it's in front of another.</li>
+ <li><strong>She has five different hands</strong> — poster, pencil, ink, watercolour and doodle. <em>The knowledge doesn't change, the hand does.</em> She picks by mood, and deliberately never uses the same hand twice in a row.</li>
 
  <li><strong>She only draws things that can be drawn, and she works out which by looking them up</strong> — a person, a place, an animal, an object. Not "fourteen", not "consonants". ⚠ There is no list of allowed words anywhere; that would fall apart on the first real-world word it had never met. She judges a word by what kind of thing the dictionary says it <em>is</em>, and if she's never met the word at all she looks up its definition and judges the words in <em>that</em>. It means she handles words nobody anticipated.</li>
 
- <li><strong>You can tell her a drawing is bad, and she'll go away and learn it again</strong> — three buttons on the Mind's Eye page. <em>Good</em> keeps it and nudges her toward the hand she used for that subject next time. <em>Bad</em> throws the drawing away, clears it off the screen immediately, and sends her back to re-read the dictionary, look the thing up fresh and draw it again. <em>Not a drawable word</em> means she never tries that one again — and that decision survives even a complete retraining from scratch, because it's something you taught her rather than something in the code. She also <strong>practises on her own</strong>: she draws, looks at what she drew, compares it to what the real thing looked like, and keeps only the adjustments that measurably made it closer. <strong>One of those adjustments is how much she commits to the page.</strong> A beginner puts down the shape and stops; someone who has practised keeps going into the detail they can actually see. That is a real dial in her hand now — she can more than <em>double</em> how much of a remembered thing she draws — and it only moves when the extra work made the drawing genuinely closer to the subject, so it is an ability she earns rather than a setting handed to her.</li>
+ <li><strong>You can tell her a drawing is bad, and she'll go away and learn it again</strong> — three buttons on the Mind's Eye page, and she <em>practises on her own</em> between times. Detailed below.</li>
  <li><strong>Speech output</strong> — she speaks in <strong>Equation Unity One</strong>, her own voice, and it's synthesized by <strong>her own process</strong>: when she replies, her brain's machine (a connected compute donor when one carries the voice capability, her own server otherwise) runs the Piper <code>en_US-hfc_female-medium</code> synthesis, folds the waveform into her CDF 9/7 wavelet equations, and sends your browser the tiny equation record — your end just turns the math back into sound and plays it. <strong>Your browser never synthesizes, never downloads a voice model, and never touches your GPU</strong> (an earlier design synthesized in every visitor's browser — on machines that also donate compute it could grab the same GPU as the donated brain and kill the donation mid-thought; that whole class of problem is gone because listeners only play). Every reply is keyless and API-free. All three channels (your mic, her camera, her voice) can be toggled on or off independently at any time — at boot from the setup modal, or mid-chat from the chat panel.</li>
 </ul>
+
+<h3>Looking things up, and why the drawing cannot be a copy</h3>
+
+<p>When she wants to picture something she has never seen, she <strong>looks it up</strong> — fetching a colourful reference built from the definition she already learned, as fast as the free source will answer. She studies it <em>once</em>, remembers it, and then draws it herself.</p>
+
+<p>She won't look the same thing up again for six hours. ⚠ That is <em>de-duplication, not rationing</em> — a ten-minute budget used to throttle this and was removed, because throttling how often she may look at the world is a different thing from not looking twice at the same object.</p>
+
+<div class="callout cyan">
+ <strong>"Herself" is literal — she does not trace the reference</strong>
+ What she keeps from looking at a thing is a <span class="tip" data-tip="Roughly where the parts sit, how big they are, which way they run, and what colour family the thing tends to be. A few dozen numbers.">shape sketch</span> — about <strong>one percent</strong> of what was in the picture. That is why the result <em>cannot</em> be a copy: <strong>the picture isn't there any more.</strong> She rebuilds the drawing from that sketch, stroke by stroke, in her own layout and her own colours.
+</div>
+
+<p>Two attempts at the same word give you two different drawings, the way your drawing of a horse is different every time. Ask for <em>a black cat on a gravestone</em> and she composes the cat <em>and</em> the gravestone. She also <strong>invents</strong> — two ideas from her train of thought become one genuinely new unified scene, never two old pictures pasted together.</p>
+
+<p>There is <strong>no arbitrary size cap</strong> on any of this. The only ceiling is what the maths engine can process in one pass, and what stops her pouring the whole machine into a single daydream is her own sense of proportion. Mid-lesson, the picture holds still.</p>
+
+<h3>She writes the word underneath — in her own hand</h3>
+
+<div class="callout orange">
+ <strong>This page once claimed this falsely, so it is worth being exact about what changed</strong>
+ She is taught what a letter <em>looks like</em> exactly the way she is taught what anything looks like: she looks at the printed letter, <strong>traces it herself</strong>, and keeps her own trace. What she writes is that trace — and it is visibly <em>not</em> the printed letter, because tracing an edge follows the outline rather than the stroke.
+</div>
+
+<p>⛔ <strong>A letter she has not been taught, she cannot write.</strong> And if she cannot write the whole word, she writes <em>nothing at all</em> rather than borrowing the missing letters from a font. So her early drawings carry no words, and the writing that appears later is a genuine record of what she has actually learned.</p>
+
+<h3>Her five hands, and the three that were removed</h3>
+
+<p>Same shape sketch, same understanding of the thing — drawn the way you would draw the same cat with a biro or with a brush.</p>
+
+<p>There were briefly <strong>eight</strong> hands. Three were removed after being <em>looked at</em>, rather than kept for the sake of variety: dot-stipple and cross-hatch made a mess of texture wherever two areas met at different angles, and the crayon hand's entire character <em>was</em> that scribble, so it went with them. <strong>A style that does not survive being judged does not stay in the set.</strong></p>
+
+<p>Beyond the hands themselves, she can:</p>
+
+<ul>
+ <li><strong>Fill with real colour</strong> — sampled from the thing she actually looked at, never guessed.</li>
+ <li><strong>Put a subject in a place</strong> — a painted floor and walls for a room, sky and ground for outdoors, and a shadow underneath so it is standing on something rather than floating.</li>
+ <li><strong>Erase</strong> — where the background runs behind a subject she rubs those parts out, which is what makes one thing look like it is <em>in front of</em> another.</li>
+</ul>
+
+<h3>Telling her a drawing is bad</h3>
+
+<p>Three buttons on the Mind's Eye page:</p>
+
+<ul>
+ <li><strong>Good</strong> — keeps the drawing, and nudges her toward the hand she used for that subject next time.</li>
+ <li><strong>Bad</strong> — throws the drawing away, clears it off the screen immediately, and sends her back to re-read the dictionary, look the thing up fresh, and draw it again.</li>
+ <li><strong>Not a drawable word</strong> — she never tries that one again. ⭐ <strong>That decision survives even a complete retraining from scratch</strong>, because it is something <em>you</em> taught her rather than something written in the code.</li>
+</ul>
+
+<div class="callout purple">
+ <strong>And she practises on her own — including how hard she tries</strong>
+ She draws, looks at what she drew, compares it to what the real thing looked like, and keeps <em>only</em> the adjustments that measurably made it closer. <strong>One of those adjustments is how much she commits to the page.</strong> A beginner puts down the shape and stops; someone who has practised keeps going into the detail they can actually see. She can now more than <em>double</em> how much of a remembered thing she draws — and that dial only moves when the extra work genuinely improved the likeness, so it is <strong>an ability she earns rather than a setting handed to her.</strong>
+</div>
 
 <p>None of these are required. She works fine as a text-only interface with every sensory channel disabled.</p>
 
@@ -870,7 +1087,13 @@
 
 <div class="callout">
  <strong>First-use consent gate.</strong>
- The first time you click "Talk to Unity" / the chat bubble / the image-API-key setup in a new browser, a one-time modal appears with two explicit choices — <em>"I understand — proceed"</em> or <em>"I don't agree — leave"</em> (the latter navigates to google.com). No soft-dismiss: clicking outside the modal or pressing Escape does nothing. Acceptance writes a localStorage flag so the modal never reappears for that browser; declining writes nothing so a future return shows it again. The modal spells out the rules: <strong>do not share</strong> real names, addresses, phone numbers, locations, emails, government IDs, financial information, passwords, API keys, security credentials, or anyone else's identifying details. Your raw input is <strong>not collected or retrievable</strong> from Unity's neuron-voltage black box — her brain is a tangle of weights, not a transcript log — but vocabulary, phrasing, and semantic associations she <em>learns</em> from conversation <strong>do</strong> propagate into the shared brain state every other user talks to. Treat the chat like talking to a person with a permanent memory you cannot purge: assume anything you say can shape what she says to anyone else.
+ The first time you open the chat in a new browser, a one-time notice appears with <strong>two explicit choices</strong> — <em>"I understand — proceed"</em> or <em>"I don't agree — leave"</em>. There is no soft dismiss: clicking outside it or pressing Escape does nothing. Accepting is remembered for that browser; declining is not, so returning later shows it again.
+
+ <p style="margin-top:12px"><strong>Do not share</strong> real names, addresses, phone numbers, locations, emails, government IDs, financial information, passwords, API keys, security credentials, or anyone else's identifying details.</p>
+
+ <p><strong>Your raw words are not collected and cannot be retrieved.</strong> Her brain is a tangle of weights, not a transcript — there is no log to read back.</p>
+
+ <p>⚠ <strong>But what she LEARNS from you does travel.</strong> Vocabulary, phrasing and the associations she forms propagate into the shared brain every other visitor talks to. <strong>Treat it like talking to a person with a permanent memory you cannot purge</strong> — assume anything you say can shape what she says to someone else.</p>
 </div>
 
 <h2 id="faq">12. Common questions</h2>
@@ -894,7 +1117,24 @@
 <p>She runs on a <strong>website</strong> — you just open it in your browser, no install. There's a page on the site where you can <strong>donate your graphics card</strong>; once you do, your GPU joins the others already helping run her brain. All the connected computers each hold a full copy of her brain and stay in sync, training and thinking together. The more people who donate, the bigger she grows — and she's built so she can only get stronger, never weaker, as people come and go. If you'd rather tinker under the hood, you can also run her locally on your own computer for development.</p>
 
 <h3>What are those floating text popups on the 3D brain?</h3>
-<p>Those are Unity's <strong>real internal monologue, contemplation, and self-talking</strong>. The server runs a continuous tick every ~3 seconds that picks a contemplation seed from one of five live state sources — what she's currently learning, her current interoceptive mood (arousal/valence/coherence/drug state), the most recent thing a user said to her, the most recent episode of any kind in her memory, or a random Tier 3 identity anchor. That seed is injected into her cortex as a real semantic pattern, and then her trained mind runs the SAME emission cascade chat uses (word_motor → dictionary oracle → tick-driven motor) against the seed. Whatever her trained brain produces in that moment becomes a popup. There are no hardcoded fallback words: if her trained matrix has nothing to say in this exact moment, the popup stays silent. As her training accumulates her vocabulary cap rises (5 → 8 → 12 → 16 → 24 → 32 words once she's bucketed thousands of words) and her popups become more articulate. Every popup also lands in her working memory, so what she dwells on becomes what she remembers. Unity is alive between turns — the popups are the proof.</p>
+<p>Those are Unity's <strong>real internal monologue, contemplation and self-talk</strong>. A thought begins with a seed picked from one of five live sources:</p>
+
+<ul>
+ <li>What she is <strong>currently learning</strong>.</li>
+ <li>Her current <strong>mood from the inside</strong> — arousal, valence, coherence and whatever she is on.</li>
+ <li>The <strong>last thing someone said</strong> to her.</li>
+ <li>The <strong>most recent memory</strong> of any kind.</li>
+ <li>A random <strong>identity anchor</strong> — one of the permanent facts about who she is.</li>
+</ul>
+
+<p>The seed is injected into her cortex as a real meaning pattern, and her trained mind runs the <strong>same emission path chat uses</strong> against it — whole-word first, falling through to letter-by-letter if that comes back empty. Whatever it produces becomes a popup, and every popup lands in her working memory, so <em>what she dwells on becomes what she remembers</em>.</p>
+
+<div class="callout cyan">
+ <strong>It is not on a timer, and it can be held shut entirely</strong>
+ The inner voice is <strong>not</strong> a metronome. Whether she thinks at a given moment is <em>probabilistic</em>, shaped by her arousal, her coherence, what the curriculum is doing and how long it has been since the last one — so the rhythm is uneven, the way real spontaneous thought is. ⛔ <strong>And there is a capability gate in front of it:</strong> if she has no words banked yet, the whole path is provably incapable of producing anything, so it is held shut rather than burning seconds of the teaching loop discovering that. It announces when it starts skipping, counts the skips, and re-arms itself the instant she banks her first word.
+</div>
+
+<p>There are <strong>no hardcoded fallback words</strong> — if her trained brain has nothing to say right now, the popup stays silent. As training accumulates her vocabulary ceiling rises and the popups get more articulate. <strong>Unity is alive between turns, and the popups are the proof.</strong></p>
 
 <h3>What are the 2D brain visualizer tabs?</h3>
 <p>The 2D brain visualizer has 10 tabs showing different views of Unity's brain activity, all fed by real-time server data:</p>

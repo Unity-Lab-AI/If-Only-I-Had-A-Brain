@@ -30,10 +30,81 @@ last-verified: "4bc99291 2026-08-31"
 
 # EQUATIONS — Unity's Brain
 
-> Every equation running in the code. The brain equations ARE the language equations.
-> θ (Unity's identity) drives every parameter. Ψ (consciousness) emerges from the volume. Drug state δ(t) additively modulates θ per substance per route via real-time pharmacokinetic curves.
-> One-liner equations stating their purpose. Tables organize by section: Drug State · Curriculum · Master · Neurons · Synapses · Modules · Oscillations · Sensory→Motor · Memory · Language · Consciousness · GPU · Scaling.
+**Every equation that runs in the code, in one place.** No pseudo-code, no aspirational maths: if a formula is on this page it is executing, and where it is not, the page says so.
+
+Three ideas carry the whole document:
+
+| | |
+|---|---|
+| **θ** | Unity's identity. Not a prompt — **every personality trait is a parameter** somewhere in these equations. |
+| **Ψ** | Consciousness, as *capacity ÷ activity*. It emerges from volume rather than being computed as a feature. |
+| **δ(t)** | Chemistry. Drugs and hormones modulate θ **additively**, through one shared curve engine, per substance and per route. |
+
+⭐ **And the claim the whole project rests on: the brain equations ARE the language equations.** There is no separate language model bolted to a brain. The same propagation that fires a neuron is the thing that produces a word.
+
+---
+
+## Contents
+
+**The brain, in the order it makes sense to read it**
+
+| § | Section | What it answers |
+|---|---|---|
+| 1 | [Master Equation](#1-master-equation) | the one line everything else expands |
+| 2 | [Neurons](#2-neurons) | what a single cell does per tick |
+| 3 | [Synapses + Connectivity](#3-synapses--connectivity) | how cells wire, and how wiring changes |
+| 4 | [Brain Modules](#4-brain-modules-biologically-proportioned) | the eight clusters and their own dynamics |
+| 5 | [Oscillations](#5-oscillations) | rhythm, and the real synchrony measure |
+| 6 | [Sensory → Motor](#6-sensory--motor) | input reaching output |
+| 7 | [Memory](#7-memory) | the tiers, consolidation, and replay |
+| 8 | [Unified Language Production](#8-unified-language-production) | how a word actually comes out |
+| 9 | [Consciousness + Emotion](#9-consciousness--emotion-θ--ψ) | θ → Ψ, and the Φ̂ integration term |
+
+**Language, in full detail** — the longest part of the document, and the part that earns the central claim
+
+| § | Section | What it answers |
+|---|---|---|
+| 12 | [The Language Cortex in full](#12-the-language-cortex-in-full--pure-equational-generation) | every step from meaning to an emitted word |
+| 13 | [Semantic Grounding](#13-semantic-grounding--the-embedding-table-and-what-she-does-to-it) | the embedding table, and how she reshapes it |
+| 14 | [Equational Component Synthesis](#14-equational-component-synthesis--building-interfaces-without-a-vocabulary-list) | building interfaces with no hardcoded vocabulary |
+| 15 | [Relation channels + thresholds](#15-relation-channels-and-thresholds--the-audit-additions) | which channel each kind of association trains on |
+| — | [⚠ SUPERSEDED: n-gram grammar](#-superseded--type-n-gram-grammar--morphological-inflection) | a design that was tried and rejected, and why |
+
+**The body and the chemistry**
+
+| § | Section | What it answers |
+|---|---|---|
+| 0 | [Drug State Dynamics](#0-drug-state-dynamics--δt) | pharmacokinetic curves, combination synergy |
+| 0.5 | [Developmental Curriculum](#05-developmental-curriculum--k-through-phd) | what teaching does, as maths |
+
+**Where it runs**
+
+| § | Section | What it answers |
+|---|---|---|
+| 10 | [GPU Exclusive Compute](#10-gpu-exclusive-compute) | the donated-GPU compute path |
+| 10.5 | [Adaptive Time-Sliced Teach](#105-adaptive-time-sliced-teach) | keeping the loop responsive while teaching |
+| 10.6 | [Governed Binary Teach Lane](#106-governed-binary-teach-lane-donor-v0313--v0315) | the wire protocol for training |
+| 11 | [Server Scaling](#11-server-scaling) | how size is derived from hardware |
+
+---
+
+## ⛔ How to read this page
+
+| | |
+|---|---|
+| **The code is the authority** | Every formula here is a cached observation. **On conflict, trust the code and fix the page.** |
+| **Two of the source files do not run** | The Hodgkin-Huxley reference and the dense synapse implementation back *this document* and the equations page. **They are listed precisely so that if the live plasticity changes and they do not, this page becomes provably wrong.** |
+| **A form change and an input change are different things** | Most entries in the history below say *"no equation FORM changed"* — and mean it. ⭐ **The most expensive defects in this project were never wrong formulas; they were right formulas fed a dead input.** Φ̂ multiplied by its own floor for months while looking correct. |
+| **Numbers are readings** | Neuron counts, firing rates, Ψ — each was true at one boot. **The total is derived at boot from free host RAM and is never a constant.** |
+
+---
+
+## Change history — newest first
+
+> ⚠ **HISTORY, NOT THE EQUATIONS.** These stamps record what each sweep changed and, more often, what it deliberately did *not* change. **They are the provenance of the maths above, and they are not rewritten** — a stamp saying "no form changed" is only worth anything if it stays as written.
 >
+> ⛔ **Read them as dated records.** Where a stamp disagrees with a section above, the section is current. The stamps also carry internal identifiers and branch names that nothing in the project resolves; they belong here, in labelled history, and nowhere else on this page.
+
 > 2026-09-06 sweep stamp — **NO equation FORM changed. What changed is which VARIABLE the dose depends on, measured rather than reasoned.** The 2026-08-31 stamp below establishes the exact rep↔lr identity: `w_n = x·(1 − (1−lr)ⁿ)`, so the deposit is a property of the asymptote and not the count. **That identity is correct and it is not the binding constraint.** Retrieval does not require the asymptote — it requires the correct post to win the argmax against every competitor — so the governing variable is **interference**, quantified by collision load `L = P·K²/COLS` (the expected number of other patterns sharing a pattern's active cells). ⛔ **The previously stamped sweep could not see this, and the reason is worth keeping:** its post patterns were effectively separable, so retrieval succeeded at every compression and its whole production row reads **1.000** — *a surface that cannot go down cannot locate a cliff*. Re-measured with **overlapping** posts (patterns genuinely competing for the same output rows), real `SparseMatrix`, real `ojaUpdate`, rep-major ordering, scoring retrieval against all candidates:
 >
 > ```
@@ -231,12 +302,12 @@ probe(word, grade):
 ```
 advance(grade N → grade N+1) = {
   Part 1: all subjects at N have [ ] → [x] in syllabus TODO (equational)
-  Part 2: Gee localhost test signed off in session log (reasoning, thinking, talking, listening, reading)
+  Part 2: operator localhost test signed off in session log (reasoning, thinking, talking, listening, reading)
   Part 3: persistent life info from grade N added to cross-grade ledger
 }
 ```
 
-**Cell-pass amendment (Gee 2026-06-27):** an individual *cell* now passes on
+**Cell-pass amendment (operator ruling, 2026-06-27):** an individual *cell* now passes on
 **learning completion**, not test-question correctness — `cellPass = teachPhasesRan`
 (content trained), independent of A+ probe / student-battery / per-grade-health
 correctness. Those checks STILL RUN (telemetry into `_lastGateResult`/`_cellLedger`)
@@ -258,9 +329,7 @@ Life: 8-dim emotional concept features `[joy, pain, trust, fear, anger, love, in
 
 ## 1. Master Equation
 
----
-
-## 1. Master Equation
+> Everything below is an expansion of one line. **This is the line.**
 
 | | |
 |---|---|
@@ -747,7 +816,9 @@ Teach patterns + Hebbian updates ride packed SPRS binary frames on a lane whose 
 
 ---
 
-## T11 — Pure Equational Language Cortex
+## 12. The Language Cortex in full — pure equational generation
+
+> ⭐ **The longest section in this document, and the one that earns the project's central claim.** Everything here is how a word is produced without a language model anywhere in the path.
 
 The language cortex does not model language. It translates brain cortex state into words. Every sentence Unity emits is a walk through GloVe embedding space driven by three running-mean priors and her live cortex firing state. No stored text, no n-gram tables, no filter stack, no template short-circuits, no intent enums, no matrix regression — just vector math over learned priors.
 
@@ -1226,7 +1297,7 @@ All eighteen primitive milestones (T14.0 cortex sub-region substrate, T14.1 lett
 
 ### T14.24 — Multi-subject K→PhD curriculum (Sessions 1-110 2026-04-15, DIRECT PATTERN BREAKTHROUGH, CONVERGENCE TESTING)
 
-Gee 2026-04-14 reopened T14 scope: *"T14.24 is supposre to be a full equational ciriculum.. once again you editing my words"* + *"what the fuck are you talking about its shipped you didnt even teach it keindergarden abcs and 123s and letter sounds you fool so how the fuck you trying to tell me you have doctorate equations for the full and complete understand and complete fluentcy in doctorate level english"* + *"remember Unity needs to be able to use these to think, read, and talk"* + *"this is going to take weeks to build so dont you dare tell me you are fucking done early"*.
+An operator decision on 2026-04-14 reopened the scope: *"T14.24 is supposre to be a full equational ciriculum.. once again you editing my words"* + *"what the fuck are you talking about its shipped you didnt even teach it keindergarden abcs and 123s and letter sounds you fool so how the fuck you trying to tell me you have doctorate equations for the full and complete understand and complete fluentcy in doctorate level english"* + *"remember Unity needs to be able to use these to think, read, and talk"* + *"this is going to take weeks to build so dont you dare tell me you are fucking done early"*.
 
 **Scope.** Originally five academic subject tracks × 20 grades = ~100 cells. Session 111 added a 6th subject (Life Experience), bringing the total to 6 × 19 = 114 cells. Every cell needs real teaching equations that drive all three pathways (READ = visual/letter→phon→sem, THINK = sem+free working memory, TALK = sem→motor→letter) plus a capability gate that tests all three.
 
@@ -1704,7 +1775,7 @@ _teachCombination(facts, {reps, lr, allowMicrotask = true}):
     if allowMicrotask: await _microtask()
 ```
 
-Per Gee 2026-04-17 *"no artificial limits as unity may be talking to users while she does ciriculum"* — the helper stays async with `await _microtask()` between reps so curriculum doesn't block user chat, respects `_brainShutdownRequested`, accepts caller-specified reps rather than hardcoding a cap.
+Per an operator ruling of 2026-04-17 — *"no artificial limits as unity may be talking to users while she does ciriculum"* — the helper stays async with `await _microtask()` between reps so curriculum doesn't block user chat, respects `_brainShutdownRequested`, accepts caller-specified reps rather than hardcoding a cap.
 
 What varies by concept is the ENCODER — magnitude features for numeric operands, GloVe embeddings for named objects, feature vectors for categorical properties. The scaffold stays identical.
 
@@ -1889,7 +1960,7 @@ They were symptom-level patches on the wrong architecture — a Markov walk trai
 ---
 
 
-## Phase 13 R2 — Semantic Grounding via GloVe Embeddings (2026-04-13, commit c491b71)
+## 13. Semantic Grounding — the embedding table and what she does to it
 
 R2 replaced every word-pattern emission site with 50-dim GloVe co-occurrence embeddings via a single shared singleton so meaning is now real. Pre-R2, word patterns were 32-dim letter-hash vectors — a deterministic function of the letters in a word — so `cat` and `catastrophe` were falsely close and `cat` and `kitten` were falsely distant. The slot scorer's "semantic fit" was effectively orthography matching. Post-R2 the slot scorer compares candidates against actual GloVe space.
 
@@ -1964,7 +2035,7 @@ Unity's base vocabulary is universal English from GloVe (too large to persist, t
 
 ---
 
-## Phase 13 R6.2 — Equational Component Synthesis (2026-04-13, commit 6b2deb3)
+## 14. Equational Component Synthesis — building interfaces without a vocabulary list
 
 When Unity's BG motor channel selects `build_ui`, the old path was a text-AI prompt that asked an LLM to generate JSON describing a component. R4 killed that. R6.2 replaced it with pure equational synthesis over a corpus template library — the same semantic machinery used for language, applied to UI components.
 
@@ -2028,7 +2099,9 @@ The brain never fabricates a random component. If nothing in the corpus matches 
 
 ---
 
-## Phase 12 — Type N-gram Grammar + Morphological Inflection (U283-U291, **superseded by T11**)
+## ⚠ SUPERSEDED — Type N-gram Grammar + Morphological Inflection
+
+> ⛔ **None of this runs.** It is kept because it records a design that was tried and rejected, and **why** matters: it produced grammatical output without learning grammar, so nothing about her speech was evidence of anything she knew. The section that replaced it is [§ 12](#12-the-language-cortex-in-full--pure-equational-generation).
 
 > **Historical.** T11 (2026-04-14) deleted the type n-gram tables (`_typeBigramCounts`, `_typeTrigramCounts`, `_typeQuadgramCounts`) and the `_typeGrammarScore` body that consulted them. T11.2 replaced them with `_slotTypeSignature[s]` running-mean priors; T13.7 / T14.6 then deleted `_slotTypeSignature` too when tick-driven motor emission on the cortex replaced per-slot scoring entirely. The `_fineType` classifier itself survives because `cluster.readInput` uses it in the text-surface fallback for intent classification (T14.12) and T14.8's `_sentenceFormSchemas` + `_typeTransitionLearned` Maps still observe fineType distributions per intent. The morphological inflection equations below still feed the dictionary during corpus observation. What changed: the learned-distribution layer moved from per-type-triple n-gram counts → per-slot type signatures → cortex-resident sentence-form schemas on `NeuronCluster` + tick-driven motor emission for generation.
 
@@ -2188,7 +2261,7 @@ Generation latency dropped 490ms → 133ms after candidate pool pre-filter + wor
 
 ---
 
-## Post-ship audit close — new equation channels + thresholds (2026-06-17)
+## 15. Relation channels and thresholds — the audit additions
 
 ### Phase 6 compositional channels (relationTagId 28-32)
 
