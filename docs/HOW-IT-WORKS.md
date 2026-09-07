@@ -4,7 +4,7 @@
 # ⚠ PLAIN-ENGLISH page. Every number here was read from the code or from the
 # running brain, not recalled — but the WORDING is deliberately loose, because
 # the job of this page is to be understood, not to be precise.
-status: draft
+status: verified
 sources:
   - js/brain/mystery.js
   - js/brain/cluster.js
@@ -37,7 +37,30 @@ verified-scope: |
   when she is not mid-lesson", on a lesson that never stops. Numbers quoted
   (four folded patterns inside eighteen minutes) were read from the live
   brain on the fresh walk, not recalled.
-last-verified: "f06ea30e 2026-08-31"
+  RE-VERIFIED 2026-09-07 during the full documentation sweep. Every checkable
+  claim on this page was tested against the code or the running brain, and this
+  page came out the best-written document in the tree — no walls, no internal
+  ticket identifiers, no attribution names, and every number already quoted
+  WITH the boot that produced it. Confirmed: the eight areas; the eleven cortex
+  sub-regions; the sixteen projections; the Psi weights 0.30/0.25/0.20/0.25 read
+  from the constructor at js/brain/mystery.js:50; `lif.wgsl` still carrying the
+  name of a neuron model that was replaced, exactly as the page's honest-oddity
+  note says; and Phi-hat genuinely live and moving (state.consciousness.phiState
+  reads 'live', with the scale reference at the documented 0.1124 seed).
+  ONE CLAIM WAS FALSE AND IS CORRECTED: the page said the program "refuses to
+  start" if a text-AI library is added to the thinking path. It does not — the
+  guard reads the dependency list, names any known text-model SDK it finds, and
+  then CARRIES ON BOOTING. There is no exit and no throw on that path. The check
+  is real and valuable (a text-model dependency was once added here with its
+  entry deliberately omitted from the dependency file so an audit could not see
+  it, which is precisely what a by-name check catches) but a warning is not a
+  refusal, and this page's own closing section is about not overselling. Whether
+  it should hard-fail is recorded as an open decision rather than a defect.
+  ALSO NOTED, against myself: the first probe for phiState read it at the top
+  level of the payload and reported 'undefined'. It lives at
+  state.consciousness.phiState. That is the wrong-read-depth defect this sweep
+  has been finding in other people's instruments all day, committed in my own.
+last-verified: "018e7183 2026-09-07"
 ---
 
 # HOW IT WORKS — in plain English
@@ -60,9 +83,20 @@ predicts text. Instead, it is **taught** — like a child, starting at
 kindergarten and working upward — and when it speaks, the words come out of the
 wiring that teaching produced.
 
-That distinction is the whole point of the project, and it is enforced in the
-code rather than merely promised: the program **refuses to start** if anyone
-adds a text-AI library back into the thinking path.
+That distinction is the whole point of the project, and it is **checked** in the
+code rather than merely promised: at every startup the program reads its own
+dependency list, looks for the known text-AI libraries by name, and **says so
+loudly** if it finds one.
+
+⚠ **Corrected 2026-09-07 — this page said the program "refuses to start". It
+does not.** The check prints an error and carries on booting. That is a real
+guard and it has already earned its place — a text-model dependency was once
+added to this project with its entry **deliberately left out** of the
+dependency file so that an audit could not see it, and a by-name check is what
+closes that hole. But **a warning is not a refusal**, and the distance between
+those two words is exactly the kind of overstatement the last section of this
+page exists to prevent. **Whether it should hard-fail is an open decision, not
+an oversight.**
 
 ---
 
