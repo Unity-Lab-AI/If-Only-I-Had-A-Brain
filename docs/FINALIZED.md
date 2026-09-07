@@ -5,6 +5,83 @@
 
 ---
 
+## 2026-09-07 (2nd) — MINDSEYE: THE DECORATION ATE THE READOUT, THE FULLSCREEN HAD NO EXIT, AND THE STUCK FRAME WAS THE HONEST ONE
+
+Gee (verbatim): *"read resume.md to continue... problem im having is the minds eye is stuck on the same image and the actual image shown in the minds eye is like tilted or something and covering up the information when it tilts :equation terms: 104,233 / source: figure:story-11xp30d / imagined: 361m ago / her art: 0 drawn · 0 shapes she can draw from · 95 seen / ✓ good — keep it / ✗ bad — relook & redraw / 🚫 not a drawable word / buttons arm when one of her drawings or look-ups is on screen , it needs to not tilt and just be  non titlting image when moused over and actually fit the area and the fullscreen option i asked for days ago just made it much much bigger windoe for the image and i still dont have option to switch betweeen normal and fullscreen"*
+
+### The live reads taken BEFORE anything was touched — build `60479ed5`, booted `2026-09-07T00:38:15Z`
+
+```
+  minds-eye.json   figure:story-11xp30d · 104,233 terms · 1920x1467 · at 361m ago
+  ownArt           drawn 0 · attempts 0 · schemas 0 · seenConcepts 95 · queued 0
+  ownArt.lookups   attempts 0 · figAttempts 8 · figGrounded 1 · figFieldOnlyMiss 7
+                   figPerceiveFails 1 · lastErr "figure store: small is not defined"
+  fields           hit 1 · miss 6 · stub 1 · lastErr "LFS pointer stub"
+  innerVoice       innerVoiceHeld TRUE · innerVoiceHeldSkips 24,269
+                   wordMotorEverFired 0 · wordsBucketed 0 · emitAttempts 0
+```
+
+---
+
+### ✅ `MINDSEYE.1` — **"the minds eye is stuck on the same image"**
+
+**Original filing:** the published frame is `figure:story-11xp30d` at **361 minutes old** and the page's own status line reads green **"live — reconstructed from her current field C"**. Both cannot be true.
+
+⛔ **Root cause is a THREE-LINK CHAIN and only the last link is a defect.** The viewer is **grounded-only by a 2026-07-15 ruling** — a de-novo `thought-blend` / `sem-state` field is a mood texture, not a picture, and must never take the screen. The only grounded frame the imagine tick can produce is the **impression anchor**, which needs tokens out of `_innerThoughtChain`. `innerVoiceHeld` is **TRUE** with **24,269 skips** because `wordsBucketed` is **0** — *she has not banked a single word yet*, so the chain is empty, so no tick ever publishes. **The eye is not broken; it is correctly showing the last real thing she saw.**
+
+⛔ **The defect is that the page does not SAY so.** A six-hour-old frame under a green LIVE dot is the exact instrument class this project keeps fixing: it reads reassuring precisely when the thing it measures has stopped.
+
+**VERDICT — FIXED, and deliberately NOT by making the eye publish more.** Past **five minutes** the status renders **`held`** with the reason read out of `state.voice` (`innerVoiceHeld` + `wordsBucketed`) rather than guessed; under five minutes it still reads `live`. ⭐ **No fallback subject was invented for the imagination seed** — that was ruled out on purpose (*empty thought = no image*), and inventing one would put a picture on screen that nothing in her head asked for. **The mechanism was right. The status line had no false branch.**
+
+### ✅ `MINDSEYE.2` — **"the actual image shown in the minds eye is like tilted or something and covering up the information when it tilts"**
+
+**Original filing:** `.frame` carries `transform: rotateX(8deg) rotateY(-9deg)` under a `perspective:1100px` stage. ⛔ **A CSS transform does not change layout**, so the projected frame tips *out of* its own layout box and lands on top of the `.meta` readout below it — equation terms, source, imagined, her art. **The decoration eats the data.**
+
+**VERDICT — FIXED.** Transform removed, and **`perspective` removed with it.** ⭐ The second half is the part worth keeping: leaving `perspective` on the stage would be a property that silently re-arms the identical defect the moment anyone adds a transform back. **0 `rotateX` / `rotateY` / `perspective` survive outside comments.**
+
+### ✅ `MINDSEYE.3` — **"it needs to not tilt and just be  non titlting image when moused over"**
+
+**Original filing:** `.frame:hover` swaps to `rotateX(3deg) rotateY(-3deg)` — a *second* tilt, not a release. Hovering makes it move rather than settle.
+
+**VERDICT — FIXED.** Hover now responds through **border colour and glow only** — no geometry changes, so the picture does not move a pixel under the pointer.
+
+### ✅ `MINDSEYE.4` — **"and actually fit the area"**
+
+**Original filing:** the canvas renders `width:auto` at native size. The live field is **1920×1467**, so the picture is taller than the viewport and pushes the whole readout below the fold. ⭐ **The 1:1 default is a DECISION, not an oversight** (see the CRYSTAL note in the file): a forced width blew small fields up soft and shrank detailed ones. **A `max-*` bound never upscales** — it only clamps a field that is genuinely too big — so bounding the height honours that decision instead of reversing it.
+
+**VERDICT — FIXED, in two parts, and the second was not in the filing.**
+
+**① `max-height:52vh` added beside the existing `max-width:96vw`.** ⛔ **It must be `max-height`, never a pinned `height`** — on a replaced element with an intrinsic ratio, a max-width/max-height pair that both bite is resolved **in ratio** by the browser, whereas a pinned height is exactly the landscape-squash the fullscreen mode already shipped and had to fix once. **Where 52vh comes from is arithmetic, not taste:** ~227px above the picture and ~220px below it have to stay on screen with it, leaving ~493px of a 940px content height; 52vh is 489.
+
+**② THE PROSE WAS THE OTHER HALF OF "FIT THE AREA", AND IT WAS BIGGER THAN THE PICTURE.** Two blocks of running text — **1,335 characters above the frame and 2,374 below it** — on a page whose entire job is showing one image. Neither is padding: the first explains what you are looking at, the second is the legend for every `source:` prefix. ⭐ **So not one word was deleted** — both fold into `<details>` disclosures with a lead line left visible, verified by string-probing five distinctive phrases through the rewrite. ⚠ **The two lines are still over 1,200 characters in the SOURCE and that is stated rather than hidden** — the wall metric counts source-line length, and what changed is what the rendered page pushes at you.
+
+### ✅ `MINDSEYE.5` — **"the fullscreen option i asked for days ago just made it much much bigger windoe for the image and i still dont have option to switch betweeen normal and fullscreen"**
+
+**Original filing:** the toggle exists and works — and `fullscreenchange` sets `btn.style.display = 'none'` **the moment fullscreen opens**, so the only control that could bring it back deletes itself. Escape and `f` still work and are documented nowhere on screen. ⛔ **A control that hides itself in the one state where it is needed is the same failure as a control that silently does nothing.**
+
+**VERDICT — FIXED, and the filing named the wrong culprit, which is worth recording.** ⛔⛔ **The `display:none` line was not the cause of its own disappearance.** The button was a `position:fixed` **SIBLING** of the `.stage` element being fullscreened, and **the browser paints only the fullscreen element's own subtree** — so it was already invisible regardless of what its `display` said. **A line that appears to cause the effect it was written to tidy up is how a three-day-old defect keeps its cover.** Fixed by making the button a **child of the stage**, so it goes fullscreen with the picture; the `display` line is gone, the label flips to `⤢ exit fullscreen`, and it is restyled for contrast over a full-bleed image because a switch nobody can see against her artwork is not a switch.
+
+### ✅ `MINDSEYE.6` — found while reading the lane that produced the stuck frame; not in Gee's list, filed because it is live
+
+**Original filing:** `server/brain-server/visual-memory.js` — the success log line reads `small.w` / `small.h`, but `const small` is declared **inside the `if (!rec)` network branch**. On the **field-store path** `rec` arrives already made, that branch never runs, and the log throws `ReferenceError: small is not defined` — **after** the store write, the mind's-eye publish and the phrase-teach have all succeeded. ⛔ **The throw is caught by the outer handler, which counts it as `figPerceiveFails` and returns `null`.** So a figure that was perceived, stored, published and taught is reported to its caller as a failure. **This is the live `lastErr` on the box** and it is the exact shape of the wrong-read-depth family: the *instrument* broke and the *measurement* said the work failed.
+
+**VERDICT — FIXED.** The geometry now comes off `rec.width` / `rec.height`, which **both** paths carry (the network path perceives at exactly `small.w`×`small.h`, so the printed value is unchanged where it used to work), and the line names which path ran — a field read and a live transform cost ~50 ms and ~7.7 s, so that is the useful half of the message. ⭐ **The reference lane at the same file's `_fetchReferenceAndGround` was checked for the identical shape and is clean** — its log reads `rec.equation_count`, never `small`.
+
+⚠ **`node --check` cannot see this defect** and did not. The code is syntactically perfect; only one of two paths ever reaches the line. **The grep that finds it is for identifiers used across a conditional-branch boundary inside a shared `try`.**
+
+---
+
+### ⚠ REPORTED, NOT FIXED — two things this batch deliberately left alone
+
+- **The field store on the box is answering LFS pointer stubs.** `fields: hit 1 · miss 6 · stub 1`, `lastErr "LFS pointer stub — git lfs pull has not run for the field store"`. With `figFieldOnlyMiss 7` of 8 attempts, the inline figure lane is missing nearly everything it asks for — **which is the *other* reason her eyes have had nothing new to show.** The hydration machinery already exists in `deploy/self-update.sh` (~300 lines of it, including a local-disk LFS-store search). ⛔ **This is a press, not a code change**, and box work is dashboard-only.
+- **`innerVoiceHeld` clears itself.** It is `true` because `wordsBucketed` is `0`; when she banks her first words the chain fills, the impression anchor starts finding targets, and the eye starts moving on its own. **Nothing was built to force it.**
+
+### Docs updated in the same atomic commit
+
+`docs/TODO.md` (filed, then migrated here) · `docs/FINALIZED.md` (this entry) · `docs/NOW.md` (a new *Her eyes* block from live reads, plus two trap rows) · `docs/RESUME.md` · `docs/HTML-ENTRY-POINTS.md` (dated banner + the mind's-eye inventory row, including the newly-read `state.voice` dependency) · `html/minds-eye.html` (the page itself, its tooltips and its in-page copy) · `html/legend.html` (the mind's-eye card) · `wiki/modules/html-pages.md` (new section + `last-verified`) · `wiki/modules/visual-memory.md` (the figure-lane bug + `last-verified`) · `wiki/gotchas/instruments-that-lie.md` (two new shapes + `last-verified`) · `wiki/log.md`.
+
+---
+
 ## 2026-09-07 — ARCHITECTURE.md CHANGELOG ARCHIVE: 71 BANNER ENTRIES MOVED OFF THE ARCHITECTURE DOCUMENT, VERBATIM
 
 Gee (verbatim): *"just mass move the rubble to finalixzed with a niote"* → *"then properly write the archeteture thats fucked up"*
