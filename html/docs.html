@@ -144,12 +144,12 @@
 </head>
 <body>
   <div class="topbar">
-    <a href="legend.html" class="pages-link" title="Open the page legend">📑 Pages</a>
+    <a href="legend.html" class="pages-link tip tip--below" data-tip="The page legend — a single index of every page and document in the project, with what each one needs in order to work.">📑 Pages</a>
     <span style="color:#6b7280;font-size:11px;">·</span>
-    <label style="font-size:11px;color:#9ca3af;">Doc:</label>
+    <label style="font-size:11px;color:#9ca3af;" class="tip tip--below" data-tip="Only PUBLIC-FACING reference documents appear in this list. A document is absent for one of three reasons: it still carries internal ticket numbers or names, it is a live task board rather than reference material, or it is lab-internal. The list is a whitelist, which also means a mistyped document name cannot be used to read arbitrary files.">Doc:</label>
     <select id="doc-select" aria-label="Switch document"></select>
-    <a id="raw-link" href="#" title="Open the raw markdown file in your browser">📝 Raw .md</a>
-    <span class="lede">Web viewer for project docs · same canonical .md files, rendered live</span>
+    <a id="raw-link" href="#" class="tip tip--below tip--right" data-tip="Open the raw markdown behind this page. ⭐ It is the SAME file the repository ships — this viewer renders the canonical document rather than a copy, so the two cannot drift apart.">📝 Raw .md</a>
+    <span class="lede tip tip--below tip--right" data-tip="Nothing here is generated or summarised. Each page is the project's own markdown file, fetched and rendered in your browser — which is why a document and its rendered page can never disagree.">Web viewer for project docs · same canonical .md files, rendered live</span>
   </div>
 
   <div class="wrap">
@@ -208,6 +208,11 @@
       // Plain-English explainer — passes the quote gate cleanly: it contains no
       // verbatim quotes, no task numbers and no operator name, by construction.
       'HOW_IT_WORKS': '../docs/HOW-IT-WORKS.md',
+      // Reader's manual for the teach viewer. Added 2026-09-07 when that page's
+      // card on the legend was cut from 8,503 bytes to three lines — the manual
+      // had been living IN the card. Passes the gate: no ticket numbers, no
+      // operator name, no verbatim quotes.
+      'TEACHVIEW_GUIDE': '../docs/TEACHVIEW-GUIDE.md',
     };
 
     const selectEl = document.getElementById('doc-select');
