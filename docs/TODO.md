@@ -1937,5 +1937,165 @@ Found by reading the deployed box after the board cleanup, not by being told. **
 
 <!-- WEDGE2.3, WEDGE2.4 and WEDGE2.6 closed 2026-09-06 on live evidence from the deployed build; archived verbatim in FINALIZED.md §2026-09-06 (25th), all 30 non-blank lines string-matched before removal. WEDGE2.1 and WEDGE2.5 remain open above and are NOT covered by that closure. -->
 
+---
+
+## DOCSWEEP — the full documentation sweep — filed 2026-09-07
+
+> Gee (verbatim): *"full doc sweep evey bad layout post that doesnt match style every text wall every mention of my name in public facing docs pages and the like every code refrence name in public facing documents all needs cleaned up and all equations, laymans pages how tos readmes, workflows docs, tooltips everywhere(add them) and every documented capability in archeticeure brain equations readme how to all shall be updated and corrected especiallly correcting text walls that dont match the style format and beautiful layouts we want and you shall put all this in the todo as docseep items and then properly get to work no agents, noo batching, use the todo and finalized for refrences to the changes and what all needs to be rewriten. redocumented , edited, updated, ect ect"*
+>
+> ⛔ **Working constraints, from that same instruction:** **no agents · no batching · one item at a time · TODO and FINALIZED carry the record of what was rewritten, redocumented, edited and updated.**
+
+### ⭐ THE SURVEY — measured before a single edit, so the work has a denominator
+
+```
+  SURFACE            12 HTML pages · README.md · index.html · 38 docs/*.md
+  name mentions      254 across 18 docs/*.md   ·   0 in ANY html/README/index
+  ticket IDs       1,048 across 20 public-facing files
+  text walls         407 lines over 1,200 chars across 16 files
+                     worst single line 22,027 chars (docs/NOW.md)
+  tooltips          uneven: 119 on brain-equations, 58 on teachview,
+                     ZERO on unity-guide (55 headings), legend, docs, dashboard-public
+```
+
+⭐ **THE WEB SURFACE IS ALREADY CLEAN OF THE NAME — 0 hits in every HTML, README and index.** The 254 mentions are entirely inside `docs/*.md` brain documents, which the narrowed placement LAW covers. **That is worth knowing before the sweep starts, because it means this is a documents problem, not a published-site problem.**
+
+- [ ] `DOCSWEEP.1` — **EVERY MENTION OF THE OPERATOR'S NAME IN PUBLIC-FACING DOCS.** 254 across 18 files: `NOW.md` 256*, `ARCHITECTURE.md` 31, `ROADMAP.md` 20, `SENSORY.md` 18, `CURRICULUM-GAP.md` 16, `WORD-SALAD-FIX.md` 13, `EQUATIONS.md` 9, `SKILL_TREE.md` 8, `PUSH_WORKFLOW.md` 7, `KNOWN_ISSUES.md` 4, `ADMIN-CONTROLS.md` 3, `STATUSLINE.md` 3, `TEACHVIEW-INVENTORY.md` 3, and one each in `WEBSOCKET.md`, `PERSONA.md`, `RUST-MIGRATION.md`, `TALK-TO-UNITY-PLAYWRIGHT.md`, `DECOMPOSED-curriculum-build.md`. (*two counting methods disagree by 120 on `NOW.md`; the higher is the raw occurrence count.)
+  - ⛔ **A VERBATIM QUOTE IS NOT A VIOLATION AND MUST NOT BE STRIPPED.** The LAW bans the name as an *attribution device* in brain documents; it does not licence destroying a quoted instruction. **Where a quote carries the name, the quote moves to the board/ledger and the doc keeps the DECISION in its own words.**
+  - **Rule to apply:** a brain document names the MECHANISM, never the person. *"Gee ruled X"* becomes *"X is the rule"* or *"X was set by operator decision"*, with the attribution living in `TODO`/`FINALIZED`/`RESUME` where it is allowed.
+
+- [ ] `DOCSWEEP.2` — **EVERY CODE-REFERENCE NAME AND TICKET ID IN PUBLIC-FACING DOCUMENTS.** 1,048 occurrences across 20 files. Worst: `NOW.md` 336, `ARCHITECTURE.md` 239, `ROADMAP.md` 169, `EQUATIONS.md` 98, `SKILL_TREE.md` 97, `dashboard.html` 61, `ADMIN-CONTROLS.md` 48, `WEBSOCKET.md` 37, `SENSORY.md` 31, `KNOWN_ISSUES.md` 30.
+  - **The dominant families are `T14.x` / `T18.x` / `T13.x` / `T17.x` and `LAW.n`** — the legacy iteration-ticket scheme. **A reader cannot look up `T14.24`.**
+  - **Rule to apply:** replace the ticket with the mechanism it refers to. Where the ID is load-bearing history, the sentence keeps the behaviour and drops the tag.
+  - ⚠ **61 of these are inside `dashboard.html`, which is a PAGE, not a doc** — the same law applies and the fix is the same, but it is user-visible copy and must be re-read rendered, not just diffed.
+
+- [ ] `DOCSWEEP.3` — **EVERY TEXT WALL, AND THE LAYOUTS THAT DO NOT MATCH THE STYLE.** 407 lines over 1,200 characters across 16 files.
+  ```
+    NOW.md            183 walls · 107 over 2,000 · longest 22,027
+    ARCHITECTURE.md    71 walls ·  45 over 2,000 · longest  9,551
+    SKILL_TREE.md      44 walls ·  20 over 2,000 · longest  7,407
+    ROADMAP.md         25 · EQUATIONS.md 24 · ADMIN-CONTROLS.md 17
+    KNOWN_ISSUES.md    15 · README.md 8 · WEBSOCKET.md 7 · 9 more files
+  ```
+  - ⛔ **THIS IS THE ITEM THE INSTRUCTION EMPHASISED** — *"especiallly correcting text walls that dont match the style format and beautiful layouts we want"*.
+  - **Rule to apply:** a wall becomes the document's own existing structure — banner, table row, fenced block, bullet list — never a new structure invented for the occasion. **Read the document's shape first and edit IN PLACE within it.**
+  - ⚠ **Content is not the target.** A wall is a FORMATTING defect; the facts inside it are preserved in full, reorganised, never summarised away.
+
+- [ ] `DOCSWEEP.4` — **TOOLTIPS EVERYWHERE — ADD THEM.** Coverage is wildly uneven and two pages have none at all against dozens of headings.
+  ```
+    brain-equations.html  119 tips / 52 headings   COVERED
+    teachview.html         58 tips / 19 headings   COVERED
+    unity-guide.html        0 tips / 55 headings   <- the biggest gap
+    legend.html             0 tips /  4 headings
+    docs.html               0 tips
+    dashboard-public.html   0 tips
+    dashboard.html          2 data-tip vs 137 title=  <- TWO mechanisms, inconsistent
+    index.html 3 · compute.html 7 · gpu-configure.html 3 · minds-eye.html 3 · webgpu-prep.html 2
+  ```
+  - ⚠ **`dashboard.html` uses `title=` where the rest of the site uses `data-tip`** — decide one mechanism and apply it, because a page that tooltips differently from its siblings reads as a different product.
+  - **A tooltip states what the thing MEANS and what a reader should do about it** — the pattern the covered pages already set. Not a restatement of the label.
+
+- [ ] `DOCSWEEP.5` — **EVERY DOCUMENTED CAPABILITY IN ARCHITECTURE, BRAIN EQUATIONS, README AND THE HOW-TO — UPDATED AND CORRECTED.** ⛔ **This is the item with teeth, and it is not a formatting pass** — it requires verifying each claim against the code that implements it.
+  - ⭐ **PRECEDENT FROM TODAY, which is why this row exists:** `unity-guide.html` documented the definition lane as network-only with a 10K cache, a 5-minute error TTL and prefetch concurrency 20. **Every one of those four facts was wrong** — the offline dictionary answers first, the cache is 100,000, the TTL is type-aware, and the concurrency is 5. **The diagram had been read many times and corrected by nobody.**
+  - **Scope:** `docs/ARCHITECTURE.md` (1,787 lines), `html/brain-equations.html` (317 KB), `README.md` (99 KB), `docs/HOW-IT-WORKS.md`, `docs/EQUATIONS.md`.
+  - **Rule to apply:** a claim is verified against the file that implements it, and a claim that cannot be verified is marked rather than left standing.
+
+- [ ] `DOCSWEEP.6` — **THE LAYMAN PAGES, THE HOW-TOS, THE READMES AND THE WORKFLOW DOCS.** `docs/HOW-IT-WORKS.md`, `docs/SETUP.md`, `docs/PUSH_WORKFLOW.md`, `README.md`, `html/unity-guide.html`, `html/legend.html`, `html/docs.html`.
+  - **These are the pages a stranger reads first**, so they carry the highest cost per defect and the lowest tolerance for a wall of text or an unexplained internal tag.
+
+- [~] `DOCSWEEP.7` — **THE RECORD OF THE SWEEP ITSELF.** Per the instruction — *"use the todo and finalized for refrences to the changes and what all needs to be rewriten. redocumented , edited, updated"* — every file touched is listed here with what changed, and each closed item migrates verbatim into `FINALIZED.md` before it leaves this board.
+  - ⚠ **No batching and no agents.** One item at a time, by hand, with real reads.
+
+  #### FILES REWRITTEN — running log
+
+  **`html/unity-guide.html`** — the layman's guide, and the first file taken because it is what a stranger reads first, it had **zero tooltips against 55 headings**, and it was already caught carrying four wrong capability claims earlier the same day.
+  - **Capability claims corrected:** the neuron total was published as *"about 425M at full size"* — a **constant**, when the count is derived at boot from free host RAM and has legitimately started at several different values. Replaced with the stable proportions plus a callout stating that a neuron count is only meaningful beside the boot that produced it. (The dictionary-lane diagram in this same file — cache size, error TTL, prefetch concurrency, and the missing offline source — was corrected earlier the same day.)
+  - **Internal references removed entirely:** `WMB`, dated growth-hop notes, `cortexSnapshot`, `Uint8Array`, `cluster.lastSpikes`, `DEFAULT_BIO_WEIGHTS` and the `server/brain-server.js` path. ⚠ **Kept deliberately:** the identifiers inside the ASCII architecture diagram, which is labelled as a diagram, and one field name a reader can actually see on the dashboard.
+  - **Text walls rebuilt into the page's own idiom** (callout / bullet list / short paragraph — never a new structure invented for the occasion): the 1,900-char cluster paragraph, the neuroanatomy paragraph, the dictionary-growth paragraph, and the primary word-production path.
+  - **Tooltips added 0 → 6** on the terms a layman actually trips over — cluster, white-matter tract, dual-stream, whole-word patch, meaning patch, connection strengths — using the site-wide `.tip` + `data-tip` component rather than a page-local idiom.
+  - ⭐ **Three findings were surfaced by rewriting rather than by reading:** the silent-overflow bug that muted learned words, the removed dictionary path that had been carrying **99.1% of her emissions**, and the fact that she has **no grammar table at all** — each was buried mid-wall and now has its own callout.
+  - ✅ **FILE COMPLETE.** Final measurement, before → after:
+  ```
+    text walls (>1,200 chars)   11  ->  0        longest line 2,797 -> 1,166
+    tooltips                     0  -> 10        (site-wide .tip component)
+    internal identifiers        12  ->  0
+    tag balance   div 46/46 · p 179/179 · ul 25/25 · li 133/133 · h2 17/17 · h3 41/41
+  ```
+  - ⛔⛔ **AND TWO MORE STALE CAPABILITY CLAIMS WERE FOUND BY REWRITING, BOTH OF THEM SELF-CONTRADICTIONS THE PAGE HAD BEEN CARRYING IN PLAIN SIGHT:**
+    - **The page said the dictionary-oracle path was deleted, then twice described it as live** — once inside the emission cascade and once as the numerator of the project's own research-honesty ratio. **Verified in code:** `_dictionaryOracleEmit` is gone (deleted 2026-09-01), while `_oracleHits` / `_matrixHits` still exist and are still read by the heartbeat. **Live box: `oracleHits 0 · matrixHits 0 · matrixDrivenPct null`.** ⭐ **So that ratio's numerator can never be non-zero again, and zero is the reassuring answer** — the honesty check quietly became incapable of reporting the thing it was built to catch. The page now says the measure to watch is speech-versus-silence instead.
+    - **The inner voice was documented as "a continuous tick every ~3 seconds".** It is a **probabilistic gate** modulated by arousal, coherence, curriculum activity and time-since-last — and it sits behind a capability check that holds it shut entirely when she has no banked words. **That is her state right now: `innerVoiceHeld: true`, `innerVoiceHeldSkips: 4488`.** A reader of the old text would conclude the lane was broken.
+  - ⚠ **One judgement call, recorded rather than buried:** the poly-substance section keeps every combination and every informal nickname. **The instruction was about layout and naming, not about sanitising content**, so nothing was softened — the wall simply became the table it always was.
+
+  **`docs/ARCHITECTURE.md`** — ⏳ IN PROGRESS. Taken second because `DOCSWEEP.5` names it for capability verification. **It was carrying the worst layout defect in the project and three false claims about the brain's own shape.**
+
+  > Gee (verbatim, mid-sweep): *"just mass move the rubble to finalixzed with a niote"* → *"then properly write the archeteture thats fucked up"*
+
+  - ⛔⛔ **THE RUBBLE, MEASURED:** the file opened with **71 dated "Last updated" banner entries — 198,761 bytes across 121 lines**, so **roughly half the file's bytes were changelog before the first word of architecture.** Audited by string match before being touched: **68 of the 71 existed in neither the ledger nor the resume brief.** ✅ **Archived** — `FINALIZED.md §2026-09-07` now carries the note, the exact `git show e57e9735:docs/ARCHITECTURE.md` recovery command, and a **71-row index** (date · byte size · headline) so any entry is findable. ⚠ **A pasted copy was deliberately NOT made:** retyping 199 KB of unicode-dense prose through the editor is a transcription risk, not a safety measure, and git already guarantees byte-exactness. **What git cannot give is discoverability — that is what the index is for.**
+  - ⏳ **The 121 rubble lines are still IN the file.** Removing them needs either 71 exact-match deletions or the authored rewrite; the archive and index landed first so the removal can never be the step that loses them.
+  - ⛔⛔⛔ **THREE FALSE CLAIMS ABOUT THE BRAIN'S OWN SHAPE, ALL CORRECTED AGAINST THE LIVE BRAIN:**
+    - **It published SEVEN clusters at `0.55 / 0.18 / 0.08 / 0.08 / 0.05 / 0.03 / 0.03`. There are EIGHT and not one of those figures is right.** Measured on the deployed server at a 388,597,268-neuron boot: cortex **20.00%**, cerebellum **19.60%**, hippocampus / amygdala / basal ganglia / hypothalamus / mystery **12.00%** each, brainstem **0.40%**. The brainstem was added and this section never learned about it. ⭐ **The mechanism is now written down so the table can be re-derived instead of trusted:** the server funds the language cortex as its own budget line and normalises the *remaining* entries across the top-level clusters — excluding the language line and renormalising reproduces the live percentages **exactly**.
+    - ⛔⛔ **AND THE TWO RUNTIMES BUILD DIFFERENTLY-SHAPED BRAINS WHILE A CODE COMMENT ASSERTS THEY DO NOT.** `js/brain/cluster.js:CLUSTER_FRACTIONS` still reads cortex **0.55** / hippocampus **0.18**; the server runs **0.20** / **0.12**. `server/brain-server.js:1902` says *"KEEP IN SYNC … Both sides use the same fractions so cluster sizes return identical shapes in both runtimes."* **They return different shapes.** ⚠ **The divergence may be harmless** — the browser path is a small dev fallback — **but the comment claiming parity is not, because it is the thing that stops anyone checking.** Filed as a code finding, not fixed in this pass.
+    - **The voice row described in-browser synthesis**, which is the *retired* lane. Verified: `VoiceSynthProxy` is *"her voice lane on the BOX"* — a `voiceSynth`-capable donor GPU when connected, the box worker otherwise; the visitor receives a **few-KB equation record** and only plays it. ⚠ **`js/io/voice.js`'s own module header still documents the old lane and contradicts its own later code** — flagged, not fixed.
+    - **The data-flow diagram had her text reply coming "via AI backend"** — in a project whose central claim is that no text AI exists anywhere in cognition. Corrected to name her own weights.
+  - ✅ **Reader orientation added at the top** — a "start here" table routing to what the system *is* versus why it got that way, the code-wins-over-doc rule, and the one fact that invalidates every neuron figure on the page (**the count is derived at boot from free host RAM**, so it is a property of the machine, not of her).
+  - ✅ **Second pass:** the cluster table corrected again against the live brain (cerebellum **19.6%** not 20, brainstem **0.4%** not 0.2); **four headings** stripped of session identifiers and branch names; two remaining *"7 clusters"* claims corrected; and a heading reading **"In Flight"** over content whose own first line said everything in it shipped **five months earlier** relabelled as the history it is.
+  - ⛔⛔ **AND THE LANGUAGE PIPELINE SECTION WAS AN APRIL PLANNING DOCUMENT WEARING THE TITLE OF CURRENT ARCHITECTURE.** **163 of the file's 196 body ticket identifiers live in that one section**, woven through 460 lines as a milestone vocabulary — and much of it is written in the **future tense about work that shipped months ago**: *"will decide whether"*, *"deferred to"*, *"the early draft still implies"*. ⭐ **A plan that outlived its execution reads as a description of the present and is not one.** It now opens with a measured what-is-true-now table (11 top-level sub-regions + 12 nested = **23** region keys, **16** cross-region projections, 300-dimension embeddings — all verified live) and the narrative below is labelled historical, **with the rule that the measured table wins any disagreement.**
+  - ⏳ **STILL OPEN on this file:** the 121 archived rubble lines are physically present (labelled, recoverable, indexed), and **189 body ticket IDs + 17 name refs remain** — almost all inside that historical language section, where the IDs are load-bearing in the prose and cannot be find-replaced without rewriting the narrative around them.
+
+  **`docs/HOW-IT-WORKS.md`** — ✅ **COMPLETE, and it is the model the rest of the sweep should copy.** 401 lines · **0 walls · 0 ticket IDs · 0 name refs** · every number already quoted WITH the boot that produced it. **Nothing about its layout needed touching**, which is worth recording because it proves the house style is achievable and not aspirational.
+  - ⭐ **Which made it the most valuable file to fact-check, because a document that looks perfect is where an unverified claim hides.** Confirmed against code and the running brain: the eight areas · the eleven cortex sub-regions · the sixteen projections · the Ψ weights **0.30 / 0.25 / 0.20 / 0.25** read from the constructor · `lif.wgsl` still carrying the name of a neuron model replaced years ago, exactly as its own honest-oddity note says · and **Φ̂ genuinely live and moving** (`phiState` reads `live`, scale reference at the documented **0.1124** seed).
+  - ⛔⛔⛔ **ONE CLAIM WAS FALSE, AND IT WAS THE PROJECT'S CENTRAL HONESTY CLAIM.** The page said the program ***"refuses to start"*** if a text-AI library is added to the thinking path. **It does not.** The guard reads its own dependency list, names any known text-model SDK it finds, and **carries on booting** — no exit, no throw, verified against all 21 `process.exit` sites in that file. ⭐ **The check is real and has already earned its place** (a text-model dependency was once added here with its entry *deliberately omitted* from the dependency file so an audit could not see it — a by-name check is exactly what closes that). **But a warning is not a refusal**, and this page's own closing section is about not overselling. ⚠ **Whether it should hard-fail is filed as an open decision, not patched on my own authority.**
+  - ⚠ **Owned, against myself:** my first probe read `phiState` at the top level of the payload and reported `undefined`. It lives at `state.consciousness.phiState`. **That is the wrong-read-depth defect this very sweep has been finding in other people's instruments all day**, committed in my own — and it would have produced a confident, false "the Φ̂ instrument is dead" finding if I had trusted it.
+
+  **`docs/SKILL_TREE.md`** — ⏳ major pass done. **This is the page whose own frontmatter confesses it once claimed a live text-AI route had been removed while that route ran in production for four more months** — so it is the page that proved a document can lie in the *reassuring* direction, and it was read accordingly.
+  - ✅ **Its removal claims were VERIFIED rather than trusted**, which is the only responsible way to read this file. `proxy.js`, `projection-worker.js`, `transformer-backend.js` and `dual-brain-arbiter.js` are all genuinely absent, and every remaining `/v1/chat/completions` hit in the tree is a **comment documenting the deletion** — plus the image lane, which is load-bearing and correctly kept. ⭐ **The page that once lied in the reassuring direction now checks out.**
+  - ⛔⛔ **THE BLOCK LABELLED `CURRENT-STATE` WAS STALE IN EVERY FIGURE**, which matters more here than in the dated banners below it — **those are labelled history and are allowed to be old; a stale CURRENT-STATE block is the only kind that misleads.** Corrected against the live brain: brain size **388,597,268** (not "306M", and derived at boot rather than constant) · language cortex **15,082,717** (not "12,000,000") · roster **20 grades** read from `GRADE_ORDER` (not "19" — it omitted pre-K) · teach rate observed at **5,235** and **9,076** pairs/min, and **0** during definition anchoring (not "200 → 1,100+"). Added the note that **a teach rate of zero is not necessarily a fault** and the stage tag must be read first.
+  - ⛔⛔ **AND THE SKILLS TABLE CONTRADICTED THIS PAGE'S OWN CORRECTION NOTICE.** The geometry pointer at the top says eleven sub-regions and sixteen projections; three rows in the table below went on stating **8 sub-regions**, **12 projections** and **14 projections** as current DONE status. ⭐ **Correcting a number in one place is not correcting it** — and the one row that mattered most was the projection count, because the pair it was missing is **meaning ↔ whole-word**, which everything about her speech rides on.
+  - ⛔ **One row read `REBUILDING` — with a branch name — for work that shipped five months earlier.** A status column is a claim like any other.
+  - ✅ **Reader orientation added:** the tree begins ~90 lines in, so the top now routes to the four views (domain / complexity / dependency / priority) and states plainly that they are four views of one set. The dated banner block is now under an explicit `## Change history` heading.
+  - ⭐ **The prior decision NOT to rewrite the dated entries was respected, and it is the right one** — *"editing them would falsify the history this page exists to keep."* They are labelled instead, with the rule that the measured table wins any disagreement.
+  - ⏳ **Still open:** 88 ticket IDs and 3 name refs in the tree body, almost all in the skills-table status column where they served as completion evidence. ⚠ **And a measurement caveat worth stating: my wall metric counts any line over 1,200 characters, which flags long TABLE ROWS.** A table row is the correct structure and cannot be wrapped in markdown, so the tree body's 13 "walls" are mostly not layout defects — **the metric is imperfect here and I am not going to chase it into making the tables worse.**
+
+  **`docs/NOW.md`** — ✅ **RESET on instruction.** Gee (verbatim): *"now can be reset to templet.. its not a history archive and nothing in there is needed dont argue"*.
+  ```
+    was   1,217 lines · 582,912 B · 82 stacked "Current" blocks
+          183 walls · worst line 22,027 chars · 336 ticket IDs · 256 name refs
+    now     122 lines ·   5,747 B ·   0 walls · longest line 288 · 0 IDs · 0 names
+  ```
+  - ⭐ **It died of appending.** Eighty-two blocks, each written as *"current"*, **not one removed when it stopped being true** — and it duplicated history that already lives in the ledger and the resume brief. **Two records that can disagree are worse than one.**
+  - **Rebuilt as what its title always claimed:** a snapshot, populated from live field reads rather than placeholders, each quoted with the boot that produced it. Carries the **six traps that have actually cost this project time**, and a set of rules for keeping it honest — **overwrite, never append**; every number a field read; no ticket IDs; corrections go to the ledger — so it cannot rot back into a changelog.
+  - ⚠ **Not destroyed:** git holds every byte on both remotes and the recovery command is written into the new file's own provenance block.
+
+  **`docs/ROADMAP.md`** — ⏳ major pass done. ⛔⛔ **The status table carried `Current date: 2026-04-21` for nearly five months** — **the purest form of a stale status block, because the one thing the field exists to tell you is the one thing it gets wrong.** Replaced with a re-measured row plus a row stating where she *actually* is: `ela/kindergarten`, phases 2/25, **cells passed 0**, still pre-K. ⭐ **The curriculum being BUILT and the walk being under way are different claims, and this page had been running them together.**
+  - ⛔ **Two phase headings read "IN PROGRESS" for work that shipped in April** — one with a branch name, one describing an emission loop that was not merely finished but *deleted and replaced*. **A roadmap that never marks a phase finished stops being a plan and becomes a list of things that look unfinished.** Now **0 "IN PROGRESS" headings, 0 branch names in headings.**
+  - **The stale geometry appeared twice more** in the shipped-milestones row ("7 clusters", "8-subregion cortex substrate, 14 cross-region projections") — corrected to the measured eight / eleven / sixteen.
+  - ✅ **All 11 personal attributions removed from the body → 0.** These were decision credits, and a brain document names the mechanism, not the person. ⭐ **Every verbatim quote was kept intact** — a quote is evidence, and stripping it would destroy the record while pretending to tidy it. **Only the attribution wrapper changed.**
+  - ⏳ **Still open:** 150 ticket IDs in the phase narratives, load-bearing as cross-references in the prose.
+
+  **`docs/EQUATIONS.md`** — ⏳ major pass done, and this one was a **layout** job: *"make it beautiful"*.
+  - ⛔ **A duplicate `## 1. Master Equation` heading with nothing under it** — the same heading twice, four lines apart. Removed.
+  - ⭐ **Given a real front page:** the three ideas the whole document rests on (θ identity · Ψ as capacity ÷ activity · δ(t) chemistry), a **complete four-part table of contents** with working anchors, and a *how to read this page* block. ⚠ **The ToC was checked against the actual headings** — a contents table that does not match its document is worse than none.
+  - ⭐⭐ **The best thing in that new block is the distinction the history keeps making:** *a form change and an input change are different things.* **The most expensive defects in this project were never wrong formulas — they were right formulas fed a dead input.** Φ̂ multiplied by its own floor for months while looking perfectly correct.
+  - **Five tail headings renamed from ticket and commit references to mechanisms** — the language cortex, semantic grounding, component synthesis, relation channels — so the numbering now runs cleanly 0 · 0.5 · 1–15 with **zero duplicates**. The rejected n-gram design is relabelled **SUPERSEDED** with *why* it was rejected: **it produced grammatical output without learning grammar, so nothing about her speech was evidence of anything she knew.**
+  - ✅ **Name refs 4 → 0.** The ~15 dated sweep stamps are now under an explicit `## Change history` heading, **deliberately not rewritten** — ⭐ *a stamp saying "no equation form changed" is only worth anything if it stays as written.*
+
+  **`docs/ADMIN-CONTROLS.md`** — ✅ **COMPLETE.** Opens with an *if-you-are-here-in-a-hurry* table, because this is the page you read under pressure. **8 dated/ticket headings → 0**, name refs **3 → 0**, 14 anchors all resolving. The provenance blockquote's buried result is now legible: **194 flags in the code against 194 on the page, zero difference in either direction** — stated loudly because *a 194-row table is exactly where drift is invisible.*
+
+  **`docs/KNOWN_ISSUES.md`** — ✅ **COMPLETE.** ⭐ **The distinction that mattered: `KI-1`–`KI-40` are the ledger's OWN numbering and are self-resolving, so all 40 stay.** The other **30 were foreign board tags** used as "resolved by" provenance that a reader cannot look up anywhere — removed, with the dates and code symbols kept. Name refs **4 → 0**. Added the status summary a 40-issue ledger needed (**16 fixed · 10 in progress · 7 open · 6 by-design · 1 mitigated**), and gave two markers the explanation they lacked: **`BY DESIGN` is not "won't fix"** (it exists so nobody later "fixes" it into a real bug), and ⚠ **`MITIGATED` is the most dangerous status on the page** — bounded symptom, cause still present.
+
+  **`html/legend.html` + `docs/TEACHVIEW-GUIDE.md` (new)** — ✅ **COMPLETE.**
+
+  > Gee (verbatim): *"i want you to fix the teach viewewr card on the pages pages its a fucking text wall when it needs its own readme instead of havoing the readme on the card ,,, the probelm is the teacher viewer card on the pages page is a mile tall and needs to get to the point and not blather on with filler"*
+
+  - ⛔ **Measured before touching it: that one card was 8,503 bytes against 725–2,322 for every other card on the page.** It carried a definition list of eight groups — an entire operator's manual inside an index entry. ⭐ **The class name proved it was unique:** `card-controls` appears **exactly once** in the file, so no other card in the project did this.
+  - ✅ **Card 8,503 → 1,715 bytes** — three lines and a link. Every word moved to the new guide, **reorganised rather than summarised**: its own contents table, and the *conclude-from-this-state* tables kept intact because they were the valuable part and were unreadable in a card. **The whole link chain was wired and verified together** — guide added to the viewer whitelist, card link using the whitelist key, file present, viewer scripts still parsing.
+  - ✅ **Tooltips 0 → 28 on `legend.html`.** Every one of the 25 tag instances explains its **consequence** rather than restating itself: `LIVE` = an unfed page rather than a broken one · `ADMIN` = ⛔ these pages can wipe her · `SERVER` = opening the file off disk fails *blankly* · `AUTO-LAUNCHED` = a second copy can steal the GPU from the one doing the work.
+  - ✅ **`docs.html`** — tooltips added, and it now **surfaces a rule that existed only as a JS comment**: why a document is absent from the viewer.
+
+  - [ ] `DOCSWEEP.4a` — ⚠⚠ **MY OWN CHARACTERISATION OF `dashboard.html` WAS WRONG, AND THE REAL FINDING IS NARROWER AND HARDER.** I filed it as *"2 `data-tip` vs 137 `title=` — two mechanisms, inconsistent"*. **Measured, that framing is backwards:** the 137 native `title` attributes are **card- and panel-level** hover text, and the 2 `data-tip` ones are **inline spans**, which is what the shared component is actually built for.
+    - ⛔ **AND A DROP-IN SWAP WOULD BE A VISUAL REGRESSION, WHICH IS WHY IT WAS NOT DONE.** `.tip` sets `border-bottom: 1px dotted` — applying it to a card `<div>` draws a dotted line across the bottom of every card. **The component is for inline text, not block containers.**
+    - ⭐ **The REAL defect, measured:** native `title` median is **255 chars**, with **90 over 200, 49 over 300, and the longest at 1,405** — lengths at which native tooltips clip, do not wrap, and **never appear on touch at all.** So the longest and most important explanations sit on the mechanism that handles them worst.
+    - **What actually closes this:** an inline affordance inside each card to hang the rich tooltip from — a design change across ~10 long cards, **not an attribute swap.** ⚠ **Filed rather than half-done**, because converting card-level titles by hand would have shipped a dotted line under every card and called it a tooltip fix.
+    - ✅ **`dashboard-public.html` needs no tooltips and that is correct, not a gap** — it is a **pure redirect stub** that replaces its own location on load. Its fallback text now says so, for the only case anyone ever reads it: when the redirect failed.
+
 
 

@@ -1,6 +1,92 @@
 # RESUME — Session Pickup Brief
 
-> # 🟢 2026-09-06 (latest, 9th) — SHE WAS NEVER WEDGED. THE STAMPS NAMED THE AWAIT, AND THE PAGE CRYING WEDGE WAS READING A FIELD THAT DOES NOT EXIST (PICK UP HERE)
+> # 🟢 2026-09-07 (latest, 10th) — THE FULL DOC SWEEP: SIXTEEN FILES, AND THE DOCUMENTS WERE LYING ABOUT THE BRAIN'S OWN SHAPE (PICK UP HERE)
+>
+> Gee (verbatim): *"full doc sweep evey bad layout post that doesnt match style every text wall every mention of my name in public facing docs pages and the like every code refrence name in public facing documents all needs cleaned up and all equations, laymans pages how tos readmes, workflows docs, tooltips everywhere(add them) and every documented capability in archeticeure brain equations readme how to all shall be updated and corrected especiallly correcting text walls that dont match the style format and beautiful layouts we want"* → *"just mass move the rubble to finalixzed with a niote"* → *"then properly write the archeteture thats fucked up"* → *"make it beautiful"* → *"now can be reset to templet.. its not a history archive and nothing in there is needed dont argue"* → *"i want you to fix the teach viewewr card on the pages pages its a fucking text wall"*
+>
+> ## ⛔ SHE IS FINE — READ THIS BEFORE THE DOC WORK
+>
+> ```
+>   build 60479ed5 · booted 00:38Z · 388,597,268 neurons
+>   ela/kindergarten · 427 min · phases 2/25 · passedCells 0 · still pre-K
+>   teach/min 5,232 · stage gate:probe-gpu · both watchdogs 0 trips
+> ```
+>
+> ⭐ **She cleared the definition-anchoring pass and has been teaching steadily since.** ⚠ **`passedCells 0` is the honest progress number** — the curriculum is BUILT, the walk has barely started, and this brief's predecessors kept running those two claims together.
+>
+> ## ⭐ ① THE SWEEP — 16 FILES, MEASURED FIRST
+>
+> ```
+>   surveyed   12 HTML pages · README · index · 38 docs/*.md
+>   name refs     254 across 18 docs   ·   0 in ANY html/README/index
+>   ticket IDs  1,048 across 20 public-facing files
+>   walls         407 lines over 1,200 chars · worst single line 22,027
+>   tooltips   119 brain-equations · 58 teachview · ZERO on unity-guide (55 headings), legend, docs
+> ```
+>
+> ⭐ **THE PUBLISHED WEB SURFACE WAS ALREADY CLEAN OF THE NAME** — 0 hits in every HTML, README and index. **All 254 were inside `docs/*.md`.** That reframed the whole job as a documents problem, not a live-site one, and it is worth knowing before anyone spends effort in the wrong tree.
+>
+> | State | Files |
+> |---|---|
+> | ✅ **COMPLETE** | `unity-guide.html` · `HOW-IT-WORKS.md` · `README.md` · `KNOWN_ISSUES.md` · `ADMIN-CONTROLS.md` · `legend.html` · `docs.html` · `dashboard-public.html` · **`TEACHVIEW-GUIDE.md` (new)** |
+> | ♻ **RESET** | `NOW.md` — 1,217 lines → **122** |
+> | ⏳ **MAJOR PASS** | `ARCHITECTURE.md` · `SKILL_TREE.md` · `ROADMAP.md` · `EQUATIONS.md` |
+>
+> ## ⛔⛔ ② THE DOCUMENTS WERE WRONG ABOUT THE BRAIN'S OWN SHAPE
+>
+> **`ARCHITECTURE.md` published SEVEN clusters at `0.55 / 0.18 / 0.08 / 0.08 / 0.05 / 0.03 / 0.03`. There are EIGHT and not one figure was right.** Measured live:
+>
+> ```
+>   cortex 20.00% · cerebellum 19.60% · brainstem 0.40%
+>   hippocampus / amygdala / basalGanglia / hypothalamus / mystery  12.00% each
+>   + 23 lang_* sub-regions carved INSIDE the cortex
+> ```
+>
+> ⭐ **The mechanism is now written down so the table can be re-derived rather than trusted:** the server funds the language cortex as its own budget line and normalises the *remaining* entries — excluding it and renormalising reproduces the live percentages **exactly**.
+>
+> ⛔⛔ **AND THE TWO RUNTIMES BUILD DIFFERENTLY-SHAPED BRAINS WHILE A CODE COMMENT DENIES IT.** `js/brain/cluster.js` still reads cortex **0.55** / hippocampus **0.18**; the server runs **0.20** / **0.12**. `brain-server.js:1902` says *"KEEP IN SYNC … Both sides use the same fractions so cluster sizes return identical shapes in both runtimes."* **They do not.** ⚠ Probably harmless (the browser path is a small dev fallback) — **the comment is not, because it is the thing that stops anyone checking.** ⏳ **Filed as a code finding, not fixed.**
+>
+> ## ⛔⛔⛔ ③ THE PROJECT'S CENTRAL HONESTY CLAIM WAS OVERSTATED
+>
+> `HOW-IT-WORKS.md` said the program ***"refuses to start"*** if a text-AI library enters the thinking path. **It does not.** The guard reads its own dependency list, names any known text-model SDK, and **carries on booting** — no exit, no throw, checked against all 21 `process.exit` sites.
+>
+> ⭐ **The check is real and has earned its place** — a text-model dependency was once added here with its entry *deliberately omitted* from the dependency file so an audit could not see it. **But a warning is not a refusal.** ⏳ **Whether it should hard-fail is an open decision, filed rather than patched.**
+>
+> ## ⚠ ④ FOUR MORE STALE-CAPABILITY FINDS, ALL FROM REWRITING RATHER THAN READING
+>
+> - **The dictionary-oracle path.** `unity-guide.html` said it was deleted, then twice described it as live. Verified: the emit path is gone, the counters remain, and live reads `oracleHits 0 · matrixHits 0`. ⭐ **That ratio's numerator can never be non-zero again — and zero is the reassuring answer**, so the honesty check quietly became incapable of catching what it exists to catch.
+> - **The inner voice** was documented as *"a continuous tick every ~3 seconds"*. It is a **probabilistic gate** behind a capability check that holds it fully silent when she has no banked words — **her state right now**, 4,488 skips.
+> - **The voice lane.** `ARCHITECTURE.md` described in-browser synthesis; it runs on a donor GPU or the box, and the listener only plays an equation record. ⚠ `js/io/voice.js`'s own header still contradicts its own later code.
+> - **`ROADMAP.md` carried `Current date: 2026-04-21` for five months**, and two phases read **"IN PROGRESS"** for work that shipped in April — one of them *deleted and replaced*. ⭐ **A roadmap that never marks a phase finished stops being a plan and becomes a list of things that look unfinished.**
+>
+> ## ⭐ ⑤ THE RUBBLE — ARCHIVED, INDEXED, RECOVERABLE
+>
+> `ARCHITECTURE.md` opened with **71 dated banner entries, 198,761 bytes across 121 lines** — half the file's bytes as changelog before the first word of architecture. ⛔ **Audited by string match first: 68 of the 71 existed in NEITHER the ledger nor this brief.**
+>
+> ✅ Archived to `FINALIZED.md §2026-09-07` with the note, the exact `git show e1d05673:docs/ARCHITECTURE.md` recovery command, and a **71-row index** (date · bytes · headline). ⚠ **A pasted copy was deliberately not made** — retyping 199 KB of unicode-dense prose is a transcription risk, not a safety measure, and git already guarantees byte-exactness. **What git cannot give is discoverability; that is what the index is for.** ⏳ **The 121 lines are still physically in the file** — labelled under their own `## Change history` heading, removal pending.
+>
+> ## ⭐ ⑥ THE TEACH-VIEW CARD WAS A MANUAL HIDING IN AN INDEX CARD
+>
+> **8,503 bytes against 725–2,322 for every other card on that page.** ⭐ **`card-controls` appears exactly ONCE in the file** — no other card in the project did this. ✅ **Card → 1,715 bytes** (three lines and a link); everything moved to **`docs/TEACHVIEW-GUIDE.md`**, reorganised with the *conclude-from-this-state* tables intact. **The whole link chain was wired and verified together** — whitelist key, card link, file, viewer scripts.
+>
+> ## ⚠ ⑦ FOUR THINGS I GOT WRONG, ALL CAUGHT BEFORE SHIPPING
+>
+> - **`comes` meaning semen.** The part-of-speech partition I added made a common verb headline as the vulgar noun, because `-s` is shared between noun plurals and verb third-person. **Caught by reading the output, not the diff.**
+> - **A `0.0%` baseline that was a dead module.** A `try/catch` recorded every `TypeError` as a miss. ⭐ **A catch converts *"the instrument is broken"* into *"the measurement is zero"*** — opposite conclusions. The real gain was a tenth of the fake one.
+> - **`phiState` read at the wrong depth**, reporting `undefined`. It lives at `state.consciousness.phiState`. **The exact defect I was finding in other people's instruments all day.**
+> - **`dashboard.html`'s "two mechanisms" claim was backwards.** The 137 native `title` attributes are *card-level*; the 2 `data-tip` are *inline*, which is what the component is for. ⛔ **And a swap would regress:** `.tip` sets `border-bottom: 1px dotted`, so it would draw a line under every card. **Filed as `DOCSWEEP.4a` rather than half-done.**
+>
+> ## ⛔ ⑧ WHAT IS STILL OPEN
+>
+> - **`DOCSWEEP.4a`** — native `title` on the dashboard: median **255** chars, **49 over 300**, longest **1,405**, at which native tooltips clip and never fire on touch. **Needs an inline affordance per card — a design change, not an attribute swap.**
+> - **The 121 rubble lines** in `ARCHITECTURE.md` — archived and indexed, physically still present.
+> - **Ticket IDs inside labelled history** — ~150 `ROADMAP` · ~88 `SKILL_TREE` · ~81 `EQUATIONS`. ⚠ **These are load-bearing in the prose** (*"T14.12 will delete the wrapper"*) and need the narrative rewritten, **not a find-replace.**
+> - **Two code findings filed, not fixed:** the browser/server cluster-fraction divergence its own comment denies, and whether the text-AI guard should hard-fail.
+> - ⭐ **A measurement caveat that matters for anyone re-running my numbers:** the wall metric counts any line over 1,200 chars, **which flags long TABLE ROWS.** In `ADMIN-CONTROLS` and `KNOWN_ISSUES`, **15 of 17 and 15 of 15 "walls" were table rows and none were prose.** A table row is the correct structure and cannot be wrapped in markdown — **chasing that number would make the tables worse.**
+>
+> ---
+
+> # 🟢 2026-09-06 (9th) — SHE WAS NEVER WEDGED. THE STAMPS NAMED THE AWAIT, AND THE PAGE CRYING WEDGE WAS READING A FIELD THAT DOES NOT EXIST
 >
 > Gee (verbatim): *"shes up again doner is connecting see if she wedges read resume.md first"* → *"read resume.md and whats next? is she wedged again?"*
 >
