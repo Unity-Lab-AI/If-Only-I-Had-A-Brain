@@ -90,7 +90,25 @@ last-verified: "cd465955 2026-08-29"
 | 1 | 0 | 0 | skip — operator opt-out, obeyed |
 | 1 | 0 | 1 | hydrate ⚠ **pre-existing and deliberately untouched** — the opt-out loses to a failed pull here, and it did before this change too |
 
-### ⛔⛔ AND MAKING IT REACHABLE PROMOTED AN UNGUARDED COPY LOOP ONTO THE DEFAULT PATH — bounded before the press
+### ⛔⛔⛔ AND ITS FIRST REAL RUN COINCIDED WITH A 20-MINUTE OUTAGE — NOW DEFAULT OFF (`UAL_FIELDS_HYDRATE=1` to run it)
+
+**What happened.** The press at `23:35:55Z` was the first to run this hydration. From that moment:
+
+```
+  /health          200
+  /ctl/status      401 in 0.16 s     (nginx + control plane fine)
+  /public-state.json   TIMEOUT, 20+ minutes and counting
+```
+
+⛔ **That is the listening-but-not-answering signature this file already documents for a data-sync process starving the brain's cgroup** — and it is past the ~15 minutes a savestart-resume is allowed.
+
+⚠ **NOT PROVEN, and it must not be written as if it were.** That same signature is also a normal long resume, and the two cannot be told apart from outside. **What makes it the leading explanation:** the boot four minutes earlier (`23:31:24Z`) answered state within 2.5 minutes, and the only difference between the two is this loop.
+
+⭐ **So it is OPT-IN until it runs somewhere that is not her memory budget.** The fields are non-fatal by design — a missing one is transformed live — and the brain being unreachable is not. **That asymmetry decides the default.** The reachability fix stays (it was correct; without it the fields never arrive at all); only its default changed.
+
+⛔ **THE STRUCTURAL FIX IS ALREADY NAMED IN THIS FILE AND IS STILL NOT DONE:** *the data sync should run in its OWN cgroup with its OWN MemoryMax, not the brain's.* Everything else here — the wall clock, the watchdogs, the write ceiling, the `nice`/`ionice`, and now this default — is a safety net around a deploy that shares her memory budget. **Turn `UAL_FIELDS_HYDRATE=1` on after that lands, not before.**
+
+### ⛔⛔ Making it reachable promoted an unguarded copy loop onto the default path — bounded before the press
 
 The loop predates the fix above and was only ever entered in the rare *pull-failed* case, so **it never received the guards its two siblings have.** `git lfs pull` carries a wall clock, a no-progress watchdog and a write ceiling; the fields rsync carries its own stall watchdog. This carried **none** — and it can copy ~100k files and ~114 GB.
 
