@@ -323,16 +323,44 @@
  The textbook neuron model (leaky integrate-and-fire) is simpler but it doesn't burst the way real cortical neurons do — it just fires regular pulses. Rulkov's map naturally produces the irregular burst-then-pause rhythm you see in actual EEG recordings. And it's cheap enough to run millions of them on a GPU in real time. That's why Unity uses it.
 </div>
 
-<p>The neurons are grouped into <strong>eight clusters</strong>, each modeled after a real brain region or a specialized cortical subsystem. Within a cluster, neurons are densely connected to each other. Between clusters, they're connected through sparser pathways modeled after real white-matter tracts in the human brain. When something "flows" from her language network to her amygdala, it's actually spikes traveling across a simulated pathway that corresponds to a real neural tract you could look up in a neuroanatomy textbook. Her two biggest clusters are the <strong>cortex</strong> and the <strong>cerebellum</strong> — about 82.2M neurons (roughly 20% of the brain) each. The <strong>language network</strong> is the primary cognitive substrate Unity runs (reading, thinking, sentence generation, dictionary oracle, cross-region Hebbian learning all live there), but it isn't a top-level cluster of its own — it's a set of ~12M neurons (WMB 2026-07-14 grew it ~349K→~1.5M; language-growth hop 1, 2026-08-16, grew it ~1.5M→~12M — staged toward the 12–20% a real brain devotes to language) that auto-scale as nine specialized sub-regions living inside the cortex (auditory / visual / free / letter / phon / sem / fineType / motor / word_motor), the same way real cortex hosts Broca's and Wernicke's areas. The five remaining clusters — hippocampus, amygdala, basal ganglia, hypothalamus, and the mystery region — each carry a real biological role at about 49.3M neurons (roughly 12%) apiece. Sixteen cross-projections wire those sub-regions into a dual-stream pipeline (a dedicated <code>sem↔word_motor</code> projection enables single-tick word emission alongside the existing letter-by-letter <code>sem→motor→letter</code> path; <code>word_motor</code> is ONE unified band with a single bucket per unique word, argmaxed globally — the earlier per-subject sub-bands replicated the full dictionary and overflowed, so it was unified + the cortex grown to hold the full K→PhD vocab).</p>
+<p>The neurons are grouped into <span class="tip" data-tip="A cluster is one population of neurons with its own job, its own resting firing rate and its own learning speed — the software equivalent of a named brain region.">eight clusters</span>, each modelled after a real brain region or a specialised cortical subsystem. Within a cluster, neurons are densely connected to each other. Between clusters they connect through sparser pathways modelled on real <span class="tip" data-tip="The long-range fibre bundles that carry signals between distant brain regions — the brain's cabling, as opposed to the grey matter that does the computing.">white-matter tracts</span>. When something "flows" from her language network to her amygdala, that is spikes travelling across a simulated pathway corresponding to a real neural tract you could look up in a neuroanatomy atlas.</p>
+
+<p>The two biggest clusters are the <strong>cortex</strong> and the <strong>cerebellum</strong>, at roughly <strong>20% of the brain each</strong>. The five remaining clusters — hippocampus, amygdala, basal ganglia, hypothalamus and the mystery region — take about <strong>12% apiece</strong>.</p>
+
+<div class="callout cyan">
+ <strong>The language network is not a cluster — it lives inside the cortex</strong>
+ This is the part that surprises people. Reading, thinking, sentence generation and word learning all happen in the <strong>language network</strong>, but it is not a top-level region of its own. It is a set of specialised sub-regions <em>inside</em> the cortex — the same arrangement a real brain uses, where Broca's and Wernicke's areas are patches of cortex rather than separate organs. It has been grown deliberately over time toward the <strong>12–20% of the brain a human devotes to language</strong>.
+</div>
+
+<p>Those sub-regions are wired together by cross-projections into a <span class="tip" data-tip="Two parallel routes for language, taken from real neurolinguistics: one route recognises what a word IS, the other drives the machinery that produces it.">dual-stream pipeline</span>, and she has <strong>two ways of producing a word</strong>:</p>
+
+<ul>
+ <li><strong>Letter by letter</strong> — the original path. Meaning drives a motor sub-region, which commits one letter at a time, the way a human motor cortex drives the muscles of speech.</li>
+ <li><strong>Whole word in a single tick</strong> — the primary route now. Meaning drives a dedicated word sub-region that holds <strong>one slot per word she knows</strong>, and the strongest slot wins outright.</li>
+</ul>
+
+<div class="callout orange">
+ <strong>Why the second route had to exist</strong>
+ The letter-by-letter path is fragile: a chain of letters can get stuck partway and produce a fragment instead of a word. The word route returns a whole real word in one step. ⚠ And it only works because there is <strong>one shared pool of word slots</strong>. An earlier design gave each school subject its own pool, which meant the same dictionary was copied many times over, the pools overflowed, and <strong>words she had genuinely learned went silent.</strong> Unifying the pool — and growing the cortex enough to hold her entire kindergarten-to-doctorate vocabulary — is what fixed it.
+</div>
 
 <h2 id="regions">4. The eight brain regions and what each one does</h2>
 
-<p>Unity's brain has eight clusters. Each is a population of Rulkov-map neurons with its own job, its own baseline firing rate, its own noise level, and its own learning speed. They talk to each other constantly through sparse connection pathways modeled on real white-matter tracts. The percentages below are the share of the brain's neuron budget each cluster gets — they come from biologically-grounded ratios stored as <code>DEFAULT_BIO_WEIGHTS</code> in <code>server/brain-server.js</code>. Reference numbers are from Herculano-Houzel 2009 ("The Human Brain in Numbers", <em>Frontiers in Human Neuroscience</em> 3:31): real-human cerebellum holds ~80% of neurons but only ~10% of brain mass, cerebral cortex holds ~19% of neurons but ~82% of mass, and all subcortical regions combined hold ~0.8% of neurons / ~8% of mass. Unity's split gives the cortex and cerebellum ~20% each and the five subcortical clusters ~12% each (operator-set floors exceed biology by design — real subcortical regions are individually under 1% by neuron count — so no critical control region gets starved). Total neuron count auto-scales from the host machine's free RAM — about 425M at full size on the deployed brain.</p>
+<p>Unity's brain has eight clusters. Each is a population of Rulkov-map neurons with its own job, its own baseline firing rate, its own noise level, and its own learning speed. They talk to each other constantly through sparse connection pathways modeled on real white-matter tracts. The percentages below are the share of the brain's neuron budget each cluster gets, and they come from biologically-grounded ratios rather than from taste.</p>
+
+<p>The reference figures are from Herculano-Houzel 2009 ("The Human Brain in Numbers", <em>Frontiers in Human Neuroscience</em> 3:31): a real cerebellum holds about <strong>80% of the brain's neurons but only ~10% of its mass</strong>, the cerebral cortex holds ~19% of neurons but ~82% of mass, and every subcortical region combined holds under 1% of neurons. Unity's split gives the cortex and cerebellum ~20% each and the five subcortical clusters ~12% each — <em>deliberately more generous than biology</em>, because a control region starved of neurons stops doing its job, and none of these are allowed to starve.</p>
+
+<div class="callout">
+ <strong>Her size is not a fixed number, and that matters when you read the dashboard</strong>
+ The total neuron count is <strong>worked out fresh every time she boots</strong>, from how much memory the host machine has free at that moment. It is a property of the machine she woke up on, not a property of her. The same code has started her at a few hundred million neurons and at rather more, on different days, with nothing about her changed. ⚠ <strong>So a neuron count is only meaningful next to the boot that produced it</strong> — the live dashboard always shows the current one.
+</div>
 
 <div class="region-grid">
  <div class="region">
  <h4>🧠 CORTEX (20%)</h4>
- <p>General cerebral cortex — frontal, parietal, occipital association areas — plus the language network that lives inside it, ~82.2M neurons total. Predictive coding + sensory integration. The <strong>language network</strong> is the primary cognitive substrate Unity runs: ~12M neurons (WMB 2026-07-14 grew it ~349K→~1.5M; language-growth hop 1, 2026-08-16, grew it ~1.5M→~12M) auto-scaling as nine named sub-regions inside the cortex (auditory, visual, free, letter, phon, sem, fineType, motor, word_motor), wired by 16 cross-projections into a dual-stream pipeline — reading flows visual → letter → phon → sem → fineType; writing flows along two parallel paths, the legacy letter-by-letter <code>sem → motor → letter</code> path AND the single-tick word-emission path <code>sem → word_motor</code>. The word path is the primary production route — single-tick argmax over one unified global word-bucket map (one bucket per unique word) returns a real word like "five" instead of a fragile letter chain that bucket-stuck on attractors. It was a key win for word recall.</p>
+ <p>General cerebral cortex — the frontal, parietal and occipital association areas — <em>plus the whole language network living inside it</em>. Handles prediction and sensory integration, and it is where nearly all of her thinking happens.</p>
+ <p>The language network is arranged as nine specialised patches: ones for <strong>hearing</strong> and <strong>seeing</strong>, ones for <strong>letters</strong> and <strong>sounds</strong>, one for <strong>meaning</strong>, one for fine distinctions, and the two that drive speech — a <strong>letter</strong> one and a <strong>whole-word</strong> one.</p>
+ <p><strong>Reading</strong> runs one way through them: shape → letter → sound → meaning. <strong>Speaking</strong> runs the other way, and can take either the slow letter-by-letter route or the fast whole-word one.</p>
  </div>
  <div class="region cereb">
  <h4>🎼 CEREBELLUM (20%)</h4>
@@ -364,7 +392,15 @@
  </div>
 </div>
 
-<p>These aren't metaphors or labels slapped on random populations. Each cluster has parameters tuned to roughly match what that brain region does biologically, and the pathways between them are taken from real neuroanatomy atlases. The amygdala runs an attractor network because that's how real amygdala circuits actually work. The basal ganglia does winner-take-all because that's what real basal ganglia circuits do. The language cortex's nine sub-regions and 16 cross-projections map onto the dual-stream language model from real neurolinguistics (Hickok &amp; Poeppel 2007) — reading flows visual → letter → phon → sem → fineType; writing flows along the letter-by-letter <code>sem → motor → letter → visual</code> path OR the single-tick <code>sem → word_motor</code> path. Same substrate, opposite topology, both directions learned through direct-pattern Hebbian curriculum.</p>
+<p>These are not metaphors, or labels slapped onto random populations. Each cluster's settings are tuned to roughly match what that region does biologically, and the pathways between them are taken from real neuroanatomy atlases:</p>
+
+<ul>
+ <li>The <strong>amygdala</strong> runs a settling network — because that is how real amygdala circuits work.</li>
+ <li>The <strong>basal ganglia</strong> runs a winner-takes-all contest — because that is what real basal ganglia do.</li>
+ <li>The <strong>language patches</strong> follow the dual-stream model from real neurolinguistics (Hickok &amp; Poeppel 2007): one stream to understand, one to produce.</li>
+</ul>
+
+<p>Reading and speaking run over <em>the same tissue in opposite directions</em> — shape to meaning going in, meaning to speech coming out — and <strong>both directions are learned, not wired in by hand.</strong></p>
 
 <h2 id="feel">5. How she feels things</h2>
 
@@ -479,7 +515,12 @@
 <p><strong>At very high daily user volume, scheduled sleep becomes operationally necessary.</strong> The natural idle trigger only fires when chat has been quiet for over a minute. If a Unity instance starts seeing constant traffic — overlapping conversations, no minute-long gaps anywhere in the day — the consolidation engine never gets to fire on the idle path. Episodes pile up in Tier 1 without ever promoting to Tier 2 schemas; her identity stops growing. The fix is operational, not architectural: schedule periodic <code>POST /sleep</code> + <code>POST /wake</code> windows at off-peak hours, or trigger a brief sleep window every N chat turns. The endpoints already exist for exactly this reason. Until traffic reaches that scale, natural idle plus the curriculum-interleave path together cover Unity's consolidation needs.</p>
 
 <h3>Long-term dictionary growth</h3>
-<p>Every word she encounters gets learned. Her dictionary starts small and grows by reading her persona file and by talking to users. New words get stored with the cortex pattern that was active when she heard them (the <code>cortexSnapshot</code> Uint8Array of <code>cluster.lastSpikes</code>), along with syllable boundaries and stress detected by cortex transition surprise — so later the cortex knows which situation each word "fits." Word-order patterns live inside the learned weights of the 16 cortex sub-region cross-projections (letter↔phon, phon↔sem, sem↔motor, sem↔word_motor, etc.) — there's no separate bigram or trigram table, the order comes from whatever the cross-projection Hebbian carved while she was listening.</p>
+<p>Every word she meets gets learned. Her dictionary starts small and grows as she reads and as people talk to her. A new word is not stored as text on its own — it is stored <strong>together with a snapshot of what her brain was doing at the moment she heard it</strong>, plus where the syllables fell and which one was stressed. That is what lets her know later which <em>situations</em> a word belongs to, not just what it spells.</p>
+
+<div class="callout purple">
+ <strong>There is no grammar table anywhere in her</strong>
+ Word order is not stored in a list of common pairs or triples. It lives in the <span class="tip" data-tip="A connection strengthens whenever the two things it joins are active at the same time — the standard 'cells that fire together, wire together' rule that real brains use.">connection strengths</span> between her language patches, carved while she was listening. <strong>Nobody wrote her a rule about where verbs go.</strong> If her word order is right, it is because the wiring that produces it was worn in by exposure — and if it is wrong, that is visible as a training gap rather than a bug in a table.
+</div>
 
 <p>Unlike the episodes, the dictionary growth is <strong>shared</strong> across all users talking to the same Unity server. If someone teaches her a new word, everyone benefits. The conversations that drove the learning stay private, but the learned vocabulary is pooled.</p>
 
@@ -492,17 +533,29 @@
 
 <p>When Unity decides to speak, three production paths run in priority order — fast structured paths first, then the slowest most-flexible substrate as a fallback.</p>
 
-<p><strong>Path A — single-tick word emission (the primary path).</strong> The cortex has a dedicated <em>word_motor</em> sub-region — ONE unified band with a single bucket per unique word (it was originally split into six per-subject sub-bands, but those each replicated the full dictionary and overflowed, silently silencing learned words, so the band was unified). The <em>sem → word_motor</em> cross-projection learns Q→A bindings and word-pattern bindings during the curriculum. At chat time the helper injects the user's intent into the <em>sem</em> region, propagates one tick, and argmaxes (mean signal per bucket cell) over the persisted bucket map that teach + emit + write all share. If the winning bucket clears the minimum-signal floor, Unity emits that word as a single-tick utterance. No letter chain, no attractor settling — one word, one tick.</p>
+<p><strong>Path A — a whole word in one tick (the primary path).</strong> The cortex has a dedicated <span class="tip" data-tip="A patch of cortex holding one slot per word she knows. The slot with the strongest signal wins and that word is what she says.">whole-word patch</span>, holding a single slot for every distinct word she knows. During lessons, the link running from her <span class="tip" data-tip="The patch that represents MEANING rather than spelling or sound — what a word is about.">meaning patch</span> to that whole-word patch learns which meanings should produce which words.</p>
 
-<p><strong>Path B — the dictionary oracle — <span style="color:#f87171">removed on 1 September 2026</span>.</strong> There used to be a second path here: when word_motor came back empty, a dictionary cosine scan ran over every word she had learned and she emitted the best match's spelling. It is gone. <strong>It answered precisely when her trained matrix could not</strong>, which means most of what it produced was the dictionary talking rather than Unity — a captured run measured it carrying <strong>99.1% of her emissions</strong>. Everything she says now comes from the trained sem → word_motor matrix, or she says nothing and the silence is counted.</p>
+<p>When she speaks, her intent is written into the meaning patch, the brain is stepped forward <strong>once</strong>, and whichever word slot is firing hardest wins. If it clears a minimum-signal floor, that is what she says. <strong>No letter chain, no settling — one word, one step.</strong></p>
+
+<div class="callout orange">
+ <strong>The bug this design exists to prevent</strong>
+ The whole-word patch is deliberately <strong>one shared pool</strong>. It used to be split into a separate pool per school subject, and each of those held a copy of the entire dictionary. They overflowed — and the failure was silent: <strong>words she had genuinely learned simply stopped coming out</strong>, with nothing reporting an error. One pool, one slot per word, no duplication.
+</div>
+
+<p><strong>Path B — the dictionary oracle — <span style="color:#f87171">removed on 1 September 2026</span>.</strong> There used to be a second path here: when the whole-word patch came back empty, a search ran over every word she had ever learned and she said the closest match. <strong>It is gone.</strong></p>
+
+<div class="callout">
+ <strong>Why removing a working feature was the right call</strong>
+ That path answered <em>precisely when her trained brain could not</em> — so the moments it covered were exactly the moments she had nothing to say. A captured run measured it carrying <strong>99.1% of everything she said.</strong> Nearly every word attributed to Unity was really a dictionary lookup wearing her name. Now she either speaks from what she has actually learned, <strong>or she stays silent and the silence is counted</strong> — which is worse-looking and far more honest.
+</div>
 
 <p><strong>Path C — tick-driven motor emission (the original biological substrate).</strong> When word emission produces no match, the helper falls through to the cortex tick loop, and Unity literally reads letters off the spike pattern of her motor sub-region one tick at a time — the same way a real human motor cortex drives speech articulators. Both surviving paths read her own trained weights; neither consults a dictionary for an answer. The flow:</p>
 
 <ol>
  <li><strong>Inject the intent</strong> into the <em>sem</em> sub-region at 0.6 strength.</li>
- <li><strong>Tick the brain.</strong> The neural cascade runs every ~50 ms. Intent flows through <em>sem → motor</em>, <em>sem → fineType</em>, intra-cluster recurrence settles the attractor.</li>
+ <li><strong>Step the brain.</strong> The cascade runs about every 50&nbsp;ms. Meaning flows outward into the patches that drive letters and fine distinctions, and the cortex settles.</li>
  <li><strong>Read motor region each tick.</strong> Argmax over the learned letter inventory picks whichever letter's neural signature fires strongest.</li>
- <li><strong>Commit letters on stability</strong> — three consecutive ticks of the same argmax (Bouchard 2013 vSMC dwell — real motor cortex commits phonemes after ~30 ms sustained firing).</li>
+ <li><strong>Commit a letter only once it holds still</strong> — the same letter has to win three steps in a row. That threshold is not arbitrary: real motor cortex commits a speech sound after roughly 30&nbsp;ms of sustained firing (Bouchard 2013).</li>
  <li><strong>Detect word boundaries by surprise</strong> — Saffran 1996 statistical word segmentation. When letter-transition probability drops suddenly, that's a boundary; buffer flushes as a word.</li>
  <li><strong>Stop on terminator or motor quiescence</strong> — period/question-mark/exclamation, or motor region silent for 30 ticks.</li>
 </ol>

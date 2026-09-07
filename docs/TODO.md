@@ -1937,5 +1937,84 @@ Found by reading the deployed box after the board cleanup, not by being told. **
 
 <!-- WEDGE2.3, WEDGE2.4 and WEDGE2.6 closed 2026-09-06 on live evidence from the deployed build; archived verbatim in FINALIZED.md §2026-09-06 (25th), all 30 non-blank lines string-matched before removal. WEDGE2.1 and WEDGE2.5 remain open above and are NOT covered by that closure. -->
 
+---
+
+## DOCSWEEP — the full documentation sweep — filed 2026-09-07
+
+> Gee (verbatim): *"full doc sweep evey bad layout post that doesnt match style every text wall every mention of my name in public facing docs pages and the like every code refrence name in public facing documents all needs cleaned up and all equations, laymans pages how tos readmes, workflows docs, tooltips everywhere(add them) and every documented capability in archeticeure brain equations readme how to all shall be updated and corrected especiallly correcting text walls that dont match the style format and beautiful layouts we want and you shall put all this in the todo as docseep items and then properly get to work no agents, noo batching, use the todo and finalized for refrences to the changes and what all needs to be rewriten. redocumented , edited, updated, ect ect"*
+>
+> ⛔ **Working constraints, from that same instruction:** **no agents · no batching · one item at a time · TODO and FINALIZED carry the record of what was rewritten, redocumented, edited and updated.**
+
+### ⭐ THE SURVEY — measured before a single edit, so the work has a denominator
+
+```
+  SURFACE            12 HTML pages · README.md · index.html · 38 docs/*.md
+  name mentions      254 across 18 docs/*.md   ·   0 in ANY html/README/index
+  ticket IDs       1,048 across 20 public-facing files
+  text walls         407 lines over 1,200 chars across 16 files
+                     worst single line 22,027 chars (docs/NOW.md)
+  tooltips          uneven: 119 on brain-equations, 58 on teachview,
+                     ZERO on unity-guide (55 headings), legend, docs, dashboard-public
+```
+
+⭐ **THE WEB SURFACE IS ALREADY CLEAN OF THE NAME — 0 hits in every HTML, README and index.** The 254 mentions are entirely inside `docs/*.md` brain documents, which the narrowed placement LAW covers. **That is worth knowing before the sweep starts, because it means this is a documents problem, not a published-site problem.**
+
+- [ ] `DOCSWEEP.1` — **EVERY MENTION OF THE OPERATOR'S NAME IN PUBLIC-FACING DOCS.** 254 across 18 files: `NOW.md` 256*, `ARCHITECTURE.md` 31, `ROADMAP.md` 20, `SENSORY.md` 18, `CURRICULUM-GAP.md` 16, `WORD-SALAD-FIX.md` 13, `EQUATIONS.md` 9, `SKILL_TREE.md` 8, `PUSH_WORKFLOW.md` 7, `KNOWN_ISSUES.md` 4, `ADMIN-CONTROLS.md` 3, `STATUSLINE.md` 3, `TEACHVIEW-INVENTORY.md` 3, and one each in `WEBSOCKET.md`, `PERSONA.md`, `RUST-MIGRATION.md`, `TALK-TO-UNITY-PLAYWRIGHT.md`, `DECOMPOSED-curriculum-build.md`. (*two counting methods disagree by 120 on `NOW.md`; the higher is the raw occurrence count.)
+  - ⛔ **A VERBATIM QUOTE IS NOT A VIOLATION AND MUST NOT BE STRIPPED.** The LAW bans the name as an *attribution device* in brain documents; it does not licence destroying a quoted instruction. **Where a quote carries the name, the quote moves to the board/ledger and the doc keeps the DECISION in its own words.**
+  - **Rule to apply:** a brain document names the MECHANISM, never the person. *"Gee ruled X"* becomes *"X is the rule"* or *"X was set by operator decision"*, with the attribution living in `TODO`/`FINALIZED`/`RESUME` where it is allowed.
+
+- [ ] `DOCSWEEP.2` — **EVERY CODE-REFERENCE NAME AND TICKET ID IN PUBLIC-FACING DOCUMENTS.** 1,048 occurrences across 20 files. Worst: `NOW.md` 336, `ARCHITECTURE.md` 239, `ROADMAP.md` 169, `EQUATIONS.md` 98, `SKILL_TREE.md` 97, `dashboard.html` 61, `ADMIN-CONTROLS.md` 48, `WEBSOCKET.md` 37, `SENSORY.md` 31, `KNOWN_ISSUES.md` 30.
+  - **The dominant families are `T14.x` / `T18.x` / `T13.x` / `T17.x` and `LAW.n`** — the legacy iteration-ticket scheme. **A reader cannot look up `T14.24`.**
+  - **Rule to apply:** replace the ticket with the mechanism it refers to. Where the ID is load-bearing history, the sentence keeps the behaviour and drops the tag.
+  - ⚠ **61 of these are inside `dashboard.html`, which is a PAGE, not a doc** — the same law applies and the fix is the same, but it is user-visible copy and must be re-read rendered, not just diffed.
+
+- [ ] `DOCSWEEP.3` — **EVERY TEXT WALL, AND THE LAYOUTS THAT DO NOT MATCH THE STYLE.** 407 lines over 1,200 characters across 16 files.
+  ```
+    NOW.md            183 walls · 107 over 2,000 · longest 22,027
+    ARCHITECTURE.md    71 walls ·  45 over 2,000 · longest  9,551
+    SKILL_TREE.md      44 walls ·  20 over 2,000 · longest  7,407
+    ROADMAP.md         25 · EQUATIONS.md 24 · ADMIN-CONTROLS.md 17
+    KNOWN_ISSUES.md    15 · README.md 8 · WEBSOCKET.md 7 · 9 more files
+  ```
+  - ⛔ **THIS IS THE ITEM THE INSTRUCTION EMPHASISED** — *"especiallly correcting text walls that dont match the style format and beautiful layouts we want"*.
+  - **Rule to apply:** a wall becomes the document's own existing structure — banner, table row, fenced block, bullet list — never a new structure invented for the occasion. **Read the document's shape first and edit IN PLACE within it.**
+  - ⚠ **Content is not the target.** A wall is a FORMATTING defect; the facts inside it are preserved in full, reorganised, never summarised away.
+
+- [ ] `DOCSWEEP.4` — **TOOLTIPS EVERYWHERE — ADD THEM.** Coverage is wildly uneven and two pages have none at all against dozens of headings.
+  ```
+    brain-equations.html  119 tips / 52 headings   COVERED
+    teachview.html         58 tips / 19 headings   COVERED
+    unity-guide.html        0 tips / 55 headings   <- the biggest gap
+    legend.html             0 tips /  4 headings
+    docs.html               0 tips
+    dashboard-public.html   0 tips
+    dashboard.html          2 data-tip vs 137 title=  <- TWO mechanisms, inconsistent
+    index.html 3 · compute.html 7 · gpu-configure.html 3 · minds-eye.html 3 · webgpu-prep.html 2
+  ```
+  - ⚠ **`dashboard.html` uses `title=` where the rest of the site uses `data-tip`** — decide one mechanism and apply it, because a page that tooltips differently from its siblings reads as a different product.
+  - **A tooltip states what the thing MEANS and what a reader should do about it** — the pattern the covered pages already set. Not a restatement of the label.
+
+- [ ] `DOCSWEEP.5` — **EVERY DOCUMENTED CAPABILITY IN ARCHITECTURE, BRAIN EQUATIONS, README AND THE HOW-TO — UPDATED AND CORRECTED.** ⛔ **This is the item with teeth, and it is not a formatting pass** — it requires verifying each claim against the code that implements it.
+  - ⭐ **PRECEDENT FROM TODAY, which is why this row exists:** `unity-guide.html` documented the definition lane as network-only with a 10K cache, a 5-minute error TTL and prefetch concurrency 20. **Every one of those four facts was wrong** — the offline dictionary answers first, the cache is 100,000, the TTL is type-aware, and the concurrency is 5. **The diagram had been read many times and corrected by nobody.**
+  - **Scope:** `docs/ARCHITECTURE.md` (1,787 lines), `html/brain-equations.html` (317 KB), `README.md` (99 KB), `docs/HOW-IT-WORKS.md`, `docs/EQUATIONS.md`.
+  - **Rule to apply:** a claim is verified against the file that implements it, and a claim that cannot be verified is marked rather than left standing.
+
+- [ ] `DOCSWEEP.6` — **THE LAYMAN PAGES, THE HOW-TOS, THE READMES AND THE WORKFLOW DOCS.** `docs/HOW-IT-WORKS.md`, `docs/SETUP.md`, `docs/PUSH_WORKFLOW.md`, `README.md`, `html/unity-guide.html`, `html/legend.html`, `html/docs.html`.
+  - **These are the pages a stranger reads first**, so they carry the highest cost per defect and the lowest tolerance for a wall of text or an unexplained internal tag.
+
+- [~] `DOCSWEEP.7` — **THE RECORD OF THE SWEEP ITSELF.** Per the instruction — *"use the todo and finalized for refrences to the changes and what all needs to be rewriten. redocumented , edited, updated"* — every file touched is listed here with what changed, and each closed item migrates verbatim into `FINALIZED.md` before it leaves this board.
+  - ⚠ **No batching and no agents.** One item at a time, by hand, with real reads.
+
+  #### FILES REWRITTEN — running log
+
+  **`html/unity-guide.html`** — the layman's guide, and the first file taken because it is what a stranger reads first, it had **zero tooltips against 55 headings**, and it was already caught carrying four wrong capability claims earlier the same day.
+  - **Capability claims corrected:** the neuron total was published as *"about 425M at full size"* — a **constant**, when the count is derived at boot from free host RAM and has legitimately started at several different values. Replaced with the stable proportions plus a callout stating that a neuron count is only meaningful beside the boot that produced it. (The dictionary-lane diagram in this same file — cache size, error TTL, prefetch concurrency, and the missing offline source — was corrected earlier the same day.)
+  - **Internal references removed entirely:** `WMB`, dated growth-hop notes, `cortexSnapshot`, `Uint8Array`, `cluster.lastSpikes`, `DEFAULT_BIO_WEIGHTS` and the `server/brain-server.js` path. ⚠ **Kept deliberately:** the identifiers inside the ASCII architecture diagram, which is labelled as a diagram, and one field name a reader can actually see on the dashboard.
+  - **Text walls rebuilt into the page's own idiom** (callout / bullet list / short paragraph — never a new structure invented for the occasion): the 1,900-char cluster paragraph, the neuroanatomy paragraph, the dictionary-growth paragraph, and the primary word-production path.
+  - **Tooltips added 0 → 6** on the terms a layman actually trips over — cluster, white-matter tract, dual-stream, whole-word patch, meaning patch, connection strengths — using the site-wide `.tip` + `data-tip` component rather than a page-local idiom.
+  - ⭐ **Three findings were surfaced by rewriting rather than by reading:** the silent-overflow bug that muted learned words, the removed dictionary path that had been carrying **99.1% of her emissions**, and the fact that she has **no grammar table at all** — each was buried mid-wall and now has its own callout.
+  - **Verified:** div/p/ul tag balance equal before and after, walls in this file cut, no `title=`/`data-tip` mixing introduced.
+  - ⏳ **Not finished:** 11 long lines remain in this file, and the FAQ and later sections have not been read yet.
+
 
 
