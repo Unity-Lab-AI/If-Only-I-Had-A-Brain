@@ -99,9 +99,31 @@ Gee (verbatim): *"update savestart pressed, she should be comming back up in the
 
 ⚠ **`bash -n` clean.** Also replaced `[ … ] && _x=1` with an explicit `if` — bash does exempt a failing left-hand side of an AND-list from `set -e` (probed, it survives), but that exemption is a shell detail nobody should need to know to read a script running under `set -euo pipefail`.
 
+---
+
+### ✅ `HYDRATEBOUND.1` — **making the hydration reachable promoted an UNGUARDED copy loop onto the default path**
+
+Gee (verbatim): *"so press update savestart twice?"*
+
+⭐ **His question is what made me re-read what press two would actually run, and the answer was a defect I had just created.**
+
+**Original filing:** `_hydrate_fields_from_local_store` predates the reachability fix and was only ever entered in the rare *"the pull failed"* case, so it never received the guards its two siblings have. `git lfs pull` carries a wall clock, a no-progress watchdog **and** a write ceiling; the fields rsync carries its own stall watchdog. **This loop carried none**, and it can copy ~100k files and ~114 GB.
+
+⛔ **The hazard is not CPU or disk contention, it is PAGE CACHE.** `deploy/REDEPLOY-NOTES.md` records it: a fields rsync pulled **12.4 GB of page cache** into the brain's cgroup and the kernel throttled the whole cgroup while `node` sat at 8.7 GB RSS and looked innocent; killing it dropped the box 20G → 4G instantly. **Any process in her cgroup that touches a lot of file data can evict her working set that way.**
+
+⚠ **I introduced this.** The loop was harmless while unreachable. Making it reachable — correctly — is what turned an unguarded 114 GB copy into the default behaviour of every press on this box. **A reachability fix is a behaviour change to everything downstream of it**, and the guards a path needs are a function of how often it runs, not of what it does.
+
+**VERDICT — FIXED before the press.** `UAL_FIELDS_HYDRATE_MAX_SEC` (default **480s** — the same 8 minutes the LFS pull settled on, and for the same reason: *a cap only protects her if it is shorter than an outage anyone would care about*), plus `nice -n 19` + `ionice -c3` so the copy loses every CPU and disk arbitration against her.
+
+⭐ **The bound costs nothing permanent, which is what makes a hard stop the right shape here.** The loop already skips any destination already at full size, so it is **incremental by construction** — each press hydrates another batch and the next resumes where this one stopped. Until a field arrives, its figure is transformed live: the documented non-fatal path.
+
+⛔ **Checked PER FILE, not per batch**, so a slow copy cannot overshoot the budget by a whole batch — and **everything after the stop is COUNTED and logged with its number**, because a bound that truncates without saying so reads as *"we hydrated everything there was"*.
+
+**Harnessed:** 12 items, 3s budget, 1s per copy → **3 hydrated, 9 reported remaining, stopped flag set**; `=0` disables the bound and all items run. `bash -n` clean. Also used an explicit `if` rather than `command -v … && var=…`, matching the note left at `_fields_opt_out`.
+
 ### Docs updated in the same atomic commit
 
-`docs/TODO.md` (filed, then migrated here) · `docs/FINALIZED.md` (this entry) · `docs/NOW.md` · `docs/RESUME.md` · `deploy/REDEPLOY-NOTES.md` (a dated entry with the truth table and the two-press instruction) · plus the local wiki tree.
+`docs/TODO.md` (filed, then migrated here) · `docs/FINALIZED.md` (this entry) · `docs/NOW.md` · `docs/RESUME.md` · `deploy/REDEPLOY-NOTES.md` (a dated entry with the truth table, the bound, and the two-press instruction) · plus the local wiki tree.
 
 ---
 

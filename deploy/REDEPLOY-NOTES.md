@@ -90,7 +90,19 @@ last-verified: "cd465955 2026-08-29"
 | 1 | 0 | 0 | skip — operator opt-out, obeyed |
 | 1 | 0 | 1 | hydrate ⚠ **pre-existing and deliberately untouched** — the opt-out loses to a failed pull here, and it did before this change too |
 
-> ⛔⛔ **TWO-PRESS SEQUENCE.** A press runs the **box's** copy of `self-update.sh`, not `main`'s. This fix takes effect on the press **after** the one that delivers it. **What to read on the second press:** the log line `fields — hydrated N from the local store, M already present, K unresolved`. If instead it says it *could not find (or read)* the store, that is the `/var/lib/forgejo` mode-750 `git:git` permissions case — the script names the `usermod` that fixes it, and `UAL_LFS_STORE` sets the path explicitly.
+### ⛔⛔ AND MAKING IT REACHABLE PROMOTED AN UNGUARDED COPY LOOP ONTO THE DEFAULT PATH — bounded before the press
+
+The loop predates the fix above and was only ever entered in the rare *pull-failed* case, so **it never received the guards its two siblings have.** `git lfs pull` carries a wall clock, a no-progress watchdog and a write ceiling; the fields rsync carries its own stall watchdog. This carried **none** — and it can copy ~100k files and ~114 GB.
+
+⛔ **The hazard is the one CORRECTION 2 below already records, and it is PAGE CACHE, not CPU or disk.** A fields rsync pulled **12.4 GB of page cache** into the brain's cgroup and the kernel throttled the whole cgroup while `node` sat at 8.7 GB RSS looking innocent; killing it dropped the box **20G → 4G instantly**.
+
+⚠ **The general lesson: a reachability fix is a behaviour change to everything downstream of it.** The guards a path needs are a function of **how often it runs**, not of what it does — and this one went from *almost never* to *every press on this box* in a single edit.
+
+**Bounded:** `UAL_FIELDS_HYDRATE_MAX_SEC` (default **480s**, the same 8 minutes the LFS pull settled on) + `nice -n 19` + `ionice -c3`.
+
+⭐ **The bound costs nothing permanent.** The loop skips any destination already at full size, so it is **incremental by construction** — each press hydrates another batch and the next resumes where this one stopped; until a field arrives its figure is transformed live. The check is **per file, not per batch**, so a slow copy cannot overshoot by a whole batch, and **the remainder is counted and logged with its number** — a bound that truncates silently reads as *"we hydrated everything there was"*. Harnessed: 12 items / 3s budget / 1s per copy → 3 hydrated, 9 reported remaining; `=0` disables it.
+
+> ⛔⛔ **TWO-PRESS SEQUENCE.** A press runs the **box's** copy of `self-update.sh`, not `main`'s. This fix takes effect on the press **after** the one that delivers it. **What to read on the second press:** the log line `fields — hydrated N from the local store, M already present, K unresolved`, optionally followed by `fields — STOPPED at the 480s bound with N still to hydrate` (that is **normal and expected** on the first hydrating press — press again to continue). If instead it says it *could not find (or read)* the store, that is the `/var/lib/forgejo` mode-750 `git:git` permissions case — the script names the `usermod` that fixes it, and `UAL_LFS_STORE` sets the path explicitly.
 
 ---
 
