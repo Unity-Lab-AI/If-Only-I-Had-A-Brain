@@ -220,6 +220,52 @@ function _rawSenses(lemma) {
   return out;
 }
 
+/* WordNet's own suffix-detachment table, POS-scoped, in WordNet's order.
+   Consumed by `lookup()` below — see the long note there for why each candidate
+   is verified against the index rather than trusted, and why the irregular
+   forms are deliberately left to the network lane. The noun rules that overlap
+   the existing plural arm are kept so the table stays WordNet's, not a
+   hand-trimmed subset; a duplicate check costs one Map hit. */
+/* The third field says whether the SUFFIX ITSELF identifies the part of speech.
+   ⛔ It is not decoration — it decides whether `_leadWithPos` may reorder.
+   `-ed` and `-ing` can only be verb forms and `-er`/`-est` only comparatives, so
+   for those the word form is direct evidence and beats attestation. **`-s`,
+   `-es` and `-ies` are shared between noun plurals and verb third-person**, so
+   there the ending proves nothing and attestation must decide — measured:
+   `comes` detaches to `come` under BOTH the noun and the verb rule, and forcing
+   the table's first match to lead made a common verb headline as the vulgar
+   noun. Ambiguous endings therefore return the attested order untouched. */
+const MORPHY = [
+  ['noun', [['s', '', false], ['ses', 's', false], ['xes', 'x', false], ['zes', 'z', false], ['ches', 'ch', false], ['shes', 'sh', false], ['men', 'man', true], ['ies', 'y', false]]],
+  ['verb', [['s', '', false], ['ies', 'y', false], ['es', 'e', false], ['es', '', false], ['ed', 'e', true], ['ed', '', true], ['ing', 'e', true], ['ing', '', true]]],
+  ['adj', [['er', '', true], ['est', '', true], ['er', 'e', true], ['est', 'e', true]]],
+];
+
+/* ⛔⛔ THE INFLECTION KNOWS THE PART OF SPEECH, AND THROWING THAT AWAY REMAKES
+ * THE BUG THIS FILE EXISTS TO FIX.
+ *
+ * `_rawSenses` orders by WordNet's attestation counts across ALL parts of
+ * speech. That is right for a bare lemma and WRONG for one reached by
+ * detaching a verb ending: `spelled` resolves to the lemma `spell`, whose
+ * best-attested sense is the NOUN — *"a psychological state induced by a magic
+ * spell"* — so she would answer a question about a past-tense verb with a
+ * definition of witchcraft. Same shape as `be` leading with beryllium, which
+ * the sense-ordering work above was built to end.
+ *
+ * ⭐ A STABLE PARTITION, NOT A FILTER. Every sense still returns and still
+ * binds — the module's rule is that the SET is complete and only the headline
+ * moves. Senses of the inflection's own part of speech lead; everything else
+ * keeps the attestation order it already had.
+ */
+const _POS_LABEL = { noun: 'noun', verb: 'verb', adj: 'adjective', adv: 'adverb' };
+function _leadWithPos(senses, pos) {
+  const want = _POS_LABEL[pos];
+  if (!want) return senses;
+  const lead = [], rest = [];
+  for (const s of senses) (s.partOfSpeech === want ? lead : rest).push(s);
+  return lead.length ? lead.concat(rest) : senses;
+}
+
 /* ⛔⛔ THE RETRIES ARE NARROW ON PURPOSE, AND ONE OF THEM WAS CAUGHT TEACHING
    NONSENSE BEFORE IT SHIPPED.
    A general "split the word in two and look up both halves" pass recovers nine
@@ -257,6 +303,52 @@ function lookup(word) {
   if (singular) {
     d = _rawSenses(singular);
     if (d.length) return d;
+  }
+
+  /* ⭐⭐ MORPHY — VERB AND ADJECTIVE INFLECTION, WHICH THIS MODULE NEVER DID.
+   *
+   * ⛔ THE COST OF NOT DOING IT, MEASURED on the live `ela/kindergarten` list:
+   * of 17,873 distinct content words, 5,288 missed offline and went to the
+   * network — and `called`, `depending`, `borrowed`, `representing`, `spelled`,
+   * `languages`, `comes`, `oldest`, `created`, `smallest` are all in that list
+   * while WordNet holds `call`, `depend`, `borrow`, `represent`, `spell`,
+   * `language`, `come`, `old`, `create`, `small`. The plural arm above catches
+   * `-s`/`-es`/`-ies` and nothing else, so every past tense and participle in
+   * the corpus paid a network round trip for a lemma already on disk.
+   *
+   * ⭐ MEASURED RECOVERY: **1,806 of the 5,288 misses — 34.2%**, taking this
+   * cell's network chunks from 1,058 to 697.
+   *
+   * ⭐⭐ IT DOES NOT INVENT STEMS, WHICH IS THE RULE THIS FILE ALREADY SETS
+   * ABOVE. These are WordNet's own documented suffix-detachment rules, and a
+   * detachment is ACCEPTED ONLY IF THE RESULT IS IN THE INDEX FOR THAT PART OF
+   * SPEECH — propose and verify, exactly the shape the plural arm uses. A
+   * candidate that is not a real lemma is discarded, never taught.
+   *
+   * ⚠ POS-SCOPED ON PURPOSE. `-ed`/`-ing` are checked against the VERB index
+   * and `-er`/`-est` against the ADJECTIVE index, so a detachment cannot
+   * succeed by landing on an unrelated noun.
+   *
+   * ⛔⛔ THE IRREGULARS ARE OUT OF REACH AND ARE NOT FAKED. `went`, `came`,
+   * `caught`, `children`, `became`, `arose`, `shown` need WordNet's `.exc`
+   * exception files — and **`wordnet-db` ships none**: its payload is nine
+   * files (four `index.*`, four `data.*`, `index.sense`), verified by listing
+   * the directory. A hand-authored irregular table is the banned shape here, so
+   * those words correctly stay on the network lane.
+   */
+  for (const [pos, rules] of MORPHY) {
+    for (const [suffix, replacement, posDistinctive] of rules) {
+      if (!w.endsWith(suffix)) continue;
+      const stem = w.slice(0, w.length - suffix.length) + replacement;
+      // Two-character floor: below it a "stem" is an artefact of the rule, not
+      // a word, and WordNet's own detachment tables assume the same.
+      if (stem.length < 2 || stem === w) continue;
+      // `_idx` is null when WordNet failed to load; the guard keeps a dead
+      // dictionary silent rather than throwing into the teach path.
+      if (!_idx || !_idx[pos] || !_idx[pos].has(stem)) continue;
+      d = _rawSenses(stem);
+      if (d.length) return posDistinctive ? _leadWithPos(d, pos) : d;
+    }
   }
   return [];
 }

@@ -1,6 +1,89 @@
 # RESUME — Session Pickup Brief
 
-> # 🟡 2026-09-06 (latest, 8th) — THE CORPUS LADDER IS CLOSED 193/193, AND THE STAMP CHAIN FINALLY CORNERED THE WEDGE INTO TWO CALLS (PICK UP HERE)
+> # 🟢 2026-09-06 (latest, 9th) — SHE WAS NEVER WEDGED. THE STAMPS NAMED THE AWAIT, AND THE PAGE CRYING WEDGE WAS READING A FIELD THAT DOES NOT EXIST (PICK UP HERE)
+>
+> Gee (verbatim): *"shes up again doner is connecting see if she wedges read resume.md first"* → *"read resume.md and whats next? is she wedged again?"*
+>
+> ## ⛔ READ THIS FIRST — THE ANSWER TO "IS SHE WEDGED" IS NO, AND ONE COUNTER PROVES IT
+>
+> ```
+>   build 424ce6af · booted 23:52:49Z · resume · 388,597,268 neurons
+>   stage  runner:stories   age 0.5 → 36.8 min CLIMBING   seq 15017 FROZEN
+>   _teachWordDefinition.calls  13  ← FROZEN in every one of nine samples
+>   cell ela/kindergarten 37.4 min · phases 2/25 · teach/min 0 · loop lag 17 ms
+>   consolidationWatchdog 0 trips · trickleWordWatchdog 0 trips · no boot fatal
+> ```
+>
+> ⭐⭐ **THAT FROZEN CALL COUNT IS A LOCATION, NOT A SYMPTOM.** `_trainAcademicStories` opens with a two-part pre-vocab step — a batched `prefetchDefinitions(...)`, then a **serial** per-word `_teachWordDefinition` loop. **If she were in the loop, that counter would tick once per word.** It never moved across nine samples. **She is parked on the single line before it.**
+>
+> | reading | verdict |
+> |---|---|
+> | `runner:stories` + `defWordCalls` frozen | inside the **prefetch** — this is where she is |
+> | `runner:stories` + `defWordCalls` climbing | past it, in the **anchoring loop** — that is progress, leave it |
+> | `prevocab:…:N/M chunks` (after the next press) | the countdown; **frozen there means the NETWORK stopped, not the walk** |
+>
+> ⚠ **STILL OPEN AT HANDOFF:** 36.8 min against a priced band of **5 min best / ~26 min typical / 2.6 h throttled**. **The threshold I set is one hour** — past that, the prefetch itself is hung and is a different bug. **That verdict was not reached before this was written and must not be assumed either way.**
+>
+> ## ⛔⛔ ① THE PRICE, MEASURED — AND THE PUBLISHED ONE IS WRONG IN THREE PLACES
+>
+> ```
+>   ela/kindergarten   411,226 words · 17,873 distinct content words
+>   offline dictionary  12,585 answered (70.4%) in 1.5 s
+>   network             5,288 (29.6%)  ->  1,058 sequential chunks @ concurrency 5
+> ```
+>
+> ⛔ **`timeoutMs` BOUNDS ONE FETCH, NEVER THE CALL** — the identical defect already found in the dream-trickle lane, now its third instance.
+>
+> ⛔⛔ **THE RE-PRICE THAT RETIRED THE 60-WORD VOCAB CAP SAYS "CONCURRENCY 20". THE CONSTANT IS 5**, lowered deliberately because dictionaryapi.dev rate-limits hard. It also priced the **prefetch only** and never the serial anchoring loop, which is where the Hebbian binding happens. **Corrected in all three live sites** (`curriculum.js`, `knob-registry.js` ×2, `html/unity-guide.html`); the ledger's historical copy is left as written.
+>
+> ⭐ **THE CAP STAYS OFF AND THAT IS THE POINT.** It was never a cost control, it was a ceiling on what she can ever know. **The defect was silence, not duration.** ⛔ **Bounding this await would delete the anchoring the prose binding stands on** — so it was made to REPORT: `prefetch()` gained an `onProgress` channel (cannot throw into the loop, cannot stop it), the call site stamps `prevocab:<subject>-<grade>:N/M chunks` per chunk and `anchoring N/M` every 50 words. **`_tstage` bumps the sequence, so the region now reads as a countdown instead of a freeze.**
+>
+> ## ⛔⛔⛔ ② THE BENCH HAS BEEN CRYING WEDGE ON EVERY REFRESH SINCE IT SHIPPED
+>
+> Found while updating the in-page copy for ①, not by being told.
+>
+> ```
+>   html/teachview.html:1375   const seq = (st && st.teachStageSeq) || 0;
+>   live payload               state.teachStageSeq                     -> undefined
+>                              state.curriculum.liveness.teachStageSeq -> 15017
+> ```
+>
+> `undefined || 0` → `0`; the freshness test is `seq !== _benchPrev.seq`; **`0 !== 0` is false.** So from the **second sample onward** it rendered `stage sequence FROZEN at 0` and the action **`WEDGE. … Restart via Update & Savestart.`** — unconditionally, for a brain teaching perfectly.
+>
+> ⛔ **It is the check the page itself calls the most important one**, introduced by a comment saying it keeps a previous sample because *"a single instant cannot answer it"*. **It took two readings of a constant.**
+>
+> ⛔⛔ **AND ITS RECOMMENDED ACTION IS DESTRUCTIVE** — a restart mid-pre-vocab discards every definition anchored so far and re-pays the same half hour.
+>
+> ⚠ **IT CANNOT EXONERATE ITSELF.** Some wedge reports were real (one has a paired read 194 s apart with byte-identical counters). **This check could not distinguish a real wedge from a healthy walk by construction, so how many reports it manufactured is UNKNOWABLE** — recorded as unknowable rather than estimated. ✅ Fixed; verdict now carries the stage tag and the action **names a read before a restart**. Grepped: no other file had the same wrong-depth read.
+>
+> ## ⭐ ③ THE OFFLINE DICTIONARY LEARNED INFLECTION — 34.2% OF THAT CELL'S MISSES
+>
+> `called`, `depending`, `spelled`, `languages`, `oldest`, `created` all missed offline and hit the API while WordNet holds `call`, `depend`, `spell`, `language`, `old`, `create`. The module handled the exact lemma, proper nouns, closed compounds and **regular plurals only**.
+>
+> ```
+>   ela/kindergarten   1,806 of 5,288 misses recovered (34.2%)   chunks 1,058 -> 697
+>   corpus-wide        15.2% -> 17.7%   +11,811 words   0 REGRESSIONS
+> ```
+>
+> ⭐ **IT INVENTS NO STEMS**, which is the rule that module already sets: WordNet's own detachment table, **each candidate accepted only if the stem is in the index for that part of speech** — propose and verify, the shape the plural arm already used.
+>
+> ⛔ **THE IRREGULARS ARE DELIBERATELY LEFT ON THE NETWORK.** `went`, `came`, `caught`, `children` need WordNet's `.exc` files and **`wordnet-db` ships none** — nine files, verified by listing the directory. A hand-authored irregular table is the banned shape.
+>
+> ## ⚠ ④ TWO OF MY OWN INSTRUMENTS LIED INSIDE ONE HOUR
+>
+> **A `0.0%` BASELINE THAT WAS A DEAD MODULE.** The before/after sweep reported *"offline answered BEFORE: 0 0.0%"* across 468,511 words. The baseline copy sat in `.scratch/` as `.js`, this repo is `"type": "module"`, so `require()` returned an ESM namespace with no `lookup` — and the per-word `try/catch` recorded every `TypeError` as a miss. ⭐ **A catch converts *"the instrument is broken"* into *"the measurement is zero"*, and those are opposite conclusions.** Re-run as `.cjs`: the real gain is a **tenth** the size of the fake one.
+>
+> **A POS PARTITION THAT MADE `comes` MEAN SEMEN.** Leading with the part of speech the suffix implies is right for `-ed`/`-ing`/`-er`/`-est` and **wrong for `-s`/`-es`/`-ies`**, which noun plurals and verb third-person share — so the table's first match won and a common verb headlined as the vulgar noun. **Ambiguous endings now keep the attested order**; caught by reading the output, not the diff.
+>
+> ## ⛔ ⑤ WHAT IS STILL OPEN
+>
+> - **The one-hour verdict** on whether the prefetch is merely slow or genuinely hung.
+> - **`WEDGE2.5`** — corpus extraction damage (`addedp`, `pictographicp`, `twoword`) that can never resolve and is re-fetched on **every visit forever**. Fix at the fetcher, not the dictionary; a miss-list was already rejected in this exact code path.
+> - Everything shipped here is **server-side and needs a press.** The frontend fix (`teachview.html`, `unity-guide.html`) rides the rsync and is live on the next push.
+>
+> ---
+
+> # 🟡 2026-09-06 (8th) — THE CORPUS LADDER IS CLOSED 193/193, AND THE STAMP CHAIN FINALLY CORNERED THE WEDGE INTO TWO CALLS
 >
 > Gee (verbatim): *"okay lets get to whats lest so we can update and zero the todo whhen its all done"* → *"keep working on stuff needed to be completed in the mean time"* → *"cascade to main both remotes and make sure brainwaves repo has everyhting still properly"* → *"yeay those logs are treadh clean it then get back to finiahing the work"* → *"save start didnt work i think she went straight to wedge idk shes up just not training"* → *"wedged again"*
 >

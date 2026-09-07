@@ -18541,6 +18541,25 @@ export class Curriculum {
         //     cells whose first visit exceeds 30 min    6 of 189
         //     worst cell  science/grad  68,942 new      224 min, ONCE, ever
         //
+        // ⛔⛔ CORRECTION 2026-09-06 — THE PRICE ABOVE IS UNDERSTATED, TWICE, AND
+        // THE CAP DECISION IS STILL RIGHT.
+        //
+        //   ⓐ `PREFETCH_CONCURRENCY` IS **5**, NOT 20. It was lowered
+        //      deliberately (definition-service.js) because dictionaryapi.dev
+        //      rate-limits hard, and this arithmetic was never redone against
+        //      it. Every "at concurrency 20" figure here is off by that ratio.
+        //   ⓑ IT PRICED THE PREFETCH ONLY. The serial per-word loop BELOW is
+        //      where the Hebbian binding happens, and it is not in the number.
+        //
+        // Measured live on `ela/kindergarten`: 17,873 distinct content words,
+        // 70.4% answered by the offline dictionary in 1.5 s, **5,288 to the
+        // network = 1,058 sequential chunks** — read frozen here for 33+ min.
+        //
+        // ⭐ THE CAP STAYS OFF. The ruling it came from is about what she can
+        // ever know, and a truer price does not change that. What the bad price
+        // hid was that this region reports NOTHING, which is why the stamps
+        // below exist.
+        //
         // ⭐ **A CAP HERE WAS NEVER A COST CONTROL, IT WAS A CEILING ON WHAT SHE
         // CAN EVER KNOW** — the same shape as the figure lane's per-visit cap,
         // which turned out to make everything past a cell's 24th picture
@@ -18586,13 +18605,50 @@ export class Curriculum {
           ? newWords
           : Array.from({ length: VOCAB_CAP }, (_, k) => newWords[(vStart + k) % newWords.length]);
         if (newWords.length) this._acadVocabCursor.set(vcKey, (vStart + batch.length) % newWords.length);
+        // ⛔⛔ THIS AWAIT IS WHERE THE WALK APPEARED TO WEDGE, THREE TIMES, AND
+        // IT WAS WORKING EVERY TIME. `timeoutMs` bounds one fetch; the call
+        // itself runs `ceil(networkWords / 5)` sequential chunks with a 5 s
+        // sleep after each throttled one. Measured live on this exact cell:
+        // 17,873 distinct content words, 70.4% answered by the offline
+        // dictionary in 1.5 s, **5,288 to the network = 1,058 chunks**, read
+        // frozen at `runner:stories` for 18+ minutes with `stageSeq` static.
+        //
+        // ⭐ THE FIX IS VISIBILITY, NOT A BOUND. Cutting this short would delete
+        // the definition anchoring the prose binding exists to stand on. The
+        // stamp turns a silent half-hour into a countdown, which is the whole
+        // difference between "she is wedged" and "she is on chunk 340 of 1058".
         if (batch.length && typeof cluster.prefetchDefinitions === 'function') {
-          try { await cluster.prefetchDefinitions(batch, { timeoutMs: 8000 }); } catch { /* prefetch best-effort */ }
+          try {
+            this._tstage?.(`prevocab:${subject}-${grade}:resolving ${batch.length}`);
+            await cluster.prefetchDefinitions(batch, {
+              timeoutMs: 8000,
+              onProgress: (p) => {
+                // Stamp every chunk: `_tstage` is a cheap string set, and the
+                // age-vs-seq pair is exactly what distinguishes progress from a
+                // hang. A frozen seq here now means the NETWORK stopped, not
+                // that the walk did.
+                try { this._tstage?.(`prevocab:${subject}-${grade}:${p.chunk}/${p.chunks} chunks · ${p.words}/${p.total} words`); } catch { }
+              },
+            });
+          } catch { /* prefetch best-effort */ }
+          try { this._tstage?.(`prevocab:${subject}-${grade}:done`); } catch { }
         }
+        // ⚠ AND THIS LOOP IS THE LONGER DARK REGION OF THE TWO. The prefetch
+        // only warms the cache; the binding happens here, serially, one word at
+        // a time. `_teachWordDefinition` is TRACKED so the profile call count
+        // climbs — which is what proved the walk was parked in the prefetch and
+        // not in here — but the STAGE tag would still name the whole runner for
+        // hours. Stamp position periodically, not per word: the tag is read by
+        // a human at ~10 s resolution and a stamp per word is noise.
         let anchored = 0;
+        let _wi = 0;
         for (const w of batch) {
           try { const r = await this._teachWordDefinition(w, { reps: 3, label: `ACADEMIC-PREVOCAB-${subject}-${grade}` }); if (r && r.defsBound > 0) anchored++; }
           catch { /* per-word best-effort */ }
+          _wi += 1;
+          if ((_wi % 50) === 0 || _wi === batch.length) {
+            try { this._tstage?.(`prevocab:${subject}-${grade}:anchoring ${_wi}/${batch.length} · ${anchored} bound`); } catch { }
+          }
         }
         // ⭐ REPORT THE COVERAGE THE WINDOW ACTUALLY BOUGHT, not just its size.
         // "60/60 anchored" says nothing about whether those sixty words are the
