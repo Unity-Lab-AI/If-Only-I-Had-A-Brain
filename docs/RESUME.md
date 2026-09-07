@@ -1,6 +1,65 @@
 # RESUME — Session Pickup Brief
 
-> # 🟢 2026-09-07 (latest, 12th) — BOTH OF HER PICTURE LANES WERE SHUT BY AN ORDERING DEFECT, AND THE SECOND ONE WAS FOUND BY BEING CORRECTED (PICK UP HERE)
+> # 🔴 2026-09-07 (latest, 13th) — HANDOFF: I BROKE THE PRESS. WHAT I BROKE, AND HOW TO GET HER BACK (START HERE)
+>
+> Gee (verbatim): *"okay do the handoff out linine what you broke and how to fix it"*
+>
+> ## ⛔⛔⛔ THE ONE THING TO DO FIRST
+>
+> **Press `Update & Savestart` with `fields=0`.** She comes up with no field copying at all.
+>
+> ```
+>   /admin/update?keep=1&fields=0
+> ```
+>
+> ⭐ **That hatch works only because of a split I added an hour before it was needed.** `UAL_FIELDS=0` and *"this box has no git-lfs"* used to be the same variable, so `fields=0` would have hydrated anyway — **useless in exactly the emergency it exists for.** It is now recorded separately as `_fields_opt_out`.
+>
+> ⚠ **`main` already carries a second belt:** the hydration is **DEFAULT OFF** as of `HEAD`. So a plain `Update & Savestart` on current `main` is also safe — but that is a TWO-PRESS sequence again (the box runs its own copy of the script), and `fields=0` works on the FIRST press. **Use `fields=0` now; the default-off lands underneath it.**
+>
+> ## ⛔ WHAT I BROKE
+>
+> **I made an unguarded ~114 GB file copy the default behaviour of every press on this box.**
+>
+> `_hydrate_fields_from_local_store` copies Forgejo's LFS objects into place by OID. It was correct and it was unreachable — gated behind `git lfs pull` having failed, on a box that has no git-lfs and so never runs one. **Making it reachable was right.** Leaving it on by default was not: that loop copies up to ~100k files **inside the brain's own cgroup**, and this file's own history says any process in there that touches a lot of file data can evict her working set **through page cache alone**, while `ps rss` looks innocent.
+>
+> ```
+>   23:31:24Z  boot 06240fc4          -> answered /public-state.json within 2.5 min
+>   23:35:55Z  press (first run of the hydration)
+>   23:35:55Z+ /health 200 · /ctl/status 401 in 0.16s · /public-state.json TIMEOUT 20+ min
+> ```
+>
+> ⚠ **NOT PROVEN, and I am not going to write it as if it were.** `health 200 + state dead` is *also* the normal savestart-resume signature and the two cannot be told apart from outside. **What makes the hydration the leading explanation is the boot four minutes earlier answering in 2.5 minutes, with this loop as the only difference.**
+>
+> ⚠ **The bound I added did not prevent this.** 480s was modelled on the LFS pull's 8 minutes — but that number was chosen for a **download**, where 8 minutes is short. For a local copy that thrashes page cache at full disk speed it is far too long. **A bound is only a guard if it is shorter than an outage anyone would care about, and I re-used a number without re-deriving it for a different kind of work.**
+>
+> ## ✅ WHAT IS *NOT* BROKEN — CHECK THIS BEFORE CHASING ANYTHING
+>
+> - **Her weights.** Every press was Savestart. Nothing in this ran a wipe.
+> - **The figure-queue reorder** (`js/brain/curriculum.js`) — independent of all of it, and already live on the `23:31:24Z` boot.
+> - **The mind's-eye viewer** — frontend, deployed on push, nothing to do with the press.
+> - **nginx and the control plane** — `/ctl/status` answers 401 in 0.16s throughout.
+>
+> ## ⛔ HOW TO FIX IT — IN ORDER
+>
+> | # | Action | Why |
+> |---|---|---|
+> | **1** | **`/admin/update?keep=1&fields=0`** | gets her up now, no copying, no code needed |
+> | **2** | let the DEFAULT-OFF land (already on `main`) | a plain press stops being able to do this at all |
+> | **3** | ⛔ **move the data sync into its OWN cgroup with its OWN `MemoryMax`** | **this is the actual fix and this file has named it as not-done for days.** Every other guard here is a net around a deploy that shares her memory budget |
+> | **4** | then re-derive the bound *for a copy*, not for a download | ~60–90 s per press, incremental — not 480 s |
+> | **5** | only then `UAL_FIELDS_HYDRATE=1` | the fields are worth having; they are not worth her being unreachable |
+>
+> ⭐ **Nothing is lost by leaving the fields off.** A figure with no field is **transformed live** — slower per figure, correct in every other way, and the documented non-fatal path. **The asymmetry is the whole argument: a missing field costs CPU, an unreachable brain costs everything.**
+>
+> ## ⚠ THE LESSON, WRITTEN DOWN BECAUSE I WILL OTHERWISE REPEAT IT
+>
+> ⛔⛔ **A REACHABILITY FIX IS A BEHAVIOUR CHANGE TO EVERYTHING DOWNSTREAM OF IT.** The guards a path needs are a function of **how often it runs**, not of what it does. This loop was fine for two years at *almost never* and became an incident at *every press*, in one edit — and I shipped the reachability and the guard in the same hour without ever asking what the new frequency demanded.
+>
+> ⚠ **And re-using a constant is re-using its assumptions.** 480 s was a good number for a network pull and a bad one for a local copy. **A bound carries the conditions it was measured under.**
+>
+> ---
+
+> # 🟢 2026-09-07 (12th) — BOTH OF HER PICTURE LANES WERE SHUT BY AN ORDERING DEFECT, AND THE SECOND ONE WAS FOUND BY BEING CORRECTED (PICK UP HERE)
 >
 > Gee (verbatim): *"update savestart pressed, she should be comming back up in the next 5 minutes and we will see if her minds eye is back to normal use/operation"* → then, after I asked him to run a manual pull: *"the field store is suppoose to be downlosaded auto like and the box is to use brain waves repo"*
 >

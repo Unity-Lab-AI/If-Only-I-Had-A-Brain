@@ -2125,5 +2125,22 @@ Found by reading the deployed box after the board cleanup, not by being told. **
 
 ⭐ **Gee's question — *"so press update savestart twice?"* — is what made me re-read what press two would actually run**, and the answer was a defect I had just created: an unguarded ~114 GB copy loop, harmless while unreachable, promoted to the default behaviour of every press. **A reachability fix is a behaviour change to everything downstream of it.** Bounded at 480s (`UAL_FIELDS_HYDRATE_MAX_SEC`) at idle CPU/IO priority, incremental across presses, remainder counted and logged.
 
+---
+
+## HYDRATEOFF — the bound was not enough, the first real run coincided with a 20-minute outage, and the hydration is now default OFF — 2026-09-07
+
+> Gee (verbatim): *"okay do the handoff out linine what you broke and how to fix it"*
+
+- [x] `HYDRATEOFF.1` — **I made an unguarded ~114 GB copy the default behaviour of every press on this box, and the bound I chose was the wrong size**
+  - Original filing: the press at `23:35:55Z` was the first to run `_hydrate_fields_from_local_store`. From that moment `/health` answered 200 and `/ctl/status` 401 in 0.16s while `/public-state.json` **timed out for 20+ minutes** — the listening-but-not-answering signature `REDEPLOY-NOTES` records for a data-sync process starving the brain's cgroup, and past the ~15 min a savestart-resume is allowed.
+  - ⚠ **NOT PROVEN and not written as if it were.** That signature is also a normal long resume and the two cannot be told apart from outside. **What makes it the leading explanation:** the boot four minutes earlier (`23:31:24Z`) answered state within 2.5 minutes, and this loop is the only difference.
+  - ⛔ **THE BOUND I ADDED DID NOT PREVENT IT.** 480s was copied from the LFS pull — a number chosen for a **download**, where 8 minutes is short. For a local copy running at full disk speed and filling page cache it is far too long. **A bound is only a guard if it is shorter than an outage anyone would care about, and I re-used a constant without re-deriving it for a different kind of work.** ⚠ **A constant carries the conditions it was measured under.**
+
+**VERDICT — DEFAULT OFF.** `UAL_FIELDS_HYDRATE` (default `0`); the reachability fix itself STAYS, because without it the fields never arrive at all — **only the default changed.** ⭐ **The asymmetry decides it: a missing field costs a live transform, an unreachable brain costs everything.**
+
+⛔ **The real fix is named in `REDEPLOY-NOTES` and is still NOT done — the data sync belongs in its OWN cgroup with its OWN `MemoryMax`.** Every guard on this path is a net around a deploy that shares her memory budget. **Turn the hydration on after that lands, and re-derive the bound for a COPY (~60–90s per press, incremental) rather than for a download.**
+
+**Escape hatch for the live outage:** `/admin/update?keep=1&fields=0`. ⭐ **It works only because `_fields_opt_out` was split out an hour earlier** — before that, `UAL_FIELDS=0` and *"no git-lfs on this box"* were one variable and the hatch would have hydrated anyway.
+
 
 
