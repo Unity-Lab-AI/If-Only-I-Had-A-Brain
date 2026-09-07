@@ -387,8 +387,10 @@ async function getDefinitions(word, opts = {}) {
  * Returns when all words have been processed (or skipped due to cache).
  *
  * @param {string[]} words
- * @param {{timeoutMs?: number}} [opts]
- * @returns {Promise<{prefetched: number, alreadyCached: number, rateLimited: number}>}
+ * @param {{timeoutMs?: number, onProgress?: (p: {chunk: number, chunks: number, words: number, total: number, prefetched: number, rateLimited: number}) => void}} [opts]
+ *   `timeoutMs` bounds ONE fetch, never the call. `onProgress` fires after each
+ *   chunk settles and is a report, not a bound — see the loop comment.
+ * @returns {Promise<{prefetched: number, alreadyCached: number, rateLimited: number, chunks: number, networkWords: number}>}
  */
 async function prefetch(words, opts = {}) {
   if (!HAS_FETCH || !Array.isArray(words) || words.length === 0) {
@@ -424,6 +426,28 @@ async function prefetch(words, opts = {}) {
     if (inFlight.has(key)) { alreadyCached += 1; continue; }
     todo.push(key);
   }
+  /* ⛔⛔ THIS LOOP RAN SILENT AND THAT IS WHAT MADE IT LOOK LIKE A HANG.
+   *
+   * The caller `await`s this whole function. `opts.timeoutMs` bounds each
+   * INDIVIDUAL fetch and nothing bounds the total, so a large word list is one
+   * await lasting as long as `ceil(todo/PREFETCH_CONCURRENCY)` sequential
+   * chunks — plus a RATE_LIMIT_BACKOFF_MS sleep after every chunk that hit a
+   * 429. Measured on the real `ela/kindergarten` list: 17,873 distinct content
+   * words, 12,585 answered offline in 1.5 s, **5,288 to the network = 1,058
+   * sequential chunks**, which is ~5 min at best and hours if the API throttles.
+   *
+   * ⭐ Nothing above is a bug — that IS the work, and killing it would delete
+   * the anchoring the prose training depends on. **The bug was that it reported
+   * nothing while doing it**, so from outside it is indistinguishable from a
+   * wedge. This is the third time this project has mistaken an unbounded-but-
+   * working await for a hang.
+   *
+   * ⚠ `onProgress` is therefore a REPORTING channel, deliberately not a bound.
+   * It never throws into the loop and it never stops it.
+   */
+  const _onProgress = (typeof opts.onProgress === 'function') ? opts.onProgress : null;
+  const _chunks = Math.ceil(todo.length / PREFETCH_CONCURRENCY);
+  let _chunk = 0;
   // Process in chunks of PREFETCH_CONCURRENCY.
   for (let i = 0; i < todo.length; i += PREFETCH_CONCURRENCY) {
     const batch = todo.slice(i, i + PREFETCH_CONCURRENCY);
@@ -441,11 +465,17 @@ async function prefetch(words, opts = {}) {
       if (c && c.rateLimited) { rateLimited += 1; batchHit429 = true; }
       else if (c && !c.error) prefetched += 1;
     }
+    /* Report BEFORE the back-off sleep, so a throttled run shows the chunk it
+       reached rather than going quiet for another 5 s at the worst moment. */
+    _chunk += 1;
+    if (_onProgress) {
+      try { _onProgress({ chunk: _chunk, chunks: _chunks, words: Math.min(i + batch.length, todo.length), total: todo.length, prefetched, rateLimited }); } catch { /* a reporter must never break the work it reports on */ }
+    }
     if (batchHit429) {
       await new Promise(r => setTimeout(r, RATE_LIMIT_BACKOFF_MS));
     }
   }
-  return { prefetched, alreadyCached, rateLimited };
+  return { prefetched, alreadyCached, rateLimited, chunks: _chunks, networkWords: todo.length };
 }
 
 /**

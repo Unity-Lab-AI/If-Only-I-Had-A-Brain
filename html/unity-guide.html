@@ -531,9 +531,19 @@
   word arrives  ("bank")
        │
        ▼
-  cluster.lookupDefinitionFull(word)  ─────────────────  dictionaryapi.dev
-       │                                                  (LRU cache 10K, 5min err TTL,
-       │                                                   prefetch concurrency 20)
+  cluster.lookupDefinitionFull(word)
+       │
+       ├─ 1. LRU cache (100K entries, flushed to disk)
+       ├─ 2. OFFLINE WordNet — 155,467 lemmas, in-process, no network.
+       │       Answers ~70% of corpus vocabulary and ~96% of the early
+       │       grades. A PEER source, not a fallback: multi-sense with
+       │       part of speech, the same shape the network returns.
+       │       Regular inflections resolve here too (called → call),
+       │       each candidate checked against the index, never guessed.
+       └─ 3. dictionaryapi.dev, only for what the first two miss
+               (prefetch concurrency 5 + back-off; error TTL depends on
+                WHY it failed — a genuine "no such word" is permanent,
+                a rate-limit rides 6h, a network blip retries in 60min)
        ▼
   array&lt;{partOfSpeech, definition, example, synonyms}&gt;
    ├──── meaning 1 (noun):  "a financial institution where money is kept"
