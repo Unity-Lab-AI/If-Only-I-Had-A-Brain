@@ -86,7 +86,9 @@ last-verified: "5698d8e1 2026-09-07 (2nd) — snapshot refreshed against the sam
 
 ⛔ **A still mind's-eye frame is normally right, not stuck.** That screen publishes only something real she saw or drew — never the formless mood texture — and the only frame the imagination tick can ground needs words out of her inner-thought chain to aim with. **She has banked none yet**, so nothing qualifies to replace the last real picture. It will start moving on its own when she banks her first words.
 
-⛔ **The field store on the box is answering pointer stubs.** `git lfs pull` has not run there, so the figure lane misses almost everything it asks for — which is the *other* reason her eyes have had nothing new. **This is a press, not a code change**; the hydration is already in the deploy script.
+⛔ **The field store on the box is answering pointer stubs, and the automatic hydration could not fire.** The credential-free path — copy Forgejo's own LFS objects off local disk by the OID each pointer names — was gated behind `git lfs pull` having failed, and that call **succeeds by design** on a box with no git-lfs. **The one condition it was written for was the one condition that skipped it.** Fixed; it needs the second of two presses, because a press runs the box's own copy of the deploy script.
+
+⛔ **And her third frame source was shut by an ordering defect.** The background figure drain publishes a picture every ~1.5 s — and the only thing that enqueues rows ran *after* the cell's multi-hour prose phase, which has never completed on this walk. Measured: `figureQueue.total 0` on a resumed boot, where zero is not a reset but *never*. The enqueue now runs at the top of the cell.
 
 ### Vitals
 
@@ -123,6 +125,8 @@ These are the traps this project has actually fallen into. Each one cost real ti
 | **The GPU is not the throughput ceiling** | Utilisation sits low with essentially no queue wait, so a faster card buys idle silicon. The cost is elsewhere in the round trip. |
 | **A mind's-eye frame that stops moving is usually correct** | The viewer refuses to publish anything but a real percept, so a still frame means *nothing new qualified* — not that the eye is broken. **Read the inner-voice hold before investigating the viewer.** |
 | **An error string names where it was CAUGHT, not what failed** | A figure that was perceived, stored, published and taught reported itself as a storage failure for six hours, because the throw came from the success log at the tail of the same `try`. |
+| **A fallback whose trigger is a FAILURE cannot fire when the thing that would fail is never attempted** | The field hydration that needs no credential sat behind `if ! git-lfs-pull`, on a box that has no git-lfs and therefore never runs one. **Check what reaches a fallback, not just what it does.** |
+| **A work queue that fills at the END of a long phase is empty for the whole phase** | The background figure lane exists so nothing pins the cell pass — and the enqueue that feeds it was placed behind the longest await in that same pass. **`total 0` on a RESUMED boot means *never*, not *reset*.** |
 
 ---
 
