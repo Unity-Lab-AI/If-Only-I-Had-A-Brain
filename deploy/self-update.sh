@@ -1312,16 +1312,56 @@ else
     # ⭐ A checkout with no git-lfs filter writes POINTERS, which is exactly the
     # input this needs — so the absent tool costs nothing here except the branch
     # that used to reach it.
+    # ⛔⛔ AND IT IS BOUNDED, BECAUSE MAKING IT REACHABLE PROMOTED AN UNGUARDED
+    # COPY LOOP ONTO THE DEFAULT PATH.
+    #
+    # This loop predates the fix above and was only ever reached in the rare
+    # "the pull failed" case, so it never got the guards its two siblings did:
+    # `git lfs pull` has a wall clock, a no-progress watchdog and a write
+    # ceiling; the fields rsync has its own stall watchdog. **This had none** —
+    # no `nice`, no `ionice`, no bound — and it can copy ~100k files and ~114 GB.
+    #
+    # ⛔ THE HAZARD IS NOT CPU OR DISK CONTENTION, IT IS PAGE CACHE. Recorded in
+    # REDEPLOY-NOTES: a fields rsync pulled 12.4 GB of page cache into the
+    # brain's cgroup and the kernel throttled the WHOLE cgroup, while `node` sat
+    # at 8.7 GB RSS and looked innocent. Any process in here that touches a lot
+    # of file data can evict her working set that way. Killing it dropped the box
+    # from 20G to 4G instantly.
+    #
+    # ⭐ SO: a wall clock (`UAL_FIELDS_HYDRATE_MAX_SEC`, default 480s — the same
+    # 8 minutes the LFS pull settled on, and for the same reason: a cap only
+    # protects her if it is shorter than an outage anyone would care about), plus
+    # `nice`/`ionice` so the copy loses every arbitration against her.
+    #
+    # ⚠ CUTTING IT SHORT COSTS NOTHING PERMANENT, and that is what makes a hard
+    # bound the right shape here. The loop already SKIPS any destination already
+    # at full size, so it is incremental by construction: each press hydrates
+    # another batch and the remainder waits. A field that has not arrived is
+    # transformed live — the documented non-fatal path.
     _hydrate_fields_from_local_store() {
+      _hyd_max="${UAL_FIELDS_HYDRATE_MAX_SEC:-480}"
+      _hyd_started="$(date +%s)"
+      # Explicit `if`, not `cmd && var=…`, for the reason given at `_fields_opt_out`.
+      _hyd_nice=''
+      if command -v nice   >/dev/null 2>&1; then _hyd_nice="nice -n 19"; fi
+      if command -v ionice >/dev/null 2>&1; then _hyd_nice="$_hyd_nice ionice -c3"; fi
       _lfs_store="$(_search_lfs_store || true)"
       if [ -z "$_lfs_store" ]; then
         log "WARN — could not find (or read) Forgejo's LFS object store on this box, so the field payloads cannot be hydrated from disk either. Every figure without a field is transformed live. ⚠ If Forgejo's data directory is mode 0700 and owned by another user, this is a PERMISSIONS result, not an absence — say so rather than assuming the fields are gone."
       elif [ ! -d "$FTMP/bw/fields" ]; then
         log "WARN — the clone has no fields/ directory; nothing to hydrate."
       else
-        log "fields — hydrating from Forgejo's local LFS store at ${_lfs_store}. No credential, no network: each pointer names its object and the object is a file on this disk."
-        _fh=0; _fm=0; _fs=0
+        log "fields — hydrating from Forgejo's local LFS store at ${_lfs_store}. No credential, no network: each pointer names its object and the object is a file on this disk. Bounded to ${_hyd_max}s (UAL_FIELDS_HYDRATE_MAX_SEC) and run at idle CPU/IO priority, because this copy shares the brain's cgroup and can throttle her through page cache alone."
+        _fh=0; _fm=0; _fs=0; _fleft=0; _fstop=0
         while IFS= read -r _ptr; do
+          # ⛔ THE BOUND IS CHECKED PER FILE, NOT PER BATCH, so a long-running
+          # copy cannot overshoot it by a whole batch. Everything after the stop
+          # is COUNTED rather than dropped silently — a bound that truncates
+          # without saying so reads as "we hydrated everything there was".
+          if [ "$_fstop" = "1" ]; then _fleft=$((_fleft+1)); continue; fi
+          if [ "$_hyd_max" != "0" ] && [ "$(( $(date +%s) - _hyd_started ))" -ge "$_hyd_max" ]; then
+            _fstop=1; _fleft=$((_fleft+1)); continue
+          fi
           _rel="${_ptr#"$FTMP/bw/fields/"}"
           _dst="${FIELDS_DIR}/${_rel}"
           # Already hydrated at full size? leave it.
@@ -1331,7 +1371,7 @@ else
           _obj="${_lfs_store}/${_oid:0:2}/${_oid:2:2}/${_oid}"
           if [ -f "$_obj" ]; then
             mkdir -p "$(dirname "$_dst")" 2>/dev/null || true
-            if cp --reflink=auto -f "$_obj" "$_dst" 2>/dev/null || cp -f "$_obj" "$_dst" 2>/dev/null; then
+            if $_hyd_nice cp --reflink=auto -f "$_obj" "$_dst" 2>/dev/null || $_hyd_nice cp -f "$_obj" "$_dst" 2>/dev/null; then
               _fh=$((_fh+1))
             else _fm=$((_fm+1)); fi
           else _fm=$((_fm+1)); fi
@@ -1339,6 +1379,13 @@ else
 $( { find "$FTMP/bw/fields" -name '*.field.json' -type f 2>/dev/null || true; } )
 EOF
         log "fields — hydrated ${_fh} from the local store, ${_fs} already present, ${_fm} unresolved. ⚠ The unresolved ones are transformed live; that is the documented non-fatal path and not a failed press."
+        if [ "$_fstop" = "1" ]; then
+          # ⭐ INCREMENTAL BY CONSTRUCTION, so the bound costs nothing permanent:
+          # the skip above leaves anything already at full size alone, so the
+          # next press starts where this one stopped. Say the number out loud —
+          # a silent truncation reads as "covered everything".
+          log "fields — STOPPED at the ${_hyd_max}s bound with ${_fleft} still to hydrate. This is deliberate: the copy shares the brain's cgroup and an unbounded one has starved her before. It resumes on the next press (already-hydrated files are skipped), and until then those figures are transformed live. Raise with UAL_FIELDS_HYDRATE_MAX_SEC, or 0 for no bound."
+        fi
       fi
     }
 

@@ -50,9 +50,21 @@
 >
 > ✅ **Truth-tabled over all 8 combinations.** The box's row (`_have_lfs=0`, no opt-out) now hydrates where it used to print SKIPPED; opt-out is obeyed; the git-lfs-present rows are unchanged. ⚠ **One row reported and untouched:** git-lfs present + `UAL_FIELDS=0` + failing pull hydrates despite the opt-out — **true before this change too.**
 >
+> ## ⛔⛔ ④ AND MAKING IT REACHABLE PROMOTED AN UNGUARDED 114 GB COPY ONTO THE DEFAULT PATH — CAUGHT BY HIS NEXT QUESTION
+>
+> Gee (verbatim): *"so press update savestart twice?"* — **and re-reading what press two would actually run is what found a defect I had just created.**
+>
+> The copy loop was only ever entered in the rare pull-failed case, so **it never got the guards its two siblings have** — the LFS pull has a wall clock, a no-progress watchdog and a write ceiling; the rsync has its own stall watchdog. ⛔ **The hazard is PAGE CACHE, not CPU or disk:** a fields rsync once pulled **12.4 GB of page cache** into the brain's cgroup and the kernel throttled everything while `node` sat at 8.7 GB RSS looking innocent.
+>
+> ⚠ **The general lesson, and it is the one worth carrying: a reachability fix is a behaviour change to everything downstream of it.** The guards a path needs are a function of **how often it runs**, not of what it does — this one went from *almost never* to *every press on this box* in one edit.
+>
+> ✅ Bounded at **480s** (`UAL_FIELDS_HYDRATE_MAX_SEC`) at `nice -n 19` + `ionice -c3`. ⭐ **The bound costs nothing permanent** — already-full-size destinations are skipped, so it is incremental across presses. Checked **per file**, and the remainder is **counted and logged**, because a silent truncation reads as *"we hydrated everything there was"*. Harness: 12 items / 3s / 1s per copy → 3 done, 9 reported left; `=0` disables.
+>
 > ## ⛔ WHAT TO DO NEXT — IT IS A TWO-PRESS SEQUENCE
 >
 > **A press runs the BOX's copy of `deploy/self-update.sh`, not `main`'s.** The press that delivers this fix cannot run it. **The one after it can.**
+>
+> ⭐ **`fields — STOPPED at the 480s bound with N still to hydrate` is NORMAL on the first hydrating press, not a failure.** Press again to continue from where it stopped.
 >
 > | On press 2, read | Meaning |
 > |---|---|

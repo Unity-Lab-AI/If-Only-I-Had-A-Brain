@@ -2117,5 +2117,13 @@ Found by reading the deployed box after the board cleanup, not by being told. **
 
 ⛔ **Both fixes need TWO presses to take full effect** — the deploy half runs the BOX's copy of `self-update.sh`, so it lands on the press after the one that delivers it.
 
+---
+
+## HYDRATEBOUND — making the hydration reachable promoted an UNGUARDED copy loop onto the default path — caught + closed 2026-09-07 before the press
+
+✅ **CLOSED THE SAME PASS.** Verbatim text archived to **`docs/FINALIZED.md §2026-09-07 (3rd)`** and **string-probed 5/5 present** before removal.
+
+⭐ **Gee's question — *"so press update savestart twice?"* — is what made me re-read what press two would actually run**, and the answer was a defect I had just created: an unguarded ~114 GB copy loop, harmless while unreachable, promoted to the default behaviour of every press. **A reachability fix is a behaviour change to everything downstream of it.** Bounded at 480s (`UAL_FIELDS_HYDRATE_MAX_SEC`) at idle CPU/IO priority, incremental across presses, remainder counted and logged.
+
 
 
