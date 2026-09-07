@@ -2055,5 +2055,28 @@ Found by reading the deployed box after the board cleanup, not by being told. **
   - ⭐ **The prior decision NOT to rewrite the dated entries was respected, and it is the right one** — *"editing them would falsify the history this page exists to keep."* They are labelled instead, with the rule that the measured table wins any disagreement.
   - ⏳ **Still open:** 88 ticket IDs and 3 name refs in the tree body, almost all in the skills-table status column where they served as completion evidence. ⚠ **And a measurement caveat worth stating: my wall metric counts any line over 1,200 characters, which flags long TABLE ROWS.** A table row is the correct structure and cannot be wrapped in markdown, so the tree body's 13 "walls" are mostly not layout defects — **the metric is imperfect here and I am not going to chase it into making the tables worse.**
 
+  **`docs/NOW.md`** — ✅ **RESET on instruction.** Gee (verbatim): *"now can be reset to templet.. its not a history archive and nothing in there is needed dont argue"*.
+  ```
+    was   1,217 lines · 582,912 B · 82 stacked "Current" blocks
+          183 walls · worst line 22,027 chars · 336 ticket IDs · 256 name refs
+    now     122 lines ·   5,747 B ·   0 walls · longest line 288 · 0 IDs · 0 names
+  ```
+  - ⭐ **It died of appending.** Eighty-two blocks, each written as *"current"*, **not one removed when it stopped being true** — and it duplicated history that already lives in the ledger and the resume brief. **Two records that can disagree are worse than one.**
+  - **Rebuilt as what its title always claimed:** a snapshot, populated from live field reads rather than placeholders, each quoted with the boot that produced it. Carries the **six traps that have actually cost this project time**, and a set of rules for keeping it honest — **overwrite, never append**; every number a field read; no ticket IDs; corrections go to the ledger — so it cannot rot back into a changelog.
+  - ⚠ **Not destroyed:** git holds every byte on both remotes and the recovery command is written into the new file's own provenance block.
+
+  **`docs/ROADMAP.md`** — ⏳ major pass done. ⛔⛔ **The status table carried `Current date: 2026-04-21` for nearly five months** — **the purest form of a stale status block, because the one thing the field exists to tell you is the one thing it gets wrong.** Replaced with a re-measured row plus a row stating where she *actually* is: `ela/kindergarten`, phases 2/25, **cells passed 0**, still pre-K. ⭐ **The curriculum being BUILT and the walk being under way are different claims, and this page had been running them together.**
+  - ⛔ **Two phase headings read "IN PROGRESS" for work that shipped in April** — one with a branch name, one describing an emission loop that was not merely finished but *deleted and replaced*. **A roadmap that never marks a phase finished stops being a plan and becomes a list of things that look unfinished.** Now **0 "IN PROGRESS" headings, 0 branch names in headings.**
+  - **The stale geometry appeared twice more** in the shipped-milestones row ("7 clusters", "8-subregion cortex substrate, 14 cross-region projections") — corrected to the measured eight / eleven / sixteen.
+  - ✅ **All 11 personal attributions removed from the body → 0.** These were decision credits, and a brain document names the mechanism, not the person. ⭐ **Every verbatim quote was kept intact** — a quote is evidence, and stripping it would destroy the record while pretending to tidy it. **Only the attribution wrapper changed.**
+  - ⏳ **Still open:** 150 ticket IDs in the phase narratives, load-bearing as cross-references in the prose.
+
+  **`docs/EQUATIONS.md`** — ⏳ major pass done, and this one was a **layout** job: *"make it beautiful"*.
+  - ⛔ **A duplicate `## 1. Master Equation` heading with nothing under it** — the same heading twice, four lines apart. Removed.
+  - ⭐ **Given a real front page:** the three ideas the whole document rests on (θ identity · Ψ as capacity ÷ activity · δ(t) chemistry), a **complete four-part table of contents** with working anchors, and a *how to read this page* block. ⚠ **The ToC was checked against the actual headings** — a contents table that does not match its document is worse than none.
+  - ⭐⭐ **The best thing in that new block is the distinction the history keeps making:** *a form change and an input change are different things.* **The most expensive defects in this project were never wrong formulas — they were right formulas fed a dead input.** Φ̂ multiplied by its own floor for months while looking perfectly correct.
+  - **Five tail headings renamed from ticket and commit references to mechanisms** — the language cortex, semantic grounding, component synthesis, relation channels — so the numbering now runs cleanly 0 · 0.5 · 1–15 with **zero duplicates**. The rejected n-gram design is relabelled **SUPERSEDED** with *why* it was rejected: **it produced grammatical output without learning grammar, so nothing about her speech was evidence of anything she knew.**
+  - ✅ **Name refs 4 → 0.** The ~15 dated sweep stamps are now under an explicit `## Change history` heading, **deliberately not rewritten** — ⭐ *a stamp saying "no equation form changed" is only worth anything if it stays as written.*
+
 
 
