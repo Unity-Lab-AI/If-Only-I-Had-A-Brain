@@ -1,6 +1,53 @@
 # RESUME — Session Pickup Brief
 
-> # ✅ 2026-09-08 (latest, 22nd) — THE PHASE DENOMINATOR EXISTS NOW, AND THE CURSOR HAD BEEN THERE ALL ALONG (START HERE)
+> # ✅ 2026-09-08 (latest, 23rd) — THE THREE TEACH FLAGS, AND THE FIX WAS THE LOOKUP NOT THE CONTENT (START HERE)
+>
+> Gee pasted the live panel: `DEF-DEFER ×3308` · `PRECELL-MISS 12 of 2247` · `DEF-MISS ×41`.
+>
+> ## ⭐ THE EXAMPLES CARRIED THE DIAGNOSIS — TWO DEFECTS, NOT ONE
+>
+> - **On disk:** `grayhair`, `toystore`, `presidentsday`, `chinesenewyear` are IN `kindergarten.json`; `dont` is in `grade12.json`.
+> - **At runtime:** `hennypenny`, `cockylocky`, `teenytiny`, `youve`, `replied` are in **no list** — a `[^a-z]` strip over prose destroying hyphens and apostrophes. ⛔ **Jacobs spells them `Henny-Penny` / `Cocky-Locky`; the tale is `Teeny-Tiny`.**
+> - ⛔⛔ **And the structural one: the offline dictionary is `noun/verb/adj/adv` only** — no prepositions, pronouns, conjunctions or determiners exist in it. **49 of kindergarten's 75 offline misses are function words.**
+>
+> ## ⛔⛔ I WAS ONE EDIT FROM CUTTING REAL CURRICULUM
+>
+> The plan was to delete four damaged tokens from the word list. Then I probed the **whole** holiday cluster rather than the flag's eight examples:
+>
+> ```
+>   laborday newyear independenceday memorialday veteransday groundhogday   ALL RESOLVE
+>   presidentsday valentinesday                                            MISS
+>
+>   presidents_day  0 senses     presidents'_day  1 sense   <- POSSESSIVE APOSTROPHE
+>   valentines_day  0 senses     valentine_day    1 sense   <- FIRST ELEMENT SINGULAR
+> ```
+>
+> **They were never absent from WordNet — the join could not reach them.** `Presidents' Day` was being reported as a word with no definition while the dictionary on disk could define it. ⛔ **Deleting it would have removed a real thing a kindergartener learns, to silence a lookup bug.** **No content was touched.**
+>
+> ## ✅ SHIPPED — both in `server/offline-dictionary.js`
+>
+> - **Compound arm tries three shapes** (plain / possessive / singular-head), each propose-and-verify against the index.
+> - **The Morphy rules WordNet files in `.exc`** — `ied→y`, doubled-consonant `-ed`/`-ing`, adverbial `-ly`/`-ily`. `wordnet-db` ships **no `.exc`**, so all of these were paying a network round trip for a lemma already on disk.
+>
+> **19,339 distinct list words: 2,938 → 2,819 missing, 119 recovered.**
+>
+> ⚠ **BUT KINDERGARTEN GOES 75 → 74, so the panel you are looking at drops by about ONE word.** Its misses are function words, irregulars and proper nouns. Said plainly rather than letting the 119 imply otherwise — **the value is upper-grade coverage and outage resilience** (the API returned `000` for a day on 2026-09-05 and the walk sat 17.5 h on one cell).
+>
+> **Guardrails:** 18/18 targets resolve; `zzzqqq`/`hennypenny`/`grayhair`/`mlk`/`airbnb`/`xxpped`/`qqly` all still correctly absent — nothing invented.
+>
+> ## ⛔ A FOURTH DETECTOR DISCARDED — four in one session
+>
+> The rule to generalise the deletion flagged **`javascript`, `smartphone`, `datasets`, `filesystems`, `keywords`, `webassembly`, `lunchbox`, `kickball`** — all real words. Also caught: a truthiness bug (`lookup()` returns `[]`, which is truthy) that briefly reported **"0 undefinable"** for a list with 75 misses, and a denominator slip comparing 19,339 distinct against 56,527 with duplicates. **All caught by self-tests before reaching a claim.**
+>
+> ## ⏳ THE BIG ONE IS FILED, NOT FIXED — `VOCABMISS.4`
+>
+> The runtime `[^a-z]` strip lives at **12+ sites** in `curriculum.js`. `Henny-Penny → hennypenny` can never resolve, is never added to the taught set, stays in `newWords`, and is re-looked-up **every visit, forever** — that is the 3,308. **Not attempted:** 12+ sites, different lanes, changes what enters the definition queue, and needs its own measurement of hyphen/apostrophe damage versus genuinely-absent proper nouns like `moufflou`. **Guessing the split and rewriting 12 sites is how a sweep breaks a lane.**
+>
+> ⭐ **Nothing went near her. Boot `24ddd9c2`, 233,932,309 neurons, teaching.** All of today's four batches land on the same restart — **one Update & Savestart** collects them and answers `RESUMEPROOF.1`.
+>
+> ---
+
+> # ✅ 2026-09-08 (22nd) — THE PHASE DENOMINATOR EXISTS NOW, AND THE CURSOR HAD BEEN THERE ALL ALONG
 >
 > Gee (verbatim): *"okay fix that then if u can and the work needing to be done"*
 >
