@@ -183,6 +183,62 @@ sudo loginctl enable-linger unity
 
 ---
 
+## 2026-09-08 — RESUMETERM + DONORWATCH: THE SIZING GOT ITS MISSING TERM, AND THE POD LEARNED TO WATCH THE THING IT IS PAID FOR
+
+Gee (verbatim): *"yeah do it all so we never have to have Sponge fix it for you"*
+
+⭐ **Both of these were found by Sponge, both were named in his brief as the real fix, and neither was built. This is the building.**
+
+### ✅ `RESUMETERM.1` — the sizing had no term for a RESUME (closes `KI-42`)
+
+**Original filing:** `DREAM_CGROUP_OVERHEAD_MB` measures everything that is not weights, **at a fresh boot**. A savestart resume does one more thing no fresh boot does: it reads the saved weight file off disk and holds it while applying it — `[Brain] Binary weights queued for apply — 17 sections, 4931.4 MB` — on top of the arrays the budget already sized. **Nothing in the model accounted for it, so every resume boot overshot by roughly the size of that file. And a press IS a savestart resume.**
+
+Measured on the box: budget 15,580 − 2,048 OS reserve = **13,532 MB for weights** against **20,957 MB actual anon** ⇒ real non-weight overhead **7,425 MB** where the model said 2,867, of which **4,931 MB is the weight file**. Result: 102% of `memory.high`, ~628 throttle events/second, process in `D` state, `/health` timing out while systemd read the unit healthy.
+
+**VERDICT — FIXED.** `brain-server.js` stats the weight pair it is about to read and subtracts it from the budget whenever this boot intends to resume.
+
+⛔ **It PREDICTS the keep/wipe rather than reading it, and that is unavoidable.** `autoClearStaleState()` makes the real decision and must run *later*, because its compatibility checks compare against `TOTAL_NEURONS` — which the sizing block is what produces. **The circularity is real and is not resolvable there.** So the term reads only the two signals that precede any compatibility test, and **errs in the safe direction**: those checks can only turn an attempted resume INTO a wipe, never a wipe into a resume, so a rejected resume merely under-sizes for one boot while a successful one is exactly right.
+
+⚠ **READ-ONLY, deliberately.** `autoClearStaleState` *consumes* `.force-fresh` and the resume marker (`unlinkSync` — one resume per clean stop is the contract). The term only ever stats and parses; the harness asserts both files survive it.
+
+⛔ **A TDZ trap caught before shipping.** The first cut referenced `RESUME_MARKER_PATH`, a module-level `const` declared **~480 lines below** a block that runs at module load — `ReferenceError` from the temporal dead zone, which `node --check` cannot see and a `typeof` guard does not shield. Path inlined, with the reason written at the site.
+
+⭐ **The term announces itself EVERY boot, including when it is zero.** *"RESUME SIZING TERM — 0MB: this boot is not resuming…"* — because a term that only prints when it fires is indistinguishable, from the log, from a term that does not exist. **Which is exactly how this one stayed missing while costing a stall on every press.**
+
+**10/10 harness on real files:** fresh walk keeps full size · `DREAM_KEEP_STATE=1` reserves both files · `.force-fresh` beats it · clean-shutdown marker alone reserves · marker without `cleanShutdown` does not · corrupt marker returns 0 and never throws · bin-only reserves · **neither marker file is consumed.**
+
+⚠ **`DREAM_CGROUP_OVERHEAD_MB=4900` is now over-conservative on a resume** — it was 2,867 plus a hand patch *for* this missing term, and the term now applies on top. She boots smaller than necessary; she does not stall. Reclaiming it means returning the knob to 2,867, which **changes the neuron count and therefore wipes the weights** — an operator decision about timing, not a tidy-up. Documented in the drop-in itself.
+
+### ✅ `DONORWATCH.1` — the pod supervises PROCESS LIVENESS, not the CONNECTION (files `KI-43`)
+
+**Original filing:** `wait $DP` returns when the donor process EXITS; `kill -0 $DP` asks only whether it EXISTS. **A donor that is donating and a donor that is alive-but-wedged are identical to both** — and the walk is donor-gated, so a wedged donor stops her completely.
+
+⛔ **Twice now.** 2026-08-26: the pod sat at **0% GPU / 0% CPU for 24.9 hours**. 2026-09-08: donor alive on the correct release (`0.3.36` = the brain's own `recommendedDonorVersion`), WS lane handshaking cleanly (`101` + welcome frame), **not attached** — `donorCount 0`, `meanVoltageSource no-gpu-donor-attached`, 10 readback refusals — and she sat at **frames 0 · spikes 0 · psi 0 · cellStatus idle for 53 minutes** while `/health` answered 200 in under a millisecond.
+
+⭐ **The first occurrence was recorded and its remedy written as a PROCEDURE** — *"Brain first, pod second"* — which is advice, not a mechanism. Nothing could detect the second one either.
+
+**VERDICT — FIXED IN THE LAUNCHER, and the live pod cannot receive it.** The watchdog now also asks the brain whether this pod's GPU is in the attached-donor list, and after `DONOR_MAX_MISS` (3) consecutive **answered** misses kills the donor by PID into the existing reinstall-and-relaunch path.
+
+⚠⚠ **It requires the brain to ANSWER before counting a miss, and that condition is the whole design.** A brain that is down is not evidence the donor is wedged — sitting in the reconnect loop is the *correct* behaviour then, and killing over it would burn the pod against nothing. **Unreachable, empty, non-JSON, and nginx-SPA-swallowed HTML all score NO strike.** That last one matters: a 200 carrying HTML is a documented trap here, and the `"donorCount"` shape guard is what catches it.
+
+⚠ **Identity is by GPU MODEL**, because `donors[].name` publishes the GPU (`NVIDIA A40`), not `DONOR_NAME`. Two identical models are indistinguishable — **a false negative, which leaves a wedged donor running rather than killing a working one.** Safe direction, chosen deliberately.
+
+**11/11 harness** against a stub server across all three outcomes, including the SPA-swallow and a closed port.
+
+⛔ **WHAT DOES NOT CLOSE IT: `update-pod` cannot change `args`.** A pod's command is fixed at creation, forever — so **the live pod keeps the old supervisor until it is recreated.** ⭐ **The structural close is donor-side:** the binary should exit on a prolonged failure to reach the brain, so *any* supervisor relaunches it. That is a `donor-v*` release, not a launcher edit, and it is not done.
+
+### ⚠ AND THE LIVE INCIDENT THIS CAME OUT OF
+
+The pod was restarted (donor machines are in scope; she had zero donors, so there was nothing to lose) and **she went from 53 minutes of absolute zero to teaching within two minutes** — `frames 0 → 533`, `spikes 0 → 505,955`, `psi 0 → 21.8`, and 19,803 teach/min shortly after.
+
+⛔ **The lesson worth more than either fix: every health signal was green while she did nothing.** `/health` 200 in 0.95 ms, memory 32% of ceiling, PSI 0.00, proc `Ssl`, unit active. **Not one of them asked whether she was teaching.** `frameCount`, `totalSpikes` and `cellStatus` are the ones that would have.
+
+### Docs updated in the same atomic commit
+
+`docs/TODO.md` · `docs/FINALIZED.md` (this entry) · `docs/KNOWN_ISSUES.md` (`KI-42` → FIXED, `KI-43` filed, summary block rewritten) · `docs/RESUME.md` · `deploy/dropins/40-cgroup-overhead.conf` (the knob's new relationship to the term) · `deploy/runpod-donor-create.md` (the fourth fix + a log-line table for verification).
+
+---
+
 ## 2026-09-07 (3rd) — FIGORDER + FIELDHYDRATE: BOTH OF HER PICTURE LANES WERE SHUT BY AN ORDERING DEFECT, AND THE SECOND ONE WAS FOUND BY BEING CORRECTED
 
 Gee (verbatim): *"update savestart pressed, she should be comming back up in the next 5 minutes and we will see if her minds eye is back to normal use/operation"* → then, after I asked him to run a manual pull: *"the field store is suppoose to be downlosaded auto like and the box is to use brain waves repo"*
