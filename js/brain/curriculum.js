@@ -3750,6 +3750,56 @@ export class Curriculum {
    * A unit whose gate names a grade outside `GRADE_ORDER` is COUNTED rather
    * than dropped: an unresolvable guard must not silently shrink the whole.
    */
+  /**
+   * Publish a LEAF phase's own position, because the nested-unit denominator is
+   * structurally 0 for every phase that does its work in a loop.
+   *
+   * ⛔⛔ WHY THIS EXISTS. `phaseWork`'s total comes from
+   * `_phaseReachableTotal(name)`, which counts the distinct nested `_teach*`
+   * units a phase's SOURCE calls. That is a good estimate for an ORCHESTRATOR
+   * phase and it is **0** for a leaf. Measured on the shipped sources:
+   *
+   *     _teachAssociationPairs    0        _teachSentenceStructure   5
+   *     _teachWordDefinition      0
+   *     _teachConcreteSentences   0
+   *     _teachQABinding           0
+   *     _teachVocabList           0
+   *
+   * A total of 0 makes the publisher emit `null` — so the bar was blind to
+   * precisely the phases that cost the hours. `_teachAssociationPairs` and
+   * `_teachWordDefinition` alone account for ~26 h of nested work inside a 16 h
+   * wall clock, and "how far through phase 2 is she?" had no answer on the box.
+   * The absence was filled once by a forecast built on a frozen field instead.
+   *
+   * ⭐ ONE HELPER, NOT A COPY PER PHASE. Two leaf phases already bank a rep
+   * cursor with identical code, and the publish rules here (the owner guard, the
+   * on-exit `done`, the 0.99 cap) are the parts easy to get subtly wrong twice.
+   * Adding a call site is now one line.
+   *
+   * ⚠ `done` counts COMPLETED units only — at unit 0 nothing has landed, so it
+   * reports `0 of N` rather than crediting work in flight. Same on-exit rule the
+   * nested-unit tally follows, for the same reason: a bar that moves by claiming
+   * completion is the defect the whole `phaseWork` instrument exists to avoid.
+   * ⚠ `frac` caps at 0.99 so a phase can never read finished from inside its own
+   * loop; only the phase wrapper's exit clears the override.
+   * ⚠ The `_phaseWorkName` guard is load-bearing: these methods are also called
+   * NESTED inside other phases, and without it a nested call would overwrite the
+   * cursor of the outer phase that actually owns the bar.
+   */
+  _publishPhaseCursor(name, done, total, extra) {
+    try {
+      if (this._phaseWorkName !== name) return;
+      const t = Number(total) || 0;
+      const d = Math.max(0, Number(done) || 0);
+      this._phaseWorkOverride = {
+        done: d,
+        total: t,
+        frac: t > 0 ? Math.min(0.99, d / t) : 0,
+        ...(extra || {}),
+      };
+    } catch { /* an instrument must never be able to stop a teach */ }
+  }
+
   _phaseReachableTotal(name) {
     const lexical = (this._teachNestedTotal && this._teachNestedTotal[name]) || 0;
     const gates = this._teachNestedGate && this._teachNestedGate[name];
@@ -4530,7 +4580,36 @@ export class Curriculum {
               inflightMs: inf ? (Date.now() - inf.at) : null,
             };
           })()
-        : null,
+        // ⛔⛔ THE THIRD BRANCH, AND IT EXISTS BECAUSE BARE `null` READ AS
+        // "NOT PUBLISHED" WHEN THE TRUTH WAS "THIS PHASE HAS NO DENOMINATOR".
+        //
+        // A leaf phase's nested-unit total is 0 (see `_publishPhaseCursor`), so
+        // before this branch the field was simply `null` for the whole run —
+        // indistinguishable from a missing feature, and it left "how far through
+        // phase 2 is she?" unanswerable rather than answered-with-a-limit. That
+        // silence is what a 12-hour forecast got built into.
+        //
+        // ⭐ Now it names the phase, says the denominator is unavailable and
+        // WHY, and still gives the two things that ARE known and do answer "is
+        // she stuck?": the unit in flight and how long it has held. A 4-hour age
+        // on a named unit is the difference between stuck and expensive, and no
+        // fraction was ever going to express it.
+        // ⚠ `frac: null`, never 0 — a zero fraction is a claim about progress.
+        : (this._phaseWorkName
+          ? (() => {
+              const inf = this._phaseWorkInflight;
+              return {
+                name: this._phaseWorkName,
+                done: null,
+                total: null,
+                frac: null,
+                denominator: 'unavailable',
+                why: 'leaf phase — its work is a loop, not a set of nested teach units, so no structural total exists. Read inflightMs, and teachProfile for the per-call cost.',
+                inflight: inf ? inf.name : null,
+                inflightMs: inf ? (Date.now() - inf.at) : null,
+              };
+            })()
+          : null),
       // PHASE COUNTS - ONE derivation, from ONE record.
       //
       // `passedPhases` is the ledger: the auto-wrap appends `cellKey:method`
@@ -16734,6 +16813,10 @@ export class Curriculum {
         if (!cluster._phaseRepCursor || typeof cluster._phaseRepCursor !== 'object') cluster._phaseRepCursor = {};
         cluster._phaseRepCursor[_cursorKey] = reps - rep;
       }
+      // ⭐ Publish this leaf phase's own position — its nested-unit denominator
+      // is 0, so without this `phaseWork` reports `null` for the whole run.
+      // See `_publishPhaseCursor` for why the total is structurally absent here.
+      this._publishPhaseCursor('_teachQABinding', rep, reps, { unit: 'rep' });
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) {
         // PHASELOOP.2 — the shutdown exit that used to bank NOTHING (the
         // exact defect PHASELOOP.1 fixed in the sibling loop). Banked above
@@ -20711,6 +20794,19 @@ export class Curriculum {
         if (!cluster._phaseRepCursor || typeof cluster._phaseRepCursor !== 'object') cluster._phaseRepCursor = {};
         cluster._phaseRepCursor[_cursorKey] = reps - rep;
       }
+      // ⭐⭐ Publish this leaf phase's own position. This is THE phase that ate
+      // 16 hours with no readable progress: its nested-unit denominator is 0, so
+      // `phaseWork` emitted `null` for the entire run and "how far through phase
+      // 2 is she?" had no answer anywhere on the box. `pairTeaches*` is carried
+      // alongside the rep fraction because a rep here is `pairs.length`
+      // pair-teaches wide — 8,428 x 60 in one recorded call — and the rep count
+      // alone hides that scale.
+      this._publishPhaseCursor('_teachAssociationPairs', rep, reps, {
+        unit: 'rep',
+        pairs: pairs.length,
+        pairTeachesDone: pairs.length * rep,
+        pairTeachesTotal: pairs.length * reps,
+      });
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) {
         // Banked above already; returning the same SHAPE as the budget stop so a
         // caller cannot tell the two apart by accident and silently treat an

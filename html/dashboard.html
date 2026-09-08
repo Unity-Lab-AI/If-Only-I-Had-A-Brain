@@ -3387,7 +3387,14 @@
       } else if (status === 'in-progress') {
         const total = c.cellPhasesTotal | 0;
         const pw = c.phaseWork;
-        pct = Math.min(99, Math.round(((done + (pw ? pw.frac : 0)) / total) * 100));
+        // ⚠ `frac` IS NULL, NOT 0, WHEN THE PHASE HAS NO DENOMINATOR. A leaf
+        // phase's work is a loop rather than a set of nested teach units, so no
+        // structural total exists and the backend now says so explicitly
+        // instead of publishing a bare `null` block. `pw ? pw.frac : 0` would
+        // hand `null` to this arithmetic — which happens to coerce to 0 here,
+        // and would NOT in any consumer that formats it. Tested, not assumed.
+        const pwFrac = (pw && typeof pw.frac === 'number') ? pw.frac : 0;
+        pct = Math.min(99, Math.round(((done + pwFrac) / total) * 100));
         // A phase name is published only while a DECLARED phase is actually in
         // flight. If that is ever absent the label says so plainly instead of
         // substituting a nested primitive, because a name that is not the
@@ -3412,8 +3419,16 @@
                   : `${(pw.inflightMs / 60000).toFixed(0)}m`})</span>`
               : '')
           : '';
+        // ⛔ `work ${pw.done}/${pw.total}` WOULD RENDER "work null/null" for a
+        // leaf phase, which is worse than the old empty tail: it looks like a
+        // broken read rather than a stated limit. When the denominator is
+        // genuinely unavailable, say that and lean on the in-flight age — which
+        // is the field that actually answers "is she stuck?" and is present in
+        // both shapes.
         const workTail = pw
-          ? ` &middot; <span style="color:#fcd34d;">work ${pw.done}/${pw.total}</span>${inflightTail}`
+          ? (typeof pw.done === 'number' && typeof pw.total === 'number'
+              ? ` &middot; <span style="color:#fcd34d;">work ${pw.done}/${pw.total}${pw.unit === 'rep' ? ' reps' : ''}</span>${inflightTail}`
+              : ` &middot; <span style="color:#fbbf24;">no phase denominator (loop phase)</span>${inflightTail}`)
           : '';
         const vp = c.vocabProgress;
         const vocabTail = (vp && vp.total > 0)
