@@ -1,6 +1,46 @@
 # RESUME — Session Pickup Brief
 
-> # 📄 2026-09-08 (latest, 20th) — `WEBSOCKET.md` CLEARED, AND THREE OF THE SWEEP'S OWN RULERS WERE WRONG (START HERE)
+> # ⛔ 2026-09-08 (latest, 21st) — SHE WAS NEVER STUCK; TWO INSTRUMENTS WERE, AND ONE WAS GRADING THE VIEWER'S VERDICT (START HERE)
+>
+> Gee (verbatim): *"okay she has been grinding for 16 houirs, you sdaid 12 hrs... why is she not done with phase 2 yet"*
+>
+> ## ⛔⛔ THE HONEST ACCOUNT: I GAVE HIM A 12.3-HOUR FORECAST OFF A FROZEN FIELD
+>
+> `2,148 queued × 20.6 s/definition` — **both numbers from `definitionQueue.lastWindow`, which had been byte-identical for 13.6 hours.** Two fossils multiplied into a forecast. Then, checking it, I swung the other way and declared the drain **dead** off the same field.
+>
+> ⚠ **I had the evidence to catch it the first time.** My own paired read showed `depth 2,148 → 2,148 FROZEN` and I wrote *"expected, the window is 185 s"* — **a plausible story fitted to a dead counter instead of a longer sample.**
+>
+> ## ⭐ SHE IS FINE. WHAT SHE WAS ACTUALLY DOING
+>
+> ```
+>   _teachWordDefinition   2,365 -> 17,002 calls   (+14,637 in 13.6h)
+>   live rate              +73 calls / 168s  =  2.30 s per call
+>   published rate                              20.6 s   <- ~9x wrong
+>   phaseChain             _teachWordDefinition -> _teachAssociationPairs (nested)
+> ```
+>
+> **Phase 2 IS the association pass**, and it anchors every unlearned word it touches: **865 min in `_teachWordDefinition` + 711 min in `_teachAssociationPairs`** — ~26 h of nested work inside 16 h of wall clock. The board already carries one `_teachAssociationPairs` call measured at **14.88 hours.** Nothing is wedged.
+>
+> ## ✅ FIXED — both savestart-safe, no geometry, no format bump
+>
+> - **`DEFQLIE.1`** — `definitionQueue` describes the **dream trickle**, which sleeps during a walk. `_trickleLastWindow` now carries **`at`** (it had *no timestamp*, which is why a fossil read as live), the block is labelled `lane: 'dream-trickle'` with **`lastWindowAgeMs`**, and **`state.curriculum.definitionAnchor` is NEW** — the lane that actually works, from `_teachProfile`, rate banked on a **clock** not per call.
+> - ⛔⛔ **The worst instance was a PAGE.** `html/teachview.html` graded the definition lane on `dq.lastWindow.bound > 0`; the fossil carries `bound: 158`, so **the viewer built to answer "is it working?" was answering green off a 13.6-hour-old number — and that fed its overall `WORKING` verdict.** Now graded on `definitionAnchor`, trickle shown **ungraded** beside it.
+> - **`SPIKESEM.1`** — `totalSpikes` is **instantaneous** (both writers `= 0` then re-sum), so it legitimately falls; it did, twice (`−24,710`, `−10,935`), and I reported that as an anomaly before reading the writers. **`state.spikesLifetime` added at BOTH writer sites** — both, or it stalls on whichever lane is running, the split that made `gpuHits` read 0 for a whole walk. `NOW.md`'s liveness test now names `frameCount · spikesLifetime · cellStatus` + two new trap rows. ⭐ `totalSpikes = 0` **stays meaningful**; only the delta was worthless.
+>
+> **Verified:** the `definitionAnchor` IIFE **extracted by brace-matched range and run as shipped, 5/5** — including reproducing the hand-measured **2.30 s/call** exactly. Real spike sequence replayed: instantaneous fell on 2 of 3, lifetime rose on all 3. `node --check` ×3, ESM import clean, teachview tags + scripts parse, **`curriculum.js` not in the bundle so no rebuild owed.**
+>
+> ## ⭐ CHECKED AND DELIBERATELY NOT CHANGED
+>
+> `html/dashboard.html` says `"N firing"` — **already the honest word** for an instantaneous value. `ADMIN-CONTROLS.md` and `wiki/**` — **zero hits**, genuinely unaffected. `RESUME.md`'s older blocks keep the old wording; rewriting history to match a later fix is forbidden.
+>
+> ## ⏳ OPEN
+>
+> - ⛔ **THE PHASE DENOMINATOR IS MISSING** — `macroPhaseProgress`, `phaseWork`, `outermostPhase`, `cellSubPhasesTotal` all null/absent, so `cellSubPhases` climbs at ~1,289/min against nothing. **"When does phase 2 finish" is unanswerable from the box.** That is why no second ETA was given, and it should not be guessed.
+> - **`RESUMEPROOF.1` — "is the savestart stall behind us?" is PROBABLY, UNPROVEN.** The 0.03% sizing prediction was measured on `mode:"wipe"` force-fresh; the stall happens on a **resume**. Headroom argues it holds (`cgroup 11,884 / 20,480 MB · throttleEvents 0`). **The reading:** next Update & Savestart prints `RESUME SIZING TERM — … ÷ 1.3644 = …` with `bootReason.mode` = resume, and `cellStatus` reaches `in-progress`. **No fresh walk needed.**
+>
+> ---
+
+> # 📄 2026-09-08 (20th) — `WEBSOCKET.md` CLEARED, AND THREE OF THE SWEEP'S OWN RULERS WERE WRONG
 >
 > Gee (verbatim): *"keep going cascade once ur complete"*
 >
