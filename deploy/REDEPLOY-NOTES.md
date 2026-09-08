@@ -106,7 +106,42 @@ last-verified: "cd465955 2026-08-29"
 
 ⭐ **So it is OPT-IN until it runs somewhere that is not her memory budget.** The fields are non-fatal by design — a missing one is transformed live — and the brain being unreachable is not. **That asymmetry decides the default.** The reachability fix stays (it was correct; without it the fields never arrive at all); only its default changed.
 
-⛔ **THE STRUCTURAL FIX IS ALREADY NAMED IN THIS FILE AND IS STILL NOT DONE:** *the data sync should run in its OWN cgroup with its OWN MemoryMax, not the brain's.* Everything else here — the wall clock, the watchdogs, the write ceiling, the `nice`/`ionice`, and now this default — is a safety net around a deploy that shares her memory budget. **Turn `UAL_FIELDS_HYDRATE=1` on after that lands, not before.**
+### ⛔⛔⛔ 2026-09-08 — THE STRUCTURAL FIX WAS NOT MISSING. IT WAS WRITTEN, MERGED, LIVE, AND **INERT** — AND THE LOG CLAIMED IT WORKED
+
+**The line that stood here said the structural fix was "STILL NOT DONE".** That was wrong, and being wrong in that direction is the more expensive way to be wrong: it sent the next reader off to build something that already existed instead of asking why the thing that existed was not working.
+
+`OWNCGROUP` landed **2026-09-05**, is merged to `develop` and `main`, and — checked by ancestry — **was already in the tree at the `06240fc4` boot**, four minutes before the hydration ran. The deploy was *supposed* to be in its own cgroup that night. It was not.
+
+⛔ **WHY IT WAS INERT: `systemd-run --user` CANNOT REACH A USER MANAGER FROM A SYSTEM UNIT.** libsystemd looks for the user bus in `$DBUS_SESSION_BUS_ADDRESS`, then `$XDG_RUNTIME_DIR`. **`unity-brain.service` sets neither, and a system service gets no session bus.** Measured on systemd 259 with both unset, exactly as the unit leaves them:
+
+```
+  Failed to connect to user scope bus via local transport:
+  $DBUS_SESSION_BUS_ADDRESS and $XDG_RUNTIME_DIR not defined
+  exit 1   —   and the payload never ran
+```
+
+⭐ **THE FALLBACK IS WHY NOBODY NOTICED.** The handler's plain-spawn fallback caught it correctly, so the deploy *ran* — inside her cgroup, which is the one thing the block exists to prevent. **And the summary line announced containment anyway**, because it was built from `_useScope`, a config flag, rather than from whether the scope started. ⛔⛔ **A status assembled from intent is a label, not a status** — this project has now paid for that exact shape twice, once on a page reading `live` over a six-hour-old frame and once here.
+
+| | Before | After |
+|---|---|---|
+| `XDG_RUNTIME_DIR` for the scope | never set → bus unreachable | **derived** (`/run/user/<uid>`) and passed on the child env |
+| runtime dir missing | attempted anyway, confusing failure | **not attempted**; names the one box command that fixes it |
+| the summary line | asserted containment from a config flag | reports the path **attempted**, and points at ground truth |
+| ground truth | nowhere | `self-update.sh` reads **its own cgroup and its own `memory.max`** and logs `cgroup: CONTAINED` / `cgroup: ⚠ UNCONTAINED` as its first line |
+
+⛔ **AND THE REMAINING HALF IS NOT CODE — IT IS ONE COMMAND, ONCE, AS ROOT ON THE BOX:**
+
+```bash
+sudo loginctl enable-linger unity        # creates /run/user/<uid> for a service
+                                         # account with no login session; persists
+                                         # across reboots
+```
+
+⚠ **Until that is run the deploy stays uncontained, and it now SAYS SO instead of claiming otherwise.** The script tightens its own memory-shaped bounds on that reading, so the uncontained case is safe — just slow. **Nothing is broken while it waits.**
+
+⚠ **A drop-in cannot substitute for it.** `Environment=XDG_RUNTIME_DIR=/run/user/999` would point at a directory that still does not exist; lingering is what creates it. Drop-ins install per `deploy/dropins/README.md` and do not help here.
+
+⛔ **`UAL_FIELDS_HYDRATE=1` STILL WAITS FOR THAT COMMAND.** The default did not flip and it does not flip itself — a false read of containment would put the ~114 GB copy straight back in her budget. The `OFF` log line now reports whether the precondition is met, so the decision can be made from the log instead of from memory.
 
 ### ⛔⛔ Making it reachable promoted an unguarded copy loop onto the default path — bounded before the press
 
@@ -116,11 +151,34 @@ The loop predates the fix above and was only ever entered in the rare *pull-fail
 
 ⚠ **The general lesson: a reachability fix is a behaviour change to everything downstream of it.** The guards a path needs are a function of **how often it runs**, not of what it does — and this one went from *almost never* to *every press on this box* in a single edit.
 
-**Bounded:** `UAL_FIELDS_HYDRATE_MAX_SEC` (default **480s**, the same 8 minutes the LFS pull settled on) + `nice -n 19` + `ionice -c3`.
+**Bounded, as first shipped:** `UAL_FIELDS_HYDRATE_MAX_SEC` (default **480s**, the same 8 minutes the LFS pull settled on) + `nice -n 19` + `ionice -c3`.
 
 ⭐ **The bound costs nothing permanent.** The loop skips any destination already at full size, so it is **incremental by construction** — each press hydrates another batch and the next resumes where this one stopped; until a field arrives its figure is transformed live. The check is **per file, not per batch**, so a slow copy cannot overshoot by a whole batch, and **the remainder is counted and logged with its number** — a bound that truncates silently reads as *"we hydrated everything there was"*. Harnessed: 12 items / 3s budget / 1s per copy → 3 hydrated, 9 reported remaining; `=0` disables it.
 
-> ⛔⛔ **TWO-PRESS SEQUENCE.** A press runs the **box's** copy of `self-update.sh`, not `main`'s. This fix takes effect on the press **after** the one that delivers it. **What to read on the second press:** the log line `fields — hydrated N from the local store, M already present, K unresolved`, optionally followed by `fields — STOPPED at the 480s bound with N still to hydrate` (that is **normal and expected** on the first hydrating press — press again to continue). If instead it says it *could not find (or read)* the store, that is the `/var/lib/forgejo` mode-750 `git:git` permissions case — the script names the `usermod` that fixes it, and `UAL_LFS_STORE` sets the path explicitly.
+### ⛔⛔ 2026-09-08 — AND 480s WAS THE WRONG **INSTRUMENT**, NOT MERELY THE WRONG NUMBER
+
+480s was lifted from the `git lfs pull`, a number chosen for a **network download** where eight minutes is short. ⚠ **Re-using a constant re-uses the conditions it was measured under**, and a download and a local copy share none of them.
+
+⛔ **But seconds are the wrong unit for this hazard at ANY size.** What starves her is **page-cache volume** in a shared cgroup, and seconds only become volume by way of disk speed:
+
+| Bound | at 1 GB/s | at 10 MB/s |
+|---|---|---|
+| `480s` | ~480 GB of page cache | ~4.8 GB |
+
+**The same bound, two orders of magnitude apart in the quantity it exists to limit.** So the primary bound now counts **bytes copied**, and the wall clock is demoted to a second net for the slow-not-large case.
+
+| Knob | Uncontained (today's box) | Contained (after `enable-linger`) |
+|---|---|---|
+| `UAL_FIELDS_HYDRATE_MAX_BYTES` | **2 GiB** | **0** — lifted |
+| `UAL_FIELDS_HYDRATE_MAX_SEC` | **90s** | **480s** |
+
+⭐ **Where every number comes from — derived, not picked.** The recorded incident is 12.4 GB of page cache pinning the cgroup with `node` at only 8.7 GB RSS. The unit's ceiling is `MemoryHigh=22G` / `MemoryMax=24G`, so against a ~8.8 GB node the whole headroom is ~13 GB and a copy that dirties a few GB has already spent a real share of it. **2 GiB leaves that headroom standing**, and at ~1.13 MB a field (114 GB over 101,002 reachable figures) it is ~1,800 fields a press — a trickle, deliberately. **90s is then the smallest wall clock that cannot cut a healthy run short**: 2 GiB at the 25–100 MB/s a `nice -n 19 ionice -c3` copy actually gets is 20–80s. It is also ~13× shorter than the outage that made this default off, which is the property a guard needs and the one 480s did not have.
+
+⭐ **The bounds are CHOSEN FROM A MEASUREMENT, not from the launcher's intention.** `_deploy_is_contained` reads `/proc/self/cgroup` **and** this cgroup's own `memory.max`. ⛔ **Both halves are load-bearing** — the first draft asked only "am I outside her unit", which called a hand-run SSH copy CONTAINED and relaxed the bounds; a scope with `MemoryMax=2G` reads `2147483648` where a plain shell in the same slice reads `max`. **Unknown counts as uncontained** (a cgroup namespace reads `0::/` and reveals nothing), because a false *contained* puts the 114 GB copy back in her budget and a false *uncontained* costs one more press.
+
+✅ **Exercised against the shipped bodies, extracted by line range rather than retyped — 14 checks:** both bounds proven to fire *and to name which one bit*; the remainder counted; `already present` / `unresolved` counters correct; a second press resuming where the first stopped (4 copied → 4 skipped + 4 more); both bounds at `0` running unbounded; the containment verdict correct inside a **real** `systemd-run` scope, in a scope with no `MemoryMax`, in a plain shell, and against `0::/` / empty / `/`. ⚠ **One defect was found only by running it:** a 512 KiB press printed `0 MiB copied` — integer truncation, the same instrument-says-nothing shape this project keeps paying for. It reports KiB under 1 MiB now.
+
+> ⛔⛔ **TWO-PRESS SEQUENCE.** A press runs the **box's** copy of `self-update.sh`, not `main`'s. This fix takes effect on the press **after** the one that delivers it. **What to read on the second press:** first the `cgroup: CONTAINED` / `cgroup: ⚠ UNCONTAINED` line, which decides how to read everything under it; then `fields — hydrated N from the local store (X MiB copied), M already present, K unresolved`, optionally followed by `fields — STOPPED at <which bound>, having copied X MiB, with N still to hydrate` (that is **normal and expected** on the first hydrating presses — press again to continue). If instead it says it *could not find (or read)* the store, that is the `/var/lib/forgejo` mode-750 `git:git` permissions case — the script names the `usermod` that fixes it, and `UAL_LFS_STORE` sets the path explicitly.
 
 ---
 
