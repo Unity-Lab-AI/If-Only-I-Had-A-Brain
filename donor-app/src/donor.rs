@@ -519,6 +519,100 @@ mod upgrade_tests {
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// WEDGE WATCHDOG — the donor ends itself when it is neither donating nor trying.
+//
+// ⛔⛔ THE FAILURE THIS EXISTS FOR, TWICE MEASURED. On 2026-08-26 a pod sat at
+// 0% GPU / 0% CPU for 24.9 HOURS. On 2026-09-08 the donor process was alive, on
+// the correct release, with the brain's WS lane handshaking cleanly — and NOT
+// attached, printing nothing at all, for 53+ minutes, while the brain read
+// `donorCount 0` and the walk (which is donor-gated) did no work whatsoever.
+//
+// ⛔ AND THE SUPERVISOR ABOVE COULD NOT SEE IT. `run_donor_supervised` prints on
+// every retry, and the pod logs carried NO donor output — so it was not in the
+// reconnect loop at all. It was pinned INSIDE `run_donor`. The comment on
+// `WORKER_JOIN_PATIENCE` already names this class: *"blocked inside a wedged GPU
+// call would otherwise pin run_donor forever and make the reconnect supervisor
+// unreachable (the exact failure the supervisor exists to prevent)."*
+//
+// ⭐⭐ SO THE CHECK CANNOT LIVE ON THE THING IT IS CHECKING. This is a plain OS
+// thread that only reads an atomic and sleeps, so it stays alive no matter what
+// the tokio runtime, the GPU driver or a network call is doing. Same reasoning
+// as the brain's own loop watchdog, which runs off-thread precisely because
+// "every diagnostic channel rode the loop under investigation".
+//
+// ⚠⚠ IT REQUIRES *BOTH* SILENCES BEFORE IT FIRES, and that is the whole design.
+// Progress is stamped when a frame arrives from the brain, when we register, AND
+// on every supervisor reconnect attempt. So a brain that is simply DOWN keeps
+// stamping (the supervisor's backoff caps at 30s, twenty times faster than this
+// window) and is never mistaken for a wedge. **Only "not receiving AND not even
+// trying" trips it** — which is a state with no legitimate meaning.
+//
+// ⭐ EXITING IS THE FIX, NOT A CRASH. The launcher's supervisor loop already
+// reinstalls and relaunches on exit — that is exactly how UPGRADE BEFORE
+// RECONNECT above works. So this repairs the LIVE pod too, whose baked-in
+// `args` can never be changed (`update-pod` does not accept them).
+//
+// `DONOR_SELF_EXIT_SECS=0` disables it.
+//
+// ⚠ Uses the module's existing `now_ms()` (wall clock) rather than a second
+// clock of its own. A monotonic `Instant` would be more correct in principle,
+// but this module already has one time source and adding a second — with a
+// colliding name — is how the first build of this failed to compile. At a
+// ten-minute granularity a clock step is not a hazard; a duplicated clock is.
+static LAST_PROGRESS_MS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// Record that the donor is demonstrably doing something. Cheap enough to call
+/// on every received frame.
+pub fn stamp_donor_progress() {
+    LAST_PROGRESS_MS.store(now_ms(), Ordering::Relaxed);
+}
+
+/// Start the wedge watchdog. Headless/autostart only — an interactive GUI user
+/// may sit deliberately idle, and ending their process would be a bug, not a fix.
+pub fn start_wedge_watchdog() {
+    // ⛔ FLOORED AT 300s, AND THE FLOOR IS NOT DEFENSIVE PADDING — IT IS A
+    // MEASURED BOUND. A healthy first session can legitimately be silent for
+    // ENGINE_INIT_TIMEOUT (75s) of GPU engine build plus a connect attempt with
+    // its own timeout. Running this at 40s killed a donor whose only fault was
+    // that its brain was unreachable — the exact false positive this watchdog
+    // exists to avoid causing. A window shorter than a legal startup does not
+    // detect wedges, it manufactures them. Same `max()` idiom the hang limit
+    // above already uses.
+    let secs: u64 = std::env::var("DONOR_SELF_EXIT_SECS")
+        .ok()
+        .and_then(|v| v.trim().parse::<u64>().ok())
+        .map(|v| if v == 0 { 0 } else { v.max(300) })
+        .unwrap_or(600);
+    if secs == 0 {
+        println!("[donor] wedge watchdog DISABLED (DONOR_SELF_EXIT_SECS=0) — a hung donor will stay hung and silent.");
+        return;
+    }
+    stamp_donor_progress();   // the grace period starts now, not at epoch
+    println!("[donor] wedge watchdog armed — self-exit after {secs}s with no frame from the brain AND no reconnect attempt. Exiting lets the supervisor reinstall and relaunch.");
+    std::thread::spawn(move || {
+        let limit_ms = secs.saturating_mul(1000);
+        loop {
+            std::thread::sleep(Duration::from_secs(30));
+            let last = LAST_PROGRESS_MS.load(Ordering::Relaxed);
+            let idle = now_ms().saturating_sub(last);
+            if idle >= limit_ms {
+                // stderr is unbuffered — a wedged process must be able to say so.
+                eprintln!(
+                    "[donor] ⛔ WEDGED — {}s with no frame from the brain and no reconnect attempt. \
+This is not a brain outage (that still stamps progress via the reconnect loop); it is this process stuck. \
+Exiting with code 17 so the supervisor reinstalls and relaunches.",
+                    idle / 1000
+                );
+                use std::io::Write;
+                let _ = std::io::stderr().flush();
+                let _ = std::io::stdout().flush();
+                std::process::exit(17);
+            }
+        }
+    });
+}
+
 pub async fn run_donor_supervised(
     cfg: DonorConfig,
     gpus: Vec<GpuInfo>,
@@ -534,6 +628,12 @@ pub async fn run_donor_supervised(
         .fold(0u64, |a, b| a.wrapping_mul(31).wrapping_add(b as u64))
         % 1500;
     loop {
+        // ⭐ THIS STAMP IS WHAT KEEPS A BRAIN OUTAGE FROM READING AS A WEDGE.
+        // Reaching the top of this loop proves the runtime is alive and still
+        // trying, even when every attempt fails. The backoff caps at 30s, so a
+        // donor waiting on a down brain stamps ~20x faster than the watchdog
+        // window and can never trip it.
+        stamp_donor_progress();
         let result = run_donor(cfg.clone(), gpus.clone(), utils.clone(), control.clone()).await;
 
         // User Stop / Ctrl+C → never reconnect.
@@ -648,6 +748,13 @@ Exiting so the supervisor installs the current build; it will reconnect on the n
 /// `control.stop` is set (the GUI Stop button). Updates `control.status` live.
 pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, control: Control) -> Result<(), String> {
     let indices: Vec<usize> = gpus.iter().map(|g| g.index).collect();
+    // ⭐ STAMP THE LEGITIMATE SLOW PHASES, OR THE WATCHDOG CALLS THEM A WEDGE.
+    // Caught by running it: engine init alone is bounded at ENGINE_INIT_TIMEOUT
+    // (75s) and the connect that follows has its own timeout, so a single
+    // *healthy* first session can be silent for well over a minute — and the
+    // supervisor's loop-top stamp cannot help, because the loop has not come
+    // back round yet. **Starting is not being stuck.**
+    stamp_donor_progress();
     println!("[donor] building multi-GPU engine over {} card(s): {:?} @ utils {:?}", gpus.len(), indices, utils);
     // Engine build runs on a side thread with a bounded wait — a wedged driver
     // can block adapter/device creation INDEFINITELY, and an unguarded build
@@ -680,6 +787,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
             }
         }
     };
+    stamp_donor_progress();   // engine is up — the slowest startup phase is behind us
     let label = engine.gpu_label();
     println!("[donor] backends: {}", engine.backend_summary());
     // A matrix lives on ONE local GPU, so advertise the SMALLEST per-binding cap across the
@@ -798,6 +906,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
         .map_err(|e| format!("register send failed: {e}"))?;
     println!("[donor] registered as {} ({} MB binding cap) — leaderboard: {}. Donating at {}% utilization.", host_name, binding_mb, donor_name.as_deref().unwrap_or("anonymous"), cfg.utilization_pct);
     set_status(&control, |s| { s.connected = true; s.gpu_name = host_name.clone(); s.note = "registered".into(); });
+    stamp_donor_progress();   // registration is real progress — see the wedge watchdog
 
     // Report a prior crash (panic crumb) the moment we're registered — the
     // brain logs it as DONOR CRUMB so the operator learns why the donor
@@ -1229,6 +1338,11 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 // A frame arrived (text/binary/ping/pong/close) — the link is alive; reset the
                 // dead-link timer so keepalive only trips on genuine silence.
                 last_recv = std::time::Instant::now();
+                // ⭐ The same fact, for the off-thread wedge watchdog. `last_recv` is a LOCAL
+                // that only this loop can see, and the whole point of the watchdog is that it
+                // still works when this loop does not run at all — so the fact has to leave
+                // the loop, not be read from inside it.
+                stamp_donor_progress();
                 // WSQ.4 — tally inbound bytes for the downlink-throughput estimate (folded in on the telemetry tick).
                 bytes_in_window += match &msg {
                     Message::Text(t) => t.len() as u64,

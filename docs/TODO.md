@@ -2136,10 +2136,13 @@ Found by reading the deployed box after the board cleanup, not by being told. **
 - **`RESUMETERM.1`** — closes `KI-42`. The sizing had no term for a resume, so every press overshot by roughly the size of the saved weight file. Now stats and subtracts it. ⛔ **It must PREDICT the keep/wipe rather than read it** — `autoClearStaleState` decides later by necessity, since its checks compare against the very `TOTAL_NEURONS` the sizing produces — so it reads only the pre-compatibility signals and errs where a wrong guess costs one under-sized boot, never a stall. **10/10 harness**, and a **TDZ trap caught before shipping** (`RESUME_MARKER_PATH` is declared ~480 lines below a block that runs at module load).
 - **`DONORWATCH.1`** — files `KI-43`. The pod watched process liveness, never the connection; a wedged donor is invisible to `wait`/`kill -0`, and the walk is donor-gated. Cost 24.9 hours once and 53 minutes once. The watchdog now asks the brain whether this pod's GPU is attached, and **only counts a miss when the brain ANSWERS** — a down brain is not evidence about the donor. **11/11 harness.**
 
+- **`SELFEXIT.1`** ✅ **CLOSED — `donor-v0.3.37`.** The structural close, and it turned out to also solve the immutable-args problem: the launcher already relaunches on process EXIT, so a donor that ends itself repairs the live pod with **no recreate**. ⛔ **The supervisor-side counter I first designed would not have fired** — the pod logs showed *no* donor output, so it was never in the reconnect loop; it was pinned *inside* `run_donor`. The watchdog is therefore an OS thread, off the runtime it watches. ⛔ **A false positive was shipped and caught by running it** (killed a donor at 59 s whose brain was merely unreachable) → engine-build stamps + a **300 s floor**, because *a window shorter than a legal startup does not detect wedges, it manufactures them*. **360 s false-fire test: 0 exits, 2 reconnects, still alive.**
+
 ⛔ **STILL OPEN, and named rather than quietly dropped:**
-- **The live pod cannot receive `DONORWATCH.1`** — `update-pod` cannot change `args`; a pod's command is fixed at creation. **It applies on the next pod recreate.** Until then a wedged donor still needs a manual restart.
-- **The structural close is donor-side** — the binary should exit on a prolonged failure to reach the brain, so *any* supervisor relaunches it. That is a `donor-v*` release, not a launcher edit.
+- **One press** to land the resume sizing term — the box runs `06240fc4`. Read the `RESUME SIZING TERM` line on that boot. **Operator action; box deploys are dashboard-only.**
 - **`DREAM_CGROUP_OVERHEAD_MB=4900` is now over-conservative on a resume.** Safe, but it costs neurons; returning it to 2,867 wipes the weights, so it waits for a moment a wipe is acceptable.
+- **`UAL_FIELDS_HYDRATE` stays OFF** — a deliberate decision, not a defect. Its precondition is met; it is a 114 GB copy and it waits.
+- ⚠ **The pod recreate is no longer required for `KI-43`**, but `deploy/runpod-donor-create.md` now carries the connection watchdog for whenever a pod IS next created — **two independent nets, deliberately.**
 
 ---
 

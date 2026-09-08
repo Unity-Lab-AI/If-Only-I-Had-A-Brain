@@ -191,6 +191,11 @@ fn main() {
         for g in &targets {
             println!("  → [{}] {}", g.index, g.name);
         }
+        // ⛔ HEADLESS ONLY, DELIBERATELY. The wedge watchdog ends the process when
+        // the donor is neither receiving nor trying — correct for an unattended pod,
+        // wrong for a person sitting at a GUI who has deliberately not started
+        // donating. An interactive idle is a choice; an unattended silence is a fault.
+        donor::start_wedge_watchdog();
         let (_control, handle) = donor::spawn_donor(cfg.clone(), targets, utils);
         let _ = handle.join();
     } else {
