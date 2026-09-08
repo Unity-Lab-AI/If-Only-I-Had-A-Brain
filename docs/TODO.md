@@ -2127,6 +2127,22 @@ Found by reading the deployed box after the board cleanup, not by being told. **
 
 ---
 
+## RESUMETERM + DONORWATCH — the sizing got its missing term, and the pod learned to watch the thing it is paid for — filed + closed 2026-09-08
+
+> Gee (verbatim): *"yeah do it all so we never have to have Sponge fix it for you"*
+
+✅ **BOTH CLOSED THE SAME PASS.** Verbatim text archived to **`docs/FINALIZED.md §2026-09-08`** before removal.
+
+- **`RESUMETERM.1`** — closes `KI-42`. The sizing had no term for a resume, so every press overshot by roughly the size of the saved weight file. Now stats and subtracts it. ⛔ **It must PREDICT the keep/wipe rather than read it** — `autoClearStaleState` decides later by necessity, since its checks compare against the very `TOTAL_NEURONS` the sizing produces — so it reads only the pre-compatibility signals and errs where a wrong guess costs one under-sized boot, never a stall. **10/10 harness**, and a **TDZ trap caught before shipping** (`RESUME_MARKER_PATH` is declared ~480 lines below a block that runs at module load).
+- **`DONORWATCH.1`** — files `KI-43`. The pod watched process liveness, never the connection; a wedged donor is invisible to `wait`/`kill -0`, and the walk is donor-gated. Cost 24.9 hours once and 53 minutes once. The watchdog now asks the brain whether this pod's GPU is attached, and **only counts a miss when the brain ANSWERS** — a down brain is not evidence about the donor. **11/11 harness.**
+
+⛔ **STILL OPEN, and named rather than quietly dropped:**
+- **The live pod cannot receive `DONORWATCH.1`** — `update-pod` cannot change `args`; a pod's command is fixed at creation. **It applies on the next pod recreate.** Until then a wedged donor still needs a manual restart.
+- **The structural close is donor-side** — the binary should exit on a prolonged failure to reach the brain, so *any* supervisor relaunches it. That is a `donor-v*` release, not a launcher edit.
+- **`DREAM_CGROUP_OVERHEAD_MB=4900` is now over-conservative on a resume.** Safe, but it costs neurons; returning it to 2,867 wipes the weights, so it waits for a moment a wipe is acceptable.
+
+---
+
 ## HYDRATEOFF — the bound was not enough, the first real run coincided with a 20-minute outage, and the hydration is now default OFF — 2026-09-07
 
 > Gee (verbatim): *"okay do the handoff out linine what you broke and how to fix it"*

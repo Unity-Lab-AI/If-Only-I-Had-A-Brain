@@ -124,6 +124,30 @@ three ways that all matter:
    ⚠ It kills by **captured PID**, never `pkill -f unity-donor` — the
    supervisor's own command line contains that string, so `pkill -f` would kill
    the loop meant to restart the donor and the pod would go dark unnoticed.
+4. ⭐ **Connection watchdog (2026-09-08) — it supervises the CONNECTION, not the
+   process.** Every 5 min it asks the brain whether this pod's GPU is in the
+   attached-donor list, and after `DONOR_MAX_MISS` (3) consecutive *answered*
+   misses it kills the donor by PID into the same relaunch path.
+
+   ⛔ **This closes a failure that has now happened TWICE and that nothing in the
+   pod could see:** 2026-08-26 the pod sat at 0% GPU / 0% CPU for **24.9 hours**;
+   2026-09-08 the donor was alive, on the correct release, with the brain's WS
+   lane handshaking cleanly — and **not connected**, while the brain read
+   `donorCount 0` and the walk (which is donor-gated) sat at frames 0 / spikes 0
+   for 53 minutes. `wait $DP` returns when the process EXITS and `kill -0 $DP`
+   asks only whether it EXISTS: **a donor that is donating and a donor that is
+   wedged are identical to both.**
+
+   ⚠⚠ **It requires the brain to ANSWER before counting a miss**, and that is the
+   whole design — a brain that is down is not evidence the donor is wedged, and
+   the correct behaviour then is exactly what the donor already does: sit in its
+   reconnect loop. An unreachable, empty, non-JSON or SPA-swallowed response
+   scores **no strike**.
+
+   ⚠ **Identity is by GPU model**, because `donors[].name` in the public state is
+   the GPU (`NVIDIA A40`), *not* `DONOR_NAME`. Two pods with the same model are
+   indistinguishable — a false negative, which leaves a wedged donor running
+   rather than killing a working one. Safe direction, chosen deliberately.
 
 The command is the body of **`deploy/runpod-donor-launcher.sh`** (below the
 header comment) wrapped as:
@@ -151,6 +175,21 @@ The pod logs are the proof. Look for, in order:
 
 ⛔ **A pod that starts is not a pod that is donating.** Confirm the brain shows
 the donor registered and matrices uploading before calling it done.
+
+⭐ **And the pod now says so itself.** Within ~5 minutes of launch the log carries
+one of:
+
+| line | meaning |
+|---|---|
+| `DONOR_SELF_GPU=NVIDIA A40` | printed once at startup — the identity the connection watchdog will look for |
+| *(nothing)* | attached and healthy — the check is silent on success |
+| `DONOR_CONN_BRAIN_UNREACHABLE no_strike_counted` | the **brain** is down. Nothing wrong with the pod; do not restart it |
+| `DONOR_CONN_MISS 1/3 brain_answered_and_we_are_not_attached` | the brain is up and this pod is **not** in its donor list |
+| `DONOR_WEDGED_RELAUNCHING` | three consecutive misses — killing and relaunching itself |
+| `DONOR_CONN_OK_AFTER_MISSES misses_cleared=N` | it recovered on its own; only *consecutive* misses count |
+
+⚠ **`DONOR_CONN_MISS` climbing to 3 and then recovering is the system working**,
+not a fault. The fault it replaces is silence.
 
 ---
 
