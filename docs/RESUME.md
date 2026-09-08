@@ -47,14 +47,28 @@
 >
 > ⛔ **THE LIVE POD CANNOT RECEIVE THIS — `update-pod` cannot change `args`; a pod's command is fixed at creation.** It applies on the next recreate. **Until then a wedged donor still needs a manual pod restart.**
 >
-> ## ⛔ WHAT IS STILL OPEN
+> ## ✅ ③ `donor-v0.3.37` — THE DONOR ENDS ITSELF, WHICH ALSO FIXES THE LIVE POD
+>
+> Gee (verbatim): *"get to fixing all of it"*
+>
+> ⭐⭐ **The structural close also solved the immutable-args problem.** The launcher already reinstalls and relaunches whenever the donor **exits** — that is how `UPGRADE BEFORE RECONNECT` has worked since 0.3.30 — so **a donor that ends itself repairs a pod whose `args` can never be changed. No recreate needed.**
+>
+> ⛔ **And the supervisor-side counter I first designed would NOT have fired.** The pod logs carried *no* donor output, so it was never in the reconnect loop — it was pinned *inside* `run_donor`, the class `WORKER_JOIN_PATIENCE` already names. **So the check cannot live on the thing it is checking:** it is a plain OS thread, off the runtime it watches, same as the brain's loop watchdog.
+>
+> ⛔⛔ **I SHIPPED A FALSE POSITIVE AND THE HARNESS CAUGHT IT.** Stamping only at loop top killed a donor at **59 s** whose brain was merely unreachable — a healthy first session is silent through 75 s of engine build plus a connect. **Starting is not being stuck.** Fixed with engine-build stamps and a **300 s floor**: *a window shorter than a legal startup does not detect wedges, it manufactures them.*
+>
+> ✅ **360 s false-fire test on the real release binary: 0 exits, 2 reconnects, still alive.** `--version` = `0.3.37`.
+>
+> ## ⛔ WHAT IS STILL OPEN — ALL OF IT IS A PRESS, NONE OF IT IS CODE
 >
 > | | |
 > |---|---|
 > | **One press to land the resume term** | the box runs `06240fc4`; read the `RESUME SIZING TERM` line on that boot |
-> | **The live pod keeps the old supervisor** | until a recreate — `deploy/runpod-donor-create.md` carries the new command |
-> | **The structural donor close** | the binary should exit on prolonged failure to reach the brain, so *any* supervisor relaunches it. That is a `donor-v*` release, not done |
-> | **`UAL_FIELDS_HYDRATE` stays OFF** | its precondition is met now, but it is a 114 GB copy and it waits |
+> | **The donor tag reaching the pod** | the pod's upgrade watchdog re-checks `releases/latest` every 5 min and relaunches on a new tag — so it self-upgrades to 0.3.37 shortly after the tag publishes. **Verify `--version` in the pod log** |
+> | **`DREAM_CGROUP_OVERHEAD_MB=4900`** | now over-conservative on a resume. Safe; costs neurons. Returning it to 2,867 **wipes the weights**, so it waits for your timing |
+> | **`UAL_FIELDS_HYDRATE` stays OFF** | a deliberate decision, not a defect. Precondition met; it is a 114 GB copy and it waits |
+>
+> ⚠ **The pod recreate is no longer required** — but `deploy/runpod-donor-create.md` carries the connection watchdog for whenever a pod IS next created. **Two independent nets, deliberately: one in the pod, one in the binary.**
 >
 > ---
 
