@@ -916,10 +916,88 @@ const BRAIN_VRAM_ALLOC = (function () {
     })();
     const _cgroupOverheadMB = Number(process.env.DREAM_CGROUP_OVERHEAD_MB) > 0
       ? Number(process.env.DREAM_CGROUP_OVERHEAD_MB) : 2867;   // 2.8 GB, measured
+    // ⛔⛔⛔ THE SIZING HAD NO TERM FOR A RESUME, AND THAT WAS THE WHOLE BUG.
+    //
+    // `DREAM_CGROUP_OVERHEAD_MB` is everything that is not weights, measured **at
+    // a FRESH boot**. A savestart resume does one more thing no fresh boot does:
+    // it reads the saved weight file off disk and holds it while applying it —
+    // `[Brain] Binary weights queued for apply — 17 sections, 4931.4 MB` — ON TOP
+    // of the arrays the budget already sized. Nothing in the model accounted for
+    // it, so **every resume boot overshot by roughly the size of that file.**
+    //
+    // ⛔ AND A PRESS *IS* A SAVESTART RESUME. Measured on the box 2026-09-08:
+    // budget 15,580 − 2,048 allocator reserve = 13,532 for weights, against
+    // **20,957 MB of actual anon** — a real non-weight overhead of **7,425 MB**
+    // where the model said 2,867. The difference is the resumed weight file. The
+    // result was `memory.current` at 102% of `memory.high`, ~628 throttle events
+    // a second, the process in `D` state, and `/health` timing out while systemd
+    // reported the unit perfectly healthy.
+    //
+    // ⭐ Proved memory rather than slow code or slow disk by reading the three
+    // pressure files against each other: `memory.pressure some avg10 = 84.36`
+    // vs `io.pressure 0.36` vs `cpu.pressure 0.00`. She was blocked in reclaim.
+    //
+    // ⚠ THE KNOB WAS A SHIM FOR THIS TERM. A drop-in on the box carries
+    // `DREAM_CGROUP_OVERHEAD_MB=4900` — raised by hand to absorb the missing
+    // term. With the term present that knob should go back toward the measured
+    // FRESH-boot figure (2,867); leaving it high is merely conservative, never
+    // unsafe, so it is left for a measurement rather than changed blind. **Do not
+    // treat 4,900 as the measured overhead — it is 2,867 plus a patch for this.**
+    //
+    // ⛔⛔ WHY THIS PREDICTS THE WIPE RATHER THAN READING IT: `autoClearStaleState()`
+    // makes the real keep/wipe decision, and it runs LATER than this sizing —
+    // necessarily, because its compatibility checks compare against `TOTAL_NEURONS`,
+    // which this block is what produces. The circularity is real and is not
+    // resolvable here. **So this reads only the two cheap signals that come before
+    // any compatibility test, and it errs in the safe direction:** those checks can
+    // only turn an attempted resume INTO a wipe, never a wipe into a resume. If a
+    // resume is attempted and later rejected, this boot is merely smaller than it
+    // needed to be for one boot. If a resume is attempted and succeeds, the term is
+    // exactly right.
+    //
+    // ⚠ READ-ONLY, DELIBERATELY. `autoClearStaleState` CONSUMES both files
+    // (`unlinkSync`) — one resume per clean stop is the contract. Touching them
+    // here would silently break it, so this only ever stats and parses.
+    const _resumeWeightsMB = (() => {
+      try {
+        // `.force-fresh` beats everything, exactly as it does in the real decision.
+        if (fs.existsSync(path.join(__dirname, '.force-fresh'))) return 0;
+        let _keep = process.env.DREAM_KEEP_STATE === '1';
+        if (!_keep) {
+          try {
+            // ⛔ THE PATH IS INLINE AND MUST STAY INLINE. `RESUME_MARKER_PATH` is a
+            // module-level `const` declared ~480 lines BELOW this block, and this
+            // block runs at module load — so naming it here throws
+            // `ReferenceError: Cannot access '…' before initialization` from the
+            // temporal dead zone. ⚠ `node --check` cannot see that, and neither can
+            // a `typeof` guard: TDZ is not shielded by `typeof` the way an
+            // undeclared identifier is. Verified by call-site ORDER, not by syntax.
+            const m = JSON.parse(fs.readFileSync(path.join(__dirname, '.resume-marker.json'), 'utf8'));
+            _keep = !!(m && m.cleanShutdown);
+          } catch { /* no marker, or unreadable → not a keep */ }
+        }
+        if (!_keep) return 0;
+        // The pair a resume actually reads. The v0..v4 slots are checkpoint
+        // copies and are not loaded on a normal resume, so counting them would
+        // reserve for bytes nobody reads.
+        let mb = 0;
+        for (const f of ['brain-weights.bin', 'brain-weights.json']) {
+          try { mb += Math.ceil(fs.statSync(path.join(__dirname, f)).size / 1048576); }
+          catch { /* absent = nothing to reserve for it */ }
+        }
+        return mb;
+      } catch { return 0; }   // never let sizing fail on a stat
+    })();
     const _hostSafeMB = Math.max(1024, _hostRamMB - 13312);
     const _cgroupSafeMB = _cgroupLimitMB !== null
       ? Math.max(1024, _cgroupLimitMB - _cgroupOverheadMB) : null;
-    const _safeMB = _cgroupSafeMB !== null ? Math.min(_hostSafeMB, _cgroupSafeMB) : _hostSafeMB;
+    // ⭐ SUBTRACTED AFTER THE `min`, SO IT APPLIES TO WHICHEVER CEILING BINDS.
+    // The transient costs host memory and cgroup memory alike — the OOM kill on
+    // 2026-09-08 was HOST-level (`global_oom`, `memory.events oom_kill = 0` for
+    // her cgroup), so a term that only defended the cgroup would have missed the
+    // ceiling that actually fired.
+    const _safeMB = Math.max(1024,
+      (_cgroupSafeMB !== null ? Math.min(_hostSafeMB, _cgroupSafeMB) : _hostSafeMB) - _resumeWeightsMB);
     // ⛔ SAY WHICH CEILING IS BINDING, because "the brain is smaller than I
     // expected" and "the kernel is throttling her" look identical from the
     // outside and have opposite fixes. If the cgroup is binding, the answer is a
@@ -930,6 +1008,16 @@ const BRAIN_VRAM_ALLOC = (function () {
       console.log(`[Brain] CGROUP-AWARE SIZING — kernel limit ${_cgroupLimitMB}MB (minus ${_cgroupOverheadMB}MB measured non-weights overhead = ${_cgroupSafeMB}MB) vs host reserve ${_hostSafeMB}MB → budget basis ${_safeMB}MB, bound by the ${_binding}. The host reserve protects Forgejo, which lives OUTSIDE this cgroup; the cgroup limit is what the kernel enforces on this process. Both apply.`);
     } else {
       console.log(`[Brain] CGROUP-AWARE SIZING — no cgroup memory limit visible (${process.platform}); the host reserve decides alone: ${_hostSafeMB}MB.`);
+    }
+    // ⛔ THE RESUME TERM ANNOUNCES ITSELF EVEN WHEN IT IS ZERO. A term that only
+    // prints when it fires is indistinguishable, from the log, from a term that
+    // does not exist — which is precisely how this one was missing for months
+    // while its absence cost a stall on every press. Saying "fresh boot, no
+    // reserve" is what makes the next reader able to tell those apart.
+    if (_resumeWeightsMB > 0) {
+      console.log(`[Brain] RESUME SIZING TERM — a saved weight file is on disk and this boot intends to RESUME, so ${_resumeWeightsMB}MB is reserved for holding it while it is applied. This is ON TOP of the ${_cgroupOverheadMB}MB non-weights overhead, which is measured at a FRESH boot and does not include it. Without this term a resume boot oversizes by roughly this much and the kernel throttles her in reclaim (measured 2026-09-08: 102% of memory.high, ~628 throttle events/sec, process in D state, /health timing out while systemd read healthy).`);
+    } else {
+      console.log('[Brain] RESUME SIZING TERM — 0MB: this boot is not resuming saved weights (fresh wipe, force-fresh, or no weight file on disk), so no reserve is needed and the full budget is available.');
     }
     // #112.2 — DONOR-COMPUTE SIZING. On the DEPLOYED box (UAL_PROXY_AUTH=1) the
     // brain's real compute lives on DONOR browser GPUs, not host RAM. Sizing the

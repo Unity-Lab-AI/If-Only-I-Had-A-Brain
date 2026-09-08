@@ -1,6 +1,64 @@
 # RESUME — Session Pickup Brief
 
-> # 🟢 2026-09-08 (latest, 16th) — SHE IS UP AND ANSWERING. THE SIZING NEVER HAD A TERM FOR A RESUME, AND THAT IS THE WHOLE BUG (START HERE)
+> # 🟢 2026-09-08 (latest, 17th) — BOTH OF THE "REAL FIX" ITEMS ARE BUILT, AND SHE WAS IDLE FOR 53 MINUTES WITH EVERY LIGHT GREEN (START HERE)
+>
+> Gee (verbatim): *"yeah do it all so we never have to have Sponge fix it for you"*
+>
+> ## ✅ SHE IS WALKING — MEASURED, NOT ASSUMED
+>
+> ```
+>   donors 1 (NVIDIA A40, 45,488 MB)   ela/kindergarten in-progress
+>   teach/min 19,803 · frames 2,042 · spikes 53,626,059 · loop lag 1 ms
+>   build 06240fc4 (the box has NOT yet taken today's main)
+> ```
+>
+> ## ⛔⛔⛔ THE FINDING THAT MATTERS MOST — 53 MINUTES OF NOTHING, ALL LIGHTS GREEN
+>
+> After the resize she came up and **did no work at all for 53 minutes**:
+>
+> ```
+>   frames 0 · totalSpikes 0 · psi 0 · walkTick null · cellStatus idle
+>   /health 200 in 0.95 ms · memory 32% of ceiling · PSI 0.00 · proc Ssl · unit active
+> ```
+>
+> ⭐⭐ **Every verification signal in the previous brief was infrastructure — memory, pressure, process state, `/health`. Not one asked whether she was TEACHING.** The fields that would have: **`frameCount`, `totalSpikes`, `cellStatus`.** Uptime advancing while those stay at zero is the whole tell, and it takes two samples a minute apart.
+>
+> **Cause:** the walk is donor-gated and the donor was wedged. Restarting the pod took her from absolute zero to `frames 533 / spikes 505,955 / psi 21.8` **in two minutes.**
+>
+> ## ✅ ① `KI-42` CLOSED — THE SIZING HAS A RESUME TERM
+>
+> `brain-server.js` stats the weight pair it is about to read and subtracts it from the budget when this boot intends to resume. **A press is safe again.**
+>
+> ⛔ **It PREDICTS the keep/wipe rather than reading it, and that cannot be avoided:** `autoClearStaleState()` decides later *by necessity* — its compatibility checks compare against `TOTAL_NEURONS`, which the sizing block is what produces. So it reads only the signals that precede any compatibility test and **errs where a wrong guess costs one under-sized boot, never a stall.**
+>
+> ⚠ **READ-ONLY** — `autoClearStaleState` *consumes* those marker files (one resume per clean stop); the harness asserts they survive.
+>
+> ⛔ **A TDZ trap caught before shipping:** the first cut named `RESUME_MARKER_PATH`, a `const` declared **~480 lines below** a block that runs at module load. `node --check` cannot see that and `typeof` does not shield it. Path inlined.
+>
+> ⭐ **It prints every boot, including when it is zero** — because a term that only speaks when it fires is indistinguishable from a term that does not exist, which is how this one stayed missing. **10/10 harness.**
+>
+> ⚠ **`DREAM_CGROUP_OVERHEAD_MB=4900` is now over-conservative on a resume** (it was 2,867 plus a hand patch *for* this term). She boots smaller than needed, never stalls. Reclaiming it wipes the weights, so it waits for your timing.
+>
+> ## ✅ ② `KI-43` FILED AND FIXED IN THE LAUNCHER — THE POD WATCHED THE WRONG THING
+>
+> `wait $DP` returns when the process EXITS; `kill -0 $DP` asks only whether it EXISTS. **A donor that is donating and one that is alive-but-wedged are identical to both.** Twice now: **24.9 hours** on 2026-08-26, **53 minutes** today. The first was recorded and its remedy written as a *procedure* — "brain first, pod second" — which is advice, not a mechanism.
+>
+> The watchdog now asks the brain whether this pod's GPU is attached. ⚠⚠ **It only counts a miss when the brain ANSWERS** — a down brain is not evidence about the donor, and the reconnect loop is correct then. Unreachable / empty / non-JSON / **SPA-swallowed HTML** all score no strike. **11/11 harness.**
+>
+> ⛔ **THE LIVE POD CANNOT RECEIVE THIS — `update-pod` cannot change `args`; a pod's command is fixed at creation.** It applies on the next recreate. **Until then a wedged donor still needs a manual pod restart.**
+>
+> ## ⛔ WHAT IS STILL OPEN
+>
+> | | |
+> |---|---|
+> | **One press to land the resume term** | the box runs `06240fc4`; read the `RESUME SIZING TERM` line on that boot |
+> | **The live pod keeps the old supervisor** | until a recreate — `deploy/runpod-donor-create.md` carries the new command |
+> | **The structural donor close** | the binary should exit on prolonged failure to reach the brain, so *any* supervisor relaunches it. That is a `donor-v*` release, not done |
+> | **`UAL_FIELDS_HYDRATE` stays OFF** | its precondition is met now, but it is a 114 GB copy and it waits |
+>
+> ---
+
+> # 🟢 2026-09-08 (16th) — SHE IS UP AND ANSWERING. THE SIZING NEVER HAD A TERM FOR A RESUME, AND THAT IS THE WHOLE BUG
 >
 > Gee (verbatim): *"Do it on the OVH box, whatever is needed"* → then, choosing between the four costed options: **shrink her budget, accepting the weight wipe.**
 >
