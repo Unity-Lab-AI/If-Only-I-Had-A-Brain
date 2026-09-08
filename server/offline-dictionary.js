@@ -323,7 +323,7 @@ function _leadWithPos(senses, pos) {
    form (`living_room`, `milky_way`). An arbitrary split is refused.
    ⚠ These are the same retries the curriculum already runs for hyphenated
    compounds: a second query for the same capability, never a lesser one. */
-function lookup(word) {
+function lookup(word, _depth = 0) {
   const w = String(word == null ? '' : word).toLowerCase().trim().replace(/\s+/g, '_');
   if (!w) return [];
   let d = _rawSenses(w);
@@ -332,6 +332,66 @@ function lookup(word) {
   // Proper nouns — WordNet capitalises them, the corpus does not.
   d = _rawSenses(w.replace(/^[a-z]/, (c) => c.toUpperCase()));
   if (d.length) return d;
+
+  /* ⭐⭐ PUNCTUATION VARIANTS — THE CORPUS AND WORDNET DISAGREE ABOUT THE JOIN,
+     NOT ABOUT THE WORD.
+     WordNet's own lemmas carry hyphens and apostrophes (`knick-knack`,
+     `son-in-law`, `presidents'_day`), so a token that reaches this function with
+     its punctuation intact usually needs no help at all. What it does need is
+     the handful of cases where the two spell the SAME word differently:
+     `ale-house` vs `ale_house`, `farmer's` vs `farmer`, and the archaic
+     elisions a real children's corpus is full of — `pleas'd`, `turn'd`,
+     `fill'd`, `whisker'd`.
+     ⭐ MEASURED on the live `ela/kindergarten` corpus (22,658 sentences):
+     2,011 distinct tokens carry internal punctuation, 874 already resolved as
+     the mashed form, and these arms recover **251 more** — `well-known`,
+     `son-in-law`, `o'clock`, `three-legged`, `ill-mannered`, `simple-minded`,
+     `by-and-by`, `one-tenth`, `good-natured`, `mouse-colored`, `full-length`.
+     ⛔⛔ A HEAD-ONLY SPLIT WAS MEASURED AT 581 MORE AND IS REFUSED. `paddy-whack`
+     → `paddy` and `cocky-locky` → `cocky` return real lemmas for DIFFERENT
+     words, so the lookup would answer confidently with the wrong meaning — the
+     same failure the `suprise` → `sup` + `rise` note above rejects a general
+     split for. A partial match is not a definition. **251 correct beats 832
+     with 581 wrong in it.**
+     ⚠ Same propose-and-verify rule as every other arm: a variant is returned
+     ONLY when it is a real lemma, so a bad guess can fail but never invent. */
+  if (/['\-.]/.test(w)) {
+    const variants = [];
+    // Corpus artefact: a trailing `.p` / `.s` marker fused to the word
+    // (`added.p`, `pictographic.p`, `pronunciation.p` all appear in the live
+    // kindergarten corpus). Ten distinct forms measured; each is a real word
+    // wearing a footnote.
+    if (/\.[a-z]$/.test(w)) variants.push(w.slice(0, -2));
+    // Possessive — the thing owned is the word she needs (`farmer's` → farmer).
+    if (w.endsWith("'s")) variants.push(w.slice(0, -2));
+    if (w.includes("'")) {
+      variants.push(w.replace(/'/g, ''));              // o'clock → oclock
+      if (w.endsWith("'d")) variants.push(`${w.slice(0, -2)}ed`);   // pleas'd → pleased
+      if (w.endsWith("'st")) variants.push(`${w.slice(0, -3)}est`); // strong'st → strongest
+    }
+    if (w.includes('-')) {
+      variants.push(w.replace(/-/g, '_'));             // ale-house → ale_house
+      variants.push(w.replace(/-/g, ''));              // toy-book → toybook
+    }
+    for (const v of variants) {
+      if (!v || v === w || v.length < 2) continue;
+      d = _rawSenses(v);
+      if (d.length) return d;
+      d = _rawSenses(v.replace(/^[a-z]/, (c) => c.toUpperCase()));
+      if (d.length) return d;
+      // ⭐ A DEPUNCTUATED VARIANT STILL NEEDS THE INFLECTION ARMS. Caught by the
+      // self-test: `added.p` → `added` failed here, because `added` is not a
+      // WordNet lemma — it is `add` plus a Morphy detachment that lives BELOW
+      // this block and so was never reached. One bounded re-entry gives the
+      // variant the same plural/Morphy treatment the original token gets.
+      // ⚠ `_depth` caps it at one hop, and every variant produced above is
+      // punctuation-free, so it cannot re-enter this arm and loop.
+      if (_depth === 0) {
+        const deeper = lookup(v, 1);
+        if (deeper.length) return deeper;
+      }
+    }
+  }
 
   // Closed compounds the corpus writes shut: livingroom -> living_room.
   // ONLY when the joined form exists; never a bare two-word guess.

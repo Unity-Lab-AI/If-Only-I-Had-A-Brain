@@ -599,8 +599,12 @@ When the landing page is served from `localhost` (or `127.0.0.1` / `::1` / `file
 | # | Source | |
 |:-:|---|---|
 | 1 | **the cache** | read before both of the below |
-| 2 | **the offline dictionary** (WordNet, in-process) | ⭐ **96.1% of her real kindergarten vocabulary — 2,134 of 2,221 words, 13,139 senses, 57 ms for the ENTIRE list, no network** |
+| 2 | **the offline dictionary** (WordNet, in-process) | ⭐ **96.7% of her real kindergarten vocabulary — 2,147 of 2,221 words, 13,116 senses, 55 ms for the ENTIRE list, no network** |
 | 3 | **`api.dictionaryapi.dev`** | only for what the first two cannot answer |
+
+**How it reaches 96.7% without inventing anything.** WordNet holds one spelling of a word and a real corpus writes another, so the lookup tries a short ladder of variants — a closed compound (`livingroom` → `living_room`), a possessive or singular first element (`presidentsday` → `presidents'_day`, `valentinesday` → `valentine_day`), regular plurals, WordNet's own suffix detachment for verbs and adjectives, and the punctuation forms a book actually uses (`ale-house` → `ale_house`, `farmer's` → `farmer`, the archaic `pleas'd` → `pleased`).
+
+⛔ **Every variant is proposed and then VERIFIED against the index, so a bad guess can only fail — never invent.** That rule is load-bearing rather than decorative: a general "split the word and look up both halves" pass was written, measured at 581 extra hits, and **refused**, because it turns `paddy-whack` into `paddy` and `cocky-locky` into `cocky` — real dictionary words with entirely different meanings. **A partial match is not a definition.** The words WordNet genuinely does not hold — irregular forms like `children`, contractions like `don't`, and proper nouns — stay on the network lane instead of being forced to resolve.
 
 ⭐ **Why that order exists, and it is not an optimisation.** On 2026-09-05 the API returned `000` on **every word for a whole day**, and the walk sat **17.5 hours on one kindergarten cell** at `passedCellsTotal 0` — she could not bind a definition, so vocabulary never landed and the gate could never clear. **A lane with one source and no SLA is a lane that stops the walk when that source blinks.** Putting the offline dictionary first also makes the rate-limit death-spiral *unreachable* for the common case rather than merely bounded.
 

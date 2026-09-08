@@ -18712,6 +18712,11 @@ export class Curriculum {
     try {
       if (typeof this._teachWordDefinition === 'function') {
         const taught = cluster._definitionTaughtWords || new Set();
+        // The 404-only miss set, read here for the first time. Declared beside
+        // `taught` because it is the same kind of thing — a record of what must
+        // not be asked for again — and the tokenizer below consults both.
+        const permaMiss = cluster._vocabPermanentMiss instanceof Set
+          ? cluster._vocabPermanentMiss : new Set();
         const STOP = new Set(['the','and','that','this','with','from','have','has','had','are','was','were','for','not','they','them','their','which','also','into','than','then','such','these','those','some','can','may','will','would','could','should','more','most','one','two','its','our','your','who','how','why','when','where','what','been','being']);
         // ⭐⭐ ORDERED BY HOW OFTEN THE CELL ACTUALLY USES THE WORD, NOT BY WHERE
         // IT HAPPENS TO FIRST APPEAR.
@@ -18747,13 +18752,69 @@ export class Curriculum {
         // ⚠ Ties broken by first appearance so the order is fully deterministic
         // — a cursor walking a list that reshuffles between visits would revisit
         // and skip unpredictably.
+        // ⛔⛔⛔ THIS LINE USED TO BE `tok.replace(/[^a-z]/g, '')` AND IT WAS
+        // MANUFACTURING WORDS THAT CANNOT EXIST.
+        //
+        // `Henny-Penny` became `hennypenny`, `you've` became `youve`,
+        // `children's` became `childrens`, `added.p` became `addedp`. None of
+        // those is a word, so no dictionary can ever answer for one — and the
+        // taught-set only records a word when `defsBound > 0`, so a manufactured
+        // token is never marked learned, stays in `newWords`, and is looked up
+        // AGAIN on the next visit. Forever.
+        //
+        // ⭐ MEASURED on this exact corpus (`academicStorySentences('ela',
+        // 'kindergarten')`, 22,658 sentences), both tokenizers run side by side
+        // and every damaged form tested against the offline dictionary:
+        //
+        //     distinct tokens, letters-only strip        17,903
+        //     distinct tokens, internal punctuation kept 18,175
+        //     DAMAGED distinct forms                      2,011
+        //       already resolved as the mashed form         874
+        //       newly resolvable, safe arms only            251
+        //       still unresolvable                          886
+        //
+        //     hyphen 1,787 · possessive 600 · contraction 140 · `.p` artefact 10
+        //
+        // ⚠ THE HONEST ACCOUNTING: the distinct count RISES by 272, because
+        // `well-known` and a literal `wellknown` are correctly two different
+        // words now instead of one mashed collision. **This is not a throughput
+        // win and must not be sold as one.** It is a correctness win: the token
+        // she reads is the token the story contains, the network lane can answer
+        // for it, and it can finally be recorded as learned.
+        //
+        // ⛔⛔ AND THE TRAP THAT WOULD HAVE INVERTED THE WHOLE FIX: `taught` and
+        // `_definitionTaughtWords` are keyed on the OLD mashed form. Emitting a
+        // better token without checking BOTH keys makes every already-taught
+        // word read as untaught, and this pass — 662 chunks, ~81 minutes on this
+        // cell — would EXPLODE rather than shrink. Both forms are checked.
+        //
+        // ⭐ Splitting on `--` too: a real children's corpus joins clauses with
+        // em-dashes (`it--with`, `bed,--and`, `when--whack!--something`), and
+        // whitespace alone left those fused into a single non-word.
         const freq = new Map();
         const firstAt = new Map();
         let position = 0;
         for (const s of sentences) {
-          for (const tok of String(s).toLowerCase().split(/\s+/)) {
-            const c = tok.replace(/[^a-z]/g, '');
-            if (c.length <= 3 || STOP.has(c) || taught.has(c)) continue;
+          for (const tok of String(s).toLowerCase().split(/\s+|--+/)) {
+            // Leading/trailing punctuation is never part of the word; INTERNAL
+            // hyphens and apostrophes always are.
+            const c = tok.replace(/^[^a-z]+/, '').replace(/[^a-z]+$/, '');
+            // The length gate stays on the LETTERS, exactly as before, so a
+            // hyphen or apostrophe cannot buy a short word past it.
+            const legacy = c.replace(/[^a-z]/g, '');
+            if (legacy.length <= 3) continue;
+            if (STOP.has(legacy) || taught.has(c) || taught.has(legacy)) continue;
+            // ⭐ SKIP WHAT THE DICTIONARY POSITIVELY HAS NO ENTRY FOR — the same
+            // filter the pre-cell vocab pass already applies, for the same
+            // reason and with the same safety. `_vocabPermanentMiss` receives a
+            // word ONLY on a positive 404, never on an outage, and it does not
+            // survive a boot — so every boot still asks once (which is where the
+            // offline-dictionary heal gets its chance) and only a word both
+            // sources have refused is skipped for the rest of that boot. ⛔ This
+            // is NOT the miss-list this call site rejected: that one would have
+            // marked a word on ANY failed lookup and could not tell "no such
+            // word" from "the API refused me just now".
+            if (permaMiss.has(c) || permaMiss.has(legacy)) continue;
             if (!freq.has(c)) { freq.set(c, 0); firstAt.set(c, position++); }
             freq.set(c, freq.get(c) + 1);
           }
