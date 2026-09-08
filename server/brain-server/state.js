@@ -743,8 +743,33 @@ const SERVER_STATE_MIXIN = {
       // `detail` carries which writer armed it.
       bootReason: (typeof globalThis !== 'undefined' && globalThis.__bootReason) || null,
       frameCount: this.frameCount,
+      // ⛔⛔ `totalSpikes` IS INSTANTANEOUS, NOT CUMULATIVE, AND ITS NAME SAYS
+      // OTHERWISE. Both writers (`brain-server.js` walk-heartbeat and main-tick
+      // batch paths) do `this.totalSpikes = 0` and then re-sum the CURRENT
+      // per-cluster `lastSpikeCount`, so it is a snapshot of how much is firing
+      // right now and it legitimately goes DOWN.
+      //
+      // ⚠ Measured falling twice in one session — 18,113,187 -> 18,088,477 and
+      // 18,121,469 -> 18,110,534 — and reported as an unexplained anomaly
+      // before the writers were read. It was the field working as written and
+      // named as something else.
+      //
+      // ⛔ The cost is that `docs/NOW.md` and `docs/RESUME.md` both instructed
+      // readers to settle "is she doing work, or only serving state?" with TWO
+      // SAMPLES of this field a minute apart. Two samples of a non-monotonic
+      // value settle nothing: a decrease is compatible with a perfectly healthy
+      // brain. (A reading of exactly 0 IS still meaningful — nothing firing —
+      // which is why the 53-minute-idle incident's evidence stands.)
+      //
+      // ⭐ `spikesLifetime` is ADDED, never a redefinition of the two names
+      // below, per the rule this stack already records beside `gpuHits`: fixing
+      // a display by changing what an existing field means is how the next
+      // reader gets misled. Monotonic by construction — it only ever
+      // accumulates — so a two-sample delta on THIS field is a valid liveness
+      // test, and `frameCount` remains the other one.
       totalSpikes: this.totalSpikes,
       spikeCount: this.totalSpikes,
+      spikesLifetime: this._spikesLifetime || 0,
       arousal: this.arousal,
       valence: this.valence,
       fear: this.fear,

@@ -1411,10 +1411,38 @@ function tvBench(st, series) {
     'She cannot write characters she has not traced. Expected 94/94 after cell entry.');
 
   // ── the dictionary lane
+  // ⛔⛔ THIS CHECK REPORTED GREEN OFF A 13.6-HOUR-OLD FOSSIL, IN THE VIEWER
+  // BUILT TO ANSWER "IS IT WORKING?".
+  //
+  // It read `definitionQueue.lastWindow.bound > 0`. That block describes the
+  // DREAM-TRICKLE lane, which runs only inside a dream window — so during a
+  // multi-hour walk it does not run, its numbers stand still, and `bound: 158`
+  // from the last trickle keeps satisfying `> 0` forever. Measured: frozen for
+  // 13.6 h while the lane that actually anchors definitions did 14,637 calls.
+  // Its verdict fed the page's overall WORKING/NOT WORKING line.
+  //
+  // ⭐ The live lane is `definitionAnchor` — the pre-cell anchoring pass nested
+  // inside the association teach. Judge on that, and show the trickle's AGE so
+  // a fossil is visible as a fossil instead of passing as health.
   const dq = cur && cur.definitionQueue;
-  add('definition lane', !!(dq && dq.lastWindow && dq.lastWindow.bound > 0),
-    dq ? `depth ${dq.depth}, last window bound ${dq.lastWindow ? dq.lastWindow.bound : '?'}` : 'not published',
+  const da = cur && cur.definitionAnchor;
+  // `callsPerMin` is null until a second sample exists — honest emptiness, so
+  // treat "no rate yet" as unknown rather than as a failure.
+  const daOk = !da ? null
+    : (!(da.calls > 0) ? false
+      : (da.callsPerMin == null ? null : da.callsPerMin > 0));
+  add('definition lane (live anchoring)', daOk,
+    da ? `${da.calls} anchored${da.callsPerMin != null
+      ? ` · ${da.callsPerMin}/min · ${da.secPerCallNow}s each`
+      : ' · rate needs a second sample'}` : 'not published',
     'Definitions are not binding. Check the dictionary cache and DEF-MISS flags.');
+  // ⚠ Reported, never graded. Idle mid-walk is the CORRECT state for this lane,
+  // so a stale window must not count for or against the verdict.
+  add('dream trickle (idle mid-walk is correct)', null,
+    dq ? (dq.lastWindowAgeMs == null
+      ? `depth ${dq.depth} · has not run this boot`
+      : `depth ${dq.depth} · last window ${Math.round(dq.lastWindowAgeMs / 60000)} min ago${dq.lastWindow ? ` · bound ${dq.lastWindow.bound}` : ''}`) : 'not published',
+    'Informational only — this lane sleeps while the walk runs.');
 
   // ── retention: can we still see what happened an hour ago?
   add('history retained', !!(series && series.available && (series.returned || 0) > 1),

@@ -5,6 +5,87 @@
 
 ---
 
+## 2026-09-08 (3rd) — `LIVEWATCH`: TWO PUBLISHED INSTRUMENTS LIED, AND ONE OF THEM WAS GRADING THE VIEWER'S "IS IT WORKING?" VERDICT
+
+Gee (verbatim): *"is her minds eye stuck?"*
+
+Gee (verbatim): *"okay she has been grinding for 16 houirs, you sdaid 12 hrs... why is she not done with phase 2 yet"*
+
+Gee (verbatim, reaffirming the working rule): *"no we arent done, i was only saying that yesterday for a single thing, if i tell you to fix something document in todo and do it.... we just are Not doing a frteshwalk is all and i hope the stall of the update savestart is behind us"*
+
+⛔⛔ **BOTH FIXES ARE SERVER-SIDE WITH NO GEOMETRY CHANGE AND NO `WEIGHTS_FORMAT_VERSION` BUMP — SAVESTART-SAFE BY CONSTRUCTION, per his "Not doing a frteshwalk".**
+
+### ⛔⛔⛔ HOW THIS STARTED: I QUOTED A 12.3-HOUR FORECAST OFF A FROZEN FIELD, THEN CALLED THE LANE DEAD OFF THE SAME FIELD
+
+He asked how she was doing. I read `definitionQueue.lastWindow`, computed `2,148 queued × 20.6 s/definition`, and gave him **12.3 hours to drain**. Sixteen hours later he asked why phase 2 was not done.
+
+**Both numbers came from one field that had been byte-identical for 13.6 hours.** I multiplied two fossils and published a forecast. Then, checking it, I swung the other way and declared the definition drain **dead** — off the same frozen field.
+
+⚠ **And I had the evidence to catch it the first time.** My own paired read showed `depth 2,148 → 2,148 FROZEN` and I explained it away as *"expected, the window is 185 s"* — **a plausible story fitted to a dead counter instead of a longer sample.** The rule this project already has for exactly this is two samples far enough apart to settle it, and I applied that discipline to `frameCount` and skipped it for the queue.
+
+### ⭐ WHAT SHE WAS ACTUALLY DOING, MEASURED
+
+```
+  _teachWordDefinition    2,365 -> 17,002 calls  (+14,637 in 13.6h)
+  live rate               +73 calls / 168s  =  2.30 s per call
+  published rate                               20.6 s per definition   <- ~9x wrong
+  phaseChain              _teachWordDefinition -> _teachAssociationPairs  (nested)
+```
+
+**She was never stuck.** Phase 2 *is* the association pass, it anchors every unlearned word it touches, and cumulatively that is **865 min in `_teachWordDefinition` + 711 min in `_teachAssociationPairs`** — ~26 h of nested work inside 16 h of wall clock. The board already carries one `_teachAssociationPairs` call measured at **14.88 hours**.
+
+### `DEFQLIE.1` — the field named `definitionQueue` describes a lane that sleeps during a walk
+
+`curriculum.js:4095` reads `depth` off `cluster._kVocabQueue`; `:4097` reads `lastWindow` off `_trickleLastWindow`. **Both are written in exactly one place — the dream-cycle trickle block**, which runs only inside a dream window. With `isDreaming: false` and a walk in progress it never fires.
+
+⚠ **The field's own comment stated the purpose it failed:** published so that *"is she actually learning word meanings"* is *"a field read, not a log hunt."* It answered about the wrong lane.
+
+**Fixed:**
+- `_trickleLastWindow` now carries **`at`** — it had **no timestamp at all**, which is exactly why a fossil could not be told from a live reading.
+- The block is labelled **`lane: 'dream-trickle'`** and publishes **`lastWindowAgeMs`**.
+- **`state.curriculum.definitionAnchor` is NEW** — the pre-cell anchoring lane, sourced from `_teachProfile`, with `calls`, `avgSecPerCall`, `callsPerMin`, `secPerCallNow`. The windowed rate banks its previous sample on a **clock (≥60 s)**, not per call.
+- ⛔ **Nothing existing was redefined.** The rule is already recorded in this stack beside `gpuHits`: *"redefining a published field fixes a display by changing what an existing name means, which is how the next reader gets misled."*
+
+### ⛔⛔ AND THE WORST INSTANCE WAS IN A PAGE: `html/teachview.html` WAS GRADING ITSELF GREEN OFF THE FOSSIL
+
+```js
+add('definition lane', !!(dq && dq.lastWindow && dq.lastWindow.bound > 0), …)
+```
+
+The fossil carries `bound: 158`, so **`> 0` was satisfied forever** — and that check's result feeds the page's overall **`WORKING` / `NOT WORKING`** verdict. **The viewer built to answer "is it working?" was answering it from a 13.6-hour-old number.**
+
+Now graded on `definitionAnchor`, with the trickle shown **ungraded** (`ok: null`) beside it — because *idle mid-walk is the correct state for that lane and must not count either way.*
+
+### `SPIKESEM.1` — `totalSpikes` is instantaneous, and the docs built a two-sample test on it
+
+Both writers (`brain-server.js:5905` and `:7560`) do `this.totalSpikes = 0` and re-sum the current per-cluster `lastSpikeCount`. **It measures what is firing right now.** It fell twice in one session on a brain that was teaching throughout — `−24,710`, then `−10,935` — and I reported that as an unexplained anomaly before reading the writers. **It was the field working as written and named as something else**, published under two names (`totalSpikes` and `spikeCount`).
+
+⛔ **`docs/NOW.md` and `docs/RESUME.md` both instructed readers to settle "is she doing work?" with two samples of it.** Two samples of a non-monotonic value settle nothing.
+
+**Fixed:** **`state.spikesLifetime`** added, accumulated at **both** writer sites — *both*, because feeding one leaves the counter stalling on whichever lane happens to be running, which is the split that made `gpuHits` read `0` through a whole walk. `NOW.md`'s liveness test now names `frameCount · spikesLifetime · cellStatus`, plus two new trap rows.
+
+⭐ **`totalSpikes = 0` is still meaningful and the fix says so** — nothing firing is what the 53-minute incident showed. **Only the delta is worthless**, and conflating those would have discarded real evidence.
+
+### Verification
+
+- **Harnessed on the SHIPPED text, not a reimplementation:** the `definitionAnchor` IIFE extracted by brace-matched range and executed, **5/5** — honest note with no profile, honest note at zero calls, `callsPerMin: null` on a first read (emptiness, not a fake zero), and on the second read **26/min at 2.30 s/call, reproducing the hand-measured live figure exactly**; clock resample holds at 5 s and refreshes at 61 s.
+- **The real spike sequence replayed** through the shipped accumulator: instantaneous field fell on **2 of 3** actual transitions, lifetime twin rose on all three.
+- `node --check` on all three JS files · ESM `import()` of `curriculum.js` clean · `teachview.html` tag balance + both inline scripts parse · **`curriculum.js` is not in `js/app.bundle.js` (0 hits), so no bundle rebuild is owed.**
+
+### Named, checked, and deliberately NOT changed
+
+- **`html/dashboard.html`** renders `${s.totalSpikes} firing` — **"firing" is already the honest word** for an instantaneous value, and the probe-gate freeze is documented in place. **Churning a page that is already correct is its own defect.**
+- **`docs/ADMIN-CONTROLS.md` and `wiki/**` — zero hits for either field.** Genuinely unaffected, stated rather than silently skipped.
+- **`docs/WEBSOCKET.md:164`** — its only hit is `profiling.throughput.totalSpikes` inside a JSON example with value `0`. Different path, no semantic claim.
+- **`docs/RESUME.md`'s older blocks** keep the old wording — they record what was believed at the time, and rewriting history to match a later fix is what the change-history rule forbids.
+
+### ⏳ Still owed, filed not fixed
+
+- **The phase DENOMINATOR.** `macroPhaseProgress`, `phaseWork`, `outermostPhase`, `cellSubPhasesTotal` are all null or absent, so `cellSubPhases` climbs at ~1,289/min against nothing. **"When does phase 2 finish" is genuinely unanswerable from the box**, which is why no second ETA was given.
+- **`RESUMEPROOF.1`** — the resume sizing term is proven *arithmetic* on an *unexercised path*. The 0.03% prediction was measured on `bootReason: {mode:"wipe", reason:"force-fresh"}`; the stall it prevents happens on a **resume**. Headroom argues it will hold (`cgroup 11,884 / 20,480 MB · throttleEvents 0 · below-high`), but the answer to *"is the savestart stall behind us"* is **probably, unproven** until a resume boot prints `RESUME SIZING TERM` and comes up teaching. **No fresh walk is needed for that reading and none should be spent on it.**
+
+---
+
 ## 2026-09-08 (2nd) — `WEBSOCKET.md` CLEARED, AND THREE OF THIS SWEEP'S OWN MEASUREMENTS WERE WRONG
 
 Gee (verbatim): *"keep going cascade once ur complete"*

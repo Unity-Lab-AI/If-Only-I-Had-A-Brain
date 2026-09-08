@@ -5928,6 +5928,12 @@ class ServerBrain {
         }
         this.totalSpikes += this.clusters[name].spikeCount || 0;
       }
+      // ⭐ MONOTONIC TWIN. `totalSpikes` above is reset to 0 every tick and
+      // re-summed, so it is instantaneous and falls as often as it rises —
+      // which makes a two-sample delta on it useless as a liveness test. This
+      // one only ever accumulates, so "is she doing work?" is answerable from
+      // two reads. Added rather than changing what `totalSpikes` means.
+      this._spikesLifetime = (this._spikesLifetime || 0) + this.totalSpikes;
       this._firingControllerSample(_ackSpikes, _ackSize);
     } else {
       _st.lastMissAt = Date.now();
@@ -7591,6 +7597,13 @@ class ServerBrain {
                 this.totalSpikes += this.clusters[name].spikeCount || 0;
               }
             }
+            // ⭐ MONOTONIC TWIN — the second of the two writers. Same reasoning
+            // as the walk-heartbeat path: `totalSpikes` is reset and re-summed
+            // every tick, so only this accumulator can answer a two-sample
+            // liveness question. Both sites must feed it or the counter stalls
+            // on whichever lane happens to be running — the producer/consumer
+            // split that made `gpuHits` read 0 through an entire walk.
+            this._spikesLifetime = (this._spikesLifetime || 0) + this.totalSpikes;
             if (_fkSize > 0) this._firingControllerSample(_fkSpikes, _fkSize);
 
             this._updateDerivedState();
