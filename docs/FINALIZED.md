@@ -5,6 +5,114 @@
 
 ---
 
+## 2026-09-08 (2nd) — `WEBSOCKET.md` CLEARED, AND THREE OF THIS SWEEP'S OWN MEASUREMENTS WERE WRONG
+
+Gee (verbatim): *"keep going cascade once ur complete"*
+
+### ✅ `docs/WEBSOCKET.md` — COMPLETE
+
+**7 prose walls → 0 · 1 name ref → 0 · ~30 ticket identifiers → 1** (a deliberate cross-reference, documented in place). Longest prose line 3,353 → 1,200.
+
+⭐ **The tickets converted almost for free, and the reason generalises: every protocol entry already named its own opcode.** `**SHADOWCOST.3 — readback_matrix_values**` → `**readback_matrix_values**`. `**TU.19-D — readback_matrix_checksum**` → `**readback_matrix_checksum**`. **The mechanism was sitting beside the ticket in all but a handful of cases**, which is exactly what the placement LAW asks for and it cost almost nothing to do.
+
+**Walls became the structure each was already trying to be:** the four parity verdicts a **table** (they demand *opposite* responses and a paragraph hid that), the `gpu_register` payload a **table**, the two-site donor bound a **fenced block**, the run-cap re-price a **priced block**, the replica-pool wall a bullet list plus a nested callout.
+
+### ⛔⛔ THREE MEASUREMENTS THIS SWEEP HAD ON RECORD WERE WRONG, AND ALL THREE WERE MY OWN INSTRUMENTS
+
+**① The ticket denominator is 1,844, not 1,048 — a 76% undercount.** Every pattern in use required **four or more** uppercase characters before the dot, so a whole family of short stems was invisible: `DF.7` · `TU.20` · `TU.25` · `WSQ.1/.2/.3` · `I.15` · `R6.2`. **`SENSORY.md` alone went 19 → 78** when the pattern widened. ⚠ **Same lesson `CODELEAK.1` already records after four failed detectors — at triple the scale.**
+
+**② The wall metric counts TABLE ROWS, which are correct structure and cannot be wrapped.** Re-measured with a detector that separates prose from tables and fences:
+
+```
+                        PROSE  table          verdict
+  ADMIN-CONTROLS.md         1     18   its "21 walls" were 18 table rows
+  KNOWN_ISSUES.md           0     18   its "18 walls" were ALL table rows
+  ARCHITECTURE.md          69      0   but 63 sit in the ARCHIVED history block;
+                                       its LIVE architecture has SIX
+```
+
+⭐⭐ **Two files this sweep listed as debt were already correct** — both were marked ✅ COMPLETE and both still showed double-digit walls, **because the ruler was wrong, not the verdicts.** ⚠ **`SKILL_TREE.md`'s own log entry had already said so** and the survey table was never corrected, so every later reader inherited the bad number.
+
+**③ The name-reference count is 159 actionable, not 254 — because 179 of 338 hits sit inside verbatim quotes this sweep explicitly forbids stripping.** ⚠ **And that split is still only a candidate list:** `SENSORY.md:167` reads `Gee: "a human doesnt have…"`, which **is** a quote, classed bare purely because it uses straight quotes. **Every one of the 159 needs individual judgement.**
+
+### ⭐⭐ THE STRUCTURAL FINDING: A PER-FILE TICKET SWEEP IS NOT SAFE — THE UNIT IS THE REFERENCE PAIR
+
+`docs/WEBSOCKET.md` pointed at `EQUATIONS.md § Phase 13 R6.2 — Equational Component Synthesis`. **That heading was renamed to `## 14. Equational Component Synthesis` by THIS SWEEP'S OWN earlier pass on `EQUATIONS.md`, and the pointer was never updated.**
+
+⛔ **So the sweep broke a cross-reference while cleaning up, and nothing anywhere would have reported it.** Found and fixed by hand.
+
+⭐ **This is why `WEBSOCKET.md`'s two surviving `§ T14` pointers were deliberately KEPT** rather than cleaned: their target headings still carry the legacy identifier, so **both sides move together or neither does.** That constraint is now written into the doc beside the pointers.
+
+⛔ **And a third class: some tickets are RENDERED UI STRINGS.** `html/dashboard.html:829` ships `🗣 Speech Health (SPEAK) — separability + coherence floor` as a card title — a ticket-family name a visitor reads on screen.
+
+### Two rows filed, neither fixed here
+
+- **`DOCSWEEP.9` — a cross-reference checker.** 236 `<file> § <section>` references exist across the tree and **nothing checks any of them**; `docs:drift` checks a page against its declared *sources*, never against the *headings it points at*. ⛔⛔ **I tried to build it and could not make it trustworthy in two iterations, so no numbers from it are recorded as findings.** Pass 1 said 86 unresolved (it was rewriting `.claude/` targets as `docs/` and over-capturing prose); pass 2 said 16, and spot-checks killed those too — it called `RESUME.md § (15th` and `§ (16th` dead when **both blocks exist.** **One real break found and fixed by hand; the generalisation is unbuilt, and its acceptance test is reproducing the `R6.2` break.**
+- **`DOCSWEEP.10` — a live code comment still advertises the deleted dictionary fallback.** `js/brain/language-cortex.js:1511` promises a *"pre-curriculum dictionary-cosine fallback"*; **the branch is gone** (read it: the only guard left is *no cluster → warn and return `''`*), and `:1506` **in the same docblock** already says the lane is gone. **The file contradicts itself eleven lines apart.** ⭐ **The four-page doc sweep above exists because a deleted fallback kept being described as live — a comment promising one is that defect one layer deeper, in the layer a future reader trusts most.** With `voice.js`'s header and `DOCSWEEP.8`'s parity comments that is **three known cases: a class, not an incident.**
+
+### Also corrected in `WEBSOCKET.md` by reading the code
+
+- **`LanguageCortex.generate` called "a 68-line delegate". It is ~421 lines** (1510 → 1931).
+- Its frontmatter carried the same unbounded-provenance shape `DOCLINE.1` warns about; moved to the short `<hash> <date>` form.
+
+⚠ **`status` stays `draft`** — the JSON message schemas in the first half of the page were not re-read field by field, and the file says so.
+
+---
+
+## 2026-09-08 — `DOCSWEEP.6`: THE LAYMAN PAGES, AND FOUR PAGES DESCRIBING A DELETED FALLBACK AS LIVE
+
+Gee (verbatim, the instruction this row serves): *"full doc sweep evey bad layout post that doesnt match style every text wall every mention of my name in public facing docs pages and the like every code refrence name in public facing documents all needs cleaned up and all equations, laymans pages how tos readmes, workflows docs, tooltips everywhere(add them) and every documented capability in archeticeure brain equations readme how to all shall be updated and corrected especiallly correcting text walls that dont match the style format and beautiful layouts we want and you shall put all this in the todo as docseep items and then properly get to work no agents, noo batching, use the todo and finalized for refrences to the changes and what all needs to be rewriten. redocumented , edited, updated, ect ect"*
+
+⛔ **Working constraints honoured: no agents · no batching · one file at a time · every claim verified against the file that implements it before a word changed.**
+
+### The three files, and what was wrong with them
+
+| File | State before | Result |
+|---|---|---|
+| **`README.md`** | layout pass had **already shipped** at `d720d000` and was **never logged** — so the board still claimed "8 walls" against an actual 0 | **12 defects corrected.** walls 0 · names 0 · 26/26 anchors resolve |
+| **`docs/SETUP.md`** | the install guide a stranger follows. **VRAM table wrong in every row**, a browser brain promised in two places that does not exist | **12 more defects.** 3 walls → 0 · 14 ticket leaks → 0 |
+| **`docs/PUSH_WORKFLOW.md`** | the pre-push checklist **listed half the doc trees** — the checklist whose whole job is preventing this sweep | full tree list · 7 attributions → 0 · 5 ticket leaks → 0 |
+
+### ⭐⭐ THE REUSABLE FINDING: A DELETION IS NOT FINISHED UNTIL EVERY PAGE THAT DESCRIBED IT IS FOUND
+
+The dictionary oracle — `_dictionaryOracleEmit`, 311 lines, **measured carrying 99.1% of her emissions (`oracleHits=425` vs `matrixHits=4`)** — was deleted 2026-09-01 and the deletion was recorded as done.
+
+**This sweep has now corrected it on FOUR pages:** `unity-guide.html`, `HOW-IT-WORKS.md`, `README.md` and `SETUP.md` — **three of them found after the deletion was closed.** The same is true of the **browser fallback brain** (two places in `SETUP.md` alone) and the **TTS fallbacks** (README + SETUP).
+
+⛔ **A no-fallbacks project whose documentation keeps describing fallbacks as live is making its central claim false in the only place a stranger can read it.** The code was right every time; the pages were the liability.
+
+### The defects worth naming individually
+
+- ⛔⛔ **`SETUP.md`'s VRAM share table was wrong in EVERY row and missing a whole cluster** — `75 / 10 / 5 / 4 / 2 / 2 / 1 / 1` with no `brainstem`, against `DEFAULT_BIO_WEIGHTS` `0.500 / 0.100 / 0.098 / 0.060 ×5 / 0.002`. **Not one number matched.**
+- ⛔ **`README.md` quoted percentages from one boot and absolute neuron counts from a DIFFERENT boot inside one sentence** — `≈82.2M` is 20% of 411,216,550, beside a stated total of 425,436,550. **The exact trap `NOW.md` was rebuilt to prevent, sitting on the front page.**
+- **`oracleRatio` was documented on both pages as "the central research-validity number".** Nothing increments `_oracleHits` any more, so it reads `0%` forever. Kept as a permanent-zero regression detector and **relabelled as one** — *an instrument whose only possible reading is the healthy one has stopped being an instrument.*
+- **Sub-region count said nine on both pages** (SETUP said eight) while `README`'s own diagram said eleven. It is **eleven**; eight carry the sixteen projections; 23 region keys with the nested bands.
+- **Vocabulary totals were `49,921 / 18,017`.** Measured off the live lists: **`56,527 / 19,339`** — including as a dashboard denominator.
+- **Every launcher path was wrong** in eight places: they are under `windows\` and `linux/` since the root reorg.
+- **The resume sizing term post-dated `README`'s own warning block** and is now in it, with the reason it is a *ratio* and not a file size: a budget that moved as the weight file grew would change `TOTAL_NEURONS` and make the stale-state check **wipe the weights on every savestart.**
+
+### ⚠ THREE OF MY OWN READINGS WERE WRONG FIRST, AND THE CHECKS ARE WHAT SAVED THEM
+
+1. **"The Windows launchers were deleted."** They are all present under `windows/`. The defect was real but narrower — a path defect, not a missing file.
+2. **"Three README anchors are broken."** My checker collapsed runs of whitespace where GitHub replaces each space individually, so every heading containing `" / "` came back broken. **Fixed the checker, re-ran with a known-good pair as a self-test: 26 anchors, 0 unresolved.** The page had been correct all along. **Nth instrument in this project to need checking before being believed.**
+3. ⭐ **"`fastText subword for OOV` is another surviving fallback."** It is **correct** — subword n-gram sum is the **defined encoding** for an out-of-vocabulary word (`embeddings.js:494`); what no-fallbacks deleted was subword-as-substitute-for-the-whole-table. **One edit from breaking a true statement**, and only reading the file stopped it.
+
+⛔ **And I committed the `DOCLINE.1` anti-pattern mid-pass and caught it in the same pass:** my first `SETUP.md` restamp wrote a **~2,500-character `last-verified`** line, exactly the unbounded-frontmatter shape that row documents as the mechanical cause of four banned-write violations. Restructured to the fix that row already names — short `<hash> <date>` in frontmatter, `## Verification history` in the body — **after checking the consumer**, which parses only the leading hash.
+
+### What this row raised and did NOT fix
+
+**`DOCSWEEP.8`** — two comments in two files assert a cluster-shape parity between the runtimes that does not hold. `js/brain/cluster.js:88` has cortex `0.55` / hippocampus `0.18`; the server runs `0.20` / `0.12` and **does not call `clusterSizesFor` at all** (grepped: only `cluster.js` and the browser `engine.js` consume it). Both files nonetheless document parity, and `brain-server.js`'s `KEEP IN SYNC` block **sits directly above the allocator that superseded it**. ⭐ **The divergence is probably harmless; the comments are not, because a comment asserting parity is what stops anyone measuring it.** Filed as a code finding, not repaired in a documentation pass.
+
+### Verification
+
+All three files: **0 walls over 1,200 chars** (longest 1,186 / 839 / 701) · **0 name references** · **0 duplicate headings** · **every internal anchor resolves** · **all three dropped off `npm run docs:drift`**. Every verbatim operator quote in all three files was left **byte-intact** — only attribution wrappers changed, because a quote is evidence and stripping it destroys the record while pretending to tidy up.
+
+⚠ **`docs/SETUP.md` and `docs/PUSH_WORKFLOW.md` keep `status: draft`, with what was NOT re-verified named in each file's own frontmatter** — SETUP's endpoints-table completeness, its troubleshooting table and the systemd bootstrap narrative; PUSH_WORKFLOW's `BUILD`/nonce mechanics. **A claim that cannot be verified is marked rather than left standing.**
+
+⚠ **The board row is `[x]` and still on `docs/TODO.md` on purpose.** `DOCSWEEP` is a live programme with eight rows still open, and every prior board reset here archived the whole board byte-for-byte before stripping anything — so the verbatim archive happens for all `DOCSWEEP` rows together at the programme's end. **This entry is the authored record; the row carries a note saying the migration is owed.**
+
+---
+
 ## 2026-09-08 (archive) — `HYDRATEOFF`: THE PREVIOUS SESSION'S COMPLETED ROW, MIGRATED VERBATIM BECAUSE IT NEVER WAS
 
 ⛔ **FOUND WHILE CLEARING THE BOARD, NOT LOOKED FOR.** `HYDRATEOFF.1` sat on `docs/TODO.md` marked `- [x]` with its verdict written, and **its verbatim text was in no ledger entry.** String-probed before assuming: the row's own `Original filing:` sentence returned **no match** anywhere in this file. ⚠ **A matching task TAG proves nothing** — there were `HYDRATEOFF` mentions in the 2026-09-07 (3rd) entry and the row itself had still never been archived. **FINALIZED-before-DELETE forbids removing it in that state**, so it is copied here first, byte-for-byte, and only then removed.

@@ -1,6 +1,110 @@
 # RESUME — Session Pickup Brief
 
-> # ✅ 2026-09-08 (latest, 18th) — THE FRESH WALK LANDED AND THE SIZING PREDICTION HELD TO 0.03% (START HERE)
+> # 📄 2026-09-08 (latest, 20th) — `WEBSOCKET.md` CLEARED, AND THREE OF THE SWEEP'S OWN RULERS WERE WRONG (START HERE)
+>
+> Gee (verbatim): *"keep going cascade once ur complete"*
+>
+> ## ✅ `docs/WEBSOCKET.md` COMPLETE — 7 walls → 0 · 1 name → 0 · ~30 tickets → 1
+>
+> ⭐ **The tickets came off almost free, and it generalises: every protocol entry already named its own opcode.** `SHADOWCOST.3 — readback_matrix_values` → `readback_matrix_values`. **The mechanism was beside the ticket in nearly every case** — which is precisely what the placement LAW asks for.
+>
+> ## ⛔⛔ THREE OF THIS SWEEP'S RECORDED MEASUREMENTS WERE WRONG, ALL THREE MY OWN INSTRUMENTS
+>
+> ```
+>   tickets   1,048  ->  1,844   +76%.  Every pattern needed 4+ uppercase chars
+>                                       before the dot, so DF.7 / TU.20 / WSQ.3 /
+>                                       I.15 / R6.2 were INVISIBLE.
+>                                       SENSORY.md alone: 19 -> 78
+>
+>   walls     the metric counted TABLE ROWS, which are correct structure.
+>             ADMIN-CONTROLS "21 walls" = 1 prose + 18 tables  (verdict was RIGHT)
+>             KNOWN_ISSUES   "18 walls" = 0 prose + 18 tables  (verdict was RIGHT)
+>             ARCHITECTURE      69 prose, but 63 are in the ARCHIVED history block
+>                               -> its LIVE architecture has SIX
+>
+>   names       254  ->  159 actionable.  179 of 338 sit inside VERBATIM QUOTES
+>                                         the sweep itself forbids stripping.
+> ```
+>
+> ⭐⭐ **Two files this sweep listed as debt were already correct.** The rulers were wrong, not the verdicts — and `SKILL_TREE.md`'s own log had already said so while the survey table went uncorrected, so every later reader inherited the bad number.
+>
+> ## ⭐⭐ THE FINDING THAT CHANGES HOW THE TICKET SWEEP MUST BE WORKED
+>
+> **A per-file ticket sweep is NOT safe. The unit is the reference PAIR.**
+>
+> `WEBSOCKET.md` pointed at `EQUATIONS.md § Phase 13 R6.2` — **a heading THIS SWEEP renamed in an earlier pass.** The pointer was dead and **nothing anywhere would have reported it.** Fixed by hand. ⭐ **That is why `WEBSOCKET.md`'s two surviving `§ T14` pointers were deliberately KEPT** — their targets still carry the legacy identifier, so both sides move together or neither does.
+>
+> ⛔ **And some tickets are RENDERED UI:** `html/dashboard.html:829` ships `🗣 Speech Health (SPEAK)` as a card title a visitor reads.
+>
+> ## ⛔ WHAT I FILED AND DID NOT FIX
+>
+> - **`DOCSWEEP.9` — a cross-reference checker.** 236 `<file> § <section>` refs exist and nothing checks them; `docs:drift` checks *sources*, never *pointed-at headings*. ⛔⛔ **I could not make the checker trustworthy in two passes, so I recorded NO numbers from it.** Pass 1: 86 "unresolved" — it rewrote `.claude/` targets as `docs/`. Pass 2: 16 — and spot-checks killed those too (it called `RESUME.md § (15th` dead when the block exists). **One real break found and fixed by hand; the generalisation is unbuilt.** ⚠ **Third detector this session to give a confident wrong answer.**
+> - **`DOCSWEEP.10` — `language-cortex.js:1511` still advertises the deleted dictionary fallback** while `:1506` in the same docblock says the lane is gone. **The file contradicts itself eleven lines apart.** With `voice.js`'s header and `DOCSWEEP.8`'s parity comments that is **three cases — a class.**
+>
+> ## ⏳ WHAT REMAINS ON `DOCSWEEP`, WITH REAL NUMBERS
+>
+> ```
+>   walls    ~110 prose  SKILL_TREE 32 · EQUATIONS 24 · ROADMAP 23 · HTML-ENTRY 5 · singles
+>                        (+63 in ARCHITECTURE's archived block = declared debt, 61/61 audited
+>                         present in e57e9735, git-recoverable, safe to leave)
+>   tickets  ~1,830      ARCHITECTURE 380 · COMP-todo 373 · ROADMAP 215 · NewTodo 193 ·
+>                        SKILL_TREE 184 · EQUATIONS 125 · SENSORY 78 · + 24 files
+>   names       159      individually judged, quote-protected ones excluded
+>   .4a         dashboard tooltips — a DESIGN change across ~10 cards, not an attribute swap
+>   .5          capability verification: brain-equations.html (317 KB) + ARCHITECTURE live
+> ```
+>
+> ⚠ **The ticket grind has no shortcut and a regex sweep is banned** — `CODELEAK.1` is the precedent: 79 files by hand across multiple sessions. **Nothing about it is blocked; it is just long.**
+>
+> ⭐ **The walk is untouched. Nothing this session went near the brain.** Boot `24ddd9c2`, 233,932,309 neurons, teaching.
+>
+> ---
+
+> # 📄 2026-09-08 (19th) — `DOCSWEEP.6` CLOSED: FOUR PAGES WERE DESCRIBING A DELETED FALLBACK AS LIVE
+>
+> Gee (verbatim): *"then run /workflow"* — no new scope; picked the highest-value open row off the board.
+>
+> ## ⭐⭐ THE FINDING THAT MATTERS BEYOND THESE THREE FILES
+>
+> **A deletion is not finished until every page that described the deleted thing is found.** The dictionary oracle — 311 lines, **measured carrying 99.1% of her emissions** — was deleted 2026-09-01 and closed. This sweep has now corrected it on **FOUR pages**, three of them found *after* the deletion was recorded as done:
+>
+> ```
+>   unity-guide.html   corrected earlier in the sweep
+>   HOW-IT-WORKS.md    corrected earlier in the sweep
+>   README.md          corrected THIS pass — the full three-path cascade was intact
+>   SETUP.md           corrected THIS pass — listed as a shipped cluster.js helper
+> ```
+>
+> ⛔ **Same shape for the browser fallback brain (two places in SETUP alone) and the TTS fallbacks (README + SETUP).** The code was right every time. **In a no-fallbacks project, a doc describing a fallback as live makes the central claim false in the only place a stranger reads it.**
+>
+> ## ✅ WHAT LANDED — 3 files, 26 verified defects
+>
+> | | |
+> |---|---|
+> | **`README.md`** | 12 defects. ⛔ Its layout pass had **already shipped** at `d720d000` and was **never logged**, so the board still claimed "8 walls" against 0 |
+> | **`docs/SETUP.md`** | 12 defects. ⛔ **The VRAM share table was wrong in every row and missing a whole cluster** |
+> | **`docs/PUSH_WORKFLOW.md`** | ⛔ **The pre-push checklist was itself the defect** — it named nine files and omitted `html/` tooltips, `deploy/`, `.claude/`, `wiki/`, `RESUME.md`, `NOW.md` |
+>
+> ⭐ **That last one is upstream of everything else this sweep is fixing.** A tree nobody names is a tree nobody checks.
+>
+> **Measured after: 0 walls · 0 name refs · 0 duplicate headings · every anchor resolves · all three off `npm run docs:drift`.**
+>
+> ## ⚠ THREE OF MY OWN READINGS WERE WRONG FIRST
+>
+> - *"The Windows launchers were deleted"* — they are in `windows/`. Real defect, narrower than I wrote.
+> - *"Three README anchors are broken"* — **my checker was collapsing whitespace GitHub does not.** Fixed it, self-tested against a known-good pair: 26/26 resolve. The page was always fine.
+> - ⭐ *"`fastText subword for OOV` is another surviving fallback"* — **it is CORRECT.** Subword n-gram sum is the *defined* encoding for an out-of-vocabulary word; what no-fallbacks deleted was subword-as-substitute-for-the-whole-table. **One edit from breaking a true statement.**
+>
+> ## ⛔ WHAT IS OPEN
+>
+> - **`DOCSWEEP.8` — NEW, filed this pass.** Two comments in two files assert a cluster-shape parity between the runtimes that **does not hold**: `cluster.js:88` has cortex `0.55`/hippocampus `0.18`, the server runs `0.20`/`0.12` and **never calls `clusterSizesFor` at all**. `brain-server.js`'s `KEEP IN SYNC` block sits **directly above the allocator that superseded it**. ⭐ The divergence is likely harmless; **the comments are not, because a comment asserting parity is what stops anyone measuring it.** Code finding — not a doc fix.
+> - **`DOCSWEEP` continues:** `.1` `.2` `.3` `.4` `.4a` `.5` `.7` still open. `.5` is the one with teeth (capability verification across `ARCHITECTURE.md`, `brain-equations.html`, `README.md`, `HOW-IT-WORKS.md`, `EQUATIONS.md`).
+> - ⚠ **`DOCSWEEP.6`'s row is `[x]` and still on the board ON PURPOSE**, with a note saying so. The verbatim archive + strip happens for all `DOCSWEEP` rows together at the programme's end — the same whole-board discipline every prior reset used. **Not committed to `main`; the work sits on `feature/docsweep-layman-pages`.**
+> - **The walk is untouched and still healthy** — nothing this pass went near the brain. Boot `24ddd9c2`, 233,932,309 neurons, teaching.
+>
+> ---
+
+> # ✅ 2026-09-08 (18th) — THE FRESH WALK LANDED AND THE SIZING PREDICTION HELD TO 0.03%
 >
 > Gee (verbatim): *"update freshwalk pressed! 5min probably till she is teaching"*
 >
