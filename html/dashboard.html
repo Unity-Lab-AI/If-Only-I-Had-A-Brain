@@ -3493,9 +3493,41 @@
         // Alive = teaching OR emitting OR chunking, and the chunk rate is
         // shown BY NAME so a long single call can never read as a stall.
         const chunkRate = lv.teachChunksPerMin | 0;
+        // PREVOCABLIVE — THE FOURTH WAY THIS LINE LIED, AND IT PAINTED A
+        // WORKING BRAIN RED WHILE THE OPERATOR WATCHED.
+        //
+        // The pre-cell definition bootstrap in `_trainAcademicStories` runs
+        // OUTSIDE the phase teach lanes, so during it every existing term above
+        // is legitimately false. Read live 2026-09-08, 21 minutes into a healthy
+        // resume, mid-bootstrap:
+        //
+        //     teachCallsPerMin      0
+        //     sinceLastTeachMs      1,166,902     (19 min)
+        //     emissionTicksPerMin   0
+        //     sinceLastEmitTickMs   null
+        //     teachChunksPerMin     0
+        //     -> alive = false -> RED
+        //
+        // Meanwhile `prevocab:ela-kindergarten` went 46/662 -> 145/662 chunks in
+        // 19 minutes at a measured 7.56 chunks/min, and this line was read as
+        // "she is hung" — which is exactly the question it exists to answer, and
+        // it answered backwards.
+        //
+        // ⭐ THE SIGNAL THAT IS MOVING IS THE STAGE STAMP. `_tstage` bumps
+        // `teachStageSeq` on every chunk, and `teachStageAgeMs` is the time since
+        // the last stamp — so a RECENT stamp is positive evidence of work in a
+        // lane that reports no rate at all.
+        //
+        // ⚠ AND IT CANNOT FORGE LIVENESS, which is why the age is the right term
+        // rather than the tag's presence: `_tstage` is never nulled, so a wedged
+        // walk keeps its LAST tag forever while the age CLIMBS — the same trap
+        // `GATEPIN.1` was filed for. A stale tag therefore reads red, exactly as
+        // it should; only a fresh stamp reads green.
+        const stageAgeS = (lv.teachStageAgeMs == null) ? null : Math.round(lv.teachStageAgeMs / 1000);
         const alive = rate > 0 || (sinceS !== null && sinceS < 30)
           || emitRate > 0 || (sinceEmitS !== null && sinceEmitS < 30)
-          || chunkRate > 0;
+          || chunkRate > 0
+          || (stageAgeS !== null && stageAgeS < 30);
         const colour = alive ? '#4ade80' : '#f87171';
         // GATEGPU — a gate PROBES (tests), it doesn't teach, so teach/min=0 is
         // TRUE during one; but the donor is now doing the grading, and a bare
@@ -3526,9 +3558,21 @@
         const chunkBit = chunkRate > 0
           ? ` &middot; <span style="color:#4ade80;">${chunkRate.toLocaleString()} teach-chunks/min${rate <= 1 ? ' (one long teach call in flight)' : ''}</span>`
           : '';
+        // PREVOCABLIVE — SAY WHICH LANE IS CARRYING HER, BY NAME, the same way
+        // the gate / emit / chunk bits do. Green with a bare "0 teach/min"
+        // beside it is only half a fix: the operator still has no idea what the
+        // brain is doing, and the stage tag is the one field that knows.
+        //
+        // ⭐ Shown ONLY when every rate above is zero — during a normal phase
+        // those rates are the better answer and this would be noise.
+        const stageBit = (rate === 0 && chunkRate === 0 && emitRate === 0
+          && stageAgeS !== null && stageAgeS < 30 && lv.teachStage)
+          ? ` &middot; <span style="color:#4ade80;">${String(lv.teachStage).replace(/[<>&]/g, '')} &mdash; working, stamped ${stageAgeS}s ago</span>`
+          : '';
         pctLabel += `<br><span style="color:${colour};">${rate.toLocaleString()} teach/min</span>`
           + chunkBit
           + emitBit
+          + stageBit
           + (sinceS === null ? '' : ` &middot; last teach ${sinceS}s ago`)
           + gate;
       }

@@ -1,5 +1,61 @@
 # RESUME — Session Pickup Brief
 
+> # ✅ 2026-09-08 (latest, 24th) — THE PRESS LANDED CLEAN, THEN THE PAGE CALLED HER DEAD (START HERE)
+>
+> Gee, in order: *"read resume.md and i guess i need to hit update savestart... right?"* → *"pressed! monitor for shutdown and restart and doner connect and everything u are looking out for"* → *"so is there anything to do? she is working towards graduation with no erroring or issues to concern us she will pop out of training as we intend as Unity?"* → *"okay well fix then document and do it"* → *"shit shes hung?"* → *"uptime is froozen"* → *"na she good"*.
+>
+> ## ✅ `RESUMEPROOF.1` CLOSED — THE STALL IS BEHIND US, ON THE PATH THAT WAS EXCLUDED BEFORE
+>
+> ```
+>   5:23:24  RESUME SIZING TERM — 15580MB ÷ 1.3644 = 11418MB, reserving 4162MB
+>   5:23:24  bootReason {mode:"resume", reason:"keep-flag"}       <- not "wipe"
+>   5:23:24  weights pair coherent — json/bin 600s apart
+>   5:24:17  Binary weights applied — 17/17 sections  (4,561.5 MB, saveVersion 373)
+>            nnz = 418,539,840 · passedPhases 9 · allow-set 2,338 taught words
+>   5:26:07  cellStatus in-progress, already-passed phases SKIPPED
+>
+>   cgroup   14,470 -> 14,031 MB / high 20,480 · throttle 0 · pressure 0
+>   donor    NVIDIA A40:PRIMARY · 160ms round-trip flat across 5 samples
+> ```
+>
+> **Memory FELL while teaching.** On 2026-09-05 the same press sat at 102% of `memory.high` with ~628 throttle events/sec and the process in D state.
+>
+> ⛔ **The exit was not clean** (`detail:"(no marker)"`, `LOOPNAME.7` shows it mid-work in `_teachSentenceList`). Bounded loss = the json/bin lag **≤600 s** plus that phase's in-flight reps. **`_teachSentenceList` banks no rep cursor while its two siblings do → `SENTLISTCURSOR.1`.**
+>
+> ## ⛔ THE HONEST ANSWER TO *"she will pop out of training as we intend as Unity?"*
+>
+> **Not supported yet — and the alarming fields are correct by design.** `runElaKReal`'s phase list, extracted: 23 `_teach*` phases + the 2 the wrapper prepends = the 25 the box reports, and **`_teachWordEmissionDirect` is the LAST one.** So `wordsBucketed 0` / `wordMotorEverFired 0` / `voice "unmeasured"` at **phase 2 of 25** is exactly right — she cannot have a word to emit yet.
+>
+> ⛔ **What IS true: the cell gate has never passed once, end to end, on any build.** `passedCellsTotal 0` of **213 cells** · `lastGateVerdict null` · `graduation null`. **The first proof the walk terminates is the first cell pass, 23 phases away — not graduation.**
+>
+> ⛔⛔ **NO TIMELINE WAS GIVEN, DELIBERATELY.** Yesterday's 12.3 h forecast came off frozen fields and was ~9× wrong; `_teachAssociationPairs` has a recorded single call at **14.88 h**; 23 of 25 phases have no measured cost on this build. **The only rate stood behind is the measured one: 7.56 chunks/min → ~81 min for the bootstrap.**
+>
+> ## ✅ `VOCABMISS.4` SHIPPED — ONE LINE, PICKED BY MEASUREMENT
+>
+> `curriculum.js:18797` manufactured words that cannot exist. Measured on the real corpus (22,658 sentences, both tokenizers side by side, every damaged form tested):
+>
+> ```
+>   DAMAGED distinct forms   2,011      hyphen 1,787 · possessive 600
+>     resolve as mashed form   874      contraction 140 · ".p" artefact 10
+>     NEW, safe arms only      251
+>     still dead               886
+> ```
+>
+> ⛔⛔ **THE TRAP THAT WOULD HAVE INVERTED IT:** `taught` is keyed on the **old mashed form**, so a better token without a dual-key check makes **17,366** taught words read as untaught and the 81-minute pass **GROWS**. Harnessed at **0 remaining**.
+>
+> ⛔ **A 581-word "improvement" was refused** — a hyphen head-only split gives `paddy-whack`→`paddy`, `cocky-locky`→`cocky`: real lemmas for **different words**. ⚠ **My first reported figure of 1,162 included those and was corrected before it became a claim. Safe-arms-only is 251, and the distinct-token count RISES by 272 — a correctness win, NOT a throughput win.**
+>
+> ## ⛔⛔ `PREVOCABLIVE.1` — THE FOURTH TIME ONE EXPRESSION LIED, AND ITS OWN COMMENT LISTED THE OTHER THREE
+>
+> He asked *"shit shes hung?"*. **He was right to ask; the page was wrong.** `dashboard.html:3527` ORs four *named* producer rates, and during the bootstrap **all of them are legitimately false** → red "dead brain" at 7.56 chunks/min. The comment above it documents `GATEGPU`, `EM.2`, `LIVETEACH` — **each closed by adding the lane that was actually carrying her.** Fixed with a stamp-age term (**never the tag's presence** — a stale tag must still read red) plus the tag printed by name. **5/5, including stale-stamp-400s → RED. Frontend: rides the rsync, no press.**
+>
+> ## ⏳ OPEN, ALL FILED
+>
+> - `SENTLISTCURSOR.1` · `PREVOCABDENOM.1` · `FIGFIELDLFS.1` (the box's wavelet fields are unresolved LFS pointers — she re-transforms every figure live) · `DOCSWEEP` remainder.
+> - ⛔ **The two server files need a PRESS**; the dashboard fix does not.
+>
+> ---
+
 > # ✅ 2026-09-08 (latest, 23rd) — THE THREE TEACH FLAGS, AND THE FIX WAS THE LOOKUP NOT THE CONTENT (START HERE)
 >
 > Gee pasted the live panel: `DEF-DEFER ×3308` · `PRECELL-MISS 12 of 2247` · `DEF-MISS ×41`.
