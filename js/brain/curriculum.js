@@ -4091,11 +4091,84 @@ export class Curriculum {
       // a silent no-op that hid a whole run's worth of un-learned vocabulary
       // behind an absent log. Depth + the last window's outcome are published so
       // "is she actually learning word meanings" is a field read, not a log hunt.
+      // ⛔⛔ THIS BLOCK DESCRIBES THE DREAM TRICKLE AND NOTHING ELSE, AND THE
+      // OMISSION OF THAT WORD IS THE WHOLE DEFECT.
+      //
+      // `depth` reads `cluster._kVocabQueue` and `lastWindow` reads
+      // `_trickleLastWindow`; BOTH are written in exactly one place — the
+      // dream-cycle trickle block, which runs only inside a dream window. So
+      // during a walk this lane is idle BY DESIGN and every number here stands
+      // still, for hours, while the definition work that matters runs
+      // elsewhere and is not represented at all.
+      //
+      // ⛔ The comment above once claimed this made *"is she actually learning
+      // word meanings"* a field read rather than a log hunt. It answered about
+      // the wrong lane: measured on one boot, this block sat frozen for 13.6
+      // hours while `_teachWordDefinition` went 2,365 -> 17,002 calls. A
+      // forecast built on it was wrong by ~9x on the per-definition cost
+      // (20.6s published against 2.30s live).
+      //
+      // ⭐ `lane` and `lastWindowAgeMs` are ADDED rather than the existing
+      // fields being redefined — the same reasoning `brain-server.js` records
+      // beside `gpuHits`: redefining a published field fixes a display by
+      // changing what an existing name means, which is how the next reader gets
+      // misled. The live lane gets its own block below.
       definitionQueue: {
+        lane: 'dream-trickle',
         depth: (cluster && Array.isArray(cluster._kVocabQueue)) ? cluster._kVocabQueue.length : 0,
         unresolved: (cluster && cluster._kVocabUnresolved instanceof Set) ? cluster._kVocabUnresolved.size : 0,
         lastWindow: this._trickleLastWindow || null,
+        // ⚠ null means the trickle has never run on this boot. A LARGE age
+        // means these numbers are a fossil — which is the normal reading
+        // mid-walk, not a fault.
+        lastWindowAgeMs: (this._trickleLastWindow && this._trickleLastWindow.at)
+          ? (Date.now() - this._trickleLastWindow.at)
+          : null,
       },
+      // ⭐⭐ THE LANE THAT IS ACTUALLY DOING THE WORK, PUBLISHED FOR THE FIRST
+      // TIME. Definitions are anchored by the pre-cell pass nested inside the
+      // association teach (`phaseChain` reads `_teachWordDefinition ->
+      // _teachAssociationPairs`), which touches neither field above.
+      //
+      // Sourced from `_teachProfile`, the per-method wall-ms profile — the one
+      // instrument that told the truth during this incident. Cumulative totals
+      // are exact; the windowed rate needs two samples, so a previous sample is
+      // banked on a CLOCK (>= 60s) rather than per call, for the same reason
+      // the rep-pricing sampler was moved onto a clock: a per-call resample
+      // makes the window whatever the call rate happens to be.
+      // ⚠ `callsPerMin`/`secPerCallNow` are null until a second sample exists.
+      // That is honest emptiness, not a zero.
+      definitionAnchor: (() => {
+        try {
+          const pf = (this._teachProfile && this._teachProfile._teachWordDefinition) || null;
+          if (!pf || !(pf.calls > 0)) {
+            return { lane: 'pre-cell-anchor', calls: 0, totalMs: 0, note: 'no definition anchoring has run on this boot' };
+          }
+          const now = Date.now();
+          const prev = this._defAnchorSample;
+          let callsPerMin = null, secPerCallNow = null;
+          if (prev && now > prev.at && pf.calls > prev.calls) {
+            const dCalls = pf.calls - prev.calls;
+            const dMs = pf.ms - prev.ms;
+            const dt = now - prev.at;
+            callsPerMin = Math.round(dCalls / (dt / 60000));
+            secPerCallNow = Math.round(dMs / dCalls) / 1000;
+          }
+          if (!prev || (now - prev.at) >= 60000) {
+            this._defAnchorSample = { at: now, calls: pf.calls, ms: pf.ms };
+          }
+          return {
+            lane: 'pre-cell-anchor',
+            calls: pf.calls,
+            totalMs: pf.ms,
+            avgSecPerCall: Math.round(pf.ms / pf.calls) / 1000,
+            callsPerMin,
+            secPerCallNow,
+          };
+        } catch {
+          return null;
+        }
+      })(),
       // ⛔⛔ THE WEDGE THAT STOPPED THE WALK FOR 110 MINUTES, MADE READABLE.
       // The forced consolidation pass was awaited with no bound; when it stopped
       // making progress the walk parked on it, and because a `finally` does not
@@ -5435,11 +5508,25 @@ export class Curriculum {
             this._hb(`[Curriculum] 💤 dream trickle: ${processed} words processed in ${dt}s (${bound} multi-def Hebbian fires, ${failed} deferred for retry) · ${cluster._kVocabQueue.length} words remaining in the definition-seed queue · ${cluster._kVocabUnresolved.size} unresolved after ${MAX_ATTEMPTS} attempts${cluster._defSeedEnqueuedGrades ? ` (grades enqueued: ${[...cluster._defSeedEnqueuedGrades].join(', ')})` : ''}`);
             // Published so this is answerable from /public-state.json instead of
             // by hunting a rate-limited console line.
+            //
+            // ⛔⛔ `at` IS LOAD-BEARING AND ITS ABSENCE COST A WRONG FORECAST.
+            // This window had no timestamp, so a fossil from the last dream
+            // window was indistinguishable from a reading taken seconds ago.
+            // This lane only runs INSIDE a dream window, so during a multi-hour
+            // walk it does not run at all and these numbers stand still by
+            // design — and a reader (me) took the stale pair as a live rate,
+            // multiplied `queueDepth x ms/processed`, and published a 12-hour
+            // completion forecast off two fossils. Measured afterwards: the
+            // window had been byte-identical for 13.6 hours while the lane that
+            // actually anchors definitions did 14,637 calls.
+            // ⭐ A window without an age cannot be told from a window that is
+            // current. Stamp it, and let the consumer publish the age.
             this._trickleLastWindow = {
               processed, bound, failed,
               ms: Date.now() - batchStart,
               queueDepth: cluster._kVocabQueue.length,
               unresolved: cluster._kVocabUnresolved.size,
+              at: Date.now(),
             };
           } catch (err) {
             // Non-fatal — dream consolidation continues even if trickle fails.
