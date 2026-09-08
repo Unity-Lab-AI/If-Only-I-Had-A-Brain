@@ -5,6 +5,60 @@
 
 ---
 
+## 2026-09-08 (4th) — `PHASEDENOM`: THE PHASE BAR WAS BLIND TO EVERY PHASE THAT COSTS ANYTHING, AND THE CURSOR ALREADY EXISTED
+
+Gee (verbatim): *"okay fix that then if u can and the work needing to be done"*
+
+### ⛔⛔ ROOT CAUSE — A SHAPE THE INSTRUMENT CANNOT MEASURE, NOT A MISSING FEATURE
+
+`phaseWork`'s total comes from `_phaseReachableTotal(name)`, which counts **the distinct nested `_teach*` units a phase's own source calls.** Sound for an orchestrator; **0 for every leaf phase that does its work in a loop.** Measured on the shipped sources:
+
+```
+  _teachAssociationPairs    0     <- 711 min of this walk
+  _teachWordDefinition      0     <- 865 min of this walk
+  _teachConcreteSentences   0
+  _teachQABinding           0
+  _teachVocabList           0
+  _teachSentenceStructure   5     <- only orchestrators score at all
+```
+
+A total of 0 makes the publisher emit `null`, **so the bar was blind to precisely the phases where every hour goes.**
+
+⚠ **My earlier report called the denominator "missing/absent" and that was imprecise.** The machinery exists and works correctly — it is the phase *shape* it cannot measure. Correcting my own framing because the difference decides the fix.
+
+### ⭐⭐ AND THE CURSOR WAS ALREADY THERE, UNPUBLISHED
+
+`PHASELOOP.1` banks `reps - rep` on every rep so a restart can resume the remainder. **The phase has known its own position all along**, and two leaf phases carry that identical block — `_teachAssociationPairs` and `_teachQABinding`. **Nothing had to be computed. It had to be published.**
+
+### What shipped
+
+- **`_publishPhaseCursor(name, done, total, extra)` — ONE shared helper**, not a copy per phase, because the owner guard, the on-exit `done` and the 0.99 cap are exactly the parts that go subtly wrong twice. Wired into both rep loops; a third phase is one line.
+- **`_teachAssociationPairs` carries `pairs` / `pairTeachesDone` / `pairTeachesTotal`** — a rep there is `pairs.length` pair-teaches wide (**8,428 × 60** in one recorded call) and the rep count alone hides that scale.
+- **A third publisher branch replaces bare `null` with a stated limit:** `{name, done: null, total: null, frac: null, denominator: 'unavailable', why, inflight, inflightMs}`. ⛔ **`frac: null`, never `0` — a zero fraction is a claim about progress.** ⭐ It still surfaces the two fields that genuinely answer *"is she stuck?"*
+
+### ⛔⛔ A REGRESSION CAUGHT BY READING THE CONSUMER, NOT BY THE HARNESS
+
+Making the block truthy where it had been `null` meant `html/dashboard.html:3416` — `work ${pw.done}/${pw.total}` — would have rendered **`work null/null`** on the operator's screen, and `pw ? pw.frac : 0` would have fed `null` into the percentage arithmetic, **which coerces to 0 here by luck and would not in any consumer that formats it.**
+
+Both sites fixed with explicit `typeof` tests. ⚠ **This is `feedback_harness_production_wiring` exactly: the harness proved the producer and only the consumer could show the damage.**
+
+### Verification — on shipped code, not reimplementations
+
+- **`_publishPhaseCursor` on the real `Curriculum.prototype`, 6/6:** `rep 0/60` → frac 0 (nothing credited) · `30/60` → 0.5 · `60/60` → **capped at 0.99** · a NESTED call while another phase owns the bar → **ignored** · `total 0` → no divide-by-zero · junk args → survives.
+- **The `phaseWork` publisher extracted by brace-matched range and executed, 4/4 branches:** override wins · orchestrator unchanged (`2/5`, 2.0 h inflight) · leaf → `frac: null` + reason · no phase → `null`.
+- **Dashboard render simulated across all four shapes:** `work 30/60 reps` · `work 2/5 running … (2.0h)` · `no phase denominator (loop phase) running … (4.0h)` · empty tail.
+- `node --check` + ESM `import()` clean. Dashboard's two plain script blocks parse; **block 0 is `<script type="module">` at line 237, so `new Function` failing on it is expected and was verified rather than assumed.**
+
+### Deliberately not done
+
+**`_teachWordDefinition`, `_teachConcreteSentences` and `_teachVocabList` were checked and given no cursor** — none has a natural rep loop, and `_teachWordDefinition`'s aggregate is already published by `definitionAnchor`. ⛔ **Forcing a cursor where there is no honest unit is how a fake denominator gets invented.**
+
+⚠ **A banned-write attempt was BLOCKED by the hook mid-session** — a `node -e` that wrote a temp file to inspect a script block. The guard was right; the check was redone read-only with `grep`. Recorded rather than hidden.
+
+**Savestart-safe: no geometry, no `WEIGHTS_FORMAT_VERSION` bump, `curriculum.js` absent from the bundle.**
+
+---
+
 ## 2026-09-08 (3rd) — `LIVEWATCH`: TWO PUBLISHED INSTRUMENTS LIED, AND ONE OF THEM WAS GRADING THE VIEWER'S "IS IT WORKING?" VERDICT
 
 Gee (verbatim): *"is her minds eye stuck?"*
