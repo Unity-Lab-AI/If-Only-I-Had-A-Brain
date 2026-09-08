@@ -131,8 +131,99 @@ _size()  { local s; s="$( { du -sh "$1" 2>/dev/null || true; } | cut -f1 )" || s
 # cannot suppress it and the deploy log gains a bare "No such file or directory"
 # with no context. The value was already correct; this stops the noise.
 _bytes() { local n; n="$( { wc -c < "$1"; } 2>/dev/null || true )" || n=0; printf '%s' "${n:-0}"; }
+# ⚠ INTEGER DIVISION TRUNCATES, AND A TRUNCATED READOUT IS THE ONE DEFECT THIS
+# PROJECT KEEPS PAYING FOR. A press that copied 512 KiB printed "0 MiB copied" —
+# an instrument reporting nothing where something happened. Under 1 MiB it says
+# KiB instead.
+_human_bytes() {
+  local n="${1:-0}"
+  if [ "$n" -ge 1048576 ]; then printf '%s MiB' "$(( n / 1048576 ))"; else printf '%s KiB' "$(( n / 1024 ))"; fi
+}
+
+# ⛔⛔ CONTAINMENT IS A MEASUREMENT, NOT AN ASSUMPTION — AND EVERY MEMORY-SHAPED
+# BOUND IN THIS SCRIPT IS SIZED FROM IT.
+#
+# `server/brain-server.js` launches this script inside its own `systemd-run`
+# scope so that a heavy clone / rsync / copy spends the DEPLOY's memory budget
+# instead of the brain's. ⚠ THAT LAUNCH CAN DEGRADE, AND UNTIL 2026-09-08 IT
+# DEGRADED SILENTLY WHILE THE LOG CLAIMED CONTAINMENT: `systemd-run --user`
+# needs a user-manager bus address, a system service has none, and the handler
+# then falls back to a plain spawn INSIDE `unity-brain.service`'s cgroup.
+#
+# Measured, systemd 259, with `XDG_RUNTIME_DIR` and `DBUS_SESSION_BUS_ADDRESS`
+# unset exactly as a system unit leaves them:
+#
+#   Failed to connect to user scope bus via local transport:
+#   $DBUS_SESSION_BUS_ADDRESS and $XDG_RUNTIME_DIR not defined
+#   exit 1 — and the payload never ran
+#
+# ⭐ SO THE SCRIPT DOES NOT TAKE CONTAINMENT ON TRUST FROM THE THING THAT
+# LAUNCHED IT. It reads its own cgroup. The launcher's intention and the kernel's
+# accounting are two different facts, and only the second one decides whether a
+# copy can starve her.
+#
+# ⛔ UNKNOWN COUNTS AS UNCONTAINED. Inside a cgroup namespace `/proc/self/cgroup`
+# reads `0::/` and reveals nothing; an unreadable file reveals nothing either.
+# Both answer NO — because a false "contained" puts the ~114 GB copy back in her
+# budget, and a false "uncontained" costs a tighter bound and one more press.
+# Block by default on uncertainty.
+_deploy_cgroup() {
+  local c
+  c="$( { tr '\n' ' ' < /proc/self/cgroup; } 2>/dev/null || true )" || c=''
+  c="${c%" "}"
+  printf '%s' "${c:-unknown}"
+}
+# The unified-hierarchy path on its own, for reading this cgroup's own knobs.
+_deploy_cgroup_path() {
+  local p
+  p="$( { cut -d: -f3 < /proc/self/cgroup; } 2>/dev/null | tail -1 || true )" || p=''
+  printf '%s' "$p"
+}
+# ⛔ THIS CGROUP'S OWN MEMORY CEILING — `max` when there is none. It is the whole
+# question, so it is read rather than inferred from the path.
+_deploy_memory_max() {
+  local p f v
+  p="$(_deploy_cgroup_path)"
+  [ -n "$p" ] || { printf '%s' 'unknown'; return 0; }
+  f="/sys/fs/cgroup${p}/memory.max"
+  v="$( { cat "$f"; } 2>/dev/null || true )" || v=''
+  printf '%s' "${v:-unknown}"
+}
+# ⛔⛔ CONTAINED MEANS "HAS ITS OWN FINITE CEILING", NOT MERELY "IS SOMEWHERE
+# ELSE" — AND THE FIRST DRAFT OF THIS HELPER GOT THAT WRONG.
+#
+# Being outside `unity-brain.service` is necessary and not sufficient: a copy of
+# this script run by hand from an SSH shell is also outside her unit, has NO
+# memory ceiling of its own, and the first version of this check called that
+# CONTAINED and relaxed the bounds. Measured on systemd 259: a
+# `systemd-run --property=MemoryMax=2G` scope reads `memory.max` = `2147483648`,
+# while a plain login shell in the same slice reads `max`. **The bounds below
+# depend on there being a real ceiling, so a real ceiling is what gets read.**
+_deploy_is_contained() {
+  local c m
+  c="$(_deploy_cgroup)"
+  case "$c" in
+    unknown|'0::/'|'/'|'')      return 1 ;;   # nothing legible — assume the worst
+    *"${SERVICE}.service"*)     return 1 ;;   # still inside the brain's own unit
+  esac
+  m="$(_deploy_memory_max)"
+  case "$m" in
+    ''|unknown|max)             return 1 ;;   # elsewhere, but with no ceiling of its own
+    *[!0-9]*)                   return 1 ;;   # not a plain byte count — do not guess
+    *)                          return 0 ;;
+  esac
+}
 
 log "START — overlay ${GIT_BRANCH} from ${GIT_REMOTE} -> ${BACKEND_DIR}"
+
+# ⭐ SAID ONCE, AT THE TOP, BECAUSE IT CHANGES HOW EVERY LATER LINE SHOULD BE
+# READ. A press that starved her and a press that could not have starved her look
+# identical in this log otherwise.
+if _deploy_is_contained; then
+  log "cgroup: CONTAINED — this deploy has its own memory ceiling (memory.max=$(_deploy_memory_max) bytes) in its own cgroup [$(_deploy_cgroup)], so its page cache is reclaimed against ITS budget and not against her working set. The memory-shaped bounds below relax accordingly."
+else
+  log "cgroup: ⚠ UNCONTAINED — this deploy has NO memory ceiling of its own (memory.max=$(_deploy_memory_max)) and its cgroup is [$(_deploy_cgroup)], so every byte it reads or writes is page cache charged to HER MemoryHigh budget. The memory-shaped bounds below are TIGHT on purpose. ⭐ ONE-TIME BOX FIX, as root, survives reboots: sudo loginctl enable-linger $(id -un 2>/dev/null || echo unity) — that gives the service account the user manager that \`systemd-run --user\` needs, which is what server/brain-server.js already tries and cannot currently reach from a system unit."
+fi
 
 # ── SELFFIRST (2026-09-05) — THE UPDATER UPDATES ITSELF FIRST, THEN RE-EXECS ──
 #
@@ -1328,10 +1419,48 @@ else
     # of file data can evict her working set that way. Killing it dropped the box
     # from 20G to 4G instantly.
     #
-    # ⭐ SO: a wall clock (`UAL_FIELDS_HYDRATE_MAX_SEC`, default 480s — the same
-    # 8 minutes the LFS pull settled on, and for the same reason: a cap only
-    # protects her if it is shorter than an outage anyone would care about), plus
-    # `nice`/`ionice` so the copy loses every arbitration against her.
+    # ⛔⛔⛔ AND THE FIRST BOUND IT GOT WAS THE WRONG INSTRUMENT, NOT MERELY THE
+    # WRONG NUMBER — RE-DERIVED 2026-09-08.
+    #
+    # It carried `UAL_FIELDS_HYDRATE_MAX_SEC`, default **480s**, lifted from the
+    # `git lfs pull`. That number was chosen for a NETWORK DOWNLOAD, where eight
+    # minutes is short. ⚠ **Re-using a constant re-uses the conditions it was
+    # measured under**, and a download and a local copy do not share one.
+    #
+    # ⛔ BUT SECONDS ARE THE WRONG UNIT AT ANY SIZE, AND THAT IS THE DEEPER HALF.
+    # What starves her is PAGE-CACHE VOLUME in a shared cgroup, and seconds only
+    # become volume by way of disk speed: 480s is ~480 GB of cache at 1 GB/s and
+    # ~4.8 GB at 10 MB/s. **The same bound, two orders of magnitude apart in the
+    # quantity it exists to limit.** So the PRIMARY bound counts BYTES COPIED
+    # (`UAL_FIELDS_HYDRATE_MAX_BYTES`) and the wall clock is demoted to a second
+    # net for the case where the copy is slow rather than large.
+    #
+    # WHERE THE NUMBERS COME FROM — derived, not picked:
+    #   • the recorded incident: a fields rsync pulled **12.4 GB of page cache**
+    #     into the cgroup and the kernel throttled everything in it, with `node`
+    #     at only 8.7 GB RSS and looking innocent (REDEPLOY-NOTES).
+    #   • the unit's ceiling is `MemoryHigh=22G` / `MemoryMax=24G`, so against a
+    #     ~8.8 GB node the entire headroom is ~13 GB — a copy that dirties a few
+    #     GB has already spent a meaningful share of it.
+    #   • **2 GiB** is the budget that leaves that headroom standing. At ~1.13 MB
+    #     a field (114 GB across the 101,002 reachable figures) that is ~1,800
+    #     fields a press — a trickle, deliberately, because a missing field costs
+    #     one live transform and an unreachable brain costs everything.
+    #   • the wall clock, re-derived FOR A COPY: 2 GiB at the 25-100 MB/s a
+    #     `nice -n 19 ionice -c3` copy actually gets is 20-80s, so **90s** is the
+    #     smallest wall clock that cannot cut a healthy run short. It is also
+    #     ~13x shorter than the outage that made this default off, which is the
+    #     property a guard needs and the one 480s did not have.
+    #
+    # ⭐ CONTAINED IS A DIFFERENT JOB AND GETS DIFFERENT NUMBERS. Once this script
+    # runs in its own cgroup with its own `MemoryMax`, the kernel reclaims THIS
+    # process's page cache instead of her working set — the byte budget is then
+    # protecting nothing, so it lifts, and the wall clock relaxes to the old 480s
+    # as a politeness bound rather than a safety one. **The bound is chosen from
+    # `_deploy_is_contained`, which MEASURES it; see the helper at the top.**
+    #
+    # Plus `nice`/`ionice` either way, so the copy loses every arbitration
+    # against her rather than merely being capped.
     #
     # ⚠ CUTTING IT SHORT COSTS NOTHING PERMANENT, and that is what makes a hard
     # bound the right shape here. The loop already SKIPS any destination already
@@ -1364,10 +1493,27 @@ else
     # or on a box where nothing is served from the same budget.
     _hydrate_fields_from_local_store() {
       if [ "${UAL_FIELDS_HYDRATE:-0}" != "1" ]; then
-        log "fields — local-store hydration is OFF by default (UAL_FIELDS_HYDRATE=1 enables it). The copy runs inside the brain's cgroup and can throttle her through page cache alone; its first run coincided with a 20-minute listening-but-not-answering outage. Every figure without a field is transformed live, which is the documented non-fatal path. ⭐ The real fix is to run the data sync in its own cgroup with its own MemoryMax — see REDEPLOY-NOTES."
+        # ⭐ THE OFF MESSAGE NAMES THE PRECONDITION AND ITS CURRENT VALUE, because
+        # "turn it on after the cgroup fix lands" is useless to whoever reads this
+        # if the log will not say whether it has landed.
+        if _deploy_is_contained; then
+          log "fields — local-store hydration is OFF by default (UAL_FIELDS_HYDRATE=1 enables it). ⭐ ITS PRECONDITION IS NOW MET: this deploy is CONTAINED in its own cgroup ($(_deploy_cgroup)), so the copy can no longer starve her through page cache. Enabling it is a deliberate operator decision, not an automatic one — a false read of containment would put the ~114 GB copy back in her budget, so the default does not flip itself."
+        else
+          log "fields — local-store hydration is OFF by default (UAL_FIELDS_HYDRATE=1 enables it), and ⚠ ITS PRECONDITION IS NOT MET: this deploy is UNCONTAINED in the brain's own cgroup ($(_deploy_cgroup)). The copy can throttle her through page cache alone, and its first run coincided with a 20-minute listening-but-not-answering outage. Every figure without a field is transformed live, which is the documented non-fatal path. ⭐ If it is enabled anyway it now runs under a 2 GiB copy budget and a 90s wall clock instead of the 480s that failed to protect her."
+        fi
         return 0
       fi
-      _hyd_max="${UAL_FIELDS_HYDRATE_MAX_SEC:-480}"
+      # ⛔ THE BOUNDS ARE CHOSEN FROM A MEASUREMENT OF CONTAINMENT, NOT FROM THE
+      # LAUNCHER'S INTENTION. Derivation of every number is in the block above.
+      if _deploy_is_contained; then
+        _hyd_max="${UAL_FIELDS_HYDRATE_MAX_SEC:-480}"
+        _hyd_bytes_max="${UAL_FIELDS_HYDRATE_MAX_BYTES:-0}"
+        _hyd_bound_why="CONTAINED in its own cgroup ($(_deploy_cgroup)) — its page cache is reclaimed against ITS budget, so the copy budget lifts and the wall clock is politeness, not safety"
+      else
+        _hyd_max="${UAL_FIELDS_HYDRATE_MAX_SEC:-90}"
+        _hyd_bytes_max="${UAL_FIELDS_HYDRATE_MAX_BYTES:-2147483648}"
+        _hyd_bound_why="⚠ UNCONTAINED in the brain's cgroup ($(_deploy_cgroup)) — every copied byte is page cache charged to HER budget, so the bounds are tight on purpose"
+      fi
       _hyd_started="$(date +%s)"
       # Explicit `if`, not `cmd && var=…`, for the reason given at `_fields_opt_out`.
       _hyd_nice=''
@@ -1379,16 +1525,25 @@ else
       elif [ ! -d "$FTMP/bw/fields" ]; then
         log "WARN — the clone has no fields/ directory; nothing to hydrate."
       else
-        log "fields — hydrating from Forgejo's local LFS store at ${_lfs_store}. No credential, no network: each pointer names its object and the object is a file on this disk. Bounded to ${_hyd_max}s (UAL_FIELDS_HYDRATE_MAX_SEC) and run at idle CPU/IO priority, because this copy shares the brain's cgroup and can throttle her through page cache alone."
-        _fh=0; _fm=0; _fs=0; _fleft=0; _fstop=0
+        log "fields — hydrating from Forgejo's local LFS store at ${_lfs_store}. No credential, no network: each pointer names its object and the object is a file on this disk. Bounded to $( [ "$_hyd_bytes_max" = "0" ] && printf 'no copy budget' || printf '%s copied' "$(_human_bytes "$_hyd_bytes_max")" ) (UAL_FIELDS_HYDRATE_MAX_BYTES) and ${_hyd_max}s (UAL_FIELDS_HYDRATE_MAX_SEC), whichever bites first, at idle CPU/IO priority. Bound sizing: ${_hyd_bound_why}."
+        _fh=0; _fm=0; _fs=0; _fleft=0; _fstop=0; _fbytes=0; _fstop_why=''
         while IFS= read -r _ptr; do
-          # ⛔ THE BOUND IS CHECKED PER FILE, NOT PER BATCH, so a long-running
-          # copy cannot overshoot it by a whole batch. Everything after the stop
-          # is COUNTED rather than dropped silently — a bound that truncates
+          # ⛔ BOTH BOUNDS ARE CHECKED PER FILE, NOT PER BATCH, so a long-running
+          # or a fat copy cannot overshoot by a whole batch. Everything after the
+          # stop is COUNTED rather than dropped silently — a bound that truncates
           # without saying so reads as "we hydrated everything there was".
           if [ "$_fstop" = "1" ]; then _fleft=$((_fleft+1)); continue; fi
+          # ⭐ BYTES FIRST, because bytes are what the hazard is measured in. The
+          # wall clock below only catches the slow-not-large case.
+          if [ "$_hyd_bytes_max" != "0" ] && [ "$_fbytes" -ge "$_hyd_bytes_max" ]; then
+            _fstop=1; _fleft=$((_fleft+1))
+            _fstop_why="the $(_human_bytes "$_hyd_bytes_max") copy budget (UAL_FIELDS_HYDRATE_MAX_BYTES), having copied $(_human_bytes "$_fbytes")"
+            continue
+          fi
           if [ "$_hyd_max" != "0" ] && [ "$(( $(date +%s) - _hyd_started ))" -ge "$_hyd_max" ]; then
-            _fstop=1; _fleft=$((_fleft+1)); continue
+            _fstop=1; _fleft=$((_fleft+1))
+            _fstop_why="the ${_hyd_max}s wall clock (UAL_FIELDS_HYDRATE_MAX_SEC), having copied $(_human_bytes "$_fbytes")"
+            continue
           fi
           _rel="${_ptr#"$FTMP/bw/fields/"}"
           _dst="${FIELDS_DIR}/${_rel}"
@@ -1401,18 +1556,25 @@ else
             mkdir -p "$(dirname "$_dst")" 2>/dev/null || true
             if $_hyd_nice cp --reflink=auto -f "$_obj" "$_dst" 2>/dev/null || $_hyd_nice cp -f "$_obj" "$_dst" 2>/dev/null; then
               _fh=$((_fh+1))
+              # ⚠ MEASURED AT THE DESTINATION, not from the source's size. What
+              # charges page cache is what actually landed, and a short write
+              # that the copy reported as success must not be billed as a full
+              # one — the budget would then stop early and blame the wrong thing.
+              _fbytes=$(( _fbytes + $(_bytes "$_dst") ))
             else _fm=$((_fm+1)); fi
           else _fm=$((_fm+1)); fi
         done <<EOF
 $( { find "$FTMP/bw/fields" -name '*.field.json' -type f 2>/dev/null || true; } )
 EOF
-        log "fields — hydrated ${_fh} from the local store, ${_fs} already present, ${_fm} unresolved. ⚠ The unresolved ones are transformed live; that is the documented non-fatal path and not a failed press."
+        log "fields — hydrated ${_fh} from the local store ($(_human_bytes "$_fbytes") copied), ${_fs} already present, ${_fm} unresolved. ⚠ The unresolved ones are transformed live; that is the documented non-fatal path and not a failed press."
         if [ "$_fstop" = "1" ]; then
           # ⭐ INCREMENTAL BY CONSTRUCTION, so the bound costs nothing permanent:
           # the skip above leaves anything already at full size alone, so the
           # next press starts where this one stopped. Say the number out loud —
           # a silent truncation reads as "covered everything".
-          log "fields — STOPPED at the ${_hyd_max}s bound with ${_fleft} still to hydrate. This is deliberate: the copy shares the brain's cgroup and an unbounded one has starved her before. It resumes on the next press (already-hydrated files are skipped), and until then those figures are transformed live. Raise with UAL_FIELDS_HYDRATE_MAX_SEC, or 0 for no bound."
+          # ⛔ AND SAY WHICH BOUND BIT. Two bounds with one message is how the
+          # next person raises the wrong knob and concludes the guard is broken.
+          log "fields — STOPPED at ${_fstop_why}, with ${_fleft} still to hydrate. This is deliberate, and on the first hydrating presses it is EXPECTED rather than a failure. It resumes on the next press (already-hydrated files are skipped), and until then those figures are transformed live. Bound sizing: ${_hyd_bound_why}. Raise with UAL_FIELDS_HYDRATE_MAX_BYTES / UAL_FIELDS_HYDRATE_MAX_SEC, or 0 on either for no bound of that kind."
         fi
       fi
     }

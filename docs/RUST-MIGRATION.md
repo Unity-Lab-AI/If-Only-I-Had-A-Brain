@@ -727,9 +727,44 @@ spawned" and deployed **nothing**. Probe any new property first:
 errors, and exits non-zero having started nothing. Handle both, or the Update
 button silently does nothing.
 
+> ⛔⛔⛔ **DO NOT PORT THOSE FLAGS ALONE — AS WRITTEN THEY DO NOTHING ON THIS BOX.
+> Measured 2026-09-08.** `--user` needs a user-manager **bus address**, and
+> libsystemd looks for it in `$DBUS_SESSION_BUS_ADDRESS` then `$XDG_RUNTIME_DIR`.
+> **A system unit has neither**, so the invocation above exits **1** having
+> started nothing, on every press, since the day it shipped. **Porting it
+> verbatim ports a no-op.**
+>
+> **What the Rust port must carry, beyond the flags:**
+>
+> 1. **Set `XDG_RUNTIME_DIR` on the child** — derived as `/run/user/<uid>`, not
+>    inherited (the unit does not have it).
+> 2. **Do not attempt the scope when that directory is absent.** No directory
+>    means no user manager to place a scope in; attempting anyway buys a
+>    confusing failure in place of a clear one. Log the one-time box fix instead:
+>    `sudo loginctl enable-linger unity`.
+> 3. ⛔ **NEVER assert containment from a config flag.** The line that announced
+>    isolation was built from `_useScope` and printed synchronously, so it was
+>    reassuring and wrong on every press for three days. **Report the path
+>    *attempted*; let the contained process report the containment.**
+> 4. ⭐ **Containment is a MEASUREMENT with two halves** — the deployed script
+>    reads `/proc/self/cgroup` **and** its own `memory.max`. Path alone is not
+>    enough: a hand-run copy from SSH is also outside her unit and has no
+>    ceiling. A scope with `MemoryMax=2G` reads `2147483648`; a plain shell in
+>    the same slice reads `max`. **Unknown counts as uncontained.**
+> 5. **Size the deploy's memory-shaped bounds from that reading**, not from the
+>    launcher's intention — see `deploy/REDEPLOY-NOTES.md` for the derivation of
+>    the byte budget and the wall clock.
+>
+> ⚠ **A working fallback hid all of this.** Both handlers behaved correctly, the
+> deploy always ran, and that is exactly why nobody saw it was running inside her
+> cgroup. **A fallback that succeeds silently turns a broken feature into an
+> invisible one.**
+
 ⭐ This is also a **precondition for 6.2**: once weights are file-backed, an
 unbounded rsync in the same cgroup would evict them through page-cache pressure
-alone — the same failure with a new mechanism.
+alone — the same failure with a new mechanism. ⛔ **And that precondition is not
+met on the box today** — it waits on the `enable-linger` command above, so 6.2
+must not land before someone confirms the `cgroup: CONTAINED` line.
 
 ### 6.5 SELFFIRST — the updater must update itself before it acts
 

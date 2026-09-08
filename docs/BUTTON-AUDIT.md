@@ -99,13 +99,31 @@ brain MemoryHigh=22G · MemoryMax=24G · CPUQuota=1200%
 
 Three things follow, and all three bit us this week:
 
-1. ⛔ **The deploy runs inside the brain's cgroup.** `brain-server.js:10715`
-   spawns `self-update.sh` with `{ detached: true }` — ⚠ **that is a
-   process-group flag, not a cgroup escape. systemd membership is inherited by
-   every descendant.** So a 114 GB `git lfs pull` charges against *her*
-   `MemoryHigh` and *her* `CPUQuota`. **Fix: `systemd-run --scope` with its own
-   limits** (needs a new verb on `brain-ctl-helper`, which today allows only
-   `start|stop|restart unity-brain` and `reload-nginx`).
+1. ⛔ **The deploy runs inside the brain's cgroup.** The `/update` handler in
+   `server/brain-server.js` spawns `self-update.sh` with `{ detached: true }` —
+   ⚠ **that is a process-group flag, not a cgroup escape. systemd membership is
+   inherited by every descendant.** So a 114 GB `git lfs pull` charges against
+   *her* `MemoryHigh` and *her* `CPUQuota`.
+   - ⭐ **STATUS 2026-09-08 — the fix is written and HALF LANDED.** The handler
+     launches the deploy in its own `systemd-run --user --scope` with
+     `MemoryMax` (`UAL_DEPLOY_MEM_MAX`, default 2G) as of 2026-09-05. ⛔ **No
+     new `brain-ctl-helper` verb was needed and none was added** — the guess in
+     this row's original text was wrong; `--user` runs under the caller's own
+     manager and gains no privilege, so the narrow sudoers surface is untouched.
+   - ⛔⛔ **But it was INERT on this box until 2026-09-08 and the log claimed
+     otherwise.** `--user` needs a user-manager bus, and a **system** unit
+     supplies neither `$XDG_RUNTIME_DIR` nor `$DBUS_SESSION_BUS_ADDRESS`;
+     measured on systemd 259 it exits **1** having started nothing, and the
+     plain-spawn fallback then ran the deploy **in her cgroup** on every press.
+   - ✅ **Code side fixed:** `XDG_RUNTIME_DIR` derived and passed, the scope not
+     attempted when that directory is absent, and the summary line now reports
+     the path *attempted* rather than asserting containment. **Ground truth is
+     the deploy's own first log line** — `cgroup: CONTAINED` /
+     `cgroup: ⚠ UNCONTAINED`, read from `/proc/self/cgroup` and `memory.max`.
+   - ⛔ **Operator side, one command, once, as root:**
+     `sudo loginctl enable-linger unity`. Until then the deploy stays
+     uncontained and **says so**, and its memory-shaped bounds tighten
+     themselves on that reading. Full record in `deploy/REDEPLOY-NOTES.md`.
 2. ⛔ **The 114 GB is stored twice on one disk, and fetched over the network from
    itself.** `git.unityailab.com` **is this box** — Forgejo's LFS store already
    holds all 26,359 field objects here, and the deploy clones over SSH to
