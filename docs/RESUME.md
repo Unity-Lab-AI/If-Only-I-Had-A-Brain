@@ -59,6 +59,25 @@
 >
 > ✅ **360 s false-fire test on the real release binary: 0 exits, 2 reconnects, still alive.** `--version` = `0.3.37`.
 >
+> ## ⛔⛔⛔ ④ USE **FRESH WALK**, NOT SAVESTART — AND THE REASON IS NOT SPONGE'S STALL
+>
+> Gee (verbatim): *"okay but shouldnt we used freshwalk sponge said update savestart will hang er"*
+>
+> **Sponge's warning was about the OLD code and no longer applies:** the resume term fixes that stall, and unlike `self-update.sh` (which is the script *running* the press, hence two presses) `brain-server.js` is the thing being *restarted* — **so the term takes effect on the very press that delivers it.**
+>
+> ⛔ **But checking that question exposed a weight-wipe in my own first design, and it changed the answer.** Statting the live weight file makes the budget — and therefore `TOTAL_NEURONS` — move as she trains, and **`autoClearStaleState` wipes when the saved count ≠ the computed one.** `10-pin-brain-size.conf` exists because *"that silent size change wiped the trained brain on restart"*. **Every savestart would have wiped her while reporting that it was keeping the weights.**
+>
+> ⭐⭐ **Fixed by making it a RATIO applied on EVERY boot** — the weight file is proportional to the weights, so `_safeMB = preResume / 1.3644`. Deterministic, identical every boot, `TOTAL_NEURONS` never moves. **The correct fix is smaller than the wrong one:** it deletes the circularity with `autoClearStaleState`, the marker-consumption hazard, and a TDZ trap — all three were consequences of solving the wrong problem.
+>
+> ⛔ **SO THE NEXT PRESS IS A RESIZE EITHER WAY:**
+>
+> ```
+>   budget 15,580 -> 11,418 MB     neuron count drops     weights cannot survive it
+>   Savestart -> wipes SILENTLY        Fresh Walk -> wipes HONESTLY
+> ```
+>
+> ⭐ **And because a wipe happens regardless, this is the free moment to also drop `DREAM_CGROUP_OVERHEAD_MB` back to its measured 2,867** — delete `40-cgroup-overhead.conf` on the box — which buys **~13% more brain** (budget 12,908 instead of 11,418, predicted footprint 17,311 MB with 3,169 MB headroom). ⚠ **The press does NOT install drop-ins**; they are hand-placed, so that half is a box action.
+>
 > ## ⛔ WHAT IS STILL OPEN — ALL OF IT IS A PRESS, NONE OF IT IS CODE
 >
 > | | |
