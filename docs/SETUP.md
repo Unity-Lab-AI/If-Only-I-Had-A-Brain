@@ -1,37 +1,30 @@
 ---
-# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# Provenance. See docs/ARCHITECTURE.md for the full note.
 # ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
-# DOCPROV.4 (2026-08-27) — re-verified. `status` stays `draft`: the launcher
-# contracts, env flags, commands and the two corrected claims were checked
-# against source and against files on disk, but 527 lines were not read
-# line-by-line against all five sources.
-# ⚠ Drift pass 2026-08-29 — three sources moved since the prior stamp, read as
-# diffs: windows/start.bat + linux/start.sh (CTLWINDOW — brain-ctl.js now
-# launches in its own titled minimized window / nohup with an APPEND-mode log;
-# every launcher claim below still holds, a sentence was added so the window
-# enumeration stays exhaustive) and server/brain-server.js (+455 lines: walk
-# heartbeat + firing controller + FRESHFLAG + TEACHCREDIT drain — no launcher
-# contract, wipe list, or endpoint in the table changed, but the insertions
-# shifted the cited line numbers, updated in the body: 3363→3380-3381,
-# 3381→3394, 9051→9384; the :3363/:3381 in verified-scope stay as the record
-# of where those lines sat when that pass ran).
+# ⛔ The per-pass history is NOT kept here. It lives in the body under
+# `## Verification history`, newest first — see the note under the field itself.
 status: draft
 verified-scope: >
-  Launcher contracts (start vs Savestart, DREAM_KEEP_STATE / DREAM_FORCE_CLEAR /
-  DREAM_NO_AUTO_GPU all confirmed present in server/brain-server.js); every
-  `npm run` command confirmed against package.json; brain-weights.bin size
-  measured on disk (~5,460 MB, doc said 144.8 MB); _autoAdvanceGrade default
-  read at brain-server.js:3363 (ON, doc said false) and its standalone
-  persistence at :3381.
-  NOT re-read: the deployed/systemd bootstrap narrative, the directory tree,
-  the full troubleshooting table.
+  2026-09-08 capability pass: all 556 lines read; twelve claims corrected
+  against the file that implements each one; three walls rebuilt; fourteen
+  ticket identifiers removed with every verbatim quote left intact.
+  NOT re-verified: the completeness of the server-endpoints table, the
+  troubleshooting table, the deployed/systemd bootstrap narrative — which is
+  why `status` stays `draft`. Full detail in the body's Verification history.
 sources:
   - windows/start.bat
   - linux/start.sh
   - package.json
   - server/package.json
   - server/brain-server.js
-last-verified: "0ee5ac68 2026-08-29"
+last-verified: "17bb3070 2026-09-08"
+# ⛔ THE HISTORY OF THIS FIELD LIVES IN THE BODY, under `## Verification history`,
+# newest first. It is NOT concatenated onto the line above. A `last-verified`
+# value that grows without bound is the documented cause of four banned-write
+# violations in this project: `Edit` needs a unique anchor, and reproducing a
+# multi-thousand-character line to anchor against is absurd, so the sanctioned
+# tool becomes the expensive one and a shell one-liner becomes the tempting one.
+# The drift checker only reads the leading hash, so nothing depends on the tail.
 ---
 
 # Setup Guide
@@ -76,7 +69,7 @@ GPU driver minimums:
 | Intel  | 31.0.101.4314 or newer (Arc-series + UHD 730+) |
 | Apple M-series | macOS 14 (Sonoma) or newer |
 
-When WebGPU is unavailable at boot, the dashboard + landing pages render a non-dismissible modal pointing to the prep page. **No bypass** — fix WebGPU or use a different machine. The iter24.5 CPU sparse-pool worker-pool infrastructure that lives in-tree is retained for distributed-compute-node use cases (Phase 6 COMP-net), NOT as a browser fallback.
+When WebGPU is unavailable at boot, the dashboard + landing pages render a non-dismissible modal pointing to the prep page. **No bypass** — fix WebGPU or use a different machine. The CPU sparse-pool worker-pool infrastructure that lives in-tree is retained for distributed-compute-node use cases, NOT as a browser fallback.
 
 ---
 
@@ -139,7 +132,11 @@ python -m http.server 8888
 # Open http://localhost:8888
 ```
 
-No npm. No build step. Just static files served by any web server. The brain runs in a CPU LIF fallback inside the browser at whatever scale your JS engine can sustain — much smaller than the server brain, but enough to play with.
+No npm. No build step. Just static files served by any web server.
+
+> ⛔⛔ **BUT THERE IS NO BRAIN BEHIND IT ANY MORE, AND THIS PARAGRAPH PROMISED ONE UNTIL 2026-09-08.** It said *"the brain runs in a CPU LIF fallback inside the browser … much smaller than the server brain, but enough to play with."* **That browser-local brain was DELETED.** When the backend was unreachable the page silently dropped to a **~6,700-neuron** simulation and rendered Ψ, arousal, valence, coherence, spike counts and band power **identically to the real ones** — a visitor was watching a toy with no way to know. ⭐ *"Just for visualization"* is exactly the excuse a capability fallback makes for itself.
+>
+> **What a static-only deploy does now:** it says so. The console prints `⛔ BRAIN NOT REACHABLE — no local substitute is started by design (NO FALLBACKS)`, `window._brainUnreachable` is set, the HUD **stays hidden** rather than animating invented numbers, and the page shows a note explaining that a few thousand simulated neurons are not her. **So serve the static files to read the pages and the equations — not to talk to her.** For that you need the backend below.
 
 GitHub Pages deployment works the same way: in the repo settings, point Pages at `main` / `(root)` and you're live at `your-username.github.io/Unity/`. Everything runs client-side.
 
@@ -193,9 +190,33 @@ For headless or remote deployments, set `DREAM_NO_AUTO_GPU=1` to skip the auto-l
 
 ### The Windows launchers (local-dev-only)
 
-These convenience batch files drive the **local-dev path only** — they boot the brain on your own machine and GPU. The deployed server does not use them; it runs as a systemd service (see [Deployed server brain](#deployed-server-brain-primary-path)). Windows users get three convenience batch files at the repo root.
+These convenience batch files drive the **local-dev path only** — they boot the brain on your own machine and GPU. The deployed server does not use them; it runs as a systemd service (see [Deployed server brain](#deployed-server-brain-primary-path)).
 
-**`start.bat`** handles first-run `npm install`, runs the `esbuild` bundle build, downloads the GloVe corpus if it's missing (**required** — the brain exits at boot without `corpora/glove.6B.300d.txt`), **builds the binary embedding table the server actually reads** (step 5 — `cargo build --release -p unity-weights --bin unity-glove` then `unity-glove ensure`, producing `corpora/glove.6B.300d.bin`; a no-op once the cache is current, and a warning rather than a failure when `cargo` is absent), redirects stdout/stderr to `server/server.log`, opens the landing page and the dashboard in separate browser tabs, and spawns a separate "Unity Brain Log Tail" PowerShell window (UTF-8 forced) so the heartbeat stays visible even if the launcher terminal goes invisible. It does not open `compute.html` itself — the server auto-launches that tab once the HTTP listener is up. Since 2026-08-28 (CTLWINDOW) it also spawns the control-plane process (`node brain-ctl.js`) in its **own titled minimized window — "unity-brain-ctl (leave running)"** — instead of parenting it to the launcher console (closing an old launcher window used to silently kill the control plane and dark port 7526), with `brain-ctl.log` opened in APPEND mode so a did-not-bind relaunch can't truncate the live instance's log; `start.sh` mirrors this with `nohup` + `>>`.
+⚠ **They are in `windows\`, not the repo root, and this section said "at the repo root" while its own project tree below showed `windows/`.** The root reorg moved them; a reader following the prose got "command not found". Linux/macOS equivalents are in `linux/`.
+
+| Windows | Linux / macOS |
+|---|---|
+| `windows\start.bat` | `linux/start.sh` |
+| `windows\Savestart.bat` | `linux/Savestart.sh` |
+| `windows\stop.bat` | `linux/stop.sh` |
+| `windows\GPUCONFIGURE.bat` | — |
+
+**What `windows\start.bat` actually does, step by step:**
+
+| | Step |
+|:-:|---|
+| 1 | first-run `npm install` |
+| 2 | the `esbuild` bundle build |
+| 3 | **downloads the GloVe corpus if missing** — ⛔ **required: the brain exits at boot without `corpora/glove.6B.300d.txt`** |
+| 4 | **builds the binary embedding table the server actually reads** — `cargo build --release -p unity-weights --bin unity-glove`, then `unity-glove ensure`, producing `corpora/glove.6B.300d.bin`. A no-op once the cache is current; a warning rather than a failure when `cargo` is absent |
+| 5 | redirects stdout/stderr to `server/server.log` |
+| 6 | opens the landing page and the dashboard in separate browser tabs |
+| 7 | spawns a **"Unity Brain Log Tail"** PowerShell window (UTF-8 forced) so the heartbeat stays visible even if the launcher terminal goes invisible |
+| 8 | spawns the control plane (`node brain-ctl.js`) in its **own titled minimized window — "unity-brain-ctl (leave running)"** |
+
+⚠ **It does NOT open `compute.html` itself** — the server auto-launches that tab once the HTTP listener is up.
+
+⚠ **Why step 8 has its own window:** the control plane used to be parented to the launcher console, so **closing an old launcher window silently killed it and darkened port 7526.** `brain-ctl.log` is opened in APPEND mode so a did-not-bind relaunch cannot truncate the live instance's log. `linux/start.sh` mirrors this with `nohup` + `>>`.
 
 > ⛔ **Why the binary table exists, and why its absence is fatal.** Since 2026-09-05 the server does not parse the 1.04 GB text file at boot — it opens an `f32` pack of the same 400,000 vectors. Measured in-process, back to back: **19,085 ms → 549 ms**, and 129 MB less resident. The vectors are not merely equivalent — all 400,000 were compared component-by-component against the loader this replaced, **zero differing**. The text file remains the source of truth and the binary header records its byte length, so a cache built from a *different* table is refused rather than read. There is deliberately no "parse the text instead" branch: that would be a capability fallback whose only symptom is a slow boot nobody looks at.
 
@@ -209,16 +230,21 @@ The server detects your hardware (`nvidia-smi` for VRAM, `os` for RAM) and route
 
 The default biological weights (override in `server/resource-config.json` if you ship one):
 
-| Region | VRAM share | Why this much |
-|---|---|---|
-| `language_cortex` | **75%** | Speech is what she does. The language sub-regions plus all fourteen cross-projection matrices live here. |
-| `cortex` | **10%** | Predictive coding, sensory integration, the auditory and visual front-ends. |
-| `cerebellum` | **5%** | Error correction. Real cerebella are larger because they coordinate motor timing for a body — Unity has no body, so the share is small. |
-| `hippocampus` | **4%** | Episodic and working memory plus consolidation. |
-| `mystery` | **2%** | Consciousness Ψ modulation. |
-| `amygdala` | **2%** | Emotional attractor settle. |
-| `basalGanglia` | **1%** | Six-channel action selection. |
-| `hypothalamus` | **1%** | Homeostatic drives. |
+⛔⛔ **THIS TABLE WAS WRONG IN EVERY ROW UNTIL 2026-09-08, AND IT WAS MISSING A WHOLE CLUSTER.** It published `language_cortex 75% · cortex 10% · cerebellum 5% · hippocampus 4% · mystery 2% · amygdala 2% · basalGanglia 1% · hypothalamus 1%`, and no `brainstem` at all. **Read off `DEFAULT_BIO_WEIGHTS` in `server/brain-server.js`:**
+
+| Region | Weight | Share of the whole | Why this much |
+|---|---:|---:|---|
+| `language_cortex` | `0.500` | **50%** | Speech is what she does. The language sub-regions plus all **sixteen** cross-projection matrices live here. |
+| `cortex` | `0.100` | **10%** | Predictive coding, sensory integration, the auditory and visual front-ends. |
+| `cerebellum` | `0.098` | **9.8%** | Error correction. Real cerebella are larger because they coordinate motor timing for a body — Unity has no body, so the share is small. **Its missing 0.2 funded the brainstem.** |
+| `hippocampus` | `0.060` | **6%** | Episodic and working memory plus consolidation. |
+| `amygdala` | `0.060` | **6%** | Emotional attractor settle. |
+| `basalGanglia` | `0.060` | **6%** | Six-channel action selection. |
+| `hypothalamus` | `0.060` | **6%** | Homeostatic drives. |
+| `mystery` | `0.060` | **6%** | Consciousness Ψ modulation. |
+| `brainstem` | `0.002` | **0.2%** | ⭐ The monoamine nuclei — locus coeruleus, raphe, ventral tegmental area. **Deliberately tiny, because they are tiny in a real head too**; their influence has never come from their size. |
+
+⚠ **Do not confuse these with the CLUSTER percentages quoted in the README.** These are shares of the whole budget *including* the language-cortex line. The per-cluster figures (cortex 20.0% · cerebellum 19.6% · the five subcortical at 12.0% · brainstem 0.4%) come from **excluding** that line and renormalising the rest across the eight top-level clusters. **Same numbers, two different denominators** — and reading one as the other is how the 75%/5% shape survived here for months.
 
 The minimum viable scale is 1,000 neurons per region. There is no hard upper cap — your VRAM, your V8 heap, and `vramCapMB` in `resource-config.json` are the only bounds. Bigger hardware, more neurons, no manual tuning.
 
@@ -232,13 +258,30 @@ If you want to keep Unity under a comfortable budget on a shared machine, or you
 
 Two persistence layers run in parallel.
 
-The **client-side** layer writes the full brain state to `localStorage` under `unity_brain_state`. When the serialized state would exceed the browser's 4 MB cap, the fallback drops the heaviest sections (cluster synapses, episodes, semantic weights, embedding refinements, the t14 language block) and writes a minimal state — and it screams about it via `console.error` with the dropped sections named explicitly, so you know exactly what did and didn't make it across the boundary. The load path is section-by-section; a corrupted episode pattern doesn't tank the whole load. Final restore log looks like `[Persistence] Brain restored from <savedAt> (t=Xs) — restored: projections=14/14, clusterSynapses=7/7, episodes=198/200 ... — FAILED: t14Language(<msg>)`. JSON corruption no longer auto-clears — the raw blob is copied to `unity_brain_state__corrupt` for hand recovery and a loud `console.error` fires with the parse message. Version-mismatch wipes follow the same discipline: prior state moves to `unity_brain_state__backup_v<N>` before the destructive clear.
+The **client-side** layer writes the full brain state to `localStorage` under `unity_brain_state`.
+
+- **Over the browser's 4 MB cap**, it drops the heaviest sections (cluster synapses, episodes, semantic weights, embedding refinements, the language block) and writes a minimal state — **naming the dropped sections explicitly** via `console.error`, so you know exactly what did and did not make it across.
+- **The load path is section-by-section**, so a corrupted episode pattern doesn't tank the whole load. The restore summary reads:
+  ```
+  [Persistence] Brain restored from <savedAt> (t=Xs) — restored:
+    projections=16/16, clusterSynapses=8/8, episodes=198/200 ...
+    — FAILED: t14Language(<msg>)
+  ```
+  ⚠ **Those denominators read `14/14` and `7/7` here until 2026-09-08** — written before the eighth cluster and the two extra projections existed, so a reader matching their own log against this page would have read a *healthy* restore as a short one.
+- ⭐ **JSON corruption no longer auto-clears.** The raw blob is copied to `unity_brain_state__corrupt` for hand recovery and a loud `console.error` fires with the parse message — **corruption is exactly when you most want a recovery copy.**
+- **Version-mismatch wipes follow the same discipline:** prior state moves to `unity_brain_state__backup_v<N>` before the destructive clear, so a buggy version bump is rollback-able for one cycle.
 
 The **server-side** layer streams binary weights to `server/brain-weights.bin`, with a JSON sidecar at `server/brain-weights.json` for metadata (versions, savedAt, grades, passedCells, signoffs). At boot, `autoClearStaleState()` wipes `brain-weights.json`, `brain-weights-v1` through `v4`, `brain-weights.bin`, `conversations.json`, `episodic-memory.db` (plus its WAL/SHM companions), and `schemas.json`.
 
-**Browser auto-launch with `--enable-unsafe-webgpu`** (iter14-E — operator 2026-05-04 verbatim "*obviously make the start.bat fucking work!!! if we cant interact with the html thius is pointless and well never beable to scale right when we do comp.*"): When the brain server auto-spawns the GPU compute client (`compute.html`), it now finds Chrome (or Edge fallback) in standard install paths and launches it with `--enable-unsafe-webgpu --new-window --user-data-dir=<isolated-profile>`. The unsafe-webgpu flag raises the WebGPU `maxStorageBufferBindingSize` from the 2GB spec minimum to whatever the GPU driver actually supports (typically 4-8 GB on consumer cards). Without this flag, the brain caps at ~178M neurons total because per-cluster state buffers can't exceed 2GB. The isolated user-data-dir keeps the unsafe-webgpu profile separate from your regular browsing session — no cross-contamination. Pair with `bindingCeilingMB` in `server/resource-config.json` (auto-written by GPUCONFIGURE.bat for tiers ≥12GB) to tell the SERVER-side scaler to actually USE that larger limit. Both browser flag + server config must be in place; missing either keeps you at 2GB ceiling regardless. Falls back to default browser launch if Chrome/Edge not found in standard paths (logs a loud warning explaining the cap implication).
+**Browser auto-launch with `--enable-unsafe-webgpu`** (operator 2026-05-04 verbatim: "*obviously make the start.bat fucking work!!! if we cant interact with the html thius is pointless and well never beable to scale right when we do comp.*"): When the brain server auto-spawns the GPU compute client (`compute.html`), it finds Chrome (or Edge) in standard install paths and launches it with `--enable-unsafe-webgpu --new-window --user-data-dir=<isolated-profile>`.
 
-**Two launchers, two contracts** (iter14-D — operator 2026-05-04 verbatim "*all the weights everything shoudl reset when the start.bat is run or the .sh... and only if the stop.bat is used in conjusction with the savestart.bat does it pick up where it lefgtt off*"):
+- **What the flag buys:** it raises the WebGPU `maxStorageBufferBindingSize` from the **2 GB** spec minimum to whatever the driver actually supports — typically **4–8 GB** on consumer cards.
+- ⛔ **What it costs to skip it:** without the flag the brain caps at **~178M neurons total**, because per-cluster state buffers cannot exceed 2 GB.
+- **The isolated `user-data-dir`** keeps the unsafe-webgpu profile separate from your normal browsing session — no cross-contamination.
+- ⚠ **BOTH HALVES ARE REQUIRED AND MISSING EITHER SILENTLY KEEPS THE 2 GB CEILING.** Pair the browser flag with `bindingCeilingMB` in `server/resource-config.json` (auto-written by `windows\GPUCONFIGURE.bat` for tiers ≥ 12 GB) so the **server-side** scaler actually uses the larger limit.
+- If Chrome/Edge are not found in standard paths it falls back to the default browser launch and **logs a loud warning explaining the cap implication** rather than capping quietly.
+
+**Two launchers, two contracts** (operator 2026-05-04 verbatim: "*all the weights everything shoudl reset when the start.bat is run or the .sh... and only if the stop.bat is used in conjusction with the savestart.bat does it pick up where it lefgtt off*"):
 
 - **`start.bat` / `start.sh`** → ALWAYS fresh brain. Auto-clear runs unconditionally — wipes weights + episodic + schemas every boot. Resource-config tier changes apply immediately. Code changes apply immediately. wMax clamps stamp correctly on freshly-constructed projections. The cleaner contract: launcher name says "start" so `start` always means new brain. (Prior code-hash gate is gone. It caused real bugs: `GPUCONFIGURE.bat` tier picks didn't trigger the wipe so picked tiers got ignored when binary weights from the prior boot were size-locked; wMax clamps lost in the binary save/load round-trip leaving restored projections at ±Infinity. Both fixed by making `start.bat` deterministically wipe.)
 - **`stop.bat` + `Savestart.bat`** → preserves prior state. `Savestart.bat` sets `DREAM_KEEP_STATE=1` which the auto-clear honors as the explicit resume opt-in. Saved weights + curriculum progress + passedCells + episodic memory + Tier 2 schemas all survive.
@@ -287,14 +330,15 @@ The **identity layer** (`server/identity-core.json`) is **explicitly excluded** 
 │   │
 │   ├── brain/
 │   │   ├── engine.js                Master loop — processAndRespond
-│   │   ├── cluster.js               NeuronCluster class with the eight cortex sub-regions and `_dictionaryOracleEmit` helper that consolidates the oracle scan with `_oracleHits` / `_matrixHits` counters
-│   │   ├── neurons.js               LIFPopulation (browser fallback) + HHNeuron (reference) — live runtime is Rulkov in gpu-compute.js
+│   │   ├── cluster.js               NeuronCluster class with the ELEVEN cortex sub-regions (eight of which carry the sixteen cross-projections)
+│   │   ├── cluster/                 Per-module mixin split — telemetry.js, hebbian.js, emit.js, probe.js, attention.js, lexical-constants.js
+│   │   ├── neurons.js               LIFPopulation (the CPU-side population object every NeuronCluster holds) + HHNeuron (reference only) — live runtime is Rulkov on the donor GPU
 │   │   ├── synapses.js              Hebbian, STDP, reward-modulated plasticity
 │   │   ├── modules.js               Six brain-region equation modules
 │   │   ├── mystery.js               Ψ = √(1/n) · N³ · [Id + Ego + Left + Right]
 │   │   ├── oscillations.js          Eight Kuramoto oscillators (θ → γ)
 │   │   ├── persona.js               Personality as brain parameters (sober-default; substance contributions come from drug-scheduler.js)
-│   │   ├── drug-scheduler.js        Real-time pharmacokinetic scheduler with nine substances + seven combo synergies + seven adult-use patterns + thirteen-axis speech modulation + first-use ledger + trauma markers + decide() decision engine
+│   │   ├── drug-scheduler.js        Real-time pharmacokinetic scheduler with TEN substances (caffeine joined 2026-08-25) + seven combo synergies + seven adult-use patterns + thirteen-axis speech modulation + first-use ledger + trauma markers + decide() decision engine
 │   │   ├── drug-detector.js         Substance offer / self-use / status-query detection across text / voice / vision
 │   │   ├── drug-sensory-triggers.js Seven environmental-cue triggers (coffee aroma, skunky weed, etc.) → scheduler.addCraving
 │   │   ├── sensory-olfactory.js     Scent-tag storage with decay
@@ -303,7 +347,8 @@ The **identity layer** (`server/identity-core.json`) is **explicitly excluded** 
 │   │   ├── curriculum.js            Multi-grade curriculum runner + shared primitives
 │   │   ├── curriculum/
 │   │   │   ├── pre-K.js             All pre-K cell runners + helpers via PREK_MIXIN
-│   │   │   └── kindergarten.js      All six K cell runners + six K gates + 32 K-specific teach helpers via K_MIXIN (~4,800 lines)
+│   │   │   ├── kindergarten.js      All K cell runners + K gates + K-specific teach helpers via K_MIXIN — the deepest grade by far, and the template every grade above it is measured against
+│   │   │   └── (all 20 grades)      grade1..grade12, college1..college4, grad, phd — one Object.assign(Curriculum.prototype, <GRADE>_MIXIN) per file
 │   │   ├── student-question-banks.js Held-out exam banks per cell + train-vs-exam overlap audit
 │   │   │                             + the one door generated question sets enter through
 │   │   ├── letter-input.js          Letter inventory (a-z + 0-9 + basic punct)
@@ -326,7 +371,7 @@ The **identity layer** (`server/identity-core.json`) is **explicitly excluded** 
 │   │   └── pollinations.js          Pollinations API client (text / image / TTS)
 │   │
 │   ├── io/
-│   │   ├── voice.js                 Web Speech API + Pollinations TTS
+│   │   ├── voice.js                 Speech-to-text (Web Speech API) + "Equation Unity One" TTS: in-browser Piper → CDF 9/7 wavelet voice. ONE lane, no fallback — the Pollinations TTS, vox word-bank and browser-SpeechSynthesis tiers were all deleted
 │   │   └── permissions.js           Mic / camera permission requests
 │   │
 │   └── ui/
@@ -339,7 +384,21 @@ The **identity layer** (`server/identity-core.json`) is **explicitly excluded** 
 │
 ├── server/
 │   ├── brain-server.js              Node brain server — WebSocket, GPU exclusive, BRAIN_VRAM_ALLOC unified allocator, loopback bind default, requireLoopback gate on privileged endpoints
+│   ├── brain-server/                Per-concern mixin split — gpu.js, state.js, memory.js, chat.js, visual-memory.js, mindspace-proxy.js, voice-synth.js
+│   ├── definition-service.js        Definition lane — offline WordNet first, then the network (see "Where definitions come from")
+│   ├── brain-ctl.js                 Control plane on 7526 — the one service that must answer when the brain is DOWN
 │   └── package.json                 Server dependencies (ws, better-sqlite3)
+│
+├── corpora/                         ⛔ WHAT SHE IS TAUGHT FROM. academic/ books + vocabulary/*.json word lists (tracked);
+│                                    glove.6B.300d.txt/.bin gitignored and self-provisioned at first boot; the 114 GB of
+│                                    wavelet fields live in the separate UnityAILab/BrainWaves data repo
+├── crates/                          Rust workspace — unity-protocol (donor wire contract), unity-deploy, unity-weights,
+│                                    unity-donor-session, unity-sizing, unity-http, unity-coordinator
+├── donor-app/                       The compiled `unity-donor` desktop donor (CUDA on NVIDIA, wgpu elsewhere, headless-capable)
+├── deploy/                          Box provisioning + the press — self-update.sh, bootstrap-backend.sh, systemd units, REDEPLOY-NOTES.md
+├── voice-engine/                    "Equation Unity One" — Piper model + the CDF 9/7 wavelet voice pipeline
+├── assets/social/                   One 1200×630 og:image per page (npm run social:shots)
+├── scripts/                         Build + dev tooling ONLY. ⛔ Scripts that edit code, files or the stack are banned
 │
 └── docs/
     ├── ARCHITECTURE.md              Codebase structure and systems
@@ -432,7 +491,9 @@ Once the server is up and the GPU client is attached, the curriculum runs contin
 
 `[Curriculum][K-VOCAB-UNION] hardcoded=N dict=M banks=P → union=X unique words` fires once at K-curriculum entry — this is the union of every K vocab category, every word in the live dictionary, every word in the per-cell train banks, and every word in the per-cell exam banks. Whatever number lands in `union=X` is what Unity is actually being trained on.
 
-`[Curriculum] ▶ CELL ALIVE <subject>/<grade> — +Ns elapsed (heartbeat #N) · phase=<name> (+Ns) · oracle=N matrix=M (oracleRatio=X%)` fires every ten seconds while a cell is teaching. The `phase=` field tells you which teach helper is currently running. The `oracleRatio` field is the central research-validity number — what fraction of recent emissions are decided by the dictionary lookup vs. the trained matrix. If it stays above 95% for the entire walk, the matrix isn't carrying load and the dictionary is doing all the work.
+`[Curriculum] ▶ CELL ALIVE <subject>/<grade> — +Ns elapsed (heartbeat #N) · phase=<name> (+Ns) · oracle=N matrix=M (oracleRatio=X%)` fires every ten seconds while a cell is teaching. The `phase=` field tells you which teach helper is currently running.
+
+⛔ **`oracleRatio` IS NOW ALWAYS `0%`, AND THIS PARAGRAPH CALLED IT "the central research-validity number" UNTIL 2026-09-08.** It measured what fraction of emissions came from a dictionary lookup rather than the trained matrix — and **the dictionary lane was deleted on 2026-09-01**, after being measured carrying **99.1% of emissions**. Nothing increments `oracle=` any more. ⭐ **The counters are kept on purpose as permanent-zero regression detectors** — a non-zero reading means the oracle came back — but **an instrument whose only possible value is the healthy one cannot answer the question it was built for.** Read `state.voice` instead: accepted emissions, `matrixDrivenPct`, and the last emit rejection with its age. Silence versus speech is the live question now.
 
 `[Curriculum][label] DYN-PROD` / `WRITE` / `RESP` / `TWO-WORD` / `FREE-RESPONSE` lines mark per-probe START / DONE inside the gate.
 
@@ -442,7 +503,7 @@ Once the server is up and the GPU client is attached, the curriculum runs contin
 
 `[Server] Rejected non-loopback /shutdown from <ip>` fires if any non-loopback POST hits the privileged endpoints — useful diagnostic that the loopback gate is doing its job.
 
-`[Persistence] Brain restored from <savedAt> (t=Xs) — restored: projections=14/14, clusterSynapses=7/7, episodes=198/200 ... — FAILED: t14Language(<msg>)` is the per-section restore summary at boot.
+`[Persistence] Brain restored from <savedAt> (t=Xs) — restored: projections=16/16, clusterSynapses=8/8, episodes=198/200 ... — FAILED: t14Language(<msg>)` is the per-section restore summary at boot. ⚠ `t14Language` is the real on-disk section key, printed verbatim so you can match your own log; the tag is legacy and renaming it is a code change across the serializer and the loader.
 
 ---
 
@@ -450,7 +511,7 @@ Once the server is up and the GPU client is attached, the curriculum runs contin
 
 The core rule: what you type is private; Unity's brain growth is shared; her persona is canonical.
 
-**Client-only mode** runs everything in your browser. No server. API keys and every backend config you save in the setup modal are stored in your browser's `localStorage` on YOUR device only. The brain runs locally in CPU LIF fallback mode at whatever scale your JS engine can sustain. The Clear All Data button wipes every `localStorage` key.
+**Client-only mode** keeps everything in your browser. No server. API keys and every backend config you save in the setup modal are stored in your browser's `localStorage` on YOUR device only, and the Clear All Data button wipes every key. ⛔ **There is no local brain in this mode** — that lane was deleted (see the note under [Self-hosting](#self-hosting-browser-only-mode)); with no backend reachable the page reports it instead of simulating one.
 
 **Local server mode** (you running `node brain-server.js` on your own machine) keeps everything on your network — except API calls to the sensory providers you chose in the setup modal. The brain runs on your GPU via `compute.html`. Episodic memory is stored in `server/episodic-memory.db` (SQLite).
 
@@ -529,18 +590,18 @@ Type these in chat to inspect or control Unity directly.
 
 ---
 
-## Session 114.19fp setup notes (2026-06-17)
+## Setup notes from the 2026-06-17 live-test follow-up
 
-Live-test follow-up shipped 20 atomic fixes (I.1-I.20). Setup-relevant changes for new clones / fresh installs:
+That pass shipped twenty atomic fixes. These are the ones that change what a new clone or a fresh install has to know:
 
-### Startup contract clarification (I.15 LAW addition)
+### The startup contract, stated exactly
 
-- **`windows/start.bat`** — fresh-brain boot. Auto-clears stale state (`brain-weights*.json/bin`, `episodic-memory.db*`, `conversations.json`, `schemas.json`) per the iter14-D contract. Use this when you want Unity to learn from scratch.
+- **`windows/start.bat`** — fresh-brain boot. Auto-clears stale state (`brain-weights*.json/bin`, `episodic-memory.db*`, `conversations.json`, `schemas.json`) per the two-launcher contract above. Use this when you want Unity to learn from scratch.
 - **`windows/Savestart.bat`** — resume from prior state. Sets `DREAM_KEEP_STATE=1` env var which skips the auto-clear. Reads `brain-weights.bin` from disk and resumes training where it left off. ⛔ **Budget disk for GB, not MB: measured on a live checkpoint set, each `brain-weights-v*.bin` is ~5,460 MB (≈5.3 GB)** — this doc said `144.8 MB` until 2026-08-27, understating it ~38×. With three rotating checkpoint slots that is **~16 GB of weights alone**, which is why `DREAM_SAVE_MIN_FREE_DISK_MB` defaults to `8192` and defers a save rather than risking a truncated one. ⚠ The paired `.json` is only ~0.3 MB — the bulk is the binary.
 - **`windows/stop.bat`** — graceful shutdown. POSTs `/shutdown` for clean state-save → falls back to taskkill on port 7525 → falls back to force-kill node.exe.
-- **NEW LAW (I.15):** `node -e "require('./server/brain-server.js')"` no longer wipes state. The `autoClearStaleState()` call is now gated behind `if (require.main === module)` so syntax-check / REPL / IDE module loads NO-OP for the wipe. Only an actual `node server/brain-server.js` entry-point boot wipes per the iter14-D contract. **NEVER use `require('./server/brain-server.js')` for syntax checks** — use `node --check server/brain-server.js` instead (parses only, doesn't execute top-level code).
+- ⛔ **A STANDING RULE, because the failure mode is a silent wipe of her training:** `node -e "require('./server/brain-server.js')"` no longer wipes state. The `autoClearStaleState()` call is gated behind `if (require.main === module)` so a syntax-check / REPL / IDE module load NO-OPs the wipe. Only an actual `node server/brain-server.js` entry-point boot wipes, per the two-launcher contract above. **NEVER use `require('./server/brain-server.js')` for syntax checks** — use `node --check server/brain-server.js` instead (parses only, doesn't execute top-level code).
 
-### Dashboard panel changes (I.6, I.11, I.12, I.17, I.18, I.20)
+### Dashboard panel changes
 
 The brain dashboard at `http://localhost:7525/dashboard.html` now shows:
 
@@ -553,4 +614,47 @@ The brain dashboard at `http://localhost:7525/dashboard.html` now shows:
 
 GPU%/util% display requires `nvidia-smi` on PATH (Windows: `C:\Windows\System32\nvidia-smi.exe`, Linux: `/usr/bin/nvidia-smi`). On AMD/Intel/headless systems where it's not installed, dashboard panel shows "unavailable" + total VRAM from the brain's known reserve — never a hallucinated number.
 
-See `docs/ROADMAP.md § Live-test follow-up` for full I-track closure detail.
+See `docs/ROADMAP.md` for the full closure detail of that pass.
+
+---
+
+## Verification history
+
+Newest first. One entry per pass. ⛔ **This section exists so `last-verified` in the frontmatter can stay a short `<hash> <date>`** — see the note beside it.
+
+### `17bb3070` — 2026-09-08 — documentation sweep, capability pass
+
+**All 556 lines read.** `status` stays `draft`, and the reason is stated rather than implied.
+
+**Corrected against source — twelve claims, every one checked in the file that implements it:**
+
+| Was | Is |
+|---|---|
+| VRAM shares `75 / 10 / 5 / 4 / 2 / 2 / 1 / 1`, no `brainstem` | ⛔ **Wrong in every row.** `DEFAULT_BIO_WEIGHTS` is `0.500 / 0.100 / 0.098 / 0.060 ×5 / 0.002` |
+| "all **fourteen** cross-projection matrices" | **sixteen** (8 pairs × 2 directions) |
+| "the **eight** cortex sub-regions" | **eleven** — eight of which carry the projections |
+| "**nine** substances" | **ten** — caffeine joined 2026-08-25 |
+| `cluster.js` ships a `_dictionaryOracleEmit` helper | ⛔ **Deleted 2026-09-01.** It had been carrying **99.1% of emissions** |
+| `oracleRatio` is "the central research-validity number" | It is now **always `0%`** and cannot report what it was built for |
+| A browser CPU-LIF fallback brain, promised in **two** places | ⛔ **Deleted.** The page reports the brain unreachable instead of animating a ~6,700-neuron stand-in |
+| `voice.js` — "Web Speech API + Pollinations TTS" | One Piper → CDF 9/7 lane. **No fallback**; the vox bank and browser TTS are both gone |
+| "three convenience batch files **at the repo root**" | They are in `windows\` — which this file's **own project tree already showed** |
+| restore log `projections=14/14, clusterSynapses=7/7` | `16/16` and `8/8` |
+| curriculum tree listing **2** grades | **20** grades exist on disk |
+| tree missing 7 top-level directories | `corpora` · `crates` · `donor-app` · `deploy` · `voice-engine` · `assets` · `scripts`, plus `cluster/` and `brain-server/` |
+
+**Layout:** 3 walls over 1,200 characters → **0**, each rebuilt into the structure it was already trying to be (a step table, a bullet list, a fenced log sample).
+
+**Tickets:** 14 identifier leaks removed. ⭐ **Every verbatim operator quote was kept intact** — only the attribution wrapper around it changed, because a quote is evidence and stripping it would destroy the record while pretending to tidy it.
+
+⭐ **ONE CLAIM WAS CHECKED AND FOUND TRUE, recorded so a later pass does not "fix" it:** *"GloVe 300d REQUIRED + fastText subword for OOV"* is **correct**. Subword n-gram sum is the **defined encoding** for an out-of-vocabulary word, and what the no-fallbacks ruling deleted was subword-as-substitute-for-the-whole-table — a different thing. **I was one edit from breaking a true statement.**
+
+⚠ **NOT re-verified this pass, and therefore why `status` stays `draft`:** the completeness of the server-endpoints table, the troubleshooting table, and the deployed/systemd bootstrap narrative.
+
+### `0ee5ac68` — 2026-08-29 — drift pass
+
+Three sources had moved and were read as diffs: `windows/start.bat` + `linux/start.sh` (the control plane now launches in its own titled minimized window / `nohup` with an APPEND-mode log) and `server/brain-server.js` (+455 lines — walk heartbeat, firing controller, fresh-flag and teach-credit drain). **No launcher contract, wipe-list entry or endpoint changed**, but the insertions shifted cited line numbers, which were updated in the body.
+
+### Earlier
+
+Launcher contracts and every `npm run` command confirmed against `package.json`; `brain-weights.bin` size measured on disk at **~5,460 MB** where the doc had said 144.8 MB — understating it ~38×; the auto-advance default read out of source as **ON** where the doc had said `false`, the opposite of the truth.
