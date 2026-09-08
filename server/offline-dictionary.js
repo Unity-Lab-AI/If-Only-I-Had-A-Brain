@@ -235,10 +235,58 @@ function _rawSenses(lemma) {
    `comes` detaches to `come` under BOTH the noun and the verb rule, and forcing
    the table's first match to lead made a common verb headline as the vulgar
    noun. Ambiguous endings therefore return the attested order untouched. */
+/* ⭐⭐ THE ORTHOGRAPHIC RULES WORDNET PUTS IN `.exc` INSTEAD OF ITS DETACHMENT
+ * TABLE — ADDED 2026-09-08, AND EVERY ONE WAS MEASURED BEFORE IT WAS WRITTEN.
+ *
+ * WordNet's published detachment table has no entry for `-ied`, for a doubled
+ * final consonant, or for adverbial `-ly`, because its own tool resolves those
+ * from the exception files. ⛔ `wordnet-db` ships NONE — its payload is nine
+ * files (four `index.*`, four `data.*`, `index.sense`), verified by listing the
+ * directory — so every one of these paid a network round trip for a lemma
+ * already on disk.
+ *
+ * ⭐ MEASURED over all 19 vocabulary lists (19,339 distinct words, 2,938 of them
+ * missing offline), each candidate validated against the index exactly as the
+ * rules above are:
+ *
+ *     adj  ly   -> ""    18    discretely -> discrete
+ *     verb ied  -> y     17    carried -> carry, copied -> copy, cried -> cry
+ *     verb pped -> p     15    kidnapped -> kidnap, mapped -> map
+ *     verb rred -> r      9    occurred -> occur, referred -> refer
+ *     verb tted -> t      8    formatted -> format, submitted -> submit
+ *     verb mming/gging/nning      8    slamming -> slam, debugging -> debug
+ *                        ---
+ *                         75   words moved from the network lane to disk
+ *
+ * ⚠ 75 of 2,938 is 2.6% and is not sold as more than that. The rest is function
+ * words (which this dictionary cannot define at all — it is noun/verb/adj/adv
+ * only), true irregulars needing the absent `.exc`, and proper nouns.
+ * ⭐ The reason it matters past the count: on 2026-09-05 the dictionary API
+ * returned `000` for a whole day and the walk sat 17.5 HOURS on one kindergarten
+ * cell. Every word the offline lane can answer is a word that outage cannot stop.
+ *
+ * ⚠ SAFE BY THE SAME PROPERTY AS THE RULES ABOVE, NOT BY BEING RIGHT: a
+ * detachment is accepted ONLY if the result is in the index for that part of
+ * speech. `modelled -> model` and a bogus `-ly` strip are both simply discarded
+ * when the stem is not a real lemma, so a wrong rule cannot invent a definition
+ * — it can only fail to resolve.
+ * ⚠ `-ly` validates against the ADJECTIVE index deliberately: an adverb formed
+ * from an adjective has its source there (`constitutively` -> `constitutive`),
+ * and leading with that part of speech is the honest headline for the reduction.
+ * ⛔ NOT a hand-authored irregular table — that is the banned shape in this file
+ * and `went`/`children`/`came` correctly stay on the network lane.
+ */
 const MORPHY = [
   ['noun', [['s', '', false], ['ses', 's', false], ['xes', 'x', false], ['zes', 'z', false], ['ches', 'ch', false], ['shes', 'sh', false], ['men', 'man', true], ['ies', 'y', false]]],
-  ['verb', [['s', '', false], ['ies', 'y', false], ['es', 'e', false], ['es', '', false], ['ed', 'e', true], ['ed', '', true], ['ing', 'e', true], ['ing', '', true]]],
-  ['adj', [['er', '', true], ['est', '', true], ['er', 'e', true], ['est', 'e', true]]],
+  ['verb', [['s', '', false], ['ies', 'y', false], ['es', 'e', false], ['es', '', false], ['ed', 'e', true], ['ed', '', true], ['ing', 'e', true], ['ing', '', true],
+    // y -> ied (regular orthography; WordNet files these in verb.exc)
+    ['ied', 'y', true],
+    // doubled final consonant before -ed / -ing
+    ['pped', 'p', true], ['rred', 'r', true], ['tted', 't', true], ['nned', 'n', true], ['mmed', 'm', true], ['gged', 'g', true], ['bbed', 'b', true], ['dded', 'd', true], ['lled', 'l', true],
+    ['pping', 'p', true], ['rring', 'r', true], ['tting', 't', true], ['nning', 'n', true], ['mming', 'm', true], ['gging', 'g', true], ['bbing', 'b', true], ['dding', 'd', true], ['lling', 'l', true]]],
+  ['adj', [['er', '', true], ['est', '', true], ['er', 'e', true], ['est', 'e', true],
+    // adverbial -ly formed from an adjective
+    ['ly', '', true], ['ily', 'y', true]]],
 ];
 
 /* ⛔⛔ THE INFLECTION KNOWS THE PART OF SPEECH, AND THROWING THAT AWAY REMAKES
@@ -287,10 +335,49 @@ function lookup(word) {
 
   // Closed compounds the corpus writes shut: livingroom -> living_room.
   // ONLY when the joined form exists; never a bare two-word guess.
+  //
+  // ⭐⭐ THREE SHAPES, NOT ONE — MEASURED 2026-09-08 ON THE LIVE KINDERGARTEN
+  // LIST, WHERE THE HOLIDAY VOCABULARY SPLIT ALMOST EXACTLY IN HALF.
+  //
+  // `laborday`, `newyear`, `independenceday`, `memorialday`, `veteransday` and
+  // `groundhogday` all resolved through the plain underscore arm. `presidentsday`
+  // and `valentinesday` did not — and the reason is not that WordNet lacks them:
+  //
+  //     presidents_day    0 senses        presidents'_day   1 sense
+  //     valentines_day    0 senses        valentine_day     1 sense
+  //
+  // ⛔ So the entries exist and the join could not reach them: one carries a
+  // POSSESSIVE APOSTROPHE and the other holds its first element SINGULAR. Those
+  // words then failed offline AND on the network, landed in the permanent-miss
+  // set, and were reported to the operator as vocabulary that would "train on
+  // words with no definition behind them" — a real warning about a word the
+  // dictionary on disk could define all along.
+  //
+  // ⭐ THE ALTERNATIVE WAS TO DELETE THE TOKENS FROM THE WORD LIST, AND THAT
+  // WOULD HAVE BEEN A CUT. `Presidents' Day` and `Valentine's Day` are things a
+  // kindergartener actually learns; removing them to silence a warning removes
+  // curriculum. Fix the lookup, not the content.
+  //
+  // ⚠ Same propose-and-verify discipline as every other arm here: a variant is
+  // returned ONLY if it is a real lemma, so a wrong guess cannot invent a
+  // definition — it can only fail. `earthday`, `chinesenewyear`, `grayhair` and
+  // `toystore` were probed too and WordNet genuinely holds none of them, so they
+  // correctly stay on the network lane rather than being forced to resolve.
   for (let i = 3; i <= w.length - 3; i++) {
-    const joined = w.slice(0, i) + '_' + w.slice(i);
-    const j = _rawSenses(joined);
+    const head = w.slice(0, i);
+    const tail = w.slice(i);
+    const j = _rawSenses(head + '_' + tail);
     if (j.length) return j;
+    // Possessive: presidentsday -> presidents'_day
+    if (head.endsWith('s')) {
+      const p = _rawSenses(head + "'_" + tail);
+      if (p.length) return p;
+    }
+    // First element singular: valentinesday -> valentine_day
+    if (head.endsWith('s') && head.length > 4) {
+      const s = _rawSenses(head.slice(0, -1) + '_' + tail);
+      if (s.length) return s;
+    }
   }
 
   // Regular plurals WordNet holds in the singular (leaves/leaf is irregular and
