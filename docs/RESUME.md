@@ -1,5 +1,51 @@
 # RESUME — Session Pickup Brief
 
+> # ✅ 2026-09-08 (latest, 18th) — THE FRESH WALK LANDED AND THE SIZING PREDICTION HELD TO 0.03% (START HERE)
+>
+> Gee (verbatim): *"update freshwalk pressed! 5min probably till she is teaching"*
+>
+> ## ⭐ THE PREDICTION WAS WRITTEN DOWN BEFORE THE BOOT, AND IT HELD
+>
+> ```
+>   predicted  ~234,000,000 neurons     (budget 15,580 / 1.3644 = 11,418 MB,
+>                                        x 24,966 neurons per MB of weights)
+>   actual      233,932,309 neurons     -> within 0.03%
+> ```
+>
+> ⭐ **That is the resume ratio doing exactly what it was derived to do**, and it is the difference between a term that was reasoned about and one that was measured.
+>
+> ## ✅ SHE IS HEALTHY AND TEACHING — NO STALL, NO DARK WINDOW
+>
+> ```
+>   03:47:02Z  force-fresh via dashboard /update
+>   03:48:45Z  boot 24ddd9c2 · 233,932,309 neurons · donors 1 (reattached on its own)
+>   03:50:17Z  TEACHING — 90 seconds after boot
+>   03:53Z     teach/min 27,930 · loop lag 0 ms · psi 20.88
+> ```
+>
+> ⛔ **Compare with the boot two hours earlier: `frames 0 · spikes 0 · psi 0 · cellStatus idle` for 53 MINUTES, with `/health` 200 in 0.95 ms and every memory and pressure reading green.** Same brain, same box. **The signals that would have caught it are `frameCount`, `totalSpikes` and `cellStatus`; not one infrastructure check asks any of them.**
+>
+> ## ✅ EVERYTHING FROM THE NIGHT, CONFIRMED LIVE
+>
+> | Fix | Evidence |
+> |---|---|
+> | **Resume sizing term** (`KI-42`) | 233,932,309 neurons vs a ~234M prediction · no stall · no dark window |
+> | **`donor-v0.3.37` self-exit** (`KI-43`) | pod self-upgraded; `wedge watchdog armed — self-exit after 600s`; all 9 clusters re-uploaded |
+> | **Donor reattach** | `donors=1` within seconds, at the new geometry |
+> | **Release lane** (`KI-22`) | tag → CI build → 2 assets → site links → pod, all at `0.3.37` |
+> | **Figure enqueue reorder** | ⏳ **not yet observable** — it lives in the prose block, and she is still in the pre-phase definition bootstrap (`phases 0/25`, hours out). **Watch for the `runner:fig-enqueue` stage tag and `figureQueue.total` leaving 0** |
+>
+> ## ⛔ WHAT IS LEFT — BOTH OPTIONAL, NEITHER URGENT
+>
+> - **`DREAM_CGROUP_OVERHEAD_MB=4900` now does work the ratio already does.** Deleting `deploy/dropins/40-cgroup-overhead.conf` on the box returns it to the measured 2,867 and buys ~13% more brain (**~234M → ~271M**, predicted footprint 17,311 MB with 3,169 MB headroom). ⚠ **It is a resize, so it costs a fresh walk** — do it at the next wipe that is happening anyway, not on its own. **The press does not install drop-ins; this is a box action.**
+> - **`UAL_FIELDS_HYDRATE` stays OFF**, so figures transform live — the documented non-fatal path.
+>
+> ## ⚠ THE ONE I HAVE TO KEEP SAYING
+>
+> The donor false positive was caught by a harness. **The resume-term weight-wipe was caught by Gee asking *"shouldnt we used freshwalk"*** — not by anything I ran. **That one would have shipped**, and it would have wiped her on every savestart while reporting that it was keeping the weights.
+>
+> ---
+
 > # 🟢 2026-09-08 (latest, 17th) — BOTH OF THE "REAL FIX" ITEMS ARE BUILT, AND SHE WAS IDLE FOR 53 MINUTES WITH EVERY LIGHT GREEN (START HERE)
 >
 > Gee (verbatim): *"yeah do it all so we never have to have Sponge fix it for you"*
