@@ -11200,8 +11200,67 @@ const httpServer = http.createServer((req, res) => {
       // is exactly what shipped before, so it falls back to the plain spawn and
       // SAYS which path it took — an operator reading a starved box needs to
       // know whether the deploy was contained or not.
+      // ⛔⛔⛔ AND FOR THREE DAYS IT DEGRADED ON EVERY PRESS WHILE THE LOG BELOW
+      // CLAIMED CONTAINMENT — MEASURED 2026-09-08.
+      //
+      // `systemd-run --user` has to find the caller's user-manager bus, and
+      // libsystemd looks for it in `$DBUS_SESSION_BUS_ADDRESS`, then in
+      // `$XDG_RUNTIME_DIR`. ⛔ A SYSTEM UNIT HAS NEITHER — `unity-brain.service`
+      // sets no `XDG_RUNTIME_DIR` and a system service gets no session bus. So
+      // the invocation never reached a manager at all. Measured on systemd 259
+      // with both variables unset, exactly as the unit leaves them:
+      //
+      //   Failed to connect to user scope bus via local transport:
+      //   $DBUS_SESSION_BUS_ADDRESS and $XDG_RUNTIME_DIR not defined
+      //   exit 1  —  and the payload never ran
+      //
+      // ⭐ THE FALLBACK WORKED, WHICH IS WHY NOBODY NOTICED. The deploy still
+      // ran — just inside her cgroup, which is the whole thing this block exists
+      // to prevent — and the summary line at the bottom announced containment
+      // anyway, because it was written from `_useScope` (a CONFIG FLAG) instead
+      // of from whether the scope actually started. **A status assembled from
+      // intent is a label, not a status**, and this project has now paid for
+      // that shape twice: once on a page that read `live` over a six-hour-old
+      // frame, and once here.
+      //
+      // TWO THINGS FIX IT, AND ONLY ONE OF THEM IS CODE:
+      //  • CODE — hand `systemd-run` an `XDG_RUNTIME_DIR`, and refuse to even
+      //    attempt the scope when that runtime directory does not exist. A
+      //    missing `/run/user/<uid>` means there is no user manager to place the
+      //    scope in, and trying anyway buys a confusing failure instead of a
+      //    clear one.
+      //  • BOX, ONE TIME, AS ROOT — `loginctl enable-linger unity`, which is what
+      //    creates that runtime directory for a service account with no login
+      //    session and keeps it across reboots. ⚠ Until that is run there is no
+      //    user manager on this box and this path CANNOT contain anything; the
+      //    log says so in those words rather than implying a code fault.
+      //
+      // ⭐ GROUND TRUTH IS PRINTED BY THE SCRIPT, NOT BY US. `self-update.sh`
+      // reads its OWN cgroup and its own `memory.max` on the first line it logs
+      // (`cgroup: CONTAINED` / `cgroup: ⚠ UNCONTAINED`), and that line streams
+      // into the admin console with the rest of the deploy. **Believe that line
+      // over anything this handler predicts** — it is the kernel's answer, and
+      // it is the one the hydration's bounds are sized from.
       const _scopeMemMax = process.env.UAL_DEPLOY_MEM_MAX || '2G';
-      const _useScope = process.env.UAL_DEPLOY_OWN_CGROUP !== '0';
+      let _useScope = process.env.UAL_DEPLOY_OWN_CGROUP !== '0';
+      // Derive the runtime dir rather than requiring the unit to carry it, so
+      // this works the moment lingering is enabled with no unit edit.
+      let _runtimeDir = process.env.XDG_RUNTIME_DIR || null;
+      if (!_runtimeDir && typeof process.getuid === 'function') {
+        try { _runtimeDir = `/run/user/${process.getuid()}`; } catch { _runtimeDir = null; }
+      }
+      let _noScopeReason = null;
+      if (_useScope) {
+        if (!_runtimeDir) {
+          _noScopeReason = 'no XDG_RUNTIME_DIR and no uid to derive one from';
+        } else if (!fs.existsSync(_runtimeDir)) {
+          _noScopeReason = `${_runtimeDir} does not exist, so this account has no systemd --user manager to put a scope in. ⭐ ONE-TIME BOX FIX, as root, survives reboots: sudo loginctl enable-linger ${(() => { try { return require('os').userInfo().username; } catch { return 'unity'; } })()}`;
+        }
+        if (_noScopeReason) {
+          _useScope = false;
+          console.warn(`[Brain] /update — NOT attempting cgroup isolation: ${_noScopeReason}. ⚠ The deploy will run INSIDE the brain's cgroup and share her MemoryHigh budget, so a heavy clone/rsync/copy can throttle her through page cache alone. The deploy script detects this itself and TIGHTENS its own memory-shaped bounds accordingly — watch for its "cgroup: ⚠ UNCONTAINED" line.`);
+        }
+      }
       let child = null;
       let _spawnPath = 'plain';
       if (_useScope) {
@@ -11266,7 +11325,15 @@ const httpServer = http.createServer((req, res) => {
             '--property=IOWeight=10',
             '--property=CPUWeight=10',
             'bash', updateScript];
-          child = spawn('systemd-run', _args, { detached: true, stdio: ['ignore', 'pipe', 'pipe'], env });
+          // ⛔ THE ONE VARIABLE THE INVOCATION CANNOT WORK WITHOUT. Without it
+          // libsystemd has no user-bus address to try and exits 1 having started
+          // nothing — the silent degradation described above. Set on the CHILD's
+          // env only; the brain's own environment is left alone.
+          child = spawn('systemd-run', _args, {
+            detached: true,
+            stdio: ['ignore', 'pipe', 'pipe'],
+            env: { ...env, XDG_RUNTIME_DIR: _runtimeDir },
+          });
           // ⛔⛔ TWO DIFFERENT FAILURES, TWO DIFFERENT HANDLERS, AND MISSING
           // EITHER ONE MEANS THE UPDATE BUTTON SILENTLY DOES NOTHING.
           //
@@ -11318,7 +11385,23 @@ const httpServer = http.createServer((req, res) => {
         child = spawn('bash', [updateScript], { detached: true, stdio: ['ignore', 'pipe', 'pipe'], env });
         _spawnPath = 'plain detached (shares the brain cgroup)';
       }
-      console.log(`[Brain] /update — deploy spawned via ${_spawnPath}. ${_useScope ? 'Its memory is capped separately from the brain, so a heavy clone/rsync/LFS pull can no longer throttle her cgroup.' : 'UAL_DEPLOY_OWN_CGROUP=0 — cgroup isolation DISABLED by config; the deploy shares her budget.'}`);
+      // ⛔⛔ THIS LINE MAY NOT ASSERT CONTAINMENT, AND IT USED TO.
+      //
+      // It was written as `_useScope ? 'Its memory is capped separately…'` — a
+      // claim about the kernel, derived from a CONFIG FLAG, printed
+      // SYNCHRONOUSLY before the scope had had a chance to fail. On this box the
+      // scope failed on every press and this line announced isolation anyway.
+      // ⭐ So it now reports only what is known at this instant — which path was
+      // ATTEMPTED — and points at the two lines that carry the answer: the
+      // fallback warning if the scope did not start, and the script's own
+      // kernel-read `cgroup:` line either way.
+      console.log(`[Brain] /update — deploy launched via ${_spawnPath}.`
+        + (_useScope
+            ? ' ⚠ ATTEMPTED, NOT CONFIRMED: if the scope fails to start, the fallback warning below says so and the deploy runs uncontained.'
+            : process.env.UAL_DEPLOY_OWN_CGROUP === '0'
+              ? ' UAL_DEPLOY_OWN_CGROUP=0 — cgroup isolation DISABLED by config; the deploy shares her budget.'
+              : ' ⚠ Uncontained — the deploy shares her MemoryHigh budget (reason logged above).')
+        + ' ⭐ GROUND TRUTH IS THE SCRIPT\'S OWN FIRST LINE — it reads its cgroup and its memory.max and prints "cgroup: CONTAINED" or "cgroup: ⚠ UNCONTAINED". Believe that over this line; it is what the deploy\'s memory-shaped bounds are sized from.');
       // WL.4 — stream the self-update script's output into the brain console (→ the
       // admin Server Console ring → dashboard) so the operator watches the deploy
       // live (clone → overlay → restart, or the exact failure) instead of needing

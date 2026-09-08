@@ -1,6 +1,83 @@
 # RESUME — Session Pickup Brief
 
-> # 🔴 2026-09-07 (latest, 13th) — HANDOFF: I BROKE THE PRESS. WHAT I BROKE, AND HOW TO GET HER BACK (START HERE)
+> # 🟢 2026-09-08 (latest, 14th) — THE HANDOFF'S ITEM 3 WAS ALREADY BUILT. IT WAS **INERT**, AND THE LOG SAID IT WORKED (START HERE)
+>
+> Gee (verbatim, handing over the previous session's brief): *"So whatever branch is the one he was recently working on, go with that"*
+>
+> ## ⛔⛔⛔ THE ONE THING TO KNOW BEFORE ANYTHING ELSE
+>
+> **The previous brief's item 3 — *"move the data sync into its OWN cgroup with its OWN `MemoryMax`… this file has named it as not-done for days"* — was FALSE.** It had shipped **three days earlier**.
+>
+> `OWNCGROUP` landed **2026-09-05**, is merged to `develop` and `main`, and by ancestry **was already in the tree at the `06240fc4` boot** — four minutes before the hydration ran and starved her. **The deploy was supposed to be contained that night. It was not.**
+>
+> ⭐ **Being wrong in that direction is the more expensive way to be wrong.** A doc saying a fix is missing sends the next reader off to rebuild it. It never prompts the only question that mattered: *why is the thing that exists not working?*
+>
+> ## ⛔⛔ WHY IT WAS INERT — MEASURED, NOT REASONED ABOUT
+>
+> `systemd-run --user` has to find a user-manager bus, and libsystemd looks in `$DBUS_SESSION_BUS_ADDRESS`, then `$XDG_RUNTIME_DIR`. **`unity-brain.service` is a *system* unit and sets neither.** Run on systemd 259 with both stripped exactly as the unit leaves them:
+>
+> ```
+>   Failed to connect to user scope bus via local transport:
+>   $DBUS_SESSION_BUS_ADDRESS and $XDG_RUNTIME_DIR not defined
+>   exit 1   —   and the payload never ran
+> ```
+>
+> ⭐⭐ **THE FALLBACK IS WHY IT SURVIVED THREE DAYS.** Both fallback handlers worked perfectly, so the deploy always ran — **inside her cgroup**, the one thing the block exists to prevent. ⛔ **A fallback that succeeds silently converts a broken feature into an invisible one**, and no dashboard field, console line or counter could have shown it.
+>
+> ⛔ **AND THE SUMMARY LINE ANNOUNCED CONTAINMENT ANYWAY**, built from `_useScope` — a **config flag** — and printed synchronously, before the scope could fail. **A status assembled from intent is a label, not a status.** Second time this project has paid for that shape, after a page reading `live` over a six-hour-old frame.
+>
+> ## ✅ WHAT SHIPPED
+>
+> | | |
+> |---|---|
+> | **`XDG_RUNTIME_DIR`** | derived (`/run/user/<uid>`) and passed on the child env — the variable the invocation cannot work without |
+> | **runtime dir absent** | the scope is **not attempted**; the log names the one box command instead of failing confusingly |
+> | **the summary line** | reports the path **attempted**, and defers to ground truth |
+> | **ground truth** | the **deploy** reads `/proc/self/cgroup` **and** its own `memory.max`, logging `cgroup: CONTAINED` / `cgroup: ⚠ UNCONTAINED` as its first line |
+> | **`UAL_FIELDS_HYDRATE_MAX_BYTES`** | ⭐ **NEW primary bound — 2 GiB** uncontained, lifted when contained |
+> | **`UAL_FIELDS_HYDRATE_MAX_SEC`** | **90s** uncontained (was 480s), 480s when contained |
+>
+> ⭐ **480s was the wrong INSTRUMENT, not merely the wrong number.** What starves her is **page-cache volume**, and seconds only become volume through disk speed — `480s` is ~480 GB of cache at 1 GB/s and ~4.8 GB at 10 MB/s. **The same bound, two orders of magnitude apart in the quantity it exists to limit.** So the primary bound counts **bytes**, and the wall clock is the second net.
+>
+> **Every number derived:** the recorded incident is 12.4 GB of page cache pinning the cgroup with `node` at 8.7 GB RSS; against `MemoryHigh=22G` and a ~8.8 GB node the whole headroom is ~13 GB, so **2 GiB leaves it standing** (~1,800 fields a press at ~1.13 MB each — a trickle, deliberately). **90s** is then the smallest clock that cannot cut a healthy run short, and it is **~13× shorter than the outage** that made the hydration default-off.
+>
+> ✅ **14 checks against the shipped bodies, extracted by line range rather than retyped.** Both bounds fire and **name which one bit**; the remainder is counted; a second press resumes where the first stopped; the containment verdict is correct inside a **real** `systemd-run` scope, in a scope with no `MemoryMax`, in a plain shell, and against `0::/` / empty / `/`. All four spawn paths ran through the **shipped handler block**, with the payload recording its own landing cgroup: `unity-brain-selfupdate-<ts>.scope` at `memory.max=2147483648` when the scope took, the parent's cgroup at `max` when it did not. ⭐ **That is containment proved from the payload's side, which is the only side that counts.**
+>
+> ⚠ **One defect found only by running it:** a 512 KiB press printed `0 MiB copied` — integer truncation, the instrument-says-nothing shape again. It reports KiB under 1 MiB now.
+>
+> ## ⛔ WHAT IS LEFT — ONE COMMAND, AND IT IS NOT MINE TO RUN
+>
+> ```bash
+> sudo loginctl enable-linger unity
+> ```
+>
+> **That creates the `/run/user/<uid>` a service account with no login session otherwise lacks, and it persists across reboots.** ⚠ **A drop-in cannot substitute** — `Environment=XDG_RUNTIME_DIR=…` would name a directory that still does not exist; lingering is what creates it.
+>
+> ⭐ **Nothing is broken while it waits.** The deploy reports itself uncontained and **tightens its own bounds on that reading**, so the uncontained case is safe — just slow. Tracked as **`KI-41`**, status 🟠 MITIGATED (*survivable, cause not removed*).
+>
+> ## ⛔ THE ORDERED LIST, RE-SCORED
+>
+> | # | Action | State |
+> |---|---|---|
+> | **1** | `/admin/update?keep=1&fields=0` | **operator's press** — untouched, still the escape hatch |
+> | **2** | default-off on `main` | ✅ already landed (`67ce8846`) |
+> | **3** | the data sync in its own cgroup | ⭐ **was already built; found INERT and fixed in code.** ⛔ needs the `enable-linger` command to finish |
+> | **4** | re-derive the bound for a copy | ✅ **done, and the instrument changed from seconds to bytes** |
+> | **5** | `UAL_FIELDS_HYDRATE=1` | ⛔ **still waiting on 3.** It does **not** self-enable on a containment reading — a false positive puts the ~114 GB copy back in her budget |
+>
+> ## ⚠ THE TWO LESSONS, BECAUSE BOTH WILL OTHERWISE RECUR
+>
+> ⛔⛔ **A WORKING FALLBACK IS A PLACE FOR A DEAD PRIMARY TO HIDE.** The better the fallback, the longer the primary can be broken unnoticed. **Verify what the primary was supposed to ACHIEVE, separately from whether the work completed.**
+>
+> ⛔⛔ **A DOC THAT SAYS "NOT DONE" IS A CLAIM, AND CLAIMS DECAY.** Two files carried *"the real fix is NOT done"* for three days after it shipped. **Read the code that implements a rule before believing the prose about it** — the same failure as auditing a LAW's text and never opening the hook that enforced it.
+>
+> ⭐ **AND A CONSTANT CARRIES THE CONDITIONS IT WAS MEASURED UNDER.** 480s was good for a network pull and bad for a local copy — and re-deriving it exposed the larger fault: it measured the wrong quantity entirely.
+>
+> **Branch:** `feature/hydrate-cgroup-and-bound`, off `develop`. **Deploy-path only — no weights, no curriculum, no frontend.** ⛔ **Two-press sequence as always:** a press runs the BOX's copy of `self-update.sh`, so this lands on the press *after* the one that delivers it.
+>
+> ---
+
+> # 🔴 2026-09-07 (13th) — HANDOFF: I BROKE THE PRESS. WHAT I BROKE, AND HOW TO GET HER BACK
 >
 > Gee (verbatim): *"okay do the handoff out linine what you broke and how to fix it"*
 >

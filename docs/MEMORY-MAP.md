@@ -427,6 +427,25 @@ Now: `TMPDIR` exported to `$BACKEND_DIR/.staging` (disk), an `flock` making
 presses mutually exclusive, and the deploy launched in its own
 `systemd-run --user --scope` with `MemoryMax` (`UAL_DEPLOY_MEM_MAX`, default 2G).
 
+> ⛔⛔ **AND ON THIS BOX THAT LAST CLAUSE WAS FALSE FOR THREE DAYS — corrected
+> 2026-09-08.** `systemd-run --user` needs a user-manager bus address, and
+> `unity-brain.service` is a **system** unit that sets neither
+> `$DBUS_SESSION_BUS_ADDRESS` nor `$XDG_RUNTIME_DIR`. Measured on systemd 259
+> with both unset: *"Failed to connect to user scope bus via local transport"*,
+> **exit 1, payload never ran** — so every press fell back to the plain spawn
+> **inside her cgroup**, while the summary line announced containment because it
+> was built from a config flag instead of from what happened.
+>
+> ⭐ **The code half is fixed** (`XDG_RUNTIME_DIR` derived and passed; the scope
+> not attempted when the runtime dir is absent; the summary line reports the path
+> *attempted* and defers to ground truth). **Ground truth is now printed by the
+> script itself** — `self-update.sh` reads its own cgroup **and** its own
+> `memory.max` and logs `cgroup: CONTAINED` / `cgroup: ⚠ UNCONTAINED` as its
+> first line. ⛔ **The other half is one command, once, as root:**
+> `sudo loginctl enable-linger unity`. Until it runs, the deploy is uncontained
+> and says so, and the memory-shaped bounds tighten themselves on that reading.
+> Full record: `deploy/REDEPLOY-NOTES.md`.
+
 ### Traps found while fixing that, all by running it
 
 - **`kill -9` does not release an `flock`.** Children (rsync, git, a watchdog's
@@ -454,6 +473,13 @@ presses mutually exclusive, and the deploy launched in its own
   `systemd-run` spawns fine, never fires `'error'`, and exits non-zero having
   started nothing. Only the first handler existed at first, which is exactly how
   the invalid properties got through.
+- ⛔⛔ **AND A WORKING FALLBACK CAN HIDE A DEAD PRIMARY FOR DAYS.** Both handlers
+  were correct, so the deploy always ran — and that is precisely why nobody
+  noticed it was running **uncontained** on every press. **A fallback that
+  succeeds silently converts a broken feature into an invisible one.** The fix
+  is not a better fallback: it is that the summary line may not assert what the
+  primary was *supposed* to achieve, and that the thing being contained reports
+  its own containment from the kernel. See the `--user` bus entry above.
 - `.staging/` and `.self-update.lock` must be on the overlay rsync's
   `--exclude` list — they live under `BACKEND_DIR`, so `--delete` would remove
   the staging directory the script is reading from, mid-deploy.

@@ -2131,16 +2131,29 @@ Found by reading the deployed box after the board cleanup, not by being told. **
 
 > Gee (verbatim): *"okay do the handoff out linine what you broke and how to fix it"*
 
-- [x] `HYDRATEOFF.1` — **I made an unguarded ~114 GB copy the default behaviour of every press on this box, and the bound I chose was the wrong size**
-  - Original filing: the press at `23:35:55Z` was the first to run `_hydrate_fields_from_local_store`. From that moment `/health` answered 200 and `/ctl/status` 401 in 0.16s while `/public-state.json` **timed out for 20+ minutes** — the listening-but-not-answering signature `REDEPLOY-NOTES` records for a data-sync process starving the brain's cgroup, and past the ~15 min a savestart-resume is allowed.
-  - ⚠ **NOT PROVEN and not written as if it were.** That signature is also a normal long resume and the two cannot be told apart from outside. **What makes it the leading explanation:** the boot four minutes earlier (`23:31:24Z`) answered state within 2.5 minutes, and this loop is the only difference.
-  - ⛔ **THE BOUND I ADDED DID NOT PREVENT IT.** 480s was copied from the LFS pull — a number chosen for a **download**, where 8 minutes is short. For a local copy running at full disk speed and filling page cache it is far too long. **A bound is only a guard if it is shorter than an outage anyone would care about, and I re-used a constant without re-deriving it for a different kind of work.** ⚠ **A constant carries the conditions it was measured under.**
+✅ **CLOSED, AND ARCHIVED LATE — the row sat here marked `[x]` with its verbatim text in NO ledger entry.** Migrated to **`docs/FINALIZED.md §2026-09-08 (archive)`**, **2,510 bytes, md5 `1edbed8cc3e81515d6af2291ccadefb7`, checked byte-identical to the live section before one line was removed.** ⚠ **The audit was by STRING MATCH, not by tag** — there were `HYDRATEOFF` mentions in the 2026-09-07 (3rd) entry and the row's own `Original filing:` sentence still matched nothing. **A matching tag proves nothing.**
 
-**VERDICT — DEFAULT OFF.** `UAL_FIELDS_HYDRATE` (default `0`); the reachability fix itself STAYS, because without it the fields never arrive at all — **only the default changed.** ⭐ **The asymmetry decides it: a missing field costs a live transform, an unreachable brain costs everything.**
+⛔ **ONE SENTENCE IN IT WAS FALSE WHEN WRITTEN AND IS PRESERVED IN THE ARCHIVE ANYWAY:** *"The real fix … is still NOT done."* It had shipped three days earlier. **That claim is what sent the next session off to rebuild an existing fix**, and the archive keeps it because deleting it would destroy the evidence of the misdirection. **Answered in `docs/FINALIZED.md §2026-09-08 HYDRATECGROUP`.**
 
-⛔ **The real fix is named in `REDEPLOY-NOTES` and is still NOT done — the data sync belongs in its OWN cgroup with its OWN `MemoryMax`.** Every guard on this path is a net around a deploy that shares her memory budget. **Turn the hydration on after that lands, and re-derive the bound for a COPY (~60–90s per press, incremental) rather than for a download.**
+---
 
-**Escape hatch for the live outage:** `/admin/update?keep=1&fields=0`. ⭐ **It works only because `_fields_opt_out` was split out an hour earlier** — before that, `UAL_FIELDS=0` and *"no git-lfs on this box"* were one variable and the hatch would have hydrated anyway.
+## HYDRATECGROUP — the structural fix was written, merged, live and INERT, and the log said it worked — filed + built 2026-09-08
+
+> Gee (verbatim, via the handoff brief he was handed): *"move the data sync into its own cgroup with its own MemoryMax — the actual fix, named as not-done in your notes for days"*
+>
+> Gee (verbatim, same list): *"re-derive the bound for a copy — ~60–90s per press, incremental, not 480"*
+>
+> Gee (verbatim, on which branch to work from): *"So whatever branch is the one he was recently working on, go with that"*
+
+✅ **BOTH ROWS CLOSED THE DAY THEY WERE FILED, AND ARCHIVED VERBATIM BEFORE REMOVAL** — `docs/FINALIZED.md §2026-09-08 HYDRATECGROUP`, **6,130 bytes, md5 `2761a100ac6d8a31520ec0d1224289d7`, checked byte-identical to the live rows before one line was removed.**
+
+⛔ **THE AUDIT CAUGHT ME PARAPHRASING MY OWN ROWS.** The ledger entry was written first and describes the same work **in different words**; a line-by-line string probe of the board rows against it returned **18 of 18 unmatched**. **A paraphrase is not a migration**, so a verbatim fenced archive was added and only then did the rows leave.
+
+⚠ **PRE-WORK GATE FILED LATE, AND SAYING SO RATHER THAN BACK-DATING IT.** The two rows were written after the code and the harness, not before.
+
+⛔ **THE FINDING, IN ONE LINE:** *the structural fix was not missing — it was written, merged, live on the night of the outage, and inert, while the log claimed it worked.* `systemd-run --user` cannot reach a user manager from a **system** unit; the plain-spawn fallback then ran the deploy inside her cgroup on every press, and the summary line announced containment from a **config flag**. Code side fixed; **the remaining half is one root command on the box** — `sudo loginctl enable-linger unity` — tracked as **`KI-41`**.
+
+⛔ **`UAL_FIELDS_HYDRATE=1` IS STILL ITEM 5 AND STILL OFF.** It waits on that command, and it does **not** flip itself on a containment reading — a false positive would put the ~114 GB copy straight back in her budget.
 
 
 

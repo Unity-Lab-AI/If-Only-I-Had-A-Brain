@@ -23,7 +23,7 @@ verified-scope: |
       git show e1d05673:docs/NOW.md
 
   This file is now what its title always claimed: a SNAPSHOT.
-last-verified: "5698d8e1 2026-09-07 (2nd) — snapshot refreshed against the same boot (60479ed5): Ψ re-read, the stage tag re-read, and a new 'Her eyes' block added from live reads of state.ownArt, state.voice and the field-store counters. Two trap rows added, both earned the same day."
+last-verified: "2026-09-08 — two trap rows added about the deploy's cgroup claim, and a note on why the field stubs are expected. ⚠ NO FIELD READ WAS REFRESHED: the numbers above still belong to the 60479ed5 boot, because nothing was pressed and inventing a fresh read would be worse than an old one that says its own date."
 ---
 
 # NOW — Session Snapshot
@@ -88,6 +88,8 @@ last-verified: "5698d8e1 2026-09-07 (2nd) — snapshot refreshed against the sam
 
 ⛔ **The field store on the box is answering pointer stubs, and the automatic hydration could not fire.** The credential-free path — copy Forgejo's own LFS objects off local disk by the OID each pointer names — was gated behind `git lfs pull` having failed, and that call **succeeds by design** on a box with no git-lfs. **The one condition it was written for was the one condition that skipped it.** Fixed; it needs the second of two presses, because a press runs the box's own copy of the deploy script.
 
+⛔ **And it is now DELIBERATELY OFF, so the stubs stay for the moment.** Making that path reachable put an unguarded ~114 GB copy on the default path of every press, and its first run coincided with a 20-minute listening-but-not-answering outage. It is opt-in (`UAL_FIELDS_HYDRATE=1`) until the deploy has its own memory budget, **because a missing field costs one live transform and an unreachable brain costs everything.** The deploy prints whether that precondition is met on its own first line. **A pointer stub in the table above is expected, not a regression.**
+
 ⛔ **And her third frame source was shut by an ordering defect.** The background figure drain publishes a picture every ~1.5 s — and the only thing that enqueues rows ran *after* the cell's multi-hour prose phase, which has never completed on this walk. Measured: `figureQueue.total 0` on a resumed boot, where zero is not a reset but *never*. The enqueue now runs at the top of the cell.
 
 ### Vitals
@@ -123,6 +125,8 @@ These are the traps this project has actually fallen into. Each one cost real ti
 | **A stage tag whose age climbs while its sequence stays frozen means the blocker is in unmarked code** | The tag alone is ambiguous. **The sequence number is the discriminator.** |
 | **A teach rate of zero is not necessarily a fault** | Before prose training, a cell anchors every unlearned word it uses — a serial pass that can legitimately run tens of minutes with the teach counter at zero. **Read the stage tag first.** |
 | **The GPU is not the throughput ceiling** | Utilisation sits low with essentially no queue wait, so a faster card buys idle silicon. The cost is elsewhere in the round trip. |
+| **The deploy announcing that it has its own memory budget is not evidence that it does** | That line was assembled from a config flag and was **wrong on every press for three days** while the deploy ran inside her cgroup. ⭐ **The only field to believe is the deploy's own first log line** — `cgroup: CONTAINED` or `cgroup: ⚠ UNCONTAINED`, which it reads from the kernel. A claim made by the thing that *launched* the work is a prediction; a claim made by the work itself is a measurement. |
+| **A fallback that works can hide a primary that never runs** | Both fallback handlers behaved correctly, so the deploy always completed — which is exactly why nobody saw that the isolation it was supposed to get had never once been applied. **A silent successful fallback turns a broken feature into an invisible one.** |
 | **A mind's-eye frame that stops moving is usually correct** | The viewer refuses to publish anything but a real percept, so a still frame means *nothing new qualified* — not that the eye is broken. **Read the inner-voice hold before investigating the viewer.** |
 | **An error string names where it was CAUGHT, not what failed** | A figure that was perceived, stored, published and taught reported itself as a storage failure for six hours, because the throw came from the success log at the tail of the same `try`. |
 | **A fallback whose trigger is a FAILURE cannot fire when the thing that would fail is never attempted** | The field hydration that needs no credential sat behind `if ! git-lfs-pull`, on a box that has no git-lfs and therefore never runs one. **Check what reaches a fallback, not just what it does.** |
