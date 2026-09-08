@@ -227,6 +227,39 @@ Measured on the box: budget 15,580 − 2,048 OS reserve = **13,532 MB for weight
 
 ⛔ **WHAT DOES NOT CLOSE IT: `update-pod` cannot change `args`.** A pod's command is fixed at creation, forever — so **the live pod keeps the old supervisor until it is recreated.** ⭐ **The structural close is donor-side:** the binary should exit on a prolonged failure to reach the brain, so *any* supervisor relaunches it. That is a `donor-v*` release, not a launcher edit, and it is not done.
 
+### ✅ `SELFEXIT.1` — `donor-v0.3.37`: the donor ends itself when it is neither donating nor trying (closes `KI-43`)
+
+Gee (verbatim): *"get to fixing all of it"*
+
+**Original filing:** the structural close for `KI-43` is donor-side — the binary should exit on a prolonged failure to reach the brain, so *any* supervisor relaunches it.
+
+⭐⭐ **AND IT TURNED OUT TO SOLVE THE IMMUTABLE-ARGS PROBLEM TOO.** The launcher's supervisor already reinstalls and relaunches whenever the donor process **exits** — that is exactly how `UPGRADE BEFORE RECONNECT` has worked since 0.3.30. So a donor that ends itself **repairs a pod whose baked-in `args` can never be changed**, with no recreate and no downtime beyond one relaunch. The pod-recreate item is closed by this, not deferred.
+
+⛔ **THE SUPERVISOR-SIDE COUNTER I FIRST DESIGNED WOULD NOT HAVE FIRED.** `run_donor_supervised` prints on every retry and the pod logs carried **no donor output at all** — so it was never in that loop. It was pinned *inside* `run_donor`, and the codebase already names the class on `WORKER_JOIN_PATIENCE`: *"blocked inside a wedged GPU call would otherwise pin run_donor forever and make the reconnect supervisor unreachable (the exact failure the supervisor exists to prevent)."*
+
+⭐⭐ **So the check cannot live on the thing it is checking.** It is a plain OS thread that only reads an atomic and sleeps, surviving whatever the tokio runtime, the GPU driver or a socket is doing — the same reasoning as the brain's own loop watchdog, which runs off-thread precisely because *every diagnostic channel rode the loop under investigation*.
+
+⚠⚠ **BOTH SILENCES ARE REQUIRED, AND THAT IS THE WHOLE DESIGN.** Progress stamps on a frame from the brain, on registration, on **every supervisor reconnect attempt**, and on **entry to and exit from the GPU engine build**. A brain that is merely DOWN keeps stamping — the backoff caps at 30 s, twenty times faster than the window — so an outage can never be read as a wedge. **Only "not receiving AND not even trying" trips it.**
+
+⛔⛔ **A FALSE POSITIVE WAS SHIPPED AND CAUGHT BY RUNNING IT, NOT BY READING IT.** The first cut stamped only at the top of the supervisor loop. Against an unreachable brain at a 40 s window it **killed the donor at 59 s** — manufacturing the exact failure it exists to prevent. **Cause:** a healthy *first* session is legitimately silent through `ENGINE_INIT_TIMEOUT` (75 s) of engine build plus a connect with its own timeout, and the loop-top stamp cannot help because the loop has not come back round. **Starting is not being stuck.**
+
+**Both fixes came from that measurement:** the engine build stamps on entry and completion, and `DONOR_SELF_EXIT_SECS` is **floored at 300 s** (`0` disables). ⭐ **The floor is a measured bound, not padding — a window shorter than a legal startup does not detect wedges, it manufactures them.**
+
+**Verified on the real release binary, not on a reasoning:**
+
+```
+  cargo check      clean on BOTH feature sets (headless + default GUI)
+  --version        unity-donor 0.3.37
+  floor            asked 40s -> armed at 300s (printed in the arming line)
+  default          armed at 600s with no env set
+  FALSE-FIRE       360s watch, unreachable brain, 300s window
+                   -> 0 wedge exits · 2 reconnect attempts · still alive (timeout rc=124)
+```
+
+⚠ **Headless/autostart only** — an interactive GUI user may sit deliberately idle. **An interactive idle is a choice; an unattended silence is a fault.**
+
+⚠ **A compile error caught a second clock:** the first cut added its own `now_ms()` beside the module's existing one. Reusing the existing wall-clock source is right here — at ten-minute granularity a clock step is not a hazard, and **a duplicated clock is.**
+
 ### ⚠ AND THE LIVE INCIDENT THIS CAME OUT OF
 
 The pod was restarted (donor machines are in scope; she had zero donors, so there was nothing to lose) and **she went from 53 minutes of absolute zero to teaching within two minutes** — `frames 0 → 533`, `spikes 0 → 505,955`, `psi 0 → 21.8`, and 19,803 teach/min shortly after.
