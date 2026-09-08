@@ -5,6 +5,60 @@
 
 ---
 
+## 2026-09-08 — `DOCSWEEP.6`: THE LAYMAN PAGES, AND FOUR PAGES DESCRIBING A DELETED FALLBACK AS LIVE
+
+Gee (verbatim, the instruction this row serves): *"full doc sweep evey bad layout post that doesnt match style every text wall every mention of my name in public facing docs pages and the like every code refrence name in public facing documents all needs cleaned up and all equations, laymans pages how tos readmes, workflows docs, tooltips everywhere(add them) and every documented capability in archeticeure brain equations readme how to all shall be updated and corrected especiallly correcting text walls that dont match the style format and beautiful layouts we want and you shall put all this in the todo as docseep items and then properly get to work no agents, noo batching, use the todo and finalized for refrences to the changes and what all needs to be rewriten. redocumented , edited, updated, ect ect"*
+
+⛔ **Working constraints honoured: no agents · no batching · one file at a time · every claim verified against the file that implements it before a word changed.**
+
+### The three files, and what was wrong with them
+
+| File | State before | Result |
+|---|---|---|
+| **`README.md`** | layout pass had **already shipped** at `d720d000` and was **never logged** — so the board still claimed "8 walls" against an actual 0 | **12 defects corrected.** walls 0 · names 0 · 26/26 anchors resolve |
+| **`docs/SETUP.md`** | the install guide a stranger follows. **VRAM table wrong in every row**, a browser brain promised in two places that does not exist | **12 more defects.** 3 walls → 0 · 14 ticket leaks → 0 |
+| **`docs/PUSH_WORKFLOW.md`** | the pre-push checklist **listed half the doc trees** — the checklist whose whole job is preventing this sweep | full tree list · 7 attributions → 0 · 5 ticket leaks → 0 |
+
+### ⭐⭐ THE REUSABLE FINDING: A DELETION IS NOT FINISHED UNTIL EVERY PAGE THAT DESCRIBED IT IS FOUND
+
+The dictionary oracle — `_dictionaryOracleEmit`, 311 lines, **measured carrying 99.1% of her emissions (`oracleHits=425` vs `matrixHits=4`)** — was deleted 2026-09-01 and the deletion was recorded as done.
+
+**This sweep has now corrected it on FOUR pages:** `unity-guide.html`, `HOW-IT-WORKS.md`, `README.md` and `SETUP.md` — **three of them found after the deletion was closed.** The same is true of the **browser fallback brain** (two places in `SETUP.md` alone) and the **TTS fallbacks** (README + SETUP).
+
+⛔ **A no-fallbacks project whose documentation keeps describing fallbacks as live is making its central claim false in the only place a stranger can read it.** The code was right every time; the pages were the liability.
+
+### The defects worth naming individually
+
+- ⛔⛔ **`SETUP.md`'s VRAM share table was wrong in EVERY row and missing a whole cluster** — `75 / 10 / 5 / 4 / 2 / 2 / 1 / 1` with no `brainstem`, against `DEFAULT_BIO_WEIGHTS` `0.500 / 0.100 / 0.098 / 0.060 ×5 / 0.002`. **Not one number matched.**
+- ⛔ **`README.md` quoted percentages from one boot and absolute neuron counts from a DIFFERENT boot inside one sentence** — `≈82.2M` is 20% of 411,216,550, beside a stated total of 425,436,550. **The exact trap `NOW.md` was rebuilt to prevent, sitting on the front page.**
+- **`oracleRatio` was documented on both pages as "the central research-validity number".** Nothing increments `_oracleHits` any more, so it reads `0%` forever. Kept as a permanent-zero regression detector and **relabelled as one** — *an instrument whose only possible reading is the healthy one has stopped being an instrument.*
+- **Sub-region count said nine on both pages** (SETUP said eight) while `README`'s own diagram said eleven. It is **eleven**; eight carry the sixteen projections; 23 region keys with the nested bands.
+- **Vocabulary totals were `49,921 / 18,017`.** Measured off the live lists: **`56,527 / 19,339`** — including as a dashboard denominator.
+- **Every launcher path was wrong** in eight places: they are under `windows\` and `linux/` since the root reorg.
+- **The resume sizing term post-dated `README`'s own warning block** and is now in it, with the reason it is a *ratio* and not a file size: a budget that moved as the weight file grew would change `TOTAL_NEURONS` and make the stale-state check **wipe the weights on every savestart.**
+
+### ⚠ THREE OF MY OWN READINGS WERE WRONG FIRST, AND THE CHECKS ARE WHAT SAVED THEM
+
+1. **"The Windows launchers were deleted."** They are all present under `windows/`. The defect was real but narrower — a path defect, not a missing file.
+2. **"Three README anchors are broken."** My checker collapsed runs of whitespace where GitHub replaces each space individually, so every heading containing `" / "` came back broken. **Fixed the checker, re-ran with a known-good pair as a self-test: 26 anchors, 0 unresolved.** The page had been correct all along. **Nth instrument in this project to need checking before being believed.**
+3. ⭐ **"`fastText subword for OOV` is another surviving fallback."** It is **correct** — subword n-gram sum is the **defined encoding** for an out-of-vocabulary word (`embeddings.js:494`); what no-fallbacks deleted was subword-as-substitute-for-the-whole-table. **One edit from breaking a true statement**, and only reading the file stopped it.
+
+⛔ **And I committed the `DOCLINE.1` anti-pattern mid-pass and caught it in the same pass:** my first `SETUP.md` restamp wrote a **~2,500-character `last-verified`** line, exactly the unbounded-frontmatter shape that row documents as the mechanical cause of four banned-write violations. Restructured to the fix that row already names — short `<hash> <date>` in frontmatter, `## Verification history` in the body — **after checking the consumer**, which parses only the leading hash.
+
+### What this row raised and did NOT fix
+
+**`DOCSWEEP.8`** — two comments in two files assert a cluster-shape parity between the runtimes that does not hold. `js/brain/cluster.js:88` has cortex `0.55` / hippocampus `0.18`; the server runs `0.20` / `0.12` and **does not call `clusterSizesFor` at all** (grepped: only `cluster.js` and the browser `engine.js` consume it). Both files nonetheless document parity, and `brain-server.js`'s `KEEP IN SYNC` block **sits directly above the allocator that superseded it**. ⭐ **The divergence is probably harmless; the comments are not, because a comment asserting parity is what stops anyone measuring it.** Filed as a code finding, not repaired in a documentation pass.
+
+### Verification
+
+All three files: **0 walls over 1,200 chars** (longest 1,186 / 839 / 701) · **0 name references** · **0 duplicate headings** · **every internal anchor resolves** · **all three dropped off `npm run docs:drift`**. Every verbatim operator quote in all three files was left **byte-intact** — only attribution wrappers changed, because a quote is evidence and stripping it destroys the record while pretending to tidy up.
+
+⚠ **`docs/SETUP.md` and `docs/PUSH_WORKFLOW.md` keep `status: draft`, with what was NOT re-verified named in each file's own frontmatter** — SETUP's endpoints-table completeness, its troubleshooting table and the systemd bootstrap narrative; PUSH_WORKFLOW's `BUILD`/nonce mechanics. **A claim that cannot be verified is marked rather than left standing.**
+
+⚠ **The board row is `[x]` and still on `docs/TODO.md` on purpose.** `DOCSWEEP` is a live programme with eight rows still open, and every prior board reset here archived the whole board byte-for-byte before stripping anything — so the verbatim archive happens for all `DOCSWEEP` rows together at the programme's end. **This entry is the authored record; the row carries a note saying the migration is owed.**
+
+---
+
 ## 2026-09-08 (archive) — `HYDRATEOFF`: THE PREVIOUS SESSION'S COMPLETED ROW, MIGRATED VERBATIM BECAUSE IT NEVER WAS
 
 ⛔ **FOUND WHILE CLEARING THE BOARD, NOT LOOKED FOR.** `HYDRATEOFF.1` sat on `docs/TODO.md` marked `- [x]` with its verdict written, and **its verbatim text was in no ledger entry.** String-probed before assuming: the row's own `Original filing:` sentence returned **no match** anywhere in this file. ⚠ **A matching task TAG proves nothing** — there were `HYDRATEOFF` mentions in the 2026-09-07 (3rd) entry and the row itself had still never been archived. **FINALIZED-before-DELETE forbids removing it in that state**, so it is copied here first, byte-for-byte, and only then removed.

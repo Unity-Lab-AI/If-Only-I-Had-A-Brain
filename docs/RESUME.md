@@ -1,6 +1,50 @@
 # RESUME — Session Pickup Brief
 
-> # ✅ 2026-09-08 (latest, 18th) — THE FRESH WALK LANDED AND THE SIZING PREDICTION HELD TO 0.03% (START HERE)
+> # 📄 2026-09-08 (latest, 19th) — `DOCSWEEP.6` CLOSED: FOUR PAGES WERE DESCRIBING A DELETED FALLBACK AS LIVE (START HERE)
+>
+> Gee (verbatim): *"then run /workflow"* — no new scope; picked the highest-value open row off the board.
+>
+> ## ⭐⭐ THE FINDING THAT MATTERS BEYOND THESE THREE FILES
+>
+> **A deletion is not finished until every page that described the deleted thing is found.** The dictionary oracle — 311 lines, **measured carrying 99.1% of her emissions** — was deleted 2026-09-01 and closed. This sweep has now corrected it on **FOUR pages**, three of them found *after* the deletion was recorded as done:
+>
+> ```
+>   unity-guide.html   corrected earlier in the sweep
+>   HOW-IT-WORKS.md    corrected earlier in the sweep
+>   README.md          corrected THIS pass — the full three-path cascade was intact
+>   SETUP.md           corrected THIS pass — listed as a shipped cluster.js helper
+> ```
+>
+> ⛔ **Same shape for the browser fallback brain (two places in SETUP alone) and the TTS fallbacks (README + SETUP).** The code was right every time. **In a no-fallbacks project, a doc describing a fallback as live makes the central claim false in the only place a stranger reads it.**
+>
+> ## ✅ WHAT LANDED — 3 files, 26 verified defects
+>
+> | | |
+> |---|---|
+> | **`README.md`** | 12 defects. ⛔ Its layout pass had **already shipped** at `d720d000` and was **never logged**, so the board still claimed "8 walls" against 0 |
+> | **`docs/SETUP.md`** | 12 defects. ⛔ **The VRAM share table was wrong in every row and missing a whole cluster** |
+> | **`docs/PUSH_WORKFLOW.md`** | ⛔ **The pre-push checklist was itself the defect** — it named nine files and omitted `html/` tooltips, `deploy/`, `.claude/`, `wiki/`, `RESUME.md`, `NOW.md` |
+>
+> ⭐ **That last one is upstream of everything else this sweep is fixing.** A tree nobody names is a tree nobody checks.
+>
+> **Measured after: 0 walls · 0 name refs · 0 duplicate headings · every anchor resolves · all three off `npm run docs:drift`.**
+>
+> ## ⚠ THREE OF MY OWN READINGS WERE WRONG FIRST
+>
+> - *"The Windows launchers were deleted"* — they are in `windows/`. Real defect, narrower than I wrote.
+> - *"Three README anchors are broken"* — **my checker was collapsing whitespace GitHub does not.** Fixed it, self-tested against a known-good pair: 26/26 resolve. The page was always fine.
+> - ⭐ *"`fastText subword for OOV` is another surviving fallback"* — **it is CORRECT.** Subword n-gram sum is the *defined* encoding for an out-of-vocabulary word; what no-fallbacks deleted was subword-as-substitute-for-the-whole-table. **One edit from breaking a true statement.**
+>
+> ## ⛔ WHAT IS OPEN
+>
+> - **`DOCSWEEP.8` — NEW, filed this pass.** Two comments in two files assert a cluster-shape parity between the runtimes that **does not hold**: `cluster.js:88` has cortex `0.55`/hippocampus `0.18`, the server runs `0.20`/`0.12` and **never calls `clusterSizesFor` at all**. `brain-server.js`'s `KEEP IN SYNC` block sits **directly above the allocator that superseded it**. ⭐ The divergence is likely harmless; **the comments are not, because a comment asserting parity is what stops anyone measuring it.** Code finding — not a doc fix.
+> - **`DOCSWEEP` continues:** `.1` `.2` `.3` `.4` `.4a` `.5` `.7` still open. `.5` is the one with teeth (capability verification across `ARCHITECTURE.md`, `brain-equations.html`, `README.md`, `HOW-IT-WORKS.md`, `EQUATIONS.md`).
+> - ⚠ **`DOCSWEEP.6`'s row is `[x]` and still on the board ON PURPOSE**, with a note saying so. The verbatim archive + strip happens for all `DOCSWEEP` rows together at the programme's end — the same whole-board discipline every prior reset used. **Not committed to `main`; the work sits on `feature/docsweep-layman-pages`.**
+> - **The walk is untouched and still healthy** — nothing this pass went near the brain. Boot `24ddd9c2`, 233,932,309 neurons, teaching.
+>
+> ---
+
+> # ✅ 2026-09-08 (18th) — THE FRESH WALK LANDED AND THE SIZING PREDICTION HELD TO 0.03%
 >
 > Gee (verbatim): *"update freshwalk pressed! 5min probably till she is teaching"*
 >
