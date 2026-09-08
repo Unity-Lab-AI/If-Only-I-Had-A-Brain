@@ -1,6 +1,76 @@
 # RESUME — Session Pickup Brief
 
-> # 🔴 2026-09-08 (latest, 15th) — RAN ON THE BOX: THE FIX WORKS, I CAUSED AN OOM KILL, AND THE 20-MINUTE OUTAGE WAS NEVER THE HYDRATION (START HERE)
+> # 🟢 2026-09-08 (latest, 16th) — SHE IS UP AND ANSWERING. THE SIZING NEVER HAD A TERM FOR A RESUME, AND THAT IS THE WHOLE BUG (START HERE)
+>
+> Gee (verbatim): *"Do it on the OVH box, whatever is needed"* → then, choosing between the four costed options: **shrink her budget, accepting the weight wipe.**
+>
+> ## ✅ SHE IS HEALTHY — FIRST TIME IN OVER AN HOUR
+>
+> ```
+>                        the stalled boots        fresh boot 01:56:42Z
+>   memory.current       20.3–20.6 GiB (102%)     6.52 GiB (32% of ceiling)
+>   memory.high events   ~628 / second            0
+>   memory PSI some10    84.36                    0.00
+>   proc state           Dsl (uninterruptible)    Ssl (normal)
+>   /health              TIMEOUT                  HTTP 200 in 0.00095 s
+>   host available       835 MB                   15,699 MB
+>   neurons              388.6M / 411.2M          337,841,199
+>   language cortex      15,082,717 (pinned)      13,924,722 (re-derived)
+> ```
+>
+> ## ⛔⛔⛔ THE BUG, AND IT IS ONE SENTENCE
+>
+> **`DREAM_CGROUP_OVERHEAD_MB=2867` is correct for a FRESH boot, and the sizing has no term for a RESUME.** A savestart resume additionally loads the saved binary weight file — `[Brain] Binary weights queued for apply — 17 sections, 4931.4 MB` — on top of everything the model accounts for. **So every resume boot overshoots by roughly the size of that file. And a press IS a savestart resume.**
+>
+> | | MB |
+> |---|---:|
+> | budget | 15,580 |
+> | − allocator's OS reserve | 2,048 |
+> | **⇒ for weights** | **13,532** |
+> | actual anon, measured | **20,957** |
+> | **⇒ real non-weight overhead** | ⛔ **7,425** (model says 2,867) |
+> | …of which the resumed weight file | **4,931** |
+>
+> ⭐ **Proved it is memory and not something in `loadSelfImage`** (where all three stalls froze): `memory.pressure some avg10 = 84.36` against **`io.pressure 0.36`** and **`cpu.pressure 0.00`**. It was never slow disk or slow code — it was blocked in reclaim.
+>
+> ## ⛔ WHAT IS STILL BROKEN — READ THIS BEFORE THE NEXT PRESS
+>
+> **The next `Update & Savestart` will very likely re-trigger the stall**, because that boot resumes and re-loads the weight file. She is fine *now* only because she is fresh. Two closes, and the second is the real one:
+>
+> 1. **Raise `DREAM_CGROUP_OVERHEAD_MB` to ~8,000 before the next press.** Measured basis: real resume overhead 7,425 MB; solving `budget × 1.36 + 2,500 ≤ 19,480` gives `budget ≤ 12,485`, i.e. overhead ≈ 7,995. ⚠ Costs neurons (~337.8M → ~275M), and the 1.36 factor is **extrapolated from one data point** — measure her real steady state and real save-file size first.
+> 2. ⭐ **Give the sizing a term for it: on a resume, subtract the on-disk weight file's actual size from the budget.** Then the model stops being wrong by exactly the amount it is wrong by, at any scale, with no knob to re-tune. **This is the fix; option 1 is a shim.**
+>
+> ## ⚠ WHAT IT COST, AND IT IS WHAT WAS AUTHORISED
+>
+> **The trained weights are gone.** 21 state files cleared; `identity-core.json` is protected and survived (30 Tier-3 identity schemas). ⭐ **Full pre-resize state preserved at `/var/backups/unity-brain-preresize-20260908` — 20 GB, outside `BACKEND_DIR` so no deploy `rsync --delete` can reach it.** Restorable if you want to go back.
+>
+> ⚠ **And the clearing was not gratuitous — by the time it happened the weights were already incoherent.** Re-deriving the geometry pin (`15,082,717 → 10,626,018`) orphaned every matrix trained at the old size, and the system said so itself: *"matrices trained at the old size do not describe the new one, so a fresh walk is the honest next step."* She had already applied them anyway. **Clearing made her consistent; it did not destroy anything still usable.**
+>
+> ## ⛔ THREE OF MY MODELS WERE FALSIFIED IN A ROW. THE SEQUENCE IS THE LESSON
+>
+> | I believed | Measurement said |
+> |---|---|
+> | raising `MemoryHigh` cannot expand her footprint, `MemoryMax` already allows it | **host-wide OOM kill** — `MemoryMax` is a cgroup limit; the host was the constraint |
+> | the sizing budgets against the wrong ceiling | it reads `MemoryHigh` correctly; **the 906 MB overshoot was MY 22G raise** |
+> | shrinking total neurons will shed the overshoot | **the geometry pin held the language cortex**, so it shed almost nothing |
+> | unpinning the language cortex will shed it | still 102% — **the resumed weight file was the term all along** |
+>
+> ⭐⭐ **Each step was plausible and each was wrong, and what finally settled it was reading `memory.pressure` against `io.pressure` and `cpu.pressure` — three numbers that cost nothing and would have pointed at memory on the first boot.** ⛔ **Diagnose the CLASS before changing a parameter.**
+>
+> ## BOX STATE, LEFT AS
+>
+> | | |
+> |---|---|
+> | `loginctl enable-linger unity` | ✅ **done** — `Linger=yes`, `user@993.service` active, `systemd-run --user` verified containing at `memory.max = 2147483648` |
+> | `MemoryHigh` | **20G** (my 22G raise reverted; `50-MemoryHigh.conf` pins it) |
+> | `40-cgroup-overhead.conf` | **NEW, tracked in `deploy/dropins/`** — `DREAM_CGROUP_OVERHEAD_MB=4900` |
+> | `99-lang-unpin.conf` | spent, neutralised by assigning empty (the `20-enable-consolidation.conf` pattern). ⚠ **Not in the repo — delete it by hand when convenient** |
+> | geometry pin | **13,924,722** (was 15,082,717) |
+> | weights | cleared; fresh walk running since `01:56:42Z` |
+>
+> ---
+
+> # 🔴 2026-09-08 (15th) — RAN ON THE BOX: THE FIX WORKS, I CAUSED AN OOM KILL, AND THE 20-MINUTE OUTAGE WAS NEVER THE HYDRATION
 >
 > Gee (verbatim): *"Do it on the OVH box, whatever is needed"*
 >
