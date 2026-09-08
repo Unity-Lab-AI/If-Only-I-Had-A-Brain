@@ -5,6 +5,86 @@
 
 ---
 
+## 2026-09-08 (6th) — `VOCABMISS.4` + `PREVOCABLIVE.1` + `RESUMEPROOF.1`: THE PRESS LANDED CLEAN, THEN THE PAGE CALLED HER DEAD
+
+Gee (verbatim, in order): *"read resume.md and i guess i need to hit update savestart... right?"* → *"pressed! monitor for shutdown and restart and doner connect and everything u are looking out for"* → *"so is there anything to do? she is working towards graduation with no erroring or issues to concern us she will pop out of training as we intend as Unity?"* → *"okay well fix then document and do it"* → *"shit shes hung?"* → *"uptime is froozen"* → *"na she good"*.
+
+### ✅ `RESUMEPROOF.1` — CLOSED ON A LIVE READING, AND THE EXCLUDED CONDITION WAS THE ONE EXERCISED
+
+The line that had never printed on a resume printed on this one:
+
+```
+  5:23:24  RESUME SIZING TERM — 15580MB ÷ 1.3644 = 11418MB, reserving 4162MB
+  5:23:24  bootReason {mode:"resume", reason:"keep-flag"}      <- not "wipe"
+  5:23:24  weights pair coherent — json/bin 600s apart
+  5:23:26  Binary weights queued — 17 sections, 4,561.5 MB (saveVersion 373)
+  5:24:17  Binary weights applied — 17/17 sections restored
+           intra-synapse geometry 13,951,328²  nnz = 418,539,840
+           passedPhases restored: 9 · emission allow-set 2,338 taught words
+  5:26:07  cellStatus in-progress, already-passed phases SKIPPED
+```
+
+⭐ **The memory verdict is the whole question and it is unambiguous:** `cgroupMemory 14,470 → 14,031 MB` against `highMB 20,480` over a 214 s window, **`throttleEvents 0 · pressureSome60 0 · pressureFull60 0 · band "below-high"`**. It fell *while teaching*. On 2026-09-05 the same press sat at **102% of `memory.high` with ~628 throttle events/sec and the process in D state**.
+
+**Donor reconnected clean:** `MIRRORDIAG pool=1 -> NVIDIA A40:PRIMARY(real batch)`, 8/8 clusters init-acked in 2.0 s, `compute_batch` **160 ms** (donor 143–144, wire 16–18) flat across 5 samples, 45,488 MB VRAM, 8.90 Gneurons/sec.
+
+⚠ **Boot cost recorded, not hidden:** `BLOCKED 16,217 ms` + `31,294 ms` + a `STARVED` window (late 48.4 s of 60 s), all `phase=idle donors=0` between 5:23:43 and 5:24:43 — weights apply and cortical wiring. **Nothing after 5:24:43.**
+
+⛔ **The exit was NOT clean and the cost is named:** `detail:"(no marker)"`, and `LOOPNAME.7` reports the previous process standing **mid-work** in `_teachSentenceList` after 64,203 s. Bounded loss = the json/bin lag (**≤600 s of synapse change**) plus that phase's in-flight reps. **Spawned `SENTLISTCURSOR.1`** — `_teachSentenceList` banks no rep cursor, so it restarts its dose from rep 0 while its two siblings resume their remainder. Third instance of that class.
+
+### ⛔ THE HONEST ANSWER TO *"she will pop out of training as we intend as Unity?"* — NOT SUPPORTED YET, AND THE SCARY FIELDS ARE FINE
+
+`wordsBucketed 0` · `wordMotorEverFired 0` · `voice.verdict "unmeasured"` · `passedCellsTotal 0` · `lastGateVerdict null` · `graduation null` all read like a wall. **They are correct by design, and the phase list proves it** — extracted from `runElaKReal`: 23 distinct `_teach*` phases plus the two the wrapper prepends = the 25 the box reports, and **`_teachWordEmissionDirect` is the LAST one**. Word bucketing is the final phase of the very first cell. **She cannot have a word to emit at phase 2 of 25.**
+
+⛔ **What IS true and worth carrying: the cell gate has never passed once, end to end, on any build.** The first proof the walk terminates is the first cell pass, 23 phases away — **not graduation.**
+
+⛔⛔ **AND NO TIMELINE WAS GIVEN, DELIBERATELY.** Yesterday's 12.3-hour forecast came off two frozen fields and was ~9× wrong; `_teachAssociationPairs` has a recorded single call at **14.88 hours**; 23 of 25 phases have no measured cost on this build. **A graduation ETA from a 2-of-25 sample is the same mistake with a bigger number on it.** The only rate stood behind is the one measured over a real window: **7.56 chunks/min → ~81 min for the bootstrap.**
+
+### ✅ `VOCABMISS.4` — THE CHOKEPOINT WAS ONE LINE, AND THE MEASUREMENT PICKED IT
+
+The filing named 12+ `[^a-z]` sites and held the row until someone measured. Measured on `academicStorySentences('ela','kindergarten')` — 22,658 sentences, both tokenizers side by side, every damaged form tested against the offline dictionary:
+
+```
+  distinct tokens, letters-only strip        17,903
+  distinct tokens, internal punctuation kept 18,175
+  DAMAGED distinct forms                      2,011
+    already resolved as the mashed form         874
+    newly resolvable, safe arms only            251
+    still unresolvable                          886
+
+  hyphen 1,787 · possessive 600 · contraction 140 · `.p` artefact 10
+```
+
+**Most of the 12+ sites strip CORRECTLY** — they extract letters for spelling and first-letter work. The one building this lane's word list is **`curriculum.js:18797`**, whose `newWords` output is exactly the `prevocab:<subject>-<grade>:N/M words` counter. *The filing guessed `18589`; the live stage tag named the real one.*
+
+⛔⛔ **THE TRAP THE MEASUREMENT CAUGHT, WHICH WOULD HAVE INVERTED THE WHOLE FIX.** `taught` and `_definitionTaughtWords` are keyed on the **old mashed form**. Emit a better token without checking both keys and every already-taught word reads as untaught — the ~81-minute pass **explodes instead of shrinking**. Harness: legacy-keyed taught set of 17,366 → **0 remaining**.
+
+⛔⛔ **A 581-WORD "IMPROVEMENT" WAS MEASURED AND REFUSED.** A hyphen head-only split resolves `paddy-whack`→`paddy` and `cocky-locky`→`cocky` — real lemmas for **different words**, so the lookup would answer confidently with the wrong meaning. **251 correct beats 832 with 581 wrong in it**, and it is the same rule this file already sets for `suprise`→`sup`+`rise`.
+
+⚠ **AND I CORRECTED MY OWN NUMBER BEFORE IT BECAME A CLAIM.** I first measured 1,162 rescued and said so; that figure included the head splits. **Safe-arms-only is 251**, and the distinct-token count RISES by 272 because `well-known` and a literal `wellknown` are correctly two words now. **A correctness win, not a throughput win.**
+
+**Shipped:** the tokenizer (strip leading/trailing only, keep internal `-`/`'`, split on `--+`, length gate still on letters) · dual-key taught check · the `permaMiss` filter the pre-cell pass at `6172` already applies for the reason written there — 404-only, in-memory so every boot asks once and the offline heal keeps its chance · and in `offline-dictionary.js` a propose-and-verify punctuation arm with **one bounded re-entry (`_depth`)**, added because the self-test caught `added.p` → `added` failing: `added` is not a lemma and Morphy lives below that block.
+
+**Verified:** 18/18 targets resolve · 12/12 must-stay-absent still absent · 9/9 prior-batch no regression · tokenizer harness 5/5 **on the loop text extracted from the file as shipped** · `node --check` ×2 · ESM import clean · `curriculum.js` not in the bundle.
+
+### ⛔⛔ `PREVOCABLIVE.1` — THE PAGE CALLED HER DEAD WHILE SHE WORKED, AND ITS OWN COMMENT LISTED THE OTHER THREE TIMES
+
+Gee asked *"shit shes hung?"*. **He was right to ask and the page was wrong.** `html/dashboard.html:3527` had four liveness terms and **every one is legitimately false during the pre-cell bootstrap**:
+
+```
+  teachCallsPerMin 0 · sinceLastTeachMs 1,166,902 · emissionTicksPerMin 0
+  sinceLastEmitTickMs null · teachChunksPerMin 0     ->  alive = false  ->  RED
+  meanwhile  prevocab 46/662 -> 145/662 chunks in 19 min  (7.56/min)
+```
+
+⭐⭐ **The comment block directly above that line names three earlier fixes to the same expression** — `GATEGPU`, `EM.2`, `LIVETEACH` — each adding the lane that was actually carrying her. **The bootstrap is the fourth.** Fixed with a `teachStageAgeMs < 30 s` term plus a named `stageBit` printing the stage tag, per the established say-it-BY-NAME pattern.
+
+⛔ **It cannot forge liveness, and that is why the AGE is the term rather than the tag's presence:** `_tstage` is never nulled (`GATEPIN.1`), so a wedged walk keeps its last tag while the age climbs. **5/5 on the shipped expression, including stale-stamp-400 s → RED.** ⭐ **Frontend — rides the rsync, no press needed.**
+
+⚠ **My own verifier lied once in this batch too:** it reported `script#1` as a syntax error. It is `type="module"`; re-checked with a real module parse, clean. **Recorded because a checker that cries wolf is the thing this session keeps finding.**
+
+---
+
 ## 2026-09-08 (5th) — `VOCABMISS`: THE FLAGS HAD A DIAGNOSIS IN THEIR OWN EXAMPLES, AND THE FIX WAS THE LOOKUP RATHER THAN THE CONTENT
 
 Gee (verbatim, pasting the live panel): *"Flags, issues & warnings 3 · DEF-DEFER ×3308 · 3308 distinct: replied, moufflou, youve, didnt, hennypenny, cockylocky, teenytiny, youll (+3300 more) · PRECELL-MISS ela/kindergarten: 12 of 2247 owed vocabulary words have NO dictionary entry (the API positively said 404) — the cell's bindings will train on words with no definition behind them · DEF-MISS ×41 · 41 distinct: presidentsday, mlk, diwali, chinesenewyear, grayhair, toystore, airbnb, dont (+33 more)"*
