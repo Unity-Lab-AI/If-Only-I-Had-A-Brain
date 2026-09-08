@@ -195,7 +195,23 @@ Gee (verbatim): *"yeah do it all so we never have to have Sponge fix it for you"
 
 Measured on the box: budget 15,580 − 2,048 OS reserve = **13,532 MB for weights** against **20,957 MB actual anon** ⇒ real non-weight overhead **7,425 MB** where the model said 2,867, of which **4,931 MB is the weight file**. Result: 102% of `memory.high`, ~628 throttle events/second, process in `D` state, `/health` timing out while systemd read the unit healthy.
 
-**VERDICT — FIXED.** `brain-server.js` stats the weight pair it is about to read and subtracts it from the budget whenever this boot intends to resume.
+> ⛔⛔⛔ **CORRECTED THE SAME NIGHT, BEFORE ANY PRESS — THE FIRST DESIGN BELOW WAS A WEIGHT-WIPE WAITING TO HAPPEN.** Gee asked whether to use Fresh Walk instead of Savestart, and checking that question is what exposed it. **The `stat`-the-file design is wrong twice over:**
+>
+> **① IT WOBBLES.** The weight file GROWS as she trains, so the budget — and therefore `TOTAL_NEURONS` — comes out different on every boot. **`autoClearStaleState` WIPES when the saved neuron count does not equal the computed one.** `deploy/dropins/10-pin-brain-size.conf` exists precisely because *"that silent size change wiped the trained brain on restart"*. **Every savestart would have wiped her while reporting that it was keeping the weights.**
+>
+> **② IT SPLITS FRESH FROM RESUME.** A fresh boot sizes to `f(safe)`, a resume boot to `f(safe − file)` — two different counts, so the **first savestart after any fresh walk wipes, forever.**
+>
+> ⭐⭐ **THE REAL INSIGHT: every brain is resumed eventually, so the sizing must be resume-safe UNCONDITIONALLY.** Sizing for the fresh case and hoping the resume fits is exactly what created the original bug — I reproduced its shape while fixing it.
+>
+> ✅ **The term is now a RATIO of the budget, applied on every boot, fresh or resuming.** The weight file IS the weights on disk, so it is proportional: measured **13,532 MB of weights against a 4,931 MB file ⇒ 0.3644**, and `_safeMB = preResume / 1.3644`. Deterministic, self-scaling at any brain size, **identical on every boot** — so `TOTAL_NEURONS` never moves and `autoClearStaleState` never wipes on size.
+>
+> ⭐ **A cross-check that this is the right decomposition:** the same measurement leaves **2,494 MB** of non-file overhead against the shipped default of **2,867** — which its own comment says was measured at a FRESH boot, i.e. with no file. **The two agree from opposite directions.**
+>
+> ⭐⭐ **And the correct fix is SMALLER than the wrong one.** Dropping the keep/wipe prediction deletes the circularity with `autoClearStaleState`, the read-only-marker hazard, and the TDZ trap — all three were consequences of solving the wrong problem. **5/5 determinism checks; predicted footprint 15,278 MB at the box's current knob (5,202 MB headroom) and 17,311 MB at the 2,867 default (3,169 MB).**
+>
+> ⛔ **CONSEQUENCE THAT MUST BE STATED: THE NEXT PRESS IS A RESIZE EITHER WAY.** Budget 15,580 → 11,418 MB, so the neuron count drops and the weights cannot survive it. **Savestart would wipe silently; Fresh Walk makes it honest — so use Fresh Walk.** ⭐ And since a wipe is happening regardless, that is the free moment to also drop `DREAM_CGROUP_OVERHEAD_MB` back to its measured 2,867 (delete `40-cgroup-overhead.conf` on the box), which buys ~13% more brain. ⚠ **The press does NOT install drop-ins** — they are hand-placed, so that half is a box action.
+
+**VERDICT — FIXED.** ~~`brain-server.js` stats the weight pair it is about to read and subtracts it from the budget whenever this boot intends to resume.~~ **Superseded by the ratio above; the original text is kept because the mistake is the finding.**
 
 ⛔ **It PREDICTS the keep/wipe rather than reading it, and that is unavoidable.** `autoClearStaleState()` makes the real decision and must run *later*, because its compatibility checks compare against `TOTAL_NEURONS` — which the sizing block is what produces. **The circularity is real and is not resolvable there.** So the term reads only the two signals that precede any compatibility test, and **errs in the safe direction**: those checks can only turn an attempted resume INTO a wipe, never a wipe into a resume, so a rejected resume merely under-sizes for one boot while a successful one is exactly right.
 
