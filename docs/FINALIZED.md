@@ -5,6 +5,60 @@
 
 ---
 
+## 2026-09-08 (2nd) — `WEBSOCKET.md` CLEARED, AND THREE OF THIS SWEEP'S OWN MEASUREMENTS WERE WRONG
+
+Gee (verbatim): *"keep going cascade once ur complete"*
+
+### ✅ `docs/WEBSOCKET.md` — COMPLETE
+
+**7 prose walls → 0 · 1 name ref → 0 · ~30 ticket identifiers → 1** (a deliberate cross-reference, documented in place). Longest prose line 3,353 → 1,200.
+
+⭐ **The tickets converted almost for free, and the reason generalises: every protocol entry already named its own opcode.** `**SHADOWCOST.3 — readback_matrix_values**` → `**readback_matrix_values**`. `**TU.19-D — readback_matrix_checksum**` → `**readback_matrix_checksum**`. **The mechanism was sitting beside the ticket in all but a handful of cases**, which is exactly what the placement LAW asks for and it cost almost nothing to do.
+
+**Walls became the structure each was already trying to be:** the four parity verdicts a **table** (they demand *opposite* responses and a paragraph hid that), the `gpu_register` payload a **table**, the two-site donor bound a **fenced block**, the run-cap re-price a **priced block**, the replica-pool wall a bullet list plus a nested callout.
+
+### ⛔⛔ THREE MEASUREMENTS THIS SWEEP HAD ON RECORD WERE WRONG, AND ALL THREE WERE MY OWN INSTRUMENTS
+
+**① The ticket denominator is 1,844, not 1,048 — a 76% undercount.** Every pattern in use required **four or more** uppercase characters before the dot, so a whole family of short stems was invisible: `DF.7` · `TU.20` · `TU.25` · `WSQ.1/.2/.3` · `I.15` · `R6.2`. **`SENSORY.md` alone went 19 → 78** when the pattern widened. ⚠ **Same lesson `CODELEAK.1` already records after four failed detectors — at triple the scale.**
+
+**② The wall metric counts TABLE ROWS, which are correct structure and cannot be wrapped.** Re-measured with a detector that separates prose from tables and fences:
+
+```
+                        PROSE  table          verdict
+  ADMIN-CONTROLS.md         1     18   its "21 walls" were 18 table rows
+  KNOWN_ISSUES.md           0     18   its "18 walls" were ALL table rows
+  ARCHITECTURE.md          69      0   but 63 sit in the ARCHIVED history block;
+                                       its LIVE architecture has SIX
+```
+
+⭐⭐ **Two files this sweep listed as debt were already correct** — both were marked ✅ COMPLETE and both still showed double-digit walls, **because the ruler was wrong, not the verdicts.** ⚠ **`SKILL_TREE.md`'s own log entry had already said so** and the survey table was never corrected, so every later reader inherited the bad number.
+
+**③ The name-reference count is 159 actionable, not 254 — because 179 of 338 hits sit inside verbatim quotes this sweep explicitly forbids stripping.** ⚠ **And that split is still only a candidate list:** `SENSORY.md:167` reads `Gee: "a human doesnt have…"`, which **is** a quote, classed bare purely because it uses straight quotes. **Every one of the 159 needs individual judgement.**
+
+### ⭐⭐ THE STRUCTURAL FINDING: A PER-FILE TICKET SWEEP IS NOT SAFE — THE UNIT IS THE REFERENCE PAIR
+
+`docs/WEBSOCKET.md` pointed at `EQUATIONS.md § Phase 13 R6.2 — Equational Component Synthesis`. **That heading was renamed to `## 14. Equational Component Synthesis` by THIS SWEEP'S OWN earlier pass on `EQUATIONS.md`, and the pointer was never updated.**
+
+⛔ **So the sweep broke a cross-reference while cleaning up, and nothing anywhere would have reported it.** Found and fixed by hand.
+
+⭐ **This is why `WEBSOCKET.md`'s two surviving `§ T14` pointers were deliberately KEPT** rather than cleaned: their target headings still carry the legacy identifier, so **both sides move together or neither does.** That constraint is now written into the doc beside the pointers.
+
+⛔ **And a third class: some tickets are RENDERED UI STRINGS.** `html/dashboard.html:829` ships `🗣 Speech Health (SPEAK) — separability + coherence floor` as a card title — a ticket-family name a visitor reads on screen.
+
+### Two rows filed, neither fixed here
+
+- **`DOCSWEEP.9` — a cross-reference checker.** 236 `<file> § <section>` references exist across the tree and **nothing checks any of them**; `docs:drift` checks a page against its declared *sources*, never against the *headings it points at*. ⛔⛔ **I tried to build it and could not make it trustworthy in two iterations, so no numbers from it are recorded as findings.** Pass 1 said 86 unresolved (it was rewriting `.claude/` targets as `docs/` and over-capturing prose); pass 2 said 16, and spot-checks killed those too — it called `RESUME.md § (15th` and `§ (16th` dead when **both blocks exist.** **One real break found and fixed by hand; the generalisation is unbuilt, and its acceptance test is reproducing the `R6.2` break.**
+- **`DOCSWEEP.10` — a live code comment still advertises the deleted dictionary fallback.** `js/brain/language-cortex.js:1511` promises a *"pre-curriculum dictionary-cosine fallback"*; **the branch is gone** (read it: the only guard left is *no cluster → warn and return `''`*), and `:1506` **in the same docblock** already says the lane is gone. **The file contradicts itself eleven lines apart.** ⭐ **The four-page doc sweep above exists because a deleted fallback kept being described as live — a comment promising one is that defect one layer deeper, in the layer a future reader trusts most.** With `voice.js`'s header and `DOCSWEEP.8`'s parity comments that is **three known cases: a class, not an incident.**
+
+### Also corrected in `WEBSOCKET.md` by reading the code
+
+- **`LanguageCortex.generate` called "a 68-line delegate". It is ~421 lines** (1510 → 1931).
+- Its frontmatter carried the same unbounded-provenance shape `DOCLINE.1` warns about; moved to the short `<hash> <date>` form.
+
+⚠ **`status` stays `draft`** — the JSON message schemas in the first half of the page were not re-read field by field, and the file says so.
+
+---
+
 ## 2026-09-08 — `DOCSWEEP.6`: THE LAYMAN PAGES, AND FOUR PAGES DESCRIBING A DELETED FALLBACK AS LIVE
 
 Gee (verbatim, the instruction this row serves): *"full doc sweep evey bad layout post that doesnt match style every text wall every mention of my name in public facing docs pages and the like every code refrence name in public facing documents all needs cleaned up and all equations, laymans pages how tos readmes, workflows docs, tooltips everywhere(add them) and every documented capability in archeticeure brain equations readme how to all shall be updated and corrected especiallly correcting text walls that dont match the style format and beautiful layouts we want and you shall put all this in the todo as docseep items and then properly get to work no agents, noo batching, use the todo and finalized for refrences to the changes and what all needs to be rewriten. redocumented , edited, updated, ect ect"*

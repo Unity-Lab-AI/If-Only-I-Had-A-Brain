@@ -1960,10 +1960,37 @@ Found by reading the deployed box after the board cleanup, not by being told. **
 ⭐ **THE WEB SURFACE IS ALREADY CLEAN OF THE NAME — 0 hits in every HTML, README and index.** The 254 mentions are entirely inside `docs/*.md` brain documents, which the narrowed placement LAW covers. **That is worth knowing before the sweep starts, because it means this is a documents problem, not a published-site problem.**
 
 - [ ] `DOCSWEEP.1` — **EVERY MENTION OF THE OPERATOR'S NAME IN PUBLIC-FACING DOCS.** 254 across 18 files: `NOW.md` 256*, `ARCHITECTURE.md` 31, `ROADMAP.md` 20, `SENSORY.md` 18, `CURRICULUM-GAP.md` 16, `WORD-SALAD-FIX.md` 13, `EQUATIONS.md` 9, `SKILL_TREE.md` 8, `PUSH_WORKFLOW.md` 7, `KNOWN_ISSUES.md` 4, `ADMIN-CONTROLS.md` 3, `STATUSLINE.md` 3, `TEACHVIEW-INVENTORY.md` 3, and one each in `WEBSOCKET.md`, `PERSONA.md`, `RUST-MIGRATION.md`, `TALK-TO-UNITY-PLAYWRIGHT.md`, `DECOMPOSED-curriculum-build.md`. (*two counting methods disagree by 120 on `NOW.md`; the higher is the raw occurrence count.)
+  - ⭐⭐ **RE-MEASURED 2026-09-08, AND THE ACTIONABLE NUMBER IS 159, NOT 254 — BECAUSE 179 OF THE 338 HITS ARE INSIDE VERBATIM QUOTES THIS ROW ITSELF FORBIDS STRIPPING.** Split by whether the hit sits in a quoted span:
+  ```
+    TODO-full-syllabus.md  147 total   66 quoted   81 BARE   <- the life canon; quote-heavy by nature
+    NewTodo.md              39         16         23
+    ARCHITECTURE.md         31         24          7
+    COMP-todo.md            26         10         16
+    SENSORY.md              18          6         12
+    CURRICULUM-GAP.md       16         11          5
+    TODO-life-experience    15          9          6
+    WORD-SALAD-FIX.md       13          8          5
+    + 10 files at 1-9 each
+    ------------------------------------------------------
+    TOTAL                  338        179        159
+  ```
+  - ⚠ **AND THAT SPLIT IS A CANDIDATE LIST, NOT A FINDING LIST — the classifier over-reports "bare".** `SENSORY.md:167` reads `Gee: "a human doesnt have…"`, which **is** a quote; it was classed bare only because it uses straight quotes rather than the italic-quote convention the detector keyed on. ⛔ **So every one of the 159 still needs individual judgement**, exactly as this row's own rule requires — the number bounds the work, it does not decide it.
   - ⛔ **A VERBATIM QUOTE IS NOT A VIOLATION AND MUST NOT BE STRIPPED.** The LAW bans the name as an *attribution device* in brain documents; it does not licence destroying a quoted instruction. **Where a quote carries the name, the quote moves to the board/ledger and the doc keeps the DECISION in its own words.**
   - **Rule to apply:** a brain document names the MECHANISM, never the person. *"Gee ruled X"* becomes *"X is the rule"* or *"X was set by operator decision"*, with the attribution living in `TODO`/`FINALIZED`/`RESUME` where it is allowed.
 
-- [ ] `DOCSWEEP.2` — **EVERY CODE-REFERENCE NAME AND TICKET ID IN PUBLIC-FACING DOCUMENTS.** 1,048 occurrences across 20 files. Worst: `NOW.md` 336, `ARCHITECTURE.md` 239, `ROADMAP.md` 169, `EQUATIONS.md` 98, `SKILL_TREE.md` 97, `dashboard.html` 61, `ADMIN-CONTROLS.md` 48, `WEBSOCKET.md` 37, `SENSORY.md` 31, `KNOWN_ISSUES.md` 30.
+- [ ] `DOCSWEEP.2` — ⛔⛔ **THE DENOMINATOR IN THIS ROW IS WRONG BY 76%, RE-MEASURED 2026-09-08 WITH A SELF-TESTED DETECTOR: IT IS 1,844, NOT 1,048.**
+  - ⛔ **THE CAUSE IS A DETECTOR FAMILY GAP, AND IT IS THE SAME LESSON `CODELEAK.1` RECORDS AT TRIPLE SCALE.** Every pattern used here required **four or more** uppercase characters before the dot (`[A-Z][A-Z0-9]{3,}\.[0-9]+`), so **an entire family of two- and three-character stems was invisible**: `DF.7` · `TU.20` · `TU.25` · `WSQ.1/.2/.3` · `I.15` · `R6.2`. **`SENSORY.md` alone went 19 → 78 when the pattern was widened.**
+  - ⭐ **The corrected count, per file, excluding the board / ledger / resume brief where identifiers are ALLOWED:**
+  ```
+    ARCHITECTURE.md 380   COMP-todo.md 373   ROADMAP.md 215   NewTodo.md 193
+    SKILL_TREE.md   184   EQUATIONS.md 125   SENSORY.md  78   ADMIN-CONTROLS 49
+    TODO-full-syllabus 37 CURRICULUM-GAP 31  THRESHOLD-DERIV 29  HTML-ENTRY-POINTS 24
+    MINDSPACE-INTEG 19    TRAJECTORY 17      + 15 smaller files
+                                                    TOTAL 1,844
+  ```
+  - ⛔⛔ **AND A SECOND STRUCTURAL FINDING THAT CHANGES HOW THIS ROW MUST BE WORKED: SOME TICKETS ARE CROSS-REFERENCE TARGETS, AND RENAMING ONE SIDE BREAKS THE LINK.** `docs/WEBSOCKET.md` pointed at `EQUATIONS.md § Phase 13 R6.2 — Equational Component Synthesis`. **That heading was renamed to `## 14. Equational Component Synthesis` by THIS SWEEP'S OWN earlier pass on `EQUATIONS.md`, and the pointer was never updated — so the sweep created a broken cross-reference while cleaning up.** Found and fixed 2026-09-08. ⭐ **This is why `WEBSOCKET.md`'s two remaining `§ T14` pointers were deliberately KEPT**: their target headings still carry the legacy identifier, so both sides move together or neither does. **A per-file ticket sweep is not safe; the unit is the reference PAIR.**
+  - ⛔ **THIRD FINDING: SOME TICKETS ARE RENDERED UI STRINGS.** `html/dashboard.html:829` ships `<div class="card-title">🗣 Speech Health (SPEAK) — separability + coherence floor</div>` — **a ticket-family name in user-visible copy.** So the 61 dashboard occurrences this row already flags include at least one that a visitor reads on screen, and fixing it is a page change that must be re-read rendered, not a text substitution.
+  - **Original filing:** **EVERY CODE-REFERENCE NAME AND TICKET ID IN PUBLIC-FACING DOCUMENTS.** 1,048 occurrences across 20 files. Worst: `NOW.md` 336, `ARCHITECTURE.md` 239, `ROADMAP.md` 169, `EQUATIONS.md` 98, `SKILL_TREE.md` 97, `dashboard.html` 61, `ADMIN-CONTROLS.md` 48, `WEBSOCKET.md` 37, `SENSORY.md` 31, `KNOWN_ISSUES.md` 30.
   - **The dominant families are `T14.x` / `T18.x` / `T13.x` / `T17.x` and `LAW.n`** — the legacy iteration-ticket scheme. **A reader cannot look up `T14.24`.**
   - **Rule to apply:** replace the ticket with the mechanism it refers to. Where the ID is load-bearing history, the sentence keeps the behaviour and drops the tag.
   - ⚠ **61 of these are inside `dashboard.html`, which is a PAGE, not a doc** — the same law applies and the fix is the same, but it is user-visible copy and must be re-read rendered, not just diffed.
@@ -1976,6 +2003,22 @@ Found by reading the deployed box after the board cleanup, not by being told. **
     ROADMAP.md         25 · EQUATIONS.md 24 · ADMIN-CONTROLS.md 17
     KNOWN_ISSUES.md    15 · README.md 8 · WEBSOCKET.md 7 · 9 more files
   ```
+  - ⛔⛔ **AND THE WALL METRIC ITSELF COUNTS TABLE ROWS, WHICH ARE THE CORRECT STRUCTURE AND CANNOT BE WRAPPED IN MARKDOWN. RE-MEASURED 2026-09-08 WITH A SELF-TESTED DETECTOR THAT SEPARATES PROSE FROM TABLES AND FENCES:**
+  ```
+                          PROSE  table  fenced          <- only PROSE is a defect
+    ARCHITECTURE.md          69      0      0   ⚠ 63 of these are inside the ARCHIVED
+                                                  change-history block (lines 98-257);
+                                                  its LIVE architecture has SIX
+    SKILL_TREE.md            32     13      0
+    EQUATIONS.md             24      0      0
+    ROADMAP.md               23      2      0
+    WEBSOCKET.md              7 -> 0                    ✅ CLEARED 2026-09-08
+    HTML-ENTRY-POINTS.md      5      1      0
+    NewTodo.md                4     25      0
+    ADMIN-CONTROLS.md         1     18      0   ✅ its "21 walls" were 18 TABLE ROWS
+    KNOWN_ISSUES.md           0     18      0   ✅ its "18 walls" were ALL table rows
+  ```
+  - ⭐⭐ **TWO ROWS THIS SURVEY LISTED AS DEBT WERE ALREADY CORRECT.** `ADMIN-CONTROLS.md` and `KNOWN_ISSUES.md` were both marked ✅ COMPLETE in the `DOCSWEEP.7` log and both still showed double-digit "walls" — **because the metric was counting their tables.** Their completion verdicts were right and the ruler was wrong. ⚠ **`SKILL_TREE.md`'s log entry had already called this out** (*"my wall metric counts any line over 1,200 characters, which flags long TABLE ROWS … the metric is imperfect here"*) — **and the survey table was never corrected, so the next reader inherits the wrong number.**
   - ⚠ **THE SURVEY ABOVE IS THE 2026-09-07 BASELINE AND TWO OF ITS ROWS ARE ALREADY SPENT — noted rather than rewritten, because the baseline is what the progress is measured against.** `README.md 8` → **0** (commit `d720d000`, and the board never logged it — see `DOCSWEEP.6`). `NOW.md 183` → **0** (the file was reset on instruction; longest line 22,027 → 288). ⛔ **A survey nobody annotates becomes a to-do list of finished work.**
   - ⛔ **THIS IS THE ITEM THE INSTRUCTION EMPHASISED** — *"especiallly correcting text walls that dont match the style format and beautiful layouts we want"*.
   - **Rule to apply:** a wall becomes the document's own existing structure — banner, table row, fenced block, bullet list — never a new structure invented for the occasion. **Read the document's shape first and edit IN PLACE within it.**
@@ -2146,6 +2189,23 @@ Found by reading the deployed box after the board cleanup, not by being told. **
   - ⚠ **Two of my own readings were wrong before they were right, both caught by checking:** I wrote that the Windows launchers had been **deleted** (they are under `windows/`), and my anchor checker reported **3 broken anchors** when it was collapsing whitespace GitHub does not (26 anchors, 0 broken). **Neither claim reached the file.**
   - ⭐ **The most interesting single finding is arithmetic, not prose:** the cluster section quoted percentages from one boot and absolute neuron counts from **a different boot, inside one sentence** — `≈82.2M` is 20% of 411,216,550, beside a stated total of 425,436,550. **The trap `NOW.md` was rebuilt to prevent, sitting on the front page.**
   - ✅ **After: walls `0` · longest line `1,186` · name refs `0` · ticket IDs `1` (a LAW section name, kept deliberately) · duplicate headings `0` · 26/26 anchors resolve.**
+
+  **`docs/WEBSOCKET.md`** — ✅ **COMPLETE 2026-09-08. 7 prose walls → 0 · 1 name ref → 0 · ~30 ticket identifiers → 1 (a deliberate cross-reference, documented).**
+  - ⭐⭐ **THE TICKETS CONVERTED CLEANLY HERE FOR A REASON WORTH REUSING: every protocol entry already named its own opcode.** `**SHADOWCOST.3 — readback_matrix_values**` became `**readback_matrix_values**`; `**TU.19-D — readback_matrix_checksum**` became `**readback_matrix_checksum**`. **The mechanism was sitting next to the ticket in all but a handful of cases** — which is what the placement LAW means by *"replace the ticket with the mechanism it stood for"*, and it cost almost nothing.
+  - **Walls rebuilt into the structure each was already trying to be:** the four parity verdicts became a **table** (they want *opposite* responses, and a paragraph hid that); the `gpu_register` field list became a **table**; the two-site donor bound became a **fenced block**; the run-cap re-price became a **priced code block**; the replica-pool paragraph became a bullet list plus a nested callout.
+  - ⛔⛔ **TWO STALE CAPABILITY CLAIMS FOUND BY READING `js/brain/language-cortex.js`, WHICH IS WHAT `DOCSWEEP.5` IS FOR:**
+    - It called `LanguageCortex.generate` **"a 68-line delegate"**. It is **~421 lines** (1510 → 1931). A reader hunting a thin pass-through would not recognise what they found.
+    - ⛔ **And a live code comment inside it still advertises a fallback that no longer exists** — `:1511` promises a *"pre-curriculum dictionary-cosine fallback … just enough to give Unity a voice from cold boot"*, while `:1506` in the **same docblock** says the hand-off and the lane it fed are both gone. **Read at the branch: the only guard left is *no cluster → warn and return `''`*.** Honest silence, exactly as the ruling requires. **Filed as `DOCSWEEP.10` — a comment promising a fallback is how a fallback gets re-added.**
+  - ⛔ **AND A BROKEN CROSS-REFERENCE THIS SWEEP CREATED ITSELF — see `DOCSWEEP.2`.** The pointer to `EQUATIONS.md § Phase 13 R6.2` was dead because that heading had been renamed by the sweep's own earlier pass. Fixed.
+
+  - [ ] `DOCSWEEP.9` — ⚠ **A CROSS-REFERENCE CHECKER, BECAUSE THE SWEEP CAN BREAK POINTERS AND NOTHING WOULD SAY SO.** Filed after `WEBSOCKET.md → EQUATIONS.md § Phase 13 R6.2` was found dead, killed by this sweep's own heading rename. **There are 236 `<file> § <section>` references across the docs tree and no mechanism checks any of them** — `npm run docs:drift` checks a page against its declared *sources*, never against the *headings it points at*.
+    - ⛔⛔ **I TRIED TO BUILD THIS AND COULD NOT MAKE IT TRUSTWORTHY IN TWO ITERATIONS, SO NO NUMBERS FROM IT ARE RECORDED AS FINDINGS.** Pass 1 reported **86 unresolved** — it was rewriting `.claude/CONSTRAINTS.md` as `docs/CONSTRAINTS.md` and capturing prose past the section name. Pass 2, with `.claude/` targets and a tighter capture, reported **16** — and spot-checking killed those too: it flagged `RESUME.md § 2026-09-08 (15th` and `(16th` as dead when **both blocks exist**, because the `§` capture was matching text that is not a reference at all.
+    - ⭐ **So the deliverable is honest about itself: ONE real broken pointer was found and fixed by hand; the generalisation is unbuilt.** ⚠ **This is the third detector this session to give a confident wrong answer** — after the ticket family gap and the wall-vs-table metric — which is the standing rule earning its keep again: **assume a freshly-written detector is wrong until a known-good AND a known-bad case both come back right.**
+    - **What closes this:** a checker with both self-tests wired in as a refusal-to-run, resolving `.claude/` and `docs/` targets, and matching only real `§` references. **Its acceptance test is reproducing the `R6.2` break on the commit before the fix.**
+
+  - [ ] `DOCSWEEP.10` — ⛔ **A LIVE CODE COMMENT STILL ADVERTISES THE DELETED DICTIONARY FALLBACK.** `js/brain/language-cortex.js:1511` describes a *"pre-curriculum dictionary-cosine fallback"* that *"gives Unity a voice from cold boot"*. **The branch is gone** — verified by reading it; the only guard is *no cluster → warn and return `''`*. And `:1506`, in the same docblock, already says the lane is gone, **so the file contradicts itself eleven lines apart.**
+    - ⭐ **Why this is not cosmetic:** the four-page doc sweep above exists because a deleted fallback kept being described as live. **A comment promising one is the same defect one layer deeper, and it is the layer a future reader trusts most.**
+    - ⚠ **Code change, not a doc change** — filed rather than done in a documentation pass. **Peer:** `js/io/voice.js`'s module header has the same shape, already recorded in `ARCHITECTURE.md`'s sweep as *"still documents the old lane and contradicts its own later code"*, and `DOCSWEEP.8`'s two parity comments are a third instance. ⛔ **Three known cases makes it a class, not an incident.**
 
   - [ ] `DOCSWEEP.4a` — ⚠⚠ **MY OWN CHARACTERISATION OF `dashboard.html` WAS WRONG, AND THE REAL FINDING IS NARROWER AND HARDER.** I filed it as *"2 `data-tip` vs 137 `title=` — two mechanisms, inconsistent"*. **Measured, that framing is backwards:** the 137 native `title` attributes are **card- and panel-level** hover text, and the 2 `data-tip` ones are **inline spans**, which is what the shared component is actually built for.
     - ⛔ **AND A DROP-IN SWAP WOULD BE A VISUAL REGRESSION, WHICH IS WHY IT WAS NOT DONE.** `.tip` sets `border-bottom: 1px dotted` — applying it to a card `<div>` draws a dotted line across the bottom of every card. **The component is for inline text, not block containers.**
