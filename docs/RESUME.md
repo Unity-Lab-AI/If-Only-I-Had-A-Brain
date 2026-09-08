@@ -1,6 +1,87 @@
 # RESUME — Session Pickup Brief
 
-> # 🟢 2026-09-08 (latest, 14th) — THE HANDOFF'S ITEM 3 WAS ALREADY BUILT. IT WAS **INERT**, AND THE LOG SAID IT WORKED (START HERE)
+> # 🔴 2026-09-08 (latest, 15th) — RAN ON THE BOX: THE FIX WORKS, I CAUSED AN OOM KILL, AND THE 20-MINUTE OUTAGE WAS NEVER THE HYDRATION (START HERE)
+>
+> Gee (verbatim): *"Do it on the OVH box, whatever is needed"*
+>
+> ## ⛔⛔⛔ SHE IS STALLED RIGHT NOW, AND IT IS A SIZING BUG — NOT THE HYDRATION, NOT THE DEPLOY
+>
+> ```
+>   01:20:24Z  boot (restart 26, resumed weights, geometry pin HELD at 15,082,717)
+>   01:25:14Z  memory.current 20.58 GiB  vs  memory.high 20.00 GiB
+>              high throttle events +628/second · proc state Dsl · PSI full 75%
+>              /health TIMEOUT · LoopWatchdog "MAIN LOOP STALLED … STILL STALLED"
+>              stalled at boot stage `loadSelfImage`
+> ```
+>
+> ⛔ **THE ARITHMETIC, FROM HER OWN BOOT LOG — SHE IS OVERSIZED BY CONSTRUCTION:**
+>
+> | | MB |
+> |---|---:|
+> | `MemoryHigh` (the throttle that actually bites) | **20,480** |
+> | measured non-weights overhead (`DREAM_CGROUP_OVERHEAD_MB`) | 2,867 |
+> | **⇒ largest safe weight budget** | **17,613** |
+> | what she actually budgeted | **18,519** |
+> | **overshoot** | ⛔ **906 MB** |
+>
+> ⭐⭐ **THAT 906 MB FIGURE IS ALREADY WRITTEN IN `ADMIN-CONTROLS.md` AS HISTORY — "a budget of 18,519 MB produced a 21.3 GB process and sat 906 MB over MemoryHigh=20G, throttled by a ceiling it could not see."** It is not history. It is happening, tonight, on this boot, and **it is the mechanism behind every "listening but not answering" episode this project has chased.** Her boot log names the cause outright: `CGROUP-AWARE SIZING — kernel limit 22528MB … vs host reserve 18519MB → budget basis 18519MB, bound by the host reserve.` **The sizing budgets against a number that is not the ceiling that throttles her.**
+>
+> ⛔ **THE 2026-09-07 20-MINUTE OUTAGE WAS ALMOST CERTAINLY THIS, NOT THE FIELD HYDRATION.** The previous brief called the hydration *"the leading explanation"* on the strength of a boot four minutes earlier that answered in 2.5 min. Measured tonight on a boot with **no deploy running at all**: `file 0` in the cgroup (⭐ **zero page cache — the hydration's hazard was not even present**), `anon 20.4 GiB`, and the identical `/health` timeout. **The page-cache theory is disproven for this boot, and the same signature reproduces without any copy loop.** The hydration default-off stays — it was still an unguarded 114 GB copy — but **it was not the cause.**
+>
+> ## ⛔⛔ I CAUSED AN OOM KILL. HERE IS EXACTLY HOW
+>
+> Finding her stalled, I raised `MemoryHigh` 20G → 22G — one of the two remedies this project's own notes prescribe for that band (*"RESTART, or raise the limit"*). **Six minutes later the kernel killed her.**
+>
+> ```
+>   01:20:18Z  kernel: postgres invoked oom-killer … global_oom
+>              Out of memory: Killed process 1837244 (node) anon-rss:22937196kB
+>   cgroup memory.events oom_kill = 0     <- it was NOT her cgroup limit
+> ```
+>
+> ⛔ **The reasoning error, named precisely:** I argued that raising `MemoryHigh` could not expand her footprint *because `MemoryMax=24G` already permitted it*. **`MemoryMax` is a cgroup limit; the binding constraint was the HOST** — 31.8 GB total, **zero swap**, Forgejo + postgres + docker resident, `available` **1 GB**. ⭐⭐ **A cgroup ceiling set above the host's real free memory is not a ceiling at all**, and `memory.high` was the only thing holding her 20.4 GiB down. I had `Swap: 0` and `available 1 GB` **on screen** and reasoned past both.
+>
+> ✅ **Reverted to 20G immediately** (`systemctl set-property unity-brain MemoryHigh=20G`; the control drop-in at `/etc/systemd/system.control/unity-brain.service.d/50-MemoryHigh.conf` now pins it explicitly). **Nothing was lost:** `DREAM_KEEP_STATE=1` resumed the weights, TeachView restored **43,575 teach events**, and the LANGRAM.6 geometry pin held so no matrix was orphaned. **One kill, one restart — not a loop.**
+>
+> ## ✅ WHAT THE BOX WORK ACHIEVED — VERIFIED LIVE
+>
+> ```
+>   sudo loginctl enable-linger unity        -> Linger=yes · State=lingering
+>                                               user@993.service ACTIVE · /run/user/993 exists
+> ```
+>
+> ⭐ **And `systemd-run --user` now genuinely contains, proved as the `unity` account:**
+>
+> ```
+>   cgroup     = /user.slice/user-993.slice/user@993.service/app.slice/…scope
+>   memory.max = 2147483648        <- a real 2 GiB ceiling, OUTSIDE unity-brain.service
+> ```
+>
+> ⛔⛔ **AND BOTH HALVES ARE PROVEN LOAD-BEARING — LINGERING ALONE IS NOT ENOUGH.** Re-run as `unity` with lingering ON but `XDG_RUNTIME_DIR` unset (exactly the brain's environment): *"Failed to connect to user scope bus"*, **exit 1, payload never ran.** So the code change that derives and passes `XDG_RUNTIME_DIR` is required, and this is now measured on the box rather than argued from a dev machine.
+>
+> ## ⭐ IT IS A **ONE**-PRESS SEQUENCE NOW, AND I HAD WRITTEN OTHERWISE
+>
+> The box's `/opt/unity-brain/deploy/self-update.sh` **carries SELFFIRST** (3 hits on `UAL_SELF_REPLACED`), so the updater fetches and `exec`s its own newest copy before doing any work. ⛔ **My own earlier entry today repeated the "two-press sequence" line by habit — SELFFIRST landed 2026-09-05 specifically to kill it.** The box copy has neither the byte bound nor `_deploy_is_contained` (`grep -c` = 0 for both), and **one press delivers both.**
+>
+> ## ⛔ WHAT NEEDS GEE'S DECISION — I DID NOT TOUCH IT ON PURPOSE
+>
+> **Getting her stable means making her smaller, and that changes the neuron count.** `deploy/dropins/10-pin-brain-size.conf` exists because *"that silent size change wiped the trained brain on restart (saved 39,999,995 != computed 51,130,559 → autoClearStaleState cleared all weights+checkpoints)"*. **So the obvious fix costs the training**, and that is squarely the FRESH-WALK-IS-LAST / RE-PRICE territory that is his call, not mine.
+>
+> | Option | Cost | Non-destructive? |
+> |---|---|---|
+> | **A — shrink the budget** to ≤17,613 MB (~390M neurons, from 411M) | ⛔ neuron count changes ⇒ **weight wipe** | no |
+> | **B — raise `MemoryHigh`** | ⛔ **already tried; caused the OOM above.** The host has no headroom | no |
+> | **C — add a swap file** (369 GB free on `/`) | reclaim finally has somewhere to go, so the throttle *works* instead of spinning; costs tick latency if it swaps hot pages | ✅ yes, reversible |
+> | **D — leave it** | she stalls a few minutes into every boot and does no work | ✅ but she is down |
+>
+> ⭐ **C is the only non-destructive one, and it addresses the measured cause directly:** the cgroup has `file 0` and the host has **no swap**, so `memory.high` reclaim has *nothing it can reclaim* — which is why 628 throttle events/second achieve nothing but a `D`-state stall. **I did not add swap unilaterally**; after one intervention that backfired tonight, the next one is his call.
+>
+> ## ✅ SHIPPED AND PUSHED
+>
+> `feature/hydrate-cgroup-and-bound` → `develop` (`39e50e68`) → `main` (`3dc2b836`), pushed to `origin`. ⚠ **There is no `github` remote in this clone** despite `.claude/CLAUDE.md` describing one — only `origin` (UnityAILab) and `forgejo` (Sponge's personal mirror, not pushed).
+>
+> ---
+
+> # 🟢 2026-09-08 (14th) — THE HANDOFF'S ITEM 3 WAS ALREADY BUILT. IT WAS **INERT**, AND THE LOG SAID IT WORKED
 >
 > Gee (verbatim, handing over the previous session's brief): *"So whatever branch is the one he was recently working on, go with that"*
 >

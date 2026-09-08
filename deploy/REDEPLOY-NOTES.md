@@ -143,6 +143,57 @@ sudo loginctl enable-linger unity        # creates /run/user/<uid> for a service
 
 ⛔ **`UAL_FIELDS_HYDRATE=1` STILL WAITS FOR THAT COMMAND.** The default did not flip and it does not flip itself — a false read of containment would put the ~114 GB copy straight back in her budget. The `OFF` log line now reports whether the precondition is met, so the decision can be made from the log instead of from memory.
 
+### ✅ 2026-09-08 — RUN ON THE BOX, AND BOTH HALVES ARE NOW PROVEN LOAD-BEARING **THERE**
+
+```
+  Linger=yes · State=lingering · user@993.service ACTIVE · /run/user/993 owned by unity
+
+  systemd-run --user --scope … executed AS the `unity` account:
+    cgroup     = /user.slice/user-993.slice/user@993.service/app.slice/…scope
+    memory.max = 2147483648      <- a real 2 GiB ceiling, OUTSIDE unity-brain.service
+```
+
+⛔⛔ **LINGERING ALONE IS NOT ENOUGH — MEASURED, NOT ARGUED.** Re-run as `unity` with lingering on but `XDG_RUNTIME_DIR` unset, **exactly the brain's own environment**: *"Failed to connect to user scope bus via local transport"*, **exit 1, payload never ran.** The code half that derives and passes `XDG_RUNTIME_DIR` is required. **Neither half can be dropped.**
+
+⭐⭐ **AND IT IS A *ONE*-PRESS SEQUENCE — THE "TWO-PRESS" BOX BELOW IS STALE FOR THIS FIX.** The box's `/opt/unity-brain/deploy/self-update.sh` carries **SELFFIRST** (3 hits on `UAL_SELF_REPLACED`), so the updater fetches, validates and `exec`s its own newest copy **before doing any work**. Box copy confirmed still lacking both `UAL_FIELDS_HYDRATE_MAX_BYTES` and `_deploy_is_contained` (`grep -c` = 0 for each); **one press delivers both.** ⚠ SELFFIRST landed 2026-09-05 precisely to end the two-press dance, and the *habit* of writing "two-press" outlived it — including in this session's own earlier entry above.
+
+### ⛔⛔⛔ 2026-09-08 — AND THE 20-MINUTE OUTAGE THIS FILE BLAMES ON THE HYDRATION WAS ALMOST CERTAINLY A SIZING BUG
+
+Measured live at `01:25Z` on boot `01:20:24Z`, with **no deploy running at all**:
+
+```
+  memory.current 20.58 GiB   vs   memory.high 20.00 GiB
+  memory.stat:   anon 20.4 GiB · file 0 · shmem 0      <- ZERO page cache
+  +628 high throttle events/second, achieving nothing
+  proc state Dsl (uninterruptible) · cgroup PSI full 75%
+  /health TIMEOUT · LoopWatchdog "MAIN LOOP STALLED … STILL STALLED"
+  stalled at boot stage `loadSelfImage`
+```
+
+⭐ **The identical listening-but-not-answering signature — with the hydration's hazard not merely absent but impossible.** `file 0` means there is no page cache in the cgroup for any copy to have polluted. **A theory that requires page cache cannot explain a stall that occurs with none.**
+
+⛔ **The real mechanism, from her own boot log:** `CGROUP-AWARE SIZING — kernel limit 22528MB (minus 2867MB measured non-weights overhead = 19661MB) vs host reserve 18519MB → budget basis 18519MB, bound by the host reserve.` Against `MemoryHigh` = 20,480 MB the largest safe weight budget is **20,480 − 2,867 = 17,613 MB**; she takes **18,519 MB** — ⛔ **906 MB over, by construction.** ⭐⭐ **That exact 906 MB figure is already written in `docs/ADMIN-CONTROLS.md` as a solved historical anecdote. It is not solved.**
+
+⛔ **WHY SHE CANNOT RECOVER:** the cgroup has zero reclaimable file pages and **the host has zero swap**, so `memory.high` can only spin in direct reclaim forever. The documented dead band — *nothing kills her and nothing revives her.*
+
+⚠ **THE HYDRATION DEFAULT STAYS OFF REGARDLESS.** It was still an unguarded ~114 GB copy inside her cgroup and that argument is untouched. **What changed is the attribution** — and attributing an outage to the wrong cause is how the real one survives another week. Tracked as **`KI-42`**.
+
+### ⛔⛔ 2026-09-08 — I RAISED `MemoryHigh` TO UNSTICK HER AND THE KERNEL KILLED HER. THE REASONING ERROR IS REUSABLE, SO IT IS RECORDED
+
+Finding her stalled, I raised `MemoryHigh` 20G → 22G — one of the two remedies this file itself prescribes for that band (*"RESTART, or raise the limit"*). **Six minutes later:**
+
+```
+  01:20:18Z  kernel: postgres invoked oom-killer … constraint=CONSTRAINT_NONE, global_oom
+             Out of memory: Killed process 1837244 (node) anon-rss:22937196kB
+  cgroup memory.events oom_kill = 0        <- NOT her cgroup limit. The HOST.
+```
+
+⛔⛔ **THE ERROR, NAMED: I argued the raise could not expand her footprint because `MemoryMax=24G` already permitted it. `MemoryMax` is a CGROUP limit; the binding constraint was the HOST** — 31.8 GB total, **zero swap**, Forgejo + postgres + docker resident, `available` **1 GB**. ⭐ **A cgroup ceiling set above the host's real free memory is not a ceiling at all**, and `memory.high` was the only thing holding her 20.4 GiB down. **`Swap: 0` and `available 1 GB` were both on screen when I reasoned past them.**
+
+✅ **Reverted to 20G immediately**; the control drop-in `/etc/systemd/system.control/unity-brain.service.d/50-MemoryHigh.conf` now pins 20G explicitly. **Nothing was lost** — `DREAM_KEEP_STATE=1` resumed the weights, TeachView restored **43,575 teach events**, the LANGRAM.6 geometry pin held so no matrix was orphaned, and it was **one kill and one restart, not a loop** (`NRestarts` 25 → 26).
+
+⚠ **`MemoryHigh` DRIFT, found on the way:** the box runs **20G** while `deploy/unity-brain.service` says **22G**. The repo's value is the one that would have been raised into an OOM tonight, so ⛔ **do not "align the box upward" without first giving the host headroom or swap.**
+
 ### ⛔⛔ Making it reachable promoted an unguarded copy loop onto the default path — bounded before the press
 
 The loop predates the fix above and was only ever entered in the rare *pull-failed* case, so **it never received the guards its two siblings have.** `git lfs pull` carries a wall clock, a no-progress watchdog and a write ceiling; the fields rsync carries its own stall watchdog. This carried **none** — and it can copy ~100k files and ~114 GB.
