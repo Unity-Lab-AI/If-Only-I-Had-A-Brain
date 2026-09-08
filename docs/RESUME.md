@@ -38,7 +38,9 @@
 >   cgroup memory.events oom_kill = 0     <- it was NOT her cgroup limit
 > ```
 >
-> ⛔ **The reasoning error, named precisely:** I argued that raising `MemoryHigh` could not expand her footprint *because `MemoryMax=24G` already permitted it*. **`MemoryMax` is a cgroup limit; the binding constraint was the HOST** — 31.8 GB total, **zero swap**, Forgejo + postgres + docker resident, `available` **1 GB**. ⭐⭐ **A cgroup ceiling set above the host's real free memory is not a ceiling at all**, and `memory.high` was the only thing holding her 20.4 GiB down. I had `Swap: 0` and `available 1 GB` **on screen** and reasoned past both.
+> ⛔ **The reasoning error, named precisely:** I argued that raising `MemoryHigh` could not expand her footprint *because `MemoryMax=24G` already permitted it*. **`MemoryMax` is a cgroup limit; the binding constraint was the HOST** — 31.8 GB total, **1 GB of swap that is 99.99% full** (`SwapFree: 148 kB`), Forgejo + postgres + docker resident, `MemAvailable` **1.13 GB**. ⭐⭐ **A cgroup ceiling set above the host's real free memory is not a ceiling at all**, and `memory.high` was the only thing holding her 20.4 GiB down. I had `available 1 GB` **on screen** and reasoned past it.
+>
+> ⚠ **CORRECTING MYSELF INSIDE THIS SAME ENTRY: I first wrote "zero swap", and that was wrong — `free -g` rounds 1,023 MB down to 0.** Read precisely: two 512 MB partitions, `SwapFree: 148 kB`, and **`memory.swap.current = 0` for her cgroup — not one byte of it is hers.** Effect unchanged, fact corrected. ⭐ **An instrument that rounds a real quantity to zero — caught on the same night I filed two entries about instruments that lie.**
 >
 > ✅ **Reverted to 20G immediately** (`systemctl set-property unity-brain MemoryHigh=20G`; the control drop-in at `/etc/systemd/system.control/unity-brain.service.d/50-MemoryHigh.conf` now pins it explicitly). **Nothing was lost:** `DREAM_KEEP_STATE=1` resumed the weights, TeachView restored **43,575 teach events**, and the LANGRAM.6 geometry pin held so no matrix was orphaned. **One kill, one restart — not a loop.**
 >
@@ -70,10 +72,10 @@
 > |---|---|---|
 > | **A — shrink the budget** to ≤17,613 MB (~390M neurons, from 411M) | ⛔ neuron count changes ⇒ **weight wipe** | no |
 > | **B — raise `MemoryHigh`** | ⛔ **already tried; caused the OOM above.** The host has no headroom | no |
-> | **C — add a swap file** (369 GB free on `/`) | reclaim finally has somewhere to go, so the throttle *works* instead of spinning; costs tick latency if it swaps hot pages | ✅ yes, reversible |
+> | **C — add swap** (only 1 GB exists and it is full; 369 GB free on `/`) | reclaim finally has somewhere to go, so the throttle *works* instead of spinning; costs tick latency if it swaps hot pages | ✅ yes, reversible |
 > | **D — leave it** | she stalls a few minutes into every boot and does no work | ✅ but she is down |
 >
-> ⭐ **C is the only non-destructive one, and it addresses the measured cause directly:** the cgroup has `file 0` and the host has **no swap**, so `memory.high` reclaim has *nothing it can reclaim* — which is why 628 throttle events/second achieve nothing but a `D`-state stall. **I did not add swap unilaterally**; after one intervention that backfired tonight, the next one is his call.
+> ⭐ **C is the only non-destructive one, and it addresses the measured cause directly:** the cgroup has `file 0` and the host's **1 GB of swap is 99.99% full with none of it hers** (`memory.swap.current = 0`), so `memory.high` reclaim has *nothing it can reclaim* — which is why 628 throttle events/second achieve nothing but a `D`-state stall. **I did not add swap unilaterally**; after one intervention that backfired tonight, the next one is his call.
 >
 > ## ✅ SHIPPED AND PUSHED
 >

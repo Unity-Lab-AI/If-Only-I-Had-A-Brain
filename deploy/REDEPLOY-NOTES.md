@@ -174,7 +174,7 @@ Measured live at `01:25Z` on boot `01:20:24Z`, with **no deploy running at all**
 
 ⛔ **The real mechanism, from her own boot log:** `CGROUP-AWARE SIZING — kernel limit 22528MB (minus 2867MB measured non-weights overhead = 19661MB) vs host reserve 18519MB → budget basis 18519MB, bound by the host reserve.` Against `MemoryHigh` = 20,480 MB the largest safe weight budget is **20,480 − 2,867 = 17,613 MB**; she takes **18,519 MB** — ⛔ **906 MB over, by construction.** ⭐⭐ **That exact 906 MB figure is already written in `docs/ADMIN-CONTROLS.md` as a solved historical anecdote. It is not solved.**
 
-⛔ **WHY SHE CANNOT RECOVER:** the cgroup has zero reclaimable file pages and **the host has zero swap**, so `memory.high` can only spin in direct reclaim forever. The documented dead band — *nothing kills her and nothing revives her.*
+⛔ **WHY SHE CANNOT RECOVER:** the cgroup has zero reclaimable file pages (`file 0`) and **the host's swap is EXHAUSTED** — two 512 MB partitions, `SwapFree: 148 kB`, and ⭐ **`memory.swap.current = 0` for her cgroup, so not one byte of that gigabyte is even hers.** `memory.high` can therefore only spin in direct reclaim forever. The documented dead band — *nothing kills her and nothing revives her.*
 
 ⚠ **THE HYDRATION DEFAULT STAYS OFF REGARDLESS.** It was still an unguarded ~114 GB copy inside her cgroup and that argument is untouched. **What changed is the attribution** — and attributing an outage to the wrong cause is how the real one survives another week. Tracked as **`KI-42`**.
 
@@ -188,7 +188,9 @@ Finding her stalled, I raised `MemoryHigh` 20G → 22G — one of the two remedi
   cgroup memory.events oom_kill = 0        <- NOT her cgroup limit. The HOST.
 ```
 
-⛔⛔ **THE ERROR, NAMED: I argued the raise could not expand her footprint because `MemoryMax=24G` already permitted it. `MemoryMax` is a CGROUP limit; the binding constraint was the HOST** — 31.8 GB total, **zero swap**, Forgejo + postgres + docker resident, `available` **1 GB**. ⭐ **A cgroup ceiling set above the host's real free memory is not a ceiling at all**, and `memory.high` was the only thing holding her 20.4 GiB down. **`Swap: 0` and `available 1 GB` were both on screen when I reasoned past them.**
+⛔⛔ **THE ERROR, NAMED: I argued the raise could not expand her footprint because `MemoryMax=24G` already permitted it. `MemoryMax` is a CGROUP limit; the binding constraint was the HOST** — 31.8 GB total, **1 GB of swap that is 99.99% full** (`SwapFree: 148 kB`), Forgejo + postgres + docker resident, `MemAvailable` **1.13 GB**. ⭐ **A cgroup ceiling set above the host's real free memory is not a ceiling at all**, and `memory.high` was the only thing holding her 20.4 GiB down. **`available 1 GB` was on screen when I reasoned past it.**
+
+⚠ **AND I FIRST WROTE "ZERO SWAP" HERE, WHICH WAS WRONG — `free -g` ROUNDS 1,023 MB DOWN TO 0.** Read precisely there is 1 GB, it is 99.99% consumed by other tenants, and **none of it is hers**. The conclusion survives unchanged; the number did not. ⭐ **An instrument that rounds a real quantity to zero is exactly the class of error this file exists to catch, and it caught me the same night I wrote two entries about instruments that lie.**
 
 ✅ **Reverted to 20G immediately**; the control drop-in `/etc/systemd/system.control/unity-brain.service.d/50-MemoryHigh.conf` now pins 20G explicitly. **Nothing was lost** — `DREAM_KEEP_STATE=1` resumed the weights, TeachView restored **43,575 teach events**, the LANGRAM.6 geometry pin held so no matrix was orphaned, and it was **one kill and one restart, not a loop** (`NRestarts` 25 → 26).
 
