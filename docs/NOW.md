@@ -49,27 +49,34 @@ last-verified: "2026-09-08 — two trap rows added about the deploy's cgroup cla
 
 ## The snapshot
 
-**Boot:** `60479ed5` on `main`, deployed 2026-09-07 00:34 UTC, **booted 00:38 UTC**.
+**Boot:** `24ddd9c2` on `main`, **booted 2026-09-08 03:48:45 UTC** — operator fresh walk, `force-fresh` via the dashboard.
+
+⭐ **The sizing now carries a RESUME term, and this boot is the proof it works.** The budget is divided by `1 + 0.3644` on **every** boot — fresh or resuming — because the saved weight file is proportional to the weights and every brain is resumed eventually. **Predicted ~234,000,000 neurons before the press; measured 233,932,309.** She was teaching **90 seconds after boot**, where the previous resume boot stalled at 102% of its memory ceiling.
 
 ### Scale
 
 | | |
 |---|---:|
-| Neurons | **388,597,268** |
-| Language cortex | **15,082,717** |
+| Neurons | **233,932,309** |
+| Language cortex | **13,924,722** |
 | Letterforms banked | **94 / 94** |
 
-⛔ **Neither of the first two is a constant.** The total is derived at boot from free host RAM, so it is a property of the machine she woke up on. The same code has started at 425,436,550, at 411,216,550 and at the figure above. **A neuron count means nothing without the boot beside it.**
+⛔ **Neither of the first two is a constant.** The total is derived at boot from free host RAM **and now from the resume ratio**, so it is a property of the machine and the ceiling she woke up under. The same code has started at 425,436,550, at 411,216,550, at 388,597,268, at 337,841,199 and at the figure above. **A neuron count means nothing without the boot beside it.**
+
+⚠ **It went DOWN on purpose.** 337.8M → 233.9M is the resume term being applied: the earlier number could not be resumed without the kernel throttling her into a `D`-state stall. **A brain that fits only until it is restarted is not the right size.**
 
 ### The walk
 
 | | |
 |---|---|
-| Position | `ela/kindergarten` — **phases 2 of 25** |
+| Position | `ela/kindergarten` — **phases 0 of 25**, in the pre-phase definition bootstrap |
 | Cells passed | **0** |
 | Lowest grade cleared | none — still `pre-K` |
-| Teach rate | **4,645** pairs/min |
-| Current stage | `_teachAssociationPairs-done` |
+| Teach rate | **~16,000–28,000** pairs/min, oscillating by phase |
+| Current stage | cycling `hebbian:substrate` · `gate:probe-gpu` · `cell:phase-gap:_teachWordDefinition` · `_teachAntiHebbian-done` |
+| Loop lag | **0 ms** |
+
+⚠ **She is at the start of the road, not partway down it.** Cells-passed is the honest measure of progress, and it reads zero. ⭐ **`phases 0/25` with `cellPhasesStarted 0` is CORRECT here** — the pre-phase definition bootstrap runs for hours before phase 1, and it has been mistaken for a wedge before.
 
 ⚠ **She is at the start of the road, not partway down it.** Cells-passed is the honest measure of progress, and it reads zero.
 
@@ -131,6 +138,8 @@ These are the traps this project has actually fallen into. Each one cost real ti
 | **An error string names where it was CAUGHT, not what failed** | A figure that was perceived, stored, published and taught reported itself as a storage failure for six hours, because the throw came from the success log at the tail of the same `try`. |
 | **A fallback whose trigger is a FAILURE cannot fire when the thing that would fail is never attempted** | The field hydration that needs no credential sat behind `if ! git-lfs-pull`, on a box that has no git-lfs and therefore never runs one. **Check what reaches a fallback, not just what it does.** |
 | **A work queue that fills at the END of a long phase is empty for the whole phase** | The background figure lane exists so nothing pins the cell pass — and the enqueue that feeds it was placed behind the longest await in that same pass. **`total 0` on a RESUMED boot means *never*, not *reset*.** |
+| ⛔⛔ **SERVING STATE IS NOT DOING WORK** | She once ran **53 minutes at `frames 0 · spikes 0 · psi 0 · cellStatus idle`** while `/health` answered 200 in 0.95 ms and every memory and pressure reading was green. **No infrastructure check asks whether she is teaching.** Read `frameCount`, `totalSpikes` and `cellStatus` — two samples a minute apart settles it. |
+| **A sizing term read from a GROWING file changes the neuron count every boot** | And `autoClearStaleState` wipes when the saved count differs from the computed one — so it would wipe on **every** savestart while reporting that it was keeping the weights. **The resume term is a RATIO for exactly this reason.** |
 
 ---
 
