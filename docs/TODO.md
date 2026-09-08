@@ -2359,6 +2359,56 @@ Found by reading the deployed box after the board cleanup, not by being told. **
   - ⚠ **`_teachWordDefinition`, `_teachConcreteSentences` and `_teachVocabList` were checked and deliberately NOT given a cursor** — none has a natural rep loop, and `_teachWordDefinition`'s aggregate progress is already published by `definitionAnchor` from the previous batch. **Forcing a cursor where there is no honest unit is how a fake denominator gets invented.**
   - **Savestart-safe: no geometry, no `WEIGHTS_FORMAT_VERSION` bump, `curriculum.js` absent from the bundle.**
 
+## VOCABMISS — the three teach-panel flags, classified against the real dictionary — filed 2026-09-08
+
+> Gee (verbatim, pasting the live panel): *"Flags, issues & warnings 3 · DEF-DEFER ×3308 · 3308 distinct: replied, moufflou, youve, didnt, hennypenny, cockylocky, teenytiny, youll (+3300 more) · PRECELL-MISS ela/kindergarten · ela/kindergarten: 12 of 2247 owed vocabulary words have NO dictionary entry (the API positively said 404) — the cell's bindings will train on words with no definition behind them · DEF-MISS ×41 · 41 distinct: presidentsday, mlk, diwali, chinesenewyear, grayhair, toystore, airbnb, dont (+33 more)"*
+
+⭐ **THE EXAMPLES CARRY THE DIAGNOSIS, AND IT IS TWO DIFFERENT DEFECTS.** Tested against the live word lists on disk: `grayhair` · `toystore` · `presidentsday` · `chinesenewyear` are **IN `corpora/vocabulary/kindergarten.json`** and `dont` is in `grade12.json` — **damage written into the curated lists.** `hennypenny` · `cockylocky` · `teenytiny` · `youve` · `replied` · `moufflou` are in **no list** — produced at runtime by a `[^a-z]` strip over prose, which destroys hyphens and apostrophes. ⛔ **Joseph Jacobs spells them `Henny-Penny`, `Cocky-Locky`, and the tale is `Teeny-Tiny`** — the hyphen is the whole word.
+
+⛔⛔ **AND THE BIGGEST STRUCTURAL FACT: THE OFFLINE DICTIONARY CANNOT DEFINE FUNCTION WORDS AT ALL.** Its own loader says so — *"WordNet loaded — 155,467 lemmas across **noun/verb/adj/adv**"*. There are no prepositions, pronouns, conjunctions or determiners in it by construction. Measured on the kindergarten list: **75 of 2,247 words miss offline, and 49 of those 75 are function words** — `the of and to is you that for with they this from …`. ⭐ **The project already has the right answer to that and it is not a word list:** `GRAMMAR_STRUCTURAL_WORDS`, derived from the slot taxonomy, whose own comment reads *"the words whose meaning IS their grammatical role, and which therefore owe no dictionary definition."*
+
+- [ ] `VOCABMISS.1` — ⚠ **A PLANNED FIX WAS DROPPED ON THE EVIDENCE, AND THE ELIMINATION IS THE DELIVERABLE.** I was going to split `_permanentMiss` by `GRAMMAR_STRUCTURAL_WORDS` so function words stopped being reported as harm. **Then I checked the flag's own examples: not one of `presidentsday, mlk, diwali, chinesenewyear, grayhair, toystore, airbnb, dont` is a structural word.** The permanent-miss set is *both sources failed*, and the network answers `the`/`of`/`is` — so those 49 never reach it. ⛔ **The classifier would have changed almost nothing, and shipping it would have been motion.** Recorded so nobody rebuilds it.
+  - ⚠ **What the 12 actually are, and the flag's wording is CORRECT for them:** hand-classified — 4 damaged phrase-tokens, 3 proper nouns/brands (`mlk`, `diwali`, `airbnb`), and real closed compounds WordNet simply lacks (`lunchbox`, `swingset`, `dodgeball`, `kickball`, `smartphone`, `app`).
+
+- [x] `VOCABMISS.2` — ✅ **THE MISSING MORPHY RULES, MEASURED NOT GUESSED.** The offline dictionary already implements WordNet suffix detachment with the right discipline — propose-and-verify against the POS index, no invented stems, irregulars deliberately left to the network because `wordnet-db` **ships no `.exc` files** (verified: its payload is nine files, four `index.*`, four `data.*`, `index.sense`). ⭐ **So the fix was never "add a lemma fallback" — it was "which detachment rules are absent".**
+  - **Measured across all 19 lists — 19,339 distinct words, 2,938 (15.2%) miss offline** — each candidate validated against the index so a wrong reduction cannot invent a definition:
+  ```
+    verb  ied -> y     17   carried->carry  copied->copy  supplied->supply  cried->cry
+    adj   ly  -> ""    18   discretely->discrete  instrumentally->instrumental
+    dbl-p pped-> p     15   kidnapped->kidnap  mapped->map  shipped->ship
+    dbl-r rred-> r      9   occurred->occur  referred->refer  transferred->transfer
+    dbl-t tted-> t      8   formatted->format  submitted->submit  omitted->omit
+    dbl-m mming-> m     3   dbl-g gging-> g  3   dbl-n nning-> n  2
+                       ---
+                        75  words moved from the network lane to disk
+  ```
+  - ⭐ **Why this matters beyond 75 words:** on 2026-09-05 the dictionary API returned `000` for a whole day and **the walk sat 17.5 hours on one kindergarten cell.** Every word the offline lane can answer is a word that outage cannot stop.
+  - ✅ **MEASURED AFTER, same population throughout (19,339 distinct list words): 2,938 → 2,819 missing. 119 recovered** — better than the 75 I predicted, because the `-ing` doubled-consonant and `-ily` rules I added beyond the measured set also landed.
+  - ⚠ **Honest size: 119 of 2,938 is 4%, and KINDERGARTEN BARELY MOVES — 75 → 74.** Its misses are function words, true irregulars, proper nouns and genuinely-absent compounds, none of which these rules touch. ⛔ **So the flag the operator is looking at will drop by about one word from this fix.** Stated plainly rather than letting a 119 headline imply otherwise. **The value is upper-grade coverage and outage resilience, not this panel.**
+  - ✅ **Guardrails held:** 18/18 target words resolve; `zzzqqq`, `hennypenny`, `grayhair`, `toystore`, `mlk`, `airbnb`, `xxpped`, `qqly` all **still correctly absent** — no invented definitions. `children` remains absent, correctly, as a true irregular needing the `.exc` files `wordnet-db` does not ship.
+
+- [x] `VOCABMISS.3` — ✅ **FIXED IN THE LOOKUP, NOT THE WORD LIST — AND THE PLAN TO EDIT THE LIST WAS ABANDONED ON THE EVIDENCE. NO CONTENT WAS TOUCHED.**
+  - ⛔⛔ **I WAS ABOUT TO DELETE FOUR TOKENS FROM `kindergarten.json` AND THAT WOULD HAVE BEEN A CUT.** The plan was to drop `presidentsday`, `chinesenewyear`, `grayhair`, `toystore` because every part was already in the list. **Then I probed the whole holiday cluster instead of just the flag's examples, and it split almost exactly in half:**
+  ```
+    laborday  newyear  independenceday  memorialday  veteransday  groundhogday   ALL RESOLVE
+    presidentsday  valentinesday                                                 MISS
+  ```
+  - ⭐⭐ **AND THE MISSES WERE NOT ABSENT FROM WORDNET AT ALL — THE JOIN COULD NOT REACH THEM.** Probed directly:
+  ```
+    presidents_day   0 senses     presidents'_day   1 sense    <- POSSESSIVE APOSTROPHE
+    valentines_day   0 senses     valentine_day     1 sense    <- FIRST ELEMENT SINGULAR
+  ```
+  **So `Presidents' Day` was being reported to the operator as vocabulary that would "train on words with no definition behind them" — while the dictionary on disk could define it all along.** ⛔ **Deleting the token would have removed a real thing a kindergartener learns in order to silence a warning about a lookup bug.**
+  - ✅ **The compound arm now tries three shapes instead of one** — plain `head_tail`, possessive `head'_tail`, and singular-head `head-minus-s_tail` — each **propose-and-verify against the index**, so a wrong variant can only fail, never invent. `presidentsday` and `valentinesday` both resolve now.
+  - ⭐ **`earthday`, `chinesenewyear`, `grayhair` and `toystore` were probed too and WordNet genuinely holds none of them**, so they correctly stay on the network lane rather than being forced. **Verified absent rather than assumed absent.**
+  - ⛔⛔ **AND I BUILT A DETECTOR TO GENERALISE THE DELETION AND THREW IT AWAY — IT WOULD HAVE CUT REAL CURRICULUM.** The criterion *"misses the dictionary AND splits into two dictionary words AND both parts are in the same list"* found 40 tokens, and its hits include **`javascript`, `smartphone`, `datasets`, `filesystems`, `keywords`, `stylesheets`, `webassembly`, `lunchbox`, `kickball`** — all real words — plus `modelled → model+led`, a false split of the British spelling. **Fourth detector this session discarded after a self-test.** ⚠ **The elimination is the deliverable: there is no rule here, only per-token judgement.**
+
+- [ ] `VOCABMISS.4` — ⛔ **THE RUNTIME `[^a-z]` STRIP IS STILL DESTROYING HYPHENATED AND CONTRACTED WORDS, AND IT IS THE 3,308.** Live successor to `WEDGE2.5`, which already records the same shape (`twoword`, `wellknown`, `childrens`) from a different sample.
+  - **The pattern appears at 12+ sites in `curriculum.js`** (`7536`, `9139`, `9186`, `9236`, `18589`, `18755`, `22492`, `22526`, `22563`, `22567`, …). The one feeding the LIFE definition lane is `18589`: `tok = tok.replace(/[^a-z]/g, '')` over prose sentences.
+  - ⛔ **`Henny-Penny` → `hennypenny` can never resolve, is never added to the taught set (which records only on `defsBound > 0`), stays in `newWords` on the next visit, and is looked up AGAIN — forever.** That is `WEDGE2.5`'s permanent-cost finding with a 3,308-word sample behind it.
+  - **What closes this:** at the chokepoint, before stripping — try the token with its apostrophe/hyphen intact (dictionaries hold `don't`), and for a hyphenated compound teach the PARTS rather than the jammed form. ⛔ **Not a miss-list** — that was already rejected in this code path because it cannot tell *"this word has no definition"* from *"the API refused me just now."*
+  - ⚠ **NOT ATTEMPTED IN THIS BATCH ON PURPOSE.** It is 12+ call sites feeding different lanes, it changes what enters the definition queue, and it wants its own measurement of how many of the 3,308 are hyphen/apostrophe damage versus genuinely absent proper nouns like `moufflou` (an Ouida story title). **Guessing the split and rewriting 12 sites is how a sweep breaks a lane.**
+
 - [ ] `RESUMEPROOF.1` — ⚠ **THE RESUME SIZING TERM IS PROVEN ARITHMETIC ON AN UNEXERCISED PATH, AND HIS "i hope the stall of the update savestart is behind us" DESERVES THE PRECISE ANSWER.**
   - **The term works:** predicted ~234,000,000 neurons against a measured **233,932,309** — 0.03%. ⛔ **But that was measured on `bootReason: {mode:"wipe", reason:"force-fresh"}`** — read live again today, still the same boot. **The stall it exists to prevent happens on a RESUME**, where the process must hold the saved weight pair while applying it.
   - ⚠ **So a fresh-boot pass tests the sizing and not the failure mode** — the same excluded-condition trap `MGRESET.2` is already open on: *"A clean reading under the excluded condition tests nothing."*

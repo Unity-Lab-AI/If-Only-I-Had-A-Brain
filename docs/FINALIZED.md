@@ -5,6 +5,63 @@
 
 ---
 
+## 2026-09-08 (5th) — `VOCABMISS`: THE FLAGS HAD A DIAGNOSIS IN THEIR OWN EXAMPLES, AND THE FIX WAS THE LOOKUP RATHER THAN THE CONTENT
+
+Gee (verbatim, pasting the live panel): *"Flags, issues & warnings 3 · DEF-DEFER ×3308 · 3308 distinct: replied, moufflou, youve, didnt, hennypenny, cockylocky, teenytiny, youll (+3300 more) · PRECELL-MISS ela/kindergarten: 12 of 2247 owed vocabulary words have NO dictionary entry (the API positively said 404) — the cell's bindings will train on words with no definition behind them · DEF-MISS ×41 · 41 distinct: presidentsday, mlk, diwali, chinesenewyear, grayhair, toystore, airbnb, dont (+33 more)"*
+
+### ⭐ THE EXAMPLES CARRIED THE DIAGNOSIS, AND IT IS TWO DEFECTS, NOT ONE
+
+Tested against the lists on disk: `grayhair` · `toystore` · `presidentsday` · `chinesenewyear` are **IN `corpora/vocabulary/kindergarten.json`**, and `dont` is in `grade12.json`. `hennypenny` · `cockylocky` · `teenytiny` · `youve` · `replied` · `moufflou` are in **no list** — produced at runtime by a `[^a-z]` strip over prose, which destroys hyphens and apostrophes. ⛔ **Joseph Jacobs spells them `Henny-Penny` and `Cocky-Locky`, and the tale is `Teeny-Tiny`** — the hyphen *is* the word.
+
+⛔⛔ **And the structural fact behind most of it: the offline dictionary cannot define function words at all.** Its own loader says *"155,467 lemmas across **noun/verb/adj/adv**"* — no prepositions, pronouns, conjunctions or determiners exist in it. **49 of the kindergarten list's 75 offline misses are function words.**
+
+### ⛔ A PLANNED FIX DROPPED ON THE EVIDENCE — the elimination is the deliverable
+
+I was going to split the permanent-miss set by `GRAMMAR_STRUCTURAL_WORDS` (which already exists, derived from the slot taxonomy, and whose comment reads *"words whose meaning IS their grammatical role, and which therefore owe no dictionary definition"*) so function words stopped reading as harm.
+
+**Then I checked the flag's own examples: not one of them is a structural word.** The permanent-miss set is *both sources failed*, and the network answers `the`/`of`/`is` — so those 49 never reach it. **The classifier would have changed almost nothing.** Recorded so nobody rebuilds it.
+
+### ⛔⛔ AND I WAS ONE EDIT FROM CUTTING REAL CURRICULUM
+
+The plan was to delete `presidentsday`, `chinesenewyear`, `grayhair`, `toystore` from the kindergarten list because every part was already present. **Then I probed the whole holiday cluster instead of just the flag's eight examples, and it split almost in half:**
+
+```
+  laborday  newyear  independenceday  memorialday  veteransday  groundhogday   ALL RESOLVE
+  presidentsday  valentinesday                                                 MISS
+```
+
+⭐⭐ **The misses were not absent from WordNet — the join could not reach them:**
+
+```
+  presidents_day   0 senses     presidents'_day   1 sense    <- POSSESSIVE APOSTROPHE
+  valentines_day   0 senses     valentine_day     1 sense    <- FIRST ELEMENT SINGULAR
+```
+
+**So `Presidents' Day` was reported to the operator as a word that would "train with no definition behind it" while the dictionary on disk could define it all along.** ⛔ **Deleting the token would have removed a real thing a kindergartener learns, to silence a warning about a lookup bug.** **Fix the lookup, not the content — and no content was touched.**
+
+### What shipped, both in `server/offline-dictionary.js`
+
+- **The compound arm tries three shapes instead of one** — plain `head_tail`, possessive `head'_tail`, singular-head `head−s_tail`. `presidentsday` and `valentinesday` resolve now. ⭐ `earthday`, `chinesenewyear`, `grayhair`, `toystore` were probed and WordNet genuinely holds none, so they correctly stay on the network lane — **verified absent, not assumed absent.**
+- **The Morphy detachment rules WordNet files in `.exc` instead of its table** — `ied→y`, the doubled-consonant `-ed`/`-ing` family, adverbial `-ly`/`-ily`. ⛔ `wordnet-db` **ships no `.exc` files** (payload verified: nine files), so every one of these paid a network round trip for a lemma already on disk.
+
+**Measured, same population throughout — 19,339 distinct list words: 2,938 → 2,819 missing, 119 recovered** (better than the 75 predicted; the extra `-ing` and `-ily` rules also landed).
+
+⚠ **KINDERGARTEN BARELY MOVES: 75 → 74.** Its misses are function words, irregulars, proper nouns and genuinely-absent compounds. **So the flag the operator is looking at drops by about one word.** Said plainly rather than letting a 119 headline imply otherwise — **the value is upper-grade coverage and outage resilience.** ⭐ On 2026-09-05 the dictionary API returned `000` for a whole day and **the walk sat 17.5 hours on one cell**; every word the offline lane answers is a word that outage cannot stop.
+
+**Guardrails:** 18/18 targets resolve; `zzzqqq`, `hennypenny`, `grayhair`, `toystore`, `mlk`, `airbnb`, `xxpped`, `qqly` all **still correctly absent** — nothing invented. Compound regressions (`laborday`, `livingroom`, `newyear`, …) unchanged. `children` still absent, correctly, as a true irregular.
+
+### ⛔ A FOURTH DETECTOR DISCARDED, AND THAT IS FOUR IN ONE SESSION
+
+To generalise the deletion I built: *"misses the dictionary AND splits into two dictionary words AND both parts are in the same list"*. It found 40 tokens — including **`javascript`, `smartphone`, `datasets`, `filesystems`, `keywords`, `stylesheets`, `webassembly`, `lunchbox`, `kickball`**, all real words, plus `modelled → model+led`, a false split of the British spelling. **Acting on it would have deleted real vocabulary.** ⚠ Along the way a truthiness bug (`lookup()` returns `[]`, and `[]` is truthy) briefly reported **"0 undefinable"** for a list with 75 misses, and a denominator slip compared 19,339 distinct words against 56,527 with duplicates. **Both caught by self-tests before either reached a claim.**
+
+### ⏳ Filed, not fixed: `VOCABMISS.4` — the 3,308
+
+The runtime `[^a-z]` strip appears at 12+ sites in `curriculum.js`. `Henny-Penny → hennypenny` can never resolve, is never added to the taught set (which records only on `defsBound > 0`), stays in `newWords`, and is looked up **again on every visit, forever** — `WEDGE2.5`'s permanent-cost finding, now with a 3,308-word sample. **Not attempted here on purpose:** 12+ sites feeding different lanes, it changes what enters the definition queue, and it needs its own measurement of how much of the 3,308 is hyphen/apostrophe damage versus genuinely absent proper nouns like `moufflou` (an Ouida story). **Guessing the split and rewriting 12 sites is how a sweep breaks a lane.**
+
+**Savestart-safe: server-side only, no geometry, no format bump, no content changed.**
+
+---
+
 ## 2026-09-08 (4th) — `PHASEDENOM`: THE PHASE BAR WAS BLIND TO EVERY PHASE THAT COSTS ANYTHING, AND THE CURSOR ALREADY EXISTED
 
 Gee (verbatim): *"okay fix that then if u can and the work needing to be done"*
