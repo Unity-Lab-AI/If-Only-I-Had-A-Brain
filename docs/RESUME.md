@@ -1,6 +1,55 @@
 # RESUME — Session Pickup Brief
 
-> # ✅ 2026-09-09 (latest, 26th) — SHE WAS BEING TAUGHT THE BACK OF THE BOOK (START HERE)
+> # ✅ 2026-09-09 (latest, 27th) — THE PRESS LANDED, THE FILTER IS LIVE, AND I HAD PUBLISHED IT AT THE WRONG PATH (START HERE)
+>
+> Gee: *"okay she should be up and updated"*.
+>
+> ## ✅ SHE IS UP AND DOING WORK — verified, not assumed
+>
+> ```
+>   build 5deac0f5 on main · deployed 20:14:37Z · booted 20:16:34Z
+>   bootReason resume/keep-flag · bootFatal null
+>   cgroup 13,013/20,480 MB · below-high · pressure 0/0 · throttleEvents 0
+>
+>   two samples 171s apart:
+>     frameCount      1,735 -> 2,131                 CLIMBING
+>     spikesLifetime  1.286e9 -> 1.686e9             CLIMBING (monotonic twin)
+>     teachStageAgeMs 3,140                          fresh stamp
+>     prevocab        82 -> 103 of 485 chunks        ~7.4 chunks/min measured
+> ```
+>
+> ⭐ **The box's commit is byte-equal to local `main`, so the single press was enough** — no two-press sequence was owed.
+>
+> ## ✅ THE FILTER IS LIVE, AND BOTH SECOND-WAVE CLASSES FIRE IN PRODUCTION
+>
+> ```
+>   seen 3,695,674 · apparatus 49,707 (1.345%) · markup 8,813 · credited 1,964
+>   webaddr 16,429 · credit 11,611 · licence 9,960 · citation 6,780 · bibid 2,777
+>   initrun 1,650 · indexref 218 · placeholder 102 · errata 21 · tablerule 12
+> ```
+>
+> ## ⛔⛔ AND I HAD PUBLISHED IT AT THE WRONG PATH — shape #1 inside the fix for shape #1
+>
+> It was live at **`state.ownArt.corpusCleaning`**; the only consumer reads **`state.curriculum.corpusCleaning`**. **The dashboard row rendered its own "no cell loaded yet" empty state over a working filter for a whole boot, with the value correct the entire time.**
+>
+> ⛔ **`ADMIN-CONTROLS.md` records this exact mistake in this exact file already** (`state.readback` vs `state.profiling.readback`): *"the enclosing function decides the path, not the assignment's indentation."* I read the neighbouring comments — they name `this.curriculum._relUse` — and inferred the parent. ⭐ **Caught only by reading the LIVE payload: every local harness passed, because a harness exercises the value and never the path.**
+>
+> ⛔ **I nearly shipped a ReferenceError fixing it** — `s.ownArt` written *inside* `renderCurriculumStatus(c, gateProbes)`, where the whole-state object is not in scope. Resolved at the call site as a third parameter.
+>
+> ## ⛔ AND THE DENOMINATOR WAS MISLABELLED
+>
+> `indexref 218` against **112** rows on disk. **Two accessors split the same stories**, so a cell read by both counts twice. `apparatusPct` is **a rate of work done, not a share of the corpus** — my comment said the latter. **A FLAT count is normal, not a stalled filter.**
+>
+> ## ⏳ NEXT
+>
+> - **Nothing for the operator.** She runs. The dashboard row works now via a dated version-boundary read; the canonical path lands on whatever the next press happens to be.
+> - ⭐ **`FIGORDER` CONFIRMED: `figureQueue.total 289`** where the defect was `total 0`. ⚠ **New row `FIGDRAIN.1`** — `seen 0` with `held 284` means the rows fill and never drain. **Possibly `FIGFIELDLFS.1` wearing a second face; that must be measured, not assumed.**
+> - Open: `FIGFIELDLFS.1` (box-side, `hit 0 · delivering empty-for-these-figures`), `FIGDRAIN.1`, `DOCSWEEP` remainder.
+> - ⛔ **The press did NOT unlearn the early-ELA back matter already in the weights.** Only a fresh walk clears it, and that is a re-price.
+>
+> ---
+
+> # ✅ 2026-09-09 (26th) — SHE WAS BEING TAUGHT THE BACK OF THE BOOK
 >
 > Gee (verbatim): *"something is  major wrong!!!!! Just look at this poisioning running through the teach viewer :"* — then a live paste of `ela/kindergarten · teachSentenceList`, row after row of the INDEX of her own kindergarten reader.
 >
