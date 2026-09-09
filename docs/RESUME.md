@@ -49,6 +49,8 @@
 >
 > He asked *"shit shes hung?"*. **He was right to ask; the page was wrong.** `dashboard.html:3527` ORs four *named* producer rates, and during the bootstrap **all of them are legitimately false** → red "dead brain" at 7.56 chunks/min. The comment above it documents `GATEGPU`, `EM.2`, `LIVETEACH` — **each closed by adding the lane that was actually carrying her.** Fixed with a stamp-age term (**never the tag's presence** — a stale tag must still read red) plus the tag printed by name. **5/5, including stale-stamp-400s → RED. Frontend: rides the rsync, no press.**
 >
+> ⚠⚠ **AND A CORRECTION I MADE AFTER THE CASCADE, BECAUSE THE POST-PUSH SAMPLE DISAGREED WITH ME: it FLICKERED, it was not constantly red — and that is worse.** `teachChunksPerMin` sits at 0–2/min and dips to 0 regularly, so 6 samples at 12 s intervals gave `chunk 2,1,1,0,0,2` → **old expression RED on 2 of 6, new one green on 6 of 6**, with the stage stamp 1–8 s old every single time. ⛔ **An indicator that says "dead" one refresh in three is not a milder wrong indicator — it is one nobody can use.** I had the tidier story written and shipped; the measurement is what took it back.
+>
 > ## ⏳ OPEN, ALL FILED
 >
 > - `SENTLISTCURSOR.1` · `PREVOCABDENOM.1` · `FIGFIELDLFS.1` (the box's wavelet fields are unresolved LFS pointers — she re-transforms every figure live) · `DOCSWEEP` remainder.
