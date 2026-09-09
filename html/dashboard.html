@@ -424,7 +424,7 @@
         <div id="d-curr-grade" style="font-size:11px;color:#888;margin-top:2px;">—</div>
         <div id="d-curr-desc" style="margin-top:8px;color:#bbb;line-height:1.5;font-size:11px;">Waiting for curriculum teach to begin.</div>
         <div id="d-curr-phase" style="margin-top:10px;color:#888;font-size:11px;">phase: —</div>
-        <div id="d-curr-cleaning" style="margin-top:6px;color:#888;font-size:10px;line-height:1.5;" title="What the corpus reader REFUSED before she was taught it, this boot. The corpus on disk and the corpus she is taught are not the same thing, and this line is the difference — without it the filter is indistinguishable from one that is silently eating content. APPARATUS means the text was not prose at all: a book's index rows and bold page references, web addresses, licence and page furniture, bibliographies, access-date citation stamps and transcriber's errata notes. Those arrive INSIDE the work, between the source's own start and end markers, so nothing upstream can see them — the operator caught her training the index of her own kindergarten reader. MARKUP is the older, separate lane: leaked LaTeX and MediaWiki templates, stripped where the sentence survives it and dropped where the sentence was mostly notation. CREDITED is the strip-not-drop path — a photo or attribution credit cut out of genuine prose that was then kept, because dropping the sentence would delete real art history to silence a footer. Read the per-class breakdown to find WHICH source is contaminating the corpus; one undifferentiated total cannot tell an index from a bibliography, and the two want different fixes. A boot that has only loaded one cell reads small, and that is correct rather than a fault. Blank means no cell has been loaded yet — absent, never zero.">—</div>
+        <div id="d-curr-cleaning" style="margin-top:6px;color:#888;font-size:10px;line-height:1.5;" title="What the corpus reader REFUSED before she was taught it, this boot. The corpus on disk and the corpus she is taught are not the same thing, and this line is the difference — without it the filter is indistinguishable from one that is silently eating content. APPARATUS means the text was not prose at all: a book's index rows and bold page references, web addresses, licence and page furniture, bibliographies, access-date citation stamps and transcriber's errata notes. Those arrive INSIDE the work, between the source's own start and end markers, so nothing upstream can see them — the operator caught her training the index of her own kindergarten reader. MARKUP is the older, separate lane: leaked LaTeX and MediaWiki templates, stripped where the sentence survives it and dropped where the sentence was mostly notation. CREDITED is the strip-not-drop path — a photo or attribution credit cut out of genuine prose that was then kept, because dropping the sentence would delete real art history to silence a footer. Read the per-class breakdown to find WHICH source is contaminating the corpus; one undifferentiated total cannot tell an index from a bibliography, and the two want different fixes. A boot that has only loaded one cell reads small, and that is correct rather than a fault. Blank means no cell has been loaded yet — absent, never zero.&#10;&#10;⚠ THE DENOMINATOR IS SENTENCES READ, NOT SENTENCES IN THE CORPUS, and it is a boot-time total rather than a live rate. Two accessors split the same stories, so a cell consulted by both is counted twice — the box read 218 index rows against the 112 that exist on disk, almost exactly double — and the boot-time coverage audit reads every cell once, which is why this number is already large seconds after a restart and then sits still. ⛔ A FLAT count here is therefore normal and not a stalled filter: it only moves when a cell is loaded, and the whole corpus was loaded at boot. For the share of the corpus that is apparatus, quote the on-disk measurement instead of this ratio.">—</div>
         <div style="margin-top:6px;">
           <div style="font-size:10px;color:#666;margin-bottom:3px;">current cell progress</div>
           <div style="background:#222;border:1px solid #333;height:8px;border-radius:3px;overflow:hidden;">
@@ -1711,7 +1711,8 @@
       // Current-training card — subject + grade + description + phase
       // progress bar + per-subject cumulative breakdown. Same source
       // of truth: the Curriculum object's getCurriculumStatus().
-      renderCurriculumStatus(s.curriculum || null, (s.throughput && s.throughput.gateProbes) || null);
+      renderCurriculumStatus(s.curriculum || null, (s.throughput && s.throughput.gateProbes) || null,
+        (s.ownArt && s.ownArt.corpusCleaning) || null);
       renderLeaderboard(s.leaderboard || null);
 
       // Full-Mind K Gate panel — 23-probe pass-instrument for K closure.
@@ -3306,7 +3307,7 @@
         + rows;
     }
 
-    function renderCurriculumStatus(c, gateProbes) {
+    function renderCurriculumStatus(c, gateProbes, legacyCleaning) {
       const $ = id => document.getElementById(id);
       if (!c) {
         $('d-curr-subject').textContent = 'no cell active';
@@ -3354,7 +3355,27 @@
       // ⚠ The two lanes stay separate on purpose. APPARATUS is text that was
       // never prose; MARKUP is notation that leaked into prose. Summing them
       // would hide which one is growing, and they have different fixes.
-      const cl = c.corpusCleaning;
+      // ⚠ TWO PATHS, AND THE SECOND ONE HAS AN EXPIRY DATE. The canonical home
+      // is `curriculum.corpusCleaning`. The 2026-09-09 boot published it under
+      // `ownArt` by mistake (the server block sat inside the wrong enclosing
+      // object), and this page is delivered by the frontend rsync while the
+      // server field only moves on a press — so for one boot the correct read
+      // returns undefined and the row would render its own empty state over a
+      // filter that is demonstrably working.
+      //
+      // ⛔ This is a VERSION-BOUNDARY read, not a capability fallback: both paths
+      // carry the identical value from the identical producer, and it exists so
+      // the operator is not charged a second press for a display bug.
+      // **DELETE THE `legacyCleaning` ARM once a boot on `5deac0f5`+ is confirmed
+      // publishing `curriculum.corpusCleaning`** — a compatibility read nobody
+      // removes is how two paths become permanent.
+      //
+      // ⚠ Resolved at the CALL SITE and passed in, because the whole-state
+      // object is not in scope in this function. Writing `s.ownArt` here throws
+      // a ReferenceError that takes the entire curriculum render with it, and
+      // no syntax check can see it — the same shape as the success-log throw
+      // that once reported a completed figure perception as a storage failure.
+      const cl = c.corpusCleaning || legacyCleaning || null;
       if (cl && cl.seen) {
         const byClass = cl.apparatusByClass || {};
         // Biggest class first — the count is only useful if it points at the
