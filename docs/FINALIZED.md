@@ -79,7 +79,17 @@ Gee asked *"shit shes hung?"*. **He was right to ask and the page was wrong.** `
 
 ⭐⭐ **The comment block directly above that line names three earlier fixes to the same expression** — `GATEGPU`, `EM.2`, `LIVETEACH` — each adding the lane that was actually carrying her. **The bootstrap is the fourth.** Fixed with a `teachStageAgeMs < 30 s` term plus a named `stageBit` printing the stage tag, per the established say-it-BY-NAME pattern.
 
-⛔ **It cannot forge liveness, and that is why the AGE is the term rather than the tag's presence:** `_tstage` is never nulled (`GATEPIN.1`), so a wedged walk keeps its last tag while the age climbs. **5/5 on the shipped expression, including stale-stamp-400 s → RED.** ⭐ **Frontend — rides the rsync, no press needed.**
+⛔ **It cannot forge liveness, and that is why the AGE is the term rather than the tag's presence:** `_tstage` is never nulled (`GATEPIN.1`), so a wedged walk keeps its last tag while the age climbs. **5/5 on the shipped expression, including stale-stamp-400 s → RED.** ⭐ **Frontend — rides the rsync, no press needed**, verified live after the cascade: the deployed page carries the term and the panel reads green.
+
+⚠⚠ **PRECISION CORRECTION, MINE, MEASURED AFTER THE CASCADE HAD ALREADY GONE OUT.** *"Painted her red"* is true of the sample I read, and it invites the assumption that it was CONSTANT. **It was not — it FLICKERED, which is worse.** `teachChunksPerMin` hovers at 0–2/min through the bootstrap and dips to 0 regularly, so the verdict alternates. Sampled 6× at 12 s intervals on the live box, old expression against new:
+
+```
+  chunk  2  1  1  0  0  2       stage stamp age  3s 8s 4s 1s 6s 2s
+  OLD    G  G  G  R  R  G       RED on 2 of 6
+  NEW    G  G  G  G  G  G       green on 6 of 6
+```
+
+⛔ **An indicator that says "dead" one refresh in three is not a milder version of a wrong indicator — it is an indicator nobody can use**, and it teaches the operator to disbelieve the panel when it finally has something true to say. **The flicker is why the question got asked at all**, and I would have kept the tidier, wronger story if the post-cascade sample had not disagreed with me.
 
 ⚠ **My own verifier lied once in this batch too:** it reported `script#1` as a syntax error. It is `type="module"`; re-checked with a real module parse, clean. **Recorded because a checker that cries wolf is the thing this session keeps finding.**
 
