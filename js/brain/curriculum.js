@@ -18982,9 +18982,46 @@ export class Curriculum {
         // a human at ~10 s resolution and a stamp per word is noise.
         let anchored = 0;
         let _wi = 0;
+        let _newPerma = 0;
         for (const w of batch) {
-          try { const r = await this._teachWordDefinition(w, { reps: 3, label: `ACADEMIC-PREVOCAB-${subject}-${grade}` }); if (r && r.defsBound > 0) anchored++; }
-          catch { /* per-word best-effort */ }
+          try {
+            const r = await this._teachWordDefinition(w, { reps: 3, label: `ACADEMIC-PREVOCAB-${subject}-${grade}` });
+            if (r && r.defsBound > 0) anchored++;
+            // ⛔⛔ THIS LANE READ THE 404 SET AND NEVER WROTE IT, WHICH MADE THE
+            // READ ALMOST INERT — MEASURED, AFTER I SHIPPED THE READ.
+            //
+            // `_vocabPermanentMiss` is populated in ONE place (the pre-cell
+            // vocabulary pass), over the GRADED WORD LIST. This lane walks the
+            // CORPUS, and the two sets barely intersect: of 2,571 corpus words
+            // the offline dictionary cannot answer, **23** are in the graded
+            // list. So the filter above could only ever skip 23 of them, and
+            // every proper noun and foreign-script term in the corpus —
+            // `hiragana`, `katakana`, `romaji`, `hangul`, `abjads`,
+            // `proto-sinaitic` — was re-requested on every single visit to the
+            // cell, forever. **A read against a set nobody writes is a no-op
+            // wearing a fix's name, and I did not check the overlap before
+            // shipping it.**
+            //
+            // ⭐ SAME DISCIPLINE AS THE WRITER IT MIRRORS, NOT A NEW POLICY:
+            //   · ONLY on `noDef` — the service's own POSITIVE "no entry"
+            //     verdict. An outage, a 429 or a parse failure is a fact about
+            //     the SERVICE and those words stay owed, which is the auto-heal
+            //     working as designed.
+            //   · The set is IN-MEMORY and does not survive a boot, so every
+            //     boot still asks each word once — that is where the offline
+            //     dictionary's heal gets its chance, and a permanent skip across
+            //     restarts would freeze the miss and deny it.
+            //   · Bounded at the same 5,000, newest kept.
+            if (r && !(r.defsBound > 0) && typeof cluster.lookupDefinitionStatus === 'function') {
+              if (cluster.lookupDefinitionStatus(w) === 'noDef') {
+                if (!(cluster._vocabPermanentMiss instanceof Set)) cluster._vocabPermanentMiss = new Set();
+                if (!cluster._vocabPermanentMiss.has(w)) { cluster._vocabPermanentMiss.add(w); _newPerma++; }
+                if (cluster._vocabPermanentMiss.size > 5000) {
+                  cluster._vocabPermanentMiss = new Set([...cluster._vocabPermanentMiss].slice(-5000));
+                }
+              }
+            }
+          } catch { /* per-word best-effort */ }
           _wi += 1;
           if ((_wi % 50) === 0 || _wi === batch.length) {
             try { this._tstage?.(`prevocab:${subject}-${grade}:anchoring ${_wi}/${batch.length} · ${anchored} bound`); } catch { }
@@ -19010,7 +19047,7 @@ export class Curriculum {
         let _occTotal = 0; for (const n of freq.values()) _occTotal += n;
         let _occBatch = 0; for (const w of batch) _occBatch += (freq.get(w) | 0);
         const _cov = _occTotal > 0 ? (100 * _occBatch / _occTotal) : 0;
-        if (this._hb) this._hb(`[Curriculum] _trainAcademicStories(${subject}/${grade}) PRE-VOCAB — ${anchored}/${batch.length} academic terms definition-anchored before prose binding (${newWords.length} unlearned content words found; ${Number.isFinite(VOCAB_CAP) ? `window ${VOCAB_CAP} from offset ${vStart} — A CAP IS SET, which is a diagnostic state, not the intended one` : 'NO CAP — every unlearned word in this cell is looked up'}, ordered by how often this cell uses them). This batch covers ${_cov.toFixed(1)}% of the cell's content-word occurrences. Prose now binds on anchored basins, not phantom word basins.`);
+        if (this._hb) this._hb(`[Curriculum] _trainAcademicStories(${subject}/${grade}) PRE-VOCAB — ${anchored}/${batch.length} academic terms definition-anchored before prose binding${_newPerma ? ` · ⛔ ${_newPerma} word(s) the dictionary POSITIVELY has no entry for were recorded so this cell stops re-requesting them for the rest of this boot (lifetime no-entry set now ${(cluster._vocabPermanentMiss instanceof Set) ? cluster._vocabPermanentMiss.size : 0})` : ''} (${newWords.length} unlearned content words found; ${Number.isFinite(VOCAB_CAP) ? `window ${VOCAB_CAP} from offset ${vStart} — A CAP IS SET, which is a diagnostic state, not the intended one` : 'NO CAP — every unlearned word in this cell is looked up'}, ordered by how often this cell uses them). This batch covers ${_cov.toFixed(1)}% of the cell's content-word occurrences. Prose now binds on anchored basins, not phantom word basins.`);
       }
     } catch { /* pre-vocab is best-effort; never blocks the story train */ }
 

@@ -5,6 +5,29 @@
 
 ---
 
+## 2026-09-08 (8th) — `PERMAWRITE.1`: A READ AGAINST A SET NOBODY WRITES IS A NO-OP WEARING A FIX'S NAME
+
+Gee (verbatim): *"so nothing to do but let er run?"* — nothing for him. This is the half of the repeated cost that was still live, and it is a **correction to my own `VOCABMISS.4` work**, found by measuring after I shipped it.
+
+⛔⛔ **I added a `permaMiss` filter to the academic pre-vocab lane and never checked the overlap.** `_vocabPermanentMiss` has exactly ONE writer — the pre-cell vocabulary pass, walking the **graded word list**. `_trainAcademicStories` walks the **corpus**. The two barely intersect:
+
+```
+  corpus distinct (new tokenizer)     17,637
+  offline-dead corpus words            2,571
+    reachable by permaMiss                23   <- all the filter could ever skip
+    corpus-only, unreachable           2,548
+```
+
+⚠ **A correction in the other direction so the figure is not overstated:** those 2,571 are *offline*-dead, not permanently dead. `caught`, `arose`, `became`, `shown`, `children's`, `everything` are irregular forms `wordnet-db` ships no `.exc` files for, and **the network answers them**. The genuinely permanent set is the proper nouns and foreign scripts — `hiragana`, `katakana`, `romaji`, `hangul`, `abjads`, `proto-sinaitic`, `iggulden`, `paddy-whack` — and *those* were re-requested on every visit to the cell, forever.
+
+⭐ **The fix is the missing half: the lane now WRITES the set it was only reading**, with the same discipline as the writer it mirrors rather than a new policy — **only on the service's positive `noDef`**, because an outage or a 429 is a fact about the SERVICE and those words stay owed (that is the auto-heal, and writing them is the exact defect this set was cleaned up for on 2026-09-05); the set stays **in-memory** so every boot asks each word once and the offline dictionary keeps its chance to heal; bounded at the same 5,000, newest kept. The pass **reports what it recorded** instead of banking an invisible number.
+
+**Verified 6/6 on the writer lifted from the shipped method:** bound+`noDef` → not recorded · unbound+`noDef` → recorded · unbound+transient → **not** recorded · unbound+429 → **not** recorded · unbound+unknown → **not** recorded · 5,000 cap holds with the newest kept.
+
+⭐ **NO PRESS OWED.** The benefit accrues at the *later* cells of a boot; restarting her mid-bootstrap to land it 40 minutes sooner costs more than it saves.
+
+---
+
 ## 2026-09-08 (7th) — `SENTLISTCURSOR.1` + `PREVOCABDENOM.1` + `FIGFIELDLFS.1`: FILING IS NOT SHIPPING
 
 Gee (verbatim): *"wtf why did you not fix everything thats broken, i mean wtf are we doing wasting pod on a broken run FIX IT DAMN IT AND ILL FUCKEN PRESS THE BUTOON SO THAT WE ARE RUNNING THE FIXED FUCKIGN BRAIN NOT A BROKEN ONE> FUCK! WHAT THE FUCK ARE WE EVEN DOING!!!!"*
