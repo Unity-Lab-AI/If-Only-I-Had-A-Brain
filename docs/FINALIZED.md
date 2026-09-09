@@ -5,6 +5,83 @@
 
 ---
 
+## 2026-09-09 — `APPARATUS`: SHE WAS BEING TAUGHT THE BACK OF THE BOOK, AND THE INDEX WAS THE SMALLEST CLASS BUT ONE
+
+Gee (verbatim): *"something is  major wrong!!!!! Just look at this poisioning running through the teach viewer :"* — then the live paste, every row `ela/kindergarten · teachSentenceList · corpora/academic/ela/kindergarten.json · 3 reps`:
+
+```
+  B., =21=, =22= sands of dee, the, =412= science sketches , =556= scott, sir w., =424= scudder, h.
+  H., =662= shepherd of king admetus, the, =430= shepherd's boy, the, =266=, 11-12 shepherd, the, =401= sherman, f.
+  In this text the oe-ligature is represented by brackets .
+  Bold text is represented by = and italic by .
+  In addition, the text used / as punctuation in one story.
+  Page vi, "rocky" changed to "rock" (83.
+  De) page 688, small-caps were added to mulock to conform to rest of the index.
+```
+
+⛔ **He was right, and it is the INDEX, the bold page references and the TRANSCRIBER'S NOTE of her own kindergarten reader** — the back matter of Project Gutenberg #25545, *Children's Literature*, sentence-split and Hebbian-trained as reading practice. `=412=` is a page number: **the book's own transcriber note, which she was also being taught, explains the markup — *"bold text is represented by ="***.
+
+### ⛔ WHY EVERY EXISTING FILTER PASSED IT
+
+`stripBoilerplate` in the fetcher cuts the licence header and footer, and **the index sits between those markers** — it is part of the body by every test that ran. `js/brain/text-cleaning.cjs` is the one owner of corpus cleaning, applied at `server/life-curriculum.js`, the single door all thirteen fetchers converge on — and it asks *"is this notation?"*. For an index row the honest answer is **no**: it is ASCII, lowercase, terminally punctuated and inside the length bounds. **Apparatus is prose-shaped text that is not prose, and the cleaner had no concept of it.**
+
+### ⭐ THE INDEX IS 112 SENTENCES. THE CORPUS HELD 49,609
+
+Measured through the PRODUCTION reader over all **3,758,196** academic corpus sentences, shipped rules in shipped order:
+
+```
+  web address                           16,649        credit line "located at :"    11,612
+  licence + page furniture              10,114        access-date citation stamp     6,214
+  bibliography isbn/doi/issn/oclc        3,017        author-initial reference run   1,644
+  gutenberg bold page ref  =NNN=           112        platform placeholder             110
+  page-range citation  pp.NNN               84        html attribute debris  src=       37
+  transcriber errata                        16
+  ──────────────────────────────────────────────────────────────────────────────────────
+  APPARATUS                             49,609   1.320%
+  markup (the pre-existing lane)         8,844   0.235%
+```
+
+⭐ **The largest class is web addresses: she was learning `commons.wikimedia.org/w/index.php?curid=11749560` as a sentence of English, 149 times more often than she was learning an index row.**
+
+### ⛔⛔ FIVE OF MY OWN DETECTORS WERE DISCARDED BY VALIDATION, AND ONE NUMBER IS RETRACTED
+
+- **A comma-density heuristic scored 86,903 hits and put my headline at `2.556%`. Sampling it showed the hits are ordinary prose** — *"calculus is used to find high points and low points, slope, concavity, inflection points"*. **That figure was wrong and never became a claim.**
+- `; see also …` and `figure N shows …` — both real textbook writing (*"figure 3 illustrates an arrangement of the unsigned interpretations of four-bit sequences"*).
+- **`"is represented by"` had to be narrowed from 1,287 hits to 12.** *"A demand curve is represented by a demand function"* is exactly the prose the wide rule would have eaten.
+- **A bare `=` rule and a bare `/` rule were built for the last two rows Gee pasted and thrown away: 60,039 hits on ` = ` and 3,312 on ` / `, and they are real mathematics** (*"if f = x2 is the squaring function"*, *"the rational number 1 / 3"*, *"m / z 45-500"*). Replaced by two transcription-convention arms that hit **exactly** the 4 and the 2 rows that exist, corpus-wide, and nothing else.
+- **`attrdebris` was eating geometry and the math cells caught it.** The first cut matched `height\s*=`, and *"each with base = 5 centimeters, height = 3 centimeters"* is a triangle. 148 hits → **41**; the 107 it stopped taking were Illustrative Mathematics figure descriptions across grades 6, 7, 8 and 10.
+- **Two URL refinements were built, measured and thrown away.** Strip-then-judge turns a citation into a fragment (`http://ecommons.txstate.edu/arp/206/ schneider, jack.` → `schneider, jack.`, which then passes every test). Requiring five words of prose after the address rescued **5,265** sentences of which **18 of 18 sampled were resource listings** (`https://youtu.be/… works discussed marcel duchamp, nude descending a staircase`). **Neither test separates prose from a link list, because a link list is mostly words.**
+
+### ⭐ THE ONE THING STRIPPED RATHER THAN DROPPED, BECAUSE IT SITS INSIDE REAL WRITING
+
+A photo credit lives in the middle of genuine art history — `199 cm (louvre) (photo: carole raddato , cc by-sa 2.0) although subtle, the figure of watson demonstrates …`. Cutting the parenthetical and judging what remains **saves 757 sentences** a licence rule would have taken, and every one was read before this shipped. The `stripLeakedMarkup` contract was already the right one; apparatus obeys it.
+
+### ⛔ AND THE QUOTE POSITION, NOT THE COUNT, IS WHAT IDENTIFIES AN INDEX
+
+A `>= 2` threshold on `=NNN=` excluded the single false positive — `the string "=234=+" is not`, a real sentence in a formal-languages chapter — and paid for it by keeping **fourteen** genuine index rows carrying one reference, **four of them in the very cell Gee was watching**. An index prints its page reference OUTSIDE the quoted title (`"sing a song of sixpence," =31=`); a chapter discussing a string prints it inside. Dropping quoted spans before testing separates them and lets the threshold fall to one: **113 hits against 99, false positive still excluded.**
+
+### ⛔ THE COUNTERS EXISTED, CARRIED THAT EXACT WARNING, AND NOTHING READ THEM
+
+`cleaningStats` has always been exported with the note *"a filter nobody can see the output of is indistinguishable from one that is silently eating content"* — and a grep of the whole tree found **one** reference: `server/life-curriculum.js` re-exporting it. **The corpus on disk and the corpus she is taught stopped being the same thing the day that filter shipped, and the difference was invisible.** Now `state.curriculum.corpusCleaning` publishes `seen / cleaned / dropped / apparatus / credited / apparatusPct / apparatusByClass`, and the curriculum card renders it with the biggest class first, because a count is only useful if it points at the source that needs fixing. **Absent, never zero, when no cell has loaded — a zero would claim the corpus was measured and found clean.**
+
+### ⚠ THE MATH CELLS LOOK WORST HIT AND IT IS NOT THIS FILTER
+
+`math/grade8` loses 8.3% of its sentences: **730 are the pre-existing LaTeX drop** and 69 are apparatus. The two counters stay separate so nobody has to guess, and so nobody attributes that loss here.
+
+### ⚠ THE COST, STATED RATHER THAN HIDDEN
+
+Two **hand-authored** `corpora/coding` sentences whose subject IS what a URL is (*"as an example of a web page url, https://www.example.com/index.html indicates protocol https, hostname …"*) are refused with the furniture, plus an unmeasured handful of *"visit this site and find a story"* exercise prompts. ⭐ **`corpora/life` loses ZERO** — the entire hand-authored life canon is untouched, checked explicitly because a false positive there would eat bespoke content.
+
+### ⛔ THE FETCHERS WERE DELIBERATELY NOT TOUCHED
+
+The corpus on disk keeps its apparatus and the reader refuses it. That is the architecture the cleaner's own header argues for: *"fixing the writers would have meant thirteen edits and a standing invitation for the fourteenth to forget."* **A second copy of the rule in fourteen scripts is how the markup cleaner came to run in only four of them.**
+
+**Verified:** all **11** rows Gee pasted are refused, judged by the shipped rules, each naming its class · **0** `=NNN=` survivors in `ela/kindergarten`, which still teaches real children's literature (`22,658 → 22,592`) · full-corpus sweep through the production reader, `3,758,196 → 3,699,743` · worst cell `art/college3` 19.4%, drops read as bibliography and keeps as real art criticism · hand-authored `life` 0 removed, `coding` 2 · gate admits **all 15** class witnesses with **93.11%** of the corpus leaving on one regex · `node --check` clean on all three server files · dashboard 3/3 script tags balanced, renderer exercised on four real shapes including the empty one.
+
+⛔ **NEEDS A PRESS.** `text-cleaning.cjs` is required by the server reader and is **not** in `js/app.bundle.js`, so the frontend rsync cannot deliver it — the node process has to restart. **The dashboard row rides the rsync and needs no press.**
+
+---
+
 ## 2026-09-08 (8th) — `PERMAWRITE.1`: A READ AGAINST A SET NOBODY WRITES IS A NO-OP WEARING A FIX'S NAME
 
 Gee (verbatim): *"so nothing to do but let er run?"* — nothing for him. This is the half of the repeated cost that was still live, and it is a **correction to my own `VOCABMISS.4` work**, found by measuring after I shipped it.

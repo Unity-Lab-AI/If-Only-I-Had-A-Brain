@@ -424,6 +424,7 @@
         <div id="d-curr-grade" style="font-size:11px;color:#888;margin-top:2px;">—</div>
         <div id="d-curr-desc" style="margin-top:8px;color:#bbb;line-height:1.5;font-size:11px;">Waiting for curriculum teach to begin.</div>
         <div id="d-curr-phase" style="margin-top:10px;color:#888;font-size:11px;">phase: —</div>
+        <div id="d-curr-cleaning" style="margin-top:6px;color:#888;font-size:10px;line-height:1.5;" title="What the corpus reader REFUSED before she was taught it, this boot. The corpus on disk and the corpus she is taught are not the same thing, and this line is the difference — without it the filter is indistinguishable from one that is silently eating content. APPARATUS means the text was not prose at all: a book's index rows and bold page references, web addresses, licence and page furniture, bibliographies, access-date citation stamps and transcriber's errata notes. Those arrive INSIDE the work, between the source's own start and end markers, so nothing upstream can see them — the operator caught her training the index of her own kindergarten reader. MARKUP is the older, separate lane: leaked LaTeX and MediaWiki templates, stripped where the sentence survives it and dropped where the sentence was mostly notation. CREDITED is the strip-not-drop path — a photo or attribution credit cut out of genuine prose that was then kept, because dropping the sentence would delete real art history to silence a footer. Read the per-class breakdown to find WHICH source is contaminating the corpus; one undifferentiated total cannot tell an index from a bibliography, and the two want different fixes. A boot that has only loaded one cell reads small, and that is correct rather than a fault. Blank means no cell has been loaded yet — absent, never zero.">—</div>
         <div style="margin-top:6px;">
           <div style="font-size:10px;color:#666;margin-bottom:3px;">current cell progress</div>
           <div style="background:#222;border:1px solid #333;height:8px;border-radius:3px;overflow:hidden;">
@@ -3312,6 +3313,7 @@
         $('d-curr-grade').textContent = '—';
         $('d-curr-desc').textContent = 'Waiting for curriculum teach to begin.';
         $('d-curr-phase').textContent = 'phase: —';
+        $('d-curr-cleaning').innerHTML = '<span style="color:#555;">reader refused — no cell loaded yet this boot</span>';
         $('d-curr-cellbar').style.width = '0%';
         $('d-curr-cellpct').textContent = '0% · 0 phases';
         $('d-curr-subjects').innerHTML = '';
@@ -3340,6 +3342,40 @@
         $('d-curr-phase').textContent = `phase: ${c.activePhase.name} (+${sec}s)`;
       } else {
         $('d-curr-phase').textContent = 'phase: (between phases)';
+      }
+
+      // WHAT THE READER REFUSED — the difference between the corpus on disk and
+      // the corpus she is taught. Published for a whole boot and rendered here
+      // because a filter whose output nobody can see is indistinguishable from
+      // one that is silently eating content: the cleaner exported these counters
+      // with that exact warning in its own header and NOTHING in the tree read
+      // them until the operator caught her being taught a book's index.
+      //
+      // ⚠ The two lanes stay separate on purpose. APPARATUS is text that was
+      // never prose; MARKUP is notation that leaked into prose. Summing them
+      // would hide which one is growing, and they have different fixes.
+      const cl = c.corpusCleaning;
+      if (cl && cl.seen) {
+        const byClass = cl.apparatusByClass || {};
+        // Biggest class first — the count is only useful if it points at the
+        // source that needs fixing.
+        const worst = Object.keys(byClass)
+          .filter(k => (byClass[k] | 0) > 0)
+          .sort((a, b) => byClass[b] - byClass[a])
+          .slice(0, 4)
+          .map(k => `${k} ${byClass[k].toLocaleString()}`)
+          .join(' · ');
+        const pct = (cl.apparatusPct == null) ? '—' : `${cl.apparatusPct}%`;
+        $('d-curr-cleaning').innerHTML =
+          `reader refused <b style="color:${cl.apparatus > 0 ? '#eab308' : '#555'};">`
+          + `${(cl.apparatus | 0).toLocaleString()}</b> apparatus (${pct}) `
+          + `· ${(cl.dropped | 0).toLocaleString()} markup · ${(cl.credited | 0).toLocaleString()} credits cut`
+          + ` <span style="color:#555;">of ${(cl.seen | 0).toLocaleString()} read</span>`
+          + (worst ? `<br><span style="color:#666;">${worst}</span>` : '');
+      } else {
+        // ⛔ Absent, never zero. A zero here would claim the corpus was measured
+        // and found clean, when in fact no cell has been loaded yet this boot.
+        $('d-curr-cleaning').innerHTML = '<span style="color:#555;">reader refused — no cell loaded yet this boot</span>';
       }
 
       // CELL PROGRESS - ONE formula, from the server's ONE record.
