@@ -933,6 +933,47 @@ const SERVER_STATE_MIXIN = {
             try { return require('../figure-field-store.js').fieldStoreStats(); }
             catch { return null; }
           })(),
+          // ⛔⛔ APPARATUS — HOW MUCH OF THE CORPUS ON DISK IS NOT PROSE, AND
+          // WHICH KIND. The cleaner has always exported these counters with a
+          // comment saying *"a filter nobody can see the output of is
+          // indistinguishable from one that is silently eating content"* — and
+          // until this line **nothing in the tree read them.** The corpus on
+          // disk and the corpus she is taught stopped being the same thing the
+          // day that filter shipped, and the difference was invisible.
+          //
+          // What each term answers:
+          //   seen        sentences the reader split out of the corpus files
+          //   cleaned     markup stripped, sentence kept
+          //   dropped     mostly-notation, discarded (the LaTeX/wiki lane)
+          //   apparatus   NOT PROSE AT ALL — index rows, web addresses, licence
+          //               footers, bibliographies, transcriber notes
+          //   credited    a photo/attribution credit cut out of real prose that
+          //               was then KEPT — the strip-not-drop path
+          //   apparatusByClass  which of the eleven kinds, so the count points
+          //               at the source that needs fixing rather than at a pile
+          //
+          // ⚠ Process-lifetime totals across every cell this boot has loaded,
+          // not per-cell: the reader is called once per cell per visit, so a
+          // per-call figure would answer a question nobody asks. A boot that has
+          // loaded one cell reads small and that is correct, not a fault.
+          corpusCleaning: (() => {
+            try {
+              const s = require('../life-curriculum.js').cleaningStats;
+              if (!s || !s.seen) return null;   // no cell loaded yet — absent, not zero
+              return {
+                seen: s.seen | 0,
+                cleaned: s.cleaned | 0,
+                dropped: s.dropped | 0,
+                apparatus: s.apparatus | 0,
+                credited: s.credited | 0,
+                // The share of the corpus that was never prose. Published as a
+                // fraction rather than left to the page to divide, because two
+                // consumers dividing is two consumers that can disagree.
+                apparatusPct: s.seen ? Number((100 * s.apparatus / s.seen).toFixed(3)) : null,
+                apparatusByClass: s.apparatusByClass || null,
+              };
+            } catch { return null; }
+          })(),
           // ⭐ HEARING.1 — what her EARS did, counted by reason. `received`
           // climbing with `banked` flat means the percept arrived unusable;
           // `banked` climbing with `taught` flat is the figure lane's old

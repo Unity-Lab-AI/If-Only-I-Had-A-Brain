@@ -1,6 +1,43 @@
 # RESUME — Session Pickup Brief
 
-> # ✅ 2026-09-08 (latest, 25th) — FILING IS NOT SHIPPING (START HERE)
+> # ✅ 2026-09-09 (latest, 26th) — SHE WAS BEING TAUGHT THE BACK OF THE BOOK (START HERE)
+>
+> Gee (verbatim): *"something is  major wrong!!!!! Just look at this poisioning running through the teach viewer :"* — then a live paste of `ela/kindergarten · teachSentenceList`, row after row of the INDEX of her own kindergarten reader.
+>
+> ⛔ **He was right.** `=412=` is a page number from Project Gutenberg #25545's index; the transcriber's note explaining that markup (*"bold text is represented by ="*) was being taught alongside it. **The index sits BETWEEN the licence start and end markers, so it is part of the book body by every test that ran.**
+>
+> ## ⭐ THE INDEX IS 112 SENTENCES. THE CORPUS HELD 49,609
+>
+> ```
+>   web address 16,649 · credit line 11,612 · licence furniture 10,114
+>   citation stamp 6,214 · bibliography 3,017 · initial run 1,644
+>   index ref 112 · placeholder 110 · pp.NNN 84 · src= 37 · errata 16
+>   ─────────────────────────────────────────────────────────────────
+>   APPARATUS 49,609 (1.320%)   ·   markup, pre-existing 8,844 (0.235%)
+> ```
+>
+> ⭐ **The largest class by far is web addresses — she was learning `commons.wikimedia.org/w/index.php?curid=11749560` as a sentence of English, 149× more often than an index row.** ⛔ **The fix is in `js/brain/text-cleaning.cjs`, the ONE owner at the ONE reader — the fetchers were deliberately not touched**, per that file's own argument that thirteen edits invite the fourteenth to forget.
+>
+> ## ⛔⛔ SIX OF MY OWN DETECTORS DIED IN VALIDATION AND ONE NUMBER IS RETRACTED
+>
+> A comma-density heuristic scored **86,903 hits** and made my headline `2.556%`; the hits are ordinary prose (*"high points and low points, slope, concavity, inflection points"*). **That figure never became a claim.** Also dead: `; see also …`, `figure N shows …`, a bare ` = ` rule (**60,039 hits, real mathematics**), a bare ` / ` rule (3,312), and — caught by the math cells after I thought I was finished — **`attrdebris` matching `height\s*=` and eating *"each with base = 5 centimeters, height = 3 centimeters"*, a TRIANGLE. 148 → 41.**
+>
+> ⛔ **Two URL refinements were built, measured and thrown away.** Strip-then-judge makes `…/arp/206/ schneider, jack.` into `schneider, jack.`; a prose-after test rescued 5,265 sentences of which **18 of 18 sampled were link listings.** **A link list is mostly words.**
+>
+> ## ⛔ AND THE COUNTERS ALREADY EXISTED, CARRYING THE WARNING, READ BY NOTHING
+>
+> `cleaningStats` shipped with *"a filter nobody can see the output of is indistinguishable from one that is silently eating content"* — and a whole-tree grep found **one** hit, a re-export. Now `state.curriculum.corpusCleaning` publishes it and the curriculum card renders it biggest-class-first. **Absent, never zero, before a cell loads.**
+>
+> ## ⏳ NEXT
+>
+> - ⛔ **THIS ONE NEEDS A PRESS.** `text-cleaning.cjs` is server-side and **not** in `js/app.bundle.js`, so the rsync cannot deliver it — the node process must restart. **Update & Savestart.** The dashboard row lands without one.
+> - ⚠ **Until the press she is still training the index**, and the walk is in `ela/kindergarten` where two of the worst-affected cells live (`ela/kindergarten` and `ela/grade1` are the only two carrying #25545's back matter).
+> - ⚠ **Cost stated, not hidden:** 2 hand-authored `corpora/coding` sentences whose subject IS a URL are refused with the furniture. ⭐ **`corpora/life` loses zero** — the life canon is untouched, checked explicitly.
+> - Open, unchanged: `FIGFIELDLFS.1` (box-side), `DOCSWEEP` remainder.
+>
+> ---
+
+> # ✅ 2026-09-08 (25th) — FILING IS NOT SHIPPING
 >
 > Gee (verbatim): *"wtf why did you not fix everything thats broken, i mean wtf are we doing wasting pod on a broken run FIX IT DAMN IT AND ILL FUCKEN PRESS THE BUTOON SO THAT WE ARE RUNNING THE FIXED FUCKIGN BRAIN NOT A BROKEN ONE> FUCK! WHAT THE FUCK ARE WE EVEN DOING!!!!"*
 >
