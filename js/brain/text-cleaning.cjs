@@ -140,20 +140,39 @@ function isMarkupSentence(s) {
 //     web address                           16,649
 //     credit line "located at :"            11,612
 //     licence + page furniture              10,114
-//     access-date citation stamp             6,214
+//     citation stamp / archived-from         6,994
 //     bibliography isbn / doi / issn / oclc  3,017
 //     author-initial reference run           1,644
 //     gutenberg bold page ref  =NNN=           112
 //     platform placeholder                     110
 //     page-range citation  pp.NNN               84
 //     html attribute debris  src= href=         37
-//     transcriber errata                        16
+//     transcription convention note             16
+//     page-anchored errata list                 14
+//     publisher catalogue table                  6
 //     ─────────────────────────────────────────────
-//     APPARATUS                             49,609     1.320%
+//     APPARATUS                             50,409     1.341%
 //     markup (the block above, pre-existing)  8,844     0.235%
+//     ─────────────────────────────────────────────
+//     REMOVED                               59,253     1.577%
+//     repaired in place and KEPT              2,200
 //
 // She was learning `commons.wikimedia.org/w/index.php?curid=11749560` as a
 // sentence of English, and that class is 149 times larger than the index.
+//
+// ⛔⛔ AND THE FIRST PASS DID NOT FINISH THE JOB — the operator asked *"so we
+// are good to press?"* and the honest answer was no. The rules above were built
+// from ONE book's back matter, and a structural sweep of the TAIL of every early
+// ELA experience found a second wave the per-sentence patterns had no reason to
+// match: a **different** book's errata list (`page 114: replaced missing end
+// quote--`, sharing not one token with the first), Wikipedia reference sections
+// (`archived from the original on 28 may 2020` — 789 of them), and a publisher's
+// **catalogue table** advertising other titles at the back of a picture book.
+// ⭐ **Two of those were in `ela/pre-K`, a cell she has already walked.**
+//
+// **The lesson is the method, not the patterns: back matter is TRAILING, so read
+// the tail of each experience rather than inventing more regexes.** Three more
+// classes came out of one sweep; guessing had produced none of them.
 //
 // ⚠ THE MATH CELLS LOOK LIKE THE WORST HIT AND THEY ARE NOT THIS FILTER'S DOING.
 // `math/grade8` loses 8.3% of its sentences, of which **730 are the pre-existing
@@ -178,6 +197,25 @@ function isMarkupSentence(s) {
 // then judging what is left saves **757 sentences** that the drop rules would
 // otherwise have taken, and every one of them was read before this shipped.
 const CREDIT_PAREN = /\((?:photo|image|attribution|credit|figure credit|source)\s*:[^()]{0,300}\)/gi;
+
+// ⭐⭐ A FUSED PAGE-REFERENCE MARKER IS REPAIRED, NOT DROPPED, BECAUSE THE
+// SENTENCE AROUND IT IS REAL.
+//
+// A superscript citation in the source flattens into the text and eats the
+// sentence boundary with it:
+//
+//     now only 1% of chinese characters are pictographic.p97 97% of modern …
+//     it dates to about 150 ad.p5 even earlier paper has been claimed …
+//     the larger an animal is, the larger its brain will be.p15 even allowing …
+//
+// **Both halves are real prose**, and the damage is that they are welded into
+// one sentence by a marker that also teaches `pictographicp97` as a word.
+// Dropping would throw away content; removing the marker restores the full stop
+// the source actually had. **97 sentences, every one read.**
+//
+// ⚠ Bounded to 1-3 digits, requiring a letter before and whitespace after, so it
+// cannot reach a real word or an ordinary decimal.
+const FUSED_REF_MARK = /([a-z])\.p(\d{1,3})(?=\s)/g;
 
 // ⛔⛔ A URL IS DROPPED, NEVER STRIPPED, AND THE STRIP VERSION WAS BUILT FIRST
 // AND MEASURED AND THROWN AWAY. Removing the address and keeping the remainder
@@ -212,7 +250,35 @@ const APPARATUS = [
   // An access-date stamp is a bibliographic GRAMMAR, not a word list — both
   // orders, because the corpus carries `accessed october 29, 2022` and
   // `accessed 13 february 2020`.
-  ['citation', /\b(?:accessed|retrieved|last updated|last modified|viewed)\s+(?:on\s+)?(?:[a-z]{3,9}\.?\s+\d{1,2},?\s+\d{4}|\d{1,2}\s+[a-z]{3,9}\.?\s+\d{4})/i],
+  // ⭐ `archived from the original` added 2026-09-09 — 789 hits, every one a
+  // reference-section line (`archived from the original on 28 may 2020`), found
+  // by reading the TAIL of each experience rather than by inventing a pattern.
+  // It needs no date arm of its own because the phrase is only ever written by a
+  // citation template.
+  ['citation', /\b(?:accessed|retrieved|last updated|last modified|viewed)\s+(?:on\s+)?(?:[a-z]{3,9}\.?\s+\d{1,2},?\s+\d{4}|\d{1,2}\s+[a-z]{3,9}\.?\s+\d{4})|\barchived from the original\b/i],
+  // ⛔⛔ A SECOND BOOK'S ERRATA LIST, IN A SHAPE THE FIRST BOOK'S RULES MISSED.
+  // Gutenberg #19993 records its corrections as `page 114: replaced missing end
+  // quote-- "rise, little lie-a-beds," she said`, which shares not one token
+  // with #25545's `page vi, "rocky" changed to "rock"`. **14 rows, in `ela/pre-K`
+  // and `ela/grade1` — and pre-K is a cell she has already walked.**
+  //
+  // ⚠ The gap between the colon and the verb allows any character, not just
+  // non-periods: one row reads `page 153: '.' corrected to '?'`, and a
+  // `[^.]` gap cannot cross the quoted full stop it is correcting. Bounded at 24
+  // characters. **14 hits corpus-wide, zero false positives.**
+  ['errata', /\bpage\s+\d+\s*:[^\n]{0,24}?\b(?:replaced|corrected|changed|added|removed|deleted|inserted|moved|transposed)\b/i],
+  // ⭐ A PUBLISHER'S CATALOGUE TABLE AT THE BACK OF A PICTURE BOOK — box-drawing
+  // rules and pipe columns advertising other titles, ending `stereotyped by …`.
+  //
+  // ⛔ THE WIDER TABLE RULES WERE MEASURED AND REFUSED, and this is the whole
+  // reason the arm is this narrow. Three-or-more pipes scores **1,034** hits and
+  // real mathematics is full of them — `g(x) = 4 | x 2 | + 2` is an absolute
+  // value, `p(second is weapon | first is suspect)` is a conditional
+  // probability. A run of ten dashes scores **288** and takes a binary-addition
+  // worked example in `cs/grade6` and a chapter divider welded to real prose in
+  // `ela/grade11`. **The box-drawing corner takes 6 rows, all of them the
+  // catalogue, and nothing else in the corpus.**
+  ['tablerule', /\+-{4,}\+/],
   // ⭐ THE LAST TWO ROWS THE OPERATOR PASTED NEEDED THEIR OWN ARMS, AND THE
   // CHEAP WAY TO CATCH THEM WOULD HAVE COST 63,351 REAL SENTENCES. `bold text is
   // represented by = and italic by .` and `the text used / as punctuation in one
@@ -272,17 +338,38 @@ const APPARATUS = [
 // reads as though it does — the same shape as a fallback whose trigger cannot
 // fire. **Measured: 93.11% of the corpus leaves on this one test, and all
 // fifteen class witnesses reach the rules behind it.**
-const APPARATUS_SUSPECT = /[=/]|\bpp\.|\bisbn\b|\bdoi\b|\bissn\b|\boclc\b|\bcc[ -]by\b|creative commons|all rights reserved|\bhttps?:|\bwww\.|\baccessed\b|\bretrieved\b|\blast (?:updated|modified)\b|\blocated at\b|\bprovided by\b|\bauthored by\b|\badapted from\b|\bavailable (?:at|from)\b|\bshow toc\b|has been excluded from this version|\bviewed\b|\bimage credit\b|\bphoto credit\b|\bcontent by\b|\blicense\b|\bchanged to\b|oe-ligature|small-caps|moved up from|to conform to|(?:^|\s)[a-z]\.,/i;
+const APPARATUS_SUSPECT = /[=/]|\bpp\.|\bisbn\b|\bdoi\b|\bissn\b|\boclc\b|\bcc[ -]by\b|creative commons|all rights reserved|\bhttps?:|\bwww\.|\baccessed\b|\bretrieved\b|\blast (?:updated|modified)\b|\blocated at\b|\bprovided by\b|\bauthored by\b|\badapted from\b|\bavailable (?:at|from)\b|\bshow toc\b|has been excluded from this version|\bviewed\b|\bimage credit\b|\bphoto credit\b|\bcontent by\b|\blicense\b|\bchanged to\b|oe-ligature|small-caps|moved up from|to conform to|(?:^|\s)[a-z]\.,|archived from the original|\bpage\s+\d+\s*:|\+-{4,}/i;
 
-/** Cut credit apparatus that sits inside otherwise real prose. */
-function stripCreditApparatus(s) {
-  const before = String(s || '');
-  if (!before || before.indexOf('(') < 0) return before;
-  CREDIT_PAREN.lastIndex = 0;
-  if (!CREDIT_PAREN.test(before)) return before;
-  CREDIT_PAREN.lastIndex = 0;
-  return before.replace(CREDIT_PAREN, ' ')
-    .replace(/\s{2,}/g, ' ').replace(/\s+([.,;:!?])/g, '$1').trim();
+/**
+ * Cut apparatus that sits INSIDE otherwise real prose, keeping the prose.
+ *
+ * Two things, both repairs rather than refusals: a photo/attribution credit
+ * parenthetical, and a fused page-reference marker. Neither is a reason to
+ * discard a sentence — the surrounding words are the work.
+ */
+function stripInlineApparatus(s) {
+  let t = String(s || '');
+  if (!t) return t;
+  let touched = false;
+  if (t.indexOf('(') >= 0) {
+    CREDIT_PAREN.lastIndex = 0;
+    if (CREDIT_PAREN.test(t)) {
+      CREDIT_PAREN.lastIndex = 0;
+      t = t.replace(CREDIT_PAREN, ' ');
+      touched = true;
+    }
+  }
+  // Cheap gate: `.p` followed by a digit is rare, and this runs over millions.
+  if (/\.p\d/.test(t)) {
+    FUSED_REF_MARK.lastIndex = 0;
+    if (FUSED_REF_MARK.test(t)) {
+      FUSED_REF_MARK.lastIndex = 0;
+      t = t.replace(FUSED_REF_MARK, '$1.');
+      touched = true;
+    }
+  }
+  if (!touched) return String(s || '');
+  return t.replace(/\s{2,}/g, ' ').replace(/\s+([.,;:!?])/g, '$1').trim();
 }
 
 /**
@@ -322,7 +409,8 @@ const cleaningStats = {
   apparatus: 0, credited: 0,
   apparatusByClass: {
     indexref: 0, webaddr: 0, credit: 0, licence: 0, bibid: 0, citation: 0,
-    transnote: 0, pagecite: 0, initrun: 0, attrdebris: 0, placeholder: 0,
+    transnote: 0, errata: 0, tablerule: 0, pagecite: 0, initrun: 0,
+    attrdebris: 0, placeholder: 0,
   },
 };
 
@@ -356,7 +444,7 @@ function storyToSentences(story, post) {
     // a licence footer wrapped in wiki markup must be judged on its words rather
     // than its braces; before, because `post` is the caller's proper-casing and
     // capitalising an index entry does not make it a sentence.
-    const credited = stripCreditApparatus(r.text);
+    const credited = stripInlineApparatus(r.text);
     if (credited !== r.text) cleaningStats.credited++;
     const klass = apparatusClass(credited);
     if (klass) {
@@ -395,7 +483,7 @@ function cleanProse(s) {
   // TO A PERCEPT. A context reading `license : cc by-sa: attribution-sharealike`
   // teaches a licence string as the meaning of a picture, which is the
   // unlabelled-frame defect arriving through the eyes instead of the ears.
-  const credited = stripCreditApparatus(r.text);
+  const credited = stripInlineApparatus(r.text);
   const klass = apparatusClass(credited);
   if (klass) {
     cleaningStats.apparatus++;
@@ -412,4 +500,4 @@ exports.storyToSentences = storyToSentences;
 exports.cleaningStats = cleaningStats;
 exports.apparatusClass = apparatusClass;
 exports.isApparatusSentence = isApparatusSentence;
-exports.stripCreditApparatus = stripCreditApparatus;
+exports.stripInlineApparatus = stripInlineApparatus;
