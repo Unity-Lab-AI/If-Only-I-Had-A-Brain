@@ -2451,6 +2451,22 @@ Found by reading the deployed box after the board cleanup, not by being told. **
   - ⭐ **Current headroom is genuinely comfortable and argues the fix will hold:** `cgroupMemory` reads `currentMB 11,884 · highMB 20,480 · maxMB 24,576 · throttleEvents 0 · band below-high`, RSS 7,345 MB, disk 334 GB free, `saveDeferrals 0`.
   - **What closes this — a READING, not code:** the next Update & Savestart prints `RESUME SIZING TERM — <pre>MB ÷ 1.3644 = <safe>MB` and `bootReason.mode` reads **resume/compatible** rather than `wipe`. **Watch that line and `cellStatus` reaching `in-progress`.** ⛔ **No fresh walk is required for it and none should be spent on it.**
 
+## PERMAWRITE — the 404 set had one writer and the wrong lane was reading it — filed + closed 2026-09-08
+
+- [x] `PERMAWRITE.1` — ✅ **FIXED 2026-09-08. ⛔ AND IT IS A CORRECTION TO MY OWN `VOCABMISS.4` WORK, MEASURED AFTER I SHIPPED IT.** Gee: *"so nothing to do but let er run?"* — nothing for him; this is the half of the repeated cost that was still live.
+  - ⛔⛔ **THE READ I ADDED WAS ALMOST INERT AND I NEVER CHECKED THE OVERLAP.** `_vocabPermanentMiss` has exactly ONE writer — the pre-cell vocabulary pass, walking the **graded word list**. `_trainAcademicStories` walks the **corpus**. Measured:
+    ```
+      corpus distinct (new tokenizer)     17,637
+      offline-dead corpus words            2,571
+        reachable by permaMiss                23   <- all my filter could ever skip
+        corpus-only, unreachable           2,548
+    ```
+    **A read against a set nobody writes is a no-op wearing a fix's name.**
+  - ⚠ **AND A CORRECTION IN THE OTHER DIRECTION, so the number is not overstated:** those 2,571 are *offline*-dead, not permanently dead. `caught`, `arose`, `became`, `shown`, `children's`, `everything` are irregular forms WordNet ships no `.exc` files for and **the network answers them**. The genuinely permanent set is the proper nouns and foreign scripts — `hiragana`, `katakana`, `romaji`, `hangul`, `abjads`, `proto-sinaitic`, `iggulden`, `paddy-whack` — and *those* were being re-requested on every visit to the cell, forever.
+  - **Shipped: the lane now WRITES the set it was only reading**, with the same discipline as the writer it mirrors, not a new policy — **only on the service's positive `noDef`** (an outage, a 429 or a parse failure is a fact about the SERVICE and those words stay owed, which is the auto-heal working); the set stays **in-memory** so every boot still asks each word once and the offline heal keeps its chance; bounded at the same 5,000, newest kept. The pass now **reports what it recorded** rather than banking an invisible number.
+  - **Verified 6/6 on the writer lifted from the shipped method:** bound+`noDef` → not recorded · unbound+`noDef` → recorded · unbound+transient → **not** recorded · unbound+429 → **not** recorded · unbound+unknown → **not** recorded · 5,000 cap holds with the newest kept. `node --check` + ESM clean.
+  - ⭐ **NO PRESS OWED FOR THIS.** The benefit accrues at the *later* cells of a boot, and restarting her mid-bootstrap to land it 40 minutes sooner costs more than it saves. **It rides whenever the next press happens.**
+
 ## POSTPRESS — three defects the 2026-09-08 press watch surfaced — filed 2026-09-08
 
 Gee, verbatim: *"pressed! monitor for shutdown and restart and doner connect and everything u are looking out for"*. The resume itself was clean (`RESUMEPROOF.1` above); these are what the watch found while it was clean.
