@@ -24,10 +24,31 @@
 >
 > ⛔ **I called it "unresolved LFS pointers" off one warning line. 16 of 20 reads found NO FILE AT ALL; only 4 were pointers** — so the dominant cause is *no field exists for these figures*, and the warning itself infers a global cause from `stats.stub === 1`. ⭐ **`hit: 0` is the real finding and nothing said it** — every counter was truthful and the conclusion existed nowhere. Shipped `attempts` + a `delivering` verdict (7/7; the live shape reads `empty-for-these-figures`, contradicting my announcement). **The delivery is box-side: the pull is already hardened and the box's script matches `main`.**
 >
+> ## ✅ PRESSED AND VERIFIED — build `660b86a4` booted 00:18:15Z
+>
+> ```
+>   bootReason resume/keep-flag · pair coherent json/bin 225s apart
+>   Binary weights applied 17/17 · passedPhases restored 9 · bootFatal null
+>   donor NVIDIA A40 x1 · connected · 8.88 Gn/s · cgroup 10,880/20,480 throttle 0
+>   prevocab 61/363 chunks · 305/1813 words  @ 7.33 chunks/min measured
+>   fields.delivering "empty-for-these-figures" (12 of 15 reads found NO FILE; 3 stubs)
+> ```
+>
+> ⭐ **The owed word list went 3,308 → 1,813** — dominated by RETAINED progress, not by the tokenizer. ⛔ **The point is that without the dual-key check it would have gone UP**, because the ~1,900 words already taught were keyed under the old mashed spellings.
+>
+> ⚠ **`phaseRepCursor restored` did NOT print, and that is correct** — the previous process stopped in the prevocab bootstrap, which carries no rep debt. **The cursor fix is untested in production by construction** until a press lands inside a sentence phase.
+>
+> ⚠ **`definitionAnchor` read 11 calls / 5 ms** against 2.30 s/call last boot — the offline dictionary answering from disk.
+>
+> ## ✅ `PERMAWRITE.1` — and it corrected my own `VOCABMISS.4` work
+>
+> The `permaMiss` filter I shipped was **almost inert**: the set has one writer (the graded-word-list lane) and this lane walks the corpus — **23 of 2,571 offline-dead corpus words were reachable.** Now the lane WRITES it too, `noDef`-only, in-memory, capped at 5,000. **6/6 including the three must-not-record gates.** ⭐ **No press owed** — the benefit lands at later cells.
+>
 > ## ⏳ NEXT
 >
-> - ⛔ **All server-side — needs ONE press.** `curriculum.js` (tokenizer + cursor + prevocab field), `offline-dictionary.js`, `figure-field-store.js`. The dashboard liveness fix is already live.
-> - After the press, read: `phaseRepCursor restored`, `prevocabProgress`, `fields.delivering`.
+> - **Nothing for the operator.** She runs. `~41 min` measured for the prefetch half, then an **unmeasured** anchoring half — price it when `prevocabProgress.stage` flips.
+> - ⛔ **THE MILESTONE IS THE FIRST CELL PASS**, 22 phases out — `passedCellsTotal 0` of 213, `lastGateVerdict null`, and **no build has ever passed a cell gate end to end.** No graduation ETA should be given from a 2-of-25 sample.
+> - Open: `FIGFIELDLFS.1` (box-side), `DOCSWEEP` remainder.
 >
 > ---
 
