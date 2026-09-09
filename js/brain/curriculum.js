@@ -4086,6 +4086,17 @@ export class Curriculum {
       // not noise — it is the size of what the dictionary could not answer.
       vocabPermanentMiss: (this.cluster && this.cluster._vocabPermanentMiss instanceof Set)
         ? this.cluster._vocabPermanentMiss.size : 0,
+      // ⭐ THE PRE-CELL DEFINITION BOOTSTRAP, WITH A DENOMINATOR. This pass runs
+      // BEFORE the first phase of a cell — so `phaseWork`, `activePhase` and
+      // `phaseChain` are all legitimately null through the longest stretch of
+      // the cell, and the only numbers anywhere were inside a stage STRING.
+      // ⚠ Carries its own age so a stopped pass reads as a fossil rather than a
+      // position: `ageMs` climbing with `chunk` still means the lane died.
+      // ⚠ `frac: null` when there is no denominator — never 0, because a zero
+      // fraction is a claim about progress.
+      prevocabProgress: this._prevocabProgress
+        ? { ...this._prevocabProgress, ageMs: Date.now() - this._prevocabProgress.at }
+        : null,
       // Compact label for dashboard panel headers — "Pre-K" / "K" /
       // "Grade 1" / "PhD" — substituted into hardcoded "K-VOCABULARY"
       // / "K-WIRING ASSERTION" / "Dictionary API + K-Vocabulary"
@@ -18934,6 +18945,29 @@ export class Curriculum {
                 // hang. A frozen seq here now means the NETWORK stopped, not
                 // that the walk did.
                 try { this._tstage?.(`prevocab:${subject}-${grade}:${p.chunk}/${p.chunks} chunks · ${p.words}/${p.total} words`); } catch { }
+                // ⭐ AND BANK IT AS A FIELD, because this pass owns the longest
+                // stretch of a cell and the board could not answer "when does
+                // it finish" — measured live at 46/662 chunks with
+                // `phaseWork null · activePhase null · phaseChain []` while the
+                // numbers sat in a string only a human could read.
+                //
+                // ⛔⛔ IT GETS ITS OWN FIELD AND DELIBERATELY NOT `phaseWork`.
+                // `_publishPhaseCursor` drops anything whose name is not the
+                // ACTIVE CELL PHASE, and this pass is not a phase at all — it
+                // runs before the first one, which is precisely why
+                // `activePhase` reads null here. Routing it through that helper
+                // would have published NOTHING while looking correct in the
+                // diff, and inventing a phase name to satisfy the guard would
+                // corrupt the phase instrument to fix a different one.
+                try {
+                  this._prevocabProgress = {
+                    subject, grade, stage: 'resolve',
+                    chunk: p.chunk, chunks: p.chunks,
+                    words: p.words, total: p.total,
+                    frac: p.chunks > 0 ? Math.min(0.99, p.chunk / p.chunks) : null,
+                    at: Date.now(),
+                  };
+                } catch { /* an instrument must never be able to stop a teach */ }
               },
             });
           } catch { /* prefetch best-effort */ }
@@ -18954,6 +18988,17 @@ export class Curriculum {
           _wi += 1;
           if ((_wi % 50) === 0 || _wi === batch.length) {
             try { this._tstage?.(`prevocab:${subject}-${grade}:anchoring ${_wi}/${batch.length} · ${anchored} bound`); } catch { }
+            // The anchoring half is the LONGER of the two dark regions (the
+            // prefetch only warms the cache; the Hebbian bind happens here,
+            // serially), so it carries the same field with its own stage name.
+            try {
+              this._prevocabProgress = {
+                subject, grade, stage: 'anchoring',
+                words: _wi, total: batch.length, bound: anchored,
+                frac: batch.length > 0 ? Math.min(0.99, _wi / batch.length) : null,
+                at: Date.now(),
+              };
+            } catch { /* an instrument must never be able to stop a teach */ }
           }
         }
         // ⭐ REPORT THE COVERAGE THE WINDOW ACTUALLY BOUGHT, not just its size.
@@ -27491,7 +27536,9 @@ export class Curriculum {
     // embedding → sem, first letter → letter/motor/phon. Write to
     // lastSpikes, fire _crossRegionHebbian. Also teach word-to-word
     // transitions via cluster.synapses.hebbianUpdate.
-    const reps = opts.reps ?? 8;
+    // `let`, not `const`: the resume guard below replaces the authored dose with
+    // whatever remainder a previous stop banked.
+    let reps = opts.reps ?? 8;
     const arousal = ctx?.arousal ?? 0.8;
     const valence = ctx?.valence ?? 0.2;
 
@@ -27576,8 +27623,60 @@ export class Curriculum {
     }
     ensureLetters(Array.from(letterSet));
 
+    // ⛔⛔⛔ THIS PHASE DISCARDED ITS WHOLE VISIT ON A PRESS, AND IT IS THE PHASE
+    // A REAL PRESS LANDED IN.
+    //
+    // Measured 2026-09-08: `LOOPNAME.7` reported the previous process standing
+    // MID-WORK in `_teachSentenceList` after 64,203 s of uptime, and no
+    // `phaseRepCursor restored` line printed on the boot that followed —
+    // because there was no debt to restore. The shutdown exit below returned
+    // `{pass:false, reason:'shutdown'}` and banked NOTHING, so the next visit
+    // repeated the authored dose from rep 0.
+    //
+    // ⭐ This is the THIRD phase in this file to need the same block; the other
+    // two (`_teachAssociationPairs`, `_teachQABinding`) already carry it, and
+    // this lane trains EVERY academic corpus sentence, so it is the most
+    // expensive of the three to throw away.
+    //
+    // Same key, same arithmetic, same persistence as the siblings
+    // (`_phaseRepCursor` rides brain-weights.bin beside `passedPhases`), and
+    // `cluster._phaseDeadlineName` is assigned unconditionally when a phase
+    // arms, so the key is available here exactly as it is there.
+    const _cursorKey = (cluster._phaseDeadlineName && (opts.label || 'sentences'))
+      ? `${cluster._phaseDeadlineName}::${opts.label || 'sentences'}`
+      : null;
+    if (_cursorKey) {
+      if (!cluster._phaseRepCursor || typeof cluster._phaseRepCursor !== 'object') cluster._phaseRepCursor = {};
+      const _owed = cluster._phaseRepCursor[_cursorKey];
+      if (Number.isFinite(_owed) && _owed > 0 && _owed < reps) {
+        console.warn(`[Curriculum][${opts.label || 'sentences'}] SENTLISTCURSOR - RESUMING a deferred sentence phase: ${_owed} of ${reps} authored rep(s) still owed from a previous stop, so THIS visit trains the remainder (${_owed}) instead of repeating the whole dose over ${sentences.length} sentence(s). Cursor clears when the debt is paid.`);
+        reps = Math.max(1, _owed);
+      }
+    }
+
     for (let rep = 0; rep < reps; rep++) {
-      if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return { pass: false, reason: 'shutdown' };
+      // Bank the cursor on EVERY rep, same law as the siblings: banking here has
+      // no ordering dependency on the shutdown sequence, and it survives
+      // SIGKILL / OOM / power loss, which a cooperative exit never can. At
+      // `rep === 0` this writes the full `reps`, which the resume guard
+      // (`_owed < reps`) correctly ignores — nothing has landed yet.
+      if (_cursorKey) {
+        if (!cluster._phaseRepCursor || typeof cluster._phaseRepCursor !== 'object') cluster._phaseRepCursor = {};
+        cluster._phaseRepCursor[_cursorKey] = reps - rep;
+      }
+      // ⭐ Publish this leaf phase's own position — its nested-unit denominator
+      // is 0, so without this `phaseWork` reports `null` for the whole run.
+      // One rep is `sentences.length` wide, which the rep count alone hides.
+      this._publishPhaseCursor('_teachSentenceList', rep, reps, {
+        unit: 'rep', sentences: sentences.length,
+        sentenceTeachesDone: rep * sentences.length,
+        sentenceTeachesTotal: reps * sentences.length,
+      });
+      if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) {
+        const _owedNow = reps - rep;
+        console.warn(`[Curriculum][${opts.label || 'sentences'}] SENTLISTCURSOR - SHUTDOWN at a clean rep boundary, rep ${rep}/${reps} over ${sentences.length} sentence(s). ${_cursorKey ? `Cursor BANKED as '${_cursorKey}' = ${_owedNow} rep(s) owed — the next boot RESUMES the remainder instead of repeating the whole dose.` : 'NO CURSOR KEY on this call, so this remainder CANNOT be banked and the next visit repeats the dose.'}`);
+        return { pass: false, reason: 'shutdown', repsDone: rep, deferredReps: _owedNow, shutdownStopped: true };
+      }
       for (const sentence of sentences) {
         const words = sentence.split(/\s+/).filter(Boolean);
         if (words.length < 2) continue;
@@ -27722,6 +27821,12 @@ export class Curriculum {
         this.stats.sentencesSeen++;
       }
       await _microtask();
+    }
+    // Every authored rep landed — clear the debt so the NEXT visit teaches the
+    // full dose again rather than a stale remainder. Same clean-finish contract
+    // as the two sibling loops.
+    if (_cursorKey && cluster._phaseRepCursor && _cursorKey in cluster._phaseRepCursor) {
+      delete cluster._phaseRepCursor[_cursorKey];
     }
 
     // SPEAK.3 — carve WORD->WORD transitions (relationTagId=13) for THIS

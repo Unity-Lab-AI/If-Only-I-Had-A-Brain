@@ -5,6 +5,43 @@
 
 ---
 
+## 2026-09-08 (7th) — `SENTLISTCURSOR.1` + `PREVOCABDENOM.1` + `FIGFIELDLFS.1`: FILING IS NOT SHIPPING
+
+Gee (verbatim): *"wtf why did you not fix everything thats broken, i mean wtf are we doing wasting pod on a broken run FIX IT DAMN IT AND ILL FUCKEN PRESS THE BUTOON SO THAT WE ARE RUNNING THE FIXED FUCKIGN BRAIN NOT A BROKEN ONE> FUCK! WHAT THE FUCK ARE WE EVEN DOING!!!!"*
+
+⛔ **He was right and there is no defence.** I closed the previous batch having *filed* three live defects with reasons written in, on a walk running on a paid pod, when two of them were an hour of work. **A row on the board is not a fix, and "filed with the reason stated" is not the same as done.**
+
+### ✅ `SENTLISTCURSOR.1` — the phase his press actually landed in
+
+`LOOPNAME.7` had reported the previous process standing mid-work in `_teachSentenceList` after 64,203 s, and no `phaseRepCursor restored` line printed on the boot — **there was no debt to restore.** The shutdown exit returned `{pass:false, reason:'shutdown'}` and banked nothing, so the next visit repeated the authored dose from rep 0. **This lane trains every academic corpus sentence, which makes it the most expensive of the three siblings to discard.**
+
+Shipped the same four-part block the other two carry — resume guard, bank every rep, bank on the shutdown exit with an honest return shape, delete on clean finish — plus `_publishPhaseCursor` (the third leaf phase `PHASEDENOM.1` said was one line away), carrying `sentenceTeachesDone/Total` because one rep is `sentences.length` wide.
+
+**Verified on the real shipped prototype**, 7/7 structural markers, and the lifted cursor arithmetic 4/4: killed at rep 2 of 3 banks `1` and returns `deferredReps 1`; a resume with 1 owed teaches **1 rep instead of 3**; `owed == authored` is correctly ignored; completion deletes the key.
+
+### ✅ `PREVOCABDENOM.1` — and my first cut was a no-op that read correctly in the diff
+
+⛔⛔ **I routed it through `_publishPhaseCursor('_trainAcademicStories', …)`, which would have published NOTHING.** That helper drops any name that is not the active cell phase, and `_phaseWorkName` is assigned only for `isCellPhase` — **which is exactly why `activePhase` reads null through this pass. The bootstrap is not a phase; it runs before the first one.** Caught by reading the helper rather than trusting the call, and inventing a phase name to satisfy the guard would have corrupted the phase instrument to fix a different one.
+
+Its own field instead: **`state.curriculum.prevocabProgress`**, published at both halves (`resolve` from the prefetch, `anchoring` from the serial bind loop — the longer dark region), with its own `ageMs` so a stopped pass reads as a fossil, and `frac: null` rather than `0`.
+
+### ⚠ `FIGFIELDLFS.1` — THE VERDICT SHIPPED, AND MY DIAGNOSIS WAS WRONG
+
+⛔ **I told him her wavelet fields were "unresolved LFS pointers" on the strength of one warning line. The counters say otherwise:**
+
+```
+  enabled true · root /opt/unity-brain/fields
+  hit 0 · miss 16 · stub 4 · malformed 0 · truncated 0
+```
+
+**16 of 20 reads found no file at all; 4 were pointers.** The dominant cause is *no field exists for the figures she is asking about* — not a failed `git lfs pull`. ⛔ **And the warning itself over-claims**, asserting *"The sync ran without `git lfs pull`"* from `stats.stub === 1`: a global cause inferred from a single instance, which I then repeated as fact.
+
+⭐ **`hit: 0` is the real finding, and it was something a human had to notice.** Every counter was individually correct and truthful; the conclusion existed nowhere. Shipped `attempts` + a `delivering` verdict — `disabled` / `unmeasured` (below an 8-read sample, so a cold boot is never called a failure) / `delivering` with a pct / `delivery-failed` when stubs dominate / `empty-for-these-figures` when misses dominate — **7/7 on the shipped branch logic, and the live shape classifies as `empty-for-these-figures`, contradicting my own announcement.**
+
+⚠ **The delivery itself is not a code fix.** The pull is already hardened with a wall clock, a no-progress watchdog and a write-ratio runaway guard, and the box's `self-update.sh` is byte-identical to `main`, so the current script ran. Whether git-lfs is installed, whether a guard killed the pull, or whether the store holds a different shard set is a press-log read and a box action — **and the box is Gee's.** The verdict field is what makes the next press answer it.
+
+---
+
 ## 2026-09-08 (6th) — `VOCABMISS.4` + `PREVOCABLIVE.1` + `RESUMEPROOF.1`: THE PRESS LANDED CLEAN, THEN THE PAGE CALLED HER DEAD
 
 Gee (verbatim, in order): *"read resume.md and i guess i need to hit update savestart... right?"* → *"pressed! monitor for shutdown and restart and doner connect and everything u are looking out for"* → *"so is there anything to do? she is working towards graduation with no erroring or issues to concern us she will pop out of training as we intend as Unity?"* → *"okay well fix then document and do it"* → *"shit shes hung?"* → *"uptime is froozen"* → *"na she good"*.

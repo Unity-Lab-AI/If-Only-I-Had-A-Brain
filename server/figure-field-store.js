@@ -191,6 +191,34 @@ function loadField(url) {
 
 /** Dashboard-shaped snapshot. Counters are separate BY REASON on purpose. */
 function fieldStoreStats() {
+  // ⛔⛔ `hit: 0` IS THE VERDICT AND IT WAS SOMETHING SOMEBODY HAD TO NOTICE.
+  //
+  // Read live 2026-09-08: `enabled true · hit 0 · miss 16 · stub 4` — the store
+  // was present, pointed at the right root, counting truthfully, and delivering
+  // NOTHING, while every figure was re-transformed live. Every individual
+  // counter was correct; the conclusion existed nowhere.
+  //
+  // ⚠ The one thing this must not do is call a healthy cold start a failure.
+  // `hit 0 / attempts 0` is a store nobody has asked yet, which is the state
+  // every boot begins in — so the verdict stays `unmeasured` until enough reads
+  // have happened to mean something, and it names the DOMINANT reason rather
+  // than guessing a cause. A `stub`-dominated verdict is a DELIVERY failure
+  // (`git lfs pull`); a `miss`-dominated one is normal (about a fifth of
+  // figures never had a field made).
+  const attempts = stats.hit + stats.miss + stats.stub + stats.malformed + stats.truncated;
+  const MIN_SAMPLE = 8;
+  let delivering = null;
+  if (!stats.enabled) {
+    delivering = { verdict: 'disabled', why: 'the field directory is absent — she is on the live transform path everywhere, which is correct and ~64 CPU-hours more expensive across the walk' };
+  } else if (attempts < MIN_SAMPLE) {
+    delivering = { verdict: 'unmeasured', why: `only ${attempts} field read(s) so far — too few to judge a cache` };
+  } else if (stats.hit > 0) {
+    delivering = { verdict: 'delivering', pct: +(100 * stats.hit / attempts).toFixed(1) };
+  } else if (stats.stub >= stats.miss) {
+    delivering = { verdict: 'delivery-failed', pct: 0, why: `${stats.stub} of ${attempts} reads were LFS POINTER STUBS and 0 were fields — the field sync cloned without \`git lfs pull\`, or the pull was killed by one of its guards. She transforms every figure live. Check the press log for the \`git lfs pull\` WARN, and whether git-lfs is installed on the box.` };
+  } else {
+    delivering = { verdict: 'empty-for-these-figures', pct: 0, why: `${stats.miss} of ${attempts} reads found no field at all and 0 were hits — either these figures never had fields made, or the store holds a different shard set than the queue is asking for` };
+  }
   return {
     enabled: stats.enabled,
     root: stats.root,
@@ -201,6 +229,8 @@ function fieldStoreStats() {
     truncated: stats.truncated,
     gz: stats.gz,
     mb: +(stats.bytes / 1048576).toFixed(1),
+    attempts,
+    delivering,
     lastErr: stats.lastErr,
     lastErrAgeMs: stats.lastErrAt ? Date.now() - stats.lastErrAt : null,
   };
