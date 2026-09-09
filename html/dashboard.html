@@ -3513,6 +3513,16 @@
         // "she is hung" — which is exactly the question it exists to answer, and
         // it answered backwards.
         //
+        // ⚠ AND IT FLICKERED RATHER THAN STAYING RED, WHICH IS WORSE.
+        // `teachChunksPerMin` hovers at 0-2/min through the bootstrap and dips
+        // to 0 regularly, so the verdict alternates. Sampled six times at 12 s
+        // intervals on the live box: chunk = 2,1,1,0,0,2 -> RED on 2 of 6 while
+        // the stage stamp was 1-8 s old every single time. **An indicator that
+        // says "dead" one refresh in three is not a weaker version of a wrong
+        // indicator, it is an indicator nobody can use** — and it trains the
+        // operator to disbelieve the panel when it finally has something true
+        // to say.
+        //
         // ⭐ THE SIGNAL THAT IS MOVING IS THE STAGE STAMP. `_tstage` bumps
         // `teachStageSeq` on every chunk, and `teachStageAgeMs` is the time since
         // the last stamp — so a RECENT stamp is positive evidence of work in a

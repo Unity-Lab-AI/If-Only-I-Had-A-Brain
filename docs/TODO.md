@@ -2467,7 +2467,14 @@ Gee, verbatim: *"pressed! monitor for shutdown and restart and doner connect and
   - **Fix:** `teachStageAgeMs < 30s` added as a fifth term, and a named `stageBit` that prints the stage tag verbatim when every rate is zero — the established "say it BY NAME" pattern, so green never appears without a reason beside it.
   - ⛔ **IT CANNOT FORGE LIVENESS, WHICH IS WHY THE AGE IS THE TERM AND NOT THE TAG'S PRESENCE.** `_tstage` is never nulled (`GATEPIN.1`), so a wedged walk keeps its last tag forever while the age CLIMBS. **Harness on the shipped expression, 5/5:** fresh stamp → GREEN + named · **stale stamp 400 s → RED** · normal teaching → GREEN with no added noise · no stage field → RED (unchanged) · emission phase → GREEN via the existing term.
   - **Verified:** shipped `alive`/`stageBit` text extracted from the file by line range and executed · 3/3 script tags balanced · all inline scripts parse (⚠ my own checker first reported `script#1` as a syntax error — it is `type="module"`; re-checked with a real module parse, clean).
-  - ⭐ **Frontend — rides the rsync on push, NO PRESS NEEDED.** This one reaches him immediately.
+  - ⚠⚠ **PRECISION CORRECTION, MINE, MEASURED AFTER THE CASCADE — IT FLICKERED RATHER THAN STAYING RED, AND THAT IS WORSE.** The verdict above is true of the sample I read, and "painted her red" invites a reader to assume it was constant. **It was not.** `teachChunksPerMin` hovers at 0–2/min through the bootstrap and dips to 0 regularly, so the verdict alternates. Sampled 6× at 12 s intervals on the live box, comparing the old expression against the new one:
+    ```
+      chunk  2  1  1  0  0  2      stage stamp age  3s 8s 4s 1s 6s 2s
+      OLD    G  G  G  R  R  G      RED on 2 of 6
+      NEW    G  G  G  G  G  G      green on 6 of 6
+    ```
+    ⛔ **An indicator that says "dead" one refresh in three is not a milder version of a wrong indicator — it is an indicator nobody can use**, and it teaches the operator to disbelieve the panel when it finally has something true to say. **The flicker is the reason the question got asked at all.**
+  - ⭐ **Frontend — rides the rsync on push, NO PRESS NEEDED.** Verified live after the cascade: the deployed `dashboard.html` carries `PREVOCABLIVE`, the `stageAgeS` term and the `stageBit`, and the panel reads green on all 6 samples above.
 
 - [ ] `PREVOCABDENOM.1` — ⚠ **THE PHASE DENOMINATOR I SHIPPED DOES NOT COVER THE PHASE SHE IS ACTUALLY IN, AND I AM RECORDING THAT RATHER THAN LETTING THE FILING IMPLY OTHERWISE.**
   - Read live at 4.5 min post-boot, mid pre-cell bootstrap: `phaseWork null · activePhase null · phaseChain [] · macroPhaseProgress null`. **The pre-cell definition bootstrap runs OUTSIDE the phase wrapper**, so `PHASEDENOM.1`'s publisher — wired into `_teachAssociationPairs` and `_teachQABinding` — cannot see it.
