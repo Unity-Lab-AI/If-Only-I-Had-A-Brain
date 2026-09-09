@@ -933,47 +933,10 @@ const SERVER_STATE_MIXIN = {
             try { return require('../figure-field-store.js').fieldStoreStats(); }
             catch { return null; }
           })(),
-          // ⛔⛔ APPARATUS — HOW MUCH OF THE CORPUS ON DISK IS NOT PROSE, AND
-          // WHICH KIND. The cleaner has always exported these counters with a
-          // comment saying *"a filter nobody can see the output of is
-          // indistinguishable from one that is silently eating content"* — and
-          // until this line **nothing in the tree read them.** The corpus on
-          // disk and the corpus she is taught stopped being the same thing the
-          // day that filter shipped, and the difference was invisible.
-          //
-          // What each term answers:
-          //   seen        sentences the reader split out of the corpus files
-          //   cleaned     markup stripped, sentence kept
-          //   dropped     mostly-notation, discarded (the LaTeX/wiki lane)
-          //   apparatus   NOT PROSE AT ALL — index rows, web addresses, licence
-          //               footers, bibliographies, transcriber notes
-          //   credited    a photo/attribution credit cut out of real prose that
-          //               was then KEPT — the strip-not-drop path
-          //   apparatusByClass  which of the eleven kinds, so the count points
-          //               at the source that needs fixing rather than at a pile
-          //
-          // ⚠ Process-lifetime totals across every cell this boot has loaded,
-          // not per-cell: the reader is called once per cell per visit, so a
-          // per-call figure would answer a question nobody asks. A boot that has
-          // loaded one cell reads small and that is correct, not a fault.
-          corpusCleaning: (() => {
-            try {
-              const s = require('../life-curriculum.js').cleaningStats;
-              if (!s || !s.seen) return null;   // no cell loaded yet — absent, not zero
-              return {
-                seen: s.seen | 0,
-                cleaned: s.cleaned | 0,
-                dropped: s.dropped | 0,
-                apparatus: s.apparatus | 0,
-                credited: s.credited | 0,
-                // The share of the corpus that was never prose. Published as a
-                // fraction rather than left to the page to divide, because two
-                // consumers dividing is two consumers that can disagree.
-                apparatusPct: s.seen ? Number((100 * s.apparatus / s.seen).toFixed(3)) : null,
-                apparatusByClass: s.apparatusByClass || null,
-              };
-            } catch { return null; }
-          })(),
+          // ⚠ `corpusCleaning` USED TO BE PUBLISHED HERE AND THAT WAS WRONG —
+          // it now lives on `state.curriculum`, where it belongs and where its
+          // only consumer already looked. See the note at that call site; this
+          // marker stays so the next reader does not re-add it to this object.
           // ⭐ HEARING.1 — what her EARS did, counted by reason. `received`
           // climbing with `banked` flat means the percept arrived unusable;
           // `banked` climbing with `taught` flat is the figure lane's old
@@ -1532,9 +1495,71 @@ const SERVER_STATE_MIXIN = {
       // dashboard's subject/grade/progress display and the curriculum
       // teach path can never drift out of sync — ONE cortex, ONE
       // curriculum object, ONE dashboard read.
-      curriculum: _lap('curriculum', () => (this.curriculum && typeof this.curriculum.getCurriculumStatus === 'function'
-        ? this.curriculum.getCurriculumStatus()
-        : null)),
+      // ⛔⛔ `corpusCleaning` IS MERGED IN HERE, AND THE FIRST CUT PUBLISHED IT
+      // UNDER `state.ownArt` BY ACCIDENT — defect shape #1, producer/consumer
+      // path mismatch, committed inside the very batch that fixed an instrument
+      // nobody read. **`docs/ADMIN-CONTROLS.md` already records this exact
+      // mistake being made once before in this exact file** (`state.readback`
+      // against `state.profiling.readback`), with the same cause: I read the
+      // surrounding comments, which talk about `this.curriculum._relUse`, and
+      // inferred the parent instead of checking which object encloses the
+      // assignment. **The enclosing function decides the path, not the
+      // indentation or the neighbours.**
+      //
+      // ⚠ It was live and correct in VALUE for a whole boot while the dashboard
+      // row read `undefined` and rendered its own "no cell loaded yet" empty
+      // state — a filter's audit trail, invisible again, one commit after being
+      // published to fix exactly that. **Caught by reading the LIVE payload
+      // after the press instead of trusting the write.**
+      //
+      // Merged rather than moved into `getCurriculumStatus()`: that method lives
+      // in `js/brain/curriculum.js`, which is ALSO browser-bundled, so a
+      // server-only `require('fs')`-backed module cannot be reached from it.
+      // This file is server-side and is the correct seam.
+      //
+      // What each term answers:
+      //   seen        sentences the reader split out of the corpus files
+      //   cleaned     markup stripped, sentence kept
+      //   dropped     mostly-notation, discarded (the LaTeX/wiki lane)
+      //   apparatus   NOT PROSE AT ALL — index rows, web addresses, licence
+      //               footers, bibliographies, errata, catalogue tables
+      //   credited    apparatus cut out of real prose that was then KEPT — a
+      //               photo credit, or a fused page-reference marker repaired
+      //   apparatusByClass  which of the thirteen kinds, so the count points at
+      //               the source that needs fixing rather than at a pile
+      curriculum: _lap('curriculum', () => {
+        const base = (this.curriculum && typeof this.curriculum.getCurriculumStatus === 'function')
+          ? this.curriculum.getCurriculumStatus()
+          : null;
+        if (!base || typeof base !== 'object') return base;
+        let corpusCleaning = null;
+        try {
+          const s = require('../life-curriculum.js').cleaningStats;
+          if (s && s.seen) {
+            corpusCleaning = {
+              seen: s.seen | 0,
+              cleaned: s.cleaned | 0,
+              dropped: s.dropped | 0,
+              apparatus: s.apparatus | 0,
+              credited: s.credited | 0,
+              // ⚠ THE DENOMINATOR IS SENTENCES READ, NOT SENTENCES IN THE
+              // CORPUS, and the first version of this comment said "the share of
+              // the corpus" — which is wrong and the live payload proved it.
+              // `academicStorySentences` and `academicStoryExperiences` both
+              // split the same stories, so a cell consulted by both is counted
+              // TWICE: the box read `indexref 218` against 112 distinct rows on
+              // disk, almost exactly double. **A rate of work done, not a
+              // property of the corpus** — quote the on-disk measurement for
+              // the latter.
+              apparatusPct: s.seen ? Number((100 * s.apparatus / s.seen).toFixed(3)) : null,
+              apparatusByClass: s.apparatusByClass || null,
+            };
+          }
+        } catch { corpusCleaning = null; }
+        // Absent, never zero: a zero would claim the corpus was measured and
+        // found clean when in fact no cell has been loaded yet this boot.
+        return { ...base, corpusCleaning };
+      }),
       // ⭐⭐ THE FINALIZATION SEQUENCE — see `_finalizationSteps()` above for the
       // rule it exists to enforce: "has not run" and "cannot run" must not look
       // alike. Derived from state that already exists, so there is one producer

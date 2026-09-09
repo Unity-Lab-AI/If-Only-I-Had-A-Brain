@@ -5,6 +5,71 @@
 
 ---
 
+## 2026-09-09 (3rd) — `APPARATUS.9-.10`: THE PRESS LANDED, THE FILTER IS LIVE, AND I HAD PUBLISHED IT AT THE WRONG PATH
+
+Gee (verbatim): *"okay she should be up and updated"*.
+
+### ✅ SHE IS UP, AND SHE IS DOING WORK — not merely serving state
+
+```
+  build     5deac0f5 on main · deployed 20:14:37Z · booted 20:16:34Z
+  bootReason {mode:"resume", reason:"keep-flag", detail:"DREAM_KEEP_STATE=1 (no marker)"} · bootFatal null
+  cgroup    13,013 / 20,480 MB · below-high · pressure 0/0 · throttleEvents 0
+```
+
+**Two samples 171 s apart, because `/health` answering 200 has never been evidence of teaching:**
+
+```
+  frameCount       1,735       -> 2,131          CLIMBING
+  spikesLifetime   1,285,622,508 -> 1,685,773,850  CLIMBING   (the monotonic twin, not totalSpikes)
+  teachStageAgeMs  3,140                          fresh stamp
+  prevocab         82 -> 103 of 485 chunks        ~7.4 chunks/min measured
+```
+
+⭐ **The box's commit is byte-equal to local `main`, so the single press was enough** — no two-press sequence was owed, which is what I said to expect and is worth recording as a hit rather than only recording misses.
+
+### ⭐ THE FILTER IS LIVE AND EVERY CLASS IS FIRING
+
+```
+  seen 3,695,674 · apparatus 49,707 (1.345%) · markup 8,813 · credited 1,964
+  webaddr 16,429 · credit 11,611 · licence 9,960 · citation 6,780 · bibid 2,777
+  initrun 1,650 · indexref 218 · placeholder 102 · pagecite 81 · attrdebris 34
+  transnote 32 · errata 21 · tablerule 12
+```
+
+**Both second-wave classes are working in production** (`errata 21`, `tablerule 12`) — the two that only existed because the operator's *"its all fixed?"* made me check instead of assert.
+
+### ⛔⛔ `APPARATUS.9` — AND IT WAS PUBLISHED AT THE WRONG PATH, WHICH IS DEFECT SHAPE #1 COMMITTED INSIDE THE FIX FOR DEFECT SHAPE #1
+
+`corpusCleaning` was live at **`state.ownArt.corpusCleaning`**. Its only consumer reads **`state.curriculum.corpusCleaning`**. So for a whole boot the dashboard row rendered its own *"reader refused — no cell loaded yet this boot"* empty state **over a filter that was demonstrably working**, and the value was correct the entire time.
+
+⛔ **`docs/ADMIN-CONTROLS.md` already records this exact mistake being made once before in this exact file** — `state.readback` against `state.profiling.readback` — with the identical cause, written down in its own words: *"the enclosing function decides the path, not the assignment's indentation"*. **I read the surrounding comments, which talk about `this.curriculum._relUse`, and inferred the parent instead of checking which object encloses the assignment.** The enclosing object was `ownArt: (() => {` at line 855.
+
+⭐ **Caught only by reading the LIVE payload after the press.** Every local harness passed, because a harness exercises the value and never the path.
+
+**Fixed** by merging the block into the `curriculum` lap — deliberately at the state.js seam rather than inside `getCurriculumStatus()`, because that method lives in `js/brain/curriculum.js`, which is **also browser-bundled** and cannot reach an `fs`-backed module.
+
+⚠ **And the page reads both paths across the version boundary**, so the operator is not charged a second press for a display bug. **That arm is dated and marked for deletion** once a boot on `5deac0f5`+ is confirmed publishing the canonical path — a compatibility read nobody removes is how two paths become permanent.
+
+⛔ **I nearly shipped a ReferenceError doing it.** The first cut wrote `s.ownArt.corpusCleaning` *inside* `renderCurriculumStatus(c, gateProbes)`, where the whole-state object **is not in scope** — a throw that takes the entire curriculum render with it, and one no syntax check can see. Resolved at the call site and passed in as a third parameter; the surviving `s.ownArt` in that function is inside a **comment**, proven by brace-matching the function body and classifying every hit rather than trusting a grep.
+
+### ⛔ `APPARATUS.10` — THE DENOMINATOR IS SENTENCES READ, NOT SENTENCES IN THE CORPUS
+
+The live box reads `indexref 218` against the **112** rows that exist on disk — almost exactly double. **`academicStorySentences` and `academicStoryExperiences` both split the same stories**, so a cell consulted by both is counted twice, and the boot-time coverage audit reads every cell once.
+
+⛔ **My state.js comment called `apparatusPct` *"the share of the corpus that was never prose"*, and that is wrong.** It is a rate of work done. Corrected in the comment and in the tooltip, which now also says that **a FLAT count here is normal rather than a stalled filter** — it moves when a cell loads, and the whole corpus loads at boot.
+
+### ⭐ TWO THINGS THE LIVE READ SETTLED THAT WERE NOT MINE
+
+- **`FIGORDER` is CONFIRMED WORKING: `figureQueue.total 289`**, where the defect was `total 0` meaning *never*. ⚠ **But `seen 0` with `held 284`** — the rows exist and are not draining into percepts. **A queue that fills and never empties is the next thing to read, not a success**, and it is filed rather than claimed.
+- **`FIGFIELDLFS.1` remains open and unchanged**, with its own verdict doing its job: `hit 0 · miss 12 · stub 3` of 15 attempts, `delivering "empty-for-these-figures"`. Box-side, and Gee's.
+
+**Verified:** every figure above is a field read from build `5deac0f5` quoted with its sample time · the shipped renderer exercised against the **real fetched payload** (renders `reader refused 49,707 apparatus (1.345%) …`) and against the canonical path, the legacy path and the empty case · `node --check` clean · dashboard 3/3 script tags balanced and **all inline scripts parse under a real module parser** · no executable `s.ownArt` inside the render function.
+
+⚠ **`docs/NOW.md` is a genuine refresh for the first time in this batch** — the snapshot now quotes this boot instead of `24ddd9c2`, and donor attachment and Gn/s were **removed** from its compute table because the public snapshot does not carry them and the previous version quoted them anyway.
+
+---
+
 ## 2026-09-09 (2nd) — `APPARATUS.6-.8`: I SAID IT WAS FIXED AND IT WAS NOT, AND THE THING THAT FOUND THE REST WAS A METHOD RATHER THAN A PATTERN
 
 Gee (verbatim): *"so we are good to press update savestart now? its all fixed?"*
