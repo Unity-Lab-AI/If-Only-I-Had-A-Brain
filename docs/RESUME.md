@@ -6,21 +6,33 @@
 >
 > ⛔ **He was right.** `=412=` is a page number from Project Gutenberg #25545's index; the transcriber's note explaining that markup (*"bold text is represented by ="*) was being taught alongside it. **The index sits BETWEEN the licence start and end markers, so it is part of the book body by every test that ran.**
 >
-> ## ⭐ THE INDEX IS 112 SENTENCES. THE CORPUS HELD 49,609
+> ## ⭐ THE INDEX IS 112 SENTENCES. THE CORPUS HELD 50,409
 >
 > ```
 >   web address 16,649 · credit line 11,612 · licence furniture 10,114
->   citation stamp 6,214 · bibliography 3,017 · initial run 1,644
->   index ref 112 · placeholder 110 · pp.NNN 84 · src= 37 · errata 16
+>   citation/archived 6,994 · bibliography 3,017 · initial run 1,644
+>   index ref 112 · placeholder 110 · pp.NNN 84 · src= 37
+>   transnote 16 · errata 14 · catalogue table 6
 >   ─────────────────────────────────────────────────────────────────
->   APPARATUS 49,609 (1.320%)   ·   markup, pre-existing 8,844 (0.235%)
+>   APPARATUS 50,409 (1.341%) · markup 8,844 (0.235%) · REMOVED 59,253 (1.577%)
+>   repaired in place and KEPT 2,200
 > ```
+>
+> ## ⛔⛔ AND I TOLD HIM IT WAS FIXED WHEN IT WAS NOT
+>
+> He asked *"so we are good to press update savestart now? its all fixed?"* and **the answer was no.** The first pass shipped, cascaded and pushed — and **every rule in it was derived from ONE book's back matter.** A second book's errata list shares **not one token** with the first (`page 114: replaced missing end quote--` against `page vi, "rocky" changed to "rock"`).
+>
+> ⭐ **What found the rest was a METHOD, not more patterns: back matter is TRAILING, so read the tail of every early-ELA experience AFTER filtering.** Three classes out of one sweep — Wikipedia reference sections (+780), the page-anchored errata list (14), a publisher's **catalogue table** at the back of a picture book (6) — and **two of them are in `ela/pre-K`, a cell she has already walked.** Plus 97 sentences **repaired** rather than dropped, where a fused reference marker had welded two real sentences together.
+>
+> ⛔ **None of the three new rules contained a character the cheap gate admitted**, so all three would have been live in the source and dead in effect — the exact failure the first pass had already written down. Gate widened, all 14 witnesses re-verified.
 >
 > ⭐ **The largest class by far is web addresses — she was learning `commons.wikimedia.org/w/index.php?curid=11749560` as a sentence of English, 149× more often than an index row.** ⛔ **The fix is in `js/brain/text-cleaning.cjs`, the ONE owner at the ONE reader — the fetchers were deliberately not touched**, per that file's own argument that thirteen edits invite the fourteenth to forget.
 >
-> ## ⛔⛔ SIX OF MY OWN DETECTORS DIED IN VALIDATION AND ONE NUMBER IS RETRACTED
+> ## ⛔⛔ NINE OF MY OWN DETECTORS DIED IN VALIDATION AND ONE NUMBER IS RETRACTED
 >
 > A comma-density heuristic scored **86,903 hits** and made my headline `2.556%`; the hits are ordinary prose (*"high points and low points, slope, concavity, inflection points"*). **That figure never became a claim.** Also dead: `; see also …`, `figure N shows …`, a bare ` = ` rule (**60,039 hits, real mathematics**), a bare ` / ` rule (3,312), and — caught by the math cells after I thought I was finished — **`attrdebris` matching `height\s*=` and eating *"each with base = 5 centimeters, height = 3 centimeters"*, a TRIANGLE. 148 → 41.**
+>
+> ⛔ **Three more in the second pass. `pg.` is PICOGRAMS** (`327 pg./ml`) — 65 hits, gone. `etc.` at sentence end — 2,501 hits of ordinary prose, gone. ⛔⛔ **And table detection by pipe count (1,034 hits) would have eaten MATHEMATICS** — `4 | x 2 |` is an absolute value, `p(second is weapon | first is suspect)` a conditional probability; by dash run (288) it takes a binary-addition worked example and a chapter divider welded to real prose. **What survived is `+----+`: 6 rows, all one catalogue, nothing else in 3.7M sentences.**
 >
 > ⛔ **Two URL refinements were built, measured and thrown away.** Strip-then-judge makes `…/arp/206/ schneider, jack.` into `schneider, jack.`; a prose-after test rescued 5,265 sentences of which **18 of 18 sampled were link listings.** **A link list is mostly words.**
 >
@@ -30,8 +42,9 @@
 >
 > ## ⏳ NEXT
 >
-> - ⛔ **THIS ONE NEEDS A PRESS.** `text-cleaning.cjs` is server-side and **not** in `js/app.bundle.js`, so the rsync cannot deliver it — the node process must restart. **Update & Savestart.** The dashboard row lands without one.
-> - ⚠ **Until the press she is still training the index**, and the walk is in `ela/kindergarten` where two of the worst-affected cells live (`ela/kindergarten` and `ela/grade1` are the only two carrying #25545's back matter).
+> - ⛔ **THIS ONE NEEDS A PRESS.** `text-cleaning.cjs` is server-side and **not** in `js/app.bundle.js`, so the rsync cannot deliver it — the node process must restart. **Update & Savestart.** The dashboard row and the teachview tooltip land without one.
+> - ⚠ **Until the press she is still training the index**, and the walk is in `ela/kindergarten` — one of the three ELA cells carrying a source's back matter (`pre-K`, `kindergarten`, `grade1`).
+> - ⛔⛔ **THE PRESS DOES NOT UNLEARN WHAT IS ALREADY BANKED.** Update & Savestart keeps the weights, so the apparatus she has already trained on stays in them; the filter only stops it happening again. ⭐ **The good news is where the mass is: the 16,649 web addresses and 10,114 licence footers live in college/grad cells she has never reached, so the filter lands BEFORE the bulk of it.** What she has actually eaten is the early-ELA back matter — tens of sentences, at 3 reps, against 22,586 in the cell. **A fresh walk is the only thing that clears it, and that decision is a re-price, not a reflex.**
 > - ⚠ **Cost stated, not hidden:** 2 hand-authored `corpora/coding` sentences whose subject IS a URL are refused with the furniture. ⭐ **`corpora/life` loses zero** — the life canon is untouched, checked explicitly.
 > - Open, unchanged: `FIGFIELDLFS.1` (box-side), `DOCSWEEP` remainder.
 >
