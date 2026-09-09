@@ -5,6 +5,78 @@
 
 ---
 
+## 2026-09-09 (2nd) — `APPARATUS.6-.8`: I SAID IT WAS FIXED AND IT WAS NOT, AND THE THING THAT FOUND THE REST WAS A METHOD RATHER THAN A PATTERN
+
+Gee (verbatim): *"so we are good to press update savestart now? its all fixed?"*
+
+⛔ **The honest answer was NO, and I only knew that because the question made me check instead of assert.** The first pass shipped, cascaded and pushed; then a residual scan found a second wave. **"It's all fixed" was one query away from being a false claim to the operator's face, on the strength of my own verification passing.**
+
+### ⛔⛔ WHY THE FIRST PASS COULD NOT HAVE BEEN COMPLETE
+
+**Every rule in it was derived from ONE book's back matter** — Gutenberg #25545, the book in the rows Gee pasted. A second book records its corrections in a shape sharing **not one token** with the first:
+
+```
+  #25545   page vi, "rocky" changed to "rock" (83.
+  #19993   page 114: replaced missing end quote-- "rise, little lie-a-beds," she said
+```
+
+**A pattern set fitted to one source generalises to that source.** The fix was to stop guessing patterns and use the structure: **back matter is TRAILING**, so read the last sentences of every early-ELA experience *after* filtering and look at what is still there. **Three new classes came out of one sweep; guessing had produced none of them.**
+
+### ⭐ WHAT THE SWEEP FOUND
+
+| Class | Hits | What it is |
+|---|---:|---|
+| `citation` (widened) | **+780** | Wikipedia reference sections — `archived from the original on 28 may 2020` |
+| `errata` | **14** | #19993's page-anchored correction list, in `ela/pre-K` and `ela/grade1` |
+| `tablerule` | **6** | a publisher's **catalogue table** advertising other titles at the back of a picture book, ending `stereotyped by vincent …` |
+| `refmark` (repair) | **97** | a fused page-reference marker **welded two real sentences together** |
+
+⛔⛔ **Two of those classes sit in `ela/pre-K` — a cell she has ALREADY WALKED.**
+
+### ⭐ ONE OF THEM IS A REPAIR, NOT A REFUSAL
+
+A superscript citation flattens into the text and eats the sentence boundary with it:
+
+```
+  before   now only 1% of chinese characters are pictographic.p97 97% of modern characters are sp characters.
+  after    now only 1% of chinese characters are pictographic. 97% of modern characters are sp characters.
+```
+
+**Both halves are real prose.** Dropping would have thrown away content; removing the marker restores the full stop the source actually had, and stops `pictographicp97` being learned as a word. **97 sentences, every one read.**
+
+### ⛔ THREE MORE OF MY OWN DETECTORS DIED IN THIS PASS — NINE ACROSS THE TWO
+
+- **`pg.` page citations (65 hits) — DISCARDED. `pg.` is PICOGRAMS.** `327 pg./ml`, `6.41 pg.` are real units in the science and research cells. Two of seven sampled were citations; the rest were measurements.
+- **`etc.` at sentence end (2,501 hits) — DISCARDED.** All ordinary prose.
+- **Table detection by pipe count (1,034 hits) — DISCARDED, and this one would have eaten mathematics.** `g(x) = 4 | x 2 | + 2` is an **absolute value**; `p(second is weapon | first is suspect)` is a **conditional probability**.
+- **Table detection by dash run (288 hits) — DISCARDED.** It takes a binary-addition worked example in `cs/grade6` and a chapter divider welded to real prose in `ela/grade11`.
+- ⭐ **What survived is the narrowest possible form: the box-drawing corner `+----+`, which matches 6 rows, all of them that one catalogue, and nothing else in 3.7M sentences.**
+
+### ⛔ AND THE GATE HAD TO BE REOPENED, WHICH IS THE FAILURE MODE THE FIRST PASS ALREADY DOCUMENTED
+
+None of `page 114:`, `archived from the original` or `+----+` contains a character the cheap gate admitted, so **all three new rules would have been unreachable — live in the source, dead in effect.** The gate was widened and **all 14 class witnesses re-verified through it**, which is the only reason this was caught twice rather than shipped once.
+
+### THE CORRECTED TOTALS — these supersede the first entry's
+
+```
+  ACADEMIC sentences            3,758,196
+    markup drop (pre-existing)      8,844   0.235%
+    APPARATUS                      50,409   1.341%
+    ───────────────────────────────────────────────
+    REMOVED                        59,253   1.577%
+    repaired in place and KEPT      2,200
+
+  webaddr 16,649 · credit 11,612 · licence 10,114 · citation 6,994
+  bibid 3,017 · initrun 1,644 · indexref 112 · placeholder 110
+  pagecite 84 · attrdebris 37 · transnote 16 · errata 14 · tablerule 6
+```
+
+**Verified:** all **14** class witnesses reach their rule through the gate · **12 real sentences that the discarded wider rules would have eaten all survive**, including *"he took up a stone--it changed to gold"*, *"each with base = 5 centimeters, height = 3 centimeters"*, *"the string \"=234=+\" is not in l"*, `327 pg./ml` and the conditional probability · residual trailing sweep of `ela/pre-K` / `kindergarten` / `grade1` / `grade2` now finds **1, 1, 1, 0** survivors and **every one is real prose** (*"as soon as loki put the nut down, it changed to idun"*) · `corpora/life` **0 removed** · full sweep `3,758,196 → 3,698,943` · `node --check` clean.
+
+⛔ **STILL NEEDS THE PRESS, and now there is a second reason to want it:** `ela/pre-K` back matter is in the weights already. **The filter stops future teaching; it does not unlearn what is banked.**
+
+---
+
 ## 2026-09-09 — `APPARATUS`: SHE WAS BEING TAUGHT THE BACK OF THE BOOK, AND THE INDEX WAS THE SMALLEST CLASS BUT ONE
 
 Gee (verbatim): *"something is  major wrong!!!!! Just look at this poisioning running through the teach viewer :"* — then the live paste, every row `ela/kindergarten · teachSentenceList · corpora/academic/ela/kindergarten.json · 3 reps`:
