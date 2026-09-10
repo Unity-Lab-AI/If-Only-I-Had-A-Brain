@@ -1,6 +1,93 @@
 # RESUME — Session Pickup Brief
 
-> # ✅ 2026-09-09 (latest, 27th) — THE PRESS LANDED, THE FILTER IS LIVE, AND I HAD PUBLISHED IT AT THE WRONG PATH (START HERE)
+> # 🛑 2026-09-09 (latest, 28th) — SESSION CLOSE: THE CORPUS BACK-MATTER WAR, AND THE ONE THING TO CHECK FIRST (START HERE)
+>
+> Gee: *"okay write resume.md we are stopping for now"*.
+>
+> ## ⛔⛔⛔ SHE IS WEDGED. THE TEACH LANE HAS DONE NOTHING FOR 2.8 HOURS AND THE SUBSTRATE IS FINE.
+>
+> **Measured, two samples 121 s apart, on the last read of the session. `WALKPROG`/`WEDGE` shape, and the sequence number is what settles it:**
+>
+> ```
+>   teachStageSeq          21,660 -> 21,660        FLAT      <- THE DISCRIMINATOR
+>   sinceLastTeachMs       10,093,465  = 2.80 h
+>   teachCallsPerMin       0
+>   teachChunksPerMin      0
+>   emissionTicksPerMin    0
+>   activePhase            {name:"_teachSentenceList", elapsedMs:10,093,348}
+>   phaseWork              null
+>
+>   frameCount             46,828 -> 47,105        CLIMBING  <- the TICK loop, not teaching
+>   spikesLifetime         26.456e9 -> 26.601e9    CLIMBING
+>   loopLag 184ms · cgroup 9,890/20,480 · pressure 0/0 · throttle 0 · watchdogs 0 trips
+> ```
+>
+> ⛔ **I first read this as progress and I was wrong.** The stamp *looks* like a finished bootstrap handing off — `"prevocab:ela-kindergarten:anchoring 2451/2451 · 0 bound"` is a completion line, and the walk did move into `_teachSentenceList`. **But this project's own rule settles it: a tag whose AGE climbs while its SEQUENCE stays frozen means the blocker is in unmarked code. `teachStageSeq` did not move.** Every teach rate is zero, and `sinceLastTeachMs` is the whole 2.8 h.
+>
+> ⭐ **The substrate is healthy and that is the point** — frames and spikes climb, the loop lag is normal, memory is under the soft limit with zero throttling, no watchdog tripped. **This is not resource starvation. The tick loop is alive and the TEACH lane is dead**, which is the `PROBEWEDGE` shape: one await that never came back.
+>
+> ⛔ **NO WATCHDOG COVERS THIS.** Consolidation fires at 300 s, the trickle at 60 s; both read `trips: 0`. **A 2.8-hour teach silence trips nothing** — that gap is itself a finding.
+>
+> ### The prime suspect, named as a suspect and not a conclusion
+>
+> **`_teachSentenceList` is the phase `SENTLISTCURSOR.1` was written into this week**, and the previous process died *inside* that same phase (`LOOPNAME.7` recorded it), so **this boot resumed into it carrying a banked rep cursor** — the first time that code path has ever run in production, which the ledger explicitly flagged as *"untested in production by construction"*.
+>
+> ⚠ **Read the resume arithmetic first:** if `_owed` resolved such that the phase entered with nothing to do, and the exit path awaits something that only a rep completion satisfies, that is a wedge with a clean substrate — exactly this signature. ⛔ **Do not "fix" it by guessing; get the console ring** (`/public-state.json?console=N`, and page BACKWARD with `&before=`) **and find the last line before the silence.**
+>
+> ### Two instruments that failed alongside it
+>
+> - ⛔ **`phaseWork null` inside the very phase whose cursor `SENTLISTCURSOR.1` wired.** The one field that would say how far through the phase she is publishes nothing, so the wedge has no denominator.
+> - ⛔ **`0 bound` on a pass reporting `2451/2451` anchored.** Either a final-state artefact or a two-hour pass that bound nothing. **Unresolved; distinguish it before trusting the anchoring.**
+>
+> ## ⛔ THE SERVER AND THE PAGE ARE ON DIFFERENT COMMITS, ON PURPOSE
+>
+> ```
+>   server process   5deac0f5   booted 2026-09-09 20:16:34Z   (no press since)
+>   main / both remotes  846a0914
+>   deployed frontend    846a0914's — verified live: d-curr-cleaning node, legacyCleaning
+>                        param, 3-arg call site and the denominator tooltip are all on the box
+> ```
+>
+> **This is the documented shape, not a fault:** the frontend rsyncs on every push, the node process only restarts on a press. **The dashboard row works right now** because the page reads the legacy path the running server publishes.
+>
+> ## ✅ WHAT SHIPPED — THREE WAVES, ALL ON BOTH REMOTES
+>
+> **The finding:** Gee saw `ela/kindergarten` training the **INDEX** of its own kindergarten reader — page references, errata, and the transcriber's note explaining the markup she was learning. The fetcher cannot catch it: a book's back matter sits **between** the licence start and end markers.
+>
+> | Wave | What |
+> |---|---|
+> | `APPARATUS.1-.5` | the apparatus stage in `js/brain/text-cleaning.cjs`, the one owner at the one reader; 11 classes; `state…corpusCleaning` published and rendered |
+> | `APPARATUS.6-.8` | ⛔ **the first pass was fitted to ONE book and was not complete** — a second errata list, Wikipedia reference sections, a publisher's catalogue table, and 97 sentences **repaired** not dropped |
+> | `APPARATUS.9-.10` | ⛔ **I published the field at the wrong path**; denominator relabelled |
+>
+> **Final measured totals, on disk:** `apparatus 50,409 (1.341%) · markup 8,844 (0.235%) · removed 59,253 (1.577%) · repaired-and-kept 2,200`. **Live on the box:** `apparatus 49,707 (1.345%)`, every class firing including `errata 21` and `tablerule 12`.
+>
+> ## ⛔⛔ THE THREE LESSONS WORTH MORE THAN THE CODE
+>
+> 1. **A pattern set fitted to one source generalises to that source, and a green verification over that same source is not coverage.** *"Is it all fixed?"* is the only reason the second wave exists.
+> 2. **The enclosing function decides a field's path — not its indentation, not its neighbours.** Second time in this exact file. **A harness exercises the VALUE and never the PATH**; only the live payload catches it.
+> 3. **Nine of my own detectors died in validation.** A comma-density heuristic scored **86,903 hits of ordinary prose** and produced a retracted `2.556%` headline; a `height\s*=` rule was eating *"base = 5 centimeters, height = 3 centimeters"* — **a triangle**; `pg.` is **picograms**; pipe-counting would have eaten `4 | x 2 |` and `p(a | b)`. **A detector is not a finding until its hits have been read.**
+>
+> ## ⏳ PICK UP HERE
+>
+> 1. ⛔⛔⛔ **THE WEDGE, above. Nothing else matters until it is answered** — she has been burning a paid pod for 2.8 h without a single teach call. Console ring first, resume arithmetic second, and **a restart is the LAST resort, not the first**: a restart mid-cell discards the visit, and `WALKPROG` and the teachview bench have each falsely reported a wedge before, which is why the flat `teachStageSeq` is quoted here rather than an inference.
+> 2. **`FIGDRAIN.1` (new)** — `FIGORDER` is CONFIRMED working (`figureQueue.total 289`, was `0` meaning *never*), and that exposed `seen 0` with `held 284`: the rows fill and never drain. **Possibly `FIGFIELDLFS.1` wearing a second face — measure, do not assume.**
+> 3. **`FIGFIELDLFS.1`** — unchanged, box-side, Gee's: `hit 0 · miss 12 · stub 3` of 15, verdict `empty-for-these-figures`.
+> 4. **Delete the dated `legacyCleaning` arm** in `dashboard.html` once a boot on `846a0914`+ publishes `state.curriculum.corpusCleaning`. **A compatibility read nobody removes is how two paths become permanent.**
+> 5. **`DOCSWEEP` remainder.**
+> 6. ⛔ **The press did NOT unlearn the early-ELA back matter already in the weights.** Savestart keeps them. **Only a fresh walk clears it, and that is a RE-PRICE, not a reflex.** ⭐ The bulk of the apparatus (16,649 web addresses, 9,960 licence footers) lives in college and grad cells she has never reached, so the filter landed **ahead** of most of it.
+>
+> ## ⛔ FOR THE OPERATOR
+>
+> ⛔ **She is NOT running usefully — she is wedged in `_teachSentenceList` with every teach rate at zero.** The corpus work all shipped and is verified live, but **the walk is not advancing**, and the pod is being paid for either way. **That is the first thing to deal with next session.**
+>
+> ⚠ **No press is owed for the code** — everything is on both remotes, and the next press whenever it happens collects the canonical `state.curriculum.corpusCleaning` path. ⛔ **But a restart is also the only lever that clears a wedge, so the two decisions are now coupled:** read the console ring before pressing, because **the evidence dies with the process.**
+>
+> `wiki/` was updated and is **gitignored by design**, so it is not in the commits.
+>
+> ---
+
+> # ✅ 2026-09-09 (27th) — THE PRESS LANDED, THE FILTER IS LIVE, AND I HAD PUBLISHED IT AT THE WRONG PATH
 >
 > Gee: *"okay she should be up and updated"*.
 >
