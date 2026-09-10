@@ -51,7 +51,23 @@ last-verified: "2026-09-09 (3rd) — ⭐ THE SNAPSHOT IS A GENUINE REFRESH FOR T
 
 **Boot:** `5deac0f5` on `main`, **deployed 2026-09-09 20:14:37 UTC, booted 20:16:34 UTC** — operator Update & Savestart via the dashboard. `bootReason {mode:"resume", reason:"keep-flag", detail:"DREAM_KEEP_STATE=1 (no marker)"}` · `bootFatal null`.
 
-⭐ **This is the boot that carries the apparatus filter, and it is the first field read on this page taken from it.** Read live, two samples **171 s** apart:
+> ## ⛔⛔⛔ AND AS OF THE LAST READ SHE IS WEDGED — read this before the tables below
+>
+> **Two samples 121 s apart, ~2.8 h after the boot:**
+>
+> ```
+>   teachStageSeq       21,660 -> 21,660      FLAT      <- the discriminator
+>   sinceLastTeachMs    10,093,465 = 2.80 h
+>   teachCallsPerMin 0 · teachChunksPerMin 0 · emissionTicksPerMin 0
+>   activePhase {name:"_teachSentenceList", elapsedMs:10,093,348} · phaseWork null
+>   frameCount 46,828 -> 47,105  CLIMBING    spikesLifetime 26.456e9 -> 26.601e9  CLIMBING
+> ```
+>
+> ⭐ **The substrate is healthy — and that is the point.** Frames and spikes climb, loop lag is normal, memory is under the soft limit with zero throttling, no watchdog tripped. **The tick loop is alive and the TEACH lane is dead.** ⛔ **A tag whose age climbs while its sequence stays frozen means the blocker is in unmarked code**, which is the rule in the trap table below, applied to itself. ⛔ **No watchdog covers a 2.8-hour teach silence.**
+>
+> **The numbers in the tables below are the early-boot reads and were true when taken.** They describe a brain that was teaching; she is not teaching now.
+
+⭐ **This is the boot that carries the apparatus filter, and it is the first field read on this page taken from it.** Read live, two samples **171 s** apart, **21 minutes into the boot**:
 
 | | | |
 |---|---:|---|

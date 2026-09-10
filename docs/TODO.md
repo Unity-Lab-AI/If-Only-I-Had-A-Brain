@@ -2520,6 +2520,26 @@ Gee, verbatim: *"pressed! monitor for shutdown and restart and doner connect and
   - **Plausibly downstream of the 2026-09-01 redeploy**, where a wedged `git-lfs` tree was deliberately killed to recover the box (recorded in `deploy/REDEPLOY-NOTES.md`) — that recovery was correct and this is its unrecorded consequence.
   - **What closes this:** count them (`1 so far` is a running counter, not a total), then decide whether the fields are worth an LFS pull on the box or whether live transformation is acceptable. ⛔ **Needs a number before it needs a fix** — and per `feedback_box_deploy_dashboard_only` any box-side action is Gee's, not a manual SSH.
 
+## ⛔⛔⛔ SENTWEDGE — the teach lane has done nothing for 2.8 hours on a healthy substrate — filed 2026-09-09
+
+Found on the last read of the session, while writing the pickup brief Gee asked for.
+
+- [ ] `SENTWEDGE.1` — ⛔⛔ **SHE IS WEDGED IN `_teachSentenceList` AND THE SUBSTRATE IS FINE.** Two samples 121 s apart on boot `5deac0f5`:
+    ```
+      teachStageSeq        21,660 -> 21,660      FLAT     <- THE DISCRIMINATOR
+      sinceLastTeachMs     10,093,465 = 2.80 h
+      teachCallsPerMin 0 · teachChunksPerMin 0 · emissionTicksPerMin 0
+      activePhase {name:"_teachSentenceList", elapsedMs:10,093,348} · phaseWork null
+      frameCount 46,828 -> 47,105  CLIMBING   spikesLifetime 26.456e9 -> 26.601e9  CLIMBING
+      loopLag 184ms · cgroup 9,890/20,480 · pressure 0/0 · throttle 0 · watchdogs 0 trips
+    ```
+  ⛔ **I first read this as progress and I was wrong.** The stamp is a *completion* line (`prevocab:…:anchoring 2451/2451 · 0 bound`) and the walk genuinely did move into `_teachSentenceList` — **but the age climbing while the SEQUENCE stays frozen is this project's own test for a blocker in unmarked code, and `teachStageSeq` did not move.** ⭐ **The tick loop is alive and the teach lane is dead** — not resource starvation. `PROBEWEDGE` shape: one await that never came back.
+  - ⛔ **NO WATCHDOG COVERS A 2.8-HOUR TEACH SILENCE.** Consolidation fires at 300 s, the trickle at 60 s, both read `trips: 0`. **That gap is a finding in its own right** — the walk can stop dead and nothing says so.
+  - ⚠ **PRIME SUSPECT, NAMED AS A SUSPECT:** `_teachSentenceList` is the phase `SENTLISTCURSOR.1` was written into this week, the previous process died *inside* that same phase (`LOOPNAME.7`), so **this boot resumed into it carrying a banked rep cursor — a path the ledger explicitly recorded as "untested in production by construction."** Read the resume arithmetic: if `_owed` left the phase with nothing to do while the exit awaits something only a rep completion satisfies, that is a clean-substrate wedge with exactly this signature.
+  - **What to do first:** the console ring (`/public-state.json?console=N`, paging BACKWARD with `&before=`) to find the last line before the silence. ⛔ **A restart is the LAST resort — the evidence dies with the process**, and both `WALKPROG` and the teachview bench have falsely reported a wedge before, which is why the flat sequence is quoted here rather than an inference.
+- [ ] `SENTWEDGE.2` — ⛔ **`phaseWork null` INSIDE THE VERY PHASE WHOSE CURSOR WAS JUST WIRED.** `SENTLISTCURSOR.1` added `_publishPhaseCursor` to `_teachSentenceList` specifically so this phase would have a denominator, and it publishes nothing — **so the wedge has no progress reading at all.** Either the cursor never fires before the first rep completes (in which case it cannot report a phase that hangs on rep 0, which is the case that matters) or it is not reached. **A cursor that is blind exactly when the phase is stuck is the same defect class as the stamp above.**
+- [ ] `SENTWEDGE.3` — ⚠ **`0 bound` ON A PASS REPORTING `2451/2451` ANCHORED.** Either a final-state counter artefact or a two-hour anchoring pass that bound nothing. `definitionAnchor` reads `calls 2,462 · totalMs 7,490,432 · avgSecPerCall 3.042`, so the work was *done* — the question is whether it LANDED. **Unresolved; distinguish it before trusting the anchoring, because a pass that binds nothing makes the following prose bind on phantom basins, which is the exact failure the pre-vocab step exists to prevent.**
+
 ## FIGDRAIN — the figure queue holds 289 rows and drains none of them — filed 2026-09-09
 
 Found in the live read that verified the apparatus press, so it is filed rather than claimed.
