@@ -323,6 +323,22 @@ So at any plausible sem width, 0.7 means *"essentially every concept points the 
 | mean bigram-graph degree (bigrams ÷ N) | 0.31 | **3.485** | — |
 | stated target for robust connectivity | ~4,500 bigrams / degree ≈ 2.0 | **exceeded by 74%** | ⭐ **PASSED** |
 
+### `WEIGHTFIT` — `DREAM_WEIGHT_FIT_PCT = 85`, prune floor `0.5`, histogram `4096` bins (2026-09-24)
+
+**What it bounds.** The resident size of the brain after the saved weights apply, as a share of the cgroup's `memory.high`. Above `memory.high` the kernel throttles the cgroup; approaching it leaves no page cache for the corpora reader or saves.
+
+| measured point | resident / `memory.high` | outcome | source |
+|---|---:|---|---|
+| 2026-09-09 healthy resume | 13,013 / 22,528 = **58%** | teaching at 90 s | `docs/NOW.md` snapshot |
+| 2026-09-08 resume, pre-term | 102% | D-state stall, 628 throttle events/s | `brain-server.js` sizing comment |
+| 2026-09-24 four boots, 9 GB file | 20,476–21,085 / 22,528 = **91–93%** | pinned, port bound, no response | `docs/FINALIZED.md §2026-09-24` |
+
+**Derivation of 85.** There is no measured point between 58% and 91%. `85` is the largest round margin that keeps ≥ 3 GB (15% of 22.5 GB) of the cgroup free for page cache on the box that exists, and stays 6 points under the lowest measured pin. ⚠ **It is a chosen margin, not a fitted one**, and it is a named knob for exactly that reason — the next healthy boot between 58% and 91% moves it.
+
+**Derivation of the 0.5 floor.** Dropping more than half the synapses is a different brain; below that the check refuses to pretend and warns that she may still pin, leaving the decision (raise the pct, raise the cgroup, fresh walk) to the operator.
+
+**Derivation of 4096 bins.** Float32 weights in these matrices span roughly `[1e-4, 2.0]` after clamping; 4096 linear bins over `[0, max]` give a threshold resolution of `max/4096 ≈ 5e-4` at `max = 2.0`, finer than the smallest weight the Hebbian rule writes, so the boundary bin holds few entries and position-tie-breaking inside it changes the kept set negligibly. Two passes over `nnz` and a 16 KB histogram, no sort, no index arrays — the cost model that lets it run inside the restore.
+
 `N = 2247` (`K_VOCABULARY`) **is still correct** — verified, and the only number in the old block that survived.
 
 ⛔ **Why this mattered more than a wrong number:** an open, authoritative-sounding claim that *"most bigram paths terminate in dead-ends"* and that compositional emergence is **mathematically suppressed** is a **ready-made false explanation for any emission failure.** ⚠ **`EMITZERO.1` is open right now** — 100% emit refusal, one reason, `no-best-word` — and it is filed deliberately as *a question with evidence and no diagnosis*. **This page offered a mathematically-dressed cause that has been false since the corpus grew.** ⭐ **That is the exact failure mode `SKILL_TREE.md:358` established: a doc lying in the direction that feels like an answer.**
