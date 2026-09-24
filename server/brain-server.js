@@ -1483,6 +1483,75 @@ function _binReadTypedArrayAt(fd, ta, pos) {
   return pos + view.length;
 }
 
+// ── WEIGHTFIT — fit the saved weights under the cgroup ceiling at apply time ──
+// The resume term reserves room for the restore transient as a FIXED RATIO of
+// the brain, and a ratio cannot follow a file that grows with every hour of
+// learning. Measured 2026-09-24 across four boots, streaming included: the
+// applied weights alone carried her to ~91-93% of memory.high and she pinned
+// there every time — port bound, loop never answering, systemd satisfied.
+// So the fit is checked HERE, with the brain arrays already resident, against
+// the cgroup the process is actually in. ONLY if the sections will not fit under
+// DREAM_WEIGHT_FIT_PCT of memory.high are the smallest-|weight| synapses dropped,
+// uniformly across sections, until they do. Neuron count is untouched, so nothing
+// reads as incompatible and nothing is wiped. Fits → nothing pruned. No cgroup
+// readable → no ceiling to fit under → nothing pruned. DREAM_WEIGHT_PRUNE=0
+// disables the check entirely (and says so).
+function _cgroupMemBytes(file) {
+  try {
+    let base = '/sys/fs/cgroup';
+    for (const line of fs.readFileSync('/proc/self/cgroup', 'utf8').split('\n')) {
+      const m = /^0::(.*)$/.exec(line.trim());
+      if (m) { base = `/sys/fs/cgroup${m[1] === '/' ? '' : m[1]}`; break; }
+    }
+    const raw = fs.readFileSync(`${base}/${file}`, 'utf8').trim();
+    if (!raw || raw === 'max') return null;
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  } catch { return null; }
+}
+
+// Keep at most `keepMax` entries of one CSR section, dropping the smallest
+// |value| first. Two passes, no sort, no index arrays: a 4096-bin histogram of
+// |v| picks the threshold; an in-place compaction then walks each row keeping
+// original order (ascending colIdx per row is the CSR contract downstream
+// binary-search probes rely on, and a filter preserves it). Ties inside the
+// boundary bin are kept by position until the quota is spent — deterministic.
+// Returns views SLICED to the kept length so the original backing stores can go.
+function _pruneSectionInPlace(rowPtr, colIdx, values, keepMax) {
+  const nnz = values.length;
+  if (keepMax >= nnz) return { rowPtr, colIdx, values, kept: nnz, dropped: 0, eps: 0 };
+  let vmax = 0;
+  for (let i = 0; i < nnz; i++) { const a = Math.abs(values[i]); if (a > vmax) vmax = a; }
+  if (!(vmax > 0)) return { rowPtr, colIdx, values, kept: nnz, dropped: 0, eps: 0 };
+  const BINS = 4096;
+  const scale = (BINS - 1) / vmax;
+  const binOf = (a) => Math.min(BINS - 1, (a * scale) | 0);
+  const hist = new Uint32Array(BINS);
+  for (let i = 0; i < nnz; i++) hist[binOf(Math.abs(values[i]))]++;
+  // Walk down from the largest bin while the whole bin still fits.
+  let acc = 0, bin = BINS - 1;
+  for (; bin >= 0; bin--) { if (acc + hist[bin] > keepMax) break; acc += hist[bin]; }
+  const eps = (bin + 1) / scale;      // everything at or above this is kept outright
+  let quota = keepMax - acc;          // how many from the boundary bin may also stay
+  const rows = rowPtr.length - 1;
+  // ⛔ The row's ORIGINAL end must be read before rowPtr[r+1] is overwritten,
+  // and the NEXT row's start is that same original end — not the value just
+  // written. Carrying `start` forward is what keeps this correct.
+  let w = 0, start = rowPtr[0];
+  for (let r = 0; r < rows; r++) {
+    const end = rowPtr[r + 1];
+    for (let j = start; j < end; j++) {
+      const a = Math.abs(values[j]);
+      let keep = a >= eps;
+      if (!keep && quota > 0 && binOf(a) === bin) { keep = true; quota--; }
+      if (keep) { values[w] = values[j]; colIdx[w] = colIdx[j]; w++; }
+    }
+    start = end;
+    rowPtr[r + 1] = w;
+  }
+  return { rowPtr, colIdx: colIdx.slice(0, w), values: values.slice(0, w), kept: w, dropped: nnz - w, eps };
+}
+
 const RESUME_MARKER_PATH = path.join(__dirname, '.resume-marker.json');
 
 // #112.11 — checkpoint slot cap. Keep only the last N rolling save slots
@@ -4634,8 +4703,9 @@ class ServerBrain {
       // cluster existed. Populates grades, passedCells, probeHistory,
       // learned language Maps, identity thresholds, persona dimensions,
       // intent centroids, refresh corpus, letter inventory, gate history.
-      // Idempotent.
-      this._applyPendingCortexState();
+      // Idempotent. Awaited: the weights apply yields between sections now, and
+      // everything below assumes they are on the cluster.
+      await this._applyPendingCortexState();
       // T15 — drug-scheduler wired with the cortex cluster so substance
       // availability gates against cluster.grades.life. Pre-Life-G7 Unity
       // ingest attempts are rejected with grade_locked reason. Stash the
@@ -8927,7 +8997,7 @@ class ServerBrain {
   // available. Requires the SparseMatrix constructor from the dynamic
   // import — we pull it off cortex.synapses.constructor since that
   // instance was just built.
-  _applyPendingCortexWeights() {
+  async _applyPendingCortexWeights() {
     const pending = this._pendingCortexWeights;
     const cortex = this.cortexCluster;
     if (!pending || !cortex) return;
@@ -8950,6 +9020,34 @@ class ServerBrain {
       this._pendingCortexWeights = null;
       return;
     }
+    // WEIGHTFIT — read the cgroup NOW, with the brain arrays already resident,
+    // so "room" is what is genuinely left under the ceiling, then decide once
+    // for all sections. See the helper's header for the measurement behind it.
+    const mb = (b) => Math.round(b / 1048576);
+    const fitPct = (() => {
+      const v = Number(process.env.DREAM_WEIGHT_FIT_PCT);
+      return Number.isFinite(v) && v >= 50 && v <= 100 ? v : 85;
+    })();
+    const pruneOn = process.env.DREAM_WEIGHT_PRUNE !== '0';
+    const cgHigh = _cgroupMemBytes('memory.high');
+    const cgCur = _cgroupMemBytes('memory.current');
+    const needBytes = pending.sections.reduce((a, s) => a + s.dataBytes, 0);
+    let keepRatio = 1;
+    if (!pruneOn) {
+      console.warn('[Brain] WEIGHTFIT — DREAM_WEIGHT_PRUNE=0: the fit check is OFF by operator choice; the weights load whole and may pin at the ceiling.');
+    } else if (cgHigh && cgCur) {
+      const ceiling = Math.floor(cgHigh * fitPct / 100);
+      const room = ceiling - cgCur;
+      if (room < needBytes) {
+        keepRatio = Math.max(0.5, room / needBytes);
+        console.warn(`[Brain] WEIGHTFIT — the saved weights do NOT fit: memory.high ${mb(cgHigh)} MB × ${fitPct}% = ceiling ${mb(ceiling)} MB · already resident ${mb(cgCur)} MB · room ${mb(room)} MB · sections need ${mb(needBytes)} MB. Keeping the largest ${(keepRatio * 100).toFixed(1)}% of synapses per section by |weight| so she fits UNDER the ceiling instead of pinning at it.${keepRatio === 0.5 ? ' ⛔ FLOOR HIT — even half does not fit; she may still pin. Raise DREAM_WEIGHT_FIT_PCT or the cgroup, or accept a fresh walk.' : ''} (DREAM_WEIGHT_PRUNE=0 disables.)`);
+      } else {
+        console.log(`[Brain] WEIGHTFIT — fits: ceiling ${mb(ceiling)} MB (${fitPct}% of memory.high) · resident ${mb(cgCur)} MB · room ${mb(room)} MB ≥ need ${mb(needBytes)} MB. Nothing pruned.`);
+      }
+    } else {
+      console.log('[Brain] WEIGHTFIT — no cgroup ceiling readable (local run?): nothing to fit under, nothing pruned.');
+    }
+    this._weightFit = { fitPct, pruneOn, highMB: cgHigh ? mb(cgHigh) : null, residentMB: cgCur ? mb(cgCur) : null, needMB: mb(needBytes), keepRatio, keptNnz: 0, droppedNnz: 0 };
     let applied = 0;
     for (const s of pending.sections) {
       // ONE section resident at a time. These three arrays are the only copy
@@ -8968,6 +9066,16 @@ class ServerBrain {
         console.warn(`[Brain] Binary weight read failed for ${s.name} at offset ${s.dataOffset}:`, err?.message || err);
         continue;
       }
+      let keptNnz = s.nnz;
+      if (keepRatio < 1) {
+        const p = _pruneSectionInPlace(rowPtr, colIdx, values, Math.floor(s.nnz * keepRatio));
+        rowPtr = p.rowPtr; colIdx = p.colIdx; values = p.values; keptNnz = p.kept;
+        this._weightFit.keptNnz += p.kept;
+        this._weightFit.droppedNnz += p.dropped;
+        console.log(`[Brain] WEIGHTFIT — ${s.name}: kept ${p.kept.toLocaleString()} of ${s.nnz.toLocaleString()} synapses (|w| ≥ ${p.eps.toExponential(3)}), dropped ${p.dropped.toLocaleString()}`);
+      } else {
+        this._weightFit.keptNnz += s.nnz;
+      }
       try {
         const m = new SparseMatrix(s.rows, s.cols);
         // ⛔ COERCE TO THE LIVE WEIGHT TYPE. This is a DIRECT assignment, not
@@ -8983,7 +9091,7 @@ class ServerBrain {
         m.values = (values instanceof TargetValues) ? values : new TargetValues(values);
         m.colIdx = colIdx;
         m.rowPtr = rowPtr;
-        m.nnz = s.nnz;
+        m.nnz = keptNnz;
         if (s.name === 'cortex.synapses') {
           // TU.25.E — the constructor default is wMax=Infinity; the binary save
           // doesn't persist clamps, so restored matrices came back UNBOUNDED
@@ -9014,8 +9122,18 @@ class ServerBrain {
       } catch (err) {
         console.warn(`[Brain] Binary weight apply failed for ${s.name}:`, err?.message || err);
       }
+      // Let the loop breathe between sections. Timers, the health probe and
+      // V8's idle-time memory reducer all need a tick, and the previous
+      // section's arrays are only reclaimable once one has run. Without this
+      // the apply was one synchronous pass: every dropped section stayed as
+      // garbage until the loop returned, and the kernel throttled her at the
+      // ceiling before it ever did.
+      await new Promise((resolve) => setImmediate(resolve));
     }
     try { fs.closeSync(fd); } catch { /* already closed */ }
+    if (this._weightFit && this._weightFit.droppedNnz > 0) {
+      console.warn(`[Brain] WEIGHTFIT — total: kept ${this._weightFit.keptNnz.toLocaleString()} synapses, dropped ${this._weightFit.droppedNnz.toLocaleString()} (${(100 * this._weightFit.droppedNnz / (this._weightFit.keptNnz + this._weightFit.droppedNnz)).toFixed(1)}%). The neuron count is unchanged; the next save writes the fitted brain.`);
+    }
     if (applied > 0) {
       console.log(`[Brain] Binary weights applied — ${applied}/${pending.sections.length} sections restored onto live cortexCluster (streamed one section at a time)`);
     }
@@ -9202,7 +9320,7 @@ class ServerBrain {
   // `this.cortexCluster = new NeuronCluster(...)` + `this.curriculum =
   // new Curriculum(...)` have run. Idempotent: clears pending refs after
   // applying so a second call is a no-op.
-  _applyPendingCortexState() {
+  async _applyPendingCortexState() {
     try {
       const cortex = this.cortexCluster;
       const pending = this._pendingCortexState;
@@ -9515,7 +9633,7 @@ class ServerBrain {
       // reachable via the just-built cortex.synapses instance. Must run
       // AFTER cortexCluster exists (handled by the outer call order in
       // _initLanguageSubsystem).
-      this._applyPendingCortexWeights();
+      await this._applyPendingCortexWeights();
     } catch (err) {
       console.warn('[Brain] _applyPendingCortexState failed:', err?.message || err);
     }
