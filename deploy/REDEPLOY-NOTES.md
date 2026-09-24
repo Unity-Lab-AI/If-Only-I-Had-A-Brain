@@ -1303,6 +1303,8 @@ Verified: server JS + dashboard parse; `_getProfilingState` mock → cortexUploa
 
 ## 2026-09-24 — Fifteen days pinned, the recovery button needed her alive, and the weights outgrew a fixed ratio
 
+> **3:00 PM Denver addendum — she is UP on `2dc34494` (resume, 233.9M, ~6.1 GB), and the only GPU was being refused as PRIMARY against the tier-4 target.** `community.runningFloorMB 25,619` came from `900,000,000 × 20 B` (the target `community-tier.json` has held since the rented A40 registered on 2026-08-20) while the box's RAM clamps the brain to 233.9M — so the 16 GB `4070 Ti SUPER` read *"TOO SMALL (short 9244MB)"* every minute. **Fixed in `server/brain-server/gpu.js`:** floor from the live `TOTAL_NEURONS` (8,680 MB for this boot) and the smallest CONNECTED card as the size driver (the baseline only with no card attached). Server-side → lands on the press. **What to read after Gee presses Update Freshwalk:** `community.runningFloorMB` ≈ `ceil((N×20/1048576+2048)/0.75)` for the fresh N, the donor row without its red cell, the PRIMARY promotion + `17/17 matrices uploaded` for his card, `cellStatus in-progress`. ⚠ `autoscale-settings.json` on the box still carries `donorBaselineMB 45498` from the A40 — harmless now (boot assumption only), left alone; `community-tier.json` still says tier 4 — harmless too, host RAM clamps it. ⚠ `unity-brain-ctl` still needs its hand restart for the morning's `/ctl/` fixes.
+
 **What was found (all read live, no box access; times Denver):** `unity-brain` `active/running`, `nRestarts 0`, one process since before 09-09, port 7525 bound and accepting from the kernel backlog, every HTTP request timing out at 4002 ms. `unity-brain-ctl` up **19.9 days**, CPU-starved into 20-second silences beside her (`CPUQuota 25%` vs her `1200%`). nginx, static site and Forgejo all healthy on the same host. **She was never down; she was pinned, and nothing anywhere was asking.**
 
 **Three forced restarts reproduced the same boot to the megabyte:** `173 → 11,511 MB` (neurons) `→ 20,476 MB` in ONE step (the binary weights restore) → parked at 92% of `MemoryHigh`, `respondedMs null`. `_loadBinaryWeights()` held every section in memory before applying one; the reservation for that transient was the 09-08 resume term's **fixed `0.3644` ratio**, which stopped covering the file the day the file outgrew it. **Fixed at the source: the restore streams one section at a time. Weights KEPT.** Lands on the next press; boot line `headers scanned, data reads deferred to apply`.
@@ -1318,3 +1320,14 @@ Verified: server JS + dashboard parse; `_getProfilingState` mock → cortexUploa
 **Recovery, dashboard only, in order:** `Stop` → wait for `phase` to leave `active` (~90 s) → `⬆ Update (keep weights)` (with her already halted it skips the ask and runs the script) → verify by a **5-second probe** of `/public-state.json`, never a wait: a real answer in under a second is up; `no answer in 5 s` is still down. `mem` should level near **13,000 MB**, not 20,700.
 
 **The one box ask when someone has a shell:** `sudo systemctl restart unity-brain-ctl`, plus the journal grant and — per `KI-45` — a true kill arm in the helper.
+
+**1:30 PM addendum — the ctl arm into systemd stopped working, and the ask became the whole recovery.** After the streamed restore deployed and she pinned again on the new code (21 GB, `WEIGHTLOAD.4`), a gatling barrel landed at 1:03:18, she closed her listener and pinned inside her own shutdown save. From then on every `/ctl/*` verb — stop, kick, reset — returned `ok: true` and **the unit never left `active`**: `doStop()` always calls `runHelper('stop')` but swallows its error, so a `sudo … brain-ctl-helper` call that fails or hangs reads as a successful stop (`WEIGHTLOAD.5`). Gee's decision: fresh walk (*"we are doing a freshwalk... remember"*). **Shell hand-off, in order:**
+
+```bash
+sudo systemctl kill -s KILL unity-brain
+echo '{"via":"shell fresh walk"}' | sudo -u unity tee /opt/unity-brain/server/.force-fresh >/dev/null
+sudo systemctl start unity-brain          # fresh boot on 8e073c5d (overlay confirmed on disk)
+sudo systemctl restart unity-brain-ctl    # lands /ctl/freshstart-update, activeForSec, cpuPct
+```
+
+Verify by a **5-second** probe of `/public-state.json`: a real answer under a second with `build 8e073c5d` and `bootReason mode:"wipe"`. ⚠ Two operator tools with opposite destructive semantics — `gatling-savestart.js` and `gatling-freshwalk.js` — were live in one console for ~3 minutes with only a shared `window.__gatGen` between them (`WEIGHTLOAD.6`).
