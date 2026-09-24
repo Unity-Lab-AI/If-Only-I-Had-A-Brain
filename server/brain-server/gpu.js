@@ -2619,6 +2619,10 @@ const SERVER_GPU_MIXIN = {
     // Pre-register the pending promise BEFORE sending any chunks so
     // the ack handler can find it even if client ACKs very fast.
     if (!this._gpuSparsePending) this._gpuSparsePending = new Map();
+    // STALLDEADLINE — progress the timer closure and the chunk loop both see.
+    const _prog = { dispatched: 0, total: totalChunks, bytes: 0 };
+    const _stallMs = Number(process.env.DREAM_UPLOAD_STALL_MS) > 0
+      ? Number(process.env.DREAM_UPLOAD_STALL_MS) : 180_000;
     const promise = new Promise((resolve, reject) => {
       // #112.3 — FAIL FAST. Was 180s: a stuck/dropped donor upload hung for 3
       // minutes before the loop moved on, and with no retry it declared PARTIAL
@@ -2689,13 +2693,31 @@ const SERVER_GPU_MIXIN = {
       } else {
         timeoutMs = Math.min(_capMs, Math.max(45_000, _scaledMs));
       }
-      const timeout = setTimeout(() => {
-        // ⛔ Resolve UNCONDITIONALLY — same reason as the other two timers.
-        const _wasPending = !!(this._gpuSparsePending && this._gpuSparsePending.delete(reqId));
-        if (_wasPending) console.warn(`[Brain] sparse chunked upload reqId=${reqId} name=${name} timed out after ${timeoutMs}ms`);
-        resolve(null);
-      }, timeoutMs);
-      this._gpuSparsePending.set(reqId, { resolve, reject, timeout, ws }); // TU.25.D — target-tagged for cancel-on-disconnect
+      // STALLDEADLINE (2026-09-24) — THE DEADLINE RE-ARMS ON PROGRESS. The
+      // size-scaled figure above is only the INITIAL arm. A fixed total-transfer
+      // budget assumes the wire rate; on a home link measured at ~3.2 MB/s the
+      // 3,680 MB intra matrix needed ~19 min against a 997 s budget computed at
+      // 4 MB/s, so the promise resolved null at 16.6 min WHILE CHUNKS WERE STILL
+      // LANDING ON THE CARD (VRAM 1 GB → 5 GB), the caller's retry re-sent the
+      // whole matrix from chunk 0 on top of the still-draining first stream, and
+      // the donor's eventual ack for reqId 1 had nobody left to receive it. The
+      // chunk loop below re-arms this timer every time a chunk actually leaves
+      // the box (the send callback = handed to the kernel), so the only thing
+      // that can fire it is a genuine STALL — no chunk out for `_stallMs` — or,
+      // after the last chunk, the drain + donor-side alloc window not closing.
+      const _pend = { resolve, reject, timeout: null, ws, armedMs: 0, why: 'initial (size+queue-scaled)' }; // TU.25.D — target-tagged for cancel-on-disconnect
+      _pend.rearm = (ms, why) => {
+        if (_pend.timeout) clearTimeout(_pend.timeout);
+        _pend.armedMs = ms; _pend.why = why;
+        _pend.timeout = setTimeout(() => {
+          // ⛔ Resolve UNCONDITIONALLY — same reason as the other two timers.
+          const _wasPending = !!(this._gpuSparsePending && this._gpuSparsePending.delete(reqId));
+          if (_wasPending) console.warn(`[Brain] sparse chunked upload reqId=${reqId} name=${name} timed out after ${ms}ms (${why}) — chunks dispatched ${_prog.dispatched}/${_prog.total}, ${(_prog.bytes / 1048576).toFixed(1)}MB left the box, donor socket buffered ${((ws && ws.bufferedAmount) || 0) / 1048576 | 0}MB. A stall, not a slow link: slow links re-arm this deadline on every chunk.`);
+          resolve(null);
+        }, ms);
+      };
+      _pend.rearm(timeoutMs, _pend.why);
+      this._gpuSparsePending.set(reqId, _pend);
     });
 
     if (!ws || ws.readyState !== 1) return null;
@@ -2907,6 +2929,37 @@ const SERVER_GPU_MIXIN = {
           res();
         });
       });
+      // STALLDEADLINE — a chunk just left the box: that is progress, so the
+      // deadline moves. If the deadline has ALREADY fired (the pending entry is
+      // gone), stop streaming: the remaining gigabytes would arrive at a donor
+      // whose ack nobody is waiting for, and the caller's retry is about to
+      // start the same matrix again from chunk 0 on the same socket.
+      {
+        _prog.dispatched = seq + 1;
+        _prog.bytes = _upBytes;
+        const _pendNow = this._gpuSparsePending && this._gpuSparsePending.get(reqId);
+        if (!_pendNow) {
+          console.warn(`[Brain] sparse chunked upload reqId=${reqId} name=${name} — deadline already fired at chunk ${seq + 1}/${totalChunks}; abandoning the remaining ${totalChunks - seq - 1} chunks rather than streaming into a dropped ack.`);
+          break;
+        }
+        if (typeof _pendNow.rearm === 'function') {
+          if (seq + 1 === totalChunks) {
+            // Last chunk is on the wire. What remains is the socket draining
+            // plus the donor allocating and acking — size that window from the
+            // bytes still buffered at a deliberately slow 1 MB/s, plus the
+            // margin the initial deadline already used.
+            const _buf = (ws && typeof ws.bufferedAmount === 'number') ? ws.bufferedAmount : 0;
+            const _drainMs = Math.ceil(_buf / 1048576) * 1000;
+            _pendNow.rearm(Math.max(_stallMs, _drainMs + 120_000), `all ${totalChunks} chunks dispatched — waiting for the socket to drain ${(_buf / 1048576).toFixed(1)}MB and the donor to ack`);
+          } else {
+            _pendNow.rearm(_stallMs, `no chunk left the box for ${(_stallMs / 1000) | 0}s`);
+          }
+        }
+        if (totalChunks >= 50 && (seq + 1) % 100 === 0) {
+          const _secs = Math.max(0.001, (Date.now() - _upT0) / 1000);
+          console.log(`[Brain] sparse upload ${name} progress ${seq + 1}/${totalChunks} chunks · ${(_upBytes / 1048576).toFixed(0)}MB in ${_secs.toFixed(0)}s = ${((_upBytes / 1048576) / _secs).toFixed(2)}MB/s · donor socket buffered ${(((ws && ws.bufferedAmount) || 0) / 1048576).toFixed(1)}MB · deadline re-armed on progress`);
+        }
+      }
       // WSQ.3 — SYNC PACING. On a replica-sync to a high-RTT/low-bandwidth donor (Starlink),
       // blasting 16MB chunks back-to-back saturates its uplink → its heartbeat pong queues
       // behind the inbound flood → measured RTT spikes into the >1s zone during the warmup
