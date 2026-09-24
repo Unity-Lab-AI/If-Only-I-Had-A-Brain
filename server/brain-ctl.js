@@ -51,6 +51,10 @@
  *   POST /ctl/savererun        — keep weights, re-walk the curriculum on top.
  *   POST /ctl/update           — deploy latest code + FRESH WALK.
  *   POST /ctl/update-savestart — deploy latest code, RESUME saved training.
+ *   POST /ctl/freshstart-update — for a brain ALIVE but NOT ANSWERING: stop the
+ *                        unit outright via systemd (no graceful ask), confirm
+ *                        it is down, then update-savestart on the halted box.
+ *                        Weights KEPT — fresh start of the PROCESS only.
  *
  * Each of those delegates to the brain's own endpoint when the brain is up (so
  * behaviour is identical and it does its own bookkeeping), and does the
@@ -197,6 +201,10 @@ const GRACEFUL_WAIT_MS = parseInt(process.env.UAL_CTL_GRACEFUL_WAIT_MS || '20000
 // exactly the kind of lie this service exists to remove. Overridable so tests
 // (and smaller brains) need not sit through the full budget.
 const BIND_WAIT_MS = parseInt(process.env.UAL_CTL_BIND_WAIT_MS || '300000', 10);
+// Last CPU-time sample, so consecutive /status reads can publish a RATE. A
+// single absolute CPU figure answers nothing; the delta between two reads is
+// what says whether the process is executing.
+let _lastCpuSample = null;
 
 // Where the brain keeps the flags that steer its NEXT boot. brain-ctl writes
 // these directly so the destructive/deploy verbs work with the brain DOWN —
@@ -288,6 +296,10 @@ function systemctlShow(unit) {
       '-p', 'ActiveState', '-p', 'SubState', '-p', 'Result',
       '-p', 'ExecMainStatus', '-p', 'ActiveEnterTimestamp',
       '-p', 'NRestarts', '-p', 'MemoryCurrent', '-p', 'LoadState',
+      // CPU time is the one field that separates "working hard over arrays it
+      // has already allocated" from "deadlocked". Memory goes flat in BOTH
+      // cases; only this one keeps moving in the first.
+      '-p', 'CPUUsageNSec',
     ], { timeout: 10000 }, (err, stdout) => {
       if (err) return resolve({});
       const out = {};
@@ -478,6 +490,14 @@ async function buildStatus() {
       phase = 'online';
       _loopPinned = true;
       _respondedMs = null;
+      // How long has THIS been true? This branch is the actual pinned state,
+      // and it used to publish `activeForSec: null` — the one field an
+      // operator needs most in exactly this state, absent in exactly this
+      // state. Derived the same way the booting branch derives it.
+      {
+        const _enterMs = Date.parse(show.ActiveEnterTimestamp || '') || 0;
+        _activeForSecOut = _enterMs ? Math.round((Date.now() - _enterMs) / 1000) : null;
+      }
       human = 'Brain is LISTENING but NOT ANSWERING — the port accepts connections (the kernel does that) '
         + `while requests time out after ${responded.ms}ms. The event loop is pinned or starved, so the site, `
         + 'dashboard and chat will look disconnected even though the process is alive and training may be fine. '
@@ -674,6 +694,25 @@ async function buildStatus() {
       activeEnter: show.ActiveEnterTimestamp || null,
       memoryBytes: show.MemoryCurrent && show.MemoryCurrent !== '[not set]'
         ? Number(show.MemoryCurrent) : null,
+      // Cumulative CPU seconds for the unit, and the rate since the previous
+      // /status read as a percentage of one core (100 = one core saturated,
+      // 1200 = the unit's full quota). `null` on the first read, because a
+      // rate needs two points and inventing one would be a reassuring number
+      // earned by nothing.
+      ...((() => {
+        const raw = show.CPUUsageNSec;
+        if (!raw || raw === '[not set]') return { cpuUsageSec: null, cpuPct: null };
+        const ns = Number(raw);
+        if (!Number.isFinite(ns)) return { cpuUsageSec: null, cpuPct: null };
+        const now = Date.now();
+        let pct = null;
+        if (_lastCpuSample && now > _lastCpuSample.at && ns >= _lastCpuSample.ns) {
+          const cpuMs = (ns - _lastCpuSample.ns) / 1e6;
+          pct = Math.round((cpuMs / (now - _lastCpuSample.at)) * 100);
+        }
+        _lastCpuSample = { ns, at: now };
+        return { cpuUsageSec: Math.round(ns / 1e9), cpuPct: pct };
+      })()),
     },
     portOpen: portUp,
     brainPort: BRAIN_PORT,
@@ -858,6 +897,64 @@ async function doKick() {
 // it is up (identical behaviour, its own bookkeeping), otherwise perform the
 // equivalent boot-flag work directly and start it. That keeps one button doing
 // one predictable thing regardless of whether the brain happens to be alive.
+
+/**
+ * FRESHSTART-UPDATE — the verb the 2026-09-24 outage did not have.
+ *
+ * Every existing cycle verb first ASKS the brain to do something: `/restart`
+ * and `/update-savestart` post to the brain's own routes and wait for it to
+ * shut itself down; `/kick` goes through systemd but is `systemctl restart`,
+ * i.e. SIGTERM and a wait. Against a brain whose event loop is pinned, the
+ * ask times out, the wait runs its whole budget, and the operator watches a
+ * five-minute lock on a verb that changed nothing. That is what happened at
+ * 10:18 and again at 10:40 that morning.
+ *
+ * This verb asks the brain NOTHING. It stops the unit through the helper —
+ * `systemctl stop` blocks until the unit is inactive, so systemd's own stop
+ * timeout is what delivers the SIGKILL a mute process needs — confirms the
+ * unit is no longer `active`, and only then runs the savestart update on a
+ * halted box by handing off to `doUpdate(keep=true)`, which with the brain
+ * down skips its own ask and runs the deploy script directly. Weights are
+ * KEPT: `keep=true` means the resume marker stays and `.force-fresh` is never
+ * written. "Fresh start" here is the PROCESS, never the training.
+ *
+ * ⚠ If the unit still reads `active` after the stop returns, the box's stop
+ * timeout is longer than the helper waits. The verb REFUSES to run the update
+ * on top of a live process and says so — that is the one case left that needs
+ * a shell, and the payload names it rather than pretending.
+ */
+async function doFreshstartUpdate(skipFields) {
+  log('FRESHSTART-UPDATE requested — stopping the unit outright (no graceful ask), then savestart update on the halted box');
+  const before = await buildStatus();
+  let stopError = null;
+  try {
+    await runHelper('stop');
+  } catch (e) {
+    stopError = e && e.message || String(e);
+    log('systemctl stop returned an error:', stopError);
+  }
+  const mid = await buildStatus();
+  const stillActive = mid.unit && mid.unit.activeState === 'active';
+  if (stillActive) {
+    return {
+      ok: false, action: 'freshstart-update', stoppedFirst: false, stopError,
+      message: 'REFUSED to run the update: the unit still reads active after systemctl stop'
+        + (stopError ? ` (${stopError})` : '')
+        + '. The box\'s stop timeout is longer than the control plane waits, so the process has not been killed yet. '
+        + 'Re-issue this verb in a minute; if it still reads active, that is the one case that needs a shell: `sudo systemctl kill -s KILL unity-brain`.',
+      status: mid,
+    };
+  }
+  log(`unit is ${mid.unit && mid.unit.activeState} (port ${mid.portOpen ? 'still probing open — kernel backlog' : 'closed'}) — running the savestart update now`);
+  const upd = await doUpdate(true, '', skipFields);
+  return {
+    ...upd,
+    action: 'freshstart-update',
+    stoppedFirst: true,
+    stopError,
+    message: `Process cycled first (unit was ${before.unit && before.unit.activeState}, ${before.loopPinned ? 'loop pinned' : 'not pinned'}, ${before.activeForSec != null ? before.activeForSec + 's old' : 'age unknown'}). ` + (upd.message || ''),
+  };
+}
 
 /**
  * RESET — wipe to a fresh brain. Mirrors brain-server's /reset: write
@@ -1271,6 +1368,9 @@ const server = http.createServer(async (req, res) => {
         '/savererun': doSaveRerun,
         '/update': () => doUpdate(false, confirm, skipFields),   // UPDATE & FRESH WALK (wipes)
         '/update-savestart': () => doUpdate(true, '', skipFields), // UPDATE & SAVESTART (keeps)
+        // FRESHSTART-UPDATE — hard-cycle the PROCESS first (no graceful ask),
+        // then the same savestart update on a halted box. Weights kept.
+        '/freshstart-update': () => doFreshstartUpdate(skipFields),
       };
       const fn = table[url];
       if (fn) {

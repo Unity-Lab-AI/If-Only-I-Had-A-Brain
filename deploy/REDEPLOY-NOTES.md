@@ -31,7 +31,7 @@ sources:
   "checked and clean" when it usually means "not opened". ⚠ The stamp stays
   at the older commit because the redeploy procedure itself was not
   re-verified this pass and its sources have moved for unrelated reasons.
-last-verified: "cd465955 2026-08-29"
+last-verified: "2026-09-24 — new dated entry at the end (chronological record): the pinned-loop outage, the streamed restore that keeps the weights, /ctl/freshstart-update, and five deploy-mechanism facts for the next operator pressing buttons on a brain that is alive and not answering. PRIOR: cd465955 2026-08-29"
 ---
 
 # REDEPLOY NOTES — for the box Claude / server admin
@@ -1298,3 +1298,23 @@ Verified: server JS + dashboard parse; `_getProfilingState` mock → cortexUploa
 5. **A geometry change (WEIGHTS_FORMAT_VERSION bump) needs to deploy?** Only then press `Fresh Walk` (old-geometry weights auto-refuse anyway). Expect the boot log to show the new sizing lines + K restart.
 
 **Verify healthy after any recovery:** build badge = the intended `main` SHA; `/public-state.json` `teachEvents` delta > 0 over 60s (the one honest liveness signal — dashboard stutter during teach pins is display starvation, not brain death); donor row green; no `[EventLoop] BLOCKED` > 150s; no repeated `disconnected UNEXPECTEDLY` churn.
+
+---
+
+## 2026-09-24 — Fifteen days pinned, the recovery button needed her alive, and the weights outgrew a fixed ratio
+
+**What was found (all read live, no box access; times Denver):** `unity-brain` `active/running`, `nRestarts 0`, one process since before 09-09, port 7525 bound and accepting from the kernel backlog, every HTTP request timing out at 4002 ms. `unity-brain-ctl` up **19.9 days**, CPU-starved into 20-second silences beside her (`CPUQuota 25%` vs her `1200%`). nginx, static site and Forgejo all healthy on the same host. **She was never down; she was pinned, and nothing anywhere was asking.**
+
+**Three forced restarts reproduced the same boot to the megabyte:** `173 → 11,511 MB` (neurons) `→ 20,476 MB` in ONE step (the binary weights restore) → parked at 92% of `MemoryHigh`, `respondedMs null`. `_loadBinaryWeights()` held every section in memory before applying one; the reservation for that transient was the 09-08 resume term's **fixed `0.3644` ratio**, which stopped covering the file the day the file outgrew it. **Fixed at the source: the restore streams one section at a time. Weights KEPT.** Lands on the next press; boot line `headers scanned, data reads deferred to apply`.
+
+**Deploy-mechanism facts this entry adds, for the next person pressing buttons on a pinned brain:**
+
+- **`⚡ Force Restart (wedged)` is `systemctl restart`, not a kill.** SIGTERM → systemd's stop timeout (90 s default on this unit — no `TimeoutStopSec` set) → SIGKILL. Nothing on the control plane can SIGKILL; the helper's sudoers grant is `start|stop|restart|reload-nginx`. Expect ~90 s of nothing, then `RESTART`. It worked at 10:48 AM; it is slow, not broken.
+- **`update-savestart` on a pinned brain is five minutes of `409 busy`.** It first ASKS the brain to shut itself down (10 s timeout), then `waitForBrainBound` holds the serialised lock for `BIND_WAIT_MS` (300 s). Every other verb answers `busy` meanwhile. A `Start` on an already-active unit does the same. **New: `POST /ctl/freshstart-update`** — stop the unit outright, confirm `!active`, THEN the same update on the halted box. Refuses with the exact shell command if the unit still reads active. ⚠ **Inert until `unity-brain-ctl` is restarted by hand** (this file's Problem 4 / `BUTTON-AUDIT.md`) — the running control plane 404s the route until then.
+- **The Brain Power panel was gated on the dead brain.** `ctlPollAllowed()` returned `body.is-admin`, which the brain grants over `/admin/ws`. Fixed; frontend, rides the rsync.
+- **The offline JSON's `"brain process is not running"` is an inference from a 504**, and it was wrong for the entire outage. `/ctl/status` is the instrument; the JSON already points at it.
+- **`/ctl/logs` → `journal-permission-denied`.** The cause of the original pin (some time between 09-09 and 09-24) is unrecoverable. A group/sudoers grant on the box would have answered it in one read.
+
+**Recovery, dashboard only, in order:** `Stop` → wait for `phase` to leave `active` (~90 s) → `⬆ Update (keep weights)` (with her already halted it skips the ask and runs the script) → verify by a **5-second probe** of `/public-state.json`, never a wait: a real answer in under a second is up; `no answer in 5 s` is still down. `mem` should level near **13,000 MB**, not 20,700.
+
+**The one box ask when someone has a shell:** `sudo systemctl restart unity-brain-ctl`, plus the journal grant and — per `KI-45` — a true kill arm in the helper.

@@ -20,6 +20,15 @@ verified-scope: |
     - GET routes serve 3: /health (also /), /status, /logs
     - Total 11 served verbs — matching the 11 documented here, with no
       omissions and no extras.
+  ADDED 2026-09-24: POST /freshstart-update (9th POST, 12th verb) — stop the unit
+  outright through the helper, confirm it is no longer active, then run the
+  savestart update on the halted box. Built during an outage in which every
+  existing cycle verb first ASKED a pinned brain to do something and waited on
+  a lock for minutes. Weights KEPT. ⚠ The running control plane does not have
+  it until unity-brain-ctl is restarted — self-update.sh restarts unity-brain
+  only — so the dashboard button 404s against a box that has not had that
+  restart. /ctl/status also gained cpuUsageSec + cpuPct, and activeForSec is
+  now published in the LISTENING-but-NOT-ANSWERING branch.
   ⚠ TWO FALSE POSITIVES OF MINE, caught before writing them down. A string
   grep for "'/<verb>'" in brain-ctl.js reported two undocumented endpoints:
     · '/shutdown' — an OUTBOUND call brain-ctl makes TO the brain, not a verb
@@ -288,6 +297,14 @@ six honest phases and offering only the actions that make sense for each:
 | `failed` | crashed / OOM-killed | **Start**, Restart |
 | `unmanaged` | something serves :7525 but the unit is inactive (hand-started) | Force Restart |
 
+**`⚡⬆ Freshstart Update (keep weights)` is offered in EVERY phase on purpose.** Its whole reason
+to exist is the phase where the unit reads `active`, the port is bound, and nothing answers — a
+positive-match gate on phase is exactly what would hide it then. ⚠ **`Force Restart` is
+`systemctl restart`, not a kill:** SIGTERM, then systemd's stop timeout (90 s by default), then
+SIGKILL. Nothing on the control plane sends SIGKILL directly — the helper's sudoers grant is
+`start|stop|restart|reload-nginx` and nothing else. That 90 s is what cycled a brain pinned for
+weeks on 2026-09-24; it is slow, not broken.
+
 `booting` vs `online` is a real distinction the old UI could not make: the brain binds its port
 only *after* loading weights, so "systemd says active" and "actually serving" are different
 facts, and conflating them is why a healthy boot used to look like a failure.
@@ -304,6 +321,7 @@ facts, and conflating them is why a healthy boot used to look like a failure.
 | `POST /ctl/restart` | savestart; escalates to a process restart if wedged | no |
 | `POST /ctl/kick` | hard restart for a wedged brain (no graceful save) | no |
 | `POST /ctl/update-savestart` | deploy latest code, **RESUME** training | no |
+| `POST /ctl/freshstart-update` | for a brain **alive but not answering**: stop the unit outright (no graceful ask), confirm it is down, then `update-savestart` on the halted box. Weights **KEPT** — a fresh start of the *process*, never the training. Refuses, and says so, if the unit still reads `active` after the stop | no |
 | `POST /ctl/update` | deploy latest code + **FRESH WALK (wipes weights)** | no |
 | `POST /ctl/reset` | **wipe to a fresh brain** (identity-core preserved) | no |
 | `POST /ctl/savererun` | keep weights, re-walk the curriculum on top | **YES** |

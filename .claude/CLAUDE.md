@@ -381,6 +381,9 @@ Pollinations       → brain-side code only (the CLI plugin was removed 2026-08-
 | **The neuron count is DERIVED AT BOOT from free host RAM** | It is not a property of the brain. The same code booted at 425,436,550 and 411,216,550. Quote `state.totalNeurons` with the boot that produced it, never a constant |
 | **`DREAM_KEEP_STATE` unset = WIPE** | `start.*` boots fresh; only `Savestart.*` resumes. Setting it wrong costs the whole run |
 | **A stage tag whose AGE CLIMBS means the blocker is UNMARKED code** | `_tstage` is never nulled, so a stale tag names the wrong culprit |
+| **`⚡ Force Restart (wedged)` is `systemctl restart`, not a kill** | SIGTERM → systemd's stop timeout (90 s default) → SIGKILL. Nothing on the control plane sends SIGKILL; the helper grants `start\|stop\|restart\|reload-nginx` only. Expect ~90 s of nothing, then `RESTART`. Found 2026-09-24 after reading it as "did nothing" |
+| **`brain-ctl.js` changes are INERT until `unity-brain-ctl` is restarted by hand** | `self-update.sh` restarts `unity-brain` only. A new `/ctl/` verb 404s on the box until that restart; the dashboard button for it will too. Frontend fixes to the Brain Power panel ride the rsync and do not wait |
+| **A press on a PINNED brain does nothing for five minutes, on purpose** | `update-savestart` first ASKS the brain to shut itself down (10 s) then waits up to `BIND_WAIT_MS` (300 s) on a serialised lock. Against a brain that answers nothing that is `409 busy` for everything else. `POST /ctl/freshstart-update` stops the unit outright first and exists for exactly this |
 
 ---
 

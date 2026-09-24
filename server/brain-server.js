@@ -1460,6 +1460,29 @@ const WEIGHTS_FORMAT_VERSION = 6;   // language-growth hop 2 (2026-08-29): WORD_
 const BIN_FORMAT_VERSION = 2;
 const _BIN_VALUES_ARRAY_FOR = (v) => (v === 1 ? Float64Array : v === 2 ? Float32Array : null);
 
+// Fill a typed array from the weights file at an ABSOLUTE offset, chunked at
+// 512 MiB so no single readSync crosses Node's 2 GiB Buffer ceiling. Returns
+// the offset just past the bytes read. Module-level because the restore is
+// now two-phase: the boot-time scan records where each section's data lives,
+// and the apply step reads ONE section at a time through this. Holding every
+// section in memory before applying any was a transient the size of the whole
+// file on top of the already-sized brain arrays — a reservation fixed at a
+// ratio of the brain could not track a file that grows with every hour of
+// learning, and the day the file outgrew it the restore parked the process at
+// the memory ceiling with the port bound and the loop pinned. Peak is now the
+// brain plus the single largest section.
+function _binReadTypedArrayAt(fd, ta, pos) {
+  const view = Buffer.from(ta.buffer, ta.byteOffset, ta.byteLength);
+  let got = 0;
+  while (got < view.length) {
+    const chunk = Math.min(view.length - got, 512 * 1024 * 1024);
+    const n = fs.readSync(fd, view, got, chunk, pos + got);
+    if (n <= 0) throw new Error(`short read at offset ${pos + got}, expected ${chunk} more bytes`);
+    got += n;
+  }
+  return pos + view.length;
+}
+
 const RESUME_MARKER_PATH = path.join(__dirname, '.resume-marker.json');
 
 // #112.11 — checkpoint slot cap. Keep only the last N rolling save slots
@@ -8852,6 +8875,10 @@ class ServerBrain {
       }
       const decoder = new TextDecoder();
       const sections = [];
+      // SCAN ONLY. Each section's header is read and its data is SKIPPED —
+      // the record carries the file offset the data starts at, and the apply
+      // step reads it back one section at a time. The deferral check during
+      // cluster construction needs only name/rows/cols/nnz, which are here.
       for (let i = 0; i < sectionCount; i++) {
         const sectHeader = readIntoBuffer(4);
         if (sectHeader.toString('ascii', 0, 4) !== 'SECT') {
@@ -8868,21 +8895,26 @@ class ServerBrain {
         const rows = dims.readUInt32LE(0);
         const cols = dims.readUInt32LE(4);
         const nnz = dims.readUInt32LE(8);
-        // Allocate typed arrays directly and stream file bytes into them.
-        // Each array backs its own ArrayBuffer so the 2 GiB Buffer cap
-        // only constrains per-call read size, not total per-array size.
-        const rowPtr = new Uint32Array(rows + 1);
-        readIntoTypedArray(rowPtr);
-        const colIdx = new Uint32Array(nnz);
-        readIntoTypedArray(colIdx);
-        const values = new ValuesArray(nnz);
-        readIntoTypedArray(values);
-        sections.push({ name, rows, cols, nnz, rowPtr, colIdx, values });
+        const dataOffset = filePos;
+        const dataBytes = (rows + 1) * 4 + nnz * 4 + nnz * ValuesArray.BYTES_PER_ELEMENT;
+        if (dataOffset + dataBytes > stat.size) {
+          // A torn or truncated checkpoint. Queue nothing rather than a
+          // section the apply step would short-read into a half-built matrix.
+          console.warn(`[Brain] Binary weights section ${i} (${name}) claims ${dataBytes} bytes past end of file (${stat.size}) — torn checkpoint, weights NOT restored`);
+          fs.closeSync(fd); fd = -1;
+          return;
+        }
+        filePos = dataOffset + dataBytes;
+        sections.push({ name, rows, cols, nnz, dataOffset, dataBytes });
       }
       fs.closeSync(fd); fd = -1;
-      this._pendingCortexWeights = { saveVersion, sections };
+      if (filePos !== stat.size) {
+        console.warn(`[Brain] Binary weights: ${stat.size - filePos} trailing bytes after the last section — file is readable, noting it`);
+      }
+      this._pendingCortexWeights = { saveVersion, formatVersion, binFile: BIN_FILE, sections };
       const mb = (stat.size / 1048576).toFixed(1);
-      console.log(`[Brain] Binary weights queued for apply — ${sectionCount} sections, ${mb} MB (saveVersion=${saveVersion})`);
+      const largestMB = (sections.reduce((m, s) => Math.max(m, s.dataBytes), 0) / 1048576).toFixed(1);
+      console.log(`[Brain] Binary weights queued for apply — ${sectionCount} sections, ${mb} MB on disk (saveVersion=${saveVersion}); headers scanned, data reads deferred to apply — peak transient is the largest section at ${largestMB} MB, not the file`);
     } catch (err) {
       console.warn('[Brain] Binary weights load failed:', err?.message || err);
     } finally {
@@ -8904,8 +8936,38 @@ class ServerBrain {
       console.warn('[Brain] Cannot apply binary weights — SparseMatrix constructor unreachable');
       return;
     }
+    const ValuesArray = _BIN_VALUES_ARRAY_FOR(pending.formatVersion);
+    if (!ValuesArray) {
+      console.warn(`[Brain] Cannot apply binary weights — format version ${pending.formatVersion} unsupported`);
+      this._pendingCortexWeights = null;
+      return;
+    }
+    let fd = -1;
+    try {
+      fd = fs.openSync(pending.binFile, 'r');
+    } catch (err) {
+      console.warn(`[Brain] Cannot apply binary weights — ${pending.binFile} unreadable at apply time:`, err?.message || err);
+      this._pendingCortexWeights = null;
+      return;
+    }
     let applied = 0;
     for (const s of pending.sections) {
+      // ONE section resident at a time. These three arrays are the only copy
+      // of this section's data; they are handed to the matrix below and the
+      // next iteration lets the previous ones go.
+      let rowPtr, colIdx, values;
+      try {
+        let pos = s.dataOffset;
+        rowPtr = new Uint32Array(s.rows + 1);
+        pos = _binReadTypedArrayAt(fd, rowPtr, pos);
+        colIdx = new Uint32Array(s.nnz);
+        pos = _binReadTypedArrayAt(fd, colIdx, pos);
+        values = new ValuesArray(s.nnz);
+        _binReadTypedArrayAt(fd, values, pos);
+      } catch (err) {
+        console.warn(`[Brain] Binary weight read failed for ${s.name} at offset ${s.dataOffset}:`, err?.message || err);
+        continue;
+      }
       try {
         const m = new SparseMatrix(s.rows, s.cols);
         // ⛔ COERCE TO THE LIVE WEIGHT TYPE. This is a DIRECT assignment, not
@@ -8918,9 +8980,9 @@ class ServerBrain {
         // it is whatever `sparse-matrix.js` allocates TODAY — no constant to
         // keep in sync, and it self-corrects if the width ever changes again.
         const TargetValues = m.values.constructor;
-        m.values = (s.values instanceof TargetValues) ? s.values : new TargetValues(s.values);
-        m.colIdx = s.colIdx;
-        m.rowPtr = s.rowPtr;
+        m.values = (values instanceof TargetValues) ? values : new TargetValues(values);
+        m.colIdx = colIdx;
+        m.rowPtr = rowPtr;
         m.nnz = s.nnz;
         if (s.name === 'cortex.synapses') {
           // TU.25.E — the constructor default is wMax=Infinity; the binary save
@@ -8953,8 +9015,9 @@ class ServerBrain {
         console.warn(`[Brain] Binary weight apply failed for ${s.name}:`, err?.message || err);
       }
     }
+    try { fs.closeSync(fd); } catch { /* already closed */ }
     if (applied > 0) {
-      console.log(`[Brain] Binary weights applied — ${applied}/${pending.sections.length} sections restored onto live cortexCluster`);
+      console.log(`[Brain] Binary weights applied — ${applied}/${pending.sections.length} sections restored onto live cortexCluster (streamed one section at a time)`);
     }
     // SAFETY NET for the deferred construction: if the restore did not actually
     // deliver an intra matrix (apply threw, section missing, torn checkpoint),
