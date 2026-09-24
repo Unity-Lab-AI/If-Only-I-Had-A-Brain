@@ -66,6 +66,8 @@ last-verified: "2026-09-24 — a NEW top banner over the 09-09 one, from field r
 >
 > ⚠ **Also found:** the Brain Power panel was gated on `body.is-admin`, which the brain grants over its own WebSocket — the recovery UI for a dead brain required the dead brain (fixed, frontend). `⚡ Force Restart` is `systemctl restart`, not a kill (~90 s). `/ctl/logs` is `journal-permission-denied`, so the cause of the original pin is unrecoverable. RunPod reads zero pods — nothing is bleeding.
 >
+> ⛔⛔ **12:24 PM — the streamed restore deployed and she pinned AGAIN on the new code: `age 444 s · mem 21,085 MB · restarts 0`.** The applied weights are resident; streaming bounded only the transient. `WEIGHTFIT` (yield between sections + fit the weights under `memory.high × 85%` by pruning the smallest synapses only as far as needed, neuron count untouched) is built, harnessed 11/11, and awaits the press. **The new number to watch: `mem` stops UNDER ~19,100 MB.**
+>
 > ## PRIOR (2026-09-09) — AND AS OF THE LAST READ SHE IS WEDGED — read this before the tables below
 >
 > **Two samples 121 s apart, ~2.8 h after the boot:**

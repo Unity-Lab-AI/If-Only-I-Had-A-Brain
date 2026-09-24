@@ -13,6 +13,12 @@
 >   RunPod         zero pods running (list-pods) — the hundred hours is sunk, not bleeding
 > ```
 >
+> ## ⛔⛔ AFTERNOON ADDENDUM — THE STREAMED RESTORE DEPLOYED AND SHE PINNED AGAIN ON THE NEW CODE
+>
+> `12:17:34 PM` Start → new process on `2dc34494` (overlay confirmed: `main` staged fresh, `server/` not excluded) → `12:24:58 PM` **`age 444 s · mem 21,085 MB · restarts 0`**, bound and mute. **Streaming bounded the transient; the applied weights are RESIDENT.** Base ≈ 8 GB + ~9 GB file ≈ 17 GB steady + a section in flight ≈ 20 GB, and the apply was one synchronous pass so dropped sections sat as garbage until the kernel throttled her. ⛔ **I told Gee she would level near 13,000 — that was a boot with a 4.9 GB file. Wrong, owned.**
+>
+> ⭐ **`WEIGHTLOAD.4` — `WEIGHTFIT` built and harnessed 11/11 on Gee's *"just fucking fix it with what ever options will fix it for sure"*:** the apply now **yields between sections** (`async` end to end, `setImmediate`) AND **fits the weights under `memory.high × 85%` by construction** — if the sections will not fit, the smallest-|weight| synapses are dropped uniformly per section until they do (floor 50%, loud). Neuron count untouched → no wipe. Fits → nothing pruned. `DREAM_WEIGHT_PRUNE=0` / `DREAM_WEIGHT_FIT_PCT`. **Pickup step 3 changes:** the number to watch is `mem` stopping **under ~19,100 MB**, and the boot line is `WEIGHTFIT — fits` or `… Keeping the largest N%`.
+>
 > ## ⛔ THE CAUSE, IN THE CODE'S OWN WORDS
 >
 > `brain-server.js:8854-8885` read all 17 weight sections into memory and held them in `_pendingCortexWeights` before applying one — **a transient the size of the whole file on top of the sized brain.** Its reservation was the resume term at `:983-1014`, a **fixed ratio `0.3644`** derived when the file was 4,931 MB, kept as a ratio on purpose (*"a budget that moved with the growing file would change the neuron count and make autoClearStaleState wipe the weights"*). **The file grew with ~100 h of learning; the ratio did not.** Measured three times that morning: `173 → 11,511 → 20,476 MB` in one step → parked at 92% of `MemoryHigh`. ⭐ **Fixed at the transient, weights KEPT:** the restore streams one section at a time. Peak = brain + largest section (~2.9 GB). Neuron count unchanged, so nothing reads as incompatible.
