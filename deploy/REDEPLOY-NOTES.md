@@ -1318,3 +1318,14 @@ Verified: server JS + dashboard parse; `_getProfilingState` mock → cortexUploa
 **Recovery, dashboard only, in order:** `Stop` → wait for `phase` to leave `active` (~90 s) → `⬆ Update (keep weights)` (with her already halted it skips the ask and runs the script) → verify by a **5-second probe** of `/public-state.json`, never a wait: a real answer in under a second is up; `no answer in 5 s` is still down. `mem` should level near **13,000 MB**, not 20,700.
 
 **The one box ask when someone has a shell:** `sudo systemctl restart unity-brain-ctl`, plus the journal grant and — per `KI-45` — a true kill arm in the helper.
+
+**1:30 PM addendum — the ctl arm into systemd stopped working, and the ask became the whole recovery.** After the streamed restore deployed and she pinned again on the new code (21 GB, `WEIGHTLOAD.4`), a gatling barrel landed at 1:03:18, she closed her listener and pinned inside her own shutdown save. From then on every `/ctl/*` verb — stop, kick, reset — returned `ok: true` and **the unit never left `active`**: `doStop()` always calls `runHelper('stop')` but swallows its error, so a `sudo … brain-ctl-helper` call that fails or hangs reads as a successful stop (`WEIGHTLOAD.5`). Gee's decision: fresh walk (*"we are doing a freshwalk... remember"*). **Shell hand-off, in order:**
+
+```bash
+sudo systemctl kill -s KILL unity-brain
+echo '{"via":"shell fresh walk"}' | sudo -u unity tee /opt/unity-brain/server/.force-fresh >/dev/null
+sudo systemctl start unity-brain          # fresh boot on 8e073c5d (overlay confirmed on disk)
+sudo systemctl restart unity-brain-ctl    # lands /ctl/freshstart-update, activeForSec, cpuPct
+```
+
+Verify by a **5-second** probe of `/public-state.json`: a real answer under a second with `build 8e073c5d` and `bootReason mode:"wipe"`. ⚠ Two operator tools with opposite destructive semantics — `gatling-savestart.js` and `gatling-freshwalk.js` — were live in one console for ~3 minutes with only a shared `window.__gatGen` between them (`WEIGHTLOAD.6`).

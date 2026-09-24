@@ -13,6 +13,23 @@
 >   RunPod         zero pods running (list-pods) — the hundred hours is sunk, not bleeding
 > ```
 >
+> ## ⛔⛔⛔ 1:30 PM — WHERE THIS STANDS, FOR WHOEVER PICKS IT UP
+>
+> **Decision: FRESH WALK** — Gee, verbatim: *"we are doing a freshwalk... remember"*. RE-PRICE on the board (`WEIGHTLOAD.7`): zero cells were ever passed; the loss is the ~2.4 h definition bootstrap.
+>
+> **State: she is NOT dying and NOT down.** Listener closed at 1:03:18 (a gatling barrel landed; she began her own shutdown and pinned inside the save), unit `active`, `mem ~21.8 GB`, same process since 12:17:34. ⛔ **Every ctl verb since 12:41 reported `ok: true` and changed nothing** — `doStop()` always calls `runHelper('stop')`, the unit never read `deactivating`, so the `sudo … brain-ctl-helper` arm is failing or hanging and the error is swallowed (`WEIGHTLOAD.5`). Kick and reset use the same arm. **No browser-side lever remains.**
+>
+> **The shell hand-off, three commands:**
+> ```
+> sudo systemctl kill -s KILL unity-brain
+> echo '{"via":"shell"}' | sudo -u unity tee /opt/unity-brain/server/.force-fresh >/dev/null
+> sudo systemctl start unity-brain          # fresh boot on 8e073c5d, already on disk
+> sudo systemctl restart unity-brain-ctl    # lands /ctl/freshstart-update, activeForSec, cpuPct
+> ```
+> **Verify with a 5-second probe, not a wait:** `/public-state.json` answering in under a second with `build 8e073c5d`, `bootReason mode:"wipe"`.
+>
+> ⛔ **Owned this afternoon, in order:** three "she's dying" reads that were a closed listener on a live process · "she'll level near 13,000" off a boot with a 4.9 GB file · a `.force-fresh` disarm theory I had to retract on reading `doStop` · and the freshwalk gatling ran live beside the savestart one for ~3 minutes with only a shared counter between them (`WEIGHTLOAD.6`).
+>
 > ## ⛔⛔ AFTERNOON ADDENDUM — THE STREAMED RESTORE DEPLOYED AND SHE PINNED AGAIN ON THE NEW CODE
 >
 > `12:17:34 PM` Start → new process on `2dc34494` (overlay confirmed: `main` staged fresh, `server/` not excluded) → `12:24:58 PM` **`age 444 s · mem 21,085 MB · restarts 0`**, bound and mute. **Streaming bounded the transient; the applied weights are RESIDENT.** Base ≈ 8 GB + ~9 GB file ≈ 17 GB steady + a section in flight ≈ 20 GB, and the apply was one synchronous pass so dropped sections sat as garbage until the kernel throttled her. ⛔ **I told Gee she would level near 13,000 — that was a boot with a 4.9 GB file. Wrong, owned.**
