@@ -3020,7 +3020,7 @@
         // visible field reading fine. So the row states the verdict and the
         // shortfall, in red, next to the bind size it disqualifies.
         const floorCell = (!x.maxBindMB || x.primaryEligible !== false) ? ''
-          : ` · <span style="color:#ef4444;font-weight:600" title="TOO SMALL TO BE PRIMARY. The canonical weight upload only ever targets the PRIMARY donor, so this card will never receive the ${x.df7TotalMatrices || 17} matrices and the walk cannot start on it — it can only ever be a partial replica. Needs ${x.primaryFloorMB}MB to hold the full running brain, holds ${x.maxBindMB}MB. Give it ${x.primaryShortfallMB}MB more, or the brain has to shrink.">⛔ ${(x.primaryShortfallMB / 1024).toFixed(1)}GB SHORT of PRIMARY (needs ${(x.primaryFloorMB / 1024).toFixed(1)}GB)</span>`;
+          : ` · <span style="color:#ef4444;font-weight:600" title="TOO SMALL TO BE PRIMARY. The canonical weight upload only ever targets the PRIMARY donor, so this card will never receive the ${x.df7TotalMatrices || 17} matrices and the walk cannot start on it — it can only ever be a partial replica. Needs ${x.primaryFloorMB}MB to hold the running brain (measured from the live neuron count, not a tier target), holds ${x.maxBindMB}MB. The smallest connected card drives the size: the brain re-tiers down to fit this card after the downscale hold window — no bigger card is required.">⛔ ${(x.primaryShortfallMB / 1024).toFixed(1)}GB SHORT (brain needs ${(x.primaryFloorMB / 1024).toFixed(1)}GB · will shrink to fit)</span>`;
         // MIRRORID.5 — A RATE WITH NO FRESHNESS IS NOT A MEASUREMENT.
         // gneuronsPerSec is a PERSISTENT donor-side field: written only when a
         // batch completes, then kept forever. A card that stopped computing

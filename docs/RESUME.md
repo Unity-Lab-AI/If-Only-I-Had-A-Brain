@@ -1,6 +1,26 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-09-24 (latest, 29th) — SHE WAS PINNED FOR FIFTEEN DAYS, THE RESTART BUTTON NEEDED HER ALIVE, AND THE WEIGHTS OUTGREW A FIXED RATIO (START HERE)
+> # 🛑 2026-09-24, 3:00 PM Denver (latest, 30th) — SHE IS UP; HER 16 GB CARD WAS BEING REFUSED AGAINST A 900M-NEURON BRAIN THAT DOES NOT EXIST; FIXED, AWAITING HIS PRESS (START HERE)
+>
+> **She came up at 1:54:19 PM** on `2dc34494` — `bootReason {mode:"resume", reason:"compatible", neurons:233932309}`, cgroup ~6.1 GB, `arrayBuffersMB 5,755`, answering in 0.34 s. ⚠ **A resume, not the fresh walk that was decided at 1:15 PM** — the reset path never wrote `.force-fresh`; the control-plane helper arm had gone silent 12:41–1:48 PM and every queued verb landed at once when it woke (`WEIGHTLOAD.5`, archived). ⛔ **The 9 GB / 17–21 GB steady-state theory in the 29th block below is RETRACTED by this boot:** the weights file is ~5.7 GB resident (`arrayBuffersMB 5755`), she sits at 6.1 GB — the WEIGHTFIT premise (weights not fitting under `memory.high × 85%`) is not what this boot shows, and `8e073c5d` (WEIGHTFIT) is NOT on the box yet. What pinned her is still unexplained; `/ctl/logs` cannot read the journal.
+>
+> **Then the real problem of the afternoon.** Gee (verbatim): *"okay its up and running but major problem this horse shit says i cant run it on my 16gb gpu now since those last updates 3 weeks agao that is horse shit i ran this brain with 4 times the nuron coundt on my GPU so why the fuck is the dashboard saying this and the doner app not working with the site"* — donor row `bind 16.0GB · ⛔ 9.0GB SHORT of PRIMARY (needs 25.0GB)`.
+>
+> ```
+>   live 2:50 PM   totalNeurons 233,932,309 · community.runningTier 4 · runningFloorMB 25,619
+>                  sizeDriverMB 45,498 (the rented A40, ratcheted into donorBaselineMB 2026-08-20)
+>                  minDonorMB 16,375 (his 4070 Ti SUPER — the only card connected)
+>   cause          floor = MILESTONES[runningTier].neurons × 20 B = 900,000,000 × 20 -> 25,619 MB
+>                  driver = max(baseline, smallest card) -> a small card could never lower it
+>   fix            floor from TOTAL_NEURONS (live) -> 8,680 MB for this boot; driver = smallest CONNECTED card
+>   verified       old formula reproduces 25,619; new gives 8,680; 6 GB card -> downscale candidate, not refusal
+> ```
+>
+> **Files:** `server/brain-server/gpu.js` (`_recomputeCommunityCompute`: driver + floor + comments + downscale message), `server/brain-server.js` (no-primary watchdog message), `html/dashboard.html` (the red cell's text). `node --check` clean. `KI-48`. **Board reset per his word** — the whole 546,002-byte board archived byte-for-byte into `FINALIZED.md` (md5 `dcd03a22d27565b257d335d809d2c463`, `Buffer.equals` TRUE) and `TODO.md` rewritten to two sections: `GPUFLOOR` (`.1` fixed, `.2` = his press + the read) and `POOL` (his standing directive, verbatim ×4: *"ANY FUCKJING GPU ALONE OVER 6GB CAN AND SAHLL BE ABLE TO RUN THE BRAIN ALONE…NO PRIMARY GPU SHIT ALL GPUS WORK IN A POOL AT THEIR OWN SPEED"*, the no-sync propagation, the quantum-tunnel cross-cluster propagation on non-zero set agreement, the wave-propagation activation equations — design owed, not built pre-press).
+>
+> **NEXT — in this order:** cascade → push both remotes → **Gee presses Update Freshwalk** → read `community.runningFloorMB` (≈8,680 at ~234M; `ceil((N×20/1048576+2048)/0.75)` at whatever the fresh walk sizes), the donor row without the red cell, `17/17 matrices uploaded` to his card, `cellStatus in-progress`. ⚠ The fresh walk sizes without the resume term, so she may boot near 425M — floor 13,539 MB, still under his 16,375. ⚠ `brain-ctl.js` fixes from the morning stay inert until `unity-brain-ctl` is restarted by hand.
+>
+> # 🛑 2026-09-24 (29th) — SHE WAS PINNED FOR FIFTEEN DAYS, THE RESTART BUTTON NEEDED HER ALIVE, AND THE WEIGHTS OUTGREW A FIXED RATIO
 >
 > Gee opened with *"none of the web pages are working?"* and closed the decision with *"okay so we probably need to fix the main issues we are having deploy to main on both repos then design a admin command to freshstart update"*. All times below are **Denver**.
 >
@@ -12,6 +32,23 @@
 >   main / remotes NOT YET CASCADED at the time of writing — WEIGHTLOAD.2 is the open row
 >   RunPod         zero pods running (list-pods) — the hundred hours is sunk, not bleeding
 > ```
+>
+> ## ⛔⛔⛔ 1:30 PM — WHERE THIS STANDS, FOR WHOEVER PICKS IT UP
+>
+> **Decision: FRESH WALK** — Gee, verbatim: *"we are doing a freshwalk... remember"*. RE-PRICE on the board (`WEIGHTLOAD.7`): zero cells were ever passed; the loss is the ~2.4 h definition bootstrap.
+>
+> **State: she is NOT dying and NOT down.** Listener closed at 1:03:18 (a gatling barrel landed; she began her own shutdown and pinned inside the save), unit `active`, `mem ~21.8 GB`, same process since 12:17:34. ⛔ **Every ctl verb since 12:41 reported `ok: true` and changed nothing** — `doStop()` always calls `runHelper('stop')`, the unit never read `deactivating`, so the `sudo … brain-ctl-helper` arm is failing or hanging and the error is swallowed (`WEIGHTLOAD.5`). Kick and reset use the same arm. **No browser-side lever remains.**
+>
+> **The shell hand-off, three commands:**
+> ```
+> sudo systemctl kill -s KILL unity-brain
+> echo '{"via":"shell"}' | sudo -u unity tee /opt/unity-brain/server/.force-fresh >/dev/null
+> sudo systemctl start unity-brain          # fresh boot on 8e073c5d, already on disk
+> sudo systemctl restart unity-brain-ctl    # lands /ctl/freshstart-update, activeForSec, cpuPct
+> ```
+> **Verify with a 5-second probe, not a wait:** `/public-state.json` answering in under a second with `build 8e073c5d`, `bootReason mode:"wipe"`.
+>
+> ⛔ **Owned this afternoon, in order:** three "she's dying" reads that were a closed listener on a live process · "she'll level near 13,000" off a boot with a 4.9 GB file · a `.force-fresh` disarm theory I had to retract on reading `doStop` · and the freshwalk gatling ran live beside the savestart one for ~3 minutes with only a shared counter between them (`WEIGHTLOAD.6`).
 >
 > ## ⛔⛔ AFTERNOON ADDENDUM — THE STREAMED RESTORE DEPLOYED AND SHE PINNED AGAIN ON THE NEW CODE
 >

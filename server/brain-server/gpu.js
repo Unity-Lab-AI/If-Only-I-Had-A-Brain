@@ -641,10 +641,16 @@ const SERVER_GPU_MIXIN = {
       stabilityMin: 5,      // minutes a higher tier must be HELD past the buffer
                             // before the resize+retrain actually fires.
       minDonorsFloor: 1,    // never consider a tier needing fewer donors than this.
-      // SIZING BASELINE — data-parallel sizing assumes a committed replica donor
-      // holds at least this card class (operator directive); the size driver
-      // never drops below it, so small cards can never shrink the brain. Tune
-      // via the admin autoscale endpoint / autoscale-settings.json.
+      // SIZING BASELINE — the card class the BOOT assumes before any donor has
+      // registered (boot cannot read a card that is not connected yet). Once a
+      // donor is connected, the smallest connected card is the size driver and
+      // this value is not consulted — a small card DOES shrink the brain, per
+      // the operator's standing rule that any GPU over 6GB runs the brain alone
+      // and extra GPUs only add speed and neurons. Ratcheted up on register by
+      // the largest card ever seen (brain-server.js gpu_register), so a rented
+      // big card leaves a big boot assumption behind; that only sets the boot
+      // TIER TARGET, which host RAM clamps anyway. Tune via the admin autoscale
+      // endpoint / autoscale-settings.json.
       donorBaselineMB: 16384,
       // Donor-replica cost estimator (bytes/neuron): ~12B GPU Rulkov state +
       // sparse-matrix share. The first-cut 42 (host-CSR semantics) was ~2x too
@@ -761,12 +767,20 @@ const SERVER_GPU_MIXIN = {
     const settings = this._getAutoScaleSettings();
 
     // SIZE DRIVER (data-parallel): every replica donor holds the FULL brain, so
-    // size is driven by what the smallest COMMITTED donor can hold — floored by
-    // the operator baseline (donors are assumed to hold at least that card
-    // class; smaller cards are assist-lane and never lower the driver). The
-    // community SUM stays a THROUGHPUT metric only.
+    // size is driven by what the smallest CONNECTED donor can hold. The operator
+    // baseline is what the boot assumes when NO donor is connected (boot cannot
+    // read a card that has not registered yet); the moment a card is attached,
+    // that card IS the size driver, however small. Standing operator rule
+    // (2026-09-24): any GPU over 6GB runs the brain ALONE; adding GPUs only
+    // adds speed and neurons. So a small card must be able to shrink the
+    // driver — the old `max(baseline, smallest donor)` let a rented 45GB card
+    // ratchet the baseline up and then judged every 16GB card against a brain
+    // that only existed on paper. The community SUM stays a THROUGHPUT metric
+    // only.
     const _baselineMB = settings.donorBaselineMB || 16384;
-    const _driverMB = Math.max(_baselineMB, this._communityMinDonorMB || 0);
+    const _driverMB = (donorCount > 0 && (this._communityMinDonorMB || 0) > 0)
+      ? this._communityMinDonorMB
+      : _baselineMB;
     const _bytesPerNeuron = settings.donorBytesPerNeuron || 20;
     // Mirrors local host sizing: 75% of the card usable minus a 2GB reserve.
     const _capNeurons = Math.max(0, Math.floor(((_driverMB * 0.75 - 2048) * 1048576) / _bytesPerNeuron));
@@ -846,8 +860,18 @@ const SERVER_GPU_MIXIN = {
     // returning) never shrinks the brain. `_computeInsufficient` flags the
     // admin alert the instant compute can't hold the running tier, regardless
     // of the buffer/window (so you SEE the problem before any rectify fires).
-    const _runningNeurons = MILESTONES[runningTier] ? MILESTONES[runningTier].neurons : 0;
-    // VRAM a single replica donor needs to hold the running tier — inverse of
+    // THE BRAIN A DONOR MUST HOLD IS THE ONE THAT IS RUNNING, NOT THE TIER'S
+    // TARGET. The tier target is an aspiration the boot allocator clamps to host
+    // RAM — on the 32GB coordinator tier 4 "900,000,000" boots as ~234,000,000.
+    // Judging cards against the target produced a 25,619MB floor for a brain
+    // whose real weights fit in a third of that, and a 16GB card that had run
+    // this brain before was refused as PRIMARY for fifteen days (2026-09-24).
+    // `TOTAL_NEURONS` is the allocator's own sum of the live cluster sizes; the
+    // tier target is only used before that number exists.
+    const _tierNeurons = MILESTONES[runningTier] ? MILESTONES[runningTier].neurons : 0;
+    const _liveNeurons = Number(this.TOTAL_NEURONS || this.totalNeurons) || 0;
+    const _runningNeurons = _liveNeurons > 0 ? _liveNeurons : _tierNeurons;
+    // VRAM a single replica donor needs to hold the running brain — inverse of
     // the capacity estimator (neurons x bytes/neuron + 2GB reserve at 75% use).
     const runningFloorMB = _runningNeurons > 0
       ? Math.ceil(((_runningNeurons * _bytesPerNeuron) / 1048576 + 2048) / 0.75)
@@ -867,7 +891,7 @@ const SERVER_GPU_MIXIN = {
           this._communityDownTierPending = fitTier;
           this._communityDownTierPendingTarget = MILESTONES[fitTier].neurons;
           this._communityDownTierPendingSince = Date.now();
-          console.warn(`[Brain] DF.7 — DOWNSCALE candidate: size-driver capacity ~${_capNeurons.toLocaleString()} neurons fell >${(settings.downBufferPct * 100).toFixed(0)}% below the running tier ${runningTier} target (${_runningNeurons.toLocaleString()} neurons; driver ${_driverMB.toLocaleString()}MB vs floor ${runningFloorMB.toLocaleString()}MB). With the baseline assumption this only happens if the admin lowers donorBaselineMB. If HELD >=${settings.downStabilityMin}min, rectify by retraining at tier ${fitTier} (${MILESTONES[fitTier].neurons.toLocaleString()} neurons). A transient mass-disconnect will NOT trigger it.`);
+          console.warn(`[Brain] DF.7 — DOWNSCALE candidate: size-driver capacity ~${_capNeurons.toLocaleString()} neurons fell >${(settings.downBufferPct * 100).toFixed(0)}% below the RUNNING brain (${_runningNeurons.toLocaleString()} neurons; smallest connected card ${_driverMB.toLocaleString()}MB vs floor ${runningFloorMB.toLocaleString()}MB). The smallest connected card drives the size — a small card runs the brain alone at a smaller size, it is never turned away. If HELD >=${settings.downStabilityMin}min, rectify by retraining at tier ${fitTier} (${MILESTONES[fitTier].neurons.toLocaleString()} neurons). A transient mass-disconnect will NOT trigger it.`);
         }
       } else if (this._communityDownTierPending != null) {
         // Compute recovered above the down-gate before the window elapsed — cancel.
