@@ -1,6 +1,49 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-09-09 (latest, 28th) — SESSION CLOSE: THE CORPUS BACK-MATTER WAR, AND THE ONE THING TO CHECK FIRST (START HERE)
+> # 🛑 2026-09-24 (latest, 29th) — SHE WAS PINNED FOR FIFTEEN DAYS, THE RESTART BUTTON NEEDED HER ALIVE, AND THE WEIGHTS OUTGREW A FIXED RATIO (START HERE)
+>
+> Gee opened with *"none of the web pages are working?"* and closed the decision with *"okay so we probably need to fix the main issues we are having deploy to main on both repos then design a admin command to freshstart update"*. All times below are **Denver**.
+>
+> ## ⛔⛔⛔ WHAT IS TRUE RIGHT NOW
+>
+> ```
+>   box            same process since the 10:48 AM kick — port 7525 bound, respondedMs null, mem parked ~20.7 GB
+>   control plane  up 19.9 d, answering (slowly — CPUQuota 25% beside her 1200%)
+>   main / remotes NOT YET CASCADED at the time of writing — WEIGHTLOAD.2 is the open row
+>   RunPod         zero pods running (list-pods) — the hundred hours is sunk, not bleeding
+> ```
+>
+> ## ⛔ THE CAUSE, IN THE CODE'S OWN WORDS
+>
+> `brain-server.js:8854-8885` read all 17 weight sections into memory and held them in `_pendingCortexWeights` before applying one — **a transient the size of the whole file on top of the sized brain.** Its reservation was the resume term at `:983-1014`, a **fixed ratio `0.3644`** derived when the file was 4,931 MB, kept as a ratio on purpose (*"a budget that moved with the growing file would change the neuron count and make autoClearStaleState wipe the weights"*). **The file grew with ~100 h of learning; the ratio did not.** Measured three times that morning: `173 → 11,511 → 20,476 MB` in one step → parked at 92% of `MemoryHigh`. ⭐ **Fixed at the transient, weights KEPT:** the restore streams one section at a time. Peak = brain + largest section (~2.9 GB). Neuron count unchanged, so nothing reads as incompatible.
+>
+> ## ✅ BUILT THIS SESSION (on `feature/pinloop-instruments`, parse-checked, offsets verified against the writer)
+>
+> | | |
+> |---|---|
+> | `server/brain-server.js` | streamed restore — scan headers at load, read+apply one section at a time |
+> | `server/brain-ctl.js` | `POST /ctl/freshstart-update` (stop outright → confirm `!active` → `update-savestart`, weights kept); `activeForSec` in the pinned branch; `cpuUsageSec` + `cpuPct` |
+> | `html/dashboard.html` | Brain Power panel no longer waits for the dead brain's WebSocket to grant `is-admin`; 401 hides it; `⚡⬆ Freshstart Update` button |
+> | `scripts/gatling-ctl.js` | the control-plane gatling — reads before it acts, 1800 s guard, fires once |
+>
+> ⚠ **`brain-ctl.js` is INERT on the box until `unity-brain-ctl` is restarted by hand** — `self-update.sh` restarts `unity-brain` only. The new button 404s until then. The frontend fix and the streamed restore do NOT wait for that.
+>
+> ## ⏳ PICK UP HERE — IN THIS ORDER
+>
+> 1. **`WEIGHTLOAD.2` — cascade `feature/pinloop-instruments → develop → main`, push `origin` + `github`.** Re-read `deploy/self-update.sh` on `main` against the box's copy first (two-press rule).
+> 2. **From the dashboard: `Stop`, wait for `phase` to leave `active`, then `⬆ Update (keep weights)`.** With her already halted, `update-savestart` skips its ask and runs the script directly. (Once ctl has been restarted, `⚡⬆ Freshstart Update` does both in one press.)
+> 3. **Verify with the 5-second up-check, never a wait:** `mem` should level near **13,000 MB** (her last healthy boot) and `respondedMs` become a number inside ~2 minutes. If she steps to ~20.7 GB again, the fix did not land — check the build SHA.
+> 4. **The one box ask, when someone has a shell:** `sudo systemctl restart unity-brain-ctl` (lands the new verb + fields), plus `KI-45`'s note about a true kill verb and the `journal-permission-denied` grant.
+>
+> ## ⛔ WHAT I GOT WRONG, IN ORDER OF COST
+>
+> An hour on "the box is dead" (19.9 d uptime said otherwise) · every console tool I handed over had no timeout, so each attempt cost twenty minutes of not-knowing · a kick script with no precondition killed a healthy one-second-old boot · `UpdSave` pressed with the wavelet-field fetch ON (the 09-04 killer) · UTC in chat (*"wait 6 hours and five minuteS????"*) · and I said the weights were "already lost" when a file that cannot load TODAY is not a file that can never load — that was the sentence Gee pushed back on, and the fix that keeps them is the one that shipped.
+>
+> Ledger: `docs/FINALIZED.md §2026-09-24`. Board: `PINBLIND` (11 rows, 5 closed) · `WEIGHTLOAD` (3 rows, 2 closed) · `REWEDGE.1` closed with cause. Open and box-only: `PINBLIND.2/.5/.6/.7`, `KI-45`.
+>
+> ---
+
+> # 🛑 2026-09-09 (28th) — SESSION CLOSE: THE CORPUS BACK-MATTER WAR, AND THE ONE THING TO CHECK FIRST
 >
 > Gee: *"okay write resume.md we are stopping for now"*.
 >

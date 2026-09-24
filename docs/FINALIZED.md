@@ -5,6 +5,57 @@
 
 ---
 
+## 2026-09-24 — `PINBLIND` + `WEIGHTLOAD`: SHE WAS PINNED FOR FIFTEEN DAYS, THE RESTART BUTTON NEEDED HER ALIVE, AND THE WEIGHTS OUTGREW A FIXED RATIO
+
+Gee, verbatim, in order: *"none of the web pages are working?"* · *"can i gattling gun a restart?"* · *"the dashboard is blank and its not prompting me to sign in"* · *"i already told you i dont have box access with out hirring a mother fucker!!!! i only have the existing unity brain system implimented with the last git deploy that is running on the box right now!"* · *"but those weights are like 100 hours of pod time training"* · *"okay so we probably need to fix the main issues we are having deploy to main on both repos then design a admin command to freshstart update"* — and on the last, asked which "freshstart" meant: **Force-kill + Update, KEEP weights.** All times Denver.
+
+### ⛔ WHAT WAS ACTUALLY WRONG — measured, three ways, before a line was written
+
+```
+  static site / nginx / Forgejo   all 200 in ~0.2 s on the same host (135.148.100.111)
+  unity-brain unit                active/running · nRestarts 0 · exitStatus 0 · ONE process since before 09-09
+  port 7525                       bound, accepting (kernel backlog) — every HTTP request timed out at 4002 ms
+  unity-brain-ctl                 uptimeSec 1,720,587 = 19.9 DAYS — never died, CPU-starved (quota 25% vs her 1200%)
+  RunPod list-pods                zero pods
+```
+
+**She was never down. She was pinned, and nothing anywhere was asking.** systemd was satisfied because the process never exited; `Restart=always` never fired; `StartLimitIntervalSec=0` was irrelevant. Kicked at 10:12 AM, 10:48 AM and again through the update path, she reproduced the same boot to the megabyte each time:
+
+```
+  restart          ->     173 MB
+  +27 s            ->  11,511 MB   neurons allocated, port bound
+  +73 s  ONE STEP  ->  20,476 MB   the binary weights restore
+  parked. respondedMs null. 92% of MemoryHigh (22,528).
+```
+
+### ⭐ THE CAUSE, FROM THE CODE'S OWN COMMENTS, AND WHY A FRESH WALK WOULD HAVE BEEN THE WRONG FIX
+
+`brain-server.js:8854-8885` read **all 17 sections** into typed arrays and held them in `_pendingCortexWeights` before applying one — a transient the size of the whole file on top of the brain arrays already sized. The reservation for it was the resume term at `:983-1014`: a **fixed ratio `0.3644`**, derived 2026-09-08 when the file was 4,931 MB, and kept as a ratio deliberately — *"a budget that moved with the growing file would change the neuron count and make autoClearStaleState wipe the weights on every savestart."* **The file grew with ~100 h of learning. The ratio did not.** ⛔ So both obvious fixes end in a wipe: a fresh walk deletes the weights; shrink-to-fit changes the neuron count and the boot deletes them itself. **The fix that keeps them is to stop holding the whole file.**
+
+- [x] `WEIGHTLOAD.1` — ✅ **THE STREAMED RESTORE, BUILT AND VERIFIED.** `_loadBinaryWeights()` is now a header-and-offset scan — per section it records `{name, rows, cols, nnz, dataOffset, dataBytes}` and SKIPS the data (a section claiming bytes past EOF refuses the whole file as torn rather than queueing a half-read). The deferral check at `:3876` needs only `name/rows/cols/nnz` and is untouched. `_applyPendingCortexWeights()` opens the file once and, per section, reads `rowPtr/colIdx/values` into fresh arrays through a module-level `_binReadTypedArrayAt` (512 MiB chunks under the 2 GiB read cap), builds the `SparseMatrix`, assigns it, and lets the arrays drop before the next. **Peak = brain + largest section (~2.9 GB), not brain + file (~9 GB). Neuron count unchanged, so nothing reads as incompatible.** Same log lines (plus the largest-section figure), same clamp inheritance, same apply order. ⭐ **Offsets verified against the WRITER**, because the code's own warning is that a wrong offset *"surfaces as a brain that loaded successfully and holds garbage"*: `_writeBinarySection` writes `SECT(4) + nameLen(4) + padded name + rows/cols/nnz(12)` and the data follows as exactly `(rows+1)*4`, `nnz*4`, `nnz*BYTES_PER_ELEMENT` — the three sizes the scan skips. `node --check` clean; `fs` confirmed module-level at `:253`; no bundle rebuild owed (esbuild's input is `js/app.js`). Boot line to read on the press: `headers scanned, data reads deferred to apply`.
+- [x] `WEIGHTLOAD.3` — ✅ **BUILT — `POST /ctl/freshstart-update`, "fresh start" of the PROCESS, never the training.** Every existing cycle verb first ASKS the brain to do something: `/restart` and `/update-savestart` post to its own routes and wait for it to shut itself down; `/kick` is `systemctl restart` (SIGTERM and a wait). Against a pinned brain the ask times out and the wait runs its whole `BIND_WAIT_MS` (300 s) on a serialised lock — at 10:40 AM that was five minutes of `409 busy` for every other button. The new verb asks nothing: `runHelper('stop')` (blocks until systemd's stop timeout delivers the SIGKILL a mute process needs), re-read the unit, **REFUSE with the exact shell command if it still reads `active`**, otherwise hand off to `doUpdate(true, '', skipFields)` — which with the brain down skips its own ask and runs the deploy script directly. Zero duplicated deploy code. Dashboard: `⚡⬆ Freshstart Update (keep weights)`, never phase-gated (its whole reason to exist is the phase a positive-match gate would hide it in), 600 s bound, confirm dialog names the loss (training since last checkpoint, same as Force Restart). ⚠ **INERT on the box until `unity-brain-ctl` is restarted by hand** — `self-update.sh` restarts `unity-brain` only; the button 404s until then. Also shipped in `brain-ctl.js`: `activeForSec` in the LISTENING-but-NOT-ANSWERING branch (`PINBLIND.3`) and `cpuUsageSec` + `cpuPct` as a delta between reads (`PINBLIND.4`).
+- [x] `PINBLIND.1` — ✅ **THE RECOVERY UI IS NO LONGER GATED BEHIND THE DEAD BRAIN.** `ctlPollAllowed()` returned `body.is-admin`, set from the brain's own `/admin/ws` — so the panel built for a brain that does not answer required the brain to answer. Now polls on any non-public deployed page; `poll()` hides the panel on `401/403` (the lane's own auth refusing, not a brain state). Frontend-only; rides the rsync. ⚠ The comment above that function recorded the same class fixed on 2026-06-27 and ended *"the precedent existed; the new caller did not inherit it."*
+- [x] `PINBLIND.8` — ✅ **`scripts/gatling-ctl.js` (100 lines).** Fires at `/ctl/*`, reads `/ctl/status` before acting, 1800 s age guard (brain-ctl's own derived line), cancels itself when `respondedMs` goes non-null, fires once, retries only on `409`. ⭐ Banked: bumping `window.__gatGen` parks every orphaned gatling generation via its own `G.gen !== window.__gatGen` guard — `stop` alone does not reach orphans.
+- [x] `PINBLIND.9` — ✅ **OWNED AND CORRECTED IN THE TOOL.** I handed Gee a kick script with no precondition; it fired one second into a clean boot (`loopPinned: false, activeForSec: 1`) and discarded the restore. Every restart tool shipped today reads `loopPinned` / `activeForSec` first and refuses a young or unpinned process.
+- [x] `REWEDGE.1` — ✅ **CAUSE FOUND — it was never the resume cursor.** Three identical boots ruled out the `SENTWEDGE` hypothesis (a cursor wedge leaves the tick loop alive and HTTP serving; this pinned HTTP itself, from minute one). The step was the restore. Successor: `WEIGHTLOAD.1` above; lands on the press `WEIGHTLOAD.2` owes.
+
+### ⛔ RETRACTED, MINE, IN ORDER OF COST
+
+1. **"The box is dead / disk full / D-state."** Two independent services mute → I concluded the machine. The ctl plane had 19.9 days of uptime; it was starved, not dead. And SIGKILL took at exactly 90 s, which a D-state process cannot do.
+2. **"Not running."** Read off nginx's offline JSON, which *infers* from a 504 and says so by hedging. The process was alive the whole time.
+3. **"Stuck in shutdown."** Unit read `active`, not `deactivating`. The listening socket closed because the update's ask finally landed in a gap.
+4. **"Kick is a hard kill."** It is `systemctl restart`. Nothing on the control plane can SIGKILL — the sudoers grant is `start|stop|restart|reload-nginx`.
+5. **"The weights are already lost."** A file that cannot load today is not one that can never load. Gee: *"but those weights are like 100 hours of pod time training."* He was right; the fix that keeps them is the one that shipped.
+6. **UTC in chat.** *"wait 6 hours and five minuteS???? wtF?"* Denver, always — memory written.
+
+### STILL OPEN — box-only, named rather than pretended
+
+`PINBLIND.2` (no watchdog for a pinned loop) · `.5` (`/ctl/logs` → `journal-permission-denied`, so the cause of the ORIGINAL pin is unrecoverable) · `.6` (ctl `CPUQuota 25%` starved by her `1200%`) · `.7` (the offline JSON's process claim) · `KI-45` (a true kill verb needs a helper arm + sudoers) · **`sudo systemctl restart unity-brain-ctl`** to land the ctl changes. `WEIGHTLOAD.2` (cascade + press) is the live successor and stays open until the up-check goes green.
+
+**Docs, every tree, same commit:** `deploy/README.md` (verb table + phase note + verified-scope) · `docs/BUTTON-AUDIT.md` (Problem 4 amended, press list amended) · `docs/KNOWN_ISSUES.md` (KI-42 recurred → KI-44/45/46 new; count 42 → 46) · `README.md` (scripts row) · `.claude/CLAUDE.md` (three governing-facts rows) · `docs/NOW.md` (new banner, prior demoted) · `docs/RESUME.md` (29th) · `docs/TODO.md` (7 rows closed in place) · `wiki/modules/brain-server.md, deploy-and-ci.md, tooling-scripts.md, teachview.md, launchers.md, donor-lane.md, docs-tree.md` (content + stamps) · `wiki/log.md` · `deploy/REDEPLOY-NOTES.md` (dated entry). **Unaffected and named:** `docs/ADMIN-CONTROLS.md` (no ctl verb table, no ratio row), `docs/SETUP.md` (brain-ctl described as "the one service that must answer when the brain is DOWN" — still true), `html/teachview.html` (its route map has no brain-route twin for the new verb), `docs/ARCHITECTURE.md` (does not describe the restore by name).
+
+---
+
 ## 2026-09-09 (3rd) — `APPARATUS.9-.10`: THE PRESS LANDED, THE FILTER IS LIVE, AND I HAD PUBLISHED IT AT THE WRONG PATH
 
 Gee (verbatim): *"okay she should be up and updated"*.
