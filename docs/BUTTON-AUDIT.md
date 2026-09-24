@@ -423,6 +423,14 @@ There is no `systemctl restart unity-brain-ctl` anywhere in it.
 timeout fix on `main` right now — is inert until somebody restarts that unit by
 hand.
 
+⚠ **Still true on 2026-09-24, and it now holds back three more things:** the new
+`POST /ctl/freshstart-update` verb (the dashboard's `⚡⬆ Freshstart Update` button
+404s against a box that has not restarted ctl), `activeForSec` in the
+LISTENING-but-NOT-ANSWERING branch (it published `null` there through the whole
+outage), and the `cpuUsageSec` / `cpuPct` fields. **The frontend fix to this panel
+— it no longer waits for the dead brain's WebSocket to grant `is-admin` before it
+will poll `/ctl/status` — does NOT need this**; it rides the rsync.
+
 ```bash
 sudo systemctl restart unity-brain-ctl
 systemctl show unity-brain-ctl -p ActiveEnterTimestamp
@@ -481,5 +489,24 @@ disk and config persist.
    the graceful save, which currently costs nothing: `passedCellsTotal` has been
    **0** for 18 hours.
 3. Then **`⬆ Update (keep weights)`** to pull the current `main`.
+
+⚠ **Amended 2026-09-24, after the same symptom recurred for weeks.** Two facts
+that this list did not carry and that cost a morning:
+
+- **`⚡ Force Restart` is `systemctl restart`** — SIGTERM, then systemd's stop
+  timeout (90 s default), then SIGKILL. It is not a kill and it will not read as
+  one: expect ~90 s of nothing, then `RESTART`. Nothing on the control plane can
+  SIGKILL directly (the helper grants `start|stop|restart|reload-nginx` only).
+- **Step 3 does not work on a pinned brain.** `update-savestart` first ASKS the
+  brain to shut itself down and then waits up to five minutes on a lock. Against
+  a brain that answers nothing, that is five minutes of `busy`. The verb built
+  for this is **`⚡⬆ Freshstart Update (keep weights)`** (`/ctl/freshstart-update`):
+  stop the unit outright, confirm it is down, THEN update. It needs the ctl
+  restart described in Problem 4 before it exists on the box.
+
+And **if the panel itself is not on the page**, that was `ctlPollAllowed()`
+waiting for `body.is-admin` — which the brain grants over its own WebSocket —
+so the recovery UI for a dead brain required the dead brain. Fixed; the panel
+now polls on any non-public deployed page and hides itself on a 401.
 
 ⛔ **Do not use the legacy row.** It will print a green tick either way.

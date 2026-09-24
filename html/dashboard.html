@@ -322,6 +322,7 @@
            a second row because they are heavier / destructive. -->
       <div class="bp-actions" id="bp-actions2" style="margin-top:8px;">
         <button id="bp-update-save" title="UPDATE &amp; SAVESTART — pull the latest code and restart, RESUMING saved training. Non-destructive to weights. Runs the same deploy/self-update.sh the brain would, and works even if the brain is down (so a bad deploy can be fixed from here).">⬆ Update (keep weights)</button>
+        <button id="bp-freshstart" class="bp-danger" title="FRESHSTART UPDATE — for a brain that is ALIVE but NOT ANSWERING. Stops the process outright through systemd (no asking the brain to save first — a pinned brain cannot answer, and every other verb waits minutes for it to), confirms the unit is down, THEN runs Update &amp; Savestart on the halted box. Weights are KEPT: this is a fresh start of the PROCESS, never of the training. Training since the last checkpoint is lost, same as Force Restart. Use when Update (keep weights) sits on a busy lock or a 504.">⚡⬆ Freshstart Update (keep weights)</button>
         <button id="bp-update-fresh" class="bp-danger" title="UPDATE &amp; FRESH WALK — pull the latest code, WIPE trained weights (identity-core Tier 3 preserved) and start a clean K→PhD walk. Destructive to training.">⬆ Update + Fresh Walk</button>
         <button id="bp-savererun" title="SAVERERUN — KEEP all trained weights and re-walk the whole curriculum on top of them (rollback checkpoint taken first; only the grade pointers reset). Requires the brain to be RUNNING, since it rewrites pointers inside the loaded weights.">🔁 Savererun (keep weights)</button>
         <button id="bp-reset" class="bp-danger" title="RESET — WIPE all trained weights / episodic memory / schemas (identity-core Tier 3 anchors preserved) and boot a fresh brain. Destructive. Works with the brain down too (arms the fresh-boot flag and starts it).">♻ Reset (fresh brain)</button>
@@ -4328,6 +4329,7 @@
         start: $('bp-start'), restart: $('bp-restart'), stop: $('bp-stop'),
         kick: $('bp-kick'), refresh: $('bp-refresh'), logs: $('bp-logs'),
         updateSave: $('bp-update-save'), updateFresh: $('bp-update-fresh'),
+        freshstart: $('bp-freshstart'),
         savererun: $('bp-savererun'), reset: $('bp-reset'),
       };
 
@@ -4466,6 +4468,10 @@
         // enabled in every phase except while another action runs.
         btns.updateSave.disabled  = busy;
         btns.updateFresh.disabled = busy;
+        // Never phase-gated: its whole reason to exist is the phase where the
+        // brain reads alive and answers nothing, and a positive-match gate on
+        // phase is exactly what would hide it then.
+        btns.freshstart.disabled  = busy;
         btns.reset.disabled       = busy;
         // Savererun genuinely CANNOT work with the brain down: it rewrites
         // grade pointers inside the loaded weights. Disable rather than let it
@@ -4498,10 +4504,17 @@
       function ctlPollAllowed() {
         if (typeof PUBLIC_MODE !== 'undefined' && PUBLIC_MODE) return false;
         if (_dashIsLocal) return true;              // loopback, no auth lane
-        // Deployed: only once the WS has actually assigned admin. Mode arrives
-        // ~500ms after connect, so this is false for the first few polls by
-        // design — better a late panel than a login box for strangers.
-        return document.body.classList.contains('is-admin');
+        // Deployed, non-public: poll. This used to wait for `body.is-admin`,
+        // which the brain assigns over its own WebSocket — so the panel whose
+        // entire purpose is a brain that does not answer was gated on the
+        // brain answering. On 2026-09-24 the control plane had 19.9 days of
+        // uptime and answered every console call while this panel stayed
+        // hidden for the whole outage, because the socket that grants
+        // `is-admin` was the dead thing. The public page is already excluded
+        // above; on the admin page the lane's own nginx auth is the
+        // entitlement — a 401 is handled in poll() and hides the panel, a 200
+        // shows it. The brain has no say in whether its own recovery UI exists.
+        return true;
       }
 
       async function poll() {
@@ -4513,6 +4526,12 @@
         }
         try {
           const r = await fetch(ctlUrl('status'), { cache: 'no-store', credentials: 'same-origin' });
+          if (r.status === 401 || r.status === 403) {
+            // Not entitled on this lane. Stay hidden and quiet — this is the
+            // admin page's own auth refusing, not a brain state to render.
+            panel.classList.remove('active');
+            return;
+          }
           const j = await r.json();
           // nginx's @ctl_unreachable shape — the control plane itself is down.
           if (j && j.ctlOnline === false) {
@@ -4634,6 +4653,24 @@
           + '✓ Pulls the latest code\n✓ RESUMES saved training (weights kept)\n'
           + '✓ Restarts and reloads the proxy when it is back\n\n'
           + 'Takes 1-2 minutes. Non-destructive to training.',
+      }));
+      // FRESHSTART UPDATE — for the brain that is alive and not answering.
+      // Same deploy as Update (keep weights), but the process is stopped
+      // outright through systemd FIRST instead of being asked to save itself
+      // (a pinned brain cannot answer the ask; every other verb waits minutes
+      // for it to). Longer bound: a stop can take systemd's full stop timeout
+      // before the update even begins.
+      btns.freshstart.addEventListener('click', () => act('freshstart-update', {
+        pending: 'stopping the process outright, then deploying latest code (keeping weights)',
+        timeoutMs: 600000,
+        confirm: 'FRESHSTART UPDATE?\n\n'
+          + '⚡ STOPS the brain process outright via systemd — no graceful save.\n'
+          + '   Training since the last checkpoint is lost (same as Force Restart).\n'
+          + '✓ Confirms the unit is down, THEN pulls the latest code\n'
+          + '✓ RESUMES saved training (weights KEPT — this is not a fresh walk)\n'
+          + '✓ Restarts and reloads the proxy when it is back\n\n'
+          + 'For a brain that is ALIVE but NOT ANSWERING, when Update (keep weights)\n'
+          + 'sits on a busy lock or a 504. Takes 2-5 minutes.',
       }));
       btns.updateFresh.addEventListener('click', () => {
         // Typed confirmation, same as Reset: this WIPES training, and an
