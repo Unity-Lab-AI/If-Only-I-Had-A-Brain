@@ -6964,7 +6964,7 @@ class ServerBrain {
               + `Pool: ${_rows.join(' · ')}. `
               + (_eligible
                 ? 'An ELIGIBLE donor is present and unpromoted — PROMOTING it now and re-arming the upload.'
-                : 'EVERY connected donor is too small to be PRIMARY. This is NOT a bug to work around: a primary that cannot hold the weights cannot serve them. Attach a bigger card, or shrink the brain (DREAM_BRAIN_BUDGET_MB / a lower tier).')
+                : 'EVERY connected donor is too small to hold the RUNNING brain. The floor is measured against the live neuron count, not a tier target, and the smallest connected card now drives the size — DF.7 downscale re-tiers the brain to fit it after the hold window. Nothing to attach; the brain shrinks to the card.')
             );
             if (_eligible) {
               this._gpuClient = _eligible;
