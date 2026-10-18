@@ -412,6 +412,43 @@ if exist "%UNITY_VOICE_V2_DIR%\serve.py" (
     echo           she will speak with the piper floor instead.
     echo           Set UNITY_VOICE_V2_DIR to the model folder to use her real voice.
 )
+REM IMAGEENGINE - her eyes, as a SIDECAR, same pattern as the voice above.
+REM CORA's local Stable Diffusion (services/image_sidecar.py, realistic-vision
+REM v5.1) on 127.0.0.1:5124. The brain POSTs a prompt and gets PNG back; the
+REM bytes go through the same decoder and the same CDF 9/7 perceive as before.
+REM Measured 2026-10-18 on this card: ~2.5 GB peak during a 512x512 render,
+REM 2.1 s warm, 0.6 s reload after unload.
+REM
+REM !! OFFLOAD STAYS ON. Never add --no-offload here: that is "+3 GB VRAM" on a
+REM    card the donor and her voice already share, and the brain's own gate
+REM    (image-engine.js) is priced on the offload numbers.
+REM !! The checkpoint loads on the FIRST render, not at start - so this costs
+REM    the GPU nothing until she actually asks for a picture.
+REM Not found -> say so, carry on. A missing image engine never stops her boot;
+REM the look lane counts engineDown and retries on cooldown.
+if not defined UNITY_IMAGE_PORT set "UNITY_IMAGE_PORT=5124"
+if not defined CORA_IMAGE_DIR set "CORA_IMAGE_DIR=%~dp0..\..\C.O.R.A Cognitive Operations & Reasoning Assistant"
+if not defined CORA_IMAGE_CHECKPOINT set "CORA_IMAGE_CHECKPOINT=%USERPROFILE%\Desktop\Unity 3D Equational Model\Unity 18+\models\realistic-vision-v51.safetensors"
+if exist "%CORA_IMAGE_DIR%\services\image_sidecar.py" (
+    if exist "%CORA_IMAGE_CHECKPOINT%" (
+        netstat -ano | findstr :%UNITY_IMAGE_PORT% | findstr LISTENING >nul 2>&1
+        if errorlevel 1 (
+            echo   [eyes] starting the local image engine on %UNITY_IMAGE_PORT% ...
+            echo   [eyes] log: %CORA_IMAGE_DIR%\data\image-sidecar.log
+            REM One level of quotes only (the stop.bat/voice lesson): /D sets the
+            REM working dir, the log path is relative to it, nothing nests.
+            start "unity-image-engine (leave running)" /min /D "%CORA_IMAGE_DIR%" cmd /c "python -u services\image_sidecar.py --port %UNITY_IMAGE_PORT% --checkpoint "%CORA_IMAGE_CHECKPOINT%" --device auto >> data\image-sidecar.log 2>&1"
+        ) else (
+            echo   [eyes] image engine already listening on %UNITY_IMAGE_PORT% - left alone.
+        )
+    ) else (
+        echo   [eyes] checkpoint NOT found: %CORA_IMAGE_CHECKPOINT%
+        echo          set CORA_IMAGE_CHECKPOINT to the .safetensors file. No pictures until then.
+    )
+) else (
+    echo   [eyes] CORA image engine NOT found at %CORA_IMAGE_DIR%
+    echo          set CORA_IMAGE_DIR to the C.O.R.A folder. No pictures until then.
+)
 start /b "" cmd /c "node --max-old-space-size=65536 --max-semi-space-size=1024 --expose-gc brain-server.js > server.log 2>&1"
 ping -n 2 127.0.0.1 >nul
 start "Unity Brain Log Tail" powershell -NoExit -Command "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $OutputEncoding = [System.Text.Encoding]::UTF8; Get-Content -Path '%~dp0..\server\server.log' -Wait -Tail 200 -Encoding UTF8"

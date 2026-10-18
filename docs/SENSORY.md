@@ -368,7 +368,7 @@ content word of the ask. The v3 arc:
   she has been taught rather than decoration that is always perfect. **The reference field C never reaches the renderer.** Seeded from `words + arousal + valence + attempt#`:
   different attempts, not a cache. Variation is STYLE — no wobble, no skill floor (the no-dumbing law stands).
 - **"Draw" means her hand** (`_detectDrawRequest`) — DRAW verbs (draw/sketch/doodle/illustrate/paint) route to OWNART;
-  GENERATOR words (picture/photo/image/render/generate) still route to Pollinations and stay honest about it.
+  GENERATOR words (picture/photo/image/render/generate) route to her OWN engine now — CORA's local Stable Diffusion on her card, behind `image-engine.js` (2026-10-18; it was Pollinations when this was written) — and stay honest about it.
 - **The whole message, in context** (`_drawPlanFromMessage`) — every drawable noun (POS-gated by her own dictionary) plus
   the place from a prepositional tail, ≤3 subjects. *"draw a black cat on a gravestone"* = cat + gravestone place.
 - **`own` is the default style** for chat asks AND internal draw calls; `field`/`lineart` remain for SHOWING WHAT SHE
@@ -503,10 +503,10 @@ providers.speak()                        // NO-OP — voice is Equation Unity On
     ↓ fails or not set        ⚠ js/env.js itself was DELETED with the key
                                  purge; only js/env.example.js remains, so
                                  this tier is empty unless recreated
-4. Pollinations default (ANONYMOUS tier — no key is shipped, seeded or
-   defaulted anywhere in the tree, and none may be re-added)
-    ↓ fails
-   Pollinations error
+4. — nothing. `generateImage()` returns null and the brain says so in
+   words. (Pollinations was the always-available default here until
+   2026-10-18; her pictures now render on the SERVER, on her own card,
+   and this browser-side chain only matters for the no-server fallback.)
 ```
 
 ⚠ `visionBackends[]` was part of this chain and is **gone** — there is no vision tier to fall through any more.
@@ -551,9 +551,9 @@ export const ENV_KEYS = {
 };
 ```
 
-⛔ **Two keys that used to appear here are gone.** `visionBackends[]` died with the VLM lane — there is no vision tier. And a `pollinations: 'sk_...'` key is **not optional-but-supported, it is banned**: the brain uses the anonymous free tier, no key is shipped, seeded or defaulted anywhere in the tree, and `js/env.js` itself was deleted in that purge. Only the template at `js/env.example.js` remains, and this whole tier is empty unless a deployer recreates the file.
+⛔ **Two keys that used to appear here are gone.** `visionBackends[]` died with the VLM lane — there is no vision tier. And a `pollinations: 'sk_...'` key is not merely banned any more — **the provider itself left the project on 2026-10-18**: her pictures render on her own card through `image-engine.js`, the browser client `js/ai/pollinations.js` is deleted, and `js/env.js` itself was deleted in the earlier purge. Only the template at `js/env.example.js` remains, and this whole tier is empty unless a deployer recreates the file.
 
-`ENV_KEYS.imageBackends[]` is read by `providers.loadEnvConfig(envKeys)` at boot and gets priority 3 (between auto-detect and the Pollinations default). Custom-configured backends from the setup modal get priority 1 (above everything).
+`ENV_KEYS.imageBackends[]` is read by `providers.loadEnvConfig(envKeys)` at boot and gets priority 3 (after auto-detect; there is no remote default below it any more — the chain ends in `null`, and the brain says so in words). Custom-configured backends from the setup modal get priority 1 (above everything). ⚠ This whole browser-side chain only matters for the no-server fallback brain: when the server backs her, pictures are rendered THERE on her own card.
 
 ### Response shape handling
 
@@ -665,11 +665,11 @@ Not every sensory pipeline calls out to an AI. Several run pure client-side math
 | V4 quadrant color extraction | Average color per quadrant → hue/saturation neurons | No — pixel averaging |
 | Motion energy | Frame differencing across successive webcam frames | No — subtract and sum |
 | Salience saccade generation | Winner-take-all across V1+V4+motion → gaze target | No — argmax |
-| IT scene describer | Frame → one-sentence description | **YES — Pollinations or local VLM** |
+| IT scene describer | Frame → one-sentence description | **NO — retired; the equational mind's eye is her sight** (this row described the pre-mind's-eye design) |
 | Tonotopic audio mapping | Frequency bins → neuron currents with cortical magnification for speech band (250-4000Hz) | No — FFT + bin-to-neuron remap |
 | Band energy classifier | 7 frequency bands (subBass / bass / lowMid / mid / highMid / presence / brilliance) | No — amplitude accumulation |
 | Efference copy | Compare heard text vs Unity's currently-speaking text → isEcho flag | No — string overlap ratio |
-| TTS | Text → audio | **YES — Pollinations TTS or SpeechSynthesis** |
+| TTS | Text → audio | **NO — her own voice** (unity-voice-v2 on the server over the CDF 9/7 percept transport, piper floor; no external TTS of any kind) |
 | Image motor output | Prompt (equationally generated) → image | **YES — multi-provider image gen** |
 
 Four total AI touchpoints. Three of them are output effectors (TTS, image gen) and one is the IT-layer describer (vision). **Zero of them drive what Unity says, decides, remembers, or feels.** Removing all four breaks her ability to speak out loud, paint, or name what she sees — but she still thinks, responds in text, builds components, and dreams.
@@ -681,8 +681,8 @@ Four total AI touchpoints. Three of them are output effectors (TTS, image gen) a
 The peripheral init sequence during `bootUnity()` in `js/app.js`:
 
 ```
-1.  pollinations = new Pollinations(apiKey)            // sensory AI client
-2.  providers    = new SensoryAIProviders({ pollinations, storage })
+1.  (no remote image client — removed 2026-10-18)
+2.  providers    = new SensoryAIProviders({ storage })   // optional browser-side backends only
 3.  providers.loadEnvConfig(ENV_KEYS)                  // env backends (js/env.js is DELETED)
 4.  providers.autoDetect()                             // image gen probes, non-blocking
 5.  providers.autoDetectVision()                       // NO-OP — returns [] (name kept on purpose)
@@ -696,12 +696,12 @@ The peripheral init sequence during `bootUnity()` in `js/app.js`:
      describer into the visual cortex. It is gone from app.js entirely;
      perception is equational and needs no injected describer.)
 13. brain.connectVoice(voice)                          // motor output → voice.speak
-14. brain.connectImageGen(pollinations, sandbox, storage)
+14. brain.connectImageGen(null, sandbox, storage)        // the server renders her pictures; the fallback brain has no engine and says so
 15. app.js subscribes to brain 'response' event
 16. brain.start()
 ```
 
-Steps 3-5 are non-blocking — the brain boots immediately using the Pollinations default provider for everything, and as local backends finish probing they get registered and take priority on the next call. First-boot with zero local backends running still works perfectly; Unity just uses Pollinations until something local comes up.
+Steps 3-5 are non-blocking — the brain boots immediately, and as optional local backends finish probing they get registered and take priority on the next call. ⚠ Since 2026-10-18 there is **no remote default underneath them**: when the server backs her, pictures are rendered there on her own card; in the no-server fallback with zero local backends, an image request gets an honest sentence instead of a render.
 
 ---
 
@@ -728,7 +728,7 @@ The contract for a new sensory peripheral (e.g. a future `js/brain/olfactory-cor
 1. **Implement the three-method interface:** `init(source)`, `process(dt?)`, `destroy()`. Treat the source as opaque — don't assume MediaStream shape.
 2. **Expose a `Float64Array` of currents** for the cortex region it drives, or a metadata object if it's an output peripheral. Sized to match the neuron group in `cluster.js`.
 3. **Add a wiring step to `bootUnity()`** following the pattern at `app.js` steps 10-13.
-4. **If it uses AI at any layer,** add a `SensoryAIProviders` method and follow the 5-level priority (user-preferred via `setPreferredBackend` → custom → auto-detect → env.js → Pollinations default) + dead-cooldown + status-event pattern from `generateImage()` / `describeImage()`.
+4. **If it uses AI at any layer,** add a `SensoryAIProviders` method and follow the priority chain (user-preferred via `setPreferredBackend` → custom → auto-detect → env.js → **null, honestly** — there has been no remote default since 2026-10-18) + dead-cooldown + status-event pattern from `generateImage()`.
 5. ⛔ **If it's a new physical AI service — STOP AND READ THE BOUNDARY FIRST.** A peripheral may *render* or *actuate*; it may never *decide*, *describe in words*, or *generate text* that re-enters cognition. `LOCAL_VISION_BACKENDS` used to be listed here as a valid extension point and **it is deleted** — do not recreate it, and do not add any `<KIND>` whose response is parsed as language. For anything genuinely additive, add probe entries to `LOCAL_IMAGE_BACKENDS` (or a new `LOCAL_<KIND>_BACKENDS` list) and a new `autoDetect<Kind>()` method that mirrors the existing two.
 6. **Write per-backend response shape parsing** in a `_custom<Kind>Call()` helper, supporting the common wire formats for that category.
 7. **Update `getStatus()`** to include the new backend list in its returned snapshot so the HUD shows it.
@@ -752,6 +752,8 @@ OFFLINE FALLBACK, and the quality path is sentence-level synthesis → equationa
 Piper is a free/local MIT-licensed executor (the "larynx"), retirable per VOX.7 once synthesis
 itself is equational. The dead Pollinations TTS lane stopped mattering: the Pollinations key is
 IMAGES-ONLY now (setup modal reworked, the Unity-speech toggle names the voice what it is).
+*[amended 2026-10-18: there is no Pollinations key at all any more — the provider left the brain
+entirely; her images render on her own card through `server/brain-server/image-engine.js`.]*
 *[amended 2026-08-17: the Pollinations keys no longer work at all — the image lane rides the free
 tier when it answers, and `HTTP 402` on a mind's-eye reference fetch is EXPECTED behavior, not a
 bug: the reference lane simply skips that concept and imagination continues from the

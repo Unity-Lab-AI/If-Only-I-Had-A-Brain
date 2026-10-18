@@ -36,7 +36,6 @@ if (typeof window !== 'undefined') {
 // more text-AI peripheral. The language.js file still exists as a
 // shim (see its header) but is not imported here.
 import { AIProviders } from './brain/peripherals/ai-providers.js';
-import { PollinationsAI } from './ai/pollinations.js';
 import { VoiceIO } from './io/voice.js';
 import { preloadVoice, isVoicePreloading } from './io/voice-piper.js';
 import { requestPermissions, getGrantedPermissions, queryLivePermissions } from './io/permissions.js';
@@ -60,7 +59,9 @@ try {
 }
 
 // ── Global instances ──
-let brain, pollinations, providers, voice, storage, sandbox;
+// `pollinations` left this list 2026-10-18 — the browser carries no image
+// renderer any more; the server renders on her own card.
+let brain, providers, voice, storage, sandbox;
 let chatPanel, brainViz, brain3d;
 let isRunning = false;
 
@@ -1094,7 +1095,8 @@ function updateLandingStats(state) {
 // ── DOM refs ──
 const setupModal = document.getElementById('setup-modal');
 const startBtn = document.getElementById('start-btn');
-const apiKeyInput = document.getElementById('api-key-input');
+// `apiKeyInput` (#api-key-input, the optional Pollinations key field) was
+// REMOVED from index.html 2026-10-18 with the provider. Nothing reads it.
 const micStatus = document.getElementById('mic-status');
 const camStatus = document.getElementById('cam-status');
 const unityBubble = document.getElementById('unity-bubble');
@@ -1115,7 +1117,8 @@ const brainIndicator = document.getElementById('brain-indicator');
 //   - providers.autoDetect() / autoDetectVision() — boot-time probe
 //   - providers.loadEnvConfig(ENV_KEYS) — env.js imageBackends[] /
 //     visionBackends[]
-//   - Optional pollinations API key in the setup modal input below
+//   - (the optional Pollinations key input is GONE — 2026-10-18; her
+//     pictures render on the server, on her own card)
 // See js/brain/peripherals/ai-providers.js for the real sensory
 // provider chain and docs/SENSORY.md for the peripheral contract.
 
@@ -1124,40 +1127,28 @@ const brainIndicator = document.getElementById('brain-indicator');
 // ═══════════════════════════════════════════════════════════════
 // Unity's brain runs on math; no text-AI backend is required. The
 // setup modal exists only to (a) request mic + camera permissions,
-// (b) accept an optional Pollinations API key for raised rate
-// limits, and (c) show the user what sensory backends (image gen,
-// vision describer) were auto-detected. Everything else is wired
+// and (b) show the user what OPTIONAL browser-side image backends were
+// auto-detected. There is no key to paste: HER EYES COME HOME
+// (2026-10-18) — the server renders her pictures on her own card. Everything else is wired
 // through env.js / auto-detect at boot in bootUnity().
 // ═══════════════════════════════════════════════════════════════
 
 async function init() {
   storage = new UserStorage();
 
-  // ANONKEY (2026-08-22, operator law) — the brain runs the Pollinations
-  // ANONYMOUS tier. env.js seeding is what kept re-filling a cleared key
-  // every boot (a stale env.js can survive on a deploy box because it is
-  // gitignored and rsync never replaces it), so the pollinations slot is
-  // NEVER seeded from env — and any retired project key found in storage
-  // is actively purged here too (belt to index.html's pre-bundle purge).
-  const RETIRED_POLL_KEYS = new Set([
-    'sk_cVKTWfmo9wF7S5bOiFHZPhN2LjpW4SZ3',
-    'sk_sGQDs3CwfDJRiUcGipueAfqI3U4xhMeW',
-  ]);
-  try {
-    const storedPoll = storage.getApiKey('pollinations');
-    if (storedPoll && RETIRED_POLL_KEYS.has(storedPoll)) storage.setApiKey('pollinations', '');
-  } catch { /* storage unavailable — anonymous regardless */ }
+  // HER EYES COME HOME (2026-10-18) — there is no Pollinations slot any more.
+  // The ANONKEY purge that lived here (2026-08-22: never seed the slot, scrub
+  // retired project keys) is now simply: clear the slot outright, so a
+  // visitor's browser does not carry a credential for a provider the project
+  // no longer uses. Belt to index.html's pre-bundle purge.
+  try { if (storage.getApiKey('pollinations')) storage.setApiKey('pollinations', ''); }
+  catch { /* storage unavailable — nothing to clear */ }
   for (const [pid, key] of Object.entries(ENV_KEYS)) {
-    if (pid === 'pollinations') continue;   // anonymous tier only — never seeded
+    if (pid === 'pollinations') continue;   // retired provider — never seeded
     if (key && typeof key === 'string' && !storage.getApiKey(pid)) {
       storage.setApiKey(pid, key);
     }
   }
-
-  // If a stored Pollinations key exists, pre-fill the optional input
-  // so users don't have to re-paste it every session.
-  const storedPollKey = storage.getApiKey('pollinations');
-  if (storedPollKey && apiKeyInput) apiKeyInput.value = storedPollKey;
 
   startBtn.addEventListener('click', handleStart);
 
@@ -1212,30 +1203,8 @@ async function init() {
     if (!on) voice.stopSpeaking?.();
   });
 
-  // Instant SAVE KEY button — stores the Pollinations API key without
-  // having to boot Unity. Writes storage + pushes into providers so
-  // the next generateImage/describeImage picks it up immediately.
-  const saveKeyBtn = document.getElementById('api-key-save-btn');
-  if (saveKeyBtn && apiKeyInput) {
-    saveKeyBtn.addEventListener('click', () => {
-      const key = (apiKeyInput.value || '').trim();
-      if (!key) {
-        alert('Paste a Pollinations API key first.');
-        return;
-      }
-      storage.setApiKey('pollinations', key);
-      if (providers?._pollinations) providers._pollinations._apiKey = key;
-      saveKeyBtn.textContent = 'SAVED ✓';
-      saveKeyBtn.style.background = 'var(--green,#22c55e)';
-      setTimeout(() => {
-        saveKeyBtn.textContent = 'SAVE KEY';
-        saveKeyBtn.style.background = 'var(--cyan)';
-      }, 1500);
-      // Re-render inventory so the (default) pollinations row reflects
-      // the authenticated state if the UI cares.
-      if (typeof renderSensoryInventory === 'function') renderSensoryInventory();
-    });
-  }
+  // (The instant SAVE KEY button for a Pollinations key was REMOVED
+  // 2026-10-18 along with the provider. Its markup went from index.html too.)
 
   // R15 — Clear All Data button (still inside the setup modal)
   const clearBtn = document.getElementById('clear-data-btn');
@@ -1248,7 +1217,8 @@ async function init() {
     });
   }
 
-  // R15b-T6 — Create pollinations + providers + run auto-detect probes
+  // R15b-T6 — Create providers + run auto-detect probes (the Pollinations
+  // client that used to be created here is gone — 2026-10-18)
   // at PAGE LOAD TIME, not at boot. The original R15b shipped this
   // inside bootUnity() which meant the setup modal's sensory inventory
   // panel showed "Start Unity to see what's detected" until the user
@@ -1257,9 +1227,9 @@ async function init() {
   // everything here fires the probes as soon as the page loads so
   // opening the setup modal always shows real results.
   try {
-    const bootKey = storage.getApiKey('pollinations') || '';
-    pollinations = new PollinationsAI(bootKey || undefined);
-    providers = new AIProviders({ pollinations, storage });
+    // No PollinationsAI client any more (2026-10-18): the browser renders no
+    // images itself. providers only tracks OPTIONAL user-configured backends.
+    providers = new AIProviders({ storage });
 
     if (typeof providers.loadEnvConfig === 'function') {
       providers.loadEnvConfig(ENV_KEYS);
@@ -1283,15 +1253,15 @@ async function init() {
     // running, so every probe failed with ERR_CONNECTION_REFUSED and
     // the browser's network layer logged each as a red error — the
     // console
-    // looked broken even though the brain was fine. Pollinations
-    // works out of the box without any of this, so the sensible
-    // default is "don't probe unless the user told us to".
+    // looked broken even though the brain was fine. Her pictures render
+    // on the server, on her own card, without any of this, so the
+    // sensible default is "don't probe unless the user told us to".
 
     // Enable by setting ENV_KEYS.probeLocalAI = true in env.js OR
     // localStorage.unity_probe_local_ai = '1' from the setup
     // modal toggle. When off (default) we skip both probes
     // entirely and the inventory renders with zero local backends
-    // — Pollinations + user-configured API keys still work.
+    // — server-side rendering + user-configured backends still work.
     const probeEnv = (ENV_KEYS && ENV_KEYS.probeLocalAI === true);
     const probeLs = (typeof localStorage !== 'undefined' && localStorage.getItem('unity_probe_local_ai') === '1');
     if (probeEnv || probeLs) {
@@ -1347,8 +1317,8 @@ function renderSensoryInventory() {
   // _mindSpace.describe), not an LLM describer. Nothing to list.
 
   // R15b-T6 — if providers exists but autoDetect hasn't resolved yet,
-  // only the Pollinations fallback will show. Detect that state and
-  // show a friendly "probing" badge instead of a stark single-entry list.
+  // only the server-engine row will show. Detect that state and show a
+  // friendly "probing" badge instead of a stark single-entry list.
   const probing = ((status.image || []).length <= 1);
   const probingNote = probing
     ? '<div style="color:var(--text-dim);margin-top:6px;font-size:10px;">⏳ probing localhost ports for local backends (A1111 / ComfyUI / Ollama / etc.)...</div>'
@@ -1380,7 +1350,6 @@ function renderSensoryInventory() {
 // Model catalogs per backend. Static where we know the options,
 // dynamic for ones we probe at runtime (ollama /api/tags).
 const BACKEND_MODEL_CATALOG = {
-  'image:Pollinations': ['flux', 'flux-realism', 'flux-anime', 'flux-3d', 'turbo', 'sdxl-1.0'],
   'image:Automatic1111 / SD.Next / Forge': ['default'],
   'image:ComfyUI': ['default'],
   'image:OpenAI DALL-E': ['dall-e-3', 'dall-e-2'],
@@ -1495,20 +1464,10 @@ function refreshActiveBackendSelectors(status) {
 
 const BACKEND_CATALOG = {
   // ── IMAGE GENERATION ──────────────────────────────────────────
-  'img:pollinations': {
-    name: 'Pollinations',
-    kind: 'image',
-    instructions:
-      'Unity\'s default image gen provider — active out of the box, no setup needed for the anonymous tier. Paste your Pollinations API key below to authenticate (raises rate limits and unlocks paid models). You can also pick which Pollinations image model Unity uses (default: flux).',
-    link: 'https://enter.pollinations.ai/',
-    linkLabel: '🔑 Get Pollinations API key',
-    needsKey: true,
-    keyOptional: true,
-    keyStorageKey: 'pollinations',
-    showModel: true,
-    defaultModel: 'flux',
-    modelHint: 'e.g. flux / turbo / sdxl-1.0',
-  },
+  // ('img:pollinations' — the default remote provider card — was REMOVED
+  // 2026-10-18. Her pictures render on the SERVER, on her own card, through
+  // CORA's local engine. The cards below are OPTIONAL browser-side backends
+  // a user may configure for the no-server fallback brain only.)
   'img:a1111': {
     name: 'Automatic1111 / SD.Next / Forge',
     kind: 'image',
@@ -1606,13 +1565,14 @@ function wireBackendButtons() {
   // Highlight already-saved backends so returning users see them green
   refreshSavedMarkers();
 
-  // Auto-populate the form with the CURRENTLY ACTIVE backend on page
-  // load so users never see the "No provider selected yet" placeholder
-  // when there IS a provider active. Priority: (1) user-preferred
-  // image backend from localStorage, (2) Pollinations as the default.
+  // Auto-populate the form with a user-preferred browser-side backend if
+  // one is saved. HER EYES COME HOME (2026-10-18): there is no default
+  // card any more — her pictures render on the server, on her own card —
+  // so with no preference the placeholder is the honest state and nothing
+  // is pre-selected. ('' matches no button; the guard below skips it.)
   const imgPrefRaw = localStorage.getItem('unity_pref_image_backend') || '';
   const [, prefName] = imgPrefRaw.split('|');
-  let initialBackendKey = 'img:pollinations';
+  let initialBackendKey = '';
   if (prefName) {
     // Match preferred name against catalog entries
     for (const [key, cfg] of Object.entries(BACKEND_CATALOG)) {
@@ -1638,17 +1598,12 @@ function refreshSavedMarkers() {
   try {
     const imgAll = JSON.parse(localStorage.getItem('custom_image_backends') || '{}');
     const visAll = JSON.parse(localStorage.getItem('custom_vision_backends') || '{}');
-    const pollKey = storage?.getApiKey('pollinations');
     document.querySelectorAll('.provider-btn').forEach(btn => {
       const key = btn.dataset.backend;
       const config = BACKEND_CATALOG[key];
       if (!config) return;
-      if (config.keyStorageKey === 'pollinations') {
-        btn.classList.toggle('saved', !!pollKey);
-      } else {
-        const store = config.kind === 'image' ? imgAll : visAll;
-        btn.classList.toggle('saved', !!store[key]);
-      }
+      const store = config.kind === 'image' ? imgAll : visAll;
+      btn.classList.toggle('saved', !!store[key]);
     });
   } catch {}
 }
@@ -1748,8 +1703,8 @@ function showBackendForm(backendKey) {
   // Initial connection status — reflects current state BEFORE the user
   // clicks CONNECT. Three signals: (a) key/url exists in localStorage,
   // (b) key/url exists in env.js via providers, (c) live backend entry
-  // is alive/dead. Pollinations is always "default available" unless
-  // explicitly dead.
+  // is alive/dead. (There is no always-available default any more —
+  // the remote provider left 2026-10-18.)
   updateConnectStatus(backendKey, config, stored);
 
   // Wire save button — runs saveBackend() then probes connectivity and
@@ -1786,20 +1741,6 @@ function updateConnectStatus(backendKey, config, stored) {
   const statusEl = document.getElementById('backend-connect-status');
   if (!statusEl) return;
 
-  // Pollinations — always a default available; green if a key is saved,
-  // blue-ish if running anonymously.
-  if (config.keyStorageKey === 'pollinations') {
-    const pollKey = storage?.getApiKey('pollinations');
-    if (pollKey) {
-      statusEl.innerHTML = '🟢 connected · authenticated with saved key';
-      statusEl.style.color = 'var(--green,#22c55e)';
-    } else {
-      statusEl.innerHTML = '🔵 default · running on anonymous tier (no key)';
-      statusEl.style.color = 'var(--cyan,#00e5ff)';
-    }
-    return;
-  }
-
   // Check providers registry for a live entry matching this backend
   // name — covers both env.js and localStorage sources
   const list = config.kind === 'image'
@@ -1834,22 +1775,13 @@ function updateConnectStatus(backendKey, config, stored) {
  * Live connectivity probe for a backend. Called from the CONNECT button
  * click handler after saveBackend writes the config. Returns
  * {ok: boolean, detail: string}. Uses a short-circuit per-backend-kind
- * check: Pollinations hits /models, OpenAI hits /v1/models, A1111 hits
+ * check: OpenAI hits /v1/models, A1111 hits
  * /sdapi/v1/options, Ollama hits /api/tags, custom/generic does a HEAD.
  */
 async function probeBackend(backendKey, config) {
   try {
-    // Pollinations — hit the models endpoint with the saved key
-    if (config.keyStorageKey === 'pollinations') {
-      const key = storage?.getApiKey('pollinations');
-      const headers = key ? { Authorization: `Bearer ${key}` } : {};
-      const res = await fetch('https://image.pollinations.ai/models', {
-        headers,
-        signal: AbortSignal.timeout(5000),
-      });
-      if (!res.ok) return { ok: false, detail: `HTTP ${res.status}` };
-      return { ok: true, detail: key ? 'authenticated' : 'anonymous tier' };
-    }
+    // (The Pollinations /models probe was REMOVED 2026-10-18 with the
+    // provider — nothing remote is probed for images any more.)
 
     const stored = loadStoredBackendConfig(backendKey);
     const url = stored?.url || config.defaultUrl || (config.defaultPort ? `http://localhost:${config.defaultPort}` : '');
@@ -1896,35 +1828,6 @@ function saveBackend(backendKey) {
   }
   if (config.needsKey && !config.keyOptional && !key) {
     alert('API key is required for this backend.');
-    return;
-  }
-
-  // Pollinations special case — the key goes into the shared
-  // pollinations storage slot (used by the Pollinations client) and
-  // the model choice goes into a per-kind localStorage key that
-  // bootUnity reads back at launch to override the hardcoded default.
-  if (config.keyStorageKey === 'pollinations') {
-    if (key) {
-      storage.setApiKey('pollinations', key);
-      if (apiKeyInput) apiKeyInput.value = key;
-    }
-    const modelStorageKey = config.kind === 'image' ? 'pollinations_image_model' : 'pollinations_vision_model';
-    if (model) {
-      localStorage.setItem(modelStorageKey, model);
-    } else {
-      localStorage.removeItem(modelStorageKey);
-    }
-    // Apply to the live pollinations client immediately if boot has run
-    if (pollinations && key) pollinations._apiKey = key;
-    if (pollinations && model && config.kind === 'image') pollinations._defaultImageModel = model;
-    if (providers && model && config.kind === 'vision') providers._pollinationsVisionModel = model;
-
-    showEnvSnippet({
-      pollinations: key || storage.getApiKey('pollinations') || '',
-      [modelStorageKey]: model,
-    });
-    refreshSavedMarkers();
-    renderSensoryInventory();
     return;
   }
 
@@ -2019,7 +1922,7 @@ function getEnvJsDestination() {
 
 /**
  * Render a copy-paste-ready env.js snippet into the form's snippet
- * area. Keeps any previously-saved Pollinations key visible so users
+ * area. (It used to carry a Pollinations key forward; that provider is gone — 2026-10-18.) Lets users
  * don't accidentally drop it when they copy the block. Also shows
  * exactly where to put the file (file:// gives an absolute path,
  * localhost gives OS-specific shell hints, remote says localStorage
@@ -2033,8 +1936,6 @@ function showEnvSnippet(updates) {
 
   const jsonify = (v) => typeof v === 'string' ? `'${v.replace(/'/g, "\\'")}'` : JSON.stringify(v);
   const lines = [];
-  const existingPoll = storage.getApiKey('pollinations') || '';
-  if (existingPoll && !updates.pollinations) lines.push(`  pollinations: '${existingPoll}',`);
   for (const [k, v] of Object.entries(updates)) {
     if (v == null || v === '') continue;
     if (Array.isArray(v)) {
@@ -2142,13 +2043,6 @@ function loadStoredBackendConfig(backendKey) {
   const config = BACKEND_CATALOG[backendKey];
   if (!config) return null;
 
-  if (config.keyStorageKey === 'pollinations') {
-    return {
-      key: storage?.getApiKey('pollinations') || '',
-      model: localStorage.getItem(config.kind === 'image' ? 'pollinations_image_model' : 'pollinations_vision_model') || '',
-    };
-  }
-
   try {
     const storageField = config.kind === 'image' ? 'custom_image_backends' : 'custom_vision_backends';
     const all = JSON.parse(localStorage.getItem(storageField) || '{}');
@@ -2179,11 +2073,8 @@ function injectCustomBackendsIntoProviders() {
     console.warn('[Unity] custom backend injection failed:', err.message);
   }
 
-  // R15 — apply saved Pollinations model overrides
-  const imgModel = localStorage.getItem('pollinations_image_model');
-  const visModel = localStorage.getItem('pollinations_vision_model');
-  if (imgModel && pollinations) pollinations._defaultImageModel = imgModel;
-  if (visModel) providers._pollinationsVisionModel = visModel;
+  // (Saved Pollinations model overrides no longer apply — provider removed
+  // 2026-10-18. Any stale localStorage entries are inert.)
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2194,10 +2085,9 @@ async function handleStart() {
   startBtn.textContent = 'Requesting permissions...';
   startBtn.disabled = true;
 
-  // Optional Pollinations API key — raises rate limits on image gen
-  // + vision describer + TTS fallbacks. Unity works fine without one.
-  const apiKey = apiKeyInput.value.trim();
-  if (apiKey) storage.setApiKey('pollinations', apiKey);
+  // (The optional Pollinations key read here was REMOVED 2026-10-18 along
+  // with its input — the provider left the project; her pictures render on
+  // the server. The old line dereferenced a DOM node that no longer exists.)
 
   const permResults = document.getElementById('perm-results');
   permResults.style.display = 'block';
@@ -2259,19 +2149,10 @@ async function bootUnity(apiKey, perms) {
   // R15b-T6 — pollinations + providers are now constructed at init()
   // time (page load) so the setup modal's sensory inventory panel
   // shows real detected backends before the user clicks WAKE UNITY UP.
-  // bootUnity just REUSES the module-level instances. If the user
-  // entered a new Pollinations key in the modal, update the existing
-  // pollinations client in place.
-  const effectiveKey = apiKey || storage.getApiKey('pollinations');
-  if (!pollinations) {
-    // Defensive fallback — init() should have created this already,
-    // but if something went wrong, create it now.
-    pollinations = new PollinationsAI(effectiveKey || undefined);
-  } else if (effectiveKey) {
-    pollinations._apiKey = effectiveKey;
-  }
+  // bootUnity just REUSES the module-level instances. (The Pollinations
+  // client that used to be re-keyed here is gone — 2026-10-18.)
   if (!providers) {
-    providers = new AIProviders({ pollinations, storage });
+    providers = new AIProviders({ storage });
     if (typeof providers.loadEnvConfig === 'function') providers.loadEnvConfig(ENV_KEYS);
     injectCustomBackendsIntoProviders();
     if (typeof providers.onStatus === 'function') {
@@ -2297,8 +2178,8 @@ async function bootUnity(apiKey, perms) {
   // needed no key since the network synthesis lane went. The setter stored the
   // key on a field that was **read by nothing**, so this line was a live call
   // into dead state: the most convincing kind of orphan, because the call site
-  // makes it look wired. The Pollinations key is images-only and still flows
-  // through `js/ai/pollinations.js`, untouched.
+  // makes it look wired. (The Pollinations image client this note once
+  // deferred to was itself removed 2026-10-18.)
   // Expose on window so chat-panel in-the-moment mute buttons can reach it
   window.voice = voice;
   // Respect persisted speech mute toggle on boot — if user had Unity
@@ -2411,8 +2292,11 @@ async function bootUnity(apiKey, perms) {
   // is internal to the brain (innerVoice.languageCortex), not a
   // connected peripheral.
   brain.connectVoice(voice);
-  // Images still available even in brain-only mode
-  brain.connectImageGen(pollinations, sandbox, storage);
+  // HER EYES COME HOME (2026-10-18): no browser-side image client. When the
+  // server backs her, pictures are rendered THERE and arrive as {url}; the
+  // in-browser fallback brain has no engine and says so instead of calling
+  // out. `null` here is deliberate and the engine handles it.
+  brain.connectImageGen(null, sandbox, storage);
 
   // ── Listen for brain's response events — app.js just renders ──
   // Deduplicate: track last response to prevent double display.
@@ -2481,30 +2365,26 @@ async function bootUnity(apiKey, perms) {
   // to load, the <img> element is hidden entirely (no "Loading..." alt
   // placeholder bleeding into the chat) and a brief text fallback shows.
   brain.__appImageHandler = (arg) => {
-    // IMG-GEN — accept a finished url (string, browser-local engine path) OR
-    // {url, prompt} (server/RemoteBrain). When only a prompt is given, render it
-    // through Pollinations on the client — the deployed server has no image
-    // backend, so the user's browser turns Unity's prompt into the actual image.
+    // IMG-GEN — accept a finished url (string, from a user-configured
+    // browser-side backend) OR {url, prompt} from the server. HER EYES COME
+    // HOME (2026-10-18): the server now renders on her own card and sends
+    // `{type:'image', url:'/image/<id>.png'}` — a picture already made, served
+    // from a bounded cache. A prompt-only message (the old "the deployed
+    // server has no image backend, let the visitor's browser render it" path)
+    // is no longer rendered here; there is no browser image client, and a
+    // visitor's browser must never be the thing that spends her GPU.
     let url = null;
     if (typeof arg === 'string') url = arg;
     else if (arg && arg.url) url = arg.url;
-    else if (arg && arg.prompt && pollinations && typeof pollinations.generateImage === 'function') {
-      try { url = pollinations.generateImage(arg.prompt); } catch (e) { url = null; }
-    }
     if (!url) return;
     showSpeechBubble('Image generating...', 3000);
     if (chatPanel) {
-      // IMGRETRY (2026-08-28) — the anonymous Pollinations tier allows ONE
-      // queued request per IP, and her own reference-look lane shares this IP.
-      // The server preempts the in-flight look (CHATPREEMPT.1), but the remote
-      // queue slot can stay occupied for seconds after the abort — and this
-      // <img> used to get exactly ONE attempt against that race, so the human
-      // saw "(image generation failed)" while every background lane retried.
-      // Now the load retries on a backoff (4s/8s/16s/24s, same URL — the seed
-      // is pinned in it, so the image is identical) and only after the last
-      // attempt does the failure text show. A cache-busting fragment is NOT
-      // used: the URL must stay byte-identical so a queued-then-completed
-      // render is served from Pollinations' cache instead of re-queued.
+      // IMGRETRY (2026-08-28, kept 2026-10-18) — the <img> load retries on a
+      // backoff (4s/8s/16s/24s, same URL) and only after the last attempt
+      // shows the failure text. It was written for a remote queue race; it is
+      // still right for the local cache URL, where the one realistic miss is
+      // a picture that aged out of the bounded cache before the <img> asked.
+      // The URL must stay byte-identical — it names a specific cached render.
       const imgId = 'img-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
       const imgHtml = `<a href="${url}" target="_blank"><img id="${imgId}" src="${url}" style="max-width:280px;border-radius:8px;border:1px solid #333;display:block;margin:4px 0;"></a><div class="img-fail" style="display:none;color:#777;font-size:11px;">(image generation failed)</div><div class="img-retry" style="display:none;color:#777;font-size:11px;">(image queued — retrying…)</div>`;
       chatPanel.addMessage('assistant', imgHtml, false);
@@ -3239,7 +3119,18 @@ Vision: ${state.visionDescription || 'none'}`;
       const result = await brain.processAndRespond(text);
       return result?.text || '';
     },
-    generateImage: (prompt, opts) => pollinations.generateImage(prompt, opts),
+    // HER EYES COME HOME (2026-10-18): there is no browser-side image client.
+    // Ask her in chat — the server renders on her own card and the picture
+    // arrives as {type:'image', url}. A user-configured browser backend, if
+    // any, is reachable through `providers.generateImage`.
+    generateImage: async (prompt, opts) => {
+      if (providers && typeof providers.generateImage === 'function') {
+        const url = await providers.generateImage(prompt, opts);
+        if (url) return url;
+      }
+      console.warn('[Unity] generateImage: no browser-side image backend is configured — her pictures render on the server; ask her in chat.');
+      return null;
+    },
     getState: () => brain.getState(),
     ui: {
       getState: () => ({ ...uiState, chatOpen: chatPanel?.isOpen(), brainVizOpen: brainViz?.isOpen() }),

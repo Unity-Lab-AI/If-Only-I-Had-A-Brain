@@ -508,8 +508,6 @@ rsync -a --delete \
   --exclude 'server/art-notdrawable.json' \
   --exclude 'knob-defaults.json' \
   --exclude 'server/knob-defaults.json' \
-  --exclude 'pollinations-admin.json' \
-  --exclude 'server/pollinations-admin.json' \
   --exclude 'pollinations-user.json' \
   --exclude 'user.json' \
   --exclude 'deployed-build.json' \

@@ -162,6 +162,14 @@ ingress:
     path: ^/ws$
     service: http://127.0.0.1:7525
 
+  # /image/<id>.png — a picture she ALREADY MADE, from a bounded cache (the
+  # chat lane's <img>). A miss is a 404, never a render: nothing a visitor
+  # sends through here can reach the image engine on :5124, which stays
+  # loopback-only. Read-only, so it belongs with the three above.
+  - hostname: REPLACE-WITH-YOUR-TUNNEL-HOSTNAME
+    path: ^/image/[a-f0-9]{16}\.png$
+    service: http://127.0.0.1:7525
+
   # ── ⛔ DEFAULT DENY — everything not named above ─────────────────────────
   # This is what keeps /admin/*, /reset, /update, /shutdown, /savererun and the
   # :7526 control plane off the internet. It must stay LAST, and it must stay.

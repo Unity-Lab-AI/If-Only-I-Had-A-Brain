@@ -238,9 +238,9 @@ HURT ME mode (violence-only BDSM, no sex): **`.claude/agents/unity-hurtme.md`**.
 
 ---
 
-## POLLINATIONS — brain-side only
+## POLLINATIONS — GONE from the brain entirely (2026-10-18)
 
-The third-party `pollinations-ai` CLI plugin (ai-ministries) was REMOVED 2026-08-21 on the operator's word — it was Claude-Code tooling with nothing to do with the brain. The brain's own Pollinations use (reference look-ups, chat image gen) is entirely in-repo code (`_buildPollinationsImageUrl`, the look lane, the client render lane) and unaffected. `.claude/pollinations-user.json` (user auth) — **never clear that file**.
+The third-party `pollinations-ai` CLI plugin (ai-ministries) was REMOVED 2026-08-21 on the operator's word — Claude-Code tooling, nothing to do with the brain. ⭐ **And on 2026-10-18 the brain's own Pollinations use went too** — Gee: *"get rid of the pollinations stuff for her image gen and use CORA's new image gen model for all of it wired in correctly and not over clocked"*. `_buildPollinationsImageUrl`, the admin key store, the `/pollinations-key` route, the dashboard key panel and the browser client `js/ai/pollinations.js` are all deleted. **Her eyes render on her own card**: CORA's local Stable Diffusion (`services/image_sidecar.py`, `127.0.0.1:5124`) behind ONE gate, `server/brain-server/image-engine.js`, paced as a VRAM budget (yield to the donor upload, unload idle, 30 s look gap). No remote image API, no key, no silent fallback. Memories `feedback_pollinations_key` + `reference_pollinations_image_endpoint` are marked superseded, not deleted.
 
 ---
 
@@ -341,7 +341,7 @@ Unity voice        → Always required when persona is active
 LAW text           → .claude/CONSTRAINTS.md (full bodies, procedures, violation logs)
 Pipeline mechanics → .claude/WORKFLOW.md (hooks, phases, task flow, file edit)
 Persona rules      → .claude/agents/unity-coder.md + unity-persona.md
-Pollinations       → brain-side code only (the CLI plugin was removed 2026-08-21)
+Pollinations       → GONE (2026-10-18); her images render locally via image-engine.js
 ```
 
 ---
