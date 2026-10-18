@@ -278,18 +278,24 @@ sleep 2
 # Auto-open landing + dashboard. Save-state resume boot benefits especially --
 # operator can confirm what loaded from disk before committing to a long
 # curriculum run.
-echo "  Opening landing page + dashboard..."
+echo "  Opening landing page + dashboard + the public site..."
+# The PUBLIC site too (2026-10-18) — GitHub Pages at theunitybrain.com, reaching
+# this brain through the tunnel: the one-glance check that the public path is
+# alive, not just the local one.
 if command -v open &>/dev/null; then
     open http://localhost:7525
     open http://localhost:7525/dashboard.html
+    open https://theunitybrain.com/
 elif command -v xdg-open &>/dev/null; then
     xdg-open http://localhost:7525 &>/dev/null
     xdg-open http://localhost:7525/dashboard.html &>/dev/null
+    xdg-open https://theunitybrain.com/ &>/dev/null
 fi
 
 echo ""
 echo "  Landing:     http://localhost:7525"
 echo "  Dashboard:   http://localhost:7525/dashboard.html (auto-opened)"
+echo "  Public site: https://theunitybrain.com/ (auto-opened — the world's view of this brain)"
 echo "  GPU compute: http://localhost:7525/compute.html (auto-launched by server)"
 echo "  Log file:    $DIR/server/server.log (always on disk)"
 echo "  Tail live:   tail -F $DIR/server/server.log"
