@@ -361,7 +361,7 @@ REM Plus the PowerShell console's OutputEncoding must be UTF-8 or even
 REM a correctly-decoded emoji won't render right when re-emitted.
 REM Setting both [Console]::OutputEncoding + Get-Content -Encoding UTF8
 REM renders the log window cleanly.
-echo [start] step 7/7: launching brain server + log tail window (GPU EXCLUSIVE)...
+echo [start] step 7/7: launching the control plane, the tunnel, her voice, her eyes, the brain, the log tail, her pages...
 echo   server log: %~dp0..\server\server.log
 if exist server.log del server.log
 REM LOCALCTL - start the control plane FIRST, so the dashboard's power buttons
@@ -397,7 +397,11 @@ REM is set (`tailscale set --unattended`), and this also brings the tray app
 REM back if it is gone. Not installed -> say so and carry on; the tunnel is
 REM the world's path to her, never a condition of her boot.
 if exist "%ProgramFiles%\Tailscale\tailscale-ipn.exe" (
-    tasklist /FI "IMAGENAME eq tailscale-ipn.exe" 2>nul | find /i "tailscale-ipn.exe" >nul
+    REM find.exe by absolute path: a shell whose PATH puts Git's usr\bin first
+    REM (git-bash, or anything it spawned, incl. the control plane) resolves a
+    REM bare `find` to GNU find, which treats "/c" as a DIRECTORY and walks
+    REM the whole drive. Measured 2026-10-18: 64 MB of output and a 100 s stall.
+    tasklist /FI "IMAGENAME eq tailscale-ipn.exe" 2>nul | "%SystemRoot%\System32\find.exe" /i "tailscale-ipn.exe" >nul
     if errorlevel 1 (
         echo   [tunnel] Tailscale tray app not running - starting it so the Funnel stays up.
         start "" "%ProgramFiles%\Tailscale\tailscale-ipn.exe"
@@ -414,6 +418,45 @@ REM    2026-10-18 when the daemon reloaded an older snapshot of its serve
 REM    config, so the funnel script alone cannot be trusted to have the last
 REM    word - strip it on every boot. `off` on an absent path is a no-op.
 if exist "%ProgramFiles%\Tailscale\tailscale.exe" "%ProgramFiles%\Tailscale\tailscale.exe" serve --https=443 --set-path=/ off >nul 2>&1
+REM FUNNELENSURE - the tray app being up is not the same as the lanes being
+REM forwarded: after the daemon dropped its profile the serve config came back
+REM EMPTY, and nothing re-applied it. So: wait for the daemon to answer (up to
+REM ~45 s after a cold tray start), and if "Funnel on" is missing, re-apply
+REM the same five read lanes deploy\tailscale-funnel.bat applies - idempotent,
+REM a no-op when they are already there. Then SAY how many lanes are up.
+set "TSX=%ProgramFiles%\Tailscale\tailscale.exe"
+set "TS_UP="
+if exist "%TSX%" (
+    for /l %%i in (1,1,15) do (
+        if not defined TS_UP (
+            "%TSX%" status >nul 2>&1 && set "TS_UP=1"
+            if not defined TS_UP ping -n 4 127.0.0.1 >nul
+        )
+    )
+)
+if defined TS_UP (
+    "%TSX%" funnel status 2>nul | "%SystemRoot%\System32\find.exe" "Funnel on" >nul
+    if errorlevel 1 (
+        echo   [tunnel] Funnel is OFF - re-applying the five public lanes...
+        REM `funnel` per path, never a bare `funnel --bg 443`: a bare port means
+        REM "expose local port 443 at /" and is what kept recreating the root route.
+        "%TSX%" funnel --bg --https=443 --set-path=/public-state.json http://127.0.0.1:7525/public-state.json >nul 2>&1
+        "%TSX%" funnel --bg --https=443 --set-path=/minds-eye.json    http://127.0.0.1:7525/minds-eye.json    >nul 2>&1
+        "%TSX%" funnel --bg --https=443 --set-path=/health            http://127.0.0.1:7525/health            >nul 2>&1
+        "%TSX%" funnel --bg --https=443 --set-path=/ws                http://127.0.0.1:7525/ws                >nul 2>&1
+        "%TSX%" funnel --bg --https=443 --set-path=/image             http://127.0.0.1:7525/image             >nul 2>&1
+    )
+)
+set "UAL_LANES=0"
+if defined TS_UP (
+    "%TSX%" funnel status 2>nul | "%SystemRoot%\System32\find.exe" /c "proxy http://127.0.0.1:7525" > "%TEMP%\ual-lanes.txt"
+    set /p UAL_LANES=<"%TEMP%\ual-lanes.txt"
+)
+if defined TS_UP (
+    echo   [tunnel] public lanes forwarded: %UAL_LANES% of 5 - https://dumbass.tailec58e0.ts.net
+) else (
+    if exist "%TSX%" echo   [tunnel] Tailscale daemon not answering after 45s - the public path may be down; she boots anyway.
+)
 if not defined UNITY_VOICE_PORT set "UNITY_VOICE_PORT=5123"
 if not defined UNITY_VOICE_V2_DIR set "UNITY_VOICE_V2_DIR=%~dp0..\..\Backrooms\models\unity-voice-v2"
 if exist "%UNITY_VOICE_V2_DIR%\serve.py" (
@@ -484,7 +527,22 @@ REM the way to stop her, and closing this window changes nothing.
 start "unity-brain (leave running)" /min cmd /c "node --max-old-space-size=65536 --max-semi-space-size=1024 --expose-gc brain-server.js > server.log 2>&1"
 ping -n 2 127.0.0.1 >nul
 start "Unity Brain Log Tail" powershell -NoExit -Command "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $OutputEncoding = [System.Text.Encoding]::UTF8; Get-Content -Path '%~dp0..\server\server.log' -Wait -Tail 200 -Encoding UTF8"
-ping -n 2 127.0.0.1 >nul
+REM BINDWAIT - open the pages only once she is LISTENING, so the first thing
+REM on screen is her and not a "backend unreachable" banner. A fresh walk
+REM sizes the brain to the card first; allow up to 3 minutes, then open the
+REM pages anyway and say so (server.log has the reason).
+set "UAL_BOUND="
+for /l %%i in (1,1,45) do (
+    if not defined UAL_BOUND (
+        netstat -ano | findstr :7525 | findstr LISTENING >nul 2>&1 && set "UAL_BOUND=1"
+        if not defined UAL_BOUND ping -n 5 127.0.0.1 >nul
+    )
+)
+if defined UAL_BOUND (
+    echo   [start] brain is listening on 7525 - opening her pages.
+) else (
+    echo   [start] brain NOT listening after 3 min - opening the pages anyway; read server.log.
+)
 start "" http://localhost:7525
 REM Dashboard auto-opens alongside the landing page so the milestone panel
 REM (curriculum state, save-resume vs fresh-boot, passed cells, operator

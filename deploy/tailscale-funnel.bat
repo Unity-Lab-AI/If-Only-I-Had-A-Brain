@@ -113,13 +113,21 @@ if errorlevel 1 (
     )
 )
 
-echo [funnel] applying the four public read lanes -^> %BRAIN%
+echo [funnel] applying the five public read lanes -^> %BRAIN%
 REM --bg: persist in the background (survives this window and reboots).
 REM --https=443: Funnel only permits 443, 8443 and 10000; 443 keeps the URL clean.
 REM Each --set-path maps ONE public path prefix to the same path on the brain.
-"%TS%" serve --bg --https=443 --set-path=/public-state.json %BRAIN%/public-state.json
-"%TS%" serve --bg --https=443 --set-path=/minds-eye.json    %BRAIN%/minds-eye.json
-"%TS%" serve --bg --https=443 --set-path=/health            %BRAIN%/health
+REM !! `funnel` (not `serve`) PER PATH. `tailscale funnel --bg --set-path=/x T`
+REM    both registers the handler AND turns Funnel on for port 443, with no
+REM    other route. The earlier form - five `serve` lines and then a bare
+REM    `tailscale funnel --bg 443` - looked right and was the whole bug: a bare
+REM    port argument means "expose LOCAL PORT 443 at /", so every run of this
+REM    script silently added `/ -> 127.0.0.1:443` and made the allowlist
+REM    default-allow (proved 2026-10-18 by stripping `/`, running each command
+REM    alone, and counting; only that one recreated it).
+"%TS%" funnel --bg --https=443 --set-path=/public-state.json %BRAIN%/public-state.json
+"%TS%" funnel --bg --https=443 --set-path=/minds-eye.json    %BRAIN%/minds-eye.json
+"%TS%" funnel --bg --https=443 --set-path=/health            %BRAIN%/health
 REM /ws is the PUBLIC WebSocket lane -- chat AND the donor lane, since the donor
 REM dials wss://host/ws (donor-app/src/config.rs:4). Serve proxies the HTTP
 REM Upgrade; no extra flag needed.
@@ -129,27 +137,13 @@ REM    the "/ws only" restriction is enforced HERE, by what Funnel forwards,
 REM    and not by the brain. That is the whole reason this route list is the
 REM    security control and not a convenience: remove a line and nothing
 REM    downstream catches it.
-"%TS%" serve --bg --https=443 --set-path=/ws                %BRAIN%/ws
+"%TS%" funnel --bg --https=443 --set-path=/ws                %BRAIN%/ws
 REM /image/ serves pictures she ALREADY MADE from a bounded cache (chat lane).
 REM A miss is a 404, never a render: nothing a visitor sends through this path
 REM can reach the image engine on :5124, which stays loopback-only. Read-only,
 REM so it belongs with the other three. Prefix-safe: no other brain route
 REM begins with /image (checked 2026-10-18).
-"%TS%" serve --bg --https=443 --set-path=/image             %BRAIN%/image
-
-REM !! NO ROOT ROUTE, EVER. A `/` entry proxies EVERY path that no line above
-REM    claims -- it turns this default-deny list into default-allow. One was
-REM    created by accident on 2026-10-18 (an argument mangled on its way to
-REM    the CLI became a bare `/` -> 127.0.0.1:443). Strip it unconditionally;
-REM    `off` on a path that is not configured is a no-op.
-"%TS%" serve --https=443 --set-path=/ off >nul 2>&1
-
-echo [funnel] opening port 443 to the public internet (Funnel)...
-REM !! The CLI WAITS here the first time: "Funnel is not enabled on your
-REM    tailnet. To enable, visit: https://login.tailscale.com/f/funnel?node=..."
-REM    Open that link, press Enable, and this command finishes by itself.
-REM    (`serve` above does the same with /f/serve on a brand-new tailnet.)
-"%TS%" funnel --bg 443
+"%TS%" funnel --bg --https=443 --set-path=/image             %BRAIN%/image
 if errorlevel 1 (
     echo   [funnel] FAILED. The usual cause is Funnel not enabled in your tailnet
     echo            policy -- see ONE-TIME SETUP step 2 above. Open
@@ -157,6 +151,17 @@ if errorlevel 1 (
     echo            then run this file again.
     goto :fail
 )
+REM !! The CLI WAITS the first time: "Funnel is not enabled on your tailnet.
+REM    To enable, visit: https://login.tailscale.com/f/funnel?node=..." Open
+REM    that link, press Enable, and the command finishes by itself. (A brand-
+REM    new tailnet asks the same for Serve, at /f/serve, on the first line.)
+
+REM !! NO ROOT ROUTE, EVER. A `/` entry proxies EVERY path that no line above
+REM    claims -- it turns this default-deny list into default-allow. The five
+REM    per-path lines above create none; this strips one left behind by any
+REM    older run of this file (see the note above the lanes). `off` on a path
+REM    that is not configured is a no-op.
+"%TS%" serve --https=443 --set-path=/ off >nul 2>&1
 
 echo.
 echo [funnel] current serve + funnel configuration:
