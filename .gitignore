@@ -432,6 +432,15 @@ art-notdrawable.json
 # clone as if it were the code's own behaviour.
 knob-defaults.json
 server/knob-defaults.json
+# pollinations-admin.json — the admin image-key file. Its consumer was DELETED
+# 2026-10-18 (her images render locally now), so nothing writes it any more.
+# ⛔ The ignore STAYS, as a tombstone-ignore, because of what happened the
+# moment it was removed: a stale copy still existed on disk, `git add -A`
+# staged it, and a file that had been ignored for two months went into a
+# commit and out to the public mirror. Removing an ignore for a path that
+# still exists on disk is a commit of that path. Keep this line.
+pollinations-admin.json
+server/pollinations-admin.json
 
 # ── Fable Kit — OPERATOR TOOLING, not project source ─────────────────────────
 # A third-party kit (protocol launcher + LLM-maintained codebase wiki + central
