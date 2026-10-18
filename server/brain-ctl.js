@@ -129,15 +129,27 @@ function spawnLauncher(script) {
   if (!fs.existsSync(script)) {
     return Promise.reject(new Error(`launcher not found: ${script}`));
   }
+  // ⛔ A LAUNCHER SPAWNED BY A BUTTON MUST NOT WAIT FOR A KEYPRESS. `stop.bat`
+  // ends in an unconditional `pause`, so a `/ctl/stop` press opened a console
+  // window that did its work and then sat on "Press any key to continue"
+  // forever — one orphaned window per press, and nobody there to press it when
+  // the press came from a browser. The scripts honour this variable by skipping the pause
+  // when it is set; a human double-clicking them never sets it and still gets
+  // the pause that lets them read the output.
+  //
+  // ⚠ Error-path pauses in start/Savestart are DELIBERATELY left alone: a
+  // launcher that failed should hold its window open with the reason on screen,
+  // which is the only diagnostic surface a detached launch has.
+  const env = { ...process.env, UAL_CTL_NONINTERACTIVE: '1' };
   return new Promise((resolve, reject) => {
     try {
       const child = IS_WIN
         // cmd.exe /c runs the .bat; the empty title arg is required by `start`
         // when any later argument is quoted, or cmd treats the path AS the title.
         ? spawn('cmd.exe', ['/c', 'start', '', '/D', LAUNCH_DIR, path.basename(script)],
-            { cwd: LAUNCH_DIR, detached: true, stdio: 'ignore', windowsHide: false })
+            { cwd: LAUNCH_DIR, detached: true, stdio: 'ignore', windowsHide: false, env })
         : spawn('bash', [script],
-            { cwd: LAUNCH_DIR, detached: true, stdio: 'ignore' });
+            { cwd: LAUNCH_DIR, detached: true, stdio: 'ignore', env });
       child.on('error', reject);
       child.unref();
       resolve({ stdout: `launched ${path.basename(script)}`, stderr: '' });
@@ -195,6 +207,15 @@ function localGitPull() {
 // short is how trained state gets corrupted.
 const GRACEFUL_WAIT_MS = parseInt(process.env.UAL_CTL_GRACEFUL_WAIT_MS || '20000', 10);
 
+// How long LOCAL_MODE's `stop` primitive waits for the brain's port to close
+// after spawning the stop script, so it keeps `systemctl stop`'s blocking
+// contract (see the long note in runHelper). Generous because a local stop
+// begins with the brain's own graceful /shutdown, which flushes multi-GB
+// weights — the same reason GRACEFUL_WAIT_MS is generous — and because a stop
+// reported as failed while it is still saving is the lie this bound exists to
+// prevent.
+const LOCAL_STOP_WAIT_MS = parseInt(process.env.UAL_CTL_LOCAL_STOP_WAIT_MS || '180000', 10);
+
 // How long to wait for a freshly-started brain to BIND its port. Deliberately
 // generous: at 411M neurons the boot loads ~5.4 GB of weights before it
 // listens, and reporting a false failure while it is coming up correctly is
@@ -245,9 +266,36 @@ function runHelper(action) {
     if (action === 'stop') {
       // Prefer the platform's own stop script; if the repo has none, fall
       // through to the graceful HTTP shutdown the callers already use.
-      return fs.existsSync(LAUNCHERS.stop)
-        ? spawnLauncher(LAUNCHERS.stop)
-        : Promise.resolve({ stdout: 'no stop script — graceful shutdown only', stderr: '' });
+      if (!fs.existsSync(LAUNCHERS.stop)) {
+        return Promise.resolve({ stdout: 'no stop script — graceful shutdown only', stderr: '' });
+      }
+      // ⛔⛔ THIS PRIMITIVE MUST BLOCK, AND LOCALLY IT DID NOT — WHICH BROKE
+      // `/ctl/freshstart-update` OUTRIGHT ON A LOCAL RUN.
+      //
+      // On the box `systemctl stop` blocks until the unit is inactive, so every
+      // caller may read status immediately afterwards and trust it. Locally the
+      // launcher is spawned DETACHED and resolves in milliseconds, long before
+      // the brain has gone. `doFreshstartUpdate` then read `activeState` —
+      // which in LOCAL_MODE is synthesized from a PORT PROBE — found the port
+      // still bound, and REFUSED its own update with a message about the box's
+      // systemd stop timeout. On a machine with no systemd. Every time.
+      //
+      // ⭐ Fixed HERE rather than in the verb, because this is the file's own
+      // stated design rule: adapt the THREE PRIMITIVES so the eleven verbs
+      // inherit local behaviour and cannot each drift from the box. `doStop`
+      // gets the same correctness for free.
+      return spawnLauncher(LAUNCHERS.stop).then(async (r) => {
+        const closed = await waitForPortClosed(LOCAL_STOP_WAIT_MS);
+        return {
+          ...r,
+          stdout: `${r.stdout}; brain port ${closed
+            ? 'closed'
+            : `STILL OPEN after ${Math.round(LOCAL_STOP_WAIT_MS / 1000)}s`}`,
+          // Surfaced so a caller can distinguish "the script ran" from "the
+          // brain actually went away" without re-probing.
+          _portClosed: closed,
+        };
+      });
     }
     if (action === 'restart') return spawnLauncher(LAUNCHERS.save);
     // reload-nginx has no local meaning and says so rather than pretending.
@@ -835,9 +883,25 @@ async function doStop() {
     action: 'stop',
     gracefulSave: asked.reached && graceful,
     brainAnswered: asked.reached,
-    message: asked.reached
-      ? 'Brain saved its state and halted. It will stay down until you press Start.'
-      : 'Brain was not answering, so it was stopped at the process level. Unsaved training since the last checkpoint may be lost.',
+    // ⛔⛔ THIS MESSAGE USED TO BRANCH ON `asked.reached` AND CLAIM A SAVE THAT
+    // THE FIELD BESIDE IT DENIED. Found by RUNNING it: a stand-in brain that
+    // ACCEPTED /shutdown with a 200 and then never exited was killed at the
+    // process level, and the payload came back
+    // `gracefulSave: false` + "Brain saved its state and halted."
+    // Accepting the request and completing the save are different events, and
+    // only the second one means the training is on disk — `reached` is just
+    // "something answered the socket".
+    //
+    // ⭐ Three outcomes, three sentences, because the middle one is the
+    // dangerous case and had no words of its own: the brain agreed to stop,
+    // did not finish inside the budget, and was then stopped anyway.
+    message: !asked.reached
+      ? 'Brain was not answering, so it was stopped at the process level. Unsaved training since the last checkpoint may be lost.'
+      : graceful
+        ? 'Brain saved its state and halted. It will stay down until you press Start.'
+        : `Brain ACCEPTED the shutdown request but had not exited after ${Math.round(GRACEFUL_WAIT_MS / 1000)}s, so it was stopped at the process level. `
+          + 'It may have been part-way through writing its weights — treat the last checkpoint, not this stop, as the saved state. '
+          + 'If this keeps happening the save is outrunning the budget: raise UAL_CTL_GRACEFUL_WAIT_MS.',
     status: after,
   };
 }
@@ -936,12 +1000,25 @@ async function doFreshstartUpdate(skipFields) {
   const mid = await buildStatus();
   const stillActive = mid.unit && mid.unit.activeState === 'active';
   if (stillActive) {
+    // ⚠ THE REFUSAL HAS TO NAME THE RIGHT MACHINE. This message used to talk
+    // about systemd's stop timeout unconditionally — advice that is actively
+    // misleading on a host with no systemd, where `activeState` is synthesized
+    // from a port probe and "still active" means the brain is still BOUND.
     return {
       ok: false, action: 'freshstart-update', stoppedFirst: false, stopError,
-      message: 'REFUSED to run the update: the unit still reads active after systemctl stop'
-        + (stopError ? ` (${stopError})` : '')
-        + '. The box\'s stop timeout is longer than the control plane waits, so the process has not been killed yet. '
-        + 'Re-issue this verb in a minute; if it still reads active, that is the one case that needs a shell: `sudo systemctl kill -s KILL unity-brain`.',
+      local: LOCAL_MODE || undefined,
+      message: LOCAL_MODE
+        ? `REFUSED to run the update: the brain is still listening on port ${BRAIN_PORT} after the stop script ran`
+          + (stopError ? ` (${stopError})` : '')
+          + `, and ${Math.round(LOCAL_STOP_WAIT_MS / 1000)}s was not enough for it to go. Running an update on top of a live process is how an install gets corrupted, so this verb will not do it. `
+          + `Local state is synthesized from the port, so "active" here means BOUND — she may still be flushing weights. `
+          + `Re-issue in a minute; if the port is still held, close it from this machine: ${IS_WIN
+            ? 'run windows\\stop.bat, or taskkill /f /pid <the PID from `netstat -ano | findstr :' + BRAIN_PORT + '`>'
+            : 'run linux/stop.sh, or kill -9 $(lsof -ti:' + BRAIN_PORT + ')'}.`
+        : 'REFUSED to run the update: the unit still reads active after systemctl stop'
+          + (stopError ? ` (${stopError})` : '')
+          + '. The box\'s stop timeout is longer than the control plane waits, so the process has not been killed yet. '
+          + 'Re-issue this verb in a minute; if it still reads active, that is the one case that needs a shell: `sudo systemctl kill -s KILL unity-brain`.',
       status: mid,
     };
   }

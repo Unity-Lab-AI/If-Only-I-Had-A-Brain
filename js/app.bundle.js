@@ -21137,6 +21137,29 @@ function _probeWs(url, timeoutMs) {
   });
 }
 async function detectRemoteBrain(url = "ws://localhost:7525") {
+  const _cfgOrigin = typeof globalThis !== "undefined" && globalThis.UNITY_BRAIN_ORIGIN || "";
+  if (_cfgOrigin) {
+    const wsBase = _cfgOrigin.replace(/^http/, "ws");
+    let alive = false;
+    try {
+      const c = new AbortController();
+      const t = setTimeout(() => c.abort(), 4e3);
+      const r = await fetch(`${_cfgOrigin}/health`, { signal: c.signal });
+      clearTimeout(t);
+      alive = !!(r && r.ok);
+    } catch {
+      alive = false;
+    }
+    if (!alive) {
+      console.warn(`[RemoteBrain] configured brain origin ${_cfgOrigin} did not answer /health \u2014 falling through to the normal resolution so a dead override cannot strand the page.`);
+    } else {
+      const url2 = `${wsBase}/ws`;
+      console.log(`[RemoteBrain] using configured brain origin \u2014 ${url2}`);
+      if (await _probeWs(url2, 8e3)) return new RemoteBrain(url2);
+      console.warn(`[RemoteBrain] ${_cfgOrigin} answered /health but ${url2} would not open \u2014 check the tunnel forwards /ws, not just the JSON routes.`);
+      return null;
+    }
+  }
   if (typeof location !== "undefined") {
     const host = location.hostname;
     const isLocal = host === "localhost" || host === "127.0.0.1" || host === "[::1]" || host === "" || location.protocol === "file:";

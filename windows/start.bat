@@ -376,6 +376,34 @@ REM back to the legacy button row ("why dont i have sponge's buttons any more").
 REM Its own minimized window survives launcher-window closes. Log APPENDS so a
 REM did-not-bind relaunch cannot truncate the live instance's log.
 start "unity-brain-ctl (leave running)" /min cmd /c "node brain-ctl.js >> brain-ctl.log 2>&1"
+REM VOICEV2 - her trained voice (unity-voice-v2), started as a SIDECAR the same
+REM way brain-ctl is: own named window, appending log, survives this launcher
+REM closing. The brain POSTs {text, emotion, intensity, speech_act} to it and
+REM gets WAV back; server/voice-synth-worker.mjs then runs the SAME CDF 9/7
+REM perceive over that PCM, so her voice still travels to viewers as field-A
+REM equations. piper stays on disk as the never-mute floor.
+REM
+REM Not found -> say so and carry on with piper. A missing voice model must
+REM never stop her booting.
+REM
+REM Loading torch takes ~40s, which is fine: the brain's readiness probe may
+REM miss it and log "not reachable", but every later line re-tries the service,
+REM so she picks up her real voice as soon as it finishes loading.
+if not defined UNITY_VOICE_PORT set "UNITY_VOICE_PORT=5123"
+if not defined UNITY_VOICE_V2_DIR set "UNITY_VOICE_V2_DIR=%~dp0..\..\Backrooms\models\unity-voice-v2"
+if exist "%UNITY_VOICE_V2_DIR%\serve.py" (
+    netstat -ano | findstr :%UNITY_VOICE_PORT% | findstr LISTENING >nul 2>&1
+    if errorlevel 1 (
+        echo   [voice] starting unity-voice-v2 on %UNITY_VOICE_PORT% ...
+        start "unity-voice-v2 (leave running)" /min /D "%UNITY_VOICE_V2_DIR%" cmd /c "python serve.py --port %UNITY_VOICE_PORT% >> "%~dp0..\server\voice-v2.log" 2>&1"
+    ) else (
+        echo   [voice] unity-voice-v2 already listening on %UNITY_VOICE_PORT% - left alone.
+    )
+) else (
+    echo   [voice] unity-voice-v2 NOT found at %UNITY_VOICE_V2_DIR%
+    echo           she will speak with the piper floor instead.
+    echo           Set UNITY_VOICE_V2_DIR to the model folder to use her real voice.
+)
 start /b "" cmd /c "node --max-old-space-size=65536 --max-semi-space-size=1024 --expose-gc brain-server.js > server.log 2>&1"
 ping -n 2 127.0.0.1 >nul
 start "Unity Brain Log Tail" powershell -NoExit -Command "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $OutputEncoding = [System.Text.Encoding]::UTF8; Get-Content -Path '%~dp0..\server\server.log' -Wait -Tail 200 -Encoding UTF8"

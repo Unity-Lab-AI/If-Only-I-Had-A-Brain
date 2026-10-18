@@ -771,6 +771,48 @@ export async function detectRemoteBrain(url = 'ws://localhost:7525') {
   // https secure-context) and the Pages UI would display the dev box's
   // auto-scaled neuron count (which grows with available VRAM). It also prevents
   // every stranger's browser from silently poking their own loopback on page load.
+  // ── CONFIGURED BRAIN ORIGIN — the third mode (2026-10-18) ────────────────
+  //
+  // The two branches below assume the brain is either on loopback or behind
+  // THE SAME HOSTNAME as the page. Both were true on the box, where nginx
+  // served the site and reverse-proxied the backend. Neither is true now:
+  // GitHub Pages serves the site and the brain runs on the operator's PC
+  // behind a Cloudflare Tunnel — a different origin. Without this, a Pages
+  // visitor resolves `wss://<user>.github.io/ws`, finds nothing, and lands on
+  // the 6,700-neuron fallback, which is exactly what the comment above warns
+  // about and exactly what we do NOT want a visitor to meet.
+  //
+  // ⭐ ADDITIVE BY CONSTRUCTION: `js/brain-origin.js` sets this global only
+  // when an origin is configured. Unset -> this block is skipped entirely and
+  // the original two branches run unchanged, branch for branch.
+  const _cfgOrigin = (typeof globalThis !== 'undefined' && globalThis.UNITY_BRAIN_ORIGIN) || '';
+  if (_cfgOrigin) {
+    const wsBase = _cfgOrigin.replace(/^http/, 'ws');
+    // Same backend-exists gate as the same-origin path, aimed at the
+    // configured host. ⚠ /health must be reachable through the tunnel for
+    // this to mean anything — see deploy/cloudflared-unity-brain.yml, which
+    // exposes it for precisely this reason.
+    let alive = false;
+    try {
+      const c = new AbortController();
+      const t = setTimeout(() => c.abort(), 4000);
+      const r = await fetch(`${_cfgOrigin}/health`, { signal: c.signal });
+      clearTimeout(t);
+      alive = !!(r && r.ok);
+    } catch { alive = false; }
+    if (!alive) {
+      console.warn(`[RemoteBrain] configured brain origin ${_cfgOrigin} did not answer /health — `
+        + 'falling through to the normal resolution so a dead override cannot strand the page.');
+    } else {
+      const url2 = `${wsBase}/ws`;
+      console.log(`[RemoteBrain] using configured brain origin — ${url2}`);
+      if (await _probeWs(url2, 8000)) return new RemoteBrain(url2);
+      console.warn(`[RemoteBrain] ${_cfgOrigin} answered /health but ${url2} would not open — `
+        + 'check the tunnel forwards /ws, not just the JSON routes.');
+      return null;
+    }
+  }
+
   if (typeof location !== 'undefined') {
     const host = location.hostname;
     const isLocal =

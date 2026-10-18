@@ -106,6 +106,11 @@
     </ul>
     <div>Auto-retry in <span class="countdown" id="unity-conn-countdown">3</span>s · or <a href="#" id="unity-conn-retry">retry now</a></div>
   </div>
+  <!-- WHERE THE BRAIN LIVES. Must load BEFORE the probe below and before the
+       bundle, because both ask it. Plain (non-module, non-deferred) so it has
+       already run by the time the inline script executes. Unset origin = every
+       consumer falls back to the exact behaviour it had before this existed. -->
+  <script src="js/brain-origin.js"></script>
   <script>
     // Self-contained WS probe + banner toggler. Independent
     // of app.bundle.js so banner works even if bundle build is broken /
@@ -123,12 +128,19 @@
       //     ALWAYS fail the probe and see a false "backend unreachable" banner
       //     even when the brain is healthy. Probing /ws mirrors what the page
       //     actually uses, so the banner only fires on a REAL outage.
+      //   • CONFIGURED ORIGIN (js/brain-origin.js) → that host's /ws. Added
+      //     2026-10-18 for the GitHub-Pages-serves-the-site, PC-runs-the-brain
+      //     split, where "same origin" points at GitHub and finds nothing.
+      //     ⭐ Unset → the two branches below run exactly as they always did,
+      //     so this probe cannot change behaviour until an origin is set.
       var _host = location.hostname || '';
       var IS_LOCAL = _host === 'localhost' || _host === '127.0.0.1'
         || _host === '[::1]' || _host === '' || location.protocol === 'file:';
-      var WS_URL = IS_LOCAL
-        ? 'ws://localhost:7525'
-        : (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
+      var WS_URL = (typeof window.unityBrainWs === 'function')
+        ? window.unityBrainWs('ws')
+        : (IS_LOCAL
+          ? 'ws://localhost:7525'
+          : (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws');
       var bannerEl = document.getElementById('unity-no-conn-banner');
       var countdownEl = document.getElementById('unity-conn-countdown');
       var retryEl = document.getElementById('unity-conn-retry');
