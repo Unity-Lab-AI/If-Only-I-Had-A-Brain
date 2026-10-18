@@ -74,20 +74,46 @@ REM run `tailscale funnel reset` BEFORE investigating.
 setlocal
 set "BRAIN=http://127.0.0.1:7525"
 
+REM Double-clicked from Explorer, the window closes the instant this script
+REM exits -- which is how "it just opens then closes" happens on a machine
+REM without Tailscale. Detect that launch (cmd was started with /c for this
+REM file) and hold the window at every exit so the message is readable.
+set "HOLD="
+echo %cmdcmdline% | find /i "/c" >nul 2>&1 && set "HOLD=1"
+
+REM The installer puts tailscale.exe under Program Files and does not always
+REM refresh PATH for an already-open shell, so look there before giving up.
+set "TS=tailscale"
 where tailscale >nul 2>&1
 if errorlevel 1 (
-    echo   [funnel] tailscale is not on PATH. Install it first:
-    echo            https://tailscale.com/download
-    exit /b 1
+    if exist "%ProgramFiles%\Tailscale\tailscale.exe" (
+        set "TS=%ProgramFiles%\Tailscale\tailscale.exe"
+    ) else (
+        call :install || goto :fail
+        set "TS=%ProgramFiles%\Tailscale\tailscale.exe"
+    )
+)
+
+REM Signed in? `tailscale status` exits non-zero while logged out or stopped.
+REM `tailscale up` opens the browser sign-in and blocks until it completes.
+"%TS%" status >nul 2>&1
+if errorlevel 1 (
+    echo [funnel] this PC is not signed in to a tailnet yet -- opening the sign-in...
+    echo          Finish it in the browser window; this script continues on its own.
+    "%TS%" up
+    if errorlevel 1 (
+        echo   [funnel] sign-in did not complete.
+        goto :fail
+    )
 )
 
 echo [funnel] applying the four public read lanes -^> %BRAIN%
 REM --bg: persist in the background (survives this window and reboots).
 REM --https=443: Funnel only permits 443, 8443 and 10000; 443 keeps the URL clean.
 REM Each --set-path maps ONE public path prefix to the same path on the brain.
-tailscale serve --bg --https=443 --set-path=/public-state.json %BRAIN%/public-state.json
-tailscale serve --bg --https=443 --set-path=/minds-eye.json    %BRAIN%/minds-eye.json
-tailscale serve --bg --https=443 --set-path=/health            %BRAIN%/health
+"%TS%" serve --bg --https=443 --set-path=/public-state.json %BRAIN%/public-state.json
+"%TS%" serve --bg --https=443 --set-path=/minds-eye.json    %BRAIN%/minds-eye.json
+"%TS%" serve --bg --https=443 --set-path=/health            %BRAIN%/health
 REM /ws is the PUBLIC WebSocket lane -- chat AND the donor lane, since the donor
 REM dials wss://host/ws (donor-app/src/config.rs:4). Serve proxies the HTTP
 REM Upgrade; no extra flag needed.
@@ -97,27 +123,67 @@ REM    the "/ws only" restriction is enforced HERE, by what Funnel forwards,
 REM    and not by the brain. That is the whole reason this route list is the
 REM    security control and not a convenience: remove a line and nothing
 REM    downstream catches it.
-tailscale serve --bg --https=443 --set-path=/ws                %BRAIN%/ws
+"%TS%" serve --bg --https=443 --set-path=/ws                %BRAIN%/ws
 REM /image/ serves pictures she ALREADY MADE from a bounded cache (chat lane).
 REM A miss is a 404, never a render: nothing a visitor sends through this path
 REM can reach the image engine on :5124, which stays loopback-only. Read-only,
 REM so it belongs with the other three. Prefix-safe: no other brain route
 REM begins with /image (checked 2026-10-18).
-tailscale serve --bg --https=443 --set-path=/image             %BRAIN%/image
+"%TS%" serve --bg --https=443 --set-path=/image             %BRAIN%/image
 
 echo [funnel] opening port 443 to the public internet (Funnel)...
-tailscale funnel --bg 443
+"%TS%" funnel --bg 443
 if errorlevel 1 (
     echo   [funnel] FAILED. The usual cause is Funnel not enabled in your tailnet
-    echo            policy -- see ONE-TIME SETUP step 2 above.
-    exit /b 1
+    echo            policy -- see ONE-TIME SETUP step 2 above. Open
+    echo            https://login.tailscale.com/admin/acls and add the nodeAttrs line,
+    echo            then run this file again.
+    goto :fail
 )
 
 echo.
 echo [funnel] current serve + funnel configuration:
-tailscale serve status
+"%TS%" serve status
 echo.
 echo [funnel] your public brain origin is the https://...ts.net line above.
 echo          Put it in js/brain-origin.js  BRAIN_ORIGIN  and push.
 echo          THEN run the VERIFY block in this file's header -- all six lines.
+if defined HOLD pause
 endlocal
+exit /b 0
+
+:fail
+echo.
+echo [funnel] stopped. Read the lines above; nothing was changed on the tailnet.
+if defined HOLD pause
+endlocal
+exit /b 1
+
+REM ---- :install -- fetch and run Tailscale's own MSI ----------------------------
+REM Official package server, stable channel, 64-bit. msiexec needs elevation, so
+REM Windows shows ONE UAC prompt -- answer Yes. /quiet /norestart: no wizard.
+REM Exit 0 = installed; 3010 = installed, reboot pending (fine -- tailscaled is
+REM already running); anything else is a real failure and the code is printed.
+:install
+set "MSI=%TEMP%\tailscale-setup-latest-amd64.msi"
+echo [funnel] tailscale is not installed. Fetching the official installer...
+curl -fsSL -o "%MSI%" https://pkgs.tailscale.com/stable/tailscale-setup-latest-amd64.msi
+if errorlevel 1 (
+    echo   [funnel] download failed. Install by hand: https://tailscale.com/download
+    exit /b 1
+)
+echo [funnel] installing -- answer YES to the Windows prompt...
+msiexec /i "%MSI%" /quiet /norestart
+set "RC=%ERRORLEVEL%"
+if "%RC%"=="0" goto :installed
+if "%RC%"=="3010" goto :installed
+echo   [funnel] installer exited %RC%. 1602 = you cancelled the prompt, 1603 = blocked
+echo            by policy. Install by hand: https://tailscale.com/download
+exit /b 1
+:installed
+if not exist "%ProgramFiles%\Tailscale\tailscale.exe" (
+    echo   [funnel] installer reported success but tailscale.exe is not where it should be.
+    exit /b 1
+)
+echo [funnel] installed.
+exit /b 0
