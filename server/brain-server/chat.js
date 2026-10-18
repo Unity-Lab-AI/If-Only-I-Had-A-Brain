@@ -787,6 +787,34 @@ const SERVER_CHAT_MIXIN = {
       && process.env.DREAM_INNERVOICE_FORCE_CPU !== '1';
 
     let response = '';
+    // ── CAPABILITY BEFORE COMPOSITION (2026-10-18) — the SAME test the inner
+    // voice already runs first (`_shouldEmitInnerThought`), in the same order.
+    // A brain with zero bucketed words, zero passed cells and zero active
+    // subGrades has no word it can emit, and the silence gate further down
+    // says exactly that — AFTER a full reply pass. Measured on "hi" to a
+    // 40-minute-old fresh walk: `reply pass 14021ms`, 13,986 of them in
+    // `generate:primary(3cand)`, with the watchdog reporting the main loop
+    // STALLED 5.4 s inside it and the donor attached — the brain's own line
+    // says any stage over ~1 s is the shape that makes a donor miss pings.
+    // The answer to the visitor is identical (the honest `pre_training`
+    // silence); it just costs nothing now. Same primitive as the gate below,
+    // so the two cannot disagree; re-arms by itself the moment she buckets
+    // her first word. Counted and announced once, never a silent disable.
+    const _preCap = (this.cortexCluster && typeof this.cortexCluster.getTrainedCapability === 'function')
+      ? this.cortexCluster.getTrainedCapability() : null;
+    const _preFresh = !!(_preCap && (_preCap.wordsBucketed | 0) === 0
+      && (_preCap.passedCellCount | 0) === 0
+      && (_preCap.subGradesActive | 0) === 0);
+    if (_preFresh) {
+      this._chatFreshSkips = (this._chatFreshSkips || 0) + 1;
+      if (!this._chatFreshSkipNoted) {
+        this._chatFreshSkipNoted = true;
+        console.log('[Chat] 🔇 reply composition HELD — she has no word she can emit yet (wordsBucketed=0, passedCells=0, subGrades=0). The honest silence is sent without the 14 s reply pass that used to find that out. Re-arms by itself when the first word is bucketed.');
+      }
+    } else if (this._chatFreshSkipNoted && !this._chatFreshResumedNoted) {
+      this._chatFreshResumedNoted = true;
+      console.log(`[Chat] 🔊 reply composition RESUMED — first word(s) bucketed (${_preCap ? _preCap.wordsBucketed : '?'} words, ${_preCap ? _preCap.passedCellCount : '?'} cells passed). ${this._chatFreshSkips || 0} turn(s) were answered with the held silence.`);
+    }
     // CHAT ASKS THROUGH THE EXAM'S LANE. The battery answered "what letter
     // comes after a?" with "b" while the same question in chat produced
     // off-target vocabulary, because the probe reconstructs the teach
@@ -807,7 +835,7 @@ const SERVER_CHAT_MIXIN = {
     const _questionShaped = !!(text && this.curriculum
       && typeof this.curriculum._isQuestionLike === 'function'
       && this.curriculum._isQuestionLike(text));
-    if (!_cpuTickUnsafe && _questionShaped && this.curriculum
+    if (!_cpuTickUnsafe && !_preFresh && _questionShaped && this.curriculum
         && typeof this.curriculum.answerChatQuestion === 'function') {
       try {
         this._chatStamp('qa-probe');
@@ -842,7 +870,7 @@ const SERVER_CHAT_MIXIN = {
     if (_cpuTickUnsafe) {
       try { process.stdout.write(`[Brain] chat generation SKIPPED — cortex ${_cortexNeurons.toLocaleString()} > ${_ivMaxNeurons.toLocaleString()} AND GPU proxy not ready (donor mid-reconnect); a CPU cortex tick would freeze the loop ~57s/word and trip the donor's 150s idle watchdog. Honest silence until the donor re-syncs.\n`); } catch { /* non-fatal */ }
       // response stays '' → the honest-silence handler below fires (motor_unstable).
-    } else if (!response) {
+    } else if (!response && !_preFresh) {
       try {
         // CHAT.3 (2026-07-16) — open the chat-priority window: while the reply
         // is composing, the teach firehose (pattern lane + hebbian batch flush)
@@ -1011,13 +1039,32 @@ const SERVER_CHAT_MIXIN = {
         } catch { /* derivation must never break the reply path */ }
       }
 
+      // THE NOTICE READS THE LIVE WALK (2026-10-18). This line told the
+      // operator to "Start the curriculum (start.bat)" while the walk had been
+      // running for forty minutes on `ela/kindergarten` — a fresh brain with a
+      // walk in progress and a fresh brain with no walk are different states,
+      // and a notice that cannot tell them apart sends a reader to press a
+      // button that wipes the training it is describing.
+      let _walkLine = 'No walk is running — start the curriculum (start.bat) and watch her abilities build live.';
+      try {
+        const _cur = this.curriculum;
+        const _st = (_cur && typeof _cur.getCurriculumStatus === 'function') ? _cur.getCurriculumStatus() : null;
+        const _cell = _st && (_st.currentCellKey
+          || ((_st.currentSubject && _st.currentGrade) ? `${_st.currentSubject}/${_st.currentGrade}` : null));
+        if (_cell) {
+          const _ph = (_st.cellPhasesTotal | 0) > 0 ? ` (phase ${_st.cellPhasesStarted | 0}/${_st.cellPhasesTotal | 0})` : '';
+          _walkLine = `The walk is RUNNING — ${_cell} is ${_st.cellStatus || 'in progress'}${_ph}. She speaks once her first cell passes; there is nothing to press.`;
+        } else if (this._curriculumInProgress) {
+          _walkLine = 'The walk is RUNNING (pre-cell setup). She speaks once her first cell passes; there is nothing to press.';
+        }
+      } catch { /* the notice must never break the reply — the no-walk line stands */ }
       return {
         text: '',
         action: 'respond_text',
         silent: true,
         silentReason: isFresh ? 'pre_training' : 'motor_unstable',
         silentDetail: isFresh
-          ? `Unity is brand new — zero words bucketed, zero cells passed, all subGrades 'fresh'. Her motor region has no letter→motor or sem→word_motor wiring yet. Start the curriculum (start.bat) and watch her abilities build live.`
+          ? `Unity is brand new — zero words bucketed, zero cells passed, all subGrades 'fresh'. Her motor region has no letter→motor or sem→word_motor wiring yet. ${_walkLine}`
           : `Motor region didn't commit a stable letter sequence for this input. Live trained capability: ${trainedCap.wordsBucketed} words bucketed across ${trainedCap.bucketSubjects} subjects, ${trainedCap.passedCellCount} cells passed, ${trainedCap.subGradesActive} subGrades active. The intent signal may have been too weak for this specific input — try rephrasing.`,
         minGrade,
         trainedCap,

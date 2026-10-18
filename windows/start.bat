@@ -524,7 +524,14 @@ REM killed her: the first boot on the new home died that way five minutes in
 REM (server.log ended in ^C) while the text below promised the opposite. A
 REM process in its own console is not reachable from this one; stop.bat is
 REM the way to stop her, and closing this window changes nothing.
-start "unity-brain (leave running)" /min cmd /c "node --max-old-space-size=65536 --max-semi-space-size=1024 --expose-gc brain-server.js > server.log 2>&1"
+REM EXITCODE (2026-10-18) - she died at 5:06:56 AM with NOTHING in the log:
+REM no shutdown line, no ^C, no stack, window gone. A process that leaves no
+REM trace cannot be diagnosed. So the window now appends node's exit code
+REM and the time to server.log the moment node returns, whatever the reason
+REM (a crash code, a taskkill, a clean exit). /V:ON makes !ERRORLEVEL! read
+REM at THAT moment; %ERRORLEVEL% would be expanded when the line is parsed,
+REM before node ever ran. Only a window closed by hand still leaves nothing.
+start "unity-brain (leave running)" /min cmd /V:ON /c "node --max-old-space-size=65536 --max-semi-space-size=1024 --expose-gc brain-server.js > server.log 2>&1 & echo [launcher] node exited with code !ERRORLEVEL! at !DATE! !TIME! >> server.log"
 ping -n 2 127.0.0.1 >nul
 start "Unity Brain Log Tail" powershell -NoExit -Command "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $OutputEncoding = [System.Text.Encoding]::UTF8; Get-Content -Path '%~dp0..\server\server.log' -Wait -Tail 200 -Encoding UTF8"
 REM BINDWAIT - open the pages only once she is LISTENING, so the first thing

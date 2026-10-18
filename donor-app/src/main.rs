@@ -89,7 +89,58 @@ fn cuda_only_gpus() -> Vec<gpu::GpuInfo> {
         .collect()
 }
 
+/// CRASH LOG — a panic writes its own reason down before the process unwinds
+/// or aborts. On 2026-10-18 the Windows donor died with `0xc0000409` (an abort)
+/// two seconds after its brain went dark; the GUI build detaches from the
+/// console, so the panic text Rust prints to stderr went nowhere, the dump
+/// held no message, and the stripped binary made the fault offset unnameable.
+/// A donor that dies without a word cannot be fixed. This hook appends the
+/// time, the version, the message, the source location and a backtrace to
+/// `<data dir>/unity-donor/crash.log` — the same directory as `settings.json`
+/// — and then hands off to the default hook so stderr still gets it when there
+/// is a console. Best-effort by construction: a hook that itself fails must
+/// never hide the panic it was asked to record.
+fn install_crash_log() {
+    let default_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let when = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let thread = std::thread::current();
+        let msg = if let Some(s) = info.payload().downcast_ref::<&str>() {
+            s.to_string()
+        } else if let Some(s) = info.payload().downcast_ref::<String>() {
+            s.clone()
+        } else {
+            "(non-string panic payload)".to_string()
+        };
+        let loc = info
+            .location()
+            .map(|l| format!("{}:{}:{}", l.file(), l.line(), l.column()))
+            .unwrap_or_else(|| "(unknown location)".to_string());
+        let bt = std::backtrace::Backtrace::force_capture();
+        let entry = format!(
+            "---- unity-donor v{} panic at unix {} on thread '{}' ----\n{}\n  at {}\n{}\n\n",
+            env!("CARGO_PKG_VERSION"),
+            when,
+            thread.name().unwrap_or("?"),
+            msg,
+            loc,
+            bt
+        );
+        let dir = config::data_dir();
+        let _ = std::fs::create_dir_all(&dir);
+        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(dir.join("crash.log")) {
+            use std::io::Write;
+            let _ = f.write_all(entry.as_bytes());
+        }
+        default_hook(info);
+    }));
+}
+
 fn main() {
+    install_crash_log();
     let cli = cli::Cli::parse();
 
     // --list-gpus: enumerate and exit.

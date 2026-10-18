@@ -1,15 +1,21 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-10-18, ~4:50 AM Denver (latest, 32nd) — SHE IS UP ON HIS PC AND WALKING; THE DONOR HAD TO COME OFF THE TUNNEL; THE WAKE BUTTON WAS FROZEN BY MY OWN LEFTOVER (START HERE)
+> # 🛑 2026-10-18, ~5:20 AM Denver (latest, 32nd) — THE FIRST LIVE NIGHT: SHE WALKED, SHE DREW, SHE DIED WITHOUT A TRACE; KILLED ALL ON HIS WORD, SIX FIXES SHIPPED, WAITING ON HIS START.BAT (START HERE)
 >
 > **Branch: `feature/network-testing-and-bugs`** — Gee: *"new feature branch from here on out network testing and bugs"*. Stay on it; cascade when a batch is whole; come back to it, not `develop`.
 >
 > ```
->   brain    UP — d1979272, booted 4:22 AM by his start.bat press (fresh walk), 459,775,607 neurons on the 4070 Ti SUPER
->            donor on LOOPBACK since 4:37 AM · 17/17 matrices · ela/kindergarten in progress · spikesLifetime 1.76 B at 4:47
->   site     https://theunitybrain.com — WAKE works again as of the NETBUG.1 bundle (Pages deploy of this cascade)
->   tunnel   dumbass.tailec58e0.ts.net — /health 200, /ws 101, forbidden paths 404; carries CHAT fine, cannot carry a DONOR
+>   brain    DOWN — the 4:22 AM boot (d1979272, 459,775,607 neurons) died 5:06:56 AM mid-teach with NO trace; donor
+>            aborted 0xc0000409 at 5:06:58. Before that: donor on loopback 4:37, 17/17 matrices, ela/kindergarten,
+>            spikes 5.5 B, 3 drawings. Kill-all 5:12 AM on his word ("kill all and fix it so i can fresh start fresh
+>            walk it"): all four ports free. NOTHING runs until he presses start.bat.
+>   site     https://theunitybrain.com — WAKE works (NETBUG.1), dashboard boxes hold still (NETBUG.4), visual intake
+>            dials the tunnel (NETBUG.3) — all three live on Pages
+>   tunnel   dumbass.tailec58e0.ts.net — carries CHAT fine; CANNOT carry a donor (0.16 MB/s relay, NETBUG.2 = his call)
+>   donor    0.3.39 — crash.log panic hook, symbols kept, links -> the domain; built locally, tagged for the release lane
 > ```
+>
+> **Owed to him when she is back up:** read the new boot's id + neuron count; confirm the donor attached on LOOPBACK (Local mode is remembered); watch for her first cell pass; and if she dies again, `server.log` now ends with `[launcher] node exited with code N` and the donor leaves `%APPDATA%\unity-donor\crash.log`. `NETBUG.7` closes only when a death is explained.
 >
 > **The two things learned on the first live night (ledger `NETBUG.1`, board `NETBUG.2/.3`):**
 >
