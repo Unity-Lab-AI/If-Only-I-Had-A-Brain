@@ -1,0 +1,128 @@
+# GitHub Pages — the PUBLIC SITE. The brain itself runs on the operator's PC.
+#
+# ── THE SHAPE, AND WHY IT IS THIS SHAPE ─────────────────────────────────────
+# The brain used to live on a box behind nginx, with the static site served
+# from the SAME hostname — which is why `html/dashboard.html` only ever had two
+# modes: loopback, or same-origin. That host stopped serving her on 2026-10-17
+# (410 on every route, TLS cert issued for a different name). The new shape:
+#
+#     GitHub Pages  ──── the static site, public, free, no backend
+#           |
+#           |  https:// + wss://  to a SEPARATE origin
+#           v
+#     brain.unityailab.com  ── Cloudflare Tunnel ──>  the operator's PC :7525
+#
+# ⛔ PAGES CANNOT HOST THE BRAIN AND NEVER WILL. It is static: no Node, no
+# WebSocket server, no 6 GB of resident weights, no donor sockets. It serves
+# her PAGES. Anything that talks to her goes to the tunnel. See
+# `deploy/cloudflared-unity-brain.yml` for the route allowlist, which is
+# DEFAULT-DENY and deliberately excludes the admin lane.
+#
+# ⚠ THE FRONTEND NEEDS A THIRD ENDPOINT MODE BEFORE THIS SITE IS USEFUL.
+# `dashboard.html:1186` resolves the brain as `wss://{location.host}/ws` when
+# it is not on localhost — i.e. SAME-ORIGIN, which from Pages points at GitHub
+# and finds nothing. Until the configured-brain-origin mode lands (board row
+# `LOCALHOST.7a`), the published pages render but cannot reach her.
+# ⭐ Publishing anyway is deliberate: it proves the lane end to end, and the
+# brain origin is then a one-value change rather than a new workflow.
+#
+# ── WHAT GETS PUBLISHED ─────────────────────────────────────────────────────
+# The exclude list below is NOT invented — it mirrors the proven frontend rsync
+# from `.forgejo/workflows/deploy.yml`, which served this same site for months.
+# Measured on the tracked tree: 161 files, ~129 MB, well inside Pages' 1 GB.
+#
+# ⚠ `voice-engine/` (119 MB of it) IS INCLUDED ON PURPOSE AND IS NOT DEAD
+# WEIGHT. It is tempting to drop — the server synthesizes her replies now and
+# "listener browsers never synthesize again" — but `html/compute.html:1112`
+# still constructs the piper worker and `js/io/voice.js:568` still tries the
+# LIVE SENTENCE LANE FIRST. Removing it would break a lane that is still
+# reached. (That the browser lane speaks PIPER while the server now speaks
+# unity-voice-v2 is a real inconsistency, filed separately — it is not this
+# workflow's business to resolve by deletion.)
+#
+# ⚠ The seven `docs/*.md` re-includes are load-bearing: `html/docs.html` has a
+# `DOC_PATHS` whitelist that fetches exactly those, so excluding all markdown
+# without re-adding them 404s the published docs page. The original rsync hit
+# this and the fix is preserved here verbatim in intent.
+name: pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Pages' own deployment model: the job needs to mint an OIDC token and write
+# to the pages environment. Nothing else is granted.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One live deployment at a time. `cancel-in-progress: false` because a
+# half-finished Pages deploy is worse than a queued one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # The site is plain static files; no history is needed and a shallow
+          # clone keeps a ~129 MB tree quick.
+          fetch-depth: 1
+
+      - name: Stage the static site
+        run: |
+          set -euo pipefail
+          mkdir -p _site
+          # rsync applies filters IN ORDER, first match wins — so the
+          # re-includes MUST precede the excludes, and `--include='docs/'` is
+          # required or rsync never descends into the directory to find them.
+          rsync -a \
+            --include='docs/' \
+            --include='docs/ARCHITECTURE.md' \
+            --include='docs/EQUATIONS.md' \
+            --include='docs/ROADMAP.md' \
+            --include='docs/SKILL_TREE.md' \
+            --include='docs/SENSORY.md' \
+            --include='docs/WEBSOCKET.md' \
+            --include='docs/SETUP.md' \
+            --include='README.md' \
+            --exclude='.git' --exclude='.github' --exclude='.forgejo' --exclude='.gitea' \
+            --exclude='.claude' --exclude='server' --exclude='corpora' \
+            --exclude='node_modules' --exclude='scripts' --exclude='deploy' \
+            --exclude='docs/**' --exclude='docs' --exclude='*.md' \
+            --exclude='donor-app' --exclude='crates' --exclude='target' \
+            --exclude='linux' --exclude='windows' --exclude='wiki' \
+            --exclude='graphify-out' --exclude='.scratch' \
+            --exclude='package.json' --exclude='package-lock.json' \
+            --exclude='Cargo.toml' --exclude='Cargo.lock' \
+            --exclude='*.exe' \
+            ./ _site/
+          # Pages runs Jekyll unless told not to, and Jekyll silently drops
+          # files and directories beginning with an underscore.
+          touch _site/.nojekyll
+          echo "staged $(find _site -type f | wc -l) files, $(du -sh _site | cut -f1)"
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

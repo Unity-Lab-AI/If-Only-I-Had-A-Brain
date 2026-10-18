@@ -19,11 +19,42 @@
 # Requires the org/repo Actions secrets the lab already uses for pages:
 #   PAGES_DEPLOY_KEY (base64 SSH private key) · PAGES_DEPLOY_HOST · PAGES_DEPLOY_USER
 # Optional repo var: UNITY_BRAIN_BACKEND_DIR (default /opt/unity-brain).
+# ⛔⛔ DISABLED 2026-10-17 — THE TARGET HOST NO LONGER SERVES HER.
+#
+# Everything described above is still accurate about what this lane DOES; it is
+# the destination that stopped existing. Measured that night from a dev box,
+# over IPv4 and IPv6, on ports 80 and 443:
+#
+#   if-only-i-had-a-brain.git.unityailab.com/            HTTP 410 Gone
+#     …/public-state.json  …/ctl/status  …/dashboard.html HTTP 410 Gone
+#   TLS cert served for that hostname    subject=CN=unityailab.com
+#
+# A wrong certificate means nginx has no `server` block matching the
+# `server_name` in deploy/nginx-unity-brain.conf — her vhost is not broken, it
+# is ABSENT — and 410 only ever comes from an explicit `return 410;`.
+#
+# ⭐ WHY DISABLE RATHER THAN LEAVE IT RUNNING: this lane would keep reporting
+# GREEN for work that reaches nobody. That is the failure shape this repo has
+# been bitten by before (KI-22: a release lane that logged all-green while
+# publishing nothing), and a passing deploy is the single most reassuring lie
+# available. A lane that cannot succeed should not be able to report success.
+#
+# ⭐ WHY NOT DELETE IT: the box-deploy path WORKS and took real work to get
+# right. The operator's decision was DISABLE, not delete, so the knowledge
+# stays readable and the revert is one line.
+#
+# TO RE-ENABLE: uncomment the `push:` trigger below. Nothing else changed.
+# ⚠ And before trusting it again, re-read deploy/self-update.sh on `main`
+# against the box's own copy — a press runs the BOX's copy, so when the two
+# disagree, updating is a TWO-PRESS sequence.
+#
+# She is hosted LOCALLY from here: windows/Savestart.bat or linux/Savestart.sh,
+# brain on 127.0.0.1:7525, control plane on :7526. See docs/TODO.md §LOCALHOST.
 name: deploy
 
 on:
-  push:
-    branches: [main]
+  # push:                      <- DISABLED 2026-10-17, see the block above.
+  #   branches: [main]
   workflow_dispatch:
 
 jobs:

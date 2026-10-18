@@ -1,0 +1,131 @@
+# cloudflared — the public route to the brain running on the OPERATOR'S PC.
+#
+# ── WHAT THIS REPLACES ──────────────────────────────────────────────────────
+# The brain used to live on a box behind nginx at
+# if-only-i-had-a-brain.git.unityailab.com. That host stopped serving her on
+# 2026-10-17 (410 Gone on every route, and a TLS certificate issued for a
+# different name — nginx has no `server` block for her any more). The new shape
+# is: GitHub Pages serves the STATIC SITE, this machine runs the BRAIN, and
+# this tunnel is the only thing joining them.
+#
+#     GitHub Pages (public site)
+#           |  https:// + wss://
+#           v
+#     brain.unityailab.com          <- Cloudflare edge, TLS terminated here
+#           |  outbound-only tunnel, NO open ports on the router
+#           v
+#     127.0.0.1:7525                <- the brain, still loopback-only
+#
+# ⭐ THE BRAIN NEVER STOPS BEING LOOPBACK-ONLY. `BIND_HOST` stays 127.0.0.1 and
+# nothing on the LAN or the internet can address it directly; cloudflared is
+# the single process allowed to speak to it. That is strictly safer than
+# binding 0.0.0.0 and firewalling afterwards.
+#
+# ── ⛔⛔ THE ALLOWLIST IS THE SECURITY CONTROL. READ BEFORE EDITING. ─────────
+# The rules below are DEFAULT-DENY: the final catch-all answers 404, so a route
+# is reachable only if it is named here. The three that are named are exactly
+# the three the old public nginx vhost forwarded without auth
+# (deploy/nginx-unity-brain.conf — `= /public-state.json`, `= /minds-eye.json`,
+# `/ws`). They are read-only and already carry `Access-Control-Allow-Origin: *`
+# in brain-server.js, which is why a page served from GitHub can use them.
+#
+# ⛔⛔ THE ADMIN LANE IS DELIBERATELY ABSENT, AND ADDING IT WITHOUT AUTH WOULD
+# HAND THE INTERNET A BRAIN-WIPE BUTTON.
+#
+#   `requireLoopback` (brain-server.js:10052) decides authorisation from
+#   `req.socket.remoteAddress`. A TUNNEL FORWARDS FROM 127.0.0.1 — so every
+#   request arriving through cloudflared looks like loopback and PASSES. The
+#   brain's own comment at :10065 says so: "behind the reverse proxy, loopback
+#   is universal — gate brain-mutating endpoints on the proxy-vouched identity
+#   instead." On the box, nginx Basic auth supplied that identity. nginx is
+#   gone. Nothing supplies it today.
+#
+#   So `POST /reset` — which wipes every trained weight — would be a public URL
+#   requiring no credential, reachable by one curl.
+#
+# ⚠ AND `UAL_PROXY_AUTH=1` ALONE IS NOT ENOUGH. It only checks that an
+#   `X-UAL-User` header is PRESENT. Whatever terminates TLS must therefore
+#   STRIP any inbound copy of that header and set it from real authentication —
+#   otherwise a caller simply sends the header themselves and is trusted.
+#
+# ⭐ The supported way to add the admin lane later is Cloudflare Access in front
+#   of an `/admin/` rule: it authenticates the user, injects its own identity
+#   header, and removes client-supplied copies. **Do not add that rule until
+#   the forged-header attack has been ATTEMPTED FROM OUTSIDE and observed to
+#   fail.** A security control that has only been reasoned about is not one.
+#
+# ── SETUP (once) ────────────────────────────────────────────────────────────
+#   cloudflared tunnel login
+#   cloudflared tunnel create unity-brain
+#   cloudflared tunnel route dns unity-brain brain.unityailab.com
+#   # fill in the two placeholders below from the output, then:
+#   cloudflared tunnel --config deploy/cloudflared-unity-brain.yml run
+#
+# Run it as a service so it survives a reboot:
+#   cloudflared service install        (Windows: installs + auto-starts)
+#
+# ── VERIFY (do not skip the refusals) ───────────────────────────────────────
+#   curl -s -o /dev/null -w '%{http_code}\n' https://brain.unityailab.com/public-state.json   # want 200
+#   curl -s -o /dev/null -w '%{http_code}\n' https://brain.unityailab.com/minds-eye.json      # want 200
+#   curl -s -o /dev/null -w '%{http_code}\n' https://brain.unityailab.com/admin/status        # want 404
+#   curl -s -o /dev/null -w '%{http_code}\n' -X POST https://brain.unityailab.com/reset       # want 404
+#   curl -s -o /dev/null -w '%{http_code}\n' https://brain.unityailab.com/ctl/status          # want 404
+# ⭐ The last three are the ones that matter. A 200 from any of them means this
+#   file is not doing its job — stop the tunnel before investigating.
+
+tunnel: REPLACE-WITH-TUNNEL-ID
+credentials-file: REPLACE-WITH-PATH-TO/<TUNNEL-ID>.json
+
+# Keep the connection healthy through long quiet periods — she can go minutes
+# without a public request while teaching.
+originRequest:
+  connectTimeout: 30s
+  noHappyEyeballs: true
+
+ingress:
+  # ── PUBLIC READ LANES — the same three the old nginx vhost served openly ──
+
+  # The dashboard snapshot every public viewer polls. Also the console-ring
+  # tunnel (`?console=N`); query strings are not part of path matching, so that
+  # keeps working without a rule of its own.
+  - hostname: brain.unityailab.com
+    path: ^/public-state\.json$
+    service: http://127.0.0.1:7525
+
+  # Her mind's eye — the current percept frame.
+  - hostname: brain.unityailab.com
+    path: ^/minds-eye\.json$
+    service: http://127.0.0.1:7525
+
+  # ⭐ /health — AND THIS ONE IS LOAD-BEARING IN A WAY THE OLD NGINX MISSED.
+  #
+  # `js/brain/remote-brain.js` gates its connection on `fetch('/health')`: if
+  # health answers, there IS a live brain behind this origin, so the page keeps
+  # probing for MINUTES rather than dropping a visitor to the 6,700-neuron
+  # in-browser fallback. That gate exists because visitors landing during a
+  # teach pin were getting the fake brain and seeing "7k neurons" while the
+  # real one ran at 306M.
+  #
+  # ⛔ The old public nginx vhost NEVER FORWARDED /health — zero mentions in
+  # deploy/nginx-unity-brain.conf — so on the deployed site that gate could
+  # never fire, and the long-probe fix it guards has likely never once taken
+  # effect in production. Exposing it here makes it work for the first time.
+  #
+  # Safe to publish: it returns status/uptime/neurons/scale/gpu/vram/clients/
+  # spikes/psi/clusters — the same class of public figures already served by
+  # public-state.json, no secrets and nothing mutable.
+  - hostname: brain.unityailab.com
+    path: ^/health$
+    service: http://127.0.0.1:7525
+
+  # The PUBLIC WebSocket lane (chat + live state). ⚠ This is `/ws`, NOT
+  # `/admin/ws` — the admin socket is the Basic-auth-gated one and stays off.
+  # cloudflared upgrades WebSockets by default; no extra setting is needed.
+  - hostname: brain.unityailab.com
+    path: ^/ws$
+    service: http://127.0.0.1:7525
+
+  # ── ⛔ DEFAULT DENY — everything not named above ─────────────────────────
+  # This is what keeps /admin/*, /reset, /update, /shutdown, /savererun and the
+  # :7526 control plane off the internet. It must stay LAST, and it must stay.
+  - service: http_status:404
