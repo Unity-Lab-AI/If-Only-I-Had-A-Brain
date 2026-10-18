@@ -446,22 +446,13 @@ ping-stamp). All reads defensive — missing sources degrade to `—`, never thr
 
 ---
 
-## 🔑 Two image lanes, two wallets
+## 🖼 Her eyes render on her own card (2026-10-18) — the "two wallets" section is retired
 
-⛔ **The rule, because this is the thing to get wrong:** the brain's own Pollinations use and a visitor's chat image are **separate lanes with separate keys**, and neither may ever spend the other's pollen.
+⛔ **SUPERSEDED.** This section used to govern **two Pollinations lanes with two keys** — the admin's for the brain's look-ups, the visitor's for chat pictures — and the wrong-wallet bug that came from mixing them. **There is no remote image API in the brain any more, so there are no wallets.** Every picture is rendered on the machine running her, on its own GPU, through CORA's local Stable Diffusion behind one gate (`server/brain-server/image-engine.js`, knob `UNITY_IMAGE_URL` and the `DREAM_IMAGE_*` rows above). The admin key store, the dashboard key field and `GET/POST /pollinations-key` were all removed with it.
 
-| Lane | What it is | Whose key | Default |
-|---|---|---|---|
-| **HER lane** | The mind's-eye reference look-ups she learns shapes from, and her own drawing. The BRAIN doing the work. | **The admin's**, set on the admin dashboard (or `DREAM_POLLINATIONS_KEY` as an ops override) | ⭐ **ANONYMOUS** |
-| **VISITOR lane** | An image a visitor asked Unity for in chat. | **That visitor's own**, from their own browser's localStorage | ⭐ **ANONYMOUS** |
+**What the removal changed for a VISITOR:** a chat picture is rendered server-side and arrives as `{type:'image', url:'/image/<id>.png'}` — a picture already made, served from a bounded cache. ⛔ **A visitor can never trigger a render**: a cache miss is a 404, never a render, which is why `/image/` is on the tunnel allowlists while the engine port is not. With a free remote API that protection was unnecessary; with her own GPU it is the difference between a public site and a denial-of-walk vector.
 
-**Setting it:** the admin dashboard carries a *Pollinations key — her look-ups only* field under the milestone controls. Empty means anonymous, which is the default and fully supported; set it only to spend pollen on making her learning faster or her references better. Backed by `GET`/`POST /pollinations-key` (loopback-gated like every other brain-mutating endpoint).
-
-⚠ **The key never leaves the box.** `GET /pollinations-key` returns whether one is set, where it came from, and its **last four characters** — never the key. A credential cannot leak back out through the dashboard it was typed into.
-
-⚠ **It survives a fresh walk.** Stored at `server/pollinations-admin.json`, mode `0600`, gitignored, deploy-excluded, and on the never-clear protected list beside `identity-core.json`. A fresh walk wipes what she learned; it must not log the operator out.
-
-⛔ **THE BUG THIS FIXED, so it is not reintroduced.** One key served both lanes: the server built a fully keyed URL and sent it to the visitor's browser, so **every visitor's chat image was billed to the admin.** It was latent only because the key defaulted to empty — adding the dashboard field without separating the lanes first would have started the drain immediately. The chat lane now sends the **prompt only** and the client builds the URL with its own key. ⚠ The original reason for sending a server-built URL is also gone: it was a keyed-era fix for a fresh visitor whose key had not loaded and who therefore could not build a URL at all. Anonymous access removed that constraint — every client can always build one now. **Do not send a server-keyed image URL to a client.**
+**What survives from the old rule:** *never send a client something that spends her resources on their say-so.* It used to mean a keyed URL; now it means the render decision stays with the brain and its pacing.
 
 ---
 
@@ -639,6 +630,7 @@ each is listed with what it actually costs.
 | `DREAM_UPLOAD_PACE_LOWATER_MB` | 96 native / 8 browser ⛔ *(the split was BROKEN until 2026-08-25 — see BOUNDCAP.1 note below the table; every donor got 96)* | In-flight bytes the chunk pump keeps on the donor socket before pausing for drain. The 8MB default existed for BROWSER donors whose busy tab can't service its own socket; a NATIVE donor drains on a dedicated thread, and at ≤14MB in flight the wire sat IDLE through every 3-4s loop slab — the entire "4MB/s uplink" myth (KI-24). Every upload logs `UPLINK measured … MB/s` so the real rate is a console read (first live read post-fix: 75-350MB/s) |
 | `DREAM_VOCAB_RETEACH_MS` | 48h | Spaced-repetition window on the persisted exam-vocab receipt (`word → lastTaughtAt`, saved in the weights): a gate re-entry inside the window skips the re-teach (`VOCAB OK … 100%` in a second), outside it the word re-teaches in full. One-time-training-forever was revoked as a law violation; this is the rest-then-reinforce cadence |
 | `DREAM_NO_PRIMARY_WATCHDOG_MS` | 120s | Donors connected but NO live primary for this long → log every donor's held VRAM against `runningFloorMB` with an ELIGIBLE / TOO SMALL verdict, and promote an eligible one if it is sitting unpromoted. **It deliberately will NOT promote a card that is too small** — that refusal is correct, since a primary which cannot hold the weights cannot serve them |
+| `DREAM_UPLOAD_STALL_MS` | **180000** (180 s) | `GPUFLOOR.3` / `STALLDEADLINE` (2026-09-24) — the sparse-upload deadline **re-arms on progress**: every chunk handed to the kernel re-arms it to this value, and after the last chunk it re-arms to `max(stall, bufferedMB × 1 s + 120 s)` for drain + donor alloc. Replaces the old fixed budget computed at an assumed 4 MB/s (`DREAM_UPLOAD_MIN_MBPS`), which timed out the 3.68 GB intra upload to a 16 GB card at 16.6 min while chunks were still landing. **A slow link cannot trip this — only a stall can.** ⚠ Documented 2026-10-18; it shipped with *"NO DOC work"* on the operator's word that day and was owed here |
 | `DREAM_UPLOAD_GRACE_MIN` | 3min | How long `runner quiet` stays worded as *"EXPECTED … by design"* before escalating to a `⛔ DEADLOCKED` error naming the flags. It printed the reassuring version for **ten minutes** on a permanently stuck brain. Never escalates while an upload is genuinely in flight |
 | `DREAM_SAVE_MIN_FREE_MB` | 3072 (`0` disables) | Host free-RAM floor below which a binary checkpoint DEFERS (retry in 2min — deferred, never dropped). The save assembles multi-GB buffers, so it is the sharpest OOM edge on a box shared with Forgejo |
 | `DREAM_OWNART_INGEST_MS` | 5000 (`0` disables) | Throttle for learning a shape schema AT PERCEPTION time rather than only when asked to draw. Confirmed looks only, fire-and-forget, skipped mid-curriculum, first ten log their real cost |
@@ -909,7 +901,7 @@ The endocrine constants — `RECEPTOR_MIN` (0.35), `RECEPTOR_FLOOD_THRESHOLD` (0
 | Env | Default | Kind | What it does |
 |---|---|---|---|
 | `DREAM_ABLATION_LOG` | ⚠ off | lever | Ablation logging for research runs |
-| `DREAM_POLLINATIONS_KEY` | ✅ `''` (empty) | **escape hatch, ops-only** | ⛔ Present as an operations override lever ONLY. The brain runs the Pollinations **anonymous free tier**; no key is shipped, seeded or defaulted anywhere in the tree, and none may be re-added. Empty ⇒ the URL builder omits the key parameter entirely |
+| ~~`DREAM_POLLINATIONS_KEY`~~ | — | **REMOVED 2026-10-18** | Read nowhere any more. The remote image API it keyed left the brain entirely; her pictures render locally (`UNITY_IMAGE_URL`). Kept as a tombstone so the name is not re-added by someone who remembers it |
 
 > ⚠ **Three strings that look like flags and are not:** `DREAM_CONSOLIDATION_`, `DREAM_SAT_` and `DREAM_KEEP_` appear in a raw extraction of this namespace because they are **prefixes** built up in code, not variables. Do not set them.
 >

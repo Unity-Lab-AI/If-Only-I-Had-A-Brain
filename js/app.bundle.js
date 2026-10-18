@@ -1486,8 +1486,7 @@ var LOCAL_IMAGE_BACKENDS = [
 ];
 var SHARED_DEAD_BACKENDS = /* @__PURE__ */ new Map();
 var SensoryAIProviders = class {
-  constructor({ pollinations: pollinations2, storage: storage2 }) {
-    this._pollinations = pollinations2;
+  constructor({ storage: storage2 } = {}) {
     this._storage = storage2;
     this._customImageUrl = null;
     this._customImageModel = null;
@@ -1519,9 +1518,7 @@ var SensoryAIProviders = class {
    * path without re-implementing each backend's dispatcher.
    */
   _findBackend(kind, source, name) {
-    if (source === "default" || name === "Pollinations") {
-      return { pollinations: true };
-    }
+    if (source === "default" || name === "Pollinations") return null;
     const list = kind === "image" ? this._localImageBackends : this._localVisionBackends;
     for (const b of list) {
       if (b.name === name) return b;
@@ -1579,7 +1576,7 @@ var SensoryAIProviders = class {
         state: this._isBackendDead(b.url) ? "dead" : "alive"
       });
     }
-    imageBackends.push({ name: "Pollinations", url: "pollinations", source: "default", state: "alive" });
+    imageBackends.push({ name: "Unity (her own engine, on the server)", url: "server", source: "default", state: "alive" });
     const visionBackends = [];
     for (const b of this._localVisionBackends) {
       visionBackends.push({
@@ -1590,7 +1587,6 @@ var SensoryAIProviders = class {
         state: this._isBackendDead(b.url) ? "dead" : "alive"
       });
     }
-    visionBackends.push({ name: "Pollinations", url: "pollinations", source: "default", state: "alive" });
     return {
       image: imageBackends,
       vision: visionBackends,
@@ -1603,7 +1599,7 @@ var SensoryAIProviders = class {
    * with a short timeout. Any server that responds gets registered.
    *
    * Called on brain boot from app.js. Non-blocking: returns a promise
-   * but the brain can start using Pollinations immediately while the
+   * but the brain keeps running (server-side rendering needs none of this) while the
    * probe runs. Detected backends become available when their probe
    * resolves.
    *
@@ -1658,7 +1654,6 @@ var SensoryAIProviders = class {
    *
    * Expected shape in env.js:
    *   export const ENV_KEYS = {
-   *     pollinations: 'sk_...',        // existing
    *     imageBackends: [               // NEW
    *       { url: 'http://my-server:7860', model: 'sdxl-turbo', key: 'optional' },
    *       { url: 'https://api.example.com', model: 'dalle-3', key: 'sk-...' },
@@ -1712,10 +1707,10 @@ var SensoryAIProviders = class {
    * @param {string} model — model name to request
    * @param {string} apiKey — bearer token (optional)
    */
-  configureImageGen(url, model, apiKey) {
+  configureImageGen(url, model, apiKey2) {
     this._customImageUrl = url;
     this._customImageModel = model;
-    this._customImageKey = apiKey;
+    this._customImageKey = apiKey2;
     console.log("[SensoryAI] Custom image backend configured:", url, model);
   }
   /**
@@ -1725,11 +1720,14 @@ var SensoryAIProviders = class {
    *   2. Auto-detected local backends (Automatic1111, ComfyUI,
    *      InvokeAI, LocalAI, etc. — whichever responded to probes at boot)
    *   3. env.js-configured backends (from ENV_KEYS.imageBackends)
-   *   4. Pollinations (default, always available)
+   *   4. — nothing. Returns null. (Pollinations used to be the always-
+   *      available fallback here; removed 2026-10-18. The server renders
+   *      her pictures on her own card; this browser-side chain exists only
+   *      for a user who configured their own backend.)
    *
-   * Each non-Pollinations backend can fail independently — if one is
-   * down or returns an error, we try the next. Pollinations is the
-   * always-available fallback.
+   * Each backend can fail independently — if one is down or returns an
+   * error, we try the next, and when none answers the caller gets null and
+   * says so in words.
    *
    * @param {string} prompt — the image description
    * @param {object} opts — { model, width, height, seed, ... }
@@ -1739,10 +1737,7 @@ var SensoryAIProviders = class {
     if (this._preferredImage) {
       const pref = this._preferredImage;
       const target = this._findBackend("image", pref.source, pref.name);
-      if (target?.pollinations) {
-        const url = await this._pollinations.generateImage(prompt, { ...opts, model: pref.model || opts.model });
-        if (url) return url;
-      } else if (target && !this._isBackendDead(target.url)) {
+      if (target && !this._isBackendDead(target.url)) {
         const url = await this._customGenerateImage(
           target.url,
           pref.model || target.model || opts.model || "default",
@@ -1774,7 +1769,7 @@ var SensoryAIProviders = class {
       );
       if (url) return url;
     }
-    return this._pollinations.generateImage(prompt, opts);
+    return null;
   }
   // `describeImage()` deleted. It sent a webcam frame plus the
   // prompt "Describe what you see through a webcam… 1 sentence" to a local VLM
@@ -1818,26 +1813,11 @@ var SensoryAIProviders = class {
   // Ollama's `/api/chat` (llava/moondream/bakllava) or to an OpenAI-compatible
   // `/v1/chat/completions` with multimodal content, and returned the model's
   // words as her perception. Unreachable once `describeImage()` went.
-  /**
-   * Pollinations multimodal fallback. Same call the old
-   * app.js:1022 inline handler used, now centralized.
-   *
-   * The Pollinations multimodal model is overridable via
-   * `this._pollinationsVisionModel`, which app.js sets at boot time
-   * from `localStorage.pollinations_vision_model` (written when the
-   * user saves the Pollinations vision backend in the setup modal).
-   * Defaults to `'openai'` (Pollinations' GPT-4o multimodal endpoint).
-   */
-  // `_pollinationsDescribeImage()` deleted (body removed below).
-  // It POSTed the frame to `gen.pollinations.ai/v1/chat/completions` with a
-  // multimodal message and returned GPT-4o's sentence as her sight. ⚠ Note the
-  // contrast with `js/io/voice.js`, which posts to the SAME URL and is KEPT:
-  // that one requests `modalities: ['text','audio']` and consumes the returned
-  // AUDIO, i.e. it is a voice executor, not a describer. Same endpoint, opposite
-  // roles — which is exactly why this strip had to be read rather than grepped.
-  async _pollinationsDescribeImage() {
-    return null;
-  }
+  // `_pollinationsDescribeImage()` — the last Pollinations-named stub — was
+  // removed 2026-10-18 along with the provider itself. (It had already been a
+  // body-less `return null` since the VLM describer was deleted: an external
+  // text model doing her perceiving is what the equational mind's eye
+  // replaced.)
   _isBackendDead(url) {
     const deadTime = this._deadBackends.get(url);
     if (!deadTime) return false;
@@ -1862,12 +1842,12 @@ var SensoryAIProviders = class {
    * Marks the backend dead on auth/payment failures so we don't hammer
    * a broken endpoint. Network errors fall through to the next one.
    */
-  async _customGenerateImage(backendUrl, model, apiKey, prompt, opts = {}) {
+  async _customGenerateImage(backendUrl, model, apiKey2, prompt, opts = {}) {
     if (this._abortController) this._abortController.abort();
     this._abortController = new AbortController();
     const signal = opts.signal || this._abortController.signal;
     const headers = { "Content-Type": "application/json" };
-    if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
+    if (apiKey2) headers["Authorization"] = `Bearer ${apiKey2}`;
     const openaiBody = JSON.stringify({
       model: opts.model || model || "default",
       prompt,
@@ -1917,98 +1897,6 @@ var SensoryAIProviders = class {
     }
     return null;
   }
-};
-
-// ../js/ai/pollinations.js
-var IMAGE_URL = "https://image.pollinations.ai";
-var PollinationsAI = class _PollinationsAI {
-  constructor(apiKey = null) {
-    this._apiKey = apiKey;
-  }
-  // ── Utility ────────────────────────────────────────────────────────
-  setApiKey(key) {
-    this._apiKey = key;
-  }
-  hasApiKey() {
-    return Boolean(this._apiKey);
-  }
-  _headers() {
-    const h = { "Content-Type": "application/json" };
-    if (this._apiKey) {
-      h["Authorization"] = `Bearer ${this._apiKey}`;
-    }
-    return h;
-  }
-  // ⛔ THE TEXT LANE IS DELETED — there is no text-AI in the cognition path.
-  //
-  // `chat()` POSTed to `gen.pollinations.ai/v1/chat/completions`. Its own
-  // doc-comment said it was kept solely for the vision describer — and that
-  // describer is gone (`app.js` now reads "Vision-describer auto-detect
-  // removed — no LLM describer to probe"), replaced by her equational mind's
-  // eye. So it had ZERO call sites and was an OpenAI-shaped text-generation
-  // path sitting in the tree with nothing using it. `listModels()` went with
-  // it for the same reason. The endpoint also 401s on the anonymous tier now,
-  // so it was doubly dead.
-  //
-  // ⛔ THIS DELETION IS SURGICAL ON PURPOSE. The image lane below is
-  // LOAD-BEARING and stays: `image.pollinations.ai/prompt` is how she gets
-  // her reference look-ups and her generated images, it is verified unfiltered
-  // and measured so, and gutting this file wholesale would have taken her eyes
-  // out along with the LLM.
-  // ── Image Generation ───────────────────────────────────────────────
-  /** Style presets that get appended to the prompt. */
-  static STYLE_PRESETS = {
-    photorealistic: ", photorealistic, ultra detailed, 8k",
-    anime: ", anime style, vibrant colors, detailed",
-    "oil-painting": ", oil painting style, textured brush strokes",
-    "pixel-art": ", pixel art style, retro 8-bit",
-    watercolor: ", watercolor painting, soft washes, delicate",
-    cinematic: ", cinematic lighting, dramatic composition, film grain",
-    sketch: ", pencil sketch, hand-drawn, detailed linework",
-    cyberpunk: ", cyberpunk aesthetic, neon lights, futuristic cityscape"
-  };
-  /**
-   * Generate an image URL.
-   * @param {string} prompt
-   * @param {Object} [options]
-   * @param {string} [options.model='flux']
-   * @param {number} [options.width=512]
-   * @param {number} [options.height=512]
-   * @param {string} [options.style] - one of STYLE_PRESETS keys
-   * @returns {string|null} image URL or null on failure
-   */
-  generateImage(prompt, options = {}) {
-    try {
-      const model = options.model || this._defaultImageModel || "flux";
-      const width = options.width || 512;
-      const height = options.height || 512;
-      let finalPrompt = prompt;
-      if (options.style && _PollinationsAI.STYLE_PRESETS[options.style]) {
-        finalPrompt += _PollinationsAI.STYLE_PRESETS[options.style];
-      }
-      const encoded = encodeURIComponent(finalPrompt);
-      const seed = typeof options.seed === "number" ? options.seed : Math.floor(Math.random() * 1e9);
-      let url = `${IMAGE_URL}/prompt/${encoded}?model=${encodeURIComponent(model)}&width=${width}&height=${height}&seed=${seed}&nologo=true`;
-      if (this._apiKey) {
-        url += `&key=${encodeURIComponent(this._apiKey)}`;
-      }
-      return url;
-    } catch (err) {
-      console.error("[PollinationsAI] generateImage failed:", err.message);
-      return null;
-    }
-  }
-  // `speak()` and `listModels()` DELETED.
-  //
-  // This project does not use a third-party TTS lane; it uses her own
-  // equations. Her voice is Equation Unity One (piper hfc_female
-  // through the CDF 9/7 round-trip) with her own banked word equations
-  // behind it. This was an external TTS lane that nothing reached any more,
-  // and it answered 401 on the anonymous tier regardless.
-  //
-  // With the text lane, the TTS lane and the model list all gone, this
-  // module does exactly ONE thing, which is the whole point: Pollinations is
-  // IMAGES. `GEN_URL` is retired with them; only `IMAGE_URL` remains.
 };
 
 // ../js/brain/mindspace/transform.js
@@ -21220,7 +21108,6 @@ try {
   console.log("[Unity] No env.js found \u2014 keys entered in setup modal");
 }
 var brain;
-var pollinations;
 var providers;
 var voice;
 var storage;
@@ -21961,7 +21848,6 @@ function updateLandingStats(state) {
 }
 var setupModal = document.getElementById("setup-modal");
 var startBtn = document.getElementById("start-btn");
-var apiKeyInput = document.getElementById("api-key-input");
 var micStatus = document.getElementById("mic-status");
 var camStatus = document.getElementById("cam-status");
 var unityBubble = document.getElementById("unity-bubble");
@@ -21970,13 +21856,8 @@ var unityAvatar = document.getElementById("unity-avatar");
 var brainIndicator = document.getElementById("brain-indicator");
 async function init() {
   storage = new UserStorage();
-  const RETIRED_POLL_KEYS = /* @__PURE__ */ new Set([
-    "sk_cVKTWfmo9wF7S5bOiFHZPhN2LjpW4SZ3",
-    "sk_sGQDs3CwfDJRiUcGipueAfqI3U4xhMeW"
-  ]);
   try {
-    const storedPoll = storage.getApiKey("pollinations");
-    if (storedPoll && RETIRED_POLL_KEYS.has(storedPoll)) storage.setApiKey("pollinations", "");
+    if (storage.getApiKey("pollinations")) storage.setApiKey("pollinations", "");
   } catch {
   }
   for (const [pid, key] of Object.entries(ENV_KEYS)) {
@@ -21985,8 +21866,6 @@ async function init() {
       storage.setApiKey(pid, key);
     }
   }
-  const storedPollKey = storage.getApiKey("pollinations");
-  if (storedPollKey && apiKeyInput) apiKeyInput.value = storedPollKey;
   startBtn.addEventListener("click", handleStart);
   window.unityChannels = {
     userMic: localStorage.getItem("unity_channel_user_mic") !== "false",
@@ -22032,25 +21911,6 @@ async function init() {
     voice._muted = !on;
     if (!on) voice.stopSpeaking?.();
   });
-  const saveKeyBtn = document.getElementById("api-key-save-btn");
-  if (saveKeyBtn && apiKeyInput) {
-    saveKeyBtn.addEventListener("click", () => {
-      const key = (apiKeyInput.value || "").trim();
-      if (!key) {
-        alert("Paste a Pollinations API key first.");
-        return;
-      }
-      storage.setApiKey("pollinations", key);
-      if (providers?._pollinations) providers._pollinations._apiKey = key;
-      saveKeyBtn.textContent = "SAVED \u2713";
-      saveKeyBtn.style.background = "var(--green,#22c55e)";
-      setTimeout(() => {
-        saveKeyBtn.textContent = "SAVE KEY";
-        saveKeyBtn.style.background = "var(--cyan)";
-      }, 1500);
-      if (typeof renderSensoryInventory === "function") renderSensoryInventory();
-    });
-  }
   const clearBtn = document.getElementById("clear-data-btn");
   if (clearBtn) {
     clearBtn.addEventListener("click", () => {
@@ -22061,9 +21921,7 @@ async function init() {
     });
   }
   try {
-    const bootKey = storage.getApiKey("pollinations") || "";
-    pollinations = new PollinationsAI(bootKey || void 0);
-    providers = new SensoryAIProviders({ pollinations, storage });
+    providers = new SensoryAIProviders({ storage });
     if (typeof providers.loadEnvConfig === "function") {
       providers.loadEnvConfig(ENV_KEYS);
     }
@@ -22113,7 +21971,6 @@ function renderSensoryInventory() {
   refreshActiveBackendSelectors(status);
 }
 var BACKEND_MODEL_CATALOG = {
-  "image:Pollinations": ["flux", "flux-realism", "flux-anime", "flux-3d", "turbo", "sdxl-1.0"],
   "image:Automatic1111 / SD.Next / Forge": ["default"],
   "image:ComfyUI": ["default"],
   "image:OpenAI DALL-E": ["dall-e-3", "dall-e-2"],
@@ -22189,19 +22046,10 @@ function refreshActiveBackendSelectors(status) {
 }
 var BACKEND_CATALOG = {
   // ── IMAGE GENERATION ──────────────────────────────────────────
-  "img:pollinations": {
-    name: "Pollinations",
-    kind: "image",
-    instructions: "Unity's default image gen provider \u2014 active out of the box, no setup needed for the anonymous tier. Paste your Pollinations API key below to authenticate (raises rate limits and unlocks paid models). You can also pick which Pollinations image model Unity uses (default: flux).",
-    link: "https://enter.pollinations.ai/",
-    linkLabel: "\u{1F511} Get Pollinations API key",
-    needsKey: true,
-    keyOptional: true,
-    keyStorageKey: "pollinations",
-    showModel: true,
-    defaultModel: "flux",
-    modelHint: "e.g. flux / turbo / sdxl-1.0"
-  },
+  // ('img:pollinations' — the default remote provider card — was REMOVED
+  // 2026-10-18. Her pictures render on the SERVER, on her own card, through
+  // CORA's local engine. The cards below are OPTIONAL browser-side backends
+  // a user may configure for the no-server fallback brain only.)
   "img:a1111": {
     name: "Automatic1111 / SD.Next / Forge",
     kind: "image",
@@ -22288,7 +22136,7 @@ function wireBackendButtons() {
   refreshSavedMarkers();
   const imgPrefRaw = localStorage.getItem("unity_pref_image_backend") || "";
   const [, prefName] = imgPrefRaw.split("|");
-  let initialBackendKey = "img:pollinations";
+  let initialBackendKey = "";
   if (prefName) {
     for (const [key, cfg] of Object.entries(BACKEND_CATALOG)) {
       if (cfg.kind === "image" && cfg.name === prefName) {
@@ -22307,17 +22155,12 @@ function refreshSavedMarkers() {
   try {
     const imgAll = JSON.parse(localStorage.getItem("custom_image_backends") || "{}");
     const visAll = JSON.parse(localStorage.getItem("custom_vision_backends") || "{}");
-    const pollKey = storage?.getApiKey("pollinations");
     document.querySelectorAll(".provider-btn").forEach((btn) => {
       const key = btn.dataset.backend;
       const config = BACKEND_CATALOG[key];
       if (!config) return;
-      if (config.keyStorageKey === "pollinations") {
-        btn.classList.toggle("saved", !!pollKey);
-      } else {
-        const store = config.kind === "image" ? imgAll : visAll;
-        btn.classList.toggle("saved", !!store[key]);
-      }
+      const store = config.kind === "image" ? imgAll : visAll;
+      btn.classList.toggle("saved", !!store[key]);
     });
   } catch {
   }
@@ -22411,17 +22254,6 @@ function showBackendForm(backendKey) {
 function updateConnectStatus(backendKey, config, stored) {
   const statusEl = document.getElementById("backend-connect-status");
   if (!statusEl) return;
-  if (config.keyStorageKey === "pollinations") {
-    const pollKey = storage?.getApiKey("pollinations");
-    if (pollKey) {
-      statusEl.innerHTML = "\u{1F7E2} connected \xB7 authenticated with saved key";
-      statusEl.style.color = "var(--green,#22c55e)";
-    } else {
-      statusEl.innerHTML = "\u{1F535} default \xB7 running on anonymous tier (no key)";
-      statusEl.style.color = "var(--cyan,#00e5ff)";
-    }
-    return;
-  }
   const list = config.kind === "image" ? providers?._localImageBackends || [] : providers?._localVisionBackends || [];
   const hit = list.find((b) => b.name === config.name);
   if (hit) {
@@ -22446,16 +22278,6 @@ function updateConnectStatus(backendKey, config, stored) {
 }
 async function probeBackend(backendKey, config) {
   try {
-    if (config.keyStorageKey === "pollinations") {
-      const key = storage?.getApiKey("pollinations");
-      const headers2 = key ? { Authorization: `Bearer ${key}` } : {};
-      const res2 = await fetch("https://image.pollinations.ai/models", {
-        headers: headers2,
-        signal: AbortSignal.timeout(5e3)
-      });
-      if (!res2.ok) return { ok: false, detail: `HTTP ${res2.status}` };
-      return { ok: true, detail: key ? "authenticated" : "anonymous tier" };
-    }
     const stored = loadStoredBackendConfig(backendKey);
     const url = stored?.url || config.defaultUrl || (config.defaultPort ? `http://localhost:${config.defaultPort}` : "");
     if (!url) return { ok: false, detail: "no URL configured" };
@@ -22490,28 +22312,6 @@ function saveBackend(backendKey) {
   }
   if (config.needsKey && !config.keyOptional && !key) {
     alert("API key is required for this backend.");
-    return;
-  }
-  if (config.keyStorageKey === "pollinations") {
-    if (key) {
-      storage.setApiKey("pollinations", key);
-      if (apiKeyInput) apiKeyInput.value = key;
-    }
-    const modelStorageKey = config.kind === "image" ? "pollinations_image_model" : "pollinations_vision_model";
-    if (model) {
-      localStorage.setItem(modelStorageKey, model);
-    } else {
-      localStorage.removeItem(modelStorageKey);
-    }
-    if (pollinations && key) pollinations._apiKey = key;
-    if (pollinations && model && config.kind === "image") pollinations._defaultImageModel = model;
-    if (providers && model && config.kind === "vision") providers._pollinationsVisionModel = model;
-    showEnvSnippet({
-      pollinations: key || storage.getApiKey("pollinations") || "",
-      [modelStorageKey]: model
-    });
-    refreshSavedMarkers();
-    renderSensoryInventory();
     return;
   }
   const entry = { name: config.name, url };
@@ -22561,8 +22361,6 @@ function showEnvSnippet(updates) {
   if (!wrap || !pre) return;
   const jsonify = (v) => typeof v === "string" ? `'${v.replace(/'/g, "\\'")}'` : JSON.stringify(v);
   const lines = [];
-  const existingPoll = storage.getApiKey("pollinations") || "";
-  if (existingPoll && !updates.pollinations) lines.push(`  pollinations: '${existingPoll}',`);
   for (const [k, v] of Object.entries(updates)) {
     if (v == null || v === "") continue;
     if (Array.isArray(v)) {
@@ -22645,12 +22443,6 @@ Move-Item $env:USERPROFILE\\Downloads\\env.js C:\\path\\to\\Unity\\js\\env.js`
 function loadStoredBackendConfig(backendKey) {
   const config = BACKEND_CATALOG[backendKey];
   if (!config) return null;
-  if (config.keyStorageKey === "pollinations") {
-    return {
-      key: storage?.getApiKey("pollinations") || "",
-      model: localStorage.getItem(config.kind === "image" ? "pollinations_image_model" : "pollinations_vision_model") || ""
-    };
-  }
   try {
     const storageField = config.kind === "image" ? "custom_image_backends" : "custom_vision_backends";
     const all = JSON.parse(localStorage.getItem(storageField) || "{}");
@@ -22673,16 +22465,10 @@ function injectCustomBackendsIntoProviders() {
   } catch (err) {
     console.warn("[Unity] custom backend injection failed:", err.message);
   }
-  const imgModel = localStorage.getItem("pollinations_image_model");
-  const visModel = localStorage.getItem("pollinations_vision_model");
-  if (imgModel && pollinations) pollinations._defaultImageModel = imgModel;
-  if (visModel) providers._pollinationsVisionModel = visModel;
 }
 async function handleStart() {
   startBtn.textContent = "Requesting permissions...";
   startBtn.disabled = true;
-  const apiKey = apiKeyInput.value.trim();
-  if (apiKey) storage.setApiKey("pollinations", apiKey);
   const permResults = document.getElementById("perm-results");
   permResults.style.display = "block";
   const channels = window.unityChannels || { userMic: true, unityVision: true, unitySpeech: true };
@@ -22712,15 +22498,9 @@ async function handleStart() {
   await sleep(300);
   await bootUnity(apiKey, perms);
 }
-async function bootUnity(apiKey, perms) {
-  const effectiveKey = apiKey || storage.getApiKey("pollinations");
-  if (!pollinations) {
-    pollinations = new PollinationsAI(effectiveKey || void 0);
-  } else if (effectiveKey) {
-    pollinations._apiKey = effectiveKey;
-  }
+async function bootUnity(apiKey2, perms) {
   if (!providers) {
-    providers = new SensoryAIProviders({ pollinations, storage });
+    providers = new SensoryAIProviders({ storage });
     if (typeof providers.loadEnvConfig === "function") providers.loadEnvConfig(ENV_KEYS);
     injectCustomBackendsIntoProviders();
     if (typeof providers.onStatus === "function") {
@@ -22791,7 +22571,7 @@ async function bootUnity(apiKey, perms) {
     }
   }
   brain.connectVoice(voice);
-  brain.connectImageGen(pollinations, sandbox, storage);
+  brain.connectImageGen(null, sandbox, storage);
   if (brain.__appResponseHandler) {
     brain.off("response", brain.__appResponseHandler);
   }
@@ -22824,13 +22604,6 @@ async function bootUnity(apiKey, perms) {
     let url = null;
     if (typeof arg === "string") url = arg;
     else if (arg && arg.url) url = arg.url;
-    else if (arg && arg.prompt && pollinations && typeof pollinations.generateImage === "function") {
-      try {
-        url = pollinations.generateImage(arg.prompt);
-      } catch (e) {
-        url = null;
-      }
-    }
     if (!url) return;
     showSpeechBubble("Image generating...", 3e3);
     if (chatPanel) {
@@ -23368,7 +23141,18 @@ Vision: ${state.visionDescription || "none"}`;
       const result = await brain.processAndRespond(text);
       return result?.text || "";
     },
-    generateImage: (prompt, opts) => pollinations.generateImage(prompt, opts),
+    // HER EYES COME HOME (2026-10-18): there is no browser-side image client.
+    // Ask her in chat — the server renders on her own card and the picture
+    // arrives as {type:'image', url}. A user-configured browser backend, if
+    // any, is reachable through `providers.generateImage`.
+    generateImage: async (prompt, opts) => {
+      if (providers && typeof providers.generateImage === "function") {
+        const url = await providers.generateImage(prompt, opts);
+        if (url) return url;
+      }
+      console.warn("[Unity] generateImage: no browser-side image backend is configured \u2014 her pictures render on the server; ask her in chat.");
+      return null;
+    },
     getState: () => brain.getState(),
     ui: {
       getState: () => ({ ...uiState, chatOpen: chatPanel?.isOpen(), brainVizOpen: brainViz?.isOpen() }),

@@ -302,13 +302,13 @@ The unknown — what we can't model, what makes consciousness CONSCIOUSNESS — 
 | **Deployment** | **PRIMARY:** deployed static page + persistent Node brain-server on the same box, joined by nginx **reverse-proxy** (loopback `proxy_pass /ws` + `/admin/ws` → `127.0.0.1:7525` — same machine, not a tunnel). **DEV:** `start.bat` / `Savestart.bat` run the brain locally. |
 | **Admin / Master** | Admin lane Forgejo-authenticated; first authed connection after deploy = locked primary operator. Admin dashboard: live server-console panel, auto-scale controls + sliders, grade signoffs, graceful stop. |
 | **Database** | SQLite (better-sqlite3) for episodic memory, JSON for weights + conversations |
-| **AI Backends** | **Sensory-OUTPUT only** — image gen (custom/auto-detected local/env.js/Pollinations), TTS/STT. Vision is now 100% EQUATIONAL (CDF 9/7 field C → `describeEquational` percept; the LLM/VLM vision describer is RETIRED). Zero text-AI for cognition — language cortex generates every word equationally. |
+| **AI Backends** | **Sensory-OUTPUT only** — image gen on HER OWN CARD (CORA's local Stable Diffusion behind `server/brain-server/image-engine.js`, 2026-10-18; a visitor's browser may configure its own custom/auto-detected backend for the no-server fallback — there is no remote default), her own voice (unity-voice-v2). Vision is now 100% EQUATIONAL (CDF 9/7 field C → `describeEquational` percept; the LLM/VLM vision describer is RETIRED). Zero text-AI for cognition — language cortex generates every word equationally. |
 | **Embeddings** | GloVe 300d word vectors — **REQUIRED, the brain exits at boot without the table**; fastText-style subword n-grams encode out-of-vocabulary words only and are not a substitute for it (they carry spelling, not meaning), and ⭐ **online context refinement that actually runs** — she reshapes her own semantic geometry from the corpus she reads, so the imported vectors are a STARTING SHAPE she grows out of rather than the fixed answer. Two derived terms make it learn instead of collapse: mean-centring and a 0.5 delta cap. ⚠ The refinement machinery existed for a long time with **one call site, browser-only** — the server had never refined a single embedding — and that call site was poisoning 250/300 dimensions with NaN. Both fixed 2026-08-25; see `EQUATIONS.md §Learned semantic geometry` |
 | **Voice I/O** | Web Speech API (listen) + "Equation Unity One" (speak). ⛔ **CORRECTED 2026-09-07 — this row described in-browser synthesis, which is the RETIRED lane.** Synthesis runs on **her own process**: a `voiceSynth`-capable donor GPU when one is connected, otherwise the box's own worker thread (`VoiceSynthProxy` → `server/voice-synth-worker.mjs`, piper VITS + espeak phonemiser + field perceive). The waveform is folded into the CDF 9/7 equations server-side and the visitor receives **a few-KB equation record**, which their browser turns back into sound and plays. **The listener never synthesises and never touches their own GPU** — the in-browser lane could seize the same card a donor was lending, and killing that class of failure is why the lane moved. No cloud TTS, no external API, no key. ⚠ The module header in `js/io/voice.js` still documents the old in-browser lane and contradicts its own later code; flagged, not yet fixed. |
-| **Image Gen** | Pollinations API (flux, photorealistic, anime, cyberpunk + 20 more models) |
+| **Image Gen** | **Local** — CORA's `services/image_sidecar.py` (Stable Diffusion, `realistic-vision-v51`, offload on) on `127.0.0.1:5124`, one gate in `image-engine.js`, paced as a VRAM budget. No remote image API since 2026-10-18 |
 | **Storage** | localStorage (browser) + disk persistence (server) with sparse CSR serialization |
 | **Config** | `js/env.js` (gitignored) for API keys, `js/brain/persona.js` for personality params |
-| **MCP Tools** | Pollinations MCP server (image/text/audio/video generation) |
+| **MCP Tools** | none in the brain (the Pollinations CLI plugin was Claude-Code tooling, removed 2026-08-21; the brain's own Pollinations use followed on 2026-10-18) |
 
 ---
 
@@ -362,7 +362,7 @@ The unknown — what we can't model, what makes consciousness CONSCIOUSNESS — 
 ├───────────────────────────┼──────────────────────────────────────┤
 │        SENSORY PERIPHERALS — output only, never cognition        │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────┐    │
-│  │Pollinations│ │ Local SD │  │  Piper   │  │ Equational   │    │
+│  │CORA SD(img)│ │ Local SD │  │  Piper   │  │ Equational   │    │
 │  │IMAGE only│  │A1111/Comf│  │ +CDF 9/7 │  │ vision (9/7) │    │
 │  └──────────┘  └──────────┘  └──────────┘  └──────────────┘    │
 │                                                                │
@@ -936,7 +936,7 @@ She also banks a **first-person episode of finishing**, with an identity-anchor 
 1. **Custom-configured** — user-added entries in `ENV_KEYS.imageBackends[]` with `{name, url, model, key, kind}`
 2. **Auto-detected local** — `autoDetect()` probes 7 common ports in parallel (1.5s timeout each): A1111 `:7860`, SD.Next/Forge `:7861`, Fooocus `:7865`, ComfyUI `:8188`, InvokeAI `:9090`, LocalAI `:8081`, Ollama `:11434`
 3. **env-listed** — backends loaded via `providers.loadEnvConfig(ENV_KEYS)` at boot. ⚠ `js/env.js` itself was **DELETED** with the API-key purge (2026-08-22); only `js/env.example.js` remains as a template, so this tier is empty unless a deployer recreates the file
-4. **Pollinations default** — Unity's built-in provider, always available. Anonymous tier works without a key; a saved Pollinations API key unlocks paid models and higher rate limits
+4. **— nothing.** The chain ends in `null` and the brain says so in words. (Pollinations was the always-available default here until 2026-10-18; her pictures now render on the server, on her own card, and this browser-side chain only matters for the no-server fallback brain.)
 
 `_customGenerateImage(url, model, key, prompt, opts)` supports 4 response shapes so practically any SD-alike backend works: OpenAI `{data:[{url}]}`, OpenAI b64 `{data:[{b64_json}]}`, A1111 `{images:['<base64>']}`, generic `{url}`/`{image_url}`. Dead-backend cooldown (1 hour) on auth/payment errors so bad endpoints don't get hammered.
 
@@ -988,7 +988,7 @@ If-Only-I-Had-A-Brain/
 │   │   ├── curriculum.js       # T14.5+T14.24 developmental curriculum — pre-K→PhD, growing roster (core: ELA, Math, Science, Social Studies, Arts, Life Experience), 114 cells, direct pattern Hebbian + emotional concept features, 3-pathway gates, memory-weighted tiers. **28,370 lines at `81c5068c` (2026-08-27)** ⚠ *(read 28,340 at `c5e9d412` earlier the same day — the `GOTCHA.9` comment block moved it by 30 lines within hours. A count is a READING, not a property, and this is the fourth time that lesson has landed today)* — the largest file in the repo, and the AST graph's single hub (`Curriculum`, 349 edges, bridging ten communities). ⛔ This row read `~12500 lines` until 2026-08-27, stale by ~16,000; per-grade bodies live in `curriculum/` (kindergarten.js alone is 9,200).
 │   │   ├── letter-input.js     # LETTER_INVENTORY Set seeded at module load with a-z + 0-9 + space , . ' (40 symbols). Locked by default — ensureLetter rejects symbols outside the seeded alphabet. encodeLetter/decodeLetter one-hot primitives. ~260 lines.
 │   │   ├── peripherals/
-│   │   │   └── ai-providers.js # SensoryAIProviders — multi-provider image gen (custom → auto-detect → env.js → Pollinations), TTS, NO text chat
+│   │   │   └── ai-providers.js # SensoryAIProviders — OPTIONAL browser-side image backends (custom → auto-detect → env.js → null), NO remote default, NO text chat
 │   │   ├── visual-cortex.js    # V1→V4→IT vision pipeline + T14.10 renderLetterTemplate (synthetic visual letter percepts)
 │   │   ├── auditory-cortex.js  # Tonotopic processing + efference copy + T14.11 renderPhonemeTemplate (synthetic auditory phoneme percepts)
 │   │   ├── memory.js           # Episodic + working + consolidation
@@ -1005,7 +1005,6 @@ If-Only-I-Had-A-Brain/
 │   │   └── response-pool.js   # EDNA response categories (fallback for language cortex)
 │   ├── ai/
 │   │   ├── router.js           # Brain→Action bridge + AI intent classification
-│   │   ├── pollinations.js     # Pollinations API client (12K fallback trimming)
 │   │   └── persona-prompt.js   # System prompt from live brain state + anti-safety-training
 │   ├── io/
 │   │   ├── voice.js            # Web Speech API + TTS + speech interruption handling
@@ -1065,7 +1064,7 @@ If-Only-I-Had-A-Brain/
 
 | System | Connection |
 |--------|-----------|
-| Pollinations API | Image generation only. **No text chat, no TTS, no vision describer** — all three lanes deleted. ⛔ **No key at all:** the ANONYMOUS free tier is the only tier, no key is shipped/seeded/defaulted anywhere, and none may be re-added. The default tier in the 5-level image-gen priority. |
+| ~~Pollinations API~~ | **REMOVED 2026-10-18.** Image generation moved to her own card — CORA's local Stable Diffusion behind `server/brain-server/image-engine.js`. The URL builder, the key store, the `/pollinations-key` route, the dashboard panel and the browser client are all gone; nothing in the brain calls a remote image host. |
 | Local image backends | Auto-detected at boot on localhost: A1111/SD.Next/Forge/Fooocus/ComfyUI/InvokeAI/LocalAI/Ollama. 1.5s probe timeout per port. |
 | env-listed image backends | `ENV_KEYS.imageBackends[]` array — persistent custom endpoints (OpenAI-compatible, A1111 kind, ComfyUI workflow kind, or generic URL+key). ⚠ `js/env.js` was DELETED 2026-08-22 with the key purge; `js/env.example.js` is the remaining template. |
 | Web Speech API | Voice input (SpeechRecognition) with speech interruption handling |
@@ -1706,7 +1705,7 @@ The binding ceiling was added after T4.1 caught cortex+cerebellum silently retur
 - Semantic GloVe grounding (R2→T14.0) — 300d word embeddings + fastText-style subword encoding for out-of-vocabulary words shared between sensory input and language-cortex output via `sharedEmbeddings` singleton
 - Server equational control (R3) — `server/brain-server.js` dynamic-imports client brain modules, loads corpora from disk
 - Text-AI cognition killed (R4) — BrocasArea → 68-line throwing stub, every chat call site ripped (stub file `js/brain/language.js` DELETED outright in Session 113 T14.24-CLEAN.A1 2026-04-16)
-- Multi-provider image gen (R5) — 5-level priority (user-preferred via setPreferredBackend → custom → auto-detect → env.js → Pollinations default) with 7 local backend auto-detect + live HTTP probe CONNECT button in setup modal
+- Multi-provider image gen (R5) — priority chain (user-preferred via setPreferredBackend → custom → auto-detect → env.js → null; the Pollinations default at the end was removed 2026-10-18) with 7 local backend auto-detect + live HTTP probe CONNECT button in setup modal
 - Equational image prompts + equational component synthesis (R6) — zero hardcoded visual vocabulary, cosine match against template corpus
 - Sensory peripheral destroy() + embedding refinement persistence (R7 + R8)
 - Docs sync (R10) — every public-facing doc updated, new `docs/SENSORY.md` and `docs/WEBSOCKET.md` added
