@@ -40,8 +40,10 @@
 #      `requireLoopback`-is-defeated-by-a-tunnel problem below, because the
 #      admin lane then never faces the public internet at all.
 #
-# Keep this file for options 1 and 3's cloudflared form; it is the route
-# allowlist either way, and the allowlist is the part that matters.
+# ⭐ DECIDED 2026-10-18: OPTION 3. The live route is `deploy/tailscale-funnel.bat`
+# (same four lanes, same default-deny, same absent admin lane). This file is
+# KEPT, not deleted, for the day a domain exists again — the allowlist is the
+# part that matters and it is identical in both.
 #
 # ⭐ THE BRAIN NEVER STOPS BEING LOOPBACK-ONLY. `BIND_HOST` stays 127.0.0.1 and
 # nothing on the LAN or the internet can address it directly; cloudflared is
