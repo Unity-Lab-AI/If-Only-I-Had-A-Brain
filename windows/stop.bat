@@ -79,6 +79,27 @@ if %ERRORLEVEL% EQU 0 (
 )
 
 echo.
+REM SIDECARS (2026-10-18) - stop what start.bat starts. Her voice (unity-voice-v2
+REM on 5123) and her eyes (the image engine on 5124) are launched by the
+REM launchers as sidecars; a stop that left them running meant "kill all" was
+REM not true, and a later start.bat found the ports busy and left stale
+REM processes in charge. Killed by the PID holding each port - never by image
+REM name, which would take out any other python on the machine. The log-tail
+REM window goes too. Tailscale is NOT touched: the tunnel is the world's path
+REM to her and is managed by its own service.
+echo [stop] sidecars: her voice (5123), her eyes (5124), the log tail window...
+for /f "tokens=5" %%v in ('netstat -ano ^| findstr :5123 ^| findstr LISTENING') do (
+    echo   voice  - taskkill /F /PID %%v
+    taskkill /f /pid %%v >nul 2>&1
+)
+for /f "tokens=5" %%e in ('netstat -ano ^| findstr :5124 ^| findstr LISTENING') do (
+    echo   eyes   - taskkill /F /PID %%e
+    taskkill /f /pid %%e >nul 2>&1
+)
+taskkill /f /fi "WINDOWTITLE eq Unity Brain Log Tail*" >nul 2>&1
+taskkill /f /fi "WINDOWTITLE eq unity-brain (leave running)*" >nul 2>&1
+echo.
+
 echo [stop] bonus step: closing Chrome processes attached to the isolated
 echo   UnityBrain-WebGPU-Profile so subsequent start.bat boots clean
 echo   (prior Chrome compute.html windows would otherwise auto-reconnect

@@ -150,6 +150,21 @@ export function browserDisplayName(id) {
 export async function mountBootModal({ prepUrl = 'webgpu-prep.html', bannerColor = '#ef4444' } = {}) {
   if (typeof document === 'undefined') return 'no-document';
 
+  // ⛔ A SERVER BRAIN NEEDS NO WEBGPU FROM THE VISITOR (2026-10-18). This gate
+  // exists for the one case where the brain must run IN THE VISITOR'S BROWSER
+  // — no server anywhere. When a brain server answers, the visitor only talks
+  // to it and plays what it sends; their GPU is not involved unless they
+  // choose to donate on compute.html, which has its own check. The gate was
+  // firing on the public page for everyone the night the site moved — the
+  // page is served over plain http until the domain's certificate issues,
+  // and browsers expose WebGPU only in a secure context, so `navigator.gpu`
+  // was undefined for every visitor while the brain was up and reachable.
+  // The operator's words: "people arnt suppose to seee this: they can see the
+  // brain and use it normally they dont HAVE to donate". So: ask the brain
+  // first, through the same origin helper the page uses to reach it; gate
+  // only when no brain answers. The no-server case keeps its "no bypass".
+  if (await serverBrainAnswers()) return 'server-brain';
+
   const result = await checkWebGPUAdapter();
   if (result.available) return 'available';
 
@@ -209,6 +224,29 @@ export async function mountBootModal({ prepUrl = 'webgpu-prep.html', bannerColor
     });
   }
   return 'blocked';
+}
+
+// Does a brain SERVER answer for this page? Resolved the same way every page
+// finds the brain (js/brain-origin.js: ?brain= override > local page >
+// committed tunnel origin > same-origin), so the answer matches what the
+// page is about to connect to. `/health` is CORS-open and cheap. A 4-second
+// cap: a slow or absent brain must not stall the modal decision, and a
+// false negative only means the WebGPU check runs as before.
+// `UNITY_SKIP_SERVER_PROBE` is a harness hook (set before the module loads)
+// to force the no-server path for a test; it is never set by any page.
+async function serverBrainAnswers() {
+  try {
+    const g = (typeof window !== 'undefined') ? window : globalThis;
+    if (g.UNITY_SKIP_SERVER_PROBE) return false;
+    const url = (typeof g.unityBrainHttp === 'function') ? g.unityBrainHttp('/health') : '/health';
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 4000);
+    const r = await fetch(url, { cache: 'no-store', signal: ctl.signal });
+    clearTimeout(t);
+    if (!r.ok) return false;
+    const j = await r.json().catch(() => null);
+    return !!(j && (j.status === 'alive' || typeof j.neurons === 'number'));
+  } catch { return false; }
 }
 
 // Small HTML-escape helpers used only by mountBootModal's innerHTML so
