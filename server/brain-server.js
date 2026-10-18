@@ -9696,6 +9696,12 @@ Object.assign(ServerBrain.prototype, SERVER_VISUAL_MEMORY_MIXIN);
 // anonymous. Sending a server-keyed URL to a client is exactly the wrong-
 // wallet bug this file was corrected for; do not reintroduce it.
 ServerBrain.prototype._buildPollinationsImageUrl = _buildPollinationsImageUrl;
+// HER EYES COME HOME (2026-10-18) — the local image engine gate. Attached
+// here, after every other mixin, exactly where the old URL builder was: the
+// look lane guards on `typeof this._buildImageRequest === 'function'` at call
+// time, so attach order relative to visual-memory does not matter, and
+// attaching LAST means nothing below can be shadowed by it.
+Object.assign(ServerBrain.prototype, require('./brain-server/image-engine.js').ImageEngineMixin);
 
 const brain = new ServerBrain();
 
@@ -10533,6 +10539,30 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
+  // ── /image/<id>.png — a picture she ALREADY MADE, from a bounded cache ──
+  // PUBLIC and read-only on purpose: the browser's chat lane <img>s this URL.
+  // A miss is a 404, never a render — nothing a visitor sends can reach her
+  // GPU through here, which is why it is safe to expose through the tunnel
+  // while the engine on :5124 is not. Same CORS posture as public-state.json.
+  {
+    const _m = /^\/image\/([a-f0-9]{16})\.png(?:\?.*)?$/.exec(req.url || '');
+    if (_m) {
+      const hit = (typeof brain._imageCacheGet === 'function') ? brain._imageCacheGet(_m[1]) : null;
+      if (!hit) {
+        res.writeHead(404, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ error: 'no such image (it may have aged out of the cache)' }));
+        return;
+      }
+      res.writeHead(200, {
+        'Content-Type': 'image/png',
+        'Content-Length': hit.png.length,
+        'Cache-Control': 'public, max-age=86400, immutable',
+        'Access-Control-Allow-Origin': '*',
+      });
+      res.end(hit.png);
+      return;
+    }
+  }
   if (req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
@@ -13233,7 +13263,27 @@ wss.on('connection', (ws, req) => {
                 // problem: a fresh visitor whose key had not loaded could not
                 // build a URL at all. Anonymous access removed that, so every
                 // client can always build one.
-                ws.send(JSON.stringify({ type: 'image', prompt: result.text }));
+                // HER EYES COME HOME (2026-10-18) — the SERVER renders now, on
+                // her own card through CORA's local engine, and sends the
+                // browser a URL to the finished picture. The "prompt only, the
+                // visitor's browser renders it" split above was a KEYED-API
+                // wallet problem; there is no wallet any more — there is her
+                // GPU, and a visitor must never be able to spend it directly.
+                // Detached: the reply text already shipped; the picture follows
+                // in ~2-4 s, or an honest sentence does. Never a blank.
+                {
+                  const _prompt = result.text;
+                  const _ws = ws;
+                  const _sendSafe = (o) => { try { if (_ws.readyState === 1) _ws.send(JSON.stringify(o)); } catch { /* client gone */ } };
+                  if (typeof this._renderImageForChat === 'function') {
+                    this._renderImageForChat(_prompt).then((img) => {
+                      if (img) _sendSafe({ type: 'image', url: img.url, prompt: _prompt });
+                      else _sendSafe({ type: 'response', text: '(my image engine is not answering right now — no picture this time)', action: 'generate_image' });
+                    }).catch(() => _sendSafe({ type: 'response', text: '(my image engine failed on that one — no picture this time)', action: 'generate_image' }));
+                  } else {
+                    _sendSafe({ type: 'response', text: '(no image engine is wired in this build)', action: 'generate_image' });
+                  }
+                }
               } else {
                 ws.send(JSON.stringify({ type: 'response', text: result.text, action: result.action }));
                 // ONE PROCESS voice lane — HER process synthesizes the reply

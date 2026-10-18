@@ -2499,7 +2499,26 @@ const SERVER_GPU_MIXIN = {
    * matrices loaded from persistence where binding metadata wasn't
    * shipped originally.
    */
+  /**
+   * HER EYES COME HOME (2026-10-18) — count uploads in flight, so the image
+   * engine can YIELD. A matrix upload is the one window where the donor sits at
+   * its VRAM peak; a render on top of it can exceed the card (measured:
+   * donor 13 GB + voice 2.4 GB + render 2.5 GB > 16.4 GB). Counted here, at
+   * the single method every upload goes through, rather than at the call sites
+   * — a third caller would otherwise be invisible to the gate. try/finally so
+   * a failed or timed-out upload cannot leave the count stuck high and close
+   * the look lane forever (the leaked-slot lesson from LOOKQUEUE.1).
+   */
   async gpuSparseUpload(name, matrix, binding, targetWs = null) {
+    this._gpuUploadsInFlight = (this._gpuUploadsInFlight | 0) + 1;
+    try {
+      return await this._gpuSparseUploadInner(name, matrix, binding, targetWs);
+    } finally {
+      this._gpuUploadsInFlight = Math.max(0, (this._gpuUploadsInFlight | 0) - 1);
+    }
+  },
+
+  async _gpuSparseUploadInner(name, matrix, binding, targetWs = null) {
     // TEACHCREDIT — record the matrix's stored-synapse count so teach frames
     // can be credited with their real giga-ops (see _countTeachOut). Values
     // length IS the nnz; a matrix without one records nothing (no invented
