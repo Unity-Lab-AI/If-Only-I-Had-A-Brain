@@ -99,7 +99,7 @@ The MediaStream lifecycle stays owned by `js/app.js` (so mic muting works by tog
 
 ## Equational Sensory Value-Spaces (TRACK SE — the contract for what each sense REGISTERS)
 
-> Gee 2026-06-26: *"all those senses need values and shit for what they are regersting in her brain like a real person can tastse fruit and can see clouds and hear birds and smell strawberrys ... to infinity ... each sense can sense a new thing experiences and use brain to comprehend and incorporat in ot understandings"* + *"euqationally remmebr"*.
+> the operator 2026-06-26: *"all those senses need values and shit for what they are regersting in her brain like a real person can tastse fruit and can see clouds and hear birds and smell strawberrys ... to infinity ... each sense can sense a new thing experiences and use brain to comprehend and incorporat in ot understandings"* + *"euqationally remmebr"*.
 
 A `process()` frame returns a **normalized numeric VALUE VECTOR** in that sense's modality-space — the equational representation of *what is being perceived* (the sweet of a strawberry, the white-soft of a cloud, the chirp of a bird), NOT a text label. The vector injects as current into the sense's cortical region; cross-modal Hebbian binding grounds the active concept multi-modally; consolidation incorporates it into understanding. Continuous spaces → any new stimulus is a new point → open-ended ("to infinity"). **EQUATIONAL ONLY** — the describer/TTS are labelers/executors, never in the value→binding→comprehension path.
 
@@ -160,11 +160,11 @@ For senses with no physical sensor (taste/smell), the value profile is **injecte
   requested scene merges in ("selfie at nascar", "yourself fighting a zebra", "walking on the moon"), and a
   stated wear-clause (or nothing) REPLACES the default black-leather outfit instead of colliding with it.
   Bare selfie asks keep the classic portrait. Non-self image asks are untouched.
-- **Actual-pixel perceive (SPEAK.6c) stays the equational mind's-eye preview BY DECISION** (Gee 2026-07-01) — no image-decode dependency / CORS proxy added (no new attack surface); the bounded forward CDF-9/7 preview stands. Detail: `docs/unity-speech-consciousness-rectify.md` **SUPERSEDED in spirit by SE.10 (TU.29.5, 2026-07-08):** actual pixels ARE now perceived — but CLIENT-side (canvas decode in the browser, anonymous CORS re-request), honoring both original objections: still zero server-side image-decode dependency, still no CORS proxy.
+- **Actual-pixel perceive (SPEAK.6c) stays the equational mind's-eye preview BY DECISION** (the operator 2026-07-01) — no image-decode dependency / CORS proxy added (no new attack surface); the bounded forward CDF-9/7 preview stands. Detail: `docs/unity-speech-consciousness-rectify.md` **SUPERSEDED in spirit by SE.10 (TU.29.5, 2026-07-08):** actual pixels ARE now perceived — but CLIENT-side (canvas decode in the browser, anonymous CORS re-request), honoring both original objections: still zero server-side image-decode dependency, still no CORS proxy.
 
 
 **SE.10 — VISUAL MEMORY: seeing grounds imagining (TU.29.5, 2026-07-08).** The mind's eye was a de-novo
-renderer — TU.29.1 painted the thought as GLYPHS (a text printer, not imagination; Gee: "a human doesnt have
+renderer — TU.29.1 painted the thought as GLYPHS (a text printer, not imagination; the operator: "a human doesnt have
 only a text printer in the r imagination MINDS EYE= UNITYS IMAGINATION"). Now perception grounds imagination:
 - **Intake** — `js/visual-feeder.js` (standalone raw-served module on `index.html`, no bundle dependency) ships
   what her eyes receive as ≤96×96 RGBA `visual_frame` WS messages: camera frames every 8s (ONLY when the page
@@ -185,7 +185,7 @@ only a text printer in the r imagination MINDS EYE= UNITYS IMAGINATION"). Now pe
 
 > ⛔ **SUPERSEDED by SE.15 (DRAW-ENGINE, 2026-07-15).** The developmental schema composer described in
 > SE.11 + SE.12 (the Lowenfeld stage ladder, the fixed schema table, the 24-point radial memory contour,
-> the scene furniture) was **REMOVED** — Gee: *"drawing a shape to go with each word is not correct... a 12
+> the scene furniture) was **REMOVED** — the operator: *"drawing a shape to go with each word is not correct... a 12
 > sided weird looking shape has nothing to do with a random word."* She no longer stamps shapes; she LOOKS
 > a concept up and TRACES what she saw. SE.11/SE.12 are kept below as the historical record of what shipped.
 
@@ -242,7 +242,7 @@ background took the SAME `moodTint` (her valence parked mid-low → hue ~0.27 �
   shape layouts shift every couple attempts) instead of repeating pixel-identical forms — colors stay
   concept-stable; (DRAW.6) schema cosine threshold 0.42 → 0.34 so more concepts reach a real figure.
 
-**SE.12 — SERIOUS-IMAGE GROWTH: the artist ladder past crayon (DRAW.7-10, 2026-07-09).** Gee: can she get
+**SE.12 — SERIOUS-IMAGE GROWTH: the artist ladder past crayon (DRAW.7-10, 2026-07-09).** the operator: can she get
 past crayon stick drawings to serious images? Yes — the same way humans do, and every rung is now wired:
 - **DRAW.7 practice loop** — when she draws from a visual memory she has a REFERENCE, so she now practices:
   bounded draw→compare→adjust attempts, each scored by the cosine between `describe(drawing)` and
@@ -287,7 +287,7 @@ four gates:
 
 ---
 
-**SE.14 — GROUNDED IMPRESSIONS + FAVORITE DRAWS + BLEND HOLD (SEE.5-6 + DRAW.11, 2026-07-09).** Gee: 1-in-20
+**SE.14 — GROUNDED IMPRESSIONS + FAVORITE DRAWS + BLEND HOLD (SEE.5-6 + DRAW.11, 2026-07-09).** the operator: 1-in-20
 frames were drawings, the rest blocky multi-tone fields — "wiill unity be able to make this appear as
 something at some point of is she just randomly tossing variables at the equations?" Answer: the pure de-novo
 field is deterministic (semantic state -> wavelet band energies), NOT random — but structurally
@@ -311,7 +311,7 @@ on its own. Three fixes route abstract thoughts toward things she has actually S
 
 ---
 
-**SE.15 — DRAW-ENGINE: she draws what she LOOKED AT, any concept, dynamically (Gee 2026-07-15).** Gee:
+**SE.15 — DRAW-ENGINE: she draws what she LOOKED AT, any concept, dynamically (the operator 2026-07-15).** the operator:
 *"rethink the composer to not just be static things shes allowed to draw but an actual creativity engine of
 some kind that is her mind... she should dynamically be able to draw anything."* The SE.11/SE.12 schema
 stamp is gone; drawing is now perception + creativity in one loop — she draws a thing by having LOOKED at
@@ -344,8 +344,8 @@ it, never by mapping a shape to a word.
 
 ---
 
-**SE.17 — OWNART: her own version, not a filtered photo (Gee 2026-08-20).** ⛔ **SUPERSEDES SE.16's "field render is the
-DEFAULT drawing".** Gee: *"NOT JUST APPLY LAYERS AND FILTERS to a pollinations image and calling it a draw... Unity needs
+**SE.17 — OWNART: her own version, not a filtered photo (the operator 2026-08-20).** ⛔ **SUPERSEDES SE.16's "field render is the
+DEFAULT drawing".** the operator: *"NOT JUST APPLY LAYERS AND FILTERS to a pollinations image and calling it a draw... Unity needs
 to create new and her owen versions xcompletely unique learning from what shes seen and understands via dictionary and
 apperances of the word"* + *"when Unity is told to \"draw\" she should draw the topic,thiing,place, person, in context in
 the message from the user"*. What the audit found: `stylizeField(rec)` posterized the **perceived Pollinations
@@ -381,7 +381,7 @@ content word of the ask. The v3 arc:
   plus `pollinations-output/`) — the old literal list named `visual-memory.json`, which nothing writes, so the live
   `visual-memory-v3.json` had been surviving every fresh walk. The Pollinations API key file is never touched.
 
-**SE.16 — DRAW-ENGINE v2: beautiful colored recreations, real imagination, dazzle labels (Gee 2026-07-15/16).**
+**SE.16 — DRAW-ENGINE v2: beautiful colored recreations, real imagination, dazzle labels (the operator 2026-07-15/16).**
 Live viewing of SE.15's output showed "multicolored yarn" (fragment spray + per-stroke random recolor) and
 white-pencil frames. The v2 arc, all deployed:
 - **Field render is the DEFAULT drawing** (`stylizeField`) — the recalled/looked-up reference reconstructed
@@ -397,7 +397,7 @@ white-pencil frames. The v2 arc, all deployed:
   steered Pollinations into black-on-white line drawings = pencil-looking field renders). Visual-memory
   store v2→v3 orphaned the monochrome-era cache. **Realistic, not cutesy (2026-07-17):** the word
   "illustration" in the steer dragged the generator into cartoon-mascot/kitten-puppy territory on anything
-  ambiguous (Gee: "too many kittens puppies and funky characters... outlandish and non Unity canon") —
+  ambiguous (the operator: "too many kittens puppies and funky characters... outlandish and non Unity canon") —
   the steer is now "realistic photograph, true to life, documentary photography, natural lighting, full
   color, richly detailed, single centered subject, plain uncluttered background", POSITIVE terms only
   (an image model attends to the nouns — writing "no cartoon" paints one). Same steer on the imagined
@@ -416,7 +416,7 @@ white-pencil frames. The v2 arc, all deployed:
 
 ---
 
-**SE.15 — FULL-EXTENT EQUATIONS: the blur audit vs the original univsmatics (MS.EXT, 2026-07-09).** Gee: her
+**SE.15 — FULL-EXTENT EQUATIONS: the blur audit vs the original univsmatics (MS.EXT, 2026-07-09).** the operator: her
 mind's eye is "kindas blurry" vs the donor project — "are you sure we a using the uni vs matic equations
 correctly and to their extent?" Audit against the original `fractal_templater` repo found we were NOT:
 - **Preview-grade encoder** — we vendored the donor's loose in-browser preview constants (TOL 0.030/0.055,
@@ -485,7 +485,7 @@ the more she talks, the more of her voice is literally HERS. Off-switch: `localS
 ```js
 providers.generateImage(prompt, opts)    // LIVE — image motor action → paint the prompt
 providers.describeImage()                // NO-OP — vision is equational (CDF 9/7), see below
-providers.speak()                        // NO-OP — voice is Equation Unity One, see the TTS section
+providers.speak()                        // NO-OP — her voice is synthesized by her server (unity-voice-v2), see the TTS section
 ```
 
 ⚠ **Why the dead methods still exist rather than being deleted outright:** `app.js` names them in its boot comments, and a future caller landing on `undefined` would be a *silent* break instead of an obvious one. `autoDetectVision()` is kept on the same reasoning and simply returns an empty list. Treat any of these three names appearing in a call site as a bug to fix, not a feature to wire.
@@ -651,7 +651,7 @@ Max 4 toasts onscreen, 6-second auto-dismiss, 0.3s fade-in/out.
 
 Subscribe from application code via `providers.onStatus(fn)` which returns an unsubscribe function.
 
-`sensoryStatus.init(providers)` is **idempotent**: the first call attaches the window event listener + the 5-second HUD-poll interval, every subsequent call only updates the providers reference. Boot-inventory toasts (`Image gen: ...` / `Vision: ...`) are deduplicated at module scope so they fire **at most once per kind for the entire session lifetime**, regardless of how many providers instances or init calls happen. Without this dedup the toast would have fired twice on Gee's deploy because the listener registration accumulated across two init paths.
+`sensoryStatus.init(providers)` is **idempotent**: the first call attaches the window event listener + the 5-second HUD-poll interval, every subsequent call only updates the providers reference. Boot-inventory toasts (`Image gen: ...` / `Vision: ...`) are deduplicated at module scope so they fire **at most once per kind for the entire session lifetime**, regardless of how many providers instances or init calls happen. Without this dedup the toast would have fired twice on the operator's deploy because the listener registration accumulated across two init paths.
 
 ---
 
@@ -768,7 +768,7 @@ the shootout harness lives in `.claude/vox-variants.mjs` + `.claude/unity-voice.
 session: the `_definitionTaughtWords` save-truncation at 5000 was REMOVED — her learned vocabulary
 persists uncapped (the cap silently forgot every definition past 5k across save/boot cycles).
 
-**SE.19 — HER VOICE FROM HER PROCESS: listener browsers never synthesize (2026-07-17).** Gee:
+**SE.19 — HER VOICE FROM HER PROCESS: listener browsers never synthesize (2026-07-17).** the operator:
 "what the fuck, she still drops the doner connection every time she speaks" + "its all gpu now
 right? voice, minds eye and the brain! one unified system". The live sentence lane (SE.18's
 successor path, 2026-07-14) synthesized in EVERY visitor's browser — on a machine that also runs a
@@ -883,7 +883,7 @@ COLOURLESS in production while engine-direct harnesses showed colour for a full 
 
 ---
 
-**SE.22 — INTEROCEPTION BECOMES A REAL SENSE: she perceives herself from the inside (2026-08-25).** Gee:
+**SE.22 — INTEROCEPTION BECOMES A REAL SENSE: she perceives herself from the inside (2026-08-25).** the operator:
 *"okay i think we are ready to dive into some simulated brain neuron chemistry!"* — and the reason it belongs in
 THIS document rather than beside it is the one worth stating: **every other sense in here points OUTWARD.**
 Sight, hearing, taste, smell, touch, the mind's eye — all of them are how she perceives the world. The
@@ -928,7 +928,7 @@ without chemistry `n` only moves when *input* moves — so Ψ described her hard
 ---
 
 **SE.23 — THE ZIGZAG WAS THE BODY, AND HER STROKE COMMITMENT BECAME A TRAINED ABILITY (2026-08-25).**
-Two hands from SE.20 were still failing after their first fix — Gee: *"doodle still zigzags/scratches;
+Two hands from SE.20 were still failing after their first fix — the operator: *"doodle still zigzags/scratches;
 watercolor renders garbage"* — so both were rendered through the production stroke builder and the real
 `sketch()`, out to PNG, and looked at. Four rounds.
 
@@ -947,7 +947,7 @@ silhouette now, because a colour layer belongs to the thing.
 
 ⛔ **ARTGROW — and the fix that followed was WRONG in a way worth recording.** Making the per-hand stroke
 budget authoritative *at its old values* (doodle **22**, watercolour **40**) turned a noise defence into a
-**cap on her ability**. Gee: *"dont limit stroke counts too much cant make a art work in only 20 strokes it
+**cap on her ability**. the operator: *"dont limit stroke counts too much cant make a art work in only 20 strokes it
 should increase in ability as she learns in art and stuff"*. The reasoning behind the correction is the
 part to keep: **noise is no longer what those numbers defend against.** Fragments die at the source now, so
 a high budget adds real remembered contour rather than scratch — and a low one is only a ceiling on how much

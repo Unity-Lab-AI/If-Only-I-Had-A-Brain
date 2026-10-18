@@ -122,12 +122,13 @@
       // differently depending on origin:
       //   • LOCAL dev (localhost / 127.0.0.1 / file://) → raw loopback port
       //     ws://localhost:7525 (brain-server binds 7525 directly).
-      //   • DEPLOYED (any public host) → same-origin PUBLIC lane reverse-proxied
-      //     by nginx at wss://<host>/ws — the SAME lane the app itself connects
-      //     to (remote-brain.js detectRemoteBrain() + compute.html donors). NOT
-      //     /admin/ws: that lane is Forgejo-auth-gated, so a public visitor would
-      //     ALWAYS fail the probe and see a false "backend unreachable" banner
-      //     even when the brain is healthy. Probing /ws mirrors what the page
+      //   • DEPLOYED (the public site) → the brain's PUBLIC /ws lane on the
+      //     configured brain origin (js/brain-origin.js; a tunnel forwards it)
+      //     — the SAME lane the app itself connects to (remote-brain.js
+      //     detectRemoteBrain() + compute.html donors). NOT the admin lane: that
+      //     is never forwarded publicly, so a public visitor would ALWAYS fail
+      //     the probe and see a false "backend unreachable" banner even when
+      //     the brain is healthy. Probing /ws mirrors what the page
       //     actually uses, so the banner only fires on a REAL outage.
       //   • CONFIGURED ORIGIN (js/brain-origin.js) → that host's /ws. Added
       //     2026-10-18 for the GitHub-Pages-serves-the-site, PC-runs-the-brain
@@ -388,14 +389,14 @@
         </label>
         <label style="display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;color:var(--text);cursor:pointer;">
           <input type="checkbox" id="toggle-unity-speech" checked style="width:14px;height:14px;cursor:pointer;accent-color:var(--cyan);">
-          <span>🔊 <strong>Unity speech</strong> <span style="color:var(--text-dim);">(<strong>Equation Unity One</strong> — her own voice, reconstructed from her wavelet equations locally: no provider, no key, works offline. Browser SpeechSynthesis is only the emergency fallback)</span></span>
+          <span>🔊 <strong>Unity speech</strong> <span style="color:var(--text-dim);">(<strong>her own voice</strong> — synthesized by her brain's machine with the emotion she is feeling, carried to you as her wavelet equations and played here: no provider, no key, no stand-in voice)</span></span>
         </label>
         <div style="font-size:10px;color:var(--text-dim);line-height:1.5;">Toggles persist across sessions and are live-applied the moment you flip them — after boot you can mute her mid-sentence, pause her camera, or silence her voice without reloading.</div>
       </div>
 
-      <!-- Voice preload — Equation Unity One (her real voice) downloads + warms
-           IN THE BROWSER here, BEFORE wake, so her first word has zero lag.
-           Self-hosted + one-time, then cached offline forever. Hidden if the
+      <!-- Voice status — her voice is synthesized on her brain's machine and
+           arrives as an equation record this browser plays; nothing downloads
+           here. This box only says where her voice comes from. Hidden if the
            Unity-speech channel is toggled off. -->
       <div id="voice-preload" style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-family:var(--mono);font-size:11px;">
         <div style="display:flex;align-items:center;gap:8px;color:var(--text);"><span>🎙</span><strong>Her voice</strong><span id="voice-preload-status" style="color:var(--text-dim);">— speaks from her brain server; this browser only plays it</span></div>

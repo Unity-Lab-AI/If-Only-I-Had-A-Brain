@@ -456,7 +456,7 @@
             data-tip="Run the full sweep bench, right now, against the running brain.&#10;&#10;It checks every surface this page depends on — the knob registry, the knob write lane, the teach ledger, the corpus feed, the figure lane, and whether any field shown here has no producer — and returns one WORKING / NOT WORKING line plus a reason per surface.&#10;&#10;⛔ It reads ALREADY-PUBLISHED state only. No cortex reads, no GPU work, no filesystem sweep — running it cannot disturb the training it is reporting on, and it prints its own cost so a slow bench is visible.&#10;&#10;⚠ GREY is not a pass. It means the bench could not see that surface — usually because the walk was idle. Re-run it during teaching.">bench</button>
           <button id="tvBuf" class="tv-tip"
             title="Arm the corpus buffer — the books download in the background, a few files at a time, while she trains."
-            data-tip="Arm the CORPUS BUFFER.&#10;&#10;The books stream in from the data repo in the background, a few files at a time, while she trains — instead of the whole 395 MB arriving in one blocking sync at press time.&#10;&#10;⛔ A MAXIMUM OF ONE COMPLETE COPY EVER SITS ON THIS BOX. Nothing is ever checked out: each file is streamed straight into its final path and verified by checksum before it counts. The scratch space used to do it is destroyed after every batch, so it cannot slowly become a second copy — and the peak it ever reached is shown beside the progress.&#10;&#10;⚠ It only fetches what actually DIFFERS. Files already on the box are recognised by content, so re-arming costs nothing.&#10;&#10;Click again to disarm. Disarming stops the next batch; it never deletes anything already downloaded.">buffer</button>
+            data-tip="Arm the CORPUS BUFFER.&#10;&#10;The books stream in from the data repo in the background, a few files at a time, while she trains — instead of the whole 395 MB arriving in one blocking sync at press time.&#10;&#10;⛔ A MAXIMUM OF ONE COMPLETE COPY EVER SITS ON THIS BOX. Nothing is ever checked out: each file is streamed straight into its final path and verified by checksum before it counts. The scratch space used to do it is destroyed after every batch, so it cannot slowly become a second copy — and the peak it ever reached is shown beside the progress.&#10;&#10;⚠ It only fetches what actually DIFFERS. Files already on the brain's machine are recognised by content, so re-arming costs nothing.&#10;&#10;Click again to disarm. Disarming stops the next batch; it never deletes anything already downloaded.">buffer</button>
           <span class="tv-sub" id="tvBufLbl">buffer off</span>
           <label class="tv-sub tv-tip"
             title="How fast queued items are drained into the pane."
@@ -564,7 +564,7 @@
       <h2>
         <span class="tv-tip tip-l"
           title="Download the trained weights — one button per file, browser Save As."
-          data-tip="Download her trained weights straight from the box. Clicking a button opens the browser's own Save As dialog.&#10;&#10;⭐ These files ARE the brain: brain-weights.json is the structure and bookkeeping, brain-weights.bin is the weight matrices themselves and is measured in GIGABYTES. The -v0/-v1/-v2 pairs are the rotating checkpoint slots, so an older one is a rollback point.&#10;&#10;⛔ A save in flight is REFUSED rather than served. A checkpoint write is not atomic to a reader, and half a 4 GB binary downloads as a file that looks complete and restores as garbage.&#10;&#10;⚠ Admin-gated on the same identity as every other privileged route.">Download model weights</span>
+          data-tip="Download her trained weights straight from the brain's machine. Clicking a button opens the browser's own Save As dialog.&#10;&#10;⭐ These files ARE the brain: brain-weights.json is the structure and bookkeeping, brain-weights.bin is the weight matrices themselves and is measured in GIGABYTES. The -v0/-v1/-v2 pairs are the rotating checkpoint slots, so an older one is a rollback point.&#10;&#10;⛔ A save in flight is REFUSED rather than served. A checkpoint write is not atomic to a reader, and half a 4 GB binary downloads as a file that looks complete and restores as garbage.&#10;&#10;⚠ Admin-gated on the same identity as every other privileged route.">Download model weights</span>
         <span class="tv-sub" id="tvWeightsNote">—</span>
       </h2>
       <div class="tv-body">
@@ -584,7 +584,7 @@
     <!-- ⭐⭐ THE PRESS CONTROLS. The ask: proper restart and update buttons.
          ⛔ NO NEW DEPLOY PATH IS INVENTED HERE. Every button below POSTs the exact
          route the dashboard's own press buttons POST, behind the same loopback gate.
-         The box still deploys by pressing a button; this is the same button, placed
+         The brain's machine still updates by pressing a button; this is the same button, placed
          beside the thing it acts on.
          ⭐ WHY IT BELONGS ON THIS PAGE AT ALL: the restore lane directly above.
          A restored walk position changes a file on disk and NOTHING else — the
@@ -595,7 +595,7 @@
     <div class="tv-card" style="margin-top:14px">
       <h2>
         <span class="tv-tip tip-l"
-          title="Restart and update the box — the same presses the dashboard fires, beside the restore that needs them."
+          title="Restart and update the brain's machine — the same presses the dashboard fires, beside the restore that needs them."
           data-tip="THE PRESS CONTROLS.&#10;&#10;These are the same four presses the dashboard fires, on the same admin-gated routes. Nothing new is invented and there is no second deploy path.&#10;&#10;They are HERE because of the restore lane above: putting a walk position on disk does not move the running brain, which still holds the old ledger in memory. A restore that is never restarted has done nothing while looking like it worked.&#10;&#10;READ THE GROUPS, NOT THE VERBS. The label says what the press COSTS, because &quot;update&quot; alone does not distinguish the press that keeps every hour of training from the press that discards all of it.&#10;&#10;KEEPS TRAINING — the weights survive. Restart resumes exactly where she is. Update pulls new code and resumes.&#10;&#10;KEEPS THE WEIGHTS, RESETS THE POSITION — she re-walks the whole curriculum on top of the synapses she already has. The Oja rule is self-normalising, so re-teaching strengthens rather than corrupts.&#10;&#10;DISCARDS TRAINING — the fresh walk. Every weight, episode and schema is wiped and she starts from zero.&#10;&#10;⭐ A PRESS IS CONFIRMED BY MEASUREMENT, NOT ASSUMED. The connection dropping is what a working restart looks like from a browser — and also what an unreachable server looks like. So this watches for the brain's uptime to come back LOWER than it was at the press, which only a real reboot can produce. Until that happens it says it is waiting, and if it never happens it says it could not tell — never that the press worked.">press controls <span class="tv-q">?</span></span>
         <span class="tv-sub" id="tvPressNote">—</span>
       </h2>
@@ -614,7 +614,7 @@
               data-tip="RESTART — and RESUME.&#10;&#10;The brain force-saves its weights, drops a resume marker, and exits; the service brings it back and it picks up at the same cell.&#10;&#10;⭐ THIS IS WHAT MAKES A RESTORED WALK POSITION TAKE EFFECT. Dropping a position file above changes a file on disk and nothing else — the running process still holds the old ledger in memory until this fires.&#10;&#10;⚠ If a heavy change altered the brain's size or format the saved weights cannot load and it fresh-starts instead, saying so.">🔄 Restart · keeps training</button>
             <button id="tvPressUpdKeep" class="tv-press tv-press-keep tv-tip"
               title="Pull the latest code and resume the saved weights. No fresh walk."
-              data-tip="UPDATE — and KEEP TRAINING.&#10;&#10;The box re-pulls the project code, restarts, and RESUMES the saved weights. No fresh walk; nothing she has learned is lost.&#10;&#10;⭐ This is how a fix ships without costing training, and it is the normal press. Takes a minute or two.&#10;&#10;⚠ Code that changes WHAT SHE IS TAUGHT does not retroactively re-teach her — for that you want a walk that starts from zero.">⬆ Update code · keeps training</button>
+              data-tip="UPDATE — and KEEP TRAINING.&#10;&#10;The brain's machine pulls the latest project code, restarts, and RESUMES the saved weights. No fresh walk; nothing she has learned is lost.&#10;&#10;⭐ This is how a fix ships without costing training, and it is the normal press. Takes a minute or two.&#10;&#10;⚠ Code that changes WHAT SHE IS TAUGHT does not retroactively re-teach her — for that you want a walk that starts from zero.">⬆ Update code · keeps training</button>
           </div>
         </div>
 
@@ -632,7 +632,7 @@
           <div class="tv-controls">
             <button id="tvPressFresh" class="tv-press tv-press-bad tv-tip"
               title="Pull the latest code and WIPE every trained weight. There is no way back."
-              data-tip="THE FRESH WALK — AND IT DESTROYS EVERYTHING SHE HAS LEARNED.&#10;&#10;The box re-pulls the project code, then wipes every trained weight, every episode, every schema and her visual store. Her identity anchors survive. Nothing she has LEARNED does.&#10;&#10;⭐ IT IS THE RIGHT PRESS AFTER A CHANGE TO WHAT SHE IS TAUGHT, and only then. A walk teaches from zero using whatever the code does at that moment, so a curriculum change that is not walked was never applied to her.&#10;&#10;⛔ It is the WRONG press for anything else, because there is no way back. Confirm twice, and read what the dialog says she is currently doing before the second one.">⬆ Update code · WIPES all training</button>
+              data-tip="THE FRESH WALK — AND IT DESTROYS EVERYTHING SHE HAS LEARNED.&#10;&#10;The brain's machine pulls the latest project code, then wipes every trained weight, every episode, every schema and her visual store. Her identity anchors survive. Nothing she has LEARNED does.&#10;&#10;⭐ IT IS THE RIGHT PRESS AFTER A CHANGE TO WHAT SHE IS TAUGHT, and only then. A walk teaches from zero using whatever the code does at that moment, so a curriculum change that is not walked was never applied to her.&#10;&#10;⛔ It is the WRONG press for anything else, because there is no way back. Confirm twice, and read what the dialog says she is currently doing before the second one.">⬆ Update code · WIPES all training</button>
           </div>
         </div>
 
@@ -642,7 +642,7 @@
              whether it was forgotten. Both omissions are deliberate. -->
         <div class="tv-note" style="margin-top:9px">
           <b>Two dashboard controls are deliberately NOT here.</b>
-          <b>Stop Brain</b> halts the process with nothing to revive it — recovering from it needs a shell on the box,
+          <b>Stop Brain</b> halts the process with nothing to revive it — recovering from it needs a shell on the brain's machine,
           which is a worse thing to have one click away on a page whose job is watching training.
           <b>Reset</b> wipes the weights without pulling code, and the re-walk above does the same job non-destructively.
           Both remain on the dashboard, which is where an operator goes deliberately.
@@ -753,7 +753,7 @@
 
     <!-- ⭐⭐ THE KNOBS. Every value that governs how her weights are written,
          published where the person operating this brain can actually read it.
-         ⛔ These were reachable only from a shell on the box, and there is no
+         ⛔ These were reachable only from a shell on the brain's machine, and there is no
          shell — so the settings deciding how she learns could not be READ, let
          alone turned. ⚠ This card renders even when the teach bus is silent,
          which is deliberate: with the walk stopped the knobs are exactly what
@@ -763,7 +763,7 @@
       <h2>
         <span class="tv-tip tip-l"
           title="Every knob governing how her weights are written — live value, default, and whether a write could take effect."
-          data-tip="Every knob that governs how her weights are written: learning rate, dose, rep compression, saturation thresholds, firing set points, consolidation bounds.&#10;&#10;⛔ These are read from the process environment, which on the box means the service unit, which means a shell — so until now the settings deciding how she learns could not even be READ from here.&#10;&#10;⚠ READ-ONLY today, deliberately. A knob captured once at boot cannot honour a write: the value would read back correctly and change nothing. Drawing a control for that would be a lie, so no control is drawn until every effect class is proven.">Training knobs</span>
+          data-tip="Every knob that governs how her weights are written: learning rate, dose, rep compression, saturation thresholds, firing set points, consolidation bounds.&#10;&#10;⛔ These are read from the process environment, which on the brain's machine means the service unit, which means a shell — so until now the settings deciding how she learns could not even be READ from here.&#10;&#10;⚠ READ-ONLY today, deliberately. A knob captured once at boot cannot honour a write: the value would read back correctly and change nothing. Drawing a control for that would be a lie, so no control is drawn until every effect class is proven.">Training knobs</span>
         <span class="tv-sub tv-tip tip-l" id="tvKnobSummary"
           title="How many knobs exist, how many the environment overrides, how many are frozen at boot."
           data-tip="Totals for the list below.&#10;&#10;“overridden” — set explicitly in the environment; everything else is running the default read out of the code.&#10;“boot-frozen” — captured when the process started; a write cannot take effect until a restart.&#10;“effect unproven” — the read site is recorded but its scope has not been verified, so no promise is made either way.">—</span>
@@ -844,9 +844,15 @@
 /* ⛔⛔ EVERY PRIVILEGED ROUTE ON THIS PAGE MUST CARRY THE `/admin` PREFIX WHEN
    DEPLOYED, AND WITHOUT IT TEN OF THIS PAGE'S TWELVE ROUTES SILENTLY DIE.
 
-   The public nginx vhost forwards exactly FIVE locations to the brain:
+   (2026-10-18: the public door is a Tailscale Funnel now, forwarding exactly
+   FIVE read lanes — `/public-state.json`, `/minds-eye.json`, `/health`, `/ws`,
+   `/image` — and answering **404** for everything else, admin lanes included;
+   the admin routes exist only on the brain's own machine. The nginx history
+   below is kept because the failure shape it describes is still the one to
+   check for whenever a front door sits between this page and the brain.)
+   The old public nginx vhost forwarded exactly FIVE locations to the brain:
    `= /public-state.json`, `= /minds-eye.json`, `/ws`, `/admin/ws` and `/admin/`.
-   Anything else falls through to the static SPA — which answers **HTTP 200 with
+   Anything else fell through to the static SPA — which answered **HTTP 200 with
    an HTML body**. So a bare `fetch('/teach-bench')` does not fail: it succeeds,
    returns a page, and dies at `r.json()` with `Unexpected token '<'`, which this
    page then reported as *"could not reach the brain"*. The brain was never
@@ -919,7 +925,7 @@ $('tvBench').onclick = async () => {
     const r = await fetch(TV_ADMIN + '/teach-bench', { cache: 'no-store' });
     if (isForbidden(r)) {
       markAdminLane(false, 'This browser is not calling from loopback.');
-      box.textContent = 'bench is an admin-only control and this page is not on the admin lane — the bench itself is fine, and every reading above is live. Run it from the box.';
+      box.textContent = 'bench is an admin-only control and this page is not on the admin lane — the bench itself is fine, and every reading above is live. Run it from the brain's machine.';
       return;
     }
     const j = await r.json();
@@ -1000,8 +1006,8 @@ function markAdminLane(ok, why) {
 /* A 403 is the ONE status that means "not you", and it must never be reported
    as a fault in the thing being called. */
 /* ⛔ 401 COUNTS TOO, AND OMITTING IT WOULD HAVE RE-BROKEN THE PAGE THE MOMENT THE
-   `/admin` PREFIX LANDED. The brain's own `requireLoopback` answers 403; nginx's
-   `auth_basic` on the `/admin/` lane answers **401** with an HTML body. Routing
+   `/admin` PREFIX LANDED. The brain's own `requireLoopback` answers 403; the old
+   nginx `auth_basic` on the `/admin/` lane answered **401** with an HTML body. Routing
    through `/admin` therefore turns every unauthenticated control from a clean
    403 into a 401 that falls through to `r.json()`, throws on the HTML, and
    reports "could not reach the brain" — the exact false accusation this
@@ -1461,7 +1467,7 @@ function tvBench(st, series) {
   // ── retention: can we still see what happened an hour ago?
   add('history retained', !!(series && series.available && (series.returned || 0) > 1),
     series && series.available ? `${series.total} samples on disk` : 'series unavailable',
-    'Without retention an hours-old stall is unreadable. Check better-sqlite3 on the box.');
+    'Without retention an hours-old stall is unreadable. Check better-sqlite3 on the brain's machine.');
 
   // ── the substrate
   const v = st && st.voice;
@@ -1606,8 +1612,8 @@ async function pollEye() {
    claim.
    ──────────────────────────────────────────────────────────────────────────── */
 /* ⚠ `/teach-ledger.json` LOOKS like the two public JSON readers above and is
-   NOT one of them — the nginx vhost forwards `/public-state.json` and
-   `/minds-eye.json` by exact match, and nothing else. Bare, this route returned
+   NOT one of them — the public door forwards `/public-state.json` and
+   `/minds-eye.json` (and `/health`, `/ws`, `/image`), and nothing else. Bare, this route returned
    the SPA with a 200, `r.json()` threw, `grabLedger` swallowed it, and the pane
    printed "Ledger route unreachable — the brain may be offline." about a brain
    that was up and teaching. It carries the prefix like every other route. */
@@ -1989,7 +1995,7 @@ function renderKnobs(k) {
           + ` style="width:112px;font:11.5px var(--tv-font);background:var(--tv-bg);color:var(--tv-ink);`
           + `border:1px solid var(--tv-line);border-radius:3px;padding:2px 5px">`
           + `<button class="tv-knob-def" data-key="${knobEsc(x.key)}"`
-          + ` title="Store this as the value the box STARTS with for ${knobEsc(x.key)}. Does not change the running brain — it takes effect at the next restart."`
+          + ` title="Store this as the value the brain's machine STARTS with for ${knobEsc(x.key)}. Does not change the running brain — it takes effect at the next restart."`
           + ` style="font:11px var(--tv-font);background:var(--tv-panel);color:var(--tv-warn);`
           + `border:1px solid var(--tv-line);border-radius:3px;padding:2px 8px;cursor:pointer">◎ make default</button>`
           + (x.defaultStored != null
@@ -2118,7 +2124,7 @@ function renderKnobs(k) {
         msgEl.textContent = ' ⚠ nothing typed — an empty box would store an empty default rather than clearing one. Use ✕ clear.';
         return;
       }
-      defPost(key, { value: input.value }, msgEl, `◎ saved — the box will START with ${input.value}. The running brain is unchanged; restart to apply.`);
+      defPost(key, { value: input.value }, msgEl, `◎ saved — the brain's machine will START with ${input.value}. The running brain is unchanged; restart to apply.`);
     };
   }
   for (const btn of host.querySelectorAll('.tv-knob-def-clear')) {
@@ -2397,7 +2403,7 @@ async function loadWeightsList() {
     ? `${files.length} file${files.length === 1 ? '' : 's'}`
     : 'none on disk';
   if (!files.length) {
-    host.innerHTML = '<div class="tv-note">No weights file exists on the box yet — '
+    host.innerHTML = '<div class="tv-note">No weights file exists on the brain's machine yet — '
       + 'nothing has been saved. On a fresh brain this is correct.</div>';
     return;
   }
@@ -2553,7 +2559,7 @@ function renderDials(st, tv) {
       sub: st.knobs ? `${st.knobs.boot} boot-frozen` : '',
     },
     {
-      id: 'disk', label: 'disk used', tip: 'Share of the box volume in use.\n\nThe visual store grows with everything she sees, so this is the tripwire for the save floor — deferred saves are the symptom that matters.',
+      id: 'disk', label: 'disk used', tip: 'Share of the brain's machine volume in use.\n\nThe visual store grows with everything she sees, so this is the tripwire for the save floor — deferred saves are the symptom that matters.',
       val: st.disk && st.disk.usedPct != null ? st.disk.usedPct + '%' : null,
       frac: st.disk && st.disk.usedPct != null ? st.disk.usedPct / 100 : null, c: TV_C.good,
       sub: st.disk && st.disk.saveDeferrals ? `${st.disk.saveDeferrals} saves deferred` : 'save floor ok',
@@ -2776,7 +2782,7 @@ async function sendPosition(file) {
   if (!file) return;
   if (!/\.json$/i.test(file.name)) {
     msg.style.color = 'var(--tv-warn)';
-    msg.textContent = `${file.name} is not a .json — the position lives in brain-weights.json (about 761 KB). The multi-gigabyte .bin is placed on the box, not uploaded through a browser.`;
+    msg.textContent = `${file.name} is not a .json — the position lives in brain-weights.json (about 761 KB). The multi-gigabyte .bin is placed on the brain's machine, not uploaded through a browser.`;
     return;
   }
   /* ⛔ IT SURFACES ITS CONSEQUENCE BEFORE IT FIRES, like every other control on
@@ -2794,7 +2800,7 @@ async function sendPosition(file) {
     + 'use "Restart · keeps training" below to make this take effect.'
     + posNow)) {
     msg.style.color = 'var(--tv-dim)';
-    msg.textContent = 'cancelled — nothing was sent and the position on the box is unchanged.';
+    msg.textContent = 'cancelled — nothing was sent and the position on the brain's machine is unchanged.';
     return;
   }
   msg.style.color = 'var(--tv-dim)';
@@ -3001,8 +3007,8 @@ const PRESS_ACTIONS = [
   },
   {
     id: 'tvPressUpdKeep', path: 'update?keep=1', verb: 'update (keep training)', waitMs: 300000,
-    head: 'UPDATE the box to the latest code and KEEP training?',
-    body: '✓ The box re-pulls the project code, then restarts\n'
+    head: 'UPDATE the brain's machine to the latest code and KEEP training?',
+    body: '✓ The brain's machine pulls the latest project code, then restarts\n'
         + '✓ The saved weights are RESUMED — no fresh walk\n\n'
         + 'This is how a fix ships without costing training. Takes a minute or two.',
   },
@@ -3019,8 +3025,8 @@ const PRESS_ACTIONS = [
   },
   {
     id: 'tvPressFresh', path: 'update', verb: 'fresh walk', waitMs: 300000,
-    head: '⚠ UPDATE the box to the latest code and WIPE ALL TRAINING?',
-    body: '✓ The box re-pulls the project code\n'
+    head: '⚠ UPDATE the brain's machine to the latest code and WIPE ALL TRAINING?',
+    body: '✓ The brain's machine pulls the latest project code\n'
         + '✗ Every trained weight, every episode, every schema and her visual store are DESTROYED\n'
         + '✗ Her identity anchors survive. Nothing she has LEARNED does\n\n'
         + 'This is the fresh walk. It is the right press after shipping a change to what she is '
@@ -3168,7 +3174,7 @@ async function pressSafeties() {
    ⛔⛔ THE DEPLOY VERBS ASK FIRST, AND THAT IS NOT TIMIDITY. A timeout means
    NGINX stopped waiting — it does NOT mean the brain never received the request.
    If it processes that request later while a ctl-spawned deploy is already
-   running, the box gets TWO `self-update.sh` processes doing `rsync -a --delete`
+   running, the brain's machine gets TWO `self-update.sh` processes doing `rsync -a --delete`
    into the same directory, which is the one failure mode that corrupts an
    install rather than merely failing.
 
@@ -3190,7 +3196,7 @@ async function pressViaCtl(a, msg, netErr) {
       + 'That is what a BLOCKED EVENT LOOP looks like from here — and it is exactly what the '
       + 'always-up control plane is for. It can run this press without the brain.\n\n'
       + '⚠ BEFORE YOU DO: a timeout means nginx stopped waiting, NOT that the brain never got '
-      + 'the request. If it wakes up and runs this press too, the box ends up with TWO deploys '
+      + 'the request. If it wakes up and runs this press too, the brain's machine ends up with TWO deploys '
       + 'writing into the same directory at once, which can corrupt the install.\n\n'
       + 'Only continue if the brain has been unresponsive for a while — not if it just went quiet.\n\n'
       + `OK = run "${a.verb}" through the control plane.  Cancel = do nothing.`)) {
@@ -3416,7 +3422,7 @@ function renderDefaults(st) {
   }
   if (!bits.length) {
     el.innerHTML = '<span style="color:var(--tv-dim)">◎ no operator defaults stored — this boot is running code behaviour '
-      + 'plus whatever the environment sets. Use “make default” on any knob to change what the box starts with.</span>';
+      + 'plus whatever the environment sets. Use “make default” on any knob to change what the brain's machine starts with.</span>';
     return;
   }
   el.innerHTML = bits.map((b) => `<div>${b}</div>`).join('');
@@ -3462,7 +3468,7 @@ function pressWatchTick() {
   if (msg) {
     msg.style.color = 'var(--tv-warn)';
     msg.textContent = `⚠ ${PRESS_WATCH.verb} was accepted but no new boot has been seen in `
-      + `${Math.round(PRESS_WATCH.waitMs / 1000)}s. That is a CANNOT-TELL, not a failure: the box may be slow to `
+      + `${Math.round(PRESS_WATCH.waitMs / 1000)}s. That is a CANNOT-TELL, not a failure: the brain's machine may be slow to `
       + 'come back, or the restart may never have happened. Check the dashboard before pressing again — '
       + 'pressing twice is how a fresh walk gets fired at a brain that was already restarting.';
   }

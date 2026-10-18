@@ -266,9 +266,9 @@
     const elStatus = document.getElementById('status');
     const elStatusText = document.getElementById('status-text');
 
-    // Deployment-aware endpoint: same-origin first (works when the brain serves
-    // this page, and through the nginx proxy on the deploy); fall back to the
-    // local dev brain on :7525 when the page is opened from a different origin.
+    // Deployment-aware endpoint: the configured brain origin (or same-origin
+    // when the brain serves this page itself); fall back to the local dev
+    // brain on :7525 when the page is opened from a different origin.
     // THIRD MODE (2026-10-18): on GitHub Pages the brain is on another host;
     // js/brain-origin.js resolves it and returns the bare path when nothing
     // is configured, so the old order below is unchanged in that case.
@@ -314,7 +314,7 @@
         } catch (e) { /* try next endpoint */ }
       }
       if (!data) { setStatus('err', 'brain offline — no snapshot reachable'); return; }
-      // CTLPLANE.1 — nginx now answers 200 with an explicit brain-offline body
+      // A front door may answer 200 with an explicit brain-offline body
       // when the backend is down, instead of a 502 HTML page that this loop
       // could only report as "no snapshot reachable". Check the flag BEFORE the
       // `rec` test below, or a genuine outage renders as the much softer
