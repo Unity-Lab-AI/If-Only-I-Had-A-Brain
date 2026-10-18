@@ -25,6 +25,9 @@ REM   3. If the port is still held after that, best-effort force-kill
 REM      every node.exe process on the machine as a last resort (the
 REM      operator's launcher window only ever has one node for the
 REM      brain so this is safe on dedicated dev boxes).
+REM
+REM Then the CONTROL PLANE on 7526 is stopped as well - see CTLSTOP below for
+REM why that is the default. `stop.bat keepctl` leaves it up.
 
 echo [stop] step 1/3: requesting graceful shutdown via HTTP /shutdown...
 curl -s -m 5 -X POST http://localhost:7525/shutdown > nul 2>&1
@@ -90,23 +93,68 @@ powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { $
 
 echo.
 echo [stop] control plane (port 7526)...
-REM CTLSTOP - brain-ctl is LEFT RUNNING ON PURPOSE by default.
-REM It is a separate always-up process whose entire job is to outlive the
-REM brain: with it up, the dashboard's Start button can bring the brain back.
-REM Killing it here would mean "stop" also removed the way to start again.
-REM Pass `stop.bat all` when you genuinely want everything down.
+REM CTLSTOP - brain-ctl IS STOPPED BY DEFAULT. Inverted from the original
+REM "left running on purpose" behaviour on the operator's instruction, and it
+REM fixes a real defect rather than only changing a preference:
+REM
+REM   1. brain-ctl exits QUIETLY on EADDRINUSE (brain-ctl.js, the already-
+REM      running instance is the correct one on the box). So a launcher
+REM      relaunch does NOT replace a running control plane - which means
+REM      EVERY EDIT TO brain-ctl.js IS INERT until the old process is gone.
+REM      That is the local twin of the box defect recorded in
+REM      docs/BUTTON-AUDIT.md: self-update.sh restarts the brain and never the
+REM      control plane, so control-plane fixes there can be months old.
+REM   2. The original rationale was that killing it "removed the way to start
+REM      again" - true ON THE BOX, where there is no shell and the dashboard
+REM      is the only lever. It does NOT hold locally: the operator is sitting
+REM      at the machine with start.bat and Savestart.bat in this very folder.
+REM      The recovery path brain-ctl exists to provide is already in reach.
+REM
+REM Pass `stop.bat keepctl` for the old behaviour (leave it up) - kept because
+REM it is the right choice when driving a local brain purely from the
+REM dashboard. `stop.bat all` still means everything down.
+REM !! AND IT MUST NOT DECAPITATE ITS OWN CALLER. brain-ctl uses THIS SCRIPT as
+REM the stop primitive behind the dashboard's Stop button, so once stopping the
+REM control plane became the default, a Stop press would kill the very process
+REM serving the request: the HTTP response would never arrive (so a successful
+REM stop reports as a failure) and the Start button would be gone with it -
+REM which is precisely the original "left running on purpose" rationale.
+REM   The two callers are distinguishable, so they are distinguished:
+REM   UAL_CTL_NONINTERACTIVE=1 is set ONLY by brain-ctl's spawnLauncher.
+REM   Launched by the control plane -> keep the control plane.
+REM   Run by a human              -> stop everything, as instructed.
 netstat -ano | findstr :7526 | findstr LISTENING >nul 2>&1
 if %ERRORLEVEL% EQU 0 (
-    if /i "%~1"=="all" (
+    if defined UAL_CTL_NONINTERACTIVE (
+        echo   control plane LEFT RUNNING on 7526 - this stop was launched BY
+        echo   the control plane, and killing it would cut off the reply to the
+        echo   press and remove the Start button. Run stop.bat yourself to
+        echo   stop it too.
+    ) else if /i "%~1"=="keepctl" (
+        echo   control plane LEFT RUNNING on 7526 ^(you asked for 'keepctl'^).
+        echo   It is what lets the dashboard Start the brain again - but a
+        echo   launcher will NOT replace it, so edits to brain-ctl.js stay
+        echo   inert until it is stopped.
+    ) else (
         for /f "tokens=5" %%c in ('netstat -ano ^| findstr :7526 ^| findstr LISTENING') do (
+            echo   killing control-plane PID %%c
             taskkill /f /pid %%c >nul 2>&1
         )
-        echo   control plane STOPPED ^(you asked for 'all'^) - the dashboard
-        echo   Start button will not work until a launcher runs again.
-    ) else (
-        echo   control plane LEFT RUNNING on 7526 - this is deliberate.
-        echo   It is what lets the dashboard Start the brain again.
-        echo   Run `stop.bat all` to stop it too.
+        ping -n 2 127.0.0.1 >nul
+        REM BATCHERR - `if errorlevel N`, NOT `if %ERRORLEVEL% EQU N`. Inside a
+        REM parenthesised block %ERRORLEVEL% is expanded when the block is
+        REM PARSED, so it carries the value from before the netstat above ever
+        REM ran and the branch is decided by a stale number. `if errorlevel` is
+        REM evaluated at run time and is the only correct form here.
+        REM errorlevel 0 = findstr matched = port STILL held.
+        netstat -ano | findstr :7526 | findstr LISTENING >nul 2>&1
+        if not errorlevel 1 (
+            echo   WARNING: port 7526 STILL held - the next launcher will exit
+            echo   quietly on EADDRINUSE and keep serving the OLD build.
+        ) else (
+            echo   control plane STOPPED - the next start.bat / Savestart.bat
+            echo   starts a FRESH one, so brain-ctl.js changes take effect.
+        )
     )
 ) else (
     echo   control plane not running.
@@ -117,4 +165,14 @@ echo   Remember to close any browser tabs on http://localhost:7525 -
 echo   compute.html keeps the WebGPU loop running even without the
 echo   server, which is what keeps your GPU fans spinning.
 echo.
-pause
+REM NOPAUSE - brain-ctl spawns this script when the dashboard's Stop button is
+REM pressed, and it sets UAL_CTL_NONINTERACTIVE=1. Without this guard the
+REM spawned window completed the stop and then sat on "Press any key to
+REM continue" forever: one orphaned console per press, with nobody at a
+REM keyboard because the press came from a browser. A human double-clicking
+REM this file never sets the variable and still gets the pause.
+if defined UAL_CTL_NONINTERACTIVE (
+    echo   [non-interactive: launched by the control plane - closing]
+) else (
+    pause
+)

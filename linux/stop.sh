@@ -84,21 +84,60 @@ if command -v pgrep > /dev/null 2>&1; then
 fi
 echo ""
 
-# CTLSTOP — brain-ctl is LEFT RUNNING ON PURPOSE by default.
-# It is a separate always-up process whose entire job is to outlive the brain:
-# with it up, the dashboard's Start button can bring the brain back. Killing it
-# here would mean "stop" also removed the way to start again.
-# Pass `./stop.sh all` when you genuinely want everything down.
+# CTLSTOP — brain-ctl IS STOPPED BY DEFAULT. Inverted from the original
+# "left running on purpose" behaviour on the operator's instruction, and it
+# fixes a real defect rather than only changing a preference:
+#
+#   1. brain-ctl exits QUIETLY on EADDRINUSE (correct on the box, where the
+#      already-running instance is the good one). So a launcher relaunch does
+#      NOT replace a running control plane — meaning EVERY EDIT TO
+#      brain-ctl.js IS INERT until the old process is gone. That is the local
+#      twin of the box defect in docs/BUTTON-AUDIT.md: self-update.sh restarts
+#      the brain and never the control plane.
+#   2. The original rationale — killing it "removed the way to start again" —
+#      is true ON THE BOX, where there is no shell and the dashboard is the
+#      only lever. It does NOT hold locally: the operator is at the machine
+#      with start.sh and Savestart.sh in this very folder.
+#
+# Pass `./stop.sh keepctl` for the old behaviour (leave it up), kept because it
+# is right when driving a local brain purely from the dashboard. `./stop.sh all`
+# still means everything down.
+#
+# ⛔⛔ AND IT MUST NOT DECAPITATE ITS OWN CALLER. brain-ctl uses THIS SCRIPT as
+# the stop primitive behind the dashboard's Stop button, so once stopping the
+# control plane became the default, a Stop press would kill the very process
+# serving the request: the HTTP reply would never arrive (a successful stop
+# reporting as a failure) and the Start button would go with it — which is
+# exactly the original "left running on purpose" rationale.
+#   The two callers are distinguishable, so they are distinguished:
+#   UAL_CTL_NONINTERACTIVE=1 is set ONLY by brain-ctl's spawnLauncher.
+#   Launched by the control plane -> keep the control plane.
+#   Run by a human                -> stop everything, as instructed.
 echo "[stop] control plane (port 7526)..."
 if lsof -ti:7526 > /dev/null 2>&1; then
-    if [ "${1:-}" = "all" ]; then
-        for pid in $(lsof -ti:7526 2>/dev/null); do kill -9 "$pid" 2>/dev/null; done
-        echo "  control plane STOPPED (you asked for 'all') -- the dashboard"
-        echo "  Start button will not work until a launcher runs again."
+    if [ -n "${UAL_CTL_NONINTERACTIVE:-}" ]; then
+        echo "  control plane LEFT RUNNING on 7526 — this stop was launched BY"
+        echo "  the control plane, and killing it would cut off the reply to the"
+        echo "  press and remove the Start button. Run ./stop.sh yourself to"
+        echo "  stop it too."
+    elif [ "${1:-}" = "keepctl" ]; then
+        echo "  control plane LEFT RUNNING on 7526 (you asked for 'keepctl')."
+        echo "  It is what lets the dashboard Start the brain again — but a"
+        echo "  launcher will NOT replace it, so edits to brain-ctl.js stay"
+        echo "  inert until it is stopped."
     else
-        echo "  control plane LEFT RUNNING on 7526 -- this is deliberate."
-        echo "  It is what lets the dashboard Start the brain again."
-        echo "  Run ./stop.sh all to stop it too."
+        for pid in $(lsof -ti:7526 2>/dev/null); do
+            echo "  killing control-plane PID $pid"
+            kill -9 "$pid" 2>/dev/null
+        done
+        sleep 1
+        if lsof -ti:7526 > /dev/null 2>&1; then
+            echo "  WARNING: port 7526 STILL held — the next launcher will exit"
+            echo "  quietly on EADDRINUSE and keep serving the OLD build."
+        else
+            echo "  control plane STOPPED — the next start.sh / Savestart.sh"
+            echo "  starts a FRESH one, so brain-ctl.js changes take effect."
+        fi
     fi
 else
     echo "  control plane not running."
