@@ -354,7 +354,13 @@
       <div class="title">⚠ GPU client auto-launch failed</div>
       <div class="details" id="gpu-spawn-details">Brain-server tried to spawn compute.html but the browser-launch chain failed.</div>
       <ul class="steps">
-        <li>1. Open <a href="/compute.html" target="_blank">http://localhost:7525/compute.html</a> manually in Chrome</li>
+        <!-- SUBPATH — relative, not root-absolute. '/compute.html' resolves to
+             the SITE ROOT, which 404s wherever the site is not served from one
+             (measured on GitHub Pages 2026-10-18, where this page lives under
+             /<repo>/html/). A sibling reference is correct from html/ in every
+             deployment, and still correct when the brain serves this page at
+             the root on :7525. -->
+        <li>1. Open <a href="compute.html" target="_blank">http://localhost:7525/compute.html</a> manually in Chrome</li>
         <li>2. Recommended Chrome flags for max neuron capacity: <code>--enable-unsafe-webgpu --enable-dawn-features=allow_unsafe_apis,disable_robustness</code></li>
         <li>3. Without <code>--enable-unsafe-webgpu</code>: capped at 2GB binding ceiling (~178M neurons)</li>
         <li>4. See <code>server/server.log</code> [CRITICAL] lines for the exact failure signature</li>

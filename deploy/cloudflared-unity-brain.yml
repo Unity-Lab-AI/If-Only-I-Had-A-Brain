@@ -11,10 +11,37 @@
 #     GitHub Pages (public site)
 #           |  https:// + wss://
 #           v
-#     brain.unityailab.com          <- Cloudflare edge, TLS terminated here
+#     <your tunnel hostname>        <- Cloudflare edge, TLS terminated here
 #           |  outbound-only tunnel, NO open ports on the router
 #           v
 #     127.0.0.1:7525                <- the brain, still loopback-only
+#
+# ⛔⛔ THERE IS NO DOMAIN ANY MORE — unityailab.com is DEAD (operator,
+# 2026-10-18: "we dont have unityailab.com anymore, its a dead site").
+# git.unityailab.com still answers and still hosts Forgejo, but it is MOVING,
+# so nothing new should be built against it either.
+#
+# ⚠ THAT IS A REAL CONSTRAINT ON THIS FILE, NOT A COSMETIC ONE. A *named*
+# Cloudflare tunnel requires a domain in your Cloudflare account — that is
+# where the stable hostname comes from. With no domain there are three honest
+# options, and they are not equivalent:
+#
+#   1. A cheap domain (~$10/yr) on Cloudflare -> everything below works exactly
+#      as written, stable hostname, nothing else changes.
+#   2. `cloudflared tunnel --url http://127.0.0.1:7525` -> a FREE quick tunnel
+#      on *.trycloudflare.com. ⛔ The URL is RANDOM AND CHANGES EVERY RESTART,
+#      so the committed BRAIN_ORIGIN goes stale each time and visitors need the
+#      `?brain=` override. Fine for proving the path, poor as the permanent
+#      answer. This config file is NOT used in that mode.
+#   3. ⭐ Tailscale Funnel -> a STABLE `*.ts.net` hostname, free, TLS included,
+#      NO DOMAIN REQUIRED. For a brain hosted on a home PC with no domain this
+#      is the better fit than 2, and the same Tailscale install also gives a
+#      PRIVATE path to the admin lane — which is the clean answer to the
+#      `requireLoopback`-is-defeated-by-a-tunnel problem below, because the
+#      admin lane then never faces the public internet at all.
+#
+# Keep this file for options 1 and 3's cloudflared form; it is the route
+# allowlist either way, and the allowlist is the part that matters.
 #
 # ⭐ THE BRAIN NEVER STOPS BEING LOOPBACK-ONLY. `BIND_HOST` stays 127.0.0.1 and
 # nothing on the LAN or the internet can address it directly; cloudflared is
@@ -54,24 +81,32 @@
 #   the forged-header attack has been ATTEMPTED FROM OUTSIDE and observed to
 #   fail.** A security control that has only been reasoned about is not one.
 #
-# ── SETUP (once) ────────────────────────────────────────────────────────────
+# ── SETUP (once) — needs a domain in your Cloudflare account; see above ─────
 #   cloudflared tunnel login
 #   cloudflared tunnel create unity-brain
-#   cloudflared tunnel route dns unity-brain brain.unityailab.com
-#   # fill in the two placeholders below from the output, then:
+#   cloudflared tunnel route dns unity-brain <your-tunnel-host>
+#   # fill in the placeholders (tunnel id, credentials path, and the hostname
+#   # on every ingress rule) from the output, then:
 #   cloudflared tunnel --config deploy/cloudflared-unity-brain.yml run
 #
 # Run it as a service so it survives a reboot:
 #   cloudflared service install        (Windows: installs + auto-starts)
 #
-# ── VERIFY (do not skip the refusals) ───────────────────────────────────────
-#   curl -s -o /dev/null -w '%{http_code}\n' https://brain.unityailab.com/public-state.json   # want 200
-#   curl -s -o /dev/null -w '%{http_code}\n' https://brain.unityailab.com/minds-eye.json      # want 200
-#   curl -s -o /dev/null -w '%{http_code}\n' https://brain.unityailab.com/admin/status        # want 404
-#   curl -s -o /dev/null -w '%{http_code}\n' -X POST https://brain.unityailab.com/reset       # want 404
-#   curl -s -o /dev/null -w '%{http_code}\n' https://brain.unityailab.com/ctl/status          # want 404
-# ⭐ The last three are the ones that matter. A 200 from any of them means this
-#   file is not doing its job — stop the tunnel before investigating.
+# ── VERIFY — AND DO NOT SKIP THE REFUSALS ───────────────────────────────────
+# Substitute your own hostname. The first three prove she is reachable; the
+# last three prove she is not WIDE OPEN, and those are the ones that matter.
+#
+#   H=https://<your-tunnel-host>
+#   curl -s -o /dev/null -w '%{http_code}\n' $H/public-state.json   # want 200
+#   curl -s -o /dev/null -w '%{http_code}\n' $H/minds-eye.json      # want 200
+#   curl -s -o /dev/null -w '%{http_code}\n' $H/health              # want 200
+#   curl -s -o /dev/null -w '%{http_code}\n' $H/admin/status        # want 404
+#   curl -s -o /dev/null -w '%{http_code}\n' -X POST $H/reset       # want 404
+#   curl -s -o /dev/null -w '%{http_code}\n' $H/ctl/status          # want 404
+#
+# ⭐ A 200 from any of the last three means this file is not doing its job.
+#   Stop the tunnel before investigating — `POST /reset` wipes every trained
+#   weight, and at that point it would be a public URL.
 
 tunnel: REPLACE-WITH-TUNNEL-ID
 credentials-file: REPLACE-WITH-PATH-TO/<TUNNEL-ID>.json
@@ -88,12 +123,12 @@ ingress:
   # The dashboard snapshot every public viewer polls. Also the console-ring
   # tunnel (`?console=N`); query strings are not part of path matching, so that
   # keeps working without a rule of its own.
-  - hostname: brain.unityailab.com
+  - hostname: REPLACE-WITH-YOUR-TUNNEL-HOSTNAME
     path: ^/public-state\.json$
     service: http://127.0.0.1:7525
 
   # Her mind's eye — the current percept frame.
-  - hostname: brain.unityailab.com
+  - hostname: REPLACE-WITH-YOUR-TUNNEL-HOSTNAME
     path: ^/minds-eye\.json$
     service: http://127.0.0.1:7525
 
@@ -114,14 +149,14 @@ ingress:
   # Safe to publish: it returns status/uptime/neurons/scale/gpu/vram/clients/
   # spikes/psi/clusters — the same class of public figures already served by
   # public-state.json, no secrets and nothing mutable.
-  - hostname: brain.unityailab.com
+  - hostname: REPLACE-WITH-YOUR-TUNNEL-HOSTNAME
     path: ^/health$
     service: http://127.0.0.1:7525
 
   # The PUBLIC WebSocket lane (chat + live state). ⚠ This is `/ws`, NOT
   # `/admin/ws` — the admin socket is the Basic-auth-gated one and stays off.
   # cloudflared upgrades WebSockets by default; no extra setting is needed.
-  - hostname: brain.unityailab.com
+  - hostname: REPLACE-WITH-YOUR-TUNNEL-HOSTNAME
     path: ^/ws$
     service: http://127.0.0.1:7525
 
