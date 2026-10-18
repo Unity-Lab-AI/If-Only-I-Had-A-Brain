@@ -409,6 +409,8 @@
       Unity AI Lab · <a href="../README.md">README</a> · <a href="docs.html">docs viewer</a> · <a href="legend.html">refresh this page</a>
     </footer>
   </div>
+<!-- Where the brain is (same-origin / localhost / a configured tunnel origin). -->
+<script src="../js/brain-origin.js"></script>
 <script>
   // Live-latest donor links. The buttons carry the build-time release URL
   // as the no-JS base (CI keeps them bumped); this upgrades them to the
@@ -416,7 +418,7 @@
   // proxy provably forwards (brand-new server routes are not reachable
   // from outside). Clicking through to the Forgejo asset is plain
   // navigation — no CORS involved.
-  fetch('/public-state.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+  fetch((typeof unityBrainHttp === 'function') ? unityBrainHttp('/public-state.json') : '/public-state.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
     var dl = d && d.state && d.state.donorLatest;
     if (!dl) return;
     var w = document.getElementById('donor-dl-win'); if (w && dl.windowsUrl) w.href = dl.windowsUrl;

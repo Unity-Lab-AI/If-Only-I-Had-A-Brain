@@ -10502,7 +10502,13 @@ const httpServer = http.createServer((req, res) => {
     }
   }
   if (req.url === '/health') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
+    // CORS on purpose (2026-10-18): the site is served from GitHub Pages and
+    // the brain from a tunnel on another host, and /health is the route the
+    // client's health gate fetches cross-origin to decide a real brain exists.
+    // Without this header the fetch fails silently and every visitor is handed
+    // the in-browser toy brain while the real one runs fine. Same header the
+    // other public read routes already send.
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
     res.end(JSON.stringify({
       status: 'alive',
       uptime: brain.time,

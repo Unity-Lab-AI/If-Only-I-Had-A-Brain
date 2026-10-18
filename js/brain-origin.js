@@ -41,7 +41,7 @@
   //     var BRAIN_ORIGIN = 'https://REPLACE-WITH-YOUR-TUNNEL-HOSTNAME';
   // Leave it empty until then: a configured-but-dead origin is worse than none,
   // because the page would stop trying the same-origin lane that may be live.
-  var BRAIN_ORIGIN = '';
+  var BRAIN_ORIGIN = 'https://dumbass.tailec58e0.ts.net';
 
   /** ?brain= wins over the committed value — see note above. */
   function fromQuery() {
