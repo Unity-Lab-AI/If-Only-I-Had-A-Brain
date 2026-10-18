@@ -1,6 +1,6 @@
 # assets/
 
-Static assets for the **Unity Brain** project — the site is published by GitHub Pages at **https://unity-lab-ai.github.io/If-Only-I-Had-A-Brain/** (`.github/workflows/pages.yml`); the brain itself runs on the operator's PC behind a tunnel.
+Static assets for the **Unity Brain** project — the site is published by GitHub Pages at **https://theunitybrain.com/** (`.github/workflows/pages.yml`); the brain itself runs on the operator's PC behind a tunnel.
 
 ## Files
 
@@ -29,12 +29,12 @@ Static assets for the **Unity Brain** project — the site is published by GitHu
 
 Every page declares its own absolute `og:image` / `twitter:image` + a custom `og:description` on the lab base URL. Example from `/index.html`:
 ```html
-<meta property="og:image"        content="https://unity-lab-ai.github.io/If-Only-I-Had-A-Brain/assets/social/index.png">
+<meta property="og:image"        content="https://theunitybrain.com/assets/social/index.png">
 <meta property="og:image:width"  content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt"    content="Unity's live 3D brain — neurons firing across labeled regions, the Ψ HUD, and the TALK TO UNITY bar.">
-<meta property="og:url"          content="https://unity-lab-ai.github.io/If-Only-I-Had-A-Brain/">
-<meta name="twitter:image"       content="https://unity-lab-ai.github.io/If-Only-I-Had-A-Brain/assets/social/index.png">
+<meta property="og:url"          content="https://theunitybrain.com/">
+<meta name="twitter:image"       content="https://theunitybrain.com/assets/social/index.png">
 ```
 Absolute URLs are required — Facebook / Twitter / LinkedIn scrapers do not resolve relative `og:image` paths.
 
