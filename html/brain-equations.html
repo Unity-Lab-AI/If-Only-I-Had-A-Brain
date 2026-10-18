@@ -1244,8 +1244,10 @@ probe(word, grade, subject):
  │ as a few KB of field-A; your browser only reconstructs + plays. ONE
  │ lane: no browser synthesis, no cloud TTS, no fallback voice — if her
  │ voice engine is down she is silent and the reason is counted
- ├── <span class="hl">Image Gen</span> → multi-provider chain (custom / auto-detect /
- │ env.js / Pollinations default, see §8.11)
+ ├── <span class="hl">Image Gen</span> → her brain's own card: a local Stable
+ │ Diffusion engine behind ONE server-side gate, paced as a VRAM budget
+ │ (one render at a time, idle unload, yields to a donor upload). No remote
+ │ API, no key, no silent fallback — engine down ⇒ she says so in words
  ├── <span class="hl">Vision</span> → her own EQUATIONAL MIND'S EYE + visual cortex
  │ (visual-cortex.js _mindSpace.describe; camera frames → CDF 9/7
  │ field C → dim-64 percept). NO LLM/VLM describer — fully retired,

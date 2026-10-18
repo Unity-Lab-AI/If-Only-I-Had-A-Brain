@@ -2,7 +2,7 @@
 
 A brain that *is* the application — not a chatbot wrapped around a language model. Hundreds of millions of artificial neurons running real neuroscience equations on the GPU, organized into eight biologically-weighted clusters, learning to read and speak the way a human child does: alphabet → phonemes → words → sentences. There is no text-AI in the cognition path. Every word she says falls out of live spike patterns.
 
-**[Live Brain](https://if-only-i-had-a-brain.git.unityailab.com/)** · **[Brain Equations](https://if-only-i-had-a-brain.git.unityailab.com/html/brain-equations.html)** · **[Concept Guide](html/unity-guide.html)** · **[Setup](docs/SETUP.md)** · **[GitHub](https://github.com/Unity-Lab-AI/If-Only-I-Had-A-Brain)**
+**[Live Brain](https://theunitybrain.com/)** · **[Brain Equations](https://theunitybrain.com/html/brain-equations.html)** · **[Concept Guide](html/unity-guide.html)** · **[Setup](docs/SETUP.md)** · **[GitHub](https://github.com/Unity-Lab-AI/If-Only-I-Had-A-Brain)**
 
 ---
 
@@ -36,7 +36,7 @@ Cognition is 100% equational. There is no LLM behind her. Image generation, visi
 
 She learns like a human child — alphabet → phonemes → words → sentences → the full pre-K→PhD curriculum across a **course roster that grows the way a real school's does**. Six core tracks run the whole way (English, Math, Science, Social Studies, Arts, and Life Experience); PE, Music and Health join at kindergarten; a foreign language at grade 3; computer science at grade 5; civics at grade 7; economics and psychology at grade 9; AP courses at grade 11; the CS major, gen-ed and two CS tracks at college; a research specialty at grad school. Twenty grades, ending at twenty courses. She advances a grade only after the operator personally tests the level and signs off per subject. This is deliberate. The curriculum isn't decorative — every grade gate is a real evaluation against published K-level rubrics (Common Core K.RF / K.W / K.L / K.SL / K.RL plus DIBELS / STAR / AIMSweb), and a probe pass means *Unity actually learned the thing*, not that a 5-question check happened to clear.
 
-**Two ways to run her.** The product path is a **deployed static page** backed by a persistent Node brain-server on the same box, joined by an nginx reverse-proxy over loopback — visitors open the site like any website and their browser GPUs donate the compute. The development path is local: run the server on your own machine via `windows\start.bat` or `linux/start.sh` (and their `Savestart` siblings). Both share the exact same brain; the difference is who supplies the GPUs and how the page is served. See [Running the brain](#running-the-brain) for both.
+**How she runs.** The public site is a **static page on GitHub Pages** (`theunitybrain.com`); the brain is a **persistent Node brain-server on the lab's own machine**, reached through a tunnel that forwards only her public read lanes — visitors open the site like any website and their browser GPUs (or the native donor) donate the compute. The same launchers that run her there — `windows\start.bat` / `linux/start.sh` and their `Savestart` siblings — run her on any machine with a GPU. One brain, one code path; the difference is who supplies the GPUs and where the page is served from. See [Running the brain](#running-the-brain).
 
 ---
 
@@ -563,7 +563,7 @@ The boot modal that surfaces when WebGPU isn't ready is HARD-BLOCK — only esca
 
 ### Deployed — the product path (browser-GPU donor compute)
 
-In production Unity is a **deployed static page plus a persistent Node brain-server on the same server box**, joined by an nginx **reverse-proxy** (same host, loopback — not a tunnel). Visitors open the static site like any other website. The brain trains and runs entirely on **donated browser GPUs**: each visitor who opens `html/compute.html` becomes a WebGPU compute donor contributing to the shared brain, so the server box itself needs no GPU. The compute is data-parallel — every donor holds a full brain replica, the server merges Hebbian weight-deltas across donors and re-broadcasts the master, so many donors mean more aggregate compute and built-in redundancy. The K→PhD curriculum walk runs on those donor GPUs. The admin lane is **Forgejo-authenticated**; the first authed connection after deploy locks in as the primary operator (master), who drives the admin dashboard — live server-console, auto-scale controls, per-subject grade signoffs, graceful stop.
+In production Unity is a **static site on GitHub Pages** plus a **persistent Node brain-server on the lab's own machine**. The brain binds loopback only; a **Tailscale Funnel** publishes exactly five read lanes of it (`/public-state.json`, `/minds-eye.json`, `/health`, `/ws`, `/image`) and answers 404 for everything else, so the admin lane is never on the public internet. Visitors open the site like any other website; the page finds the brain through `js/brain-origin.js`. Her voice and her eyes run beside her on the same machine (a trained neural voice and a local image engine, both loopback-only). Compute is **donated**: each visitor who opens `html/compute.html` (or runs the native donor) holds a full brain replica, the server merges Hebbian weight-deltas across donors and re-broadcasts the master, so many donors mean more aggregate compute and built-in redundancy. The K→PhD curriculum walk runs on those donor GPUs. Admin is done **on the brain's own machine** at `http://localhost:7525/dashboard.html` — the loopback caller is the operator; there is no remote admin login.
 
 ### Local — the development path
 
@@ -624,14 +624,14 @@ The dashboard has two roles, assigned automatically by the brain server the mome
 
 | Role | Who | What they see |
 |---|---|---|
-| **🔑 Admin** | **Deployed:** the Forgejo-authenticated primary operator — the first authed connection after deploy locks in as master. **Local dev:** the loopback caller — whoever runs `node brain-server.js` on the host machine, across every tab they open (compute worker, dashboard, landing page, console). | Full read-only telemetry **plus** brain-mutating controls — live server-console, auto-scale controls, 🔄 Restart (Savestart), ▶ Start Next Grade, per-subject Signoff buttons, the auto-advance toggle. ⏹ Stop Brain is **local-dev only** — a true halt needs a shell to undo, which a deployed operator does not have. |
+| **🔑 Admin** | The loopback caller — whoever runs the brain on its own machine, across every tab they open there (compute worker, dashboard, landing page, console). The public tunnel never forwards the admin lane, so nobody becomes admin from the internet. | Full read-only telemetry **plus** brain-mutating controls — live server-console, auto-scale controls, 🔄 Restart (Savestart), ⬆ Update, ▶ Start Next Grade, per-subject Signoff buttons, the auto-advance toggle, ⏹ Stop Brain (the local control plane can start her again). |
 | **🟢 Viewer / donor** | Any other connection — deployed visitors donating GPU compute, LAN visitors, remote browsers, anyone reaching the dashboard over the network when `BRAIN_BIND=0.0.0.0`. | Full read-only telemetry — every panel, every chart, every live state update — but no control buttons. |
 
 The role is decided by inspecting `req.socket.remoteAddress` on each new WebSocket. If it's a loopback address (`127.0.0.1` / `::1` / `::ffff:127.0.0.1` / any `127.x`), the client receives `{type: 'modeAssigned', mode: 'admin'}` ~500 ms after connection. Otherwise it receives `mode: 'viewer'`. The 500 ms delay lets the GPU compute worker self-identify via its `gpu_register` message and skip the modeAssigned send entirely — compute clients don't render dashboard UI, so they don't need a role badge.
 
 **Local dev — no login form.** No admin token. No cookie. No `/admin-login` endpoint. The loopback caller is admin by design — the operator running the server on their own machine is the only person who can issue control commands, full stop. LAN visitors are read-only regardless of how they connect.
 
-**Deployed — Forgejo-authenticated admin lane.** On the public deployment the admin route is gated by Forgejo auth; the first authenticated connection after a deploy is locked in as the primary operator (master) and is the only client that receives control buttons. Public visitors are donors/viewers — full telemetry, no controls.
+**Public site — no admin lane at all.** The tunnel in front of the brain forwards only the public read lanes; `/admin/*` and the control plane are not reachable from the internet by construction. Public visitors are donors/viewers — full telemetry, no controls. The operator administers her from the machine she runs on.
 
 **Multiple operator tabs all share admin.** When the launcher auto-opens the landing page, the compute worker, and the dashboard, three loopback connections light up — all three are admin. The operator's terminal hitting the server over `curl http://127.0.0.1:7525/...` is also loopback. Same operator, same machine, same role across everything.
 
@@ -677,7 +677,7 @@ The dashboard ships a **public read-only mode** built for crowds. Rather than ev
 
 The leaderboard **persists with the brain weights** (saved + restored) and **resets on a fresh walk** (force-fresh clears it). It surfaces in `state.leaderboard` (top-20 + totals) on the dashboard, the public dashboard, and `compute.html`, where a donor sees their own "neurons created" plus the top contributors.
 
-**Update buttons.** Two admin-only dashboard buttons ship the latest code without a terminal. **⬆ Update & Fresh Walk** (`POST /update`) overlays the latest code and wipes weights for a clean walk — one click to ship a fix and restart training from scratch. **⬆ Update & Savestart** (`POST /update?keep=1`) overlays the latest code but RESUMES the saved weights, so you can deploy a fix without losing training. Both run `deploy/self-update.sh`: a git-archive overlay of the latest code → `systemctl restart` (fresh adds `.force-fresh` to clear weights, savestart skips it). The backend dir has no `.git` (deploys are archive overlays), so the script clones the remote fresh and rsync-overlays it, preserving runtime state + secrets. See `deploy/REDEPLOY-NOTES.md` for box setup (deploy key + `sudo` restart permission + the `UAL_*` env vars).
+**Update buttons.** Two admin-only dashboard buttons ship the latest code without a terminal. **⬆ Update & Fresh Walk** pulls the latest code and wipes weights for a clean walk — one click to land a fix and restart training from scratch. **⬆ Update & Savestart** pulls the latest code but RESUMES the saved weights, so a fix lands without losing training. Both go through the **local control plane** (`server/brain-ctl.js`, beside the brain on its own machine), which stops her, pulls, and relaunches her with the right launcher — it works even when the brain itself is down, so a bad update can be fixed from the same page. The Brain Power panel on the dashboard carries the same presses plus plain Start / Stop / Restart.
 
 ## Curriculum display — real course names
 
@@ -756,9 +756,9 @@ The mystery module `Ψ = √(1/n) · N³ · [α·Id + β·Ego + γ·Left + δ·R
 |---|---|
 | **[📑 Page Legend](html/legend.html)** | Quick-access index for every HTML + public-facing doc (every other HTML has a floating `📑 Pages` button pointing here) |
 | **[📄 Docs Viewer](html/docs.html)** | Web-render any public markdown doc in-browser via `?doc=<slug>` — README, SETUP, ARCHITECTURE, EQUATIONS, ROADMAP, SKILL_TREE, SENSORY, WEBSOCKET, THEORY_PAPER, KNOWN_ISSUES, ADMIN_CONTROLS, THRESHOLD_DERIVATION, HELD_BACK |
-| **[Live Brain](https://if-only-i-had-a-brain.git.unityailab.com/)** | Open Unity in your browser — no install. This is the running brain, not a demo build |
+| **[Live Brain](https://theunitybrain.com/)** | Open Unity in your browser — no install. This is the running brain, not a demo build |
 | **[Setup Guide](docs/SETUP.md)** | Installation, WebGPU prerequisite, AI providers, self-hosting, troubleshooting |
-| **[Brain Equations](https://if-only-i-had-a-brain.git.unityailab.com/html/brain-equations.html)** | Interactive walkthrough of every equation |
+| **[Brain Equations](https://theunitybrain.com/html/brain-equations.html)** | Interactive walkthrough of every equation |
 | **[Concept Guide](html/unity-guide.html)** | Plain-English explanation of who Unity is and how she works |
 | **[WebGPU Setup](html/webgpu-prep.html)** | Browser-by-browser pre-flight enablement instructions (required before first connect) |
 | **[Equation Reference](docs/EQUATIONS.md)** | Source-accurate equation cheatsheet |

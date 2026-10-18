@@ -442,9 +442,9 @@ function connectToServer() {
   // brain-server runs on port 7525 (moved off 8080 to avoid colliding
   // with llama.cpp / LocalAI / every other local service).
   // Derive the backend WS URL. Local dev → ws://localhost:7525.
-  // Deployed (served from the pages host) → the PUBLIC compute lane
-  // wss://<host>/ws (nginx reverse-proxies to brain-server; see
-  // deploy/nginx-unity-brain.conf). Admin/chat UI uses /admin/ws (Forgejo-authed).
+  // Deployed (the public site) → the PUBLIC compute lane wss://<brain>/ws,
+  // one of the lanes the brain's tunnel forwards (deploy/tailscale-funnel.bat).
+  // The admin lane is never forwarded publicly.
   // THIRD MODE (2026-10-18): the page may be served from GitHub Pages while
   // the brain lives behind a tunnel on another host. js/brain-origin.js owns
   // that resolution; with nothing configured it returns exactly the two
