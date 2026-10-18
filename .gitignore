@@ -432,9 +432,6 @@ art-notdrawable.json
 # clone as if it were the code's own behaviour.
 knob-defaults.json
 server/knob-defaults.json
-# The admin's Pollinations key — a CREDENTIAL. Never tracked.
-pollinations-admin.json
-server/pollinations-admin.json
 
 # ── Fable Kit — OPERATOR TOOLING, not project source ─────────────────────────
 # A third-party kit (protocol launcher + LLM-maintained codebase wiki + central

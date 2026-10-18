@@ -305,9 +305,9 @@
        The modal is sensory-only by design because Unity's cognition is
        100% equational — there is no text-AI backend to configure. All
        the modal does is request mic/camera permissions, show the
-       auto-detected sensory backends (image-gen providers, TTS), and
-       let the user paste an optional Pollinations API key for raised
-       image-gen/TTS rate limits. Vision is Unity's own equational
+       auto-detected OPTIONAL browser-side image backends. There is no key
+       to paste: HER EYES COME HOME (2026-10-18) — her pictures render on
+       the server, on her own card. Vision is Unity's own equational
        mind's eye — no LLM describer, no describer key. -->
   <div id="setup-modal" style="display:none;">
     <div class="setup-card">
@@ -327,7 +327,6 @@
       <!-- Image Generation backend grid — click a button for per-backend instructions -->
       <p style="font-size:12px;color:var(--text);margin-top:14px;margin-bottom:6px;font-weight:500;">🎨 Image Generation</p>
       <div id="imggen-buttons" class="provider-grid">
-        <button class="provider-btn" data-backend="img:pollinations">Pollinations</button>
         <button class="provider-btn" data-backend="img:a1111">Automatic1111</button>
         <button class="provider-btn" data-backend="img:comfyui">ComfyUI</button>
         <button class="provider-btn" data-backend="img:ollama">Ollama</button>
@@ -372,11 +371,7 @@
         <div style="font-size:10px;color:var(--text-dim);line-height:1.5;">Any number of image-gen backends can be configured above. This picks which one Unity actually uses. Model dropdown lists the options available at the selected backend. (Vision is her own equational mind's eye — nothing to configure.)</div>
       </div>
 
-      <p class="hint" style="margin-bottom:6px;margin-top:12px;">Pollinations API key <span style="color:var(--text-dim);">(optional — IMAGES ONLY: anonymous tier works without, a key raises rate limits and unlocks paid image models. Her voice needs no key — it speaks from her own equational reference bank — and vision is her own equational mind's eye)</span>:</p>
-      <div style="display:flex;gap:6px;margin-bottom:14px;">
-        <input type="password" id="api-key-input" placeholder="paste your pollinations key (or any other provider key saved above)" autocomplete="off" spellcheck="false" style="flex:1;padding:8px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;box-sizing:border-box;">
-        <button id="api-key-save-btn" type="button" style="padding:8px 16px;background:var(--cyan);border:none;border-radius:6px;color:#000;font-family:var(--mono);font-size:11px;font-weight:700;cursor:pointer;letter-spacing:0.5px;">SAVE KEY</button>
-      </div>
+      <p class="hint" style="margin-bottom:14px;margin-top:12px;"><span style="color:var(--text-dim);">Her pictures render on her own engine, on the server — no image key is needed. The grid above is only for an OPTIONAL browser-side backend of your own. Her voice needs no key either (it speaks from her own equational reference bank), and vision is her own equational mind's eye.</span></p>
 
       <p class="hint" style="margin-top:4px;">Mic + camera permissions are requested when you wake her up. All sensory channels are optional — Unity can chat via text only. Toggle anything below off BEFORE waking her to skip the permission prompt entirely.</p>
 
@@ -432,7 +427,7 @@
         </p>
 
         <p style="font-size:10px;color:var(--text-dim);line-height:1.6;margin-top:8px;">
-          <strong style="color:var(--cyan);">Client-only mode</strong> (default — no server configured, or Unity server running locally on your own machine): everything runs in your browser. No cloud backend owned by us. Your conversation history, preferences, sandbox state, optional Pollinations key, and every image-gen backend you configure in this modal (custom image gen URLs, API keys) are all stored in your browser's localStorage on YOUR device only. Specific localStorage keys: <code>unity_brain_state</code>, <code>unity_brain_dictionary_v3</code>, <code>custom_image_backends</code>, <code>pollinations_image_model</code>, plus Pollinations API key via an obfuscated storage slot. "Clear All Data" wipes all of these.
+          <strong style="color:var(--cyan);">Client-only mode</strong> (default — no server configured, or Unity server running locally on your own machine): everything runs in your browser. No cloud backend owned by us. Your conversation history, preferences, sandbox state, and every optional image-gen backend you configure in this modal (custom image gen URLs, API keys) are all stored in your browser's localStorage on YOUR device only. Specific localStorage keys: <code>unity_brain_state</code>, <code>unity_brain_dictionary_v3</code>, <code>custom_image_backends</code>. "Clear All Data" wipes all of these. (There is no Pollinations key any more — that provider left the project 2026-10-18; her pictures render on the server.)
         </p>
 
         <p style="font-size:10px;color:var(--text-dim);line-height:1.6;margin-top:8px;">
@@ -444,7 +439,7 @@
         </p>
 
         <p style="font-size:10px;color:var(--text-dim);line-height:1.6;margin-top:8px;">
-          <strong style="color:var(--cyan);">Sensory API calls</strong> (image generation, TTS) are sent <strong>only</strong> to the providers YOU configure in the Image Generation grid above — never to us, never to any third party you didn't explicitly pick. If you save a DALL-E backend with your OpenAI key, only OpenAI gets that key. If you save an Automatic1111 backend on localhost, the traffic stays on your machine. Pollinations is Unity's default provider (anonymous tier works without a key, a saved key unlocks paid models and higher rate limits); using it sends image prompts to pollinations.ai. Camera frames are NOT sent to any LLM — they feed Unity's own equational visual cortex, in the brain, not a third-party describer.
+          <strong style="color:var(--cyan);">Sensory API calls</strong> (image generation, TTS) are sent <strong>only</strong> to the providers YOU configure in the Image Generation grid above — never to us, never to any third party you didn't explicitly pick. If you save a DALL-E backend with your OpenAI key, only OpenAI gets that key. If you save an Automatic1111 backend on localhost, the traffic stays on your machine. Unity's OWN pictures — the ones she draws for you in chat, and the references she learns from — are rendered on the server running her, on its own GPU, and never leave that machine; no third-party image API is involved by default. Camera frames are NOT sent to any LLM — they feed Unity's own equational visual cortex, in the brain, not a third-party describer.
         </p>
 
         <p style="font-size:10px;color:var(--text-dim);line-height:1.6;margin-top:8px;">
@@ -637,39 +632,27 @@
     }
   </script>
 
-  <!-- Pollinations key purge — ANONYMOUS TIER ONLY (operator law 2026-08-22).
-       This block used to force-seed a default key into visitor storage on
-       EVERY page load, so clearing the key never stuck. It is now purge-only:
-       every retired project key (plain AND obfuscated forms) is removed and
-       NOTHING is ever seeded — the brain runs the anonymous free tier. A
-       visitor's own personally-pasted key (not in the retired list) is left
-       untouched. Runs BEFORE the bundle so no later seed path can win. -->
+  <!-- Pollinations key purge — the provider LEFT THE PROJECT 2026-10-18.
+       This block has had three lives: it force-seeded a default key (bad),
+       then purged only the retired project keys (2026-08-22 anonymous-tier
+       law), and now simply removes ANY stored Pollinations key, because
+       there is nothing left to use one with — her pictures render on the
+       server, on her own card. A returning visitor's browser should not go
+       on carrying a credential for a provider the project no longer calls.
+       Runs BEFORE the bundle so nothing later can re-seed it. -->
   <script>
   (function () {
-    var RETIRED_KEYS = [
-      'sk_cVKTWfmo9wF7S5bOiFHZPhN2LjpW4SZ3',
-      'sk_sGQDs3CwfDJRiUcGipueAfqI3U4xhMeW',
-    ];
     try {
       var raw = localStorage.getItem('unity_brain_apikeys');
       var keys = raw ? JSON.parse(raw) : {};
-      var cur = keys.pollinations || '';
-      // stored keys may be XOR-obfuscated with the per-user salt — decode to compare
-      var plain = cur;
-      if (cur && cur.indexOf('sk_') !== 0 && cur.indexOf('sk-') !== 0) {
-        try {
-          var sess = JSON.parse(localStorage.getItem('unity_brain_session') || '{}');
-          var salt = sess.userId || 'unity_default_salt';
-          var dec = atob(cur), out = '';
-          for (var j = 0; j < dec.length; j++) out += String.fromCharCode(dec.charCodeAt(j) ^ salt.charCodeAt(j % salt.length));
-          plain = out;
-        } catch (e) { /* not base64 — leave as-is */ }
-      }
-      if (RETIRED_KEYS.indexOf(plain) !== -1) {
+      if (keys && Object.prototype.hasOwnProperty.call(keys, 'pollinations')) {
         delete keys.pollinations;
         localStorage.setItem('unity_brain_apikeys', JSON.stringify(keys));
       }
-    } catch (e) { /* storage unavailable — anonymous tier regardless */ }
+      // Stale model picks for the retired provider are inert; drop them too.
+      localStorage.removeItem('pollinations_image_model');
+      localStorage.removeItem('pollinations_vision_model');
+    } catch (e) { /* storage unavailable — nothing to clear */ }
   })();
   </script>
   <!-- Visual intake — standalone module (NOT bundled): ships camera frames

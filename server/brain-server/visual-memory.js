@@ -1658,7 +1658,15 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     st[stage] = (st[stage] || 0) + 1;
     st.lastErr = `${stage}:${key}${detail ? ' — ' + String(detail).slice(0, 120) : ''}`;
     st.lastErrAt = Date.now();
-    const GAP = Number(process.env.DREAM_REF_FETCH_GAP_MS) > 0 ? Number(process.env.DREAM_REF_FETCH_GAP_MS) : 0;
+    // 30 s default (2026-10-18). The 0 default was priced for a FREE remote
+    // renderer; a look now spends HER OWN GPU — 2.1 s warm at 512² — so 30 s
+    // bounds the look lane to ~7% of GPU time worst case, and the 6 h
+    // per-concept cooldown bounds the total. RE-PRICE written down before the
+    // pacing changed, as the law requires. `DREAM_REF_FETCH_GAP_MS=0` puts the
+    // old behaviour back for a comparison; the rollback in _vmLookFail still
+    // shortens a failed attempt's gap to 60 s so a down engine retries soon.
+    const GAP = Number(process.env.DREAM_REF_FETCH_GAP_MS) >= 0 && process.env.DREAM_REF_FETCH_GAP_MS !== undefined && process.env.DREAM_REF_FETCH_GAP_MS !== ''
+      ? Number(process.env.DREAM_REF_FETCH_GAP_MS) : 30000;
     const COOL = Number(process.env.DREAM_REF_FETCH_COOLDOWN_MS) || 21600000;
     // Roll the entry burns back to short retry windows: the attempt bought
     // nothing, so most of the cooldown comes back — the concept retries in
@@ -1948,7 +1956,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
 
   async _fetchReferenceAndGround(concept, opts = {}) {
     if (!this.mindSpace || typeof this.mindSpace.perceive !== 'function') return null;
-    if (typeof this._buildPollinationsImageUrl !== 'function') return null;
+    if (typeof this._buildImageRequest !== 'function') return null;   // image-engine.js not attached
     if (typeof fetch !== 'function') return null;   // Node < 18 (the box is 18+)
     // opts.keyOverride — imagination combos ground under their OWN key ("a+b")
     // so a combined scene never pollutes the single concepts' visual memory.
@@ -2066,7 +2074,15 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // per-concept 6h cooldown above is NOT a rate limit and stays: it stops
     // re-generating a word she already holds. Set DREAM_REF_FETCH_GAP_MS to a
     // positive ms value to re-arm a global gap for ops tuning.
-    const GAP = Number(process.env.DREAM_REF_FETCH_GAP_MS) > 0 ? Number(process.env.DREAM_REF_FETCH_GAP_MS) : 0;
+    // 30 s default (2026-10-18). The 0 default was priced for a FREE remote
+    // renderer; a look now spends HER OWN GPU — 2.1 s warm at 512² — so 30 s
+    // bounds the look lane to ~7% of GPU time worst case, and the 6 h
+    // per-concept cooldown bounds the total. RE-PRICE written down before the
+    // pacing changed, as the law requires. `DREAM_REF_FETCH_GAP_MS=0` puts the
+    // old behaviour back for a comparison; the rollback in _vmLookFail still
+    // shortens a failed attempt's gap to 60 s so a down engine retries soon.
+    const GAP = Number(process.env.DREAM_REF_FETCH_GAP_MS) >= 0 && process.env.DREAM_REF_FETCH_GAP_MS !== undefined && process.env.DREAM_REF_FETCH_GAP_MS !== ''
+      ? Number(process.env.DREAM_REF_FETCH_GAP_MS) : 30000;
     if (!opts.force && GAP > 0 && this._vmLastRefFetchAt && (now - this._vmLastRefFetchAt) < GAP) { this._vmLook().gapSkips++; return null; }
     // ⛔ LOOKBACKOFF.1 (2026-08-26) — HONOUR A 429. NOT A BUDGET.
     //
@@ -2128,8 +2144,30 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       // is unchanged, so this costs no extra pollen; it just means the ONE look she
       // gets carries enough detail to learn an appearance from.
       const _refPx = Number(process.env.DREAM_REF_RENDER_PX) > 0 ? Number(process.env.DREAM_REF_RENDER_PX) : 512;
-      try { url = this._buildPollinationsImageUrl(prompt, { width: _refPx, height: _refPx }); } catch (e) { return this._vmLookFail(key, 'urlBuild', e && e.message); }
-      if (!url) return this._vmLookFail(key, 'urlBuild', 'builder returned empty');
+      // HER EYES COME HOME (2026-10-18) — the request now targets her OWN
+      // engine (CORA, local SD on her card) through the image-engine gate.
+      // `_buildImageRequest` returns {url, init}; the bytes that come back go
+      // through the SAME decoder and the SAME perceive as before.
+      //
+      // ⛔ Rule 5 — yield to the donor. A matrix upload in flight is the one
+      // window where the donor sits at its VRAM peak and a render on top of it
+      // can exceed the card. A LOOK is a background errand: skip it, roll the
+      // burns back, retry on cooldown. (A chat picture waits instead — see
+      // image-engine.js.)
+      if ((this._gpuUploadsInFlight | 0) > 0) {
+        if (typeof this._imageEngine === 'function') this._imageEngine().donorYieldSkips++;
+        return this._vmLookFail(key, 'donorYield', 'matrix upload in flight — look deferred');
+      }
+      // ⛔ No silent fallback: an engine that is not answering /health names
+      // itself here, on its own counter, and the look retries later.
+      if (typeof this._imageEngineAlive === 'function' && !(await this._imageEngineAlive())) {
+        if (typeof this._imageEngine === 'function') this._imageEngine().engineDown++;
+        return this._vmLookFail(key, 'engineDown', 'local image engine not answering /health');
+      }
+      let _req = null;
+      try { _req = this._buildImageRequest(prompt, { width: _refPx, height: _refPx, purpose: 'look' }); } catch (e) { return this._vmLookFail(key, 'urlBuild', e && e.message); }
+      if (!_req || !_req.url) return this._vmLookFail(key, 'urlBuild', 'builder returned empty');
+      url = _req.url;
       let buf;
       try {
         const ctrl = new AbortController();
@@ -2157,16 +2195,25 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         // sits at 16-19MB buffered under the teach-pattern flood, starving other
         // connections past 25s. 60s lets fetches land in the drain windows; the
         // fetch is fire-and-forget/detached so the longer wait blocks nothing.)
-        const to = setTimeout(() => ctrl.abort(), Number(process.env.DREAM_REF_FETCH_TIMEOUT_MS) || 60000);
-        const r = await fetch(url, { signal: ctrl.signal });
+        // 90 s default now: a local render is 2-4 s warm plus a 0.6 s reload,
+        // but a cold first render behind the donor's own GPU work can run long,
+        // and aborting a render that is about to land wastes the GPU time it
+        // already spent.
+        const to = setTimeout(() => ctrl.abort(), Number(process.env.DREAM_REF_FETCH_TIMEOUT_MS) || 90000);
+        const r = await fetch(url, { ...(_req && _req.init ? _req.init : {}), signal: ctrl.signal });
         clearTimeout(to);
+        if (r && r.ok && typeof this._imageEngineTouch === 'function') {
+          // Rule 2 — (re)arm the idle unload now that the card has been used.
+          this._imageEngineTouch();
+          if (typeof this._imageEngine === 'function') { const _s = this._imageEngine(); _s.ok++; _s.lastOkAt = Date.now(); }
+        }
         if (!r || !r.ok) {
-          // Honest message (2026-08-21): the box runs the ANONYMOUS Pollinations
-          // tier by design (keys dead since 2026-08-17) — a 429 is the free
-          // tier's rate limit, EXPECTED and self-healing (the look lane rolls
-          // its burns back and retries on cooldown). The old text said "verify
-          // the Pollinations key", sending the operator hunting a key that
-          // does not exist.
+          // The engine is LOCAL now (2026-10-18). Its honest statuses: 503 =
+          // checkpoint missing on disk, 422 = bad input, 500 = the render itself
+          // failed. It serialises with a lock rather than refusing, so a 429
+          // should never arrive — the branch below is kept generic because a
+          // 429 from ANY renderer still means "back off", and dead code that
+          // handles a status honestly beats a crash on a status nobody expected.
           // LOOKBACKOFF.1 — ARM THE BACKOFF on an explicit rate-limit refusal.
           // Exponential from 15s, doubling per consecutive 429, capped at 10min,
           // and `Retry-After` WINS when the server sends one — it is the only
@@ -2184,7 +2231,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
             st429.backoffMs = wait;
             st429.backoffUntil = this._vmRef429Until;
           }
-          if (!this._vmRefHttpLogAt || now - this._vmRefHttpLogAt > 60000) { this._vmRefHttpLogAt = now; console.warn(`[VisualMemory] reference fetch "${key}" HTTP ${r ? r.status : '?'} — no image${r && r.status === 429 ? ` (anonymous-tier rate limit — backing off ${Math.round((Number(this._vmRef429BackoffMs) || 0) / 1000)}s so the chat image lane keeps its share of the shared anonymous quota)` : ''}.`); }
+          if (!this._vmRefHttpLogAt || now - this._vmRefHttpLogAt > 60000) { this._vmRefHttpLogAt = now; console.warn(`[VisualMemory] reference render "${key}" HTTP ${r ? r.status : '?'} from the local image engine — no image${r && r.status === 503 ? ' (503 = the checkpoint is not on disk; see the sidecar log)' : r && r.status === 429 ? ` (rate limited — backing off ${Math.round((Number(this._vmRef429BackoffMs) || 0) / 1000)}s)` : ''}.`); }
           return this._vmLookFail(key, 'httpFails', 'HTTP ' + (r ? r.status : '?'));
         }
         // LOOKBACKOFF.1 — the generator answered, so the escalation resets.
@@ -2242,8 +2289,15 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         // first sight of this concept → the second, independent render
         let rec2 = null, percept2 = null;
         try {
-          const url2 = this._buildPollinationsImageUrl(prompt, { width: _refPx, height: _refPx });
-          const r2 = await fetch(url2);
+          // Second independent seed through the SAME local engine (the gate
+          // serialises it behind the first; warm reload is 0.6 s so the
+          // 20 s idle-unload window keeps the checkpoint resident between them).
+          const _req2 = this._buildImageRequest(prompt, { width: _refPx, height: _refPx, purpose: 'look' });
+          const _c2 = new AbortController();
+          const _t2 = setTimeout(() => _c2.abort(), Number(process.env.DREAM_REF_FETCH_TIMEOUT_MS) || 90000);
+          let r2;
+          try { r2 = await fetch(_req2.url, { ..._req2.init, signal: _c2.signal }); } finally { clearTimeout(_t2); }
+          if (r2 && r2.ok && typeof this._imageEngineTouch === 'function') this._imageEngineTouch();
           if (r2 && r2.ok) {
             const buf2 = Buffer.from(await r2.arrayBuffer());
             const img2 = this._decodeImageToRGBA(buf2);

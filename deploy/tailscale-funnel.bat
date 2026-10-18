@@ -98,6 +98,12 @@ REM    and not by the brain. That is the whole reason this route list is the
 REM    security control and not a convenience: remove a line and nothing
 REM    downstream catches it.
 tailscale serve --bg --https=443 --set-path=/ws                %BRAIN%/ws
+REM /image/ serves pictures she ALREADY MADE from a bounded cache (chat lane).
+REM A miss is a 404, never a render: nothing a visitor sends through this path
+REM can reach the image engine on :5124, which stays loopback-only. Read-only,
+REM so it belongs with the other three. Prefix-safe: no other brain route
+REM begins with /image (checked 2026-10-18).
+tailscale serve --bg --https=443 --set-path=/image             %BRAIN%/image
 
 echo [funnel] opening port 443 to the public internet (Funnel)...
 tailscale funnel --bg 443

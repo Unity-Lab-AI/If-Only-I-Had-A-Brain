@@ -9,22 +9,33 @@
  * What's left is SENSORY AI only — peripherals that translate between
  * raw sensor data and brain state:
  *
- *   - generateImage()  — image gen (Pollinations + custom user backend)
- *   - speak()          — TTS (Pollinations)
- *   - describer        — vision/VLM call (used by visual-cortex.js
- *                         directly, not routed through this file)
+ *   - generateImage()  — image gen through a USER-CONFIGURED browser-side
+ *                         backend only (custom / auto-detected / env.js)
+ *   - describer        — gone (vision is equational; see below)
  *
  * None of these drive Unity's cognition. She decides WHEN to draw / speak
  * / look, and WHAT to draw / speak about (via equational slot scoring
  * over her language cortex). These peripherals just execute the output.
  *
- * Multi-backend image gen:
- *   - Pollinations is the default image backend (free, no key required)
+ * ⛔ HER EYES COME HOME (2026-10-18): THERE IS NO DEFAULT REMOTE IMAGE
+ * BACKEND ANY MORE. Pollinations — the "always available" fallback this
+ * file used to end on — is gone from the whole project. When Unity is backed
+ * by the server, her pictures are rendered THERE, on her own card, through
+ * CORA's local Stable Diffusion behind one gate
+ * (`server/brain-server/image-engine.js`), and arrive at the browser as
+ * `{type:'image', url}`. This file now only matters for the no-server
+ * in-browser fallback, and only when a user has configured their OWN
+ * backend; with none configured, `generateImage()` returns null and the
+ * brain says so in words instead of calling out to a remote API.
+ *
+ * Multi-backend image gen (browser-side, user-opted):
  *   - Users can configure a custom image endpoint via `configureImageGen(
  *     url, model, apiKey)` — for example, a self-hosted Stable Diffusion,
  *     DALL-E, or any OpenAI-compatible /v1/images/generations endpoint
- *   - `generateImage()` tries custom first, falls back to Pollinations
- *     if the custom backend fails or isn't configured
+ *   - `generateImage()` tries custom first, then auto-detected locals, then
+ *     env.js backends — and returns null when none answers. No remote
+ *     fallback; a silent successful fallback is the trap this project keeps
+ *     un-shipping.
  *   - Dead-backend tracking reuses the same cooldown pattern from the
  *     old text-chat path
  */
@@ -77,8 +88,10 @@ const LOCAL_IMAGE_BACKENDS = [
 //     `modalities: ['text','audio']` and returns base64 AUDIO.
 //     It is a sensory-OUTPUT executor, which the no-text-AI law explicitly
 //     permits. Gutting it would take her voice.
-//   • HER IMAGE GENERATION — `generateImage()` below and the server's
-//     `_buildPollinationsImageUrl`.
+//   • HER IMAGE GENERATION — on the SERVER now (2026-10-18): CORA's local
+//     Stable Diffusion behind `server/brain-server/image-engine.js`.
+//     `generateImage()` below is only the no-server fallback's optional
+//     browser-side chain.
 //   • HER MIND'S EYE — `js/brain/mindspace/*` and the look lane in
 //     `server/brain-server/visual-memory.js`.
 
@@ -86,8 +99,7 @@ const LOCAL_IMAGE_BACKENDS = [
 // instances. The landing page and bootUnity both construct their own
 // providers, and without a shared dead-backend map each instance would
 // re-discover the same 400s from scratch. These are keyed by URL so
-// every instance sees the same dead state and the same resolved
-// Pollinations vision model id once the first probe completes.
+// every instance sees the same dead state.
 const SHARED_DEAD_BACKENDS = new Map(); // url → timestamp
 
 // `SHARED_POLL_VISION_MODEL`, `SHARED_POLL_VISION_PROBE`,
@@ -98,25 +110,27 @@ const SHARED_DEAD_BACKENDS = new Map(); // url → timestamp
 // modalities. With the describer gone there is no model to choose.
 
 export class SensoryAIProviders {
-  constructor({ pollinations, storage }) {
-    this._pollinations = pollinations;
+  constructor({ storage } = {}) {
+    // `pollinations` used to be the first constructor arg and the default
+    // backend. Removed 2026-10-18 — see the header. Any old caller that still
+    // passes it is simply ignored.
     this._storage = storage;
 
     // Custom image generation backend — user-configurable at runtime
     // via setup modal or env.js. If set, generateImage() tries this
-    // first before local-detected or Pollinations.
+    // first, before local-detected backends.
     this._customImageUrl = null;
     this._customImageModel = null;
     this._customImageKey = null;
 
     // Auto-detected local image backends — populated by `autoDetect()`
     // at boot. Each entry: { name, url, model, kind }. generateImage()
-    // iterates this list between the custom and Pollinations fallbacks.
+    // iterates this list after the custom backend; nothing follows it.
     this._localImageBackends = [];
 
     // Auto-detected + env.js-configured VLM backends for vision
     // describer. describeImage() iterates this list before falling
-    // back to Pollinations multimodal.
+    // back to nothing — the describer and its remote fallback are gone.
     this._localVisionBackends = [];
 
     // Consecutive failure counter on the vision describer; after 3
@@ -131,7 +145,7 @@ export class SensoryAIProviders {
 
     this._abortController = null;
     // Shared across every SensoryAIProviders instance (landing page +
-    // bootUnity construct separate instances, but Pollinations dead
+    // bootUnity construct separate instances, but a backend's dead
     // state must be global or each instance re-learns the same 400s).
     this._deadBackends = SHARED_DEAD_BACKENDS;
     this._deadCooldown = 3600000;   // 1 hour — if a backend is dead, leave it
@@ -162,9 +176,10 @@ export class SensoryAIProviders {
    * path without re-implementing each backend's dispatcher.
    */
   _findBackend(kind, source, name) {
-    if (source === 'default' || name === 'Pollinations') {
-      return { pollinations: true };
-    }
+    // 'default' / 'Pollinations' used to resolve to the remote fallback.
+    // There is none now; an unknown preference resolves to nothing and the
+    // caller falls through the configured backends.
+    if (source === 'default' || name === 'Pollinations') return null;
     const list = kind === 'image' ? this._localImageBackends : this._localVisionBackends;
     for (const b of list) {
       if (b.name === name) return b;
@@ -221,7 +236,10 @@ export class SensoryAIProviders {
         state: this._isBackendDead(b.url) ? 'dead' : 'alive',
       });
     }
-    imageBackends.push({ name: 'Pollinations', url: 'pollinations', source: 'default', state: 'alive' });
+    // Her OWN engine — on the server, not in this browser. Listed so the
+    // inventory tells the truth about where pictures come from; it is not a
+    // browser-side backend and generateImage() never calls it from here.
+    imageBackends.push({ name: 'Unity (her own engine, on the server)', url: 'server', source: 'default', state: 'alive' });
 
     const visionBackends = [];
     for (const b of this._localVisionBackends) {
@@ -233,7 +251,7 @@ export class SensoryAIProviders {
         state: this._isBackendDead(b.url) ? 'dead' : 'alive',
       });
     }
-    visionBackends.push({ name: 'Pollinations', url: 'pollinations', source: 'default', state: 'alive' });
+    // No vision backend of any kind: her sight is the equational mind's eye.
 
     return {
       image: imageBackends,
@@ -248,7 +266,7 @@ export class SensoryAIProviders {
    * with a short timeout. Any server that responds gets registered.
    *
    * Called on brain boot from app.js. Non-blocking: returns a promise
-   * but the brain can start using Pollinations immediately while the
+   * but the brain keeps running (server-side rendering needs none of this) while the
    * probe runs. Detected backends become available when their probe
    * resolves.
    *
@@ -305,7 +323,6 @@ export class SensoryAIProviders {
    *
    * Expected shape in env.js:
    *   export const ENV_KEYS = {
-   *     pollinations: 'sk_...',        // existing
    *     imageBackends: [               // NEW
    *       { url: 'http://my-server:7860', model: 'sdxl-turbo', key: 'optional' },
    *       { url: 'https://api.example.com', model: 'dalle-3', key: 'sk-...' },
@@ -376,11 +393,14 @@ export class SensoryAIProviders {
    *   2. Auto-detected local backends (Automatic1111, ComfyUI,
    *      InvokeAI, LocalAI, etc. — whichever responded to probes at boot)
    *   3. env.js-configured backends (from ENV_KEYS.imageBackends)
-   *   4. Pollinations (default, always available)
+   *   4. — nothing. Returns null. (Pollinations used to be the always-
+   *      available fallback here; removed 2026-10-18. The server renders
+   *      her pictures on her own card; this browser-side chain exists only
+   *      for a user who configured their own backend.)
    *
-   * Each non-Pollinations backend can fail independently — if one is
-   * down or returns an error, we try the next. Pollinations is the
-   * always-available fallback.
+   * Each backend can fail independently — if one is down or returns an
+   * error, we try the next, and when none answers the caller gets null and
+   * says so in words.
    *
    * @param {string} prompt — the image description
    * @param {object} opts — { model, width, height, seed, ... }
@@ -394,10 +414,7 @@ export class SensoryAIProviders {
     if (this._preferredImage) {
       const pref = this._preferredImage;
       const target = this._findBackend('image', pref.source, pref.name);
-      if (target?.pollinations) {
-        const url = await this._pollinations.generateImage(prompt, { ...opts, model: pref.model || opts.model });
-        if (url) return url;
-      } else if (target && !this._isBackendDead(target.url)) {
+      if (target && !this._isBackendDead(target.url)) {
         const url = await this._customGenerateImage(
           target.url,
           pref.model || target.model || opts.model || 'default',
@@ -434,8 +451,9 @@ export class SensoryAIProviders {
       if (url) return url;
     }
 
-    // 4. Pollinations fallback — always available
-    return this._pollinations.generateImage(prompt, opts);
+    // 4. Nothing answered and there is no remote fallback (removed
+    // 2026-10-18). null, honestly — the caller says so in words.
+    return null;
   }
 
   // `describeImage()` deleted. It sent a webcam frame plus the
@@ -482,26 +500,11 @@ export class SensoryAIProviders {
   // `/v1/chat/completions` with multimodal content, and returned the model's
   // words as her perception. Unreachable once `describeImage()` went.
 
-  /**
-   * Pollinations multimodal fallback. Same call the old
-   * app.js:1022 inline handler used, now centralized.
-   *
-   * The Pollinations multimodal model is overridable via
-   * `this._pollinationsVisionModel`, which app.js sets at boot time
-   * from `localStorage.pollinations_vision_model` (written when the
-   * user saves the Pollinations vision backend in the setup modal).
-   * Defaults to `'openai'` (Pollinations' GPT-4o multimodal endpoint).
-   */
-  // `_pollinationsDescribeImage()` deleted (body removed below).
-  // It POSTed the frame to `gen.pollinations.ai/v1/chat/completions` with a
-  // multimodal message and returned GPT-4o's sentence as her sight. ⚠ Note the
-  // contrast with `js/io/voice.js`, which posts to the SAME URL and is KEPT:
-  // that one requests `modalities: ['text','audio']` and consumes the returned
-  // AUDIO, i.e. it is a voice executor, not a describer. Same endpoint, opposite
-  // roles — which is exactly why this strip had to be read rather than grepped.
-  async _pollinationsDescribeImage() {
-    return null;
-  }
+  // `_pollinationsDescribeImage()` — the last Pollinations-named stub — was
+  // removed 2026-10-18 along with the provider itself. (It had already been a
+  // body-less `return null` since the VLM describer was deleted: an external
+  // text model doing her perceiving is what the equational mind's eye
+  // replaced.)
 
   _isBackendDead(url) {
     const deadTime = this._deadBackends.get(url);

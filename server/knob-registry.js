@@ -464,7 +464,6 @@ const KNOBS = [
   { key: 'DREAM_DF7_REBALANCE_MS', effect: 'boot', site: 'server/brain-server.js:9019', proof: 'column-0 `const PRIMARY_REBALANCE_MS = …` — top-level, once at import' },
   { key: 'DREAM_LOOP_LAG_WARN_MS', effect: 'boot', site: 'server/brain-server.js:12676', proof: 'column-0 `const _LAG_WARN_MS = …` — top-level, once at import' },
   { key: 'DREAM_CPU_PROFILE', effect: 'boot', site: 'server/brain-server.js:12754', proof: 'column-0 `if (process.env.DREAM_CPU_PROFILE !== \'0\')` — a top-level branch, taken once at import' },
-  { key: 'DREAM_POLLINATIONS_KEY', effect: 'live', site: 'server/brain-server.js:176', proof: 'read in the `return` of `function _pollinationsImageKey()`, which runs per image request — context read 2026-09-03' },
   { key: 'DREAM_WALK_TICK_MS', effect: 'live', site: 'server/brain-server.js:5325', proof: 'first line of `async _walkHeartbeat(…)`, which runs every walk tick — context read 2026-09-03' },
   { key: 'DREAM_CPU_PROFILE_EVERY_MS', effect: 'live', site: 'server/brain-server.js:12888', proof: 'read inside the repeating `setTimeout` callback, so each cycle re-reads it — context read 2026-09-03' },
   { key: 'DREAM_PARITY_MIN_GAP_MS', effect: 'live', site: 'server/brain-server.js:9257', proof: 'inside the `?parity=` request branch — re-read per request' },

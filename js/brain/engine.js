@@ -1057,13 +1057,21 @@ export class UnityBrain extends EventEmitter {
     this._voice = voiceIO;
   }
 
-  /** Connect image generation peripheral. */
-  connectImageGen(pollinationsAI, sandboxRef, storageRef) {
-    this._imageGen = pollinationsAI;
+  /**
+   * Connect the image-generation peripheral.
+   *
+   * HER EYES COME HOME (2026-10-18): the browser no longer carries an image
+   * renderer of its own. When she is backed by the server, a picture is
+   * rendered THERE on her own card and arrives as `{type:'image', url}`;
+   * the in-browser fallback brain has no engine and says so instead of
+   * reaching for a remote API. `imageGen` may therefore be null.
+   */
+  connectImageGen(imageGen, sandboxRef, storageRef) {
+    this._imageGen = imageGen || null;
     this._sandbox = sandboxRef;
     this._storage = storageRef;
-    // Give the sensory processor access to the AI for semantic classification
-    this.sensory.setAIProvider(pollinationsAI);
+    // Give the sensory processor access to the provider (may be null now).
+    this.sensory.setAIProvider(imageGen || null);
   }
 
   /**
@@ -1519,15 +1527,26 @@ export class UnityBrain extends EventEmitter {
     }
 
     console.log('[Brain] Image prompt (equational):', prompt.slice(0, 120));
-    const url = this._imageGen.generateImage(prompt, { model: this._storage?.get('image_model') || 'flux', width: 768, height: 768 });
+    // HER EYES COME HOME (2026-10-18): this in-browser brain is the no-server
+    // fallback, and it has no image engine of its own any more — the remote
+    // API it used to call is gone. The server-backed path never reaches here
+    // (RemoteBrain receives `{type:'image', url}` rendered on her own card).
+    // So: say so, honestly, instead of showing nothing.
+    const url = (this._imageGen && typeof this._imageGen.generateImage === 'function')
+      ? this._imageGen.generateImage(prompt, { width: 768, height: 768 })
+      : null;
 
     if (url) {
       this.emit('image', url);
+      this.reward += 0.1;
+      // Don't emit 'response' for images — the 'image' event handles display
+      return { text: null, action: 'generate_image' };
     }
 
-    this.reward += 0.1;
-    // Don't emit 'response' for images — the 'image' event handles display
-    return { text: null, action: 'generate_image' };
+    return {
+      text: `(I would draw "${prompt.slice(0, 60)}", but this in-browser copy of me has no image engine — the real me renders pictures on her own card when the server is up)`,
+      action: 'generate_image',
+    };
   }
 
   _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }

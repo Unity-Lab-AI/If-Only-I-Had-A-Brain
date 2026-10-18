@@ -282,71 +282,15 @@ const { performance } = require('perf_hooks');
 //                           Spends THAT VISITOR's own key from their own
 //                           browser, if they set one. Defaults to ANONYMOUS.
 //
-// ⛔ The server must NOT build a keyed URL for the visitor lane. It used to:
-// one key served both, so the moment an admin key existed, every visitor's
-// chat image was billed to the admin. The chat lane now ships the PROMPT and
-// the client builds the URL with its own key — which is also why the original
-// reason for sending a server-built URL is gone. That was a KEYED-ERA fix for
-// a fresh visitor whose key had not loaded and who therefore could not build a
-// URL at all; anonymous works now, so every client can always build one.
-const POLL_ADMIN_KEY_FILE = path.join(__dirname, 'pollinations-admin.json');
-let _pollAdminKey = null;   // null = not yet loaded from disk
-
-/**
- * The ADMIN's Pollinations key — used ONLY by the brain's own lanes.
- * Precedence: dashboard-set value → DREAM_POLLINATIONS_KEY (ops override) → ''.
- * Empty ⇒ the URL builder omits the key param entirely and Pollinations serves
- * the anonymous free tier, which is the default and the supported path.
- */
-function _pollinationsImageKey() {
-  if (_pollAdminKey === null) {
-    _pollAdminKey = '';
-    try {
-      if (fs.existsSync(POLL_ADMIN_KEY_FILE)) {
-        const j = JSON.parse(fs.readFileSync(POLL_ADMIN_KEY_FILE, 'utf8'));
-        if (j && typeof j.key === 'string') _pollAdminKey = j.key;
-      }
-    } catch { /* unreadable config must not stop the brain — anonymous is a fine default */ }
-  }
-  return _pollAdminKey || process.env.DREAM_POLLINATIONS_KEY || '';
-}
-
-/** Set (or clear, with '') the admin key and persist it. Returns the new state. */
-function _setPollinationsAdminKey(key) {
-  _pollAdminKey = typeof key === 'string' ? key.trim() : '';
-  try {
-    // 0600 — it is a credential. Written beside the other runtime state, which
-    // is gitignored, deploy-excluded and protected from the fresh-walk wipe.
-    fs.writeFileSync(POLL_ADMIN_KEY_FILE, JSON.stringify({ key: _pollAdminKey }, null, 2), { mode: 0o600 });
-  } catch (e) {
-    console.warn('[Pollinations] admin key not persisted:', e && e.message);
-  }
-  return _pollAdminKey;
-}
-function _buildPollinationsImageUrl(prompt, opts = {}) {
-  const model = opts.model || 'flux';
-  const width = opts.width || 512;
-  const height = opts.height || 512;
-  const encoded = encodeURIComponent(String(prompt || '').slice(0, 300));
-  // TU.29.14 — FRESH SEED every generation. Pollinations is deterministic per
-  // (prompt, seed): with no seed the same prompt returns the SAME cached image,
-  // so her renders looked recycled. A random seed makes each imagining a NEW
-  // picture even when the composed prompt repeats — imagination varies, it never
-  // recycles. (Callers may pin opts.seed for a reproducible render.)
-  const seed = (typeof opts.seed === 'number') ? opts.seed : Math.floor(Math.random() * 1e9);
-  // image.pollinations.ai/prompt/{prompt} — the host that serves the ANONYMOUS
-  // free tier (re-verified 2026-08-18 with THREE prompts, all 200 image/jpeg,
-  // model param honored — the never-reflip-on-one-test law satisfied).
-  // gen.pollinations.ai/image/ now answers anonymous requests with an explicit
-  // 401 POLICY body ("A valid API key is required") — and the account keys are
-  // DEAD (2026-08-17 law: free tier only), so that gateway is a locked door,
-  // not an outage. A saved key still rides along harmlessly if one is set
-  // (?key= — a browser <img> can't send a Bearer header).
-  let url = `https://image.pollinations.ai/prompt/${encoded}?model=${encodeURIComponent(model)}&width=${width}&height=${height}&seed=${seed}&nologo=true`;
-  const key = _pollinationsImageKey();
-  if (key) url += `&key=${encodeURIComponent(key)}`;
-  return url;
-}
+// HER EYES COME HOME (2026-10-18) — the Pollinations URL builder, the admin
+// key store (`pollinations-admin.json`), its loader/setter and the
+// `/pollinations-key` route that fronted them were all REMOVED here. There is
+// no remote image API in the brain any more: every picture she asks for is
+// rendered on her own card through CORA's local engine, behind the one gate
+// in `server/brain-server/image-engine.js` (attached onto ServerBrain below).
+// No key exists, none may be re-added, and nothing falls back to a remote
+// host when the local engine is down — the look lane counts `engineDown`
+// and chat says so in words.
 // PAINT.6 — Node has no ImageData; the mind-space CPU reconstruct path
 // constructs one (transform.js reconstructImageData via imagine()). Same
 // structural polyfill as mindspace-worker.mjs so any main-process caller of a
@@ -1995,9 +1939,9 @@ function autoClearStaleState() {
   // to `targets` by reflex.
   const NEVER_CLEAR_PROTECTED = [
     path.join(__dirname, 'identity-core.json'),
-    // The admin's Pollinations key is a CREDENTIAL, not training state. A
-    // fresh walk wipes what she learned; it must not log the operator out.
-    path.join(__dirname, 'pollinations-admin.json'),
+    // (`pollinations-admin.json` used to sit here as a protected credential.
+    // Removed 2026-10-18 with the rest of the remote image API — there is no
+    // key to protect any more; her images render locally.)
   ];
   if (NEVER_CLEAR_PROTECTED.length > 0) {
     const present = NEVER_CLEAR_PROTECTED.filter(p => fs.existsSync(p)).map(p => path.basename(p));
@@ -9688,14 +9632,14 @@ Object.assign(ServerBrain.prototype, SERVER_VISUAL_MEMORY_MIXIN);
 // is HER OWN lane — `visual-memory.js`, for the reference look-ups she learns
 // shapes from. That lane spends the ADMIN's key.
 //
-// ⚠ The comment here previously said chat.js broadcasts a server-keyed
-// `{type:'image', url}` to clients "same path as the user-ask lane". Neither
-// is true any more: chat.js has no image broadcast at all (verified — zero
-// call sites), and the user-ask lane now deliberately sends the PROMPT ONLY
-// so a visitor's chat image is billed to the visitor's own key or runs
-// anonymous. Sending a server-keyed URL to a client is exactly the wrong-
-// wallet bug this file was corrected for; do not reintroduce it.
-ServerBrain.prototype._buildPollinationsImageUrl = _buildPollinationsImageUrl;
+// HER EYES COME HOME (2026-10-18) — the local image engine gate. Attached
+// here, after every other mixin, where the old Pollinations URL builder used
+// to be attached: the look lane guards on `typeof this._buildImageRequest ===
+// 'function'` at call time, so attach order relative to visual-memory does not
+// matter, and attaching LAST means nothing below can be shadowed by it. The
+// chat lane now renders SERVER-side and sends the browser `{type:'image',
+// url}` to `/image/<id>.png` — a picture already made, from a bounded cache.
+Object.assign(ServerBrain.prototype, require('./brain-server/image-engine.js').ImageEngineMixin);
 
 const brain = new ServerBrain();
 
@@ -10533,6 +10477,30 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
+  // ── /image/<id>.png — a picture she ALREADY MADE, from a bounded cache ──
+  // PUBLIC and read-only on purpose: the browser's chat lane <img>s this URL.
+  // A miss is a 404, never a render — nothing a visitor sends can reach her
+  // GPU through here, which is why it is safe to expose through the tunnel
+  // while the engine on :5124 is not. Same CORS posture as public-state.json.
+  {
+    const _m = /^\/image\/([a-f0-9]{16})\.png(?:\?.*)?$/.exec(req.url || '');
+    if (_m) {
+      const hit = (typeof brain._imageCacheGet === 'function') ? brain._imageCacheGet(_m[1]) : null;
+      if (!hit) {
+        res.writeHead(404, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ error: 'no such image (it may have aged out of the cache)' }));
+        return;
+      }
+      res.writeHead(200, {
+        'Content-Type': 'image/png',
+        'Content-Length': hit.png.length,
+        'Cache-Control': 'public, max-age=86400, immutable',
+        'Access-Control-Allow-Origin': '*',
+      });
+      res.end(hit.png);
+      return;
+    }
+  }
   if (req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
@@ -11976,63 +11944,8 @@ const httpServer = http.createServer((req, res) => {
   //
   // Loopback-gated (same as every other brain-mutating endpoint).
   // Defense-in-depth on top of the dashboard's admin-only UI control.
-  // ── /pollinations-key — the ADMIN's own key, for HER lanes only ─────────
-  // Sets the key the brain spends on its OWN work (mind's-eye reference
-  // look-ups, her drawing). It is NEVER used for a visitor's chat image —
-  // that lane spends the visitor's own key, or anonymous. Default is
-  // anonymous; this endpoint exists so an admin can CHOOSE to spend pollen
-  // on the brain's look-ups.
-  if (req.url === '/pollinations-key') {
-    if (!requireLoopback(req, res, '/pollinations-key')) return;
-    if (req.method === 'GET') {
-      // ⛔ NEVER return the key itself. A dashboard only needs to know
-      // whether one is set and where it came from.
-      const dashboardKey = _pollinationsImageKey();
-      const fromEnv = !_pollAdminKey && !!process.env.DREAM_POLLINATIONS_KEY;
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        set: !!dashboardKey,
-        source: dashboardKey ? (fromEnv ? 'env' : 'dashboard') : 'none',
-        tier: dashboardKey ? 'keyed' : 'anonymous',
-        // last 4 only, so an admin can tell WHICH key is loaded without the
-        // key ever leaving the box.
-        hint: dashboardKey ? `…${dashboardKey.slice(-4)}` : null,
-        scope: "the brain's own look-ups and drawing ONLY — never a visitor's chat image",
-      }));
-      return;
-    }
-    if (req.method === 'POST') {
-      const chunks = [];
-      let total = 0;
-      req.on('data', (chunk) => {
-        total += chunk.length;
-        if (total > 4096) { req.destroy(); return; }
-        chunks.push(chunk);
-      });
-      req.on('end', () => {
-        try {
-          const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
-          if (typeof parsed.key !== 'string') {
-            res.writeHead(400, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'body must include { key: "<key>" } — send "" to clear and return to the anonymous tier' }));
-            return;
-          }
-          const now = _setPollinationsAdminKey(parsed.key);
-          console.log(`[Pollinations] admin key ${now ? `SET (…${now.slice(-4)})` : 'CLEARED — back to the anonymous tier'};`
-            + ' scope is the brain\'s own look-ups only, never a visitor chat image');
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ set: !!now, tier: now ? 'keyed' : 'anonymous', hint: now ? `…${now.slice(-4)}` : null }));
-        } catch (e) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: `bad body: ${e && e.message}` }));
-        }
-      });
-      return;
-    }
-    res.writeHead(405, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'GET or POST only' }));
-    return;
-  }
+  // (`/pollinations-key` — the admin key route — was REMOVED 2026-10-18 with
+  // the remote image API. Her images render locally; there is no key.)
 
   if (req.url === '/auto-advance') {
     if (!requireLoopback(req, res, '/auto-advance')) return;
@@ -13233,7 +13146,27 @@ wss.on('connection', (ws, req) => {
                 // problem: a fresh visitor whose key had not loaded could not
                 // build a URL at all. Anonymous access removed that, so every
                 // client can always build one.
-                ws.send(JSON.stringify({ type: 'image', prompt: result.text }));
+                // HER EYES COME HOME (2026-10-18) — the SERVER renders now, on
+                // her own card through CORA's local engine, and sends the
+                // browser a URL to the finished picture. The "prompt only, the
+                // visitor's browser renders it" split above was a KEYED-API
+                // wallet problem; there is no wallet any more — there is her
+                // GPU, and a visitor must never be able to spend it directly.
+                // Detached: the reply text already shipped; the picture follows
+                // in ~2-4 s, or an honest sentence does. Never a blank.
+                {
+                  const _prompt = result.text;
+                  const _ws = ws;
+                  const _sendSafe = (o) => { try { if (_ws.readyState === 1) _ws.send(JSON.stringify(o)); } catch { /* client gone */ } };
+                  if (typeof this._renderImageForChat === 'function') {
+                    this._renderImageForChat(_prompt).then((img) => {
+                      if (img) _sendSafe({ type: 'image', url: img.url, prompt: _prompt });
+                      else _sendSafe({ type: 'response', text: '(my image engine is not answering right now — no picture this time)', action: 'generate_image' });
+                    }).catch(() => _sendSafe({ type: 'response', text: '(my image engine failed on that one — no picture this time)', action: 'generate_image' }));
+                  } else {
+                    _sendSafe({ type: 'response', text: '(no image engine is wired in this build)', action: 'generate_image' });
+                  }
+                }
               } else {
                 ws.send(JSON.stringify({ type: 'response', text: result.text, action: result.action }));
                 // ONE PROCESS voice lane — HER process synthesizes the reply

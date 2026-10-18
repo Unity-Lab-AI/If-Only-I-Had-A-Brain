@@ -340,7 +340,7 @@ Sent when the motor channel selects `generate_image`. The *prompt* is generated 
 }
 ```
 
-Routed only to the triggering client. The client's `SensoryAIProviders.generateImage(prompt)` runs the 5-level priority chain (user-preferred via setPreferredBackend → custom → auto-detected local → env.js → Pollinations default).
+Routed only to the triggering client. ⭐ **Since 2026-10-18 the SERVER renders the picture** — on her own card through `image-engine.js` — and sends `{type:'image', url:'/image/<id>.png', prompt}` (a picture already made, from a bounded cache), or `{type:'response', text:'(my image engine is not answering right now — no picture this time)'}` when the engine is down. The old prompt-only message that had the visitor's browser render it via Pollinations is gone; a browser-side `SensoryAIProviders.generateImage` chain survives only for the no-server fallback brain and ends in `null`.
 
 ### `conversation` — REMOVED 2026-04-13
 
@@ -485,7 +485,7 @@ Stored on the server-side client record (`client.name`). Currently used only for
 Visual intake — what Unity's eyes receive. Sent by the standalone client
 feeder (`js/visual-feeder.js`, raw-served — NOT bundled) for camera frames
 (permission-gated, never prompts) and generated-image renders (prompt decoded
-from the Pollinations URL as the label).
+from the render request as the label — the renderer was Pollinations when this was written and is her own local engine since 2026-10-18).
 
 ```json
 {
