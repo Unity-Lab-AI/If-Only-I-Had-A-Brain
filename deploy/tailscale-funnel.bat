@@ -71,15 +71,21 @@ REM   curl -s -o NUL -w "%%{http_code}\n" %H%/ctl/status             want 404
 REM A 200 from any of the last three means this file is not doing its job:
 REM run `tailscale funnel reset` BEFORE investigating.
 
-setlocal
+setlocal EnableDelayedExpansion
 set "BRAIN=http://127.0.0.1:7525"
 
 REM Double-clicked from Explorer, the window closes the instant this script
 REM exits -- which is how "it just opens then closes" happens on a machine
 REM without Tailscale. Detect that launch (cmd was started with /c for this
 REM file) and hold the window at every exit so the message is readable.
+REM !! A pure string test, no pipe: the usual `echo %cmdcmdline% | find` idiom
+REM    HUNG in `find` when this file was started from a non-console shell
+REM    (measured 2026-10-18 -- two runs parked on find.exe, nothing printed).
+REM    Delayed expansion keeps the quotes inside %cmdcmdline% from breaking
+REM    the comparison.
 set "HOLD="
-echo %cmdcmdline% | find /i "/c" >nul 2>&1 && set "HOLD=1"
+set "CL=!cmdcmdline!"
+if not "!CL:/c=!"=="!CL!" set "HOLD=1"
 
 REM The installer puts tailscale.exe under Program Files and does not always
 REM refresh PATH for an already-open shell, so look there before giving up.
@@ -131,7 +137,18 @@ REM so it belongs with the other three. Prefix-safe: no other brain route
 REM begins with /image (checked 2026-10-18).
 "%TS%" serve --bg --https=443 --set-path=/image             %BRAIN%/image
 
+REM !! NO ROOT ROUTE, EVER. A `/` entry proxies EVERY path that no line above
+REM    claims -- it turns this default-deny list into default-allow. One was
+REM    created by accident on 2026-10-18 (an argument mangled on its way to
+REM    the CLI became a bare `/` -> 127.0.0.1:443). Strip it unconditionally;
+REM    `off` on a path that is not configured is a no-op.
+"%TS%" serve --https=443 --set-path=/ off >nul 2>&1
+
 echo [funnel] opening port 443 to the public internet (Funnel)...
+REM !! The CLI WAITS here the first time: "Funnel is not enabled on your
+REM    tailnet. To enable, visit: https://login.tailscale.com/f/funnel?node=..."
+REM    Open that link, press Enable, and this command finishes by itself.
+REM    (`serve` above does the same with /f/serve on a brand-new tailnet.)
 "%TS%" funnel --bg 443
 if errorlevel 1 (
     echo   [funnel] FAILED. The usual cause is Funnel not enabled in your tailnet
@@ -160,12 +177,19 @@ endlocal
 exit /b 1
 
 REM ---- :install -- fetch and run Tailscale's own MSI ----------------------------
-REM Official package server, stable channel, 64-bit. msiexec needs elevation, so
-REM Windows shows ONE UAC prompt -- answer Yes. /quiet /norestart: no wizard.
+REM Official package server, stable channel, 64-bit. /quiet /norestart: no wizard.
+REM !! msiexec /quiet from a NON-ELEVATED process does not ask for elevation --
+REM    it fails with 1603 and never shows a prompt (measured here 2026-10-18 on
+REM    the first double-click). So the installer is launched through
+REM    PowerShell Start-Process -Verb RunAs, which is what makes Windows show
+REM    the ONE UAC prompt -- answer Yes. -Wait -PassThru hands the real exit
+REM    code back. A verbose log lands beside the MSI and its tail is printed on
+REM    any failure, so a second 1603 names its own cause instead of a guess.
 REM Exit 0 = installed; 3010 = installed, reboot pending (fine -- tailscaled is
-REM already running); anything else is a real failure and the code is printed.
+REM already running); 1602 = the prompt was cancelled; anything else is printed.
 :install
 set "MSI=%TEMP%\tailscale-setup-latest-amd64.msi"
+set "MSILOG=%TEMP%\tailscale-install.log"
 echo [funnel] tailscale is not installed. Fetching the official installer...
 curl -fsSL -o "%MSI%" https://pkgs.tailscale.com/stable/tailscale-setup-latest-amd64.msi
 if errorlevel 1 (
@@ -173,12 +197,20 @@ if errorlevel 1 (
     exit /b 1
 )
 echo [funnel] installing -- answer YES to the Windows prompt...
-msiexec /i "%MSI%" /quiet /norestart
-set "RC=%ERRORLEVEL%"
+REM The exit code comes back through a file: a `for /f` over a command that
+REM itself contains quotes is where cmd silently splits the line.
+set "MSIRC=%TEMP%\tailscale-install.rc"
+del /q "%MSIRC%" >nul 2>&1
+powershell -NoProfile -Command "try { $p = Start-Process msiexec.exe -ArgumentList ('/i \"%MSI%\" /quiet /norestart /l*v \"%MSILOG%\"') -Verb RunAs -Wait -PassThru; Set-Content -Path '%MSIRC%' -Value $p.ExitCode } catch { Set-Content -Path '%MSIRC%' -Value 1602 }"
+set "RC="
+if exist "%MSIRC%" set /p RC=<"%MSIRC%"
+if not defined RC set "RC=1602"
 if "%RC%"=="0" goto :installed
 if "%RC%"=="3010" goto :installed
-echo   [funnel] installer exited %RC%. 1602 = you cancelled the prompt, 1603 = blocked
-echo            by policy. Install by hand: https://tailscale.com/download
+echo   [funnel] installer exited %RC%. 1602 = the prompt was cancelled or never answered;
+echo            any other code: the last lines of the installer log follow.
+if exist "%MSILOG%" powershell -NoProfile -Command "Get-Content -Tail 12 '%MSILOG%'"
+echo            Log: %MSILOG%    Install by hand: https://tailscale.com/download
 exit /b 1
 :installed
 if not exist "%ProgramFiles%\Tailscale\tailscale.exe" (
