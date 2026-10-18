@@ -389,6 +389,31 @@ REM
 REM Loading torch takes ~40s, which is fine: the brain's readiness probe may
 REM miss it and log "not reachable", but every later line re-tries the service,
 REM so she picks up her real voice as soon as it finishes loading.
+REM TUNNELTRAY (2026-10-18) - the public door is a Tailscale Funnel, and on
+REM Windows the daemon's profile (and with it Serve + Funnel) goes DARK when the
+REM tray app is not running: closing "Tailscale" from the tray at 3:25 AM took
+REM the whole public path down while the brain kept running. Unattended mode
+REM is set (`tailscale set --unattended`), and this also brings the tray app
+REM back if it is gone. Not installed -> say so and carry on; the tunnel is
+REM the world's path to her, never a condition of her boot.
+if exist "%ProgramFiles%\Tailscale\tailscale-ipn.exe" (
+    tasklist /FI "IMAGENAME eq tailscale-ipn.exe" 2>nul | find /i "tailscale-ipn.exe" >nul
+    if errorlevel 1 (
+        echo   [tunnel] Tailscale tray app not running - starting it so the Funnel stays up.
+        start "" "%ProgramFiles%\Tailscale\tailscale-ipn.exe"
+    ) else (
+        echo   [tunnel] Tailscale tray app running - public path is up.
+    )
+) else (
+    echo   [tunnel] Tailscale not installed - she runs, but only this machine can reach her.
+    echo            Run deploy\tailscale-funnel.bat to publish her.
+)
+REM !! NO ROOT ROUTE. A `/` entry on the Funnel proxies EVERY unlisted path and
+REM    turns the five-lane allowlist into default-allow. One reappeared on
+REM    2026-10-18 when the daemon reloaded an older snapshot of its serve
+REM    config, so the funnel script alone cannot be trusted to have the last
+REM    word - strip it on every boot. `off` on an absent path is a no-op.
+if exist "%ProgramFiles%\Tailscale\tailscale.exe" "%ProgramFiles%\Tailscale\tailscale.exe" serve --https=443 --set-path=/ off >nul 2>&1
 if not defined UNITY_VOICE_PORT set "UNITY_VOICE_PORT=5123"
 if not defined UNITY_VOICE_V2_DIR set "UNITY_VOICE_V2_DIR=%~dp0..\..\Backrooms\models\unity-voice-v2"
 if exist "%UNITY_VOICE_V2_DIR%\serve.py" (

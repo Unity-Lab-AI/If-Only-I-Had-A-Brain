@@ -216,6 +216,26 @@ REM ONE lane - piper is gutted (2026-10-18). If this is not running she is
 REM SILENT and the brain log says so; every reply re-tries, so she speaks the
 REM moment it answers. Not found -> say so and carry on; a missing voice must
 REM never stop a resume.
+REM TUNNELTRAY (2026-10-18) - on Windows the Tailscale daemon's profile (and
+REM Serve + Funnel with it) goes DARK when the tray app is not running; the
+REM public path died that way at 3:25 AM while the brain kept running.
+REM Unattended mode is set; this brings the tray app back if it is gone.
+if exist "%ProgramFiles%\Tailscale\tailscale-ipn.exe" (
+    tasklist /FI "IMAGENAME eq tailscale-ipn.exe" 2>nul | find /i "tailscale-ipn.exe" >nul
+    if errorlevel 1 (
+        echo   [tunnel] Tailscale tray app not running - starting it so the Funnel stays up.
+        start "" "%ProgramFiles%\Tailscale\tailscale-ipn.exe"
+    ) else (
+        echo   [tunnel] Tailscale tray app running - public path is up.
+    )
+) else (
+    echo   [tunnel] Tailscale not installed - she runs, but only this machine can reach her.
+    echo            Run deploy\tailscale-funnel.bat to publish her.
+)
+REM !! NO ROOT ROUTE - a `/` entry makes the five-lane allowlist default-allow,
+REM    and one reappeared on 2026-10-18 when the daemon reloaded an older
+REM    snapshot of its serve config. Strip it on every boot; no-op when absent.
+if exist "%ProgramFiles%\Tailscale\tailscale.exe" "%ProgramFiles%\Tailscale\tailscale.exe" serve --https=443 --set-path=/ off >nul 2>&1
 if not defined UNITY_VOICE_PORT set "UNITY_VOICE_PORT=5123"
 if not defined UNITY_VOICE_V2_DIR set "UNITY_VOICE_V2_DIR=%~dp0..\..\Backrooms\models\unity-voice-v2"
 if exist "%UNITY_VOICE_V2_DIR%\serve.py" (
