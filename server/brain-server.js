@@ -10256,7 +10256,17 @@ const httpServer = http.createServer((req, res) => {
       return;
     }
     brain._lastPublicPollTs = Date.now();
-    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=2' });
+    // ⛔ CORS ON THE PLAIN SNAPSHOT (2026-10-18). Every query-string branch of
+    // this route above sends `Access-Control-Allow-Origin: *`; this one — the
+    // bare GET that the public dashboard, the compute page's leaderboard, the
+    // legend's donor-link upgrader and the public viewers all poll — did not.
+    // It never needed to on the old box, where nginx stamped the header on
+    // everything. Now the site is GitHub Pages and the brain is a tunnel on
+    // another origin, so the browser refused this body on the live site:
+    // "No 'Access-Control-Allow-Origin' header" on https://theunitybrain.com,
+    // the leaderboard read "—" against a server holding the operator's row.
+    // Same header, same posture as /minds-eye.json and /health.
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=2', 'Access-Control-Allow-Origin': '*' });
     res.end(brain._publicStateJson || JSON.stringify({ type: 'state', state: null, snapshotAt: 0, note: 'snapshot warming up — try again in a moment' }));
     return;
   }

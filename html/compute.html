@@ -176,6 +176,72 @@ let ws = null;
 let stepsComputed = 0;
 let totalComputeMs = 0;
 
+// ── Donor neuron-compute LEADERBOARD identity + panel ─────────────────────
+// A persistent donor ID (localStorage) so this donor's cumulative neuron
+// contribution MAINTAINS through reconnects + page reloads, plus a settable
+// display name. Sent in gpu_register + gpu_telemetry so the server keys this
+// donor's leaderboard total to a stable id. A small UI lets the donor name
+// themselves + see their own + the top contributors (polled from the shared
+// public snapshot — no extra per-user firehose).
+//
+// ⛔ TOP-LEVEL, NOT INSIDE THE GPU INIT (2026-10-18). This block lived after
+// `connectToServer()` inside the init IIFE, which RETURNS when WebGPU is not
+// available — so a visitor whose browser cannot donate (or who only came to
+// look at the board) never got a leaderboard at all, and the operator read
+// "compute leaderboard ain't workin". The board needs nothing but `fetch`;
+// it renders for everyone now, and the name-save still only speaks to the
+// socket when there is one. `window._donorId` / `_getDonorName` are set
+// before the init IIFE runs, which is the order the telemetry relied on.
+const _DONOR_ID_KEY = 'unity_donor_id', _DONOR_NAME_KEY = 'unity_donor_name';
+function _genDonorId() {
+  try { return (crypto.randomUUID ? crypto.randomUUID() : 'd-' + Math.random().toString(36).slice(2) + Date.now().toString(36)); }
+  catch { return 'd-' + Date.now().toString(36); }
+}
+let _donorId = null, _donorName = null;
+try { _donorId = localStorage.getItem(_DONOR_ID_KEY); if (!_donorId) { _donorId = _genDonorId(); localStorage.setItem(_DONOR_ID_KEY, _donorId); } }
+catch { _donorId = _genDonorId(); }
+try { _donorName = localStorage.getItem(_DONOR_NAME_KEY) || null; } catch { /* private mode */ }
+window._donorId = _donorId;
+window._getDonorName = () => _donorName;
+(function _donorLeaderboardUI() {
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'margin:12px auto;max-width:520px;padding:10px;border:1px solid #333;border-radius:6px;font-size:12px;background:#0d0d0d;';
+  wrap.innerHTML = '<div style="color:#22c55e;font-weight:bold;margin-bottom:6px;">🏆 Neuron Leaderboard</div>'
+    + '<div style="margin-bottom:6px;">Your name: <input id="donor-name-input" maxlength="32" placeholder="(anonymous)" style="background:#111;color:#e0e0e0;border:1px solid #333;border-radius:4px;padding:3px 6px;width:160px;"> <button id="donor-name-save" style="background:#1a1a1a;color:#22c55e;border:1px solid #333;border-radius:4px;padding:3px 8px;cursor:pointer;">save</button></div>'
+    + '<div id="donor-you" class="tip tip--wide" tabindex="0" data-tip="Neuron-seconds you have contributed, banked as you compute. ⚠ IF YOUR GPU LOOKS IDLE, IT PROBABLY IS NOT BROKEN. Low VRAM use and low utilisation percentages are EXPECTED here and are not a sign of a failed donation: the brain only asks for what it needs, and the real ceiling is round-trip network latency per operation plus checkpoint transfer time, not your card\'s speed. A remote card genuinely cannot be pegged at 100% by this workload. Credit is given for work actually completed, so the number below is the honest measure — not the percentage in your task manager." style="color:#a78bfa;margin-bottom:6px;display:inline-block;">Your neurons created: —</div>'
+    + '<div id="donor-top" style="color:#bbb;line-height:1.5;"></div>';
+  document.body.appendChild(wrap);
+  const input = wrap.querySelector('#donor-name-input');
+  if (_donorName) input.value = _donorName;
+  wrap.querySelector('#donor-name-save').addEventListener('click', () => {
+    const nm = (input.value || '').replace(/[<>&]/g, '').trim().slice(0, 32);
+    _donorName = nm || null;
+    try { if (nm) localStorage.setItem(_DONOR_NAME_KEY, nm); else localStorage.removeItem(_DONOR_NAME_KEY); } catch { /* */ }
+    try { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: 'set_donor_name', name: nm })); } catch { /* */ }
+  });
+  const fmtN = (n) => (n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : (n || 0).toFixed(1));
+  // My leaderboard row id mirrors the server's canonical key: when I've set a
+  // name I share the name:<lower> row with everyone else of that name, so match
+  // on that; otherwise I'm my own per-device anonymous donorId row.
+  const _myLbKey = () => (_donorName ? ('name:' + _donorName.toLowerCase()) : _donorId);
+  async function pollLB() {
+    try {
+      const r = await fetch((typeof unityBrainHttp === 'function') ? unityBrainHttp('/public-state.json') : '/public-state.json', { cache: 'no-store' });
+      const m = await r.json();
+      const lb = m && m.state && m.state.leaderboard;
+      if (!lb) return;
+      const mine = _myLbKey();
+      const you = (lb.top || []).find(e => e.id === mine);
+      document.getElementById('donor-you').textContent = 'Your neurons created: ' + (you ? fmtN(you.neurons) + ' Gn·s' : '— (start donating!)');
+      document.getElementById('donor-top').innerHTML = (lb.top || []).slice(0, 10)
+        .map((e, i) => (i + 1) + '. ' + String(e.name || 'anon').replace(/[<>&]/g, '') + ' — ' + fmtN(e.neurons) + ' Gn·s' + (e.id === mine ? ' (you)' : ''))
+        .join('<br>') || '(no contributors yet)';
+    } catch { /* transient — the next poll retries; a cross-origin refusal shows in the console */ }
+  }
+  pollLB();
+  setInterval(pollLB, 5000);
+})();
+
 // #112.1 — Wake Lock + device-lost recovery helpers. Defined before the init
 // IIFE; their BODIES run at call time (after init / on a later device loss)
 // when gpu / ws / clusterState / connectToServer are all live, so no TDZ.
@@ -302,62 +368,8 @@ function _installDeviceLostHandler() {
   // NOW connect WebSocket — GPU is ready
   connectToServer();
 
-  // ── Donor neuron-compute LEADERBOARD identity ─────────────────────────────
-  // A persistent donor ID (localStorage) so this donor's cumulative neuron
-  // contribution MAINTAINS through reconnects + page reloads, plus a settable
-  // display name. Sent in gpu_register + gpu_telemetry so the server keys this
-  // donor's leaderboard total to a stable id. A small UI lets the donor name
-  // themselves + see their own + the top contributors (polled from the shared
-  // public snapshot — no extra per-user firehose).
-  const _DONOR_ID_KEY = 'unity_donor_id', _DONOR_NAME_KEY = 'unity_donor_name';
-  function _genDonorId() {
-    try { return (crypto.randomUUID ? crypto.randomUUID() : 'd-' + Math.random().toString(36).slice(2) + Date.now().toString(36)); }
-    catch { return 'd-' + Date.now().toString(36); }
-  }
-  let _donorId = null, _donorName = null;
-  try { _donorId = localStorage.getItem(_DONOR_ID_KEY); if (!_donorId) { _donorId = _genDonorId(); localStorage.setItem(_DONOR_ID_KEY, _donorId); } }
-  catch { _donorId = _genDonorId(); }
-  try { _donorName = localStorage.getItem(_DONOR_NAME_KEY) || null; } catch { /* private mode */ }
-  window._donorId = _donorId;
-  window._getDonorName = () => _donorName;
-  (function _donorLeaderboardUI() {
-    const wrap = document.createElement('div');
-    wrap.style.cssText = 'margin:12px auto;max-width:520px;padding:10px;border:1px solid #333;border-radius:6px;font-size:12px;background:#0d0d0d;';
-    wrap.innerHTML = '<div style="color:#22c55e;font-weight:bold;margin-bottom:6px;">🏆 Neuron Leaderboard</div>'
-      + '<div style="margin-bottom:6px;">Your name: <input id="donor-name-input" maxlength="32" placeholder="(anonymous)" style="background:#111;color:#e0e0e0;border:1px solid #333;border-radius:4px;padding:3px 6px;width:160px;"> <button id="donor-name-save" style="background:#1a1a1a;color:#22c55e;border:1px solid #333;border-radius:4px;padding:3px 8px;cursor:pointer;">save</button></div>'
-      + '<div id="donor-you" class="tip tip--wide" tabindex="0" data-tip="Neuron-seconds you have contributed, banked as you compute. ⚠ IF YOUR GPU LOOKS IDLE, IT PROBABLY IS NOT BROKEN. Low VRAM use and low utilisation percentages are EXPECTED here and are not a sign of a failed donation: the brain only asks for what it needs, and the real ceiling is round-trip network latency per operation plus checkpoint transfer time, not your card\'s speed. A remote card genuinely cannot be pegged at 100% by this workload. Credit is given for work actually completed, so the number below is the honest measure — not the percentage in your task manager." style="color:#a78bfa;margin-bottom:6px;display:inline-block;">Your neurons created: —</div>'
-      + '<div id="donor-top" style="color:#bbb;line-height:1.5;"></div>';
-    document.body.appendChild(wrap);
-    const input = wrap.querySelector('#donor-name-input');
-    if (_donorName) input.value = _donorName;
-    wrap.querySelector('#donor-name-save').addEventListener('click', () => {
-      const nm = (input.value || '').replace(/[<>&]/g, '').trim().slice(0, 32);
-      _donorName = nm || null;
-      try { if (nm) localStorage.setItem(_DONOR_NAME_KEY, nm); else localStorage.removeItem(_DONOR_NAME_KEY); } catch { /* */ }
-      try { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: 'set_donor_name', name: nm })); } catch { /* */ }
-    });
-    const fmtN = (n) => (n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : (n || 0).toFixed(1));
-    // My leaderboard row id mirrors the server's canonical key: when I've set a
-    // name I share the name:<lower> row with everyone else of that name, so match
-    // on that; otherwise I'm my own per-device anonymous donorId row.
-    const _myLbKey = () => (_donorName ? ('name:' + _donorName.toLowerCase()) : _donorId);
-    async function pollLB() {
-      try {
-        const r = await fetch((typeof unityBrainHttp === 'function') ? unityBrainHttp('/public-state.json') : '/public-state.json', { cache: 'no-store' });
-        const m = await r.json();
-        const lb = m && m.state && m.state.leaderboard;
-        if (!lb) return;
-        const mine = _myLbKey();
-        const you = (lb.top || []).find(e => e.id === mine);
-        document.getElementById('donor-you').textContent = 'Your neurons created: ' + (you ? fmtN(you.neurons) + ' Gn·s' : '— (start donating!)');
-        document.getElementById('donor-top').innerHTML = (lb.top || []).slice(0, 10)
-          .map((e, i) => (i + 1) + '. ' + String(e.name || 'anon').replace(/[<>&]/g, '') + ' — ' + fmtN(e.neurons) + ' Gn·s' + (e.id === mine ? ' (you)' : ''))
-          .join('<br>') || '(no contributors yet)';
-      } catch { /* transient */ }
-    }
-    pollLB();
-    setInterval(pollLB, 5000);
-  })();
+  // (The leaderboard identity + panel used to be built HERE, after the GPU
+  // init — see the top-level block above the init IIFE for why it moved.)
 
   // #30 — periodic per-donor telemetry. Each donor reports ITS OWN GPU
   // (model, VRAM capacity, binding ceiling, live throughput) so the admin

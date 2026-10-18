@@ -5,10 +5,12 @@
 > **Branch: `feature/network-testing-and-bugs`** — Gee: *"new feature branch from here on out network testing and bugs"*. Stay on it; cascade when a batch is whole; come back to it, not `develop`.
 >
 > ```
->   brain    DOWN — the 4:22 AM boot (d1979272, 459,775,607 neurons) died 5:06:56 AM mid-teach with NO trace; donor
->            aborted 0xc0000409 at 5:06:58. Before that: donor on loopback 4:37, 17/17 matrices, ela/kindergarten,
->            spikes 5.5 B, 3 drawings. Kill-all 5:12 AM on his word ("kill all and fix it so i can fresh start fresh
->            walk it"): all four ports free. NOTHING runs until he presses start.bat.
+>   brain    UP — 83efd40e, booted 5:29:18 AM by his start.bat after the kill-all (fresh walk), 459,775,607 neurons;
+>            donor 0.3.39 on LOOPBACK within 2 min, 17/17 matrices, ela/kindergarten since 5:31, 2,747 teach/min,
+>            spikes 179 M at 5:38, first checkpoint 5:34. The 4:22 AM boot (d1979272) died 5:06:56 mid-teach with NO
+>            trace, donor abort 0xc0000409 at 5:06:58 — cause unknown; kill-all 5:12 on his word ("kill all and fix
+>            it so i can fresh start fresh walk it"). ⚠ One server fix (CORS on the plain /public-state.json) still
+>            waits for her NEXT restart — until then the public site cannot read her snapshot.
 >   site     https://theunitybrain.com — WAKE works (NETBUG.1), dashboard boxes hold still (NETBUG.4), visual intake
 >            dials the tunnel (NETBUG.3) — all three live on Pages
 >   tunnel   dumbass.tailec58e0.ts.net — carries CHAT fine; CANNOT carry a donor (0.16 MB/s relay, NETBUG.2 = his call)
