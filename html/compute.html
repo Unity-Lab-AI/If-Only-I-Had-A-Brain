@@ -95,6 +95,9 @@
      import itself would fail (file://html/compute.html resolving
      ./js/brain/gpu-compute.js to file://html/js/... which doesn't
      exist on disk). Live-test diagnostic surfaces the recovery path. -->
+<!-- Where the brain is (same-origin / localhost / a configured tunnel origin).
+     Must run before any script that builds a brain URL. -->
+<script src="../js/brain-origin.js"></script>
 <script>
   if (window.location.protocol === 'file:') {
     document.body.innerHTML = '<div style="padding:40px;background:#0a0a0a;color:#ef4444;font-family:monospace;line-height:1.6;max-width:780px;"><h2 style="color:#ef4444;margin:0 0 16px 0;">compute.html cannot run under file://</h2><p style="color:#e0e0e0;">This page requires the brain-server HTTP route. ES module imports + WebSocket connect both need an http origin.</p><p style="color:#e0e0e0;">Run <code style="background:#222;padding:2px 6px;border-radius:3px;color:#22c55e;">start.bat</code> (or <code style="background:#222;padding:2px 6px;border-radius:3px;color:#22c55e;">Savestart.bat</code> to resume from saved state). The launcher boots <code style="background:#222;padding:2px 6px;border-radius:3px;color:#22c55e;">brain-server.js</code> and opens <code style="background:#222;padding:2px 6px;border-radius:3px;color:#22c55e;">http://localhost:7525/compute.html</code> automatically in an isolated Chrome window with <code style="background:#222;padding:2px 6px;border-radius:3px;">--enable-unsafe-webgpu</code>.</p><p style="color:#888;">Manual fallback: <code style="background:#222;padding:2px 6px;border-radius:3px;color:#22c55e;">node server/brain-server.js</code> then open <a href="http://localhost:7525/compute.html" style="color:#ff4d9a;text-decoration:underline;">http://localhost:7525/compute.html</a></p></div>';
@@ -339,7 +342,7 @@ function _installDeviceLostHandler() {
     const _myLbKey = () => (_donorName ? ('name:' + _donorName.toLowerCase()) : _donorId);
     async function pollLB() {
       try {
-        const r = await fetch('/public-state.json', { cache: 'no-store' });
+        const r = await fetch((typeof unityBrainHttp === 'function') ? unityBrainHttp('/public-state.json') : '/public-state.json', { cache: 'no-store' });
         const m = await r.json();
         const lb = m && m.state && m.state.leaderboard;
         if (!lb) return;
@@ -441,11 +444,18 @@ function connectToServer() {
   // Deployed (served from the pages host) → the PUBLIC compute lane
   // wss://<host>/ws (nginx reverse-proxies to brain-server; see
   // deploy/nginx-unity-brain.conf). Admin/chat UI uses /admin/ws (Forgejo-authed).
+  // THIRD MODE (2026-10-18): the page may be served from GitHub Pages while
+  // the brain lives behind a tunnel on another host. js/brain-origin.js owns
+  // that resolution; with nothing configured it returns exactly the two
+  // branches below, so this is additive. The old expression stays as the
+  // path for a page that loaded without the helper.
   const _loc = window.location;
   const _isLocal = _loc.hostname === 'localhost' || _loc.hostname === '127.0.0.1' || _loc.hostname === '::1';
-  const _wsUrl = _isLocal
-    ? 'ws://localhost:7525'
-    : `${_loc.protocol === 'https:' ? 'wss' : 'ws'}://${_loc.host}/ws`;
+  const _wsUrl = (typeof unityBrainWs === 'function')
+    ? unityBrainWs('ws')
+    : (_isLocal
+        ? 'ws://localhost:7525'
+        : `${_loc.protocol === 'https:' ? 'wss' : 'ws'}://${_loc.host}/ws`);
   ws = new WebSocket(_wsUrl);
   // Binary frames arrive as ArrayBuffer (not Blob) — skips the async
   // Blob→ArrayBuffer copy for 100MB+ sparse matrix uploads.
@@ -1328,7 +1338,7 @@ function connectToServer() {
     // /public-state.json, so ask it and tell the donor plainly. Best-effort and
     // fire-and-forget: it must never interfere with the reconnect schedule
     // above, which stays armed regardless of what this says.
-    fetch('/public-state.json', { cache: 'no-store' })
+    fetch((typeof unityBrainHttp === 'function') ? unityBrainHttp('/public-state.json') : '/public-state.json', { cache: 'no-store' })
       .then((r) => r.json())
       .then((d) => {
         if (!d) return;
@@ -1583,7 +1593,7 @@ async function handleComputeRequest(msg) {
 </script>
 <script>
   // Live-latest donor links — same upgrader as legend.html (see there).
-  fetch('/public-state.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+  fetch((typeof unityBrainHttp === 'function') ? unityBrainHttp('/public-state.json') : '/public-state.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
     var dl = d && d.state && d.state.donorLatest;
     if (!dl) return;
     var w = document.getElementById('donor-dl-win'); if (w && dl.windowsUrl) w.href = dl.windowsUrl;

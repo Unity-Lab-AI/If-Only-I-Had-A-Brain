@@ -54,7 +54,7 @@ last-verified: "2026-10-18, ~1:40 AM Denver — field reads taken on the operato
 
 > ## ⛔⛔⛔ 2026-10-18, ~1:40 AM Denver — SHE HAS MOVED HOUSE AND HAS NOT BEEN STARTED YET
 >
-> **Where she lives now.** The site is served by **GitHub Pages** from the public mirror (`200`, 55,881 B at the root). The brain, her voice and her eyes all run on **the operator's own PC** and are meant to be reached through a tunnel. The page reads its brain address from `js/brain-origin.js`, and **the copy Pages is serving says `BRAIN_ORIGIN = ''`** — so the public page currently has no brain to talk to and falls back to its own in-browser toy brain. That stays true until a tunnel hostname exists and is written into that one line. **Tailscale is not installed on this PC** — that is the step everything downstream waits on.
+> **Where she lives now.** The site is served by **GitHub Pages** from the public mirror (`200`, 55,881 B at the root). The brain, her voice and her eyes all run on **the operator's own PC**, reached through **Tailscale Funnel** as `https://dumbass.tailec58e0.ts.net` — up and verified from the public internet at ~3:30 AM: the five forwarded lanes (`/public-state.json`, `/minds-eye.json`, `/health`, `/ws`, `/image`) answer **502** because nothing is on 7525 yet, and `/admin/status`, `POST /reset`, `/ctl/status` and `/` answer **404** — default-deny holds. `js/brain-origin.js` carries that hostname in the working tree; **the copy Pages is serving still says `BRAIN_ORIGIN = ''`** until the next push lands, so the public page has no brain to talk to for a few more minutes, and then it will have one that is not running.
 >
 > **What IS up, read live:**
 >
@@ -91,7 +91,7 @@ last-verified: "2026-10-18, ~1:40 AM Denver — field reads taken on the operato
 | Neuron count | Derived at boot from free host RAM, and there has been no boot on this machine. 103.5 GB free will produce a number the old box never could; **it will be quoted with its boot, not predicted here.** |
 | Walk position | A fresh walk starts at `pre-K` by definition. Nothing has been taught on this machine. |
 | Loop lag, Ψ, Φ̂, coherence | Instruments of a running brain. |
-| Tunnel hostname | Does not exist until Tailscale is installed and the funnel script is run. |
+| Reachability of a RUNNING brain through the tunnel | The tunnel is proven only against an absent brain (502). The first boot proves `/health` 200 cross-origin from Pages, and `/ws` carrying chat. |
 
 ---
 

@@ -234,6 +234,9 @@
        bypass — operators either fix WebGPU via the prep page or do
        not use the dashboard. Loads early so the modal renders before
        the cards paint. -->
+  <!-- Where the brain is (same-origin / localhost / a configured tunnel origin).
+       Must run before any script that builds a brain URL. -->
+  <script src="../js/brain-origin.js"></script>
   <script type="module">
     import { mountBootModal } from '../js/webgpu-prep.js';
     mountBootModal({ prepUrl: 'webgpu-prep.html' });
@@ -1177,9 +1180,17 @@
     // public dashboard opened /admin/ws and the browser threw a Basic-auth PASSWORD PROMPT at
     // every public viewer — the public page is public, no sign-in; only admin sections are gated.
     const _dashIsPublic = /[?&]public=1(\b|&|$)/.test(location.search) || /\/public(\/|$)/.test(location.pathname);
-    const SERVER_URL = _dashIsLocal
-      ? 'ws://localhost:7525'
-      : `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/${_dashIsPublic ? 'ws' : 'admin/ws'}`;
+    // THIRD MODE (2026-10-18): served from GitHub Pages, the brain is behind a
+    // tunnel on another host and js/brain-origin.js resolves it. The PUBLIC
+    // lane (?public=1) works through the tunnel; the ADMIN lane is deliberately
+    // NOT forwarded by the tunnel (deploy/tailscale-funnel.bat) and is reached
+    // privately from the tailnet instead. Unconfigured, the helper returns the
+    // same two branches as before.
+    const SERVER_URL = (typeof unityBrainWs === 'function')
+      ? unityBrainWs(_dashIsPublic ? 'ws' : 'admin/ws')
+      : (_dashIsLocal
+          ? 'ws://localhost:7525'
+          : `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/${_dashIsPublic ? 'ws' : 'admin/ws'}`);
 
     // Deployment-aware admin REST base. The dashboard's HTTP control
     // endpoints (auto-advance / shutdown / milestone / grade-advance /
