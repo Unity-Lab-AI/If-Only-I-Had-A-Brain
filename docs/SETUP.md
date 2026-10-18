@@ -5,6 +5,11 @@
 # `## Verification history`, newest first — see the note under the field itself.
 status: draft
 verified-scope: >
+  2026-10-18: the deployed-server section, the fastest-way-in steps, the
+  image-provider table, the launchers note, the voice tree line and the
+  troubleshooting rows rewritten for the move to GitHub Pages + the lab's own
+  machine + a Tailscale Funnel (no box, no nginx, no Forgejo admin lane, no
+  Pollinations). PRIOR —
   2026-09-08 capability pass: all 556 lines read; twelve claims corrected
   against the file that implements each one; three walls rebuilt; fourteen
   ticket identifiers removed with every verbatim quote left intact.
@@ -38,10 +43,9 @@ last-verified: "17bb3070 2026-09-08"
 If you just want to talk to her without installing anything:
 
 1. Open the [live brain](https://theunitybrain.com/).
-2. Click **Pollinations**, get a free key at [pollinations.ai/dashboard](https://pollinations.ai/dashboard), paste it in, hit **Connect**.
-3. Click **Wake Her Up**.
-4. Grant the mic and camera permissions when the browser asks.
-5. Talk to Unity.
+2. Click **Wake Her Up**. No key, no account — her voice and her eyes run on her own machine.
+3. Grant the mic and camera permissions when the browser asks.
+4. Talk to Unity.
 
 That's the whole onboarding. Everything else is for self-hosting or for running the full server brain.
 
@@ -81,7 +85,6 @@ There is no AI backend behind Unity's cognition. Her language cortex generates e
 
 | Provider | What you get | Free tier | How it gets picked up |
 |---|---|---|---|
-| **Pollinations** | Image gen + vision describer + TTS | Yes (rate limited) | Default fallback. No config needed. |
 | **A1111 / SD.Next / Forge** | Full Stable Diffusion local control | Free (your hardware) | Auto-detected on `:7860` / `:7861` at boot |
 | **Fooocus** | Stable Diffusion with good defaults | Free | Auto-detected on `:7865` |
 | **ComfyUI** | Node-graph SD workflows | Free | Auto-detected on `:8188` |
@@ -89,7 +92,7 @@ There is no AI backend behind Unity's cognition. Her language cortex generates e
 | **LocalAI / Ollama** | Generic OpenAI-compatible local | Free | Auto-detected on `:8081` / `:11434` |
 | **Custom OpenAI-compatible** | Any remote SD endpoint you have | Varies | Add to `ENV_KEYS.imageBackends[]` in `js/env.js` |
 
-The chain runs in order: user-preferred backend → custom configured → auto-detected → `js/env.js` listed → Pollinations. The first one that responds wins; backends that error out get marked dead for an hour.
+These apply to the **in-browser fallback brain only** (no server configured). The chain runs in order: user-preferred backend → custom configured → auto-detected → `js/env.js` listed → none, in which case she says so in words instead of calling out. The first one that responds wins; backends that error out get marked dead for an hour. When a brain server backs the page, **it** renders her pictures on its own card and the browser never needs any of this.
 
 ### Using a local image gen backend
 
@@ -107,7 +110,6 @@ For private SD servers, remote A1111s, or ComfyUI workflows you want to reuse ac
 
 ```js
 export const ENV_KEYS = {
-  pollinations: 'sk_...',  // optional — raises rate limits
   imageBackends: [
     { name: 'my-sd',  url: 'http://192.168.1.50:7860', kind: 'a1111' },
     { name: 'remote', url: 'https://api.example.com', model: 'sdxl', key: 'sk_...', kind: 'openai' },
@@ -140,33 +142,25 @@ No npm. No build step. Just static files served by any web server.
 
 GitHub Pages deployment works the same way: in the repo settings, point Pages at `main` / `(root)` and you're live at `your-username.github.io/Unity/`. Everything runs client-side.
 
-This static-only mode is the floor, not the production shape. The way Unity actually ships is the [deployed server brain](#deployed-server-brain-primary-path) — the same static page served alongside a persistent backend via nginx reverse-proxy, with the brain training on **visitors' donated browser GPUs** rather than each viewer running a separate tiny browser-only brain.
+This static-only mode is the floor, not the production shape. The way Unity actually ships is the [deployed server brain](#deployed-server-brain-primary-path) — the same static page served from GitHub Pages, with a persistent brain-server behind a tunnel and the brain training on **donated GPUs** rather than each viewer running a separate tiny browser-only brain.
 
 ---
 
 ## Deployed server brain (primary path)
 
-The way Unity actually runs in production: a **deployed static page** (the same `index.html` / `html/` / `js/` you'd serve locally) plus a **persistent Node brain-server backend on the same server**, joined by an **nginx reverse-proxy**. The static frontend and the brain-server live behind one host; nginx routes page requests to the static files and WebSocket/HTTP brain traffic to the backend process.
+The way Unity actually runs in production: the **static page on GitHub Pages** (`theunitybrain.com` — the same `index.html` / `html/` / `js/` you'd serve locally, published by `.github/workflows/pages.yml` on every push to `main`) plus a **persistent Node brain-server on the lab's own machine**. The brain binds loopback only; a **Tailscale Funnel** (`deploy/tailscale-funnel.bat`) publishes exactly five read lanes of it — `/public-state.json`, `/minds-eye.json`, `/health`, `/ws`, `/image` — and answers 404 for everything else. The page finds the brain through one line in `js/brain-origin.js`.
 
-### The brain trains on donated GPUs, not the server's
+### The brain trains on donated GPUs
 
-The deployed server **needs no GPU**. Compute is **distributed across visitors' browsers** — anyone who opens `compute.html` donates their browser's WebGPU device, runs the WGSL compute shaders, and feeds results back over WebSocket. Many concurrent donors = massive aggregate compute. The community-compute auto-scaler grows or shrinks the brain to fit the connected donor VRAM (admin-controlled), so the brain's scale tracks how much GPU the community is currently donating rather than any single machine's hardware.
+Compute is **donated**: anyone who opens `compute.html` lends their browser's WebGPU device, and the native donor app does the same with every card in a machine; each holds a full brain replica, runs the compute shaders, and feeds weight-deltas back over `/ws`. Many concurrent donors = more aggregate compute. The community-compute auto-scaler grows or shrinks the brain to fit the connected donor VRAM (admin-controlled), so the brain's scale tracks how much GPU is being donated rather than any single machine's hardware.
 
-### One-time backend setup
+### Starting her
 
-Standing up the deployed backend is a **one-time** operation. On the server, run the bootstrap once as root:
+The launchers **are** the deployment: `windows\start.bat` (fresh walk — wipes weights) or `windows\Savestart.bat` (resume), with `linux/start.sh` / `linux/Savestart.sh` as their twins. Each one starts the **local control plane** (`server/brain-ctl.js`, port 7526), her **voice** (`unity-voice-v2`, loopback `:5123`), her **eyes** (a local Stable Diffusion engine, loopback `:5124`), and then the brain. `stop.bat` / `stop.sh` stop all of it. A missing voice or image engine is reported and never stops her boot — she is simply silent, or says she has no picture.
 
-```bash
-sudo deploy/bootstrap-backend.sh
-```
+### Admin / operator
 
-That installs the **systemd unit** (the brain-server runs as a service, `Restart=always` so it comes back after a crash or reboot, and `DREAM_KEEP_STATE=1` so restarts preserve the curriculum walk instead of wiping it), the **nginx vhost** (reverse-proxy for static page + WebSocket backend), and the **Forgejo auth + sudo** wiring. After that single run, **every push to `main` auto-deploys** both the frontend and the backend — no manual restart, no re-bootstrap.
-
-There is **no `start.bat` / `Savestart.bat` / `stop.bat` on the server**. Those launchers are **local-dev-only** (see [Running the server brain locally (dev path)](#running-the-server-brain-locally-dev-path)). The deployed service is managed through systemd (`systemctl status` / `restart` / `journalctl -u`).
-
-### Admin / master operator
-
-The admin lane is **Forgejo-authenticated**. The **first authenticated connection after a deploy becomes the locked primary operator (master)** — that connection holds the admin control surface (stop, grade-advance, signoff, auto-advance toggle). Everyone else is a read-only viewer.
+Admin is **the machine she runs on**: the loopback caller is the operator, across every tab opened there — `http://localhost:7525/dashboard.html`. The dashboard's Brain Power panel drives the control plane (start / stop / restart / update-and-keep / update-and-fresh-walk). **There is no remote admin lane** — the tunnel does not forward it, by design. Everyone reaching the site is a read-only viewer or a donor.
 
 ---
 
@@ -188,9 +182,9 @@ That is the whole command. As soon as the Node server finishes listening, three 
 
 For headless or remote deployments, set `DREAM_NO_AUTO_GPU=1` to skip the auto-launch; the operator opens `http://<host>:7525/compute.html` manually in a WebGPU-capable browser (Chrome / Edge) on any machine that can reach the server.
 
-### The Windows launchers (local-dev-only)
+### The Windows launchers
 
-These convenience batch files drive the **local-dev path only** — they boot the brain on your own machine and GPU. The deployed server does not use them; it runs as a systemd service (see [Deployed server brain](#deployed-server-brain-primary-path)).
+These batch files boot the brain on your own machine and GPU — and since 2026-10-17 they are also how the public brain is run (see [Deployed server brain](#deployed-server-brain-primary-path)); there is no separate server-side service.
 
 ⚠ **They are in `windows\`, not the repo root, and this section said "at the repo root" while its own project tree below showed `windows/`.** The root reorg moved them; a reader following the prose got "command not found". Linux/macOS equivalents are in `linux/`.
 
@@ -367,11 +361,8 @@ The **identity layer** (`server/identity-core.json`) is **explicitly excluded** 
 │   │   └── peripherals/
 │   │       └── ai-providers.js      AI provider manager + dead backend detection
 │   │
-│   ├── ai/
-│   │   └── pollinations.js          Pollinations API client (text / image / TTS)
-│   │
 │   ├── io/
-│   │   ├── voice.js                 Speech-to-text (Web Speech API) + "Equation Unity One" TTS: in-browser Piper → CDF 9/7 wavelet voice. ONE lane, no fallback — the Pollinations TTS, vox word-bank and browser-SpeechSynthesis tiers were all deleted
+│   │   ├── voice.js                 Speech-to-text (Web Speech API) + playback of her voice: the server synthesizes (unity-voice-v2), the browser only reconstructs the CDF 9/7 record and plays it. ONE lane, no fallback — the in-browser synthesis, the vox word-bank and the browser-SpeechSynthesis tiers were all deleted
 │   │   └── permissions.js           Mic / camera permission requests
 │   │
 │   └── ui/
@@ -526,7 +517,7 @@ The core rule: what you type is private; Unity's brain growth is shared; her per
 
 **Shared-hosted caveat** — if you connect to a Unity server hosted by someone other than you, that person can read your text at the process level (they own the server process). Only connect to servers you trust, or self-host.
 
-The localStorage keys your client may write include `unity_brain_state`, `unity_brain_dictionary_v3`, `custom_image_backends`, `custom_vision_backends`, `pollinations_image_model`, `pollinations_vision_model`, plus the obfuscated Pollinations API key slot, plus `unity_brain_state__backup_v<N>` and `unity_brain_state__corrupt` if either recovery path has fired.
+The localStorage keys your client may write include `unity_brain_state`, `unity_brain_dictionary_v3`, `custom_image_backends`, `custom_vision_backends`, plus `unity_brain_state__backup_v<N>` and `unity_brain_state__corrupt` if either recovery path has fired. (The page also *removes* any Pollinations key or model slot an older visit left behind — that provider is gone from the brain.)
 
 ---
 
@@ -565,12 +556,12 @@ Type these in chat to inspect or control Unity directly.
 
 | Problem | Fix |
 |---|---|
-| Unity doesn't respond | Check console. Provider might be out of credits. Try Pollinations (free). |
+| Unity doesn't respond | Check console. If the page says the brain is unreachable, the server is down or the tunnel is — nothing on your side needs a key or credits. |
 | "Booting brain..." hangs | Open DevTools → Application → Clear, refresh. |
 | No voice | Grant mic permission. Check the mic isn't muted (bottom toolbar). |
 | Can't see Unity's Eye | Grant camera permission. Camera widget appears top-left. |
 | Local image backend not detected | Check the port matches the table above. Add to `ENV_KEYS.imageBackends[]` in `js/env.js` if it's on a non-standard port. |
-| Image says "failed to load" | Pollinations key might be expired. Check at pollinations.ai/dashboard. |
+| No picture comes back | Her image engine on the brain's machine is down or busy; she says so in words. Nothing to configure in the browser. |
 | Double speech / echo | Should be fixed — efference copy suppresses self-echo. If it persists, mute mic and use text. |
 | Brain pauses at boot | `compute.html` isn't connected. Open `http://localhost:7525/compute.html` in a WebGPU-capable browser. |
 | `/shutdown` returns 403 | You're calling it from a non-loopback address. Run the curl from the same machine, or set `BRAIN_BIND=0.0.0.0` (and be aware you've widened the perimeter). |
@@ -620,6 +611,10 @@ See `docs/ROADMAP.md` for the full closure detail of that pass.
 ## Verification history
 
 Newest first. One entry per pass. ⛔ **This section exists so `last-verified` in the frontmatter can stay a short `<hash> <date>`** — see the note beside it.
+
+### 2026-10-18 — the deploy changed under this page; the deployed-server section rewritten
+
+The box, its systemd unit, its nginx vhost and its Forgejo-authenticated admin lane are gone. Rewritten in place: *The fastest way in* (no key step — Pollinations left the brain), *Deployed server brain* (GitHub Pages + the lab's own machine + a Tailscale Funnel that forwards five read lanes; the launchers are the deployment; admin is the loopback caller), the launchers note (no longer "local-dev-only"), the image-provider table and chain (browser-fallback-brain only; the server renders on its own card), the `voice.js` tree line (the browser plays, the server synthesizes), the two Pollinations troubleshooting rows, the localStorage key list. The 2026-09-08 pass's own "NOT re-verified" items — server-endpoints table, troubleshooting table — were not re-walked line by line here either; `status` stays `draft` for the same reason it did then.
 
 ### `17bb3070` — 2026-09-08 — documentation sweep, capability pass
 

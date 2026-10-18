@@ -65,16 +65,17 @@ last-verified: "0ee5ac68 2026-08-29"
 
 Local dev connects the browser directly to `ws://localhost:7525` — no proxy, no auth (see the hostname gate under "Client Reconnection Behavior").
 
-### Deployed (nginx reverse-proxy lanes)
+### Deployed (tunnel lanes)
 
-In the deployed pre-alpha, the Node brain-server binds to loopback only (`127.0.0.1:7525`) and is never exposed directly. An nginx reverse-proxy fronts it and splits two WSS lanes onto the same brain process:
+In production the Node brain-server binds to loopback only (`127.0.0.1:7525`) on the lab's own machine and is never exposed directly. A **Tailscale Funnel** fronts it and forwards exactly these paths; anything else answers 404 from the tunnel itself:
 
 | Lane | URL | Auth | Who connects |
 |---|---|---|---|
-| **Public donor/viewer** | `wss://<host>/ws` | None | `compute.html` donor GPUs + read-only viewers |
-| **Admin** | `wss://<host>/admin/ws` | Forgejo-authenticated (nginx `auth_request`) — injects a trusted `X-UAL-User` header the brain-server reads | Lab operators. First authed connection after a deploy becomes the master operator. |
+| **Public donor/viewer** | `wss://<brain>/ws` | None | `compute.html` donor GPUs, the native donor, chat clients, read-only viewers |
+| **Public reads** | `https://<brain>/public-state.json`, `/minds-eye.json`, `/health`, `/image/<id>.png` | None | the public pages (CORS `*`) |
+| **Admin** | `ws://127.0.0.1:7525/admin/ws` | Loopback only — `requireLoopback` on the brain | The operator, on the brain's own machine. **Not forwarded by the tunnel.** |
 
-Both lanes terminate at the one loopback brain-server; the lane a client arrived on (plus the `X-UAL-User` header on the admin lane) is what gates the admin-only messages described below. Admin REST control endpoints are proxied under `/admin/<endpoint>` (see "Server Endpoints").
+The page learns `<brain>` from `js/brain-origin.js`. The brain's WebSocket server accepts an Upgrade on any path, so the "public lane is `/ws` only" rule is enforced by what the tunnel forwards — the route list in `deploy/tailscale-funnel.bat` is the security control. Admin REST control endpoints live at `/admin/<endpoint>` and are reachable only on loopback (see "Server Endpoints").
 
 **R14 note (2026-04-13):** Unity's brain server used to bind to port `8080`, which collides with llama.cpp's default, is one of the most commonly-used ports, and was a port R13 explicitly wanted to auto-detect for vision describer backends. R14 moved Unity to `7525` — not used by any backend Unity probes, so Unity never fights its own vision detection. If you're still running an old deployment on `8080`, set the `PORT` env var on `node brain-server.js` to keep the old behavior.
 
@@ -406,7 +407,7 @@ On the public donor lane (`wss://<host>/ws`), any number of `compute.html` donor
 | Donor → Server | `gpu_register` | `{ …, appVersion }` (native binary) | Donor joins the replica pool; server uploads the full brain to it. **Version gate:** a native binary sends `appVersion` (Cargo pkg version); if it's below `DREAM_MIN_DONOR_VERSION` (**default `0.3.26` as of `brain-server.js:10959`** — ⛔ this doc said `0.3.7` until 2026-08-27, which is a materially wrong admission floor: it *"sat at 0.3.7 for 22 releases"* and has since been raised) the server replies `{type:"incompatible_version", yourVersion, minVersion, message}` + closes (code 4001) and does NOT admit it. Browser donors omit `appVersion` → exempt. The refused donor stops reconnecting + shows "Brain status: refused — update". |
 | Server → Donor | (full-brain upload + periodic master re-broadcast) | weights | Replica receives the complete brain on join, then periodic merged-master pushes |
 
-Admin-only telemetry rides the admin lane (`wss://<host>/admin/ws`): the live server console stream and auto-scale telemetry (replica count, per-replica throughput, scaling decisions) are pushed only to authed admin clients, never to donors/viewers.
+Admin-only telemetry rides the admin lane (loopback `/admin/ws`, never forwarded by the tunnel): the live server console stream and auto-scale telemetry (replica count, per-replica throughput, scaling decisions) are pushed only to authed admin clients, never to donors/viewers.
 
 #### Binary sparse frames (SPRS → donor, SPRR ← donor)
 
@@ -680,7 +681,7 @@ Core design rule (established 2026-04-13): **user text is private; brain growth 
 
 ## Security Model
 
-- **Auth lives at the proxy, not the brain-server.** The brain-server itself does no authentication — any client that reaches loopback `127.0.0.1:7525` can connect and send text. In local dev that's the developer alone (loopback only). In the deployed pre-alpha the brain-server binds loopback only and nginx fronts it: the public donor/viewer lane (`/ws`) stays unauthenticated, and the admin lane (`/admin/ws`) is gated by nginx `auth_request` against Forgejo, which injects a trusted `X-UAL-User` header. Admin-only messages and `/admin/<endpoint>` control routes are only reachable via the authed lane. **Direct exposure of `127.0.0.1:7525` to the public internet — bypassing the proxy — is never appropriate.**
+- **Auth is the loopback, and the tunnel's route list.** The brain-server itself does no authentication — any client that reaches loopback `127.0.0.1:7525` is the operator, by construction, because only the operator's own processes can. In production the brain binds loopback only and a Tailscale Funnel forwards just the public read lanes (`/ws`, `/public-state.json`, `/minds-eye.json`, `/health`, `/image`); `/admin/*` and the control plane are not forwarded at all. ⚠ A tunnel delivers requests *from* loopback, so `requireLoopback` would pass a forwarded `/admin` request — which is exactly why the admin lane must never be added to the forwarded list. **Direct exposure of `127.0.0.1:7525` to the public internet — bypassing the tunnel's allowlist — is never appropriate.**
 - **API keys never traverse the WebSocket.** Unity's brain never needs API keys — cognition runs fully equational on the server, and sensory AI calls happen client-side. Whatever keys the client holds (for their own image gen, TTS, VLM backends) stay in their browser's localStorage.
 - **No key material in server storage.** Server persists brain weights (`server/brain-weights.json`), word frequencies, and episodic memory (`server/episodic-memory.db` SQLite). Zero user secrets on disk.
 - **Conversation broadcasts are anonymized to userId only** — no client name, no IP, no User-Agent. The `setName` field is server-local and never included in the broadcast.
@@ -708,7 +709,7 @@ Core design rule (established 2026-04-13): **user text is private; brain growth 
 | `/history` | GET | Emotional history data (for the dashboard chart) |
 | Static files | GET | Anything else in the project directory is served as static |
 
-All HTTP endpoints default to `http://localhost:7525/<path>` and move with `PORT`. In the deployed setup these are served behind nginx; the admin REST control endpoints are proxied under `/admin/<endpoint>` on the Forgejo-authenticated lane (same `auth_request` + `X-UAL-User` injection as the admin WSS lane), while public reads come through the unauthenticated front.
+All HTTP endpoints default to `http://localhost:7525/<path>` and move with `PORT`. In production only the public reads (`/public-state.json`, `/minds-eye.json`, `/health`, `/image/<id>.png`) and `/ws` are forwarded by the tunnel; the admin REST control endpoints under `/admin/<endpoint>` and the control plane (`:7526`) are reachable only on the brain's own machine.
 
 ---
 
