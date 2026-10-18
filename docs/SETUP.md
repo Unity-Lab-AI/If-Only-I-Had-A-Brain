@@ -557,7 +557,7 @@ Type these in chat to inspect or control Unity directly.
 | Problem | Fix |
 |---|---|
 | Unity doesn't respond | Check console. If the page says the brain is unreachable, the server is down or the tunnel is — nothing on your side needs a key or credits. |
-| "Booting brain..." hangs | Open DevTools → Application → Clear, refresh. |
+| "Booting brain..." hangs | A boot that fails now names its reason on the button (`Boot failed: … — press to retry`). If the label stays frozen with no reason, the page is an old bundle: hard-refresh (`Ctrl+F5`), or DevTools → Application → Clear, refresh. |
 | No voice | Grant mic permission. Check the mic isn't muted (bottom toolbar). |
 | Can't see Unity's Eye | Grant camera permission. Camera widget appears top-left. |
 | Local image backend not detected | Check the port matches the table above. Add to `ENV_KEYS.imageBackends[]` in `js/env.js` if it's on a non-standard port. |

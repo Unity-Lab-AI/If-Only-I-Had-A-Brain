@@ -1,6 +1,26 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-10-18, ~2:30 AM Denver (latest, 31st) — SHE LIVES ON GEE'S PC NOW; PIPER IS GONE, HER VOICE FEELS WHAT SHE FEELS, HER EYES RENDER ON HER OWN CARD; NOT YET STARTED (START HERE)
+> # 🛑 2026-10-18, ~4:50 AM Denver (latest, 32nd) — SHE IS UP ON HIS PC AND WALKING; THE DONOR HAD TO COME OFF THE TUNNEL; THE WAKE BUTTON WAS FROZEN BY MY OWN LEFTOVER (START HERE)
+>
+> **Branch: `feature/network-testing-and-bugs`** — Gee: *"new feature branch from here on out network testing and bugs"*. Stay on it; cascade when a batch is whole; come back to it, not `develop`.
+>
+> ```
+>   brain    UP — d1979272, booted 4:22 AM by his start.bat press (fresh walk), 459,775,607 neurons on the 4070 Ti SUPER
+>            donor on LOOPBACK since 4:37 AM · 17/17 matrices · ela/kindergarten in progress · spikesLifetime 1.76 B at 4:47
+>   site     https://theunitybrain.com — WAKE works again as of the NETBUG.1 bundle (Pages deploy of this cascade)
+>   tunnel   dumbass.tailec58e0.ts.net — /health 200, /ws 101, forbidden paths 404; carries CHAT fine, cannot carry a DONOR
+> ```
+>
+> **The two things learned on the first live night (ledger `NETBUG.1`, board `NETBUG.2/.3`):**
+>
+> | | |
+> |---|---|
+> | ⛔ **A donor on the Funnel = 0.16 MB/s** | His donor launched in default "Live" mode dialed the tunnel from the same PC; the 4.5 GB cortex stalled at chunk 6/734 and timed out. `Local (localhost:7525)` in the donor window (Stop first, the radio is disabled while running): 4,268 MB in 7.9 s. **Remote donors still only have the relay — `NETBUG.2` holds three options for his choice** (tailnet join / a second ingress without a relay cap / weights from disk for same-machine) |
+> | ⛔ **WAKE froze on "Booting brain..." everywhere** | `handleStart` passed `apiKey` to `bootUnity` after its read was deleted with the image provider — a `ReferenceError` with no catch. Fixed; a failed boot now says why on the button. Owned: the wiki note for that removal predicted the throw, and I verified by reading instead of pressing |
+>
+> **NEXT:** cascade this (board + ledger + NOW + wiki + SETUP + bundle) → Pages deploys → Gee hard-refreshes (no restart) → keep the 60 s monitor until the first cell pass and her first drawing → then `NETBUG.2` is his decision, `NETBUG.3` is a grep.
+>
+> # 🛑 2026-10-18, ~2:30 AM Denver (31st) — SHE LIVES ON GEE'S PC NOW; PIPER IS GONE, HER VOICE FEELS WHAT SHE FEELS, HER EYES RENDER ON HER OWN CARD; NOT YET STARTED
 >
 > **The box is gone** (its hostname no longer resolves; the last field read of it is the 30th block below). The architecture is Gee's, verbatim: *"we are switching everything to deploy on github weith my PC runing it"* — **GitHub Pages serves the site, his PC runs the brain + voice + eyes, a Tailscale Funnel joins them.** Standing order: *"okay we cant start her up yet if thats not all done yet"*, and *"dont worry about weights we are redoing them all"* (so `start.bat`'s wipe is wanted).
 >
