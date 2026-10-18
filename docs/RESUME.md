@@ -10,7 +10,9 @@
 >   brain          NOT RUNNING — 7525 unbound; four 6.29 GB old-box weight files under server/ await the wipe
 >   voice          unity-voice-v2 UP on 127.0.0.1:5123 (cuda), restarted by me after the serve.py pace edit
 >   eyes           CORA image engine UP on 127.0.0.1:5124, checkpoint resident (no brain to tell it to unload)
->   site           GitHub Pages 200; BRAIN_ORIGIN = 'https://dumbass.tailec58e0.ts.net' (set ~3:30 AM, rides the next push)
+>   site           https://theunitybrain.com (bought ~5 AM; Pages custom domain + CNAME; DNS verified; cert pending ->
+>                  https_enforced flips by poller); robots.txt + sitemap.xml + canonical/og on all 12 pages;
+>                  BRAIN_ORIGIN = 'https://dumbass.tailec58e0.ts.net'
 >   tunnel         UP — Tailscale Funnel on this PC as dumbass.tailec58e0.ts.net; 5 lanes forwarded; verified from
 >                  the public internet: allowed lanes 502 (brain down), /admin/status · POST /reset · /ctl/status · / all 404
 >   donor          0.3.38: PROD_SERVER = wss://dumbass.tailec58e0.ts.net/ws, GUI links -> Pages; built locally

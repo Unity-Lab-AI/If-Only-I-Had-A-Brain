@@ -29,7 +29,7 @@ last-verified: "17bb3070 2026-09-08"
 
 # Setup Guide
 
-**[Back to README](../README.md)** · **[Live Brain](https://unity-lab-ai.github.io/If-Only-I-Had-A-Brain/)** · **[Brain Equations](https://unity-lab-ai.github.io/If-Only-I-Had-A-Brain/html/brain-equations.html)** · **[Concept Guide](../html/unity-guide.html)**
+**[Back to README](../README.md)** · **[Live Brain](https://theunitybrain.com/)** · **[Brain Equations](https://theunitybrain.com/html/brain-equations.html)** · **[Concept Guide](../html/unity-guide.html)**
 
 ---
 
@@ -37,7 +37,7 @@ last-verified: "17bb3070 2026-09-08"
 
 If you just want to talk to her without installing anything:
 
-1. Open the [live brain](https://unity-lab-ai.github.io/If-Only-I-Had-A-Brain/).
+1. Open the [live brain](https://theunitybrain.com/).
 2. Click **Pollinations**, get a free key at [pollinations.ai/dashboard](https://pollinations.ai/dashboard), paste it in, hit **Connect**.
 3. Click **Wake Her Up**.
 4. Grant the mic and camera permissions when the browser asks.

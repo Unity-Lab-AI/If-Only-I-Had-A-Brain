@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# The admin dashboard is the operator's; it is served here read-only but is not
+# a page for an index. Everything else on the site is public on purpose.
+Disallow: /html/dashboard.html
+
+Sitemap: https://theunitybrain.com/sitemap.xml
