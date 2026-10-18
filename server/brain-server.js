@@ -13664,17 +13664,10 @@ wss.on('connection', (ws, req) => {
           // A donor too small to hold the FULL running brain must never be
           // PRIMARY — the primary is the canonical full-weights upload target.
           // It joins as a replica; the sync path gives it partial coverage.
-          let _tooSmallForPrimary = false;
-          try {
-            const _pv = Number(client.gpuVramMB || 0);
-            // HELD VRAM (donated cap or full card) — duty-cycle is throughput,
-            // not VRAM held; it must not disqualify a card from PRIMARY.
-            const _pe = (Number(client.donatedMB) > 0)
-              ? (_pv > 0 ? Math.min(Number(client.donatedMB), _pv) : Number(client.donatedMB))
-              : _pv;
-            const _pn = Number(brain._runningFloorMB || 0);
-            _tooSmallForPrimary = (_pe > 0 && _pn > 0 && _pe < _pn);
-          } catch { /* keep false */ }
+          // Same HELD-VRAM-vs-running-floor test the periodic rebalance applies
+          // (one chokepoint, gpu.js) — the two used to disagree, and the
+          // rebalance side handed PRIMARY to a card this side had just refused.
+          const _tooSmallForPrimary = brain._donorTooSmallForPrimary(client);
           if (_tooSmallForPrimary && (!havePrimary || _df7PromoteStronger)) {
             console.log(`[${id}] DF.7 — donor VRAM cannot hold the FULL running brain (needs ~${brain._runningFloorMB}MB) — NOT eligible for PRIMARY; joins as a (partial) replica.`);
           }

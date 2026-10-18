@@ -1,23 +1,31 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-10-18, ~5:20 AM Denver (latest, 32nd) — THE FIRST LIVE NIGHT: SHE WALKED, SHE DREW, SHE DIED WITHOUT A TRACE; KILLED ALL ON HIS WORD, SIX FIXES SHIPPED, WAITING ON HIS START.BAT (START HERE)
+> # 🛑 2026-10-18, ~5:55 AM Denver (latest, 32nd) — THE FIRST LIVE NIGHT: SHE WALKED, SHE DREW, SHE DIED WITHOUT A TRACE; KILLED ALL ON HIS WORD, SIX FIXES SHIPPED; THEN THE DONOR DIED AGAIN AT 5:39 (A RUST abort(), NO HOOK CAN SEE IT) AND A 2 GB TAB WAS FOUND STEALING PRIMARY — FIXED; HIS KILL-ALL + START.BAT IS NEXT (START HERE)
 >
 > **Branch: `feature/network-testing-and-bugs`** — Gee: *"new feature branch from here on out network testing and bugs"*. Stay on it; cascade when a batch is whole; come back to it, not `develop`.
 >
 > ```
->   brain    UP — 83efd40e, booted 5:29:18 AM by his start.bat after the kill-all (fresh walk), 459,775,607 neurons;
->            donor 0.3.39 on LOOPBACK within 2 min, 17/17 matrices, ela/kindergarten since 5:31, 2,747 teach/min,
->            spikes 179 M at 5:38, first checkpoint 5:34. The 4:22 AM boot (d1979272) died 5:06:56 mid-teach with NO
->            trace, donor abort 0xc0000409 at 5:06:58 — cause unknown; kill-all 5:12 on his word ("kill all and fix
->            it so i can fresh start fresh walk it"). ⚠ One server fix (CORS on the plain /public-state.json) still
->            waits for her NEXT restart — until then the public site cannot read her snapshot.
+>   brain    UP but PAUSED — 83efd40e, booted 5:29:18 AM (fresh walk), 459,775,607 neurons; walked ela/kindergarten
+>            from 5:31 (2,747 teach/min) until the DONOR DIED at 5:39:33 AM: WER 0xc0000409 / parameter 7 = Rust
+>            abort(), not a panic → no crash.log (NETBUG.7). She survived it: 55 ECONNRESET, 115 requests cancelled,
+>            "PAUSED - no compute substrate", state saved. In the same second my headless leaderboard probe had
+>            registered as a 2 GB browser donor while the primary was mid-upload of a 245 MB matrix — and six minutes
+>            earlier the SAME kind of tab had been PROMOTED TO PRIMARY over the 4070 Ti (NETBUG.9, fixed in gpu.js).
+>            Gee: "should i reestart it? we need full restart fresh, right? kill all?" then "kill all first this
+>            time" — KILL-ALL DONE 5:55 AM from this shell (stop.bat + the control plane by hand: all four ports
+>            free, no donor, no brain; her log's last line is the new instrument working: "[launcher] node exited
+>            with code 1 at 5:55:33"). His start.bat is next (CORS + NETBUG.9 both land on it).
+>            Per-user WER full dumps are armed for the donor exe (%LOCALAPPDATA%\CrashDumps) for the next abort.
+>            The 4:22 AM boot (d1979272) died 5:06:56 with NO trace, donor abort 0xc0000409 at 5:06:58 — that one
+>            had two nvlddmkm events at 5:07:02 and Chrome's GPU process respawned (crash-count 1); the 5:39 one had
+>            no driver event. ⚠ No headless browser against a live brain with a native donor attached — ever.
 >   site     https://theunitybrain.com — WAKE works (NETBUG.1), dashboard boxes hold still (NETBUG.4), visual intake
 >            dials the tunnel (NETBUG.3) — all three live on Pages
 >   tunnel   dumbass.tailec58e0.ts.net — carries CHAT fine; CANNOT carry a donor (0.16 MB/s relay, NETBUG.2 = his call)
 >   donor    0.3.39 — crash.log panic hook, symbols kept, links -> the domain; built locally, tagged for the release lane
 > ```
 >
-> **Owed to him when she is back up:** read the new boot's id + neuron count; confirm the donor attached on LOOPBACK (Local mode is remembered); watch for her first cell pass; and if she dies again, `server.log` now ends with `[launcher] node exited with code N` and the donor leaves `%APPDATA%\unity-donor\crash.log`. `NETBUG.7` closes only when a death is explained.
+> **Owed to him when she is back up:** read the new boot's id + neuron count; confirm the donor attached on LOOPBACK (Local mode is remembered); confirm the tunnel's `/public-state.json` now carries `Access-Control-Allow-Origin: *` (GET, not HEAD); watch for her first cell pass; and if the donor aborts again, read `%LOCALAPPDATA%\CrashDumps\unity-donor-windows-x86_64.exe.<pid>.dmp` with the `.pdb` beside the exe (a panic would ALSO leave `%APPDATA%\unity-donor\crash.log`; an abort leaves only the dump). `NETBUG.7` closes only when a death is explained.
 >
 > **The two things learned on the first live night (ledger `NETBUG.1`, board `NETBUG.2/.3`):**
 >
