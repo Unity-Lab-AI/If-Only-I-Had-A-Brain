@@ -22,11 +22,12 @@ use crate::config::{self, DonorConfig, LOCAL_SERVER, PROD_SERVER};
 use crate::donor::{self, Control};
 use crate::gpu::GpuInfo;
 
-// The public SITE lives on GitHub Pages (2026-10-18); the brain itself is
-// reached through PROD_SERVER in config.rs. These are page links only.
-const LEGEND_URL: &str = "https://unity-lab-ai.github.io/If-Only-I-Had-A-Brain/html/legend.html";
-const DASHBOARD_URL: &str = "https://unity-lab-ai.github.io/If-Only-I-Had-A-Brain/html/dashboard-public.html";
-const LEADERBOARD_URL: &str = "https://unity-lab-ai.github.io/If-Only-I-Had-A-Brain/html/dashboard-public.html";
+// The public SITE is theunitybrain.com (GitHub Pages behind the custom domain,
+// 2026-10-18); the brain itself is reached through PROD_SERVER in config.rs.
+// These are page links only.
+const LEGEND_URL: &str = "https://theunitybrain.com/html/legend.html";
+const DASHBOARD_URL: &str = "https://theunitybrain.com/html/dashboard-public.html";
+const LEADERBOARD_URL: &str = "https://theunitybrain.com/html/dashboard-public.html";
 
 /// Runtime colour palette — replaces the old module-level `const`s so the same
 /// widgets read correctly in BOTH light and dark themes. `Copy` so each `ui_*`

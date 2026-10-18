@@ -29,9 +29,18 @@ const isLocal = (typeof location !== 'undefined') && (
   location.hostname === 'localhost' || location.hostname === '127.0.0.1'
   || location.hostname === '[::1]' || location.hostname === ''
   || location.protocol === 'file:');
-const WS_URL = isLocal
-  ? 'ws://localhost:7525'
-  : (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
+// WHERE THE BRAIN IS. `js/brain-origin.js` (loaded by index.html before this
+// module) resolves the configured brain origin — on the public site that is
+// the tunnel, not the static host. This file still built its own URL from
+// `location.host`, so the live page dialed `wss://theunitybrain.com/ws` (a
+// 404 from GitHub Pages) beside the real connection and retried it every
+// 30 s. The old expression stays as the no-helper path, so a page without
+// the helper behaves exactly as before.
+const WS_URL = (typeof unityBrainWs === 'function')
+  ? unityBrainWs('ws')
+  : (isLocal
+      ? 'ws://localhost:7525'
+      : (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws');
 
 let ws = null;
 let wsReady = false;

@@ -315,7 +315,10 @@ REM OWNWINDOW (2026-10-18) - the brain gets ITS OWN minimized window, like the
 REM control plane above. `start /b` kept her INSIDE this console, so a Ctrl+C
 REM here or closing this window killed her (the first boot on the new home
 REM died that way; server.log ended in ^C). stop.bat is the way to stop her.
-start "unity-brain (leave running)" /min cmd /c "node --max-old-space-size=65536 --max-semi-space-size=1024 --expose-gc brain-server.js > server.log 2>&1"
+REM EXITCODE (2026-10-18) - same as start.bat: node's exit code and the time
+REM are appended to server.log the moment node returns, so a death that leaves
+REM no stack still leaves a number. /V:ON = !ERRORLEVEL! read at that moment.
+start "unity-brain (leave running)" /min cmd /V:ON /c "node --max-old-space-size=65536 --max-semi-space-size=1024 --expose-gc brain-server.js > server.log 2>&1 & echo [launcher] node exited with code !ERRORLEVEL! at !DATE! !TIME! >> server.log"
 ping -n 2 127.0.0.1 >nul
 start "Unity Brain Log Tail" powershell -NoExit -Command "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $OutputEncoding = [System.Text.Encoding]::UTF8; Get-Content -Path '%~dp0..\server\server.log' -Wait -Tail 200 -Encoding UTF8"
 REM BINDWAIT - open the pages only once she is LISTENING (a resume restores
