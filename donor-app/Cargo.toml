@@ -1,6 +1,6 @@
 [package]
 name = "unity-donor"
-version = "0.3.38"
+version = "0.3.39"
 edition = "2021"
 description = "Native GPU compute donor for the Unity brain — versatile headless/GUI, cross-platform (Windows + Linux)."
 license = "MIT"
@@ -39,4 +39,9 @@ cuda = ["dep:cudarc"]
 [profile.release]
 opt-level = 3
 lto = "thin"
-strip = true
+# Line tables, not full debug info: the binary stays small and the crash
+# log's panic location is readable. `strip = true` used to discard even these,
+# which is why the 0.3.38 abort at offset 0x4aedc1 on 2026-10-18 could not be
+# named — the only .pdb on disk was from a build a month older.
+debug = "line-tables-only"
+strip = "none"
