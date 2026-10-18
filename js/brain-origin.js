@@ -63,13 +63,24 @@
     return s;
   }
 
-  var origin = normalise(fromQuery() || BRAIN_ORIGIN);
-
   // The SAME local test every page already used. Kept here verbatim so there
   // is one definition instead of five that can drift apart.
   var host = (g.location && g.location.hostname) || '';
   var isLocal = host === 'localhost' || host === '127.0.0.1' || host === '[::1]'
     || host === '' || (g.location && g.location.protocol === 'file:');
+
+  // PRECEDENCE: explicit ?brain= override > LOCAL page > committed origin.
+  //
+  // ⛔ The committed origin must NOT beat the local test. Found 2026-10-18 on
+  // the first boot after the move: the operator opened the dashboard on the
+  // brain's own machine and it dialed the TUNNEL's admin lane — which the
+  // tunnel refuses by design — instead of ws://localhost:7525. A page served
+  // from the brain's own host is talking to its own brain; that is the one
+  // case where the admin lane exists, and the committed value is for everyone
+  // else. The query override still wins everywhere, because it is typed on
+  // purpose.
+  var queryOrigin = normalise(fromQuery());
+  var origin = queryOrigin || (isLocal ? '' : normalise(BRAIN_ORIGIN));
 
   /**
    * HTTP base for the brain. '' means "same origin" — i.e. use a bare path and

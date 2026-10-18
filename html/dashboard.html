@@ -1353,8 +1353,8 @@
           ? '<li>1. The brain-server is running and answering — only this page\'s WebSocket lane failed. Reload the tab.</li>'
             + '<li>2. If it keeps failing, check that nothing else grabbed the port: <code>netstat -ano | findstr :7525</code></li>'
             + '<li>3. Read-only telemetry works right now: <a href="?public=1">open the public view</a>.</li>'
-          : '<li>1. <strong>Re-authenticate Forgejo</strong> — the <code>/admin/</code> lane is gated by <code>auth_request</code>; an expired session returns 401 and the socket never opens. Open <a href="/admin/milestone" target="_blank">/admin/milestone</a>, sign in, then reload this page.</li>'
-            + '<li>2. Do NOT restart the service — it is healthy. A restart here would pause the walk for nothing.</li>'
+          : '<li>1. <strong>This page was opened from the public site, and the admin lane is not forwarded by the tunnel — on purpose.</strong> Admin is on the machine running her: open <code>http://localhost:7525/dashboard.html</code> there.</li>'
+            + '<li>2. Do NOT restart her — she is healthy. A restart here would pause the walk for nothing.</li>'
             + '<li>3. Need to watch her meanwhile? <a href="?public=1">Public read-only view</a> needs no auth.</li>';
       }
     }
