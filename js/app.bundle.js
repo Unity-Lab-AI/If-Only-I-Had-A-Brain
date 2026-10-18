@@ -1707,10 +1707,10 @@ var SensoryAIProviders = class {
    * @param {string} model — model name to request
    * @param {string} apiKey — bearer token (optional)
    */
-  configureImageGen(url, model, apiKey2) {
+  configureImageGen(url, model, apiKey) {
     this._customImageUrl = url;
     this._customImageModel = model;
-    this._customImageKey = apiKey2;
+    this._customImageKey = apiKey;
     console.log("[SensoryAI] Custom image backend configured:", url, model);
   }
   /**
@@ -1842,12 +1842,12 @@ var SensoryAIProviders = class {
    * Marks the backend dead on auth/payment failures so we don't hammer
    * a broken endpoint. Network errors fall through to the next one.
    */
-  async _customGenerateImage(backendUrl, model, apiKey2, prompt, opts = {}) {
+  async _customGenerateImage(backendUrl, model, apiKey, prompt, opts = {}) {
     if (this._abortController) this._abortController.abort();
     this._abortController = new AbortController();
     const signal = opts.signal || this._abortController.signal;
     const headers = { "Content-Type": "application/json" };
-    if (apiKey2) headers["Authorization"] = `Bearer ${apiKey2}`;
+    if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
     const openaiBody = JSON.stringify({
       model: opts.model || model || "default",
       prompt,
@@ -22378,9 +22378,15 @@ async function handleStart() {
   uiState.permCamera = perms.camera;
   startBtn.textContent = "Booting brain...";
   await sleep(300);
-  await bootUnity(apiKey, perms);
+  try {
+    await bootUnity(perms);
+  } catch (err) {
+    console.error("[Unity] boot failed:", err && err.stack || err);
+    startBtn.textContent = `Boot failed: ${err && err.message || err} \u2014 press to retry`;
+    startBtn.disabled = false;
+  }
 }
-async function bootUnity(apiKey2, perms) {
+async function bootUnity(perms) {
   if (!providers) {
     providers = new SensoryAIProviders({ storage });
     if (typeof providers.loadEnvConfig === "function") providers.loadEnvConfig(ENV_KEYS);
