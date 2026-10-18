@@ -449,7 +449,14 @@ if exist "%CORA_IMAGE_DIR%\services\image_sidecar.py" (
     echo   [eyes] CORA image engine NOT found at %CORA_IMAGE_DIR%
     echo          set CORA_IMAGE_DIR to the C.O.R.A folder. No pictures until then.
 )
-start /b "" cmd /c "node --max-old-space-size=65536 --max-semi-space-size=1024 --expose-gc brain-server.js > server.log 2>&1"
+REM OWNWINDOW (2026-10-18) - the brain gets ITS OWN minimized window, exactly
+REM like the control plane above. It used to run `start /b` INSIDE this
+REM launcher's console, which meant a Ctrl+C here - or closing this window -
+REM killed her: the first boot on the new home died that way five minutes in
+REM (server.log ended in ^C) while the text below promised the opposite. A
+REM process in its own console is not reachable from this one; stop.bat is
+REM the way to stop her, and closing this window changes nothing.
+start "unity-brain (leave running)" /min cmd /c "node --max-old-space-size=65536 --max-semi-space-size=1024 --expose-gc brain-server.js > server.log 2>&1"
 ping -n 2 127.0.0.1 >nul
 start "Unity Brain Log Tail" powershell -NoExit -Command "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $OutputEncoding = [System.Text.Encoding]::UTF8; Get-Content -Path '%~dp0..\server\server.log' -Wait -Tail 200 -Encoding UTF8"
 ping -n 2 127.0.0.1 >nul
@@ -458,9 +465,15 @@ REM Dashboard auto-opens alongside the landing page so the milestone panel
 REM (curriculum state, save-resume vs fresh-boot, passed cells, operator
 REM signoffs) is visible from the first moment the brain is up.
 start "" http://localhost:7525/dashboard.html
+REM The PUBLIC site too (2026-10-18) - what everyone else sees: GitHub Pages
+REM at theunitybrain.com, reaching this brain through the tunnel. Opening it
+REM beside the loopback pages is the one-glance check that the public path
+REM is alive, not just the local one.
+start "" https://theunitybrain.com/
 echo.
 echo   Landing:     http://localhost:7525
 echo   Dashboard:   http://localhost:7525/dashboard.html (auto-opened)
+echo   Public site: https://theunitybrain.com/ (auto-opened - the world's view of this brain)
 echo   GPU compute: http://localhost:7525/compute.html (auto-launched by server)
 echo   Log tail:    separate PowerShell window "Unity Brain Log Tail"
 echo   Log file:    %~dp0..\server\server.log (always on disk)
@@ -471,10 +484,11 @@ echo     [Brain] dictionary API ready -- "test" -^> "..."
 echo     [Brain] K-VOCAB-PREFETCH DONE -- N new definitions cached
 echo.
 echo   NOTE: brain runs ONLY on GPU. compute.html MUST stay open.
-echo   To STOP the brain cleanly: run stop.bat (Ctrl+C in this launcher
-echo   or the tail window does NOT reach the detached node process -
+echo   To STOP the brain cleanly: run stop.bat. She runs in her OWN window
+echo   ("unity-brain (leave running)", minimized) - Ctrl+C here or closing
+echo   this window does not reach her; closing HER window does.
 echo   stop.bat sends HTTP /shutdown, then taskkill on port 7525 if
-echo   needed, then verifies the port is free).
+echo   needed, then verifies the port is free.
 echo   Also close the http://localhost:7525 browser tabs - compute.html
 echo   keeps WebGPU running even without the server.
 echo.
