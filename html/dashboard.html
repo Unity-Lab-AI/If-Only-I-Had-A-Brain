@@ -39,7 +39,10 @@
     .bar-purple { background: #a855f7; }
     .bar-cyan { background: #00e5ff; }
     .bar-green { background: #22c55e; }
-    .log { max-height: 300px; overflow-y: auto; font-size: 10px; color: #555; line-height: 1.6; }
+    /* overflow-anchor: none — a log box that auto-scrolls must never be chosen
+       as the PAGE's scroll anchor; a browser that descends into it would move
+       the whole page every time the box followed a new line. */
+    .log { max-height: 300px; overflow-y: auto; overflow-anchor: none; font-size: 10px; color: #555; line-height: 1.6; }
     .log-entry { border-bottom: 1px solid #111; padding: 2px 0; }
     #connection-status { font-size: 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
     /* Graceful-stop button. Inline with connection-status
@@ -464,7 +467,7 @@
 
     <div class="card" style="margin-top:12px;" title="Live event ring buffer surfacing what's firing in the brain RIGHT NOW — teach-phase entries, gate probe results, plasticity events, dream window opens/closes, drug schedule promotions, GPU shadow drops. Scrolls newest at top. Capped at 200 most-recent events to stay bounded.">
       <div class="card-title">Brain Events — what Unity is thinking RIGHT NOW</div>
-      <div id="d-brain-events" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#ccc;line-height:1.6;max-height:200px;overflow-y:auto;">
+      <div id="d-brain-events" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#ccc;line-height:1.6;max-height:200px;overflow-y:auto;overflow-anchor:none;">
         <div style="color:#666;">No live events yet — waiting for curriculum teach / gate / plasticity to fire.</div>
       </div>
     </div>
@@ -2577,14 +2580,35 @@
       }
     }
 
+    // STICKY FOLLOW — shared by every streaming box on this page. A box
+    // follows new lines ONLY while the reader is already at its bottom; the
+    // moment they scroll up to read, it holds still, and scrolling back down
+    // re-arms it. The old unconditional `scrollTop = scrollHeight` on every
+    // line yanked the box away from the reader at the console's own rate,
+    // which during a walk is hundreds of lines a minute — a box that cannot be
+    // read is not a log. Measured BEFORE the append, because after it the
+    // new line has already moved the bottom.
+    const FOLLOW_SLACK_PX = 24;
+    function atBottom(el) {
+      return (el.scrollHeight - el.scrollTop - el.clientHeight) <= FOLLOW_SLACK_PX;
+    }
+
     function log(text) {
       const el = document.getElementById('d-log');
+      const follow = atBottom(el);
       const entry = document.createElement('div');
       entry.className = 'log-entry';
       entry.textContent = `[${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })}] ${text}`;
       el.appendChild(entry);
-      el.scrollTop = el.scrollHeight;
-      while (el.children.length > 200) el.children[0].remove();
+      if (follow) el.scrollTop = el.scrollHeight;
+      // Trimming the top while the reader is holding still would slide the
+      // content under them by the trimmed height — compensate so what they
+      // were reading stays where it is.
+      while (el.children.length > 200) {
+        const h = el.children[0].offsetHeight;
+        el.children[0].remove();
+        if (!follow) el.scrollTop = Math.max(0, el.scrollTop - h);
+      }
     }
 
     // Server console-log renderer. Appends one brain-server console
@@ -2604,6 +2628,10 @@
       const errorsOnly = document.getElementById('d-srvlog-errorsonly');
       if (errorsOnly && errorsOnly.checked && level === 'log') return;
       const autoScroll = document.getElementById('d-srvlog-autoscroll');
+      // Sticky follow (see atBottom above): the checkbox is the master switch,
+      // and the reader's own scroll position is the second. Reading the box
+      // mid-walk used to be impossible — it followed every line regardless.
+      const follow = atBottom(el);
       const color = level === 'error' ? '#ff6b6b' : (level === 'warn' ? '#f59e0b' : '#9ca3af');
       const div = document.createElement('div');
       div.className = 'log-entry';
@@ -2614,13 +2642,20 @@
       _srvLogCount++;
       const countEl = document.getElementById('d-srvlog-count');
       if (countEl) countEl.textContent = _srvLogCount.toLocaleString();
-      while (el.children.length > 500) el.removeChild(el.firstChild);
+      // Same compensation as log(): the 500-row cap trims from the top, and at
+      // a walking brain's line rate that is several rows a second — without it
+      // a held box still slid under the reader by the trimmed height.
+      while (el.children.length > 500) {
+        const h = el.firstChild.offsetHeight;
+        el.removeChild(el.firstChild);
+        if (!follow) el.scrollTop = Math.max(0, el.scrollTop - h);
+      }
       if (_srvLogSeen.size > 2000) {
         const arr = Array.from(_srvLogSeen).sort((a, b) => a - b);
         _srvLogSeen.clear();
         for (const s of arr.slice(-1000)) _srvLogSeen.add(s);
       }
-      if (autoScroll && autoScroll.checked) el.scrollTop = el.scrollHeight;
+      if (autoScroll && autoScroll.checked && follow) el.scrollTop = el.scrollHeight;
     }
     // Clear-view button — clears the rendered panel only. The server-side ring
     // is untouched; a reconnect re-pulls the backlog.
@@ -3093,7 +3128,14 @@
       const cuBanner = (cu.failed && cu.looksLikeBindingLimit)
         ? `<div style="color:#ef4444;font-size:11px;padding:4px 6px;">⚠ cortex cross-projections failed to BIND on the donor GPU (storage buffer too small) — brain on CPU master. ${String(cu.reason || '').slice(0, 80)}</div>`
         : '';
+      // The table is rebuilt on every state message (~1 Hz). Rebuilding a
+      // scroll box resets it to the top, so a reader who had scrolled down to
+      // a lower row was yanked back up once a second — the box could not be
+      // read past its first screen. Keep the reader's position across the
+      // rebuild; a position past the new height clamps harmlessly.
+      const keepTop = cl.scrollTop;
       cl.innerHTML = cuBanner + `<table class="profiling-tbl"><thead><tr><th>type</th><th>name</th><th>ip</th><th>up</th><th>seen</th><th>rtt</th><th>in/out</th><th>buf</th><th>gpu</th><th>plat</th></tr></thead><tbody>${rows}</tbody></table>${more}`;
+      if (keepTop) cl.scrollTop = keepTop;
     }
 
     // Brain-event stream renderer. Reads the `brainEvents` array out
@@ -3108,6 +3150,7 @@
       if (!el || !Array.isArray(events) || events.length === 0) return;
       const fresh = events.filter(e => !_renderedEventSeqs.has(e.seq));
       if (fresh.length === 0) return;
+      const follow = atBottom(el);   // sticky follow — see atBottom above
       for (const e of fresh) _renderedEventSeqs.add(e.seq);
       // Clear the placeholder on first real event.
       if (el.firstElementChild && el.firstElementChild.textContent.includes('No live events')) {
@@ -3141,9 +3184,13 @@
         el.appendChild(div);
       }
       // Cap to the last 50 rendered rows so scrollback doesn't grow
-      // unbounded. Auto-scroll to newest.
-      while (el.children.length > 50) el.removeChild(el.firstChild);
-      el.scrollTop = el.scrollHeight;
+      // unbounded. Follow the newest only while the reader is at the bottom.
+      while (el.children.length > 50) {
+        const h = el.firstChild.offsetHeight;
+        el.removeChild(el.firstChild);
+        if (!follow) el.scrollTop = Math.max(0, el.scrollTop - h);
+      }
+      if (follow) el.scrollTop = el.scrollHeight;
       // Prune the seq cache too so memory doesn't leak.
       if (_renderedEventSeqs.size > 500) {
         const arr = Array.from(_renderedEventSeqs).sort((a,b) => a-b);
