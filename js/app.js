@@ -2125,10 +2125,24 @@ async function handleStart() {
 
   startBtn.textContent = 'Booting brain...';
   await sleep(300);
-  await bootUnity(apiKey, perms);
+  // ⛔ THE BUTTON FROZE ON "Booting brain..." FOR EVERY VISITOR (2026-10-18).
+  // The optional image-provider key read was removed from this handler when
+  // that provider left, but the boot call below still passed its variable —
+  // a ReferenceError on the first line after the permission prompts, with no
+  // catch, so the page stayed on the modal forever and said nothing. The
+  // brain, the socket and the welcome were all fine; the throw was here.
+  // A boot that fails now NAMES its failure on the button and hands the
+  // button back, instead of a frozen label a reader cannot act on.
+  try {
+    await bootUnity(perms);
+  } catch (err) {
+    console.error('[Unity] boot failed:', err && err.stack || err);
+    startBtn.textContent = `Boot failed: ${(err && err.message) || err} — press to retry`;
+    startBtn.disabled = false;
+  }
 }
 
-async function bootUnity(apiKey, perms) {
+async function bootUnity(perms) {
   // ── Initialize peripherals ──
   // R15b-T6 — pollinations + providers are now constructed at init()
   // time (page load) so the setup modal's sensory inventory panel
