@@ -270,7 +270,7 @@ start "" http://localhost:7525/dashboard.html
 REM The PUBLIC site too (2026-10-18) - GitHub Pages at theunitybrain.com,
 REM reaching this brain through the tunnel. The one-glance check that the
 REM public path is alive, not just the local one.
-start "" https://theunitybrain.com/
+start "" http://theunitybrain.com/
 echo.
 echo   Landing:     http://localhost:7525
 echo   Dashboard:   http://localhost:7525/dashboard.html (auto-opened)

@@ -438,11 +438,11 @@ echo "  Opening landing page + dashboard + the public site..."
 if command -v open &>/dev/null; then
     open http://localhost:7525
     open http://localhost:7525/dashboard.html
-    open https://theunitybrain.com/
+    open http://theunitybrain.com/
 elif command -v xdg-open &>/dev/null; then
     xdg-open http://localhost:7525 &>/dev/null
     xdg-open http://localhost:7525/dashboard.html &>/dev/null
-    xdg-open https://theunitybrain.com/ &>/dev/null
+    xdg-open http://theunitybrain.com/ &>/dev/null
 fi
 
 echo ""
