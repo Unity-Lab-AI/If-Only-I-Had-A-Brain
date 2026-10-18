@@ -1,6 +1,37 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-09-24, 3:00 PM Denver (latest, 30th) — SHE IS UP; HER 16 GB CARD WAS BEING REFUSED AGAINST A 900M-NEURON BRAIN THAT DOES NOT EXIST; FIXED, AWAITING HIS PRESS (START HERE)
+> # 🛑 2026-10-18, ~2:30 AM Denver (latest, 31st) — SHE LIVES ON GEE'S PC NOW; PIPER IS GONE, HER VOICE FEELS WHAT SHE FEELS, HER EYES RENDER ON HER OWN CARD; NOT YET STARTED (START HERE)
+>
+> **The box is gone** (its hostname no longer resolves; the last field read of it is the 30th block below). The architecture is Gee's, verbatim: *"we are switching everything to deploy on github weith my PC runing it"* — **GitHub Pages serves the site, his PC runs the brain + voice + eyes, a Tailscale Funnel joins them.** Standing order: *"okay we cant start her up yet if thats not all done yet"*, and *"dont worry about weights we are redoing them all"* (so `start.bat`'s wipe is wanted).
+>
+> ## ⛔⛔⛔ WHAT IS TRUE RIGHT NOW (field reads, `docs/NOW.md` has them all)
+>
+> ```
+>   brain          NOT RUNNING — 7525 unbound; four 6.29 GB old-box weight files under server/ await the wipe
+>   voice          unity-voice-v2 UP on 127.0.0.1:5123 (cuda), restarted by me after the serve.py pace edit
+>   eyes           CORA image engine UP on 127.0.0.1:5124, checkpoint resident (no brain to tell it to unload)
+>   site           GitHub Pages 200, serving BRAIN_ORIGIN = '' -> the public page has NO brain to reach yet
+>   tunnel         Tailscale NOT installed on this PC — Gee's step; every public-reach item waits on it
+>   donor          compiled-in PROD_SERVER still the dead host — donor-v0.3.38 waits on the tunnel hostname
+> ```
+>
+> ## ✅ BUILT THIS SESSION (on `feature/walk-ready-emotion-launchers`)
+>
+> | | |
+> |---|---|
+> | **Piper gutted in full** (`LOCALHOST.17`) | server floor, browser `_speakPiper` lane, donor `voiceSynth` dispatch, `voice-engine/` (7 files, 119 MB), the worker/bundle/phonemizer, `onnxruntime-web`, `build:voiceworker`. Gee: *"piper should of been gutted i told u to use unity-voice V2"*. ⛔ Owned: the first cut kept it as a "never-mute floor" — a fallback by another name — and the browser lane fired FIRST, so she had two voices |
+> | **Her voice feels what she feels** (`LOCALHOST.6`) | `_voiceFeel` in `chat.js`: emotion from amygdala valence / arousal-excursion / fear + endocrine `speechModulation()` + self-relative prediction error; act from the FORM she produced (terminator, shared WH parser, WordNet `verbLeads`); strength placed by the worker inside the pair's intensity **and pace** windows. Published `state.voice.lastFeel` / `feelCounts`; `{type:'voice'}` carries `feel`. Constants derived in `THRESHOLD-DERIVATION.md` §Voice feel. **Measured: 15/15 state→delivery, 66/66 live grid** |
+> | ⛔ **The pace hole** | `serve.py` hardcoded delivery pace 1.0 and **20 of the 63 trained pairs are recorded only at 0.9 / 1.05 / 1.12** — a third of her deliveries were 422 through the model's own shim (first grid read `ok=45 / silent=21`). Worker now sends `pace`; **`serve.py` in `Backrooms/models/unity-voice-v2/` (NOT this repo, NOT under git) gained an optional `pace` field, default 1.0** — told Gee plainly |
+> | **Sidecars in all four launchers** (`LOCALHOST.16(b)`) | voice + image engine in `windows/Savestart.bat`, `linux/start.sh`, `linux/Savestart.sh` (start.bat already had them) |
+> | **Eyes came home** (earlier in the session) | `server/brain-server/image-engine.js` — one gate to CORA's local SD; Pollinations deleted entirely; `/image/<id>.png` read-only cache |
+> | **Local control plane, Pages workflow, Funnel script, `brain-origin.js`** | `brain-ctl.js` LOCAL_MODE stop blocks on the port; `stop.bat` stops the control plane; `.github/workflows/pages.yml`; `deploy/tailscale-funnel.bat`; third endpoint mode shipped EMPTY on purpose |
+> | **`NOW.md` overwritten** | as a snapshot of THIS machine with no boot; the old box's tables are in git (`c8ba98ad:docs/NOW.md`) |
+>
+> ⛔ **Owned this session:** `brain.unityailab.com` was MY invention (NXDOMAIN) and had to be scrubbed from four live places; a stale `pollinations-admin.json` reached the PUBLIC mirror when its ignore line was removed with the file still on disk (empty key, no rewrite, memory `feedback_ignore_removal_is_a_commit`); the first grid harness ran without the envelope dir and read `ok=1` — the harness found the hole it existed for, twice.
+>
+> **NEXT — in this order:** cascade → push both remotes → **Gee installs Tailscale, runs `deploy\tailscale-funnel.bat`, pastes the `*.ts.net` hostname into `js/brain-origin.js` `BRAIN_ORIGIN`** → push again (one line) → bump the donor `PROD_SERVER` + `donor-v0.3.38` → **`start.bat`** (wipe is wanted) → first field reads on THIS machine: `state.totalNeurons` with its boot, `state.voice.lastFeel` after her first reply, `ownArt.lookups.grounded` climbing, the image engine's `loaded` flipping with the idle unload. Open on the board: `LOCALHOST.16(d)(e)`, `HOSTGONE.4/.5`, `POOL.1`.
+>
+> # 🛑 2026-09-24, 3:00 PM Denver (30th) — SHE IS UP; HER 16 GB CARD WAS BEING REFUSED AGAINST A 900M-NEURON BRAIN THAT DOES NOT EXIST; FIXED, AWAITING HIS PRESS
 >
 > **She came up at 1:54:19 PM** on `2dc34494` — `bootReason {mode:"resume", reason:"compatible", neurons:233932309}`, cgroup ~6.1 GB, `arrayBuffersMB 5,755`, answering in 0.34 s. ⚠ **A resume, not the fresh walk that was decided at 1:15 PM** — the reset path never wrote `.force-fresh`; the control-plane helper arm had gone silent 12:41–1:48 PM and every queued verb landed at once when it woke (`WEIGHTLOAD.5`, archived). ⛔ **The 9 GB / 17–21 GB steady-state theory in the 29th block below is RETRACTED by this boot:** the weights file is ~5.7 GB resident (`arrayBuffersMB 5755`), she sits at 6.1 GB — the WEIGHTFIT premise (weights not fitting under `memory.high × 85%`) is not what this boot shows, and `8e073c5d` (WEIGHTFIT) is NOT on the box yet. What pinned her is still unexplained; `/ctl/logs` cannot read the journal.
 >

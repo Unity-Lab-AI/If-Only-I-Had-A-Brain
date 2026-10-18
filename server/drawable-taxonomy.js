@@ -268,4 +268,41 @@ function unattestedNoun(word) {
   return !!(e && e.tag === 0);
 }
 
-module.exports = { drawableVerdict, primaryLex, knownDescriptor, knownOnlyNonNoun, unattestedNoun, descendsFromJuvenile };
+// VOICEFEEL — does this word LEAD as a verb? Used by the voice lane to tell
+// her imperative form ("Come here.") from her declaratives ("I came here.")
+// without a verb list: WordNet's own index.verb is the witness, and the
+// decision is ATTESTATION DOMINANCE — the verb reading's tagsense count must
+// beat the noun reading's. "come"/"look"/"stop" all have noun entries too,
+// and the corpus counts are what say which reading English actually leads
+// with. A word absent from every index (I, you, the, it, we…) is a function
+// word, so it returns false and the sentence reads as subject-first.
+let _verbTag = null;   // Map<lemma, tagsense_cnt> from index.verb ONLY
+function _loadVerb() {
+  if (_verbTag || _loadFailed) return;
+  try {
+    const dict = require('wordnet-db').path;
+    const txt = fs.readFileSync(path.join(dict, 'index.verb'), 'utf8');
+    _verbTag = new Map();
+    for (const line of txt.split('\n')) {
+      if (!line || line[0] === ' ') continue;
+      const parts = line.trim().split(/\s+/);
+      const n = parseInt(parts[2], 10) || 0;
+      if (!parts[0] || !n) continue;
+      _verbTag.set(parts[0], parseInt(parts[parts.length - n - 1], 10) || 0);
+    }
+  } catch { _verbTag = null; }
+}
+function verbLeads(word) {
+  _load(); _loadVerb();
+  const w = String(word || '').toLowerCase().trim();
+  if (!w || !_verbTag || !_verbTag.has(w)) return false;
+  const vt = _verbTag.get(w) | 0;
+  const ne = _index && _index.get(w);
+  const nt = ne ? (ne.tag | 0) : 0;
+  // A verb reading that never occurs in the tagged corpora cannot lead; a
+  // tie goes to the noun, because her declarative forms outnumber her
+  // imperatives and the cost of a wrong "instruction" is a wrong delivery.
+  return vt > 0 && vt > nt;
+}
+
+module.exports = { drawableVerdict, primaryLex, knownDescriptor, knownOnlyNonNoun, unattestedNoun, descendsFromJuvenile, verbLeads };

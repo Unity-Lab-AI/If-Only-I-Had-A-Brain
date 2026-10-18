@@ -10,7 +10,7 @@
 #           |
 #           |  https:// + wss://  to a SEPARATE origin
 #           v
-#     brain.unityailab.com  ── Cloudflare Tunnel ──>  the operator's PC :7525
+#     <machine>.<tailnet>.ts.net  ── Tailscale Funnel ──>  the operator's PC :7525
 #
 # ⛔ PAGES CANNOT HOST THE BRAIN AND NEVER WILL. It is static: no Node, no
 # WebSocket server, no 6 GB of resident weights, no donor sockets. It serves
@@ -31,14 +31,13 @@
 # from `.forgejo/workflows/deploy.yml`, which served this same site for months.
 # Measured on the tracked tree: 161 files, ~129 MB, well inside Pages' 1 GB.
 #
-# ⚠ `voice-engine/` (119 MB of it) IS INCLUDED ON PURPOSE AND IS NOT DEAD
-# WEIGHT. It is tempting to drop — the server synthesizes her replies now and
-# "listener browsers never synthesize again" — but `html/compute.html:1112`
-# still constructs the piper worker and `js/io/voice.js:568` still tries the
-# LIVE SENTENCE LANE FIRST. Removing it would break a lane that is still
-# reached. (That the browser lane speaks PIPER while the server now speaks
-# unity-voice-v2 is a real inconsistency, filed separately — it is not this
-# workflow's business to resolve by deletion.)
+# ⭐ `voice-engine/` IS GONE FROM THE TREE (2026-10-18) — and with it 119 MB
+# of the publish. The paragraph that used to sit here kept it because
+# `compute.html` still built the in-browser piper worker and `voice.js` still
+# tried that lane first. The operator's ruling settled it: "piper should of
+# been gutted i told u to use unity-voice V2". Her voice is unity-voice-v2 on
+# the server, ONE lane; browsers only reconstruct + play the rec. The
+# publishable tree is now ~10 MB.
 #
 # ⚠ The seven `docs/*.md` re-includes are load-bearing: `html/docs.html` has a
 # `DOC_PATHS` whitelist that fetches exactly those, so excluding all markdown
