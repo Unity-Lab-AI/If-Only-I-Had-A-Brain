@@ -1,0 +1,186 @@
+# Unity donor — native binary release builder (GitHub Actions edition).
+#
+# Ported 2026-10-18 from .forgejo/workflows/donor-release.yml, which built and
+# attached the binaries on Forgejo and then rsynced the site to a box that no
+# longer exists. Same build, same guards, same asset names; the publish target
+# is a GitHub Release on this repository and the site redeploy is a Pages run.
+#
+# Trigger: push a tag matching `donor-v*` (e.g. donor-v0.3.38), or run manually
+# via workflow_dispatch with the `tag` input pointing at an existing tag.
+#
+# What one tag push does, end to end:
+#   1. fail-early guard: donor-app/Cargo.toml version == the tag (the binary
+#      self-reports that version and sends it as the donor appVersion the brain's
+#      version gate checks — a mismatch would ship a mislabeled binary),
+#   2. builds Linux + Windows (x86-64; CUDA is dynamic-loaded, so the same binary
+#      runs on AMD/Intel/Apple with automatic WebGPU fallback) and refuses to
+#      publish unless the built Linux binary SAYS the tag version,
+#   3. creates the release if missing and uploads both assets (--clobber, so a
+#      re-run never errors on a duplicate),
+#   4. bumps the two download pages (html/compute.html + html/legend.html) to
+#      the new tag and commits them to `main`,
+#   5. dispatches the Pages workflow itself.
+#
+# PAGESTALE, GitHub flavour — step 5 exists for the same reason the Forgejo lane
+# grew an rsync step: a push made with GITHUB_TOKEN never triggers another
+# workflow (recursion guard), so the `push: [main]` trigger in pages.yml does NOT
+# fire for step 4's commit. A `workflow_dispatch` raised through the API with
+# the same token DOES run, which is what `gh workflow run` does here. Without it
+# the links would be committed and the site would keep serving the old release
+# with every step green — the exact shape KI-22 had.
+#
+# NOTE: deliberately does NOT touch DREAM_MIN_DONOR_VERSION (the brain's minimum
+# COMPATIBLE donor version) — a compatibility decision per protocol change, not
+# "every release"; it stays a manual edit in server/brain-server.js.
+name: donor-release
+
+on:
+  push:
+    tags:
+      - 'donor-v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing donor-v* tag to build + attach assets to'
+        required: true
+
+permissions:
+  contents: write     # create the release, upload assets, push the link bump
+  actions: write      # dispatch pages.yml after the bump
+
+concurrency:
+  group: donor-release
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-24.04
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout (at the tag)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref_name }}
+          fetch-depth: 0
+
+      - name: Guard — Cargo.toml version must match the tag
+        run: |
+          set -euo pipefail
+          ver="${TAG#donor-v}"
+          cargo_ver="$(grep -m1 '^version' donor-app/Cargo.toml | sed -E 's/.*"([^"]+)".*/\1/')"
+          echo "tag version=${ver}  cargo version=${cargo_ver}"
+          if [ "$ver" != "$cargo_ver" ]; then
+            echo "::error::donor-app/Cargo.toml version (${cargo_ver}) != tag ${TAG} (expected ${ver}). Bump Cargo.toml and re-tag."
+            exit 1
+          fi
+
+      - name: Install build deps (mingw cross-linker + Linux GUI headers + jq)
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential curl jq ca-certificates \
+            gcc-mingw-w64-x86-64 \
+            libxkbcommon-dev libwayland-dev libx11-dev libxrandr-dev \
+            libxi-dev libxcursor-dev libgl1-mesa-dev libegl1-mesa-dev pkg-config
+
+      - name: Install Rust + Windows target
+        run: |
+          if ! command -v cargo >/dev/null 2>&1; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+          fi
+          . "$HOME/.cargo/env"
+          rustup target add x86_64-pc-windows-gnu
+          rustc --version && cargo --version
+
+      # The artifact path is resolved from cargo, never hardcoded: donor-app is a
+      # workspace member and builds into the WORKSPACE root's target/. Both the
+      # artifact and its copy are removed before building so a failed build can
+      # never publish whatever happened to be there (the KI-22 class of failure:
+      # every step green, the wrong bytes shipped).
+      - name: Build Linux (x86-64)
+        run: |
+          set -euo pipefail
+          . "$HOME/.cargo/env"
+          TARGET_DIR="$(cargo metadata --format-version 1 --no-deps | jq -r '.target_directory')"
+          [ -n "$TARGET_DIR" ] && [ "$TARGET_DIR" != "null" ] || { echo "::error::could not resolve cargo target_directory"; exit 1; }
+          echo "cargo builds into: ${TARGET_DIR}"
+          mkdir -p donor-app/dist-ci
+          rm -f "${TARGET_DIR}/release/unity-donor" donor-app/dist-ci/unity-donor-linux-x86_64
+          cargo build --release --manifest-path donor-app/Cargo.toml
+          cp "${TARGET_DIR}/release/unity-donor" donor-app/dist-ci/unity-donor-linux-x86_64
+
+      - name: Build Windows (x86-64, cross via mingw)
+        run: |
+          set -euo pipefail
+          . "$HOME/.cargo/env"
+          TARGET_DIR="$(cargo metadata --format-version 1 --no-deps | jq -r '.target_directory')"
+          [ -n "$TARGET_DIR" ] && [ "$TARGET_DIR" != "null" ] || { echo "::error::could not resolve cargo target_directory"; exit 1; }
+          mkdir -p donor-app/dist-ci
+          rm -f "${TARGET_DIR}/x86_64-pc-windows-gnu/release/unity-donor.exe" donor-app/dist-ci/unity-donor-windows-x86_64.exe
+          cargo build --release --target x86_64-pc-windows-gnu --manifest-path donor-app/Cargo.toml
+          cp "${TARGET_DIR}/x86_64-pc-windows-gnu/release/unity-donor.exe" \
+            donor-app/dist-ci/unity-donor-windows-x86_64.exe
+
+      # The binary must say its own name before it is published — the only check
+      # that catches a stale or mis-resolved artifact. Linux only: the Windows
+      # binary is cross-compiled and cannot run here; it is verified by build
+      # provenance (same cargo invocation, same resolved target dir).
+      - name: Verify the built binary reports the tag version
+        run: |
+          got="$(donor-app/dist-ci/unity-donor-linux-x86_64 --version 2>/dev/null | awk '{print $NF}')"
+          ver="${TAG#donor-v}"
+          echo "binary reports '${got}', tag expects '${ver}'"
+          if [ "$got" != "$ver" ]; then
+            echo "::error::the built binary reports ${got} but the tag is ${ver} — a stale or wrong artifact was picked up; refusing to publish."
+            exit 1
+          fi
+
+      - name: Publish the release (create-if-missing + upload with --clobber)
+        run: |
+          set -euo pipefail
+          ver="${TAG#donor-v}"
+          notes="donor-app/RELEASE-${ver}.md"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            echo "No release for ${TAG} yet — creating it."
+            if [ -f "$notes" ]; then
+              gh release create "$TAG" --title "$TAG" --notes-file "$notes"
+            else
+              gh release create "$TAG" --title "$TAG" --notes "Unity donor ${TAG} — native GPU-compute client (Linux + Windows x86-64, GUI+CUDA with automatic WebGPU fallback)."
+            fi
+          fi
+          gh release upload "$TAG" \
+            donor-app/dist-ci/unity-donor-linux-x86_64 \
+            donor-app/dist-ci/unity-donor-windows-x86_64.exe \
+            --clobber
+          echo "Done — assets published to ${TAG}."
+
+      - name: Bump site download links on main
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git checkout -B main origin/main
+          sed -i -E "s#donor-v[0-9]+\.[0-9]+\.[0-9]+#${TAG}#g" html/compute.html html/legend.html
+          if git diff --quiet -- html/compute.html html/legend.html; then
+            echo "Site links already at ${TAG} — nothing to commit."
+            echo "BUMPED=0" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          git config user.name  "unity-ci"
+          git config user.email "ci@unityailab.com"
+          git add html/compute.html html/legend.html
+          git commit -m "site(donor): bump download links -> ${TAG} [auto donor-release]"
+          git push origin HEAD:main
+          echo "BUMPED=1" >> "$GITHUB_ENV"
+
+      # The bump above was pushed with GITHUB_TOKEN, which never triggers
+      # pages.yml's push trigger. Dispatch it. Runs even when nothing was bumped,
+      # because a release built against links a human already bumped still needs
+      # the site to be the current main.
+      - name: Redeploy the site (Pages) — the bump cannot trigger it
+        run: |
+          set -euo pipefail
+          gh workflow run pages.yml --ref main
+          echo "Pages dispatched for main (bumped=${BUMPED:-?})."

@@ -95,13 +95,18 @@ apt-get update -qq >/dev/null 2>&1
 apt-get install -y --no-install-recommends curl ca-certificates libssl3 >/dev/null 2>&1
 nvidia-smi || echo NO_NVIDIA_SMI
 
-API=https://git.unityailab.com/api/v1/repos/UnityAILab/If-Only-I-Had-A-Brain/releases/latest
+# GitHub Releases on the public mirror (2026-10-18) — the Forgejo lane built to a
+# box that no longer exists. Same JSON shape for what this greps: the asset's
+# browser_download_url ends in the binary name and the tag_name is donor-vX.Y.Z.
+API=https://api.github.com/repos/Unity-Lab-AI/If-Only-I-Had-A-Brain/releases/latest
 BIN=/usr/local/bin/unity-donor
 
-latest_url() { curl -fsSL -m 60 "$API" | grep -oE "https://[A-Za-z0-9._/-]+unity-donor-linux-x86_64" | head -1; }
-latest_tag() { curl -fsSL -m 60 "$API" | grep -oE "donor-v[0-9]+[.][0-9]+[.][0-9]+" | head -1; }
+latest_url() { curl -fsSL -m 60 -H 'User-Agent: unity-runpod-donor' "$API" | grep -oE "https://[A-Za-z0-9._/-]+unity-donor-linux-x86_64" | head -1; }
+latest_tag() { curl -fsSL -m 60 -H 'User-Agent: unity-runpod-donor' "$API" | grep -oE "donor-v[0-9]+[.][0-9]+[.][0-9]+" | head -1; }
 
-BRAIN_URL="${BRAIN_URL:-https://if-only-i-had-a-brain.git.unityailab.com}"
+# The brain is on the operator's own machine behind a Tailscale Funnel now; the
+# binary's compiled-in PROD_SERVER is the /ws lane of the same host.
+BRAIN_URL="${BRAIN_URL:-https://dumbass.tailec58e0.ts.net}"
 DONOR_MAX_MISS="${DONOR_MAX_MISS:-3}"
 # The GPU model this pod actually has — the only identity the brain publishes for
 # an attached donor. Resolved once; if nvidia-smi cannot answer, the connection

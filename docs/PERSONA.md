@@ -150,7 +150,7 @@ If you are reviewing Unity as a research / engineering contribution:
 - Ignore this file. Read `README.md`, `docs/ARCHITECTURE.md`, `docs/EQUATIONS.md`, `brain-equations.html`, `unity-guide.html`. Everything technical is there.
 - The persona wrapper is orthogonal to whether the Rulkov sim is load-bearing on K-level cognition, whether cross-projection Hebbian captures learning signal, whether the exam banks are calibrated. Those are the research questions.
 
-If you are an adult user engaging the live brain at `if-only-i-had-a-brain.git.unityailab.com` and want the in-character wrapper:
+If you are an adult user engaging the live brain at `unity-lab-ai.github.io/If-Only-I-Had-A-Brain` and want the in-character wrapper:
 
 - ⛔ **CORRECTED 2026-08-27 — you cannot do this, and the page was conflating two different systems.** The old text read: *"Default mode is neutral. Type `/unity` in chat to activate the full persona. Type `/normal` to reset. Type `/hurtme` for violence-only mode."*
 - ⭐ **`/unity`, `/sexy` and `/hurtme` ARE real — as slash commands for the CLAUDE CODE AGENT the operator develops with**, defined in `.claude/commands/*.md`. They are **development-time** persona toggles for that agent. **They are not chat commands to the deployed brain, and the brain has no slash-command dispatch at all** (verified: zero matches repo-wide).

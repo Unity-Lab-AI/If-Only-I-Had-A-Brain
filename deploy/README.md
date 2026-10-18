@@ -207,7 +207,7 @@ possible. Every default below was read out of `brain-ctl.js`, not recalled.
 | `UAL_CTL_GRACEFUL_WAIT_MS` | `20000` (20 s) | How long a graceful shutdown is given before escalating. |
 | `UAL_RESUME_MARKER` | *(unset)* | Marker file path used to signal that a start should RESUME from saved weights rather than walk fresh. ⛔ Getting this wrong costs the whole run — see the `DREAM_KEEP_STATE` note in the current-state facts. |
 | `UAL_SELF_UPDATE_SH` | *(unset)* | Path to the self-update script brain-ctl invokes for an Update-and-Savestart press. |
-| `UNITY_URL` | `https://if-only-i-had-a-brain.git.unityailab.com/` | ⚠ **Not control-plane** — used only by `scripts/unity-chat-hold.mjs`, the Playwright holder that keeps one chat window open. Documented here because it was in the same undocumented set. |
+| `UNITY_URL` | `https://unity-lab-ai.github.io/If-Only-I-Had-A-Brain/` | ⚠ **Not control-plane** — used only by `scripts/unity-chat-hold.mjs`, the Playwright holder that keeps one chat window open. Documented here because it was in the same undocumented set. |
 
 ## Sanity checklist
 

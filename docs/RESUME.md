@@ -13,8 +13,10 @@
 >   site           GitHub Pages 200; BRAIN_ORIGIN = 'https://dumbass.tailec58e0.ts.net' (set ~3:30 AM, rides the next push)
 >   tunnel         UP — Tailscale Funnel on this PC as dumbass.tailec58e0.ts.net; 5 lanes forwarded; verified from
 >                  the public internet: allowed lanes 502 (brain down), /admin/status · POST /reset · /ctl/status · / all 404
->   donor          compiled-in PROD_SERVER still the dead host — donor-v0.3.38 now has its hostname; the release lane
->                  (donor-release.yml) rsynced to the dead box and needs its own row before a tag
+>   donor          0.3.38: PROD_SERVER = wss://dumbass.tailec58e0.ts.net/ws, GUI links -> Pages; built locally
+>                  (reports 0.3.38, server string baked in) and released by .github/workflows/donor-release.yml
+>                  to GitHub Releases — the Forgejo lane is disabled (built to the dead box). Pages/pod/server
+>                  download links + the brain's donorLatest resolver all read GitHub now
 > ```
 >
 > ⚠ **The tunnel night, in one line each (ledger `LOCALHOST.18` has the full account):** `msiexec /quiet` un-elevated = 1603 with no prompt → `Start-Process -Verb RunAs`; `echo %cmdcmdline% | find` hangs from a non-console shell → string test; Google refuses sign-in in a Playwright browser → open the link in HIS Chrome; git-bash turns `--set-path=/x` into `C:/Program Files/Git/x` and one mangled call made a **root route** → stripped, and the script strips it unconditionally now; the Tailscale CLI *waits* on `…/f/serve?node=` the first time → that was the "hang". `dashboard`/`compute`/`minds-eye`/`legend` were still resolving the brain from `location.host` → now `js/brain-origin.js`; `/health` lacked CORS → added (it is the health-gate route).
