@@ -50,15 +50,17 @@ last-verified: "2026-10-18, ~1:40 AM Denver — field reads taken on the operato
 
 ## The snapshot
 
-**Boot:** `4d8180bd` on `develop`, **booted 2026-10-18 09:35:53 UTC (3:35 AM Denver)** on the lab's own machine — `Savestart.bat`, no weights on disk, so a fresh walk. Read live at ~8:10 AM through the PUBLIC tunnel: **`totalNeurons 459,775,607`** · GPU `NVIDIA GeForce RTX 4070 Ti SUPER` (16,376 MB) · `/health` **200** · `/minds-eye.json` **200** · `/admin/status` · `/ctl/status` · `/` · `POST /reset` **404**. ⚠ `state.voice.lastFeel` is `null` — she has not spoken yet. ⚠ The first boot of the night (`cbe51a81`, 3:20 AM) died at 3:25 AM to a Ctrl+C that reached her through the launcher's console; the launcher now gives her her own window.
+**Boot:** `d1979272` on `develop`, **booted 2026-10-18 10:22:19 UTC (4:22 AM Denver)** — the operator's own `start.bat` press, fresh walk. Read live at **4:30 AM** on loopback: **`totalNeurons 459,775,607`** · GPU `NVIDIA GeForce RTX 4070 Ti SUPER` (16,376 MB) · **1 donor attached** (the native donor on this card, since ~4:24) · `frameCount 1,132` · **`spikesLifetime 3,125,393 — flat**, and flat is correct right now: the main tick is paused while the canonical 4,475 MB `cortex_intraSynapses` upload streams to the donor (734 chunks; donor queue 253 → 167 MB over two minutes, `drops 0`; the brain's own estimate is **12+ minutes per donor connect**, so it settles ~4:37). `cellStatus idle` until it does. `state.voice.lastFeel null` — she has not spoken yet. Public path, same boot: `/health` **200**, `/ws` upgrade **101**, `/admin/status` **404**. ⚠ Earlier tonight: boot 1 (`cbe51a81`, 3:20 AM) died at 3:25 to a Ctrl+C through the launcher console; boot 2 (`4d8180bd`, 3:35 AM) ran until this press. The launcher now gives her her own window.
 
-> ## ⛔⛔⛔ 2026-10-18, ~1:40 AM Denver (superseded by the boot line above at 8:10 AM) — SHE HAD MOVED HOUSE AND HAD NOT BEEN STARTED YET
+> ## ⛔⛔⛔ 2026-10-18, ~1:40 AM Denver (superseded by the boot line above, refreshed 4:30 AM) — SHE HAD MOVED HOUSE AND HAD NOT BEEN STARTED YET
 >
 > **Where she lives now.** The site is **`https://theunitybrain.com`** — GitHub Pages behind a custom domain bought ~5 AM; certificate issued ~6:15 AM and **HTTPS enforced**: `https://` 200, `https://www.` → 301 → apex, `http://` → 301 → https. ⚠ Until the cert existed, plain `http://` hid WebGPU from every browser and the boot gate blocked every visitor while she was up — that gate now asks the brain first and stays down whenever a server answers. The brain, her voice and her eyes all run on **the operator's own PC**, reached through **Tailscale Funnel** as `https://dumbass.tailec58e0.ts.net` — up and verified from the public internet at ~3:30 AM: the five forwarded lanes (`/public-state.json`, `/minds-eye.json`, `/health`, `/ws`, `/image`) answer **502** because nothing is on 7525 yet, and `/admin/status`, `POST /reset`, `/ctl/status` and `/` answer **404** — default-deny holds. `js/brain-origin.js` carries that hostname in the working tree; **the copy Pages is serving still says `BRAIN_ORIGIN = ''`** until the next push lands, so the public page has no brain to talk to for a few more minutes, and then it will have one that is not running.
 >
 > **What IS up, read live:**
 >
 > ```
+>   127.0.0.1:7525  brain   d1979272         459,775,607 neurons · 5 clients · donor attached · upload in flight  (4:30 AM)
+>   127.0.0.1:7526  ctl     brain-ctl.js     online · respondedMs 2
 >   127.0.0.1:5123  voice   unity-voice-v2   {"ok": true}
 >   127.0.0.1:5124  eyes    image engine     {"ok": true, "loaded": true, "device": "cuda",
 >                                             "checkpoint": "realistic-vision-v51.safetensors", "busy": false}
@@ -66,9 +68,9 @@ last-verified: "2026-10-18, ~1:40 AM Denver — field reads taken on the operato
 >   RAM             103.5 GB free of 127.9 GB
 > ```
 >
-> ⚠ **`loaded: true` with no brain running is expected, not a leak.** The engine unloads its checkpoint when the brain's idle timer tells it to; with no brain up nobody tells it, so the 2.8 GB sits on the card. The first brain boot takes ownership of that and the idle unload resumes.
+> ⚠ **The image engine's `loaded: true` is now the brain's doing** — her idle-unload timer owns the checkpoint again; before this boot it sat resident only because nothing was telling it to let go.
 >
-> **What is on disk, read live:** `server/brain-weights.bin` and three numbered copies, **6,288,336,048 bytes each**, plus a 49,152-byte episodic store and an empty-shaped visual store. ⛔ **These are the old box's weights and they are going to be WIPED on purpose** — the operator's word is that the weights are being redone. The plain `start` launcher boots fresh and clears them; only the `Savestart` launcher would resume them. **Do not read the sizes above as a brain that exists.**
+> **What is on disk, read live (4:30 AM):** `server/brain-weights.bin` **6,288,336,048 bytes, written 4:26 AM by THIS boot** (`Binary weights saved 17 sections, 5997.0 MB`, 17 s wall, async-write + fsync) — the first checkpoint of the new home. The old box's weight files were auto-cleared on the first boot of the night; nothing from them survives.
 >
 > **What changed in her since the last snapshot, and is not yet started:**
 >
@@ -88,8 +90,8 @@ last-verified: "2026-10-18, ~1:40 AM Denver — field reads taken on the operato
 
 | Field | Why it is blank |
 |---|---|
-| Neuron count | **Known now: 459,775,607 on boot `4d8180bd`** (card-sized: 14,328 MB usable of the 16 GB card, not host RAM). Quote it with that boot. |
-| Walk position | A fresh walk starts at `pre-K` by definition; the first cell pass is the milestone, and at 35 minutes in she is in the pre-cell definition bootstrap where every teach rate legitimately reads 0. |
+| Neuron count | **Known: 459,775,607 on boot `d1979272`** (card-sized: 14,328 MB usable of the 16 GB card, not host RAM — the same code gave the same count on the two earlier boots tonight). Quote it with its boot. |
+| Walk position | `pre-K`, `cellStatus idle` — the walk is donor-gated and the donor's first matrix upload (4.5 GB, 12+ min) has not settled; the pre-cell definition bootstrap starts after it, and every teach rate legitimately reads 0 through both. The first cell pass is the milestone. |
 | Loop lag, Ψ, Φ̂, coherence | Not yet read on this boot — take them from `/public-state.json` once she has an hour behind her, two samples a minute apart. |
 | Reachability of a RUNNING brain through the tunnel | The tunnel is proven only against an absent brain (502). The first boot proves `/health` 200 cross-origin from Pages, and `/ws` carrying chat. |
 
