@@ -210,6 +210,48 @@ REM console: closing an old launcher window silently killed the control plane,
 REM port 7526 went dark, and the dashboard fell back to the legacy button row.
 REM Its own minimized window survives launcher-window closes; log APPENDS.
 start "unity-brain-ctl (leave running)" /min cmd /c "node brain-ctl.js >> brain-ctl.log 2>&1"
+REM VOICEV2 - her voice (unity-voice-v2), started as a SIDECAR exactly as in
+REM start.bat: own named window, appending log, survives this launcher closing.
+REM ONE lane - piper is gutted (2026-10-18). If this is not running she is
+REM SILENT and the brain log says so; every reply re-tries, so she speaks the
+REM moment it answers. Not found -> say so and carry on; a missing voice must
+REM never stop a resume.
+if not defined UNITY_VOICE_PORT set "UNITY_VOICE_PORT=5123"
+if not defined UNITY_VOICE_V2_DIR set "UNITY_VOICE_V2_DIR=%~dp0..\..\Backrooms\models\unity-voice-v2"
+if exist "%UNITY_VOICE_V2_DIR%\serve.py" (
+    netstat -ano | findstr :%UNITY_VOICE_PORT% | findstr LISTENING >nul 2>&1
+    if errorlevel 1 (
+        echo   [voice] starting unity-voice-v2 on %UNITY_VOICE_PORT% ...
+        echo   [voice] log: %UNITY_VOICE_V2_DIR%\voice-v2.log
+        start "unity-voice-v2 (leave running)" /min /D "%UNITY_VOICE_V2_DIR%" cmd /c "python serve.py --port %UNITY_VOICE_PORT% >> voice-v2.log 2>&1"
+    ) else (
+        echo   [voice] unity-voice-v2 already listening on %UNITY_VOICE_PORT% - left alone.
+    )
+) else (
+    echo   [voice] unity-voice-v2 NOT found at %UNITY_VOICE_V2_DIR%
+    echo           she will be SILENT until it runs. Set UNITY_VOICE_V2_DIR to the model folder.
+)
+REM IMAGEENGINE - her eyes (CORA's local Stable Diffusion), same pattern. The
+REM checkpoint loads on the FIRST render, so this costs the GPU nothing until
+REM she asks for a picture. Offload stays on - never add --no-offload here.
+if not defined UNITY_IMAGE_PORT set "UNITY_IMAGE_PORT=5124"
+if not defined CORA_IMAGE_DIR set "CORA_IMAGE_DIR=%~dp0..\..\C.O.R.A Cognitive Operations & Reasoning Assistant"
+if not defined CORA_IMAGE_CHECKPOINT set "CORA_IMAGE_CHECKPOINT=%USERPROFILE%\Desktop\Unity 3D Equational Model\Unity 18+\models\realistic-vision-v51.safetensors"
+if exist "%CORA_IMAGE_DIR%\services\image_sidecar.py" (
+    if exist "%CORA_IMAGE_CHECKPOINT%" (
+        netstat -ano | findstr :%UNITY_IMAGE_PORT% | findstr LISTENING >nul 2>&1
+        if errorlevel 1 (
+            echo   [eyes] starting the local image engine on %UNITY_IMAGE_PORT% ...
+            start "unity-image-engine (leave running)" /min /D "%CORA_IMAGE_DIR%" cmd /c "python -u services\image_sidecar.py --port %UNITY_IMAGE_PORT% --checkpoint "%CORA_IMAGE_CHECKPOINT%" --device auto >> data\image-sidecar.log 2>&1"
+        ) else (
+            echo   [eyes] image engine already listening on %UNITY_IMAGE_PORT% - left alone.
+        )
+    ) else (
+        echo   [eyes] checkpoint NOT found: %CORA_IMAGE_CHECKPOINT% - no pictures until set.
+    )
+) else (
+    echo   [eyes] CORA image engine NOT found at %CORA_IMAGE_DIR% - no pictures until set.
+)
 start /b "" cmd /c "node --max-old-space-size=65536 --max-semi-space-size=1024 --expose-gc brain-server.js > server.log 2>&1"
 ping -n 2 127.0.0.1 >nul
 start "Unity Brain Log Tail" powershell -NoExit -Command "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $OutputEncoding = [System.Text.Encoding]::UTF8; Get-Content -Path '%~dp0..\server\server.log' -Wait -Tail 200 -Encoding UTF8"

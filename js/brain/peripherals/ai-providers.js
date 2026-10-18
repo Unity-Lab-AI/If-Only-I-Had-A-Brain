@@ -476,7 +476,7 @@ export class SensoryAIProviders {
    */
   // This was a one-line passthrough to `PollinationsAI.speak()`,
   // which is deleted. It had no callers: her voice is Equation Unity One
-  // (js/io/voice.js — piper hfc_female → CDF 9/7, then her own banked word
+  // (unity-voice-v2 on the server → CDF 9/7 rec → js/io/voice.js plays; the old piper lane and the banked word
   // equations). Kept as a null-returning stub so a stray caller gets "no
   // audio" instead of a TypeError on a removed method.
   async speak() {

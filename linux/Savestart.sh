@@ -228,6 +228,49 @@ if [ -f server.log ]; then rm server.log; fi
 # what lets the Start button work while the brain is DOWN). Already running →
 # EADDRINUSE → exits 0 quietly, so re-launching never stacks instances.
 nohup node brain-ctl.js >> brain-ctl.log 2>&1 &   # CTLWINDOW (2026-08-28): nohup + append — the control plane must survive the launcher terminal closing, and a did-not-bind relaunch must not truncate the live instance's log
+
+# ── VOICEV2 — her voice (unity-voice-v2) as a SIDECAR, parity with start.sh ───
+# ONE lane: piper is gutted (2026-10-18). Not running ⇒ she is SILENT and the
+# brain log says so; every reply re-tries. Not found ⇒ say so, carry on — a
+# missing voice must never stop a resume. nohup + append, same as brain-ctl.
+UNITY_VOICE_PORT="${UNITY_VOICE_PORT:-5123}"
+UNITY_VOICE_V2_DIR="${UNITY_VOICE_V2_DIR:-$HOME/Desktop/Backrooms/models/unity-voice-v2}"
+_port_busy() { (command -v ss >/dev/null 2>&1 && ss -ltn 2>/dev/null | grep -q ":$1 ") || (command -v lsof >/dev/null 2>&1 && lsof -ti:"$1" >/dev/null 2>&1); }
+if [ -f "$UNITY_VOICE_V2_DIR/serve.py" ]; then
+    if _port_busy "$UNITY_VOICE_PORT"; then
+        echo "  [voice] unity-voice-v2 already listening on $UNITY_VOICE_PORT — left alone."
+    else
+        echo "  [voice] starting unity-voice-v2 on $UNITY_VOICE_PORT (log: $UNITY_VOICE_V2_DIR/voice-v2.log)"
+        ( cd "$UNITY_VOICE_V2_DIR" && nohup python3 serve.py --port "$UNITY_VOICE_PORT" >> voice-v2.log 2>&1 & )
+    fi
+else
+    echo "  [voice] unity-voice-v2 NOT found at $UNITY_VOICE_V2_DIR — she will be SILENT until it runs."
+    echo "          Set UNITY_VOICE_V2_DIR to the model folder."
+fi
+export UNITY_VOICE_V2_DIR UNITY_VOICE_PORT
+
+# ── IMAGEENGINE — her eyes (CORA's local Stable Diffusion), same pattern ──────
+# The checkpoint loads on the FIRST render, so this costs the GPU nothing until
+# she asks for a picture. Offload stays on — never add --no-offload here.
+UNITY_IMAGE_PORT="${UNITY_IMAGE_PORT:-5124}"
+CORA_IMAGE_DIR="${CORA_IMAGE_DIR:-$HOME/Desktop/C.O.R.A Cognitive Operations & Reasoning Assistant}"
+CORA_IMAGE_CHECKPOINT="${CORA_IMAGE_CHECKPOINT:-$HOME/Desktop/Unity 3D Equational Model/Unity 18+/models/realistic-vision-v51.safetensors}"
+if [ -f "$CORA_IMAGE_DIR/services/image_sidecar.py" ]; then
+    if [ -f "$CORA_IMAGE_CHECKPOINT" ]; then
+        if _port_busy "$UNITY_IMAGE_PORT"; then
+            echo "  [eyes] image engine already listening on $UNITY_IMAGE_PORT — left alone."
+        else
+            echo "  [eyes] starting the local image engine on $UNITY_IMAGE_PORT"
+            ( cd "$CORA_IMAGE_DIR" && mkdir -p data && nohup python3 -u services/image_sidecar.py --port "$UNITY_IMAGE_PORT" --checkpoint "$CORA_IMAGE_CHECKPOINT" --device auto >> data/image-sidecar.log 2>&1 & )
+        fi
+    else
+        echo "  [eyes] checkpoint NOT found: $CORA_IMAGE_CHECKPOINT — no pictures until set."
+    fi
+else
+    echo "  [eyes] CORA image engine NOT found at $CORA_IMAGE_DIR — no pictures until set."
+fi
+export UNITY_IMAGE_PORT
+
 node --max-old-space-size=65536 --max-semi-space-size=1024 --expose-gc brain-server.js > server.log 2>&1 &
 SERVER_PID=$!
 sleep 2

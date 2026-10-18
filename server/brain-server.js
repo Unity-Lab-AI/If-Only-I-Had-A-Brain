@@ -12600,10 +12600,11 @@ const httpServer = http.createServer((req, res) => {
     '.png': 'image/png', '.jpg': 'image/jpeg', '.ico': 'image/x-icon',
     '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf',
     '.map': 'application/json', '.txt': 'text/plain',
-    // Voice engine (self-hosted piper) — WASM needs application/wasm for
-    // streaming compile; the ONNX model + phonemizer .data are fetched as
-    // arrayBuffers so octet-stream is correct. Served from voice-engine/*.
-    '.wasm': 'application/wasm', '.onnx': 'application/octet-stream', '.data': 'application/octet-stream',
+    // `.wasm` kept for any future wasm asset (streaming compile needs the
+    // type). The `.onnx` / `.data` entries went with `voice-engine/` on
+    // 2026-10-18 — the in-browser piper voice is gutted; her voice is
+    // unity-voice-v2 on the server and nothing serves a model to a browser.
+    '.wasm': 'application/wasm',
   };
 
   // URL-decode the path so names like "Ultimate%20Unity.txt" resolve to

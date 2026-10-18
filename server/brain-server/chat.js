@@ -6370,32 +6370,173 @@ const SERVER_CHAT_MIXIN = {
   // reply themselves (per-visitor onnxruntime worker) — on the operator's
   // machine that shared silicon with the compute donor, and one stale cached
   // tab could grab WebGPU and kill the donation whenever she spoke. Now the
-  // reply's voice is synthesized by HER process — a voiceSynth-capable donor
-  // when connected (browser donors carry it; the native binary gains it with
-  // its ort port), the box worker thread otherwise — and the viewer receives
-  // her field-A equations (a few KB) to reconstruct + play. Fire-and-forget:
-  // the text reply already shipped; a failed synth = a silently text-only
-  // reply, never a delayed one.
+  // reply's voice is synthesized by HER process — the voice worker thread
+  // (`VoiceSynthProxy` → unity-voice-v2 on loopback) — and the viewer
+  // receives her field-A equations (a few KB) to reconstruct + play.
+  // Fire-and-forget: the text reply already shipped; a failed synth = a
+  // silently text-only reply, never a delayed one.
   async _voiceLane(ws, text) {
     try {
       if (!text || typeof text !== 'string' || !ws || ws.readyState !== 1) return;
-      let out = null;
-      if (typeof this._mindspaceDonorCapable === 'function' && this._mindspaceDonorCapable('voiceSynth')) {
-        // 60s: a donor's FIRST synth may pay the one-time model fetch/cache.
-        const r = await this.gpuMindspaceOp('voiceSynth', { text }, 60_000);
-        if (r && r.rec) out = { rec: r.rec, sampleRate: r.sampleRate || r.rec.sampleRate };
+      // ONE synthesizer (2026-10-18): the donor `voiceSynth` dispatch is gone
+      // with piper — a donor carries no voice model any more and answers that
+      // op `retired`, so asking it only bought a 60 s wait before the real
+      // lane. Her voice is the v2 worker on her own machine, every time.
+      if (!this._voiceSynth) {
+        const { VoiceSynthProxy } = require('./voice-synth.js');
+        this._voiceSynth = new VoiceSynthProxy();
       }
-      if (!out) {
-        if (!this._voiceSynth) {
-          const { VoiceSynthProxy } = require('./voice-synth.js');
-          this._voiceSynth = new VoiceSynthProxy();
-        }
-        out = await this._voiceSynth.synthesizeRec(text);
-      }
+      const feel = this._voiceFeel(text);
+      const out = await this._voiceSynth.synthesizeRec(text, feel);
       if (out && out.rec && ws.readyState === 1) {
-        ws.send(JSON.stringify({ type: 'voice', text, rec: out.rec, sampleRate: out.sampleRate || out.rec.sampleRate || 22050 }));
+        ws.send(JSON.stringify({
+          type: 'voice', text, rec: out.rec, sampleRate: out.sampleRate || out.rec.sampleRate || 24000,
+          feel: { emotion: feel.emotion, intensity: feel.intensity, speechAct: feel.speechAct },
+        }));
       }
     } catch { /* voice is best-effort — the text reply already landed */ }
+  },
+
+  // ── HOW SHE SOUNDS — read from HER STATE, never from the words ────────────
+  // unity-voice-v2 takes {emotion, intensity, speech_act}. The EMOTION and the
+  // INTENSITY come from what her body is doing at the moment she speaks:
+  //
+  //   amygdala   this.valence (reward − fear, blended), this.arousal (the
+  //              settled attractor, EMA'd, clamped [0.3, 1]), this.fear (a
+  //              sigmoid — 0.5 is its zero, not its floor)
+  //   endocrine  this.endocrine.speechModulation() — the ten chemicals'
+  //              deviations already projected onto speech axes (warmth,
+  //              speechRate, emotionalOverflow, pauses …). ⛔ That method is
+  //              documented as THE ONLY way endocrine state reaches her voice,
+  //              and this is where it reaches it.
+  //   cortex     prediction error against its own 32-tick history — surprise
+  //              is a SELF-RELATIVE quantity, the way Ψ is read as deviation
+  //              from its own recent average and never as an absolute.
+  //
+  // ⛔ No word-list classifier anywhere in here. A table deciding she sounds
+  // "frustrated" because the sentence contains a certain word would be the
+  // banned shape and a lie besides — her chemistry is computed every tick and
+  // is the ground truth. The SPEECH ACT is the one thing read off the text,
+  // and only off the FORM she herself produced: her terminator, the shared
+  // WH-frame parser (`NeuronCluster.extractIntentConcept`, the single source
+  // chat and curriculum both use), and WordNet attestation for whether her
+  // first word leads as a verb (her imperative form). No word list there
+  // either.
+  //
+  // Every constant below is derived in docs/THRESHOLD-DERIVATION.md
+  // (§"Voice feel"), not picked. `intensity` is a STRENGTH in [0, 1]; the
+  // worker places it inside the model's own trained window for that
+  // (emotion, act), read from voice-meta.json — so nothing here knows or
+  // hardcodes 0.25 / 0.85, and a retrain widens the range by itself.
+  _voiceFeel(text) {
+    const VALENCE_DEADBAND = 0.03;   // 3.75× the ±0.008 valence noise floor; a reward step (0.08) clears it 2.7×
+    const AROUSAL_HIGH = 0.4;        // of the headroom ABOVE her baseline (0.9 → 1.0): +0.04 absolute
+    const AROUSAL_LOW = -0.3;        // of the room BELOW it (0.9 → 0.3): −0.18 absolute
+    const SURPRISE_HIGH = 0.5;       // prediction error 50% above its own 32-tick mean
+    const SURPRISE_MILD = 0.2;       // 20% above — novelty she notices without startling
+    const FEAR_CONCERN = 0.6;        // sigmoid zero 0.5 + 0.1 (the margin the arousal EMA cannot cross on noise)
+    const WARMTH_MIN = 0.15;         // = oxytocin deviation 0.30 × its warmth weight 0.50 (a real release, not a flicker)
+    const RATE_STRESS = 0.2;         // speechRate: adrenaline 0.45×dev — dev ≥ 0.44 (a SAM-axis event, not drift)
+    const VALENCE_FULL = 0.3;        // |valence| that reads as full strength: 0.8×0.12 + 0.2×1.0 = 0.296, the formula's own ceiling
+
+    const now = Date.now();
+    const p = this.persona || {};
+    const base = Number.isFinite(p.arousalBaseline) ? p.arousalBaseline : 0.9;
+    const ar = Number.isFinite(this.arousal) ? this.arousal : base;
+    // Excursion from HER baseline, normalised to the room on each side so
+    // "high" means the same thing whether the persona floor is 0.9 or 0.5.
+    const aN = ar >= base
+      ? (ar - base) / Math.max(1e-6, 1 - base)
+      : (ar - base) / Math.max(1e-6, base - 0.3);
+    const val = Number.isFinite(this.valence) ? this.valence : 0;
+    const fear = Number.isFinite(this.fear) ? this.fear : 0.5;
+
+    const cc = this.cortexCluster;
+    let surprise = 0;
+    if (cc && Number.isFinite(cc._lastPredictionError)
+        && Array.isArray(cc._predictionErrorHistory) && cc._predictionErrorHistory.length >= 8) {
+      const h = cc._predictionErrorHistory;
+      let s = 0; for (const x of h) s += x;
+      const mean = s / h.length;
+      surprise = mean > 1e-9 ? (cc._lastPredictionError / mean) - 1 : 0;
+    }
+
+    let mod = null;
+    try {
+      mod = (this.endocrine && typeof this.endocrine.speechModulation === 'function')
+        ? this.endocrine.speechModulation(now) : null;
+    } catch { mod = null; }
+    const warmth = mod && Number.isFinite(mod.warmth) ? mod.warmth : 0;
+    const overflow = mod && Number.isFinite(mod.emotionalOverflow) ? mod.emotionalOverflow : 0;
+    const rate = mod && Number.isFinite(mod.speechRate) ? mod.speechRate : 0;
+
+    const pos = val > VALENCE_DEADBAND;
+    const neg = val < -VALENCE_DEADBAND;
+    let emotion;
+    if (surprise >= SURPRISE_HIGH && aN >= 0) emotion = 'surprised';
+    else if (neg && (aN >= AROUSAL_HIGH || rate >= RATE_STRESS)) emotion = 'frustrated';
+    else if (neg && fear >= FEAR_CONCERN) emotion = 'concerned';
+    else if (neg && aN <= AROUSAL_LOW) emotion = 'sad';
+    // Negative at mid arousal: emotional overflow (cortisol up / serotonin
+    // down) is the sad reading; without it the negative is a worry.
+    else if (neg) emotion = overflow > 0 ? 'sad' : 'concerned';
+    else if (pos && aN >= AROUSAL_HIGH) emotion = 'excited';
+    else if (warmth >= WARMTH_MIN && aN < AROUSAL_HIGH) emotion = 'warm';
+    else if (pos && surprise >= SURPRISE_MILD) emotion = 'amused';
+    else if (pos) emotion = 'happy';
+    else if (fear >= FEAR_CONCERN) emotion = 'concerned';
+    else emotion = 'neutral';
+
+    // Strength = the strongest normalised driver. `neutral` is trained at
+    // exactly 0.00, so it sends 0 — anything else would be a 422.
+    const intensity = emotion === 'neutral' ? 0 : Math.max(0, Math.min(1, Math.max(
+      Math.abs(val) / VALENCE_FULL,
+      Math.abs(aN),
+      Math.min(1, Math.max(0, surprise)),
+      Math.min(1, warmth / (2 * WARMTH_MIN + 0.2)),   // 0.5 = one full oxytocin release
+      Math.abs(fear - 0.5) * 2,
+    )));
+
+    // The act, from the FORM she produced.
+    const t = String(text).trim();
+    const last = t.slice(-1);
+    let speechAct = 'statement';
+    if (last === '?') {
+      const ic = (cc && cc.constructor && typeof cc.constructor.extractIntentConcept === 'function')
+        ? cc.constructor.extractIntentConcept(t) : null;
+      speechAct = (ic && ic !== 'truth') ? 'wh_question' : 'yes_no_question';
+    } else if (last === '!') {
+      speechAct = 'exclamation';
+    } else {
+      const first = (t.match(/^[A-Za-z']+/) || [''])[0];
+      let imperative = false;
+      if (first) {
+        try {
+          const tax = this._drawTaxonomy || (this._drawTaxonomy = require('../drawable-taxonomy.js'));
+          imperative = typeof tax.verbLeads === 'function' && tax.verbLeads(first);
+        } catch { imperative = false; }
+      }
+      if (imperative) speechAct = 'instruction';
+      // Soothing is bonding chemistry at or below her resting arousal, said
+      // to someone, without a negative valence underneath it.
+      else if (warmth >= WARMTH_MIN && aN <= 0 && !neg) speechAct = 'reassurance';
+      // `aside` is the inner voice's register, and the inner voice is not
+      // voiced — so it is unreachable from here BY DESIGN, not by omission.
+    }
+
+    const feel = {
+      emotion, intensity: +intensity.toFixed(3), speechAct, at: now,
+      drivers: {
+        valence: +val.toFixed(3), arousal: +ar.toFixed(3), arousalExcursion: +aN.toFixed(3),
+        fear: +fear.toFixed(3), surprise: +surprise.toFixed(3),
+        warmth: +warmth.toFixed(3), speechRate: +rate.toFixed(3), emotionalOverflow: +overflow.toFixed(3),
+        endocrine: !!mod,
+      },
+    };
+    this._lastVoiceFeel = feel;
+    if (!this._voiceFeelCounts) this._voiceFeelCounts = Object.create(null);
+    this._voiceFeelCounts[`${emotion}/${speechAct}`] = (this._voiceFeelCounts[`${emotion}/${speechAct}`] | 0) + 1;
+    return feel;
   },
 };
 

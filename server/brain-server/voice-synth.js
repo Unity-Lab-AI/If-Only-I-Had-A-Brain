@@ -1,12 +1,12 @@
-// VoiceSynthProxy — her voice lane on the BOX (ONE PROCESS rollout ramp).
+// VoiceSynthProxy — her voice lane. ONE lane (2026-10-18).
 //
-// Wraps server/voice-synth-worker.mjs (piper VITS + espeak phonemizer + the
-// field-A perceive, all on a worker THREAD) behind one async call:
-// synthesizeRec(text) → { rec, sampleRate } | null. Same worker-proxy shape
-// as MindSpaceWorkerProxy. When a voiceSynth-capable donor is connected the
-// chat lane dispatches THERE instead (gpuMindspaceOp('voiceSynth')) — this
-// box worker is the always-available floor so she is never mute, and it
-// respawns itself if the worker thread ever dies.
+// Wraps server/voice-synth-worker.mjs — unity-voice-v2 (her trained voice,
+// with emotion) + the field-A perceive, on a worker THREAD — behind one async
+// call: synthesizeRec(text, feel) → { rec, sampleRate, voice } | null. Same
+// worker-proxy shape as MindSpaceWorkerProxy. ⛔ There is no donor voice lane
+// and no piper floor any more: a donor's voiceSynth was piper, and piper is
+// gutted. If v2 is down, null — and that reply is silent with the reason
+// counted. The worker respawns itself if the thread ever dies.
 const { Worker } = require('worker_threads');
 const path = require('path');
 
@@ -26,8 +26,8 @@ class VoiceSynthProxy {
     this._worker.unref();
     this._worker.on('message', (m) => {
       if (m && m.ready !== undefined) {
-        if (m.ready) console.log(`[VoiceSynth] box voice lane READY (${m.voice || 'unknown'}) — her replies synthesize in HER process (worker thread), viewers only play.`);
-        else console.warn('[VoiceSynth] box voice lane failed to init:', m.error || 'unknown');
+        if (m.ready) console.log(`[VoiceSynth] voice lane READY (${m.voice || 'v2'}) — her replies synthesize in HER process (worker thread), viewers only play.`);
+        else console.warn('[VoiceSynth] voice lane NOT ready — she is silent until unity-voice-v2 answers:', m.error || 'unknown');
         this.lastVoice = m.voice || null;
         return;
       }

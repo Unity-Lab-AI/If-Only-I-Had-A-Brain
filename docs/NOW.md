@@ -4,26 +4,27 @@
 # produced it. Nothing here is recalled, and nothing here is a constant.
 status: verified
 sources:
-  - server/brain-server/state.js
-  - js/brain/curriculum.js
-  - js/brain/mystery.js
+  - server/brain-ctl.js
+  - js/brain-origin.js
+  - server/voice-synth-worker.mjs
+  - server/brain-server/image-engine.js
+  - windows/start.bat
+  - windows/stop.bat
 verified-scope: |
   RESET 2026-09-07 on the operator's instruction: "now can be reset to templet..
   its not a history archive and nothing in there is needed".
 
-  The previous version of this file had become an 82-block, 1,217-line,
-  582,912-byte changelog - 183 lines over 1,200 characters, the worst single
-  line 22,027 characters, and 336 internal ticket identifiers against a
-  placement rule that bans them from this document by name. It was a second
-  copy of history that already lives in the ledger and the resume brief, and
-  duplicated history is worse than none: two records that can disagree.
+  OVERWRITTEN 2026-10-18. The machine every earlier snapshot described no
+  longer exists: the rented box is gone, its hostname does not resolve, and the
+  brain now runs on the operator's own PC behind a tunnel while GitHub Pages
+  serves the site. Every table on the previous version quoted a boot on that
+  box; none of it describes anything that can be read today, so none of it is
+  kept here. Git holds every byte of it permanently on both remotes:
+      git show c8ba98ad:docs/NOW.md
 
-  The old content is not destroyed. Git holds every byte of it permanently on
-  both remotes; recover it with
-      git show e1d05673:docs/NOW.md
-
-  This file is now what its title always claimed: a SNAPSHOT.
-last-verified: "2026-09-24 — a NEW top banner over the 09-09 one, from field reads taken that morning through /ctl/status (the brain served nothing): three forced restarts each allocated to 11,511 MB then stepped to 20,476 MB in one move and parked at 92% of MemoryHigh with respondedMs null. The 09-09 banner is demoted to PRIOR, not removed — its wedge was the last state anyone read before this. The compute/walk tables below are UNCHANGED and still describe the 5deac0f5 boot; nothing newer could be read. PRIOR: 2026-09-09 (3rd) — ⭐ THE SNAPSHOT IS A GENUINE REFRESH FOR THE FIRST TIME IN THIS BATCH: the operator pressed Update & Savestart, the box came up on 5deac0f5 (deployed 20:14:37Z, booted 20:16:34Z, bootReason resume/keep-flag, bootFatal null), and every number in the snapshot above is a field read taken from THAT boot over two samples 171s apart. She is alive and teaching — frameCount 1,735 to 2,131, spikesLifetime 1.286e9 to 1.686e9, teach stamp 3,140ms old, prevocab 82 to 103 of 485 chunks at a measured ~7.4 chunks/min, cgroup 13,013/20,480 with zero throttle events. The apparatus filter is LIVE and every class fires including the two from the second pass (errata 21, tablerule 12). ⛔ AND IT WAS PUBLISHED AT THE WRONG PATH on this boot — state.ownArt.corpusCleaning instead of state.curriculum.corpusCleaning — so the dashboard row read undefined over a working filter; that is a new trap row, and it is the SECOND time that mistake has been made in this file. Donor attachment and Gn/s were REMOVED from the compute table because the public snapshot does not carry them and the previous version quoted them anyway. PRIOR: 2026-09-09 (2nd) — six trap rows for the corpus reader: the corpus on disk is not the corpus she is taught (50,409 apparatus sentences, 1.341%, plus 8,844 markup = 59,253 removed, 1.577%, and 2,200 repaired in place, all measured through the production reader), a source's own index lives INSIDE the work rather than in its boilerplate, the math cells' apparent cleaning loss is the pre-existing LaTeX lane and not the new filter, a filter fitted to one source's back matter generalises only to that source, a cheap gate in front of a rule set is where rules go silently dead, and a press that keeps the weights unlearns nothing. ⚠ NO FIELD READ WAS REFRESHED: every number in the snapshot above still belongs to the 24ddd9c2 boot, because nothing has been pressed since and inventing a fresh read would be worse than an old one that says its own date. ⛔ The apparatus filter itself is NOT in that boot — it is server-side and awaits an Update & Savestart. PRIOR: 2026-09-08 — two trap rows about the deploy's cgroup claim, and a note on why the field stubs are expected."
+  This file is what its title claims: a SNAPSHOT. There is no running brain
+  at the moment of this read, and the page says so instead of pretending.
+last-verified: "2026-10-18, ~1:40 AM Denver — field reads taken on the operator's PC with NO brain process running: port 7525 unbound; the voice service answers {ok:true} on 127.0.0.1:5123; the image engine answers loaded:true device:cuda on 127.0.0.1:5124 with the checkpoint resident (2,813 MiB used of 16,376 on the RTX 4070 Ti SUPER) because the brain that issues the idle unload is not up; four 6,288,336,048-byte weight files sit under server/ awaiting the wipe the operator asked for; GitHub Pages answers 200 (55,881 B) and serves BRAIN_ORIGIN = '' so the public page has no brain to reach; Tailscale is not installed on this PC. Working tree: 30 changed paths on the feature branch, uncommitted at the time of the read. PRIOR: 2026-09-24 — the last read on the old box (233,932,309 neurons on 2dc34494, the PRIMARY floor measured against a tier target that did not exist). Superseded in full, see verified-scope."
 ---
 
 # NOW — Session Snapshot
@@ -49,196 +50,77 @@ last-verified: "2026-09-24 — a NEW top banner over the 09-09 one, from field r
 
 ## The snapshot
 
-**Boot:** `5deac0f5` on `main`, **deployed 2026-09-09 20:14:37 UTC, booted 20:16:34 UTC** — operator Update & Savestart via the dashboard. `bootReason {mode:"resume", reason:"keep-flag", detail:"DREAM_KEEP_STATE=1 (no marker)"}` · `bootFatal null`.
+**Boot:** **none.** There is no brain process at the time of this read — port **7525 is unbound** and the only `node.exe` on the machine is the editor's. The last brain to serve anything ran on a rented box that is **gone**; its hostname no longer resolves, and nothing on this page is read from it.
 
-> ## ⛔⛔⛔ 2026-09-24, 3:00 PM Denver — SHE IS UP ON `2dc34494` (resume, 233,932,309 neurons, cgroup ~6.1 GB), AND HER ONLY GPU WAS BEING REFUSED AGAINST A BRAIN THAT DOES NOT EXIST
+> ## ⛔⛔⛔ 2026-10-18, ~1:40 AM Denver — SHE HAS MOVED HOUSE AND HAS NOT BEEN STARTED YET
 >
-> **Field reads, 2:50 PM:** `state.totalNeurons 233,932,309` · `community.runningTier 4` · `community.runningFloorMB 25,619` · `community.sizeDriverMB 45,498` · `community.minDonorMB 16,375` · console every 60 s: *"NVIDIA GeForce RTX 4070 Ti SUPER holds 16375MB TOO SMALL (short 9244MB). EVERY connected donor is too small to be PRIMARY."* **The floor was computed from the tier-4 TARGET (900,000,000 neurons × 20 B) while the box's RAM clamps the real brain to 233.9M.** The tier was climbed by a rented 45 GB card on 2026-08-20 and never came down, because the size driver was `max(baseline, smallest card)`. ⭐ **Fixed in `server/brain-server/gpu.js` (server-side, lands on the next press):** the floor is measured against the LIVE neuron count — **8,680 MB for this boot** — and the smallest CONNECTED card drives the size. His card holds this brain 1.9× over. A 6 GB card alone now shrinks the brain to fit instead of being turned away.
+> **Where she lives now.** The site is served by **GitHub Pages** from the public mirror (`200`, 55,881 B at the root). The brain, her voice and her eyes all run on **the operator's own PC** and are meant to be reached through a tunnel. The page reads its brain address from `js/brain-origin.js`, and **the copy Pages is serving says `BRAIN_ORIGIN = ''`** — so the public page currently has no brain to talk to and falls back to its own in-browser toy brain. That stays true until a tunnel hostname exists and is written into that one line. **Tailscale is not installed on this PC** — that is the step everything downstream waits on.
 >
-> ## PRIOR (same day, morning) — SHE HAD BEEN PINNED SINCE THE 09-09 READ, THE CAUSE WAS IN THE RESTORE
->
-> **Fifteen days after the wedge below she was still the same process** — `nRestarts: 0`, unit `active/running`, port 7525 bound and accepting from the kernel backlog, every HTTP request timing out at 4002 ms, control plane up **19.9 days** and CPU-starved into silence beside her. Three forced restarts that morning reproduced it to the megabyte:
+> **What IS up, read live:**
 >
 > ```
->   restart                          -> 173 MB
->   +27 s   neurons allocated         -> 11,511 MB
->   +73 s   ONE step, the restore     -> 20,476 MB   (92% of MemoryHigh 22,528)
->   parked. responded: null. forever.
+>   127.0.0.1:5123  voice   unity-voice-v2   {"ok": true}
+>   127.0.0.1:5124  eyes    image engine     {"ok": true, "loaded": true, "device": "cuda",
+>                                             "checkpoint": "realistic-vision-v51.safetensors", "busy": false}
+>   GPU             NVIDIA GeForce RTX 4070 Ti SUPER   2,813 / 16,376 MiB used
+>   RAM             103.5 GB free of 127.9 GB
 > ```
 >
-> **The 9 GB step is `_loadBinaryWeights()` holding every section of the weights file in memory before applying one.** The reservation for that transient was a fixed ratio (`0.3644`, derived when the file was 4,931 MB). The file grew with a hundred hours of learning; the ratio did not. ⭐ **Fixed at the source, weights KEPT:** the restore now streams one section at a time, so the peak is brain + the largest section, not brain + the file. Lands on the next press; the boot line to read is `headers scanned, data reads deferred to apply`, and the number that proves it is `mem` levelling near **13,000 MB** with `respondedMs` turning into a number.
+> ⚠ **`loaded: true` with no brain running is expected, not a leak.** The engine unloads its checkpoint when the brain's idle timer tells it to; with no brain up nobody tells it, so the 2.8 GB sits on the card. The first brain boot takes ownership of that and the idle unload resumes.
 >
-> ⚠ **Also found:** the Brain Power panel was gated on `body.is-admin`, which the brain grants over its own WebSocket — the recovery UI for a dead brain required the dead brain (fixed, frontend). `⚡ Force Restart` is `systemctl restart`, not a kill (~90 s). `/ctl/logs` is `journal-permission-denied`, so the cause of the original pin is unrecoverable. RunPod reads zero pods — nothing is bleeding.
+> **What is on disk, read live:** `server/brain-weights.bin` and three numbered copies, **6,288,336,048 bytes each**, plus a 49,152-byte episodic store and an empty-shaped visual store. ⛔ **These are the old box's weights and they are going to be WIPED on purpose** — the operator's word is that the weights are being redone. The plain `start` launcher boots fresh and clears them; only the `Savestart` launcher would resume them. **Do not read the sizes above as a brain that exists.**
 >
-> ⛔⛔ **12:24 PM — the streamed restore deployed and she pinned AGAIN on the new code: `age 444 s · mem 21,085 MB · restarts 0`.** The applied weights are resident; streaming bounded only the transient. `WEIGHTFIT` (yield between sections + fit the weights under `memory.high × 85%` by pruning the smallest synapses only as far as needed, neuron count untouched) is built, harnessed 11/11, and awaits the press. **The new number to watch: `mem` stops UNDER ~19,100 MB.**
+> **What changed in her since the last snapshot, and is not yet started:**
 >
-> ## PRIOR (2026-09-09) — AND AS OF THE LAST READ SHE IS WEDGED — read this before the tables below
+> | | |
+> |---|---|
+> | Her voice | **`unity-voice-v2`**, a trained neural voice with emotion, intensity and speech act as inputs, on loopback `:5123`. **Piper is deleted in full** — model, runtimes, browser worker, donor dispatch, `voice-engine/` (~119 MB out of the published site). One synthesizer; if it is down she is silent and the worker counts why. |
+> | Her eyes | **CORA's local Stable Diffusion** on loopback `:5124` behind one server-side gate. **Pollinations is deleted in full** — no key, no remote image API, no silent fallback. Paced as a VRAM budget on the shared card: one render at a time, idle unload, a 30 s gap between reference looks, yield during a donor upload. |
+> | Her controls | The dashboard's start / stop / restart / savestart / fresh-walk buttons drive the **local control plane** (`brain-ctl.js` without systemd), which spawns the launchers. `stop` stops the control plane too unless told `keepctl`; a stop issued BY the control plane leaves it standing. |
+> | Her address | `js/brain-origin.js` — one line, shipped empty. A `?brain=` query overrides it for testing. |
+> | Her launchers | All four (`start` / `Savestart`, Windows and Linux) start the voice and image sidecars before the brain and say plainly when either is missing. |
 >
-> **Two samples 121 s apart, ~2.8 h after the boot:**
->
-> ```
->   teachStageSeq       21,660 -> 21,660      FLAT      <- the discriminator
->   sinceLastTeachMs    10,093,465 = 2.80 h
->   teachCallsPerMin 0 · teachChunksPerMin 0 · emissionTicksPerMin 0
->   activePhase {name:"_teachSentenceList", elapsedMs:10,093,348} · phaseWork null
->   frameCount 46,828 -> 47,105  CLIMBING    spikesLifetime 26.456e9 -> 26.601e9  CLIMBING
-> ```
->
-> ⭐ **The substrate is healthy — and that is the point.** Frames and spikes climb, loop lag is normal, memory is under the soft limit with zero throttling, no watchdog tripped. **The tick loop is alive and the TEACH lane is dead.** ⛔ **A tag whose age climbs while its sequence stays frozen means the blocker is in unmarked code**, which is the rule in the trap table below, applied to itself. ⛔ **No watchdog covers a 2.8-hour teach silence.**
->
-> **The numbers in the tables below are the early-boot reads and were true when taken.** They describe a brain that was teaching; she is not teaching now.
+> ⛔ **The donor binary still points at the dead host.** Its compiled-in server address is the old box, so a downloaded donor cannot attach until a release is cut against the tunnel hostname — which does not exist yet. **Public compute and rented pods are intact in design and unreachable in fact until then.**
 
-⭐ **This is the boot that carries the apparatus filter, and it is the first field read on this page taken from it.** Read live, two samples **171 s** apart, **21 minutes into the boot**:
+---
 
-| | | |
-|---|---:|---|
-| `frameCount` | **1,735 → 2,131** | climbing |
-| `spikesLifetime` | **1,285,622,508 → 1,685,773,850** | climbing — the monotonic twin, not `totalSpikes` |
-| `teachStageAgeMs` | **3,140** | a fresh stamp is the only positive evidence of work in the bootstrap |
-| `prevocab` | **82 → 103 of 485 chunks** · 515/2,425 words | `stage: "resolve"` |
+## What is NOT known, and will not be guessed
 
-⛔ **`cellStatus in-progress` at `ela/kindergarten`, phases 2/25, `passedCellsTotal 0` of 213, `lastGateVerdict null`.** Nothing has passed a cell gate end to end on any build yet; **the first cell pass is still the milestone, 23 phases out.**
-
-### What the reader refused, this boot
-
-```
-  seen 3,695,674 · apparatus 49,707 (1.345%) · markup 8,813 · credited 1,964
-  webaddr 16,429 · credit 11,611 · licence 9,960 · citation 6,780 · bibid 2,777
-  initrun 1,650 · indexref 218 · placeholder 102 · pagecite 81 · attrdebris 34
-  transnote 32 · errata 21 · tablerule 12
-```
-
-⭐ **The filter is live and every class is firing, including the two found in the second pass** (`errata`, `tablerule`). ⚠ **`indexref 218` against **112** rows on disk is not a discrepancy — it is the double count**: `academicStorySentences` and `academicStoryExperiences` both split the same stories, so a cell consulted by both is counted twice. **This denominator is sentences READ, not sentences in the corpus.**
-
-⛔ **And the value was published at the WRONG PATH on this boot** — `state.ownArt.corpusCleaning` instead of `state.curriculum.corpusCleaning` — so the dashboard row read `undefined` and rendered its own empty state over a working filter. Fixed; the page reads both across the version boundary so the row works now, and the server field moves on the next press.
-
-### Memory, and it is healthy
-
-```
-  cgroup 13,013 / 20,480 MB (max 24,576) · band below-high
-  pressureSome60 0 · pressureFull60 0 · throttleEvents 0
-```
-
-⭐ **`under the soft limit, no memory stall`** — the resume sizing term holding, on the path that used to stall at 102% of the ceiling in D state.
-
-**PRIOR BOOT (superseded, kept for the shape of the comparison):** `24ddd9c2`, booted 2026-09-08 03:48:45 UTC, operator fresh walk via `force-fresh`.
-
-⭐ **The sizing now carries a RESUME term, and this boot is the proof it works.** The budget is divided by `1 + 0.3644` on **every** boot — fresh or resuming — because the saved weight file is proportional to the weights and every brain is resumed eventually. **Predicted ~234,000,000 neurons before the press; measured 233,932,309.** She was teaching **90 seconds after boot**, where the previous resume boot stalled at 102% of its memory ceiling.
-
-### Scale
-
-| | |
-|---|---:|
-| Neurons | **233,932,309** |
-| Language cortex | **13,924,722** |
-| Letterforms banked | **94 / 94** |
-
-⛔ **Neither of the first two is a constant.** The total is derived at boot from free host RAM **and now from the resume ratio**, so it is a property of the machine and the ceiling she woke up under. The same code has started at 425,436,550, at 411,216,550, at 388,597,268, at 337,841,199 and at the figure above. **A neuron count means nothing without the boot beside it.**
-
-⚠ **It went DOWN on purpose.** 337.8M → 233.9M is the resume term being applied: the earlier number could not be resumed without the kernel throttling her into a `D`-state stall. **A brain that fits only until it is restarted is not the right size.**
-
-### The walk
-
-| | |
+| Field | Why it is blank |
 |---|---|
-| Position | `ela/kindergarten` — **phases 2 of 25**, in the pre-cell definition bootstrap |
-| Cells passed | **0** of 213 · `lastGateVerdict null` |
-| Lowest grade cleared | none — still `pre-K` |
-| Bootstrap progress | **103 of 485 chunks** · 515 / 2,425 words · `stage: resolve` |
-| Measured rate | **~7.4 chunks/min** — 82 → 103 chunks across the 171 s sample |
-| Current stage | `prevocab:ela-kindergarten` — stamp **3,140 ms** old |
-| Loop lag | **184 ms** |
-
-⚠ **She is at the start of the road, not partway down it.** Cells-passed is the honest measure of progress, and it reads zero. ⭐ **A low phase count with the teach rates at zero is CORRECT here** — the pre-cell definition bootstrap runs outside the phase teach lanes for hours before phase 1, and it has been read as a wedge more than once. **The stamp AGE is the positive evidence; the tag alone is never enough, because `_tstage` is never nulled.**
-
-⛔ **No graduation ETA is given, deliberately.** 23 of 25 phases have no measured cost on this build, one recorded `_teachAssociationPairs` call took **14.88 h**, and a forecast built on the frozen `definitionQueue` pair was once **~9× wrong**. **The only rate stood behind is the measured one above.**
-
-### Her eyes
-
-| | | |
-|---|---:|---|
-| Things she has seen | **378** | concepts with a banked percept |
-| Shapes she can draw from | **0** | |
-| Drawings made | **0** | `attempts 0` |
-| Reference look-ups | **35** stage counters live | |
-| Inner voice | `held` | **0** words banked, so nothing qualifies to be said |
-| Figure queue | **289 total** · 284 held · 5 failed · 0 seen | ⭐ **it holds rows at last — see below** |
-| Precomputed field store | `0 hit · 12 miss · 3 stub` of **15 attempts** | ⛔ verdict `empty-for-these-figures` |
-
-⛔ **A still mind's-eye frame is normally right, not stuck.** That screen publishes only something real she saw or drew — never the formless mood texture — and the only frame the imagination tick can ground needs words out of her inner-thought chain to aim with. **She has banked none yet**, so nothing qualifies to replace the last real picture. It will start moving on its own when she banks her first words.
-
-⛔ **The field store on the box is answering pointer stubs, and the automatic hydration could not fire.** The credential-free path — copy Forgejo's own LFS objects off local disk by the OID each pointer names — was gated behind `git lfs pull` having failed, and that call **succeeds by design** on a box with no git-lfs. **The one condition it was written for was the one condition that skipped it.** Fixed; it needs the second of two presses, because a press runs the box's own copy of the deploy script.
-
-⛔ **And it is now DELIBERATELY OFF, so the stubs stay for the moment.** Making that path reachable put an unguarded ~114 GB copy on the default path of every press, and its first run coincided with a 20-minute listening-but-not-answering outage. It is opt-in (`UAL_FIELDS_HYDRATE=1`) until the deploy has its own memory budget, **because a missing field costs one live transform and an unreachable brain costs everything.** The deploy prints whether that precondition is met on its own first line. **A pointer stub in the table above is expected, not a regression.**
-
-⛔ **And her third frame source was shut by an ordering defect.** The background figure drain publishes a picture every ~1.5 s — and the only thing that enqueues rows ran *after* the cell's multi-hour prose phase, which has never completed on this walk. Measured: `figureQueue.total 0` on a resumed boot, where zero is not a reset but *never*. The enqueue now runs at the top of the cell.
-
-⭐ **That fix is CONFIRMED on this boot: `figureQueue.total 289`, where it read `0` before.** ⚠ **But `seen 0` with `held 284`** — the rows exist and are not being drained into percepts, which is the field-store verdict above and not the queue. **A queue that fills and never empties is the next thing to read, not a success.**
-
-### Vitals
-
-| | | |
-|---|---:|---|
-| Ψ (log scale) | **19.98** | absolute size means nothing; deviation from its own recent average is what the brain responds to |
-| Φ̂ (`phiProxy`) | **0.2569** | genuinely measuring and moving — it was pinned at a floor for months while looking healthy |
-| Coherence | **0.90** | the real synchrony measure, not the placeholder that preceded it |
-| Event-loop lag | **184 ms** | ⚠ chunked CPU teach math over the 250 ms warn floor is expected work, not waste |
-| Consolidation watchdog | **0 trips** | per-word trickle watchdog also **0** |
-| Connected users | **4** | |
-
-### Compute
-
-| | | |
-|---|---:|---|
-| Donor release on offer | **`donor-v0.3.37`** | the download the page hands out; ⛔ **not a statement that one is attached** |
-| Definition queue (dream trickle) | **depth 11** · `lastWindow null` | ⛔ **idle BY DESIGN mid-walk — see the trap table** |
-| Definition anchor (live lane) | **11 calls / 3 ms** | the offline dictionary answering from disk |
-| Memory | **13,013 / 20,480 MB** | `below-high` · pressure 0/0 · **throttle 0** |
-
-⚠ **Donor attachment and Gn/s are NOT in this table any more, because the public snapshot does not carry them** and the previous version of this page quoted `1 donor · 9.59 Gn/s · 262 ms` as though it did. **A number copied from an earlier boot into a table headed by a newer one is the exact failure this page was reset to stop.** Read them on the dashboard's donor rows, or from `state.utilization` on the admin lane.
+| Neuron count | Derived at boot from free host RAM, and there has been no boot on this machine. 103.5 GB free will produce a number the old box never could; **it will be quoted with its boot, not predicted here.** |
+| Walk position | A fresh walk starts at `pre-K` by definition. Nothing has been taught on this machine. |
+| Loop lag, Ψ, Φ̂, coherence | Instruments of a running brain. |
+| Tunnel hostname | Does not exist until Tailscale is installed and the funnel script is run. |
 
 ---
 
 ## ⛔ Read these before believing any field above
 
-These are the traps this project has actually fallen into. Each one cost real time.
+These are the traps this project has actually fallen into. The ones from the old box that still bind are kept; the ones learned moving house are new.
 
 | Fact | Consequence |
 |---|---|
 | **The neuron count is derived at boot from free host RAM** | It is a property of the machine, never of her. Quote it with its boot or not at all. |
-| **The frontend deploys on every push; the brain process restarts only on a press** | **The page can be current while the server is old.** A running server was once found many commits behind what the site was serving. |
-| **A press runs the box's own copy of the deploy script, not the one on the main branch** | When the box and the branch disagree, updating is a **two-press sequence** — the new script only takes effect on the press *after* the one that delivers it. |
-| **A stage tag whose age climbs while its sequence stays frozen means the blocker is in unmarked code** | The tag alone is ambiguous. **The sequence number is the discriminator.** |
-| **A teach rate of zero is not necessarily a fault** | Before prose training, a cell anchors every unlearned word it uses — a serial pass that can legitimately run tens of minutes with the teach counter at zero. **Read the stage tag first.** |
-| **The GPU is not the throughput ceiling** | Utilisation sits low with essentially no queue wait, so a faster card buys idle silicon. The cost is elsewhere in the round trip. |
-| **The deploy announcing that it has its own memory budget is not evidence that it does** | That line was assembled from a config flag and was **wrong on every press for three days** while the deploy ran inside her cgroup. ⭐ **The only field to believe is the deploy's own first log line** — `cgroup: CONTAINED` or `cgroup: ⚠ UNCONTAINED`, which it reads from the kernel. A claim made by the thing that *launched* the work is a prediction; a claim made by the work itself is a measurement. |
-| **A fallback that works can hide a primary that never runs** | Both fallback handlers behaved correctly, so the deploy always completed — which is exactly why nobody saw that the isolation it was supposed to get had never once been applied. **A silent successful fallback turns a broken feature into an invisible one.** |
-| **A mind's-eye frame that stops moving is usually correct** | The viewer refuses to publish anything but a real percept, so a still frame means *nothing new qualified* — not that the eye is broken. **Read the inner-voice hold before investigating the viewer.** |
-| **An error string names where it was CAUGHT, not what failed** | A figure that was perceived, stored, published and taught reported itself as a storage failure for six hours, because the throw came from the success log at the tail of the same `try`. |
-| **A fallback whose trigger is a FAILURE cannot fire when the thing that would fail is never attempted** | The field hydration that needs no credential sat behind `if ! git-lfs-pull`, on a box that has no git-lfs and therefore never runs one. **Check what reaches a fallback, not just what it does.** |
-| **A work queue that fills at the END of a long phase is empty for the whole phase** | The background figure lane exists so nothing pins the cell pass — and the enqueue that feeds it was placed behind the longest await in that same pass. **`total 0` on a RESUMED boot means *never*, not *reset*.** |
-| ⛔⛔ **SERVING STATE IS NOT DOING WORK** | She once ran **53 minutes at `frames 0 · spikes 0 · psi 0 · cellStatus idle`** while `/health` answered 200 in 0.95 ms and every memory and pressure reading was green. **No infrastructure check asks whether she is teaching.** Take **two samples a minute apart** of `frameCount`, `spikesLifetime` and `cellStatus`. |
-| ⛔ **`totalSpikes` IS INSTANTANEOUS AND FALLS ON A HEALTHY BRAIN — do not use it for a two-sample test** | Both writers reset it to `0` each tick and re-sum the current per-cluster counts, so it measures **what is firing right now**, not a lifetime. Measured falling twice in one session on a brain that was teaching the whole time (`−24,710`, then `−10,935`), and it produced a false alarm. ⭐ **A reading of exactly `0` is still meaningful** — nothing is firing, which is what the 53-minute incident showed. It is the *delta* that means nothing. **`spikesLifetime` is the monotonic twin; use that.** |
-| ⛔ **A LEAF PHASE HAS NO STRUCTURAL DENOMINATOR, AND `phaseWork` NOW SAYS SO INSTEAD OF GOING QUIET** | The total comes from counting the nested `_teach*` units a phase's source calls — **0 for every phase that works in a loop** (`_teachAssociationPairs`, `_teachWordDefinition`, `_teachConcreteSentences`, `_teachQABinding`, `_teachVocabList`), against 5 for an orchestrator. Those leaves are where the hours go. ⭐ **The two with rep loops now publish their own cursor** (`done/total` in reps, plus `pairTeaches*`, since one rep is `pairs.length` wide). ⚠ **For the rest the field returns `denominator: 'unavailable'` with `frac: null` — never `0`, because a zero fraction is a claim about progress.** **Read `inflight` + `inflightMs`: a 4-hour age on a named unit is the difference between stuck and expensive, and no fraction expresses that.** |
-| ⛔ **`definitionQueue` DESCRIBES THE DREAM TRICKLE, WHICH IS IDLE BY DESIGN MID-WALK** | `depth` and `lastWindow` come from the dream-cycle trickle lane, so during a walk they stand still — measured frozen **13.6 h** while `_teachWordDefinition` ran **2,365 → 17,002 calls**. A forecast built on that pair was wrong by ~9× on the per-definition cost (20.6 s published, 2.30 s live). **Read `definitionAnchor` for the live lane, and `definitionQueue.lastWindowAgeMs` to see whether the trickle numbers are a fossil.** |
-| ⛔⛔ **EVERY TEACH RATE READS `0` DURING THE PRE-CELL DEFINITION BOOTSTRAP, AND THE DASHBOARD USED TO PAINT THAT RED** | `_trainAcademicStories` opens with a definition pass that runs **outside the phase teach lanes**, so `teachCallsPerMin`, `teachChunksPerMin`, `emissionTicksPerMin` and `sinceLastTeachMs` are all legitimately dead. Read live 21 min into a healthy resume: **all five terms false, `sinceLastTeachMs 1,166,902`**, while `prevocab:ela-kindergarten` went **46/662 → 145/662 chunks in 19 min**. ⚠ **It FLICKERS rather than staying dead** — `teachChunksPerMin` hovers at 0–2/min and dips to 0 regularly, measured **RED on 2 of 6 samples** 12 s apart, so a single green reading is not evidence the panel is trustworthy. ⭐ **The lane that IS moving is the stage stamp: read `liveness.teachStage` with `teachStageAgeMs`.** A recent stamp is the only positive evidence of work here. ⚠ **And the AGE is the signal, not the tag** — `_tstage` is never nulled, so a wedged walk keeps its last tag forever while the age climbs. |
-| ⛔⛔ **`hit: 0` ON THE FIELD STORE IS A VERDICT, AND EVERY COUNTER AROUND IT WAS TRUTHFUL** | Read live 2026-09-08: `enabled true · hit 0 · miss 16 · stub 4`. The store was present, pointed at the right root, counting honestly — **and delivering nothing**, while she re-transformed every figure live. **The conclusion existed nowhere.** ⛔ **And the stub warning over-claims:** it asserts *"The sync ran without `git lfs pull`"* from `stats.stub === 1`, a global cause from one instance — **16 of those 20 reads found no file at all**, so the dominant cause is *no field was ever made for these figures*. **Read `fields.delivering` for the verdict, and `fields.attempts` before believing either.** |
-| ⛔ **A HYPHEN OR APOSTROPHE IS PART OF THE WORD, AND STRIPPING IT MANUFACTURES A WORD THAT CANNOT EXIST** | `Henny-Penny` → `hennypenny`, `children's` → `childrens`, `added.p` → `addedp`. No dictionary can answer for one, the taught-set only records on `defsBound > 0`, so it is never marked learned and is looked up again **every visit, forever**. **2,011 damaged distinct forms measured in one cell's corpus.** ⚠ **When fixing a tokenizer, the taught-set is keyed on the OLD form** — check both keys or every taught word reads as untaught and the pass grows instead of shrinking. |
-| ⛔⛔ **A FLOOR COMPUTED FROM A TIER TARGET JUDGES CARDS AGAINST A BRAIN THAT MAY NOT EXIST** | The PRIMARY floor read `25,619 MB` from `900,000,000 × 20 B` — the tier-4 target — while the running brain was 233,932,309 neurons and its weights measured ~7 GB. A 16 GB card that had run a 425M brain was refused for fifteen days. **Judge a card against `totalNeurons`, never against the ladder; the ladder is an aspiration the host RAM clamps.** And a size driver of `max(baseline, smallest card)` means a rented big card ratchets the baseline forever — **the smallest CONNECTED card is the driver; the baseline is only what the boot assumes with no card attached.** |
-| **A sizing term read from a GROWING file changes the neuron count every boot** | And `autoClearStaleState` wipes when the saved count differs from the computed one — so it would wipe on **every** savestart while reporting that it was keeping the weights. **The resume term is a RATIO for exactly this reason.** |
-| ⛔⛔ **THE CORPUS ON DISK IS NOT THE CORPUS SHE IS TAUGHT, AND FOR MONTHS NOTHING PUBLISHED THE DIFFERENCE** | The reader cleans at read time, so a sentence or word count taken off the corpus files overstates her intake. Measured: **50,409 sentences (1.341%) are apparatus** — a book's index rows and bold page references, web addresses, licence and page furniture, bibliographies, citation stamps, transcription notes, a page-anchored errata list and a publisher's catalogue table — plus **8,844 (0.235%) markup**, for **59,253 removed (1.577%)** and **2,200 repaired in place and kept**. ⭐ **The counters carried the warning *"a filter nobody can see the output of is indistinguishable from one that is silently eating content"* and a whole-tree grep found ONE reference to them: a re-export.** Read `state.curriculum.corpusCleaning`, and quote as-taught figures, never on-disk ones. |
-| ⛔ **A SOURCE'S OWN INDEX IS INSIDE THE WORK, NOT IN ITS BOILERPLATE** | The fetcher cuts the licence header and footer; the index, the errata list and the transcriber's note sit **between** those markers and are body text by every test that runs. She was caught training the index of her own kindergarten reader — `=412=` is a page number, and the note explaining that markup (*"bold text is represented by ="*) was being taught with it. **Front and back matter are a per-sentence judgement at the reader, not a slice at the fetcher.** |
-| ⛔⛔ **A FILTER FITTED TO ONE SOURCE'S BACK MATTER GENERALISES TO THAT SOURCE** | The first apparatus pass was built from one book, shipped, and then a residual scan found a second book's errata list sharing **not one token** with it, plus Wikipedia reference sections and a publisher's catalogue table — **two of them in a cell she had already walked.** ⭐ **What finds them is a METHOD, not more patterns: back matter is TRAILING, so read the tail of each experience AFTER filtering and look at what is still there.** Three classes came from one sweep; guessing had produced none. |
-| ⛔ **A CHEAP GATE IN FRONT OF A RULE SET IS WHERE RULES GO SILENTLY DEAD** | Three new apparatus rules contained no character the existing gate admitted, so all three would have been **live in the source and dead in effect** — a fallback whose trigger cannot fire. **Re-verify every class witness through the gate whenever a rule is added**, and state the pass rate: 93% cheap-exit with all 14 witnesses reaching their rule. |
-| ⛔⛔ **THE ENCLOSING FUNCTION DECIDES A FIELD'S PATH — NOT ITS INDENTATION AND NOT ITS NEIGHBOURS** | `corpusCleaning` was published at `state.ownArt.corpusCleaning` for a whole boot while its only consumer read `state.curriculum.corpusCleaning`, so a working filter rendered as *"no cell loaded yet"*. The value was correct the entire time. **This is the second time this exact mistake has been made in this exact file** — `ADMIN-CONTROLS.md` records `state.readback` against `state.profiling.readback`, with the same cause: the surrounding comments named a different object and I inferred the parent instead of checking. ⭐ **Read the LIVE payload after a press; do not trust the write.** |
-| ⚠ **A PRESS THAT KEEPS THE WEIGHTS DOES NOT UNLEARN ANYTHING** | Update & Savestart lands new code and keeps everything already banked, so a content fix stops future damage and never reverses past damage. **Only a fresh walk clears trained-in poison, and that is a re-price, not a reflex.** ⭐ The question to ask is WHERE the mass sits: most apparatus lives in college/grad cells the walk has never reached, so a filter shipped now lands ahead of the bulk of it. |
-| ⚠ **THE MATH CELLS LOOK WORST-HIT BY CORPUS CLEANING AND ARE NOT HIT BY THE NEW FILTER AT ALL** | `math/grade8` loses 8.3% of its sentences: **730 are the long-standing LaTeX drop**, 69 are apparatus. The two are counted separately for exactly this reason. **A rule aimed at furniture nearly ate geometry once already** — `height\s*=` matched *"each with base = 5 centimeters, height = 3 centimeters"*, and the math cells are what caught it. |
+| **The site deploys on every push; the brain restarts only when the operator presses or launches** | **The page can be current while the brain is old** — or, as now, while there is no brain at all. The page answering `200` says nothing about her. |
+| ⛔⛔ **SERVING STATE IS NOT DOING WORK** | A brain once ran **53 minutes at `frames 0 · spikes 0 · psi 0`** while `/health` answered in under a millisecond. Take **two samples a minute apart** of `frameCount`, `spikesLifetime` and `cellStatus`. `totalSpikes` is instantaneous and falls on a healthy brain; `spikesLifetime` is the monotonic twin. |
+| **A stage tag whose age climbs while its sequence stays frozen means the blocker is in unmarked code** | `_tstage` is never nulled. **The sequence number is the discriminator; the age is the signal.** |
+| **Every teach rate reads 0 during the pre-cell definition bootstrap** | Legitimately dead for hours before phase 1. Read `liveness.teachStage` with its age. |
+| ⛔ **A "never-mute floor" under the real lane is a fallback with a kinder name** | The first cut of the voice swap kept the old synthesizer beneath the new one, and the browser's old lane still fired FIRST — a listener heard whichever answered. **If a second path exists, it will be the one that speaks.** One lane, or silence with the reason. |
+| ⛔ **A lazy init that another path depends on is a dependency, not an optimisation** | The shared percept transform was loaded inside the old voice's init; making that init lazy broke the new voice on the second run and not the first. **Load shared things eagerly; lazy-load only what is private.** |
+| ⛔⛔ **Removing an ignore rule for a path that still exists on disk IS a commit of that path** | A stale credential file reached the public mirror the moment its `.gitignore` line was deleted and `add -A` ran. The file was empty, so nothing leaked — the mechanism did not care. **Delete the file first, or keep a tombstone ignore.** |
+| ⛔ **Loopback trust is tunnel-blind** | A request forwarded by a tunnel arrives from `127.0.0.1`, so every tunnelled request passes a loopback check. **Trusting a header's presence is not enough either; the terminator must strip the inbound header.** Publish only the read-only routes; the WebSocket server upgrades on ANY path, so the route list is the only thing enforcing `/ws`. |
+| ⚠ **Tunnel path rules match by PREFIX** | `/image` admits `/image/anything`. Write the rule list knowing that. |
+| ⚠ **A page served from a repository sub-path breaks every absolute URL in it** | Two `/js/…`-style references 404'd on Pages until made file-relative. **Grep for leading-slash paths before publishing to a sub-path.** |
+| **A batch `%ERRORLEVEL%` inside a parenthesised block is expanded at parse time** | Use `if errorlevel 1`, which is evaluated at run time. |
+| ⚠ **`cmd | head || echo` masks a missing binary** | A check for the tunnel client printed nothing and was nearly read as fine. Check the binary directly. |
+| **The stale "weights" on disk are the old box's and are scheduled to die** | `start` wipes, `Savestart` resumes. **A 6 GB file in `server/` is not evidence of a brain.** |
 
 ---
 
 ## How to keep this file honest
 
-1. **Overwrite it. Do not append to it.** The previous version died of appending — 82 stacked blocks, each one written as *"current"*, none of them removed when they stopped being true.
+1. **Overwrite it. Do not append to it.** The previous version died of appending — 82 stacked blocks, each one written as *"current"*, none of them removed when they stopped being true. This version was overwritten for the same reason: every table it replaced described a machine that no longer exists.
 2. **Every number is a field read**, pasted with the boot that produced it. If it was recalled rather than read, it does not belong here.
 3. **No internal ticket identifiers and no personal attributions.** Those belong in the board, the ledger and the commit messages. A snapshot names the **mechanism**, never the ticket.
 4. **When something here turns out to be false, the correction goes in the ledger** — not into a new paragraph on this page.

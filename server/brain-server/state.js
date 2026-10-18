@@ -1391,6 +1391,18 @@ const SERVER_STATE_MIXIN = {
             oracleHits,
             matrixHits,
             matrixDrivenPct,
+            // VOICEFEEL — how the last spoken reply was DELIVERED, and why.
+            // `emotion` / `intensity` / `speechAct` are what went to the voice
+            // model; `drivers` are the state reads they came from (valence,
+            // arousal excursion, fear, surprise, endocrine warmth …), so a
+            // delivery that sounds wrong can be traced to the number that
+            // chose it instead of argued about. `counts` is per
+            // emotion/act since boot — a brain that only ever reads
+            // `neutral/statement` has a dead driver, and this is where that
+            // shows. Null until she has spoken once.
+            lastFeel: this._lastVoiceFeel || null,
+            feelCounts: this._voiceFeelCounts
+              ? Object.assign(Object.create(null), this._voiceFeelCounts) : null,
             // GATEPURE — how many times the dictionary oracle was REFUSED
             // inside a gate probe. ⭐ This is the number that explains a pass-
             // rate drop: it is exactly how often the dictionary would have
