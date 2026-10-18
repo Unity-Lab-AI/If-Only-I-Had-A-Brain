@@ -469,7 +469,7 @@ REM The PUBLIC site too (2026-10-18) - what everyone else sees: GitHub Pages
 REM at theunitybrain.com, reaching this brain through the tunnel. Opening it
 REM beside the loopback pages is the one-glance check that the public path
 REM is alive, not just the local one.
-start "" https://theunitybrain.com/
+start "" http://theunitybrain.com/
 echo.
 echo   Landing:     http://localhost:7525
 echo   Dashboard:   http://localhost:7525/dashboard.html (auto-opened)
