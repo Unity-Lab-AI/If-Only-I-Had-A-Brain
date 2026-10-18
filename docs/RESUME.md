@@ -7,7 +7,11 @@
 > ## ⛔⛔⛔ WHAT IS TRUE RIGHT NOW (field reads, `docs/NOW.md` has them all)
 >
 > ```
->   brain          NOT RUNNING — 7525 unbound; four 6.29 GB old-box weight files under server/ await the wipe
+>   brain          UP — build 4d8180bd (develop), booted 3:35 AM, 459,775,607 neurons on the 4070 Ti SUPER; fresh walk
+>                  (old weights auto-cleared). First boot (cbe51a81, 3:20 AM) died at 3:25 to a Ctrl+C through the
+>                  launcher console → the brain has its OWN window now. Public /health 200 through the tunnel.
+>                  Tunnel went dark once (tray app closed → daemon dropped its profile) → unattended mode set,
+>                  launchers start the tray app and strip any root route on every boot
 >   voice          unity-voice-v2 UP on 127.0.0.1:5123 (cuda), restarted by me after the serve.py pace edit
 >   eyes           CORA image engine UP on 127.0.0.1:5124, checkpoint resident (no brain to tell it to unload)
 >   site           https://theunitybrain.com (bought ~5 AM; Pages custom domain + CNAME; DNS verified; cert pending ->

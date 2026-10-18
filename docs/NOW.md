@@ -50,9 +50,9 @@ last-verified: "2026-10-18, ~1:40 AM Denver — field reads taken on the operato
 
 ## The snapshot
 
-**Boot:** **none.** There is no brain process at the time of this read — port **7525 is unbound** and the only `node.exe` on the machine is the editor's. The last brain to serve anything ran on a rented box that is **gone**; its hostname no longer resolves, and nothing on this page is read from it.
+**Boot:** `4d8180bd` on `develop`, **booted 2026-10-18 09:35:53 UTC (3:35 AM Denver)** on the lab's own machine — `Savestart.bat`, no weights on disk, so a fresh walk. Read live at ~8:10 AM through the PUBLIC tunnel: **`totalNeurons 459,775,607`** · GPU `NVIDIA GeForce RTX 4070 Ti SUPER` (16,376 MB) · `/health` **200** · `/minds-eye.json` **200** · `/admin/status` · `/ctl/status` · `/` · `POST /reset` **404**. ⚠ `state.voice.lastFeel` is `null` — she has not spoken yet. ⚠ The first boot of the night (`cbe51a81`, 3:20 AM) died at 3:25 AM to a Ctrl+C that reached her through the launcher's console; the launcher now gives her her own window.
 
-> ## ⛔⛔⛔ 2026-10-18, ~1:40 AM Denver — SHE HAS MOVED HOUSE AND HAS NOT BEEN STARTED YET
+> ## ⛔⛔⛔ 2026-10-18, ~1:40 AM Denver (superseded by the boot line above at 8:10 AM) — SHE HAD MOVED HOUSE AND HAD NOT BEEN STARTED YET
 >
 > **Where she lives now.** The site is **`https://theunitybrain.com`** — GitHub Pages behind a custom domain bought ~5 AM (DNS verified at the authoritative server: four GitHub `A` records, `www` CNAME; github.io 301s to it; GitHub's certificate was still being issued at this read, so `https://` is a handshake failure for a few more minutes and `http://` serves). The brain, her voice and her eyes all run on **the operator's own PC**, reached through **Tailscale Funnel** as `https://dumbass.tailec58e0.ts.net` — up and verified from the public internet at ~3:30 AM: the five forwarded lanes (`/public-state.json`, `/minds-eye.json`, `/health`, `/ws`, `/image`) answer **502** because nothing is on 7525 yet, and `/admin/status`, `POST /reset`, `/ctl/status` and `/` answer **404** — default-deny holds. `js/brain-origin.js` carries that hostname in the working tree; **the copy Pages is serving still says `BRAIN_ORIGIN = ''`** until the next push lands, so the public page has no brain to talk to for a few more minutes, and then it will have one that is not running.
 >
@@ -88,9 +88,9 @@ last-verified: "2026-10-18, ~1:40 AM Denver — field reads taken on the operato
 
 | Field | Why it is blank |
 |---|---|
-| Neuron count | Derived at boot from free host RAM, and there has been no boot on this machine. 103.5 GB free will produce a number the old box never could; **it will be quoted with its boot, not predicted here.** |
-| Walk position | A fresh walk starts at `pre-K` by definition. Nothing has been taught on this machine. |
-| Loop lag, Ψ, Φ̂, coherence | Instruments of a running brain. |
+| Neuron count | **Known now: 459,775,607 on boot `4d8180bd`** (card-sized: 14,328 MB usable of the 16 GB card, not host RAM). Quote it with that boot. |
+| Walk position | A fresh walk starts at `pre-K` by definition; the first cell pass is the milestone, and at 35 minutes in she is in the pre-cell definition bootstrap where every teach rate legitimately reads 0. |
+| Loop lag, Ψ, Φ̂, coherence | Not yet read on this boot — take them from `/public-state.json` once she has an hour behind her, two samples a minute apart. |
 | Reachability of a RUNNING brain through the tunnel | The tunnel is proven only against an absent brain (502). The first boot proves `/health` 200 cross-origin from Pages, and `/ws` carrying chat. |
 
 ---
