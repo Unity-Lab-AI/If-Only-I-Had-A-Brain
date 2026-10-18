@@ -1353,6 +1353,28 @@ const SERVER_GPU_MIXIN = {
     return plan;
   },
 
+  // DF.7 — can this donor hold the FULL running brain? The PRIMARY is the
+  // canonical full-weights upload target, so a card whose HELD VRAM (donated
+  // cap or full card — duty-cycle is throughput, not VRAM held) is under the
+  // running floor must never be primary. ONE chokepoint for registration AND
+  // the periodic rebalance: the rebalance used to trust `_partialReplica` /
+  // `_replicaIncapable`, which the replica-sync path sets LATER (and not at
+  // all while another sync holds the serial lane) — so a 2 GB browser tab
+  // that registered as "NOT eligible for PRIMARY" was promoted over a 16 GB
+  // card by the next 10 s rebalance tick, teach frames went JSON to a tab
+  // that cannot hold one cluster, the pattern lane shed, and the real card
+  // only came back when the tab left. Read from the registration record,
+  // synchronously, every time.
+  _donorTooSmallForPrimary(c) {
+    if (!c) return false;
+    const fullVram = Number(c.gpuVramMB || 0);
+    const held = (Number(c.donatedMB) > 0)
+      ? (fullVram > 0 ? Math.min(Number(c.donatedMB), fullVram) : Number(c.donatedMB))
+      : fullVram;
+    const need = Number(this._runningFloorMB || 0);
+    return held > 0 && need > 0 && held < need;
+  },
+
   // DF.7 — strongest live donor (optionally excluding one ws, e.g. the one
   // that's leaving during failover).
   _strongestLiveDonor(exclude = null) {
@@ -1363,6 +1385,7 @@ const SERVER_GPU_MIXIN = {
       // partial/incapable donor can never be the canonical upload target.
       const _sc = this.clients && this.clients.get ? this.clients.get(ws) : null;
       if (_sc && (_sc._replicaIncapable || _sc._partialReplica || _sc._bindIncapable)) continue;
+      if (this._donorTooSmallForPrimary(_sc)) continue;
       const s = this._donorStrength(ws);
       if (s > bestScore) { bestScore = s; best = ws; }
     }
