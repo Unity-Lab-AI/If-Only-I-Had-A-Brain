@@ -11,7 +11,10 @@
 >                  (old weights auto-cleared). First boot (cbe51a81, 3:20 AM) died at 3:25 to a Ctrl+C through the
 >                  launcher console → the brain has its OWN window now. Public /health 200 through the tunnel.
 >                  Tunnel went dark once (tray app closed → daemon dropped its profile) → unattended mode set,
->                  launchers start the tray app and strip any root route on every boot
+>                  launchers start the tray app, ENSURE the five lanes, and strip a root route on every boot.
+>                  ⛔ The root route was MY `funnel --bg 443` (= expose port 443 at /), not a daemon snapshot —
+>                  per-path `funnel --bg --set-path` everywhere now; public verify with her up: 200/200/200,
+>                  forbidden 404 ×4, /ws 101
 >   voice          unity-voice-v2 UP on 127.0.0.1:5123 (cuda), restarted by me after the serve.py pace edit
 >   eyes           CORA image engine UP on 127.0.0.1:5124, checkpoint resident (no brain to tell it to unload)
 >   site           https://theunitybrain.com (bought ~5 AM; Pages custom domain + CNAME; DNS verified; cert pending ->
