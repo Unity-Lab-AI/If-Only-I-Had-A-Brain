@@ -9778,7 +9778,15 @@ setInterval(() => {
 // from the doors. Failure keeps the prior cache — never a wrong answer.
 async function refreshDonorLatest() {
   try {
-    const r = await fetch('https://git.unityailab.com/api/v1/repos/UnityAILab/If-Only-I-Had-A-Brain/releases?limit=20', { signal: AbortSignal.timeout(8000) });
+    // GitHub Releases on the public mirror (2026-10-18): the Forgejo release
+    // lane rsynced to a box that no longer exists, so donor binaries are built
+    // and attached by .github/workflows/donor-release.yml now. Same asset
+    // shape (tag_name / draft / assets[].name,.browser_download_url,.size).
+    // GitHub's API refuses requests without a User-Agent.
+    const r = await fetch('https://api.github.com/repos/Unity-Lab-AI/If-Only-I-Had-A-Brain/releases?per_page=20', {
+      signal: AbortSignal.timeout(8000),
+      headers: { 'User-Agent': 'unity-brain-server', 'Accept': 'application/vnd.github+json' },
+    });
     if (!r.ok) return;
     const rels = await r.json();
     const rel = (Array.isArray(rels) ? rels : []).find(x => x && !x.draft && /^donor-v\d/.test(x.tag_name || ''));
@@ -10432,7 +10440,7 @@ const httpServer = http.createServer((req, res) => {
   // links never change again. Resolve failure degrades to the RELEASES
   // PAGE (a human lands somewhere useful), never to a stale binary.
   if ((req.url === '/download/donor-windows' || req.url === '/download/donor-linux' || req.url === '/donor-latest.json') && req.method === 'GET') {
-    const RELEASES_PAGE = 'https://git.unityailab.com/UnityAILab/If-Only-I-Had-A-Brain/releases';
+    const RELEASES_PAGE = 'https://github.com/Unity-Lab-AI/If-Only-I-Had-A-Brain/releases';
     const _dlServe = () => {
       const c = brain._donorLatestCache;
       if (req.url === '/donor-latest.json') {

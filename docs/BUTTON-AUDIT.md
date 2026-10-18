@@ -234,10 +234,11 @@ reading both paths.** So when the socket is dead and the page looks lifeless,
 **that panel is still live and still pressable.**
 
 ⚠ **If the panel is missing entirely, that is AUTH, not the brain.** It only
-renders once `/ctl/status` has answered at least once, and `/ctl/` sits behind
-`auth_basic "Unity admin"`. Open
-`https://if-only-i-had-a-brain.git.unityailab.com/ctl/status` directly, enter the
-admin login, then reload the dashboard.
+renders once `/ctl/status` has answered at least once. *(2026-10-18: there is no
+public admin lane any more — the tunnel forwards only the read lanes. The control
+plane answers on the PC running her; open the dashboard there at
+`http://localhost:7525/dashboard.html`. The old box put `/ctl/` behind
+`auth_basic "Unity admin"`; that host is gone.)*
 
 ---
 

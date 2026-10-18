@@ -1,10 +1,11 @@
 use crate::cli::Cli;
 use serde::{Deserialize, Serialize};
 
-/// Public production donor endpoint — the nginx `/ws` lane on the box, the same URL the
-/// browser donor (compute.html) connects to. This is the DEFAULT so a distributed binary
-/// donates to the live brain out of the box.
-pub const PROD_SERVER: &str = "wss://if-only-i-had-a-brain.git.unityailab.com/ws";
+/// Public production donor endpoint — the `/ws` lane of the brain on the operator's own
+/// machine, published through a Tailscale Funnel (the rented box and its nginx vhost are
+/// gone as of 2026-10-17). The same URL the browser donor (compute.html) connects to.
+/// This is the DEFAULT so a distributed binary donates to the live brain out of the box.
+pub const PROD_SERVER: &str = "wss://dumbass.tailec58e0.ts.net/ws";
 /// Local brain for testing (`--local`).
 ///
 /// LOOPBACK (2026-08-23) — **127.0.0.1, NOT `localhost`.** The brain binds
