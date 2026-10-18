@@ -14,7 +14,7 @@ REM  Chrome process (honoring the flag) WITHOUT touching your
 REM  main browser. Leave the window open to keep donating.
 REM ============================================================
 
-set "URL=https://unity-lab-ai.github.io/If-Only-I-Had-A-Brain/html/compute.html"
+set "URL=https://theunitybrain.com/html/compute.html"
 set "PROFILE=%TEMP%\unity-gpu"
 set "FLAGS=--enable-unsafe-webgpu --enable-dawn-features=allow_unsafe_apis,disable_robustness --user-data-dir=%PROFILE%"
 
