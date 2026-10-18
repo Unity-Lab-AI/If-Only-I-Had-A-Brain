@@ -38,10 +38,16 @@
 # not "every release", so it stays a manual edit in server/brain-server.js.
 name: donor-release
 
+# ⛔ DISABLED 2026-10-18 — the box this lane rsynced to is gone, and the Forgejo
+# runner lived on it. Releases are built and attached by
+# .github/workflows/donor-release.yml on the public mirror now (GitHub Releases,
+# then a Pages redeploy). Kept, not deleted, like deploy.yml: the mechanism was
+# right, the destination stopped existing. workflow_dispatch stays for the day
+# a Forgejo runner exists again.
 on:
-  push:
-    tags:
-      - 'donor-v*'
+  # push:
+  #   tags:
+  #     - 'donor-v*'
   workflow_dispatch:
     inputs:
       tag:

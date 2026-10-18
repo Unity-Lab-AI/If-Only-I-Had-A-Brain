@@ -80,7 +80,7 @@ last-verified: "2026-10-18, ~1:40 AM Denver — field reads taken on the operato
 > | Her address | `js/brain-origin.js` — one line, shipped empty. A `?brain=` query overrides it for testing. |
 > | Her launchers | All four (`start` / `Savestart`, Windows and Linux) start the voice and image sidecars before the brain and say plainly when either is missing. |
 >
-> ⛔ **The donor binary still points at the dead host.** Its compiled-in server address is the old box, so a downloaded donor cannot attach until a release is cut against the tunnel hostname — which does not exist yet. **Public compute and rented pods are intact in design and unreachable in fact until then.**
+> ⭐ **The donor binary points at the tunnel now.** `0.3.38` compiles in `wss://dumbass.tailec58e0.ts.net/ws` and its page links go to the Pages site; it is built and published by GitHub Actions to GitHub Releases (the Forgejo lane built to the dead box and is disabled, not deleted). Until that release's assets exist, a download still hands out the old binary — the first read after the tag is `gh release view donor-v0.3.38` showing both assets, then the download page's version label.
 
 ---
 

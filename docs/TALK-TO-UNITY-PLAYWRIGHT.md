@@ -78,7 +78,7 @@ node scripts/unity-chat.mjs <lines-file>
 ## Prerequisites
 
 - **Playwright installed** at repo root — `node_modules/playwright` (v1.61.0). `node -v` ≥ 18.
-- The deployed brain is up: `https://if-only-i-had-a-brain.git.unityailab.com/` (HTTP 200).
+- The deployed brain is up: `https://unity-lab-ai.github.io/If-Only-I-Had-A-Brain/` (HTTP 200).
 - If the **Playwright MCP** tools (`mcp__playwright__*`) are registered this session, prefer driving interactively with them (navigate / snapshot / click) — you can see the page and adapt. They are NOT always registered (only `converse` connected on 2026-06-29), in which case use the script and **screenshot-then-Read** to see the UI instead of guessing selectors.
 
 ---
@@ -93,7 +93,7 @@ node scripts/unity-chat.mjs <lines-file>
    ```
 2. **Grant all permissions** up front:
    `ctx.grantPermissions(['microphone','camera','geolocation','notifications'], { origin })`
-3. `page.goto('https://if-only-i-had-a-brain.git.unityailab.com/')`.
+3. `page.goto('https://unity-lab-ai.github.io/If-Only-I-Had-A-Brain/')`.
 4. **Consent modal** — click the button matching `/understand|proceed|accept|continue/`. **NEVER** click one matching `/don'?t|leave|disagree|decline/` — "I don't agree — leave" navigates the browser to google.com.
 5. **Click `#landing-chat-btn`** ("TALK TO UNITY") — reveals the chat section. The consent modal may appear *here* instead of on load — accept it the same way.
 6. **Scroll all the way down.**

@@ -1,5 +1,7 @@
 # Unity — Deployed Admin Guide (NOT pushed — lives in `.claude/`, gitignored)
 
+> ⛔ **HISTORICAL AS OF 2026-10-17 — the box this guide describes is gone.** The site is on GitHub Pages (`https://unity-lab-ai.github.io/If-Only-I-Had-A-Brain/`), the brain runs on Gee's PC behind a Tailscale Funnel (`https://dumbass.tailec58e0.ts.net`, read lanes only), and **admin is done on that PC at `http://localhost:7525/dashboard.html`** — there is no public admin lane by design. Everything below is the old deploy, kept for the record.
+
 > **Audience:** YOU, the operator/admin, running Unity on the deployed site.
 > **This file never ships** — `.claude/` is fully gitignored (Layer-0 block).
 > Plain-language, exact steps. Deploy URL: `https://if-only-i-had-a-brain.git.unityailab.com` (subdomain = lowercased repo name; rename the repo for a cleaner one).
