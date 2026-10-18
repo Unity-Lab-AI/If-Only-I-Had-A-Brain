@@ -1109,7 +1109,15 @@ function connectToServer() {
             // perceives the PCM into her field-A equations — the server relays
             // the few-KB rec to viewers, who only reconstruct + play.
             if (!window._voiceSynthWorker) {
-              window._voiceSynthWorker = new Worker('/js/voice-piper-worker.bundle.js?v=' + Date.now(), { type: 'module' });
+              // SUBPATH — root-absolute '/js/…' resolves to the SITE ROOT, which
+              // is wrong wherever the site is not served from one. On GitHub
+              // Pages this page lives at /<repo>/html/compute.html, so '/js/…'
+              // asked for https://<user>.github.io/js/… and got a hard 404
+              // (measured 2026-10-18). '../js/…' is correct from html/ in BOTH
+              // deployments — served by the brain at :7525 and served by Pages
+              // under a repo path — because it is relative to this file, not to
+              // whatever happens to be the root today.
+              window._voiceSynthWorker = new Worker('../js/voice-piper-worker.bundle.js?v=' + Date.now(), { type: 'module' });
               window._voiceSynthPending = new Map();
               window._voiceSynthSeq = 1;
               window._voiceSynthWorker.onmessage = (ev) => {
