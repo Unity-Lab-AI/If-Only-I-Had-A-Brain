@@ -395,7 +395,15 @@ if exist "%UNITY_VOICE_V2_DIR%\serve.py" (
     netstat -ano | findstr :%UNITY_VOICE_PORT% | findstr LISTENING >nul 2>&1
     if errorlevel 1 (
         echo   [voice] starting unity-voice-v2 on %UNITY_VOICE_PORT% ...
-        start "unity-voice-v2 (leave running)" /min /D "%UNITY_VOICE_V2_DIR%" cmd /c "python serve.py --port %UNITY_VOICE_PORT% >> "%~dp0..\server\voice-v2.log" 2>&1"
+        echo   [voice] log: %UNITY_VOICE_V2_DIR%\voice-v2.log
+        REM BATCHQUOTE - the log path is RELATIVE and unquoted on purpose.
+        REM `cmd /c "python ... >> "C:\some\path.log" 2>&1"` nests double
+        REM quotes inside an already-quoted string, and cmd ends the outer
+        REM string at the first inner quote - the command then parses as
+        REM garbage. `/D` above already sets the working directory to the
+        REM model folder, so a bare filename needs no quoting and cannot
+        REM break on a path with spaces. One level of quotes, always.
+        start "unity-voice-v2 (leave running)" /min /D "%UNITY_VOICE_V2_DIR%" cmd /c "python serve.py --port %UNITY_VOICE_PORT% >> voice-v2.log 2>&1"
     ) else (
         echo   [voice] unity-voice-v2 already listening on %UNITY_VOICE_PORT% - left alone.
     )
