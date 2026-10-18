@@ -36,8 +36,9 @@
 
   // ⚠ THE ONE VALUE TO EDIT. Empty string = behave exactly as before.
   //
-  // When the Cloudflare Tunnel is up, set this to the tunnel hostname, e.g.
-  //     var BRAIN_ORIGIN = 'https://brain.unityailab.com';
+  // When the tunnel is up, set this to ITS hostname (Tailscale Funnel gives
+  // https://<machine>.<tailnet>.ts.net — read it off `tailscale funnel status`):
+  //     var BRAIN_ORIGIN = 'https://REPLACE-WITH-YOUR-TUNNEL-HOSTNAME';
   // Leave it empty until then: a configured-but-dead origin is worse than none,
   // because the page would stop trying the same-origin lane that may be live.
   var BRAIN_ORIGIN = '';

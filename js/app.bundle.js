@@ -1790,7 +1790,7 @@ var SensoryAIProviders = class {
    */
   // This was a one-line passthrough to `PollinationsAI.speak()`,
   // which is deleted. It had no callers: her voice is Equation Unity One
-  // (js/io/voice.js — piper hfc_female → CDF 9/7, then her own banked word
+  // (unity-voice-v2 on the server → CDF 9/7 rec → js/io/voice.js plays; the old piper lane and the banked word
   // equations). Kept as a null-returning stub so a stray caller gets "no
   // audio" instead of a TypeError on a removed method.
   async speak() {
@@ -2757,65 +2757,6 @@ function describeAudio(rec, bins = 32) {
   return out;
 }
 
-// ../js/io/voice-piper.js
-var WORKER_URL = "/js/voice-piper-worker.bundle.js?v=" + Date.now();
-var _worker = null;
-var _seq = 0;
-var _pending = /* @__PURE__ */ new Map();
-var _readyPromise = null;
-function _spawn() {
-  if (_worker) return _worker;
-  _worker = new Worker(WORKER_URL, { type: "module" });
-  _worker.addEventListener("message", (e) => {
-    const m = e.data || {};
-    if (m.type === "pcm" || m.type === "error") {
-      const p = _pending.get(m.id);
-      if (p) {
-        _pending.delete(m.id);
-        if (m.type === "pcm") p.resolve({ pcm: m.pcm, sampleRate: m.sampleRate });
-        else p.reject(new Error(m.error));
-      }
-    }
-  });
-  _worker.addEventListener("error", (err) => {
-    for (const [, p] of _pending) p.reject(new Error("voice worker error: " + (err.message || "unknown")));
-    _pending.clear();
-  });
-  return _worker;
-}
-function preloadVoice(onProgress) {
-  if (_readyPromise) return _readyPromise;
-  const w = _spawn();
-  _readyPromise = new Promise((resolve, reject) => {
-    const handler = (e) => {
-      const m = e.data || {};
-      if (m.type === "progress") {
-        if (onProgress) onProgress(m.loaded, m.total);
-      } else if (m.type === "ready") {
-        w.removeEventListener("message", handler);
-        resolve();
-      } else if (m.type === "error" && m.id == null) {
-        w.removeEventListener("message", handler);
-        reject(new Error(m.error));
-      }
-    };
-    w.addEventListener("message", handler);
-    w.postMessage({ type: "preload" });
-  });
-  return _readyPromise;
-}
-function synthPCM(text) {
-  const w = _spawn();
-  const id = ++_seq;
-  return new Promise((resolve, reject) => {
-    _pending.set(id, { resolve, reject });
-    w.postMessage({ type: "synth", id, text });
-  });
-}
-function isVoicePreloading() {
-  return _readyPromise != null;
-}
-
 // ../js/io/voice.js
 var VoiceIO = class {
   constructor() {
@@ -2920,59 +2861,21 @@ var VoiceIO = class {
       document.addEventListener(ev, unlock, { passive: true });
     }
   }
+  // ⛔⛔ `_speakPiper` — THE IN-BROWSER LIVE SENTENCE LANE — IS DELETED
+  // (2026-10-18). Operator: "piper should of been gutted i told u to use
+  // unity-voice V2". It synthesized every reply a second time in the listener's
+  // browser (piper hfc_female via onnxruntime-web) and `speak()` tried it FIRST,
+  // so after the server moved to unity-voice-v2 she had two voices and which
+  // one a listener heard depended on which lane answered. The CDF 9/7
+  // round-trip it performed is not lost: the server's worker runs the same
+  // `perceiveAudio` over v2's PCM, and `playRec` below runs the inverse. Gone
+  // with it: `js/io/voice-piper.js`, the worker and its bundle, the vendored
+  // phonemizer, and `voice-engine/` (119 MB of model + wasm).
   /**
-   * LIVE SENTENCE LANE — Equation Unity One, her REAL voice, synthesized in the
-   * browser off the main thread (piper en_US-hfc_female-medium via onnxruntime-web,
-   * WebGPU->CPU-wasm) from the self-hosted model. This is the whole-sentence path:
-   * it carries natural prosody the per-word vox-bank can't.
-   *
-   * ⛔ AS OF 2026-09-01 THIS IS THE ONLY LANE. Returning false or throwing no
-   * longer hands off to anything — it makes her SILENT, and `speak()` names the
-   * reason on the console, on `_lastSilentReason` and on the `speech_end`
-   * event. Every early return below is therefore a reportable outcome, not a
-   * hand-off.
-   *
-   * Only used when the setup-page preload was kicked (isVoicePreloading), so a
-   * cold path never spawns the worker unexpectedly.
-   */
-  async _speakPiper(text, rate) {
-    if (this._piperEnabled === false) return false;
-    if (!isVoicePreloading()) return false;
-    let out;
-    try {
-      out = await synthPCM(text);
-    } catch (e) {
-      console.warn("[VoiceIO] live piper synth failed \u2014 she will be SILENT for this utterance:", e.message);
-      return false;
-    }
-    if (!out || !out.pcm || !out.pcm.length) return false;
-    let pcm = out.pcm;
-    let sr = out.sampleRate;
-    let equational = false;
-    try {
-      const rec = perceiveAudio(pcm, sr);
-      const recon = reconstructAudio(rec);
-      if (recon && recon.length) {
-        pcm = recon;
-        sr = rec.sampleRate || sr;
-        equational = true;
-      }
-    } catch (e) {
-      this._equationalSkips = (this._equationalSkips | 0) + 1;
-      this._lastEquationalSkipReason = e && e.message || "transform returned nothing";
-    }
-    if (!equational && !this._lastEquationalSkipReason) this._lastEquationalSkipReason = "transform returned nothing";
-    console.log(equational ? `[VoiceIO] \u{1F399} Equation Unity One (live sentence lane) \u2014 "${String(text).slice(0, 40)}" synthesized in-browser` : `[VoiceIO] \u{1F399} raw piper PCM \u2014 transform SKIPPED (${this._equationalSkips | 0}x, ${this._lastEquationalSkipReason}) \u2014 "${String(text).slice(0, 40)}" is NOT equational this utterance`);
-    await this._playPcm(pcm, sr, rate || 1);
-    return true;
-  }
-  /**
-   * ONE PROCESS voice lane — play a server-synthesized field-A rec.
-   * Her reply's voice is synthesized by HER process now (donor voiceSynth or
-   * the box worker) and arrives over the WS as a few-KB equation record; this
-   * end only runs the inverse CDF 9/7 and plays. The viewer NEVER synthesizes
-   * a server reply — the in-browser larynx (and its historical GPU-grab that
-   * killed compute donors on shared-card machines) is out of the loop.
+   * HER VOICE — play a server-synthesized field-A rec.
+   * The reply's voice is synthesized by HER process (unity-voice-v2, the one
+   * lane) and arrives over the WS as a few-KB equation record; this end only
+   * runs the inverse CDF 9/7 and plays. The viewer NEVER synthesizes.
    */
   async playRec(rec) {
     if (!rec || this._muted) return;
@@ -3229,14 +3132,16 @@ var VoiceIO = class {
    * distorted ... scrap the per age/grade modulation and keep her original chosen
    * sound for her voice"). The age-pinned pitch/formant OLA shift (1.14 young →
    * 1.0 adult) was mangling her into a distorted scavenger. ALWAYS her ORIGINAL
-   * chosen voice now — Equation Unity One (V4), piper hfc_female: rate 1.0,
-   * no pitch shift, no tempo change, at any grade or age.
+   * chosen voice: no pitch shift, no tempo change, at any grade or age. Since
+   * 2026-10-18 that voice is unity-voice-v2 on her server, and expression
+   * comes from the model's own emotion / intensity / speech-act inputs, which
+   * the SERVER derives from her state — nothing on this end shapes the sound.
    *
    * ⚠ The `voice` / `pitch` / `style` fields this used to return were legacy
-   * hints for a NETWORK audio model that no longer exists, and **`rate` is the
-   * only one any caller ever read** (`_speakPiper`). Returning three dead
-   * fields alongside one live one is how a reader concludes the voice is
-   * configurable when it is not.
+   * hints for a NETWORK audio model that no longer exists, and `rate` was the
+   * only one any caller ever read — by the deleted in-browser piper lane, so
+   * today NOTHING reads it. Returning dead fields alongside a live-looking one
+   * is how a reader concludes the voice is configurable when it is not.
    */
   _agePreset() {
     return { rate: 1 };
@@ -3255,19 +3160,14 @@ var VoiceIO = class {
     this._speaking = true;
     this.emit("speech_start");
     const voice2 = options.voice || null;
-    let spoke = false;
-    let silentReason = null;
-    try {
-      spoke = await this._speakPiper(text, this._agePreset().rate);
-      if (!spoke) silentReason = "her voice lane returned false (not ready or nothing synthesised)";
-    } catch (err) {
-      silentReason = `her voice lane threw: ${err && err.message ? err.message : err}`;
+    const spoke = false;
+    const silentReason = "the browser does not synthesize \u2014 her voice is unity-voice-v2 on the server and arrives as a rec (playRec); a text-only speak() has no lane";
+    if (!this._browserSilentNoted) {
+      this._browserSilentNoted = true;
+      console.log(`[VoiceIO] speak(text) is inert in the browser now \u2014 ${silentReason}.`);
     }
-    if (!spoke) {
-      console.warn(`[VoiceIO] SILENT \u2014 ${silentReason}. No substitute voice is attempted by design (no-fallbacks).`);
-      this._lastSilentReason = silentReason;
-      this._silentCount = (this._silentCount | 0) + 1;
-    }
+    this._lastSilentReason = silentReason;
+    this._silentCount = (this._silentCount | 0) + 1;
     this._speaking = false;
     this.emit("speech_end", { spoke, silentReason });
   }
@@ -3296,8 +3196,9 @@ var VoiceIO = class {
   // fall-through path that no longer exists.
   //
   // ⭐ A COMMENT THAT CONTRADICTS A RULING IS HOW THE RULING GETS QUIETLY
-  // REVERSED BY THE NEXT READER. There is ONE lane now, `_speakPiper`, and if
-  // it cannot run she is silent with the reason named. See `speak()`.
+  // REVERSED BY THE NEXT READER. There is ONE lane now — her SERVER's voice,
+  // arriving as a rec that `playRec` plays — and this end synthesizes nothing
+  // (the in-browser `_speakPiper` lane was deleted 2026-10-18). See `speak()`.
   //
   // What it used to do, kept as one line of history rather than a page: it
   // POSTed her text to an outside chat model with an instruction to repeat it
@@ -21238,36 +21139,17 @@ var landingBrainSource = null;
   }, 500);
   const kickVoicePreload = () => {
     const box = document.getElementById("voice-preload");
+    if (!box) return;
     const speechOn = (document.getElementById("toggle-unity-speech") || {}).checked !== false;
     if (!speechOn) {
-      if (box) box.style.display = "none";
+      box.style.display = "none";
       return;
     }
-    if (landingBrainSource) {
-      if (box) {
-        box.style.display = "";
-        const s = document.getElementById("voice-preload-status");
-        if (s) s.textContent = "\u2014 her voice speaks from her own brain server \u2713";
-        const b = document.getElementById("voice-preload-bar");
-        if (b) b.style.width = "100%";
-      }
-      return;
-    }
-    if (box) box.style.display = "";
-    if (isVoicePreloading()) return;
-    const bar = document.getElementById("voice-preload-bar");
-    const status = document.getElementById("voice-preload-status");
-    preloadVoice((loaded, total) => {
-      const pct = total > 0 ? Math.min(100, Math.round(loaded / total * 100)) : 0;
-      if (bar) bar.style.width = pct + "%";
-      if (status) status.textContent = total > 0 ? `\u2014 downloading her voice\u2026 ${pct}%` : "\u2014 preparing her voice\u2026";
-    }).then(() => {
-      if (bar) bar.style.width = "100%";
-      if (status) status.textContent = "\u2014 her voice is ready \u2713";
-    }).catch((err) => {
-      if (status) status.textContent = "\u2014 voice unavailable (" + (err.message || "load failed") + ")";
-      console.warn("[Unity] voice preload failed:", err);
-    });
+    box.style.display = "";
+    const s = document.getElementById("voice-preload-status");
+    const b = document.getElementById("voice-preload-bar");
+    if (s) s.textContent = landingBrainSource ? "\u2014 her voice speaks from her own brain server \u2713" : "\u2014 her voice speaks from her brain server; this browser only plays it";
+    if (b) b.style.width = "100%";
   };
   const openSetupModal = () => {
     const modal = document.getElementById("setup-modal");

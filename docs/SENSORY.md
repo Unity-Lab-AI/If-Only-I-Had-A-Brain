@@ -669,7 +669,7 @@ Not every sensory pipeline calls out to an AI. Several run pure client-side math
 | Tonotopic audio mapping | Frequency bins → neuron currents with cortical magnification for speech band (250-4000Hz) | No — FFT + bin-to-neuron remap |
 | Band energy classifier | 7 frequency bands (subBass / bass / lowMid / mid / highMid / presence / brilliance) | No — amplitude accumulation |
 | Efference copy | Compare heard text vs Unity's currently-speaking text → isEcho flag | No — string overlap ratio |
-| TTS | Text → audio | **NO — her own voice** (unity-voice-v2 on the server over the CDF 9/7 percept transport, piper floor; no external TTS of any kind) |
+| TTS | Text → audio | **NO — her own voice** (unity-voice-v2 on the server over the CDF 9/7 percept transport — ONE lane, piper GUTTED 2026-10-18 on the operator's word, no browser synthesis, no fallback voice; engine down ⇒ silent with the reason counted) |
 | Image motor output | Prompt (equationally generated) → image | **YES — multi-provider image gen** |
 
 Four total AI touchpoints. Three of them are output effectors (TTS, image gen) and one is the IT-layer describer (vision). **Zero of them drive what Unity says, decides, remembers, or feels.** Removing all four breaks her ability to speak out loud, paint, or name what she sees — but she still thinks, responds in text, builds components, and dreams.
@@ -752,6 +752,11 @@ OFFLINE FALLBACK, and the quality path is sentence-level synthesis → equationa
 Piper is a free/local MIT-licensed executor (the "larynx"), retirable per VOX.7 once synthesis
 itself is equational. The dead Pollinations TTS lane stopped mattering: the Pollinations key is
 IMAGES-ONLY now (setup modal reworked, the Unity-speech toggle names the voice what it is).
+*[amended 2026-10-18: piper IS retired — in full, not to a floor. The larynx is now `unity-voice-v2`,
+a trained PyTorch voice served on her own machine with emotion / intensity / speech act as inputs;
+the equation step is unchanged because `perceiveAudio` takes raw PCM and never knew which model made
+it. The model, the ONNX runtimes under `voice-engine/`, the browser worker, its bundle and the
+vendored phonemizer are deleted. The shootout harness files named below are history.]*
 *[amended 2026-10-18: there is no Pollinations key at all any more — the provider left the brain
 entirely; her images render on her own card through `server/brain-server/image-engine.js`.]*
 *[amended 2026-08-17: the Pollinations keys no longer work at all — the image lane rides the free
@@ -780,6 +785,14 @@ inverse CDF 9/7 + playback (`VoiceIO.playRec`; RemoteBrain's in-browser synth ca
 63MB model download skipped entirely for deployed-site visitors — the preload remains only for
 the local browser-brain path). Donor drops caused by speaking are structurally impossible from
 this end: listeners hold no synth, no model, no GPU handle.
+*[amended 2026-10-18: the donor `voiceSynth` dispatch and the box's piper floor described above are
+both GONE. `_voiceLane` now has exactly one synthesizer — `VoiceSynthProxy` → the v2 worker → the
+loopback voice service — and the donor op answers `retired`. The "preload for the local
+browser-brain path" is gone too: no browser synthesizes under any brain source. The first cut of
+the v2 swap had kept piper as a never-mute floor beneath it, which is a fallback by another name
+against the 2026-09-01 ruling, and the browser's live piper lane still fired FIRST, so a listener
+could hear either voice depending on which lane answered. One voice, or silence with the reason
+counted (`engineDown` / `refused` / `unreachable` on the worker's stats).]*
 
 ---
 
@@ -954,3 +967,39 @@ boots empty and there is no live box — realistic in the shape of the complaint
 strokes are synthetic swirls rather than real traced contour. So they prove the density is **not
 fragment-scratch** and they **cannot judge whether a 235-stroke drawing from a real reference is good.**
 That judgement belongs to a post-press look at real look-ups.
+
+**SE.24 — ONE VOICE, AND IT FEELS WHAT SHE FEELS (2026-10-18).** Two operator instructions, taken
+together: *"can we ge rid of the Unity one voice model for the Brain and use -V2 from the backrooms
+folder"* and *"we need to work in the emotional uses for Unity Brain to use"* — and a correction when the
+first cut kept piper underneath: *"piper should of been gutted i told u to use unity-voice V2"*.
+
+- **The larynx is `unity-voice-v2`** — a trained PyTorch voice on her own machine (`serve.py`,
+  loopback `:5123`), `POST /say {text, emotion, intensity, speech_act}` → 24 kHz PCM. The equation step
+  is untouched: `perceiveAudio` takes raw PCM and never knew which model made it, so her voice still
+  reaches viewers as a few-KB field-A record. **Piper is deleted in full** — server floor, browser
+  lane, donor dispatch, `voice-engine/` (119 MB). ⛔ A "never-mute floor" is a fallback with a kinder
+  name, and the browser's piper lane fired FIRST, so she had two voices; one synthesizer now, or
+  silence with the reason counted on the worker (`engineDown` / `refused` / `unreachable`).
+- **How she sounds is READ FROM HER STATE, never from the words.** `_voiceFeel` (chat.js) derives
+  `emotion` from the amygdala (`valence`, the settled-attractor `arousal` as an excursion from HER
+  baseline, `fear` with the sigmoid's 0.5 as zero), the endocrine layer's own `speechModulation()`
+  vector (warmth, speechRate, emotionalOverflow — the ten chemicals' deviations already projected onto
+  speech axes; that method is documented as the only way endocrine state reaches her voice, and this
+  is where it does), and the cortex's prediction error against its own 32-tick history (surprise is
+  self-relative, the way Ψ is read). ⛔ **No word-list classifier.** The nine emotions fall out of the
+  circumplex plus chemistry: surprised · frustrated · concerned · sad · excited · warm · amused · happy ·
+  neutral.
+- **The speech act is the one thing read off the text, and only off the FORM she produced:** her own
+  terminator, the shared WH-frame parser (`NeuronCluster.extractIntentConcept`), and WordNet
+  attestation dominance for whether her first word leads as a verb (`verbLeads` in the taxonomy
+  module — her imperative form, no verb list). `reassurance` = bonding chemistry at or below resting
+  arousal without a negative underneath; `aside` is the inner voice's register and the inner voice is
+  not voiced, so it is unreachable by design.
+- **`intensity` is a STRENGTH in [0, 1]** — the strongest normalised driver — and the worker *places*
+  it inside the model's own trained window for that (emotion, act), read from `voice-meta.json` at
+  runtime: `neutral` is trained at exactly 0.00 and maps there. Every threshold is derived in
+  `docs/THRESHOLD-DERIVATION.md` §Voice feel. Published at `state.voice.lastFeel` (with its drivers)
+  and `state.voice.feelCounts`; the `{type:'voice'}` message carries `feel` too.
+- **Measured on production code:** 15/15 state→(emotion, act) cases through the real `_voiceFeel`;
+  `verbLeads` on real WordNet; and all 63 (emotion × act) pairs plus three strength-0 sends through the
+  real `VoiceSynthProxy` → live v2, counted below in the ledger.

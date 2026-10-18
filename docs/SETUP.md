@@ -396,7 +396,6 @@ The **identity layer** (`server/identity-core.json`) is **explicitly excluded** 
 │                                    unity-donor-session, unity-sizing, unity-http, unity-coordinator
 ├── donor-app/                       The compiled `unity-donor` desktop donor (CUDA on NVIDIA, wgpu elsewhere, headless-capable)
 ├── deploy/                          Box provisioning + the press — self-update.sh, bootstrap-backend.sh, systemd units, REDEPLOY-NOTES.md
-├── voice-engine/                    "Equation Unity One" — Piper model + the CDF 9/7 wavelet voice pipeline
 ├── assets/social/                   One 1200×630 og:image per page (npm run social:shots)
 ├── scripts/                         Build + dev tooling ONLY. ⛔ Scripts that edit code, files or the stack are banned
 │

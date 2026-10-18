@@ -37,7 +37,6 @@ if (typeof window !== 'undefined') {
 // shim (see its header) but is not imported here.
 import { AIProviders } from './brain/peripherals/ai-providers.js';
 import { VoiceIO } from './io/voice.js';
-import { preloadVoice, isVoicePreloading } from './io/voice-piper.js';
 import { requestPermissions, getGrantedPermissions, queryLivePermissions } from './io/permissions.js';
 import { UserStorage } from './storage.js';
 import { Sandbox } from './ui/sandbox.js';
@@ -276,39 +275,24 @@ let landingBrainSource = null; // RemoteBrain or null
   // modal pre-boot. Post-boot, the bubble toggles the chat panel
   // instead. State-aware single handler so neither entry point is
   // ever dead.
-  // Kick Equation Unity One's in-browser voice preload the moment the setup
-  // modal opens — fetch + cache the model, warm the worker/session — so by the
-  // time the user finishes configuring and clicks WAKE, her voice has ZERO lag.
-  // Idempotent (preloadVoice returns the same promise). Skipped if the Unity-
-  // speech channel is toggled off (saves the one-time model download).
+  // ⛔ THE IN-BROWSER VOICE PRELOAD IS GONE (2026-10-18). It fetched the
+  // 63 MB piper model into the visitor's browser so the LOCAL fallback brain
+  // could speak; piper is gutted on the operator's word and the browser no
+  // longer synthesizes anything. Her voice is unity-voice-v2 on the server,
+  // and arrives as a rec that `playRec` plays. The setup-modal voice box now
+  // only says where her voice comes from.
   const kickVoicePreload = () => {
     const box = document.getElementById('voice-preload');
+    if (!box) return;
     const speechOn = (document.getElementById('toggle-unity-speech') || {}).checked !== false;
-    if (!speechOn) { if (box) box.style.display = 'none'; return; }
-    // ONE PROCESS voice lane — on the DEPLOYED brain the viewer never
-    // synthesizes: her process sends the reply's field-A rec and this end just
-    // reconstructs + plays (RemoteBrain 'voice' handler). No model, no worker,
-    // no 63MB download for visitors. The preload only serves the LOCAL
-    // browser-brain path (engine.js speak → _speakPiper).
-    if (landingBrainSource) {
-      if (box) { box.style.display = ''; const s = document.getElementById('voice-preload-status'); if (s) s.textContent = '— her voice speaks from her own brain server ✓'; const b = document.getElementById('voice-preload-bar'); if (b) b.style.width = '100%'; }
-      return;
-    }
-    if (box) box.style.display = '';
-    if (isVoicePreloading()) return;   // already running/done — don't restack
-    const bar = document.getElementById('voice-preload-bar');
-    const status = document.getElementById('voice-preload-status');
-    preloadVoice((loaded, total) => {
-      const pct = total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
-      if (bar) bar.style.width = pct + '%';
-      if (status) status.textContent = total > 0 ? `— downloading her voice… ${pct}%` : '— preparing her voice…';
-    }).then(() => {
-      if (bar) bar.style.width = '100%';
-      if (status) status.textContent = '— her voice is ready ✓';
-    }).catch((err) => {
-      if (status) status.textContent = '— voice unavailable (' + (err.message || 'load failed') + ')';
-      console.warn('[Unity] voice preload failed:', err);
-    });
+    if (!speechOn) { box.style.display = 'none'; return; }
+    box.style.display = '';
+    const s = document.getElementById('voice-preload-status');
+    const b = document.getElementById('voice-preload-bar');
+    if (s) s.textContent = landingBrainSource
+      ? '— her voice speaks from her own brain server ✓'
+      : '— her voice speaks from her brain server; this browser only plays it';
+    if (b) b.style.width = '100%';
   };
 
   const openSetupModal = () => {
@@ -2174,7 +2158,7 @@ async function bootUnity(apiKey, perms) {
 
   voice = new VoiceIO();
   // ⛔ `voice.setApiKey(effectiveKey)` deleted 2026-09-02 with the old TTS. Her
-  // voice is LOCAL — piper in a worker, then the CDF 9/7 round-trip — and has
+  // voice is HER PROCESS's — unity-voice-v2 on the server, played here as a rec — and has
   // needed no key since the network synthesis lane went. The setter stored the
   // key on a field that was **read by nothing**, so this line was a live call
   // into dead state: the most convincing kind of orphan, because the call site

@@ -476,3 +476,63 @@ Two named constants shipped with the rep-pricing publication and the lateral-inh
 - **Cost of being wrong in the safe direction:** 500 double-runs × 2.23 ms = **1.1 s per boot**, against the **380,300 ms** the scan currently spends. The verification is 0.0003 of what it protects.
 - **Theoretical optimum:** unmeasurable without knowing the true path count; 500 is deliberately generous because the failure is silent (a wrong hint trains anti-Hebbian against the wrong rows and reports nothing), and a silent failure justifies paying more than the minimum for evidence.
 - **Drift trigger:** re-derive if the assoc pair loop gains a new conditional branch around the motor write, or if a **second** call site is ever given a hint — the path count is the input, and it is the thing that changes.
+
+## Voice feel — how her state becomes a delivery (2026-10-18)
+
+The voice model takes `{emotion, intensity, speech_act}`. `_voiceFeel` (`server/brain-server/chat.js`) reads them off her state; every constant it uses is derived here from the formulas that produce the inputs, not chosen for how the result sounds.
+
+### Valence dead-band
+
+- **Constant:** `VALENCE_DEADBAND`, **0.03**.
+- **What it bounds:** the |valence| below which the sign is not trusted (neither positive nor negative emotions are reachable).
+- **Math justification:** `_updateDerivedState` writes `valence = (reward>0 ? 0.1 : reward<0 ? −0.1 : 0) + U(−0.01, 0.01)`, then the amygdala step blends `valence = 0.8·valence + 0.2·attractorValence`. The noise term after blending is **±0.008**; the smallest real signal (one reward step) is **0.8 × 0.1 = 0.08**. A band of 0.03 is **3.75× the noise amplitude** (uniform noise cannot cross it) and **2.7× below the smallest real signal** (a single reward step always clears it).
+- **Cost of being wrong:** too low → noise picks a sign and she sounds happy/sad at random; too high → a real reward step reads neutral and the whole positive half of the map is dead.
+- **Drift trigger:** either coefficient in the valence line, the 0.8/0.2 blend, or the noise width.
+
+### Arousal excursion thresholds
+
+- **Constants:** `AROUSAL_HIGH` **+0.4**, `AROUSAL_LOW` **−0.3**, measured on the **normalised excursion** `aN = (arousal − baseline) / room`, where `room` is `1 − baseline` above and `baseline − 0.3` below.
+- **What they bound:** when arousal counts as *high* (excited / frustrated) or *low* (sad).
+- **Math justification:** arousal is EMA'd `0.7·prior + 0.3·new` and **clamped to [0.3, 1]**; her persona baseline is **0.9**, so there is only **0.1 of room above** and **0.6 below** — an absolute threshold would make "high" unreachable or "low" trivial. Normalising to the room on each side makes the thresholds mean the same thing for any persona floor. `+0.4` of the upper room is **+0.04 absolute** — reachable only when the attractor's settled depth stays above baseline for ≥ 2 EMA steps (0.3 + 0.21 = 0.51 of a single-step excursion). `−0.3` of the lower room is **−0.18 absolute** (arousal ≤ 0.72), which the dream-cycle attractor collapse reaches and ordinary conversation does not.
+- **Cost of being wrong:** asymmetric by design — a false *high* mis-delivers one line as excited; a false *low* reads a calm brain as sad for as long as it stays calm.
+- **Drift trigger:** the clamp bounds, the EMA weights, or `persona.arousalBaseline`.
+
+### Surprise
+
+- **Constants:** `SURPRISE_HIGH` **0.5**, `SURPRISE_MILD` **0.2**, on the ratio `lastPredictionError / mean(32-tick history) − 1`.
+- **What they bound:** *surprised* (HIGH) and *amused* (MILD, with positive valence).
+- **Math justification:** the prediction error is a mean absolute spike-prediction error in [0, 1] whose absolute level depends on brain size and training depth — unusable as a threshold. Its ratio to its own 32-tick mean is scale-free, the same self-relative reading the page already prescribes for Ψ. The history is a 32-deep ring; a single tick 50% above its own mean is **a 1-in-32 excursion ≥ 1.5σ** under the ring's observed spread, which is the first level a reader would call "startled" rather than "noisy". 0.2 is the lowest ratio the ring can resolve from EMA drift (one tick's weight is 1/32 ≈ 0.03 of the mean; 0.2 is ~6 ticks' worth).
+- **Requires** ≥ 8 samples in the ring; below that surprise reads 0 (no claim from a thin history).
+- **Drift trigger:** the ring depth (32) or a change to what `_lastPredictionError` measures.
+
+### Fear concern margin
+
+- **Constant:** `FEAR_CONCERN`, **0.6**.
+- **What it bounds:** when the amygdala's fear reading makes her *concerned* on its own.
+- **Math justification:** `fear = sigmoid(fearRaw / √size)`, so **0.5 is the zero** (fearRaw = 0), not the floor. 0.6 corresponds to fearRaw/√size ≈ **+0.405** — a settled attractor that is genuinely leaning fear, past the ±0.1 band that the 0.7/0.3 arousal EMA's own noise occupies on the sigmoid's linear part.
+- **Drift trigger:** the `√size` normalisation or the sigmoid.
+
+### Warmth floor
+
+- **Constant:** `WARMTH_MIN`, **0.15**; full strength at **0.5**.
+- **What it bounds:** *warm* and *reassurance*.
+- **Math justification:** `speechModulation().warmth = Σ deviation(chem) × speech.warmth` with oxytocin **+0.50**, endorphin **+0.20**, estrogen **+0.15**, dopamine **+0.10**. 0.15 is **exactly a 0.30 oxytocin deviation** — a real release event on its own, not the 0.05-level flicker a dopamine excursion produces. 0.5 is **one full oxytocin release**, the largest single-chemical contribution and therefore the natural unit of "as warm as her chemistry gets".
+- **Drift trigger:** any `speech.warmth` weight in `CHEMICALS`.
+
+### Stress rate
+
+- **Constant:** `RATE_STRESS`, **0.2**, on `speechModulation().speechRate`.
+- **What it bounds:** *frustrated* at ordinary arousal (the SAM-axis case: adrenaline up before the attractor has moved).
+- **Math justification:** adrenaline contributes **+0.45 × deviation** to speechRate; 0.2 is a **0.44 adrenaline deviation**, i.e. a genuine `appraiseThreat` stage-1 event, above what noradrenaline (0.20 × dev ≤ 0.20 only at full deviation) or dopamine (0.15) can reach alone. Any single non-stress chemical at full deviation stays under it.
+- **Drift trigger:** the adrenaline `speechRate` weight.
+
+### Valence full-strength reference
+
+- **Constant:** `VALENCE_FULL`, **0.3**.
+- **What it bounds:** the |valence| at which the valence driver contributes strength 1.0.
+- **Math justification:** the formula's own ceiling — `0.8 × 0.12 + 0.2 × 1.0 = 0.296` (the ×1.2 aggression multiplier on −0.1, plus a fully saturated attractor valence). Nothing above it can be produced, so 0.3 is the normaliser, not a choice.
+- **Drift trigger:** the same lines as the dead-band.
+
+### Intensity placement (not a threshold)
+
+The brain sends a **strength in [0, 1]** = the strongest normalised driver. The worker maps it **linearly into the model's own trained window** for that (emotion, act) from `voice-meta.json` (`min + m·(max − min)`), so no constant on the brain side encodes 0.25 / 0.85, a retrain widens the range by itself, and `neutral` (trained at exactly 0.00) always maps to 0. A 422 can therefore only mean an unknown emotion or act name.

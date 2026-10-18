@@ -2,18 +2,19 @@
  * VoiceIO — Browser-based voice input/output for Unity.
  *
  * Listening:  Web Speech API (SpeechRecognition)
- * Speaking:   Equation Unity One — ONE lane, no substitutes. `_speakPiper`
- *             synthesizes the whole sentence in-browser (piper hfc_female via
- *             onnxruntime-web) and round-trips it through the CDF 9/7 forward
- *             and inverse transforms, so what plays is literally her voice AS
- *             EQUATIONS. If that lane cannot run she is SILENT and the reason
- *             is named — see `speak()`.
+ * Speaking:   THE BROWSER DOES NOT SYNTHESIZE (2026-10-18). Her voice is
+ *             unity-voice-v2, rendered by HER PROCESS on the server and sent
+ *             here as a few-KB field-A rec; `playRec` runs the inverse CDF 9/7
+ *             and plays. ⛔ The in-browser piper lane (`_speakPiper`,
+ *             onnxruntime-web, 119 MB of voice-engine/) is GUTTED on the
+ *             operator's word — it was a second voice firing ahead of hers.
+ *             `speak(text)` therefore does nothing audible: it records why,
+ *             once, and returns. No substitutes, no browser SpeechSynthesis.
  *
- * No external dependencies. No network synthesis. No browser SpeechSynthesis.
+ * No external dependencies. No network synthesis.
  */
 
 import { perceiveAudio, reconstructAudio, describeAudio } from '../brain/mindspace/audio.js';
-import { synthPCM, isVoicePreloading } from './voice-piper.js';
 
 class VoiceIO {
   constructor() {
@@ -157,70 +158,22 @@ class VoiceIO {
     }
   }
 
-  /**
-   * LIVE SENTENCE LANE — Equation Unity One, her REAL voice, synthesized in the
-   * browser off the main thread (piper en_US-hfc_female-medium via onnxruntime-web,
-   * WebGPU->CPU-wasm) from the self-hosted model. This is the whole-sentence path:
-   * it carries natural prosody the per-word vox-bank can't.
-   *
-   * ⛔ AS OF 2026-09-01 THIS IS THE ONLY LANE. Returning false or throwing no
-   * longer hands off to anything — it makes her SILENT, and `speak()` names the
-   * reason on the console, on `_lastSilentReason` and on the `speech_end`
-   * event. Every early return below is therefore a reportable outcome, not a
-   * hand-off.
-   *
-   * Only used when the setup-page preload was kicked (isVoicePreloading), so a
-   * cold path never spawns the worker unexpectedly.
-   */
-  async _speakPiper(text, rate) {
-    if (this._piperEnabled === false) return false;
-    if (!isVoicePreloading()) return false;   // preload never initiated — she stays silent, `speak()` says so
-    let out;
-    try {
-      out = await synthPCM(text);
-    } catch (e) {
-      console.warn('[VoiceIO] live piper synth failed — she will be SILENT for this utterance:', e.message);
-      return false;
-    }
-    if (!out || !out.pcm || !out.pcm.length) return false;
-    // Equational round-trip: encode her piper waveform into wavelet equations
-    // (CDF 9/7) and reconstruct — so what plays is literally her voice-AS-equations,
-    // identical machinery to the vox-bank path (reconstructAudio). Transparent
-    // (~38-42dB, the V4 blind-A/B pick). Optional — falls back to raw piper PCM
-    // if the transform hiccups, so a codec edge never silences her.
-    let pcm = out.pcm;
-    let sr = out.sampleRate;
-    // ⚠ THE LOG USED TO CLAIM THE EQUATIONAL LANE UNCONDITIONALLY.
-    // The catch below is correct and deliberate — "a codec edge never silences
-    // her" — but the line underneath asserted `Equation Unity One` whether the
-    // round-trip ran or was skipped, so an operator could not tell an
-    // equational utterance from raw piper PCM. The round-trip IS the project's
-    // claim about her voice; a log that cannot distinguish it is an instrument
-    // that lies. Counted, and said out loud in the line itself.
-    let equational = false;
-    try {
-      const rec = perceiveAudio(pcm, sr);
-      const recon = reconstructAudio(rec);
-      if (recon && recon.length) { pcm = recon; sr = rec.sampleRate || sr; equational = true; }
-    } catch (e) {
-      this._equationalSkips = (this._equationalSkips | 0) + 1;
-      this._lastEquationalSkipReason = (e && e.message) || 'transform returned nothing';
-    }
-    if (!equational && !this._lastEquationalSkipReason) this._lastEquationalSkipReason = 'transform returned nothing';
-    console.log(equational
-      ? `[VoiceIO] 🎙 Equation Unity One (live sentence lane) — "${String(text).slice(0, 40)}" synthesized in-browser`
-      : `[VoiceIO] 🎙 raw piper PCM — transform SKIPPED (${this._equationalSkips | 0}x, ${this._lastEquationalSkipReason}) — "${String(text).slice(0, 40)}" is NOT equational this utterance`);
-    await this._playPcm(pcm, sr, rate || 1.0);
-    return true;
-  }
+  // ⛔⛔ `_speakPiper` — THE IN-BROWSER LIVE SENTENCE LANE — IS DELETED
+  // (2026-10-18). Operator: "piper should of been gutted i told u to use
+  // unity-voice V2". It synthesized every reply a second time in the listener's
+  // browser (piper hfc_female via onnxruntime-web) and `speak()` tried it FIRST,
+  // so after the server moved to unity-voice-v2 she had two voices and which
+  // one a listener heard depended on which lane answered. The CDF 9/7
+  // round-trip it performed is not lost: the server's worker runs the same
+  // `perceiveAudio` over v2's PCM, and `playRec` below runs the inverse. Gone
+  // with it: `js/io/voice-piper.js`, the worker and its bundle, the vendored
+  // phonemizer, and `voice-engine/` (119 MB of model + wasm).
 
   /**
-   * ONE PROCESS voice lane — play a server-synthesized field-A rec.
-   * Her reply's voice is synthesized by HER process now (donor voiceSynth or
-   * the box worker) and arrives over the WS as a few-KB equation record; this
-   * end only runs the inverse CDF 9/7 and plays. The viewer NEVER synthesizes
-   * a server reply — the in-browser larynx (and its historical GPU-grab that
-   * killed compute donors on shared-card machines) is out of the loop.
+   * HER VOICE — play a server-synthesized field-A rec.
+   * The reply's voice is synthesized by HER process (unity-voice-v2, the one
+   * lane) and arrives over the WS as a few-KB equation record; this end only
+   * runs the inverse CDF 9/7 and plays. The viewer NEVER synthesizes.
    */
   async playRec(rec) {
     if (!rec || this._muted) return;
@@ -527,14 +480,16 @@ class VoiceIO {
    * distorted ... scrap the per age/grade modulation and keep her original chosen
    * sound for her voice"). The age-pinned pitch/formant OLA shift (1.14 young →
    * 1.0 adult) was mangling her into a distorted scavenger. ALWAYS her ORIGINAL
-   * chosen voice now — Equation Unity One (V4), piper hfc_female: rate 1.0,
-   * no pitch shift, no tempo change, at any grade or age.
+   * chosen voice: no pitch shift, no tempo change, at any grade or age. Since
+   * 2026-10-18 that voice is unity-voice-v2 on her server, and expression
+   * comes from the model's own emotion / intensity / speech-act inputs, which
+   * the SERVER derives from her state — nothing on this end shapes the sound.
    *
    * ⚠ The `voice` / `pitch` / `style` fields this used to return were legacy
-   * hints for a NETWORK audio model that no longer exists, and **`rate` is the
-   * only one any caller ever read** (`_speakPiper`). Returning three dead
-   * fields alongside one live one is how a reader concludes the voice is
-   * configurable when it is not.
+   * hints for a NETWORK audio model that no longer exists, and `rate` was the
+   * only one any caller ever read — by the deleted in-browser piper lane, so
+   * today NOTHING reads it. Returning dead fields alongside a live-looking one
+   * is how a reader concludes the voice is configurable when it is not.
    */
   _agePreset() {
     return { rate: 1.0 };
@@ -591,22 +546,21 @@ class VoiceIO {
     // than a stock voice the listener would mistake for her. The failure is
     // NAMED in the console and on the event, so silence is diagnosable rather
     // than mysterious.
-    let spoke = false;
-    let silentReason = null;
-    try {
-      spoke = await this._speakPiper(text, this._agePreset().rate);
-      if (!spoke) silentReason = 'her voice lane returned false (not ready or nothing synthesised)';
-    } catch (err) {
-      silentReason = `her voice lane threw: ${err && err.message ? err.message : err}`;
+    // ⛔ THE BROWSER DOES NOT SYNTHESIZE (2026-10-18). Her voice arrives from
+    // her process as a rec and plays through `playRec`; a bare text here has
+    // no lane to go down. That is correct when the server backs her (the rec
+    // follows the text by ~1 s) and it is the honest state for the no-server
+    // fallback brain (which has no voice engine of its own). Said ONCE per
+    // session rather than per utterance, because a warn on every reply would
+    // bury the console the operator actually reads.
+    const spoke = false;
+    const silentReason = 'the browser does not synthesize — her voice is unity-voice-v2 on the server and arrives as a rec (playRec); a text-only speak() has no lane';
+    if (!this._browserSilentNoted) {
+      this._browserSilentNoted = true;
+      console.log(`[VoiceIO] speak(text) is inert in the browser now — ${silentReason}.`);
     }
-
-    if (!spoke) {
-      // ⛔ No substitute is attempted. The reason is surfaced instead, because
-      // an unexplained silence is the thing this project keeps paying for.
-      console.warn(`[VoiceIO] SILENT — ${silentReason}. No substitute voice is attempted by design (no-fallbacks).`);
-      this._lastSilentReason = silentReason;
-      this._silentCount = (this._silentCount | 0) + 1;
-    }
+    this._lastSilentReason = silentReason;
+    this._silentCount = (this._silentCount | 0) + 1;
 
     this._speaking = false;
     this.emit('speech_end', { spoke, silentReason });
@@ -667,8 +621,9 @@ class VoiceIO {
   // fall-through path that no longer exists.
   //
   // ⭐ A COMMENT THAT CONTRADICTS A RULING IS HOW THE RULING GETS QUIETLY
-  // REVERSED BY THE NEXT READER. There is ONE lane now, `_speakPiper`, and if
-  // it cannot run she is silent with the reason named. See `speak()`.
+  // REVERSED BY THE NEXT READER. There is ONE lane now — her SERVER's voice,
+  // arriving as a rec that `playRec` plays — and this end synthesizes nothing
+  // (the in-browser `_speakPiper` lane was deleted 2026-10-18). See `speak()`.
   //
   // What it used to do, kept as one line of history rather than a page: it
   // POSTed her text to an outside chat model with an instruction to repeat it
