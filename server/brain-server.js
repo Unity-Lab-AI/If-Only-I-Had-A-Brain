@@ -8224,6 +8224,11 @@ class ServerBrain {
             // when the cell hasn't actually cleared every criterion.
             lastGateResults: (cortex._lastGateResult && typeof cortex._lastGateResult === 'object')
               ? { ...cortex._lastGateResult } : null,
+            // Per-cell gate READINGS (comprehension / vocab / sentence /
+            // production / battery / verdict, counts only) for the dashboard's
+            // gate card. Bounded by the curriculum at write time.
+            gateReadings: (cortex._gateReadings && typeof cortex._gateReadings === 'object')
+              ? { ...cortex._gateReadings } : null,
             // 114.19fc.persistence — per-subject word-bucket maps
             // (`wordBucketWords_<subj>` populated by
             // `_teachWordEmissionDirect`, watermarked by
@@ -9580,6 +9585,11 @@ class ServerBrain {
         // recent battery had active blockers.
         if (pending.lastGateResults && typeof pending.lastGateResults === 'object') {
           cortex._lastGateResult = { ...pending.lastGateResults };
+        }
+        // Restore the per-cell gate readings so the dashboard's gate card does
+        // not empty on every savestart.
+        if (pending.gateReadings && typeof pending.gateReadings === 'object') {
+          cortex._gateReadings = { ...pending.gateReadings };
         }
         // 114.19fc.persistence — restore per-subject word-bucket maps
         // (`wordBucketWords_<subj>` + `wordBucketDictSize_<subj>`

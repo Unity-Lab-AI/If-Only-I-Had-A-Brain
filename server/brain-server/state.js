@@ -1596,6 +1596,31 @@ const SERVER_STATE_MIXIN = {
       // contents must not travel onto a surface a reader can reach.
       lastBattery: _lap('lastBattery', () => ((this.cortexCluster && this.cortexCluster.lastBattery)
         ? this.cortexCluster.lastBattery : null)),
+      // ⭐ THE GATE READINGS — the probe lane's live position and each cell's
+      // numbers. A cell passes on learning completion, so every probe is
+      // advisory and its result used to land in one log line; while it ran the
+      // Current Training card read `idle`. `probe` names which probe is running,
+      // item i of n, and how long that probe kind has held; `cells` is the last
+      // few cells' comprehension / vocab / sentence / production / battery /
+      // verdict rows, newest first. Counts only — the exam is held out.
+      gateReadings: _lap('gateReadings', () => {
+        const cl = this.cortexCluster;
+        if (!cl) return null;
+        const now = Date.now();
+        const p = cl._gateProbe;
+        const probe = (p && typeof p === 'object') ? {
+          kind: p.kind, i: p.i | 0, n: p.n | 0, cell: p.cell || null,
+          heldMs: Math.max(0, now - (p.startedAt || now)),
+          sinceMs: Math.max(0, now - (p.at || now)),
+        } : null;
+        const all = (cl._gateReadings && typeof cl._gateReadings === 'object') ? cl._gateReadings : {};
+        const cells = Object.values(all)
+          .filter(r => r && typeof r === 'object' && r.cell)
+          .sort((a, b) => (b.at | 0) - (a.at | 0))
+          .slice(0, 12)
+          .map(r => ({ ...r, ageMs: Math.max(0, now - (r.at || now)) }));
+        return { probe, cells, kept: Object.keys(all).length };
+      }),
       // ⭐ THE BACKGROUND EMISSION LANES, TIMED SEPARATELY AT LAST.
       //
       // The inner voice and the dream sentence run the same generation path the

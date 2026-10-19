@@ -1,6 +1,31 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-10-19, ~7:20 AM Denver (latest, 34th) — THE SEED CRYSTAL IS BUILT, DONOR v0.3.40 COUNTS BOTH HALVES, THE FIVE EQUATION REPAIRS LANDED; NOTHING HAS A LIVE NUMBER UNTIL HIS PRESS
+> # 🛑 2026-10-19, ~7:45 AM Denver (latest, 35th) — THE PROBES ARE ADVISORY AND WERE INVISIBLE; NOW THE PROBE LANE NAMES ITSELF AND EVERY CELL'S GATE NUMBERS ARE ON THE DASHBOARD
+>
+> **Branch: `feature/gate-readings-dashboard`** — cascaded after this batch.
+>
+> ```
+>   fact     a cell passes on LEARNING COMPLETION (ruled 2026-06-27). Comprehension / vocab / sentence / production /
+>            battery / methodology all still run, re-teach what they find, and feed the crystal's gate credit — but
+>            decide nothing. Their numbers reached one log line, the /grade-signoff ledger and the K-only panel; the
+>            Current Training card read `idle` through the whole probe block. Hard gates: DREAM_CELL_PASS_HARD /
+>            DREAM_BATTERY_GATE_HARD / DREAM_HEALTH_GATE_HARD (none set). My "changes what a cell passes on" was wrong.
+>   built    curriculum: _probeMark(kind,i,n) in every probe loop -> cluster._gateProbe (startedAt held per kind+cell);
+>            _gateRead(kind, reading) at every gate exit -> cluster._gateReadings[cell][kind], 24 cells
+>            (DREAM_GATE_READINGS_MAX), cleared at CELL DONE. brain-server: persisted beside lastGateResults.
+>            state.gateReadings { probe{kind,i,n,cell,heldMs,sinceMs}, cells[12 newest], kept }. Dashboard: the gate
+>            line names the probe kind + i/n + minutes held; a Gate readings card with the live line (stale > 2 min
+>            says "not advancing") and the per-cell table. Counts only — the exam is held out.
+>   verify   8/8 on Curriculum.prototype; node --check x2; ESM import; 3 dashboard script blocks parse; ids unique.
+>   read     after his press: the card's live line should change kind every few minutes during a gate; a row per
+>            cell with comprehension / vocab / production numbers that MOVE across grades is the learning curve.
+>   still    the 34th block below — crystal unmeasured until a 0.3.40 donor attaches; the eight page claims + the
+>            EQUATIONS.md pass; neural-substrate.md stale on purpose.
+> ```
+>
+> ---
+>
+> # 🛑 2026-10-19, ~7:20 AM Denver (34th) — THE SEED CRYSTAL IS BUILT, DONOR v0.3.40 COUNTS BOTH HALVES, THE FIVE EQUATION REPAIRS LANDED; NOTHING HAS A LIVE NUMBER UNTIL HIS PRESS
 >
 > **Branch: `feature/seed-crystal-build`** — cascaded after this batch; tag `donor-v0.3.40` on `main`, both remotes.
 >
