@@ -1,6 +1,33 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-10-18, ~5:55 AM Denver (latest, 32nd) — THE FIRST LIVE NIGHT: SHE WALKED, SHE DREW, SHE DIED WITHOUT A TRACE; KILLED ALL ON HIS WORD, SIX FIXES SHIPPED; THEN THE DONOR DIED AGAIN AT 5:39 (A RUST abort(), NO HOOK CAN SEE IT) AND A 2 GB TAB WAS FOUND STEALING PRIMARY — FIXED; HIS KILL-ALL + START.BAT IS NEXT (START HERE)
+> # 🛑 2026-10-19, ~1:50 PM Denver (latest, 33rd) — THE PAGES WERE STYLED BY A STYLESHEET THAT NEVER MATCHED; THE EQUATION LEDGER EXISTS; NEXT IS HIS FRESH WALK
+>
+> **Branch: `feature/network-testing-and-bugs`** — cascaded after this batch; `develop` merged in first (it was nine merge-commits ahead, all of them this branch's own work).
+>
+> ```
+>   brain    NOT RUNNING at write time (/public-state.json empty). Last boot: the one he stopped for the fresh walk,
+>            budget-pinned to DREAM_BRAIN_BUDGET_MB=8000 -> 199,728,759 neurons (floor 7,811 MB). Launch is his press.
+>   pages    brain-equations: 8 compound selectors (no descendant space) + NO rule for .eq-box (39 uses) = every card
+>            title / module name / biology note / TOC number / the whole language half rendered unstyled. Fixed
+>            context-free; 320 inline styles -> 1. guide 19 -> 1, dashboard 395 -> 114 (panel vocabulary; the rest
+>            is widget geometry), legend 15 -> 2, docs 2 -> 0. index / compute / teachview judged original
+>            authoring, left. Verified by headless render of every repaired selector + screenshots; both dashboard
+>            script blocks re-compiled. Four stale brain claims corrected on the equations page (AI-call IT stage,
+>            AI classification bootstrap, "four-tier pipeline / slot scorer still exists", "no CUDA, just a tab").
+>   ledger   docs/equation-rundown.md — every equation family: working great / working with a limit / built but
+>            unread / inert / deleted, with the evidence; §8 = twelve claims the equations page still makes that
+>            the brain no longer does (4 fixed, 8 open). Also a docs-viewer slug (EQUATION_RUNDOWN, 20 slugs now).
+>   owed     the 8 open page claims + docs/EQUATIONS.md (same retired mechanisms described as live, and 25 headers
+>            carrying ticket/session IDs — a brain doc). First two readings on the next boot: state.voice.verdict
+>            .status must be matrix-driven; consciousness.phiState must be live, not floored.
+>   unread   the rows that only the walk can close: FRESHSIZE (the 199.7M boot), NETBUG.7 / NETBUG.10 (donor abort
+>            and driver-wedge classes under the VRAM gates), POOL.1 live two-card reads, DEFFULL union counts,
+>            the image engine's own counters (ownArt.imageEngine).
+> ```
+>
+> ---
+>
+> # 🛑 2026-10-18, ~5:55 AM Denver (32nd) — THE FIRST LIVE NIGHT: SHE WALKED, SHE DREW, SHE DIED WITHOUT A TRACE; KILLED ALL ON HIS WORD, SIX FIXES SHIPPED; THEN THE DONOR DIED AGAIN AT 5:39 (A RUST abort(), NO HOOK CAN SEE IT) AND A 2 GB TAB WAS FOUND STEALING PRIMARY — FIXED; HIS KILL-ALL + START.BAT IS NEXT (START HERE)
 >
 > **Branch: `feature/network-testing-and-bugs`** — Gee: *"new feature branch from here on out network testing and bugs"*. Stay on it; cascade when a batch is whole; come back to it, not `develop`.
 >

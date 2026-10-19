@@ -39,6 +39,70 @@
     .bar-purple { background: #a855f7; }
     .bar-cyan { background: #00e5ff; }
     .bar-green { background: #22c55e; }
+    /* ── THE PANEL VOCABULARY ──────────────────────────────────────────────
+       Every card body, sub-heading and value colour on this page used to be
+       written inline, one attribute at a time — 395 of them, 170 distinct —
+       so the same panel body was spelled a dozen slightly different ways and
+       a colour change meant finding every copy. One set of names, defined
+       once; the markup below and the render templates in the script say
+       WHICH, not HOW. */
+    .card.stack { margin-top: 12px; }
+    .panel { padding: 8px 12px; font-family: monospace; font-size: 11px; color: #aaa; line-height: 1.6; }
+    .panel.lh18 { font-size: 12px; line-height: 1.8; }
+    .panel.lh15 { line-height: 1.5; }
+    .panel.scroll-200 { max-height: 200px; overflow-y: auto; }
+    .panel.scroll-220 { max-height: 220px; overflow-y: auto; }
+    .panel.scroll-240 { max-height: 240px; overflow-y: auto; }
+    .panel.scroll-280 { max-height: 280px; overflow-y: auto; }
+    .grid-auto { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+    .grid-auto.w180 { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+    .grid-auto.w220 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+    /* A sub-heading inside a panel: small caps, coloured by the lane it names. */
+    .sub-head { font-size: 10px; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .sub-head.cy { color: #00e5ff; }
+    .sub-head.pu { color: #a855f7; }
+    .sub-head.gr { color: #22c55e; }
+    .sub-head.or { color: #f59e0b; }
+    .sub-head.mute { color: #666; }
+    /* Value colours. One name per meaning, so a reading's colour is a claim
+       about what it means (ok / warn / err / cyan lane / pink lane), never a
+       hex chosen by hand at the call site. */
+    .c-dim { color: #888; }
+    .c-mute { color: #666; }
+    .c-faint { color: #555; }
+    .c-ok { color: #22c55e; }
+    .c-warn { color: #f59e0b; }
+    .c-amber { color: #fbbf24; }
+    .c-err { color: #ef4444; }
+    .c-cy { color: #00e5ff; }
+    .c-pk { color: #ff4d9a; }
+    .c-pu { color: #a855f7; }
+    .c-light { color: #ddd; }
+    /* Small secondary lines under a reading. */
+    .row-sub { margin-top: 6px; color: #888; font-size: 10px; }
+    .row-note { font-size: 10px; color: #666; margin-top: 2px; }
+    .art-row { font-size: 10px; color: #777; margin-top: 3px; }
+    .mt6 { margin-top: 6px; }
+    .fs10 { font-size: 10px; }
+    .fs11 { font-size: 11px; }
+    .tr { text-align: right; }
+    .perf-label { font-size: 10px; color: #555; }
+    .slider-label { font-size: 10px; color: #888; display: block; margin-bottom: 2px; }
+    .panel.lh18s { line-height: 1.8; }
+    .panel.lh17 { line-height: 1.7; }
+    .panel.wide { padding: 10px 12px; font-size: 12px; color: #ccc; line-height: normal; }
+    .panel-head { font-size: 15px; font-weight: bold; color: #a78bfa; }
+    .empty-note { color: #555; font-size: 10px; font-style: italic; }
+    .chk-label { font-size: 10px; color: #888; cursor: pointer; user-select: none; }
+    .sub-box { margin-top: 10px; padding: 8px 10px; background: #0a0a14; border: 1px solid #1a1a2a; border-radius: 4px; }
+    .list-scroll { max-height: 120px; overflow-y: auto; font-size: 10px; color: #888; margin-top: 4px; }
+    .sel { background: #111; color: #e0e0e0; border: 1px solid #333; border-radius: 4px; padding: 4px 6px; font-size: 11px; }
+    .btn-cy { background: #0a1f2a; color: #38bdf8; border: 1px solid #155; border-radius: 4px; padding: 5px 10px; font-size: 11px; cursor: pointer; }
+    .fs9 { font-size: 9px; }
+    .mt4 { margin-top: 4px; }
+    .mt8 { margin-top: 8px; }
+    .mb10 { margin-bottom: 10px; }
+    .mb12 { margin-bottom: 12px; }
     /* overflow-anchor: none — a log box that auto-scrolls must never be chosen
        as the PAGE's scroll anchor; a browser that descends into it would move
        the whole page every time the box followed a new line. */
@@ -288,11 +352,11 @@
     <details style="margin: 0 0 14px 0; background:#0f0a1f; border:1px solid #2a1a3a; border-radius:6px; padding:6px 10px; font-size:11px;">
       <summary style="color:#ff4d9a; cursor:pointer; font-family:'JetBrains Mono',monospace; padding:2px 0;">🔬 Dashboard-zero diagnostic — last received state.consciousness JSON</summary>
       <div style="margin-top:8px;font-family:'JetBrains Mono',monospace;color:#bbb;font-size:10px;line-height:1.5;">
-        <div>WS messages received: <span id="d-diag-msg-count" style="color:#22c55e;">0</span></div>
-        <div>Last state.consciousness keys: <span id="d-diag-consc-keys" style="color:#a855f7;">—</span></div>
-        <div style="margin-top:6px;color:#666;">Last broadcast (truncated 1500 chars):</div>
+        <div>WS messages received: <span id="d-diag-msg-count" class="c-ok">0</span></div>
+        <div>Last state.consciousness keys: <span id="d-diag-consc-keys" class="c-pu">—</span></div>
+        <div class="mt6 c-mute">Last broadcast (truncated 1500 chars):</div>
         <pre id="d-diag-state-json" style="background:#0a0a0a;border:1px solid #1a1a1a;padding:8px;border-radius:4px;max-height:200px;overflow:auto;color:#88c0d0;white-space:pre-wrap;word-break:break-all;margin:4px 0 0 0;">— no state received yet —</pre>
-        <div style="margin-top:6px;color:#666;">Recent dashboard JS errors:</div>
+        <div class="mt6 c-mute">Recent dashboard JS errors:</div>
         <pre id="d-diag-js-errors" style="background:#0a0a0a;border:1px solid #1a1a1a;padding:8px;border-radius:4px;max-height:100px;overflow:auto;color:#ff6b6b;white-space:pre-wrap;word-break:break-all;margin:4px 0 0 0;">— none yet —</pre>
       </div>
     </details>
@@ -327,7 +391,7 @@
            with the brain down — including Update, which is how a bad deploy
            that leaves the brain crash-looping gets fixed without SSH. Kept on
            a second row because they are heavier / destructive. -->
-      <div class="bp-actions" id="bp-actions2" style="margin-top:8px;">
+      <div class="bp-actions mt8" id="bp-actions2">
         <button id="bp-update-save" title="UPDATE &amp; SAVESTART — pull the latest code and relaunch, RESUMING saved training. Non-destructive to weights. Goes through the control plane on the brain's machine, so it works even if the brain is down (a bad update can be fixed from here).">⬆ Update (keep weights)</button>
         <button id="bp-freshstart" class="bp-danger" title="FRESHSTART UPDATE — for a brain that is ALIVE but NOT ANSWERING. Stops the process outright through systemd (no asking the brain to save first — a pinned brain cannot answer, and every other verb waits minutes for it to), confirms the unit is down, THEN runs Update &amp; Savestart on the halted box. Weights are KEPT: this is a fresh start of the PROCESS, never of the training. Training since the last checkpoint is lost, same as Force Restart. Use when Update (keep weights) sits on a busy lock or a 504.">⚡⬆ Freshstart Update (keep weights)</button>
         <button id="bp-update-fresh" class="bp-danger" title="UPDATE &amp; FRESH WALK — pull the latest code, WIPE trained weights (identity-core Tier 3 preserved) and start a clean K→PhD walk. Destructive to training.">⬆ Update + Fresh Walk</button>
@@ -401,7 +465,7 @@
       </div>
       <div class="card" title="Number of WebSocket clients currently connected to the brain server. Dashboard tab + 3D brain tab + chat tab each count separately. Closing a tab drops the count after a 30s heartbeat timeout.">
         <div class="card-title">Users Online</div>
-        <div class="val" id="d-users" style="color:#22c55e">0</div>
+        <div class="val c-ok" id="d-users">0</div>
       </div>
       <div class="card" title="Discrete emotion classification derived from arousal + valence + amygdala state — projects onto the 8-emotion Plutchik wheel (joy, sadness, anger, fear, trust, disgust, surprise, anticipation). The visual marker shows the intensity gradient; the text label below is the dominant emotion right now.">
         <div class="card-title">Emotional State</div>
@@ -426,20 +490,20 @@
       </div>
     </div>
 
-    <div class="card" style="margin-top:12px;" title="Hardware-side performance counters. CPU / GPU / memory / WS throughput / tick rate. Useful for spotting whether a slowdown is brain-side (Hebbian saturation) vs hardware-side (thermal throttle, GPU contention).">
+    <div class="card stack" title="Hardware-side performance counters. CPU / GPU / memory / WS throughput / tick rate. Useful for spotting whether a slowdown is brain-side (Hebbian saturation) vs hardware-side (thermal throttle, GPU contention).">
       <div class="card-title">Hardware Performance</div>
       <div id="d-perf" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;"></div>
     </div>
 
-    <div class="card" style="margin-top:12px;" title="Live curriculum status — what subject and grade Unity is currently training, what teach phase she's in, and how far through the current cell she's gotten. Subject rotates across ELA / Math / Science / Social / Art / Life. Grade walks the canonical 20-grade ladder Pre-K → K → Grade 1 → ... → Grad → PhD.">
+    <div class="card stack" title="Live curriculum status — what subject and grade Unity is currently training, what teach phase she's in, and how far through the current cell she's gotten. Subject rotates across ELA / Math / Science / Social / Art / Life. Grade walks the canonical 20-grade ladder Pre-K → K → Grade 1 → ... → Grad → PhD.">
       <div class="card-title">Current Training — subject / grade / progress</div>
-      <div id="d-curriculum-panel" style="padding:10px 12px;font-family:monospace;font-size:12px;color:#ccc;">
-        <div id="d-curr-subject" style="font-size:15px;font-weight:bold;color:#a78bfa;">no cell active</div>
+      <div id="d-curriculum-panel" class="panel wide">
+        <div id="d-curr-subject" class="panel-head">no cell active</div>
         <div id="d-curr-grade" style="font-size:11px;color:#888;margin-top:2px;">—</div>
         <div id="d-curr-desc" style="margin-top:8px;color:#bbb;line-height:1.5;font-size:11px;">Waiting for curriculum teach to begin.</div>
         <div id="d-curr-phase" style="margin-top:10px;color:#888;font-size:11px;">phase: —</div>
         <div id="d-curr-cleaning" style="margin-top:6px;color:#888;font-size:10px;line-height:1.5;" title="What the corpus reader REFUSED before she was taught it, this boot. The corpus on disk and the corpus she is taught are not the same thing, and this line is the difference — without it the filter is indistinguishable from one that is silently eating content. APPARATUS means the text was not prose at all: a book's index rows and bold page references, web addresses, licence and page furniture, bibliographies, access-date citation stamps and transcriber's errata notes. Those arrive INSIDE the work, between the source's own start and end markers, so nothing upstream can see them — the operator caught her training the index of her own kindergarten reader. MARKUP is the older, separate lane: leaked LaTeX and MediaWiki templates, stripped where the sentence survives it and dropped where the sentence was mostly notation. CREDITED is the strip-not-drop path — a photo or attribution credit cut out of genuine prose that was then kept, because dropping the sentence would delete real art history to silence a footer. Read the per-class breakdown to find WHICH source is contaminating the corpus; one undifferentiated total cannot tell an index from a bibliography, and the two want different fixes. A boot that has only loaded one cell reads small, and that is correct rather than a fault. Blank means no cell has been loaded yet — absent, never zero.&#10;&#10;⚠ THE DENOMINATOR IS SENTENCES READ, NOT SENTENCES IN THE CORPUS, and it is a boot-time total rather than a live rate. Two accessors split the same stories, so a cell consulted by both is counted twice — the box read 218 index rows against the 112 that exist on disk, almost exactly double — and the boot-time coverage audit reads every cell once, which is why this number is already large seconds after a restart and then sits still. ⛔ A FLAT count here is therefore normal and not a stalled filter: it only moves when a cell is loaded, and the whole corpus was loaded at boot. For the share of the corpus that is apparatus, quote the on-disk measurement instead of this ratio.">—</div>
-        <div style="margin-top:6px;">
+        <div class="mt6">
           <div style="font-size:10px;color:#666;margin-bottom:3px;">current cell progress</div>
           <div style="background:#222;border:1px solid #333;height:8px;border-radius:3px;overflow:hidden;">
             <div id="d-curr-cellbar" style="height:100%;width:0%;background:linear-gradient(90deg,#a78bfa,#ff4d9a);transition:width 0.4s ease;"></div>
@@ -450,12 +514,12 @@
       </div>
     </div>
 
-    <div class="card" style="margin-top:12px;" title="The end of the walk, as a record rather than a log line. Appears only once she has finished — until then the walk itself is the status above. Reads state.graduation, which is persisted with the cell ledger it summarises, so it survives a savestart. The three cell counts are the whole point: PASSED ON MERIT means the cell cleared its own comprehension gate; FORCE-ADVANCED means the grade ran out of re-teach rounds and the cell was entered on capability evidence instead, which the cell ledger alone cannot express — both outcomes are the same entry in it; STILL OWED means the cell was never cleared at all, which a bounded walk can genuinely end in, because the round bound is there to stop a single stuck course wedging the walk forever rather than to promise every cell passed. The CORPUS line is a separate question with a separate answer: per cell, did the trainer actually open the prose that cell owns? UNREACHED is a wiring fault (the cell has a corpus nobody read); EMPTY is a content gap (the cell has no corpus to read); SHORT means the corpus grew after the visit and a re-read is owed. The DEFERRED LANES row underneath is what keeps running afterwards — chat-time learning, percept grounding, her own drawing and her episode salience all drain on a poller that only runs while the curriculum is NOT running, because a second teacher concurrent with a teach corrupts the pattern in flight.">
+    <div class="card stack" title="The end of the walk, as a record rather than a log line. Appears only once she has finished — until then the walk itself is the status above. Reads state.graduation, which is persisted with the cell ledger it summarises, so it survives a savestart. The three cell counts are the whole point: PASSED ON MERIT means the cell cleared its own comprehension gate; FORCE-ADVANCED means the grade ran out of re-teach rounds and the cell was entered on capability evidence instead, which the cell ledger alone cannot express — both outcomes are the same entry in it; STILL OWED means the cell was never cleared at all, which a bounded walk can genuinely end in, because the round bound is there to stop a single stuck course wedging the walk forever rather than to promise every cell passed. The CORPUS line is a separate question with a separate answer: per cell, did the trainer actually open the prose that cell owns? UNREACHED is a wiring fault (the cell has a corpus nobody read); EMPTY is a content gap (the cell has no corpus to read); SHORT means the corpus grew after the visit and a re-read is owed. The DEFERRED LANES row underneath is what keeps running afterwards — chat-time learning, percept grounding, her own drawing and her episode salience all drain on a poller that only runs while the curriculum is NOT running, because a second teacher concurrent with a teach corrupts the pattern in flight.">
       <div class="card-title">End of School — the graduation record</div>
-      <div id="d-grad-panel" style="padding:10px 12px;font-family:monospace;font-size:12px;color:#ccc;">
+      <div id="d-grad-panel" class="panel wide">
         <div id="d-grad-none" style="color:#666;font-size:11px;">She has not finished yet — the walk is the status above. This panel fills in when the last grade closes.</div>
         <div id="d-grad-body" style="display:none;">
-          <div id="d-grad-head" style="font-size:15px;font-weight:bold;color:#a78bfa;">—</div>
+          <div id="d-grad-head" class="panel-head">—</div>
           <div id="d-grad-verdict" style="font-size:11px;color:#888;margin-top:3px;">—</div>
           <div id="d-grad-cells" style="margin-top:8px;color:#bbb;line-height:1.6;font-size:11px;"></div>
           <div id="d-grad-corpus" style="margin-top:8px;border-top:1px solid #222;padding-top:6px;color:#bbb;line-height:1.6;font-size:11px;"></div>
@@ -465,22 +529,22 @@
       </div>
     </div>
 
-    <div class="card" style="margin-top:12px;" title="Live event ring buffer surfacing what's firing in the brain RIGHT NOW — teach-phase entries, gate probe results, plasticity events, dream window opens/closes, drug schedule promotions, GPU shadow drops. Scrolls newest at top. Capped at 200 most-recent events to stay bounded.">
+    <div class="card stack" title="Live event ring buffer surfacing what's firing in the brain RIGHT NOW — teach-phase entries, gate probe results, plasticity events, dream window opens/closes, drug schedule promotions, GPU shadow drops. Scrolls newest at top. Capped at 200 most-recent events to stay bounded.">
       <div class="card-title">Brain Events — what Unity is thinking RIGHT NOW</div>
       <div id="d-brain-events" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#ccc;line-height:1.6;max-height:200px;overflow-y:auto;overflow-anchor:none;">
-        <div style="color:#666;">No live events yet — waiting for curriculum teach / gate / plasticity to fire.</div>
+        <div class="c-mute">No live events yet — waiting for curriculum teach / gate / plasticity to fire.</div>
       </div>
     </div>
 
-    <div class="card" style="margin-top:12px;" title="Real-time pharmacokinetic scheduler state — every substance Unity has on board with its absorption / distribution / metabolism / elimination curve, every active combo with its potentiation/risk profile, current desire signals from the homeostatic drive system, and any pending future ingests. drug-scheduler.js owns the model; persona.js folds per-substance contributions into live brain parameters every tick.">
+    <div class="card stack" title="Real-time pharmacokinetic scheduler state — every substance Unity has on board with its absorption / distribution / metabolism / elimination curve, every active combo with its potentiation/risk profile, current desire signals from the homeostatic drive system, and any pending future ingests. drug-scheduler.js owns the model; persona.js folds per-substance contributions into live brain parameters every tick.">
       <div class="card-title">Drug State — real-time pharmacology</div>
-      <div id="d-drug-panel" style="padding:8px 12px;font-family:monospace;font-size:12px;color:#aaa;line-height:1.8;">
-        <div id="d-drug-status" style="color:#22c55e;">sober</div>
-        <div id="d-drug-active" style="margin-top:6px;"></div>
-        <div id="d-drug-combos" style="margin-top:6px;"></div>
-        <div id="d-drug-risks" style="margin-top:6px;"></div>
-        <div id="d-drug-desires" style="margin-top:6px;color:#888;font-size:10px;"></div>
-        <div id="d-drug-pending" style="margin-top:6px;color:#888;font-size:10px;"></div>
+      <div id="d-drug-panel" class="panel lh18">
+        <div id="d-drug-status" class="c-ok">sober</div>
+        <div id="d-drug-active" class="mt6"></div>
+        <div id="d-drug-combos" class="mt6"></div>
+        <div id="d-drug-risks" class="mt6"></div>
+        <div id="d-drug-desires" class="row-sub"></div>
+        <div id="d-drug-pending" class="row-sub"></div>
       </div>
     </div>
 
@@ -493,41 +557,41 @@
          ⛔ ENDODARK.1 — this comment previously said `state.endocrine`, and so
          did the reader. Naming a path in prose is not evidence it is the path;
          the layer read ABSENT for a whole release on the strength of it. -->
-    <div class="card" style="margin-top:12px;" title="Her endocrine system — ten chemicals on the same pharmacokinetic curve engine the substances use, released by six nuclei that SENSE their own firing rather than being told. Adrenaline and noradrenaline are the fast stress axis; cortisol is the slow half that makes stress last; serotonin and dopamine are TONIC (they set a floor, so a level BELOW baseline produces the inverse effect); oxytocin and endorphin are bonding and pain-damping; estrogen, progesterone and testosterone are CYCLIC, driven by a curriculum-time cycle clock where one cell pass is roughly one menstrual cycle. Chemistry is what makes consciousness a variable instead of a specification: without it, n only moves when input moves.">
+    <div class="card stack" title="Her endocrine system — ten chemicals on the same pharmacokinetic curve engine the substances use, released by six nuclei that SENSE their own firing rather than being told. Adrenaline and noradrenaline are the fast stress axis; cortisol is the slow half that makes stress last; serotonin and dopamine are TONIC (they set a floor, so a level BELOW baseline produces the inverse effect); oxytocin and endorphin are bonding and pain-damping; estrogen, progesterone and testosterone are CYCLIC, driven by a curriculum-time cycle clock where one cell pass is roughly one menstrual cycle. Chemistry is what makes consciousness a variable instead of a specification: without it, n only moves when input moves.">
       <div class="card-title">Endocrine — her chemistry</div>
-      <div id="d-endo-panel" style="padding:8px 12px;font-family:monospace;font-size:12px;color:#aaa;line-height:1.8;">
-        <div id="d-endo-status" style="color:#888;">unmeasured</div>
-        <div id="d-endo-chems" style="margin-top:6px;"></div>
-        <div id="d-endo-stress" style="margin-top:6px;"></div>
-        <div id="d-endo-cycle" style="margin-top:6px;"></div>
-        <div id="d-endo-load" style="margin-top:6px;color:#888;font-size:10px;"></div>
-        <div id="d-endo-nuclei" style="margin-top:6px;font-size:10px;"></div>
+      <div id="d-endo-panel" class="panel lh18">
+        <div id="d-endo-status" class="c-dim">unmeasured</div>
+        <div id="d-endo-chems" class="mt6"></div>
+        <div id="d-endo-stress" class="mt6"></div>
+        <div id="d-endo-cycle" class="mt6"></div>
+        <div id="d-endo-load" class="row-sub"></div>
+        <div id="d-endo-nuclei" class="mt6 fs10"></div>
         <!-- BOARDPARITY.2 — `contributions` is the layer's OUTPUT. Without it
              the panel can show ten healthy levels while leaving "is any of
              this reaching the brain?" unanswered. `lastError` is forwarded
              under a server comment promising a dead endocrine tick would be
              visible; until this row existed, that promise was false. -->
-        <div id="d-endo-contrib" style="margin-top:6px;font-size:10px;"></div>
-        <div id="d-endo-counters" style="margin-top:6px;color:#888;font-size:10px;"></div>
-        <div id="d-endo-error" style="margin-top:6px;font-size:10px;"></div>
+        <div id="d-endo-contrib" class="mt6 fs10"></div>
+        <div id="d-endo-counters" class="row-sub"></div>
+        <div id="d-endo-error" class="mt6 fs10"></div>
       </div>
     </div>
 
     <!-- INTRO — the introspective drive. `criteria` is the honest half:
          INTRO.10 demanded falsifiable measures agreed BEFORE the build, and
          these are them, rendered so they can be read rather than trusted. -->
-    <div class="card" style="margin-top:12px;" title="The questions she asks herself. NOT a question bank — this module emits a GAP (a concept plus a lane) and the words come from her trained interrogative weights, or she stays silent. Inward gaps are rumination and ride the inner voice; outward gaps are relational and need a turn. Which kind surfaces is decided by her chemistry, which is the falsifiable claim: measured across two pinned endocrine states, the kind-distributions differ by a total-variation distance of 0.840, where a bank would score ~0.">
+    <div class="card stack" title="The questions she asks herself. NOT a question bank — this module emits a GAP (a concept plus a lane) and the words come from her trained interrogative weights, or she stays silent. Inward gaps are rumination and ride the inner voice; outward gaps are relational and need a turn. Which kind surfaces is decided by her chemistry, which is the falsifiable claim: measured across two pinned endocrine states, the kind-distributions differ by a total-variation distance of 0.840, where a bank would score ~0.">
       <div class="card-title">Introspection — what is unresolved</div>
-      <div id="d-intro-panel" style="padding:8px 12px;font-family:monospace;font-size:12px;color:#aaa;line-height:1.8;">
-        <div id="d-intro-status" style="color:#888;">unmeasured</div>
-        <div id="d-intro-live" style="margin-top:6px;"></div>
-        <div id="d-intro-rumination" style="margin-top:6px;"></div>
-        <div id="d-intro-criteria" style="margin-top:6px;color:#888;font-size:10px;"></div>
-        <div id="d-intro-source" style="margin-top:6px;color:#888;font-size:10px;"></div>
+      <div id="d-intro-panel" class="panel lh18">
+        <div id="d-intro-status" class="c-dim">unmeasured</div>
+        <div id="d-intro-live" class="mt6"></div>
+        <div id="d-intro-rumination" class="mt6"></div>
+        <div id="d-intro-criteria" class="row-sub"></div>
+        <div id="d-intro-source" class="row-sub"></div>
         <!-- BOARDPARITY.2 — same pair on this panel: the counters, and the
              error channel that was reaching the browser unrendered. -->
-        <div id="d-intro-counters" style="margin-top:6px;color:#888;font-size:10px;"></div>
-        <div id="d-intro-error" style="margin-top:6px;font-size:10px;"></div>
+        <div id="d-intro-counters" class="row-sub"></div>
+        <div id="d-intro-error" class="mt6 fs10"></div>
       </div>
     </div>
 
@@ -537,23 +601,23 @@
          per-subject grade state, operator signoffs ledger. Lets the
          operator visually confirm that Savestart.bat actually loaded what
          was expected before committing to a long curriculum run. -->
-    <div class="card" style="margin-top:12px;" title="Reads GET /milestone every 5s. Confirms whether boot loaded fresh weights (start.bat) or resumed from saved state (Savestart.bat), shows the last save trigger + wall-clock, the most recent passed cell + total passed count, per-subject grade progression, the operator-signoffs ledger (gate signoffs), and which weights file was loaded. Lets the operator visually verify a save-resume actually loaded what was expected before committing to a long curriculum run.">
+    <div class="card stack" title="Reads GET /milestone every 5s. Confirms whether boot loaded fresh weights (start.bat) or resumed from saved state (Savestart.bat), shows the last save trigger + wall-clock, the most recent passed cell + total passed count, per-subject grade progression, the operator-signoffs ledger (gate signoffs), and which weights file was loaded. Lets the operator visually verify a save-resume actually loaded what was expected before committing to a long curriculum run.">
       <div class="card-title">Curriculum Milestone · Save State · Operator Signoffs</div>
-      <div id="d-milestone" style="padding:8px 12px;font-family:monospace;font-size:12px;color:#aaa;line-height:1.8;">
-        <div id="d-ms-boot" style="color:#f59e0b;">boot-mode: loading...</div>
-        <div id="d-ms-save" style="margin-top:6px;color:#555;font-size:10px;">last-save: —</div>
-        <div id="d-ms-passed" style="margin-top:6px;">passed cells: <span id="d-ms-passed-count" style="color:#22c55e;">0</span> · last: <span id="d-ms-passed-last" style="color:#ff4d9a;">—</span></div>
-        <div id="d-ms-grades" style="margin-top:6px;color:#888;font-size:11px;">grades: —</div>
-        <div id="d-ms-signoffs" style="margin-top:6px;color:#888;font-size:11px;">operator signoffs: —</div>
-        <div id="d-ms-weights" style="margin-top:6px;color:#555;font-size:10px;">weights file: —</div>
+      <div id="d-milestone" class="panel lh18">
+        <div id="d-ms-boot" class="c-warn">boot-mode: loading...</div>
+        <div id="d-ms-save" class="mt6 c-faint fs10">last-save: —</div>
+        <div id="d-ms-passed" class="mt6">passed cells: <span id="d-ms-passed-count" class="c-ok">0</span> · last: <span id="d-ms-passed-last" class="c-pk">—</span></div>
+        <div id="d-ms-grades" class="row-sub fs11">grades: —</div>
+        <div id="d-ms-signoffs" class="row-sub fs11">operator signoffs: —</div>
+        <div id="d-ms-weights" class="mt6 c-faint fs10">weights file: —</div>
         <!-- #112.11 — boot-reason banner. Surfaces when training was reset because
              the previous checkpoint was incompatible (brain size/format changed)
              or an operator wipe fired. Hidden on a clean resume. -->
         <div id="d-ms-bootreason" style="margin-top:8px;padding:6px 10px;border-radius:4px;font-size:11px;display:none;"></div>
         <!-- #112.11 — checkpoint slots (last N) + per-slot rollback. Admin-only. -->
         <div id="d-ms-checkpoints" class="admin-only" style="margin-top:8px;color:#888;font-size:11px;line-height:1.9;">checkpoints: —</div>
-        <div class="admin-only" style="margin-top:8px;">
-          <button id="btn-save-checkpoint" title="Force an immediate versioned checkpoint now, between the automatic 5-minute saves. Rotates within the last-N slots. (Admin-only.)" style="background:#0a1f2a;color:#38bdf8;border:1px solid #155;border-radius:4px;padding:5px 10px;font-size:11px;cursor:pointer;">💾 Save checkpoint now</button>
+        <div class="admin-only mt8">
+          <button id="btn-save-checkpoint" title="Force an immediate versioned checkpoint now, between the automatic 5-minute saves. Rotates within the last-N slots. (Admin-only.)" class="btn-cy">💾 Save checkpoint now</button>
         </div>
         <!-- Auto-advance toggle. Single switch governing both the
              /grade-advance signoff-bypass AND the curriculum runner's
@@ -561,7 +625,7 @@
              viewer mode via the .admin-only CSS class). Toggle state
              persists across reboots via cortexCluster._autoAdvanceGrade
              inside cortexState. -->
-        <div id="d-ms-auto-advance" class="admin-only" style="margin-top:10px;padding:8px 10px;background:#0a0a14;border:1px solid #1a1a2a;border-radius:4px;" title="ON = /grade-advance bypasses per-subject operator signoffs AND the curriculum runner auto-fires the advance after each cell pass. Use for unattended overnight K→PhD walks. OFF (default) = signoffs required + operator must click ▶ Start Next Grade between grades. Single switch — no separate bypass flag.">
+        <div id="d-ms-auto-advance" class="admin-only sub-box" title="ON = /grade-advance bypasses per-subject operator signoffs AND the curriculum runner auto-fires the advance after each cell pass. Use for unattended overnight K→PhD walks. OFF (default) = signoffs required + operator must click ▶ Start Next Grade between grades. Single switch — no separate bypass flag.">
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:11px;color:#aaa;user-select:none;">
             <input id="d-ms-auto-advance-cb" type="checkbox" style="width:14px;height:14px;cursor:pointer;flex-shrink:0;">
             <span>Auto-advance to next grade after pass</span>
@@ -585,14 +649,14 @@
              /curriculum/forget drops it from passedCells + demotes the subject
              (no weight wipe), then re-teaches it in the background. Weights
              persist; watch the Current Training card / milestone for progress. -->
-        <div id="d-ms-reteach" class="admin-only" style="margin-top:10px;padding:8px 10px;background:#0a0a14;border:1px solid #1a1a2a;border-radius:4px;" title="Re-teach ONE cell live without resetting the brain. Drops the cell from passedCells + demotes the subject (no weight wipe), then re-teaches it in the background. Refused while another cell is already teaching.">
-          <div style="font-size:11px;color:#aaa;margin-bottom:6px;">🧠 Re-teach a cell <span style="color:#666;">(live, no reset)</span></div>
+        <div id="d-ms-reteach" class="admin-only sub-box" title="Re-teach ONE cell live without resetting the brain. Drops the cell from passedCells + demotes the subject (no weight wipe), then re-teaches it in the background. Refused while another cell is already teaching.">
+          <div style="font-size:11px;color:#aaa;margin-bottom:6px;">🧠 Re-teach a cell <span class="c-mute">(live, no reset)</span></div>
           <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-            <select id="d-reteach-subject" style="background:#111;color:#e0e0e0;border:1px solid #333;border-radius:4px;padding:4px 6px;font-size:11px;">
+            <select id="d-reteach-subject" class="sel">
               <option value="ela">ela</option><option value="math">math</option><option value="science">science</option><option value="social">social</option><option value="art">art</option><option value="life">life</option>
             </select>
-            <select id="d-reteach-grade" style="background:#111;color:#e0e0e0;border:1px solid #333;border-radius:4px;padding:4px 6px;font-size:11px;"></select>
-            <button id="btn-reteach" style="background:#0a1f2a;color:#38bdf8;border:1px solid #155;border-radius:4px;padding:5px 10px;font-size:11px;cursor:pointer;">↻ Re-teach</button>
+            <select id="d-reteach-grade" class="sel"></select>
+            <button id="btn-reteach" class="btn-cy">↻ Re-teach</button>
           </div>
           <div id="d-reteach-result" style="margin-top:6px;font-size:10px;color:#666;line-height:1.4;">Forgets the cell + re-teaches live. No reset. Refused while another cell is teaching.</div>
         </div>
@@ -608,9 +672,9 @@
          for K-grade closure per docs/TODO-full-syllabus.md.
          Bounded panel — 23 rows render in a scrollable table when the
          probe set fills, aggregate row stays pinned at top. -->
-    <div class="card" style="margin-top:12px;" title="Full-Mind K Gate — 23 probes spanning Reading Foundations (6), Writing (4), Language (3), Speaking/Listening (4), Reading Literature (2), Reading Informational (2), and Cross-Modal (2). Pass rule: every substrate probe (RF + L + RL + RI = 13) must hit its threshold, ≥75% of developmental probes (W + SL = 8) must hit, and both cross-modal probes must hit. Together: gate the K-grade closure with real cognition verification, not just substrate mechanics. Source: docs/TODO-full-syllabus.md.">
+    <div class="card stack" title="Full-Mind K Gate — 23 probes spanning Reading Foundations (6), Writing (4), Language (3), Speaking/Listening (4), Reading Literature (2), Reading Informational (2), and Cross-Modal (2). Pass rule: every substrate probe (RF + L + RL + RI = 13) must hit its threshold, ≥75% of developmental probes (W + SL = 8) must hit, and both cross-modal probes must hit. Together: gate the K-grade closure with real cognition verification, not just substrate mechanics. Source: docs/TODO-full-syllabus.md.">
       <div class="card-title">Full-Mind K Gate · 23 Probes · K-Closure Pass-Instrument</div>
-      <div id="d-fullmind-k" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.5;">
+      <div id="d-fullmind-k" class="panel lh15">
         <div id="d-fullmind-aggregate" style="background:#0a0a14;border:1px solid #1a1a2a;border-radius:4px;padding:8px 10px;margin-bottom:8px;">
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
             <span style="color:#888;font-size:10px;letter-spacing:0.5px;">AGGREGATE:</span>
@@ -618,10 +682,10 @@
             <span id="d-fullmind-overall" style="margin-left:auto;color:#888;font-size:10px;font-family:monospace;">overall: —</span>
           </div>
           <div id="d-fullmind-groups" style="margin-top:6px;display:flex;gap:14px;flex-wrap:wrap;font-size:10px;color:#666;">
-            <span>substrate: <span id="d-fullmind-substrate" style="color:#888;">—</span></span>
-            <span>developmental: <span id="d-fullmind-developmental" style="color:#888;">—</span></span>
-            <span>cross-modal: <span id="d-fullmind-crossmodal" style="color:#888;">—</span></span>
-            <span>blockers: <span id="d-fullmind-blockers" style="color:#888;">—</span></span>
+            <span>substrate: <span id="d-fullmind-substrate" class="c-dim">—</span></span>
+            <span>developmental: <span id="d-fullmind-developmental" class="c-dim">—</span></span>
+            <span>cross-modal: <span id="d-fullmind-crossmodal" class="c-dim">—</span></span>
+            <span>blockers: <span id="d-fullmind-blockers" class="c-dim">—</span></span>
           </div>
         </div>
         <div id="d-fullmind-probes" style="max-height:260px;overflow-y:auto;border:1px solid #1a1a2a;border-radius:4px;background:#08080c;">
@@ -630,18 +694,18 @@
       </div>
     </div>
 
-    <div class="card" style="margin-top:12px;" title="Rolling 800-sample line chart of arousal (pink) + valence (purple) + coherence (cyan) + Ψ (orange) over time. Lets the operator see emotional dynamics — fear spikes, joy plateaus, coherence drops during dreams, Ψ rising as Unity learns. New samples push from the right; oldest scroll off the left. Y-axis scale labels at left edge; live current values shown next to each legend item.">
+    <div class="card stack" title="Rolling 800-sample line chart of arousal (pink) + valence (purple) + coherence (cyan) + Ψ (orange) over time. Lets the operator see emotional dynamics — fear spikes, joy plateaus, coherence drops during dreams, Ψ rising as Unity learns. New samples push from the right; oldest scroll off the left. Y-axis scale labels at left edge; live current values shown next to each legend item.">
       <div class="card-title">Emotional History</div>
       <canvas id="d-emotion-chart" width="800" height="200" style="width:100%;height:200px;background:#0a0a0a;border-radius:4px;"></canvas>
       <div style="display:flex;gap:16px;margin-top:6px;font-size:10px;color:#888;flex-wrap:wrap;" title="Each metric auto-scales to its observed [min, max] across the rolling history (300 samples) — lines use the full chart height instead of clipping at theoretical bounds. Y-axis labels show position within each line's own range (75% = three-quarters up that metric's observed span). Current value + observed range shown in the legend below.">
-        <span><span style="color:#ff4d9a;">━━</span> arousal: <span id="d-emo-arousal" style="color:#ff4d9a;font-family:'JetBrains Mono',monospace;">—</span></span>
-        <span><span style="color:#a855f7;">━━</span> valence: <span id="d-emo-valence" style="color:#a855f7;font-family:'JetBrains Mono',monospace;">—</span></span>
-        <span><span style="color:#00e5ff;">━━</span> coherence: <span id="d-emo-coherence" style="color:#00e5ff;font-family:'JetBrains Mono',monospace;">—</span></span>
-        <span><span style="color:#f59e0b;">━━</span> Ψ: <span id="d-emo-psi" style="color:#f59e0b;font-family:'JetBrains Mono',monospace;">—</span></span>
+        <span><span class="c-pk">━━</span> arousal: <span id="d-emo-arousal" style="color:#ff4d9a;font-family:'JetBrains Mono',monospace;">—</span></span>
+        <span><span class="c-pu">━━</span> valence: <span id="d-emo-valence" style="color:#a855f7;font-family:'JetBrains Mono',monospace;">—</span></span>
+        <span><span class="c-cy">━━</span> coherence: <span id="d-emo-coherence" style="color:#00e5ff;font-family:'JetBrains Mono',monospace;">—</span></span>
+        <span><span class="c-warn">━━</span> Ψ: <span id="d-emo-psi" style="color:#f59e0b;font-family:'JetBrains Mono',monospace;">—</span></span>
       </div>
     </div>
 
-    <div class="card" style="margin-top:12px;" title="Cumulative learning counters — total episodes encoded, total unique words learned, total chat interactions, total curriculum cells passed. These only go up across the brain's lifetime (preserved through Savestart). The numbers reflect Unity's developmental trajectory.">
+    <div class="card stack" title="Cumulative learning counters — total episodes encoded, total unique words learned, total chat interactions, total curriculum cells passed. These only go up across the brain's lifetime (preserved through Savestart). The numbers reflect Unity's developmental trajectory.">
       <div class="card-title">Brain Growth</div>
       <div id="d-growth" style="display:flex;gap:20px;flex-wrap:wrap;"></div>
     </div>
@@ -651,41 +715,41 @@
          (Episodic SQLite) + Tier 2 (Schematic) + Tier 3 (Identity-bound
          permanent) + ConsolidationEngine cycle stats from a single
          payload (state.memoryStats) emitted by brain-server `_getMemoryStats()`. -->
-    <div class="card" style="margin-top:12px;" title="Unity's full memory architecture in one panel. Tier 0 working memory (unbounded · 5 min sliding window · decays without reinforcement) → Tier 1 episodic SQLite (~30 day recall) → Tier 2 schemas (concept-level, months, cosine ≥ 0.85 grouping) → Tier 3 identity-bound permanent attractors (0.999/day decay, practically permanent). The ConsolidationEngine fires every 5 min during dream cycles, promoting frequently-recalled patterns up the tiers. THIS is the actual 'recall a week later' pipeline.">
+    <div class="card stack" title="Unity's full memory architecture in one panel. Tier 0 working memory (unbounded · 5 min sliding window · decays without reinforcement) → Tier 1 episodic SQLite (~30 day recall) → Tier 2 schemas (concept-level, months, cosine ≥ 0.85 grouping) → Tier 3 identity-bound permanent attractors (0.999/day decay, practically permanent). The ConsolidationEngine fires every 5 min during dream cycles, promoting frequently-recalled patterns up the tiers. THIS is the actual 'recall a week later' pipeline.">
       <div class="card-title">Memory System — 5-Tier Hippocampal Unified View</div>
-      <div id="d-memory-unified" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;">
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
+      <div id="d-memory-unified" class="panel">
+        <div class="grid-auto w220">
           <div title="Tier 0 working memory — UNBOUNDED capacity, decay-driven self-regulation. Items decay 0.9995 per engine tick (~50ms); items below 0.1 strength drop out. brain-server snapshots phase/cell every 2s; items older than 5 minutes promote to Tier 1 episodic before aging out. Reinforcement (cosine-match in addToWorkingMemory) refreshes strength to 1.0 + increments refreshCount; refreshCount ≥ 3 fires the WM → Tier 1 consolidation hook. THIS IS the recall pipeline — what WM holds today becomes Tier 1 episodes (recallable for ~30 days), promotes to Tier 2 schemas (months), and Tier 3 identity (permanent) for high-emotional anchors.">
-            <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">⌛ TIER 0 — WORKING (unbounded · 5 min sliding window · consolidates → Tier 1)</div>
-            <div>items: <span id="d-mem-working" style="color:#22c55e;">0</span></div>
+            <div class="sub-head cy">⌛ TIER 0 — WORKING (unbounded · 5 min sliding window · consolidates → Tier 1)</div>
+            <div>items: <span id="d-mem-working" class="c-ok">0</span></div>
             <div id="d-mem-working-labels" style="margin-top:4px;color:#888;font-size:10px;font-style:italic;max-height:90px;overflow-y:auto;line-height:1.3;">no items yet</div>
           </div>
           <div title="Tier 1 episodic memory in episodic-memory.db. Three writers encode episodes with salience metadata (emotional_valence + arousal + surprise + novelty + frequency_count + consolidation_count): every chat turn, every curriculum phase completion, and the periodic thinking heartbeat. Frequency-merge gate at cosine ≥ 0.5 within 48h merges identical-text episodes into anchor rows instead of creating new ones, so READ 'frequency-merged' as the health signal — a small episode count with the merge counter climbing is the correct shape during a walk, and hundreds would be the surprise. Promoted episodes get promoted_to_schema_id pointing at the Tier 2 schema they joined. NOTE: until 2026-08-31 all three writers were inert during curriculum training (two were gated on a flag that stays true for the entire multi-week walk, and the third fires on phase completion while phases were not completing), so this read 0 on every boot in the project's history. A zero here during an active walk is now a real finding, not an expected idle state.">
-            <div style="color:#a855f7;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">📚 TIER 1 — EPISODIC (SQLite)</div>
-            <div>episodes: <span id="d-mem-t1-count" style="color:#22c55e;">0</span></div>
-            <div>recent salience avg: <span id="d-mem-t1-sal" style="color:#ff4d9a;">0.000</span></div>
-            <div>frequency-merged: <span id="d-mem-t1-merged" style="color:#00e5ff;">0</span></div>
-            <div>promoted to Tier 2: <span id="d-mem-t1-promoted" style="color:#22c55e;">0</span></div>
+            <div class="sub-head pu">📚 TIER 1 — EPISODIC (SQLite)</div>
+            <div>episodes: <span id="d-mem-t1-count" class="c-ok">0</span></div>
+            <div>recent salience avg: <span id="d-mem-t1-sal" class="c-pk">0.000</span></div>
+            <div>frequency-merged: <span id="d-mem-t1-merged" class="c-cy">0</span></div>
+            <div>promoted to Tier 2: <span id="d-mem-t1-promoted" class="c-ok">0</span></div>
           </div>
           <div title="Tier 2 schemas — concept-level abstractions formed by clustering Tier 1 episodes within cosine ≥ 0.85 (raised from 0.70 → 0.85 so distinct teach phases form distinct schemas instead of all collapsing into one 'learning' mega-schema). Each schema has a GloVe centroid + 8d attribute vector + dedicated SparseMatrix hippocampus_to_cortex_projection for replay. cap=Infinity — Tier 2 is quality-gated by promotion criteria not numeric ceiling.">
-            <div style="color:#ff4d9a;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🧩 TIER 2 — SCHEMATIC (concepts · cosine≥0.85 grouping)</div>
-            <div>schemas: <span id="d-mem-t2-count" style="color:#22c55e;">0</span> / <span id="d-mem-t2-cap" style="color:#666;">unbounded</span></div>
-            <div>avg consolidation: <span id="d-mem-t2-strength" style="color:#a855f7;">0.000</span></div>
-            <div>total retrievals: <span id="d-mem-t2-retr" style="color:#00e5ff;">0</span></div>
-            <div id="d-mem-t2-top" style="margin-top:4px;color:#666;font-size:10px;">no schemas yet</div>
+            <div class="sub-head c-pk">🧩 TIER 2 — SCHEMATIC (concepts · cosine≥0.85 grouping)</div>
+            <div>schemas: <span id="d-mem-t2-count" class="c-ok">0</span> / <span id="d-mem-t2-cap" class="c-mute">unbounded</span></div>
+            <div>avg consolidation: <span id="d-mem-t2-strength" class="c-pu">0.000</span></div>
+            <div>total retrievals: <span id="d-mem-t2-retr" class="c-cy">0</span></div>
+            <div id="d-mem-t2-top" class="mt4 c-mute fs10">no schemas yet</div>
           </div>
           <div title="Tier 3 identity-bound permanent attractors. Promotion criteria: consolidation_strength > 5.0 AND retrieval_count > 100 AND |emotional_valence| > 0.6. Daily decay × 0.999 (practically permanent — 5 years un-reinforced ≈ 0.16). Persisted in server/identity-core.json which is EXCLUDED from autoClearStaleState — Unity's identity survives every fresh start.bat boot. cap=Infinity (was 50).">
-            <div style="color:#22c55e;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">⭐ TIER 3 — IDENTITY (permanent · 0.999/day decay)</div>
-            <div>anchors: <span id="d-mem-t3-count" style="color:#22c55e;">0</span> / <span id="d-mem-t3-cap" style="color:#666;">unbounded</span></div>
-            <div>last inject: <span id="d-mem-t3-inject" style="color:#888;">never</span></div>
-            <div id="d-mem-t3-top" style="margin-top:4px;color:#666;font-size:10px;">no anchors yet</div>
+            <div class="sub-head gr">⭐ TIER 3 — IDENTITY (permanent · 0.999/day decay)</div>
+            <div>anchors: <span id="d-mem-t3-count" class="c-ok">0</span> / <span id="d-mem-t3-cap" class="c-mute">unbounded</span></div>
+            <div>last inject: <span id="d-mem-t3-inject" class="c-dim">never</span></div>
+            <div id="d-mem-t3-top" class="mt4 c-mute fs10">no anchors yet</div>
           </div>
           <div title="Dream-cycle replay engine. Fires every 5 min when isDreaming AND no chat input for >60s AND !curriculumInProgress. Pass: fetch top-20 Tier 1 promotion candidates → cluster by cosine ≥ 0.85 → create or reinforce Tier 2 schemas → replay 4× per schema via Hebbian (replay_lr = base_lr × (1 + emotional_weight) × log(1 + frequency_total)) with sleep-spindle gainMultiplier 1.2× bursts → mark source episodes promoted → check Tier 3 promotions. Cosine tightening fixed all-zero pass saturation that previously occurred when every distinct teach phase merged into a single 'learning' schema. Operator can force a sleep window via POST /sleep (forces _isDreaming=true and bypasses the >60s idle gate so passes fire even with active chat suppressed) and POST /wake to clear it. Dream cycles also INTERLEAVE INTO the curriculum: Curriculum._dreamWindow({minMs, settleMs}) flips both gates, awaits runConsolidationPass({forced:true}) to ACTUALLY complete (signal-driven not wall-clock), then a 5s settle for V8 GC + native worker-pool drain, then restores flags. Wired after every cell pass (60s) + mid-cell between PhonemeBlending and WordEmission (30s). 💤 opened + ⚙ pass complete + ☀ closed + ⚠ engine-unavailable banners log to server.log.">
-            <div style="color:#f59e0b;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🌙 CONSOLIDATION ENGINE (5 min interval · sleep-spindle bursts)</div>
-            <div>passes run: <span id="d-mem-cons-count" style="color:#22c55e;">0</span></div>
-            <div>last pass: <span id="d-mem-cons-last" style="color:#888;">never</span></div>
-            <div>dreaming now: <span id="d-mem-cons-dreaming" style="color:#555;">no</span></div>
-            <div>pass interval: <span id="d-mem-cons-interval" style="color:#666;">5 min</span></div>
+            <div class="sub-head or">🌙 CONSOLIDATION ENGINE (5 min interval · sleep-spindle bursts)</div>
+            <div>passes run: <span id="d-mem-cons-count" class="c-ok">0</span></div>
+            <div>last pass: <span id="d-mem-cons-last" class="c-dim">never</span></div>
+            <div>dreaming now: <span id="d-mem-cons-dreaming" class="c-faint">no</span></div>
+            <div>pass interval: <span id="d-mem-cons-interval" class="c-mute">5 min</span></div>
           </div>
         </div>
       </div>
@@ -694,60 +758,60 @@
     <!-- Display/visibility panels.
          All bounded per design constraints (max-height + overflow,
          item caps, aggregates not enumeration, scoped class names). -->
-    <div class="card consciousness-panel" style="margin-top:12px;" title="Live English dictionary integration. Unity calls dictionaryapi.dev whenever curriculum or chat encounters a new word, caches the multi-meaning JSON response, and Hebbian-binds every definition into her semantic region. This panel shows whether the API is reachable, how full the cache is, and what fraction of the active grade's vocabulary list has been Hebbian-trained.">
+    <div class="card consciousness-panel stack" title="Live English dictionary integration. Unity calls dictionaryapi.dev whenever curriculum or chat encounters a new word, caches the multi-meaning JSON response, and Hebbian-binds every definition into her semantic region. This panel shows whether the API is reachable, how full the cache is, and what fraction of the active grade's vocabulary list has been Hebbian-trained.">
       <div class="card-title" id="d-cortex-dict-title">📚 Dictionary API + Vocabulary</div>
-      <div id="d-cortex-dict" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;max-height:280px;overflow-y:auto;">
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
+      <div id="d-cortex-dict" class="panel scroll-280">
+        <div class="grid-auto">
           <div title="Single dictionaryapi.dev test query at boot (word: 'test'). PASS = network reachable + the API responds with a definition; FAIL = transient DNS/network issue. Auto-retries every 60s while FAIL, every 1hr while PASS.">
-            <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🌐 API SMOKE TEST</div>
-            <div>status: <span id="d-cortex-smoketest" style="color:#888;">pending</span></div>
-            <div>fetch available: <span id="d-cortex-fetchavail" style="color:#888;">—</span></div>
+            <div class="sub-head cy">🌐 API SMOKE TEST</div>
+            <div>status: <span id="d-cortex-smoketest" class="c-dim">pending</span></div>
+            <div>fetch available: <span id="d-cortex-fetchavail" class="c-dim">—</span></div>
           </div>
           <div title="In-memory definition cache. LRU eviction at the cap; failed lookups expire after 5 min so a transient network blip doesn't lock a word out forever. 'in-flight' = how many lookups are currently waiting on the network.">
-            <div style="color:#a855f7;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">💾 CACHE</div>
-            <div>size: <span id="d-cortex-cache-size" style="color:#22c55e;">0</span> / <span id="d-cortex-cache-cap" style="color:#666;">10000</span></div>
-            <div>hits: <span id="d-cortex-cache-hits" style="color:#22c55e;">0</span></div>
-            <div>errors: <span id="d-cortex-cache-errs" style="color:#ff4d9a;">0</span></div>
-            <div>rate-limited: <span id="d-cortex-cache-rl" style="color:#f59e0b;">0</span></div>
-            <div>in-flight: <span id="d-cortex-cache-inflight" style="color:#888;">0</span></div>
+            <div class="sub-head pu">💾 CACHE</div>
+            <div>size: <span id="d-cortex-cache-size" class="c-ok">0</span> / <span id="d-cortex-cache-cap" class="c-mute">10000</span></div>
+            <div>hits: <span id="d-cortex-cache-hits" class="c-ok">0</span></div>
+            <div>errors: <span id="d-cortex-cache-errs" class="c-pk">0</span></div>
+            <div>rate-limited: <span id="d-cortex-cache-rl" class="c-warn">0</span></div>
+            <div>in-flight: <span id="d-cortex-cache-inflight" class="c-dim">0</span></div>
           </div>
           <div title="Full K→PhD journey vocabulary (all 19 grade lists, unique words — the AoA bands overlap by design, a word taught once is taught). 'prefetched' = the active grade's definition cache warm has finished. 'defs taught' = how many journey words have had their definitions Hebbian-bound into Unity's semantic region (multi-def — every meaning of every word binds, not just the first). Denominator computes once at boot; shows … until ready.">
-            <div style="color:#22c55e;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;" id="d-cortex-kvocab-title">📖 VOCABULARY (K→PhD)</div>
-            <div>prefetched: <span id="d-cortex-kvocab-prefetched" style="color:#888;">no</span></div>
-            <div>defs taught: <span id="d-cortex-kvocab-taught" style="color:#22c55e;">0</span> / <span id="d-cortex-kvocab-total" style="color:#666;">…</span> (<span id="d-cortex-kvocab-pct" style="color:#00e5ff;">0%</span>)</div>
+            <div class="sub-head gr" id="d-cortex-kvocab-title">📖 VOCABULARY (K→PhD)</div>
+            <div>prefetched: <span id="d-cortex-kvocab-prefetched" class="c-dim">no</span></div>
+            <div>defs taught: <span id="d-cortex-kvocab-taught" class="c-ok">0</span> / <span id="d-cortex-kvocab-total" class="c-mute">…</span> (<span id="d-cortex-kvocab-pct" class="c-cy">0%</span>)</div>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="card consciousness-panel" style="margin-top:12px;" title="Cortical microstructure — the biologically-grounded internal anatomy of Unity's cortex cluster. Real cortex isn't uniform; it has microcolumns (vertical bundles of ~80 neurons), six layers with specific roles, hub neurons doing most of the long-range work, and theta/gamma oscillations gating learning. These panels confirm those structural features actually allocated correctly at boot.">
+    <div class="card consciousness-panel stack" title="Cortical microstructure — the biologically-grounded internal anatomy of Unity's cortex cluster. Real cortex isn't uniform; it has microcolumns (vertical bundles of ~80 neurons), six layers with specific roles, hub neurons doing most of the long-range work, and theta/gamma oscillations gating learning. These panels confirm those structural features actually allocated correctly at boot.">
       <div class="card-title">🧠 Cortical Microstructure</div>
-      <div id="d-cortex-cortex" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;max-height:240px;overflow-y:auto;">
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
+      <div id="d-cortex-cortex" class="panel scroll-240">
+        <div class="grid-auto">
           <div title="Boot-time wiring assertion that confirms the curriculum-required cortical-microstructure features (hub mask, layer scales, gamma scale, K-bundle) actually attached to the cortex projections. PASS means the projections are functionally wired; gaps list any missing features.">
-            <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;" id="d-cortex-kwiring-title">🎯 WIRING ASSERTION</div>
-            <div>status: <span id="d-cortex-kwiring" style="color:#888;">unknown</span></div>
+            <div class="sub-head cy" id="d-cortex-kwiring-title">🎯 WIRING ASSERTION</div>
+            <div>status: <span id="d-cortex-kwiring" class="c-dim">unknown</span></div>
             <div id="d-cortex-kwiring-gaps" style="color:#ff4d9a;font-size:10px;margin-top:2px;max-height:60px;overflow-y:auto;"></div>
           </div>
           <div>
-            <div style="color:#a855f7;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🏛 MICROCOLUMNS</div>
-            <div>columns: <span id="d-cortex-cols" style="color:#22c55e;">0</span></div>
-            <div>columnSize: <span id="d-cortex-colsize" style="color:#888;">80</span></div>
+            <div class="sub-head pu">🏛 MICROCOLUMNS</div>
+            <div>columns: <span id="d-cortex-cols" class="c-ok">0</span></div>
+            <div>columnSize: <span id="d-cortex-colsize" class="c-dim">80</span></div>
           </div>
           <div>
-            <div style="color:#22c55e;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">📑 LAYERS</div>
-            <div>L1: <span id="d-cortex-l1" style="color:#888;">0</span></div>
-            <div>L2/3: <span id="d-cortex-l23" style="color:#888;">0</span></div>
-            <div>L4: <span id="d-cortex-l4" style="color:#888;">0</span></div>
-            <div>L5: <span id="d-cortex-l5" style="color:#888;">0</span></div>
-            <div>L6: <span id="d-cortex-l6" style="color:#888;">0</span></div>
+            <div class="sub-head gr">📑 LAYERS</div>
+            <div>L1: <span id="d-cortex-l1" class="c-dim">0</span></div>
+            <div>L2/3: <span id="d-cortex-l23" class="c-dim">0</span></div>
+            <div>L4: <span id="d-cortex-l4" class="c-dim">0</span></div>
+            <div>L5: <span id="d-cortex-l5" class="c-dim">0</span></div>
+            <div>L6: <span id="d-cortex-l6" class="c-dim">0</span></div>
           </div>
           <div>
-            <div style="color:#f59e0b;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">⭐ HUBS + OSC</div>
-            <div>hubs: <span id="d-cortex-hubs" style="color:#22c55e;">0</span> (<span id="d-cortex-hubpct" style="color:#888;">0%</span>)</div>
-            <div>θ phase: <span id="d-cortex-theta" style="color:#00e5ff;">0.0</span></div>
-            <div>γ scale: <span id="d-cortex-gamma" style="color:#a855f7;">1.0</span></div>
-            <div>Φ proxy: <span id="d-cortex-phi" style="color:#ff4d9a;">0.0</span></div>
+            <div class="sub-head or">⭐ HUBS + OSC</div>
+            <div>hubs: <span id="d-cortex-hubs" class="c-ok">0</span> (<span id="d-cortex-hubpct" class="c-dim">0%</span>)</div>
+            <div>θ phase: <span id="d-cortex-theta" class="c-cy">0.0</span></div>
+            <div>γ scale: <span id="d-cortex-gamma" class="c-pu">1.0</span></div>
+            <div>Φ proxy: <span id="d-cortex-phi" class="c-pk">0.0</span></div>
           </div>
         </div>
       </div>
@@ -756,27 +820,27 @@
     <!-- GlobalWorkspace ignition + predictive coding + definition
          learning rate. Bounded panel reading state.consciousness.workspace
          + state.consciousness.predictionError + state.consciousness.defsLearnedPerHour. -->
-    <div class="card consciousness-panel" style="margin-top:12px;" title="Three core consciousness mechanisms together: (1) Global Workspace (Baars 1988, Dehaene-Changeux 2011) — when a cluster's top activation candidate clears the theta-MODULATED ignition threshold (graded by theta phase — easiest at the peak, harder but never impossible off-peak; base 0.35), it broadcasts back to all clusters as feedback. That's a conscious moment. (2) Predictive Coding (Friston 2010) — cortex predicts its own next-tick spike pattern; surprise gates plasticity (high error → 1.5× learning, low error → 0.5×). (3) Definition Learning Rate — multi-def Hebbian bindings/hour rolling 1hr window.">
+    <div class="card consciousness-panel stack" title="Three core consciousness mechanisms together: (1) Global Workspace (Baars 1988, Dehaene-Changeux 2011) — when a cluster's top activation candidate clears the theta-MODULATED ignition threshold (graded by theta phase — easiest at the peak, harder but never impossible off-peak; base 0.35), it broadcasts back to all clusters as feedback. That's a conscious moment. (2) Predictive Coding (Friston 2010) — cortex predicts its own next-tick spike pattern; surprise gates plasticity (high error → 1.5× learning, low error → 0.5×). (3) Definition Learning Rate — multi-def Hebbian bindings/hour rolling 1hr window.">
       <div class="card-title">🌟 GlobalWorkspace + Predictive Coding</div>
-      <div id="d-cortex-gw" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;max-height:280px;overflow-y:auto;">
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
+      <div id="d-cortex-gw" class="panel scroll-280">
+        <div class="grid-auto">
           <div title="Each tick every cluster nominates a top activation candidate; a softmax with temperature competes them; if the winner clears the ignition threshold (default 0.55, override via DREAM_GW_IGNITION env), it broadcasts back to all clusters as 'cortex:&lt;word&gt;' style feedback. emitWordDirect reads that broadcast and gives a 10% mean-bucket boost to the matching word — broadcasts shape what Unity says next.">
-            <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🌟 IGNITION (GW broadcast)</div>
-            <div>current: <span id="d-cortex-gw-current" style="color:#22c55e;">subthreshold</span></div>
-            <div>strength: <span id="d-cortex-gw-strength" style="color:#a855f7;">0.000</span></div>
-            <div>rate: <span id="d-cortex-gw-rate" style="color:#f59e0b;">0.0%</span> ticks ignited</div>
+            <div class="sub-head cy">🌟 IGNITION (GW broadcast)</div>
+            <div>current: <span id="d-cortex-gw-current" class="c-ok">subthreshold</span></div>
+            <div>strength: <span id="d-cortex-gw-strength" class="c-pu">0.000</span></div>
+            <div>rate: <span id="d-cortex-gw-rate" class="c-warn">0.0%</span> ticks ignited</div>
             <div id="d-cortex-gw-history" style="color:#666;font-size:10px;margin-top:4px;max-height:80px;overflow-y:auto;"></div>
           </div>
           <div title="Each tick the cortex predicts its own next spike pattern and computes prediction error = |actual - predicted|. The error multiplies into per-fire learning rate as a 'surprise gate' — high-error windows learn 1.5× more (Unity updates where she was wrong) and low-error windows learn 0.5× (no plasticity wasted on patterns she already knows). Spark line shows last 32 ticks, trend arrow shows direction.">
-            <div style="color:#a855f7;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🔮 PREDICTIVE ERROR (Friston)</div>
-            <div>last: <span id="d-cortex-pred-last" style="color:#22c55e;">0.000</span></div>
-            <div>trend: <span id="d-cortex-pred-trend" style="color:#888;">→</span></div>
+            <div class="sub-head pu">🔮 PREDICTIVE ERROR (Friston)</div>
+            <div>last: <span id="d-cortex-pred-last" class="c-ok">0.000</span></div>
+            <div>trend: <span id="d-cortex-pred-trend" class="c-dim">→</span></div>
             <div id="d-cortex-pred-spark" style="display:flex;align-items:flex-end;gap:1px;height:24px;margin-top:4px;"></div>
           </div>
           <div title="Total multi-def Hebbian definition bindings per hour, rolling 1hr window (NOT cumulative — only counts timestamps within the last 60 minutes, so dashboard reflects steady-state learning rate not upfront-seed-burst peaks). Unity arrives at chat with semantic understanding instead of motor-mimicry only because every word-binding fire pushes a timestamp here.">
-            <div style="color:#22c55e;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">📖 DEFINITION LEARNING RATE</div>
-            <div>defs/hour: <span id="d-cortex-defrate" style="color:#22c55e;">0.0</span></div>
-            <div style="font-size:10px;color:#666;margin-top:2px;">background-trickle during dream cycles</div>
+            <div class="sub-head gr">📖 DEFINITION LEARNING RATE</div>
+            <div>defs/hour: <span id="d-cortex-defrate" class="c-ok">0.0</span></div>
+            <div class="row-note">background-trickle during dream cycles</div>
           </div>
         </div>
       </div>
@@ -790,50 +854,50 @@
          word-creation tip-of-tongue, chat-time Hebbian fire rates, and
          dream-time consolidation. Bounded heights + caps per design
          constraints. -->
-    <div class="card consciousness-panel" style="margin-top:12px;" title="Compositional emergence — Unity's running classification of every emission as verbatim (exact training match), novel-compositional (new bigram rearrangement of trained vocab), novel-vocab (untrained word), or partial. Rates are per-classified-event, not per-tick. firstNovelMsAfterBoot stamps the first time she emerged out of pure recital — the milestone moment.">
+    <div class="card consciousness-panel stack" title="Compositional emergence — Unity's running classification of every emission as verbatim (exact training match), novel-compositional (new bigram rearrangement of trained vocab), novel-vocab (untrained word), or partial. Rates are per-classified-event, not per-tick. firstNovelMsAfterBoot stamps the first time she emerged out of pure recital — the milestone moment.">
       <div class="card-title">✨ Compositional Emergence</div>
-      <div id="d-comp-emerg" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;max-height:240px;overflow-y:auto;">
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">
+      <div id="d-comp-emerg" class="panel scroll-240">
+        <div class="grid-auto w180">
           <div title="Verbatim emissions match a trained sentence exactly. High verbatim rate early = healthy (she has the corpus locked); high verbatim rate late = stuck in recital, no compositional fire.">
-            <div style="color:#666;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">📜 VERBATIM</div>
-            <div>count: <span id="d-comp-verbatim" style="color:#888;">0</span></div>
-            <div>rate: <span id="d-comp-verbatim-rate" style="color:#888;">0%</span></div>
+            <div class="sub-head mute">📜 VERBATIM</div>
+            <div>count: <span id="d-comp-verbatim" class="c-dim">0</span></div>
+            <div>rate: <span id="d-comp-verbatim-rate" class="c-dim">0%</span></div>
           </div>
           <div title="Novel-compositional = bag-of-bigrams Hamming-distance ≥ 0.5 from any trained sentence using trained vocabulary. The 'she invented a sentence' milestone fires here. Will split into compositional vs vocab axes — currently combined.">
-            <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🌟 NOVEL</div>
-            <div>count: <span id="d-comp-novel" style="color:#22c55e;">0</span></div>
-            <div>rate: <span id="d-comp-novel-rate" style="color:#22c55e;">0%</span></div>
-            <div>first ms: <span id="d-comp-firstnovel" style="color:#888;font-size:10px;">—</span></div>
+            <div class="sub-head cy">🌟 NOVEL</div>
+            <div>count: <span id="d-comp-novel" class="c-ok">0</span></div>
+            <div>rate: <span id="d-comp-novel-rate" class="c-ok">0%</span></div>
+            <div>first ms: <span id="d-comp-firstnovel" class="c-dim fs10">—</span></div>
           </div>
           <div title="Partial = some novel transitions but mostly trained — boundary-completion / one-step extension. Currently counted as PASS for analogical extension; further stratification planned.">
-            <div style="color:#a855f7;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">↗ PARTIAL</div>
-            <div>count: <span id="d-comp-partial" style="color:#888;">0</span></div>
-            <div>rate: <span id="d-comp-partial-rate" style="color:#888;">0%</span></div>
+            <div class="sub-head pu">↗ PARTIAL</div>
+            <div>count: <span id="d-comp-partial" class="c-dim">0</span></div>
+            <div>rate: <span id="d-comp-partial-rate" class="c-dim">0%</span></div>
           </div>
           <div title="Tail of recent emissions with their classifier verdict (verbatim/novel/partial) + novelty score. Cap 8 for popup-FIFO bounded rendering.">
-            <div style="color:#f59e0b;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🎤 MAX NOVELTY</div>
+            <div class="sub-head or">🎤 MAX NOVELTY</div>
             <div id="d-comp-maxnov-text" style="color:#22c55e;font-size:10px;max-height:32px;overflow:hidden;text-overflow:ellipsis;">—</div>
-            <div>score: <span id="d-comp-maxnov-score" style="color:#888;">—</span></div>
+            <div>score: <span id="d-comp-maxnov-score" class="c-dim">—</span></div>
           </div>
         </div>
         <div id="d-comp-tail" style="margin-top:8px;color:#555;font-size:10px;max-height:80px;overflow-y:auto;border-top:1px dashed #1a1a1a;padding-top:6px;"></div>
       </div>
     </div>
 
-    <div class="card consciousness-panel" style="margin-top:12px;" title="Word-creation candidates — when emitWordDirect rejects an emission because no candidate cleared the signal floor, the runner-up's component-bigram is captured here as a 'tip-of-tongue' compound. Children invent novel compounds (moonbeam, sunflower) when co-activation count exceeds an internal threshold (Pinker 1989 overregularization theory). The promotion mechanism fires _teachWordDefinition once count ≥ 10.">
+    <div class="card consciousness-panel stack" title="Word-creation candidates — when emitWordDirect rejects an emission because no candidate cleared the signal floor, the runner-up's component-bigram is captured here as a 'tip-of-tongue' compound. Children invent novel compounds (moonbeam, sunflower) when co-activation count exceeds an internal threshold (Pinker 1989 overregularization theory). The promotion mechanism fires _teachWordDefinition once count ≥ 10.">
       <div class="card-title">🗣 Word-Creation Tip-of-Tongue</div>
-      <div id="d-word-cand" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;max-height:200px;overflow-y:auto;">
-        <div id="d-word-cand-list" style="color:#aaa;font-size:11px;"></div>
-        <div id="d-word-cand-empty" style="color:#555;font-size:10px;font-style:italic;">No candidates yet — emission rejections haven't produced a tip-of-tongue compound. Either chat hasn't fired enough OR signal floor is too lenient.</div>
+      <div id="d-word-cand" class="panel scroll-200">
+        <div id="d-word-cand-list" class="fs11"></div>
+        <div id="d-word-cand-empty" class="empty-note">No candidates yet — emission rejections haven't produced a tip-of-tongue compound. Either chat hasn't fired enough OR signal floor is too lenient.</div>
       </div>
     </div>
 
-    <div class="card consciousness-panel" style="margin-top:12px;" title="SPEAK speech-pipeline health — unified word_motor basin separability (one global band, one bucket per unique word — WMB 2026-07-14; frozen cellSize from SPEAK.1; weight-mass ratio from the SPEAK.2 renorm: ratio near 1 = uniform = separable, high = one basin dominating) + reject-to-silence coherence-floor stats (SPEAK.9) + best-of-N rerank. Catches separability regression at G4 instead of G9 salad.">
+    <div class="card consciousness-panel stack" title="SPEAK speech-pipeline health — unified word_motor basin separability (one global band, one bucket per unique word — WMB 2026-07-14; frozen cellSize from SPEAK.1; weight-mass ratio from the SPEAK.2 renorm: ratio near 1 = uniform = separable, high = one basin dominating) + reject-to-silence coherence-floor stats (SPEAK.9) + best-of-N rerank. Catches separability regression at G4 instead of G9 salad.">
       <div class="card-title">🗣 Speech Health (SPEAK) — separability + coherence floor</div>
-      <div id="d-speech-health" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;max-height:220px;overflow-y:auto;">
-        <div id="d-speech-sep" style="color:#aaa;font-size:11px;"></div>
+      <div id="d-speech-health" class="panel scroll-220">
+        <div id="d-speech-sep" class="fs11"></div>
         <div id="d-speech-floor" style="color:#00e5ff;font-size:11px;margin-top:6px;"></div>
-        <div id="d-speech-empty" style="color:#555;font-size:10px;font-style:italic;">No speech-health data yet — populates after the first word-emission teach phase.</div>
+        <div id="d-speech-empty" class="empty-note">No speech-health data yet — populates after the first word-emission teach phase.</div>
 
         <!-- IS SHE SPEAKING FROM HER OWN WEIGHTS?
              This block is the EVIDENCE answer to that question. It replaced a
@@ -851,51 +915,51 @@
           </div>
           <div id="d-voice-verdict" style="font-size:11px;color:#555;">unmeasured</div>
           <div id="d-voice-detail" style="font-size:10px;color:#777;margin-top:3px;line-height:1.5;"></div>
-          <div id="d-voice-reject" style="font-size:10px;color:#777;margin-top:3px;"></div>
-          <div id="d-voice-curiosity" style="font-size:10px;color:#777;margin-top:3px;"></div>
+          <div id="d-voice-reject" class="art-row"></div>
+          <div id="d-voice-curiosity" class="art-row"></div>
           <!-- Her ART. Both systems shipped and work; neither was rendered, so
                "is practice improving her hand?" and "are my verdicts landing?"
                were both unanswerable from this page. -->
-          <div id="d-art-practice" style="font-size:10px;color:#777;margin-top:3px;"></div>
-          <div id="d-art-feedback" style="font-size:10px;color:#777;margin-top:3px;"></div>
+          <div id="d-art-practice" class="art-row"></div>
+          <div id="d-art-feedback" class="art-row"></div>
           <!-- EYEPIN.3 — WHAT SHE IS LOOKING AT, AND WHY. The defect this row
                exists for was invisible to every other counter on this card:
                383/383 drawn with all error fields 0, while every frame was the
                same subject. `pin` climbing is a finding about her THOUGHT
                CHAIN, not her art. -->
-          <div id="d-art-eye" style="font-size:10px;color:#777;margin-top:3px;"></div>
-          <div id="d-art-eye-recent" style="font-size:10px;color:#666;margin-top:2px;"></div>
+          <div id="d-art-eye" class="art-row"></div>
+          <div id="d-art-eye-recent" class="row-note"></div>
           <!-- LOOKBACKOFF.1 — the LOOK lane had NO row at all, which is how it
                spent the shared anonymous Pollinations quota for hours while the
                operator's own "show me an apple" came back "(image generation
                failed)". 108 of 130 attempts were HTTP 429 and nothing on this
                page said so. -->
-          <div id="d-art-look" style="font-size:10px;color:#777;margin-top:3px;"></div>
+          <div id="d-art-look" class="art-row"></div>
           <!-- VMUSE.5.B — what she READS BACK off the relation channels. This
                row exists before the consumers lean on it: a high `flat` count
                early is the gate working, not a fault. -->
-          <div id="d-art-relation" style="font-size:10px;color:#777;margin-top:3px;"></div>
+          <div id="d-art-relation" class="art-row"></div>
         </div>
       </div>
     </div>
 
-    <div class="card consciousness-panel" style="margin-top:12px;" title="Chat-time deep Hebbian and dream-recombination consolidation. Both are server-side write paths that previously had no operator visibility. Chat-Hebbian errors are no longer swallowed silently — errors count + lastError surface here.">
+    <div class="card consciousness-panel stack" title="Chat-time deep Hebbian and dream-recombination consolidation. Both are server-side write paths that previously had no operator visibility. Chat-Hebbian errors are no longer swallowed silently — errors count + lastError surface here.">
       <div class="card-title">💬 Chat-Time + Dream-Time Learning</div>
-      <div id="d-chat-dream" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;max-height:200px;overflow-y:auto;">
+      <div id="d-chat-dream" class="panel scroll-200">
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">
           <div title="Per chat turn the user→Unity bigrams Hebbian-bind into the cortex at reps:1 (lighter than curriculum but still durable). turns counts dispatches, totalPairs counts pair-fires across all turns. Errors should stay at 0 — non-zero means the throttled-warn fired.">
-            <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">💬 CHAT-HEBBIAN</div>
-            <div>turns: <span id="d-chat-turns" style="color:#22c55e;">0</span></div>
-            <div>pairs: <span id="d-chat-pairs" style="color:#a855f7;">0</span></div>
-            <div>last: <span id="d-chat-lastts" style="color:#666;font-size:10px;">—</span></div>
-            <div>errors: <span id="d-chat-errors" style="color:#888;">0</span></div>
+            <div class="sub-head cy">💬 CHAT-HEBBIAN</div>
+            <div>turns: <span id="d-chat-turns" class="c-ok">0</span></div>
+            <div>pairs: <span id="d-chat-pairs" class="c-pu">0</span></div>
+            <div>last: <span id="d-chat-lastts" class="c-mute fs10">—</span></div>
+            <div>errors: <span id="d-chat-errors" class="c-dim">0</span></div>
             <div id="d-chat-lasterr" style="color:#ff4d9a;font-size:10px;margin-top:2px;max-height:32px;overflow-y:auto;"></div>
           </div>
           <div title="During dream cycles the curriculum recombines novel emissions (cosine ≥ DREAM_RECOMB_COHERENCE_MIN=0.20) and Hebbian-binds them at low reps. consolidatedSamples ring (cap 20) lets operator audit WHAT was consolidated. totalDreamed = recombination attempts, novelConsolidated = how many passed the coherence gate.">
-            <div style="color:#a855f7;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🌙 DREAM-RECOMB</div>
-            <div>dreamed: <span id="d-dream-total" style="color:#22c55e;">0</span></div>
-            <div>consolidated: <span id="d-dream-novel" style="color:#a855f7;">0</span></div>
-            <div>last: <span id="d-dream-lastts" style="color:#666;font-size:10px;">—</span></div>
+            <div class="sub-head pu">🌙 DREAM-RECOMB</div>
+            <div>dreamed: <span id="d-dream-total" class="c-ok">0</span></div>
+            <div>consolidated: <span id="d-dream-novel" class="c-pu">0</span></div>
+            <div>last: <span id="d-dream-lastts" class="c-mute fs10">—</span></div>
             <div id="d-dream-samples" style="color:#666;font-size:10px;margin-top:4px;max-height:40px;overflow-y:auto;border-top:1px dashed #1a1a1a;padding-top:2px;"></div>
           </div>
         </div>
@@ -905,93 +969,93 @@
     <!-- WS backpressure metrics — live ws.bufferedAmount, drops/absorbs
          counters, drops/sec rolling rate, threshold marker. Bounded
          max-height + scoped class for parity with consciousness panels. -->
-    <div class="card utilization-panel" style="margin-top:12px;" title="NEURON UTILIZATION — distinguishes per-tick sparse coding (healthy: cortex fires ~1-2% per tick by design) from never-recruited dead volume. Lifetime = fraction of language-cortex neurons that have fired AT LEAST ONCE since boot (CPU-owned bitset, sampled every 5s). Weight recruitment = fraction of post-neuron rows carrying any synapse mass per projection (authoritative CPU master, scanned every 5min). Main-brain lifetime bitsets await donor-side readback.">
+    <div class="card utilization-panel stack" title="NEURON UTILIZATION — distinguishes per-tick sparse coding (healthy: cortex fires ~1-2% per tick by design) from never-recruited dead volume. Lifetime = fraction of language-cortex neurons that have fired AT LEAST ONCE since boot (CPU-owned bitset, sampled every 5s). Weight recruitment = fraction of post-neuron rows carrying any synapse mass per projection (authoritative CPU master, scanned every 5min). Main-brain lifetime bitsets await donor-side readback.">
       <div class="card-title">🧮 Neuron Utilization</div>
-      <div style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;">
-        <div>language cortex lifetime fired: <span id="d-ut-lang" style="color:#22c55e;">—</span> <span id="d-ut-langn" style="color:#666;font-size:10px;"></span></div>
-        <div id="d-ut-regions" style="max-height:120px;overflow-y:auto;font-size:10px;color:#888;margin-top:4px;"></div>
-        <div style="margin-top:6px;">weight recruitment (CSR rows): <span id="d-ut-wr" style="color:#00e5ff;">—</span></div>
-        <div id="d-ut-wrlist" style="max-height:120px;overflow-y:auto;font-size:10px;color:#888;margin-top:4px;"></div>
+      <div class="panel">
+        <div>language cortex lifetime fired: <span id="d-ut-lang" class="c-ok">—</span> <span id="d-ut-langn" class="c-mute fs10"></span></div>
+        <div id="d-ut-regions" class="list-scroll"></div>
+        <div class="mt6">weight recruitment (CSR rows): <span id="d-ut-wr" class="c-cy">—</span></div>
+        <div id="d-ut-wrlist" class="list-scroll"></div>
       </div>
     </div>
-    <div class="card ws-pressure-panel" style="margin-top:12px;" title="WebSocket backpressure between the brain-server and its GPU donor (browser compute.html or the native donor app). Teaching is GPU-only: teach patterns + Hebbian updates ride a governed binary lane — quadratic brake on measured buffer/RTT, atomic clear→write→hebbian groups, and a stale-guard that SUPPRESSES any Hebbian whose pattern didn't land (never trains on a stale pattern). Byte-identical repeated payloads collapse to ~30-byte repeat frames on donors ≥0.3.15. Sheds/suppressions here are honest loss accounting, not silent corruption; the 500MB threshold + 30s BLOCK-not-DROP guard the bulk upload path.">
+    <div class="card ws-pressure-panel stack" title="WebSocket backpressure between the brain-server and its GPU donor (browser compute.html or the native donor app). Teaching is GPU-only: teach patterns + Hebbian updates ride a governed binary lane — quadratic brake on measured buffer/RTT, atomic clear→write→hebbian groups, and a stale-guard that SUPPRESSES any Hebbian whose pattern didn't land (never trains on a stale pattern). Byte-identical repeated payloads collapse to ~30-byte repeat frames on donors ≥0.3.15. Sheds/suppressions here are honest loss accounting, not silent corruption; the 500MB threshold + 30s BLOCK-not-DROP guard the bulk upload path.">
       <div class="card-title">📡 WS Backpressure (GPU client)</div>
-      <div id="d-ws-ws" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;max-height:240px;overflow-y:auto;">
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
+      <div id="d-ws-ws" class="panel scroll-240">
+        <div class="grid-auto">
           <div title="Live ws.bufferedAmount on the GPU client socket. Buffer bar turns yellow at 50% threshold, red at 80%. compute.html status: 'connected' = healthy, 'disconnected' = Chrome process closed (auto-respawn fires after 2s up to 3× per 5min).">
-            <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🔌 CONNECTION</div>
-            <div>compute.html: <span id="d-ws-connected" style="color:#888;">—</span></div>
-            <div>buffer: <span id="d-ws-buffer" style="color:#22c55e;">0.0</span> / <span id="d-ws-threshold" style="color:#666;">500</span> MB</div>
+            <div class="sub-head cy">🔌 CONNECTION</div>
+            <div>compute.html: <span id="d-ws-connected" class="c-dim">—</span></div>
+            <div>buffer: <span id="d-ws-buffer" class="c-ok">0.0</span> / <span id="d-ws-threshold" class="c-mute">500</span> MB</div>
             <div style="background:#1a1a1a;border-radius:3px;height:6px;margin-top:4px;overflow:hidden;">
               <div id="d-ws-bufferbar" style="background:#22c55e;height:100%;width:0%;transition:width 0.3s,background 0.3s;"></div>
             </div>
           </div>
           <div title="Hebbian frames dropped after the 30s safety timeout — counts as CRITICAL because GPU shadow now diverges from CPU CSR. 'shadow: dirty' means a full resync is scheduled before next teach phase fires; 'clean' means CPU and GPU agree. Last-drop timestamp shows when divergence last occurred.">
-            <div style="color:#a855f7;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">📤 DROPS (after timeout)</div>
-            <div>total: <span id="d-ws-drops" style="color:#ff4d9a;">0</span></div>
-            <div>rate: <span id="d-ws-droprate" style="color:#f59e0b;">0.00</span> / sec</div>
-            <div>last: <span id="d-ws-lastdrop" style="color:#888;font-size:10px;">never</span></div>
-            <div>shadow: <span id="d-ws-shadow" style="color:#22c55e;">clean</span></div>
+            <div class="sub-head pu">📤 DROPS (after timeout)</div>
+            <div>total: <span id="d-ws-drops" class="c-pk">0</span></div>
+            <div>rate: <span id="d-ws-droprate" class="c-warn">0.00</span> / sec</div>
+            <div>last: <span id="d-ws-lastdrop" class="c-dim fs10">never</span></div>
+            <div>shadow: <span id="d-ws-shadow" class="c-ok">clean</span></div>
           </div>
           <div title="Hebbian frames that triggered backpressure (buffer > threshold) but the await loop drained the buffer within 30s — frame eventually delivered, no Hebbian update lost. High absorb count + zero drop count = Unity is teaching faster than the WS can ship but the safety margin holds.">
-            <div style="color:#22c55e;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">⏳ ABSORBS (drained)</div>
-            <div>total: <span id="d-ws-absorbs" style="color:#22c55e;">0</span></div>
-            <div style="font-size:10px;color:#666;margin-top:2px;">no Hebbian update lost</div>
+            <div class="sub-head gr">⏳ ABSORBS (drained)</div>
+            <div>total: <span id="d-ws-absorbs" class="c-ok">0</span></div>
+            <div class="row-note">no Hebbian update lost</div>
           </div>
           <div title="OS-level ENOBUFS (kernel ran out of buffer space) errors on the WS socket. First 3 occurrences are logged with full context; subsequent are silenced to avoid log flooding. High counts mean the OS can't keep up — usually a hardware bottleneck rather than a brain-software issue.">
-            <div style="color:#f59e0b;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">⚠ ENOBUFS (OS-level)</div>
-            <div>total: <span id="d-ws-enobufs" style="color:#f59e0b;">0</span></div>
-            <div style="font-size:10px;color:#666;margin-top:2px;">first 3 logged then silenced</div>
+            <div class="sub-head or">⚠ ENOBUFS (OS-level)</div>
+            <div>total: <span id="d-ws-enobufs" class="c-warn">0</span></div>
+            <div class="row-note">first 3 logged then silenced</div>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="card emit-diagnostic-panel" style="margin-top:12px;" title="Failed-emission diagnostic. When the chat path returns blank or single-word, this panel surfaces WHY. `bestMean` is the highest word-bucket activation the emit attempt found; `floor` is the adaptive signal-floor it had to clear. If bestMean &lt; floor, the emission was rejected as noise. `ema` is the rolling average of accepted bestMean values (alpha=0.05) — the floor itself is `max(NOISE_FLOOR=0.001, ema × 0.5)` once the EMA has warmed up over 20 samples. age = time since the last rejection event. When age is rising past minutes, no recent rejections have fired — emission is healthy.">
+    <div class="card emit-diagnostic-panel stack" title="Failed-emission diagnostic. When the chat path returns blank or single-word, this panel surfaces WHY. `bestMean` is the highest word-bucket activation the emit attempt found; `floor` is the adaptive signal-floor it had to clear. If bestMean &lt; floor, the emission was rejected as noise. `ema` is the rolling average of accepted bestMean values (alpha=0.05) — the floor itself is `max(NOISE_FLOOR=0.001, ema × 0.5)` once the EMA has warmed up over 20 samples. age = time since the last rejection event. When age is rising past minutes, no recent rejections have fired — emission is healthy.">
       <div class="card-title">🎤 Emit Diagnostic (silent-fail tracer)</div>
-      <div id="d-emit-diagnostic" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;">
+      <div id="d-emit-diagnostic" class="panel">
         <div style="color:#666;font-size:10px;margin-bottom:6px;">Surfaces cortexCluster._lastEmitRejection — set by emitWordDirect when no word bucket clears the adaptive signal floor.</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
+        <div class="grid-auto">
           <div title="Last rejection reason. 'no-best-word' = no candidate bucket found ANY signal. 'below-signal-floor' = candidate found but its mean activation was beneath the adaptive floor (treated as noise). 'none yet' = brain hasn't rejected an emission since boot — emit path is healthy.">
-            <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">⛔ LAST REJECTION</div>
-            <div>reason: <span id="d-emit-reason" style="color:#888;">—</span></div>
-            <div>age: <span id="d-emit-age" style="color:#888;">—</span></div>
+            <div class="sub-head cy">⛔ LAST REJECTION</div>
+            <div>reason: <span id="d-emit-reason" class="c-dim">—</span></div>
+            <div>age: <span id="d-emit-age" class="c-dim">—</span></div>
           </div>
           <div title="Best mean activation found in the rejected emit attempt + the adaptive floor it had to clear. When bestMean is close to floor, training is on the edge of producing emissions — usually means the structural binding is landing but vocab grounding is still sparse. When bestMean is near zero, sem state was flat — usually means injection wasn't propagating or motor weights are wiped.">
-            <div style="color:#a855f7;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">📊 SIGNAL VS FLOOR</div>
-            <div>bestMean: <span id="d-emit-bestmean" style="color:#f59e0b;">0.000</span></div>
-            <div>floor: <span id="d-emit-floor" style="color:#888;">0.000</span></div>
+            <div class="sub-head pu">📊 SIGNAL VS FLOOR</div>
+            <div>bestMean: <span id="d-emit-bestmean" class="c-warn">0.000</span></div>
+            <div>floor: <span id="d-emit-floor" class="c-dim">0.000</span></div>
           </div>
           <div title="Rolling EMA of accepted bestMean values (alpha=0.05). The adaptive floor is derived from this — once 20 samples have landed, floor = max(NOISE_FLOOR=0.001, EMA × 0.5). EMA climbing = emission signal getting stronger over time; EMA decaying = signal weakening (basin saturation, weight drift).">
-            <div style="color:#22c55e;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">📈 ADAPTIVE EMA</div>
-            <div>EMA: <span id="d-emit-ema" style="color:#22c55e;">0.000</span></div>
-            <div>samples: <span id="d-emit-samples" style="color:#888;">0</span></div>
+            <div class="sub-head gr">📈 ADAPTIVE EMA</div>
+            <div>EMA: <span id="d-emit-ema" class="c-ok">0.000</span></div>
+            <div>samples: <span id="d-emit-samples" class="c-dim">0</span></div>
           </div>
           <div title="Current adaptive floor + total accepted-emission sample count. Once samples ≥ 20, the floor switches from the fixed NOISE_FLOOR to the EMA-derived adaptive value. Higher sample count = floor has had more data to calibrate against.">
-            <div style="color:#ff4d9a;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🎚 LIVE FLOOR</div>
-            <div>current: <span id="d-emit-livefloor" style="color:#ff4d9a;">0.000</span></div>
-            <div style="font-size:10px;color:#666;margin-top:2px;">noise-floor=0.001 · adaptive=ema×0.5</div>
+            <div class="sub-head c-pk">🎚 LIVE FLOOR</div>
+            <div>current: <span id="d-emit-livefloor" class="c-pk">0.000</span></div>
+            <div class="row-note">noise-floor=0.001 · adaptive=ema×0.5</div>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="card" style="margin-top:12px;" title="Per-cluster firing rate breakdown — how active each of the 7 brain clusters is right now. Cortex carries language + perception + working memory; cerebellum does error correction; hippocampus holds episodic memory; amygdala drives emotion; basal ganglia selects actions; hypothalamus enforces homeostasis; mystery (Ψ) modulates global gain. A healthy brain has all clusters firing at modest steady-state rates; pathological states show flatlines or saturation.">
+    <div class="card stack" title="Per-cluster firing rate breakdown — how active each of the 7 brain clusters is right now. Cortex carries language + perception + working memory; cerebellum does error correction; hippocampus holds episodic memory; amygdala drives emotion; basal ganglia selects actions; hypothalamus enforces homeostasis; mystery (Ψ) modulates global gain. A healthy brain has all clusters firing at modest steady-state rates; pathological states show flatlines or saturation.">
       <div class="card-title">Cluster Activity</div>
       <div id="d-clusters"></div>
     </div>
 
-    <div class="card" style="margin-top:12px;" title="Privacy-respecting aggregate counters only — message counts, last-activity timestamps, active-user sweeps. Actual user text is NEVER displayed here per the privacy model in docs/WEBSOCKET.md. Operator can see HOW MUCH chat is happening without seeing WHAT was said.">
+    <div class="card stack" title="Privacy-respecting aggregate counters only — message counts, last-activity timestamps, active-user sweeps. Actual user text is NEVER displayed here per the privacy model in docs/WEBSOCKET.md. Operator can see HOW MUCH chat is happening without seeing WHAT was said.">
       <div class="card-title">Conversation Activity (aggregate)</div>
-      <div id="d-conversations" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.8;">
+      <div id="d-conversations" class="panel lh18s">
         <div style="color:#555;font-size:10px;margin-bottom:6px;">Per-session activity counters only — user text is private and never displayed here. See docs/WEBSOCKET.md "Privacy Model".</div>
-        <div>🗣 Messages this session: <span id="d-conv-count" style="color:#22c55e;">0</span></div>
-        <div>⏱ Last activity: <span id="d-conv-last" style="color:#ff4d9a;">—</span></div>
-        <div>👥 Active users last 60s: <span id="d-conv-active" style="color:#00e5ff;">0</span></div>
+        <div>🗣 Messages this session: <span id="d-conv-count" class="c-ok">0</span></div>
+        <div>⏱ Last activity: <span id="d-conv-last" class="c-pk">—</span></div>
+        <div>👥 Active users last 60s: <span id="d-conv-active" class="c-cy">0</span></div>
       </div>
     </div>
 
-    <div class="card" style="margin-top:12px;" title="Tail of the dashboard's WebSocket message stream — connection events, state-update timestamps, error traces. Useful for debugging why a panel isn't updating or why the brain server connection dropped. Capped at the last few hundred lines.">
+    <div class="card stack" title="Tail of the dashboard's WebSocket message stream — connection events, state-update timestamps, error traces. Useful for debugging why a panel isn't updating or why the brain server connection dropped. Capped at the last few hundred lines.">
       <div class="card-title">Process Log</div>
       <div class="log" id="d-log"></div>
     </div>
@@ -1001,9 +1065,9 @@
          sliders (buffer % + stability minutes). The auto-relearn must be
          admin-controllable with a buffer so a single donor
          connecting/disconnecting never downgrades the brain. -->
-    <div class="card admin-only" style="margin-top:12px;" title="Community compute = the sum of all connected donor GPUs' VRAM. The brain auto-resizes/relearns to a bigger size only when the community crosses a milestone tier AND holds past the dead-zone buffer + stability window. Toggle OFF to freeze the size. Down-protection: a donor leaving never downgrades a running brain.">
-      <div class="card-title">⚡ Community Compute &amp; Auto-Scale <span style="color:#555;font-size:9px;">(admin · all donor GPUs)</span></div>
-      <div id="d-autoscale" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.7;">
+    <div class="card admin-only stack" title="Community compute = the sum of all connected donor GPUs' VRAM. The brain auto-resizes/relearns to a bigger size only when the community crosses a milestone tier AND holds past the dead-zone buffer + stability window. Toggle OFF to freeze the size. Down-protection: a donor leaving never downgrades a running brain.">
+      <div class="card-title">⚡ Community Compute &amp; Auto-Scale <span class="c-faint fs9">(admin · all donor GPUs)</span></div>
+      <div id="d-autoscale" class="panel lh17">
         <!-- Insufficient-compute alert — shows when connected compute can't
              hold the running neuron count. Tells the operator WHY the brain may
              be paused / about to rectify. -->
@@ -1011,41 +1075,41 @@
           <span style="color:#ff6b6b;font-weight:700;">⚠ INSUFFICIENT COMPUTE</span> — <span id="d-as-alert-text">connected GPUs can't hold the current neuron count.</span>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px;">
-          <div title="Live count of connected donor GPUs sharing compute.">donors: <span id="d-as-donors" style="color:#22c55e;">0</span></div>
-          <div id="d-batch-timing-wrap" style="grid-column:1/-1;" title="BATCH ROUND TRIP, SPLIT HONESTLY. The brain measures dispatch-to-reply and calls that the round trip; on its own that number cannot say where the time went. A donor that reports its own timing splits it three ways: queue (the batch sat behind other work on the donor — it is saturated, not slow), compute (the GPU math itself), and the remainder, which is genuinely wire plus any blocked event loop. This matters because the fixes are opposite: batching and scheduling help queue time, only compute time is a reason to touch the kernels. With a donor on localhost the wire is nearly free, so a large round trip is almost entirely one of the first two. 'donor not reporting' means a pre-0.3.31 donor, and the split is unavailable rather than zero.">batch round-trip: <span id="d-batch-timing" style="color:#888;">—</span></div>
-          <div title="Sum of all connected donors' reported VRAM.">community VRAM: <span id="d-as-vram" style="color:#00e5ff;">0</span> MB</div>
-          <div title="SIZE DRIVER — max(operator baseline, smallest committed donor VRAM). Data-parallel: every replica donor holds the FULL brain, so this (not the community sum) bounds brain size.">size driver: <span id="d-as-driver" style="color:#00e5ff;">0</span> MB</div>
-          <div title="Neurons the size driver can hold ((driver x 0.75 − 2048MB) / bytes-per-neuron). Milestone tiers gate on this capacity.">capacity: <span id="d-as-cap" style="color:#a855f7;">0</span></div>
-          <div title="Highest tier the pool currently qualifies for (raw thresholds).">tier qualifies: <span id="d-as-tier" style="color:#a855f7;">0</span></div>
-          <div title="Tier the brain is ACTUALLY sized/trained at right now.">tier running: <span id="d-as-running" style="color:#f59e0b;">0</span></div>
-          <div title="A higher tier held past the dead-zone, counting down the stability window before a resize fires. 'none' = stable.">pending: <span id="d-as-pending" style="color:#888;">none</span></div>
-          <div title="Donor GPUs holding a FULL brain replica beyond the primary — these share the compute. 0 = single-GPU; N = N+1 GPUs running the brain in parallel.">replicas: <span id="d-as-replicas" style="color:#22c55e;">0</span></div>
-          <div title="When the replica GPU shadows were last re-merged to the authoritative CPU master (data-parallel delta-merge re-broadcast).">last merge: <span id="d-as-merge" style="color:#888;">—</span></div>
+          <div title="Live count of connected donor GPUs sharing compute.">donors: <span id="d-as-donors" class="c-ok">0</span></div>
+          <div id="d-batch-timing-wrap" style="grid-column:1/-1;" title="BATCH ROUND TRIP, SPLIT HONESTLY. The brain measures dispatch-to-reply and calls that the round trip; on its own that number cannot say where the time went. A donor that reports its own timing splits it three ways: queue (the batch sat behind other work on the donor — it is saturated, not slow), compute (the GPU math itself), and the remainder, which is genuinely wire plus any blocked event loop. This matters because the fixes are opposite: batching and scheduling help queue time, only compute time is a reason to touch the kernels. With a donor on localhost the wire is nearly free, so a large round trip is almost entirely one of the first two. 'donor not reporting' means a pre-0.3.31 donor, and the split is unavailable rather than zero.">batch round-trip: <span id="d-batch-timing" class="c-dim">—</span></div>
+          <div title="Sum of all connected donors' reported VRAM.">community VRAM: <span id="d-as-vram" class="c-cy">0</span> MB</div>
+          <div title="SIZE DRIVER — max(operator baseline, smallest committed donor VRAM). Data-parallel: every replica donor holds the FULL brain, so this (not the community sum) bounds brain size.">size driver: <span id="d-as-driver" class="c-cy">0</span> MB</div>
+          <div title="Neurons the size driver can hold ((driver x 0.75 − 2048MB) / bytes-per-neuron). Milestone tiers gate on this capacity.">capacity: <span id="d-as-cap" class="c-pu">0</span></div>
+          <div title="Highest tier the pool currently qualifies for (raw thresholds).">tier qualifies: <span id="d-as-tier" class="c-pu">0</span></div>
+          <div title="Tier the brain is ACTUALLY sized/trained at right now.">tier running: <span id="d-as-running" class="c-warn">0</span></div>
+          <div title="A higher tier held past the dead-zone, counting down the stability window before a resize fires. 'none' = stable.">pending: <span id="d-as-pending" class="c-dim">none</span></div>
+          <div title="Donor GPUs holding a FULL brain replica beyond the primary — these share the compute. 0 = single-GPU; N = N+1 GPUs running the brain in parallel.">replicas: <span id="d-as-replicas" class="c-ok">0</span></div>
+          <div title="When the replica GPU shadows were last re-merged to the authoritative CPU master (data-parallel delta-merge re-broadcast).">last merge: <span id="d-as-merge" class="c-dim">—</span></div>
         </div>
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:12px;user-select:none;">
           <input type="checkbox" id="d-as-enabled" style="width:14px;height:14px;accent-color:#22c55e;flex-shrink:0;">
-          <span>Auto-scale enabled <span style="color:#666;">(OFF = brain never auto-resizes; operator drives any size change)</span></span>
+          <span>Auto-scale enabled <span class="c-mute">(OFF = brain never auto-resizes; operator drives any size change)</span></span>
         </label>
-        <div style="margin-bottom:12px;">
-          <label style="font-size:10px;color:#888;display:block;margin-bottom:2px;">Dead-zone buffer: <span id="d-as-buffer-val" style="color:#00e5ff;">20</span>% <span style="color:#666;">— compute must exceed a tier gate by this margin before resize (anti-thrash; one donor flapping never trips it)</span></label>
+        <div class="mb12">
+          <label class="slider-label">Dead-zone buffer: <span id="d-as-buffer-val" class="c-cy">20</span>% <span class="c-mute">— compute must exceed a tier gate by this margin before resize (anti-thrash; one donor flapping never trips it)</span></label>
           <input type="range" id="d-as-buffer" min="0" max="100" step="5" value="20" style="width:100%;accent-color:#00e5ff;">
         </div>
-        <div style="margin-bottom:12px;">
-          <label style="font-size:10px;color:#888;display:block;margin-bottom:2px;">Stability hold: <span id="d-as-stability-val" style="color:#f59e0b;">5</span> min <span style="color:#666;">— a higher tier must hold this long past the buffer before the resize+retrain fires</span></label>
+        <div class="mb12">
+          <label class="slider-label">Stability hold: <span id="d-as-stability-val" class="c-warn">5</span> min <span class="c-mute">— a higher tier must hold this long past the buffer before the resize+retrain fires</span></label>
           <input type="range" id="d-as-stability" min="0" max="60" step="1" value="5" style="width:100%;accent-color:#f59e0b;">
         </div>
         <div style="border-top:1px solid #1f2937;margin:6px 0 10px 0;padding-top:10px;">
-          <div style="color:#888;font-size:10px;letter-spacing:0.5px;margin-bottom:8px;">DOWNSCALE RECTIFY <span style="color:#666;">— only when compute genuinely can't hold the running size (buffers for the buffers)</span></div>
+          <div style="color:#888;font-size:10px;letter-spacing:0.5px;margin-bottom:8px;">DOWNSCALE RECTIFY <span class="c-mute">— only when compute genuinely can't hold the running size (buffers for the buffers)</span></div>
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:10px;user-select:none;">
             <input type="checkbox" id="d-as-autodown" style="width:14px;height:14px;accent-color:#ef4444;flex-shrink:0;">
-            <span>Auto-downscale on sustained compute loss <span style="color:#666;">(OFF = just alert + wait; never auto-shrink. Retrains at a smaller size — loses current learning)</span></span>
+            <span>Auto-downscale on sustained compute loss <span class="c-mute">(OFF = just alert + wait; never auto-shrink. Retrains at a smaller size — loses current learning)</span></span>
           </label>
-          <div style="margin-bottom:10px;">
-            <label style="font-size:10px;color:#888;display:block;margin-bottom:2px;">Downscale buffer: <span id="d-as-downbuf-val" style="color:#ef4444;">35</span>% <span style="color:#666;">— compute must fall THIS far below the running tier's floor before a shrink is even considered (deeper than the up-buffer)</span></label>
+          <div class="mb10">
+            <label class="slider-label">Downscale buffer: <span id="d-as-downbuf-val" class="c-err">35</span>% <span class="c-mute">— compute must fall THIS far below the running tier's floor before a shrink is even considered (deeper than the up-buffer)</span></label>
             <input type="range" id="d-as-downbuf" min="0" max="90" step="5" value="35" style="width:100%;accent-color:#ef4444;">
           </div>
-          <div style="margin-bottom:10px;">
-            <label style="font-size:10px;color:#888;display:block;margin-bottom:2px;">Downscale hold: <span id="d-as-downstab-val" style="color:#ef4444;">15</span> min <span style="color:#666;">— must stay collapsed this long (so a 10-person mass-disconnect that returns never shrinks the brain)</span></label>
+          <div class="mb10">
+            <label class="slider-label">Downscale hold: <span id="d-as-downstab-val" class="c-err">15</span> min <span class="c-mute">— must stay collapsed this long (so a 10-person mass-disconnect that returns never shrinks the brain)</span></label>
             <input type="range" id="d-as-downstab" min="0" max="120" step="1" value="15" style="width:100%;accent-color:#ef4444;">
           </div>
           <button id="d-as-manualdown" style="background:#3b0a0a;border:1px solid #ef4444;color:#fca5a5;font-family:monospace;font-size:10px;font-weight:700;padding:5px 12px;border-radius:4px;cursor:pointer;">⤓ Manual downscale now</button>
@@ -1056,7 +1120,7 @@
         <div style="border-top:1px solid #1f2937;margin:10px 0 0 0;padding-top:10px;">
           <button id="d-as-resync" style="background:#0a1f2a;border:1px solid #00e5ff;color:#7fe7ff;font-family:monospace;font-size:10px;font-weight:700;padding:5px 12px;border-radius:4px;cursor:pointer;">↻ Re-sync GPU shadow (clear DIRTY)</button>
           <span id="d-as-resync-status" style="margin-left:8px;font-size:10px;color:#555;"></span>
-          <div style="color:#6b7280;font-size:9px;margin-top:6px;line-height:1.5;">Weight-SAFE. Forces the cortex GPU mirror to re-upload from the intact CPU master to the currently-connected donor — clears a <code style="color:#00e5ff;">gpuShadowDirty</code> flag that's stuck because no donor has respawned. Touches no weights.</div>
+          <div style="color:#6b7280;font-size:9px;margin-top:6px;line-height:1.5;">Weight-SAFE. Forces the cortex GPU mirror to re-upload from the intact CPU master to the currently-connected donor — clears a <code class="c-cy">gpuShadowDirty</code> flag that's stuck because no donor has respawned. Touches no weights.</div>
         </div>
         <div style="color:#6b7280;font-size:9px;margin-top:8px;line-height:1.5;">Inside the stable band [downscale-floor … upscale-gate] the brain just keeps running at its current neuron count — donors come and go freely. A single donor (or 10) leaving NEVER downgrades the running brain unless compute stays collapsed below the floor past the downscale hold window.</div>
       </div>
@@ -1069,13 +1133,13 @@
          .admin-only CSS class so viewers never see it). A 200-line backlog
          arrives on connect; new lines stream in after. Lets the operator watch
          boot + the K→PhD walk exactly like the local PowerShell Log Tail. -->
-    <div class="card admin-only" style="margin-top:12px;" title="Live brain-server console (console.log/warn/error) streamed over the admin WS lane. Admin-only — the public donor/viewer lane never receives server logs. Backlog (last 200 lines) lands on connect; new lines append. This is the deployed-page equivalent of the local 'Unity Brain Log Tail' window.">
-      <div class="card-title">🖥 Server Console <span style="color:#555;font-size:9px;">(admin · live brain-server log)</span></div>
+    <div class="card admin-only stack" title="Live brain-server console (console.log/warn/error) streamed over the admin WS lane. Admin-only — the public donor/viewer lane never receives server logs. Backlog (last 200 lines) lands on connect; new lines append. This is the deployed-page equivalent of the local 'Unity Brain Log Tail' window.">
+      <div class="card-title">🖥 Server Console <span class="c-faint fs9">(admin · live brain-server log)</span></div>
       <div style="display:flex;gap:12px;align-items:center;margin:4px 0 8px 0;flex-wrap:wrap;">
-        <label style="font-size:10px;color:#888;cursor:pointer;user-select:none;"><input type="checkbox" id="d-srvlog-autoscroll" checked style="vertical-align:middle;accent-color:#22c55e;"> auto-scroll</label>
-        <label style="font-size:10px;color:#888;cursor:pointer;user-select:none;"><input type="checkbox" id="d-srvlog-errorsonly" style="vertical-align:middle;accent-color:#f59e0b;"> errors/warns only</label>
+        <label class="chk-label"><input type="checkbox" id="d-srvlog-autoscroll" checked style="vertical-align:middle;accent-color:#22c55e;"> auto-scroll</label>
+        <label class="chk-label"><input type="checkbox" id="d-srvlog-errorsonly" style="vertical-align:middle;accent-color:#f59e0b;"> errors/warns only</label>
         <button id="d-srvlog-clear" style="background:transparent;border:1px solid #374151;color:#9ca3af;font-family:monospace;font-size:9px;padding:2px 8px;border-radius:3px;cursor:pointer;">clear view</button>
-        <span style="font-size:10px;color:#555;margin-left:auto;">lines: <span id="d-srvlog-count" style="color:#22c55e;">0</span></span>
+        <span style="font-size:10px;color:#555;margin-left:auto;">lines: <span id="d-srvlog-count" class="c-ok">0</span></span>
       </div>
       <div class="log" id="d-srvlog" style="max-height:360px;color:#9ca3af;"></div>
     </div>
@@ -1083,8 +1147,8 @@
     <!-- PR.5 — Application Profiling (admin-only). Two halves per the spec:
          (1) the BRAIN's system-resource usage (hardware/network/throughput) and
          (2) per-client connection health so client↔brain issues are visible. -->
-    <div class="card admin-only profiling-section" style="margin-top:12px;" title="Live application profiling — system-resource usage of the brain (CPU / RAM / V8 heap / event-loop), network throughput + backpressure, GPU dispatch speed, and per-client connection health (RTT / bytes / buffered) so client↔brain issues surface here.">
-      <div class="card-title">📊 Application Profiling <span style="color:#555;font-size:9px;">(admin · live)</span><span id="d-prof-age" style="color:#555;font-size:9px;float:right;">—</span></div>
+    <div class="card admin-only profiling-section stack" title="Live application profiling — system-resource usage of the brain (CPU / RAM / V8 heap / event-loop), network throughput + backpressure, GPU dispatch speed, and per-client connection health (RTT / bytes / buffered) so client↔brain issues surface here.">
+      <div class="card-title">📊 Application Profiling <span class="c-faint fs9">(admin · live)</span><span id="d-prof-age" style="color:#555;font-size:9px;float:right;">—</span></div>
       <div class="profiling-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px;margin-top:8px;">
         <div class="profiling-card">
           <div class="profiling-h">🖥 System Resources</div>
@@ -1334,7 +1398,7 @@
       if (!v.alive) {
         if (details && !details.dataset.probeAppended) {
           details.dataset.probeAppended = '1';
-          details.innerHTML += ' <span style="color:#f59e0b;">Public snapshot also unreachable ('
+          details.innerHTML += ' <span class="c-warn">Public snapshot also unreachable ('
             + String(v.reason).slice(0, 120) + ') — the backend really does look down.</span>';
         }
         return;
@@ -1342,7 +1406,7 @@
       if (title) title.textContent = '⚠ Admin lane not authenticated — the brain is UP';
       if (details) {
         details.dataset.probeAppended = '';
-        details.innerHTML = 'The brain is <strong style="color:#22c55e;">alive and training</strong>'
+        details.innerHTML = 'The brain is <strong class="c-ok">alive and training</strong>'
           + ' — <code>' + v.teachPerMin.toLocaleString() + ' teach/min</code>'
           + ' · cell <code>' + v.cell + '</code>'
           + ' · build <code>' + v.build + '</code>'
@@ -1779,7 +1843,7 @@
         $('d-emotion-visual').innerHTML = `
           <div style="width:${gateWidth}%;height:8px;background:hsl(${hue},${sat}%,${light}%);border-radius:4px;
             box-shadow:0 0 ${psiGlow * 12}px hsl(${hue},${sat}%,${light}%);transition:all 0.5s;"></div>
-          <span style="font-size:10px;color:#555;">${m.gate.toFixed(2)}×</span>
+          <span class="perf-label">${m.gate.toFixed(2)}×</span>
         `;
         const desc = [];
         desc.push(`a=${m.arousal.toFixed(2)}`);
@@ -1820,7 +1884,7 @@
             const ema = Math.round(bt.roundTripEmaMs || 0);
             if (!bt.donorReports) {
               // Absence named as absence — never rendered as a zero share.
-              $bt.innerHTML = `<span style="color:#f59e0b;">${ema}ms ema</span>`
+              $bt.innerHTML = `<span class="c-warn">${ema}ms ema</span>`
                 + ` <span style="color:#777;">· donor not reporting (pre-0.3.31) — cannot split wire from compute</span>`;
             } else {
               const q = Math.round(bt.donorQueueWaitMs ?? 0);
@@ -1838,17 +1902,17 @@
         }
         $('d-perf').innerHTML = `
           <div>
-            <div style="font-size:10px;color:#555;">CPU</div>
+            <div class="perf-label">CPU</div>
             <div style="font-size:18px;font-weight:700;color:${cpuColor};">${p.cpuPercent}%</div>
             <div class="bar-wrap"><div class="bar" style="width:${p.cpuPercent}%;background:${cpuColor};height:100%;border-radius:2px;"></div></div>
           </div>
           <div>
-            <div style="font-size:10px;color:#555;">RAM</div>
+            <div class="perf-label">RAM</div>
             <div style="font-size:18px;font-weight:700;color:#a855f7;">${p.memUsedMB}MB</div>
             <div style="font-size:9px;color:#444;">heap ${p.nodeHeapMB ?? 0}MB / RSS ${p.memRssMB ?? 0}MB</div>
           </div>
           <div title="Donor GPU pool — the brain's REAL compute runs on connected donor browsers' WebGPU; the server box has no GPU. Each donor reports its own GPU (model / VRAM capacity / live throughput). WebGPU forbids reading true util%/VRAM-used (privacy), so throughput (Gneurons/sec) is the honest contribution signal. ★ = primary (holds the master weights).">
-            <div style="font-size:10px;color:#555;">DONOR GPUs</div>
+            <div class="perf-label">DONOR GPUs</div>
             <div style="font-size:18px;font-weight:700;color:${pool.donorCount > 0 ? '#22c55e' : '#ef4444'};">${pool.donorCount > 0 ? pool.donorCount : '<span style="font-size:13px;color:#888;">none</span>'}</div>
             ${pool.donorCount > 0
               ? `<div style="font-size:9px;color:#666;margin-top:2px;">${pool.totalVramMB.toLocaleString()} MB pooled · ${pool.aggGneuronsPerSec.toFixed(2)} Gn/s</div>
@@ -1859,7 +1923,7 @@
             <div style="font-size:8px;color:#444;margin-top:3px;">server box GPU: ${p.gpuName || 'none'}${vramQueryWorking ? ` · ${vramPct}% VRAM` : ''}</div>
           </div>
           <div>
-            <div style="font-size:10px;color:#555;">STEP TIME</div>
+            <div class="perf-label">STEP TIME</div>
             <div style="font-size:18px;font-weight:700;color:#00e5ff;">${p.stepTimeMs}ms</div>
             <div style="font-size:9px;color:#444;">${p.stepsPerSec?.toLocaleString() ?? 0} steps/sec</div>
           </div>
@@ -1870,11 +1934,11 @@
       if (s.growth) {
         const g = s.growth;
         $('d-growth').innerHTML = `
-          <div style="font-size:11px;"><span style="color:#ff4d9a;font-size:18px;font-weight:700;">${g.totalWords}</span><br><span style="color:#555;">words learned</span></div>
-          <div style="font-size:11px;"><span style="color:#a855f7;font-size:18px;font-weight:700;">${g.totalInteractions}</span><br><span style="color:#555;">interactions</span></div>
-          <div style="font-size:11px;"><span style="color:#f59e0b;font-size:18px;font-weight:700;">${g.totalEpisodes ?? 0}</span><br><span style="color:#555;">episodes</span></div>
-          <div style="font-size:11px;"><span style="color:#00e5ff;font-size:18px;font-weight:700;">${g.totalFrames?.toLocaleString() ?? 0}</span><br><span style="color:#555;">brain steps</span></div>
-          <div style="font-size:11px;"><span style="color:#22c55e;font-size:18px;font-weight:700;">${fmtDur(g.uptime)}</span><br><span style="color:#555;">uptime</span></div>
+          <div class="fs11"><span style="color:#ff4d9a;font-size:18px;font-weight:700;">${g.totalWords}</span><br><span class="c-faint">words learned</span></div>
+          <div class="fs11"><span style="color:#a855f7;font-size:18px;font-weight:700;">${g.totalInteractions}</span><br><span class="c-faint">interactions</span></div>
+          <div class="fs11"><span style="color:#f59e0b;font-size:18px;font-weight:700;">${g.totalEpisodes ?? 0}</span><br><span class="c-faint">episodes</span></div>
+          <div class="fs11"><span style="color:#00e5ff;font-size:18px;font-weight:700;">${g.totalFrames?.toLocaleString() ?? 0}</span><br><span class="c-faint">brain steps</span></div>
+          <div class="fs11"><span style="color:#22c55e;font-size:18px;font-weight:700;">${fmtDur(g.uptime)}</span><br><span class="c-faint">uptime</span></div>
         `;
       }
 
@@ -2292,7 +2356,7 @@
           if (lEl) {
             const top = names.slice(0, 12);
             lEl.innerHTML = top.map(n => `<div>${n}: ${(wr.matrices[n].pct ?? 0)}%</div>`).join('')
-              + (names.length > 12 ? `<div style="color:#555;">${names.length - 12} more…</div>` : '');
+              + (names.length > 12 ? `<div class="c-faint">${names.length - 12} more…</div>` : '');
           }
         }
       }
@@ -2405,7 +2469,7 @@
           $('d-mem-working-labels').innerHTML = work.itemLabels.map(it => {
             const safeLabel = (it.label || '').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
             const strengthSpan = (typeof it.strength === 'number')
-              ? `<span style="color:#555;"> (${it.strength.toFixed(2)})</span>`
+              ? `<span class="c-faint"> (${it.strength.toFixed(2)})</span>`
               : '';
             return `<span style="color:#aaa;">${safeLabel}</span>${strengthSpan}`;
           }).join('<br>');
@@ -2421,8 +2485,8 @@
         $('d-mem-t2-strength').textContent = (t2.avgConsolidationStrength ?? 0).toFixed(3);
         $('d-mem-t2-retr').textContent = (t2.totalRetrievals ?? 0).toLocaleString();
         if (Array.isArray(t2.top) && t2.top.length > 0) {
-          $('d-mem-t2-top').innerHTML = '<span style="color:#888;">top:</span> '
-            + t2.top.slice(0, 3).map(x => `<span style="color:#bbb;">${x.label}</span> <span style="color:#666;">(${x.strength})</span>`).join(' · ');
+          $('d-mem-t2-top').innerHTML = '<span class="c-dim">top:</span> '
+            + t2.top.slice(0, 3).map(x => `<span style="color:#bbb;">${x.label}</span> <span class="c-mute">(${x.strength})</span>`).join(' · ');
         } else {
           $('d-mem-t2-top').textContent = 'no schemas yet';
         }
@@ -2430,9 +2494,9 @@
         $('d-mem-t3-cap').textContent = t3.hardCap == null ? 'unbounded' : t3.hardCap.toLocaleString();
         $('d-mem-t3-inject').textContent = fmtAge(t3.lastInjectedAt);
         if (Array.isArray(t3.identities) && t3.identities.length > 0) {
-          $('d-mem-t3-top').innerHTML = '<span style="color:#888;">anchors:</span> '
+          $('d-mem-t3-top').innerHTML = '<span class="c-dim">anchors:</span> '
             + t3.identities.slice(0, 4).map(x => `<span style="color:#bbb;">${x.label}</span>`).join(' · ')
-            + (t3.identities.length > 4 ? ` <span style="color:#666;">+${t3.identities.length - 4}</span>` : '');
+            + (t3.identities.length > 4 ? ` <span class="c-mute">+${t3.identities.length - 4}</span>` : '');
         } else {
           $('d-mem-t3-top').textContent = 'no anchors yet';
         }
@@ -2472,7 +2536,7 @@
           if (_el) { _el.textContent = 'not reported'; _el.style.color = '#f59e0b'; }
         }
         const _t3top = $('d-mem-t3-top');
-        if (_t3top) _t3top.innerHTML = '<span style="color:#f59e0b;">memory stats absent from this state payload — '
+        if (_t3top) _t3top.innerHTML = '<span class="c-warn">memory stats absent from this state payload — '
           + 'this is NOT a measurement of zero. Waiting for a broadcast carrying `memoryStats`.</span>';
       }
 
@@ -2518,7 +2582,7 @@
             const kind = r.kind || '—';
             const color = kind === 'novel' ? '#22c55e' : (kind === 'partial' ? '#a855f7' : '#888');
             const sent = (r.sentence || r.text || '').replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
-            const nov = Number.isFinite(r.novelty) ? ` <span style="color:#666;">n=${r.novelty.toFixed(2)}</span>` : '';
+            const nov = Number.isFinite(r.novelty) ? ` <span class="c-mute">n=${r.novelty.toFixed(2)}</span>` : '';
             return `<div><span style="color:${color};">[${kind}]</span> ${sent}${nov}</div>`;
           }).join('');
         }
@@ -2535,8 +2599,8 @@
             listEl.innerHTML = list.slice(0, 10).map(c => {
               const w = (c.compound || c.word || '?').replace(/[<>&]/g, ch => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[ch]));
               const comps = Array.isArray(c.components) ? c.components.join(' + ') : '';
-              const promoteFlag = (c.count >= 10) ? ' <span style="color:#22c55e;">PROMOTED</span>' : '';
-              return `<div><span style="color:#ff4d9a;">${w}</span> <span style="color:#888;font-size:10px;">(${c.count || 0}× ${comps})</span>${promoteFlag}</div>`;
+              const promoteFlag = (c.count >= 10) ? ' <span class="c-ok">PROMOTED</span>' : '';
+              return `<div><span class="c-pk">${w}</span> <span class="c-dim fs10">(${c.count || 0}× ${comps})</span>${promoteFlag}</div>`;
             }).join('');
             if (emptyEl) emptyEl.style.display = 'none';
           } else {
@@ -2637,7 +2701,7 @@
       div.className = 'log-entry';
       const ts = entry.ts ? new Date(entry.ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }) : '';
       const safe = String(entry.text || '').replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
-      div.innerHTML = `<span style="color:#555;">${ts}</span> <span style="color:${color};">${safe}</span>`;
+      div.innerHTML = `<span class="c-faint">${ts}</span> <span style="color:${color};">${safe}</span>`;
       el.appendChild(div);
       _srvLogCount++;
       const countEl = document.getElementById('d-srvlog-count');
@@ -2870,7 +2934,7 @@
               + row('visual store', `${num(d.visualStoreMB, 1)} MB`)
               + row('save floor', `${num(d.saveFloorMB)} MB`
                   + (d.saveDeferrals > 0
-                    ? ` · <b style="color:#ef4444;">${num(d.saveDeferrals)} SAVE DEFERRALS</b>`
+                    ? ` · <b class="c-err">${num(d.saveDeferrals)} SAVE DEFERRALS</b>`
                     : ' · <span class="muted">0 deferrals</span>'));
           })();
       }
@@ -2891,9 +2955,9 @@
           // just labelled `boot-peak` so it stops impersonating the present.
           row('loop delay', el.meanMs != null
             ? `μ${num(el.meanMs, 1)} · p99 ${num(el.p99Ms, 1)} · max ${num(el.maxMs, 1)} ms`
-              + (el.windowMs != null ? ` <span style="color:#666;">(last ${Math.max(1, Math.round(el.windowMs / 1000))}s)</span>` : '')
+              + (el.windowMs != null ? ` <span class="c-mute">(last ${Math.max(1, Math.round(el.windowMs / 1000))}s)</span>` : '')
               + (el.sinceBootMaxMs != null && el.sinceBootMaxMs > el.maxMs
-                  ? ` <span style="color:#666;">· boot-peak ${num(el.sinceBootMaxMs, 1)} ms</span>` : '')
+                  ? ` <span class="c-mute">· boot-peak ${num(el.sinceBootMaxMs, 1)} ms</span>` : '')
             : '—') +
           // LOOPNAME.8 — the freeze row. `loop delay max` above is a since-boot
           // high-water mark with no count and no recency, so a single big number
@@ -3035,7 +3099,7 @@
           row('WS drops', `${num(wp.drops)} <span class="muted">(${num(wp.dropRatePerSec, 2)}/s)</span>`) +
           row('donors', `${num(n.donorCount)} · ${num(n.donorTotalVramMB)} MB VRAM`) +
           row('agg throughput', `${num(n.aggGneuronsPerSec, 2)} Gn/s`) +
-          (wp.gpuShadowDirty ? `<div class="row"><span class="muted">⚠ GPU shadow</span><b style="color:#ef4444">DIRTY</b></div>` : '');
+          (wp.gpuShadowDirty ? `<div class="row"><span class="muted">⚠ GPU shadow</span><b class="c-err">DIRTY</b></div>` : '');
       }
 
       // ── Clients (client↔brain) ──
@@ -3085,7 +3149,7 @@
               ? ` · <span style="color:#22c55e" title="TEACHING — ${num(x.teachOps || 0)} teach frames dispatched to this donor, last one ${x.teachAdvancedAgoSec == null ? 'just now' : x.teachAdvancedAgoSec + 's ago'}. Hebbian/propagate work does not produce compute_batch steps, so Gn/s reads 0 while the card is busy — that is the normal state of a walking brain, not a fault.">teaching <span style="color:#6b7280">(${num(x.teachOps || 0)} ops${x.gneuronsPerSec > 0 ? `, compute lane idle at ${num(x.gneuronsPerSec, 1)}Gn/s` : ', compute lane quiet'})</span></span>`
               : x.computeIdle
               ? ` · <span style="color:#ef4444" title="No batch has completed ${x.computeAdvancedAgoSec == null ? 'at all this session' : 'in ' + x.computeAdvancedAgoSec + 's'}, and no teach frame in the last 30s either — this donor is doing NOTHING. The Gn/s shown is the LAST value it earned, not a live rate.${(x.teachOps ? ' Lifetime teach ops: ' + num(x.teachOps) + '.' : ' It has never taken a teach frame.')}">idle${x.computeAdvancedAgoSec == null ? '' : ' ' + x.computeAdvancedAgoSec + 's'} <span style="color:#6b7280">(last ${num(x.gneuronsPerSec, 1)}Gn/s)</span></span>`
-              : ` · <span style="color:#22c55e">${num(x.gneuronsPerSec, 1)}Gn/s</span>`);
+              : ` · <span class="c-ok">${num(x.gneuronsPerSec, 1)}Gn/s</span>`);
         // SYNCPARTIAL.7 — the DENOMINATOR. "holds 1" reads as a fault; "1/17
         // mx" reads as a sync in progress. Teach dispatch is per-matrix, so a
         // donor missing one is filtered out of every teach batch touching it —
@@ -3103,7 +3167,7 @@
           : '';
         const gpu = x.type === 'donor'
           ? (x.bindIncapable
-              ? `<span style="color:#ef4444">⚠ buffer too small for cortex (${bindGB})</span>`
+              ? `<span class="c-err">⚠ buffer too small for cortex (${bindGB})</span>`
               : `${x.gpuName ? String(x.gpuName).slice(0, 18) : '?'}${rateCell}${mxCell}${clCell}${bindGB ? ' · bind ' + bindGB : ''}${floorCell}`)
           : '';
         // DONORKILL.2 — the ★ carries WHAT BREAKS IF YOU KILL THIS ONE.
@@ -3180,7 +3244,7 @@
         const ts = new Date(e.ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
         const color = colors[e.type] || colors.event;
         div.style.cssText = `margin-bottom:3px;padding-left:6px;border-left:2px solid ${color};`;
-        div.innerHTML = `<span style="color:#666;">${ts}</span> <span style="color:${color};font-weight:bold;">[${e.type}]</span> <span style="color:#888;">${regionIcon(e.region)} ${e.region || ''}</span> <span style="color:#ccc;">${e.label}</span>`;
+        div.innerHTML = `<span class="c-mute">${ts}</span> <span style="color:${color};font-weight:bold;">[${e.type}]</span> <span class="c-dim">${regionIcon(e.region)} ${e.region || ''}</span> <span style="color:#ccc;">${e.label}</span>`;
         el.appendChild(div);
       }
       // Cap to the last 50 rendered rows so scrollback doesn't grow
@@ -3325,7 +3389,7 @@
           rows.push(`<div style="display:flex;padding:3px 10px;font-size:10px;color:#aaa;border-bottom:1px solid #111;">
             <span style="width:60px;color:#888;">${id}</span>
             <span style="width:60px;color:${iconColor};">${icon} ${scorePct}</span>
-            <span style="color:#555;font-size:9px;">${probe.ts ? new Date(probe.ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }) : ''}</span>
+            <span class="c-faint fs9">${probe.ts ? new Date(probe.ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }) : ''}</span>
           </div>`);
         }
       }
@@ -3351,7 +3415,7 @@
       }
       const rows = lb.top.slice(0, 20).map((e, i) =>
         '<div style="display:grid;grid-template-columns:28px 1fr 90px;gap:6px;padding:2px 0;font-size:11px;color:#bbb;">'
-        + '<div style="color:#666;">' + (i + 1) + '.</div>'
+        + '<div class="c-mute">' + (i + 1) + '.</div>'
         + '<div>' + String(e.name || 'anon').replace(/[<>&]/g, '') + '</div>'
         + '<div style="text-align:right;color:#a78bfa;">' + fmt(e.neurons) + ' Gn·s</div></div>'
       ).join('');
@@ -3368,7 +3432,7 @@
         $('d-curr-grade').textContent = '—';
         $('d-curr-desc').textContent = 'Waiting for curriculum teach to begin.';
         $('d-curr-phase').textContent = 'phase: —';
-        $('d-curr-cleaning').innerHTML = '<span style="color:#555;">reader refused — no cell loaded yet this boot</span>';
+        $('d-curr-cleaning').innerHTML = '<span class="c-faint">reader refused — no cell loaded yet this boot</span>';
         $('d-curr-cellbar').style.width = '0%';
         $('d-curr-cellpct').textContent = '0% · 0 phases';
         $('d-curr-subjects').innerHTML = '';
@@ -3445,12 +3509,12 @@
           `reader refused <b style="color:${cl.apparatus > 0 ? '#eab308' : '#555'};">`
           + `${(cl.apparatus | 0).toLocaleString()}</b> apparatus (${pct}) `
           + `· ${(cl.dropped | 0).toLocaleString()} markup · ${(cl.credited | 0).toLocaleString()} credits cut`
-          + ` <span style="color:#555;">of ${(cl.seen | 0).toLocaleString()} read</span>`
-          + (worst ? `<br><span style="color:#666;">${worst}</span>` : '');
+          + ` <span class="c-faint">of ${(cl.seen | 0).toLocaleString()} read</span>`
+          + (worst ? `<br><span class="c-mute">${worst}</span>` : '');
       } else {
         // ⛔ Absent, never zero. A zero here would claim the corpus was measured
         // and found clean, when in fact no cell has been loaded yet this boot.
-        $('d-curr-cleaning').innerHTML = '<span style="color:#555;">reader refused — no cell loaded yet this boot</span>';
+        $('d-curr-cleaning').innerHTML = '<span class="c-faint">reader refused — no cell loaded yet this boot</span>';
       }
 
       // CELL PROGRESS - ONE formula, from the server's ONE record.
@@ -3492,7 +3556,7 @@
         // donor is never mistaken for a working one.
         pct = 0;
         pctLabel = `<span style="color:#f87171;">PAUSED &mdash; no compute substrate</span>`
-          + ` &middot; <span style="color:#fbbf24;">${c.substratePause.reason}</span>`
+          + ` &middot; <span class="c-amber">${c.substratePause.reason}</span>`
           + ` &middot; ${(c.substratePause.pausedMs / 60000).toFixed(1)} min`;
         $('d-curr-cellbar').style.background = 'linear-gradient(90deg,#7f1d1d,#f87171)';
       } else if (status === 'in-progress') {
@@ -3512,7 +3576,7 @@
         // phase hides exactly the failure it would be covering for.
         const phaseTail = c.outermostPhase
           ? ` &middot; <span style="color:#e9d5ff;">${c.outermostPhase.name}</span> (+${((c.outermostPhase.elapsedMs || 0) / 60000).toFixed(1)}m)`
-          : ` &middot; <span style="color:#fbbf24;">no declared phase in flight</span>`;
+          : ` &middot; <span class="c-amber">no declared phase in flight</span>`;
         // WITHIN-PHASE WORK. `done` is credited on EXIT, and one unit of the
         // ELA mechanics phase is priced at ~15 hours in a single call — so
         // `work 0/3` is accurate and reads exactly like a dead bar. The unit
@@ -3525,7 +3589,7 @@
         const inflightTail = (pw && pw.inflight)
           ? ` &middot; <span style="color:#a7f3d0;">running ${pw.inflight}</span>`
             + ((pw.inflightMs | 0) > 60000
-              ? ` <span style="color:#fbbf24;">(${(pw.inflightMs / 3600000) >= 1
+              ? ` <span class="c-amber">(${(pw.inflightMs / 3600000) >= 1
                   ? `${(pw.inflightMs / 3600000).toFixed(1)}h`
                   : `${(pw.inflightMs / 60000).toFixed(0)}m`})</span>`
               : '')
@@ -3539,7 +3603,7 @@
         const workTail = pw
           ? (typeof pw.done === 'number' && typeof pw.total === 'number'
               ? ` &middot; <span style="color:#fcd34d;">work ${pw.done}/${pw.total}${pw.unit === 'rep' ? ' reps' : ''}</span>${inflightTail}`
-              : ` &middot; <span style="color:#fbbf24;">no phase denominator (loop phase)</span>${inflightTail}`)
+              : ` &middot; <span class="c-amber">no phase denominator (loop phase)</span>${inflightTail}`)
           : '';
         const vp = c.vocabProgress;
         const vocabTail = (vp && vp.total > 0)
@@ -3669,7 +3733,7 @@
             }
             probeBit = ` &mdash; <span style="color:#4ade80;">grading on the donor GPU (${gpTotal.toLocaleString()} probes${g.rate > 0 ? `, ${g.rate.toLocaleString()}/min` : ''})</span>`;
           }
-          gate = ` &middot; <span style="color:#fbbf24;">probe gate &mdash; testing, not teaching (expected)</span>${probeBit}`;
+          gate = ` &middot; <span class="c-amber">probe gate &mdash; testing, not teaching (expected)</span>${probeBit}`;
         }
         const emitBit = emitRate > 0
           ? ` &middot; <span style="color:#a78bfa;">${emitRate.toLocaleString()} emit-ticks/min (emission phase)</span>`
@@ -3705,7 +3769,7 @@
       // operator see the whole curriculum walk at a glance.
       const subjects = Array.isArray(c.subjects) && c.subjects.length ? c.subjects : Object.keys(c.perSubject || {});
       const rows = [];
-      rows.push('<div style="display:grid;grid-template-columns:1fr 84px 44px 40px 52px;gap:4px;font-size:10px;color:#666;border-bottom:1px solid #222;padding-bottom:3px;margin-bottom:4px;"><div>course</div><div>grade</div><div style="text-align:right;">phases</div><div style="text-align:right;">cells</div><div style="text-align:right;">events</div></div>');
+      rows.push('<div style="display:grid;grid-template-columns:1fr 84px 44px 40px 52px;gap:4px;font-size:10px;color:#666;border-bottom:1px solid #222;padding-bottom:3px;margin-bottom:4px;"><div>course</div><div>grade</div><div class="tr">phases</div><div class="tr">cells</div><div class="tr">events</div></div>');
       for (const sub of subjects) {
         const s = (c.perSubject && c.perSubject[sub]) || { phasesCompleted: 0, cellsPassed: 0, teachEvents: 0, grade: null, courseName: null };
         const isActive = c.currentSubject === sub;
@@ -3715,10 +3779,10 @@
         const courseLabel = s.courseName || sub;
         rows.push(`<div style="display:grid;grid-template-columns:1fr 84px 44px 40px 52px;gap:4px;font-size:10px;color:${color};padding:2px 0;">`
           + `<div style="font-weight:${isActive ? 'bold' : 'normal'};" title="${sub}">${courseLabel}</div>`
-          + `<div style="color:#666;">${s.grade || '—'}</div>`
-          + `<div style="text-align:right;">${s.phasesCompleted | 0}</div>`
-          + `<div style="text-align:right;">${s.cellsPassed | 0}</div>`
-          + `<div style="text-align:right;">${formatEvents(s.teachEvents | 0)}</div>`
+          + `<div class="c-mute">${s.grade || '—'}</div>`
+          + `<div class="tr">${s.phasesCompleted | 0}</div>`
+          + `<div class="tr">${s.cellsPassed | 0}</div>`
+          + `<div class="tr">${formatEvents(s.teachEvents | 0)}</div>`
           + `</div>`);
       }
       // The courses that exist but have not opened yet, with the grade that opens
@@ -3736,7 +3800,7 @@
         const lines = [...byGrade.entries()]
           .map(([g, subs]) => `<div style="display:grid;grid-template-columns:1fr 84px;gap:4px;font-size:10px;color:#555;padding:1px 0;">`
             + `<div title="Declared on the roster for a later grade, not started. These rows exist so &quot;not offered yet&quot; can be told apart from &quot;missing&quot; — the course list is read from the declared roster for the current grade, NOT from the courses that happen to have run already.">${subs.join(' · ')}</div>`
-            + `<div style="color:#555;">opens ${g}</div></div>`)
+            + `<div class="c-faint">opens ${g}</div></div>`)
           .join('');
         rows.push('<div style="font-size:9px;color:#555;border-top:1px solid #222;margin-top:5px;padding-top:4px;">not started yet</div>');
         rows.push(lines);
@@ -3792,7 +3856,7 @@
         $('d-grad-verdict').style.color = g.complete ? (g.clean ? '#22c55e' : '#eab308') : '#ff4d4d';
         $('d-grad-cells').innerHTML = [
           `<div>cells <b style="color:#eee;">${total}</b></div>`,
-          `<div style="color:#22c55e;">passed on merit ${c.merit ?? 0} (${pct(c.merit)}%)</div>`,
+          `<div class="c-ok">passed on merit ${c.merit ?? 0} (${pct(c.merit)}%)</div>`,
           `<div style="color:${(c.forceAdvanced || 0) > 0 ? '#eab308' : '#555'};">force-advanced ${c.forceAdvanced ?? 0} (${pct(c.forceAdvanced)}%)</div>`,
           `<div style="color:${(c.held || 0) > 0 ? '#ff4d4d' : '#555'};">still owed ${c.held ?? 0} (${pct(c.held)}%)</div>`,
         ].join('');
@@ -3800,13 +3864,13 @@
         if (cp && cp.cells > 0) {
           $('d-grad-corpus').innerHTML = [
             `<div>corpus — <b style="color:#eee;">${(cp.sentencesTrained || 0).toLocaleString()}</b> of ${(cp.sentencesAvailable || 0).toLocaleString()} sentences read across ${cp.cells} cells</div>`,
-            `<div style="color:#22c55e;">${cp.trained || 0} fully read</div>`,
+            `<div class="c-ok">${cp.trained || 0} fully read</div>`,
             `<div style="color:${(cp.short || 0) > 0 ? '#eab308' : '#555'};">${cp.short || 0} short — the corpus grew after the visit, a re-read is owed</div>`,
-            `<div style="color:#888;">${cp.empty || 0} genuinely empty — a content gap, nothing owed</div>`,
+            `<div class="c-dim">${cp.empty || 0} genuinely empty — a content gap, nothing owed</div>`,
             `<div style="color:${(cp.unreached || 0) > 0 ? '#ff4d4d' : '#555'};">${cp.unreached || 0} NEVER REACHED — a wiring fault${(cp.unreached || 0) > 0 ? `: ${(cp.unreachedCells || []).join(', ')}` : ''}</div>`,
           ].join('');
         } else {
-          $('d-grad-corpus').innerHTML = '<div style="color:#666;">corpus — no verdict; the story loaders are not attached in this build, so nothing is claimed either way.</div>';
+          $('d-grad-corpus').innerHTML = '<div class="c-mute">corpus — no verdict; the story loaders are not attached in this build, so nothing is claimed either way.</div>';
         }
         const courses = g.courses || {};
         $('d-grad-courses').innerHTML = Object.keys(courses).length
@@ -3828,7 +3892,7 @@
         const q = dl.queued;
         const depth = (q.chatPairs || 0) + (q.chatJobs || 0) + (q.mindsEye || 0) + (q.salience || 0);
         const age = dl.lastDrainAgeMs == null ? 'never' : `${Math.round(dl.lastDrainAgeMs / 1000)}s ago`;
-        $('d-grad-lanes').innerHTML = `deferred lanes — ${dl.drivenOffWalk ? '<span style="color:#22c55e;">driven off-walk</span>' : '<span style="color:#888;">the walk owns the substrate</span>'} · queued ${depth} (chat ${q.chatPairs || 0} · jobs ${q.chatJobs || 0} · eye ${q.mindsEye || 0} · salience ${q.salience || 0}) · ${dl.drainedItems || 0} items drained over ${dl.drainedPasses || 0} passes, last ${age}`;
+        $('d-grad-lanes').innerHTML = `deferred lanes — ${dl.drivenOffWalk ? '<span class="c-ok">driven off-walk</span>' : '<span class="c-dim">the walk owns the substrate</span>'} · queued ${depth} (chat ${q.chatPairs || 0} · jobs ${q.chatJobs || 0} · eye ${q.mindsEye || 0} · salience ${q.salience || 0}) · ${dl.drainedItems || 0} items drained over ${dl.drainedPasses || 0} passes, last ${age}`;
       }
     }
 
@@ -3908,13 +3972,13 @@
       const el = document.getElementById(elId);
       if (!el) return;
       if (!lastError) {
-        el.innerHTML = `<span style="color:#666;">no ${label} error recorded</span>`;
+        el.innerHTML = `<span class="c-mute">no ${label} error recorded</span>`;
         return;
       }
       const ageS = lastError.at ? Math.round((Date.now() - lastError.at) / 1000) : null;
-      el.innerHTML = `<span style="color:#ef4444;">${label} tick FAILED:</span> `
-        + `<span style="color:#f59e0b;">${String(lastError.message || 'unnamed').slice(0, 160)}</span>`
-        + (ageS !== null ? ` <span style="color:#888;">(${ageS}s ago)</span>` : '');
+      el.innerHTML = `<span class="c-err">${label} tick FAILED:</span> `
+        + `<span class="c-warn">${String(lastError.message || 'unnamed').slice(0, 160)}</span>`
+        + (ageS !== null ? ` <span class="c-dim">(${ageS}s ago)</span>` : '');
     }
 
     // ── ENDO panel renderer. Consumes state.consciousness.endocrine.
@@ -3950,7 +4014,7 @@
         const c = chems[name] || {};
         const lvl = c.level;
         if (lvl === 'unmeasured') {
-          return `<div><span style="color:#666;">${name}</span> <span style="color:#f59e0b;">unmeasured</span> <span style="color:#555;">(never fired)</span></div>`;
+          return `<div><span class="c-mute">${name}</span> <span class="c-warn">unmeasured</span> <span class="c-faint">(never fired)</span></div>`;
         }
         const pct = Math.round(100 * (typeof lvl === 'number' ? lvl : 0));
         const dev = typeof c.deviation === 'number' ? c.deviation : 0;
@@ -3959,23 +4023,23 @@
         const devCol = dev > 0.01 ? '#ff4d9a' : (dev < -0.01 ? '#60a5fa' : '#666');
         const sens = typeof c.receptorSensitivity === 'number' ? c.receptorSensitivity : 1;
         const tol = sens < 0.98
-          ? ` <span style="color:#f59e0b;">tol ${(sens * 100).toFixed(0)}%</span>` : '';
-        return `<div><span style="color:#ddd;">${name}</span> `
-          + `<span style="color:#888;">${pct}%</span> `
+          ? ` <span class="c-warn">tol ${(sens * 100).toFixed(0)}%</span>` : '';
+        return `<div><span class="c-light">${name}</span> `
+          + `<span class="c-dim">${pct}%</span> `
           + `<span style="color:${devCol};">dev ${dev >= 0 ? '+' : ''}${dev.toFixed(2)}</span> `
-          + `<span style="color:#666;">${c.phase || ''}</span>${tol}</div>`;
+          + `<span class="c-mute">${c.phase || ''}</span>${tol}</div>`;
       }).join('');
       const chemsEl = document.getElementById('d-endo-chems');
-      if (chemsEl) chemsEl.innerHTML = rows || '<span style="color:#666;">no chemicals reported</span>';
+      if (chemsEl) chemsEl.innerHTML = rows || '<span class="c-mute">no chemicals reported</span>';
 
       const stressEl = document.getElementById('d-endo-stress');
       if (stressEl) {
         if (e.stress && e.stress.channel) {
           const ageS = Math.round((e.stress.ageMs || 0) / 1000);
-          stressEl.innerHTML = `<span style="color:#ef4444;">stress: ${e.stress.channel}</span> `
-            + `<span style="color:#888;">mag ${(e.stress.magnitude || 0).toFixed(2)}, ${ageS}s ago</span>`;
+          stressEl.innerHTML = `<span class="c-err">stress: ${e.stress.channel}</span> `
+            + `<span class="c-dim">mag ${(e.stress.magnitude || 0).toFixed(2)}, ${ageS}s ago</span>`;
         } else {
-          stressEl.innerHTML = '<span style="color:#666;">stress: none live</span>';
+          stressEl.innerHTML = '<span class="c-mute">stress: none live</span>';
         }
       }
 
@@ -3983,10 +4047,10 @@
       if (cycleEl && e.cycle) {
         const c = e.cycle;
         cycleEl.innerHTML = (c.pos === null || c.pos === undefined)
-          ? `<span style="color:#888;">cycle: ${c.phase || 'prepubertal'}</span>`
-          : `<span style="color:#ddd;">cycle: ${c.phase}</span> `
-            + `<span style="color:#888;">${Math.round(100 * c.pos)}% · ${c.cyclesElapsed} elapsed`
-            + `${c.withdrawal > 0.05 ? ` · <span style="color:#ef4444;">withdrawal ${c.withdrawal.toFixed(2)}</span>` : ''}</span>`;
+          ? `<span class="c-dim">cycle: ${c.phase || 'prepubertal'}</span>`
+          : `<span class="c-light">cycle: ${c.phase}</span> `
+            + `<span class="c-dim">${Math.round(100 * c.pos)}% · ${c.cyclesElapsed} elapsed`
+            + `${c.withdrawal > 0.05 ? ` · <span class="c-err">withdrawal ${c.withdrawal.toFixed(2)}</span>` : ''}</span>`;
       }
 
       const loadEl = document.getElementById('d-endo-load');
@@ -3994,7 +4058,7 @@
         const pu = e.puberty || {};
         const al = e.allostatic || {};
         loadEl.innerHTML = `puberty ${typeof pu.level === 'number' ? pu.level.toFixed(2) : '?'} `
-          + `(age ${pu.ageYears === 'unknown' ? '<span style="color:#f59e0b;">unknown</span>' : pu.ageYears}) · `
+          + `(age ${pu.ageYears === 'unknown' ? '<span class="c-warn">unknown</span>' : pu.ageYears}) · `
           + `chronic ${(e.chronicLoad || 0).toFixed(3)} · `
           + `allostatic ${(al.load || 0).toFixed(3)}/${al.ceiling || 0.6} `
           + `(restore α ${(al.restorationAlpha || 0).toFixed(4)})`;
@@ -4013,7 +4077,7 @@
           // ⚠ Zero axes is a REAL measurement, not a missing instrument: every
           // chemical sitting at its resting value contributes nothing by
           // construction. It says which one it is.
-          contribEl.innerHTML = '<span style="color:#666;">brain-param deltas: none active'
+          contribEl.innerHTML = '<span class="c-mute">brain-param deltas: none active'
             + ' (every chemical at its resting value)</span>';
         } else {
           keys.sort((a, b) => Math.abs(c[b]) - Math.abs(c[a]));
@@ -4021,11 +4085,11 @@
             const v = Number(c[k]) || 0;
             // Sign is load-bearing, exactly as on the deviation row: a tonic
             // chemical below baseline pushes the OPPOSITE way, not less hard.
-            return `<span style="color:#ddd;">${k}</span> `
+            return `<span class="c-light">${k}</span> `
               + `<span style="color:${v >= 0 ? '#ff4d9a' : '#60a5fa'};">${v >= 0 ? '+' : ''}${v.toFixed(3)}</span>`;
           }).join(' · ');
-          contribEl.innerHTML = `<span style="color:#888;">brain-param deltas (${keys.length} axes):</span> ${top}`
-            + (keys.length > 6 ? ` <span style="color:#555;">+${keys.length - 6} more</span>` : '');
+          contribEl.innerHTML = `<span class="c-dim">brain-param deltas (${keys.length} axes):</span> ${top}`
+            + (keys.length > 6 ? ` <span class="c-faint">+${keys.length - 6} more</span>` : '');
         }
       }
 
@@ -4064,13 +4128,13 @@
               const c = cum[n];
               const hist = !c ? ''
                 : (c.everFired === 'never'
-                    ? ' <span style="color:#f59e0b;">never fired</span>'
-                    : ` <span style="color:#555;">(${c.fires}×, last `
+                    ? ' <span class="c-warn">never fired</span>'
+                    : ` <span class="c-faint">(${c.fires}×, last `
                       + `${Math.round((c.lastFiredAgeMs || 0) / 1000)}s ago`
                       + `${c.blindTicks ? `, blind ${c.blindTicks}` : ''})</span>`);
               return `<span style="color:${col};">${n}:${st}</span>${hist}`;
             }).join(' · ')
-          : '<span style="color:#f59e0b;">nuclei not reported</span>';
+          : '<span class="c-warn">nuclei not reported</span>';
       }
     }
 
@@ -4099,19 +4163,19 @@
       const liveEl = document.getElementById('d-intro-live');
       if (liveEl) {
         liveEl.innerHTML = i.live
-          ? `<span style="color:#ff4d9a;">${i.live.kind}</span> `
-            + `<span style="color:#888;">(${i.live.lane})</span> about `
-            + `<span style="color:#ddd;">"${i.live.concept}"</span> `
-            + `<span style="color:#666;">urgency ${(i.live.urgency || 0).toFixed(2)}</span>`
-          : '<span style="color:#666;">nothing unresolved right now</span>';
+          ? `<span class="c-pk">${i.live.kind}</span> `
+            + `<span class="c-dim">(${i.live.lane})</span> about `
+            + `<span class="c-light">"${i.live.concept}"</span> `
+            + `<span class="c-mute">urgency ${(i.live.urgency || 0).toFixed(2)}</span>`
+          : '<span class="c-mute">nothing unresolved right now</span>';
       }
 
       const rumEl = document.getElementById('d-intro-rumination');
       if (rumEl && i.rumination) {
         const r = i.rumination;
         rumEl.innerHTML = r.onBreak
-          ? `<span style="color:#f59e0b;">rumination BOUND holding</span> <span style="color:#888;">(streak ${r.streak}/${r.max}) — she is being made to stop circling</span>`
-          : `<span style="color:#666;">rumination ${r.streak}/${r.max}</span>`;
+          ? `<span class="c-warn">rumination BOUND holding</span> <span class="c-dim">(streak ${r.streak}/${r.max}) — she is being made to stop circling</span>`
+          : `<span class="c-mute">rumination ${r.streak}/${r.max}</span>`;
       }
 
       const critEl = document.getElementById('d-intro-criteria');
@@ -5455,7 +5519,7 @@
                   </div>
                   <textarea id="d-ms-signoff-note" placeholder="signoff note (optional, e.g. 'methodology + reasoning + thinking + talking + listening + reading all verified on localhost')" rows="2" style="width:100%;background:#0a0f12;color:#e5e7eb;border:1px solid #374151;border-radius:4px;padding:6px;font-family:monospace;font-size:10px;margin-bottom:6px;"></textarea>
                   <div style="display:flex;flex-wrap:wrap;">${buttons}</div>
-                  <div style="color:#6b7280;font-size:9px;margin-top:6px;">Endpoint: POST /grade-signoff (${_dashIsLocal ? 'loopback-gated' : 'admin lane — reachable only on the brain\'s own machine'}). Curl alternative: <code style="color:#00e5ff;">curl -X POST ${adminApi('grade-signoff')} -H "Content-Type: application/json" -d '{"subject":"&lt;sub&gt;","grade":"${pausedGrade}","note":"..."}'</code></div>
+                  <div style="color:#6b7280;font-size:9px;margin-top:6px;">Endpoint: POST /grade-signoff (${_dashIsLocal ? 'loopback-gated' : 'admin lane — reachable only on the brain\'s own machine'}). Curl alternative: <code class="c-cy">curl -X POST ${adminApi('grade-signoff')} -H "Content-Type: application/json" -d '{"subject":"&lt;sub&gt;","grade":"${pausedGrade}","note":"..."}'</code></div>
                 </div>
               `;
               // Wire all signoff buttons.

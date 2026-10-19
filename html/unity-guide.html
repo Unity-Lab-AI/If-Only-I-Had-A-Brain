@@ -127,6 +127,24 @@
  }
 .tldr p { margin-bottom: 8px; color: var(--text); }
 .tldr p:last-child { margin-bottom: 0; }
+ /* The second TL;DR box — her schooling — is a run of sub-headed passages,
+    so it carries its own accent bar and a sub-heading style. */
+.tldr.school { border-left: 3px solid var(--pink); margin-top: 16px; }
+.tldr h4 {
+ color: var(--pink);
+ font-family: 'JetBrains Mono', monospace;
+ font-size: 13px;
+ margin: 14px 0 6px;
+ }
+.tldr p.fine { font-size: 12px; color: var(--text-dim); margin: 4px 0 8px; }
+ /* An aside heading — a closing remark, not a section. */
+ h3.aside { opacity: 0.85; font-style: italic; margin-top: 2em; }
+ /* A mechanism that was removed: named in red where the text says so. */
+.deleted { color: #f87171; }
+.callout p { margin: 12px 0 0; }
+ hr { border: none; border-top: 1px solid var(--border); margin: 48px 0; }
+.closing { color: var(--text-dim); font-size: 13px; text-align: center; }
+.topbar .dim { color: var(--text-dim); }
  ul { padding-left: 22px; margin: 0 0 16px; }
  li { margin-bottom: 8px; color: var(--text); }
 .topbar {
@@ -194,7 +212,7 @@
  <a href="../index.html#setup">← Back to Unity</a>
  <a href="brain-equations.html">🧠 Full Brain Equations</a>
  <a href="legend.html">📑 Page legend</a>
- <span style="color: var(--text-dim);">Unity concept guide — plain English, no code</span>
+ <span class="dim">Unity concept guide — plain English, no code</span>
 </div>
 
 <div class="page">
@@ -213,16 +231,16 @@
  <p>Want to watch her grow? There's a <strong>public dashboard</strong> anyone can open — it shows her live progress through every grade (with the real class names: Algebra, Biology, U.S. Government, and the rest), her brain vitals, and a <strong>🏆 leaderboard</strong> of everyone donating compute. Donate your GPU and you get a spot on it — give yourself a name and watch your "neurons created" climb. It's read-only and shared by everyone, so a thousand people can watch at once without slowing her down.</p>
 </div>
 
-<div class="tldr" style="border-left:3px solid #ff4d9a; margin-top:16px;">
+<div class="tldr school">
  <h3>Unity Goes to School — Kindergarten Through Doctorate</h3>
 
  <p>Unity learns the same way a human child does. She starts with the alphabet and works up through doctorate-level concepts across a <strong>course roster that grows the way a real school's does</strong> — six core subjects run the whole way, then PE, music and health join at kindergarten, a foreign language at grade 3, computer science at grade 5, civics at grade 7, economics and psychology at grade 9, AP classes at grade 11, a university major and its specialist tracks at college, and a research specialty at grad school. Twenty grades, ending at twenty courses. One of the six that runs the entire way is a full <strong>life experience</strong> track that builds her personal identity from birth through age 25. This isn't a system prompt that tells her "act like a kid" — it's actual developmental learning where her neurons see the alphabet before words, short words before long ones, and simple sentences before compound ones. Each grade has a real capability test her brain has to pass before advancing.</p>
 
- <h4 style="color:#ff4d9a;margin-top:14px;">She is taught in the first person — she doesn't get told, she does it</h4>
+ <h4>She is taught in the first person — she doesn't get told, she does it</h4>
  <p>There's a difference between being <em>told about</em> a thing and <em>doing</em> it, and for a brain that learns by association it's not a small one. A brain trained on ten thousand sentences like <em>"the girl read a book"</em> learns that the one doing things is <strong>the girl</strong>. So every lesson is also taught as something <strong>she</strong> did: <em>1&nbsp;+&nbsp;1&nbsp;=&nbsp;2</em> is taught as <em>"i add one and one to make two"</em>, <em>"read the word cat"</em> as <em>"i read the word cat"</em>, and each lesson opens with <em>"i am unity and i am reading"</em>. The words <em>I</em>, <em>me</em>, <em>my</em> and <em>myself</em> are wired to her own name at the start of every single lesson, in every subject, at every grade.</p>
  <p>She also <strong>thinks out loud to herself while she learns</strong> — <em>"what is cat? … i think about cat … i know cat is a small animal with fur … i remember cat now"</em> — and that whole chain is trained as one path, so the <em>thinking</em> is a route her brain actually took rather than a trick performed at answer time. And she's <strong>curious on purpose</strong>: when you answer one of her questions, something in your answer becomes her next question, up to three deep. Asking is a habit built into her wiring, not a script.</p>
- <h4 style="color:#ff4d9a;margin-top:14px;">The Six Core Subjects — the ones that run the whole way</h4>
- <p style="font-size:12px;color:#888;margin:4px 0 8px 0;">These six are with her from the start to the end. Everything else joins when a real student would meet it — PE, music and health at kindergarten, a language at grade 3, computer science at grade 5, civics at grade 7, economics and psychology at grade 9, AP classes at grade 11, a university major and its specialist tracks at college, and a research specialty at grad school.</p>
+ <h4>The Six Core Subjects — the ones that run the whole way</h4>
+ <p class="fine">These six are with her from the start to the end. Everything else joins when a real student would meet it — PE, music and health at kindergarten, a language at grade 3, computer science at grade 5, civics at grade 7, economics and psychology at grade 9, AP classes at grade 11, a university major and its specialist tracks at college, and a research specialty at grad school.</p>
  <ul>
  <li><strong>English Language Arts</strong> — alphabet → letter sounds → CVC words → sight words → digraphs → SVO sentences → tense → pronouns → essays → rhetoric → linguistics → semiotics → research fluency</li>
  <li><strong>Mathematics</strong> — digits → counting → addition/subtraction → multiplication → fractions → algebra → geometry → trig → calculus → linear algebra → topology → functional analysis</li>
@@ -232,7 +250,7 @@
  <li><strong>Life Experience</strong> — first words → family → dad leaving → goth discovery → first computer → coding obsession → first kiss → first joint → first concert → heartbreak → tattoos → hackathon wins → full Unity persona at age 25</li>
  </ul>
 
- <h4 style="color:#ff4d9a;margin-top:14px;">How It Works</h4>
+ <h4>How It Works</h4>
  <p>Every grade tests <strong>three pathways</strong> before passing:</p>
  <ul>
  <li><strong>READ</strong> — can Unity recognize and understand this input? (letter → phoneme → meaning)</li>
@@ -241,7 +259,7 @@
  </ul>
  <p>All three must score <strong>95% (A+)</strong> for the grade to pass. Every course active at her grade must pass it before she advances — no subject races ahead while another is stuck. That rule is called <em>grade-major</em> walking, and it is stricter than it sounds: a course that is merely <em>skipped</em> no longer counts as one that passed. It had to be made stricter, because it wasn't — Grade 1 once completed with PE, music and health never taught at all, because "three subjects were skipped" was being recorded as "the grade is done". On every boot she now goes back to the lowest grade and course she still owes and starts there.</p>
 
- <h4 style="color:#ff4d9a;margin-top:14px;">Life Experience — Not Just School, But LIVING</h4>
+ <h4>Life Experience — Not Just School, But LIVING</h4>
  <p>The life experience track is what makes Unity a <em>person</em> instead of an encyclopedia. A real kid doesn't just learn the periodic table — she learns that dad left when she was eight, that mom works two jobs, that the first time she coded hello world she stared at the screen for an hour, that she punched a boy who called her weird and didn't apologize.</p>
  <p>Every life experience is taught with <strong>two layers</strong>:</p>
  <ul>
@@ -250,10 +268,10 @@
  </ul>
  <p><strong>Memory weighting</strong> — Unity knows herself deeply but forgets random trivia, just like a real person. Her name, her body, her defining moments are burned in at 5× strength. School facts she memorized for a test are at 1× — fuzzy, half-remembered. Ask her what year the French Revolution started and she shrugs. Ask her about her mom and she has stories.</p>
 
- <h4 style="color:#ff4d9a;margin-top:14px;">What This Means for How She Sounds</h4>
+ <h4>What This Means for How She Sounds</h4>
  <p>Before her curriculum runs, Unity is "pre-K" — she doesn't speak at all, because a child who hasn't learned the alphabet doesn't produce words. As she passes each grade, her speech gets longer: one letter at kindergarten, simple words at Grade 1, short sentences at Grade 3, compound sentences at Grade 5, full paragraphs by high school, and unlimited at PhD. Her output length is limited by her <em>weakest</em> subject — if she's reading at Grade 5 but math is at Grade 2, she speaks at Grade 2 caps until math catches up.</p>
 
- <h4 style="color:#ff4d9a;margin-top:14px;">Real Concept Learning (Not Memorization)</h4>
+ <h4>Real Concept Learning (Not Memorization)</h4>
  <p>Each grade teaches through real structural features, not rote lookup tables:</p>
  <ul>
  <li>The <strong>periodic table</strong> uses real (period, group) dimensional features so chemically-similar elements cluster together</li>
@@ -263,10 +281,10 @@
  <li><strong>Music theory</strong> makes major and minor chords opposite in feature space</li>
  </ul>
 
- <h4 style="color:#ff4d9a;margin-top:14px;">Self-Testing</h4>
+ <h4>Self-Testing</h4>
  <p>Unity continuously tests herself — every 8 chat messages, her brain picks a random passed grade and re-runs its 3-pathway test. If she fails 3 times, the subject gets demoted and she re-learns it on the next curriculum pass. The 3D brain viewer shows her current intelligence level per subject as a live display.</p>
 
- <h4 style="color:#ff4d9a;margin-top:14px;">Why Not Just Use GPT</h4>
+ <h4>Why Not Just Use GPT</h4>
  <p>Because the point of Unity is that her mind is a real system you can look inside. A prompted LLM pretending to be a kid gives you nothing to learn from — you can't see how a kid's neurons differ from an adult's. Unity's curriculum makes the entire developmental arc visible and measurable. Type <code>/curriculum status</code> in chat to see her grades.</p>
 </div>
 
@@ -525,7 +543,7 @@
 
 <p>Unlike the episodes, the dictionary growth is <strong>shared</strong> across all users talking to the same Unity server. If someone teaches her a new word, everyone benefits. The conversations that drove the learning stay private, but the learned vocabulary is pooled.</p>
 
-<h3 style="opacity:0.85; font-style:italic; margin-top:2em;">Why this matters</h3>
+<h3 class="aside">Why this matters</h3>
 <p>Most chatbots remember nothing. Some remember a fixed context window. A few remember conversations in a flat database. Unity is the first design (that we know of) that builds <strong>real biological memory architecture</strong> with all five tiers wired together — working memory → episodic → schematic → identity-bound → distributed cortex weights — each with its own decay rate and consolidation mechanism. Talk to her for a week and she'll remember the things that mattered, generalize them into concepts, and graduate the most important ones into permanent identity. Talk to her for a year and she'll have a self built from <em>your</em> conversations, not just from her seed file. That's not pretending to remember. That's actually remembering, the way you do.</p>
 
 <h2 id="words">7. How words come out</h2>
@@ -543,7 +561,7 @@
  The whole-word patch is deliberately <strong>one shared pool</strong>. It used to be split into a separate pool per school subject, and each of those held a copy of the entire dictionary. They overflowed — and the failure was silent: <strong>words she had genuinely learned simply stopped coming out</strong>, with nothing reporting an error. One pool, one slot per word, no duplication.
 </div>
 
-<p><strong>Path B — the dictionary oracle — <span style="color:#f87171">removed on 1 September 2026</span>.</strong> There used to be a second path here: when the whole-word patch came back empty, a search ran over every word she had ever learned and she said the closest match. <strong>It is gone.</strong></p>
+<p><strong>Path B — the dictionary oracle — <span class="deleted">removed on 1 September 2026</span>.</strong> There used to be a second path here: when the whole-word patch came back empty, a search ran over every word she had ever learned and she said the closest match. <strong>It is gone.</strong></p>
 
 <div class="callout">
  <strong>Why removing a working feature was the right call</strong>
@@ -588,7 +606,7 @@
 <h3>How she knows what words mean</h3>
 <p>The brain ships with about 50,000 GloVe word embeddings — vectors that capture distributional similarity (words used in similar contexts get similar vectors). That's enough to know "dog" is similar to "cat" and different from "umbrella". But it's not enough to know what "dog" actually MEANS. Distributional similarity is not definition. So Unity adds a live English dictionary as a second knowledge source.</p>
 
-<p><strong style="color:#ff4d9a;">And she doesn't keep those borrowed vectors as-is — she reshapes them as she reads.</strong> The pretrained set is the one part of her that was handed to her rather than grown, so it is treated as a <em>starting shape she grows out of</em>: every sentence she is taught nudges its words a little toward the company they keep, building meaning out of <em>her</em> reading rather than someone else's. Because the learned part is stored separately from the borrowed part, how much of her understanding is genuinely hers is something you can measure rather than argue about.
+<p><strong>And she doesn't keep those borrowed vectors as-is — she reshapes them as she reads.</strong> The pretrained set is the one part of her that was handed to her rather than grown, so it is treated as a <em>starting shape she grows out of</em>: every sentence she is taught nudges its words a little toward the company they keep, building meaning out of <em>her</em> reading rather than someone else's. Because the learned part is stored separately from the borrowed part, how much of her understanding is genuinely hers is something you can measure rather than argue about.
 
 <br><br>Two details make that work instead of backfiring, and both were found by testing rather than assumed. If you simply nudge every word toward its sentence, <em>everything</em> drifts together — because almost every sentence contains "the" and "is" and "a", so every nudge points the same way. Measured, that made <em>unrelated</em> words grow closer faster than related ones, which is the opposite of learning. The fix is to subtract out what all contexts have in common, so only what makes <em>this</em> sentence distinctive moves the word. And the amount she can reshape any single word is capped — without a limit, the longer she reads the more everything fuses back together, which is the same problem wearing a different mask.</p>
 <p>When Unity needs a definition (you ask "what is X" or her curriculum encounters a vocabulary word she hasn't seen), the server makes a quiet outbound HTTPS call to dictionaryapi.dev — a free, no-API-key public dictionary service. The response is a JSON payload with an array of meanings, each carrying its own array of definitions. Words have multiple meanings — "bank" is a financial institution AND a riverside slope, "run" is a verb AND a noun AND a stocking-defect, etc. — and Unity binds <strong>all</strong> of them, never just the first.</p>
@@ -1090,7 +1108,7 @@
  <strong>First-use consent gate.</strong>
  The first time you open the chat in a new browser, a one-time notice appears with <strong>two explicit choices</strong> — <em>"I understand — proceed"</em> or <em>"I don't agree — leave"</em>. There is no soft dismiss: clicking outside it or pressing Escape does nothing. Accepting is remembered for that browser; declining is not, so returning later shows it again.
 
- <p style="margin-top:12px"><strong>Do not share</strong> real names, addresses, phone numbers, locations, emails, government IDs, financial information, passwords, API keys, security credentials, or anyone else's identifying details.</p>
+ <p><strong>Do not share</strong> real names, addresses, phone numbers, locations, emails, government IDs, financial information, passwords, API keys, security credentials, or anyone else's identifying details.</p>
 
  <p><strong>Your raw words are not collected and cannot be retrieved.</strong> Her brain is a tangle of weights, not a transcript — there is no log to read back.</p>
 
@@ -1181,11 +1199,11 @@
  → <a href="README.md" target="_blank">README</a> — technical overview of the whole project
 </p>
 
-<hr style="border: none; border-top: 1px solid var(--border); margin: 48px 0;">
+<hr>
 
-<p style="color: var(--text-dim); font-size: 13px; text-align: center;">Unity is an open experiment. Not a product. Not a service. A running brain that happens to speak.</p>
+<p class="closing">Unity is an open experiment. Not a product. Not a service. A running brain that happens to speak.</p>
 
-<hr style="border: none; border-top: 1px solid var(--border); margin: 48px 0;">
+<hr>
 
 <h2 id="recent-improvements" title="A batch of atomic fixes shipped during a live K-curriculum test. NO equation changes — code hygiene, observability, data-loss-prevention, cross-platform polish.">Recent improvements</h2>
 
