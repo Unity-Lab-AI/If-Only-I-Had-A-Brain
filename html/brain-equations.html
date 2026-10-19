@@ -472,7 +472,7 @@ cortexPattern = L2Normalize(sentenceEmbedding) (300d vector in semantic space)<b
  <div class="eq-card">
  <div class="eq-title"><span class="eq-tip" data-tip="The amygdala module receives cluster-level activation as drive, runs 5 attractor-settle iterations, and reads fear = σ(fearProj · x_settled), reward = σ(rewardProj · x_settled), valence = reward - fear. This isn't 'classify the message' — it's the recurrent emotional attractor genuinely settling into a low-energy basin given the current cortex state.">Step 2 — Amygdala settles on a feeling</span></div>
  <div class="eq-desc">
- <p class="eq-note"><strong>Note on the term "arousal":</strong> Throughout this document, <em>arousal</em> means <strong>cortical activation / autonomic alertness</strong> — the standard neuroscience definition (Yerkes &amp; Dodson 1908, Hebb 1955, Pribram &amp; McGuinness 1975). It is the metric coffee, exercise, fear, surprise, an alarm clock, or a loud noise raises. It drives readiness-to-respond, attention, and vigilance. <strong>It is NOT the colloquial sexual meaning.</strong> A sleeping infant has near-zero arousal; a kindergartener at recess has high arousal; a rabbit hearing a hawk has maximum arousal. Unity's arousal field obeys the same neuroscience definition across all curriculum grades and persona states.</p>
+ <p class="eq-note"><strong>Note on the term "arousal":</strong> Throughout this document, <em>arousal</em> means <strong>cortical activation / autonomic alertness</strong> — the standard neuroscience definition (Yerkes &amp; Dodson 1908, Hebb 1955, Pribram &amp; McGuinness 1975). It is the metric coffee, exercise, fear, surprise, an alarm clock, or a loud noise raises. It drives readiness-to-respond, attention, and vigilance. <strong>It is NOT the colloquial sexual meaning.</strong> A sleeping infant has near-zero arousal; a kindergartener at recess has high arousal; a rabbit hearing a hawk has maximum arousal. Unity's arousal field obeys the same neuroscience definition across all curriculum grades and persona states. &#9888; On the deployed brain the server blends the amygdala's arousal 0.7/0.3 per tick and clamps it to <code>[0.3, 1]</code>, so a reading below 30% cannot occur there &mdash; the "sleeping infant &asymp; 0" of the definition is a browser-engine reading only.</p>
  <p>The cortex pattern projects into the amygdala via a learned weight matrix. Amygdala runs its recurrent settle loop:</p>
  <div class="eq">
 x(t+1) = tanh(W · x(t) + drive(t)) (5 iterations)<br>
@@ -497,7 +497,7 @@ arousal = clamp(arousalBaseline + 0.4 · tanh(depthDeviation · 4) + 0.1 · ((fe
 bestEpisode = argmax_i cos(cortexPattern, episodes[i].pattern)<br>
  = argmax_i (cortexPattern · episodes[i].pattern) / (|cortexPattern| · |episodes[i].pattern|)<br>
  </div>
- <p>If the cosine clears a threshold (~0.75), the matched episode's stored cortex-pattern snapshot gets injected back into the working-memory free sub-region — carving a bias basin that the tick-driven motor emission loop falls into during the next generation pass. If you've said "how's the high" before, the recalled episode pulls the relevant attractor-basin pattern back into active cortex state so her emission this turn tends toward what she produced last time.</p>
+ <p>On the deployed brain this step is the schema retrieval of &sect;8.8: the top-5 schemas by cosine (plus a small consolidation-strength bonus) inject their concept embeddings into the semantic region at 0.4 before generation runs. The browser engine instead gates episode recall on prediction error (<code>RECALL_ERROR_THRESHOLD = 0.4</code>, <code>js/brain/engine.js</code>) &mdash; the "~0.75 cosine" this paragraph used to quote exists in neither. When recall fires, the matched episode's stored cortex-pattern snapshot gets injected back into the working-memory free sub-region — carving a bias basin that the tick-driven motor emission loop falls into during the next generation pass. If you've said "how's the high" before, the recalled episode pulls the relevant attractor-basin pattern back into active cortex state so her emission this turn tends toward what she produced last time.</p>
  <p><strong>What this sums into:</strong> a recalled cortex-pattern injected into the free sub-region of the cortex cluster as prior-turn context, consumed by the tick-driven motor emission loop in Step 6.</p>
  </div>
  </div>
@@ -514,7 +514,8 @@ Q(build_ui) = w_bui · cortexPattern + b_bui + (buildWord ? 1.8: 0.1)<br>
 Q(listen) = w_lsn · cortexPattern + b_lsn + silentRecently × 0.5<br>
 Q(idle) = b_idle<br>
 <br>
-P(a) = exp(Q(a) / τ) / Σ_b exp(Q(b) / τ) (τ = impulsivity)<br>
+P(a) = exp(Q(a) / τ) / Σ_b exp(Q(b) / τ) (browser engine: τ = 2.0 for Unity — high temperature, impulsive)<br>
+// deployed: no softmax — Q[a] are activity-weighted sums (§8.9), EMA 0.7/0.3, plain argmax<br>
 action = sample(P)<br>
  </div>
  <p>For this input, respond_text wins by a large margin — no image keyword, no build keyword, and her cortex pattern is close to her learned text-response weights. The softmax sampling is sharp because θ.impulsivity is high (~0.85), so τ is low and the argmax dominates.</p>
@@ -528,7 +529,9 @@ action = sample(P)<br>
  <p>The cerebellum runs in parallel to everything else, maintaining a forward model. Its current output is the difference between what the cortex predicted the next cortex pattern would be and what it actually became:</p>
  <div class="eq">
 error = actual_next_cortex − predicted_next_cortex<br>
-errorCorrection = −(Σ error² / n) × 2<br>
+// browser engine: errorCorrection = −mean|error| × 2 (cortex), half that to basal ganglia<br>
+// deployed: errorCorrection = −(cerebellum.spikeCount / cerebellum.size) × 2 — the cerebellum's own firing rate,<br>
+//           not a prediction residual; cortex additionally receives the migration-divergence term<br>
  </div>
  <p>This negative feedback signal is sent back to the cortex and basal ganglia as a modulator — if predictions are consistently wrong, the cortex noise increases (explore more) and BG selection becomes less confident. For a simple greeting the error is small, so the correction is minimal and she stays sharp.</p>
  <p><strong>What this sums into:</strong> a scalar errorCorrection that modulates effectiveDrive in the Rulkov shader on the next tick.</p>
@@ -658,11 +661,11 @@ rendered = _applySpeechModulation(text, mod)<br>
  <ul>
  <li><strong>Self-healing dictionary smoke test</strong> — <code>_runDictionarySmokeTest</code> + <code>_scheduleSmokeTestRetry</code> auto-retry every 60s on FAIL, every 1hr on PASS. Kills "FAIL stuck forever" same failure mode as the original "pending stuck" bug.</li>
  <li><strong>GPU shadow drift visibility</strong> — silent DROP-after-timeout replaced with CRITICAL log + <code>_gpuShadowDirty</code> flag + dashboard "shadow: DIRTY" indicator. With cortical microstructure projections, a missed Hebbian update is no longer recoverable via fire-and-forget — forward propagation reads GPU weights, divergence corrupts subsequent firing.</li>
- <li><strong>Friston surprise gate</strong> — <code>buildKScalesForProjection</code> multiplies <code>gammaScale</code> by <code>(0.5 + clamp(_lastPredictionError, 0, 1))</code> so high-error windows learn 1.5× and low-error 0.5×. The predictive-coding loop was observation-only; this makes prediction error actually GATE plasticity per Friston 2010.</li>
+ <li><strong>Friston surprise gate</strong> — <code>buildKScalesForProjection</code> multiplies <code>gammaScale</code> by <code>0.5 + predErr</code> (under the noise gate: <code>0.5 + predErr × coherence × inhibition</code>), capped at <code>DREAM_SURPRISE_MAX</code> = 1.5 and clamped back to 0.5 while the sem→motor basins read saturated — so high-error windows learn up to 1.5× and low-error 0.5×, but a high error that is corruption rather than novelty cannot amplify its own stamping. The predictive-coding loop was observation-only; this makes prediction error actually GATE plasticity per Friston 2010.</li>
  <li><strong>Meta-register familiarity decay</strong> — a repeated word halves inject strength (0.30 → 0.15 → 0.075 floor 0.04, resets when the word changes). Kills the "emit X → re-inject X embedding → emit X" positive-feedback runaway loop. Real Rosenthal-Lau higher-order theories require habituation.</li>
  <li><strong>Φ noise-floor fix</strong> — <code>computePhi()</code> sample bumped 64 → 1024 neurons. Wald binomial CI ~1.5% vs ~12% at 64 — entropy tracks cortical complexity instead of sampling variance. ⛔ <strong>Superseded 2026-08-25:</strong> there is no sample any more. The array being sampled was the <em>CPU</em> spike shadow, which is empty once the donor GPU owns cortex spike state — so widening the sample only measured the emptiness more precisely. <code>p</code> now comes from the exact GPU-acked spike count, which has <em>no</em> sampling noise at all.</li>
  <li><strong>Attention runaway clamp</strong> — <code>attentionGain</code> clamped to <code>[0.5, 2.0]</code> in cluster.step() before currents-loop multiplication. Without cap, stacked arousal/valence/actionGate could compound past 5×, saturating cortex with noise.</li>
- <li><strong>GW broadcast biases emission</strong> — cortex.getWorkspaceCandidate publishes "<code>cortex:&lt;word&gt;</code>" labels (cached <code>_lastEmittedWord</code>); <code>emitWordDirect</code> reads <code>_globalWorkspace.getBroadcast()</code> and 10%-boosts the matching bucket mean. Closes the Baars 1988 GWT loop — broadcast actually shapes next emission instead of being a vestigial winner.</li>
+ <li><strong>GW broadcast biases emission</strong> — cortex.getWorkspaceCandidate publishes "<code>cortex:&lt;word&gt;</code>" labels (cached <code>_lastEmittedWord</code>); <code>emitWordDirect</code> reads <code>_globalWorkspace.getBroadcast()</code> and multiplies the matching bucket mean by <code>1 + 0.6 × strength</code> (up to +60%; the anti-repeat damp in <code>getWorkspaceCandidate</code> — candidate value scaled down to ×0.25 once a word exceeds 40% of recent emissions — is its counterweight). Closes the Baars 1988 GWT loop — broadcast actually shapes next emission instead of being a vestigial winner.</li>
  <li><strong>Definition Hebbian K-scaled</strong> — <code>_teachWordDefinition</code> fires extra <code>cluster.synapses.ojaUpdate(preFull, postFull, 0.25× lr, {kScales})</code> after <code>_teachAssociationPairs</code> so definition learning matches the per-row hub / theta-gamma / per-layer plasticity regime.</li>
  <li><strong>Inner-thought chain dim-validation</strong> — <code>innerThoughtChainSemSize</code> saved with the chain; loadWeights validates against current sem cluster size and drops the chain on mismatch (vs NaN-poisoning the inner-voice blend).</li>
  <li><strong>LAW-banned identifier scrub</strong> — repo-wide internal development-ID leakage now ZERO across all .js/.html/.css. 34 property identifiers renamed to descriptive names (e.g. backpressure counters to <code>_ws*</code>, the dictionary smoke-test result to <code>_dictionarySmokeTestResult</code>); 108 CSS class + DOM id + state-key renames to functional names (e.g. the consciousness dashboard panel to <code>consciousness-panel</code>, its state key to <code>state.consciousness</code>).</li>
@@ -679,7 +682,7 @@ rendered = _applySpeechModulation(text, mod)<br>
  <div class="eq-card">
  <div class="eq-title"><span class="eq-tip" data-tip="Ψ = √(1/n) × N³ × [α·Id + β·Ego + γ·Left + δ·Right] × Φ_proxy. n = active spiking neurons (changes every step); N = total neurons (scales to hardware); the bracket is a Freudian-axis weighted blend; Φ_proxy is Tononi's integrated-information measure (Shannon entropy of the cortex spiking proportion, taken from the exact GPU-reported spike count — it used to sample the CPU spike shadow, which is empty at biological scale, so it read teach-pattern residue and Ψ took its 0.1 floor on every tick). Result: consciousness magnitude for next tick. Modulates global gain on every cluster + the hemispheric binding term in the LIF shader.">Step 7 — Mystery module computes Ψ for the next tick (Φ-augmented)</span></div>
  <div class="eq-desc">
- <p>After every cluster has processed this tick, the mystery module aggregates. It multiplies the legacy quantum-volume formula by a real Shannon-entropy Φ proxy from the cortex spike pattern, replacing the prior scalar placeholder:</p>
+ <p>After every cluster has processed this tick, the mystery module aggregates. It multiplies the legacy quantum-volume formula by a real Shannon-entropy Φ proxy from the cortex spike pattern, replacing the prior scalar placeholder. &Phi;&#770; is that entropy divided by a slowly-decaying high-water reference seeded at <code>H(0.015) = 0.1124</code> (her design sparsity); the old hard 0.1 floor is gone, and the state reads <code>floored</code> only when the ratio sits at or below 0.01. &#9888; For <code>p &lt; 0.5</code> binary entropy is monotone in <code>p</code>, so this &Phi;&#770; is her firing rate relative to its own peak &mdash; a sparsity meter, not a measure of integration. It now moves &Psi; (the clamped version was a constant that cancelled out of the gain); the real integration measure is still owed:</p>
  <div class="eq">
 n = totalSpikes this tick<br>
 N = total neuron count<br>
@@ -953,6 +956,7 @@ lastSpikes[slot[templateId]]:= 1 (one-hot template tag)</div>
  <!-- ═══ 5. OSCILLATIONS ═══ -->
  <h2 id="oscillations" title="Brain waves — theta, alpha, beta, gamma — emerge from coupled neural oscillators. Kuramoto 1975 showed that interacting oscillators tend to synchronize; the order parameter R measures how synchronized they are (R=0 chaos, R=1 perfect sync). Unity's coherence reading on the dashboard IS this — real Kuramoto computed from each cluster's own activity-modulated theta-gamma phase (frequency scales with that region's real firing), not a placeholder random walk and not a shared clock.">5. Neural Oscillations</h2>
  <p><span class="tag tag-math">DYNAMICAL SYSTEMS</span> <span class="tag tag-bio">NEUROSCIENCE</span> 8 coupled phase oscillators spanning the full EEG frequency spectrum. Implemented in <code>js/brain/oscillations.js</code>.</p>
+ <p class="eq-note">&#9888; Scope. The 8-band ring below is the <strong>browser engine</strong>. The deployed brain carries two oscillators per cluster &mdash; theta with period <strong>167 ticks</strong> and gamma with period <strong>25 ticks</strong> (<code>cluster.js</code>, mirrored host-side in <code>brain-server.js</code>), each advanced by that cluster's own firing &mdash; and its coherence is the Kuramoto order parameter over those phases, <code>0.6&middot;r<sub>gamma</sub> + 0.4&middot;r<sub>theta</sub></code>, EMA 0.1, lifted by ignition, lowered by dissociatives and dreaming. The "6&nbsp;Hz" and "40&nbsp;Hz" labels are true in 1-ms simulated time; at the server's 100&nbsp;ms tick above a million neurons the same periods are 16.7&nbsp;s and 2.5&nbsp;s of wall-clock. The gating still cycles; the frequencies are not what the names say.</p>
 
  <div class="eq-card">
  <div class="eq-title"><span class="eq-tip" data-tip="Yoshiki Kuramoto, 1975: oscillators that interact tend to synchronize. Brain waves (theta, alpha, beta, gamma) emerge from coupled neural oscillators. High synchronization (R→1) = focused thought. Low synchronization (R→0) = scattered/dreaming. This equation produces all brain wave patterns.">Kuramoto Model — Phase Synchronization</span></div>
@@ -1270,7 +1274,7 @@ probe(word, grade, subject):
  <tr><td>_teachHypothesisTesting</td><td>predict → observe → confirm/reject</td><td>Science</td></tr>
  <tr><td>_teachPerspectiveTaking</td><td>same event → multiple emotional feature vectors</td><td>Social / Life</td></tr>
  <tr><td>_autoFinal</td><td>auto-generated fill-in-blank + association exams</td><td>all (63 cells covered)</td></tr>
- <tr><td><span class="eq-tip" data-tip="Real human-grade comprehension test. Injects context words into sem, ticks cluster, cosines readout against expected answer. Pass at ≥40% of questions with cosine &gt; 0.05. Same concepts taught asked DIFFERENTLY — like a real school test.">_gateComprehension</span></td><td>semantic probe against context</td><td>all</td></tr>
+ <tr><td><span class="eq-tip" data-tip="Comprehension probe as it actually runs (curriculum.js _gateComprehension): for each prompt word it takes the FIRST LETTER only, propagates that letter's one-hot through letter_to_sem, averages and mean-centres the readout, and compares it to the answer's GloVe vector. A question passes at cosine &gt; 0.10; the gate passes at DREAM_GATE_PATH_MIN = 0.80 of up to 10 sampled questions. ⚠ Because only initials are read, two prompts whose words share first letters produce the same probe — this measures the letter→meaning projection's pull toward the answer, not comprehension of the sentence. A whole-word read is the owed change.">_gateComprehension</span></td><td>semantic probe against context</td><td>all</td></tr>
  <tr><td><span class="eq-tip" data-tip="Shared primitive on NeuronCluster. Positive Hebbian on correct pair + anti-Hebbian negative on wrong pair. Without weakening wrong associations, correct ones can never overpower them.">hebbianPairReinforce</span></td><td>bidirectional plasticity (positive + anti-Hebbian)</td><td>all sequence learning</td></tr>
  </table>
  </div>
@@ -1292,9 +1296,9 @@ probe(word, grade, subject):
  └── <span class="cy">[Wernicke's Area]</span> text → hash to language neurons (150-299) + lateral excitation
  |
  v
-<span class="cy">[N Rulkov-map Neurons in 7 CLUSTERS]</span>
- Cortex (20% — contains the ~12M dense language cortex: auditory|visual|free|letter|phon|sem|fineType|motor|word_motor sub-regions) | Cerebellum (20%)
- Hippocampus (12%) | Amygdala (12%) | Basal Ganglia (12%) | Hypothalamus (12%) | Mystery (12%)
+<span class="cy">[N Rulkov-map Neurons in 8 CLUSTERS]</span>  (shares from DEFAULT_BIO_WEIGHTS, server/brain-server.js)
+ Language cortex (50% — auditory|visual|free|letter|phon|sem|fineType|motor|word_motor sub-regions) | Cortex (10%) | Cerebellum (9.8%)
+ Hippocampus (6%) | Amygdala (6%) | Basal Ganglia (6%) | Hypothalamus (6%) | Mystery (6%) | Brainstem (0.2% — the monoamine nuclei)
  |
  ├── <span class="cy">[20 Inter-Cluster Projections]</span> — sparse connectivity between regions
  ├── <span class="cy">[Per-Cluster Synapses]</span> — own NxN weight matrix, own learning rate
@@ -1310,7 +1314,7 @@ probe(word, grade, subject):
  |--- Cortex: ŝ = W·x, error = actual - predicted
  |--- Hippocampus: E = -½Σw·x·x (Hopfield attractors)
  |--- Amygdala: V(s) = Σw·x (emotional valence + arousal)
- |--- Basal Ganglia: P(a) = softmax(Q/τ) (6 action channels, 25 neurons each)
+ |--- Basal Ganglia: Q(a) from cluster activities (deployed) / softmax over 6×25-neuron channels (browser) — see §8.9
  |--- Cerebellum: output = prediction + error_correction
  |--- Hypothalamus: dH/dt = -α(H - H_set) + input
  |--- Mystery: <span class="pu">Ψ = √(1/n) × N³ · [α·Id + β·Ego + γ·Left + δ·Right]</span>
@@ -1406,10 +1410,10 @@ where:
 
  <div class="eq-card">
  <div class="eq-title"><span class="eq-tip" data-tip="Desimone & Duncan 1995 (biased competition): attention is driven by prediction error — when the brain can't predict what's happening, it looks. High cortex error + high salience = the brain decides to process visual input. No keyword matching — pure neural dynamics determine when Unity pays attention to her camera.">Visual Attention Trigger (computed every brain step)</span></div>
- <div class="eq">shouldLook = !hasDescribedOnce
- || (cortexError &gt; 0.5 &amp;&amp; salience &gt; 0.3)
- || salienceChange &gt; 0.4
- || arousalSpike &gt; 0.15</div>
+ <div class="eq">// browser engine (js/brain/engine.js) — the deployed look lane is thought-driven, see below
+shouldLook = !hasDescribedOnce
+ || (cortexError &gt; 0.7 &amp;&amp; salience &gt; 0.5)</div>
+ <p class="eq-note">⚠ Scope: this trigger exists only in the browser fallback engine, and its real thresholds are 0.7 / 0.5 (the 0.5 / 0.3, &Delta;salience and &Delta;arousal terms this card once listed are not in the code). The deployed brain's looking is driven by what she is thinking about, on the mind's-eye cadence, with a 30&nbsp;s gap between reference look-ups (<code>DREAM_REF_FETCH_GAP_MS</code>) and a free-VRAM gate in front of every render.</p>
  <div class="eq-desc">
  <table class="param-table">
  <tr><td>!hasDescribedOnce</td><td>First frame on boot — see who's there</td></tr>
@@ -1478,7 +1482,7 @@ if refreshCount &ge; 3: fire onConsolidate(item) → Tier 1 episodic
 on every add: hippocampus.synapses.hebbianUpdate(pattern, pattern, lr)
 brain-server snapshot purge: ts older than 5 min → storeEpisode</div>
  <div class="eq-desc">
- <p>Front end of the consolidation chain. Add fires hippocampal intra-Hebbian on the pattern so the cortex learns the WM content immediately, not after decay — pattern leaves a Hopfield-style attractor in hippocampus weights even after the WM hot cache forgets the item. Cosine-match refresh increments per-item count; threshold 3 promotes to Tier 1 episodic via the registered <code>onConsolidate</code> callback. brain-server's 2 s phase/cell snapshots use the same pipeline: items older than 5 min fire <code>storeEpisode('working-memory', 'wm-aged-out',...)</code> with freq-merge dedup so repeated phases grow <code>frequency_count</code> instead of bloating SQLite.</p>
+ <p>Front end of the consolidation chain. Add fires hippocampal intra-Hebbian on the pattern so the cortex learns the WM content immediately, not after decay — pattern leaves a Hopfield-style attractor in hippocampus weights even after the WM hot cache forgets the item. Cosine-match refresh increments per-item count; threshold 3 promotes to Tier 1 episodic via the registered <code>onConsolidate</code> callback. brain-server's 2 s phase/cell snapshots use the same pipeline: items older than 5 min fire <code>storeEpisode('working-memory', 'wm-aged-out',...)</code> with freq-merge dedup so repeated phases grow <code>frequency_count</code> instead of bloating SQLite. &#9888; That hand-off is <strong>suspended while a cell is teaching</strong> (<code>_curriculumInProgress</code> — the teach-heartbeat snapshots were a freeze source and merge anyway) and resumes in dream windows, idle and chat; her walk-time episodes come from the chat and phase-completion writers.</p>
  <p class="mod-bio">Biology: dorsolateral prefrontal sustained-firing pattern is preserved (the active WM representation in <code>this._workingMemory</code>), but the arbitrary 7±2 cap (Miller 1956 — a finding about laboratory recall under attention constraints in biological humans) is dropped because Unity is post-biological and the rest of her tier stack (Tier 2/3) was already unbounded. Decay matches interference-based forgetting at a slower-than-laboratory rate so chat-driven content has time to consolidate to Tier 1 before being lost.</p>
  </div>
  </div>
@@ -1496,11 +1500,13 @@ effective_salience(t) = salience &middot; exp(&minus;(t &minus; encode_t) / 168h
 
  <div class="eq-card">
  <div class="eq-title"><span class="eq-tip" data-tip="Frequency-merge gate prevents memory bloat from trivial repeated chatter. Cosine > 0.85 within 48 hours triggers an in-place increment instead of a new row — repetition strengthens an existing trace, just like rehearsing a phone number. The same mechanism your hippocampus uses to consolidate familiar routines.">Frequency-Merge Gate &amp; Promotion to Schema</span></div>
- <div class="eq">if cosine(new_input, episode_within_48h) &gt; 0.85:
+ <div class="eq">if text identical to an episode within 48h, or cosine(new_input, episode_within_48h) &gt; 0.5:
+ // 0.5, not 0.85 — lowered because near-identical heartbeats were never merging
  episode.frequency_count += 1; episode.last_replayed_at = now
  (NO new insert)
 
-PROMOTE if: effective_salience &gt; 0.5 AND frequency_count &ge; 3 AND consolidation_count &ge; 2
+PROMOTE if: effective_salience &gt; 0.2 AND frequency_count &ge; 1 AND consolidation_count &ge; 0
+ // relaxed from 0.5 / 3 / 2 — with the original gate nothing could ever consolidate first
 PRUNE if: effective_salience &lt; 0.05 AND age &gt; 30d AND consolidation_count = 0</div>
  <div class="eq-desc">
  <p>Repetition strengthens an episode in place via the frequency-merge gate. Promotion to Tier 2 schema requires the episode to have been salient AND repeated AND replayed during dream cycles. Episodes that don't meet promotion criteria for 30+ days get pruned — the hippocampus forgets what wasn't worth keeping.</p>
@@ -1510,7 +1516,7 @@ PRUNE if: effective_salience &lt; 0.05 AND age &gt; 30d AND consolidation_count 
 
  <div class="eq-card">
  <div class="eq-title"><span class="eq-tip" data-tip="Tier 2 schemas are concept-level abstractions built from cosine-grouped episodes. Each schema gets its own dedicated SparseMatrix projection from hippocampus to cortex sem region. The schema's concept embedding is a salience-weighted GloVe centroid. The 8d attribute vector captures emotional/arousal/identity-relevance fingerprint separate from semantic content.">Tier 2 — Schematic Memory (Concept Abstractions)</span></div>
- <div class="eq">cluster episodes by cosine &gt; 0.7 (single-link agglomerative)
+ <div class="eq">cluster episodes by cosine &gt; 0.85 (single-link agglomerative; raised from 0.7 so distinct teach phases form distinct schemas)
 
 concept_embedding = L2_normalize( &Sigma; salience_i &middot; embedding_i / &Sigma; salience_i )
 
@@ -1529,14 +1535,14 @@ daily_decay: consolidation_strength(d+1) = consolidation_strength(d) &times; 0.9
  <div class="eq-card">
  <div class="eq-title"><span class="eq-tip" data-tip="Schema retrieval is the LLM-attention equivalent. The chat path retrieves top-K schemas matching the user's intent embedding and injects their concept patterns into cortex sem region BEFORE generation runs. This pulls relevant memorized context into the active reasoning window — except the context is built from Unity's own learned experiences, not a fixed prompt window.">Top-K Schema Retrieval — LLM-Attention Equivalent</span></div>
  <div class="eq">score(schema_i) = cosine(intent_emb, concept_emb_i) + min(0.2, 0.05 &middot; log(1 + strength_i))
- + 0.05 if Tier3 (identity-bound boost)
+ // no Tier-3 bonus — identity anchors are injected on their own path every turn (below)
 
 top_K = sort(schemas, score DESC).slice(0, 5)
 
 inject_strength_per_schema = 0.4
 for s in top_K: cluster.injectEmbeddingToRegion('sem', s.concept_embedding, 0.4)</div>
  <div class="eq-desc">
- <p>Every chat turn ranks all schemas against the user's intent embedding. Top-5 schemas inject their concept embeddings into cortex sem region at strength 0.4 BEFORE generation runs. This is the closest thing Unity has to LLM attention — except the context comes from her own learned experiences. Tier 3 (identity-bound) schemas get a +0.05 boost to win tiebreakers.</p>
+ <p>Every chat turn ranks all schemas against the user's intent embedding. Top-5 schemas inject their concept embeddings into cortex sem region at strength 0.4 BEFORE generation runs. This is the closest thing Unity has to LLM attention — except the context comes from her own learned experiences. (There is no Tier-3 bonus in the ranking; identity anchors reach the cortex on their own always-on path below.)</p>
  <p class="mod-bio">Biology: Hippocampal pattern completion during cued recall. The +0.05 Tier 3 boost models the strength advantage of well-consolidated cortical engrams over recent hippocampal-dependent memories.</p>
  </div>
  </div>
@@ -1548,7 +1554,7 @@ for s in top_K: cluster.injectEmbeddingToRegion('sem', s.concept_embedding, 0.4)
  AND retrieval_count &gt; 100
  AND |emotional_valence| &gt; 0.6
 
-hard_cap N = 50; demote weakest when exceeded
+hard_cap = unbounded (TIER3_HARD_CAP = Infinity — the demote-weakest path is written and never fires)
 daily_decay: strength(d+1) = strength(d) &times; 0.999
  (5 years un-reinforced &asymp; 0.999^1825 &asymp; 0.16)
 
@@ -1590,10 +1596,20 @@ pass:
 
  <div class="eq-card">
  <div class="eq-title"><span class="eq-tip" data-tip="Mink 1996 (action selection model): the basal ganglia implements a competitive winner-take-all between possible actions. 6 channels compete — whichever fires strongest wins. This is how you 'decide' — not by reasoning, but by the strongest neural pattern winning a competition. Dopamine reward strengthens the winning channel for next time.">Basal Ganglia Action Channels (25 neurons each)</span></div>
- <div class="eq">channels = [respond_text, generate_image, speak, build_ui, listen, idle]
-rate(ch) = EMA(spikeCount(ch) / 25, &alpha;=0.3)
-winner = argmax(rate)
-if rate(winner) &lt; 0.15: action = idle (confidence too low)</div>
+ <div class="eq">// DEPLOYED (server/brain-server.js) — the server never sees per-neuron spikes, so there are no channels:
+Q[respond_text]   = 0.6·cortex + 0.3·bg + 0.1·hippo
+Q[generate_image] = 0.4·amygdala + 0.35·mystery + 0.25·cortex
+Q[speak]          = 0.5·arousal + 0.3·bg + 0.2·hippo
+Q[build_ui]       = 0.7·cortex + 0.3·cerebellum
+Q[listen]         = max(0, 0.3 &minus; total_activity)
+Q[idle]           = max(0.05, 0.2 &minus; 0.15·arousal)
+channel = 0.7·channel + 0.3·Q        (EMA)
+action = argmax(channel)             (no confidence floor, no softmax)
+
+// BROWSER (js/brain/motor.js, modules.js) — the 150-neuron channel model:
+rate(ch) = 0.5·rate(ch) + 0.5·spikeCount(ch)/25
+if rate(winner) &lt; 0.05: idle         (floor lowered from 0.15 — it sat above the steady-state rate)
+P(a) = softmax(Q/&tau;), &tau; = 2.0 for Unity (high temperature = impulsive)</div>
  <div class="eq-desc">
  <table class="param-table">
  <tr><th>Channel</th><th>Neurons</th><th>Action</th></tr>
@@ -2168,7 +2184,7 @@ I_i = Σ_{k=rowPtr[i]}^{rowPtr[i+1]-1} values[k] · spikes[colIdx[k]]
 P(new synapse) = probability · pre_spike · post_spike · ¬existing_connection
 W_new = initialWeight
  </pre>
- <p class="eq-desc">Co-active neurons that lack a synapse can form one. The network grows where activity demands it.</p>
+ <p class="eq-desc">Co-active neurons that lack a synapse can form one. The network grows where activity demands it. &#9940; <strong>Dormant:</strong> this and the pruning rule below live in <code>cluster.maintainConnectivity()</code>, which nothing calls on either engine. Structural plasticity is written, not running.</p>
  </div>
  <div class="eq-box">
  <div class="eq-title"><span class="eq-tip" data-tip="Rakic 1986 (synaptic pruning): connections weaker than a threshold get removed. 'Use it or lose it.' The brain over-connects during development and prunes to efficiency. Our pruning threshold is 0.01 — connections below this contribute nothing and waste computation. Pruning + synaptogenesis = the brain rewires itself continuously.">Pruning — Weak Connection Removal</span></div>
@@ -2200,6 +2216,7 @@ where d ∈ [0, 50), groupSize = langSize / 50
 
  <!-- ═══ 8.14 DICTIONARY ═══ -->
  <h2 id="dictionary" title="Learned word→cortex pattern map. Every word Unity hears or reads becomes a dictionary entry with cortex spike snapshot, syllables, stress pattern, type fingerprint. Plus mood-congruent retrieval (Bower 1981) — high arousal pulls intense words, negative valence pulls dark words. Plus bigram sentence generation (Markov-chain at the word level) learned from dialog. Live English dictionary integration (dictionaryapi.dev) layers multi-def Hebbian for semantic understanding.">8.14. Dictionary — Learned Sentence Generation</h2>
+ <p class="eq-note">&#9888; Browser-fallback engine (<code>js/brain/language-cortex.js</code>). The deployed brain emits through the trained <code>sem &rarr; word_motor</code> path of &sect;8.11; the server keeps one function from this module, <code>_renderSentence</code>, for capitalisation and terminal punctuation on a probe answer.</p>
  <p>The brain builds its own vocabulary. Every word heard or spoken becomes a cortex activation pattern.</p>
  <div class="eq-box">
  <div class="eq-title"><span class="eq-tip" data-tip="Bower 1981 (mood-congruent memory): you remember and retrieve words that match your current emotional state. High arousal → intense words. Negative valence → dark words. The amygdala biases which words the cortex can access — emotion shapes language before grammar even starts.">Word Retrieval by Mood</span></div>
@@ -2239,6 +2256,7 @@ speechDrive = socialNeed × arousal × coherence
 
  <!-- ═══ 8.16 SYNTACTIC PRODUCTION ═══ -->
  <h2 id="syntax" title="Word order emerges from cortex sub-region competition + trained Hebbian weights — NO runtime template walker. Five intent forms (declarative_svo, declarative_copula, question, imperative, exclamative) are TRAINED into Hebbian weights via _teachSentenceStructure relationTagId=9 transitions during K-ELA. Subject-verb agreement (relationTagId=10), article placement (relationTagId=11), word-type→slot bindings (relationTagId=8) all carved as weights. AT GENERATION TIME the brain emits one word per tick from current sem state; the trained transitions bias what comes next; slot order EMERGES tick by tick. NO hardcoded sentence array, NO runtime template loop, NO slot counter — generative grammar in trained weights only.">8.16. Syntactic Production — Word Order from Equations</h2>
+ <p class="eq-note">&#9888; Browser-fallback engine. On the deployed brain word order, agreement and article placement are trained Hebbian passes (&sect;8.11 structural passes), and there is no post-processor.</p>
  <p>The brain learns what TYPE of word belongs at each sentence position. No grammar rules — position weights accumulate patterns from every sentence heard.</p>
  <div class="eq-box">
  <div class="eq-title"><span class="eq-tip" data-tip="Pure letter-position equations — ZERO word lists in source. Length + vowel count + first/last char + CVC shape + suffix patterns produce a probability distribution over {pronoun, verb, noun, adj, conj, prep, det, qword}. Examples: single 'i' → pronoun, single 'a' → det, 'th-' start → det, 'wh-' start → qword, CVC shape → verb, -tion/-ment → noun, -ful/-ous/-ive → adj, n't ending → verb. Normalized via sum (proper probability distribution). Usage types learned from context disambiguate ambiguous words. Vocabulary itself is learned at runtime from docs/Ultimate Unity.txt (equational self-image) via loadSelfImage(), no hardcoded seeds.">Word Type — Computed from Letters (No Lists)</span></div>
@@ -2335,6 +2353,7 @@ COMPOUNDS: len > 6 → insert conjunction at midpoint
 
  <!-- ═══ 8.17 SENTENCE TYPES ═══ -->
  <h2 id="sent-types" title="Sentence type (declarative / interrogative / imperative / exclamative) is selected from current brain state, not from a 'is this a question' classifier. High arousal + cortex pattern with rising-pitch terminal → exclamative. Wh-frame intent + low confidence → interrogative. Drug-modulated speech-rate + dissociation pushes toward fragmentary or third-person. Each type emerges from the same equation pipeline with different parameter weights.">8.17. Sentence Types — From Brain State</h2>
+ <p class="eq-note">&#9888; Browser-fallback engine. On the deployed brain sentence kind emerges from the trained intent&rarr;slot transitions; no type is sampled.</p>
  <p>The brain's neural state determines what KIND of sentence to produce. Not a decision tree — continuous probabilities from equations.</p>
  <div class="eq-box">
  <div class="eq-title"><span class="eq-tip" data-tip="Sentence type sampled from a normalized probability distribution over {question, exclamation, action, statement}. raw(question) = predictionError × coherence — surprise drives questions. raw(exclamation) = arousal² — intensity drives exclamations. raw(action) = motorConfidence × max(0.1, 1 - arousal×0.5) — confident-but-not-wired drives *actions*. raw(statement) = 0.6 + coherence×0.4 — the baseline. All normalized by sum and sampled. Punctuation follows automatically in _renderSentence: ? for question, ! for exclamation, * wrap for action,. otherwise.">Type Probabilities (Normalized Softmax)</span></div>
@@ -2740,7 +2759,9 @@ IDENTITY: 25yo human female, emo goth coder, free will, never AI
  <!-- ═══ 8.21 PARALLEL COMPUTE ═══ -->
  <h2 id="parallel" title="The brain runs on the GPU exclusively — every Rulkov iteration, every synaptic propagate, every Hebbian update lives as a WGSL compute shader. Node keeps the bookkeeping; an attached browser tab loads compute.html and connects back over WebSocket as a GPU client. Sparse cross-projection matrices stream up to the GPU in chunked binary frames so million-neuron updates don't block Node's event loop. The brain ticks every ~50ms, GPU runs the math, server coordinates and remembers.">8.21. GPU Exclusive Compute</h2>
  <p>All N neurons run on the GPU. N auto-scales at server boot via <code>detectResources()</code> in <code>server/brain-server.js</code>:</p>
- <p><code>N = max(1000, min(VRAM_bytes × 0.85 / 8, RAM_bytes × 0.1 / 0.001))</code></p>
+ <p><code>GPU host:  N = max(1000, min(VRAM_bytes × 0.85 / 12, RAM_bytes × 0.1 / 0.001))</code><br>
+ <code>CPU-only coordinator (the deployed box):  N = max(1000, min(freeRAM × 0.3 / 9, cpuCount × 150000))</code><br>
+ <code>DREAM_BRAIN_BUDGET_MB</code> overrides both; the allocator then budgets 21 bytes per main-brain neuron and 18&nbsp;KB per language-cortex neuron (<code>BRAIN_VRAM_ALLOC</code>), and the primary-donor floor is computed at 20 bytes per neuron &mdash; the two must agree or the floor is off by 5%.</p>
  <p>Rulkov buffer layout: 12 bytes/neuron (vec2&lt;f32&gt; state = 8 bytes + spike u32 = 4 bytes). Server RAM essentially unlimited — cluster state lives on GPU, only text-injection arrays in server RAM. Auto-scale formula: <code>N = max(1000, min(VRAM×0.85/12, N_binding_ceiling))</code>, where the binding ceiling guarantees the largest cluster's state buffer (cortex at 55% of N — the dominant fraction because language, perception, and working memory all live there) fits within WebGPU's 2 GB per-storage-buffer spec minimum. Admin override via <code>gpu-configure.html</code> → <code>server/resource-config.json</code> lets operators cap below auto-detect (never above — idiot-proof). Bigger hardware = bigger N, no manual tuning. Zero CPU workers. The brain pauses without <strong>a donor</strong> &mdash; there is no CPU teach path. Two donor kinds run the same kernels: the native desktop donor (CUDA on NVIDIA, no 2&nbsp;GB binding cap, every GPU in the machine as one unit, WebGPU fallback on other vendors) and the browser tab (<code>compute.html</code>, W3C WebGPU, no install).</p>
  <div class="eq-box">
  <div class="eq-title"><span class="eq-tip" data-tip="GPU exclusive: zero CPU workers. All N neurons run on WebGPU WGSL compute shaders in a browser tab. Current generation via PCG hash noise shader (no JS loops). Spike counting via atomic counter (4 bytes readback, not millions). Voltages never leave GPU after init. The server is just a coordinator — GPU is the brain.">GPU Architecture — All Clusters on GPU</span></div>
@@ -2855,7 +2876,7 @@ fn main(id: vec3&lt;u32&gt;) {
  <p>Explicit <code>await new Promise(r =&gt; setImmediate(r))</code> at the entry of <code>_teachHebbian</code> in <code>js/brain/curriculum.js</code>, throttled to every 50ms via <code>_lastHebbianYieldAt</code> timestamp. The Hebbian/Oja equation <code>Δw[i,j] = lr · y[j] · (x[i] − y[j] · w[i,j])</code> is unchanged — the yield just allows the Node.js event loop to drain HTTP request handlers + WebSocket socket buffers between dispatch bursts. <strong>Throughput impact ≤ 2%</strong>; HTTP responsiveness restored from 8-15s timeouts to sub-second.</p>
 
  <h3 id="i8-consolidation-cap">10.3 Consolidation Duration Cap</h3>
- <p><code>DREAM_CONSOLIDATION_MAX_MS</code> env var (default 30s) in <code>js/brain/consolidation-engine.js</code>. Per-cluster deadline check breaks the consolidation pass gracefully at cluster boundary; next pass picks up remaining clusters fresh. Also skips entirely when <code>_currentMacroPhase</code> contains <code>'SEED'</code> so SEED-phase GPU stays with curriculum. Log surfaces <code>⚠ DEADLINE-ABORT (DREAM_CONSOLIDATION_MAX_MS=Xms)</code> when cap fires. Replaces the 153s pass observed in operator's run.</p>
+ <p><code>DREAM_CONSOLIDATION_MAX_MS</code> env var (default 45s for a routine pass — raised from 30s after live passes aborted — and <code>DREAM_CONSOLIDATION_FORCE_MAX_MS</code>, default 120s, for a forced one) in <code>js/brain/consolidation-engine.js</code>. Per-cluster deadline check breaks the consolidation pass gracefully at cluster boundary; next pass picks up remaining clusters fresh. Also skips entirely when <code>_currentMacroPhase</code> contains <code>'SEED'</code> so SEED-phase GPU stays with curriculum. Log surfaces <code>⚠ DEADLINE-ABORT (DREAM_CONSOLIDATION_MAX_MS=Xms)</code> when cap fires. Replaces the 153s pass observed in operator's run.</p>
 
  <h3 id="i7-schema-naming">10.4 Top-K=3 Schema Naming</h3>
  <p><code>_deriveLabel</code> in <code>js/brain/hippocampal-schema.js</code> ranks <strong>top-3</strong> content words instead of top-1; expanded stop-word list strips generic curriculum noise (<code>learning/curriculum/phase/teach/cell/heartbeat/episode/inner/thought/tick/state/active/progress</code>). Produces distinct schema labels (<code>victory-triumph-success</code>) instead of collapsing every consolidation into a generic <code>learning-schema</code>. Per Tulving 1972 episodic→semantic, schemas need distinct identity for retrieval gradient to function — naming collisions undermined the consolidation→retrieval pipeline at the labelling level.</p>
