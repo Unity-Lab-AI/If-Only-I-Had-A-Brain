@@ -1,6 +1,38 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-10-19, ~1:50 PM Denver (latest, 33rd) — THE PAGES WERE STYLED BY A STYLESHEET THAT NEVER MATCHED; THE EQUATION LEDGER EXISTS; NEXT IS HIS FRESH WALK
+> # 🛑 2026-10-19, ~7:20 AM Denver (latest, 34th) — THE SEED CRYSTAL IS BUILT, DONOR v0.3.40 COUNTS BOTH HALVES, THE FIVE EQUATION REPAIRS LANDED; NOTHING HAS A LIVE NUMBER UNTIL HIS PRESS
+>
+> **Branch: `feature/seed-crystal-build`** — cascaded after this batch; tag `donor-v0.3.40` on `main`, both remotes.
+>
+> ```
+>   brain    NOT RUNNING at write time. Launch is his press; the box's donor must be 0.3.40 before state.crystal
+>            reads measured:true — an older donor keeps working and the card says why it is unmeasured.
+>   donor    0.3.40 — spike_count keeps TWO atomic counters (left = index < half), lif steps the right half on
+>            effectiveDriveR; LifParams 48 -> 64 B, SpikeParams 8 -> 16 B; kernels.ptx REGENERATED (the old PTX
+>            would fail the lif launch on argument count); ack carries lastSpikeCountL/R, request takes tonicDriveR
+>            + half. cargo check clean default + --no-default-features. RELEASE-0.3.40.md. Floor stays 0.3.26.
+>   crystal  server/brain-server/crystal.js, fed from BOTH ack sites: hemispheric theta/gamma, central phase with
+>            K_c(g) = 0.6(1 - e^{-g/4}), C, A, Φ_LR (normalised MI, 64 batches, 8 bins), correctness 0.5 c1 +
+>            0.3 gate + 0.2 chat, standing EMA 0.05, softmax shares τ = 0.25(1 + serotonin dev), η_h conserved and
+>            floored and scaled by dopamine -> cortex _hemiScale -> ojaUpdate per row + split hebbian_ranges frames;
+>            drive per half; Ψ Left/Right literal + Ψ(1 + 0.5 C Φ_LR); Kuramoto over 2K hemispheric phasors.
+>            Harness 24/24 on the real mixins (left rows 2.0x, right 0.5x; shares sum to 1; one frame when
+>            unmeasured), deleted after the run.
+>   repairs  gate reads EVERY letter of every word (DREAM_GATE_READ=initial keeps the old probe for an A/B);
+>            cerebellum -2 predErr (0.5 + p_cereb); amygdala floor 0.33 arousalBaseline; BG keeps its action unless
+>            the lead > 0.05; MAIN_BRAIN_BYTES_PER_NEURON = 21 from gpu.js feeds floor AND allocator.
+>   read     after the press, in this order: state.crystal.measured (true = the 0.3.40 donor attached); Φ_LR must
+>            not sit at 0 while C climbs; A settles in 0.05-0.5; state.voice.verdict.status matrix-driven;
+>            consciousness.phiState live. ⚠ The whole-word gate changes WHAT a cell passes on — it is in before
+>            the fresh walk by construction (THE FRESH WALK IS LAST), and a cell's pass rate may move; re-priced
+>            in the spec at +1-3 min per ~26-min cell.
+>   owed     the 8 open page claims + docs/EQUATIONS.md pass (unchanged from the 33rd); wiki neural-substrate.md
+>            is marked stale on purpose — it owes a re-read against the split kernels.
+> ```
+>
+> ---
+>
+> # 🛑 2026-10-19, ~1:50 PM Denver (33rd) — THE PAGES WERE STYLED BY A STYLESHEET THAT NEVER MATCHED; THE EQUATION LEDGER EXISTS; NEXT IS HIS FRESH WALK
 >
 > **Branch: `feature/network-testing-and-bugs`** — cascaded after this batch; `develop` merged in first (it was nine merge-commits ahead, all of them this branch's own work).
 >

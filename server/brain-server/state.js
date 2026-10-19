@@ -1924,6 +1924,12 @@ const SERVER_STATE_MIXIN = {
       // showed 0 donors / 0 VRAM / 0 replicas between /autoscale POSTs. Same data
       // the GET /autoscale route returns (now a shared method).
       community: this._getCommunityState(),
+      // SEED CRYSTAL — the hemispheres, the central phase, the contest. `measured`
+      // is false (with the reason) until a donor counts both halves; nothing in
+      // it is a zero standing in for a reading.
+      crystal: (typeof this._crystalState === 'function') ? this._crystalState() : null,
+      psiLeftRightSource: this.psiLeftRightSource || 'legacy',
+      psiCrystalTerm: (typeof this.psiCrystalTerm === 'number') ? Number(this.psiCrystalTerm.toFixed(4)) : null,
       // POOL — who owns what, who was late, and whether the tunnel is crossing.
       // Every field is a count or a name, never a flag: "the pool is on" is
       // not a fact, "cortex is on card X and 3 pairs crossed last cycle" is.

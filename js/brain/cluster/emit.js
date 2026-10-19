@@ -548,6 +548,7 @@ export const CLUSTER_EMIT_MIXIN = {
     const candidates = [];
     let bestWord = null;
     let bestMean = -Infinity;
+    let bestIdx = -1;   // Seed Crystal — which word_motor bucket spoke (its side gets the chat reward)
     // 114.19fi.A.3 — recent-emission repetition penalty. Track last 8
     // emissions in cluster._recentEmissions ring buffer (initialized
     // lazily). Apply mean *= 0.7 for buckets whose word appeared in
@@ -741,8 +742,8 @@ export const CLUSTER_EMIT_MIXIN = {
         if (_isRecentContent) {
           mean *= REPETITION_PENALTY;
         }
-        candidates.push({ word: wordsList[b], mean });
-        if (mean > bestMean) { bestMean = mean; bestWord = wordsList[b]; }
+        candidates.push({ word: wordsList[b], mean, idx: b });
+        if (mean > bestMean) { bestMean = mean; bestWord = wordsList[b]; bestIdx = b; }
       }
     }
 
@@ -979,6 +980,7 @@ export const CLUSTER_EMIT_MIXIN = {
         if (cum >= r) {
           bestWord = nucleus[i].word;
           bestMean = nucleus[i].mean;
+          bestIdx = (typeof nucleus[i].idx === 'number') ? nucleus[i].idx : -1;
           break;
         }
       }
@@ -988,6 +990,7 @@ export const CLUSTER_EMIT_MIXIN = {
     // (broadcast biases NEXT emission via the gwBoostWord path above).
     this._lastEmittedWord = bestWord;
     this._lastEmittedActivation = bestMean;
+    this._lastEmittedBucketIdx = bestIdx;
     // 114.19fi.A.3 — push to recent-emissions ring buffer for next
     // call's repetition penalty. 8-entry rolling window.
     // 114.19fj.9 — opt-out for callers that manage the ring themselves

@@ -1,5 +1,7 @@
 # Equation Repair Plan + the Seed Crystal
 
+> **Build status (2026-10-19, same day as the spec).** Part A: A1 (one constant), A3 (persona-fraction floor), A4 (cerebellum residual), A7 (every letter of every word, `DREAM_GATE_READ=initial` for the A/B) and A8 (hysteresis) are **in the code**; A2 and A5 were decided (docs); A6 is **built as `Φ_LR`** inside the crystal; A9 is still owed. Part B: **all six build steps are in** — the donor counts both halves (v0.3.40, PTX regenerated), the server runs the hemispheric oscillators, the crystal phase, `C`, `A`, `Φ_LR`, the correctness signals, the conserved-and-floored dopamine split applied through the per-row scale path and split `hebbian_ranges` frames, per-half drive on the wire, Ψ's literal Left/Right and the `1 + 0.5·C·Φ_LR` term, `K_c(g)`, `state.crystal`, and a dashboard card. ⛔ **Not yet read on a live boot** — the harness drove the real mixins with synthetic acks; `state.crystal.measured` stays `false` until a 0.3.40 donor attaches. The two readings in B8 are the ones to take first.
+
 Two parts. **Part A** is the ordered plan to get every equation the brain runs on into the
 shape the reference page claims for it — each item with the equation as it is, the equation
 as it must be, the file, the cost, and the re-price where a walk bound is touched. **Part B**

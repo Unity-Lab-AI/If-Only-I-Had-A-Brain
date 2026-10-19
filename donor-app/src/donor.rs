@@ -1081,7 +1081,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                         seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
                         // The pool drives clusters through run_substeps (same entry the
                         // compute_batch path uses), so the walk inherits multi-GPU routing.
-                        let jobs = [StepJob { name: cluster.clone(), size: 0, drive, noise }];
+                        let jobs = [StepJob { name: cluster.clone(), size: 0, drive, noise, drive_r: drive, half: 0 }];
                         let _ = engine.run_substeps(&jobs, ticks, seed, &control_w.stop, &pending_w);
                         // One bucket over the whole region span = the region spike count.
                         let counts = engine
@@ -1629,6 +1629,14 @@ fn run_batch(engine: &mut MultiEngine, cluster_regions: &HashMap<String, HashMap
         // per batch, so this product IS the CPU step's full formula.)
         let effective_drive =
             c.tonic_drive * c.drive_baseline * c.emotional_gate * c.gain_multiplier + c.error_correction;
+        // Seed Crystal (v0.3.40) — the right half steps on its own tonic drive
+        // when the brain's dopamine contest sent one; otherwise both halves
+        // step identically and the split costs nothing but the second count.
+        let effective_drive_r = match c.tonic_drive_r {
+            Some(t) if t.is_finite() => t * c.drive_baseline * c.emotional_gate * c.gain_multiplier + c.error_correction,
+            _ => effective_drive,
+        };
+        let half = c.half.unwrap_or(c.size / 2).min(c.size);
         // RHYTHM3S.2 (v0.3.34) — per-batch gate rebuild: Ψ hemisphere gate ×
         // attention gains, matching the browser donor's updateRegionGates
         // cadence. ~256 bytes per cluster per batch; skipped for clusters the
@@ -1639,7 +1647,7 @@ fn run_batch(engine: &mut MultiEngine, cluster_regions: &HashMap<String, HashMap
                 engine.update_region_gates(&c.name, &packed);
             }
         }
-        jobs.push(StepJob { name: c.name.clone(), size: c.size, drive: effective_drive, noise: c.noise_amp });
+        jobs.push(StepJob { name: c.name.clone(), size: c.size, drive: effective_drive, noise: c.noise_amp, drive_r: effective_drive_r, half });
     }
     // Advance the batch seed once; MultiEngine derives a distinct per-GPU stream and runs
     // each card's clusters in parallel, returning per-cluster spike totals.
@@ -1654,7 +1662,15 @@ fn run_batch(engine: &mut MultiEngine, cluster_regions: &HashMap<String, HashMap
             // why the field read `null` on all seven clusters for the entire life
             // of the native donor while the wire field, the server's EMA blend
             // and the state publish were all already built and waiting.
-            PerClusterResult { spike_count_total: so.total, last_spike_count: so.last, mean_voltage: so.mean_voltage },
+            PerClusterResult {
+                spike_count_total: so.total,
+                last_spike_count: so.last,
+                mean_voltage: so.mean_voltage,
+                // Seed Crystal (v0.3.40) — the halves, so the brain can read
+                // its two hemispheres. Always Some from this build.
+                last_spike_count_l: Some(so.last_l),
+                last_spike_count_r: Some(so.last_r),
+            },
         );
     }
     ComputeBatchResult {
