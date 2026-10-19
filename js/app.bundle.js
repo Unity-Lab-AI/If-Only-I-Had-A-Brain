@@ -3994,6 +3994,8 @@ var ChatPanel = class {
         <div class="chat-header-btns">
           <button class="chat-mute-btn" title="Mute Unity's voice (she still types responses \u2014 just silences TTS in the moment)">\u{1F50A}</button>
           <button class="chat-mic-btn" title="Mute your mic (stops her from hearing you)">\u{1F3A4}</button>
+          <button class="chat-min-btn" title="Minimise \u2014 collapse to the title bar, keeps the conversation">&minus;</button>
+          <button class="chat-full-btn" title="Fullscreen \u2014 fill the window">&#9974;</button>
           <button class="chat-close-btn" title="Close">&times;</button>
         </div>
       </div>
@@ -4010,6 +4012,39 @@ var ChatPanel = class {
     const closeBtn = this._el.querySelector(".chat-close-btn");
     const muteBtn = this._el.querySelector(".chat-mute-btn");
     const micBtn = this._el.querySelector(".chat-mic-btn");
+    const minBtn = this._el.querySelector(".chat-min-btn");
+    const fullBtn = this._el.querySelector(".chat-full-btn");
+    const KEY = "unity_chat_panel_view";
+    const applyView = (v, persist) => {
+      const full = v === "fullscreen";
+      const mini = v === "minimized";
+      this._el.classList.toggle("fullscreen", full);
+      this._el.classList.toggle("minimized", mini);
+      fullBtn.innerHTML = full ? "&#10066;" : "&#9974;";
+      fullBtn.title = full ? "Exit fullscreen" : "Fullscreen \u2014 fill the window";
+      minBtn.innerHTML = mini ? "&#9633;" : "&minus;";
+      minBtn.title = mini ? "Restore the conversation" : "Minimise \u2014 collapse to the title bar, keeps the conversation";
+      this._view = v;
+      if (persist) {
+        try {
+          localStorage.setItem(KEY, v);
+        } catch {
+        }
+      }
+      if (!mini && this._messagesEl) this._messagesEl.scrollTop = this._messagesEl.scrollHeight;
+    };
+    let _saved = "normal";
+    try {
+      _saved = localStorage.getItem(KEY) || "normal";
+    } catch {
+    }
+    applyView(_saved === "fullscreen" || _saved === "minimized" ? _saved : "normal", false);
+    minBtn.addEventListener("click", () => applyView(this._view === "minimized" ? "normal" : "minimized", true));
+    fullBtn.addEventListener("click", () => applyView(this._view === "fullscreen" ? "normal" : "fullscreen", true));
+    this._el.querySelector(".chat-header").addEventListener("click", (e) => {
+      if (this._view === "minimized" && !e.target.closest("button")) applyView("normal", true);
+    });
+    this._applyChatView = applyView;
     const syncButtons = () => {
       const ch = window.unityChannels || { userMic: true, unitySpeech: true };
       muteBtn.textContent = ch.unitySpeech ? "\u{1F50A}" : "\u{1F507}";
@@ -4046,7 +4081,10 @@ var ChatPanel = class {
       if (e.key === "Enter" && this._inputEl.value.trim()) {
         this._send();
       }
-      if (e.key === "Escape") this.close();
+      if (e.key === "Escape") {
+        if (this._view === "fullscreen") this._applyChatView("normal", true);
+        else this.close();
+      }
     });
     sendBtn.addEventListener("click", () => this._send());
     closeBtn.addEventListener("click", () => this.close());
