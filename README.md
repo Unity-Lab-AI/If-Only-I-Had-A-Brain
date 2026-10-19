@@ -755,13 +755,14 @@ The mystery module `Ψ = √(1/n) · N³ · [α·Id + β·Ego + γ·Left + δ·R
 | Resource | Description |
 |---|---|
 | **[📑 Page Legend](html/legend.html)** | Quick-access index for every HTML + public-facing doc (every other HTML has a floating `📑 Pages` button pointing here) |
-| **[📄 Docs Viewer](html/docs.html)** | Web-render any public markdown doc in-browser via `?doc=<slug>` — README, SETUP, ARCHITECTURE, EQUATIONS, ROADMAP, SKILL_TREE, SENSORY, WEBSOCKET, THEORY_PAPER, KNOWN_ISSUES, ADMIN_CONTROLS, THRESHOLD_DERIVATION, HELD_BACK |
+| **[📄 Docs Viewer](html/docs.html)** | Web-render any public markdown doc in-browser via `?doc=<slug>` — README, SETUP, ARCHITECTURE, EQUATIONS, ROADMAP, SKILL_TREE, SENSORY, WEBSOCKET, THEORY_PAPER, KNOWN_ISSUES, ADMIN_CONTROLS, THRESHOLD_DERIVATION, HELD_BACK, EQUATION_RUNDOWN |
 | **[Live Brain](https://theunitybrain.com/)** | Open Unity in your browser — no install. This is the running brain, not a demo build |
 | **[Setup Guide](docs/SETUP.md)** | Installation, WebGPU prerequisite, AI providers, self-hosting, troubleshooting |
 | **[Brain Equations](https://theunitybrain.com/html/brain-equations.html)** | Interactive walkthrough of every equation |
 | **[Concept Guide](html/unity-guide.html)** | Plain-English explanation of who Unity is and how she works |
 | **[WebGPU Setup](html/webgpu-prep.html)** | Browser-by-browser pre-flight enablement instructions (required before first connect) |
 | **[Equation Reference](docs/EQUATIONS.md)** | Source-accurate equation cheatsheet |
+| **[Equation Rundown](docs/equation-rundown.md)** | The ledger: which equation families are working great, which run with a known limit, which are built but have never produced a live number, which are inert, which were deleted — and what the equations page still claims that the brain no longer does |
 | **[Architecture](docs/ARCHITECTURE.md)** | Canonical system architecture + directory structure |
 | **[Memory Map](docs/MEMORY-MAP.md)** | Where the coordinator's RAM actually goes — which structures are resident, which live on donors, the sizing chain, and the traps that made two plausible models wrong. **Read before changing any sizing constant, weight dtype, or deploy spawn.** |
 | **[Rust Migration](docs/RUST-MIGRATION.md)** | Phased plan for rewriting the coordinator (`server/`) in Rust — what moves, what stays JS, the contracts that must not break, and the memory fixes that must be carried across. **Start here if you are picking up the migration.** |

@@ -12,7 +12,7 @@
 // If the key step fails, Unity is NOT woken — the script screenshots and exits
 // so the failure is visible instead of papered over.
 import { chromium } from 'playwright';
-const SITE = process.env.UNITY_URL || 'https://if-only-i-had-a-brain.git.unityailab.com/';
+const SITE = process.env.UNITY_URL || 'https://theunitybrain.com/';   // the Pages site; the old vhost answers 410 Gone
 const ORIGIN = new URL(SITE).origin;
 const S = 'C:/Users/gfour/Desktop/If-Only-I-Had-A-Brain/server';
 const log = (m)=>console.log(`[${new Date().toISOString().slice(11,19)}] ${m}`);

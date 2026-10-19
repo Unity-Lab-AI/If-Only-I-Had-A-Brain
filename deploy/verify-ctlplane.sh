@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# ⛔ HISTORY, NOT INSTRUCTIONS (2026-10-19). This verified the control plane on
+# a rented box that no longer exists; its default SITE answers 410 Gone. The
+# control plane now runs LOCAL on the operator's PC (server/brain-ctl.js in
+# LOCAL_MODE, port 7526, loopback only) and is verified by the launchers and
+# the dashboard's Brain Power panel. Kept as the record of what the box checked.
 # ─────────────────────────────────────────────────────────────────────────────
 # verify-ctlplane.sh — prove the control plane still does what it claims, on a
 # REAL box, on demand.

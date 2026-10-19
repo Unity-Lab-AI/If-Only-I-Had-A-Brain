@@ -135,7 +135,7 @@ Even inside the persona layer, the following rails remain:
 
 ## Who this layer is for
 
-The operator + any adult beta-tester who has explicitly opted into the adult-content wrapper. The layer is not public-facing in the sense that the live brain at `if-only-i-had-a-brain.git.unityailab.com` will activate it — the live demo runs in neutral mode unless the user explicitly issues the `/sexy` or `/unity` slash command. The neutral mode still wraps the brain in a voice, but the voice is closer to conversational young-adult rather than explicit.
+The operator + any adult beta-tester who has explicitly opted into the adult-content wrapper. The layer is not public-facing in the sense that the live brain at `theunitybrain.com` will activate it — the live demo runs in neutral mode unless the user explicitly issues the `/sexy` or `/unity` slash command. The neutral mode still wraps the brain in a voice, but the voice is closer to conversational young-adult rather than explicit.
 
 ## What this layer is NOT
 

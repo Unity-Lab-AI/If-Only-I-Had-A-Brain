@@ -1924,6 +1924,39 @@ const SERVER_STATE_MIXIN = {
       // showed 0 donors / 0 VRAM / 0 replicas between /autoscale POSTs. Same data
       // the GET /autoscale route returns (now a shared method).
       community: this._getCommunityState(),
+      // POOL — who owns what, who was late, and whether the tunnel is crossing.
+      // Every field is a count or a name, never a flag: "the pool is on" is
+      // not a fact, "cortex is on card X and 3 pairs crossed last cycle" is.
+      pool: (() => {
+        try {
+          const owner = this._clusterOwner instanceof Map ? this._clusterOwner : null;
+          const owners = {};
+          const cards = new Set();
+          if (owner) {
+            for (const [cl, ws] of owner) {
+              const c = this.clients && this.clients.get ? this.clients.get(ws) : null;
+              const label = (c && (c.gpuName || c.id)) || 'donor';
+              owners[cl] = label; cards.add(label);
+            }
+          }
+          const T = this._tunnel || null;
+          return {
+            cards: cards.size,
+            owners,
+            unplaced: Array.isArray(this._poolUnplaced) ? this._poolUnplaced : [],
+            movedLast: Array.isArray(this._poolMovedLast) ? this._poolMovedLast : [],
+            lateOwners: Array.isArray(this._poolLateOwners) ? this._poolLateOwners : [],
+            lateBatches: this._poolLateCount | 0,
+            tunnel: T ? {
+              enabled: T.enabled, cadenceTicks: T.cadenceTicks, buckets: T.buckets, gain: T.gain, maxRttMs: T.maxRttMs,
+              cycles: T.cycles, pairsChecked: T.pairsChecked, pairsFired: T.pairsFired,
+              skippedRtt: T.skippedRtt, skippedNoRegion: T.skippedNoRegion, readFails: T.readFails, writeFails: T.writeFails,
+              lastAgreementMax: T.lastAgreementMax, lastFiredPairs: T.lastFiredPairs, lastCycleMs: T.lastCycleMs,
+              lastAgeMs: T.lastAt ? (Date.now() - T.lastAt) : null, lastErr: T.lastErr || null,
+            } : null,
+          };
+        } catch { return null; }
+      })(),
     };
   },
 

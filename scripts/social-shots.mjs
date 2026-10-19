@@ -34,8 +34,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
 const OUT_DIR = path.join(REPO_ROOT, 'assets', 'social');
 
-// Lab self-host base — where the deploy workflow actually rsyncs the site.
-const BASE_URL = 'https://if-only-i-had-a-brain.git.unityailab.com';
+// The public site — GitHub Pages at the lab's domain (2026-10-18). The old
+// self-hosted vhost this pointed at answers 410 Gone; screenshots of it would
+// have been screenshots of a tombstone.
+const BASE_URL = 'https://theunitybrain.com';
 const ADMIN_LIVE_URL = `${BASE_URL}/html/dashboard.html`;
 
 const CARD_W = 1200;

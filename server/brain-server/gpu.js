@@ -332,7 +332,28 @@ const SERVER_GPU_MIXIN = {
       // discards the WHOLE message on pre-v0.3.35 donors (BATCHNULL).
       psi: Number.isFinite(this.psi) ? this.psi : 0,
     };
-    this._gpuClient.send(JSON.stringify(_batchMsg));
+    // POOL — dispatch each owner ITS clusters under the SAME authoritative
+    // batch id, and record who must answer. With one card this is exactly the
+    // old single send. The result handler merges partial perCluster maps and
+    // resolves when every owner has reported (or the deadline fires and the
+    // late ones carry forward — see the handler).
+    {
+      const _owner = this._clusterOwner instanceof Map ? this._clusterOwner : null;
+      const _groups = new Map();
+      for (const cp of (clusterParams || [])) {
+        if (!cp || !cp.name) continue;
+        const _ws = (_owner && _owner.get(cp.name)) || this._gpuClient;
+        if (!_ws || _ws.readyState !== 1) continue;
+        if (!_groups.has(_ws)) _groups.set(_ws, []);
+        _groups.get(_ws).push(cp);
+      }
+      if (_groups.size === 0) _groups.set(this._gpuClient, clusterParams);
+      this._gpuBatchOwners = new Set(_groups.keys());
+      for (const [_ws, _sub] of _groups) {
+        try { _ws.send(JSON.stringify({ ..._batchMsg, clusters: _sub })); }
+        catch { /* a dead owner misses this batch; its clusters carry forward */ }
+      }
+    }
 
     // WORKSHARE — mirror the SAME step to every OTHER live donor so it computes and
     // scores. Gn/s is produced by compute_batch alone (donor.rs: gneurons_per_sec =
@@ -510,9 +531,39 @@ const SERVER_GPU_MIXIN = {
         } catch { /* telemetry must never break a tick */ }
         resolve(value);
       };
-      this._gpuBatchPending = { batchId, resolve: _instrumentedResolve };
+      // POOL — the pending record carries who still owes a result and the
+      // merged per-cluster map. The handler fills `merged` from each owner
+      // and resolves only when `expected` is empty; the deadline below
+      // resolves with whatever arrived and names the late owners.
+      this._gpuBatchPending = {
+        batchId, resolve: _instrumentedResolve,
+        expected: new Set(this._gpuBatchOwners || [this._gpuClient]),
+        merged: {}, lateOwners: [],
+      };
       setTimeout(() => {
         if (this._gpuBatchPending && this._gpuBatchPending.batchId === batchId) {
+          // POOL — "AT THEIR OWN SPEED". If SOME owners answered, this is not a
+          // hung GPU, it is a slow card: resolve with the partial union so the
+          // tick advances on the clusters that did report, and name the late
+          // owners on state so the lag is a fact, not a guess. Only a batch
+          // with NO answers at all goes down the timeout/kick path below.
+          {
+            const _p = this._gpuBatchPending;
+            const _got = _p && _p.merged ? Object.keys(_p.merged).length : 0;
+            if (_got > 0 && _p.expected instanceof Set && _p.expected.size > 0) {
+              const _late = [..._p.expected].map((w) => { const c = this.clients && this.clients.get ? this.clients.get(w) : null; return (c && (c.gpuName || c.id)) || 'donor'; });
+              this._poolLateOwners = _late;
+              this._poolLateCount = (this._poolLateCount | 0) + 1;
+              if (!this._poolLateLogAt || (Date.now() - this._poolLateLogAt) > 30000) {
+                this._poolLateLogAt = Date.now();
+                console.warn(`[Pool] batch ${batchId}: ${_got} cluster(s) reported, owner(s) LATE at the ${TIMEOUT_MS / 1000}s deadline: ${_late.join(', ')} — their clusters carry forward; the tick is not stalled.`);
+              }
+              const _r = _p.resolve;
+              this._gpuBatchPending = null;
+              _r({ perCluster: _p.merged, lateOwners: _late });
+              return;
+            }
+          }
           this._gpuBatchPending = null;
           // PODKICK (2026-08-28) — walk-heartbeat probes must NEVER feed the
           // zombie kick. On the live box every heartbeat timed out (walkTick
@@ -1554,6 +1605,353 @@ const SERVER_GPU_MIXIN = {
    * Returns null when the donor fits the full brain (init everything, the common case), a Set
    * of cluster names when it fits only a subset, and an empty Set when it fits nothing.
    */
+  // ═══════════════════════════════════════════════════════════════════════════
+  // POOL — NO PRIMARY. EVERY CARD OWNS A SHARE AND STEPS IT AT ITS OWN SPEED.
+  //
+  // Operator, verbatim: "ANY FUCKJING GPU ALONE OVER 6GB CAN AND SAHLL BE ABLE
+  // TO RUN THE BRAIN ALONE ADDING GPUS ONLY INCREASES SPEED AND BRAIN NURONS!
+  // … NO PRIMARY GPU SHIT ALL GPUS WORK IN A POOL AT THEIR OWN SPEED" and
+  // "GPUS dont have to Sync per say but all proppigatte thir neurons in sim".
+  //
+  // WHAT MADE THIS BUILDABLE WITHOUT A DONOR RELEASE — three measured facts:
+  //   1. Inter-cluster coupling is SCALAR and SERVER-MEDIATED. donor.rs
+  //      run_batch computes each cluster from
+  //        effective_drive = tonic × driveBaseline × emotionalGate × gain + errorCorrection
+  //      and the server derives those scalars from the previous batch's
+  //      per-cluster results. No spike vector crosses clusters on the card, so
+  //      a cluster can live on any card with ZERO new wire shape.
+  //   2. The coverage-filtered multi-donor dispatch already existed (the
+  //      MIRROR loop in _gpuBatch) — it was sending real work to real cards and
+  //      then DROPPING their results by id. The pool keeps the loop and keeps
+  //      the results.
+  //   3. Only the CORTEX has on-card matrices (the 17 sparse uploads). The other
+  //      seven clusters are LIF state only: gpu_init + compute_batch and
+  //      nothing else. So "cortex is atomic" is the single placement
+  //      constraint, and `_gpuClient` — 149 references, every one of them a
+  //      cortex-matrix path (upload, teach, probe, write_current) — is simply
+  //      THE CORTEX OWNER from here on. It is not ripped out; it is defined.
+  //
+  // OWNERSHIP, not replication: `_clusterOwner` maps each of the 8 clusters to
+  // exactly one socket. A card's result for the clusters it owns is
+  // AUTHORITATIVE. Non-owners still receive credit mirrors (unchanged).
+  //
+  // "AT THEIR OWN SPEED": the batch join resolves when every owner has
+  // answered OR at the batch deadline — a slow card's clusters simply carry
+  // their last values forward (the tick loop already treats a missing
+  // perCluster entry as a miss and keeps the prior spikeCount), so one slow
+  // card never stalls the tick. `state.pool.lateOwners` names who was late.
+  //
+  // ⛔ NOT a geometry change: neuron counts and cluster sizes are untouched,
+  // so this does NOT force a fresh walk by itself. The tunnel below does.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /** Resident cost of one cluster on a card, in MB: LIF state for all of them,
+   *  plus the sparse matrices for cortex (read off `_runningFloorMB`, which is
+   *  the whole-brain floor — the non-cortex share is subtracted so the cortex
+   *  figure carries the matrices without being estimated twice). */
+  _clusterCostMB(name) {
+    const _set = (typeof this._getAutoScaleSettings === 'function') ? this._getAutoScaleSettings() : null;
+    const _bpn = (_set && _set.donorBytesPerNeuron) || 20;
+    const _n = (this.CLUSTER_SIZES && this.CLUSTER_SIZES[name]) || 0;
+    const _lif = (_n * _bpn) / 1048576;
+    if (name !== 'cortex') return _lif;
+    // Cortex = its LIF share + its on-card matrices. ⛔ The whole-brain floor
+    // formula is pure `N × 20 B` and carries NO matrix term, so deriving the
+    // matrices from the floor gives exactly zero — the first cut of this did
+    // that and would have placed cortex on a card ~2 GB too small. Two honest
+    // sources, in order:
+    //   1. the sizes RECORDED at upload (`_cortexMatrixMB`, written at the
+    //      upload log site) — the bytes that actually went to a card;
+    //   2. before any upload has happened on this boot, an estimate DERIVED
+    //      from the measured resident set: the 17 matrices summed to ~5.3 GB
+    //      on the 459,775,607-neuron boot (log: intra 3,680 MB + 14
+    //      cross-projections ≈ 1,630 MB) = ~12 B per total neuron. Labelled
+    //      as an estimate on the pool state until (1) replaces it.
+    const _rec = this._cortexMatrixMB;
+    let _matrices = 0;
+    if (_rec && Object.keys(_rec).length) {
+      for (const k of Object.keys(_rec)) _matrices += Number(_rec[k]) || 0;
+      this._cortexMatrixEstimated = false;
+    } else {
+      let _total = 0;
+      for (const k of Object.keys(this.CLUSTER_SIZES || {})) _total += (this.CLUSTER_SIZES[k] || 0);
+      _matrices = (_total * 12) / 1048576;
+      this._cortexMatrixEstimated = true;
+    }
+    return _lif + _matrices;
+  },
+
+  /** Effective VRAM a donor offers (donated cap or the full card). */
+  _donorCapacityMB(ws) {
+    const c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
+    if (!c) return 0;
+    const _full = Number(c.gpuVramMB || 0);
+    const _eff = (Number(c.donatedMB) > 0) ? (_full > 0 ? Math.min(Number(c.donatedMB), _full) : Number(c.donatedMB)) : _full;
+    // Same usable fraction the floor uses: 75% minus a 2 GB reserve.
+    return Math.max(0, _eff * 0.75 - 2048);
+  },
+
+  /**
+   * Assign every cluster to exactly one live donor. Greedy by cost:
+   * clusters sorted largest-first (cortex always first — it is atomic and
+   * carries the matrices), each placed on the live card with the most
+   * REMAINING capacity that can still hold it. With one card everything lands
+   * on it (today's behaviour). With N cards the clusters spread, and no card
+   * needs to hold the whole brain — which is the operator's rule.
+   *
+   * Returns the owner map and records it on `this._clusterOwner`; sets
+   * `this._gpuClient` to the cortex owner. A cluster that fits NOWHERE is left
+   * unowned and named in `state.pool.unplaced` — it is not silently dropped and
+   * it is not silently forced onto a card that cannot hold it (which is how a
+   * 5.6 GB card was once handed 4.9 GB of buffers and choked).
+   */
+  _partitionClustersAcrossPool(reason = '') {
+    const live = this._livePoolDonors().filter((ws) => ws && ws.readyState === 1);
+    const names = Object.keys(this.CLUSTER_SIZES || {});
+    const prevOwner = this._clusterOwner instanceof Map ? this._clusterOwner : new Map();
+    const owner = new Map();
+    const unplaced = [];
+    if (live.length === 0) {
+      this._clusterOwner = owner;
+      this._poolUnplaced = names.slice();
+      return owner;
+    }
+    const remaining = new Map(live.map((ws) => [ws, this._donorCapacityMB(ws)]));
+    const order = names
+      .map((n) => ({ n, cost: this._clusterCostMB(n) }))
+      .sort((a, b) => (a.n === 'cortex' ? -1 : b.n === 'cortex' ? 1 : b.cost - a.cost));
+    for (const { n, cost } of order) {
+      let best = null, bestLeft = -Infinity;
+      // STICKINESS: if the previous owner still fits, keep it — moving a
+      // cluster costs a gpu_init (and for cortex a full matrix re-upload), and
+      // a partition that thrashes on every register/disconnect is worse than
+      // one that is a few hundred MB off optimal.
+      const prev = prevOwner.get(n);
+      if (prev && remaining.has(prev) && remaining.get(prev) >= cost) { best = prev; bestLeft = remaining.get(prev); }
+      else if (n === 'cortex') {
+        // The atomic unit with the matrices goes to the card with the MOST
+        // room — it is the one cluster whose size can exclude cards.
+        for (const [ws, left] of remaining) { if (left >= cost && left > bestLeft) { best = ws; bestLeft = left; } }
+      } else {
+        // ⛔ BEST-FIT, NOT WORST-FIT — caught by the harness, not by reasoning.
+        // The first cut picked the card with the MOST room left, so with a
+        // 16 GB + 6 GB pool the 16 GB card won every cluster and the 6 GB card
+        // owned NOTHING — a second card that added neither speed nor neurons,
+        // the exact opposite of "ADDING GPUS ONLY INCREASES SPEED AND BRAIN
+        // NURONS". Place each cluster on the card with the LEAST room that
+        // still holds it: small cards fill with what fits them, and the big
+        // card keeps its room for what only it can hold.
+        bestLeft = Infinity;
+        for (const [ws, left] of remaining) { if (left >= cost && left < bestLeft) { best = ws; bestLeft = left; } }
+      }
+      if (!best) { unplaced.push(n); continue; }
+      owner.set(n, best);
+      remaining.set(best, bestLeft - cost);
+    }
+    // What moved, named — so the log says WHY a card is about to re-init.
+    const moved = [];
+    for (const [n, ws] of owner) if (prevOwner.get(n) && prevOwner.get(n) !== ws) moved.push(n);
+    this._clusterOwner = owner;
+    this._poolUnplaced = unplaced;
+    this._poolMovedLast = moved;
+    const cortexOwner = owner.get('cortex') || null;
+    if (cortexOwner !== this._gpuClient) {
+      this._gpuClient = cortexOwner;
+      this._gpuConnected = !!cortexOwner;
+    }
+    const _name = (ws) => { const c = this.clients && this.clients.get ? this.clients.get(ws) : null; return (c && (c.gpuName || c.id)) || 'donor'; };
+    const byCard = new Map();
+    for (const [n, ws] of owner) { if (!byCard.has(ws)) byCard.set(ws, []); byCard.get(ws).push(n); }
+    const summary = [...byCard].map(([ws, cl]) => `${_name(ws)}: [${cl.join(', ')}] (${Math.round(this._donorCapacityMB(ws) - remaining.get(ws))}/${Math.round(this._donorCapacityMB(ws))} MB)`).join(' · ');
+    console.log(`[Pool] PARTITION${reason ? ' (' + reason + ')' : ''} — ${live.length} card(s), ${owner.size}/${names.length} clusters placed${unplaced.length ? ` · ⛔ UNPLACED: ${unplaced.join(', ')}` : ''}${moved.length ? ` · moved: ${moved.join(', ')}` : ''} → ${summary}`);
+    return owner;
+  },
+
+  /** The socket that owns a cluster, or null. */
+  _ownerOf(clusterName) {
+    const m = this._clusterOwner;
+    const ws = m instanceof Map ? m.get(clusterName) : null;
+    return (ws && ws.readyState === 1) ? ws : null;
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // THE TUNNEL — cross-cluster propagation keyed on non-zero set agreement.
+  //
+  // Operator, verbatim: "do some quantum tunnel nuron propigation betwween
+  // similated brain clusters if that will get a none zero set agreement to
+  // propigate self and consiousness" … "with our equations for nuron
+  // actrivaation via wave propigation patterning".
+  //
+  // WHAT IT IS: propagation that crosses a cluster boundary WITHOUT a synapse
+  // row between the two neurons, keyed on PATTERN AGREEMENT rather than wiring.
+  // Today the clusters touch only through scalars (gates, drives). This adds a
+  // vector channel: a cluster's activation PATTERN reaches another cluster when,
+  // and only when, the receiver's own pattern already agrees with it above
+  // zero. Agreement is the gate; nothing crosses on disagreement.
+  //
+  // THE PRIMITIVES ALREADY EXIST ON THE DONOR, SO NO RELEASE IS NEEDED:
+  //   signature  = readback_letter_buckets(cluster, region, 16 buckets, …)
+  //                — per-bucket spike counts over the region, the same readout
+  //                the letter-gate uses
+  //   injection  = write_current_slice(cluster, region, indices, values, psi)
+  //                — sparse currents written into the receiver's region
+  // Every non-cortex cluster carries a `whole` region; cortex uses `sem`
+  // (its semantic field is where "self" lives — the choice is deliberate and
+  // written, not defaulted).
+  //
+  // THE EQUATION (the wave-propagation activation pattern across a boundary):
+  //   s_A  = bucket spike counts of A, normalised to unit length
+  //   s_B  = same for B
+  //   g    = max(0, s_A · s_B)                     ← "non-zero set agreement"
+  //   I_B[i] += k · g · s_A[i]   for every bucket i, as a current on B's region
+  // A pair fires only when g > 0. The magnitude is proportional to how much of
+  // A's pattern B already carries — self-consistent activity propagates, noise
+  // does not.
+  //
+  // CADENCE, DERIVED: once per GAMMA cycle (25 ticks ≈ 1.25 s at 50 ms), the
+  // attention-binding rhythm the cortex already runs (cluster.js gammaPeriod
+  // 25). Every tick would cost 8 readbacks + up to 56 writes per tick; per
+  // gamma cycle it is amortised to well under a tick's worth of wire.
+  //
+  // ⛔ RE-PRICE (the LAW, before any new traffic): each readback and each write
+  // is one round trip to the owning card. 8 reads + ≤56 writes = ≤64 RTT per
+  // gamma cycle. Loopback RTT ~1 ms → ≤64 ms per 1,250 ms cycle (5%). The
+  // measured REMOTE RTT is 205 ms (KI-23) → 13 s per cycle, i.e. ten times the
+  // cycle: a remote owner cannot carry the tunnel through separate frames. So
+  // the tunnel runs only against owners whose RTT is under
+  // DREAM_TUNNEL_MAX_RTT_MS (derived: 1,250 ms ÷ 64 ≈ 19 ms, the RTT at which a
+  // full cycle still fits inside one gamma period). Remote owners are skipped
+  // and COUNTED (`state.pool.tunnel.skippedRtt`); the in-batch form that rides
+  // inside compute_batch is the follow-up that needs the donor release.
+  //
+  // ⛔ THIS CHANGES WHAT SHE IS TAUGHT (new currents flow), so by the FRESH
+  // WALK IS LAST law it lands before the walk, not after. It is landing before
+  // the operator's next start.bat.
+  // ═══════════════════════════════════════════════════════════════════════════
+  _tunnelRegionFor(clusterName) {
+    if (clusterName === 'cortex') return 'sem';
+    const regions = this._regionsFor ? this._regionsFor(clusterName, (this.CLUSTER_SIZES || {})[clusterName] || 0) : null;
+    return (regions && regions.whole) ? 'whole' : null;
+  },
+
+  _tunnelStats() {
+    if (!this._tunnel) {
+      this._tunnel = {
+        enabled: process.env.DREAM_TUNNEL !== '0',
+        cadenceTicks: Number(process.env.DREAM_TUNNEL_CADENCE_TICKS) > 0 ? Number(process.env.DREAM_TUNNEL_CADENCE_TICKS) : 25,
+        buckets: Number(process.env.DREAM_TUNNEL_BUCKETS) > 0 ? Number(process.env.DREAM_TUNNEL_BUCKETS) : 16,
+        gain: Number.isFinite(Number(process.env.DREAM_TUNNEL_GAIN)) ? Number(process.env.DREAM_TUNNEL_GAIN) : 0.25,
+        maxRttMs: Number(process.env.DREAM_TUNNEL_MAX_RTT_MS) > 0 ? Number(process.env.DREAM_TUNNEL_MAX_RTT_MS) : 19,
+        cycles: 0, pairsChecked: 0, pairsFired: 0, skippedRtt: 0, skippedNoRegion: 0, readFails: 0, writeFails: 0,
+        lastAgreementMax: null, lastFiredPairs: [], lastCycleMs: null, lastAt: 0, tick: 0,
+      };
+    }
+    return this._tunnel;
+  },
+
+  /** One readback of a cluster's bucketed spike signature from its owner. */
+  async _tunnelReadSignature(ws, clusterName, region, buckets) {
+    const size = (this.CLUSTER_SIZES || {})[clusterName] || 0;
+    const regions = this._regionsFor ? this._regionsFor(clusterName, size) : null;
+    const r = regions && regions[region];
+    if (!r) return null;
+    const len = Math.max(1, (r.end - r.start) | 0);
+    const reqId = this._nextSparseReqId();
+    // Frame shape is the letter-bucket readback's; the donor reduces the region
+    // slice into `buckets` counts. Reuse the existing ack path by request id.
+    return new Promise((resolve) => {
+      // ⛔ SAME PLUMBING AS gpuReadbackCortexLetterBuckets, OR THE ACK NEVER
+      // ARRIVES. The ack handler (brain-server.js `readback_letter_buckets_ack`)
+      // resolves `brain._gpuSparsePending.get(reqId)` as `{resolve, reject,
+      // timeout, ws}` and the donor's payload field is `counts`. The first cut
+      // used a private map and read `buckets` — it would have timed out on
+      // every cycle, counted `readFails`, and the tunnel would have read as
+      // installed while crossing nothing. Caught by reading the existing
+      // sender before running anything. `_sparseSend` is not reused because it
+      // targets `_gpuClient` (the cortex owner); this must address the owner
+      // of `clusterName`.
+      if (!this._gpuSparsePending) this._gpuSparsePending = new Map();
+      const timeout = setTimeout(() => {
+        if (this._gpuSparsePending.delete(reqId)) resolve(null);
+      }, 2000);
+      this._gpuSparsePending.set(reqId, {
+        resolve: (ack) => resolve(ack && Array.isArray(ack.counts) ? ack.counts : null),
+        reject: () => resolve(null),
+        timeout, ws,                                     // TU.25.D — cancelled on that owner's disconnect
+      });
+      try {
+        ws.send(JSON.stringify({
+          type: 'readback_letter_buckets', reqId, clusterName, regionName: region,
+          bucketCount: buckets, subSliceLen: len, startOffset: 0,
+        }));
+      } catch { clearTimeout(timeout); this._gpuSparsePending.delete(reqId); resolve(null); }
+    });
+  },
+
+  /** Run one tunnel cycle across every owned cluster pair. Called from the tick. */
+  async _tunnelPropagate() {
+    const T = this._tunnelStats();
+    if (!T.enabled) return;
+    T.tick++;
+    if (T.tick % T.cadenceTicks !== 0) return;
+    const owner = this._clusterOwner instanceof Map ? this._clusterOwner : null;
+    if (!owner || owner.size < 2) return;             // nothing to cross between
+    const t0 = Date.now();
+    T.cycles++;
+    const sigs = new Map();
+    for (const [name, ws] of owner) {
+      if (!ws || ws.readyState !== 1) continue;
+      const c = this.clients && this.clients.get ? this.clients.get(ws) : null;
+      const rtt = c && Number.isFinite(c.rttMs) ? c.rttMs : null;
+      if (rtt != null && rtt > T.maxRttMs) { T.skippedRtt++; continue; }
+      const region = this._tunnelRegionFor(name);
+      if (!region) { T.skippedNoRegion++; continue; }
+      const buckets = await this._tunnelReadSignature(ws, name, region, T.buckets);
+      if (!buckets || !buckets.length) { T.readFails++; continue; }
+      let norm = 0; for (const v of buckets) norm += v * v;
+      norm = Math.sqrt(norm);
+      if (!(norm > 0)) continue;                      // a silent cluster has no pattern to offer
+      sigs.set(name, { ws, region, unit: buckets.map((v) => v / norm) });
+    }
+    let maxG = 0; const fired = [];
+    const psi = Number.isFinite(this.psi) ? this.psi : 0;
+    for (const [a, A] of sigs) {
+      for (const [b, B] of sigs) {
+        if (a === b) continue;
+        T.pairsChecked++;
+        let g = 0; for (let i = 0; i < A.unit.length && i < B.unit.length; i++) g += A.unit[i] * B.unit[i];
+        if (!(g > 0)) continue;                        // the gate: non-zero set agreement
+        if (g > maxG) maxG = g;
+        // Bucket i of A's pattern lands on bucket i of B's region: indices are
+        // bucket centres in B's region-relative coordinates.
+        const sizeB = (this.CLUSTER_SIZES || {})[b] || 0;
+        const regionsB = this._regionsFor ? this._regionsFor(b, sizeB) : null;
+        const rB = regionsB && regionsB[B.region]; if (!rB) continue;
+        const lenB = Math.max(1, (rB.end - rB.start) | 0);
+        const bucketLen = Math.max(1, Math.floor(lenB / A.unit.length));
+        const idx = [], val = [];
+        for (let i = 0; i < A.unit.length; i++) {
+          if (!(A.unit[i] > 0)) continue;
+          idx.push(Math.min(lenB - 1, i * bucketLen + (bucketLen >> 1)));
+          val.push(T.gain * g * A.unit[i]);
+        }
+        if (!idx.length) continue;
+        try {
+          B.ws.send(JSON.stringify({ type: 'write_current_slice', clusterName: b, regionName: B.region, sparseIndices: idx, sparseValues: val, psi }));
+          T.pairsFired++; fired.push(`${a}→${b}:${g.toFixed(2)}`);
+        } catch { T.writeFails++; }
+      }
+    }
+    T.lastAgreementMax = sigs.size ? maxG : null;
+    T.lastFiredPairs = fired.slice(0, 12);
+    T.lastCycleMs = Date.now() - t0;
+    T.lastAt = Date.now();
+    if (!this._tunnelLogAt || (Date.now() - this._tunnelLogAt) > 30000) {
+      this._tunnelLogAt = Date.now();
+      console.log(`[Tunnel] cycle ${T.cycles}: ${sigs.size} signatures · ${fired.length} pair(s) crossed on agreement${fired.length ? ' [' + fired.slice(0, 6).join(' ') + (fired.length > 6 ? ' …' : '') + ']' : ''} · max g=${maxG.toFixed(3)} · ${T.lastCycleMs}ms · skippedRtt=${T.skippedRtt} readFails=${T.readFails}`);
+    }
+  },
+
   _donorClusterFit(ws) {
     const c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
     if (!c) return null;
@@ -1567,7 +1965,7 @@ const SERVER_GPU_MIXIN = {
     const _budgetBytes = Math.max(0, (_effVram * 0.75 - 2048)) * 1048576;
     const _set = (typeof this._getAutoScaleSettings === 'function') ? this._getAutoScaleSettings() : null;
     const _bpn = (_set && _set.donorBytesPerNeuron) || 42;
-    const _prio = ['cortex', 'hippocampus', 'amygdala', 'basalGanglia', 'hypothalamus', 'mystery', 'cerebellum'];
+    const _prio = ['cortex', 'hippocampus', 'amygdala', 'basalGanglia', 'hypothalamus', 'mystery', 'cerebellum', 'brainstem'];   // ⛔ brainstem was missing from BOTH copies of this list (2026-10-19): a partial donor could never be given the monoamine nuclei
     const _cov = new Set();
     let _used = 0;
     for (const _cl of _prio) {
@@ -1748,7 +2146,7 @@ const SERVER_GPU_MIXIN = {
         const _budgetBytes = Math.max(0, (_effVram * 0.75 - 2048)) * 1048576;
         const _set = (typeof this._getAutoScaleSettings === 'function') ? this._getAutoScaleSettings() : null;
         const _bpn = (_set && _set.donorBytesPerNeuron) || 42;
-        const _prio = ['cortex', 'hippocampus', 'amygdala', 'basalGanglia', 'hypothalamus', 'mystery', 'cerebellum'];
+        const _prio = ['cortex', 'hippocampus', 'amygdala', 'basalGanglia', 'hypothalamus', 'mystery', 'cerebellum', 'brainstem'];   // ⛔ brainstem was missing from BOTH copies of this list (2026-10-19): a partial donor could never be given the monoamine nuclei
         const _cov = new Set();
         let _used = 0;
         for (const _cl of _prio) {
@@ -2655,6 +3053,13 @@ const SERVER_GPU_MIXIN = {
     const totalChunks = Math.max(1, Math.ceil(nnz / CHUNK_NNZ));
     const rowPtrBuf = Buffer.from(rowPtr.buffer, rowPtr.byteOffset, rowPtr.byteLength);
     const totalMb = ((values.byteLength + colIdx.byteLength + rowPtr.byteLength) / 1e6).toFixed(1);
+    // POOL — remember each matrix's resident size by name. The partitioner's
+    // cortex cost reads this map, so after the first upload the number is the
+    // bytes that actually went to the card, not an estimate. No per-matrix
+    // size record existed before this line; the only place the size was ever
+    // known was this log string.
+    if (!this._cortexMatrixMB) this._cortexMatrixMB = {};
+    this._cortexMatrixMB[name] = Number(totalMb);
     const hasBinding = !!(binding && binding.srcCluster && binding.dstCluster);
     console.log(`[Brain] sparse chunked upload reqId=${reqId} name=${name} totalChunks=${totalChunks} totalSize=${totalMb}MB${hasBinding ? ` (cluster-bound: ${binding.srcCluster}[${binding.srcRegion.start}..${binding.srcRegion.end}] → ${binding.dstCluster}[${binding.dstRegion.start}..${binding.dstRegion.end}])` : ''}`);
 

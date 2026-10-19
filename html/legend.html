@@ -43,6 +43,11 @@
       padding-bottom: 6px;
     }
     .lede { color: #9ca3af; font-size: 12px; margin: 0 0 18px; }
+    .lede.tight { margin: 0 0 12px; }
+    /* An inline link inside running copy, and the small raw-markdown link
+       beside each rendered-doc title. */
+    .lnk { color: #67e8f9; }
+    .raw-md { font-size: 9px; color: #6b7280; }
     .cards {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -204,7 +209,7 @@
     </div>
 
     <h2>🌐 <span class="tip" data-tip="Nothing in this section can change or damage the brain. Open anything here freely — the destructive controls are all behind the admin section further down.">For everyone — open &amp; use (no login)</span></h2>
-    <p class="lede" style="margin:0 0 12px;">Anyone can open these. Talk to Unity, donate your GPU to help train her, and learn how she works.</p>
+    <p class="lede tight">Anyone can open these. Talk to Unity, donate your GPU to help train her, and learn how she works.</p>
     <div class="cards">
 
       <div class="card">
@@ -325,13 +330,13 @@
     </div>
 
     <h2>🔑 <span class="tip" data-tip="⛔ The pages that can stop, restart or WIPE her. The ordinary start path boots FRESH and only the save-start path resumes, so a wrong press here costs the entire training run — not a session.">Admin / operator — login required</span></h2>
-    <p class="lede" style="margin:0 0 12px;">Operator tools, gated by the admin login. A normal visitor who opens the dashboard sees read-only vitals only — <strong>never the admin controls or the live console stream</strong> (enforced server-side, not just hidden). One deliberate exception: a bounded read-only <em>console tail</em> (the server's recent log lines) is publicly readable after the fact via <code>/public-state.json?console=N</code> — transparency for anyone debugging her, with zero control surface.</p>
+    <p class="lede tight">Operator tools, gated by the admin login. A normal visitor who opens the dashboard sees read-only vitals only — <strong>never the admin controls or the live console stream</strong> (enforced server-side, not just hidden). One deliberate exception: a bounded read-only <em>console tail</em> (the server's recent log lines) is publicly readable after the fact via <code>/public-state.json?console=N</code> — transparency for anyone debugging her, with zero control surface.</p>
     <div class="cards">
 
       <div class="card">
         <div class="card-head"><span class="card-icon">📊</span><span class="card-name">Admin Dashboard</span></div>
         <div class="card-path">html/dashboard.html</div>
-        <p class="card-desc">Live brain state — emotion chart, cluster firing, curriculum milestones + signoffs, drug pharmacokinetics, memory tiers, consciousness panel, the new <strong>Endocrine</strong> panel (her ten chemicals with signed deviation, the live stress channel, cycle phase, receptor tolerance, and each of the six nuclei reading <code>fired</code> / <code>quiet</code> / <code>blind</code> — where <em>blind</em> means it cannot read its input at all, which is a different claim from having nothing to do) and the <strong>Introspection</strong> panel (what is currently unresolved, the rumination bound, and the falsifiability counters), plus the <strong>operator-only</strong> live Server Console, Community-Compute auto-scale controls, graceful stop, and a one-click <strong>⬆ Update &amp; Fresh Walk</strong> (re-pulls the latest code, clears weights, restarts into a clean walk). Admin login unlocks the controls; visitors get read-only vitals (or use the dedicated read-only <a href="dashboard-public.html" style="color:#67e8f9;">Public Dashboard</a>).</p>
+        <p class="card-desc">Live brain state — emotion chart, cluster firing, curriculum milestones + signoffs, drug pharmacokinetics, memory tiers, consciousness panel, the new <strong>Endocrine</strong> panel (her ten chemicals with signed deviation, the live stress channel, cycle phase, receptor tolerance, and each of the six nuclei reading <code>fired</code> / <code>quiet</code> / <code>blind</code> — where <em>blind</em> means it cannot read its input at all, which is a different claim from having nothing to do) and the <strong>Introspection</strong> panel (what is currently unresolved, the rumination bound, and the falsifiability counters), plus the <strong>operator-only</strong> live Server Console, Community-Compute auto-scale controls, graceful stop, and a one-click <strong>⬆ Update &amp; Fresh Walk</strong> (re-pulls the latest code, clears weights, restarts into a clean walk). Admin login unlocks the controls; visitors get read-only vitals (or use the dedicated read-only <a href="dashboard-public.html" class="lnk">Public Dashboard</a>).</p>
         <div class="card-tags">
           <span class="tag live tip" data-tip="Needs the brain-server running. If it isn't, the page still loads — but every number on it will be blank or frozen. That is an unfed page, not a broken one, so check the server before reporting a bug.">LIVE</span>
           <span class="tag admin tip" data-tip="Operator-only, behind authentication. ⛔ Pages carrying this tag can stop, restart or WIPE the brain — the destructive buttons live here, not on the public pages.">ADMIN</span>
@@ -362,47 +367,52 @@
     </div>
 
     <h2>📝 <span class="tip" data-tip="Project documents rendered as pages, so you can read them without cloning the repository. These describe the system; where a document and the code disagree, the code is right.">Public docs (rendered in-browser)</span></h2>
-    <p class="lede" style="margin:0 0 12px;">Project-facing reference docs — overview, setup, architecture, equations. Click any title to open the web-rendered version via <a href="docs.html" style="color:#67e8f9;">docs.html</a>. Internal workflow + planning docs are intentionally NOT listed here (lab-only — not for public legend).</p>
+    <p class="lede tight">Project-facing reference docs — overview, setup, architecture, equations. Click any title to open the web-rendered version via <a href="docs.html" class="lnk">docs.html</a>. Internal workflow + planning docs are intentionally NOT listed here (lab-only — not for public legend).</p>
     <ul class="doc-list">
       <li>
         <a href="docs.html?doc=README">📄 README</a>
-        &nbsp;·&nbsp; <a href="../README.md" style="font-size:9px;color:#6b7280;">raw .md</a>
+        &nbsp;·&nbsp; <a href="../README.md" class="raw-md">raw .md</a>
         <span class="doc-desc">project overview, plain-English intro, run commands</span>
       </li>
       <li>
         <a href="docs.html?doc=SETUP">🔧 SETUP</a>
-        &nbsp;·&nbsp; <a href="../docs/SETUP.md" style="font-size:9px;color:#6b7280;">raw .md</a>
+        &nbsp;·&nbsp; <a href="../docs/SETUP.md" class="raw-md">raw .md</a>
         <span class="doc-desc">install + WebGPU prerequisite + image-gen backends + persistence</span>
       </li>
       <li>
         <a href="docs.html?doc=ARCHITECTURE">🏗 ARCHITECTURE</a>
-        &nbsp;·&nbsp; <a href="../docs/ARCHITECTURE.md" style="font-size:9px;color:#6b7280;">raw .md</a>
+        &nbsp;·&nbsp; <a href="../docs/ARCHITECTURE.md" class="raw-md">raw .md</a>
         <span class="doc-desc">module map + cross-module impact tables</span>
       </li>
       <li>
         <a href="docs.html?doc=EQUATIONS">📐 EQUATIONS</a>
-        &nbsp;·&nbsp; <a href="../docs/EQUATIONS.md" style="font-size:9px;color:#6b7280;">raw .md</a>
+        &nbsp;·&nbsp; <a href="../docs/EQUATIONS.md" class="raw-md">raw .md</a>
         <span class="doc-desc">canonical equational substrate (mirrors brain-equations.html)</span>
       </li>
       <li>
         <a href="docs.html?doc=ROADMAP">🗺 ROADMAP</a>
-        &nbsp;·&nbsp; <a href="../docs/ROADMAP.md" style="font-size:9px;color:#6b7280;">raw .md</a>
+        &nbsp;·&nbsp; <a href="../docs/ROADMAP.md" class="raw-md">raw .md</a>
         <span class="doc-desc">milestone history + open partials</span>
       </li>
       <li>
         <a href="docs.html?doc=SKILL_TREE">🌳 SKILL_TREE</a>
-        &nbsp;·&nbsp; <a href="../docs/SKILL_TREE.md" style="font-size:9px;color:#6b7280;">raw .md</a>
+        &nbsp;·&nbsp; <a href="../docs/SKILL_TREE.md" class="raw-md">raw .md</a>
         <span class="doc-desc">capability ladder — what Unity can do at each grade</span>
       </li>
       <li>
         <a href="docs.html?doc=SENSORY">👁 SENSORY</a>
-        &nbsp;·&nbsp; <a href="../docs/SENSORY.md" style="font-size:9px;color:#6b7280;">raw .md</a>
+        &nbsp;·&nbsp; <a href="../docs/SENSORY.md" class="raw-md">raw .md</a>
         <span class="doc-desc">peripheral interface — cognition vs sensory boundary</span>
       </li>
       <li>
         <a href="docs.html?doc=WEBSOCKET">📡 WEBSOCKET</a>
-        &nbsp;·&nbsp; <a href="../docs/WEBSOCKET.md" style="font-size:9px;color:#6b7280;">raw .md</a>
+        &nbsp;·&nbsp; <a href="../docs/WEBSOCKET.md" class="raw-md">raw .md</a>
         <span class="doc-desc">wire reference, rate limits, reconnection, security model</span>
+      </li>
+      <li>
+        <a href="docs.html?doc=EQUATION_RUNDOWN">🧾 EQUATION RUNDOWN</a>
+        &nbsp;·&nbsp; <a href="../docs/equation-rundown.md" class="raw-md">raw .md</a>
+        <span class="doc-desc">every equation family: working great · working with a limit · built but unread · inert · deleted</span>
       </li>
     </ul>
 
