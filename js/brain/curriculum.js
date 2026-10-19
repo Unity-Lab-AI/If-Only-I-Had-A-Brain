@@ -33048,6 +33048,30 @@ export class Curriculum {
       console.warn('[Brain] fractal-equation audit failed:', err?.message || err);
     }
 
+    // ⛔⛔ YIELD — THIS PROLOGUE USED TO BLOCK THE EVENT LOOP FOR ~56 SECONDS AND
+    //   THAT IS WHY A DONOR COULD NOT ATTACH. `runCompleteCurriculum` is called
+    //   WITHOUT await and logged "BACKGROUND", but an async function body runs
+    //   synchronously up to its FIRST await — and this one had none until the
+    //   `_waitForGpuReady` ~170 lines down. So the fractal audit, the phonics
+    //   injection, the held-out sanitize and the eval check all ran in one
+    //   unbroken synchronous block while the boot's own instruments screamed:
+    //       [Brain] Language corpora loaded in 56611ms
+    //       [EventLoop] ⛔ STARVED — late 52.0s out of the last 61s (15% serviced)
+    //       [WS] connection … while donors=0 — if this is the donor app,
+    //            gpu_register should follow within s
+    //   The donor's socket opened INSIDE that window and its `gpu_register` was
+    //   never serviced, so the boot ended at "No GPU — brain paused" with a
+    //   healthy card sitting right there, and the brain fell back to the one
+    //   thing it can do without a donor: nothing, on one core.
+    // ⭐ `setImmediate` is the macrotask boundary — the same primitive the
+    //   battery loops in this file already use for exactly this reason ("service
+    //   WS pings/donor frames between probes"). A microtask (`Promise.resolve()`)
+    //   would NOT work: it never reaches the I/O phase, which is where a
+    //   WebSocket handshake is completed.
+    // ⚠ Costs one tick per stage and changes no result — the stages are ordered
+    //   exactly as before and each still completes before the next begins.
+    await new Promise((r) => setImmediate(r));
+
     // ⭐⭐ THE GENERATED PHONICS QUESTIONS JOIN THE BANK HERE, BEFORE THE CHECK
     // BELOW RUNS — so the integrity check verifies the rows that were injected,
     // not just the rows that were authored. Injecting after it would leave the
@@ -33082,6 +33106,12 @@ export class Curriculum {
       // bank is still a valid held-out set on its own.
       console.warn('[Curriculum] generated-question injection failed:', err?.message || err);
     }
+
+    // YIELD — second of three. The derived-bank load + sanitize + eval check
+    // below is the heaviest stage of this prologue (206 cells / 2,806 questions
+    // on the last boot, plus a cross-cell duplicate sweep). See the note above
+    // the first yield for why an unbroken prologue costs a donor.
+    await new Promise((r) => setImmediate(r));
 
     // ⭐⭐ THE DERIVED BANKS FOR EVERY OTHER CELL JOIN HERE, for the same reason
     // the phonics rows do: before the integrity check below, so the check covers
@@ -33172,6 +33202,13 @@ export class Curriculum {
     } catch (err) {
       console.warn('[Curriculum] Held-out eval check failed:', err?.message || err);
     }
+
+    // YIELD — third and last of the prologue. Placed immediately BEFORE the GPU
+    // wait on purpose: this is the tick where a donor that connected during the
+    // boot finally gets its `gpu_register` serviced, which is the difference
+    // between `_waitForGpuReady` finding a card and timing out against one that
+    // was there the whole time.
+    await new Promise((r) => setImmediate(r));
 
     // WAIT FOR GPU READY before starting the teach
     // pass. The curriculum kickoff lives in `server/brain-server.js
