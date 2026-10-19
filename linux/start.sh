@@ -146,6 +146,23 @@ if [ -z "$DREAM_NO_AUTO_GPU" ]; then
     echo ""
 fi
 
+# ---------------------------------------------------------------------------
+# BRAIN BUDGET -- she shares the card with her voice and her eyes.
+# Full derivation in windows/start.bat. Short form: unbudgeted, the brain takes
+# 85% of the card plus LANGVRAM's 2 GB handback (459,775,607 neurons, a 14,424 MB
+# donor floor on a 16,376 MB card), leaving ~2 GB for a voice wanting 2,400 and
+# renders peaking at 2,500. The card ran at 0-2 GB free and the donor's CUDA
+# context wedged twice in one boot ("blocked 154s (limit 150s)").
+#   floor(N) = ceil((N * 20 / 1048576 + 2048) / 0.75)   [verified vs the live 14424]
+#   8000 MB -> ~264M neurons -> floor 9451 -> 15481/16376, 895 MB headroom
+# RE-PRICE: 264M is 0.57x of 459.8M and teach cost scales WITH the brain, so each
+# teach op gets ~0.57x cheaper -- shrinking makes the walk faster, not longer.
+# ** THE ONE NUMBER TO CHANGE IF YOU WANT HER BIGGER. ** Raising it spends the
+# headroom; her eyes break first, then the donor.
+: "${DREAM_BRAIN_BUDGET_MB:=8000}"
+export DREAM_BRAIN_BUDGET_MB
+echo "  [scale] brain budget ${DREAM_BRAIN_BUDGET_MB}MB — card shared with her voice and her eyes."
+
 if [ -z "$DREAM_FORCE_CLEAR" ]; then
     # ────────────────────────────────────────────────────────────────
     # Y/N CONFIRMATION GATE (the operator 2026-05-08 LAW -- irreversible-loss warning)
