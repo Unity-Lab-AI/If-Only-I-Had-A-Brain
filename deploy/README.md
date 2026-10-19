@@ -277,8 +277,15 @@ sudo nginx -t && sudo systemctl reload nginx
 curl -s http://127.0.0.1:7526/ctl/status | grep -E 'phase|human'
 # stop the brain THROUGH the control plane, confirm the site survives:
 curl -s -X POST http://127.0.0.1:7526/ctl/stop
-curl -s -o /dev/null -w 'site:%{http_code}\n' https://unityailab.com/          # want 200
-curl -s https://unityailab.com/public-state.json | head -c 200                 # want brainOffline:true
+# ⛔ The two lines that used to sit here checked https://unityailab.com/ — that host now
+# serves the LAB MARKETING SITE, so "site: 200" passed for the wrong reason and
+# /public-state.json answered 404. A verification step that passes against the
+# wrong server is worse than none. The brain is reached through the tunnel now:
+curl -s -o /dev/null -w 'site:%{http_code}\n' https://theunitybrain.com/              # want 200 (GitHub Pages)
+curl -s -o /dev/null -w 'health:%{http_code}\n' https://dumbass.tailec58e0.ts.net/health   # want 200 brain up / 502 brain down
+curl -s https://dumbass.tailec58e0.ts.net/public-state.json | head -c 200             # want JSON, or 502 while she is down
+# and the tunnel's default-deny, which is the security control:
+curl -s -o /dev/null -w 'admin:%{http_code}\n' https://dumbass.tailec58e0.ts.net/admin/status   # want 404
 # then bring it back the way Gee would — from the dashboard, or:
 curl -s -X POST http://127.0.0.1:7526/ctl/start
 ```

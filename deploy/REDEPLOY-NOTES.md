@@ -713,7 +713,7 @@ The loop found four real defects that inspection had missed: `unmanaged` mislabe
 ### ⚠ Notes for the next operator
 
 - **`/dashboard.html` SPA-swallows — the real URL is `/html/dashboard.html`.** On this vhost `location /` falls through to `index.html`, so `curl …/dashboard.html` returns the 55 KB landing shell, not the 345 KB dashboard. I briefly mis-read a deploy as failed because of this.
-- **`unityailab.com` is NOT the brain vhost.** The brain is `if-only-i-had-a-brain.git.unityailab.com`. Health-checking the wrong host reports a happy site while the brain is down.
+- **`unityailab.com` is NOT the brain vhost — and as of 2026-10-17 neither is `if-only-i-had-a-brain.git.unityailab.com`,** which answers 410 Gone under a certificate for a different name. The brain is reached through the tunnel (`dumbass.tailec58e0.ts.net`, `/health`) and the site is `theunitybrain.com`. The lesson this bullet carried still stands and has now bitten twice: health-checking the wrong host reports a happy site while the brain is down.
 - **Two dashboard copies, again.** `html/*` auto-deploys to `/var/www/pages/…`, but `/opt/unity-brain/html/*` is a **separate** copy the Node process serves. Both were synced here (md5 match); a future HTML fix must do the same.
 - The vhost's inline `location = /public-state.json` and `location = /minds-eye.json` blocks were **removed** — the snippet supersedes them with offline-tolerant versions, and duplicate `location =` blocks make `nginx -t` fail. Rollback copies: `/root/vhost.rollback-*`, `/root/vhost.bak-*`.
 - Backend code on the box is still `d7ff7dda`; only `brain-ctl.js` + the dashboard were added. `main` is ahead — a `server/**` redeploy remains a separate, deliberate action.

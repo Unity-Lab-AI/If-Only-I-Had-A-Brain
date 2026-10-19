@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# ⛔ HISTORY, NOT INSTRUCTIONS (2026-10-19). This bootstrapped the Node backend
+# onto a rented box that no longer exists (its hostname answers 410 Gone). The
+# brain now runs on the operator's PC via windows/start.bat or linux/start.sh,
+# which start the voice and image sidecars, the control plane and the tunnel
+# themselves. Running this against any current host would install the wrong
+# thing in the wrong place. Kept as the record of how the box was built.
 # deploy/bootstrap-backend.sh — ONE-TIME backend bootstrap.
 #
 # Run this ONCE, as root (or with sudo), ON THE SERVER that hosts the lab pages.
