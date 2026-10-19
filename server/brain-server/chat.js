@@ -45,7 +45,11 @@ const os = require('os');
 // 50% for I.18's vram budget halving). Adding the missing import unbreaks
 // ALL GPU polling: VRAM%, util, and the I.17 dispatch counter is fine
 // because that lives in gpu.js which has its own scope.
-const { execSync } = require('child_process');
+// ⚠ `execFile`, NOT `execSync`. The synchronous form was the main loop's single
+// biggest blocker (one spawn per second; see `_updatePerfStats`). There is now
+// no synchronous child-process call anywhere in this file and there must not be
+// one again — a spawn on the brain's thread stops her thinking while it runs.
+const { execFile } = require('child_process');
 // AGEPIN.1 — the ONE grade ladder + age map. `_selfImageAge` used to carry
 // its own copy keyed on `'K'`, a string the curriculum never emits.
 const { GRADE_AGE, normalizeGradeKey } = require('./state.js');
@@ -1313,29 +1317,61 @@ const SERVER_CHAT_MIXIN = {
     let gpuVramQueryWorking = this._gpuVramQueryWorking !== false;
     if (gpuVramQueryWorking && this.RESOURCES.gpu.vram > 0
         && (!this._lastGpuVramPoll || Date.now() - this._lastGpuVramPoll > 1000)) {
+      // ⛔⛔ THIS WAS `execSync` AND IT WAS THE SINGLE BIGGEST EVENT-LOOP BLOCKER
+      //   IN THE PROCESS — one synchronous child-process spawn PER SECOND, on
+      //   the main thread, to fill two dashboard fields.
+      //
+      // ⭐ HOW IT HID: a thread parked in a blocking syscall is NOT COMPUTING,
+      //   so the brain's own 45-second sampler billed it as `(idle) 83.1%` while
+      //   `[EventLoop] ⛔ STARVED` reported the loop late 53.3s out of 60 and
+      //   `perf.cpuPercent` sat at an honest 1%. Three readings that look like
+      //   they disagree and do not — the profile named the culprit outright
+      //   (`spawnSync @ child_process:1105`, 3.0% of samples) and nobody had
+      //   read it. A Windows process spawn costs 100–500 ms; at once a second
+      //   that is most of a second of dead loop in every second.
+      //
+      // ⚠ AND IT COST A DONOR. `gpu_register` arrives as a WebSocket frame, and
+      //   a loop that cannot reach its I/O phase cannot service one — which is
+      //   the `[WS] connection … while donors=0` line that had the brain sitting
+      //   at "No GPU — brain paused" with a healthy card attached.
+      //
+      // ⭐ NOW ASYNCHRONOUS AND FIRE-AND-FORGET. The poll is kicked off and the
+      //   function returns immediately; whatever the LAST completed sample said
+      //   is what gets published this tick. The dashboard is a second stale at
+      //   worst, which is invisible, and the loop never waits for a subprocess.
+      // ⛔ `_gpuVramPollInFlight` is the whole safety: without it a slow
+      //   nvidia-smi would stack one spawn per second until the box dies.
       try {
-        const out = execSync(
-          'nvidia-smi --query-gpu=memory.used,utilization.gpu --format=csv,noheader,nounits',
-          { timeout: 2000 }
-        ).toString().trim();
-        // Output format: "1853, 14" — memory in MB, then util %.
-        const parts = out.split(',').map(s => s.trim());
-        const memParsed = parseInt(parts[0], 10);
-        const utilParsed = parseInt(parts[1], 10);
-        if (Number.isFinite(memParsed) && memParsed >= 0) {
-          gpuVramUsedMB = memParsed;
-          this._cachedGpuVramUsedMB = memParsed;
-        } else {
-          gpuVramUsedMB = this._cachedGpuVramUsedMB ?? 0;
-        }
-        if (Number.isFinite(utilParsed) && utilParsed >= 0 && utilParsed <= 100) {
-          gpuUtilPercent = utilParsed;
-          this._cachedGpuUtilPercent = utilParsed;
-        } else {
-          gpuUtilPercent = this._cachedGpuUtilPercent ?? 0;
-        }
         this._lastGpuVramPoll = Date.now();
+        if (!this._gpuVramPollInFlight) {
+          this._gpuVramPollInFlight = true;
+          execFile('nvidia-smi',
+            ['--query-gpu=memory.used,utilization.gpu', '--format=csv,noheader,nounits'],
+            { timeout: 4000 },
+            (err, stdout) => {
+              this._gpuVramPollInFlight = false;
+              if (err) {
+                if (!this._gpuVramFailWarned) {
+                  this._gpuVramFailWarned = true;
+                  this._gpuVramQueryWorking = false;
+                  const fl = String(err && err.message ? err.message : err).split('\n')[0].slice(0, 200);
+                  console.warn(`[Brain] nvidia-smi GPU query unavailable on this system (${fl}) — dashboard will show VRAM/util as unavailable rather than a made-up number.`);
+                }
+                return;
+              }
+              // Output format: "1853, 14" — memory in MB, then util %.
+              const parts = String(stdout || '').trim().split(',').map((s) => s.trim());
+              const memParsed = parseInt(parts[0], 10);
+              const utilParsed = parseInt(parts[1], 10);
+              if (Number.isFinite(memParsed) && memParsed >= 0) this._cachedGpuVramUsedMB = memParsed;
+              if (Number.isFinite(utilParsed) && utilParsed >= 0 && utilParsed <= 100) this._cachedGpuUtilPercent = utilParsed;
+            });
+        }
+        // Publish the newest COMPLETED sample. Never blocks on the one in flight.
+        gpuVramUsedMB = this._cachedGpuVramUsedMB ?? 0;
+        gpuUtilPercent = this._cachedGpuUtilPercent ?? 0;
       } catch (err) {
+        this._gpuVramPollInFlight = false;
         if (!this._gpuVramFailWarned) {
           this._gpuVramFailWarned = true;
           this._gpuVramQueryWorking = false;
