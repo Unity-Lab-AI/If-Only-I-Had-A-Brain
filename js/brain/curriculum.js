@@ -6278,6 +6278,21 @@ export class Curriculum {
     for (let chunkStart = 0; chunkStart < todo.length; chunkStart += CHUNK) {
       const chunk = todo.slice(chunkStart, chunkStart + CHUNK);
       this._hb(`[Curriculum] 📚 PRE-CELL VOCAB chunk ${chunkStart}–${chunkStart + chunk.length}/${todo.length} (${subject}/${grade})`);
+      // ⭐⭐ `reps: 1` IS THE DESIGN, NOT A MISSING NUMBER. Operator, 2026-10-19:
+      //   *"its becasue this is to be human like thats how she was mathed to
+      //   learn like a human does and only need to hear something once to
+      //   remember it like a human does"*. One-shot encoding is the premise the
+      //   substrate was built on — a person who is told what a word means does
+      //   not need to be told six times — so a rep count above 1 on a FIRST
+      //   exposure is not extra care, it is a departure from the model.
+      // ⛔ DO NOT "FIX" THIS UPWARDS. It was flagged as a suspected defect on
+      //   2026-10-19 precisely because it carried no comment while five other
+      //   definition lanes pass 3 or 4, and an undocumented intentional value
+      //   reads exactly like an oversight. The number is now explained; the
+      //   inconsistency with those other lanes is the open question, and it
+      //   points at THEM, not at this line.
+      // ⚠ And reps is TEACH DOSE, so changing it anywhere moves both what she
+      //   learns and how long the walk takes — it is re-price territory.
       const stats = await this._teachWordDefinitions(chunk, { reps: 1, label: `PRECELL-${subject}-${grade}` });
       totalTrained += stats?.totalTrained || 0;
       totalWordsBound += stats?.wordsBound || 0;
