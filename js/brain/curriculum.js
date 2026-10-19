@@ -18182,6 +18182,17 @@ export class Curriculum {
     if (defsBound > 0) {
       if (!cluster._definitionTaughtWords) cluster._definitionTaughtWords = new Set();
       cluster._definitionTaughtWords.add(w);
+      // ⭐ THE SENSE COUNT, CUMULATIVELY — because `_definitionTaughtWords` is a
+      //   set of WORDS and the dashboard was publishing its size under the label
+      //   "defs taught", against a denominator that is also a word count. One
+      //   word carries 1 to 91 senses, so the two numbers were never the same
+      //   quantity and the pair could not be read as progress through meanings.
+      // ⛔ AND THIS ONE HAS NO DENOMINATOR, DELIBERATELY. The total number of
+      //   definitions in the journey is NOT KNOWABLE in advance: it depends on
+      //   how many senses the dictionary returns for each word, which is only
+      //   discovered by asking. Publishing "A of X" here would require inventing
+      //   X. A bare climbing count is the honest shape.
+      cluster._definitionSensesBound = (cluster._definitionSensesBound || 0) + defsBound;
       if (!cluster._defLearnedTimestamps) cluster._defLearnedTimestamps = [];
       for (let i = 0; i < defsBound; i++) {
         cluster._defLearnedTimestamps.push(now);
