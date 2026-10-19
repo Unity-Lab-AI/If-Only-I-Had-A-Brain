@@ -31,6 +31,14 @@ struct LifParams {
     seed: u32,
     grid_x: u32,
     num_regions: u32,
+    /// Seed Crystal (v0.3.40) — the right half's drive and the split index.
+    /// ⚠ The two `_pad` fields are REQUIRED: 14 × 4 = 56 bytes, and a WGSL
+    /// uniform block is 16-byte aligned, so the shader reads 64. Declared on
+    /// both sides in the same order.
+    effective_drive_r: f32,
+    half: u32,
+    _pad0: u32,
+    _pad1: u32,
 }
 
 #[repr(C)]
@@ -38,6 +46,10 @@ struct LifParams {
 struct SpikeParams {
     n: u32,
     grid_x: u32,
+    /// Seed Crystal (v0.3.40) — neurons with index < half count into slot 0
+    /// (left), the rest into slot 1 (right). `_pad` keeps the block at 16 bytes.
+    half: u32,
+    _pad: u32,
 }
 
 /// GOTCHA.3b (v0.3.32) — params for the voltage-mean reduction.
@@ -153,7 +165,7 @@ struct Cluster {
     region_gates: wgpu::Buffer, // [start,end,gate,pad] f32 per region (≥1 dummy)
     num_regions: u32,
     regions: HashMap<String, (u32, u32)>, // name → (start, end) for region ops
-    count: wgpu::Buffer,        // atomic<u32> [1]
+    count: wgpu::Buffer,        // atomic<u32> [2] — [left, right] (Seed Crystal, v0.3.40)
     count_staging: wgpu::Buffer,
     noise_amp: f32,
     tonic_drive: f32,
@@ -326,13 +338,13 @@ impl ComputeEngine {
         });
         let count = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some(&format!("{name}-count")),
-            size: 4,
+            size: 8,
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
             mapped_at_creation: false,
         });
         let count_staging = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some(&format!("{name}-count-staging")),
-            size: 4,
+            size: 8,
             usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -439,7 +451,10 @@ impl ComputeEngine {
 
     /// Run ONE Rulkov step on a cluster and return the spike count. Blocking on the GPU
     /// readback (per-tick) — acceptable for the MVP single-GPU donor.
-    pub fn step(&self, name: &str, effective_drive: f32, noise_amp: f32, seed: u32) -> Result<u32, String> {
+    /// One Rulkov substep. Returns the spike count of each HALF of the cluster
+    /// `(left, right)` — the Seed Crystal's hemispheric read (v0.3.40). `half`
+    /// is the split index; `effective_drive_r` drives neurons at or past it.
+    pub fn step(&self, name: &str, effective_drive: f32, effective_drive_r: f32, half: u32, noise_amp: f32, seed: u32) -> Result<(u32, u32), String> {
         let c = self.clusters.get(name).ok_or_else(|| format!("cluster '{name}' not initialized"))?;
         let (dx, dy, grid_x) = dispatch_dims(c.size);
 
@@ -456,6 +471,10 @@ impl ComputeEngine {
             seed,
             grid_x,
             num_regions: c.num_regions,
+            effective_drive_r,
+            half,
+            _pad0: 0,
+            _pad1: 0,
         };
         let lif_ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("lif-params"),
@@ -474,7 +493,7 @@ impl ComputeEngine {
             ],
         });
 
-        let spike_params = SpikeParams { n: c.size, grid_x };
+        let spike_params = SpikeParams { n: c.size, grid_x, half, _pad: 0 };
         let spike_ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("spike-params"),
             contents: bytemuck::bytes_of(&spike_params),
@@ -490,8 +509,8 @@ impl ComputeEngine {
             ],
         });
 
-        // zero the spike counter
-        self.queue.write_buffer(&c.count, 0, &0u32.to_le_bytes());
+        // zero both spike counters (left, right)
+        self.queue.write_buffer(&c.count, 0, &[0u8; 8]);
 
         let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("step") });
         {
@@ -506,7 +525,7 @@ impl ComputeEngine {
             cp.set_bind_group(0, &spike_bg, &[]);
             cp.dispatch_workgroups(dx, dy, 1);
         }
-        enc.copy_buffer_to_buffer(&c.count, 0, &c.count_staging, 0, 4);
+        enc.copy_buffer_to_buffer(&c.count, 0, &c.count_staging, 0, 8);
         self.queue.submit(std::iter::once(enc.finish()));
 
         // Block on the readback (MVP). Maintain::Wait fires the map callback.
@@ -517,10 +536,11 @@ impl ComputeEngine {
         let _ = self.device.poll(wgpu::Maintain::Wait);
         rx.recv().map_err(|_| "map_async channel dropped".to_string())?.map_err(|e| format!("map failed: {e:?}"))?;
         let data = c.count_staging.slice(..).get_mapped_range();
-        let count = u32::from_le_bytes(data[0..4].try_into().unwrap());
+        let count_l = u32::from_le_bytes(data[0..4].try_into().unwrap());
+        let count_r = u32::from_le_bytes(data[4..8].try_into().unwrap());
         drop(data);
         c.count_staging.unmap();
-        Ok(count)
+        Ok((count_l, count_r))
     }
 
     /// GOTCHA.3b (v0.3.32) — mean of the Rulkov FAST variable across a cluster.
@@ -1332,11 +1352,12 @@ impl Backend {
             Backend::Cuda(e) => e.has_cluster(name),
         }
     }
-    fn step(&self, name: &str, drive: f32, noise: f32, seed: u32) -> Result<u32, String> {
+    /// Seed Crystal (v0.3.40) — both halves' counts, per backend.
+    fn step(&self, name: &str, drive: f32, drive_r: f32, half: u32, noise: f32, seed: u32) -> Result<(u32, u32), String> {
         match self {
-            Backend::Wgpu(e) => e.step(name, drive, noise, seed),
+            Backend::Wgpu(e) => e.step(name, drive, drive_r, half, noise, seed),
             #[cfg(feature = "cuda")]
-            Backend::Cuda(e) => e.step(name, drive, noise, seed),
+            Backend::Cuda(e) => e.step(name, drive, drive_r, half, noise, seed),
         }
     }
     fn has_sparse(&self, name: &str) -> bool {
@@ -1506,12 +1527,20 @@ pub struct StepJob {
     pub size: u32,
     pub drive: f32,
     pub noise: f32,
+    /// Seed Crystal (v0.3.40) — the right half's drive and the split index
+    /// (`half == 0` or `half >= size` → one drive for the whole cluster).
+    pub drive_r: f32,
+    pub half: u32,
 }
 
 #[derive(Default, Clone, Copy)]
 pub struct StepOut {
     pub total: u64,
     pub last: u64,
+    /// Seed Crystal (v0.3.40) — the last substep's count per half. Always
+    /// filled by this build; the wire layer reports them as Some(..).
+    pub last_l: u64,
+    pub last_r: u64,
     /// GOTCHA.3b (v0.3.32) — mean of the Rulkov fast variable, sampled ONCE at
     /// the end of the substep run rather than per substep. `None` means "not
     /// measured this run", never "zero" — see `voltage_mean()` for why that
@@ -1881,13 +1910,19 @@ impl MultiEngine {
                         let job = &jobs[i];
                         let mut total: u64 = 0;
                         let mut last: u64 = 0;
+                        let mut last_l: u64 = 0;
+                        let mut last_r: u64 = 0;
                         for _ in 0..substeps {
                             seed = seed.wrapping_mul(2654435761).wrapping_add(40503);
-                            match engine.step(&job.name, job.drive, job.noise, seed) {
-                                Ok(count) => {
-                                    let count = (count as u64).min(job.size as u64);
+                            match engine.step(&job.name, job.drive, job.drive_r, job.half, job.noise, seed) {
+                                Ok((cl, cr)) => {
+                                    let cl = cl as u64;
+                                    let cr = cr as u64;
+                                    let count = (cl + cr).min(job.size as u64);
                                     total += count;
                                     last = count;
+                                    last_l = cl;
+                                    last_r = cr;
                                 }
                                 Err(e) => eprintln!("[donor] step error on '{}': {e}", job.name),
                             }
@@ -1897,7 +1932,7 @@ impl MultiEngine {
                         // one extra dispatch + blocking readback per substep on
                         // the hot path for a number the dashboard reads at ~1Hz.
                         let mean_voltage = engine.voltage_mean(&job.name);
-                        local.push((job.name.clone(), StepOut { total, last, mean_voltage }));
+                        local.push((job.name.clone(), StepOut { total, last, last_l, last_r, mean_voltage }));
                     }
                     // Per-GPU duty-cycle: idle a slice so THIS card's busy-fraction ≈ util_g%.
                     // (Independent per GPU — a gentle display card + a hard spare card coexist.)
@@ -1943,9 +1978,11 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
     println!("self-test: device on '{}' — seeding {} neurons", eng.adapter_name(), neurons);
     eng.init_cluster("selftest", neurons, &HashMap::new(), drive, 0.05);
     for s in 0..steps {
-        let count = eng.step("selftest", drive, 0.05, s.wrapping_mul(2654435761))?;
+        // Seed Crystal (v0.3.40): both halves on the same drive, counted apart.
+        let (cl, cr) = eng.step("selftest", drive, drive, neurons / 2, 0.05, s.wrapping_mul(2654435761))?;
+        let count = cl + cr;
         let pct = (count as f64 / neurons as f64) * 100.0;
-        println!("  step {s:>3}: {count:>10} spikes ({pct:.2}% of {neurons})");
+        println!("  step {s:>3}: {count:>10} spikes ({pct:.2}% of {neurons}) — L {cl} / R {cr}");
     }
 
     // Sparse propagate check: a known 4x4 CSR, fire neurons {0,2}, verify currents.

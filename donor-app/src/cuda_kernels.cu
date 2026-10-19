@@ -45,16 +45,19 @@ __device__ float region_gate(unsigned int n_idx, unsigned int numRegions, const 
 }
 
 // Rulkov 2002 map (port of lif.wgsl). state interleaved float2: state[2i]=x, state[2i+1]=y.
-__global__ void lif(unsigned int n, float effectiveDrive, float noiseAmp,
-                    unsigned int seed, unsigned int numRegions,
+// Seed Crystal (v0.3.40): `effectiveDriveR` drives neurons at index >= `half`;
+// the left half steps on `effectiveDrive`. Equal values = the old single drive.
+__global__ void lif(unsigned int n, float effectiveDrive, float effectiveDriveR, unsigned int half,
+                    float noiseAmp, unsigned int seed, unsigned int numRegions,
                     float* state, unsigned int* spikes,
                     const float* currents, const float* regionGates) {
   unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i >= n) return;
   const float ALPHA = 4.5f;
   const float MU = 0.001f;
+  float ed = (i < half) ? effectiveDrive : effectiveDriveR;
   float gate = region_gate(i, numRegions, regionGates);
-  float drive = (effectiveDrive + currents[i]) * gate;
+  float drive = (ed + currents[i]) * gate;
   float sigmaEff = -1.0f + fminf(fmaxf(drive / 40.0f, 0.0f), 1.0f) * 1.5f;
   float xN = state[2u*i];
   float yN = state[2u*i + 1u];
@@ -112,11 +115,12 @@ __global__ void voltage_mean(unsigned int n, unsigned int chunk, const float* st
   partials[p] = sum;
 }
 
-// Atomic spike count (port of spike_count.wgsl).
-__global__ void spike_count(unsigned int n, const unsigned int* spikes, unsigned int* count) {
+// Atomic spike count per HALF (port of spike_count.wgsl): count[0] = left
+// (index < half), count[1] = right. Seed Crystal, v0.3.40.
+__global__ void spike_count(unsigned int n, unsigned int half, const unsigned int* spikes, unsigned int* count) {
   unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i >= n) return;
-  if (spikes[i] != 0u) atomicAdd(count, 1u);
+  if (spikes[i] != 0u) atomicAdd(count + ((i < half) ? 0u : 1u), 1u);
 }
 
 // CSR matmul gated by presynaptic spikes (port of synapse_propagate.wgsl). rowPtr has rows+1.

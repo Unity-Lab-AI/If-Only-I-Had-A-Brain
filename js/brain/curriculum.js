@@ -33473,20 +33473,49 @@ export class Curriculum {
       // through letter→sem, accumulate the sem readouts. This simulates
       // "reading" the prompt through the trained cross-projections.
       const accumSem = new Float64Array(SEM_DIM);
+      // Seed Crystal gate credit — the same readout split at the sem midpoint.
+      const accumL = new Float64Array(SEM_DIM), accumR = new Float64Array(SEM_DIM);
       let wordCount = 0;
+      // ⛔ EVERY LETTER OF EVERY WORD. This probe read only the FIRST letter of
+      // each prompt word for its whole life, so "cat sat" and "car sun" were
+      // the same probe and every grade's comprehension gate measured the
+      // letter→meaning projection's pull toward the answer, not the sentence.
+      // Now each letter propagates through letter_to_sem and the word's readout
+      // is the mean over its letters (a bag of letters — still position-free,
+      // but no longer blind past the initial). `DREAM_GATE_READ=initial`
+      // restores the old probe for an A/B. RE-PRICE: ×len(word) propagates per
+      // word on the probe lane only; the walk's consolidation gate is untouched.
+      const _readInitialOnly = (typeof process !== 'undefined' && process.env && process.env.DREAM_GATE_READ === 'initial');
       for (const word of prompt) {
-        const firstLetter = word.replace(/[^a-z0-9]/g, '')[0];
-        if (!firstLetter) continue;
-        const letterPat = buildLetterPattern(firstLetter);
-        const semOutput = await this._probePropagate('letter_to_sem', letterPat);
-        const sGSize = Math.max(1, Math.floor(semSize / SEM_DIM));
-        for (let d = 0; d < SEM_DIM; d++) {
-          let sum = 0;
-          for (let n = 0; n < sGSize; n++) {
-            const idx = d * sGSize + n;
-            if (idx < semOutput.length) sum += semOutput[idx];
+        const clean = word.replace(/[^a-z0-9]/g, '');
+        if (!clean) continue;
+        const letters = _readInitialOnly ? [clean[0]] : clean.split('');
+        const wordSem = new Float64Array(SEM_DIM);
+        const wordL = new Float64Array(SEM_DIM), wordR = new Float64Array(SEM_DIM);
+        let letterCount = 0;
+        for (const letter of letters) {
+          const letterPat = buildLetterPattern(letter);
+          const semOutput = await this._probePropagate('letter_to_sem', letterPat);
+          const sGSize = Math.max(1, Math.floor(semSize / SEM_DIM));
+          const semMid = Math.floor(semSize / 2);
+          for (let d = 0; d < SEM_DIM; d++) {
+            let sum = 0, sumL = 0, sumR = 0;
+            for (let n = 0; n < sGSize; n++) {
+              const idx = d * sGSize + n;
+              if (idx < semOutput.length) {
+                sum += semOutput[idx];
+                if (idx < semMid) sumL += semOutput[idx]; else sumR += semOutput[idx];
+              }
+            }
+            wordSem[d] += sum / sGSize;
+            wordL[d] += sumL / sGSize; wordR[d] += sumR / sGSize;
           }
-          accumSem[d] += sum / sGSize;
+          letterCount++;
+        }
+        if (letterCount === 0) continue;
+        for (let d = 0; d < SEM_DIM; d++) {
+          accumSem[d] += wordSem[d] / letterCount;
+          accumL[d] += wordL[d] / letterCount; accumR[d] += wordR[d] / letterCount;
         }
         wordCount++;
       }
@@ -33506,12 +33535,26 @@ export class Curriculum {
       // Check if the accumulated sem state is closest to the answer's GloVe
       const answerEmb = sharedEmbeddings.getEmbedding(answer);
       if (!answerEmb) continue;
+      // 0.10 is derived, not tuned: a mean-centred 300-d readout against a unit
+      // vector has chance cosine ~N(0, 1/√300 = 0.058), so 0.10 is 1.7σ above
+      // chance; with the 80% gate over ≤10 questions the chance pass is ~1e-8.
       const score = cosine(accumSem, answerEmb);
-      if (score > 0.10) {
+      const passed = score > 0.10;
+      if (passed) {
         comprehendPass++;
       } else {
         fails.push(`${prompt.join(' ')} → ${answer} (cos=${score.toFixed(3)})`);
       }
+      // Seed Crystal — credit the side whose half of the readout was nearer.
+      try {
+        const brain = this.brain || this._brain || (cluster && cluster._brain) || null;
+        const host = (brain && typeof brain._crystalGateCredit === 'function') ? brain
+          : (typeof globalThis.__unityBrain === 'object' && typeof globalThis.__unityBrain._crystalGateCredit === 'function') ? globalThis.__unityBrain : null;
+        if (host) {
+          const centre = (v) => { let m = 0; for (let i = 0; i < v.length; i++) m += v[i]; m /= v.length; const o = new Float64Array(v.length); for (let i = 0; i < v.length; i++) o[i] = v[i] - m; return o; };
+          host._crystalGateCredit(cosine(centre(accumL), answerEmb), cosine(centre(accumR), answerEmb), passed);
+        }
+      } catch { /* credit is optional; the gate's own verdict is unaffected */ }
     }
 
     const N = sample.length;

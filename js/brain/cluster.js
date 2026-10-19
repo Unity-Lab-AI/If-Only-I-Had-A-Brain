@@ -2429,6 +2429,11 @@ export class NeuronCluster {
       // predictive-coding surprise gate so high-error windows learn
       // 1.5× and low-error windows learn 0.5×.
       gammaScale: curriculumGamma * surpriseGate,
+      // Seed Crystal — per-hemisphere plasticity share, set by the server's
+      // dopamine contest (`_hemiScale = [η_L/η, η_R/η]`), null when unmeasured.
+      // The split is the cluster's midpoint in absolute index.
+      hemiScale: (Array.isArray(this._hemiScale) && this._hemiScale.length === 2) ? this._hemiScale : null,
+      hemiSplit: Math.floor((this.size || 0) / 2),
     };
   }
 
