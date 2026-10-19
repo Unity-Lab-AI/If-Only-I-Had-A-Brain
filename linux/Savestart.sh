@@ -240,6 +240,29 @@ if [ -f server.log ]; then rm server.log; fi
 # EADDRINUSE → exits 0 quietly, so re-launching never stacks instances.
 nohup node brain-ctl.js >> brain-ctl.log 2>&1 &   # CTLWINDOW (2026-08-28): nohup + append — the control plane must survive the launcher terminal closing, and a did-not-bind relaunch must not truncate the live instance's log
 
+# ── CFTUNNEL — the DONOR DOOR. Identical to the block in linux/start.sh; see
+# that file for why it is a SECOND tunnel (the Funnel's relay is capped and
+# measured 0.16 MB/s against 541.78 MB/s on loopback, so it cannot carry a
+# donor) and why it is a background process rather than a service (no sudo,
+# nothing to remember). Idempotent — a no-op when cloudflared already runs.
+CF_CFG="$(cd "$(dirname "$0")/.." && pwd)/deploy/cloudflared-unity-brain.yml"
+if command -v cloudflared >/dev/null 2>&1; then
+    if [ -f "$CF_CFG" ]; then
+        if pgrep -f 'cloudflared.*tunnel' >/dev/null 2>&1; then
+            echo "  [tunnel] donor door already up — brain.theunitybrain.com"
+        else
+            echo "  [tunnel] donor door starting — brain.theunitybrain.com via Cloudflare..."
+            # ⚠ `tunnel run`, NOT `run` — bare `run` prints a usage hint and
+            # EXITS 0, so the door reads open while nothing listens.
+            nohup cloudflared --config "$CF_CFG" tunnel run >> cloudflared.log 2>&1 &
+        fi
+    else
+        echo "  [tunnel] cloudflared installed but deploy/cloudflared-unity-brain.yml is missing — donor door NOT opened."
+    fi
+else
+    echo "  [tunnel] cloudflared not installed — she runs, and the website still works, but no REMOTE donor can reach her."
+fi
+
 # ── VOICEV2 — her voice (unity-voice-v2) as a SIDECAR, parity with start.sh ───
 # ONE lane: piper is gutted (2026-10-18). Not running ⇒ she is SILENT and the
 # brain log says so; every reply re-tries. Not found ⇒ say so, carry on — a
