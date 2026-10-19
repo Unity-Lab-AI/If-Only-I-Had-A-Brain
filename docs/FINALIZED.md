@@ -64,6 +64,20 @@ Gee, verbatim: *"so what your telling me is we need to write up the correct full
   K_c(g) = 0.6·(1 − e^{−g/4})                          the seed grows with her grades
 ```
 
+### The launch that did not launch — `DONORVER.1`
+
+Gee, verbatim: *"Something major went wrong none of my browsers opened"*, with a cloudflared log showing only `dial tcp 127.0.0.1:7525: connectex: No connection could be made`.
+
+**The tunnel log was healthy.** That error is cloudflared saying the brain is not listening, which was true: the brain never started.
+
+⭐ **Nothing was broken. `start.bat` stopped exactly where it is designed to.** Line 256 is `choice /C YN /D N /T 30` — the destructive-wipe confirmation, **default N, thirty-second timeout**. Nothing past it runs: not the brain, not the tunnel block, not the browsers. Reproduced twice here, once with empty stdin and once answering `N`, both ending in *"Aborted. No state was modified."* The supporting evidence is that `server/server.log` still ended at the 4:55 AM exit, so no boot had been attempted since.
+
+⛔⛔ **But the run surfaced a real lying instrument, and it had been lying on every boot.** The root-donor version check printed `ROOT DONOR IS STALE: exe reports , Cargo.toml says 0.3.41` — against an exe that genuinely was 0.3.41. The cause is the classic batch trap: the check lived inside `if exist (...)` and read `%UAL_DONOR_HAVE%` in the **same block** a `for /f` sets it, and cmd expands `%VAR%` when it *parses* a block, before any of it runs. So the value was always the pre-loop one, empty — a version check that could never pass and never said why. Flattened to top level with labels, where each `%VAR%` expands per line, which is what the original code assumed it was doing. Delayed expansion would also fix it and was rejected: this script never enables it and switching it on globally changes how every other `!` in the file parses. Verified by re-running: `root unity-donor-windows-x86_64.exe is 0.3.41 -- matches donor-app\Cargo.toml`.
+
+⚠ **And it caught me breaking the project's own rule.** The warning it was trying to print says *"Replace it with the SHIPPED release asset — never a local build dir"*, and the root exe was my `cargo build --release` output. Both are genuine 0.3.41 GUI builds (eframe present in each), but the published artifact is what a downloader gets, so the shipped asset now sits at the root. The running local build was renamed aside rather than deleted because Windows will not unlink a running image.
+
+- [x] `DONORVER.1` — ✅ **FIXED 2026-10-19 ~10:20 AM — see the section above.** The launch failure was the designed wipe-confirmation timing out to N; the bug found underneath it was a root-donor version check that reported empty-and-stale on every boot through a parse-time expansion inside a nested block.
+
 ### The launchers open the donor door — `TUNNELBOOT.1`
 
 Gee, verbatim: *"wtf??? shit like this:\" - The tunnel is running from my shell, so it dies when this session ends. Making it permanent needs an admin terminal:\" should that be handled by the start.bats and ,sh's??? i dont want to have to rember commands to enter every start up"*.
