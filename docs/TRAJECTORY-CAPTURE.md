@@ -126,6 +126,7 @@ All paths are relative to `state` in `GET /public-state.json`.
 | per-subject progress | **`curriculum.perSubject`** / **`curriculum.subjects`** | ⚠ these are what the payload actually exposes; **not** verified as a per-cell pass/fail set |
 | last gate verdict | **`curriculum.lastGateVerdict`** | point — ⭐ **present and undocumented until now.** This is the field carrying an actual gate outcome |
 | exam transcript | **`curriculum.examTranscript`** | series — ⭐ also present and undocumented |
+| gate readings per cell | **`gateReadings.cells[]`** (top-level, not under `curriculum`) | series — each cell's comprehension / vocab / sentence / production / battery / verdict counts, newest first, last 12 published of `gateReadings.kept` resident; `gateReadings.probe` is the live probe position (`kind`, `i`/`n`, `heldMs`). Counts only, no question text |
 | phase pass record | ⛔ **`curriculum.passedPhases` is UNDEFINED in the public payload** | — use `cellPhasesCompleted` / `.cellPhasesStarted` / `.cellPhasesTotal` |
 | exam-bank sizes | `[Curriculum] Held-out eval check` boot line | log — ⛔ **the sanitize line alone no longer explains the total.** A bank can now GROW at boot as well as shrink: a derived set is merged before the check runs, so the size is `authored − removed + injected`. The eval line carries `removed at source load` **and** `injected from generated sets` for exactly that reason; a recorder reading only the sanitize line cannot tell a grown bank from a doubled one |
 

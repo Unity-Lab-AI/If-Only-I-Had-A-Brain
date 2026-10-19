@@ -81,6 +81,11 @@
     /* Small secondary lines under a reading. */
     .row-sub { margin-top: 6px; color: #888; font-size: 10px; }
     .row-note { font-size: 10px; color: #666; margin-top: 2px; }
+    /* The gate card's per-cell table: one row per cell, counts only. */
+    .gate-table { width: 100%; border-collapse: collapse; font-size: 10px; font-family: monospace; margin-top: 6px; }
+    .gate-table th { text-align: left; color: #666; font-weight: 400; padding: 2px 6px 2px 0; border-bottom: 1px solid #1a1a2a; }
+    .gate-table td { padding: 2px 6px 2px 0; border-bottom: 1px solid #111; color: #bbb; white-space: nowrap; }
+    .gate-table td.cell { color: #e9d5ff; }
     .art-row { font-size: 10px; color: #777; margin-top: 3px; }
     .mt6 { margin-top: 6px; }
     .fs10 { font-size: 10px; }
@@ -877,6 +882,35 @@
             <div class="fs10"><span id="d-cr-counters" class="c-dim">—</span></div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- GATE READINGS — the probe lane's live position and each cell's numbers.
+         Reads state.gateReadings. A cell passes on learning completion, so every
+         probe is advisory; this card is where its numbers go so the probe lane
+         names itself instead of reading as a freeze. Counts only. -->
+    <div class="card consciousness-panel stack" title="The gate readings. Every cell ends with probes — readiness (five letter cues), comprehension (prompt words read through letter→meaning vs the answer), vocab and sentence (READ and TALK pathways), production (asked, did she say it), the student battery (held-out exam, authored items only can block) and methodology (HOW questions). A cell passes on LEARNING COMPLETION, so these are advisory: they re-teach what they find (failed words at 3× reps, missed answers taught) and feed the Seed Crystal's gate credit, but they do not decide the pass. The live line says which probe is running, item i of n, and how long that probe kind has held — a probe lane that names nothing reads as a freeze. Counts only: the exam is held out, no question text is shown.">
+      <div class="card-title">🎓 Gate readings — the probes, live, and what each cell scored</div>
+      <div id="d-gates" class="panel scroll-280">
+        <div id="d-gates-live" class="c-dim">probe lane: idle — no probe running</div>
+        <div id="d-gates-table-wrap" style="margin-top:6px;">
+          <div id="d-gates-empty" class="row-note">no cell has reached a gate on this brain yet — the first row lands when a cell's first probe returns</div>
+          <table class="gate-table" id="d-gates-table" style="display:none;">
+            <thead><tr>
+              <th title="subject/grade">cell</th>
+              <th title="comprehension: prompt words read through letter→meaning, cosine to the answer above 0.10 — passed/total">compr.</th>
+              <th title="vocab READ/TALK: letter→meaning cosine over 0.10 / meaning→motor decodes the first letter — read·talk/total">vocab</th>
+              <th title="sentence READ/TALK on each sentence's first word — read·talk/total">sent.</th>
+              <th title="production: asked the question, did she say the expected word — passed/total (+n re-aimed in her own frame)">prod.</th>
+              <th title="student battery on the held-out exam: authored passed/total; blockers are the advisory criteria that would have held the grade under DREAM_BATTERY_GATE_HARD=1; skip = readiness gate declined to ask">battery</th>
+              <th title="methodology HOW-questions: a reasoning keyword in her answer — passed/total">method.</th>
+              <th title="the cell's adjudicated verdict: PASS, PASS (completion) = passed on learning completion with the probes advisory, DECLINED = no completion pass and why, HELD = no runner wired">verdict</th>
+              <th title="seconds the whole cell took, and how long ago it ended">time</th>
+            </tr></thead>
+            <tbody id="d-gates-rows"></tbody>
+          </table>
+        </div>
+        <div id="d-gates-foot" class="row-note"></div>
       </div>
     </div>
 
@@ -1820,7 +1854,8 @@
       // progress bar + per-subject cumulative breakdown. Same source
       // of truth: the Curriculum object's getCurriculumStatus().
       renderCurriculumStatus(s.curriculum || null, (s.throughput && s.throughput.gateProbes) || null,
-        (s.ownArt && s.ownArt.corpusCleaning) || null);
+        (s.ownArt && s.ownArt.corpusCleaning) || null,
+        (s.gateReadings && s.gateReadings.probe) || null);
       renderLeaderboard(s.leaderboard || null);
 
       // Full-Mind K Gate panel — 23-probe pass-instrument for K closure.
@@ -2402,6 +2437,65 @@
             const cc = cr.counters || {};
             $('d-cr-counters').textContent = `ticks ${num(cc.ticks)} · unmeasured ${num(cc.unmeasuredTicks)} · gate credits ${num(cc.gateCredits)} · chat rewards ${num(cc.chatRewards)} · applied ${num(cc.applied)}`;
           }
+        }
+      }
+
+      // Gate readings render. Reads state.gateReadings. The live line is the
+      // part that answers "is she frozen?": which probe, item i of n, how long
+      // that probe kind has held. Absent block => older backend, card says so.
+      {
+        const gr = s.gateReadings;
+        const live = $('d-gates-live'), tbl = $('d-gates-table'), rows = $('d-gates-rows'), empty = $('d-gates-empty'), foot = $('d-gates-foot');
+        if (live && tbl && rows && empty && foot) {
+          const fmtAge = (ms) => (ms == null) ? '—' : (ms >= 3600000 ? `${(ms / 3600000).toFixed(1)}h` : ms >= 60000 ? `${Math.round(ms / 60000)}m` : `${Math.round(ms / 1000)}s`);
+          if (!gr) {
+            live.textContent = 'probe lane: no state.gateReadings in this broadcast (older backend)';
+            live.className = 'c-warn';
+          } else if (gr.probe && gr.probe.kind) {
+            const p = gr.probe;
+            // A position older than two minutes is a probe that stopped reporting,
+            // not one still running — say which.
+            const stale = (p.sinceMs | 0) > 120000;
+            live.innerHTML = `probe lane: <span class="${stale ? 'c-warn' : 'c-amber'}">${p.kind}</span> ${p.i}/${p.n}`
+              + ` on <span class="c-pu">${p.cell || '—'}</span>`
+              + ` &middot; this probe kind has held <span class="${(p.heldMs | 0) > 600000 ? 'c-warn' : 'c-light'}">${fmtAge(p.heldMs)}</span>`
+              + (stale ? ` &middot; <span class="c-warn">last item ${fmtAge(p.sinceMs)} ago — not advancing</span>` : ` &middot; last item ${fmtAge(p.sinceMs)} ago`);
+            live.className = '';
+          } else {
+            live.textContent = 'probe lane: idle — no probe running (teaching, or between cells)';
+            live.className = 'c-dim';
+          }
+          const cells = (gr && Array.isArray(gr.cells)) ? gr.cells : [];
+          if (cells.length === 0) {
+            tbl.style.display = 'none'; empty.style.display = '';
+          } else {
+            tbl.style.display = ''; empty.style.display = 'none';
+            const pct = (a, b) => (b > 0) ? ` (${Math.round(100 * a / b)}%)` : '';
+            const frac = (r, a, b) => r ? `<span class="${r.pass ? 'c-ok' : 'c-warn'}">${a | 0}/${b | 0}</span>${pct(a | 0, b | 0)}` : '<span class="c-faint">—</span>';
+            rows.innerHTML = cells.map(r => {
+              const c = r.comprehension, v = r.vocab, se = r.sentence, pr = r.production, b = r.battery, vd = r.verdict;
+              const vocabCell = v ? `<span class="${v.pass ? 'c-ok' : 'c-warn'}">${v.read | 0}·${v.talk | 0}/${v.total | 0}</span>` : '<span class="c-faint">—</span>';
+              const sentCell = se ? `<span class="${se.pass ? 'c-ok' : 'c-warn'}">${se.read | 0}·${se.talk | 0}/${se.total | 0}</span>` : '<span class="c-faint">—</span>';
+              const prodCell = pr ? `${frac(pr, pr.passed, pr.total)}${(pr.recovered | 0) > 0 ? ` <span class="c-dim">+${pr.recovered}</span>` : ''}` : '<span class="c-faint">—</span>';
+              let batCell = '<span class="c-faint">—</span>';
+              if (b) {
+                if (b.skipped) batCell = `<span class="c-dim">skipped</span> <span class="c-faint">${(b.skipReason || '').slice(0, 24)}</span>`;
+                else if (b.authoredTotal != null) batCell = `${frac(b, b.authoredPass, b.authoredTotal)}${(b.blockers | 0) > 0 ? ` <span class="c-warn">${b.blockers} blocker${b.blockers === 1 ? '' : 's'}</span>` : ''}${(b.correctiveTaught | 0) > 0 ? ` <span class="c-dim">taught ${b.correctiveTaught}</span>` : ''}`;
+                else batCell = `<span class="${b.pass ? 'c-ok' : 'c-warn'}">${b.pass ? 'pass' : 'fail'}</span>${(b.blockers | 0) > 0 ? ` <span class="c-warn">${b.blockers} blocker${b.blockers === 1 ? '' : 's'}</span>` : ''}`;
+              }
+              const methCell = (b && (b.methodologyTotal | 0) > 0) ? `<span class="c-light">${b.methodologyPass | 0}/${b.methodologyTotal | 0}</span>${pct(b.methodologyPass | 0, b.methodologyTotal | 0)}` : '<span class="c-faint">—</span>';
+              let verdictCell = '<span class="c-amber">in progress</span>';
+              if (vd) {
+                if (vd.held) verdictCell = '<span class="c-dim">HELD</span>';
+                else if (vd.pass && vd.onCompletion) verdictCell = '<span class="c-ok">PASS</span> <span class="c-dim">(completion)</span>';
+                else if (vd.pass) verdictCell = '<span class="c-ok">PASS</span>';
+                else verdictCell = `<span class="c-err">DECLINED</span> <span class="c-faint" title="${String(vd.declined || '').replace(/"/g, '&quot;')}">${String(vd.declined || '').slice(0, 28)}</span>`;
+              }
+              const timeCell = vd ? `${Math.round((vd.ms | 0) / 1000)}s · ${fmtAge(r.ageMs)} ago` : `${fmtAge(r.ageMs)} ago`;
+              return `<tr><td class="cell">${r.cell}</td><td>${frac(c, c && c.passed, c && c.total)}</td><td>${vocabCell}</td><td>${sentCell}</td><td>${prodCell}</td><td>${batCell}</td><td>${methCell}</td><td>${verdictCell}</td><td class="c-dim">${timeCell}</td></tr>`;
+            }).join('');
+          }
+          foot.textContent = gr ? `${cells.length} of ${gr.kept | 0} cells kept · a cell passes on learning completion; these probes are advisory, re-teach what they find, and feed the crystal's gate credit` : '';
         }
       }
 
@@ -3504,7 +3598,7 @@
         + rows;
     }
 
-    function renderCurriculumStatus(c, gateProbes, legacyCleaning) {
+    function renderCurriculumStatus(c, gateProbes, legacyCleaning, gateProbe) {
       const $ = id => document.getElementById(id);
       if (!c) {
         $('d-curr-subject').textContent = 'no cell active';
@@ -3812,7 +3906,15 @@
             }
             probeBit = ` &mdash; <span style="color:#4ade80;">grading on the donor GPU (${gpTotal.toLocaleString()} probes${g.rate > 0 ? `, ${g.rate.toLocaleString()}/min` : ''})</span>`;
           }
-          gate = ` &middot; <span class="c-amber">probe gate &mdash; testing, not teaching (expected)</span>${probeBit}`;
+          // GATEVIEW — name the probe itself: kind, item i of n, how long that
+          // kind has held. "probe gate" alone still read as a freeze when the
+          // donor-probe counter was quiet (comprehension and vocab probes run
+          // off the matrices, not the emission path).
+          const kindBit = (gateProbe && gateProbe.kind)
+            ? ` &mdash; <span style="color:#e9d5ff;">${gateProbe.kind} ${gateProbe.i | 0}/${gateProbe.n | 0}</span>`
+              + ((gateProbe.heldMs | 0) > 60000 ? ` <span class="c-amber">(${Math.round(gateProbe.heldMs / 60000)}m on this probe)</span>` : '')
+            : '';
+          gate = ` &middot; <span class="c-amber">probe gate &mdash; testing, not teaching (expected)</span>${kindBit}${probeBit}`;
         }
         const emitBit = emitRate > 0
           ? ` &middot; <span style="color:#a78bfa;">${emitRate.toLocaleString()} emit-ticks/min (emission phase)</span>`

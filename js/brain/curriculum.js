@@ -918,6 +918,9 @@ const _gateEnvNum = (key, dflt) => {
 };
 const GATE_PROD_MIN = _gateEnvNum('DREAM_GATE_PROD_MIN', 0.80);
 const GATE_PATH_MIN = _gateEnvNum('DREAM_GATE_PATH_MIN', 0.80);
+// How many cells' gate readings stay resident + persisted for the dashboard's
+// gate card. Counts only — the exam is held out, no question text is kept.
+const GATE_READINGS_MAX = Math.max(4, Math.round(_gateEnvNum('DREAM_GATE_READINGS_MAX', 24)));
 
 // ─── T14.24 — Alphabet + Digit data (ALPHABET AS DATA, NOT RULE) ───
 // These are not lookup tables for grammar rules — they are the
@@ -4831,6 +4834,69 @@ export class Curriculum {
   }
 
   /**
+   * GATE READINGS — the probe lane's LIVE position and each cell's numbers.
+   *
+   * Why these two exist: a cell passes on learning completion, so every probe
+   * (readiness, comprehension, vocab, sentence, production, battery,
+   * methodology) runs ADVISORY — it re-teaches what it finds and feeds the
+   * crystal's gate credit, but its verdict decides nothing. Its numbers used to
+   * land in one `_hb` line, a ledger only `/grade-signoff` reads, and a
+   * kindergarten-only panel; and while a probe ran, the Current Training card
+   * read `idle` because the phase wrapper does not cover the gate block. A
+   * probe lane that names nothing reads as a freeze.
+   *
+   * `_probeMark(kind, i, n)` is called from inside every probe loop — the
+   * chokepoint each kind runs through — and publishes `cluster._gateProbe`.
+   * `startedAt` survives while the kind and cell stay the same, so the age on
+   * the card is "how long THIS probe kind has held", not "since the last item".
+   * `_gateRead(kind, reading)` is called once at each gate's exit and writes
+   * `cluster._gateReadings[cell][kind]`, bounded to GATE_READINGS_MAX cells
+   * (oldest evicted), persisted beside `lastGateResults`, published as
+   * `state.gateReadings`. ⛔ COUNTS ONLY on both: the exam is held out, so no
+   * prompt, answer or question text ever travels onto a surface through here.
+   */
+  _probeMark(kind, i, n) {
+    const cluster = this.cluster;
+    if (!cluster) return;
+    const now = Date.now();
+    const prev = cluster._gateProbe;
+    const cell = cluster._currentCellKey || null;
+    cluster._gateProbe = {
+      kind: String(kind),
+      i: i | 0,
+      n: n | 0,
+      cell,
+      startedAt: (prev && prev.kind === kind && prev.cell === cell) ? prev.startedAt : now,
+      at: now,
+    };
+  }
+
+  _probeClear() {
+    if (this.cluster) this.cluster._gateProbe = null;
+  }
+
+  _gateRead(kind, reading) {
+    const cluster = this.cluster;
+    if (!cluster) return;
+    const cell = cluster._currentCellKey;
+    if (!cell || !reading || typeof reading !== 'object') return;
+    if (!cluster._gateReadings || typeof cluster._gateReadings !== 'object') cluster._gateReadings = {};
+    const now = Date.now();
+    let row = cluster._gateReadings[cell];
+    if (!row || typeof row !== 'object') {
+      row = { cell, first: now, at: now };
+      cluster._gateReadings[cell] = row;
+    }
+    row[String(kind)] = { ...reading, at: now };
+    row.at = now;
+    const keys = Object.keys(cluster._gateReadings);
+    if (keys.length > GATE_READINGS_MAX) {
+      keys.sort((a, b) => ((cluster._gateReadings[a] && cluster._gateReadings[a].at) | 0) - ((cluster._gateReadings[b] && cluster._gateReadings[b].at) | 0));
+      for (let k = 0; k < keys.length - GATE_READINGS_MAX; k++) delete cluster._gateReadings[keys[k]];
+    }
+  }
+
+  /**
    * Heartbeat log — forces stdout flush in piped log mode so every
    * banner lands in server.log + the tail PowerShell window without
    * waiting for console.log's stream-buffer flush. Operator watches
@@ -7012,6 +7078,7 @@ export class Curriculum {
       await new Promise((r) => setImmediate(r));
       const sample = group[0];
       compSamplesFired += 1;
+      this._probeMark('battery-sample', compSamplesFired, byTemplate.size);
       let sampleScore = 0;
       try {
         const r = await _probeWithBudget({
@@ -7100,6 +7167,7 @@ export class Curriculum {
       // §6.4 — live battery progress for the /ws state broadcast, so the
       // walk can be watched without hand-diffing log polls.
       if (this.cluster) this.cluster._batteryProgress = { i: results.length + 1, total: questions.length, label, startedAt: _batteryStart };
+      this._probeMark('battery', results.length + 1, questions.length);
       // Macrotask yield (see loop above) — service WS pings/donor frames between probes so the
       // battery doesn't block the event loop for the whole run and evict every donor.
       await new Promise((r) => setImmediate(r));
@@ -7317,6 +7385,7 @@ export class Curriculum {
     for (let i = 0; i < bank.length; i++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) break;
       const entry = bank[i];
+      this._probeMark('methodology', i + 1, bank.length);
       const question = entry?.q || '';
       const keywords = Array.isArray(entry?.keywords) ? entry.keywords : [];
       if (!question || keywords.length === 0) continue;
@@ -7423,6 +7492,7 @@ export class Curriculum {
     let _cueIdx = 0;
     for (const cue of PROBES) {
       _cueIdx += 1;
+      this._probeMark('readiness', _cueIdx, PROBES.length);
       const _cueStart = Date.now();
       this._hb(`[Curriculum][READINESS] cue ${_cueIdx}/${PROBES.length} START letter='${cue}' — direct letter-region injection + up to 20 emission ticks`);
       let emitted = '';
@@ -12258,6 +12328,30 @@ export class Curriculum {
       }
     }
 
+    // The battery's reading for the gate card — read back off the ledger the
+    // block above just wrote, so there is one producer of these numbers.
+    try {
+      const _lg = cluster && cluster._lastGateResult && cluster._lastGateResult[cellKey];
+      if (_lg) {
+        const _lb = (cluster.lastBattery && cluster.lastBattery.cell === cellKey) ? cluster.lastBattery : null;
+        this._gateRead('battery', {
+          pass: !!_lg.pass,
+          skipped: !!_lg.skipped,
+          skipReason: _lg.skipReason || null,
+          blockers: Array.isArray(_lg.blockers) ? _lg.blockers.length : 0,
+          authoredPass: _lb ? (_lb.authoredPass | 0) : null,
+          authoredTotal: _lb ? (_lb.authoredTotal | 0) : null,
+          authoredRate: _lb ? _lb.authoredRate : null,
+          derivedTotal: _lb ? (_lb.derivedTotal | 0) : null,
+          correctiveTaught: _lb ? (_lb.correctiveTaught | 0) : null,
+          methodologyPass: _lg.methodologyPass | 0,
+          methodologyTotal: _lg.methodologyTotal | 0,
+          externalPass: _lg.externalPass | 0,
+          externalTotal: _lg.externalTotal | 0,
+        });
+      }
+    } catch { /* an instrument must never break a gate */ }
+
     // ═══════════════════════════════════════════════════════════════
     // CELL PASS = LEARNING COMPLETION (ruled 2026-06-27)
     // ───────────────────────────────────────────────────────────────
@@ -12379,6 +12473,21 @@ export class Curriculum {
     // gate's own earlier record keeps its raw pre-adjudication scores; this
     // one lands last and carries the outcome that actually decided the grade.
     this._lastGateVerdict = { gate: cellKey, pass: _cellPass, reason: String(result?.reason || 'no reason recorded').slice(0, 4000), at: Date.now() };
+    // The verdict row for the gate card, and the live probe position released —
+    // the cell is done, so a stale "battery 41/60" must not outlive it.
+    try {
+      const _wasKey = cluster ? cluster._currentCellKey : null;
+      if (cluster) cluster._currentCellKey = cellKey;
+      this._gateRead('verdict', {
+        pass: _cellPass,
+        onCompletion: !!(result && result.passedOnCompletion),
+        declined: (result && result.completionPassDeclined) ? String(result.completionPassDeclined).slice(0, 160) : null,
+        held: !!(result && result.readyAndWaiting),
+        ms: _cellMs,
+      });
+      if (cluster) cluster._currentCellKey = _wasKey;
+    } catch { /* an instrument must never break a gate */ }
+    this._probeClear();
     console.log(`[GateVerdict] ${_cellPass ? '✓ PASS' : '✗ FAIL'} ${cellKey} (${(_cellMs / 1000).toFixed(1)}s) — ${String(result?.reason || 'no reason recorded').slice(0, 1500)}`);
     this._hb(`[Curriculum] ═══ CELL DONE ═══ ${subject}/${grade} in ${(_cellMs / 1000).toFixed(1)}s — pass=${_cellPass}${_cellPass ? '' : ' (reason: ' + String(result?.reason || 'unknown').slice(0, 120) + ')'}`);
 
@@ -24801,6 +24910,7 @@ export class Curriculum {
     for (const s of samples) {
       if (!s || !s.question) continue;
       sampleIdx++;
+      this._probeMark('production', sampleIdx, samples.length);
       if (typeof this._hb === 'function' && samples.length >= 5) {
         this._hb(`[Curriculum][PROD] sample ${sampleIdx}/${samples.length} START — q="${String(s.question).slice(0, 60)}"`);
       }
@@ -26189,6 +26299,7 @@ export class Curriculum {
         metrics: { prodRate, firstPassRate, selfFrameRecovered: recovered, prodFails: selfFails },
       };
       this._recordGateHistory(subject, grade, 'overall', pass, prodRate);
+      this._gateRead('production', { pass, passed: prodPassTotal, total: prodResult.total | 0, rate: prodRate, firstPassRate, recovered });
       return result;
     } finally {
       cluster.noiseAmplitude = _savedProbeNoise;
@@ -27039,7 +27150,9 @@ export class Curriculum {
     const talkFails = [];
     const PATH_MIN = GATE_PATH_MIN;
 
+    let _wi = 0;
     for (const word of sample) {
+      this._probeMark('vocab', ++_wi, sample.length);
       const firstLetter = word.replace(/[^a-z]/g, '')[0];
       if (!firstLetter) continue;
       const letterOneHot = encodeLetter(firstLetter);
@@ -27133,6 +27246,7 @@ export class Curriculum {
     const thinkRate = N > 0 ? thinkPass / N : 0;
     const talkRate = N > 0 ? talkPass / N : 0;
     const pass = readRate >= PATH_MIN && thinkRate >= PATH_MIN && talkRate >= PATH_MIN;
+    this._gateRead('vocab', { pass, read: readPass, talk: talkPass, total: N, readRate, talkRate, talkFails: talkFails.length });
 
     return {
       pass,
@@ -28077,7 +28191,9 @@ export class Curriculum {
     const talkFails = [];
     const PATH_MIN = GATE_PATH_MIN;
 
+    let _si = 0;
     for (const sentence of sample) {
+      this._probeMark('sentence', ++_si, sample.length);
       const words = sentence.split(/\s+/).filter(Boolean);
       if (words.length < 2) continue;
       const firstWord = words[0];
@@ -28173,6 +28289,7 @@ export class Curriculum {
     const thinkRate = N > 0 ? thinkPass / N : 0;
     const talkRate = N > 0 ? talkPass / N : 0;
     const pass = readRate >= PATH_MIN && thinkRate >= PATH_MIN && talkRate >= PATH_MIN;
+    this._gateRead('sentence', { pass, read: readPass, talk: talkPass, total: N, readRate, talkRate, talkFails: talkFails.length });
 
     return {
       pass,
@@ -33467,7 +33584,9 @@ export class Curriculum {
     const SEM_DIM = 300;
     const PATH_MIN = GATE_PATH_MIN;
 
+    let _qi = 0;
     for (const { prompt, answer } of sample) {
+      this._probeMark('comprehension', ++_qi, sample.length);
       // Build accumulated sem state from the prompt words.
       // For each word in the prompt, get its first letter, propagate
       // through letter→sem, accumulate the sem readouts. This simulates
@@ -33560,6 +33679,7 @@ export class Curriculum {
     const N = sample.length;
     const rate = N > 0 ? comprehendPass / N : 0;
     const pass = rate >= PATH_MIN;
+    this._gateRead('comprehension', { pass, passed: comprehendPass, total: N, rate, fails: fails.length });
     return {
       pass,
       reason: `COMPREHEND ${comprehendPass}/${N} (${(rate * 100).toFixed(0)}%)${fails.length > 0 ? ' [FAIL: ' + fails.slice(0, 3).join('; ') + ']' : ''}`,
