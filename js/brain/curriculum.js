@@ -17805,6 +17805,34 @@ export class Curriculum {
     } catch { /* the view must never break a teach */ }
 
     const STOP = new Set(['a','an','the','and','or','but','of','to','for','in','on','at','by','with','as','is','are','was','were','be','been','being','it','this','that','these','those','its','it','from','into','out','up','down','off','over','under','than','then','when','where','which','who','whose','whom','what','why','how']);
+
+    // ⛔⛔ THE PER-DEFINITION WORD CAP WAS 8 AND IT WAS TRUNCATING ONE DEFINITION
+    // IN SIX. Operator: "are you going to fucking fix it so she actually learns
+    // full definitions not just 1% of them". The sense LOOP was already complete
+    // — measured live, 406 of 410 words reached their FINAL sense, 0 aborts —
+    // but inside each sense only the first 8 content words were bound.
+    //
+    // DERIVED from the real distribution over 10 vocabulary words / 378
+    // definitions (dictionaryapi.dev, measured not estimated):
+    //   content words per definition: median 5 · p90 10 · p99 22 · max 26
+    //     cap  8 -> 87.8% of definition words ·  63 of 378 defs truncated
+    //     cap 12 -> 95.5%                     ·  22 truncated
+    //     cap 16 -> 98.3%                     ·   7 truncated
+    //     cap 24 -> 99.9%                     ·   1 truncated   <= CHOSEN
+    // 24 sits above the p99 of 22, so the bound still EXISTS (one pathological
+    // definition cannot blow up a pass) while never binding in practice.
+    // Example cap 10 clears the observed example max of 13 at p90 8; synonym
+    // cap 6 is a judgement — synonyms are the weakest signal of the three.
+    //
+    // ⛔ RE-PRICE, as the LAW demands before weakening a bound. Over the same
+    // sample: bound today 1,858 content words; full signal 2,995; so the lane
+    // does **1.61x** the work. Against the fresh walk's 0.56x per-op cost at
+    // 199.7M neurons, the net is 1.61 x 0.56 = **0.90x of what the definition
+    // lane cost before tonight** — this buys back a third of the dictionary and
+    // still runs cheaper than the brain she was walking an hour ago.
+    const DEF_CONTENT_CAP = Number(process.env.DREAM_DEF_CONTENT_CAP) > 0 ? Number(process.env.DREAM_DEF_CONTENT_CAP) : 24;
+    const DEF_EXAMPLE_CAP = Number(process.env.DREAM_DEF_EXAMPLE_CAP) >= 0 ? Number(process.env.DREAM_DEF_EXAMPLE_CAP) : 10;
+    const DEF_SYNONYM_CAP = Number(process.env.DREAM_DEF_SYNONYM_CAP) >= 0 ? Number(process.env.DREAM_DEF_SYNONYM_CAP) : 6;
     const reps = opts.reps ?? 6;
     const baseLabel = opts.label || `DEF-${w.toUpperCase()}`;
     let totalTrained = 0;
@@ -17836,15 +17864,50 @@ export class Curriculum {
         if (seen.has(t)) continue;
         seen.add(t);
         contentWords.push(t);
-        if (contentWords.length >= 8) break;
+        if (contentWords.length >= DEF_CONTENT_CAP) break;
       }
       if (contentWords.length === 0) continue;
+
+      // ⛔⛔ THE EXAMPLE SENTENCE AND THE SYNONYMS WERE FETCHED AND THROWN AWAY.
+      // `definition-service.js` carries `{ partOfSpeech, definition, example,
+      // synonyms }` for every sense, and this loop read ONLY `.definition`.
+      // Measured over 10 real vocabulary words / 378 definitions: the lane bound
+      // 1,858 content words and discarded 177 example sentences carrying 847
+      // content words plus 33 synonyms — **she was getting 62% of what the
+      // dictionary gave us.** The example is the strongest half of what was
+      // lost: it is the word USED IN CONTEXT, which is exactly what the
+      // test-words rule means by "usage exercised across context sentences",
+      // and it was being discarded on every sense of every word.
+      //
+      // They bind into THIS sense's pair set, not a separate pass, because an
+      // example illustrates the sense it sits under — binding it anywhere else
+      // would smear sense-specific context across the word's other meanings,
+      // which is the collapse this multi-def loop exists to prevent.
+      if (entry && typeof entry === 'object') {
+        if (typeof entry.example === 'string' && entry.example) {
+          let added = 0;
+          for (const t of (entry.example.toLowerCase().match(/[a-z]+/g) || [])) {
+            if (added >= DEF_EXAMPLE_CAP) break;
+            if (t.length < 3 || STOP.has(t) || t === w || seen.has(t)) continue;
+            seen.add(t); contentWords.push(t); added++;
+          }
+        }
+        if (Array.isArray(entry.synonyms)) {
+          let added = 0;
+          for (const s of entry.synonyms) {
+            if (added >= DEF_SYNONYM_CAP) break;
+            const t = String(s || '').toLowerCase().replace(/[^a-z]/g, '');
+            if (t.length < 3 || STOP.has(t) || t === w || seen.has(t)) continue;
+            seen.add(t); contentWords.push(t); added++;
+          }
+        }
+      }
 
       // Layer the part-of-speech as an additional content word when
       // available — disambiguates noun-vs-verb senses in sem.
       if (entry && entry.partOfSpeech && typeof entry.partOfSpeech === 'string') {
         const pos = entry.partOfSpeech.toLowerCase().replace(/[^a-z]/g, '');
-        if (pos && pos.length >= 3 && !contentWords.includes(pos) && contentWords.length < 8) {
+        if (pos && pos.length >= 3 && !contentWords.includes(pos) && contentWords.length < DEF_CONTENT_CAP + DEF_EXAMPLE_CAP + DEF_SYNONYM_CAP) {
           contentWords.push(pos);
         }
       }
