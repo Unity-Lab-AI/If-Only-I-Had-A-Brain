@@ -3083,7 +3083,17 @@ const SERVER_STATE_MIXIN = {
       // null until the one-time async warm completes — never an invented
       // stand-in number.
       kVocabTotal: this._defVocabJourneyTotal || null,
+      // ⚠ THIS IS A COUNT OF WORDS, NOT OF DEFINITIONS, and it is paired with a
+      //   word denominator. The dashboard labelled the pair "defs taught" and
+      //   that was wrong in KIND, not by a little: `_definitionTaughtWords` is a
+      //   Set keyed by word, so a word with 32 senses advances it by one.
       kVocabTaught: kvocabTaught,
+      // ⭐ THE ACTUAL NUMBER OF MEANINGS BOUND, cumulative, and deliberately
+      //   WITHOUT a denominator — the journey's definition total is not knowable
+      //   ahead of time, because how many senses a word has is only discovered
+      //   by asking the dictionary (measured live: "set" 91, "take" 65, "old"
+      //   32, "any" 10). Any "A of X" here would require inventing X.
+      definitionSensesBound: (cortex && cortex._definitionSensesBound) || 0,
       // M.22 K-wiring assertion
       kwiring: kwiring ? { ok: kwiring.ok, gaps: (kwiring.gaps || []).slice(0, 5) } : null,
       // M.23 cortical microstructure
