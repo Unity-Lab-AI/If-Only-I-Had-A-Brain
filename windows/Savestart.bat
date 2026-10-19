@@ -342,6 +342,11 @@ REM signoffs) is visible from the first moment the brain is up. Save-state
 REM resume boot especially benefits -- the operator can confirm what loaded
 REM from disk before committing to a long curriculum run.
 start "" http://localhost:7525/dashboard.html
+REM Teach View too - the training HUD: exactly what she is being taught right
+REM now, beside what her mind's eye is holding. On a RESUME it is the page that
+REM shows whether the restored brain picked the walk back up or is only serving
+REM state, which a green dashboard cannot distinguish.
+start "" http://localhost:7525/teachview.html
 REM The PUBLIC site too (2026-10-18) - GitHub Pages at theunitybrain.com,
 REM reaching this brain through the tunnel. The one-glance check that the
 REM public path is alive, not just the local one.
@@ -349,6 +354,7 @@ start "" https://theunitybrain.com/
 echo.
 echo   Landing:     http://localhost:7525
 echo   Dashboard:   http://localhost:7525/dashboard.html (auto-opened)
+echo   Teach View:  http://localhost:7525/teachview.html (auto-opened - what she is being taught)
 echo   Public site: https://theunitybrain.com/ (auto-opened - the world's view of this brain)
 echo   GPU compute: http://localhost:7525/compute.html (auto-launched by server)
 echo   Log tail:    separate PowerShell window "Unity Brain Log Tail"
