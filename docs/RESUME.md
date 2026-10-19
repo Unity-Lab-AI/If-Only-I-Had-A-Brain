@@ -32,7 +32,7 @@
 >
 > ---
 >
-> # 🛑 2026-10-19, ~1:50 PM Denver (33rd) — THE PAGES WERE STYLED BY A STYLESHEET THAT NEVER MATCHED; THE EQUATION LEDGER EXISTS; NEXT IS HIS FRESH WALK
+> # 🛑 2026-10-19, ~6:50 AM Denver (33rd; the header first said 1:50 PM — corrected against the commit clock) — THE PAGES WERE STYLED BY A STYLESHEET THAT NEVER MATCHED; THE EQUATION LEDGER EXISTS; NEXT IS HIS FRESH WALK
 >
 > **Branch: `feature/network-testing-and-bugs`** — cascaded after this batch; `develop` merged in first (it was nine merge-commits ahead, all of them this branch's own work).
 >
