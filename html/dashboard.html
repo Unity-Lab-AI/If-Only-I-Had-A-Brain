@@ -783,7 +783,8 @@
           <div title="Full K→PhD journey vocabulary (all 19 grade lists, unique words — the AoA bands overlap by design, a word taught once is taught). 'prefetched' = the active grade's definition cache warm has finished. 'defs taught' = how many journey words have had their definitions Hebbian-bound into Unity's semantic region (multi-def — every meaning of every word binds, not just the first). Denominator computes once at boot; shows … until ready.">
             <div class="sub-head gr" id="d-cortex-kvocab-title">📖 VOCABULARY (K→PhD)</div>
             <div>prefetched: <span id="d-cortex-kvocab-prefetched" class="c-dim">no</span></div>
-            <div>defs taught: <span id="d-cortex-kvocab-taught" class="c-ok">0</span> / <span id="d-cortex-kvocab-total" class="c-mute">…</span> (<span id="d-cortex-kvocab-pct" class="c-cy">0%</span>)</div>
+            <div title="WORDS whose definitions have been taught, against the journey's unique-word total. This pair was labelled &quot;defs taught&quot; and that was wrong in kind: the numerator is a Set keyed by WORD, so a word with 32 senses advances it by one. Both numbers are word counts and the percentage is progress through the vocabulary, not through meanings.">words defined: <span id="d-cortex-kvocab-taught" class="c-ok">0</span> / <span id="d-cortex-kvocab-total" class="c-mute">…</span> (<span id="d-cortex-kvocab-pct" class="c-cy">0%</span>)</div>
+            <div title="The actual number of MEANINGS bound, cumulative. No denominator on purpose: how many senses a word has is only discovered by asking the dictionary — measured live, &quot;set&quot; has 91, &quot;take&quot; 65, &quot;old&quot; 32, &quot;any&quot; 10 — so the journey's definition total is not knowable in advance and any &quot;A of X&quot; here would require inventing X. Every sense of every word is bound; the teach feed labels each line &quot;sense 1 of N — all N are bound&quot; because it prints one sample per word, not one per sense.">senses bound: <span id="d-cortex-senses-bound" class="c-ok">0</span> <span class="c-mute fs10">(no total — unknowable until asked)</span></div>
           </div>
         </div>
       </div>
@@ -2053,6 +2054,13 @@
         $('d-cortex-kvocab-prefetched').textContent = m.kVocabPrefetched ? 'yes' : 'no';
         $('d-cortex-kvocab-prefetched').style.color = m.kVocabPrefetched ? '#22c55e' : '#888';
         $('d-cortex-kvocab-taught').textContent = m.kVocabTaught || 0;
+        // The meanings count, which is the number the word pair above cannot
+        // express. Absent on an older backend ⇒ say so rather than show 0.
+        {
+          const sb = $('d-cortex-senses-bound');
+          if (sb) sb.textContent = (typeof m.definitionSensesBound === 'number')
+            ? m.definitionSensesBound.toLocaleString() : 'not published';
+        }
         // Journey-wide denominator (unique words across all 19 grade lists).
         // null = the server's one-time warm hasn't finished — show … rather
         // than inventing a number (the old || 2247 fallback was K-only and
