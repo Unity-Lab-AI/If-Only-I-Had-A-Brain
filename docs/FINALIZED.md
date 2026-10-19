@@ -64,6 +64,18 @@ Gee, verbatim: *"so what your telling me is we need to write up the correct full
   K_c(g) = 0.6·(1 − e^{−g/4})                          the seed grows with her grades
 ```
 
+### The launchers open the donor door — `TUNNELBOOT.1`
+
+Gee, verbatim: *"wtf??? shit like this:\" - The tunnel is running from my shell, so it dies when this session ends. Making it permanent needs an admin terminal:\" should that be handled by the start.bats and ,sh's??? i dont want to have to rember commands to enter every start up"*.
+
+He was right, and the delivery below was wrong where it ended: it handed him a command to type at every boot. All four launchers now start the tunnel themselves — `windows/start.bat`, `windows/Savestart.bat`, `linux/start.sh`, `linux/Savestart.sh` — in a block placed immediately after their existing Tailscale-Funnel block and following that block's own conventions: `find.exe` by absolute path (the GNU-find trap already documented there), a `tasklist` / `pgrep` guard so re-running is a no-op, a plain background process so there is **no elevation prompt and no service to install**, and a named status line. Not installed means say so and boot anyway, exactly like the Funnel — the donor door is the world's path to her, never a condition of her boot.
+
+⛔⛔ **The first cut was broken, and the bug is worth more than the feature.** `cloudflared --config <cfg> run` does not run a tunnel: it prints *"Use `cloudflared tunnel run` to start tunnel &lt;id&gt;"* and **exits 0**. A launcher that trusted the exit code would have printed *"donor door starting"* on every boot while nothing listened — exactly the lying-instrument shape this project keeps finding. It was caught by killing the process and re-running the block, not by reading the line. The correct form is `--config <cfg> tunnel run` and the reason is now a comment in all four launchers and in the config file.
+
+**Verified end to end, not reasoned about:** the block run against a live tunnel printed *"already up"* and started no second process; the process was then killed and the block re-run, which produced a new process (pid 26652, 9:49:58 AM) and `brain.theunitybrain.com/reset` back to **404** with `/health` 502 because the brain itself is down. `bash -n` clean on both shell launchers, and the batch block was executed in isolation to prove that `%ProgramFiles(x86)%` does not break the parenthesised `if` — it does not, because the `set` sits outside the block.
+
+- [x] `TUNNELBOOT.1` — ✅ **DONE 2026-10-19 ~9:50 AM — see the section above.**
+
 ### A stranger can donate now — `NETBUG.2`, donor v0.3.41, and the weight-loss bound
 
 Gee, verbatim: *"okay i suppose those 4 arent urgent but netbug.2 we kinda need doners to be able to donate dont we.. and we cant have the brain looss weights if someone disconnects"* — both true, and both were open.

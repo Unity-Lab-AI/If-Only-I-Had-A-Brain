@@ -397,6 +397,40 @@ if [ -f server.log ]; then rm server.log; fi
 # same reason — the running instance keeps the port.
 nohup node brain-ctl.js >> brain-ctl.log 2>&1 &   # CTLWINDOW (2026-08-28): nohup + append — the control plane must survive the launcher terminal closing, and a did-not-bind relaunch must not truncate the live instance's log
 
+# ── CFTUNNEL — the DONOR DOOR, parity with windows/start.bat ────────────────
+# A SECOND tunnel on purpose. The Tailscale Funnel carries the website's small
+# reads; it cannot carry a donor, because its relay bandwidth is capped and not
+# configurable — measured 0.16 MB/s through it against 541.78 MB/s over
+# loopback, about eight hours for the 4.5 GB cortex matrix. So the donor lane
+# is a Cloudflare named tunnel on brain.theunitybrain.com and donor 0.3.41+
+# dials it by default.
+#
+# ⚠ Started as a plain background process, NOT a service: no sudo prompt and
+# nothing for the operator to remember. The donor door opens whenever she does,
+# which is the only moment it has anything to serve.
+# ⚠ Idempotent — already running (a systemd unit, or a previous launch) ⇒ no-op.
+# Not installed ⇒ say so and carry on; like the Funnel it is never a condition
+# of her boot.
+CF_CFG="$(cd "$(dirname "$0")/.." && pwd)/deploy/cloudflared-unity-brain.yml"
+if command -v cloudflared >/dev/null 2>&1; then
+    if [ -f "$CF_CFG" ]; then
+        if pgrep -f 'cloudflared.*tunnel' >/dev/null 2>&1; then
+            echo "  [tunnel] donor door already up — brain.theunitybrain.com"
+        else
+            echo "  [tunnel] donor door starting — brain.theunitybrain.com via Cloudflare..."
+            # ⚠ `tunnel run`, NOT `run`. Bare `run` prints "Use `cloudflared
+            # tunnel run` to start tunnel <id>" and EXITS 0, so a launcher that
+            # trusted the exit code would report the donor door open while
+            # nothing was listening. Caught by killing it and re-running.
+            nohup cloudflared --config "$CF_CFG" tunnel run >> cloudflared.log 2>&1 &
+        fi
+    else
+        echo "  [tunnel] cloudflared installed but deploy/cloudflared-unity-brain.yml is missing — donor door NOT opened."
+    fi
+else
+    echo "  [tunnel] cloudflared not installed — she runs, and the website still works, but no REMOTE donor can reach her."
+fi
+
 # ── VOICEV2 — her voice (unity-voice-v2) as a SIDECAR, parity with start.bat ──
 # ONE lane: piper is gutted (2026-10-18). Not running ⇒ she is SILENT and the
 # brain log says so; every reply re-tries. Not found ⇒ say so, carry on — a

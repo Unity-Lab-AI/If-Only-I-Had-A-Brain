@@ -287,6 +287,32 @@ if defined TS_UP (
 ) else (
     if exist "%TSX%" echo   [tunnel] Tailscale daemon not answering after 45s - the public path may be down; she boots anyway.
 )
+REM CFTUNNEL (2026-10-19) - THE DONOR DOOR. Identical to the block in
+REM windows\start.bat; see that file for why it is a SECOND tunnel (the Funnel's
+REM relay bandwidth is capped and measured 0.16 MB/s against 541.78 MB/s on
+REM loopback, so it cannot carry a donor) and why it is a background process
+REM rather than a service (no elevation, nothing for the operator to remember).
+REM Idempotent - a no-op when cloudflared is already running.
+set "CFX=%ProgramFiles(x86)%\cloudflared\cloudflared.exe"
+if not exist "%CFX%" set "CFX=%ProgramFiles%\cloudflared\cloudflared.exe"
+set "CFCFG=%~dp0..\deploy\cloudflared-unity-brain.yml"
+if exist "%CFX%" (
+    if exist "%CFCFG%" (
+        tasklist /FI "IMAGENAME eq cloudflared.exe" 2>nul | "%SystemRoot%\System32\find.exe" /i "cloudflared.exe" >nul
+        if errorlevel 1 (
+            echo   [tunnel] donor door starting - brain.theunitybrain.com via Cloudflare...
+            REM !! `tunnel run`, NOT `run` - bare `run` prints a usage hint and
+            REM    EXITS 0, so the door reads open while nothing listens.
+            start "unity-donor-tunnel" /min "%CFX%" --config "%CFCFG%" tunnel run
+        ) else (
+            echo   [tunnel] donor door already up - brain.theunitybrain.com
+        )
+    ) else (
+        echo   [tunnel] cloudflared installed but deploy\cloudflared-unity-brain.yml is missing - donor door NOT opened.
+    )
+) else (
+    echo   [tunnel] cloudflared not installed - she runs, and the website still works, but no REMOTE donor can reach her.
+)
 if not defined UNITY_VOICE_PORT set "UNITY_VOICE_PORT=5123"
 if not defined UNITY_VOICE_V2_DIR set "UNITY_VOICE_V2_DIR=%~dp0..\..\Backrooms\models\unity-voice-v2"
 if exist "%UNITY_VOICE_V2_DIR%\serve.py" (
