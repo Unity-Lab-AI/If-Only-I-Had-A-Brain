@@ -2164,6 +2164,41 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         if (typeof this._imageEngine === 'function') this._imageEngine().engineDown++;
         return this._vmLookFail(key, 'engineDown', 'local image engine not answering /health');
       }
+      // ⛔⛔ Rule 6 — IS THERE ROOM RIGHT NOW? Rule 5 above yields only during a
+      // matrix UPLOAD, but the donor holds its matrices resident for the WHOLE
+      // walk, so its steady state is also at the ceiling. Measured mid-walk on a
+      // 16,376 MiB card: free 2,132 MiB, later 0 MiB, against a 512² render that
+      // peaks at ~2,500 MiB. The render did not fit, the CUDA allocator stalled,
+      // and the DONOR's own next allocation inside compute_batch stalled behind
+      // it — two hangs in one boot, both `blocked 154s (limit 150s)`, which is a
+      // driver wedge (the call never returned), not a slow batch. Each repeat
+      // costs a full 17-matrix re-upload.
+      //
+      // ⛔ THIS CHECK LIVES HERE AND NOT ONLY IN `_imageEngineRender`. The look
+      // lane does its OWN gating and then calls `_buildImageRequest` + fetch
+      // directly — it never passes through `_imageEngineRender`, so a gate
+      // placed only there protects the CHAT lane and misses the lane doing the
+      // overwhelming majority of renders. Caught by reading the call path after
+      // the gate was written; the two lanes share the rule, not the code path.
+      if (typeof this._gpuFreeVramMB === 'function') {
+        const _freeMb = await this._gpuFreeVramMB();
+        const _floorMb = (typeof this._imageEngine === 'function')
+          ? (this._imageEngine().minFreeVramMB | 0) : 0;
+        if (_freeMb == null) {
+          // Unreadable card FAILS OPEN — a host with no nvidia-smi must not have
+          // her eyes switched off forever by a probe that never worked. Counted
+          // apart, because a gate that is silently not gating must be visible.
+          if (typeof this._imageEngine === 'function') this._imageEngine().vramUnreadable++;
+        } else if (_floorMb > 0 && _freeMb < _floorMb) {
+          if (typeof this._imageEngine === 'function') {
+            this._imageEngine().vramTightSkips++;
+            this._imageEngine().lastFreeVramMB = _freeMb;
+          }
+          return this._vmLookFail(key, 'vramTight', `${_freeMb}MB free < ${_floorMb}MB floor — look deferred so the donor's CUDA context is not starved`);
+        } else if (typeof this._imageEngine === 'function') {
+          this._imageEngine().lastFreeVramMB = _freeMb;
+        }
+      }
       let _req = null;
       try { _req = this._buildImageRequest(prompt, { width: _refPx, height: _refPx, purpose: 'look' }); } catch (e) { return this._vmLookFail(key, 'urlBuild', e && e.message); }
       if (!_req || !_req.url) return this._vmLookFail(key, 'urlBuild', 'builder returned empty');
