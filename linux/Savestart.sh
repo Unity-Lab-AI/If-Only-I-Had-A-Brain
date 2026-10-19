@@ -66,6 +66,17 @@ fi
 # FORCE preserve-state. Overrides autoClearStaleState() regardless of
 # code-hash change since last run. DREAM_FORCE_CLEAR explicitly rejected.
 export DREAM_KEEP_STATE=1
+
+# BRAIN BUDGET -- see windows/start.bat for the full derivation. 8000 MB ->
+# ~264M neurons -> 9,451 MB donor floor -> 895 MB headroom with her voice and
+# her eyes resident on the same card.
+# ⚠ ON A RESUME THIS MUST MATCH THE BOOT THAT WROTE THE WEIGHTS. A different
+# budget is a different neuron count, which is a GEOMETRY change -- the resume
+# refuses as incompatible and falls back to a fresh walk, throwing the training
+# away. Change it in start.sh and here together, never one alone.
+: "${DREAM_BRAIN_BUDGET_MB:=8000}"
+export DREAM_BRAIN_BUDGET_MB
+echo "  [scale] brain budget ${DREAM_BRAIN_BUDGET_MB}MB — must match the boot that saved these weights."
 unset DREAM_FORCE_CLEAR
 
 # ── DONORDEFAULT (2026-08-23) — same native-donor default as start.sh. The
