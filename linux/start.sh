@@ -438,16 +438,22 @@ echo "  Opening landing page + dashboard + the public site..."
 if command -v open &>/dev/null; then
     open http://localhost:7525
     open http://localhost:7525/dashboard.html
+    open http://localhost:7525/teachview.html
     open https://theunitybrain.com/
 elif command -v xdg-open &>/dev/null; then
     xdg-open http://localhost:7525 &>/dev/null
     xdg-open http://localhost:7525/dashboard.html &>/dev/null
+    # Teach View - the training HUD: exactly what she is being taught right now,
+    # beside what her mind's eye is holding. The page that answers "what is going
+    # into her?" rather than "is she up?", so it opens on every launch.
+    xdg-open http://localhost:7525/teachview.html &>/dev/null
     xdg-open https://theunitybrain.com/ &>/dev/null
 fi
 
 echo ""
 echo "  Landing:     http://localhost:7525"
 echo "  Dashboard:   http://localhost:7525/dashboard.html (auto-opened)"
+echo "  Teach View:  http://localhost:7525/teachview.html (auto-opened — what she is being taught)"
 echo "  Public site: https://theunitybrain.com/ (auto-opened — the world's view of this brain)"
 echo "  GPU compute: http://localhost:7525/compute.html (auto-launched by server)"
 echo "  Log file:    $DIR/server/server.log (always on disk)"

@@ -555,6 +555,11 @@ REM Dashboard auto-opens alongside the landing page so the milestone panel
 REM (curriculum state, save-resume vs fresh-boot, passed cells, operator
 REM signoffs) is visible from the first moment the brain is up.
 start "" http://localhost:7525/dashboard.html
+REM Teach View too - the training HUD: exactly what she is being taught right
+REM now, beside what her mind's eye is holding. It is the one page that answers
+REM "what is going into her?" rather than "is she up?", so it belongs open on
+REM every launch, not two clicks away behind the legend index.
+start "" http://localhost:7525/teachview.html
 REM The PUBLIC site too (2026-10-18) - what everyone else sees: GitHub Pages
 REM at theunitybrain.com, reaching this brain through the tunnel. Opening it
 REM beside the loopback pages is the one-glance check that the public path
@@ -563,6 +568,7 @@ start "" https://theunitybrain.com/
 echo.
 echo   Landing:     http://localhost:7525
 echo   Dashboard:   http://localhost:7525/dashboard.html (auto-opened)
+echo   Teach View:  http://localhost:7525/teachview.html (auto-opened - what she is being taught)
 echo   Public site: https://theunitybrain.com/ (auto-opened - the world's view of this brain)
 echo   GPU compute: http://localhost:7525/compute.html (auto-launched by server)
 echo   Log tail:    separate PowerShell window "Unity Brain Log Tail"

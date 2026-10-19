@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Teach View — exactly what Unity is being taught</title>
+<title>Teach View — exactly what Unity is being taught</title><script src="../js/brain-origin.js"></script>
 <meta name="description" content="A live window on the training itself: the exact text going into Unity, at human reading speed, beside the images entering her mind's eye — with the complete counts the paced feed cannot show." />
 <link rel="canonical" href="https://theunitybrain.com/html/teachview.html">
 <meta property="og:type" content="website">
@@ -879,10 +879,10 @@
    has already taken a crash-loop from exactly that shape. `bufPoke('state')`
    runs at module scope further down, so this must be above it. */
 const TV_IS_LOCAL = (location.protocol === 'file:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1');
-const TV_ADMIN = TV_IS_LOCAL ? '' : '/admin';
+const TV_ADMIN = TV_IS_LOCAL ? '' : ((typeof unityBrainHttp === 'function') ? unityBrainHttp('/admin') : '/admin');
 
-const STATE_URLS = ['/public-state.json'];
-const EYE_URLS = ['/minds-eye.json'];
+const STATE_URLS = [(typeof unityBrainHttp === 'function') ? unityBrainHttp('/public-state.json') : '/public-state.json'];
+const EYE_URLS = [(typeof unityBrainHttp === 'function') ? unityBrainHttp('/minds-eye.json') : '/minds-eye.json'];
 if (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.protocol === 'file:') {
   STATE_URLS.push('http://localhost:7525/public-state.json');
   EYE_URLS.push('http://localhost:7525/minds-eye.json');
@@ -925,7 +925,7 @@ $('tvBench').onclick = async () => {
     const r = await fetch(TV_ADMIN + '/teach-bench', { cache: 'no-store' });
     if (isForbidden(r)) {
       markAdminLane(false, 'This browser is not calling from loopback.');
-      box.textContent = 'bench is an admin-only control and this page is not on the admin lane — the bench itself is fine, and every reading above is live. Run it from the brain's machine.';
+      box.textContent = 'bench is an admin-only control and this page is not on the admin lane — the bench itself is fine, and every reading above is live. Run it from the brain\'s machine.';
       return;
     }
     const j = await r.json();
@@ -1467,7 +1467,7 @@ function tvBench(st, series) {
   // ── retention: can we still see what happened an hour ago?
   add('history retained', !!(series && series.available && (series.returned || 0) > 1),
     series && series.available ? `${series.total} samples on disk` : 'series unavailable',
-    'Without retention an hours-old stall is unreadable. Check better-sqlite3 on the brain's machine.');
+    'Without retention an hours-old stall is unreadable. Check better-sqlite3 on the brain\'s machine.');
 
   // ── the substrate
   const v = st && st.voice;
@@ -2355,7 +2355,7 @@ $('tvKnobReset').onclick = () => {
    reach the weights lane" while the brain was up. */
 const WEIGHT_BASES = TV_IS_LOCAL
   ? ['http://localhost:7525', '']
-  : ['/admin'];
+  : [(typeof unityBrainHttp === 'function') ? unityBrainHttp('/admin') : '/admin'];
 let WEIGHT_BASE = '';
 
 function fmtBytes(b) {
@@ -2403,7 +2403,7 @@ async function loadWeightsList() {
     ? `${files.length} file${files.length === 1 ? '' : 's'}`
     : 'none on disk';
   if (!files.length) {
-    host.innerHTML = '<div class="tv-note">No weights file exists on the brain's machine yet — '
+    host.innerHTML = '<div class="tv-note">No weights file exists on the brain\'s machine yet — '
       + 'nothing has been saved. On a fresh brain this is correct.</div>';
     return;
   }
@@ -2559,7 +2559,7 @@ function renderDials(st, tv) {
       sub: st.knobs ? `${st.knobs.boot} boot-frozen` : '',
     },
     {
-      id: 'disk', label: 'disk used', tip: 'Share of the brain's machine volume in use.\n\nThe visual store grows with everything she sees, so this is the tripwire for the save floor — deferred saves are the symptom that matters.',
+      id: 'disk', label: 'disk used', tip: 'Share of the brain\'s machine volume in use.\n\nThe visual store grows with everything she sees, so this is the tripwire for the save floor — deferred saves are the symptom that matters.',
       val: st.disk && st.disk.usedPct != null ? st.disk.usedPct + '%' : null,
       frac: st.disk && st.disk.usedPct != null ? st.disk.usedPct / 100 : null, c: TV_C.good,
       sub: st.disk && st.disk.saveDeferrals ? `${st.disk.saveDeferrals} saves deferred` : 'save floor ok',
@@ -2800,7 +2800,7 @@ async function sendPosition(file) {
     + 'use "Restart · keeps training" below to make this take effect.'
     + posNow)) {
     msg.style.color = 'var(--tv-dim)';
-    msg.textContent = 'cancelled — nothing was sent and the position on the brain's machine is unchanged.';
+    msg.textContent = 'cancelled — nothing was sent and the position on the brain\'s machine is unchanged.';
     return;
   }
   msg.style.color = 'var(--tv-dim)';
@@ -3007,8 +3007,8 @@ const PRESS_ACTIONS = [
   },
   {
     id: 'tvPressUpdKeep', path: 'update?keep=1', verb: 'update (keep training)', waitMs: 300000,
-    head: 'UPDATE the brain's machine to the latest code and KEEP training?',
-    body: '✓ The brain's machine pulls the latest project code, then restarts\n'
+    head: 'UPDATE the brain\'s machine to the latest code and KEEP training?',
+    body: '✓ The brain\'s machine pulls the latest project code, then restarts\n'
         + '✓ The saved weights are RESUMED — no fresh walk\n\n'
         + 'This is how a fix ships without costing training. Takes a minute or two.',
   },
@@ -3025,8 +3025,8 @@ const PRESS_ACTIONS = [
   },
   {
     id: 'tvPressFresh', path: 'update', verb: 'fresh walk', waitMs: 300000,
-    head: '⚠ UPDATE the brain's machine to the latest code and WIPE ALL TRAINING?',
-    body: '✓ The brain's machine pulls the latest project code\n'
+    head: '⚠ UPDATE the brain\'s machine to the latest code and WIPE ALL TRAINING?',
+    body: '✓ The brain\'s machine pulls the latest project code\n'
         + '✗ Every trained weight, every episode, every schema and her visual store are DESTROYED\n'
         + '✗ Her identity anchors survive. Nothing she has LEARNED does\n\n'
         + 'This is the fresh walk. It is the right press after shipping a change to what she is '
@@ -3196,7 +3196,7 @@ async function pressViaCtl(a, msg, netErr) {
       + 'That is what a BLOCKED EVENT LOOP looks like from here — and it is exactly what the '
       + 'always-up control plane is for. It can run this press without the brain.\n\n'
       + '⚠ BEFORE YOU DO: a timeout means nginx stopped waiting, NOT that the brain never got '
-      + 'the request. If it wakes up and runs this press too, the brain's machine ends up with TWO deploys '
+      + 'the request. If it wakes up and runs this press too, the brain\'s machine ends up with TWO deploys '
       + 'writing into the same directory at once, which can corrupt the install.\n\n'
       + 'Only continue if the brain has been unresponsive for a while — not if it just went quiet.\n\n'
       + `OK = run "${a.verb}" through the control plane.  Cancel = do nothing.`)) {
@@ -3422,7 +3422,7 @@ function renderDefaults(st) {
   }
   if (!bits.length) {
     el.innerHTML = '<span style="color:var(--tv-dim)">◎ no operator defaults stored — this boot is running code behaviour '
-      + 'plus whatever the environment sets. Use “make default” on any knob to change what the brain's machine starts with.</span>';
+      + 'plus whatever the environment sets. Use “make default” on any knob to change what the brain\'s machine starts with.</span>';
     return;
   }
   el.innerHTML = bits.map((b) => `<div>${b}</div>`).join('');
