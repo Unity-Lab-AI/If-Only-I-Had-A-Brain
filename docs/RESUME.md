@@ -20,7 +20,15 @@
 >            (memory.js, now exp(-ln2*age/168)); the cortex was counted twice in Kuramoto coherence (brain-server.js).
 >            22 page corrections. THE BIG OPEN ONE: _gateComprehension reads only the FIRST LETTER of each prompt
 >            word — the gate every grade closes on measures initials, not words. Design change, re-price first.
->            Also a docs-viewer slug (EQUATION_RUNDOWN, 20 slugs now).
+>            Also a docs-viewer slug (EQUATION_RUNDOWN).
+>   plan     docs/EQUATION-REPAIR-AND-SEED-CRYSTAL.md — Part A the nine repairs in landing order (constant, periods,
+>            amygdala floor, cerebellum residual, structural plasticity deleted, Φ as mutual information, the WORD-
+>            reading gate with derived 0.10/80% thresholds and a re-price, BG hysteresis, EQUATIONS.md). Part B the
+>            SEED CRYSTAL he asked for: L/R cut of every cluster's index space (free), donor counts per half, a
+>            central phase coupled to both sides, correctness per side from prediction-error decrease + gate credit +
+>            chat reward, a CONSERVED + FLOORED dopamine split that sets each side's plasticity, Ψ Left/Right made
+>            literal, Ψ·(1 + 0.5·C·Φ_LR), K_c annealed with grade. Walk length unchanged. NOT BUILT — a spec with a
+>            six-step build order; step 1 is the donor's split count. 21 docs-viewer slugs now.
 >   owed     the 8 open page claims + docs/EQUATIONS.md (same retired mechanisms described as live, and 25 headers
 >            carrying ticket/session IDs — a brain doc). First two readings on the next boot: state.voice.verdict
 >            .status must be matrix-driven; consciousness.phiState must be live, not floored.
