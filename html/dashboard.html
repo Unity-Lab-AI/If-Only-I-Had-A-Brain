@@ -310,10 +310,12 @@
   <!-- Where the brain is (same-origin / localhost / a configured tunnel origin).
        Must run before any script that builds a brain URL. -->
   <script src="../js/brain-origin.js"></script>
-  <script type="module">
-    import { mountBootModal } from '../js/webgpu-prep.js';
-    mountBootModal({ prepUrl: 'webgpu-prep.html' });
-  </script>
+  <!-- ⛔ WEBGPU HARD-BLOCK REMOVED 2026-10-19, same reason as index.html and
+       one more besides: the dashboard COMPUTES NOTHING. It is a read-only
+       viewer of the server's state, so demanding a GPU adapter to look at a
+       number was never justified — and it blocked the one page an operator
+       needs most at exactly the moment something is wrong with the GPU.
+       The donor requirement lives on html/compute.html, where it belongs. -->
 
   <!-- Quick-access page legend. Floating top-right link to the
        canonical page index (html/legend.html). Z-index 99998. -->
