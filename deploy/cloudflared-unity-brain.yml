@@ -98,8 +98,22 @@
 #   # fix it, at the cost of overwriting the cert the other tunnels use.
 #   cloudflared tunnel --config deploy/cloudflared-unity-brain.yml run
 #
-# Run it as a service so it survives a reboot:
-#   cloudflared service install        (Windows: installs + auto-starts)
+# ⭐ YOU DO NOT NORMALLY RUN ANY OF THIS BY HAND. Since 2026-10-19 all four
+# launchers (`windows/start.bat`, `windows/Savestart.bat`, `linux/start.sh`,
+# `linux/Savestart.sh`) start this tunnel themselves, right after the Funnel
+# block, as a plain background process — idempotent, no elevation, and nothing
+# for the operator to remember. The donor door opens whenever she does, which
+# is the only moment it has anything to serve.
+#
+# ⛔ THE ARGUMENT ORDER IS LOAD-BEARING: `cloudflared --config <cfg> tunnel run`.
+# With a bare `run` cloudflared prints "Use `cloudflared tunnel run` to start
+# tunnel <id>" and EXITS 0 — so a launcher trusting the exit code reports the
+# donor door open while nothing is listening. That shipped in the first cut of
+# the launcher block and was caught by killing the process and re-running it,
+# not by reading the line.
+#
+# Optional, and only if you want it up even when she is not:
+#   cloudflared service install        (Windows: installs + auto-starts; needs admin)
 #
 # ── VERIFY — AND DO NOT SKIP THE REFUSALS ───────────────────────────────────
 # Substitute your own hostname. The first three prove she is reachable; the

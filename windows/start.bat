@@ -517,6 +517,48 @@ if defined TS_UP (
 ) else (
     if exist "%TSX%" echo   [tunnel] Tailscale daemon not answering after 45s - the public path may be down; she boots anyway.
 )
+REM CFTUNNEL (2026-10-19) - THE DONOR DOOR, AND IT IS A SECOND TUNNEL ON PURPOSE.
+REM The Funnel above carries the website's small reads. It CANNOT carry a donor:
+REM Tailscale's relay bandwidth is capped and not configurable, and a donor
+REM measured 0.16 MB/s through it against 541.78 MB/s over loopback - about
+REM eight hours for the 4.5 GB cortex matrix, which is unusable rather than
+REM slow. So the donor lane is a Cloudflare named tunnel on
+REM brain.theunitybrain.com, and donor 0.3.41+ dials that by default.
+REM
+REM !! STARTED AS A PLAIN BACKGROUND PROCESS, NOT A SERVICE, SO NO ADMIN PROMPT
+REM    AND NOTHING TO REMEMBER. `cloudflared service install` would survive a
+REM    reboot without the launcher, but it needs elevation every time it is
+REM    installed; starting it here means the donor door opens whenever she does,
+REM    which is the only moment it has anything to serve.
+REM !! Idempotent: if cloudflared is already running (installed as a service by
+REM    hand, or left over from a previous start) this does nothing. Not
+REM    installed -> say so and carry on; like the Funnel, the donor door is the
+REM    world's path to her and never a condition of her boot.
+set "CFX=%ProgramFiles(x86)%\cloudflared\cloudflared.exe"
+if not exist "%CFX%" set "CFX=%ProgramFiles%\cloudflared\cloudflared.exe"
+set "CFCFG=%~dp0..\deploy\cloudflared-unity-brain.yml"
+if exist "%CFX%" (
+    if exist "%CFCFG%" (
+        REM find.exe by absolute path - same GNU-find trap documented above.
+        tasklist /FI "IMAGENAME eq cloudflared.exe" 2>nul | "%SystemRoot%\System32\find.exe" /i "cloudflared.exe" >nul
+        if errorlevel 1 (
+            echo   [tunnel] donor door starting - brain.theunitybrain.com via Cloudflare...
+            REM !! `tunnel run`, NOT `run`. With only `run` cloudflared prints
+            REM    "Use `cloudflared tunnel run` to start tunnel <id>" and EXITS 0 -
+            REM    so a launcher that only checked the exit code would report the
+            REM    donor door open while nothing was listening. Caught by killing
+            REM    the process and re-running this block, not by reading it.
+            start "unity-donor-tunnel" /min "%CFX%" --config "%CFCFG%" tunnel run
+        ) else (
+            echo   [tunnel] donor door already up - brain.theunitybrain.com
+        )
+    ) else (
+        echo   [tunnel] cloudflared installed but deploy\cloudflared-unity-brain.yml is missing - donor door NOT opened.
+    )
+) else (
+    echo   [tunnel] cloudflared not installed - she runs, and the website still works,
+    echo            but no REMOTE donor can reach her. Install from https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/
+)
 if not defined UNITY_VOICE_PORT set "UNITY_VOICE_PORT=5123"
 if not defined UNITY_VOICE_V2_DIR set "UNITY_VOICE_V2_DIR=%~dp0..\..\Backrooms\models\unity-voice-v2"
 if exist "%UNITY_VOICE_V2_DIR%\serve.py" (
