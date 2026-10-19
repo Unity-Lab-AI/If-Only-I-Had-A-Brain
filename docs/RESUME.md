@@ -1,6 +1,39 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-10-19, ~7:45 AM Denver (latest, 35th) — THE PROBES ARE ADVISORY AND WERE INVISIBLE; NOW THE PROBE LANE NAMES ITSELF AND EVERY CELL'S GATE NUMBERS ARE ON THE DASHBOARD
+> # 🛑 2026-10-19, ~9:30 AM Denver (latest, 36th) — A STRANGER CAN DONATE: THE DONOR LANE IS OFF THE CAPPED RELAY AND ON A CLOUDFLARE TUNNEL; THE WEIGHT-LOSS BOUND IS HALVED
+>
+> **Branch: `feature/donor-tunnel-and-weight-loss-bound`** — cascaded after this batch; tag `donor-v0.3.41`.
+>
+> ```
+>   ingress  brain.theunitybrain.com -> Cloudflare named tunnel 30417290-1c95-4a10-8648-15a70646938f,
+>            4 QUIC edges (den01 x2, dfw06, dfw08). deploy/cloudflared-unity-brain.yml filled in, same
+>            5-lane allowlist + default-deny as the Funnel. VERIFIED FROM OUTSIDE: /admin/status, /reset
+>            and /ctl/status all 404; /public-state.json + /health 502 only because the brain is down.
+>   dns      theunitybrain.com moved to Cloudflare (brodie/dorthy). Baseline captured FIRST; all 11
+>            records checked against it and every web record forced DNS-ONLY (Cloudflare imports them
+>            Proxied). Only `brain` is proxied. The Funnel is untouched and still serves the website.
+>            ⚠ 1.1.1.1 has the new pair, 8.8.8.8 still cached at write time.
+>   ⛔ trap  `cloudflared tunnel route dns` wrote into the WRONG ZONE and logged success — cert.pem
+>            predates the new zone, so it made `brain.theunitybrain.com.unityailab.com`. Deleted; the
+>            record was created directly (a tunnel route is only a proxied CNAME).
+>   donor    v0.3.41 — PROD_SERVER = wss://brain.theunitybrain.com/ws. Forced by measurement: 0.16 MB/s
+>            through the Funnel vs 541.78 MB/s loopback. cargo check clean both feature sets; release
+>            built, reports 0.3.41, placed at the repo-root exe. ⚠ HIS RUNNING DONOR IS STILL THE OLD
+>            PROCESS — close and relaunch the root exe.
+>   weights  DREAM_READBACK_MIN_GAP_MS 3.6M -> 1.8M, re-priced first (80s cycle -> 4.4% duty at 30 min).
+>            A blip loses nothing; a CRASH costs everything hebbian_bound taught since the last pull.
+>            ⛔ Bound, not fix. WEIGHTLOSS.1 filed: donor-side disk checkpoint + clean-leave handback.
+>            ⚠ The hourly readback had NEVER fired on this box — first thing to read after a press.
+>   method   his dashboards are driven in HIS signed-in Chrome via screenshot + input, not a new window
+>            and not a profile copy (that road was started and abandoned — it is credential copying).
+>            Memory feedback_drive_web_dashboards_with_playwright.
+>   open     NETBUG.7 (donor abort(), no trace), NETBUG.10 (GPU-hang watchdog hangs up the socket),
+>            FRESHSIZE.1 (his press), WEIGHTLOSS.1. Plus the 8 page claims + EQUATIONS.md pass.
+> ```
+>
+> ---
+>
+> # 🛑 2026-10-19, ~7:45 AM Denver (35th) — THE PROBES ARE ADVISORY AND WERE INVISIBLE; NOW THE PROBE LANE NAMES ITSELF AND EVERY CELL'S GATE NUMBERS ARE ON THE DASHBOARD
 >
 > **Branch: `feature/gate-readings-dashboard`** — cascaded after this batch.
 >

@@ -16,34 +16,35 @@
 #           v
 #     127.0.0.1:7525                <- the brain, still loopback-only
 #
-# ⛔⛔ THERE IS NO DOMAIN ANY MORE — unityailab.com is DEAD (operator,
-# 2026-10-18: "we dont have unityailab.com anymore, its a dead site").
-# git.unityailab.com still answers and still hosts Forgejo, but it is MOVING,
-# so nothing new should be built against it either.
+# ⭐⭐ THIS FILE IS LIVE AS OF 2026-10-19. The day a domain exists again came.
 #
-# ⚠ THAT IS A REAL CONSTRAINT ON THIS FILE, NOT A COSMETIC ONE. A *named*
-# Cloudflare tunnel requires a domain in your Cloudflare account — that is
-# where the stable hostname comes from. With no domain there are three honest
-# options, and they are not equivalent:
+# ⛔ THE HISTORY, KEPT BECAUSE IT EXPLAINS THE SHAPE: on 2026-10-18 the lab had
+# no Cloudflare zone (operator: "we dont have unityailab.com anymore, its a dead
+# site"), a *named* Cloudflare tunnel requires one, and so Tailscale Funnel was
+# chosen instead (`deploy/tailscale-funnel.bat`, same lanes, same default-deny).
 #
-#   1. A cheap domain (~$10/yr) on Cloudflare -> everything below works exactly
-#      as written, stable hostname, nothing else changes.
-#   2. `cloudflared tunnel --url http://127.0.0.1:7525` -> a FREE quick tunnel
-#      on *.trycloudflare.com. ⛔ The URL is RANDOM AND CHANGES EVERY RESTART,
-#      so the committed BRAIN_ORIGIN goes stale each time and visitors need the
-#      `?brain=` override. Fine for proving the path, poor as the permanent
-#      answer. This config file is NOT used in that mode.
-#   3. ⭐ Tailscale Funnel -> a STABLE `*.ts.net` hostname, free, TLS included,
-#      NO DOMAIN REQUIRED. For a brain hosted on a home PC with no domain this
-#      is the better fit than 2, and the same Tailscale install also gives a
-#      PRIVATE path to the admin lane — which is the clean answer to the
-#      `requireLoopback`-is-defeated-by-a-tunnel problem below, because the
-#      admin lane then never faces the public internet at all.
+# ⚠ WHAT CHANGED, AND WHY IT HAD TO: the Funnel's bandwidth is capped and NOT
+# configurable (Tailscale's own documentation). Measured live on 2026-10-19 a
+# donor dialling the Funnel moved its cortex upload at **0.16 MB/s** — ~8 hours
+# for 4.5 GB, i.e. unusable rather than slow — while the same upload over
+# loopback ran at **541.78 MB/s**. The Funnel is fine for the website's small
+# reads; it cannot carry a REMOTE DONOR, which is the whole point of
+# `compute.html` and the donor app. That is the gap this file closes.
 #
-# ⭐ DECIDED 2026-10-18: OPTION 3. The live route is `deploy/tailscale-funnel.bat`
-# (same four lanes, same default-deny, same absent admin lane). This file is
-# KEPT, not deleted, for the day a domain exists again — the allowlist is the
-# part that matters and it is identical in both.
+# ⭐ SO BOTH RUN, DELIBERATELY, AND THEY CARRY DIFFERENT TRAFFIC:
+#   • Tailscale Funnel  — the website's public reads (still live, unchanged).
+#   • THIS Cloudflare tunnel on `brain.theunitybrain.com` — the DONOR lane, no
+#     relay cap. The donor app's default server points here.
+# The route allowlist below is identical in both, which is the part that matters.
+#
+# ⛔ `theunitybrain.com` moved to Cloudflare DNS on 2026-10-19 to make this
+# hostname possible. Its nameservers are now brodie/dorthy.ns.cloudflare.com.
+# ⚠ EVERY ONE of its pre-existing records was carried across and set DNS-ONLY
+# (grey cloud) so the GitHub Pages site and the Namecheap mail forwarding behave
+# EXACTLY as they did on the registrar's nameservers: four Pages A records, the
+# `www` CNAME to unity-lab-ai.github.io, five `eforward*.registrar-servers.com`
+# MX records and the SPF TXT. **Do not proxy those.** Only `brain` is proxied,
+# because a tunnel CNAME has to be.
 #
 # ⭐ THE BRAIN NEVER STOPS BEING LOOPBACK-ONLY. `BIND_HOST` stays 127.0.0.1 and
 # nothing on the LAN or the internet can address it directly; cloudflared is
@@ -83,12 +84,18 @@
 #   the forged-header attack has been ATTEMPTED FROM OUTSIDE and observed to
 #   fail.** A security control that has only been reasoned about is not one.
 #
-# ── SETUP (once) — needs a domain in your Cloudflare account; see above ─────
-#   cloudflared tunnel login
-#   cloudflared tunnel create unity-brain
-#   cloudflared tunnel route dns unity-brain <your-tunnel-host>
-#   # fill in the placeholders (tunnel id, credentials path, and the hostname
-#   # on every ingress rule) from the output, then:
+# ── SETUP — ALREADY DONE 2026-10-19, recorded so it can be redone ───────────
+#   cloudflared tunnel create unity-brain      -> id 30417290-1c95-4a10-8648-15a70646938f
+#   # ⛔ `cloudflared tunnel route dns` DID NOT WORK for this hostname and the
+#   # way it failed is worth knowing: the `cert.pem` in ~/.cloudflared was issued
+#   # for the OLD zone list, so cloudflared could not see theunitybrain.com and
+#   # silently appended it to the zone it COULD see — creating a junk record
+#   # literally named `brain.theunitybrain.com.unityailab.com` pointed at an
+#   # unrelated tunnel, and reporting success. It was deleted by hand.
+#   # A tunnel route is only a proxied CNAME, so the record was created directly:
+#   #     brain  CNAME  30417290-1c95-4a10-8648-15a70646938f.cfargotunnel.com  (Proxied)
+#   # Re-running `cloudflared tunnel login` and re-picking the zone would also
+#   # fix it, at the cost of overwriting the cert the other tunnels use.
 #   cloudflared tunnel --config deploy/cloudflared-unity-brain.yml run
 #
 # Run it as a service so it survives a reboot:
@@ -110,8 +117,8 @@
 #   Stop the tunnel before investigating — `POST /reset` wipes every trained
 #   weight, and at that point it would be a public URL.
 
-tunnel: REPLACE-WITH-TUNNEL-ID
-credentials-file: REPLACE-WITH-PATH-TO/<TUNNEL-ID>.json
+tunnel: 30417290-1c95-4a10-8648-15a70646938f
+credentials-file: C:\Users\gfour\.cloudflared\30417290-1c95-4a10-8648-15a70646938f.json
 
 # Keep the connection healthy through long quiet periods — she can go minutes
 # without a public request while teaching.
@@ -125,12 +132,12 @@ ingress:
   # The dashboard snapshot every public viewer polls. Also the console-ring
   # tunnel (`?console=N`); query strings are not part of path matching, so that
   # keeps working without a rule of its own.
-  - hostname: REPLACE-WITH-YOUR-TUNNEL-HOSTNAME
+  - hostname: brain.theunitybrain.com
     path: ^/public-state\.json$
     service: http://127.0.0.1:7525
 
   # Her mind's eye — the current percept frame.
-  - hostname: REPLACE-WITH-YOUR-TUNNEL-HOSTNAME
+  - hostname: brain.theunitybrain.com
     path: ^/minds-eye\.json$
     service: http://127.0.0.1:7525
 
@@ -151,14 +158,14 @@ ingress:
   # Safe to publish: it returns status/uptime/neurons/scale/gpu/vram/clients/
   # spikes/psi/clusters — the same class of public figures already served by
   # public-state.json, no secrets and nothing mutable.
-  - hostname: REPLACE-WITH-YOUR-TUNNEL-HOSTNAME
+  - hostname: brain.theunitybrain.com
     path: ^/health$
     service: http://127.0.0.1:7525
 
   # The PUBLIC WebSocket lane (chat + live state). ⚠ This is `/ws`, NOT
   # `/admin/ws` — the admin socket is the Basic-auth-gated one and stays off.
   # cloudflared upgrades WebSockets by default; no extra setting is needed.
-  - hostname: REPLACE-WITH-YOUR-TUNNEL-HOSTNAME
+  - hostname: brain.theunitybrain.com
     path: ^/ws$
     service: http://127.0.0.1:7525
 
@@ -166,7 +173,7 @@ ingress:
   # chat lane's <img>). A miss is a 404, never a render: nothing a visitor
   # sends through here can reach the image engine on :5124, which stays
   # loopback-only. Read-only, so it belongs with the three above.
-  - hostname: REPLACE-WITH-YOUR-TUNNEL-HOSTNAME
+  - hostname: brain.theunitybrain.com
     path: ^/image/[a-f0-9]{16}\.png$
     service: http://127.0.0.1:7525
 

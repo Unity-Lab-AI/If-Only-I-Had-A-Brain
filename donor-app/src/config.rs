@@ -2,10 +2,19 @@ use crate::cli::Cli;
 use serde::{Deserialize, Serialize};
 
 /// Public production donor endpoint — the `/ws` lane of the brain on the operator's own
-/// machine, published through a Tailscale Funnel (the rented box and its nginx vhost are
-/// gone as of 2026-10-17). The same URL the browser donor (compute.html) connects to.
-/// This is the DEFAULT so a distributed binary donates to the live brain out of the box.
-pub const PROD_SERVER: &str = "wss://dumbass.tailec58e0.ts.net/ws";
+/// machine, published through a Cloudflare named tunnel (the rented box and its nginx
+/// vhost are gone as of 2026-10-17).
+///
+/// ⛔ MOVED OFF THE TAILSCALE FUNNEL 2026-10-19, AND THE REASON IS A MEASUREMENT, NOT A
+/// PREFERENCE. Funnel bandwidth is capped and not configurable; a donor dialling
+/// `wss://dumbass.tailec58e0.ts.net/ws` moved its cortex upload at **0.16 MB/s** — about
+/// eight hours for 4.5 GB, which is unusable rather than slow — while the identical
+/// upload over loopback ran at **541.78 MB/s**. Every REMOTE donor (a pod, a friend's
+/// card) dials this constant, so the cap made remote donation impossible.
+///
+/// The Funnel is still live and still serves the website's small public reads; only the
+/// donor lane moved. Route allowlist + rationale: `deploy/cloudflared-unity-brain.yml`.
+pub const PROD_SERVER: &str = "wss://brain.theunitybrain.com/ws";
 /// Local brain for testing (`--local`).
 ///
 /// LOOPBACK (2026-08-23) — **127.0.0.1, NOT `localhost`.** The brain binds
