@@ -191,22 +191,35 @@ set "UAL_DONOR_WANT="
 for /f "tokens=2 delims==" %%v in ('%SystemRoot%\System32\findstr.exe /b /c:"version" "%~dp0..\donor-app\Cargo.toml"') do if not defined UAL_DONOR_WANT set "UAL_DONOR_WANT=%%v"
 set "UAL_DONOR_WANT=%UAL_DONOR_WANT: =%"
 set "UAL_DONOR_WANT=%UAL_DONOR_WANT:"=%"
-if exist "%UAL_DONOR_EXE%" (
-    set "UAL_DONOR_HAVE="
-    for /f "tokens=2" %%v in ('"%UAL_DONOR_EXE%" --version 2^>nul') do if not defined UAL_DONOR_HAVE set "UAL_DONOR_HAVE=%%v"
-    if defined UAL_DONOR_HAVE (
-        if "%UAL_DONOR_HAVE%"=="%UAL_DONOR_WANT%" (
-            echo   [donor] root unity-donor-windows-x86_64.exe is %UAL_DONOR_HAVE% -- matches donor-app\Cargo.toml.
-        ) else (
-            echo   [donor] !! ROOT DONOR IS STALE: exe reports %UAL_DONOR_HAVE%, Cargo.toml says %UAL_DONOR_WANT%.
-            echo   [donor] !! Replace it with the SHIPPED release asset for %UAL_DONOR_WANT% -- never a local build dir.
-        )
-    ) else (
-        echo   [donor] root donor exe present but --version printed nothing -- cannot verify it.
-    )
-) else (
-    echo   [donor] no root unity-donor-windows-x86_64.exe -- the donor app is not installed here.
-)
+REM !! FLAT, NOT NESTED, AND THAT IS THE WHOLE FIX. This check used to live
+REM    inside `if exist (...)` and read %UAL_DONOR_HAVE% in the SAME block that
+REM    a `for /f` sets it. cmd expands %VAR% when it PARSES a block, before any
+REM    of it runs, so the value was always the one from BEFORE the loop - empty.
+REM    The check therefore printed "ROOT DONOR IS STALE: exe reports , Cargo.toml
+REM    says 0.3.41" on EVERY boot, including when the exe was perfectly current:
+REM    a version check that could never pass and never said why. Observed
+REM    2026-10-19 against a root exe that really was 0.3.41.
+REM    Delayed expansion would also fix it, but this script never enables it and
+REM    turning it on globally changes how every other `!` in the file parses.
+REM    Flattening to top level makes each %VAR% expand per line, which is what
+REM    the original code assumed it was doing.
+if not exist "%UAL_DONOR_EXE%" goto :ual_donor_absent
+set "UAL_DONOR_HAVE="
+for /f "tokens=2" %%v in ('"%UAL_DONOR_EXE%" --version 2^>nul') do if not defined UAL_DONOR_HAVE set "UAL_DONOR_HAVE=%%v"
+if not defined UAL_DONOR_HAVE goto :ual_donor_silent
+if "%UAL_DONOR_HAVE%"=="%UAL_DONOR_WANT%" goto :ual_donor_match
+echo   [donor] !! ROOT DONOR IS STALE: exe reports %UAL_DONOR_HAVE%, Cargo.toml says %UAL_DONOR_WANT%.
+echo   [donor] !! Replace it with the SHIPPED release asset for %UAL_DONOR_WANT% -- never a local build dir.
+goto :ual_donor_done
+:ual_donor_match
+echo   [donor] root unity-donor-windows-x86_64.exe is %UAL_DONOR_HAVE% -- matches donor-app\Cargo.toml.
+goto :ual_donor_done
+:ual_donor_silent
+echo   [donor] root donor exe present but --version printed nothing -- cannot verify it.
+goto :ual_donor_done
+:ual_donor_absent
+echo   [donor] no root unity-donor-windows-x86_64.exe -- the donor app is not installed here.
+:ual_donor_done
 
 if defined DREAM_FORCE_CLEAR (
     echo   [!] DREAM_FORCE_CLEAR=1 -- will clear brain state on boot.
