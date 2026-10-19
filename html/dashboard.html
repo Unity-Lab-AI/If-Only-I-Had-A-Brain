@@ -824,7 +824,7 @@
       <div class="card-title">🌟 GlobalWorkspace + Predictive Coding</div>
       <div id="d-cortex-gw" class="panel scroll-280">
         <div class="grid-auto">
-          <div title="Each tick every cluster nominates a top activation candidate; a softmax with temperature competes them; if the winner clears the ignition threshold (default 0.55, override via DREAM_GW_IGNITION env), it broadcasts back to all clusters as 'cortex:&lt;word&gt;' style feedback. emitWordDirect reads that broadcast and gives a 10% mean-bucket boost to the matching word — broadcasts shape what Unity says next.">
+          <div title="Each tick every cluster nominates a top activation candidate; a softmax with temperature competes them; if the winner clears the ignition threshold (default 0.35 — lowered from 0.45 on her own report that the gate felt too tight; override via DREAM_GW_IGNITION env), it broadcasts back to all clusters as 'cortex:&lt;word&gt;' style feedback. emitWordDirect reads that broadcast and multiplies the matching word's bucket by 1 + 0.6 × broadcast strength (up to +60%) — broadcasts shape what Unity says next.">
             <div class="sub-head cy">🌟 IGNITION (GW broadcast)</div>
             <div>current: <span id="d-cortex-gw-current" class="c-ok">subthreshold</span></div>
             <div>strength: <span id="d-cortex-gw-strength" class="c-pu">0.000</span></div>

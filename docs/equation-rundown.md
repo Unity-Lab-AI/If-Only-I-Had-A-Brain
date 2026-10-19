@@ -1,152 +1,230 @@
-# Equation Rundown — what runs, what is broken, what has never been read
+# Equation Rundown — where the page, the doc, the code and the math diverge
 
-A short, honest ledger of every equation family the brain is built on: which ones are
-**working great** (verified from a live reading or a harness on the production code),
-which are **working with a known limit**, which are **built but unread** (no live
-evidence yet — they land on the next fresh walk), and which are **not working, inert,
-or deliberately off**. The last section lists what the reference page
-(`html/brain-equations.html`) still describes as live that the brain no longer runs.
+This is a divergence map. For every equation family the brain is built on it records
+**what the reference page says** (`html/brain-equations.html`), **what the canonical
+doc says** where it differs (`docs/EQUATIONS.md`), **what the code actually does**
+(file and line, read on 2026-10-19), **whether the math is right**, **why it drifted**,
+and **the exact fix** — applied in the same change where it is a text correction or a
+one-line math repair, or named as owed where it is a design change.
 
-Written 2026-10-19 against the code on the working branch. The brain was **not running**
-when this was written, so every "live" verdict below cites the last reading that produced
-it rather than a reading taken today. Verdicts marked **unread** have never produced a
-number on a real boot — they are claims, not measurements, until they do.
+Evidence standard. "Code" means the implementation was opened and the constant read,
+not inferred from a comment or a tooltip. "Live" means a number was read off a running
+boot. The brain was **not running** when this was written, so live claims cite the
+boot that produced them. Nothing below is quoted from the page as if it were the code —
+that was the first draft's mistake, and the reason this file exists in this form.
 
-How to read a verdict:
+Verdict key: **✅ agree** · **✗ page wrong** · **✗ doc wrong** · **⚠ math** (the
+implementation computes something other than what it is named) · **🔧 unread** (built,
+no live number yet) · **🪦 not on the deployed path** (browser-fallback engine only).
 
-| Verdict | Meaning |
-|---|---|
-| **✅ working great** | Measured live, or harnessed through the production wiring, and the number came back right |
-| **⚠ working, limited** | Runs and does what it says, but with a bound or a blind spot worth knowing |
-| **🔧 built, unread** | Code is in, verified by reading or by harness, but no live boot has produced its number yet |
-| **⛔ not working / inert** | Computes nothing, reaches nothing, or is switched off — on purpose or not |
-| **🪦 deleted** | Removed from the runtime; the page or a doc may still describe it |
+Two engines run this brain and the page conflates them throughout. The **deployed
+path** is `server/brain-server.js` coordinating a donor GPU (`donor-app/src/cuda_kernels.cu`
+or `donor-app/src/shaders/lif.wgsl`), with the modules re-implemented server-side. The
+**browser fallback** is `js/brain/engine.js` with `modules.js`, `motor.js` and
+`language-cortex.js`, used only when no server is reachable. Where the two disagree the
+deployed path is the one that matters, and the page mostly describes the browser one.
 
 ---
 
-## 1. The substrate — neurons, synapses, compute
+## 1. Substrate
 
-| Equation / mechanism | Verdict | Evidence |
-|---|---|---|
-| **Rulkov 2D map neuron** `x' = α/(1+x²)+y`, `y' = y − μ(x−σ)`, spike on zero-crossing, run as a CUDA kernel on the donor card | ✅ working great | Spike counts return every batch; `spikesLifetime` climbs on every healthy boot; the donor's own timing split (queue / compute / wire) is published per batch |
-| **Scalar inter-cluster coupling** `effective_drive = tonic × driveBaseline × emotionalGate × gain + errorCorrection` | ✅ working great | This is the whole inter-cluster wire. It is server-mediated and scalar, which is exactly why a brain can now be split across several cards with no new wire shape |
-| **Sparse CSR propagation** `I_i = Σ_k values[k]·spikes[colIdx[k]]` over the 17 cortex matrices | ✅ working great | All 17 matrices upload to the primary and are held on the card; residency is recorded on the upload ack and shown as `17/17 mx` |
-| **Oja / Hebbian teach** `Δw = η·y·(x − y·w)` with a projection whitelist so silent regions do not decay | ✅ working great | Thousands of teach calls per minute on a walking brain; the range-encoded and masked wire verbs moved the last CPU training math onto the card and are counted per frame |
-| **Anti-Hebbian correction** on a wrong sequence transition (`+10η` right pair, `−5η` wrong pair) | ✅ working | Part of every sequence probe; without it the right association could never overpower the wrong one |
-| **Chunked propagate for probes / gates** | ✅ working great | Replaced four synchronous `propagate` calls that pinned the loop 1–10 s each; verified bit-identical (`maxDiff = 0`) |
-| **Binary weight save in 1 GiB views** | ✅ working great | The old single write silently failed past Node's 2,147,483,647-byte cap and dropped everything since the last checkpoint; chunked writes are byte-identical on disk |
-| **Weight fit at apply time** (drop the smallest-\|w\| synapses only as far as needed to sit under `memory.high × 85%`) | ✅ working | Read the `WEIGHTFIT —` boot line; neuron count is untouched so nothing wipes |
-| **Neuron count derived at boot from free host RAM** | ⚠ working, limited | It is not a property of the brain. The same code has booted at 425,436,550 and 411,216,550. Quote the count with the boot that produced it; the next walk is budget-pinned at 8000 MB → 199,728,759 neurons, measured on the card as `N = 41,221 × MB − 130,837,239` |
-| **Synaptogenesis** `P(new) = p·pre·post·¬existing` and **pruning** `\|w\| < 0.01 → remove` | 🔧 built, unread | Described on the page and present in the reference synapse code, but no boot publishes a connection-growth or prune count. Until an instrument exists this is a claim |
-| **STDP and reward-modulated plasticity** (the "three rules" on the comparison table) | 🔧 built, unread | The live teach path is Oja-Hebbian plus anti-Hebbian. STDP lives in the reference synapse implementation that backs the page, which **does not run** on the GPU path. Treat "three plasticity rules" as reference, not production |
-| **Hodgkin-Huxley and LIF neuron models** | 🪦 reference only | Backing implementations for the page. The runtime kernel is Rulkov; the shader constant still called `LIF_SHADER` is a historical name |
+### 1.1 Rulkov map — ✅ agree
+- **Page:** `x' = α/(1+x²)+y`, `y' = y − μ(x−σ)`, `α = 4.5`, `μ = 0.001`, `σ = −1 + clamp(drive/40, 0, 1)·1.5`, spike on zero-crossing.
+- **Code:** `donor-app/src/cuda_kernels.cu:54-58` (`ALPHA 4.5f`, `MU 0.001f`, `sigmaEff = -1 + clamp(drive/40)·1.5`) and `donor-app/src/shaders/lif.wgsl:55-58`, identical.
+- **Math:** correct. σ ∈ [−1, 0.5] walks the map from silence into the bursting regime; the page's named constants are the kernel's.
 
-## 2. Modules and modulation
+### 1.2 Inter-cluster drive — ✅ agree on the deployed path, one term differs in the browser
+- **Page:** `effective_drive = tonic × driveBaseline × emotionalGate × gain + errorCorrection`.
+- **Code (deployed):** `server/brain-server/gpu.js:141` — same expression, applied on the card.
+- **Code (browser):** `js/brain/cluster.js:5178` multiplies an extra `actionGate` (basal-ganglia boost of the active cluster).
+- **Why:** the GPU path never had an action gate; the page's data-flow diagram ("Basal Ganglia → action gate (boosts active cluster)") describes the browser.
+- **Fix:** page diagram marked browser-only for that arrow. Design question left open: whether the deployed path should carry an action gate at all.
 
-| Equation / mechanism | Verdict | Evidence |
-|---|---|---|
-| **Amygdala attractor settle** `x(t+1) = tanh(W·x + drive)` ×5, fear/reward projections, moving-baseline arousal | ✅ working | Arousal moves around the persona baseline instead of pegging at the old 0.94 floor; the dashboard valence/arousal chart is this |
-| **Hypothalamus homeostatic drift** `dH/dt = −α(H − H_set) + input` | ✅ working | Drive baseline multiplies into every cluster's effective drive each tick |
-| **Basal-ganglia winner-take-all** over six action channels with a 0.15 confidence floor | ⚠ working, limited | The selection runs every tick. The page still quotes the tiny-client geometry (150 neurons, 25 per channel) — on the deployed brain the cluster is a 12% share of hundreds of millions; the channel *fractions* hold, the counts do not |
-| **Cerebellum forward model** `error = actual − predicted`, `errorCorrection = −(Σerror²/n)×2` | ✅ working | Feeds the scalar drive as the `errorCorrection` term; prediction error is published and sparklined |
-| **Kuramoto coherence** `R = \|Σ e^{iθ_k}\|/N`, gamma-weighted 60/40, per-cluster oscillators advanced by that cluster's own firing | ✅ working great | This number **used to be fake** — a random walk pulled toward 0.4. It is real now: each cluster runs its own theta and gamma phase, ignition lifts it, dissociatives and dreaming lower it |
-| **Theta-gated gamma plasticity** (6 Hz drive modulation, 40 Hz learning-rate modulation in the upper theta half) | ✅ working | Confirmed consumed by the boot wiring assertion, which checks that the gamma scale actually reaches the projection update rather than merely being allocated |
-| **Mystery Ψ** `Ψ = √(1/n)·N³·[α·Id + β·Ego + γ·Left + δ·Right] × Φ` | ⚠ working, limited | The four psychodynamic terms compute from all clusters and Ψ scales the coupling gain. The **Φ** factor is where to look: see the next row |
-| **Φ proxy** — binary entropy of the spiking proportion, divided by an adaptive reference, floored at 0.1 | ⚠ working, limited | `H(0.01) = 0.081` is **below the 0.1 floor**, so on a sparsely firing cortex Φ reads a healthy `0.100` forever while modulating nothing. The dashboard now shows raw / reference / normalised and a state (`live` / `floored` / `error`). Only `live` is green; a `floored` reading means Φ has never actually touched Ψ on that boot |
-| **Endocrine layer** — ten chemicals on the same pharmacokinetic curve engine the substances use; six nuclei that sense their own firing; cyclic hormones on a curriculum-time clock | ✅ working great | Ran correctly for a whole release while the dashboard read **absent**, because the panel read `state.endocrine` and the producer publishes `state.consciousness.endocrine`. The reader is fixed; the `contributions` row answers "is any of this reaching the brain?" |
-| **Drug scheduler** — per-substance PK curves (onset / peak / plateau / tail), additive superposition, seven synergy pairs scaled by the *smaller* level, cumulative strain ceiling, chaos flag at ≥3 active | ✅ working great | Contributions refresh onto the live cluster every 60 frames; cortex noise, learning rate and amygdala noise all track them (plasticity is no longer drug-blind). Sober is the default; availability is gated by life-track age |
-| **Speech modulation post-processor** (slur, pause injection, third-person flip, ethereal vocabulary bias) | ✅ working | Applied after emission; sober state produces a zero vector and clean output |
+### 1.3 Oja rule — ✅ agree
+- **Page / doc:** `Δw[i,j] = lr · y[j] · (x[i] − y[j] · w[i,j])`.
+- **Code:** `js/brain/sparse-matrix.js:929-960` (`ojaUpdate`), with the hub / layer / gamma scales applied through `opts.kScales`.
+- **Math:** correct; the `y²·w` decay is what keeps weights bounded. The page's "silent regions decay via `−η·post²·w`" is right and is why every teach call passes a projection whitelist.
+
+### 1.4 Anti-Hebbian — ✅ agree for the pair-reinforce primitive; the scalar varies by caller
+- **Page:** `ΔW_correct = +η×10`, `ΔW_wrong = −η×5`, repeat 100×.
+- **Code:** `js/brain/cluster.js:4827-4829` — `posLr = lr × 10`, `negLr = −lr × 5`, `reps = 100`, exactly. The curriculum-wide anti pass is separate: `_teachAntiHebbian(lr × antiLrScale)` with `antiLrScale` **2.5** on sequence probes (`curriculum.js:20858`), **0.5** (`16676`) and **0.3** (`16804`) elsewhere.
+- **Fix:** none to the math. The doc's single "antiLrScale = 2.5" line should say it is one of three.
+
+### 1.5 Neuron count — ✗ page partly wrong, two byte costs in play (⚠)
+- **Page:** `N = max(1000, min(VRAM×0.85/12, RAM×0.1/0.001))`, "12 bytes/neuron".
+- **Code:** that is the **GPU-host** branch of `detectResources()` (`server/brain-server.js:451-498`: `vram×0.85 / 12`, `freeRAM×0.1 / 0.001`, floor 1000). The **CPU-only coordinator** (the deployed box) takes the other branch: `min(freeRAM × 0.3 / 9, cpuCount × 150000)` (`:482-484`). `DREAM_BRAIN_BUDGET_MB` overrides both (`:740-756`). The allocator then sizes main-brain clusters at `MAIN_BRAIN_BYTES_PER_NEURON: 21` (`:1165`) and the language cortex at 18 KB/neuron (`:1166`).
+- **Math:** the page's 12 B is the card's *state* cost (vec2<f32> + u32); the allocator budgets 21 B for synapse mass on top. The primary-floor estimator uses **20** (`gpu.js:835`, `settings.donorBytesPerNeuron || 20`) against the allocator's **21** — the floor under-estimates a card's need by ~5% (≈ 190 MB at 200 M neurons). Fix: `gpu.js` reads `BRAIN_VRAM_ALLOC.MAIN_BRAIN_BYTES_PER_NEURON` instead of a literal.
+- **Fix:** page §8.21 corrected to name both branches and the budget override.
+
+### 1.6 Cluster shares — ✗ page wrong
+- **Page:** cortex 20%, cerebellum 20%, hippocampus / amygdala / basal ganglia / hypothalamus / mystery 12% each, seven clusters.
+- **Code:** `server/brain-server.js:640-650` — `language_cortex 0.50, cortex 0.10, cerebellum 0.098, hippocampus 0.06, amygdala 0.06, basalGanglia 0.06, hypothalamus 0.06, mystery 0.06, brainstem 0.002`. Eight clusters, and **half the brain is the language cortex**.
+- **Why:** the 20/20/12 split predates the language-cortex rebalance (its own comment: "language 0.75 → 0.50, main brain 0.25 → 0.50") and the brainstem.
+- **Fix:** page §1.5 Step 0, §8 data-flow diagram and the substrate block corrected.
+
+### 1.7 Synaptogenesis / pruning — 🪦 not on the deployed path
+- **Page:** `P(new) = p·pre·post·¬existing`, prune `|w| < 0.01`.
+- **Code:** `js/brain/cluster.js:1625-1645` `maintainConnectivity()` — `prune(0.01)` + synaptogenesis at probability 0.0005, "call every ~100 steps" — and **nothing calls it** (no caller in `cluster.js`, `engine.js` or the server). Structural plasticity is dormant everywhere.
+- **Fix:** page §8.12 marked dormant. Design decision owed: wire it on the GPU path (prune is a CSR rebuild; expensive at 17 matrices) or delete the section.
+
+### 1.8 STDP, Hodgkin-Huxley, LIF — 🪦 reference only
+- `sparse-matrix.js:1231 stdpUpdate` has no caller; `synapses.js` / `neurons.js` are the reference implementations the page is written against and do not run (the doc's own provenance header says so). The comparison table's "3 plasticity rules per cluster" is two on the live path (Oja + anti-Hebbian).
+
+---
+
+## 2. Modules
+
+### 2.1 Amygdala — ✅ agree on the formula; the server adds a floor the page never mentions
+- **Page:** `x(t+1) = tanh(W·x + drive)` ×5, `fear/reward = σ(proj·x/√size)`, `arousal = clamp(baseline + 0.4·tanh(4·depthDev) + 0.1·((fear+reward)−1), 0, 1)`, baseline EMA α 0.005.
+- **Code:** `js/brain/modules.js:160` `settleIters = 5`, `:189` leak 0.85, `:192-203` the tanh settle, `:258-264` α 0.005 and the arousal line, exactly. The server runs the same module and then **EMAs the result 0.7/0.3 and clamps arousal to `[0.3, 1]`** (`server/brain-server.js:6319-6321`).
+- **Math:** the 0.3 floor means the dashboard tooltip's "a sleeping infant ≈ 0" cannot happen on the deployed brain; her arousal never reads below 30%.
+- **Fix:** page and dashboard tooltip now state the floor. Whether a resting floor of 0.3 is wanted is a design call (it was added so a quiet brain still acts).
+
+### 2.2 Hypothalamus — ✅ agree
+- `dH/dt = −α(H − H_set) + input`, `α = 0.1`, needs-attention threshold 0.15 (`modules.js:405-426`).
+
+### 2.3 Basal ganglia — ✗ page wrong on the deployed path
+- **Page:** 6 channels × 25 neurons (150), `rate = EMA(spikes/25, α 0.3)`, winner needs `rate ≥ 0.15`, softmax `P(a) = e^{Q/τ}/Σ`, τ = impulsivity.
+- **Code (browser):** `js/brain/motor.js:26` 25 per channel, `:43` **floor 0.05** (lowered from 0.15 because the old floor sat above the steady-state rate and the motor never left idle), `:145` EMA **0.5/0.5** (was 0.7/0.3). `modules.js:295-325`: τ = **2.0** for Unity (high temperature = impulsive), not "τ = impulsivity".
+- **Code (deployed):** the server never sees per-neuron spikes, so there are **no channels at all**: `server/brain-server.js:6341-6357` builds six Q-values from cluster activities (`respond_text = 0.6·cortex + 0.3·bg + 0.1·hippo`, `generate_image = 0.4·amyg + 0.35·mystery + 0.25·cortex`, `speak = 0.5·arousal + …`, `listen = max(0, 0.3 − total)`, `idle = max(0.05, 0.2 − 0.15·arousal)`), EMA 0.7/0.3, plain argmax, **no confidence floor, no softmax**.
+- **Why:** the page describes the browser model, written before GPU-exclusive compute removed per-neuron readback.
+- **Fix:** page §8.9 rewritten to show the deployed formula and label the channel model browser-only.
+
+### 2.4 Cerebellum — ✗ page wrong; three different formulas exist
+- **Page:** `errorCorrection = −(Σ error²/n) × 2`.
+- **Code (browser):** `engine.js:676` `errorSignal = meanAbs(error) × 2` (mean absolute, not mean square), `:684-685` cortex gets `−errorSignal`, basal ganglia `−0.5·errorSignal`.
+- **Code (deployed):** `server/brain-server.js:7329-7338` — `cerebFeedback = −(cerebellum.spikeCount / cerebellum.size) × 2` for cortex and basal ganglia only, cortex additionally receiving the migration-divergence term. The server's "error" is the cerebellum's **firing rate**, not a prediction residual; the forward model in `modules.js:363-398` (`corrected = pred + w·(tgt − pred)`, `w += lr·error`) runs only in the browser.
+- **Math:** on the deployed path the cerebellum is a negative feedback proportional to its own activity. That is a defensible damping term, but it is not the Marr-Albus error correction the page describes.
+- **Fix:** page §4/§8 state the deployed formula. Design question owed: give the server-side cerebellum a real prediction residual (the cortex prediction error already exists at `cluster.js:2397`).
+
+### 2.5 Kuramoto coherence — ✅ agree on the formula; ⚠ one math wart, fixed
+- **Page / guide:** `R = |Σ e^{iθ_k}|/N` per band, `0.6·rGamma + 0.4·rTheta`, EMA α 0.1, ignition lift, dissociation drop, dream drop.
+- **Code:** `server/brain-server.js:6453-6460` the two order parameters and the 60/40 blend; `:6468` `+0.3·broadcast` when the broadcast exceeds 0.5; `:6476` `×(1 − 0.4·dissociation)` above 0.3; `:6482` `×0.6` while dreaming; `:6250` `0.9·old + 0.1·new`. Per-cluster phases come from each cluster's own activity-modulated accumulator (`:7340-7346`, `cluster.js:4236`), so the measure is real.
+- **Math wart:** the sum was seeded with the cortex's base phases (`N = 2`, `:6409-6413`) and the loop then added the cortex's own phases again (`:6416-6450`) — the same value twice, so the cortex carried double weight in every reading. **Fixed in this change:** the loop skips the cortex cluster. Expect the live coherence to read slightly lower and more honest after the next boot.
+
+### 2.6 Theta / gamma — ⚠ the Hz are simulated-time labels
+- **Page:** "theta ~6 Hz modulates drive, gamma ~40 Hz modulates learning rate, gated to the upper theta half".
+- **Code:** `cluster.js:537-538` `thetaPeriod = 167`, `gammaPeriod = 25` — in **ticks**; `:524` ±15% drive; `:4251` the upper-half gate. 167 ticks is 6 Hz only if a tick is 1 ms. The server's tick is `BRAIN_TICK_MS` = 100 ms above a million neurons (`brain-server.js:2166`), so on the deployed brain theta cycles every **16.7 s** and gamma every **2.5 s** of wall-clock.
+- **Math:** the gating still cycles — plasticity is still modulated across phases — but nothing about it is 6 Hz or 40 Hz in real time, and the curriculum's gamma sampling walks the same period in teach calls.
+- **Fix:** page §5 now gives the periods in ticks and both readings of them. Whether the periods should scale with `BRAIN_TICK_MS` is a design call.
+
+### 2.7 Ψ — ✅ agree
+- `Ψ = √(1/n) · N³ · Φ̂ · [α·Id + β·Ego + γ·Left + δ·Right]`, then `log10(max(1, ·))` (`mystery.js:201-222`). `n` = active spikes, `N` = total neurons. `psiGain` rides Ψ's deviation from its own slow EMA and is clamped `[0.8, 1.5]` (`brain-server.js:6236`).
+
+### 2.8 Φ proxy — ✗ page wrong, and the first draft of this file was wrong with it (⚠)
+- **Page:** "Shannon entropy of 1024 sampled spikes", and the first draft of this file said "floored at 0.1".
+- **Code:** `cluster.js:2487-2497` — at scale Φ is the **binary entropy of the exact GPU spike proportion** (`spikeCount / size`), the 1024-sample path being the browser fallback. `brain-server.js:6173-6197`: the 0.1 floor is **gone**; Φ̂ = `raw / reference`, the reference seeded at `H(0.015) = 0.1124`, raised to any new high at once and decayed at 0.99995/tick never below the seed; `floored` means `norm ≤ 0.01`.
+- **Math:** `H(p)` for `p < 0.5` is monotone in `p`, so this Φ̂ is **her firing rate relative to its own high-water mark** — a sparsity meter, not integration. The code's own comment admits the design limit. It does move Ψ now (the old clamp made it a constant that cancelled out of `psiGain`), which is the improvement.
+- **Fix:** this file corrected; page §6 corrected. Owed: an integration measure that is not a function of firing rate alone (e.g. mutual information between cluster spike proportions across a tick window — the per-cluster counts already arrive every batch).
+
+---
 
 ## 3. Consciousness mechanisms
 
-| Equation / mechanism | Verdict | Evidence |
-|---|---|---|
-| **Global workspace ignition** — softmax competition across cluster candidates, theta-*modulated* threshold (never hard-blocked), broadcast back to every cluster | ✅ working great | The broadcast is **consumed**: single-tick word emission reads it and gives the matching word a 10% mean-bucket boost. Before that was wired, ignition was computed and discarded. The threshold was also lowered after she reported the gate felt "gated too much" |
-| **Predictive coding surprise gate** — `surpriseGate = 0.5 + clamp(error, 0, 1)` multiplied into the gamma scale (high error → 1.5× learning, low → 0.5×) | ✅ working | Prediction error is published with a 32-sample history and a trend arrow |
-| **Stream of consciousness** — inner-voice seed blends 60% current state with 40% the previous thought; 8-deep chain persisted across restarts | ✅ working | The inner voice is probabilistic, not a metronome, with a capability gate in front of it: while she has banked no words it holds shut, counts the skips, and re-arms on her first word |
-| **Meta-register** — emissions inject back into the semantic region at 0.3 with familiarity decay (0.30 → 0.15 → 0.075, floor 0.04) | ✅ working | The decay is what stops "saying a word makes that word more likely" from running away |
-| **Attention gain** — per-region multiplier from arousal × valence × action gate, clamped `[0.5, 2.0]` | ✅ working | The clamp is the fix: unclamped, a stacked arousal-and-mood spike compounded past the cap and flooded the cortex |
-| **Introspective drive** — emits a *gap* (concept + lane), the words come from her interrogative weights or she stays silent; kind distribution measured across two pinned endocrine states at TV distance 0.840 | ⚠ working, limited | The falsifiability criteria are rendered. `source starved` is **expected** before she has lived anything and only becomes a finding if it persists once episodes exist |
-| **Curiosity follow-ups** (a question out of what she could not hold, up to three deep) | ⚠ working, limited | `gaps > 0` with `asks = 0` is a **training fact**, not a bug: the interrogative weights are simply not trained yet at the grades she has reached. Watch `asks` start climbing; it has not yet |
+### 3.1 Global workspace — ✗ page and dashboard wrong on both numbers
+- **Page / dashboard tooltip:** ignition threshold 0.55; a 10% mean-bucket boost on the broadcast word.
+- **Code:** `global-workspace.js:69-75` default **0.35** (lowered from 0.45 on her own report; `DREAM_GW_IGNITION` overrides). `cluster/emit.js:526` boost = `1 + 0.6 × strength` — up to **+60%**, not 10%.
+- **Math:** a 60% multiplier on one bucket is a strong prior toward repeating the last ignited word; the anti-repeat damp in `cluster.js:2601-2609` (candidate value × down to 0.25 once a word exceeds 40% of recent emissions) exists to counter exactly that. The two constants were tuned against each other and neither is documented.
+- **Fix:** page and dashboard tooltip corrected to 0.35 and `1 + 0.6·strength`.
 
-## 4. Memory
+### 3.2 Predictive-coding surprise gate — ✗ page simplified
+- **Page:** `gate = 0.5 + clamp(error, 0, 1)` → 1.5× / 0.5×.
+- **Code:** `cluster.js:2397-2421` `gate = 0.5 + err` (or `0.5 + err × coherence × inhibition` under the noise gate), ceiling `DREAM_SURPRISE_MAX` 1.5, and a **saturation clamp to 0.5** while sem→motor basins are collapsed (so a high error from corruption cannot amplify its own stamping). Its distribution is recorded (`_surpriseStats`).
+- **Fix:** page text corrected.
 
-| Equation / mechanism | Verdict | Evidence |
-|---|---|---|
-| **Tier 0 working memory** — unbounded, `strength ×= 0.9995` per tick (~4 min unreinforced), cosine refresh, `refreshCount ≥ 3` → Tier 1; every add fires hippocampal Hebbian on the pattern | ✅ working | Items and their labels are rendered; the 5-minute server snapshot window ages out into episodes with frequency-merge dedup |
-| **Tier 1 episodic salience** `0.4·\|valence\| + 0.3·arousal + 0.2·surprise + 0.1·novelty`, 168 h half-life, prune at `< 0.05` and `> 30 d` | ✅ working, **since 2026-08-31** | All three episode writers were **inert during curriculum training** for the project's entire history (two gated on a flag that stays true for the whole walk, one firing on phase completion while phases were not completing). Episodes read 0 on every boot before that date. A zero during an active walk is a real finding now |
-| **Frequency-merge gate** (cosine ≥ 0.85 within 48 h increments the row instead of inserting) | ✅ working | Read `frequency-merged` as the health signal, not the raw episode count — a small count with the merge counter climbing is the correct shape during a walk |
-| **Tier 2 schemas** — single-link clustering at cosine ≥ 0.85, salience-weighted centroid, 8-d attribute vector, merge at 0.90, daily decay 0.967, dedicated hippocampus→cortex projection | ✅ working | Cosine was raised from 0.70 to 0.85 so distinct teach phases form distinct schemas instead of one "learning" mega-schema; top-K=3 naming gives them distinct labels |
-| **Top-K schema retrieval** into the semantic region before generation (`+0.05` identity boost) | ✅ working | Top 5 at strength 0.4 every chat turn |
-| **Tier 3 identity anchors** — promote at strength > 5, retrievals > 100, \|valence\| > 0.6; decay 0.999/day; injected every turn at `0.15 / \|Tier3\|` | ✅ working | Identity-core persists through every fresh boot (excluded from the state wipe); the live state has carried 30 anchors with ~1,049 retrievals each |
-| **Consolidation engine** — every 5 min while dreaming, top-20 candidates, replay ×4 per schema with sleep-spindle 1.2× bursts, forced passes bounded at 120 s | ✅ working great | Runs **during** the curriculum (dream windows between cells, signal-driven completion), not only between conversations. The consolidation gate is also the one thing keeping the walk finite (~24 days with it, ~100 without) |
-| **Dream-time recombination** — novel emissions clearing joint criteria (cosine ≥ 0.20, ≥ 4 words, unique ratio ≥ 0.6, terminator) bind at reps 5 | 🔧 built, unread | Counters are published and rendered; no walk has yet produced a non-zero `consolidated` reading worth citing |
-| **Visual memory** — CDF 9/7 wavelet fields stored as JSON skeleton + binary blob in SQLite (cap 25,000), relation tags written per concept | ✅ working great | The monolithic-JSON store pinned the loop 761 ms at 10k entries and hard-failed at 100k; the SQLite store carries ~33k concepts per 250 MB and the blob row shape cut resident memory 25% |
-| **Relation-channel readback** (what she reads back off the tagged channels) | ⚠ working, limited | Early in a walk every band reads *flat* and the gate correctly refuses to act. The one reading to chase is `flatNoMass` with `tagWrites` climbing — that is tags not reaching the matrix, a different claim from channels that have not separated yet |
-
-## 5. Language — reading, meaning, speaking
-
-| Equation / mechanism | Verdict | Evidence |
-|---|---|---|
-| **GloVe 300-d grounding** + fastText subword for out-of-vocabulary words, one shared singleton for input and output | ✅ working great | The same word activates the same cortex pattern whether she is hearing it or about to say it |
-| **Learned semantic geometry** — per-word deltas on top of the borrowed vectors, common-context subtracted, per-word drift capped | ✅ working great | Both details were found by measuring: un-centred nudges made *unrelated* words converge faster than related ones, and an uncapped drift fused everything back together |
-| **Sparse text injection** into Wernicke's (only the touched indices, ~160 bytes for "hi") | ✅ working great | The dense 23.4 MB snapshot per message was what killed the donor on every chat turn, and the donor's decoder discarded it anyway — so chat text lands in her language cortex **for the first time** since this landed |
-| **Single-tick word emission** — one global `word_motor` band, one bucket per unique word, `sem → word_motor` argmax over an adaptive floor (`max(0.001, EMA × 0.5)`) | ✅ working great | `state.voice` is **measured, never inferred from grade**: `matrixDrivenPct`, buckets ever fired, refusals with age and a per-cause tally. The six per-subject sub-bands that overflowed and silenced learned words are gone |
-| **Dictionary oracle** (cosine scan over taught words when the matrix came back empty) | 🪦 deleted 2026-09-01 | It carried **99.1%** of emitted words in the captured run (425 oracle hits against 4 matrix hits); every gate probe travelled it, so gate pass rates were measuring the dictionary. `retrieved` is now a regression detector and must stay 0 |
-| **Tick-driven letter emission** (motor-region argmax, 3-tick stability commit, surprise-based word boundary, quiescence stop) | ✅ working | The fall-through path when single-tick emission is empty; both paths read her own weights |
-| **Honest silence** | ✅ working great | When neither trained path produces a word she says nothing and the silence is **counted** (`honestSilence`). The number to watch is how often she speaks at all, not a dictionary ratio that can only read zero |
-| **Structural sentence passes** — slot bindings, intent→slot transitions, agreement, article placement, all as Hebbian weights; generation emits one word per tick with no runtime template | ✅ working | The kindergarten structural probe (five seed kinds, pass when ≥3 produce ≥2 structurally-correct words) is the gate; a saturated or collapsed cortex is rebalanced instead of wedging the gate forever |
-| **Full definitions** — every sense, example and synonym from dictionaryapi.dev **unioned** with Wiktionary and offline WordNet; caps 24 senses / 10 examples / 6 synonyms per word | 🔧 built, unread | Three gates in front of the union made it inert (a cache that kept version-1 rows, an offline lane that short-circuited, a Wiktionary consult that only fired on 404 while the wrapper was returning 530). All three are fixed; the first boot on this code is the first time a 30-sense word binds as 30 senses |
-| **Comprehension gate** — inject prompt words at 0.4, step, cosine of semantic readout against the answer, pass at ≥ 40% of questions over 0.05 | ✅ working | The gate asks the same concepts *differently* from the teaching; the words must be pre-taught, and nonsense-word probes must stay **un**taught or they pass for the wrong reason |
-| **Word-creation promotion** (tip-of-tongue compounds promote at count ≥ 10) | 🔧 built, unread | The candidate list has read empty on every boot cited so far |
-
-## 6. Senses and her hands
-
-| Equation / mechanism | Verdict | Evidence |
-|---|---|---|
-| **Equational vision** — camera frame → CDF 9/7 field → 64-d percept read straight off the equation; no describer model anywhere | ✅ working great | The old vision-language describer was deleted; a describer whose words ground her concepts is a language model inside her senses |
-| **Camera frames bind to nothing** (a webcam cannot know what she is thinking) | ✅ working | A placeholder card had become her memory of a thought word; frames are experienced, never filed under the current word |
-| **Visual attention trigger** `!describedOnce ∨ (cortexError > 0.5 ∧ salience > 0.3) ∨ Δsalience > 0.4 ∨ Δarousal > 0.15` | ⚠ working, limited | The trigger runs. The page's claim that the IT stage is "an AI call, rate-limited 5 s" is stale — IT is the equational mind's eye now |
-| **Drawing** — schema (parts, sizes, orientations, colour family, ~1% of the reference) → eight hands over the same primitives → scene space, cast shadow, eraser, variation; practice loop keeps only measurable gains | ✅ working great | Practice ran live and climbed monotonically (0.9713 → 0.9723 over three sessions); five of the eight hands survived being judged; letter-guess scribbles, the palette guesser and the whole-bbox fallback were all deleted after being looked at |
-| **Drawable-word judgement** by WordNet lexicographer category, unknown words judged by their definition's head words — **no word lists** | ✅ working great | Full 2,207-word dictionary sweep judged by eye; the operator's not-drawable set survives fresh walks because it is taught, not coded |
-| **Two-seed self-consistency** before a looked-up reference is believed (agree ≥ 0.45 or nothing is bound) | ✅ working | Ended the 80% word/image mismatch — one noisy render was being bound and shown |
-| **Local image engine** — her own card's Stable Diffusion behind one gate, paced as a VRAM budget (one render at a time, idle unload, yields to a donor upload, 30 s look gap) | 🔧 built, unread | Replaced the remote provider on 2026-10-18. The free-VRAM rule (probe `nvidia-smi`, floor 3072 MB, fail-open counted as `vramUnreadable`) sits on **both** the chat lane and the look lane; `ownArt.imageEngine` carries the counters. No boot has produced them yet |
-| **Her voice** — one trained lane (`unity-voice-v2`), emotion / intensity / speech act read from her own state, rendered on her machine, shipped as a few KB of field-A | ✅ working | No browser synthesis, no cloud, no fallback voice; if the voice engine is down she is silent and the reason is counted |
-
-## 7. Compute topology
-
-| Equation / mechanism | Verdict | Evidence |
-|---|---|---|
-| **GPU-only teach lane** — governed binary frames, quadratic brake on buffer/RTT, atomic clear→write→hebbian groups, stale-guard that **refuses** a Hebbian whose pattern did not land | ✅ working great | Refusals are counted (`cap-flush`, `stale-suppressed`) because refusing is correct but not free |
-| **Primary floor measured against the live neuron count** (never the tier target) | ✅ working | A 16 GB card was refused for fifteen days against a tier-4 floor the brain was not running |
-| **No-primary pool** — best-fit partition of clusters across cards (cortex to the roomiest), batch fan-out per owner under one id with a join, late owners carried forward | 🔧 built, unread | Harnessed 22/22 on the production wiring; no two-card boot has run on it yet |
-| **Tunnel** — cross-cluster propagation once per gamma period (25 ticks) gated on cosine agreement `g = max(0, ŝA·ŝB)`, RTT-gated at 19 ms (derived: 1250 ms ÷ 64 against a measured 205 ms remote) | 🔧 built, unread | Same harness. The RTT gate means a remote pod never tunnels — by design |
-| **Delta-merge of replica shadows to the CPU master** | ⛔ not working (disabled) | Disabled; cause unknown. It stays on the board precisely because nobody has named why |
-
-## 8. What the reference page still says that the brain does not do
-
-These are on `html/brain-equations.html` as of this write-up. The four marked **fixed today** were corrected in the same change as this file; the rest are counted here so the next pass has the list.
-
-| Page claim | Reality | Status |
-|---|---|---|
-| §8.6 "IT object recognition (AI call, rate-limited 5s min)" | IT is the equational mind's eye; there is no AI call | **fixed today** |
-| §8.10 "Bootstrap: Until the projections have learned enough, an AI classification call provides a temporary semantic routing signal" | There is no classification call; routing is the projection or nothing | **fixed today** |
-| §8.18.5 "It's a four-tier pipeline… The slot scorer (8.14) still exists but now fires only as Tier 4 fallback" | The four-tier pipeline and the slot scorer are both deleted — the same section says so two cards later | **fixed today** |
-| §8.21 "W3C WebGPU standard — no CUDA, no drivers, just a browser tab… Brain pauses without compute.html" | The native donor runs CUDA; the browser donor is the fallback. The brain pauses without **a donor**, not without a tab | **fixed today** |
-| §8.14 "Bigram Sentence Generation" `P(next \| current) = count / total` presented as live | Word-level bigram sequencing is not the production path; emission is the trained `sem → word_motor` matrix | open |
-| §8.16 "Post-Processing — Agreement, Tense, Negation, Compounds" presented as live | Agreement and article placement are trained Hebbian passes, not a post-processor; the negation-at-40% rule does not exist in the emission path | open |
-| §8.17 sentence-type softmax over {question, exclamation, action, statement} | Sentence type emerges from the trained intent→slot transitions, not a sampled type | open |
-| Flow diagram "N Rulkov-map Neurons in 7 CLUSTERS" and §4 "6 Parallel Systems" against the master-equation row's eight clusters including the brainstem | Eight clusters since the brainstem was added | open |
-| §8.9 basal ganglia "150 neurons, 25 per channel" | Tiny-client geometry; the deployed cluster is a 12% share of hundreds of millions | open |
-| §7 curriculum heading "6 Subjects × 19 Grades = 114 Cells" against its own tooltip's 273 cells across a growing roster | 273 cells, 20 grades, 9 → 20 courses | open |
-| §8.21 `N = max(1000, min(VRAM×0.85/8, RAM×0.1/0.001))` | The count derives from free host RAM through the biologically-weighted allocator, pinned by the brain budget for the next walk | open |
-| Comparison table "3 (Hebbian, STDP, reward-mod) per cluster" | Oja-Hebbian plus anti-Hebbian on the live path; STDP is reference code | open |
-
-The canonical markdown twin, `docs/EQUATIONS.md`, carries the same retired mechanisms in its §8 ("Word Type from letters", "Post-Processing", "English Structure (built-in)") and a long tail of session-tagged history under §12; it needs the same pass.
+### 3.3 Stream blend, meta-register, attention — ✅ agree
+- 60/40 blend `inner-voice.js:248`; reflective inject 0.3 halving per repeat to a 0.04 floor `cluster.js:4125-4132`; attention gain clamped `[0.5, 2.0]` `cluster.js:4301`.
 
 ---
 
-## The two numbers to read first on the next boot
+## 4. Memory
 
-1. **`state.voice.verdict.status`** — `matrix-driven` is the only good answer. `attempting-refused` is red and loud: she is reaching for a word every tick and being refused. `unmeasured` is grey and means nothing has tried to speak, which is **not** a claim that she cannot.
-2. **`consciousness.phiState`** — `live` means Φ is actually modulating Ψ. `floored` means the Φ term has been a constant 0.1 for the whole boot and the consciousness operator has been running without its integration factor.
+### 4.1 Working memory — ✅ agree, with one caveat the page lacks
+- `WM_DECAY_RATE 0.9995`, drop below 0.1, `CONSOLIDATION_THRESHOLD 3` (`js/brain/memory.js:35-36, 138-186`).
+- **Caveat:** the server's Tier-0 age-out → Tier-1 promotion is **suspended while `_curriculumInProgress`** (`server/brain-server/memory.js:1119-1129`) — the teach-heartbeat snapshots were a freeze source and merge anyway. Her walk-time episodes come from the other two writers (chat and phase completion). The guide's statement that "the whole chain now runs while she studies" is true for those writers and not for this one.
+- **Fix:** guide and page now say which writer sleeps during the walk.
+
+### 4.2 Episodic salience — ✅ agree; decay ⚠ math, fixed
+- Weights 0.4/0.3/0.2/0.1 (`server/brain-server/memory.js:398, 536`); prune at `effective_salience < 0.05` and age > 30 d (`:612-613`).
+- **Decay:** page and variable name say "168-hour half-life"; the code computed `exp(−age_h / 168)` (`:622`), which is a **time constant** — half strength arrives at 168·ln2 ≈ 116 h, 1/e at 168 h. **Fixed in this change:** `exp(−ln2 · age_h / 168)`, so 168 h is a half-life as documented. Consequence: traces now decay slower than before (half at 168 h instead of 116 h), so fewer prunes per sweep. No walk gate touched.
+
+### 4.3 Frequency-merge — ✗ page wrong
+- **Page:** cosine > 0.85 within 48 h. **Code:** exact-text merge within 48 h (`:470`) then cosine ≥ **0.5** (`:489-500`, lowered from 0.7 because near-identical heartbeats were not merging). The dashboard tooltip already said 0.5.
+- **Fix:** page corrected.
+
+### 4.4 Tier-1 → Tier-2 promotion gate — ✗ page wrong
+- **Page:** `salience > 0.5 AND frequency ≥ 3 AND consolidations ≥ 2`.
+- **Code:** `findPromotionCandidates` (`:662-665`) — salience > **0.2**, frequency ≥ **1**, consolidation ≥ **0**, deliberately relaxed to break a chicken-and-egg (nothing could ever consolidate first).
+- **Fix:** page corrected. The relaxed gate means any salient-enough episode promotes on its first dream pass; that is the current design, stated.
+
+### 4.5 Schemas — ✗ page's equation block wrong, its prose right
+- Group cosine **0.85** (`hippocampal-schema.js:70`, raised from 0.70 — the page's eq block still says 0.7), merge 0.90 with attribute cosine 0.7 (`:52, 297-299`), decay 0.967/day (`:47`). ✅ otherwise.
+- **Retrieval:** top-K 5, strength bonus `min(0.2, 0.05·ln(1+s))` (`:548-562`). The page's **"+0.05 Tier-3 boost" does not exist** in `retrieveSchemas`.
+- **Fix:** page eq block corrected; the Tier-3 line removed.
+
+### 4.6 Identity (Tier 3) — ✗ page wrong on the cap
+- Promotion `strength > 5 ∧ retrievals > 100 ∧ |valence| > 0.6`, decay 0.999/day, baseline inject 0.15 (`:620-648`) ✅. Cap: page says 50, code `TIER3_HARD_CAP = Infinity` (`:647`).
+- **Fix:** page corrected.
+
+### 4.7 Consolidation engine — ✗ page wrong on the cap
+- 5 min, top-20, replay ×4, spindle 1.2× for 200 ms / 1000 ms quiet (`consolidation-engine.js:38-43`, `memory.js:662`) ✅. Pass cap: page says `DREAM_CONSOLIDATION_MAX_MS` default 30 s; code **45 s** routine, **120 s** forced (`:152-184`).
+- **Fix:** page corrected.
+
+### 4.8 Dream recombination — ✅ agree
+- Coherence ≥ 0.20, ≥ 4 words, unique ratio ≥ 0.6, reps 5, 3 rounds per window (`curriculum.js:5751-5761`). 🔧 no live non-zero count yet.
+
+---
+
+## 5. Language
+
+### 5.1 Single-tick emission floor — ✅ agree
+- `NOISE_FLOOR 0.001`, adaptive `EMA × 0.5` after 20 samples, EMA α 0.05 (`cluster/emit.js:789-819, 913-914`).
+
+### 5.2 Comprehension gate — ✗ page wrong, and ⚠ the probe measures less than its name
+- **Page:** "inject each prompt word's GloVe at 0.4 into sem, step, cosine of the sem readout against the answer > 0.05, pass at ≥ 40%".
+- **Code:** `curriculum.js:33421-33525` — for each prompt word it takes the **first letter only**, builds that letter's one-hot, propagates it through `letter_to_sem`, averages, mean-centres, and compares to the answer's GloVe; a question passes at cosine > **0.10**; the gate passes at `GATE_PATH_MIN` = **0.80** of up to 10 sampled questions (`curriculum.js:920`).
+- **Math:** two prompts whose words share first letters produce identical probes ("cat sat" ≡ "car sun"). The gate therefore measures the letter→meaning projection's association with the answer, not comprehension of the prompt. It is the gate every grade's cells are closed on.
+- **Fix:** page corrected to describe what runs. **Owed (design, re-price first):** read each prompt word through the real reading path (`cluster.readText`, or its GloVe injected into sem) before the readout, so the probe sees words rather than initials.
+
+### 5.3 Visual attention — ✗ page wrong; browser only
+- **Page:** `!describedOnce ∨ (cortexError > 0.5 ∧ salience > 0.3) ∨ Δsalience > 0.4 ∨ Δarousal > 0.15`.
+- **Code:** `engine.js:786` `cortexError > 0.7 && salience > 0.5` only — no Δsalience, no Δarousal — and this is the **browser** engine. The deployed look lane (`visual-memory.js`) is thought-driven on its own cadence with a 30 s reference gap (`:1669`), not a trigger formula.
+- **Fix:** page §8.6 corrected and scoped.
+
+### 5.4 Hippocampal recall threshold — ✗ page wrong
+- **Page (§1.5 step 3):** "if the cosine clears ~0.75 the episode is injected".
+- **Code:** browser `engine.js:75` `RECALL_ERROR_THRESHOLD = 0.4` on **prediction error**, not cosine; the deployed chat path uses schema retrieval (§4.5) instead.
+- **Fix:** page corrected.
+
+### 5.5 Sentence types, post-processing, bigrams, letter-shape word types — 🪦 browser only, one renderer shared
+- `language-cortex.js` (sentence-type probabilities, agreement/negation post-processing, bigram sequencing, `_fineType`) runs in the **browser fallback** only. The server keeps exactly one function from it: `_renderSentence` for capitalisation and terminal punctuation on a probe answer (`chat.js:855`, `language-cortex.js:2618-2660`). The page's §8.14 / §8.16 / §8.17 describe that engine as if it were the deployed one.
+- **Fix:** those sections are now labelled browser-fallback with the one shared renderer named.
+
+---
+
+## 6. Senses, hands, compute — ✅ agree (constants read)
+- Definition caps 24 / 10 / 6 (`curriculum.js:17833-17835`); visual store cap 25,000 (`visual-memory.js:91`); image engine free-VRAM floor 3072 MB, 5 s probe TTL, 20 s idle unload, 15 s chat yield (`image-engine.js:68-97`), 30 s look gap (`visual-memory.js:1669`); tunnel cadence 25 ticks, 16 buckets, gain 0.25, RTT gate 19 ms (`gpu.js:1840-1844`). All 🔧 unread on a live boot for the lanes that only the fresh walk exercises (pool, tunnel, image engine, definition union).
+
+---
+
+## 7. What changed in this pass
+
+**Code (two one-line math repairs, no walk gate touched):**
+1. `server/brain-server/memory.js` — episodic decay now `exp(−ln2·age/168)`: 168 h is a half-life, as named and documented, instead of a time constant.
+2. `server/brain-server.js` `_computeKuramotoCoherence` — the cortex is counted once; its base phase no longer double-weights every reading.
+
+**Page (`html/brain-equations.html`), corrected to the code:** cluster shares (1.6), basal ganglia (2.3), cerebellum (2.4), theta/gamma periods (2.6), Φ (2.8), ignition threshold and boost (3.1), surprise gate (3.2), frequency-merge (4.3), promotion gate (4.4), schema cosine and the phantom Tier-3 boost (4.5), identity cap (4.6), consolidation cap (4.7), comprehension gate (5.2), visual attention (5.3), recall threshold (5.4), browser-only language sections (5.5), neuron-count branches (1.5), amygdala floor (2.1). Dashboard tooltip: ignition 0.55 → 0.35.
+
+**Owed, each a design decision rather than a typo:**
+- 5.2 the comprehension probe reads initials, not words — re-price the walk before changing the gate.
+- 2.8 Φ̂ is a firing-rate meter — a real integration measure is still to be built.
+- 2.4 the deployed cerebellum feeds back its firing rate, not a prediction residual.
+- 2.6 theta/gamma periods are in ticks and do not scale with `BRAIN_TICK_MS`.
+- 1.7 structural plasticity has no caller.
+- 1.5 the floor estimator's 20 bytes/neuron against the allocator's 21 — one constant, read from one place.
+- `docs/EQUATIONS.md` §8 carries the browser language engine as live and 25 headers with ticket/session tags; it needs the same pass as the page.
+
+## 8. The readings to take first on the next boot
+1. `state.voice.verdict.status` — `matrix-driven` or nothing else counts.
+2. `consciousness.phiState` — `live`, not `floored`; and `phiNorm` should move with firing, because that is all it can do (2.8).
+3. `coherence` — expect a modest drop versus the last boot's reading; that is the double-count leaving, not a regression.

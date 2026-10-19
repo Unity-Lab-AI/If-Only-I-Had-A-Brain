@@ -6416,6 +6416,10 @@ class ServerBrain {
     for (let i = 0; i < clusterNames.length; i++) {
       const c = this.clusters[clusterNames[i]];
       if (!c) continue;
+      // The cortex's phases are already in the sum as the base phasors above
+      // (N starts at 2). Adding its own getPhases() again put the same value
+      // in twice, so the cortex carried double weight in every reading.
+      if (c === this.cortexCluster) continue;
       let thetaPhase, gammaPhase;
       // SPEAK.5a.i — prefer each cluster's OWN activity-modulated oscillator
       // phase (getPhases()/_thetaPhaseAcc), so r measures the genuine emergent

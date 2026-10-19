@@ -619,7 +619,10 @@ const SERVER_MEMORY_MIXIN = {
       const updateTx = this._db.transaction((rs) => {
         for (const r of rs) {
           const ageHours = (now - r.timestamp) / (60 * 60 * 1000);
-          const factor = Math.exp(-ageHours / DECAY_HALF_LIFE_HOURS);
+          // ln2 makes the constant a HALF-LIFE, as its name and every doc say.
+          // Without it this was a time constant: half strength at 168·ln2 ≈ 116 h,
+          // 1/e at 168 h. Found by reading the formula against its own name.
+          const factor = Math.exp(-Math.LN2 * ageHours / DECAY_HALF_LIFE_HOURS);
           const effective = (r.salience_score || 0) * factor;
           this._stmtUpdateEffectiveSalience.run(effective, r.id);
           decayed++;

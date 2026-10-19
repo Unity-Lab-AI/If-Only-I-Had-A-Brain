@@ -14,9 +14,13 @@
 >            authoring, left. Verified by headless render of every repaired selector + screenshots; both dashboard
 >            script blocks re-compiled. Four stale brain claims corrected on the equations page (AI-call IT stage,
 >            AI classification bootstrap, "four-tier pipeline / slot scorer still exists", "no CUDA, just a tab").
->   ledger   docs/equation-rundown.md — every equation family: working great / working with a limit / built but
->            unread / inert / deleted, with the evidence; §8 = twelve claims the equations page still makes that
->            the brain no longer does (4 fixed, 8 open). Also a docs-viewer slug (EQUATION_RUNDOWN, 20 slugs now).
+>   ledger   docs/equation-rundown.md — REWRITTEN as the divergence map after he asked whether the math was checked
+>            (it had not been): page / doc / code / math / why / fix per equation family, every constant read at its
+>            implementation. TWO MATH BUGS FIXED in code: episodic decay was a time constant not a half-life
+>            (memory.js, now exp(-ln2*age/168)); the cortex was counted twice in Kuramoto coherence (brain-server.js).
+>            22 page corrections. THE BIG OPEN ONE: _gateComprehension reads only the FIRST LETTER of each prompt
+>            word — the gate every grade closes on measures initials, not words. Design change, re-price first.
+>            Also a docs-viewer slug (EQUATION_RUNDOWN, 20 slugs now).
 >   owed     the 8 open page claims + docs/EQUATIONS.md (same retired mechanisms described as live, and 25 headers
 >            carrying ticket/session IDs — a brain doc). First two readings on the next boot: state.voice.verdict
 >            .status must be matrix-driven; consciousness.phiState must be live, not floored.
