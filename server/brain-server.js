@@ -1375,7 +1375,27 @@ if (BUNDLE_FRESHNESS.ok === false) {
 // ⛔ THE ORDER IS THE RULE, not a preference: set ahead of a published tag, every
 // donor exits at its next disconnect, the launcher reinstalls the same older
 // `releases/latest`, and the pod loops downloading instead of donating.
-const CURRENT_DONOR_VERSION = '0.3.36';
+// ⛔⛔ DERIVED FROM `donor-app/Cargo.toml`, NEVER TYPED HERE AGAIN. Measured
+// 2026-10-19: this constant read `'0.3.36'` while Cargo.toml was at `0.3.39` —
+// three releases behind the binary he double-clicks — so every attached donor
+// was told it was current when it was not, and the self-update lane that this
+// number drives had been silently off for three versions. A hand-typed copy of
+// a value that lives in another file is a value that WILL drift; the rule in
+// the comment above ("set ahead of a published tag…") was obeyed exactly zero
+// times because nothing enforced it. The repo ships Cargo.toml, so the source
+// of truth is a file read away. ⛔ NO FALLBACK TO A LITERAL: if the file is
+// unreadable the server refuses to boot with the reason on screen, because a
+// brain that cannot say which donor it expects would quietly recommend
+// nothing — the exact silent failure this replaces.
+const CURRENT_DONOR_VERSION = (() => {
+  const _p = path.join(__dirname, '..', 'donor-app', 'Cargo.toml');
+  let _txt;
+  try { _txt = fs.readFileSync(_p, 'utf8'); }
+  catch (e) { throw new Error(`CURRENT_DONOR_VERSION: cannot read ${_p} (${e && e.message}). The donor version is derived from Cargo.toml by design; restore the file.`); }
+  const _m = /^\s*version\s*=\s*"(\d+\.\d+\.\d+)"/m.exec(_txt);
+  if (!_m) throw new Error(`CURRENT_DONOR_VERSION: no 'version = "x.y.z"' line in ${_p}`);
+  return _m[1];
+})();
 
 const WEIGHTS_FORMAT_VERSION = 6;   // language-growth hop 2 (2026-08-29): WORD_MOTOR_TARGET_LANG_CORTEX 12M→20M with per-host AFFORDABLE geometry (each host hops as far as its own RAM/VRAM bounds allow, ≤ target) — saved lang-cortex geometry no longer matches, old weights auto-refuse → fresh walk both directions, per the operator's word. (v5 was ENDO 2026-08-25: `brainstem` cluster added (monoamine nuclei) — cluster set + cerebellum fraction changed. v4 was language-growth hop 1 2026-08-16: langCortexSize 1.5M→12M. v3 was WMB 2026-07-14: word_motor unified band.)
 // ⛔⛔ THE `UBWT` BINARY WEIGHT FILE'S OWN FORMAT VERSION — A DIFFERENT NUMBER
@@ -7576,6 +7596,18 @@ class ServerBrain {
               console.log(`[Brain] SUBSTEPS.1 — ${_substepsThisTick} brain-steps per donor round-trip (${_isNative ? `NATIVE tier, floor ${SUBSTEPS_NATIVE}: this donor drains its socket during a batch — priority lane + dedicated compute thread` : `conservative tier, floor ${SUBSTEPS}: browser donor, or a version we cannot read`}${_substepsThisTick !== _tierFloor ? ` · SUBSTEPS.2 has since adapted ${_tierFloor} → ${_substepsThisTick}` : ''}) → ${Math.round(1000 / BRAIN_TICK_MS * _substepsThisTick)} brain-steps/sec. Override with DREAM_SUBSTEPS.`);
             }
             const batchResult = await this._gpuBatch(_substepsThisTick, clusterParams);
+            // POOL / TUNNEL — cross-cluster propagation on non-zero set
+            // agreement, once per gamma cycle, against owners on a fast wire.
+            // Fire-and-forget with an in-flight guard: a cycle's readbacks and
+            // writes must never extend THIS tick's latency, and a cycle that is
+            // still running when the next cadence point arrives is skipped,
+            // not stacked. See gpu.js _tunnelPropagate for the equation.
+            if (typeof this._tunnelPropagate === 'function' && !this._tunnelInFlight) {
+              this._tunnelInFlight = true;
+              this._tunnelPropagate()
+                .catch((e) => { const T = this._tunnelStats && this._tunnelStats(); if (T) T.lastErr = String((e && e.message) || e); })
+                .finally(() => { this._tunnelInFlight = false; });
+            }
 
             // T18.4.f — capture per-phase GPU timing from compute.html's
             // batch response so the dashboard can show WHERE step time
@@ -13530,6 +13562,37 @@ wss.on('connection', (ws, req) => {
           }
 
           brain._gpuClients.add(ws);
+          // POOL — every donor that joins the pool triggers a re-partition.
+          // Delayed 1.5 s for the same reason the replica path delays: the
+          // donor's own WebGPU/CUDA device init must finish before it is
+          // handed gpu_init for the clusters it now owns. Clusters whose owner
+          // CHANGED get re-initialised on the new card (LIF state is ephemeral;
+          // the weights live in the CPU master, and cortex's matrices re-upload
+          // through the existing cortex-owner path when cortex moves).
+          setTimeout(() => {
+            try {
+              if (ws.readyState !== 1 || typeof brain._partitionClustersAcrossPool !== 'function') return;
+              const before = brain._clusterOwner instanceof Map ? new Map(brain._clusterOwner) : new Map();
+              const after = brain._partitionClustersAcrossPool(`gpu_register ${id}`);
+              const byOwner = new Map();
+              for (const [cl, owner] of after) {
+                if (before.get(cl) === owner) continue;           // unchanged — nothing to send
+                if (!byOwner.has(owner)) byOwner.set(owner, new Set());
+                byOwner.get(owner).add(cl);
+                // A moved cluster must re-confirm on its NEW card before the
+                // tick trusts it; the flat confirmed-map is correct because a
+                // cluster has exactly one owner at a time.
+                if (brain._gpuInitializedConfirmed) delete brain._gpuInitializedConfirmed[cl];
+                if (brain._gpuInitialized) delete brain._gpuInitialized[cl];
+              }
+              for (const [owner, set] of byOwner) {
+                if (owner.readyState !== 1) continue;
+                const n = brain._gpuInitDonorClusters(owner, set);
+                const oc = brain.clients.get(owner);
+                console.log(`[Pool] ${(oc && (oc.gpuName || oc.id)) || 'donor'} now owns [${[...set].join(', ')}] — gpu_init sent for ${n} cluster(s).`);
+              }
+            } catch (e) { console.warn('[Pool] re-partition on register failed (non-fatal):', e && e.message); }
+          }, 1500);
           // PA.4.8 — capture donor compute capacity (compute.html reports its
           // WebGPU adapter VRAM) for community-compute milestone scaling.
           client.gpuVramMB = Number(msg.vramMB) || 0;
@@ -13948,6 +14011,24 @@ wss.on('connection', (ws, req) => {
             console.warn(`[Brain] compute_batch_result batchId mismatch: expected ${brain._gpuBatchPending.batchId}, got ${msg.batchId}`);
             break;
           }
+          // POOL — JOIN. An authoritative result may now arrive from ANY owner
+          // socket, carrying only the clusters that owner holds. Merge it and
+          // keep waiting until every owner has reported; the batch deadline in
+          // _gpuBatch resolves with the partial map if one is late, so a slow
+          // card never stalls the tick (its clusters carry their last values —
+          // the tick loop already treats a missing entry as a miss).
+          {
+            const _pend = brain._gpuBatchPending;
+            if (_pend && _pend.expected instanceof Set) {
+              const _pc = msg.perCluster || {};
+              for (const _k of Object.keys(_pc)) _pend.merged[_k] = _pc[_k];
+              _pend.expected.delete(ws);
+              if (_pend.expected.size > 0) {
+                break;                                   // more owners still owe this batch
+              }
+              msg.perCluster = _pend.merged;             // everyone answered — resolve the union
+            }
+          }
           const resolver = brain._gpuBatchPending.resolve;
           brain._gpuBatchPending = null;
           brain._gpuBatchesCompleted = (brain._gpuBatchesCompleted || 0) + 1;
@@ -14185,6 +14266,30 @@ wss.on('connection', (ws, req) => {
         brain._gpuMisses = 0;
         if (brain.cortexCluster) brain.cortexCluster._gpuShadowDirty = true;
         _rearmCortexGpuUpload('primary-left failover');
+        // POOL — the departed card's clusters need new owners. Re-partition
+        // over the survivors and re-init only what moved. The cortex-owner
+        // promotion above stays as the cortex placement; this handles the
+        // other seven, which the old failover silently left on a dead socket.
+        try {
+          if (typeof brain._partitionClustersAcrossPool === 'function') {
+            const before = brain._clusterOwner instanceof Map ? new Map(brain._clusterOwner) : new Map();
+            const after = brain._partitionClustersAcrossPool('owner left');
+            const byOwner = new Map();
+            for (const [cl, owner] of after) {
+              if (before.get(cl) === owner) continue;
+              if (!byOwner.has(owner)) byOwner.set(owner, new Set());
+              byOwner.get(owner).add(cl);
+              if (brain._gpuInitializedConfirmed) delete brain._gpuInitializedConfirmed[cl];
+              if (brain._gpuInitialized) delete brain._gpuInitialized[cl];
+            }
+            for (const [owner, set] of byOwner) {
+              if (owner.readyState !== 1) continue;
+              const n = brain._gpuInitDonorClusters(owner, set);
+              const oc = brain.clients.get(owner);
+              console.log(`[Pool] after a card left, ${(oc && (oc.gpuName || oc.id)) || 'donor'} now owns [${[...set].join(', ')}] — gpu_init sent for ${n} cluster(s).`);
+            }
+          }
+        } catch (e) { console.warn('[Pool] re-partition on disconnect failed (non-fatal):', e && e.message); }
         const _pid = (brain.clients.get(_promotedGpu) || {}).id || '(unknown)';
         console.log(`[Server] PRIMARY GPU donor left — promoted standby ${_pid} to primary (pool: ${brain._gpuClients ? brain._gpuClients.size : 0}). Brain re-uploads to the new primary on next dispatch.`);
       } else {

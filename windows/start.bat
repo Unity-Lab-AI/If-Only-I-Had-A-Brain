@@ -179,6 +179,35 @@ REM the donor. Set it in the environment to override this default for one run.
 if not defined DREAM_BRAIN_BUDGET_MB set DREAM_BRAIN_BUDGET_MB=8000
 echo   [scale] brain budget %DREAM_BRAIN_BUDGET_MB%MB -- card shared with her voice and her eyes.
 
+REM ---------------------------------------------------------------------------
+REM ROOT DONOR VERSION CHECK -- "the donor is old" becomes a PRINTED fact.
+REM The root exe is the artifact a human double-clicks and the only one whose
+REM version was discoverable solely by executing it. On 2026-10-17 it sat at
+REM 0.3.36 while the shipped release was 0.3.37, byte-identical to a stale
+REM build dir, and nothing said so. Compare it against donor-app\Cargo.toml,
+REM which the brain itself now derives CURRENT_DONOR_VERSION from.
+set "UAL_DONOR_EXE=%~dp0..\unity-donor-windows-x86_64.exe"
+set "UAL_DONOR_WANT="
+for /f "tokens=2 delims==" %%v in ('%SystemRoot%\System32\findstr.exe /b /c:"version" "%~dp0..\donor-app\Cargo.toml"') do if not defined UAL_DONOR_WANT set "UAL_DONOR_WANT=%%v"
+set "UAL_DONOR_WANT=%UAL_DONOR_WANT: =%"
+set "UAL_DONOR_WANT=%UAL_DONOR_WANT:"=%"
+if exist "%UAL_DONOR_EXE%" (
+    set "UAL_DONOR_HAVE="
+    for /f "tokens=2" %%v in ('"%UAL_DONOR_EXE%" --version 2^>nul') do if not defined UAL_DONOR_HAVE set "UAL_DONOR_HAVE=%%v"
+    if defined UAL_DONOR_HAVE (
+        if "%UAL_DONOR_HAVE%"=="%UAL_DONOR_WANT%" (
+            echo   [donor] root unity-donor-windows-x86_64.exe is %UAL_DONOR_HAVE% -- matches donor-app\Cargo.toml.
+        ) else (
+            echo   [donor] !! ROOT DONOR IS STALE: exe reports %UAL_DONOR_HAVE%, Cargo.toml says %UAL_DONOR_WANT%.
+            echo   [donor] !! Replace it with the SHIPPED release asset for %UAL_DONOR_WANT% -- never a local build dir.
+        )
+    ) else (
+        echo   [donor] root donor exe present but --version printed nothing -- cannot verify it.
+    )
+) else (
+    echo   [donor] no root unity-donor-windows-x86_64.exe -- the donor app is not installed here.
+)
+
 if defined DREAM_FORCE_CLEAR (
     echo   [!] DREAM_FORCE_CLEAR=1 -- will clear brain state on boot.
     echo.

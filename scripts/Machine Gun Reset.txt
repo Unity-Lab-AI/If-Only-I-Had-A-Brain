@@ -1,5 +1,6 @@
-/* UNITY MACHINE GUN v5 - paste into the browser console (F12) on ANY page of
- * https://if-only-i-had-a-brain.git.unityailab.com
+/* UNITY MACHINE GUN v5 - paste into the browser console (F12) on the ADMIN
+ * dashboard, which is loopback-only now: http://localhost:7525/html/dashboard.html
+ * (the public site at theunitybrain.com does NOT forward the admin lane, by design)
  * ASCII only. Short lines. Nothing here can be broken by copy-wrap.
  *
  *   PASTE          arms and reports. Fires NOTHING.
