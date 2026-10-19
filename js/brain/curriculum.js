@@ -17782,9 +17782,25 @@ export class Curriculum {
     // once per word, not per definition or per rep, so the count is "words
     // defined" rather than a number inflated by the dose.
     try {
-      const first = definitions[0] && (definitions[0].definition || definitions[0]);
-      this.teachBus('_teachWordDefinition', `${w} — ${String(first || '').slice(0, 200)}`, {
+      // ⛔⛔ THE SENSE COUNT IS PART OF THE FACT, NOT A DETAIL. This line used to
+      // publish `definitions[0]` alone, so the teach view showed ONE definition
+      // per word while the loop below bound EVERY sense — measured live on a
+      // fresh walk: "set" 91 senses, "take" 65, "down" 60, and across the boot
+      // 7,769 passes with more than one sense against ZERO with exactly one.
+      // The operator read the view and concluded she was being trained on a
+      // single definition per word, which would have been a serious defect if
+      // it were true. **An instrument that understates the work is the same
+      // class of lie as one that overstates it** — it invites a fix to
+      // something that is not broken. The count and the part of speech now ride
+      // the line, and the text is labelled as the sense it actually is.
+      const d0 = definitions[0];
+      const first = d0 && (d0.definition || d0);
+      const senses = definitions.length;
+      const pos0 = (d0 && d0.partOfSpeech) ? ` (${d0.partOfSpeech})` : '';
+      const senseTag = senses > 1 ? ` [sense 1 of ${senses} — all ${senses} are bound]` : ' [1 sense]';
+      this.teachBus('_teachWordDefinition', `${w}${pos0}${senseTag} — ${String(first || '').slice(0, 200)}`, {
         phase: opts.label || null, source: 'dictionaryapi.dev', reps: opts.reps ?? 6,
+        senses, partsOfSpeech: [...new Set(definitions.map((x) => x && x.partOfSpeech).filter(Boolean))],
       });
     } catch { /* the view must never break a teach */ }
 
