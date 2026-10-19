@@ -35,6 +35,10 @@
 const offlineDict = require('./offline-dictionary.js');
 
 const API_BASE = 'https://api.dictionaryapi.dev/api/v2/entries/en/';
+// The SAME dictionary without the wrapper's editorial filtering. See the union
+// block in the fetch path for why this is a second query for one capability
+// rather than a fallback, and for the measured coverage that forced it.
+const WIKT_BASE = 'https://en.wiktionary.org/api/rest_v1/page/definition/';
 
 // fetch availability check at module load.
 const HAS_FETCH = typeof globalThis.fetch === 'function';
@@ -44,6 +48,54 @@ if (!HAS_FETCH) {
 
 // User-Agent for dictionary API.
 const USER_AGENT = 'Unity-Brain/1.0 (https://github.com/unity-ai-lab)';
+
+/**
+ * Wiktionary senses for one word, in the SAME shape the wrapper produces:
+ * `{ partOfSpeech, definition, example, synonyms }`.
+ *
+ * ⛔ Returns `[]` on any failure and never throws — the union that calls this
+ * must degrade to the wrapper's senses, never to zero senses.
+ *
+ * ⚠ Three things about this payload that a naive reader gets wrong:
+ *   1. It carries EVERY language on the page (`en, sq, nl, fr, es, sv, other`
+ *      observed on one word). Only `en` is ours.
+ *   2. Definition text is HTML — `<a rel="mw:WikiLink" …>`, `<span
+ *      class="usage-label-sense">`, `<b>` — and must be stripped before it
+ *      reaches the teach lane, or she binds markup as vocabulary.
+ *   3. The API emits `definition: ""` for header rows. Those are dropped;
+ *      an empty definition is not a sense.
+ */
+async function _fetchWiktionarySenses(word, timeoutMs) {
+  const strip = (s) => String(s || '')
+    .replace(/<[^>]*>/g, ' ')          // tags
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+  const out = [];
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), Math.max(2000, timeoutMs || 3000));
+  try {
+    const res = await fetch(WIKT_BASE + encodeURIComponent(word), {
+      signal: controller.signal,
+      headers: { 'User-Agent': USER_AGENT, 'Accept': 'application/json' },
+    });
+    if (!res.ok) return out;                       // 404 here is not fatal — the wrapper may still know it
+    const j = await res.json();
+    const en = Array.isArray(j && j.en) ? j.en : [];
+    for (const group of en) {
+      const pos = String((group && group.partOfSpeech) || '').toLowerCase();
+      for (const d of (group && group.definitions) || []) {
+        const def = strip(d && d.definition);
+        if (!def) continue;                        // header rows arrive as ""
+        const ex = Array.isArray(d && d.examples) && d.examples.length ? strip(d.examples[0]) : '';
+        out.push({ partOfSpeech: pos, definition: def, example: ex, synonyms: [] });
+      }
+    }
+  } catch { /* fall through to [] */ }
+  finally { clearTimeout(t); }
+  return out;
+}
 
 // LRU cache. Insertion order = recency in Map. On hit,
 // delete + re-set so the entry moves to the "newest" end. On overflow,
@@ -264,8 +316,26 @@ async function getDefinition(word, opts = {}) {
         return null;
       }
       if (!res.ok) {
-        // 404 = word has no dictionary entry → permanent (noDef, never
-        // re-fetch). Other non-OK (5xx) = transient → normal retry window.
+        // ⛔⛔ A 404 FROM THE WRAPPER IS NOT "NO SUCH WORD", AND TREATING IT AS
+        // ONE IS WHAT KEPT HER VOCABULARY CORPORATE. Every word the operator
+        // named — fuck, shit, cunt, piss, penis, vagina, tampon, puberty,
+        // horny, feces — 404s here and is PRESENT in Wiktionary with real
+        // depth (shit 29 senses, fuck 26 across five parts of speech). This
+        // branch used to cache `noDef: true` on that 404, which is a PERMANENT
+        // marker: the word was never asked for again, on any later walk.
+        // So the single most important place to ask the unfiltered source is
+        // exactly where the filtered one says the word does not exist.
+        if (res.status === 404) {
+          let wikt = [];
+          try { wikt = await _fetchWiktionarySenses(key, timeoutMs); } catch { wikt = []; }
+          if (wikt.length > 0) {
+            const firstW = wikt[0].definition;
+            _cachePut(key, { definition: firstW, definitions: wikt, fetchedAt: Date.now() });
+            return wikt;
+          }
+        }
+        // 404 with no Wiktionary entry either = genuinely no dictionary entry
+        // → permanent (noDef, never re-fetch). Other non-OK (5xx) = transient.
         _cachePut(key, { error: true, fetchedAt: Date.now(), noDef: res.status === 404 });
         return null;
       }
@@ -287,6 +357,36 @@ async function getDefinition(word, opts = {}) {
         return null;
       }
       const definitions = [];
+      // ⛔⛔ WIKTIONARY IS QUERIED ALONGSIDE, AND IT IS NOT A FALLBACK.
+      // Operator: "we need like a urban dictions for her to look up all the
+      // names that normal dictrionaries wont.. ie she needs full human
+      // definitions so all slang cusses and obsinitys and organ and
+      // excreations names… lets not limit her by only having words that
+      // corporate dictionarieds have".
+      //
+      // MEASURED, 10 words the wrapper returns nothing useful for:
+      //   fuck 26 defs (Verb/Noun/Interjection/Adverb/Particle) · shit 29 ·
+      //   cunt 14 · piss 10 · vagina 7 · horny 7 · tampon 4 · puberty 4 ·
+      //   penis 3 · feces 2            -> 10 of 10 present, with real depth
+      //
+      // ⭐ `dictionaryapi.dev` is itself a WRAPPER over Wiktionary, so going to
+      // the source is not a second opinion — it is the same dictionary with
+      // the editorial filtering removed. That is why this is a UNION and not a
+      // fallback: neither query is the lesser path, and the file already sets
+      // this precedent with the hyphenated-compound retry ("a second query for
+      // the same capability, not a lesser one"). Senses are merged and deduped
+      // on normalised text, so a word both sources know gains nothing spurious.
+      //
+      // ⚠ Wiktionary returns HTML and EVERY language on the page. Both are
+      // handled: `en` only, tags stripped, empty definitions dropped (the API
+      // emits `""` for header rows). Anatomy, excretion and obscenity are
+      // ordinary entries there — no separate "adult" source is needed, and a
+      // user-submitted one (Urban Dictionary) would have traded this coverage
+      // for joke definitions she would have to unlearn.
+      try {
+        const wikt = await _fetchWiktionarySenses(key, timeoutMs);
+        for (const d of wikt) definitions.push(d);
+      } catch { /* the union degrades to the wrapper's senses, never to zero */ }
       for (const entry of data) {
         const meanings = entry.meanings || [];
         for (const meaning of meanings) {
@@ -302,6 +402,23 @@ async function getDefinition(word, opts = {}) {
             }
           }
         }
+      }
+      // Dedup the union on normalised definition text. Both sources derive
+      // from Wiktionary, so a word they both know returns overlapping senses;
+      // binding the same sentence twice would weight that sense for no reason.
+      // ⚠ Normalise punctuation and case only — two senses that differ by a
+      // single word are DIFFERENT senses and must both survive.
+      if (definitions.length > 1) {
+        const seenDef = new Set();
+        const merged = [];
+        for (const d of definitions) {
+          const k = String(d.definition || '').toLowerCase().replace(/[^a-z0-9 ]+/g, '').replace(/\s+/g, ' ').trim();
+          if (!k || seenDef.has(k)) continue;
+          seenDef.add(k);
+          merged.push(d);
+        }
+        definitions.length = 0;
+        for (const d of merged) definitions.push(d);
       }
       if (definitions.length === 0) {
         // Parsed OK but zero usable definitions → no entry → permanent (noDef).
