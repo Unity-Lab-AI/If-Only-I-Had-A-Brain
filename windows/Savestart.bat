@@ -66,6 +66,18 @@ REM rejected in this script -- this entry point is for resume only.
 set DREAM_KEEP_STATE=1
 set DREAM_FORCE_CLEAR=
 
+REM BRAIN BUDGET -- see windows\start.bat for the full derivation. Short form:
+REM the card is shared with her voice (2400 MB) and her eyes (2500 MB peak), and
+REM an unbudgeted brain took 14,424 MB of 16,376, leaving 0-2 GB free and wedging
+REM the donor's CUDA context twice in one boot. 8000 MB -> ~264M neurons ->
+REM 9,451 MB donor floor -> 895 MB headroom with everything resident.
+REM !! ON A RESUME THIS MUST MATCH THE BOOT THAT WROTE THE WEIGHTS. A different
+REM budget is a different neuron count, which is a GEOMETRY change -- the resume
+REM will refuse as incompatible and fall back to a fresh walk, throwing the
+REM training away. Change it in start.bat and here together, never one alone.
+if not defined DREAM_BRAIN_BUDGET_MB set DREAM_BRAIN_BUDGET_MB=8000
+echo   [scale] brain budget %DREAM_BRAIN_BUDGET_MB%MB -- must match the boot that saved these weights.
+
 REM ── DONORDEFAULT (2026-08-23) — SAVESTART GETS THE SAME NATIVE-DONOR
 REM DEFAULT AS start.bat. The first pass of this fix only touched start.bat
 REM and start.sh, so resuming through Savestart still auto-launched the

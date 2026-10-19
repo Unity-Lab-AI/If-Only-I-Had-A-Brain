@@ -148,6 +148,37 @@ if not defined DREAM_NO_AUTO_GPU (
     )
 )
 
+REM ---------------------------------------------------------------------------
+REM BRAIN BUDGET -- SHE SHARES THIS CARD WITH HER VOICE AND HER EYES.
+REM
+REM Without this the brain takes 85%% of the card and LANGVRAM hands another 2 GB
+REM back, which sized her at 459,775,607 neurons and a 14,424 MB donor floor on a
+REM 16,376 MB card. That left ~2 GB for a voice wanting 2,400 MB and renders
+REM peaking at 2,500 MB. The card ran at 0-2 GB free, a look could not allocate,
+REM and the donor's own next allocation inside compute_batch stalled behind it --
+REM two GPU hangs in one boot, both "blocked 154s (limit 150s)", each costing a
+REM full 17-matrix re-upload.
+REM
+REM DERIVED, not chosen (floor formula verified against the live 14,424 reading):
+REM   floor(N) = ceil((N * 20 / 1048576 + 2048) / 0.75)
+REM   reserve  = 1130 desktop+driver+engine ctx  (measured with the brain DOWN)
+REM            + 2400 voice resident + 2500 render peak  = 6030 MB
+REM   budget 10000 -> 330M -> floor 11131 -> 17161/16376  OVER
+REM   budget  9000 -> 297M -> floor 10291 -> 16321/16376  only 55 MB spare
+REM   budget  8000 -> 264M -> floor  9451 -> 15481/16376  895 MB headroom  <= CHOSEN
+REM   budget  7000 -> 231M -> floor  8611 -> 14641/16376  1735 MB headroom
+REM
+REM RE-PRICE (the LAW requires it before changing what she is taught): 264M is
+REM 0.57x the 459.8M brain, and teach cost scales WITH the brain, so every teach
+REM op gets ~0.57x cheaper. Shrinking is the safe direction -- the walk gets
+REM faster, not longer. The cost is capability: 264M is a smaller brain.
+REM
+REM ** THIS IS THE ONE NUMBER TO CHANGE IF YOU WANT HER BIGGER. ** Raising it
+REM costs the headroom above, and the first thing that breaks is her eyes, then
+REM the donor. Set it in the environment to override this default for one run.
+if not defined DREAM_BRAIN_BUDGET_MB set DREAM_BRAIN_BUDGET_MB=8000
+echo   [scale] brain budget %DREAM_BRAIN_BUDGET_MB%MB -- card shared with her voice and her eyes.
+
 if defined DREAM_FORCE_CLEAR (
     echo   [!] DREAM_FORCE_CLEAR=1 -- will clear brain state on boot.
     echo.
