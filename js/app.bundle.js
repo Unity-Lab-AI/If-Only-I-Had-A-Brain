@@ -657,6 +657,8 @@ var init_sparse_matrix = __esm({
         const gammaScale = kScales && typeof kScales.gammaScale === "number" ? kScales.gammaScale : 1;
         const haveLayer = !!(layerScales && dstLayerId);
         const haveHub = !!srcHubMask;
+        const hemiScale = kScales && Array.isArray(kScales.hemiScale) && kScales.hemiScale.length === 2 ? kScales.hemiScale : null;
+        const hemiSplit = kScales && typeof kScales.hemiSplit === "number" ? kScales.hemiSplit : 0;
         const rowStart = opts && typeof opts.rowStart === "number" ? Math.max(0, opts.rowStart) : 0;
         const rowEnd = opts && typeof opts.rowEnd === "number" ? Math.min(rows, opts.rowEnd) : rows;
         const activeRows = opts && opts.activeRows || null;
@@ -675,6 +677,7 @@ var init_sparse_matrix = __esm({
             if (typeof s === "number") lrPostScale = s;
           }
           lrPostScale *= gammaScale;
+          if (hemiScale) lrPostScale *= dstStart + i < hemiSplit ? hemiScale[0] : hemiScale[1];
           const y2 = y * y;
           const start = rowPtr[i];
           const end = rowPtr[i + 1];
@@ -15616,6 +15619,7 @@ var CLUSTER_EMIT_MIXIN = {
     const candidates = [];
     let bestWord = null;
     let bestMean = -Infinity;
+    let bestIdx = -1;
     if (!Array.isArray(this._recentEmissions)) this._recentEmissions = [];
     const recentLast4 = new Set(this._recentEmissions.slice(-4));
     const REPETITION_PENALTY = 0.7;
@@ -15707,10 +15711,11 @@ var CLUSTER_EMIT_MIXIN = {
         if (_isRecentContent) {
           mean *= REPETITION_PENALTY;
         }
-        candidates.push({ word: wordsList[b], mean });
+        candidates.push({ word: wordsList[b], mean, idx: b });
         if (mean > bestMean) {
           bestMean = mean;
           bestWord = wordsList[b];
+          bestIdx = b;
         }
       }
     }
@@ -15823,12 +15828,14 @@ var CLUSTER_EMIT_MIXIN = {
         if (cum >= r) {
           bestWord = nucleus[i].word;
           bestMean = nucleus[i].mean;
+          bestIdx = typeof nucleus[i].idx === "number" ? nucleus[i].idx : -1;
           break;
         }
       }
     }
     this._lastEmittedWord = bestWord;
     this._lastEmittedActivation = bestMean;
+    this._lastEmittedBucketIdx = bestIdx;
     if (!opts.skipRecentTrack) {
       this._recentEmissions.push(bestWord);
       while (this._recentEmissions.length > 8) {
@@ -18188,7 +18195,12 @@ var NeuronCluster = class {
       // deterministically as curriculum progresses. Combined with the
       // predictive-coding surprise gate so high-error windows learn
       // 1.5× and low-error windows learn 0.5×.
-      gammaScale: curriculumGamma * surpriseGate
+      gammaScale: curriculumGamma * surpriseGate,
+      // Seed Crystal — per-hemisphere plasticity share, set by the server's
+      // dopamine contest (`_hemiScale = [η_L/η, η_R/η]`), null when unmeasured.
+      // The split is the cluster's midpoint in absolute index.
+      hemiScale: Array.isArray(this._hemiScale) && this._hemiScale.length === 2 ? this._hemiScale : null,
+      hemiSplit: Math.floor((this.size || 0) / 2)
     };
   }
   /**
