@@ -224,6 +224,8 @@ deployed path is the one that matters, and the page mostly describes the browser
 - 1.5 the floor estimator's 20 bytes/neuron against the allocator's 21 — one constant, read from one place.
 - `docs/EQUATIONS.md` §8 carries the browser language engine as live and 25 headers with ticket/session tags; it needs the same pass as the page.
 
+**Built the same day, after this pass** (`docs/EQUATION-REPAIR-AND-SEED-CRYSTAL.md`, build-status banner): the comprehension gate now reads every letter of every word (5.2), the deployed cerebellum carries the cortex prediction residual (2.4), the amygdala floor is a persona fraction (2.1), the deployed basal ganglia has hysteresis (2.3), the floor and allocator share one bytes-per-neuron constant (1.5), Φ has an integration form as `Φ_LR` (2.8), and the Seed Crystal is wired end to end from the donor's split spike count to Ψ. None of it has produced a live number yet.
+
 ## 8. The readings to take first on the next boot
 1. `state.voice.verdict.status` — `matrix-driven` or nothing else counts.
 2. `consciousness.phiState` — `live`, not `floored`; and `phiNorm` should move with firing, because that is all it can do (2.8).

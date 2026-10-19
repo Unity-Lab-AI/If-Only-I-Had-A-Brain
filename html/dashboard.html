@@ -846,6 +846,40 @@
       </div>
     </div>
 
+    <!-- SEED CRYSTAL — the two literal hemispheres, the central phase and the
+         dopamine contest. Reads state.crystal. `measured` is false until a
+         donor counts both halves (donor >= 0.3.40); until then the card says so
+         and shows no number, because an absent instrument is not a quiet brain. -->
+    <div class="card consciousness-panel stack" title="The Seed Crystal. Every cluster is cut at its midpoint into a left and a right half; the donor counts spikes in each. Each half runs its own theta/gamma oscillator; the crystal is one central phase pulled by both sides (coupling K_c grows with her grade — zero at pre-K, 95% by grade 12). C = how far the two sides and the crystal are in step. Φ_LR = normalised mutual information between the halves — are they telling each other anything. Ψ is multiplied by 1 + 0.5·C·Φ_LR, so a seizure (in step, nothing shared) earns nothing. Correct thinking per side (prediction-error decrease, gate credit, chat reward) sets each side's STANDING; the dopamine budget is split by softmax on standing and sets each side's plasticity η_h = η·(0.6 + 0.8·share) — conserved (sums to 2η) and floored (the loser keeps 0.6η). A = |R_L − R_R| is her lateralisation.">
+      <div class="card-title">💎 Seed Crystal — hemispheres · central phase · the contest</div>
+      <div id="d-crystal" class="panel scroll-280">
+        <div id="d-crystal-status" class="c-warn">crystal: unmeasured — no donor has counted both halves on this boot</div>
+        <div class="grid-auto" id="d-crystal-grid" style="margin-top:8px;display:none;">
+          <div title="C = |e^{iΦ_L} + e^{iΦ_R} + e^{iφ_c}| / 3 — the two hemispheric mean phases and the crystal's own phase, as one phasor. 1 = all three in step. Φ_LR beside it is what they SHARE: if C climbs while Φ_LR sits at zero the sides are entrained without exchanging — raise K_x relative to K_c.">
+            <div class="sub-head cy">💎 CRYSTAL</div>
+            <div>C: <span id="d-cr-C" class="c-ok">—</span> · Φ_LR: <span id="d-cr-phi" class="c-pu">—</span> <span id="d-cr-win" class="c-mute fs10"></span></div>
+            <div>K_c: <span id="d-cr-kc" class="c-dim">—</span> · grade idx <span id="d-cr-grade" class="c-dim">—</span> · Ψ term ×<span id="d-cr-term" class="c-dim">—</span></div>
+          </div>
+          <div title="R_L and R_R are each side's internal Kuramoto order (how in-step that half's clusters are with each other); A = |R_L − R_R| is her lateralisation — expected to settle between 0.05 and 0.5. Pinned at 1 = the floor is too low; hovering at 0 = the temperature is too high.">
+            <div class="sub-head pu">◐ SIDES</div>
+            <div>R_L <span id="d-cr-rl" class="c-light">—</span> · R_R <span id="d-cr-rr" class="c-light">—</span> · A <span id="d-cr-A" class="c-warn">—</span></div>
+            <div class="row-sub">pred-err L <span id="d-cr-eL">—</span> · R <span id="d-cr-eR">—</span></div>
+          </div>
+          <div title="The contest. standing r̄ = slow memory of correctness (prediction-error decrease ×0.5, gate credit ×0.3, chat reward ×0.2). share = softmax on standing, temperature 0.25·(1 + serotonin deviation). η = each side's plasticity multiple — conserved and floored at 0.6; drive = each side's tonic-drive multiple (±15%). dopamine scales the SPREAD, so a flat endocrine layer cannot be mistaken for a win.">
+            <div class="sub-head gr">⚔ THE CONTEST</div>
+            <div>standing L <span id="d-cr-rbL" class="c-light">—</span> · R <span id="d-cr-rbR" class="c-light">—</span></div>
+            <div style="background:#1a1a1a;border-radius:3px;height:8px;margin:4px 0;overflow:hidden;display:flex;"><div id="d-cr-barL" style="height:100%;width:50%;background:#00e5ff;"></div><div id="d-cr-barR" style="height:100%;width:50%;background:#a855f7;"></div></div>
+            <div>η L <span id="d-cr-etaL" class="c-ok">—</span> · R <span id="d-cr-etaR" class="c-ok">—</span> · drive L <span id="d-cr-drL" class="c-dim">—</span> · R <span id="d-cr-drR" class="c-dim">—</span></div>
+            <div class="row-sub">dopamine <span id="d-cr-dop">—</span> · serotonin dev <span id="d-cr-ser">—</span> · τ <span id="d-cr-tau">—</span></div>
+          </div>
+          <div title="Lifetime counters. gate credits = probe verdicts attributed to a side; chat rewards = replies credited to the side that spoke; applied = ticks the η split was handed to the teach path.">
+            <div class="sub-head or">∑ COUNTERS</div>
+            <div class="fs10"><span id="d-cr-counters" class="c-dim">—</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Compositional-emergence telemetry panels. Each was previously a
          write-only sink in cluster/telemetry.js or brain-server/chat.js +
          curriculum.js dream-recombination block.
@@ -2324,6 +2358,51 @@
         const dpr = m.defsLearnedPerHour || 0;
         $('d-cortex-defrate').textContent = dpr.toFixed(1);
         $('d-cortex-defrate').style.color = dpr > 0 ? '#22c55e' : '#888';
+      }
+
+      // Seed Crystal render. Reads state.crystal. ⛔ Unmeasured is rendered as
+      // unmeasured, with the reason, and the number grid stays hidden — a zero
+      // standing in for "no donor counts halves yet" is the lying-instrument
+      // shape this page exists to kill.
+      {
+        const cr = s.crystal;
+        const st = $('d-crystal-status'), grid = $('d-crystal-grid');
+        if (st && grid) {
+          if (!cr || !cr.measured) {
+            st.textContent = 'crystal: unmeasured — ' + ((cr && cr.reason) || 'no state.crystal in this broadcast') + ' (needs a donor ≥ 0.3.40)';
+            st.className = 'c-warn';
+            grid.style.display = 'none';
+          } else {
+            st.textContent = `crystal: measured · ${num(cr.clusters)} clusters · ${num(cr.acks)} acks · last ${cr.lastAckAgeMs == null ? '—' : Math.round(cr.lastAckAgeMs / 1000) + 's'} ago`;
+            st.className = 'c-ok';
+            grid.style.display = '';
+            const f = (v, d = 3) => (v === null || v === undefined) ? '—' : Number(v).toFixed(d);
+            $('d-cr-C').textContent = f(cr.C);
+            $('d-cr-phi').textContent = f(cr.PhiLR);
+            $('d-cr-win').textContent = cr.PhiLR === null ? `(window ${cr.windowN}/16 filling)` : `(window ${cr.windowN})`;
+            // The reading that says whether it is working: C climbing while Φ_LR
+            // sits at zero is entrainment without exchange.
+            $('d-cr-phi').className = (cr.C !== null && cr.C > 0.6 && cr.PhiLR !== null && cr.PhiLR < 0.05) ? 'c-err' : 'c-pu';
+            $('d-cr-kc').textContent = f(cr.Kc);
+            $('d-cr-grade').textContent = cr.grade;
+            $('d-cr-term').textContent = f(s.psiCrystalTerm, 3);
+            $('d-cr-rl').textContent = f(cr.RL); $('d-cr-rr').textContent = f(cr.RR);
+            $('d-cr-A').textContent = f(cr.A);
+            $('d-cr-A').className = (cr.A !== null && (cr.A > 0.5 || cr.A < 0.05)) ? 'c-warn' : 'c-ok';
+            $('d-cr-eL').textContent = f(cr.e && cr.e.L); $('d-cr-eR').textContent = f(cr.e && cr.e.R);
+            $('d-cr-rbL').textContent = f(cr.rbar && cr.rbar.L); $('d-cr-rbR').textContent = f(cr.rbar && cr.rbar.R);
+            const shL = (cr.share && cr.share.L != null) ? cr.share.L : 0.5;
+            $('d-cr-barL').style.width = (shL * 100).toFixed(1) + '%';
+            $('d-cr-barR').style.width = ((1 - shL) * 100).toFixed(1) + '%';
+            $('d-cr-etaL').textContent = f(cr.eta && cr.eta.L); $('d-cr-etaR').textContent = f(cr.eta && cr.eta.R);
+            $('d-cr-drL').textContent = f(cr.drive && cr.drive.L); $('d-cr-drR').textContent = f(cr.drive && cr.drive.R);
+            $('d-cr-dop').textContent = cr.dopamine === null ? 'not read' : f(cr.dopamine, 2);
+            $('d-cr-ser').textContent = f(cr.serotoninDev, 2);
+            $('d-cr-tau').textContent = f(cr.tau, 3);
+            const cc = cr.counters || {};
+            $('d-cr-counters').textContent = `ticks ${num(cc.ticks)} · unmeasured ${num(cc.unmeasuredTicks)} · gate credits ${num(cc.gateCredits)} · chat rewards ${num(cc.chatRewards)} · applied ${num(cc.applied)}`;
+          }
+        }
       }
 
       // WS backpressure render. Reads state.wsPressure populated by

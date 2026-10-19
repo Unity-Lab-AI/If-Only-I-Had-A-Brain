@@ -334,11 +334,15 @@ impl CudaEngine {
         }
     }
 
-    pub fn step(&self, name: &str, effective_drive: f32, noise_amp: f32, seed: u32) -> Result<u32, String> {
+    /// One Rulkov substep, CUDA half. Returns `(left, right)` spike counts —
+    /// the Seed Crystal's hemispheric read (v0.3.40); `half` is the split
+    /// index and `effective_drive_r` drives neurons at or past it. Mirrors
+    /// `ComputeEngine::step` line for line.
+    pub fn step(&self, name: &str, effective_drive: f32, effective_drive_r: f32, half: u32, noise_amp: f32, seed: u32) -> Result<(u32, u32), String> {
         let c = self.clusters.get(name).ok_or_else(|| format!("cluster '{name}' not initialized"))?;
         let n = c.size;
         if n == 0 {
-            return Ok(0);
+            return Ok((0, 0));
         }
         let launch_cfg = cfg(n);
         // LIF step — writes state + spikes through the device pointers (GPU-side mutation, so
@@ -346,6 +350,8 @@ impl CudaEngine {
         let mut b = self.stream.launch_builder(&self.f_lif);
         b.arg(&n)
             .arg(&effective_drive)
+            .arg(&effective_drive_r)
+            .arg(&half)
             .arg(&noise_amp)
             .arg(&seed)
             .arg(&c.num_regions)
@@ -355,15 +361,15 @@ impl CudaEngine {
             .arg(&c.region_gates);
         unsafe { b.launch(launch_cfg) }.map_err(|e| format!("lif launch: {e}"))?;
 
-        // Spike count into a fresh zeroed counter.
-        let mut count = self.stream.alloc_zeros::<u32>(1).map_err(|e| e.to_string())?;
+        // Spike counts (left, right) into a fresh zeroed pair.
+        let mut count = self.stream.alloc_zeros::<u32>(2).map_err(|e| e.to_string())?;
         let mut b2 = self.stream.launch_builder(&self.f_spike);
-        b2.arg(&n).arg(&c.spikes).arg(&mut count);
+        b2.arg(&n).arg(&half).arg(&c.spikes).arg(&mut count);
         unsafe { b2.launch(launch_cfg) }.map_err(|e| format!("spike launch: {e}"))?;
 
         let host = self.stream.memcpy_dtov(&count).map_err(|e| e.to_string())?;
         self.stream.synchronize().map_err(|e| e.to_string())?;
-        Ok(*host.first().unwrap_or(&0))
+        Ok((*host.first().unwrap_or(&0), *host.get(1).unwrap_or(&0)))
     }
 
     /// GOTCHA.3b (v0.3.32) — mean of the Rulkov fast variable, CUDA half.

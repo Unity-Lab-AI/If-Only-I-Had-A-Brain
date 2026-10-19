@@ -185,6 +185,13 @@ pub struct PerClusterResult {
     pub last_spike_count: u64,
     #[serde(rename = "meanVoltage", skip_serializing_if = "Option::is_none")]
     pub mean_voltage: Option<f32>,
+    /// Seed Crystal (v0.3.40) — the last substep's spike count in each HALF of
+    /// the cluster (index < half → L). `None` = this donor did not count
+    /// halves, which the brain renders as *unmeasured*, never as zero.
+    #[serde(rename = "lastSpikeCountL", skip_serializing_if = "Option::is_none")]
+    pub last_spike_count_l: Option<u64>,
+    #[serde(rename = "lastSpikeCountR", skip_serializing_if = "Option::is_none")]
+    pub last_spike_count_r: Option<u64>,
 }
 
 /// Donor-side timing for one `compute_batch`, so the brain can split its
@@ -318,6 +325,14 @@ pub struct ClusterParams {
     /// A `null` gain drops that region's entry (kernel default 1.0).
     #[serde(rename = "regionGains", default, deserialize_with = "gains_null_tolerant")]
     pub region_gains: HashMap<String, f32>,
+    /// Seed Crystal (v0.3.40) — the RIGHT half's tonic drive when the dopamine
+    /// contest has moved it; absent (older brain, or no contest this batch) →
+    /// both halves step on `tonic_drive`. `half` is the split index; absent →
+    /// `size / 2`.
+    #[serde(rename = "tonicDriveR", default)]
+    pub tonic_drive_r: Option<f32>,
+    #[serde(default)]
+    pub half: Option<u32>,
 }
 
 /// Batched multi-cluster step request.

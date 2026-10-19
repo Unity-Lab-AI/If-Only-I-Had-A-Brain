@@ -89,6 +89,12 @@ const DF7_MILESTONES = [
   { minCommunityMB: 4_000_000, minDonors: 64, neurons: 6_000_000_000 },  // tier 6 — headroom; NOT the limit, the box is
 ];
 
+// Bytes of VRAM budgeted per main-brain neuron — the allocator's number
+// (brain-server.js BRAIN_VRAM_ALLOC reads it from here) AND the primary-floor
+// estimator's. One constant, one place, so the floor and the allocation can
+// never disagree again.
+const MAIN_BRAIN_BYTES_PER_NEURON = 21;
+
 const SERVER_GPU_MIXIN = {
   async _gpuStep(clusterName) {
     // UPLOAD PRIORITY — while the canonical cortex upload is in flight, PAUSE
@@ -709,7 +715,12 @@ const SERVER_GPU_MIXIN = {
       // (live incident: runningFloor 21797MB vs the card's 16375MB -> no
       // primary -> CPU-only grind -> curriculum never started).
       // and host sizing agree.
-      donorBytesPerNeuron: 20,
+      // ⛔ ONE CONSTANT. The allocator budgets MAIN_BRAIN_BYTES_PER_NEURON = 21
+      // (brain-server.js BRAIN_VRAM_ALLOC); this floor estimator used a literal
+      // 20 for its whole life, under-estimating every card's need by ~5%
+      // (≈ 190 MB at 2×10⁸ neurons). Same number, exported from here so the
+      // allocator reads it too.
+      donorBytesPerNeuron: MAIN_BRAIN_BYTES_PER_NEURON,
       // DF.7 downscale rectify — "buffers for the buffers". A downscale is far
       // more conservative than an upscale because it RETRAINS at a smaller size
       // (loses the bigger brain's learning), so it must only fire on a genuine,
@@ -739,7 +750,9 @@ const SERVER_GPU_MIXIN = {
           downBufferPct: Number.isFinite(saved.downBufferPct) ? Math.max(0, Math.min(0.9, saved.downBufferPct)) : defaults.downBufferPct,
           downStabilityMin: Number.isFinite(saved.downStabilityMin) ? Math.max(0, Math.min(240, saved.downStabilityMin)) : defaults.downStabilityMin,
           donorBaselineMB: Number.isFinite(saved.donorBaselineMB) ? Math.max(1024, Math.min(262144, saved.donorBaselineMB)) : defaults.donorBaselineMB,
-          donorBytesPerNeuron: Number.isFinite(saved.donorBytesPerNeuron) ? Math.max(8, Math.min(1024, saved.donorBytesPerNeuron)) : defaults.donorBytesPerNeuron,
+          // A persisted 20 is the OLD default, not an operator choice — it
+          // follows the constant; any other saved value is honoured.
+          donorBytesPerNeuron: (Number.isFinite(saved.donorBytesPerNeuron) && saved.donorBytesPerNeuron !== 20) ? Math.max(8, Math.min(1024, saved.donorBytesPerNeuron)) : defaults.donorBytesPerNeuron,
         };
       } else {
         this._autoScale = { ...defaults };
@@ -832,7 +845,7 @@ const SERVER_GPU_MIXIN = {
     const _driverMB = (donorCount > 0 && (this._communityMinDonorMB || 0) > 0)
       ? this._communityMinDonorMB
       : _baselineMB;
-    const _bytesPerNeuron = settings.donorBytesPerNeuron || 20;
+    const _bytesPerNeuron = settings.donorBytesPerNeuron || MAIN_BRAIN_BYTES_PER_NEURON;
     // Mirrors local host sizing: 75% of the card usable minus a 2GB reserve.
     const _capNeurons = Math.max(0, Math.floor(((_driverMB * 0.75 - 2048) * 1048576) / _bytesPerNeuron));
     // Capacity of the baseline ALONE — tiers this covers are entered without
@@ -3756,16 +3769,40 @@ const SERVER_GPU_MIXIN = {
     if (!ws || ws.readyState !== 1) return false;
     if (ws.bufferedAmount > this._donorPatternLaneCapBytes()) return false;
     if (!Array.isArray(preRanges) || !Array.isArray(postRanges) || !preRanges.length || !postRanges.length) return false;
+    // Seed Crystal — the dose is split at the cluster midpoint and each side
+    // ships at its own lr (η_L, η_R). A post range that straddles the midpoint
+    // is cut in two. Pre ranges are unchanged; when the contest has not moved
+    // the scale (or the crystal is unmeasured) one frame goes out exactly as before.
+    const _hs = (this.cortexCluster && Array.isArray(this.cortexCluster._hemiScale)) ? this.cortexCluster._hemiScale : null;
+    const _mid = this.cortexCluster ? Math.floor((this.cortexCluster.size || 0) / 2) : 0;
+    const _frames = [];
+    if (_hs && _mid > 0 && (Math.abs(_hs[0] - 1) > 1e-6 || Math.abs(_hs[1] - 1) > 1e-6)) {
+      const L = [], R = [];
+      for (const [start, len] of postRanges) {
+        if (!(len > 0)) continue;
+        const end = start + len;
+        if (end <= _mid) L.push([start, len]);
+        else if (start >= _mid) R.push([start, len]);
+        else { L.push([start, _mid - start]); R.push([_mid, end - _mid]); }
+      }
+      if (L.length) _frames.push({ lr: lr * _hs[0], postRanges: L });
+      if (R.length) _frames.push({ lr: lr * _hs[1], postRanges: R });
+    } else {
+      _frames.push({ lr, postRanges });
+    }
     try {
-      ws.send(JSON.stringify({
-        type: 'hebbian_ranges',
-        name,
-        lr,
-        reps: Math.max(1, Math.min(1000, Math.round(reps || 1))),
-        preRanges,
-        postRanges,
-      }));
-      this._hebbianRangesSent = (this._hebbianRangesSent || 0) + 1;
+      for (const f of _frames) {
+        ws.send(JSON.stringify({
+          type: 'hebbian_ranges',
+          name,
+          lr: f.lr,
+          reps: Math.max(1, Math.min(1000, Math.round(reps || 1))),
+          preRanges,
+          postRanges: f.postRanges,
+        }));
+        this._hebbianRangesSent = (this._hebbianRangesSent || 0) + 1;
+      }
+      if (_frames.length > 1) this._hebbianRangesSplit = (this._hebbianRangesSplit || 0) + 1;
       return true;
     } catch {
       return false;
@@ -6276,4 +6313,4 @@ const SERVER_GPU_MIXIN = {
   },
 };
 
-module.exports = { SERVER_GPU_MIXIN, DF7_MILESTONES };
+module.exports = { SERVER_GPU_MIXIN, DF7_MILESTONES, MAIN_BRAIN_BYTES_PER_NEURON };

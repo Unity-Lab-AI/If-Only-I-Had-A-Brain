@@ -12,6 +12,12 @@ struct Params {
   seed: u32,
   gridX: u32,
   numRegions: u32,
+  // Seed Crystal (v0.3.40) — the right half's drive and the split index;
+  // the two pads keep the block at 64 bytes, matching the Rust side.
+  effectiveDriveR: f32,
+  half: u32,
+  _pad0: u32,
+  _pad1: u32,
 };
 
 @group(0) @binding(0) var<uniform> params: Params;
@@ -52,9 +58,11 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   let i = gid.x + gid.y * params.gridX * 256u;
   if (i >= params.n) { return; }
 
-  let sigma = -1.0 + clamp(params.effectiveDrive / 40.0, 0.0, 1.0) * 1.5;
+  // Seed Crystal — each half of the cluster steps on its own drive.
+  let ed = select(params.effectiveDriveR, params.effectiveDrive, i < params.half);
+  let sigma = -1.0 + clamp(ed / 40.0, 0.0, 1.0) * 1.5;
   let gate = lookupRegionGate(i, params.numRegions);
-  let drive = (params.effectiveDrive + currents[i]) * gate;
+  let drive = (ed + currents[i]) * gate;
   let sigmaEff = -1.0 + clamp(drive / 40.0, 0.0, 1.0) * 1.5;
 
   let s = state[i];

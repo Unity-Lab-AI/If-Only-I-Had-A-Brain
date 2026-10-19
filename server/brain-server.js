@@ -1162,7 +1162,8 @@ const BRAIN_VRAM_ALLOC = (function () {
     brainBudgetMB,
     weights,
     perRegionBytes,
-    MAIN_BRAIN_BYTES_PER_NEURON: 21,
+    // One constant with the primary-floor estimator (gpu.js) — see the note there.
+    MAIN_BRAIN_BYTES_PER_NEURON: require('./brain-server/gpu.js').MAIN_BRAIN_BYTES_PER_NEURON,
     LANG_CORTEX_BYTES_PER_NEURON: 18 * 1024,
   };
 })();
@@ -2650,6 +2651,11 @@ class ServerBrain {
     this.coherenceTheta = 0;
     this.coherenceGamma = 0;
     this.reward = 0;
+    // The curriculum has no handle on the server brain (it owns only the
+    // cluster); the Seed Crystal's gate credit reaches it through this one
+    // well-known name rather than a new constructor argument threaded
+    // through every runner.
+    globalThis.__unityBrain = this;
     // T15 — legacy scalar replaced by drugScheduler. Kept as a derived
     // label so legacy WebSocket consumers that read state.drugState keep
     // working until C9 UI refactor migrates them to drugSnapshot.
@@ -5974,6 +5980,8 @@ class ServerBrain {
           // the same truth without rewriting the first one's history.
           this._walkTickAcks = (this._walkTickAcks || 0) + 1;
           this.clusters[name].spikeCount = entry.lastSpikeCount;
+          // Seed Crystal — a split-counting donor also reports each half.
+          if (typeof this._crystalOnAck === 'function') this._crystalOnAck(name, entry, CLUSTER_SIZES[name] || 0);
           _ackSpikes += entry.lastSpikeCount;
           _ackSize += CLUSTER_SIZES[name] || 0;
           const avgHb = (entry.spikeCountTotal || 0) / SUBSTEPS;
@@ -5985,6 +5993,9 @@ class ServerBrain {
         }
         this.totalSpikes += this.clusters[name].spikeCount || 0;
       }
+      // Seed Crystal tick — runs on the fresh per-half proportions; a no-op
+      // (counted as such) until a split-counting donor is attached.
+      if (typeof this._crystalTick === 'function') { try { this._crystalTick(); } catch (err) { this._crystalErr = { message: err?.message || String(err), at: Date.now() }; } }
       // ⭐ MONOTONIC TWIN. `totalSpikes` above is reset to 0 every tick and
       // re-summed, so it is instantaneous and falls as often as it rises —
       // which makes a two-sample delta on it useless as a liveness test. This
@@ -6109,8 +6120,14 @@ class ServerBrain {
 
     const id = amygAct * p.arousalBaseline;                   // Id: instinct × arousal baseline
     const ego = cortexAct * (1 + hippoAct);                   // Ego: self-model × memory
-    const left = (cerebAct + cortexAct) * (1 - p.impulsivity); // Left: logic × deliberation
-    const right = (amygAct + mysteryAct) * p.creativity;       // Right: creativity × emotion
+    // Left / Right are the LITERAL hemispheres once the Seed Crystal is
+    // measured (each side's internal order weighted by its standing); until a
+    // split-counting donor is attached they fall back to the legacy proxies,
+    // which were never hemispheres at all.
+    const _lr = (typeof this._crystalLeftRight === 'function') ? this._crystalLeftRight() : null;
+    const left = _lr ? _lr.left : (cerebAct + cortexAct) * (1 - p.impulsivity);   // legacy: logic × deliberation
+    const right = _lr ? _lr.right : (amygAct + mysteryAct) * p.creativity;        // legacy: creativity × emotion
+    this.psiLeftRightSource = _lr ? 'crystal' : 'legacy';
 
     // Φ-augmented Ψ. Multiply the legacy quantum-volume
     // formula by cluster.computePhi() (Shannon-entropy proxy of cortex
@@ -6218,6 +6235,11 @@ class ServerBrain {
     // Guard rawPsi finiteness: a NaN here would propagate to psiGain below and
     // corrupt every cluster's gainMultiplier on the GPU compute path.
     this.psi = Math.log10(Math.max(1, Number.isFinite(rawPsi) ? rawPsi : 1));
+    // Seed Crystal term: Ψ ← Ψ · (1 + λ · C · Φ_LR) — the two sides in step
+    // with the seed AND telling each other something. Identity (×1) until the
+    // crystal is measured, so an unmeasured crystal cannot move Ψ.
+    if (_lr && Number.isFinite(_lr.term)) this.psi *= _lr.term;
+    this.psiCrystalTerm = _lr ? _lr.term : null;
     this.phiProxy = phiProxy; // exposed for dashboard / heartbeat
 
     // CGATE.4 — Ψ consciousness gain, self-calibrating. The old map
@@ -6317,7 +6339,11 @@ class ServerBrain {
       // cycles).
       if (typeof amyOut.arousal === 'number' && isFinite(amyOut.arousal)) {
         this.arousal = this.arousal * 0.7 + amyOut.arousal * 0.3;
-        this.arousal = Math.min(1, Math.max(0.3, this.arousal));
+        // The floor is the persona's, not a literal: a third of her arousal
+        // baseline (0.3 for Unity's 0.9 — identical to the old constant), so a
+        // calmer persona gets a lower floor instead of inheriting hers.
+        const _arFloor = 0.33 * ((this.persona && Number.isFinite(this.persona.arousalBaseline)) ? this.persona.arousalBaseline : 0.9);
+        this.arousal = Math.min(1, Math.max(_arFloor, this.arousal));
       }
     } else {
       this.fear = 0; // pre-module-init fallback
@@ -6349,11 +6375,23 @@ class ServerBrain {
     for (let ch = 0; ch < 6; ch++) {
       this.motorChannels[ch] = this.motorChannels[ch] * 0.7 + channelQ[ch] * 0.3;
     }
-    let maxRate = 0, maxCh = 5;
+    let maxRate = 0, maxCh = 5, secondRate = 0;
     for (let ch = 0; ch < 6; ch++) {
-      if (this.motorChannels[ch] > maxRate) { maxRate = this.motorChannels[ch]; maxCh = ch; }
+      const v = this.motorChannels[ch];
+      if (v > maxRate) { secondRate = maxRate; maxRate = v; maxCh = ch; }
+      else if (v > secondRate) { secondRate = v; }
     }
-    this.motorAction = ['respond_text', 'generate_image', 'speak', 'build_ui', 'listen', 'idle'][maxCh];
+    // Hysteresis — the deployed analogue of the browser motor's confidence
+    // floor, which this argmax never had: a winner that leads by less than
+    // 0.05 does not displace the current action, so the respond/speak flip the
+    // EMA alone cannot prevent stops.
+    const _ACTIONS = ['respond_text', 'generate_image', 'speak', 'build_ui', 'listen', 'idle'];
+    const _prevCh = _ACTIONS.indexOf(this.motorAction);
+    if (_prevCh >= 0 && _prevCh !== maxCh && (maxRate - secondRate) < 0.05 && this.motorChannels[_prevCh] >= secondRate) {
+      maxCh = _prevCh;
+      maxRate = this.motorChannels[_prevCh];
+    }
+    this.motorAction = _ACTIONS[maxCh];
     this.motorConfidence = maxRate;
 
     // T15.C — drive the scheduler's per-tick work once motorAction
@@ -6412,7 +6450,20 @@ class ServerBrain {
     let sumGsin = Math.sin(baseGamma);
     let N = 2;
 
-    const clusterNames = Object.keys(this.clusters || {});
+    // Seed Crystal — once both halves of every cluster are counted, the order
+    // parameter is taken over the HEMISPHERIC phasors (2K of them), which is
+    // the measurement the spec names; the base-phasor seeding above is then
+    // replaced, not added to.
+    const _hemi = (typeof this._crystalPhasors === 'function') ? this._crystalPhasors() : null;
+    if (_hemi) {
+      sumTcos = 0; sumTsin = 0; sumGcos = 0; sumGsin = 0; N = 0;
+      for (const ph of _hemi) {
+        sumTcos += Math.cos(ph.theta); sumTsin += Math.sin(ph.theta);
+        sumGcos += Math.cos(ph.gamma); sumGsin += Math.sin(ph.gamma);
+        N += 1;
+      }
+    }
+    const clusterNames = _hemi ? [] : Object.keys(this.clusters || {});
     for (let i = 0; i < clusterNames.length; i++) {
       const c = this.clusters[clusterNames[i]];
       if (!c) continue;
@@ -6587,6 +6638,11 @@ class ServerBrain {
     }
 
     this.reward += 0.1;
+    // Seed Crystal — a reply credits the side whose word_motor bucket spoke last.
+    if (typeof this._crystalChatReward === 'function' && this.cortexCluster
+        && Number.isFinite(this.cortexCluster._lastEmittedBucketIdx) && this.cortexCluster._lastEmittedBucketIdx >= 0) {
+      this._crystalChatReward(this.cortexCluster._lastEmittedBucketIdx, 0.1);
+    }
   }
 
   /**
@@ -7329,9 +7385,18 @@ class ServerBrain {
             // Active clusters run fast, quiet ones slow → real phase
             // dispersion, not a cosmetic shared clock.
             if (!this._thetaOsc) this._thetaOsc = {};
+            // Cerebellum residual — the cortex's own prediction error scaled by
+            // the cerebellum's activity, in place of the cerebellum's firing
+            // rate standing in for an error it was never shown.
+            //   errorCorrection_cortex = −2 · predErr · (0.5 + p_cereb)
+            //   errorCorrection_bg     = −1 · predErr · (0.5 + p_cereb)
+            const _pCereb = Math.max(0, Math.min(1, (this.clusters.cerebellum?.spikeCount || 0) / (CLUSTER_SIZES.cerebellum || 1)));
+            const _predErr = (typeof this._crystalCortexPredErr === 'function') ? this._crystalCortexPredErr()
+              : Math.max(0, Math.min(1, this.cortexCluster?._lastPredictionError || 0));
+            const _hemiDrive = (typeof this._crystalDriveScale === 'function') ? this._crystalDriveScale() : { L: 1, R: 1 };
             const clusterParams = allClusters.map((name) => {
-              const cerebFeedback = name === 'cortex' || name === 'basalGanglia'
-                ? -(this.clusters.cerebellum?.spikeCount || 0) / (CLUSTER_SIZES.cerebellum || 1) * 2 : 0;
+              const cerebFeedback = name === 'cortex' ? -2 * _predErr * (0.5 + _pCereb)
+                : name === 'basalGanglia' ? -1 * _predErr * (0.5 + _pCereb) : 0;
               // Main cortex gets the divergence contribution on top
               // of cerebellum feedback. Both are negative corrections,
               // summed — the cerebellum handles BOTH standard
@@ -7400,7 +7465,14 @@ class ServerBrain {
                 // FIREKNOB (2026-08-28) — × the self-calibrating firing-rate
                 // scale (see _firingControllerSample): the controller aims the
                 // measured fired-fraction at DREAM_FIRING_TARGET_PCT.
-                tonicDrive: _fin((Number.isFinite(this.tonicDrives[name]) ? this.tonicDrives[name] : 0) * thetaMod * actionGate * this._firingDriveScale(), 0),
+                tonicDrive: _fin((Number.isFinite(this.tonicDrives[name]) ? this.tonicDrives[name] : 0) * thetaMod * actionGate * this._firingDriveScale() * _hemiDrive.L, 0),
+                // Seed Crystal — the right half's drive, when the contest has
+                // moved it. A donor that counts halves reads it; older donors
+                // ignore the unknown fields and step both halves on tonicDrive.
+                ...((_hemiDrive.R !== _hemiDrive.L) ? {
+                  tonicDriveR: _fin((Number.isFinite(this.tonicDrives[name]) ? this.tonicDrives[name] : 0) * thetaMod * actionGate * this._firingDriveScale() * _hemiDrive.R, 0),
+                  half: Math.floor((CLUSTER_SIZES[name] || 0) / 2),
+                } : {}),
                 noiseAmp: _fin(this.noiseAmplitudes[name], 0),
                 gainMultiplier: _fin(psiGain, 1),
                 emotionalGate: _fin(emotionalGate, 1),
@@ -7646,6 +7718,8 @@ class ServerBrain {
                   this.clusters[name].spikeCount = entry.lastSpikeCount;
                   _fkSpikes += entry.lastSpikeCount;
                   _fkSize += CLUSTER_SIZES[name] || 0;
+                  // Seed Crystal — the hemispheric halves ride the same ack.
+                  if (typeof this._crystalOnAck === 'function') this._crystalOnAck(name, entry, CLUSTER_SIZES[name] || 0);
                   // Blend firing rate across the whole batch using the
                   // substep-average spike count, not just the last one.
                   const avg = (entry.spikeCountTotal || 0) / (this._substepsLastTick || SUBSTEPS);
@@ -7678,6 +7752,8 @@ class ServerBrain {
             // split that made `gpuHits` read 0 through an entire walk.
             this._spikesLifetime = (this._spikesLifetime || 0) + this.totalSpikes;
             if (_fkSize > 0) this._firingControllerSample(_fkSpikes, _fkSize);
+            // Seed Crystal — one tick per batch, on whichever lane is running.
+            if (typeof this._crystalTick === 'function') this._crystalTick();
 
             this._updateDerivedState();
 
@@ -9664,6 +9740,10 @@ Object.assign(ServerBrain.prototype, SERVER_STATE_MIXIN);
 Object.assign(ServerBrain.prototype, SERVER_MEMORY_MIXIN);
 Object.assign(ServerBrain.prototype, SERVER_CHAT_MIXIN);
 Object.assign(ServerBrain.prototype, SERVER_VISUAL_MEMORY_MIXIN);
+// The Seed Crystal — hemispheric oscillators, the central phase, the dopamine
+// contest and Ψ's literal Left/Right. All names are `_crystal*`; attached after
+// the mixins it reads from (gpu, state, memory, chat, visual-memory).
+Object.assign(ServerBrain.prototype, require('./brain-server/crystal.js').SERVER_CRYSTAL_MIXIN);
 // Expose the image-URL builder to the mixins. ⛔ Its ONLY legitimate consumer
 // is HER OWN lane — `visual-memory.js`, for the reference look-ups she learns
 // shapes from. That lane spends the ADMIN's key.

@@ -965,6 +965,11 @@ export class SparseMatrix {
     const gammaScale = kScales && typeof kScales.gammaScale === 'number' ? kScales.gammaScale : 1.0;
     const haveLayer = !!(layerScales && dstLayerId);
     const haveHub = !!srcHubMask;
+    // Seed Crystal — per-hemisphere plasticity. `hemiScale = [η_L/η, η_R/η]`
+    // indexed by whether the post-neuron's ABSOLUTE cluster index sits below the
+    // midpoint (`hemiSplit`). Null until the dopamine contest has moved it.
+    const hemiScale = kScales && Array.isArray(kScales.hemiScale) && kScales.hemiScale.length === 2 ? kScales.hemiScale : null;
+    const hemiSplit = kScales && typeof kScales.hemiSplit === 'number' ? kScales.hemiSplit : 0;
 
     // #37 step 2 — optional row-range slice so callers can chunk a large
     // projection's update across event-loop yields. The dst region can be
@@ -1012,6 +1017,8 @@ export class SparseMatrix {
       }
       // theta-gamma oscillations gamma scale (curriculum-controlled snapshot)
       lrPostScale *= gammaScale;
+      // Seed Crystal — the side this post-neuron belongs to learns at its share.
+      if (hemiScale) lrPostScale *= ((dstStart + i) < hemiSplit) ? hemiScale[0] : hemiScale[1];
       const y2 = y * y;
       const start = rowPtr[i];
       const end = rowPtr[i + 1];
