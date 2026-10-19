@@ -2144,6 +2144,15 @@ const SERVER_STATE_MIXIN = {
         heapLimitMB,
         heapUsedPct: heapLimitMB > 0 ? r1((mu.heapUsed / MB / heapLimitMB) * 100) : 0,
         cpuPercent: r1(perf.cpuPercent || 0),
+        // ⛔ `cpuPercent` is CLAMPED to 100, so a pinned reading cannot be told
+        //   apart from a genuinely saturated box by that field alone — exactly
+        //   the confusion of 2026-10-19, when it read 100 against a measured 1.08
+        //   cores of 16. These three carry the clamp's inputs so the next pinned
+        //   reading explains itself: raw percent before the clamp, the CPU the
+        //   process actually burned in the window, and the window's own length.
+        cpuPercentRaw: r1(perf.cpuPercentRaw ?? 0),
+        cpuSampleMs: perf.cpuSampleMs ?? 0,
+        cpuWindowMs: perf.cpuWindowMs ?? 0,
         uptimeS: r1(process.uptime()),
         maxRssMB: ru ? r1((ru.maxRSS || 0) / 1024) : 0, // maxRSS is KB on linux
         voluntaryCtxSwitches: ru ? (ru.voluntaryContextSwitches || 0) : 0,

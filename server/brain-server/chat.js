@@ -1264,12 +1264,34 @@ const SERVER_CHAT_MIXIN = {
     // process.cpuUsage only counts main thread — workers aren't included
     // Measure ACTUAL CPU usage from process.cpuUsage(), not step wall-clock time
     // Step time includes GPU I/O wait which is NOT CPU work
+    // ⛔⛔ THIS GAUGE READ A HARD 100 ON A BRAIN USING 1.08 CORES OF 16 (2026-10-19).
+    //   Measured side by side: the OS said the process burned 108% of ONE core —
+    //   6.7% of a 16-core box — while `perf.cpuPercent` sat at exactly 100 and
+    //   never moved across polls minutes apart, with spikesLifetime climbing the
+    //   whole time so the data was demonstrably fresh.
+    //
+    // ⭐ THE ARITHMETIC IS NOT THE BUG. The block below was lifted verbatim into a
+    //   standalone harness, run against a worker burning one core, and reported
+    //   **6** — correct, every sample. So the fault is in the INPUTS as they are
+    //   in this process, not in the expression, and the honest move is to publish
+    //   the inputs instead of guessing which one is wrong. A pinned 100 is now
+    //   self-describing: `cpuSampleMs` over `cpuWindowMs` says whether the CPU
+    //   delta is too large (a baseline that stopped advancing) or the window too
+    //   small, and `cpuPercentRaw` shows how far past the clamp it actually went.
+    //   ⚠ `Math.min(100, …)` is exactly what made this unreadable — a clamp turns
+    //   every impossible value into the same plausible one.
     const cpuUsage = process.cpuUsage(this._lastCpuUsage || undefined);
     const cpuTimeMs = (cpuUsage.user + cpuUsage.system) / 1000; // microseconds → ms
     const elapsed = this._lastPerfTime ? (Date.now() - this._lastPerfTime) : 1000;
     this._lastPerfTime = Date.now();
-    const cpuPercent = Math.min(100, Math.round(cpuTimeMs / (elapsed * os.cpus().length) * 100));
-    this._lastCpuUsage = process.cpuUsage();
+    // Guard the divisor: os.cpus() can return an empty array, and `x / 0` is
+    // Infinity, which this clamp would render as a perfectly ordinary 100.
+    const cpuCores = Math.max(1, (os.cpus() || []).length);
+    const cpuPercentRaw = cpuTimeMs / (elapsed * cpuCores) * 100;
+    const cpuPercent = Math.min(100, Math.round(cpuPercentRaw));
+    // ⚠ ONE assignment, not two. The line above this used to be a second,
+    //   immediately-overwritten `this._lastCpuUsage = process.cpuUsage()` — dead,
+    //   and dead code next to a misbehaving reading is a false lead.
     this._lastCpuUsage = cpuNow;
 
     // GPU VRAM% + util% — combined nvidia-smi query, one execSync per
@@ -1369,6 +1391,12 @@ const SERVER_CHAT_MIXIN = {
     // UPDATE existing object — don't replace (tick loop writes stepTimeMs/stepsPerSec)
     Object.assign(this._perfStats, {
       cpuPercent,
+      // The three numbers that make a pinned cpuPercent explain itself. Cheap,
+      // and the only reason the 2026-10-19 reading needed an OS-level
+      // measurement beside it to be disproved at all.
+      cpuPercentRaw: Math.round(cpuPercentRaw * 10) / 10,
+      cpuSampleMs: Math.round(cpuTimeMs),
+      cpuWindowMs: Math.round(elapsed),
       memUsedMB: Math.round(mem.heapUsed / 1048576),
       memTotalMB: Math.round(os.totalmem() / 1048576),
       memRssMB: Math.round(mem.rss / 1048576),

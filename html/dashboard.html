@@ -1970,9 +1970,29 @@
           }
         }
         $('d-perf').innerHTML = `
-          <div>
+          <div title="${(() => {
+            // A clamped gauge cannot distinguish a saturated box from a broken
+            // reading — on 2026-10-19 this showed a hard 100 while the process
+            // was measured at 1.08 cores of 16. The tooltip carries the clamp's
+            // own inputs so a pinned number explains itself in place.
+            const raw = p.cpuPercentRaw, s = p.cpuSampleMs, w = p.cpuWindowMs;
+            let t = 'Share of ALL cores the brain process used in the last sample window.'
+              + ' 100% means every core saturated, not one core busy.';
+            if (typeof s === 'number' && typeof w === 'number' && w > 0) {
+              t += `\nMeasured: ${s} ms of CPU in a ${w} ms window`
+                 + (typeof raw === 'number' ? ` = ${raw}% before clamping` : '');
+              if (typeof raw === 'number' && raw > 105) {
+                t += '\n⛔ RAW IS ABOVE THE CLAMP. The displayed 100 is a ceiling, not a reading:'
+                   + ' a CPU delta that large in this window means the previous-sample baseline'
+                   + ' stopped advancing. Treat the number as unknown, not as saturation.';
+              }
+            } else {
+              t += '\n(this backend does not publish the clamp inputs yet)';
+            }
+            return t.replace(/"/g, '&quot;');
+          })()}">
             <div class="perf-label">CPU</div>
-            <div style="font-size:18px;font-weight:700;color:${cpuColor};">${p.cpuPercent}%</div>
+            <div style="font-size:18px;font-weight:700;color:${(typeof p.cpuPercentRaw === 'number' && p.cpuPercentRaw > 105) ? '#a855f7' : cpuColor};">${p.cpuPercent}%${(typeof p.cpuPercentRaw === 'number' && p.cpuPercentRaw > 105) ? ' <span class="fs10 c-pu">clamped</span>' : ''}</div>
             <div class="bar-wrap"><div class="bar" style="width:${p.cpuPercent}%;background:${cpuColor};height:100%;border-radius:2px;"></div></div>
           </div>
           <div>
