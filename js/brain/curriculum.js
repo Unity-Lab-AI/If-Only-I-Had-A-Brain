@@ -17906,7 +17906,13 @@ export class Curriculum {
       const first = d0 && (d0.definition || d0);
       const senses = definitions.length;
       const pos0 = (d0 && d0.partOfSpeech) ? ` (${d0.partOfSpeech})` : '';
-      const senseTag = senses > 1 ? ` [sense 1 of ${senses} — all ${senses} are bound]` : ' [1 sense]';
+      // ⚠ NO LONGER CLAIMS COMPLETION. This used to read "all N are bound",
+      //   which is an assertion the reader has to take on trust — and twice the
+      //   operator read it and concluded the opposite of what it meant. The
+      //   count stays (it is a fact about the word); the promise goes, because
+      //   the `_teachDefinitionSense` lane now PRINTS each sense as it binds and
+      //   that lane's own count is the evidence.
+      const senseTag = senses > 1 ? ` [${senses} senses — each printed on the sense lane as it binds]` : ' [1 sense]';
       this.teachBus('_teachWordDefinition', `${w}${pos0}${senseTag} — ${String(first || '').slice(0, 200)}`, {
         phase: opts.label || null, source: 'dictionaryapi.dev', reps: opts.reps ?? 6,
         senses, partsOfSpeech: [...new Set(definitions.map((x) => x && x.partOfSpeech).filter(Boolean))],
@@ -18062,6 +18068,34 @@ export class Curriculum {
       if (r.trained > 0) {
         totalTrained += r.trained;
         defsBound++;
+        // ⭐⭐ THE FEED SHOWS THE DEFINITION, IT NO LONGER ASSERTS ONE.
+        //   The per-word line above prints sense 1 and a claim that the rest
+        //   were bound. Operator, twice, on two different days: *"its just
+        //   saying all n are bound saying nothing of the full amount of
+        //   definitions she needs to hear"*. He was right that a claim is not
+        //   evidence — the first time this came up the fix was to make the
+        //   CLAIM louder, which is why it came up again.
+        // ⛔ TO BE CLEAR ABOUT WHAT THIS IS NOT: `teachBus` writes to the
+        //   telemetry ring and counters ONLY — it never calls a bind path, and
+        //   the display string never leaves the two lines that build and report
+        //   it. She is not taught the words "all N are bound". What she is
+        //   taught is the content words of `entry.definition`, below.
+        // ⚠ ONE LINE PER SENSE, ON ITS OWN LANE. A separate lane keeps both
+        //   counts readable — `_teachWordDefinition` stays a count of WORDS and
+        //   `_teachDefinitionSense` is a count of MEANINGS — and lets the
+        //   viewer's lane filter show the definitions without the word summary
+        //   losing its meaning. The reading ring is bounded by design, so a
+        //   93-sense word scrolls it; the analytics counts never sample.
+        try {
+          const _dt = String((entry && (entry.definition || entry)) || '').trim();
+          if (_dt) {
+            const _pos = (entry && entry.partOfSpeech) ? ` (${entry.partOfSpeech})` : '';
+            this.teachBus('_teachDefinitionSense',
+              `${w}${_pos} — sense ${defIdx + 1} of ${definitions.length} — ${_dt.slice(0, 200)}`,
+              { phase: opts.label || null, source: 'dictionaryapi.dev',
+                word: w, sense: defIdx + 1, senses: definitions.length, reps: opts.reps ?? 6 });
+          }
+        } catch { /* the view must never break a teach */ }
         // Session 114.19ej P0 #3 — pool the K-scaled ojaUpdate buffers.
         // Previous code allocated `Float32Array(cluster.size)` × 2 PER
         // DEFINITION ENTRY. With multi-def × 2247 K_VOCAB upfront seed
