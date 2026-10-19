@@ -917,6 +917,18 @@ const SERVER_STATE_MIXIN = {
           // lane starved for ~10h (2 grounds against a ~60-look budget) with
           // zero remotely-visible evidence — every failure path was silent.
           lookups: this._vmLookStats || null,
+          // ⛔ THE CHAT RENDER LANE WAS COUNTED AND PUBLISHED NOWHERE (2026-10-19).
+          // `_imageEngineStats` has tracked ok / engineDown / httpFails /
+          // timeouts / donorYieldSkips / queued / unloads since the engine came
+          // home, and a live snapshot proved NONE of it reaches this file — the
+          // only image keys in /public-state.json were `ownArt.lookups.engineDown`
+          // and the unrelated `perf.gpuVram*`. So the chat lane's health was
+          // readable only from inside the process, which is the same
+          // instrument-nobody-can-read defect the look ledger above exists to fix.
+          // Found while adding the free-VRAM gate, when its new counters had
+          // nowhere to appear. `lastFreeVramMB` / `minFreeVramMB` are the two that
+          // answer "is the card too full for her to see?" at a glance.
+          imageEngine: (typeof this._imageEngine === 'function') ? this._imageEngine() : null,
           // WAVESEE.4 — is she READING the precomputed wavelet fields, or
           // silently re-transforming every figure? One number cannot answer
           // that, so the counters are separate BY REASON:
