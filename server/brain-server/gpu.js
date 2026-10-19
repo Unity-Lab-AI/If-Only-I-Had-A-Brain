@@ -5829,8 +5829,29 @@ const SERVER_GPU_MIXIN = {
       }
       return refuse('donor < 0.3.36');
     }
+    // ⛔ THIS GAP IS THE WEIGHT-LOSS BOUND ON A DONOR DEATH, which is what it
+    //   should be read as — not as a cache-refresh interval. 94% of plasticity
+    //   arrives via `hebbian_bound` and trains on the donor's RESIDENT state
+    //   (SHADOWCOST.8: the CPU arrays are a DIFFERENT brain, not a lagging
+    //   copy). So everything learned since the last successful readback dies
+    //   with the card. A donor that aborts at minute 59 of an hourly gap throws
+    //   away an hour of the walk.
+    //
+    // ⭐ 3_600_000 → 1_800_000 on 2026-10-19, RE-PRICED FIRST rather than tuned:
+    //     pull   ~6.8 GB over loopback at the measured 541.78 MB/s ≈ 13 s
+    //     save   5,997 MB binary weights, measured 51–66 s wall this week
+    //     cycle  ≈ 75–80 s, and the save pins the loop for most of it
+    //   duty = cycle / gap →  hourly 2.2% · 30 min 4.4% · 15 min 8.9%
+    //   Thirty minutes halves the worst-case loss for ~2 points of walk
+    //   throughput. Fifteen doubles the tax again for the same shape of win,
+    //   so it is left to the operator rather than taken as the default.
+    // ⚠ This is a TIGHTENING — a bound made smaller, nothing removed — so the
+    //   consolidation gate and every walk-length figure are untouched.
+    // ⛔ The real fix is not here: it is the donor keeping its own on-disk
+    //   checkpoint and handing it back on reconnect, which bounds the loss
+    //   without the host paying the transfer at all.
     const GAP_MS = Number.isFinite(+process.env.DREAM_READBACK_MIN_GAP_MS)
-      ? Math.max(0, +process.env.DREAM_READBACK_MIN_GAP_MS) : 3_600_000;
+      ? Math.max(0, +process.env.DREAM_READBACK_MIN_GAP_MS) : 1_800_000;
     // ⛔ `SHADOWCOST.3` FIX — SEED THE CLOCK, or "hourly" is not hourly on the
     //   first fire. `_lastReadbackMs` starts undefined, so `!this._lastReadbackMs`
     //   made the gap check fall through and the FIRST scheduler tick pulled the
