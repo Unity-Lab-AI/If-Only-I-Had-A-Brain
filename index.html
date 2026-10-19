@@ -219,14 +219,26 @@
     })();
   </script>
 
-  <!-- WebGPU pre-flight gate. The modal is HARD-BLOCK with no CPU
-       bypass — users either fix WebGPU via the prep page or do not
-       use Unity. Loads early so the modal renders before the 3D brain
-       canvas paints. -->
-  <script type="module">
-    import { mountBootModal } from './js/webgpu-prep.js';
-    mountBootModal({ prepUrl: 'html/webgpu-prep.html' });
-  </script>
+  <!-- ⛔⛔ THE WEBGPU HARD-BLOCK WAS REMOVED FROM THIS PAGE 2026-10-19.
+       It mounted a full-screen overlay (`position:fixed; inset:0;
+       background:rgba(0,0,0,0.92); z-index:99999`) with NO dismiss, so a
+       visitor whose browser reported no adapter could not read the site,
+       open a page, or say a word to her. Operator, verbatim: *"PEOPEL ARE
+       NOT REQUIRED TO DONATE!!!!!!"* — and that is the whole point. This is
+       the front door, not the donation desk.
+
+       ⚠ VISITING AND DONATING ARE DIFFERENT ACTS AND ONLY ONE NEEDS A GPU.
+       Her thinking runs on the SERVER's donated compute; a reader's browser
+       contributes nothing unless they choose to open the donor page. The
+       gate's own first line even knew this — it returns early when the
+       server brain answers — which means the block only ever fired on the
+       visitors least able to act on it, and on every visitor whenever the
+       brain was briefly down.
+
+       ⭐ WHERE THE REQUIREMENT STILL LIVES, CORRECTLY: `html/compute.html`,
+       the donor page, where WebGPU genuinely is the product. `webgpu-prep.html`
+       stays as the opt-in guide for anyone who wants to set it up.
+       ⛔ Do not re-mount `mountBootModal` here. -->
 
   <!-- The page-index link lives in the bottom button row with the other
        brain buttons (see #landing-pages-btn below), not floating top-right. -->
