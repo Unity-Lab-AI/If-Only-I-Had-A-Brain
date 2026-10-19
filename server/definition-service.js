@@ -263,26 +263,47 @@ async function getDefinition(word, opts = {}) {
    * fetch used to mean no definitions at all. Now it means no NETWORK
    * definitions.
    */
+  // ⛔⛔ THE OFFLINE LANE USED TO `return` HERE, AND THAT MADE IT THE ONLY
+  // SOURCE FOR MOST OF THE LANGUAGE. WordNet holds 155,467 lemmas, so for
+  // almost any ordinary word it answered first and the network never ran —
+  // which meant NO examples (it has none), NO synonyms, and none of the
+  // Wiktionary senses. Measured after the union shipped and before this
+  // change: `headphones` still returned 1 sense with 0 examples, and
+  // `heterochromia` returned 0 even though Wiktionary answers it HTTP 200.
+  // The union looked installed and reached almost nothing.
+  //
+  // ⭐ This file's own header already calls offline **"a peer source, not a
+  // fallback"** — and a peer CONTRIBUTES, it does not short-circuit. Its
+  // senses are now collected and merged with the network's, deduped with
+  // everything else. The no-fetch runtime it was built for still gets exactly
+  // what it got before: see the `!HAS_FETCH` return below, which now serves
+  // these senses instead of nothing.
+  let offlineDefs = [];
   try {
     const offline = offlineDict.lookup(key);
     if (offline && offline.length) {
-      const definitions = offline.map((d) => ({
+      offlineDefs = offline.map((d) => ({
         partOfSpeech: d.partOfSpeech || '',
         definition: d.definition,
         example: '',
         synonyms: [],
         source: 'wordnet-offline',
       }));
-      const first = definitions[0].definition;
-      _cachePut(key, { definition: first, definitions, fetchedAt: Date.now() });
-      return first;
     }
   } catch (err) {
     /* Never let the offline lane break the network lane. It is an addition. */
     console.warn('[OfflineDict] lookup threw (non-fatal, falling through to the API):', (err && err.message) || err);
   }
 
-  if (!HAS_FETCH) return null;
+  // No fetch in this runtime → the offline senses ARE the answer, exactly as
+  // before this block became a contributor rather than a short-circuit.
+  if (!HAS_FETCH) {
+    if (offlineDefs.length) {
+      _cachePut(key, { definition: offlineDefs[0].definition, definitions: offlineDefs, fetchedAt: Date.now() });
+      return offlineDefs[0].definition;
+    }
+    return null;
+  }
   if (inFlight.has(key)) return inFlight.get(key);
 
   const timeoutMs = opts.timeoutMs ?? 5000;
@@ -325,13 +346,35 @@ async function getDefinition(word, opts = {}) {
         // marker: the word was never asked for again, on any later walk.
         // So the single most important place to ask the unfiltered source is
         // exactly where the filtered one says the word does not exist.
-        if (res.status === 404) {
+        // ⛔⛔ THIS FIRES ON **ANY** WRAPPER FAILURE, NOT JUST 404 — AND THE
+        // 404-ONLY VERSION WAS CAUGHT BY MEASUREMENT, NOT BY READING.
+        // With the gate at `=== 404`, a test run returned 0 senses for shit,
+        // cunt, tampon, puberty, heterochromia and headphones, which looked
+        // like Wiktionary rate-limiting me again. It was not: Wiktionary
+        // answered **HTTP 200 with 29 senses for `shit`** in the same second
+        // the wrapper answered **HTTP 530**. The consult never ran because 530
+        // is not 404.
+        // dictionaryapi.dev returned 530 repeatedly across this session, so
+        // this is its normal failure mode, not a freak. Wiktionary's
+        // availability is INDEPENDENT of the wrapper's — gating the healthy
+        // source on the sick one's particular status code means a wrapper
+        // outage silently teaches her nothing for every word in that window.
+        if (!res.ok) {
           let wikt = [];
           try { wikt = await _fetchWiktionarySenses(key, timeoutMs); } catch { wikt = []; }
-          if (wikt.length > 0) {
-            const firstW = wikt[0].definition;
-            _cachePut(key, { definition: firstW, definitions: wikt, fetchedAt: Date.now() });
-            return wikt;
+          // Offline senses ride here too — a wrapper 404 says nothing about
+          // what WordNet or Wiktionary know, and dropping the peer's senses
+          // on the wrapper's say-so is the same mistake one level down.
+          const union = [];
+          const seenU = new Set();
+          for (const d of [...offlineDefs, ...wikt]) {
+            const k = String(d.definition || '').toLowerCase().replace(/[^a-z0-9 ]+/g, '').replace(/\s+/g, ' ').trim();
+            if (!k || seenU.has(k)) continue;
+            seenU.add(k); union.push(d);
+          }
+          if (union.length > 0) {
+            _cachePut(key, { definition: union[0].definition, definitions: union, fetchedAt: Date.now() });
+            return union;
           }
         }
         // 404 with no Wiktionary entry either = genuinely no dictionary entry
@@ -383,6 +426,7 @@ async function getDefinition(word, opts = {}) {
       // ordinary entries there — no separate "adult" source is needed, and a
       // user-submitted one (Urban Dictionary) would have traded this coverage
       // for joke definitions she would have to unlearn.
+      for (const d of offlineDefs) definitions.push(d);   // the peer source, merged not skipped
       try {
         const wikt = await _fetchWiktionarySenses(key, timeoutMs);
         for (const d of wikt) definitions.push(d);
@@ -637,6 +681,16 @@ function clearCache() {
 // subsequent boots.
 const fs = require('fs');
 const path = require('path');
+// ⛔ BUMP THIS WHENEVER THE SHAPE **OR THE SOURCES** OF A DEFINITION RECORD
+// CHANGE. A cached record is a statement about what the pipeline could produce
+// at the moment it was written; when the pipeline grows, every older record is
+// an understatement, and this cache is persistent ACROSS FRESH WALKS, so an
+// un-bumped version silently teaches the old vocabulary forever.
+//   v1 — dictionaryapi.dev only, first definition's words, no examples
+//   v2 — 2026-10-19: union with Wiktionary (the wrapper 404s on anatomy,
+//        excretion and obscenity), examples and synonyms bound, per-definition
+//        word cap 8 -> 24
+const CACHE_VERSION = 2;
 const DEFAULT_DISK_CACHE_PATH = path.join(__dirname, 'definition-cache.json');
 const _envCachePath = process.env.DREAM_DEFINITION_CACHE_FILE;
 const DISK_CACHE_PATH = (typeof _envCachePath === 'string')
@@ -648,7 +702,33 @@ if (DISK_CACHE_PATH) {
     if (fs.existsSync(DISK_CACHE_PATH)) {
       const raw = fs.readFileSync(DISK_CACHE_PATH, 'utf8');
       const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object' && parsed.entries) {
+      // ⛔⛔ A CACHE WRITTEN BY AN OLDER DEFINITION PIPELINE WOULD HAVE HIDDEN
+      // THE WHOLE 2026-10-19 FIX, SILENTLY, ON EXACTLY THE WORDS THAT MATTER.
+      // The disk cache is deliberately persistent and deliberately excluded
+      // from the fresh-walk wipe, so a fresh walk REUSES it. Measured on the
+      // v1 file sitting here when the union shipped:
+      //     16,779 word entries · mean 5.23 senses · only 18% carried ANY
+      //     example · 27% held a single sense
+      //     1,539 cached `noDef` — a PERMANENT "no such word" marker — and
+      //     they included real words the wrapper merely 404'd on
+      //     (heterochromia, graphological, predication, collectivity)
+      // Every one of those would have been served from disk and never
+      // re-fetched, so the examples, the synonyms, the raised word cap and the
+      // Wiktionary senses would have reached almost nothing. The walk would
+      // have looked fixed and taught the old vocabulary.
+      //
+      // ⭐ The version is the fix, not a one-time `rm`: a manual delete has to
+      // be remembered by a human every time the pipeline changes, and it will
+      // not be. Entries written under a lower CACHE_VERSION are discarded on
+      // load and re-fetched. **Bump CACHE_VERSION whenever the shape or the
+      // SOURCES of a definition record change** — adding Wiktionary to the
+      // union is exactly such a change.
+      const _fileVersion = Number(parsed && parsed.version) || 0;
+      if (_fileVersion < CACHE_VERSION) {
+        console.log(`[definition-service] disk cache DISCARDED — written by pipeline v${_fileVersion}, this build is v${CACHE_VERSION}. `
+          + `${Object.keys((parsed && parsed.entries) || {}).length} entries will be re-fetched against the current sources `
+          + `(the union with Wiktionary, examples and synonyms). This is deliberate: serving them would teach the old vocabulary.`);
+      } else if (parsed && typeof parsed === 'object' && parsed.entries) {
         let restored = 0;
         for (const [key, entry] of Object.entries(parsed.entries)) {
           if (entry && typeof entry === 'object') {
@@ -671,7 +751,7 @@ function flushCacheToDisk() {
   try {
     const entries = {};
     for (const [k, v] of cache.entries()) entries[k] = v;
-    const payload = { savedAt: Date.now(), version: 1, entries };
+    const payload = { savedAt: Date.now(), version: CACHE_VERSION, entries };
     fs.writeFileSync(DISK_CACHE_PATH, JSON.stringify(payload), 'utf8');
     return true;
   } catch (err) {
