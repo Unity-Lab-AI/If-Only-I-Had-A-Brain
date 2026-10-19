@@ -27,6 +27,8 @@ export class ChatPanel {
         <div class="chat-header-btns">
           <button class="chat-mute-btn" title="Mute Unity's voice (she still types responses — just silences TTS in the moment)">🔊</button>
           <button class="chat-mic-btn" title="Mute your mic (stops her from hearing you)">🎤</button>
+          <button class="chat-min-btn" title="Minimise — collapse to the title bar, keeps the conversation">&minus;</button>
+          <button class="chat-full-btn" title="Fullscreen — fill the window">&#9974;</button>
           <button class="chat-close-btn" title="Close">&times;</button>
         </div>
       </div>
@@ -44,6 +46,50 @@ export class ChatPanel {
     const closeBtn = this._el.querySelector('.chat-close-btn');
     const muteBtn = this._el.querySelector('.chat-mute-btn');
     const micBtn = this._el.querySelector('.chat-mic-btn');
+    const minBtn = this._el.querySelector('.chat-min-btn');
+    const fullBtn = this._el.querySelector('.chat-full-btn');
+
+    // ── WINDOW CONTROLS ──────────────────────────────────────────────────
+    // This is the panel every visitor talks to her through, and it was a
+    // fixed 380×520 box in the corner with only a close button: no way to
+    // give a long conversation more room, and no way to push it aside
+    // without losing it. Minimise collapses to the title bar and KEEPS the
+    // conversation; fullscreen fills the window.
+    // ⚠ The two states are mutually exclusive and entering one clears the
+    //   other — a minimised fullscreen panel is a title bar stretched across
+    //   the whole screen, which is nobody's intent.
+    // ⚠ Persisted, because a visitor who chose fullscreen means it for the
+    //   next message too, not just this one. Wrapped: storage throws in
+    //   private-mode browsers and a thrown preference must not cost a chat.
+    const KEY = 'unity_chat_panel_view';
+    const applyView = (v, persist) => {
+      const full = v === 'fullscreen';
+      const mini = v === 'minimized';
+      this._el.classList.toggle('fullscreen', full);
+      this._el.classList.toggle('minimized', mini);
+      // The glyph shows what the button WILL DO, not the state it is in.
+      fullBtn.innerHTML = full ? '&#10066;' : '&#9974;';
+      fullBtn.title = full ? 'Exit fullscreen' : 'Fullscreen — fill the window';
+      minBtn.innerHTML = mini ? '&#9633;' : '&minus;';
+      minBtn.title = mini ? 'Restore the conversation' : 'Minimise — collapse to the title bar, keeps the conversation';
+      this._view = v;
+      if (persist) { try { localStorage.setItem(KEY, v); } catch { /* private mode */ } }
+      // A restored or enlarged panel should show the newest message, not
+      // wherever the scroll happened to be when it was collapsed.
+      if (!mini && this._messagesEl) this._messagesEl.scrollTop = this._messagesEl.scrollHeight;
+    };
+    let _saved = 'normal';
+    try { _saved = localStorage.getItem(KEY) || 'normal'; } catch { /* private mode */ }
+    applyView(_saved === 'fullscreen' || _saved === 'minimized' ? _saved : 'normal', false);
+
+    minBtn.addEventListener('click', () => applyView(this._view === 'minimized' ? 'normal' : 'minimized', true));
+    fullBtn.addEventListener('click', () => applyView(this._view === 'fullscreen' ? 'normal' : 'fullscreen', true));
+    // Clicking the title bar of a minimised panel restores it — the whole
+    // visible surface is a target, not just the small button.
+    this._el.querySelector('.chat-header').addEventListener('click', (e) => {
+      if (this._view === 'minimized' && !e.target.closest('button')) applyView('normal', true);
+    });
+    this._applyChatView = applyView;
 
     // In-the-moment mute toggles. These reflect and update
     // window.unityChannels (the same state the setup-modal checkboxes
@@ -95,7 +141,14 @@ export class ChatPanel {
       if (e.key === 'Enter' && this._inputEl.value.trim()) {
         this._send();
       }
-      if (e.key === 'Escape') this.close();
+      // ⚠ Escape leaves FULLSCREEN first and only closes from the normal
+      //   size. Every other fullscreen surface on the web behaves this way,
+      //   and closing a full-window chat on one keypress would throw a
+      //   visitor out of a conversation when they meant to shrink it.
+      if (e.key === 'Escape') {
+        if (this._view === 'fullscreen') this._applyChatView('normal', true);
+        else this.close();
+      }
     });
     sendBtn.addEventListener('click', () => this._send());
     closeBtn.addEventListener('click', () => this.close());
