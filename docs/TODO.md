@@ -415,6 +415,38 @@ Asked via `AskUserQuestion` how far to go — Gee chose **"Restructure into the 
 
 ---
 
+## ⛔⛔⛔ GREENEYE — EVERY IMAGINED FRAME WAS A FLAT GREEN WALL, AND IT WAS NEVER A DISPLAY BUG — filed 2026-10-20 Denver
+
+Gee (verbatim): *"is it just me? or is her minds eye images all just neon grreeen images of nothing but green wall of color"*
+
+Gee (verbatim): *"okay they are working now"* · *"i didnt have to restart her"* · *"can we clear out all those bad images without restarting her?"* · *"okay if it was a display bug they all should be fine then right? but im still seeing intermittenat green neon images"*
+
+⛔ **IT WAS NOT A DISPLAY BUG — the renderer faithfully rendered garbage.** His *"intermittent"* is the exact signature: her eye alternates between frame SOURCES, and only one of them was broken. Measured over 10 consecutive samples of the live `/minds-eye.json`:
+
+```
+  canvas:imagine:*            Y kept     500   non-zero       4   distinct values      1   DEGENERATE  (7 of 7)
+  lookup:helper               Y kept 204,799   non-zero 204,799   distinct        12,170   fine
+  canvas:own:helper:poster    Y kept 186,416   non-zero 186,416   distinct        18,858   fine
+  draw:fav:cook               Y kept 162,799   non-zero 162,799   distinct        20,016   fine
+```
+
+**100% correlation with the source type**, and a second, sharper correlation underneath it — `fidelity.source`: every `mindspace-donor` field measured flat, every `mindspace-sketch` field measured rich.
+
+- [x] `GREENEYE.1` — ✅ **GUARD SHIPPED 2026-10-20 — A FLAT FIELD IS NO LONGER PUBLISHABLE TO HER EYE, ON BOTH `stylizeField` LANES.** ⭐ **The green is fully explained by arithmetic, not inferred:** the bad field carries **four** non-zero coefficients out of a 500/150/150 keep budget, all four at the same quantized magnitude — one DC term plus three reflection-padding artefacts, i.e. a **uniform** field. Reconstructed through the REAL production transform it is **`rgb(0,135,0)` across 100% of 65,536 pixels, 1 distinct colour**. The reason uniform reads as *green* rather than black is that neutral chroma in this codec is **0.5**, and `transform.js:135` subtracts it:
+  ```
+    DC values   Y 0.311   Cb 0.325   Cr 0.278        (neutral chroma = 0.5)
+    R = 0.311 + 1.402(0.278-0.5)                =  0.000  ->   0
+    G = 0.311 - 0.344(-0.175) - 0.714(-0.222)   =  0.530  -> 135
+    B = 0.311 + 1.772(0.325-0.5)                =  0.000  ->   0
+  ```
+  ⭐⭐ **THREE SUSPECTS WERE CLEARED BY MEASUREMENT BEFORE ANY CODE CHANGED, AND CLEARING THEM IS WHAT MADE THE FIX CORRECT:** (1) **`stylizeField` is innocent** — fed a real field it returns **9,728** non-zero coefficients with 5,375 distinct values; the degeneracy is *inherited from its input*, proven by running the production function on a captured live rec. (2) **`labelStrokes` is innocent** — identical output with strokes present and absent. (3) ⛔ **The donor's colour transform is innocent, and this is the one I expected to be guilty** — `donor-app/src/mindspace.rs:300` `rgb_to_ycbcr` is **byte-for-byte the same formula** as `transform.js`'s `rgbToYCbCr`, 0.5 offset included. ⚠ **The donor's coefficient selection is also correct** (sort by magnitude, accumulate to an energy target, `k = max(EQ_KMIN, k)`) — `EQ_KMIN: [500, 150, 150]` is exactly the keep budget observed, so the budget is being honoured and the field genuinely has nothing in it. **The donor was handed a BLANK IMAGE. The encoder encoded it perfectly.**
+  **FIX — the guard, at BOTH publish points:** `_drawImagined` now measures its OWN output with `_recDetail` against `DREAM_REF_MIN_DETAIL` (200, the same *"a blank plate is not a look"* floor this file already trusts everywhere else) and returns a **null honest decline** on failure, which is that function's own documented behaviour for every other fault — *"Can't ground → honest decline (null), never a collage, never a fake."* **A green wall is a fake.** ⭐ **The sibling `canvas:draw:` lane got the identical guard in the same edit** — it is the OTHER `stylizeField` publish path and carries exactly the same risk; **fixing only the lane that happened to be caught is how the free-VRAM gate ended up on the minority caller this morning.** Counted apart as `flatImagines` / `flatRenders`, both **declared at 0** so they read as a statement rather than `undefined`.
+  ✅ **Verified against her REAL captured frames through the REAL `_recDetail`** (lifted off the production mixin, not re-implemented): bad rec **12** → REFUSED · `canvas:own` **213,170** → published · `draw:fav` **408,468** → published. **Four orders of magnitude of separation**, so a false refusal is not reachable. `node --check` clean on both files.
+  ⛔⛔ **ROOT CAUSE STILL OPEN AND DELIBERATELY NOT CLAIMED: WHY IS A BLANK IMAGE REACHING THE DONOR FOR IMAGINES?** The guard stops her eye showing garbage; **it does not give her back her imagination** — with it in place an imagined combo DECLINES instead of painting green, and her eye holds the last real picture. ⚠ Prime suspect, measured but not proven: `ownArt.imageEngine.vramTightSkips` climbed **2 → 13** in the same window, so the local image engine is refusing renders under VRAM pressure — if a refusal leaks a blank buffer onward instead of declining, that is the source. ⚠ Also unexplained: `_fetchReferenceAndGround` already carries a near-uniform rejection (`_recDetail < 200 → blankRefs++`) at `visual-memory.js:2306`, and `blankRefs` read **0** throughout — **a gate that should have caught this and did not, which means either the blank arrives after it or the imagined lane does not pass through it.** ⭐ Noted while reading: the LOOKTWICE two-seed agreement check at `:2323` is skipped whenever `opts.keyOverride` is set, and `_drawImagined` **always** sets it — so every imagined combo bypasses the noisy-oracle verification by construction. Successor row owed.
+  ⚠ **SERVER-SIDE — it lands on the next launch.** Answering his question directly: **there is nothing stored to clear.** The imagined ring is capped at **≤8 recs** and the code calls it *"derivative state — fine to lose / auto-clear; she re-imagines"*, so the bad frames roll over by themselves. They kept reappearing because they were being **regenerated live**, not replayed from storage — which is why clearing without a restart would have changed nothing and the restart is what actually carries the fix.
+
+---
+
 ## ⛔⛔⛔ CHATWIN.2 — THE WINDOW CONTROLS SHIPPED WITH NO STYLING AND A FULLSCREEN THAT PUT THE INPUT BAR MID-SCREEN — filed 2026-10-20 9:36 AM Denver
 
 Gee (verbatim): *"okay the fullscreen and maximize buttons you added for chat are not fulley fleshed out, they are bright white and clash with the style of the chat window, and the fullscreen is fucked the chat input bar is in the middle of the fucking screen when in fullscreen, wtf?"*
