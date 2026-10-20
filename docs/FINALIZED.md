@@ -5,6 +5,117 @@
 
 ---
 
+## 2026-10-20 — `WALKWATCH`: THE FREE-VRAM GATE REFUSED EVERY RENDER FROM THE DAY IT SHIPPED, AND ITS OWN HARNESS CERTIFIED THE DEFECT
+
+Gee, verbatim: *"start your 1 min, cron, to monitor the Unity brain as she starts up and donor connects and she starts drawing, then after 1st gate starts training"* · then *"what are you doing, you are suppose to be monitoring her till she is drawing and talking  drawing shoulud start areound phase 2 and talking cell 1 pass"* · then *"wtf u mean she wont draw... she was drawing fine last run"* · then *"okay so i need to fresh start her now?"* · then *"we are only 5min in so freshwalk is best"* · then *"okay need you to cascade so i can freshwalk"*.
+
+### ⛔ He was right that she drew fine last run, and that is the same fact as the bug
+
+```
+  boots before 2026-10-19 night    no gate in the build       she drew fine
+  10/19 12:43 boot (gate shipped)   9 attempts   0 grounded   vramTight
+  10/20 08:56 boot (this one)      11 attempts   0 grounded   vramTight
+  nvidia-smi at that same moment   3,676 MB free              the card was never tight
+```
+
+The gate shipped on the night of 2026-10-19. Every boot since has grounded
+**zero** looks. The last line in `server.log` before her 10/19 exit was that
+same `vramTight ... 0MB free` refusal, already visible and already unread.
+
+### The bug, reproduced against live output before a line was changed
+
+`_gpuFreeVramMB` parsed `nvidia-smi --query-gpu=memory.free` as
+`split('\n').map(Number).filter(isFinite && >= 0)`.
+
+```
+  raw stdout            "3676\r\n"
+  split('\n')           ["3676\r", ""]
+  Number("")            0        isFinite ✓   >= 0 ✓   -> SURVIVES the filter
+  Math.min(3676, 0)     0        <- the gate's reading, every probe, every machine
+```
+
+`nvidia-smi` terminates its output with a newline, so the split **always**
+yields a trailing empty string, and `Number('')` is `0` — a finite,
+non-negative, entirely ordinary-looking reading of zero megabytes free, which
+then won the `Math.min` written to take the smallest card on a multi-GPU host.
+
+### ⛔⛔ The fail-open instrument never engaged, and that is the part worth keeping
+
+`vramUnreadable` exists precisely so a gate that is not gating becomes visible
+— but it only increments when the probe returns `null`, and **this probe never
+failed. It succeeded and returned a fiction.** It read `0` throughout. So the
+counter built to catch exactly this class sat at zero while the thing it
+watches was totally broken.
+
+⭐ **`NOW.md` had already written the test and nobody had run it:** *"Whether
+the gate holds — `ownArt.lookups.vramTight` has never been read on a live boot
+— the running build predates it. A climbing `vramTight` with zero donor hangs
+is the proof; anything else is a claim."* It climbed, with zero hangs
+(`blocked 154s` count on this boot: **0**) — and it was **the bug rather than
+the proof.** The reading was ambiguous between *working perfectly* and *broken
+totally*, and only a side-by-side `nvidia-smi` separated the two.
+
+### ⛔⛔ And the gate's own harness certified the defect
+
+`wiki/modules/visual-memory.md` recorded: *"Harnessed through the real mixin
+against the real card: `0MB free < 3072MB floor` → `{stage:'vramTight'}`,
+`vramTightSkips 1`."* That harness asserted the **refusal** branch; the probe
+always returned 0; so **it passed for the broken reason and shipped the defect
+with a green tick.** A harness that exercises the path a bug forces is not
+evidence that path is correct. The missing assertion is the one nobody writes:
+**does the probe ever return the TRUE number?**
+
+### The fix — one chokepoint, both lanes
+
+`server/brain-server/image-engine.js` `_gpuFreeVramMB`: blank lines are dropped
+**before** coercion — `.map(trim).filter(len > 0).map(Number).filter(isFinite && >= 0)`.
+`visual-memory.js:2184` calls this same mixin function, so the look lane and the
+chat lane are both covered by the one change — verified by reading the call
+path, which is the lesson the two-lane split was written for.
+
+```
+  "3710\r\n"          -> [3710]        min 3,710   floor 3072   look PASSES
+  ""   (no nvidia-smi) -> []            null        fails OPEN, counts vramUnreadable
+  "3676\n8120\n"       -> [3676, 8120]  min 3,676   smallest card still the bound
+```
+
+`node --check` clean. A repo-wide sweep for the same
+`split('\n')` → coerce-before-filter shape found **no other instance**. The
+fail-open branch is reachable for the first time.
+
+⛔ **THE TRANSFERABLE RULE:** a blank line is the **absence** of a reading.
+Coercing it to the smallest possible reading is how a safety gate silently
+inverts into a shutoff. **Filter for presence before you coerce for value.**
+
+### Also read on this boot, and left open with the reason written in
+
+| Finding | State |
+|---|---|
+| **The CPU gauge is frozen, not clamped** | `cpuPercent 7 · raw 7.3 · cpuSampleMs 3486 / cpuWindowMs 2978` **byte-identical across three polls spanning 251 s** while `spikesLifetime` climbed 3,450,975 → 18,265,275. So the earlier hard `100` was **one stale sample published forever**, not a clamp firing — the arithmetic and the divisor guard are exonerated. Cause of the staleness NOT proven: the sampler is called behind a 1-second gate in the tick loop, and a call that ran would report `cpuWindowMs ≈ 1000`, not a fixed 2978. Two candidates, neither confirmed — the sampler stops being called, or `state.perf` is served from a different object than the one that writes it (the producer/consumer name-mismatch shape). **Not patched; the next read is a counter on the function itself so "did it run" stops being an inference** |
+| **Boot numbers, quoted with their boot** | `mode resume · compatible · 199,728,759 neurons · formatVersion 6`, booted `2026-10-20T14:56:19Z`. **`runningFloorMB 8,064` is exactly the 21 bytes/neuron formula** (`ceil((N×21/1048576 + 2048)/0.75)`); 20 B gives 7,811 — so the one-bytes-per-neuron repair is confirmed live, and the earlier sizing derivation, computed at 20 B, understated the floor by 253 MB. Card 16,375 MB holds it **2.0× over**, no red cell |
+| **The seed crystal has its first live numbers** | `crystal.measured: true`, 77 acks — a split-counting donor is attached and both hemispheres are being counted for the first time. `C 0.9994`, `A 0`, **`Φ_LR null` at `windowN 11`** (it needs 64 batches), so the stated failure signature — Φ_LR pinned at 0 while C climbs — is **not yet testable**, and saying so beats reporting a reassuring number |
+| **The pool placed one card correctly** | `pool.cards 1`, all eight clusters owned by the one card, `17/17 matrices uploaded`, `drops 0`. The two-card split stays unharnessed for want of a second card |
+| **The loop is starved and the named culprit is genuinely gone** | `[EventLoop] ⛔ STARVED — late 56.0s out of the last 61s (8% serviced)`, with the brain's own note *"it is thousands of short ones"*. The per-second synchronous `nvidia-smi` is confirmed absent from `chat.js`, so this is either the honest cost of chunked teach math or a second blocker. **A starved loop cannot service a `gpu_register` frame**, which is the documented mechanism behind the donor hang class — so it is watched, not dismissed |
+| **The donor crash instrument is correctly silent** | Newest dump is still `unity-donor-windows-x86_64.exe.31076.dmp`, Oct 18 05:39 — last night's second death. No new dump, no `crash.log`, and the per-user WER `LocalDumps` arming verified still in place. **An instrument that writes nothing because nothing happened is working, and this is the read that distinguishes that from a dead one** |
+| **The 30-minute readback bound is still theoretical** | `grep -c readback server/server.log` = **0** on this boot, as on every boot before it |
+
+### Docs — every tree named
+
+`docs/TODO.md` (two rows filed, one closed) · `docs/FINALIZED.md` (this entry)
+· `docs/ADMIN-CONTROLS.md` (the knob's row asserted the probe worked, corrected
+in place) · `docs/NOW.md` (overwritten — its headline was a fresh walk that has
+since happened) · `docs/RESUME.md` (pickup block) · `wiki/modules/visual-memory.md`
++ `wiki/concepts/the-anonymous-image-slot.md` + `wiki/index.md` + `wiki/log.md`.
+**Unaffected, stated rather than assumed:** `docs/equation-rundown.md:206` lists
+the constants (3072 MB floor, 5 s TTL) and they did not change;
+`html/brain-equations.html`'s only nearby hit is an unrelated attention-threshold
+note; `README.md`, `deploy/**` and the remaining `html/` pages carry no claim
+about this probe. ⚠ `js/app.bundle.js` showed as modified and was **deliberately
+not staged** — HEAD and the working tree are both exactly 1,012,529 bytes, so it
+is line-ending noise rather than content.
+
+---
+
 ## 2026-10-19 — `PAGES.1` + `EQRUN.1`: THE PAGES WERE STYLED BY A STYLESHEET THAT NEVER MATCHED, AND THE EQUATION LEDGER
 
 Gee, verbatim: *"I SEE THAT SOMEONE TOTALLY FUCKED UP MY PAGES STYLE AND LAYOUR APPENDING HUGE TEXT WALLS THAT ARE IN NO WAY IDENTICAL IN COLOR STYLE AND LAYOUR OF THE FURTHER DOWN SECTIONS < ITS LIKE AN AI JUST APPENEDED A BUNCH OF SHIT WITHOUT THE FROM CS SCRIPTING TO MATCH THE SYLE< YOU CAN TELL WQHAT I MEAN BY THE PAGES BEING FUCKED AS FOR ECAMPLE IN EQUATIONS HTML THERE IS A SHIT TONE OF APPENEDED INFORMATION THAT IT ALL TEXT WALLY EWHERE AS THE ORIGNAL LAYOUT HAD SECTIONS BOARDERS NUMBERS CHART LIKE ORGANIZATION AND SHIT AND NOW MY PAGES ARE ALL HORSESHITTY<< I WANT A THROUGHT RUN THROUGH OF THE PAGES TO GET THEM FULLY INTO UNIFORMITY BEFORE FINAL CASCADE, THE PAGES ARE TO BE FULLY BREAUTIFUL AS THEY ONCE WERE AS YOU CAN SEE SOME SECTIONS IN THE PAGES ARE STILL BEAUTIFUL WHERE AS THE STUFF AND INFORMATION THATS BEEN ADDED IS JUST LIKE COMPUTER TALK text walls mono tone colored"* · then *"and quickely do a run through of the equations the brain runs on and do a equation-rundown.md of whats not working versus is working great"*.
