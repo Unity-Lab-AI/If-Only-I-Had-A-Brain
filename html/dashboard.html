@@ -1405,6 +1405,18 @@
         const host = location.hostname || 'localhost';
         return `${scheme}//${host}:7525/public-state.json`;
       }
+      // ⛔⛔ THIS IS THE ONE LANE A VISITOR HAS, AND IT ASKED THE WRONG SERVER.
+      //   `location.origin` on the published site is GitHub Pages, which serves
+      //   this file and has no brain behind it: measured, the page answered 200
+      //   (410,136 B) and `theunitybrain.com/public-state.json` answered 404,
+      //   while the real snapshot sat at the configured tunnel origin (200,
+      //   264,768 B). A visitor got the whole dashboard with every value blank —
+      //   "like it's not plugged in". The live socket two functions up was
+      //   already routed through `js/brain-origin.js`; this poll was missed, the
+      //   same defect the brain page's leaderboard had and was fixed for today.
+      // ⚠ Unconfigured, the helper returns the same bare path, so a page served
+      //   by the brain itself is unchanged.
+      if (typeof unityBrainHttp === 'function') return unityBrainHttp('/public-state.json');
       return `${location.origin}/public-state.json`;
     }
 
