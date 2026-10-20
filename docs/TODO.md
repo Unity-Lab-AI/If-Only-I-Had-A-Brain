@@ -415,6 +415,25 @@ Asked via `AskUserQuestion` how far to go — Gee chose **"Restructure into the 
 
 ---
 
+## ⛔⛔⛔ LBORIGIN — HIS DONOR ROW WAS RANKED ON THE SERVER AND THE BRAIN PAGE ASKED GITHUB FOR IT — filed 2026-10-20 ~9:35 AM Denver
+
+Gee (verbatim): *"something im something wrong, my doner named Gee is not appearing on the compute leaderboard of the brasin page, so that needs fixed"*
+
+Gee (verbatim, correcting me): *"you are wrong the public pages woork fine i just oipened one"*
+
+- [x] `LBORIGIN.1` — ✅ **FIXED 2026-10-20 ~9:40 AM — `index.html`'s leaderboard poll was the ONE brain fetch in the public pages never routed through `js/brain-origin.js`.** ⭐ **The server was never wrong — it held his row the whole time**, and reading that first is what kept this from becoming an accrual hunt:
+  ```
+    state.leaderboard.top[0]   {"id":"name:gee","name":"Gee","neurons":199371.17,...}
+    totalContributors          1
+    and climbing across the session: 199,371 -> 207,240 -> 214,148 Gn-s
+  ```
+  **The defect, measured from the page's own origin:** `index.html:732` called `fetch('/public-state.json')` **root-absolute**, so it resolved against whoever served the PAGE — which on the published site is GitHub's CDN. **`https://theunitybrain.com/public-state.json` → 404**, confirmed by two independent clients (curl AND PowerShell through the OS certificate store, so it is not a probe artefact). `compute.html:229` had already been routed through `unityBrainHttp()`; this page was missed. ⚠ **The deferral was recorded at the time and this is it coming due** — `LOCALHOST.12`: *"the brain-API fetches in those pages (`/public-state.json`, `/save`, …) are ALSO root-absolute and are a DIFFERENT problem — they were always meant for the brain, and belong to `unityBrainHttp()` in the third-mode work, not to a relative-path rewrite. Not touched."*
+  ⛔ **AND THE PAGE REPORTED THE FAILURE AS A HEALTHY STARTUP STATE.** `r.ok ? r.json() : null` mapped **every** non-OK reply to `null`, and `render(null)` prints *"waiting for the brain…"* — the identical string the board shows before its first successful poll. **So a leaderboard pointed at the wrong host was indistinguishable from one that simply had not loaded yet**, which is why this sat unnoticed: the page looked like it was working on it. The non-OK branch now names the HTTP status **and the URL it asked**, so the next misrouting identifies itself instead of looking patient.
+  **FIX (`index.html`, page code only — no bundle, `brain-origin.js` is served raw via `<script src>` and already loaded at `:114`):** an `lbUrl()` helper routing through `unityBrainHttp()` when present and returning the bare path otherwise, so **unconfigured and on a local page nothing changes, branch for branch** — the file's own governing rule. ✅ **Verified:** all **4** inline `<script>` blocks in `index.html` re-parsed with `new vm.Script` after the edit (the lesson that a prose-or-code edit inside a page is a code change, and a syntax error anywhere kills the whole block); the fixed URL fetched live and the row read back through it — `Gee = 214,148.7 Gn-s`. **Repo-wide sweep for the same class:** the only remaining root-absolute fetches are `html/gpu-configure.html`'s `/detect` `/save` `/clear` `/exit`, which are **correct** — that page is served by its own local helper and `grep -c` proves the brain serves none of those routes — plus one occurrence inside a `teachview.html` comment.
+  ⛔⛔ **A WRONG CALL OF MY OWN, CAUGHT BY HIM AND WORTH THE RECORD.** I measured the Tailscale Funnel at `000` from git-bash three times running and told him *"every public page routes to a corpse"*, then edited `BRAIN_ORIGIN` to the Cloudflare host on that basis. **He opened a public page and it worked.** Re-probed properly: `curl -k` → **200**, PowerShell through the OS certificate store → **200 with 285,890 bytes**. ⭐ **git-bash's curl could not verify the `ts.net` certificate — `000` means MY CLIENT COULD NOT CONNECT, it has never meant the host is down.** The `BRAIN_ORIGIN` edit was reverted: it was an unforced change to working configuration, justified by a broken instrument. **The same error class this whole session has been cataloguing, committed by the instrument-auditor.** Standing rule: **a transport failure code is a statement about the prober. Confirm with a second, independent client before it is a statement about the target.**
+
+---
+
 ## ⛔⛔⛔ WALKWATCH — THE FRESH-WALK BOOT IS WATCHED ON A ONE-MINUTE WAKE-UP, THROUGH FOUR NAMED MILESTONES — filed 2026-10-20 ~8:52 AM Denver
 
 Gee (verbatim, in full): *"start your 1 min, cron, to monitor the Unity brain as she starts up and donor connects and she starts drawing, then after 1st gate starts training"*

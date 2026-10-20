@@ -729,11 +729,40 @@
     // rendering an empty board that reads as "nobody has donated". The catch
     // below only fires on a network error; a deliberate outage returns valid
     // JSON, so it needs its own branch.
-    function poll(){fetch('/public-state.json',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(s){
+    // ⛔⛔ THIS FETCH MUST GO THROUGH `unityBrainHttp()`, AND FOR TWO YEARS OF
+    //   THIS PAGE'S LIFE IT DID NOT. A bare `/public-state.json` resolves
+    //   against whoever served the PAGE — which on the published site is
+    //   GitHub's CDN, where no such file exists. Measured live: the page
+    //   answered 200 and its own leaderboard URL answered **404**, so the
+    //   board sat empty on the public site while the brain held a ranked row
+    //   the whole time. `js/brain-origin.js` is already loaded above and
+    //   `compute.html` was routed through it; this page was missed, and the
+    //   deferral was recorded at the time as *"the brain-API fetches in those
+    //   pages are ALSO root-absolute and are a DIFFERENT problem — not
+    //   touched"*. This is that deferral coming due.
+    // ⚠ Unconfigured and on a local page the helper returns the SAME bare
+    //   path, so this changes nothing for anyone serving the page off the
+    //   brain itself.
+    function lbUrl(){
+      try{ if(typeof unityBrainHttp==='function') return unityBrainHttp('/public-state.json'); }catch(e){ /* fall through to same-origin */ }
+      return '/public-state.json';
+    }
+    function poll(){var url=lbUrl();fetch(url,{cache:'no-store'}).then(function(r){return r.ok?r.json():{__httpStatus:r.status};}).then(function(s){
       if(s&&(s.brainOffline===true||s.brainOnline===false)){
         rowsEl.innerHTML='<div style="color:#f87171;">Brain offline — she isn\'t running right now.</div>'
           +'<div style="color:#667;margin-top:4px;">The site stays up; an admin can start her again. Scores are preserved.</div>';
         footEl.textContent='brain offline · retrying…';
+        return;
+      }
+      // ⛔ A NON-OK REPLY IS NOT "WAITING FOR THE BRAIN". The old code mapped
+      //   every failure to `null`, which rendered the same reassuring
+      //   "waiting for the brain…" the page shows at startup — so a leaderboard
+      //   pointed at the wrong host was indistinguishable from one that had
+      //   simply not loaded yet. Name the status and the host it was asked of.
+      if(s&&s.__httpStatus){
+        rowsEl.innerHTML='<div style="color:#f87171;">Leaderboard unreachable — HTTP '+s.__httpStatus+'.</div>'
+          +'<div style="color:#667;margin-top:4px;word-break:break-all;">asked: '+esc(url)+'</div>';
+        footEl.textContent='HTTP '+s.__httpStatus+' · retrying…';
         return;
       }
       render(s&&s.state&&s.state.leaderboard);
