@@ -6773,6 +6773,32 @@ class ServerBrain {
       // biological scale.
       this._memoryHeartbeat();
 
+      // Full perf + history once per second — HERE, at the top, for the same
+      // reason the memory heartbeat above is here.
+      // ⛔⛔ IT USED TO SIT AT THE BOTTOM OF THE TICK BODY, BELOW THREE EARLY
+      //   RETURNS — and one of them fires on EVERY tick while the walk runs
+      //   (`if (this._curriculumInProgress) { … return; }`). So the sampler ran
+      //   only in the seconds before the walk began and then never again: the
+      //   dashboard CPU gauge froze on whatever its last pre-walk sample said,
+      //   for the entire walk. Three boots, three frozen readings — 100 (busy
+      //   sample), 2% (idle sample), and 100 again from the very FIRST call
+      //   (61,219 ms of boot CPU over a placeholder 1,000 ms window = 382%).
+      //   The OS measured the process at 2.5% of 16 cores at that moment.
+      //   The emotion-history ring is pushed from this same block, so her
+      //   arousal / valence / Ψ history froze through every walk too.
+      // ⚠ Both calls are cheap by construction: the GPU query inside
+      //   `_updatePerfStats` is fire-and-forget, never a blocking spawn.
+      const _perfNow = Date.now();
+      if (_perfNow - this._lastHistorySample >= 1000) {
+        this._lastHistorySample = _perfNow;
+        this._updatePerfStats();
+        this._emotionHistory.push({
+          t: this.time, a: +this.arousal.toFixed(3), v: +this.valence.toFixed(3),
+          p: +this.psi.toFixed(4), c: +this.coherence.toFixed(3), s: this.totalSpikes,
+        });
+        if (this._emotionHistory.length > this._historyMaxLen) this._emotionHistory.shift();
+      }
+
       // server-side inner voice tick. Fires Unity's REAL
       // current-state thought (read from server cluster's trained
       // weights) every ~3 s and broadcasts as `innerThought` WS message
@@ -7838,20 +7864,21 @@ class ServerBrain {
       // (above the probe-gate early-return) — see this._memoryHeartbeat()
       // call at the start of tick().
 
-      // Full perf + history once per second
-      const now = Date.now();
-      if (now - this._lastHistorySample >= 1000) {
-        this._lastHistorySample = now;
-        this._updatePerfStats();
-        this._emotionHistory.push({
-          t: this.time, a: +this.arousal.toFixed(3), v: +this.valence.toFixed(3),
-          p: +this.psi.toFixed(4), c: +this.coherence.toFixed(3), s: this.totalSpikes,
-        });
-        if (this._emotionHistory.length > this._historyMaxLen) this._emotionHistory.shift();
-      }
+      // (The once-per-second perf + emotion-history block lived HERE, below the
+      // early returns, and so never ran during a walk. It is at the top of the
+      // tick body now, beside the memory heartbeat — see the note there.)
       // Schedule next tick AFTER this one completes — no pileup
       if (this.running) setTimeout(tick, BRAIN_TICK_MS);
     };
+    // Seed the CPU baseline BEFORE the first sample. Without it the first call
+    // has no `_lastCpuUsage`, so `process.cpuUsage()` returns the process's
+    // TOTAL CPU since launch — all of boot — divided by the function's
+    // placeholder 1,000 ms window. Measured: 61,219 ms over 1,000 ms = 382%,
+    // published as a clamped 100 on a process the OS read at 2.5%. Seeding here
+    // (and holding the first sample one second out) makes it a real second.
+    this._lastCpuUsage = process.cpuUsage();
+    this._lastPerfTime = Date.now();
+    this._lastHistorySample = Date.now();
     tick(); // start the loop
     console.log('[Brain] Started — thinking continuously');
   }

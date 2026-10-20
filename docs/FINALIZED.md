@@ -5,6 +5,29 @@
 
 ---
 
+## 2026-10-20 — `CPUGAUGE`: THE GAUGE NEVER SAMPLED DURING A WALK, AND ITS FIRST SAMPLE WAS ALL OF BOOT
+
+Gee, verbatim: *"woah!!!! CPU 100% clamped whats happenening last run it was 1%"* · then *"okay fix it and fresh start it is im shutting her down"*
+
+```
+  dashboard   cpuPercent 100   raw 382.6   cpuSampleMs/cpuWindowMs 61219/1000   (identical 20 s apart)
+  OS          2,000 ms CPU in 5,000 ms wall = 0.4 cores = 2.5% of 16
+```
+
+**The freeze:** `_updatePerfStats` was called from the bottom of `tick()`, below three early returns. One of them — the curriculum-in-progress branch — returns on **every tick for as long as the walk runs**. So the sampler ran only in the seconds before the walk began, then never again, and the gauge held whatever its last pre-walk sample said. That reconciles three boots: `3486/2978` (busy) → 100, `281/1039` (idle) → 2%, `61219/1000` → 100. The emotion-history ring was pushed from the same block, so **her arousal / valence / Ψ history froze through every walk as well.** A comment two lines above the old call recorded that the memory heartbeat had been moved to the top of the tick for exactly this reason; the perf block had been left behind.
+
+**The first sample:** with no CPU baseline, `process.cpuUsage()` returns total CPU since launch, divided by the function's placeholder 1,000 ms window — all of boot read as one second: 61,219 / 1,000 = 382%, clamped to 100.
+
+**Fix:** the once-per-second block moved to the top of `tick()` beside the memory heartbeat; the CPU baseline, perf time and history clock are seeded in `start()` just before the loop begins. `node --check` clean; one sampler call, ahead of the walk's early return; nothing in `tick()` before it can return.
+
+⭐ **The arithmetic was exonerated weeks ago and the instruments added then are what found this.** Publishing `cpuSampleMs` and `cpuWindowMs` instead of a clamped number is the only reason the 1,000 ms placeholder and the byte-identical repeats were visible at all.
+
+Also filed open, not built: `WEDGEALARM.1` — the "NOT TEACHING … WEDGE" detector does not count the definition-binding lane and so cries wolf during vocab.
+
+**Docs:** `docs/TODO.md` (`CPUGAUGE.1` and `.2` closed, `WEDGEALARM.1` filed) · this entry · `docs/NOW.md` (its "not known" row answered in place). **Unaffected:** the dashboard's "clamped" tooltip still describes what it shows; no knob changed, so `ADMIN-CONTROLS.md` is untouched; no bundle — server-side only.
+
+---
+
 ## 2026-10-20 — `MINDSEYE`: THE JUDGE BUTTONS WORKED ON ONE FRAME IN FIVE, HER "IMAGINATION" WAS A RECREATION, AND THE FRAME NEVER SAID WHAT IT WAS
 
 Gee, verbatim: *"the three buttons good, bad, not drawable buttons on the minds eye page are not working correctly they are greyed out and unusable when images are appearing and drawings, and im not seeing or they arent labeled correctly, her uniquely created imageneed and drawn images,,, not just the recreations im seeing those and they look good but she needs to properly imagine drawings of completely new ideas and experimentation drawings whereshe draws things shes never seen before based off experience,,,, and these need to be labeled so people know they art her recreations of something she has seen"* · then *"okay i stopped her , u are free to change and fix, ill fresh walk once all cascaded"*
