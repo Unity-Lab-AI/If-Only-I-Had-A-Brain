@@ -5,6 +5,26 @@
 
 ---
 
+## 2026-10-20 — `FRESHFLAG`: THE WIPING LAUNCHER COULD NOT WIPE AFTER A CLEAN STOP
+
+Gee, verbatim: *"okay fix it and fresh start it is im shutting her down"*
+
+Two boots in a row came up `mode: resume` after a shutdown meant for a fresh walk; the 590 MB visual store survived both. The boot's first line named the cause: *"CLEAN SHUTDOWN detected … RESUMING where it left off (auto-Savestart). Auto-clear SKIPPED"*.
+
+```
+  _keepRequested = DREAM_KEEP_STATE === '1' || (_marker && _marker.cleanShutdown)
+```
+
+Every clean stop writes a resume marker, and the next boot resumes on it **whichever launcher started it**. Correct for the systemd box; on this PC, `start.bat` could never fresh-walk after a clean stop — while printing *"This boot will DELETE…"* and accepting a **Y** to *"Are you sure you want to WIPE"*. The confirmation was an instrument reading healthy while doing the opposite, and it broke the project's own rule that `start.*` boots fresh.
+
+**Fix, on the path that already existed:** the brain honours `.force-fresh` ahead of the marker (previously written only by the dashboard's Reset and fresh-update) and deletes a stale marker on read. Both launchers now write `{"via":"start.bat"}` / `{"via":"start.sh"}` into `server/` on entering it, on the existing `cd` line with `&&` — the files are pure CRLF, and `&&` means a failed `cd` writes nothing.
+
+**Verified by executing the shipped line:** real layout → flag lands, the brain's parser reads `via "start.bat"`; `server\` absent → no flag anywhere. CRLF counts and the `.bat` non-ASCII baseline (9) unchanged; `bash -n` clean. Two test faults of my own — MSYS escaping quotes on the way into `cmd`, and a stray flag written to the repo root by a failed `cd` under `&` — were both caught before anything booted; the second is why the line uses `&&`.
+
+**Docs:** `docs/TODO.md` (row filed and closed) · this entry. **Unaffected:** `.claude/CLAUDE.md` and `docs/NOW.md` state `start.* boots fresh` — false after a clean stop until now, true again with this change, so their wording stands; the dashboard Start button deliberately still resumes.
+
+---
+
 ## 2026-10-20 — `CPUGAUGE`: THE GAUGE NEVER SAMPLED DURING A WALK, AND ITS FIRST SAMPLE WAS ALL OF BOOT
 
 Gee, verbatim: *"woah!!!! CPU 100% clamped whats happenening last run it was 1%"* · then *"okay fix it and fresh start it is im shutting her down"*

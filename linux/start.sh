@@ -225,7 +225,7 @@ echo ""
 
 # Step 2/7: enter server folder
 echo "[start] step 2/7: entering server folder..."
-cd "$DIR/server" || { echo "  ERROR: server/ folder missing"; exit 1; }
+cd "$DIR/server" || { echo "  ERROR: server/ folder missing"; exit 1; }; printf '{"via":"start.sh"}' > .force-fresh && echo "  [start] fresh walk ARMED: .force-fresh written. A clean stop leaves a resume marker that would otherwise make this boot RESUME despite start.sh being the wiping launcher."
 echo ""
 
 # Step 3/7: check npm dependencies
