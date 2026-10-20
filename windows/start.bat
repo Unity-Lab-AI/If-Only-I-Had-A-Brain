@@ -281,7 +281,7 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr :7525 ^| findstr LISTENING') 
 echo.
 
 echo [start] step 2/7: entering server folder...
-cd /d "%~dp0..\server"
+cd /d "%~dp0..\server" && (echo {"via":"start.bat"})> .force-fresh && echo   [start] fresh walk ARMED: .force-fresh written. A clean stop leaves a resume marker that would otherwise make this boot RESUME despite the WIPE you just confirmed.
 echo.
 
 echo [start] step 3/7: checking npm dependencies...
