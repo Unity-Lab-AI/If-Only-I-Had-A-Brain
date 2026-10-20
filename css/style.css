@@ -19,6 +19,18 @@
   --pink-glow: rgba(255, 77, 154, 0.3);
   --pink-dim: rgba(255, 77, 154, 0.15);
   --purple: #a855f7;
+  /* ⛔⛔ `--cyan` WAS REFERENCED FIVE TIMES IN THIS FILE AND DECLARED NOWHERE,
+     so every one of those rules was invalid at parse time and silently did
+     nothing — including two `:hover` rules on the chat panel's mute and mic
+     buttons that predate the window controls, meaning their hover accent has
+     never once rendered. Found by auditing the loaded stylesheets for
+     undefined custom properties: `--cyan` is the ONLY one, 5 uses, every
+     other reference resolves.
+     ⭐ The value is not invented — `rgba(0, 229, 255, …)` is already written
+     LITERALLY three times in this same file (the oldest at 0.4 alpha), and
+     0,229,255 is exactly #00e5ff, the cyan the brain pages already use. The
+     colour was always here; only the name was missing. */
+  --cyan: #00e5ff;
   --green: #22c55e;
   --red: #ef4444;
   --font: 'Inter', -apple-system, sans-serif;
@@ -691,8 +703,17 @@ html, body {
   z-index: 9300;
 }
 /* The message list is the only part that should grow; without this the
-   flex column leaves the input floating mid-screen on a short history. */
-.chat-panel.fullscreen .chat-messages { flex: 1 1 auto; }
+   flex column leaves the input floating mid-screen on a short history.
+   ⛔⛔ AND `flex` ALONE DID NOT DO IT — `.chat-messages` carries its own
+   `max-height: 380px`, which is NOT the panel's 520px cap released above and
+   survived into fullscreen untouched. So the list stopped growing at 380px
+   however tall the window was, and the input bar sat pinned directly beneath
+   it IN THE MIDDLE OF THE SCREEN — exactly the symptom the first line of this
+   comment names. The comment was right, the override was on the wrong
+   property, and it shipped: a `max-height` was released one level up while the
+   identical property on the child holding the content was missed.
+   ⚠ `min-height` stays — it is a floor, and a floor cannot clamp growth. */
+.chat-panel.fullscreen .chat-messages { flex: 1 1 auto; max-height: none; }
 
 /* ⚠ A phone is already effectively fullscreen, so the corner geometry is
    what breaks there, not the expanded state. Keeping the normal panel
@@ -720,9 +741,18 @@ html, body {
   color: var(--pink);
 }
 .chat-header-btns { display: flex; gap: 6px; align-items: center; }
+/* ⛔⛔ `.chat-min-btn` AND `.chat-full-btn` WERE MISSING FROM THIS LIST AND SO
+   RENDERED AS BROWSER-DEFAULT BUTTONS — bright white chrome boxes beside four
+   dark bordered siblings. The markup and the behaviour shipped; the styling
+   never did, which is the same shape as a designed stylesheet whose selectors
+   never match the designed markup: the vocabulary exists and the new element
+   simply was not added to it. A new control belongs in its siblings' selector
+   list in the SAME edit that adds its markup. */
 .chat-close-btn,
 .chat-mute-btn,
-.chat-mic-btn {
+.chat-mic-btn,
+.chat-min-btn,
+.chat-full-btn {
   background: rgba(20, 20, 22, 0.6);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -738,7 +768,18 @@ html, body {
 }
 .chat-close-btn:hover { border-color: var(--pink); color: var(--text); background: rgba(255, 77, 154, 0.08); }
 .chat-mute-btn:hover,
-.chat-mic-btn:hover { border-color: var(--cyan); color: var(--text); background: rgba(0, 229, 255, 0.08); }
+.chat-mic-btn:hover,
+.chat-min-btn:hover,
+.chat-full-btn:hover { border-color: var(--cyan); color: var(--text); background: rgba(0, 229, 255, 0.08); }
+/* The two view toggles read their ACTIVE state off the panel's own class, so
+   no extra JS or data attribute is needed — the state already lives there. A
+   lit button means "this view is on", which is what the title text says too. */
+.chat-panel.fullscreen .chat-full-btn,
+.chat-panel.minimized .chat-min-btn {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  background: rgba(0, 229, 255, 0.12);
+}
 /* Muted state — dimmed + red-border so the off state is visually
    distinct from the on state without needing a toggled emoji swap
    alone to carry the signal. */

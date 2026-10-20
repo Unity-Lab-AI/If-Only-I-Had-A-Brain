@@ -5,6 +5,100 @@
 
 ---
 
+## 2026-10-20 — `CHATWIN.2`: THE WINDOW CONTROLS SHIPPED UNSTYLED, THE FULLSCREEN FIX WAS ON THE WRONG PROPERTY, AND `--cyan` HAD NEVER EXISTED
+
+Gee, verbatim: *"okay the fullscreen and maximize buttons you added for chat are not fulley fleshed out, they are bright white and clash with the style of the chat window, and the fullscreen is fucked the chat input bar is in the middle of the fucking screen when in fullscreen, wtf?"*
+
+### ⛔⛔ How I missed both — the verification was real and could not have caught either
+
+`CHATWIN.1` recorded: *"Verified by RENDERING all three states, not by reading:
+normal 380×319 in the corner, minimised 380×57 with messages and input computed
+`display:none`, fullscreen 1280×800 at origin."* **Every number is correct.
+None of them touches colour or interior layout.** I measured the outer box in
+three states, captured screenshots, and never looked at them. **Geometry is not
+appearance, and a screenshot taken but not looked at is not a render check.**
+
+### (a) The buttons were never styled
+
+```
+  css/style.css:723   .chat-close-btn,
+                      .chat-mute-btn,
+                      .chat-mic-btn {          <- .chat-min-btn / .chat-full-btn absent
+```
+
+They fell through to browser-default chrome — bright white boxes beside four
+dark bordered siblings. Markup shipped, behaviour shipped, styling did not.
+**A new control joins its siblings' selector list in the same edit that adds its
+markup.**
+
+### (b) The fullscreen override was on the wrong property, and my own comment named the symptom
+
+`.chat-panel.fullscreen` correctly released the PANEL's `max-height: 520px`,
+with a comment explaining why a surviving cap would ruin the expanded state.
+But `.chat-messages` carries **its own `max-height: 380px`** one level down,
+never released. Panel filled 800px, message list stopped at 380px, input bar
+pinned directly beneath it **in the middle of the screen**.
+
+The comment above the broken line reads *"without this the flex column leaves
+the input floating mid-screen on a short history."* **The diagnosis was exact;
+the override went on `flex` instead of `max-height`; it shipped.** `min-height`
+deliberately kept — a floor cannot clamp growth.
+
+### ⭐⭐ (c) The third defect, older than this work and found by audit
+
+A sweep of both loaded stylesheets for undefined custom properties returned
+**exactly one**: `--cyan`, **5 references, 0 declarations**, every other
+reference resolving. Each of those rules was invalid at parse time and silently
+did nothing — **including two `:hover` rules on the mute and mic buttons that
+predate the window controls entirely. Their hover accent has never once
+rendered on the live site.**
+
+⭐ The value was not invented. `rgba(0, 229, 255, …)` appears **literally three
+times in the same file** (oldest at 0.4 alpha), and `0,229,255` is exactly
+`#00e5ff`, the cyan the brain pages already use. **The colour was always there;
+only the name was missing.** Declared in `:root`.
+
+### Verified by rendering and then actually looking — 7/7
+
+A standalone `file://` harness carrying only the real stylesheet and the real
+markup, so nothing opened a socket or touched WebGPU. ⛔ The standing rule
+applies: **no headless browser near a live brain with a native donor attached**
+— headless Chrome registers as a ~2 GB donor and can take PRIMARY off the
+16 GB card.
+
+```
+  fullscreen fills the viewport           1280x800 at origin
+  child max-height released               none
+  INPUT BAR gap to viewport bottom        0px          <- the bug put it mid-screen
+  new buttons vs .chat-close-btn          background, border and 30x30 byte-identical
+  active view lights its own button       rgb(0, 229, 255)
+```
+
+**Screenshots of all three states opened and judged by eye**, not merely
+captured. Temp harness and instrument deleted in the same change.
+
+### ⚠ My instrument lied first, and I nearly "fixed" working CSS because of it
+
+The first run reported the active-state styling broken, reading
+`rgba(16, 65, 72, 0.325)` — **neither the default nor the active colour, but a
+blend of the two.** The buttons carry `transition: all 0.15s` and the probe read
+computed styles immediately after the class change.
+
+⛔ **A value that is not any value the code can produce means the instrument is
+mid-measurement, not that the code is wrong.** Settled with a 300 ms wait; the
+CSS had been correct the whole time.
+
+### Docs — every tree named
+
+`docs/TODO.md` (row filed and closed) · `docs/FINALIZED.md` (this entry).
+**Unaffected, stated rather than assumed:** `docs/HTML-ENTRY-POINTS.md`'s
+fullscreen references are about `minds-eye.html`, not the chat panel; no doc or
+wiki page asserts the chat button styling or `--cyan`; **no bundle rebuild** —
+`style.css` is served raw and the panel's JS was untouched; `README.md`,
+`deploy/**` and `docs/NOW.md` carry no claim here.
+
+---
+
 ## 2026-10-20 — `LBORIGIN`: HIS ROW WAS RANKED ON THE SERVER AND THE BRAIN PAGE ASKED GITHUB FOR IT
 
 Gee, verbatim: *"something im something wrong, my doner named Gee is not appearing on the compute leaderboard of the brasin page, so that needs fixed"* · then, correcting me: *"you are wrong the public pages woork fine i just oipened one"*.
