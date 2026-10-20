@@ -40,6 +40,24 @@
 >   read     after his fresh walk, in this order: `ownArt.lookups.grounded` CLIMBING (the fix working
 >            — anything else and it did not load), `ownArt.imageEngine.lastFreeVramMB` showing a real
 >            number instead of 0, then `voice.wordsBucketed` non-zero at cell-1 pass.
+>   lboard   his donor row "Gee" was RANKED ON THE SERVER the whole time (199,371 -> 214,148 Gn-s
+>            across the session) while the brain page showed an empty board: `index.html:732` fetched
+>            `/public-state.json` ROOT-ABSOLUTE, so on the published site it asked GitHub's CDN ->
+>            404 (curl AND PowerShell/OS-store agree). compute.html was routed through
+>            unityBrainHttp() long ago; index.html was the one page missed, and LOCALHOST.12 had
+>            recorded the deferral in those exact words. Routed now; 4/4 inline blocks re-parsed.
+>   ⛔⛔     AND THE PAGE CALLED IT A HEALTHY STARTUP: every non-OK reply mapped to null, and
+>            render(null) prints "waiting for the brain..." — the SAME string the board shows before
+>            its first poll. Misrouted was indistinguishable from not-loaded-yet. It now names the
+>            HTTP status and the URL it asked.
+>   ⛔ mine  I measured the Tailscale Funnel at 000 from git-bash three times and told him every
+>            public page routed to a corpse. HE OPENED ONE AND IT WORKED. `curl -k` -> 200,
+>            PowerShell via the OS cert store -> 200 / 285,890 B: git-bash curl could not verify the
+>            ts.net cert. 000 MEANS MY CLIENT COULD NOT CONNECT, NEVER THAT THE HOST IS DOWN. The
+>            BRAIN_ORIGIN edit I made on that basis is REVERTED (byte-identical to HEAD) — an
+>            unforced change to working config from a broken instrument, and the same error class the
+>            rest of the day was cataloguing. RULE: a transport failure code is a statement about the
+>            PROBER; confirm with a second independent client before it is one about the target.
 >   still    WEIGHTLOSS.1, NETBUG.7, NETBUG.10, FRESHSIZE.1 from the 36th block below.
 > ```
 >
