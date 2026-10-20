@@ -2608,6 +2608,19 @@ const SERVER_CHAT_MIXIN = {
       let fr = null;
       const labelStrokes = this._labelStrokes(key);   // she writes the word on the field render too
       try { fr = await this.mindSpace.stylizeField(rec, { traceSide: Math.max(160, Math.min(side, 256)), bands: 7, labelStrokes }); } catch { fr = null; }   // ONE PROCESS - async (donor GPU when capable)
+      // Same flat-field refusal as the imagined lane below — this is the OTHER
+      // `stylizeField` publish path and carries the identical risk: a uniform
+      // field here would paint her eye solid green with a `canvas:draw:` label
+      // instead of a `canvas:imagine:` one. Fixing only the lane that happened
+      // to be caught is how the free-VRAM gate ended up on the minority caller.
+      if (fr && typeof this._recDetail === 'function'
+          && this._recDetail(fr) < (Number(process.env.DREAM_REF_MIN_DETAIL) || 200)) {
+        try {
+          const _st = (typeof this._imageEngine === 'function') ? this._imageEngine() : null;
+          if (_st) _st.flatRenders = (_st.flatRenders | 0) + 1;
+        } catch { /* best-effort counter */ }
+        fr = null;   // fall through to line-art rather than publish a flat frame
+      }
       if (fr) { this._lastSketchLabel = 'canvas:draw:' + key; return { rec: fr, label: this._lastSketchLabel, source: 'canvas:draw:' + key, from: source || ('draw:' + key), style }; }
     }
 
@@ -4491,6 +4504,38 @@ const SERVER_CHAT_MIXIN = {
     let drawn = null;
     try { drawn = await this.mindSpace.stylizeField(rec, { traceSide: Math.max(160, Math.min(side, 256)), bands: 7, labelStrokes }); } catch { return null; }   // ONE PROCESS - async
     if (!drawn) return null;
+    // ⛔⛔ A FLAT FIELD IS NOT A PICTURE, AND PUBLISHING ONE PAINTS HER EYE SOLID
+    //   GREEN. Measured 2026-10-20 on the live brain: every `canvas:imagine:`
+    //   frame carried FOUR non-zero coefficients out of a 500/150/150 keep
+    //   budget, all four at the same quantized magnitude — one DC term plus
+    //   padding artefacts, i.e. a UNIFORM field. Reconstructed through the real
+    //   transform it is rgb(0,135,0) across 100% of 65,536 pixels, because
+    //   neutral chroma in this codec is 0.5 and a DC near 0.3 reads as a full
+    //   negative chroma shift: R and B clamp to zero and only green survives.
+    //   ⭐ Nothing downstream is at fault — the same `stylizeField` fed a real
+    //   field returns ~9,700 non-zero coefficients, and every CPU-rendered
+    //   frame (`mindspace-sketch`) measured rich while every one of these
+    //   (`mindspace-donor`) measured flat. The INPUT was blank.
+    // ⚠ The gate is the one this file already trusts everywhere else
+    //   (`DREAM_REF_MIN_DETAIL`, the "a blank plate is not a look" floor) —
+    //   applied here to the OUTPUT, which was the one publish path that never
+    //   checked. A decline is already this function's documented behaviour for
+    //   every other failure: "Can't ground → honest decline (null), never a
+    //   collage, never a fake." A green wall is a fake.
+    if (typeof this._recDetail === 'function') {
+      const _detail = this._recDetail(drawn);
+      if (_detail < (Number(process.env.DREAM_REF_MIN_DETAIL) || 200)) {
+        try {
+          const _st = (typeof this._imageEngine === 'function') ? this._imageEngine() : null;
+          if (_st) _st.flatImagines = (_st.flatImagines | 0) + 1;
+        } catch { /* counter is best-effort; the refusal is not */ }
+        if (!this._flatImagineLogAt || Date.now() - this._flatImagineLogAt > 60000) {
+          this._flatImagineLogAt = Date.now();
+          console.log(`[MindSpace] imagined field for "${comboKey}" came back FLAT (${_detail} live coefficients, floor ${Number(process.env.DREAM_REF_MIN_DETAIL) || 200}) — refusing to publish a uniform frame. Her eye keeps the last real picture.`);
+        }
+        return null;   // honest decline — never a green wall
+      }
+    }
     this._lastSketchLabel = 'canvas:imagine:' + comboKey;
     return { rec: drawn, label: this._lastSketchLabel, source: 'canvas:imagine:' + comboKey, imagined: true };
   },

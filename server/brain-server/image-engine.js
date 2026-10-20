@@ -111,6 +111,12 @@ const ImageEngineMixin = {
         // because the gate FAILS OPEN when it cannot read the card, and a gate
         // that is silently not gating must be visible as itself.
         vramTightSkips: 0, vramUnreadable: 0, lastFreeVramMB: null, minFreeVramMB: MIN_FREE_VRAM_MB,
+        // Flat-field refusals, declared here so they read 0 rather than
+        // `undefined` before the first one — an absent counter is unreadable
+        // and a zero one is a statement. `flatImagines` is the imagined lane,
+        // `flatRenders` the reference-render lane; they are counted apart
+        // because they fail for different upstream reasons.
+        flatImagines: 0, flatRenders: 0,
       };
     }
     return this._imageEngineStats;
