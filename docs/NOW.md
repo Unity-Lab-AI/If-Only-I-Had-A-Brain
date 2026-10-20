@@ -12,7 +12,8 @@ sources:
   - windows/start.bat
   - windows/Savestart.bat
 verified-scope: |
-  OVERWRITTEN 2026-10-20, ~9:20 AM Denver. This file is a SNAPSHOT and is
+  OVERWRITTEN 2026-10-20, 9:09 AM Denver (commit clock; this line first said
+  ~9:20 AM, a time that had not yet happened when it was written). This file is a SNAPSHOT and is
   overwritten, never appended — the previous version described the 2026-10-19
   night and a fresh walk that has since been taken. Git holds every byte of it:
       git show HEAD:docs/NOW.md
@@ -22,7 +23,7 @@ verified-scope: |
   machine from the day it landed, and both of its own instruments reported
   healthy while it did so. It is fixed. A fresh walk is being pressed on the
   fix.
-last-verified: "2026-10-20, ~9:05 AM Denver — field reads on the operator's PC with the brain UP on the 8:56:19 AM resume boot (mode resume/compatible, 199,728,759 neurons, formatVersion 6): uptime 412 s · ela/kindergarten in-progress · phases 0 of 25 started · spikesLifetime 3,450,975 -> 18,265,275 -> 301,252,170 across three samples · 1 donor owning all 8 clusters · 17/17 matrices uploaded · drops 0 · runningFloorMB 8,064 against a 16,375 MB card · crystal.measured TRUE at 77 acks · looks 11 attempts / 0 grounded / 11 vramTight against a card nvidia-smi read as 3,676 MB FREE at the same moment. That last pair is the finding on this page."
+last-verified: "2026-10-20, field reads taken 8:57-9:03 AM Denver and committed 9:09 — on the operator's PC with the brain UP on the 8:56:19 AM resume boot (mode resume/compatible, 199,728,759 neurons, formatVersion 6): uptime 412 s · ela/kindergarten in-progress · phases 0 of 25 started · spikesLifetime 3,450,975 -> 18,265,275 -> 301,252,170 across three samples · 1 donor owning all 8 clusters · 17/17 matrices uploaded · drops 0 · runningFloorMB 8,064 against a 16,375 MB card · crystal.measured TRUE at 77 acks · looks 11 attempts / 0 grounded / 11 vramTight against a card nvidia-smi read as 3,676 MB FREE at the same moment. That last pair is the finding on this page."
 tags: [snapshot, current-state]
 ---
 
@@ -173,6 +174,16 @@ understated the floor by 253 MB. The headroom is still ample.
    ledger** — not into a new paragraph on this page. This page's own prediction
    about the VRAM gate turned out ambiguous; the correction is in the ledger
    and the replacement wording is above.
+5. ⛔ **EVERY TIMESTAMP IS READ FROM A CLOCK, NEVER PREDICTED.** This page, the
+   board and the pickup brief were all caught on 2026-10-20 carrying stamps
+   **in the future** — `~9:20 AM` on work that committed at `9:09:34`, and
+   `~9:40 AM` on work that committed at `9:21:01` — because the stamp was
+   written at the START of the work as a guess at when it would finish and
+   never corrected. **A predicted timestamp is not a reading.** Stamp from the
+   commit clock (`git log --date=format-local:'%H:%M:%S'`), which is the only
+   one a later reader can verify, and when a reading and its write are minutes
+   apart, **say both** — a correct number wearing a stale label is the same
+   defect as a stale stage tag naming the wrong culprit.
 
 ---
 
