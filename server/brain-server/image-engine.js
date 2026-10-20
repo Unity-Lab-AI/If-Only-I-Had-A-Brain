@@ -117,6 +117,12 @@ const ImageEngineMixin = {
         // `flatRenders` the reference-render lane; they are counted apart
         // because they fail for different upstream reasons.
         flatImagines: 0, flatRenders: 0,
+        // Her inventions — scenes composed from her own learned schemas with
+        // no reference fetched. `inventions` = published as `canvas:imagine:`;
+        // `inventionsSingle` = only one subject drawable, so it published as an
+        // honest `canvas:own:` recreation instead; `inventionsDeclined` = she
+        // did not yet know the shape of enough of them to draw anything.
+        inventions: 0, inventionsSingle: 0, inventionsDeclined: 0,
       };
     }
     return this._imageEngineStats;
