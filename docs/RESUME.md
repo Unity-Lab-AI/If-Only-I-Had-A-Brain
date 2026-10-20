@@ -1,6 +1,6 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-10-20, ~9:20 AM Denver (latest, 37th) — HER EYES WERE SHUT BY MY OWN GATE: `Number('')` ON A TRAILING BLANK LINE READ AS 0 MB FREE, AND THE GATE'S OWN HARNESS CERTIFIED IT
+> # 🛑 2026-10-20, 9:09 AM Denver, amended 9:21 (latest, 37th; both are commit-clock reads — the header first said ~9:20 AM, written before the work it describes had landed) — HER EYES WERE SHUT BY MY OWN GATE: `Number('')` ON A TRAILING BLANK LINE READ AS 0 MB FREE, AND THE GATE'S OWN HARNESS CERTIFIED IT
 >
 > **Branch: `feature/freshwalk-startup-monitor`** — cascaded after this batch. He is pressing a FRESH WALK (his call: *"we are only 5min in so freshwalk is best"*).
 >
