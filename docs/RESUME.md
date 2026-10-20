@@ -1,6 +1,51 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-10-19, ~9:30 AM Denver (latest, 36th) — A STRANGER CAN DONATE: THE DONOR LANE IS OFF THE CAPPED RELAY AND ON A CLOUDFLARE TUNNEL; THE WEIGHT-LOSS BOUND IS HALVED
+> # 🛑 2026-10-20, ~9:20 AM Denver (latest, 37th) — HER EYES WERE SHUT BY MY OWN GATE: `Number('')` ON A TRAILING BLANK LINE READ AS 0 MB FREE, AND THE GATE'S OWN HARNESS CERTIFIED IT
+>
+> **Branch: `feature/freshwalk-startup-monitor`** — cascaded after this batch. He is pressing a FRESH WALK (his call: *"we are only 5min in so freshwalk is best"*).
+>
+> ```
+>   watched  he asked for a 1-min monitor across four milestones: starts up -> donor connects ->
+>            starts drawing (phase ~2) -> talking (cell-1 pass). Milestones 1 and 2 LANDED on the
+>            08:56 boot. 3 and 4 were blocked by the bug below.
+>   ⛔ bug   the free-VRAM gate I shipped 10/19 refused EVERY render on EVERY machine from day one.
+>            `nvidia-smi` ends its output with a newline -> split('\n') yields a trailing "" ->
+>            `Number('')` is 0, finite and >= 0, so it SURVIVED the filter as a real reading, and
+>            Math.min(3676, 0) = 0. Live: 11 attempts / 11 vramTight / 0 grounded while the card had
+>            3,676 MB genuinely free. Two boots of her eyes lost (10/19 12:43, 10/20 08:56).
+>   ⛔⛔    `vramUnreadable` STAYED 0 — it only counts a null, and the probe never failed; it
+>            succeeded and returned a fiction. The instrument built to catch exactly this read healthy.
+>            AND the harness in the wiki asserted the REFUSAL branch at `0MB free`, which the bug
+>            forces, so it PASSED FOR THE BROKEN REASON. Missing assertion: does the probe ever
+>            return the TRUE number?
+>   fix      one chokepoint (`image-engine.js _gpuFreeVramMB`) — blanks dropped BEFORE coercion.
+>            Both lanes share that mixin (`visual-memory.js:2184`), so one fix covers both. Verified
+>            on live output (3,710 -> PASSES), empty stdout (-> null, fails OPEN, counts
+>            vramUnreadable for the first time), multi-GPU (min preserved). No second instance in repo.
+>   boot     resume/compatible, 199,728,759 neurons, formatVersion 6. ⭐ `runningFloorMB 8,064` is
+>            EXACTLY the 21 B/neuron formula (20 B gives 7,811) — the bytes-per-neuron repair confirmed
+>            live, and the 8000-budget derivation (written at 20 B) understated the floor by 253 MB.
+>            Card 16,375 holds it 2.0x over. crystal.measured TRUE, 77 acks, Φ_LR still null at
+>            windowN 11 (needs 64) — the stated failure signature is NOT yet testable.
+>   open     CPUGAUGE.2 — the gauge is FROZEN, not clamped: 7 / 7.3 / 3486 / 2978 byte-identical
+>            across 251 s while spikes went 3.45M -> 18.3M. So the old hard 100 was one stale sample
+>            published forever; arithmetic exonerated. Cause unproven — sampler not running, or
+>            state.perf served from a different object than the one that writes it. Next read is a
+>            counter on the function so "did it run" stops being an inference.
+>   also     EventLoop STARVED 8% serviced ("thousands of short ones"); the per-second sync
+>            nvidia-smi is genuinely gone from chat.js, so it is teach math or a second blocker — and
+>            a starved loop cannot service gpu_register, the donor-hang mechanism. blocked 154s: 0.
+>            No new donor dump (newest Oct 18 05:39); WER arming verified in place and silent.
+>            `grep -c readback` = 0 — the 30-min bound is still theoretical on this box.
+>   read     after his fresh walk, in this order: `ownArt.lookups.grounded` CLIMBING (the fix working
+>            — anything else and it did not load), `ownArt.imageEngine.lastFreeVramMB` showing a real
+>            number instead of 0, then `voice.wordsBucketed` non-zero at cell-1 pass.
+>   still    WEIGHTLOSS.1, NETBUG.7, NETBUG.10, FRESHSIZE.1 from the 36th block below.
+> ```
+>
+> ---
+>
+> # 🛑 2026-10-19, ~9:30 AM Denver (36th) — A STRANGER CAN DONATE: THE DONOR LANE IS OFF THE CAPPED RELAY AND ON A CLOUDFLARE TUNNEL; THE WEIGHT-LOSS BOUND IS HALVED
 >
 > **Branch: `feature/donor-tunnel-and-weight-loss-bound`** — cascaded after this batch; tag `donor-v0.3.41`.
 >

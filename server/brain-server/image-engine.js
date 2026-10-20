@@ -160,8 +160,25 @@ const ImageEngineMixin = {
             if (err) return resolve(null);
             // Multi-GPU prints one row per card; the brain's donor is on one
             // card and the smallest free value is the honest bound.
+            // ⛔⛔ BLANK LINES ARE DROPPED BEFORE `Number()`, NOT AFTER, AND THAT
+            //   ORDER IS THE WHOLE BUG THIS REPLACES. `nvidia-smi` terminates its
+            //   output with a newline, so `split('\n')` always yields a trailing
+            //   empty string — and `Number('')` is **0**, which passes both
+            //   `Number.isFinite` and `>= 0` and therefore survived the filter as
+            //   a legitimate reading of ZERO MEGABYTES FREE. `Math.min` then chose
+            //   it over the real figure on every probe, on every machine, forever:
+            //   measured `Math.min(3676, 0) === 0` against a card with 3,676 MB
+            //   free. Both look lanes share this one function, so the gate refused
+            //   every single render as `vramTight` from the day it shipped
+            //   (2026-10-19) — 9 attempts / 0 grounded on that boot, 6 / 0 on the
+            //   next — while `vramUnreadable` stayed at 0, because the probe never
+            //   failed. It succeeded and returned a fiction.
+            // ⚠ A blank line is the ABSENCE of a reading. Turning it into the
+            //   smallest possible reading is how a safety gate becomes a shutoff.
             const vals = String(stdout).split('\n')
-              .map((s) => Number(String(s).trim()))
+              .map((s) => String(s).trim())
+              .filter((s) => s.length > 0)
+              .map(Number)
               .filter((n) => Number.isFinite(n) && n >= 0);
             resolve(vals.length ? Math.min(...vals) : null);
           });
