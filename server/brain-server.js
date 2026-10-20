@@ -13010,9 +13010,27 @@ wss.on('connection', (ws, req) => {
     // i.e. from our own proxy). No header → viewer/donor (compute-only,
     // enforced in PA.4.6). Default (LOCAL dev, no proxy): loopback → admin.
     const proxyAuth = process.env.UAL_PROXY_AUTH === '1';
+    // ⛔⛔ A TUNNEL DELIVERS THE PUBLIC FROM LOOPBACK, SO LOOPBACK ALONE CANNOT
+    //   MEAN "THE OPERATOR". Both public ingresses (the Tailscale Funnel and the
+    //   Cloudflare tunnel) forward every visitor's socket from 127.0.0.1, and the
+    //   local default below made every one of them ADMIN. Measured 2026-10-20:
+    //   three public visitors on the live /ws lane classified `admin`, each
+    //   receiving the server console ring (the last 200 lines on connect, then
+    //   every line live) and the full admin state stream through a relay capped
+    //   near 0.16 MB/s, so their unsent buffers grew to 566 MB, 623 MB and
+    //   1.2 GB inside her process. No socket command is destructive — those are
+    //   HTTP routes the tunnels refuse — but the leak and the memory were real.
+    // ⭐ A proxy announces itself in headers a visitor cannot remove: the tunnel
+    //   ADDS them. So a request carrying any of them came through a proxy and is
+    //   not the operator at the keyboard. The check only ever DEMOTES: a local
+    //   page that sent one of these headers itself would merely lose admin.
+    const _proxyHeaders = ['x-forwarded-for', 'cf-connecting-ip', 'cf-ray', 'tailscale-funnel-request', 'forwarded', 'x-real-ip'];
+    const forwardedVia = _proxyHeaders.find((h) => req.headers && req.headers[h] != null && String(req.headers[h]).length > 0) || null;
+    const isDirectLocal = isLoopback && !forwardedVia;
+    client.forwardedVia = forwardedVia;
     const mode = proxyAuth
       ? ((client.ualUser && isLoopback) ? 'admin' : 'viewer')
-      : (isLoopback ? 'admin' : 'viewer');
+      : (isDirectLocal ? 'admin' : 'viewer');
     // PA.4.2+ — FIRST-AUTHED-OPERATOR binding. On a static deploy there is no
     // loopback-implies-admin guarantee like localhost. So: the public can't
     // reach the admin lane at all (Forgejo auth_request), and the FIRST
@@ -13058,7 +13076,10 @@ wss.on('connection', (ws, req) => {
       }
     } catch { /* connection closed during the assignment window — drop silently */ }
     const who = client.ualUser ? ` user=${client.ualUser}${isPrimaryOperator ? ' (PRIMARY)' : ''}` : '';
-    console.log(`[Server] ${id} assigned mode: ${mode} (remote=${addr || 'unknown'}${who})`);
+    // `via` names the proxy header that demoted a loopback socket, so the first
+    // public visitor after this change PROVES the tunnel sets one — or, if a
+    // visitor still reads `admin` with no `via`, shows that it does not.
+    console.log(`[Server] ${id} assigned mode: ${mode} (remote=${addr || 'unknown'}${forwardedVia ? `, via proxy header ${forwardedVia}` : ''}${who})`);
   }, 500);
 
   ws.on('message', (data) => {
