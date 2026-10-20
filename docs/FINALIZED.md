@@ -5,6 +5,51 @@
 
 ---
 
+## 2026-10-20 — `MINDSEYE`: THE JUDGE BUTTONS WORKED ON ONE FRAME IN FIVE, HER "IMAGINATION" WAS A RECREATION, AND THE FRAME NEVER SAID WHAT IT WAS
+
+Gee, verbatim: *"the three buttons good, bad, not drawable buttons on the minds eye page are not working correctly they are greyed out and unusable when images are appearing and drawings, and im not seeing or they arent labeled correctly, her uniquely created imageneed and drawn images,,, not just the recreations im seeing those and they look good but she needs to properly imagine drawings of completely new ideas and experimentation drawings whereshe draws things shes never seen before based off experience,,,, and these need to be labeled so people know they art her recreations of something she has seen"* · then *"okay i stopped her , u are free to change and fix, ill fresh walk once all cascaded"*
+
+### 1 — The buttons
+
+`minds-eye.html` armed them only when the raw source began with one of four prefixes, and the server parsed the same four. Over ten live frames sampled earlier the same day:
+
+```
+  canvas:imagine:*        7 of 10   not on the list           -> greyed out
+  transition:...          2 of 10   failed on the prefix      -> greyed out
+  canvas:own: / lookup:   2 of 10   armed
+```
+
+One classifier, `kindOf(source)`, now drives both the label and the buttons, so they cannot disagree. It strips `transition:` and arms every one of her pieces and look-ups. `_artFeedback` parses the identical set. Also fixed: a verdict the brain **answered and refused** used to read *"brain unreachable"*, and now shows the brain's reason.
+
+**Verified with the real code on both sides**, against every source string seen live that day: the page armed all 9 artwork/look-up sources and dimmed memories and daydreams; the server accepted exactly those and refused the same two, with style suffixes kept out of the subject words.
+
+### 2 — Her imagination was a recreation
+
+The legend promised *"pure imagination — a scene she invented"*. The code sent *"a and b together in one unified scene"* to the image engine and redrew the result: **every imagined frame was a copy of a picture something else made**, and that fetch was also the lane delivering blank images as green walls.
+
+`_drawImagined` now hands the combination to `_drawOwnCreation`, which redraws each subject from its own learned shape schema and composes one scene in a mood-picked hand. **No reference is fetched and no earlier picture is placed**, so it is not the `composeFields` collage that was ruled out on 2026-07-16 either.
+
+The labelling is enforced in code: two or more drawable subjects publish as `canvas:imagine:<subjects>:<style>`; one publishes honestly as a `canvas:own:` recreation; none declines. The label names only the subjects she actually drew.
+
+```
+  knows none of the shapes        -> decline                               reference fetches 0
+  knows one                       -> canvas:own:apple:ink                  reference fetches 0
+  knows two                       -> canvas:imagine:apple+cherry:crayon    reference fetches 0
+  two, but the field came out flat -> refused by the detail floor          reference fetches 0
+```
+
+Harnessed through the real rewritten function; the composition engine underneath was already proven live (every `canvas:own` frame that day measured 94k–186k coefficients).
+
+### 3 — The frame now says what it is
+
+A colour-coded plain-English line under every frame: pink **★ HER INVENTION**, cyan **✍ HER RECREATION** of something she has seen, cyan **◐ RECREATION** of a reference, dim for references, memories and daydreams, each naming the subjects, the hand, and *forming…* during a transition. Hover tip and legend rewritten to match.
+
+### Docs — every tree named
+
+`docs/TODO.md` (three rows filed and closed) · `docs/FINALIZED.md` (this entry) · `docs/ARCHITECTURE.md` (the 2026-07-16 banner stated the fetched-scene design as fact; marked superseded in place) · `docs/HTML-ENTRY-POINTS.md` (the viewer row: what `canvas:imagine:` means, the label line, the buttons) · `html/minds-eye.html` (tip + legend). **Unaffected, stated:** `docs/MINDSPACE-INTEGRATION.md` makes no claim about the imagine lane; `README.md` and `deploy/**` carry none; no bundle rebuild — `minds-eye.html` is served raw and `chat.js` is server-side.
+
+---
+
 ## 2026-10-20 — `CHATWIN.2`: THE WINDOW CONTROLS SHIPPED UNSTYLED, THE FULLSCREEN FIX WAS ON THE WRONG PROPERTY, AND `--cyan` HAD NEVER EXISTED
 
 Gee, verbatim: *"okay the fullscreen and maximize buttons you added for chat are not fulley fleshed out, they are bright white and clash with the style of the chat window, and the fullscreen is fucked the chat input bar is in the middle of the fucking screen when in fullscreen, wtf?"*
