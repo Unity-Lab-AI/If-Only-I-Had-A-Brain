@@ -5,6 +5,22 @@
 
 ---
 
+## 2026-10-20 — `TUNNELADMIN`: EVERY PUBLIC VISITOR ON HER SOCKET WAS AN ADMIN
+
+Gee, verbatim: *"this last Gn/s cant be right? right? not on that card! is something bad his shits tooo small and showing shit ton of work"* — with a Clients table showing three `admin · anon · 127.0.0.x` rows at 10–20 s round trips and 0.5–1.2 GB send buffers.
+
+**Cause.** With no proxy auth configured — always the case on this PC — the socket mode was `isLoopback ? 'admin' : 'viewer'`. Both tunnels deliver the public from 127.0.0.1, so **every public visitor was an admin**. They got the server console ring (200 lines on connect, then live) and the full admin state stream, which backed up behind a relay capped near 0.16 MB/s into those buffers, inside a process at 16.3 GB private.
+
+**Scope, measured.** Every socket command was enumerated and none is destructive. The destructive routes are HTTP and the tunnels return 404 for them. A leak and a memory risk, not a takeover. The earlier claim that keeping `/admin/*` off the internet closed the loopback problem held for HTTP and never for the socket.
+
+**Fix.** A request carrying a proxy header (`x-forwarded-for`, `cf-connecting-ip`, `cf-ray`, `tailscale-funnel-request`, `forwarded`, `x-real-ip`) is a viewer. Tunnels add these, so a visitor cannot remove them, and the check only ever demotes. Verified on the real decision code: local → admin, Cloudflare visitor → viewer, Funnel visitor → viewer, LAN → viewer. **Live proof owed:** the connect log now names the header; the first public visitor after restart must read `viewer … via proxy header …`.
+
+**Filed with it, not built:** `LBCREDIT.1` — the leaderboard credits the donor's self-reported rate (`Steeeeeeve 1,902,858` above `Gee 295,515` from a card whose init hung). The honest design needs init-acknowledged clusters as its gate and is not being rushed.
+
+**Docs:** `docs/TODO.md` (both rows) · this entry. **Unaffected:** the deploy comments on the tunnels describe the HTTP admin lane being kept off them, which stays true.
+
+---
+
 ## 2026-10-20 — `FRESHFLAG`: THE WIPING LAUNCHER COULD NOT WIPE AFTER A CLEAN STOP
 
 Gee, verbatim: *"okay fix it and fresh start it is im shutting her down"*
