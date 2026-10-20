@@ -5,6 +5,93 @@
 
 ---
 
+## 2026-10-20 — `LBORIGIN`: HIS ROW WAS RANKED ON THE SERVER AND THE BRAIN PAGE ASKED GITHUB FOR IT
+
+Gee, verbatim: *"something im something wrong, my doner named Gee is not appearing on the compute leaderboard of the brasin page, so that needs fixed"* · then, correcting me: *"you are wrong the public pages woork fine i just oipened one"*.
+
+### The server was never wrong, and reading it first is what kept this small
+
+```
+  state.leaderboard.top[0]   {"id":"name:gee","name":"Gee","neurons":199371.17, ...}
+  totalContributors          1
+  across the session         199,371 -> 207,240 -> 214,148 Gn-s   (accrual is live)
+```
+
+### The defect, measured from the page's own origin
+
+`index.html:732` called `fetch('/public-state.json')` **root-absolute**, so it
+resolved against whoever served the PAGE — on the published site, GitHub's CDN.
+
+```
+  https://theunitybrain.com/                      200   the page itself is fine
+  https://theunitybrain.com/public-state.json     404   curl AND PowerShell/OS-store agree
+  routed through unityBrainHttp() instead         Gee = 214,148.7 Gn-s
+```
+
+`compute.html:229` had already been routed through `unityBrainHttp()`; this page
+was missed. ⚠ **The deferral was recorded at the time and this is it coming
+due** — the earlier note read: *"the brain-API fetches in those pages
+(`/public-state.json`, `/save`, …) are ALSO root-absolute and are a DIFFERENT
+problem … Not touched."*
+
+### ⛔ The page reported the failure as a healthy startup state
+
+`r.ok ? r.json() : null` mapped **every** non-OK reply to `null`, and
+`render(null)` prints *"waiting for the brain…"* — **the identical string the
+board shows before its first successful poll.** A leaderboard pointed at the
+wrong host was therefore indistinguishable from one that had simply not loaded
+yet, which is exactly why it sat unnoticed: it looked like it was working on it.
+The non-OK branch now names the HTTP status **and the URL it asked**.
+
+### The fix
+
+`index.html`, page code only — no bundle rebuild, since `brain-origin.js` is
+served raw via `<script src>` and was already loaded at `:114`. An `lbUrl()`
+helper routes through `unityBrainHttp()` when present and returns the bare path
+otherwise, so **unconfigured and on a local page nothing changes, branch for
+branch** — the file's own governing rule.
+
+**Verified:** all **4** inline `<script>` blocks in `index.html` re-parsed with
+`new vm.Script` after the edit; the fixed URL fetched live and the row read back
+through it. **Repo-wide sweep for the class:** the only remaining root-absolute
+fetches are `gpu-configure.html`'s `/detect` `/save` `/clear` `/exit`, which are
+**correct** — that page is served by its own local helper, and `grep -c` proves
+the brain serves none of those routes — plus one occurrence inside a comment.
+
+### ⛔⛔ A wrong call of my own, caught by him
+
+I measured the Tailscale Funnel at `000` from git-bash three times and told him
+*"every public page routes to a corpse"*, then edited `BRAIN_ORIGIN` to the
+Cloudflare host on that basis. **He opened a public page and it worked.**
+
+```
+  curl, git-bash CA store              000      <- MY instrument
+  curl -k (skip verification)          200
+  PowerShell, OS certificate store     200      285,890 bytes
+```
+
+git-bash's curl could not verify the `ts.net` certificate. **`000` means my
+client could not connect; it has never meant the host is down.** The
+`BRAIN_ORIGIN` edit was **reverted** — an unforced change to working
+configuration, justified by a broken instrument, and the Funnel needed nothing.
+
+⛔ **THE RULE, and the irony is the point:** this is the same error class the
+rest of this day's work was cataloguing — an instrument's failure read as the
+subject's failure — committed while auditing instruments. **A transport failure
+code is a statement about the prober. Confirm with a second, independent client
+before it becomes a statement about the target.**
+
+### Docs — every tree named
+
+`docs/TODO.md` (row filed and closed) · `docs/FINALIZED.md` (this entry) ·
+`docs/RESUME.md` (pickup block amended). **Unaffected, stated rather than
+assumed:** `js/brain-origin.js` ends byte-identical to `HEAD` (the edit was
+reverted); no bundle rebuild — the file is served raw; `docs/NOW.md` describes
+the running brain and this is page code; `ADMIN-CONTROLS`, `deploy/**`,
+`README.md` carry no claim about the leaderboard's fetch path.
+
+---
+
 ## 2026-10-20 — `WALKWATCH`: THE FREE-VRAM GATE REFUSED EVERY RENDER FROM THE DAY IT SHIPPED, AND ITS OWN HARNESS CERTIFIED THE DEFECT
 
 Gee, verbatim: *"start your 1 min, cron, to monitor the Unity brain as she starts up and donor connects and she starts drawing, then after 1st gate starts training"* · then *"what are you doing, you are suppose to be monitoring her till she is drawing and talking  drawing shoulud start areound phase 2 and talking cell 1 pass"* · then *"wtf u mean she wont draw... she was drawing fine last run"* · then *"okay so i need to fresh start her now?"* · then *"we are only 5min in so freshwalk is best"* · then *"okay need you to cascade so i can freshwalk"*.
