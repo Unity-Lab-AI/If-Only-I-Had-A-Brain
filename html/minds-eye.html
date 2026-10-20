@@ -175,6 +175,16 @@
     #btn-ban:hover { border-color:#e0533a; color:#e0533a; box-shadow:0 0 12px rgba(224,83,58,0.25); }
     .judge button:disabled { opacity:0.45; cursor:default; transform:none; }
     .judge-note { margin-top:8px; font-size:11px; color:var(--dim); min-height:14px; }
+    /* WHAT KIND OF PICTURE THIS IS, in words a visitor can read without
+       decoding the raw source string. The colour carries the one distinction
+       that matters most: pink = something she INVENTED, cyan = a RECREATION of
+       something she has seen, dim = not her artwork (a reference, a memory). */
+    .kind { margin-top:14px; padding:8px 14px; border-radius:8px; border:1px solid var(--border); background:var(--surface); font-family:var(--mono); font-size:12px; color:var(--dim); text-align:center; max-width:640px; }
+    .kind b { font-weight:700; letter-spacing:0.5px; }
+    .kind.invent { border-color:var(--pink); color:var(--text); }
+    .kind.invent b { color:var(--pink); }
+    .kind.recreate { border-color:var(--cyan); color:var(--text); }
+    .kind.recreate b { color:var(--cyan); }
   </style>
 <link rel="stylesheet" href="../css/tooltip.css">
 </head>
@@ -197,10 +207,11 @@
 
   <div class="meta">
     <div><span class="tip tip--below tip--wide" tabindex="0" data-tip="How many wavelet terms this picture is made of. It is a measure of DETAIL, not of quality — a simple shape genuinely needs fewer terms than a busy scene. This number is the picture: there is no image file behind it, only the equation, which is reconstructed in your browser to draw what you are looking at.">equation terms</span>: <b id="terms">—</b></div>
-    <div><span class="tip tip--below tip--wide" tabindex="0" data-tip="What KIND of picture this is — read the note under the frame for the full list. The short version: seen: = coming in through her eyes, recall: = a memory she is re-seeing, lookup: = a reference she just fetched to study something new, canvas:own: = she DREW it, canvas:imagine: = she invented it by combining her own ideas.">source</span>: <b id="source">—</b></div>
+    <div><span class="tip tip--below tip--wide" tabindex="0" data-tip="What KIND of picture this is — read the note under the frame for the full list. The short version: seen: = coming in through her eyes, recall: = a memory she is re-seeing, lookup: = a reference she just fetched to study something new, canvas:own: = she DREW it — a recreation, from memory, of something she has seen, canvas:imagine: = she INVENTED it — a scene she has never seen, drawn from what she knows of each thing, with no reference looked at. The plain-English line under the frame says which one you are looking at.">source</span>: <b id="source">—</b></div>
     <div><span class="tip tip--below" tabindex="0" data-tip="How long ago this picture formed. A frame that stops moving is usually correct rather than broken: this screen only ever shows something REAL she saw or drew, never the formless mood texture her mind makes when she has nothing particular in view — so when there is nothing new that qualifies, the last real picture stays up instead of being replaced by a wash of colour. Once the number here passes a few minutes the status line below the frame says so in words, and says why.">imagined</span>: <b id="age">—</b></div>
     <div><span class="tip tip--below tip--wide" tabindex="0" data-tip="How many of her own drawings she has made this session, and how many things she has learned the SHAPE of. A shape sketch is what lets her draw something without copying it — she has one for each of these. 'seen' counts every picture she holds; 'shapes' counts the ones she could draw from. All three reading zero while 'seen' climbs is the normal shape of an early walk: she is banking what things look like well before she has the hand to draw them.">her art</span>: <b id="art">—</b></div>
   </div>
+  <div class="kind" id="kind">—</div>
   <div class="judge" id="judge">
     <button id="btn-accept" title="This is a good drawing — she holds it as a good one.">✓ good — keep it</button>
     <button id="btn-reject" title="This is bad — she looks the thing up again, re-reads its definition, and redraws it.">✗ bad — relook &amp; redraw</button>
@@ -212,7 +223,7 @@
 
   <details class="fold" data-note>
     <summary>what every source prefix means</summary>
-    <p><b>seen:&lt;word&gt;</b> = a picture of hers coming back through her eyes (camera frames are experienced but never shown here or filed under words — a webcam can't know what she's thinking) · <b>recall:&lt;word&gt;</b> = a memory — she's re-seeing something she saw before · <b>lookup:&lt;word&gt;</b> = a reference she just fetched to study a thing she'd never seen · <b>canvas:own:&lt;words&gt;</b> = <b>she DREW this</b> — built stroke by stroke from her shape sketch of the thing, not traced over a photo. Ask her to "draw a black cat on a gravestone" and she composes the cat AND the gravestone, in her own layout and colours. Two goes at the same word give you two different drawings, because it is an attempt and not a saved file. The word on the end — <b>canvas:own:&lt;word&gt;:&lt;style&gt;</b> — is the <b>hand she drew it with</b>: poster, pencil, ink, watercolour, pointillism, crosshatch, crayon or doodle. It is the same knowledge and the same shape sketch every time; only the hand changes, the way you'd draw the same cat with a biro or a brush. She picks by mood and deliberately never uses the same hand twice running, and if you mark a drawing <b>good</b> she leans toward that hand for that subject next time · <b>canvas:draw:&lt;word&gt;</b> = a <b>render of what she LOOKED AT</b> — the reference redrawn in her palette. Useful for seeing what she studied, but it is her showing you the source, not her artwork · <b>draw:fav:&lt;word&gt;</b> = same, from a favourite memory while her current thought couldn't be pictured · <b>canvas:imagine:&lt;a&gt;+&lt;b&gt;</b> = pure imagination — a scene she invented by combining ideas from her own train of thought into ONE new picture · <b>thought / thought-blend / sem-state</b> = a formless daydream, just her mood as colour. When she's never seen a thing she looks it up ONCE, studies it, and remembers it for next time — treated as a reference, not gospel. She daydreams whenever her brain has a free moment (mid-lesson the picture holds still). There is <b>no arbitrary size cap</b> on what she can picture any more — the only ceiling left is what the maths engine can physically process in one pass. What keeps her from pouring the whole machine into one daydream is her own sense of proportion: she decides how much a thought is worth and spends accordingly, the way you can imagine a whole city without trying to picture every brick.</p>
+    <p><b>seen:&lt;word&gt;</b> = a picture of hers coming back through her eyes (camera frames are experienced but never shown here or filed under words — a webcam can't know what she's thinking) · <b>recall:&lt;word&gt;</b> = a memory — she's re-seeing something she saw before · <b>lookup:&lt;word&gt;</b> = a reference she just fetched to study a thing she'd never seen · <b>canvas:own:&lt;words&gt;</b> = <b>she DREW this</b> — built stroke by stroke from her shape sketch of the thing, not traced over a photo. Ask her to "draw a black cat on a gravestone" and she composes the cat AND the gravestone, in her own layout and colours. Two goes at the same word give you two different drawings, because it is an attempt and not a saved file. The word on the end — <b>canvas:own:&lt;word&gt;:&lt;style&gt;</b> — is the <b>hand she drew it with</b>: poster, pencil, ink, watercolour, pointillism, crosshatch, crayon or doodle. It is the same knowledge and the same shape sketch every time; only the hand changes, the way you'd draw the same cat with a biro or a brush. She picks by mood and deliberately never uses the same hand twice running, and if you mark a drawing <b>good</b> she leans toward that hand for that subject next time · <b>canvas:draw:&lt;word&gt;</b> = a <b>render of what she LOOKED AT</b> — the reference redrawn in her palette. Useful for seeing what she studied, but it is her showing you the source, not her artwork · <b>draw:fav:&lt;word&gt;</b> = same, from a favourite memory while her current thought couldn't be pictured · <b>canvas:imagine:&lt;a&gt;+&lt;b&gt;:&lt;style&gt;</b> = <b>her invention</b> — a scene she has <b>never seen</b>. Her own train of thought picks the ideas; she draws each one from the shape she has learned of it and composes them into ONE new picture, in a hand of her choosing. <b>No reference is looked at</b> and no earlier picture is pasted in — so it only appears once she has learned the shape of at least two of the things, and early in a walk that takes a while. When only one of them can be drawn, the piece is honestly labelled <b>canvas:own:</b> instead, because a drawing of one thing she has seen is a recreation, not an invention · <b>canvas:own:</b> pieces are her <b>recreations</b> of things she has seen — drawn from memory, not traced · <b>transition:</b> in front of any of these = the picture is still forming; the buttons judge the piece it is forming into ·<b>thought / thought-blend / sem-state</b> = a formless daydream, just her mood as colour. When she's never seen a thing she looks it up ONCE, studies it, and remembers it for next time — treated as a reference, not gospel. She daydreams whenever her brain has a free moment (mid-lesson the picture holds still). There is <b>no arbitrary size cap</b> on what she can picture any more — the only ceiling left is what the maths engine can physically process in one pass. What keeps her from pouring the whole machine into one daydream is her own sense of proportion: she decides how much a thought is worth and spends accordingly, the way you can imagine a whole city without trying to picture every brick.</p>
   </details>
 
   <!-- Where the brain is (same-origin / localhost / a configured tunnel origin).
@@ -354,11 +365,20 @@
         // ARTJUDGE — the critique buttons arm on judgeable frames (her
         // drawings and the references behind them); on daydreams they dim
         // with an honest note instead of vanishing.
-        currentSource = data.source || '';
-        const judgeable = /^(canvas:own:|canvas:draw:|draw:fav:|lookup:)/.test(currentSource);
-        elJudge.className = 'judge' + (judgeable ? '' : ' off');
-        if (!judgeable && !elJudgeNote.dataset.busy) elJudgeNote.textContent = 'buttons arm when one of her drawings or look-ups is on screen';
-        else if (judgeable && !elJudgeNote.dataset.busy) elJudgeNote.textContent = '';
+        // ⛔ The buttons used to arm only when the RAW source started with one
+        //   of four prefixes. Measured over ten live frames they were usable on
+        //   about one in five: her inventions (`canvas:imagine:`) were not on
+        //   the list at all, and a `transition:` frame — her drawing visibly
+        //   forming — failed on its prefix alone. `kindOf` is now the ONE place
+        //   that reads a source, and the label and the buttons both come from
+        //   it, so they cannot disagree about what is on screen.
+        const k = kindOf(data.source || '');
+        currentSource = k.judgeSource;
+        elKind.className = 'kind' + (k.cls ? ' ' + k.cls : '');
+        elKind.innerHTML = k.html;
+        elJudge.className = 'judge' + (k.judgeable ? '' : ' off');
+        if (!k.judgeable && !elJudgeNote.dataset.busy) elJudgeNote.textContent = 'buttons arm when one of her drawings, inventions or look-ups is on screen';
+        else if (k.judgeable && !elJudgeNote.dataset.busy) elJudgeNote.textContent = '';
       } catch (e) {
         setStatus('err', 'could not reconstruct this field C');
       }
@@ -369,6 +389,39 @@
     // not a drawing subject, never used again. Rides the same whitelisted
     // snapshot route as a query param.
     let currentSource = '';
+    const elKind = document.getElementById('kind');
+
+    /* What kind of picture a source label is, in words a visitor can read.
+       Returns the label HTML, its colour class, whether the judge buttons may
+       act on it, and the source to send if they do (`transition:` stripped —
+       a morph's verdict belongs to the piece it is forming into). */
+    function kindOf(raw) {
+      const esc = (s) => String(s).replace(/[<>&"]/g, '');
+      const forming = /^transition:/.test(raw);
+      const src = raw.replace(/^transition:/, '');
+      const pre = forming ? '<b>forming…</b> ' : '';
+      // "<words>:<style>" for her own pieces; words are '+'-joined subjects
+      const rest = (p) => src.slice(p.length);
+      const subjects = (p) => esc(rest(p).split(':')[0].split('+').join(' + '));
+      const hand = (p) => { const s = rest(p).split(':'); return s.length > 1 ? ' · drawn in <b>' + esc(s[s.length - 1]) + '</b>' : ''; };
+      if (src.startsWith('canvas:imagine:')) return { cls: 'invent', judgeable: true, judgeSource: src,
+        html: pre + '<b>★ HER INVENTION</b> — ' + subjects('canvas:imagine:') + ': a scene she has <b>never seen</b>, drawn from what she knows of each thing. No reference was looked at.' + hand('canvas:imagine:') };
+      if (src.startsWith('canvas:own:')) return { cls: 'recreate', judgeable: true, judgeSource: src,
+        html: pre + '<b>✍ HER RECREATION</b> — ' + subjects('canvas:own:') + ': drawn from her <b>memory of something she has seen</b>, stroke by stroke, with no picture in front of her.' + hand('canvas:own:') };
+      if (src.startsWith('canvas:draw:')) return { cls: 'recreate', judgeable: true, judgeSource: src,
+        html: pre + '<b>◐ RECREATION OF WHAT SHE LOOKED AT</b> — ' + subjects('canvas:draw:') + ': the reference she studied, redrawn in her palette.' };
+      if (src.startsWith('draw:fav:')) return { cls: 'recreate', judgeable: true, judgeSource: src,
+        html: pre + '<b>◐ RECREATION OF A FAVOURITE</b> — ' + subjects('draw:fav:') + ': something she studied before, redrawn from her memory of it.' };
+      if (src.startsWith('lookup:')) return { cls: '', judgeable: true, judgeSource: src,
+        html: pre + '<b>🔎 A REFERENCE SHE LOOKED UP</b> — ' + subjects('lookup:') + ': what she studied to learn the shape. Not her drawing.' };
+      if (src.startsWith('recall:')) return { cls: '', judgeable: false, judgeSource: '',
+        html: pre + '<b>↺ A MEMORY</b> — ' + subjects('recall:') + ': something she saw before, re-seen.' };
+      if (src.startsWith('seen:')) return { cls: '', judgeable: false, judgeSource: '',
+        html: pre + '<b>👁 SEEN</b> — ' + subjects('seen:') + ': coming in through her eyes.' };
+      return { cls: '', judgeable: false, judgeSource: '',
+        html: pre + (src ? '<b>a daydream</b> — her mood as colour, with no particular subject.' : '—') };
+    }
+
     const elJudge = document.getElementById('judge');
     const elJudgeNote = document.getElementById('judge-note');
     const judgeBtns = ['btn-accept', 'btn-reject', 'btn-ban'].map(id => document.getElementById(id));
@@ -390,8 +443,15 @@
           : kind === 'reject'
             ? `she's looking "${out.words.join(' + ')}" up again — fresh reference, definition re-read, redraw incoming…`
             : `she will never draw "${out.words.join(' + ')}" again`;
+      } else if (out && out.why === 'too fast') {
+        elJudgeNote.textContent = 'easy — one verdict at a time';
+      } else if (out) {
+        // ⛔ The brain ANSWERED and refused — that is not "unreachable". This
+        //   branch used to blame the network for every refusal, which hid the
+        //   real reason (e.g. "not a judgeable frame") behind a false outage.
+        elJudgeNote.textContent = 'she heard, but could not take that one: ' + (out.why || 'no reason given');
       } else {
-        elJudgeNote.textContent = out && out.why === 'too fast' ? 'easy — one verdict at a time' : 'she didn\'t hear that — brain unreachable';
+        elJudgeNote.textContent = 'she didn\'t hear that — brain unreachable';
       }
       setTimeout(() => { judgeBtns.forEach(b => { b.disabled = false; }); delete elJudgeNote.dataset.busy; }, 4000);
     }

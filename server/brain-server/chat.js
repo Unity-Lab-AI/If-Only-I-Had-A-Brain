@@ -3617,13 +3617,21 @@ const SERVER_CHAT_MIXIN = {
     if (this._artFbAt && (now - this._artFbAt) < 1500) return { ok: false, why: 'too fast' };
     this._artFbAt = now;
     // parse the concept words out of the frame's source label
-    const src = String(sourceLabel || '');
-    const m = src.match(/^(?:canvas:own:|canvas:draw:|draw:fav:|lookup:)(.+)$/);
+    // ⛔ A `transition:` frame is a morph INTO one of her pieces, and it is on
+    //   screen for a real share of the time. Matching the raw label refused it
+    //   on its prefix alone, so the buttons were greyed out while her drawing
+    //   was visibly forming. The verdict belongs to the piece being morphed to.
+    // ⛔ And `canvas:imagine:` was missing outright — her own inventions were
+    //   the one kind of artwork that could not be judged at all. Measured over
+    //   ten consecutive live frames: the buttons armed on roughly 1 in 5.
+    const src = String(sourceLabel || '').replace(/^transition:/, '');
+    const m = src.match(/^(?:canvas:own:|canvas:imagine:|canvas:draw:|draw:fav:|lookup:)(.+)$/);
     if (!m) return { ok: false, why: 'not a judgeable frame' };
-    // canvas:own labels are "<words>:<style>" — the style rides after the colon
+    // canvas:own and canvas:imagine labels are "<words>:<style>" — the style
+    // rides after the colon, and an accept credits that hand for each subject.
     const segs = m[1].split(':');
     const words = segs[0].split('+').map(w => w.trim().toLowerCase()).filter(w => w && w.length > 1).slice(0, 3);
-    const styleName = (src.startsWith('canvas:own:') && segs.length > 1) ? String(segs[segs.length - 1]).toLowerCase() : null;
+    const styleName = ((src.startsWith('canvas:own:') || src.startsWith('canvas:imagine:')) && segs.length > 1) ? String(segs[segs.length - 1]).toLowerCase() : null;
     if (!words.length) return { ok: false, why: 'no concept in label' };
     const store = (typeof this._vmStore === 'function') ? this._vmStore() : null;
     const relearned = [];
@@ -4470,8 +4478,28 @@ const SERVER_CHAT_MIXIN = {
   // recreation with a dazzle label. Exactly the DRAW-ENGINE law, applied to a
   // concept that exists only in her head. Can't ground → honest decline (null),
   // never a collage, never a fake.
+  //
+  // ⛔⛔ SUPERSEDED 2026-10-20 — THAT DESIGN MADE HER "IMAGINATION" A RECREATION.
+  //   Sending "a and b together in one unified scene" to the image engine and
+  //   redrawing the result means every `canvas:imagine:` frame was a copy of a
+  //   picture SOMETHING ELSE made — the opposite of what the label promised,
+  //   and the viewer's legend called it "pure imagination". The same fetch is
+  //   also the lane that published uniform fields as solid green walls.
+  //   The operator's requirement now: she draws "things she's never seen
+  //   before based off experience".
+  // ⭐ So the lane composes from what she has LEARNED instead: the combination
+  //   goes through `_drawOwnCreation`, which redraws every subject stroke by
+  //   stroke from its own shape schema and composes them into ONE scene —
+  //   shared backdrop, ground shadows, occlusion — in a hand she picks by mood.
+  //   No reference is fetched and no prior image is placed anywhere, so this is
+  //   NOT the 2026-07-16 collage either: that pasted earlier pictures' fields
+  //   into regions; this draws every subject anew.
+  // ⚠ An invention needs at least TWO subjects she has a schema for. When only
+  //   one of them can be drawn, what she made is an ordinary drawing of a thing
+  //   she has seen, and it keeps the `canvas:own:` label that says exactly that
+  //   — a label must never claim invention for a recreation.
   async _drawImagined(concepts) {
-    if (!this.mindSpace || typeof this.mindSpace.stylizeField !== 'function') return null;
+    if (!this.mindSpace || typeof this.mindSpace.sketch !== 'function') return null;
     const keys = [];
     for (const c of (Array.isArray(concepts) ? concepts : [])) {
       if (keys.length >= 3) break;
@@ -4481,29 +4509,28 @@ const SERVER_CHAT_MIXIN = {
       keys.push(key);
     }
     if (keys.length < 2) return null;   // need ≥2 concepts to invent a combination
-    const comboKey = keys.join('+');
-    // already imagined this combo? (grounded under its own key, 6h cooldown applies)
-    let rec = null;
-    try {
-      const e = (typeof this._vmStore === 'function') ? this._vmStore().get(comboKey) : null;
-      if (e && e.rec && (typeof this._recDetail !== 'function' || this._recDetail(e.rec) >= 200)) rec = e.rec;
-    } catch { /* store peek best-effort */ }
-    if (!rec && typeof this._fetchReferenceAndGround === 'function') {
-      const phrase = keys.join(' and ');
-      // Same realistic steer as _referenceImagePrompt (ruled 2026-07-17: "too many
-      // kittens puppies and funky characters" — "illustration" pulled the
-      // generator cutesy/cartoon; her imagined scenes ground TRUE-TO-LIFE too).
-      // POSITIVE terms ONLY (a model attends to the nouns — "no cartoon" paints one).
-      const prompt = `${phrase} together in one unified scene, ${require('./eye-style.js').EYE_STYLE.sceneTail}`;   // STYLEBLEED — one owner
-      try { rec = await this._fetchReferenceAndGround(comboKey, { keyOverride: comboKey, promptOverride: prompt }); } catch { rec = null; }
+    // Her own composition from her own schemas. `_drawOwnCreation` reads the
+    // whole phrase, keeps the drawable subjects she has learned, places them,
+    // and draws every one from memory — it also queues the ARTWEIGHT bind, so
+    // inventing a scene teaches her the subjects belong together.
+    let made = null;
+    try { made = await this._drawOwnCreation(keys.join(' and ')); } catch { made = null; }
+    const _ist = (typeof this._imageEngine === 'function') ? this._imageEngine() : null;
+    if (!made || !made.rec) {
+      // She does not yet know the shape of enough of these to draw them —
+      // honest decline. Early in a walk this is the common, correct outcome.
+      if (_ist) _ist.inventionsDeclined = (_ist.inventionsDeclined | 0) + 1;
+      return null;
     }
-    if (!rec) return null;   // cooldown / fetch-fail / blank → honest decline
-    const side = (typeof this._drawCanvasSide === 'function') ? this._drawCanvasSide() : 96;
-    let labelStrokes = [];
-    try { labelStrokes = this._labelStrokes(comboKey); } catch { /* nf */ }
-    let drawn = null;
-    try { drawn = await this.mindSpace.stylizeField(rec, { traceSide: Math.max(160, Math.min(side, 256)), bands: 7, labelStrokes }); } catch { return null; }   // ONE PROCESS - async
-    if (!drawn) return null;
+    const drew = (made.plan && Array.isArray(made.plan.subjects)) ? made.plan.subjects : [];
+    if (drew.length < 2) {
+      // Only one subject could be drawn: a recreation of a thing she has seen,
+      // published under the label that says so.
+      if (_ist) _ist.inventionsSingle = (_ist.inventionsSingle | 0) + 1;
+      return made;
+    }
+    const comboKey = drew.join('+');
+    const drawn = made.rec;
     // ⛔⛔ A FLAT FIELD IS NOT A PICTURE, AND PUBLISHING ONE PAINTS HER EYE SOLID
     //   GREEN. Measured 2026-10-20 on the live brain: every `canvas:imagine:`
     //   frame carried FOUR non-zero coefficients out of a 500/150/150 keep
@@ -4536,8 +4563,13 @@ const SERVER_CHAT_MIXIN = {
         return null;   // honest decline — never a green wall
       }
     }
-    this._lastSketchLabel = 'canvas:imagine:' + comboKey;
-    return { rec: drawn, label: this._lastSketchLabel, source: 'canvas:imagine:' + comboKey, imagined: true };
+    // Same "<subjects>:<style>" shape as `canvas:own:`, so the viewer can name
+    // the hand and an accept credits it — but the PREFIX says invention.
+    if (_ist) _ist.inventions = (_ist.inventions | 0) + 1;
+    const styleName = made.style || 'poster';
+    this._lastSketchLabel = 'canvas:imagine:' + comboKey + ':' + styleName;
+    try { console.log(`[OwnArt] ★ INVENTED "${drew.join(' + ')}" in ${String(styleName).toUpperCase()} — a scene she has never seen, drawn from what she knows of each. No reference fetched.`); } catch { /* nf */ }
+    return { ...made, rec: drawn, label: this._lastSketchLabel, source: this._lastSketchLabel, imagined: true };
   },
 
   // Fire an imaginative drawing from her STREAM OF THOUGHT — open-ended + dynamic to
