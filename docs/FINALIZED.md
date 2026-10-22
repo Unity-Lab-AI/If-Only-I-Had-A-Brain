@@ -5,6 +5,50 @@
 
 ---
 
+## 2026-10-22 — `PENPATH`: HER HANDWRITING WAS THE BORDER AROUND EACH LETTER, NOT THE PEN STROKE — AND IT WAS NEVER A FONT
+
+Gee, verbatim, in full: *"and something ive told you before is i dont like the font of her writing in the minds eye.. is like some weird boarder outline text font and ive told you this before that i didnt want this font type and it looks like u made it so that is the only font type she uses now, when it was the only one i didnt want her using, as she use to have many font types then i told u to remove the one that is like boarder outlined text and you fucking made it so that is the ONLY one she uses!!!! so wtf!"*
+
+Gee, verbatim: *"yeah its suppose to use her handwriting not fonts"*
+
+Gee, verbatim: *"i think option 1. but i dont want her being stuck with one shitting handwritting when writing the words it needs to be good"*
+
+**He was right twice over, and the second half is the part worth keeping: there was no font to remove.**
+
+**Cause.** `learnLetterShape` (`server/brain-server/visual-memory.js`) taught every letterform by rendering the printed glyph and tracing it with `ms.traceLineArt`. That function is **Sobel → non-maximum suppression → walk** — an **edge** tracer. Run over a *filled, bold* glyph it returns the letter's **CONTOUR**: the border running around the stroke, a hollow shape. All 94 glyphs were banked that way under `letter:<ch>`, and `handwrittenStrokes` replays exactly what was banked. **Every word she has ever written was an outline of a letter.**
+
+⛔ **Which is why removing the outline font could not have worked.** The six-name set (`block / serif / dots / bubble / tall / wide`) is still in `chat.js`, and `bubble` is still the hollow one — but `_labelStrokes` reads only `size`, `anchor` and `colors[0]` off the style object. **`st.font` is never consumed.** The typeset caption layer was deliberately gutted so she writes in her own hand, which is correct and is what he confirmed he wants. The variety died with that layer; the one look left standing was produced by the *tracer*, and it happened to be the exact look he had asked to be rid of. ⭐ **The thing he told me to delete and the thing that replaced everything were the same shape arrived at two different ways.**
+
+**Fix.** New `traceCentreline(rec, opts)` in `js/brain/mindspace/transform.js`: binarise the ink **against the field's own range** (the glyph ink and the paper are both caller-chosen, so an absolute threshold would be wrong), **Zhang-Suen thin** to a 1-pixel skeleton, walk from **endpoints first** with orthogonal neighbours preferred over diagonals, RDP simplify. The skeleton of a letter **is** its pen path. Faced in `gpu.js`; passed through in `mindspace-proxy.js`.
+
+⚠ **Three traps handled, each written into the code:** Zhang-Suen deletions are **collected per sub-iteration and applied after the sweep** — deleting mid-sweep changes neighbours' connectivity counts and erodes the skeleton to nothing; **closed forms have no endpoint**, so remaining ink is seeded after the endpoint pass or every `o`, `0` and `8` silently drops; and the output contract is **identical** to `traceLineArt` (`{type:'poly', pts:[[x,y]…], rgb}`, `[x,y]` **arrays** not `{x,y}` — a distinction that has already cost this project all 26 letters once), so `_normaliseLetterStrokes` and the rasterisers are untouched.
+
+⛔ **The proxy passthrough is in, deliberately and non-optionally.** A method missing from `MindSpaceWorkerProxy` falls through to the caller's `typeof` guard and takes the silent branch **in production only**, because an engine-direct harness never goes through the proxy — which is precisely how every banked schema came out colourless while the harnesses passed. It is **not** donor-routed: the donor has no `traceCentreline` opcode, so routing would return empty and read as a letter she could not trace.
+
+**"It needs to be good" — variety, honestly.** She now takes **three looks** at each glyph (three real sizes and offsets, because a letter on a page is never the same twice) and banks **three real traces** as `letter.variants`, with `letter.strokes` kept as the primary so every existing consumer and the practice ladder work unchanged. `_pickLetterVariant` chooses among them per **letter position**, deterministic in `(label, position)` so a caption rasterises identically every time, and varied across positions so a doubled letter is not a stamped copy of itself.
+
+⛔⛔ **AND NO WOBBLE, WHICH IS A LAW AND NOT A PREFERENCE.** `handwrittenStrokes` states it outright: *"THERE IS NO WOBBLE PARAMETER AND THERE MUST NEVER BE ONE. An artificial tremor faking childish writing is dumbing her down… it would also make the practice loop optimise toward a lie."* **This is selection among traces she actually took, never perturbation of one.** Her hand still improves only through the existing trainable `weight` / `slant` / `commit` loop, which scores resemblance to the printed form.
+
+✅ **Verified by MEASURING and then by LOOKING, on real glyphs through the production path** (harness deleted in the same change). Pen-path length against edge length — the number that proves it stopped tracing both sides of every stroke:
+
+```
+  ch   edgeLen   penLen   ratio
+   l    0.97      0.38     0.39
+   I    1.00      0.41     0.41
+   T    1.01      0.42     0.42
+   A    1.57      0.77     0.49
+   o    1.27      0.53     0.42
+   7    1.26      0.36     0.29
+```
+
+**Rendered both and looked at them:** the old trace is unmistakably a border running right around the letter including its counter; the new one is a single-stroke `l` (stem + foot serif, correctly two pen strokes) and a skeletal `A` with two legs, an arch and a crossbar. **Three looks at `a` gave 3 distinct traces of 3.** `node --check` clean on all four files, **ESM verified by `import()`** with `traceCentreline` resolving as a function, all four files **still pure CRLF**, bundle rebuilt (1,012,529 → 1,016,366 B, `traceCentreline` present ×3) — ⚠ rebuilt against drift even though the only caller is server-side.
+
+⭐ **It self-applies on the next restart and costs no fresh walk.** `_letterShapesLearned` is an in-memory flag that is **not persisted**, so all 94 glyphs re-learn on every boot — the outline-banked letters are replaced automatically. No store bump needed.
+
+**Docs:** `docs/TODO.md` · this entry · `wiki/modules/mindspace.md` · `wiki/concepts/the-anonymous-image-slot.md` (re-verified, claims unaffected) · `wiki/index.md` · `wiki/log.md`. **Unaffected, stated:** the `FONTS` set in `chat.js` is left exactly as it is — it is already unreachable for captions and he confirmed handwriting is the intent, so deleting it is a separate decision, not a side effect of this one.
+
+---
+
 ## 2026-10-22 — `WEDGEALARM`: THE STALL ALARM TRIGGERED ON A COMPLETION COUNTER AND CALLED A WORKING BRAIN WEDGED, THREE TIMES
 
 Gee, verbatim: *"so how isd whe doing, shes been on phasde 2 for like 20 hours"* — then, correcting me: *"its nbot a wedge this is Standard operating procesure"*.
