@@ -584,6 +584,10 @@ export class MindSpaceGPU {
   // shape-per-word stamp. Cheap CPU (tiny plane) — always CPU, like describe().
   traceField(rec, opts = {}) { return CPU.traceField(rec, opts); }
   traceLineArt(rec, opts = {}) { return CPU.traceLineArt(rec, opts); }
+  // Centreline (skeleton) trace — the pen path, not the border around it. This is
+  // the one the handwriting lane uses: an edge trace of a filled glyph is its
+  // outline, which is why her letters were hollow.
+  traceCentreline(rec, opts = {}) { return CPU.traceCentreline(rec, opts); }
   traceColorFill(rec, opts = {}) { return CPU.traceColorFill(rec, opts); }
   stylizeField(rec, opts = {}) { return CPU.stylizeField(rec, opts); }
   // composeFields delegate REMOVED (2026-07-16) — the collage compositor is gone;

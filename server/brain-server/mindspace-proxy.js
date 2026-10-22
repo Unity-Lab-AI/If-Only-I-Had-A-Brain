@@ -190,6 +190,20 @@ class MindSpaceWorkerProxy {
       : [];
   }
 
+  // ⛔⛔ THE PROXY PASSTHROUGH IS NOT OPTIONAL, AND THIS PROJECT HAS ALREADY PAID
+  // FOR FORGETTING IT ONCE. A method absent here falls through to the caller's
+  // `typeof` guard, which then takes the silent branch — in production only,
+  // because an engine-direct harness never goes through the proxy. That is
+  // exactly how every banked schema came out colourless while the tests passed.
+  // DELIBERATELY NOT DONOR-ROUTED: the donor has no `traceCentreline` opcode, so
+  // routing it would reach `_donorDispatch`, come back empty, and read as a letter
+  // she could not trace. Local only, until a donor release carries it.
+  traceCentreline(rec, opts = {}) {
+    return (this._local && typeof this._local.traceCentreline === 'function')
+      ? this._local.traceCentreline(rec, opts)
+      : [];
+  }
+
   // Color-fill draw style — flat colour-region strokes (sync-local; out of the
   // auto-rotation, explicit opts.style only — not donor-routed).
   traceColorFill(...args) {
