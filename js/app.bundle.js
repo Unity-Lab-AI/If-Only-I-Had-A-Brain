@@ -2571,6 +2571,34 @@ function traceCentreline(rec, opts = {}) {
   const cut = lo + (hi - lo) * Math.max(0.15, Math.min(0.85, opts.inkThresh ?? 0.45));
   const I = new Uint8Array(gw * gh);
   for (let i = 0; i < Y.length; i++) I[i] = Y[i] >= cut ? 1 : 0;
+  const closeR = Math.max(0, Math.min(2, Math.round(opts.closeRadius ?? 1)));
+  if (closeR > 0) {
+    const dil = new Uint8Array(gw * gh);
+    for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
+      let on = 0;
+      for (let dy = -closeR; dy <= closeR && !on; dy++) for (let dx = -closeR; dx <= closeR; dx++) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= gw || ny >= gh) continue;
+        if (I[ny * gw + nx]) {
+          on = 1;
+          break;
+        }
+      }
+      dil[y * gw + x] = on;
+    }
+    for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
+      let all = 1;
+      for (let dy = -closeR; dy <= closeR && all; dy++) for (let dx = -closeR; dx <= closeR; dx++) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= gw || ny >= gh) continue;
+        if (!dil[ny * gw + nx]) {
+          all = 0;
+          break;
+        }
+      }
+      I[y * gw + x] = all;
+    }
+  }
   const at = (x, y) => x < 0 || y < 0 || x >= gw || y >= gh ? 0 : I[y * gw + x];
   let changed = true, guard = 0;
   while (changed && guard++ < 64) {
@@ -2638,12 +2666,15 @@ function traceCentreline(rec, opts = {}) {
     (degree(x, y) === 1 ? ends : rest).push(i);
   }
   const maxStrokes = Math.max(4, Math.min(opts.maxStrokes || 60, 300));
-  const minLen = Math.max(2, Math.round((opts.minLenFrac ?? 0.04) * Math.max(gw, gh)));
+  const minLen = Math.max(1, Math.round((opts.minLenFrac ?? 0.04) * Math.max(gw, gh)));
   const polylines = [];
   for (const si of ends.concat(rest)) {
     if (polylines.length >= maxStrokes) break;
     if (visited[si] || !I[si]) continue;
-    const pts = walk(si % gw, si / gw | 0);
+    const sx = si % gw, sy = si / gw | 0;
+    const fwd = walk(sx, sy);
+    const back = walk(sx, sy);
+    const pts = back.length > 1 ? back.slice(1).reverse().concat(fwd) : fwd;
     if (pts.length >= minLen) polylines.push(pts);
   }
   const eps = Math.max(0.3, opts.simplify ?? 1);
@@ -2651,8 +2682,9 @@ function traceCentreline(rec, opts = {}) {
   const strokes = [];
   for (const pl of polylines) {
     const simp = _rdp(pl, eps);
-    if (simp.length < 2) continue;
-    strokes.push({ type: "poly", pts: simp.map((p) => [p[0] / (gw - 1), p[1] / (gh - 1)]), rgb: ink.slice() });
+    if (!simp.length) continue;
+    const pts = simp.length === 1 ? [simp[0], [simp[0][0] + 1, simp[0][1]]] : simp;
+    strokes.push({ type: "poly", pts: pts.map((p) => [p[0] / (gw - 1), p[1] / (gh - 1)]), rgb: ink.slice() });
   }
   return strokes;
 }

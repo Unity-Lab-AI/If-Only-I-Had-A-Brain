@@ -2689,7 +2689,11 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         // setting could have changed it because no font was involved. The
         // skeleton of a letter is its pen path, which is what a hand takes away.
         const mine = await ms.traceCentreline(r, {
-          traceSide: 192, maxStrokes: 60, inkThresh: 0.45, minLenFrac: 0.03, simplify: 1.0, ink: [232, 230, 236],
+          // ⚠ `minLenFrac: 0` ON PURPOSE. The speck filter exists for photographs;
+          // this input is a cleanly rendered glyph, and every short run here is a
+          // real part of a letter — a crossbar, a serif, the dot on an `i`.
+          // Filtering by length is what removed them.
+          traceSide: 192, maxStrokes: 60, inkThresh: 0.45, minLenFrac: 0, simplify: 1.0, ink: [232, 230, 236],
         });
         if (!mine || !mine.length) continue;
         const norm = this._normaliseLetterStrokes(mine);
@@ -2755,7 +2759,16 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // degenerate case and `{strokes, aspect}` otherwise, so a caller reading
     // `.strokes.strokes` got `undefined` and threw — on the failure path only,
     // which is the path least likely to be exercised before it ships.
-    if (!(w > 0) || !(h > 0)) return { strokes: [], aspect: 0 };
+    // ⛔⛔ A PERFECTLY STRAIGHT STROKE HAS ZERO EXTENT ON ONE AXIS, AND THIS
+    // REFUSED IT. The old guard was `!(w > 0) || !(h > 0)`, so a glyph whose
+    // trace is one horizontal or one vertical line was thrown away as
+    // degenerate — which is five real marks she could therefore never write at
+    // any point in this project: `-` and `_` (h === 0), `|`, `!` and `:`
+    // (w === 0). Found by tracing all 94 glyphs and noticing that the entire
+    // failing set was straight single strokes.
+    // ⚠ Only a SINGLE POINT is genuinely degenerate — no extent on either axis,
+    // nothing to scale and nothing to draw. That case is still refused.
+    if (!(w > 0) && !(h > 0)) return { strokes: [], aspect: 0 };
     const k = 1 / Math.max(w, h);
     const out = [];
     for (const s of strokes) {
@@ -2766,7 +2779,12 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         .filter((p) => Number.isFinite(p[0]) && Number.isFinite(p[1]));
       if (pts.length >= 2) out.push({ ...s, pts });
     }
-    return { strokes: out, aspect: w / h };
+    // ⚠ A straight stroke divides by zero here. The caller clamps aspect into
+    // [0.18, 1.4], so an explicit bound is the same drawing with a readable
+    // number instead of `Infinity` travelling through the store and out to any
+    // panel that renders it: a flat mark gets the wide end, an upright the narrow.
+    const aspect = (h > 0) ? (w / h) : 1.4;
+    return { strokes: out, aspect: (w > 0) ? aspect : 0.18 };
   },
 
   /**
