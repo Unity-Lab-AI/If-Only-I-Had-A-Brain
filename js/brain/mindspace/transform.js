@@ -618,6 +618,49 @@ export function traceCentreline(rec, opts = {}) {
   const cut = lo + (hi - lo) * Math.max(0.15, Math.min(0.85, opts.inkThresh ?? 0.45));
   const I = new Uint8Array(gw * gh);
   for (let i = 0; i < Y.length; i++) I[i] = Y[i] >= cut ? 1 : 0;
+  // ⛔⛔ PERCEPTUAL CLOSURE, AND IT IS NOT COSMETIC — WITHOUT IT EVERY DIAGONAL
+  // LETTER TRACES TO NOTHING.
+  //
+  // The printed glyph she looks at is drawn from a 5x7 grid, and that renderer
+  // only emits a LINE for a run of two or more cells. A diagonal is a staircase
+  // of SINGLE cells, so it comes out as isolated dots: measured on the real
+  // renderer, `K` is 2 lines + 6 dots and `x` is 0 lines + 9 dots — the whole
+  // letter. Thinning reduces each dot to one pixel, a one-point polyline is
+  // dropped, and the letter loses its diagonals or vanishes entirely.
+  //
+  // ⭐ A dilate-then-erode CLOSE bridges the gap between neighbouring dots
+  // exactly the way an eye reads a dotted diagonal as a line, and it is the
+  // honest operation here: the strokes really are adjacent, the font merely
+  // declined to join them. Erosion afterwards gives the width back, so a stroke
+  // that was already solid is unchanged.
+  //
+  // ⚠ RADIUS 1 AND NO MORE. A bigger kernel welds genuinely separate strokes —
+  // the two uprights of an `H`, the bowl and stem of a `b` — into one blob, and
+  // a letter fused into a lump traces as confidently as a correct one.
+  const closeR = Math.max(0, Math.min(2, Math.round(opts.closeRadius ?? 1)));
+  if (closeR > 0) {
+    const dil = new Uint8Array(gw * gh);
+    for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
+      let on = 0;
+      for (let dy = -closeR; dy <= closeR && !on; dy++) for (let dx = -closeR; dx <= closeR; dx++) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= gw || ny >= gh) continue;
+        if (I[ny * gw + nx]) { on = 1; break; }
+      }
+      dil[y * gw + x] = on;
+    }
+    for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
+      let all = 1;
+      for (let dy = -closeR; dy <= closeR && all; dy++) for (let dx = -closeR; dx <= closeR; dx++) {
+        const nx = x + dx, ny = y + dy;
+        // Outside the field counts as SET, so erosion does not eat a stroke that
+        // legitimately runs to the edge of the canvas.
+        if (nx < 0 || ny < 0 || nx >= gw || ny >= gh) continue;
+        if (!dil[ny * gw + nx]) { all = 0; break; }
+      }
+      I[y * gw + x] = all;
+    }
+  }
   const at = (x, y) => ((x < 0 || y < 0 || x >= gw || y >= gh) ? 0 : I[y * gw + x]);
   // ZHANG-SUEN: two alternating sub-iterations, each deleting a whole generation
   // at once. ⚠ Deletions are COLLECTED and applied after the sweep — removing a
@@ -675,12 +718,31 @@ export function traceCentreline(rec, opts = {}) {
     (degree(x, y) === 1 ? ends : rest).push(i);
   }
   const maxStrokes = Math.max(4, Math.min(opts.maxStrokes || 60, 300));
-  const minLen = Math.max(2, Math.round((opts.minLenFrac ?? 0.04) * Math.max(gw, gh)));
+  // ⚠ FLOOR OF 1, NOT 2 — A DOT IS A MARK. The dot on an `i`, the two of a `:`
+  // and a full stop all thin to a SINGLE pixel, and a floor of 2 discarded them:
+  // `:` traced to nothing at all, while `i` and `j` passed while quietly losing
+  // their dots, which is the worse of the two failures because it looks fine.
+  // The caller controls the real threshold through `minLenFrac`; the letter lane
+  // passes 0 because its input is a cleanly rendered glyph, not a photograph
+  // where specks need filtering.
+  const minLen = Math.max(1, Math.round((opts.minLenFrac ?? 0.04) * Math.max(gw, gh)));
   const polylines = [];
   for (const si of ends.concat(rest)) {
     if (polylines.length >= maxStrokes) break;
     if (visited[si] || !I[si]) continue;
-    const pts = walk(si % gw, (si / gw) | 0);
+    // ⛔ BOTH DIRECTIONS FROM THE SEED, and the one-way version is what broke
+    // every closed form. An ENDPOINT seed only has one way to go, so walking
+    // once is complete for `l` or `T`. A LOOP has no endpoint at all — `O`, `o`,
+    // `0`, `8`, the bowl of `G` — so it is seeded mid-run from the leftover
+    // pass, and a single walk takes one lap in one direction and abandons the
+    // rest of the ring. That is the half-drawn `O` the operator reported.
+    // ⚠ The second call starts on an already-visited seed on purpose: its first
+    // step can only choose a neighbour the forward walk did not take, which is
+    // the other side. Same pattern `traceLineArt` has always used.
+    const sx = si % gw, sy = (si / gw) | 0;
+    const fwd = walk(sx, sy);
+    const back = walk(sx, sy);
+    const pts = back.length > 1 ? back.slice(1).reverse().concat(fwd) : fwd;
     if (pts.length >= minLen) polylines.push(pts);
   }
   const eps = Math.max(0.3, opts.simplify ?? 1.0);
@@ -688,8 +750,17 @@ export function traceCentreline(rec, opts = {}) {
   const strokes = [];
   for (const pl of polylines) {
     const simp = _rdp(pl, eps);
-    if (simp.length < 2) continue;
-    strokes.push({ type: 'poly', pts: simp.map(p => [p[0] / (gw - 1), p[1] / (gh - 1)]), rgb: ink.slice() });
+    if (!simp.length) continue;
+    // A one-pixel component is a DOT, and a dot is a mark she has to be able to
+    // write — the dot on an `i`, the two of a `:`, a full stop. Dropping them is
+    // how `:` traced to nothing while `i` and `j` passed with their dots
+    // silently missing, which is the worse failure because it looks correct.
+    // Emitted as a minimal two-point stroke so the normaliser, the rasterisers
+    // and the writer all handle it with no special case anywhere downstream.
+    const pts = (simp.length === 1)
+      ? [simp[0], [simp[0][0] + 1, simp[0][1]]]
+      : simp;
+    strokes.push({ type: 'poly', pts: pts.map(p => [p[0] / (gw - 1), p[1] / (gh - 1)]), rgb: ink.slice() });
   }
   return strokes;
 }

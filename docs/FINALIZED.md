@@ -5,6 +5,34 @@
 
 ---
 
+## 2026-10-22 — `PENPATH.2`: THIRTEEN GLYPHS TRACED TO NOTHING AND THE REST LOST LIMBS — FOUR CAUSES, AND I SHIPPED THE FIRST FIX ON SIX GLYPHS
+
+Gee, verbatim: *"wtf she is still using that same fucking outlined font"* · *"test every letter and number,, some are incomplete that she is writting, not sure hhow to fix"* · *"O, G,W,K ive seeen problems just to name a few"*
+
+⛔⛔ **MINE, AND THE METHOD FAILURE IS THE POINT: I VERIFIED `PENPATH.1` ON SIX GLYPHS AND CALLED IT DONE.** `l I T A o 7` all looked right, so the verdict read as a success. **Tracing all 94 is one loop and it was not run**, and the operator found `O`, `G`, `W`, `K` broken within minutes of the restart. A sample chosen for being easy to draw is not a test of a letterform tracer.
+
+**Measured on the full set:** **81 of 94** traced; `! ' - . : ; < > ^ _ \` x |` returned **nothing at all**, and `B D G H K O P` came back as fragments. Four separate causes, each found by measurement after the previous theory died:
+
+⚠ **Two of my theories died first and are recorded as dead.** A `minLenFrac` sweep (0.03 → 0) changed almost nothing — `K` stayed at path length **0.31** and `x` at **zero strokes** at every setting. An `inkThresh` sweep (0.25 → 0.60) produced **byte-identical** results. An invariant across a parameter sweep means that parameter is not the cause, which is what sent the search upstream.
+
+**① THE PRINTED LETTER SHE LOOKS AT IS A DOTTED STAIRCASE.** `glyphStrokes` emits a line only for a run of **≥2 cells** on its 5×7 grid, and a diagonal is a staircase of **single** cells. Measured on the real renderer: **`K` = 2 lines + 6 POINTS**, **`x` = 0 lines + 9 POINTS** — the whole letter is dots. Thinning reduces each dot to one pixel, a one-point polyline is dropped, and the diagonals vanish. **The defect was in what she was shown, not in the tracer.** Fixed with a radius-1 dilate-then-erode **close** before thinning — the operation an eye performs reading a dotted diagonal as a line. ⚠ **Radius 1 and no more:** a bigger kernel welds the uprights of an `H` or the bowl and stem of a `b` into one blob, and a fused letter traces as confidently as a correct one.
+
+**② THE WALK WENT ONE WAY, AND `traceLineArt` HAS ALWAYS GONE BOTH.** An endpoint seed only has one direction, so `l` and `T` were complete and hid it. A **closed form has no endpoint** — `O o 0 8`, the bowl of `G` — so it is seeded mid-run and a single walk took one lap and abandoned the rest of the ring. That is the half-drawn `O`. Now walks forward and back from the seed and joins them, the same pattern the older tracer uses.
+
+**③ ⛔ A PERFECTLY STRAIGHT STROKE WAS REFUSED AS DEGENERATE — AND SHE HAS NEVER BEEN ABLE TO WRITE FIVE MARKS, EVER.** `_normaliseLetterStrokes` guarded `if (!(w > 0) || !(h > 0)) return { strokes: [], aspect: 0 }`. A hyphen has `h === 0`; a pipe has `w === 0`. **`- _ | ! :` have been unwritable for the life of this project**, outline tracer or not. Found because the entire remaining failure set was straight single strokes — *the shape of the failing set named the cause*. Now only a **single point** (no extent on either axis) is degenerate; `aspect` is bounded explicitly instead of dividing by zero and sending `Infinity` to the store.
+
+**④ A DOT IS A MARK, AND DROPPING IT LOOKED LIKE SUCCESS.** A one-pixel component was discarded by a floor of 2, so `:` traced to nothing **while `i` and `j` passed with their dots silently missing** — the worse of the two failures, because it renders as a plausible letter. The floor is 1, a single-pixel component is emitted as a minimal two-point stroke, and the letter lane passes `minLenFrac: 0` because its input is a cleanly rendered glyph, not a photograph needing speck filtering.
+
+✅ **Verified by tracing ALL 94 and LOOKING at a contact sheet of every one: 94 of 94, zero failures** (81 → 89 → 93 → 94 across the four fixes). The only short-path flag is `:` at 0.083, which is correct for two dots. **A word was then composed from the traced letters and judged by eye** — `hello world`, `Unity 2026!`, `apple cherry` render as legible single-stroke writing with `i`/`j` dotted, not as outlines. `node --check` clean, ESM verified by `import()`, files still pure CRLF, bundle rebuilt.
+
+⚠ **Stated rather than claimed: it is BLOCKY.** The letterforms are angular because the printed source she copies is a 5×7 bitmap grid, and the trace is faithful to it. Rounder, more natural handwriting needs a better *printed* source for her to learn from, which is a separate piece of work and is not claimed here.
+
+⚠ **Also owned: `PENPATH.1` told the operator to restart and check, and what he got back was still wrong.** The fix had loaded — running build matched `develop` and `letterShapes` read `learned 94 of 94` — so the restart worked and the traces were simply broken. **"It loaded" and "it works" are different readings and only the second one matters.**
+
+**Docs:** `docs/TODO.md` · this entry · `wiki/modules/mindspace.md` · `wiki/index.md` · `wiki/log.md`.
+
+---
+
 ## 2026-10-22 — `PENPATH`: HER HANDWRITING WAS THE BORDER AROUND EACH LETTER, NOT THE PEN STROKE — AND IT WAS NEVER A FONT
 
 Gee, verbatim, in full: *"and something ive told you before is i dont like the font of her writing in the minds eye.. is like some weird boarder outline text font and ive told you this before that i didnt want this font type and it looks like u made it so that is the only font type she uses now, when it was the only one i didnt want her using, as she use to have many font types then i told u to remove the one that is like boarder outlined text and you fucking made it so that is the ONLY one she uses!!!! so wtf!"*
