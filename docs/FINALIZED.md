@@ -5,6 +5,47 @@
 
 ---
 
+## 2026-10-22 — `WEDGEALARM`: THE STALL ALARM TRIGGERED ON A COMPLETION COUNTER AND CALLED A WORKING BRAIN WEDGED, THREE TIMES
+
+Gee, verbatim: *"so how isd whe doing, shes been on phasde 2 for like 20 hours"* — then, correcting me: *"its nbot a wedge this is Standard operating procesure"*.
+
+**He was right, for the third time on this one instrument** (2026-08-20 `cellPhasesStarted: 0`; 2026-10-20 the vocab lane; today). ⛔ **And I led with "she is wedged" off the alarm's own word before measuring** — the exact failure the board row had already written down as mine.
+
+**Cause.** The trigger is `Date.now() - this._lastTeachAtMs > DREAM_WEDGE_WARN_MS` (600,000 ms). `_lastTeachAtMs` is stamped at `curriculum.js:3484`, **inside the `try` AFTER `await original(...args)` resolves** — so the field means *"when a tracked teach call last COMPLETED"*, never *"when she last taught"*. **One long call holds it frozen for its entire duration while teaching throughout.**
+
+⛔ **The threshold's own justification refuted the threshold.** It read *"deliberately well past the slowest legitimate single teach call ever measured here — one `_teachAssociationPairs` over 7,250 corpus pairs took 380,470 ms"*. **380,470 ms is 6.3 minutes, UNDER the 10-minute bar** — while `curriculum.js:3400`, the same file, prices one unit at **"14.9 hours in a single call."** The bar was ~143× smaller than the worst case the file already knew about, and the comment that set it read as reassurance.
+
+**Measured live** on an 11 h 6 m boot (one boot, zero `[launcher] node exited` lines), two samples 92.2 s apart while the alarm printed `NOT TEACHING for 76.8min` every 60 s:
+
+```
+  boundHebbian.enqueued    16,442,929 -> 16,452,049    +9,120   ADVANCING  (~99 ops/sec)
+    flushedOps                        same             +9,120   ADVANCING  (nothing queued)
+    flushedFrames               226,159 -> 226,729       +570   ADVANCING
+  spikesLifetime                              +93,224,879       ADVANCING
+  cellSubPhases             4,832,799 -> 4,832,799           0   FROZEN   <- completion-based
+  teachCallsPerMin                            0 -> 0            FROZEN   <- completion-based
+```
+
+**Every counter measuring WORK advanced; every counter measuring COMPLETIONS was frozen** — correctly, because she was inside one long unit. The alarm could not distinguish that from a dead brain.
+
+⭐ **The deciding fact was already computed and already discarded.** The detector derives `_frozen` from `hebbian.calls`, prints it in the warn body, and fires regardless — while its own comment two lines above says *"Advancing-or-frozen is the ONE fact that separates 'inside a long call' from 'wedged', and it is the check that settled it live."* **An instrument that measures the deciding fact and does not gate on it is not an instrument.**
+
+**Fix (`js/brain/curriculum.js`, server-side; the browser bundle does not carry this code — `grep -c "NOT TEACHING for" js/app.bundle.js` = 0, `CELL ALIVE` = 0, so no rebuild is owed).** The warn now additionally requires a **work signature** to be frozen across **two consecutive 10 s checks**: the union of the bound-Hebbian dispatch counters (`_boundHebbianEnqueued` / `FlushedOps` / `FlushedFrames`) and the `hebbian` / `lateral` / `defSemSem` / `pairSegments` stage lanes, **each key read from its writer**. The healthy outcome gets its own rare `⏳ LONG PHASE` line (`DREAM_LONG_PHASE_NOTE_MS`, 10 min) naming the ops and frames actually flushed, and **never the word WEDGE** — an alarm that fires on healthy behaviour trains the reader to ignore it, which is how three true readings got discarded.
+
+⚠ **THE UNION IS THE DESIGN, NOT THOROUGHNESS — a single named lane would have shipped the same lie.** In that same healthy window `rangesSent` (71,154) and `maskedSent` (1,588,671) were **also frozen** while the bound lane advanced, because the dispatch path in use varies by phase. A fix that had picked those two would have read FROZEN on a working brain and fired the identical false alarm.
+
+⚠ **One defect of my own, caught by reading the finished block rather than by the harness.** I first gated the quiet line on `!_reallyStalled`, which is true on the read where the lanes have *just* frozen (run 1 of the 2 needed) — so it would have printed *"work lanes ADVANCING"* in the exact window a stall was forming. **The same lie wearing the opposite sign.** Condition tightened to `_workMoved === true`; a pending run now prints nothing and the 10 s CELL ALIVE heartbeat still carries the phase and its age.
+
+✅ **Verified by lifting the SHIPPED decision text out of the file and driving it with real counter sequences** (the `kindOf` / `_recDetail` precedent — the harness runs the production bytes, not a re-implementation), **7/7 behavioural checks + 11 signature assertions**, harness deleted in the same change: healthy long call → **no warn, 7 quiet notes** · every lane frozen → **fires at check 3** (~20–30 s after crossing) · no lane readable → **fires at check 1 and says it is firing because it cannot tell** · frozen one read then recovers → **no warn** (run count reset) · healthy then dies mid-run → **fires at check 6** · **only the definition lane advancing** (the lane the board row named) → **no warn** · **only bound-Hebbian advancing — today's brain exactly, stage lanes frozen** → **no warn**. Signature confirmed to exclude `rangesSent` / `maskedSent` / `suppressedStale` / `capFlushes` and to include all seven real lanes. `node --check` clean, **ESM verified by `import()`** (**35** exports resolved — `node --check` cannot see link errors), and **CRLF integrity measured, not assumed: 33,994 → 34,071 lines, still pure CRLF** on a file that is CRLF end to end. ⚠ Both of those numbers were first written here as **38 exports** and **34,064 lines** and are corrected: the export count was never counted, and the line count was recorded before the final edit added seven more. **A ledger carrying an unchecked number is the same defect this entry is about**, so the correction is recorded rather than quietly swapped.
+
+⛔ **It must not suppress a real stall, and does not:** the 2026-09-06 case (teaching stopped 26 s into a cell for 24 minutes) and the donor-death class both freeze the work lanes too, so both still fire — proven by checks 2 and 5 above.
+
+**Docs:** `docs/TODO.md` (row filed with his verbatim words, then closed) · `docs/ADMIN-CONTROLS.md` (`DREAM_WEDGE_WARN_MS` row corrected in place — its 380,470 ms justification is now recorded as disproven — and `DREAM_LONG_PHASE_NOTE_MS` added) · `wiki/gotchas/instruments-that-lie.md` + `wiki/modules/curriculum.md` + `wiki/index.md` + `wiki/log.md` · this entry. **Unaffected and stated:** no bundle (measured above); nothing she is taught changes, so this is an instrument and lands on any press under the fresh-walk-is-last rule; `docs/NOW.md` is a 2026-10-20 snapshot of a different boot and is left for its own refresh rather than half-updated here.
+
+⭐ **Two unrelated fixes confirmed working live on this same boot, both firsts.** `ownArt.imageEngine.lastFreeVramMB` read **3043** — a true number where the trailing-blank-line gate returned the fiction `0` on every boot since it shipped — with `grounded 1` and **4,730 drawings**, including `★ INVENTED "apple + cherry + poison" … No reference fetched`, the invented-composition lane running in production for the first time. And `perf.cpuSampleMs/cpuWindowMs` moved **531/1074 → 2109/1341** across polls, where it published one frozen fossil through every previous walk.
+
+---
+
 ## 2026-10-20 — `TUNNELADMIN`: EVERY PUBLIC VISITOR ON HER SOCKET WAS AN ADMIN
 
 Gee, verbatim: *"this last Gn/s cant be right? right? not on that card! is something bad his shits tooo small and showing shit ton of work"* — with a Clients table showing three `admin · anon · 127.0.0.x` rows at 10–20 s round trips and 0.5–1.2 GB send buffers.
