@@ -11730,7 +11730,77 @@ export class Curriculum {
           const _seqFrozen = (this._wedgeLastSeq !== null && this._wedgeLastSeq !== undefined)
             ? (_seq === this._wedgeLastSeq) : null;
           this._wedgeLastSeq = _seq;
-          if (!this._wedgeWarnAt || (Date.now() - this._wedgeWarnAt) > 60000) {
+          // ⛔⛔ THIS ALARM TOLD THE OPERATOR "WEDGE" THREE TIMES WHILE SHE TAUGHT,
+          // BECAUSE IT TRIGGERS ON A *COMPLETION* COUNTER AND THE *WORK* COUNTER
+          // SITS IN THE SAME PAYLOAD.
+          //
+          // `_lastTeachAtMs` is stamped after `await original(...)` RESOLVES, so it
+          // means "when a tracked teach call last COMPLETED" — never "when she last
+          // taught". One long call holds it frozen for its whole duration while
+          // teaching the entire time, and this file prices a single unit at 14.9
+          // hours while the threshold above is 10 minutes.
+          //
+          // ⭐ MEASURED, 92.2s window, on a brain this alarm was calling wedged:
+          //   boundHebbian.enqueued  16,442,929 -> 16,452,049  (+9,120, ~99 ops/s)
+          //   flushedFrames             226,159 -> 226,729     (+570)
+          //   cellSubPhases / teachCallsPerMin / sinceLastTeach    FROZEN
+          // Work advancing, completions frozen. The alarm could not tell that from
+          // a dead brain.
+          //
+          // ⚠ THE SIGNAL IS A UNION, NEVER ONE LANE PICKED BY NAME. In that same
+          // window `rangesSent` and `maskedSent` were ALSO frozen while the bound
+          // lane advanced — the dispatch path in use varies by phase, so a fix that
+          // had chosen those two would have read frozen on a healthy brain and
+          // fired the identical false alarm. Every key below is read from its
+          // writer: the bound-Hebbian dispatch counters, and the hebbian / lateral
+          // / defSemSem / pairSegments stage lanes.
+          const _workLanes = [];
+          try {
+            if (_b) _workLanes.push(_b._boundHebbianEnqueued | 0, _b._boundHebbianFlushedOps | 0, _b._boundHebbianFlushedFrames | 0);
+            if (_sp) {
+              if (_sp.hebbian) _workLanes.push(_sp.hebbian.calls | 0);
+              if (_sp.lateral) _workLanes.push(_sp.lateral.calls | 0);
+              if (_sp.defSemSem) _workLanes.push(_sp.defSemSem.n | 0);
+              if (_sp.pairSegments) _workLanes.push(_sp.pairSegments.n | 0, _sp.pairSegments.calls | 0);
+            }
+          } catch { /* a progress read must never take the heartbeat down */ }
+          // `null` means NO work lane was readable. That is declared out loud below
+          // and still fires, because an instrument whose input is missing must say
+          // so rather than default to the reassuring half.
+          const _workSig = _workLanes.length ? _workLanes.join(',') : null;
+          const _workMoved = (_workSig !== null && this._wedgeLastWork !== null && this._wedgeLastWork !== undefined)
+            ? (_workSig !== this._wedgeLastWork) : null;
+          this._wedgeLastWork = _workSig;
+          // Two consecutive frozen reads, not one. This block runs on the 10s
+          // heartbeat, so a genuine stall still names itself about 20s after it
+          // crosses the threshold — while a single sampling coincidence cannot
+          // promote a working brain to a wedge.
+          if (_workMoved === true) this._wedgeFrozenRuns = 0;
+          else if (_workMoved === false) this._wedgeFrozenRuns = (this._wedgeFrozenRuns | 0) + 1;
+          const _reallyStalled = (_workSig === null) || (this._wedgeFrozenRuns | 0) >= 2;
+          // ⭐ THE OTHER OUTCOME — AND IT USED TO PRINT THE IDENTICAL ALARM.
+          //
+          // No teach call has COMPLETED for a long time AND the work lanes are
+          // advancing. That is one long unit, which is this walk's ordinary shape,
+          // not a fault. It gets a rare, plainly-worded line and never the word
+          // WEDGE — an alarm that fires on healthy behaviour teaches the reader to
+          // stop reading it, which is exactly what happened here three times.
+          // ⚠ `_workMoved === true` AND NOT MERELY `!_reallyStalled`, because the two
+          // differ exactly where it matters. A read with the lanes freshly FROZEN
+          // (run 1 of the 2 needed) is not-yet-stalled but is also not advancing —
+          // printing "work lanes ADVANCING" there would be false reassurance in the
+          // very window a stall is forming, which is this alarm's original defect
+          // wearing the opposite sign. A pending run prints nothing; the 10s CELL
+          // ALIVE heartbeat still carries the phase and its age.
+          if (!_reallyStalled && _workMoved === true) {
+            const _noteMs = (typeof process !== 'undefined' && Number(process.env?.DREAM_LONG_PHASE_NOTE_MS) > 0)
+              ? Number(process.env.DREAM_LONG_PHASE_NOTE_MS) : 600000;
+            if (!this._longPhaseNoteAt || (Date.now() - this._longPhaseNoteAt) > _noteMs) {
+              this._longPhaseNoteAt = Date.now();
+              this._hb(`[Curriculum] ⏳ LONG PHASE — no teach call has COMPLETED in ${(_sinceTeach / 60000).toFixed(1)}min, and she is teaching the whole time: work lanes ADVANCING (bound-Hebbian ${(_b && _b._boundHebbianFlushedOps) | 0} ops flushed, ${(_b && _b._boundHebbianFlushedFrames) | 0} frames). stage=${(_b && _b._teachStage) || 'none'} · activePhase=${(cluster && cluster._activePhase && cluster._activePhase.name) || 'none'} · phases ${this._currentCellPhasesCompleted | 0}/${this._currentCellPhasesStarted | 0} started. A single unit here is priced as high as 14.9 hours, so a long one is normal. The stall alarm fires only once these lanes FREEZE.`);
+            }
+          }
+          if (_reallyStalled && (!this._wedgeWarnAt || (Date.now() - this._wedgeWarnAt) > 60000)) {
             this._wedgeWarnAt = Date.now();
             console.warn(`[Curriculum] ⛔ NOT TEACHING for ${(_sinceTeach / 60000).toFixed(1)}min while the cell is ALIVE — this is a WEDGE, not a slow phase. `
               + `stage=${(_b && _b._teachStage) || 'none'} (age ${_b && _b._teachStageAt ? Math.round((Date.now() - _b._teachStageAt) / 1000) + 's' : '?'}) · `
@@ -11739,11 +11809,18 @@ export class Curriculum {
               + `substrate=${(cluster && cluster._gpuProxyReady === true && _b && _b._gpuClient && _b._gpuClient.readyState === 1) ? 'ready' : 'NOT ready'} · `
               + `pausedForDonor=${this._substratePause ? this._substratePause.reason : 'no'} · `
               + `probeDeadlineHits=${this._probeDeadlineHits || 0} · `
+              + `work=${_workSig === null ? '⛔ NO LANE READABLE — this alarm could not check whether she is working, and is firing BECAUSE it cannot tell' : `FROZEN across ${this._wedgeFrozenRuns | 0} consecutive checks (bound-Hebbian ${(_b && _b._boundHebbianFlushedOps) | 0} ops, ${(_b && _b._boundHebbianFlushedFrames) | 0} frames — not moving)`} · `
               + `stageSeq=${_seq}${_seqFrozen === null ? '' : (_seqFrozen ? ' FROZEN → THE TAG IS STALE: no new stage was entered, so the blocker is UNMARKED code AFTER the stage named above' : ' advancing → the tag is CURRENT: stages really are turning over, so the named stage is the one to look at')}. `
               + `⚠ Read the SEQ, not the age. A climbing age means one of two opposite things and the tag cannot tell them apart — a stage genuinely still running, or the last stage entered before a hang in code that stamps nothing. This was called stale when it was accurate and accurate when it was stale, on the same day, before the sequence existed.`);
           }
         } else if (_sinceTeach !== null && _sinceTeach <= _wedgeMs) {
           this._wedgeLastHeb = null;   // healthy again — forget the frozen baseline
+          // The work baseline and the consecutive-frozen run go with it. Leaving
+          // the run count standing would let two unrelated frozen reads, minutes
+          // and a healthy stretch apart, add up to a stall that never happened.
+          this._wedgeLastWork = null;
+          this._wedgeFrozenRuns = 0;
+          this._longPhaseNoteAt = 0;
         }
       } catch { /* the watchdog must never take the heartbeat down */ }
       // ⏱ RETENTION SAMPLE — every number on this heartbeat line is thrown away
