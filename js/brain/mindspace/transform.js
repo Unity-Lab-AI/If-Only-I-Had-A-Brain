@@ -584,6 +584,116 @@ export function traceLineArt(rec, opts = {}) {
   return strokes;
 }
 
+// ── traceCentreline(rec, opts) — THE PEN STROKE, NOT THE BORDER AROUND IT ──
+//
+// ⛔⛔ WHY THIS EXISTS, AND WHY `traceLineArt` COULD NEVER DO IT. That tracer is
+// Sobel → non-max-suppression → walk, i.e. it finds EDGES. Run it over a filled
+// letterform and what comes back is the letter's CONTOUR — the border running
+// around the stroke, a hollow shape. That is correct for line art of a photo and
+// it is exactly wrong for handwriting: every letter she had learned was banked as
+// the OUTLINE of a fat glyph, so every word she wrote came out as border-outlined
+// text, and no font setting could change it because no font was involved.
+// The operator asked twice for that look to go and it was structural, not a knob.
+//
+// ⭐ THE PIPELINE: binarise the ink region → ZHANG-SUEN THIN it to a 1-pixel
+// skeleton → walk the skeleton from its ENDPOINTS so each stroke runs end to end
+// → RDP simplify. The skeleton of a letter IS its pen path, which is what a hand
+// actually takes away from looking at a letter.
+//
+// ⚠ IDENTICAL OUTPUT CONTRACT to `traceLineArt` — `{type:'poly', pts:[[x,y]…],
+// rgb}` in normalised grid coords — so `_normaliseLetterStrokes` and the
+// rasterisers consume it unchanged. The point shape is `[x, y]` ARRAYS, not
+// `{x, y}`; that difference has already cost this project all 26 letters once.
+export function traceCentreline(rec, opts = {}) {
+  if (!rec || !rec.channels) return [];
+  const grid = _fieldToGrid(rec, opts.traceSide || 192);
+  if (!grid) return [];
+  const { gw, gh, Y } = grid;
+  // Ink is the BRIGHT region: she looks at a light glyph on her dark sketchbook
+  // paper. Threshold is relative to the field's own range, never an absolute —
+  // the glyph's ink colour and the paper are both caller-chosen.
+  let lo = Infinity, hi = -Infinity;
+  for (let i = 0; i < Y.length; i++) { if (Y[i] < lo) lo = Y[i]; if (Y[i] > hi) hi = Y[i]; }
+  if (!(hi - lo > 1e-6)) return [];                 // a blank field has no stroke to take
+  const cut = lo + (hi - lo) * Math.max(0.15, Math.min(0.85, opts.inkThresh ?? 0.45));
+  const I = new Uint8Array(gw * gh);
+  for (let i = 0; i < Y.length; i++) I[i] = Y[i] >= cut ? 1 : 0;
+  const at = (x, y) => ((x < 0 || y < 0 || x >= gw || y >= gh) ? 0 : I[y * gw + x]);
+  // ZHANG-SUEN: two alternating sub-iterations, each deleting a whole generation
+  // at once. ⚠ Deletions are COLLECTED and applied after the sweep — removing a
+  // pixel mid-sweep changes its neighbours' connectivity counts and erodes the
+  // skeleton to nothing. The guard bounds it; a 192-side glyph converges in ~20.
+  let changed = true, guard = 0;
+  while (changed && guard++ < 64) {
+    changed = false;
+    for (let step = 0; step < 2; step++) {
+      const del = [];
+      for (let y = 1; y < gh - 1; y++) for (let x = 1; x < gw - 1; x++) {
+        if (!I[y * gw + x]) continue;
+        const p2 = at(x, y - 1), p3 = at(x + 1, y - 1), p4 = at(x + 1, y), p5 = at(x + 1, y + 1);
+        const p6 = at(x, y + 1), p7 = at(x - 1, y + 1), p8 = at(x - 1, y), p9 = at(x - 1, y - 1);
+        const B = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
+        if (B < 2 || B > 6) continue;                 // keep endpoints and interior
+        const seq = [p2, p3, p4, p5, p6, p7, p8, p9, p2];
+        let A = 0; for (let k = 0; k < 8; k++) if (seq[k] === 0 && seq[k + 1] === 1) A++;
+        if (A !== 1) continue;                        // A==1 preserves connectivity
+        if (step === 0) { if (p2 * p4 * p6 !== 0 || p4 * p6 * p8 !== 0) continue; }
+        else { if (p2 * p4 * p8 !== 0 || p2 * p6 * p8 !== 0) continue; }
+        del.push(y * gw + x);
+      }
+      if (del.length) { changed = true; for (const i of del) I[i] = 0; }
+    }
+  }
+  // Orthogonal neighbours BEFORE diagonals: a walk that prefers a straight step
+  // follows the pen path instead of cutting corners across a junction.
+  const NB = [[1, 0], [0, 1], [-1, 0], [0, -1], [1, 1], [-1, 1], [-1, -1], [1, -1]];
+  const degree = (x, y) => { let n = 0; for (const [dx, dy] of NB) n += at(x + dx, y + dy); return n; };
+  const visited = new Uint8Array(gw * gh);
+  const walk = (sx, sy) => {
+    const pts = []; let cx = sx, cy = sy, g = 0;
+    visited[cy * gw + cx] = 1;
+    while (g++ < gw * gh) {
+      pts.push([cx, cy]);
+      let bx = -1, by = -1;
+      for (const [dx, dy] of NB) {
+        const nx = cx + dx, ny = cy + dy;
+        if (nx < 0 || ny < 0 || nx >= gw || ny >= gh) continue;
+        const ni = ny * gw + nx;
+        if (I[ni] && !visited[ni]) { bx = nx; by = ny; break; }
+      }
+      if (bx < 0) break;
+      visited[by * gw + bx] = 1; cx = bx; cy = by;
+    }
+    return pts;
+  };
+  // ENDPOINTS FIRST (degree 1), then whatever is left — a closed loop like `o`
+  // has no endpoint at all, so seeding only from endpoints would silently drop
+  // every round letter.
+  const ends = [], rest = [];
+  for (let y = 1; y < gh - 1; y++) for (let x = 1; x < gw - 1; x++) {
+    const i = y * gw + x; if (!I[i]) continue;
+    (degree(x, y) === 1 ? ends : rest).push(i);
+  }
+  const maxStrokes = Math.max(4, Math.min(opts.maxStrokes || 60, 300));
+  const minLen = Math.max(2, Math.round((opts.minLenFrac ?? 0.04) * Math.max(gw, gh)));
+  const polylines = [];
+  for (const si of ends.concat(rest)) {
+    if (polylines.length >= maxStrokes) break;
+    if (visited[si] || !I[si]) continue;
+    const pts = walk(si % gw, (si / gw) | 0);
+    if (pts.length >= minLen) polylines.push(pts);
+  }
+  const eps = Math.max(0.3, opts.simplify ?? 1.0);
+  const ink = Array.isArray(opts.ink) ? opts.ink : [228, 226, 230];
+  const strokes = [];
+  for (const pl of polylines) {
+    const simp = _rdp(pl, eps);
+    if (simp.length < 2) continue;
+    strokes.push({ type: 'poly', pts: simp.map(p => [p[0] / (gw - 1), p[1] / (gh - 1)]), rgb: ink.slice() });
+  }
+  return strokes;
+}
+
 // ── traceColorFill(rec, opts) — FLAT COLOUR REGIONS (one of her draw styles) ──
 // "She colours it in": coarse blocks averaged from the reference, each filled in
 // the block's ACTUAL colour (an orange subject stays orange), background paper left

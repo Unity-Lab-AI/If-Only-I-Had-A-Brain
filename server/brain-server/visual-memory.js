@@ -2658,14 +2658,50 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     try {
       // Big and centred so the trace has real pixels to read. A letter drawn at
       // caption size would trace to a handful of specks.
-      const printed = ms.glyphStrokes(c, { x: 0.22, y: 0.16, size: 0.62, bold: true, rgb: [235, 233, 238] });
-      if (!printed || !printed.length) return null;
-      const rec = await ms.sketch(printed, { maxSide: 256 });
-      if (!rec || !rec.channels) return null;
-      const mine = await ms.traceLineArt(rec, {
-        traceSide: 192, maxStrokes: 90, edgeThresh: 0.10, minLenFrac: 0.02, simplify: 1.0, ink: [232, 230, 236],
-      });
-      if (!mine || !mine.length) return null;
+      // ⭐ THREE LOOKS, NOT ONE — AND THIS IS WHERE HER HANDWRITING GETS ITS
+      // VARIETY HONESTLY. A letter on a page is never quite the same size or in
+      // quite the same place twice, so she looks at this glyph three times at
+      // three real sizes and offsets and takes away three real traces. Writing
+      // then picks among HER OWN readings.
+      //
+      // ⛔ THIS IS NOT A WOBBLE PARAMETER, and the distinction is load-bearing.
+      // `handwrittenStrokes` forbids synthetic tremor outright — it would be
+      // dumbing her down, and it would make the practice loop optimise toward a
+      // lie, since that loop scores resemblance to the printed form. These are
+      // three genuine perceptions of the same letter, which is a thing a real
+      // hand has. Nothing here degrades a stroke on purpose.
+      const LOOKS = [
+        { x: 0.22, y: 0.16, size: 0.62 },
+        { x: 0.26, y: 0.19, size: 0.57 },
+        { x: 0.19, y: 0.14, size: 0.66 },
+      ];
+      let rec = null;
+      const variants = [];
+      for (const look of LOOKS) {
+        const printed = ms.glyphStrokes(c, { ...look, bold: true, rgb: [235, 233, 238] });
+        if (!printed || !printed.length) continue;
+        const r = await ms.sketch(printed, { maxSide: 256 });
+        if (!r || !r.channels) continue;
+        // ⛔⛔ CENTRELINE, NEVER THE EDGE TRACE. `traceLineArt` is Sobel → non-max
+        // suppression → walk, so over a FILLED glyph it returns the letter's
+        // CONTOUR — the border running around the stroke, a hollow shape. Every
+        // letter banked that way made her write border-outlined text, and no font
+        // setting could have changed it because no font was involved. The
+        // skeleton of a letter is its pen path, which is what a hand takes away.
+        const mine = await ms.traceCentreline(r, {
+          traceSide: 192, maxStrokes: 60, inkThresh: 0.45, minLenFrac: 0.03, simplify: 1.0, ink: [232, 230, 236],
+        });
+        if (!mine || !mine.length) continue;
+        const norm = this._normaliseLetterStrokes(mine);
+        if (!norm || !norm.strokes || !norm.strokes.length) continue;
+        variants.push(norm);
+        if (!rec) rec = r;
+      }
+      // ⚠ A letter with no usable trace is REFUSED, never banked blank — a blank
+      // filed under a real key reads as a learned shape and would print nothing
+      // where a letter belongs, which is the exact failure this lane exists to
+      // prevent. One good look is enough; three is the target, not a condition.
+      if (!variants.length || !rec) return null;
       const prev = store.get(key);
       store.set(key, {
         rec,
@@ -2679,7 +2715,13 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
           : (/[0-9]/.test(c) ? `the number ${c}` : `the mark ${c}`),
         // Her strokes, normalised to the unit box so writing can place and scale
         // them anywhere without re-tracing.
-        letter: { ch: c, strokes: this._normaliseLetterStrokes(mine) },
+        // `strokes` stays the primary reading, so every existing consumer —
+        // `handwrittenStrokes`' measuring pass, `hasLetterShape`, the practice
+        // ladder — keeps working byte-for-byte unchanged. `variants` carries all
+        // of her readings beside it, and the writer picks among them per word.
+        // ⚠ An older entry has no `variants` key; the writer must treat its
+        // absence as "one reading", not as an error.
+        letter: { ch: c, strokes: variants[0], variants },
       });
       this._vmTrimResident(store);
       this._vmSaveSoon();
@@ -2754,6 +2796,34 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
   // shape of an instrument reading green over an unfinished job.
   hasLetterShape(ch, exact = false) { return !!this._letterEntry(ch, exact); },
 
+  // ⭐ WHICH OF HER READINGS WRITES THIS LETTER. She banks up to three real
+  // traces per glyph — three looks at the printed letter at three real sizes and
+  // offsets — so a word comes out in her own hand instead of one frozen stroke
+  // set stamped repeatedly. Deterministic in (label, position) so the same
+  // caption renders identically every time it is rasterised, and varied ACROSS
+  // positions so a doubled letter is not a copy of itself, which is what a real
+  // hand does.
+  //
+  // ⛔ THIS IS SELECTION, NOT PERTURBATION. It only ever chooses between traces
+  // she actually took; it never nudges, tilts or degrades one. `handwrittenStrokes`
+  // forbids a wobble parameter outright — a faked tremor is dumbing her down and
+  // would make the practice loop optimise toward a lie — and picking among real
+  // readings is not a wobble.
+  _pickLetterVariant(entry, label, pos, hand) {
+    const L0 = entry && entry.letter && entry.letter.strokes;
+    const vs = (entry && entry.letter && Array.isArray(entry.letter.variants))
+      ? entry.letter.variants : null;
+    // ⚠ A MISSING `variants` KEY MEANS "ONE READING", NEVER AN ERROR. Entries
+    // banked before variants existed carry only `strokes`, and a letter she can
+    // write must stay writable across that change.
+    if (!vs || vs.length < 2) return L0;
+    let h = 5381;
+    const t = `${label}|${pos}|${hand === undefined ? '' : hand}`;
+    for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) >>> 0;
+    const pick = vs[h % vs.length];
+    return (pick && pick.strokes && pick.strokes.length) ? pick : L0;
+  },
+
   /**
    * Write a word IN HER OWN HAND — composed from the letter traces she has
    * actually learned.
@@ -2782,7 +2852,11 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     for (const ch of label) {
       if (ch === ' ') { cells.push(null); totalW += size * 0.5 + gap; continue; }
       const e = this._letterEntry(ch);
-      const L = e && e.letter && e.letter.strokes;
+      // Her own hand: one of the real traces she took of this letter, chosen by
+      // position so a doubled letter is not a stamped copy. `opts.hand` lets a
+      // caller rotate the whole word onto a different reading; unset keeps it
+      // deterministic for a given label.
+      const L = this._pickLetterVariant(e, label, cells.length, opts.hand);
       if (!L || !L.strokes || !L.strokes.length) { skipped++; continue; }
       const aspect = Number(L.aspect) > 0 ? L.aspect : 0.7;
       const w = size * Math.min(1.4, Math.max(0.18, aspect));
