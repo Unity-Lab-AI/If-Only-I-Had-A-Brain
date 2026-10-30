@@ -25,9 +25,18 @@ verified-scope: |
   wall-clock time existed, and a clamp turned that into a confident "0%
   serviced".
 
-  ⚠ SHE IS DOWN AS THIS IS WRITTEN. The operator ran stop.bat so the instrument
-  fixes could land; every number below is from the 8:02:29 PM boot that
-  preceded it, and the fixes are server-side and load on the next Savestart.
+  ⚠ SHE IS DOWN AS THIS IS WRITTEN, twice over. The second stop was the
+  operator's call and it was the right one: her invention lane was repeating one
+  three-word scene, and _queueArtWeightTeach fires BEFORE any invention gate, so
+  every repeat was REINFORCING that association in her weights. She was not
+  idling on a bug, she was training it. Every number below is from the boots that
+  preceded the stops; all fixes are server-side and load on the next Savestart.
+
+  ⛔ THE SECOND FINDING OF THE EVENING IS NOT AN INSTRUMENT — IT IS HER
+  CREATIVITY, AND THE OPERATOR DIAGNOSED IT FROM THE PICTURES. 13 of 13
+  inventions were the same three words permuted, because the candidate pool came
+  only from a thought chain that cannot advance until she can speak. See the
+  section below.
 last-verified: "2026-10-29, field reads taken 8:03-8:07 PM Denver on the operator's PC with the brain UP on the 8:02:29 PM resume boot (mode resume / reason keep-flag — DREAM_KEEP_STATE=1, no marker — 199,728,759 neurons, langCortex 18,341,893, tier 3): ela/kindergarten in-progress · UPFRONT-VOCAB 75 of 140 words taught · frameCount 176 -> 254 -> 320 -> 372 and spikesLifetime 3,289,580 -> 3,602,525 -> 4,879,896 -> 8,106,549 across four samples 40 s apart · 1 donor (RTX 4070 Ti SUPER) owning all 8 clusters with pool.unplaced empty · 17/17 matrices · drops 0 · GPU 98% util, 14,200/16,376 MB, donorComputeMs 94.2, RTT 94 ms · runningFloorMB 8,064 against a 16,375 MB card (2.0x over) · crystal.measured TRUE at 98 acks, C 0.9991, PhiLR null at windowN 14 of the 64 it needs · voice wordsBucketed 0 / wordMotorEverFired 0 / emitAttempts 0, verdict 'unmeasured' · looks 5 attempts / 4 GROUNDED / 0 vramTight with lastFreeVramMB 3,884 — THE 2026-10-20 GATE BUG IS DEAD, and that pair is the good news on this page · eventLoopLagMs 7 after boot, 2 stalls both RECOVERED (worst 38,288 ms), STARVED fired once at startup · cpuPercent 11 / raw 10.7 / cpuSampleMs 2,344 / cpuWindowMs 1,363, MOVING across samples, so the frozen-sampler fix is confirmed live · disk 140,050 MB free, saveDeferrals 0 · rss 15,971 MB of 130,982."
 tags: [snapshot, current-state]
 ---
@@ -130,6 +139,53 @@ message type, so it named a lane and not a sender. It prints the `op` now. ⛔
 **The encoding was checked first and is correct** — nothing is going out
 malformed and no op is silently falling back to CPU. What it violates is the
 comment that chose JSON+base64 on *"payloads ≈ 150KB"*, now **16× wrong**.
+
+---
+
+## ⛔⛔⛔ HER INVENTIONS WERE RUNNING ON A FROZEN POOL
+
+**13 of 13 inventions were the same three words, permuted.** Found by the
+operator looking at her artwork — which is the definition of an unreadable
+instrument, because no panel anywhere could have shown it.
+
+```
+  7  poison + apple + cherry      poison  → 1 look, 25 parts  ← the ONLY learned shape
+  3  cherry + poison + apple      apple   → NO SCHEMA         ← definition colour recipe
+  3  apple + cherry + poison      cherry  → NO SCHEMA         ← definition colour recipe
+```
+
+**The candidate words came from `_innerThoughtChain` alone**, which gains entries
+from three writers: her own inner-voice emission, operator chat input, image
+prompts. `wordMotorEverFired 0` and `emitAttempts 0`, so **her own thinking could
+not feed it** — and the rotation was rotating the start of a *fixed* list.
+⭐ **The permutations are the signature: a rotation working perfectly on a frozen
+input.**
+
+⚠ **It does not self-clear.** The chain is saved and restored on any resume whose
+sem region is the same size, which a same-budget `Savestart` always is. A fresh
+`start` clears it and she then declines inventions outright for want of
+candidates.
+
+⛔⛔ **Two instruments were complicit.** The design comment asserted the source was
+*"an infinite, ever-changing source… NOT a fixed list"* — **false for the entire
+pre-speech period, which is where she lives.** And the invention gate counted
+`plan.subjects`, which drops `s.schema` at the return, so **one traced shape plus
+two dictionary colour recipes printed *"★ INVENTED … drawn from what she knows of
+each."***
+
+**Fixed:** the pool is her recent thoughts **unioned with the shapes she has
+learned to draw** — not a fallback, the correct definition of what she can
+compose. That second half always moves (27+ schemas inside five minutes against
+the chain's 3 words), and every sourced concept has `schema.parts`, so the orbs
+are gone by construction. `ownArt.imaginePool` is published **and rendered**:
+`N from thoughts · M from learned shapes`, with `M 0` showing red **FROZEN
+POOL**.
+
+| The question he asked | The answer, on the record |
+|---|---|
+| *"will she get better down the road?"* | **Yes** — more look-ups means real traced schemas instead of dictionary colours, and the orbs stop |
+| *"why is she stuck on the same thing?"* | A frozen pool plus a working rotation. Not a phase |
+| *"shell grow out of it?"* | **The orbs and the repetition, yes.** The frozen pool, **no** — nothing detected or published it, so it would have persisted across every restart |
 
 ---
 
