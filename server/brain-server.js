@@ -2604,6 +2604,18 @@ class ServerBrain {
     this.frameCount = 0;
     this.running = false;
     this.clients = new Map(); // ws → { id, lastInput, inputCount, name }
+    // ⛔⛔ THE MIND'S-EYE PREVIEW QUEUE IS BORN HERE, ONCE (2026-10-29). It had
+    // NO boot-time init: it was created lazily at four human-driven sites in
+    // chat.js (chat text, an image prompt, the two judge buttons), while the two
+    // autonomous pushers — WRITEWARM's writing-practice ladder and the pre-cell
+    // vocab practice — only CHECKED `Array.isArray` and skipped silently when it
+    // was absent. So on every boot where nobody talked to her first, her writing
+    // practice, her drawing practice and her relearns never ran, and both state
+    // publishers printed `0` for the missing array. Measured on the first boot
+    // that published practice attempts: zero of every queue-driven kind after
+    // 4½ minutes, 61 drawings from the lanes that need no queue. One init at
+    // the chokepoint; the lazy sites stay as harmless no-ops.
+    this._mindsEyePreviewQueue = [];
 
     // Expose module-scope constants on `this` so mixin files (gpu.js,
     // state.js, memory.js, chat.js) can read them via `this.X`. Without

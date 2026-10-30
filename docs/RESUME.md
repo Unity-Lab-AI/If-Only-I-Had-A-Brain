@@ -106,9 +106,22 @@
 >              M attempt(s)": attempts 0 = jobs never reached the lane (queue suspect); attempts
 >              >0 / sessions 0 = the listed decline names it. THAT read closes HANDWRITE.5.
 >              Then LOOK at a caption on her next drawing.
+>   ⭐ 4th    HANDWRITE.5 NAMED on the first boot: the practice ladder was never QUEUED because
+>   batch     _mindsEyePreviewQueue had NO boot-time init — created lazily by four human-driven
+>              chat/judge sites only; both autonomous pushers just checked Array.isArray and
+>              skipped. Every queue-driven lane (writing practice, drawing practice, relearn) was
+>              dead on every unattended boot, and BOTH publishers printed 0 for "no array".
+>              HANDWRITE.6 built: queue born in the ServerBrain constructor; publishers emit null
+>              for absent; lanes row prints ABSENT; WRITEWARM says "N writing-practice jobs
+>              queued" or alarms (server-gated — browser bundle has no drain by design).
+>   ⛔⛔ owned I EDITED CODE WHILE SHE WAS RUNNING. "you dont fucking change code while she is
+>              frunning" — he stopped her. Node loads at boot so the process never saw it; NOT
+>              the point — stopping her is his call. Memory: feedback_no_code_edits_while_she_runs.
+>   read      next Savestart: WRITEWARM line shows "62 writing-practice jobs queued";
+>              writingPractice.attempts climbs within minutes; [Writing] ✍ PRACTICE lines appear.
+>              That is the first unattended run of that lane, ever.
 >   open      HANDWRITE.4 (symbol-thought raster still reads FONT5X7 — the table cannot be
->              deleted until it is ported) · HANDWRITE.5 (why practice never drained — nameable
->              on the next boot, not guessed).
+>              deleted until it is ported).
 >   still     WEIGHTLOSS.1, NETBUG.7, NETBUG.10, FRESHSIZE.1, WALKWATCH.1, STRANGERCARD.1,
 >              LBCREDIT.1, PERCEIVECAP.1. ⚠ Leaderboard flipped on self-reported rate: Gee
 >              1,903,436 now above Steeeeeeve 1,902,858 — LBCREDIT.1 is still the open lie.

@@ -4164,7 +4164,7 @@
         const q = dl.queued;
         const depth = (q.chatPairs || 0) + (q.chatJobs || 0) + (q.mindsEye || 0) + (q.salience || 0);
         const age = dl.lastDrainAgeMs == null ? 'never' : `${Math.round(dl.lastDrainAgeMs / 1000)}s ago`;
-        $('d-grad-lanes').innerHTML = `deferred lanes — ${dl.drivenOffWalk ? '<span class="c-ok">driven off-walk</span>' : '<span class="c-dim">the walk owns the substrate</span>'} · queued ${depth} (chat ${q.chatPairs || 0} · jobs ${q.chatJobs || 0} · eye ${q.mindsEye || 0} · salience ${q.salience || 0}) · ${dl.drainedItems || 0} items drained over ${dl.drainedPasses || 0} passes, last ${age}`;
+        $('d-grad-lanes').innerHTML = `deferred lanes — ${dl.drivenOffWalk ? '<span class="c-ok">driven off-walk</span>' : '<span class="c-dim">the walk owns the substrate</span>'} · queued ${depth} (chat ${q.chatPairs || 0} · jobs ${q.chatJobs || 0} · eye ${q.mindsEye == null ? 'ABSENT' : q.mindsEye} · salience ${q.salience || 0}) · ${dl.drainedItems || 0} items drained over ${dl.drainedPasses || 0} passes, last ${age}`;
       }
     }
 

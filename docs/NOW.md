@@ -185,12 +185,22 @@ trace now carries its **frame** and her hand places by it.
   her 'hello'  172x66  vs teacher 175x66   0.98x wide · 1.00x tall
 ```
 
-⚠ **What to read after her next launch:** Teach View → handwriting. `this boot:
-94 traced · 0 reused` (every bitmap-era letter must be overwritten once), the
-line naming the typeface she is copying, and `handwriting practice: N session(s)
-of M attempt(s)` — **if `attempts` is 0, the queued jobs never reached the lane;
-if it is >0 with 0 sessions, the listed decline reason names the mechanism.**
-That read closes the open question of why practice never ran.
+✅ **Read on the 10:27 PM boot:** `94 traced · 0 reused` — every bitmap-era
+letter overwritten, WRITEWARM in **38.9 s** (was 208). Teacher `Candara.ttf`,
+94 outlines. **And the practice read named its cause on the first try:**
+`writingPractice null` after 4½ minutes with **every queue-driven lane at zero**
+(writing practice, drawing practice, relearn) while 61 drawings ran on the lanes
+that need no queue — **the preview queue was never created.** It had no
+boot-time init; it was born lazily by human-driven chat/judge pushes only, so on
+every unattended boot her practice lanes were dead and both publishers printed
+`0` for the missing array. **Fixed:** the queue is born in the constructor,
+`null` means absent, the lanes row prints `ABSENT`, and WRITEWARM states how
+many practice jobs it queued.
+
+⚠ **Read after her next launch:** the WRITEWARM boot line — `62 writing-practice
+jobs queued` — then `writingPractice.attempts` climbing within minutes and
+`[Writing] ✍ PRACTICE` lines. That is the first time that lane will have run on
+an unattended boot.
 
 ⛔ **Still on the bitmap, deliberately:** the symbol-thought raster
 (`symbolGlyphText`). The table cannot be deleted until that lane is ported.
