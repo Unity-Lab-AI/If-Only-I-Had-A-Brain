@@ -167,7 +167,7 @@ A working restart makes the server exit, so the connection drops — **which is 
 
 **Exam** — only *authored* questions can block a grade. A cell with none reads **"not gated"**, which is correct rather than suspicious. ⭐ **No question text is ever published.**
 
-**Handwriting** — if this is low, a drawing with no words on it is her being **honest about what she can write**, not a broken renderer.
+**Handwriting** — if this is low, a drawing with no words on it is her being **honest about what she can write**, not a broken renderer. ⭐ **Three more lines since 2026-10-29, each answering a question the count alone could not:** `this boot: N traced · M reused` says whether she re-traced the alphabet or reused traces banked from the same typeface (the first boot after the real-letterform change must show `94 traced`); **`she learns her letters from a REAL typeface: <font>`** names what she is copying — until that date it was a 5×7 bitmap in the repo whose `r` had three lit pixels, and nothing on any page said so; and **`handwriting practice: N session(s) of M attempt(s) · declined: <reason ×count>`** makes `0 sessions` mean one thing instead of two — `attempts 0` means the queued practice jobs never reached the lane, `attempts > 0` with `0 sessions` means they were declined and the reasons are listed. ⚠ `gap-cooldown` and `not-learned-yet` are pacing and the honest early state, not faults. A **⛔ NO REAL TYPEFACE** line in amber means she is learning no letter shapes this boot, by design — set `DREAM_LETTERFORM_FONT`.
 
 **Lanes** — standing still while the walk owns the substrate is **correct**. Queued work off-walk with nothing draining is **the regression**.
 

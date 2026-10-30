@@ -4594,6 +4594,32 @@ class ServerBrain {
         // init() probes WebGPU; in Node it returns false and we stay on the CPU
         // reference path. Await so _useGpu() is settled before first imagine.
         try { await this.mindSpace.init(); } catch { /* CPU path */ }
+        // ⛔⛔ REAL LETTERFORMS (2026-10-29) — her handwriting teacher was a 5x7
+        // bitmap table authored in this repo, whose lowercase 'r' had THREE LIT
+        // PIXELS on its widest row, and the practice loop scored her against
+        // that same bitmap, so practice could only ever converge on it. The
+        // outlines now come from a REAL typeface on this machine, parsed by
+        // `server/letterforms.js` (zero new dependencies) and injected here —
+        // this file can read a font; the bundled engine cannot. ⛔ NO FALLBACK:
+        // if no typeface parses, the learning lane (`real: true`) gets nothing
+        // and she learns no letter shapes this boot, loudly, rather than copy a
+        // bitmap wearing the same function name. Status is published in state.
+        try {
+          const lf = await import('./letterforms.js');
+          const ASCII = Array.from({ length: 95 }, (_, i) => String.fromCharCode(32 + i)).join('');
+          const outlines = lf.letterformOutlines(ASCII);
+          const set = await this.mindSpace.setLetterforms(outlines);
+          const r = (set && set.local) || this.mindSpace.letterformsReady();
+          this._letterformStatus = r || { ready: false };
+          if (r && r.ready) {
+            console.log(`[Letterforms] real typeface loaded — ${r.glyphs} glyphs with outlines from ${r.source}. Her handwriting teacher is a real font, not a 5x7 bitmap.`);
+          } else {
+            console.warn(`[Letterforms] ⛔ NO REAL TYPEFACE FOUND — she will learn NO letter shapes this boot rather than copy a bitmap. Tried: ${(lf.letterformLoadFailures() || []).join(' | ') || '(no candidate path was readable)'}. Set DREAM_LETTERFORM_FONT=<path to a .ttf>.`);
+          }
+        } catch (e) {
+          this._letterformStatus = { ready: false, error: String(e && e.message) };
+          console.warn(`[Letterforms] ⛔ loader threw: ${e && e.message} — no letter shapes will be learned this boot.`);
+        }
         // ONE PROCESS (ruled 2026-07-17) — wire the DONOR bridge into the proxy:
         // when a mindspace-capable donor (compute.html / donor-v0.3.11+) is
         // connected, her imagery computes on the SAME GPU as her brain. The
