@@ -5,6 +5,69 @@
 
 ---
 
+## 2026-10-29 — `LOOPLIE` + `SENDOP`: THE STARVATION ALARM REPORTED MORE LATENESS THAN TIME EXISTED, AND A CLAMP TURNED THAT INTO "0% SERVICED"
+
+Gee, verbatim: *"i started her up read now.md lets see whats up"*
+
+Gee, verbatim: *"its this a bug on your end or is it actionable and we need to fix it:⛔ NEW — a finding"*
+
+Gee, verbatim: *"thousands of <<< this sounds massive"*
+
+Gee, verbatim: *"yeah lets fix it since its not brain math or training chenges, right? so we wont need to freshwalk we can stage and shut it down with stop . bat and restart it with savestart.bat , right?"*
+
+Gee, verbatim: *"stop.bat ran its shut down"*
+
+Gee, verbatim: *"you can make the fixes now"*
+
+Gee, verbatim: *"start a new feature branch for both"*
+
+Gee, verbatim: *"make sure to cascade when all donw to both remotes"*
+
+**He started her and asked for the rundown. The headline turned out to be good news** — the 2026-10-20 free-VRAM gate bug is **dead, confirmed on the exact read the pickup brief named**: `ownArt.lookups` at `attempts 5 · grounded 4 · vramTightSkips 0` with `lastFreeVramMB 3,884`, a real number where every boot before the fix read `0`. She was also **inventing** (`★ INVENTED "cherry + poison + apple" in POSTER — a scene she has never seen`). Then he read a line in the boot log and asked the question this entry exists for.
+
+```
+  the line           [EventLoop] ⛔ STARVED — the loop was late 85.7s out of the last 71s
+                     (0% serviced). No single stall need exceed the 250ms floor for this:
+                     it is thousands of short ones.
+
+  log line  99       [EventLoop] BLOCKED  16,856 ms
+  log line 124       [EventLoop] BLOCKED  37,288 ms
+  log line 148       [EventLoop] BLOCKED  31,508 ms
+                                        ──────────
+                                         85,652 ms   = the reported 85.7s, to the millisecond
+
+  STARVED fired      ONCE this boot (line 147, during startup), never again
+  lag after boot     eventLoopLagMs 7
+  honest ongoing     14 blocks/60s worst 1,666ms 8.4s total · 14/1,929/9.6 · 11/1,869/9.8
+  teach cost         · 9/1,981/8.3  →  84-86% serviced at 1,959 teach calls/min
+```
+
+⛔⛔ **HE WAS RIGHT THAT IT SOUNDED MASSIVE, AND IT WAS WRONG IN THREE WAYS — NONE OF THEM A BRAIN DEFECT.**
+
+**① `85.7s out of the last 71s` is impossible on its face, and that was the unread tell.** The numerator was exact; the **denominator** was short. The 60-second window roll executes **only inside the sampler's own `setInterval` callback**, and a blocked loop does not fire that timer — so a 37 s block ends, the callback finally runs, and the whole 37 s of lateness is billed to a window whose `windowStart` was reset **before that block began.** Numerator spanned ~2 windows; denominator spanned one.
+
+**② ⛔⛔ THE CLAMP IS THE FINDING.** `(1 − 85652/71000) × 100 = −20.6%`, and `Math.max(0, …)` laundered the negative into **"0% serviced"** — the most alarming value the field can legally hold. ⭐ **Any over-count whatsoever bottoms out at exactly 0%, so that field could never distinguish *bad* from *impossible*.** A defensive clamp is correct; a clamp standing between an impossible number and the operator is a laundering step.
+
+**③ The prose asserted a mechanism the instrument cannot measure.** *"it is thousands of short ones"* was **hardcoded and printed unconditionally.** The accumulator holds a **total** and never counted events, so it is structurally incapable of knowing how many stalls there were. The sentence is true of the 2026-08-23 case it was written for — 25 s waits on a route returning a pre-cached string, no single stall over the floor — and **false of every other shape.** Here there were **three**, and they were boot.
+
+**FIXED — the denominator is now the same measured quantity as the numerator.** Every sample contributes its own monotonic span to `spanMs` and its own lateness (`actualMs − _LAG_SAMPLE_MS`) to `lateMs`, so **`lateMs <= spanMs` holds BY CONSTRUCTION** — a straddling block's lateness and the span it occupied are inseparable and cannot be attributed to a window the block did not occur in. Also removes a `Date.now()`/`hrtime` mix across the two sides of one ratio. The warn now reports **what it counted** (`samples`, worst single gap) and claims *many short ones* only when the worst observed gap stayed under the warn floor. ⭐ **Had it done that, the line would have read `3 gaps, worst 37.3s` and been recognisable as boot at a glance.**
+
+**`SENDOP` — the donor tripwire named the message type and not the sender.** 15 LARGE sends of **2.3–2.5 MB** this boot, every one `kind=json:mindspace_op`. But **four ops carry a rec over that one message type** (`describe` / `traceLineArt` / `stylizeField`, plus `perceive`'s `rgba_b64`), so the line named a **lane** and the sender had to be inferred from log adjacency — inference, not a reading. The `op` was in the payload all along; `slice(0, 40)` could not reach past `{"type":"mindspace_op","id":N,` to see it. ⭐ **Fixed in `_kindOf` rather than at either call site, because the LARGE-send tripwire AND the 4 MB ring dump both render through that one function** — a fix at either would have left the other still unable to name a sender. An unparseable payload now renders `json:?` instead of the literal word `undefined`.
+
+⚠ **THE SCARIER THEORY WAS CHECKED FIRST AND WAS WRONG, WHICH IS WHY NO WIRE FORMAT WAS CHANGED.** A rec going out as a bloated numeric object would mean the donor could not decode it and the op was **silently falling back to CPU while reading as wired** — the signature defect class of this project. It is not happening: `_recWireSafe` converts every `val_bin`/`pos_bin` to base64 and `chanVal` accepts only those two forms. It is a genuinely large, **correctly encoded** payload.
+
+⛔ **What it violates is a COMMENT, and the comment is load-bearing.** JSON+base64 was chosen for this lane on the premise *"payloads are SMALL (≤192² frames ≈ 150KB, recs are KBs)"* — **16× wrong**, because frames render at **512²** now and schemas carry **full vector traces**. **Both halves expired quietly while the sentence kept reading as a justification.** Same shape as the stale constant priced at the 12M cortex. Kept and annotated rather than deleted. **Harmless on loopback and provably so** (`buffered=0.0MB` on all 15, zero drops, zero timeouts, GPU 98%); **unmeasured for a remote primary**, and these ops go only to the PRIMARY, which a stranger's card can be. The one remote figure this project owns is **0.16 MB/s**, measured on the **Funnel the Cloudflare tunnel replaced** — not the tunnel's number, and not quoted as one.
+
+⛔ **PULLED OUT OF THE BATCH ON PURPOSE:** the outbound `perceive` size cap. The asymmetry is real (**inbound** caps at `192*192*4*2` chars, **outbound** has no cap, against 512² renders) — but capping or downscaling what she perceives changes **what she sees**, and what she sees is what she grounds words against. **That is curriculum, it owes a RE-PRICE, and curriculum lands before a walk, never mid-walk.** Filed as a board row and `KI-50` rather than fixed on the quiet.
+
+⭐ **NO FRESH WALK, verified against his own question rather than agreed with.** Nothing here touches brain math, geometry or what she is taught. `Savestart.bat:66` sets `DREAM_KEEP_STATE=1` with `DREAM_BRAIN_BUDGET_MB=8000` at `:78`, **byte-identical to `start.bat:179`** — so she re-derives the same **199,728,759** and the resume is a true resume, not *a fresh walk wearing a resume's name*. And a **human-run** `stop.bat` stops the control plane too (`CTLSTOP`, `stop.bat:117`, inverted precisely because *"EVERY EDIT TO brain-ctl.js IS INERT until the old process is gone"*), so no stale `brain-ctl` survives to swallow the edits. All edits are server-side → **no bundle rebuild**.
+
+✅ **VERIFIED — 20/20 on a harness that ran the REAL extracted `_kindOf` (793 B lifted from the shipped file, not a copy) plus the shipped arithmetic against the three real block durations; harness deleted after the run.** The **old** formula reproduces the logged `85.7s` and `0%` exactly and unclamped reads **−21%**; the same blocks through the new path give `late 85.7s of the 129s it measured (33% serviced, 43 samples)` with `worst single gap 37.3s` and the verdict *"a few long ones, not many short ones"*; the 2026-08-23 shape (300 samples, worst gap 200 ms under a 250 ms floor) **still earns** *"many short ones"* at 83% serviced, so the fix did not break the case the original prose got right. `node --check` clean on all touched JS, `import()` clean on `state.js`, **all files pure CRLF**, **both** `dashboard.html` inline script blocks parse (a prose edit to a JS string is a code change), and the dashboard row was rendered against five real states including the live `72% serviced · 16,922ms/min late · worst gap 1,666ms · 48 samples` and an old boot missing the new fields, which degrades to the old display rather than to fake zeros. ⚠ Owned in this batch: my harness printed *"1.3MB — over the 2MB tripwire"*, and 1.3 MB is **under** 2 MB — the check it ran was the right one (the op is found past a large `rgba_b64`), only my label was wrong. Also removed a task identifier from shipped page copy in `dashboard.html` (banned from HTMLs) found while editing the adjacent row.
+
+**Docs, every tree named:** `docs/TODO.md` (4 rows) · `docs/FINALIZED.md` (this) · `docs/KNOWN_ISSUES.md` (`KI-49` fixed, `KI-50` open) · `docs/ADMIN-CONTROLS.md` (the field table **and its wrong path**) · `docs/WEBSOCKET.md` (the `kind` format) · `docs/MINDSPACE-INTEGRATION.md` (measured payload size) · `docs/NOW.md` (overwritten to this boot) · `docs/RESUME.md` (new top block) · `html/dashboard.html` (row + tooltips) · `wiki/gotchas/instruments-that-lie.md` + `wiki/index.md` + `wiki/log.md`. **Unaffected and why:** `docs/ARCHITECTURE.md` and `docs/EQUATIONS.md` name these only in dated banners, with no body claim about either instrument; `docs/RUST-MIGRATION.md` and `html/compute.html` describe the `mindspace_op` **protocol**, which did not change; `README.md`, `deploy/*` and the launchers carry no claim about either field — the `deploy/` hits are the dead box's history, already bannered. ⚠ `wiki/gotchas/instruments-that-lie.md` is now **1,200+ lines against the wiki's own ~150-line page rule** — flagged in the page, the index and the log rather than quietly worsened. A split is owed and is its own job.
+
+---
+
 ## 2026-10-22 — `PENPATH.2`: THIRTEEN GLYPHS TRACED TO NOTHING AND THE REST LOST LIMBS — FOUR CAUSES, AND I SHIPPED THE FIRST FIX ON SIX GLYPHS
 
 Gee, verbatim: *"wtf she is still using that same fucking outlined font"* · *"test every letter and number,, some are incomplete that she is writting, not sure hhow to fix"* · *"O, G,W,K ive seeen problems just to name a few"*

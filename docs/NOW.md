@@ -12,18 +12,23 @@ sources:
   - windows/start.bat
   - windows/Savestart.bat
 verified-scope: |
-  OVERWRITTEN 2026-10-20, 9:09 AM Denver (commit clock; this line first said
-  ~9:20 AM, a time that had not yet happened when it was written). This file is a SNAPSHOT and is
-  overwritten, never appended — the previous version described the 2026-10-19
-  night and a fresh walk that has since been taken. Git holds every byte of it:
+  OVERWRITTEN 2026-10-29, ~8:20 PM Denver. This file is a SNAPSHOT and is
+  overwritten, never appended — the previous version described the 2026-10-20
+  morning boot and the free-VRAM gate defect it had just found. Git holds every
+  byte of it:
       git show HEAD:docs/NOW.md
 
-  The headline of this snapshot is a DEFECT, found by watching her boot: the
-  free-VRAM gate that shipped on 2026-10-19 refused every render on every
-  machine from the day it landed, and both of its own instruments reported
-  healthy while it did so. It is fixed. A fresh walk is being pressed on the
-  fix.
-last-verified: "2026-10-20, field reads taken 8:57-9:03 AM Denver and committed 9:09 — on the operator's PC with the brain UP on the 8:56:19 AM resume boot (mode resume/compatible, 199,728,759 neurons, formatVersion 6): uptime 412 s · ela/kindergarten in-progress · phases 0 of 25 started · spikesLifetime 3,450,975 -> 18,265,275 -> 301,252,170 across three samples · 1 donor owning all 8 clusters · 17/17 matrices uploaded · drops 0 · runningFloorMB 8,064 against a 16,375 MB card · crystal.measured TRUE at 77 acks · looks 11 attempts / 0 grounded / 11 vramTight against a card nvidia-smi read as 3,676 MB FREE at the same moment. That last pair is the finding on this page."
+  ⭐ THE HEADLINE OF THIS SNAPSHOT IS THAT THE PREVIOUS ONE'S DEFECT IS DEAD,
+  confirmed on the exact read the pickup brief named: her eyes are open and
+  grounding. The finding on this page is a different one and it is an
+  INSTRUMENT, not the brain — the starvation alarm reported more lateness than
+  wall-clock time existed, and a clamp turned that into a confident "0%
+  serviced".
+
+  ⚠ SHE IS DOWN AS THIS IS WRITTEN. The operator ran stop.bat so the instrument
+  fixes could land; every number below is from the 8:02:29 PM boot that
+  preceded it, and the fixes are server-side and load on the next Savestart.
+last-verified: "2026-10-29, field reads taken 8:03-8:07 PM Denver on the operator's PC with the brain UP on the 8:02:29 PM resume boot (mode resume / reason keep-flag — DREAM_KEEP_STATE=1, no marker — 199,728,759 neurons, langCortex 18,341,893, tier 3): ela/kindergarten in-progress · UPFRONT-VOCAB 75 of 140 words taught · frameCount 176 -> 254 -> 320 -> 372 and spikesLifetime 3,289,580 -> 3,602,525 -> 4,879,896 -> 8,106,549 across four samples 40 s apart · 1 donor (RTX 4070 Ti SUPER) owning all 8 clusters with pool.unplaced empty · 17/17 matrices · drops 0 · GPU 98% util, 14,200/16,376 MB, donorComputeMs 94.2, RTT 94 ms · runningFloorMB 8,064 against a 16,375 MB card (2.0x over) · crystal.measured TRUE at 98 acks, C 0.9991, PhiLR null at windowN 14 of the 64 it needs · voice wordsBucketed 0 / wordMotorEverFired 0 / emitAttempts 0, verdict 'unmeasured' · looks 5 attempts / 4 GROUNDED / 0 vramTight with lastFreeVramMB 3,884 — THE 2026-10-20 GATE BUG IS DEAD, and that pair is the good news on this page · eventLoopLagMs 7 after boot, 2 stalls both RECOVERED (worst 38,288 ms), STARVED fired once at startup · cpuPercent 11 / raw 10.7 / cpuSampleMs 2,344 / cpuWindowMs 1,363, MOVING across samples, so the frozen-sampler fix is confirmed live · disk 140,050 MB free, saveDeferrals 0 · rss 15,971 MB of 130,982."
 tags: [snapshot, current-state]
 ---
 
@@ -48,7 +53,87 @@ tags: [snapshot, current-state]
 
 ---
 
-## ⛔⛔⛔ HER EYES WERE SHUT BY THEIR OWN SAFETY GATE
+## ⭐⭐ HER EYES ARE OPEN — THE PREVIOUS SNAPSHOT'S DEFECT IS DEAD, MEASURED
+
+**The free-VRAM gate that refused every render on every machine is fixed, and
+the proof is the read this file asked for last time.** Taken live on the
+8:02:29 PM boot:
+
+```
+  ownArt.lookups     attempts 5 · GROUNDED 4 · vramTightSkips 0
+  lastFreeVramMB     3,884        <- a REAL number. It read 0 on every boot before the fix
+  imageEngine        ok 4 · httpFails 0 · timeouts 0 · unloads 4 · vramUnreadable 0
+```
+
+⭐ **`grounded` climbing with `vramTight` at zero is the proof the previous
+version of this page specified in advance**, and it arrived. Her drawing lane is
+not merely working, it is **inventing**: `★ INVENTED "cherry + poison + apple"
+in POSTER — a scene she has never seen, drawn from what she knows of each. No
+reference fetched.` — 3 inventions across 29 attempts.
+
+⚠ **Also confirmed live and previously unknown: the CPU gauge is no longer
+frozen.** `cpuPercent 11 · raw 10.7 · cpuSampleMs 2,344 / cpuWindowMs 1,363`,
+and it **moved** between samples. The sampler that had sat below an early
+return is running.
+
+---
+
+## ⛔⛔⛔ THE FINDING ON THIS PAGE IS AN INSTRUMENT, NOT THE BRAIN
+
+**The starvation alarm reported more lateness than wall-clock time existed, and
+a clamp turned that into a confident "0% serviced".** Found because the operator
+read the boot log and asked whether *"thousands of"* sounded massive.
+
+```
+  the line           [EventLoop] ⛔ STARVED — the loop was late 85.7s out of the
+                     last 71s (0% serviced) … it is thousands of short ones.
+
+  log line  99       [EventLoop] BLOCKED  16,856 ms
+  log line 124       [EventLoop] BLOCKED  37,288 ms
+  log line 148       [EventLoop] BLOCKED  31,508 ms
+                                        ──────────
+                                         85,652 ms   = the reported 85.7s, exactly
+```
+
+⛔ **`85.7s out of the last 71s` is impossible on its face, and that was the
+unread tell.** The numerator was exact — the boot's three long blocks
+(allocation, cortical wiring, weight restore) to the millisecond. The
+**denominator** was short: the 60-second window roll executes only inside the
+sampler's own timer, and a blocked loop does not fire that timer, so a 37 s
+block ends, the callback finally runs, and the whole 37 s is billed to a window
+whose start was reset **before that block began**.
+
+⛔⛔ **THE CLAMP IS THE FINDING.** `(1 − 85652/71000) × 100 = −20.6%`, and
+`Math.max(0, …)` laundered the negative into **"0% serviced"** — the most
+alarming value the field can legally hold. **Any over-count bottoms out at
+exactly 0%, so that field could never distinguish *bad* from *impossible*.**
+
+⚠ **And the prose asserted a mechanism it cannot measure.** *"it is thousands of
+short ones"* was hardcoded and printed unconditionally, while the accumulator
+holds a **total** and never counted events. Here there were **three**, and they
+were boot. **Fixed:** numerator and denominator now come from one measured span
+(`lateMs <= spanMs` by construction), and the warn reports `samples` + worst
+gap — the same boot would now read **`3 gaps, worst 37.3s`**.
+
+**The honest ongoing cost of teaching, for comparison:**
+
+```
+  14 blocks/60s worst 1,666ms  8.4s total   → 86% serviced
+  14 blocks/60s worst 1,929ms  9.6s total   → 84%
+  11 blocks/60s worst 1,869ms  9.8s total   → 84%
+   9 blocks/60s worst 1,981ms  8.3s total   → 86%     at 1,959 teach calls/min
+```
+
+⚠ **Second instrument fixed the same evening:** the donor send tripwire printed
+`kind=json:mindspace_op` for **15 sends of 2.3–2.5 MB**, but four ops share that
+message type, so it named a lane and not a sender. It prints the `op` now. ⛔
+**The encoding was checked first and is correct** — nothing is going out
+malformed and no op is silently falling back to CPU. What it violates is the
+comment that chose JSON+base64 on *"payloads ≈ 150KB"*, now **16× wrong**.
+
+---
+
+## The previous snapshot's finding, kept because the lesson is the asset
 
 **The gate that protects the donor's CUDA context from her renders refused
 EVERY render, on EVERY machine, from the day it shipped.** Found by watching
@@ -103,21 +188,32 @@ the smallest possible reading is how a safety gate inverts into a shutoff.
 
 ---
 
-## The snapshot — the 8:56:19 AM boot this replaces
+## The snapshot — the 8:02:29 PM boot
 
-**Boot `8:56:19 AM Denver`** (`mode: resume`, `reason: compatible`,
-`formatVersion 6`), read live between 8:57 and 9:03:
+**Boot `8:02:29 PM Denver`** (`mode: resume`, `reason: keep-flag` —
+`DREAM_KEEP_STATE=1`, no marker), read live between 8:03 and 8:07:
 
 ```
   neurons          199,728,759          <- quoted with its boot; never a constant
+  langCortex       18,341,893           geometry PIN confirmed, matches this boot's derived size
+  tier             3                    capacityNeurons 510,968,588
   runningFloorMB   8,064                against a 16,375 MB card — holds it 2.0x over
-  uptime           412 s
-  cell             ela/kindergarten · in-progress · phases 0 of 25 started
-  spikesLifetime   3,450,975 -> 18,265,275 -> 301,252,170  (three samples, climbing)
-  donor            1 attached · owns all 8 clusters · 17/17 matrices · drops 0
-  crystal          measured TRUE · 77 acks · C 0.9994 · A 0 · Phi_LR null at windowN 11
-  looks            11 attempts · 0 grounded · 11 vramTight   <- the defect above
-  voice            wordsBucketed 0 · wordMotorEverFired 0    <- she has never spoken
+  cell             ela/kindergarten · in-progress · UPFRONT-VOCAB 75 of 140 taught
+  frameCount       176 -> 254 -> 320 -> 372          (four samples, 40 s apart)
+  spikesLifetime   3,289,580 -> 3,602,525 -> 4,879,896 -> 8,106,549    climbing
+  donor            RTX 4070 Ti SUPER · PRIMARY · owns all 8 clusters · unplaced []
+  gpu              98% util · 14,200/16,376 MB · donorCompute 94.2ms · RTT 94ms · 13.5 Gn/s
+  crystal          measured TRUE · 98 acks · C 0.9991 · A 0 · Phi_LR null at windowN 14
+  looks            5 attempts · 4 GROUNDED · 0 vramTight · lastFreeVramMB 3,884
+  art              29 attempts · 3 inventions · styles rotating
+  voice            wordsBucketed 0 · wordMotorEverFired 0 · emitAttempts 0 — never spoken
+  grades           ela/math/science/social/art/life ALL pre-K · minGradeCleared false
+  loop             eventLoopLagMs 7 · 2 stalls, both RECOVERED (worst 38,288 ms)
+  loopStarve       lateMsPerMin 16,922 · servicePct 72
+  cpu              11% · raw 10.7 · sampleMs 2,344 / windowMs 1,363 — MOVING
+  mem              rss 15,971 MB of 130,982 · heap 2,108/2,228
+  disk             140,050 MB free of 952,861 · saveFloor 8,192 · deferrals 0
+  coverage         213 cells run · 191 fed · 2 thin · 0 EMPTY  (72,709,122 words)
   ports            7525 brain · 7526 control plane · 5123 voice · 5124 eyes — all 200
 ```
 
@@ -127,6 +223,18 @@ the smallest possible reading is how a safety gate inverts into a shutoff.
 derivation that chose the 8,000 MB budget was computed at 20 B, so it
 understated the floor by 253 MB. The headroom is still ample.
 
+⛔ **`frameCount 0 · spikesLifetime 0` was the FIRST reading taken, about ninety
+seconds into the boot, and it was not a dead brain.** Two samples a minute apart
+settled it — which is this page's own standing rule, applied rather than quoted.
+⚠ **And `/public-state.json` did not answer at all for the first minutes** while
+the port was LISTENING and accepting connections: the control plane's
+`brainOnline: true` is a **port probe**, not an HTTP reply, so *port open* and
+*serving* are different facts on this box too.
+
+⚠ **`grades` reading all `pre-K` with 204,277 restored teach events is not a
+contradiction** — `cluster.grades` is a record of the past and under-reports;
+the authoritative position is the `passedCells` ledger.
+
 ---
 
 ## What is NOT known, and will not be guessed
@@ -134,9 +242,11 @@ understated the floor by 253 MB. The headroom is still ample.
 | Field | Why it is blank |
 |---|---|
 | ~~Why the CPU gauge freezes~~ **ANSWERED** | The sampler sat below an early return that fires on every tick while the walk runs, so it ran only before the walk began; its first call also had no CPU baseline and read all of boot as one second. Moved to the top of the tick and seeded at start — lands on the next launch. The emotion-history ring shared the block and froze the same way. Original entry: **It is frozen, not clamped** — `cpuPercent 7 · raw 7.3 · cpuSampleMs 3486 / cpuWindowMs 2978` byte-identical across three polls spanning 251 s while spikes climbed 87×. So the earlier hard `100` was ONE stale sample published forever, and the arithmetic is exonerated. The sampler sits behind a 1-second gate in the tick loop, and a call that ran would report `cpuWindowMs ≈ 1000`. Two candidates, neither confirmed: it stops being called, or `state.perf` is served from a different object than the one that writes it |
-| Whether the gate now holds | The fix is server-side and loads on the next launch. **`ownArt.lookups.grounded` CLIMBING is the proof**; `vramTight` still climbing with `grounded 0` means the fix did not load |
-| Whether Φ_LR behaves | `windowN 11` of the 64 batches it needs, so `Phi_LR null` is correct-and-early. **The stated failure signature — Φ_LR pinned at 0 while C climbs — is not yet testable** |
-| Whether the loop starvation matters | `[EventLoop] ⛔ STARVED — late 56.0s of the last 61s (8% serviced)`, the brain's own note being *"thousands of short ones"*. The per-second synchronous `nvidia-smi` is genuinely gone from `chat.js`, so this is either the honest cost of chunked teach math or a second blocker. `blocked 154s` on this boot: **0** |
+| ~~Whether the gate now holds~~ **ANSWERED — IT HOLDS** | `attempts 5 · grounded 4 · vramTightSkips 0 · lastFreeVramMB 3,884`. The proof this row specified was `grounded` CLIMBING with `vramTight` at zero, and that is what came back. **The prediction was written here before the evidence existed, and it was the right prediction** |
+| ~~Whether the loop starvation matters~~ **ANSWERED — THE ALARM WAS WRONG, THE COST IS ~15%** | The `0% serviced / thousands of short ones` line was an instrument defect (see the finding above), not a brain state. The real ongoing cost is **84–86% serviced** while teaching at 1,959 calls/min, which is chunked teach math over the warn floor — the same conclusion as the 2026-08-21 block-wall work. `eventLoopLagMs` after boot: **7** |
+| Which `mindspace_op` sends 2.4 MB | **Four ops carry a rec** and the forensics line printed only the message type, so the sender was identified by log adjacency — inference. The line names the `op` as of this evening; **the next boot answers it.** ⛔ Until then the lane is NOT converted to binary |
+| What a 2.4 MB mind's-eye op costs a REMOTE donor | Never measured. On loopback it is provably harmless (`buffered 0.0MB`, zero drops). These ops go only to the PRIMARY and **a stranger's card can be PRIMARY.** The one remote figure this project owns is 0.16 MB/s, measured on the **Funnel the tunnel replaced** — not the tunnel's number, and not quoted as one |
+| Whether Φ_LR behaves | `windowN 14` of the 64 batches it needs, so `Phi_LR null` is correct-and-early. **The stated failure signature — Φ_LR pinned at 0 while C climbs — is still not yet testable** |
 | Whether the 30-minute readback bound is real | `grep -c readback server/server.log` = **0**, as on every boot before it |
 | Phase timings past phase 0 | Zero of the 25 phases has started on this brain, so there is no sample to price them from |
 
@@ -146,6 +256,9 @@ understated the floor by 253 MB. The headroom is still ample.
 
 | Fact | Consequence |
 |---|---|
+| ⛔⛔ **A CLAMP CAN LAUNDER AN IMPOSSIBLE NUMBER INTO A CONFIDENT ONE** | `late 85.7s out of the last 71s` is arithmetically impossible, and `Math.max(0, …)` published it as **"0% serviced"**. Any over-count lands on exactly 0%, so that reading could not be told apart from a genuine total outage. **Feed an instrument an impossible input and check whether the output is distinguishable from a plausible reading — if the clamp absorbs it, the clamp is hiding your only evidence of a broken denominator** |
+| ⛔⛔ **AN INSTRUMENT MAY ONLY NAME A MECHANISM IT COUNTED** | The starvation warn asserted *"thousands of short ones"* unconditionally while holding a TOTAL and never counting events. It was three blocks, and they were boot. **Prose that asserts a cause sends the reader hunting a shape that was never there** |
+| **PORT OPEN IS NOT SERVING** | `/public-state.json` did not answer for minutes while 7525 was LISTENING with ESTABLISHED connections, and the control plane's `brainOnline: true` is a **port probe**. Two independent clients agreed the port was up and the HTTP read still timed out |
 | ⛔⛔ **AN INSTRUMENT THAT CANNOT FAIL CANNOT WARN** | `vramUnreadable` counts only a `null`. A probe that returns a plausible wrong number is invisible to it. **Ask what reading a broken version of this instrument would produce, and if the answer is "a healthy one", the instrument is not finished** |
 | ⛔⛔ **A HARNESS THAT EXERCISES THE PATH A BUG FORCES CERTIFIES THE BUG** | The gate's harness asserted the refusal branch and passed, because the probe always refused. **Assert the TRUE value, not just the branch** |
 | **The neuron count is derived at boot** | From the budget and the card. It is a property of the configuration, never of her. Quote it with its boot or not at all |
