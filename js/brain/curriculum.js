@@ -6179,18 +6179,42 @@ export class Curriculum {
     //
     // ⚠ Queued onto the walk lane rather than run here — the cell must not wait
     // on practice, and the queue is already the single serialized teacher.
+    // ⛔⛔ THIS BLOCK SKIPPED SILENTLY ON EVERY BOOT WHERE NOBODY HAD CHATTED YET.
+    // `_mindsEyePreviewQueue` had no boot-time init; it was created lazily by
+    // four human-driven sites in chat.js (chat text, an image prompt, the two
+    // judge buttons). At cell entry none of those has fired, so `Array.isArray`
+    // was false here and the whole ladder — and the pre-cell vocab practice, and
+    // every drawing-practice and relearn job — was dropped with no line in the
+    // log. Measured 2026-10-29 on the first boot that published practice
+    // attempts: zero of every queue-driven kind after 4½ minutes, while 61
+    // drawings ran on the lanes that need no queue. The queue is now created at
+    // construction (server side), so this guard should never fail again — and
+    // if it ever does, it SAYS SO on the WRITEWARM line instead of skipping,
+    // because a practice lane that silently never runs is indistinguishable
+    // from one that is pacing.
+    let _ladderQueued = 0, _ladderDropped = 0;
     try {
       const _q = _brain._mindsEyePreviewQueue;
+      const ladder = [
+        ...ALPHABET_ORDER.split(''),
+        ...DIGIT_ORDER.split(''),
+      ];
       if (Array.isArray(_q)) {
-        const ladder = [
-          ...ALPHABET_ORDER.split(''),
-          ...DIGIT_ORDER.split(''),
-        ];
         for (const t of ladder) _q.push({ kind: 'write-practice', text: t });
+        _ladderQueued = ladder.length;
+      } else if (_brain && typeof _brain._drainMindsEyePreview === 'function') {
+        // ⚠ The alarm keys on DRAIN-PRESENT-BUT-QUEUE-ABSENT, not on absence
+        // alone: in the browser bundle there is no server mind-space and no
+        // drain, and a missing queue there is the portability contract (see the
+        // drain gate), not a defect. Only a brain that CAN drain practice and
+        // has nowhere to queue it is broken.
+        _ladderDropped = ladder.length;
       }
     } catch { /* practice is never allowed to block the pencil */ }
     this._hb(`[Curriculum] ✍ WRITEWARM — glyph shapes: ${learned}/${GLYPHS.length} traced and banked in ${((Date.now() - t0) / 1000).toFixed(1)}s`
       + (failed ? ` · ⚠ ${failed} could NOT be traced (${failedChars.join('')}) — she will write nothing for those rather than stamp a font she never learned` : '')
+      + (_ladderQueued ? ` · ${_ladderQueued} writing-practice jobs queued` : '')
+      + (_ladderDropped ? ` · ⛔ ${_ladderDropped} writing-practice jobs NOT QUEUED — the preview queue does not exist on this brain object, so her practice lane is dead this boot` : '')
       + ` — run at CELL ENTRY, before the definition bootstrap, so she can form letters and numbers from the first minute.`);
   }
 

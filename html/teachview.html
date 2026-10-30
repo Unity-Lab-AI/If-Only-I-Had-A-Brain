@@ -2767,7 +2767,7 @@ function renderLanes(st) {
      nothing draining it. */
   const stalled = dl.drivenOffWalk && depth > 0 && !dl.drainedItems;
   el.innerHTML = `<div>${driver}</div>`
-    + `<div style="margin-top:6px;font-family:var(--tv-font)">queued <b>${depth}</b> — chat ${q.chatPairs || 0} · jobs ${q.chatJobs || 0} · eye ${q.mindsEye || 0} · salience ${q.salience || 0}</div>`
+    + `<div style="margin-top:6px;font-family:var(--tv-font)">queued <b>${depth}</b> — chat ${q.chatPairs || 0} · jobs ${q.chatJobs || 0} · eye ${q.mindsEye == null ? '<span style="color:var(--tv-bad)">ABSENT — the preview queue does not exist, so writing practice, drawing practice and relearns cannot run</span>' : q.mindsEye} · salience ${q.salience || 0}</div>`
     + `<div style="color:var(--tv-dim);font-family:var(--tv-font)">${(dl.drainedItems || 0).toLocaleString()} items drained over ${(dl.drainedPasses || 0).toLocaleString()} passes · last ${age}</div>`
     + (stalled ? '<div style="color:var(--tv-bad);margin-top:5px">⛔ work is queued off-walk and nothing has drained — the driver is not firing.</div>' : '');
 }

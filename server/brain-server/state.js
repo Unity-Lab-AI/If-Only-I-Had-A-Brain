@@ -864,7 +864,16 @@ const SERVER_STATE_MIXIN = {
         return {
           drawn: this._ownArtDrawn | 0,
           attempts: this._ownArtAttempt | 0,
-          queued: Array.isArray(this._mindsEyePreviewQueue) ? this._mindsEyePreviewQueue.length : 0,
+          // ⛔ `null` when the queue DOES NOT EXIST, `0` when it is empty — these
+          // used to publish the same `0`, which is how the preview queue could
+          // be absent for an entire boot (no boot-time init; created lazily by
+          // human-driven chat/judge pushes) while this field read "nothing
+          // queued" and her writing practice, drawing practice and relearns all
+          // silently never ran. Found 2026-10-29 on the first boot that published
+          // practice attempts: zero of every queue-driven kind, 61 drawings from
+          // the lanes that need no queue. Null-as-zero, the first shape on the
+          // instruments-that-lie page.
+          queued: Array.isArray(this._mindsEyePreviewQueue) ? this._mindsEyePreviewQueue.length : null,
           dropped: this._mindsEyePreviewDropped | 0,
           previewsDrained: this._mindsEyePreviewsDrained | 0,
           schemas,                    // concepts whose SHAPE she has abstracted
@@ -1845,7 +1854,17 @@ const SERVER_STATE_MIXIN = {
         && typeof this.cortexCluster.graduation === 'object')
         ? this.cortexCluster.graduation : null)),
       deferredLanes: _lap('deferredLanes', () => {
-        const q = (a) => (Array.isArray(a) ? a.length : 0);
+        // ⛔ `null` for a queue that does not exist, `0` for one that is empty.
+        // These published the same `0` until 2026-10-29, which let the preview
+        // queue be ABSENT for whole boots — it had no boot-time init — while
+        // this block read "mindsEye: 0, nothing queued" and her practice lanes
+        // silently never ran. Null-as-zero, the first shape on the
+        // instruments-that-lie page. ⚠ Two pages DO render this block
+        // (dashboard.html + teachview.html, the deferred-lanes row); both read
+        // `q.x || 0` so a null sums as zero, and both now print the word
+        // "absent" for a null so the reader can tell the two apart — the first
+        // draft of this comment said nothing rendered it, which was wrong.
+        const q = (a) => (Array.isArray(a) ? a.length : null);
         const st = (this.curriculum && this.curriculum._deferredDrainStats) || {};
         return {
           // The driver only runs off the walk; while the walk owns the substrate
