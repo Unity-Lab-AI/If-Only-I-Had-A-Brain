@@ -2277,10 +2277,25 @@ const SERVER_STATE_MIXIN = {
         // string, while eventLoopLagMs, the freeze watchdog and the
         // teach-chunk counter all read healthy — because each individual
         // stall was under every threshold and there were thousands of them.
+        // ⛔ 2026-10-29 — `servicePct` ALONE CANNOT BE TRUSTED AND NOW SHIPS ITS
+        // OWN EVIDENCE. The sampler used to bill a straddling block's lateness to
+        // whichever window the timer woke up in, which produced `late 85.7s out of
+        // the last 71s`: a NEGATIVE percentage that the clamp turned into a
+        // confident "0% serviced". That accounting is fixed at the sampler (the
+        // numerator and denominator now come from one measured span), and these
+        // three fields are the cross-check — `spanMs` is the span the ratio was
+        // actually taken over, so `lateMsPerMin > spanMs` is now a visible
+        // impossibility instead of a silent clamp. `samples` and `worstGapMs`
+        // answer the question the old warn ASSERTED rather than measured: a high
+        // sample count with a sub-floor worst gap is genuinely "many short ones";
+        // a worst gap of seconds is a few long blocks and a different hunt.
         loopStarve: {
           lateMsPerMin: (this._loopStarve && this._loopStarve.lastLateMs) | 0,
           servicePct: this._loopStarve && typeof this._loopStarve.lastPct === 'number'
             ? this._loopStarve.lastPct : null,
+          spanMs: (this._loopStarve && this._loopStarve.lastSpanMs) | 0,
+          samples: (this._loopStarve && this._loopStarve.lastSamples) | 0,
+          worstGapMs: (this._loopStarve && this._loopStarve.lastWorstMs) | 0,
         },
         // GPUTEACH step-0 — the bound-Hebbian TEACH LANE, every stage counted
         // so "0 teach/min" can never lie again: enqueued (ops asked), flushed

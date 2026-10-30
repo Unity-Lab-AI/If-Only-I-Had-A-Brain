@@ -13897,9 +13897,35 @@ wss.on('connection', (ws, req) => {
               ws._sendForensicsWrapped = true;
               const _origSend = ws.send.bind(ws);
               const _ring = [];
+              // ── 2026-10-29 — THIS NAMED THE MESSAGE TYPE AND NOT THE OP, SO IT
+              // ── COULD NOT FINISH ITS OWN SENTENCE.
+              //
+              // 15 sends of 2.3-2.5MB in four minutes all printed the same
+              // `kind=json:mindspace_op`. But FOUR ops carry a rec over that one
+              // message type (describe / traceLineArt / stylizeField, plus
+              // perceive's rgba), so the line named a lane and not a sender, and
+              // the sender had to be guessed from log adjacency — inference, not
+              // a reading. The `op` field is right there in the payload.
+              //
+              // ⚠ The old slice(0, 40) could not reach it: `{"type":"mindspace_op"
+              // ,"id":1,"op":"…` is already past 40 chars at the op. Widened — it
+              // is a regex over a short prefix of a string we already hold, and
+              // the cost does not scale with the payload.
+              //
+              // ⛔ Fixed HERE rather than at the warn below, because this is the
+              // chokepoint: the LARGE-send tripwire AND the 16-slot ring dump both
+              // render through this one function, and a fix at either call site
+              // would have left the other one still unable to name a sender.
               const _kindOf = (p) => {
                 try {
-                  if (typeof p === 'string') return 'json:' + (p.slice(0, 40).match(/"type"\s*:\s*"([^"]+)"/) || [])[1];
+                  if (typeof p === 'string') {
+                    const _head = p.slice(0, 200);
+                    const _type = (_head.match(/"type"\s*:\s*"([^"]+)"/) || [])[1];
+                    const _op = (_head.match(/"op"\s*:\s*"([^"]+)"/) || [])[1];
+                    // An instrument must not print the word "undefined" at an
+                    // operator. No match is a known state and says so.
+                    return 'json:' + (_type || '?') + (_op ? ':' + _op : '');
+                  }
                   if (p && p.length >= 6 && p[0] === 0x53 && p[1] === 0x50 && p[2] === 0x52 && p[3] === 0x53) return 'sprs-t' + p[4];
                   return 'bin';
                 } catch { return '?'; }
@@ -14954,20 +14980,77 @@ const _lagTimer = setInterval(() => {
   // total milliseconds per minute the loop owed and did not deliver. ~0 is
   // healthy; approaching 60,000 means requests wait a minute. `loopServicePct`
   // is the same fact as a percentage of the wall clock actually serviced.
+  //
+  // ── 2026-10-29 — THIS ALARM REPORTED MORE LATENESS THAN TIME EXISTED, AND
+  // ── THE CLAMP IS WHAT MADE THAT LOOK LIKE A READING.
+  //
+  // Read off a resume boot: `late 85.7s out of the last 71s (0% serviced)`.
+  // The 85.7s was EXACT — it is 16,856 + 37,288 + 31,508 ms, the boot's three
+  // long blocks (allocation, cortical wiring, weight restore) summed to the
+  // millisecond. The impossibility was in the DENOMINATOR.
+  //
+  // CAUSE: the window roll executes only inside this callback, and a blocked
+  // loop does not fire this timer. So a 37s block ends, the callback finally
+  // runs, and the whole 37s of lateness is billed to a window whose
+  // `windowStart` was reset BEFORE that block began. Numerator spanned ~2
+  // windows; denominator spanned one.
+  //
+  // ⛔ AND THE CONSEQUENCE IS THE PART WORTH KEEPING: the percentage went
+  // NEGATIVE (1 − 85652/71000 = −20.6%) and `Math.max(0, …)` laundered it into
+  // "0% serviced" — the most alarming value the field can legally hold. ANY
+  // over-count bottoms out at exactly 0%, so that number could never
+  // distinguish *bad* from *impossible*. The clamp stays (a defensive bound is
+  // correct); what must stop is the clamp standing between an impossible
+  // number and the operator's screen.
+  //
+  // FIX: the denominator is now the SAME MEASURED QUANTITY the numerator came
+  // from. Every sample contributes its own monotonic span (`actualMs`) to
+  // `spanMs` and its own lateness (`actualMs − _LAG_SAMPLE_MS`) to `lateMs`.
+  // Since lateness per sample can never exceed that sample's span,
+  // `lateMs <= spanMs` holds BY CONSTRUCTION — a straddling block's lateness
+  // and the span it occupied are inseparable, so it cannot be attributed to a
+  // window it did not occur in. Also removes the Date.now()/hrtime mixing: both
+  // sides of the ratio are now hrtime-derived.
   {
-    const _s = brain._loopStarve || (brain._loopStarve = { lateMs: 0, windowStart: Date.now(), lastLateMs: 0, lastPct: 100 });
-    if (lagMs > 0) _s.lateMs += lagMs;
-    const _elapsed = Date.now() - _s.windowStart;
-    if (_elapsed >= 60_000) {
+    const _s = brain._loopStarve || (brain._loopStarve = {
+      lateMs: 0, spanMs: 0, samples: 0, worstMs: 0,
+      lastLateMs: 0, lastPct: 100, lastSamples: 0, lastWorstMs: 0, lastSpanMs: 0,
+    });
+    // The measured span and its lateness travel together, always.
+    _s.spanMs += actualMs;
+    _s.samples += 1;
+    if (lagMs > 0) {
+      _s.lateMs += lagMs;
+      if (lagMs > _s.worstMs) _s.worstMs = lagMs;
+    }
+    if (_s.spanMs >= 60_000) {
       _s.lastLateMs = Math.round(_s.lateMs);
-      _s.lastPct = Math.max(0, Math.min(100, Math.round((1 - (_s.lateMs / _elapsed)) * 100)));
+      _s.lastSpanMs = Math.round(_s.spanMs);
+      _s.lastSamples = _s.samples;
+      _s.lastWorstMs = Math.round(_s.worstMs);
+      _s.lastPct = Math.max(0, Math.min(100, Math.round((1 - (_s.lateMs / _s.spanMs)) * 100)));
       // Only shout when it is genuinely bad — a starved loop is invisible to
       // every other channel, so it has to announce itself somewhere.
       if (_s.lastPct < 50) {
-        console.warn(`[EventLoop] ⛔ STARVED — the loop was late ${(_s.lastLateMs / 1000).toFixed(1)}s out of the last ${(_elapsed / 1000).toFixed(0)}s (${_s.lastPct}% serviced). No single stall need exceed the ${_LAG_WARN_MS}ms floor for this: it is thousands of short ones. HTTP/WS callers wait this long — the dashboard, minds-eye and chat will look "disconnected" while teaching is fine.`);
+        // ⛔ SAY WHAT WAS COUNTED, NEVER A MECHANISM THIS INSTRUMENT CANNOT SEE.
+        // The old line asserted "it is thousands of short ones" unconditionally.
+        // That is true of the 2026-08-23 case it was written for — 25-second
+        // waits on a route that only hands back a pre-cached string, with no
+        // single stall over the floor — and FALSE of every other shape. On the
+        // boot above it was THREE long blocks, and the sentence sent the reader
+        // hunting for thousands of stalls that never existed. This accumulator
+        // holds a total; it can only honestly claim "many short ones" when the
+        // worst gap it actually observed stayed under the warn floor.
+        const _many = _s.lastWorstMs < _LAG_WARN_MS;
+        const _shape = _many
+          ? `no single gap reached the ${_LAG_WARN_MS}ms floor — this is many short ones`
+          : `worst single gap ${(_s.lastWorstMs / 1000).toFixed(1)}s — this is a few long ones, not many short ones`;
+        console.warn(`[EventLoop] ⛔ STARVED — the loop was late ${(_s.lastLateMs / 1000).toFixed(1)}s of the ${(_s.lastSpanMs / 1000).toFixed(0)}s it measured (${_s.lastPct}% serviced, ${_s.lastSamples} samples). ${_shape}. HTTP/WS callers wait this long — the dashboard, minds-eye and chat will look "disconnected" while teaching is fine.`);
       }
       _s.lateMs = 0;
-      _s.windowStart = Date.now();
+      _s.spanMs = 0;
+      _s.samples = 0;
+      _s.worstMs = 0;
     }
   }
   // LOOPNAME.8 — the heartbeat the watchdog thread watches. Deliberately the
