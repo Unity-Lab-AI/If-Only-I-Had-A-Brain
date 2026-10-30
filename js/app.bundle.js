@@ -10224,6 +10224,29 @@ var MindSpaceGPU = class {
   describe(rec, dim) {
     return describeEquational(rec, dim);
   }
+  // ⛔ REAL LETTERFORMS, INJECTED. This file is bundled for the browser and
+  // cannot read a font file, so `server/letterforms.js` parses a real typeface
+  // and hands the outlines in here. See `glyphStrokes` for why the bitmap it
+  // replaces was the reason her handwriting could not improve.
+  //
+  // ⚠ `setLetterforms(null)` is a legitimate call meaning "no real font was
+  // found on this machine" — it must leave `_letterforms` unset so that callers
+  // passing `real: true` get nothing, loudly, instead of a bitmap.
+  setLetterforms(data) {
+    this._letterforms = data && data.glyphs && Object.keys(data.glyphs).length ? data : null;
+    return this.letterformsReady();
+  }
+  letterformsReady() {
+    const g = this._letterforms && this._letterforms.glyphs;
+    if (!g) return { ready: false, glyphs: 0, source: null };
+    const keys = Object.keys(g);
+    return {
+      ready: true,
+      glyphs: keys.filter((k) => !g[k].blank && g[k].contours.length).length,
+      blank: keys.filter((k) => g[k].blank).length,
+      source: this._letterforms.source || null
+    };
+  }
   // TU.29.5 — equation-domain blend of two stored percepts (coefficient-set
   // union + lerp, transform.js morphField). This is the RECOMBINATION step of
   // imagination: two seen field Cs fuse into one imagined field C without ever
@@ -10409,10 +10432,20 @@ var MindSpaceGPU = class {
     if (rec) rec.fidelity = { psnr_db: null, source: "mindspace-sketch" };
     return rec;
   }
-  // Letters as STROKES rather than a raster stamp. Converts each character's 5x7
-  // bitmap (FONT5X7 — single source of truth shared with the glyph raster) into
-  // line strokes for sketch(): horizontal + vertical runs of lit cells become
-  // line segments, isolated single cells become points.
+  // Letters as STROKES rather than a raster stamp.
+  //
+  // ⭐ 2026-10-29 — THE LETTERFORM SOURCE IS A REAL TYPEFACE WHEN ONE IS
+  // INJECTED (`setLetterforms`, fed by server/letterforms.js). The loop below
+  // takes that branch first and emits scanline runs from true outlines. The
+  // `FONT5X7` bitmap path that follows it is reached only when no typeface has
+  // been injected AND the caller did not demand `real: true` — which today means
+  // the browser bundle and the symbol-thought raster (`symbolGlyphText`, which
+  // still reads FONT5X7 directly). ⚠ So FONT5X7 is NO LONGER "the single source
+  // of truth shared with the glyph raster": the pen lane and the symbol raster
+  // now diverge, deliberately, and porting the raster is filed as its own item.
+  //
+  // Bitmap path: horizontal + vertical runs of lit cells become line segments,
+  // isolated single cells become points.
   //
   // ⛔⛔ THESE ARE TYPESET LETTERFORMS, NOT HANDWRITING, AND THIS COMMENT USED TO
   // SAY THE OPPOSITE. It read *"her own hand"* and *"her CLEAN trained hand"*,
@@ -10434,7 +10467,7 @@ var MindSpaceGPU = class {
     if (!t) return [];
     const x0 = Math.max(0, Math.min(1, opts.x ?? 0.1));
     const y0 = Math.max(0, Math.min(1, opts.y ?? 0.78));
-    const size = Math.max(0.03, Math.min(0.3, opts.size ?? 0.08));
+    const size = Math.max(0.03, Math.min(0.95, opts.size ?? 0.08));
     const baseRgb = opts.rgb || [222, 220, 226];
     const colors = Array.isArray(opts.colors) && opts.colors.length ? opts.colors : null;
     const slant = Math.max(-0.5, Math.min(0.5, opts.slant || 0));
@@ -10462,9 +10495,42 @@ var MindSpaceGPU = class {
     const dot = (x, y, rgb) => {
       strokes.push({ type: "point", x: shx(x, y), y, r: font === "bubble" ? 1 : 0, rgb, w: thick });
     };
+    const _LF = this._letterforms && this._letterforms.glyphs;
+    if (opts.real && !_LF) return [];
+    const _ROWS = Math.max(24, Math.min(200, opts.rows || 72));
     for (const ch of t) {
       const glyph = fontGlyph(ch);
       const col = colors ? colors[li % colors.length] : baseRgb;
+      const _lf = _LF ? _LF[ch] : null;
+      if (_lf && !_lf.blank && _lf.contours.length) {
+        const gwid = Math.max(0.02 * gh, (_lf.widthFrac || 0.5) * gh);
+        const rowH = gh / _ROWS;
+        const runW = Math.max(15e-4, rowH * 1.7);
+        for (let r = 0; r < _ROWS; r++) {
+          const fy = (r + 0.5) / _ROWS;
+          const xs = [];
+          for (const cont of _lf.contours) {
+            for (let i = 0, j = cont.length - 1; i < cont.length; j = i++) {
+              const a = cont[i], b = cont[j];
+              if (a.y > fy !== b.y > fy) xs.push(b.x + (a.x - b.x) * (fy - b.y) / (a.y - b.y || 1e-9));
+            }
+          }
+          if (xs.length < 2) continue;
+          xs.sort((p, q) => p - q);
+          const y = y0 + fy * gh;
+          for (let k = 0; k + 1 < xs.length; k += 2) {
+            const xa = cx + xs[k] * gh, xb = cx + xs[k + 1] * gh;
+            if (xb - xa < rowH * 0.35) {
+              dot((xa + xb) / 2, y, col);
+              continue;
+            }
+            strokes.push({ type: "line", x0: shx(xa, y), y0: y, x1: shx(xb, y), y1: y, rgb: col, w: runW });
+          }
+        }
+        cx += gwid + gh * 0.12;
+        li++;
+        continue;
+      }
       if (glyph && font === "dots") {
         for (let r = 0; r < 7; r++) for (let c = 0; c < 5; c++) {
           if (glyph[r][c] === "1") dot(cx + (c + 0.5) / 5 * cw, y0 + (r + 0.5) / 7 * gh, col);

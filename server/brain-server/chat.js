@@ -3786,19 +3786,37 @@ const SERVER_CHAT_MIXIN = {
    * refuses rather than training against an empty page.
    */
   async _practiceWriting(text) {
+    // ⛔⛔ EIGHT SILENT DECLINES, ONE INDISTINGUISHABLE OUTCOME — until 2026-10-29.
+    // Every early exit below returned a bare `null`, and `writingPractice` in
+    // state stayed `null` until the FIRST SUCCESSFUL session. So a boot that
+    // drained 62 queued practice jobs and declined every one read exactly like
+    // a boot that never drained any: `writingPractice: null`, `sessions: 0`. The
+    // operator asked why her handwriting never improves and this lane could not
+    // say whether it had ever run. Same shape as the Life gate's five decline
+    // conditions printing "no reason recorded".
+    //
+    // Now every exit NAMES itself. Two of the names are NOT faults and are
+    // worded so a reader does not treat them as one: `gap-cooldown` is pacing
+    // (30 min per key by design), and `not-learned-yet` is the honest early
+    // state before WRITEWARM has banked that glyph. The rest are real.
+    const _st = this._writePracticeStats || (this._writePracticeStats = { sessions: 0, attempts: 0, declines: {} });
+    if (!_st.declines) _st.declines = {};
+    _st.attempts = (_st.attempts | 0) + 1;
+    _st.lastAttemptAt = Date.now();
+    const _decline = (why) => { _st.declines[why] = (_st.declines[why] | 0) + 1; _st.lastDecline = why; _st.lastDeclineAt = Date.now(); return null; };
     if (!this.mindSpace || typeof this.mindSpace.sketch !== 'function'
       || typeof this.mindSpace.describe !== 'function'
       || typeof this.mindSpace.glyphStrokes !== 'function'
-      || typeof this.handwrittenStrokes !== 'function') return null;
+      || typeof this.handwrittenStrokes !== 'function') return _decline('no-methods');
     const key = String(text || '').trim();
-    if (!key) return null;
+    if (!key) return _decline('no-text');
     const store = (typeof this._vmStore === 'function') ? this._vmStore() : null;
-    if (!store) return null;
+    if (!store) return _decline('no-store');
     const skillKey = `writing:${key.toLowerCase()}`;
     const prev = store.get(skillKey) || null;
     const GAP = Number(process.env.DREAM_WRITE_PRACTICE_GAP_MS) >= 0
       ? Number(process.env.DREAM_WRITE_PRACTICE_GAP_MS) : 1800000;
-    if (prev && prev.at && (Date.now() - prev.at) < GAP) return null;
+    if (prev && prev.at && (Date.now() - prev.at) < GAP) return _decline('gap-cooldown');
     const ITERS = Number(process.env.DREAM_WRITE_PRACTICE_ITERS) > 0
       ? Number(process.env.DREAM_WRITE_PRACTICE_ITERS) : 5;
     const cos = (a, b) => {
@@ -3813,15 +3831,20 @@ const SERVER_CHAT_MIXIN = {
     let refP = prev && Array.isArray(prev.refP) && prev.refP.length ? prev.refP : null;
     try {
       if (!refP) {
-        const rs = this.mindSpace.glyphStrokes(key, { x: BOX.x, y: BOX.y, size: BOX.size, bold: true, rgb: [235, 233, 238] });
-        if (!rs || !rs.length) return null;
+        // ⛔ `real: true` — THE PRACTICE REFERENCE MUST BE THE REAL LETTERFORM.
+        // This is the line that set her ceiling: scored against the 5x7 bitmap,
+        // practice could only make her reproduce a three-pixel 'r' more exactly.
+        // With a real outline as the reference the ceiling is the typeface. If no
+        // typeface loaded there is nothing honest to score against, so no session.
+        const rs = this.mindSpace.glyphStrokes(key, { x: BOX.x, y: BOX.y, size: BOX.size, bold: true, rgb: [235, 233, 238], real: true });
+        if (!rs || !rs.length) return _decline('no-printed-strokes');   // no real typeface loaded this boot
         const rrec = await this.mindSpace.sketch(rs, { maxSide: 256 });
-        if (!rrec) return null;
+        if (!rrec) return _decline('ref-sketch-null');
         const rd = await this.mindSpace.describe(rrec);
-        if (!rd) return null;
+        if (!rd) return _decline('ref-describe-null');
         refP = Array.from(rd);
       }
-    } catch { return null; }
+    } catch { return _decline('ref-threw'); }
     const score = async (params) => {
       const hw = this.handwrittenStrokes(key, {
         x: BOX.x, y: BOX.y, size: BOX.size, rgb: [232, 230, 236],
@@ -3847,9 +3870,9 @@ const SERVER_CHAT_MIXIN = {
     };
     const sessions = (prev && prev.sessions) || 0;
     let first;
-    try { first = await score(params); } catch { return null; }
-    if (!first || first.s < 0) return null;
-    if (!first.wrote) return null;   // she cannot write any of it yet — nothing to train
+    try { first = await score(params); } catch { return _decline('score-threw'); }
+    if (!first || first.s < 0) return _decline('no-score');          // her hand sketched/described to nothing
+    if (!first.wrote) return _decline('not-learned-yet');            // honest early state — WRITEWARM has not banked these glyphs yet
     let best = first.s;
     const base = best;
     const keys = Object.keys(RANGES);
@@ -3871,11 +3894,15 @@ const SERVER_CHAT_MIXIN = {
       refP, wrote: first.wrote, skipped: first.skipped, text: key,
     };
     try { store.set(skillKey, entry); } catch { /* the session still counted in state */ }
-    this._writePracticeStats = {
-      sessions: ((this._writePracticeStats && this._writePracticeStats.sessions) || 0) + 1,
+    // ⚠ MUTATE, DO NOT REPLACE. `_st` is this same object and carries the
+    // attempt/decline counters; assigning a fresh literal here (as this used to)
+    // would wipe every decline the moment the first session succeeded, and the
+    // page would read "1 session" over 61 silent refusals.
+    Object.assign(_st, {
+      sessions: (_st.sessions | 0) + 1,
       lastText: key, lastBase: +base.toFixed(4), lastBest: +best.toFixed(4),
       lastKept: kept, wrote: first.wrote, skipped: first.skipped, at: Date.now(),
-    };
+    });
     try {
       console.log(`[Writing] ✍ PRACTICE "${key}" session ${sessions + 1}: resemblance ${base.toFixed(4)} → ${best.toFixed(4)} (${kept}/${ITERS} nudges kept) · wrote ${first.wrote} char(s), skipped ${first.skipped} she has not learned`);
     } catch { /* nf */ }

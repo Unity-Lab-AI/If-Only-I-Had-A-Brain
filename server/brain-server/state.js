@@ -1785,6 +1785,13 @@ const SERVER_STATE_MIXIN = {
       // entry and drains on the walk lane, so nothing to report early in a boot
       // is the expected reading, not a fault.
       writingPractice: _lap('writingPractice', () => (this._writePracticeStats || null)),
+      // ⛔ WHAT SHE IS COPYING. Until 2026-10-29 the answer was a 5x7 bitmap
+      // table in this repo whose lowercase 'r' had three lit pixels, and no
+      // field anywhere said so — the operator found it by looking at her
+      // writing. `ready:false` means NO real typeface parsed on this machine and
+      // she is learning NO letter shapes this boot (by design — never a silent
+      // bitmap). `source` names the font her hand is learning from.
+      letterformSource: _lap('letterformSource', () => (this._letterformStatus || null)),
       letterShapes: _lap('letterShapes', () => {
         try {
           if (typeof this.hasLetterShape !== 'function') return null;
@@ -1805,6 +1812,13 @@ const SERVER_STATE_MIXIN = {
             lettersLearned: learned.filter(_isL).length, lettersOf: 52,
             digitsLearned: learned.filter(_isD).length, digitsOf: 10,
             marksLearned: learned.filter((c) => !_isL(c) && !_isD(c)).length, marksOf: 32,
+            // 2026-10-29 — `learned 94/94` cannot say whether this boot RE-TRACED
+            // the alphabet (208s) or reused traces banked from the same typeface.
+            // `traced` + `reused` split that; on the first boot after the real
+            // letterform change `traced` MUST be 94 and `reused` 0, because every
+            // bitmap-era entry carries no source tag and has to be overwritten.
+            traced: this._letterShapesTraced | 0,
+            reused: this._letterShapesReused | 0,
           };
         } catch { return null; }
       }),

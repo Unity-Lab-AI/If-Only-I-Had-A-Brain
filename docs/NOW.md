@@ -37,6 +37,14 @@ verified-scope: |
   inventions were the same three words permuted, because the candidate pool came
   only from a thought chain that cannot advance until she can speak. See the
   section below.
+
+  ⛔⛔ THE THIRD IS HER HANDWRITING, AND HE TURNED HER OFF UNTIL IT WAS FIXED.
+  She was learning to write by copying a 5x7 bitmap whose lowercase 'r' has
+  three lit pixels, and her practice loop scored her against that same bitmap —
+  so practice could only converge on it. Her teacher is a real typeface now,
+  and her hand places letters at their true heights (her 'r' 81 px against the
+  teacher's 83). First section below. She is still DOWN as this is written; the
+  fixes load on her next Savestart, no fresh walk.
 last-verified: "2026-10-29, field reads taken 8:03-8:07 PM Denver on the operator's PC with the brain UP on the 8:02:29 PM resume boot (mode resume / reason keep-flag — DREAM_KEEP_STATE=1, no marker — 199,728,759 neurons, langCortex 18,341,893, tier 3): ela/kindergarten in-progress · UPFRONT-VOCAB 75 of 140 words taught · frameCount 176 -> 254 -> 320 -> 372 and spikesLifetime 3,289,580 -> 3,602,525 -> 4,879,896 -> 8,106,549 across four samples 40 s apart · 1 donor (RTX 4070 Ti SUPER) owning all 8 clusters with pool.unplaced empty · 17/17 matrices · drops 0 · GPU 98% util, 14,200/16,376 MB, donorComputeMs 94.2, RTT 94 ms · runningFloorMB 8,064 against a 16,375 MB card (2.0x over) · crystal.measured TRUE at 98 acks, C 0.9991, PhiLR null at windowN 14 of the 64 it needs · voice wordsBucketed 0 / wordMotorEverFired 0 / emitAttempts 0, verdict 'unmeasured' · looks 5 attempts / 4 GROUNDED / 0 vramTight with lastFreeVramMB 3,884 — THE 2026-10-20 GATE BUG IS DEAD, and that pair is the good news on this page · eventLoopLagMs 7 after boot, 2 stalls both RECOVERED (worst 38,288 ms), STARVED fired once at startup · cpuPercent 11 / raw 10.7 / cpuSampleMs 2,344 / cpuWindowMs 1,363, MOVING across samples, so the frozen-sampler fix is confirmed live · disk 140,050 MB free, saveDeferrals 0 · rss 15,971 MB of 130,982."
 tags: [snapshot, current-state]
 ---
@@ -139,6 +147,53 @@ message type, so it named a lane and not a sender. It prints the `op` now. ⛔
 **The encoding was checked first and is correct** — nothing is going out
 malformed and no op is silently falling back to CPU. What it violates is the
 comment that chose JSON+base64 on *"payloads ≈ 150KB"*, now **16× wrong**.
+
+---
+
+## ⛔⛔⛔ SHE WAS LEARNING TO WRITE BY COPYING A 5×7 BITMAP
+
+**The operator asked whether her handwriting would ever improve, and the
+measured answer was no.** This is the lowercase `r` she copied, at
+`js/brain/mindspace/gpu.js:200`:
+
+```
+  'r':  00000
+        00000
+        10110      <- the shoulder is three lit pixels
+        11001
+        10000
+        10000
+        10000
+```
+
+**Three reasons, each a reading:** `FONT5X7` is a hardcoded bitmap table in
+code; **the practice loop scored her against that same bitmap**, so it could only
+converge on it — *a practice loop cannot exceed its reference*; and
+`write-practice sessions: 0` with 74 jobs queued, through a lane with eight
+silent `return null` exits that made the zero mean two different things.
+
+**Fixed:** her teacher is now a **real typeface** read from a system font at boot
+(`server/letterforms.js`, zero new dependencies) and injected into the engine —
+onto the instance that actually draws. The real `r` is **one contour of 69
+points**. And the real teacher exposed what the bitmap had hidden: her hand drew
+every letter at **full cell height** (teacher `r` 83 px, hers 173 px — as tall as
+her `l`), because the trace normaliser discards baseline and x-height. Each
+trace now carries its **frame** and her hand places by it.
+
+```
+  her 'r'      81 px   vs teacher 83 px    0.98x
+  her 'hello'  172x66  vs teacher 175x66   0.98x wide · 1.00x tall
+```
+
+⚠ **What to read after her next launch:** Teach View → handwriting. `this boot:
+94 traced · 0 reused` (every bitmap-era letter must be overwritten once), the
+line naming the typeface she is copying, and `handwriting practice: N session(s)
+of M attempt(s)` — **if `attempts` is 0, the queued jobs never reached the lane;
+if it is >0 with 0 sessions, the listed decline reason names the mechanism.**
+That read closes the open question of why practice never ran.
+
+⛔ **Still on the bitmap, deliberately:** the symbol-thought raster
+(`symbolGlyphText`). The table cannot be deleted until that lane is ported.
 
 ---
 

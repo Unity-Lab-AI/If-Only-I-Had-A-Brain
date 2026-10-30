@@ -2656,6 +2656,23 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     if (!store) return null;
     const key = `letter:${c}`;
     try {
+      // ⭐ SKIP A TRACE THAT WOULD BE BYTE-IDENTICAL. The letter store persists
+      // (sqlite), so a boot used to spend ~208s re-tracing all 94 glyphs from the
+      // same source to the same result. An entry banked from THIS typeface at
+      // THIS trace version is reused; anything else — including every entry
+      // traced from the old 5x7 bitmap, which carries no source tag — is
+      // re-traced and overwritten, which is exactly what the first boot after the
+      // real-letterform change must do. ⚠ Bump the version literal whenever the
+      // trace parameters below change, or a stale trace will be reused as current.
+      const _lfr = (typeof ms.letterformsReady === 'function') ? ms.letterformsReady() : null;
+      const _lfSource = (_lfr && _lfr.ready && _lfr.source) ? _lfr.source : null;
+      const _LF_VERSION = 'real-outline-v1';
+      const _prev0 = store.get(key);
+      if (_lfSource && _prev0 && _prev0.letter && _prev0.letter.strokes
+          && _prev0.letterformSource === _lfSource && _prev0.letterformVersion === _LF_VERSION) {
+        this._letterShapesReused = (this._letterShapesReused | 0) + 1;
+        return c;
+      }
       // Big and centred so the trace has real pixels to read. A letter drawn at
       // caption size would trace to a handful of specks.
       // ⭐ THREE LOOKS, NOT ONE — AND THIS IS WHERE HER HANDWRITING GETS ITS
@@ -2678,7 +2695,13 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       let rec = null;
       const variants = [];
       for (const look of LOOKS) {
-        const printed = ms.glyphStrokes(c, { ...look, bold: true, rgb: [235, 233, 238] });
+        // ⛔ `real: true` — THE TEACHER MUST BE A REAL LETTERFORM OR NOTHING.
+        // Without this flag `glyphStrokes` could hand back the 5x7 bitmap when
+        // no typeface loaded, and she would bank a three-pixel 'r' as a learned
+        // shape with every instrument reading healthy. An empty return here is
+        // the honest outcome ("she writes nothing for those rather than stamp a
+        // font she never learned"), and the boot log already said why.
+        const printed = ms.glyphStrokes(c, { ...look, bold: true, rgb: [235, 233, 238], real: true });
         if (!printed || !printed.length) continue;
         const r = await ms.sketch(printed, { maxSide: 256 });
         if (!r || !r.channels) continue;
@@ -2698,7 +2721,41 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         if (!mine || !mine.length) continue;
         const norm = this._normaliseLetterStrokes(mine);
         if (!norm || !norm.strokes || !norm.strokes.length) continue;
-        variants.push(norm);
+        // ⭐⭐ WHERE THE LETTER SAT IN THE FRAME SHE WAS SHOWN — carried with the
+        // trace (2026-10-29). `_normaliseLetterStrokes` fits every glyph to its
+        // own [0,1]² box, which is right for scaling and WRONG for placing: it
+        // discards the baseline and the x-height, so her hand drew every letter
+        // at full cell height. Measured the day real outlines arrived: the
+        // teacher's 'r' was 83px tall (x-height), hers was 173px — the same as
+        // her 'l'. Uniform-height letters is what bad handwriting looks like,
+        // and the 5x7 bitmap never had real proportions to lose. These four
+        // fractions are the glyph's ink extent inside the look's own frame
+        // (x, y, size), so `handwrittenStrokes` can put an 'e' at x-height and
+        // hang a 'p' below the line, in the same frame the teacher used — which
+        // is also what makes the practice comparison align.
+        // ⚠ THE FRAME IS THE PRINTED GLYPH'S INK, NOT THE SKELETON'S BBOX. The
+        // first cut measured `mine` (the centreline trace), and a stem's skeleton
+        // is a single vertical line: `right === left`, zero width. The width guard
+        // downstream then refused the frame and the letter fell back to full cell
+        // height — measured as her 'l' running the whole cell while 'h', 'e' and
+        // 'o' honoured theirs. Same zero-extent trap `_normaliseLetterStrokes`
+        // records for `- _ | ! :`, one function over. `printed` is the glyph as
+        // drawn — scanline runs with real stroke width — so every glyph has a
+        // non-zero extent on both axes, and the frame describes where the LETTER
+        // sat, which is what her hand needs to place it.
+        let fMinX = Infinity, fMinY = Infinity, fMaxX = -Infinity, fMaxY = -Infinity;
+        for (const s of printed) {
+          if (!s) continue;
+          const xs = s.type === 'point' ? [s.x] : [s.x0, s.x1];
+          const ys = s.type === 'point' ? [s.y] : [s.y0, s.y1];
+          for (const px of xs) { if (Number.isFinite(px)) { if (px < fMinX) fMinX = px; if (px > fMaxX) fMaxX = px; } }
+          for (const py of ys) { if (Number.isFinite(py)) { if (py < fMinY) fMinY = py; if (py > fMaxY) fMaxY = py; } }
+        }
+        const frame = (Number.isFinite(fMinX) && Number.isFinite(fMinY) && look.size > 0) ? {
+          left: (fMinX - look.x) / look.size, right: (fMaxX - look.x) / look.size,
+          top: (fMinY - look.y) / look.size, bot: (fMaxY - look.y) / look.size,
+        } : null;
+        variants.push(frame ? { ...norm, frame } : norm);
         if (!rec) rec = r;
       }
       // ⚠ A letter with no usable trace is REFUSED, never banked blank — a blank
@@ -2726,7 +2783,12 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         // ⚠ An older entry has no `variants` key; the writer must treat its
         // absence as "one reading", not as an error.
         letter: { ch: c, strokes: variants[0], variants },
+        // Provenance of the trace, so the next boot can tell "already learned
+        // from this teacher" from "learned from the bitmap" and skip only the first.
+        letterformSource: _lfSource,
+        letterformVersion: _LF_VERSION,
       });
+      this._letterShapesTraced = (this._letterShapesTraced | 0) + 1;
       this._vmTrimResident(store);
       this._vmSaveSoon();
       return c;
@@ -2860,8 +2922,20 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // `_letterEntry` still falls back to the sibling case per character, so a word
     // she could write before is still a word she can write.
     const label = String(text || '').slice(0, 14);
-    const size = Math.max(0.03, Math.min(0.3, opts.size ?? 0.08));
-    const gap = size * 0.28;
+    // ⛔ THIS CEILING MUST MATCH `glyphStrokes`' (0.95 as of 2026-10-29). The
+    // practice loop hands the SAME x/y/size to the printed reference and to her
+    // hand and scores the resemblance; when the reference stopped clamping at
+    // 0.3 and this still did, a `size: 0.34` request produced a teacher at 0.34
+    // and a hand at 0.30 — a 13% scale gap that weight/slant/commit cannot
+    // optimise away, so practice would have chased a penalty it did not cause.
+    const size = Math.max(0.03, Math.min(0.95, opts.size ?? 0.08));
+    // ⭐ THE GAP MATCHES THE TEACHER'S ADVANCE (2026-10-29). `glyphStrokes` steps
+    // `gh * 0.12` between real letterforms; this stepped `size * 0.28`, so the
+    // same word came out 1.34x wider in her hand than on the page she copied
+    // (measured: 234px vs 175px for a five-letter word). The practice loop
+    // scores her word against the teacher's at identical x/y/size, so a layout
+    // gap it cannot optimise away is a standing penalty, not a skill.
+    const gap = size * 0.12;
     const rgb = opts.rgb || [226, 224, 230];
     // Measure first: the word's width depends on which letters she can write and
     // on their individual aspects, so it cannot be assumed uniform.
@@ -2876,9 +2950,17 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       // deterministic for a given label.
       const L = this._pickLetterVariant(e, label, cells.length, opts.hand);
       if (!L || !L.strokes || !L.strokes.length) { skipped++; continue; }
-      const aspect = Number(L.aspect) > 0 ? L.aspect : 0.7;
-      const w = size * Math.min(1.4, Math.max(0.18, aspect));
-      cells.push({ L, w });
+      // ⭐ WIDTH FROM THE FRAME WHEN SHE HAS ONE. A trace banked with its
+      // placement carries the glyph's real width as a fraction of the shared
+      // frame — an 'i' narrow, an 'm' wide, both at their true proportion to the
+      // letter height. The aspect path below is the frame-less reading for
+      // entries banked before placement was recorded; the first boot after the
+      // real-letterform change re-traces all 94, so it is transitional.
+      const f = L.frame && Number.isFinite(L.frame.left) && Number.isFinite(L.frame.right) && L.frame.right > L.frame.left ? L.frame : null;
+      const w = f
+        ? size * Math.min(1.4, Math.max(0.03, f.right - f.left))
+        : size * Math.min(1.4, Math.max(0.18, Number(L.aspect) > 0 ? L.aspect : 0.7));
+      cells.push({ L, w, f });
       totalW += w + gap;
       wrote++;
     }
@@ -2930,15 +3012,28 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     const out = [];
     for (const cell of cells) {
       if (!cell) { x += drawSize * 0.5 + drawGap; continue; }
+      // ⭐⭐ PLACE BY THE FRAME (2026-10-29). `_normaliseLetterStrokes` fits a
+      // trace to its own [0,1]² box with the LONGER axis at 1, which is right for
+      // scaling and threw away the baseline: `py = y + p[1] * drawSize` drew
+      // every letter at full cell height, so her 'r' (teacher: 83px, x-height)
+      // came out 173px — as tall as her 'l'. With a frame, the trace is mapped
+      // back to where the glyph sat in the look it was shown in: `S` is the
+      // frame-unit extent of the trace's longer axis, so `p * S` is in frame
+      // units again, and `f.top` is the glyph's real top. An 'e' lands at
+      // x-height, a 'p' hangs below the line, and her word aligns with the
+      // teacher's for the practice comparison. A frameless entry (banked before
+      // placement was recorded) draws exactly as it always did.
+      const f = cell.f || null;
+      const S = f ? Math.max(f.right - f.left, f.bot - f.top) : 1;
       for (const s of cell.L.strokes) {
         // `commit` trims the TAIL of a stroke rather than sampling it randomly:
         // a hand that does not follow through leaves the end of the mark short,
         // it does not drop pieces out of the middle.
         const src = hc >= 1 ? s.pts : s.pts.slice(0, Math.max(2, Math.round(s.pts.length * hc)));
         const pts = src.map((p) => {
-          const py = y + p[1] * drawSize;
+          const py = y + (f ? (f.top + p[1] * S) : p[1]) * drawSize;
           // slant shears toward the top of the line, the way a real slant does
-          const sx = x + p[0] * cell.w + hs * ((y + drawSize) - py);
+          const sx = x + (f ? p[0] * S * drawSize : p[0] * cell.w) + hs * ((y + drawSize) - py);
           return [sx, py];
         });
         if (pts.length >= 2) out.push({ ...s, pts, rgb, w: (s.w ?? 0.006) * hw });

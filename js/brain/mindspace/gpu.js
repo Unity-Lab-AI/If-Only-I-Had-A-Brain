@@ -572,6 +572,31 @@ export class MindSpaceGPU {
   // the percept value-vector is cheap — always CPU (reads coeffs already in the rec)
   describe(rec, dim) { return CPU.describeEquational(rec, dim); }
 
+  // ⛔ REAL LETTERFORMS, INJECTED. This file is bundled for the browser and
+  // cannot read a font file, so `server/letterforms.js` parses a real typeface
+  // and hands the outlines in here. See `glyphStrokes` for why the bitmap it
+  // replaces was the reason her handwriting could not improve.
+  //
+  // ⚠ `setLetterforms(null)` is a legitimate call meaning "no real font was
+  // found on this machine" — it must leave `_letterforms` unset so that callers
+  // passing `real: true` get nothing, loudly, instead of a bitmap.
+  setLetterforms(data) {
+    this._letterforms = (data && data.glyphs && Object.keys(data.glyphs).length) ? data : null;
+    return this.letterformsReady();
+  }
+
+  letterformsReady() {
+    const g = this._letterforms && this._letterforms.glyphs;
+    if (!g) return { ready: false, glyphs: 0, source: null };
+    const keys = Object.keys(g);
+    return {
+      ready: true,
+      glyphs: keys.filter((k) => !g[k].blank && g[k].contours.length).length,
+      blank: keys.filter((k) => g[k].blank).length,
+      source: this._letterforms.source || null,
+    };
+  }
+
   // TU.29.5 — equation-domain blend of two stored percepts (coefficient-set
   // union + lerp, transform.js morphField). This is the RECOMBINATION step of
   // imagination: two seen field Cs fuse into one imagined field C without ever
@@ -838,10 +863,20 @@ export class MindSpaceGPU {
     return rec;
   }
 
-  // Letters as STROKES rather than a raster stamp. Converts each character's 5x7
-  // bitmap (FONT5X7 — single source of truth shared with the glyph raster) into
-  // line strokes for sketch(): horizontal + vertical runs of lit cells become
-  // line segments, isolated single cells become points.
+  // Letters as STROKES rather than a raster stamp.
+  //
+  // ⭐ 2026-10-29 — THE LETTERFORM SOURCE IS A REAL TYPEFACE WHEN ONE IS
+  // INJECTED (`setLetterforms`, fed by server/letterforms.js). The loop below
+  // takes that branch first and emits scanline runs from true outlines. The
+  // `FONT5X7` bitmap path that follows it is reached only when no typeface has
+  // been injected AND the caller did not demand `real: true` — which today means
+  // the browser bundle and the symbol-thought raster (`symbolGlyphText`, which
+  // still reads FONT5X7 directly). ⚠ So FONT5X7 is NO LONGER "the single source
+  // of truth shared with the glyph raster": the pen lane and the symbol raster
+  // now diverge, deliberately, and porting the raster is filed as its own item.
+  //
+  // Bitmap path: horizontal + vertical runs of lit cells become line segments,
+  // isolated single cells become points.
   //
   // ⛔⛔ THESE ARE TYPESET LETTERFORMS, NOT HANDWRITING, AND THIS COMMENT USED TO
   // SAY THE OPPOSITE. It read *"her own hand"* and *"her CLEAN trained hand"*,
@@ -863,7 +898,14 @@ export class MindSpaceGPU {
     if (!t) return [];
     const x0 = Math.max(0, Math.min(1, opts.x ?? 0.1));
     const y0 = Math.max(0, Math.min(1, opts.y ?? 0.78));
-    const size = Math.max(0.03, Math.min(0.3, opts.size ?? 0.08));   // glyph height in canvas units
+    // ⛔ THE 0.3 CEILING THAT WAS HERE STARVED THE LEARNING LANE. `learnLetterShape`
+    // asks for 0.62 / 0.57 / 0.66 ("big and centred so the trace has real pixels
+    // to read") and was silently handed 0.3 — a lowercase letter is ~46% of the
+    // frame on top of that, so a real 'r' skeletonised to FOUR points at 192px.
+    // Measured 2026-10-29 the moment real outlines arrived; the 7-row bitmap had
+    // nothing finer to lose. Captions no longer come through here (they use her
+    // own hand), so the ceiling protects nothing. 0.95 leaves the frame on-canvas.
+    const size = Math.max(0.03, Math.min(0.95, opts.size ?? 0.08));   // glyph height in canvas units
     // STYLE (operator, 2026-07-16: "bold and sillouetted and highlighted and all that
     // kind of stuff ... not just pencil style text"). Strokes carry a real
     // THICKNESS `w` (normalized) so the rasterizers paint filled BOLD letters,
@@ -900,9 +942,67 @@ export class MindSpaceGPU {
     const dot = (x, y, rgb) => {
       strokes.push({ type: 'point', x: shx(x, y), y, r: font === 'bubble' ? 1 : 0, rgb, w: thick });
     };
+    // ⛔⛔ REAL LETTERFORMS (2026-10-29). The operator reported her handwriting
+    // was not improving and asked that drawing and writing be one system with
+    // her brain, not a bolted-on script. He was right, and the proof was the
+    // source: the old `FONT5X7` lowercase 'r' had THREE LIT PIXELS
+    // on its widest row. Her tracer was faithful to a three-pixel teacher, and
+    // the practice loop scored her against that same bitmap — so ⭐ PRACTICE
+    // COULD ONLY CONVERGE ON THE BITMAP, never past it. A practice loop cannot
+    // exceed its reference.
+    //
+    // `server/letterforms.js` now reads real vector outlines from a real
+    // typeface (measured: the same 'r' is ONE CONTOUR OF 69 POINTS) and injects
+    // them via `setLetterforms`. They are emitted here as HORIZONTAL SCANLINE
+    // RUNS — the same stroke shape the bitmap produced, so every consumer
+    // downstream is untouched — but computed from the true outline at ~72 rows
+    // instead of 7, with even-odd across ALL of a glyph's contours so a counter
+    // (the hole in 'a', 'o', 'e') stays open. ⚠ Filling each contour separately
+    // would plug every counter, and outlining instead of filling would hand the
+    // skeletoniser a border — which is exactly the defect that made her
+    // handwriting the outline of a letter once already.
+    const _LF = this._letterforms && this._letterforms.glyphs;
+    // ⛔ NO SILENT DEGRADE. A caller that needs the real teacher says so, and
+    // gets NOTHING when it is unavailable rather than a bitmap wearing the same
+    // function name. The learning lane and the practice reference both pass it.
+    if (opts.real && !_LF) return [];
+    const _ROWS = Math.max(24, Math.min(200, opts.rows || 72));
     for (const ch of t) {
       const glyph = fontGlyph(ch);
       const col = colors ? colors[li % colors.length] : baseRgb;
+      const _lf = _LF ? _LF[ch] : null;
+      if (_lf && !_lf.blank && _lf.contours.length) {
+        const gwid = Math.max(0.02 * gh, (_lf.widthFrac || 0.5) * gh);
+        const rowH = gh / _ROWS;
+        // Thickness 1.7x the row pitch so adjacent runs merge into solid ink —
+        // a filled glyph is what the centreline tracer needs to return a PEN
+        // PATH rather than a contour.
+        const runW = Math.max(0.0015, rowH * 1.7);
+        for (let r = 0; r < _ROWS; r++) {
+          const fy = (r + 0.5) / _ROWS;
+          const xs = [];
+          for (const cont of _lf.contours) {
+            for (let i = 0, j = cont.length - 1; i < cont.length; j = i++) {
+              const a = cont[i], b = cont[j];
+              if ((a.y > fy) !== (b.y > fy)) xs.push(b.x + (a.x - b.x) * (fy - b.y) / ((a.y - b.y) || 1e-9));
+            }
+          }
+          if (xs.length < 2) continue;
+          xs.sort((p, q) => p - q);
+          const y = y0 + fy * gh;
+          for (let k = 0; k + 1 < xs.length; k += 2) {
+            const xa = cx + xs[k] * gh, xb = cx + xs[k + 1] * gh;
+            if (xb - xa < rowH * 0.35) { dot((xa + xb) / 2, y, col); continue; }
+            strokes.push({ type: 'line', x0: shx(xa, y), y0: y, x1: shx(xb, y), y1: y, rgb: col, w: runW });
+          }
+        }
+        // PROPORTIONAL ADVANCE — real letterforms carry their own widths, so an
+        // 'i' no longer occupies the same cell as a 'w'. The bitmap path below
+        // is monospaced because a 5x7 grid has nothing else to offer.
+        cx += gwid + gh * 0.12;
+        li++;
+        continue;
+      }
       if (glyph && font === 'dots') {
         // DOT-MATRIX letterform — every lit cell is a dot; no runs at all.
         for (let r = 0; r < 7; r++) for (let c = 0; c < 5; c++) {
