@@ -3670,9 +3670,20 @@ const SERVER_GPU_MIXIN = {
    * the Cloudflare tunnel replaced — so it is NOT the tunnel's number and must
    * not be quoted as one. The tunnel's real rate is unmeasured.
    *
-   * ⛔ Do not convert this lane to binary until the forensics line has NAMED
-   * the op (it prints the op as of the same change). Four ops carry a rec;
-   * switching the wire format on a guess spends the work on the wrong one.
+   * ⭐ THE OP NAMED ITSELF ON THE NEXT BOOT: `describe`, 4 of 4 LARGE sends at
+   * 2.0-2.4MB, with the other four routed ops contributing ZERO — and it was
+   * NOT the one to guess (`perceive` carries a 512² rgba_b64 and never tripped
+   * the wire). So `describe` was REMOVED from this lane entirely rather than
+   * re-encoded: `describeEquational` is a single linear pass over the rec's
+   * nonzero coefficients, which is not GPU work, and it was paying 2.4MB to
+   * return a 64-value percept. See mindspace-proxy.js `describe` for the full
+   * reasoning and the parity read that made it safe.
+   *
+   * ⚠ Still on this lane and still shipping a whole rec: `traceLineArt` and
+   * `stylizeField`. Those are genuine lifting work and BELONG on the card — but
+   * they carry the same payload shape and simply did not cross 2MB on the boots
+   * measured. If the tripwire names one of them later, that is a real finding
+   * and not a repeat of this one.
    *
    * JSON+base64 is the wire today. Timeout → null; the
    * caller (MindSpaceWorkerProxy) holds the rollout ramp until v0.3.11 is the

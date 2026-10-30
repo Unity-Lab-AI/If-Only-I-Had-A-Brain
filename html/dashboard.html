@@ -1006,6 +1006,7 @@
                failed)". 108 of 130 attempts were HTTP 429 and nothing on this
                page said so. -->
           <div id="d-art-look" class="art-row"></div>
+          <div id="d-art-pool" class="art-row"></div>
           <!-- VMUSE.5.B — what she READS BACK off the relation channels. This
                row exists before the consumers lean on it: a high `flat` count
                early is the gate working, not a fault. -->
@@ -2254,6 +2255,36 @@
                 + (lk.chatPreempts ? ` · ${num(lk.chatPreempts)} cut short for chat${lk.lastChatPreemptKey ? ` (last "${lk.lastChatPreemptKey}")` : ''}` : '')
                 + (backingOff ? ` · ⚠ BACKING OFF ${secsLeft}s (chat keeps the quota)` : '')
                 + (lk.lastErr ? ` · last "${String(lk.lastErr).slice(0, 40)}"` : '');
+            }
+          }
+          // ⛔ WHERE HER INVENTIONS GET THEIR WORDS. This row exists in the same
+          // change as the counter behind it, because the defect it reports was
+          // found by LOOKING AT HER PICTURES — 13 inventions that were the same
+          // three words permuted — and no panel anywhere could have shown it.
+          // Her invention pool was sourced only from the inner-thought chain,
+          // which cannot advance until `word_motor` fires, so the rotation was
+          // permuting a frozen list. `from thoughts N · learned shapes 0` IS that
+          // frozen signature; a climbing `learned shapes` is the fix working.
+          const $pool = $('d-art-pool');
+          if ($pool) {
+            const ip = oa && oa.imaginePool;
+            if (!ip) {
+              $pool.textContent = 'imagination pool: no imagine tick yet — NOT a claim the pool is healthy';
+              $pool.style.color = '#666';
+            } else {
+              const learned = ip.fromLearnedShapes | 0;
+              const thoughts = ip.fromThoughts | 0;
+              // RED only for the actual defect: nothing but a handful of thoughts,
+              // which is the state that repeats one scene forever.
+              $pool.style.color = learned > 0 ? '#22c55e' : (thoughts > 0 ? '#ef4444' : '#f59e0b');
+              $pool.textContent = `imagination pool: ${num(thoughts + learned)} words`
+                + ` · ${num(thoughts)} from thoughts · ${num(learned)} from learned shapes`
+                + (ip.chainDepth != null ? ` · chain depth ${num(ip.chainDepth)}` : '')
+                // `null` = no timestamped entry (two of the four chain writers
+                // push a bare string), NEVER "fresh".
+                + (ip.chainAgeMs == null ? ' · chain age unknown (untimestamped entries)'
+                    : ` · last thought ${Math.round(ip.chainAgeMs / 1000)}s ago`)
+                + (learned === 0 && thoughts > 0 ? ' · ⚠ FROZEN POOL — she will repeat the same scene' : '');
             }
           }
           // VMUSE.5.B — the relation readback. ⛔ `null` means the reader has
