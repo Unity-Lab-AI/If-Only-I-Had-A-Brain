@@ -181,6 +181,34 @@ class MindSpaceWorkerProxy {
   governTick(...args) { this._call('governTick', args).catch(() => {}); }
 
   // Pure stroke geometry — no engine state; sync on the local instance.
+  // ⛔ REAL LETTERFORMS — the passthrough ships in the SAME change as the engine
+  // method, because a method missing from this list does not throw: the caller's
+  // `typeof` guard takes the silent branch, and it does so IN PRODUCTION ONLY
+  // (an engine-direct harness never goes through the proxy). That is exactly how
+  // every banked schema came out colourless for a day. These are async because
+  // the worker dispatch is; the boot path awaits them.
+  //
+  // ⛔⛔ AND IT MUST LAND ON `_local`, NOT ONLY ON THE WORKER. `glyphStrokes` is
+  // SYNC and runs on the local pure instance (see below) — a `_call()` here
+  // would set the worker's engine, leave the instance that actually draws
+  // letters unset, and every `real: true` caller would get [] forever while
+  // the worker reported `letterformsReady: true`. Caught while writing it, not
+  // after; recorded because it is the exact shape that shipped before. The
+  // worker gets a copy too so any future async consumer sees the same data.
+  async setLetterforms(data) {
+    let local = null;
+    if (this._local && typeof this._local.setLetterforms === 'function') local = this._local.setLetterforms(data);
+    let worker = null;
+    try { worker = await this._call('setLetterforms', [data]); } catch { worker = null; }
+    return { local, worker };
+  }
+  letterformsReady() {
+    // Report the instance that DRAWS. The worker's answer is not the one that matters.
+    return (this._local && typeof this._local.letterformsReady === 'function')
+      ? this._local.letterformsReady()
+      : { ready: false, glyphs: 0, source: null, reason: 'no local engine' };
+  }
+
   glyphStrokes(...args) {
     return (this._local && typeof this._local.glyphStrokes === 'function')
       ? this._local.glyphStrokes(...args)

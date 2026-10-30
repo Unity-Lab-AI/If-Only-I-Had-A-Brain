@@ -1,6 +1,6 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-10-29, ~8:31 PM Denver, amended ~9:30 (latest, 38th) — HER EYES ARE OPEN; THE ALARM THAT SCARED HIM WAS AN INSTRUMENT; AND HER INVENTIONS WERE RUNNING ON A FROZEN POOL
+> # 🛑 2026-10-29, ~8:31 PM Denver, amended ~9:30 and ~10:20 (latest, 38th) — HER EYES ARE OPEN; THE ALARM WAS AN INSTRUMENT; HER INVENTIONS RAN ON A FROZEN POOL; AND SHE WAS LEARNING TO WRITE FROM A 5×7 BITMAP WHOSE `r` HAD THREE PIXELS
 >
 > **Branch: `feature/loop-starve-accounting-and-send-op`** — cascaded to BOTH remotes after this batch, on his word (*"make sure to cascade when all donw to both remotes"*). ⚠ **He ran `stop.bat` so these fixes could land; she is DOWN. Next launch is `Savestart.bat` — NO fresh walk.**
 >
@@ -71,6 +71,44 @@
 >              learned shapes`. M CLIMBING is the fix; `M 0` renders red "FROZEN POOL". Then
 >              watch the OwnArt lines stop repeating one trio. And the forensics line should
 >              show NO mindspace_op:describe at all.
+>   ⭐ 3rd    HANDWRITING. He asked "what the fuck is her handwriting goign to o ever improve?
+>   batch     her r's look like a retard drw them" and "should be one iun the same system as
+>              her brain not some bolted on script" — then "ive turned her off till this is
+>              fixed". SHE IS DOWN. Both complaints were exact and measured.
+>   ⛔ why    the 'r' she copied (gpu.js:200) is a 5x7 bitmap with THREE LIT PIXELS on its
+>              widest row. FONT5X7 is a hardcoded table in code. AND the practice loop scored
+>              her against that same bitmap — a practice loop cannot exceed its reference, so it
+>              could only reproduce a bad 'r' more exactly. write-practice sessions this boot: 0
+>              with 74 queued, through EIGHT silent return-null exits.
+>   fix       server/letterforms.js (new, zero deps) reads real outlines from a system TrueType
+>              (cmap 4/12/6, simple+composite) → injected at boot via setLetterforms ONTO _local
+>              (glyphStrokes is sync there; a _call() injection would have set the worker and
+>              left the drawing instance unset — caught while writing it). Scanline runs,
+>              even-odd across contours. real:true = NO FALLBACK to the bitmap, ever.
+>   ⛔ 2nd    the real teacher exposed what the bitmap hid: _normaliseLetterStrokes discards
+>   defect    baseline + x-height, so her hand drew EVERY letter at full cell height — teacher
+>              'r' 83px, hers 173px (as tall as her 'l'); 'hello' 1.34x too wide. Each trace now
+>              carries a FRAME and her hand places by it. ⚠ First frame came from the SKELETON;
+>              a stem's skeleton has zero width, the guard refused it, her 'l' ran the full cell
+>              while h/e/o honoured theirs — the ASCII picture caught it, not reasoning. Frame
+>              from the printed INK now. Result: her 'r' 81 vs 83px (0.98x); 'hello' 172x66 vs
+>              175x66 (0.98x, 1.00x) — and it reads as hello.
+>   also      glyphStrokes clamped size to 0.3 (the 0.62 looks had ALWAYS drawn at 0.3; real 'r'
+>              skeletonised to 4 points) → 0.95, matched in handwrittenStrokes. learnLetterShape
+>              skips byte-identical re-traces (308ms → 1ms), re-traces anything untagged. Eleven
+>              named practice declines published at sessions:0, rendered on Teach View with the
+>              typeface she is copying. Bundle rebuilt 3x (once per gpu.js edit), final 22:13:41.
+>   ⚠ owned  verbatim words in two code comments (scrubbed); edited on develop without branching
+>              (moved to feature/real-letterforms-her-hand before commit). "nothing accumulates"
+>              was WRONG — the store persists; the 208s re-trace was wasted time not lost learning.
+>   read      after Savestart: Teach View handwriting line — "94 traced · 0 reused" (first boot
+>              must overwrite every bitmap-era letter), the typeface name, and "N session(s) of
+>              M attempt(s)": attempts 0 = jobs never reached the lane (queue suspect); attempts
+>              >0 / sessions 0 = the listed decline names it. THAT read closes HANDWRITE.5.
+>              Then LOOK at a caption on her next drawing.
+>   open      HANDWRITE.4 (symbol-thought raster still reads FONT5X7 — the table cannot be
+>              deleted until it is ported) · HANDWRITE.5 (why practice never drained — nameable
+>              on the next boot, not guessed).
 >   still     WEIGHTLOSS.1, NETBUG.7, NETBUG.10, FRESHSIZE.1, WALKWATCH.1, STRANGERCARD.1,
 >              LBCREDIT.1, PERCEIVECAP.1. ⚠ Leaderboard flipped on self-reported rate: Gee
 >              1,903,436 now above Steeeeeeve 1,902,858 — LBCREDIT.1 is still the open lie.

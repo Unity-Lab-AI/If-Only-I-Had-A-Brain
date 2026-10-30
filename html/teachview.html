@@ -2926,9 +2926,41 @@ function renderLetters(st) {
   if (L.lettersOf) parts.push(`letters ${L.lettersLearned || 0}/${L.lettersOf}`);
   if (L.digitsOf) parts.push(`numbers ${L.digitsLearned || 0}/${L.digitsOf}`);
   if (L.marksOf) parts.push(`marks ${L.marksLearned || 0}/${L.marksOf}`);
+  // 2026-10-29 — `traced` vs `reused` says whether THIS boot re-traced the set
+  // (the first boot after the real-letterform change must show traced 94) or
+  // reused traces banked from the same typeface.
+  if (L.traced || L.reused) parts.push(`this boot: ${L.traced || 0} traced &middot; ${L.reused || 0} reused`);
+  // WHAT SHE IS COPYING. Until 2026-10-29 the answer was a 5x7 bitmap table in
+  // the repo whose lowercase 'r' had three lit pixels, and no page said so.
+  const src = st && st.letterformSource;
+  const srcLine = !src
+    ? `<div style="color:var(--tv-dim);margin-top:5px">letterform source: not published by this build.</div>`
+    : (src.ready
+      ? `<div style="color:var(--tv-dim);margin-top:5px">she learns her letters from a REAL typeface: <span style="color:var(--tv-good)">${knobEsc(String(src.source || '').split(/[\\/]/).pop())}</span> &middot; ${src.glyphs || 0} outlines</div>`
+      : `<div style="color:var(--tv-warn);margin-top:5px">⛔ NO REAL TYPEFACE loaded — she is learning NO letter shapes this boot (by design, never a bitmap). Set DREAM_LETTERFORM_FONT.</div>`);
+  // PRACTICE — and its DECLINES, so "0 sessions" stops meaning two different
+  // things. `null` = no attempt has even been made; attempts with 0 sessions =
+  // every attempt declined, and the reasons are listed. `gap-cooldown` and
+  // `not-learned-yet` are pacing and the honest early state, not faults.
+  const W = st && st.writingPractice;
+  let pracLine;
+  if (!W) pracLine = `<div style="color:var(--tv-dim);margin-top:5px">handwriting practice: no attempt yet this boot — NOT a claim the lane is healthy.</div>`;
+  else {
+    const dec = W.declines && Object.keys(W.declines).length
+      ? Object.entries(W.declines).map(([k, v]) => `${knobEsc(k)} ×${v}`).join(', ')
+      : '';
+    const realDeclines = W.declines ? Object.entries(W.declines).filter(([k]) => k !== 'gap-cooldown' && k !== 'not-learned-yet').reduce((a, [, v]) => a + v, 0) : 0;
+    const pcol = (W.sessions | 0) > 0 ? 'var(--tv-good)' : (realDeclines > 0 ? 'var(--tv-warn)' : 'var(--tv-dim)');
+    pracLine = `<div style="color:${pcol};margin-top:5px">handwriting practice: <b>${W.sessions | 0}</b> session(s) of ${W.attempts | 0} attempt(s)`
+      + ((W.sessions | 0) > 0 && W.lastText != null ? ` &middot; last "${knobEsc(String(W.lastText))}" ${W.lastBase} → ${W.lastBest} (${W.lastKept} nudges kept)` : '')
+      + (dec ? `<div style="color:var(--tv-dim);margin-top:2px">declined: ${dec}</div>` : '')
+      + `</div>`;
+  }
   el.innerHTML = `<div style="font-size:14px;color:${col}"><b>${n} of ${of}</b> characters learned in her own hand</div>`
     + (parts.length ? `<div style="color:var(--tv-dim);margin-top:3px">${parts.join(' &middot; ')}</div>` : '')
     + (L.letters ? `<div style="margin-top:4px;font-family:var(--tv-font);letter-spacing:.22em;word-break:break-all">${knobEsc(L.letters)}</div>` : '')
+    + srcLine
+    + pracLine
     + (n < of
       ? `<div style="color:var(--tv-dim);margin-top:5px">a drawing with no words on it is CORRECT right now — she skips a character she has not learned rather than substituting a font.</div>`
       : '<div style="color:var(--tv-dim);margin-top:5px">she can write anything on a keyboard in her own hand — every case, every number, every mark.</div>');

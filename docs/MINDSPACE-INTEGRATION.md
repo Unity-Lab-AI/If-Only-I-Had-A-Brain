@@ -139,6 +139,23 @@ The recall layer that turns the mind's eye from a de-novo renderer into IMAGINAT
 - **Recall-first order** in `_imagineTick` / IMG-SEE: recall (single-field abstract/dream — the two-image morph was REMOVED per MEYE.3; a composite of two seen frames is static, not imagination) → de-novo only for unseen
   concepts. De-novo glyphs demoted to symbol thoughts (numbers/letters); abstract color/mood
   field otherwise (`symbolGlyphText` in `mindspace/gpu.js`).
+- ⛔⛔ **Her LETTERFORMS come from a real typeface, not from `FONT5X7` (2026-10-29).**
+  `glyphStrokes` — the printed letter she looks at in `learnLetterShape` and the
+  reference `_practiceWriting` scores her against — used to convert the 5×7
+  bitmap table, whose lowercase `r` has **three lit pixels** on its widest row.
+  Her tracer was faithful to a three-pixel teacher, and because the practice
+  loop's reference was the same bitmap, **practice could only converge on the
+  bitmap, never past it.** `server/letterforms.js` now reads real vector outlines
+  from a system font (TrueType `cmap` 4/12/6, `loca`, `glyf` simple + composite;
+  zero new dependencies) and `brain-server.js` injects them at boot via
+  `setLetterforms` — ⚠ **onto the proxy's `_local` instance, because
+  `glyphStrokes` is sync and runs there, not on the worker.** Emission is
+  scanline runs with even-odd across all contours, so a counter stays open.
+  ⛔ **No fallback:** callers that need the real teacher pass `real: true` and
+  get nothing without a typeface. ⚠ **The symbol-thought raster
+  (`symbolGlyphText`) still reads `FONT5X7` directly** — the two lanes diverge
+  deliberately until that raster is ported, and the table cannot be deleted
+  before then (filed on the board and in the known-issues ledger).
 - **Persistence** — `server/visual-memory.json`, LRU 384 concepts, debounced 30s atomic write.
 ## Consciousness de-gating — CGATE batch (2026-06-27)
 

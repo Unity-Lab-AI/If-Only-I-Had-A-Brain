@@ -5,6 +5,52 @@
 
 ---
 
+## 2026-10-29 (3rd) — `HANDWRITE`: SHE WAS LEARNING TO WRITE BY COPYING A 5×7 BITMAP, AND HER PRACTICE LOOP COULD ONLY CONVERGE ON IT
+
+Gee, verbatim, in full: *"and what the fuck is her handwriting goign to o ever improve? her r's look like a retard drw them her drawnming and handwroiting should be one iun the same system as her brain not some bolted on script"*
+
+Gee, verbatim: *"if we need to we pre program her weights to know how"*
+
+Gee, verbatim: *"right?"*
+
+Gee, verbatim: *"ive turned her off till this is fixed"*
+
+**The source she copied**, `js/brain/mindspace/gpu.js:200` — a 5-wide bitmap whose `r` shoulder is **three lit pixels**:
+
+```
+  'r':  00000
+        00000
+        10110      <- the shoulder
+        11001
+        10000
+        10000
+        10000
+```
+
+⛔⛔ **HE WAS RIGHT ON BOTH COUNTS, AND "WILL IT EVER IMPROVE?" WAS A MEASURED NO, THREE WAYS.** **①** `FONT5X7` was a **hardcoded bitmap table in code** — the tracing was equational, the *source* was a lookup table, the same shape as the word-lists killed by DRAWGATE. **②** ⭐ **The practice loop existed and its reference was the bitmap.** `_practiceWriting` scored her hand against `glyphStrokes(key)`, so **practice could only converge on the bitmap, never past it. A practice loop cannot exceed its reference.** **③** `write-practice sessions: 0` with 74 jobs queued, and the lane had **eight silent `return null` exits**, so the zero could not tell *never drained* from *drained and declined 74 times*.
+
+⚠ **Corrected in the same pass, mine:** *"nothing accumulates across boots"* was **wrong**. The letter store is sqlite and persists; the 208 s re-trace per boot produced an identical result — wasted time, not lost learning. Also mine: a banned-identifier grep that flagged the word `LETTERFORM.` at a sentence end, and a harness look that sampled one pixel per cell and rendered her hairline `r` as fifteen rows of dots while the bbox said 591 ink pixels — fixed to take the max over each cell before anything was concluded from it.
+
+**On *"pre program her weights"*:** right instinct, one layer too late. Pre-seeding bakes in the answer; the defect was that **she was shown a bad teacher**. The fix that serves *"one and the same system as her brain, not some bolted on script"* is to show her **real letterforms**, perceived through the same eyes, traced by the same `traceCentreline`, refined by the same practice loop her drawings use — and it **deletes** a hardcoded asset rather than adding one. Seeded weights remain available as a prior.
+
+**① `HANDWRITE.1` — a real typeface, read from a real font file, zero new dependencies.** `server/letterforms.js` (389 lines, new): table directory, `head`, `maxp`, `cmap` **formats 4, 12, 6**, `loca`, `glyf` simple + composite, quadratic contours flattened with the implied-midpoint and start-off-curve rules. ⚠ **The first cut read cmap format 4 only and reported "no mapping" for every character of Arial and Calibri** — measured Candara 10/10, Arial 0/10, Calibri 0/10 — which reads exactly like a broken font rather than a reader asking the wrong question. Discovery from real system faces per platform; `DREAM_LETTERFORM_FONT` overrides. **One shared vertical frame per font** (ascender `0.80 em` → descender `−0.22 em`): `l.top 0.106` vs `o.top 0.308`, `p.bot 1.003` vs `x.bot 0.784` — typography, not stamps. ⛔ **Server-side and injected**: the engine is bundled for the browser and cannot read a file; `brain-server.js` loads at boot and calls `setLetterforms` through the proxy. ⛔⛔ **THE TRAP, CAUGHT WHILE WRITING IT:** `glyphStrokes` is **sync on the proxy's `_local`**; a `_call()` injection would have set the worker's engine and left the drawing instance unset — every `real: true` caller `[]` forever while the worker reported ready. `setLetterforms` lands on `_local` first. Emission is **horizontal scanline runs** (the bitmap's stroke shape, so every consumer downstream is untouched) at ~72 rows with **even-odd across all of a glyph's contours** so counters stay open. ⛔ **No fallback:** the learning lane and the practice reference pass `real: true` and get nothing when no typeface parsed — never a silent bitmap. ⚠ **Found on contact:** `glyphStrokes` clamped `size` to 0.3, so the "big and centred" looks of 0.62 had *always* drawn at 0.3 — the real `r` skeletonised to **4 points**; ceiling 0.95, **matched in `handwrittenStrokes`** because a 0.34/0.30 teacher-vs-hand mismatch is a penalty practice cannot optimise away. ✅ Real `r` = **1 contour, 69 points** vs 3 lit pixels; 94/95 printables with contours; **14/14 through the real proxy + worker**; 94/94 glyphs trace to a pen path; the real `r` traces **tall-narrow (h/w 1.88)** where the bitmap `r` traced **square (0.93)**.
+
+**② `HANDWRITE.2` — her hand places letters where they sat.** The real teacher exposed what the bitmap hid: `_normaliseLetterStrokes` fits each trace to `[0,1]²` and **discards baseline and x-height**, so `handwrittenStrokes` drew every letter at full cell height. Measured through the real mixin: **teacher `r` 83 px, hers 173 px — as tall as her `l`**; `hello` **234 vs 175 px (1.34×)**, uniform height. Each trace now carries a **frame** (ink extent as fractions of the look: `r` `top 0.35 · bot 0.73`; `l.top 0.156` < `e.top 0.341`; `p.bot 0.958` > `e.bot 0.747`) and the hand maps the trace back into it; gap matched to the teacher's advance (`×0.12`, was `×0.28`). ⛔⛔ **A TRAP INSIDE THE FIX, caught by the picture:** the first frame was measured from the **skeleton**, and a stem's skeleton is one vertical line — `right === left` — so the width guard refused it and **her `l` ran the full cell while `h`/`e`/`o` honoured theirs** (word height 93 vs 66, 1.41×). The zero-extent trap `_normaliseLetterStrokes` already documents for `- _ | ! :`, reintroduced one function over. Frame now from the **printed ink**, non-zero on both axes for every glyph. ✅ **7/7: her `r` 81 vs 83 px (0.98×); `hello` 172×66 vs 175×66 (0.98×, 1.00×)** — and it reads as `hello`.
+
+**③ `HANDWRITE.3` — the ceiling is the typeface, and every decline has a name.** Practice reference = the real letterform. Eight bare exits → **eleven named declines** in `writingPractice.declines` + `attempts` + `lastDecline`, published at `sessions: 0`, rendered on Teach View with the letterform source. `gap-cooldown` / `not-learned-yet` worded as pacing and the honest early state. **Stats write mutates** (`Object.assign(_st, …)`) — the fresh literal would have wiped the declines on the first success. `learnLetterShape` **reuses** an entry tagged with this typeface + `real-outline-v1` (**308 ms → 1 ms**) and re-traces anything untagged — every bitmap-era letter, on the first boot. `letterShapes.traced/reused` and `state.letterformSource` published.
+
+**Open, filed:** `HANDWRITE.4` (the symbol-thought raster still reads `FONT5X7`; the table cannot be deleted until it is ported) · `HANDWRITE.5` (why zero practice sessions drained — **now nameable on the next boot** via the declines; not guessed, because `SUBSTEPS.5` was).
+
+⛔ **TWO LAW SLIPS OWNED.** The operator's verbatim words were in **two code comments** (`letterforms.js`, `gpu.js`) — scrubbed to neutral rationale before commit; verbatim lives in this file and the board only. And this batch was **edited on `develop`**: after the previous cascade I checked out `develop` per the rule and began editing without branching. Moved to `feature/real-letterforms-her-hand` with the working tree intact before anything was committed.
+
+⭐ **No fresh walk.** Letter shapes are re-learned per boot by design and the store overwrites bitmap-era entries on contact; nothing changes the curriculum, the geometry or the weights format. `stop.bat` already ran — her next start is `Savestart.bat`.
+
+**Verified:** `node --check` on all seven JS files, six `import()`s clean, all eight files pure CRLF, both Teach View inline script blocks parse, bundle rebuilt after every `gpu.js` edit (final 22:13:41, newer than the engine, verbatim absent from it), zero task-IDs or names in this batch's added lines (checked on the **diff**, not the files). Harnesses: letterform reader 7/7, hand pipeline 14/14, her replay 7/7 — all through production wiring, all deleted after the run.
+
+**Docs, every tree named:** `docs/TODO.md` (HANDWRITE.1–5) · `docs/FINALIZED.md` (this) · `docs/KNOWN_ISSUES.md` (`KI-52` fixed, `KI-53` open) · `docs/ADMIN-CONTROLS.md` (`DREAM_LETTERFORM_FONT` + the three new state fields) · `docs/SENSORY.md` (amendment ⑤ on the paragraph that has now been wrong three ways) · `docs/MINDSPACE-INTEGRATION.md` (the glyph source + the symbol-raster divergence) · `docs/TEACHVIEW-GUIDE.md` (the handwriting line) · `docs/NOW.md` · `docs/RESUME.md` · `html/teachview.html` · `wiki/{modules/visual-memory, modules/mindspace, modules/brain-server, concepts/the-anonymous-image-slot, gotchas/instruments-that-lie, index, log}`. **Unaffected and why:** `docs/ARCHITECTURE.md`, `HOW-IT-WORKS.md`, `SKILL_TREE.md`, `README.md`, `deploy/*`, `.claude/CLAUDE.md`, `html/legend.html`, `html/minds-eye.html` carry no claim about the font or her hand (grepped); `docs/TODO-full-syllabus.md`'s "5×7" is `5×7=35`, a multiplication fact; `docs/COMP-todo.md`'s "letter shapes" is a design note on a visual-cortex recognition head, not her hand.
+
+---
+
 ## 2026-10-29 (2nd) — `DESCRIBELOCAL` + `ARTPOOL`: THE NAMED OP WAS PAYING 2.4 MB FOR ARITHMETIC, AND HER INVENTIONS WERE RUNNING ON A FROZEN POOL
 
 Gee, verbatim: *"so its fixed, no savestart needed?"*

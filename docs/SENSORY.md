@@ -227,6 +227,21 @@ background took the SAME `moodTint` (her valence parked mid-low → hue ~0.27 �
   request. The fold survives only as a **fallback** (own letterform → case sibling → nothing), so a shape she banked
   before still answers and `cat` renders as `cat`. **Lowercase and uppercase are different letterforms and bank
   separate traces.**
+  ⑤ ⛔⛔ **2026-10-29 — THE BITMAP IS NO LONGER WHAT SHE COPIES, and this paragraph has now been wrong a third way:
+  it called `FONT5X7` "the shared bitmaps" she looks at without ever asking whether a 5×7 grid could carry a letter.**
+  The lowercase `r` in that table had **three lit pixels** on its widest row; her tracer was faithful to a
+  three-pixel teacher, and `_practiceWriting` scored her hand against the same bitmap — so **practice could only
+  converge on the bitmap, never past it. A practice loop cannot exceed its reference.** The operator asked whether
+  her handwriting would ever improve; the measured answer was no. `glyphStrokes` now takes its letterforms from a
+  **real typeface** — `server/letterforms.js` reads TrueType outlines from a system font at boot (zero new
+  dependencies) and `brain-server.js` injects them onto the engine instance that actually draws — emitted as scanline
+  runs with even-odd across every contour so an `a`'s counter stays open. The real `r` is **one contour of 69
+  points**. ⚠ The real teacher then exposed what the bitmap had hidden: `_normaliseLetterStrokes` discards baseline
+  and x-height, so her hand drew every letter at full cell height (teacher `r` 83 px, hers 173 px — as tall as her
+  `l`); each trace now carries its **frame** and her hand places by it (her `r` 81 vs 83 px; `hello` 172×66 vs
+  175×66). ⛔ **`FONT5X7` survives for one consumer only — the symbol-thought raster** — so the pen lane and the
+  symbol raster diverge deliberately until that lane is ported, and the table cannot be deleted before then. The
+  case-fold note in ④ remains true for that one lane.
 - **Viewer** — the mind's-eye `source` label now carries the stage + subject (`canvas:scene:cat`,
   `canvas:figure:mom`, `canvas:shapes:blue`, `…?` when she's asking). Equational end-to-end; ≤96px cap and
   no-fractalize invariants intact.
