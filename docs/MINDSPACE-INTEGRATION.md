@@ -91,6 +91,26 @@ sparseV2 precedent). Hosts: `html/compute.html` (full `MindSpaceGPU` surface) +
 Timeout/incapable/unsupported all resolve null → local ramp; donors=0 → imagery
 pauses WITH the brain at the same gate (one process, coherent behavior).
 
+⛔⛔ **PAYLOAD SIZE, MEASURED 2026-10-29 — 16× the assumption this protocol was
+designed against.** The source comment choosing JSON+base64 for this lane read
+*"payloads are SMALL (≤192² frames ≈ 150KB, recs are KBs)"*. Read off a live
+resume boot: **15 sends of 2.3–2.5 MB in four minutes**, every one a
+`mindspace_op` riding the drawing lane, each tripping the >2 MB donor-socket
+forensics warn. Both halves of the premise expired quietly — frames render at
+**512²** now (`server/brain-server/image-engine.js`), and schemas carry **full
+vector traces** rather than a handful of fragments.
+
+| | Status |
+|---|---|
+| **The encoding** | ✅ **Correct, and checked before anything else.** `_recWireSafe` converts every `val_bin`/`pos_bin` to base64 and `chanVal` accepts only those two forms — nothing goes out as the bloated numeric object that boundary warns about, and **no op is silently falling back to CPU while reading as wired** |
+| **On loopback** | ✅ **Provably harmless:** `buffered=0.0MB` on all 15, zero donor drops, zero timeouts, donor up throughout, GPU at 98%. The socket drains faster than she fills it |
+| **On a REMOTE primary** | ⛔ **Unmeasured, and these ops go ONLY to the PRIMARY — a stranger's card can be PRIMARY.** The one remote throughput figure this project owns is **0.16 MB/s**, measured on the Funnel the Cloudflare tunnel replaced, so it is **not** the tunnel's number and is not quoted as one |
+| **Which op is 2.4 MB** | ⚠ **Not yet known.** Four ops carry a rec, and until 2026-10-29 the forensics line printed the message *type* and not the `op` — so the sender was identified by log adjacency, which is inference. The line names the op now; the next boot answers it |
+
+⛔ **Do not convert this lane to binary until the op has named itself.**
+Switching a wire format on a guess spends the work on whichever of the four was
+already fine.
+
 ### Learning her own mind-space — **UVM-INT.2 (NEW)**
 `knowledge.js` was data-only. `curriculum._teachMindSpaceKnowledge()` now calls
 `teachInto(this)` once per walk (right after `_teachUnityFamilyName`, pre-K + K, once-

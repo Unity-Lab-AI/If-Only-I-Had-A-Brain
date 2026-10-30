@@ -3652,8 +3652,29 @@ const SERVER_GPU_MIXIN = {
    *     op='imagineFromState' {seed_b64 (f32le), opts}
    *     op='describe'         {rec, dim}
    *   donor→server  {type:'mindspace_result', id, ok, rec|strokes|percept_b64|data_b64|error}
-   * Payloads are SMALL (≤192² frames ≈ 150KB, recs are KBs) → JSON+base64 is
-   * the right wire; nothing like the 6MB spike arrays. Timeout → null; the
+   * ⛔⛔ THE SIZE ASSUMPTION BELOW WAS MEASURED ON 2026-10-29 AND IS 16x WRONG.
+   * It used to read, unqualified: "Payloads are SMALL (≤192² frames ≈ 150KB,
+   * recs are KBs)". Read off a live resume boot: 15 sends of 2.3-2.5MB in four
+   * minutes, every one a mindspace_op on the drawing lane. Frames are rendered
+   * at 512² now (image-engine.js) and schemas carry full vector traces, so
+   * neither half of that parenthesis holds. ⚠ KEPT, NOT DELETED, because this
+   * comment is the basis on which JSON+base64 was chosen over a binary frame —
+   * a stale premise that still reads as a justification is worse than a wrong
+   * number.
+   *
+   * What is still true: nothing here approaches the 6MB spike arrays, and on
+   * LOOPBACK it is provably harmless (buffered 0.0MB on all 15, zero drops,
+   * zero timeouts). What is NOT established: the cost to a REMOTE primary. A
+   * stranger's card can be PRIMARY and these ops go only to the PRIMARY. The
+   * one remote figure this project owns is 0.16 MB/s, measured on the Funnel
+   * the Cloudflare tunnel replaced — so it is NOT the tunnel's number and must
+   * not be quoted as one. The tunnel's real rate is unmeasured.
+   *
+   * ⛔ Do not convert this lane to binary until the forensics line has NAMED
+   * the op (it prints the op as of the same change). Four ops carry a rec;
+   * switching the wire format on a guess spends the work on the wrong one.
+   *
+   * JSON+base64 is the wire today. Timeout → null; the
    * caller (MindSpaceWorkerProxy) holds the rollout ramp until v0.3.11 is the
    * min donor version (sparseV2 precedent — ramp removal is a logged milestone).
    */

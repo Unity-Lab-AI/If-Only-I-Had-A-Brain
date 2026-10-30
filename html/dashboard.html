@@ -3174,7 +3174,7 @@
               + (el.sinceBootMaxMs != null && el.sinceBootMaxMs > el.maxMs
                   ? ` <span class="c-mute">· boot-peak ${num(el.sinceBootMaxMs, 1)} ms</span>` : '')
             : '—') +
-          // LOOPNAME.8 — the freeze row. `loop delay max` above is a since-boot
+          // The freeze row, fed by the off-thread watchdog. `loop delay max` above is a since-boot
           // high-water mark with no count and no recency, so a single big number
           // there cannot be told apart from one bad moment at boot. This row is
           // counted by a separate watchdog THREAD, which is why it can exist for
@@ -3182,7 +3182,7 @@
           // watchdog did not start — stated, not silently rendered as zero.
           row('loop freezes',
             (t.loopFreeze == null)
-              ? '<span class="muted" title="The LOOPNAME.8 watchdog thread is not running on this boot, so freezes longer than the warn threshold are NOT being counted. A hard freeze would leave only the .last-breadcrumb.json phase marker. Check the boot log for a [LoopWatchdog] warn.">watchdog off</span>'
+              ? '<span class="muted" title="The off-thread loop watchdog is not running on this boot, so freezes longer than the warn threshold are NOT being counted. A hard freeze would leave only the .last-breadcrumb.json phase marker. Check the boot log for a [LoopWatchdog] warn.">watchdog off</span>'
               : (t.loopFreeze.episodes > 0
                   ? `<span style="color:#f59e0b" title="Times the main event loop stopped answering for longer than the freeze threshold (default 5s) since boot, as observed from a separate thread. Worst episode shown. Each one was reported to stderr WHILE it was happening, and server/.loop-freeze.json holds the last one — if that file says STALLED after a reboot, the process never recovered from it.">${num(t.loopFreeze.episodes)} · worst ${num(t.loopFreeze.worstMs)} ms</span>`
                   : `<span style="color:#22c55e" title="No stall past the freeze threshold since boot, measured by a thread that is not on the loop being measured — so this zero is evidence, not just an absence of reports.">none</span>`)) +
@@ -3194,14 +3194,32 @@
           // thirds of the time — during which both rows above read healthy and
           // the page genuinely cannot be reached. `null` means unmeasured,
           // never a reassuring zero.
-          row('loop service',
-            (t.loopStarve == null || t.loopStarve.servicePct == null)
-              ? '<span class="muted" title="Not yet sampled. This is NOT a claim that the loop is healthy — no measurement exists yet.">unmeasured</span>'
-              : (t.loopStarve.servicePct < 50
-                  ? `<span style="color:#ef4444" title="The loop delivered less than half the service it owed in the last minute. It is not frozen — it is LATE, constantly, which no max-stall alarm can see. Requests to this box will be timing out even though every other row here looks fine.">${num(t.loopStarve.servicePct, 0)}% serviced · ${num(t.loopStarve.lateMsPerMin)}ms/min late</span>`
-                  : (t.loopStarve.servicePct < 90
-                      ? `<span style="color:#f59e0b" title="The loop is running late enough to be noticeable. Page fetches may be slow to first byte even while step time and freeze count look normal.">${num(t.loopStarve.servicePct, 0)}% serviced · ${num(t.loopStarve.lateMsPerMin)}ms/min late</span>`
-                      : `<span style="color:#22c55e" title="The loop is answering close to on time. Total milliseconds per minute it owed and did not deliver.">${num(t.loopStarve.servicePct, 0)}% serviced · ${num(t.loopStarve.lateMsPerMin)}ms/min late</span>`))) +
+          // The row REPORTS the shape and no longer ASSERTS it. Until 2026-10-29
+          // the red tooltip here said the loop was "LATE, constantly" — a
+          // mechanism this instrument cannot see, because it accumulates a TOTAL
+          // and never counted events. A boot whose starvation was three long
+          // blocks read exactly the same as thousands of short ones. `worst gap`
+          // and `samples` are the evidence that tells those two apart, and the
+          // tooltip now explains how to read them instead of picking one.
+          row('loop service', (() => {
+            const ls = t.loopStarve;
+            if (ls == null || ls.servicePct == null) {
+              return '<span class="muted" title="Not yet sampled. This is NOT a claim that the loop is healthy — no measurement exists yet.">unmeasured</span>';
+            }
+            // Older boots publish neither field; absent is shown as absent
+            // rather than as a zero that would read like a measurement.
+            const ev = (ls.worstGapMs ? ` · worst gap ${num(ls.worstGapMs)}ms` : '')
+              + (ls.samples ? ` · ${num(ls.samples)} samples` : '');
+            const howToRead = 'Read the worst gap beside it: a small worst gap across many samples is thousands of short stalls that no max-stall alarm can see; a worst gap of seconds is a few long blocks, and those are a different hunt. The percentage is taken over the span it actually measured, so it can no longer exceed 100% late.';
+            const body = `${num(ls.servicePct, 0)}% serviced · ${num(ls.lateMsPerMin)}ms/min late${ev}`;
+            if (ls.servicePct < 50) {
+              return `<span style="color:#ef4444" title="The loop delivered less than half the service it owed over the span it measured. ${howToRead} Requests to this box will be timing out even though every other row here looks fine.">${body}</span>`;
+            }
+            if (ls.servicePct < 90) {
+              return `<span style="color:#f59e0b" title="The loop is running late enough to be noticeable. Page fetches may be slow to first byte even while step time and freeze count look normal. ${howToRead}">${body}</span>`;
+            }
+            return `<span style="color:#22c55e" title="The loop is answering close to on time. Total milliseconds per minute it owed and did not deliver. ${howToRead}">${body}</span>`;
+          })()) +
           // PROPBOUND.2 — the bound-propagate lane, and the row exists in the
           // SAME commit as its counter per the BOARDPARITY lesson. `null` says
           // no bound propagate has been attempted this boot, which is NOT a
@@ -3273,7 +3291,7 @@
                   const u = t.uplink[t.uplink.length - 1];
                   const best = t.uplink.reduce((m, x) => (x.mb > m.mb ? x : m), t.uplink[0]);
                   const col = best.mbps >= 20 ? '#22c55e' : (best.mbps >= 8 ? '#f59e0b' : '#ef4444');
-                  return `<span style="color:${col}" title="Last completed chunked upload, and the LARGEST in the recent ring — the large one is the honest read of sustained throughput, because a small matrix can finish inside a single drain window and flatter the number. KI-24: a rate far below the port rating means the PUMP is the limit, not the link.">`
+                  return `<span style="color:${col}" title="Last completed chunked upload, and the LARGEST in the recent ring — the large one is the honest read of sustained throughput, because a small matrix can finish inside a single drain window and flatter the number. A rate far below the port rating means the PUMP is the limit, not the link.">`
                     + `${num(u.mbps, 1)} MB/s <span class="muted">(${num(u.mb, 0)}MB ${u.name})</span>`
                     + ` · <span class="muted">largest ${num(best.mbps, 1)} MB/s @ ${num(best.mb, 0)}MB</span></span>`;
                 })()) +

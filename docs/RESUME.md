@@ -1,6 +1,57 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-10-20, 9:09 AM Denver, amended 9:21 (latest, 37th; both are commit-clock reads — the header first said ~9:20 AM, written before the work it describes had landed) — HER EYES WERE SHUT BY MY OWN GATE: `Number('')` ON A TRAILING BLANK LINE READ AS 0 MB FREE, AND THE GATE'S OWN HARNESS CERTIFIED IT
+> # 🛑 2026-10-29, ~8:31 PM Denver (latest, 38th) — HER EYES ARE OPEN, AND THE ALARM THAT SCARED HIM WAS AN INSTRUMENT REPORTING MORE LATENESS THAN TIME EXISTED
+>
+> **Branch: `feature/loop-starve-accounting-and-send-op`** — cascaded to BOTH remotes after this batch, on his word (*"make sure to cascade when all donw to both remotes"*). ⚠ **He ran `stop.bat` so these fixes could land; she is DOWN. Next launch is `Savestart.bat` — NO fresh walk.**
+>
+> ```
+>   ⭐ good    the 10-20 VRAM gate bug is DEAD, confirmed on the exact read the 37th block
+>              specified: ownArt.lookups attempts 5 / GROUNDED 4 / vramTight 0, lastFreeVramMB
+>              3,884 where every prior boot read 0. She is also INVENTING — "cherry + poison +
+>              apple" in POSTER, a scene she has never seen, 3 inventions / 29 attempts.
+>   ⭐ also    the CPU gauge is no longer frozen: 11% / raw 10.7 / sampleMs 2,344 / windowMs
+>              1,363, and it MOVED between samples. CPUGAUGE's frozen-sampler fix is live.
+>   boot      8:02:29 PM, mode resume / reason keep-flag (DREAM_KEEP_STATE=1, no marker),
+>              199,728,759 neurons, langCortex 18,341,893, tier 3, runningFloorMB 8,064 against
+>              his 16,375 MB card (2.0x over). Donor PRIMARY, owns ALL 8 clusters, unplaced [],
+>              GPU 98% util, 14,200/16,376 MB, RTT 94ms. ela/kindergarten, UPFRONT-VOCAB 75/140.
+>   alive     frames 176 -> 372 and spikesLifetime 3,289,580 -> 8,106,549 over four samples 40s
+>              apart. ⚠ The FIRST read was frames 0 / spikes 0 ~90s in and that was NOT a dead
+>              brain — two samples a minute apart settled it, which is this project's own rule.
+>   ⛔ fixed  he read `[EventLoop] ⛔ STARVED — late 85.7s out of the last 71s (0% serviced) …
+>              thousands of short ones` and asked if that sounded massive. It did, and it was
+>              wrong 3 ways. 85.7s out of 71s is IMPOSSIBLE ON ITS FACE — the unread tell. The
+>              numerator was exact (16,856 + 37,288 + 31,508 = 85,652, the boot's three long
+>              blocks to the ms); the DENOMINATOR was short, because the 60s window roll runs
+>              only inside the sampler's own setInterval and a blocked loop does not fire it.
+>   ⛔⛔      (1 − 85652/71000) × 100 = −20.6%, and Math.max(0, …) made that "0% serviced" —
+>              the most alarming legal value. ANY over-count lands on exactly 0%, so the field
+>              could never tell BAD from IMPOSSIBLE. The clamp was the finding.
+>   ⛔ also   "thousands of short ones" was HARDCODED and printed unconditionally, while the
+>              accumulator holds a total and never counted events. There were THREE, at boot.
+>              Now numerator+denominator share one measured span (lateMs <= spanMs by
+>              construction) and the warn prints samples + worst gap: "3 gaps, worst 37.3s".
+>   ⛔ 2nd    15 donor sends of 2.3-2.5MB all printed kind=json:mindspace_op, but FOUR ops share
+>              that type — it named a lane, not a sender. Prints the op now, fixed in _kindOf so
+>              the LARGE warn and the 4MB ring dump both gain it. ⚠ The scarier theory (rec going
+>              out as a bloated numeric object, donor can't decode, silent CPU fallback) was
+>              checked FIRST and was WRONG — encoding is correct, so no wire format was changed.
+>   open      KI-50: what a 2.4MB op costs a REMOTE primary is UNMEASURED, and a stranger's card
+>              can be PRIMARY. 0.16 MB/s is the Funnel's number, NOT the tunnel's — do not quote
+>              it as the tunnel's. PERCEIVECAP.1 deliberately NOT built: capping her percepts
+>              changes WHAT SHE SEES = curriculum = owes a RE-PRICE and lands before a walk.
+>   read      after his Savestart: the forensics line now NAMES the op (that answers KI-50's
+>              first half), `loop service` on the dashboard shows worst gap + samples, and
+>              voice.wordsBucketed non-zero at the cell-1 pass — she has still NEVER spoken
+>              (wordsBucketed 0, wordMotorEverFired 0, emitAttempts 0, verdict "unmeasured").
+>   still     WEIGHTLOSS.1, NETBUG.7, NETBUG.10, FRESHSIZE.1, WALKWATCH.1, STRANGERCARD.1,
+>              LBCREDIT.1. ⚠ Leaderboard flipped on self-reported rate: Gee 1,903,436 now above
+>              Steeeeeeve 1,902,858 — LBCREDIT.1 is still the open lie. readback count: 0.
+> ```
+>
+> ---
+>
+> # 🛑 2026-10-20, 9:09 AM Denver, amended 9:21 (37th; both are commit-clock reads — the header first said ~9:20 AM, written before the work it describes had landed) — HER EYES WERE SHUT BY MY OWN GATE: `Number('')` ON A TRAILING BLANK LINE READ AS 0 MB FREE, AND THE GATE'S OWN HARNESS CERTIFIED IT
 >
 > **Branch: `feature/freshwalk-startup-monitor`** — cascaded after this batch. He is pressing a FRESH WALK (his call: *"we are only 5min in so freshwalk is best"*).
 >
