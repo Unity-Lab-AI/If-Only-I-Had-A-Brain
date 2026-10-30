@@ -12,25 +12,29 @@ sources:
   - windows/start.bat
   - windows/Savestart.bat
 verified-scope: |
-  OVERWRITTEN 2026-10-29, ~8:20 PM Denver. This file is a SNAPSHOT and is
-  overwritten, never appended — the previous version described the 2026-10-20
-  morning boot and the free-VRAM gate defect it had just found. Git holds every
-  byte of it:
+  OVERWRITTEN 2026-10-29, 11:14 PM Denver (clock read, not predicted). This file
+  is a SNAPSHOT and is overwritten, never appended — the previous version
+  described the 2026-10-20 morning boot and the free-VRAM gate defect it had
+  just found. Git holds every byte of it:
       git show HEAD:docs/NOW.md
 
-  ⭐ THE HEADLINE OF THIS SNAPSHOT IS THAT THE PREVIOUS ONE'S DEFECT IS DEAD,
-  confirmed on the exact read the pickup brief named: her eyes are open and
-  grounding. The finding on this page is a different one and it is an
-  INSTRUMENT, not the brain — the starvation alarm reported more lateness than
-  wall-clock time existed, and a clamp turned that into a confident "0%
-  serviced".
+  FOUR BATCHES LANDED TONIGHT, ALL ON MAIN AND BOTH REMOTES. Every number on
+  this page is from the 8:02 PM, 8:46 PM or 10:27 PM boots, each quoted with
+  its boot. Her eyes are open and grounding (the 10-20 gate bug is dead); the
+  starvation alarm no longer reports more lateness than time existed; her
+  inventions no longer run on a frozen three-word pool; her handwriting teacher
+  is a real typeface and her hand places letters at their true heights; and the
+  practice queue is born at construction instead of waiting for a human to chat.
 
-  ⚠ SHE IS DOWN AS THIS IS WRITTEN, twice over. The second stop was the
-  operator's call and it was the right one: her invention lane was repeating one
-  three-word scene, and _queueArtWeightTeach fires BEFORE any invention gate, so
-  every repeat was REINFORCING that association in her weights. She was not
-  idling on a bug, she was training it. Every number below is from the boots that
-  preceded the stops; all fixes are server-side and load on the next Savestart.
+  ⚠ SHE IS DOWN AS THIS IS WRITTEN — the operator stopped her for the fourth
+  batch and has not yet pressed Savestart. Every fix is server-side and loads on
+  that press; none is curriculum, so NO fresh walk. The one read that matters on
+  the next boot: the WRITEWARM line must say "62 writing-practice jobs queued" —
+  the first time her practice lane will have run on an unattended boot, ever.
+
+  ⛔ Owned on this page because it belongs beside the facts: the fourth batch
+  was begun while she was running, which is the operator's decision and not
+  mine. He stopped her. Carried as a standing rule.
 
   ⛔ THE SECOND FINDING OF THE EVENING IS NOT AN INSTRUMENT — IT IS HER
   CREATIVITY, AND THE OPERATOR DIAGNOSED IT FROM THE PICTURES. 13 of 13
@@ -45,7 +49,7 @@ verified-scope: |
   and her hand places letters at their true heights (her 'r' 81 px against the
   teacher's 83). First section below. She is still DOWN as this is written; the
   fixes load on her next Savestart, no fresh walk.
-last-verified: "2026-10-29, field reads taken 8:03-8:07 PM Denver on the operator's PC with the brain UP on the 8:02:29 PM resume boot (mode resume / reason keep-flag — DREAM_KEEP_STATE=1, no marker — 199,728,759 neurons, langCortex 18,341,893, tier 3): ela/kindergarten in-progress · UPFRONT-VOCAB 75 of 140 words taught · frameCount 176 -> 254 -> 320 -> 372 and spikesLifetime 3,289,580 -> 3,602,525 -> 4,879,896 -> 8,106,549 across four samples 40 s apart · 1 donor (RTX 4070 Ti SUPER) owning all 8 clusters with pool.unplaced empty · 17/17 matrices · drops 0 · GPU 98% util, 14,200/16,376 MB, donorComputeMs 94.2, RTT 94 ms · runningFloorMB 8,064 against a 16,375 MB card (2.0x over) · crystal.measured TRUE at 98 acks, C 0.9991, PhiLR null at windowN 14 of the 64 it needs · voice wordsBucketed 0 / wordMotorEverFired 0 / emitAttempts 0, verdict 'unmeasured' · looks 5 attempts / 4 GROUNDED / 0 vramTight with lastFreeVramMB 3,884 — THE 2026-10-20 GATE BUG IS DEAD, and that pair is the good news on this page · eventLoopLagMs 7 after boot, 2 stalls both RECOVERED (worst 38,288 ms), STARVED fired once at startup · cpuPercent 11 / raw 10.7 / cpuSampleMs 2,344 / cpuWindowMs 1,363, MOVING across samples, so the frozen-sampler fix is confirmed live · disk 140,050 MB free, saveDeferrals 0 · rss 15,971 MB of 130,982."
+last-verified: "2026-10-29, 11:14 PM Denver, she is DOWN awaiting Savestart. Newest field reads: the 10:27:56 PM resume boot — letterformSource ready, Candara.ttf, 94 outlines · letterShapes 94/94, traced 94, reused 0 (every bitmap-era letter overwritten), WRITEWARM 94/94 in 38.9 s · writingPractice null after 4.5 min with every queue-driven lane at zero while 61 drawings and 5 inventions ran — the preview queue was never created (no boot-time init; fixed in the constructor, lands on the next press) · ela/kindergarten in-progress, 199,728,759 neurons, donor owning all 8 clusters. The 8:46 PM boot confirmed the loop-starvation accounting live (late 75.5s of the 77s it measured, 3% serviced, 2 samples, worst gap 57.9s — a few long ones) and named the 2.4 MB donor sender as describe (now local-only). Earlier reads on this page are from the 8:02:29 PM boot (mode resume / reason keep-flag — DREAM_KEEP_STATE=1, no marker — 199,728,759 neurons, langCortex 18,341,893, tier 3): ela/kindergarten in-progress · UPFRONT-VOCAB 75 of 140 words taught · frameCount 176 -> 254 -> 320 -> 372 and spikesLifetime 3,289,580 -> 3,602,525 -> 4,879,896 -> 8,106,549 across four samples 40 s apart · 1 donor (RTX 4070 Ti SUPER) owning all 8 clusters with pool.unplaced empty · 17/17 matrices · drops 0 · GPU 98% util, 14,200/16,376 MB, donorComputeMs 94.2, RTT 94 ms · runningFloorMB 8,064 against a 16,375 MB card (2.0x over) · crystal.measured TRUE at 98 acks, C 0.9991, PhiLR null at windowN 14 of the 64 it needs · voice wordsBucketed 0 / wordMotorEverFired 0 / emitAttempts 0, verdict 'unmeasured' · looks 5 attempts / 4 GROUNDED / 0 vramTight with lastFreeVramMB 3,884 — THE 2026-10-20 GATE BUG IS DEAD, and that pair is the good news on this page · eventLoopLagMs 7 after boot, 2 stalls both RECOVERED (worst 38,288 ms), STARVED fired once at startup · cpuPercent 11 / raw 10.7 / cpuSampleMs 2,344 / cpuWindowMs 1,363, MOVING across samples, so the frozen-sampler fix is confirmed live · disk 140,050 MB free, saveDeferrals 0 · rss 15,971 MB of 130,982."
 tags: [snapshot, current-state]
 ---
 
