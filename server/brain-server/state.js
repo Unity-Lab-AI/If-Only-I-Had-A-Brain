@@ -929,6 +929,18 @@ const SERVER_STATE_MIXIN = {
           // nowhere to appear. `lastFreeVramMB` / `minFreeVramMB` are the two that
           // answer "is the card too full for her to see?" at a glance.
           imageEngine: (typeof this._imageEngine === 'function') ? this._imageEngine() : null,
+          // ⛔ WHERE HER INVENTIONS GET THEIR WORDS — unreadable until 2026-10-29,
+          // and it was the cause of her drawing the same three-word scene 13
+          // times. The pool came only from `_innerThoughtChain`, which cannot
+          // advance until `word_motor` fires, so the rotation was permuting a
+          // frozen list and nothing anywhere said so. The operator found it by
+          // looking at her pictures, which is the definition of an unreadable
+          // instrument. `fromLearnedShapes` is the half that always moves (a new
+          // schema every look-up); `fromThoughts 3 · fromLearnedShapes 0` is the
+          // exact frozen signature. ⚠ `chainAgeMs: null` means NO TIMESTAMPED
+          // ENTRY, never "fresh" — two of the four chain writers push a bare
+          // string with no `ts`.
+          imaginePool: this._imaginePool || null,
           // WAVESEE.4 — is she READING the precomputed wavelet fields, or
           // silently re-transforming every figure? One number cannot answer
           // that, so the counters are separate BY REASON:

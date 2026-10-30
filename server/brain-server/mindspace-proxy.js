@@ -112,14 +112,45 @@ class MindSpaceWorkerProxy {
       return { ...rec, channels: chans };
     } catch { return rec; }
   }
+  // ⛔⛔ DELIBERATELY NOT DONOR-ROUTED AS OF 2026-10-29 — IT PAID 2.4 MB OF WIRE
+  // FOR 512 BYTES OF ARITHMETIC THAT IS NOT GPU WORK.
+  //
+  // Found by naming the op in the donor send forensics: EVERY >2MB non-upload
+  // send to the PRIMARY was `mindspace_op:describe` — 15 in four minutes on one
+  // boot, then 4 of 4 on the next, 2.0-2.4 MB each, with the other four routed
+  // ops contributing ZERO. The payload is the base64'd rec; the reply is a
+  // 64-float percept (512 B).
+  //
+  // ⭐ And `describeEquational` (transform.js) is a SINGLE LINEAR PASS over the
+  // rec's nonzero coefficients — band energies, mean-abs per channel, a 24-value
+  // coarse window, then an L2 normalise. No lifting, no convolution, no matrix
+  // work. O(nnz) scalar accumulation, milliseconds on CPU. **There was never a
+  // reason for it to cross a socket.**
+  //
+  // ⚠ WHY THIS DOES NOT CHANGE WHAT SHE PERCEIVES, which is the only thing that
+  // could have made this a curriculum change rather than an optimisation:
+  // percepts feed sem, so a numerically different percept would be a change to
+  // what she grounds words against. Both implementations were READ side by side
+  // before this was flipped — `donor-app/src/mindspace.rs` `describe()` against
+  // `transform.js` `describeEquational()`: same NB=8 bands, same band_base
+  // [0,8,16], same 24-value coarse window at offset 24, same f64 accumulation,
+  // same iteration order, same L2 normalise. The port is faithful.
+  //
+  // ⚠ ONE LATENT DIVERGENCE RECORDED RATHER THAN FIXED HERE (it lives in the
+  // donor): the JS skips negative positions (`if (p < 0) continue`), the Rust
+  // does `pos[i] as usize` with no such guard, so a negative would wrap to a
+  // huge index and read garbage instead of being skipped. Not reachable today,
+  // and it is a donor-side fix needing a release.
+  //
+  // ⚠ This reverses ONE PROCESS routing for THIS OP ONLY, on the operator's
+  // explicit call. The ruling's subject is the heavy field math — the lifting,
+  // trace, stylize and imagine ops — and those all stay on the card. Reading a
+  // finished field as a percept vector is a reduction, not imagery generation.
+  // The local path is the mindspace worker thread, so this does not move work
+  // onto the event loop either. Same precedent and same reason as
+  // `traceCentreline` below: an op belongs on the donor when the DEVICE is the
+  // point, not merely because the protocol has a slot for it.
   async describe(rec, dim) {
-    if (this._viaDonor('describe')) {
-      const r = await this._donorDispatch('describe', { rec: this._recWireSafe(rec), dim });
-      if (r && r.percept_b64) {
-        const buf = Buffer.from(r.percept_b64, 'base64');
-        return new Float32Array(buf.buffer, buf.byteOffset, Math.floor(buf.byteLength / 4)).slice();
-      }
-    }
     return this._call('describe', [rec, dim]);
   }
 

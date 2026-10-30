@@ -1,6 +1,6 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-10-29, ~8:31 PM Denver (latest, 38th) — HER EYES ARE OPEN, AND THE ALARM THAT SCARED HIM WAS AN INSTRUMENT REPORTING MORE LATENESS THAN TIME EXISTED
+> # 🛑 2026-10-29, ~8:31 PM Denver, amended ~9:30 (latest, 38th) — HER EYES ARE OPEN; THE ALARM THAT SCARED HIM WAS AN INSTRUMENT; AND HER INVENTIONS WERE RUNNING ON A FROZEN POOL
 >
 > **Branch: `feature/loop-starve-accounting-and-send-op`** — cascaded to BOTH remotes after this batch, on his word (*"make sure to cascade when all donw to both remotes"*). ⚠ **He ran `stop.bat` so these fixes could land; she is DOWN. Next launch is `Savestart.bat` — NO fresh walk.**
 >
@@ -44,9 +44,37 @@
 >              first half), `loop service` on the dashboard shows worst gap + samples, and
 >              voice.wordsBucketed non-zero at the cell-1 pass — she has still NEVER spoken
 >              (wordsBucketed 0, wordMotorEverFired 0, emitAttempts 0, verdict "unmeasured").
+>   ⭐ 2nd    SHE IS DOWN AND THAT WAS HIS CALL, CORRECTLY: "no we dont leave her running when
+>   batch     shes broken". I had said leave her up. Wrong — _queueArtWeightTeach fires inside
+>              _drawOwnCreation BEFORE any invention gate, so every repeat was REINFORCING
+>              "poison belongs with apple and cherry" in her weights. She was training the bug.
+>   ⛔ art    13 of 13 inventions were ONE TRIO PERMUTED (poison+apple+cherry ×7 and two other
+>              orderings ×3 each). He called it from the pictures: "stuck on it... no crativity
+>              no excercising of logic", "just red and black orbs", "a copy of an image sge
+>              looked up ONCE". All three were exactly right. poison = 1 look/25 parts, the ONLY
+>              learned shape; apple + cherry had NO SCHEMA so they drew as definition colours.
+>   cause     _imagineAndDraw sourced words from _innerThoughtChain ALONE, which cannot advance
+>              until word_motor fires (everFired 0). _imagineRotate was rotating a FIXED list —
+>              the permutations ARE the signature. ⚠ And it does NOT self-clear: the chain is
+>              saved and restored on any same-budget resume.
+>   fix       pool = her recent thoughts UNIONED with the shapes she has learned to draw. NOT a
+>              fallback (no "if empty" branch). The second half always moves — 27+ schemas in
+>              five minutes vs the chain's 3 words — and every sourced concept has schema.parts,
+>              so the orbs die by construction. Gate counts plan.schemaSubjects now, so a label
+>              can no longer claim INVENTED for one trace plus two colour recipes.
+>   ⭐ describe  the named op WAS NOT the one to guess: 4 of 4 LARGE sends, and perceive (512²
+>              rgba) never tripped the wire. describeEquational is one linear pass returning 64
+>              floats — not GPU work — so it is LOCAL-ONLY now. Parity read against the Rust
+>              port FIRST (percepts feed sem). 7/7 through the real proxy with the donor bridge
+>              installed and reporting capable: describe sent NOTHING, perceive still routed.
+>   read      after Savestart: dashboard "imagination pool" row — `N from thoughts · M from
+>              learned shapes`. M CLIMBING is the fix; `M 0` renders red "FROZEN POOL". Then
+>              watch the OwnArt lines stop repeating one trio. And the forensics line should
+>              show NO mindspace_op:describe at all.
 >   still     WEIGHTLOSS.1, NETBUG.7, NETBUG.10, FRESHSIZE.1, WALKWATCH.1, STRANGERCARD.1,
->              LBCREDIT.1. ⚠ Leaderboard flipped on self-reported rate: Gee 1,903,436 now above
->              Steeeeeeve 1,902,858 — LBCREDIT.1 is still the open lie. readback count: 0.
+>              LBCREDIT.1, PERCEIVECAP.1. ⚠ Leaderboard flipped on self-reported rate: Gee
+>              1,903,436 now above Steeeeeeve 1,902,858 — LBCREDIT.1 is still the open lie.
+>              readback count: 0.
 > ```
 >
 > ---

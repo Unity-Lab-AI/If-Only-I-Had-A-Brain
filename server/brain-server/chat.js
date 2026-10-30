@@ -3062,7 +3062,14 @@ const SERVER_CHAT_MIXIN = {
     this._lastSketchLabel = label;
     const known = contributed.map(s => `${s.word}(${s.schema ? (s.schema.looks || 1) + ' look' + ((s.schema.looks || 1) === 1 ? '' : 's') + ', ' + s.schema.parts.length + ' parts' : 'no schema — drawn from definition only'})`).join(', ');
     try { console.log(`[OwnArt] ✍ HER OWN "${contributed.map(s => s.word).join(' + ')}"${plan.place ? ' in ' + plan.place.word : ''} in ${styleName.toUpperCase()} — ${finalStrokes.length} marks (revised: ${revised.erased} erased, ${revised.deduped} deduped), attempt #${this._ownArtAttempt}. Learned from: ${known}. No reference pixels used.`); } catch { /* nf */ }
-    return { rec: drawn, label, source: label, from: 'own:' + contributed.map(s => s.word).join('+'), style: styleName, plan: { subjects: contributed.map(s => s.word), place: plan.place ? plan.place.word : null } };
+    // ⛔ `schemaSubjects` exists because `subjects` DROPS `s.schema` on the way
+    // out, and the invention gate in `_drawImagined` was therefore counting
+    // definition-only subjects as things she "knows". That is how a scene built
+    // from ONE traced shape plus two dictionary colour recipes printed
+    // "★ INVENTED … drawn from what she knows of each" — the words were true of
+    // `poison(1 look, 25 parts)` and false of `apple(no schema)` and
+    // `cherry(no schema)`, and the caller had no way to tell them apart.
+    return { rec: drawn, label, source: label, from: 'own:' + contributed.map(s => s.word).join('+'), style: styleName, plan: { subjects: contributed.map(s => s.word), schemaSubjects: contributed.filter(s => s.schema && Array.isArray(s.schema.parts) && s.schema.parts.length).map(s => s.word), place: plan.place ? plan.place.word : null } };
   },
 
   // DRAWCTX (ruled 2026-08-20: *"when Unity is told to 'draw' she should draw the
@@ -4523,9 +4530,21 @@ const SERVER_CHAT_MIXIN = {
       return null;
     }
     const drew = (made.plan && Array.isArray(made.plan.subjects)) ? made.plan.subjects : [];
-    if (drew.length < 2) {
-      // Only one subject could be drawn: a recreation of a thing she has seen,
-      // published under the label that says so.
+    // ⛔ THE GATE NOW COUNTS LEARNED SHAPES, NOT SUBJECTS. The comment on this
+    // method has always said an invention needs "at least TWO subjects she has a
+    // schema for", and this test counted `plan.subjects` — which includes
+    // subjects drawn from a dictionary definition because `_drawOwnCreation`
+    // discarded `s.schema` at its return. Measured 2026-10-29: every one of 13
+    // inventions was ONE traced shape (`poison`, 1 look, 25 parts) plus TWO
+    // definition-colour recipes (`apple`, `cherry`, no schema), published as
+    // "a scene she has never seen, drawn from what she knows of each".
+    // ⭐ A label must never claim invention for a recreation — this file's own
+    // rule, now actually enforceable.
+    const drewKnown = (made.plan && Array.isArray(made.plan.schemaSubjects)) ? made.plan.schemaSubjects : drew;
+    if (drewKnown.length < 2) {
+      // Not enough LEARNED shapes to compose: what she made is an ordinary
+      // drawing, published under the label that says so. Early in a walk this is
+      // the common, correct outcome.
       if (_ist) _ist.inventionsSingle = (_ist.inventionsSingle | 0) + 1;
       return made;
     }
@@ -4579,6 +4598,57 @@ const SERVER_CHAT_MIXIN = {
   // couple, composes them via _drawImagined (which look-up-grounds parts she hasn't
   // seen), and publishes the canvas:imagine frame. DETACHED from the tick (it may
   // fetch) so it never freezes the viewer; guarded so parts don't storm the fetcher.
+  // ⛔⛔ THE THOUGHT CHAIN ALONE IS NOT "AN INFINITE, EVER-CHANGING SOURCE" —
+  // ⛔⛔ IT IS FROZEN FOR THE WHOLE PRE-SPEECH PERIOD, WHICH IS MOST OF THE WALK.
+  //
+  // Measured 2026-10-29 on a live resume boot: 13 of 13 inventions were THE SAME
+  // THREE WORDS, permuted — `poison + apple + cherry` ×7, `cherry + poison +
+  // apple` ×3, `apple + cherry + poison` ×3. The operator saw it as "stuck on
+  // it... no creativity, no exercising of logic", and he was reading the
+  // mechanism correctly.
+  //
+  // CAUSE: `_innerThoughtChain` gains entries from exactly three writers — her
+  // own inner-voice emission, operator chat input, and image prompts. Her inner
+  // voice cannot emit until `word_motor` fires, and on that boot
+  // `wordMotorEverFired` was 0 with `emitAttempts` 0. So the chain could not
+  // advance from her own thinking, and `_imagineRotate` below was rotating the
+  // start of a FIXED list. ⭐ The permutations are the signature: a rotation
+  // working perfectly on a frozen input.
+  //
+  // ⚠ And it SURVIVES A RESTART, so it does not self-clear: the chain is saved
+  // (brain-server.js, `innerThoughtChain`) and restored on any resume whose sem
+  // region is the same size — which a same-budget Savestart always is.
+  //
+  // FIX — and deliberately NOT a fallback (there is no "if the chain is empty"
+  // branch here; a fallback would make her creativity silently change shape
+  // depending on whether she had spoken). The candidate pool is simply DEFINED
+  // correctly: what she is turning over in her head is her recent thoughts AND
+  // THE SHAPES SHE HAS LEARNED TO DRAW. The second half is the part that was
+  // missing, and it is the half that always moves — she banks a new schema every
+  // time she looks something up, 27+ of them inside five minutes on that boot
+  // against the chain's three words.
+  //
+  // ⭐ It also fixes the OTHER half of what he reported ("just red and black orbs
+  // of different number"): a word with no schema falls to the definition-recipe
+  // path, which draws colour masses rather than forms. Every concept sourced
+  // here has `schema.parts`, so by construction the subjects have real traced
+  // shapes instead of dictionary colours.
+  //
+  // ⚠ Map order IS recency — the evictor (visual-memory.js) takes
+  // `store.keys().next().value` as the OLDEST, so the tail is the newest. No
+  // timestamp field is needed and none is invented.
+  //
+  // ⛔ THE SCAN IS BOUNDED BECAUSE THE STORE IS LAZY. Only ~2k of up to 25,000
+  // entries are resident; `get()` on a cold key loads it from sqlite. Walking
+  // every key to test for a schema would pull the whole store into RAM one row
+  // at a time, on a tick. The newest `DREAM_IMAGINE_POOL_SCAN` keys are both the
+  // cheap ones and the right ones.
+  //
+  // RE-PRICE (no gate is removed or weakened — `_conceptIsDrawable`, the ≥2
+  // requirement, the in-flight guard and every per-concept cooldown all stand):
+  // the imagine TICK RATE is unchanged, so this adds no throughput cost. Fetches
+  // should DROP, because she now proposes words she already holds schemas for
+  // instead of words from a sentence she may never have seen.
   async _imagineAndDraw() {
     if (typeof this._drawImagined !== 'function') return;
     const chain = Array.isArray(this._innerThoughtChain) ? this._innerThoughtChain : [];
@@ -4587,6 +4657,48 @@ const SERVER_CHAT_MIXIN = {
     const toks = (typeof this._vmContentWords === 'function') ? this._vmContentWords(pool) : [];
     const cand = [];
     for (const t of toks) if (t && !cand.includes(t)) cand.push(t);
+    // The shapes she has learned, newest first — the half of her mental contents
+    // that keeps moving while she cannot yet speak.
+    const SCAN = Number(process.env.DREAM_IMAGINE_POOL_SCAN) > 0 ? Number(process.env.DREAM_IMAGINE_POOL_SCAN) : 48;
+    const KEEP = Number(process.env.DREAM_IMAGINE_POOL_KEEP) > 0 ? Number(process.env.DREAM_IMAGINE_POOL_KEEP) : 24;
+    let learnedAdded = 0;
+    try {
+      const store = (typeof this._vmStore === 'function') ? this._vmStore() : null;
+      if (store && typeof store.keys === 'function') {
+        const keys = Array.from(store.keys());
+        for (let i = keys.length - 1, scanned = 0; i >= 0 && scanned < SCAN && learnedAdded < KEEP; i--, scanned++) {
+          const k = keys[i];
+          if (!k || cand.includes(k)) continue;
+          const e = store.get(k);
+          if (!(e && e.schema && Array.isArray(e.schema.parts) && e.schema.parts.length)) continue;
+          cand.push(k);
+          learnedAdded++;
+        }
+      }
+    } catch { /* the pool must never break the tick — her thoughts alone still compose */ }
+    // A frozen chain is now a READABLE state rather than something only visible
+    // in the artwork — which is how this was found, by the operator looking at
+    // her pictures. Published at `ownArt.imaginePool`.
+    //
+    // ⚠ The age is derived from the chain's own entries rather than from a new
+    // stamp, because TWO of the four push sites push a bare STRING and two push
+    // `{sentence, seedSource, ts}` — so a timestamp exists for her own thoughts
+    // and for operator input, and does NOT exist for the image-prompt pushes.
+    // `chainNewestTs: 0` therefore means "no timestamped entry", NEVER "the
+    // chain is new". Inventing a single stamp would have required editing all
+    // four sites, and a missing one would have read as a frozen chain.
+    let newestTs = 0;
+    for (const e of chain) {
+      if (e && typeof e === 'object' && Number(e.ts) > newestTs) newestTs = Number(e.ts);
+    }
+    this._imaginePool = {
+      fromThoughts: cand.length - learnedAdded,
+      fromLearnedShapes: learnedAdded,
+      chainDepth: texts.length,
+      chainNewestTs: newestTs,
+      chainAgeMs: newestTs ? (Date.now() - newestTs) : null,
+      at: Date.now(),
+    };
     if (cand.length < 2) return;   // need ≥2 concepts to invent a combination
     // rotate the starting point so successive imaginings recombine different ideas
     this._imagineRotate = ((this._imagineRotate || 0) + 1) % cand.length;

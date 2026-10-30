@@ -5,6 +5,56 @@
 
 ---
 
+## 2026-10-29 (2nd) — `DESCRIBELOCAL` + `ARTPOOL`: THE NAMED OP WAS PAYING 2.4 MB FOR ARITHMETIC, AND HER INVENTIONS WERE RUNNING ON A FROZEN POOL
+
+Gee, verbatim: *"so its fixed, no savestart needed?"*
+
+Gee, verbatim: *"no we dont leave her running when shes broken you retard!"*
+
+Gee, verbatim, in full: *"and wtf she is constantly do a poison cherrry apple image like she is stuck on it and its jusut red and black orbs of differnt number with a copy of an image sge looked up ONCE what gave her a bowlk of poison.. there is no crativity no excercising of logic.. wtf actual are therse imaginative firsts shes suppose to be able to do? will she get better down the road, why is she stuck on the same thing, shell grow out of it?"*
+
+Gee's choice when asked how to handle the 2.4 MB sender, by name: **"Run describe locally"**.
+
+⛔⛔ **HE WAS RIGHT TO OVERRULE ME ON LEAVING HER UP, AND THE REASON IS WORSE THAN IDLE TIME.** I said *"I'd leave her running"*. `_queueArtWeightTeach(contributed, plan)` fires inside `_drawOwnCreation` **before** any invention gate — so every repeat of that scene was reinforcing *"poison belongs with apple and cherry"* in her weights. **She was not idling on a bug, she was training it.** Stopped at his word; `stop.bat` confirmed 7525 free, voice and eyes killed, control plane deliberately left up so the dashboard Start button survives.
+
+**① `DESCRIBELOCAL` — the op named itself, and it was not the one to guess.**
+
+```
+  4 of 4 LARGE sends       mindspace_op:describe    2.0-2.4 MB
+  every other routed op    ZERO
+  perceive (the guess)     carries a 512² rgba_b64 and NEVER tripped the wire
+```
+
+So the 2.4 MB was **the rec, not the image**. `describe(rec, dim)` shipped the whole base64'd rec to get back a 64-value percept, and `describeEquational` is a **single linear pass** over the rec's nonzero coefficients — band energies, per-channel mean-abs, a 24-value coarse window, an L2 normalise. No lifting, no convolution, no matrix work. **It never needed a GPU, let alone a socket.** Removed from the donor lane rather than re-encoded, `traceCentreline` as precedent.
+
+⚠ **The parity read came BEFORE the flip**, because percepts feed sem and a numerically different percept would be a curriculum change wearing an optimisation's clothes: `donor-app/src/mindspace.rs describe()` against `transform.js describeEquational()` — same `NB=8` bands, same `band_base [0,8,16]`, same coarse window at offset 24, same f64 accumulation, same order, same normalise; **and the local path resolves to `MindSpaceGPU.describe` = `CPU.describeEquational`, the same function.** ⚠ Latent divergence recorded not fixed (donor-side): JS skips negative positions, the Rust does `pos[i] as usize` with no guard.
+
+✅ **7/7 through the REAL proxy and REAL worker with the donor bridge INSTALLED and reporting capable** — so *"describe sent NOTHING to the donor"* is a measurement, not an absence. `perceive` still routed, percept `L2 = 1.000000000000`, deterministic at `maxDiff 0`, **231× wire-to-reply at 96²** against real recs at 512². ⚠ Owned: I twice called the reply "512 bytes" while assuming the element width — it is **64 floats**.
+
+**② `ARTPOOL` — 13 of 13 inventions were one trio, permuted.**
+
+```
+  7  poison + apple + cherry        poison  → 1 look, 25 parts   ← the ONLY learned shape
+  3  cherry + poison + apple        apple   → NO SCHEMA          ← definition colour recipe
+  3  apple + cherry + poison        cherry  → NO SCHEMA          ← definition colour recipe
+```
+
+**CAUSE:** `_imagineAndDraw` sourced candidates from `_innerThoughtChain` alone, which gains entries from three writers — her own inner-voice emission, operator chat input, image prompts. `wordMotorEverFired 0` / `emitAttempts 0`, so her own thinking could not feed it, and `_imagineRotate` was rotating the start of a **fixed** list. ⭐ **The permutations are the signature: a rotation working perfectly on a frozen input.** ⚠ **It does not self-clear** — the chain is saved and restored on any same-budget resume, so a Savestart reproduces it exactly.
+
+⛔⛔ **TWO INSTRUMENTS WERE COMPLICIT.** The design comment claimed *"an infinite, ever-changing source… NOT a fixed list"* — **false for the whole pre-speech period.** And the invention gate counted `plan.subjects`, which **discards `s.schema` at `_drawOwnCreation`'s return**, so one traced shape plus two dictionary colour recipes printed *"★ INVENTED … drawn from what she knows of each."*
+
+**FIX:** the pool is her recent thoughts **UNIONED** with the shapes she has learned to draw — ⚠ **not a fallback** (no *"if the chain is empty"* branch; a fallback would make her creativity change shape depending on whether she had spoken) but the correct definition of what she can compose. The second half always moves — **27+ schemas inside five minutes** against the chain's 3 words — and every sourced concept has `schema.parts`, so **the orbs are gone by construction.** Gate counts `plan.schemaSubjects` now. ⚠ Map order **is** recency (the evictor already treats the first key as oldest), so no timestamp was invented; the scan is **bounded at 48** because the store is lazy and `get()` on a cold key hits sqlite.
+
+⛔ **RE-PRICE — no gate removed or weakened:** `_conceptIsDrawable`, the ≥2 requirement, the in-flight guard and every per-concept cooldown stand. The imagine **tick rate is unchanged**, so no throughput cost; fetches should **drop**, since she proposes words she already holds schemas for.
+
+✅ **11/11 on the SHIPPED block lifted from `chat.js`:** the frozen case reproducing `fromThoughts 3 · fromLearnedShapes 0`; the fixed case **3 → 27 words** with her own thoughts still FIRST; newest-before-oldest; **the bound at 48 `get()` calls against 25,000 entries**; schema-less entries never entering; the KEEP cap; a throwing store not breaking the tick. ⚠ One FAIL was **mine** — I deleted the env vars before invoking the extracted block, so KEEP read its default; ordering fixed and re-run rather than explained away. `ownArt.imaginePool` published **and rendered in the same change** (`⚠ FROZEN POOL — she will repeat the same scene`, red), because this was found by looking at her artwork, which is the definition of an unreadable instrument. Row rendered against four real states.
+
+⭐ **ON THE RECORD, HIS LAST THREE QUESTIONS:** she **will** grow out of the orbs (more look-ups → real schemas instead of dictionary colours) and **will** grow out of the repetition (once `word_motor` fires, the chain advances continuously) — **but she would NOT have grown out of the frozen pool unaided, because nothing detected or published it.**
+
+**Docs, every tree named:** `docs/TODO.md` (2 rows closed, `PERCEIVECAP.1` still open) · `docs/FINALIZED.md` (this) · `docs/KNOWN_ISSUES.md` (`KI-50` closed, `KI-51` new) · `docs/ADMIN-CONTROLS.md` (`ownArt.imaginePool` + two knobs) · `docs/MINDSPACE-INTEGRATION.md` (the "which op" row answered) · `docs/NOW.md` · `docs/RESUME.md` · `html/dashboard.html` (new row + both inline blocks re-parsed) · `wiki/{modules/brain-server,gotchas/case-inserted-into-a-fallthrough-chain,modules/visual-memory,index,log}`. **Unaffected and why:** `docs/WEBSOCKET.md`'s forensics paragraph already describes the `op` extraction and is still exact; `docs/ARCHITECTURE.md` / `EQUATIONS.md` name these only in dated banners; `README.md`, `deploy/*` and the launchers carry no claim about either lane.
+
+---
+
 ## 2026-10-29 — `LOOPLIE` + `SENDOP`: THE STARVATION ALARM REPORTED MORE LATENESS THAN TIME EXISTED, AND A CLAMP TURNED THAT INTO "0% SERVICED"
 
 Gee, verbatim: *"i started her up read now.md lets see whats up"*
