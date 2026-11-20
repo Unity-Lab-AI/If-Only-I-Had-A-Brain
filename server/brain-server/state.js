@@ -2851,8 +2851,11 @@ const SERVER_STATE_MIXIN = {
       const ok = this._lastReadbackOk || null;
       const bad = this._lastReadbackRefusal || null;
       const st = this._readbackStats || null;
-      const gapMs = Number.isFinite(+process.env.DREAM_READBACK_MIN_GAP_MS)
-        ? Math.max(0, +process.env.DREAM_READBACK_MIN_GAP_MS) : 3_600_000;
+      // ⛔ This used to recompute the gap with its own default of 3,600,000,
+      // which drifted from the real gate (halved to 1,800,000) and published a
+      // cadence the code no longer ran. It reads the gate's own value now;
+      // null until the gate has run once, because a guess is worse than absent.
+      const gapMs = Number.isFinite(this._readbackGapMs) ? this._readbackGapMs : null;
       out.readback = {
         // null (not 0) until one has actually completed — "never run" and
         // "ran just now" must not share a rendering.
@@ -2876,7 +2879,9 @@ const SERVER_STATE_MIXIN = {
         // ⛔ The verdict is DERIVED, never a stored flag: a flag set at boot
         // survives the thing it described. `overdue` is the field that says the
         // cadence has stopped without anyone having to do the subtraction.
-        overdue: ok && ok.at ? (now - ok.at) > (gapMs * 2) : null,
+        // null when the gap is not yet known — `null * 2` is NaN, and NaN
+        // compares false, which would have read as a reassuring "not overdue".
+        overdue: (ok && ok.at && gapMs != null) ? (now - ok.at) > (gapMs * 2) : null,
       };
     } catch (err) { out.readback = { error: err.message }; }
 

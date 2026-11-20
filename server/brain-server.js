@@ -9728,8 +9728,28 @@ class ServerBrain {
       // a slow-but-honest save and well under a real desync.
       const TOL = Number(process.env.DREAM_WEIGHTS_PAIR_TOL_SEC) > 0
         ? Number(process.env.DREAM_WEIGHTS_PAIR_TOL_SEC) : 600;
-      out.coherent = gapSec <= TOL;
-      if (!out.coherent) {
+      // ⛔ THE SIZE OF THE GAP CANNOT CATCH AN INTERRUPTED SAVE — THE DIRECTION
+      // CAN. Honest pairs sit 43-268s apart because the synapse file finishes
+      // AFTER the metadata, so a gap inside 600s says nothing. On 2026-11-19 a
+      // stop killed her 3s into her shutdown save: metadata 19:46:47, synapses
+      // still the 19:43:05 file, a 222s gap — inside the tolerance, so this check
+      // reported the pair coherent while her memory of what she had learned ran
+      // four minutes ahead of the weights that held it. Two signatures now count,
+      // whatever the gap:
+      //   (a) the .bin predates savedAt — it was written by an EARLIER save, so
+      //       this metadata describes synapses that never reached disk;
+      //   (b) a leftover .bin.tmp newer than the .bin — a synapse write that
+      //       started and never renamed. At boot no save is running, so a .tmp
+      //       here can only be one that was cut off.
+      const _CLOCK_EPS_MS = 2000;   // filesystem-mtime granularity, not a tolerance
+      out.binPredatesMeta = binMs < savedAt - _CLOCK_EPS_MS;
+      let _tmpMs = null;
+      try { if (fs.existsSync(binPath + '.tmp')) _tmpMs = fs.statSync(binPath + '.tmp').mtimeMs; } catch { /* stat race — treat as absent */ }
+      out.interruptedWrite = _tmpMs != null && _tmpMs > binMs;
+      out.coherent = gapSec <= TOL && !out.binPredatesMeta && !out.interruptedWrite;
+      if (out.binPredatesMeta || out.interruptedWrite) {
+        console.warn(`[Brain] ⛔ WEIGHTS PAIR INCOHERENT — AN INTERRUPTED SAVE: ${out.binPredatesMeta ? `brain-weights.bin (${out.binMtime}) predates the metadata's savedAt (${out.jsonSavedAt}), so it is an earlier save's synapses` : ''}${out.binPredatesMeta && out.interruptedWrite ? '; and ' : ''}${out.interruptedWrite ? `a leftover brain-weights.bin.tmp is NEWER than brain-weights.bin, i.e. a synapse write that never completed` : ''}. Gap ${gapSec}s — inside the ${TOL}s tolerance, which is why the size of the gap cannot catch this. Her METADATA is ahead of her SYNAPSES. FIX: copy the newest COHERENT checkpoint pair (brain-weights-vN.json + .bin, .bin written AFTER the .json) over the live one. Booting anyway.`);
+      } else if (!out.coherent) {
         console.warn(`[Brain] ⛔ WEIGHTS PAIR INCOHERENT — brain-weights.json says savedAt ${out.jsonSavedAt} but brain-weights.bin was written ${out.binMtime}, a gap of ${gapSec}s (tolerance ${TOL}s). Her METADATA is ahead of her SYNAPSES: grade pointers and taught-word ledgers will claim progress the weights do not hold. Cause is almost always a save interrupted between the two writes — check for a leftover brain-weights.bin.tmp. FIX: copy the newest COHERENT checkpoint pair over the live one (brain-weights-vN.json + .bin, whose mtimes are seconds apart). Booting anyway.`);
       } else {
         console.log(`[Brain] weights pair coherent — json/bin ${gapSec}s apart.`);
@@ -11744,15 +11764,29 @@ const httpServer = http.createServer((req, res) => {
     // #38 — DELIBERATE clean stop. Force-save the latest weights + drop the
     // resume marker so a LATER manual start auto-resumes (no need to remember
     // Savestart) unless a heavy update made the weights incompatible.
-    try { _writeResumeMarker('stop.bat / HTTP /shutdown'); } catch (err) {
-      console.warn('[Brain] resume-marker on /shutdown failed:', err && err.message);
-    }
-    try { brain.stop(); } catch (err) {
-      console.error('[Brain] stop() failed during /shutdown:', err);
-    }
-    // Give the (possibly large) force-save a moment to flush to disk before exit.
-    // Exit 42 (deliberate-halt sentinel) — see RestartPreventExitStatus in the unit.
-    setTimeout(() => { process.exit(42); }, 1500);
+    //
+    // ⛔ STOPKILL (2026-11-19) — THIS PATH SKIPPED THE GPU READBACK THAT THE
+    // SIGTERM PATH DOES, so every dashboard Stop and every stop.bat discarded
+    // whatever the donor had trained since the last scheduled readback (94% of
+    // her plasticity trains on the card's resident weights, which the host
+    // never sees until it pulls them). It now does exactly what SIGTERM does,
+    // in the same order: pull the GPU's weights (bounded by its own budget, so
+    // it can never be the reason a stop hangs), then the synchronous save and
+    // marker, then exit. The callers that used to kill her 3s into this save
+    // now wait for the port to close — see windows/stop.bat.
+    (async () => {
+      await _readbackBeforeStop('stop.bat / HTTP /shutdown');
+      try { _writeResumeMarker('stop.bat / HTTP /shutdown'); } catch (err) {
+        console.warn('[Brain] resume-marker on /shutdown failed:', err && err.message);
+      }
+      try { brain.stop(); } catch (err) {
+        console.error('[Brain] stop() failed during /shutdown:', err);
+      }
+      // The save above is synchronous, so by the time this runs it has landed;
+      // the short delay only lets the HTTP reply and log lines flush.
+      // Exit 42 (deliberate-halt sentinel) — see RestartPreventExitStatus in the unit.
+      setTimeout(() => { process.exit(42); }, 1500);
+    })();
     return;
   }
 
@@ -14494,8 +14528,15 @@ wss.on('connection', (ws, req) => {
             const _stepsNow = Number(msg.stepsComputed) || 0;
             const _stepsPrev = Number(lb._lastSteps);
             const _stepsAdvanced = Number.isFinite(_stepsPrev) ? (_stepsNow > _stepsPrev) : false;
-            if (_stepsAdvanced) {
-              lb.neurons += (Number(msg.gneuronsPerSec) || 0) * dt; // billions of neuron-steps contributed
+            // Credit the neuron-steps the SERVER saw this card complete since the
+            // last frame (see compute_batch_result), in billions. The donor's
+            // `gneuronsPerSec` is still displayed but no longer banked.
+            const _obsNow = Number(client._observedNeuronSteps) || 0;
+            const _obsPrev = Number(lb._lastObservedSteps);
+            const _obsDelta = Number.isFinite(_obsPrev) ? Math.max(0, _obsNow - _obsPrev) : 0;
+            lb._lastObservedSteps = _obsNow;
+            if (_stepsAdvanced && _obsDelta > 0) {
+              lb.neurons += _obsDelta / 1e9;                    // billions of neuron-steps the server observed
               lb._lastComputeTs = now;
             } else {
               lb._idleFrames = (lb._idleFrames || 0) + 1;   // visible in the row: connected but not computing
@@ -14603,6 +14644,25 @@ wss.on('connection', (ws, req) => {
           // promotion timing, and the exact-match check below still guarantees
           // only the batch we are actually waiting on can resolve the tick.
           const _MIRROR_ID_BASE = 2000000000;
+          // ── LEADERBOARD CREDIT FROM WHAT THE SERVER OBSERVED ──────────────
+          // Counted here, for mirrored and authoritative results alike (both
+          // are real computation the card performed), BEFORE either branch
+          // below can drop the message. Credit = each returned cluster's size ×
+          // the substeps the server asked for, for clusters this card has
+          // CONFIRMED initializing. ⛔ The old credit was the donor's own
+          // `gneuronsPerSec × dt`: a card whose init hung returned near-empty
+          // batches almost instantly, and "the work I was asked for ÷ almost no
+          // time" ranked an RX 6500 at 96,110 Gn/s over a 4070 Ti SUPER's 3.3.
+          if (client && msg.perCluster && typeof msg.perCluster === 'object') {
+            const _sub = Number(brain._lastBatchSubsteps) || 0;
+            const _acked = client._initAcked;
+            let _obs = 0;
+            for (const _cn of Object.keys(msg.perCluster)) {
+              if (!_acked || !_acked.has(_cn)) continue;
+              _obs += (Number(CLUSTER_SIZES[_cn]) || 0) * _sub;
+            }
+            if (_obs > 0) client._observedNeuronSteps = (client._observedNeuronSteps || 0) + _obs;
+          }
           if (msg.mirror === true
               || (typeof msg.batchId === 'number' && msg.batchId >= _MIRROR_ID_BASE)) {
             brain._gpuMirrorBatches = (brain._gpuMirrorBatches || 0) + 1;
@@ -14722,6 +14782,11 @@ wss.on('connection', (ws, req) => {
           // the optimistic _gpuInitialized flag.
           if (!brain._gpuInitializedConfirmed) brain._gpuInitializedConfirmed = {};
           brain._gpuInitializedConfirmed[msg.clusterName] = true;
+          // Which clusters THIS card has confirmed initializing. Leaderboard
+          // credit is gated on it: a card whose init hung can still return a
+          // result for a cluster, and "computed, nothing fired" is
+          // indistinguishable from "never computed" without this ack.
+          if (client) (client._initAcked || (client._initAcked = new Set())).add(msg.clusterName);
           console.log(`[GPU] Confirmed: ${msg.clusterName} initialized (${(msg.size || 0).toLocaleString()} neurons)`);
           // 114.19ek P2 #11 — once cortex re-confirms after a respawn,
           // the GPU shadow is back in sync with the CPU CSR; clear the

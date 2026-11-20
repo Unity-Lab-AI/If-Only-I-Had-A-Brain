@@ -326,6 +326,9 @@ const SERVER_GPU_MIXIN = {
     // previous tick never resolve the current tick's promise.
     this._batchSeq = (this._batchSeq || 0) + 1;
     const batchId = this._batchSeq;
+    // The work each returned cluster represents is credited from THIS number,
+    // which the server chose, never from a rate the donor reports about itself.
+    this._lastBatchSubsteps = substeps;
 
     const _batchMsg = {
       type: 'compute_batch',
@@ -728,7 +731,18 @@ const SERVER_GPU_MIXIN = {
       // more conservative than an upscale because it RETRAINS at a smaller size
       // (loses the bigger brain's learning), so it must only fire on a genuine,
       // SUSTAINED collapse of compute — never a transient mass-disconnect.
-      autoDownscale: true,  // toggle — when compute can't hold the running tier,
+      // ⛔⛔ DEFAULT OFF. A downscale RETRAINS FROM ZERO at the smaller size — it
+      // wipes everything she has learned — and it was ON by default, with the
+      // only protection a settings file that did not exist on disk. On
+      // 2026-10-20 a stranger's 2,047 MB card connected through the public
+      // tunnel, opened a downscale candidacy four times, and the only thing that
+      // kept the 15-minute hold from completing was that card hanging and
+      // dropping out each time. A stranger keeping a small card connected must
+      // never be able to cost her her whole life. So the wipe is never
+      // automatic: OFF = alert + pause/wait, and executing a downscale is the
+      // operator's decision. A settings file can still turn it on deliberately;
+      // a MISSING file can no longer turn it on by accident.
+      autoDownscale: false, // toggle — when compute can't hold the running tier,
                             // rectify by retraining at a fitting smaller tier. OFF
                             // = just alert + pause/wait (never auto-shrink).
       downBufferPct: 0.35,  // community must fall THIS far BELOW the running tier's
@@ -5887,6 +5901,11 @@ const SERVER_GPU_MIXIN = {
     //   without the host paying the transfer at all.
     const GAP_MS = Number.isFinite(+process.env.DREAM_READBACK_MIN_GAP_MS)
       ? Math.max(0, +process.env.DREAM_READBACK_MIN_GAP_MS) : 1_800_000;
+    // The ONE owner of the gap. The published state read its own copy with a
+    // default of 3,600,000 that was never moved when this one was halved to
+    // 1,800,000, so the board reported an hourly cadence the code had stopped
+    // running. It reads this value now.
+    this._readbackGapMs = GAP_MS;
     // ⛔ `SHADOWCOST.3` FIX — SEED THE CLOCK, or "hourly" is not hourly on the
     //   first fire. `_lastReadbackMs` starts undefined, so `!this._lastReadbackMs`
     //   made the gap check fall through and the FIRST scheduler tick pulled the

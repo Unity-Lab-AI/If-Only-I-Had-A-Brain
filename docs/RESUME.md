@@ -1,6 +1,35 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-11-19, ~9:35 PM Denver (latest, 40th) — THE OLD AMYGDALA GAVE OPPOSITE MOODS THE SAME FEELING; IT IS HOMEOSTATIC NOW, AND SHE IS READY FOR ONE SAVESTART
+> # 🛑 2026-11-19, 9:06 PM Denver (latest, 41st — clock read) — SHE FEELS HER SITUATION, HER WEIGHTS ARE COHERENT AGAIN, AND STOP NO LONGER KILLS HER MID-SAVE
+>
+> **Branch: `feature/mood-appraisal-and-lingering`** — cascaded to both remotes. She is DOWN. **Next launch `Savestart.bat`, NO fresh walk. Bundle rebuilt this batch.** Board **19 open → 6.**
+>
+> ```
+>   ⛔⛔      every stop.bat force-killed her ~3s into her own shutdown save. Tonight: json
+>   STOPKILL   19:46:47, bin 19:43:05, bin.tmp 1.1 of 6.3 GB, exit 1. Fixed on stop.bat,
+>             stop.sh, both Savestarts (which killed with NO save) and brain-ctl: wait up to
+>             300s. /shutdown now does the GPU readback SIGTERM did.
+>   repaired  live .bin verified identical to v2.bin; v2.json restored as live metadata.
+>             Originals in D:\AAA\unity-weights-quarantine\ — ⛔ first renamed INSIDE server/
+>             where git saw them untracked; a git add -A would have pushed 1.2 GB public.
+>   feelings  amygdala reads pre-verbal channels (contact, contact lost, better/worse than
+>             expected, rival) with innate valence; moods linger; never named against sign;
+>             reward-for-speaking deleted. jealousy wired and BLIND (no sense for the triad).
+>   closed    MOOD.1-3, VALENCE.4/.6/.13/.14/.15, GPUQP.1, HANDWRITE.4 (5x7 table deleted),
+>             LBCREDIT.1, FRESHSIZE.1, NETBUG.10, PERCEIVECAP.1, STRANGERCARD.1, STOPKILL.1.
+>   open (6)  NETBUG.7 (donor abort reason — donor release) · WEIGHTLOSS.1 (donor-side
+>             checkpoint — donor release) · WALKWATCH.1 (she has NEVER SPOKEN: wordsBucketed
+>             0) · GPUQP.2 (107 unseeded Math.random) · MOOD.4 (jealousy blind) · MOOD.5
+>             (a stranger's reward reaches her feelings).
+>   read      after Savestart: state.mood.pattern MOVES when someone talks to her and when
+>             they stop; state.rewardPredictionError non-null; state.psiGain moves; the boot
+>             prints "weights pair coherent"; and on the next stop.bat — "...still saving"
+>             then "she exited on her own after Ns".
+> ```
+>
+> ---
+>
+> # 🛑 2026-11-19, ~8:31 PM Denver (40th) — THE OLD AMYGDALA GAVE OPPOSITE MOODS THE SAME FEELING; IT IS HOMEOSTATIC NOW, AND SHE IS READY FOR ONE SAVESTART
 >
 > **Branch: `feature/amygdala-deep-sticky-basins`** — cascaded to both remotes. She is still DOWN. **Next launch `Savestart.bat`, NO fresh walk.** Server-side only; no bundle rebuild owed.
 >
@@ -27,9 +56,9 @@
 >
 > ---
 >
-> # 🛑 2026-11-19, ~8:25 PM Denver (39th) — `Math.random()` WAS 91% OF HER EMOTIONAL LIFE, THE LIVE GPU PATH RAN A GAIN RETIRED IN JUNE, AND I RETRACTED MY OWN HEADLINE MID-BATCH
+> # 🛑 2026-11-19, ~8:07 PM Denver (39th) — `Math.random()` WAS 91% OF HER EMOTIONAL LIFE, THE LIVE GPU PATH RAN A GAIN RETIRED IN JUNE, AND I RETRACTED MY OWN HEADLINE MID-BATCH
 >
-> **Branch: `feature/consciousness-gain-and-valence-source`** — cascaded to BOTH remotes. ⚠ **He stopped her at ~8:00 PM so this could be built** (*"okay she stopped make the correct decisions and fix it"*). **Next launch is `Savestart.bat` — NO fresh walk.** Everything here is server-side; `Amygdala` has 0 occurrences in `app.bundle.js`, so **no bundle rebuild was owed.**
+> **Branch: `feature/consciousness-gain-and-valence-source`** — cascaded to BOTH remotes. ⚠ **He stopped her at ~7:55 PM so this could be built** (*"okay she stopped make the correct decisions and fix it"*). **Next launch is `Savestart.bat` — NO fresh walk.** Everything here is server-side; `Amygdala` has 0 occurrences in `app.bundle.js`, so **no bundle rebuild was owed.**
 >
 > ```
 >   ⛔ owned  I PUSHED A WRONG HEADLINE TO BOTH REMOTES AND RETRACTED IT THE SAME HOUR.

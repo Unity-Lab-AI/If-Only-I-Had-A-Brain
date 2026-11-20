@@ -2667,8 +2667,8 @@ const SERVER_CHAT_MIXIN = {
     //
     // ⛔⛔ THIS IS A CAPTION AND NOT HER HANDWRITING, AND THIS COMMENT USED TO
     // CLAIM OTHERWISE. It read *"in her own CLEAN trained hand"*, which asserted
-    // a capability she does not have: `_labelStrokes` renders the concept key
-    // through `FONT5X7`, so the letterforms are a constant in this file and are
+    // a capability she does not have: `_labelStrokes` rendered the concept key
+    // through the 5x7 bitmap (since deleted), so the letterforms were a constant and
     // identical whether she is at pre-K or PhD. **She has never spelled anything**
     // — she is not taught letters as shapes, and there is no vocabulary check on
     // this path at all.
@@ -4770,7 +4770,8 @@ const SERVER_CHAT_MIXIN = {
     else colors = [hsl(45, 0.9, 0.62), hsl(35, 0.95, 0.55), hsl(50, 0.85, 0.66)];                            // gold shimmer
     // ALTERNATE LETTERFORMS (ruled 2026-07-16: "yes alternat leter forms") — the
     // letter SHAPE itself varies too: block / serif / dots / bubble / tall / wide
-    // (rendered differently from the one FONT5X7 grid in glyphStrokes).
+    // (styles of her own hand; the printed teacher is a real typeface, and the
+    // 5x7 grid this line once contrasted against no longer exists).
     const FONTS = ['block', 'serif', 'dots', 'bubble', 'tall', 'wide'];
     // PLACEMENT (ruled 2026-07-16: "in differnt places on the image to fit so its
     // not always a banner at the bottom") — seeded anchor around the page.

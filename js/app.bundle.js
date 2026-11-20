@@ -9722,113 +9722,6 @@ fn inverse(@builtin(global_invocation_id) gid : vec3<u32>) {
   storeLine(base);
 }
 `;
-var FONT5X7 = {
-  "A": ["01110", "10001", "10001", "11111", "10001", "10001", "10001"],
-  "B": ["11110", "10001", "10001", "11110", "10001", "10001", "11110"],
-  "C": ["01110", "10001", "10000", "10000", "10000", "10001", "01110"],
-  "D": ["11100", "10010", "10001", "10001", "10001", "10010", "11100"],
-  "E": ["11111", "10000", "10000", "11110", "10000", "10000", "11111"],
-  "F": ["11111", "10000", "10000", "11110", "10000", "10000", "10000"],
-  "G": ["01110", "10001", "10000", "10111", "10001", "10001", "01111"],
-  "H": ["10001", "10001", "10001", "11111", "10001", "10001", "10001"],
-  "I": ["01110", "00100", "00100", "00100", "00100", "00100", "01110"],
-  "J": ["00111", "00010", "00010", "00010", "00010", "10010", "01100"],
-  "K": ["10001", "10010", "10100", "11000", "10100", "10010", "10001"],
-  "L": ["10000", "10000", "10000", "10000", "10000", "10000", "11111"],
-  "M": ["10001", "11011", "10101", "10101", "10001", "10001", "10001"],
-  "N": ["10001", "11001", "10101", "10011", "10001", "10001", "10001"],
-  "O": ["01110", "10001", "10001", "10001", "10001", "10001", "01110"],
-  "P": ["11110", "10001", "10001", "11110", "10000", "10000", "10000"],
-  "Q": ["01110", "10001", "10001", "10001", "10101", "10010", "01101"],
-  "R": ["11110", "10001", "10001", "11110", "10100", "10010", "10001"],
-  "S": ["01111", "10000", "10000", "01110", "00001", "00001", "11110"],
-  "T": ["11111", "00100", "00100", "00100", "00100", "00100", "00100"],
-  "U": ["10001", "10001", "10001", "10001", "10001", "10001", "01110"],
-  "V": ["10001", "10001", "10001", "10001", "10001", "01010", "00100"],
-  "W": ["10001", "10001", "10001", "10101", "10101", "11011", "10001"],
-  "X": ["10001", "10001", "01010", "00100", "01010", "10001", "10001"],
-  "Y": ["10001", "10001", "01010", "00100", "00100", "00100", "00100"],
-  "Z": ["11111", "00001", "00010", "00100", "01000", "10000", "11111"],
-  "0": ["01110", "10001", "10011", "10101", "11001", "10001", "01110"],
-  "1": ["00100", "01100", "00100", "00100", "00100", "00100", "01110"],
-  "2": ["01110", "10001", "00001", "00010", "00100", "01000", "11111"],
-  "3": ["01110", "10001", "00001", "00110", "00001", "10001", "01110"],
-  "4": ["00010", "00110", "01010", "10010", "11111", "00010", "00010"],
-  "5": ["11111", "10000", "11110", "00001", "00001", "10001", "01110"],
-  "6": ["00110", "01000", "10000", "11110", "10001", "10001", "01110"],
-  "7": ["11111", "00001", "00010", "00100", "01000", "01000", "01000"],
-  "8": ["01110", "10001", "10001", "01110", "10001", "10001", "01110"],
-  "9": ["01110", "10001", "10001", "01111", "00001", "00010", "01100"],
-  ".": ["00000", "00000", "00000", "00000", "00000", "00110", "00110"],
-  ",": ["00000", "00000", "00000", "00000", "00110", "00100", "01000"],
-  "!": ["00100", "00100", "00100", "00100", "00100", "00000", "00100"],
-  "?": ["01110", "10001", "00001", "00010", "00100", "00000", "00100"],
-  "'": ["00100", "00100", "01000", "00000", "00000", "00000", "00000"],
-  "-": ["00000", "00000", "00000", "01110", "00000", "00000", "00000"],
-  " ": ["00000", "00000", "00000", "00000", "00000", "00000", "00000"],
-  // ── THE REST OF A QWERTY KEYBOARD ──────────────────────────────────────────────────────────
-  // The table above covered A-Z, 0-9 and six marks: 42 of the 94 printable keys. The other 52
-  // (26 lowercase forms + 26 symbols) resolved to the SPACE glyph, so anything typed on them
-  // rasterized blank and banked a blank trace — a silent wrong answer, not a missing feature.
-  // Lowercase uses the standard 5x7 metrics: ascenders from the top row, x-height body on rows
-  // 2-6, descenders (g j p q y) dropping through the last row. Correctness by inspection, per
-  // the no-tests LAW — every glyph below is legible as its own character in the source.
-  "a": ["00000", "00000", "01110", "00001", "01111", "10001", "01111"],
-  "b": ["10000", "10000", "11110", "10001", "10001", "10001", "11110"],
-  "c": ["00000", "00000", "01110", "10001", "10000", "10001", "01110"],
-  "d": ["00001", "00001", "01111", "10001", "10001", "10001", "01111"],
-  "e": ["00000", "00000", "01110", "10001", "11111", "10000", "01110"],
-  "f": ["00110", "01001", "01000", "11100", "01000", "01000", "01000"],
-  "g": ["00000", "01111", "10001", "10001", "01111", "00001", "01110"],
-  "h": ["10000", "10000", "11110", "10001", "10001", "10001", "10001"],
-  "i": ["00100", "00000", "01100", "00100", "00100", "00100", "01110"],
-  "j": ["00010", "00000", "00110", "00010", "00010", "10010", "01100"],
-  "k": ["10000", "10000", "10010", "10100", "11000", "10100", "10010"],
-  "l": ["01100", "00100", "00100", "00100", "00100", "00100", "01110"],
-  "m": ["00000", "00000", "11010", "10101", "10101", "10101", "10101"],
-  "n": ["00000", "00000", "10110", "11001", "10001", "10001", "10001"],
-  "o": ["00000", "00000", "01110", "10001", "10001", "10001", "01110"],
-  "p": ["00000", "11110", "10001", "10001", "11110", "10000", "10000"],
-  "q": ["00000", "01111", "10001", "10001", "01111", "00001", "00001"],
-  "r": ["00000", "00000", "10110", "11001", "10000", "10000", "10000"],
-  "s": ["00000", "00000", "01111", "10000", "01110", "00001", "11110"],
-  "t": ["01000", "01000", "11100", "01000", "01000", "01001", "00110"],
-  "u": ["00000", "00000", "10001", "10001", "10001", "10011", "01101"],
-  "v": ["00000", "00000", "10001", "10001", "10001", "01010", "00100"],
-  "w": ["00000", "00000", "10001", "10001", "10101", "10101", "01010"],
-  "x": ["00000", "00000", "10001", "01010", "00100", "01010", "10001"],
-  "y": ["00000", "10001", "10001", "10001", "01111", "00001", "01110"],
-  "z": ["00000", "00000", "11111", "00010", "00100", "01000", "11111"],
-  "`": ["01000", "00100", "00000", "00000", "00000", "00000", "00000"],
-  "~": ["00000", "00000", "01001", "10110", "00000", "00000", "00000"],
-  "@": ["01110", "10001", "10111", "10101", "10111", "10000", "01110"],
-  "#": ["01010", "01010", "11111", "01010", "11111", "01010", "01010"],
-  "$": ["00100", "01111", "10100", "01110", "00101", "11110", "00100"],
-  "%": ["11001", "11010", "00010", "00100", "01000", "01011", "10011"],
-  "^": ["00100", "01010", "10001", "00000", "00000", "00000", "00000"],
-  "&": ["01100", "10010", "10100", "01000", "10101", "10010", "01101"],
-  "*": ["00000", "10101", "01110", "11111", "01110", "10101", "00000"],
-  "(": ["00010", "00100", "01000", "01000", "01000", "00100", "00010"],
-  ")": ["01000", "00100", "00010", "00010", "00010", "00100", "01000"],
-  "_": ["00000", "00000", "00000", "00000", "00000", "00000", "11111"],
-  "=": ["00000", "00000", "11111", "00000", "11111", "00000", "00000"],
-  "+": ["00000", "00100", "00100", "11111", "00100", "00100", "00000"],
-  "[": ["01110", "01000", "01000", "01000", "01000", "01000", "01110"],
-  "]": ["01110", "00010", "00010", "00010", "00010", "00010", "01110"],
-  "{": ["00110", "01000", "01000", "11000", "01000", "01000", "00110"],
-  "}": ["01100", "00010", "00010", "00011", "00010", "00010", "01100"],
-  "\\": ["10000", "01000", "01000", "00100", "00010", "00010", "00001"],
-  "|": ["00100", "00100", "00100", "00100", "00100", "00100", "00100"],
-  ";": ["00000", "00100", "00000", "00000", "00100", "00100", "01000"],
-  ":": ["00000", "00100", "00000", "00000", "00100", "00000", "00000"],
-  '"': ["01010", "01010", "00000", "00000", "00000", "00000", "00000"],
-  "<": ["00010", "00100", "01000", "10000", "01000", "00100", "00010"],
-  ">": ["01000", "00100", "00010", "00001", "00010", "00100", "01000"],
-  "/": ["00001", "00010", "00010", "00100", "01000", "01000", "10000"]
-};
-function fontGlyph(ch) {
-  return FONT5X7[ch] || FONT5X7[String(ch).toUpperCase()] || null;
-}
 var COLOR_WORDS = {
   red: [220, 45, 45],
   blue: [55, 95, 225],
@@ -9897,10 +9790,10 @@ function symbolGlyphText(text) {
   const symbolish = t.split(/\s+/).filter((w) => /^[0-9]+([.,][0-9]+)?$/.test(w) || /^[+\-x=<>?!]$/.test(w) || /^[a-zA-Z]$/.test(w));
   return symbolish.length ? symbolish.slice(0, 12).join(" ") : "";
 }
-function renderThoughtPlane(glyphText, stateVector, W, H, mood, tintText) {
+function renderThoughtPlane(glyphText, stateVector, W, H, mood, tintText, glyphs) {
   const N = W * H;
   const data = new Uint8ClampedArray(N * 4);
-  const txt = String(glyphText || "").replace(/\s+/g, " ").trim().slice(0, 180);
+  const txt = glyphs ? String(glyphText || "").replace(/\s+/g, " ").trim().slice(0, 180) : "";
   const tintSrc = String(tintText || glyphText || "").toLowerCase();
   let tint = null;
   for (const w of tintSrc.split(/[^a-z]+/)) {
@@ -9967,8 +9860,10 @@ function renderThoughtPlane(glyphText, stateVector, W, H, mood, tintText) {
   }
   if (!txt) return data;
   const gl = named ? [Math.round(tintA[0] * 0.4 + 255 * 0.6), Math.round(tintA[1] * 0.4 + 255 * 0.6), Math.round(tintA[2] * 0.4 + 255 * 0.6)] : [238, 236, 228];
-  const scale = txt.length <= 22 ? 2 : 1;
-  const gw = 6 * scale, gh = 8 * scale;
+  const lineH = txt.length <= 22 ? 16 : 8;
+  const inkH = txt.length <= 22 ? 14 : 7;
+  const gw = Math.round(lineH * 0.75);
+  const gh = lineH;
   const cols = Math.max(1, Math.floor((W - 4) / gw));
   const maxRows = Math.max(1, Math.floor((H - 4) / gh));
   const lines = [];
@@ -9985,21 +9880,37 @@ function renderThoughtPlane(glyphText, stateVector, W, H, mood, tintText) {
   }
   if (cur && lines.length < maxRows) lines.push(cur);
   const used = lines.slice(0, maxRows);
+  const adv = (ch) => {
+    const g = glyphs[ch];
+    return Math.max(1, Math.round(((g && !g.blank ? g.widthFrac || 0.5 : 0.35) + 0.12) * inkH));
+  };
   const y0 = Math.max(2, Math.floor((H - used.length * gh) / 2));
   for (let li = 0; li < used.length; li++) {
     const line = used[li];
-    const x0 = Math.max(2, Math.floor((W - line.length * gw) / 2));
-    for (let ci = 0; ci < line.length; ci++) {
-      const glyph = fontGlyph(line[ci]) || FONT5X7[" "];
-      for (let r = 0; r < 7; r++) {
-        const rowBits = glyph[r];
-        for (let cc = 0; cc < 5; cc++) {
-          if (rowBits[cc] !== "1") continue;
-          for (let sy = 0; sy < scale; sy++) {
-            for (let sx = 0; sx < scale; sx++) {
-              const x = x0 + ci * gw + cc * scale + sx;
-              const y = y0 + li * gh + r * scale + sy;
-              if (x < 0 || x >= W || y < 0 || y >= H) continue;
+    let lineW = 0;
+    for (const ch of line) lineW += adv(ch);
+    let cx = Math.max(2, Math.floor((W - lineW) / 2));
+    const top = y0 + li * gh + Math.floor((gh - inkH) / 2);
+    for (const ch of line) {
+      const g = glyphs[ch];
+      if (g && !g.blank && g.contours && g.contours.length) {
+        for (let py = 0; py < inkH; py++) {
+          const fy = (py + 0.5) / inkH;
+          const xs = [];
+          for (const cont of g.contours) {
+            for (let i = 0, j = cont.length - 1; i < cont.length; j = i++) {
+              const a = cont[i], b = cont[j];
+              if (a.y > fy !== b.y > fy) xs.push(b.x + (a.x - b.x) * (fy - b.y) / (a.y - b.y || 1e-9));
+            }
+          }
+          if (xs.length < 2) continue;
+          xs.sort((p, q) => p - q);
+          const y = top + py;
+          if (y < 0 || y >= H) continue;
+          for (let k = 0; k + 1 < xs.length; k += 2) {
+            const xa = Math.round(cx + xs[k] * inkH), xb = Math.round(cx + xs[k + 1] * inkH);
+            for (let x = xa; x <= Math.max(xa, xb - 1); x++) {
+              if (x < 0 || x >= W) continue;
               const o = (y * W + x) * 4;
               data[o] = gl[0];
               data[o + 1] = gl[1];
@@ -10009,6 +9920,7 @@ function renderThoughtPlane(glyphText, stateVector, W, H, mood, tintText) {
           }
         }
       }
+      cx += adv(ch);
     }
   }
   return data;
@@ -10322,7 +10234,15 @@ var MindSpaceGPU = class {
     const _iar = !opts.side && Number(opts.aspect) > 0 && Number.isFinite(Number(opts.aspect)) ? Number(opts.aspect) : 1;
     const W = _iar >= 1 ? side : Math.max(16, Math.round(side * _iar));
     const H = _iar >= 1 ? Math.max(16, Math.round(side / _iar)) : side;
-    const data = renderThoughtPlane(glyphText, stateVector, W, H, opts.mood, opts.text);
+    const data = renderThoughtPlane(
+      glyphText,
+      stateVector,
+      W,
+      H,
+      opts.mood,
+      opts.text,
+      this._letterforms && this._letterforms.glyphs || null
+    );
     const rec = equationalizeImageData({ width: W, height: H, data });
     if (rec) rec.fidelity = { psnr_db: null, source: "mindspace-denovo" };
     return rec;
@@ -10436,13 +10356,11 @@ var MindSpaceGPU = class {
   //
   // ⭐ 2026-10-29 — THE LETTERFORM SOURCE IS A REAL TYPEFACE WHEN ONE IS
   // INJECTED (`setLetterforms`, fed by server/letterforms.js). The loop below
-  // takes that branch first and emits scanline runs from true outlines. The
-  // `FONT5X7` bitmap path that follows it is reached only when no typeface has
-  // been injected AND the caller did not demand `real: true` — which today means
-  // the browser bundle and the symbol-thought raster (`symbolGlyphText`, which
-  // still reads FONT5X7 directly). ⚠ So FONT5X7 is NO LONGER "the single source
-  // of truth shared with the glyph raster": the pen lane and the symbol raster
-  // now diverge, deliberately, and porting the raster is filed as its own item.
+  // takes that branch and emits scanline runs from true outlines. ⭐ 2026-11-19 —
+  // the 5x7 bitmap table is DELETED: the symbol-thought raster was its last reader
+  // and now rasterizes the same injected outlines, so the pen lane and the thought
+  // plane share one letterform source again. With no typeface injected there is no
+  // lettering at all — `real: true` callers get nothing, loudly.
   //
   // Bitmap path: horizontal + vertical runs of lit cells become line segments,
   // isolated single cells become points.
@@ -10499,7 +10417,6 @@ var MindSpaceGPU = class {
     if (opts.real && !_LF) return [];
     const _ROWS = Math.max(24, Math.min(200, opts.rows || 72));
     for (const ch of t) {
-      const glyph = fontGlyph(ch);
       const col = colors ? colors[li % colors.length] : baseRgb;
       const _lf = _LF ? _LF[ch] : null;
       if (_lf && !_lf.blank && _lf.contours.length) {
@@ -10530,51 +10447,6 @@ var MindSpaceGPU = class {
         cx += gwid + gh * 0.12;
         li++;
         continue;
-      }
-      if (glyph && font === "dots") {
-        for (let r = 0; r < 7; r++) for (let c = 0; c < 5; c++) {
-          if (glyph[r][c] === "1") dot(cx + (c + 0.5) / 5 * cw, y0 + (r + 0.5) / 7 * gh, col);
-        }
-      } else if (glyph) {
-        const covered = /* @__PURE__ */ new Set();
-        for (let r = 0; r < 7; r++) {
-          let run = -1;
-          for (let c = 0; c <= 5; c++) {
-            const on = c < 5 && glyph[r][c] === "1";
-            if (on && run < 0) run = c;
-            else if (!on && run >= 0) {
-              if (c - run >= 2) {
-                const y = y0 + (r + 0.5) / 7 * gh;
-                line(cx + run / 5 * cw, y, cx + (c - 0.5) / 5 * cw, y, col);
-                for (let k = run; k < c; k++) covered.add(r * 5 + k);
-              }
-              run = -1;
-            }
-          }
-        }
-        for (let c = 0; c < 5; c++) {
-          let run = -1;
-          for (let r = 0; r <= 7; r++) {
-            const on = r < 7 && glyph[r][c] === "1";
-            if (on && run < 0) run = r;
-            else if (!on && run >= 0) {
-              if (r - run >= 2) {
-                const x = cx + (c + 0.5) / 5 * cw, ya = y0 + run / 7 * gh, yb = y0 + (r - 0.5) / 7 * gh;
-                line(x, ya, x, yb, col);
-                if (font === "serif") {
-                  const f = cw * 0.24;
-                  line(x - f, ya, x + f, ya, col);
-                  line(x - f, yb, x + f, yb, col);
-                }
-                for (let k = run; k < r; k++) covered.add(k * 5 + c);
-              }
-              run = -1;
-            }
-          }
-        }
-        for (let r = 0; r < 7; r++) for (let c = 0; c < 5; c++) {
-          if (glyph[r][c] === "1" && !covered.has(r * 5 + c)) dot(cx + (c + 0.5) / 5 * cw, y0 + (r + 0.5) / 7 * gh, col);
-        }
       }
       cx += adv;
       li++;
