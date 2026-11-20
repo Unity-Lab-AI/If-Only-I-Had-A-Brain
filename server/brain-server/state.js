@@ -814,6 +814,28 @@ const SERVER_STATE_MIXIN = {
         // lively arousal means a dead deviation is being amplified to look alive.
         depthDevSigma: this._amygOut.depthDevSigma ?? null,
       } : null,
+      // ── HER MOOD — what lingers, what it is, and whether she can name it ──
+      // `pattern` is the state and always exists; `word` is non-null only once
+      // she has been taught that word — she feels before she can say it.
+      // `blind` names any channel with no perception behind it (today:
+      // `rival`), so an absent sense reads as absent instead of as calm.
+      // ⛔ The attachment figure is a userId and this snapshot is PUBLIC, so it
+      // publishes only WHETHER she has someone, never who.
+      mood: this.mood ? {
+        valence: this.mood.valence,
+        arousal: this.mood.arousal,
+        pattern: this.mood.pattern ?? null,
+        word: this.mood.word ?? null,
+        sign: this.mood.sign ?? 0,
+        lingering: this.mood.lingering ? { ...this.mood.lingering } : null,
+        hasAttachment: this.mood.primary != null,
+        blind: Array.isArray(this.mood.blind) ? [...this.mood.blind] : [],
+      } : null,
+      // Better/worse than expected, and surprise — both existed as readers
+      // with no writer until now; a reader with no writer is a sense that was
+      // never connected.
+      rewardPredictionError: (typeof this._tdError === 'number' && isFinite(this._tdError)) ? this._tdError : null,
+      surprise: (typeof this.predictionError === 'number' && isFinite(this.predictionError)) ? this.predictionError : null,
       // PSITEACH.1 — which lane fed Ψ this tick: step-lane spikes and the
       // measured teach-lane activity term (TEACHCREDIT Gops/s, normalized).
       // Ψ = 0.000 with teachGopsPerSec > 0 is the blind-instrument shape this

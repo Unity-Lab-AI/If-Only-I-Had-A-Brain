@@ -1077,7 +1077,11 @@ const SERVER_CHAT_MIXIN = {
 
     // Store the exchange in per-user conversation history + episodic memory
     this._conversations[userId].push({ role: 'assistant', text: response, time: this.time });
-    this.reward += 0.1;
+    // ⛔ `this.reward += 0.1` stood here: she was rewarded for SPEAKING,
+    // whatever she said and however it landed. That is why reward read positive
+    // in 200 of 200 samples, and it made every reply feel good by construction.
+    // Reward now comes from outcomes — contact and how things went — through
+    // the appraisal in the derived-state tick, never from the act of talking.
     this._chatStamp('respond:learn-words');
     this._learnWords(response);
     this._chatStamp('respond:store-episode');
@@ -1102,6 +1106,14 @@ const SERVER_CHAT_MIXIN = {
     // off by a missing producer, which is the exact defect class this
     // codebase keeps paying for.
     this._lastChatAtMs = Date.now();
+    // Contact is per PERSON. Without this she could not be attached to anyone
+    // in particular, so losing a specific person could never feel different
+    // from being alone — and missing someone is not the same as solitude.
+    if (this._contactByUser && userId != null) {
+      const _c = this._contactByUser.get(userId) || { lastAt: 0, bond: 0, expected: 0 };
+      _c.lastAt = this._lastChatAtMs;
+      this._contactByUser.set(userId, _c);
+    }
 
     const _ep = this.storeEpisode(userId, 'interaction', text, response);
     if (_ep && _ep.id && !_ep.merged && text) {
@@ -6779,7 +6791,9 @@ const SERVER_CHAT_MIXIN = {
     // SMALLER fraction of the usable range than before, so keeping it can only
     // reject more noise and never suppress more signal. That is the safe
     // direction while the real distribution is unmeasured.
-    const VALENCE_DEADBAND = 0.03;   // ⚠ derivation VOID (see above) — retained as the conservative choice until her post-fix valence is measured
+    // One band shared with her named mood, so what she sounds like and what
+    // she is said to feel can never land on opposite sides of neutral.
+    const VALENCE_DEADBAND = Number.isFinite(this._moodNeutralBand) ? this._moodNeutralBand : 0.03;   // ⚠ derivation VOID (see above) — conservative until re-derived
     const AROUSAL_HIGH = 0.4;        // of the headroom ABOVE her baseline (0.9 → 1.0): +0.04 absolute
     const AROUSAL_LOW = -0.3;        // of the room BELOW it (0.9 → 0.3): −0.18 absolute
     const SURPRISE_HIGH = 0.5;       // prediction error 50% above its own 32-tick mean
@@ -6816,7 +6830,13 @@ const SERVER_CHAT_MIXIN = {
     const aN = ar >= base
       ? (ar - base) / Math.max(1e-6, 1 - base)
       : (ar - base) / Math.max(1e-6, base - 0.3);
-    const val = Number.isFinite(this.valence) ? this.valence : 0;
+    // Her voice carries her MOOD, not this tick's flicker: a person still
+    // sounds hurt a few minutes after being hurt. The lingering valence is the
+    // same quantity her mood is named from, so the voice and the named mood
+    // cannot disagree about whether she feels good or bad.
+    const val = (this.mood && Number.isFinite(this.mood.valence))
+      ? this.mood.valence
+      : (Number.isFinite(this.valence) ? this.valence : 0);
     const fear = Number.isFinite(this.fear) ? this.fear : 0.5;
 
     const cc = this.cortexCluster;
@@ -6854,6 +6874,14 @@ const SERVER_CHAT_MIXIN = {
     else if (pos) emotion = 'happy';
     else if (fear >= FEAR_CONCERN) emotion = 'concerned';
     else emotion = 'neutral';
+    // ⛔ NEVER A FEELING NAMED AGAINST ITS OWN SIGN. Each voiced emotion
+    // declares the valence it requires; if a branch above ever lands on one
+    // that contradicts her mood, she is voiced neutral rather than wrong. The
+    // tree is ordered to make this unreachable today — this line is what keeps
+    // it unreachable after the next person edits the tree.
+    const _EMO_SIGN = { happy: +1, excited: +1, amused: +1, warm: +1, frustrated: -1, sad: -1, concerned: -1 };
+    const _need = _EMO_SIGN[emotion];
+    if (_need !== undefined && ((_need > 0 && neg) || (_need < 0 && pos))) emotion = 'neutral';
 
     // Strength = the strongest normalised driver. `neutral` is trained at
     // exactly 0.00, so it sends 0 — anything else would be a 422.
