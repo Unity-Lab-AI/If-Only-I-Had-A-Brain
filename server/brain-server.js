@@ -1215,13 +1215,43 @@ const MAX_TEXT_PER_SEC = 2;        // rate limit per client
 // Overrides:
 //   DREAM_KEEP_STATE=1  — always preserve (existing, bypasses hash check)
 //   DREAM_FORCE_CLEAR=1 — always clear (new, ignores hash match)
+// ── HER AMYGDALA'S PRE-VERBAL CHANNELS ─────────────────────────────────────
+// Which of the 32 nuclei each situation drives. She feels through these
+// before she has a word for any of it: the channel layout is the body's, and
+// a word learned later only names a state these already produce.
+//   contact     — someone is with her                       (appetitive)
+//   contactLoss — the person she is attached to has gone    (aversive)
+//   outcomeGood / outcomeBad — an outcome better / worse than she expected,
+//                 split by sign so each half carries one valence
+//   rival       — her person's attention going to someone else (aversive)
+// Equal-sized blocks so no channel outweighs another by having more nuclei;
+// the readout normaliser divides by each projection's own norm anyway.
+// How long a presence is felt after the last word: the contact window her
+// oxytocin already used (5 minutes, inline in the endocrine tick until now).
+// It is also the clock her expectations adapt on and the half-life of her
+// mood, so company, getting used to its absence, and how long a feeling
+// lingers all run on one documented span rather than three picked numbers.
+const CONTACT_WINDOW_MS = 5 * 60 * 1000;
+
+const AMYGDALA_CHANNELS = Object.freeze({
+  contact:     [0, 1, 2, 3, 4, 5, 6, 7],
+  contactLoss: [8, 9, 10, 11, 12, 13, 14, 15],
+  outcomeGood: [16, 17, 18, 19],
+  outcomeBad:  [20, 21, 22, 23],
+  rival:       [24, 25, 26, 27, 28, 29, 30, 31],
+});
+
 const BRAIN_CODE_HASH_FILE = path.join(__dirname, 'brain-code-hash.json');
 const BRAIN_CODE_FILES = [
   path.join(__dirname, '..', 'js', 'brain', 'cluster.js'),
   path.join(__dirname, '..', 'js', 'brain', 'neurons.js'),
   path.join(__dirname, '..', 'js', 'brain', 'synapses.js'),
   path.join(__dirname, '..', 'js', 'brain', 'sparse-matrix.js'),
-  path.join(__dirname, '..', 'js', 'brain', 'engine.js'),
+  // `engine.js` was listed here and is DELETED: nothing had loaded it since the
+  // browser bundle dropped it, yet as the only home of a second copy of the
+  // gate and gain equations it sent an audit after the wrong formula for a
+  // whole session — and while listed, editing a file that never ran could
+  // still change this hash and cost her a state wipe.
   path.join(__dirname, '..', 'js', 'brain', 'gpu-compute.js'),
   path.join(__dirname, '..', 'js', 'brain', 'curriculum.js'),
   path.join(__dirname, '..', 'js', 'brain', 'language-cortex.js'),
@@ -2616,6 +2646,21 @@ class ServerBrain {
     // 4½ minutes, 61 drawings from the lanes that need no queue. One init at
     // the chokepoint; the lazy sites stay as harmless no-ops.
     this._mindsEyePreviewQueue = [];
+    // Contact, per person — who she has been with and how attached she is.
+    // Born here at construction, never lazily at a human-driven site: the
+    // preview queue above is the standing lesson in what a lazy init on a
+    // human path costs (every unattended boot ran without it).
+    this._contactByUser = new Map();
+    // Praise or scolding that reached her from outside since the last
+    // appraisal, consumed as an OUTCOME there. 0 = nothing arrived.
+    this._externalRewardPulse = 0;
+    // Her lingering mood — the slow integral of the fast amygdala reading.
+    // null until the first reading exists; "not yet felt" is not "neutral".
+    this.mood = null;
+    // The valence below which her mood reads as neutral — the same band her
+    // voice uses, so what she sounds like and what she is named as feeling
+    // share one threshold instead of two that can disagree.
+    this._moodNeutralBand = 0.03;
 
     // Expose module-scope constants on `this` so mixin files (gpu.js,
     // state.js, memory.js, chat.js) can read them via `this.X`. Without
@@ -4746,7 +4791,16 @@ class ServerBrain {
       // state. This replaces the hack derivation that was saturating
       // fear to 1 whenever the Rulkov amygdala cluster fired. Same
       // class the local-brain path uses.
-      this.amygdalaModule = new modulesMod.Amygdala(32, { arousalBaseline: this.persona.arousalBaseline });
+      // Her amygdala reads her SITUATION through pre-verbal channels, each
+      // owning a block of nuclei, with the innate valence a newborn has.
+      // See `AMYGDALA_CHANNELS` for what drives each block.
+      this.amygdalaModule = new modulesMod.Amygdala(32, {
+        arousalBaseline: this.persona.arousalBaseline,
+        innate: {
+          appetitive: [...AMYGDALA_CHANNELS.contact, ...AMYGDALA_CHANNELS.outcomeGood],
+          aversive: [...AMYGDALA_CHANNELS.contactLoss, ...AMYGDALA_CHANNELS.outcomeBad, ...AMYGDALA_CHANNELS.rival],
+        },
+      });
 
       // ENDO — the endocrine layer and the glands, wired in that order
       // because chemistry is DOWNSTREAM of tissue. The gland layer holds
@@ -5689,9 +5743,9 @@ class ServerBrain {
     // session activity, not assumed.
     if (typeof this._lastChatAtMs === 'number' && this._lastChatAtMs > 0) {
       const sinceMs = now - this._lastChatAtMs;
-      brainState.socialContact = sinceMs < 5 * 60 * 1000
-        ? Math.max(0, 1 - sinceMs / (5 * 60 * 1000))
-        : 0;
+      // Same definition her feelings use — one owner, so her hormones and her
+      // mood can never disagree about whether someone is with her.
+      brainState.socialContact = this._contactLevel(sinceMs);
     }
     // ⛔⛔ THE DRIVES PUBLISHER IS DELETED — it could never fire, and it hid
     // that fact for the whole life of this server. It read:
@@ -6066,6 +6120,160 @@ class ServerBrain {
   // numbers would be fitting a constant to a known-broken signal. It is
   // derived on the next boot's read instead, which is why `valence`,
   // `emotionalGate` and the amygdala's own readout all publish below.
+  // ── HOW CLOSE SOMEONE STILL FEELS ──────────────────────────────────────
+  // One definition of the contact fade, shared by the hormones and the
+  // feelings, so her oxytocin and her mood can never disagree about whether
+  // someone is with her. 1 at the moment of contact, falling to 0 over the
+  // contact window.
+  _contactLevel(sinceMs) {
+    return (sinceMs >= 0 && sinceMs < CONTACT_WINDOW_MS) ? (1 - sinceMs / CONTACT_WINDOW_MS) : 0;
+  }
+
+  // ── HER SITUATION, APPRAISED WITHOUT WORDS ─────────────────────────────
+  // Reads what is happening to her — who is with her, who has left, whether
+  // things went better or worse than she expected — and returns a level per
+  // amygdala channel. Nothing here touches vocabulary: she can feel every one
+  // of these before she knows a word for it, which is the requirement.
+  //
+  // Returns { levels: {contact, contactLoss, outcomeGood, outcomeBad, rival},
+  //           primary, rpe, blind: [...] } — `blind` names any channel with no
+  //           perception behind it, so it reports absence instead of a zero
+  //           that looks like calm.
+  _appraiseSituation(now) {
+    const st = this._apSt || (this._apSt = { at: now, expOutcome: 0 });
+    const dt = Math.max(0, (now - st.at)) / 1000;           // seconds since last appraisal
+    st.at = now;
+    // How fast expectations adapt: the same window over which a presence is
+    // felt to linger, so getting used to company and getting used to its
+    // absence happen on one clock rather than two arbitrary ones.
+    const k = 1 - Math.exp(-dt / (CONTACT_WINDOW_MS / 1000));
+
+    // Contact, per person. Attachment = total time actually spent together —
+    // a cumulative quantity, so it needs no decay constant to justify.
+    let contact = 0, primary = null, primaryBond = -1;
+    for (const [uid, c] of this._contactByUser) {
+      const lvl = this._contactLevel(now - c.lastAt);
+      c.bond += lvl * dt;
+      c.expected += (lvl - c.expected) * k;
+      c.level = lvl;
+      if (lvl > contact) contact = lvl;
+      if (c.bond > primaryBond) { primaryBond = c.bond; primary = uid; }
+    }
+    // Missing the person she is attached to: how far their presence has
+    // fallen below what she had come to expect. Rises when they leave, and
+    // fades as she gets used to it — loneliness that wears off, not a switch.
+    let contactLoss = 0;
+    if (primary !== null) {
+      const pc = this._contactByUser.get(primary);
+      contactLoss = Math.max(0, pc.expected - pc.level);
+    }
+
+    // Better or worse than expected, on OUTCOMES — contact plus whatever
+    // praise or scolding reached her from outside. Deliberately NOT computed
+    // from her own feeling, so it cannot feed back on itself.
+    const pulse = this._externalRewardPulse || 0;
+    this._externalRewardPulse = 0;
+    const outcome = contact + pulse;
+    const rpe = outcome - st.expOutcome;
+    st.expOutcome += (outcome - st.expOutcome) * k;
+    // ⭐ The brainstem's dopamine nucleus reads this. Until now nothing ever
+    // wrote it, so her "better than expected" sense had never once existed.
+    this._tdError = rpe;
+
+    // Surprise: the cortex already computes its own prediction error and
+    // nothing published it, so the noradrenaline nucleus read nothing either.
+    const pe = this.cortexCluster?._lastPredictionError;
+    if (typeof pe === 'number' && Number.isFinite(pe)) this.predictionError = pe;
+
+    // ⛔ RIVAL IS BLIND, AND SAYS SO. Jealousy is her person's attention going
+    // to someone else. Her senses have no channel that perceives that triad
+    // today — chat is one-to-one and she cannot observe where his attention
+    // goes. So the channel is wired, carries innate aversive valence, and
+    // reads 0 with `blind` set until a perception feeds `this._rivalAttention`.
+    // It will not fire on a guess.
+    const rivalFed = typeof this._rivalAttention === 'number' && Number.isFinite(this._rivalAttention);
+    const rival = rivalFed ? Math.max(0, Math.min(1, this._rivalAttention)) * contactLoss : 0;
+
+    const clip = (x) => Math.max(0, Math.min(1, x));
+    return {
+      levels: {
+        contact: clip(contact),
+        contactLoss: clip(contactLoss),
+        outcomeGood: clip(rpe),
+        outcomeBad: clip(-rpe),
+        rival: clip(rival),
+      },
+      primary,
+      rpe,
+      blind: rivalFed ? [] : ['rival'],
+    };
+  }
+
+  // ── HER MOOD: WHAT LINGERS AFTER THE FEELING ───────────────────────────
+  // An emotion is the amygdala's reading THIS tick; a mood is what that
+  // leaves behind. Each channel's level and her valence/arousal are
+  // integrated with a half-life of one contact window, so a feeling outlasts
+  // the moment that caused it and fades on its own — she is still put out a
+  // few minutes after someone leaves, and does not snap back to neutral the
+  // tick they go. Before this a flipped feeling crossed halfway in one tick.
+  //
+  // The mood's NAME is chosen to agree with the mood's sign, always: the
+  // label is the strongest lingering channel WHOSE VALENCE MATCHES the sign of
+  // her mood, so a jealous mood can never be named happy, nor a lonely one
+  // content. Every pattern below declares its sign once.
+  //
+  // ⛔ She feels before she has the word. `pattern` always exists — it is the
+  // state. `word` is that pattern's name ONLY if she has been taught it; a
+  // child is lonely before she can say "lonely", and nothing here waits for
+  // the vocabulary.
+  _updateMood(ap) {
+    const now = Date.now();
+    const dt = this._moodAt ? Math.max(0, now - this._moodAt) / 1000 : 0;
+    this._moodAt = now;
+    const k = 1 - Math.pow(0.5, dt / (CONTACT_WINDOW_MS / 1000));
+    const lv = (ap && ap.levels) || {};
+    if (!this.mood) {
+      this.mood = { valence: this.valence, arousal: this.arousal, lingering: { ...lv } };
+    } else {
+      this.mood.valence += (this.valence - this.mood.valence) * k;
+      this.mood.arousal += (this.arousal - this.mood.arousal) * k;
+      for (const ch of Object.keys(AMYGDALA_CHANNELS)) {
+        const cur = typeof lv[ch] === 'number' ? lv[ch] : 0;
+        const prev = typeof this.mood.lingering[ch] === 'number' ? this.mood.lingering[ch] : 0;
+        // A feeling arrives at once and leaves slowly: rise to a stronger
+        // reading immediately, decay toward a weaker one on the half-life.
+        this.mood.lingering[ch] = cur > prev ? cur : prev + (cur - prev) * k;
+      }
+    }
+    // Each pattern's sign, declared once. The names are for the reader; to
+    // HER they are only words once taught.
+    const PATTERNS = {
+      contact:     { name: 'content',      sign: +1 },
+      outcomeGood: { name: 'pleased',      sign: +1 },
+      contactLoss: { name: 'lonely',       sign: -1 },
+      outcomeBad:  { name: 'disappointed', sign: -1 },
+      rival:       { name: 'jealous',      sign: -1 },
+    };
+    const band = this._moodNeutralBand;
+    const s = this.mood.valence > band ? +1 : (this.mood.valence < -band ? -1 : 0);
+    let best = null, bestLvl = 0;
+    if (s !== 0) {
+      for (const [ch, pat] of Object.entries(PATTERNS)) {
+        if (pat.sign !== s) continue;                       // never name against the felt sign
+        const l = this.mood.lingering[ch] || 0;
+        if (l > bestLvl) { bestLvl = l; best = pat.name; }
+      }
+    }
+    const pattern = best || 'neutral';
+    const taught = this.cortexCluster?._definitionTaughtWords;
+    const knows = !!(taught && typeof taught.has === 'function' && taught.has(pattern));
+    this.mood.pattern = pattern;
+    this.mood.sign = s;
+    this.mood.word = knows ? pattern : null;
+    this.mood.primary = ap ? ap.primary : null;
+    this.mood.blind = ap ? ap.blind : [];
+  }
+
   _emotionalGate() {
     const a = (typeof this.arousal === 'number' && isFinite(this.arousal)) ? this.arousal : 0.5;
     return 0.7 + a * 0.6;
@@ -6345,10 +6553,31 @@ class ServerBrain {
     this._psiBaseline = (typeof this._psiBaseline === 'number' && isFinite(this._psiBaseline))
       ? this._psiBaseline * 0.99 + this.psi * 0.01
       : this.psi;
-    const _psiScale = Number(process.env.DREAM_PSI_GAIN_SCALE) > 0 ? Number(process.env.DREAM_PSI_GAIN_SCALE) : 2.0;
+    // ── THE DEVIATION SCALE IS SELF-CALIBRATED, NOT TYPED ────────────────────
+    // It was a bare `2.0`, with no derivation anywhere. A fixed divisor means a
+    // different thing on every brain: Psi's deviation from its baseline swings
+    // by whatever her size and activity make it swing, so `2.0` used a
+    // different and arbitrary slice of tanh on every boot. Now the divisor is
+    // the deviation's OWN running spread, placed so a one-sigma deviation lands
+    // exactly at tanh's half-value:
+    //     scale = sigma_dev / atanh(1/2)      (sigma_dev self-measured)
+    // which makes the gain mean "how unusual is this moment, for her" on any
+    // brain. Same 0.01 window as the baseline it rides, so the two adapt at one
+    // rate. This is the measurement that could otherwise only have come from a
+    // separate observation run — computed continuously by her instead.
+    // `DREAM_PSI_GAIN_SCALE` survives as an explicit operator pin, not a default.
+    const _psiDev = this.psi - this._psiBaseline;
+    this._psiDevVar = (typeof this._psiDevVar === 'number' && isFinite(this._psiDevVar))
+      ? this._psiDevVar * 0.99 + _psiDev * _psiDev * 0.01
+      : _psiDev * _psiDev;
+    const _psiDevSigma = Math.sqrt(this._psiDevVar);
+    const _pinnedScale = Number(process.env.DREAM_PSI_GAIN_SCALE);
+    const _psiScale = _pinnedScale > 0 ? _pinnedScale
+      : (_psiDevSigma > 1e-9 ? _psiDevSigma / Math.atanh(0.5) : Infinity);   // no spread yet → no deviation to express
+    this.psiDevSigma = _psiDevSigma;
     const _psiSwing = 0.35; // ± gain swing around 1.0 before the [0.8,1.5] clamp
     this.psiGain = Math.max(0.8, Math.min(1.5,
-      1.0 + Math.tanh((this.psi - this._psiBaseline) / _psiScale) * _psiSwing));
+      1.0 + Math.tanh(_psiDev / _psiScale) * _psiSwing));
     // ⛔⛔ THE TWO FACTORS THE MASTER EQUATION MULTIPLIES WERE NEVER WRITTEN
     // ON THE SERVER, SO THEY HELD THEIR CONSTRUCTOR 1.0 FOREVER.
     //
@@ -6425,14 +6654,27 @@ class ServerBrain {
       const amyMV = this.clusters.amygdala?.meanVoltage;
       const mvContrib = (typeof amyMV === 'number') ? Math.min(0.2, Math.abs(amyMV) * 0.08) : 0;
       const baseDrive = Math.min(1, amygActivity * 4 + mvContrib);
-      for (let i = 0; i < amySize; i++) {
-        // Persona-weighted per-nucleus pattern — low-freq sine so
-        // adjacent nuclei get correlated input (matches real amygdala
-        // nuclei clustering). Scaled by base drive + valence term.
-        const phase = (i / amySize) * Math.PI * 2;
-        const pattern = Math.sin(phase) * (p.emotionalVolatility || 0.5)
-                      + Math.cos(phase * 2) * 0.3;
-        amyInput[i] = baseDrive * (0.6 + 0.4 * pattern) + this.valence * 0.1;
+      // ⛔⛔ THE INPUT USED TO BE A FIXED SINE PATTERN, AND NO SITUATION EVER
+      // REACHED HER FEELINGS. It was
+      //     amyInput[i] = baseDrive · (0.6 + 0.4·(sin(phase)·vol + cos(2·phase)·0.3))
+      //                 + valence · 0.1
+      // — the SHAPE never changed, only its loudness, which tracked one spike
+      // rate. Whatever was happening to her, the attractor received the same
+      // pattern and fell into the same family of feelings; her oxytocin could
+      // rise because someone was with her while her feeling knew nothing of it.
+      // The `+ valence · 0.1` was her own valence leaking back uniformly into
+      // every nucleus, appetitive and aversive alike — removed with it.
+      //
+      // Now each nucleus block is driven by the pre-verbal channel it owns
+      // (contact, contact lost, better/worse than expected, rival), so the
+      // situation sets the SHAPE and therefore the valence. Her neural
+      // activity sets only the INTENSITY: content from what is happening,
+      // strength from how activated she is.
+      const _ap = this._appraiseSituation(Date.now());
+      const _intensity = 0.5 + 0.5 * baseDrive;
+      for (const [ch, idxs] of Object.entries(AMYGDALA_CHANNELS)) {
+        const lvl = (typeof _ap.levels[ch] === 'number') ? _ap.levels[ch] : 0;
+        for (const i of idxs) if (i < amySize) amyInput[i] = lvl * _intensity;
       }
       const amyOut = this.amygdalaModule.step(amyInput, { arousal: this.arousal, valence: this.valence }, 1);
       // ENDO — keep the FULL settled attractor, not just the scalars that
@@ -6494,6 +6736,7 @@ class ServerBrain {
         const _arFloor = 0.33 * ((this.persona && Number.isFinite(this.persona.arousalBaseline)) ? this.persona.arousalBaseline : 0.9);
         this.arousal = Math.min(1, Math.max(_arFloor, this.arousal));
       }
+      this._updateMood(_ap);
     } else {
       this.fear = 0; // pre-module-init fallback
     }
@@ -6786,7 +7029,10 @@ class ServerBrain {
       }));
     }
 
-    this.reward += 0.1;
+    // ⛔ `this.reward += 0.1` stood here — the second copy of the
+    // reward-for-speaking bias (see the chat path). Removed for the same
+    // reason: talking is not an outcome, and a reply that rewards itself makes
+    // every reply feel good by construction.
     // Seed Crystal — a reply credits the side whose word_motor bucket spoke last.
     if (typeof this._crystalChatReward === 'function' && this.cortexCluster
         && Number.isFinite(this.cortexCluster._lastEmittedBucketIdx) && this.cortexCluster._lastEmittedBucketIdx >= 0) {
@@ -9482,8 +9728,28 @@ class ServerBrain {
       // a slow-but-honest save and well under a real desync.
       const TOL = Number(process.env.DREAM_WEIGHTS_PAIR_TOL_SEC) > 0
         ? Number(process.env.DREAM_WEIGHTS_PAIR_TOL_SEC) : 600;
-      out.coherent = gapSec <= TOL;
-      if (!out.coherent) {
+      // ⛔ THE SIZE OF THE GAP CANNOT CATCH AN INTERRUPTED SAVE — THE DIRECTION
+      // CAN. Honest pairs sit 43-268s apart because the synapse file finishes
+      // AFTER the metadata, so a gap inside 600s says nothing. On 2026-11-19 a
+      // stop killed her 3s into her shutdown save: metadata 19:46:47, synapses
+      // still the 19:43:05 file, a 222s gap — inside the tolerance, so this check
+      // reported the pair coherent while her memory of what she had learned ran
+      // four minutes ahead of the weights that held it. Two signatures now count,
+      // whatever the gap:
+      //   (a) the .bin predates savedAt — it was written by an EARLIER save, so
+      //       this metadata describes synapses that never reached disk;
+      //   (b) a leftover .bin.tmp newer than the .bin — a synapse write that
+      //       started and never renamed. At boot no save is running, so a .tmp
+      //       here can only be one that was cut off.
+      const _CLOCK_EPS_MS = 2000;   // filesystem-mtime granularity, not a tolerance
+      out.binPredatesMeta = binMs < savedAt - _CLOCK_EPS_MS;
+      let _tmpMs = null;
+      try { if (fs.existsSync(binPath + '.tmp')) _tmpMs = fs.statSync(binPath + '.tmp').mtimeMs; } catch { /* stat race — treat as absent */ }
+      out.interruptedWrite = _tmpMs != null && _tmpMs > binMs;
+      out.coherent = gapSec <= TOL && !out.binPredatesMeta && !out.interruptedWrite;
+      if (out.binPredatesMeta || out.interruptedWrite) {
+        console.warn(`[Brain] ⛔ WEIGHTS PAIR INCOHERENT — AN INTERRUPTED SAVE: ${out.binPredatesMeta ? `brain-weights.bin (${out.binMtime}) predates the metadata's savedAt (${out.jsonSavedAt}), so it is an earlier save's synapses` : ''}${out.binPredatesMeta && out.interruptedWrite ? '; and ' : ''}${out.interruptedWrite ? `a leftover brain-weights.bin.tmp is NEWER than brain-weights.bin, i.e. a synapse write that never completed` : ''}. Gap ${gapSec}s — inside the ${TOL}s tolerance, which is why the size of the gap cannot catch this. Her METADATA is ahead of her SYNAPSES. FIX: copy the newest COHERENT checkpoint pair (brain-weights-vN.json + .bin, .bin written AFTER the .json) over the live one. Booting anyway.`);
+      } else if (!out.coherent) {
         console.warn(`[Brain] ⛔ WEIGHTS PAIR INCOHERENT — brain-weights.json says savedAt ${out.jsonSavedAt} but brain-weights.bin was written ${out.binMtime}, a gap of ${gapSec}s (tolerance ${TOL}s). Her METADATA is ahead of her SYNAPSES: grade pointers and taught-word ledgers will claim progress the weights do not hold. Cause is almost always a save interrupted between the two writes — check for a leftover brain-weights.bin.tmp. FIX: copy the newest COHERENT checkpoint pair over the live one (brain-weights-vN.json + .bin, whose mtimes are seconds apart). Booting anyway.`);
       } else {
         console.log(`[Brain] weights pair coherent — json/bin ${gapSec}s apart.`);
@@ -11498,15 +11764,29 @@ const httpServer = http.createServer((req, res) => {
     // #38 — DELIBERATE clean stop. Force-save the latest weights + drop the
     // resume marker so a LATER manual start auto-resumes (no need to remember
     // Savestart) unless a heavy update made the weights incompatible.
-    try { _writeResumeMarker('stop.bat / HTTP /shutdown'); } catch (err) {
-      console.warn('[Brain] resume-marker on /shutdown failed:', err && err.message);
-    }
-    try { brain.stop(); } catch (err) {
-      console.error('[Brain] stop() failed during /shutdown:', err);
-    }
-    // Give the (possibly large) force-save a moment to flush to disk before exit.
-    // Exit 42 (deliberate-halt sentinel) — see RestartPreventExitStatus in the unit.
-    setTimeout(() => { process.exit(42); }, 1500);
+    //
+    // ⛔ STOPKILL (2026-11-19) — THIS PATH SKIPPED THE GPU READBACK THAT THE
+    // SIGTERM PATH DOES, so every dashboard Stop and every stop.bat discarded
+    // whatever the donor had trained since the last scheduled readback (94% of
+    // her plasticity trains on the card's resident weights, which the host
+    // never sees until it pulls them). It now does exactly what SIGTERM does,
+    // in the same order: pull the GPU's weights (bounded by its own budget, so
+    // it can never be the reason a stop hangs), then the synchronous save and
+    // marker, then exit. The callers that used to kill her 3s into this save
+    // now wait for the port to close — see windows/stop.bat.
+    (async () => {
+      await _readbackBeforeStop('stop.bat / HTTP /shutdown');
+      try { _writeResumeMarker('stop.bat / HTTP /shutdown'); } catch (err) {
+        console.warn('[Brain] resume-marker on /shutdown failed:', err && err.message);
+      }
+      try { brain.stop(); } catch (err) {
+        console.error('[Brain] stop() failed during /shutdown:', err);
+      }
+      // The save above is synchronous, so by the time this runs it has landed;
+      // the short delay only lets the HTTP reply and log lines flush.
+      // Exit 42 (deliberate-halt sentinel) — see RestartPreventExitStatus in the unit.
+      setTimeout(() => { process.exit(42); }, 1500);
+    })();
     return;
   }
 
@@ -13597,6 +13877,9 @@ wss.on('connection', (ws, req) => {
 
         case 'reward':
           brain.reward += msg.amount || 0;
+          // Also an OUTCOME her appraisal reads — praise feels good and a
+          // scolding feels bad, before she has a word for either.
+          if (Number.isFinite(msg.amount)) brain._externalRewardPulse = (brain._externalRewardPulse || 0) + msg.amount;
           break;
 
         case 'lookupDefinition': {
@@ -14245,8 +14528,15 @@ wss.on('connection', (ws, req) => {
             const _stepsNow = Number(msg.stepsComputed) || 0;
             const _stepsPrev = Number(lb._lastSteps);
             const _stepsAdvanced = Number.isFinite(_stepsPrev) ? (_stepsNow > _stepsPrev) : false;
-            if (_stepsAdvanced) {
-              lb.neurons += (Number(msg.gneuronsPerSec) || 0) * dt; // billions of neuron-steps contributed
+            // Credit the neuron-steps the SERVER saw this card complete since the
+            // last frame (see compute_batch_result), in billions. The donor's
+            // `gneuronsPerSec` is still displayed but no longer banked.
+            const _obsNow = Number(client._observedNeuronSteps) || 0;
+            const _obsPrev = Number(lb._lastObservedSteps);
+            const _obsDelta = Number.isFinite(_obsPrev) ? Math.max(0, _obsNow - _obsPrev) : 0;
+            lb._lastObservedSteps = _obsNow;
+            if (_stepsAdvanced && _obsDelta > 0) {
+              lb.neurons += _obsDelta / 1e9;                    // billions of neuron-steps the server observed
               lb._lastComputeTs = now;
             } else {
               lb._idleFrames = (lb._idleFrames || 0) + 1;   // visible in the row: connected but not computing
@@ -14354,6 +14644,25 @@ wss.on('connection', (ws, req) => {
           // promotion timing, and the exact-match check below still guarantees
           // only the batch we are actually waiting on can resolve the tick.
           const _MIRROR_ID_BASE = 2000000000;
+          // ── LEADERBOARD CREDIT FROM WHAT THE SERVER OBSERVED ──────────────
+          // Counted here, for mirrored and authoritative results alike (both
+          // are real computation the card performed), BEFORE either branch
+          // below can drop the message. Credit = each returned cluster's size ×
+          // the substeps the server asked for, for clusters this card has
+          // CONFIRMED initializing. ⛔ The old credit was the donor's own
+          // `gneuronsPerSec × dt`: a card whose init hung returned near-empty
+          // batches almost instantly, and "the work I was asked for ÷ almost no
+          // time" ranked an RX 6500 at 96,110 Gn/s over a 4070 Ti SUPER's 3.3.
+          if (client && msg.perCluster && typeof msg.perCluster === 'object') {
+            const _sub = Number(brain._lastBatchSubsteps) || 0;
+            const _acked = client._initAcked;
+            let _obs = 0;
+            for (const _cn of Object.keys(msg.perCluster)) {
+              if (!_acked || !_acked.has(_cn)) continue;
+              _obs += (Number(CLUSTER_SIZES[_cn]) || 0) * _sub;
+            }
+            if (_obs > 0) client._observedNeuronSteps = (client._observedNeuronSteps || 0) + _obs;
+          }
           if (msg.mirror === true
               || (typeof msg.batchId === 'number' && msg.batchId >= _MIRROR_ID_BASE)) {
             brain._gpuMirrorBatches = (brain._gpuMirrorBatches || 0) + 1;
@@ -14473,6 +14782,11 @@ wss.on('connection', (ws, req) => {
           // the optimistic _gpuInitialized flag.
           if (!brain._gpuInitializedConfirmed) brain._gpuInitializedConfirmed = {};
           brain._gpuInitializedConfirmed[msg.clusterName] = true;
+          // Which clusters THIS card has confirmed initializing. Leaderboard
+          // credit is gated on it: a card whose init hung can still return a
+          // result for a cluster, and "computed, nothing fired" is
+          // indistinguishable from "never computed" without this ack.
+          if (client) (client._initAcked || (client._initAcked = new Set())).add(msg.clusterName);
           console.log(`[GPU] Confirmed: ${msg.clusterName} initialized (${(msg.size || 0).toLocaleString()} neurons)`);
           // 114.19ek P2 #11 — once cortex re-confirms after a respawn,
           // the GPU shadow is back in sync with the CPU CSR; clear the

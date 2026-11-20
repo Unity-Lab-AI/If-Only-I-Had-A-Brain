@@ -2635,8 +2635,9 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
   // is always perfect.
   async learnLetterShape(ch) {
     // ⭐ `WRITEWARM.2` — CASE IS NO LONGER FOLDED AWAY, and that correction is the
-    // whole reason this line changed. `FONT5X7` now carries every printable key on
-    // a QWERTY keyboard (94 glyphs plus space), so `A` and `a` are DIFFERENT
+    // whole reason this line changed. Her teacher carries every printable key on a
+    // QWERTY keyboard (a real typeface since 2026-10-29; the 5x7 bitmap that first
+    // carried them was deleted 2026-11-19), so `A` and `a` are DIFFERENT
     // letterforms with different traces. Lower-casing here would have quietly
     // banked the lowercase trace under every uppercase request — a wrong shape
     // filed under a right-looking key, which is worse than a refusal.

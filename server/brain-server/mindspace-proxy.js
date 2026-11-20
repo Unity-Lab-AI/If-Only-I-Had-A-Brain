@@ -5,7 +5,7 @@
 // zero event-loop time on the main thread. Governor calls stay sync-shaped
 // at the call site (fire-and-forget RPC; worker message order preserves the
 // governState → governTick → imagine sequence). glyphStrokes is pure
-// stroke geometry (FONT5X7 → line segments, no engine state) and runs on a
+// stroke geometry (real typeface outlines → line segments, no engine state) and runs on a
 // local instance so sync callers keep working unchanged.
 const { Worker } = require('worker_threads');
 const path = require('path');

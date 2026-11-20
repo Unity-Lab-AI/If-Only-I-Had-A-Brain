@@ -23,9 +23,25 @@ echo ""
 
 # Step 1/3: graceful HTTP shutdown
 echo "[stop] step 1/3: requesting graceful shutdown via HTTP /shutdown..."
+# STOPKILL (2026-11-19) - this used to wait 3s and then step 2 kill -9'd her in
+# the middle of her own shutdown save (6.3 GB, 51-66s measured, pins up to
+# ~112s, port held throughout). Wait for her to release the port herself, up to
+# 300s - the GPU readback budget (120s) plus the measured save - and only kill
+# past that. See windows/stop.bat for the measured case.
 if curl -s -m 5 -X POST http://localhost:7525/shutdown > /dev/null 2>&1; then
-    echo "  graceful shutdown request sent -- waiting 3s for server to exit..."
-    sleep 3
+    echo "  shutdown accepted -- she is pulling her GPU weights and saving them."
+    echo "  Waiting up to 300s for her to exit on her own. Do NOT interrupt."
+    waited=0
+    while lsof -ti:7525 >/dev/null 2>&1; do
+        if [ "$waited" -ge 300 ]; then
+            echo "  WARNING: still holding the port after 300s - falling through to kill."
+            break
+        fi
+        sleep 2
+        waited=$((waited + 2))
+        if [ $((waited % 20)) -eq 0 ]; then echo "  ...still saving, ${waited}s"; fi
+    done
+    if ! lsof -ti:7525 >/dev/null 2>&1; then echo "  she exited on her own after ${waited}s - her save completed."; fi
 else
     echo "  graceful shutdown unreachable (server may already be dead)."
 fi

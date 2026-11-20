@@ -111,11 +111,38 @@ if /i "%1"=="/clear" (
     exit /b 1
 )
 
-echo [Savestart] step 1/7: killing any prior listener on port 7525...
+REM !! STOPKILL (2026-11-19) - THIS STEP USED TO taskkill A RUNNING BRAIN WITH NO
+REM SAVE AT ALL, AND THEN RESUME FROM WHATEVER WAS ON DISK. Savestart exists to
+REM keep her state, so killing her without saving defeated its own purpose - and a
+REM kill that lands while a periodic save is writing leaves her metadata ahead of
+REM her synapses. Now a running brain is asked to shut down and given up to 300s
+REM to finish its GPU readback and its save (see windows\stop.bat for the measured
+REM case and the derivation of 300s). Only a brain that will not let go is killed.
+echo [Savestart] step 1/7: stopping any prior brain on port 7525 - cleanly first...
+netstat -ano | findstr :7525 | findstr LISTENING >nul 2>&1
+if errorlevel 1 goto :ss_prior_done
+curl -s -m 5 -X POST http://localhost:7525/shutdown > nul 2>&1
+if errorlevel 1 goto :ss_prior_kill
+echo   [Savestart] a brain is running - asked it to save and exit; waiting up to 300s...
+set /a SS_WAITED=0
+:ss_prior_wait
+netstat -ano | findstr :7525 | findstr LISTENING >nul 2>&1
+if errorlevel 1 goto :ss_prior_saved
+if %SS_WAITED% GEQ 300 goto :ss_prior_kill
+ping -n 3 127.0.0.1 >nul
+set /a SS_WAITED+=2
+set /a SS_MOD=SS_WAITED %% 20
+if %SS_MOD% EQU 0 echo   [Savestart] ...still saving, %SS_WAITED%s
+goto :ss_prior_wait
+:ss_prior_saved
+echo   [Savestart] prior brain exited on its own after %SS_WAITED%s - its save completed.
+goto :ss_prior_done
+:ss_prior_kill
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr :7525 ^| findstr LISTENING') do (
-    echo   [Savestart] taskkill /F /PID %%a
+    echo   [Savestart] WARNING: force-killing PID %%a - it did not exit cleanly.
     taskkill /f /pid %%a
 )
+:ss_prior_done
 echo.
 
 echo [Savestart] step 2/7: entering server folder...
@@ -401,9 +428,9 @@ echo.
 echo   NOTE: brain runs ONLY on GPU. compute.html MUST stay open.
 echo   To STOP the brain cleanly: run stop.bat. She runs in her OWN window
 echo   ("unity-brain (leave running)", minimized) - Ctrl+C here or closing
-echo   this window does not reach her; closing HER window does.
-echo   stop.bat sends HTTP /shutdown, then taskkill on port 7525 if
-echo   needed, then verifies the port is free.
+echo   this window does not reach her; closing HER window does - and kills
+echo   her WITHOUT saving. stop.bat sends HTTP /shutdown, waits up to 300s
+echo   while she saves, and only then taskkills port 7525 if she is stuck.
 echo   Also close the http://localhost:7525 browser tabs - compute.html
 echo   keeps WebGPU running even without the server.
 echo.

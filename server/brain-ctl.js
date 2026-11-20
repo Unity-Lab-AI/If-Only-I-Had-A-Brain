@@ -202,10 +202,15 @@ function localGitPull() {
   });
 }
 
-// How long to let the brain flush ~5.4GB of weights after a graceful stop
-// before we consider the process gone. Generous on purpose: cutting a save
-// short is how trained state gets corrupted.
-const GRACEFUL_WAIT_MS = parseInt(process.env.UAL_CTL_GRACEFUL_WAIT_MS || '20000', 10);
+// How long to let the brain flush its weights after a graceful stop before we
+// consider the process gone. "Generous on purpose: cutting a save short is how
+// trained state gets corrupted" — and the old 20s was not generous: the weights
+// are 6.3 GB (51-66s measured, shutdown pins up to ~112s) and /shutdown now
+// pulls the GPU's weights first under a 120s budget. 300s covers both, and is
+// the ceiling the project already uses for a pinned brain (BIND_WAIT_MS). On
+// 2026-11-19 a stop that killed early left her synapses 1.1 GB into a 6.3 GB
+// write. ⚠ Inert until this control plane is itself restarted.
+const GRACEFUL_WAIT_MS = parseInt(process.env.UAL_CTL_GRACEFUL_WAIT_MS || '300000', 10);
 
 // How long LOCAL_MODE's `stop` primitive waits for the brain's port to close
 // after spawning the stop script, so it keeps `systemctl stop`'s blocking
@@ -214,7 +219,11 @@ const GRACEFUL_WAIT_MS = parseInt(process.env.UAL_CTL_GRACEFUL_WAIT_MS || '20000
 // weights — the same reason GRACEFUL_WAIT_MS is generous — and because a stop
 // reported as failed while it is still saving is the lie this bound exists to
 // prevent.
-const LOCAL_STOP_WAIT_MS = parseInt(process.env.UAL_CTL_LOCAL_STOP_WAIT_MS || '180000', 10);
+// ⚠ Must exceed stop.bat's own wait, which is now up to 300s for the readback
+// and the save before it ever force-kills; 180s would have reported a stop as
+// failed while she was still mid-save. 300s + 30s for the script's own kill
+// and verify steps.
+const LOCAL_STOP_WAIT_MS = parseInt(process.env.UAL_CTL_LOCAL_STOP_WAIT_MS || '330000', 10);
 
 // How long to wait for a freshly-started brain to BIND its port. Deliberately
 // generous: at 411M neurons the boot loads ~5.4 GB of weights before it

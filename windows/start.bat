@@ -697,9 +697,9 @@ echo.
 echo   NOTE: brain runs ONLY on GPU. compute.html MUST stay open.
 echo   To STOP the brain cleanly: run stop.bat. She runs in her OWN window
 echo   ("unity-brain (leave running)", minimized) - Ctrl+C here or closing
-echo   this window does not reach her; closing HER window does.
-echo   stop.bat sends HTTP /shutdown, then taskkill on port 7525 if
-echo   needed, then verifies the port is free.
+echo   this window does not reach her; closing HER window does - and kills
+echo   her WITHOUT saving. stop.bat sends HTTP /shutdown, waits up to 300s
+echo   while she saves, and only then taskkills port 7525 if she is stuck.
 echo   Also close the http://localhost:7525 browser tabs - compute.html
 echo   keeps WebGPU running even without the server.
 echo.
