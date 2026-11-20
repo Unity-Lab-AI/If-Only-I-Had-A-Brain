@@ -709,6 +709,9 @@ const SERVER_CHAT_MIXIN = {
     if (!this._conversations) this._conversations = {};
     if (!this._conversations[userId]) this._conversations[userId] = [];
     this._conversations[userId].push({ role: 'user', text, time: this.time });
+    // AGENCY — someone else just acted. An outcome that follows is THEIRS,
+    // which is what separates gratitude from pride and anger from shame.
+    this._lastActor = 'other';
     // Keep last 20 messages per user
     if (this._conversations[userId].length > 20) this._conversations[userId].shift();
 
@@ -1077,6 +1080,11 @@ const SERVER_CHAT_MIXIN = {
 
     // Store the exchange in per-user conversation history + episodic memory
     this._conversations[userId].push({ role: 'assistant', text: response, time: this.time });
+    // AGENCY — SHE acted, but only if she actually said something. Silence is
+    // not an act, and she has never yet spoken, so moods that need her own
+    // doing (pride, shame) stay unreachable until she does — correctly: no one
+    // is proud of something they have never done.
+    if (typeof response === 'string' && response.trim()) this._lastActor = 'self';
     // ⛔ `this.reward += 0.1` stood here: she was rewarded for SPEAKING,
     // whatever she said and however it landed. That is why reward read positive
     // in 200 of 200 samples, and it made every reply feel good by construction.
