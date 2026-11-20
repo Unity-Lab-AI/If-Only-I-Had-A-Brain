@@ -810,6 +810,9 @@ const SERVER_STATE_MIXIN = {
         depthBaseline: this._amygOut.depthBaseline ?? null,
         depthDeviation: this._amygOut.depthDeviation ?? null,
         rawArousal: this._amygOut.rawArousal ?? null,
+        // The sigma the arousal gain self-calibrates against. Tiny here beside a
+        // lively arousal means a dead deviation is being amplified to look alive.
+        depthDevSigma: this._amygOut.depthDevSigma ?? null,
       } : null,
       // PSITEACH.1 — which lane fed Ψ this tick: step-lane spikes and the
       // measured teach-lane activity term (TEACHCREDIT Gops/s, normalized).

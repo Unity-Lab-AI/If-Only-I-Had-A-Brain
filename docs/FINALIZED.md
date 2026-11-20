@@ -5,6 +5,26 @@
 
 ---
 
+## 2026-11-19 (later) — `VALENCE.12`: THE OLD AMYGDALA GAVE OPPOSITE MOODS THE SAME FEELING; IT IS HOMEOSTATIC NOW
+
+Gee, verbatim: *"why would i start it you just told all kinds of things still needing to be fixed"*
+
+Gee, verbatim: *"okay get to it"*
+
+⛔ **Owned first: I told him she was safe to start while listing things still broken.** The honest split is two classes — items that need her running to be measured (`.4`'s `k`, `.13`'s scale), and one buildable while she was down that gated `.4`. Starting her first would have spent a boot.
+
+**Proven before building:** the old leak `w ← (w + lr·x_i·x_j)·0.9995` has a saturated fixed point `lr·d/(1−d) = 5.997`, six times the `±1` clamp. **Three cuts measured and rejected before one shipped:** a true Oja rule (pins identically to the old leak); a derived fixed decay `0.96404` (landed at depth 0.9914 through a drive→Hebbian feedback loop, weights 0.0794 vs 0.0797 predicted); and a self-calibrating gain on that cut (amplified a sd-0.0015 deviation into arousal sd 0.041 — a dead signal dressed as alive).
+
+**Shipped:** homeostatic plasticity `Δw = lr·x_i·x_j·(D² − depth²)/D²`, `D = 1/√2`, no decay; arousal gain from the headroom **left after** the fear/reward term's measured 2σ (the cut that gave depth all of it railed 0–19.8% by draw); `depthDevSigma` published. **10 weight draws:** depth 0.7051–0.7057 · arousal sd 0.02–0.08 (was exactly 0) · rail 0.03% mean, 0.1% worst (was 100% of 200 live samples) · valence sd 0.005–0.017 · opposite moods distinguished every draw. ⭐⭐ **Under the old rule opposite inputs gave −0.2561 and −0.2561.** The emotional gate's magnitude term is alive, which half-unblocks `.4`.
+
+**Not delivered, on the board:** lag — a mood outlasting its cause (`VALENCE.15`, a persona ratio); discrimination is draw-dependent, weakest gap 0.0037.
+
+**RE-PRICE:** `corpus × reps × scale × visits` unchanged; no gate or bound removed; ~24 days stands. ⚠ Content changes: mean arousal falls from a pinned 1.0 to ~0.9, so `emotionalGate` drops from 1.300 to ~1.24 on average — **~4.6% less drive**, which FIREKNOB will see and compensate by raising `tonic`. That is one more reason the FIREKNOB-vs-gain interaction read matters on the next boot. Curriculum; lands before a walk.
+
+**Verified:** `node --check`, ESM import, pure CRLF (614/614), zero task-IDs in code, module confirmed rebuilt every boot (`brain-server.js:4749`) so no saved weights migrate. **Docs:** `TODO.md` · `FINALIZED.md` · `THRESHOLD-DERIVATION.md` · `EQUATIONS.md` · `RESUME.md`. Unaffected: `ARCHITECTURE.md`, `SKILL_TREE.md`, `HOW-IT-WORKS.md`, `html/*`, `README.md`, `deploy/*` — none describes the amygdala's weight rule.
+
+---
+
 ## 2026-11-19 — `VALENCE.0`–`.11`: HER EMOTIONAL POLARITY WAS A DICE ROLL, THE LIVE GPU PATH RAN A GAIN FORMULA RETIRED IN JUNE, AND I RETRACTED MY OWN HEADLINE MID-BATCH
 
 Gee, verbatim: *"i want you to do a /super-review of the full stack and brain process tits to ass of how this can properly solve out low valence issue and other tings like the main modulator in the brain of thethat governs the master equation via themystery equation this is real world exercise i want all your best effert trust no one"*
