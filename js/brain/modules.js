@@ -152,9 +152,26 @@ export class Amygdala {
     // Fear and reward projection vectors (like central nucleus outputs)
     this.fearW = new Float64Array(size);
     this.rewardW = new Float64Array(size);
-    for (let i = 0; i < size; i++) {
-      this.fearW[i] = (Math.random() - 0.5) * 0.4;
-      this.rewardW[i] = (Math.random() - 0.5) * 0.4;
+    // ── INNATE WIRING — she feels before she has the word ──────────────────
+    // When `opts.innate` names which nuclei carry APPETITIVE and which carry
+    // AVERSIVE input, the readout is wired to them the way a newborn's is:
+    // contact and good outcomes feel good, loss and bad outcomes feel bad,
+    // before any learning and before any vocabulary. This is the grounding of
+    // primary reinforcers — the unconditioned stimuli a real amygdala is born
+    // reading — and it is the only grounding that can precede a word.
+    // ⛔ With random readout weights (the old default, kept below for callers
+    // that pass no channels) the SIGN of her valence for a given situation was
+    // a coin flip set at construction: the same event could feel good on one
+    // boot and bad on the next. That is not a feeling, it is noise with a name.
+    const innate = (opts && typeof opts === 'object' && opts.innate) ? opts.innate : null;
+    if (innate) {
+      for (const i of innate.appetitive || []) if (i >= 0 && i < size) this.rewardW[i] = 1;
+      for (const i of innate.aversive || []) if (i >= 0 && i < size) this.fearW[i] = 1;
+    } else {
+      for (let i = 0; i < size; i++) {
+        this.fearW[i] = (Math.random() - 0.5) * 0.4;
+        this.rewardW[i] = (Math.random() - 0.5) * 0.4;
+      }
     }
     // The readout normaliser is MEASURED off these vectors, never typed.
     //

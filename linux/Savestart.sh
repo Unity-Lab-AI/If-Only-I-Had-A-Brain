@@ -105,8 +105,27 @@ fi
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Step 1/7: kill any prior listener
-echo "[Savestart] step 1/7: killing any prior listener on port 7525..."
-lsof -ti:7525 2>/dev/null | xargs kill -9 2>/dev/null
+# STOPKILL (2026-11-19) - this used to kill -9 a running brain with NO save and
+# then resume from whatever was on disk, defeating the point of Savestart. A
+# running brain is now asked to save and exit, with up to 300s (GPU readback
+# budget plus measured save; see windows/stop.bat) before it is killed.
+echo "[Savestart] step 1/7: stopping any prior brain on port 7525 - cleanly first..."
+if lsof -ti:7525 >/dev/null 2>&1; then
+    if curl -s -m 5 -X POST http://localhost:7525/shutdown > /dev/null 2>&1; then
+        echo "  [Savestart] a brain is running - asked it to save and exit; waiting up to 300s..."
+        ss_waited=0
+        while lsof -ti:7525 >/dev/null 2>&1 && [ "$ss_waited" -lt 300 ]; do
+            sleep 2; ss_waited=$((ss_waited + 2))
+            if [ $((ss_waited % 20)) -eq 0 ]; then echo "  [Savestart] ...still saving, ${ss_waited}s"; fi
+        done
+    fi
+    if lsof -ti:7525 >/dev/null 2>&1; then
+        echo "  [Savestart] WARNING: force-killing the prior brain - it did not exit cleanly."
+        lsof -ti:7525 2>/dev/null | xargs kill -9 2>/dev/null
+    else
+        echo "  [Savestart] prior brain exited on its own - its save completed."
+    fi
+fi
 echo ""
 
 # Step 2/7: enter server folder

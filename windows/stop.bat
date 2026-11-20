@@ -29,12 +29,40 @@ REM
 REM Then the CONTROL PLANE on 7526 is stopped as well - see CTLSTOP below for
 REM why that is the default. `stop.bat keepctl` leaves it up.
 
+REM !! STOPKILL (2026-11-19) - THIS STEP USED TO WAIT 3 SECONDS AND THEN STEP 2
+REM FORCE-KILLED HER, IN THE MIDDLE OF HER OWN SHUTDOWN SAVE. /shutdown writes her
+REM weights synchronously - 6.3 GB, 51-66s measured, shutdown pins up to ~112s -
+REM and she keeps holding port 7525 while she writes, so step 2 found the port
+REM held and taskkilled her ~3s in. Caught on 2026-11-19: metadata written at
+REM 19:46:47, the synapse file cut off at 1.1 GB of 6.3 GB at 19:46:50, exit code
+REM 1, no "resume marker written" line. Every stop.bat had been doing this.
+REM Now: wait for her to let go of the port on her own, up to 300s - the ceiling
+REM the project already uses for a pinned brain (BIND_WAIT_MS), covering the
+REM GPU readback budget (120s) plus the measured shutdown save (~112s). Only past
+REM that is she force-killed.
 echo [stop] step 1/3: requesting graceful shutdown via HTTP /shutdown...
 curl -s -m 5 -X POST http://localhost:7525/shutdown > nul 2>&1
-if %ERRORLEVEL% EQU 0 (
-    echo   graceful shutdown request sent - waiting 3s for server to exit...
-    ping -n 4 127.0.0.1 >nul
-)
+if errorlevel 1 goto :stop_wait_done
+echo   shutdown accepted - she is pulling her GPU weights and saving them.
+echo   Waiting up to 300s for her to exit on her own. DO NOT close this window:
+echo   killing her mid-save leaves her memories ahead of her synapses.
+set /a STOP_WAITED=0
+:stop_wait
+netstat -ano | findstr :7525 | findstr LISTENING >nul 2>&1
+if errorlevel 1 goto :stop_wait_exited
+if %STOP_WAITED% GEQ 300 goto :stop_wait_timeout
+ping -n 3 127.0.0.1 >nul
+set /a STOP_WAITED+=2
+set /a STOP_MOD=STOP_WAITED %% 20
+if %STOP_MOD% EQU 0 echo   ...still saving, %STOP_WAITED%s
+goto :stop_wait
+:stop_wait_timeout
+echo   WARNING: still holding the port after 300s - longer than any clean stop
+echo   ever measured here. Falling through to the force-kill below.
+goto :stop_wait_done
+:stop_wait_exited
+echo   she exited on her own after %STOP_WAITED%s - her save completed.
+:stop_wait_done
 
 echo.
 echo [stop] step 2/3: killing any PID still listening on port 7525...

@@ -216,7 +216,7 @@ These batch files boot the brain on your own machine and GPU — and since 2026-
 
 **`Savestart.bat`** is identical to `start.bat` except it sets `DREAM_KEEP_STATE=1` so the server's `autoClearStaleState()` skips its wipe block regardless of whether the curriculum code hash changed. Use this when you want to resume from a prior session's saved weights, passed cells, and grades instead of starting fresh.
 
-**`stop.bat`** is the clean-halt path. `Ctrl+C` in the launcher terminal does *not* reach Node (the process is detached via `start /b`), so a clean halt needs an explicit signal. The script runs three stages: `POST http://localhost:7525/shutdown` first (the graceful path — the server saves, closes SQLite, and exits after a 500 ms drain), `taskkill` on any PID still holding port 7525 second, `taskkill /f /im node.exe` third if the port is still held, then verifies the port is free and reminds you to close any browser tabs on `http://localhost:7525` because `compute.html`'s WebGPU loop keeps the GPU spinning even after the server dies.
+**`stop.bat`** is the clean-halt path. `Ctrl+C` in the launcher terminal does *not* reach Node (the process is detached via `start /b`), so a clean halt needs an explicit signal. The script runs three stages: `POST http://localhost:7525/shutdown` first — the graceful path, in which the server pulls the GPU's trained weights back, saves them (6.3 GB, about a minute), writes its resume marker and exits on its own — and **`stop.bat` waits for that, up to 300 seconds, printing `...still saving` as it goes. Do not close the window while it waits:** a stop that kills her mid-save leaves her memory of what she learned ahead of the synapses that hold it. Only if she still holds port 7525 after 300 s does it `taskkill` the PIDs on that port, then verify the port is free and remind you to close any browser tabs on `http://localhost:7525`, because `compute.html`'s WebGPU loop keeps the GPU spinning even after the server dies. ⚠ Before 2026-11-19 this script waited about three seconds before force-killing, which cut her shutdown save off every time. `Savestart.bat` now does the same clean stop on any brain it finds running, instead of killing it unsaved.
 
 ### How the brain auto-scales
 
@@ -307,7 +307,7 @@ The **identity layer** (`server/identity-core.json`) is **explicitly excluded** 
 ├── windows/
 │   ├── start.bat                    Windows launcher — npm install + bundle build + GloVe download + node + auto-open landing/dashboard
 │   ├── Savestart.bat                Resume launcher — sets DREAM_KEEP_STATE=1 to skip the boot wipe
-│   ├── stop.bat                     Three-stage clean halt — POST /shutdown → taskkill on port → taskkill /f node.exe → verify port free
+│   ├── stop.bat                     Clean halt — POST /shutdown → WAIT up to 300s for her save → taskkill on port only past that → verify port free
 │   └── GPUCONFIGURE.bat             One-shot loopback-only VRAM-tier picker
 ├── linux/
 │   ├── start.sh                     Linux/macOS launcher (mirrors start.bat)
@@ -588,7 +588,7 @@ That pass shipped twenty atomic fixes. These are the ones that change what a new
 
 - **`windows/start.bat`** — fresh-brain boot. Auto-clears stale state (`brain-weights*.json/bin`, `episodic-memory.db*`, `conversations.json`, `schemas.json`) per the two-launcher contract above. Use this when you want Unity to learn from scratch.
 - **`windows/Savestart.bat`** — resume from prior state. Sets `DREAM_KEEP_STATE=1` env var which skips the auto-clear. Reads `brain-weights.bin` from disk and resumes training where it left off. ⛔ **Budget disk for GB, not MB: measured on a live checkpoint set, each `brain-weights-v*.bin` is ~5,460 MB (≈5.3 GB)** — this doc said `144.8 MB` until 2026-08-27, understating it ~38×. With three rotating checkpoint slots that is **~16 GB of weights alone**, which is why `DREAM_SAVE_MIN_FREE_DISK_MB` defaults to `8192` and defers a save rather than risking a truncated one. ⚠ The paired `.json` is only ~0.3 MB — the bulk is the binary.
-- **`windows/stop.bat`** — graceful shutdown. POSTs `/shutdown` for clean state-save → falls back to taskkill on port 7525 → falls back to force-kill node.exe.
+- **`windows/stop.bat`** — graceful shutdown. POSTs `/shutdown` (GPU readback, then the state-save) → **waits up to 300 s for her to exit on her own** → only then taskkills the PIDs on port 7525.
 - ⛔ **A STANDING RULE, because the failure mode is a silent wipe of her training:** `node -e "require('./server/brain-server.js')"` no longer wipes state. The `autoClearStaleState()` call is gated behind `if (require.main === module)` so a syntax-check / REPL / IDE module load NO-OPs the wipe. Only an actual `node server/brain-server.js` entry-point boot wipes, per the two-launcher contract above. **NEVER use `require('./server/brain-server.js')` for syntax checks** — use `node --check server/brain-server.js` instead (parses only, doesn't execute top-level code).
 
 ### Dashboard panel changes

@@ -814,6 +814,28 @@ const SERVER_STATE_MIXIN = {
         // lively arousal means a dead deviation is being amplified to look alive.
         depthDevSigma: this._amygOut.depthDevSigma ?? null,
       } : null,
+      // ── HER MOOD — what lingers, what it is, and whether she can name it ──
+      // `pattern` is the state and always exists; `word` is non-null only once
+      // she has been taught that word — she feels before she can say it.
+      // `blind` names any channel with no perception behind it (today:
+      // `rival`), so an absent sense reads as absent instead of as calm.
+      // ⛔ The attachment figure is a userId and this snapshot is PUBLIC, so it
+      // publishes only WHETHER she has someone, never who.
+      mood: this.mood ? {
+        valence: this.mood.valence,
+        arousal: this.mood.arousal,
+        pattern: this.mood.pattern ?? null,
+        word: this.mood.word ?? null,
+        sign: this.mood.sign ?? 0,
+        lingering: this.mood.lingering ? { ...this.mood.lingering } : null,
+        hasAttachment: this.mood.primary != null,
+        blind: Array.isArray(this.mood.blind) ? [...this.mood.blind] : [],
+      } : null,
+      // Better/worse than expected, and surprise — both existed as readers
+      // with no writer until now; a reader with no writer is a sense that was
+      // never connected.
+      rewardPredictionError: (typeof this._tdError === 'number' && isFinite(this._tdError)) ? this._tdError : null,
+      surprise: (typeof this.predictionError === 'number' && isFinite(this.predictionError)) ? this.predictionError : null,
       // PSITEACH.1 — which lane fed Ψ this tick: step-lane spikes and the
       // measured teach-lane activity term (TEACHCREDIT Gops/s, normalized).
       // Ψ = 0.000 with teachGopsPerSec > 0 is the blind-instrument shape this
@@ -2829,8 +2851,11 @@ const SERVER_STATE_MIXIN = {
       const ok = this._lastReadbackOk || null;
       const bad = this._lastReadbackRefusal || null;
       const st = this._readbackStats || null;
-      const gapMs = Number.isFinite(+process.env.DREAM_READBACK_MIN_GAP_MS)
-        ? Math.max(0, +process.env.DREAM_READBACK_MIN_GAP_MS) : 3_600_000;
+      // ⛔ This used to recompute the gap with its own default of 3,600,000,
+      // which drifted from the real gate (halved to 1,800,000) and published a
+      // cadence the code no longer ran. It reads the gate's own value now;
+      // null until the gate has run once, because a guess is worse than absent.
+      const gapMs = Number.isFinite(this._readbackGapMs) ? this._readbackGapMs : null;
       out.readback = {
         // null (not 0) until one has actually completed — "never run" and
         // "ran just now" must not share a rendering.
@@ -2854,7 +2879,9 @@ const SERVER_STATE_MIXIN = {
         // ⛔ The verdict is DERIVED, never a stored flag: a flag set at boot
         // survives the thing it described. `overdue` is the field that says the
         // cadence has stopped without anyone having to do the subtraction.
-        overdue: ok && ok.at ? (now - ok.at) > (gapMs * 2) : null,
+        // null when the gap is not yet known — `null * 2` is NaN, and NaN
+        // compares false, which would have read as a reassuring "not overdue".
+        overdue: (ok && ok.at && gapMs != null) ? (now - ok.at) > (gapMs * 2) : null,
       };
     } catch (err) { out.readback = { error: err.message }; }
 

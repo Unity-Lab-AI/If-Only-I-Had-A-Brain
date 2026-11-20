@@ -1,5 +1,14 @@
 # Prediction-error learning
 
+> ⛔ **HISTORICAL — THE ENGINE THIS PAGE DESCRIBES HAS BEEN DELETED (2026-11-19).**
+> `js/brain/engine.js` was the browser brain. The bundle stopped importing it on
+> 2026-09-02 and nothing loaded it afterwards; it and the two harnesses named
+> below (`test_learning.mjs`, `test_improves.mjs`) are removed. **The deployed
+> brain never ran this plasticity block.** Its reward path is in
+> `server/brain-server.js`, and its emotional grounding is the amygdala in
+> `js/brain/modules.js`. Kept as the record of what was tried, not as a
+> description of her.
+
 ## What changed
 
 One block in `engine.js` § 10 PLASTICITY, plus two constants. Nothing else
