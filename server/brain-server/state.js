@@ -830,6 +830,10 @@ const SERVER_STATE_MIXIN = {
         lingering: this.mood.lingering ? { ...this.mood.lingering } : null,
         hasAttachment: this.mood.primary != null,
         blind: Array.isArray(this.mood.blind) ? [...this.mood.blind] : [],
+        // Where she sits in appraisal space (null = not perceived, never 0), and
+        // which moods are out of reach because a sense behind them is missing.
+        coords: this.mood.coords ? { ...this.mood.coords } : null,
+        unreachable: Array.isArray(this.mood.unreachable) ? [...this.mood.unreachable] : [],
       } : null,
       // Better/worse than expected, and surprise — both existed as readers
       // with no writer until now; a reader with no writer is a sense that was

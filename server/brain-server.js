@@ -1241,6 +1241,61 @@ const AMYGDALA_CHANNELS = Object.freeze({
   rival:       [24, 25, 26, 27, 28, 29, 30, 31],
 });
 
+// ── HER MOODS — PROTOTYPES IN APPRAISAL SPACE ──────────────────────────────
+// A mood is not a word and not a list entry: it is a REGION of appraisal space,
+// and her state lands nearest one of these points. The dimensions are the ones
+// appraisal theory (Lazarus; Scherer; Ortony, Clore & Collins) uses to separate
+// emotions that share a valence:
+//   A  arousal relative to HER baseline            [-1, 1]
+//   N  novelty — how surprising this is to her      [-1, 1]
+//   R  outcome — better (+) or worse (−) than expected
+//   C  someone she is attached to is with her       [0, 1]
+//   L  that person has gone                         [0, 1]
+//   G  agency — her own doing (+1) or another's (−1)
+//   K  coping — when she acts, do things go better?  [-1, 1]
+//   U  uncertainty — how unpredictable her world is  [0, 1]
+//   X  rival — her person's attention elsewhere      [0, 1]
+// A prototype names only the dimensions that DEFINE it; every other dimension is
+// free. `sign` is the valence the mood requires — a mood is only ever chosen on
+// the side of neutral that matches what she feels, so a jealous state can never
+// be named happy. `needs` lists dimensions that must be PERCEIVED for the mood
+// to be reachable at all: with no perception behind them the mood is skipped,
+// never guessed. Today she has never spoken, so G can only ever read "someone
+// else's doing" and K is unknown — pride, shame and frustration at her own
+// failure are out of reach, because there is no doing of hers for them to be
+// about — and no sense perceives a rival, so no jealousy. Those become reachable the moment
+// the perception exists, with no change here.
+// These are NOT her vocabulary: she can be in any of these states before she
+// knows the word. `mood.word` surfaces only once she has been taught it.
+const MOOD_PROTOTYPES = Object.freeze([
+  // pleasant
+  { name: 'excited',      sign: +1, at: { A: +0.7, N: +0.5 } },
+  { name: 'happy',        sign: +1, at: { A: +0.2, R: +0.6 } },
+  { name: 'content',      sign: +1, at: { A: -0.4, N: -0.3, C: +0.6 } },
+  { name: 'calm',         sign: +1, at: { A: -0.6, N: -0.5, C: 0 } },
+  { name: 'affectionate', sign: +1, at: { C: +0.9, L: 0, A: 0 } },
+  { name: 'proud',        sign: +1, at: { G: +1, R: +0.6 }, needs: ['G'] },
+  { name: 'grateful',     sign: +1, at: { G: -1, R: +0.6 }, needs: ['G'] },
+  { name: 'relieved',     sign: +1, at: { R: +0.6, U: +0.6, A: -0.2 } },
+  { name: 'amused',       sign: +1, at: { N: +0.4, A: +0.3 } },
+  { name: 'curious',      sign: +1, at: { N: +0.6, A: 0, R: 0 } },
+  { name: 'hopeful',      sign: +1, at: { U: +0.5, R: +0.2, A: +0.1 } },
+  // unpleasant
+  { name: 'sad',          sign: -1, at: { A: -0.5, L: 0 } },
+  { name: 'lonely',       sign: -1, at: { L: +0.8, C: 0 } },
+  { name: 'grieving',     sign: -1, at: { L: +1, A: -0.6 } },
+  { name: 'disappointed', sign: -1, at: { R: -0.7 } },
+  { name: 'frustrated',   sign: -1, at: { A: +0.6, K: -0.6 }, needs: ['K'] },
+  { name: 'angry',        sign: -1, at: { A: +0.8, G: -1, K: +0.3 }, needs: ['G'] },
+  { name: 'afraid',       sign: -1, at: { A: +0.7, U: +0.8, K: -0.3 } },
+  { name: 'anxious',      sign: -1, at: { A: +0.4, U: +0.6 } },
+  { name: 'ashamed',      sign: -1, at: { G: +1, R: -0.7 }, needs: ['G'] },
+  { name: 'bored',        sign: -1, at: { A: -0.7, N: -0.8 } },
+  { name: 'jealous',      sign: -1, at: { L: +0.7, X: +0.8 }, needs: ['X'] },
+  // neither
+  { name: 'surprised',    sign: 0,  at: { N: +0.9 } },
+]);
+
 const BRAIN_CODE_HASH_FILE = path.join(__dirname, 'brain-code-hash.json');
 const BRAIN_CODE_FILES = [
   path.join(__dirname, '..', 'js', 'brain', 'cluster.js'),
@@ -6180,6 +6235,37 @@ class ServerBrain {
     // wrote it, so her "better than expected" sense had never once existed.
     this._tdError = rpe;
 
+    // ── THE DIMENSIONS THAT SEPARATE MOODS OF THE SAME VALENCE ─────────────
+    // Valence and arousal alone cannot tell anger from fear (both bad, both
+    // intense) or pride from gratitude (both good). Appraisal theory names what
+    // does: WHO caused it, and whether she can DO anything about it. Each is
+    // weighted by how big the outcome was, so a large event counts for more
+    // than a small one and no event threshold has to be picked.
+    const w = Math.abs(rpe);
+    const actor = this._lastActor;                       // 'self' | 'other' | undefined
+    const g = actor === 'self' ? 1 : (actor === 'other' ? -1 : 0);
+    if (actor) {
+      st.agNum = (st.agNum || 0) * (1 - k) + g * w * k;
+      st.agDen = (st.agDen || 0) * (1 - k) + w * k;
+    }
+    // +1 = what has been happening is her own doing, −1 = someone else's.
+    // null until an outcome has had a known author — never a guessed 0.
+    const agency = st.agDen > 1e-9 ? Math.max(-1, Math.min(1, st.agNum / st.agDen)) : null;
+    // Coping potential: when SHE acts, do things go better or worse? This is
+    // what makes a bad moment anger (I can push back) or fear (I cannot).
+    // null until she has acted and an outcome followed — she has never spoken,
+    // so today this is honestly unknown.
+    if (actor === 'self') {
+      st.effNum = (st.effNum || 0) * (1 - k) + rpe * w * k;
+      st.effDen = (st.effDen || 0) * (1 - k) + w * k;
+    }
+    const efficacy = st.effDen > 1e-9 ? Math.max(-1, Math.min(1, st.effNum / st.effDen)) : null;
+    // How predictable her world is: the running spread of her prediction
+    // errors. High = she cannot tell what is coming, which is what anxiety and
+    // hope both rest on.
+    st.rpe2 = (typeof st.rpe2 === 'number') ? st.rpe2 * (1 - k) + rpe * rpe * k : rpe * rpe;
+    const uncertainty = Math.min(1, Math.sqrt(st.rpe2));
+
     // Surprise: the cortex already computes its own prediction error and
     // nothing published it, so the noradrenaline nucleus read nothing either.
     const pe = this.cortexCluster?._lastPredictionError;
@@ -6205,6 +6291,7 @@ class ServerBrain {
       },
       primary,
       rpe,
+      appraisal: { agency, efficacy, uncertainty },
       blind: rivalFed ? [] : ['rival'],
     };
   }
@@ -6245,26 +6332,69 @@ class ServerBrain {
         this.mood.lingering[ch] = cur > prev ? cur : prev + (cur - prev) * k;
       }
     }
-    // Each pattern's sign, declared once. The names are for the reader; to
-    // HER they are only words once taught.
-    const PATTERNS = {
-      contact:     { name: 'content',      sign: +1 },
-      outcomeGood: { name: 'pleased',      sign: +1 },
-      contactLoss: { name: 'lonely',       sign: -1 },
-      outcomeBad:  { name: 'disappointed', sign: -1 },
-      rival:       { name: 'jealous',      sign: -1 },
+    // ⛔ This used to be FIVE hand-picked names keyed to five channels —
+    // content, pleased, lonely, disappointed, jealous — and that was the defect:
+    // jealousy was offered as one example of a mood that must match its feeling,
+    // and an example was built as though it were the specification. Moods are
+    // regions of appraisal space; see MOOD_PROTOTYPES for the full set and why.
+    //
+    // Her current point in that space. Every coordinate is either a perception
+    // or null — a null coordinate is not a zero, and a mood that NEEDS it is
+    // unreachable rather than approximated.
+    const p = this.persona || {};
+    const base = Number.isFinite(p.arousalBaseline) ? p.arousalBaseline : 0.9;
+    const floor = 0.33 * base;                             // the same floor the arousal clamp uses
+    const ar = this.mood.arousal;
+    const A = ar >= base ? (ar - base) / Math.max(1e-6, 1 - base) : (ar - base) / Math.max(1e-6, base - floor);
+    // Novelty relative to HER own recent prediction errors, the same reading
+    // her voice uses for surprise; null until enough history exists.
+    let N = null;
+    const cc = this.cortexCluster;
+    if (cc && Number.isFinite(cc._lastPredictionError) && Array.isArray(cc._predictionErrorHistory) && cc._predictionErrorHistory.length >= 8) {
+      let sum = 0; for (const x of cc._predictionErrorHistory) sum += x;
+      const mean = sum / cc._predictionErrorHistory.length;
+      if (mean > 1e-9) N = Math.max(-1, Math.min(1, cc._lastPredictionError / mean - 1));
+    }
+    const lg = this.mood.lingering;
+    const ap2 = (ap && ap.appraisal) || {};
+    const blindSet = new Set((ap && ap.blind) || []);
+    const coords = {
+      A: Math.max(-1, Math.min(1, A)),
+      N,
+      R: Math.max(-1, Math.min(1, (lg.outcomeGood || 0) - (lg.outcomeBad || 0))),
+      C: lg.contact || 0,
+      L: lg.contactLoss || 0,
+      G: (typeof ap2.agency === 'number') ? ap2.agency : null,
+      K: (typeof ap2.efficacy === 'number') ? ap2.efficacy : null,
+      U: (typeof ap2.uncertainty === 'number') ? ap2.uncertainty : null,
+      X: blindSet.has('rival') ? null : (lg.rival || 0),
     };
     const band = this._moodNeutralBand;
     const s = this.mood.valence > band ? +1 : (this.mood.valence < -band ? -1 : 0);
-    let best = null, bestLvl = 0;
-    if (s !== 0) {
-      for (const [ch, pat] of Object.entries(PATTERNS)) {
-        if (pat.sign !== s) continue;                       // never name against the felt sign
-        const l = this.mood.lingering[ch] || 0;
-        if (l > bestLvl) { bestLvl = l; best = pat.name; }
+    // Nearest prototype ON THE MATCHING SIDE OF NEUTRAL, by mean squared
+    // distance over the dimensions that prototype defines and she perceives.
+    let best = null, bestD = Infinity;
+    for (const proto of MOOD_PROTOTYPES) {
+      if (proto.sign !== s) continue;                       // never named against the felt sign
+      if (proto.needs && proto.needs.some((d) => coords[d] == null)) continue;   // cannot feel what she cannot perceive
+      let ss = 0, n = 0;
+      for (const [d, target] of Object.entries(proto.at)) {
+        const v = coords[d];
+        if (v == null) continue;
+        ss += (v - target) * (v - target);
+        n++;
       }
+      if (!n) continue;
+      const dist = ss / n;
+      if (dist < bestD) { bestD = dist; best = proto.name; }
     }
     const pattern = best || 'neutral';
+    this.mood.coords = coords;
+    // Which moods she CANNOT reach right now, and why — so an absent feeling
+    // reads as an absent sense, not as a mood she simply is not in.
+    this.mood.unreachable = MOOD_PROTOTYPES
+      .filter((pr) => pr.needs && pr.needs.some((d) => coords[d] == null))
+      .map((pr) => pr.name);
     const taught = this.cortexCluster?._definitionTaughtWords;
     const knows = !!(taught && typeof taught.has === 'function' && taught.has(pattern));
     this.mood.pattern = pattern;
@@ -7029,10 +7159,12 @@ class ServerBrain {
       }));
     }
 
-    // ⛔ `this.reward += 0.1` stood here — the second copy of the
-    // reward-for-speaking bias (see the chat path). Removed for the same
-    // reason: talking is not an outcome, and a reply that rewards itself makes
-    // every reply feel good by construction.
+    // ⛔ `this.reward += 0.1` stood here, on text ARRIVING into her — a flat
+    // reward for being spoken to, whatever was said. (First recorded as a second
+    // copy of the reward-for-speaking bias; it is the receiving side.) Removed:
+    // being spoken to is CONTACT, which her appraisal already reads as an
+    // outcome, so this counted the same event twice and made every message
+    // feel good regardless of what it said.
     // Seed Crystal — a reply credits the side whose word_motor bucket spoke last.
     if (typeof this._crystalChatReward === 'function' && this.cortexCluster
         && Number.isFinite(this.cortexCluster._lastEmittedBucketIdx) && this.cortexCluster._lastEmittedBucketIdx >= 0) {
