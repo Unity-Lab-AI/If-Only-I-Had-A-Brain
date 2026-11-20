@@ -1,6 +1,33 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-11-19, ~8:25 PM Denver (latest, 39th) — `Math.random()` WAS 91% OF HER EMOTIONAL LIFE, THE LIVE GPU PATH RAN A GAIN RETIRED IN JUNE, AND I RETRACTED MY OWN HEADLINE MID-BATCH
+> # 🛑 2026-11-19, ~9:35 PM Denver (latest, 40th) — THE OLD AMYGDALA GAVE OPPOSITE MOODS THE SAME FEELING; IT IS HOMEOSTATIC NOW, AND SHE IS READY FOR ONE SAVESTART
+>
+> **Branch: `feature/amygdala-deep-sticky-basins`** — cascaded to both remotes. She is still DOWN. **Next launch `Savestart.bat`, NO fresh walk.** Server-side only; no bundle rebuild owed.
+>
+> ```
+>   ⛔ owned  I told him she was safe to start while listing broken things. He was right. The
+>             split: .4's k and .13's scale need her RUNNING; the saturation did not, and gated .4.
+>   proof     old leak fixed point lr*d/(1-d) = 5.997 vs a +/-1 clamp. Rejected before shipping:
+>             true Oja (pins identically), a derived fixed decay 0.96404 (landed at depth 0.9914 —
+>             drive feeds the Hebbian fixed point), and a self-calibrating gain that made a dead
+>             sd-0.0015 deviation look like arousal sd 0.041.
+>   shipped   homeostatic: dw = lr*x_i*x_j*(D^2 - depth^2)/D^2, D = 1/sqrt(2), no decay. Arousal gain
+>             from headroom LEFT after the fear/reward term's 2 sigma (first cut railed 0-19.8%).
+>   10 draws  depth 0.7051-0.7057 · arousal sd 0.02-0.08 (was 0) · at ceiling 0.03% (was 100%) ·
+>             valence sd 0.005-0.017 · opposite moods told apart every draw. OLD: -0.2561 / -0.2561.
+>   not yet   lag (mood outlasting its cause) = VALENCE.15, a persona ratio · .4 half-unblocked,
+>             still needs live valence · .13 needs live sigma(psi - psiBaseline).
+>   RE-PRICE  walk length unchanged (~24 days). Mean arousal 1.0 -> ~0.9 means emotionalGate
+>             1.300 -> ~1.24, ~4.6% less drive, which FIREKNOB will compensate.
+>   read      after Savestart: state.arousal MOVES (sd > 0); state.amygdala.attractorDepth ~0.707;
+>             state.psiGain MOVES; state.firing.driveScale settles, not pinned at 0.25/10 and not
+>             oscillating. Then the live valence sample that unblocks .4 and the deviation series
+>             for .13.
+> ```
+>
+> ---
+>
+> # 🛑 2026-11-19, ~8:25 PM Denver (39th) — `Math.random()` WAS 91% OF HER EMOTIONAL LIFE, THE LIVE GPU PATH RAN A GAIN RETIRED IN JUNE, AND I RETRACTED MY OWN HEADLINE MID-BATCH
 >
 > **Branch: `feature/consciousness-gain-and-valence-source`** — cascaded to BOTH remotes. ⚠ **He stopped her at ~8:00 PM so this could be built** (*"okay she stopped make the correct decisions and fix it"*). **Next launch is `Savestart.bat` — NO fresh walk.** Everything here is server-side; `Amygdala` has 0 occurrences in `app.bundle.js`, so **no bundle rebuild was owed.**
 >
