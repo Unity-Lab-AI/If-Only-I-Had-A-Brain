@@ -6756,7 +6756,30 @@ const SERVER_CHAT_MIXIN = {
   // (emotion, act), read from voice-meta.json — so nothing here knows or
   // hardcodes 0.25 / 0.85, and a retrain widens the range by itself.
   _voiceFeel(text) {
-    const VALENCE_DEADBAND = 0.03;   // 3.75× the ±0.008 valence noise floor; a reward step (0.08) clears it 2.7×
+    // ⛔⛔ THE TWO VALENCE CONSTANTS BELOW WERE DERIVED FROM A BROKEN CEILING,
+    // AND THE SOURCE THEY WERE DERIVED FROM NO LONGER EXISTS.
+    //
+    // Both were computed against a `valence` that was a hardcoded ±0.1 step on
+    // reward's sign plus a ±0.01 dice roll — the constant has been deleted and
+    // the amygdala attractor is the sole writer now. So: there is no longer a
+    // "±0.008 noise floor", because the injected randomness that produced it is
+    // gone; and the old ceiling of 0.296 cannot be reached or even approached by
+    // the same route.
+    //
+    // ⚠ This is the consumer-breakage the valence work was warned about, and it
+    // is a FOURTH consumer that the filing listed nowhere — it named the
+    // amygdala input, the plasticity term and the blend weight. Her VOICE reads
+    // valence too. Left unexamined, `VALENCE_FULL = 0.3` against a signal whose
+    // ceiling moved to 1.0 would have pinned her delivery at full strength for
+    // any moderate feeling.
+    //
+    // DEADBAND: kept at 0.03 on purpose rather than re-derived. Its justifying
+    // noise floor is gone, so the number no longer means what its old comment
+    // said — but the readout's sensitivity grew ~7×, which makes a fixed 0.03 a
+    // SMALLER fraction of the usable range than before, so keeping it can only
+    // reject more noise and never suppress more signal. That is the safe
+    // direction while the real distribution is unmeasured.
+    const VALENCE_DEADBAND = 0.03;   // ⚠ derivation VOID (see above) — retained as the conservative choice until her post-fix valence is measured
     const AROUSAL_HIGH = 0.4;        // of the headroom ABOVE her baseline (0.9 → 1.0): +0.04 absolute
     const AROUSAL_LOW = -0.3;        // of the room BELOW it (0.9 → 0.3): −0.18 absolute
     const SURPRISE_HIGH = 0.5;       // prediction error 50% above its own 32-tick mean
@@ -6764,7 +6787,25 @@ const SERVER_CHAT_MIXIN = {
     const FEAR_CONCERN = 0.6;        // sigmoid zero 0.5 + 0.1 (the margin the arousal EMA cannot cross on noise)
     const WARMTH_MIN = 0.15;         // = oxytocin deviation 0.30 × its warmth weight 0.50 (a real release, not a flicker)
     const RATE_STRESS = 0.2;         // speechRate: adrenaline 0.45×dev — dev ≥ 0.44 (a SAM-axis event, not drift)
-    const VALENCE_FULL = 0.3;        // |valence| that reads as full strength: 0.8×0.12 + 0.2×1.0 = 0.296, the formula's own ceiling
+    // VALENCE_FULL: re-derived by the SAME method as before — the formula's own
+    // ceiling — which is the only part of the old derivation worth keeping.
+    // `valence ← valence·0.8 + amyOut.valence·0.2` is an EMA, so its steady
+    // state equals its input, and `amyOut.valence = reward − fear` is a
+    // difference of two sigmoids, each in (0, 1). The reachable bound is
+    // therefore |valence| → 1, and the aggression multiplier is explicitly
+    // clamped to the same [-1, 1]. Ceiling 1.0, not 0.296.
+    //
+    // ⚠ This is the ALGEBRAIC ceiling, not her measured range, and the
+    // difference matters: the harness fixed point sits near |valence| 0.05, so
+    // on this normaliser valence will drive her voice only weakly at first.
+    // That is the deliberate direction of error — under-expression is
+    // recoverable, every utterance pinned at maximum intensity is not — and
+    // `intensity` takes the MAX across drivers, so arousal, surprise and fear
+    // still carry her delivery meanwhile. The practical normaliser needs her
+    // post-fix valence distribution, which requires a boot, and inventing it
+    // from pre-fix samples would be fitting a constant to a signal that was
+    // ~91% dice roll.
+    const VALENCE_FULL = 1.0;        // the formula's own ceiling, re-derived; ⚠ practical normaliser owed on measured data
 
     const now = Date.now();
     const p = this.persona || {};

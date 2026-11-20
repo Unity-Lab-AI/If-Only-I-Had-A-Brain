@@ -152,7 +152,10 @@ const SERVER_GPU_MIXIN = {
     // (baseline-relative tanh, set on `this.psiGain`); fall back to a neutral
     // 1.0 only before the first psi update has run.
     const psiGain = (typeof this.psiGain === 'number' && isFinite(this.psiGain)) ? this.psiGain : 1.0;
-    const emotionalGate = 0.7 + (this.arousal || 0.5) * 0.6;
+    // One owner for the gate — see `_emotionalGate` on the server brain. This
+    // builder had the gain right and the gate inlined; the batched builder had
+    // both wrong. Neither now restates an equation.
+    const emotionalGate = this._emotionalGate();
     const driveFactor = 0.8 + ((this.clusters.hypothalamus?.spikeCount || 0) > 100 ? 0.4 : 0.0);
     const errorSignal = clusterName === 'cortex' || clusterName === 'basalGanglia'
       ? -(this.clusters.cerebellum?.spikeCount || 0) / (this.CLUSTER_SIZES.cerebellum || 1) * 2 : 0;

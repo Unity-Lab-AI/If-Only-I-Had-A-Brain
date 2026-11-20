@@ -774,6 +774,43 @@ const SERVER_STATE_MIXIN = {
       valence: this.valence,
       fear: this.fear,
       psi: this.psi,
+      // ── THE MODULATOR CHAIN, PUBLISHED ────────────────────────────────────
+      // Every one of these was absent, and their absence is why an audit of the
+      // emotional chain could only DERIVE the consciousness gain instead of
+      // reading it — and derived it off a formula that turned out not to be the
+      // one running. A headline quantity computed in one place and published
+      // nowhere is the defect class this codebase keeps rediscovering, so the
+      // whole chain from Psi to the gate now ships.
+      //
+      // `psiGain` is the self-calibrating gain actually sent to the donor;
+      // `psiBaseline` is the slow EMA it rides against, so a reader can see the
+      // DEVIATION the gain is built on rather than inferring it; `emotionalGate`
+      // is the one-owner gate. ⚠ A `psiGain` pinned at 1.000 now means
+      // something is wrong — before this it meant nothing, because the field
+      // the dashboard read was a constructor default nobody ever wrote.
+      psiGain: (typeof this.psiGain === 'number' && isFinite(this.psiGain)) ? this.psiGain : null,
+      psiBaseline: (typeof this._psiBaseline === 'number' && isFinite(this._psiBaseline)) ? this._psiBaseline : null,
+      emotionalGate: (typeof this._emotionalGate === 'function') ? this._emotionalGate() : null,
+      // ⛔ The three fields that make the arousal rail explicable. Arousal read
+      // exactly 1.000000 with sd 0.000000 for 200 consecutive samples and
+      // 0.9792 minutes later, so it saturates in EPISODES. Solving
+      // `rawArousal >= 1` against the measured fear/reward gives the condition
+      // `depthDeviation >= 0.0647`, which a true EMA can hold only while
+      // `attractorDepth` is still CLIMBING — a testable claim that was
+      // unanswerable from outside because none of these were published.
+      // `rawArousal` is PRE-clamp on purpose: the clamped value cannot
+      // distinguish "at the ceiling" from "far past it", which is exactly why
+      // the rail was invisible. null = the amygdala module has not stepped yet,
+      // which is not the same as zero.
+      amygdala: this._amygOut ? {
+        valence: this._amygOut.valence,
+        fear: this._amygOut.fear,
+        reward: this._amygOut.reward,
+        attractorDepth: this._amygOut.attractorDepth ?? null,
+        depthBaseline: this._amygOut.depthBaseline ?? null,
+        depthDeviation: this._amygOut.depthDeviation ?? null,
+        rawArousal: this._amygOut.rawArousal ?? null,
+      } : null,
       // PSITEACH.1 — which lane fed Ψ this tick: step-lane spikes and the
       // measured teach-lane activity term (TEACHCREDIT Gops/s, normalized).
       // Ψ = 0.000 with teachGopsPerSec > 0 is the blind-instrument shape this

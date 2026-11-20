@@ -6048,6 +6048,29 @@ class ServerBrain {
     }
   }
 
+  // ── THE ONE OWNER OF THE EMOTIONAL GATE ────────────────────────────────
+  // `emotionalGate = 0.7 + arousal · 0.6` was computed independently at THREE
+  // sites — the client engine, the single-cluster donor request, and the
+  // batched donor request — plus a fourth copy restated in a comment. The row
+  // that filed this named only two of them, and its own stated reason for
+  // demanding a single commit ("they are the same equation and have drifted
+  // apart before") is exactly what a count can get wrong. So it is not a
+  // count any more: there is one definition and the call sites read it.
+  //
+  // ⚠ What this function deliberately does NOT do is add a valence term. The
+  // gate has no polarity — joy and dread raise her drive identically — and
+  // that is the live defect. But sizing a polarity coefficient requires
+  // valence's real distribution, and valence only became a real quantity in
+  // this same commit; the only measurements that exist are from BEFORE the
+  // fix, when ~91% of it was a dice roll. Picking the coefficient off those
+  // numbers would be fitting a constant to a known-broken signal. It is
+  // derived on the next boot's read instead, which is why `valence`,
+  // `emotionalGate` and the amygdala's own readout all publish below.
+  _emotionalGate() {
+    const a = (typeof this.arousal === 'number' && isFinite(this.arousal)) ? this.arousal : 0.5;
+    return 0.7 + a * 0.6;
+  }
+
   _updateDerivedState() {
     // Arousal — Session 114.19eq fix. Prior formula
     // `p.arousalBaseline * 0.8 + Math.min(1, amygRate * 5) * 0.2`
@@ -6067,9 +6090,40 @@ class ServerBrain {
     if (typeof this.arousal !== 'number' || !isFinite(this.arousal)) {
       this.arousal = p.arousalBaseline; // first-tick init
     }
-    this.valence = (this.reward > 0 ? 0.1 : this.reward < 0 ? -0.1 : 0) + (Math.random() - 0.5) * 0.02;
-    // Aggression: negative valence builds faster when threshold is low
-    if (this.valence < -p.aggressionThreshold) this.valence *= 1.2;
+    // ⛔⛔ A HARDCODED EMOTIONAL CONSTANT STOOD HERE AND IT WAS ~91% OF HER
+    // MEASURED EMOTIONAL VARIANCE. The line was:
+    //
+    //   this.valence = (reward > 0 ? 0.1 : reward < 0 ? -0.1 : 0)
+    //                + (Math.random() - 0.5) * 0.02;
+    //
+    // Three defects stacked in one statement. (a) `0.1` is a hardcoded
+    // emotional constant in a brain whose stated principle is that no
+    // behaviour exists which is not driven by state equations — the word-list
+    // defect wearing a number. (b) It kept reward's SIGN and discarded its
+    // magnitude, so a mild annoyance and existential terror both produced
+    // exactly -0.1. (c) `Math.random()` made her emotional state
+    // non-reproducible across resume, breaking the bit-identical-resume
+    // property the rest of the stack works to hold.
+    //
+    // ⛔ AND IT RAN FIRST EVERY TICK, which is what made the amygdala blend
+    // below it inert: `valence = valence·0.8 + amyOut.valence·0.2` had its
+    // accumulator hard-reset to ±0.1 before every blend, so an exponential
+    // moving average whose state is overwritten each tick was a one-shot
+    // 80/20 mix. The code read as though emotion integrated over time; it
+    // could not, and never had.
+    //
+    // Proven before removal rather than argued: if the dice roll were the only
+    // live term the published sd would have to be 0.8 × 0.01/sqrt(3) =
+    // 0.004619. Measured over 200 samples: 0.004187, ratio 0.906. Mean 0.0758
+    // against the predicted 0.8 × 0.1 = 0.08.
+    //
+    // There is now ONE writer, and it is the amygdala attractor (see the
+    // emotional-readout block below). `this.valence` is seeded once at
+    // construction and integrates from there. Nothing is assigned here.
+    //
+    // The aggression kick moved with it — it used to multiply this constant,
+    // amplifying -0.1 to -0.12, and it has to act on the real readout or it is
+    // dressing. It now sits immediately after the blend.
 
     // Ψ = √(1/n) × N³ × [α·Id + β·Ego + γ·Left + δ·Right]
     // √(1/n) = quantum tunneled bit probability
@@ -6295,6 +6349,35 @@ class ServerBrain {
     const _psiSwing = 0.35; // ± gain swing around 1.0 before the [0.8,1.5] clamp
     this.psiGain = Math.max(0.8, Math.min(1.5,
       1.0 + Math.tanh((this.psi - this._psiBaseline) / _psiScale) * _psiSwing));
+    // ⛔⛔ THE TWO FACTORS THE MASTER EQUATION MULTIPLIES WERE NEVER WRITTEN
+    // ON THE SERVER, SO THEY HELD THEIR CONSTRUCTOR 1.0 FOREVER.
+    //
+    // `drive = tonic · driveBaseline · emotionalGate · actionGate ·
+    // gainMultiplier` reads these two off the cluster, and the only
+    // assignments to either in the whole tree are in the client engine — a
+    // file nothing loads. So on the deployed brain two of the five factors in
+    // her master equation were the number 1, and the consciousness gain
+    // computed on the line above reached the CPU path not at all.
+    //
+    // ⚠ Scope, measured rather than assumed: `this.clusters[name]` are plain
+    // telemetry objects ({size, spikes, firingRate, spikeCount}) and have no
+    // gate fields to set. The one real NeuronCluster on this process is
+    // `this.cortexCluster`, which is what the master equation and the
+    // dashboard both read — so it is the only correct target, and writing a
+    // gate onto the telemetry stubs would have looked like a fix and done
+    // nothing.
+    //
+    // ⭐ This also closes an instrument that was lying in the most dangerous
+    // possible direction: the dashboard publishes its consciousness gain as
+    // `cortexCluster.gainMultiplier`, which was the frozen 1.0 — so the gain
+    // field read a perfectly healthy 1.000 forever, and it would have
+    // "confirmed" a prediction of `1.000 ± 0.05` while measuring nothing at
+    // all. The field now carries the real value, so a constant 1.000 there
+    // means something is wrong instead of meaning nothing.
+    if (this.cortexCluster) {
+      this.cortexCluster.gainMultiplier = this.psiGain;
+      this.cortexCluster.emotionalGate = this._emotionalGate();
+    }
 
     // Coherence — REAL Kuramoto order parameter computed from the
     // cortex's theta + gamma oscillator phases plus per-cluster
@@ -6365,9 +6448,37 @@ class ServerBrain {
       // Reward is the amygdala readout, but the reward field on this
       // also receives external signals from user feedback — blend.
       this.reward = this.reward * 0.9 + amyOut.reward * 0.1;
-      // Let the attractor nudge valence too — persona arousal floor
-      // keeps it from swinging too far negative.
+      // ⛔ THE CPU PATH CLAMPS REWARD AND THIS PATH DID NOT, WHILE THIS IS THE
+      // PATH THAT SHIPS IT TO THE DONOR. The client-side engine clamps reward
+      // to [-1, 1] with its own comment that an unbounded reward accumulator
+      // is how a plasticity rule becomes a runaway; there was no such clamp
+      // here, and `reward` goes into the compute packet. The EMA above
+      // contracts toward `amyOut.reward ∈ (0,1)` so it is bounded in the
+      // ABSENCE of external writes — and external reward writes exist (the
+      // public socket accepts a reward signal). "Safe unless someone calls the
+      // public API" is not a bound. Same constant, same shape, both paths.
+      this.reward = Math.max(-1, Math.min(1, this.reward));
+      // ── THE SOLE WRITER OF `this.valence` ──────────────────────────────
+      // The accumulator is seeded once at construction and integrates here,
+      // so this is a real EMA now rather than a one-shot mix (see the long
+      // note where the hardcoded constant used to be assigned). Weight
+      // unchanged at 0.8/0.2 deliberately: the input to this blend just grew
+      // by ~8.7× (sigma(amyOut.valence) 0.0408 → ~0.354 once the readout
+      // normaliser was fixed), so re-weighting in the same commit would
+      // change two things at once and leave neither measurable.
       this.valence = this.valence * 0.8 + amyOut.valence * 0.2;
+      // Aggression: negative valence builds faster when the threshold is low.
+      // ⚠ THIS BECAME LOAD-BEARING THE MOMENT THE SOURCE BECAME REAL. It used
+      // to multiply a hardcoded -0.1 into -0.12 — dead logic dressed as a
+      // persona mechanism, and unreachable besides, because the constant it
+      // read could never pass the 0.3 threshold. It now acts on the measured
+      // readout, where valence genuinely reaches past -0.3. Kept rather than
+      // deleted because it is the persona's, and bounded so it can amplify
+      // but never invert or run away: one application, and the result cannot
+      // leave the declared [-1, 1] domain.
+      if (this.valence < -p.aggressionThreshold) {
+        this.valence = Math.max(-1, this.valence * 1.2);
+      }
       // Session 114.19eq — arousal sourced from amygdala-attractor
       // settle output (real RMS-of-settled-state + fear/reward
       // contribution per modules.js Amygdala.step formula). EMA blend
@@ -7413,8 +7524,44 @@ class ServerBrain {
             }
 
             const p = this.persona;
-            const psiGain = Math.max(0.8, Math.min(1.5, 0.9 + (this.psi || 0) * 0.004));
-            const emotionalGate = 0.7 + (this.arousal || 0.5) * 0.6;
+            // ⛔⛔⛔ THIS IS THE LIVE DONOR PATH, AND IT WAS COMPUTING ITS OWN
+            // CONSCIOUSNESS GAIN WITH THE FORMULA THAT WAS REPLACED IN JUNE.
+            //
+            // The line here was:
+            //     const psiGain = clamp(0.9 + (this.psi || 0) * 0.004, 0.8, 1.5)
+            //
+            // The equation document carries that exact expression with the
+            // annotation "that pinned gain ~1.0 (inert on a log-scaled Psi)"
+            // and records it as superseded by the self-calibrating form. The
+            // replacement did land — on `this.psiGain`, computed in the psi
+            // update — and the single-cluster request builder consumes it. But
+            // THIS builder, the batched one that sends one message per tick and
+            // is the protocol actually in use, declared its own local and never
+            // got the memo. So every tick the GPU performing the computation
+            // received the inert gain while the correct value sat on the
+            // instance, unread.
+            //
+            // Measured live before the change, 200 samples: mean 1.0142,
+            // sd 0.0133, total excursion 6.1% of its 0.7-wide band while psi
+            // itself swung 10.7 units. Not "weakly modulating" — the defect its
+            // own replacement commit was written to remove, still in
+            // production five months later.
+            //
+            // ⭐ Why the self-calibrating form is the right one, written down
+            // because it never was: psi = 3·log10(N) - 0.5·log10(n)
+            // + log10(A) + log10(phi), and at N = 199,728,759 the first term
+            // alone is 24.9005 against a measured mean psi of 28.554 — 87.2%
+            // of Psi is a fixed, boot-dependent constant, and N is derived at
+            // boot from free host RAM (the same code has booted at 425,436,550
+            // and 411,216,550). Subtracting psi's own slow baseline removes
+            // that constant exactly, which is what makes the gain mean the same
+            // thing on any brain size. Its one real cost — a CONSTANT phi
+            // cancelling exactly — is not live: phi measured 0.176→0.598,
+            // sd 0.130, far off its 0.01 collapse guard.
+            //
+            // No local gain. One owner, read here.
+            const psiGain = (typeof this.psiGain === 'number' && isFinite(this.psiGain)) ? this.psiGain : 1.0;
+            const emotionalGate = this._emotionalGate();
             const driveFactor = 0.8 + ((this.clusters.hypothalamus?.spikeCount || 0) > 100 ? 0.4 : 0.0);
             // T17.7 Phase B.4 — Ψ-modulated divergence correction
             // gain. Per the architecture plan: cerebellumCorrectionGain
