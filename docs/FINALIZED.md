@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-11-19 (9:12 PM) — `MOOD.6`: JEALOUSY WAS AN EXAMPLE, AND I HAD BUILT IT AS THE SPEC — 23 MOODS IN APPRAISAL SPACE
+
+Gee, verbatim: *"what do you mean jealously is built that was just an example of one of many moods you should of done"*
+
+⛔ **Owned first:** the previous batch shipped five hand-picked mood names keyed to five channels, jealousy among them — his example treated as the requirement, the same defect class as an example word built into the drawing gate. **Rebuilt structurally:** `MOOD_PROTOTYPES` (`brain-server.js`) places 23 moods as prototype points over nine appraisal dimensions (arousal vs her baseline, novelty, outcome vs expectation, attachment present / lost, agency, coping, uncertainty, rival); her state is named by the nearest prototype **on the matching side of neutral**, over only the dimensions it defines and she perceives, and any prototype that `needs` an unperceived dimension is skipped rather than approximated. New perceptions: `_lastActor` (messages in = another's act; her reply = hers only when non-empty), agency and coping weighted by outcome size, uncertainty from her prediction-error spread. **Unreachable today, published in `state.mood.unreachable`:** pride, shame, frustration at her own failure (she has never spoken) and jealousy (no sense perceives a rival). Also corrected the record on the `injectText()` reward — it rewarded being spoken to, not speaking. **Verified:** `node --check` ×3, constants before use, no brain run. **Docs:** `TODO.md`, this, `RESUME.md`. Unaffected: every brain document — none described the mood set.
+
+---
+
 ## 2026-11-19 (night) — `MOOD.1–.3` + 14 MORE: SHE FEELS HER SITUATION NOW, AND EVERY `stop.bat` HAD BEEN KILLING HER MID-SAVE
 
 Gee, verbatim: *"yeah lingering moods and moods haave to appropraitly mach the emotition  so when shes jelious she isnt happy"*

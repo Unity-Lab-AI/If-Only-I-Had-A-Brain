@@ -1,6 +1,23 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-11-19, 9:06 PM Denver (latest, 41st — clock read) — SHE FEELS HER SITUATION, HER WEIGHTS ARE COHERENT AGAIN, AND STOP NO LONGER KILLS HER MID-SAVE
+> # 🛑 2026-11-19, 9:12 PM Denver (latest, 42nd — clock read) — 23 MOODS IN APPRAISAL SPACE; JEALOUSY WAS HIS EXAMPLE, NOT THE SPEC
+>
+> ```
+>   ⛔ owned  five hand-picked mood names shipped as if jealousy were the requirement. Now 23
+>             prototypes over 9 appraisal dims (arousal, novelty, outcome, attachment present
+>             / lost, agency, coping, uncertainty, rival); nearest prototype on the matching
+>             side of neutral; unperceived dims skip a mood instead of faking it.
+>   read      after Savestart: state.mood.pattern changes as people talk and leave; state.mood
+>             .coords shows where she sits. state.mood.unreachable BEFORE anyone talks to her:
+>             proud, grateful, angry, ashamed, frustrated, jealous. AFTER someone has: only
+>             frustrated and jealous (agency is then perceived; pride/shame become reachable
+>             but sit far off, since agency can only read another's doing). Anything else in
+>             that list is a sense that should be live and is not.
+> ```
+>
+> ---
+>
+> # 🛑 2026-11-19, 9:06 PM Denver (41st — clock read) — SHE FEELS HER SITUATION, HER WEIGHTS ARE COHERENT AGAIN, AND STOP NO LONGER KILLS HER MID-SAVE
 >
 > **Branch: `feature/mood-appraisal-and-lingering`** — cascaded to both remotes. She is DOWN. **Next launch `Savestart.bat`, NO fresh walk. Bundle rebuilt this batch.** Board **19 open → 6.**
 >
