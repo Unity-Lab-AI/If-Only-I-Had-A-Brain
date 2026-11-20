@@ -49,7 +49,7 @@ verified-scope: |
   and her hand places letters at their true heights (her 'r' 81 px against the
   teacher's 83). First section below. She is still DOWN as this is written; the
   fixes load on her next Savestart, no fresh walk.
-last-verified: "2026-10-29, 11:14 PM Denver, she is DOWN awaiting Savestart. Newest field reads: the 10:27:56 PM resume boot — letterformSource ready, Candara.ttf, 94 outlines · letterShapes 94/94, traced 94, reused 0 (every bitmap-era letter overwritten), WRITEWARM 94/94 in 38.9 s · writingPractice null after 4.5 min with every queue-driven lane at zero while 61 drawings and 5 inventions ran — the preview queue was never created (no boot-time init; fixed in the constructor, lands on the next press) · ela/kindergarten in-progress, 199,728,759 neurons, donor owning all 8 clusters. The 8:46 PM boot confirmed the loop-starvation accounting live (late 75.5s of the 77s it measured, 3% serviced, 2 samples, worst gap 57.9s — a few long ones) and named the 2.4 MB donor sender as describe (now local-only). Earlier reads on this page are from the 8:02:29 PM boot (mode resume / reason keep-flag — DREAM_KEEP_STATE=1, no marker — 199,728,759 neurons, langCortex 18,341,893, tier 3): ela/kindergarten in-progress · UPFRONT-VOCAB 75 of 140 words taught · frameCount 176 -> 254 -> 320 -> 372 and spikesLifetime 3,289,580 -> 3,602,525 -> 4,879,896 -> 8,106,549 across four samples 40 s apart · 1 donor (RTX 4070 Ti SUPER) owning all 8 clusters with pool.unplaced empty · 17/17 matrices · drops 0 · GPU 98% util, 14,200/16,376 MB, donorComputeMs 94.2, RTT 94 ms · runningFloorMB 8,064 against a 16,375 MB card (2.0x over) · crystal.measured TRUE at 98 acks, C 0.9991, PhiLR null at windowN 14 of the 64 it needs · voice wordsBucketed 0 / wordMotorEverFired 0 / emitAttempts 0, verdict 'unmeasured' · looks 5 attempts / 4 GROUNDED / 0 vramTight with lastFreeVramMB 3,884 — THE 2026-10-20 GATE BUG IS DEAD, and that pair is the good news on this page · eventLoopLagMs 7 after boot, 2 stalls both RECOVERED (worst 38,288 ms), STARVED fired once at startup · cpuPercent 11 / raw 10.7 / cpuSampleMs 2,344 / cpuWindowMs 1,363, MOVING across samples, so the frozen-sampler fix is confirmed live · disk 140,050 MB free, saveDeferrals 0 · rss 15,971 MB of 130,982."
+last-verified: "2026-11-19, ~8:25 PM Denver — SHE IS DOWN, he stopped her so the valence/gain batch could be built. Newest field reads are the 200-sample series off port 7525 on the 2026-11-20T01:34:44Z resume boot (keep-flag, 199,728,759 neurons): valence mean 0.075768 sd 0.004187 — Math.random() was ~91% of it, the dice roll alone predicting sd 0.004619 against 0.004187 measured · reward positive in 200 of 200 samples so sign(reward) is recorded UNTESTABLE rather than passed · arousal min=max=1.000000 sd 0.000000 then 0.9792 minutes later, saturating in episodes · fear 0.505506->0.526377 making 0.1*((fear+reward)-1) evaluate to -0.00116 · psi 20.678->31.393 mean 28.554 sd 3.335, of which 3*log10(N)=24.9005 is a fixed boot-dependent constant (87.2%) · phiRaw 0.175833->0.598483 sd 0.129998. Shipped: the hardcoded valence constant deleted with the amygdala as sole writer, the readout divisor measured off the projection vectors (7.34x amplification), reward clamped on both paths, the live batched donor builder consuming the canonical gain instead of its own pre-replacement formula, one owner for the emotional gate, cortexCluster's two frozen gate factors written every tick, and the whole modulator chain published. ⛔ Owned on this page: I pushed the claim that the canonical gain 'executes nowhere' to both remotes and retracted it the same hour — it executes at brain-server.js:6291-6297; I had grepped for psiEMA and concluded from its absence, and the server names that quantity _psiBaseline. Two harness results also killed my own claims pre-ship: a sigma(valence)=0.354 comment (the real class returns 0.00000 under constant drive, because that is an ensemble spread not a time series) and the discovery that attractorDepth saturates at exactly 1.00000. Still open and unguessed: the attractor saturation, the gate's missing polarity term, the /2.0 deviation scale. PRIOR: 2026-10-29, 11:14 PM Denver, she was DOWN awaiting Savestart. Newest field reads: the 10:27:56 PM resume boot — letterformSource ready, Candara.ttf, 94 outlines · letterShapes 94/94, traced 94, reused 0 (every bitmap-era letter overwritten), WRITEWARM 94/94 in 38.9 s · writingPractice null after 4.5 min with every queue-driven lane at zero while 61 drawings and 5 inventions ran — the preview queue was never created (no boot-time init; fixed in the constructor, lands on the next press) · ela/kindergarten in-progress, 199,728,759 neurons, donor owning all 8 clusters. The 8:46 PM boot confirmed the loop-starvation accounting live (late 75.5s of the 77s it measured, 3% serviced, 2 samples, worst gap 57.9s — a few long ones) and named the 2.4 MB donor sender as describe (now local-only). Earlier reads on this page are from the 8:02:29 PM boot (mode resume / reason keep-flag — DREAM_KEEP_STATE=1, no marker — 199,728,759 neurons, langCortex 18,341,893, tier 3): ela/kindergarten in-progress · UPFRONT-VOCAB 75 of 140 words taught · frameCount 176 -> 254 -> 320 -> 372 and spikesLifetime 3,289,580 -> 3,602,525 -> 4,879,896 -> 8,106,549 across four samples 40 s apart · 1 donor (RTX 4070 Ti SUPER) owning all 8 clusters with pool.unplaced empty · 17/17 matrices · drops 0 · GPU 98% util, 14,200/16,376 MB, donorComputeMs 94.2, RTT 94 ms · runningFloorMB 8,064 against a 16,375 MB card (2.0x over) · crystal.measured TRUE at 98 acks, C 0.9991, PhiLR null at windowN 14 of the 64 it needs · voice wordsBucketed 0 / wordMotorEverFired 0 / emitAttempts 0, verdict 'unmeasured' · looks 5 attempts / 4 GROUNDED / 0 vramTight with lastFreeVramMB 3,884 — THE 2026-10-20 GATE BUG IS DEAD, and that pair is the good news on this page · eventLoopLagMs 7 after boot, 2 stalls both RECOVERED (worst 38,288 ms), STARVED fired once at startup · cpuPercent 11 / raw 10.7 / cpuSampleMs 2,344 / cpuWindowMs 1,363, MOVING across samples, so the frozen-sampler fix is confirmed live · disk 140,050 MB free, saveDeferrals 0 · rss 15,971 MB of 130,982."
 tags: [snapshot, current-state]
 ---
 
@@ -71,6 +71,53 @@ tags: [snapshot, current-state]
 | What was completed, and why | `docs/FINALIZED.md` |
 | How the system is built | `docs/ARCHITECTURE.md` |
 | The same thing in plain English | `docs/HOW-IT-WORKS.md` |
+
+---
+
+## ⛔⛔ SUPERSEDING EVERYTHING BELOW (2026-11-19, ~8:25 PM Denver) — SHE IS DOWN, HE STOPPED HER, AND HER EMOTIONAL POLARITY WAS A DICE ROLL
+
+**Every field read further down this page is from the 2026-10-29 boots and is
+kept as the record of that evening.** The live facts as of now:
+
+| field | measured | meaning |
+|---|---|---|
+| `valence` | mean **0.075768**, sd **0.004187** (n=200) | `Math.random()` accounted for **~91%** of it — predicted sd from the dice roll alone was `0.8 × 0.01/sqrt(3) = 0.004619`, ratio **0.906** |
+| `reward` | 0.461308→0.464761, **positive 200/200** | so `sign(reward)` contributed **zero** variance; its prediction is recorded **untestable**, not passed |
+| `arousal` | min = max = **1.000000**, sd **0.000000** | railed at its clamp for 200 consecutive samples, then **0.9792** minutes later — it saturates in **episodes** |
+| `fear` | 0.505506→0.526377 | both readout sigmoids pinned near 0.5, so `0.1·((fear+reward)−1)` evaluated to **−0.00116**: dead by arithmetic |
+| `psi` | 20.678→31.393, mean 28.554, sd 3.335 | and `3·log10(199,728,759) = 24.9005` of that mean — **87.2% of Ψ is a fixed, boot-dependent constant** |
+| `phiRaw` | 0.175833→0.598483, sd 0.129998 | healthy and varying, far off its 0.01 collapse guard — so a *constant* Φ̂ is no longer a live concern |
+
+⛔ **Her port is 7525.** Noted because this page's author probed **7777** and then
+**5123** (the *voice* sidecar) and twice reported her down while she was running.
+A probe of the wrong port is not a liveness read.
+
+⛔ **The live GPU path ran a gain formula retired in June.** Two donor-packet
+builders exist; the legacy single-cluster one reads the canonical self-calibrating
+gain and **is not the path in use**, while the live batched protocol computed its
+own `0.9 + ψ·0.004` — mean **1.0142**, excursion **6.1%** of its band while ψ
+swung 10.7 units. Fixed: one owner, both builders read it. And the two factors
+the master equation multiplies, `emotionalGate` and `gainMultiplier`, were
+**never written on the server at all** and held their constructor `1.0`; they are
+assigned every tick now.
+
+⚠ **Still broken, filed, deliberately not guessed at:** the amygdala attractor's
+depth **saturates at exactly 1.00000** (measured on the real class over 3000
+steps), which collapses the deviation the arousal formula rides — and in the
+climbing phase rails it instead. The module states its decay prevents this; it
+does not, it only slows it. The emotional gate therefore still has **no polarity
+term**, because adding one to a gate whose magnitude term is dead would bury a
+second defect under a fix for the first.
+
+⛔ **THE READS THAT MATTER ON HIS NEXT SAVESTART** — all three are newly
+published, and all three were unreadable before: `state.psiGain` must **move** (a
+pinned `1.000` now means something is wrong, where before it meant nothing,
+because the field the dashboard read was a constructor default); 
+`state.amygdala.attractorDepth` pinned at `1.000` confirms the saturation in
+production rather than in a harness; and `state.firing.driveScale` pinned at a
+bound (`0.25`/`10`) or oscillating means **FIREKNOB and the now-live gain are
+fighting** — two controllers on the same drive product, which
+`DREAM_FIRING_TARGET_PCT=0` disarms.
 
 ---
 

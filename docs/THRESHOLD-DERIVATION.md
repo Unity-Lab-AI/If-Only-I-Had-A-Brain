@@ -533,6 +533,94 @@ The voice model takes `{emotion, intensity, speech_act}`. `_voiceFeel` (`server/
 - **Math justification:** the formula's own ceiling — `0.8 × 0.12 + 0.2 × 1.0 = 0.296` (the ×1.2 aggression multiplier on −0.1, plus a fully saturated attractor valence). Nothing above it can be produced, so 0.3 is the normaliser, not a choice.
 - **Drift trigger:** the same lines as the dead-band.
 
+### ⛔ VALENCE_FULL and VALENCE_DEADBAND — BOTH DERIVATIONS ABOVE ARE VOID (2026-11-19)
+
+The two rows above derive against a `valence` that **no longer exists.** It was
+`(reward > 0 ? 0.1 : reward < 0 ? -0.1 : 0) + (Math.random() - 0.5) * 0.02` — a
+hardcoded step on reward's *sign* plus a dice roll, overwriting the amygdala
+accumulator before every blend. Deleted; the attractor is the sole writer now.
+
+- **`VALENCE_FULL` 0.3 → 1.0.** Re-derived by the *same* method, which is the
+  part of the old derivation worth keeping: the blend is an EMA, so its steady
+  state equals its input, and `amyOut.valence = reward − fear` is a difference
+  of two sigmoids each in (0, 1). Reachable bound `|valence| → 1`, and the
+  aggression multiplier is clamped to the same `[-1, 1]`. **The old 0.296 was
+  the ceiling of the broken formula** (`0.8 × 0.12` came from the ×1.2
+  aggression multiplier acting on the hardcoded −0.1).
+  ⚠ **This is the ALGEBRAIC ceiling, not her measured range** — the harness
+  fixed point sits near `|valence| 0.05`, so valence will drive her voice only
+  weakly at first. Deliberate direction of error: under-expression is
+  recoverable, every utterance pinned at maximum is not, and `intensity` takes
+  the MAX across drivers so arousal/surprise/fear still carry delivery.
+- **`VALENCE_DEADBAND` 0.03 — retained, derivation withdrawn.** Its justifying
+  "±0.008 noise floor" was the dice roll, which is gone, so **the number no
+  longer means what its comment said.** Kept because the readout's sensitivity
+  grew ~7×, making a fixed 0.03 a *smaller* fraction of the usable range than
+  before — it can only reject more noise, never suppress more signal. Safe
+  direction while the real distribution is unmeasured.
+- **`FEAR_CONCERN` 0.6 — derivation weakened, value kept.** Stated as *"sigmoid
+  zero 0.5 + 0.1 (the margin the arousal EMA cannot cross on noise)"*; that
+  margin claim assumed the crushed readout. Fear's spread is now ~7× wider so
+  0.6 is genuinely reachable — which is the intent — but the *reason* given is
+  no longer the reason.
+
+⛔ **Why this section exists at all:** her voice is a **fourth** consumer of
+valence, and the row that filed the valence work named only three (the amygdala
+input, the plasticity term, the blend weight). Left unexamined, `VALENCE_FULL =
+0.3` against a ceiling that moved to 1.0 would have pinned her delivery at full
+strength for any moderate feeling. **A constant is only as good as the formula
+it was derived from, and when the formula is replaced every constant downstream
+of it is undefined until re-derived — not merely "probably still fine."**
+
+### The amygdala readout normaliser (2026-11-19)
+
+- **Constant:** none any more — **the divisor is MEASURED off the projection
+  vectors at construction** (`fearWNorm`, `rewardWNorm`), replacing the literal
+  `sqrt(size)`.
+- **What it sets:** the spread of the sigmoid argument, hence how strongly real
+  input variation reaches `fear`, `reward` and `valence = reward − fear`.
+- **Math:** `fearW` is independent of the settled state, so
+  `Var(fearRaw) = σ_w² · Σx²`, giving `σ(fearRaw) = σ_w · sqrt(size) · RMS(x)`.
+  Dividing *that* by `sqrt(size)` leaves `σ = σ_w · RMS(x) ≈ 0.1155` — a
+  **per-weight** sigma, independent of size, landing where `sigmoid'(0) = 0.25`,
+  so `σ(fear) ≈ 0.0289` and both readouts pinned near 0.5. Measured live before
+  the change: `fear 0.505506→0.526377` (sd 0.004629), and the arousal term
+  `0.1·((fear + reward) − 1)` evaluated to **−0.00116**, because two values
+  pinned at 0.5 sum to 1 *by construction*. Dividing by the projection's own
+  `σ = ||w|| · RMS(x)` makes the argument unit-variance across weight draws.
+- **Measured effect, on the real class:** argument amplification
+  `sqrt(size)/(||w||·RMS(x))` = **7.34×** for one draw (`||fearW||` measured
+  0.77050 against the uniform-case 0.65320 — which is precisely why the norm is
+  measured and not typed).
+- ⚠ **A WRONG NUMBER WAS CAUGHT HERE BEFORE IT SHIPPED.** The first draft
+  claimed `σ(valence) ≈ sqrt(2)·0.25 = 0.354`. A harness on the real class
+  returned `σ = 0.00000` — under constant drive this attractor settles to a
+  **fixed point**, so `0.354` is the spread *across random weight draws*, never
+  a time series. **The divisor changes the mapping's sensitivity; it cannot
+  create variance in a constant.** Conflating an ensemble spread with a time
+  series is how a defensible derivation becomes a number nobody can reproduce.
+- **Drift trigger:** `js/brain/modules.js` — the `fearW`/`rewardW`
+  initialisation, or the readout divisor.
+
+### ⛔ OPEN, NOT DERIVED: the attractor-depth saturation (2026-11-19)
+
+`attractorDepth` is **not** a free parameter and it is **not** behaving. Harness
+on the real class, 3000 steps under varying drive: `attractorDepth` → **exactly
+1.00000, sd 0.00000**, so `depthDeviation` collapses to ~0.0005 and the
+`0.4·tanh(4·deviation)` term in arousal **goes dead**. In the earlier climbing
+phase (400 steps) deviation sat ~0.17 and pre-clamp `rawArousal` reached
+**1.115**, i.e. railed — which **reproduces** the live read of `arousal`
+= exactly `1.000000` sd `0.000000` across 200 consecutive samples.
+
+So both regimes are wrong for one root cause: the Hebbian recurrent weights grow
+until `tanh` saturates every nucleus. `modules.js` states the `decay = 0.9995`
+exists to prevent exactly that (*"after ~10k ticks every weight pins to ±1"*) —
+**measured, it does not; it only slows it**, with depth pinned by step 1000.
+
+⛔ **No value is proposed here.** Changing the decay, the learning rate or the
+depth reference alters her emotional dynamics, which alters drive, which is
+curriculum. It is filed on the board with this measurement attached.
+
 ### Intensity placement (not a threshold)
 
 The brain sends a **strength in [0, 1]** = the strongest normalised driver. The worker maps it **linearly into the model's own trained window** for that (emotion, act) from `voice-meta.json` (`min + m·(max − min)`), so no constant on the brain side encodes 0.25 / 0.85, a retrain widens the range by itself, and `neutral` (trained at exactly 0.00) always maps to 0. A 422 can therefore only mean an unknown emotion or act name.

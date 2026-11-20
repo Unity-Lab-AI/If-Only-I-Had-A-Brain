@@ -156,6 +156,24 @@ export class Amygdala {
       this.fearW[i] = (Math.random() - 0.5) * 0.4;
       this.rewardW[i] = (Math.random() - 0.5) * 0.4;
     }
+    // The readout normaliser is MEASURED off these vectors, never typed.
+    //
+    // Why a norm and not sqrt(size): the readout is a projection of the
+    // settled state onto a FIXED random vector, so its spread is set by that
+    // vector's own length, not by how many nuclei there are. For independent
+    // weights and state, Var(proj) = Σ w² x², so sigma(proj) = ||w|| · RMS(x).
+    // Dividing by that exact quantity hands the sigmoid a unit-variance
+    // argument at any size and for any weight distribution — including a
+    // future one that is not uniform, which a hardcoded sigma could not
+    // survive. Stored here because the vectors never change after
+    // construction, so this is a constant per instance rather than per tick.
+    let _fN = 0, _rN = 0;
+    for (let i = 0; i < size; i++) {
+      _fN += this.fearW[i] * this.fearW[i];
+      _rN += this.rewardW[i] * this.rewardW[i];
+    }
+    this.fearWNorm = Math.sqrt(_fN);
+    this.rewardWNorm = Math.sqrt(_rN);
 
     this.settleIters = 5;      // gradient steps per call — enough to fall into a basin
     this.leak = 0.85;          // state persistence across frames (stria-terminalis-ish)
@@ -232,13 +250,57 @@ export class Amygdala {
       rewardRaw += rewardW[i] * x[i];
       norm += x[i] * x[i];
     }
-    const sizeNorm = Math.sqrt(size);
-    const fear = sigmoid(fearRaw / sizeNorm);
-    const reward = sigmoid(rewardRaw / sizeNorm);
+    // ⛔ THE OLD DIVISOR WAS sqrt(size), AND IT OVERCORRECTED INTO THE EXACT
+    // OPPOSITE OF THE SATURATION IT WAS ADDED TO FIX.
+    //
+    // The comment above describes the saturation it cured and never measured
+    // the floor it created. Worked through: fearW is independent of the
+    // settled state, so Var(fearRaw) = sigma_w² · Σx², giving
+    // sigma(fearRaw) = sigma_w · sqrt(size) · RMS(x). Dividing THAT by
+    // sqrt(size) leaves sigma = sigma_w · RMS(x) ≈ 0.1155 — a per-weight
+    // sigma, independent of size, landing in the near-linear middle of the
+    // sigmoid where sigmoid'(0) = 0.25. So sigma(fear) ≈ 0.0289, both
+    // readouts sat pinned near 0.5, and `reward - fear` — a difference of two
+    // near-identical sigmoids — kept the noise and subtracted the signal.
+    // Measured live before this change: fear 0.5055→0.5264, and the
+    // `0.1·((fear + reward) - 1)` arousal term evaluated to -0.00116, because
+    // two values pinned at 0.5 sum to 1 BY CONSTRUCTION. Dead by arithmetic,
+    // not by accident.
+    //
+    // Dividing by the projection's actual sigma instead makes the argument
+    // unit-variance ACROSS WEIGHT DRAWS, which is the quantity the divisor
+    // controls. Measured on this real class: the argument is amplified by
+    // sqrt(size)/(||w||·RMS(x)) = 7.34x for one draw, so real input variation
+    // maps into the readout about seven times more strongly in the sigmoid's
+    // near-linear region. Live sigma(fear) was 0.004629, so expect order 0.03.
+    //
+    // ⚠ AN EARLIER VERSION OF THIS COMMENT CLAIMED sigma(valence) ~ 0.354 AND
+    // THAT NUMBER WAS WRONG — a harness on this class disproved it before it
+    // shipped. sqrt(2)·0.25 is the spread ACROSS random weight draws, not a
+    // time series: under constant drive this attractor settles to a FIXED
+    // POINT and the readout's time-series sigma is 0.00000 exactly, measured.
+    // The fix changes the MAPPING's sensitivity, not the variance of a
+    // constant, and conflating an ensemble spread with a time series is how a
+    // defensible derivation turns into a number nobody can reproduce.
+    //
+    // It also removes the bad-estimator objection: the two readouts project
+    // onto INDEPENDENT random vectors, so once both are scaled to unit
+    // variance their difference combines two uncorrelated reads rather than
+    // cancelling a shared one. Derivation recorded in
+    // docs/THRESHOLD-DERIVATION.md.
+    const stateRms = Math.sqrt(norm / size);        // RMS of the settled state, [0,1]
+    // Guard the degenerate case only: a fully-collapsed state (norm = 0)
+    // carries no readout, and 0/0 must not become NaN and poison every
+    // downstream consumer. Not a fallback — sigmoid(0) = 0.5 is the honest
+    // answer for "no signal in either direction".
+    const _fDiv = this.fearWNorm * stateRms;
+    const _rDiv = this.rewardWNorm * stateRms;
+    const fear = sigmoid(_fDiv > 1e-12 ? fearRaw / _fDiv : 0);
+    const reward = sigmoid(_rDiv > 1e-12 ? rewardRaw / _rDiv : 0);
     const valence = reward - fear;
 
     // Arousal = persona baseline + depth of the attractor we fell into
-    const attractorDepth = Math.sqrt(norm / size); // RMS of settled state, [0,1]
+    const attractorDepth = stateRms; // RMS of settled state, [0,1]
     // 114.19et — saturation fix. Earlier formula `min(1, baseline·0.6
     // + 0.4·attractorDepth + 0.1·(fear+reward))` pegged arousal at 1.000
     // because attractorDepth saturates near 1.0 once the recurrent
@@ -266,7 +328,22 @@ export class Amygdala {
 
     this.lastEnergy = this._energy(x);
 
-    return { valence, arousal, fear, reward, energy: this.lastEnergy, attractorDepth };
+    // The arousal rail cannot be explained from outside without these three.
+    // Measured 2026-11-19: arousal read exactly 1.000000 with sd 0.000000 for
+    // 200 consecutive samples, then 0.9792 minutes later — saturating in
+    // episodes. Solving `rawArousal >= 1` with the measured fear/reward gives
+    // the condition `depthDeviation >= 0.0647`, which a true EMA can only hold
+    // while `attractorDepth` is still CLIMBING. That is a testable claim about
+    // these numbers and about nothing else, so they ship rather than a guess
+    // at a fix. `rawArousal` is returned PRE-clamp on purpose: the clamped
+    // value cannot distinguish "exactly at the ceiling" from "far past it",
+    // which is the whole reason the rail was invisible.
+    return {
+      valence, arousal, fear, reward, energy: this.lastEnergy, attractorDepth,
+      depthBaseline: this._attractorDepthBaseline,
+      depthDeviation,
+      rawArousal,
+    };
   }
 }
 

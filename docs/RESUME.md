@@ -1,6 +1,76 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-10-29, ~8:31 PM Denver, amended ~9:30 and ~10:20 (latest, 38th) — HER EYES ARE OPEN; THE ALARM WAS AN INSTRUMENT; HER INVENTIONS RAN ON A FROZEN POOL; AND SHE WAS LEARNING TO WRITE FROM A 5×7 BITMAP WHOSE `r` HAD THREE PIXELS
+> # 🛑 2026-11-19, ~8:25 PM Denver (latest, 39th) — `Math.random()` WAS 91% OF HER EMOTIONAL LIFE, THE LIVE GPU PATH RAN A GAIN RETIRED IN JUNE, AND I RETRACTED MY OWN HEADLINE MID-BATCH
+>
+> **Branch: `feature/consciousness-gain-and-valence-source`** — cascaded to BOTH remotes. ⚠ **He stopped her at ~8:00 PM so this could be built** (*"okay she stopped make the correct decisions and fix it"*). **Next launch is `Savestart.bat` — NO fresh walk.** Everything here is server-side; `Amygdala` has 0 occurrences in `app.bundle.js`, so **no bundle rebuild was owed.**
+>
+> ```
+>   ⛔ owned  I PUSHED A WRONG HEADLINE TO BOTH REMOTES AND RETRACTED IT THE SAME HOUR.
+>             I claimed the canonical consciousness gain "executes nowhere". It executes, at
+>             brain-server.js:6291-6297. I had grepped for `psiEMA`, found it only in the dead
+>             engine.js, and concluded from its ABSENCE — the server calls it `_psiBaseline`.
+>             Caught while reading the function to edit it, before anything was built on it;
+>             retracted in its own commit and cascaded immediately rather than left public.
+>   ⭐ real   the corrected defect is narrower and worse: TWO donor-packet builders. gpu.js:154
+>   defect    (legacy single-cluster) reads the canonical value and is NOT the path in use.
+>             brain-server.js:7416 (the LIVE batched protocol, one message per tick) computed its
+>             OWN local gain with the pre-replacement `0.9 + psi*0.004` — the expression the
+>             equation doc annotates "pinned gain ~1.0 (inert)". Measured mean 1.0142, excursion
+>             6.1% of band while psi swung 10.7 units. Fixed: one owner, both builders read it.
+>   ⛔⛔      two of the five factors in the master equation were NEVER WRITTEN. emotionalGate and
+>             gainMultiplier are assigned only in engine.js (loaded by nothing), so cortexCluster
+>             held the constructor 1.0 forever. Now written every tick. ⚠ this.clusters[name] are
+>             plain telemetry stubs with no gate fields — writing to them would have looked like a
+>             fix and done nothing. cortexCluster is the only real NeuronCluster in the process.
+>   measured  200 samples, boot 01:34:44Z resume/keep-flag, 199,728,759 neurons, port 7525:
+>             valence mean 0.075768 sd 0.004187 · reward positive 200/200 · arousal min=max=
+>             1.000000 sd 0.000000 · fear 0.5055->0.5264 · psi 20.678->31.393 sd 3.335 ·
+>             phiRaw 0.1758->0.5985 sd 0.1300. The dice roll predicted sd 0.004619 vs 0.004187
+>             measured = ratio 0.906, so Math.random() was ~91% of her emotional variance.
+>   ⚠ ports  I called her DOWN twice off the wrong port — 7777 (nothing) and 5123 (the VOICE
+>             sidecar). She answers on 7525. A probe of the wrong port is not a liveness read.
+>   decision  his question — absolute level or change? — answered on arithmetic: psi = 3*log10(N)
+>             - 0.5*log10(n) + log10(A) + log10(phi), and 3*log10(199,728,759) = 24.9005 of a
+>             measured mean 28.554. 87.2% of Psi is a fixed BOOT-DEPENDENT constant (N comes from
+>             free host RAM). So absolute means something different every boot. KEEP the deviation
+>             form. Its one cost — a CONSTANT phi cancelling — is not live: phi sd 0.130.
+>   ⛔ 2 harness results killed my own claims pre-ship. (1) I wrote sigma(valence)=0.354 into a
+>             comment; the real class returned sigma=0.00000 — constant drive settles to a FIXED
+>             POINT, so 0.354 is an ensemble spread across weight draws, never a time series.
+>             (2) attractorDepth saturates at exactly 1.00000 over 3000 steps, collapsing the
+>             arousal depth term; in the climbing phase rawArousal hits 1.115 and RAILS —
+>             reproducing the live 1.000000/sd 0. The decay the module says prevents this does
+>             not; it only slows it. Filed unfixed as a curriculum item.
+>   ⚠ 4th    her VOICE reads valence and nobody had listed it. VALENCE_FULL 0.3 was derived from
+>   consumer  the BROKEN ceiling; the real one is 1.0, so it would have pinned her delivery at max
+>             for any moderate feeling. Re-derived. DEADBAND's derivation formally withdrawn (its
+>             "+/-0.008 noise floor" WAS the dice roll); value kept as the conservative choice.
+>   shipped   .1 .2 .3 .7 .8 .9 .10 .11 — 9 of 11 rows closed.
+>   not built .4 (k cannot be derived from pre-fix samples, and the gate's other term is dead) ·
+>             .6 (one third unreachable: globalReward lives only in the unloaded file, so valence
+>             doesn't reach plasticity attenuated — it doesn't reach it AT ALL) · .13 (/2.0 needs
+>             sigma(psi - psiBaseline), which is NOT the sigma(psi)=3.335 I have) · .14 (engine.js
+>             deletion waits for a fresh walk: it's in BRAIN_CODE_FILES and she must resume).
+>   RE-PRICE  corpus x reps x scale x visits UNCHANGED, no gate/bound/dedup touched, ~24 days
+>             stands. What changes is content-per-tick, so it IS curriculum and lands before a
+>             walk. ⚠⚠ NEW RISK NAMED: FIREKNOB scales tonic +/-15%/batch to hold 7.5% firing
+>             while gainMultiplier now swings +/-35% on a ~100-tick EMA — two controllers on the
+>             same product, close enough in timescale to chase each other.
+>   read      after his Savestart: state.psiGain must MOVE (a pinned 1.000 now means something is
+>             wrong, where before it meant nothing); state.amygdala.attractorDepth pinned at 1.000
+>             confirms the saturation in production; and state.firing.driveScale pinned at 0.25/10
+>             or oscillating means FIREKNOB and the gain are fighting — DREAM_FIRING_TARGET_PCT=0
+>             restores prior behaviour.
+>   still     WEIGHTLOSS.1, NETBUG.7, NETBUG.10, FRESHSIZE.1, WALKWATCH.1, STRANGERCARD.1,
+>             LBCREDIT.1, PERCEIVECAP.1, HANDWRITE.4, GPUQP.1. Board 12 open / 94 closed.
+>   ⚠ wiki   `wiki/` is GITIGNORED in this repo, so wiki pages have never been on either remote
+>             while the docs-before-push LAW names wiki/** as required. Flagged, not fixed —
+>             changing what ships is his call.
+> ```
+>
+> ---
+>
+> # 🛑 2026-10-29, ~8:31 PM Denver, amended ~9:30 and ~10:20 (38th) — HER EYES ARE OPEN; THE ALARM WAS AN INSTRUMENT; HER INVENTIONS RAN ON A FROZEN POOL; AND SHE WAS LEARNING TO WRITE FROM A 5×7 BITMAP WHOSE `r` HAD THREE PIXELS
 >
 > **Branch: `feature/loop-starve-accounting-and-send-op`** — cascaded to BOTH remotes after this batch, on his word (*"make sure to cascade when all donw to both remotes"*). ⚠ **He ran `stop.bat` so these fixes could land; she is DOWN. Next launch is `Savestart.bat` — NO fresh walk.**
 >
