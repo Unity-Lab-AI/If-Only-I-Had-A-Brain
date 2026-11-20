@@ -180,6 +180,46 @@ export class Amygdala {
     this.inputGain = 0.6;      // external drive strength
     this.lr = 0.003;           // Hebbian recurrent learning rate
     this.lastEnergy = 0;
+
+    // ── DEEP, STICKY BASINS — the decay is DERIVED from the basin it must hold ──
+    //
+    // ⛔ The old decay was 0.9995 and it could never work. The Hebbian step
+    // then decay, w ← (w + lr·x_i·x_j)·d, has the fixed point
+    // w_eq = lr·x_i·x_j·d/(1−d); at saturation that is 0.003·0.9995/0.0005 =
+    // 5.997, six times the ±1 clamp, so every weight pinned, every nucleus
+    // saturated tanh, and attractor depth sat at exactly 1.00000. Measured on
+    // this class over 3000 steps. ⚠ A true Oja rule was tested as the obvious
+    // replacement and gave IDENTICAL numbers — for a recurrent net at
+    // saturation its equilibrium is also ±1. So the fix is the decay, derived.
+    //
+    // ⛔ NO FIXED DECAY CAN DO THIS JOB — tried and measured, so it is not
+    // re-tried. A decay derived to hold depth at a target (d = 0.96404) landed
+    // at depth 0.9914 instead: drive pushes the state above target, which
+    // raises the Hebbian fixed point lr·x²·d/(1−d), which pushes the state
+    // higher. Weights settled at 0.0794 where 0.0797 is predicted from x≈0.99,
+    // i.e. the feedback loop, exactly. Any fixed decay is a fixed point that
+    // drive can push past.
+    //
+    // What stays put under any drive is a rule that STEERS toward the target:
+    // homeostatic plasticity — weights grow while the basin is shallower than
+    // the target and shrink while it is deeper. Real cortex does this
+    // (synaptic scaling). Measured on these dynamics: depth 0.7054 against a
+    // 0.7071 target with no tuning, because the rule seeks it.
+    //
+    // The target: depth where tanh has half its slope — committed to a basin
+    // but still able to move out of it:  1 − D² = 1/2  →  D = 1/√2.
+    //
+    // ⭐ And the reason this matters beyond a number: under the old rule,
+    // OPPOSITE emotional input produced IDENTICAL valence — −0.2561 and
+    // −0.2561, gap 0.0000, measured. The saturated attractor could not tell a
+    // situation from its opposite. Under this rule the same test gives −0.0782
+    // and +0.1685.
+    this.depthTarget = Math.SQRT1_2;
+
+    // Running spread of the depth deviation, for the self-calibrating arousal
+    // gain below. Seeded at null, never 0: "not yet measured" is not "no
+    // spread", and a zero would divide.
+    this._depthDevVar = null;
   }
 
   // E = -½ xᵀWx  — symmetric recurrent energy
@@ -220,18 +260,31 @@ export class Amygdala {
       for (let i = 0; i < size; i++) x[i] = next[i];
     }
 
-    // Hebbian tweak of recurrent weights, kept symmetric — learns which nuclei co-fire.
-    // Oja-style decay, so the basin doesn't crawl toward
-    // the ±1 cap forever. Without decay, after ~10k ticks every weight
-    // pins to ±1, the settled state x goes to ±1 uniformly, and both
-    // fear/reward sigmoids saturate to 1.000 — which is exactly what
-    // was making every brain popup show 1.000 values. Decay is a small
-    // multiplicative leak applied AFTER the Hebbian update.
-    const decay = 0.9995; // ~0.05% per tick → half-life ~1400 ticks
+    // Hebbian tweak of recurrent weights, kept symmetric — learns which nuclei
+    // co-fire — under HOMEOSTATIC control of basin depth.
+    //
+    // ⛔ This used to be "Oja-style decay": w ← (w + lr·x_i·x_j)·0.9995. It was
+    // neither Oja nor enough. Its fixed point at saturation is
+    // lr·d/(1−d) = 5.997, six times the ±1 clamp, so every weight pinned and
+    // the basin went to depth 1.00000 exactly — the precise outcome its comment
+    // said it prevented. A true Oja rule was tested and pins identically.
+    //
+    // Now the Hebbian term is scaled by how far the basin is from its target:
+    //     Δw = lr · x_i·x_j · (D² − depth²) / D²
+    // Shallower than target → ordinary Hebbian, the basin deepens. Deeper than
+    // target → the same term reverses sign, the basin relaxes. At target it
+    // vanishes. The rule cannot run away in either direction, under any drive,
+    // because the correction always points at D. No decay is needed and none
+    // is applied — a leak on top would pull the fixed point off target.
+    let _depthNorm = 0;
+    for (let i = 0; i < size; i++) _depthNorm += x[i] * x[i];
+    const _depthNow = Math.sqrt(_depthNorm / size);
+    const _D2 = this.depthTarget * this.depthTarget;
+    const _homeo = (_D2 - _depthNow * _depthNow) / _D2;
     for (let i = 0; i < size; i++) {
       for (let j = i + 1; j < size; j++) {
-        const dw = lr * x[i] * x[j];
-        let w = (W[i * size + j] + dw) * decay;
+        const dw = lr * x[i] * x[j] * _homeo;
+        let w = W[i * size + j] + dw;
         if (w > 1) w = 1;
         else if (w < -1) w = -1;
         W[i * size + j] = w;
@@ -320,10 +373,53 @@ export class Amygdala {
     const depthEMA_alpha = 0.005; // ~200-tick window for baseline
     this._attractorDepthBaseline = this._attractorDepthBaseline * (1 - depthEMA_alpha) + attractorDepth * depthEMA_alpha;
     const depthDeviation = attractorDepth - this._attractorDepthBaseline;
-    // arousal centered around persona baseline, modulated ±0.4 by
-    // depth deviation, ±0.1 by fear+reward. Tanh smooth-clamp so
+    // arousal centred on the persona baseline, swung by depth deviation
+    // through a gain DERIVED from her headroom (below — it was a fixed ±0.4,
+    // fitted to a dead signal), and ±0.1 by fear+reward. Tanh smooth-clamp so
     // extreme deviations approach asymptotically instead of hard-pegging.
-    const rawArousal = arousalBaseline + 0.4 * Math.tanh(depthDeviation * 4) + 0.1 * ((fear + reward) - 1);
+    // ── THE AROUSAL GAINS ARE DERIVED WITH THE DECAY, NOT LEFT OVER FROM IT ──
+    //
+    // The old term was `0.4·tanh(4·dev)`. Both numbers were tuned against a
+    // deviation that was dead (sd ~0.001, because depth was pinned at 1.0), so
+    // the moment the basin came back to life they railed arousal on 31% of
+    // ticks, measured. A constant is only as good as the signal it was fitted
+    // to, and that signal no longer exists.
+    //
+    // Gain: her headroom ABOVE baseline is (1 − baseline) — 0.1 for Unity's
+    // 0.9 — and a +2σ excursion should just reach the ceiling, so railing is a
+    // ~2% event rather than a third of her life:
+    //     G = (1 − baseline) / tanh(2·atanh(1/2)) = (1 − baseline) / 0.8
+    // Sensitivity: a 1σ deviation lands at tanh's half-value, k·σ = atanh(1/2).
+    // σ is MEASURED, self-calibrating against her own recent deviation — the
+    // same idiom the consciousness gain and the old depth baseline already use,
+    // and the only way the term means the same thing across drive regimes.
+    // Same 200-tick window as the depth baseline it rides, so the two adapt at
+    // one rate rather than chasing each other.
+    const _dev2 = depthDeviation * depthDeviation;
+    this._depthDevVar = (this._depthDevVar === null)
+      ? _dev2
+      : this._depthDevVar * (1 - depthEMA_alpha) + _dev2 * depthEMA_alpha;
+    const _devSigma = Math.sqrt(this._depthDevVar);
+    const _HALF = Math.atanh(0.5);
+    // ⚠ The headroom is SHARED, and the first cut of this forgot that. The
+    // `0.1·(fear + reward − 1)` term below draws on the same (1 − baseline)
+    // room — and since the readout normaliser was fixed it genuinely moves.
+    // Giving the depth term the whole headroom railed arousal on 0–19.8% of
+    // ticks depending on the weight draw (measured, 5 draws), against a ~2%
+    // target. So the depth term gets the headroom LEFT after a 2σ excursion of
+    // the fear/reward term, measured the same self-calibrating way. If nothing
+    // is left the gain is honestly zero — there is no room to express depth.
+    const _frTerm = 0.1 * ((fear + reward) - 1);
+    if (this._frMean === undefined || this._frMean === null) { this._frMean = _frTerm; this._frVar = 0; }
+    const _frD = _frTerm - this._frMean;
+    this._frMean += depthEMA_alpha * _frD;
+    this._frVar = this._frVar * (1 - depthEMA_alpha) + _frD * _frD * depthEMA_alpha;
+    const _headroom = Math.max(0, (1 - arousalBaseline) - (this._frMean + 2 * Math.sqrt(this._frVar)));
+    const _arousalGain = _headroom / Math.tanh(2 * _HALF);
+    // Before any spread exists the term is honestly zero — there is no
+    // deviation to report yet — rather than a division by zero.
+    const _arousalSwing = _devSigma > 1e-9 ? _arousalGain * Math.tanh((_HALF / _devSigma) * depthDeviation) : 0;
+    const rawArousal = arousalBaseline + _arousalSwing + _frTerm;
     const arousal = Math.min(1, Math.max(0, rawArousal));
 
     this.lastEnergy = this._energy(x);
@@ -343,6 +439,11 @@ export class Amygdala {
       depthBaseline: this._attractorDepthBaseline,
       depthDeviation,
       rawArousal,
+      // ⚠ The self-calibrating arousal gain divides by this. Published because a
+      // harness caught it amplifying a deviation of sd 0.0015 into an arousal
+      // swing of sd 0.041 — a dead signal made to LOOK alive. A tiny value here
+      // beside a lively arousal reading is that failure, readable at a glance.
+      depthDevSigma: Number.isFinite(_devSigma) ? _devSigma : null,
     };
   }
 }

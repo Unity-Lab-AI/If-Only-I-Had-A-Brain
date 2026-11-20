@@ -602,6 +602,45 @@ of it is undefined until re-derived — not merely "probably still fine."**
 - **Drift trigger:** `js/brain/modules.js` — the `fearW`/`rewardW`
   initialisation, or the readout divisor.
 
+### ✅ The amygdala basin depth and the arousal gain — DERIVED TOGETHER (2026-11-19, later)
+
+**Supersedes the "open" section directly below, which is kept as the record of
+the measurement that motivated it.**
+
+- **Depth target `D = 1/√2` (0.7071).** Where tanh's slope has fallen to half,
+  `1 − D² = 1/2`: committed to a basin, still able to leave it.
+- **No decay constant at all.** The rule is homeostatic,
+  `Δw = lr · x_i·x_j · (D² − depth²)/D²` — Hebbian while shallower than `D`,
+  reversed while deeper, zero at `D`. It cannot run away under any drive because
+  the correction always points at the target.
+  - ⛔ **Two replacements were measured and rejected.** (1) A true Oja rule pins
+    at `±1` identically to the old leak — at recurrent saturation its
+    equilibrium is also `±1`. (2) A decay derived to make the target the
+    Hebbian fixed point, `d = w*/(w* + lr·D²) = 0.96404`, landed at depth
+    **0.9914**: drive lifts the state above target, raising the fixed point
+    `lr·x²·d/(1−d)`, which lifts the state further (weights 0.0794 against
+    0.0797 predicted from that loop). **A fixed decay is a fixed point drive can
+    push past; only a rule that steers can hold a target.**
+- **Arousal gain `G = headroom / tanh(2·atanh ½) = headroom / 0.8`**, so a +2σ
+  depth excursion just reaches the ceiling. **`headroom = (1 − baseline) −
+  (mean + 2σ)` of the `0.1·(fear + reward − 1)` term** — the two terms SHARE the
+  room above baseline. ⚠ The first cut gave the depth term all of it and railed
+  on **0–19.8%** of ticks by weight draw.
+- **Sensitivity `k = atanh(½)/σ_dev`**, σ self-calibrated over the same
+  200-tick window as the depth baseline so the two adapt at one rate.
+  ⚠ **A self-calibrating gain amplifies whatever deviation exists, including a
+  dead one** — measured once at sd 0.0015 → arousal sd 0.041. `depthDevSigma`
+  is published so that failure is readable rather than disguised.
+- **Measured, 10 independent weight draws:** depth **0.7051–0.7057**; arousal
+  sd **0.02–0.08** (was 0); rail **0.03% mean, 0.1% worst** (was 100% live);
+  opposite inputs distinguished on every draw, min gap 0.0037 — **under the old
+  rule opposite inputs produced identical valence, gap 0.0000.**
+- **Not delivered, stated:** lag (a mood outlasting its cause). A flipped mood
+  crosses halfway in 1 tick; lag needs the recurrent field to dominate drive,
+  which is a ratio that decides how long her feelings linger.
+- **Drift trigger:** `js/brain/modules.js` Amygdala constructor, the Hebbian
+  block, the arousal block; persona `arousalBaseline`.
+
 ### ⛔ OPEN, NOT DERIVED: the attractor-depth saturation (2026-11-19)
 
 `attractorDepth` is **not** a free parameter and it is **not** behaving. Harness
