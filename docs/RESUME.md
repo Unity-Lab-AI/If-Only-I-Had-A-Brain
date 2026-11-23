@@ -1,6 +1,12 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-11-23, 3:07 PM Denver (latest, 44th — clock read) — HER EYES SEE WHAT SHE DRAWS; HER RENDERER IS HER OWN; FRESH EYES
+> # 🛑 2026-11-23, evening (latest, 45th) — NO FROZEN THOUGHTS
+>
+> **Branch: `feature/no-frozen-thoughts`.** Gee stopped her: still apple / poison / cherry in bright circles. **Her training is not tainted** — her saved thought chain held four entries from 10-19/10-20 (two of them RENDER PROMPTS pushed in as thoughts) and reloaded every boot; she cannot speak yet, so nothing replaced them, and her imagination picked from it. Fixed: prompts never enter the chain; imagination reads only this session's thoughts; no definition-colour "circles" drawing. Next launch `Savestart.bat`, NO fresh walk. Board: `WALKWATCH.1` only. ⚠ Non-things (white, no) still pass her lenient early eye — measured that her dictionary's first-meaning rule would refuse bear/duck/watch, so it was not shipped.
+>
+> ---
+>
+> # 🛑 2026-11-23, 3:07 PM Denver (44th — clock read) — HER EYES SEE WHAT SHE DRAWS; HER RENDERER IS HER OWN; FRESH EYES
 >
 > **Branch: `feature/her-eyes-see-what-she-draws`.** She is DOWN (Gee stopped her: her pieces looked like nothing). **Next launch `Savestart.bat`, NO fresh walk** — weights untouched; her visual store starts EMPTY (v11). Board: `WALKWATCH.1` only.
 >
