@@ -2897,7 +2897,8 @@ const SERVER_CHAT_MIXIN = {
     // ARTSTYLE — one style per artwork, mood-weighted, never her last one.
     // The whole piece (ground, every subject, label ink) rides the same hand.
     // ARTLEARN — the subjects' human-accepted styles weight the pick.
-    const artStyle = (typeof this._artStylePick === 'function') ? this._artStylePick(rnd, plan.subjects.map(s => s.word)) : null;
+    const _fusedPiece = plan.subjects.some(s => s && s.fused);
+    const artStyle = (typeof this._artStylePick === 'function') ? this._artStylePick(rnd, plan.subjects.map(s => s.word), { painted: _fusedPiece }) : null;
 
     const side = Number(process.env.DREAM_OWNART_CANVAS) > 0
       ? Number(process.env.DREAM_OWNART_CANVAS)
@@ -2953,7 +2954,10 @@ const SERVER_CHAT_MIXIN = {
           } catch { /* no thoughts to graft from */ }
           const cands = [...inMind];
           const ranked = (cands.length ? this._thoughtRank(cands.concat([s.word])) : null) || [];
-          const thoughtElsewhere = ranked.length > 1 && ranked[0] !== s.word;
+          // ⛔ Never onto a FUSED idea: its parts are already joined in the one
+          // picture she imagined, and a graft from a passing thought stuck a
+          // grey mass onto the subject (judged on a render).
+          const thoughtElsewhere = !s.fused && ranked.length > 1 && ranked[0] !== s.word;
           if (thoughtElsewhere) {
             for (const w of ranked.slice(0, ranked.indexOf(s.word)).slice(0, 4)) {
               const dsk = await this._skeletonFor(w);
@@ -2988,7 +2992,10 @@ const SERVER_CHAT_MIXIN = {
       for (const st of built) { if (!st.layer) st.layer = 'subject'; strokes.push(st); }
     }
     if (contributed.length === 0) return null;   // nothing real drew — no piece, no label
-    if (strokes.length < 4) return null;   // nothing she understood well enough → honest no-drawing
+    // nothing she understood well enough → honest no-drawing. A painted body
+    // (`layer`) is ONE stroke carrying the whole surface, so it counts on its
+    // own — counting marks alone threw every smooth painting away.
+    if (strokes.length < 4 && !strokes.some(s => s && s.type === 'layer')) return null;
 
     // PAINT.11 — HER REVISION PASS: step back, erase what hurts the picture.
     // Backdrop lines running through a subject get erased (occlusion — the
@@ -3050,7 +3057,9 @@ const SERVER_CHAT_MIXIN = {
     } catch { return null; }
     if (!drawn) return null;
     if (contributed.length === 1) {
-      const verdict = await this._eyeJudgesDrawing(drawn, contributed[0].word);
+      const _sk0 = contributed[0].schema && contributed[0].schema.skeleton;
+      // A fully painted picture is drawn unposed (see `_constructFromMask`).
+      const verdict = await this._eyeJudgesDrawing(drawn, contributed[0].word, _sk0 && !_sk0.scene && _sk0.posed);
       const ej = this._eyeJudge || (this._eyeJudge = { passed: 0, refused: 0, unjudged: 0, last: null });
       if (!verdict.judged) ej.unjudged++;
       else if (verdict.pass) ej.passed++;
@@ -3153,6 +3162,13 @@ const SERVER_CHAT_MIXIN = {
       .replace(/[\s,]+/g, ' ')
       .trim();
     if (!body) return null;
+    // A FUSED idea is ONE subject — the whole phrase is the thing she imagined,
+    // never split back into the separate words it came from.
+    if (opts.fusedKey) {
+      const fk = String(opts.fusedKey);
+      const schema = await this._ownArtSchemaFor(fk, { ...opts, allowFetch: false });
+      return { subjects: [{ word: fk, schema, fused: true }], place: null, body: fk };
+    }
     // PLACE cue — the prepositional tail names where the thing IS, which is context,
     // not another subject ("on a gravestone", "in the woods", "at school").
     let placeWord = null;
@@ -3191,7 +3207,7 @@ const SERVER_CHAT_MIXIN = {
       // She HAS seen it but never abstracted it — learn the schema now, from the
       // percept she already holds (no fetch, no pollen).
       if (e && e.rec && typeof this._learnShapeSchema === 'function') {
-        const s = await this._learnShapeSchema(word, e.rec);
+        const s = await this._learnShapeSchema(word, e.rec, opts.fusedKey === word ? { keyOverride: word } : {});
         if (s) return s;
       }
       // Never seen it: one definition-driven look, then abstract THAT and throw the
@@ -3307,8 +3323,14 @@ const SERVER_CHAT_MIXIN = {
       { name: 'doodle',      mass: 'fill',     ink: 'palette',  outlineW: 0.006, outlineA: 1.0, detailMul: 0.7, scale: 0.55, traceBudget: 110 },
     ];
   },
-  _artStylePick(rnd, subjectWords) {
-    const styles = this._artStyles();
+  _artStylePick(rnd, subjectWords, opts = {}) {
+    // `opts.painted` — a fused idea is ABOUT its colour, substance or kind
+    // (a quality or a substance joined to the subject), so it is drawn in a hand
+    // that paints the body at full size. Judged on renders: the line-only hands
+    // left a coloured subject colourless, and the small-scale hand left one a speck.
+    const styles = opts.painted
+      ? this._artStyles().filter(s => s.mass !== 'none' && s.scale >= 1)
+      : this._artStyles();
     const arousal = (typeof this.arousal === 'number') ? this.arousal : 0.5;
     const valence = (typeof this.valence === 'number') ? this.valence : 0;
     // ARTLEARN — her LEARNED taste for these subjects: every human-accepted
@@ -3648,17 +3670,69 @@ const SERVER_CHAT_MIXIN = {
     // pixels), clustered — and a pixel is backdrop when it is as close to one of
     // those colours as the border pixels themselves are (mean + 2 sd of their
     // own distances: the border's measured spread, not a number of mine).
-    const ring = [];
+    let ring = [];
+    const ringSide = [];   // 0 top, 1 bottom, 2 left, 3 right (the nearest side)
     for (let y = 2; y < gh - 2; y++) for (let x = 2; x < gw - 2; x++) {
-      if (x <= 4 || y <= 4 || x >= gw - 5 || y >= gh - 5) ring.push(px(x, y));
+      if (x <= 4 || y <= 4 || x >= gw - 5 || y >= gh - 5) {
+        ring.push(px(x, y));
+        const dt = y, db = gh - 1 - y, dl = x, dr = gw - 1 - x, m = Math.min(dt, db, dl, dr);
+        ringSide.push(m === dt ? 0 : m === db ? 1 : m === dl ? 2 : 3);
+      }
     }
     const K = 6;
     let cent = Array.from({ length: K }, (_, k) => ring[Math.floor((k + 0.5) * ring.length / K)].slice());
     const d2 = (a, b) => (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2;
+    const ringOwner = new Uint8Array(ring.length);
     for (let it = 0; it < 10; it++) {
       const sum = cent.map(() => [0, 0, 0, 0]);
-      for (const c of ring) { let bi = 0, bd = Infinity; for (let k = 0; k < K; k++) { const d = d2(c, cent[k]); if (d < bd) { bd = d; bi = k; } } const s = sum[bi]; s[0] += c[0]; s[1] += c[1]; s[2] += c[2]; s[3]++; }
+      for (let r = 0; r < ring.length; r++) { const c = ring[r]; let bi = 0, bd = Infinity; for (let k = 0; k < K; k++) { const d = d2(c, cent[k]); if (d < bd) { bd = d; bi = k; } } ringOwner[r] = bi; const s = sum[bi]; s[0] += c[0]; s[1] += c[1]; s[2] += c[2]; s[3]++; }
       cent = cent.map((c, k) => sum[k][3] ? [sum[k][0] / sum[k][3], sum[k][1] / sum[k][3], sum[k][2] / sum[k][3]] : c);
+    }
+    // ⛔ A BACKDROP SURROUNDS THE PICTURE; A SUBJECT CROSSING THE FRAME DOES
+    // NOT. Judged on a render: a dark subject big enough to run off the left
+    // and bottom put its own colour into the border, the border model learned
+    // that colour as backdrop, and the subject was erased to a sliver (4,883 of
+    // 25,600 cells survived, of a subject filling half the frame). A border colour counts as
+    // backdrop only when its COLOUR FAMILY is present on at least THREE of the
+    // four sides. ⚠ Families, not single colours: a gradient backdrop splits
+    // into several shades, each on only one or two sides (measured), so judged
+    // one at a time none of them qualified. The border colours are linked by
+    // their nearest neighbours (a minimum spanning tree) and cut at the ONE
+    // largest gap — the shades of a gradient stay one family, the colour of a
+    // subject or a stand crossing the frame falls on the other side of the cut. "Present" on a side
+    // = at least half the family's even share of that side's band.
+    {
+      const sideTot = [0, 0, 0, 0], per = Array.from({ length: K }, () => [0, 0, 0, 0]);
+      for (let r = 0; r < ring.length; r++) { sideTot[ringSide[r]]++; per[ringOwner[r]][ringSide[r]]++; }
+      // MST over the K colours (Prim), then cut its longest edge
+      const inT = [0], edges = [];
+      while (inT.length < K) {
+        let ba = -1, bb = -1, bd = Infinity;
+        for (const a of inT) for (let b = 0; b < K; b++) { if (inT.includes(b)) continue; const d = d2(cent[a], cent[b]); if (d < bd) { bd = d; ba = a; bb = b; } }
+        if (bb < 0) break;
+        inT.push(bb); edges.push([ba, bb, bd]);
+      }
+      let cutAt = -1, cutD = -1;
+      for (let e = 0; e < edges.length; e++) if (edges[e][2] > cutD) { cutD = edges[e][2]; cutAt = e; }
+      const fam = new Int8Array(K).fill(-1);
+      const adj = Array.from({ length: K }, () => []);
+      edges.forEach(([a, b], e) => { if (e !== cutAt) { adj[a].push(b); adj[b].push(a); } });
+      let nf = 0;
+      for (let k = 0; k < K; k++) { if (fam[k] >= 0) continue; const q = [k]; fam[k] = nf; while (q.length) { const a = q.pop(); for (const b of adj[a]) if (fam[b] < 0) { fam[b] = nf; q.push(b); } } nf++; }
+      const keep = [];
+      const famSides = [];
+      for (let f = 0; f < nf; f++) {
+        const members = [...Array(K).keys()].filter(k => fam[k] === f);
+        let sides = 0;
+        for (let s = 0; s < 4; s++) { let c = 0; for (const k of members) c += per[k][s]; if (sideTot[s] && c >= sideTot[s] * members.length / (2 * K)) sides++; }
+        famSides.push(sides);
+        if (sides >= 3) keep.push(...members);
+      }
+      if (keep.length && keep.length < K) {
+        const ks = new Set(keep);
+        ring = ring.filter((_, r) => ks.has(ringOwner[r]));
+        cent = keep.map(k => cent[k]);
+      }
     }
     const nearest = (c) => { let bd = Infinity; for (const k of cent) bd = Math.min(bd, d2(c, k)); return Math.sqrt(bd); };
     const rd = ring.map(nearest);
@@ -3681,14 +3755,20 @@ const SERVER_CHAT_MIXIN = {
     const ctol = cmu + 2 * csd;
     const localStd = (x, y) => { let s = 0, s2 = 0, n2 = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const X = Math.max(0, Math.min(gw - 1, x + dx)), Y = Math.max(0, Math.min(gh - 1, y + dy)); const l = lumOf(px(X, Y)); s += l; s2 += l * l; n2++; } const m = s / n2; return Math.sqrt(Math.max(0, s2 / n2 - m * m)); };
     const ringTex = [];   // the border's own texture, sampled
-    for (let y = 2; y < gh - 2; y += 3) for (let x = 2; x < gw - 2; x += 3) if (x <= 4 || y <= 4 || x >= gw - 5 || y >= gh - 5) ringTex.push(localStd(x, y));
+    // only where the border IS backdrop — a subject crossing the frame must not
+    // lend the backdrop its texture either
+    for (let y = 2; y < gh - 2; y += 3) for (let x = 2; x < gw - 2; x += 3) if ((x <= 4 || y <= 4 || x >= gw - 5 || y >= gh - 5) && nearest(px(x, y)) <= tol) ringTex.push(localStd(x, y));
     const tmu = ringTex.reduce((a, b) => a + b, 0) / Math.max(1, ringTex.length);
     const tsd = Math.sqrt(ringTex.reduce((a, b) => a + (b - tmu) ** 2, 0) / Math.max(1, ringTex.length));
     const ttol = tmu + 2 * tsd;
     let M = new Uint8Array(gw * gh);
     for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
       const c = px(x, y);
-      if (nearest(c) <= tol) continue;                                  // backdrop
+      // backdrop = the border's colour AND its smoothness. Colour alone made
+      // a dark, textured subject on a dark vignette into backdrop (judged: the
+      // subject came out as scraps); a subject's surface is textured, a studio
+      // backdrop is not.
+      if (nearest(c) <= tol && localStd(x, y) <= ttol) continue;
       const [cd, ck] = chromaDist(c);
       if (cd <= ctol && lumOf(c) < cl[ck] && localStd(x, y) <= ttol) continue;   // its shadow
       M[y * gw + x] = 1;
@@ -3696,6 +3776,7 @@ const SERVER_CHAT_MIXIN = {
     // close small gaps (dilate then erode, 1 px), so one body is one region
     const morph = (src, grow) => { const o = new Uint8Array(src.length); for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) { let v = grow ? 0 : 1; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const X = x + dx, Y = y + dy; const s = (X >= 0 && Y >= 0 && X < gw && Y < gh) ? src[Y * gw + X] : 0; if (grow) v |= s; else v &= s; } o[y * gw + x] = v; } return o; };
     M = morph(morph(M, true), false);
+    const Mclosed = M.slice();   // before the opening — thin parts still in it
     // ...then OPEN (erode then dilate, 1 px): thin structures — a backdrop
     // stand, a horizon line, a table edge — are a pixel or two wide and do not
     // survive it, while a body does. Judged on a render: the elephant's mask
@@ -3707,23 +3788,169 @@ const SERVER_CHAT_MIXIN = {
     // region scores its area weighted by how central its pixels are.
     const lab = new Int32Array(gw * gh).fill(-1);
     let best = -1, bestS = 0;
+    const regionScore = new Map();
     const cxF = (gw - 1) / 2, cyF = (gh - 1) / 2, rMax = Math.hypot(cxF, cyF);
     for (let i0 = 0; i0 < M.length; i0++) {
       if (!M[i0] || lab[i0] >= 0) continue;
       const q = [i0]; lab[i0] = i0; let s = 0;
       while (q.length) { const i = q.pop(); const x = i % gw, y = (i / gw) | 0; s += 1 - Math.hypot(x - cxF, y - cyF) / rMax; for (const [X, Y] of [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]]) { if (X < 0 || Y < 0 || X >= gw || Y >= gh) continue; const j = Y * gw + X; if (M[j] && lab[j] < 0) { lab[j] = i0; q.push(j); } } }
+      regionScore.set(i0, s);
       if (s > bestS) { bestS = s; best = i0; }
     }
     if (best < 0) return null;
+    // Backdrop NOT reachable from the frame edge without crossing region `r` —
+    // what `r` encloses.
+    const enclosedBy = (r) => {
+      const reach = new Uint8Array(gw * gh);
+      const fq = [];
+      for (let x = 0; x < gw; x++) { fq.push(x, (gh - 1) * gw + x); }
+      for (let y = 0; y < gh; y++) { fq.push(y * gw, y * gw + gw - 1); }
+      while (fq.length) { const i = fq.pop(); if (reach[i] || lab[i] === r) continue; reach[i] = 1; const x = i % gw, y = (i / gw) | 0; if (x > 0) fq.push(i - 1); if (x < gw - 1) fq.push(i + 1); if (y > 0) fq.push(i - gw); if (y < gh - 1) fq.push(i + gw); }
+      return reach;
+    };
+    // ⛔ A FRAME AROUND A THING IS NOT THE THING. Judged on a render: the
+    // subject was painted inside a round frame — the frame's rim won the region
+    // score, the hole-fill below swallowed the whole frame, she learned a disc
+    // and drew an oval. A region that surrounds another whole object is a frame
+    // (a plate, a hoop, a window): the subject is the best region INSIDE it.
+    // ⚠ The test is that it surrounds ANOTHER WHOLE OBJECT — a separate region
+    // standing inside it, cut off by backdrop. A body never does that: an eye
+    // or a marking is not backdrop-coloured, so it joins the body's region. An
+    // area comparison was tried first and missed a wide ring round the subject
+    // (judged on a render: the ring out-weighed what it held).
+    for (let hop = 0; hop < 3; hop++) {
+      const reach = enclosedBy(best);
+      const inner = new Map();
+      const innerArea = new Map();
+      for (let i = 0; i < M.length; i++) {
+        if (lab[i] === best || reach[i] || lab[i] < 0) continue;
+        inner.set(lab[i], regionScore.get(lab[i]) || 0);
+        innerArea.set(lab[i], (innerArea.get(lab[i]) || 0) + 1);
+      }
+      // 20 cells — the same floor this function already uses for "a subject at all".
+      for (const [r, a] of innerArea) if (a < 20) inner.delete(r);
+      if (inner.size === 0) break;
+      let nb2 = -1, ns = 0;
+      for (const [r, s] of inner) if (s > ns) { ns = s; nb2 = r; }
+      if (nb2 < 0) break;
+      best = nb2;
+    }
     for (let i = 0; i < M.length; i++) M[i] = lab[i] === best ? 1 : 0;
-    // fill its holes: background unreachable from the frame edge is inside the body
-    const outside = new Uint8Array(gw * gh);
-    const fq = [];
-    for (let x = 0; x < gw; x++) { fq.push(x, (gh - 1) * gw + x); }
-    for (let y = 0; y < gh; y++) { fq.push(y * gw, y * gw + gw - 1); }
-    while (fq.length) { const i = fq.pop(); if (outside[i] || M[i]) continue; outside[i] = 1; const x = i % gw, y = (i / gw) | 0; if (x > 0) fq.push(i - 1); if (x < gw - 1) fq.push(i + 1); if (y > 0) fq.push(i - gw); if (y < gh - 1) fq.push(i + gw); }
+    // "At the frame" = inside the border band the backdrop model reads (the
+    // reconstruction pads the outermost cells, so a stand ending there never
+    // touches the literal last row — measured: a stand stopped three short).
+    const onEdge = (i) => { const x = i % gw, y = (i / gw) | 0; return x <= 4 || y <= 4 || x >= gw - 5 || y >= gh - 5; };
+    const N4 = (i) => { const x = i % gw, y = (i / gw) | 0, r = []; if (x > 0) r.push(i - 1); if (x < gw - 1) r.push(i + 1); if (y > 0) r.push(i - gw); if (y < gh - 1) r.push(i + gw); return r; };
+    // ⛔ WHAT IT STANDS ON IS NOT IT. Judged on renders: a subject on a stand
+    // or a base — the stand is joined to the subject, so the subject came out
+    // with a block or a strip under it. A stand runs OFF the frame;
+    // the subject is composed inside it. When the region reaches the frame
+    // edge, it is shrunk until it falls apart at its narrowest joint; every
+    // cell is then given to the nearest surviving piece (a race outward from
+    // all of them at once — the joint is where they meet), and the pieces
+    // that stay inside the frame are kept when they hold more of the body than
+    // the pieces that run off it. A subject that IS the thing touching the
+    // edge (one big animal cropped by the frame) does not fall apart, or its
+    // inside part is the smaller, and stays whole.
+    if ([...Array(M.length).keys()].some(i => M[i] && onEdge(i))) {
+      let core = M.slice();
+      let pieces = null;
+      for (let k = 0; k < 40; k++) {
+        const er = new Uint8Array(M.length);
+        let any = 0;
+        for (let i = 0; i < M.length; i++) if (core[i] && N4(i).length === 4 && N4(i).every(j => core[j])) { er[i] = 1; any++; }
+        if (!any) break;
+        core = er;
+        // label the shrunk pieces
+        const pl = new Int32Array(M.length).fill(-1);
+        const info = [];
+        for (let i0 = 0; i0 < M.length; i0++) {
+          if (!core[i0] || pl[i0] >= 0) continue;
+          const id = info.length, q = [i0]; pl[i0] = id; let edge = false, sz = 0;
+          while (q.length) { const i = q.pop(); sz++; for (const j of N4(i)) if (core[j] && pl[j] < 0) { pl[j] = id; q.push(j); } }
+          info.push({ edge, sz });
+        }
+        if (info.length >= 2) { pieces = { pl, info }; break; }
+      }
+      if (pieces) {
+        // grow every piece back through the body at once
+        const own = pieces.pl.slice();
+        let front = [];
+        for (let i = 0; i < M.length; i++) if (own[i] >= 0) front.push(i);
+        while (front.length) { const nx = []; for (const i of front) for (const j of N4(i)) if (M[j] && own[j] < 0) { own[j] = own[i]; nx.push(j); } front = nx; }
+        const touches = new Set(), size = new Map();
+        for (let i = 0; i < M.length; i++) { if (own[i] < 0) continue; size.set(own[i], (size.get(own[i]) || 0) + 1); if (onEdge(i)) touches.add(own[i]); }
+        // A piece running off the frame is a STAND when its colour is not the
+        // subject's: measured against the subject piece's mean colour with the
+        // same tolerance the backdrop test uses (the border's own spread). A
+        // cropped body is the colour of the rest of it and stays. (Size was
+        // tried first: a stand can be bigger than the subject on it, and it stayed.)
+        // The SUBJECT piece is chosen the way the region was: area weighted by
+        // how central it is. (A subject whose tail reaches the frame band still
+        // wins over the stand under it — judged: measuring "inside vs off the
+        // frame" alone threw the subject away with the stand.)
+        const meanOf = new Map(), cScore = new Map();
+        for (let i = 0; i < M.length; i++) {
+          if (own[i] < 0) continue;
+          const x = i % gw, y = (i / gw) | 0, c = px(x, y);
+          const m = meanOf.get(own[i]) || [0, 0, 0, 0]; m[0] += c[0]; m[1] += c[1]; m[2] += c[2]; m[3]++; meanOf.set(own[i], m);
+          cScore.set(own[i], (cScore.get(own[i]) || 0) + 1 - Math.hypot(x - cxF, y - cyF) / rMax);
+        }
+        let subj = -1, sBest = -1;
+        for (const [id, s] of cScore) if (s > sBest) { sBest = s; subj = id; }
+        const sm = meanOf.get(subj);
+        if (sm) {
+          const sc0 = [sm[0] / sm[3], sm[1] / sm[3], sm[2] / sm[3]];
+          const drop = new Set();
+          for (const id of touches) {
+            if (id === subj) continue;
+            const m = meanOf.get(id);
+            if (m && Math.sqrt(d2([m[0] / m[3], m[1] / m[3], m[2] / m[3]], sc0)) > tol) drop.add(id);
+          }
+          if (drop.size) for (let i = 0; i < M.length; i++) if (M[i] && (own[i] < 0 || drop.has(own[i]))) M[i] = 0;
+        }
+      }
+    }
+    // ⛔ THIN PARTS COME BACK. The opening above strips 1-2 cell backdrop lines
+    // — and with them every leg, ear, tail and beak (judged: everything looked
+    // slightly melted). What the opening removed is given back where it is
+    // JOINED to the body, except a run that leaves through the frame edge,
+    // which is a backdrop line or a stand, not a limb.
+    {
+      const got = new Uint8Array(M.length);
+      let front = [];
+      for (let i = 0; i < M.length; i++) if (M[i]) front.push(i);
+      while (front.length) { const nx = []; for (const i of front) for (const j of N4(i)) if (Mclosed[j] && !M[j] && !got[j]) { got[j] = 1; nx.push(j); } front = nx; }
+      const seenG = new Uint8Array(M.length);
+      for (let i0 = 0; i0 < M.length; i0++) {
+        if (!got[i0] || seenG[i0]) continue;
+        const comp = [], q = [i0]; seenG[i0] = 1; let leaves = false;
+        while (q.length) { const i = q.pop(); comp.push(i); if (onEdge(i)) leaves = true; for (const j of N4(i)) if (got[j] && !seenG[j]) { seenG[j] = 1; q.push(j); } }
+        if (!leaves) for (const i of comp) M[i] = 1;
+      }
+    }
+    // Fill its holes — a pale belly, a window in a body — but only a hole
+    // SMALLER than the body round it. A larger enclosed space is a gap the
+    // thing surrounds (the inside of a ring, the space between a handle and
+    // its cup), not part of its mass.
     let inCount = 0;
-    for (let i = 0; i < M.length; i++) { if (!outside[i]) M[i] = 1; if (M[i]) inCount++; }
+    {
+      const outside = new Uint8Array(gw * gh);
+      const fq = [];
+      for (let x = 0; x < gw; x++) { fq.push(x, (gh - 1) * gw + x); }
+      for (let y = 0; y < gh; y++) { fq.push(y * gw, y * gw + gw - 1); }
+      while (fq.length) { const i = fq.pop(); if (outside[i] || M[i]) continue; outside[i] = 1; const x = i % gw, y = (i / gw) | 0; if (x > 0) fq.push(i - 1); if (x < gw - 1) fq.push(i + 1); if (y > 0) fq.push(i - gw); if (y < gh - 1) fq.push(i + gw); }
+      let body = 0;
+      for (let i = 0; i < M.length; i++) if (M[i]) body++;
+      const seenHole = new Uint8Array(gw * gh);
+      for (let i0 = 0; i0 < M.length; i0++) {
+        if (M[i0] || outside[i0] || seenHole[i0]) continue;
+        const comp = [], q = [i0]; seenHole[i0] = 1;
+        while (q.length) { const i = q.pop(); comp.push(i); const x = i % gw, y = (i / gw) | 0; for (const j of [x > 0 ? i - 1 : -1, x < gw - 1 ? i + 1 : -1, y > 0 ? i - gw : -1, y < gh - 1 ? i + gw : -1]) { if (j >= 0 && !M[j] && !outside[j] && !seenHole[j]) { seenHole[j] = 1; q.push(j); } } }
+        if (comp.length < body) for (const i of comp) M[i] = 1;
+      }
+      for (let i = 0; i < M.length; i++) if (M[i]) inCount++;
+    }
     // A "subject" that fills the frame is the scene itself — the look held no
     // one thing to draw. This is the evidence `skeleton: null` records.
     let touches = 0;
@@ -3843,17 +4070,60 @@ const SERVER_CHAT_MIXIN = {
       for (const c of subj) { let bi = 0, bd = Infinity; for (let k = 0; k < PK; k++) { const d = d2(c, pal[k]); if (d < bd) { bd = d; bi = k; } } const s = sum[bi]; s[0] += c[0]; s[1] += c[1]; s[2] += c[2]; s[3]++; }
       pal = pal.map((c, k) => sum[k][3] ? [sum[k][0] / sum[k][3], sum[k][1] / sum[k][3], sum[k][2] / sum[k][3]] : c);
     }
-    const idx = new Uint8Array(M.length).fill(255);
-    for (let i = 0; i < M.length; i++) {
-      if (!M[i]) continue;
-      const c = px(i % gw, (i / gw) | 0);
+    // ⛔ THE COLOUR LAYOUT IS KEPT AT 3x THE SHAPE GRID. At 160 cells across a
+    // 1,024-px canvas every learned cell covered ~6 px and the painting read as
+    // fog (judged on renders: too soft to read detail). The shape
+    // work stays on the 160 grid (its thresholds are in those cells); WHERE
+    // THE COLOURS SIT is kept at 480, deflate-compressed — a few-colour index
+    // map compresses ~10x, so her memory does not balloon. The subject's edge
+    // at the finer grid follows the 160 mask bilinearly, so it is smooth, not
+    // a 3-cell staircase. 255 = not the subject.
+    const R = 3, HW = gw * R, HH = gh * R;
+    const pxH = (hx, hy) => { const x = Math.min(SW - 1, Math.floor((hx + 0.5) * SW / HW)), y = Math.min(SH - 1, Math.floor((hy + 0.5) * SH / HH)); const o = (y * SW + x) * 4; return [D[o], D[o + 1], D[o + 2]]; };
+    const mAt = (x, y) => (x >= 0 && y >= 0 && x < gw && y < gh && M[y * gw + x]) ? 1 : 0;
+    const inSubj = (hx, hy) => {
+      const gx = (hx + 0.5) / R - 0.5, gy = (hy + 0.5) / R - 0.5;
+      const x0 = Math.floor(gx), y0 = Math.floor(gy), fx = gx - x0, fy = gy - y0;
+      return ((mAt(x0, y0) * (1 - fx) + mAt(x0 + 1, y0) * fx) * (1 - fy) + (mAt(x0, y0 + 1) * (1 - fx) + mAt(x0 + 1, y0 + 1) * fx) * fy) >= 0.5;
+    };
+    const idx = new Uint8Array(HW * HH).fill(255);
+    for (let hy = 0; hy < HH; hy++) for (let hx = 0; hx < HW; hx++) {
+      if (!inSubj(hx, hy)) continue;
+      const c = pxH(hx, hy);
       let bi = 0, bd = Infinity; for (let k = 0; k < PK; k++) { const d = d2(c, pal[k]); if (d < bd) { bd = d; bi = k; } }
-      idx[i] = bi;
+      idx[hy * HW + hx] = bi;
+    }
+    const zlib = require('zlib');
+    // THE WHOLE PICTURE'S COLOUR LAYOUT — the same abstraction for everything
+    // around the subject (backdrop, ground, what it stands on, its shadow), so
+    // she can paint the scene she imagined instead of cutting the thing out of
+    // it. Cutting was judged to wreck every drawing: torn-off shadows floating
+    // as clouds, half-kept ledges and posts, bodies chopped where the cut went
+    // wrong. k = 8 over the whole frame.
+    const all = [];
+    for (let i = 0; i < M.length; i++) if (!M[i]) all.push(px(i % gw, (i / gw) | 0));
+    let scene = null;
+    if (all.length >= 8) {
+      const SK = 8;
+      let sp = Array.from({ length: SK }, (_, k) => all[Math.floor((k + 0.5) * all.length / SK)].slice());
+      for (let it = 0; it < 8; it++) {
+        const sum = sp.map(() => [0, 0, 0, 0]);
+        for (const c of all) { let bi = 0, bd = Infinity; for (let k = 0; k < SK; k++) { const d = d2(c, sp[k]); if (d < bd) { bd = d; bi = k; } } const s = sum[bi]; s[0] += c[0]; s[1] += c[1]; s[2] += c[2]; s[3]++; }
+        sp = sp.map((c, k) => sum[k][3] ? [sum[k][0] / sum[k][3], sum[k][1] / sum[k][3], sum[k][2] / sum[k][3]] : c);
+      }
+      const sidx = new Uint8Array(HW * HH);
+      for (let hy = 0; hy < HH; hy++) for (let hx = 0; hx < HW; hx++) {
+        const c = pxH(hx, hy);
+        let bi = 0, bd = Infinity; for (let k = 0; k < SK; k++) { const d = d2(c, sp[k]); if (d < bd) { bd = d; bi = k; } }
+        sidx[hy * HW + hx] = bi;
+      }
+      scene = { palette: sp.map(c => c.map(v => Math.round(v))), w: HW, h: HH, z: 1, b64: zlib.deflateSync(Buffer.from(sidx)).toString('base64') };
     }
     return out.length ? {
       bones: out, aspect: +(gw / gh).toFixed(3), bg,
       mask: { w: gw, h: gh, b64: Buffer.from(bits).toString('base64') },
-      colors: { palette: pal.map(c => c.map(v => Math.round(v))), b64: Buffer.from(idx).toString('base64') },
+      colors: { palette: pal.map(c => c.map(v => Math.round(v))), w: HW, h: HH, z: 1, b64: zlib.deflateSync(Buffer.from(idx)).toString('base64') },
+      scene,
     } : null;
   },
 
@@ -3870,47 +4140,178 @@ const SERVER_CHAT_MIXIN = {
     if (!skel || !skel.mask || !skel.colors) return out;
     const W = skel.mask.w, H = skel.mask.h;
     const bits = Buffer.from(skel.mask.b64, 'base64');
-    const idx = Buffer.from(skel.colors.b64, 'base64');
+    // The colour layout may be finer than the shape grid (and compressed).
+    const unpack = (m) => { const raw = Buffer.from(m.b64, 'base64'); return m.z ? require('zlib').inflateSync(raw) : raw; };
+    const idx = unpack(skel.colors);
+    const CW = skel.colors.w || W, CH = skel.colors.h || H;
     const pal = skel.colors.palette || [];
     const on = (x, y) => x >= 0 && y >= 0 && x < W && y < H && ((bits[(y * W + x) >> 3] >> ((y * W + x) & 7)) & 1);
     let x0 = W, y0 = H, x1 = 0, y1 = 0, n = 0;
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (on(x, y)) { n++; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
     if (!n) return out;
     const fw = x1 - x0 + 1, fh = y1 - y0 + 1;
-    const sc = Math.min(box.w / fw, box.h / fh);
-    const cxM = (x0 + x1 + 1) / 2, cyM = (y0 + y1 + 1) / 2;
-    const p = skel.posed || { sx: 1, sy: 1, rot: 0 };
+    // ⭐ THE WHOLE PICTURE, NOT A CUT-OUT. When she holds the colour layout of
+    // everything around the subject (`skel.scene`), she paints the picture she
+    // imagined edge to edge — backdrop, ground, shadow — and the subject on
+    // top, on the canvas the picture's own shape. Cutting the subject out was
+    // judged to wreck the drawings (torn-off shadows, half-kept stands, bodies
+    // chopped where the cut went wrong). The scene is painted unposed:
+    // stretching or turning a whole frame would tear its corners open.
+    const full = !!(skel.scene && skel.scene.b64 && style.mass !== 'none');
+    const sc = full ? 1 : Math.min(box.w / fw, box.h / fh);
+    const cxM = full ? W / 2 : (x0 + x1 + 1) / 2, cyM = full ? H / 2 : (y0 + y1 + 1) / 2;
+    const p = full ? { sx: 1, sy: 1, rot: 0 } : (skel.posed || { sx: 1, sy: 1, rot: 0 });
     const cr = Math.cos(p.rot || 0), sr = Math.sin(p.rot || 0);
-    const T = (x, y) => { const u = (x - cxM) * sc * (p.sx || 1), v = (y - cyM) * sc * (p.sy || 1); return [box.cx + u * cr - v * sr, box.cy + u * sr + v * cr]; };
-    const jit = () => (rnd() - 0.5) * ((skill && skill.jitter) || 0.006);
+    const T = full
+      ? (x, y) => [x / W, y / H]
+      : (x, y) => { const u = (x - cxM) * sc * (p.sx || 1), v = (y - cyM) * sc * (p.sy || 1); return [box.cx + u * cr - v * sr, box.cy + u * sr + v * cr]; };
     const fillA = (skill && skill.fillA) || 0.92;
-    const volW = (skill && skill.volW) || 1;
-    // the body — one soft stroke per cell, sampled so a huge mask stays a few thousand marks
-    const step = Math.max(1, Math.ceil(Math.sqrt(n / 2600)));
-    const r = sc * step * 0.62 * volW;
-    if (style.mass !== 'none') {
-      for (let y = y0; y <= y1; y += step) for (let x = x0; x <= x1; x += step) {
-        if (!on(x, y)) continue;
-        const c = pal[idx[y * W + x]];
-        if (!c) continue;
-        const [X, Y] = T(x + 0.5, y + 0.5);
-        out.push({ type: 'blob', cx: X + jit(), cy: Y + jit(), rx: r * (0.9 + 0.2 * rnd()), ry: r * (0.9 + 0.2 * rnd()), ang: rnd() * 3.1416, rgb: c, a: style.mass === 'wash' ? 0.5 * fillA : fillA });
+    // One painted surface from a colour-index grid: indices settled by a 3x3
+    // majority (twice), colours blended over a 3x3 inside the region, sampled
+    // by the canvas smoothly with an antialiased edge.
+    const paint = (inside, ids, palette, inv, bbox, a, W, H) => {
+      let id2 = new Uint8Array(W * H);
+      for (let i = 0; i < W * H; i++) id2[i] = ids[i];
+      for (let pass = 0; pass < 2; pass++) {
+        const nx = new Uint8Array(W * H);
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+          const i = y * W + x;
+          nx[i] = id2[i];
+          if (!inside(x, y)) continue;
+          const cnt = new Uint16Array(Math.max(1, palette.length));
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+            if (!inside(x + dx, y + dy)) continue;
+            const k = id2[(y + dy) * W + x + dx];
+            if (k < cnt.length) cnt[k]++;
+          }
+          let bk = id2[i], bc = -1;
+          for (let k = 0; k < cnt.length; k++) if (cnt[k] > bc) { bc = cnt[k]; bk = k; }
+          nx[i] = bk;
+        }
+        id2 = nx;
       }
+      const rgb = new Float32Array(W * H * 3), alpha = new Float32Array(W * H);
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        if (!inside(x, y)) continue;
+        let r = 0, g = 0, b = 0, m = 0;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          if (!inside(x + dx, y + dy)) continue;
+          const c = palette[id2[(y + dy) * W + x + dx]];
+          if (!c) continue;
+          r += c[0]; g += c[1]; b += c[2]; m++;
+        }
+        if (!m) continue;
+        const i = y * W + x;
+        alpha[i] = 1;
+        rgb[i * 3] = r / m; rgb[i * 3 + 1] = g / m; rgb[i * 3 + 2] = b / m;
+      }
+      out.push({ type: 'layer', gw: W, gh: H, rgb: Array.from(rgb, v => +v.toFixed(1)), alpha: Array.from(alpha), inv, bbox, a });
+    };
+    if (full) {
+      // the scene first, everywhere the subject is not (the subject goes on top)
+      const sIdx = unpack(skel.scene);
+      const SW2 = skel.scene.w || W, SH2 = skel.scene.h || H;
+      const everywhere = (x, y) => x >= 0 && y >= 0 && x < SW2 && y < SH2;
+      paint(everywhere, sIdx, skel.scene.palette || [], [SW2, 0, 0, 0, SH2, 0], [0, 0, 1, 1], 1, SW2, SH2);
     }
-    // her outline — the silhouette's edge, drawn as linked runs between edge cells
-    let lum = 0, ln = 0; for (const c of pal) { lum += 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]; ln++; }
-    const ink = (ln && lum / ln > 120) ? [28, 24, 32] : [232, 228, 236];
-    const lw = style.outlineW > 0 ? Math.min(style.outlineW, 0.007) * ((skill && skill.traceW) || 1) : undefined;
-    const edge = (x, y) => on(x, y) && (!on(x + 1, y) || !on(x - 1, y) || !on(x, y + 1) || !on(x, y - 1));
-    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
-      if (!edge(x, y)) continue;
-      for (const [dx, dy] of [[1, 0], [0, 1], [1, 1], [1, -1]]) {
-        if (!edge(x + dx, y + dy)) continue;
-        const a = T(x + 0.5, y + 0.5), b = T(x + dx + 0.5, y + dy + 0.5);
-        out.push({ type: 'line', x0: a[0] + jit(), y0: a[1] + jit(), x1: b[0] + jit(), y1: b[1] + jit(), rgb: ink, w: lw, a: style.outlineA || 1 });
+    // ⛔ THE BODY WAS SAND. It was painted as one round dab per cell — a few
+    // thousand jittered marks — and the cell colour was the NEAREST of six
+    // learned colours, one of which is always the shadows and edges, so dark
+    // dabs were strewn through every body (judged on renders: grainy, like
+    // sand). Now:
+    //   • each cell's colour index is SETTLED by its neighbourhood (a 3x3
+    //     majority, twice) — a lone dark cell in a red body is an edge or a
+    //     glint, not the body's colour;
+    //   • the colours are then blended across neighbours inside the body;
+    //   • and the whole body goes down as ONE painted surface the canvas
+    //     samples smoothly, with an antialiased edge (`layer`).
+    // It is still her abstraction — six learned colours and where they sit —
+    // only laid down the way a brush would, not as grains.
+    if (style.mass !== 'none') {
+      // Inverse of T: canvas point → grid coordinate (the layer samples by it).
+      let inv;
+      if (full) inv = [W, 0, 0, 0, H, 0];
+      else {
+        const ksx = sc * (p.sx || 1), ksy = sc * (p.sy || 1);
+        inv = [cr / ksx, sr / ksx, 0, -sr / ksy, cr / ksy, 0];
+        inv[2] = cxM - (inv[0] * box.cx + inv[1] * box.cy);
+        inv[5] = cyM - (inv[3] * box.cx + inv[4] * box.cy);
       }
+      // canvas-space bounds of the body, for the canvas to scan only that
+      let bx0 = 1, by0 = 1, bx1 = 0, by1 = 0;
+      for (const [gx, gy] of [[x0, y0], [x1 + 1, y0], [x0, y1 + 1], [x1 + 1, y1 + 1]]) { const [X, Y] = T(gx, gy); bx0 = Math.min(bx0, X); bx1 = Math.max(bx1, X); by0 = Math.min(by0, Y); by1 = Math.max(by1, Y); }
+      // the layer is sampled on the colour grid, which may be finer than the shape grid
+      const fx = CW / W, fy = CH / H;
+      const invC = [inv[0] * fx, inv[1] * fx, inv[2] * fx, inv[3] * fy, inv[4] * fy, inv[5] * fy];
+      const inSubj = (CW === W && CH === H) ? on : (x, y) => x >= 0 && y >= 0 && x < CW && y < CH && idx[y * CW + x] !== 255;
+      paint(inSubj, idx, pal, invC, [bx0 - 0.01, by0 - 0.01, bx1 + 0.01, by1 + 0.01], style.mass === 'wash' ? 0.6 * fillA : 1, CW, CH);
+    }
+    // HER OUTLINE — the silhouette's edge traced as a CONTOUR (marching
+    // squares on the mask) and rounded (two Chaikin passes), not a run of
+    // cell-to-cell steps (judged: the outline read as pixel stairs).
+    let lum = 0, ln = 0; for (const c of pal) { lum += 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]; ln++; }
+    // With a painted body the outline contrasts the BODY; with no body painted
+    // it sits on bare paper, which is dark, so it must be light — judged on a
+    // render: a dark outline on dark paper was an invisible drawing.
+    const ink = (style.mass !== 'none' && ln && lum / ln > 120) ? [28, 24, 32] : [232, 228, 236];
+    const lw = style.outlineW > 0 ? Math.min(style.outlineW, 0.007) * ((skill && skill.traceW) || 1) : undefined;
+    // In a fully painted picture the subject is set off by its own colours
+    // against the scene — an outline round it would make it a sticker.
+    for (const loop of (full ? [] : this._maskContours(on, W, H))) {
+      if (loop.length < 6) continue;
+      let pts = loop;
+      for (let k = 0; k < 2; k++) {
+        const sm = [];
+        for (let i = 0; i < pts.length; i++) {
+          const a = pts[i], b = pts[(i + 1) % pts.length];
+          sm.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25], [a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]);
+        }
+        pts = sm;
+      }
+      const cpts = pts.map(q => T(q[0], q[1]));
+      cpts.push(cpts[0]);
+      out.push({ type: 'poly', pts: cpts, rgb: ink, w: lw, a: style.outlineA || 1 });
     }
     return out;
+  },
+
+  // The closed edge loops of a binary grid, in grid coordinates (cell corners
+  // at integers), by marching squares — the standard way to turn a mask into
+  // smooth-able contours. `on(x, y)` reads the grid.
+  _maskContours(on, W, H) {
+    const v = (x, y) => (on(x, y) ? 1 : 0);
+    // edge points sit at cell-centre midpoints; key by doubled coordinates
+    const segs = new Map();
+    const K = (x2, y2) => x2 + ',' + y2;
+    const add = (a, b) => { (segs.get(K(a[0], a[1])) || segs.set(K(a[0], a[1]), []).get(K(a[0], a[1]))).push(b); };
+    for (let y = -1; y < H; y++) for (let x = -1; x < W; x++) {
+      const c = v(x, y) | (v(x + 1, y) << 1) | (v(x + 1, y + 1) << 2) | (v(x, y + 1) << 3);
+      if (c === 0 || c === 15) continue;
+      // midpoints of the square's four sides (doubled coords, centres at 2x+1)
+      const T2 = [2 * x + 2, 2 * y + 1], R2 = [2 * x + 3, 2 * y + 2], B2 = [2 * x + 2, 2 * y + 3], L2 = [2 * x + 1, 2 * y + 2];
+      const table = {
+        1: [[L2, T2]], 2: [[T2, R2]], 3: [[L2, R2]], 4: [[R2, B2]], 5: [[L2, T2], [R2, B2]], 6: [[T2, B2]], 7: [[L2, B2]],
+        8: [[B2, L2]], 9: [[B2, T2]], 10: [[T2, R2], [B2, L2]], 11: [[B2, R2]], 12: [[R2, L2]], 13: [[R2, T2]], 14: [[T2, L2]],
+      };
+      for (const [a, b] of table[c]) { add(a, b); add(b, a); }
+    }
+    const used = new Set();
+    const loops = [];
+    for (const [k0] of segs) {
+      if (used.has(k0)) continue;
+      const loop = [];
+      let cur = k0, prev = null;
+      for (let guard = 0; guard < 200000; guard++) {
+        used.add(cur);
+        const [cx2, cy2] = cur.split(',').map(Number);
+        loop.push([cx2 / 2, cy2 / 2]);
+        const nexts = (segs.get(cur) || []).map(q => K(q[0], q[1])).filter(q => q !== prev && !used.has(q));
+        if (!nexts.length) break;
+        prev = cur; cur = nexts[0];
+      }
+      if (loop.length >= 3) loops.push(loop);
+    }
+    return loops;
   },
 
   // ── HER EYES SEE WHAT SHE DRAWS ─────────────────────────────────────────
@@ -3935,27 +4336,77 @@ const SERVER_CHAT_MIXIN = {
     return g;
   },
   _maskIoU(a, b) { let i = 0, u = 0; for (let k = 0; k < a.length; k++) { if (a[k] && b[k]) i++; if (a[k] || b[k]) u++; } return u ? i / u : 0; },
-  async _eyeJudgesDrawing(drawnRec, word) {
+  // The learned silhouette in the POSE she drew it in (stretch + turn about
+  // its centre), so her eye compares like with like. Without it every
+  // deliberate pose read as a wrong shape (judged: all eight good drawings of
+  // one run refused).
+  _poseMask(mask, posed) {
+    if (!mask || !posed) return mask;
+    const W = mask.w, H = mask.h, bits = Buffer.from(mask.b64, 'base64');
+    const on = (x, y) => x >= 0 && y >= 0 && x < W && y < H && ((bits[(y * W + x) >> 3] >> ((y * W + x) & 7)) & 1);
+    const sx = posed.sx || 1, sy = posed.sy || 1, cr = Math.cos(posed.rot || 0), sr = Math.sin(posed.rot || 0);
+    const cx = W / 2, cy = H / 2;
+    const out = new Uint8Array(Math.ceil(W * H / 8));
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const X = x + 0.5 - cx, Y = y + 0.5 - cy;
+      const u = (X * cr + Y * sr) / sx, v = (-X * sr + Y * cr) / sy;
+      if (on(Math.floor(u + cx), Math.floor(v + cy))) out[(y * W + x) >> 3] |= 1 << ((y * W + x) & 7);
+    }
+    return { w: W, h: H, b64: Buffer.from(out).toString('base64') };
+  },
+  async _eyeJudgesDrawing(drawnRec, word, posed) {
     try {
       const store = this._vmStore();
       const e = store.get(word);
-      const learned = e && e.schema && e.schema.skeleton && e.schema.skeleton.mask;
+      const learned = this._poseMask(e && e.schema && e.schema.skeleton && e.schema.skeleton.mask, posed);
       if (!learned) return { judged: false };
       const img = await this.mindSpace.imagine(drawnRec, 0);
       const seenInDrawing = this._learnSkeleton(img);
       if (!seenInDrawing || !seenInDrawing.mask) return { judged: true, pass: false, why: 'her eye finds no single shape in it' };
       const N = 32, mine = this._maskGrid(seenInDrawing.mask, N), own = this._maskGrid(learned, N);
-      const ownScore = this._maskIoU(mine, own);
-      let beaten = 0, compared = 0;
+      // She may draw the thing facing the other way — her pose can mirror it.
+      const flip = (g) => { const o = new Uint8Array(g.length); for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) o[y * N + x] = g[y * N + (N - 1 - x)]; return o; };
+      const ownScore = Math.max(this._maskIoU(mine, own), this._maskIoU(flip(mine), own));
+      // ⛔ RECOGNITION, NOT A YARDSTICK. An "oval score" — the drawing had to
+      // beat a plain oval of the thing's frame — was built here and REMOVED
+      // the same day on the operator's word: comparing a drawing to a shape
+      // that has nothing to do with the thing measures nothing, and it refused
+      // good drawings while passing bad ones. What her eye actually does is
+      // RECOGNISE: does the drawing look more like the thing she imagined than
+      // like anything else she remembers? Two readings, both ranks among her
+      // own memories, no number of mine:
+      //   • SHAPE — the silhouette her eye finds in the drawing, against every
+      //     learned silhouette;
+      //   • SIGHT — her percept of the whole drawing (field C, the same
+      //     description she keeps of everything she sees), against the
+      //     percepts of everything she holds.
+      // A drawing another memory beats on either is not yet the thing.
+      const cos = (a, b) => { if (!a || !b) return 0; let d = 0, na = 0, nb = 0; const n = Math.min(a.length, b.length); for (let i = 0; i < n; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; } const dn = Math.sqrt(na) * Math.sqrt(nb); return dn > 0 ? d / dn : 0; };
+      let dp = null;
+      try { const _d = await this.mindSpace.describe(drawnRec); if (_d) dp = Array.from(_d); } catch { dp = null; }
+      const ownSight = (dp && e.p) ? cos(dp, e.p) : null;
+      let beaten = 0, compared = 0, sightBeaten = 0, sightCompared = 0;
       for (const k of this._vmAllKeys()) {
         if (k === word || compared >= 48) continue;
         const o = store.get(k);
-        const m = o && o.schema && o.schema.skeleton && o.schema.skeleton.mask;
-        if (!m) continue;
-        compared++;
-        if (this._maskIoU(mine, this._maskGrid(m, N)) > ownScore) beaten++;
+        if (!o) continue;
+        const m = o.schema && o.schema.skeleton && o.schema.skeleton.mask;
+        if (m) {
+          compared++;
+          const g = this._maskGrid(m, N);
+          if (g && Math.max(this._maskIoU(mine, g), this._maskIoU(flip(mine), g)) > ownScore) beaten++;
+        }
+        if (ownSight != null && o.p) {
+          sightCompared++;
+          if (cos(dp, o.p) > ownSight) sightBeaten++;
+        }
       }
-      return { judged: true, pass: beaten === 0, ownScore: +ownScore.toFixed(3), compared, beaten };
+      const pass = beaten === 0 && sightBeaten === 0;
+      return {
+        judged: true, pass, ownScore: +ownScore.toFixed(3), compared, beaten,
+        ownSight: ownSight == null ? null : +ownSight.toFixed(4), sightCompared, sightBeaten,
+        why: pass ? undefined : `her eye finds it more like ${beaten ? beaten + ' other shape(s)' : ''}${beaten && sightBeaten ? ' and ' : ''}${sightBeaten ? sightBeaten + ' other sight(s)' : ''} she remembers than the ${word}`,
+      };
     } catch (err) { return { judged: false, error: err && err.message }; }
   },
 
@@ -5161,50 +5612,123 @@ const SERVER_CHAT_MIXIN = {
   //   one of them can be drawn, what she made is an ordinary drawing of a thing
   //   she has seen, and it keeps the `canvas:own:` label that says exactly that
   //   — a label must never claim invention for a recreation.
+  // ⛔⛔ AND THAT WAS STILL A COLLAGE (superseded 2026-11-23). Drawing each
+  //   subject from its own schema into its own box puts her old drawings side
+  //   by side — judged a collage of single images labelled as something new.
+  //   Two things placed next to each other are two things.
+  // ⭐ INVENTION IS FUSION. Her thought supplies the ingredients; the ideas
+  //   JOIN into ONE new thing — a quality onto a subject, a substance with it,
+  //   a place around it, or a kind of it (one noun naming a kind of another).
+  //   HOW two words join is read from
+  //   WordNet's own categories (`fuseRole`), never from a list, so every
+  //   combination her thinking produces has a form.
+  //   Then the whole chain a person has: her IMAGE CORTEX paints the idea as
+  //   ONE picture (her own renderer); her EYE accepts it only if two
+  //   independent paintings agree (it is a coherent thing, not noise); she
+  //   LEARNS its silhouette and colours under its own name, never over the
+  //   plain subject; her HAND draws it from that learned shape; and her eye
+  //   judges the drawing against it before anyone sees it.
+  // ⚠ Paced by the same look lane as every other look (one in the pipe, the
+  //   30 s gap, the VRAM gate, chat priority). A look that is skipped is an
+  //   honest decline; an idea she has already learned draws with no look.
   async _drawImagined(concepts) {
     if (!this.mindSpace || typeof this.mindSpace.sketch !== 'function') return null;
-    const keys = [];
-    for (const c of (Array.isArray(concepts) ? concepts : [])) {
-      if (keys.length >= 3) break;
-      const key = (typeof this._vmContentWords === 'function' ? (this._vmContentWords(c)[0] || '') : String(c || '').toLowerCase());
-      if (!key || keys.includes(key)) continue;
-      if (typeof this._conceptIsDrawable === 'function' && !(await this._conceptIsDrawable(key))) continue;   // only DRAWABLE (noun) concepts
-      keys.push(key);
-    }
-    if (keys.length < 2) return null;   // need ≥2 concepts to invent a combination
-    // Her own composition from her own schemas. `_drawOwnCreation` reads the
-    // whole phrase, keeps the drawable subjects she has learned, places them,
-    // and draws every one from memory — it also queues the ARTWEIGHT bind, so
-    // inventing a scene teaches her the subjects belong together.
-    let made = null;
-    try { made = await this._drawOwnCreation(keys.join(' and ')); } catch { made = null; }
     const _ist = (typeof this._imageEngine === 'function') ? this._imageEngine() : null;
-    if (!made || !made.rec) {
-      // She does not yet know the shape of enough of these to draw them —
-      // honest decline. Early in a walk this is the common, correct outcome.
-      if (_ist) _ist.inventionsDeclined = (_ist.inventionsDeclined | 0) + 1;
-      return null;
+    let tax = null;
+    try { tax = this._drawTaxonomy || (this._drawTaxonomy = require('../drawable-taxonomy.js')); } catch { tax = null; }
+    if (!tax || typeof tax.fuseRole !== 'function') return null;
+    const words = [];
+    for (const c of (Array.isArray(concepts) ? concepts : [])) {
+      const w = (typeof this._vmContentWords === 'function' ? (this._vmContentWords(c)[0] || '') : String(c || '').toLowerCase());
+      if (w && !words.includes(w)) words.push(w);
     }
-    const drew = (made.plan && Array.isArray(made.plan.subjects)) ? made.plan.subjects : [];
-    // ⛔ THE GATE NOW COUNTS LEARNED SHAPES, NOT SUBJECTS. The comment on this
-    // method has always said an invention needs "at least TWO subjects she has a
-    // schema for", and this test counted `plan.subjects` — which includes
-    // subjects drawn from a dictionary definition because `_drawOwnCreation`
-    // discarded `s.schema` at its return. Measured 2026-10-29: every one of 13
-    // inventions was ONE traced shape (`poison`, 1 look, 25 parts) plus TWO
-    // definition-colour recipes (`apple`, `cherry`, no schema), published as
-    // "a scene she has never seen, drawn from what she knows of each".
-    // ⭐ A label must never claim invention for a recreation — this file's own
-    // rule, now actually enforceable.
-    const drewKnown = (made.plan && Array.isArray(made.plan.schemaSubjects)) ? made.plan.schemaSubjects : drew;
-    if (drewKnown.length < 2) {
-      // Not enough LEARNED shapes to compose: what she made is an ordinary
-      // drawing, published under the label that says so. Early in a walk this is
-      // the common, correct outcome.
-      if (_ist) _ist.inventionsSingle = (_ist.inventionsSingle | 0) + 1;
-      return made;
+    // HEAD — the thing the new picture is OF. A THING (animal, object,
+    // person, plant…) heads before a substance, a substance before a place: a
+    // thing found in a place is a kind of that thing, never the place. A word
+    // that DESCRIBES (a colour, a state) is never the head — it joins one.
+    // Within one role the LATER word heads — English compounds are head-final.
+    let head = '';
+    for (const want of ['kind', 'stuff', 'place']) {
+      for (const w of [...words].reverse()) {
+        if (tax.fuseRole(w) !== want || tax.drawableVerdict(w) !== 'concrete') continue;
+        if (typeof this._conceptIsDrawable === 'function' && !(await this._conceptIsDrawable(w))) continue;
+        head = w; break;
+      }
+      if (head) break;
     }
-    const comboKey = drew.join('+');
+    if (!head) { if (_ist) _ist.inventionsDeclined = (_ist.inventionsDeclined | 0) + 1; return null; }
+    // INGREDIENTS — every other word that can join it, with the way it joins.
+    const quality = [], kind = [], place = [], stuff = [];
+    for (const w of words) {
+      if (w === head || head.startsWith(w) || w.startsWith(head)) continue;
+      const role = tax.fuseRole(w);
+      if (role === 'quality') quality.push(w);
+      else if (role === 'kind') kind.push(w);
+      else if (role === 'place') place.push(w);
+      else if (role === 'stuff') stuff.push(w);
+    }
+    // Her own choice of which ingredients to use and how many (1 or 2), drawn
+    // from her seeded generator so it is reproducible from her saved state.
+    const r = (tag) => this._rand('fuse-' + tag);
+    const pick = (arr) => arr.length ? arr[Math.floor(r('pick') * arr.length) % arr.length] : null;
+    const pre = [];
+    let tail = '';
+    const q = pick(quality); if (q) pre.push(q);
+    // A place or substance word can sit BEFORE the subject as a kind of it or
+    // AROUND it as where / with — her generator picks, so the same ingredients
+    // fuse differently.
+    const k = pick(kind.concat(place, stuff).filter(w => !pre.includes(w)));
+    if (k && (pre.length === 0 || r('second') < 0.5)) {
+      const asTail = (place.includes(k) || stuff.includes(k)) && r('tail') < 0.5;
+      if (asTail) tail = (place.includes(k) ? ' in ' : ' with ') + k;
+      else pre.push(k);
+    }
+    if (!tail && pre.length < 2) {
+      const t2 = pick(place.concat(stuff).filter(w => !pre.includes(w)));
+      if (t2 && r('third') < 0.5) tail = (place.includes(t2) ? ' in ' : ' with ') + t2;
+    }
+    if (pre.length === 0 && !tail) { if (_ist) _ist.inventionsDeclined = (_ist.inventionsDeclined | 0) + 1; return null; }
+    const idea = (pre.join(' ') + ' ' + head + tail).trim();
+    this._lastFusedIdea = { idea, head, at: Date.now() };
+    // IMAGE CORTEX + EYE — one new picture of the idea, accepted only on agreement.
+    const store = (typeof this._vmStore === 'function') ? this._vmStore() : null;
+    const held = store && store.get(idea);
+    if (!(held && held.rec) && typeof this._fetchReferenceAndGround === 'function') {
+      let rec = null;
+      // A relation (in / with) is painted as a scene — the study framing would
+      // erase the place or the substance; a quality or a kind keeps the study
+      // framing, which is what her eye learns a single silhouette from.
+      // A quality or kind keeps the study framing but names its HEAD instead
+      // of "object, centered": measured on six pinned seeds, "centered" put the
+      // subject inside a painted circle in one of six, and naming the head
+      // ("of the whole <head>") in none — a framed disc is what her eye then learns.
+      let promptOverride;
+      try {
+        const { EYE_STYLE } = require('./eye-style.js');
+        promptOverride = tail
+          ? `${idea}, ${EYE_STYLE.fuseScene}`
+          : `${idea}, ${EYE_STYLE.photoPerson} of the whole ${head}${EYE_STYLE.refTail}`;
+      } catch { promptOverride = undefined; }
+      // ⚠ A "does the picture hold every thing in the idea" check was built
+      // and REMOVED the same day: her percept is one whole-picture vector, raw
+      // percepts of any two pictures scored ~1.00, and centred on a small
+      // memory they swung to -1.00 — it refused five of six correct pictures.
+      // Telling that a picture contains BOTH things of an idea needs her to
+      // recognise parts within a picture, which she cannot yet; that is an
+      // open board item, not something to fake here.
+      try { rec = await this._fetchReferenceAndGround(idea, { keyOverride: idea, lookTwice: true, promptOverride }); } catch { rec = null; }
+      if (!rec) { if (_ist) _ist.inventionsDeclined = (_ist.inventionsDeclined | 0) + 1; return null; }
+      // She looks at what she imagined for a beat before drawing it.
+      const HOLD = Number(process.env.DREAM_LOOKUP_HOLD_MS) || 4500;
+      this._lookupHoldUntil = Date.now() + HOLD;
+      await new Promise(res => setTimeout(res, HOLD));
+    }
+    // HAND — she draws the ONE new thing from the shape she learned of it.
+    let made = null;
+    try { made = await this._drawOwnCreation(idea, { fusedKey: idea, allowFetch: false }); } catch { made = null; }
+    if (!made || !made.rec) { if (_ist) _ist.inventionsDeclined = (_ist.inventionsDeclined | 0) + 1; return null; }
+    const comboKey = idea.replace(/\s+/g, '+');
+    const drew = [idea];
     const drawn = made.rec;
     // ⛔⛔ A FLAT FIELD IS NOT A PICTURE, AND PUBLISHING ONE PAINTS HER EYE SOLID
     //   GREEN. Measured 2026-10-20 on the live brain: every `canvas:imagine:`
@@ -5243,7 +5767,7 @@ const SERVER_CHAT_MIXIN = {
     if (_ist) _ist.inventions = (_ist.inventions | 0) + 1;
     const styleName = made.style || 'poster';
     this._lastSketchLabel = 'canvas:imagine:' + comboKey + ':' + styleName;
-    try { console.log(`[OwnArt] ★ INVENTED "${drew.join(' + ')}" in ${String(styleName).toUpperCase()} — a scene she has never seen, drawn from what she knows of each. No reference fetched.`); } catch { /* nf */ }
+    try { console.log(`[OwnArt] ★ INVENTED "${idea}" in ${String(styleName).toUpperCase()} — one new thing fused from her thoughts, imagined as one picture, learned, and drawn by her own hand.`); } catch { /* nf */ }
     return { ...made, rec: drawn, label: this._lastSketchLabel, source: this._lastSketchLabel, imagined: true };
   },
 

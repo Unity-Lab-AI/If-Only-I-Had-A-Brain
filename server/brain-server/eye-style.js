@@ -41,6 +41,13 @@ const EYE_STYLE = {
   photoPerson: 'color photograph',
   photoObject: 'color photograph of the whole object, centered',
   refTail: ', isolated on a plain neutral grey studio backdrop, full color, richly detailed',
+  // fused-idea SCENE framing (chat.js) — an idea that puts its subject IN a
+  // place or WITH a substance is a relation, and the isolated-backdrop tail
+  // above erases exactly that relation: judged 2026-11-23 on her renderer,
+  // ideas of the form "<thing> in <place>" / "<thing> with <substance>" came
+  // back as the thing alone on grey; with this framing it sat in the place and
+  // in the substance.
+  fuseScene: 'color photograph, the whole scene, natural lighting, full color, richly detailed',
 };
 
 let _styleWords = null;

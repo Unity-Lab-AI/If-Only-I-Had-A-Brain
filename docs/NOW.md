@@ -16,10 +16,21 @@ verified-scope: |
   a SNAPSHOT and is overwritten, never appended — the previous version described
   the 2026-10-29 boots. Git holds every byte of it: git show HEAD~1:docs/NOW.md
 
+  ⚠ 2026-11-23 NIGHT — SHE IS DOWN; THE NEXT START IS A FRESHSTART (the
+  operator's call, to carry nothing over from earlier sessions). Code since the
+  3:07 PM read: her inventions FUSE her thoughts into one new thing (red bird,
+  ocean sponge in reef), pictured as one image and learned under their own
+  name; she paints the WHOLE learned picture — scene and subject as smooth
+  surfaces at 3x the shape grid, nothing cut out; her eye passes a piece only
+  when it looks more like its own thing than anything else she remembers. All
+  judged on renders through the production code (harness, not a live boot):
+  eight of eight read as what they are. No live read exists yet.
+
   SHE IS DOWN AS THIS IS WRITTEN. She ran twice today on the
   close-the-open-board code; the operator stopped her both times because of
-  what her mind's eye showed. Every fix for both is on main (810f88ab) and both
-  remotes. Next launch: Savestart.bat, NO fresh walk.
+  what her mind's eye showed. Every fix for both is on main and both
+  remotes. Next launch: a FRESHSTART (superseding the Savestart this snapshot
+  first named).
 ---
 
 # NOW — 2026-11-23, evening
@@ -30,7 +41,7 @@ verified-scope: |
 |---|---|
 | state | **DOWN** — stopped by the operator after the second boot today |
 | code | `main` **810f88ab** on both remotes (`origin` Forgejo, `github`); local `develop` **adeac8ea** |
-| next launch | **`Savestart.bat`, no fresh walk** — weights untouched |
+| next launch | **a FRESHSTART** (the operator's call, night of 2026-11-23 — carry nothing over from earlier sessions); this superseded the Savestart first written here |
 | donor | **0.3.42** in the repo root and published (`donor-v0.3.42`, Windows + Linux assets, `--version` read off the shipped exe) |
 | board | `docs/TODO.md` = template + **`WALKWATCH.1`** only |
 

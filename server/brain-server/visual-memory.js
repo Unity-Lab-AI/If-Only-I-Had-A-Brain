@@ -1139,7 +1139,10 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
   // that the thing looks like her own invention.
   async _learnShapeSchema(concept, rec, opts = {}) {
     if (!rec || !this.mindSpace || typeof this.mindSpace.traceLineArt !== 'function') return null;
-    const key = (this._vmHeadWord(concept) || String(concept || '').toLowerCase().trim());
+    // `opts.keyOverride` — a fused idea (a quality + a thing) learns its shape under
+    // its OWN name; reduced to its head it would overwrite what she knows of
+    // the plain subject.
+    const key = opts.keyOverride || (this._vmHeadWord(concept) || String(concept || '').toLowerCase().trim());
     if (!key) return null;
     let strokes = null;
     try {
@@ -2362,7 +2365,11 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       try { const _d = await this.mindSpace.describe(rec); if (_d) percept = Array.from(_d); } catch { percept = null; }
       const _lkCos = (a, b) => { if (!a || !b) return 0; let d = 0, na = 0, nb = 0; const n = Math.min(a.length, b.length); for (let i = 0; i < n; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; } const dn = Math.sqrt(na) * Math.sqrt(nb); return dn > 0 ? d / dn : 0; };
       const _prevEntry = this._vmStore().get(key);
-      if (!(_prevEntry && _prevEntry.p) && percept && !opts.keyOverride) {
+      // `opts.lookTwice` — a fused idea grounds under its own key AND still
+      // has to pass the two-render agreement: a combination the renderer
+      // cannot paint the same way twice is not a thing she has imagined.
+      const _twice = !opts.keyOverride || opts.lookTwice === true;
+      if (!(_prevEntry && _prevEntry.p) && percept && _twice) {
         // first sight of this concept → the second, independent render
         let rec2 = null, percept2 = null;
         try {
@@ -2391,6 +2398,11 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
           console.log(`[VisualMemory] LOOK REJECTED for "${key}" — two independent renders DISAGREE (cosine ${agree.toFixed(2)} < 0.45): the generator does not know this word; nothing bound, nothing shown.`);
           return this._vmLookFail(key, 'selfMismatch', `render self-consistency ${agree.toFixed(2)}`);
         }
+        // ⚠ A SILHOUETTE-AGREEMENT check between the two renders was tried here
+        // and removed the same day: two true renders of one thing differ in
+        // POSE (facing left in one and right in the other, sitting in one and walking in the other), so it
+        // refused four of six real looks. The circle-framed render it was meant
+        // to catch is fixed at its cause instead — the "centered" framing word.
       }
       try {
         const store = this._vmStore();
@@ -2398,7 +2410,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         const cos = _lkCos;
         // two agreeing independent renders IS the confirmation standard —
         // a first sight that passed LOOKTWICE binds CONFIRMED
-        const confirmed = !!(prev && prev.p && percept && cos(percept, prev.p) >= 0.45) || (!(prev && prev.p) && !!percept && !opts.keyOverride);
+        const confirmed = !!(prev && prev.p && percept && cos(percept, prev.p) >= 0.45) || (!(prev && prev.p) && !!percept && _twice);
         store.delete(key);
         // VMPHRASE.3 — the concept she asked to look at, whole. `key` is the
         // head noun; this keeps the phrase that produced it.
@@ -2412,7 +2424,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         // a noisy oracle, and teaching the wording of a picture she may reject
         // is exactly the poisoning that gate was built to stop.
         try {
-          if (confirmed && !opts.keyOverride && typeof this._queuePhraseTeach === 'function') {
+          if (confirmed && _twice && typeof this._queuePhraseTeach === 'function') {
             this._queuePhraseTeach(concept);
           }
         } catch { /* non-fatal — a look must never fail on its teach */ }
