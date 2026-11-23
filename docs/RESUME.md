@@ -1,6 +1,27 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-11-23, evening (latest, 45th) — NO FROZEN THOUGHTS
+> # 🛑 2026-11-23, night (latest, 46th) — SHE FUSES IDEAS AND PAINTS THE WHOLE PICTURE
+>
+> **Branch: `feature/fused-imagination`.** She is DOWN. **Next launch is a FRESHSTART** (Gee: *"we will freshstart this time just to make sure we arent carrying any hiccups from earlier sessions"*). Gee on the last sheet: *"perfecxt set!"*.
+>
+> ```
+>   invention  thoughts FUSE into one thing (fuseRole, WordNet): red bird, ocean sponge in
+>              reef, sponge with water. One image from her renderer, lookTwice, learned
+>              under its own key, painted as one subject. No more side-by-side collages.
+>   eye        backdrop = border colour FAMILIES on >=3 sides (the cat error: a subject
+>              crossing the frame poisoned the backdrop model); smooth-backdrop test; frames
+>              skipped; stands dropped by colour; thin parts restored.
+>   hand       paints the WHOLE picture (scene + subject), smooth `layer` surfaces at 3x the
+>              shape grid (no sand, no fog, nothing cut out, no outline).
+>   judge      recognition only: silhouette + percept ranks among her memories. Oval score
+>              REMOVED (Gee: "thats idiotic"). Weak while her memory is empty.
+>   open       KI-55: a fused picture can drop one of its things (castle dragon -> castle).
+>   watch      WALKWATCH.1 is the one open row.
+> ```
+>
+> ---
+>
+> # 🛑 2026-11-23, evening (45th) — NO FROZEN THOUGHTS
 >
 > **Branch: `feature/no-frozen-thoughts`.** Gee stopped her: still apple / poison / cherry in bright circles. **Her training is not tainted** — her saved thought chain held four entries from 10-19/10-20 (two of them RENDER PROMPTS pushed in as thoughts) and reloaded every boot; she cannot speak yet, so nothing replaced them, and her imagination picked from it. Fixed: prompts never enter the chain; imagination reads only this session's thoughts; no definition-colour "circles" drawing. Next launch `Savestart.bat`, NO fresh walk. Board: `WALKWATCH.1` only. ⚠ Non-things (white, no) still pass her lenient early eye — measured that her dictionary's first-meaning rule would refuse bear/duck/watch, so it was not shipped.
 >

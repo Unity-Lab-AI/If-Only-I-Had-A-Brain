@@ -305,4 +305,73 @@ function verbLeads(word) {
   return vt > 0 && vt > nt;
 }
 
-module.exports = { drawableVerdict, primaryLex, knownDescriptor, knownOnlyNonNoun, unattestedNoun, descendsFromJuvenile, verbLeads };
+// FUSION ROLE — how a second word can JOIN a subject to make one new thing.
+// Decided by WordNet's own categories, never a list:
+//   'quality'  — the word leads as an ADJECTIVE (its adjective reading is more
+//                attested than its noun reading), its primary noun sense is an
+//                attribute (lex 07), or its noun reading is not a thing: it
+//                describes the subject.
+//   'place'    — its primary noun sense is a location or a natural object
+//                (lex 15 / 17): the subject can be IN it.
+//   'stuff'    — its primary noun sense is a substance (lex 27): the subject
+//                can be WITH it.
+//   'kind'     — any other CONCRETE noun: an English noun-noun compound names
+//                a kind of the subject.
+//   null       — glue, inflections, determiners, or an abstract noun — it
+//                cannot fuse.
+let _adjTag = null;
+function _loadAdjTag() {
+  if (_adjTag || _loadFailed) return;
+  try {
+    const dict = require('wordnet-db').path;
+    const txt = fs.readFileSync(path.join(dict, 'index.adj'), 'utf8');
+    _adjTag = new Map();
+    for (const line of txt.split('\n')) {
+      if (!line || line[0] === ' ') continue;
+      const parts = line.trim().split(/\s+/);
+      const n = parseInt(parts[2], 10) || 0;
+      if (!parts[0] || !n) continue;
+      _adjTag.set(parts[0], parseInt(parts[parts.length - n - 1], 10) || 0);
+      _adjFirstOff.set(parts[0], parseInt(parts[parts.length - n], 10));
+    }
+    _adjData = fs.readFileSync(path.join(dict, 'data.adj'));
+  } catch { _adjTag = null; _adjData = null; }
+}
+const _adjFirstOff = new Map();
+let _adjData = null;
+// WordNet glosses a DETERMINER ("no", "all", "some", "every", "much") by its
+// grammar — "(quantifier) used with mass nouns", "(used with count nouns)…".
+// That is the database's own statement that the word is grammar, not a
+// quality anything can be painted with.
+function _adjIsDeterminer(w) {
+  const o = _adjFirstOff.get(w);
+  if (!_adjData || !Number.isFinite(o) || o < 0 || o >= _adjData.length) return false;
+  const nl = _adjData.indexOf(10, o);
+  const line = _adjData.toString('utf8', o, nl > o ? nl : Math.min(_adjData.length, o + 600));
+  const bar = line.indexOf(' | ');
+  return /\b(quantifier|count nouns|mass nouns)\b/i.test(bar > 0 ? line.slice(bar + 3, bar + 80) : '');
+}
+function fuseRole(word) {
+  _load(); _loadAdjTag();
+  const w = String(word || '').toLowerCase().trim();
+  if (!w) return null;
+  const ne = _index && _index.get(w);
+  const hasAdj = !!(_adjTag && _adjTag.has(w));
+  if (!ne && !hasAdj) return null;
+  if (hasAdj && _adjIsDeterminer(w)) return null;
+  const at = hasAdj ? (_adjTag.get(w) | 0) : -1;
+  const nt = ne ? (ne.tag | 0) : -1;
+  const lex = primaryLex(w);
+  // An adjective whose noun reading is not a thing (wet → a state) describes.
+  if (hasAdj && (!ne || at > nt || !CONCRETE_LEX.has(lex))) return 'quality';
+  // 07 noun.attribute — a colour, a texture, a size: it describes, so it
+  // fuses as a quality even where its noun reading out-attests the adjective.
+  if (lex === 7) return 'quality';
+  if (lex === 15 || lex === 17) return 'place';
+  if (lex === 27) return 'stuff';
+  // Only a THING can name a kind of another thing. A noun whose primary sense
+  // is abstract (communication, act, feeling…) has nothing to show.
+  return CONCRETE_LEX.has(lex) ? 'kind' : null;
+}
+
+module.exports = { drawableVerdict, primaryLex, knownDescriptor, knownOnlyNonNoun, unattestedNoun, descendsFromJuvenile, verbLeads, fuseRole };

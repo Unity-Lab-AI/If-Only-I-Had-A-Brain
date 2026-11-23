@@ -12,6 +12,16 @@ sources:
   - windows/start.bat
   - windows/Savestart.bat
 verified-scope: |
+  ⚠ 2026-11-23 NIGHT — SHE IS DOWN; THE NEXT START IS A FRESHSTART (the
+  operator's call, to carry nothing over from earlier sessions). Code since the
+  3:07 PM read: her inventions FUSE her thoughts into one new thing (red bird,
+  ocean sponge in reef), pictured as one image and learned under their own
+  name; she paints the WHOLE learned picture — scene and subject as smooth
+  surfaces at 3x the shape grid, nothing cut out; her eye passes a piece only
+  when it looks more like its own thing than anything else she remembers. All
+  judged on renders through the production code (harness, not a live boot):
+  eight of eight read as what they are. No live read exists yet.
+
   ⚠ 2026-11-23 3:07 PM — SHE WAS UP BRIEFLY AND IS DOWN AGAIN. The one live
   read from that boot: her drawings looked like nothing (bone builds of 78–134
   fragments). Since: she paints learned silhouettes and her eye judges each
