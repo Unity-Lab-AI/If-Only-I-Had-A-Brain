@@ -1,6 +1,28 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-11-23, 2:06 PM Denver (latest, 43rd — clock read) — THE BOARD IS CLOSED; ONE ROW RUNS AFTER THE START
+> # 🛑 2026-11-23, 3:07 PM Denver (latest, 44th — clock read) — HER EYES SEE WHAT SHE DRAWS; HER RENDERER IS HER OWN; FRESH EYES
+>
+> **Branch: `feature/her-eyes-see-what-she-draws`.** She is DOWN (Gee stopped her: her pieces looked like nothing). **Next launch `Savestart.bat`, NO fresh walk** — weights untouched; her visual store starts EMPTY (v11). Board: `WALKWATCH.1` only.
+>
+> ```
+>   ⛔ owned  the morning's skeleton build was tested only on shapes I drew in code; on her
+>             real looks it made 78-134-fragment mosaics, grafted on every piece, and drew
+>             non-things. Gee caught it on the live eye.
+>   drawing   subject finder (border colours + shadow test + central region) -> she PAINTS the
+>             learned silhouette in its learned colours, her outline, her pose. Grafts only
+>             from her current thoughts. HER EYE judges each piece before it shows (rank vs
+>             what else she knows). 10 fresh looks: 9 passed, apple refused.
+>   looks     study references: whole object, centred, plain neutral GREY backdrop (pinned
+>             A/B, grey beat white and the old tail).
+>   renderer  CORA's running sidecar was never the intent. Now server/image-render.py in THIS
+>             repo with the model in models/image/ (gitignored, SHA-256 matched). Launchers
+>             x4 start it. Her VOICE still comes from another project's tree - his call.
+>   weak      eye lenient while she knows few things (passed a bad cat); chair legs, teapot.
+> ```
+>
+> ---
+>
+> # 🛑 2026-11-23, 2:06 PM Denver (43rd — clock read) — THE BOARD IS CLOSED; ONE ROW RUNS AFTER THE START
 >
 > **Branch: `feature/close-the-open-board`.** She is DOWN. **Next launch: update the donor to 0.3.42 first, then `Savestart.bat`, NO fresh walk.** Board **9 open → 1** (`WALKWATCH.1`, kept open by ruling: it is the monitor that runs after the start). Whole board archived byte-for-byte into FINALIZED before the template.
 >

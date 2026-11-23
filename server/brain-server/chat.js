@@ -2936,15 +2936,26 @@ const SERVER_CHAT_MIXIN = {
           // INVENTION — her current thought picks another thing she knows the
           // build of, and that thing's limbs graft onto this one.
           let built = sk;
-          const others = [];
-          try { for (const k of this._vmAllKeys()) { if (k !== s.word) others.push(k); } } catch { /* none */ }
-          // She grafts only when her THOUGHT is on something else she knows:
-          // her semantic readout sits closer to another thing than to the
-          // subject she is drawing. No probability of mine decides it.
-          const ranked = (others.length ? this._thoughtRank(others.concat([s.word])) : null) || [];
+          // She grafts only from what she is THINKING ABOUT: the things named
+          // in her current thoughts (and the other subjects of this piece),
+          // never her whole memory. ⛔ The first version ranked her readout
+          // against every one of ~2,000 memories and grafted whenever any of
+          // them beat the subject — which is nearly always, so every live piece
+          // carried limbs from reef / heel / ammunition / beach. Then, among
+          // those candidates, only when her readout sits closer to one of them
+          // than to the subject.
+          const inMind = new Set(plan.subjects.map(x => x.word).filter(w => w !== s.word));
+          try {
+            const chain = Array.isArray(this._innerThoughtChain) ? this._innerThoughtChain : [];
+            const recent = chain.slice(-3).map(e => (typeof e === 'string' ? e : (e && e.sentence) || '')).join(' ');
+            const toks = (typeof this._vmContentWords === 'function') ? this._vmContentWords(recent) : [];
+            for (const t of toks) if (t && t !== s.word) inMind.add(t);
+          } catch { /* no thoughts to graft from */ }
+          const cands = [...inMind];
+          const ranked = (cands.length ? this._thoughtRank(cands.concat([s.word])) : null) || [];
           const thoughtElsewhere = ranked.length > 1 && ranked[0] !== s.word;
           if (thoughtElsewhere) {
-            for (const w of ranked.filter(x => x !== s.word).slice(0, 4)) {
+            for (const w of ranked.slice(0, ranked.indexOf(s.word)).slice(0, 4)) {
               const dsk = await this._skeletonFor(w);
               if (dsk) { built = this._graftSkeleton(built, dsk, rnd); if (built.grafted) { built.graftedFrom = w; break; } }
             }
@@ -3025,6 +3036,33 @@ const SERVER_CHAT_MIXIN = {
       const _rw = _e && _e.rec && Number(_e.rec.width), _rh = _e && _e.rec && Number(_e.rec.height);
       if (_rw > 0 && _rh > 0) _aspect = Math.min(4, Math.max(0.25, _rw / _rh));
     } catch { /* no reference on file — square, and say nothing false about it */ }
+    // HER EYES SEE IT FIRST — the finished piece is rendered and judged BEFORE
+    // anything (progress frames included) reaches the viewer, so a piece her
+    // eye refuses is never shown. Single-subject pieces with a learned
+    // silhouette are judged; a scene of several things is not (no one mask).
+    let drawn = null;
+    try {
+      drawn = await this.mindSpace.sketch(finalStrokes, {
+        maxSide: side,
+        aspect: _aspect,
+        mood: { arousal: this.arousal, valence: this.valence },
+      });
+    } catch { return null; }
+    if (!drawn) return null;
+    if (contributed.length === 1) {
+      const verdict = await this._eyeJudgesDrawing(drawn, contributed[0].word);
+      const ej = this._eyeJudge || (this._eyeJudge = { passed: 0, refused: 0, unjudged: 0, last: null });
+      if (!verdict.judged) ej.unjudged++;
+      else if (verdict.pass) ej.passed++;
+      else {
+        ej.refused++;
+        ej.last = { word: contributed[0].word, at: Date.now(), ...verdict };
+        try { console.log(`[OwnArt] 👁 her eye REFUSED her "${contributed[0].word}" — ${verdict.why || `${verdict.beaten} of ${verdict.compared} other things she knows match its shape better (own ${verdict.ownScore})`}. Not shown; she practises it.`); } catch { /* nf */ }
+        try { if (Array.isArray(this._mindsEyePreviewQueue)) this._mindsEyePreviewQueue.push({ kind: 'practice', word: contributed[0].word }); } catch { /* practice best-effort */ }
+        return null;
+      }
+      if (verdict.judged) ej.last = { word: contributed[0].word, at: Date.now(), ...verdict };
+    }
     if (process.env.DREAM_EYE_PROCESS !== '0' && finalStrokes.length >= 24 && opts.progress !== false) {
       for (const frac of [0.35, 0.7]) {
         try {
@@ -3038,15 +3076,6 @@ const SERVER_CHAT_MIXIN = {
         } catch { break; /* process frames are best-effort — the piece itself still lands */ }
       }
     }
-    let drawn = null;
-    try {
-      drawn = await this.mindSpace.sketch(finalStrokes, {
-        maxSide: side,
-        aspect: _aspect,
-        mood: { arousal: this.arousal, valence: this.valence },
-      });
-    } catch { return null; }
-    if (!drawn) return null;
     // DRAWNCOUNT (2026-08-21) — reported as "0 drawn" on the board against 25+
     // seen. Count every born piece HERE, at the single
     // point all lanes flow through. The old counter lived in one drain lane
@@ -3606,19 +3635,104 @@ const SERVER_CHAT_MIXIN = {
   _learnSkeleton(img) {
     if (!img || !img.data || !img.width) return null;
     const SW = img.width, SH = img.height, D = img.data;
-    const G = 96, gw = SW >= SH ? G : Math.max(16, Math.round(G * SW / SH)), gh = SW >= SH ? Math.max(16, Math.round(G * SH / SW)) : G;
+    // 160 cells across: fine enough that a thin part (a chair leg) spans
+    // several cells and survives the opening that strips 1-px backdrop lines
+    // (judged on a render: at 96 the chair lost its legs).
+    const G = 160, gw = SW >= SH ? G : Math.max(16, Math.round(G * SW / SH)), gh = SW >= SH ? Math.max(16, Math.round(G * SH / SW)) : G;
     const px = (gx, gy) => { const x = Math.min(SW - 1, Math.floor((gx + 0.5) * SW / gw)), y = Math.min(SH - 1, Math.floor((gy + 0.5) * SH / gh)); const o = (y * SW + x) * 4; return [D[o], D[o + 1], D[o + 2]]; };
-    // backdrop = median of an inset border band (the reconstruction pads the corners black)
-    const band = [];
-    for (let i = 0; i < 16; i++) { const t = i / 15; band.push(px(Math.round(t * (gw - 1)), 2), px(Math.round(t * (gw - 1)), gh - 3), px(2, Math.round(t * (gh - 1))), px(gw - 3, Math.round(t * (gh - 1)))); }
-    const bg = [0, 1, 2].map(c => { const v = band.map(b => b[c]).sort((a, b) => a - b); return v[v.length >> 1]; });
-    const M = new Uint8Array(gw * gh);
-    let inCount = 0;
+    // ── THE SUBJECT, NOT "EVERYTHING THAT ISN'T ONE BACKDROP COLOUR" ──────────
+    // Measured on her real looks: a single border median grabbed half of every
+    // scene (a field, a sky, a plate) and the skeleton of that was 78–134
+    // fragments. The backdrop is modelled instead as the COLOURS OF THE BORDER
+    // — the ring just inside the frame (the reconstruction pads the outermost
+    // pixels), clustered — and a pixel is backdrop when it is as close to one of
+    // those colours as the border pixels themselves are (mean + 2 sd of their
+    // own distances: the border's measured spread, not a number of mine).
+    const ring = [];
+    for (let y = 2; y < gh - 2; y++) for (let x = 2; x < gw - 2; x++) {
+      if (x <= 4 || y <= 4 || x >= gw - 5 || y >= gh - 5) ring.push(px(x, y));
+    }
+    const K = 6;
+    let cent = Array.from({ length: K }, (_, k) => ring[Math.floor((k + 0.5) * ring.length / K)].slice());
+    const d2 = (a, b) => (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2;
+    for (let it = 0; it < 10; it++) {
+      const sum = cent.map(() => [0, 0, 0, 0]);
+      for (const c of ring) { let bi = 0, bd = Infinity; for (let k = 0; k < K; k++) { const d = d2(c, cent[k]); if (d < bd) { bd = d; bi = k; } } const s = sum[bi]; s[0] += c[0]; s[1] += c[1]; s[2] += c[2]; s[3]++; }
+      cent = cent.map((c, k) => sum[k][3] ? [sum[k][0] / sum[k][3], sum[k][1] / sum[k][3], sum[k][2] / sum[k][3]] : c);
+    }
+    const nearest = (c) => { let bd = Infinity; for (const k of cent) bd = Math.min(bd, d2(c, k)); return Math.sqrt(bd); };
+    const rd = ring.map(nearest);
+    const mu = rd.reduce((a, b) => a + b, 0) / rd.length;
+    const sd = Math.sqrt(rd.reduce((a, b) => a + (b - mu) ** 2, 0) / rd.length);
+    const tol = mu + 2 * sd;
+    // A CAST SHADOW is the backdrop's own colour, only darker, and smooth: its
+    // hue matches a border cluster (chromaticity within the border's own
+    // spread), it is darker than that cluster, and its 3x3 neighbourhood has
+    // no more texture than the border itself does. Textured subjects (an
+    // elephant's skin) keep their pixels; the soft grey smear under them does
+    // not. Judged on a render: floor shadows rode along under elephant and bear.
+    const lumOf = (c) => 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
+    const chroma = (c) => { const s = c[0] + c[1] + c[2] + 1e-6; return [c[0] / s, c[1] / s]; };
+    const cc = cent.map(chroma), cl = cent.map(lumOf);
+    const chromaDist = (c) => { const q = chroma(c); let bd = Infinity, bk = 0; for (let k = 0; k < cc.length; k++) { const d = Math.hypot(q[0] - cc[k][0], q[1] - cc[k][1]); if (d < bd) { bd = d; bk = k; } } return [bd, bk]; };
+    const rcd = ring.map(c => chromaDist(c)[0]);
+    const cmu = rcd.reduce((a, b) => a + b, 0) / rcd.length;
+    const csd = Math.sqrt(rcd.reduce((a, b) => a + (b - cmu) ** 2, 0) / rcd.length);
+    const ctol = cmu + 2 * csd;
+    const localStd = (x, y) => { let s = 0, s2 = 0, n2 = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const X = Math.max(0, Math.min(gw - 1, x + dx)), Y = Math.max(0, Math.min(gh - 1, y + dy)); const l = lumOf(px(X, Y)); s += l; s2 += l * l; n2++; } const m = s / n2; return Math.sqrt(Math.max(0, s2 / n2 - m * m)); };
+    const ringTex = [];   // the border's own texture, sampled
+    for (let y = 2; y < gh - 2; y += 3) for (let x = 2; x < gw - 2; x += 3) if (x <= 4 || y <= 4 || x >= gw - 5 || y >= gh - 5) ringTex.push(localStd(x, y));
+    const tmu = ringTex.reduce((a, b) => a + b, 0) / Math.max(1, ringTex.length);
+    const tsd = Math.sqrt(ringTex.reduce((a, b) => a + (b - tmu) ** 2, 0) / Math.max(1, ringTex.length));
+    const ttol = tmu + 2 * tsd;
+    let M = new Uint8Array(gw * gh);
     for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
       const c = px(x, y);
-      if (Math.abs(c[0] - bg[0]) + Math.abs(c[1] - bg[1]) + Math.abs(c[2] - bg[2]) > 70) { M[y * gw + x] = 1; inCount++; }
+      if (nearest(c) <= tol) continue;                                  // backdrop
+      const [cd, ck] = chromaDist(c);
+      if (cd <= ctol && lumOf(c) < cl[ck] && localStd(x, y) <= ttol) continue;   // its shadow
+      M[y * gw + x] = 1;
     }
-    if (inCount < 20 || inCount > gw * gh * 0.92) return null;   // no subject, or no backdrop
+    // close small gaps (dilate then erode, 1 px), so one body is one region
+    const morph = (src, grow) => { const o = new Uint8Array(src.length); for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) { let v = grow ? 0 : 1; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const X = x + dx, Y = y + dy; const s = (X >= 0 && Y >= 0 && X < gw && Y < gh) ? src[Y * gw + X] : 0; if (grow) v |= s; else v &= s; } o[y * gw + x] = v; } return o; };
+    M = morph(morph(M, true), false);
+    // ...then OPEN (erode then dilate, 1 px): thin structures — a backdrop
+    // stand, a horizon line, a table edge — are a pixel or two wide and do not
+    // survive it, while a body does. Judged on a render: the elephant's mask
+    // carried the studio frame round it until this.
+    M = morph(morph(M, false), true);
+    // The subject is the region the look is ABOUT: large, and in the middle of
+    // the frame — a reference is composed around its subject, while scenery
+    // (a fence, a horizon, a table edge) runs off to the sides. Each connected
+    // region scores its area weighted by how central its pixels are.
+    const lab = new Int32Array(gw * gh).fill(-1);
+    let best = -1, bestS = 0;
+    const cxF = (gw - 1) / 2, cyF = (gh - 1) / 2, rMax = Math.hypot(cxF, cyF);
+    for (let i0 = 0; i0 < M.length; i0++) {
+      if (!M[i0] || lab[i0] >= 0) continue;
+      const q = [i0]; lab[i0] = i0; let s = 0;
+      while (q.length) { const i = q.pop(); const x = i % gw, y = (i / gw) | 0; s += 1 - Math.hypot(x - cxF, y - cyF) / rMax; for (const [X, Y] of [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]]) { if (X < 0 || Y < 0 || X >= gw || Y >= gh) continue; const j = Y * gw + X; if (M[j] && lab[j] < 0) { lab[j] = i0; q.push(j); } } }
+      if (s > bestS) { bestS = s; best = i0; }
+    }
+    if (best < 0) return null;
+    for (let i = 0; i < M.length; i++) M[i] = lab[i] === best ? 1 : 0;
+    // fill its holes: background unreachable from the frame edge is inside the body
+    const outside = new Uint8Array(gw * gh);
+    const fq = [];
+    for (let x = 0; x < gw; x++) { fq.push(x, (gh - 1) * gw + x); }
+    for (let y = 0; y < gh; y++) { fq.push(y * gw, y * gw + gw - 1); }
+    while (fq.length) { const i = fq.pop(); if (outside[i] || M[i]) continue; outside[i] = 1; const x = i % gw, y = (i / gw) | 0; if (x > 0) fq.push(i - 1); if (x < gw - 1) fq.push(i + 1); if (y > 0) fq.push(i - gw); if (y < gh - 1) fq.push(i + gw); }
+    let inCount = 0;
+    for (let i = 0; i < M.length; i++) { if (!outside[i]) M[i] = 1; if (M[i]) inCount++; }
+    // A "subject" that fills the frame is the scene itself — the look held no
+    // one thing to draw. This is the evidence `skeleton: null` records.
+    let touches = 0;
+    if ([...Array(gw).keys()].some(x => M[x])) touches++;
+    if ([...Array(gw).keys()].some(x => M[(gh - 1) * gw + x])) touches++;
+    if ([...Array(gh).keys()].some(y => M[y * gw])) touches++;
+    if ([...Array(gh).keys()].some(y => M[y * gw + gw - 1])) touches++;
+    if (inCount < 20 || touches === 4) return null;
+    const bg = cent[0].map(v => Math.round(v));
     // distance to the edge (two-pass chamfer)
     const DT = new Float32Array(gw * gh);
     for (let i = 0; i < DT.length; i++) DT[i] = M[i] ? 1e6 : 0;
@@ -3672,6 +3786,27 @@ const SERVER_CHAT_MIXIN = {
       }
     }
     if (!bones.length) return null;
+    // SPUR PRUNING — the standard skeleton clean-up. A branch with a FREE end
+    // that is shorter than the body is thick where it joins lies inside the
+    // body: it is a wobble of the outline, not a limb. Removed, and repeated
+    // while it keeps finding spurs (pruning one exposes the next).
+    for (let pass = 0; pass < 6; pass++) {
+      const endDeg = new Map();
+      for (const b of bones) for (const e of [b[0], b[b.length - 1]]) endDeg.set(e, (endDeg.get(e) || 0) + 1);
+      const keep = [];
+      let dropped = 0;
+      for (const b of bones) {
+        const a = b[0], z = b[b.length - 1];
+        const aFree = endDeg.get(a) === 1 && deg[a] <= 1, zFree = endDeg.get(z) === 1 && deg[z] <= 1;
+        if (aFree !== zFree && bones.length > 1) {
+          const joint = aFree ? z : a;
+          if (b.length < DT[joint] * 1.5) { dropped++; continue; }
+        }
+        keep.push(b);
+      }
+      bones.length = 0; bones.push(...keep);
+      if (!dropped) break;
+    }
     // sample a colour along each bone; normalise; drop specks
     const out = [];
     let maxR = 0;
@@ -3691,7 +3826,137 @@ const SERVER_CHAT_MIXIN = {
       if (b.length < 4 && Math.max(...b.map(i => DT[i])) < maxR * 0.3) continue;
       out.push({ pts, rgb: [Math.round(r / n), Math.round(g / n), Math.round(bl / n)] });
     }
-    return out.length ? { bones: out, aspect: +(gw / gh).toFixed(3), bg } : null;
+    // The subject's MASK travels with the skeleton (1 bit per cell, base64):
+    // it is what her eye compares a finished drawing's shape against.
+    const bits = new Uint8Array(Math.ceil(M.length / 8));
+    for (let i = 0; i < M.length; i++) if (M[i]) bits[i >> 3] |= 1 << (i & 7);
+    // WHERE ITS COLOURS SIT — the subject's pixels clustered into a few colours
+    // (k-means, k = 6), and which colour each cell of the body is. What
+    // recognition rides on is the silhouette and the layout of its colours,
+    // and this is that, learned from the look — not its photographic lines.
+    const subj = [];
+    for (let i = 0; i < M.length; i++) if (M[i]) subj.push(px(i % gw, (i / gw) | 0));
+    const PK = Math.min(6, subj.length);
+    let pal = Array.from({ length: PK }, (_, k) => subj[Math.floor((k + 0.5) * subj.length / PK)].slice());
+    for (let it = 0; it < 8; it++) {
+      const sum = pal.map(() => [0, 0, 0, 0]);
+      for (const c of subj) { let bi = 0, bd = Infinity; for (let k = 0; k < PK; k++) { const d = d2(c, pal[k]); if (d < bd) { bd = d; bi = k; } } const s = sum[bi]; s[0] += c[0]; s[1] += c[1]; s[2] += c[2]; s[3]++; }
+      pal = pal.map((c, k) => sum[k][3] ? [sum[k][0] / sum[k][3], sum[k][1] / sum[k][3], sum[k][2] / sum[k][3]] : c);
+    }
+    const idx = new Uint8Array(M.length).fill(255);
+    for (let i = 0; i < M.length; i++) {
+      if (!M[i]) continue;
+      const c = px(i % gw, (i / gw) | 0);
+      let bi = 0, bd = Infinity; for (let k = 0; k < PK; k++) { const d = d2(c, pal[k]); if (d < bd) { bd = d; bi = k; } }
+      idx[i] = bi;
+    }
+    return out.length ? {
+      bones: out, aspect: +(gw / gh).toFixed(3), bg,
+      mask: { w: gw, h: gh, b64: Buffer.from(bits).toString('base64') },
+      colors: { palette: pal.map(c => c.map(v => Math.round(v))), b64: Buffer.from(idx).toString('base64') },
+    } : null;
+  },
+
+  // ── SHE PAINTS WHAT SHE SAW, FROM WHAT SHE LEARNED OF IT ──────────────────
+  // Judged on her real looks: volumes built round bones lose the outline that
+  // makes a thing recognisable (a clean rooster came out a grey lump). What
+  // carries recognition is the SILHOUETTE and WHERE ITS COLOURS SIT — both
+  // learned from the look (`skeleton.mask`, `skeleton.colors`). She paints the
+  // body cell by cell in the colour she saw there, in soft overlapping strokes,
+  // then draws her own outline round the silhouette's edge. The pose (stretch,
+  // turn) is the one her state gave the skeleton. No photographic line is drawn.
+  _constructFromMask(skel, box, rnd, style, skill) {
+    const out = [];
+    if (!skel || !skel.mask || !skel.colors) return out;
+    const W = skel.mask.w, H = skel.mask.h;
+    const bits = Buffer.from(skel.mask.b64, 'base64');
+    const idx = Buffer.from(skel.colors.b64, 'base64');
+    const pal = skel.colors.palette || [];
+    const on = (x, y) => x >= 0 && y >= 0 && x < W && y < H && ((bits[(y * W + x) >> 3] >> ((y * W + x) & 7)) & 1);
+    let x0 = W, y0 = H, x1 = 0, y1 = 0, n = 0;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (on(x, y)) { n++; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+    if (!n) return out;
+    const fw = x1 - x0 + 1, fh = y1 - y0 + 1;
+    const sc = Math.min(box.w / fw, box.h / fh);
+    const cxM = (x0 + x1 + 1) / 2, cyM = (y0 + y1 + 1) / 2;
+    const p = skel.posed || { sx: 1, sy: 1, rot: 0 };
+    const cr = Math.cos(p.rot || 0), sr = Math.sin(p.rot || 0);
+    const T = (x, y) => { const u = (x - cxM) * sc * (p.sx || 1), v = (y - cyM) * sc * (p.sy || 1); return [box.cx + u * cr - v * sr, box.cy + u * sr + v * cr]; };
+    const jit = () => (rnd() - 0.5) * ((skill && skill.jitter) || 0.006);
+    const fillA = (skill && skill.fillA) || 0.92;
+    const volW = (skill && skill.volW) || 1;
+    // the body — one soft stroke per cell, sampled so a huge mask stays a few thousand marks
+    const step = Math.max(1, Math.ceil(Math.sqrt(n / 2600)));
+    const r = sc * step * 0.62 * volW;
+    if (style.mass !== 'none') {
+      for (let y = y0; y <= y1; y += step) for (let x = x0; x <= x1; x += step) {
+        if (!on(x, y)) continue;
+        const c = pal[idx[y * W + x]];
+        if (!c) continue;
+        const [X, Y] = T(x + 0.5, y + 0.5);
+        out.push({ type: 'blob', cx: X + jit(), cy: Y + jit(), rx: r * (0.9 + 0.2 * rnd()), ry: r * (0.9 + 0.2 * rnd()), ang: rnd() * 3.1416, rgb: c, a: style.mass === 'wash' ? 0.5 * fillA : fillA });
+      }
+    }
+    // her outline — the silhouette's edge, drawn as linked runs between edge cells
+    let lum = 0, ln = 0; for (const c of pal) { lum += 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]; ln++; }
+    const ink = (ln && lum / ln > 120) ? [28, 24, 32] : [232, 228, 236];
+    const lw = style.outlineW > 0 ? Math.min(style.outlineW, 0.007) * ((skill && skill.traceW) || 1) : undefined;
+    const edge = (x, y) => on(x, y) && (!on(x + 1, y) || !on(x - 1, y) || !on(x, y + 1) || !on(x, y - 1));
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      if (!edge(x, y)) continue;
+      for (const [dx, dy] of [[1, 0], [0, 1], [1, 1], [1, -1]]) {
+        if (!edge(x + dx, y + dy)) continue;
+        const a = T(x + 0.5, y + 0.5), b = T(x + dx + 0.5, y + dy + 0.5);
+        out.push({ type: 'line', x0: a[0] + jit(), y0: a[1] + jit(), x1: b[0] + jit(), y1: b[1] + jit(), rgb: ink, w: lw, a: style.outlineA || 1 });
+      }
+    }
+    return out;
+  },
+
+  // ── HER EYES SEE WHAT SHE DRAWS ─────────────────────────────────────────
+  // A finished piece is looked at by the same eye that learned the thing: it
+  // is reconstructed, the same subject-finder reads its silhouette, and that
+  // silhouette is compared (overlap / union, each fitted to its own frame)
+  // with the one she learned for the subject — and with the ones she learned
+  // for other things she knows. The piece passes only when its own subject
+  // is the BEST match. A rank among her memories, not a cutoff of mine.
+  _maskGrid(mask, N) {
+    const W = mask.w, H = mask.h, bits = Buffer.from(mask.b64, 'base64');
+    const on = (x, y) => (bits[(y * W + x) >> 3] >> ((y * W + x) & 7)) & 1;
+    let x0 = W, y0 = H, x1 = -1, y1 = -1;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (on(x, y)) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+    if (x1 < 0) return null;
+    const g = new Uint8Array(N * N), s = Math.max(x1 - x0 + 1, y1 - y0 + 1);
+    const ox = x0 - (s - (x1 - x0 + 1)) / 2, oy = y0 - (s - (y1 - y0 + 1)) / 2;
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const x = Math.floor(ox + (i + 0.5) * s / N), y = Math.floor(oy + (j + 0.5) * s / N);
+      if (x >= 0 && y >= 0 && x < W && y < H && on(x, y)) g[j * N + i] = 1;
+    }
+    return g;
+  },
+  _maskIoU(a, b) { let i = 0, u = 0; for (let k = 0; k < a.length; k++) { if (a[k] && b[k]) i++; if (a[k] || b[k]) u++; } return u ? i / u : 0; },
+  async _eyeJudgesDrawing(drawnRec, word) {
+    try {
+      const store = this._vmStore();
+      const e = store.get(word);
+      const learned = e && e.schema && e.schema.skeleton && e.schema.skeleton.mask;
+      if (!learned) return { judged: false };
+      const img = await this.mindSpace.imagine(drawnRec, 0);
+      const seenInDrawing = this._learnSkeleton(img);
+      if (!seenInDrawing || !seenInDrawing.mask) return { judged: true, pass: false, why: 'her eye finds no single shape in it' };
+      const N = 32, mine = this._maskGrid(seenInDrawing.mask, N), own = this._maskGrid(learned, N);
+      const ownScore = this._maskIoU(mine, own);
+      let beaten = 0, compared = 0;
+      for (const k of this._vmAllKeys()) {
+        if (k === word || compared >= 48) continue;
+        const o = store.get(k);
+        const m = o && o.schema && o.schema.skeleton && o.schema.skeleton.mask;
+        if (!m) continue;
+        compared++;
+        if (this._maskIoU(mine, this._maskGrid(m, N)) > ownScore) beaten++;
+      }
+      return { judged: true, pass: beaten === 0, ownScore: +ownScore.toFixed(3), compared, beaten };
+    } catch (err) { return { judged: false, error: err && err.message }; }
   },
 
   // She BUILDS the figure: a tapered volume around every bone (each point's
@@ -4360,7 +4625,12 @@ const SERVER_CHAT_MIXIN = {
     // remembered trace below is never redrawn when she knows how the thing is
     // built. The trace path stays only for a schema with no readable build.
     if (schema && schema.skeleton && Array.isArray(schema.skeleton.bones) && schema.skeleton.bones.length) {
-      const built = this._constructFromSkeleton(schema.skeleton, box, rnd, style, skill);
+      // painted from the learned silhouette + colour layout when the look
+      // carried them; the bone-volume build only for a skeleton learned before
+      // those existed
+      const built = (schema.skeleton.mask && schema.skeleton.colors)
+        ? this._constructFromMask(schema.skeleton, box, rnd, style, skill)
+        : this._constructFromSkeleton(schema.skeleton, box, rnd, style, skill);
       if (built.length) return built;
     }
     // No build she can read → the definition recipe, or honestly nothing. The

@@ -383,7 +383,7 @@ content word of the ask. The v3 arc:
   she has been taught rather than decoration that is always perfect. **The reference field C never reaches the renderer.** Seeded from `words + arousal + valence + attempt#`:
   different attempts, not a cache. Variation is STYLE — no wobble, no skill floor (the no-dumbing law stands).
 - **"Draw" means her hand** (`_detectDrawRequest`) — DRAW verbs (draw/sketch/doodle/illustrate/paint) route to OWNART;
-  GENERATOR words (picture/photo/image/render/generate) route to her OWN engine now — CORA's local Stable Diffusion on her card, behind `image-engine.js` (2026-10-18; it was Pollinations when this was written) — and stay honest about it.
+  GENERATOR words (picture/photo/image/render/generate) route to her OWN engine now — this project's own local Stable Diffusion renderer (`server/image-render.py`) on her card, behind `image-engine.js` (2026-10-18; it was Pollinations when this was written) — and stay honest about it.
 - **The whole message, in context** (`_drawPlanFromMessage`) — every drawable noun (POS-gated by her own dictionary) plus
   the place from a prepositional tail, ≤3 subjects. *"draw a black cat on a gravestone"* = cat + gravestone place.
 - **`own` is the default style** for chat asks AND internal draw calls; `field`/`lineart` remain for SHOWING WHAT SHE

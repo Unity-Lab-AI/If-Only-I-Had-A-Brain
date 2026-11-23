@@ -1,0 +1,227 @@
+#!/usr/bin/env python3
+"""
+image-render.py — her eyes' renderer, owned by THIS project.
+
+Renders the reference pictures she looks at, on her own card, from the
+realistic-vision-v51 checkpoint (SD1.5) kept in this repo's own models/image/
+(gitignored — a third-party checkpoint on a public remote). Started and
+stopped by this project's launchers; nothing here depends on any other
+project's tree or process.
+
+Only what the brain calls (server/brain-server/image-engine.js):
+  GET  /health   -> {"ok", "loaded", "device", "checkpoint", "checkpoint_present", "busy"}
+  POST /txt2img  {"prompt", "negative"?, "width"?, "height"?, "steps"?, "guidance"?, "seed"?}
+                 -> image/png  (headers X-Seed, X-Seconds, X-Size)
+  POST /unload   -> drops the pipeline and frees the card (the process stays)
+  POST /shutdown -> exits
+
+Behaviour the brain's pacing was measured against, kept exactly:
+  - the checkpoint loads on the FIRST render, so /health answers at once and the
+    card is only taken when a picture is asked for;
+  - model CPU offload on CUDA (only the executing layer rides the GPU — her
+    brain's donor matrices and her voice keep their room);
+  - one render at a time (a lock); DPM++ multistep sampling; fp16 on CUDA;
+  - the prompt is cut by the real CLIP tokenizer (CLIP reads 77 tokens and
+    silently drops the rest).
+
+    python server/image-render.py --port 5124 --checkpoint models/image/realistic-vision-v51.safetensors
+"""
+import argparse
+import gc
+import io
+import json
+import os
+import random
+import threading
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+DEFAULT_CKPT = os.path.join(HERE, "..", "models", "image", "realistic-vision-v51.safetensors")
+
+# quality negatives only; what the picture shows is the prompt's business
+NEG = ("lowres, blurry, out of focus, deformed, bad anatomy, extra fingers, extra limbs, missing fingers, "
+       "mutated hands, watermark, text, signature, cartoon, anime, 3d render, oversaturated, jpeg artifacts")
+
+CKPT = DEFAULT_CKPT
+DEVICE_ARG = "auto"
+OFFLOAD = True
+
+_lock = threading.Lock()
+_state = {"t2i": None, "device": None}
+
+
+def _log(msg):
+    print(time.strftime("%H:%M:%S"), "image:", msg, flush=True)
+
+
+def _device():
+    if _state["device"]:
+        return _state["device"]
+    import torch
+    dev = DEVICE_ARG
+    if dev == "auto":
+        dev = "cuda" if torch.cuda.is_available() else "cpu"
+    _state["device"] = dev
+    return dev
+
+
+def _round8(n, lo=256, hi=1024):
+    n = max(lo, min(hi, int(n)))
+    return n - (n % 8)
+
+
+def _load():
+    if _state["t2i"] is not None:
+        return
+    import torch
+    from diffusers import StableDiffusionPipeline, DPMSolverMultistepScheduler
+    if not os.path.exists(CKPT):
+        raise FileNotFoundError("checkpoint not found: %s" % CKPT)
+    dev = _device()
+    t0 = time.time()
+    _log("loading %s on %s%s" % (os.path.basename(CKPT), dev, " (cpu offload)" if dev == "cuda" and OFFLOAD else ""))
+    dtype = torch.float16 if dev == "cuda" else torch.float32
+    t2i = StableDiffusionPipeline.from_single_file(CKPT, torch_dtype=dtype, safety_checker=None)
+    t2i.scheduler = DPMSolverMultistepScheduler.from_config(t2i.scheduler.config)
+    if dev == "cuda":
+        if OFFLOAD:
+            t2i.enable_model_cpu_offload()
+        else:
+            t2i.to("cuda")
+    else:
+        t2i.to("cpu")
+    _state["t2i"] = t2i
+    _log("loaded in %.1fs" % (time.time() - t0))
+
+
+def _tokens_fit(text, limit=75):
+    try:
+        tok = _state["t2i"].tokenizer
+        ids = tok(text).input_ids
+        if len(ids) <= limit + 2:
+            return text
+        return tok.decode(ids[1:limit + 1]).strip()
+    except Exception:
+        words = text.split()
+        return " ".join(words[:55]) if len(words) > 55 else text
+
+
+def render_txt2img(req):
+    import torch
+    _load()
+    dev = _device()
+    w = _round8(req.get("width") or (768 if dev == "cuda" else 512))
+    h = _round8(req.get("height") or (768 if dev == "cuda" else 512))
+    steps = max(4, min(60, int(req.get("steps") or (25 if dev == "cuda" else 12))))
+    seed = req.get("seed")
+    seed = int(seed) if seed not in (None, "", 0) else random.randint(1, 2 ** 31 - 1)
+    gen = torch.Generator(dev).manual_seed(seed)
+    guidance = float(req.get("guidance") or 6.5)
+    negative = str(req.get("negative") or NEG)
+    t0 = time.time()
+    if dev == "cuda":
+        torch.cuda.empty_cache()
+    out = _state["t2i"](prompt=_tokens_fit(str(req.get("prompt") or "")), negative_prompt=_tokens_fit(negative),
+                        width=w, height=h, num_inference_steps=steps, guidance_scale=guidance,
+                        generator=gen).images[0]
+    return out, seed, time.time() - t0
+
+
+def unload():
+    had = _state["t2i"] is not None
+    _state["t2i"] = None
+    gc.collect()
+    try:
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except Exception:
+        pass
+    if had:
+        _log("unloaded")
+    return had
+
+
+class Handler(BaseHTTPRequestHandler):
+    server_version = "unity-image/1.0"
+
+    def log_message(self, fmt, *args):
+        pass
+
+    def _json(self, obj, status=200):
+        body = json.dumps(obj).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self):
+        if self.path.split("?")[0] == "/health":
+            return self._json({"ok": True, "loaded": _state["t2i"] is not None, "device": _state["device"] or DEVICE_ARG,
+                               "checkpoint": os.path.basename(CKPT), "checkpoint_present": os.path.exists(CKPT),
+                               "busy": _lock.locked()})
+        self._json({"error": "unknown endpoint"}, 404)
+
+    def do_POST(self):
+        path = self.path.split("?")[0]
+        try:
+            n = int(self.headers.get("Content-Length") or 0)
+            req = json.loads(self.rfile.read(n).decode("utf-8")) if n else {}
+        except Exception as e:
+            return self._json({"error": "bad json: %s" % e}, 400)
+        if path == "/unload":
+            with _lock:
+                return self._json({"ok": True, "unloaded": unload()})
+        if path == "/shutdown":
+            self._json({"ok": True})
+            threading.Timer(0.3, lambda: os._exit(0)).start()
+            return
+        if path != "/txt2img":
+            return self._json({"error": "unknown endpoint"}, 404)
+        if not str(req.get("prompt") or "").strip():
+            return self._json({"error": "prompt is empty"}, 422)
+        try:
+            with _lock:
+                img, seed, secs = render_txt2img(req)
+        except FileNotFoundError as e:
+            return self._json({"error": str(e)}, 503)
+        except (KeyError, ValueError) as e:
+            return self._json({"error": str(e)}, 422)
+        except Exception as e:
+            _log("render failed: %r" % (e,))
+            return self._json({"error": "%s: %s" % (type(e).__name__, str(e)[:300])}, 500)
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        body = buf.getvalue()
+        self.send_response(200)
+        self.send_header("Content-Type", "image/png")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("X-Seed", str(seed))
+        self.send_header("X-Seconds", "%.2f" % secs)
+        self.send_header("X-Size", "%dx%d" % img.size)
+        self.end_headers()
+        self.wfile.write(body)
+        _log("txt2img %dx%d seed %d in %.1fs" % (img.size[0], img.size[1], seed, secs))
+
+
+def main():
+    global CKPT, DEVICE_ARG, OFFLOAD
+    ap = argparse.ArgumentParser(description="her eyes' renderer (this project's own)")
+    ap.add_argument("--port", type=int, default=int(os.environ.get("UNITY_IMAGE_PORT", "5124")))
+    ap.add_argument("--checkpoint", default=os.environ.get("UNITY_IMAGE_CHECKPOINT", DEFAULT_CKPT))
+    ap.add_argument("--device", default=os.environ.get("UNITY_IMAGE_DEVICE", "auto"), choices=["auto", "cuda", "cpu"])
+    ap.add_argument("--no-offload", action="store_true", help="keep the whole model on the GPU (~3 GB more VRAM)")
+    a = ap.parse_args()
+    CKPT, DEVICE_ARG, OFFLOAD = os.path.abspath(a.checkpoint), a.device, not a.no_offload
+    srv = ThreadingHTTPServer(("127.0.0.1", a.port), Handler)
+    _log("serving on 127.0.0.1:%d  checkpoint=%s  present=%s" % (a.port, os.path.basename(CKPT), os.path.exists(CKPT)))
+    try:
+        srv.serve_forever()
+    except KeyboardInterrupt:
+        pass
+
+
+if __name__ == "__main__":
+    main()
