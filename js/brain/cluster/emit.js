@@ -65,6 +65,10 @@ import { normalizeSubject, SUBJECTS } from '../subjects.js';
 // never imported, so the ESM source path threw ReferenceError when the
 // letter-emission methods ran (bundle masked it via flattened scope).
 import { encodeLetter, decodeLetterAlpha, inventorySize, inventorySnapshot } from '../letter-input.js';
+// Which word she picks when she samples (temperature > 0) comes from her own
+// persisted stream, so a resumed brain chooses the next word where it left off.
+import { brainStream } from '../brain-rng.js';
+const _emitSampleRand = brainStream('emit-word-sample');
 
 export const CLUSTER_EMIT_MIXIN = {
   /**
@@ -973,7 +977,7 @@ export const CLUSTER_EMIT_MIXIN = {
       const nucleus = topCandidates.slice(0, nucleusEnd);
       const nucleusWeights = weights.slice(0, nucleusEnd);
       const nucleusSum = nucleusWeights.reduce((a, b) => a + b, 0);
-      const r = Math.random() * nucleusSum;
+      const r = _emitSampleRand() * nucleusSum;
       let cum = 0;
       for (let i = 0; i < nucleus.length; i++) {
         cum += nucleusWeights[i];

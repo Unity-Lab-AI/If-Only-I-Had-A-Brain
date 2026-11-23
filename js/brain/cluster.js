@@ -132,6 +132,11 @@ import { CLUSTER_HEBBIAN_MIXIN } from './cluster/hebbian.js';
 import { CLUSTER_EMIT_MIXIN } from './cluster/emit.js';
 import { CLUSTER_PROBE_MIXIN } from './cluster/probe.js';
 import { CLUSTER_ATTENTION_MIXIN } from './cluster/attention.js';
+import { brainStream } from './brain-rng.js';
+// Her draws ride her seeded streams: which identity sentence gets refreshed,
+// and the membrane noise on every LIF step.
+const _personaRefreshRand = brainStream('persona-refresh-pick');
+const _lifNoiseRand = brainStream('lif-noise');
 
 // Question key-word extraction + fractional-offset region injection.
 // Duplicated here (vs importing from curriculum.js) so `readInput` stays
@@ -3553,7 +3558,7 @@ export class NeuronCluster {
       for (let d = 0; d < limit; d++) {
         const dim = this.personaDimensions[d];
         if (!dim || !dim.sentences || dim.sentences.length === 0) continue;
-        const pick = dim.sentences[Math.floor(Math.random() * dim.sentences.length)];
+        const pick = dim.sentences[Math.floor(_personaRefreshRand() * dim.sentences.length)];
         applySentence(pick);
       }
     } else {
@@ -3561,7 +3566,7 @@ export class NeuronCluster {
       const corpus = this._personaRefreshCorpus;
       const n = Math.min(sentencesPerCycle, corpus.length);
       for (let i = 0; i < n; i++) {
-        const idx = Math.floor(Math.random() * corpus.length);
+        const idx = Math.floor(_personaRefreshRand() * corpus.length);
         applySentence(corpus[idx]);
       }
     }
@@ -4313,7 +4318,7 @@ export class NeuronCluster {
         + this.externalCurrent[i]
         + this._incomingProjections[i]
         + effectiveDrive
-        + (Math.random() - 0.5) * this.noiseAmplitude
+        + (_lifNoiseRand() - 0.5) * this.noiseAmplitude
         + this.errorCorrection;  // cerebellum correction signal
       if (k5Active) {
         // Column-mean voltage pull — all column members share this

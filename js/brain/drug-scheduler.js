@@ -27,6 +27,10 @@
 // If the canonical order changes there, update here too.
 import { pkCurve, sigmoid } from './pk-curve.js';
 import { CHEMICALS } from './endocrine.js';
+import { brainStream } from './brain-rng.js';
+// Whether she takes an offer is drawn from her own persisted stream; a harness
+// can still pin `offer.random` to make one decision exact.
+const _offerRand = brainStream('drug-offer-decision');
 
 const GRADE_ORDER = [
   'pre-K', 'kindergarten',
@@ -1696,7 +1700,7 @@ class DrugScheduler {
 
     // Clamp and draw.
     p = Math.max(0, Math.min(1, p));
-    const roll = typeof offer.random === 'number' ? offer.random : Math.random();
+    const roll = typeof offer.random === 'number' ? offer.random : _offerRand();
     if (roll < p) {
       return { accept: true, reason: 'accepted', probability: p };
     }

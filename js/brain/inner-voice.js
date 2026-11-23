@@ -22,6 +22,10 @@ import { LanguageCortex } from './language-cortex.js';
 // been thinking about. Real human brains lean their output toward
 // recently-exercised topics without being asked.
 import { sharedEmbeddings } from './embeddings.js';
+import { brainStream } from './brain-rng.js';
+// The basin-escape nudge is part of her thinking, so it draws from her own
+// persisted stream and resumes where it stopped.
+const _innerVoiceRand = brainStream('inner-voice-basin-escape');
 // Continuous developmental learning reference. Wired by engine.js
 // via `innerVoice.setCurriculum(curriculum)` once the cortex cluster
 // exists. When present, `learn()` routes every user turn through
@@ -232,7 +236,7 @@ export class InnerVoice {
       if (seed.pattern && seed.pattern.length > 0) {
         const jittered = new Float32Array(seed.pattern.length);
         for (let i = 0; i < jittered.length; i++) {
-          jittered[i] = seed.pattern[i] + (Math.random() - 0.5) * 0.10;
+          jittered[i] = seed.pattern[i] + (_innerVoiceRand() - 0.5) * 0.10;
         }
         chainedPattern = jittered;
       }

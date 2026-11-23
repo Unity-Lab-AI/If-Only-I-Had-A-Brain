@@ -99,6 +99,10 @@
 // back from it would close a cycle whose failure mode is a load-time TDZ
 // crash that `node --check` does not catch. Still exactly one curve engine.
 import { pkCurve } from './pk-curve.js';
+import { brainStream } from './brain-rng.js';
+// Her fight/flight/freeze/fawn draw comes from her own persisted stream; a
+// harness can still pin `ctx.random` to make one appraisal exact.
+const _stressRand = brainStream('endocrine-stress-channel');
 
 // ─── Chemical database ────────────────────────────────────────────────────
 // Timing in milliseconds. Curves are the subjective shape of the real
@@ -1019,7 +1023,7 @@ class EndocrineSystem {
       expS[c] = Math.exp((scores[c] - maxS) / tau);
       sumExp += expS[c];
     }
-    let roll = (typeof ctx.random === 'number' ? ctx.random : Math.random()) * sumExp;
+    let roll = (typeof ctx.random === 'number' ? ctx.random : _stressRand()) * sumExp;
     let channel = STRESS_CHANNELS[0];
     for (const c of STRESS_CHANNELS) {
       roll -= expS[c];

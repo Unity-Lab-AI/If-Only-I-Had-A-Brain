@@ -1,6 +1,30 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-11-19, 9:12 PM Denver (latest, 42nd — clock read) — 23 MOODS IN APPRAISAL SPACE; JEALOUSY WAS HIS EXAMPLE, NOT THE SPEC
+> # 🛑 2026-11-23, 2:06 PM Denver (latest, 43rd — clock read) — THE BOARD IS CLOSED; ONE ROW RUNS AFTER THE START
+>
+> **Branch: `feature/close-the-open-board`.** She is DOWN. **Next launch: update the donor to 0.3.42 first, then `Savestart.bat`, NO fresh walk.** Board **9 open → 1** (`WALKWATCH.1`, kept open by ruling: it is the monitor that runs after the start). Whole board archived byte-for-byte into FINALIZED before the template.
+>
+> ```
+>   seeded    every draw inside her rides brain-rng.js (seed + counters saved with her
+>             weights; construction streams restart at 0, so a seed rebuilds her wiring).
+>             The "cosmetic" exemption was mine and wrong — nothing inside her is exempt.
+>   feelings  bonds, appraisal stats and lingering mood persist (MOOD.7); a sense for a
+>             third person feeds the rival dimension (MOOD.4).
+>   drawing   built from the skeleton she learns on every look — volumes, shading, her own
+>             outline, her own pose; grafts only when her thought is on another thing;
+>             a look with no body in it makes the word undrawable. ⛔ owned: a drawability
+>             rule with a hand-picked category set + thresholds — reverted on his word.
+>   eye       pickers see every memory on disk, not the resident few hundred (EYEPOOL);
+>             the viewer changes picture to picture (flow + pyramid melt, no ghosting).
+>   donor     0.3.42: own on-disk weight checkpoint, restored after re-upload, polite
+>             hand-back on Stop; supervisor writes the exit code of an abort to crash.log.
+>   read      after the press: [Brain] RNG line; state.donorCheckpoint.saves >= 1 within
+>             10 min of the upload; "[OwnArt] ✍ … built from N bones". WALKWATCH.1 lists all.
+> ```
+>
+> ---
+>
+> # 🛑 2026-11-19, 9:12 PM Denver (42nd — clock read) — 23 MOODS IN APPRAISAL SPACE; JEALOUSY WAS HIS EXAMPLE, NOT THE SPEC
 >
 > ```
 >   ⛔ owned  five hand-picked mood names shipped as if jealousy were the requirement. Now 23

@@ -9,7 +9,15 @@
  * No external dependencies. Pure ES module. Float64 everything.
  */
 
+import { brainStream } from './brain-rng.js';
+
 const TWO_PI = 2 * Math.PI;
+
+// Initial phases come from her own seeded stream, restarted on every boot, so
+// the same seed starts her oscillators in the same place. A reset while she
+// runs draws from a persisted stream.
+const _phaseInit = brainStream('oscillator-phase-init', { fromStart: true });
+const _phaseReset = brainStream('oscillator-phase-reset');
 
 // Frequency band ranges (Hz)
 const BANDS = {
@@ -43,7 +51,7 @@ export class OscillatorNetwork {
       const hz = freqMin + (freqMax - freqMin) * (i / (n - 1 || 1));
       this.freqHz[i] = hz;
       this.omega[i] = TWO_PI * hz;           // convert Hz to rad/s
-      this.phases[i] = Math.random() * TWO_PI; // random initial phase
+      this.phases[i] = _phaseInit() * TWO_PI; // random initial phase
     }
 
     // scratch buffer for phase derivatives
@@ -166,7 +174,7 @@ export class OscillatorNetwork {
    */
   resetPhases() {
     for (let i = 0; i < this.n; i++) {
-      this.phases[i] = Math.random() * TWO_PI;
+      this.phases[i] = _phaseReset() * TWO_PI;
     }
   }
 }

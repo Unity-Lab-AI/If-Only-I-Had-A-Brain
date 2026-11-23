@@ -12,6 +12,7 @@
 #![cfg_attr(all(windows, feature = "gui"), windows_subsystem = "windows")]
 #![allow(dead_code)]
 
+mod checkpoint;
 mod cli;
 mod compute;
 mod config;
@@ -139,8 +140,99 @@ fn install_crash_log() {
     }));
 }
 
+/// SUPERVISOR — the reason an ABORT is recorded at all.
+///
+/// The panic hook above cannot see an abort. Rust's `abort_internal` is reached
+/// WITHOUT the hook by a stack overflow, an allocation the OS refuses, or a
+/// double panic, and Windows then reports only `0xc0000409`; both 2026-10-18
+/// deaths were that class and left no `crash.log`. A process cannot write down
+/// its own abort, so the donor runs itself as a CHILD and this parent waits:
+/// the child's stderr streams through (and its last lines are kept), and when
+/// the child exits with anything but success, the parent appends the exit code,
+/// the platform's name for it, and that stderr tail to the same `crash.log`.
+/// Returns `None` in the child (or when supervision is off); `Some(code)` in
+/// the parent, which then exits with the child's code.
+fn supervise() -> Option<i32> {
+    if std::env::var_os("UNITY_DONOR_CHILD").is_some() || std::env::var_os("UNITY_DONOR_NO_SUPERVISOR").is_some() {
+        return None;
+    }
+    let exe = std::env::current_exe().ok()?;
+    let mut cmd = std::process::Command::new(exe);
+    cmd.args(std::env::args_os().skip(1))
+        .env("UNITY_DONOR_CHILD", "1")
+        .stdin(std::process::Stdio::inherit())
+        .stdout(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::piped());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW — the GUI build must not flash a console
+    }
+    let mut child = match cmd.spawn() {
+        Ok(c) => c,
+        Err(_) => return None, // cannot supervise — run unsupervised rather than not at all
+    };
+    let tail = std::sync::Arc::new(std::sync::Mutex::new(std::collections::VecDeque::<String>::new()));
+    let reader = child.stderr.take().map(|err| {
+        let tail = tail.clone();
+        std::thread::spawn(move || {
+            use std::io::{BufRead, Write};
+            for line in std::io::BufReader::new(err).lines().map_while(Result::ok) {
+                let _ = writeln!(std::io::stderr(), "{line}");
+                if let Ok(mut t) = tail.lock() {
+                    t.push_back(line);
+                    while t.len() > 80 {
+                        t.pop_front();
+                    }
+                }
+            }
+        })
+    });
+    let status = child.wait();
+    if let Some(r) = reader {
+        let _ = r.join();
+    }
+    let code = match status {
+        Ok(s) => s.code().unwrap_or(-1),
+        Err(_) => -1,
+    };
+    if code != 0 {
+        let raw = code as u32;
+        let name = match raw {
+            0xC000_0409 => "STATUS_STACK_BUFFER_OVERRUN / fail-fast — Rust abort (stack overflow, refused allocation, or double panic)",
+            0xC000_00FD => "STATUS_STACK_OVERFLOW",
+            0xC000_0005 => "STATUS_ACCESS_VIOLATION",
+            0xC000_0017 => "STATUS_NO_MEMORY",
+            0xC000_013A => "STATUS_CONTROL_C_EXIT",
+            _ => "",
+        };
+        let when = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+        let lines: Vec<String> = tail.lock().map(|t| t.iter().cloned().collect()).unwrap_or_default();
+        let entry = format!(
+            "---- unity-donor v{} EXITED at unix {} — code {} (0x{:08X}) {} ----\nlast {} stderr line(s):\n{}\n\n",
+            env!("CARGO_PKG_VERSION"),
+            when,
+            code,
+            raw,
+            name,
+            lines.len(),
+            lines.join("\n")
+        );
+        let dir = config::data_dir();
+        let _ = std::fs::create_dir_all(&dir);
+        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(dir.join("crash.log")) {
+            use std::io::Write;
+            let _ = f.write_all(entry.as_bytes());
+        }
+    }
+    Some(code)
+}
+
 fn main() {
     install_crash_log();
+    if let Some(code) = supervise() {
+        std::process::exit(code);
+    }
     let cli = cli::Cli::parse();
 
     // --list-gpus: enumerate and exit.

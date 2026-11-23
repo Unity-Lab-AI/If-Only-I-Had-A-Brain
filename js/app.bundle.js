@@ -8,10 +8,74 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
+// ../js/brain/brain-rng.js
+function _fnv1a(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+function _mix(x) {
+  x ^= x >>> 16;
+  x = Math.imul(x, 2246822507);
+  x ^= x >>> 13;
+  x = Math.imul(x, 3266489909);
+  x ^= x >>> 16;
+  return x >>> 0;
+}
+function _cryptoSeed() {
+  try {
+    const c = typeof globalThis !== "undefined" && globalThis.crypto || null;
+    if (c && typeof c.getRandomValues === "function") {
+      const a = new Uint32Array(1);
+      c.getRandomValues(a);
+      return a[0] >>> 0;
+    }
+  } catch {
+  }
+  return _mix(Date.now() >>> 0 ^ 2654435769);
+}
+function _ensureSeed() {
+  if (_seed === null) _seed = _cryptoSeed();
+  return _seed;
+}
+function _value(siteKey, n) {
+  const lo = n >>> 0;
+  const hi = Math.floor(n / 4294967296) >>> 0;
+  return _mix(_seed ^ siteKey ^ _mix(lo ^ _mix(hi ^ siteKey))) / 4294967296;
+}
+function brainStream(site, opts = {}) {
+  const name = String(site);
+  if (opts.fromStart) _fromStart.add(name);
+  let st = _streams.get(name);
+  if (!st) {
+    st = { n: 0 };
+    _streams.set(name, st);
+  }
+  const key = _fnv1a(name);
+  return () => {
+    _ensureSeed();
+    return _value(key, st.n++);
+  };
+}
+var _streams, _fromStart, _seed;
+var init_brain_rng = __esm({
+  "../js/brain/brain-rng.js"() {
+    _streams = /* @__PURE__ */ new Map();
+    _fromStart = /* @__PURE__ */ new Set();
+    _seed = null;
+  }
+});
+
 // ../js/brain/sparse-matrix.js
-var WEIGHT_ARRAY, BYTES_PER_VALUE, BYTES_PER_NNZ, SparseMatrix;
+var _initRand, _growRand, WEIGHT_ARRAY, BYTES_PER_VALUE, BYTES_PER_NNZ, SparseMatrix;
 var init_sparse_matrix = __esm({
   "../js/brain/sparse-matrix.js"() {
+    init_brain_rng();
+    _initRand = brainStream("sparse-init", { fromStart: true });
+    _growRand = brainStream("synaptogenesis");
     WEIGHT_ARRAY = Float32Array;
     BYTES_PER_VALUE = WEIGHT_ARRAY.BYTES_PER_ELEMENT;
     BYTES_PER_NNZ = BYTES_PER_VALUE + 4;
@@ -71,7 +135,7 @@ var init_sparse_matrix = __esm({
           seen.clear();
           let count = 0;
           while (count < kPerRow) {
-            const j = Math.floor(Math.random() * cols);
+            const j = Math.floor(_initRand() * cols);
             if (noSelfConnect && i === j) continue;
             if (seen.has(j)) continue;
             seen.add(j);
@@ -88,8 +152,8 @@ var init_sparse_matrix = __esm({
           }
           for (let k = 0; k < kPerRow; k++) {
             this.colIdx[idx] = scratchCols[k];
-            const sign = Math.random() < excitatoryRatio ? 1 : -1;
-            this.values[idx] = sign * (0.1 + Math.random() * 0.4) * strength;
+            const sign = _initRand() < excitatoryRatio ? 1 : -1;
+            this.values[idx] = sign * (0.1 + _initRand() * 0.4) * strength;
             idx++;
           }
           this.rowPtr[i + 1] = idx;
@@ -144,8 +208,8 @@ var init_sparse_matrix = __esm({
             if (col < 0) col += cols;
             else if (col >= cols) col -= cols;
             this.colIdx[idx + filled] = col;
-            const sign = Math.random() < excitatoryRatio ? 1 : -1;
-            this.values[idx + filled] = sign * (0.1 + Math.random() * 0.4) * strength;
+            const sign = _initRand() < excitatoryRatio ? 1 : -1;
+            this.values[idx + filled] = sign * (0.1 + _initRand() * 0.4) * strength;
             filled++;
           }
           if (filled > 1) {
@@ -235,7 +299,7 @@ var init_sparse_matrix = __esm({
           let attempts = 0;
           const maxAttempts = effFanout * 6;
           while (filled < localCount && attempts < maxAttempts) {
-            const offset = Math.floor((Math.random() * 2 - 1) * radiusLocal);
+            const offset = Math.floor((_initRand() * 2 - 1) * radiusLocal);
             let col = i + offset;
             if (col < 0) col += cols;
             else if (col >= cols) col -= cols;
@@ -249,14 +313,14 @@ var init_sparse_matrix = __esm({
             }
             picks.add(col);
             rowBufCol[filled] = col;
-            const sign = Math.random() < excitatoryRatio ? 1 : -1;
-            rowBufVal[filled] = sign * (0.1 + Math.random() * 0.4) * strength;
+            const sign = _initRand() < excitatoryRatio ? 1 : -1;
+            rowBufVal[filled] = sign * (0.1 + _initRand() * 0.4) * strength;
             filled++;
             attempts++;
           }
           attempts = 0;
           while (filled < localCount + medCount && attempts < maxAttempts) {
-            const offset = Math.floor((Math.random() * 2 - 1) * radiusMed);
+            const offset = Math.floor((_initRand() * 2 - 1) * radiusMed);
             let col = i + offset;
             if (col < 0) col += cols;
             else if (col >= cols) col -= cols;
@@ -270,14 +334,14 @@ var init_sparse_matrix = __esm({
             }
             picks.add(col);
             rowBufCol[filled] = col;
-            const sign = Math.random() < excitatoryRatio ? 1 : -1;
-            rowBufVal[filled] = sign * (0.1 + Math.random() * 0.4) * strength;
+            const sign = _initRand() < excitatoryRatio ? 1 : -1;
+            rowBufVal[filled] = sign * (0.1 + _initRand() * 0.4) * strength;
             filled++;
             attempts++;
           }
           attempts = 0;
           while (filled < effFanout && attempts < maxAttempts) {
-            const col = Math.floor(Math.random() * cols);
+            const col = Math.floor(_initRand() * cols);
             if (col === i && noSelfConnect) {
               attempts++;
               continue;
@@ -288,8 +352,8 @@ var init_sparse_matrix = __esm({
             }
             picks.add(col);
             rowBufCol[filled] = col;
-            const sign = Math.random() < excitatoryRatio ? 1 : -1;
-            rowBufVal[filled] = sign * (0.1 + Math.random() * 0.4) * strength;
+            const sign = _initRand() < excitatoryRatio ? 1 : -1;
+            rowBufVal[filled] = sign * (0.1 + _initRand() * 0.4) * strength;
             filled++;
             attempts++;
           }
@@ -384,7 +448,7 @@ var init_sparse_matrix = __esm({
           let attempts = 0;
           const maxAttempts = fanout * 6;
           while (filled < rowLocal && attempts < maxAttempts) {
-            const offset = Math.floor((Math.random() * 2 - 1) * radiusTopo);
+            const offset = Math.floor((_initRand() * 2 - 1) * radiusTopo);
             let col = center + offset;
             if (col < 0) col += cols;
             else if (col >= cols) col -= cols;
@@ -398,14 +462,14 @@ var init_sparse_matrix = __esm({
             }
             picks.add(col);
             rowBufCol[filled] = col;
-            const sign = Math.random() < excitatoryRatio ? 1 : -1;
-            rowBufVal[filled] = sign * (0.1 + Math.random() * 0.4) * strength;
+            const sign = _initRand() < excitatoryRatio ? 1 : -1;
+            rowBufVal[filled] = sign * (0.1 + _initRand() * 0.4) * strength;
             filled++;
             attempts++;
           }
           attempts = 0;
           while (filled < rowFanout && attempts < maxAttempts) {
-            const col = Math.floor(Math.random() * cols);
+            const col = Math.floor(_initRand() * cols);
             if (picks.has(col)) {
               attempts++;
               continue;
@@ -416,23 +480,23 @@ var init_sparse_matrix = __esm({
             }
             picks.add(col);
             rowBufCol[filled] = col;
-            const sign = Math.random() < excitatoryRatio ? 1 : -1;
-            rowBufVal[filled] = sign * (0.1 + Math.random() * 0.4) * strength;
+            const sign = _initRand() < excitatoryRatio ? 1 : -1;
+            rowBufVal[filled] = sign * (0.1 + _initRand() * 0.4) * strength;
             filled++;
             attempts++;
           }
           if (maskMode !== "veto" && filled < rowFanout) {
             attempts = 0;
             while (filled < rowFanout && attempts < maxAttempts) {
-              const col = Math.floor(Math.random() * cols);
+              const col = Math.floor(_initRand() * cols);
               if (picks.has(col)) {
                 attempts++;
                 continue;
               }
               picks.add(col);
               rowBufCol[filled] = col;
-              const sign = Math.random() < excitatoryRatio ? 1 : -1;
-              rowBufVal[filled] = sign * (0.1 + Math.random() * 0.4) * strength;
+              const sign = _initRand() < excitatoryRatio ? 1 : -1;
+              rowBufVal[filled] = sign * (0.1 + _initRand() * 0.4) * strength;
               filled++;
               attempts++;
             }
@@ -1025,7 +1089,7 @@ var init_sparse_matrix = __esm({
             if (noSelfConnect && i === j) continue;
             if (!preSpikes[j]) continue;
             if (existing.has(j)) continue;
-            if (Math.random() < probability) {
+            if (_growRand() < probability) {
               newEntries.push([i, j, initialWeight]);
               if (this.nnz + newEntries.length >= maxNnz) break;
             }
@@ -10819,6 +10883,8 @@ var Dictionary = class {
 };
 
 // ../js/brain/language-cortex.js
+init_brain_rng();
+var _sentenceTypeRand = brainStream("sentence-type");
 var PATTERN_DIM2 = EMBED_DIM;
 var CANON_NAMES = /* @__PURE__ */ new Set([
   "unity",
@@ -11758,7 +11824,7 @@ var LanguageCortex = class {
     let sum = 0;
     for (const k in raw) sum += raw[k];
     if (sum < 0.01) return "statement";
-    let rand = Math.random() * sum;
+    let rand = _sentenceTypeRand() * sum;
     for (const k of ["question", "exclamation", "action", "statement"]) {
       rand -= raw[k];
       if (rand <= 0) return k;
@@ -12952,6 +13018,8 @@ var LanguageCortex = class {
 };
 
 // ../js/brain/inner-voice.js
+init_brain_rng();
+var _innerVoiceRand = brainStream("inner-voice-basin-escape");
 var SPEECH_THRESHOLD = 0.15;
 var THOUGHT_INTERVAL = 60;
 var InnerVoice = class {
@@ -13096,7 +13164,7 @@ var InnerVoice = class {
       if (seed.pattern && seed.pattern.length > 0) {
         const jittered = new Float32Array(seed.pattern.length);
         for (let i = 0; i < jittered.length; i++) {
-          jittered[i] = seed.pattern[i] + (Math.random() - 0.5) * 0.1;
+          jittered[i] = seed.pattern[i] + (_innerVoiceRand() - 0.5) * 0.1;
         }
         chainedPattern = jittered;
       }
@@ -13456,6 +13524,8 @@ var InnerVoice = class {
 };
 
 // ../js/brain/visual-cortex.js
+init_brain_rng();
+var _saccadeRand = brainStream("visual-saccade");
 var FRAME_W = 60;
 var FRAME_H = 45;
 var V1_ORIENTATIONS = 4;
@@ -13798,8 +13868,8 @@ var VisualCortex = class {
     this.gazeX += (targetX - this.gazeX) * pursuitRate;
     this.gazeY += (targetY - this.gazeY) * pursuitRate;
     const saccadeAmp = 0.012 * (1 - this._attentionLock * 0.6);
-    this.gazeX += (Math.random() - 0.5) * saccadeAmp;
-    this.gazeY += (Math.random() - 0.5) * saccadeAmp;
+    this.gazeX += (_saccadeRand() - 0.5) * saccadeAmp;
+    this.gazeY += (_saccadeRand() - 0.5) * saccadeAmp;
     if (this._attentionLock > 0.5) {
       const window2 = 0.3 - (this._attentionLock - 0.5) * 0.2;
       const min = 0.5 - window2;
@@ -15441,6 +15511,8 @@ var FUNCTION_WORDS = /* @__PURE__ */ new Set([
 ]);
 
 // ../js/brain/cluster/emit.js
+init_brain_rng();
+var _emitSampleRand = brainStream("emit-word-sample");
 var CLUSTER_EMIT_MIXIN = {
   /**
    * Set (or clear) the grade-vocab emission allow-set consumed by
@@ -15934,7 +16006,7 @@ var CLUSTER_EMIT_MIXIN = {
       const nucleus = topCandidates.slice(0, nucleusEnd);
       const nucleusWeights = weights.slice(0, nucleusEnd);
       const nucleusSum = nucleusWeights.reduce((a, b) => a + b, 0);
-      const r = Math.random() * nucleusSum;
+      const r = _emitSampleRand() * nucleusSum;
       let cum = 0;
       for (let i = 0; i < nucleus.length; i++) {
         cum += nucleusWeights[i];
@@ -17101,7 +17173,10 @@ var CLUSTER_ATTENTION_MIXIN = {
 };
 
 // ../js/brain/cluster.js
+init_brain_rng();
 var EMPTY_PRE_SPIKES = new Uint32Array(0);
+var _personaRefreshRand = brainStream("persona-refresh-pick");
+var _lifNoiseRand = brainStream("lif-noise");
 function extractKeyWordShared(question) {
   if (!question || typeof question !== "string") return null;
   const q = question.toLowerCase().trim();
@@ -19244,14 +19319,14 @@ var NeuronCluster = class {
       for (let d = 0; d < limit; d++) {
         const dim = this.personaDimensions[d];
         if (!dim || !dim.sentences || dim.sentences.length === 0) continue;
-        const pick2 = dim.sentences[Math.floor(Math.random() * dim.sentences.length)];
+        const pick2 = dim.sentences[Math.floor(_personaRefreshRand() * dim.sentences.length)];
         applySentence(pick2);
       }
     } else {
       const corpus = this._personaRefreshCorpus;
       const n = Math.min(sentencesPerCycle, corpus.length);
       for (let i = 0; i < n; i++) {
-        const idx = Math.floor(Math.random() * corpus.length);
+        const idx = Math.floor(_personaRefreshRand() * corpus.length);
         applySentence(corpus[idx]);
       }
     }
@@ -19822,7 +19897,7 @@ var NeuronCluster = class {
       }
     }
     for (let i = 0; i < size; i++) {
-      let cur = synapticCurrents[i] + this.externalCurrent[i] + this._incomingProjections[i] + effectiveDrive + (Math.random() - 0.5) * this.noiseAmplitude + this.errorCorrection;
+      let cur = synapticCurrents[i] + this.externalCurrent[i] + this._incomingProjections[i] + effectiveDrive + (_lifNoiseRand() - 0.5) * this.noiseAmplitude + this.errorCorrection;
       if (k5Active) {
         cur += k5Scale * this._columnVoltageMean[this.columnId[i]];
       }
