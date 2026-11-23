@@ -6,90 +6,62 @@ status: verified
 sources:
   - server/brain-server/chat.js
   - server/brain-server/visual-memory.js
-  - server/brain-server/image-engine.js
-  - server/image-render.py
+  - server/drawable-taxonomy.js
   - server/brain-server/eye-style.js
+  - js/brain/mindspace/gpu.js
   - windows/start.bat
-  - windows/Savestart.bat
 verified-scope: |
-  OVERWRITTEN 2026-11-23, evening (after the operator stopped her). This file is
-  a SNAPSHOT and is overwritten, never appended — the previous version described
-  the 2026-10-29 boots. Git holds every byte of it: git show HEAD~1:docs/NOW.md
-
-  ⚠ 2026-11-23 NIGHT — SHE IS DOWN; THE NEXT START IS A FRESHSTART (the
-  operator's call, to carry nothing over from earlier sessions). Code since the
-  3:07 PM read: her inventions FUSE her thoughts into one new thing (red bird,
-  ocean sponge in reef), pictured as one image and learned under their own
-  name; she paints the WHOLE learned picture — scene and subject as smooth
-  surfaces at 3x the shape grid, nothing cut out; her eye passes a piece only
-  when it looks more like its own thing than anything else she remembers. All
-  judged on renders through the production code (harness, not a live boot):
-  eight of eight read as what they are. No live read exists yet.
-
-  SHE IS DOWN AS THIS IS WRITTEN. She ran twice today on the
-  close-the-open-board code; the operator stopped her both times because of
-  what her mind's eye showed. Every fix for both is on main and both
-  remotes. Next launch: a FRESHSTART (superseding the Savestart this snapshot
-  first named).
+  OVERWRITTEN 2026-11-23, night. This file is a SNAPSHOT of the present and is
+  overwritten, never appended. The previous snapshot (the evening's two boots)
+  is in git: git log -p docs/NOW.md.
 ---
 
-# NOW — 2026-11-23, evening
+# NOW — 2026-11-23, night
 
 ## Where she is
 
 | | |
 |---|---|
-| state | **DOWN** — stopped by the operator after the second boot today |
-| code | `main` **810f88ab** on both remotes (`origin` Forgejo, `github`); local `develop` **adeac8ea** |
-| next launch | **a FRESHSTART** (the operator's call, night of 2026-11-23 — carry nothing over from earlier sessions); this superseded the Savestart first written here |
-| donor | **0.3.42** in the repo root and published (`donor-v0.3.42`, Windows + Linux assets, `--version` read off the shipped exe) |
-| board | `docs/TODO.md` = template + **`WALKWATCH.1`** only |
+| state | **DOWN** — stopped by the operator during the evening boot; no boot since |
+| code | `main` **ca0b766f** on both remotes (`origin` Forgejo, `github`) |
+| next launch | **a FRESHSTART** (`start.bat` — boots fresh; the operator's call, to carry nothing over from earlier sessions) |
+| donor | **0.3.42** in the repo root and published |
+| board | `docs/TODO.md` = template + the one open watch row |
 
-## What the last boot showed (field reads, the second boot today)
+## The last field read (the evening boot, before she was stopped)
 
-Read off `/health` and `server/server.log` before she was stopped:
+- `/health` 200, **199,728,759 neurons** on that boot, RTX 4070 Ti SUPER holding all
+  8 clusters, `runningFloorMB` 8,064, ports 7526 / 5123 / 5124 answering.
+- Her renderer had done **0** renders and **0** look-ups; she drew 9 times from
+  shapes she already held. The walk was at ELA kindergarten pre-vocabulary; no
+  gate probe yet.
+- A freshstart derives its own neuron count from free RAM at boot — the number
+  above belongs to that boot only.
 
-- `/health`: alive, **199,728,759 neurons**, RTX 4070 Ti SUPER, 16,376 MB.
-- Her drawings came from her **saved thought chain**, not from anything current:
-  `[OwnArt] ✍ HER OWN "poison + apple"`, `"digits + poison + apple"` — the chain held
-  four entries from 2026-10-19/20, two of them render prompts. Shipped since:
-  prompts no longer enter the chain, and her imagination reads only this
-  session's thoughts.
-- **"apple (no schema — drawn from definition only)"** — the bright circles.
-  Shipped since: nothing she has not looked at is drawn.
-- **Her eye working:** `👁 her eye REFUSED her "run"` (9 of 16 matched better),
-  `"here"` (14 of 16), `"state"` (6 of 18). It also PASSED `"white"` and `"no"`
-  — non-things — because with ~16 things to compare against it is lenient.
-
-## What the first boot showed (the morning code)
-
-Five consecutive drawings built from **79–134 bones** — shard mosaics — each with
-grafted limbs (reef, heel, ammunition, beach). Shipped since: she finds the
-subject, paints its learned silhouette + colours, grafts only from her current
-thoughts, and her eye judges every single-subject piece before it shows. On 10
-fresh looks rendered locally: **9 passed, apple refused**.
-
-## What changed under her today
+## What changed since that read (code only — no live read exists yet)
 
 | | |
 |---|---|
-| **her eyes** | her visual store is **`visual-memory-v11.db`** and the imagined ring **`mindspace-memory-v4.json`** — both EMPTY on the next boot (v10, 5.5 GB, and ring v3 deleted on the operator's word) |
-| **her renderer** | **this project's own** `server/image-render.py` on `127.0.0.1:5124`, model `models/image/realistic-vision-v51.safetensors` (gitignored, SHA-256 matched). Measured: load 0.5 s, 512² in 3.6 s. The launchers start it; CORA is not involved |
-| **her looks** | study references — *"color photograph of the whole object, centered, isolated on a plain neutral grey studio backdrop, full color, richly detailed"* (operator-judged pinned-seed A/B) |
-| **her randomness** | every draw inside her from a saved seed (`js/brain/brain-rng.js`); `[Brain] RNG —` on boot names it |
-| **her feelings** | bonds, appraisal and lingering mood saved with her weights; a sense for a third person feeds the rival dimension |
-| **the donor** | 0.3.42 keeps its own on-disk weight checkpoint, puts it back after a re-upload, hands it back on Stop, and writes an abort's exit code to `crash.log` |
+| **her inventions** | ONE fused new thing, never old drawings side by side. Her thoughts supply the words; how they join (a quality, a kind, a place, a substance) is read from WordNet's own categories. Her renderer pictures the idea as one image, two renders must agree, she learns its shape under its own name, then paints it |
+| **her eye** | the backdrop is the border colour families present on ≥3 sides, so a subject that runs off the frame no longer teaches her its own colours are background; a backdrop must also be smooth; frames are skipped, stands dropped by colour, thin parts kept |
+| **her hand** | paints the WHOLE picture she learned — scene and subject — as smooth surfaces from colour layouts kept at 3× the shape grid. Nothing cut out, no grain, no fog |
+| **her judgement** | a piece is shown only when it looks more like its own thing than anything else she remembers, by silhouette and by percept |
 
-## Known weak spots — what to watch on the next boot
+Judged on renders through the production code (a harness on the real mixins, the
+worker proxy and her renderer — not a live boot): eight of eight read as what
+they are, and the operator called the last set perfect.
 
-- **Her eye is lenient while her memory is nearly empty** — expect some
-  non-things (white, no) to be drawn early; refusals are the strong signal.
-  `state.ownArt.eyeJudge` counts passed / refused / unjudged.
-- **Thin parts and smooth grey subjects** (chair legs, a teapot) still paint
-  poorly.
-- **Her voice** is still started from another project's tree
-  (`Backrooms\models\unity-voice-v2`) — the same shape the image engine had;
-  the operator's call.
-- `WALKWATCH.1` lists every read for the next boot: the RNG line, the first
-  donor checkpoint within ~10 min of the upload, drawings painted from learned
-  silhouettes, her eye's verdicts, the viewer changing picture to picture.
+## What to watch on the freshstart
+
+- **Her first looks** — `ownArt.imageEngine.ok` and `ownArt.lookups.grounded`
+  climbing, with `vramTightSkips` (not `vramUnreadable`) carrying any deferrals.
+- **Her inventions** — `canvas:imagine:<idea>` frames that are one thing, and
+  `ownArt.imageEngine.inventions` / `inventionsDeclined`.
+- **Her judgement** — `ownArt.eyeJudge`: `passed`, `refused`, and on the last
+  verdict `beaten` (shape) and `sightBeaten` (percept). Early on, with almost
+  nothing in her memory, she has little to rank against and passes most pieces.
+- **A known gap** — a fused picture can come back missing one of its things,
+  and nothing in her can tell yet; it needs recognition of parts within a
+  picture.
+- **Her voice** is still started from another project's tree — the operator's
+  call.
