@@ -12,6 +12,13 @@ sources:
   - windows/start.bat
   - windows/Savestart.bat
 verified-scope: |
+  ⚠ 2026-11-23 3:07 PM — SHE WAS UP BRIEFLY AND IS DOWN AGAIN. The one live
+  read from that boot: her drawings looked like nothing (bone builds of 78–134
+  fragments). Since: she paints learned silhouettes and her eye judges each
+  piece; her looks are grey-backdrop study references from this project's own
+  renderer (server/image-render.py); her visual store is v11 and EMPTY on the
+  next Savestart, weights untouched.
+
   ⚠ 2026-11-23 — CODE HAS MOVED PAST THIS SNAPSHOT AND SHE IS DOWN, SO NO NEW
   FIELD READS EXIST TO OVERWRITE IT WITH. Shipping in the 11-23 batch: every
   draw inside her seeded from a saved seed; her feelings (bonds, appraisal,

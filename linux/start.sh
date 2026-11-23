@@ -451,25 +451,22 @@ else
 fi
 export UNITY_VOICE_V2_DIR UNITY_VOICE_PORT
 
-# ── IMAGEENGINE — her eyes (CORA's local Stable Diffusion), same pattern ──────
-# The checkpoint loads on the FIRST render, so this costs the GPU nothing until
-# she asks for a picture. Offload stays on — never add --no-offload here.
+# ── IMAGEENGINE — her eyes' renderer, THIS project's own ──────────────────────
+# server/image-render.py with the realistic-vision-v51 checkpoint kept in this
+# repo's models/image/ (gitignored). No other project is involved. Loads on the
+# FIRST render; offload stays on — never add --no-offload here.
 UNITY_IMAGE_PORT="${UNITY_IMAGE_PORT:-5124}"
-CORA_IMAGE_DIR="${CORA_IMAGE_DIR:-$HOME/Desktop/C.O.R.A Cognitive Operations & Reasoning Assistant}"
-CORA_IMAGE_CHECKPOINT="${CORA_IMAGE_CHECKPOINT:-$HOME/Desktop/Unity 3D Equational Model/Unity 18+/models/realistic-vision-v51.safetensors}"
-if [ -f "$CORA_IMAGE_DIR/services/image_sidecar.py" ]; then
-    if [ -f "$CORA_IMAGE_CHECKPOINT" ]; then
-        if _port_busy "$UNITY_IMAGE_PORT"; then
-            echo "  [eyes] image engine already listening on $UNITY_IMAGE_PORT — left alone."
-        else
-            echo "  [eyes] starting the local image engine on $UNITY_IMAGE_PORT"
-            ( cd "$CORA_IMAGE_DIR" && mkdir -p data && nohup python3 -u services/image_sidecar.py --port "$UNITY_IMAGE_PORT" --checkpoint "$CORA_IMAGE_CHECKPOINT" --device auto >> data/image-sidecar.log 2>&1 & )
-        fi
+UNITY_IMAGE_CHECKPOINT="${UNITY_IMAGE_CHECKPOINT:-$PWD/models/image/realistic-vision-v51.safetensors}"
+export UNITY_IMAGE_CHECKPOINT
+if [ -f "$UNITY_IMAGE_CHECKPOINT" ]; then
+    if _port_busy "$UNITY_IMAGE_PORT"; then
+        echo "  [eyes] image renderer already listening on $UNITY_IMAGE_PORT — left alone."
     else
-        echo "  [eyes] checkpoint NOT found: $CORA_IMAGE_CHECKPOINT — no pictures until set."
+        echo "  [eyes] starting her image renderer on $UNITY_IMAGE_PORT"
+        ( cd server && nohup python3 -u image-render.py --port "$UNITY_IMAGE_PORT" --device auto >> image-render.log 2>&1 & )
     fi
 else
-    echo "  [eyes] CORA image engine NOT found at $CORA_IMAGE_DIR — no pictures until set."
+    echo "  [eyes] her image model is NOT at $UNITY_IMAGE_CHECKPOINT — no pictures until it is."
 fi
 export UNITY_IMAGE_PORT
 

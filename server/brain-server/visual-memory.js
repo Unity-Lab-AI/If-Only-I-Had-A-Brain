@@ -75,7 +75,13 @@ const path = require('path');
 // pattern sweep (`visual-memory*`, json AND db, incl. `-wal`/`-shm`) and the
 // `.gitignore` pattern `server/visual-memory*.db*` both cover v10 automatically
 // — nothing to add for either, which is the whole point of versioning by name.
-const VM_DB = path.join(__dirname, '..', 'visual-memory-v10.db');
+// ⭐ v11 (2026-11-23) — FRESH EYES ON A NEW RENDERER, on the operator's word
+// ("lets clear her image memorty and files so she keeps her savestart but has
+// all fresh empopty images since we have new one"). Every v10 look was a dark
+// full-scene photo from the old sidecar that the drawing lane could not find a
+// subject in; her looks now come from this project's own renderer. Same
+// contract as every bump: imagery cleared, weights and training untouched.
+const VM_DB = path.join(__dirname, '..', 'visual-memory-v11.db');
 // NOLIMIT (ruled 2026-08-20: the equations behind her mind's-eye imagery are
 // not to be limited). 384 concepts was a small number for a mind that will walk K→PhD
 // and see everything on the way — she would start FORGETTING what things look like
@@ -2181,7 +2187,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       // gets carries enough detail to learn an appearance from.
       const _refPx = Number(process.env.DREAM_REF_RENDER_PX) > 0 ? Number(process.env.DREAM_REF_RENDER_PX) : 512;
       // HER EYES COME HOME (2026-10-18) — the request now targets her OWN
-      // engine (CORA, local SD on her card) through the image-engine gate.
+      // renderer (server/image-render.py, local SD on her card) through the image-engine gate.
       // `_buildImageRequest` returns {url, init}; the bytes that come back go
       // through the SAME decoder and the SAME perceive as before.
       //
