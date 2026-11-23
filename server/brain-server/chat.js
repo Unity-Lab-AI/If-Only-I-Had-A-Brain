@@ -440,10 +440,11 @@ const SERVER_CHAT_MIXIN = {
           if (_c && typeof _c.pushEmission === 'function') {
             _c.pushEmission({ source: 'image-gen', text: imgPrompt, ts: Date.now() });
           }
-          if (Array.isArray(this._innerThoughtChain)) {
-            this._innerThoughtChain.push(imgPrompt);
-            while (this._innerThoughtChain.length > 8) this._innerThoughtChain.shift();
-          }
+          // ⛔ NOT pushed into her thought chain any more. A render prompt —
+          // with a code-written style tail ("vibrant saturated color, crisp
+          // sharp focus…") — is not something she thought, and it sat in the
+          // chain as if it were: five weeks of "poison apple, cherry, product…"
+          // steering her imagination, saved and restored every boot.
         } catch { /* learning-loop push non-fatal */ }
         // ⛔ LOOKQUEUE.1 (2026-08-26) — CLAIM THE IMAGE PIPE FOR THE HUMAN.
         //
@@ -1688,9 +1689,8 @@ const SERVER_CHAT_MIXIN = {
       let _seedText = null;   // TU.29 — the thought's TEXT rides along so the plane renders the words
       let _seedSource = 'thought';
       try {
-        const chain = Array.isArray(this._innerThoughtChain) ? this._innerThoughtChain : [];
-        const _txt = (e) => (typeof e === 'string' ? e : (e && e.sentence) || '').trim();
-        const texts = chain.map(_txt).filter(t => t.length > 0);
+        // FROZENCHAIN — what she is thinking NOW, not a weeks-old restored line.
+        const texts = this._currentThoughts();
         if (texts.length > 0 && this.sharedEmbeddings
             && typeof this.sharedEmbeddings.getSentenceEmbedding === 'function') {
           _seedText = texts[texts.length - 1];   // TU.29 — what she is thinking, verbatim
@@ -2399,8 +2399,9 @@ const SERVER_CHAT_MIXIN = {
     let _subject = _word;
     try {
       if (_word && !/\s/.test(_word) && Array.isArray(this._innerThoughtChain)) {
-        for (let i = this._innerThoughtChain.length - 1; i >= 0; i--) {
-          const s = String(this._innerThoughtChain[i] && this._innerThoughtChain[i].sentence || '').toLowerCase();
+        const _now = this._currentThoughts();   // FROZENCHAIN — this session's thoughts
+        for (let i = _now.length - 1; i >= 0; i--) {
+          const s = String(_now[i] || '').toLowerCase();
           if (!s || s.indexOf(_word) === -1) continue;
           const toks = s.split(/[^a-z'-]+/).filter(Boolean);
           const at = toks.indexOf(_word);
@@ -2946,8 +2947,7 @@ const SERVER_CHAT_MIXIN = {
           // than to the subject.
           const inMind = new Set(plan.subjects.map(x => x.word).filter(w => w !== s.word));
           try {
-            const chain = Array.isArray(this._innerThoughtChain) ? this._innerThoughtChain : [];
-            const recent = chain.slice(-3).map(e => (typeof e === 'string' ? e : (e && e.sentence) || '')).join(' ');
+            const recent = this._currentThoughts().slice(-3).join(' ');
             const toks = (typeof this._vmContentWords === 'function') ? this._vmContentWords(recent) : [];
             for (const t of toks) if (t && t !== s.word) inMind.add(t);
           } catch { /* no thoughts to graft from */ }
@@ -4027,6 +4027,21 @@ const SERVER_CHAT_MIXIN = {
     return out;
   },
 
+  // WHAT SHE IS THINKING NOW — the thought chain's entries from THIS waking
+  // session. The chain is saved and restored (her narrative survives a
+  // restart), but a thought from weeks ago is not what she is thinking about:
+  // read as "current", a chain she could not yet advance (pre-speech) pinned
+  // her imagination to the same three words on every boot. Untimestamped
+  // entries are excluded too — they were render prompts, not thoughts.
+  _currentThoughts() {
+    const chain = Array.isArray(this._innerThoughtChain) ? this._innerThoughtChain : [];
+    const since = Number(this._startedAt) || 0;
+    return chain
+      .filter(e => e && typeof e === 'object' && Number(e.ts) >= since)
+      .map(e => String(e.sentence || '').trim())
+      .filter(Boolean);
+  },
+
   // Her cortex's signature at this moment — the live semantic-region spike
   // pattern folded to an integer. Seeding a piece from this means her state
   // decides it: the same words in a different state are a different drawing.
@@ -4633,11 +4648,12 @@ const SERVER_CHAT_MIXIN = {
         : this._constructFromSkeleton(schema.skeleton, box, rnd, style, skill);
       if (built.length) return built;
     }
-    // No build she can read → the definition recipe, or honestly nothing. The
-    // trace-redraw layers further down are no longer reached from here.
-    if (typeof this._defDrivenStrokes === 'function') {
-      try { const defArt = this._defDrivenStrokes(word, box, rnd, style); if (defArt && defArt.length) return defArt; } catch { /* nothing below */ }
-    }
+    // No shape she has learned from looking → NOTHING. ⛔ The definition recipe
+    // (`_defDrivenStrokes`: colour words → round colour masses) is no longer
+    // reached: on a fresh store it was what painted "apple" as bright circles
+    // (operator, 2026-11-23: "using birght circles to represent them that is
+    // totally off"). A thing she has not looked at is not drawn until she has.
+    // The trace-redraw layers further down are not reached either.
     return out;
     // NO SCHEMA — she has never seen it. DRAW FROM THE DEFINITION (the form,
     // fill color and attached parts come straight out of what the word MEANS —
@@ -5291,8 +5307,9 @@ const SERVER_CHAT_MIXIN = {
   // instead of words from a sentence she may never have seen.
   async _imagineAndDraw() {
     if (typeof this._drawImagined !== 'function') return;
+    // FROZENCHAIN — this session's thoughts only (see `_currentThoughts`).
     const chain = Array.isArray(this._innerThoughtChain) ? this._innerThoughtChain : [];
-    const texts = chain.map(e => (typeof e === 'string' ? e : (e && e.sentence) || '')).filter(t => t && t.trim());
+    const texts = this._currentThoughts();
     const pool = texts.slice(-4).join(' ');
     const toks = (typeof this._vmContentWords === 'function') ? this._vmContentWords(pool) : [];
     const cand = [];
@@ -5745,7 +5762,7 @@ const SERVER_CHAT_MIXIN = {
     try {
       const _c = this.cortexCluster;
       if (_c && typeof _c.pushEmission === 'function') _c.pushEmission({ source: 'image-gen-spontaneous', text: prompt, ts: now });
-      if (Array.isArray(this._innerThoughtChain)) { this._innerThoughtChain.push(prompt); while (this._innerThoughtChain.length > 8) this._innerThoughtChain.shift(); }
+      // (Not pushed into her thought chain: a render prompt is not a thought.)
       if (_c) _c._emissionLockedUntil = now + 6000;
     } catch { /* feedback non-fatal */ }
     try { process.stdout.write(`[Brain] 🎨 spontaneous image (drive) "${prompt}" — arousal=${arousal.toFixed(2)}
