@@ -756,6 +756,43 @@ export class MindSpaceGPU {
           }
         }
       }
+      else if (s.type === 'layer' && s.rgb && s.alpha && s.gw > 1 && s.gh > 1) {
+        // A PAINTED SURFACE — a body laid down as one continuous layer instead
+        // of thousands of dabs (judged: dabs read as sand). `rgb` (gw*gh*3) and
+        // `alpha` (gw*gh, 0..1) are a learned grid; `inv` maps a canvas point
+        // (normalised) to grid coordinates (affine: gx = a*X + b*Y + c,
+        // gy = d*X + e*Y + f) so the layer can be scaled, turned and mirrored.
+        // Sampled BILINEARLY, so colour blends smoothly across the body and the
+        // edge is antialiased — no cell grid, no stair-steps.
+        const G = s.gw, GH = s.gh, A = s.alpha, C = s.rgb, iv = s.inv;
+        const la = (typeof s.a === 'number') ? s.a : 1;
+        const bb = s.bbox || [0, 0, 1, 1];
+        const xa = Math.max(0, Math.floor(bb[0] * (W - 1))), xb2 = Math.min(W - 1, Math.ceil(bb[2] * (W - 1)));
+        const ya = Math.max(0, Math.floor(bb[1] * (H - 1))), yb = Math.min(H - 1, Math.ceil(bb[3] * (H - 1)));
+        const samp = (arr, stride, ch, gx, gy) => {
+          const x0 = Math.floor(gx), y0 = Math.floor(gy), fx = gx - x0, fy = gy - y0;
+          const at = (x, y) => (x < 0 || y < 0 || x >= G || y >= GH) ? 0 : arr[(y * G + x) * stride + ch];
+          return (at(x0, y0) * (1 - fx) + at(x0 + 1, y0) * fx) * (1 - fy) + (at(x0, y0 + 1) * (1 - fx) + at(x0 + 1, y0 + 1) * fx) * fy;
+        };
+        for (let yy = ya; yy <= yb; yy++) {
+          const Y = yy / (H - 1);
+          for (let xx = xa; xx <= xb2; xx++) {
+            const X = xx / (W - 1);
+            const gx = iv[0] * X + iv[1] * Y + iv[2] - 0.5, gy = iv[3] * X + iv[4] * Y + iv[5] - 0.5;
+            if (gx < -1 || gy < -1 || gx > G || gy > GH) continue;
+            const al = samp(A, 1, 0, gx, gy);
+            if (al <= 0.01) continue;
+            // The colour where the body is: alpha-weighted, so the edge does not
+            // darken toward the empty (zero) cells outside it.
+            const r = samp(C, 3, 0, gx, gy) / al, g = samp(C, 3, 1, gx, gy) / al, b = samp(C, 3, 2, gx, gy) / al;
+            // smoothstep the edge: crisp but antialiased over ~one canvas pixel
+            const e = Math.max(0, Math.min(1, (al - 0.35) / 0.3));
+            const cov = e * e * (3 - 2 * e) * la;
+            if (cov <= 0) continue;
+            px(X, Y, [Math.max(0, Math.min(255, r)), Math.max(0, Math.min(255, g)), Math.max(0, Math.min(255, b))], cov >= 1 ? undefined : cov);
+          }
+        }
+      }
       else if (s.type === 'blob') {
         // filled (optionally rotated) ELLIPSE mass: cx/cy centre,
         // rx/ry radii, ang rotation, all normalized. The big soft shape every

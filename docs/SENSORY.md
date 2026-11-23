@@ -417,10 +417,18 @@ white-pencil frames. The v2 arc, all deployed:
   color, richly detailed, single centered subject, plain uncluttered background", POSITIVE terms only
   (an image model attends to the nouns — writing "no cartoon" paints one). Same steer on the imagined
   combined-scene prompt. Her look-ups are LEARNING references; her own style happens on the drawing side.
-- **Imagination = ONE genuinely new image** (`_drawImagined` + `_imagineAndDraw`) — a drawable-noun combo
-  from her inner-thought chain grounds ONE unified combined-scene reference (its own `a+b` key + cooldown,
-  `keyOverride`/`promptOverride` on the fetch) and field-renders it; the `composeFields` region-paste
-  collage was REMOVED (cookie-cutter). Detached from the imagine tick (~18%), honest decline if ungroundable.
+- **Imagination = ONE fused new thing** (`_drawImagined` + `_imagineAndDraw`, current 2026-11-23) — her
+  thoughts supply the words and they FUSE, by WordNet's own categories (`fuseRole` in
+  `server/drawable-taxonomy.js`): a quality onto a thing ("red bird"), a kind of it ("ocean sponge"), a
+  place around it ("sponge in reef"), a substance with it ("sponge with water"); the head is a thing before
+  a substance before a place, head-final within a role. Her renderer pictures the idea as one image (study
+  framing naming the head — "of the whole bird"; a place/substance idea gets the scene framing
+  `EYE_STYLE.fuseScene`), the two-render agreement must pass (`lookTwice`), the shape is learned under the
+  idea's OWN key, and she paints it by hand (`fusedKey` — one subject, no limb grafts, a painted hand).
+  ⛔ Superseded twice: the `composeFields` region paste, then a lane that drew each learned subject in its
+  own box — both were collages of old pictures. ⚠ Open: telling that the picture holds EVERY thing in the
+  idea needs part recognition she does not have (a "castle dragon" can come back a castle) — a
+  whole-picture percept check was built and removed (it refused 5 of 6 correct pictures).
 - **Zero dumbing** — 512 canvas always (grade cap gone), no skill→detail gate, no wobble anywhere;
   `_drawSkill`/`_rememberDrawing` keep her best rendition (remember-in-relation) without gating a draw.
 - **Labels (her signature)** — dazzle typography: per-letter HSL hue-rotation colours (infinite), six
