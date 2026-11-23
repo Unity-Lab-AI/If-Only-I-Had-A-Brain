@@ -976,6 +976,13 @@ const SERVER_STATE_MIXIN = {
           style: (typeof process !== 'undefined' && process.env && process.env.DREAM_DRAW_STYLE) || 'own',
           // ARTSTYLE — the hand she used on her latest piece; rotates every artwork.
           lastArtStyle: this._lastArtStyle || null,
+          // Her eye judging her own pieces before they show: passed / refused
+          // / unjudged (no learned silhouette, or a multi-subject scene), and
+          // the last verdict with its age. null until she has drawn once.
+          eyeJudge: this._eyeJudge ? {
+            passed: this._eyeJudge.passed | 0, refused: this._eyeJudge.refused | 0, unjudged: this._eyeJudge.unjudged | 0,
+            last: this._eyeJudge.last ? { word: this._eyeJudge.last.word, pass: !!this._eyeJudge.last.pass, ownScore: this._eyeJudge.last.ownScore ?? null, beaten: this._eyeJudge.last.beaten ?? null, compared: this._eyeJudge.last.compared ?? null, why: this._eyeJudge.last.why || null, ageMs: Math.max(0, Date.now() - this._eyeJudge.last.at) } : null,
+          } : null,
           // PAINT.5 — the practice loop's ledger: sessions run, the last word
           // practiced, and the base→best resemblance of that session. `null`
           // means she has never practiced (not "the feature is off").

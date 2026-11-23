@@ -69,6 +69,11 @@ server/boot-error.log
 # not authored here.
 .claude/piper/
 
+# Her image model — realistic-vision-v51 (SD1.5, 2.1 GB safetensors), run by
+# this project's own render service (server/image-render.py). A third-party
+# checkpoint, not authored here, and one public remote: never committed.
+/models/
+
 # Personal + machine-local. Anthropic-default-gitignored anyway; listed
 # explicitly because the blanket rule that used to cover them is gone.
 .claude/settings.local.json

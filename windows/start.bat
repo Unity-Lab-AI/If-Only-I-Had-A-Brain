@@ -595,12 +595,12 @@ if exist "%UNITY_VOICE_V2_DIR%\serve.py" (
     echo           she will speak with the piper floor instead.
     echo           Set UNITY_VOICE_V2_DIR to the model folder to use her real voice.
 )
-REM IMAGEENGINE - her eyes, as a SIDECAR, same pattern as the voice above.
-REM CORA's local Stable Diffusion (services/image_sidecar.py, realistic-vision
-REM v5.1) on 127.0.0.1:5124. The brain POSTs a prompt and gets PNG back; the
-REM bytes go through the same decoder and the same CDF 9/7 perceive as before.
-REM Measured 2026-10-18 on this card: ~2.5 GB peak during a 512x512 render,
-REM 2.1 s warm, 0.6 s reload after unload.
+REM IMAGEENGINE - her eyes' renderer, THIS project's own (server\image-render.py),
+REM on 127.0.0.1:5124, running the realistic-vision-v51 checkpoint kept in this
+REM repo's models\image\ (gitignored - a 2.1 GB third-party file). No other
+REM project's tree or process is involved. The brain POSTs a prompt and gets PNG
+REM back; the bytes go through the same decoder and CDF 9/7 perceive as before.
+REM Measured 2026-11-23 on this card: model load 0.5 s, 512x512 in 3.6 s cold.
 REM
 REM !! OFFLOAD STAYS ON. Never add --no-offload here: that is "+3 GB VRAM" on a
 REM    card the donor and her voice already share, and the brain's own gate
@@ -610,27 +610,23 @@ REM    the GPU nothing until she actually asks for a picture.
 REM Not found -> say so, carry on. A missing image engine never stops her boot;
 REM the look lane counts engineDown and retries on cooldown.
 if not defined UNITY_IMAGE_PORT set "UNITY_IMAGE_PORT=5124"
-if not defined CORA_IMAGE_DIR set "CORA_IMAGE_DIR=%~dp0..\..\C.O.R.A Cognitive Operations & Reasoning Assistant"
-if not defined CORA_IMAGE_CHECKPOINT set "CORA_IMAGE_CHECKPOINT=%USERPROFILE%\Desktop\Unity 3D Equational Model\Unity 18+\models\realistic-vision-v51.safetensors"
-if exist "%CORA_IMAGE_DIR%\services\image_sidecar.py" (
-    if exist "%CORA_IMAGE_CHECKPOINT%" (
-        netstat -ano | findstr :%UNITY_IMAGE_PORT% | findstr LISTENING >nul 2>&1
-        if errorlevel 1 (
-            echo   [eyes] starting the local image engine on %UNITY_IMAGE_PORT% ...
-            echo   [eyes] log: %CORA_IMAGE_DIR%\data\image-sidecar.log
-            REM One level of quotes only (the stop.bat/voice lesson): /D sets the
-            REM working dir, the log path is relative to it, nothing nests.
-            start "unity-image-engine (leave running)" /min /D "%CORA_IMAGE_DIR%" cmd /c "python -u services\image_sidecar.py --port %UNITY_IMAGE_PORT% --checkpoint "%CORA_IMAGE_CHECKPOINT%" --device auto >> data\image-sidecar.log 2>&1"
-        ) else (
-            echo   [eyes] image engine already listening on %UNITY_IMAGE_PORT% - left alone.
-        )
+if not defined UNITY_IMAGE_CHECKPOINT set "UNITY_IMAGE_CHECKPOINT=%~dp0..\models\image\realistic-vision-v51.safetensors"
+if exist "%UNITY_IMAGE_CHECKPOINT%" (
+    netstat -ano | findstr :%UNITY_IMAGE_PORT% | findstr LISTENING >nul 2>&1
+    if errorlevel 1 (
+        echo   [eyes] starting her image renderer on %UNITY_IMAGE_PORT% ...
+        echo   [eyes] log: %~dp0..\server\image-render.log
+        REM One level of quotes only (the stop.bat/voice lesson): /D sets the
+        REM working dir and the checkpoint rides UNITY_IMAGE_CHECKPOINT in the
+        REM environment, so nothing nests inside the cmd /c string.
+        start "unity-image-engine (leave running)" /min /D "%~dp0..\server" cmd /c "python -u image-render.py --port %UNITY_IMAGE_PORT% --device auto >> image-render.log 2>&1"
     ) else (
-        echo   [eyes] checkpoint NOT found: %CORA_IMAGE_CHECKPOINT%
-        echo          set CORA_IMAGE_CHECKPOINT to the .safetensors file. No pictures until then.
+        echo   [eyes] image renderer already listening on %UNITY_IMAGE_PORT% - left alone.
     )
 ) else (
-    echo   [eyes] CORA image engine NOT found at %CORA_IMAGE_DIR%
-    echo          set CORA_IMAGE_DIR to the C.O.R.A folder. No pictures until then.
+    echo   [eyes] her image model is NOT at %UNITY_IMAGE_CHECKPOINT%
+    echo          put realistic-vision-v51.safetensors in models\image\ or set UNITY_IMAGE_CHECKPOINT.
+    echo          No pictures until then.
 )
 REM OWNWINDOW (2026-10-18) - the brain gets ITS OWN minimized window, exactly
 REM like the control plane above. It used to run `start /b` INSIDE this

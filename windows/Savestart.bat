@@ -355,26 +355,21 @@ if exist "%UNITY_VOICE_V2_DIR%\serve.py" (
     echo   [voice] unity-voice-v2 NOT found at %UNITY_VOICE_V2_DIR%
     echo           she will be SILENT until it runs. Set UNITY_VOICE_V2_DIR to the model folder.
 )
-REM IMAGEENGINE - her eyes (CORA's local Stable Diffusion), same pattern. The
-REM checkpoint loads on the FIRST render, so this costs the GPU nothing until
-REM she asks for a picture. Offload stays on - never add --no-offload here.
+REM IMAGEENGINE - her eyes' renderer, THIS project's own (server\image-render.py)
+REM with the checkpoint in this repo's models\image\ - see start.bat for the full
+REM note. Loads on the FIRST render; offload stays on - never add --no-offload.
 if not defined UNITY_IMAGE_PORT set "UNITY_IMAGE_PORT=5124"
-if not defined CORA_IMAGE_DIR set "CORA_IMAGE_DIR=%~dp0..\..\C.O.R.A Cognitive Operations & Reasoning Assistant"
-if not defined CORA_IMAGE_CHECKPOINT set "CORA_IMAGE_CHECKPOINT=%USERPROFILE%\Desktop\Unity 3D Equational Model\Unity 18+\models\realistic-vision-v51.safetensors"
-if exist "%CORA_IMAGE_DIR%\services\image_sidecar.py" (
-    if exist "%CORA_IMAGE_CHECKPOINT%" (
-        netstat -ano | findstr :%UNITY_IMAGE_PORT% | findstr LISTENING >nul 2>&1
-        if errorlevel 1 (
-            echo   [eyes] starting the local image engine on %UNITY_IMAGE_PORT% ...
-            start "unity-image-engine (leave running)" /min /D "%CORA_IMAGE_DIR%" cmd /c "python -u services\image_sidecar.py --port %UNITY_IMAGE_PORT% --checkpoint "%CORA_IMAGE_CHECKPOINT%" --device auto >> data\image-sidecar.log 2>&1"
-        ) else (
-            echo   [eyes] image engine already listening on %UNITY_IMAGE_PORT% - left alone.
-        )
+if not defined UNITY_IMAGE_CHECKPOINT set "UNITY_IMAGE_CHECKPOINT=%~dp0..\models\image\realistic-vision-v51.safetensors"
+if exist "%UNITY_IMAGE_CHECKPOINT%" (
+    netstat -ano | findstr :%UNITY_IMAGE_PORT% | findstr LISTENING >nul 2>&1
+    if errorlevel 1 (
+        echo   [eyes] starting her image renderer on %UNITY_IMAGE_PORT% ...
+        start "unity-image-engine (leave running)" /min /D "%~dp0..\server" cmd /c "python -u image-render.py --port %UNITY_IMAGE_PORT% --device auto >> image-render.log 2>&1"
     ) else (
-        echo   [eyes] checkpoint NOT found: %CORA_IMAGE_CHECKPOINT% - no pictures until set.
+        echo   [eyes] image renderer already listening on %UNITY_IMAGE_PORT% - left alone.
     )
 ) else (
-    echo   [eyes] CORA image engine NOT found at %CORA_IMAGE_DIR% - no pictures until set.
+    echo   [eyes] her image model is NOT at %UNITY_IMAGE_CHECKPOINT% - no pictures until it is.
 )
 REM OWNWINDOW (2026-10-18) - the brain gets ITS OWN minimized window, like the
 REM control plane above. `start /b` kept her INSIDE this console, so a Ctrl+C

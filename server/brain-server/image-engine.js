@@ -1,6 +1,13 @@
 // image-engine.js — HER EYES COME HOME. Every picture she asks for is rendered
-// on her own card, through CORA's local image engine, paced so the card stays
-// hers.
+// on her own card, through THIS project's own renderer (server/image-render.py,
+// the realistic-vision-v51 checkpoint in this repo's models/image/), paced so
+// the card stays hers.
+//
+// ⛔ 2026-11-23 — this used to call CORA's running sidecar (another project's
+// program, out of another project's tree), which was never the intent: the
+// operator meant the MODEL CORA used, taken into this project. Her eyes went
+// down whenever CORA's process did. The renderer and the model live here now;
+// the HTTP contract below is unchanged, so nothing in this gate moved.
 //
 // ── WHAT THIS REPLACES ─────────────────────────────────────────────────────
 // `_buildPollinationsImageUrl` handed the look lane a GET URL to a remote free
@@ -13,8 +20,8 @@
 // the PCM source changed and the CDF 9/7 transport did not.
 //
 // ── THE ENGINE (measured 2026-10-18 on the operator's 4070 Ti SUPER) ───────
-//   CORA services/image_sidecar.py on 127.0.0.1:5124 — local Stable Diffusion,
-//   realistic-vision-v51 (SD1.5, 1.99 GB), diffusers, same Python310 as her voice.
+//   server/image-render.py on 127.0.0.1:5124 — local Stable Diffusion,
+//   realistic-vision-v51 (SD1.5, 1.99 GB) from models/image/, diffusers, Python 3.10.
 //   POST /txt2img {prompt,width,height,steps,seed}  → image/png (+X-Seed, X-Seconds)
 //   GET  /health   answers instantly; the checkpoint loads on the FIRST render
 //   POST /unload   drops the pipelines, frees the card, process stays

@@ -31,9 +31,16 @@ const EYE_STYLE = {
   // unified-scene tail (chat.js)
   sceneTail: 'realistic photograph, true to life, natural lighting, full color, richly detailed, plain uncluttered background',
   // reference-look framing (visual-memory.js — A/B-verified text, do not reword)
+  // ⭐ 2026-11-23 — re-verified by a new pinned-seed A/B on her own renderer,
+  // judged by the operator: the look is a STUDY REFERENCE — the whole thing,
+  // centred, on a plain neutral grey backdrop — because the drawing lane learns
+  // the subject's silhouette from it, and a full scene (or a white backdrop for a
+  // light subject) leaves no single subject to find. Grey beat white on
+  // elephant / guitar / cat / rooster / bear; the old "plain background" tail
+  // still produced full scenes.
   photoPerson: 'color photograph',
-  photoObject: 'color photograph of the object',
-  refTail: ', full color, richly detailed, plain background',
+  photoObject: 'color photograph of the whole object, centered',
+  refTail: ', isolated on a plain neutral grey studio backdrop, full color, richly detailed',
 };
 
 let _styleWords = null;

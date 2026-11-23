@@ -286,7 +286,7 @@ const { performance } = require('perf_hooks');
 // key store (`pollinations-admin.json`), its loader/setter and the
 // `/pollinations-key` route that fronted them were all REMOVED here. There is
 // no remote image API in the brain any more: every picture she asks for is
-// rendered on her own card through CORA's local engine, behind the one gate
+// rendered on her own card by this project's own renderer (server/image-render.py), behind the one gate
 // in `server/brain-server/image-engine.js` (attached onto ServerBrain below).
 // No key exists, none may be re-added, and nothing falls back to a remote
 // host when the local engine is down — the look lane counts `engineDown`
@@ -1952,7 +1952,7 @@ function autoClearStaleState() {
     // placeholder card poisoned thousands of visual bindings and would have
     // SURVIVED a fresh walk because these files were missing from the wipe.
     path.join(__dirname, 'visual-memory.json'),
-    path.join(__dirname, 'mindspace-memory-v3.json'),   // RINGWIPE — versioned with the ring
+    path.join(__dirname, 'mindspace-memory-v4.json'),   // RINGWIPE — versioned with the ring
     // TEACHVIEW RETENTION — the teach view counts what was taught INTO these
     // weights, so it must die with them. ⛔ Surviving a fresh walk is the whole
     // failure mode: the pane would open on a wiped brain showing millions of
@@ -4783,16 +4783,16 @@ class ServerBrain {
         // colorless-era imagery the same way the visual store versions do;
         // she re-imagines from the color-complete pipeline.
         try {
-          const msPath = path.join(__dirname, 'mindspace-memory-v3.json');
+          const msPath = path.join(__dirname, 'mindspace-memory-v4.json');
           if (fs.existsSync(msPath)) {
             const j = JSON.parse(fs.readFileSync(msPath, 'utf8'));
             if (j && Array.isArray(j.recs)) {
               this._imaginedFieldRing = j.recs.slice(-8);
-              console.log(`[MindSpace] restored ${this._imaginedFieldRing.length} imagined field-C memories from mindspace-memory-v3.json`);
+              console.log(`[MindSpace] restored ${this._imaginedFieldRing.length} imagined field-C memories from mindspace-memory-v4.json`);
             }
           }
         } catch (err) {
-          console.warn('[MindSpace] mindspace-memory-v3.json restore failed:', err?.message || err);
+          console.warn('[MindSpace] mindspace-memory-v4.json restore failed:', err?.message || err);
         }
       } catch (err) {
         console.warn('[MindSpace] init failed:', err?.message || err);
@@ -9429,13 +9429,13 @@ class ServerBrain {
       // write. Derivative state — fine to lose / auto-clear; she re-imagines.
       try {
         if (Array.isArray(this._imaginedFieldRing) && this._imaginedFieldRing.length > 0) {
-          const msPath = path.join(__dirname, 'mindspace-memory-v3.json');   // RINGWIPE — v2, colorless-era ring orphaned
+          const msPath = path.join(__dirname, 'mindspace-memory-v4.json');   // RINGWIPE — v2, colorless-era ring orphaned
           const tmp = `${msPath}.tmp`;
           fs.writeFileSync(tmp, JSON.stringify({ version: 2, recs: this._imaginedFieldRing.slice(-8) }));
           fs.renameSync(tmp, msPath);
         }
       } catch (err) {
-        console.warn('[MindSpace] mindspace-memory-v3.json save failed:', err?.message || err);
+        console.warn('[MindSpace] mindspace-memory-v4.json save failed:', err?.message || err);
       }
 
       const trig = opts.trigger ? ` (trigger=${opts.trigger})` : '';
@@ -14187,7 +14187,7 @@ wss.on('connection', (ws, req) => {
                 // build a URL at all. Anonymous access removed that, so every
                 // client can always build one.
                 // HER EYES COME HOME (2026-10-18) — the SERVER renders now, on
-                // her own card through CORA's local engine, and sends the
+                // her own card through this project's renderer, and sends the
                 // browser a URL to the finished picture. The "prompt only, the
                 // visitor's browser renders it" split above was a KEYED-API
                 // wallet problem; there is no wallet any more — there is her
