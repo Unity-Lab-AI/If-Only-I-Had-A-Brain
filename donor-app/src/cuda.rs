@@ -791,6 +791,20 @@ impl CudaEngine {
         self.sparse.get(name).map(|m| (m.nnz as u64) * 4)
     }
 
+    /// `WEIGHTLOSS.1` — CUDA twin of `ComputeEngine::restore_values`. Uploads
+    /// with `memcpy_stod` (the one host→device primitive this file proves
+    /// everywhere) and swaps the device slice in; refused unless the byte
+    /// length is exactly nnz * 4.
+    pub fn restore_values(&mut self, name: &str, bytes: &[u8]) -> Result<(), String> {
+        let want = self.sparse.get(name).map(|m| (m.nnz as usize) * 4).ok_or_else(|| format!("no resident matrix '{name}'"))?;
+        if bytes.len() != want { return Err(format!("checkpoint is {} bytes, resident matrix needs {want}", bytes.len())); }
+        let vals: Vec<f32> = bytes.chunks_exact(4).map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]])).collect();
+        let buf = self.stream.memcpy_stod(&vals).map_err(|e| e.to_string())?;
+        self.stream.synchronize().map_err(|e| e.to_string())?;
+        if let Some(m) = self.sparse.get_mut(name) { m.values = buf; }
+        Ok(())
+    }
+
     fn region(&self, cluster: &str, region: &str) -> Option<(u32, u32)> {
         self.clusters.get(cluster).and_then(|c| c.regions.get(region).copied())
     }

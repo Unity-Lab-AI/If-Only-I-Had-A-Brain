@@ -39,6 +39,11 @@
  */
 
 import { sharedEmbeddings } from './embeddings.js';
+import { brainStream } from './brain-rng.js';
+// Every sampling choice the curriculum makes while teaching or probing her
+// (which sentence, which distractor, which word to blank) rides her seeded
+// stream, so a walk replays from its seed.
+const _curriculumRand = brainStream('curriculum');
 import { ensureLetter, ensureLetters, encodeLetter, decodeLetter, inventorySize, inventorySnapshot } from './letter-input.js';
 import { EXAM_BANKS, TRAIN_BANKS, _examSanitizeReport, _examInjectReport, injectGeneratedExamQuestions, cutScoreFor, trainExamOverlap, examVocabCoverage, extractVocabFromBank, NEVER_TEACH_EXAM_TOKENS, methodologyBankFor, scoreMethodologyAnswer } from './student-question-banks.js';
 // ⭐ Self-pricing rep compression — the collision load is COUNTED from real
@@ -5842,7 +5847,7 @@ export class Curriculum {
             // nothing and says so.
             const dreamSeeds = K_CONCRETE_SENTENCES
               .slice()
-              .sort(() => Math.random() - 0.5)
+              .sort(() => _curriculumRand() - 0.5)
               .slice(0, DREAM_RECOMB_ROUNDS);
             if (dreamSeeds.length === 0) {
               this._hb('[Curriculum] ⚠ dream recombination has NO SEEDS — the trained corpus is empty, so nothing is dreamed this window');
@@ -9025,7 +9030,7 @@ export class Curriculum {
     // skipped rather than made 50 times for a number we already know.
     const _surpBioScale = (cluster.size | 0) > 2000000;
     for (let i = 0; i < sampleCount; i++) {
-      const s = personaSentences[Math.floor(Math.random() * personaSentences.length)];
+      const s = personaSentences[Math.floor(_curriculumRand() * personaSentences.length)];
       surpriseSamples.push(_surpBioScale ? 0 : cluster.computeTransitionSurprise(s));
       coverageSamples.push(cluster.computeFineTypeCoverage(s));
     }
@@ -17170,7 +17175,7 @@ export class Curriculum {
 
         // ─── Anti-Hebbian contrastive negative pair ─────────────────
         if (antiPairs) {
-          let wrongIdx = Math.floor(Math.random() * qaList.length);
+          let wrongIdx = Math.floor(_curriculumRand() * qaList.length);
           if (wrongIdx === qIdx) wrongIdx = (wrongIdx + 1) % qaList.length;
           const wrongEntry = qaList[wrongIdx];
           if (wrongEntry && wrongEntry.expectedAnswer) {
@@ -21490,7 +21495,7 @@ export class Curriculum {
         // MEASURED rather than assumed to be the answer.
         const _apt0 = antiPairs ? Date.now() : 0;
         if (antiPairs) {
-          let wrongIdx = Math.floor(Math.random() * pairs.length);
+          let wrongIdx = Math.floor(_curriculumRand() * pairs.length);
           if (wrongIdx === pairIdx) wrongIdx = (wrongIdx + 1) % pairs.length;
           const wrongPair = pairs[wrongIdx];
           if (Array.isArray(wrongPair) && wrongPair.length >= 2) {
@@ -27181,7 +27186,7 @@ export class Curriculum {
 
     // Type 1: Association — given one word, is a related word nearby?
     // Shuffle vocab and test adjacent pairs (they come from the same domain)
-    const shuffled = [...vocab].sort(() => Math.random() - 0.5);
+    const shuffled = [...vocab].sort(() => _curriculumRand() - 0.5);
     for (let i = 0; i < Math.min(shuffled.length - 1, 8); i++) {
       questions.push({ prompt: [shuffled[i]], answer: shuffled[i + 1] });
     }
@@ -27303,7 +27308,7 @@ export class Curriculum {
     const used = new Set();
     const sampleSize = Math.min(10, vocab.length);
     while (sample.length < sampleSize) {
-      const idx = Math.floor(Math.random() * vocab.length);
+      const idx = Math.floor(_curriculumRand() * vocab.length);
       if (!used.has(idx)) { used.add(idx); sample.push(vocab[idx]); }
     }
 
@@ -28260,7 +28265,7 @@ export class Curriculum {
       const words = sentence.split(/\s+/).filter(w => w.length > 0);
       if (words.length < 3) continue;
       // Remove a random content word (not first, not last) and test it
-      const blankIdx = 1 + Math.floor(Math.random() * (words.length - 2));
+      const blankIdx = 1 + Math.floor(_curriculumRand() * (words.length - 2));
       const answer = words[blankIdx];
       const context = [...words.slice(0, blankIdx), ...words.slice(blankIdx + 1)];
       fillInQuestions.push({ prompt: context, answer });
@@ -28323,7 +28328,7 @@ export class Curriculum {
     const sample = [];
     const used = new Set();
     while (sample.length < sampleSize) {
-      const idx = Math.floor(Math.random() * sentences.length);
+      const idx = Math.floor(_curriculumRand() * sentences.length);
       if (!used.has(idx)) { used.add(idx); sample.push(sentences[idx]); }
     }
 
@@ -29800,7 +29805,7 @@ export class Curriculum {
     const used = new Set();
     const sampleSize = Math.min(10, concepts.length);
     while (sample.length < sampleSize) {
-      const idx = Math.floor(Math.random() * concepts.length);
+      const idx = Math.floor(_curriculumRand() * concepts.length);
       if (!used.has(idx)) { used.add(idx); sample.push(concepts[idx]); }
     }
 
@@ -31394,9 +31399,9 @@ export class Curriculum {
     // Generate 20 sample (u, a, t) triples and compute v, s
     const SAMPLES = [];
     for (let i = 0; i < 20; i++) {
-      const u = Math.random() * 10;
-      const a = Math.random() * 5;
-      const t = Math.random() * 3;
+      const u = _curriculumRand() * 10;
+      const a = _curriculumRand() * 5;
+      const t = _curriculumRand() * 3;
       SAMPLES.push({ u, a, t, v: u + a * t, s: u * t + 0.5 * a * t * t });
     }
 
@@ -32801,7 +32806,7 @@ export class Curriculum {
       return age;
     });
     const totalWeight = weights.reduce((a, b) => a + b, 0);
-    let r = Math.random() * totalWeight;
+    let r = _curriculumRand() * totalWeight;
     let selectedIdx = candidates.length - 1;
     for (let i = 0; i < candidates.length; i++) {
       r -= weights[i];
@@ -33773,7 +33778,7 @@ export class Curriculum {
     const used = new Set();
     const sampleSize = Math.min(10, questions.length);
     while (sample.length < sampleSize && sample.length < questions.length) {
-      const idx = Math.floor(Math.random() * questions.length);
+      const idx = Math.floor(_curriculumRand() * questions.length);
       if (!used.has(idx)) { used.add(idx); sample.push(questions[idx]); }
     }
 
@@ -33919,7 +33924,7 @@ export class Curriculum {
     const used = new Set();
     const sampleSize = Math.min(10, exchanges.length);
     while (sample.length < sampleSize && sample.length < exchanges.length) {
-      const idx = Math.floor(Math.random() * exchanges.length);
+      const idx = Math.floor(_curriculumRand() * exchanges.length);
       if (!used.has(idx)) { used.add(idx); sample.push(exchanges[idx]); }
     }
 

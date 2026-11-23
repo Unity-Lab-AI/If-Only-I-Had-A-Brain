@@ -137,8 +137,15 @@ const ImageEngineMixin = {
     const width = opts.width || 512;
     const height = opts.height || 512;
     // Fresh seed per render unless pinned — the generator is deterministic per
-    // (prompt, seed) and a repeated prompt must not look recycled.
-    const seed = (typeof opts.seed === 'number') ? opts.seed : Math.floor(Math.random() * 2147483646) + 1;
+    // (prompt, seed) and a repeated prompt must not look recycled. The seed is
+    // drawn from HER persisted stream (js/brain/brain-rng.js, loaded onto the
+    // brain at boot), so what she sees is replayable like everything else she
+    // does. Before her generator loads, crypto supplies it — still varied, just
+    // not replayable for that one render.
+    const _draw = (this._rngMod && typeof this._rngMod.brainRandom === 'function')
+      ? this._rngMod.brainRandom('image-render-seed')
+      : crypto.randomBytes(4).readUInt32LE(0) / 4294967296;
+    const seed = (typeof opts.seed === 'number') ? opts.seed : Math.floor(_draw * 2147483646) + 1;
     const body = { prompt: String(prompt || '').slice(0, 600), width, height, steps: opts.steps || STEPS, seed };
     if (opts.negative) body.negative = String(opts.negative);
     return {

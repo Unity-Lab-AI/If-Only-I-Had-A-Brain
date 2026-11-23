@@ -117,6 +117,16 @@
 // CPU array's type happened to be. Holding f64 bought precision that was
 // discarded at the socket.
 
+import { brainStream } from './brain-rng.js';
+
+// Her wiring is drawn from her own seeded streams, never `Math.random()`.
+// Construction restarts from 0 on every boot, so the same seed always builds
+// the same brain — a fresh walk can be rebuilt from its seed, and a resume
+// (which overwrites constructed weights with the saved ones) is unaffected.
+// Synaptogenesis happens while she runs, so its counter persists in the save.
+const _initRand = brainStream('sparse-init', { fromStart: true });
+const _growRand = brainStream('synaptogenesis');
+
 export const WEIGHT_ARRAY = Float32Array;
 export const BYTES_PER_VALUE = WEIGHT_ARRAY.BYTES_PER_ELEMENT;
 // Value + Uint32 colIdx. THIS is the number server/brain-server.js budgets on.
@@ -157,7 +167,7 @@ export class SparseMatrix {
 
     // Rewritten to sample in O(nnz) instead of
     // O(rows * cols). The old algorithm walked a nested loop over every
-    // matrix cell and ran Math.random() per cell to decide inclusion:
+    // matrix cell and drew a random number per cell to decide inclusion:
 
     //   for i in 0..rows:
     //     for j in 0..cols:
@@ -238,7 +248,7 @@ export class SparseMatrix {
       seen.clear();
       let count = 0;
       while (count < kPerRow) {
-        const j = Math.floor(Math.random() * cols);
+        const j = Math.floor(_initRand() * cols);
         if (noSelfConnect && i === j) continue;
         if (seen.has(j)) continue;
         seen.add(j);
@@ -264,8 +274,8 @@ export class SparseMatrix {
       // Fill final typed arrays for this row.
       for (let k = 0; k < kPerRow; k++) {
         this.colIdx[idx] = scratchCols[k];
-        const sign = Math.random() < excitatoryRatio ? 1 : -1;
-        this.values[idx] = sign * (0.1 + Math.random() * 0.4) * strength;
+        const sign = _initRand() < excitatoryRatio ? 1 : -1;
+        this.values[idx] = sign * (0.1 + _initRand() * 0.4) * strength;
         idx++;
       }
       this.rowPtr[i + 1] = idx;
@@ -329,8 +339,8 @@ export class SparseMatrix {
         if (col < 0) col += cols;
         else if (col >= cols) col -= cols;
         this.colIdx[idx + filled] = col;
-        const sign = Math.random() < excitatoryRatio ? 1 : -1;
-        this.values[idx + filled] = sign * (0.1 + Math.random() * 0.4) * strength;
+        const sign = _initRand() < excitatoryRatio ? 1 : -1;
+        this.values[idx + filled] = sign * (0.1 + _initRand() * 0.4) * strength;
         filled++;
       }
       // Sort the row's col indices so CSR contract (colIdx ascending
@@ -437,7 +447,7 @@ export class SparseMatrix {
       let attempts = 0;
       const maxAttempts = effFanout * 6;
       while (filled < localCount && attempts < maxAttempts) {
-        const offset = Math.floor((Math.random() * 2 - 1) * radiusLocal);
+        const offset = Math.floor((_initRand() * 2 - 1) * radiusLocal);
         let col = i + offset;
         if (col < 0) col += cols;
         else if (col >= cols) col -= cols;
@@ -445,8 +455,8 @@ export class SparseMatrix {
         if (picks.has(col)) { attempts++; continue; }
         picks.add(col);
         rowBufCol[filled] = col;
-        const sign = Math.random() < excitatoryRatio ? 1 : -1;
-        rowBufVal[filled] = sign * (0.1 + Math.random() * 0.4) * strength;
+        const sign = _initRand() < excitatoryRatio ? 1 : -1;
+        rowBufVal[filled] = sign * (0.1 + _initRand() * 0.4) * strength;
         filled++;
         attempts++;
       }
@@ -454,7 +464,7 @@ export class SparseMatrix {
       // Tier 2: medium — sample medCount from [i-radiusMed, i+radiusMed]
       attempts = 0;
       while (filled < localCount + medCount && attempts < maxAttempts) {
-        const offset = Math.floor((Math.random() * 2 - 1) * radiusMed);
+        const offset = Math.floor((_initRand() * 2 - 1) * radiusMed);
         let col = i + offset;
         if (col < 0) col += cols;
         else if (col >= cols) col -= cols;
@@ -462,8 +472,8 @@ export class SparseMatrix {
         if (picks.has(col)) { attempts++; continue; }
         picks.add(col);
         rowBufCol[filled] = col;
-        const sign = Math.random() < excitatoryRatio ? 1 : -1;
-        rowBufVal[filled] = sign * (0.1 + Math.random() * 0.4) * strength;
+        const sign = _initRand() < excitatoryRatio ? 1 : -1;
+        rowBufVal[filled] = sign * (0.1 + _initRand() * 0.4) * strength;
         filled++;
         attempts++;
       }
@@ -471,13 +481,13 @@ export class SparseMatrix {
       // Tier 3: long-range — uniform from full [0, cols) (Watts-Strogatz)
       attempts = 0;
       while (filled < effFanout && attempts < maxAttempts) {
-        const col = Math.floor(Math.random() * cols);
+        const col = Math.floor(_initRand() * cols);
         if (col === i && noSelfConnect) { attempts++; continue; }
         if (picks.has(col)) { attempts++; continue; }
         picks.add(col);
         rowBufCol[filled] = col;
-        const sign = Math.random() < excitatoryRatio ? 1 : -1;
-        rowBufVal[filled] = sign * (0.1 + Math.random() * 0.4) * strength;
+        const sign = _initRand() < excitatoryRatio ? 1 : -1;
+        rowBufVal[filled] = sign * (0.1 + _initRand() * 0.4) * strength;
         filled++;
         attempts++;
       }
@@ -619,7 +629,7 @@ export class SparseMatrix {
       let attempts = 0;
       const maxAttempts = fanout * 6;
       while (filled < rowLocal && attempts < maxAttempts) {
-        const offset = Math.floor((Math.random() * 2 - 1) * radiusTopo);
+        const offset = Math.floor((_initRand() * 2 - 1) * radiusTopo);
         let col = center + offset;
         if (col < 0) col += cols;
         else if (col >= cols) col -= cols;
@@ -628,8 +638,8 @@ export class SparseMatrix {
         if (srcLayerMask && !srcLayerMask[col]) { attempts++; continue; }
         picks.add(col);
         rowBufCol[filled] = col;
-        const sign = Math.random() < excitatoryRatio ? 1 : -1;
-        rowBufVal[filled] = sign * (0.1 + Math.random() * 0.4) * strength;
+        const sign = _initRand() < excitatoryRatio ? 1 : -1;
+        rowBufVal[filled] = sign * (0.1 + _initRand() * 0.4) * strength;
         filled++;
         attempts++;
       }
@@ -637,13 +647,13 @@ export class SparseMatrix {
       // Tier 2: random spread (30% Watts-Strogatz scattering)
       attempts = 0;
       while (filled < rowFanout && attempts < maxAttempts) {
-        const col = Math.floor(Math.random() * cols);
+        const col = Math.floor(_initRand() * cols);
         if (picks.has(col)) { attempts++; continue; }
         if (srcLayerMask && !srcLayerMask[col]) { attempts++; continue; }
         picks.add(col);
         rowBufCol[filled] = col;
-        const sign = Math.random() < excitatoryRatio ? 1 : -1;
-        rowBufVal[filled] = sign * (0.1 + Math.random() * 0.4) * strength;
+        const sign = _initRand() < excitatoryRatio ? 1 : -1;
+        rowBufVal[filled] = sign * (0.1 + _initRand() * 0.4) * strength;
         filled++;
         attempts++;
       }
@@ -660,12 +670,12 @@ export class SparseMatrix {
       if (maskMode !== 'veto' && filled < rowFanout) {
         attempts = 0;
         while (filled < rowFanout && attempts < maxAttempts) {
-          const col = Math.floor(Math.random() * cols);
+          const col = Math.floor(_initRand() * cols);
           if (picks.has(col)) { attempts++; continue; }
           picks.add(col);
           rowBufCol[filled] = col;
-          const sign = Math.random() < excitatoryRatio ? 1 : -1;
-          rowBufVal[filled] = sign * (0.1 + Math.random() * 0.4) * strength;
+          const sign = _initRand() < excitatoryRatio ? 1 : -1;
+          rowBufVal[filled] = sign * (0.1 + _initRand() * 0.4) * strength;
           filled++;
           attempts++;
         }
@@ -1469,7 +1479,7 @@ export class SparseMatrix {
         if (noSelfConnect && i === j) continue;
         if (!preSpikes[j]) continue;
         if (existing.has(j)) continue; // already connected
-        if (Math.random() < probability) {
+        if (_growRand() < probability) {
           newEntries.push([i, j, initialWeight]);
           if (this.nnz + newEntries.length >= maxNnz) break;
         }

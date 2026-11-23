@@ -31,6 +31,12 @@
  * All arrays are Float64Array. Zero dependencies. Pure math.
  */
 
+import { brainStream } from './brain-rng.js';
+
+// Reference implementation, but if anything ever calls `randomize` it draws
+// from her seeded stream like every other construction path.
+const _synInit = brainStream('synapse-matrix-init', { fromStart: true });
+
 export class SynapseMatrix {
   /**
    * @param {number} n — number of neurons (matrix is n×n)
@@ -199,7 +205,7 @@ export class SynapseMatrix {
     const range = max - min;
     const W = this.W;
     for (let k = 0, len = W.length; k < len; k++) {
-      W[k] = min + Math.random() * range;
+      W[k] = min + _synInit() * range;
     }
     this._clamp();
   }

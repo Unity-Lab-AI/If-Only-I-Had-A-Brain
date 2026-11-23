@@ -35,6 +35,10 @@
 // equational substrate (consciousness + imaging + imagining are ONE process). describeEquational
 // reads a percept out of a field C; morphField/abstract are the thought-ops she runs ON it.
 import { describeEquational, describeEquationalAudio, abstract } from './mindspace/transform.js';
+import { brainStream } from './brain-rng.js';
+// Her micro-saccades are her eyes moving, so they draw from her own persisted
+// stream like every other draw inside her.
+const _saccadeRand = brainStream('visual-saccade');
 
 const FRAME_W = 60;
 const FRAME_H = 45;
@@ -536,8 +540,8 @@ export class VisualCortex {
 
     // Micro-saccades — smaller when locked (fixation), larger when idle.
     const saccadeAmp = 0.012 * (1 - this._attentionLock * 0.6);
-    this.gazeX += (Math.random() - 0.5) * saccadeAmp;
-    this.gazeY += (Math.random() - 0.5) * saccadeAmp;
+    this.gazeX += (_saccadeRand() - 0.5) * saccadeAmp;
+    this.gazeY += (_saccadeRand() - 0.5) * saccadeAmp;
 
     // When attention is strongly locked, clamp gaze to a tighter
     // center window so Unity doesn't wander to a random corner

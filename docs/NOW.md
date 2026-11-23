@@ -12,6 +12,15 @@ sources:
   - windows/start.bat
   - windows/Savestart.bat
 verified-scope: |
+  ⚠ 2026-11-23 — CODE HAS MOVED PAST THIS SNAPSHOT AND SHE IS DOWN, SO NO NEW
+  FIELD READS EXIST TO OVERWRITE IT WITH. Shipping in the 11-23 batch: every
+  draw inside her seeded from a saved seed; her feelings (bonds, appraisal,
+  mood) persist; a third-person sense for the rival dimension; her drawings
+  built from learned skeletons instead of redrawn traces; her eye picking from
+  every memory on disk; picture-to-picture changes in the viewer; and donor
+  0.3.42 (own weight checkpoint + crash log for aborts). Overwrite this page from
+  the first boot's field reads — WALKWATCH.1 on the board lists them.
+
   OVERWRITTEN 2026-10-29, 11:14 PM Denver (clock read, not predicted). This file
   is a SNAPSHOT and is overwritten, never appended — the previous version
   described the 2026-10-20 morning boot and the free-VRAM gate defect it had

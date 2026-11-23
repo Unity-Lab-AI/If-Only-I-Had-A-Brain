@@ -34,6 +34,10 @@
 // type compatibility + semantic fit + mood alignment.
 
 import { sharedEmbeddings, EMBED_DIM } from './embeddings.js';
+import { brainStream } from './brain-rng.js';
+// The sentence-form draw is hers, so it rides her seeded stream: the same
+// seed and the same state give the same sentence shape.
+const _sentenceTypeRand = brainStream('sentence-type');
 
 // PATTERN_DIM now matches the shared semantic embedding dimension
 // (GloVe 6B.50d = 50). This is the single most important change in
@@ -1432,7 +1436,7 @@ export class LanguageCortex {
     let sum = 0;
     for (const k in raw) sum += raw[k];
     if (sum < 0.01) return 'statement';
-    let rand = Math.random() * sum;
+    let rand = _sentenceTypeRand() * sum;
     for (const k of ['question', 'exclamation', 'action', 'statement']) {
       rand -= raw[k];
       if (rand <= 0) return k;
