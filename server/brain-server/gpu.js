@@ -5951,6 +5951,9 @@ const SERVER_GPU_MIXIN = {
     }
     const secs = (Date.now() - t0) / 1000;
     console.log(`[Brain] SHADOWCOST.3 checkpoint refresh (${reason}) — ${names.length} matrix(es), ${(bytes / 1048576).toFixed(1)} MB in ${secs.toFixed(1)}s. Saving the weights the GPU trained.`);
+    // `WEIGHTLOSS.1` — stamped BEFORE the save, so the save records that these
+    // weights now include what the card trained (`gpuPulledAt`).
+    this._gpuPulledAtLoad = Date.now();
     try { this.saveWeights({ force: true, trigger: `gpu-readback:${reason}` }); } catch (e) {
       console.warn('[Brain] SHADOWCOST.3 save after readback failed:', (e && e.message) || e);
       return refuse(`save failed: ${(e && e.message) || e}`);

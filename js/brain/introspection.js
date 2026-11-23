@@ -70,6 +70,12 @@
 //                        distinctly from `quiet`.
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { brainStream } from './brain-rng.js';
+// Which unresolved thing surfaces is drawn from her own persisted stream. A
+// harness can still pin `state.random` to make one draw exact.
+const _introRand = brainStream('introspection');
+const _roll = (state) => (typeof state.random === 'number' ? state.random : _introRand());
+
 // ─── Gap kinds ────────────────────────────────────────────────────────────
 // ⛔ These are SOURCE names — where an unresolved thing came from — not
 // question categories and not templates. Each names a different way for
@@ -291,7 +297,7 @@ export class IntrospectionDrive {
     // Weighted draw, not argmax — the strongest pressure usually wins but
     // does not always, which is what stops her asking the same KIND of
     // question every single time her state is similar.
-    let roll = (typeof state.random === 'number' ? state.random : Math.random()) * total;
+    let roll = _roll(state) * total;
     let kind = pressures[0][0];
     for (const [k, p] of pressures) { roll -= p; if (roll <= 0) { kind = k; break; } }
 
@@ -375,7 +381,7 @@ export class IntrospectionDrive {
       // the only thing she can ever reach for.
       let total = 0;
       const w = top.map((_, i) => { const x = 1 / (i + 1); total += x; return x; });
-      let roll = (typeof state.random === 'number' ? state.random : Math.random()) * total;
+      let roll = _roll(state) * total;
       for (let i = 0; i < top.length; i++) { roll -= w[i]; if (roll <= 0) return top[i][0]; }
       return top[0][0];
     };
@@ -439,7 +445,11 @@ export class IntrospectionDrive {
         // the seed is her own identity anchor and the answer, like everyone
         // else's, is not available.
         if (anchors.length) {
-          const i = Math.min(anchors.length - 1, Math.floor((state.random ?? 0) * anchors.length));
+          // ⛔ This read `state.random ?? 0`, and the server never passes a
+          // `random` — so it was always 0 and every philosophical question she
+          // ever formed was about her FIRST anchor. Same stuck-on-one shape as
+          // the argmax the note above `pickEpisode` describes.
+          const i = Math.min(anchors.length - 1, Math.floor(_roll(state) * anchors.length));
           return { concept: anchors[i], source: 'anchor:self' };
         }
         return null;

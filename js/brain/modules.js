@@ -1,5 +1,16 @@
 // brain/modules.js — Specialized brain region modules
-// All classes use Float64Arrays internally. No external deps.
+// All classes use Float64Arrays internally.
+//
+// Every random draw here comes from her own seeded streams. The construction
+// streams start at 0 on every boot, so the modules rebuilt each boot (her
+// amygdala among them) come out with the SAME innate wiring every time instead
+// of a new temperament per restart. The action-selection draw happens while she
+// runs, so its counter persists in the save.
+import { brainStream } from './brain-rng.js';
+const _cortexInit = brainStream('cortex-module-init', { fromStart: true });
+const _amygInit = brainStream('amygdala-init', { fromStart: true });
+const _bgInit = brainStream('basal-ganglia-init', { fromStart: true });
+const _bgAction = brainStream('basal-ganglia-action');
 
 function sigmoid(x) {
   return 1 / (1 + Math.exp(-x));
@@ -21,7 +32,7 @@ export class Cortex {
     this.lr = 0.01;
     // small random init
     for (let i = 0; i < this.weights.length; i++) {
-      this.weights[i] = (Math.random() - 0.5) * 0.1;
+      this.weights[i] = (_cortexInit() - 0.5) * 0.1;
     }
   }
 
@@ -139,7 +150,7 @@ export class Amygdala {
     this.W = new Float64Array(size * size);
     for (let i = 0; i < size; i++) {
       for (let j = i + 1; j < size; j++) {
-        const w = (Math.random() - 0.5) * 0.15;
+        const w = (_amygInit() - 0.5) * 0.15;
         this.W[i * size + j] = w;
         this.W[j * size + i] = w; // symmetry enforced
       }
@@ -169,8 +180,8 @@ export class Amygdala {
       for (const i of innate.aversive || []) if (i >= 0 && i < size) this.fearW[i] = 1;
     } else {
       for (let i = 0; i < size; i++) {
-        this.fearW[i] = (Math.random() - 0.5) * 0.4;
-        this.rewardW[i] = (Math.random() - 0.5) * 0.4;
+        this.fearW[i] = (_amygInit() - 0.5) * 0.4;
+        this.rewardW[i] = (_amygInit() - 0.5) * 0.4;
       }
     }
     // The readout normaliser is MEASURED off these vectors, never typed.
@@ -479,12 +490,12 @@ export class BasalGanglia {
     // Q-values: one set of weights per action
     this.qWeights = new Float64Array(this.numActions * numStates);
     for (let i = 0; i < this.qWeights.length; i++) {
-      this.qWeights[i] = (Math.random() - 0.5) * 0.1;
+      this.qWeights[i] = (_bgInit() - 0.5) * 0.1;
     }
     // Value function weights
     this.vWeights = new Float64Array(numStates);
     for (let i = 0; i < numStates; i++) {
-      this.vWeights[i] = (Math.random() - 0.5) * 0.1;
+      this.vWeights[i] = (_bgInit() - 0.5) * 0.1;
     }
     // Unity is impulsive: high temperature
     this.tau = persona === 'unity' ? 2.0 : 0.5;
@@ -522,7 +533,7 @@ export class BasalGanglia {
     }
 
     // sample action
-    let r = Math.random() * sumExp, chosen = 0;
+    let r = _bgAction() * sumExp, chosen = 0;
     for (let a = 0; a < numActions; a++) {
       r -= expQ[a];
       if (r <= 0) { chosen = a; break; }

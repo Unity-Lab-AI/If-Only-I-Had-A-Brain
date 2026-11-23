@@ -1188,6 +1188,27 @@ impl ComputeEngine {
         self.sparse.get(name).map(|m| (m.nnz as u64) * 4)
     }
 
+    /// `WEIGHTLOSS.1` — overwrite a resident matrix's values with bytes this
+    /// donor checkpointed to its own disk (little-endian f32, the exact bytes
+    /// `read_values_chunk` produces). The structure (row_ptr / col_idx) is the
+    /// one the brain just uploaded; only the trained VALUES come back. Refused
+    /// unless the byte length is exactly nnz * 4 — a checkpoint of a different
+    /// geometry is a different matrix.
+    pub fn restore_values(&mut self, name: &str, bytes: &[u8]) -> Result<(), String> {
+        let m = self.sparse.get(name).ok_or_else(|| format!("no resident matrix '{name}'"))?;
+        let want = (m.nnz as usize) * 4;
+        if bytes.len() != want { return Err(format!("checkpoint is {} bytes, resident matrix needs {want}", bytes.len())); }
+        let mut off = 0usize;
+        while off < bytes.len() {
+            let n = (bytes.len() - off).min(64 << 20);
+            self.queue.write_buffer(&m.values, off as u64, &bytes[off..off + n]);
+            off += n;
+        }
+        self.queue.submit(std::iter::empty());
+        let _ = self.device.poll(wgpu::Maintain::Wait);
+        Ok(())
+    }
+
     /// Run Oja/anti-Hebbian plasticity on a sparse matrix (in place).
     pub fn hebbian(&self, name: &str, pre_indices: &[u32], post_indices: &[u32], lr: f32) -> Result<(), String> {
         let m = self.sparse.get(name).ok_or_else(|| format!("sparse '{name}' not uploaded"))?;
@@ -1490,6 +1511,14 @@ impl Backend {
             Backend::Wgpu(e) => e.values_byte_len(name),
             #[cfg(feature = "cuda")]
             Backend::Cuda(e) => e.values_byte_len(name),
+        }
+    }
+    /// `WEIGHTLOSS.1` — write checkpointed values back into a resident matrix.
+    fn restore_values(&mut self, name: &str, bytes: &[u8]) -> Result<(), String> {
+        match self {
+            Backend::Wgpu(e) => e.restore_values(name, bytes),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.restore_values(name, bytes),
         }
     }
     /// TU.19-D — resident weight digest for GPU↔CPU parity (checksum + samples).
@@ -1854,6 +1883,19 @@ impl MultiEngine {
     pub fn values_byte_len(&self, name: &str) -> Option<u64> {
         let g = *self.matrix_gpu.get(name)?;
         self.engines[g].values_byte_len(name)
+    }
+
+    /// `WEIGHTLOSS.1` — restore checkpointed values on the engine holding the matrix.
+    pub fn restore_values(&mut self, name: &str, bytes: &[u8]) -> Result<(), String> {
+        let g = *self.matrix_gpu.get(name).ok_or_else(|| format!("no GPU holds '{name}'"))?;
+        self.engines[g].restore_values(name, bytes)
+    }
+
+    /// `WEIGHTLOSS.1` — every matrix resident on this donor, for its own checkpoint.
+    pub fn resident_matrices(&self) -> Vec<String> {
+        let mut v: Vec<String> = self.matrix_gpu.keys().cloned().collect();
+        v.sort();
+        v
     }
 
     pub fn write_spike_slice(&mut self, cluster: &str, region: &str, indices: &[u32]) -> Result<(), String> {

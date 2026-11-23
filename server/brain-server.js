@@ -1263,8 +1263,9 @@ const AMYGDALA_CHANNELS = Object.freeze({
 // never guessed. Today she has never spoken, so G can only ever read "someone
 // else's doing" and K is unknown — pride, shame and frustration at her own
 // failure are out of reach, because there is no doing of hers for them to be
-// about — and no sense perceives a rival, so no jealousy. Those become reachable the moment
-// the perception exists, with no change here.
+// about. Jealousy's X is perceived by `_perceiveTriad` — her person talking to
+// her about someone else — and stays null until he has spoken to her at all.
+// Each mood becomes reachable the moment its perception exists, with no change here.
 // These are NOT her vocabulary: she can be in any of these states before she
 // knows the word. `mood.word` surfaces only once she has been taught it.
 const MOOD_PROTOTYPES = Object.freeze([
@@ -3031,6 +3032,33 @@ class ServerBrain {
         import('../js/brain/introspection.js'),
       ]);
       this._letterInputMod = letterInputMod;
+
+      // ── HER SEED, BEFORE ANYTHING DRAWS ────────────────────────────────
+      // Every random draw inside her comes from `js/brain/brain-rng.js`. The
+      // seed is restored from the save on a resume (with every persisted
+      // stream's counter, so sampling carries on exactly where it stopped),
+      // pinned by DREAM_RNG_SEED when given, and otherwise taken fresh from
+      // crypto — which is what a fresh walk does. It is set HERE because the
+      // cortex cluster is constructed a few lines below and its wiring is the
+      // first thing that draws.
+      try {
+        this._rngMod = await import('../js/brain/brain-rng.js');
+        const _pinned = process.env.DREAM_RNG_SEED;
+        if (_pinned !== undefined && _pinned !== '' && Number.isFinite(Number(_pinned))) {
+          this._rngMod.brainRngSeed(Number(_pinned));
+          if (this._pendingRng && Number(this._pendingRng.seed) === (Number(_pinned) >>> 0)) this._rngMod.brainRngRestore(this._pendingRng);
+          console.log(`[Brain] RNG — seed PINNED by DREAM_RNG_SEED=${_pinned}${this._pendingRng && Number(this._pendingRng.seed) === (Number(_pinned) >>> 0) ? ' (matches the save; stream counters restored)' : (this._pendingRng ? ' (differs from the save, so saved stream counters do not apply)' : '')}.`);
+        } else if (this._pendingRng && this._rngMod.brainRngRestore(this._pendingRng)) {
+          const _n = Object.keys(this._pendingRng.counters || {}).length;
+          console.log(`[Brain] RNG — seed ${this._pendingRng.seed >>> 0} restored from the save with ${_n} stream counter(s); her sampling resumes where it stopped.`);
+        } else {
+          const _s = this._rngMod.brainRngSeed(undefined);
+          console.log(`[Brain] RNG — fresh seed ${_s} (no saved state). This walk can be rebuilt from it: DREAM_RNG_SEED=${_s}.`);
+        }
+      } catch (e) {
+        console.warn('[Brain] RNG — could not load her seeded generator; draws self-seed and this boot cannot be replayed:', e && e.message);
+      }
+      this._pendingRng = null;
 
       this.sharedEmbeddings = embedMod.sharedEmbeddings;
       this.dictionary = new dictMod.Dictionary();
@@ -6271,12 +6299,11 @@ class ServerBrain {
     const pe = this.cortexCluster?._lastPredictionError;
     if (typeof pe === 'number' && Number.isFinite(pe)) this.predictionError = pe;
 
-    // ⛔ RIVAL IS BLIND, AND SAYS SO. Jealousy is her person's attention going
-    // to someone else. Her senses have no channel that perceives that triad
-    // today — chat is one-to-one and she cannot observe where his attention
-    // goes. So the channel is wired, carries innate aversive valence, and
-    // reads 0 with `blind` set until a perception feeds `this._rivalAttention`.
-    // It will not fire on a guess.
+    // RIVAL — her person's attention going to someone else. Chat is one to one,
+    // so the one sense of it she has is hearing HIM talk about another person
+    // (`_perceiveTriad`, which writes `this._rivalAttention`). Until her
+    // attachment figure has spoken to her the channel reads 0 with `blind` set —
+    // an unperceived rival is absent, never a guessed calm.
     const rivalFed = typeof this._rivalAttention === 'number' && Number.isFinite(this._rivalAttention);
     const rival = rivalFed ? Math.max(0, Math.min(1, this._rivalAttention)) * contactLoss : 0;
 
@@ -6402,6 +6429,189 @@ class ServerBrain {
     this.mood.word = knows ? pattern : null;
     this.mood.primary = ap ? ap.primary : null;
     this.mood.blind = ap ? ap.blind : [];
+  }
+
+  // ── A DONOR KEEPS ITS OWN COPY OF WHAT IT TRAINS ──────────────────────
+  // Most of her plasticity runs on the donor's resident matrices, which the
+  // brain only sees when it pulls them back. A donor that crashed between
+  // pulls took that learning with it. Donors from 0.3.42 write their trained
+  // matrices to their own disk on this cadence and on stop, and put them back
+  // after a re-upload — but only for THIS brain: the lineage is her RNG seed,
+  // which carries across a Savestart and changes on a fresh walk, and the
+  // checkpoint must be newer than the brain's last save. `restore` asks the
+  // donor to do that now (sent once, after a successful upload).
+  // DREAM_DONOR_CHECKPOINT_MS sets the cadence (default 10 min). Priced on the
+  // measured readback: ~2.9 GB of matrices at the card's local read rate is
+  // seconds of worker time, so 10 min costs the walk well under 2% while
+  // bounding a crash's loss to one interval instead of the 30-min readback gap.
+  _sendDonorCheckpointConfig(ws, restore) {
+    if (!ws || ws.readyState !== 1) return false;
+    const c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
+    const v = ((c && c.donorAppVersion) || '').toString().match(/^(\d+)\.(\d+)\.(\d+)/);
+    if (!v || ((+v[1]) * 1e6 + (+v[2]) * 1e3 + (+v[3])) < 3042) return false;   // older donors have no checkpoint
+    const state = (this._rngMod && typeof this._rngMod.brainRngState === 'function') ? this._rngMod.brainRngState() : null;
+    if (!state || !Number.isFinite(Number(state.seed))) return false;
+    const intervalMs = Number(process.env.DREAM_DONOR_CHECKPOINT_MS) >= 60000 ? Number(process.env.DREAM_DONOR_CHECKPOINT_MS) : 600000;
+    // ⚠ NOT the last save: most saves are written from the CPU copy, which
+    // does not hold what the card trained. What matters is the last time the
+    // brain actually PULLED the card's weights in — a donor checkpoint newer
+    // than that holds learning the brain does not have.
+    const brainSavedAt = Math.max(this._gpuPulledAtLoad || 0, (this._lastReadbackOk && this._lastReadbackOk.at) || 0);
+    ws.send(JSON.stringify({ type: 'donor_checkpoint', lineage: String(state.seed >>> 0), brainSavedAt, intervalMs, restore: !!restore }));
+    return true;
+  }
+
+  // ── WHO SHE IS ATTACHED TO SURVIVES A RESTART ──────────────────────────
+  // Her bond to each person is cumulative time spent together, and it used
+  // to live only in memory, so every restart she woke attached to no one and
+  // the person she spends her life with had to rebuild the bond from zero.
+  // The same was true of the appraisal running stats (agency, coping,
+  // uncertainty) and her lingering mood. They ride the weights JSON now and
+  // die with it on a fresh walk, which is correct: a fresh brain has met no one.
+  //
+  // Every person is kept, not a top-N. The map is already unbounded in memory
+  // (one small entry per person who has ever spoken to her), so persisting it
+  // adds no bound that did not exist, and any cut would need a number nobody
+  // can derive.
+  _serializeFeelings() {
+    try {
+      const fin = (v, d) => (Number.isFinite(Number(v)) ? Number(v) : d);
+      const people = [];
+      if (this._contactByUser instanceof Map) {
+        for (const [uid, c] of this._contactByUser) {
+          if (!c || !Number.isFinite(Number(c.bond))) continue;
+          people.push([String(uid), { bond: Number(c.bond), expected: fin(c.expected, 0), lastAt: fin(c.lastAt, 0) }]);
+        }
+      }
+      people.sort((a, b) => b[1].bond - a[1].bond);
+      const st = this._apSt;
+      const appraisal = st ? {
+        expOutcome: fin(st.expOutcome, 0),
+        agNum: fin(st.agNum, 0), agDen: fin(st.agDen, 0),
+        effNum: fin(st.effNum, 0), effDen: fin(st.effDen, 0),
+        rpe2: Number.isFinite(st.rpe2) ? st.rpe2 : null,
+      } : null;
+      const m = this.mood;
+      const mood = m ? {
+        valence: fin(m.valence, 0),
+        arousal: fin(m.arousal, 0),
+        lingering: m.lingering && typeof m.lingering === 'object' ? { ...m.lingering } : {},
+      } : null;
+      return { people, appraisal, mood, savedAt: Date.now() };
+    } catch (err) {
+      console.warn('[Brain] feelings serialize failed — attachment will not survive this save:', err?.message || err);
+      return null;
+    }
+  }
+
+  // ⚠ Two clocks, deliberately different:
+  //   · `lastAt` is restored as the wall-clock time the person last spoke. Their
+  //     presence is a fact about the world, so it fades by real elapsed time —
+  //     someone who left an hour before the restart reads 0, not "still here".
+  //   · the appraisal clock (`_apSt.at`) and the mood clock restart at NOW. She
+  //     was not running, so she did not spend the downtime getting used to his
+  //     absence. She wakes still expecting him, finds him gone, misses him, and
+  //     adapts over the same contact window she adapts on while awake.
+  _restoreFeelings(f) {
+    if (!f || typeof f !== 'object') return;
+    const fin = (v, d) => (Number.isFinite(Number(v)) ? Number(v) : d);
+    let people = 0;
+    if (Array.isArray(f.people) && this._contactByUser instanceof Map) {
+      for (const e of f.people) {
+        if (!Array.isArray(e) || e.length < 2 || !e[1] || typeof e[1] !== 'object') continue;
+        const bond = Number(e[1].bond);
+        if (!Number.isFinite(bond) || bond < 0) continue;
+        this._contactByUser.set(String(e[0]), {
+          lastAt: fin(e[1].lastAt, 0),
+          bond,
+          expected: Math.max(0, Math.min(1, fin(e[1].expected, 0))),
+        });
+        people++;
+      }
+    }
+    if (f.appraisal && typeof f.appraisal === 'object') {
+      const a = f.appraisal;
+      this._apSt = {
+        at: Date.now(),
+        expOutcome: fin(a.expOutcome, 0),
+        agNum: fin(a.agNum, 0), agDen: fin(a.agDen, 0),
+        effNum: fin(a.effNum, 0), effDen: fin(a.effDen, 0),
+        ...(Number.isFinite(a.rpe2) ? { rpe2: a.rpe2 } : {}),
+      };
+    }
+    if (f.mood && typeof f.mood === 'object') {
+      const lg = {};
+      if (f.mood.lingering && typeof f.mood.lingering === 'object') {
+        for (const ch of Object.keys(AMYGDALA_CHANNELS)) {
+          if (Number.isFinite(f.mood.lingering[ch])) lg[ch] = Math.max(0, Math.min(1, f.mood.lingering[ch]));
+        }
+      }
+      this.mood = { valence: fin(f.mood.valence, 0), arousal: fin(f.mood.arousal, this.arousal), lingering: lg };
+      this._moodAt = null;
+    }
+    let topBond = 0;
+    for (const c of this._contactByUser.values()) if (c.bond > topBond) topBond = c.bond;
+    this._feelingsRestored = { people, topBondS: Math.round(topBond), savedAt: f.savedAt || null, at: Date.now() };
+    console.log(`[Brain] feelings restored — ${people} person(s) she knows (strongest bond ${Math.round(topBond)}s of time together), appraisal stats ${f.appraisal ? 'kept' : 'absent'}, lingering mood ${f.mood ? 'kept' : 'absent'}. ${people > 0 ? 'She wakes attached to the people she was attached to.' : 'The save held no one — she has not met anyone yet, or this save predates the record.'}`);
+  }
+
+  // ── THE TRIAD: HER PERSON TALKING ABOUT SOMEONE ELSE ───────────────────
+  // Jealousy is her person's attention going to someone else. Chat is one to
+  // one, so she cannot watch where his attention goes — but she CAN hear him
+  // talk about another person, which is situation, not her emotion vocabulary.
+  // This is that sense, and only that sense:
+  //   · it reads ONLY her attachment figure (the strongest bond). Anyone else
+  //     talking to her is contact, not his attention elsewhere.
+  //   · a person is a word whose primary WordNet noun sense is noun.person, or
+  //     a capitalised word mid-sentence that WordNet does not know as a common
+  //     noun (a name). The category is WordNet's, not a list of ours.
+  //   · `_rivalAttention` is the share of his words, over the current session
+  //     with him, that were about someone else. A session ends when his
+  //     presence has faded to zero over the contact window — no number picked.
+  // The appraisal multiplies this by `contactLoss`, so she feels it only once
+  // he has talked about someone else AND gone: both halves of the triad.
+  _perceiveTriad(text, userId) {
+    try {
+      if (userId == null || !(this._contactByUser instanceof Map) || this._contactByUser.size === 0) return;
+      let primary = null, best = -1;
+      for (const [uid, c] of this._contactByUser) {
+        if (c && c.bond > best) { best = c.bond; primary = uid; }
+      }
+      if (primary === null || String(primary) !== String(userId)) return;
+      if (!this._taxonomy) {
+        try { this._taxonomy = require('./drawable-taxonomy.js'); } catch { this._taxonomy = false; }
+      }
+      const tax = this._taxonomy;
+      if (!tax || typeof tax.primaryLex !== 'function') return;   // no taxonomy = no sense; stays blind
+      const s = String(text || '');
+      const re = /[A-Za-z][A-Za-z'-]*/g;
+      let m, words = 0, refs = 0, prevEnd = -1;
+      while ((m = re.exec(s)) !== null) {
+        const w = m[0];
+        words++;
+        const between = s.slice(prevEnd < 0 ? 0 : prevEnd, m.index);
+        const sentenceStart = prevEnd < 0 || /[.!?]/.test(between);
+        prevEnd = m.index + w.length;
+        const lower = w.toLowerCase().replace(/'s$/, '');
+        const lex = tax.primaryLex(lower);
+        if (lex === 18) { refs++; continue; }
+        const capitalised = w.length > 1 && w[0] === w[0].toUpperCase() && w.slice(1) !== w.slice(1).toUpperCase();
+        if (capitalised && !sentenceStart && lex === -1) refs++;
+      }
+      if (words === 0) return;
+      const now = Date.now();
+      const sess = this._triadSession;
+      const c = this._contactByUser.get(primary);
+      // A new session once his presence had fully faded before this message.
+      const fresh = !sess || sess.uid !== String(primary)
+        || !c || this._contactLevel(now - (sess.lastAt || 0)) <= 0;
+      const next = fresh ? { uid: String(primary), words: 0, refs: 0, lastAt: now } : sess;
+      next.words += words;
+      next.refs += refs;
+      next.lastAt = now;
+      this._triadSession = next;
+      this._rivalAttention = next.words > 0 ? next.refs / next.words : 0;
+    } catch { /* a perception that fails reads as blind, never as a fabricated 0 */ }
   }
 
   _emotionalGate() {
@@ -7837,6 +8047,12 @@ class ServerBrain {
                 // resync (new primary / real drift) can re-upload; the buffer-drain
                 // gate above still prevents stacking into a saturated socket.
                 this._cortexUploadInFlight = false;
+                // `WEIGHTLOSS.1` — the donor now holds what the CPU master holds.
+                // Tell it which brain it serves (her seed lineage) and when that
+                // brain last saved, so a checkpoint it wrote to its OWN disk —
+                // newer, same lineage — goes back onto the card, and so it keeps
+                // checkpointing on the brain's cadence from here on.
+                try { this._sendDonorCheckpointConfig(this._gpuClient, true); } catch { /* the donor simply does not checkpoint this session */ }
               }).catch((err) => {
                 // #32 — DON'T fail silently. Before this, a thrown initGpu
                 // (e.g. a donor whose WebGPU binding ceiling can't hold a
@@ -8901,6 +9117,19 @@ class ServerBrain {
         // Chronic load especially: a hard stretch that evaporated on every
         // restart would make allostatic load unmeasurable by construction.
         endocrine: this.endocrine ? this.endocrine.serialize() : null,
+        // Who she is attached to, her appraisal running stats and her lingering
+        // mood — see `_serializeFeelings`.
+        feelings: this._serializeFeelings(),
+        // Her seed and every persisted stream counter — see js/brain/brain-rng.js.
+        rng: (this._rngMod && typeof this._rngMod.brainRngState === 'function') ? this._rngMod.brainRngState() : null,
+        // The donor packet sequence. Every packet's CONTENT is a function of her
+        // records; its request id was the one part that restarted at 0 on every
+        // boot. Carried across, a resumed brain numbers its packets exactly as
+        // an uninterrupted one would.
+        sparseSeq: this._sparseSeq || 0,
+        // The last time these weights took in what a donor trained (a verified
+        // readback). A donor's own checkpoint is handed back only if newer.
+        gpuPulledAt: Math.max(this._gpuPulledAtLoad || 0, (this._lastReadbackOk && this._lastReadbackOk.at) || 0),
         time: this.time,
         frameCount: this.frameCount,
         savedAt: new Date().toISOString(),
@@ -9903,6 +10132,18 @@ class ServerBrain {
         this.psi = data.psi ?? this.psi;
         this.coherence = data.coherence ?? this.coherence;
         this.drugState = data.drugState ?? this.drugState;
+        // Her seed and stream counters, applied before the cortex is built.
+        if (data.rng && typeof data.rng === 'object') this._pendingRng = data.rng;
+        // When the weights she resumed from last took in what a donor trained —
+        // a donor's own checkpoint must be newer than this to be handed back.
+        if (Number.isFinite(Number(data.gpuPulledAt))) this._gpuPulledAtLoad = Number(data.gpuPulledAt);
+        if (Number.isFinite(Number(data.sparseSeq)) && Number(data.sparseSeq) > 0) this._sparseSeq = Math.floor(Number(data.sparseSeq));
+        // Who she is attached to. `_contactByUser` is born in the constructor
+        // before this runs, so it can be restored here directly.
+        if (data.feelings) {
+          try { this._restoreFeelings(data.feelings); }
+          catch (err) { console.warn('[Brain] feelings restore failed — she wakes attached to no one this boot:', err?.message || err); }
+        }
         // U306 — restore word-frequency accumulator so cross-restart
         // learning isn't lost. Groundwork for the full server-side
         // dictionary (U311 follow-up).
@@ -13922,6 +14163,9 @@ wss.on('connection', (ws, req) => {
           // / bigrams / embeddings all update from every conversation),
           // which is the "one brain of Unity" model. Only the raw text
           // broadcast needed removal.
+          // The triad sense reads the message BEFORE the reply pass, from the
+          // same stable id her attachment is keyed on.
+          brain._perceiveTriad(msg.text || '', stableId);
           brain.processAndRespond(msg.text || '', stableId).then(result => {
             if (ws.readyState !== ws.OPEN) return;
             if (result.text) {
@@ -14595,6 +14839,50 @@ wss.on('connection', (ws, req) => {
         case 'donor_crumb': {
           // Live device-lost report from a still-open tab whose WebGPU died.
           console.warn(`[${id}] DONOR CRUMB (live) — ${String(msg.reason || '').slice(0, 300)}`);
+          break;
+        }
+
+        // ── `WEIGHTLOSS.1` — THE DONOR'S OWN CHECKPOINT ──────────────────────
+        // A donor writes the matrices it trains to its own disk on the brain's
+        // cadence, puts them back after a re-upload, and hands them over before
+        // it leaves. These three messages are the brain's half of that.
+        case 'donor_checkpoint_saved': {
+          brain._donorCheckpoint = brain._donorCheckpoint || { saves: 0, fails: 0 };
+          if (msg.ok) { brain._donorCheckpoint.saves++; brain._donorCheckpoint.lastSave = { at: Date.now(), matrices: msg.matrices | 0, mb: +((Number(msg.bytes) || 0) / 1048576).toFixed(1), secs: +(Number(msg.secs) || 0).toFixed(1) }; }
+          else { brain._donorCheckpoint.fails++; brain._donorCheckpoint.lastError = { at: Date.now(), error: String(msg.error || '').slice(0, 200) }; console.warn(`[${id}] donor checkpoint save FAILED: ${String(msg.error || '').slice(0, 200)}`); }
+          break;
+        }
+        case 'donor_checkpoint_restored': {
+          const restored = Array.isArray(msg.restored) ? msg.restored : [];
+          const skipped = Array.isArray(msg.skipped) ? msg.skipped : [];
+          brain._donorCheckpoint = brain._donorCheckpoint || { saves: 0, fails: 0 };
+          brain._donorCheckpoint.lastRestore = { at: Date.now(), restored: restored.length, skipped: skipped.slice(0, 6) };
+          if (restored.length) {
+            // The card now holds weights NEWER than the CPU master: pull them
+            // through the verified readback and save, so the brain has them too.
+            console.log(`[Brain] WEIGHTLOSS — donor restored ${restored.length} matrix(es) from its own checkpoint (newer than the brain's last save). Pulling them into the master and saving.`);
+            brain.refreshCheckpointFromDonor('donor-checkpoint-restore', { force: true })
+              .then(r => { if (!r || !r.ok) console.warn(`[Brain] WEIGHTLOSS — pull after donor restore did not complete: ${(r && r.reason) || 'unknown'}`); })
+              .catch(e => console.warn('[Brain] WEIGHTLOSS — pull after donor restore threw:', e && e.message));
+          } else if (skipped.length) {
+            console.log(`[Brain] WEIGHTLOSS — donor had nothing to restore: ${skipped[0]}`);
+          }
+          break;
+        }
+        case 'donor_leaving': {
+          // A donor stopping politely. If it is the primary, it holds the
+          // weights she has been training: pull them in and save BEFORE telling
+          // it to go. Any other donor holds nothing the brain lacks.
+          const isPrimary = brain._gpuClient === ws;
+          const sendOk = () => { try { if (ws.readyState === 1) ws.send(JSON.stringify({ type: 'leave_ok' })); } catch { /* it is leaving anyway */ } };
+          if (!isPrimary) { sendOk(); break; }
+          console.log(`[Brain] WEIGHTLOSS — primary donor ${client.gpuName || id} is leaving; pulling its trained weights and saving before it closes.`);
+          brain.refreshCheckpointFromDonor('donor-leaving', { force: true })
+            .then(r => {
+              if (!r || !r.ok) console.warn(`[Brain] WEIGHTLOSS — hand-back pull did not complete (${(r && r.reason) || 'unknown'}); the donor's own disk checkpoint still holds them for its next connection.`);
+              sendOk();
+            })
+            .catch(() => sendOk());
           break;
         }
 

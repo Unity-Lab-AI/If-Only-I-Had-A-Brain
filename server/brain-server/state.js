@@ -2889,6 +2889,24 @@ const SERVER_STATE_MIXIN = {
       };
     } catch (err) { out.readback = { error: err.message }; }
 
+    // `WEIGHTLOSS.1` — the donor's OWN checkpoint: does the card keep a copy of
+    // what it trains, and did it put one back? Ages travel with the values, and
+    // a donor that never saved reads null, not zero.
+    try {
+      const dc = this._donorCheckpoint || null;
+      out.donorCheckpoint = {
+        saves: dc ? (dc.saves | 0) : 0,
+        fails: dc ? (dc.fails | 0) : 0,
+        lastSaveAgeMs: dc && dc.lastSave ? Math.max(0, now - dc.lastSave.at) : null,
+        lastSaveMB: dc && dc.lastSave ? dc.lastSave.mb : null,
+        lastSaveSecs: dc && dc.lastSave ? dc.lastSave.secs : null,
+        lastError: dc && dc.lastError ? dc.lastError.error : null,
+        lastRestoreAgeMs: dc && dc.lastRestore ? Math.max(0, now - dc.lastRestore.at) : null,
+        lastRestoreCount: dc && dc.lastRestore ? dc.lastRestore.restored : null,
+        lastRestoreSkipped: dc && dc.lastRestore ? dc.lastRestore.skipped : null,
+      };
+    } catch (err) { out.donorCheckpoint = { error: err.message }; }
+
     return out;
   },
 

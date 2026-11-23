@@ -14,6 +14,11 @@
  */
 
 import { sharedEmbeddings } from './embeddings.js';
+import { brainStream } from './brain-rng.js';
+
+// Her innate semantic→action priors are drawn from her own seeded stream,
+// restarted on every boot, so the same seed builds the same priors.
+const _sensoryInit = brainStream('sensory-init', { fromStart: true });
 
 const CORTEX_SIZE = 300;
 const AUDITORY_START = 0;
@@ -86,22 +91,22 @@ export class SensoryProcessor {
     const w = this._semanticWeights;
 
     // respond_text channel (0-24) — default for most conversational input
-    for (let i = 0; i < 25; i++) w.respond[i] = 0.6 + Math.random() * 0.2;
+    for (let i = 0; i < 25; i++) w.respond[i] = 0.6 + _sensoryInit() *0.2;
 
     // generate_image channel (25-49) — visual/creative content
-    for (let i = 25; i < 50; i++) w.image[i] = 0.5 + Math.random() * 0.2;
+    for (let i = 25; i < 50; i++) w.image[i] = 0.5 + _sensoryInit() *0.2;
 
     // speak channel (50-74) — idle vocalization
-    for (let i = 50; i < 75; i++) w.speak[i] = 0.2 + Math.random() * 0.1;
+    for (let i = 50; i < 75; i++) w.speak[i] = 0.2 + _sensoryInit() *0.1;
 
     // build_ui channel (75-99) — construction/tool requests
-    for (let i = 75; i < 100; i++) w.build[i] = 0.5 + Math.random() * 0.2;
+    for (let i = 75; i < 100; i++) w.build[i] = 0.5 + _sensoryInit() *0.2;
 
     // listen channel (100-124) — questions directed at user
-    for (let i = 100; i < 125; i++) w.listen[i] = 0.3 + Math.random() * 0.1;
+    for (let i = 100; i < 125; i++) w.listen[i] = 0.3 + _sensoryInit() *0.1;
 
     // idle channel (125-149) — low arousal, nothing happening
-    for (let i = 125; i < 150; i++) w.idle[i] = 0.4 + Math.random() * 0.1;
+    for (let i = 125; i < 150; i++) w.idle[i] = 0.4 + _sensoryInit() *0.1;
   }
 
   /**

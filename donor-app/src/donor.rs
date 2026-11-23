@@ -320,6 +320,11 @@ enum Work {
     // ONE PROCESS — a mind-space op (her imagery) computed on this donor.
     // Pure CPU (no engine state); answered with a mindspace_result JSON.
     Mindspace { id: u64, op: String, payload: serde_json::Map<String, serde_json::Value> },
+    // `WEIGHTLOSS.1` — write the resident matrices' trained values to this
+    // donor's own disk (timer + stop), and put them back after the brain
+    // re-uploads (same lineage, newer than its last save). See checkpoint.rs.
+    CheckpointSave { lineage: String },
+    CheckpointRestore { lineage: String, brain_saved_at: u64 },
 }
 
 /// A reply the worker produced; the WS loop sends it in receipt order.
@@ -950,8 +955,13 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
             // Stop promptly on request: DON'T drain the queued backlog (the brain can have many
             // compute_batch/frames buffered). Without this, join() blocks until the whole
             // backlog clears, so the GUI's ▶ Start never reappears after ⏹ Stop.
-            if control_w.stop.load(Ordering::Relaxed) {
-                break;
+            // `WEIGHTLOSS.1` — two kinds of work still run during a stop: the
+            // final checkpoint save, and a values readback the brain asks for
+            // while this donor hands its weights back. Everything else is
+            // skipped (not run) so the save is reached promptly.
+            if control_w.stop.load(Ordering::Relaxed)
+                && !matches!(work, Work::CheckpointSave { .. } | Work::ReadbackValues { .. }) {
+                continue;
             }
             activity_w.begin(match &work {
                 Work::Init(init) => format!("gpu_init {}", init.cluster_name),
@@ -982,6 +992,8 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 Work::ChecksumMatrix { name, .. } => format!("checksum {name}"),
                 Work::ReadbackValues { name, .. } => format!("readback_values {name}"),
                 Work::Mindspace { op, .. } => format!("mindspace {op}"),
+                Work::CheckpointSave { .. } => "checkpoint save".to_string(),
+                Work::CheckpointRestore { .. } => "checkpoint restore".to_string(),
             });
             match work {
                 Work::Init(init) => {
@@ -1202,6 +1214,28 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     let reply = crate::mindspace::handle_op(id, &op, &payload);
                     let _ = reply_tx.send(Out::Text(reply));
                 }
+                Work::CheckpointSave { lineage } => {
+                    set_status(&control_w, |s| { s.note = "saving weight checkpoint".into(); });
+                    let t0 = std::time::Instant::now();
+                    let reply = match crate::checkpoint::save(&engine, &lineage) {
+                        Ok((n, bytes)) => {
+                            println!("[donor] checkpoint saved — {n} matrix(es), {:.1} MB in {:.1}s.", bytes as f64 / 1048576.0, t0.elapsed().as_secs_f64());
+                            serde_json::json!({ "type": "donor_checkpoint_saved", "ok": true, "matrices": n, "bytes": bytes, "secs": t0.elapsed().as_secs_f64() })
+                        }
+                        Err(e) => {
+                            eprintln!("[donor] checkpoint save FAILED: {e}");
+                            serde_json::json!({ "type": "donor_checkpoint_saved", "ok": false, "error": e })
+                        }
+                    };
+                    let _ = reply_tx.send(Out::Text(reply.to_string()));
+                    set_status(&control_w, |s| { s.note = "idle".into(); });
+                }
+                Work::CheckpointRestore { lineage, brain_saved_at } => {
+                    let (done, skipped) = crate::checkpoint::restore(&mut engine, &lineage, brain_saved_at);
+                    if !done.is_empty() { println!("[donor] restored {} matrix(es) from this donor's checkpoint.", done.len()); }
+                    let reply = serde_json::json!({ "type": "donor_checkpoint_restored", "restored": done, "skipped": skipped });
+                    let _ = reply_tx.send(Out::Text(reply.to_string()));
+                }
             }
             activity_w.end();
         }
@@ -1245,6 +1279,16 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
     let mut hang_tick = tokio::time::interval(Duration::from_secs(5));
     hang_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     let mut gpu_hung = false;
+    // `WEIGHTLOSS.1` — set by the brain's `donor_checkpoint` message. No
+    // lineage = a brain that does not run donor checkpoints: this donor then
+    // neither saves nor waits to hand anything back.
+    let mut ckpt_lineage: Option<String> = None;
+    let mut ckpt_interval = Duration::from_secs(600);
+    let mut last_ckpt = std::time::Instant::now();
+    // When the stop began; while set, the loop keeps serving the brain's
+    // readback until it answers `leave_ok` or LEAVE_PATIENCE runs out.
+    let mut leaving: Option<std::time::Instant> = None;
+    const LEAVE_PATIENCE: Duration = Duration::from_secs(300);
 
     loop {
         tokio::select! {
@@ -1271,9 +1315,24 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
             }
             _ = stop_check.tick() => {
                 if control.stop.load(Ordering::Relaxed) {
-                    println!("[donor] stop requested (GUI) — closing connection cleanly.");
-                    let _ = tx.send(Message::Close(None)).await;
-                    break;
+                    match (&ckpt_lineage, leaving) {
+                        // A checkpointing brain: save to disk, then hand the weights back.
+                        (Some(lin), None) => {
+                            println!("[donor] stop requested — saving this donor's checkpoint and handing the weights back to the brain before closing.");
+                            pending.fetch_add(1, Ordering::Relaxed);
+                            workq.push(Work::CheckpointSave { lineage: lin.clone() });
+                            let _ = tx.send(Message::text(serde_json::json!({ "type": "donor_leaving" }).to_string())).await;
+                            set_status(&control, |s| { s.note = "handing weights back to the brain…".into(); });
+                            leaving = Some(std::time::Instant::now());
+                        }
+                        (Some(_), Some(t)) if t.elapsed() < LEAVE_PATIENCE => { /* still handing back */ }
+                        _ => {
+                            if leaving.is_some() { eprintln!("[donor] the brain did not confirm the hand-back within {}s — closing; this donor's disk checkpoint still holds the weights.", LEAVE_PATIENCE.as_secs()); }
+                            println!("[donor] stop requested (GUI) — closing connection cleanly.");
+                            let _ = tx.send(Message::Close(None)).await;
+                            break;
+                        }
+                    }
                 }
             }
             _ = telemetry_tick.tick() => {
@@ -1302,6 +1361,14 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 if let Ok(j) = serde_json::to_string(&tele) {
                     let _ = tx.send(Message::text(j)).await;
                 }
+                // `WEIGHTLOSS.1` — the timed checkpoint, at the brain's cadence.
+                if let Some(lin) = &ckpt_lineage {
+                    if leaving.is_none() && last_ckpt.elapsed() >= ckpt_interval {
+                        last_ckpt = std::time::Instant::now();
+                        pending.fetch_add(1, Ordering::Relaxed);
+                        workq.push(Work::CheckpointSave { lineage: lin.clone() });
+                    }
+                }
             }
             _ = keepalive_tick.tick() => {
                 // Dead-link detection: we ping every KEEPALIVE_INTERVAL and the brain's WS stack
@@ -1317,10 +1384,12 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     break;
                 }
             }
-            _ = &mut ctrlc => {
-                println!("\n[donor] stop requested — closing connection cleanly (safe stop).");
-                let _ = tx.send(Message::Close(None)).await;
-                break;
+            _ = &mut ctrlc, if leaving.is_none() => {
+                // Ctrl+C takes the same path as the GUI's Stop: the stop flag,
+                // then the hand-back on the next stop tick (immediate close when
+                // the brain runs no checkpoints).
+                println!("\n[donor] stop requested (Ctrl+C).");
+                control.stop.store(true, Ordering::Relaxed);
             }
             // Worker reply → send over the socket, in receipt order.
             Some(out) = reply_rx.recv() => {
@@ -1352,6 +1421,30 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 };
                 match msg {
                     Message::Text(t) => {
+                        // `WEIGHTLOSS.1` — the checkpoint messages are read as plain
+                        // JSON ahead of the protocol enum, so they need no change to
+                        // the shared crate and an older brain simply never sends them.
+                        let ckpt_msg = serde_json::from_str::<serde_json::Value>(t.as_str()).ok()
+                            .filter(|v| matches!(v.get("type").and_then(|x| x.as_str()), Some("donor_checkpoint") | Some("leave_ok")));
+                        if let Some(v) = ckpt_msg {
+                            if v.get("type").and_then(|x| x.as_str()) == Some("leave_ok") {
+                                println!("[donor] the brain confirmed it holds this donor's weights — closing.");
+                                let _ = tx.send(Message::Close(None)).await;
+                                break;
+                            }
+                            let lin = v.get("lineage").and_then(|x| x.as_str()).unwrap_or("").to_string();
+                            if !lin.is_empty() {
+                                if let Some(ms) = v.get("intervalMs").and_then(|x| x.as_u64()) { if ms >= 60_000 { ckpt_interval = Duration::from_millis(ms); } }
+                                if v.get("restore").and_then(|x| x.as_bool()) == Some(true) {
+                                    let saved = v.get("brainSavedAt").and_then(|x| x.as_u64()).unwrap_or(u64::MAX);
+                                    pending.fetch_add(1, Ordering::Relaxed);
+                                    workq.push(Work::CheckpointRestore { lineage: lin.clone(), brain_saved_at: saved });
+                                }
+                                if ckpt_lineage.is_none() { last_ckpt = std::time::Instant::now(); }
+                                ckpt_lineage = Some(lin);
+                            }
+                            continue;
+                        }
                         match serde_json::from_str::<ServerMessage>(t.as_str()) {
                             Ok(ServerMessage::GpuInit(init)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::Init(init)); }
                             Ok(ServerMessage::ComputeBatch(batch)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::Batch(batch, std::time::Instant::now())); }

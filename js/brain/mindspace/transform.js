@@ -363,6 +363,125 @@ export function morphField(recA, recB, t) {
   return { ...recA, channels, equation_count: total, fidelity: { ...(recA.fidelity || {}), source: 'mindspace-morph' } };
 }
 
+// (A by-scale coefficient blend was tried here first and judged on real looks:
+// any in-place blend shows both pictures at once. fieldChange below replaced it.)
+
+// ── fieldChange(recA, recB) — one picture MOVES into another ─────────────────────
+// A blend of two pictures in place, in any space, shows both: the old one
+// fading over the new one. A real change moves the SHAPES. This solves where
+// each region of the old picture goes in the new one — a dense flow on a coarse
+// grid, Horn–Schunck (brightness constancy + smoothness), run coarse to fine —
+// and returns `at(t)`: the old picture pushed forward along the flow by t, the
+// new one pulled back along it by 1−t, so both stand in the SAME place before
+// they are mixed. Reconstruction goes through the inverse transform; the
+// returned frames are ImageData-shaped. Null on a canvas mismatch.
+export function fieldChange(recA, recB) {
+  if (!recA || !recB || recA.width !== recB.width || recA.height !== recB.height) return null;
+  const A = reconstructImageData(recA, 0), B = reconstructImageData(recB, 0);
+  if (!A || !B) return null;
+  const W = A.width, H = A.height;
+  const G = 64, gw = W >= H ? G : Math.max(8, Math.round(G * W / H)), gh = W >= H ? Math.max(8, Math.round(G * H / W)) : G;
+  const lum = (img) => {
+    const out = new Float32Array(gw * gh);
+    for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
+      let s = 0, n = 0;
+      const x0 = Math.floor(x * W / gw), x1 = Math.max(x0 + 1, Math.floor((x + 1) * W / gw));
+      const y0 = Math.floor(y * H / gh), y1 = Math.max(y0 + 1, Math.floor((y + 1) * H / gh));
+      for (let yy = y0; yy < y1; yy += 2) for (let xx = x0; xx < x1; xx += 2) { const o = (yy * W + xx) * 4; s += 0.299 * img.data[o] + 0.587 * img.data[o + 1] + 0.114 * img.data[o + 2]; n++; }
+      out[y * gw + x] = s / Math.max(1, n) / 255;
+    }
+    return out;
+  };
+  const blur = (f, w, h) => { const o = new Float32Array(f.length); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let s = 0, n = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const X = x + dx, Y = y + dy; if (X >= 0 && Y >= 0 && X < w && Y < h) { s += f[Y * w + X]; n++; } } o[y * w + x] = s / n; } return o; };
+  const I1 = blur(blur(lum(A), gw, gh), gw, gh), I2 = blur(blur(lum(B), gw, gh), gw, gh);
+  const samp = (f, x, y) => { x = Math.max(0, Math.min(gw - 1.001, x)); y = Math.max(0, Math.min(gh - 1.001, y)); const x0 = x | 0, y0 = y | 0, fx = x - x0, fy = y - y0, i = y0 * gw + x0; return f[i] * (1 - fx) * (1 - fy) + f[i + 1] * fx * (1 - fy) + f[i + gw] * (1 - fx) * fy + f[i + gw + 1] * fx * fy; };
+  // Horn–Schunck, re-linearised around the current flow (warped iterations)
+  const u = new Float32Array(gw * gh), v = new Float32Array(gw * gh);
+  const alpha2 = 0.02;
+  for (let outer = 0; outer < 6; outer++) {
+    const Iw = new Float32Array(gw * gh), Ix = new Float32Array(gw * gh), Iy = new Float32Array(gw * gh), It = new Float32Array(gw * gh);
+    for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
+      const i = y * gw + x, X = x + u[i], Y = y + v[i];
+      Iw[i] = samp(I2, X, Y);
+      Ix[i] = (samp(I2, X + 1, Y) - samp(I2, X - 1, Y)) / 2;
+      Iy[i] = (samp(I2, X, Y + 1) - samp(I2, X, Y - 1)) / 2;
+      It[i] = Iw[i] - I1[i];
+    }
+    const du = new Float32Array(gw * gh), dv = new Float32Array(gw * gh);
+    for (let it = 0; it < 60; it++) {
+      for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
+        const i = y * gw + x;
+        let su = 0, sv = 0, n = 0;
+        if (x > 0) { su += u[i - 1] + du[i - 1]; sv += v[i - 1] + dv[i - 1]; n++; }
+        if (x < gw - 1) { su += u[i + 1] + du[i + 1]; sv += v[i + 1] + dv[i + 1]; n++; }
+        if (y > 0) { su += u[i - gw] + du[i - gw]; sv += v[i - gw] + dv[i - gw]; n++; }
+        if (y < gh - 1) { su += u[i + gw] + du[i + gw]; sv += v[i + gw] + dv[i + gw]; n++; }
+        const ub = su / n - u[i], vb = sv / n - v[i];
+        const r = (Ix[i] * ub + Iy[i] * vb + It[i]) / (alpha2 + Ix[i] * Ix[i] + Iy[i] * Iy[i]);
+        du[i] = ub - Ix[i] * r; dv[i] = vb - Iy[i] * r;
+      }
+    }
+    for (let i = 0; i < u.length; i++) { u[i] += du[i]; v[i] += dv[i]; }
+  }
+  // flow in full-image pixels, sampled bilinearly
+  const sx = W / gw, sy = H / gh;
+  const flowAt = (x, y) => [samp(u, x / sx - 0.5, y / sy - 0.5) * sx, samp(v, x / sx - 0.5, y / sy - 0.5) * sy];
+  // ⛔ Both pictures' DETAIL must never be on screen at once — that is the
+  // ghost (judged on real looks: a cat's face still showing through a horse
+  // mid-change; a flow cannot line up parts that have no counterpart). So each
+  // picture is held as a PYRAMID (each level half the size), and the change
+  // runs through it: the old picture melts down its pyramid to its broad shape
+  // and colour while that shape flows; at the deepest point, where both are
+  // only aligned colour masses, they swap; the new picture's detail then
+  // resolves back up its own pyramid.
+  const pyramid = (img) => {
+    const lv = [{ w: W, h: H, d: Float32Array.from(img.data) }];
+    while (lv.length < 7) {
+      const p = lv[lv.length - 1];
+      if (p.w < 8 || p.h < 8) break;
+      const w2 = p.w >> 1, h2 = p.h >> 1, d2 = new Float32Array(w2 * h2 * 4);
+      for (let y = 0; y < h2; y++) for (let x = 0; x < w2; x++) for (let c = 0; c < 4; c++) {
+        const i = (2 * y * p.w + 2 * x) * 4 + c;
+        d2[(y * w2 + x) * 4 + c] = (p.d[i] + p.d[i + 4] + p.d[i + p.w * 4] + p.d[i + p.w * 4 + 4]) / 4;
+      }
+      lv.push({ w: w2, h: h2, d: d2 });
+    }
+    return lv;
+  };
+  const PA = pyramid(A), PB = pyramid(B);
+  const LMAX = Math.min(PA.length, PB.length) - 1;
+  // bilinear sample of pyramid level `l` at full-image coords (x, y)
+  const lvSamp = (P, l, x, y, c) => {
+    const L = P[l], s = L.w / W;
+    let X = x * s - 0.5, Y = y * s - 0.5;
+    X = Math.max(0, Math.min(L.w - 1.001, X)); Y = Math.max(0, Math.min(L.h - 1.001, Y));
+    const x0 = X | 0, y0 = Y | 0, fx = X - x0, fy = Y - y0, i = (y0 * L.w + x0) * 4 + c, r = L.w * 4;
+    return L.d[i] * (1 - fx) * (1 - fy) + L.d[i + 4] * fx * (1 - fy) + L.d[i + r] * (1 - fx) * fy + L.d[i + r + 4] * fx * fy;
+  };
+  // fractional pyramid level: blend between the two nearest levels
+  const melt = (P, lvl, x, y, c) => { const l0 = Math.floor(lvl), l1 = Math.min(LMAX, l0 + 1), f = lvl - l0; const a = lvSamp(P, l0, x, y, c); return f > 0 ? a + (lvSamp(P, l1, x, y, c) - a) * f : a; };
+  return {
+    width: W, height: H,
+    at(t) {
+      const k = Math.max(0, Math.min(1, t)), e = k * k * (3 - 2 * k);
+      const depth = Math.sin(Math.PI * k) * LMAX;                      // 0 at the ends, deepest mid-change
+      const sw = Math.max(0, Math.min(1, (k - 0.42) / 0.16));          // the swap, only while both are masses
+      const data = new Uint8ClampedArray(W * H * 4);
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const [fx, fy] = flowAt(x, y);
+        const o = (y * W + x) * 4;
+        for (let c = 0; c < 3; c++) {
+          const a = sw < 1 ? melt(PA, depth, x - fx * e, y - fy * e, c) : 0;              // old, flowing forward
+          const b = sw > 0 ? melt(PB, depth, x + fx * (1 - e), y + fy * (1 - e), c) : 0;  // new, flowing back
+          data[o + c] = a + (b - a) * sw;
+        }
+        data[o + 3] = 255;
+      }
+      return { width: W, height: H, data };
+    },
+  };
+}
+
 // ── traceField(rec, opts) — field C → HER HAND'S STROKES (the draw engine) ───────
 // The faithful inverse of sketch(): takes a REAL field C (a thing she has SEEN /
 // imagined / recombined) and traces its salient contours into stroke primitives

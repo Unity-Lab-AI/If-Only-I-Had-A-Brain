@@ -55,6 +55,19 @@ const { execFile } = require('child_process');
 const { GRADE_AGE, normalizeGradeKey } = require('./state.js');
 
 const SERVER_CHAT_MIXIN = {
+  // Every draw this mixin makes is one of HER choices — what she draws, which
+  // memory surfaces, whether she speaks up — so each rides a named stream of
+  // her seeded generator (js/brain/brain-rng.js), saved with her weights. The
+  // module loads in `_initLanguageSubsystem`, before any lane here can run; a
+  // draw that arrives earlier than that is a boot-order bug and throws loudly
+  // rather than quietly drawing from an unseeded source.
+  _rand(site) {
+    if (!this._rngMod || typeof this._rngMod.brainRandom !== 'function') {
+      throw new Error(`[rng] draw "${site}" before her generator loaded`);
+    }
+    return this._rngMod.brainRandom(site);
+  },
+
   // REPLY-PIN EYES (2026-08-18) — a reply pinned the loop 87s on a 3-char
   // message and 174s on a 31-char one (pin start == message arrival, to the
   // second, both times), starving the donor dead. ONE BLOCKED line of 174s
@@ -1728,7 +1741,7 @@ const SERVER_CHAT_MIXIN = {
             // traceLineArt strokes = the LAST leftover white-pencil publisher
             // ("NO MORE PENCIL ART"). Now it draws via _drawConcept — the field
             // default: her beautiful COLOURED recreation + dazzle label.
-            if (typeof this._drawConcept === 'function' && Math.random() < 0.35) {
+            if (typeof this._drawConcept === 'function' && this._rand('imagine-draw-concept') < 0.35) {
               try {
                 const _mConcept = (hit.matched && hit.matched[0]) || null;
                 const practiced = _mConcept ? await this._drawConcept(_mConcept, { allowFetch: false }) : null;
@@ -1785,7 +1798,7 @@ const SERVER_CHAT_MIXIN = {
       // actually SEE (the old grounded-only + 15% version never fired: starved), but
       // reference drawings stay primary. It composes drawable nouns from her stream
       // of thought and publishes its own canvas:imagine frame when ready.
-      if (typeof this._imagineAndDraw === 'function' && Math.random() < (Number(process.env.DREAM_IMAGINE_DRAW_PROB) || 0.18)) {
+      if (typeof this._imagineAndDraw === 'function' && this._rand('imagine-and-draw') < (Number(process.env.DREAM_IMAGINE_DRAW_PROB) || 0.18)) {
         this._imagineAndDraw().catch(() => { /* background imagine best-effort */ });
       }
       if (!rec && _recallMissed && typeof this._drawConcept === 'function') {
@@ -1857,7 +1870,11 @@ const SERVER_CHAT_MIXIN = {
             // gate as everything else: the store can hold abstract keys (thought
             // words banked as lookup frames), and drawing one traces to garbage.
             // A few random tries, each gated; none pass → no favorite this tick.
-            const _favKeys = Array.from(this._visualMemory.keys());
+            // EYEPOOL — every memory she holds, not just the resident few
+            // hundred; and nothing she showed in her last few looks.
+            const _eyeRecentSet = new Set(Array.isArray(this._eyeRecent) ? this._eyeRecent : []);
+            const _favAll = this._vmAllKeys();
+            const _favKeys = _favAll.filter(k => !_eyeRecentSet.has(k)).length ? _favAll.filter(k => !_eyeRecentSet.has(k)) : _favAll;
             // ── VMUSE.5 — THE RELATION IS FINALLY CONSUMED ───────────────────
             // The stated model: art concepts are stored alongside text concepts,
             // and the brain's consciousness interjects. Both halves are true in the code: art
@@ -1901,7 +1918,7 @@ const SERVER_CHAT_MIXIN = {
                 // rather than walking a store that can hold tens of thousands.
                 const _scan = Math.min(_favKeys.length, 24);
                 for (let _i = 0; _i < _scan; _i++) {
-                  const _k = _favKeys[Math.floor(Math.random() * _favKeys.length)];
+                  const _k = _favKeys[Math.floor(this._rand('eye-favourite-pick') * _favKeys.length)];
                   if (_cur._confidentRelationFor(_k)) _known.push(_k);
                 }
                 if (_known.length) {
@@ -1919,7 +1936,7 @@ const SERVER_CHAT_MIXIN = {
               // ordered) list; later tries stay random so rotation is preserved.
               const _fav = (_ft === 0 && _relOrdered)
                 ? _favKeys[0]
-                : _favKeys[Math.floor(Math.random() * _favKeys.length)];
+                : _favKeys[Math.floor(this._rand('eye-favourite-pick') * _favKeys.length)];
               if (typeof this._conceptIsDrawable === 'function' && !(await this._conceptIsDrawable(_fav))) continue;
               const drawnFav = await this._drawConcept(_fav, { allowFetch: false });
               if (drawnFav && drawnFav.rec) { rec = drawnFav.rec; _seedSource = 'draw:fav:' + _fav; }
@@ -1954,9 +1971,9 @@ const SERVER_CHAT_MIXIN = {
               .filter(w => w.length >= 3 && !_STOP.has(w)).slice(0, 4);
             if (_iToks.length > 0) {
               const _iCos = (a, b) => { let d = 0, na = 0, nb = 0; const n = Math.min(a.length, b.length); for (let i = 0; i < n; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; } const dn = Math.sqrt(na) * Math.sqrt(nb); return dn > 0 ? d / dn : 0; };
-              const _iKeys = Array.from(this._visualMemory.keys());
+              const _iKeys = this._vmAllKeys();   // EYEPOOL — all of her memories
               const _iPOOL = 60;
-              const _iSample = _iKeys.length <= _iPOOL ? _iKeys : Array.from({ length: _iPOOL }, () => _iKeys[Math.floor(Math.random() * _iKeys.length)]);
+              const _iSample = _iKeys.length <= _iPOOL ? _iKeys : Array.from({ length: _iPOOL }, () => _iKeys[Math.floor(this._rand('eye-imagined-sample') * _iKeys.length)]);
               let _iBest = null, _iBestTok = null, _iBestS = 0.32;
               for (const k of _iSample) {
                 if (_iToks.includes(k)) { _iBest = k; _iBestTok = k; _iBestS = 1; break; }
@@ -2040,27 +2057,45 @@ const SERVER_CHAT_MIXIN = {
       // BLOBSTORE — recall frames carry STORE recs whose payload is resident
       // binary; the viewer's wire format stays base64, so convert at the door.
       const wireRec = (typeof this._recJsonSafe === 'function') ? this._recJsonSafe(rec) : rec;
-      const finalJson = JSON.stringify({ type: 'mindsEye', rec: wireRec, terms: rec.equation_count || 0, source, at: now });
-      // MINDMOTION.3 — the eye CALCULATES one image into the next instead of
-      // jump-cutting. The transition is computed in the engine's OWN
-      // representation — the sparse wavelet coefficient field (pos/val per
-      // channel) — a union-lerp in equation space, not a pixel crossfade.
-      // Viewer-only: intermediate frames touch _mindsEyeJson and nothing else
-      // (never the imagined-field ring, never the store — they are display
-      // physics, not memories). Last-wins: a newer publish aborts an older
-      // transition mid-flight via the sequence token. DREAM_EYE_TRANSITION_MS
-      // (default 1600) times the whole morph; 0 restores the instant swap.
-      const prevWire = this._lastEyeWireRec || null;
-      this._lastEyeWireRec = wireRec;
-      const _seq = this._eyePubSeq = (this._eyePubSeq | 0) + 1;
-      const _tEnv = process.env.DREAM_EYE_TRANSITION_MS;
-      const _tMs = (_tEnv === undefined || _tEnv === '') ? 1600 : Math.max(0, Number(_tEnv) || 0);
-      if (_tMs > 0 && prevWire && this._eyeRecsCompatible(prevWire, wireRec)) {
-        this._eyeFieldTransition(prevWire, wireRec, finalJson, source, _seq, _tMs)
-          .catch(() => { if (this._eyePubSeq === _seq) this._mindsEyeJson = finalJson; });
-      } else {
-        this._mindsEyeJson = finalJson;
+      // EYEMORPH — ONE IMAGE CHANGES INTO THE NEXT, AND THE VIEWER SEES ALL OF IT.
+      //
+      // The server-side step loop below morphed only when two fields shared
+      // exact dimensions (almost never, now that a canvas takes its subject's
+      // aspect), and its four steps lived ~320 ms each on a page that polls
+      // every 6 s — so the in-between fields were computed and never seen, and
+      // every change read as a jump.
+      //
+      // Now the ENGINE brings the previous field to the new field's geometry
+      // (reconstruct → resample → perceive, exact W×H) and ships it as `from`
+      // beside the new one. The page then runs the engine's own `morphField`
+      // between them — coefficient-space union-lerp, the same function, the
+      // same codec — and reconstructs every step through the inverse
+      // transform. One payload carries the whole change, so no poll can miss it.
+      const prevShown = this._lastEyeWireRec || null;
+      let fromWire = null;
+      if (prevShown && prevShown.channels && process.env.DREAM_EYE_TRANSITION_MS !== '0') {
+        if (this._eyeRecsCompatible(prevShown, wireRec)) fromWire = prevShown;
       }
+      const finalJson = JSON.stringify({ type: 'mindsEye', rec: wireRec, from: fromWire, terms: rec.equation_count || 0, source, at: now });
+      if (!fromWire && prevShown && prevShown.channels && process.env.DREAM_EYE_TRANSITION_MS !== '0') {
+        // Different geometry: the engine aligns the old field to the new one,
+        // then republishes the SAME frame (same `at`) with its `from` — unless a
+        // newer frame has taken the eye in the meantime.
+        const seqAt = (this._eyePubSeq | 0) + 1;
+        (async () => {
+          const aligned = await this._fieldAt(prevShown, wireRec.width, wireRec.height);
+          if (!aligned || (this._eyePubSeq | 0) !== seqAt) return;
+          const alignedWire = (typeof this._recJsonSafe === 'function') ? this._recJsonSafe(aligned) : aligned;
+          if (!this._eyeRecsCompatible(alignedWire, wireRec)) return;
+          this._mindsEyeJson = JSON.stringify({ type: 'mindsEye', rec: wireRec, from: alignedWire, terms: rec.equation_count || 0, source, at: now });
+        })().catch(() => { /* no morph this time — the frame itself is already up */ });
+      }
+      // The tracker follows what is SHOWN, and the sequence lets the aligned
+      // `from` (above) know whether a newer frame has taken the eye since.
+      // DREAM_EYE_TRANSITION_MS=0 sends no `from`, i.e. the instant swap.
+      this._lastEyeWireRec = wireRec;
+      this._eyePubSeq = (this._eyePubSeq | 0) + 1;
+      this._mindsEyeJson = finalJson;
     } catch { /* non-fatal */ }
     if (this.clients && this.clients.size > 0) {
       const payload = JSON.stringify({ type: 'imagine', terms: rec.equation_count || 0, source, ts: now });
@@ -2096,72 +2131,11 @@ const SERVER_CHAT_MIXIN = {
     } catch { return false; }
   },
 
-  // MINDMOTION.3 — the calculated transition. Decodes both recs' sparse
-  // wavelet channels through the engine's OWN codec (transform.js exports),
-  // union-lerps coefficient values in field space (a coefficient absent from
-  // one side fades from/to zero), re-encodes each step in the same wire
-  // format, and publishes N intermediate frames before the final one.
-  // Bounded: 4 steps, a per-channel union cap (largest-|v| coefficients kept)
-  // so a step can never dwarf the real frames it sits between.
-  async _eyeFieldTransition(fromWire, toWire, finalJson, source, seq, tMs) {
-    const STEPS = 4;
-    const UNION_CAP = 60000;
-    const codec = this._msCodec || (this._msCodec = await import('../../js/brain/mindspace/transform.js'));
-    const names = Object.keys(toWire.channels);
-    // Decode once: name → Map(pos → realValue) per side.
-    const decode = (wire) => {
-      const out = {};
-      for (const n of names) {
-        const c = wire.channels[n];
-        if (!c) continue;
-        try {
-          const val = codec.chanVal(c);
-          const pos = codec.decodePositions(c, val.length);
-          const m = new Map();
-          for (let i = 0; i < val.length; i++) m.set(pos[i], val[i] * c.qscale);
-          out[n] = m;
-        } catch { /* channel undecodable → treated as empty */ }
-      }
-      return out;
-    };
-    const A = decode(fromWire), B = decode(toWire);
-    const dt = Math.max(60, Math.floor(tMs / (STEPS + 1)));
-    for (let k = 1; k <= STEPS; k++) {
-      if (this._eyePubSeq !== seq) return;   // a newer frame took the eye — abort
-      const t = k / (STEPS + 1);
-      const chans = {};
-      for (const n of names) {
-        const a = A[n] || new Map(), b = B[n] || new Map();
-        // union of coefficient positions, values lerped (absent side = 0)
-        const entries = [];
-        for (const [p, va] of a) entries.push([p, va + ((b.get(p) || 0) - va) * t]);
-        for (const [p, vb] of b) if (!a.has(p)) entries.push([p, vb * t]);
-        let kept = entries.filter(e => e[1] !== 0);
-        if (kept.length > UNION_CAP) {
-          kept.sort((x, y) => Math.abs(y[1]) - Math.abs(x[1]));
-          kept = kept.slice(0, UNION_CAP);
-        }
-        kept.sort((x, y) => x[0] - y[0]);
-        let maxAbs = 0;
-        for (const e of kept) { const v = Math.abs(e[1]); if (v > maxAbs) maxAbs = v; }
-        if (!kept.length || maxAbs === 0) { chans[n] = { keep: 0, qscale: 1, pos_enc: 'dv1', pos_b64: '', val_b64: '' }; continue; }
-        const qscale = maxAbs / 32767;
-        const q = new Int16Array(kept.length);
-        const idx = new Array(kept.length);
-        for (let i = 0; i < kept.length; i++) { idx[i] = kept[i][0]; q[i] = Math.max(-32767, Math.min(32767, Math.round(kept[i][1] / qscale))); }
-        chans[n] = {
-          keep: kept.length, qscale, pos_enc: 'dv1',
-          pos_b64: codec.bytesToB64(new Uint8Array(codec.encPos(idx))),
-          val_b64: codec.i16ToB64(q),
-        };
-      }
-      let terms = 0; for (const n of names) terms += (chans[n] && chans[n].keep) || 0;
-      const stepRec = { ...toWire, channels: chans, equation_count: terms };
-      try { this._mindsEyeJson = JSON.stringify({ type: 'mindsEye', rec: stepRec, terms, source: 'transition:' + source, at: Date.now() }); } catch { /* step best-effort */ }
-      await new Promise(r => setTimeout(r, dt));
-    }
-    if (this._eyePubSeq === seq) this._mindsEyeJson = finalJson;
-  },
+  // (The server-side MINDMOTION.3 step loop that lived here is gone: it
+  // published four coefficient-lerp frames ~320 ms apart to a page that polls
+  // every 6 s, so nobody ever saw them, and a lerp is a double exposure. The
+  // change now runs on the page from `from` → `rec` via the engine's
+  // `fieldChange`.)
 
   // LOOK UP → DRAW (ruled 2026-07-15: "she shall draw more often!!!! ... twn -
   // twenty lookups in a row and not one single drawing has been attempted").
@@ -2451,12 +2425,12 @@ const SERVER_CHAT_MIXIN = {
     try {
       const store = this._visualMemory;
       if (store && store.size > 0) {
-        const keys = Array.from(store.keys());
+        const keys = this._vmAllKeys();   // EYEPOOL — all of her memories, not the resident few
         // Bounded random probing rather than a full shuffle — the store is
         // allowed to reach 25,000 entries (DREAM_VM_CAP) and this runs on the
         // imagine tick, which must stay microseconds.
         for (let t = 0; t < 8; t++) {
-          const k = keys[Math.floor(Math.random() * keys.length)];
+          const k = keys[Math.floor(this._rand('eye-recall-pick') * keys.length)];
           if (typeof k !== 'string' || _recent(k)) continue;
           if (!(await _drawable(k))) continue;
           st.fromRecall++;
@@ -2916,7 +2890,8 @@ const SERVER_CHAT_MIXIN = {
     const seedStr = plan.subjects.map(s => s.word).join('|')
       + '|' + Math.round((this.arousal ?? 0.5) * 7)
       + '|' + Math.round((this.valence ?? 0.5) * 7)
-      + '|' + this._ownArtAttempt;
+      + '|' + this._ownArtAttempt
+      + '|' + this._semSignature();   // her cortex's state at this moment decides the piece
     const rnd = this._ownArtRng(seedStr);
     // ARTSTYLE — one style per artwork, mood-weighted, never her last one.
     // The whole piece (ground, every subject, label ink) rides the same hand.
@@ -2950,7 +2925,33 @@ const SERVER_CHAT_MIXIN = {
       // FORMBANK — the drawn form is a per-attempt PICK from the concept's
       // banked variants (verdict-weighted), possibly recolored from another
       // look or the definition — never automatically the merged average.
-      try { const picked = this._formPick(s.word, rnd); if (picked) s.schema = picked; } catch { /* the plan's schema stands */ }
+      // DRAWCOPY — the form is what she IMAGINES of it in this piece (her field
+      // fused with the others in it and with her own state), rebuilt into a new
+      // pose and proportion. Without any field of it, she rebuilds a form she
+      // has banked. Never the remembered trace pasted as it was seen.
+      try {
+        const base = this._formPick(s.word, rnd) || s.schema;
+        const sk = await this._skeletonFor(s.word) || (base && base.skeleton) || null;
+        if (base && sk) {
+          // INVENTION — her current thought picks another thing she knows the
+          // build of, and that thing's limbs graft onto this one.
+          let built = sk;
+          const others = [];
+          try { for (const k of this._vmAllKeys()) { if (k !== s.word) others.push(k); } } catch { /* none */ }
+          // She grafts only when her THOUGHT is on something else she knows:
+          // her semantic readout sits closer to another thing than to the
+          // subject she is drawing. No probability of mine decides it.
+          const ranked = (others.length ? this._thoughtRank(others.concat([s.word])) : null) || [];
+          const thoughtElsewhere = ranked.length > 1 && ranked[0] !== s.word;
+          if (thoughtElsewhere) {
+            for (const w of ranked.filter(x => x !== s.word).slice(0, 4)) {
+              const dsk = await this._skeletonFor(w);
+              if (dsk) { built = this._graftSkeleton(built, dsk, rnd); if (built.grafted) { built.graftedFrom = w; break; } }
+            }
+          }
+          s.schema = { ...base, skeleton: this._poseSkeleton(built, rnd) };
+        }
+      } catch { /* the plan's schema stands */ }
       const b0 = layout[i];
       const box = {
         cx: Math.min(0.85, Math.max(0.15, b0.cx + (rnd() - 0.5) * 0.06)),
@@ -3080,8 +3081,18 @@ const SERVER_CHAT_MIXIN = {
     const styleName = artStyle ? artStyle.name : 'poster';
     const label = 'canvas:own:' + contributed.map(s => s.word).join('+') + ':' + styleName;
     this._lastSketchLabel = label;
-    const known = contributed.map(s => `${s.word}(${s.schema ? (s.schema.looks || 1) + ' look' + ((s.schema.looks || 1) === 1 ? '' : 's') + ', ' + s.schema.parts.length + ' parts' : 'no schema — drawn from definition only'})`).join(', ');
-    try { console.log(`[OwnArt] ✍ HER OWN "${contributed.map(s => s.word).join(' + ')}"${plan.place ? ' in ' + plan.place.word : ''} in ${styleName.toUpperCase()} — ${finalStrokes.length} marks (revised: ${revised.erased} erased, ${revised.deduped} deduped), attempt #${this._ownArtAttempt}. Learned from: ${known}. No reference pixels used.`); } catch { /* nf */ }
+    // Each subject says how its form was MADE: built from its learned skeleton
+    // (with any limbs grafted from what her thought was on, and the pose she
+    // gave it) — or drawn from the definition.
+    const known = contributed.map(s => {
+      const sk = s.schema && s.schema.skeleton;
+      if (!s.schema) return `${s.word}(no schema — drawn from definition only)`;
+      if (!sk) return `${s.word}(no learned build — drawn from definition)`;
+      const g = sk.grafted ? `, ${sk.grafted} limb(s) grafted from ${sk.graftedFrom}` : '';
+      const p = sk.posed ? `, pose ×${sk.posed.sx}/${sk.posed.sy} turn ${sk.posed.rot} build ${sk.posed.thick}` : '';
+      return `${s.word}(built from ${sk.bones.length} bones${g}${p})`;
+    }).join(', ');
+    try { console.log(`[OwnArt] ✍ HER OWN "${contributed.map(s => s.word).join(' + ')}"${plan.place ? ' in ' + plan.place.word : ''} in ${styleName.toUpperCase()} — ${finalStrokes.length} marks (revised: ${revised.erased} erased, ${revised.deduped} deduped), attempt #${this._ownArtAttempt}. Forms: ${known}.`); } catch { /* nf */ }
     // ⛔ `schemaSubjects` exists because `subjects` DROPS `s.schema` on the way
     // out, and the invention gate in `_drawImagined` was therefore counting
     // definition-only subjects as things she "knows". That is how a scene built
@@ -3433,21 +3444,10 @@ const SERVER_CHAT_MIXIN = {
         out.push({ type: 'line', x0: x, y0: y, x1: x + lean, y1: y - hh, rgb: this._ownArtInk(ps, 0.45, rnd), a: 0.5 + 0.3 * depth });
       }
     }
-    // her remembered trace of the place, faint, full-canvas — the scene's read.
-    // COLORART — scenery strokes render in the colors the place really had
-    // there (per-stroke sampled), so a backdrop reads as a colored scene
-    // instead of monotone squiggles all over the page (judged live).
-    if (ps && Array.isArray(ps.trace) && ps.trace.length >= 10) {
-      const ink = this._artInk(style, ps, 0.5, rnd, null);
-      const jit = () => (rnd() - 0.5) * 0.006;
-      const hasC = Array.isArray(ps.traceRgb) && ps.traceRgb.length;
-      for (let i = 0; i < ps.trace.length; i++) {
-        const tp = ps.trace[i];
-        if (!Array.isArray(tp) || tp.length < 2) continue;
-        const rc = hasC ? ps.traceRgb[i] : null;
-        out.push({ type: 'poly', pts: tp.map(pp => [pp[0] + jit(), pp[1] + jit()]), rgb: Array.isArray(rc) ? rc : ink, a: 0.35, layer: 'backdrop' });
-      }
-    }
+    // ⛔ DRAWCOPY — the place's remembered TRACE used to be laid here, faint and
+    // full-canvas, behind everything: another reference's lines pasted under the
+    // subjects. Deleted. The space above (horizon, vanishing point, sky, ground,
+    // floor, texture) is generated, and the place's palette still colours it.
     for (const s of out) if (!s.layer) s.layer = 'backdrop';
     return out;
   },
@@ -3567,6 +3567,307 @@ const SERVER_CHAT_MIXIN = {
     return out;
   },
 
+  // ── SHE BUILDS WHAT SHE DRAWS; SHE DOES NOT REDRAW WHAT SHE SAW ────────────
+  // Measured: every finished piece used to BE the banked trace of one
+  // reference, redrawn stroke for stroke, and a scene was several such traces
+  // over another reference's trace. Two replacements were tried and judged on
+  // renders before this one: fusing her field with others' (a double
+  // exposure) and building masses from the schema's part grid (a scatter of
+  // ovals — the grid is a layout, not a body). What stands is the SKELETON
+  // below: she learns how a thing is built, and constructs it in her own pose.
+
+  // Bring a field to an exact W×H — reconstruct, resample, perceive again — so
+  // her eye can change one picture into the next across different aspects.
+  async _fieldAt(rec, W, H) {
+    if (!rec || !this.mindSpace) return null;
+    if (rec.width === W && rec.height === H) return rec;
+    const img = await this.mindSpace.imagine(rec, 0);
+    if (!img || !img.data || !img.width) return null;
+    const sw = img.width, sh = img.height, src = img.data;
+    const data = new Uint8ClampedArray(W * H * 4);
+    for (let y = 0; y < H; y++) {
+      const sy = Math.min(sh - 1, Math.floor((y + 0.5) * sh / H));
+      for (let x = 0; x < W; x++) {
+        const sx = Math.min(sw - 1, Math.floor((x + 0.5) * sw / W));
+        const o = (y * W + x) * 4, s = (sy * sw + sx) * 4;
+        data[o] = src[s]; data[o + 1] = src[s + 1]; data[o + 2] = src[s + 2]; data[o + 3] = 255;
+      }
+    }
+    return await this.mindSpace.perceive({ width: W, height: H, data });
+  },
+
+  // ── THE BUILD OF A THING: ITS SKELETON ─────────────────────────────────────
+  // What a person keeps after looking at a body is how it is BUILT: where the
+  // limbs run and how thick each one is. This reads that off a reconstructed
+  // field: the subject's mask (pixels that are not the backdrop), the distance
+  // from every inside pixel to the edge, the mask thinned to one-pixel
+  // centrelines, and those centrelines walked into BONES — polylines whose
+  // every point carries the body's half-width there. Normalised to [0,1].
+  _learnSkeleton(img) {
+    if (!img || !img.data || !img.width) return null;
+    const SW = img.width, SH = img.height, D = img.data;
+    const G = 96, gw = SW >= SH ? G : Math.max(16, Math.round(G * SW / SH)), gh = SW >= SH ? Math.max(16, Math.round(G * SH / SW)) : G;
+    const px = (gx, gy) => { const x = Math.min(SW - 1, Math.floor((gx + 0.5) * SW / gw)), y = Math.min(SH - 1, Math.floor((gy + 0.5) * SH / gh)); const o = (y * SW + x) * 4; return [D[o], D[o + 1], D[o + 2]]; };
+    // backdrop = median of an inset border band (the reconstruction pads the corners black)
+    const band = [];
+    for (let i = 0; i < 16; i++) { const t = i / 15; band.push(px(Math.round(t * (gw - 1)), 2), px(Math.round(t * (gw - 1)), gh - 3), px(2, Math.round(t * (gh - 1))), px(gw - 3, Math.round(t * (gh - 1)))); }
+    const bg = [0, 1, 2].map(c => { const v = band.map(b => b[c]).sort((a, b) => a - b); return v[v.length >> 1]; });
+    const M = new Uint8Array(gw * gh);
+    let inCount = 0;
+    for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
+      const c = px(x, y);
+      if (Math.abs(c[0] - bg[0]) + Math.abs(c[1] - bg[1]) + Math.abs(c[2] - bg[2]) > 70) { M[y * gw + x] = 1; inCount++; }
+    }
+    if (inCount < 20 || inCount > gw * gh * 0.92) return null;   // no subject, or no backdrop
+    // distance to the edge (two-pass chamfer)
+    const DT = new Float32Array(gw * gh);
+    for (let i = 0; i < DT.length; i++) DT[i] = M[i] ? 1e6 : 0;
+    for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) { const i = y * gw + x; if (!M[i]) continue; if (x > 0) DT[i] = Math.min(DT[i], DT[i - 1] + 1); if (y > 0) DT[i] = Math.min(DT[i], DT[i - gw] + 1); if (x > 0 && y > 0) DT[i] = Math.min(DT[i], DT[i - gw - 1] + 1.414); if (x < gw - 1 && y > 0) DT[i] = Math.min(DT[i], DT[i - gw + 1] + 1.414); if (x === 0 || y === 0) DT[i] = Math.min(DT[i], 1); }
+    for (let y = gh - 1; y >= 0; y--) for (let x = gw - 1; x >= 0; x--) { const i = y * gw + x; if (!M[i]) continue; if (x < gw - 1) DT[i] = Math.min(DT[i], DT[i + 1] + 1); if (y < gh - 1) DT[i] = Math.min(DT[i], DT[i + gw] + 1); if (x < gw - 1 && y < gh - 1) DT[i] = Math.min(DT[i], DT[i + gw + 1] + 1.414); if (x > 0 && y < gh - 1) DT[i] = Math.min(DT[i], DT[i + gw - 1] + 1.414); if (x === gw - 1 || y === gh - 1) DT[i] = Math.min(DT[i], 1); }
+    // thin to centrelines (Zhang-Suen)
+    const S = M.slice();
+    const at = (x, y) => (x >= 0 && y >= 0 && x < gw && y < gh) ? S[y * gw + x] : 0;
+    for (let changed = true, guard = 0; changed && guard < 200; guard++) {
+      changed = false;
+      for (let pass = 0; pass < 2; pass++) {
+        const kill = [];
+        for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
+          if (!S[y * gw + x]) continue;
+          const n = [at(x, y - 1), at(x + 1, y - 1), at(x + 1, y), at(x + 1, y + 1), at(x, y + 1), at(x - 1, y + 1), at(x - 1, y), at(x - 1, y - 1)];
+          const B = n.reduce((a, b) => a + b, 0);
+          if (B < 2 || B > 6) continue;
+          let A = 0; for (let k = 0; k < 8; k++) if (!n[k] && n[(k + 1) % 8]) A++;
+          if (A !== 1) continue;
+          if (pass === 0 ? (n[0] * n[2] * n[4] || n[2] * n[4] * n[6]) : (n[0] * n[2] * n[6] || n[0] * n[4] * n[6])) continue;
+          kill.push(y * gw + x);
+        }
+        for (const i of kill) S[i] = 0;
+        if (kill.length) changed = true;
+      }
+    }
+    // walk the centrelines into bones, splitting at junctions
+    const nb = (i) => { const x = i % gw, y = (i / gw) | 0, r = []; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; const X = x + dx, Y = y + dy; if (X >= 0 && Y >= 0 && X < gw && Y < gh && S[Y * gw + X]) r.push(Y * gw + X); } return r; };
+    const deg = new Uint8Array(gw * gh);
+    for (let i = 0; i < S.length; i++) if (S[i]) deg[i] = nb(i).length;
+    const used = new Set();
+    const key = (a, b) => a < b ? a + ':' + b : b + ':' + a;
+    const bones = [];
+    const starts = [];
+    for (let i = 0; i < S.length; i++) if (S[i] && deg[i] !== 2) starts.push(i);
+    for (let i = 0; i < S.length; i++) if (S[i] && deg[i] === 2) starts.push(i);   // closed loops last
+    for (const s of starts) {
+      for (const f of nb(s)) {
+        if (used.has(key(s, f))) continue;
+        const path = [s];
+        let prev = s, cur = f;
+        used.add(key(s, f));
+        while (true) {
+          path.push(cur);
+          if (deg[cur] !== 2) break;
+          const nx = nb(cur).find(q => q !== prev && !used.has(key(cur, q)));
+          if (nx === undefined) break;
+          used.add(key(cur, nx)); prev = cur; cur = nx;
+        }
+        if (path.length >= 3) bones.push(path);
+      }
+    }
+    if (!bones.length) return null;
+    // sample a colour along each bone; normalise; drop specks
+    const out = [];
+    let maxR = 0;
+    for (const b of bones) for (const i of b) maxR = Math.max(maxR, DT[i]);
+    for (const b of bones) {
+      const step = Math.max(1, Math.floor(b.length / 24));
+      const pts = [];
+      let r = 0, g = 0, bl = 0;
+      for (let k = 0; k < b.length; k += step) {
+        const i = b[k], x = i % gw, y = (i / gw) | 0;
+        pts.push([+((x + 0.5) / gw).toFixed(4), +((y + 0.5) / gh).toFixed(4), +(DT[i] / Math.max(gw, gh)).toFixed(4)]);
+        const c = px(x, y); r += c[0]; g += c[1]; bl += c[2];
+      }
+      const last = b[b.length - 1];
+      pts.push([+(((last % gw) + 0.5) / gw).toFixed(4), +((((last / gw) | 0) + 0.5) / gh).toFixed(4), +(DT[last] / Math.max(gw, gh)).toFixed(4)]);
+      const n = Math.ceil(b.length / step);
+      if (b.length < 4 && Math.max(...b.map(i => DT[i])) < maxR * 0.3) continue;
+      out.push({ pts, rgb: [Math.round(r / n), Math.round(g / n), Math.round(bl / n)] });
+    }
+    return out.length ? { bones: out, aspect: +(gw / gh).toFixed(3), bg } : null;
+  },
+
+  // She BUILDS the figure: a tapered volume around every bone (each point's
+  // width is the width she learned there), filled in the bone's colour, then
+  // her own outline around the union of those volumes. Nothing from the
+  // reference's lines is drawn.
+  _constructFromSkeleton(skel, box, rnd, style, skill) {
+    const out = [];
+    if (!skel || !Array.isArray(skel.bones) || !skel.bones.length) return out;
+    const jit = () => (rnd() - 0.5) * ((skill && skill.jitter) || 0.006);
+    let x0 = 1, y0 = 1, x1 = 0, y1 = 0;
+    for (const b of skel.bones) for (const p of b.pts) { x0 = Math.min(x0, p[0] - p[2]); x1 = Math.max(x1, p[0] + p[2]); y0 = Math.min(y0, p[1] - p[2]); y1 = Math.max(y1, p[1] + p[2]); }
+    const fw = Math.max(1e-3, x1 - x0), fh = Math.max(1e-3, y1 - y0);
+    const sc = Math.min(box.w / fw, box.h / fh);
+    const mx = (x) => box.cx + (x - (x0 + fw / 2)) * sc, my = (y) => box.cy + (y - (y0 + fh / 2)) * sc;
+    // each bone → a closed volume polygon (left offsets out, right offsets back)
+    const vols = [];
+    const volW = (skill && skill.volW) || 1;
+    for (const b of skel.bones) {
+      const P = b.pts.map(p => [mx(p[0]), my(p[1]), Math.max(0.004, p[2] * sc * volW)]);
+      if (P.length < 2) continue;
+      const L = [], R = [];
+      for (let k = 0; k < P.length; k++) {
+        const a = P[Math.max(0, k - 1)], c = P[Math.min(P.length - 1, k + 1)];
+        let tx = c[0] - a[0], ty = c[1] - a[1]; const tl = Math.hypot(tx, ty) || 1; tx /= tl; ty /= tl;
+        const r = P[k][2];
+        L.push([P[k][0] - ty * r, P[k][1] + tx * r]); R.push([P[k][0] + ty * r, P[k][1] - tx * r]);
+      }
+      // round caps at both ends
+      const cap = (p, dirx, diry, from) => { const pts = []; const base = Math.atan2(diry, dirx); for (let k = 1; k < 6; k++) { const t = base + from + (k / 6) * Math.PI; pts.push([p[0] + Math.cos(t) * p[2], p[1] + Math.sin(t) * p[2]]); } return pts; };
+      const e = P[P.length - 1], e0 = P[P.length - 2], s = P[0], s1 = P[1];
+      const poly = L.concat(cap(e, e[0] - e0[0], e[1] - e0[1], -Math.PI / 2), R.reverse(), cap(s, s[0] - s1[0], s[1] - s1[1], -Math.PI / 2));
+      vols.push({ poly, rgb: b.rgb });
+    }
+    const inPoly = (x, y, pl) => { let ins = false; for (let i = 0, j = pl.length - 1; i < pl.length; j = i++) { const xi = pl[i][0], yi = pl[i][1], xj = pl[j][0], yj = pl[j][1]; if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / ((yj - yi) || 1e-9) + xi)) ins = !ins; } return ins; };
+    const lum = (c) => 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
+    const paints = style.mass !== 'none';
+    let bodyLum = 60;
+    if (paints) { let s = 0; for (const v of vols) s += lum(v.rgb); bodyLum = s / Math.max(1, vols.length); }
+    const fillA = (skill && skill.fillA) || 0.92;
+    const shade = Math.max(0, (skill && skill.detailMul) || 1);
+    if (paints) {
+      for (const v of vols) out.push({ type: 'fill', pts: v.poly.map(p => [p[0] + jit(), p[1] + jit()]), rgb: v.rgb, a: style.mass === 'wash' ? 0.5 * fillA : fillA });
+      // SHADING — the half of each volume away from the light (lower-right)
+      // goes a little darker, by as much as her trained shading skill commits.
+      if (shade > 0.05) {
+        for (const v of vols) {
+          let cx = 0, cy = 0; for (const p of v.poly) { cx += p[0]; cy += p[1]; } cx /= v.poly.length; cy /= v.poly.length;
+          const sh = v.poly.map(p => [cx + (p[0] - cx) * 0.8 + 0.008, cy + (p[1] - cy) * 0.8 + 0.01]);
+          out.push({ type: 'fill', pts: sh, rgb: v.rgb.map(c => Math.round(c * 0.72)), a: Math.min(0.6, 0.22 * shade) });
+        }
+      }
+    }
+    const lineInk = bodyLum > 120 ? [28, 24, 32] : [232, 228, 236];
+    const lw = style.outlineW > 0 ? Math.min(style.outlineW, 0.007) * ((skill && skill.traceW) || 1) : undefined;
+    for (let i = 0; i < vols.length; i++) {
+      let run = [];
+      const flush = () => { if (run.length >= 2) out.push({ type: 'poly', pts: run, rgb: lineInk, w: lw, a: style.outlineA || 1 }); run = []; };
+      const pl = vols[i].poly;
+      for (let k = 0; k <= pl.length; k++) {
+        const p = pl[k % pl.length];
+        let covered = false;
+        for (let j = 0; j < vols.length && !covered; j++) if (j !== i && inPoly(p[0], p[1], vols[j].poly)) covered = true;
+        if (covered) flush(); else run.push([p[0] + jit(), p[1] + jit()]);
+      }
+      flush();
+    }
+    return out;
+  },
+
+  // Her cortex's signature at this moment — the live semantic-region spike
+  // pattern folded to an integer. Seeding a piece from this means her state
+  // decides it: the same words in a different state are a different drawing.
+  _semSignature() {
+    try {
+      const cl = this.cortexCluster, sem = cl && cl.regions && cl.regions.sem, sp = cl && cl.lastSpikes;
+      if (!sem || !sp) return 0;
+      let h = 2166136261 >>> 0;
+      for (let i = sem.start; i < sem.end; i++) if (sp[i]) { h ^= (i - sem.start); h = Math.imul(h, 16777619) >>> 0; }
+      return h;
+    } catch { return 0; }
+  },
+
+  // Which of the things she knows is her mind on right now? The cosine between
+  // her semantic readout (produced by her trained weights) and each word's
+  // embedding — highest first. Her thought, not a dice roll, picks partners.
+  _thoughtRank(words) {
+    try {
+      const cl = this.cortexCluster, emb = this.sharedEmbeddings;
+      // No readout = no thought to rank by — say so (null), never pretend an
+      // unsorted list is an ordering her cortex produced.
+      if (!cl || !emb || typeof cl.getSemanticReadout !== 'function' || typeof emb.getEmbedding !== 'function') return null;
+      const r = cl.getSemanticReadout(emb);
+      if (!r || !r.length) return null;
+      const cos = (a, b) => { let d = 0, na = 0, nb = 0; const n = Math.min(a.length, b.length); for (let i = 0; i < n; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; } return d / (Math.sqrt(na * nb) || 1); };
+      return words.map(w => ({ w, c: cos(r, emb.getEmbedding(w) || []) })).sort((a, b) => b.c - a.c).map(x => x.w);
+    } catch { return null; }
+  },
+
+  // The skeleton of a subject she has seen: from its schema, or read now off
+  // the field she holds (schemas banked before skeletons existed).
+  async _skeletonFor(word) {
+    const store = (typeof this._vmStore === 'function') ? this._vmStore() : null;
+    const e = store && store.get(word);
+    if (!e) return null;
+    if (e.schema && e.schema.skeleton) return e.schema.skeleton;
+    if (e.schema && e.schema.skeleton === null) return null;   // already looked: no subject in it
+    if (!e.rec || !this.mindSpace) return null;
+    const img = await this.mindSpace.imagine(e.rec, 0);
+    const sk = this._learnSkeleton(img);
+    // Recorded either way: a skeleton, or `null` = "this look held no subject",
+    // which is the evidence the drawability judge reads.
+    if (e.schema) { e.schema.skeleton = sk || null; try { this._vmMarkDirty(word, false); } catch { /* persists next time */ } }
+    return sk;
+  },
+
+  // INVENTION — graft limbs from another thing she knows onto this one, at the
+  // joints where this one's limbs attach, scaled to the limb they replace.
+  _graftSkeleton(skel, donor, rnd) {
+    if (!skel || !donor || !Array.isArray(skel.bones) || !Array.isArray(donor.bones)) return skel;
+    const len = (b) => { let s = 0; for (let i = 1; i < b.pts.length; i++) s += Math.hypot(b.pts[i][0] - b.pts[i - 1][0], b.pts[i][1] - b.pts[i - 1][1]); return s; };
+    const joinedAt = (bones, bi, p) => bones.some((o, oi) => oi !== bi && o.pts.some(q => Math.hypot(p[0] - q[0], p[1] - q[1]) < 0.035));
+    const limbs = (bones) => bones.map((b, bi) => {
+      const s = joinedAt(bones, bi, b.pts[0]), e = joinedAt(bones, bi, b.pts[b.pts.length - 1]);
+      return (s !== e) ? { bi, rootAtEnd: e } : null;
+    }).filter(Boolean);
+    const mine = limbs(skel.bones), theirs = limbs(donor.bones);
+    if (!mine.length || !theirs.length) return skel;
+    const bones = skel.bones.map(b => ({ ...b, pts: b.pts.map(p => p.slice()) }));
+    const n = Math.min(mine.length, 1 + Math.floor(rnd() * 2));
+    const grafted = [];
+    for (let g = 0; g < n; g++) {
+      const m = mine[Math.floor(rnd() * mine.length)], t = theirs[Math.floor(rnd() * theirs.length)];
+      const mb = skel.bones[m.bi], tb = donor.bones[t.bi];
+      const mPts = m.rootAtEnd ? mb.pts.slice().reverse() : mb.pts;   // root first
+      const tPts = t.rootAtEnd ? tb.pts.slice().reverse() : tb.pts;
+      const k = len({ pts: mPts }) / Math.max(1e-3, len({ pts: tPts }));
+      const root = mPts[0], troot = tPts[0];
+      bones[m.bi] = { pts: tPts.map(p => [+(root[0] + (p[0] - troot[0]) * k).toFixed(4), +(root[1] + (p[1] - troot[1]) * k).toFixed(4), +(p[2] * k).toFixed(4)]), rgb: tb.rgb };
+      grafted.push(m.bi);
+    }
+    return { ...skel, bones, grafted: grafted.length };
+  },
+
+  // Pose a skeleton: bend every bone through a smooth field, turn and stretch
+  // the whole figure, and let each limb swing a little about where it joins.
+  _poseSkeleton(skel, rnd) {
+    if (!skel || !Array.isArray(skel.bones)) return skel;
+    let cx = 0, cy = 0, n = 0;
+    for (const b of skel.bones) for (const p of b.pts) { cx += p[0]; cy += p[1]; n++; }
+    cx /= n; cy /= n;
+    const sx = 0.85 + 0.3 * rnd(), sy = 0.85 + 0.3 * rnd(), rot = (rnd() - 0.5) * 0.4;
+    const thick = 0.8 + 0.45 * rnd();
+    const cr = Math.cos(rot), sr = Math.sin(rot);
+    // A bone with exactly ONE end joined to the rest of the body is a limb: it
+    // swings about that joint, so it stays attached. A bone joined at both ends
+    // (the trunk) or at neither does not swing.
+    const near = (p, other) => other.pts.some(q => Math.hypot(p[0] - q[0], p[1] - q[1]) < 0.035);
+    const bones = skel.bones.map((b, bi) => {
+      const s0 = b.pts[0], s1 = b.pts[b.pts.length - 1];
+      const startJoined = skel.bones.some((o2, oi) => oi !== bi && near(s0, o2));
+      const endJoined = skel.bones.some((o2, oi) => oi !== bi && near(s1, o2));
+      const isLimb = startJoined !== endJoined;
+      const swing = isLimb ? (rnd() - 0.5) * 0.7 : 0, cs = Math.cos(swing), ss = Math.sin(swing);
+      const o = isLimb && endJoined ? s1 : s0;
+      return { ...b, pts: b.pts.map(p => {
+        let u = p[0] - o[0], v = p[1] - o[1];
+        const u2 = u * cs - v * ss, v2 = u * ss + v * cs;
+        let X = (o[0] + u2 - cx) * sx, Y = (o[1] + v2 - cy) * sy;
+        const rx = X * cr - Y * sr, ry = X * sr + Y * cr;
+        return [+(cx + rx).toFixed(4), +(cy + ry).toFixed(4), +(p[2] * thick).toFixed(4)];
+      }) };
+    });
+    return { ...skel, bones, posed: { sx: +sx.toFixed(2), sy: +sy.toFixed(2), rot: +rot.toFixed(2), thick: +thick.toFixed(2) } };
+  },
+
   // ── PAINT.5 — HER TRAINED TECHNIQUE. The hand has tunable parameters; practice
   // (below) nudges them per concept and keeps only what measurably improves the
   // resemblance of her drawing to her remembered percept. Defaults are exactly
@@ -3581,7 +3882,11 @@ const SERVER_CHAT_MIXIN = {
     // not frozen in a style constant. Starts at 1.0 (the untrained hand already
     // draws a real drawing) and the practice loop can take it to 2.5×, at which
     // point she is redrawing essentially everything she remembers.
-    return { jitter: 0.006, underA: 0.55, traceW: 1.0, keepP: 0.85, detailMul: 1.0, budgetMul: 1.0 };
+    // DRAWCOPY — the construction's own skills, trained the same way: `volW`
+    // (how wide she builds each volume against the width she learned), `fillA`
+    // (how solidly she paints it), `traceW` now weights her OUTLINE, and
+    // `detailMul` sets how much shading she puts inside each volume.
+    return { jitter: 0.006, underA: 0.55, traceW: 1.0, keepP: 0.85, detailMul: 1.0, budgetMul: 1.0, volW: 1.0, fillA: 0.92 };
   },
   _skillFor(word) {
     const d = this._skillDefaults();
@@ -3938,6 +4243,8 @@ const SERVER_CHAT_MIXIN = {
     // practice needs both halves of the judgment: her memory of the shape
     // (schema with the trace) and her memory of the look (the percept vector)
     if (!e || !e.schema || !Array.isArray(e.schema.trace) || e.schema.trace.length < 10 || !Array.isArray(e.p) || !e.p.length) return null;
+    // DRAWCOPY — she practises the way she now draws: from the skeleton.
+    if (!e.schema.skeleton) { try { await this._skeletonFor(key); } catch { /* the old hand is practised instead */ } }
     const GAP = Number(process.env.DREAM_PRACTICE_GAP_MS) >= 0 ? Number(process.env.DREAM_PRACTICE_GAP_MS) : 1800000;
     if (e.skill && e.skill.at && (Date.now() - e.skill.at) < GAP) return null;   // she practiced this recently
     const ITERS = Number(process.env.DREAM_PRACTICE_ITERS) > 0 ? Number(process.env.DREAM_PRACTICE_ITERS) : 5;
@@ -3967,6 +4274,9 @@ const SERVER_CHAT_MIXIN = {
       // drawing resemble the subject more — which is the honest way for an
       // ability to grow rather than being handed to her as a constant.
       budgetMul: [0.6, 2.5, 0.25],
+      // DRAWCOPY — the skills of building a figure from its skeleton.
+      volW:      [0.6, 1.5, 0.08],
+      fillA:     [0.5, 1.0, 0.06],
     };
     const params = { ...this._skillDefaults(), ...(e.skill && e.skill.params) };
     const sessions = (e.skill && e.skill.sessions) || 0;
@@ -4046,6 +4356,19 @@ const SERVER_CHAT_MIXIN = {
     // candidate when the practice loop itself is scoring a nudge).
     const skill = skillOverride || this._skillFor(word);
     if (style.scale !== 1) box = { cx: box.cx, cy: box.cy, w: box.w * style.scale, h: box.h * style.scale };
+    // DRAWCOPY — with a skeleton she CONSTRUCTS the figure from its build; the
+    // remembered trace below is never redrawn when she knows how the thing is
+    // built. The trace path stays only for a schema with no readable build.
+    if (schema && schema.skeleton && Array.isArray(schema.skeleton.bones) && schema.skeleton.bones.length) {
+      const built = this._constructFromSkeleton(schema.skeleton, box, rnd, style, skill);
+      if (built.length) return built;
+    }
+    // No build she can read → the definition recipe, or honestly nothing. The
+    // trace-redraw layers further down are no longer reached from here.
+    if (typeof this._defDrivenStrokes === 'function') {
+      try { const defArt = this._defDrivenStrokes(word, box, rnd, style); if (defArt && defArt.length) return defArt; } catch { /* nothing below */ }
+    }
+    return out;
     // NO SCHEMA — she has never seen it. DRAW FROM THE DEFINITION (the form,
     // fill color and attached parts come straight out of what the word MEANS —
     // any definition she has been taught is a drawing recipe), or DON'T DRAW.
@@ -4712,7 +5035,13 @@ const SERVER_CHAT_MIXIN = {
     try {
       const store = (typeof this._vmStore === 'function') ? this._vmStore() : null;
       if (store && typeof store.keys === 'function') {
-        const keys = Array.from(store.keys());
+        // EYEPOOL — half the scan is her newest shapes, half is drawn from
+        // EVERYTHING she holds, so old memories come back into her imagination
+        // instead of the pool being only ever the newest two dozen.
+        const all = this._vmAllKeys();
+        const keys = [];
+        for (let j = 0; j < SCAN / 2 && j < all.length; j++) keys.push(all[Math.floor(this._rand('imagine-pool-sample') * all.length)]);
+        for (let j = Math.max(0, all.length - SCAN / 2); j < all.length; j++) keys.push(all[j]);
         for (let i = keys.length - 1, scanned = 0; i >= 0 && scanned < SCAN && learnedAdded < KEEP; i--, scanned++) {
           const k = keys[i];
           if (!k || cand.includes(k)) continue;
@@ -4963,6 +5292,17 @@ const SERVER_CHAT_MIXIN = {
     // ARTJUDGE 🚫 — the operator taught her this word is not a drawing
     // subject; that verdict outranks every other judge.
     try { if (this._artBanSet().has(w)) return false; } catch { /* ban set best-effort */ }
+    // HER OWN EXPERIENCE OUTRANKS THE DICTIONARY. When she has LOOKED at this
+    // word and the look held no subject — nothing her eye could find a body
+    // in, so no skeleton was learned — that is what the word turned out to be
+    // for her, whatever a lexicon says about its rarest sense. `skeleton ===
+    // null` is that recorded verdict; an absent field (a schema banked before
+    // skeletons existed) is no evidence either way.
+    try {
+      const st = (typeof this._vmStore === 'function') ? this._vmStore() : null;
+      const ev = st && st.get(w);
+      if (ev && ev.schema && Object.prototype.hasOwnProperty.call(ev.schema, 'skeleton') && ev.schema.skeleton === null) return false;
+    } catch { /* store unreadable — the other judges stand */ }
     // STYLEBLEED (2026-08-29) — reported: one recurring full-screen neon-green
     // reference kept being looked up and then tainted every image it was
     // combined with. SELF-CONTAMINATION guard, by PROVENANCE not
@@ -5089,7 +5429,7 @@ const SERVER_CHAT_MIXIN = {
     if (arousal < AROUSAL_MIN) return;
     const GAP = Number(process.env.DREAM_SPONTANEOUS_IMG_GAP_MS) || 300000; // ~5 min
     if (this._lastSpontaneousImgAt && (now - this._lastSpontaneousImgAt) < GAP) return;
-    if (Math.random() > 0.15) return;   // rare even when eligible
+    if (this._rand('spontaneous-image') > 0.15) return;   // rare even when eligible
     this._lastSpontaneousImgAt = now;
     // ⛔⛔ NO FALLBACKS (2026-09-02) — THE SUBJECT NOW COMES FROM WHAT SHE WAS
     // ACTUALLY THINKING, not from a random draw.
@@ -5223,7 +5563,7 @@ const SERVER_CHAT_MIXIN = {
           };
           // bounded scoring pool so cost stays O(POOL·dim) at any vocab size
           const POOL = 300;
-          const sample = pool.length <= POOL ? pool : Array.from({ length: POOL }, () => pool[Math.floor(Math.random() * pool.length)]);
+          const sample = pool.length <= POOL ? pool : Array.from({ length: POOL }, () => pool[Math.floor(this._rand('image-prompt-sample') * pool.length)]);
           const picked = new Set(reqWords);
           for (const tok of reqWords) {
             const tv = emb.getEmbedding(tok);
@@ -5429,7 +5769,7 @@ const SERVER_CHAT_MIXIN = {
       // portrait; ANY scene/action/wear ask frames full-body so her whole
       // life is in the picture, not just her face.
       const framing = scene ? 'full body photo of a ' : 'selfie of a ';
-      const outfit = hasWear ? '' : ', ' + WARDROBE[Math.floor(Math.random() * WARDROBE.length)];
+      const outfit = hasWear ? '' : ', ' + WARDROBE[Math.floor(this._rand('self-image-wardrobe') * WARDROBE.length)];
       return framing + CORE + outfit
         + (scene ? ', ' + scene : '')
         + ', ' + TAIL;
@@ -6051,7 +6391,7 @@ const SERVER_CHAT_MIXIN = {
       }
     }
     if (candidates.length > 0) {
-      return candidates[Math.floor(Math.random() * candidates.length)];
+      return candidates[Math.floor(this._rand('thought-candidate-pick') * candidates.length)];
     }
     // Pre-cell SEED-phase fallback. `wordBucketWords_<subject>` is
     // populated by `_teachWordEmissionDirect` Hebbian fires which only
@@ -6070,7 +6410,7 @@ const SERVER_CHAT_MIXIN = {
     const taught = cluster._definitionTaughtWords;
     if (taught instanceof Set && taught.size > 0) {
       const arr = Array.from(taught);
-      return arr[Math.floor(Math.random() * arr.length)];
+      return arr[Math.floor(this._rand('thought-candidate-pick') * arr.length)];
     }
     return null;
   },
@@ -6137,7 +6477,7 @@ const SERVER_CHAT_MIXIN = {
     // Below 50 trained words = early curriculum, single-word burst
     // matches operator's expectation of "she's still learning words".
     if (candidates.length < 50) {
-      return candidates[Math.floor(Math.random() * candidates.length)];
+      return candidates[Math.floor(this._rand('thought-candidate-pick') * candidates.length)];
     }
     // 114.19fl.2 — when ≥50 words trained AND composeSentence available,
     // prefer pure equational emergence over random word picks. Pass
@@ -6168,9 +6508,9 @@ const SERVER_CHAT_MIXIN = {
     // brain ticks (pure embedding cosine — the loop-safe budget the cap requires).
     // The candidate pool sampled for scoring is capped so cost stays bounded
     // (O(POOL·dim)) regardless of how large trained vocab grows.
-    const lengthPick = Math.random();
+    const lengthPick = this._rand('thought-length');
     const wordCount = lengthPick < 0.5 ? 2 : (lengthPick < 0.85 ? 3 : 4);
-    const seed = candidates[Math.floor(Math.random() * candidates.length)];
+    const seed = candidates[Math.floor(this._rand('thought-candidate-pick') * candidates.length)];
     const phrase = [seed];
     const picked = new Set(phrase);
     const emb = this.sharedEmbeddings;
@@ -6178,7 +6518,7 @@ const SERVER_CHAT_MIXIN = {
       const POOL = 200;
       const pool = [];
       for (let i = 0; i < Math.min(POOL, candidates.length); i++) {
-        pool.push(candidates[Math.floor(Math.random() * candidates.length)]);
+        pool.push(candidates[Math.floor(this._rand('thought-candidate-pick') * candidates.length)]);
       }
       const cos = (a, b) => {
         let d = 0, na = 0, nb = 0; const n = Math.min(a.length, b.length);
@@ -6196,7 +6536,7 @@ const SERVER_CHAT_MIXIN = {
         if (scored.length === 0) break;
         scored.sort((a, b) => b.s - a.s);
         // top-3 jitter so it's coherent but not deterministic every tick
-        const pick = scored[Math.floor(Math.random() * Math.min(3, scored.length))];
+        const pick = scored[Math.floor(this._rand('thought-candidate-pick') * Math.min(3, scored.length))];
         phrase.push(pick.w);
         picked.add(pick.w);
         const c2 = new Float32Array(centroid.length);
@@ -6319,7 +6659,7 @@ const SERVER_CHAT_MIXIN = {
     // Clamp final probability per tick
     p = Math.max(0.02, Math.min(0.5, p));
 
-    return Math.random() < p;
+    return this._rand('inner-thought-emit') < p;
   },
 
   /**
@@ -6399,7 +6739,7 @@ const SERVER_CHAT_MIXIN = {
     if (this._pendingQuestionConcept) return false;   // one open question at a time
     // Base curiosity ~12%, lifted by arousal (engaged → more inquisitive).
     const drive = 0.12 + 0.18 * Math.max(0, Math.min(1, this.arousal ?? 0.5));
-    if (Math.random() > drive) return false;
+    if (this._rand('curious-question') > drive) return false;
     const concept = this._pickEpistemicGap();
     if (!concept) return false;
     let composed = null;
@@ -6456,7 +6796,7 @@ const SERVER_CHAT_MIXIN = {
     if (taught instanceof Set && taught.size > 0) {
       const arr = Array.from(taught);
       const recentStart = Math.floor(arr.length * 0.75);   // most-recent quarter
-      const idx = recentStart + Math.floor(Math.random() * Math.max(1, arr.length - recentStart));
+      const idx = recentStart + Math.floor(this._rand('epistemic-gap-pick') * Math.max(1, arr.length - recentStart));
       const word = arr[Math.min(idx, arr.length - 1)];
       if (typeof word === 'string' && word.length > 1) return word;
     }
@@ -6491,7 +6831,7 @@ const SERVER_CHAT_MIXIN = {
     const savedGateSubject = curric ? curric._currentGateSubject : null;
     if (curric) curric._currentGateSubject = null;
     try {
-      if (Math.random() < 0.5 && curric && typeof curric._emitDefinition === 'function') {
+      if (this._rand('concept-thought-define') < 0.5 && curric && typeof curric._emitDefinition === 'function') {
         try {
           const t = await curric._emitDefinition(w, { teach: false, timeoutMs: 3000 });
           const text = t ? String(t).trim() : '';
@@ -6637,7 +6977,7 @@ const SERVER_CHAT_MIXIN = {
           } else if (this.tier3Store && this.tier3Store._anchors instanceof Map && this.tier3Store._anchors.size > 0) {
             // Fallback to direct map access if sampleAnchor not exposed
             const keys = [...this.tier3Store._anchors.keys()];
-            const k = keys[Math.floor(Math.random() * keys.length)];
+            const k = keys[Math.floor(this._rand('inner-seed-pick') * keys.length)];
             const a = this.tier3Store._anchors.get(k);
             if (a && a.pattern) {
               pattern = a.pattern;
@@ -6663,7 +7003,7 @@ const SERVER_CHAT_MIXIN = {
             // Bias toward the most recent half so contemplation
             // reflects current training, not bootstrap vocabulary.
             const recentStart = Math.floor(arr.length / 2);
-            const idx = recentStart + Math.floor(Math.random() * (arr.length - recentStart));
+            const idx = recentStart + Math.floor(this._rand('inner-seed-pick') * (arr.length - recentStart));
             const word = arr[idx];
             if (typeof word === 'string' && word.length > 0) {
               label = `thinking about ${word}`;

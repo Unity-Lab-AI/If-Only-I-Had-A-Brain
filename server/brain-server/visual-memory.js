@@ -288,6 +288,32 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     }
     return this._visualMemory;
   },
+  // EVERY concept she holds — on disk and resident — not only the resident ones.
+  //
+  // ⛔ `store.keys()` lists RESIDENT entries only: restore loads the newest rows
+  // up to the byte budget (a few hundred full fields) and the rest page in on
+  // demand. Every picker for her mind's eye enumerated `keys()`, so her eye
+  // could only ever reach the newest few hundred memories — and the ones she
+  // showed stayed resident BECAUSE she showed them, narrowing the pool further
+  // every tick. That was the "same set of images" loop.
+  // The disk key list is one indexed column read, cached for a minute.
+  _vmAllKeys() {
+    const store = this._vmStore();
+    const now = Date.now();
+    if (!this._vmAllKeysCache || now - this._vmAllKeysAt > 60000) {
+      let disk = [];
+      try {
+        const db = this._vmDb();
+        if (db) disk = db.prepare('SELECT key FROM concepts').all().map(r => r.key);
+      } catch { disk = []; }
+      this._vmAllKeysCache = disk;
+      this._vmAllKeysAt = now;
+    }
+    const seen = new Set(this._vmAllKeysCache);
+    const out = this._vmAllKeysCache.slice();
+    for (const k of store.keys()) if (!seen.has(k)) out.push(k);   // resident, not flushed yet
+    return out;
+  },
   // Resident cost of one entry. The coefficient payload dominates by orders of
   // magnitude, so it is measured and the skeleton is estimated — an exact
   // JSON.stringify per entry would cost more than the accounting is worth.
@@ -1101,7 +1127,11 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
   // horse: legs-under-body, long neck, big mass, tail behind — not a photograph.
   //
   // Cheap: it runs on strokes she already traced, and stores plain numbers.
-  async _learnShapeSchema(concept, rec) {
+  // `opts.store === false` reads the schema out of a field WITHOUT merging it
+  // into her memory of the concept. Drawing uses that for a field she IMAGINED:
+  // what she imagines is not a look, and banking it as one would teach her
+  // that the thing looks like her own invention.
+  async _learnShapeSchema(concept, rec, opts = {}) {
     if (!rec || !this.mindSpace || typeof this.mindSpace.traceLineArt !== 'function') return null;
     const key = (this._vmHeadWord(concept) || String(concept || '').toLowerCase().trim());
     if (!key) return null;
@@ -1323,6 +1353,10 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       outlines,
       trace,
       traceRgb,   // COLORART — per-stroke sampled colors, aligned with trace by index
+      // DRAWCOPY — how the thing is BUILT: bones with the body's half-width at
+      // every point and a colour per bone. Drawing constructs from this; the
+      // trace above is kept as what she saw, never redrawn onto the page.
+      skeleton: (_img && typeof this._learnSkeleton === 'function') ? this._learnSkeleton(_img) : null,
       palette,
       aspect: +(bw / bh).toFixed(3),
       frame: { x: +x0.toFixed(3), y: +y0.toFixed(3), w: +bw.toFixed(3), h: +bh.toFixed(3) },
@@ -1333,6 +1367,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // Merge with any prior schema for this concept — a SECOND look refines the
     // averages instead of replacing them (that is what looking twice is for), and
     // `looks` records how well she actually knows the thing's shape.
+    if (opts.store === false) { schema.looks = 0; schema.imagined = true; return schema; }
     try {
       const store = this._vmStore();
       const e = store.get(key);
@@ -1362,6 +1397,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
           // PAINT.2 — a fresh trace's contours win (more information than an old
           // one), but never lose contours a prior look banked if this trace was thin.
           if ((!schema.outlines || !schema.outlines.length) && Array.isArray(prev.outlines) && prev.outlines.length) schema.outlines = prev.outlines;
+          if (!schema.skeleton && prev.skeleton) schema.skeleton = prev.skeleton;
         }
         // FORMBANK (2026-08-21) — the capability asked for: having seen two
         // differently-coloured instances of a subject in one pose, she can draw
