@@ -362,7 +362,8 @@ impl CudaEngine {
             // v0.3.48 — the kernel's three trailing arguments (tunnelling, entanglement).
             .arg(&q.tunnel_a)
             .arg(&q.tunnel_kappa)
-            .arg(&q.entangle_rho);
+            .arg(&q.entangle_rho)
+            .arg(&q.refract_beta);
         unsafe { b.launch(launch_cfg) }.map_err(|e| format!("lif launch: {e}"))?;
 
         // Spike counts (left, right) into a fresh zeroed pair.

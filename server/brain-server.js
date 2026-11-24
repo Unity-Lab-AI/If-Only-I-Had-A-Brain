@@ -8393,6 +8393,9 @@ class ServerBrain {
                   const out = {};
                   if (a > 0) { out.tunnelA = a; out.tunnelKappa = k; }
                   if (rho > 0) { out.entangleRho = rho; out.half = Math.floor((CLUSTER_SIZES[name] || 0) / 2); }
+                  // REFRACTORINESS (docs §2) — β = 0.016 derived; 0 = off; pre-0.3.50 donors ignore it.
+                  const beta = Number.isFinite(+process.env.DREAM_REFRACT_BETA) && process.env.DREAM_REFRACT_BETA !== undefined ? +process.env.DREAM_REFRACT_BETA : 0.016;
+                  if (beta > 0) out.refractBeta = beta;
                   return out;
                 })(),
               };
@@ -15304,6 +15307,10 @@ wss.on('connection', (ws, req) => {
             // restores the old push.
             const _replicaSync = process.env.DREAM_DF7_REPLICA_SYNC === '1';
             console.log(`[${id}] GPU compute client registered — joins the POOL and holds the clusters the partition gives it${_replicaSync ? ' + a FULL brain replica (DREAM_DF7_REPLICA_SYNC=1)' : ''} (pool: ${brain._gpuClients.size}).`);
+            // REJOIN (donor 0.3.50) — a slice holder back inside its grace window,
+            // still holding its rows, takes its old place with no re-upload.
+            try { if (typeof brain._tryReattachSlice === 'function') brain._tryReattachSlice(ws, Array.isArray(msg.heldMatrices) ? msg.heldMatrices : []); }
+            catch (e) { console.warn(`[Pool] rejoin check failed (non-fatal): ${e && e.message}`); }
             if (_replicaSync) {
             // DF.7 — make the new donor a REAL replica that SHARES compute,
             // not an idle hot-standby. Replays cluster init + every tracked

@@ -21,7 +21,8 @@ struct Params {
   tunnelA: f32,
   tunnelKappa: f32,
   entangleRho: f32,
-  _pad0: u32,
+  // v0.3.50 — refractoriness: each spike lowers y by refractBeta (0 = off).
+  refractBeta: f32,
   _pad1: u32,
   _pad2: u32,
 };
@@ -99,7 +100,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   let jitter = r * 0.5 * params.noiseAmp * 0.0001;
 
   var xNext = ALPHA / (1.0 + xN * xN) + yN;
-  let yNext = yN - MU * (xN - sigmaEff) + jitter;
+  var yNext = yN - MU * (xN - sigmaEff) + jitter;
 
   var spk = xN <= 0.0 && xNext > 0.0;
   // TUNNELLING (v0.3.48) — a neuron staying below threshold crosses with the
@@ -109,6 +110,9 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let u = randomFloat(params.seed ^ 0x9e3779b9u, i) * 0.5 + 0.5;
     if (u < pT) { xNext = 0.01; spk = true; }
   }
+  // REFRACTORINESS (v0.3.50) — spike-triggered adaptation on the slow variable:
+  // a neuron that just fired starts its recovery from a lower y (docs §2).
+  if (spk && params.refractBeta > 0.0) { yNext = yNext - params.refractBeta; }
 
   state[i] = vec2<f32>(xNext, yNext);
   if (spk) {

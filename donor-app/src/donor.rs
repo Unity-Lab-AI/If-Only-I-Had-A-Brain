@@ -439,6 +439,21 @@ impl WorkQueue {
 /// This binary's own version, from Cargo — never hand-maintained.
 pub const MY_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+/// v0.3.50 — THE CARD KEEPS WHAT IT HOLDS ACROSS A RECONNECT. A session that
+/// ends cleanly (a dropped link, not a GPU hang) hands its engine — every
+/// resident matrix — back here, and the next session reuses it instead of
+/// building a fresh engine. Its gpu_register names what it still holds
+/// (`heldMatrices`), so a brain that kept this card's place can re-attach it
+/// without re-uploading. Measured cost it removes: a 3 s tunnel reset turned
+/// into minutes of re-upload because the engine (and its VRAM) was rebuilt.
+pub struct KeptEngine {
+    engine: MultiEngine,
+    slice_base: HashMap<String, (u32, u32)>,
+    cluster_regions: HashMap<String, HashMap<String, crate::protocol::Region>>,
+    gpu_indices: Vec<usize>,
+}
+static KEPT_ENGINE: Mutex<Option<KeptEngine>> = Mutex::new(None);
+
 /// Is `candidate` STRICTLY newer than `current`? Semver-ish numeric compare over
 /// dot-separated parts.
 ///
@@ -783,7 +798,16 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
     // here would pin the reconnect supervisor on its very first retry after a
     // GPU hang. On timeout: crumb + Err → the supervisor keeps retrying on its
     // backoff and connects the moment the driver recovers.
-    let engine = {
+    // A kept engine from the session that just dropped — same cards only.
+    let kept: Option<KeptEngine> = KEPT_ENGINE.lock().ok().and_then(|mut k| k.take()).filter(|k| k.gpu_indices == indices);
+    let (kept_slice_base, kept_cluster_regions) = match &kept {
+        Some(k) => (k.slice_base.clone(), k.cluster_regions.clone()),
+        None => (HashMap::new(), HashMap::new()),
+    };
+    let engine = if let Some(k) = kept {
+        println!("[donor] reusing the engine from the last session — {} matrix(es) still resident, no re-upload needed if the brain kept this card's place.", k.engine.held_matrices().len());
+        k.engine
+    } else {
         let (etx, erx) = tokio::sync::oneshot::channel();
         let indices_b = indices.clone();
         let utils_b = utils.clone();
@@ -891,7 +915,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
 
     // gpu_register — advertise the per-binding cap (the capability the brain gates on),
     // not the (unbounded on native) max_buffer_size. Carries the leaderboard id + name.
-    let reg = GpuRegister::new(
+    let mut reg = GpuRegister::new(
         binding_mb,
         binding_mb,
         host_name.clone(),
@@ -923,6 +947,8 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
         env!("CARGO_PKG_VERSION").to_string(),
         crate::mindspace::OPS.iter().map(|s| s.to_string()).collect(),
     );
+    // v0.3.50 — what a kept engine still holds (empty on a fresh engine).
+    reg.held_matrices = engine.held_matrices();
     tx.send(Message::text(serde_json::to_string(&reg).unwrap()))
         .await
         .map_err(|e| format!("register send failed: {e}"))?;
@@ -988,7 +1014,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
         let mut step_seed: u32 = 0x9e3779b9;
         // RHYTHM3S.2 (v0.3.34) — full protocol regions (incl. `side`) per
         // cluster, cached at gpu_init for the per-batch Ψ-gate rebuild.
-        let mut cluster_regions: HashMap<String, HashMap<String, crate::protocol::Region>> = HashMap::new();
+        let mut cluster_regions: HashMap<String, HashMap<String, crate::protocol::Region>> = kept_cluster_regions;
         // v0.3.47 — LESSON COST. One lesson in LC_EVERY is run with the card
         // drained after each step, so each step's real GPU time is measured
         // (an unsynced timer measures only queueing). Reported every LC_REPORT
@@ -1000,7 +1026,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
         let mut lc_acc: HashMap<String, (f64, u32)> = HashMap::new();
         let mut lc_total_ms: f64 = 0.0;
         // v0.3.48 — first full-matrix row of each slice this card holds.
-        let mut slice_base: HashMap<String, (u32, u32)> = HashMap::new();   // name → (first row, row count)
+        let mut slice_base: HashMap<String, (u32, u32)> = kept_slice_base;   // name → (first row, row count)
         while let Some(work) = workq_w.pop() {
             pending_w.fetch_sub(1, Ordering::Relaxed); // pulled one off the queue
             // Stop promptly on request: DON'T drain the queued backlog (the brain can have many
@@ -1404,6 +1430,9 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
             }
             activity_w.end();
         }
+        // The queue closed — hand the engine (and what it knows about its
+        // slices) back so a reconnect can reuse it.
+        (engine, slice_base, cluster_regions)
     });
 
     // Ctrl+C OR control.stop → graceful stop (safe stop): clean WS close.
@@ -1926,7 +1955,15 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
         tokio::time::sleep(Duration::from_millis(250)).await;
     }
     if worker_done {
-        let _ = worker.join();
+        if let Ok((engine, slice_base, cluster_regions)) = worker.join() {
+            // Keep it only for a dropped LINK — never after a GPU hang (that engine
+            // is suspect) or a user stop (the process is ending anyway).
+            if !gpu_hung && !control.stop.load(Ordering::Relaxed) {
+                if let Ok(mut k) = KEPT_ENGINE.lock() {
+                    *k = Some(KeptEngine { engine, slice_base, cluster_regions, gpu_indices: indices.clone() });
+                }
+            }
+        }
     }
     set_status(&control, |s| { s.connected = false; s.note = "stopped".into(); });
     if gpu_hung {
@@ -2036,6 +2073,7 @@ fn run_batch(engine: &mut MultiEngine, cluster_regions: &HashMap<String, HashMap
             tunnel_a: c.tunnel_a.unwrap_or(0.0).clamp(0.0, 1.0),
             tunnel_kappa: c.tunnel_kappa.unwrap_or(0.0).max(0.0),
             entangle_rho: c.entangle_rho.unwrap_or(0.0).clamp(0.0, 0.99),
+            refract_beta: c.refract_beta.unwrap_or(0.0).clamp(0.0, 1.0),
         };
         jobs.push(StepJob { name: c.name.clone(), size: c.size, drive: effective_drive, noise: c.noise_amp, drive_r: effective_drive_r, half, q });
     }
