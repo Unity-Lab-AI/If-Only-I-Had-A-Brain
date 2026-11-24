@@ -4466,6 +4466,9 @@ class ServerBrain {
       // it in the purge did not stop it in the flag.
       this.cortexCluster.lookupDefinitionStatus = (word) =>
         definitionService.lookupStatus(word);
+      // the real word a misspelling stands for (never a definition of the typo)
+      this.cortexCluster.lookupTypoOf = (word) =>
+        (typeof definitionService.typoOf === 'function' ? definitionService.typoOf(word) : null);
       this.cortexCluster.prefetchDefinitions = (words, opts) =>
         definitionService.prefetch(words, opts);
       this.cortexCluster.getDefinitionCacheStats = () =>
