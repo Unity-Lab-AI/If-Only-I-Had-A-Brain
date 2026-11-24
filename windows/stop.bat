@@ -41,7 +41,10 @@ REM the project already uses for a pinned brain (BIND_WAIT_MS), covering the
 REM GPU readback budget (120s) plus the measured shutdown save (~112s). Only past
 REM that is she force-killed.
 echo [stop] step 1/3: requesting graceful shutdown via HTTP /shutdown...
-curl -s -m 5 -X POST http://localhost:7525/shutdown > nul 2>&1
+REM 127.0.0.1, not localhost (Windows can resolve localhost to ::1 first and
+REM she listens on 127.0.0.1), and 30 s, not 5 - her loop can block for
+REM seconds mid-teach and a 5 s request timed out without reaching her.
+curl -s -m 30 -X POST http://127.0.0.1:7525/shutdown > nul 2>&1
 if errorlevel 1 goto :stop_wait_done
 echo   shutdown accepted - she is pulling her GPU weights and saving them.
 echo   Waiting up to 300s for her to exit on her own. DO NOT close this window:
