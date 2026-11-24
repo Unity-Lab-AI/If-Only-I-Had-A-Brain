@@ -16866,10 +16866,17 @@ export class Curriculum {
         const svc = b && Number(b._lessonSvcEmaMs);
         if (svc > 0) est.push(svc / pairsPerLesson);
         const msPerPair = est.length ? Math.min(...est) : 0;
-        if (msPerPair > 0) return Math.max(8, Math.min(1024, Math.round(targetMs / msPerPair)));
+        // ⛔ BOTH readings overstate the card: lesson_cost syncs after every
+        // step, and the ack spacing is bound by the link's round trip (the window
+        // is sized from it). Live: both said ~2 ms a pair while the cards sat at
+        // 7%. So the measured figure may only RAISE the lesson above a floor of
+        // 256 pairs — in practice a whole word's senses per lesson (a word is
+        // ~150 pairs, the largest ~600) — and a card that measures faster still
+        // gets more, up to 1024.
+        if (msPerPair > 0) return Math.max(256, Math.min(1024, Math.round(targetMs / msPerPair)));
       }
     } catch { /* fall back to the default */ }
-    return 64;
+    return 256;
   }
 
   _definitionPairsWhitelist() {
