@@ -3235,7 +3235,9 @@ const SERVER_GPU_MIXIN = {
         ? { ...binding, dstRegion: { start: binding.dstRegion.start + p.a, end: binding.dstRegion.start + p.b } }
         : binding;
       const r = await this._gpuSparseUploadInner(name, slice, sb, p.ws, true);
-      try { p.ws.send(JSON.stringify({ type: 'slice_base', name, rowBase: p.a })); } catch { /* a dropped holder re-plans */ }
+      // rowCount bounds the slice on the card too — the owner's slice starts at
+      // row 0, so a base alone would not filter rows past its end.
+      try { p.ws.send(JSON.stringify({ type: 'slice_base', name, rowBase: p.a, rowCount: p.b - p.a })); } catch { /* a dropped holder re-plans */ }
       return r;
     }));
     const ok = results.every((r) => r);
