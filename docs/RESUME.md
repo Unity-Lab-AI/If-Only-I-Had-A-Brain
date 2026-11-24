@@ -1,6 +1,30 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-11-24 (latest, 48th) — HER EYES START ON A FRESH WALK (CONFIRMED LIVE); HER EYE'S VERDICT OFF NOISE; RUNPOD DONOR READY
+> # 🛑 2026-11-24 (latest, 49th) — GPU LEARNING WAS LANDING ON THE WRONG PAIR; TEACH FRAMES BUNDLED (DONOR 0.3.43); RUNPOD ADMIN PAGE
+>
+> **Branch: `feature/runpod-admin-page`.** Gee: *"and we want to be pegging those GPUS not ssome lossey 20% horse shit"* · *"so all that batch shit needs to be finished before renting anything"* · *"get to it and dont stop till its all done and todo is templeted again"*. **Next launch is a FRESHSTART** — every earlier walk trained under the ordering bug.
+>
+> ```
+>   FOUND   bound-Hebbian ops waited ≤20 ms in a queue while the next pair's pattern went
+>           out at once (a pair-teach is ~9.6 ms) — the card trained them on the WRONG
+>           pair. Force-flushed before every pattern frame now, every donor (KI-58)
+>   BUILT   SPRS type 16 BUNDLE — fire-and-forget teach frames ride one message per
+>           event-loop turn, installed on the socket's own send so order cannot break;
+>           donor 0.3.43 unpacks it through the same per-frame path. Cross-language
+>           parity: frames.rs bundle_matches_server_encoder ← the server's real encoder
+>           · lateral + predictive-error CPU mirrors skip intermediate reps (the law
+>           every other lane already followed) · html/runpod.html + /admin/runpod/*
+>           (loopback AND no proxy header; command read from the launcher at create
+>           time; only unity-donor-* pods; a true Stop terminates them after readback)
+>   NOT DONE  nothing rented — waits for a card that measurably stays busy · the speed
+>           gain is UNMEASURED until a boot (baseline: 300 words / 649.5 s, 9.6 ms/pair)
+>   LEFT    the dream trickle's per-sense calls (cost is per PAIR, ~17 ms — merging
+>           senses saves little and would change what she is taught; KI-57 re-read)
+> ```
+>
+> ---
+>
+> # 🛑 2026-11-24 (48th) — HER EYES START ON A FRESH WALK (CONFIRMED LIVE); HER EYE'S VERDICT OFF NOISE; RUNPOD DONOR READY
 >
 > **Branch: `feature/teach-speed-runpod`.** A freshstart on build `57ffc92c` CONFIRMED the eye fix live: `eyePicks` 171 picks / 137 acquisitions, 36 looks, 36 grounded. It also showed her eye refusing 65 drawings to 6 on the percept rank (noise) — the silhouette rank now decides. Gee stopped her. Runpod: the existing `deploy/runpod-donor-launcher.sh` now asks `brain.theunitybrain.com` (was the old Tailscale host); first RTX 4090 create failed on capacity — **no pod exists, nothing billing**, $11.84 balance. Next: she boots, then the pod. Teach-speed profiling needs her live (the server-side ~180 ms per tick is the measured bottleneck, not the GPU).
 >

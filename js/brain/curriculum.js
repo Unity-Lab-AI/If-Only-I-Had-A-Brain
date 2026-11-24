@@ -15779,7 +15779,9 @@ export class Curriculum {
         } catch { _peCarried = false; }
       }
       this._predErrShadowCounter = (this._predErrShadowCounter | 0) + 1;
-      if (_peCarried && (this._predErrShadowCounter % 5 !== 0)) return;
+      // Same final-rep law as the lateral lane: carried on an intermediate rep
+      // means no CPU mirror at all.
+      if (_peCarried && (cluster._teachIntermediateRep === true || this._predErrShadowCounter % 5 !== 0)) return;
 
       const predicted = (typeof cluster.synapses.propagateChunked === 'function')
         ? await cluster.synapses.propagateChunked(target, { outBuf: this._predictPropagateScratch, chunkRows: 65536 })
@@ -16029,7 +16031,14 @@ export class Curriculum {
       } catch { _gpuCarried = false; }
     }
     this._lateralShadowCounter = (this._lateralShadowCounter | 0) + 1;
-    const _runCpuShadow = !_gpuCarried || (this._lateralShadowCounter % 5 === 0);
+    // ⭐ No CPU mirror on an INTERMEDIATE rep when the card carried the update —
+    // the same law every other bound lane already follows (`intraSynapsesHebbian`,
+    // `_crossRegionHebbian`): the GPU holds the running weights, and the shadow,
+    // which exists for checkpoints and CPU probes, catches up on the final rep.
+    // This lane alone ignored the flag and ran a CPU anti pass on every 5th pair
+    // of every rep. Nothing the card trains changes.
+    const _runCpuShadow = !_gpuCarried
+      || (cluster._teachIntermediateRep !== true && (this._lateralShadowCounter % 5 === 0));
     if (_runCpuShadow) {
       if (typeof cluster.intraSynapsesAntiHebbian === 'function') {
         await cluster.intraSynapsesAntiHebbian(cluster.lastSpikes, crossBucketPost, inhibitLr, { activeRows: crossActiveRows });
