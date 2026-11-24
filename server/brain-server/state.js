@@ -2118,6 +2118,9 @@ const SERVER_STATE_MIXIN = {
         slotWaits: this._lessonSlotWaits || 0, slotWaitMs: this._lessonSlotWaitMs || 0,
         pinned: Number(process.env.DREAM_LESSON_INFLIGHT) > 0,
       },
+      // LESSON COST — per GPU: card time per lesson and each step's share,
+      // measured on sampled lessons (donor 0.3.47+). Null until one reports.
+      lessonCost: this._lessonCost || null,
       // POOL — who owns what, who was late, and whether the tunnel is crossing.
       // Every field is a count or a name, never a flag: "the pool is on" is
       // not a fact, "cortex is on card X and 3 pairs crossed last cycle" is.
