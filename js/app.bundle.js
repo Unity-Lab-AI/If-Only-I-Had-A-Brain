@@ -14963,9 +14963,9 @@ var CLUSTER_HEBBIAN_MIXIN = {
     const rows = proj.rows | 0;
     if (!this._ojaChunkRows) this._ojaChunkRows = 65536;
     const activeRows = ojaOpts && ojaOpts.activeRows;
-    if (activeRows && activeRows.length > 2048 && this._sparsePool && typeof this._sparsePool.ojaActive === "function" && !(ojaOpts && (ojaOpts.kScales || ojaOpts.trackDelta || typeof ojaOpts.rowStart === "number" || typeof ojaOpts.rowEnd === "number"))) {
+    if (activeRows && activeRows.length >= 16384 && this._sparsePool && typeof this._sparsePool.ojaActive === "function" && !(ojaOpts && (ojaOpts.trackDelta || typeof ojaOpts.rowStart === "number" || typeof ojaOpts.rowEnd === "number"))) {
       try {
-        if (await this._sparsePool.ojaActive(proj, preF, postF, lr, activeRows)) return;
+        if (await this._sparsePool.ojaActive(proj, preF, postF, lr, activeRows, ojaOpts && ojaOpts.kScales)) return;
       } catch (e) {
         if (!this._ojaPoolWarned) {
           this._ojaPoolWarned = true;

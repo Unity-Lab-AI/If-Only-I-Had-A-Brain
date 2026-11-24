@@ -670,10 +670,12 @@ export const CLUSTER_HEBBIAN_MIXIN = {
     // delta tracking, no row window) runs on the worker pool — all hardware
     // threads but one — instead of this brain's single main thread, which it
     // used to hold for ~44% of the time while the donor card waited.
-    if (activeRows && activeRows.length > 2048 && this._sparsePool && typeof this._sparsePool.ojaActive === 'function'
-        && !(ojaOpts && (ojaOpts.kScales || ojaOpts.trackDelta || typeof ojaOpts.rowStart === 'number' || typeof ojaOpts.rowEnd === 'number'))) {
+    // ≥16k firing rows: measured 6.1× faster on 15 threads at 343k rows; below
+    // a few thousand the copy-in costs more than the math it saves.
+    if (activeRows && activeRows.length >= 16384 && this._sparsePool && typeof this._sparsePool.ojaActive === 'function'
+        && !(ojaOpts && (ojaOpts.trackDelta || typeof ojaOpts.rowStart === 'number' || typeof ojaOpts.rowEnd === 'number'))) {
       try {
-        if (await this._sparsePool.ojaActive(proj, preF, postF, lr, activeRows)) return;
+        if (await this._sparsePool.ojaActive(proj, preF, postF, lr, activeRows, ojaOpts && ojaOpts.kScales)) return;
       } catch (e) {
         if (!this._ojaPoolWarned) { this._ojaPoolWarned = true; console.warn(`[Cluster ${this.name}] Oja on the worker pool failed (${e && e.message}) — running it on the main thread.`); }
       }
