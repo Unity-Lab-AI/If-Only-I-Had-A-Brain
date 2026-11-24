@@ -1484,7 +1484,57 @@ const SERVER_GPU_MIXIN = {
   // timer. Requires a clear margin (1.25×) over the current primary so normal
   // throughput jitter doesn't thrash the primary (each handoff re-uploads the
   // brain). No-op with fan-out off, <2 donors, or no established primary.
+  /**
+   * MOVE THE CORTEX to another card — the ONE way it changes hands.
+   *
+   * The cortex is the only cluster with on-card matrices, and those matrices
+   * hold training the CPU copy does not have until the next readback. Every
+   * earlier path that changed `_gpuClient` (register promotion, the periodic
+   * rebalance, the pool re-partition) simply pointed it somewhere new: the old
+   * card's learning since the last pull was abandoned, and the rebalance never
+   * even re-uploaded (its hook probe was never true). In order:
+   *   1. pause teaching — the substrate gate reads `_gpuProxyReady`, so the walk
+   *      waits instead of training against a card with no matrices;
+   *   2. pull the trained weights off the OLD card into the CPU master and save;
+   *   3. point the cortex at the new card and re-arm the full upload; the upload
+   *      sets `_gpuProxyReady` again when it completes, and teaching resumes.
+   */
+  async _moveCortexTo(newWs, oldWs, reason) {
+    if (!newWs || newWs === oldWs) return;
+    if (this._cortexMoveInFlight) return;
+    this._cortexMoveInFlight = true;
+    const cc = this.cortexCluster;
+    const nm = (ws) => { const c = this.clients && this.clients.get ? this.clients.get(ws) : null; return (c && (c.gpuName || c.id)) || 'donor'; };
+    console.log(`[Pool] CORTEX MOVE ${nm(oldWs)} → ${nm(newWs)} (${reason}) — teaching paused; pulling the trained weights off the old card first.`);
+    try {
+      if (cc) cc._gpuProxyReady = false;
+      if (oldWs && oldWs.readyState === 1) {
+        this._gpuClient = oldWs;
+        const r = await this.refreshCheckpointFromDonor(`cortex move: ${reason}`, { force: true });
+        if (!r || !r.ok) console.warn(`[Pool] CORTEX MOVE — pull from the old card did not complete (${(r && r.reason) || 'unknown'}); the master keeps its last save.`);
+      }
+    } catch (e) {
+      console.warn(`[Pool] CORTEX MOVE — pull threw (${e && e.message}); the master keeps its last save.`);
+    } finally {
+      this._gpuClient = newWs;
+      this._gpuConnected = true;
+      this._gpuInitialized = {};
+      this._gpuInitializedConfirmed = {};
+      if (this._clusterOwner instanceof Map) this._clusterOwner.set('cortex', newWs);
+      const rearm = globalThis.__rearmCortexGpuUpload;
+      if (typeof rearm === 'function') rearm(`cortex moved: ${reason}`);
+      this._cortexMovesDone = (this._cortexMovesDone || 0) + 1;
+      this._cortexMoveInFlight = false;
+    }
+  },
+
   _maybeRebalancePrimary() {
+    // ⛔ Under the pool the PARTITION decides who holds the cortex (on every
+    // register and leave). A second, strength-based rebalance switched
+    // `_gpuClient` without updating the owner map, without pulling the old
+    // card's weights, and without re-uploading — three ways to lose learning.
+    // It now defers to the partition unless explicitly re-enabled.
+    if (process.env.DREAM_DF7_REBALANCE !== '1') return;
     if (!this._df7Fanout()) return;
     const donors = this._livePoolDonors();
     if (donors.length < 2 || !this._gpuClient) return;
@@ -1497,14 +1547,8 @@ const SERVER_GPU_MIXIN = {
     if (bestScore > curScore * MARGIN && bestScore > 0) {
       const bc = this.clients && this.clients.get ? this.clients.get(best) : null;
       const cc = this.clients && this.clients.get ? this.clients.get(cur) : null;
-      console.log(`[Brain] DF.7 F4 — rebalancing PRIMARY → healthier donor (${bc && bc.gpuName || '?'} score=${bestScore.toFixed(1)} vs current ${cc && cc.gpuName || '?'} score=${curScore.toFixed(1)}). Previous primary stays a replica + re-syncs.`);
-      this._gpuClient = best;
-      this._gpuConnected = true;
-      this._gpuInitialized = {};
-      this._gpuInitializedConfirmed = {};
-      if (typeof this._rearmCortexGpuUpload === 'function') {
-        try { this._rearmCortexGpuUpload('F4 periodic primary rebalance'); } catch { /* non-fatal */ }
-      }
+      console.log(`[Brain] DF.7 F4 — rebalancing PRIMARY → healthier donor (${bc && bc.gpuName || '?'} score=${bestScore.toFixed(1)} vs current ${cc && cc.gpuName || '?'} score=${curScore.toFixed(1)}).`);
+      this._moveCortexTo(best, cur, 'F4 periodic rebalance').catch(() => {});
     }
   },
 
@@ -1761,7 +1805,23 @@ const SERVER_GPU_MIXIN = {
       // a partition that thrashes on every register/disconnect is worse than
       // one that is a few hundred MB off optimal.
       const prev = prevOwner.get(n);
-      if (prev && remaining.has(prev) && remaining.get(prev) >= cost) { best = prev; bestLeft = remaining.get(prev); }
+      // ⭐ THE CORTEX GOES TO THE BIGGEST CARD, NOT THE FIRST ONE. Stickiness
+      // kept it on whichever card held it while that card still fit — so a 48 GB
+      // L40 joining a 16 GB card could never get it, and a rented card held only
+      // small clusters (measured: hypothalamus + mystery) while teaching stayed on
+      // the smaller card. Stickiness still holds for near-equal cards (moving costs
+      // a full re-upload); a card with ≥ RATIO× the room takes the cortex.
+      // `DREAM_POOL_CORTEX_MOVE_RATIO` (default 1.5; 0 = never move).
+      const _ratioEnv = Number(process.env.DREAM_POOL_CORTEX_MOVE_RATIO);
+      const _ratio = Number.isFinite(_ratioEnv) && _ratioEnv >= 0 ? _ratioEnv : 1.5;
+      let _keepPrev = !!(prev && remaining.has(prev) && remaining.get(prev) >= cost);
+      if (_keepPrev && n === 'cortex' && _ratio > 0) {
+        const prevCap = remaining.get(prev);
+        for (const [ws, left] of remaining) {
+          if (ws !== prev && left >= cost && left >= prevCap * _ratio) { _keepPrev = false; break; }
+        }
+      }
+      if (_keepPrev) { best = prev; bestLeft = remaining.get(prev); }
       else if (n === 'cortex') {
         // The atomic unit with the matrices goes to the card with the MOST
         // room — it is the one cluster whose size can exclude cards.
@@ -1790,14 +1850,25 @@ const SERVER_GPU_MIXIN = {
     this._poolMovedLast = moved;
     const cortexOwner = owner.get('cortex') || null;
     if (cortexOwner !== this._gpuClient) {
-      this._gpuClient = cortexOwner;
-      this._gpuConnected = !!cortexOwner;
+      // A move between two LIVE cards goes through `_moveCortexTo` (pull the
+      // old card's weights first, then re-upload); the caller runs it. Only
+      // when the previous holder is gone (or there was none) is the pointer set
+      // here — that is the existing leave/first-card path.
+      const _cur = this._gpuClient;
+      if (_cur && _cur.readyState === 1 && cortexOwner && live.includes(_cur)) {
+        this._pendingCortexMove = { to: cortexOwner, from: _cur };
+        owner.set('cortex', _cur);          // ownership changes when the move completes
+      } else {
+        this._gpuClient = cortexOwner;
+        this._gpuConnected = !!cortexOwner;
+      }
     }
     const _name = (ws) => { const c = this.clients && this.clients.get ? this.clients.get(ws) : null; return (c && (c.gpuName || c.id)) || 'donor'; };
     const byCard = new Map();
     for (const [n, ws] of owner) { if (!byCard.has(ws)) byCard.set(ws, []); byCard.get(ws).push(n); }
     const summary = [...byCard].map(([ws, cl]) => `${_name(ws)}: [${cl.join(', ')}] (${Math.round(this._donorCapacityMB(ws) - remaining.get(ws))}/${Math.round(this._donorCapacityMB(ws))} MB)`).join(' · ');
-    console.log(`[Pool] PARTITION${reason ? ' (' + reason + ')' : ''} — ${live.length} card(s), ${owner.size}/${names.length} clusters placed${unplaced.length ? ` · ⛔ UNPLACED: ${unplaced.join(', ')}` : ''}${moved.length ? ` · moved: ${moved.join(', ')}` : ''} → ${summary}`);
+    const _pmv = this._pendingCortexMove;
+    console.log(`[Pool] PARTITION${reason ? ' (' + reason + ')' : ''} — ${live.length} card(s), ${owner.size}/${names.length} clusters placed${unplaced.length ? ` · ⛔ UNPLACED: ${unplaced.join(', ')}` : ''}${moved.length ? ` · moved: ${moved.join(', ')}` : ''} → ${summary}${_pmv ? ` · cortex MOVING → ${_name(_pmv.to)} (weights pulled off ${_name(_pmv.from)} first)` : ''}`);
     return owner;
   },
 
@@ -4032,7 +4103,14 @@ const SERVER_GPU_MIXIN = {
     // re-broadcast re-converges each donor's drifted weight-shadow — so a batch
     // landing on any replica can't corrupt training. Fan-out OFF → primary, exact
     // prior behavior.
-    const target = (this._df7Fanout && this._df7Fanout()) ? this._nextPoolDonor(ops.map(_o => _o.name)) : this._gpuClient;
+    // ⛔⛔ ALWAYS THE CORTEX OWNER. This used to round-robin teach batches across
+    // the pool on the premise that "the CPU CSR is the authoritative Hebbian
+    // master" — untrue since training moved to the GPU. A bound op trains on the
+    // pattern resident on THAT card, patterns are written only to the cortex
+    // owner, and the weight readback pulls only from the cortex owner — so every
+    // batch routed to another card trained a copy nobody reads against a pattern
+    // it never received. That learning was lost whenever a second card joined.
+    const target = this._gpuClient;
     if (!target || target.readyState !== 1) {
       for (const op of ops) op.resolve(null);
       return;

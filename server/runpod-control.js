@@ -137,9 +137,16 @@ async function startDonor(gpuId) {
   return pod;
 }
 
-async function stopDonor(id) {
+// `beforeTerminate(pod)` — awaited before the kill. The brain passes a hook that
+// pulls the trained weights off this pod when it is the card holding her cortex:
+// a terminated pod's own disk checkpoint dies with it, so without the pull up to
+// a readback gap of learning would be lost.
+async function stopDonor(id, beforeTerminate = null) {
   const pod = await _api('GET', `/v2/pods/${encodeURIComponent(id)}`);
   if (!pod || !String(pod.name || '').startsWith(POD_PREFIX)) throw new Error('not a donor pod this plug-in created — refusing to touch it');
+  if (typeof beforeTerminate === 'function') {
+    try { await beforeTerminate(pod); } catch (e) { console.warn(`[Runpod] pre-terminate pull failed (${e && e.message}) — terminating anyway.`); }
+  }
   await _api('POST', `/v2/pods/${encodeURIComponent(id)}/action`, { action: 'terminate' });
   console.log(`[Runpod] donor pod terminated — ${id} (${pod.name}). Billing stops.`);
   return { id, terminated: true };
