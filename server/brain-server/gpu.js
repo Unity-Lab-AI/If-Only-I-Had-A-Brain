@@ -662,9 +662,13 @@ const SERVER_GPU_MIXIN = {
   _recordGpuDispatch() {
     if (!this._gpuDispatchTimestamps) this._gpuDispatchTimestamps = [];
     this._gpuDispatchTimestamps.push(Date.now());
+    // ⛔ The old cap filtered to the last 30 s — but while she teaches more than
+    // 5,000 dispatches land inside 30 s, so the filter kept them all and EVERY
+    // later dispatch re-copied the whole array (2.0% of the live main thread).
+    // Halving on overflow is amortised O(1); the one reader (`state.js`, rate =
+    // count ÷ span of the entries) is equally valid over the most recent half.
     if (this._gpuDispatchTimestamps.length > 5000) {
-      const cutoff = Date.now() - 30000;
-      this._gpuDispatchTimestamps = this._gpuDispatchTimestamps.filter(t => t >= cutoff);
+      this._gpuDispatchTimestamps = this._gpuDispatchTimestamps.slice(-2500);
     }
     this._gpuDispatchTotal = (this._gpuDispatchTotal || 0) + 1;
   },

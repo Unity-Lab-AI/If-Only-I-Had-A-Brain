@@ -15070,8 +15070,20 @@ export class Curriculum {
     // truncation made it WORSE by zeroing the spike entirely. GloVe
     // identity is preserved via WHICH dims fire (the active-set), not
     // via the magnitudes those dims carry into the buffer.
+    // ⭐ ONE NATIVE FILL PER ACTIVE DIM when nobody needs the index list. A dim's
+    // cells are the contiguous run [start + d·gSize, +gSize) clipped at the region
+    // end — exactly the cells the element loop sets — so `fill(1, a, b)` writes
+    // the identical bytes. Measured on the live main thread: this function was
+    // 10.5% of ALL its time, ~50,000 single-byte writes per sem pattern.
+    const _bulk = !sparseIndices && !collectInto;
     for (let d = 0; d < feat.length; d++) {
       if (feat[d] <= 0) continue;
+      if (_bulk) {
+        const a = region.start + d * gSize;
+        const b = Math.min(a + gSize, region.end);
+        if (a < b) cluster.lastSpikes.fill(1, a, b);
+        continue;
+      }
       for (let n = 0; n < gSize; n++) {
         const idx = region.start + d * gSize + n;
         if (idx >= region.end) continue;
@@ -15792,7 +15804,8 @@ export class Curriculum {
       this._predErrShadowCounter = (this._predErrShadowCounter | 0) + 1;
       // Same final-rep law as the lateral lane: carried on an intermediate rep
       // means no CPU mirror at all.
-      if (_peCarried && (cluster._teachIntermediateRep === true || this._predErrShadowCounter % 5 !== 0)) return;
+      // Carried by the card = no CPU mirror on any rep; the readback brings it current.
+      if (_peCarried) return;
 
       const predicted = (typeof cluster.synapses.propagateChunked === 'function')
         ? await cluster.synapses.propagateChunked(target, { outBuf: this._predictPropagateScratch, chunkRows: 65536 })
@@ -16048,8 +16061,12 @@ export class Curriculum {
     // which exists for checkpoints and CPU probes, catches up on the final rep.
     // This lane alone ignored the flag and ran a CPU anti pass on every 5th pair
     // of every rep. Nothing the card trains changes.
-    const _runCpuShadow = !_gpuCarried
-      || (cluster._teachIntermediateRep !== true && (this._lateralShadowCounter % 5 === 0));
+    // ⛔ AND NOT ON THE FINAL REP EITHER. The intermediate-rep rule above skipped
+    // nothing in the definition lane, whose lessons are ONE rep — every rep is
+    // the final one — and the live profile showed `antiHebbianUpdate` at 4.3% of
+    // the main thread. When the card carried it there is no per-update mirror;
+    // the checkpoint readback brings the CPU copy current.
+    const _runCpuShadow = !_gpuCarried;
     if (_runCpuShadow) {
       if (typeof cluster.intraSynapsesAntiHebbian === 'function') {
         await cluster.intraSynapsesAntiHebbian(cluster.lastSpikes, crossBucketPost, inhibitLr, { activeRows: crossActiveRows });
@@ -18275,13 +18292,23 @@ export class Curriculum {
               preFull[pi] = 0; postFull[pi] = 0;
             }
             activeRows.length = 0;
-            for (let i = 0; i < semSize; i++) {
-              const v = cluster.lastSpikes[sem.start + i] || 0;
-              if (!v) continue;
-              const gi = sem.start + i;
-              preFull[gi] = v;
-              postFull[gi] = v;
-              activeRows.push(gi);
+            // ⭐ JUMP TO THE ACTIVE CELLS instead of visiting all `semSize` (1.88M)
+            // per sense: `lastSpikes` holds 0/1 flags by construction (every
+            // writer stores 1 or `> 0 ? 1 : 0`), so `indexOf(1)` finds exactly the
+            // cells `v !== 0` found, in the same ascending order. This scan was
+            // the bulk of this method's 9% self time on the live main thread.
+            {
+              // Bounded to the sem span: an unbounded indexOf with no match would
+              // walk the rest of the 40M-cell array.
+              const _semView = cluster.lastSpikes.subarray(sem.start, sem.end);
+              let li = _semView.indexOf(1, 0);
+              while (li !== -1) {
+                const gi = sem.start + li;
+                preFull[gi] = 1;
+                postFull[gi] = 1;
+                activeRows.push(gi);
+                li = _semView.indexOf(1, li + 1);
+              }
             }
             const kScales = cluster.buildKScalesForProjection(null, null);
             const lrK = (opts.lr ?? 0.01) * 0.25;
@@ -18336,7 +18363,10 @@ export class Curriculum {
             // ⚠ The carry flag is recorded beside the time because the SAME code
             // costs five times more with no donor, and a profile that cannot
             // tell those apart would read as noise between boots.
-            if (!_gpuCarried || (this._defSemSemShadowCounter % 5 === 0)) {
+            // ⛔ Carried by the card = no CPU mirror. This every-5th shadow was
+            // `ojaUpdate` at 4.3% of the live main thread; the checkpoint readback
+            // brings the CPU copy current, which is the rule for every bound lane.
+            if (!_gpuCarried) {
               const _ojaOpts = kScales ? { kScales, activeRows } : { activeRows };
               const _dssT0 = Date.now();
               cluster.synapses.ojaUpdate(preFull, postFull, lrK, _ojaOpts);
@@ -20354,10 +20384,11 @@ export class Curriculum {
     // Write the query pattern into sem exactly as the teach side does, so the
     // read rides the geometry it was trained on rather than an approximation.
     const semSize = semRegion.end - semRegion.start;
+    // A fresh Float64Array is already zero, and `set` copies the Uint8 spike span
+    // natively with the same 0/1 → 0.0/1.0 conversion the element loop did.
     const pre = new Float64Array(semSize);
-    for (let i = 0; i < semSize; i++) pre[i] = 0;
     try { this._writeTiledPattern(semRegion, emb, false); } catch { /* fall through to the raw read */ }
-    for (let i = 0; i < semSize; i++) pre[i] = cluster.lastSpikes[semRegion.start + i] || 0;
+    pre.set(cluster.lastSpikes.subarray(semRegion.start, semRegion.start + semSize));
 
     let out = null;
     try { out = proj.propagate(pre); } catch { return null; }
