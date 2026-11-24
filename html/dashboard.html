@@ -3427,7 +3427,7 @@
         // proportionally smaller because it is stepping less brain. The
         // fraction says that, instead of leaving the board to imply a dud GPU.
         const clCell = (x.type === 'donor' && x.clusterTotal)
-          ? ` · <span style="color:#93c5fd" title="Clusters this donor is initialised for. A small card is fitted to a subset deliberately - a proportionally lower Gn/s is honest work, not a fault.">${x.clusterCoverageCount}/${x.clusterTotal} cl</span>`
+          ? ` · <span style="color:#93c5fd" title="Clusters this card computes. With several cards each one owns its own clusters and none recomputes another's, so a card with fewer clusters shows a proportionally lower Gn/s - honest work, not a fault.">${x.clusterCoverageCount}/${x.clusterTotal} cl</span>`
           : '';
         const gpu = x.type === 'donor'
           ? (x.bindIncapable

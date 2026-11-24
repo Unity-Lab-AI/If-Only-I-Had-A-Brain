@@ -384,7 +384,12 @@ const SERVER_GPU_MIXIN = {
     //
     // Skipped for a donor whose socket is already backed up past the link cap — it is
     // mid-sync and piling a step on top would slow the sync that makes it useful.
-    if (this._df7Fanout && this._df7Fanout() && typeof this._livePoolDonors === 'function') {
+    // ⛔ NEVER UNDER THE POOL. When `_clusterOwner` splits the clusters across
+    // cards, every card already got its OWN share in the real batch above; a
+    // mirror then re-sent the whole brain (cortex included) to the other cards,
+    // which computed it a second time for nothing. One card per job.
+    const _poolSplit = this._clusterOwner instanceof Map && this._clusterOwner.size > 0;
+    if (!_poolSplit && this._df7Fanout && this._df7Fanout() && typeof this._livePoolDonors === 'function') {
       // MIRRORID — the mirror batchId MUST be a POSITIVE u64. It was `-batchId`, chosen so it
       // could never collide with the real one - but the donor parses it into
       // `ComputeBatch { batch_id: u64 }` (protocol.rs:228), and serde CANNOT deserialize a

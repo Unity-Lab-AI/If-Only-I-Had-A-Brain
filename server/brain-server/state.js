@@ -2696,8 +2696,12 @@ const SERVER_STATE_MIXIN = {
           // gpu_init'ed for the subset of clusters it fits, so its rate is
           // PROPORTIONALLY smaller because it is stepping less brain. Without
           // the fraction on screen the board reads that as a broken card.
-          const _cov = (isGPU && c.clusterCoverage instanceof Set)
-            ? Array.from(c.clusterCoverage) : null;
+          // Under the pool a card steps only the clusters it OWNS — the buffers
+          // it was initialised for are not its work. Show ownership.
+          const _own = (isGPU && this._clusterOwner instanceof Map && this._clusterOwner.size > 0)
+            ? [...this._clusterOwner].filter(([, o]) => o === ws).map(([n]) => n) : null;
+          const _cov = _own ? _own : ((isGPU && c.clusterCoverage instanceof Set)
+            ? Array.from(c.clusterCoverage) : null);
           const _isPrimary = isGPU && ws === this._gpuClient;
           list.push({
             id: c.id,
