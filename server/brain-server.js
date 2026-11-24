@@ -12606,6 +12606,10 @@ const httpServer = http.createServer((req, res) => {
       return;
     }
     global._brainShutdownRequested = true;
+    // A hard stop if the orderly one has not finished in 5 minutes (readback
+    // budget 120 s + saves). The Stop button once left her running for minutes;
+    // a stop that cannot finish must still stop.
+    setTimeout(() => { console.warn('[Brain] /shutdown did not finish in 5 min — exiting anyway.'); process.exit(42); }, 300000).unref();
     console.log('[Brain] HTTP /shutdown — TRUE HALT requested (dashboard Stop / stop.bat). Exiting 42; systemd will NOT revive. Bring back with: sudo systemctl start unity-brain');
     res.end(JSON.stringify({ status: 'halting — exit 42, will NOT auto-revive; restart with `systemctl start unity-brain` (box) or start.bat (local)' }));
     // #38 — DELIBERATE clean stop. Force-save the latest weights + drop the
