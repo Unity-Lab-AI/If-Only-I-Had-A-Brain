@@ -93,6 +93,118 @@ pub enum Frame {
     /// GPU executes identical work in identical order — only the per-message cost
     /// on both ends is gone. Bundles never nest (an inner type-16 is malformed).
     Bundle { frames: Vec<Frame> },
+    /// v0.3.44 — LESSON (type 17): one rep of an association lesson, every pair in
+    /// one frame. The card expands it (see `expand_lesson`) into EXACTLY the step
+    /// sequence the brain's per-pair path sends — clears, spike writes and their
+    /// pseudo-cluster twins, the relation tag, the positive bound ops, the lateral
+    /// mask, the contrastive pass — so the brain stops building every pair in
+    /// JavaScript on its one thread. Fire-and-forget, no ack.
+    Lesson(Lesson),
+}
+
+/// v0.3.44 — the decoded lesson. Region names are the brain's; offsets are
+/// region-relative except `motor_start_abs` (the cluster row of motor's first
+/// cell, which the lateral mask is expressed in).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Lesson {
+    pub cluster: String,
+    pub twin: Option<String>,
+    pub sem_region: String,
+    pub motor_region: String,
+    pub tag_region: String,
+    pub sem_group: u32,
+    pub sem_size: u32,
+    pub motor_group: u32,
+    pub motor_size: u32,
+    pub tag_row_start: u32,
+    pub tag_len: u32,
+    pub pos_ops: Vec<(String, f32)>,
+    pub anti_ops: Vec<(String, f32)>,
+    pub lateral: Option<LessonLateral>,
+    /// (sem dims, motor dims, Some(wrong motor dims) when the pair has a
+    /// contrastive pass — which may itself carry no active dims).
+    pub pairs: Vec<(Vec<u16>, Vec<u16>, Option<Vec<u16>>)>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LessonLateral {
+    pub matrix: String,
+    pub lr: f32,
+    pub num_buckets: u32,
+    pub bucket_size: u32,
+    pub motor_start_abs: u32,
+}
+
+/// One engine step of an expanded lesson, in execution order.
+#[derive(Debug, Clone, PartialEq)]
+pub enum LessonOp {
+    Clear { cluster: String, region: String },
+    Write { cluster: String, region: String, indices: Vec<u32> },
+    Bound { name: String, lr: f32 },
+    Masked { name: String, lr: f32, rows: Vec<u32> },
+}
+
+/// Expand a lesson into the exact step sequence of the brain's per-pair path.
+/// Pure — no engine, so the cross-language check can compare it to a recording
+/// of the per-pair path.
+pub fn expand_lesson(l: &Lesson) -> Vec<LessonOp> {
+    let mut out = Vec::new();
+    let targets: Vec<&String> = std::iter::once(&l.cluster).chain(l.twin.iter()).collect();
+    let tiles = |dims: &[u16], group: u32, limit: Option<u32>| -> Vec<u32> {
+        let mut v = Vec::with_capacity(dims.len() * group as usize);
+        for &d in dims {
+            for n in 0..group {
+                let i = (d as u32) * group + n;
+                if let Some(lim) = limit { if i >= lim { continue; } }
+                v.push(i);
+            }
+        }
+        v
+    };
+    let tag: Vec<u32> = (0..l.tag_len).map(|k| l.tag_row_start + k).collect();
+    for (sem, mot, wrong) in &l.pairs {
+        let sem_idx = tiles(sem, l.sem_group, Some(l.sem_size));
+        let mot_idx = tiles(mot, l.motor_group, Some(l.motor_size));
+        // ── positive block: clear → sem → motor → tag (each with its twin), then ops
+        let block = |out: &mut Vec<LessonOp>, motor_idx: &Vec<u32>| {
+            for r in [&l.sem_region, &l.motor_region, &l.tag_region] {
+                for c in &targets { out.push(LessonOp::Clear { cluster: (*c).clone(), region: r.clone() }); }
+            }
+            // A pattern with no active dims sends no frame on the brain's path.
+            if !sem_idx.is_empty() {
+                for c in &targets { out.push(LessonOp::Write { cluster: (*c).clone(), region: l.sem_region.clone(), indices: sem_idx.clone() }); }
+            }
+            if !motor_idx.is_empty() {
+                for c in &targets { out.push(LessonOp::Write { cluster: (*c).clone(), region: l.motor_region.clone(), indices: motor_idx.clone() }); }
+            }
+            if !tag.is_empty() {
+                for c in &targets { out.push(LessonOp::Write { cluster: (*c).clone(), region: l.tag_region.clone(), indices: tag.clone() }); }
+            }
+        };
+        block(&mut out, &mot_idx);
+        for (n, lr) in &l.pos_ops { out.push(LessonOp::Bound { name: n.clone(), lr: *lr }); }
+        // ── lateral: dominant bucket over the motor actives (first max wins), mask the rest
+        if let Some(lat) = &l.lateral {
+            let nb = lat.num_buckets.max(1) as usize;
+            let bs = lat.bucket_size.max(1);
+            let mut counts = vec![0u32; nb];
+            let buckets: Vec<usize> = mot_idx.iter().map(|&i| ((i / bs) as usize).min(nb - 1)).collect();
+            for &b in &buckets { counts[b] += 1; }
+            let (mut primary, mut max) = (0usize, 0u32);
+            for (b, &c) in counts.iter().enumerate() { if c > max { max = c; primary = b; } }
+            if max > 0 {
+                let rows: Vec<u32> = mot_idx.iter().zip(&buckets).filter(|(_, &b)| b != primary).map(|(&i, _)| lat.motor_start_abs + i).collect();
+                if !rows.is_empty() { out.push(LessonOp::Masked { name: lat.matrix.clone(), lr: lat.lr, rows }); }
+            }
+        }
+        // ── contrastive pass: same sem, the WRONG motor, same tag, then the anti ops
+        if let Some(wrong) = wrong {
+            let wrong_idx = tiles(wrong, l.motor_group, Some(l.motor_size));
+            block(&mut out, &wrong_idx);
+            for (n, lr) in &l.anti_ops { out.push(LessonOp::Bound { name: n.clone(), lr: *lr }); }
+        }
+    }
+    out
 }
 
 /// Cluster-slice binding for a sparse matrix (chunk flags bit 2): the matrix's pre
@@ -410,6 +522,54 @@ pub fn decode(data: &[u8]) -> Option<Frame> {
                 frames.push(decode(inner)?);
             }
             Some(Frame::Bundle { frames })
+        }
+        // v0.3.44 — lesson. Header name = the cluster. Strings are u16 len + u16
+        // pad + bytes + pad→4; an empty twin string means no pseudo-cluster twin.
+        17 => {
+            fn s(r: &mut Reader) -> Option<String> {
+                let n = r.u16()? as usize;
+                let _ = r.u16()?;
+                let v = String::from_utf8_lossy(r.bytes(n)?).into_owned();
+                r.align4();
+                Some(v)
+            }
+            let twin = s(&mut r)?;
+            let sem_region = s(&mut r)?;
+            let motor_region = s(&mut r)?;
+            let tag_region = s(&mut r)?;
+            let (sem_group, sem_size, motor_group, motor_size, tag_row_start, tag_len) =
+                (r.u32()?, r.u32()?, r.u32()?, r.u32()?, r.u32()?, r.u32()?);
+            let n_pos = r.u16()? as usize;
+            let n_anti = r.u16()? as usize;
+            let ops = |n: usize, r: &mut Reader| -> Option<Vec<(String, f32)>> {
+                let mut v = Vec::with_capacity(n);
+                for _ in 0..n { let name = s(r)?; let lr = r.f32()?; v.push((name, lr)); }
+                Some(v)
+            };
+            let pos_ops = ops(n_pos, &mut r)?;
+            let anti_ops = ops(n_anti, &mut r)?;
+            let has_lat = r.u32()?;
+            let lateral = if has_lat != 0 {
+                let matrix = s(&mut r)?;
+                Some(LessonLateral { matrix, lr: r.f32()?, num_buckets: r.u32()?, bucket_size: r.u32()?, motor_start_abs: r.u32()? })
+            } else { None };
+            let n_pairs = r.u32()? as usize;
+            let mut pairs = Vec::with_capacity(n_pairs.min(1 << 20));
+            for _ in 0..n_pairs {
+                let (ns, nm, nw, _p) = (r.u16()? as usize, r.u16()? as usize, r.u16()?, r.u16()?);
+                let nwl = if nw == 0xFFFF { 0 } else { nw as usize };
+                let take = |n: usize, r: &mut Reader| -> Option<Vec<u16>> { let mut v = Vec::with_capacity(n); for _ in 0..n { v.push(r.u16()?); } Some(v) };
+                let sem = take(ns, &mut r)?;
+                let mot = take(nm, &mut r)?;
+                let wrong = take(nwl, &mut r)?;
+                r.align4();
+                pairs.push((sem, mot, if nw == 0xFFFF { None } else { Some(wrong) }));
+            }
+            Some(Frame::Lesson(Lesson {
+                cluster: name, twin: if twin.is_empty() { None } else { Some(twin) },
+                sem_region, motor_region, tag_region, sem_group, sem_size, motor_group, motor_size,
+                tag_row_start, tag_len, pos_ops, anti_ops, lateral, pairs,
+            }))
         }
         _ => None,
     }
@@ -753,6 +913,31 @@ mod tests {
         }
         // A truncated bundle must reject WHOLE — never execute half a lesson.
         assert!(decode(&bytes[..bytes.len() - 3]).is_none());
+    }
+
+    /// v0.3.44 — LESSON PARITY. `HEX` is the server's real `encodeTeachLesson`
+    /// output for two pairs; `EXPECTED` is what the brain's REAL per-pair path
+    /// (`_clearSpikes` / `_writeTiledPattern` / `_writeRelationTag` / the bound
+    /// op order / `_teachLateralInhibition`) sends for the same two pairs, recorded
+    /// on a small cortex. The card's expansion must equal it step for step — order
+    /// included, because every bound op reads the pattern the steps before it set.
+    #[test]
+    fn lesson_matches_per_pair_path() {
+        const HEX: &str = "5350525311000000000600636f72746578000000000000000300000073656d00050000006d6f746f720000000800000066696e6554797065030000001e000000050000003400000017000000010000000300030016000000636f727465785f73656d5f746f5f66696e655479706500008fc2f53c16000000636f727465785f66696e65547970655f746f5f73656d00008fc2f53c14000000636f727465785f696e74726153796e61707365738fc2f53c16000000636f727465785f73656d5f746f5f66696e655479706500009a9999bd16000000636f727465785f66696e65547970655f746f5f73656d00009a9999bd14000000636f727465785f696e74726153796e61707365739a9999bd0100000014000000636f727465785f696e74726153796e6170736573bc7413bc1a000000020000001e0000000200000002000300020000000100040000000100090005000600000001000100ffff000007000300";
+        const EXPECTED: &str = "C sem|C motor|C fineType|W sem 3,4,5,12,13,14|W motor 0,1,2,3,4,5,6,7,8,9,45,46,47,48,49|W fineType 23|B cortex_sem_to_fineType 0.030000|B cortex_fineType_to_sem 0.030000|B cortex_intraSynapses 0.030000|M cortex_intraSynapses -0.009000 32,33,34,35,36,37,38,39,75,76,77,78,79|C sem|C motor|C fineType|W sem 3,4,5,12,13,14|W motor 25,26,27,28,29,30,31,32,33,34|W fineType 23|B cortex_sem_to_fineType -0.075000|B cortex_fineType_to_sem -0.075000|B cortex_intraSynapses -0.075000|C sem|C motor|C fineType|W sem 21,22,23|W motor 15,16,17,18,19|W fineType 23|B cortex_sem_to_fineType 0.030000|B cortex_fineType_to_sem 0.030000|B cortex_intraSynapses 0.030000|M cortex_intraSynapses -0.009000 45,48,49";
+        let bytes: Vec<u8> = (0..HEX.len()).step_by(2).map(|i| u8::from_str_radix(&HEX[i..i + 2], 16).unwrap()).collect();
+        let lesson = match decode(&bytes) { Some(Frame::Lesson(l)) => l, other => panic!("lesson decode returned {other:?}") };
+        assert_eq!(lesson.twin, None);
+        let join = |v: &[u32]| v.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(",");
+        let got: Vec<String> = expand_lesson(&lesson).iter().map(|op| match op {
+            LessonOp::Clear { region, .. } => format!("C {region}"),
+            LessonOp::Write { region, indices, .. } => format!("W {region} {}", join(indices)),
+            LessonOp::Bound { name, lr } => format!("B {name} {lr:.6}"),
+            LessonOp::Masked { name, lr, rows } => format!("M {name} {lr:.6} {}", join(rows)),
+        }).collect();
+        assert_eq!(got.join("|"), EXPECTED);
+        // A truncated lesson rejects whole.
+        assert!(decode(&bytes[..bytes.len() - 2]).is_none());
     }
 
     /// The raw path must remain byte-identical for donors/servers that never set flag 4.

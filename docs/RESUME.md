@@ -1,6 +1,24 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-11-24 (latest, 49th) — GPU LEARNING WAS LANDING ON THE WRONG PAIR; TEACH FRAMES BUNDLED (DONOR 0.3.43); RUNPOD ADMIN PAGE
+> # 🛑 2026-11-24 (latest, 50th) — THE LESSON RUNS ON THE CARD (DONOR 0.3.44); RELATION TAGS FINALLY WRITTEN; 3.4× FASTER BEFORE IT
+>
+> **Branch: `feature/lessons-on-card`.** Gee: *"ive stopped her, fix her so we can use 100% of the rented GPUS which ever we use"* · *"WE ARE NOT STARTING HER AGAIN UNTIL YOU FINISH ALL OF IT!!!!"*. **Next launch: a FRESHSTART with the donor on 0.3.44** — the relation-tag fix changes what she is taught.
+>
+> ```
+>   MEASURED  pre-cell 300 words: 649.5 s → 417.2 → 220.3 → 192.8 s (3.4×) · the main thread
+>             was SATURATED by CPU-copy upkeep (profile), the card sat at 5%
+>   FIXED     per-word rewrite of frozen CPU copies · bulk spike fills · active-cell jump ·
+>             no CPU mirror when the card carried it · dispatch ring re-copying itself ·
+>             card-held lesson path (no CPU spike writes) · RELATION TAGS never written on
+>             either side (0.5 into a byte array = 0, no frame) — KI-59
+>   BUILT     SPRS 17 LESSON: one frame per rep, the card expands it into the exact per-pair
+>             steps; parity test passes against a recording of the real per-pair code
+>   READ NEXT cardLesson.lessons · lessonRefused ~0 · pre-cell vs 192.8 s · card utilisation
+> ```
+>
+> ---
+>
+> # 🛑 2026-11-24 (49th) — GPU LEARNING WAS LANDING ON THE WRONG PAIR; TEACH FRAMES BUNDLED (DONOR 0.3.43); RUNPOD ADMIN PAGE
 >
 > **Branch: `feature/runpod-admin-page`.** Gee: *"and we want to be pegging those GPUS not ssome lossey 20% horse shit"* · *"so all that batch shit needs to be finished before renting anything"* · *"get to it and dont stop till its all done and todo is templeted again"*. **Next launch is a FRESHSTART** — every earlier walk trained under the ordering bug.
 >
