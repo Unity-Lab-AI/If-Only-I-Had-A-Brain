@@ -15523,6 +15523,10 @@ wss.on('connection', (ws, req) => {
         const _r = closeReason ? String(closeReason).slice(0, 120) : '';
         console.warn(`[Server] GPU donor ${_cc.gpuName || _cc.id} CLOSED — code ${closeCode}${_r ? ` "${_r}"` : ''} · last heard ${_cc.lastSeen ? ((Date.now() - _cc.lastSeen) / 1000).toFixed(1) + 's' : '?'} ago · rtt ${_cc.rttMs ?? '?'}ms · buffered ${((ws.bufferedAmount || 0) / 1048576).toFixed(1)}MB · held cortex: ${brain._gpuClient === ws}. (1000/1001 = it closed on purpose · 1006 = connection died with no close frame: crash, network, or our heartbeat reap — look for a "missed … pings" line just above.)`);
         brain._lastDonorClose = { at: Date.now(), code: closeCode, reason: _r, gpu: _cc.gpuName || null, rttMs: _cc.rttMs ?? null, heldCortex: brain._gpuClient === ws };
+        // Remembered by GPU model so a relaunched donor (new id) is recognised
+        // as a REJOIN and held down before it may take the cortex back.
+        if (!(brain._recentDonorDrops instanceof Map)) brain._recentDonorDrops = new Map();
+        if (_cc.gpuName) brain._recentDonorDrops.set(String(_cc.gpuName), Date.now());
       }
     } catch { /* the post-mortem must never stop the teardown */ }
     brain.clients.delete(ws);
