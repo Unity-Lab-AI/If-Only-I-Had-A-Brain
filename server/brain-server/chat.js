@@ -4186,9 +4186,10 @@ const SERVER_CHAT_MIXIN = {
     // into flat bands ("like a Looney Tunes closing scene" — judged live); with
     // the real colour per cell, painted back with smooth interpolation, a
     // shadow stays a shadow. ~3 bytes a cell, deflated.
-    // Long side capped at 96 cells (~27 KB raw before deflate): light and shade
-    // are smooth, so this carries them exactly, and her memory stays bounded.
-    const tcS = Math.min(1, 96 / Math.max(gw, gh)), TW = Math.max(1, Math.round(gw * tcS)), TH = Math.max(1, Math.round(gh * tcS));
+    // ⛔ NO CAP. The picture she saw is kept at its own full resolution — every
+    // pixel's colour — so light, shade and texture come back as she saw them.
+    // (A 96-cell cap was written here first and struck: "dont dumb her down".)
+    const TW = SW, TH = SH;
     const tcBuf = Buffer.alloc(TW * TH * 3);
     for (let y = 0; y < TH; y++) for (let x = 0; x < TW; x++) {
       const sx = Math.min(SW - 1, Math.floor((x + 0.5) * SW / TW)), sy = Math.min(SH - 1, Math.floor((y + 0.5) * SH / TH));
