@@ -983,6 +983,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     Frame::WriteSpikeTemplate { cluster, region, .. } => format!("write_spike(tmpl) {cluster}/{region}"),
                     Frame::HebbianBoundMasked { name, reps, .. } => format!("hebbian_masked {name} x{reps}"),
                     Frame::Bundle { frames } => format!("bundle x{}", frames.len()),
+                    Frame::Lesson(l) => format!("lesson x{}", l.pairs.len()),
                 },
                 Work::WriteSpike { cluster, region, .. } => format!("write_spike {cluster}/{region}"),
                 Work::WriteCurrent { cluster, region, .. } => format!("write_current {cluster}/{region}"),
@@ -1605,6 +1606,39 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                                         }
                                     }
                                 }
+                                // v0.3.44 — a lesson runs here as the SAME work items the
+                                // per-pair frames produce, in the same order (expand_lesson
+                                // is the parity-checked definition of that order). Runs of
+                                // bound ops ride one batched-hebbian item, reqId 0 = no ack.
+                                Frame::Lesson(lesson) => {
+                                    let ops = frames::expand_lesson(&lesson);
+                                    let mut batch: Vec<(String, f32)> = Vec::new();
+                                    let flush = |batch: &mut Vec<(String, f32)>, workq: &WorkQueue| {
+                                        if !batch.is_empty() {
+                                            pending.fetch_add(1, Ordering::Relaxed);
+                                            workq.push(Work::Frame(Frame::BatchedHebbian { req_id: 0, ops: std::mem::take(batch) }));
+                                        }
+                                    };
+                                    for op in ops {
+                                        match op {
+                                            frames::LessonOp::Bound { name, lr } => batch.push((name, lr)),
+                                            other => {
+                                                flush(&mut batch, &workq);
+                                                pending.fetch_add(1, Ordering::Relaxed);
+                                                match other {
+                                                    frames::LessonOp::Clear { cluster, region } => workq.push(Work::ClearSpike { cluster, region }),
+                                                    frames::LessonOp::Write { cluster, region, indices } => workq.push(Work::WriteSpike { cluster, region, indices }),
+                                                    frames::LessonOp::Masked { name, lr, rows } => workq.push(Work::Frame(Frame::HebbianBoundMasked { req_id: 0, name, lr, reps: 1, post_idx: rows })),
+                                                    frames::LessonOp::Bound { .. } => unreachable!(),
+                                                }
+                                            }
+                                        }
+                                    }
+                                    flush(&mut batch, &workq);
+                                    // The lesson frame itself was counted once above; its
+                                    // work items now carry their own counts.
+                                    pending.fetch_sub(1, Ordering::Relaxed);
+                                }
                                 other => workq.push(Work::Frame(other)),
                             }
                           }
@@ -1930,7 +1964,8 @@ fn handle_frame(engine: &mut MultiEngine, partials: &mut HashMap<String, Partial
                     eprintln!("[donor] bound hebbian '{name}' failed: {e}");
                 }
             }
-            Some(frames::ack_simple(5, req_id))
+            // reqId 0 = a lesson's internal batch: nothing on the brain awaits it.
+            if req_id == 0 { None } else { Some(frames::ack_simple(5, req_id)) }
         }
         // Repeat frames are resolved against the teach cache at receive and never
         // reach the worker; template frames expand to Work::WriteCurrent at
@@ -1938,6 +1973,8 @@ fn handle_frame(engine: &mut MultiEngine, partials: &mut HashMap<String, Partial
         Frame::Repeat { .. } => None,
         // Unpacked at receive; never reaches the worker whole.
         Frame::Bundle { .. } => None,
+        // Expanded at receive; never reaches the worker whole.
+        Frame::Lesson(_) => None,
         Frame::WriteCurrentTemplate { cluster, region, row_start, group_size, values, psi } => {
             // Defensive twin of the receive-layer expansion (identical math).
             let mut indices: Vec<u32> = Vec::with_capacity(values.len() * group_size as usize);

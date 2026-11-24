@@ -21401,6 +21401,69 @@ export class Curriculum {
         }
       }
     };
+    // ⭐⭐⭐ THE LESSON RUNS ON THE CARD (donor v0.3.44, SPRS 17). One frame per
+    // rep carries every pair's active dims; the card expands it into exactly the
+    // steps the per-pair loop below sends (`expand_lesson` in frames.rs, parity-
+    // checked against a recording of this loop). What the brain still does per
+    // pair is the cheap part: embedding lookup, top-K, the wrong-answer draw.
+    // The op lists mirror, in order: `_crossRegionHebbian` (whitelist ∩ key order,
+    // sem→motor LR damping), the intra bound op, `_teachLateralInhibition`'s mask,
+    // `_crossRegionAntiHebbian` and the intra anti op.
+    let _lessonBase = null;
+    if (_fastLesson && cluster._gpuProxy.teachLesson && cluster._gpuProxy.lessonCapable && cluster._gpuProxy.lessonCapable()) {
+      try {
+        if (cluster._smLrScale === undefined) {
+          let _v = NaN;
+          try { _v = parseFloat(process.env.DREAM_SM_LR_SCALE); } catch { _v = NaN; }
+          cluster._smLrScale = (Number.isFinite(_v) && _v >= 0) ? _v : 0.5;
+        }
+        const wl = new Set(_wlFast);
+        const absAnti = Math.abs(lr * antiLrScale);
+        const posOps = [];
+        const antiOps = [];
+        for (const name of Object.keys(cluster.crossProjections)) {
+          if (!wl.has(name)) continue;
+          const at = name.indexOf('_to_');
+          if (at < 0 || !cluster.regions[name.slice(0, at)] || !cluster.regions[name.slice(at + 4)]) continue;
+          const damp = (name === 'sem_to_motor' || name === 'sem_to_word_motor') ? cluster._smLrScale : 1;
+          posOps.push([`${cluster.name}_${name}`, lr * damp]);
+        }
+        posOps.push([`${cluster.name}_intraSynapses`, lr]);
+        if (typeof cluster._gpuProxy.antiHebbianBound === 'function') {
+          for (const name of Object.keys(cluster.crossProjections)) {
+            if (wl.has(name) && cluster.crossProjections[name]._gpuBound) antiOps.push([`${cluster.name}_${name}`, -absAnti]);
+          }
+        }
+        if (typeof cluster.synapses.antiHebbianUpdate === 'function') antiOps.push([`${cluster.name}_intraSynapses`, -absAnti]);
+        const motorSize = motorRegion.end - motorRegion.start;
+        const BANDS = Curriculum.RELATION_TAG_BANDS;
+        let tagRowStart = 0, tagLen = 0;
+        if (fineTypeRegion && relationTagId !== null && relationTagId >= 0 && relationTagId < BANDS) {
+          const band = Math.floor((fineTypeRegion.end - fineTypeRegion.start) / BANDS);
+          if (band > 0) {
+            const t0 = relationTagId * band;
+            tagRowStart = t0;
+            tagLen = Math.max(0, Math.min(fineTypeRegion.end - fineTypeRegion.start, t0 + band) - t0);
+          }
+        }
+        _lessonBase = {
+          cluster: cluster.name,
+          twin: 'langCortex',
+          sem: this._resolveRegionName(cluster, semRegion),
+          motor: this._resolveRegionName(cluster, motorRegion),
+          tag: fineTypeRegion ? this._resolveRegionName(cluster, fineTypeRegion) : 'fineType',
+          semSize: semRegion.end - semRegion.start,
+          motorSize,
+          tagRowStart, tagLen,
+          posOps, antiOps: antiPairs ? antiOps : [],
+          lateral: (typeof cluster._gpuProxy.hebbianBoundMasked === 'function')
+            ? { matrix: `${cluster.name}_intraSynapses`, lr: -(Math.abs(lr) * 0.3), numBuckets: 26, bucketSize: Math.max(1, Math.floor(motorSize / 26)), motorStartAbs: motorRegion.start }
+            : null,
+        };
+        if (!_lessonBase.sem || !_lessonBase.motor) _lessonBase = null;
+      } catch { _lessonBase = null; }
+    }
+    const _dimsOf = (feat) => { const d = []; for (let i = 0; i < feat.length; i++) if (feat[i] > 0) d.push(i); return d; };
     {
       const sp = this._teachStageProfile || (this._teachStageProfile = {});
       const f = sp.cardLesson || (sp.cardLesson = { fastCalls: 0, cpuCalls: 0, fastPairs: 0 });
@@ -21526,7 +21589,76 @@ export class Curriculum {
       // posture everywhere else).
       cluster._teachIntermediateRep = _fastLesson || rep < reps - 1;
       cluster._teachFinalRepSampleEveryN = (rep === reps - 1) ? 5 : 0;
-      for (let pairIdx = 0; pairIdx < pairs.length; pairIdx++) {
+      // ── THE REP AS ONE LESSON ON THE CARD. Same per-pair preparation as the
+      // loop below, same RNG draws in the same order; counters commit only if
+      // the card accepted the frame. A refused frame falls through to the loop.
+      let _repOnCard = false;
+      if (_lessonBase && cluster._teachSubstrateReady('lesson')) {
+        const lp = [];
+        let t = 0, sk = 0, af = 0, wa = 0, swa = 0, semAct = 0, semN = 0;
+        let ls = null, lm = null, sg = 0, mg = 0, okShape = true;
+        for (let pairIdx = 0; pairIdx < pairs.length; pairIdx++) {
+          const pair = pairs[pairIdx];
+          if (!Array.isArray(pair) || pair.length < 2) { sk++; continue; }
+          const [inputWord, outputWord] = pair;
+          const inEmb = this._dictionaryPatternFor(inputWord);
+          const outEmb = sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function'
+            ? sharedEmbeddings.getEmbedding(outputWord) : null;
+          if (!inEmb || !outEmb || inEmb.length === 0 || outEmb.length === 0) { sk++; continue; }
+          const outEmbMotor = motorWTA ? this._topKEmbedding(outEmb, motorTopK) : outEmb;
+          if (motorWTA && outEmbMotor !== outEmb) wa++;
+          const inEmbSem = semWTA ? this._topKEmbedding(inEmb, semTopK) : inEmb;
+          if (semWTA && inEmbSem !== inEmb) swa++;
+          const gS = Math.max(1, Math.floor(_lessonBase.semSize / inEmbSem.length));
+          const gM = Math.max(1, Math.floor(_lessonBase.motorSize / outEmbMotor.length));
+          if ((sg && sg !== gS) || (mg && mg !== gM)) { okShape = false; break; }
+          sg = gS; mg = gM;
+          const sd = _dimsOf(inEmbSem);
+          semAct += sd.length; semN++;
+          let wd = null;
+          if (antiPairs) {
+            let wrongIdx = Math.floor(_curriculumRand() * pairs.length);
+            if (wrongIdx === pairIdx) wrongIdx = (wrongIdx + 1) % pairs.length;
+            const wrongPair = pairs[wrongIdx];
+            if (Array.isArray(wrongPair) && wrongPair.length >= 2) {
+              const wrongOut = wrongPair[1];
+              if (wrongOut && wrongOut !== outputWord) {
+                const wrongEmb = sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function'
+                  ? sharedEmbeddings.getEmbedding(wrongOut) : null;
+                if (wrongEmb && wrongEmb.length > 0) {
+                  const wem = motorWTA ? this._topKEmbedding(wrongEmb, motorTopK) : wrongEmb;
+                  if (Math.max(1, Math.floor(_lessonBase.motorSize / wem.length)) !== gM) { okShape = false; break; }
+                  wd = _dimsOf(wem);
+                  af++;
+                  ls = inEmbSem; lm = wem;
+                }
+              }
+            }
+          }
+          if (!wd) { ls = inEmbSem; lm = outEmbMotor; }
+          lp.push([sd, _dimsOf(outEmbMotor), wd]);
+          t++;
+        }
+        if (okShape && lp.length && cluster._gpuProxy.teachLesson({ ..._lessonBase, semGroup: sg, motorGroup: mg, pairs: lp })) {
+          trained += t; skipped += sk; antiFires += af; wtaApplied += wa; semWtaApplied += swa;
+          _semActiveSum += semAct; _semActiveN += semN; _psN += t;
+          if (ls) { _lastSemFeat = ls; _lastMotorFeat = lm; }
+          this._relTagWrites = (this._relTagWrites || 0) + (_lessonBase.tagLen ? t + af : 0);
+          const sp = this._teachStageProfile || (this._teachStageProfile = {});
+          const f = sp.cardLesson || (sp.cardLesson = { fastCalls: 0, cpuCalls: 0, fastPairs: 0 });
+          f.lessons = (f.lessons || 0) + 1;
+          f.lessonPairs = (f.lessonPairs || 0) + t;
+          _repOnCard = true;
+        } else {
+          // ⚠ A refused lesson has already drawn its wrong-answer samples, so the
+          // per-pair loop below draws fresh ones: same dose, different negatives.
+          // Counted so a rate of refusals is visible rather than assumed rare.
+          const sp = this._teachStageProfile || (this._teachStageProfile = {});
+          const f = sp.cardLesson || (sp.cardLesson = { fastCalls: 0, cpuCalls: 0, fastPairs: 0 });
+          f.lessonRefused = (f.lessonRefused || 0) + 1;
+        }
+      }
+      for (let pairIdx = 0; !_repOnCard && pairIdx < pairs.length; pairIdx++) {
         const pair = pairs[pairIdx];
         if (!Array.isArray(pair) || pair.length < 2) { skipped++; continue; }
         const [inputWord, outputWord] = pair;
