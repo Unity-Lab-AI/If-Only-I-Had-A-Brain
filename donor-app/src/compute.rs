@@ -639,6 +639,13 @@ impl ComputeEngine {
         self.sparse.contains_key(name)
     }
 
+    /// v0.3.46 — drop a resident matrix. Its device buffers are released when
+    /// the entry drops. Sent to a card that no longer owns the cortex after a
+    /// move: its copy is stale from that moment and only holds VRAM.
+    pub fn free_sparse(&mut self, name: &str) -> bool {
+        self.sparse.remove(name).is_some()
+    }
+
     /// Upload (or replace) a CSR sparse matrix on the GPU (standalone, or cluster-bound
     /// when `binding` is provided — see SparseMatrix.binding).
     pub fn upload_sparse(&mut self, name: &str, rows: u32, cols: u32, row_ptr: &[u32], values: &[f32], col_idx: &[u32], binding: Option<Binding>) {
@@ -1388,6 +1395,13 @@ impl Backend {
             Backend::Cuda(e) => e.has_sparse(name),
         }
     }
+    fn free_sparse(&mut self, name: &str) -> bool {
+        match self {
+            Backend::Wgpu(e) => e.free_sparse(name),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.free_sparse(name),
+        }
+    }
     fn upload_sparse(&mut self, name: &str, rows: u32, cols: u32, row_ptr: &[u32], values: &[f32], col_idx: &[u32], binding: Option<Binding>) {
         match self {
             Backend::Wgpu(e) => e.upload_sparse(name, rows, cols, row_ptr, values, col_idx, binding),
@@ -1790,6 +1804,14 @@ impl MultiEngine {
 
     pub fn has_sparse(&self, name: &str) -> bool {
         self.matrix_gpu.get(name).map(|&g| self.engines[g].has_sparse(name)).unwrap_or(false)
+    }
+
+    /// v0.3.46 — drop a resident matrix from whichever GPU holds it.
+    pub fn free_sparse(&mut self, name: &str) -> bool {
+        match self.matrix_gpu.remove(name) {
+            Some(g) => self.engines[g].free_sparse(name),
+            None => false,
+        }
     }
 
     pub fn upload_sparse(&mut self, name: &str, rows: u32, cols: u32, row_ptr: &[u32], values: &[f32], col_idx: &[u32], binding: Option<Binding>) {

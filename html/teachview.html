@@ -789,7 +789,7 @@
             title="Show the description and the effect-class evidence for each knob."
             data-tip="Show what each knob does, plus the evidence behind its effect class — the read site and why it was classified live, boot-frozen or unproven.&#10;&#10;⚠ The evidence line matters as much as the value: it is what lets a claim about this panel be checked instead of believed."><input type="checkbox" id="tvKnobDetail" checked /> show what each one does</label>
         </div>
-        <div id="tvKnobReport" style="margin-top:9px"></div>
+        <div class="tv-controls" style="margin-top:9px"><span class="tv-sub tv-tip" title="A named set of every knob position, applied all at once." data-tip="A TEMPLATE names every knob she reads: a value, or &quot;leave it to the code&quot; — each with its reason.&#10;&#10;⭐ Applying writes the whole set in one go. Live knobs change now; the rest are stored as the boot defaults, and if any boot-frozen knob changed she restarts ONCE for all of them — never once per knob.&#10;&#10;⚠ A knob the launcher or service unit sets still wins, and is listed as shadowed.">template</span> <select id="tvTplPick"><option value="">— loading —</option></select> <button id="tvTplPreview" class="tv-tip" title="Show what this template would change — applies nothing." data-tip="Lists every knob the template would change, split into: changes now (live), needs the one restart (boot-frozen / cached / unproven), and shadowed by the launcher.&#10;&#10;Nothing is written.">◇ preview</button> <button id="tvTplApply" class="tv-tip" title="Apply the whole template; restarts her once if a boot-frozen knob changed." data-tip="Applies every knob in the template at once and makes it the set she starts with.&#10;&#10;⛔ If any boot-frozen knob changes, she is saved and restarted ONCE (resume, no wipe) so all of them take effect together. Live-only changes apply without a restart.">✔ apply template</button> <span id="tvTplActive" class="tv-sub"></span></div><div id="tvKnobReport" style="margin-top:9px"></div>
         <div id="tvKnobs" style="margin-top:9px"><div class="tv-note">—</div></div>
       </div>
     </div>
@@ -2334,6 +2334,93 @@ $('tvKnobReset').onclick = () => {
   }
   knobReport(h);
 };
+
+/* ────────────────────────────────────────────────────────────────────────────
+   KNOB TEMPLATES — a named set of every knob, applied at once.
+
+   ⭐ ONE APPLY, AT MOST ONE RESTART. The server writes the whole set, changes
+   the live knobs now, and restarts her ONCE (resume) if any boot-frozen knob
+   changed — the preview names exactly which ones before anything is written.
+   ──────────────────────────────────────────────────────────────────────────── */
+async function tplLoadList() {
+  const sel = $('tvTplPick');
+  if (!sel) return;
+  try {
+    const r = await fetch((WEIGHT_BASE || '') + '/knob-templates');
+    if (isForbidden(r)) { sel.innerHTML = '<option value="">admin lane only</option>'; return; }
+    const j = await r.json();
+    const keep = sel.value;
+    sel.innerHTML = (j.templates || []).map((t) => `<option value="${knobEsc(t.name)}">${knobEsc(t.title || t.name)} — ${t.knobs || 0} knobs</option>`).join('')
+      || '<option value="">no templates on this brain</option>';
+    if (keep) sel.value = keep; else if (j.active) sel.value = j.active;
+    $('tvTplActive').textContent = j.active
+      ? `active: ${j.active}${j.activeModified ? ' (hand-edited since)' : ''}${j.bootTemplate && j.bootTemplate !== j.active ? ` · this boot started on ${j.bootTemplate} — restart to apply` : ''}`
+      : 'no template applied — she runs code defaults plus any saved per-knob defaults';
+  } catch (e) {
+    sel.innerHTML = '<option value="">could not reach the brain</option>';
+  }
+}
+
+function tplReportHtml(j, applied) {
+  const row = (x) => `<div style="padding:2px 0;font-size:12.5px"><code>${knobEsc(x.key)}</code> <span class="tv-sub">${knobEsc(x.from)}</span> → <b>${knobEsc(x.to)}</b>${x.effect ? ` <span class="tv-sub">(${knobEsc(x.effect)})</span>` : ''}</div>`;
+  const live = (j.liveSet || []).concat(j.liveCleared || []);
+  let h = `<div class="tv-note">${applied ? '✔ Applied' : '◇ Preview of'} template <b>${knobEsc(j.template)}</b> — `
+    + `<b>${live.length}</b> live change(s) ${applied ? 'made now' : 'would apply now'} · `
+    + `<b>${(j.restartNeeded || []).length}</b> boot-frozen change(s) ${applied ? (j.restarting ? '— <b>restarting her ONCE now</b> (resume)' : 'stored; they apply at the next restart') : 'needing ONE restart'} · `
+    + `${j.unchanged || 0} already match.`
+    + ((j.shadowed || []).length ? ` · ⚠ <b>${j.shadowed.length}</b> shadowed by the launcher/unit (the environment wins)` : '')
+    + ((j.notCovered || []).length ? ` · ⛔ <b>${j.notCovered.length}</b> knob(s) the template does not name` : '')
+    + ((j.unknownInTemplate || []).length ? ` · ${j.unknownInTemplate.length} template key(s) this brain does not read` : '')
+    + '</div>';
+  if (live.length) h += '<div class="tv-sub" style="margin-top:6px">live now</div>' + live.map(row).join('');
+  if ((j.restartNeeded || []).length) h += '<div class="tv-sub" style="margin-top:6px">at the one restart</div>' + j.restartNeeded.map(row).join('');
+  if ((j.shadowed || []).length) h += '<div class="tv-sub" style="margin-top:6px">shadowed</div>' + j.shadowed.map((x) => `<div style="padding:2px 0;font-size:12.5px"><code>${knobEsc(x.key)}</code> env <b>${knobEsc(x.env)}</b> · template ${knobEsc(x.template)}</div>`).join('');
+  if ((j.notCovered || []).length) h += '<div class="tv-sub" style="margin-top:6px">not named by the template</div>' + j.notCovered.map((k) => `<div style="padding:2px 0;font-size:12.5px"><code>${knobEsc(k)}</code></div>`).join('');
+  return h;
+}
+
+async function tplPost(preview) {
+  const name = $('tvTplPick') && $('tvTplPick').value;
+  if (!name) { knobReport('<div class="tv-note">⛔ No template selected.</div>'); return; }
+  let restart = false;
+  if (!preview) {
+    // Preview first, so the confirmation names the restart before it happens.
+    let p = null;
+    try {
+      const r0 = await fetch((WEIGHT_BASE || '') + '/knob-template', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, preview: true }) });
+      if (isForbidden(r0)) { knobReport('<div class="tv-note">⚠ admin-only — this page is not on the admin lane. Nothing was applied.</div>'); return; }
+      p = await r0.json();
+    } catch (e) { knobReport(`<div class="tv-note">⛔ ${knobEsc((e && e.message) || 'request failed')}</div>`); return; }
+    if (!p || !p.ok) { knobReport(`<div class="tv-note">⛔ ${knobEsc((p && p.why) || 'preview failed')}</div>`); return; }
+    const n = (p.restartNeeded || []).length;
+    const live = (p.liveSet || []).length + (p.liveCleared || []).length;
+    if (!n && !live) { knobReport(tplReportHtml(p, false) + '<div class="tv-note">✅ Nothing to change — she already runs this template.</div>'); return; }
+    if (n) {
+      restart = confirm(`Template "${name}": ${live} live change(s) now, and ${n} boot-frozen knob(s) that need a restart.\n\nOK = apply and restart her ONCE now (saved, resumes).\nCancel = apply and store them for the next restart.`);
+    } else if (!confirm(`Template "${name}": ${live} live change(s), no restart needed. Apply?`)) return;
+  }
+  try {
+    const r = await fetch((WEIGHT_BASE || '') + '/knob-template', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, preview: !!preview, restart }) });
+    if (isForbidden(r)) { knobReport('<div class="tv-note">⚠ admin-only — this page is not on the admin lane. Nothing was applied.</div>'); return; }
+    const j = await r.json();
+    if (!j.ok) { knobReport(`<div class="tv-note">⛔ ${knobEsc(j.why || ('HTTP ' + r.status))}</div>`); return; }
+    if (r.ok) markAdminLane(true);
+    knobReport(tplReportHtml(j, !preview));
+    if (!preview) {
+      for (const x of (j.liveSet || []).concat(j.liveCleared || [])) LIVE_KNOB_WRITES.delete(x.key);
+      tplLoadList();
+    }
+  } catch (e) {
+    knobReport(`<div class="tv-note">⛔ ${knobEsc((e && e.message) || 'request failed')}</div>`);
+  }
+}
+if ($('tvTplPreview')) $('tvTplPreview').onclick = () => tplPost(true);
+if ($('tvTplApply')) $('tvTplApply').onclick = () => tplPost(false);
+/* ⛔ DEFERRED, NOT CALLED HERE: `WEIGHT_BASE` is a `let` declared further down
+   this script, so touching it at this line is a TDZ ReferenceError that kills
+   the whole block. By 3 s the script has run and the base has been probed. */
+setTimeout(tplLoadList, 3000);
+setInterval(tplLoadList, 60000);
 
 /* ────────────────────────────────────────────────────────────────────────────
    DOWNLOAD HER WEIGHTS
