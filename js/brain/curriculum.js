@@ -6435,6 +6435,15 @@ export class Curriculum {
         finally { this._precellVocabActive = false; }
       }
     }
+    // ⛔ A SHUTDOWN IS NOT A DICTIONARY OUTAGE. The loop above breaks when the
+    // brain is stopping; every word after that point was never asked for, and
+    // reporting them as "service did not answer" (then "Cell teach phases
+    // begin") sent the reader after the wrong cause. They stay untaught and the
+    // next boot's pass resumes at them.
+    if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) {
+      this._hb(`[Curriculum] 📚 PRE-CELL VOCAB paused for shutdown — ${subject}/${grade}: ${totalWordsBound} words learned this pass; the rest are still owed and resume on the next boot.`);
+      return;
+    }
     const stall = (totalTimeouts > 0 || totalSlowWords > 0)
       ? ` · ⚠ ${totalTimeouts} per-word timeouts, ${totalSlowWords} slow words`
       : '';

@@ -154,14 +154,10 @@ class MindSpaceWorkerProxy {
     return this._call('describe', [rec, dim]);
   }
 
+  // ⛔ NOT DONOR-ROUTED AS OF 2026-11-24 — a look's RGBA went over the donor
+  // socket as one 6.2 MB JSON frame, and the remote card dropped (1006) right
+  // after it, the same class as `traceLineArt`. Runs in the mindspace worker.
   async perceive(img) {
-    if (this._viaDonor('perceive') && img && img.data && img.width && img.height) {
-      const r = await this._donorDispatch('perceive', {
-        width: img.width, height: img.height,
-        rgba_b64: Buffer.from(img.data.buffer, img.data.byteOffset, img.data.byteLength).toString('base64'),
-      });
-      if (r && r.rec) return r.rec;
-    }
     return this._call('perceive', [img]);
   }
 
@@ -276,19 +272,10 @@ class MindSpaceWorkerProxy {
   // Detailed styled field render — NOW ASYNC (ONE PROCESS): donor GPU when
   // capable, local as the rollout ramp. Same await-contract warning as
   // traceLineArt above.
+  // ⛔ NOT DONOR-ROUTED AS OF 2026-11-24 — it shipped a whole rec over the
+  // donor socket, the class that dropped the remote card. Mindspace worker.
   async stylizeField(rec, opts) {
-    if (this._viaDonor('stylizeField')) {
-      const o = opts || {};
-      const r = await this._donorDispatch('stylizeField', {
-        rec,
-        opts: { traceSide: o.traceSide, bands: o.bands },
-        labelStrokes: o.labelStrokes || null,
-      });
-      if (r && r.rec) return r.rec;
-    }
-    return (this._local && typeof this._local.stylizeField === 'function')
-      ? this._local.stylizeField(rec, opts)
-      : null;
+    return this._call('stylizeField', [rec, opts || {}]);
   }
 
   // composeFields forward REMOVED (2026-07-16) — the collage compositor is gone;
