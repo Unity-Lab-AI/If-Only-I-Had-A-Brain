@@ -2331,7 +2331,12 @@ const SERVER_CHAT_MIXIN = {
     this._eyeLastSeed = _seedKey;
     if (st.pinTicks > st.maxPinTicks) st.maxPinTicks = st.pinTicks;
 
-    const _recent = (w) => this._eyeRecent.indexOf(w) !== -1;
+    // ⭐ NOT STUCK — UNLESS IT IS THE TOPIC. She moves on from what she just
+    // looked at (the recent ring), except for what the CONVERSATION keeps coming
+    // back to: a word people have said to her at least twice in their last few
+    // messages is the topic, and she may keep looking at it while it is.
+    const _topic = this._conversationTopicWords();
+    const _recent = (w) => this._eyeRecent.indexOf(w) !== -1 && !_topic.has(w);
     // ⚠ Judged on the HEAD of the phrase. The taxonomy answers about a LEMMA,
     // and a modifier+subject phrase is not one — asking about the whole phrase returns
     // unknown and would refuse every multi-word subject, re-creating the
@@ -2456,6 +2461,28 @@ const SERVER_CHAT_MIXIN = {
     return null;
   },
 
+  // The words the conversation keeps coming back to: content words that appear
+  // at least twice across the last 4 things each person said to her. Cached
+  // for 10 s (this runs on the imagine tick).
+  _conversationTopicWords() {
+    const now = Date.now();
+    if (this._topicCache && now - this._topicCache.at < 10000) return this._topicCache.set;
+    const counts = new Map();
+    try {
+      for (const msgs of Object.values(this._conversations || {})) {
+        if (!Array.isArray(msgs)) continue;
+        const said = msgs.filter(m => m && m.role === 'user' && typeof m.text === 'string').slice(-4);
+        for (const m of said) {
+          const words = (typeof this._vmContentWords === 'function') ? this._vmContentWords(m.text) : [];
+          for (const w of new Set(words)) counts.set(w, (counts.get(w) || 0) + 1);
+        }
+      }
+    } catch { /* no conversation — no topic */ }
+    const set = new Set([...counts].filter(([, n]) => n >= 2).map(([w]) => w));
+    this._topicCache = { at: now, set };
+    return set;
+  },
+
   // MINDMOTION.1 — is this word an adjective, by the live dictionary's own
   // part-of-speech evidence (cache-only read, no network on the tick). NOT a
   // word list: the dictionary answers, or the word is not treated as a
@@ -2489,12 +2516,15 @@ const SERVER_CHAT_MIXIN = {
     // Cache the array form and refresh it only when the taught set grows —
     // this runs every imagine tick and the set reaches tens of thousands.
     if (!this._eyeTaughtCache || this._eyeTaughtCacheSize !== taught.size) {
-      this._eyeTaughtCache = Array.from(taught).filter(w => typeof w === 'string' && w.length > 1);
+      // ⭐ RELEVANT, NOT RANDOM — NEWEST FIRST. The set keeps the order she was
+      // taught in, so walking it from the front sent her to look at whatever
+      // she learned first, long ago. Reversed, the words she is learning RIGHT
+      // NOW come first: she looks at what her lessons are about. The recent
+      // ring (`isRecent`) and the "already seen" skip keep it from looping.
+      this._eyeTaughtCache = Array.from(taught).filter(w => typeof w === 'string' && w.length > 1).reverse();
       this._eyeTaughtCacheSize = taught.size;
-      // Cursor walks the pool so she works THROUGH what she has been taught
-      // instead of re-rolling the same lucky words. ⚠ Not reset on refresh:
-      // a growing vocabulary must not send her back to the beginning.
-      if (typeof this._eyeTaughtCursor !== 'number') this._eyeTaughtCursor = 0;
+      // Restart at the newest whenever the vocabulary grows.
+      this._eyeTaughtCursor = 0;
     }
     const pool = this._eyeTaughtCache;
     if (pool.length === 0) return null;
@@ -2948,8 +2978,15 @@ const SERVER_CHAT_MIXIN = {
       // pose and proportion. Without any field of it, she rebuilds a form she
       // has banked. Never the remembered trace pasted as it was seen.
       try {
-        const base = this._formPick(s.word, rnd) || s.schema;
-        const sk = await this._skeletonFor(s.word) || (base && base.skeleton) || null;
+        let base = this._formPick(s.word, rnd) || s.schema;
+        // the version of it this piece needs — what her mind is on (see _formForNeed)
+        if (!s.fused) { const need = await this._formForNeed(s.word, base, rnd); if (need) base = need; }
+        // ⛔ THE PICKED FORM'S OWN BUILD FIRST. This read `_skeletonFor(word)`
+        // first — the concept's LATEST look — so whichever form was picked (or
+        // blended) above, she built from the same skeleton every time: the
+        // photocopy. The picked form's skeleton wins; the look's is the fallback.
+        const sk = (base && base.skeleton && base.skeleton.mask) ? base.skeleton
+          : (await this._skeletonFor(s.word) || (base && base.skeleton) || null);
         if (base && sk) {
           // INVENTION — her current thought picks another thing she knows the
           // build of, and that thing's limbs graft onto this one.
@@ -3645,6 +3682,184 @@ const SERVER_CHAT_MIXIN = {
       return form;
     } catch { return null; }
   },
+  // ⭐ THE FORM THIS PIECE NEEDS — chosen by her eye, not by chance. With two or
+  // more looks of a thing she can make many versions of it: each look as it
+  // was, and blends of the picked look with each other one at several mixes.
+  // Each candidate is painted small and read by her eye (`describe`), and the
+  // one closest to what she is IMAGINING right now (the newest field in her
+  // imagined ring, under 2 min old) wins; when she is imagining nothing fresh,
+  // the one closest to her whole idea of the thing (the mean percept of every
+  // look she holds). So the door she draws is the door her mind is on — new
+  // when no door she saw fits, a seen one when it does. Bounded at
+  // DREAM_FORM_NEED_TRIES (6) candidates. Null = nothing to choose between.
+  async _formForNeed(word, base, rnd) {
+    try {
+      if (!this.mindSpace || typeof this.mindSpace.sketch !== 'function' || typeof this.mindSpace.describe !== 'function') return null;
+      const store = (typeof this._vmStore === 'function') ? this._vmStore() : null;
+      const e = store && store.get(String(word || '').toLowerCase());
+      if (!e || !e.schema) return null;
+      const looks = [e.schema, ...(Array.isArray(e.schemaBank) ? e.schemaBank : [])].filter(s => s && s.skeleton && s.skeleton.mask);
+      if (looks.length < 2) return null;
+      const first = (base && base.skeleton && base.skeleton.mask) ? base : looks[0];
+      const cos = (a, b) => { let d = 0, na = 0, nb = 0; const n = Math.min(a.length, b.length); for (let i = 0; i < n; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; } const dn = Math.sqrt(na) * Math.sqrt(nb); return dn > 0 ? d / dn : -1; };
+      const read = async (schema) => {
+        const strokes = this._ownArtStrokesFromSchema(schema, { cx: 0.5, cy: 0.5, w: 0.72, h: 0.72 }, this._ownArtRng('need|' + word), word, this._artStyles()[0]);
+        if (!strokes || !strokes.length) return null;
+        const rec = await this.mindSpace.sketch(strokes, { maxSide: 128 });
+        const d = rec ? await this.mindSpace.describe(rec) : null;
+        return d ? Array.from(d) : null;
+      };
+      // what she is imagining now, else her whole idea of the thing
+      let target = null, why = 'idea';
+      const ring = Array.isArray(this._imaginedFieldRing) ? this._imaginedFieldRing : [];
+      const fresh = ring.length ? ring[ring.length - 1] : null;
+      if (fresh && fresh.rec && Date.now() - (fresh.at || 0) < 120000) {
+        const d = await this.mindSpace.describe(fresh.rec);
+        if (d) { target = Array.from(d); why = 'imagining'; }
+      }
+      const TRIES = Number(process.env.DREAM_FORM_NEED_TRIES) > 0 ? Number(process.env.DREAM_FORM_NEED_TRIES) : 6;
+      // Every look she holds is a candidate — real doors she saw, each one full
+      // quality. ⛔ BLENDS ARE OFF BY DEFAULT (DREAM_FORM_BLEND=1 turns them on):
+      // rendered and judged 2026-11-24 on two real door looks, the 0.35 blend
+      // tore into a jagged L and the 0.65 one came out blotchy with frame
+      // fragments — a look's silhouette carries pieces of its surroundings, so
+      // morphing two of them breaks the shape. Shown only when they hold up.
+      const cands = [{ schema: first, label: 'seen' }];
+      for (const o of looks) {
+        if (cands.length >= TRIES) break;
+        if (o !== first) cands.push({ schema: o, label: 'seen' });
+      }
+      if (process.env.DREAM_FORM_BLEND === '1') {
+        for (const o of looks.filter(s => s !== first)) {
+          for (const t of [0.35, 0.65]) {
+            if (cands.length >= TRIES * 2) break;
+            const bl = this._blendSkeletons(first.skeleton, o.skeleton, t);
+            if (bl) cands.push({ schema: { ...first, skeleton: bl }, label: `blend ${t}` });
+          }
+        }
+      }
+      if (cands.length < 2) return null;
+      const reads = [];
+      for (const c of cands) reads.push(await read(c.schema));
+      if (!target) {
+        // her whole idea of it: the mean of what each look reads as
+        const ok = reads.filter(Boolean);
+        if (!ok.length) return null;
+        target = ok[0].map((_, i) => ok.reduce((s, r) => s + (r[i] || 0), 0) / ok.length);
+      }
+      let best = -1, bi = -1;
+      reads.forEach((r, i) => { if (r) { const s = cos(r, target); if (s > best) { best = s; bi = i; } } });
+      if (bi < 0) return null;
+      const won = cands[bi];
+      this._formNeed = { word: String(word || '').toLowerCase(), chose: won.label, against: why, of: cands.length, score: +best.toFixed(4), at: Date.now() };
+      if (won.label !== 'seen') this._formBlends = (this._formBlends | 0) + 1;
+      return won.schema;
+    } catch { return null; }
+  },
+
+  // ⭐ A NEW ONE OF A THING SHE KNOWS — not a copy of any look. Two forms she
+  // has seen are blended into one she never saw: each silhouette becomes a
+  // signed distance field (inside < 0), both are mapped into one frame whose
+  // proportions sit between the two, and the fields are mixed at `t` — a real
+  // morph of the outline, not an overlay. Every inside cell takes the colour
+  // she saw at that place in BOTH looks, mixed the same way. Painted as the
+  // subject on her page (no scene — a scene belongs to one look and would tear
+  // around a new outline). Null when either look cannot be read or the blend
+  // would be a sliver; her eye still judges the finished piece.
+  _blendSkeletons(A, B, t) {
+    try {
+      const zlib = require('zlib');
+      const unpack = (m) => { const raw = Buffer.from(m.b64, 'base64'); return m.z ? zlib.inflateSync(raw) : raw; };
+      const read = (S) => {
+        if (!S || !S.mask || !S.mask.b64) return null;
+        const W = S.mask.w, H = S.mask.h, bits = Buffer.from(S.mask.b64, 'base64');
+        const on = (x, y) => {
+          x = Math.round(x); y = Math.round(y);
+          if (x < 0 || y < 0 || x >= W || y >= H) return 0;
+          const i = y * W + x; return (bits[i >> 3] >> (i & 7)) & 1;
+        };
+        let x0 = W, y0 = H, x1 = -1, y1 = -1;
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (on(x, y)) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+        if (x1 < 0) return null;
+        let col = null;
+        if (S.truecolor && S.truecolor.b64) {
+          const tb = unpack(S.truecolor), TW = S.truecolor.w, TH = S.truecolor.h;
+          if (tb.length >= TW * TH * 3) col = (gx, gy) => {
+            const sx = Math.max(0, Math.min(TW - 1, Math.floor((gx + 0.5) * TW / W))), sy = Math.max(0, Math.min(TH - 1, Math.floor((gy + 0.5) * TH / H)));
+            const o = (sy * TW + sx) * 3; return [tb[o], tb[o + 1], tb[o + 2]];
+          };
+        }
+        if (!col && S.colors && S.colors.b64) {
+          const idx = unpack(S.colors), CW = S.colors.w || W, CH = S.colors.h || H, pal = S.colors.palette || [];
+          col = (gx, gy) => {
+            const cx = Math.max(0, Math.min(CW - 1, Math.floor((gx + 0.5) * CW / W))), cy = Math.max(0, Math.min(CH - 1, Math.floor((gy + 0.5) * CH / H)));
+            return pal[idx[cy * CW + cx]] || null;
+          };
+        }
+        return col ? { W, H, on, col, x0, y0, w: x1 - x0 + 1, h: y1 - y0 + 1 } : null;
+      };
+      const a = read(A), b = read(B);
+      if (!a || !b) return null;
+      const W = a.W, H = a.H, N = W * H;
+      // the new outline's frame: A's place and size, proportions between the two
+      const asp = (1 - t) * (a.h / a.w) + t * (b.h / b.w);
+      let ow = Math.sqrt((a.w * a.h) / asp), oh = ow * asp;
+      const fit = Math.min(1, (W - 2) / ow, (H - 2) / oh); ow *= fit; oh *= fit;
+      const ox0 = Math.max(0, Math.min(W - ow, a.x0 + a.w / 2 - ow / 2)), oy0 = Math.max(0, Math.min(H - oh, a.y0 + a.h / 2 - oh / 2));
+      const occA = new Uint8Array(N), occB = new Uint8Array(N);
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const u = (x + 0.5 - ox0) / ow, v = (y + 0.5 - oy0) / oh, i = y * W + x;
+        occA[i] = a.on(a.x0 + u * a.w - 0.5, a.y0 + v * a.h - 0.5);
+        occB[i] = b.on(b.x0 + u * b.w - 0.5, b.y0 + v * b.h - 0.5);
+      }
+      // two-pass chamfer distance to the nearest cell where `want` holds
+      const dist = (occ, want) => {
+        const d = new Float32Array(N), INF = 1e9, D2 = Math.SQRT2;
+        for (let i = 0; i < N; i++) d[i] = occ[i] === want ? 0 : INF;
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+          const i = y * W + x; let v = d[i];
+          if (x > 0) v = Math.min(v, d[i - 1] + 1);
+          if (y > 0) { v = Math.min(v, d[i - W] + 1); if (x > 0) v = Math.min(v, d[i - W - 1] + D2); if (x < W - 1) v = Math.min(v, d[i - W + 1] + D2); }
+          d[i] = v;
+        }
+        for (let y = H - 1; y >= 0; y--) for (let x = W - 1; x >= 0; x--) {
+          const i = y * W + x; let v = d[i];
+          if (x < W - 1) v = Math.min(v, d[i + 1] + 1);
+          if (y < H - 1) { v = Math.min(v, d[i + W] + 1); if (x < W - 1) v = Math.min(v, d[i + W + 1] + D2); if (x > 0) v = Math.min(v, d[i + W - 1] + D2); }
+          d[i] = v;
+        }
+        return d;
+      };
+      const sdf = (occ) => { const dOut = dist(occ, 1), dIn = dist(occ, 0), s = new Float32Array(N); for (let i = 0; i < N; i++) s[i] = occ[i] ? -dIn[i] : dOut[i]; return s; };
+      const sa = sdf(occA), sb = sdf(occB);
+      const bits = new Uint8Array(Math.ceil(N / 8)), idx = new Uint8Array(N).fill(255), tc = Buffer.alloc(N * 3);
+      let inside = 0, mr = 0, mg = 0, mb = 0;
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const i = y * W + x;
+        if ((1 - t) * sa[i] + t * sb[i] >= 0) continue;
+        const u = (x + 0.5 - ox0) / ow, v = (y + 0.5 - oy0) / oh;
+        const ax = a.x0 + u * a.w - 0.5, ay = a.y0 + v * a.h - 0.5, bx = b.x0 + u * b.w - 0.5, by = b.y0 + v * b.h - 0.5;
+        const ca = a.on(ax, ay) ? a.col(Math.round(ax), Math.round(ay)) : null;
+        const cb = b.on(bx, by) ? b.col(Math.round(bx), Math.round(by)) : null;
+        const c = (ca && cb) ? [0, 1, 2].map(k => ca[k] * (1 - t) + cb[k] * t) : (ca || cb);
+        if (!c) continue;
+        bits[i >> 3] |= 1 << (i & 7); idx[i] = 0; inside++;
+        tc[i * 3] = Math.round(c[0]); tc[i * 3 + 1] = Math.round(c[1]); tc[i * 3 + 2] = Math.round(c[2]);
+        mr += c[0]; mg += c[1]; mb += c[2];
+      }
+      if (inside < 0.25 * Math.min(a.w * a.h, b.w * b.h) * 0.5) return null;   // a sliver is not a new one of it
+      return {
+        ...A,
+        aspect: +(ow / oh).toFixed(3),
+        mask: { w: W, h: H, b64: Buffer.from(bits).toString('base64') },
+        colors: { palette: [[Math.round(mr / inside), Math.round(mg / inside), Math.round(mb / inside)]], w: W, h: H, z: 1, b64: zlib.deflateSync(Buffer.from(idx)).toString('base64') },
+        truecolor: { w: W, h: H, z: 1, b64: zlib.deflateSync(tc).toString('base64') },
+        scene: null,
+        blended: { t: +t.toFixed(2) },
+      };
+    } catch { return null; }
+  },
+
   // Recolor a form with a new palette, PRESERVING its light/dark structure:
   // every part/stroke color maps to the palette entry closest in LUMINANCE,
   // so the form's shading survives while the hues become the new source's —
@@ -5846,9 +6061,15 @@ const SERVER_CHAT_MIXIN = {
     // fuse differently.
     const k = pick(kind.concat(place, stuff).filter(w => !pre.includes(w)));
     if (k && (pre.length === 0 || r('second') < 0.5)) {
-      const asTail = (place.includes(k) || stuff.includes(k)) && r('tail') < 0.5;
-      if (asTail) tail = (place.includes(k) ? ' in ' : ' with ') + k;
-      else pre.push(k);
+      // ⛔ A THING IN FRONT OF A THING IS A MASH-UP unless English has that
+      // word ("fire truck", "sea lion", "birdhouse" — WordNet lemmas). "ant
+      // bunny", "chicken ant", "penguin lion" were what this made. A place or a
+      // substance that cannot lead goes AROUND the subject ("lion in a field"),
+      // which is always a real scene; a kind that cannot lead is dropped.
+      const _leads = typeof tax.knownCompound === 'function' && tax.knownCompound(`${k} ${head}`);
+      const _canTail = place.includes(k) || stuff.includes(k);
+      if (_canTail && (!_leads || r('tail') < 0.5)) tail = (place.includes(k) ? ' in ' : ' with ') + k;
+      else if (_leads) pre.push(k);
     }
     if (!tail && pre.length < 2) {
       const t2 = pick(place.concat(stuff).filter(w => !pre.includes(w)));
