@@ -18569,16 +18569,29 @@ export class Curriculum {
             // cells `v !== 0` found, in the same ascending order. This scan was
             // the bulk of this method's 9% self time on the live main thread.
             {
-              // Bounded to the sem span: an unbounded indexOf with no match would
-              // walk the rest of the 40M-cell array.
-              const _semView = cluster.lastSpikes.subarray(sem.start, sem.end);
-              let li = _semView.indexOf(1, 0);
-              while (li !== -1) {
-                const gi = sem.start + li;
-                preFull[gi] = 1;
-                postFull[gi] = 1;
-                activeRows.push(gi);
-                li = _semView.indexOf(1, li + 1);
+              // ⛔ THE WORD'S OWN SEM PATTERN, NOT WHATEVER IS IN `lastSpikes`.
+              // This read the shared spike buffer — but on the card path the
+              // lesson ships its patterns to the card and never writes
+              // `lastSpikes`, so the sem→sem bind took whatever pattern some
+              // other lane had left there. It now builds the defined word's
+              // own sparse sem code (the same top-K tiling the pair lesson
+              // used for `w`), which is also what lets several words be taught
+              // at once without reading each other's spikes.
+              const _wEmb = this._dictionaryPatternFor(w);
+              const _wSem = (_wEmb && _wEmb.length) ? this._topKEmbedding(_wEmb, 8) : null;
+              if (_wSem && _wSem.length) {
+                const gS = Math.max(1, Math.floor(semSize / _wSem.length));
+                for (let d = 0; d < _wSem.length; d++) {
+                  if (_wSem[d] === 0) continue;
+                  for (let n = 0; n < gS; n++) {
+                    const li = d * gS + n;
+                    if (li >= semSize) break;
+                    const gi = sem.start + li;
+                    preFull[gi] = 1;
+                    postFull[gi] = 1;
+                    activeRows.push(gi);
+                  }
+                }
               }
             }
             const kScales = cluster.buildKScalesForProjection(null, null);
@@ -20172,8 +20185,26 @@ export class Curriculum {
     // the walk was paused is retried in place (bounded), never dropped.
     const _wordQ = Array.from(words || []);
     const _wordRetries = new Map();
-    for (let _wi = 0; _wi < _wordQ.length; _wi++) {
-      const w = _wordQ[_wi];
+    // ⭐⭐ MANY WORDS IN FLIGHT AT ONCE. One word at a time kept at most one
+    // ~100-pair lesson on the card, which finished it in milliseconds and sat
+    // at 0% between words (measured all day). `DREAM_DEF_CONCURRENCY` (64)
+    // workers each take the next word, so the card's lesson window stays full.
+    // Safe because on the card path every lesson carries its own patterns and
+    // the sem→sem bind builds the word's own sem code — nothing a word teaches
+    // reads another word's spikes. Each word keeps its own timeout, abort and
+    // pause-retry exactly as before.
+    // ⛔ Only on the card-lesson path. Without it, the per-pair fallback writes
+    // the shared `lastSpikes` between awaits and concurrent words WOULD read
+    // each other's patterns — so a donor that cannot take lessons runs one word
+    // at a time, exactly as before.
+    const _lessonOk = !!(this.cluster && this.cluster._gpuProxy && typeof this.cluster._gpuProxy.lessonCapable === 'function'
+      && this.cluster._gpuProxy.lessonCapable() && typeof this.cluster._gpuProxy.teachLesson === 'function');
+    const _defConc = _lessonOk
+      ? (() => { const v = Number(process.env.DREAM_DEF_CONCURRENCY); return v >= 1 ? Math.floor(v) : 64; })()
+      : 1;
+    let _nextWord = 0;
+    const _teachOneWord = async (w) => {
+     for (;;) {
       const _pc0 = this._substratePauseCount | 0;
       // ⛔ SHUTDOWN ENDS THE WORD LOOP, not each word separately. Every teach
       // call already stops at a rep boundary on shutdown, but this loop kept
@@ -20181,8 +20212,8 @@ export class Curriculum {
       // measured: ~35,000 log lines in one minute of `SHUTDOWN at a clean rep
       // boundary … (0 pair-teaches landed)`, lot after lot. One check here
       // covers every definition lane that walks a word list.
-      if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) break;
-      if (!w || typeof w !== 'string') { skipped += 1; continue; }
+      if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
+      if (!w || typeof w !== 'string') { skipped += 1; return; }
       const wordStart = Date.now();
       // 114.19es.4 — AbortController per word. On Promise.race timeout
       // win, ac.abort() fires; the inner _teachWordDefinition checks
@@ -20218,7 +20249,6 @@ export class Curriculum {
             const _pw0 = Date.now();
             while (this._substratePause && Date.now() - _pw0 < 30 * 60 * 1000) await new Promise((res) => setTimeout(res, 2000));
             this._hb(`[Curriculum][${label}] ↻ "${w}" ran out its time during a pause (cards changing) — teaching it again from its first sense (retry ${_n + 1}/3).`);
-            _wi--;
             continue;
           }
           timeouts += 1;
@@ -20226,7 +20256,7 @@ export class Curriculum {
           if (errorSamples.length < 5) {
             errorSamples.push({ word: w, reason: `timeout-${PER_WORD_TIMEOUT_MS}ms` });
           }
-          continue;
+          return;
         }
 
         const elapsed = Date.now() - wordStart;
@@ -20253,7 +20283,18 @@ export class Curriculum {
           errorSamples.push({ word: w, reason: `exception: ${err?.message || err}` });
         }
       }
-    }
+      return;
+     }
+    };
+    const _defWorker = async () => {
+      for (;;) {
+        if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
+        const _wi = _nextWord++;
+        if (_wi >= _wordQ.length) return;
+        await _teachOneWord(_wordQ[_wi]);
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(_defConc, Math.max(1, _wordQ.length)) }, _defWorker));
     const dt = ((Date.now() - t0) / 1000).toFixed(1);
     const errSummary = errorSamples.length > 0
       ? ` · first errors: ${errorSamples.map(e => `${e.word}(${e.reason})`).join(', ')}`
