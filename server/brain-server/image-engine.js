@@ -247,6 +247,13 @@ const ImageEngineMixin = {
     let best = null;
     for (const [ws, c] of this.clients) {
       if (!c || !c.isGPU || !c.imageCapable || !ws || ws.readyState !== 1) continue;
+      // ⛔ NEVER THE CARD CARRYING HER CORTEX — the rule this lane was written
+      // for and did not enforce. A render there competed with her lessons, and
+      // its picture came back as megabytes of base64 on the same link; the
+      // remote cortex card dropped (1006, "send to the brain did not complete
+      // in 30s") right after a look, twice. No other capable card → her own
+      // local renderer.
+      if (ws === this._gpuClient) continue;
       if (!best || (c.imageLastAt || 0) < (best.c.imageLastAt || 0)) best = { ws, c };
     }
     return best;
