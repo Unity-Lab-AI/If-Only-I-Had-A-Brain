@@ -1517,6 +1517,12 @@ const SERVER_GPU_MIXIN = {
       if (cc) cc._gpuProxyReady = false;
       if (oldWs && oldWs.readyState === 1) {
         this._gpuClient = oldWs;
+        // ⛔ A pull already running (the periodic refresh) used to make this one
+        // refuse "already in flight" — and the move went ahead with NOTHING
+        // pulled, so the old card's learning since the last save was freed with
+        // it. Wait for that pull to finish (bounded), then take our own.
+        const _w0 = Date.now();
+        while (this._valuesReadbackInFlight && Date.now() - _w0 < 10 * 60 * 1000) await new Promise((r) => setTimeout(r, 1000));
         const r = await this.refreshCheckpointFromDonor(`cortex move: ${reason}`, { force: true });
         if (!r || !r.ok) console.warn(`[Pool] CORTEX MOVE — pull from the old card did not complete (${(r && r.reason) || 'unknown'}); the master keeps its last save.`);
       }
@@ -1883,12 +1889,22 @@ const SERVER_GPU_MIXIN = {
         if (!rejoin) return true;
         return !!(c.connectedAt && (_now - c.connectedAt) >= _holdS * 1000);
       };
-      const _moveAllowed = !this._cortexUploadInFlight && !this._cortexMoveInFlight
-        && (_now - (this._lastCortexMoveAt || 0)) >= _coolS * 1000;
+      // ⛔ The cooldown is for the THRASH case only — a card that dropped and came
+      // back. Measured: a 96 GB card joined while the cortex was moving to a 48 GB
+      // one, and a blanket 30-min cooldown then kept the bigger card idle (0 Gn/s,
+      // no clusters) while it billed. A genuinely new, bigger card takes the
+      // cortex as soon as no move or upload is running.
+      const _moveAllowed = !this._cortexUploadInFlight && !this._cortexMoveInFlight;
+      const _inCooldown = (_now - (this._lastCortexMoveAt || 0)) < _coolS * 1000;
+      const _rejoined = (ws) => {
+        const c = this.clients && this.clients.get ? this.clients.get(ws) : null;
+        const dropAt = c && this._recentDonorDrops && this._recentDonorDrops.get(String(c.gpuName || ''));
+        return !!(dropAt && (_now - dropAt) < _coolS * 1000);
+      };
       if (_keepPrev && n === 'cortex' && _ratio > 0 && _moveAllowed) {
         const prevCap = remaining.get(prev);
         for (const [ws, left] of remaining) {
-          if (ws !== prev && left >= cost && left >= prevCap * _ratio && _settled(ws)) { _keepPrev = false; break; }
+          if (ws !== prev && left >= cost && left >= prevCap * _ratio && _settled(ws) && !(_inCooldown && _rejoined(ws))) { _keepPrev = false; break; }
         }
       }
       if (_keepPrev) { best = prev; bestLeft = remaining.get(prev); }
