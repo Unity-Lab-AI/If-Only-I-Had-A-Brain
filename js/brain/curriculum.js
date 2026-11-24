@@ -21653,6 +21653,11 @@ export class Curriculum {
           lp.push([sd, _dimsOf(outEmbMotor), wd]);
           t++;
         }
+        // v0.3.45 — wait for a free in-flight slot so the card's lesson queue
+        // stays bounded (a no-op on older donors, which do not ack lessons).
+        if (okShape && lp.length && typeof cluster._gpuProxy.lessonSlot === 'function') {
+          try { await cluster._gpuProxy.lessonSlot(); } catch { /* pacing is best-effort; never block a lesson on it */ }
+        }
         if (okShape && lp.length && cluster._gpuProxy.teachLesson({ ..._lessonBase, semGroup: sg, motorGroup: mg, pairs: lp })) {
           trained += t; skipped += sk; antiFires += af; wtaApplied += wa; semWtaApplied += swa;
           _semActiveSum += semAct; _semActiveN += semN; _psN += t;

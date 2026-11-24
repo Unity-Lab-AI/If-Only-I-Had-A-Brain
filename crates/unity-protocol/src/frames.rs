@@ -107,6 +107,9 @@ pub enum Frame {
 /// cell, which the lateral mask is expressed in).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Lesson {
+    /// v0.3.45 — non-zero = the brain wants a type-17 ack when the WORKER has
+    /// finished the lesson, which is how it bounds lessons in flight per card.
+    pub req_id: u32,
     pub cluster: String,
     pub twin: Option<String>,
     pub sem_region: String,
@@ -566,6 +569,7 @@ pub fn decode(data: &[u8]) -> Option<Frame> {
                 pairs.push((sem, mot, if nw == 0xFFFF { None } else { Some(wrong) }));
             }
             Some(Frame::Lesson(Lesson {
+                req_id,
                 cluster: name, twin: if twin.is_empty() { None } else { Some(twin) },
                 sem_region, motor_region, tag_region, sem_group, sem_size, motor_group, motor_size,
                 tag_row_start, tag_len, pos_ops, anti_ops, lateral, pairs,
