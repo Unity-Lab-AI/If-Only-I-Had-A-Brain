@@ -16836,6 +16836,33 @@ export class Curriculum {
   // word-emission curriculum work. fineType has wider tolerance for
   // shared-word writes because it's the relation-tag region, not
   // the action-output region.
+  /**
+   * How many pairs a lesson should carry so the card spends about
+   * `DREAM_LESSON_TARGET_MS` (40 ms) on it — from the card's own measured time
+   * per pair (`lesson_cost` ÷ the lesson sizes actually sent), so a bigger or
+   * faster card is handed bigger lessons and the brain's fixed per-lesson cost is
+   * paid once per that much card work. Clamped 8–1024. Before any measurement it
+   * returns 64. `DREAM_LESSON_TARGET_PAIRS` pins it.
+   */
+  _lessonPairTarget() {
+    const env = (typeof process !== 'undefined' && process.env) || {};
+    const pin = Number(env.DREAM_LESSON_TARGET_PAIRS);
+    if (pin > 0) return Math.max(1, Math.floor(pin));
+    const targetMs = Number(env.DREAM_LESSON_TARGET_MS) > 0 ? Number(env.DREAM_LESSON_TARGET_MS) : 40;
+    try {
+      const b = globalThis.__unityBrain;
+      const costs = Object.values((b && b._lessonCost) || {}).map((c) => c && c.msPerLesson).filter((v) => v > 0);
+      const f = this._teachStageProfile && this._teachStageProfile.cardLesson;
+      const pairsPerLesson = f && f.lessons > 0 ? f.lessonPairs / f.lessons : 0;
+      if (costs.length && pairsPerLesson > 0) {
+        // The SLOWEST holder sets the pace — every lesson waits for every holder.
+        const msPerPair = Math.max(...costs) / pairsPerLesson;
+        if (msPerPair > 0) return Math.max(8, Math.min(1024, Math.round(targetMs / msPerPair)));
+      }
+    } catch { /* fall back to the default */ }
+    return 64;
+  }
+
   _definitionPairsWhitelist() {
     const cluster = this.cluster;
     if (!cluster || !cluster.crossProjections) return [];
@@ -18236,6 +18263,24 @@ export class Curriculum {
     // Each definition's content words form one association pair set
     // — multi-sense words get multiple sub-pattern Hebbian bindings in
     // the sem region instead of a collapsed single-sense binding.
+    //
+    // ⭐ LESSONS SIZED TO THE CARD. Every sense used to be its own lesson, and
+    // each lesson carries a fixed cost on the brain's one thread (~13 ms of
+    // wrap-up, yields and slot wait against ~1 ms a pair), so a 26-sense word paid
+    // it 26 times while a big card finished each little lesson in a few ms and
+    // waited. Consecutive senses now go to the card TOGETHER — the same pairs, in
+    // the same order, the same relation tag and reps — in lessons sized so the
+    // card spends `DREAM_LESSON_TARGET_MS` (40) on each, from its own measured time
+    // per pair: a faster or bigger card gets bigger lessons. Per-sense bookkeeping
+    // (the sense lane, the count, the sem→sem write) is unchanged, per sense.
+    let _lastDefIdx = -1;
+    for (let i = definitions.length - 1; i >= 0; i--) {
+      const e = definitions[i]; const t = (e && typeof e === 'object') ? e.definition : e;
+      if (t && typeof t === 'string') { _lastDefIdx = i; break; }
+    }
+    const _lessonPairTarget = this._lessonPairTarget();
+    let _batch = [];
+    let _batchPairs = 0;
     for (let defIdx = 0; defIdx < definitions.length; defIdx++) {
       // 114.19es.4 — bail between definition iterations on abort. If
       // the outer race timed out mid-loop, defs still pending get
@@ -18325,9 +18370,18 @@ export class Curriculum {
       // ojaUpdate's `Δw = -η·post²·w` decay on fineType has more
       // headroom than on motor (fineType isn't the argmax-output
       // region, so saturation has less downstream impact).
-      const r = await this._teachAssociationPairs(pairs, {
+      if (pairs.length) { _batch.push({ defIdx, entry, n: pairs.length, pairs }); _batchPairs += pairs.length; }
+      // Keep gathering senses until the lesson is the size the card wants, or
+      // this is the word's last sense.
+      if (defIdx < _lastDefIdx && _batchPairs < _lessonPairTarget) continue;
+      if (!_batch.length) continue;
+      const _group = _batch; _batch = []; const _groupPairs = []; for (const g of _group) for (const p of g.pairs) _groupPairs.push(p); _batchPairs = 0;
+      const _g0 = _group[0].defIdx + 1, _g1 = _group[_group.length - 1].defIdx + 1;
+      const r = await this._teachAssociationPairs(_groupPairs, {
         reps,
-        label: definitions.length > 1 ? `${baseLabel}#${defIdx + 1}/${definitions.length}` : baseLabel,
+        label: definitions.length > 1
+          ? (_g0 === _g1 ? `${baseLabel}#${_g0}/${definitions.length}` : `${baseLabel}#${_g0}-${_g1}/${definitions.length}`)
+          : baseLabel,
         relationTagId: 23,
         projectionsWhitelist: this._definitionPairsWhitelist(),
         // Batch the full-matrix post-loop diagnostics (prune/normalize) to
@@ -18335,7 +18389,7 @@ export class Curriculum {
         // a high-polysemy word (e.g. "digit" = 28 senses) doesn't fire 28
         // back-to-back synchronous CSR rebuilds (the ~20s seize). The last
         // def runs prune/normalize once over the fully-accumulated projection.
-        deferDiagnostics: defIdx < definitions.length - 1,
+        deferDiagnostics: defIdx < _lastDefIdx,
       });
       // 114.19es.4 — re-check abort between primary Hebbian and the
       // K-scaled secondary ojaUpdate so the secondary write doesn't
@@ -18343,8 +18397,10 @@ export class Curriculum {
       if (signal && signal.aborted) {
         return { passes: defsBound, totalTrained, defsBound, totalDefs: definitions.length, skipped: 'aborted-mid-hebbian' };
       }
-      if (r.trained > 0) {
-        totalTrained += r.trained;
+      if (r.trained > 0) totalTrained += r.trained;
+      for (const _sense of (r.trained > 0 ? _group : [])) {
+        const entry = _sense.entry;
+        const defIdx = _sense.defIdx;
         defsBound++;
         // ⭐⭐ THE FEED SHOWS THE DEFINITION, IT NO LONGER ASSERTS ONE.
         //   The per-word line above prints sense 1 and a claim that the rest
