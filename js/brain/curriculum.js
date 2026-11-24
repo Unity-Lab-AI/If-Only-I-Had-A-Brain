@@ -5646,14 +5646,28 @@ export class Curriculum {
                 const _wdMs = (typeof process !== 'undefined' && Number(process.env?.DREAM_TRICKLE_WORD_MS) > 0)
                   ? Number(process.env.DREAM_TRICKLE_WORD_MS) : 60000;
                 let _wdTripped = false;
+                // ⛔⛔ ONE TEACHER. A tripped word's call keeps running after the
+                // walk stops waiting on it, and the NEXT window used to start a new
+                // word beside it — measured live, two trickle words' lessons
+                // interleaving (#37/62 and #11/62 in one window), each overwriting
+                // the card's resident pattern between the other's steps. The
+                // abandoned call is held here and a window will not start a word
+                // until it has finished.
+                if (this._trickleAbandoned) {
+                  this._hb(`[Curriculum] 💤 dream trickle waits — the word abandoned by the watchdog is still running; no second teacher starts beside it.`);
+                  break;
+                }
+                const _wordCall = this._teachWordDefinition(word, { reps: 4, label: 'DREAM-DEF-TRICKLE', timeoutMs: 20000 });
                 const r = await Promise.race([
-                  this._teachWordDefinition(word, { reps: 4, label: 'DREAM-DEF-TRICKLE', timeoutMs: 20000 }),
+                  _wordCall,
                   new Promise((resolve) => {
                     const _t = setTimeout(() => { _wdTripped = true; resolve(null); }, _wdMs);
                     if (_t && typeof _t.unref === 'function') _t.unref();
                   }),
                 ]);
                 if (_wdTripped) {
+                  this._trickleAbandoned = true;
+                  Promise.resolve(_wordCall).catch(() => {}).finally(() => { this._trickleAbandoned = false; });
                   this._trickleWordTrips = (this._trickleWordTrips || 0) + 1;
                   this._trickleWordLast = { at: Date.now(), word, waitedMs: _wdMs };
                   this._hb(`[Curriculum] ⛔⛔ DREAM-TRICKLE WORD WATCHDOG TRIPPED on "${word}" after ${(_wdMs / 1000).toFixed(0)}s — the per-word teach exceeded its bound and the walk has stopped waiting on it. ⚠ the timeoutMs option only ever bounded the dictionary FETCH; the Hebbian binds and the self-frame that follow it had no bound at all, which is how a walk could sit here indefinitely with the consolidation watchdog reading 0 trips. The abandoned call is still running, so this window's trickle STOPS here rather than teaching a second word beside it; the queue persists and the next window resumes. Trips this boot: ${this._trickleWordTrips}.`);
@@ -21842,7 +21856,15 @@ export class Curriculum {
       // state is bit-identical to running the full rep budget once
       // basins have separated — additional reps after convergence
       // mostly fight the rescale + top-K-prune that fires post-loop.
-      if (rep >= 1 && pairs.length >= 2) {
+      // ⛔ Only when this lesson TRAINS sem→motor — the probe reads sem→motor,
+      // and the post-loop separation probe below already refuses to run on a
+      // lesson that does not train it (definitions train sem↔fineType). Run
+      // anyway, it measured an untouched matrix and AWAITED a probe reply per
+      // rep: ~1.1 s each with the cortex on a rented card, which is how a
+      // 62-sense dream word ran past its 60 s watchdog and a window bound nothing.
+      const _wlRep = opts.projectionsWhitelist;
+      const _repProbesMotor = !(Array.isArray(_wlRep) && _wlRep.length > 0) || _wlRep.includes('sem_to_motor');
+      if (rep >= 1 && pairs.length >= 2 && _repProbesMotor) {
         try {
           const quickSep = await this._checkSemBasinSeparation(pairs, {
             semRegion, motorRegion, overloadMax, sampleSize: 4,
