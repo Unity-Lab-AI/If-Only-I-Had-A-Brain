@@ -452,11 +452,12 @@ fi
 export UNITY_VOICE_V2_DIR UNITY_VOICE_PORT
 
 # ── IMAGEENGINE — her eyes' renderer, THIS project's own ──────────────────────
-# server/image-render.py with the realistic-vision-v51 checkpoint kept in this
-# repo's models/image/ (gitignored). No other project is involved. Loads on the
-# FIRST render; offload stays on — never add --no-offload here.
+# server/image-render.py with the SDXL base 1.0 checkpoint kept in this repo's
+# models/image/ (gitignored; SDXL can write English in a picture, peak 5.6 GB).
+# No other project is involved. Loads on the FIRST render; offload stays on —
+# never add --no-offload here.
 UNITY_IMAGE_PORT="${UNITY_IMAGE_PORT:-5124}"
-UNITY_IMAGE_CHECKPOINT="${UNITY_IMAGE_CHECKPOINT:-$PWD/models/image/realistic-vision-v51.safetensors}"
+UNITY_IMAGE_CHECKPOINT="${UNITY_IMAGE_CHECKPOINT:-$PWD/models/image/sdxl-base-1.0.safetensors}"
 export UNITY_IMAGE_CHECKPOINT
 if [ -f "$UNITY_IMAGE_CHECKPOINT" ]; then
     if _port_busy "$UNITY_IMAGE_PORT"; then
