@@ -11541,8 +11541,10 @@ const httpServer = http.createServer((req, res) => {
   if (req.url && req.url.startsWith('/teach-ledger.json') && req.method === 'GET') {
     try {
       const u = new URL(req.url, 'http://x');
-      const led = this._teachLedger;
-      const head = { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' };
+      // `brain`, not `this` — this handler is a module-level arrow, where
+      // `this` is the module, so the ledger always read as "not attached".
+      const led = brain._teachLedger;
+      const head ={ 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' };
       if (!led) {
         res.writeHead(200, head);
         res.end(JSON.stringify({ available: false, reason: 'ledger not attached — the curriculum has not booted yet' }));
