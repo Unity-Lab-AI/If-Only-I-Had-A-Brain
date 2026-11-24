@@ -6317,6 +6317,9 @@ const SERVER_CHAT_MIXIN = {
       // what the word MOSTLY means must be a thing ("second" = time, "south" =
       // a direction, "way" = a manner), not merely one rare sense of it
       if (typeof this._drawTaxonomy.primaryIsThing === 'function' && this._drawTaxonomy.primaryIsThing(w) === false) return false;
+      // a word English uses mostly to DESCRIBE ("white", "round", "second") is a
+      // quality, not a subject — real corpus usage per part of speech
+      if (typeof this._drawTaxonomy.describerLeads === 'function' && this._drawTaxonomy.describerLeads(w)) return false;
       const v = this._drawTaxonomy.drawableVerdict(w);
       if (v === 'concrete') {
         // an UNATTESTED grant (the noun reading never occurs in tagged
