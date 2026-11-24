@@ -18319,10 +18319,20 @@ export class Curriculum {
     // card spends `DREAM_LESSON_TARGET_MS` (40) on each, from its own measured time
     // per pair: a faster or bigger card gets bigger lessons. Per-sense bookkeeping
     // (the sense lane, the count, the sem→sem write) is unchanged, per sense.
+    // ⛔ THE LAST sense THAT TEACHES, not the last one with text. The batch is
+    // sent only on reaching this index, and a sense whose words are all function
+    // words (`contentWords` empty) `continue`s BEFORE that send — so when a word's
+    // final sense was such a one, every sense gathered before it was dropped,
+    // nothing bound, and the word stayed unlearned on every pass forever
+    // (measured: which, them, who, since, least… "deferred" pass after pass
+    // with their definitions sitting in the cache). Same filter as the loop.
     let _lastDefIdx = -1;
-    for (let i = definitions.length - 1; i >= 0; i--) {
+    for (let i = definitions.length - 1; i >= 0 && _lastDefIdx < 0; i--) {
       const e = definitions[i]; const t = (e && typeof e === 'object') ? e.definition : e;
-      if (t && typeof t === 'string') { _lastDefIdx = i; break; }
+      if (!t || typeof t !== 'string') continue;
+      for (const tok of (t.toLowerCase().match(/[a-z]+/g) || [])) {
+        if (tok.length >= 3 && !STOP.has(tok) && tok !== w) { _lastDefIdx = i; break; }
+      }
     }
     const _lessonPairTarget = this._lessonPairTarget();
     let _batch = [];
