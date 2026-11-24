@@ -338,7 +338,7 @@ impl CudaEngine {
     /// the Seed Crystal's hemispheric read (v0.3.40); `half` is the split
     /// index and `effective_drive_r` drives neurons at or past it. Mirrors
     /// `ComputeEngine::step` line for line.
-    pub fn step(&self, name: &str, effective_drive: f32, effective_drive_r: f32, half: u32, noise_amp: f32, seed: u32) -> Result<(u32, u32), String> {
+    pub fn step(&self, name: &str, effective_drive: f32, effective_drive_r: f32, half: u32, noise_amp: f32, seed: u32, q: crate::compute::Quantum) -> Result<(u32, u32), String> {
         let c = self.clusters.get(name).ok_or_else(|| format!("cluster '{name}' not initialized"))?;
         let n = c.size;
         if n == 0 {
@@ -358,7 +358,11 @@ impl CudaEngine {
             .arg(&c.state)
             .arg(&c.spikes)
             .arg(&c.currents)
-            .arg(&c.region_gates);
+            .arg(&c.region_gates)
+            // v0.3.48 — the kernel's three trailing arguments (tunnelling, entanglement).
+            .arg(&q.tunnel_a)
+            .arg(&q.tunnel_kappa)
+            .arg(&q.entangle_rho);
         unsafe { b.launch(launch_cfg) }.map_err(|e| format!("lif launch: {e}"))?;
 
         // Spike counts (left, right) into a fresh zeroed pair.
@@ -810,6 +814,18 @@ impl CudaEngine {
         let buf = self.stream.memcpy_stod(&vals).map_err(|e| e.to_string())?;
         self.stream.synchronize().map_err(|e| e.to_string())?;
         if let Some(m) = self.sparse.get_mut(name) { m.values = buf; }
+        Ok(())
+    }
+
+    /// v0.3.48 — overwrite `vals.len()` weights starting at element `offset`
+    /// (rows that changed since a published snapshot).
+    pub fn patch_values(&mut self, name: &str, offset: usize, vals: &[f32]) -> Result<(), String> {
+        let stream = self.stream.clone();
+        let m = self.sparse.get_mut(name).ok_or_else(|| format!("no resident matrix '{name}'"))?;
+        if offset + vals.len() > m.nnz as usize { return Err(format!("patch {}+{} past nnz {}", offset, vals.len(), m.nnz)); }
+        let mut view = m.values.slice_mut(offset..offset + vals.len());
+        stream.memcpy_htod(vals, &mut view).map_err(|e| e.to_string())?;
+        stream.synchronize().map_err(|e| e.to_string())?;
         Ok(())
     }
 

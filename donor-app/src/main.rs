@@ -22,7 +22,9 @@ mod donor;
 mod gpu;
 #[cfg(feature = "gui")]
 mod gui;
+mod image_lane;
 mod mindspace;
+mod snapshot;
 
 // ⭐ `frames` and `protocol` MOVED OUT on 2026-09-05 (migration phase B0) into
 // the shared `unity-protocol` crate, so a Rust coordinator can depend on the

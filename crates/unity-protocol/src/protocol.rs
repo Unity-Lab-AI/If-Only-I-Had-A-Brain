@@ -333,6 +333,15 @@ pub struct ClusterParams {
     pub tonic_drive_r: Option<f32>,
     #[serde(default)]
     pub half: Option<u32>,
+    /// v0.3.48 — modelled tunnelling (`A_T`, `κ_T`) and hemispheric-twin
+    /// entanglement (`ρ`); see docs/EQUATIONS.md §2. Absent or 0 → the plain
+    /// Rulkov step, bit-identical to 0.3.47.
+    #[serde(rename = "tunnelA", default)]
+    pub tunnel_a: Option<f32>,
+    #[serde(rename = "tunnelKappa", default)]
+    pub tunnel_kappa: Option<f32>,
+    #[serde(rename = "entangleRho", default)]
+    pub entangle_rho: Option<f32>,
 }
 
 /// Batched multi-cluster step request.

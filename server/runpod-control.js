@@ -124,7 +124,9 @@ async function startDonor(gpuId) {
     cloud: 'COMMUNITY',
     gpu: { id: gpuId, count: 1, minCudaVersion: '12.8' },
     image: 'ubuntu:24.04',
-    disk: 20,
+    // 30 GB: the image lane adds a torch venv (~6–7 GB with its CUDA libraries)
+    // and the 2.1 GB checkpoint to the donor binary and its own checkpoint.
+    disk: 30,
     env: {
       DONOR_GPUS: 'all', DONOR_UTIL: 'all', DONOR_NAME: s.donorName || '',
       NVIDIA_VISIBLE_DEVICES: 'all', NVIDIA_DRIVER_CAPABILITIES: 'all',

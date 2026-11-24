@@ -1,6 +1,6 @@
 [package]
 name = "unity-donor"
-version = "0.3.47"
+version = "0.3.48"
 edition = "2021"
 description = "Native GPU compute donor for the Unity brain — versatile headless/GUI, cross-platform (Windows + Linux)."
 license = "MIT"
@@ -24,6 +24,9 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"
 # system OpenSSL on Linux (no aws-lc-rs/cmake pain that rustls would add to the win-gnu build).
 tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
 futures-util = "0.3"
+# v0.3.48 — verify downloaded weight blocks against the published manifest.
+# Pure Rust, no system library, cross-compiles to the mingw Windows target.
+sha2 = "0.10"
 # CUDA backend (NVIDIA). dynamic-loading => links WITHOUT the CUDA toolkit and dlopens
 # libcuda/libnvrtc at runtime, so the same binary runs on AMD/Intel hosts (CUDA just no-ops
 # and we fall back to wgpu). Optional + feature-gated.
@@ -36,12 +39,5 @@ default = ["gui", "cuda"]
 gui = ["dep:eframe"]
 cuda = ["dep:cudarc"]
 
-[profile.release]
-opt-level = 3
-lto = "thin"
-# Line tables, not full debug info: the binary stays small and the crash
-# log's panic location is readable. `strip = true` used to discard even these,
-# which is why the 0.3.38 abort at offset 0x4aedc1 on 2026-10-18 could not be
-# named — the only .pdb on disk was from a build a month older.
-debug = "line-tables-only"
-strip = "none"
+# (The release profile lives in the workspace root `Cargo.toml` — Cargo ignores a
+# member's, and a second copy here had drifted from the one actually used.)

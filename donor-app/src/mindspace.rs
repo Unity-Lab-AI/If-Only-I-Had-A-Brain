@@ -39,7 +39,7 @@ const D97: f64 = 0.443506852043971;
 const K97: f64 = 1.230174104914001;
 
 // ─── base64 (std-only; mirrors atob/btoa over the raw byte stream) ──────────
-fn b64_decode(s: &str) -> Vec<u8> {
+pub fn b64_decode(s: &str) -> Vec<u8> {
     fn v(c: u8) -> i32 {
         match c {
             b'A'..=b'Z' => (c - b'A') as i32,
@@ -67,7 +67,7 @@ fn b64_decode(s: &str) -> Vec<u8> {
     out
 }
 
-fn b64_encode(b: &[u8]) -> String {
+pub fn b64_encode(b: &[u8]) -> String {
     const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity(b.len().div_ceil(3) * 4);
     for ch in b.chunks(3) {

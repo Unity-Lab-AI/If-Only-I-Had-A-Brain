@@ -36,14 +36,17 @@ members = [
   "donor-app",
 ]
 
-# ⚠ The donor's own `[profile.release]` is INTENTIONALLY MIRRORED HERE. Cargo
-# ignores profile settings declared in a workspace *member* and only honours the
-# workspace root's — so leaving these in `donor-app/Cargo.toml` alone would have
-# silently dropped `lto`/`strip`/`opt-level` from every released binary, making
-# it larger and slower with nothing in the build log to say so. Cargo does warn,
-# but a warning in a CI log is not a guard. Keep these in step with the member's
-# copy, which is retained there for a standalone `--manifest-path` build.
+# ⛔ THE ONE RELEASE PROFILE. Cargo ignores profile settings declared in a
+# workspace *member* and honours only the workspace root's. This block used to be
+# a "mirror" of the donor's own — and the mirror drifted: the member said keep
+# line tables (`debug = "line-tables-only"`, `strip = "none"`, the 0.3.39 fix that
+# lets a crash log name its source line) while this copy still said
+# `strip = true`, so every donor built since shipped STRIPPED and a crash could
+# not be located. The member's copy is gone; this is the only one.
 [profile.release]
 opt-level = 3
 lto = "thin"
-strip = true
+# Line tables, not full debug info: the binary stays small and the crash log's
+# panic location is readable. `strip = true` discarded even these.
+debug = "line-tables-only"
+strip = "none"

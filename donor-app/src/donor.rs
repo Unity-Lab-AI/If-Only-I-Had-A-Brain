@@ -333,6 +333,15 @@ enum Work {
     // matrices. The copy here stopped being current at the move and was only
     // holding VRAM (measured: 12.7 GB on a 16 GB card, starving her renderer).
     FreeMatrices { names: Vec<String> },
+    // v0.3.48 — this card holds rows [base, base + rows) of a matrix, not all of
+    // it. A lesson's `Masked` rows are full-matrix row numbers, so they are
+    // shifted by `base` and dropped when they fall outside the slice. Queued in
+    // the same lane as the upload so it lands after the matrix exists.
+    SliceBase { name: String, base: u32, count: u32 },
+    // v0.3.48 — a slice built from her published weights, uploaded here, then
+    // rows that changed since the snapshot written over it.
+    UploadSlice { id: u64, name: String, base: u32, slice: crate::snapshot::Slice, binding: crate::frames::Binding },
+    PatchValues { name: String, offset: usize, vals: Vec<f32>, done_id: Option<u64> },
 }
 
 /// A reply the worker produced; the WS loop sends it in receipt order.
@@ -938,6 +947,28 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
     let workq = std::sync::Arc::new(WorkQueue::new());
     let workq_w = workq.clone();
     let (reply_tx, mut reply_rx) = tokio::sync::mpsc::unbounded_channel::<Out>();
+    // v0.3.48 — her image lane: a sender the receive loop keeps (the worker
+    // takes `reply_tx`), and a one-time probe for a renderer on this machine.
+    let img_tx = reply_tx.clone();
+    {
+        let probe_tx = reply_tx.clone();
+        // Re-checked every minute for the life of the connection: a pod's
+        // renderer comes up minutes after the donor (packages + a 2 GB model), and
+        // can also stop. The brain hears every change, and only changes.
+        std::thread::spawn(move || {
+            let mut last: Option<bool> = None;
+            loop {
+                let ok = crate::image_lane::local_renderer_alive();
+                if last != Some(ok) {
+                    if ok { println!("[donor] her renderer answers on this machine — offering the image lane."); }
+                    if probe_tx.send(Out::Text(serde_json::json!({ "type": "image_capable", "ok": ok }).to_string())).is_err() { break; }
+                    last = Some(ok);
+                }
+                if probe_tx.is_closed() { break; }
+                std::thread::sleep(std::time::Duration::from_secs(60));
+            }
+        });
+    }
     let control_w = control.clone();
     // Count of QUEUED (not-yet-pulled) Work. The duty-cycle idle (run_substeps) aborts the
     // moment this is > 0, so the throttle never delays a matrix upload / its ack behind a
@@ -968,6 +999,8 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
         let mut lc_sampled: u32 = 0;
         let mut lc_acc: HashMap<String, (f64, u32)> = HashMap::new();
         let mut lc_total_ms: f64 = 0.0;
+        // v0.3.48 — first full-matrix row of each slice this card holds.
+        let mut slice_base: HashMap<String, (u32, u32)> = HashMap::new();   // name → (first row, row count)
         while let Some(work) = workq_w.pop() {
             pending_w.fetch_sub(1, Ordering::Relaxed); // pulled one off the queue
             // Stop promptly on request: DON'T drain the queued backlog (the brain can have many
@@ -1016,6 +1049,9 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 Work::CheckpointSave { .. } => "checkpoint save".to_string(),
                 Work::CheckpointRestore { .. } => "checkpoint restore".to_string(),
                 Work::FreeMatrices { names } => format!("free x{}", names.len()),
+                Work::SliceBase { name, base, count } => format!("slice {name} @{base}+{count}"),
+                Work::UploadSlice { name, slice, .. } => format!("slice upload {name} x{}", slice.rows),
+                Work::PatchValues { name, vals, .. } => format!("slice patch {name} x{}", vals.len()),
             });
             match work {
                 Work::Init(init) => {
@@ -1049,6 +1085,21 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     // Count teach work (propagate / Hebbian) so the GUI reflects the curriculum
                     // walk — the brain sends these, not compute_batch, during teaching.
                     let is_teach = matches!(frame, Frame::Propagate { .. } | Frame::Hebbian { .. } | Frame::BatchedHebbian { .. } | Frame::HebbianBoundMasked { .. });
+                    // v0.3.48 — frames that carry POST ROW numbers of a sliced
+                    // matrix are shifted into this card's slice; rows another
+                    // card holds are dropped.
+                    let shift = |v: Vec<u32>, (b, n): (u32, u32)| -> Vec<u32> { v.into_iter().filter(|&r| r >= b && r - b < n).map(|r| r - b).collect() };
+                    let frame = match frame {
+                        Frame::Hebbian { req_id, name, pre, post, lr } if slice_base.contains_key(&name) => {
+                            let s = slice_base[&name];
+                            Frame::Hebbian { req_id, pre, post: shift(post, s), lr, name }
+                        }
+                        Frame::HebbianBoundMasked { req_id, name, lr, reps, post_idx } if slice_base.contains_key(&name) => {
+                            let s = slice_base[&name];
+                            Frame::HebbianBoundMasked { req_id, lr, reps, post_idx: shift(post_idx, s), name }
+                        }
+                        f => f,
+                    };
                     if let Some(ack) = handle_frame(&mut engine, &mut partials, frame) {
                         let _ = reply_tx.send(Out::Binary(ack));
                     }
@@ -1092,7 +1143,16 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                                 if let Err(e) = engine.hebbian_bound(&name, lr) { eprintln!("[donor] lesson bound hebbian '{name}' failed: {e}"); }
                             }
                             frames::LessonOp::Masked { name, lr, rows } => {
-                                if let Err(e) = engine.hebbian_bound_masked(&name, lr, 1, &rows) { eprintln!("[donor] lesson masked hebbian '{name}' failed: {e}"); }
+                                // A slice holds rows [base, base + n): shift into it and
+                                // drop rows another card holds. The bound kernel bounds-
+                                // checks against the slice's own row count.
+                                let rows: Vec<u32> = match slice_base.get(&name) {
+                                    Some(&(b, n)) => rows.into_iter().filter(|&r| r >= b && r - b < n).map(|r| r - b).collect(),
+                                    None => rows,
+                                };
+                                if !rows.is_empty() {
+                                    if let Err(e) = engine.hebbian_bound_masked(&name, lr, 1, &rows) { eprintln!("[donor] lesson masked hebbian '{name}' failed: {e}"); }
+                                }
                             }
                         }
                         if let Some(k) = key {
@@ -1134,7 +1194,9 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                         v
                     };
                     let pre = expand(&pre_ranges);
-                    let post = expand(&post_ranges);
+                    let mut post = expand(&post_ranges);
+                    // v0.3.48 — post rows of a sliced matrix shift into this card's slice.
+                    if let Some(&(b, n)) = slice_base.get(&name) { post = post.into_iter().filter(|&r| r >= b && r - b < n).map(|r| r - b).collect(); }
                     if !pre.is_empty() && !post.is_empty() {
                         // v0.3.19 — the dose runs as ONE engine call: pattern
                         // written once, kernel looped `reps` times inside the
@@ -1168,7 +1230,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                         seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
                         // The pool drives clusters through run_substeps (same entry the
                         // compute_batch path uses), so the walk inherits multi-GPU routing.
-                        let jobs = [StepJob { name: cluster.clone(), size: 0, drive, noise, drive_r: drive, half: 0 }];
+                        let jobs = [StepJob { name: cluster.clone(), size: 0, drive, noise, drive_r: drive, half: 0, q: crate::compute::Quantum::default() }];
                         let _ = engine.run_substeps(&jobs, ticks, seed, &control_w.stop, &pending_w);
                         // One bucket over the whole region span = the region spike count.
                         let counts = engine
@@ -1311,7 +1373,28 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     let reply = serde_json::json!({ "type": "donor_checkpoint_restored", "restored": done, "skipped": skipped });
                     let _ = reply_tx.send(Out::Text(reply.to_string()));
                 }
+                Work::UploadSlice { id, name, base, slice, binding } => {
+                    set_status(&control_w, |s| { s.note = format!("loading {name} rows from her published weights"); });
+                    engine.upload_sparse(&name, slice.rows, slice.cols, &slice.row_ptr, &slice.values, &slice.col_idx, Some(binding));
+                    let ok = engine.has_sparse(&name);
+                    if ok { slice_base.insert(name.clone(), (base, slice.rows)); }
+                    println!("[donor] {name} rows {base}..{} built from the published snapshot ({} weights).", base + slice.rows, slice.values.len());
+                    let _ = reply_tx.send(Out::Text(serde_json::json!({ "type": "slice_loaded", "id": id, "name": name, "ok": ok, "rows": slice.rows, "nnz": slice.values.len() }).to_string()));
+                    set_status(&control_w, |s| { s.note = "idle".into(); });
+                }
+                Work::PatchValues { name, offset, vals, done_id } => {
+                    if let Err(e) = engine.patch_values(&name, offset, &vals) { eprintln!("[donor] slice patch '{name}' failed: {e}"); }
+                    if let Some(id) = done_id {
+                        let _ = reply_tx.send(Out::Text(serde_json::json!({ "type": "slice_patched", "id": id, "name": name }).to_string()));
+                    }
+                }
+                Work::SliceBase { name, base, count } => {
+                    // count 0 = this card holds the whole matrix again.
+                    if count == 0 { slice_base.remove(&name); } else { slice_base.insert(name.clone(), (base, count)); }
+                    println!("[donor] {name} — rows {base}..{} on this card.", base.saturating_add(count));
+                }
                 Work::FreeMatrices { names } => {
+                    for n in &names { slice_base.remove(n); }
                     let freed: Vec<String> = names.into_iter().filter(|n| engine.free_sparse(n)).collect();
                     println!("[donor] freed {} resident matrix(es) — the cortex moved to another card.", freed.len());
                     let reply = serde_json::json!({ "type": "free_matrices_ack", "freed": freed });
@@ -1507,8 +1590,78 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                         // JSON ahead of the protocol enum, so they need no change to
                         // the shared crate and an older brain simply never sends them.
                         let ckpt_msg = serde_json::from_str::<serde_json::Value>(t.as_str()).ok()
-                            .filter(|v| matches!(v.get("type").and_then(|x| x.as_str()), Some("donor_checkpoint") | Some("leave_ok") | Some("free_matrices")));
+                            .filter(|v| matches!(v.get("type").and_then(|x| x.as_str()), Some("donor_checkpoint") | Some("leave_ok") | Some("free_matrices") | Some("slice_base") | Some("image_render") | Some("slice_from_snapshot") | Some("slice_patch")));
                         if let Some(v) = ckpt_msg {
+                            // v0.3.48 — build my slice from her published weights (on a
+                            // thread: downloads take minutes), then queue the upload.
+                            if v.get("type").and_then(|x| x.as_str()) == Some("slice_from_snapshot") {
+                                let gs = |k: &str| v.get(k).and_then(|x| x.as_str()).unwrap_or("").to_string();
+                                let gu = |o: &serde_json::Value, k: &str| o.get(k).and_then(|x| x.as_u64()).unwrap_or(0) as u32;
+                                let id = v.get("id").and_then(|x| x.as_u64()).unwrap_or(0);
+                                let name = gs("name");
+                                let base = gu(&v, "rowBase");
+                                let count = gu(&v, "rowCount");
+                                let bd = v.get("binding").cloned().unwrap_or(serde_json::Value::Null);
+                                let binding = crate::frames::Binding {
+                                    src_cluster: bd.get("srcCluster").and_then(|x| x.as_str()).unwrap_or("").to_string(),
+                                    dst_cluster: bd.get("dstCluster").and_then(|x| x.as_str()).unwrap_or("").to_string(),
+                                    src_start: gu(&bd, "srcStart"), src_end: gu(&bd, "srcEnd"),
+                                    dst_start: gu(&bd, "dstStart"), dst_end: gu(&bd, "dstEnd"),
+                                };
+                                let blocks: Vec<crate::snapshot::Block> = v.get("blocks").and_then(|x| x.as_array()).map(|a| a.iter().map(|b| crate::snapshot::Block {
+                                    url: b.get("url").and_then(|x| x.as_str()).unwrap_or("").to_string(),
+                                    sha256: b.get("sha256").and_then(|x| x.as_str()).unwrap_or("").to_string(),
+                                    row_start: gu(b, "rowStart"), row_end: gu(b, "rowEnd"),
+                                }).collect()).unwrap_or_default();
+                                let (tx_s, wq, pd) = (img_tx.clone(), workq.clone(), pending.clone());
+                                std::thread::spawn(move || {
+                                    match crate::snapshot::load_slice(&blocks, base, base + count) {
+                                        Ok(slice) => { pd.fetch_add(1, Ordering::Relaxed); wq.push(Work::UploadSlice { id, name, base, slice, binding }); }
+                                        Err(e) => {
+                                            eprintln!("[donor] could not build {name} from the snapshot: {e}");
+                                            let _ = tx_s.send(Out::Text(serde_json::json!({ "type": "slice_loaded", "id": id, "name": name, "ok": false, "error": e }).to_string()));
+                                        }
+                                    }
+                                });
+                                continue;
+                            }
+                            if v.get("type").and_then(|x| x.as_str()) == Some("slice_patch") {
+                                let name = v.get("name").and_then(|x| x.as_str()).unwrap_or("").to_string();
+                                let offset = v.get("offset").and_then(|x| x.as_u64()).unwrap_or(0) as usize;
+                                let raw = crate::mindspace::b64_decode(v.get("values_b64").and_then(|x| x.as_str()).unwrap_or(""));
+                                let vals: Vec<f32> = raw.chunks_exact(4).map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]])).collect();
+                                let done_id = v.get("doneId").and_then(|x| x.as_u64());
+                                pending.fetch_add(1, Ordering::Relaxed);
+                                workq.push(Work::PatchValues { name, offset, vals, done_id });
+                                continue;
+                            }
+                            // v0.3.48 — a render for her, on this machine's renderer, on
+                            // its own thread so teaching never waits on a picture.
+                            if v.get("type").and_then(|x| x.as_str()) == Some("image_render") {
+                                let id = v.get("id").and_then(|x| x.as_u64()).unwrap_or(0);
+                                let body = v.get("body").map(|b| b.to_string()).unwrap_or_default();
+                                let timeout = v.get("timeoutMs").and_then(|x| x.as_u64()).unwrap_or(90_000);
+                                let tx_i = img_tx.clone();
+                                std::thread::spawn(move || {
+                                    let t0 = std::time::Instant::now();
+                                    let reply = match crate::image_lane::render(&body, timeout) {
+                                        Ok(png) => serde_json::json!({ "type": "image_result", "id": id, "ok": true, "ms": t0.elapsed().as_millis() as u64, "png_b64": crate::mindspace::b64_encode(&png) }),
+                                        Err(e) => serde_json::json!({ "type": "image_result", "id": id, "ok": false, "error": e }),
+                                    };
+                                    let _ = tx_i.send(Out::Text(reply.to_string()));
+                                });
+                                continue;
+                            }
+                            if v.get("type").and_then(|x| x.as_str()) == Some("slice_base") {
+                                let name = v.get("name").and_then(|x| x.as_str()).unwrap_or("").to_string();
+                                let base = v.get("rowBase").and_then(|x| x.as_u64()).unwrap_or(0) as u32;
+                                let count = v.get("rowCount").and_then(|x| x.as_u64()).unwrap_or(0) as u32;
+                                if !name.is_empty() {
+                                    pending.fetch_add(1, Ordering::Relaxed);
+                                    workq.push(Work::SliceBase { name, base, count });
+                                }
+                                continue;
+                            }
                             if v.get("type").and_then(|x| x.as_str()) == Some("free_matrices") {
                                 let names: Vec<String> = v.get("names").and_then(|x| x.as_array())
                                     .map(|a| a.iter().filter_map(|n| n.as_str().map(String::from)).collect())
@@ -1848,7 +2001,13 @@ fn run_batch(engine: &mut MultiEngine, cluster_regions: &HashMap<String, HashMap
                 engine.update_region_gates(&c.name, &packed);
             }
         }
-        jobs.push(StepJob { name: c.name.clone(), size: c.size, drive: effective_drive, noise: c.noise_amp, drive_r: effective_drive_r, half });
+        // v0.3.48 — modelled tunnelling + twin entanglement; absent → 0 → plain map.
+        let q = crate::compute::Quantum {
+            tunnel_a: c.tunnel_a.unwrap_or(0.0).clamp(0.0, 1.0),
+            tunnel_kappa: c.tunnel_kappa.unwrap_or(0.0).max(0.0),
+            entangle_rho: c.entangle_rho.unwrap_or(0.0).clamp(0.0, 0.99),
+        };
+        jobs.push(StepJob { name: c.name.clone(), size: c.size, drive: effective_drive, noise: c.noise_amp, drive_r: effective_drive_r, half, q });
     }
     // Advance the batch seed once; MultiEngine derives a distinct per-GPU stream and runs
     // each card's clusters in parallel, returning per-cluster spike totals.

@@ -16,8 +16,14 @@ struct Params {
   // the two pads keep the block at 64 bytes, matching the Rust side.
   effectiveDriveR: f32,
   half: u32,
+  // v0.3.48 — modelled tunnelling + twin entanglement (docs/EQUATIONS.md §2);
+  // three pads take the block to 80 bytes, matching the Rust LifParams.
+  tunnelA: f32,
+  tunnelKappa: f32,
+  entangleRho: f32,
   _pad0: u32,
   _pad1: u32,
+  _pad2: u32,
 };
 
 @group(0) @binding(0) var<uniform> params: Params;
@@ -82,13 +88,30 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   // [-1,1], so × 0.5 gives the identical ±amplitude. The unscaled port
   // injected ±noiseAmp (~±5-13) per step — 20,000× the reference — which
   // random-walked y out of the basin and collapsed firing to noise crossings.
-  let jitter = randomFloat(params.seed, i) * 0.5 * params.noiseAmp * 0.0001;
+  // ENTANGLEMENT (v0.3.48) — hemispheric twins i and i±half draw a shared noise
+  // component; each keeps the plain variance, corr = rho². rho = 0 → own only.
+  var r = randomFloat(params.seed, i);
+  if (params.entangleRho > 0.0 && params.half > 0u) {
+    // (`shared` is a reserved WGSL word — the self-test caught it)
+    let twin = randomFloat(params.seed ^ 0x5bd1e995u, i % params.half);
+    r = params.entangleRho * twin + sqrt(max(0.0, 1.0 - params.entangleRho * params.entangleRho)) * r;
+  }
+  let jitter = r * 0.5 * params.noiseAmp * 0.0001;
 
-  let xNext = ALPHA / (1.0 + xN * xN) + yN;
+  var xNext = ALPHA / (1.0 + xN * xN) + yN;
   let yNext = yN - MU * (xN - sigmaEff) + jitter;
 
+  var spk = xN <= 0.0 && xNext > 0.0;
+  // TUNNELLING (v0.3.48) — a neuron staying below threshold crosses with the
+  // WKB-shaped probability A·exp(−κ·√h), h = the barrier left. tunnelA = 0 → off.
+  if (!spk && params.tunnelA > 0.0 && xN <= 0.0 && xNext <= 0.0) {
+    let pT = params.tunnelA * exp(-params.tunnelKappa * sqrt(-xNext));
+    let u = randomFloat(params.seed ^ 0x9e3779b9u, i) * 0.5 + 0.5;
+    if (u < pT) { xNext = 0.01; spk = true; }
+  }
+
   state[i] = vec2<f32>(xNext, yNext);
-  if (xN <= 0.0 && xNext > 0.0) {
+  if (spk) {
     spikes[i] = 1u;
   } else {
     spikes[i] = 0u;

@@ -687,7 +687,7 @@ fn apply_theme(ctx: &egui::Context, dark: bool, pal: Pal) {
     v.override_text_color = Some(pal.text_bright);
     v.hyperlink_color = pal.accent;
     v.selection.bg_fill = pal.accent_dim;
-    v.selection.stroke = egui::Stroke::new(1.0, pal.accent);
+    v.selection.stroke = egui::Stroke::new(1.0_f32, pal.accent);
     v.widgets.hovered.bg_fill = pal.accent_dim;
     v.widgets.active.bg_fill = pal.accent_dim;
     v.panel_fill = pal.panel;
