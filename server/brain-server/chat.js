@@ -3389,7 +3389,21 @@ const SERVER_CHAT_MIXIN = {
     // mono = LIGHT ink — her paper is a dark sketchbook page, so black ink is
     // invisible on it (harness-caught: 0.1% coverage). A pale gel-pen line is
     // the ink look that actually reads on her canvas.
-    if (style && style.ink === 'mono') { const g = 205 + Math.round(rnd() * 40); return [g, g, Math.min(255, g + 8)]; }
+    // ⛔ But not when she has SEEN the thing: a single pale ink over every subject
+    // was judged live as "white pen traces". With a learned palette the ink is
+    // the subject's most saturated colour, lifted only as far as it needs to
+    // read on the dark page; the pale gel pen stays only for an unseen subject.
+    if (style && style.ink === 'mono') {
+      const pal = (schema && Array.isArray(schema.palette)) ? schema.palette.filter((c) => Array.isArray(c) && c.length >= 3) : [];
+      if (pal.length) {
+        const sat = (c) => Math.max(c[0], c[1], c[2]) - Math.min(c[0], c[1], c[2]);
+        const c = pal.slice().sort((a, b) => sat(b) - sat(a))[0];
+        const L = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
+        const t = L >= 120 ? 0 : (120 - L) / Math.max(1, 255 - L);
+        return c.map((v) => Math.round(v + (255 - v) * t));
+      }
+      const g = 205 + Math.round(rnd() * 40); return [g, g, Math.min(255, g + 8)];
+    }
     // PAINT.6 — THE SUBJECT'S COLOR DOMINATES. The live judged test rendered a
     // gray/cream subject HOT PINK because _ownArtInk caps the learned palette at
     // strength×0.6 (typically 15-30%) against base inks that include her pink.
@@ -3406,10 +3420,15 @@ const SERVER_CHAT_MIXIN = {
       : [142 + Math.round(rnd() * 24), 132 + Math.round(rnd() * 20), 118 + Math.round(rnd() * 18)];
     let ink = base;
     if (fam) {
-      const k = 0.75;
+      // TRUE COLOUR — the seen colour is painted as seen. A 25% blend of her
+      // neutral base ink greyed every hue toward pastel (judged live: "everything
+      // has a fog to it or is in pastels of the true colors"). Her hand still
+      // varies tone through the palette pick and the per-stroke jitter.
+      const k = 1.0;
       ink = [Math.round(base[0] * (1 - k) + fam[0] * k), Math.round(base[1] * (1 - k) + fam[1] * k), Math.round(base[2] * (1 - k) + fam[2] * k)];
     }
-    if (defColor) return [Math.round(ink[0] * 0.45 + defColor[0] * 0.55), Math.round(ink[1] * 0.45 + defColor[1] * 0.55), Math.round(ink[2] * 0.45 + defColor[2] * 0.55)];
+    // A definition colour only steers a subject she has NOT seen; a seen colour wins.
+    if (defColor && !fam) return [Math.round(ink[0] * 0.45 + defColor[0] * 0.55), Math.round(ink[1] * 0.45 + defColor[1] * 0.55), Math.round(ink[2] * 0.45 + defColor[2] * 0.55)];
     return ink;
   },
   // Mass treatments — every one built from the same primitives.
@@ -3418,11 +3437,12 @@ const SERVER_CHAT_MIXIN = {
     if (m === 'none') return;
     if (m === 'fill') { out.push({ type: 'blob', cx, cy, rx: pw * 0.55, ry: ph * 0.55, ang, rgb }); return; }
     if (m === 'wash') {
-      // 2-3 overlapping translucent blobs, lightened — paint that mixes with the paper
-      const n = 2 + Math.floor(rnd() * 2);
+      // 3-4 overlapping translucent blobs IN THE TRUE COLOUR — the layers build
+      // the colour up where they overlap. They used to be lightened (+45) and laid
+      // at 30-45% over the dark page, which read as fog (judged live).
+      const n = 3 + Math.floor(rnd() * 2);
       for (let i = 0; i < n; i++) {
-        const lt = [Math.min(255, rgb[0] + 45), Math.min(255, rgb[1] + 45), Math.min(255, rgb[2] + 45)];
-        out.push({ type: 'blob', cx: cx + (rnd() - 0.5) * pw * 0.25, cy: cy + (rnd() - 0.5) * ph * 0.25, rx: pw * (0.45 + rnd() * 0.2), ry: ph * (0.45 + rnd() * 0.2), ang: ang + (rnd() - 0.5) * 0.4, rgb: lt, a: 0.30 + rnd() * 0.15 });
+        out.push({ type: 'blob', cx: cx + (rnd() - 0.5) * pw * 0.25, cy: cy + (rnd() - 0.5) * ph * 0.25, rx: pw * (0.45 + rnd() * 0.2), ry: ph * (0.45 + rnd() * 0.2), ang: ang + (rnd() - 0.5) * 0.4, rgb: rgb.slice(), a: 0.55 + rnd() * 0.2 });
       }
       return;
     }
@@ -5178,7 +5198,10 @@ const SERVER_CHAT_MIXIN = {
     const _traceKeep = this._traceSurvivors(schema, fx);
     const defAttr = this._defDrawAttributes ? this._defDrawAttributes(word) : null;
     const defColor = defAttr && defAttr.colors && defAttr.colors[0];
-    const mixDef = (rgb) => defColor ? [Math.round(rgb[0] * 0.45 + defColor[0] * 0.55), Math.round(rgb[1] * 0.45 + defColor[1] * 0.55), Math.round(rgb[2] * 0.45 + defColor[2] * 0.55)] : rgb;
+    // A definition colour only steers a subject she has not SEEN — mixing it 55%
+    // into seen colours shifted every true hue (part of the "pastel" judgement).
+    const _seenPal = !!(schema && Array.isArray(schema.palette) && schema.palette.length);
+    const mixDef = (rgb) => (defColor && !_seenPal) ? [Math.round(rgb[0] * 0.45 + defColor[0] * 0.55), Math.round(rgb[1] * 0.45 + defColor[1] * 0.55), Math.round(rgb[2] * 0.45 + defColor[2] * 0.55)] : rgb;
     // ── LAYER 1: MASS — SILHOUETTE-FIRST (PAINT.6). The live judged test showed
     // part-cell blobs render as "a column of circles": the grid is a LAYOUT,
     // not a shape. But the schema HOLDS the shape — the traced silhouette —
