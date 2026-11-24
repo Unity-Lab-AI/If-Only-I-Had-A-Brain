@@ -6,56 +6,58 @@ status: verified
 sources:
   - server/brain-server.js
   - server/brain-server/gpu.js
-  - server/brain-server/image-engine.js
-  - server/brain-server/weights-publish.js
-  - server/brain-server/state.js
+  - server/brain-server/chat.js
+  - server/runpod-control.js
+  - js/brain/curriculum.js
   - donor-app/src/donor.rs
-  - donor-app/src/snapshot.rs
-  - donor-app/src/image_lane.rs
+  - donor-app/src/gui.rs
   - donor-app/src/cuda_kernels.cu
   - donor-app/src/shaders/lif.wgsl
   - docs/EQUATIONS.md
   - docs/POOL-SHARDING.md
 verified-scope: |
-  OVERWRITTEN 2026-11-24 (late night). This file is a SNAPSHOT of the present
+  OVERWRITTEN 2026-11-24 (04:15). This file is a SNAPSHOT of the present
   and is overwritten, never appended. The previous snapshot is in git:
   git log -p docs/NOW.md.
 ---
 
-# NOW — 2026-11-24, late night
+# NOW — 2026-11-24, 04:15
 
 ## Where she is
 
 | | |
 |---|---|
-| state | **DOWN** — held down until every piece below is built, documented and shipped |
-| next launch | **`start.bat` — a FRESH WALK.** Her neurons gained two modelled terms (tunnelling, hemispheric-twin entanglement), which changes what she learns, so she starts from zero with them |
-| donor | **0.3.48** — slices, the image lane, pulling weights from a release, the new neuron terms |
-| knobs | the Unity template — every one of the 272 knobs set or left to the code with its reason; 35 pinned |
+| state | **RUNNING** — fresh walk booted 04:04 on `main` @ `9722e83d` minus the last retry fix (it lands on her next restart). Kindergarten English, pre-cell warm-up. Teaching paused while the PRO 6000 pod's copy of her main matrix uploads over the home link (400/800 chunks at 8.5 MB/s at 04:14) |
+| cards | your 4070 Ti SUPER + one rented RTX PRO 6000 (Secure Cloud, `v1q3tju9r0knqu`). With two cards both hold the FULL main matrix (two copies — a drop costs nothing) |
+| donor | **0.3.50** everywhere — published, verified, your root exe replaced. Older donors are refused at register with an Update prompt |
+| next restart | `Savestart.bat` keeps this walk; `start.bat` is a fresh walk |
+| auto-stop | ON — stopping her terminates her pods |
 
-## What changes for her
+## What changed tonight (all on `main`, both remotes)
 
 | | |
 |---|---|
-| **every card teaches** | her main learning matrix (4.6 GB, the language cortex's own connections) is split into row slices across every connected card, your own included, sized to each card's room. Every lesson reaches every card; each learns its own rows, all at once. Reads are gathered from every card and stitched back in row order |
-| **more cards, bigger her** | when every card can hold a slice, the size she can grow to follows the whole pool. A step up wipes and fresh-walks her, so it is OFFERED on the tech view and waits for approval |
-| **her pictures on other cards** | a pod running her renderer draws her looks and drawings, with the same model, checked by hash against the file at home |
-| **her imagery work spreads** | perceiving, tracing and imagining run on whichever capable card is least busy |
-| **weights from a release** | her trained matrix publishes as row blocks on a GitHub pre-release (public, by choice); a joining card downloads only the blocks for its rows, checks each hash, and only rows changed since cross the home upload |
-| **tunnelling and entanglement** | a neuron just below threshold can cross it with a WKB-shaped probability; each neuron's twin in the other hemisphere shares part of its noise. Modelled mechanisms, written out in docs/EQUATIONS.md §2 with their derivations — not claimed physics |
+| **refractoriness** | each spike lowers the Rulkov slow variable by β = 0.016 (derived, docs/EQUATIONS.md §2) — her firing had no stable middle (flipped ~1.5% ↔ ~20%) |
+| **two copies of every row range** | cards are paired; a card leaving costs no learning and no pause (`DREAM_SLICE_REPLICAS`=2) |
+| **rejoin without re-upload** | a donor keeps its engine across a reconnect and reports `heldMatrices`; a dropped slice holder has 30 s to come back and is re-attached with nothing sent |
+| **no room moves while sliced** | neither the placement check nor a bigger card registering moves her language area any more (seen 04:07: `CORTEX MOVE for room skipped`) |
+| **slices by speed** | once every card has a measured lesson time, rows follow rows-per-ms, capped by room |
+| **uploads** | no double upload around a move; a remote owner pulls from the GitHub snapshot; publish-first with ≥2 remote cards; rejoining cards pull (seen: 1.2 GB slice with 82 MB sent) |
+| **donor 0.3.49/0.3.50** | every socket send bounded at 30 s (the pod freeze: every thread parked on an unbounded send); version floor = current release; Update button |
+| **no skipped words** | a word cut short by a pause is retried from its first sense (seen live: `↻ "should" … retry 2/3`); the retry now waits for the pause to end |
+| **vocabulary queue** | 10 min of its own per dream window |
+| **pods** | Secure Cloud by default; a pod that never joins is terminated after 10 min |
+| **art** | seen colours painted as seen; no white-pen ink on seen subjects; imagined scenes on 45% of recall-miss ticks |
+| **leaderboard** | slice holders credited their share; lessons carry work credit |
 
-## What was proven before shipping (no run of her)
+## Measured tonight
 
-- **Slices:** one card whole vs three cards sliced — stitched reads and slice-trained weights byte-identical (harness on the real server methods).
-- **Weights from a release:** the server's block writer → the donor's loader through `file://` URLs → the rebuilt slice byte-identical across 4 blocks, starting mid-block; the changed-row finder named exactly the rows changed.
-- **Pool sizing:** a 16 GB card alone offers ~511 M neurons; with a 96 GB card on 0.3.48, ~4.05 B (tier 5, host RAM still bounds it); with an older donor present it falls back to the smallest card.
-- **The new neuron terms:** the donor's GPU self-test on this machine's card — the WGSL kernel compiled and stepped; the CUDA PTX was rebuilt with the same toolkit and target and differs from the old one only inside the neuron kernel.
+- Definitions on two healthy cards: **46 words / 1,736 senses a minute** (03:31).
+- Your card alone: main matrix upload ~480–500 MB/s; a pod over the home link: 8–72 MB/s.
+- Heap after a two-card upload: 205.5 MB (WATCHFIX.9 closed).
 
-## What to read on the first boot
+## Open
 
-- `active template: 'unity'`.
-- `[Pool] SLICES — cortex_intraSynapses split across N cards` once a second card joins.
-- `IMAGE LANE — <card> has her renderer` from a pod after its renderer comes up (minutes: packages + a 2 GB model).
-- `WEIGHTS SNAPSHOT — published` after the first good checkpoint with two cards.
-- `SCALE-UP AVAILABLE` if the pool holds a bigger size for 5 minutes — nothing happens until you approve it.
-- Her first gate.
+- 14 built rows waiting on a live reading (each row names its sign) — board `docs/TODO.md`.
+- Owner-drop re-attach (the cortex owner still moves); lesson relay (matters at thousands of cards).
+- Readings only a run gives: `TEACHSPEED.4`, `MULTICARD.READ`, `KNOBTPL.2`, firing settling near 7.5%.
