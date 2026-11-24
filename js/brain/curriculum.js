@@ -11940,6 +11940,10 @@ export class Curriculum {
               if (_sp.lateral) _workLanes.push(_sp.lateral.calls | 0);
               if (_sp.defSemSem) _workLanes.push(_sp.defSemSem.n | 0);
               if (_sp.pairSegments) _workLanes.push(_sp.pairSegments.n | 0, _sp.pairSegments.calls | 0);
+              // Pattern lessons (type 18) ride their own frame, never the
+              // bound-Hebbian queue — without this lane a sentence phase
+              // teaching hundreds of thousands of words read FROZEN.
+              if (_sp.patternLesson) _workLanes.push(_sp.patternLesson.lessons | 0, _sp.patternLesson.items | 0);
             }
           } catch { /* a progress read must never take the heartbeat down */ }
           // `null` means NO work lane was readable. That is declared out loud below
@@ -28802,8 +28806,20 @@ export class Curriculum {
       const sp = this._teachStageProfile || (this._teachStageProfile = {});
       const f = sp.patternLesson || (sp.patternLesson = { lessons: 0, items: 0, refused: 0 });
       if (sent) { f.lessons++; f.items += items.length; } else { f.refused++; }
+      // TEACHVIEW — every lesson frame is reported, on every rep. The
+      // sentence line itself prints on rep 0 only (content, not dose), so
+      // without this the view went silent for every later rep while the card
+      // was being taught the whole time.
+      try {
+        this.teachBus('_teachSentenceList', `pattern lesson → card: ${items.length} word(s) · rep ${_plRep + 1}/${reps} · ${sentences.length} sentence(s)${sent ? '' : ' · REFUSED'}`, {
+          subject: ctx && ctx.subject, grade: ctx && ctx.grade,
+          phase: (opts && opts.label) || null, source: 'pattern-lesson', reps,
+        });
+      } catch { /* the view must never break a teach */ }
     };
+    let _plRep = 0;
     for (let rep = 0; rep < reps; rep++) {
+      _plRep = rep;
       // Bank the cursor on EVERY rep, same law as the siblings: banking here has
       // no ordering dependency on the shutdown sequence, and it survives
       // SIGKILL / OOM / power loss, which a cooperative exit never can. At
