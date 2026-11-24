@@ -47,6 +47,13 @@ function settings() {
   catch { return { autoStopOnShutdown: true, donorName: '' }; }
 }
 
+// Which Runpod cloud her pods rent from. SECURE by default: two COMMUNITY hosts
+// in a row (2026-11-24) could not open a CUDA context at all (raw driver call →
+// 999), so every pod on them billed for nothing. COMMUNITY stays selectable —
+// `"cloud": "COMMUNITY"` in server/runpod-settings.json, read on every call, so
+// switching needs no restart.
+function _cloud() { return String(settings().cloud || 'SECURE').toUpperCase() === 'COMMUNITY' ? 'COMMUNITY' : 'SECURE'; }
+
 function saveSettings(patch) {
   const s = Object.assign(settings(), patch || {});
   fs.writeFileSync(SETTINGS_FILE, JSON.stringify(s, null, 2));
@@ -91,7 +98,7 @@ async function status() {
       _api('GET', '/v2/billing/balance'),
       _api('GET', '/v2/pods?limit=100'),
       // ⚠ The catalog takes no `limit` — it returns every type in one page.
-      _api('GET', '/v2/catalog/gpus?include=AVAILABILITY&product=POD&cloud=COMMUNITY'),
+      _api('GET', `/v2/catalog/gpus?include=AVAILABILITY&product=POD&cloud=${_cloud()}`),
     ]);
     out.balance = bal && typeof bal.balanceAmount === 'number' ? bal.balanceAmount : null;
     // Field names per Runpod's v2 OpenAPI: `status` (PodStatus), `gpu.id`
@@ -107,8 +114,11 @@ async function status() {
       }));
     // Only cards that can hold a cluster and are in stock now, cheapest first.
     out.gpus = ((gpus && gpus.gpus) || [])
-      .filter((g) => g.availability && g.availability !== 'NONE' && Number(g.memory) >= 16 && g.price && Number(g.price.community) > 0)
-      .map((g) => ({ id: g.id, name: g.name, memoryGB: g.memory, pricePerHr: g.price.community, availability: g.availability }))
+      // NVIDIA only: the pod image carries no Vulkan stack, so the donor computes over CUDA.
+      .filter((g) => g.availability && g.availability !== 'NONE' && Number(g.memory) >= 16 && g.price
+        && /^NVIDIA/i.test(String(g.id)) && (_cloud() === 'SECURE' ? g.secure : g.community)
+        && Number(g.price[_cloud() === 'SECURE' ? 'secure' : 'community']) > 0)
+      .map((g) => ({ id: g.id, name: g.name, memoryGB: g.memory, pricePerHr: Number(g.price[_cloud() === 'SECURE' ? 'secure' : 'community']), cloud: _cloud(), availability: g.availability }))
       .sort((a, b) => a.pricePerHr - b.pricePerHr);
   } catch (e) {
     out.error = e.message;
@@ -147,7 +157,7 @@ async function startDonor(gpuId, isAttached = null) {
   const s = settings();
   const body = {
     name: POD_PREFIX + String(gpuId).replace(/^NVIDIA\s+/i, '').replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 40),
-    cloud: 'COMMUNITY',
+    cloud: _cloud(),
     gpu: { id: gpuId, count: 1, minCudaVersion: '12.8' },
     image: 'ubuntu:24.04',
     // 30 GB: the image lane adds a torch venv (~6–7 GB with its CUDA libraries)
