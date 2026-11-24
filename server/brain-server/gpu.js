@@ -6254,15 +6254,25 @@ const SERVER_GPU_MIXIN = {
     if (!this._donorMaskedHebbian()) return false;
     const arr = Array.isArray(postIdx) ? postIdx : (postIdx && typeof postIdx.length === 'number') ? Array.from(postIdx) : [];
     if (arr.length === 0) return false;
+    // ⛔ ONE ROW LIST, SEVERAL FRAMES. A wide mask (≈1.3M rows) shipped as one
+    // 5.2 MB message, which holds the link while it drains. Each row's update
+    // depends only on that row, so the list splits across frames with the same
+    // lr and reps and the math is identical; no frame exceeds 1 MB.
     const hdr = this._encodeSparseHeader(13, 0, name);
-    const meta = Buffer.alloc(12);
-    meta.writeFloatLE(lr, 0);
-    meta.writeUInt32LE(Math.max(1, reps >>> 0), 4);
-    meta.writeUInt32LE(arr.length >>> 0, 8);
-    const ta = Uint32Array.from(arr);
-    const frame = Buffer.concat([hdr, meta, Buffer.from(ta.buffer, ta.byteOffset, ta.byteLength)]);
-    if (!this._donorPatternSendGated(frame)) return false;
-    this._countTeachOut(13, frame.length, 0, this._teachGopsFor(name, Math.max(1, reps >>> 0)));  // TEACHCREDIT — reps full-matrix Hebbian passes
+    const PER = 262144;   // rows per frame = 1 MB of indices
+    let sentAny = false;
+    for (let s = 0; s < arr.length; s += PER) {
+      const part = arr.slice(s, s + PER);
+      const meta = Buffer.alloc(12);
+      meta.writeFloatLE(lr, 0);
+      meta.writeUInt32LE(Math.max(1, reps >>> 0), 4);
+      meta.writeUInt32LE(part.length >>> 0, 8);
+      const ta = Uint32Array.from(part);
+      const frame = Buffer.concat([hdr, meta, Buffer.from(ta.buffer, ta.byteOffset, ta.byteLength)]);
+      if (!this._donorPatternSendGated(frame)) { if (!sentAny) return false; break; }
+      sentAny = true;
+      this._countTeachOut(13, frame.length, 0, s === 0 ? this._teachGopsFor(name, Math.max(1, reps >>> 0)) : 0);  // TEACHCREDIT — credited once per lesson
+    }
     this._hebbianMaskedSent = (this._hebbianMaskedSent || 0) + 1;
     return true;
   },
