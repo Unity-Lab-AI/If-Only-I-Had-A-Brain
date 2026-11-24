@@ -11962,7 +11962,15 @@ const httpServer = http.createServer((req, res) => {
           if (typeof j.donorName === 'string') patch.donorName = j.donorName.slice(0, 40);
           return { settings: rp.saveSettings(patch) };
         }
-        if (verb === 'start') return { pod: await rp.startDonor(String(j.gpuId || '')) };
+        if (verb === 'start') {
+          // Attached = some connected client reports this GPU model (donors publish `gpuName`).
+          const isAttached = (gpu) => {
+            if (!brain.clients || typeof brain.clients.values !== 'function') return true;
+            for (const c of brain.clients.values()) if (c && String(c.gpuName || '') === String(gpu)) return true;
+            return false;
+          };
+          return { pod: await rp.startDonor(String(j.gpuId || ''), isAttached) };
+        }
         if (verb === 'stop') {
           return await rp.stopDonor(String(j.id || ''), async (pod) => {
             // Is the pod's card the one holding her cortex? Donors publish their

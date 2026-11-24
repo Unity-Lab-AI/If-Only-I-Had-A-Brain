@@ -116,7 +116,33 @@ async function status() {
   return out;
 }
 
-async function startDonor(gpuId) {
+// A pod whose card never joins her pool is billing for nothing. Found on a real
+// pod: nvidia-smi saw the card, but the host's CUDA failed its own start-up call
+// (cuInit → 999), so the donor looped "no GPU adapter" forever. `isAttached(gpu)`
+// is asked once the join window has passed; a pod still running and not attached
+// is terminated, and the reason is logged. The donor itself joins about a minute
+// after the pod starts, so the window is generous. DREAM_RUNPOD_JOIN_MS=0 disables.
+// ⚠ Matching is by GPU model, so a second pod of the SAME model can mask a dead
+// one; the window still frees every pod whose model has no card attached at all.
+const JOIN_MS = (() => { const v = Number(process.env.DREAM_RUNPOD_JOIN_MS); return Number.isFinite(v) && v >= 0 ? v : 10 * 60 * 1000; })();
+
+function _watchJoin(pod, gpuId, isAttached) {
+  if (!JOIN_MS || !pod || !pod.id || typeof isAttached !== 'function') return;
+  const t = setTimeout(async () => {
+    try {
+      const cur = await _api('GET', `/v2/pods/${encodeURIComponent(pod.id)}`);
+      if (!cur || cur.status === 'TERMINATED' || cur.status === 'EXITED') return;
+      if (isAttached(gpuId)) return;
+      await _api('POST', `/v2/pods/${encodeURIComponent(pod.id)}/action`, { action: 'terminate' });
+      console.warn(`[Runpod] ⚠ donor pod ${pod.id} (${gpuId}) never joined her pool within ${Math.round(JOIN_MS / 60000)} min — terminated so it stops billing. Usually a broken host (its CUDA does not start); rent another, it lands on a different machine.`);
+    } catch (e) {
+      console.warn(`[Runpod] join check for pod ${pod.id} could not run: ${e.message} — check the Runpod console.`);
+    }
+  }, JOIN_MS);
+  if (t.unref) t.unref();
+}
+
+async function startDonor(gpuId, isAttached = null) {
   if (!gpuId) throw new Error('pick a GPU');
   const s = settings();
   const body = {
@@ -136,6 +162,7 @@ async function startDonor(gpuId) {
   };
   const pod = await _api('POST', '/v2/pods', body);
   console.log(`[Runpod] donor pod created — ${pod && pod.id} (${gpuId}) — it downloads the latest donor release and joins her pool over brain.theunitybrain.com.`);
+  _watchJoin(pod, gpuId, isAttached);
   return pod;
 }
 
