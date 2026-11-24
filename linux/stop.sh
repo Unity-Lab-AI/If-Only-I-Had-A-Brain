@@ -28,7 +28,7 @@ echo "[stop] step 1/3: requesting graceful shutdown via HTTP /shutdown..."
 # ~112s, port held throughout). Wait for her to release the port herself, up to
 # 300s - the GPU readback budget (120s) plus the measured save - and only kill
 # past that. See windows/stop.bat for the measured case.
-if curl -s -m 5 -X POST http://localhost:7525/shutdown > /dev/null 2>&1; then
+if curl -s -m 30 -X POST http://127.0.0.1:7525/shutdown > /dev/null 2>&1; then
     echo "  shutdown accepted -- she is pulling her GPU weights and saving them."
     echo "  Waiting up to 300s for her to exit on her own. Do NOT interrupt."
     waited=0
