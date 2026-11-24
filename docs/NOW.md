@@ -29,7 +29,7 @@ verified-scope: |
 |---|---|
 | state | **RUNNING** — fresh walk booted 04:04 on `main` @ `9722e83d` minus the last retry fix (it lands on her next restart). Kindergarten English, pre-cell warm-up. Teaching paused while the PRO 6000 pod's copy of her main matrix uploads over the home link (400/800 chunks at 8.5 MB/s at 04:14) |
 | cards | your 4070 Ti SUPER + one rented RTX PRO 6000 (Secure Cloud, `v1q3tju9r0knqu`). With two cards both hold the FULL main matrix (two copies — a drop costs nothing) |
-| donor | **0.3.50** everywhere — published, verified, your root exe replaced. Older donors are refused at register with an Update prompt |
+| donor | **0.3.51** (a lesson's pattern writes go to the card in one copy) — older donors are refused at register with an Update prompt |
 | next restart | `Savestart.bat` keeps this walk; `start.bat` is a fresh walk |
 | auto-stop | ON — stopping her terminates her pods |
 
