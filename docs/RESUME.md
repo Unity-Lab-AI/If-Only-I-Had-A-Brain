@@ -1,6 +1,12 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-11-23, night (latest, 47th) — THE FRESHSTART WATCH: TWELVE FINDINGS, SIX FIXED
+> # 🛑 2026-11-24 (latest, 48th) — HER EYES START ON A FRESH WALK (CONFIRMED LIVE); HER EYE'S VERDICT OFF NOISE; RUNPOD DONOR READY
+>
+> **Branch: `feature/teach-speed-runpod`.** A freshstart on build `57ffc92c` CONFIRMED the eye fix live: `eyePicks` 171 picks / 137 acquisitions, 36 looks, 36 grounded. It also showed her eye refusing 65 drawings to 6 on the percept rank (noise) — the silhouette rank now decides. Gee stopped her. Runpod: the existing `deploy/runpod-donor-launcher.sh` now asks `brain.theunitybrain.com` (was the old Tailscale host); first RTX 4090 create failed on capacity — **no pod exists, nothing billing**, $11.84 balance. Next: she boots, then the pod. Teach-speed profiling needs her live (the server-side ~180 ms per tick is the measured bottleneck, not the GPU).
+>
+> ---
+>
+> # 🛑 2026-11-23, night (47th) — THE FRESHSTART WATCH: TWELVE FINDINGS, SIX FIXED
 >
 > **Branch: `feature/watch-fixes`.** She ran a freshstart 4:47–5:41 PM under a one-minute watch (`.scratch/watch-findings.md`); Gee stopped her to fix what it found. **Next launch is a FRESHSTART again.** No donor change — no binary, no release.
 >

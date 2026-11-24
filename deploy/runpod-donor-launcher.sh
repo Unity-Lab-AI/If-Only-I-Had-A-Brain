@@ -104,9 +104,14 @@ BIN=/usr/local/bin/unity-donor
 latest_url() { curl -fsSL -m 60 -H 'User-Agent: unity-runpod-donor' "$API" | grep -oE "https://[A-Za-z0-9._/-]+unity-donor-linux-x86_64" | head -1; }
 latest_tag() { curl -fsSL -m 60 -H 'User-Agent: unity-runpod-donor' "$API" | grep -oE "donor-v[0-9]+[.][0-9]+[.][0-9]+" | head -1; }
 
-# The brain is on the operator's own machine behind a Tailscale Funnel now; the
-# binary's compiled-in PROD_SERVER is the /ws lane of the same host.
-BRAIN_URL="${BRAIN_URL:-https://dumbass.tailec58e0.ts.net}"
+# The brain is on the operator's own machine. Its donor lane is the Cloudflare
+# tunnel host `brain.theunitybrain.com` (the binary's compiled-in PROD_SERVER is
+# its /ws), and that same tunnel forwards /public-state.json — so the watchdog
+# asks the host the donor is actually connected through. ⚠ It used to ask the
+# Tailscale Funnel address, which the donor lane left on 2026-10-19 (capped at
+# 0.16 MB/s); asking a different front door than the one the donor uses could
+# score a working donor "absent" whenever the two disagree.
+BRAIN_URL="${BRAIN_URL:-https://brain.theunitybrain.com}"
 DONOR_MAX_MISS="${DONOR_MAX_MISS:-3}"
 # The GPU model this pod actually has — the only identity the brain publishes for
 # an attached donor. Resolved once; if nvidia-smi cannot answer, the connection
