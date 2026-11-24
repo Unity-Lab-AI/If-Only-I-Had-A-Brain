@@ -4947,7 +4947,7 @@ const SERVER_GPU_MIXIN = {
     if (!ws || ws._teachBundle || typeof ws.send !== 'function') return;
     if (process.env.DREAM_TEACH_BUNDLE === '0') return;
     const raw = ws.send.bind(ws);
-    const BUNDLEABLE = new Set([5, 7, 8, 9, 10, 11, 12, 13, 14]);
+    const BUNDLEABLE = new Set([5, 7, 8, 9, 10, 11, 12, 13, 14, 17]);
     const MAX_BYTES = 1 << 20;
     const MAX_FRAMES = 4096;
     const B = { frames: [], bytes: 0, scheduled: false, messages: 0, framesBundled: 0, framesAlone: 0 };
@@ -4993,6 +4993,78 @@ const SERVER_GPU_MIXIN = {
       return raw(data, ...rest);
     };
     console.log('[Brain] TEACH BUNDLE on for this donor (SPRS 16) — fire-and-forget teach frames ride one message per event-loop turn, in order. DREAM_TEACH_BUNDLE=0 disables.');
+  },
+
+  /**
+   * LESSON (donor v0.3.44, SPRS type 17) — one rep of an association lesson in
+   * one frame. The card expands it (`expand_lesson`, frames.rs) into exactly the
+   * step sequence the per-pair path sends; see the layout there. `spec`:
+   *   { cluster, twin|null, sem, motor, tag, semGroup, semSize, motorGroup,
+   *     motorSize, tagRowStart, tagLen, posOps:[[name,lr]], antiOps:[[name,lr]],
+   *     lateral:{matrix,lr,numBuckets,bucketSize,motorStartAbs}|null,
+   *     pairs:[[semDims[], motorDims[], wrongDims[]|null]] }
+   * Returns true only when the frame was SENT (primary speaks it and the
+   * pattern lane admitted it) — the caller runs the per-pair path otherwise, so
+   * a refused lesson is never a lost one.
+   */
+  encodeTeachLesson(spec) {
+    const str = (s) => {
+      const b = Buffer.from(String(s || ''), 'utf8');
+      const pad = (4 - ((4 + b.length) % 4)) % 4;
+      const out = Buffer.alloc(4 + b.length + pad);
+      out.writeUInt16LE(b.length, 0);
+      b.copy(out, 4);
+      return out;
+    };
+    const u32 = (...v) => { const b = Buffer.alloc(4 * v.length); v.forEach((x, i) => b.writeUInt32LE(x >>> 0, 4 * i)); return b; };
+    const f32 = (x) => { const b = Buffer.alloc(4); b.writeFloatLE(x, 0); return b; };
+    const parts = [this._encodeSparseHeader(17, 0, spec.cluster),
+      str(spec.twin || ''), str(spec.sem), str(spec.motor), str(spec.tag),
+      u32(spec.semGroup, spec.semSize, spec.motorGroup, spec.motorSize, spec.tagRowStart, spec.tagLen)];
+    const cnt = Buffer.alloc(4);
+    cnt.writeUInt16LE(spec.posOps.length, 0);
+    cnt.writeUInt16LE(spec.antiOps.length, 2);
+    parts.push(cnt);
+    for (const [n, lr] of spec.posOps) parts.push(str(n), f32(lr));
+    for (const [n, lr] of spec.antiOps) parts.push(str(n), f32(lr));
+    const L = spec.lateral;
+    parts.push(u32(L ? 1 : 0));
+    if (L) parts.push(str(L.matrix), f32(L.lr), u32(L.numBuckets, L.bucketSize, L.motorStartAbs));
+    parts.push(u32(spec.pairs.length));
+    for (const [s, m, w] of spec.pairs) {
+      const nw = w ? w.length : 0xFFFF;
+      const dims = [...s, ...m, ...(w || [])];
+      const body = Buffer.alloc(8 + 2 * dims.length + ((4 - ((2 * dims.length) % 4)) % 4));
+      body.writeUInt16LE(s.length, 0); body.writeUInt16LE(m.length, 2); body.writeUInt16LE(nw, 4);
+      dims.forEach((d, i) => body.writeUInt16LE(d, 8 + 2 * i));
+      parts.push(body);
+    }
+    return Buffer.concat(parts);
+  },
+
+  gpuTeachLesson(spec) {
+    if (!this._gpuClient || this._gpuClient.readyState !== 1) return false;
+    if (!this._donorSpeaksLessonNow()) return false;
+    try {
+      const frame = this.encodeTeachLesson(spec);
+      if (!this._donorPatternSendGated(frame)) return false;
+      this._countTeachOut(17, frame.length);
+      this._lessonsSent = (this._lessonsSent || 0) + 1;
+      this._lessonPairsSent = (this._lessonPairsSent || 0) + spec.pairs.length;
+      return true;
+    } catch (e) {
+      if (!this._lessonEncodeWarned) { this._lessonEncodeWarned = true; console.warn(`[Brain] lesson encode failed (per-pair path used): ${e.message}`); }
+      return false;
+    }
+  },
+
+  /** PRIMARY donor speaks SPRS type 17 (lesson)? v0.3.44+. */
+  _donorSpeaksLessonNow() {
+    const ws = this._gpuClient;
+    if (!ws) return false;
+    const c = this.clients && this.clients.get ? this.clients.get(ws) : null;
+    const m = /^(\d+)\.(\d+)\.(\d+)/.exec(String((c && c.donorAppVersion) || ''));
+    return !!m && ((+m[1]) * 1e6 + (+m[2]) * 1e3 + (+m[3])) >= 3044;
   },
 
   /** Donor speaks SPRS type 16 (bundle)? v0.3.43+. */

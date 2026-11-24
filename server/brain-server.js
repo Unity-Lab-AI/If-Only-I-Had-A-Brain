@@ -4004,6 +4004,10 @@ class ServerBrain {
         // lane open) so callers sample their CPU shadow only when the GPU
         // carried the mass.
         hebbianBoundMasked: (name, lr, reps, postIdx)       => this.gpuSparseHebbianBoundMasked(name, lr, reps, postIdx),
+        // v0.3.44 — a whole rep of an association lesson in one frame; the card
+        // expands it into the per-pair step sequence. True only when SENT.
+        teachLesson: (spec)                                 => this.gpuTeachLesson(spec),
+        lessonCapable: ()                                   => this._donorSpeaksLessonNow(),
         // GATEGPU — one gate probe on the donor: probe-pattern slice write +
         // bound propagate pinned to the PRIMARY, currents back on the ack.
         // Null on any honesty guard (lane busy / no donor / kill switch) —
