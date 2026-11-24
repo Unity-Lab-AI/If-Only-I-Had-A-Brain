@@ -6292,6 +6292,47 @@ export class Curriculum {
       this._hb(`[Curriculum] 📚 PRE-CELL VOCAB — vocabulary load failed for ${subject}/${grade} (non-fatal; the dream-trickle still carries defs): ${err?.message || err}`);
       return;
     }
+    // ⭐ EVERY WORD THIS CELL WILL TEACH WITH, NOT ONLY THE GRADE LIST. The list
+    // above is a fixed per-grade vocabulary; the cell then trains on its train
+    // bank, its academic prose, and (for those courses) her life stories and
+    // coding stories — and any word in that material missing from the list was
+    // bound on a basin with no meaning behind it. Harvested here so the
+    // definitions land first; ordered by how often the material uses the word.
+    let _corpusAdded = 0;
+    try {
+      const have = new Set(words);
+      const freq = new Map();
+      const eat = (s) => {
+        if (typeof s !== 'string' || !s) return;
+        for (const t of s.toLowerCase().split(/[^a-z]+/)) {
+          if (t.length < 2 || have.has(t)) continue;
+          freq.set(t, (freq.get(t) || 0) + 1);
+        }
+      };
+      const bank = TRAIN_BANKS && TRAIN_BANKS[`${subject}/${grade}`];
+      if (Array.isArray(bank)) for (const e of bank) {
+        if (!e) continue;
+        eat(e.question || e.q || ''); eat(e.expectedAnswer || e.a || '');
+        if (Array.isArray(e.expected)) for (const x of e.expected) eat(x);
+      }
+      if (typeof cluster.academicStorySentences === 'function') {
+        for (const s of (cluster.academicStorySentences(subject, grade) || [])) eat(typeof s === 'string' ? s : (s && (s.text || s.sentence)) || '');
+      }
+      if (subject === 'life' && typeof cluster.lifeStoryExperiences === 'function') {
+        for (const exp of (cluster.lifeStoryExperiences(grade) || [])) {
+          if (exp && Array.isArray(exp.sentences)) for (const s of exp.sentences) eat(s);
+        }
+      }
+      if (subject === 'cs' && typeof cluster.codingStorySentences === 'function') {
+        for (const s of (cluster.codingStorySentences(grade) || [])) eat(typeof s === 'string' ? s : (s && (s.text || s.sentence)) || '');
+      }
+      const extra = [...freq.entries()].sort((a, b) => b[1] - a[1]).map(([w]) => w);
+      _corpusAdded = extra.length;
+      words = words.concat(extra);
+    } catch (err) {
+      this._hb(`[Curriculum] 📚 PRE-CELL VOCAB — could not read ${subject}/${grade}'s teaching material for its words (non-fatal; the grade list still teaches): ${err?.message || err}`);
+    }
+    if (_corpusAdded) this._hb(`[Curriculum] 📚 PRE-CELL VOCAB ${subject}/${grade} — ${_corpusAdded} more words harvested from the cell's own teaching material (train bank, prose, stories) that the grade list does not carry.`);
     if (words.length === 0) return;
     // The deepening lane rides regardless — reps:4 multi-def during dream
     // windows; idempotent per grade, dedups against taught + queued.
