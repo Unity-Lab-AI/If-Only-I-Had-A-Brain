@@ -20702,12 +20702,19 @@ export class Curriculum {
     const semSize = semRegion.end - semRegion.start;
     // A fresh Float64Array is already zero, and `set` copies the Uint8 spike span
     // natively with the same 0/1 → 0.0/1.0 conversion the element loop did.
-    const pre = new Float64Array(semSize);
+    // ⛔ SCRATCH, NOT A FRESH ARRAY PER READ. The mind's eye asks this for up to
+    // 24 words per eye tick, and each read allocated a semSize Float64 (20 MB at
+    // 2.5M sem neurons) plus a fineType-sized output — measured as 22% of the
+    // main thread with GC beside it during `_teachSentenceList`. Both buffers are
+    // reused; `propagate` zero-fills the output itself.
+    if (!this._relBandPre || this._relBandPre.length !== semSize) this._relBandPre = new Float64Array(semSize);
+    const pre = this._relBandPre;
     try { this._writeTiledPattern(semRegion, emb, false); } catch { /* fall through to the raw read */ }
     pre.set(cluster.lastSpikes.subarray(semRegion.start, semRegion.start + semSize));
 
     let out = null;
-    try { out = proj.propagate(pre); } catch { return null; }
+    if (!this._relBandOut || this._relBandOut.length !== proj.rows) this._relBandOut = new Float64Array(proj.rows || 0);
+    try { out = proj.propagate(pre, this._relBandOut); } catch { return null; }
     if (!out || out.length === 0) return null;
 
     const BANDS = Curriculum.RELATION_TAG_BANDS;
