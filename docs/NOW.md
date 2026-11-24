@@ -57,6 +57,7 @@ verified-scope: |
 | **after a cortex move** | the old card is told to free its copy once the new one holds every matrix — the stale copy had left her own image renderer short of VRAM and refusing looks |
 | **lesson window** | sized to the link instead of a fixed 4: enough in flight to cover one round trip (4 on her own card, ~30 on a rented one), still bounded. `state.lessonPacing` |
 | **gate batteries** | no battery-wide clock — a slow card no longer fails a gate on time; each question keeps its 45 s hang guard |
+| **her looks and drawings** | the look-up prompt was a grey studio product shot — her palettes came out grey and non-words came back as rings from above. New prompt (judged on her renderer: whole objects, in colour), non-things refused by the drawing gate, and her visual memory starts empty so the grey looks are gone |
 | **knob templates** | load a whole set from the teach view: preview, then apply; live knobs change now, and she restarts ONCE for all boot-frozen ones |
 
 ## What to read on the next boot

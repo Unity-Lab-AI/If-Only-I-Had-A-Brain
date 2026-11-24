@@ -6157,6 +6157,11 @@ const SERVER_CHAT_MIXIN = {
     //     judged the moment they arrive.
     try {
       if (!this._drawTaxonomy) this._drawTaxonomy = require('../drawable-taxonomy.js');
+      // A word English uses as something OTHER than a thing ("no", "want",
+      // "first", "here", "well") is not a subject, whatever one rare noun sense
+      // says — those were looked up, rendered as studio jewellery, and drawn
+      // as orbs. Judged by WordNet's own per-part-of-speech corpus counts.
+      if (typeof this._drawTaxonomy.otherPosLeads === 'function' && this._drawTaxonomy.otherPosLeads(w)) return false;
       const v = this._drawTaxonomy.drawableVerdict(w);
       if (v === 'concrete') {
         // an UNATTESTED grant (the noun reading never occurs in tagged
