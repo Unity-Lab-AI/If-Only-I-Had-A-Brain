@@ -16854,9 +16854,18 @@ export class Curriculum {
       const costs = Object.values((b && b._lessonCost) || {}).map((c) => c && c.msPerLesson).filter((v) => v > 0);
       const f = this._teachStageProfile && this._teachStageProfile.cardLesson;
       const pairsPerLesson = f && f.lessons > 0 ? f.lessonPairs / f.lessons : 0;
-      if (costs.length && pairsPerLesson > 0) {
-        // The SLOWEST holder sets the pace — every lesson waits for every holder.
-        const msPerPair = Math.max(...costs) / pairsPerLesson;
+      if (pairsPerLesson > 0) {
+        // Two readings of the card's time per pair, and the SMALLER is used:
+        // `lesson_cost` (the slowest holder — every lesson waits for every
+        // holder) syncs after every step to time it, which overstates the
+        // card's real time; the ack spacing while the lesson window is full is
+        // the card's real throughput. Measured: lesson_cost gave lessons of 16
+        // pairs while the acks showed ~0.7 ms a pair.
+        const est = [];
+        if (costs.length) est.push(Math.max(...costs) / pairsPerLesson);
+        const svc = b && Number(b._lessonSvcEmaMs);
+        if (svc > 0) est.push(svc / pairsPerLesson);
+        const msPerPair = est.length ? Math.min(...est) : 0;
         if (msPerPair > 0) return Math.max(8, Math.min(1024, Math.round(targetMs / msPerPair)));
       }
     } catch { /* fall back to the default */ }
