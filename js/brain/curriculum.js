@@ -22096,7 +22096,16 @@ export class Curriculum {
     // — false-positive ⚠OVERLOAD that triggered the wall-of-OVERLOAD
     // log the operator killed two test runs over.
     const probeMotorPath = diagProjKeys.includes('sem_to_motor');
-    if (runSeparationProbe && probeMotorPath && pairs.length >= 2) {
+    // ⏱ PACED. This diagnostic reads a health sample (`_lastSemMotorMeanCos`)
+    // and a warning line; it changes no weight on a card-held matrix. Run
+    // after EVERY lesson it was ~16% of the main thread plus most of the
+    // collector's share (8 probes a lesson) while the cards waited. One reading
+    // every DREAM_SEP_PROBE_GAP_MS (5 s) keeps the health signal current.
+    const _sepGapEnv = Number(typeof process !== 'undefined' && process?.env?.DREAM_SEP_PROBE_GAP_MS);
+    const _sepGap = Number.isFinite(_sepGapEnv) && _sepGapEnv >= 0 ? _sepGapEnv : 5000;
+    const _sepDue = !(_sepGap > 0) || !this._sepProbeLastAt || (Date.now() - this._sepProbeLastAt) >= _sepGap;
+    if (runSeparationProbe && probeMotorPath && pairs.length >= 2 && _sepDue) {
+      this._sepProbeLastAt = Date.now();
       try {
         // Pass semTopK into the probe so the diagnostic measures the
         // SAME sem pattern geometry the teach wrote. Without this the
