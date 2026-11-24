@@ -148,7 +148,12 @@ function spawnLauncher(script) {
         // when any later argument is quoted, or cmd treats the path AS the title.
         // `start <file>.bat` runs the batch under `cmd /K`, which keeps the
         // window open after it ends; `cmd /c <file>.bat` closes it.
-        ? spawn('cmd.exe', ['/c', 'start', '', '/D', LAUNCH_DIR, 'cmd', '/c', path.basename(script)],
+        // ⛔ AND IT RUNS UNDER `conhost.exe`, NOT WINDOWS TERMINAL. Windows 11
+        // hands a new console to Windows Terminal, which keeps the tab of a
+        // handed-off console open after its process has exited (even on exit
+        // 0) — measured: the launcher's cmd was gone and its window stayed.
+        // conhost closes its window when the process ends.
+        ? spawn('cmd.exe', ['/c', 'start', '', '/D', LAUNCH_DIR, 'conhost.exe', 'cmd.exe', '/c', script],
             { cwd: LAUNCH_DIR, detached: true, stdio: 'ignore', windowsHide: false, env })
         : spawn('bash', [script],
             { cwd: LAUNCH_DIR, detached: true, stdio: 'ignore', env });
