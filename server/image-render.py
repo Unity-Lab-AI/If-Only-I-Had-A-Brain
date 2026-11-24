@@ -2,15 +2,28 @@
 """
 image-render.py — her eyes' renderer, owned by THIS project.
 
-Renders the reference pictures she looks at, on her own card, from the
-realistic-vision-v51 checkpoint (SD1.5) kept in this repo's own models/image/
-(gitignored — a third-party checkpoint on a public remote). Started and
-stopped by this project's launchers; nothing here depends on any other
-project's tree or process.
+Renders the reference pictures she looks at, on her own card, from the SDXL
+base 1.0 checkpoint kept in this repo's own models/image/ (gitignored — a
+third-party checkpoint on a public remote). Started and stopped by this
+project's launchers; nothing here depends on any other project's tree or
+process.
+
+⭐ SDXL, NOT SD1.5 (2026-11-24). Measured on the same 5 English-text prompts:
+the old realistic-vision-v51 (SD1.5) wrote "ABAKRYY" for BAKERY, "TOP" for
+STOP and scribbles elsewhere — that generation cannot spell in any language;
+SDXL wrote "BAKERY", "STOP", "Hello World". Peak 5.59 GB with model CPU
+offload + VAE tiling at 1024x1024 (vs 2.81 GB), 11.2 s/image. An SD1.5 file
+passed as the checkpoint still loads (kind is read from the file name).
+
+⛔ NO DEFAULT NEGATIVE PROMPT. The picture is what the request describes —
+nothing is forbidden behind it. Words appear because the request asked for
+them (her words in quotes); SDXL does not letter a picture nobody asked to be
+lettered the way SD1.5 scribbled pseudo-text into it.
 
 Only what the brain calls (server/brain-server/image-engine.js):
-  GET  /health   -> {"ok", "loaded", "device", "checkpoint", "checkpoint_present", "busy"}
+  GET  /health   -> {"ok", "loaded", "device", "checkpoint", "checkpoint_present", "busy", "kind", "writes_text"}
   POST /txt2img  {"prompt", "negative"?, "width"?, "height"?, "steps"?, "guidance"?, "seed"?}
+                 ("allowText" may ride along — recorded by the brain, not used here)
                  -> image/png  (headers X-Seed, X-Seconds, X-Size)
   POST /unload   -> drops the pipeline and frees the card (the process stays)
   POST /shutdown -> exits
@@ -24,7 +37,7 @@ Behaviour the brain's pacing was measured against, kept exactly:
   - the prompt is cut by the real CLIP tokenizer (CLIP reads 77 tokens and
     silently drops the rest).
 
-    python server/image-render.py --port 5124 --checkpoint models/image/realistic-vision-v51.safetensors
+    python server/image-render.py --port 5124 --checkpoint models/image/sdxl-base-1.0.safetensors
 """
 import argparse
 import gc
@@ -37,11 +50,18 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_CKPT = os.path.join(HERE, "..", "models", "image", "realistic-vision-v51.safetensors")
+DEFAULT_CKPT = os.path.join(HERE, "..", "models", "image", "sdxl-base-1.0.safetensors")
 
-# quality negatives only; what the picture shows is the prompt's business
-NEG = ("lowres, blurry, out of focus, deformed, bad anatomy, extra fingers, extra limbs, missing fingers, "
-       "mutated hands, watermark, text, signature, cartoon, anime, 3d render, oversaturated, jpeg artifacts")
+# ⛔ NO DEFAULT NEGATIVE PROMPT (2026-11-24, operator law, stated twice). A fixed
+# negative forbade whole kinds of picture behind every request — it banned
+# "cartoon, anime, 3d render" on every render, so a cartoon could never be asked
+# for — and naming a thing in a prompt pulls the model toward it. What the
+# picture is, is the request's business: only a caller's own `negative` is sent.
+
+
+def _is_xl(path):
+    n = os.path.basename(path).lower()
+    return "xl" in n
 
 CKPT = DEFAULT_CKPT
 DEVICE_ARG = "auto"
@@ -75,14 +95,19 @@ def _load():
     if _state["t2i"] is not None:
         return
     import torch
-    from diffusers import StableDiffusionPipeline, DPMSolverMultistepScheduler
+    from diffusers import StableDiffusionPipeline, StableDiffusionXLPipeline, DPMSolverMultistepScheduler
     if not os.path.exists(CKPT):
         raise FileNotFoundError("checkpoint not found: %s" % CKPT)
     dev = _device()
     t0 = time.time()
     _log("loading %s on %s%s" % (os.path.basename(CKPT), dev, " (cpu offload)" if dev == "cuda" and OFFLOAD else ""))
     dtype = torch.float16 if dev == "cuda" else torch.float32
-    t2i = StableDiffusionPipeline.from_single_file(CKPT, torch_dtype=dtype, safety_checker=None)
+    if _is_xl(CKPT):
+        t2i = StableDiffusionXLPipeline.from_single_file(CKPT, torch_dtype=dtype)
+        # tiles the VAE decode — part of the measured 5.59 GB peak at 1024x1024
+        t2i.vae.enable_tiling()
+    else:
+        t2i = StableDiffusionPipeline.from_single_file(CKPT, torch_dtype=dtype, safety_checker=None)
     t2i.scheduler = DPMSolverMultistepScheduler.from_config(t2i.scheduler.config)
     if dev == "cuda":
         if OFFLOAD:
@@ -118,13 +143,24 @@ def render_txt2img(req):
     seed = int(seed) if seed not in (None, "", 0) else random.randint(1, 2 ** 31 - 1)
     gen = torch.Generator(dev).manual_seed(seed)
     guidance = float(req.get("guidance") or 6.5)
-    negative = str(req.get("negative") or NEG)
+    # only the caller's own negative, never a default (see the note at the top)
+    negative = str(req.get("negative") or "")
+    # SDXL draws at its native 1024 (what was measured) and is scaled to the
+    # size the brain asked for; SD1.5 renders the asked size directly
+    xl = _is_xl(CKPT)
+    rw, rh = (w, h)
+    if xl:
+        k = 1024.0 / max(w, h)
+        rw, rh = _round8(w * k, lo=512, hi=1024), _round8(h * k, lo=512, hi=1024)
     t0 = time.time()
     if dev == "cuda":
         torch.cuda.empty_cache()
-    out = _state["t2i"](prompt=_tokens_fit(str(req.get("prompt") or "")), negative_prompt=_tokens_fit(negative),
-                        width=w, height=h, num_inference_steps=steps, guidance_scale=guidance,
+    out = _state["t2i"](prompt=_tokens_fit(str(req.get("prompt") or "")), negative_prompt=(_tokens_fit(negative) if negative else None),
+                        width=rw, height=rh, num_inference_steps=steps, guidance_scale=guidance,
                         generator=gen).images[0]
+    if (rw, rh) != (w, h):
+        from PIL import Image
+        out = out.resize((w, h), Image.LANCZOS)
     return out, seed, time.time() - t0
 
 
@@ -161,7 +197,9 @@ class Handler(BaseHTTPRequestHandler):
         if self.path.split("?")[0] == "/health":
             return self._json({"ok": True, "loaded": _state["t2i"] is not None, "device": _state["device"] or DEVICE_ARG,
                                "checkpoint": os.path.basename(CKPT), "checkpoint_present": os.path.exists(CKPT),
-                               "busy": _lock.locked()})
+                               "busy": _lock.locked(),
+                               "kind": "sdxl" if _is_xl(CKPT) else "sd15",
+                               "writes_text": _is_xl(CKPT)})
         self._json({"error": "unknown endpoint"}, 404)
 
     def do_POST(self):

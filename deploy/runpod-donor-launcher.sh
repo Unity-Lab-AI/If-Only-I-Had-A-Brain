@@ -146,16 +146,18 @@ donor_attached() {
 # the SAME checkpoint, so a picture does not depend on which card drew it. The
 # model comes from the model host, not from the operator's upload, and is taken
 # only if its SHA-256 matches the file at home byte for byte:
-#   Realistic_Vision_V5.1_fp16-no-ema.safetensors · 2,132,625,894 B
-#   sha256 99a75a901f4fec732056930a89fa34cf360f6f72d75ce5bf333ddf82adf8dd2a
+#   sd_xl_base_1.0.safetensors (SDXL base 1.0) · 6,938,078,334 B
+#   sha256 31e35c80fc4829d14f90153f4c74cd59c90b779f6afe05a74cd6120b893f7e5b
+# (SDXL since 2026-11-24 — it can write English in a picture; the SD1.5
+# Realistic Vision 5.1 before it could not.)
 # Runs in the background and never blocks the donor; the donor re-checks the
 # renderer every minute and offers the lane the moment it answers.
 # DONOR_IMAGE=0 skips it.
 if [ "${DONOR_IMAGE:-1}" != "0" ]; then
   ( IMG=/opt/unity-image
-    CKPT="$IMG/models/image/realistic-vision-v51.safetensors"
-    CKPT_URL="https://huggingface.co/SG161222/Realistic_Vision_V5.1_noVAE/resolve/main/Realistic_Vision_V5.1_fp16-no-ema.safetensors"
-    CKPT_SHA=99a75a901f4fec732056930a89fa34cf360f6f72d75ce5bf333ddf82adf8dd2a
+    CKPT="$IMG/models/image/sdxl-base-1.0.safetensors"
+    CKPT_URL="https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/resolve/main/sd_xl_base_1.0.safetensors"
+    CKPT_SHA=31e35c80fc4829d14f90153f4c74cd59c90b779f6afe05a74cd6120b893f7e5b
     RENDER_URL="https://raw.githubusercontent.com/Unity-Lab-AI/If-Only-I-Had-A-Brain/main/server/image-render.py"
     mkdir -p "$IMG/models/image" "$IMG/server"
     curl -fsSL -m 120 -o "$IMG/server/image-render.py" "$RENDER_URL" || { echo IMAGE_LANE_NO_RENDERER_SCRIPT; exit 0; }

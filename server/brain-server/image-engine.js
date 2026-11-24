@@ -96,8 +96,13 @@ const CHAT_YIELD_MAX_MS = Number(process.env.DREAM_IMAGE_CHAT_YIELD_MS) >= 0 ? N
 // FLOOR = measured render peak (2,500) + 572 MiB margin = 3,072 MiB. The margin
 // is the gap between a 512 render and a 768 one (3,070 MiB measured), so a
 // slightly larger ask cannot sneak under the gate.
+// ⛔ RE-DERIVED FOR SDXL (2026-11-24). The renderer moved from SD1.5 (2,500 MiB
+// peak) to SDXL base, measured at 5,590 MiB peak (1024x1024, model CPU offload,
+// VAE tiling) on a 48 GB card. Same derivation, same margin: 5,590 + 572 =
+// 6,162 MiB. Keeping the old 3,072 would let an SDXL render fire into a card
+// that cannot hold it — the donor stall this rule was written against.
 const MIN_FREE_VRAM_MB = Number(process.env.DREAM_IMAGE_MIN_FREE_VRAM_MB) >= 0
-  ? Number(process.env.DREAM_IMAGE_MIN_FREE_VRAM_MB) : 3072;
+  ? Number(process.env.DREAM_IMAGE_MIN_FREE_VRAM_MB) : 6162;
 // Short TTL on purpose: free VRAM moves with every donor batch, so a stale read
 // is worse than no read. The probe costs ~216 ms, paid at most once per 5 s.
 const VRAM_TTL_MS = 5000;
@@ -155,6 +160,16 @@ const ImageEngineMixin = {
     const seed = (typeof opts.seed === 'number') ? opts.seed : Math.floor(_draw * 2147483646) + 1;
     const body = { prompt: String(prompt || '').slice(0, 600), width, height, steps: opts.steps || STEPS, seed };
     if (opts.negative) body.negative = String(opts.negative);
+    // ⭐ WORDS IN THE PICTURE WHEN SHE ASKS. Her request asks for words by
+    // QUOTING them ("a sign that says \"OPEN\""), or a caller says so outright
+    // (`opts.allowText`); SDXL spells what the prompt quotes. Counted so the
+    // board shows how often she writes. ⛔ No negative prompt forbids text (or
+    // anything) otherwise — operator law: a negative names the thing and pulls
+    // the model toward it, and it locks out pictures someone may want.
+    if (opts.allowText === true || /"[^"\n]{1,80}"/.test(body.prompt)) {
+      body.allowText = true;
+      const st = this._imageEngine(); st.textRenders = (st.textRenders | 0) + 1;
+    }
     return {
       url: `${ENGINE_URL}/txt2img`,
       init: { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
@@ -226,6 +241,16 @@ const ImageEngineMixin = {
       const r = await fetch(`${ENGINE_URL}/health`, { signal: c.signal });
       clearTimeout(t);
       ok = !!(r && r.ok);
+      // ⭐ SHE KNOWS SHE CAN WRITE IN PICTURES. The renderer says whether its
+      // model can spell (SDXL yes, SD1.5 no); published as her ability.
+      if (ok) {
+        try {
+          const h = await r.json();
+          const st = this._imageEngine();
+          st.model = h.kind || null;
+          st.canWriteInPictures = h.writes_text === true;
+        } catch { /* health without a body — ability unknown */ }
+      }
     } catch { ok = false; }
     this._imageEngineHealth = { ok, at: now };
     return ok;
