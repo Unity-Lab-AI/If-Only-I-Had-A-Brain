@@ -5241,12 +5241,12 @@ class ServerBrain {
       // has a clearly-attributable last-successful-stage in the output.
       if (personaText) {
         console.log('[Brain] Stage: loadSelfImage START');
-        personaCount = this.languageCortex.loadSelfImage(personaText, this.dictionary, 0.75, 0.25);
+        personaCount = await this.languageCortex.loadSelfImage(personaText, this.dictionary, 0.75, 0.25, { yieldMs: 50 });
         console.log(`[Brain] Stage: loadSelfImage DONE (${personaCount} sentences)`);
       }
       if (baselineText) {
         console.log('[Brain] Stage: loadLinguisticBaseline START');
-        baselineCount = this.languageCortex.loadLinguisticBaseline(baselineText, this.dictionary, 0.50, 0);
+        baselineCount = await this.languageCortex.loadLinguisticBaseline(baselineText, this.dictionary, 0.50, 0, { yieldMs: 50 });
         console.log(`[Brain] Stage: loadLinguisticBaseline DONE (${baselineCount} sentences)`);
       }
       if (codingText && _gradeReached('grade5')) {
