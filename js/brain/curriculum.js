@@ -28768,6 +28768,41 @@ export class Curriculum {
       }
     }
 
+    // v0.3.53 pattern-lesson setup (see the word loop). Ops = every card-bound
+    // cross projection between existing regions, sem→motor damped — the set
+    // `_crossRegionHebbian(lr)` fires with no whitelist on the card path.
+    const _plRegions = [letterRegion, phonRegion || null, motorRegion || null, semRegion || null];
+    let _pl = null;
+    const _plMax = (() => { const v = Number(process.env.DREAM_PATTERN_LESSON_ITEMS); return v > 0 ? Math.floor(v) : 2048; })();
+    if (cluster._gpuProxy && typeof cluster._gpuProxy.patternLessonCapable === 'function' && cluster._gpuProxy.patternLessonCapable()
+        && typeof cluster._gpuProxy.teachPatternLesson === 'function' && cluster._gpuProxyReady) {
+      if (cluster._smLrScale === undefined) {
+        let _v = NaN;
+        try { _v = parseFloat(process.env.DREAM_SM_LR_SCALE); } catch { _v = NaN; }
+        cluster._smLrScale = (Number.isFinite(_v) && _v >= 0) ? _v : 0.5;
+      }
+      const ops = [];
+      for (const [name, proj] of Object.entries(cluster.crossProjections || {})) {
+        const at = name.indexOf('_to_');
+        if (at < 0 || !proj || !proj._gpuBound) continue;
+        if (!cluster.regions[name.slice(0, at)] || !cluster.regions[name.slice(at + 4)]) continue;
+        const damp = (name === 'sem_to_motor' || name === 'sem_to_word_motor') ? cluster._smLrScale : 1;
+        ops.push([`${cluster.name}_${name}`, lr * damp]);
+      }
+      const regionNames = _plRegions.map((rg) => (rg ? this._resolveRegionName(cluster, rg) : null));
+      if (ops.length && regionNames[0]) _pl = { items: [], groups: [], ops, regionNames };
+    }
+    const _plFlush = async () => {
+      if (!_pl || !_pl.items.length) return;
+      const items = _pl.items; _pl.items = [];
+      const regs = [], keep = [];
+      _pl.regionNames.forEach((nm, i) => { if (nm && _plRegions[i]) { regs.push([nm, _pl.groups[i] || 1, _plRegions[i].end - _plRegions[i].start]); keep.push(i); } });
+      if (typeof cluster._gpuProxy.lessonSlot === 'function') { try { await cluster._gpuProxy.lessonSlot(); } catch { /* best-effort pacing */ } }
+      const sent = cluster._gpuProxy.teachPatternLesson({ cluster: cluster.name, twin: 'langCortex', regions: regs, ops: _pl.ops, items: items.map((it) => keep.map((i) => it[i])) });
+      const sp = this._teachStageProfile || (this._teachStageProfile = {});
+      const f = sp.patternLesson || (sp.patternLesson = { lessons: 0, items: 0, refused: 0 });
+      if (sent) { f.lessons++; f.items += items.length; } else { f.refused++; }
+    };
     for (let rep = 0; rep < reps; rep++) {
       // Bank the cursor on EVERY rep, same law as the siblings: banking here has
       // no ordering dependency on the shutdown sequence, and it survives
@@ -28902,13 +28937,32 @@ export class Curriculum {
           // AND the card slice, `_writeTiledPattern` sets the same 1s on the
           // CPU and mirrors them to the card (template frame). The CPU spikes
           // are identical to before: each feature dim > 0 fills its tile span.
+          // Sem — sparsified to the same top-K the pair lane has always used
+          // (see `_semTeachEmbedding`). Dense here meant ~50% of sem alight per word.
+          const semFeat = (semRegion && wordEmb && wordEmb.length > 0) ? this._semTeachEmbedding(wordEmb, opts) : null;
+
+          // ⭐⭐ THE PATTERN LESSON (donor 0.3.53+, PEGPOD). The word becomes one
+          // item — its active dims per region — and a run of items goes to the
+          // card in one frame; the card runs, per item, exactly the step below:
+          // clear the four regions, write each region's tiles, fire the bound
+          // ops `_crossRegionHebbian` would (every card-bound projection, the
+          // sem→motor damping applied). Many in flight instead of one word per
+          // round trip — which is what keeps the card busy through this lane.
+          if (_pl) {
+            const feats = [letterOneHot, phonRegion ? phonFeat : null, motorRegion ? letterOneHot : null, semFeat];
+            const groups = _plRegions.map((rg, i) => (rg && feats[i] && feats[i].length) ? Math.max(1, Math.floor((rg.end - rg.start) / feats[i].length)) : 1);
+            if (_pl.items.length && groups.some((g, i) => g !== _pl.groups[i])) await _plFlush();
+            _pl.groups = groups;
+            _pl.items.push(feats.map((f) => { const d = []; if (f) for (let k = 0; k < f.length; k++) if (f[k] > 0) d.push(k); return d; }));
+            if (_pl.items.length >= _plMax) await _plFlush();
+            continue;
+          }
+
           this._clearSpikes(['letter', 'phon', 'motor', 'sem']);
           this._writeTiledPattern(letterRegion, letterOneHot, true);
           if (phonRegion) this._writeTiledPattern(phonRegion, phonFeat, true);
           if (motorRegion) this._writeTiledPattern(motorRegion, letterOneHot, true);
-          // Sem — sparsified to the same top-K the pair lane has always used
-          // (see `_semTeachEmbedding`). Dense here meant ~50% of sem alight per word.
-          if (semRegion && wordEmb && wordEmb.length > 0) this._writeTiledPattern(semRegion, this._semTeachEmbedding(wordEmb, opts), true);
+          if (semFeat) this._writeTiledPattern(semRegion, semFeat, true);
 
           await cluster._crossRegionHebbian(lr);
         }
@@ -28919,6 +28973,8 @@ export class Curriculum {
         }
         this.stats.sentencesSeen++;
       }
+      // A rep's items finish on the card before the next rep (same order).
+      if (_pl) await _plFlush();
       await _microtask();
     }
     // Every authored rep landed — clear the debt so the NEXT visit teaches the

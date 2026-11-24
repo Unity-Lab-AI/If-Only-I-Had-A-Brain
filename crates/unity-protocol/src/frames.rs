@@ -100,6 +100,51 @@ pub enum Frame {
     /// mask, the contrastive pass — so the brain stops building every pair in
     /// JavaScript on its one thread. Fire-and-forget, no ack.
     Lesson(Lesson),
+    /// v0.3.53 — PATTERN LESSON (type 18): many items, each a multi-region spike
+    /// pattern followed by the same bound plasticity ops. Per item the card runs
+    /// EXACTLY the brain's per-word sentence step — clear every listed region
+    /// (cluster + twin), write each region's tiled dims, then the bound ops — so
+    /// a whole run of sentences rides one frame instead of one word per round
+    /// trip. Acked like a lesson (type 17 ack) so the same pacing bounds it.
+    PatternLesson(PatternLesson),
+}
+
+/// v0.3.53 — the decoded pattern lesson.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PatternLesson {
+    pub req_id: u32,
+    pub cluster: String,
+    pub twin: Option<String>,
+    /// (region name, tile group, region size)
+    pub regions: Vec<(String, u32, u32)>,
+    pub ops: Vec<(String, f32)>,
+    /// per item, one dim list per region (same order as `regions`)
+    pub items: Vec<Vec<Vec<u16>>>,
+}
+
+/// Expand a pattern lesson into the per-word step sequence, item by item.
+pub fn expand_pattern_lesson(l: &PatternLesson) -> Vec<LessonOp> {
+    let mut out = Vec::new();
+    let targets: Vec<&String> = std::iter::once(&l.cluster).chain(l.twin.iter()).collect();
+    for item in &l.items {
+        for (name, _, _) in &l.regions {
+            for c in &targets { out.push(LessonOp::Clear { cluster: (*c).clone(), region: name.clone() }); }
+        }
+        for (ri, (name, group, size)) in l.regions.iter().enumerate() {
+            let dims = match item.get(ri) { Some(d) => d, None => continue };
+            let mut idx = Vec::with_capacity(dims.len() * (*group as usize));
+            for &d in dims {
+                for n in 0..*group {
+                    let i = (d as u32) * group + n;
+                    if i < *size { idx.push(i); }
+                }
+            }
+            if idx.is_empty() { continue; }
+            for c in &targets { out.push(LessonOp::Write { cluster: (*c).clone(), region: name.clone(), indices: idx.clone() }); }
+        }
+        for (n, lr) in &l.ops { out.push(LessonOp::Bound { name: n.clone(), lr: *lr }); }
+    }
+    out
 }
 
 /// v0.3.44 — the decoded lesson. Region names are the brain's; offsets are
@@ -573,6 +618,40 @@ pub fn decode(data: &[u8]) -> Option<Frame> {
                 cluster: name, twin: if twin.is_empty() { None } else { Some(twin) },
                 sem_region, motor_region, tag_region, sem_group, sem_size, motor_group, motor_size,
                 tag_row_start, tag_len, pos_ops, anti_ops, lateral, pairs,
+            }))
+        }
+        // v0.3.53 — pattern lesson. Header name = the cluster. twin str; then
+        // nRegions u16 + nOps u16; regions: name str + group u32 + size u32;
+        // ops: name str + lr f32; nItems u32; per item: nRegions × u16 dim
+        // counts, pad→4, the dims (u16) region after region, pad→4.
+        18 => {
+            fn s(r: &mut Reader) -> Option<String> {
+                let n = r.u16()? as usize;
+                let _ = r.u16()?;
+                let v = String::from_utf8_lossy(r.bytes(n)?).into_owned();
+                r.align4();
+                Some(v)
+            }
+            let twin = s(&mut r)?;
+            let n_regions = r.u16()? as usize;
+            let n_ops = r.u16()? as usize;
+            let mut regions = Vec::with_capacity(n_regions);
+            for _ in 0..n_regions { let nm = s(&mut r)?; let g = r.u32()?.max(1); let sz = r.u32()?; regions.push((nm, g, sz)); }
+            let mut ops = Vec::with_capacity(n_ops);
+            for _ in 0..n_ops { let nm = s(&mut r)?; let lr = r.f32()?; ops.push((nm, lr)); }
+            let n_items = r.u32()? as usize;
+            let mut items = Vec::with_capacity(n_items.min(1 << 20));
+            for _ in 0..n_items {
+                let mut counts = Vec::with_capacity(n_regions);
+                for _ in 0..n_regions { counts.push(r.u16()? as usize); }
+                r.align4();
+                let mut dims = Vec::with_capacity(n_regions);
+                for &c in &counts { let mut v = Vec::with_capacity(c); for _ in 0..c { v.push(r.u16()?); } dims.push(v); }
+                r.align4();
+                items.push(dims);
+            }
+            Some(Frame::PatternLesson(PatternLesson {
+                req_id, cluster: name, twin: if twin.is_empty() { None } else { Some(twin) }, regions, ops, items,
             }))
         }
         _ => None,

@@ -4079,6 +4079,10 @@ class ServerBrain {
         // expands it into the per-pair step sequence. True only when SENT.
         teachLesson: (spec)                                 => this.gpuTeachLesson(spec),
         lessonCapable: ()                                   => this._donorSpeaksLessonNow(),
+        // v0.3.53 — a run of multi-region items (the sentence lane's per-word
+        // step) in one frame; acked like a lesson. True only when SENT.
+        teachPatternLesson: (spec)                          => this.gpuTeachPatternLesson(spec),
+        patternLessonCapable: ()                            => this._donorSpeaksPatternLessonNow(),
         // v0.3.45 — await a free in-flight slot before sending a lesson.
         lessonSlot: ()                                      => this.lessonSlot(),
         // GATEGPU — one gate probe on the donor: probe-pattern slice write +

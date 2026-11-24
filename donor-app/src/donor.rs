@@ -334,6 +334,9 @@ enum Work {
     // (not the receive loop, which must stay free to answer pings), then acked
     // so the brain can keep only a few lessons in flight per card.
     Lesson(frames::Lesson),
+    // v0.3.53 — a pattern lesson (multi-region items, the sentence lane's step),
+    // run by the same worker loop as a lesson and acked the same way.
+    PatternLesson(frames::PatternLesson),
     // v0.3.46 — the brain moved the cortex to another card: drop these resident
     // matrices. The copy here stopped being current at the move and was only
     // holding VRAM (measured: 12.7 GB on a 16 GB card, starving her renderer).
@@ -1078,11 +1081,13 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     Frame::HebbianBoundMasked { name, reps, .. } => format!("hebbian_masked {name} x{reps}"),
                     Frame::Bundle { frames } => format!("bundle x{}", frames.len()),
                     Frame::Lesson(l) => format!("lesson x{}", l.pairs.len()),
+                    Frame::PatternLesson(p) => format!("pattern lesson x{}", p.items.len()),
                 },
                 Work::WriteSpike { cluster, region, .. } => format!("write_spike {cluster}/{region}"),
                 Work::WriteCurrent { cluster, region, .. } => format!("write_current {cluster}/{region}"),
                 Work::ClearSpike { cluster, region } => format!("clear_spike {cluster}/{region}"),
                 Work::Lesson(l) => format!("lesson x{}", l.pairs.len()),
+                Work::PatternLesson(p) => format!("pattern lesson x{}", p.items.len()),
                 Work::HebbianRanges { name, reps, .. } => format!("hebbian_ranges {name} x{reps}"),
                 Work::LetterSurprise { cluster, region, letters, .. } => format!("letter_surprise {cluster}/{region} x{}", letters.len()),
                 Work::Readback { cluster, region, .. } => format!("readback {cluster}/{region}"),
@@ -1165,7 +1170,14 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 // parity-tested definition), then a type-17 ack so the brain can
                 // keep a bounded number of lessons in flight and never pile up an
                 // unbounded queue on this card.
-                Work::Lesson(lesson) => {
+                w @ (Work::Lesson(_) | Work::PatternLesson(_)) => {
+                    // v0.3.53 — both lesson kinds run this one loop; only the
+                    // expansion differs (each is its own parity definition).
+                    let (lesson_ops, lesson_req, lesson_units) = match w {
+                        Work::Lesson(l) => (frames::expand_lesson(&l), l.req_id, l.pairs.len()),
+                        Work::PatternLesson(p) => (frames::expand_pattern_lesson(&p), p.req_id, p.items.len()),
+                        _ => unreachable!(),
+                    };
                     lc_seen += 1;
                     let sample = lc_seen % LC_EVERY == 0;
                     if sample { engine.sync(); }
@@ -1185,7 +1197,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                             e.0 += t0.elapsed().as_secs_f64() * 1000.0; e.1 += 1;
                         }
                     };
-                    for op in frames::expand_lesson(&lesson) {
+                    for op in lesson_ops {
                         if let frames::LessonOp::Write { cluster, region, indices } = op {
                             let zero = !cleared.remove(&(cluster.clone(), region.clone()));
                             pending.push((cluster, region, indices, zero));
@@ -1243,10 +1255,10 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                             lc_acc.clear(); lc_sampled = 0; lc_total_ms = 0.0;
                         }
                     }
-                    if lesson.req_id != 0 {
-                        let _ = reply_tx.send(Out::Binary(frames::ack_simple(17, lesson.req_id)));
+                    if lesson_req != 0 {
+                        let _ = reply_tx.send(Out::Binary(frames::ack_simple(17, lesson_req)));
                     }
-                    set_status(&control_w, |s| { s.teach_ops += lesson.pairs.len() as u64; s.note = "teaching".into(); });
+                    set_status(&control_w, |s| { s.teach_ops += lesson_units as u64; s.note = "teaching".into(); });
                 }
                 // v0.3.18 — the whole rep dose runs HERE at engine speed: ranges
                 // expand once, then the existing hebbian op (device zero + scatter
@@ -1973,6 +1985,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                                 // local card under load. The worker runs the steps in the
                                 // same order (expand_lesson) and acks when done.
                                 Frame::Lesson(lesson) => workq.push(Work::Lesson(lesson)),
+                                Frame::PatternLesson(pl) => workq.push(Work::PatternLesson(pl)),
                                 other => workq.push(Work::Frame(other)),
                             }
                           }
@@ -2324,6 +2337,7 @@ fn handle_frame(engine: &mut MultiEngine, partials: &mut HashMap<String, Partial
         Frame::Bundle { .. } => None,
         // Expanded at receive; never reaches the worker whole.
         Frame::Lesson(_) => None,
+        Frame::PatternLesson(_) => None,
         Frame::WriteCurrentTemplate { cluster, region, row_start, group_size, values, psi } => {
             // Defensive twin of the receive-layer expansion (identical math).
             let mut indices: Vec<u32> = Vec::with_capacity(values.len() * group_size as usize);
