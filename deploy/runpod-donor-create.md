@@ -41,6 +41,16 @@ last-verified: "cd465955 2026-08-29"
 > until the operator asks for it — a GPU is picked at creation time and the old
 > pod may be gone by then.
 
+> ⭐ **2026-11-24 — THE ADMIN PAGE DOES THIS NOW.** `html/runpod.html` (local only,
+> linked from the legend's admin section) creates a donor pod from this recipe in
+> one press: community cloud, `ubuntu:24.04`, CUDA ≥ 12.8, 20 GB disk,
+> `DONOR_GPUS`/`DONOR_UTIL` = `all`, and the command read **from
+> `deploy/runpod-donor-launcher.sh` at the moment of creation**, so the pod always
+> carries the current launcher. It shows the hourly price before the press,
+> terminates only pods named `unity-donor-…`, and a true Stop of the brain
+> terminates them after the GPU readback. The manual recipe below is kept for
+> creating a pod from the Runpod console. Routes: `docs/ADMIN-CONTROLS.md`.
+
 ---
 
 ## ⛔ WHY THIS FILE EXISTS

@@ -13,6 +13,13 @@ js/env.js
 # Each operator picks their own resource tier; host-specific.
 server/resource-config.json
 
+# === Runpod plug-in (admin page, html/runpod.html) ===
+# The API key the operator pastes into the admin page, and that page's
+# settings. The key spends real money and must never reach either remote —
+# one of them is PUBLIC.
+server/runpod-key.json
+server/runpod-settings.json
+
 # === T18.12 per-machine runtime artifact ===
 # autoClearStaleState() writes SHA256 of the brain-logic source files
 # to this file on every boot. Compared against the prior-boot value to

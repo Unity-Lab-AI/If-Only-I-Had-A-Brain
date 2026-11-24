@@ -5,56 +5,52 @@
 status: verified
 sources:
   - server/brain-server.js
-  - server/brain-server/chat.js
   - server/brain-server/gpu.js
-  - server/brain-server/state.js
-  - server/coverage-worker.mjs
+  - server/runpod-control.js
+  - crates/unity-protocol/src/frames.rs
+  - donor-app/src/donor.rs
   - js/brain/curriculum.js
+  - server/server.log
 verified-scope: |
-  OVERWRITTEN 2026-11-23, late night. This file is a SNAPSHOT of the present
-  and is overwritten, never appended. The previous snapshot is in git:
+  OVERWRITTEN 2026-11-24. This file is a SNAPSHOT of the present and is
+  overwritten, never appended. The previous snapshot is in git:
   git log -p docs/NOW.md.
 ---
 
-# NOW — 2026-11-23, late night
+# NOW — 2026-11-24
 
 ## Where she is
 
 | | |
 |---|---|
-| state | **DOWN** — stopped cleanly by the operator at 5:41 PM after a 54-minute freshstart (`Binary weights saved 17 sections, 5997.0 MB`) |
-| next launch | **a FRESHSTART** (`start.bat`) — the fixes below change what she is taught (her eyes), so the walk starts over |
-| donor | **0.3.42**, unchanged — nothing in this round touches the donor |
+| state | **DOWN** — stopped by the operator after the eye-verdict boot |
+| next launch | **a FRESHSTART** (`start.bat`) — GPU learning was landing on the wrong pair before this round (below), so a walk trained under it should start over |
+| donor | **0.3.43** — new: it unpacks bundled teach frames. 0.3.42 still works, unbundled |
 
-## The last field read (the freshstart, 4:47–5:41 PM)
+## The last field read (the pre-cell vocabulary pass, previous boot)
 
-- **199,728,759 neurons** on that boot, fresh seed 1906868639, 22 state files cleared.
-- Spikes climbed to ~2.8 billion; the walk stayed in ELA kindergarten pre-vocabulary.
-- **Her eyes never started**: 0 looks, 0 drawings in 54 minutes.
-- A second card (RTX 5060 Ti, on another machine) joined at 5:06 and dropped at 5:38.
-- Her firing swung between ~0.1% and ~15–21% on a ~22-minute cycle instead of
-  holding 7.5%.
+- **300 words in 649.5 s, 67,556 association-pair updates** — about 9.6 ms a
+  pair-teach and 2.2 s a word, from `server/server.log`.
+- The dream trickle: 11–13 words per 184 s window, ~17 ms a pair-teach — the
+  same per-pair cost, so the lever is the pair, not the call.
+- A brain tick's GPU compute 18 ms against ~180 ms server-side around it.
 
 ## What changed since that read (code — no live read yet)
 
 | | |
 |---|---|
-| **her eyes** | on a fresh walk, with no thoughts yet, she now looks at words she has been taught but never seen; what her eye picks is published at `state.ownArt.eyePicks` |
-| **a card joining** | is no longer promoted over a working card before it has reported any throughput, and a card is sent only the matrices of clusters it owns — the duplicate 4.4 GB re-upload and the 5.9-minute training pause are gone |
-| **a card leaving** | its clusters are re-placed on the remaining cards, whether or not it was primary |
-| **boot** | the corpus coverage and exam-word sweeps (72.7 million words) run on their own thread; the 52-second boot freeze is gone |
-| **shutdown** | stops the word loop once instead of visiting every remaining word |
+| **GPU learning order** | the queued bound-Hebbian ops now go to the card before the next pattern does. They read whatever pattern is on the card when they run, and they used to wait up to 20 ms while the next pair's pattern went out at once — so some trained the wrong pair. Every donor version |
+| **teach frames** | on a 0.3.43 donor they ride one message per event-loop turn instead of one per frame, in the same order, through the same handlers |
+| **the CPU mirror** | the lateral-inhibition and predictive-error mirrors no longer run on intermediate reps when the card carried the update, the rule every other lane already followed |
+| **Runpod** | an admin page (`html/runpod.html`) can rent a card that joins her pool as a donor and terminate it. **Nothing has been rented**: renting waits until a card measurably stays busy |
 
 ## Still open — what to watch on the freshstart
 
-- **Her eyes** — `ownArt.eyePicks.fromAcquisition` and `ownArt.lookups.grounded`
-  climbing within minutes. `picks: 0` means the fix did not take.
-- **Her firing** — bistable: there is no drive level at which she sits at 7.5%,
-  so the controller swings and lands the average near target. A steady middle
-  needs a change to her neuron dynamics — the operator's decision.
-- **Vocabulary binding** — 15–40 s a word, so a dream window binds 11–13 words
-  and its other stages never run. Needs batching.
-- **A card joining** — `Post-upload V8 memory` should stay near ~1.1 GB, and
-  training must not pause.
-- **The 39-second freeze** while her cortex is wired at boot is still there; no
-  donor is connected yet when it happens.
+- **Teach speed** — the pre-cell line `N words taught … in Ts` and the trickle
+  line `N words processed in Ts` against the reads above;
+  `_boundHebbianOrderFlushes` climbing; the `TEACH BUNDLE on` boot line once the
+  0.3.43 donor connects.
+- **Her firing** — bistable; a steady middle needs a change to her neuron
+  dynamics, the operator's decision.
+- **A card joining** — `Post-upload V8 memory` should stay near ~1.1 GB.
+- **The 39-second freeze** while her cortex is wired at boot.

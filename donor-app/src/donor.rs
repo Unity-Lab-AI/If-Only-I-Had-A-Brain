@@ -982,6 +982,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     Frame::WriteCurrentTemplate { cluster, region, .. } => format!("write_current(tmpl) {cluster}/{region}"),
                     Frame::WriteSpikeTemplate { cluster, region, .. } => format!("write_spike(tmpl) {cluster}/{region}"),
                     Frame::HebbianBoundMasked { name, reps, .. } => format!("hebbian_masked {name} x{reps}"),
+                    Frame::Bundle { frames } => format!("bundle x{}", frames.len()),
                 },
                 Work::WriteSpike { cluster, region, .. } => format!("write_spike {cluster}/{region}"),
                 Work::WriteCurrent { cluster, region, .. } => format!("write_current {cluster}/{region}"),
@@ -1524,7 +1525,11 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                         }
                     }
                     Message::Binary(bytes) => {
-                        if let Some(frame) = frames::decode(&bytes) {
+                        if let Some(decoded) = frames::decode(&bytes) {
+                          // v0.3.43 — a bundle is unpacked HERE, before routing, so every
+                          // inner frame takes exactly the path it takes arriving alone.
+                          let list = match decoded { Frame::Bundle { frames } => frames, f => vec![f] };
+                          for frame in list {
                             pending.fetch_add(1, Ordering::Relaxed);
                             // v0.3.13 binary teach patterns route straight onto the SAME
                             // Work items the JSON path produces - identical GPU behavior,
@@ -1602,6 +1607,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                                 }
                                 other => workq.push(Work::Frame(other)),
                             }
+                          }
                         }
                     }
                     Message::Ping(p) => { let _ = tx.send(Message::Pong(p)).await; }
@@ -1930,6 +1936,8 @@ fn handle_frame(engine: &mut MultiEngine, partials: &mut HashMap<String, Partial
         // reach the worker; template frames expand to Work::WriteCurrent at
         // receive. Both arms exist for match exhaustiveness only.
         Frame::Repeat { .. } => None,
+        // Unpacked at receive; never reaches the worker whole.
+        Frame::Bundle { .. } => None,
         Frame::WriteCurrentTemplate { cluster, region, row_start, group_size, values, psi } => {
             // Defensive twin of the receive-layer expansion (identical math).
             let mut indices: Vec<u32> = Vec::with_capacity(values.len() * group_size as usize);

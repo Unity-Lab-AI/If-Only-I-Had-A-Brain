@@ -3992,7 +3992,7 @@ const SERVER_GPU_MIXIN = {
    * to every queued op's resolve callback so individual await sites
    * (rare — Hebbian is fire-and-forget in practice) still unblock.
    */
-  _flushBoundHebbianBatch() {
+  _flushBoundHebbianBatch(force = false) {
     const batch = this._boundHebbianBatch;
     if (!batch) return;
     if (batch.flushTimer) {
@@ -4006,7 +4006,10 @@ const SERVER_GPU_MIXIN = {
     // handler serves emission dispatches first. The queue keeps accumulating;
     // at the 1024-op cap it flushes anyway (bounded delay, bounded drops —
     // both under the existing fire-and-forget shed contract).
-    if (this._chatPriorityActive && this._chatPriorityActive() && ops.length < 1000) {
+    // ⛔ NOT when forced: a forced flush is the ORDERING flush (see
+    // `_donorPatternSendGated`) — the next pattern is about to overwrite the
+    // spikes these ops read, so delaying them would train them on that pattern.
+    if (!force && this._chatPriorityActive && this._chatPriorityActive() && ops.length < 1000) {
       batch.flushTimer = setTimeout(() => this._flushBoundHebbianBatch(), 250);
       return;
     }
@@ -4882,6 +4885,23 @@ const SERVER_GPU_MIXIN = {
   },
 
   _donorPatternSendGated(json) {
+    // ⛔⛔ ORDERING FLUSH — THE BOUND-HEBBIAN QUEUE GOES OUT BEFORE THE NEXT
+    // PATTERN, OR THE CARD TRAINS EVERY QUEUED OP ON THE WRONG PAIR.
+    //
+    // Bound Hebbian ops carry no pre/post of their own: the card applies them
+    // to whatever pattern is resident in the bound spike window WHEN THEY RUN.
+    // They wait in `_boundHebbianBatch` for up to 20 ms, while every pattern
+    // frame (clear, spike write, template) goes out the moment it is made. A
+    // pair-teach takes ~9.6 ms (300 words / 67,556 pair updates / 649.5 s on
+    // the last walk), so the next pair's clear-and-write regularly reached the
+    // card AHEAD of the previous pair's Hebbian, and those ops trained the next
+    // pair's pattern. Every frame that changes or reads the resident pattern
+    // passes through here, so flushing here restores the order the teach loop
+    // produced — for every donor version, bundled or not.
+    if (this._boundHebbianBatch && this._boundHebbianBatch.ops.length) {
+      this._boundHebbianOrderFlushes = (this._boundHebbianOrderFlushes || 0) + 1;
+      this._flushBoundHebbianBatch(true);
+    }
     if (!this._donorPatternLaneOpen()) return false;
     this._gpuClient.send(json);
     // Stamp the actual send so the TEACH-FLOOD THROTTLE (above) paces off the
@@ -4893,6 +4913,88 @@ const SERVER_GPU_MIXIN = {
     if (!this._patternGroup) this._patternGroup = { open: false, openedAt: 0 };
     if (!this._patternGroup.open) { this._patternGroup.open = true; this._patternGroup.openedAt = Date.now(); }
     return true;
+  },
+
+  /**
+   * TEACH BUNDLE (donor v0.3.43, SPRS type 16) — one socket message per event-
+   * loop turn instead of one per teach frame.
+   *
+   * A pair-teach puts ~10-20 small frames on the wire (region clears, spike
+   * templates, their pseudo-cluster twins, the masked lateral op, the bound
+   * Hebbian batch). Each one was its own WebSocket message: a send on this
+   * thread, a frame parse and a wake-up on the donor's single receive thread,
+   * and — over a tunnel — its own trip through every hop. The card itself
+   * finishes each kernel in microseconds and then waits for the next message,
+   * which is why a rented card read ~20% busy.
+   *
+   * ⭐ INSTALLED ON THE SOCKET'S OWN `send`, SO ORDER CANNOT BREAK. Fire-and-
+   * forget SPRS frames (types 5, 7-14) are appended in the order they were
+   * produced; ANY other send to this socket — JSON, an acked propagate, an
+   * upload, a send with a callback — flushes the bundle first and then goes out
+   * itself. The donor unpacks a bundle and routes each inner frame through the
+   * exact path it takes arriving alone, so the GPU executes identical work in
+   * identical order. Acked inner frames (type 5) still ack by reqId.
+   *
+   * Flushed at the end of the current macrotask (`setImmediate`), at 1 MiB, or
+   * at 4,096 frames — whichever comes first. A one-frame "bundle" goes out as
+   * the plain frame. `DREAM_TEACH_BUNDLE=0` disables it.
+   */
+  _installTeachBundler(ws) {
+    if (!ws || ws._teachBundle || typeof ws.send !== 'function') return;
+    if (process.env.DREAM_TEACH_BUNDLE === '0') return;
+    const raw = ws.send.bind(ws);
+    const BUNDLEABLE = new Set([5, 7, 8, 9, 10, 11, 12, 13, 14]);
+    const MAX_BYTES = 1 << 20;
+    const MAX_FRAMES = 4096;
+    const B = { frames: [], bytes: 0, scheduled: false, messages: 0, framesBundled: 0, framesAlone: 0 };
+    ws._teachBundle = B;
+    const flush = () => {
+      B.scheduled = false;
+      const list = B.frames;
+      const n = list.length;
+      if (!n) return;
+      B.frames = [];
+      B.bytes = 0;
+      if (ws.readyState !== 1) return;
+      try {
+        if (n === 1) { raw(list[0]); B.framesAlone++; return; }
+        const parts = [this._encodeSparseHeader(16, 0, '')];
+        const count = Buffer.alloc(4);
+        count.writeUInt32LE(n, 0);
+        parts.push(count);
+        for (const f of list) {
+          const len = Buffer.alloc(4);
+          len.writeUInt32LE(f.length, 0);
+          parts.push(len, f);
+          const pad = (4 - (f.length % 4)) % 4;
+          if (pad) parts.push(Buffer.alloc(pad));
+        }
+        raw(Buffer.concat(parts));
+        B.messages++;
+        B.framesBundled += n;
+      } catch { /* a closing socket — the frames die with it, as they would unbundled */ }
+    };
+    ws._teachBundleFlush = flush;
+    ws.send = (data, ...rest) => {
+      if (rest.length === 0 && Buffer.isBuffer(data) && data.length > 4
+          && data[0] === 0x53 && data[1] === 0x50 && data[2] === 0x52 && data[3] === 0x53
+          && BUNDLEABLE.has(data[4])) {
+        B.frames.push(data);
+        B.bytes += data.length;
+        if (B.bytes >= MAX_BYTES || B.frames.length >= MAX_FRAMES) flush();
+        else if (!B.scheduled) { B.scheduled = true; setImmediate(flush); }
+        return;
+      }
+      flush();
+      return raw(data, ...rest);
+    };
+    console.log('[Brain] TEACH BUNDLE on for this donor (SPRS 16) — fire-and-forget teach frames ride one message per event-loop turn, in order. DREAM_TEACH_BUNDLE=0 disables.');
+  },
+
+  /** Donor speaks SPRS type 16 (bundle)? v0.3.43+. */
+  _donorSpeaksBundle(ver) {
+    const m = /^(\d+)\.(\d+)\.(\d+)/.exec(String(ver || ''));
+    return !!m && ((+m[1]) * 1e6 + (+m[2]) * 1e3 + (+m[3])) >= 3043;
   },
 
   /**
