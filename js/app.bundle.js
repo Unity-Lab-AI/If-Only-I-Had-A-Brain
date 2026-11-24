@@ -17992,15 +17992,14 @@ var NeuronCluster = class {
     }
     const { vec } = entry;
     const active = entry.active;
+    for (let a = 0; a < active.length; a++) vec[active[a]] = 0;
     active.length = 0;
-    vec.fill(0);
-    const spikes = this.lastSpikes;
-    const start = region.start;
-    for (let i = 0; i < len; i++) {
-      if (spikes[start + i]) {
-        vec[i] = 1;
-        active.push(i);
-      }
+    const view = this.lastSpikes.subarray(region.start, region.start + len);
+    let i = view.indexOf(1, 0);
+    while (i !== -1) {
+      vec[i] = 1;
+      active.push(i);
+      i = view.indexOf(1, i + 1);
     }
     return { vec, active };
   }
