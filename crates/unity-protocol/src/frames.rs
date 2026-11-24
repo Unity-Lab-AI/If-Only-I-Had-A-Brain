@@ -132,15 +132,14 @@ pub fn expand_pattern_lesson(l: &PatternLesson) -> Vec<LessonOp> {
         }
         for (ri, (name, group, size)) in l.regions.iter().enumerate() {
             let dims = match item.get(ri) { Some(d) => d, None => continue };
-            let mut idx = Vec::with_capacity(dims.len() * (*group as usize));
-            for &d in dims {
-                for n in 0..*group {
-                    let i = (d as u32) * group + n;
-                    if i < *size { idx.push(i); }
-                }
-            }
-            if idx.is_empty() { continue; }
-            for c in &targets { out.push(LessonOp::Write { cluster: (*c).clone(), region: name.clone(), indices: idx.clone() }); }
+            // v0.3.54 — the same cells as before (every d*group+n < size), carried
+            // as dims; the card fills the tiles. A dim whose tile starts past the
+            // region writes nothing, so it is dropped here exactly as before.
+            let g = *group;
+            if g == 0 { continue; }
+            let ds: Vec<u32> = dims.iter().map(|&d| d as u32).filter(|&d| d.saturating_mul(g) < *size).collect();
+            if ds.is_empty() { continue; }
+            for c in &targets { out.push(LessonOp::Tiles { cluster: (*c).clone(), region: name.clone(), dims: ds.clone(), group: g, size: *size }); }
         }
         for (n, lr) in &l.ops { out.push(LessonOp::Bound { name: n.clone(), lr: *lr }); }
     }
@@ -188,8 +187,27 @@ pub struct LessonLateral {
 pub enum LessonOp {
     Clear { cluster: String, region: String },
     Write { cluster: String, region: String, indices: Vec<u32> },
+    /// v0.3.54 — a tiled write: cells `d*group .. d*group+group` for every `d` in
+    /// `dims` (clipped to the region), i.e. exactly the `Write` whose indices
+    /// that expands to. The card fills the tiles itself, so only the dims cross
+    /// the bus and no host thread builds the full index list.
+    /// `size` = the brain's region size, the same clip the index list used.
+    Tiles { cluster: String, region: String, dims: Vec<u32>, group: u32, size: u32 },
     Bound { name: String, lr: f32 },
     Masked { name: String, lr: f32, rows: Vec<u32> },
+}
+
+/// v0.3.54 — the index list a `Tiles` step stands for (the pre-0.3.54 `Write`).
+/// Used by backends without the tile kernel.
+pub fn tile_indices(dims: &[u32], group: u32, size: u32) -> Vec<u32> {
+    let mut idx = Vec::with_capacity(dims.len() * group as usize);
+    for &d in dims {
+        for n in 0..group {
+            let i = d.saturating_mul(group).saturating_add(n);
+            if i < size { idx.push(i); }
+        }
+    }
+    idx
 }
 
 /// Expand a lesson into the exact step sequence of the brain's per-pair path.
@@ -1015,6 +1033,7 @@ mod tests {
         let got: Vec<String> = expand_lesson(&lesson).iter().map(|op| match op {
             LessonOp::Clear { region, .. } => format!("C {region}"),
             LessonOp::Write { region, indices, .. } => format!("W {region} {}", join(indices)),
+            LessonOp::Tiles { region, dims, group, size, .. } => format!("T {region} {group} {size} {}", join(dims)),
             LessonOp::Bound { name, lr } => format!("B {name} {lr:.6}"),
             LessonOp::Masked { name, lr, rows } => format!("M {name} {lr:.6} {}", join(rows)),
         }).collect();

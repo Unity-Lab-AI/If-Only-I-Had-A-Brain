@@ -288,6 +288,26 @@ enum CachedTeach {
     Hebbian { name: String, pre: Vec<u32>, post: Vec<u32>, lr: f32 },
 }
 
+/// v0.3.54 — a pattern lesson's step list built on EVERY core: the items split
+/// into one contiguous chunk per core, each chunk expanded on its own thread,
+/// joined back in item order — the same steps in the same order as
+/// `frames::expand_pattern_lesson` over the whole lesson (each item's steps
+/// depend only on that item). Small lessons expand inline.
+fn expand_pattern_lesson_par(p: &frames::PatternLesson) -> Vec<frames::LessonOp> {
+    let cores = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1).max(1);
+    if cores == 1 || p.items.len() < 64 { return frames::expand_pattern_lesson(p); }
+    let chunk = (p.items.len() + cores - 1) / cores;
+    std::thread::scope(|s| {
+        let handles: Vec<_> = p.items.chunks(chunk).map(|items| {
+            let part = frames::PatternLesson { req_id: p.req_id, cluster: p.cluster.clone(), twin: p.twin.clone(), regions: p.regions.clone(), ops: p.ops.clone(), items: items.to_vec() };
+            s.spawn(move || frames::expand_pattern_lesson(&part))
+        }).collect();
+        let mut out = Vec::new();
+        for h in handles { out.extend(h.join().expect("pattern-lesson expansion thread panicked")); }
+        out
+    })
+}
+
 /// M3.3 — a unit of GPU work handed from the (async) WS loop to the GPU worker thread.
 /// Keeps every blocking compute/readback off the socket task so liveness pings + replies
 /// keep flowing during a heavy teach burst.
@@ -1175,7 +1195,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     // expansion differs (each is its own parity definition).
                     let (lesson_ops, lesson_req, lesson_units) = match w {
                         Work::Lesson(l) => (frames::expand_lesson(&l), l.req_id, l.pairs.len()),
-                        Work::PatternLesson(p) => (frames::expand_pattern_lesson(&p), p.req_id, p.items.len()),
+                        Work::PatternLesson(p) => (expand_pattern_lesson_par(&p), p.req_id, p.items.len()),
                         _ => unreachable!(),
                     };
                     lc_seen += 1;
@@ -1185,9 +1205,9 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     // v0.3.51 — writes between two non-write steps go to the card
                     // together (one upload), and a write right after its region's
                     // clear skips the second zero. Same steps, same order per card.
-                    let mut pending: Vec<(String, String, Vec<u32>, bool)> = Vec::new();
+                    let mut pending: Vec<crate::compute::SpikeWrite> = Vec::new();
                     let mut cleared: std::collections::HashSet<(String, String)> = std::collections::HashSet::new();
-                    let flush = |engine: &mut MultiEngine, pending: &mut Vec<(String, String, Vec<u32>, bool)>, acc: &mut HashMap<String, (f64, u32)>, sample: bool| {
+                    let flush = |engine: &mut MultiEngine, pending: &mut Vec<crate::compute::SpikeWrite>, acc: &mut HashMap<String, (f64, u32)>, sample: bool| {
                         if pending.is_empty() { return; }
                         let t0 = std::time::Instant::now();
                         let _ = engine.write_spike_slices(std::mem::take(pending));
@@ -1200,7 +1220,13 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     for op in lesson_ops {
                         if let frames::LessonOp::Write { cluster, region, indices } = op {
                             let zero = !cleared.remove(&(cluster.clone(), region.clone()));
-                            pending.push((cluster, region, indices, zero));
+                            pending.push((cluster, region, indices, zero, 0, 0));
+                            continue;
+                        }
+                        // v0.3.54 — tiled write: dims only; the card fills the tiles.
+                        if let frames::LessonOp::Tiles { cluster, region, dims, group, size } = op {
+                            let zero = !cleared.remove(&(cluster.clone(), region.clone()));
+                            pending.push((cluster, region, dims, zero, group, size));
                             continue;
                         }
                         flush(&mut engine, &mut pending, &mut lc_acc, sample);
@@ -1210,7 +1236,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                         let key = if sample {
                             Some(match &op {
                                 frames::LessonOp::Clear { .. } => "clear".to_string(),
-                                frames::LessonOp::Write { .. } => "write".to_string(),
+                                frames::LessonOp::Write { .. } | frames::LessonOp::Tiles { .. } => "write".to_string(),
                                 frames::LessonOp::Bound { name, .. } => format!("bound:{name}"),
                                 frames::LessonOp::Masked { name, .. } => format!("masked:{name}"),
                             })
@@ -1219,6 +1245,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                         match op {
                             frames::LessonOp::Clear { cluster, region } => { let _ = engine.clear_spike_region(&cluster, &region); }
                             frames::LessonOp::Write { cluster, region, indices } => { let _ = engine.write_spike_slice(&cluster, &region, &indices); }
+                            frames::LessonOp::Tiles { cluster, region, dims, group, size } => { let _ = engine.write_spike_slices(vec![(cluster, region, dims, true, group, size)]); }
                             frames::LessonOp::Bound { name, lr } => {
                                 if let Err(e) = engine.hebbian_bound(&name, lr) { eprintln!("[donor] lesson bound hebbian '{name}' failed: {e}"); }
                             }
