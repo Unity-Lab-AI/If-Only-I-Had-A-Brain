@@ -6393,7 +6393,7 @@ export class Curriculum {
     const todo = words.filter(w => w && typeof w === 'string' && !taught.has(w) && !permaMiss.has(w));
     const _skippedPerma = words.filter(w => w && typeof w === 'string' && !taught.has(w) && permaMiss.has(w)).length;
     if (todo.length === 0) {
-      this._hb(`[Curriculum] 📚 PRE-CELL VOCAB ${subject}/${grade} — all ${words.length} grade words already learned (a sibling cell paid the pass)${_skippedPerma ? `, apart from ${_skippedPerma} the dictionary positively has no entry for` : ''}. Cell starts now.`);
+      this._hb(`[Curriculum] 📚 PRE-CELL VOCAB ${subject}/${grade} — all ${words.length} grade words already learned (a sibling cell paid the pass)${_skippedPerma ? `, apart from ${_skippedPerma} no source has a definition for (held out of the bindings)` : ''}. Cell starts now.`);
       return;
     }
     // ✍ THE WORD RUNG OF THE WRITING LADDER, queued where the vocabulary
@@ -6415,7 +6415,7 @@ export class Curriculum {
     } catch { /* practice never blocks the vocabulary pass */ }
     this._currentMacroPhase = `📚 PRE-CELL VOCAB — ${subject}/${grade}`;
     this._macroPhaseProgress = { current: 0, total: todo.length, label: `PRE-CELL VOCAB ${subject}/${grade}` };
-    this._hb(`[Curriculum] 📚 PRE-CELL VOCAB START — ${subject}/${grade}: ${todo.length} of ${words.length} grade words unlearned${_skippedPerma ? ` (${_skippedPerma} skipped — the dictionary positively has NO ENTRY for them, so re-asking costs a pass and binds nothing; they re-enter on the next boot in case a source has since gained them)` : ''}; multi-def Hebbian at reps:1, 300-word chunks with dream windows between. Definitions land BEFORE the cell's bindings train on these words.`);
+    this._hb(`[Curriculum] 📚 PRE-CELL VOCAB START — ${subject}/${grade}: ${todo.length} of ${words.length} grade words unlearned${_skippedPerma ? ` (${_skippedPerma} skipped — no source (dictionaries, Wikipedia, Urban Dictionary) has a definition, they are held out of the bindings, and re-asking costs a pass and binds nothing; they re-enter on the next boot in case a source has since gained them)` : ''}; multi-def Hebbian at reps:1, 300-word chunks with dream windows between. Definitions land BEFORE the cell's bindings train on these words.`);
     const CHUNK = 300;
     let totalTrained = 0, totalWordsBound = 0, totalDefsBound = 0, totalTimeouts = 0, totalSlowWords = 0;
     const t0 = Date.now();
@@ -6486,7 +6486,10 @@ export class Curriculum {
     // not to teach something else in their place and count it.
     const taughtNow = cluster._definitionTaughtWords instanceof Set
       ? cluster._definitionTaughtWords : new Set();
-    const stillMissing = todo.filter((w) => !taughtNow.has(w));
+    // A misspelling is resolved when the word it stands for is learned — it is
+    // never a missing word and never gets a definition of its own.
+    const _typoOfW = (w) => { try { return (typeof cluster.lookupTypoOf === 'function' && cluster.lookupTypoOf(w)) || null; } catch { return null; } };
+    const stillMissing = todo.filter((w) => !taughtNow.has(w) && !(_typoOfW(w) && taughtNow.has(_typoOfW(w))));
     // ⛔⛔ A SET NAMED `_vocabPermanentMiss` MUST ONLY EVER RECEIVE
     // PERMANENT MISSES. It used to receive every unlearned word, so a dictionary
     // OUTAGE wrote perfectly ordinary words into a lifetime record of words that
@@ -6507,6 +6510,12 @@ export class Curriculum {
       } catch { /* unattached → unknown → treated as transient, deliberately */ }
       (why === 'noDef' ? _permanentMiss : _deferredMiss).push(w);
     }
+    // ⛔ NO MEANING, NO BINDING. Every owed word still undefined after the pass
+    // — no source had it, or no source answered yet — is held out of the
+    // cell's bindings (its embedding reads empty) until a definition lands.
+    if (!(sharedEmbeddings.bindBlocked instanceof Set)) sharedEmbeddings.bindBlocked = new Set();
+    for (const w of stillMissing) sharedEmbeddings.bindBlocked.add(String(w).toLowerCase());
+    if (stillMissing.length) this._hb(`[Curriculum] 📚 ${subject}/${grade}: ${stillMissing.length} owed word(s) still have no definition — held out of the cell's bindings until one lands (${sharedEmbeddings.bindBlocked.size} held in total).`);
     if (_permanentMiss.length) {
       if (!(cluster._vocabPermanentMiss instanceof Set)) cluster._vocabPermanentMiss = new Set();
       for (const w of _permanentMiss) cluster._vocabPermanentMiss.add(w);
@@ -6543,7 +6552,7 @@ export class Curriculum {
     // dereferenced — the old line assumed the set had been created above.
     const _permSetSize = cluster._vocabPermanentMiss instanceof Set ? cluster._vocabPermanentMiss.size : 0;
     const shortfall = stillMissing.length
-      ? ` · ${_permanentMiss.length ? `⛔ ${_permanentMiss.length} with NO DICTIONARY ENTRY (${_permanentMiss.slice(0, 8).join(', ')}${_permanentMiss.length > 8 ? `, +${_permanentMiss.length - 8} more` : ''})` : '⛔ 0 with no dictionary entry'}${_deferredMiss.length ? ` · ⏳ ${_deferredMiss.length} DEFERRED — service did not answer, retried next pass (${_deferredMiss.slice(0, 8).join(', ')}${_deferredMiss.length > 8 ? `, +${_deferredMiss.length - 8} more` : ''})` : ''} · of ${todo.length} owed · lifetime no-entry list ${_permSetSize}`
+      ? ` · ${_permanentMiss.length ? `⛔ ${_permanentMiss.length} with NO DEFINITION IN ANY SOURCE (${_permanentMiss.slice(0, 8).join(', ')}${_permanentMiss.length > 8 ? `, +${_permanentMiss.length - 8} more` : ''})` : '⛔ 0 with no definition in any source'}${_deferredMiss.length ? ` · ⏳ ${_deferredMiss.length} DEFERRED — service did not answer, retried next pass (${_deferredMiss.slice(0, 8).join(', ')}${_deferredMiss.length > 8 ? `, +${_deferredMiss.length - 8} more` : ''})` : ''} · of ${todo.length} owed · lifetime no-entry list ${_permSetSize}`
       : '';
     this._hb(`[Curriculum] ${verdict} — ${subject}/${grade}: ${totalTrained} Hebbian fires across ${totalWordsBound}/${todo.length} words (${totalDefsBound} definition senses) in ${((Date.now() - t0) / 1000).toFixed(0)}s${stall}${shortfall}. Cell teach phases begin.`);
     // ⛔⛔ TWO DIFFERENT FACTS, TWO DIFFERENT FLAGS, AND BOTH RETIRE THEMSELVES.
@@ -6554,7 +6563,7 @@ export class Curriculum {
     try {
       if (_permanentMiss.length) {
         this.teachFlag('warn', 'PRECELL-MISS',
-          `${subject}/${grade}: ${_permanentMiss.length} of ${todo.length} owed vocabulary words have NO dictionary entry (the API positively said 404) — the cell's bindings will train on words with no definition behind them`,
+          `${subject}/${grade}: ${_permanentMiss.length} of ${todo.length} owed words have no definition in any source (dictionaries, Wikipedia, Urban Dictionary) — the cell does not bind them`,
           { subject, grade, missing: _permanentMiss.length, owed: todo.length });
       } else {
         // Nothing permanent this pass — retire any earlier claim for this cell
@@ -6567,7 +6576,7 @@ export class Curriculum {
         // needs a person: these words are still untaught, so the next cell's
         // pass picks them up automatically once the service answers again.
         this.teachFlag('info', 'PRECELL-DEFER',
-          `${subject}/${grade}: ${_deferredMiss.length} of ${todo.length} owed words could not be looked up — the dictionary service did not answer (not a missing word). They stay untaught, so the next cell's vocab pass retries them automatically.`,
+          `${subject}/${grade}: ${_deferredMiss.length} of ${todo.length} owed words got no answer from the definition sources yet — the cell does not bind them until they are defined; every later vocab pass retries them.`,
           { subject, grade, deferred: _deferredMiss.length, owed: todo.length });
       } else {
         this.teachFlagClear('PRECELL-DEFER', { subject, grade });
@@ -18092,6 +18101,13 @@ export class Curriculum {
     if (!cluster || !word) return { passes: 0, totalTrained: 0, skipped: 'no cluster/word' };
     const w = String(word).toLowerCase().trim();
     if (!w) return { passes: 0, totalTrained: 0, skipped: 'empty word' };
+    // A misspelling is never defined: she learns the word it stands for.
+    let _realWord = null;
+    try { _realWord = (typeof cluster.lookupTypoOf === 'function') ? cluster.lookupTypoOf(w) : null; } catch { _realWord = null; }
+    if (_realWord && _realWord !== w && !opts._viaTypo) {
+      const r = await this._teachWordDefinition(_realWord, { ...opts, _viaTypo: true });
+      return { ...(r || {}), typoOf: _realWord };
+    }
 
     // Pull the FULL definitions array (multi-def) — cluster.lookupDefinitionFull
     // returns `Array<{ partOfSpeech, definition, example, synonyms }>`
@@ -18236,7 +18252,7 @@ export class Curriculum {
           // then counts every word since, which reads as one stubborn word
           // rather than an outage affecting N of them.
           this.teachFlag('info', 'DEF-DEFER',
-            `the dictionary service did not answer for "${w}" (${_why}) — this is a SERVICE outage, not a missing word; it stays unlearned and the next cell's vocab pass retries it`,
+            `no definition source answered for "${w}" yet (${_why}) — not learned and not bound; the next vocab pass retries it`,
             { sample: w });
         } catch { /* nf */ }
         return {
@@ -18249,7 +18265,7 @@ export class Curriculum {
         // `FLAGSAMPLE.1` — pass the WORD so the aggregated row can name what
         // actually missed. Without this the panel reported the first word that
         // ever missed alongside a count belonging to every word since.
-        try { this.teachFlag('warn', 'DEF-MISS', `no dictionary definition for "${w}" — bound nothing`, { sample: w }); } catch { /* nf */ }
+        try { this.teachFlag('warn', 'DEF-MISS', `no definition in any source for "${w}" (dictionaries, Wikipedia, Urban Dictionary) — not learned and not bound`, { sample: w }); } catch { /* nf */ }
       }
       return {
         passes: 0, totalTrained: 0, defsBound: 0, transient: false,
@@ -18258,6 +18274,10 @@ export class Curriculum {
           : 'no definition',
       };
     }
+
+    // It has a definition now, so it may carry meaning again — unblocked BEFORE
+    // the binding below reads its embedding.
+    if (sharedEmbeddings.bindBlocked) sharedEmbeddings.bindBlocked.delete(w);
 
     // TEACHVIEW — the actual definition text she is about to bind. Reported
     // once per word, not per definition or per rep, so the count is "words
@@ -18640,6 +18660,7 @@ export class Curriculum {
     if (defsBound > 0) {
       if (!cluster._definitionTaughtWords) cluster._definitionTaughtWords = new Set();
       cluster._definitionTaughtWords.add(w);
+      if (sharedEmbeddings.bindBlocked) sharedEmbeddings.bindBlocked.delete(w);
       // ⭐ THE SENSE COUNT, CUMULATIVELY — because `_definitionTaughtWords` is a
       //   set of WORDS and the dashboard was publishing its size under the label
       //   "defs taught", against a denominator that is also a word count. One

@@ -989,6 +989,8 @@ function lookupStatus(word) {
   // through the chokepoint also means an EXPIRED transient error now reports
   // `unknown` instead of `error`; every caller treats both as transient
   // (`_why !== 'noDef'`), so nothing downstream changes behaviour.
+  // A misspelling is never "a word with no entry": it is the real word, taught.
+  if (typoOf(word)) return 'typo';
   const entry = _cacheGet(key);
   if (!entry) return 'unknown';
   if (!entry.error) return 'hasDef';

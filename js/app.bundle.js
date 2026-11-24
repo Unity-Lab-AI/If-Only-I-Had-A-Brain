@@ -5918,6 +5918,7 @@ var SemanticEmbeddings = class {
    */
   getEmbedding(word) {
     word = word.toLowerCase().trim();
+    if (this.bindBlocked && this.bindBlocked.has(word)) return new Float32Array(EMBED_DIM);
     let vec = this._embeddings.get(word);
     if (!vec) {
       vec = this._subwordEmbedding(word);

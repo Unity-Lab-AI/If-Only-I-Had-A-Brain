@@ -503,6 +503,12 @@ export class SemanticEmbeddings {
   getEmbedding(word) {
     word = word.toLowerCase().trim();
 
+    // ⛔ NO MEANING, NO BINDING. A word the curriculum owed and could not
+    // define from any source (dictionaries, Wikipedia, Urban Dictionary) is
+    // held here; it carries no semantic pattern, so no teach path can bind it
+    // until a definition lands (the definition binder removes it on success).
+    if (this.bindBlocked && this.bindBlocked.has(word)) return new Float32Array(EMBED_DIM);
+
     // Check pre-trained
     let vec = this._embeddings.get(word);
 
