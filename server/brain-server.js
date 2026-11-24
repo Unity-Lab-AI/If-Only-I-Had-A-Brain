@@ -4008,6 +4008,8 @@ class ServerBrain {
         // expands it into the per-pair step sequence. True only when SENT.
         teachLesson: (spec)                                 => this.gpuTeachLesson(spec),
         lessonCapable: ()                                   => this._donorSpeaksLessonNow(),
+        // v0.3.45 — await a free in-flight slot before sending a lesson.
+        lessonSlot: ()                                      => this.lessonSlot(),
         // GATEGPU — one gate probe on the donor: probe-pattern slice write +
         // bound propagate pinned to the PRIMARY, currents back on the ack.
         // Null on any honesty guard (lane busy / no donor / kill switch) —
@@ -14158,6 +14160,12 @@ wss.on('connection', (ws, req) => {
       // already 1.81 GB and a u32 offset wraps silently at 4 GiB, which would
       // reassemble two chunks onto the same destination with every chunk still
       // individually valid.
+      // v0.3.45 — a LESSON finished on the card: free its in-flight slot. Handled
+      // before the pending map because lessons are paced, not awaited one by one.
+      if (typeByte === 17) {
+        if (typeof brain._lessonAcked === 'function') brain._lessonAcked(data.readUInt32LE(5), ws);
+        return;
+      }
       if (typeByte === 7) {
         if (data.length < 32) return;
         const rbReqId = data.readUInt32LE(8);

@@ -325,6 +325,10 @@ enum Work {
     // re-uploads (same lineage, newer than its last save). See checkpoint.rs.
     CheckpointSave { lineage: String },
     CheckpointRestore { lineage: String, brain_saved_at: u64 },
+    // v0.3.45 — a whole lesson as ONE work item, expanded and run by the worker
+    // (not the receive loop, which must stay free to answer pings), then acked
+    // so the brain can keep only a few lessons in flight per card.
+    Lesson(frames::Lesson),
 }
 
 /// A reply the worker produced; the WS loop sends it in receipt order.
@@ -988,6 +992,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 Work::WriteSpike { cluster, region, .. } => format!("write_spike {cluster}/{region}"),
                 Work::WriteCurrent { cluster, region, .. } => format!("write_current {cluster}/{region}"),
                 Work::ClearSpike { cluster, region } => format!("clear_spike {cluster}/{region}"),
+                Work::Lesson(l) => format!("lesson x{}", l.pairs.len()),
                 Work::HebbianRanges { name, reps, .. } => format!("hebbian_ranges {name} x{reps}"),
                 Work::LetterSurprise { cluster, region, letters, .. } => format!("letter_surprise {cluster}/{region} x{}", letters.len()),
                 Work::Readback { cluster, region, .. } => format!("readback {cluster}/{region}"),
@@ -1045,6 +1050,28 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 }
                 Work::ClearSpike { cluster, region } => {
                     let _ = engine.clear_spike_region(&cluster, &region);
+                }
+                // v0.3.45 — the lesson, step by step in `expand_lesson` order (the
+                // parity-tested definition), then a type-17 ack so the brain can
+                // keep a bounded number of lessons in flight and never pile up an
+                // unbounded queue on this card.
+                Work::Lesson(lesson) => {
+                    for op in frames::expand_lesson(&lesson) {
+                        match op {
+                            frames::LessonOp::Clear { cluster, region } => { let _ = engine.clear_spike_region(&cluster, &region); }
+                            frames::LessonOp::Write { cluster, region, indices } => { let _ = engine.write_spike_slice(&cluster, &region, &indices); }
+                            frames::LessonOp::Bound { name, lr } => {
+                                if let Err(e) = engine.hebbian_bound(&name, lr) { eprintln!("[donor] lesson bound hebbian '{name}' failed: {e}"); }
+                            }
+                            frames::LessonOp::Masked { name, lr, rows } => {
+                                if let Err(e) = engine.hebbian_bound_masked(&name, lr, 1, &rows) { eprintln!("[donor] lesson masked hebbian '{name}' failed: {e}"); }
+                            }
+                        }
+                    }
+                    if lesson.req_id != 0 {
+                        let _ = reply_tx.send(Out::Binary(frames::ack_simple(17, lesson.req_id)));
+                    }
+                    set_status(&control_w, |s| { s.teach_ops += lesson.pairs.len() as u64; s.note = "teaching".into(); });
                 }
                 // v0.3.18 — the whole rep dose runs HERE at engine speed: ranges
                 // expand once, then the existing hebbian op (device zero + scatter
@@ -1610,35 +1637,12 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                                 // per-pair frames produce, in the same order (expand_lesson
                                 // is the parity-checked definition of that order). Runs of
                                 // bound ops ride one batched-hebbian item, reqId 0 = no ack.
-                                Frame::Lesson(lesson) => {
-                                    let ops = frames::expand_lesson(&lesson);
-                                    let mut batch: Vec<(String, f32)> = Vec::new();
-                                    let flush = |batch: &mut Vec<(String, f32)>, workq: &WorkQueue| {
-                                        if !batch.is_empty() {
-                                            pending.fetch_add(1, Ordering::Relaxed);
-                                            workq.push(Work::Frame(Frame::BatchedHebbian { req_id: 0, ops: std::mem::take(batch) }));
-                                        }
-                                    };
-                                    for op in ops {
-                                        match op {
-                                            frames::LessonOp::Bound { name, lr } => batch.push((name, lr)),
-                                            other => {
-                                                flush(&mut batch, &workq);
-                                                pending.fetch_add(1, Ordering::Relaxed);
-                                                match other {
-                                                    frames::LessonOp::Clear { cluster, region } => workq.push(Work::ClearSpike { cluster, region }),
-                                                    frames::LessonOp::Write { cluster, region, indices } => workq.push(Work::WriteSpike { cluster, region, indices }),
-                                                    frames::LessonOp::Masked { name, lr, rows } => workq.push(Work::Frame(Frame::HebbianBoundMasked { req_id: 0, name, lr, reps: 1, post_idx: rows })),
-                                                    frames::LessonOp::Bound { .. } => unreachable!(),
-                                                }
-                                            }
-                                        }
-                                    }
-                                    flush(&mut batch, &workq);
-                                    // The lesson frame itself was counted once above; its
-                                    // work items now carry their own counts.
-                                    pending.fetch_sub(1, Ordering::Relaxed);
-                                }
+                                // v0.3.45 — ONE work item. Expansion moved to the worker:
+                                // unpacking every pair's tile indices here (twins included)
+                                // kept this loop busy enough to delay pongs to 7 s on a
+                                // local card under load. The worker runs the steps in the
+                                // same order (expand_lesson) and acks when done.
+                                Frame::Lesson(lesson) => workq.push(Work::Lesson(lesson)),
                                 other => workq.push(Work::Frame(other)),
                             }
                           }
