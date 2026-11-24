@@ -1798,7 +1798,11 @@ const SERVER_CHAT_MIXIN = {
       // actually SEE (the old grounded-only + 15% version never fired: starved), but
       // reference drawings stay primary. It composes drawable nouns from her stream
       // of thought and publishes its own canvas:imagine frame when ready.
-      if (typeof this._imagineAndDraw === 'function' && this._rand('imagine-and-draw') < (Number(process.env.DREAM_IMAGINE_DRAW_PROB) || 0.18)) {
+      // 0.18 → 0.45 (2026-11-24, operator: "i need to see more of her imaginative
+      // creations from cratcfh knowing what she knows and has seen like new secens
+      // and versions of things"). Each one is a detached background compose, so a
+      // higher rate costs worker time, never the tick.
+      if (typeof this._imagineAndDraw === 'function' && this._rand('imagine-and-draw') < (Number(process.env.DREAM_IMAGINE_DRAW_PROB) || 0.45)) {
         this._imagineAndDraw().catch(() => { /* background imagine best-effort */ });
       }
       // ⛔ "No thought to recall from" IS a miss too. This block used to need
