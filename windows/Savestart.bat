@@ -449,7 +449,11 @@ echo   Also close the http://localhost:7525 browser tabs - compute.html
 echo   keeps WebGPU running even without the server.
 echo.
 
-REM Keep this launcher window open for manual commands.
+REM Keep this launcher window open for manual commands - but only when a
+REM person double-clicked it. Launched by the dashboard's control plane
+REM (UAL_CTL_NONINTERACTIVE=1) it closes itself when done; her brain, voice
+REM and eyes run in their own windows and are not affected.
+if defined UAL_CTL_NONINTERACTIVE exit
 cmd /k
 goto :eof
 
