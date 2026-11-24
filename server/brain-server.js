@@ -8393,6 +8393,9 @@ class ServerBrain {
                   const out = {};
                   if (a > 0) { out.tunnelA = a; out.tunnelKappa = k; }
                   if (rho > 0) { out.entangleRho = rho; out.half = Math.floor((CLUSTER_SIZES[name] || 0) / 2); }
+                  // REFRACTORINESS (docs §2) — β = 0.016 derived; 0 = off; pre-0.3.50 donors ignore it.
+                  const beta = Number.isFinite(+process.env.DREAM_REFRACT_BETA) && process.env.DREAM_REFRACT_BETA !== undefined ? +process.env.DREAM_REFRACT_BETA : 0.016;
+                  if (beta > 0) out.refractBeta = beta;
                   return out;
                 })(),
               };

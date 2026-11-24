@@ -2036,6 +2036,7 @@ fn run_batch(engine: &mut MultiEngine, cluster_regions: &HashMap<String, HashMap
             tunnel_a: c.tunnel_a.unwrap_or(0.0).clamp(0.0, 1.0),
             tunnel_kappa: c.tunnel_kappa.unwrap_or(0.0).max(0.0),
             entangle_rho: c.entangle_rho.unwrap_or(0.0).clamp(0.0, 0.99),
+            refract_beta: c.refract_beta.unwrap_or(0.0).clamp(0.0, 1.0),
         };
         jobs.push(StepJob { name: c.name.clone(), size: c.size, drive: effective_drive, noise: c.noise_amp, drive_r: effective_drive_r, half, q });
     }

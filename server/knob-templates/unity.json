@@ -283,6 +283,7 @@
     "DREAM_QTUNNEL_A": { "set": "0.002", "why": "Tunnelling amplitude, derived (docs/EQUATIONS.md §2): ~1% of her 7.5% firing target added at a typical near-threshold barrier h = 0.25 → A·e^{-2·0.5} = 0.00075 → A ≈ 0.002." },
     "DREAM_QTUNNEL_KAPPA": { "set": "2", "why": "Barrier decay, derived: sub-threshold x sits mostly in [−2, 0]; κ = 2 takes exp(−κ√h) from 1 at threshold to ~0.06 at the bottom — tunnelling stays a near-threshold effect." },
     "DREAM_ENTANGLE_RHO": { "set": "0.3", "why": "Hemispheric-twin noise coupling, derived: corr = ρ² = 0.09 — measurable twin coincidence above the independent baseline while the hemispheres stay distinct for the Seed Crystal's contest." },
+    "DREAM_REFRACT_BETA": { "set": "0.016", "why": "Refractoriness (spike-triggered adaptation), derived (docs/EQUATIONS.md §2): her busy state fires ~20% vs a 7.5% target, so each spike must remove ~8 steps of slow drift: β ≈ 8·μ·(x̄−σ) = 8 × 0.001 × 2 = 0.016. Gives the bistable map a stable middle." },
     "DREAM_SLICE": { "code": "opt-out", "why": "On: the intra matrix splits into row slices across every card that can hold one (multi-card training). '0' keeps one card." },
     "DREAM_IMAGE_ON_DONORS": { "code": "opt-out", "why": "On: a donor whose machine runs her renderer draws for her, so the cortex card is not also rendering." },
     "DREAM_DONOR_PULL": { "code": "opt-out", "why": "On: a joining card builds its slice from her published weights instead of the home upload." },

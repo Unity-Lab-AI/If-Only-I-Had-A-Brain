@@ -488,6 +488,26 @@ It is read where the hemispheres are already measured: the Seed Crystal's `Φ_LR
 
 Knobs: `DREAM_QTUNNEL_A` (0 disables), `DREAM_QTUNNEL_KAPPA`, `DREAM_ENTANGLE_RHO` (0 disables) — `QTUNNEL`, so they cannot be confused with the cross-cluster `DREAM_TUNNEL_*` knobs, which are a different mechanism. Sent per cluster in `compute_batch`; a donor older than 0.3.48 ignores them and steps the plain map. ⛔ **Changes what she is taught** (different dynamics under every lesson) → lands before a fresh walk.
 
+### Refractoriness — spike-triggered adaptation (2026-11-24)
+
+**The problem it answers, measured.** Her live firing is bistable: below drive ≈ 0.4 a cluster sits near-silent, above it the Rulkov map enters a burst and stays there down to drive ≈ 0.06, so firing flips 1.5% ↔ 18–21% with no drive at which it rests at the 7.5% target (FIREKNOB trace, 2026-11-23/24 — the controller pinned its drive at 2.5 then 0.1 and firing did not follow). A drive knob cannot hold a point the dynamics do not have; the map needs a stable middle.
+
+**The mechanism.** A neuron that has just fired is made harder to fire again by pushing its slow variable down at the moment of the spike — the standard spike-frequency adaptation current, written on the variable the map already carries, so it needs no new per-neuron state:
+
+| Equation | Purpose |
+|---|---|
+| `y(n+1) = y(n) − μ·(x(n) − σ) + η_i − β · spike_i` | Each spike lowers `y` by `β`. Since `x(n+1) = α/(1+x²) + y`, a lower `y` lowers the next fast value: the neuron has to recover before it can cross 0 again — a relative refractory period whose length grows with how often it has fired |
+
+`β = 0` is the plain map. It acts only on the neurons that fire, in proportion to how much they fire, so a quiet neuron is untouched and a bursting one is throttled — exactly the busy state that overshoots.
+
+**Default, derived (not picked):**
+
+| Constant | Value | Derivation |
+|---|---|---|
+| `β` | 0.016 | In the busy state a neuron fires at ~20% (one spike per ~5 steps); the target is 7.5% (one per ~13.3). Each spike must therefore remove the slow drift of the ~8 extra steps it should have waited: `β ≈ 8 · μ · (x̄ − σ)`. With `μ = 0.001` and `x̄ − σ ≈ 2` in a burst, `β ≈ 8 × 0.001 × 2 = 0.016` |
+
+Knob: `DREAM_REFRACT_BETA` (0 disables). Sent per cluster in `compute_batch` beside the quantum terms; a donor older than 0.3.50 ignores it and steps the plain map. ⛔ **Changes what she is taught** → a fresh walk.
+
 ---
 
 ## 3. Synapses + Connectivity

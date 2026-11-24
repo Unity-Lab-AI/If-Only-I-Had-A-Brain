@@ -342,6 +342,9 @@ pub struct ClusterParams {
     pub tunnel_kappa: Option<f32>,
     #[serde(rename = "entangleRho", default)]
     pub entangle_rho: Option<f32>,
+    /// v0.3.50 — refractoriness `β` (spike-triggered adaptation, docs §2). Absent → 0.
+    #[serde(rename = "refractBeta", default)]
+    pub refract_beta: Option<f32>,
 }
 
 /// Batched multi-cluster step request.

@@ -43,7 +43,8 @@ struct LifParams {
     tunnel_a: f32,
     tunnel_kappa: f32,
     entangle_rho: f32,
-    _pad0: u32,
+    /// v0.3.50 — spike-triggered adaptation: each spike lowers y by β.
+    refract_beta: f32,
     _pad1: u32,
     _pad2: u32,
 }
@@ -483,7 +484,7 @@ impl ComputeEngine {
             tunnel_a: q.tunnel_a,
             tunnel_kappa: q.tunnel_kappa,
             entangle_rho: q.entangle_rho,
-            _pad0: 0,
+            refract_beta: q.refract_beta,
             _pad1: 0,
             _pad2: 0,
         };
@@ -1623,6 +1624,8 @@ pub struct Quantum {
     pub tunnel_a: f32,
     pub tunnel_kappa: f32,
     pub entangle_rho: f32,
+    /// v0.3.50 — refractoriness (docs/EQUATIONS.md §2). 0 = plain map.
+    pub refract_beta: f32,
 }
 
 #[derive(Default, Clone, Copy)]

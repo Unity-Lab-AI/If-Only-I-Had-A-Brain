@@ -51,7 +51,7 @@ __global__ void lif(unsigned int n, float effectiveDrive, float effectiveDriveR,
                     float noiseAmp, unsigned int seed, unsigned int numRegions,
                     float* state, unsigned int* spikes,
                     const float* currents, const float* regionGates,
-                    float tunnelA, float tunnelKappa, float entangleRho) {
+                    float tunnelA, float tunnelKappa, float entangleRho, float refractBeta) {
   unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i >= n) return;
   const float ALPHA = 4.5f;
@@ -93,6 +93,8 @@ __global__ void lif(unsigned int n, float effectiveDrive, float effectiveDriveR,
     float u = rnd(seed ^ 0x9e3779b9u, i) * 0.5f + 0.5f;
     if (u < pT) { xNext = 0.01f; spk = 1u; }
   }
+  // REFRACTORINESS (v0.3.50) — spike-triggered adaptation (docs/EQUATIONS.md §2).
+  if (spk && refractBeta > 0.0f) yNext -= refractBeta;
   state[2u*i]      = xNext;
   state[2u*i + 1u] = yNext;
   spikes[i] = spk;
