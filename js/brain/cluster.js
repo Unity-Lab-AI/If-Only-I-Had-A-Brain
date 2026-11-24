@@ -1705,13 +1705,19 @@ export class NeuronCluster {
     }
     const { vec } = entry;
     const active = entry.active;
+    // ⛔ CLEAR ONLY WHAT WAS SET, FIND THE NEW SET NATIVELY. This filled the
+    // whole region vector and walked every cell in JS on every call — 21% of
+    // the main thread during `_teachSentenceList` (measured 2026-11-24), with
+    // the card idle waiting on it. `vec` only ever holds 1s at the previous
+    // `active` indices, so zeroing those is the same as `fill(0)`; and
+    // `lastSpikes` holds 0/1 flags by construction (every writer stores 1 or
+    // `> 0 ? 1 : 0`), so `indexOf(1)` visits exactly the cells `if (spikes[i])`
+    // did, in the same ascending order. Bit-identical output.
+    for (let a = 0; a < active.length; a++) vec[active[a]] = 0;
     active.length = 0;
-    vec.fill(0);
-    const spikes = this.lastSpikes;
-    const start = region.start;
-    for (let i = 0; i < len; i++) {
-      if (spikes[start + i]) { vec[i] = 1; active.push(i); }
-    }
+    const view = this.lastSpikes.subarray(region.start, region.start + len);
+    let i = view.indexOf(1, 0);
+    while (i !== -1) { vec[i] = 1; active.push(i); i = view.indexOf(1, i + 1); }
     return { vec, active };
   }
 
