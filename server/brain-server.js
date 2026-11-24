@@ -10744,6 +10744,11 @@ function _rearmCortexGpuUpload(reason) {
   if (brain.cortexCluster) brain.cortexCluster._cortexFullyReady = false;
   console.log(`[Brain] re-arming sparse cortex upload for the new primary GPU (${reason}) — cross-projections + intra-synapses will re-upload.`);
 }
+// ⛔ Exposed for the gpu.js mixin. The periodic rebalance probed
+// `typeof this._rearmCortexGpuUpload === 'function'` on the brain, which was
+// never true — this is a module function — so a rebalance switched the cortex
+// owner and NEVER re-uploaded the cortex to it.
+globalThis.__rearmCortexGpuUpload = _rearmCortexGpuUpload;
 
 // T14.21 — catch any rejection from brain.start() so async init failures
 // surface with a stack trace instead of silently terminating the process
@@ -10886,7 +10891,9 @@ setInterval(() => {
   if (typeof brain._maybeRebalancePrimary === 'function') {
     try { brain._maybeRebalancePrimary(); } catch (e) { console.warn('[Brain] DF.7 F4 — primary rebalance check failed:', e?.message || e); }
   }
-  if (typeof brain._rebroadcastMasterToReplicas === 'function') {
+  // ⛔ Same rule as registration: no full-master push to cards that do not own
+  // the cortex — they have nothing to bind it to. Only with the replica opt-in.
+  if (process.env.DREAM_DF7_REPLICA_SYNC === '1' && typeof brain._rebroadcastMasterToReplicas === 'function') {
     brain._rebroadcastMasterToReplicas().catch((e) => {
       console.warn('[Brain] DF.7 — replica rebroadcast failed:', e?.message || e);
     });
@@ -11815,7 +11822,19 @@ const httpServer = http.createServer((req, res) => {
           return { settings: rp.saveSettings(patch) };
         }
         if (verb === 'start') return { pod: await rp.startDonor(String(j.gpuId || '')) };
-        if (verb === 'stop') return await rp.stopDonor(String(j.id || ''));
+        if (verb === 'stop') {
+          return await rp.stopDonor(String(j.id || ''), async (pod) => {
+            // Is the pod's card the one holding her cortex? Donors publish their
+            // GPU model as `gpuName`; the pod reports `gpu.id` (same string).
+            const want = String((pod && pod.gpu && pod.gpu.id) || '');
+            const owner = brain._gpuClient;
+            const oc = owner && brain.clients && brain.clients.get ? brain.clients.get(owner) : null;
+            if (want && oc && String(oc.gpuName || '') === want) {
+              console.log(`[Runpod] terminating the card that holds her cortex (${want}) — pulling its trained weights first.`);
+              await brain.refreshCheckpointFromDonor('runpod terminate', { force: true });
+            }
+          });
+        }
         throw Object.assign(new Error(`unknown verb '${verb}'`), { status: 404 });
       };
       run().then((r) => reply(200, { ok: true, ...r })).catch((e) => reply(e.status && e.status < 500 ? e.status : 500, { ok: false, why: e.message }));
@@ -14714,6 +14733,12 @@ wss.on('connection', (ws, req) => {
                 const oc = brain.clients.get(owner);
                 console.log(`[Pool] ${(oc && (oc.gpuName || oc.id)) || 'donor'} now owns [${[...set].join(', ')}] — gpu_init sent for ${n} cluster(s).`);
               }
+              // A stronger card took the cortex: pull, switch, re-upload — the one way.
+              const _pm = brain._pendingCortexMove;
+              brain._pendingCortexMove = null;
+              if (_pm && typeof brain._moveCortexTo === 'function') {
+                brain._moveCortexTo(_pm.to, _pm.from, `a card with more room joined (${id})`).catch(() => {});
+              }
             } catch (e) { console.warn('[Pool] re-partition on register failed (non-fatal):', e && e.message); }
           }, 1500);
           // PA.4.8 — capture donor compute capacity (compute.html reports its
@@ -14956,7 +14981,19 @@ wss.on('connection', (ws, req) => {
             _rearmCortexGpuUpload(_df7PromoteStronger ? 'gpu_register promote-stronger' : 'gpu_register primary');
             console.log(`[${id}] GPU compute client registered as PRIMARY — brain weights upload here (pool: ${brain._gpuClients.size}).`);
           } else {
-            console.log(`[${id}] GPU compute client registered — bringing it up to a FULL brain replica (DF.7 data-parallel; pool: ${brain._gpuClients.size}).`);
+            // ⛔⛔ NO FULL-BRAIN PUSH TO A JOINING CARD. Under the pool a card holds
+            // exactly the clusters it OWNS — the re-partition above sends gpu_init
+            // for those, and the cortex matrices go only to the cortex owner (via
+            // `_moveCortexTo` when a bigger card takes it). The replica sync below
+            // streamed every matrix (gigabytes, over the operator's home uplink for
+            // a rented card) to a card that owned two small clusters: measured, a
+            // pair-teach went 1.71 → 2.90 ms the moment an L40 joined. Replicas were
+            // only ever useful to the fan-out, which no longer exists for teaching
+            // (bound-Hebbian batches go to the cortex owner only). `DREAM_DF7_REPLICA_SYNC=1`
+            // restores the old push.
+            const _replicaSync = process.env.DREAM_DF7_REPLICA_SYNC === '1';
+            console.log(`[${id}] GPU compute client registered — joins the POOL and holds the clusters the partition gives it${_replicaSync ? ' + a FULL brain replica (DREAM_DF7_REPLICA_SYNC=1)' : ''} (pool: ${brain._gpuClients.size}).`);
+            if (_replicaSync) {
             // DF.7 — make the new donor a REAL replica that SHARES compute,
             // not an idle hot-standby. Replays cluster init + every tracked
             // master matrix to it. Fire-and-forget + delayed ~1.5s so the
@@ -14981,6 +15018,7 @@ wss.on('connection', (ws, req) => {
             }
             if (typeof brain._syncReplicaToDonor === 'function') {
               setTimeout(() => { brain._syncReplicaToDonor(ws).catch(() => {}); }, 1500);
+            }
             }
           }
           // PA.4.8 — recompute community compute level + milestone tier.
