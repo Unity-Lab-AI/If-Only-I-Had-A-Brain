@@ -378,7 +378,7 @@ REM IMAGEENGINE - her eyes' renderer, THIS project's own (server\image-render.py
 REM with the checkpoint in this repo's models\image\ - see start.bat for the full
 REM note. Loads on the FIRST render; offload stays on - never add --no-offload.
 if not defined UNITY_IMAGE_PORT set "UNITY_IMAGE_PORT=5124"
-if not defined UNITY_IMAGE_CHECKPOINT set "UNITY_IMAGE_CHECKPOINT=%~dp0..\models\image\realistic-vision-v51.safetensors"
+if not defined UNITY_IMAGE_CHECKPOINT set "UNITY_IMAGE_CHECKPOINT=%~dp0..\models\image\sdxl-base-1.0.safetensors"
 if exist "%UNITY_IMAGE_CHECKPOINT%" (
     netstat -ano | findstr :%UNITY_IMAGE_PORT% | findstr LISTENING >nul 2>&1
     if errorlevel 1 (

@@ -612,8 +612,9 @@ if exist "%UNITY_VOICE_V2_DIR%\serve.py" (
     echo           Set UNITY_VOICE_V2_DIR to the model folder to use her real voice.
 )
 REM IMAGEENGINE - her eyes' renderer, THIS project's own (server\image-render.py),
-REM on 127.0.0.1:5124, running the realistic-vision-v51 checkpoint kept in this
-REM repo's models\image\ (gitignored - a 2.1 GB third-party file). No other
+REM on 127.0.0.1:5124, running the SDXL base 1.0 checkpoint kept in this repo's
+REM models\image\ (gitignored - a 6.9 GB third-party file; SDXL can write English
+REM in a picture, the old SD1.5 one could not; peak 5.6 GB). No other
 REM project's tree or process is involved. The brain POSTs a prompt and gets PNG
 REM back; the bytes go through the same decoder and CDF 9/7 perceive as before.
 REM Measured 2026-11-23 on this card: model load 0.5 s, 512x512 in 3.6 s cold.
@@ -626,7 +627,7 @@ REM    the GPU nothing until she actually asks for a picture.
 REM Not found -> say so, carry on. A missing image engine never stops her boot;
 REM the look lane counts engineDown and retries on cooldown.
 if not defined UNITY_IMAGE_PORT set "UNITY_IMAGE_PORT=5124"
-if not defined UNITY_IMAGE_CHECKPOINT set "UNITY_IMAGE_CHECKPOINT=%~dp0..\models\image\realistic-vision-v51.safetensors"
+if not defined UNITY_IMAGE_CHECKPOINT set "UNITY_IMAGE_CHECKPOINT=%~dp0..\models\image\sdxl-base-1.0.safetensors"
 if exist "%UNITY_IMAGE_CHECKPOINT%" (
     netstat -ano | findstr :%UNITY_IMAGE_PORT% | findstr LISTENING >nul 2>&1
     if errorlevel 1 (
@@ -641,7 +642,7 @@ if exist "%UNITY_IMAGE_CHECKPOINT%" (
     )
 ) else (
     echo   [eyes] her image model is NOT at %UNITY_IMAGE_CHECKPOINT%
-    echo          put realistic-vision-v51.safetensors in models\image\ or set UNITY_IMAGE_CHECKPOINT.
+    echo          put sdxl-base-1.0.safetensors in models\image\ or set UNITY_IMAGE_CHECKPOINT.
     echo          No pictures until then.
 )
 REM OWNWINDOW (2026-10-18) - the brain gets ITS OWN minimized window, exactly
