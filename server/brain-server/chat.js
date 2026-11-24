@@ -3727,6 +3727,33 @@ const SERVER_CHAT_MIXIN = {
     const K = 6;
     let cent = Array.from({ length: K }, (_, k) => ring[Math.floor((k + 0.5) * ring.length / K)].slice());
     const d2 = (a, b) => (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2;
+    // ⛔ TRUE HUES, NOT AVERAGES. A k-means centre is the MEAN of its members,
+    // and a mean of several shades is greyer and paler than any of them — the
+    // "pastel, foggy, grey-toned, not the right hues" judged live. Each centre
+    // keeps its mean hue and lightness but gets back its members' average
+    // chroma (how far a colour sits from grey), and the cluster count is
+    // doubled (subject 12, scene 16) so fewer different colours are blended.
+    const trueHue = (cents, members) => cents.map((c, k) => {
+      const m = members[k];
+      if (!m || !m.n) return c;
+      const chr = (v) => Math.max(v[0], v[1], v[2]) - Math.min(v[0], v[1], v[2]);
+      const want = m.chroma / m.n, have = chr(c);
+      if (!(have > 0.5) || !(want > have)) return c;
+      const L = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
+      const s = want / have;
+      return c.map((v) => Math.max(0, Math.min(255, L + (v - L) * s)));
+    });
+    const kmeansTrue = (pixels, K) => {
+      let cen = Array.from({ length: K }, (_, k) => pixels[Math.floor((k + 0.5) * pixels.length / K)].slice());
+      let mem = null;
+      for (let it = 0; it < 8; it++) {
+        const sum = cen.map(() => [0, 0, 0, 0, 0]);
+        for (const c of pixels) { let bi = 0, bd = Infinity; for (let k = 0; k < K; k++) { const d = d2(c, cen[k]); if (d < bd) { bd = d; bi = k; } } const s = sum[bi]; s[0] += c[0]; s[1] += c[1]; s[2] += c[2]; s[3]++; s[4] += Math.max(c[0], c[1], c[2]) - Math.min(c[0], c[1], c[2]); }
+        cen = cen.map((c, k) => sum[k][3] ? [sum[k][0] / sum[k][3], sum[k][1] / sum[k][3], sum[k][2] / sum[k][3]] : c);
+        mem = sum.map((s) => ({ n: s[3], chroma: s[4] }));
+      }
+      return trueHue(cen, mem);
+    };
     const ringOwner = new Uint8Array(ring.length);
     for (let it = 0; it < 10; it++) {
       const sum = cent.map(() => [0, 0, 0, 0]);
@@ -4108,13 +4135,8 @@ const SERVER_CHAT_MIXIN = {
     // and this is that, learned from the look — not its photographic lines.
     const subj = [];
     for (let i = 0; i < M.length; i++) if (M[i]) subj.push(px(i % gw, (i / gw) | 0));
-    const PK = Math.min(6, subj.length);
-    let pal = Array.from({ length: PK }, (_, k) => subj[Math.floor((k + 0.5) * subj.length / PK)].slice());
-    for (let it = 0; it < 8; it++) {
-      const sum = pal.map(() => [0, 0, 0, 0]);
-      for (const c of subj) { let bi = 0, bd = Infinity; for (let k = 0; k < PK; k++) { const d = d2(c, pal[k]); if (d < bd) { bd = d; bi = k; } } const s = sum[bi]; s[0] += c[0]; s[1] += c[1]; s[2] += c[2]; s[3]++; }
-      pal = pal.map((c, k) => sum[k][3] ? [sum[k][0] / sum[k][3], sum[k][1] / sum[k][3], sum[k][2] / sum[k][3]] : c);
-    }
+    const PK = Math.min(12, subj.length);
+    const pal = kmeansTrue(subj, PK);
     // ⛔ THE COLOUR LAYOUT IS KEPT AT 3x THE SHAPE GRID. At 160 cells across a
     // 1,024-px canvas every learned cell covered ~6 px and the painting read as
     // fog (judged on renders: too soft to read detail). The shape
@@ -4149,13 +4171,8 @@ const SERVER_CHAT_MIXIN = {
     for (let i = 0; i < M.length; i++) if (!M[i]) all.push(px(i % gw, (i / gw) | 0));
     let scene = null;
     if (all.length >= 8) {
-      const SK = 8;
-      let sp = Array.from({ length: SK }, (_, k) => all[Math.floor((k + 0.5) * all.length / SK)].slice());
-      for (let it = 0; it < 8; it++) {
-        const sum = sp.map(() => [0, 0, 0, 0]);
-        for (const c of all) { let bi = 0, bd = Infinity; for (let k = 0; k < SK; k++) { const d = d2(c, sp[k]); if (d < bd) { bd = d; bi = k; } } const s = sum[bi]; s[0] += c[0]; s[1] += c[1]; s[2] += c[2]; s[3]++; }
-        sp = sp.map((c, k) => sum[k][3] ? [sum[k][0] / sum[k][3], sum[k][1] / sum[k][3], sum[k][2] / sum[k][3]] : c);
-      }
+      const SK = Math.min(16, all.length);
+      const sp = kmeansTrue(all, SK);
       const sidx = new Uint8Array(HW * HH);
       for (let hy = 0; hy < HH; hy++) for (let hx = 0; hx < HW; hx++) {
         const c = pxH(hx, hy);
@@ -4241,19 +4258,17 @@ const SERVER_CHAT_MIXIN = {
         id2 = nx;
       }
       const rgb = new Float32Array(W * H * 3), alpha = new Float32Array(W * H);
+      // ⛔ Each cell is painted ITS OWN colour. It used to be the mean of its
+      // 3×3 neighbours' colours, which blended every boundary between two hues
+      // into a greyer third one — the fog over every drawing. The majority pass
+      // above already cleans stray cells; the colours stay true.
       for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
         if (!inside(x, y)) continue;
-        let r = 0, g = 0, b = 0, m = 0;
-        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-          if (!inside(x + dx, y + dy)) continue;
-          const c = palette[id2[(y + dy) * W + x + dx]];
-          if (!c) continue;
-          r += c[0]; g += c[1]; b += c[2]; m++;
-        }
-        if (!m) continue;
         const i = y * W + x;
+        const c = palette[id2[i]];
+        if (!c) continue;
         alpha[i] = 1;
-        rgb[i * 3] = r / m; rgb[i * 3 + 1] = g / m; rgb[i * 3 + 2] = b / m;
+        rgb[i * 3] = c[0]; rgb[i * 3 + 1] = c[1]; rgb[i * 3 + 2] = c[2];
       }
       out.push({ type: 'layer', gw: W, gh: H, rgb: Array.from(rgb, v => +v.toFixed(1)), alpha: Array.from(alpha), inv, bbox, a });
     };
@@ -4294,7 +4309,7 @@ const SERVER_CHAT_MIXIN = {
       const fx = CW / W, fy = CH / H;
       const invC = [inv[0] * fx, inv[1] * fx, inv[2] * fx, inv[3] * fy, inv[4] * fy, inv[5] * fy];
       const inSubj = (CW === W && CH === H) ? on : (x, y) => x >= 0 && y >= 0 && x < CW && y < CH && idx[y * CW + x] !== 255;
-      paint(inSubj, idx, pal, invC, [bx0 - 0.01, by0 - 0.01, bx1 + 0.01, by1 + 0.01], style.mass === 'wash' ? 0.6 * fillA : 1, CW, CH);
+      paint(inSubj, idx, pal, invC, [bx0 - 0.01, by0 - 0.01, bx1 + 0.01, by1 + 0.01], style.mass === 'wash' ? 0.88 * fillA : 1, CW, CH);   // a wash that covers — at 0.6 the dark page greyed every hue
     }
     // HER OUTLINE — the silhouette's edge traced as a CONTOUR (marching
     // squares on the mask) and rounded (two Chaikin passes), not a run of
@@ -4511,7 +4526,7 @@ const SERVER_CHAT_MIXIN = {
     const fillA = (skill && skill.fillA) || 0.92;
     const shade = Math.max(0, (skill && skill.detailMul) || 1);
     if (paints) {
-      for (const v of vols) out.push({ type: 'fill', pts: v.poly.map(p => [p[0] + jit(), p[1] + jit()]), rgb: v.rgb, a: style.mass === 'wash' ? 0.5 * fillA : fillA });
+      for (const v of vols) out.push({ type: 'fill', pts: v.poly.map(p => [p[0] + jit(), p[1] + jit()]), rgb: v.rgb, a: style.mass === 'wash' ? 0.88 * fillA : fillA });
       // SHADING — the half of each volume away from the light (lower-right)
       // goes a little darker, by as much as her trained shading skill commits.
       if (shade > 0.05) {
