@@ -3198,6 +3198,12 @@ const SERVER_GPU_MIXIN = {
       // MULTI-CARD — the canonical upload of the intra matrix becomes one row
       // slice per card when more than one card can hold a slice.
       if (!targetWs && !noRegister && name === this._SLICE_NAME && matrix && matrix.rowPtr) {
+        // Never plan slices mid cortex-move: the move points `_gpuClient` back at
+        // the OLD card while it pulls, so a plan made then names the wrong owner
+        // and the new owner's rows are uploaded twice (seen: 660 + 640 chunks over
+        // the home upload in one boot). Wait for the move to finish (bounded).
+        const _mw = Date.now();
+        while (this._cortexMoveInFlight && Date.now() - _mw < 15 * 60 * 1000) await new Promise((r) => setTimeout(r, 1000));
         const plan = this._planIntraSlices(matrix.rows);
         if (plan) return await this._uploadIntraSliced(name, matrix, binding, plan);
       }
@@ -3304,7 +3310,13 @@ const SERVER_GPU_MIXIN = {
         ? { ...binding, dstRegion: { start: binding.dstRegion.start + p.a, end: binding.dstRegion.start + p.b } }
         : binding;
       let r = null;
-      if (snapOk && p.ws !== this._gpuClient && this._sliceCapable(p.ws)) {
+      // The owner pulls too when it is REMOTE: a rented owner took its 16 M-row
+      // slice over the home upload at ~12 MB/s (minutes, twice in one boot) while
+      // the snapshot sat on GitHub. Only a card on this machine (round trip
+      // under 20 ms) is faster fed directly.
+      const _pc = this.clients && this.clients.get ? this.clients.get(p.ws) : null;
+      const _remote = !(_pc && Number(_pc.rttMs) >= 0 && Number(_pc.rttMs) < 20);
+      if (snapOk && (p.ws !== this._gpuClient || _remote) && this._sliceCapable(p.ws)) {
         r = await this._sliceFromSnapshot(p, name, matrix, sb, snap);
       }
       if (!r) r = await this._gpuSparseUploadInner(name, this._csrRowSlice(matrix, p.a, p.b), sb, p.ws, true);
