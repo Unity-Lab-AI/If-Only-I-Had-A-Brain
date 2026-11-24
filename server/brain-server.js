@@ -9093,6 +9093,10 @@ class ServerBrain {
             // sorted array, capped at 5000 entries to bound payload size.
             definitionTaughtWords: cortex._definitionTaughtWords
               ? Array.from(cortex._definitionTaughtWords) : [],   // UNCAPPED — her vocabulary grows without limits (operator law); the old slice(0,5000) silently FORGOT every definition past 5k on save
+            // The meanings-learned count beside it. It lived in memory only,
+            // so every restart showed it back near zero and read as lost
+            // learning while the weights carrying those meanings restored whole.
+            definitionSensesBound: Number(cortex._definitionSensesBound) || 0,
             // GATEVOCAB — the exam-vocab taught receipt. In-memory only it
             // died at every restart and every K gate re-taught ALL missing
             // exam words (hours per press). Persisted like definitions.
@@ -10516,6 +10520,9 @@ class ServerBrain {
         // Restore definition-taught vocabulary set.
         if (Array.isArray(pending.definitionTaughtWords)) {
           cortex._definitionTaughtWords = new Set(pending.definitionTaughtWords);
+        }
+        if (Number(pending.definitionSensesBound) > 0) {
+          cortex._definitionSensesBound = (Number(cortex._definitionSensesBound) || 0) + Number(pending.definitionSensesBound);
         }
         // GATEVOCAB + RETEACH — restore the exam-vocab taught receipt as a
         // Map word→lastTaughtAt (spaced re-teach: a word rests for the window,
