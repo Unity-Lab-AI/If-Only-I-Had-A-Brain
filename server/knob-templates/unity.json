@@ -107,7 +107,7 @@
     "DREAM_IMAGE_STEPS": { "code": "computed", "why": "25 diffusion steps on her renderer." },
     "DREAM_IMAGE_TIMEOUT_MS": { "code": "hang-guard", "why": "90 s render timeout." },
     "DREAM_IMAGE_UNLOAD_IDLE_MS": { "code": "computed", "why": "Unload the renderer after 20 s idle to give VRAM back (reload measured 0.6 s)." },
-    "DREAM_IMAGINE_DRAW_PROB": { "code": "computed", "why": "Imaginative drawing probability (0.18)." },
+    "DREAM_IMAGINE_DRAW_PROB": { "code": "computed", "why": "Imaginative drawing probability (0.45, raised from 0.18 so her own scenes and new versions of things are seen often)." },
     "DREAM_JPEG_MAX_MB": { "code": "safety", "why": "2 GB decode cap (512 MB refused the corpus's largest figures)." },
     "DREAM_LOOKUP_HOLD_MS": { "code": "computed", "why": "She looks at a reference 4.5 s before drawing it." },
     "DREAM_MINDSEYE_MAX_SIDE": { "code": "computed", "why": "Mind's-eye resolution ceiling, engine-bound." },
