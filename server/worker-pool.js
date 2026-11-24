@@ -509,7 +509,22 @@ class SparseMatmulPool {
    * call shares them by reference. Returns false when the pool cannot run
    * it (the caller then runs it on its own thread).
    */
-  async ojaActive(matrix, pre, post, lr, activeRows) {
+  // A cluster-wide per-neuron table (layer ids, hub mask) moved onto shared
+  // memory ONCE per source array — they are fixed after construction.
+  _sharedTable(arr) {
+    if (!arr) return null;
+    if (arr.buffer instanceof SharedArrayBuffer) return arr;
+    if (!this._tableCache) this._tableCache = new WeakMap();
+    let v = this._tableCache.get(arr);
+    if (!v || v.length !== arr.length) {
+      v = new Uint8Array(new SharedArrayBuffer(Math.max(4, arr.length)));
+      v.set(arr);
+      this._tableCache.set(arr, v);
+    }
+    return v;
+  }
+
+  async ojaActive(matrix, pre, post, lr, activeRows, kScales) {
     if (!this._ready || this._workers.length === 0) this._init();
     if (!this._ready || this._workers.length === 0) return false;
     if (!matrix || !matrix.values || !matrix.colIdx || !matrix.rowPtr) return false;
@@ -538,6 +553,19 @@ class SparseMatmulPool {
     const per = Math.ceil(A / N);
     const wMin = matrix.wMin ?? -2.0;
     const wMax = matrix.wMax ?? 2.0;
+    // The same per-row / per-column scales `SparseMatrix.ojaUpdate` applies.
+    const k = kScales || null;
+    const ks = {
+      layerScales: (k && k.layerScales && k.dstLayerId) ? Array.from(k.layerScales) : null,
+      dstLayerIdBuf: (k && k.layerScales && k.dstLayerId) ? this._sharedTable(k.dstLayerId).buffer : null,
+      srcHubMaskBuf: (k && k.srcHubMask) ? this._sharedTable(k.srcHubMask).buffer : null,
+      dstStart: (k && typeof k.dstStart === 'number') ? k.dstStart : 0,
+      srcStart: (k && typeof k.srcStart === 'number') ? k.srcStart : 0,
+      hubMult: (k && typeof k.hubMult === 'number') ? k.hubMult : 1.0,
+      gammaScale: (k && typeof k.gammaScale === 'number') ? k.gammaScale : 1.0,
+      hemiScale: (k && Array.isArray(k.hemiScale) && k.hemiScale.length === 2) ? k.hemiScale.slice() : null,
+      hemiSplit: (k && typeof k.hemiSplit === 'number') ? k.hemiSplit : 0,
+    };
     await new Promise((resolve) => {
       this._pending.set(jobId, { resolve, expected: N, received: 0 });
       for (let w = 0; w < N; w++) {
@@ -545,7 +573,7 @@ class SparseMatmulPool {
           type: 'ojaActive', jobId,
           valuesBuf: matrix.values.buffer, colIdxBuf: matrix.colIdx.buffer, rowPtrBuf: matrix.rowPtr.buffer,
           preBuf: preV.buffer, rowsBuf: rowsV.buffer, yBuf: yV.buffer,
-          from: w * per, to: Math.min(A, (w + 1) * per), lr, wMin, wMax,
+          from: w * per, to: Math.min(A, (w + 1) * per), lr, wMin, wMax, ks,
         });
       }
     });
