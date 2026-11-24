@@ -3857,6 +3857,21 @@ const SERVER_GPU_MIXIN = {
     // does still happens here (registry above, size, residency, the ack), so the
     // rest of the upload flow cannot tell the difference. Any mismatch → upload.
     // `DREAM_ADOPT=0` always uploads.
+    // ⛔ STALE CARD — a card's copy is the newer one ONLY if no OTHER card has
+    // trained her cortex since. Measured: the pod dropped, the cortex trained on
+    // the local card, the pod came back still holding its pre-drop matrices, and
+    // adoption kept those — discarding the fresh weights just pulled into the
+    // master and then "refreshing" the master FROM the stale card. The trainer
+    // is the donor id the cortex last uploaded (or was adopted) on in this
+    // process; a different one means the card is behind, so it is sent fresh.
+    const _tc = (!isReplicaSync && ws && this.clients && this.clients.get) ? this.clients.get(ws) : null;
+    const _tcId = _tc ? String(_tc.donorId || _tc.gpuName || '') : '';
+    const _staleCard = !!(this._cortexTrainerId && _tcId && this._cortexTrainerId !== _tcId);
+    if (_tc && _tcId) this._cortexTrainerId = _tcId;
+    if (_staleCard && _tc.engineShapes instanceof Map && _tc.engineShapes.size) {
+      console.log(`[Pool] NO ADOPT — ${_tc.gpuName || 'the card'} holds matrices from before another card trained her; sending the master's newer weights instead.`);
+      _tc.engineShapes = new Map();
+    }
     if (!isReplicaSync && ws && process.env.DREAM_ADOPT !== '0') {
       try {
         const _ac = this.clients && this.clients.get ? this.clients.get(ws) : null;
