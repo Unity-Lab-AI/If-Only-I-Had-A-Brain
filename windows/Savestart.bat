@@ -240,7 +240,26 @@ REM Get-Content so the bytes are both decoded AND rendered as UTF-8
 REM end-to-end.
 echo [Savestart] step 7/7: launching the control plane, the tunnel, her voice, her eyes, the brain (SAVE-STATE RESUME, DREAM_KEEP_STATE=1), the log tail, her pages...
 echo   server log: %~dp0..\server\server.log
-if exist server.log del server.log
+REM LOGLOCK (2026-11-24) - the old brain closes its PORT when its shutdown
+REM begins, then keeps saving for ~40s with server.log still OPEN. Step 1 sees the
+REM port close and moves on; here the delete failed on the locked file, the new
+REM brain's "> server.log" could not open it either, and NO BRAIN STARTED while
+REM this window sat in the bind wait. So: wait until the log can actually be
+REM deleted - i.e. the old process is really gone - up to 300s.
+set /a SS_LOGWAIT=0
+:ss_logwait
+if not exist server.log goto :ss_logfree
+del server.log >nul 2>&1
+if not exist server.log goto :ss_logfree
+if %SS_LOGWAIT% GEQ 300 (
+    echo   [Savestart] WARNING: server.log still locked after 300s - a previous brain is still running. Launching anyway.
+    goto :ss_logfree
+)
+if %SS_LOGWAIT% EQU 0 echo   [Savestart] previous brain is still finishing its save - waiting for it to let go of server.log...
+ping -n 3 127.0.0.1 >nul
+set /a SS_LOGWAIT+=2
+goto :ss_logwait
+:ss_logfree
 REM LOCALCTL - control plane first (separate always-up process on 7526, which
 REM is what lets the Start button work while the brain is DOWN). Already
 REM running = exits 0 quietly, so re-launching never stacks instances.
