@@ -3265,15 +3265,48 @@ const SERVER_GPU_MIXIN = {
     const room = (ws) => Math.max(0, this._donorCapacityMB(ws) - ownedMB(ws) - (ws === owner ? crossMB : 0));
     const holders = [owner, ...others].map((ws) => ({ ws, room: room(ws) })).filter((h) => h.room > 512);
     if (holders.length < 2) return null;
-    const total = holders.reduce((s, h) => s + h.room, 0);
+    // ⭐ TWO COPIES OF EVERY ROW (DREAM_SLICE_REPLICAS, default 2). Cards are
+    // paired by room and each pair holds the SAME row range, so a card leaving
+    // costs no learning and no pause — its twin still holds and trains every one
+    // of its rows. An odd card joins the last pair. A card still holds one range
+    // of one matrix name, which is what the donor's slice bookkeeping allows.
+    // ⚠ The price: each card trains twice the rows it would alone, so two cards
+    // are a full mirror rather than a 2× split. DREAM_SLICE_REPLICAS=1 restores
+    // the single-copy split (fastest, but a drop re-slices).
+    const _rp = Number(process.env.DREAM_SLICE_REPLICAS);
+    const replicas = Number.isFinite(_rp) && _rp >= 1 ? Math.floor(_rp) : 2;
+    const sorted = holders.slice().sort((x, y) => y.room - x.room);
+    const groups = [];
+    if (replicas >= 2) {
+      for (let i = 0; i + 1 < sorted.length; i += 2) groups.push([sorted[i], sorted[i + 1]]);
+      if (sorted.length % 2 === 1) groups[groups.length - 1].push(sorted[sorted.length - 1]);
+    } else {
+      for (const h of holders) groups.push([h]);
+    }
+    const groupRoom = groups.map((g) => Math.min(...g.map((h) => h.room)));
+    const total = groupRoom.reduce((s, r) => s + r, 0);
     const plan = [];
     let a = 0;
-    holders.forEach((h, i) => {
-      const b = i === holders.length - 1 ? rows : Math.min(rows, a + Math.floor(rows * h.room / total));
-      if (b > a) plan.push({ ws: h.ws, a, b });
+    groups.forEach((g, i) => {
+      const b = i === groups.length - 1 ? rows : Math.min(rows, a + Math.floor(rows * groupRoom[i] / total));
+      if (b > a) for (const h of g) plan.push({ ws: h.ws, a, b });
       a = b;
     });
     return plan.length > 1 ? plan : null;
+  },
+
+  /** One LIVE holder per distinct row range, or null when a range has none. */
+  _sliceReaders() {
+    if (!this._intraSliceActive()) return null;
+    const byRange = new Map();
+    for (const s of this._intraSlices) {
+      const k = `${s.a}:${s.b}`;
+      if (!byRange.has(k) && s.ws && s.ws.readyState === 1) byRange.set(k, s);
+      else if (!byRange.has(k)) byRange.set(k, null);
+      else if (byRange.get(k) === null && s.ws && s.ws.readyState === 1) byRange.set(k, s);
+    }
+    const out = [...byRange.values()];
+    return out.some((s) => !s) ? null : out.sort((x, y) => x.a - y.a);
   },
 
   _csrRowSlice(m, a, b) {
@@ -3483,6 +3516,16 @@ const SERVER_GPU_MIXIN = {
     if (this._intraSliceActive() && this._intraSlices.some((s) => !s.ws || s.ws.readyState !== 1)) {
       // Remember who dropped: that card waits longer before it is trusted with rows again.
       for (const s of this._intraSlices) if ((!s.ws || s.ws.readyState !== 1) && s.key) this._sliceDroppedAt().set(s.key, Date.now());
+      // ⭐ ITS TWIN STILL HOLDS THE ROWS — no pause, no re-slice. Every range
+      // still has a live copy, so teaching carries on with nothing lost; the dead
+      // entry is dropped and the card is re-added at the next plan once it has
+      // stayed up (the rejoin hold). Lessons already wait only on LIVE holders.
+      if (this._sliceReaders()) {
+        const gone = this._intraSlices.filter((s) => !s.ws || s.ws.readyState !== 1).length;
+        this._intraSlices = this._intraSlices.filter((s) => s.ws && s.ws.readyState === 1);
+        console.log(`[Pool] REPLICA LEFT — ${gone} slice holder(s) dropped but every row range still has a live copy; teaching continues, nothing lost.`);
+        return false;
+      }
       // ⭐ REJOIN GRACE (donor 0.3.50 keeps its engine across a reconnect). A
       // holder that dropped gets DREAM_REJOIN_GRACE_MS to come back holding its
       // slice; teaching is PAUSED meanwhile so its rows miss no lesson, and a
@@ -3607,9 +3650,10 @@ const SERVER_GPU_MIXIN = {
 
   /** A propagate on the sliced intra matrix: every holder, stitched by row base. */
   async _gatherIntraPropagate(name, pre, timeoutMs, reuseKey) {
-    const slices = this._intraSlices.filter((s) => s.ws && s.ws.readyState === 1);
-    const rows = this._intraSlices[this._intraSlices.length - 1].b;
-    if (slices.length !== this._intraSlices.length) return null;   // a holder is gone — no partial answer
+    // One live copy per range (replicas hold the same rows).
+    const slices = this._sliceReaders();
+    if (!slices) return null;   // a range has no live holder — no partial answer
+    const rows = Math.max(...this._intraSlices.map((s) => s.b));
     const parts = await Promise.all(slices.map((s) => this.gpuSparsePropagate(name, pre, s.ws, timeoutMs, reuseKey ? `${reuseKey}@${s.a}` : null)));
     if (parts.some((p) => !p)) return null;
     const out = new Float32Array(rows);
@@ -6966,7 +7010,9 @@ const SERVER_GPU_MIXIN = {
         const reg = this._replicaMatrixRegistry;
         const full = reg && reg.get(n) && reg.get(n).matrix;
         let sliceFail = null;
-        for (const s of this._intraSlices) {
+        const _readers = this._sliceReaders();
+        if (!_readers) sliceFail = { reason: 'a row range has no live holder' };
+        for (const s of (_readers || [])) {
           if (!full || !s.ws || s.ws.readyState !== 1) { sliceFail = { reason: 'a slice holder is gone' }; break; }
           const rp = full.rowPtr;
           const r = await this.gpuReadbackMatrixValues(n, s.ws, undefined, { values: full.values.subarray(rp[s.a], rp[s.b]) });

@@ -1,7 +1,7 @@
 # Pool sharding — every card teaches, more cards = faster and bigger
 
 > Design, staged build, and the numbers each stage is judged by.
-> Status (2026-11-24): **Stages 0–1 BUILT** (donor 0.3.48 + server), proven by harness on the real code — slices byte-identical to one card. **Stages 2–3 open.** Not yet run live (`MULTICARD.READ` on the board).
+> Status (2026-11-24): **Stages 0–1 BUILT** (donor 0.3.48 + server), proven by harness on the real code — slices byte-identical to one card, and RUN LIVE on 2–3 cards (slices, snapshot pulls, the image lane). **Stage 2 BUILT** (server): cards are paired and each pair holds the same row range (`DREAM_SLICE_REPLICAS` = 2), so a card leaving costs no learning and no pause; a dropped holder also gets a rejoin grace and is re-attached with no upload when it returns holding its rows (donor 0.3.50). As built it differs from the text below: replication is by PAIRING cards (each card holds one range of one matrix name — what the donor's slice bookkeeping allows), not two arbitrary copies per slice, and a leave does not re-copy in the background — the twin simply carries on, and the card is re-added at the next plan. **Stage 3 open.**
 >
 > ⭐ **One design change from the text below, found in the code:** the intra matrix binds the `langCortex` pseudo-cluster, which her tick never steps — only teaching writes it and only teaching/probes read it. So there is **no thinker holding a full copy**: the matrix is sliced across EVERY card, the cortex owner included, and reads are gathered from all of them and stitched by row base. The "thinker" sections below describe the plan before that was read, and are kept as the record.
 
