@@ -6222,7 +6222,16 @@ const SERVER_GPU_MIXIN = {
     // time on the pod's link — that trade is the point.
     try {
       const _oc = this.clients && this.clients.get ? this.clients.get(ws) : null;
-      if (_oc && Number(_oc.rttMs) > 200) {
+      // ⛔ Remote by IDENTITY, not by RTT: measured, the local 4070 read 213 ms
+      // under teaching load while the tunnelled pod read 207 ms, so an RTT
+      // threshold called the local card remote. A card is local when its GPU is
+      // this machine's GPU (`_perfStats.gpuName`, nvidia-smi at boot); RTT > 500 ms
+      // is the fallback only when the host GPU is unknown.
+      const _host = this._perfStats && this._perfStats.gpuName;
+      const _remote = _oc && (_host
+        ? String(_oc.gpuName || '') !== String(_host)
+        : Number(_oc.rttMs) > 500);
+      if (_remote) {
         const _r = Number.isFinite(+process.env.DREAM_READBACK_REMOTE_GAP_MS) ? Math.max(0, +process.env.DREAM_READBACK_REMOTE_GAP_MS) : 600_000;
         GAP_MS = Math.min(GAP_MS, _r);
       }
