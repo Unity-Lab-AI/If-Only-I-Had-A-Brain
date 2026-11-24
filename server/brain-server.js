@@ -1227,7 +1227,12 @@ console.log(`[Brain] Unified VRAM allocator: total=${BRAIN_VRAM_ALLOC.vramMB}MB 
 // 7525 unless PORT is set in the environment. If you need the old
 // behavior for an existing deployment, `PORT=8080 node brain-server.js`.
 const PORT = parseInt(process.env.PORT, 10) || 7525;
-const STATE_BROADCAST_MS = 100;    // send state to clients 10fps
+// Dashboard state cadence. ⛔ It was 100 ms (10 fps): each tick builds the full
+// state and serialises a ~278 KB snapshot, and at 10 a second that build plus the
+// garbage it leaves was a quarter of the main thread while the cards waited for
+// lessons (profiled: collector 20.6%, state builders ~13%). 500 ms is still a
+// live dashboard. DREAM_STATE_BROADCAST_MS pins it.
+const STATE_BROADCAST_MS = (() => { const v = Number(process.env.DREAM_STATE_BROADCAST_MS); return Number.isFinite(v) && v >= 50 ? v : 500; })();
 const WEIGHT_SAVE_MS = 300000;     // save weights every 5 minutes
 const WEIGHTS_FILE = path.join(__dirname, 'brain-weights.json');
 const MAX_TEXT_PER_SEC = 2;        // rate limit per client
