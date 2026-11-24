@@ -3446,12 +3446,20 @@ export class Curriculum {
             await this._awaitComputeSubstrate();
           }
         } catch { /* gate must never break a teach call */ }
+        // ⛔⛔ A STOP IS A STOP. On shutdown every teach call used to return at
+        // once and the walk kept stepping through every remaining phase — each
+        // one then recorded as PASSED and checkpointed though nothing was taught
+        // (measured: 36,641 shutdown exits and a stream of `cell-pass` saves while
+        // the stop button "did nothing"). Now a teach call during a stop does
+        // nothing and marks nothing, so the walk unwinds in moments and the next
+        // boot resumes exactly where teaching really stopped.
+        if (this._shuttingDown()) return undefined;
         try {
           const result = await original(...args);
           // Persist ONLY this cell's declared phases. Primitives and foreign
           // (chat / emission) teach calls never get marked as passed - they
           // must stay free to run again.
-          if (isCellPhase) {
+          if (isCellPhase && !this._shuttingDown()) {
             if (!Array.isArray(cl.passedPhases)) cl.passedPhases = [];
             if (!cl.passedPhases.includes(phaseKey)) cl.passedPhases.push(phaseKey);
             if (typeof this._saveCheckpoint === 'function') {
@@ -3700,8 +3708,9 @@ export class Curriculum {
       this._hb(`[Curriculum] ⤳ PHASE SKIPPED — ${phaseKey} (already passed)`);
       return undefined;
     }
+    if (this._shuttingDown()) return undefined;   // a stop marks nothing passed
     const result = await fn();
-    if (phaseKey && cluster) {
+    if (phaseKey && cluster && !this._shuttingDown()) {
       if (!Array.isArray(cluster.passedPhases)) cluster.passedPhases = [];
       if (!cluster.passedPhases.includes(phaseKey)) cluster.passedPhases.push(phaseKey);
       if (typeof this._saveCheckpoint === 'function') {
@@ -9588,7 +9597,7 @@ export class Curriculum {
         break;
       }
       const ms = Date.now() - t0;
-      if (result && result.pass) {
+      if (result && result.pass && !this._shuttingDown()) {
         // Stage names are canonical GRADE_ORDER entries (see stages
         // array above). Record pass directly into cluster.grades.ela
         // and append to passedCells.
@@ -11410,6 +11419,9 @@ export class Curriculum {
    * corpora.
    */
   async runSubjectGrade(subject, grade, corpora, opts = {}) {
+    // A stop runs no cell — the walk unwinds instead of stepping through every
+    // remaining cell, which kept the stop's own save from ever getting its turn.
+    if (this._shuttingDown()) return { pass: false, reason: 'shutdown', shutdown: true };
     // ROSTER GATE FIX (from a box log 2026-07-17: "✗ pe/kindergarten — unknown subject:
     // pe" + music + health → K force-advanced incomplete). The SCHEDULER walks
     // subjectsForGrade(grade) (core 6 + the introduced-at roster: pe/music/health
@@ -12644,7 +12656,7 @@ export class Curriculum {
       }
     }
 
-    if (result && result.pass) {
+    if (result && result.pass && !this._shuttingDown()) {
       if (!cluster.grades || typeof cluster.grades !== 'object') {
         cluster.grades = { ela: 'pre-K', math: 'pre-K', science: 'pre-K', social: 'pre-K', art: 'pre-K' };
       }
@@ -13650,6 +13662,7 @@ export class Curriculum {
           const currentIdx = GRADE_ORDER.indexOf(cl.grades[subject] || 'pre-K');
           if (currentIdx >= i) continue; // already passed (true A+ pass earlier)
           const cellKey = `${subject}/${grade}`;
+          if (this._shuttingDown()) break;   // a stop advances nothing
           const phasesRan = pp.filter((k) => k && k.startsWith(`${cellKey}:`)).length;
           if (phasesRan < 1) {
             console.warn(`[Curriculum] ⤴ FORCE-ADVANCE ${cellKey} SKIPPED — 0 teach phases fired (no real training to use)`);
@@ -16844,6 +16857,11 @@ export class Curriculum {
    * paid once per that much card work. Clamped 8–1024. Before any measurement it
    * returns 64. `DREAM_LESSON_TARGET_PAIRS` pins it.
    */
+  /** Has a stop been asked for? One read, used wherever a stop must mark nothing. */
+  _shuttingDown() {
+    return typeof globalThis._brainShutdownRequested !== 'undefined' && !!globalThis._brainShutdownRequested;
+  }
+
   _lessonPairTarget() {
     const env = (typeof process !== 'undefined' && process.env) || {};
     const pin = Number(env.DREAM_LESSON_TARGET_PAIRS);
