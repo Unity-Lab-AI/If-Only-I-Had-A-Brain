@@ -24990,45 +24990,34 @@ export class Curriculum {
     // the teach used).
     const semWTA = opts.semWTA !== false;
     const semTopK = opts.semTopK ?? 8;
-    for (let i = 0; i < pairs.length && readouts.length < sampleSize; i += step) {
+    // ⛔ THE PROBES GO OUT TOGETHER. Each `_probePropagate` is a round trip to
+    // the card holding sem_to_motor (~280 ms over the tunnel); awaited one after
+    // another, 8 samples held the teach loop ~2.2 s every check while the card
+    // sat idle — measured as 82% of `_teachAssociationPairs`' per-call time
+    // (`postMs` 83,028 of 101,057 ms). The active sets are built first, then all
+    // probes are in flight at once and the readouts are taken in the same order.
+    const _probeSets = [];
+    for (let i = 0; i < pairs.length && _probeSets.length < sampleSize; i += step) {
       const pair = pairs[i];
       if (!Array.isArray(pair) || pair.length < 2) continue;
-      const [inputWord] = pair;
-      // Use the unified pattern for sem injection so probe geometry
-      // matches teach geometry. Falls back gracefully when no GloVe.
-      const rawEmb = this._dictionaryPatternFor(inputWord);
+      const rawEmb = this._dictionaryPatternFor(pair[0]);
       if (!rawEmb || rawEmb.length === 0) continue;
-      // Apply top-K filter BEFORE tiling so the probe pattern matches
-      // what `_teachAssociationPairs` wrote during the rep loop.
       const inEmb = semWTA ? this._topKEmbedding(rawEmb, semTopK) : rawEmb;
-      // Build sem-sized input (local index space). Tile the embedding
-      // the same way _writeTiledPattern would, but into a fresh
-      // Float64Array whose index 0 maps to semRegion.start. With
-      // top-K, `inEmb[d]` is zero for all dims outside the top-K set,
-      // so only those dims fire in semInput — matching the teach-side
-      // sparse pattern.
-      // ⚠ Only the ACTIVE cells are built here, ascending — exactly the ones
-      // the sem-sized vector would have set to 1. The probe takes them as is;
-      // the full vector is made only if it has to fall back to the CPU. A fresh
-      // 1.88M-cell Float64Array per sample (15 MB, up to 8 a lesson) plus a
-      // full scan of it to find those same cells was ~15% of the main thread
-      // while teaching, with the cards waiting.
       const active = [];
       const gSize = Math.max(1, Math.floor(semSize / inEmb.length));
       for (let d = 0; d < inEmb.length; d++) {
-        // Fire on ANY non-zero top-K dim (positive OR negative) so the
-        // sparse code's full active set shapes the probe pattern, not
-        // just the positive half.
         if (inEmb[d] === 0) continue;
         for (let n = 0; n < gSize; n++) {
           const idx = d * gSize + n;
           if (idx < semSize) active.push(idx);
         }
       }
-      const out = await this._probePropagate('sem_to_motor', null, { active, size: semSize });
+      _probeSets.push(active);
+    }
+    const _outs = await Promise.all(_probeSets.map((active) =>
+      this._probePropagate('sem_to_motor', null, { active, size: semSize }).catch(() => null)));
+    for (const out of _outs) {
       if (!out || out.length === 0) continue;
-      // out is motor-sized (proj.rows). L2-normalize the vector so
-      // cosine is a pure direction comparison (magnitude-free).
       let nrm = 0;
       for (let d = 0; d < out.length; d++) nrm += out[d] * out[d];
       nrm = Math.sqrt(nrm) || 1;
@@ -25036,6 +25025,11 @@ export class Curriculum {
       for (let d = 0; d < out.length; d++) normed[d] = out[d] / nrm;
       readouts.push(normed);
     }
+    // (Per-sample notes, kept: the active cells are exactly the ones the
+    // sem-sized vector would set to 1 — any non-zero top-K dim, positive OR
+    // negative — and only those are built; a full 1.88M Float64 per sample was
+    // ~15% of the main thread. Readouts are L2-normalised so the cosine is a
+    // pure direction comparison.)
     if (readouts.length < 2) return null;
     let sumCos = 0, maxCos = -Infinity, comparisons = 0;
     for (let i = 0; i < readouts.length; i++) {
