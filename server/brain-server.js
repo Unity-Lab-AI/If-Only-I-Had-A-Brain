@@ -15053,6 +15053,29 @@ wss.on('connection', (ws, req) => {
                 + `corpse; reaping it here is what stops the new donor initialising behind a dead primary and being torn `
                 + `down mid-init.`
               );
+              // ⭐ SAME CARD, STILL HOLDING EVERYTHING → TAKE ITS PLACE, NO UPLOAD.
+              // A donor whose link stalled reconnects in seconds, before the old
+              // socket is known dead, so the close-handler rejoin grace never sees
+              // it. If the new registration still holds every matrix the old socket
+              // held (donor ≥ 0.3.50 keeps its engine), the new socket inherits the
+              // old one's role — cortex owner, cluster owner, slice holder — and
+              // nothing is re-uploaded. Measured: the pod reconnected in 3 s
+              // holding 17 matrices and was then re-uploaded over the home link.
+              const _oldHeld = (_oc.heldMatrices instanceof Set) ? [..._oc.heldMatrices] : [];
+              const _newHeld = Array.isArray(msg.heldMatrices) ? msg.heldMatrices : [];
+              if (_oldHeld.length && _oldHeld.every((m) => _newHeld.includes(m))) {
+                try {
+                  client.heldMatrices = new Set(_oldHeld);
+                  if (brain._gpuClient === _old) { brain._gpuClient = ws; brain._gpuConnected = true; }
+                  if (brain._clusterOwner instanceof Map) {
+                    for (const [cl, o] of brain._clusterOwner) if (o === _old) brain._clusterOwner.set(cl, ws);
+                  }
+                  if (Array.isArray(brain._intraSlices)) for (const s of brain._intraSlices) if (s.ws === _old) s.ws = ws;
+                  if (typeof brain._installSliceFanout === 'function' && brain._gpuClient === ws) brain._installSliceFanout(ws);
+                  brain._reattachedSockets = (brain._reattachedSockets || 0) + 1;
+                  console.log(`[Pool] REATTACH — ${client.gpuName || id} reconnected holding all ${_oldHeld.length} of its matrices; it keeps its place (${brain._gpuClient === ws ? 'cortex owner' : 'pool card'}) with NO re-upload.`);
+                } catch (e) { console.warn(`[Pool] reattach failed (falling back to the full re-init): ${e && e.message}`); }
+              }
               brain._gpuClients.delete(_old);
               if (brain._gpuClient === _old) brain._gpuClient = null;
               try { _old.terminate(); } catch { /* already gone */ }
