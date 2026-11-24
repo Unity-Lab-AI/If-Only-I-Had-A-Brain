@@ -3300,6 +3300,28 @@ const SERVER_GPU_MIXIN = {
     // DONOR PULL — a published snapshot with the SAME structure lets a remote
     // card build its slice from the release instead of over the home upload.
     let snapOk = false;
+    // PUBLISH FIRST — with no snapshot of THESE weights (a fresh walk), every
+    // remote holder is otherwise pushed its rows over the home upload, one copy
+    // per card. When two or more holders are remote, publishing once and letting
+    // each pull from GitHub costs the home link one copy in total. With one
+    // remote card it saves nothing, so it is skipped. DREAM_PUBLISH_FIRST=0 off.
+    try {
+      const _isRemote = (ws) => { const c = this.clients && this.clients.get ? this.clients.get(ws) : null; return !(c && Number(c.rttMs) >= 0 && Number(c.rttMs) < 20); };
+      const _remotes = plan.filter((p) => _isRemote(p.ws) && this._sliceCapable(p.ws)).length;
+      const _have = this._weightsSnapshot && this._weightsSnapshot.rows === matrix.rows && this._weightsSnapshot.nnz === matrix.values.length
+        && (await require('./weights-publish.js').structureHash(matrix)) === this._weightsSnapshot.structure;
+      if (!_have && _remotes >= 2 && process.env.DREAM_PUBLISH_FIRST !== '0' && process.env.DREAM_WEIGHTS_PUBLISH !== '0' && !this._weightsPublishInFlight) {
+        this._weightsPublishInFlight = true;
+        const t0 = Date.now();
+        console.log(`[Pool] PUBLISH FIRST — ${_remotes} remote cards need slices of a matrix with no snapshot; publishing it once so each pulls from GitHub instead of one home upload per card.`);
+        try {
+          let lineage = null;
+          try { const st = this._rngMod && typeof this._rngMod.brainRngState === 'function' ? this._rngMod.brainRngState() : null; if (st) lineage = String(st.seed >>> 0); } catch { /* unlabelled */ }
+          const man = await require('./weights-publish.js').publishSnapshot(matrix, { name, lineage, saveVersion: this._saveVersion || 0 });
+          if (man) { this._weightsSnapshot = man; this._weightsSnapshotAt = Date.now(); console.log(`[Pool] PUBLISH FIRST — published ${man.tag} in ${((Date.now() - t0) / 60000).toFixed(1)} min.`); }
+        } finally { this._weightsPublishInFlight = false; }
+      }
+    } catch (e) { console.warn(`[Pool] PUBLISH FIRST failed (${e && e.message}) — slices go over the home upload.`); }
     const snap = this._weightsSnapshot;
     if (snap && snap.rows === matrix.rows && snap.nnz === matrix.values.length && process.env.DREAM_DONOR_PULL !== '0') {
       try { snapOk = (await require('./weights-publish.js').structureHash(matrix)) === snap.structure; } catch { snapOk = false; }
