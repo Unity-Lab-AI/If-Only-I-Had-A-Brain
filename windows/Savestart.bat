@@ -452,8 +452,10 @@ echo.
 REM Keep this launcher window open for manual commands - but only when a
 REM person double-clicked it. Launched by the dashboard's control plane
 REM (UAL_CTL_NONINTERACTIVE=1) it closes itself when done; her brain, voice
-REM and eyes run in their own windows and are not affected.
-if defined UAL_CTL_NONINTERACTIVE exit
+REM and eyes run in their own windows and are not affected. "exit 0", never a
+REM bare "exit": a bare exit returns the last command's errorlevel (the bind
+REM wait's findstr leaves 1), and Windows Terminal keeps a tab open on non-zero.
+if defined UAL_CTL_NONINTERACTIVE exit 0
 cmd /k
 goto :eof
 

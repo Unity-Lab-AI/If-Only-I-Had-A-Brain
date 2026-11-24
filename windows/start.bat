@@ -720,7 +720,7 @@ echo.
 REM Keep this launcher window open for additional manual commands - but only
 REM when a person double-clicked it. Launched by the dashboard's control plane
 REM (UAL_CTL_NONINTERACTIVE=1) it closes itself when done.
-if defined UAL_CTL_NONINTERACTIVE exit
+if defined UAL_CTL_NONINTERACTIVE exit 0
 cmd /k
 goto :eof
 
