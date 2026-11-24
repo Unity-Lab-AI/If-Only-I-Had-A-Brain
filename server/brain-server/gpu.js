@@ -1502,6 +1502,13 @@ const SERVER_GPU_MIXIN = {
   async _moveCortexTo(newWs, oldWs, reason) {
     if (!newWs || newWs === oldWs) return;
     if (this._cortexMoveInFlight) return;
+    // Never move while a cortex upload runs: the pull below would be refused
+    // ("a cortex upload is in flight") and the old card's learning skipped. The
+    // periodic placement check tries again once the upload has landed.
+    if (this._cortexUploadInFlight) {
+      console.log(`[Pool] CORTEX MOVE deferred (${reason}) — a cortex upload is in flight; the placement check retries after it lands.`);
+      return;
+    }
     this._cortexMoveInFlight = true;
     const cc = this.cortexCluster;
     const nm = (ws) => { const c = this.clients && this.clients.get ? this.clients.get(ws) : null; return (c && (c.gpuName || c.id)) || 'donor'; };
@@ -1524,6 +1531,7 @@ const SERVER_GPU_MIXIN = {
       const rearm = globalThis.__rearmCortexGpuUpload;
       if (typeof rearm === 'function') rearm(`cortex moved: ${reason}`);
       this._cortexMovesDone = (this._cortexMovesDone || 0) + 1;
+      this._lastCortexMoveAt = Date.now();
       this._cortexMoveInFlight = false;
     }
   },
@@ -1815,17 +1823,37 @@ const SERVER_GPU_MIXIN = {
       const _ratioEnv = Number(process.env.DREAM_POOL_CORTEX_MOVE_RATIO);
       const _ratio = Number.isFinite(_ratioEnv) && _ratioEnv >= 0 ? _ratioEnv : 1.5;
       let _keepPrev = !!(prev && remaining.has(prev) && remaining.get(prev) >= cost);
-      if (_keepPrev && n === 'cortex' && _ratio > 0) {
+      // ⛔ HOLD-DOWN — measured: a rented card dropped, its supervisor relaunched
+      // the donor a minute later, and the partition moved the cortex straight
+      // back to it while the failover upload was still running, so the move
+      // could pull nothing and a second ~18-minute upload began. A card may take
+      // the cortex only after it has stayed connected `DREAM_POOL_CORTEX_HOLD_S`
+      // (default 300 s), no sooner than `DREAM_POOL_CORTEX_MOVE_COOLDOWN_S`
+      // (default 1800 s) after the last move, and never while an upload runs.
+      // The move then happens on the periodic placement check, not at register.
+      const _holdS = Number.isFinite(+process.env.DREAM_POOL_CORTEX_HOLD_S) ? +process.env.DREAM_POOL_CORTEX_HOLD_S : 300;
+      const _coolS = Number.isFinite(+process.env.DREAM_POOL_CORTEX_MOVE_COOLDOWN_S) ? +process.env.DREAM_POOL_CORTEX_MOVE_COOLDOWN_S : 1800;
+      const _now = Date.now();
+      const _settled = (ws) => {
+        const c = this.clients && this.clients.get ? this.clients.get(ws) : null;
+        return !!(c && c.connectedAt && (_now - c.connectedAt) >= _holdS * 1000);
+      };
+      const _moveAllowed = !this._cortexUploadInFlight && !this._cortexMoveInFlight
+        && (_now - (this._lastCortexMoveAt || 0)) >= _coolS * 1000;
+      if (_keepPrev && n === 'cortex' && _ratio > 0 && _moveAllowed) {
         const prevCap = remaining.get(prev);
         for (const [ws, left] of remaining) {
-          if (ws !== prev && left >= cost && left >= prevCap * _ratio) { _keepPrev = false; break; }
+          if (ws !== prev && left >= cost && left >= prevCap * _ratio && _settled(ws)) { _keepPrev = false; break; }
         }
       }
       if (_keepPrev) { best = prev; bestLeft = remaining.get(prev); }
       else if (n === 'cortex') {
         // The atomic unit with the matrices goes to the card with the MOST
         // room — it is the one cluster whose size can exclude cards.
-        for (const [ws, left] of remaining) { if (left >= cost && left > bestLeft) { best = ws; bestLeft = left; } }
+        // Settled cards first (the hold-down above); a just-joined card takes it
+        // only when no settled card can hold it.
+        for (const [ws, left] of remaining) { if (_settled(ws) && left >= cost && left > bestLeft) { best = ws; bestLeft = left; } }
+        if (!best) for (const [ws, left] of remaining) { if (left >= cost && left > bestLeft) { best = ws; bestLeft = left; } }
       } else {
         // ⛔ BEST-FIT, NOT WORST-FIT — caught by the harness, not by reasoning.
         // The first cut picked the card with the MOST room left, so with a
@@ -1868,6 +1896,8 @@ const SERVER_GPU_MIXIN = {
     for (const [n, ws] of owner) { if (!byCard.has(ws)) byCard.set(ws, []); byCard.get(ws).push(n); }
     const summary = [...byCard].map(([ws, cl]) => `${_name(ws)}: [${cl.join(', ')}] (${Math.round(this._donorCapacityMB(ws) - remaining.get(ws))}/${Math.round(this._donorCapacityMB(ws))} MB)`).join(' · ');
     const _pmv = this._pendingCortexMove;
+    // The 60 s placement check stays quiet when nothing changed.
+    if (reason === 'placement check' && !moved.length && !_pmv && !unplaced.length) return owner;
     console.log(`[Pool] PARTITION${reason ? ' (' + reason + ')' : ''} — ${live.length} card(s), ${owner.size}/${names.length} clusters placed${unplaced.length ? ` · ⛔ UNPLACED: ${unplaced.join(', ')}` : ''}${moved.length ? ` · moved: ${moved.join(', ')}` : ''} → ${summary}${_pmv ? ` · cortex MOVING → ${_name(_pmv.to)} (weights pulled off ${_name(_pmv.from)} first)` : ''}`);
     return owner;
   },
@@ -6181,8 +6211,22 @@ const SERVER_GPU_MIXIN = {
     // ⛔ The real fix is not here: it is the donor keeping its own on-disk
     //   checkpoint and handing it back on reconnect, which bounds the loss
     //   without the host paying the transfer at all.
-    const GAP_MS = Number.isFinite(+process.env.DREAM_READBACK_MIN_GAP_MS)
+    let GAP_MS = Number.isFinite(+process.env.DREAM_READBACK_MIN_GAP_MS)
       ? Math.max(0, +process.env.DREAM_READBACK_MIN_GAP_MS) : 1_800_000;
+    // ⭐ A REMOTE cortex holder gets a shorter gap. A rented card can vanish
+    // (dropped, or terminated with its disk) and this gap is the bound on what
+    // dies with it; measured, one dropped after ~45 min with no pull since the
+    // move. Remote = a median heartbeat RTT over 200 ms (the loopback card reads
+    // 0 ms, the tunnelled pod ~1,100 ms). `DREAM_READBACK_REMOTE_GAP_MS`
+    // (default 600,000 = 10 min). The pull runs over the tunnel, so it costs
+    // time on the pod's link — that trade is the point.
+    try {
+      const _oc = this.clients && this.clients.get ? this.clients.get(ws) : null;
+      if (_oc && Number(_oc.rttMs) > 200) {
+        const _r = Number.isFinite(+process.env.DREAM_READBACK_REMOTE_GAP_MS) ? Math.max(0, +process.env.DREAM_READBACK_REMOTE_GAP_MS) : 600_000;
+        GAP_MS = Math.min(GAP_MS, _r);
+      }
+    } catch { /* keep the default gap */ }
     // The ONE owner of the gap. The published state read its own copy with a
     // default of 3,600,000 that was never moved when this one was halved to
     // 1,800,000, so the board reported an hourly cadence the code had stopped

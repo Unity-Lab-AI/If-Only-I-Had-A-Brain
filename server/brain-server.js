@@ -10750,6 +10750,51 @@ function _rearmCortexGpuUpload(reason) {
 // owner and NEVER re-uploaded the cortex to it.
 globalThis.__rearmCortexGpuUpload = _rearmCortexGpuUpload;
 
+// POOL — re-partition and act on it: gpu_init every cluster whose owner
+// changed, then run a pending cortex move through `_moveCortexTo` (pull the old
+// card's weights first). The ONE implementation, used at register and by the
+// placement check below; the hold-down / cooldown / upload-in-flight rules live
+// in the partition itself.
+function _applyPoolPartition(reason, moveReason) {
+  try {
+    if (typeof brain._partitionClustersAcrossPool !== 'function') return;
+    const before = brain._clusterOwner instanceof Map ? new Map(brain._clusterOwner) : new Map();
+    const after = brain._partitionClustersAcrossPool(reason);
+    const byOwner = new Map();
+    for (const [cl, owner] of after) {
+      if (before.get(cl) === owner) continue;           // unchanged — nothing to send
+      if (!byOwner.has(owner)) byOwner.set(owner, new Set());
+      byOwner.get(owner).add(cl);
+      // A moved cluster must re-confirm on its NEW card before the tick trusts it.
+      if (brain._gpuInitializedConfirmed) delete brain._gpuInitializedConfirmed[cl];
+      if (brain._gpuInitialized) delete brain._gpuInitialized[cl];
+    }
+    for (const [owner, set] of byOwner) {
+      if (!owner || owner.readyState !== 1) continue;
+      const n = brain._gpuInitDonorClusters(owner, set);
+      const oc = brain.clients.get(owner);
+      console.log(`[Pool] ${(oc && (oc.gpuName || oc.id)) || 'donor'} now owns [${[...set].join(', ')}] — gpu_init sent for ${n} cluster(s).`);
+    }
+    const _pm = brain._pendingCortexMove;
+    brain._pendingCortexMove = null;
+    if (_pm && typeof brain._moveCortexTo === 'function') {
+      brain._moveCortexTo(_pm.to, _pm.from, moveReason || reason).catch(() => {});
+    }
+  } catch (e) { console.warn(`[Pool] re-partition (${reason}) failed (non-fatal):`, e && e.message); }
+}
+
+// THE PLACEMENT CHECK — a joining card is never handed the cortex at register
+// (the hold-down), so something has to look again once it has settled. Every
+// 60 s, with ≥ 2 cards, re-run the partition; it moves the cortex only when a
+// settled card has ≥ RATIO× the room, the cooldown has passed, and no upload
+// is in flight. Cheap: a few map operations when nothing changes.
+setInterval(() => {
+  try {
+    if (!brain || !brain._gpuClients || brain._gpuClients.size < 2) return;
+    _applyPoolPartition('placement check', 'a settled card has more room');
+  } catch { /* the check must never throw into the timer */ }
+}, 60000).unref?.();
+
 // T14.21 — catch any rejection from brain.start() so async init failures
 // surface with a stack trace instead of silently terminating the process
 // via Node's default --unhandled-rejections=throw behavior.
@@ -14712,34 +14757,8 @@ wss.on('connection', (ws, req) => {
           // the weights live in the CPU master, and cortex's matrices re-upload
           // through the existing cortex-owner path when cortex moves).
           setTimeout(() => {
-            try {
-              if (ws.readyState !== 1 || typeof brain._partitionClustersAcrossPool !== 'function') return;
-              const before = brain._clusterOwner instanceof Map ? new Map(brain._clusterOwner) : new Map();
-              const after = brain._partitionClustersAcrossPool(`gpu_register ${id}`);
-              const byOwner = new Map();
-              for (const [cl, owner] of after) {
-                if (before.get(cl) === owner) continue;           // unchanged — nothing to send
-                if (!byOwner.has(owner)) byOwner.set(owner, new Set());
-                byOwner.get(owner).add(cl);
-                // A moved cluster must re-confirm on its NEW card before the
-                // tick trusts it; the flat confirmed-map is correct because a
-                // cluster has exactly one owner at a time.
-                if (brain._gpuInitializedConfirmed) delete brain._gpuInitializedConfirmed[cl];
-                if (brain._gpuInitialized) delete brain._gpuInitialized[cl];
-              }
-              for (const [owner, set] of byOwner) {
-                if (owner.readyState !== 1) continue;
-                const n = brain._gpuInitDonorClusters(owner, set);
-                const oc = brain.clients.get(owner);
-                console.log(`[Pool] ${(oc && (oc.gpuName || oc.id)) || 'donor'} now owns [${[...set].join(', ')}] — gpu_init sent for ${n} cluster(s).`);
-              }
-              // A stronger card took the cortex: pull, switch, re-upload — the one way.
-              const _pm = brain._pendingCortexMove;
-              brain._pendingCortexMove = null;
-              if (_pm && typeof brain._moveCortexTo === 'function') {
-                brain._moveCortexTo(_pm.to, _pm.from, `a card with more room joined (${id})`).catch(() => {});
-              }
-            } catch (e) { console.warn('[Pool] re-partition on register failed (non-fatal):', e && e.message); }
+            if (ws.readyState !== 1) return;
+            _applyPoolPartition(`gpu_register ${id}`, `a card with more room joined (${id})`);
           }, 1500);
           // PA.4.8 — capture donor compute capacity (compute.html reports its
           // WebGPU adapter VRAM) for community-compute milestone scaling.
