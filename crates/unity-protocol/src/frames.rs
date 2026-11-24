@@ -228,26 +228,35 @@ pub fn expand_lesson(l: &Lesson) -> Vec<LessonOp> {
         v
     };
     let tag: Vec<u32> = (0..l.tag_len).map(|k| l.tag_row_start + k).collect();
+    // v0.3.55 — sem and motor go to the card as TILES (dims + group, clipped at
+    // the region size): the same cells `tiles()` lists, filled by the card.
+    // An empty list still writes nothing, exactly as before.
+    let tile_dims = |dims: &[u16], group: u32, size: u32| -> Vec<u32> {
+        if group == 0 { return Vec::new(); }
+        dims.iter().map(|&d| d as u32).filter(|&d| d.saturating_mul(group) < size).collect()
+    };
     for (sem, mot, wrong) in &l.pairs {
-        let sem_idx = tiles(sem, l.sem_group, Some(l.sem_size));
-        let mot_idx = tiles(mot, l.motor_group, Some(l.motor_size));
+        let sem_dims = tile_dims(sem, l.sem_group, l.sem_size);
+        let mot_dims = tile_dims(mot, l.motor_group, l.motor_size);
+        // The lateral mask needs the motor cells themselves; built only then.
+        let mot_idx = if l.lateral.is_some() { tiles(mot, l.motor_group, Some(l.motor_size)) } else { Vec::new() };
         // ── positive block: clear → sem → motor → tag (each with its twin), then ops
-        let block = |out: &mut Vec<LessonOp>, motor_idx: &Vec<u32>| {
+        let block = |out: &mut Vec<LessonOp>, motor_dims: &Vec<u32>| {
             for r in [&l.sem_region, &l.motor_region, &l.tag_region] {
                 for c in &targets { out.push(LessonOp::Clear { cluster: (*c).clone(), region: r.clone() }); }
             }
             // A pattern with no active dims sends no frame on the brain's path.
-            if !sem_idx.is_empty() {
-                for c in &targets { out.push(LessonOp::Write { cluster: (*c).clone(), region: l.sem_region.clone(), indices: sem_idx.clone() }); }
+            if !sem_dims.is_empty() {
+                for c in &targets { out.push(LessonOp::Tiles { cluster: (*c).clone(), region: l.sem_region.clone(), dims: sem_dims.clone(), group: l.sem_group, size: l.sem_size }); }
             }
-            if !motor_idx.is_empty() {
-                for c in &targets { out.push(LessonOp::Write { cluster: (*c).clone(), region: l.motor_region.clone(), indices: motor_idx.clone() }); }
+            if !motor_dims.is_empty() {
+                for c in &targets { out.push(LessonOp::Tiles { cluster: (*c).clone(), region: l.motor_region.clone(), dims: motor_dims.clone(), group: l.motor_group, size: l.motor_size }); }
             }
             if !tag.is_empty() {
                 for c in &targets { out.push(LessonOp::Write { cluster: (*c).clone(), region: l.tag_region.clone(), indices: tag.clone() }); }
             }
         };
-        block(&mut out, &mot_idx);
+        block(&mut out, &mot_dims);
         for (n, lr) in &l.pos_ops { out.push(LessonOp::Bound { name: n.clone(), lr: *lr }); }
         // ── lateral: dominant bucket over the motor actives (first max wins), mask the rest
         if let Some(lat) = &l.lateral {
@@ -265,8 +274,8 @@ pub fn expand_lesson(l: &Lesson) -> Vec<LessonOp> {
         }
         // ── contrastive pass: same sem, the WRONG motor, same tag, then the anti ops
         if let Some(wrong) = wrong {
-            let wrong_idx = tiles(wrong, l.motor_group, Some(l.motor_size));
-            block(&mut out, &wrong_idx);
+            let wrong_dims = tile_dims(wrong, l.motor_group, l.motor_size);
+            block(&mut out, &wrong_dims);
             for (n, lr) in &l.anti_ops { out.push(LessonOp::Bound { name: n.clone(), lr: *lr }); }
         }
     }
@@ -1033,7 +1042,9 @@ mod tests {
         let got: Vec<String> = expand_lesson(&lesson).iter().map(|op| match op {
             LessonOp::Clear { region, .. } => format!("C {region}"),
             LessonOp::Write { region, indices, .. } => format!("W {region} {}", join(indices)),
-            LessonOp::Tiles { region, dims, group, size, .. } => format!("T {region} {group} {size} {}", join(dims)),
+            // A tiled write is checked as the cells it sets — the recording of
+            // the brain's per-pair path lists cells.
+            LessonOp::Tiles { region, dims, group, size, .. } => format!("W {region} {}", join(&tile_indices(dims, *group, *size))),
             LessonOp::Bound { name, lr } => format!("B {name} {lr:.6}"),
             LessonOp::Masked { name, lr, rows } => format!("M {name} {lr:.6} {}", join(rows)),
         }).collect();
