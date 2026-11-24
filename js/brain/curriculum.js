@@ -21757,6 +21757,37 @@ export class Curriculum {
       if (_fastLesson) { f.fastCalls++; f.fastPairs += pairs.length * reps; } else f.cpuCalls++;
     }
     _psPreMs += Date.now() - startMs;
+    // ⭐⭐ REPS RIDE TOGETHER. Each rep used to be its own lesson of this call's
+    // pairs — ~25 on average — so a 96 GB card finished each in ~17 ms and sat
+    // idle between them (measured: 0% on 11 of 12 samples while the brain's
+    // thread was 48% idle). Consecutive reps' pairs now go to the card in ONE
+    // lesson of up to `DREAM_LESSON_MERGE_PAIRS` (4096): the same pairs, the
+    // same per-rep negative draws, in the same order — the card applies them in
+    // sequence exactly as it applied the separate lessons. Counters commit only
+    // when the card accepts the merged frame.
+    const _mergeMax = (() => { const v = Number(process.env.DREAM_LESSON_MERGE_PAIRS); return v > 0 ? Math.floor(v) : 4096; })();
+    let _mLp = [], _mSg = 0, _mMg = 0;
+    let _mAcc = { t: 0, sk: 0, af: 0, wa: 0, swa: 0, semAct: 0, semN: 0, ls: null, lm: null };
+    const _flushMerged = async () => {
+      if (!_mLp.length) return;
+      const lp = _mLp, acc = _mAcc, sg = _mSg, mg = _mMg;
+      _mLp = []; _mAcc = { t: 0, sk: 0, af: 0, wa: 0, swa: 0, semAct: 0, semN: 0, ls: null, lm: null }; _mSg = 0; _mMg = 0;
+      if (typeof cluster._gpuProxy.lessonSlot === 'function') {
+        try { await cluster._gpuProxy.lessonSlot(); } catch { /* pacing is best-effort */ }
+      }
+      const sp = this._teachStageProfile || (this._teachStageProfile = {});
+      const f = sp.cardLesson || (sp.cardLesson = { fastCalls: 0, cpuCalls: 0, fastPairs: 0 });
+      if (cluster._gpuProxy.teachLesson({ ..._lessonBase, semGroup: sg, motorGroup: mg, pairs: lp })) {
+        trained += acc.t; skipped += acc.sk; antiFires += acc.af; wtaApplied += acc.wa; semWtaApplied += acc.swa;
+        _semActiveSum += acc.semAct; _semActiveN += acc.semN; _psN += acc.t;
+        if (acc.ls) { _lastSemFeat = acc.ls; _lastMotorFeat = acc.lm; }
+        this._relTagWrites = (this._relTagWrites || 0) + (_lessonBase.tagLen ? acc.t + acc.af : 0);
+        f.lessons = (f.lessons || 0) + 1;
+        f.lessonPairs = (f.lessonPairs || 0) + acc.t;
+      } else {
+        f.lessonRefused = (f.lessonRefused || 0) + 1;
+      }
+    };
     for (let rep = 0; rep < reps; rep++) {
       // ⭐⭐ `PHASELOOP.1` (2026-08-30) — BANK THE CURSOR ON EVERY REP, NOT ONLY
       //   AT A BUDGET STOP. THIS IS WHY THE WALK COULD NEVER PASS ITS FIRST CELL.
@@ -21824,6 +21855,7 @@ export class Curriculum {
         // Banked above already; returning the same SHAPE as the budget stop so a
         // caller cannot tell the two apart by accident and silently treat an
         // interrupted phase as a finished one.
+        await _flushMerged();
         const _owedNow = reps - rep;
         console.warn(`[Curriculum][${label}] PHASELOOP.1 - SHUTDOWN at a clean rep boundary, rep ${rep}/${reps} (${trained} pair-teaches landed). ${_cursorKey ? `Cursor BANKED as '${_cursorKey}' = ${_owedNow} rep(s) owed — the next boot RESUMES the remainder instead of repeating the whole dose.` : 'NO CURSOR KEY on this call, so this remainder CANNOT be banked and the next visit repeats the dose.'}`);
         _settleCpu();
@@ -21926,20 +21958,16 @@ export class Curriculum {
           lp.push([sd, _dimsOf(outEmbMotor), wd]);
           t++;
         }
-        // v0.3.45 — wait for a free in-flight slot so the card's lesson queue
-        // stays bounded (a no-op on older donors, which do not ack lessons).
-        if (okShape && lp.length && typeof cluster._gpuProxy.lessonSlot === 'function') {
-          try { await cluster._gpuProxy.lessonSlot(); } catch { /* pacing is best-effort; never block a lesson on it */ }
-        }
-        if (okShape && lp.length && cluster._gpuProxy.teachLesson({ ..._lessonBase, semGroup: sg, motorGroup: mg, pairs: lp })) {
-          trained += t; skipped += sk; antiFires += af; wtaApplied += wa; semWtaApplied += swa;
-          _semActiveSum += semAct; _semActiveN += semN; _psN += t;
-          if (ls) { _lastSemFeat = ls; _lastMotorFeat = lm; }
-          this._relTagWrites = (this._relTagWrites || 0) + (_lessonBase.tagLen ? t + af : 0);
-          const sp = this._teachStageProfile || (this._teachStageProfile = {});
-          const f = sp.cardLesson || (sp.cardLesson = { fastCalls: 0, cpuCalls: 0, fastPairs: 0 });
-          f.lessons = (f.lessons || 0) + 1;
-          f.lessonPairs = (f.lessonPairs || 0) + t;
+        // Merged path: this rep's pairs join the pending lesson (flushed at the
+        // merge size, at a group-shape change, and after the last rep).
+        if (okShape && lp.length) {
+          if (_mLp.length && (_mSg !== sg || _mMg !== mg || _mLp.length + lp.length > _mergeMax)) await _flushMerged();
+          _mSg = sg; _mMg = mg;
+          for (const p of lp) _mLp.push(p);
+          _mAcc.t += t; _mAcc.sk += sk; _mAcc.af += af; _mAcc.wa += wa; _mAcc.swa += swa;
+          _mAcc.semAct += semAct; _mAcc.semN += semN;
+          if (ls) { _mAcc.ls = ls; _mAcc.lm = lm; }
+          if (rep === reps - 1) await _flushMerged();
           _repOnCard = true;
         } else {
           // ⚠ A refused lesson has already drawn its wrong-answer samples, so the
@@ -22171,6 +22199,9 @@ export class Curriculum {
         } catch { /* probe failure leaves rep loop running */ }
       }
     }
+    // Any reps still pending in the merged lesson go to the card now (the loop
+    // can end before its last rep — a convergence exit).
+    await _flushMerged();
     // GINTRA — reset the shadow-cadence flags so they never leak into teach
     // paths that don't cycle them (mirrors the word-integrated loop's reset).
     cluster._teachIntermediateRep = false;
