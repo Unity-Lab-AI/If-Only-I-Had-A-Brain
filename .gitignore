@@ -20,6 +20,10 @@ server/resource-config.json
 server/runpod-key.json
 server/runpod-settings.json
 
+# === CPU profiles from /admin/cpuprofile ===
+# Raw V8 samples of the main thread, tens of MB each; machine- and boot-local.
+server/cpuprofile-*.cpuprofile
+
 # === T18.12 per-machine runtime artifact ===
 # autoClearStaleState() writes SHA256 of the brain-logic source files
 # to this file on every boot. Compared against the prior-boot value to
