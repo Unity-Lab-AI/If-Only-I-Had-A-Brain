@@ -7,57 +7,45 @@ sources:
   - server/brain-server.js
   - server/brain-server/gpu.js
   - server/brain-server/chat.js
-  - server/runpod-control.js
+  - server/brain-server/image-engine.js
+  - server/brain-server/visual-memory.js
+  - server/definition-service.js
+  - server/image-render.py
   - js/brain/curriculum.js
   - donor-app/src/donor.rs
-  - donor-app/src/gui.rs
-  - donor-app/src/cuda_kernels.cu
-  - donor-app/src/shaders/lif.wgsl
-  - docs/EQUATIONS.md
-  - docs/POOL-SHARDING.md
+  - windows/Savestart.bat
 verified-scope: |
-  OVERWRITTEN 2026-11-24 (04:15). This file is a SNAPSHOT of the present
+  OVERWRITTEN 2026-11-24 (12:01). This file is a SNAPSHOT of the present
   and is overwritten, never appended. The previous snapshot is in git:
   git log -p docs/NOW.md.
 ---
 
-# NOW — 2026-11-24, 04:15
+# NOW — 2026-11-24, 12:01
 
 ## Where she is
 
 | | |
 |---|---|
-| state | **STOPPED** on purpose — Kindergarten English, pre-cell vocabulary (about 10,600 words still owed). Next start is a Savestart; no fresh walk is needed |
-| cards | your 4070 Ti SUPER + one rented RTX PRO 6000 (`ua8x877eiqz63m`). **One card per job:** the PRO 6000 holds her cortex and all 17 matrices, your card steps the other clusters, and no card recomputes another's work. 200 M neurons (`DREAM_BRAIN_BUDGET_MB=8000`) — the most your card can still hold alone if the pod goes |
-| donor | **0.3.52** — a restarted brain ADOPTS the matrices a card still holds for it (no 20–30 min re-upload), and copies the card's weights back paced (~2 MB/s) so the link never fills. The first start after the release is still one full upload: the pod's donor restarts onto the new version with an empty card |
-| next restart | `Savestart.bat` keeps this walk; `start.bat` is a fresh walk |
-| auto-stop | ON — stopping her terminates her pods |
+| state | **RESTARTING** — an Update-Savestart pressed at 11:59 (build `ea2e26fb` + the window fix `72631279`). Kindergarten English: the pre-cell vocabulary is done (8,103 learned) and she is in the cell's teaching phases (sentence list), walking toward the first gate. Training kept; no fresh walk |
+| cards | your 4070 Ti SUPER + the rented RTX PRO 6000 (`ua8x877eiqz63m`). **One card per job:** the pod holds her cortex and all 17 matrices, your card steps the other 7 clusters. 200 M neurons (`DREAM_BRAIN_BUDGET_MB=8000`) — the most your card can still hold alone if the pod goes |
+| donor | **0.3.52** on both cards. A restarted brain **adopts** the matrices a card still holds for it — seen on every restart since 11:12: `17 matrices adopted from the card`, teaching in ~25 s instead of a 20–30 min upload. The pod saves its own checkpoint every 10 min (seen from 10:36) |
+| eyes | **SDXL base 1.0** (local, `models/image/`) — writes real English when her request quotes words ("OPEN" spelled right on your card), no default negative prompt; ~6 GB per render, 24–33 s; the VRAM floor is 6,162 MB. Image bank fresh (v16); 1.6 GB of old stores deleted |
+| words | when every dictionary misses: Wikipedia, then Urban Dictionary (not grade-gated); run-together phrases split and checked against Wikipedia; misspellings are **never defined** — taught as the real word; contractions stay whole |
+| next restart | the dashboard's Update-Savestart; the launcher window now closes itself |
 
-## What changed tonight (all on `main`, both remotes)
+## What changed today (all on `main`, both remotes)
 
 | | |
 |---|---|
-| **refractoriness** | each spike lowers the Rulkov slow variable by β = 0.016 (derived, docs/EQUATIONS.md §3) — her firing had no stable middle (flipped ~1.5% ↔ ~20%) |
-| **row slices split, not mirrored** | below 4 cards every card trains its own rows, sized by speed; from 4 cards they pair up so a drop costs nothing (`DREAM_SLICE_REPLICAS`) |
-| **rejoin without re-upload** | a donor keeps its engine across a reconnect and reports `heldMatrices`; a dropped slice holder has 30 s to come back and is re-attached with nothing sent |
-| **no room moves while sliced** | neither the placement check nor a bigger card registering moves her language area any more (seen 04:07: `CORTEX MOVE for room skipped`) |
-| **slices by speed** | once every card has a measured lesson time, rows follow rows-per-ms, capped by room |
-| **uploads** | no double upload around a move; a remote owner pulls from the GitHub snapshot; publish-first with ≥2 remote cards; rejoining cards pull (seen: 1.2 GB slice with 82 MB sent) |
-| **donor 0.3.49/0.3.50** | every socket send bounded at 30 s (the pod freeze: every thread parked on an unbounded send); version floor = current release; Update button |
-| **no skipped words** | a word cut short by a pause is retried from its first sense (seen live: `↻ "should" … retry 2/3`); the retry now waits for the pause to end |
-| **vocabulary queue** | 10 min of its own per dream window |
-| **pods** | Secure Cloud by default; a pod that never joins is terminated after 10 min |
-| **art** | seen colours painted as seen; no white-pen ink on seen subjects; imagined scenes on 45% of recall-miss ticks |
-| **leaderboard** | slice holders credited their share; lessons carry work credit |
+| **pod drops** | four causes found and fixed: her line-art trace, her looks (`perceive`/`stylizeField`) and renders no longer ride the pod link; the brain stopped pulling 6.8 GB of weights off the pod every 10 min (it filled the link until it dropped) — now a paced pull, hourly, ~2 MB/s |
+| **no double work** | no compute mirror while clusters are split; the bigger card takes the cortex before any upload |
+| **adopt + paced pull** | donor 0.3.52 — see above |
+| **drawing** | pencil/ink are value drawings; she keeps up to 12 real looks of a thing and draws the one her mind is on; nothing is drawn as a subject that is mostly a describing word (white, round, second) or a mash-up (ant bunny, larva cow); looks follow what she is thinking and being taught |
+| **vocabulary** | words whose last sense was all function words (which, them, who…) were never learned — fixed; a stop no longer runs the cell on during shutdown |
+| **launchers** | wait for the old brain to let go of its log before starting (a press once left her down); the start window closes itself |
 
-## Measured tonight
+## Open — on the board (`docs/TODO.md`)
 
-- Definitions on two healthy cards: **46 words / 1,736 senses a minute** (03:31).
-- Your card alone: main matrix upload ~480–500 MB/s; a pod over the home link: 8–72 MB/s.
-- Heap after a two-card upload: 205.5 MB (WATCHFIX.9 closed).
-
-## Open
-
-- 14 built rows waiting on a live reading (each row names its sign) — board `docs/TODO.md`.
-- Owner-drop re-attach (the cortex owner still moves); lesson relay (matters at thousands of cards).
-- Readings only a run gives: `TEACHSPEED.4`, `MULTICARD.READ`, `KNOBTPL.2`, firing settling near 7.5%.
+- **MEMCLIMB** — native memory climbed ~0.9 GB/min during one sentence-list phase (63 → 75 GB), then levelled off; watched, cause not yet named.
+- Form **blending** is built and switched off — the shapes tore on real renders.
+- Image size: her looks are requested at 512 (SDXL draws 1024 and scales); 1024 delivered is one knob, held back for memory.
