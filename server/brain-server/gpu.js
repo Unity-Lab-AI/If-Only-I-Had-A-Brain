@@ -3362,7 +3362,19 @@ const SERVER_GPU_MIXIN = {
     // each pull from GitHub costs the home link one copy in total. With one
     // remote card it saves nothing, so it is skipped. DREAM_PUBLISH_FIRST=0 off.
     try {
-      const _isRemote = (ws) => { const c = this.clients && this.clients.get ? this.clients.get(ws) : null; return !(c && Number(c.rttMs) >= 0 && Number(c.rttMs) < 20); };
+      // ⚠ At boot no round trip has been measured yet, and an unknown RTT used
+      // to count as remote — so this machine's own card was counted, the walk
+      // waited on a GitHub publish, and the local card pulled from GitHub
+      // instead of loading at local speed. Unmeasured → the card is local when
+      // it is this machine's GPU (the identity the remote-readback check uses).
+      const _host = this._perfStats && this._perfStats.gpuName;
+      const _isRemote = (ws) => {
+        const c = this.clients && this.clients.get ? this.clients.get(ws) : null;
+        if (!c) return true;
+        const rtt = Number(c.rttMs);
+        if (rtt >= 0 && Number.isFinite(rtt)) return rtt >= 20;
+        return !(_host && c.gpuName && String(c.gpuName) === String(_host));
+      };
       const _remotes = plan.filter((p) => _isRemote(p.ws) && this._sliceCapable(p.ws)).length;
       const _have = this._weightsSnapshot && this._weightsSnapshot.rows === matrix.rows && this._weightsSnapshot.nnz === matrix.values.length
         && (await require('./weights-publish.js').structureHash(matrix)) === this._weightsSnapshot.structure;
