@@ -187,6 +187,38 @@ function _loadOtherPos() {
     }
   } catch { _otherPos = null; _otherPosTag = null; }
 }
+// DOES ENGLISH USE THIS WORD AS SOMETHING OTHER THAN A THING? A word granted
+// 'concrete' by one rare noun sense ("no" = nobelium, "first" = first gear,
+// "want" = a need) was being looked up and drawn, and the generator, handed a
+// non-thing, answered with studio jewellery shots — rings and orbs from above.
+// The witness is WordNet's own tagged-corpus counts, per part of speech:
+//   • its primary noun sense is abstract AND another reading is at least as
+//     attested as the noun ("no", "want", "first", "build");
+//   • or another reading out-attests the noun more than twice over ("well",
+//     "here", "down", "run");
+//   • or the noun barely occurs and another reading beats it ("equal").
+// "cat"/"door"/"book"/"fire"/"face" lead as nouns and pass. An inflection the
+// noun index lacks ("equals") is read through its stem.
+function otherPosLeads(word) {
+  _load(); _loadOtherPos();
+  if (!_index || !_otherPosTag) return false;
+  let w = String(word || '').toLowerCase().trim().replace(/\s+/g, '_');
+  if (!w) return false;
+  if (!_index.has(w) && !_otherPosTag.has(w) && w.length > 3 && w.endsWith('s')) w = w.slice(0, -1);
+  const e = _index.get(w);
+  const nt = e ? (e.tag | 0) : 0;
+  const ot = _otherPosTag.get(w) | 0;
+  if (ot <= 0) return false;
+  const prim = primaryLex(w);
+  // ⚠ Only for a THINLY attested noun (≤ 4): "fire" (event-primary, verb 8 vs
+  // noun 6) and "light" (12 vs 12) are real nouns English uses constantly, and
+  // the first cut refused both.
+  if (prim >= 0 && !CONCRETE_LEX.has(prim) && ot >= nt && nt <= 4) return true;
+  if (ot > 2 * nt) return true;
+  if (nt <= 1 && ot > nt) return true;
+  return false;
+}
+
 function knownOnlyNonNoun(word) {
   _load(); _loadOtherPos();
   const w = String(word || '').toLowerCase().trim();
@@ -374,4 +406,4 @@ function fuseRole(word) {
   return CONCRETE_LEX.has(lex) ? 'kind' : null;
 }
 
-module.exports = { drawableVerdict, primaryLex, knownDescriptor, knownOnlyNonNoun, unattestedNoun, descendsFromJuvenile, verbLeads, fuseRole };
+module.exports = { drawableVerdict, primaryLex, knownDescriptor, knownOnlyNonNoun, otherPosLeads, unattestedNoun, descendsFromJuvenile, verbLeads, fuseRole };

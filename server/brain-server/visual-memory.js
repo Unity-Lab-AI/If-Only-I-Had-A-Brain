@@ -81,7 +81,13 @@ const path = require('path');
 // full-scene photo from the old sidecar that the drawing lane could not find a
 // subject in; her looks now come from this project's own renderer. Same
 // contract as every bump: imagery cleared, weights and training untouched.
-const VM_DB = path.join(__dirname, '..', 'visual-memory-v11.db');
+// ⭐ v12 (2026-11-24) — every v11 look was rendered on the grey studio product-
+// shot tail, so each learned palette was near-grey (max saturation 0.08–0.3
+// measured on her stored skeletons) and non-things she looked up ("first",
+// "no", "equals") came back as plates and rings seen from above. The tail is
+// fixed; the looks learned on it are left behind the same way as every bump —
+// imagery cleared, weights and training untouched.
+const VM_DB = path.join(__dirname, '..', 'visual-memory-v12.db');
 // NOLIMIT (ruled 2026-08-20: the equations behind her mind's-eye imagery are
 // not to be limited). 384 concepts was a small number for a mind that will walk K→PhD
 // and see everything on the way — she would start FORGETTING what things look like
@@ -1626,7 +1632,20 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // STYLEBLEED — the strings live in eye-style.js (byte-identical; the ONE
     // owner the drawability gate derives its provenance set from).
     const { EYE_STYLE } = require('./eye-style.js');
-    const subjectFraming = conceptIsPerson ? EYE_STYLE.photoPerson : EYE_STYLE.photoObject;
+    // ⭐ PARALLAX — a thing has more than one face. Each look takes a camera
+    // angle drawn from her own seeded stream, so repeat looks of one concept
+    // see it from different sides and the form bank (up to 3 variants) holds
+    // more than one view of it. ⛔ Straight-down is not among them: a top view
+    // is what turned a door or a plate into a ring.
+    const VIEWS = ['seen from the front', 'seen from a three-quarter angle', 'seen from the side', 'seen from slightly above', 'seen from a low angle'];
+    let view = VIEWS[0];
+    try {
+      const u = (typeof this._rand === 'function') ? this._rand('look-viewpoint') : Math.random();
+      view = VIEWS[Math.min(VIEWS.length - 1, Math.floor(u * VIEWS.length))];
+    } catch { /* first view */ }
+    // "one whole <c>" — an unqualified "all of it" came back as a ROW of six
+    // chairs (judged on a render).
+    const subjectFraming = conceptIsPerson ? EYE_STYLE.photoPerson : `${EYE_STYLE.photoObject} ${c}, ${view}`;
     return `${c}${ageSteer}${defTail}, ${subjectFraming}${EYE_STYLE.refTail}`;
   },
 

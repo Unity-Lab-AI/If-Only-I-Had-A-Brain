@@ -39,8 +39,17 @@ const EYE_STYLE = {
   // elephant / guitar / cat / rooster / bear; the old "plain background" tail
   // still produced full scenes.
   photoPerson: 'color photograph',
-  photoObject: 'color photograph of the whole object, centered',
-  refTail: ', isolated on a plain neutral grey studio backdrop, full color, richly detailed',
+  // ⛔ "whole object, centered … on a plain neutral grey studio backdrop" was a
+  // PRODUCT-SHOT recipe: judged on her own renderer at one pinned seed, "first"
+  // came back as a grey plate seen from above and "door" as a grey close-up —
+  // the grey backdrop greyed every palette she learned (her paintings read
+  // black and white) and "centered" pulled round centred objects (a door
+  // became a round knocker), which is where the rings and orbs came from.
+  // This tail, same seed: a whole blue door, a full chair, a cat — in colour,
+  // seen the usual way.
+  // followed by the concept and a viewpoint: "color photograph of one whole <c>, seen from …"
+  photoObject: 'color photograph of one whole',
+  refTail: ', plain pale background, vivid natural colors, full color, richly detailed',
   // fused-idea SCENE framing (chat.js) — an idea that puts its subject IN a
   // place or WITH a substance is a relation, and the isolated-backdrop tail
   // above erases exactly that relation: judged 2026-11-23 on her renderer,
