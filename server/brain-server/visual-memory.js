@@ -87,7 +87,7 @@ const path = require('path');
 // "no", "equals") came back as plates and rings seen from above. The tail is
 // fixed; the looks learned on it are left behind the same way as every bump —
 // imagery cleared, weights and training untouched.
-const VM_DB = path.join(__dirname, '..', 'visual-memory-v14.db');   // v13 → v14 2026-11-24: fresh eyes again once describing words stopped being subjects
+const VM_DB = path.join(__dirname, '..', 'visual-memory-v15.db');   // v14 → v15 2026-11-24: fresh eyes for many looks per thing + no mash-up subjects
 // NOLIMIT (ruled 2026-08-20: the equations behind her mind's-eye imagery are
 // not to be limited). 384 concepts was a small number for a mind that will walk K→PhD
 // and see everything on the way — she would start FORGETTING what things look like
@@ -1432,7 +1432,10 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
             const L = lay(s);
             if (e.schemaBank.some(b => lay(b) === L)) return;
             e.schemaBank.push(s);
-            while (e.schemaBank.length > 3) e.schemaBank.shift();
+            // 12 looks of a thing (DREAM_FORM_BANK), not 3 — her idea of a door
+            // is built from many doors.
+            const _cap = Number(process.env.DREAM_FORM_BANK) > 0 ? Number(process.env.DREAM_FORM_BANK) : 12;
+            while (e.schemaBank.length > _cap - 1) e.schemaBank.shift();
           };
           if ((prev.looks || 1) === 1) bankIfNew(prev);   // look #1, still pure
           bankIfNew(_pureLook);                            // this look, pre-merge
@@ -2086,7 +2089,19 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       } catch { /* same posture — a judgement failure must not block a look */ }
     }
     // per-concept refetch cooldown — never spam the generator for the same word
-    const COOL = Number(process.env.DREAM_REF_FETCH_COOLDOWN_MS) || 21600000;   // 6h
+    let COOL = Number(process.env.DREAM_REF_FETCH_COOLDOWN_MS) || 21600000;   // 6h
+    // ⭐ VARIETY — to learn what a door IS, she has to have seen many doors. While
+    // a concept she knows holds fewer looks than her bank keeps
+    // (DREAM_FORM_BANK, 12), it may be looked at again after
+    // DREAM_VARIETY_LOOK_GAP_MS (20 min) instead of 6 h — each look a new
+    // viewpoint and a new picture. Still one look in the pipe brain-wide.
+    try {
+      const _st = (typeof this._vmStore === 'function') ? this._vmStore() : null;
+      const _e = _st && _st.get(key);
+      const _cap = Number(process.env.DREAM_FORM_BANK) > 0 ? Number(process.env.DREAM_FORM_BANK) : 12;
+      const _have = _e && _e.schema ? 1 + (Array.isArray(_e.schemaBank) ? _e.schemaBank.length : 0) : 0;
+      if (_have > 0 && _have < _cap) COOL = Math.min(COOL, Number(process.env.DREAM_VARIETY_LOOK_GAP_MS) > 0 ? Number(process.env.DREAM_VARIETY_LOOK_GAP_MS) : 1200000);
+    } catch { /* the 6 h cooldown stands */ }
     if (!this._vmRefFetchAt) this._vmRefFetchAt = new Map();
     if (!opts.force && (now - (this._vmRefFetchAt.get(key) || 0)) < COOL) { this._vmLook().coolSkips++; return null; }
     // in-flight guard (per concept) + global pacing so a flood of unseen concepts
