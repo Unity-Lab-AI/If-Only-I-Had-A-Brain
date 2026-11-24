@@ -600,7 +600,11 @@ When the landing page is served from `localhost` (or `127.0.0.1` / `::1` / `file
 |:-:|---|---|
 | 1 | **the cache** | read before both of the below |
 | 2 | **the offline dictionary** (WordNet, in-process) | ⭐ **96.7% of her real kindergarten vocabulary — 2,147 of 2,221 words, 13,116 senses, 55 ms for the ENTIRE list, no network** |
-| 3 | **`api.dictionaryapi.dev`** | only for what the first two cannot answer |
+| 3 | **`api.dictionaryapi.dev`** + **Wiktionary** | for what the first two cannot answer, their senses merged |
+| 4 | **Wikipedia's page summary** | ⭐ only when every dictionary is empty — holidays, names, places (*Diwali* → "the Hindu festival of lights"; *William* → "a masculine given name"). A run-together phrase (*chinesenewyear*) is proposed as each real reading and used ONLY if Wikipedia has a page for the whole phrase — still never a partial match |
+| 5 | **Urban Dictionary** | last, for slang no other source carries; top-voted senses with examples. Not grade-gated — she LEARNS every word; what she SAYS is gated elsewhere |
+
+⛔ **A misspelling is never defined.** When every sense a dictionary gives is "misspelling / obsolete form of *X*" (Wiktionary's own label — *recieve*, *seperate*, *teh*), or no source knows the word but a real word is one edit away (*definately* → definitely; short words only by a swapped pair, *teh* → the), it is recorded as a **typo of *X*** with no definition, and the harvest teaches *X* in its place. Contractions are harvested whole and become their real words (*didn't* → *did* + *not*) instead of the fragment *didn*.
 
 **How it reaches 96.7% without inventing anything.** WordNet holds one spelling of a word and a real corpus writes another, so the lookup tries a short ladder of variants — a closed compound (`livingroom` → `living_room`), a possessive or singular first element (`presidentsday` → `presidents'_day`, `valentinesday` → `valentine_day`), regular plurals, WordNet's own suffix detachment for verbs and adjectives, and the punctuation forms a book actually uses (`ale-house` → `ale_house`, `farmer's` → `farmer`, the archaic `pleas'd` → `pleased`).
 
