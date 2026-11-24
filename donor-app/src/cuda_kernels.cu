@@ -190,6 +190,17 @@ __global__ void scatter_ones_u32(unsigned int count, unsigned int offset, unsign
   if (idx < len) dst[offset + idx] = 1u;
 }
 
+// v0.3.54 — tiled ones: for thread i < count (= ndims * group), cell
+// dims[i / group] * group + i % group, set to 1 when below lim (= min(region
+// len, brain region size)). The same cells the host used to list one by one.
+__global__ void tile_ones_u32(unsigned int count, unsigned int offset, unsigned int lim,
+                              unsigned int group, const unsigned int* dims, unsigned int* dst) {
+  unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i >= count) return;
+  unsigned long long idx = (unsigned long long)dims[i / group] * group + (i % group);
+  if (idx < lim) dst[offset + (unsigned int)idx] = 1u;
+}
+
 // dst[offset + indices[i]] = values[i] * psi (0 when values is shorter than indices —
 // matches the host path's values.get(k).unwrap_or(0.0)).
 __global__ void scatter_vals_f32(unsigned int count, unsigned int vcount, unsigned int offset,

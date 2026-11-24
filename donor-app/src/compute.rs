@@ -11,6 +11,11 @@ use std::time::Instant;
 use wgpu::util::DeviceExt;
 
 use crate::frames::Binding;
+
+/// One spike write in a batch: (cluster, region, list, zero-first, group, size).
+/// `group == 0` → `list` is cell indices; `group > 0` → `list` is dims and the
+/// cells are each dim's tile (`frames::tile_indices`), clipped to `size`.
+pub type SpikeWrite = (String, String, Vec<u32>, bool, u32, u32);
 use crate::gpu::{BUCKET_MEAN_SHADER, CURRENT_MAX_SHADER, LIF_SHADER, PLASTICITY_SHADER, PREDICTIVE_ERROR_SHADER, SCATTER_ONES_SHADER, SPIKE_COUNT_SHADER, SYNAPSE_PROPAGATE_SHADER, VOLTAGE_MEAN_SHADER};
 
 const WORKGROUP: u32 = 256;
@@ -1543,9 +1548,15 @@ impl Backend {
     }
     /// v0.3.51 — a run of spike writes in one go (CUDA: one upload). wgpu writes the
     /// whole region densely on every call, so `zero` is already implied there.
-    fn write_spike_slices(&mut self, writes: &[(String, String, Vec<u32>, bool)]) -> Result<(), String> {
+    fn write_spike_slices(&mut self, writes: &[SpikeWrite]) -> Result<(), String> {
         match self {
-            Backend::Wgpu(e) => { for (c, r, i, _) in writes { e.write_spike_slice(c, r, i)?; } Ok(()) }
+            Backend::Wgpu(e) => {
+                for (c, r, i, _, group, size) in writes {
+                    if *group > 0 { e.write_spike_slice(c, r, &crate::frames::tile_indices(i, *group, *size))?; }
+                    else { e.write_spike_slice(c, r, i)?; }
+                }
+                Ok(())
+            }
             #[cfg(feature = "cuda")]
             Backend::Cuda(e) => e.write_spike_slices(writes),
         }
@@ -2037,8 +2048,8 @@ impl MultiEngine {
 
     /// v0.3.51 — spike writes grouped per card, each card's group in one go, in
     /// order within a card (cards run on their own streams, as before).
-    pub fn write_spike_slices(&mut self, writes: Vec<(String, String, Vec<u32>, bool)>) -> Result<(), String> {
-        let mut per: Vec<Vec<(String, String, Vec<u32>, bool)>> = (0..self.engines.len()).map(|_| Vec::new()).collect();
+    pub fn write_spike_slices(&mut self, writes: Vec<SpikeWrite>) -> Result<(), String> {
+        let mut per: Vec<Vec<SpikeWrite>> = (0..self.engines.len()).map(|_| Vec::new()).collect();
         for w in writes {
             if let Some(&g) = self.cluster_gpu.get(w.0.as_str()) { per[g].push(w); }
         }
@@ -2294,13 +2305,33 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
                 ce.write_spike_slice("bw", "b", &[7])?;
                 ce.clear_spike_region("bw", "a")?;
                 ce.write_spike_slices(&[
-                    ("bw".to_string(), "a".to_string(), vec![1, 5, 9], false),
-                    ("bw".to_string(), "b".to_string(), vec![0, 31], true),
+                    ("bw".to_string(), "a".to_string(), vec![1, 5, 9], false, 0, 0),
+                    ("bw".to_string(), "b".to_string(), vec![0, 31], true, 0, 0),
                 ])?;
                 ce.sync();
                 let got = read(&ce)?;
                 if got != want { return Err(format!("batched spike-write MISMATCH: batched={got:?} one-at-a-time={want:?}")); }
                 println!("  batched write == one-at-a-time write ({} cells, {} set)", got.len(), got.iter().filter(|&&x| x > 0).count());
+                // v0.3.54 — the tiled write must set exactly the cells its
+                // index list names (tile clipped at the brain's size, and at
+                // the region), against the plain scatter of that list.
+                let cases: [(&str, Vec<u32>, u32, u32); 3] = [
+                    ("a", vec![0, 3, 7], 4, 30),   // last tile clipped by size 30
+                    ("b", vec![1, 5], 6, 64),      // tile 5 (30..36) clipped by region len 32
+                    ("a", vec![2], 1, 32),         // group 1 = plain dims
+                ];
+                for (reg, dims, group, size) in cases.iter() {
+                    ce.clear_spike_region("bw", "a")?; ce.clear_spike_region("bw", "b")?;
+                    ce.write_spike_slices(&[("bw".to_string(), reg.to_string(), crate::frames::tile_indices(dims, *group, *size), true, 0, 0)])?;
+                    ce.sync();
+                    let want = read(&ce)?;
+                    ce.clear_spike_region("bw", "a")?; ce.clear_spike_region("bw", "b")?;
+                    ce.write_spike_slices(&[("bw".to_string(), reg.to_string(), dims.clone(), true, *group, *size)])?;
+                    ce.sync();
+                    let got = read(&ce)?;
+                    if got != want { return Err(format!("tiled spike-write MISMATCH ({reg} {dims:?} g{group} s{size}): tiled={got:?} listed={want:?}")); }
+                }
+                println!("  tiled write == listed write (3 cases, clipping included)");
             }
         }
     }
