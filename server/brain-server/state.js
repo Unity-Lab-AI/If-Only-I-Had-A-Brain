@@ -2827,7 +2827,13 @@ const SERVER_STATE_MIXIN = {
             // once logged `1 matrices pushed` and `a FULL brain replica` ON THE
             // SAME LINE; a later one announced a full replica off `0/0`. A
             // fraction cannot tell that lie.
-            df7TotalMatrices: isGPU ? _matrixTotal : null,
+            // With her main matrix row-sliced, a card that is not the cortex owner
+            // is meant to hold ONE matrix (its slice); the owner holds all of them.
+            df7TotalMatrices: isGPU
+              ? ((typeof this._intraSliceActive === 'function' && this._intraSliceActive() && ws !== this._gpuClient)
+                ? ((this._intraSlices || []).some((s) => s.ws === ws) ? 1 : _matrixTotal)
+                : _matrixTotal)
+              : null,
             df7SyncedAgoSec: (isGPU && c._df7SyncedAt) ? Math.round((Date.now() - c._df7SyncedAt) / 1000) : null,
             // Cluster coverage — how much brain this card is actually stepping.
             // null coverage = full-coverage donor (every cluster).
