@@ -133,11 +133,33 @@ const SERVER_STATE_MIXIN = {
         console.log(`[Brain] [DASHBOARD-DIAG] broadcast-diag threw: ${err.message}`);
       }
     }
-    for (const [ws] of this.clients) {
-      if (ws.readyState === ws.OPEN) {
+    for (const [ws, c] of this.clients) {
+      if (ws.readyState === ws.OPEN && this._stateSendOk(ws, c)) {
         try { ws.send(payload); } catch {}
       }
     }
+  },
+
+  /**
+   * Should a full state snapshot go to this socket right now?
+   *
+   * ⛔ Not to GPU donors: the native donor discards `state` messages, and the
+   * browser donor page reads `/public-state.json` — yet every snapshot (hundreds
+   * of KB) went to every donor, a rented card included, over the tunnel, on the
+   * broadcast cadence, competing with its teach frames.
+   * ⛔ Not to a socket already backed up: two viewer tabs were measured holding
+   * 416 MB and 1.14 GB of unsent snapshots (RTT 10–19 s). A snapshot is
+   * superseded by the next one, so a backed-up viewer simply skips frames until
+   * it drains. `DREAM_STATE_SEND_CAP_MB` (default 4).
+   */
+  _stateSendOk(ws, c) {
+    if (c && c.isGPU) return false;
+    const capMB = Number(process.env.DREAM_STATE_SEND_CAP_MB) > 0 ? Number(process.env.DREAM_STATE_SEND_CAP_MB) : 4;
+    if ((ws.bufferedAmount || 0) > capMB * 1048576) {
+      this._stateSendSkips = (this._stateSendSkips || 0) + 1;
+      return false;
+    }
+    return true;
   },
 
   /**
