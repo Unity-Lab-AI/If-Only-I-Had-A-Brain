@@ -15,41 +15,42 @@ sources:
   - js/brain/curriculum.js
   - js/brain/cluster.js
   - js/brain/cluster/hebbian.js
+  - js/brain/dictionary.js
   - js/brain/embeddings.js
+  - crates/unity-protocol/src/frames.rs
+  - donor-app/src/donor.rs
   - html/teachview.html
+  - windows/stop.bat
 verified-scope: |
-  OVERWRITTEN 2026-11-24 (15:40). This file is a SNAPSHOT of the present
+  OVERWRITTEN 2026-11-24 (16:20). This file is a SNAPSHOT of the present
   and is overwritten, never appended. The previous snapshot is in git:
   git log -p docs/NOW.md.
 ---
 
-# NOW — 2026-11-24, 15:40
+# NOW — 2026-11-24, 16:20
 
 ## Where she is
 
 | | |
 |---|---|
-| state | **RUNNING, not yet through her first cell.** Boot `e2c30399` (15:25). Kindergarten English: 24 of 25 cell phases banked; the last phase is in `_teachSentenceList`. No gate verdict yet, no chat yet. Training kept across every press today; no fresh walk |
-| cards | your 4070 Ti SUPER (7 small clusters + her image renderer) and the rented RTX PRO 6000 (`ua8x877eiqz63m`, her cortex, all 17 matrices). Pod donor 0.3.52 |
-| pod use | **definition lanes now drive the pod** — 64 words in flight; sampled 15:26: `97 98 98 46 73 79 72 97 58 49 14 98 0 0 22` %. **The sentence lane still idles it** (15:32: 0–2%) — it teaches one word at a time and the donor has no multi-region lesson yet |
-| threads | 15 worker threads (every hardware thread but one); the CPU shadow Oja — plain and weighted — runs on them, bit-identical |
-| memory | climbs ~1 GB/min inside `_teachSentenceList` on every boot (63 → 94 GB on `e2c30399`), cause **not yet named** — the per-word scratch fix did not stop it |
-| next press | the dashboard's Update-Savestart loads everything below that is not yet live; the launcher window now closes itself (runs under conhost) |
+| state | **RUNNING, not yet through her first cell.** Boot `ff722be7` (16:09). Kindergarten English: 24 of 25 cell phases banked; the last phase is in `_teachSentenceList`. No gate verdict yet, no chat yet. Training kept across every press today; no fresh walk |
+| cards | rented RTX PRO 6000 (`ua8x877eiqz63m`) holds her cortex and all 17 matrices; your 4070 Ti SUPER holds the 7 small clusters and her image renderer. **Both donors on 0.3.53** |
+| pod use | definition lanes: 64 words in flight, measured up to 97–98%. Sentence lane: **pattern lessons** (2,048 words per frame) — `stageProfile.patternLesson {lessons: 9, items: 18,432, refused: 0}`; pod 97% read by Gee, ~35% with gaps on a 15 s sample at 16:19 — not yet pegged everywhere |
+| memory | **flat** — `ab` 8.7 GB through `_teachSentenceList` (every earlier boot climbed past 80 GB there). The leak was a 40 MB spike-buffer copy per new dictionary word, named live by `/admin/memprobe` |
+| threads | 15 worker threads carry the CPU shadow Oja (plain and weighted) |
+| next press | none owed — everything built is on this boot |
 
-## What changed today, after the morning snapshot (all on `main`, both remotes)
+## What changed today, since the 15:40 snapshot (all on `main`, both remotes)
 
 | | |
 |---|---|
-| **words** | an undefined word is held out of every binding until a definition lands; a typo teaches its real word; a dictionary rate-limit now falls through to Wiktionary → Wikipedia → Urban Dictionary instead of waiting 6 h |
-| **pod feeding** | definitions taught 64 at a time; association-pair reps merged into lessons up to 4,096 pairs; the separation check's 8 probes go out together; the academic pre-vocab lane uses the same 64-worker pool |
-| **correctness** | the definition sem→sem bind uses the word's own sem pattern (it read stale spikes); **the sentence lane now sends its patterns to the card** (the card had been learning over stale spikes — loads on the next press) |
-| **main thread** | the firing-row scan and the mind's-eye relation reads were 48% of the thread in the sentence lane; both cut (bit-identical scan, time-bounded reads) |
-| **renderer** | an idle unload no longer leaks a whole SDXL each cycle (it had reached 58 GB); renderer restarted, host RAM 113 → 80 GB |
-| **teach view** | one request in flight per poll — stacked 16 MB snapshots crashed the tab |
-| **boot / pool** | boot corpus fits yield the loop; a card that returns gets the newer weights, not its stale copy |
-| **this PC** | VibeRoller shares only Claude; Ollama, its engines and its VR desktop no longer start at sign-in (backup in `.scratch/autostart-backup/`) |
+| **memory leak** | found by measurement (`2,506 MB/s · 2,628 × Uint8Array ← Dictionary.learnWord`) and fixed: no full spike-buffer copy per new word when the stress stream did not run |
+| **sentence lane** | its patterns now reach the card (it had trained the card on stale spikes); then **donor 0.3.53 pattern lesson (type 18)** — whole runs of words per frame, encoder↔decoder parity checked |
+| **instrument** | `/admin/memprobe` — memory before/after a full collection plus the allocation sites of every large buffer |
+| **stop** | `stop.bat` / `stop.sh` send the shutdown to `127.0.0.1` with 30 s (localhost / 5 s could miss her mid-teach) |
+| **this PC** | VibeRoller shares only Claude; Ollama, its engines and VR desktop no longer start at sign-in |
 
 ## Open — on the board (`docs/TODO.md`)
 
-- **PEGPOD** — the whole curriculum must keep the pod pegged nonstop. Built so far: the definition and pre-vocab lanes. Next: a donor multi-region lesson (type 18) so the sentence lane sends whole sentences many at once, then the remaining serial lanes (`_teachSequenceCycles`, `_conceptTeach`, `_teachVocabList`, `SELF-ARCH-DEF`, the dream trickle).
-- **MEMCLIMB** — the sentence-lane memory climb; needs an allocation trace, not another reading-based guess.
+- **PEGPOD** — the whole curriculum keeps the pod pegged nonstop. Built: definition / pre-vocab pools, merged and pattern lessons. Still to do: close the gaps between sentence lessons (more in flight / build lessons off the main thread), and the remaining serial lanes (`_teachSequenceCycles`, `_conceptTeach`, `_teachVocabList`, `SELF-ARCH-DEF`, the dream trickle).
+- **First cell + talking** — monitored every 5 minutes; every talking bug is recorded with evidence once she speaks.
