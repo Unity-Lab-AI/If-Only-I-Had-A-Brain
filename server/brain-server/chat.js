@@ -4204,13 +4204,18 @@ const SERVER_CHAT_MIXIN = {
     const paint = (inside, ids, palette, inv, bbox, a, W, H) => {
       let id2 = new Uint8Array(W * H);
       for (let i = 0; i < W * H; i++) id2[i] = ids[i];
+      // One count buffer for the whole pass, cleared per pixel. It used to be a
+      // fresh array for EVERY pixel of every pass — hundreds of thousands of
+      // allocations per drawing, which put her painting and the collector at a
+      // third of the main thread while the cards waited for lessons.
+      const cnt = new Uint16Array(Math.max(1, palette.length));
       for (let pass = 0; pass < 2; pass++) {
         const nx = new Uint8Array(W * H);
         for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
           const i = y * W + x;
           nx[i] = id2[i];
           if (!inside(x, y)) continue;
-          const cnt = new Uint16Array(Math.max(1, palette.length));
+          cnt.fill(0);
           for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
             if (!inside(x + dx, y + dy)) continue;
             const k = id2[(y + dy) * W + x + dx];

@@ -16581,9 +16581,24 @@ export class Curriculum {
    * regression — adding letter_to_sem to the whitelist re-introduced
    * the 14 GB external-memory V8 GC stall that T24.a fixed).
    */
-  async _probePropagate(projName, srcVec) {
+  async _probePropagate(projName, srcVec, sparse) {
     const cluster = this.cluster;
     if (!cluster || !cluster.crossProjections) return null;
+    // `sparse = {active, size}` — the caller already knows the active cells
+    // (ascending). The GPU path needs only those; the dense vector is built
+    // only if the probe falls back to the CPU.
+    if (!srcVec && sparse && Array.isArray(sparse.active)) {
+      const _act = sparse.active, _n = sparse.size | 0;
+      let _dense = null;
+      const dense = () => { if (!_dense) { _dense = new Float64Array(_n); for (const k of _act) _dense[k] = 1; } return _dense; };
+      return this._probePropagateInner(projName, dense, _act);
+    }
+    return this._probePropagateInner(projName, () => srcVec, null);
+  }
+
+  async _probePropagateInner(projName, getVec, knownIdx) {
+    const cluster = this.cluster;
+    let srcVec = null;
     // PROBEFLAG (2026-08-22) — stamp every real probe run. The published
     // "probe gate" liveness field derives from THIS freshness, not from the
     // cell-wide GPU-ownership flag (which is deliberately on for the whole
@@ -16604,8 +16619,9 @@ export class Curriculum {
     if (proj._gpuBound && (proj.rows | 0) > 0 && (proj.rows | 0) <= 4_000_000
         && cluster._gpuProxyReady && cluster._gpuProxy
         && typeof cluster._gpuProxy.gateProbe === 'function') {
-      const idx = [];
-      for (let i = 0; i < srcVec.length; i++) { if (srcVec[i] > 0) idx.push(i); }
+      let idx;
+      if (knownIdx) idx = knownIdx.slice();
+      else { idx = []; const v = getVec(); for (let i = 0; i < v.length; i++) { if (v[i] > 0) idx.push(i); } }
       if (idx.length) {
         // Single contiguous run (the tiled one-hot shape) → ~30-byte template
         // carrier; scattered actives ship as raw u32 indices.
@@ -16681,6 +16697,8 @@ export class Curriculum {
         } catch { /* fall through to the CPU path */ }
       }
     }
+    // The CPU paths below need the dense vector; built only now, on a fallback.
+    srcVec = getVec();
     // Fast path: CPU CSR alive. Chunked (bit-identical, yields between row
     // slices) — this is THE shared probe helper every grade's gates ride, and
     // its synchronous propagate was a multi-second loop pin at grown matrices.
@@ -24784,7 +24802,13 @@ export class Curriculum {
       // top-K, `inEmb[d]` is zero for all dims outside the top-K set,
       // so only those dims fire in semInput — matching the teach-side
       // sparse pattern.
-      const semInput = new Float64Array(semSize);
+      // ⚠ Only the ACTIVE cells are built here, ascending — exactly the ones
+      // the sem-sized vector would have set to 1. The probe takes them as is;
+      // the full vector is made only if it has to fall back to the CPU. A fresh
+      // 1.88M-cell Float64Array per sample (15 MB, up to 8 a lesson) plus a
+      // full scan of it to find those same cells was ~15% of the main thread
+      // while teaching, with the cards waiting.
+      const active = [];
       const gSize = Math.max(1, Math.floor(semSize / inEmb.length));
       for (let d = 0; d < inEmb.length; d++) {
         // Fire on ANY non-zero top-K dim (positive OR negative) so the
@@ -24793,10 +24817,10 @@ export class Curriculum {
         if (inEmb[d] === 0) continue;
         for (let n = 0; n < gSize; n++) {
           const idx = d * gSize + n;
-          if (idx < semSize) semInput[idx] = 1;
+          if (idx < semSize) active.push(idx);
         }
       }
-      const out = await this._probePropagate('sem_to_motor', semInput);
+      const out = await this._probePropagate('sem_to_motor', null, { active, size: semSize });
       if (!out || out.length === 0) continue;
       // out is motor-sized (proj.rows). L2-normalize the vector so
       // cosine is a pure direction comparison (magnitude-free).
