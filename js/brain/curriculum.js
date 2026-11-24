@@ -28808,37 +28808,30 @@ export class Curriculum {
 
           // Clear + write clean patterns
           this._clearCortexRegionSpans(['letter', 'phon', 'motor', 'sem']);   // CELL-TEACH SPEED — was full 1.5M clear per word/rep
-          // Letter
-          const letterPat = buildPattern(letterSize, letterOneHot);
-          for (let j = 0; j < letterSize; j++) {
-            cluster.lastSpikes[letterRegion.start + j] = letterPat[j] > 0 ? 1 : 0;
-          }
-          // Phon
-          if (phonRegion) {
-            const phonSize = phonRegion.end - phonRegion.start;
-            const phonPat = buildPattern(phonSize, phonFeat);
-            for (let j = 0; j < phonSize; j++) {
-              cluster.lastSpikes[phonRegion.start + j] = phonPat[j] > 0 ? 1 : 0;
+          // ⛔ ONLY THE FIRING SPANS ARE WRITTEN. This used to build a full
+          // Float64 pattern per region per word (letter 1M + phon 4M + motor
+          // 460k + sem 2.5M ≈ 64 MB allocated, filled and copied for EVERY
+          // word), which pinned the main thread while the donor card waited
+          // and climbed `ext` ~1 GB/min through this phase (2026-11-24). The
+          // regions were just cleared, so writing the 1s of each feature's
+          // span is bit-identical to copying `pattern > 0 ? 1 : 0`.
+          const writeSpans = (region, feat) => {
+            if (!region || !feat || !feat.length) return;
+            const size = region.end - region.start;
+            const gSize = Math.max(1, Math.floor(size / feat.length));
+            for (let d = 0; d < feat.length; d++) {
+              if (!(feat[d] > 0)) continue;
+              const a = d * gSize;
+              if (a >= size) break;
+              cluster.lastSpikes.fill(1, region.start + a, region.start + Math.min(size, a + gSize));
             }
-          }
-          // Motor
-          if (motorRegion) {
-            const motorSize = motorRegion.end - motorRegion.start;
-            const motorPat = buildPattern(motorSize, letterOneHot);
-            for (let j = 0; j < motorSize; j++) {
-              cluster.lastSpikes[motorRegion.start + j] = motorPat[j] > 0 ? 1 : 0;
-            }
-          }
-          // Sem
-          if (semRegion && wordEmb && wordEmb.length > 0) {
-            const semSize = semRegion.end - semRegion.start;
-            // Sparsified to the same top-K the pair lane has always used — see
-          // `_semTeachEmbedding`. Dense here meant ~50% of sem alight per word.
-          const semPat = buildPattern(semSize, this._semTeachEmbedding(wordEmb, opts));
-            for (let j = 0; j < semSize; j++) {
-              cluster.lastSpikes[semRegion.start + j] = semPat[j] > 0 ? 1 : 0;
-            }
-          }
+          };
+          writeSpans(letterRegion, letterOneHot);
+          if (phonRegion) writeSpans(phonRegion, phonFeat);
+          if (motorRegion) writeSpans(motorRegion, letterOneHot);
+          // Sem — sparsified to the same top-K the pair lane has always used
+          // (see `_semTeachEmbedding`). Dense here meant ~50% of sem alight per word.
+          if (semRegion && wordEmb && wordEmb.length > 0) writeSpans(semRegion, this._semTeachEmbedding(wordEmb, opts));
 
           await cluster._crossRegionHebbian(lr);
         }
