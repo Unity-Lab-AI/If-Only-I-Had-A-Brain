@@ -11987,6 +11987,71 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
+  // MEMORY PROBE — answers "is the climb garbage or retained, and who makes
+  // it?" with measurements, not a reading of the code (MEMCLIMB, 2026-11-24:
+  // `ab` climbed ~1 GB/min in `_teachSentenceList` on every boot and a
+  // code-reading fix did not stop it). Three readings in one call:
+  //   1. process.memoryUsage() now;
+  //   2. after two full collections (`global.gc`, the launchers run
+  //      --expose-gc) — a big drop means garbage the collector had not reached,
+  //      no drop means something still holds it;
+  //   3. for `ms` (default 20 s, max 60 s): every ArrayBuffer / typed-array /
+  //      SharedArrayBuffer of ≥ `minMB` (default 1 MB) constructed, grouped by
+  //      the first two stack frames outside this probe, with count and bytes.
+  // The constructors are wrapped only for the window and restored after.
+  // Loopback + no proxy header, like the CPU profile.
+  if (req.url && req.url.split('?')[0] === '/admin/memprobe' && req.method === 'GET') {
+    if (!requireLoopback(req, res, '/admin/memprobe')) return;
+    const reply = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)); };
+    if (['x-forwarded-for', 'cf-connecting-ip', 'cf-ray', 'tailscale-funnel-request', 'forwarded', 'x-real-ip'].some((h) => req.headers[h] !== undefined)) {
+      return reply(403, { ok: false, why: 'answers only on this machine' });
+    }
+    if (globalThis.__memProbeBusy) return reply(409, { ok: false, why: 'a probe is already running' });
+    const qs = new URL(req.url, 'http://x').searchParams;
+    const ms = Math.min(60000, Math.max(1000, parseInt(qs.get('ms') || '20000', 10) || 20000));
+    const minBytes = Math.max(1, Number(qs.get('minMB') || '1')) * 1048576;
+    const mb = (n) => Math.round(n / 1048576);
+    const snap = () => { const m = process.memoryUsage(); return { rssMB: mb(m.rss), heapUsedMB: mb(m.heapUsed), externalMB: mb(m.external), arrayBuffersMB: mb(m.arrayBuffers || 0) }; };
+    const before = snap();
+    let afterGc = null;
+    if (typeof global.gc === 'function') { try { global.gc(); global.gc(); } catch { /* still report */ } afterGc = snap(); }
+    globalThis.__memProbeBusy = true;
+    const names = ['ArrayBuffer', 'SharedArrayBuffer', 'Float64Array', 'Float32Array', 'Uint32Array', 'Int32Array', 'Uint16Array', 'Uint8Array'];
+    const originals = {};
+    const sites = new Map();
+    const record = (bytes, kind) => {
+      if (!(bytes >= minBytes)) return;
+      const frames = String(new Error().stack || '').split('\n').slice(1)
+        .map((l) => l.trim()).filter((l) => !l.includes('memprobe') && !l.includes('construct (') && !l.includes('Proxy'))
+        .slice(0, 2).map((l) => l.replace(/^at /, '').replace(/\(?[A-Za-z]:.*[\\/](js|server)[\\/]/, '$1/').replace(/\)$/, ''));
+      const key = `${kind} ← ${frames.join(' ← ')}`;
+      const e = sites.get(key) || { n: 0, bytes: 0 };
+      e.n++; e.bytes += bytes; sites.set(key, e);
+    };
+    const sizeOf = (C, args) => {
+      const a0 = args[0];
+      if (typeof a0 === 'number') return a0 * (C.BYTES_PER_ELEMENT || 1);
+      if (a0 && typeof a0.length === 'number' && !(a0 instanceof ArrayBuffer) && !(typeof SharedArrayBuffer !== 'undefined' && a0 instanceof SharedArrayBuffer)) return a0.length * (C.BYTES_PER_ELEMENT || 1);
+      return 0; // a view over an existing buffer allocates no backing store
+    };
+    for (const nm of names) {
+      const C = globalThis[nm];
+      if (typeof C !== 'function') continue;
+      originals[nm] = C;
+      globalThis[nm] = new Proxy(C, { construct(target, args, nt) { try { record(sizeOf(target, args), nm); } catch { /* never break an allocation */ } return Reflect.construct(target, args, nt === globalThis[nm] ? target : nt); } });
+    }
+    setTimeout(() => {
+      for (const nm of Object.keys(originals)) globalThis[nm] = originals[nm];
+      globalThis.__memProbeBusy = false;
+      const top = [...sites.entries()].sort((a, b) => b[1].bytes - a[1].bytes).slice(0, 25)
+        .map(([site, e]) => ({ site, count: e.n, MB: mb(e.bytes), MBperSec: +(e.bytes / 1048576 / (ms / 1000)).toFixed(1) }));
+      const after = snap();
+      console.log(`[Brain] MEMPROBE — before ab=${before.arrayBuffersMB}MB · after 2×gc ab=${afterGc ? afterGc.arrayBuffersMB : '?'}MB · ${ms}ms window, top allocator: ${top[0] ? `${top[0].site} ${top[0].MBperSec} MB/s` : 'none ≥ ' + mb(minBytes) + 'MB'}`);
+      reply(200, { ok: true, before, afterGc, after, windowMs: ms, minMB: mb(minBytes), top });
+    }, ms);
+    return;
+  }
+
   // RUNPOD — the optional rented-GPU plug-in (server/runpod-control.js). Admin
   // only, and stricter than loopback: the Cloudflare tunnel also arrives from
   // 127.0.0.1, so any request carrying a proxy header is refused — the same
