@@ -812,7 +812,7 @@ Per the 2026-06-27 amendment a cell passes on **learning completion**, not answe
 | `DREAM_PATTERN_TEACH_THROTTLE_MS` | ⚠ | lever | Throttle between pattern-teach fires |
 | `DREAM_PER_WORD_TEACH_TIMEOUT_MS` | ⚠ | escape hatch | Per-word teach timeout so one word cannot hang a phase |
 | `DREAM_TRICKLE_BATCH` | ⚠ | lever | Batch size for the dream-cycle vocabulary trickle |
-| `DREAM_TRICKLE_WINDOW_MS` | `600000` | lever | The vocabulary trickle's OWN time per dream window, from its own start (it used to share the window's 180 s with every enrichment stage and taught ~10 words). `0` = back to the shared budget |
+| `DREAM_TRICKLE_WINDOW_MS` | `600000` | lever | The vocabulary trickle's OWN time per dream window, from its own start (it used to share the window's 180 s with every enrichment stage and taught ~10 words). `0` = back to the shared budget. Not applied in the dream windows between pre-cell vocabulary chunks, where the trickle keeps the shared budget so the next chunk of new words is not held back |
 | `DREAM_WINDOW_MAX_MS` | ⚠ | lever | Cap on a dream window |
 | `DREAM_DEFINITION_CACHE_FILE` | ✅ `server/definition-cache.json` (`''` opts out) | lever | Persistent dictionary-definition cache. After 2-3 cold runs it approaches full coverage and the prefetch completes with no API hits |
 | `DREAM_DEF_CACHE_CAP` | ⚠ | lever | Entry cap on that cache |
