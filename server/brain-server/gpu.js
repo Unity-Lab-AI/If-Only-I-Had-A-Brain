@@ -3204,8 +3204,12 @@ const SERVER_GPU_MIXIN = {
         // the home upload in one boot). Wait for the move to finish (bounded).
         const _mw = Date.now();
         while (this._cortexMoveInFlight && Date.now() - _mw < 15 * 60 * 1000) await new Promise((r) => setTimeout(r, 1000));
-        const plan = this._planIntraSlices(matrix.rows);
-        if (plan) return await this._uploadIntraSliced(name, matrix, binding, plan);
+        const plan = this._planIntraSlices(matrix.rows, ((matrix.values.byteLength || 0) + (matrix.colIdx.byteLength || 0) + (matrix.rowPtr.byteLength || 0)) / 1e6);
+        if (plan) { this._intraWhole = false; return await this._uploadIntraSliced(name, matrix, binding, plan); }
+        // One card holds it all: no slice plan lingers, so lessons go to (and
+        // wait on) that card only, and the re-slice check leaves it alone.
+        this._intraSlices = null;
+        this._intraWhole = true;
       }
       return await this._gpuSparseUploadInner(name, matrix, binding, targetWs, noRegister);
     } finally {
@@ -3250,7 +3254,7 @@ const SERVER_GPU_MIXIN = {
   },
 
   /** Row ranges per holder, or null when one card should hold it all. */
-  _planIntraSlices(rows) {
+  _planIntraSlices(rows, matrixMB) {
     if (process.env.DREAM_SLICE === '0') return null;
     const owner = this._gpuClient;
     if (!owner || owner.readyState !== 1 || !(rows > 0)) return null;
@@ -3265,6 +3269,16 @@ const SERVER_GPU_MIXIN = {
     const room = (ws) => Math.max(0, this._donorCapacityMB(ws) - ownedMB(ws) - (ws === owner ? crossMB : 0));
     const holders = [owner, ...others].map((ws) => ({ ws, room: room(ws) })).filter((h) => h.room > 512);
     if (holders.length < 2) return null;
+    // ⛔ ONE CARD PER JOB WHEN ONE CARD HOLDS IT. Every lesson's pattern clears
+    // and writes run on EVERY slice holder, whatever rows it holds — so a second
+    // holder doubles that work, and the small card (also stepping her other
+    // clusters every tick) paces every lesson. When the cortex owner has room for
+    // the whole matrix, it holds all of it and every lesson runs once, on it; the
+    // other cards step their clusters. DREAM_SLICE_WHEN_FITS=1 slices anyway.
+    if (process.env.DREAM_SLICE_WHEN_FITS !== '1') {
+      const fullMB = Number(matrixMB) || Number(this._cortexMatrixMB && this._cortexMatrixMB[this._SLICE_NAME]) || 0;
+      if (fullMB > 0 && room(owner) >= fullMB * 1.1) return null;
+    }
     // ⭐ TWO COPIES OF EVERY ROW (DREAM_SLICE_REPLICAS, default 2). Cards are
     // paired by room and each pair holds the SAME row range, so a card leaving
     // costs no learning and no pause — its twin still holds and trains every one
@@ -3561,6 +3575,9 @@ const SERVER_GPU_MIXIN = {
     const cc = this.cortexCluster;
     // The grace window itself clears `_gpuProxyReady`, so it must be let through here.
     if (!cc || (!cc._gpuProxyReady && !this._sliceGracePaused)) return false;
+    // The owner holds the whole matrix by choice (it fits): a newcomer does not
+    // trigger a re-slice — one card per job.
+    if (this._intraWhole && !this._intraSliceActive() && process.env.DREAM_SLICE_WHEN_FITS !== '1') return false;
     const held = new Set(this._intraSliceActive() ? this._intraSlices.map((s) => s.ws) : [owner]);
     if (this._intraSliceActive() && this._intraSlices.some((s) => !s.ws || s.ws.readyState !== 1)) {
       // Remember who dropped: that card waits longer before it is trusted with rows again.
@@ -5860,8 +5877,9 @@ const SERVER_GPU_MIXIN = {
       const costs = Object.values(this._lessonCost || {}).map((c) => c && c.msPerLesson).filter((v) => v > 0);
       if (costs.length) { const cardMs = Math.min(...costs); svc = svc > 0 ? Math.min(svc, cardMs) : cardMs; }
     } catch { /* fall back to the ack spacing */ }
-    if (!(lat > 0) || !(svc > 0)) return 4;
-    return Math.max(4, Math.min(64, Math.ceil(lat / svc) + 2));
+    const _adapt = this._lessonWinAdapt || 4;
+    if (!(lat > 0) || !(svc > 0)) return Math.max(4, _adapt);
+    return Math.max(4, _adapt, Math.min(64, Math.ceil(lat / svc) + 2));
   },
   async lessonSlot() {
     if (!this._donorAcksLessons()) return;
@@ -5891,8 +5909,24 @@ const SERVER_GPU_MIXIN = {
       const now = Date.now();
       const full = this._lessonInflight.size >= (this._lessonWindowNow || 4);
       if (!Array.isArray(this._lessonLatRing)) this._lessonLatRing = [];
-      this._lessonLatRing.push(Math.max(1, now - e.at));
+      const _lat = Math.max(1, now - e.at);
+      this._lessonLatRing.push(_lat);
       if (this._lessonLatRing.length > 200) this._lessonLatRing.shift();
+      // ⭐ KEEP THE CARD FED. A lesson's ack time is the round trip plus how
+      // long it waited in the card's queue. While that wait is under
+      // DREAM_LESSON_QUEUE_MS (1000) the card has run dry at some point, so one
+      // more lesson is allowed in flight; once lessons wait more than twice that,
+      // the queue is deep enough and the window backs off 10%. The card ends up
+      // with about a second of work queued at all times — busy, never starved,
+      // and its pong never stuck behind an unbounded queue.
+      {
+        const _floor = Math.min(...this._lessonLatRing);
+        const _q = Number(process.env.DREAM_LESSON_QUEUE_MS) > 0 ? Number(process.env.DREAM_LESSON_QUEUE_MS) : 1000;
+        const w = this._lessonWinAdapt || 4;
+        if (_lat < _floor + _q) this._lessonWinAdapt = Math.min(256, w + 1);
+        else if (_lat > _floor + 2 * _q) this._lessonWinAdapt = Math.max(4, Math.floor(w * 0.9));
+        else this._lessonWinAdapt = w;
+      }
       // Ack spacing is the card's own time per lesson only while it had a
       // queue — an idle card's gaps measure the curriculum, not the GPU.
       // ⚠ MEDIAN, not a mean: an under-sized window acks in bursts (lessons

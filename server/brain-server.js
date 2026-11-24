@@ -10883,10 +10883,17 @@ function _applyPoolPartition(reason, moveReason) {
     // before any slice was planned triggered this move with the whole cortex on
     // one card (seen 03:14 — 6 GB over the home upload). Slicing onto it costs
     // only its share; the re-slice check picks the new card up once it settles.
-    const _canSlice = process.env.DREAM_SLICE !== '0' && _pm && _pm.to && typeof brain._sliceCapable === 'function' && brain._sliceCapable(_pm.to);
+    // ⭐ But when the bigger card can hold the WHOLE matrix, the move IS the
+    // point: it then holds all of it, every lesson runs once on it, and the
+    // smaller card is left to step its clusters (one card per job — the slice
+    // planner does not split a matrix one card can hold).
+    const _fullMB = Number(brain._cortexMatrixMB && brain._cortexMatrixMB[brain._SLICE_NAME]) || 0;
+    const _targetHoldsAll = !!(_pm && _pm.to && _fullMB > 0 && typeof brain._donorCapacityMB === 'function'
+      && brain._donorCapacityMB(_pm.to) >= _fullMB * 1.1 && process.env.DREAM_SLICE_WHEN_FITS !== '1');
+    const _canSlice = !_targetHoldsAll && process.env.DREAM_SLICE !== '0' && _pm && _pm.to && typeof brain._sliceCapable === 'function' && brain._sliceCapable(_pm.to);
     // Both triggers: the 60 s placement check AND a bigger card registering
     // (seen 03:23 — "a card with more room joined" moved 6 GB at boot).
-    if (_pm && (reason === 'placement check' || String(reason).startsWith('gpu_register')) && typeof brain._intraSliceActive === 'function' && (brain._intraSliceActive() || _canSlice)
+    if (_pm && (reason === 'placement check' || String(reason).startsWith('gpu_register')) && typeof brain._intraSliceActive === 'function' && !_targetHoldsAll && (brain._intraSliceActive() || _canSlice)
         && process.env.DREAM_SLICED_ROOM_MOVE !== '1') {
       if (!brain._roomMoveSkipLogged) { brain._roomMoveSkipLogged = true; console.log('[Pool] CORTEX MOVE for room skipped — her main matrix is sliced across the pool, so the bigger card gains nothing by owning it and the move would re-upload every slice. DREAM_SLICED_ROOM_MOVE=1 restores it.'); }
       _pm = null;
