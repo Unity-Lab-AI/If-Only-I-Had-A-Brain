@@ -3283,12 +3283,35 @@ const SERVER_GPU_MIXIN = {
     } else {
       for (const h of holders) groups.push([h]);
     }
+    // ⭐ SIZED BY MEASURED SPEED (stage 3). Every lesson waits on the slowest
+    // holder, so rows should follow how fast each card trains them, not only how
+    // much room it has. A card's speed is the rows it held over its own measured
+    // time per lesson (`lesson_cost`, sampled on the card). When EVERY group has a
+    // measurement, ranges are sized by speed and capped by room; until then (a
+    // first plan, a new card) by room. A group's speed is its slowest member's.
+    const _cost = this._lessonCost || {};
+    const _rowsHeld = (ws) => { const s = (this._intraSlices || []).find((e) => e.ws === ws); return s ? s.b - s.a : 0; };
+    const _rate = (ws) => {
+      const c = this.clients && this.clients.get ? this.clients.get(ws) : null;
+      const m = c && _cost[String(c.gpuName || c.id)];
+      const held = _rowsHeld(ws);
+      return (m && m.msPerLesson > 0 && held > 0 && Date.now() - m.at < 3600000) ? held / m.msPerLesson : 0;
+    };
     const groupRoom = groups.map((g) => Math.min(...g.map((h) => h.room)));
-    const total = groupRoom.reduce((s, r) => s + r, 0);
+    const groupRate = groups.map((g) => Math.min(...g.map((h) => _rate(h.ws))));
+    const bySpeed = process.env.DREAM_SLICE_BY_SPEED !== '0' && groupRate.every((r) => r > 0);
+    const weight = bySpeed ? groupRate : groupRoom;
+    const total = weight.reduce((s, r) => s + r, 0);
     const plan = [];
     let a = 0;
     groups.forEach((g, i) => {
-      const b = i === groups.length - 1 ? rows : Math.min(rows, a + Math.floor(rows * groupRoom[i] / total));
+      let b = i === groups.length - 1 ? rows : Math.min(rows, a + Math.floor(rows * weight[i] / total));
+      // Speed never overrides room: a range a group cannot hold is cut to what it can.
+      const _intraMB = Number((this._cortexMatrixMB || {})[this._SLICE_NAME]) || 0;
+      if (bySpeed && _intraMB > 0 && i < groups.length - 1) {
+        const maxRows = Math.floor(rows * Math.min(1, groupRoom[i] / _intraMB));
+        if (b - a > maxRows) b = a + maxRows;
+      }
       if (b > a) for (const h of g) plan.push({ ws: h.ws, a, b });
       a = b;
     });
