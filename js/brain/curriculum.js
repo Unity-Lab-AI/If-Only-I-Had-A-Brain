@@ -6311,11 +6311,32 @@ export class Curriculum {
     try {
       const have = new Set(words);
       const freq = new Map();
+      // ⛔ CONTRACTIONS STAY WHOLE, AND A MISSPELLING BECOMES ITS REAL WORD.
+      // Splitting on every non-letter cut "didn't" into "didn" + "t" — strings
+      // no dictionary carries, harvested by the hundred. A contraction now
+      // yields its real words (didn't → did + not; she's → she), by English
+      // contraction grammar ("n't" = not; "can't"/"won't" are the two whose
+      // stem changes). A token the dictionary service has found to be a typo
+      // ("teh") is taught as the word it meant ("the") — never defined itself.
+      const _typo = (t) => { try { return (cluster && typeof cluster.lookupTypoOf === 'function' && cluster.lookupTypoOf(t)) || t; } catch { return t; } };
+      const _add = (t) => {
+        if (!t || t.length < 2) return;
+        t = _typo(t);
+        if (have.has(t)) return;
+        freq.set(t, (freq.get(t) || 0) + 1);
+      };
       const eat = (s) => {
         if (typeof s !== 'string' || !s) return;
-        for (const t of s.toLowerCase().split(/[^a-z]+/)) {
-          if (t.length < 2 || have.has(t)) continue;
-          freq.set(t, (freq.get(t) || 0) + 1);
+        for (const raw of (s.toLowerCase().replace(/[‘’]/g, "'").match(/[a-z]+(?:'[a-z]+)?/g) || [])) {
+          const ap = raw.indexOf("'");
+          if (ap < 0) { _add(raw); continue; }
+          if (raw.endsWith("n't")) {
+            const stem = raw.slice(0, -3);
+            _add(stem === 'ca' ? 'can' : stem === 'wo' ? 'will' : stem);
+            _add('not');
+          } else {
+            _add(raw.slice(0, ap));
+          }
         }
       };
       const bank = TRAIN_BANKS && TRAIN_BANKS[`${subject}/${grade}`];
