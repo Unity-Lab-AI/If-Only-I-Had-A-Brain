@@ -924,7 +924,10 @@ const SERVER_GPU_MIXIN = {
     const buffer = 1 + (settings.bufferPct || 0);
     let upgradeTier = 0;
     for (let i = 0; i < MILESTONES.length; i++) {
-      if (_baseCapNeurons >= MILESTONES[i].neurons || _capNeurons >= MILESTONES[i].neurons * buffer) upgradeTier = i;
+      // The baseline shortcut only applies with NO card connected. TIERTOP ratchets
+      // the baseline up to the largest card ever seen, so with a card attached it
+      // offered a size no connected card could hold (seen: tier 5 on one 16 GB card).
+      if ((donorCount === 0 && _baseCapNeurons >= MILESTONES[i].neurons) || _capNeurons >= MILESTONES[i].neurons * buffer) upgradeTier = i;
     }
     this._communityUpgradeTier = upgradeTier;
 
