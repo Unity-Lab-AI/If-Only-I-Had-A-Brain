@@ -14276,7 +14276,7 @@ wss.on('connection', (ws, req) => {
     // build: a donor above the floor but below this keeps working normally and
     // upgrades at its next natural disconnect, so nobody is kicked mid-walk
     // for being one release behind.
-    minDonorVersion: (process.env.DREAM_MIN_DONOR_VERSION || '0.3.26').trim(),
+    minDonorVersion: (process.env.DREAM_MIN_DONOR_VERSION || CURRENT_DONOR_VERSION).trim(),
     recommendedDonorVersion: (process.env.DREAM_RECOMMENDED_DONOR_VERSION || CURRENT_DONOR_VERSION).trim(),
     state: brain.getState(),
     emotionHistory: brain._emotionHistory.slice(-300),
@@ -14906,7 +14906,10 @@ wss.on('connection', (ws, req) => {
           // onto the donor — not merely to whatever is newest.
           const _donorVer = (msg.appVersion || '').toString().trim();
           if (_donorVer) {
-            const _minVer = (process.env.DREAM_MIN_DONOR_VERSION || '0.3.26').trim();
+            // The floor is the CURRENT release by default (operator 2026-11-24:
+            // "make sure old doner versions arnt allowed to connect"): an older
+            // binary is told to update and refused. DREAM_MIN_DONOR_VERSION lowers it.
+            const _minVer = (process.env.DREAM_MIN_DONOR_VERSION || CURRENT_DONOR_VERSION).trim();
             const _cmp = (a, b) => {
               const pa = a.split('.').map(n => parseInt(n, 10) || 0);
               const pb = b.split('.').map(n => parseInt(n, 10) || 0);
@@ -14922,7 +14925,7 @@ wss.on('connection', (ws, req) => {
                   type: 'incompatible_version',
                   yourVersion: _donorVer,
                   minVersion: _minVer,
-                  message: `Donor binary v${_donorVer} is incompatible — the brain requires v${_minVer} or newer. Download the current donor from git.unityailab.com and reconnect.`,
+                  message: `Donor binary v${_donorVer} is incompatible — the brain requires v${_minVer} or newer. Download the current donor from github.com/Unity-Lab-AI/If-Only-I-Had-A-Brain/releases/latest and reconnect.`,
                 }));
               } catch { /* best-effort notify */ }
               console.warn(`[Brain] gpu_register REFUSED — donor binary v${_donorVer} < min v${_minVer} (incompatible). Told the donor to update; closing.`);

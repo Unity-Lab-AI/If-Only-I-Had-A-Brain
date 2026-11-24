@@ -437,7 +437,7 @@ impl WorkQueue {
 /// the per-session worker). Reconnects are infrequent, so the extra GPU init on
 /// a drop is acceptable; a fresh engine after a drop is also the safer state.
 /// This binary's own version, from Cargo — never hand-maintained.
-const MY_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const MY_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Is `candidate` STRICTLY newer than `current`? Semver-ish numeric compare over
 /// dot-separated parts.
@@ -447,7 +447,7 @@ const MY_VERSION: &str = env!("CARGO_PKG_VERSION");
 /// unparseable or malicious version string must never be able to bounce a working
 /// donor. Same principle the launcher already states — *a fallback should never
 /// be able to move you backwards.*
-fn version_is_newer(candidate: &str, current: &str) -> bool {
+pub fn version_is_newer(candidate: &str, current: &str) -> bool {
     let parse = |s: &str| -> Option<Vec<u64>> {
         let v: Vec<u64> = s
             .trim()
@@ -1455,7 +1455,29 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
     let mut leaving: Option<std::time::Instant> = None;
     const LEAVE_PATIENCE: Duration = Duration::from_secs(300);
 
+    // ⛔ EVERY SEND IS TIME-BOUNDED. A send awaited with no limit froze a pod
+    // solid (2026-11-24): the tunnel stopped taking data, `tx.send(..).await`
+    // waited for a writable socket forever, and because that await sits INSIDE
+    // this loop nothing else ran — no reads, no idle check, no reconnect; every
+    // thread parked and the brain dropped the card after 89 s of silence. A send
+    // that cannot finish in SEND_TIMEOUT marks the link stalled; the loop then
+    // breaks and the supervisor reconnects.
+    const SEND_TIMEOUT: Duration = Duration::from_secs(30);
+    let mut send_stalled = false;
+    macro_rules! snd {
+        ($m:expr) => {
+            match tokio::time::timeout(SEND_TIMEOUT, tx.send($m)).await {
+                Ok(r) => r.is_ok(),
+                Err(_) => { send_stalled = true; false }
+            }
+        };
+    }
+
     loop {
+        if send_stalled {
+            eprintln!("[donor] a send to the brain did not complete in {}s — link stalled, reconnecting.", SEND_TIMEOUT.as_secs());
+            break;
+        }
         tokio::select! {
             _ = hang_tick.tick() => {
                 if let Some(busy) = activity.busy_secs() {
@@ -1470,9 +1492,9 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                         // The WS loop is still alive (that's the zombie shape) — report the
                         // hang to the brain NOW so the operator sees WHY, not just donors=0.
                         let payload = serde_json::json!({ "type": "donor_crumb", "reason": format!("native-donor GPU HANG (live): {what}") });
-                        let _ = tx.send(Message::text(payload.to_string())).await;
+                        let _ = snd!(Message::text(payload.to_string()));
                         set_status(&control, |s| { s.connected = false; s.note = format!("GPU hang ({label}) — rebuilding engine"); });
-                        let _ = tx.send(Message::Close(None)).await;
+                        let _ = snd!(Message::Close(None));
                         gpu_hung = true;
                         break;
                     }
@@ -1486,7 +1508,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                             println!("[donor] stop requested — saving this donor's checkpoint and handing the weights back to the brain before closing.");
                             pending.fetch_add(1, Ordering::Relaxed);
                             workq.push(Work::CheckpointSave { lineage: lin.clone() });
-                            let _ = tx.send(Message::text(serde_json::json!({ "type": "donor_leaving" }).to_string())).await;
+                            let _ = snd!(Message::text(serde_json::json!({ "type": "donor_leaving" }).to_string()));
                             set_status(&control, |s| { s.note = "handing weights back to the brain…".into(); });
                             leaving = Some(std::time::Instant::now());
                         }
@@ -1494,7 +1516,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                         _ => {
                             if leaving.is_some() { eprintln!("[donor] the brain did not confirm the hand-back within {}s — closing; this donor's disk checkpoint still holds the weights.", LEAVE_PATIENCE.as_secs()); }
                             println!("[donor] stop requested (GUI) — closing connection cleanly.");
-                            let _ = tx.send(Message::Close(None)).await;
+                            let _ = snd!(Message::Close(None));
                             break;
                         }
                     }
@@ -1524,7 +1546,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     link_down_mbps,
                 };
                 if let Ok(j) = serde_json::to_string(&tele) {
-                    let _ = tx.send(Message::text(j)).await;
+                    let _ = snd!(Message::text(j));
                 }
                 // `WEIGHTLOSS.1` — the timed checkpoint, at the brain's cadence.
                 if let Some(lin) = &ckpt_lineage {
@@ -1544,7 +1566,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     break;
                 }
                 // Outbound keepalive — keeps NAT/proxy mappings warm during quiet teach windows.
-                if tx.send(Message::Ping(Vec::new().into())).await.is_err() {
+                if !snd!(Message::Ping(Vec::new().into())) {
                     eprintln!("[donor] keepalive ping send failed — reconnecting.");
                     break;
                 }
@@ -1559,8 +1581,8 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
             // Worker reply → send over the socket, in receipt order.
             Some(out) = reply_rx.recv() => {
                 match out {
-                    Out::Text(t) => { let _ = tx.send(Message::text(t)).await; }
-                    Out::Binary(b) => { let _ = tx.send(Message::Binary(b.into())).await; }
+                    Out::Text(t) => { let _ = snd!(Message::text(t)); }
+                    Out::Binary(b) => { let _ = snd!(Message::Binary(b.into())); }
                 }
             }
             maybe = rx.next() => {
@@ -1675,7 +1697,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                             }
                             if v.get("type").and_then(|x| x.as_str()) == Some("leave_ok") {
                                 println!("[donor] the brain confirmed it holds this donor's weights — closing.");
-                                let _ = tx.send(Message::Close(None)).await;
+                                let _ = snd!(Message::Close(None));
                                 break;
                             }
                             let lin = v.get("lineage").and_then(|x| x.as_str()).unwrap_or("").to_string();
@@ -1699,7 +1721,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                                 // rebind timeout. The matrix stays standalone (carried preSpikes
                                 // path still works); cluster-slice binding is an M3.2 refinement.
                                 let ack = RebindAck { msg_type: "rebind_sparse_ack", req_id: rb.req_id, name: rb.name, ok: true };
-                                let _ = tx.send(Message::text(serde_json::to_string(&ack).unwrap())).await;
+                                let _ = snd!(Message::text(serde_json::to_string(&ack).unwrap()));
                             }
                             Ok(ServerMessage::WriteSpikeSlice(w)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::WriteSpike { cluster: w.cluster_name, region: w.region_name, indices: w.sparse_indices }); }
                             Ok(ServerMessage::WriteCurrentSlice(w)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::WriteCurrent { cluster: w.cluster_name, region: w.region_name, indices: w.sparse_indices, values: w.sparse_values, psi: w.psi }); }
@@ -1731,12 +1753,12 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                             // already rejected. The user must download the current donor + restart.
                             Ok(ServerMessage::IncompatibleVersion(iv)) => {
                                 let msg = if iv.message.is_empty() {
-                                    format!("this donor binary (v{}) is too old — the brain requires v{}+. Download the current donor from git.unityailab.com and restart.", iv.your_version, iv.min_version)
+                                    format!("this donor binary (v{}) is too old — the brain requires v{}+. Download the current donor (github.com/Unity-Lab-AI/If-Only-I-Had-A-Brain/releases/latest) and restart.", iv.your_version, iv.min_version)
                                 } else { iv.message.clone() };
                                 eprintln!("[donor] ⛔ INCOMPATIBLE: {msg}");
-                                set_status(&control, |s| { s.connected = false; s.note = format!("INCOMPATIBLE — update to v{}+ (git.unityailab.com)", iv.min_version); });
+                                set_status(&control, |s| { s.connected = false; s.note = format!("INCOMPATIBLE — update to v{}+ (press Update)", iv.min_version); });
                                 control.stop.store(true, Ordering::Relaxed);
-                                let _ = tx.send(Message::Close(None)).await;
+                                let _ = snd!(Message::Close(None));
                                 break;
                             }
                             // UPGRADE-BEFORE-RECONNECT — remember which build this
@@ -1842,7 +1864,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                                             pending.fetch_sub(1, Ordering::Relaxed);
                                             repeat_misses += 1;
                                             if orig_type == 3 {
-                                                let _ = tx.send(Message::Binary(frames::ack_simple(3, req_id).into())).await;
+                                                let _ = snd!(Message::Binary(frames::ack_simple(3, req_id).into()));
                                             }
                                             if repeat_misses <= 3 {
                                                 eprintln!("[donor] repeat-frame cache MISS (type {orig_type} '{name}') — acked without executing ({repeat_misses} total).");
@@ -1865,7 +1887,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                           }
                         }
                     }
-                    Message::Ping(p) => { let _ = tx.send(Message::Pong(p)).await; }
+                    Message::Ping(p) => { let _ = snd!(Message::Pong(p)); }
                     Message::Close(_) => { println!("[donor] server closed the connection."); break; }
                     _ => {}
                 }
