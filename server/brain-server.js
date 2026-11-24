@@ -13778,6 +13778,11 @@ const httpServer = http.createServer((req, res) => {
     // and none tested whether the SERVER would hand it over.
     '/html/teachview.html': path.join(__dirname, '..', 'html', 'teachview.html'),
     '/teachview.html': path.join(__dirname, '..', 'html', 'teachview.html'),
+    // The Runpod admin page, at both addresses like every other page here — the
+    // legend is served at /legend.html, so its relative link resolves to
+    // /runpod.html, and that 404'd (found by the operator clicking it).
+    '/html/runpod.html': path.join(__dirname, '..', 'html', 'runpod.html'),
+    '/runpod.html': path.join(__dirname, '..', 'html', 'runpod.html'),
   };
   if (req.method === 'GET' && (req.url === '/unity-guide.html' || req.url === '/brain-equations.html')) {
     res.writeHead(301, { Location: `/html${req.url}`, 'Cache-Control': 'no-store' });
