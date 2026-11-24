@@ -1472,6 +1472,14 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
             }
         };
     }
+    // The same bound for a send made just before the loop exits on purpose (a
+    // hang report, a goodbye, a Close): the session is ending anyway, so a stall
+    // there has nothing to mark.
+    macro_rules! snd_bye {
+        ($m:expr) => {
+            tokio::time::timeout(SEND_TIMEOUT, tx.send($m)).await.map(|r| r.is_ok()).unwrap_or(false)
+        };
+    }
 
     loop {
         if send_stalled {
@@ -1492,9 +1500,9 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                         // The WS loop is still alive (that's the zombie shape) — report the
                         // hang to the brain NOW so the operator sees WHY, not just donors=0.
                         let payload = serde_json::json!({ "type": "donor_crumb", "reason": format!("native-donor GPU HANG (live): {what}") });
-                        let _ = snd!(Message::text(payload.to_string()));
+                        let _ = snd_bye!(Message::text(payload.to_string()));
                         set_status(&control, |s| { s.connected = false; s.note = format!("GPU hang ({label}) — rebuilding engine"); });
-                        let _ = snd!(Message::Close(None));
+                        let _ = snd_bye!(Message::Close(None));
                         gpu_hung = true;
                         break;
                     }
@@ -1516,7 +1524,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                         _ => {
                             if leaving.is_some() { eprintln!("[donor] the brain did not confirm the hand-back within {}s — closing; this donor's disk checkpoint still holds the weights.", LEAVE_PATIENCE.as_secs()); }
                             println!("[donor] stop requested (GUI) — closing connection cleanly.");
-                            let _ = snd!(Message::Close(None));
+                            let _ = snd_bye!(Message::Close(None));
                             break;
                         }
                     }
@@ -1697,7 +1705,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                             }
                             if v.get("type").and_then(|x| x.as_str()) == Some("leave_ok") {
                                 println!("[donor] the brain confirmed it holds this donor's weights — closing.");
-                                let _ = snd!(Message::Close(None));
+                                let _ = snd_bye!(Message::Close(None));
                                 break;
                             }
                             let lin = v.get("lineage").and_then(|x| x.as_str()).unwrap_or("").to_string();
@@ -1758,7 +1766,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                                 eprintln!("[donor] ⛔ INCOMPATIBLE: {msg}");
                                 set_status(&control, |s| { s.connected = false; s.note = format!("INCOMPATIBLE — update to v{}+ (press Update)", iv.min_version); });
                                 control.stop.store(true, Ordering::Relaxed);
-                                let _ = snd!(Message::Close(None));
+                                let _ = snd_bye!(Message::Close(None));
                                 break;
                             }
                             // UPGRADE-BEFORE-RECONNECT — remember which build this
