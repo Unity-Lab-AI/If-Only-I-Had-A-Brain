@@ -308,6 +308,26 @@ fn expand_pattern_lesson_par(p: &frames::PatternLesson) -> Vec<frames::LessonOp>
     })
 }
 
+/// v0.3.55 — a lesson's step list built on every core, the same way: pairs split
+/// into one contiguous chunk per core, expanded in parallel, joined in pair
+/// order. Each pair's steps depend only on that pair (its tiles, its lateral
+/// mask, its wrong motor), so the join equals `frames::expand_lesson`.
+fn expand_lesson_par(l: &frames::Lesson) -> Vec<frames::LessonOp> {
+    let cores = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1).max(1);
+    if cores == 1 || l.pairs.len() < 64 { return frames::expand_lesson(l); }
+    let chunk = (l.pairs.len() + cores - 1) / cores;
+    std::thread::scope(|s| {
+        let handles: Vec<_> = l.pairs.chunks(chunk).map(|pairs| {
+            let mut part = l.clone();
+            part.pairs = pairs.to_vec();
+            s.spawn(move || frames::expand_lesson(&part))
+        }).collect();
+        let mut out = Vec::new();
+        for h in handles { out.extend(h.join().expect("lesson expansion thread panicked")); }
+        out
+    })
+}
+
 /// M3.3 — a unit of GPU work handed from the (async) WS loop to the GPU worker thread.
 /// Keeps every blocking compute/readback off the socket task so liveness pings + replies
 /// keep flowing during a heavy teach burst.
@@ -1194,7 +1214,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     // v0.3.53 — both lesson kinds run this one loop; only the
                     // expansion differs (each is its own parity definition).
                     let (lesson_ops, lesson_req, lesson_units) = match w {
-                        Work::Lesson(l) => (frames::expand_lesson(&l), l.req_id, l.pairs.len()),
+                        Work::Lesson(l) => (expand_lesson_par(&l), l.req_id, l.pairs.len()),
                         Work::PatternLesson(p) => (expand_pattern_lesson_par(&p), p.req_id, p.items.len()),
                         _ => unreachable!(),
                     };
