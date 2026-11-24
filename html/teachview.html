@@ -3637,17 +3637,32 @@ function renderInstruments(st, tv) {
   catch (e) { /* same rule */ }
 }
 
-poll(); pollEye(); pollSeries(); loadLedgerCells(); loadWeightsList();
+/* ⛔ ONE REQUEST IN FLIGHT PER POLL. These ran on bare intervals, so whenever
+   the brain's loop blocked for a few seconds the next tick fired anyway and
+   requests stacked up — each holding a parsed public-state (~0.3 MB) or a
+   mind's-eye snapshot (~16 MB) — until the tab died with "Out of Memory"
+   (seen 2026-11-24). A tick that finds its poll still running is skipped. */
+function serial(fn) {
+  let busy = false;
+  return async () => {
+    if (busy) return;
+    busy = true;
+    try { await fn(); } catch (e) { /* each poll reports its own failures */ } finally { busy = false; }
+  };
+}
+const pollS = serial(poll), pollEyeS = serial(pollEye), pollSeriesS = serial(pollSeries);
+const loadLedgerCellsS = serial(loadLedgerCells), loadWeightsListS = serial(loadWeightsList);
+pollS(); pollEyeS(); pollSeriesS(); loadLedgerCellsS(); loadWeightsListS();
 /* Slow on purpose: a weights file changes on a save, not on a tick, and the
    listing stats several multi-gigabyte files. 30s is far more often than a save
    happens and costs nothing. */
-setInterval(loadWeightsList, 30000);
-setInterval(poll, 2000);
-setInterval(pollEye, 5000);
-setInterval(pollSeries, 30000);
+setInterval(loadWeightsListS, 30000);
+setInterval(pollS, 2000);
+setInterval(pollEyeS, 5000);
+setInterval(pollSeriesS, 30000);
 /* Slow on purpose: the cell list is a GROUP BY over the whole ledger, and this
    pane is read on demand rather than watched. */
-setInterval(loadLedgerCells, 30000);
+setInterval(loadLedgerCellsS, 30000);
 /* The press watchdog. Cheap, and it must keep running while everything else is
    failing — that is the exact window it reports on. */
 setInterval(pressWatchTick, 5000);
