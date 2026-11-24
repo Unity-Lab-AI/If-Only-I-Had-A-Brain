@@ -11064,13 +11064,42 @@ var LanguageCortex = class {
    * Caller supplies the text (browser: fetch, node: fs.readFile) so the
    * cortex itself stays environment-agnostic.
    */
-  loadSelfImage(text, dictionary, arousal = 0.7, valence = 0.2) {
+  /**
+   * Run `fit` over every sentence. With `yieldMs > 0` it hands the event loop
+   * back every `yieldMs` and returns a Promise of the count — the server's boot
+   * fitted 1,715 sentences in one 52 s block, which silenced every socket and
+   * dropped a donor card. Without it (the browser) it runs straight through and
+   * returns the count.
+   */
+  _fitEach(sentences, fit, yieldMs, label, startTime) {
+    const done = () => {
+      console.log(`[LanguageCortex] ${label} DONE: ${sentences.length} observations fitted in ${Math.round((typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()) - startTime)}ms`);
+      return sentences.length;
+    };
+    if (!(yieldMs > 0)) {
+      for (const s of sentences) fit(s);
+      return done();
+    }
+    const nextTurn = typeof setImmediate === "function" ? (r) => setImmediate(r) : (r) => setTimeout(r, 0);
+    return (async () => {
+      let sliceAt = Date.now();
+      for (const s of sentences) {
+        fit(s);
+        if (Date.now() - sliceAt >= yieldMs) {
+          await new Promise(nextTurn);
+          sliceAt = Date.now();
+        }
+      }
+      return done();
+    })();
+  }
+  loadSelfImage(text, dictionary, arousal = 0.7, valence = 0.2, opts = {}) {
     if (!text || this._selfImageLoaded || !dictionary) return 0;
     this._selfImageLoaded = true;
     const sentences = String(text).replace(/[*_#`>|\[\]()]/g, " ").split(/[.!?\n\r]+/).map((s) => s.trim()).filter((s) => s.length >= 3);
     console.log(`[LanguageCortex] loadSelfImage: ${sentences.length} observation sentences`);
     const startTime = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
-    for (const s of sentences) {
+    return this._fitEach(sentences, (s) => {
       try {
         const firstPerson = this._transformToFirstPerson(s);
         const mood = this._computeMoodSignature(firstPerson);
@@ -11079,9 +11108,7 @@ var LanguageCortex = class {
       } catch (err) {
         console.warn("[LanguageCortex] loadSelfImage observation failed:", err.message);
       }
-    }
-    console.log(`[LanguageCortex] loadSelfImage DONE: ${sentences.length} observations fitted in ${Math.round((typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()) - startTime)}ms`);
-    return sentences.length;
+    }, opts.yieldMs, "loadSelfImage", startTime);
   }
   /**
    * T13.1 — Persona Hebbian training driver.
@@ -11208,13 +11235,13 @@ var LanguageCortex = class {
     console.log(`[LanguageCortex] loadCosmicCorpus DONE: ${sentences.length} observations fitted in ${Math.round((typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()) - startTime)}ms`);
     return sentences.length;
   }
-  loadLinguisticBaseline(text, dictionary, arousal = 0.5, valence = 0) {
+  loadLinguisticBaseline(text, dictionary, arousal = 0.5, valence = 0, opts = {}) {
     if (!text || this._baselineLoaded || !dictionary) return 0;
     this._baselineLoaded = true;
     const sentences = String(text).split(/\r?\n/).map((line) => line.trim()).filter((line) => line.length >= 3 && !line.startsWith("#")).flatMap((line) => line.split(/[.!?]+/).map((s) => s.trim()).filter((s) => s.length >= 2));
     console.log(`[LanguageCortex] loadBaseline: ${sentences.length} observation sentences`);
     const baseStart = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
-    for (const s of sentences) {
+    return this._fitEach(sentences, (s) => {
       try {
         const mood = this._computeMoodSignature(s);
         const sentenceCortex = this._deriveSentenceCortexPattern(s);
@@ -11222,9 +11249,7 @@ var LanguageCortex = class {
       } catch (err) {
         console.warn("[LanguageCortex] loadBaseline observation failed:", err.message);
       }
-    }
-    console.log(`[LanguageCortex] loadBaseline DONE: ${sentences.length} observations fitted in ${Math.round((typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()) - baseStart)}ms`);
-    return sentences.length;
+    }, opts.yieldMs, "loadBaseline", baseStart);
   }
   /**
    * Derive a 32-dim cortex-like activation pattern from a sentence.
