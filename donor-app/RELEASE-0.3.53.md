@@ -1,0 +1,3 @@
+# Donor 0.3.53
+
+- **Whole sentences reach the card at once.** A new frame, the pattern lesson, carries many items in one message — each item is one word of a sentence: its pattern in the letter, sound, motor and meaning regions — followed by the same learning steps for every item. The card runs, per item, exactly what the brain used to send one word at a time: clear those regions, write each region's pattern, run the learning ops. The brain's sentence lessons used to go out a word per round trip and left the card idle most of the time; now a run of up to 2,048 words fills the card's lesson queue. Acknowledged and paced like the existing lessons.

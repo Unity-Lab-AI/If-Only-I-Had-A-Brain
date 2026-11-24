@@ -1034,4 +1034,5 @@ mod tests {
         let mut r = Reader::new(&bytes);
         assert_eq!(r.u32_vec(cols.len()).expect("raw decode"), cols);
     }
+
 }
