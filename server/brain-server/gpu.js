@@ -3228,13 +3228,23 @@ const SERVER_GPU_MIXIN = {
     this._intraSlices = plan.map((p) => ({ ws: p.ws, a: p.a, b: p.b }));
     const nm = (ws) => { const c = this.clients && this.clients.get ? this.clients.get(ws) : null; return (c && (c.gpuName || c.id)) || 'donor'; };
     console.log(`[Pool] SLICES — ${name} split across ${plan.length} cards: ${plan.map((p) => `${nm(p.ws)} rows ${p.a.toLocaleString()}–${p.b.toLocaleString()}`).join(' · ')}`);
+    // DONOR PULL — a published snapshot with the SAME structure lets a remote
+    // card build its slice from the release instead of over the home upload.
+    let snapOk = false;
+    const snap = this._weightsSnapshot;
+    if (snap && snap.rows === matrix.rows && snap.nnz === matrix.values.length && process.env.DREAM_DONOR_PULL !== '0') {
+      try { snapOk = (await require('./weights-publish.js').structureHash(matrix)) === snap.structure; } catch { snapOk = false; }
+    }
     const results = await Promise.all(plan.map(async (p) => {
       if (p.ws !== this._gpuClient) this._gpuInitLangPseudoCluster(p.ws);
-      const slice = this._csrRowSlice(matrix, p.a, p.b);
       const sb = binding && binding.dstRegion
         ? { ...binding, dstRegion: { start: binding.dstRegion.start + p.a, end: binding.dstRegion.start + p.b } }
         : binding;
-      const r = await this._gpuSparseUploadInner(name, slice, sb, p.ws, true);
+      let r = null;
+      if (snapOk && p.ws !== this._gpuClient && this._sliceCapable(p.ws)) {
+        r = await this._sliceFromSnapshot(p, name, matrix, sb, snap);
+      }
+      if (!r) r = await this._gpuSparseUploadInner(name, this._csrRowSlice(matrix, p.a, p.b), sb, p.ws, true);
       // rowCount bounds the slice on the card too — the owner's slice starts at
       // row 0, so a base alone would not filter rows past its end.
       try { p.ws.send(JSON.stringify({ type: 'slice_base', name, rowBase: p.a, rowCount: p.b - p.a })); } catch { /* a dropped holder re-plans */ }
@@ -3243,6 +3253,100 @@ const SERVER_GPU_MIXIN = {
     const ok = results.every((r) => r);
     if (!ok) console.warn(`[Pool] SLICES — ${results.filter((r) => !r).length} of ${plan.length} slice upload(s) failed; the walk re-plans on the next cortex upload.`);
     return ok ? results[0] : null;
+  },
+
+  _awaitDonorReply(kind, id, timeoutMs) {
+    if (!this._donorReplyWait) this._donorReplyWait = new Map();
+    const key = `${kind}:${id}`;
+    return new Promise((resolve) => {
+      const t = setTimeout(() => { this._donorReplyWait.delete(key); resolve(null); }, timeoutMs);
+      this._donorReplyWait.set(key, (msg) => { clearTimeout(t); resolve(msg); });
+    });
+  },
+  _donorReply(kind, msg) {
+    const key = `${kind}:${msg && msg.id}`;
+    const f = this._donorReplyWait && this._donorReplyWait.get(key);
+    if (f) { this._donorReplyWait.delete(key); f(msg); }
+  },
+
+  /**
+   * DONOR PULL — the card builds rows [a, b) from the published blocks, then
+   * only the rows that changed since the snapshot cross the home upload.
+   * Returns a truthy result, or null when the card could not (the caller then
+   * uploads the slice the ordinary way — same weights either way).
+   */
+  async _sliceFromSnapshot(p, name, matrix, sb, snap) {
+    const nm = (() => { const c = this.clients && this.clients.get ? this.clients.get(p.ws) : null; return (c && (c.gpuName || c.id)) || 'donor'; })();
+    const id = (this._snapReqSeq = (this._snapReqSeq | 0) + 1);
+    const blocks = snap.blocks.filter((b) => b.rowEnd > p.a && b.rowStart < p.b)
+      .map((b) => ({ url: b.url, sha256: b.sha256, rowStart: b.rowStart, rowEnd: b.rowEnd }));
+    const t0 = Date.now();
+    const wait = this._awaitDonorReply('slice_loaded', id, 60 * 60 * 1000);
+    try {
+      p.ws.send(JSON.stringify({
+        type: 'slice_from_snapshot', id, name, rowBase: p.a, rowCount: p.b - p.a, blocks,
+        binding: { srcCluster: sb.srcCluster, srcStart: sb.srcRegion.start, srcEnd: sb.srcRegion.end, dstCluster: sb.dstCluster, dstStart: sb.dstRegion.start, dstEnd: sb.dstRegion.end },
+      }));
+    } catch { return null; }
+    const loaded = await wait;
+    if (!loaded || !loaded.ok) {
+      console.warn(`[Pool] DONOR PULL — ${nm} could not build ${name} rows ${p.a}–${p.b} from the snapshot (${(loaded && loaded.error) || 'timeout'}); uploading it instead.`);
+      return null;
+    }
+    const runs = await require('./weights-publish.js').changedRuns(matrix, snap._rowHash, p.a, p.b);
+    const rp = matrix.rowPtr;
+    let sent = 0;
+    const MAXV = 4 * 1024 * 1024;
+    const patches = [];
+    for (const [r0, r1] of runs) {
+      for (let k = rp[r0]; k < rp[r1]; k += MAXV) patches.push([k, Math.min(rp[r1], k + MAXV)]);
+    }
+    const doneId = id;
+    const patched = patches.length ? this._awaitDonorReply('slice_patched', doneId, 30 * 60 * 1000) : Promise.resolve({ ok: true });
+    patches.forEach(([k0, k1], i) => {
+      const v = matrix.values.subarray(k0, k1);
+      sent += k1 - k0;
+      try {
+        p.ws.send(JSON.stringify({ type: 'slice_patch', name, offset: k0 - rp[p.a], values_b64: Buffer.from(v.buffer, v.byteOffset, v.byteLength).toString('base64'), ...(i === patches.length - 1 ? { doneId } : {}) }));
+      } catch { /* a dropped card re-plans */ }
+    });
+    const pr = await patched;
+    if (!pr) { console.warn(`[Pool] DONOR PULL — ${nm} did not confirm the change patch; uploading ${name} rows ${p.a}–${p.b} instead.`); return null; }
+    const total = rp[p.b] - rp[p.a];
+    console.log(`[Pool] DONOR PULL — ${nm} built ${name} rows ${p.a.toLocaleString()}–${p.b.toLocaleString()} from the published snapshot; ${runs.length} changed run(s), ${(sent * 4 / 1048576).toFixed(1)} MB sent of ${(total * 4 / 1048576).toFixed(1)} MB (${((Date.now() - t0) / 1000).toFixed(0)}s).`);
+    return { ok: true, pulled: true };
+  },
+
+  /**
+   * Publish a snapshot of the intra matrix as a GitHub release, at most every
+   * `DREAM_WEIGHTS_PUBLISH_MS` (6 h), when another card is in the pool (a
+   * snapshot only helps a card that would otherwise be pushed the weights).
+   * Runs in the background after a successful checkpoint pull.
+   */
+  _maybePublishWeights() {
+    if (process.env.DREAM_WEIGHTS_PUBLISH === '0' || this._weightsPublishInFlight) return;
+    const gap = Number(process.env.DREAM_WEIGHTS_PUBLISH_MS) > 0 ? Number(process.env.DREAM_WEIGHTS_PUBLISH_MS) : 6 * 3600 * 1000;
+    if (this._weightsSnapshot && Date.now() - (this._weightsSnapshotAt || 0) < gap) return;
+    const pool = typeof this._livePoolDonors === 'function' ? this._livePoolDonors() : [];
+    if (pool.length < 2) return;
+    const reg = this._replicaMatrixRegistry;
+    const m = reg && reg.get(this._SLICE_NAME) && reg.get(this._SLICE_NAME).matrix;
+    if (!m || !m.values || !m.values.length) return;
+    this._weightsPublishInFlight = true;
+    const t0 = Date.now();
+    console.log(`[Brain] WEIGHTS SNAPSHOT — publishing ${this._SLICE_NAME} (${(m.values.byteLength / 1048576).toFixed(0)} MB of weights) as a GitHub release so joining cards pull it from there.`);
+    // Lineage = her seed, the same identity the donor's own checkpoint uses.
+    let lineage = null;
+    try { const st = this._rngMod && typeof this._rngMod.brainRngState === 'function' ? this._rngMod.brainRngState() : null; if (st) lineage = String(st.seed >>> 0); } catch { /* unlabelled */ }
+    require('./weights-publish.js').publishSnapshot(m, { name: this._SLICE_NAME, lineage, saveVersion: this._saveVersion || 0 })
+      .then((man) => {
+        if (man) {
+          this._weightsSnapshot = man; this._weightsSnapshotAt = Date.now();
+          console.log(`[Brain] WEIGHTS SNAPSHOT — published ${man.tag}: ${man.blocks.length} block(s) in ${((Date.now() - t0) / 60000).toFixed(1)} min.`);
+        }
+      })
+      .catch(() => {})
+      .finally(() => { this._weightsPublishInFlight = false; });
   },
 
   /** Copy every teach frame sent to the cortex owner to the other holders. */
@@ -6705,6 +6809,9 @@ const SERVER_GPU_MIXIN = {
       return refuse(`save failed: ${(e && e.message) || e}`);
     }
     this._lastReadbackOk = { at: Date.now(), reason, bytes, secs, matrices: names.length };
+    // DONOR PULL — the master now holds what the cards trained; a snapshot of
+    // it (when one is due) lets the next joining card pull instead of be pushed.
+    try { this._maybePublishWeights(); } catch { /* publishing never blocks a save */ }
     // ⭐ `READBACKEYE.1` — the cumulative side. One `lastOk` cannot answer "is the
     //   hourly cadence actually running?" on a box that has been up for hours;
     //   a count can, and `secs` banked here is what says whether `REBINDWAIT.4`'s

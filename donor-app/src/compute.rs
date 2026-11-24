@@ -1220,6 +1220,16 @@ impl ComputeEngine {
         Ok(())
     }
 
+    /// v0.3.48 — overwrite `vals.len()` weights starting at element `offset`.
+    pub fn patch_values(&mut self, name: &str, offset: usize, vals: &[f32]) -> Result<(), String> {
+        let m = self.sparse.get(name).ok_or_else(|| format!("no resident matrix '{name}'"))?;
+        if offset + vals.len() > m.nnz as usize { return Err(format!("patch {}+{} past nnz {}", offset, vals.len(), m.nnz)); }
+        self.queue.write_buffer(&m.values, (offset * 4) as u64, bytemuck::cast_slice(vals));
+        self.queue.submit(std::iter::empty());
+        let _ = self.device.poll(wgpu::Maintain::Wait);
+        Ok(())
+    }
+
     /// Run Oja/anti-Hebbian plasticity on a sparse matrix (in place).
     pub fn hebbian(&self, name: &str, pre_indices: &[u32], post_indices: &[u32], lr: f32) -> Result<(), String> {
         let m = self.sparse.get(name).ok_or_else(|| format!("sparse '{name}' not uploaded"))?;
@@ -1539,6 +1549,13 @@ impl Backend {
         }
     }
     /// `WEIGHTLOSS.1` — write checkpointed values back into a resident matrix.
+    fn patch_values(&mut self, name: &str, offset: usize, vals: &[f32]) -> Result<(), String> {
+        match self {
+            Backend::Wgpu(e) => e.patch_values(name, offset, vals),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.patch_values(name, offset, vals),
+        }
+    }
     fn restore_values(&mut self, name: &str, bytes: &[u8]) -> Result<(), String> {
         match self {
             Backend::Wgpu(e) => e.restore_values(name, bytes),
@@ -1925,6 +1942,12 @@ impl MultiEngine {
     pub fn restore_values(&mut self, name: &str, bytes: &[u8]) -> Result<(), String> {
         let g = *self.matrix_gpu.get(name).ok_or_else(|| format!("no GPU holds '{name}'"))?;
         self.engines[g].restore_values(name, bytes)
+    }
+
+    /// v0.3.48 — partial value write on whichever GPU holds the matrix.
+    pub fn patch_values(&mut self, name: &str, offset: usize, vals: &[f32]) -> Result<(), String> {
+        let g = *self.matrix_gpu.get(name).ok_or_else(|| format!("no GPU holds '{name}'"))?;
+        self.engines[g].patch_values(name, offset, vals)
     }
 
     /// `WEIGHTLOSS.1` — every matrix resident on this donor, for its own checkpoint.

@@ -14500,7 +14500,7 @@ wss.on('connection', (ws, req) => {
       // public/donor-route connection faking these could poison brain state.
       // gpu_register is exempt (it's how a donor JOINS the pool). Chat policy
       // (who may send 'text') is a separate operator decision — not gated here.
-      const DONOR_PROTOCOL = ['compute_result', 'compute_batch_result', 'gpu_init_ack', 'sparse_upload_ack', 'sparse_propagate_ack', 'sparse_hebbian_ack', 'rebind_sparse_ack', 'readback_letter_buckets_ack', 'readback_matrix_checksum_ack', 'readback_matrix_values_ack', 'letter_surprise_ack', 'device_lost', 'lesson_cost', 'image_capable', 'image_result'];
+      const DONOR_PROTOCOL = ['compute_result', 'compute_batch_result', 'gpu_init_ack', 'sparse_upload_ack', 'sparse_propagate_ack', 'sparse_hebbian_ack', 'rebind_sparse_ack', 'readback_letter_buckets_ack', 'readback_matrix_checksum_ack', 'readback_matrix_values_ack', 'letter_surprise_ack', 'device_lost', 'lesson_cost', 'image_capable', 'image_result', 'slice_loaded', 'slice_patched'];
       if (DONOR_PROTOCOL.indexOf(msg.type) !== -1 && !(brain._gpuClients && brain._gpuClients.has(ws))) {
         if (!brain._donorSpoofWarnAt || (Date.now() - brain._donorSpoofWarnAt) > 5000) {
           brain._donorSpoofWarnAt = Date.now();
@@ -15264,6 +15264,13 @@ wss.on('connection', (ws, req) => {
         }
         case 'image_result': {
           if (typeof brain._imageResult === 'function') brain._imageResult(msg);
+          break;
+        }
+        // DONOR PULL (donor 0.3.48) — a card built its slice from the published
+        // snapshot / applied the change patch.
+        case 'slice_loaded':
+        case 'slice_patched': {
+          if (typeof brain._donorReply === 'function') brain._donorReply(msg.type, msg);
           break;
         }
         case 'lesson_cost': {

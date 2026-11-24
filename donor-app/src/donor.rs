@@ -338,6 +338,10 @@ enum Work {
     // shifted by `base` and dropped when they fall outside the slice. Queued in
     // the same lane as the upload so it lands after the matrix exists.
     SliceBase { name: String, base: u32, count: u32 },
+    // v0.3.48 — a slice built from her published weights, uploaded here, then
+    // rows that changed since the snapshot written over it.
+    UploadSlice { id: u64, name: String, base: u32, slice: crate::snapshot::Slice, binding: crate::frames::Binding },
+    PatchValues { name: String, offset: usize, vals: Vec<f32>, done_id: Option<u64> },
 }
 
 /// A reply the worker produced; the WS loop sends it in receipt order.
@@ -1046,6 +1050,8 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 Work::CheckpointRestore { .. } => "checkpoint restore".to_string(),
                 Work::FreeMatrices { names } => format!("free x{}", names.len()),
                 Work::SliceBase { name, base, count } => format!("slice {name} @{base}+{count}"),
+                Work::UploadSlice { name, slice, .. } => format!("slice upload {name} x{}", slice.rows),
+                Work::PatchValues { name, vals, .. } => format!("slice patch {name} x{}", vals.len()),
             });
             match work {
                 Work::Init(init) => {
@@ -1367,6 +1373,21 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     let reply = serde_json::json!({ "type": "donor_checkpoint_restored", "restored": done, "skipped": skipped });
                     let _ = reply_tx.send(Out::Text(reply.to_string()));
                 }
+                Work::UploadSlice { id, name, base, slice, binding } => {
+                    set_status(&control_w, |s| { s.note = format!("loading {name} rows from her published weights"); });
+                    engine.upload_sparse(&name, slice.rows, slice.cols, &slice.row_ptr, &slice.values, &slice.col_idx, Some(binding));
+                    let ok = engine.has_sparse(&name);
+                    if ok { slice_base.insert(name.clone(), (base, slice.rows)); }
+                    println!("[donor] {name} rows {base}..{} built from the published snapshot ({} weights).", base + slice.rows, slice.values.len());
+                    let _ = reply_tx.send(Out::Text(serde_json::json!({ "type": "slice_loaded", "id": id, "name": name, "ok": ok, "rows": slice.rows, "nnz": slice.values.len() }).to_string()));
+                    set_status(&control_w, |s| { s.note = "idle".into(); });
+                }
+                Work::PatchValues { name, offset, vals, done_id } => {
+                    if let Err(e) = engine.patch_values(&name, offset, &vals) { eprintln!("[donor] slice patch '{name}' failed: {e}"); }
+                    if let Some(id) = done_id {
+                        let _ = reply_tx.send(Out::Text(serde_json::json!({ "type": "slice_patched", "id": id, "name": name }).to_string()));
+                    }
+                }
                 Work::SliceBase { name, base, count } => {
                     // count 0 = this card holds the whole matrix again.
                     if count == 0 { slice_base.remove(&name); } else { slice_base.insert(name.clone(), (base, count)); }
@@ -1569,8 +1590,51 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                         // JSON ahead of the protocol enum, so they need no change to
                         // the shared crate and an older brain simply never sends them.
                         let ckpt_msg = serde_json::from_str::<serde_json::Value>(t.as_str()).ok()
-                            .filter(|v| matches!(v.get("type").and_then(|x| x.as_str()), Some("donor_checkpoint") | Some("leave_ok") | Some("free_matrices") | Some("slice_base") | Some("image_render")));
+                            .filter(|v| matches!(v.get("type").and_then(|x| x.as_str()), Some("donor_checkpoint") | Some("leave_ok") | Some("free_matrices") | Some("slice_base") | Some("image_render") | Some("slice_from_snapshot") | Some("slice_patch")));
                         if let Some(v) = ckpt_msg {
+                            // v0.3.48 — build my slice from her published weights (on a
+                            // thread: downloads take minutes), then queue the upload.
+                            if v.get("type").and_then(|x| x.as_str()) == Some("slice_from_snapshot") {
+                                let gs = |k: &str| v.get(k).and_then(|x| x.as_str()).unwrap_or("").to_string();
+                                let gu = |o: &serde_json::Value, k: &str| o.get(k).and_then(|x| x.as_u64()).unwrap_or(0) as u32;
+                                let id = v.get("id").and_then(|x| x.as_u64()).unwrap_or(0);
+                                let name = gs("name");
+                                let base = gu(&v, "rowBase");
+                                let count = gu(&v, "rowCount");
+                                let bd = v.get("binding").cloned().unwrap_or(serde_json::Value::Null);
+                                let binding = crate::frames::Binding {
+                                    src_cluster: bd.get("srcCluster").and_then(|x| x.as_str()).unwrap_or("").to_string(),
+                                    dst_cluster: bd.get("dstCluster").and_then(|x| x.as_str()).unwrap_or("").to_string(),
+                                    src_start: gu(&bd, "srcStart"), src_end: gu(&bd, "srcEnd"),
+                                    dst_start: gu(&bd, "dstStart"), dst_end: gu(&bd, "dstEnd"),
+                                };
+                                let blocks: Vec<crate::snapshot::Block> = v.get("blocks").and_then(|x| x.as_array()).map(|a| a.iter().map(|b| crate::snapshot::Block {
+                                    url: b.get("url").and_then(|x| x.as_str()).unwrap_or("").to_string(),
+                                    sha256: b.get("sha256").and_then(|x| x.as_str()).unwrap_or("").to_string(),
+                                    row_start: gu(b, "rowStart"), row_end: gu(b, "rowEnd"),
+                                }).collect()).unwrap_or_default();
+                                let (tx_s, wq, pd) = (img_tx.clone(), workq.clone(), pending.clone());
+                                std::thread::spawn(move || {
+                                    match crate::snapshot::load_slice(&blocks, base, base + count) {
+                                        Ok(slice) => { pd.fetch_add(1, Ordering::Relaxed); wq.push(Work::UploadSlice { id, name, base, slice, binding }); }
+                                        Err(e) => {
+                                            eprintln!("[donor] could not build {name} from the snapshot: {e}");
+                                            let _ = tx_s.send(Out::Text(serde_json::json!({ "type": "slice_loaded", "id": id, "name": name, "ok": false, "error": e }).to_string()));
+                                        }
+                                    }
+                                });
+                                continue;
+                            }
+                            if v.get("type").and_then(|x| x.as_str()) == Some("slice_patch") {
+                                let name = v.get("name").and_then(|x| x.as_str()).unwrap_or("").to_string();
+                                let offset = v.get("offset").and_then(|x| x.as_u64()).unwrap_or(0) as usize;
+                                let raw = crate::mindspace::b64_decode(v.get("values_b64").and_then(|x| x.as_str()).unwrap_or(""));
+                                let vals: Vec<f32> = raw.chunks_exact(4).map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]])).collect();
+                                let done_id = v.get("doneId").and_then(|x| x.as_u64());
+                                pending.fetch_add(1, Ordering::Relaxed);
+                                workq.push(Work::PatchValues { name, offset, vals, done_id });
+                                continue;
+                            }
                             // v0.3.48 — a render for her, on this machine's renderer, on
                             // its own thread so teaching never waits on a picture.
                             if v.get("type").and_then(|x| x.as_str()) == Some("image_render") {

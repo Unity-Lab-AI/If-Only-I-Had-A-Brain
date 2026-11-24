@@ -813,6 +813,18 @@ impl CudaEngine {
         Ok(())
     }
 
+    /// v0.3.48 — overwrite `vals.len()` weights starting at element `offset`
+    /// (rows that changed since a published snapshot).
+    pub fn patch_values(&mut self, name: &str, offset: usize, vals: &[f32]) -> Result<(), String> {
+        let stream = self.stream.clone();
+        let m = self.sparse.get_mut(name).ok_or_else(|| format!("no resident matrix '{name}'"))?;
+        if offset + vals.len() > m.nnz as usize { return Err(format!("patch {}+{} past nnz {}", offset, vals.len(), m.nnz)); }
+        let mut view = m.values.slice_mut(offset..offset + vals.len());
+        stream.memcpy_htod(vals, &mut view).map_err(|e| e.to_string())?;
+        stream.synchronize().map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
     fn region(&self, cluster: &str, region: &str) -> Option<(u32, u32)> {
         self.clusters.get(cluster).and_then(|c| c.regions.get(region).copied())
     }
