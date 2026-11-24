@@ -65,3 +65,5 @@ Full bodies in `.claude/CONSTRAINTS.md`. These four are the ones this file exist
 ## ACTIVE TASKS
 
 *The board was templated 2026-11-24 with nothing open. New tasks go at the bottom of this file.*
+
+- [ ] **MEMCLIMB — native memory climbs ~0.9 GB/min during ELA-K `_teachSentenceList` (observe-only run, documented not fixed).** Gee 2026-11-24, verbatim: *"okay we arent changing code any more you are only documenting failers that persist and are confirmed errors do you document them we are letting this run to what may come"*. Evidence (`server/server.log` `CELL ALIVE ela/kindergarten` heartbeats, boot 11:12:56, build `a65008c7`+DEFFLUSH): `ext` 63,284 MB (11:16) → 68,600 MB (11:20) → 72,879 MB (11:25); `native` Δ +59 → +1,915 MB; `rss` 76,858 MB on a 128 GB host — three consecutive checks, still rising. At this rate RAM runs out in about an hour. Not yet known: which allocation grows (`ab` tracks `ext`, so ArrayBuffers); candidates to check when code work resumes — the paced weight pull that started after the adopt, `_teachSentenceList` itself, the image lane. No change made.
