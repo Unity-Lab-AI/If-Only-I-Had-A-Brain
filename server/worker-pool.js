@@ -34,8 +34,11 @@ class SparseMatmulPool {
     // for the same effective throughput on bio workloads. Browser
     // scale (< 100K) still benefits from the workers because that
     // path pegs single-thread. `opts.size` lets an operator override.
-    const cpuCount = os.cpus()?.length || 4;
-    this._poolSize = Math.max(1, Math.min(opts.size ?? Math.min(cpuCount - 1, 8), 8));
+    // ⛔ EVERY HARDWARE THREAD BUT ONE. The cap of 8 (cut from 16) left half
+    // this machine idle while the brain's teaching ran on one thread and the
+    // donor card waited on it. Windows needs one thread; the rest are hers.
+    const cpuCount = (typeof os.availableParallelism === 'function' ? os.availableParallelism() : os.cpus()?.length) || 4;
+    this._poolSize = Math.max(1, opts.size ?? (cpuCount - 1));
     this._workers = [];
     this._ready = false;
     this._jobSeq = 0;
@@ -491,6 +494,61 @@ class SparseMatmulPool {
     if (valsShared !== matrix.values) {
       for (let i = 0; i < valsShared.length; i++) matrix.values[i] = valsShared[i];
     }
+    return true;
+  }
+
+  /**
+   * Oja over a list of firing rows, split across EVERY worker thread.
+   *
+   *   Δw = lr · y · (x − y · w), clamped to [wMin, wMax]
+   *
+   * The same math as `SparseMatrix.ojaUpdate` with `activeRows` and no
+   * kScales (rows are independent, so splitting the active list across
+   * threads is race-free and bit-identical). The matrix's CSR arrays are
+   * moved onto SharedArrayBuffers ONCE and assigned back, so every later
+   * call shares them by reference. Returns false when the pool cannot run
+   * it (the caller then runs it on its own thread).
+   */
+  async ojaActive(matrix, pre, post, lr, activeRows) {
+    if (!this._ready || this._workers.length === 0) this._init();
+    if (!this._ready || this._workers.length === 0) return false;
+    if (!matrix || !matrix.values || !matrix.colIdx || !matrix.rowPtr) return false;
+    if (!(matrix.values instanceof Float32Array)) return false;
+    const A = activeRows ? activeRows.length : 0;
+    if (!A) return true;
+    this._lastJobAt = Date.now();
+    const toShared = (arr, Ctor) => {
+      if (arr.buffer instanceof SharedArrayBuffer) return arr;
+      const v = new Ctor(new SharedArrayBuffer(Math.max(4, arr.byteLength)));
+      v.set(arr);
+      return v;
+    };
+    matrix.values = toShared(matrix.values, Float32Array);
+    if (!(matrix.colIdx instanceof Uint32Array)) return false;
+    if (!(matrix.rowPtr instanceof Uint32Array)) return false;
+    matrix.colIdx = toShared(matrix.colIdx, Uint32Array);
+    matrix.rowPtr = toShared(matrix.rowPtr, Uint32Array);
+    const preV = this._getCachedFloat32Sab('OjaPre', pre.length).view;
+    preV.set(pre);
+    const rowsV = this._getCachedUint32Sab('OjaRows', A).view;
+    const yV = this._getCachedFloat32Sab('OjaY', A).view;
+    for (let j = 0; j < A; j++) { const i = activeRows[j]; rowsV[j] = i; yV[j] = post[i]; }
+    const jobId = ++this._jobSeq;
+    const N = Math.min(this._workers.length, A);
+    const per = Math.ceil(A / N);
+    const wMin = matrix.wMin ?? -2.0;
+    const wMax = matrix.wMax ?? 2.0;
+    await new Promise((resolve) => {
+      this._pending.set(jobId, { resolve, expected: N, received: 0 });
+      for (let w = 0; w < N; w++) {
+        this._workers[w].postMessage({
+          type: 'ojaActive', jobId,
+          valuesBuf: matrix.values.buffer, colIdxBuf: matrix.colIdx.buffer, rowPtrBuf: matrix.rowPtr.buffer,
+          preBuf: preV.buffer, rowsBuf: rowsV.buffer, yBuf: yV.buffer,
+          from: w * per, to: Math.min(A, (w + 1) * per), lr, wMin, wMax,
+        });
+      }
+    });
     return true;
   }
 
