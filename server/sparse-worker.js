@@ -99,20 +99,37 @@ function propagate(msg) {
  */
 function ojaActive(msg) {
   const { jobId, valuesBuf, colIdxBuf, rowPtrBuf, preBuf, rowsBuf, yBuf, from, to, lr, wMin, wMax } = msg;
+  const ks = msg.ks || {};
   const values = new Float32Array(valuesBuf);
   const colIdx = new Uint32Array(colIdxBuf);
   const rowPtr = new Uint32Array(rowPtrBuf);
   const pre = new Float32Array(preBuf);
   const rows = new Uint32Array(rowsBuf);
   const ys = new Float32Array(yBuf);
+  // Same per-row layer scale, gamma, hemisphere share and per-column hub
+  // multiplier as SparseMatrix.ojaUpdate's kScales.
+  const layerScales = ks.layerScales || null;
+  const dstLayerId = ks.dstLayerIdBuf ? new Uint8Array(ks.dstLayerIdBuf) : null;
+  const srcHubMask = ks.srcHubMaskBuf ? new Uint8Array(ks.srcHubMaskBuf) : null;
+  const dstStart = ks.dstStart || 0, srcStart = ks.srcStart || 0;
+  const hubMult = typeof ks.hubMult === 'number' ? ks.hubMult : 1.0;
+  const gammaScale = typeof ks.gammaScale === 'number' ? ks.gammaScale : 1.0;
+  const hemiScale = ks.hemiScale || null, hemiSplit = ks.hemiSplit || 0;
+  const haveLayer = !!(layerScales && dstLayerId);
   for (let j = from; j < to; j++) {
     const y = ys[j];
     if (!y) continue;
     const i = rows[j];
+    let lrPostScale = 1.0;
+    if (haveLayer) { const s = layerScales[dstLayerId[dstStart + i]]; if (typeof s === 'number') lrPostScale = s; }
+    lrPostScale *= gammaScale;
+    if (hemiScale) lrPostScale *= ((dstStart + i) < hemiSplit) ? hemiScale[0] : hemiScale[1];
     const y2 = y * y;
     const end = rowPtr[i + 1];
     for (let k = rowPtr[i]; k < end; k++) {
-      values[k] += lr * y * pre[colIdx[k]] - lr * y2 * values[k];
+      const col = colIdx[k];
+      const lrEff = lr * lrPostScale * ((srcHubMask && srcHubMask[srcStart + col]) ? hubMult : 1.0);
+      values[k] += lrEff * y * pre[col] - lrEff * y2 * values[k];
       if (values[k] > wMax) values[k] = wMax;
       else if (values[k] < wMin) values[k] = wMin;
     }
