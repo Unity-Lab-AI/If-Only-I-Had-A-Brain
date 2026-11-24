@@ -3478,6 +3478,13 @@ const SERVER_GPU_MIXIN = {
     const pr = await patched;
     if (!pr) { console.warn(`[Pool] DONOR PULL — ${nm} did not confirm the change patch; uploading ${name} rows ${p.a}–${p.b} instead.`); return null; }
     const total = rp[p.b] - rp[p.a];
+    // The card holds the matrix now. The upload path records residency on its
+    // ack; this path never did, so a card that built its slice from the release
+    // read `0/1 mx` while it taught every lesson.
+    try {
+      const _pc = this.clients && this.clients.get ? this.clients.get(p.ws) : null;
+      if (_pc) { if (!(_pc.heldMatrices instanceof Set)) _pc.heldMatrices = new Set(); _pc.heldMatrices.add(name); }
+    } catch { /* bookkeeping only */ }
     console.log(`[Pool] DONOR PULL — ${nm} built ${name} rows ${p.a.toLocaleString()}–${p.b.toLocaleString()} from the published snapshot; ${runs.length} changed run(s), ${(sent * 4 / 1048576).toFixed(1)} MB sent of ${(total * 4 / 1048576).toFixed(1)} MB (${((Date.now() - t0) / 1000).toFixed(0)}s).`);
     return { ok: true, pulled: true };
   },
