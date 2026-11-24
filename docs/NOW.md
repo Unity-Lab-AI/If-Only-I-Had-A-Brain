@@ -7,45 +7,49 @@ sources:
   - server/brain-server.js
   - server/brain-server/gpu.js
   - server/brain-server/chat.js
-  - server/brain-server/image-engine.js
-  - server/brain-server/visual-memory.js
+  - server/worker-pool.js
+  - server/sparse-worker.js
   - server/definition-service.js
   - server/image-render.py
+  - server/brain-ctl.js
   - js/brain/curriculum.js
-  - donor-app/src/donor.rs
-  - windows/Savestart.bat
+  - js/brain/cluster.js
+  - js/brain/cluster/hebbian.js
+  - js/brain/embeddings.js
+  - html/teachview.html
 verified-scope: |
-  OVERWRITTEN 2026-11-24 (12:01). This file is a SNAPSHOT of the present
+  OVERWRITTEN 2026-11-24 (15:40). This file is a SNAPSHOT of the present
   and is overwritten, never appended. The previous snapshot is in git:
   git log -p docs/NOW.md.
 ---
 
-# NOW — 2026-11-24, 12:01
+# NOW — 2026-11-24, 15:40
 
 ## Where she is
 
 | | |
 |---|---|
-| state | **RESTARTING** — an Update-Savestart pressed at 11:59 (build `ea2e26fb` + the window fix `72631279`). Kindergarten English: the pre-cell vocabulary is done (8,103 learned) and she is in the cell's teaching phases (sentence list), walking toward the first gate. Training kept; no fresh walk |
-| cards | your 4070 Ti SUPER + the rented RTX PRO 6000 (`ua8x877eiqz63m`). **One card per job:** the pod holds her cortex and all 17 matrices, your card steps the other 7 clusters. 200 M neurons (`DREAM_BRAIN_BUDGET_MB=8000`) — the most your card can still hold alone if the pod goes |
-| donor | **0.3.52** on both cards. A restarted brain **adopts** the matrices a card still holds for it — seen on every restart since 11:12: `17 matrices adopted from the card`, teaching in ~25 s instead of a 20–30 min upload. The pod saves its own checkpoint every 10 min (seen from 10:36) |
-| eyes | **SDXL base 1.0** (local, `models/image/`) — writes real English when her request quotes words ("OPEN" spelled right on your card), no default negative prompt; ~6 GB per render, 24–33 s; the VRAM floor is 6,162 MB. Image bank fresh (v16); 1.6 GB of old stores deleted |
-| words | when every dictionary misses: Wikipedia, then Urban Dictionary (not grade-gated); run-together phrases split and checked against Wikipedia; misspellings are **never defined** — taught as the real word; contractions stay whole |
-| next restart | the dashboard's Update-Savestart; the launcher window now closes itself |
+| state | **RUNNING, not yet through her first cell.** Boot `e2c30399` (15:25). Kindergarten English: 24 of 25 cell phases banked; the last phase is in `_teachSentenceList`. No gate verdict yet, no chat yet. Training kept across every press today; no fresh walk |
+| cards | your 4070 Ti SUPER (7 small clusters + her image renderer) and the rented RTX PRO 6000 (`ua8x877eiqz63m`, her cortex, all 17 matrices). Pod donor 0.3.52 |
+| pod use | **definition lanes now drive the pod** — 64 words in flight; sampled 15:26: `97 98 98 46 73 79 72 97 58 49 14 98 0 0 22` %. **The sentence lane still idles it** (15:32: 0–2%) — it teaches one word at a time and the donor has no multi-region lesson yet |
+| threads | 15 worker threads (every hardware thread but one); the CPU shadow Oja — plain and weighted — runs on them, bit-identical |
+| memory | climbs ~1 GB/min inside `_teachSentenceList` on every boot (63 → 94 GB on `e2c30399`), cause **not yet named** — the per-word scratch fix did not stop it |
+| next press | the dashboard's Update-Savestart loads everything below that is not yet live; the launcher window now closes itself (runs under conhost) |
 
-## What changed today (all on `main`, both remotes)
+## What changed today, after the morning snapshot (all on `main`, both remotes)
 
 | | |
 |---|---|
-| **pod drops** | four causes found and fixed: her line-art trace, her looks (`perceive`/`stylizeField`) and renders no longer ride the pod link; the brain stopped pulling 6.8 GB of weights off the pod every 10 min (it filled the link until it dropped) — now a paced pull, hourly, ~2 MB/s |
-| **no double work** | no compute mirror while clusters are split; the bigger card takes the cortex before any upload |
-| **adopt + paced pull** | donor 0.3.52 — see above |
-| **drawing** | pencil/ink are value drawings; she keeps up to 12 real looks of a thing and draws the one her mind is on; nothing is drawn as a subject that is mostly a describing word (white, round, second) or a mash-up (ant bunny, larva cow); looks follow what she is thinking and being taught |
-| **vocabulary** | words whose last sense was all function words (which, them, who…) were never learned — fixed; a stop no longer runs the cell on during shutdown |
-| **launchers** | wait for the old brain to let go of its log before starting (a press once left her down); the start window closes itself |
+| **words** | an undefined word is held out of every binding until a definition lands; a typo teaches its real word; a dictionary rate-limit now falls through to Wiktionary → Wikipedia → Urban Dictionary instead of waiting 6 h |
+| **pod feeding** | definitions taught 64 at a time; association-pair reps merged into lessons up to 4,096 pairs; the separation check's 8 probes go out together; the academic pre-vocab lane uses the same 64-worker pool |
+| **correctness** | the definition sem→sem bind uses the word's own sem pattern (it read stale spikes); **the sentence lane now sends its patterns to the card** (the card had been learning over stale spikes — loads on the next press) |
+| **main thread** | the firing-row scan and the mind's-eye relation reads were 48% of the thread in the sentence lane; both cut (bit-identical scan, time-bounded reads) |
+| **renderer** | an idle unload no longer leaks a whole SDXL each cycle (it had reached 58 GB); renderer restarted, host RAM 113 → 80 GB |
+| **teach view** | one request in flight per poll — stacked 16 MB snapshots crashed the tab |
+| **boot / pool** | boot corpus fits yield the loop; a card that returns gets the newer weights, not its stale copy |
+| **this PC** | VibeRoller shares only Claude; Ollama, its engines and its VR desktop no longer start at sign-in (backup in `.scratch/autostart-backup/`) |
 
 ## Open — on the board (`docs/TODO.md`)
 
-- **MEMCLIMB** — native memory climbed ~0.9 GB/min during one sentence-list phase (63 → 75 GB), then levelled off; watched, cause not yet named.
-- Form **blending** is built and switched off — the shapes tore on real renders.
-- Image size: her looks are requested at 512 (SDXL draws 1024 and scales); 1024 delivered is one knob, held back for memory.
+- **PEGPOD** — the whole curriculum must keep the pod pegged nonstop. Built so far: the definition and pre-vocab lanes. Next: a donor multi-region lesson (type 18) so the sentence lane sends whole sentences many at once, then the remaining serial lanes (`_teachSequenceCycles`, `_conceptTeach`, `_teachVocabList`, `SELF-ARCH-DEF`, the dream trickle).
+- **MEMCLIMB** — the sentence-lane memory climb; needs an allocation trace, not another reading-based guess.
