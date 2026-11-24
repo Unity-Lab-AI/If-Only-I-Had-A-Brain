@@ -283,6 +283,7 @@ Either way, viewer-mode dashboards hide Stop / Grade-advance / Signoff / Auto-ad
 - No key saved → the page says so and the tables stay empty
 - Runpod refuses (capacity, balance, bad key) → its own message is shown verbatim
 - Brain-server down → the page says the server did not answer
+- Opened anywhere but localhost (e.g. the public site, where a POST answers 405 from the static host) → a banner says to open it on the machine running her, with the localhost link, and every control is disabled
 
 ---
 

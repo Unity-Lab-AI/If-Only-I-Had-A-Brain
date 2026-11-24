@@ -69,6 +69,14 @@
 <script>
   const $ = (id) => document.getElementById(id);
   const msg = (t, bad) => { $('msg').textContent = t; $('msg').className = bad ? 'bad' : 'ok'; };
+  // This page only works when the brain-server on THIS machine serves it. On the
+  // public site a POST answers 405 from the static host, which says nothing useful.
+  const LOCAL = ['localhost', '127.0.0.1', '::1', '[::1]'].includes(location.hostname);
+  if (!LOCAL) {
+    document.querySelector('main').insertAdjacentHTML('afterbegin',
+      `<section><h2 class="bad">Open this page on the machine running her</h2><p>It is being served from <code>${location.host || location.protocol}</code>, which cannot reach her brain. Start her, then open <a href="http://localhost:7525/html/runpod.html">http://localhost:7525/html/runpod.html</a>. Nothing typed here is saved.</p></section>`);
+    document.querySelectorAll('button, input').forEach((el) => { el.disabled = true; });
+  }
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   async function post(verb, body) {
     const r = await fetch('/admin/runpod/' + verb, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
@@ -119,8 +127,7 @@
     } catch (e) { msg(e.message, true); }
     refresh();
   });
-  refresh();
-  setInterval(refresh, 30000);
+  if (LOCAL) { refresh(); setInterval(refresh, 30000); }
 </script>
 </body>
 </html>
