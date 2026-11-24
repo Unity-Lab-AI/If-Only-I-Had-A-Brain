@@ -3198,6 +3198,12 @@ const SERVER_GPU_MIXIN = {
       // MULTI-CARD — the canonical upload of the intra matrix becomes one row
       // slice per card when more than one card can hold a slice.
       if (!targetWs && !noRegister && name === this._SLICE_NAME && matrix && matrix.rowPtr) {
+        // Never plan slices mid cortex-move: the move points `_gpuClient` back at
+        // the OLD card while it pulls, so a plan made then names the wrong owner
+        // and the new owner's rows are uploaded twice (seen: 660 + 640 chunks over
+        // the home upload in one boot). Wait for the move to finish (bounded).
+        const _mw = Date.now();
+        while (this._cortexMoveInFlight && Date.now() - _mw < 15 * 60 * 1000) await new Promise((r) => setTimeout(r, 1000));
         const plan = this._planIntraSlices(matrix.rows);
         if (plan) return await this._uploadIntraSliced(name, matrix, binding, plan);
       }
