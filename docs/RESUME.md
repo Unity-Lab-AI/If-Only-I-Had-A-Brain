@@ -14,6 +14,11 @@
 >   BUILT     SPRS 17 LESSON: one frame per rep, the card expands it into the exact per-pair
 >             steps; parity test passes against a recording of the real per-pair code
 >   READ NEXT cardLesson.lessons · lessonRefused ~0 · pre-cell vs 192.8 s · card utilisation
+>   LATER     LIVE: 4,643 lessons, 0 refused, 1.71 ms/pair, card 56%, pre-cell 184.6 s. A rented
+>             L40 joined, got two small clusters, slowed teaching to 2.90 ms — FIXED (KI-60):
+>             cortex moves to a ≥1.5× card via pause → pull old → switch → re-upload; no
+>             full-brain push; teach batches to the cortex owner only (fan-out was losing
+>             learning); Runpod Terminate pulls first. Server-only.
 > ```
 >
 > ---
