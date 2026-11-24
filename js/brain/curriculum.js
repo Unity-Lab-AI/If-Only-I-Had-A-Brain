@@ -5605,7 +5605,14 @@ export class Curriculum {
             // to 10 min longer per window until the queue is empty, then nothing.
             // DREAM_TRICKLE_WINDOW_MS (0 = back to the shared budget).
             const _twEnv = Number(typeof process !== 'undefined' && process?.env?.DREAM_TRICKLE_WINDOW_MS);
-            const _twMs = Number.isFinite(_twEnv) && _twEnv >= 0 ? _twEnv : 600000;
+            // ⛔ NOT BETWEEN PRE-CELL VOCAB CHUNKS. That pass teaches NEW words;
+            // this queue is seeded from the same list in the same order, so its
+            // head is the chunk just taught. Given its own 10 min there, it spent
+            // every gap deepening words she had learned minutes earlier while the
+            // next chunk waited — the vocabulary count sat still for the whole
+            // window. Inside that pass the trickle keeps the shared window budget.
+            const _twMs = this._precellVocabActive ? 0
+              : (Number.isFinite(_twEnv) && _twEnv >= 0 ? _twEnv : 600000);
             const _twFrom = Date.now();
             for (let i = 0; i < batchN; i++) {
               if (_twMs > 0 ? (Date.now() - _twFrom >= _twMs)
@@ -6372,8 +6379,10 @@ export class Curriculum {
         label: `PRE-CELL VOCAB ${subject}/${grade}`,
       };
       if (chunkStart + CHUNK < todo.length) {
+        this._precellVocabActive = true;
         try { await this._dreamWindow({ minMs: 30_000, settleMs: 3_000 }); }
         catch (dwErr) { this._hb(`[Curriculum] 📚 PRE-CELL VOCAB dream-window error (non-fatal): ${dwErr?.message || dwErr}`); }
+        finally { this._precellVocabActive = false; }
       }
     }
     const stall = (totalTimeouts > 0 || totalSlowWords > 0)
