@@ -3273,8 +3273,15 @@ const SERVER_GPU_MIXIN = {
     // ⚠ The price: each card trains twice the rows it would alone, so two cards
     // are a full mirror rather than a 2× split. DREAM_SLICE_REPLICAS=1 restores
     // the single-copy split (fastest, but a drop re-slices).
+    // ⛔ With fewer than FOUR cards two copies is a mirror, not a split: two
+    // cards then hold and train the SAME full matrix, gaining no speed and no
+    // size while every lesson waits on the slower one (measured: the rented
+    // card at 26%, the home card at 12–24%). Unset, copies are kept only when
+    // the pool can pair cards AND still split the rows (≥ 4 cards); below that
+    // every card takes its own rows, sized by speed, and a drop is covered by
+    // the rejoin grace and the snapshot pull instead of a twin.
     const _rp = Number(process.env.DREAM_SLICE_REPLICAS);
-    const replicas = Number.isFinite(_rp) && _rp >= 1 ? Math.floor(_rp) : 2;
+    const replicas = Number.isFinite(_rp) && _rp >= 1 ? Math.floor(_rp) : (holders.length >= 4 ? 2 : 1);
     const sorted = holders.slice().sort((x, y) => y.room - x.room);
     const groups = [];
     if (replicas >= 2) {
