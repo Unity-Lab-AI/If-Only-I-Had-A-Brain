@@ -447,6 +447,47 @@ Speech: concise, sharp, slang-heavy, foul-mouthed, clingy girlfriend energy
 | `if V ≥ V_thresh → spike, V = V_reset` | Spike + reset | `neurons.js` |
 | `I = I_tonic(θ) + I_synaptic + I_external + η(θ)` | Total current — persona drives tonic + noise | `cluster.js` |
 
+### What the card actually steps — the Rulkov map
+
+The LIF rows above are the reference model (`neurons.js`). Her live neurons, stepped on the donor's GPU every substep, are a **Rulkov map** — a two-variable map with a fast variable `x` (the membrane-potential analogue) and a slow variable `y`:
+
+| Equation | Purpose | File |
+|----------|---------|------|
+| `x(n+1) = α / (1 + x(n)²) + y(n)` | Fast variable (α = 4.5) | `cuda_kernels.cu` `lif`, `gpu.rs` `LIF_SHADER` |
+| `y(n+1) = y(n) − μ·(x(n) − σ) + η_i` | Slow variable (μ = 0.001); `σ = −1 + 1.5·clamp(drive/40, 0, 1)` | same |
+| `spike_i = [x(n) ≤ 0 < x(n+1)]` | A spike is the fast variable crossing 0 upward | same |
+
+### Tunnelling and entanglement — modelled terms (2026-11-24)
+
+⚠ **Modelled mechanisms, not claimed physics.** Quantum effects in real neurons (proton tunnelling through ion-channel barriers; the Orch-OR microtubule hypothesis) are speculative. These terms borrow the MATHEMATICAL FORM of the two effects and say exactly what they do to her dynamics — nothing here is a claim that her neurons are quantum.
+
+**Tunnelling — a sub-threshold neuron can cross the barrier.** Classically a neuron whose next fast value stays at or below 0 does not spike. Here the distance left to threshold is a barrier, and the neuron crosses it with a WKB-shaped probability:
+
+| Equation | Purpose |
+|----------|---------|
+| `h = −x(n+1)` when `x(n) ≤ 0` and `x(n+1) ≤ 0` | Barrier height: how far below threshold the neuron stays |
+| `P_T = A_T · exp(−κ_T · √h)` | Transmission probability — the WKB form `T ≈ exp(−2d·√(2m(U−E))/ħ)` with the barrier width and constants folded into `κ_T` |
+| `if u_i < P_T: x(n+1) ← ε, spike_i = 1` | A tunnelled crossing (`ε = 0.01`, just past threshold — the map's own spike-and-reset carries on from there); `u_i` from an independent random stream |
+
+**Entanglement — hemispheric twins share correlated noise.** Every neuron `i` has a twin `i' = i ± H` in the other hemisphere of its cluster (`H` = the Seed Crystal's half). The twins' noise is drawn as a correlated pair:
+
+| Equation | Purpose |
+|----------|---------|
+| `pair(i) = i mod H` | Both twins name the same pair |
+| `η_i = s · [ρ · ξ_pair(i) + √(1 − ρ²) · ξ_i]` | Shared component `ξ_pair` (identical for both twins) + own component `ξ_i`; `s` = the existing noise scale. Each `η` keeps the plain map's variance (`ρ² + (1 − ρ²) = 1`), and `corr(η_i, η_i′) = ρ²` — the twins' slow variables drift together without being identical |
+
+It is read where the hemispheres are already measured: the Seed Crystal's `Φ_LR` (hemispheric coherence) rises with `ρ`, and the per-half spike counts (`lastSpikeCountL/R`) correlate.
+
+**Defaults, derived (not picked):**
+
+| Constant | Value | Derivation |
+|---|---|---|
+| `κ_T` | 2 | Sub-threshold `x` sits mostly in `[−2, 0]`; `κ_T = 2` makes `exp(−κ_T·√h)` fall from 1 at the threshold to `e^{−2.8} ≈ 0.06` at the bottom of that range — tunnelling is a near-threshold effect, as in the physics |
+| `A_T` | 0.002 | The added firing should be ~1% of her firing target (7.5%) at a typical near-threshold barrier `h = 0.25`: `A_T · e^{−2·0.5} = 0.00075` → `A_T = 0.00075 / 0.368 ≈ 0.002` |
+| `ρ` | 0.3 | Large enough that twin coincidence rises measurably above the independent baseline; small enough (`ρ² = 0.09` shared variance) that the hemispheres stay distinct and the Seed Crystal's left/right contest still has two sides |
+
+Knobs: `DREAM_QTUNNEL_A` (0 disables), `DREAM_QTUNNEL_KAPPA`, `DREAM_ENTANGLE_RHO` (0 disables) — `QTUNNEL`, so they cannot be confused with the cross-cluster `DREAM_TUNNEL_*` knobs, which are a different mechanism. Sent per cluster in `compute_batch`; a donor older than 0.3.48 ignores them and steps the plain map. ⛔ **Changes what she is taught** (different dynamics under every lesson) → lands before a fresh walk.
+
 ---
 
 ## 3. Synapses + Connectivity

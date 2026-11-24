@@ -8381,6 +8381,20 @@ class ServerBrain {
                 errorCorrection: _fin(errorSignal, 0),
                 reward: _fin(this.reward, 0),
                 ...(regionGains ? { regionGains } : {}),
+                // MODELLED QUANTUM TERMS (docs/EQUATIONS.md §2) — tunnelling
+                // across the sub-threshold barrier and hemispheric-twin
+                // entanglement. Read live so a knob write takes effect on the
+                // next batch; 0 turns each off. A donor older than 0.3.48
+                // ignores the fields and steps the plain map.
+                ...(() => {
+                  const a = Number.isFinite(+process.env.DREAM_QTUNNEL_A) ? +process.env.DREAM_QTUNNEL_A : 0.002;
+                  const k = Number.isFinite(+process.env.DREAM_QTUNNEL_KAPPA) ? +process.env.DREAM_QTUNNEL_KAPPA : 2;
+                  const rho = Number.isFinite(+process.env.DREAM_ENTANGLE_RHO) ? +process.env.DREAM_ENTANGLE_RHO : 0.3;
+                  const out = {};
+                  if (a > 0) { out.tunnelA = a; out.tunnelKappa = k; }
+                  if (rho > 0) { out.entangleRho = rho; out.half = Math.floor((CLUSTER_SIZES[name] || 0) / 2); }
+                  return out;
+                })(),
               };
             });
             // Keep the cortex cluster's step-loop gamma field honest for the

@@ -1230,7 +1230,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                         seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
                         // The pool drives clusters through run_substeps (same entry the
                         // compute_batch path uses), so the walk inherits multi-GPU routing.
-                        let jobs = [StepJob { name: cluster.clone(), size: 0, drive, noise, drive_r: drive, half: 0 }];
+                        let jobs = [StepJob { name: cluster.clone(), size: 0, drive, noise, drive_r: drive, half: 0, q: crate::compute::Quantum::default() }];
                         let _ = engine.run_substeps(&jobs, ticks, seed, &control_w.stop, &pending_w);
                         // One bucket over the whole region span = the region spike count.
                         let counts = engine
@@ -2001,7 +2001,13 @@ fn run_batch(engine: &mut MultiEngine, cluster_regions: &HashMap<String, HashMap
                 engine.update_region_gates(&c.name, &packed);
             }
         }
-        jobs.push(StepJob { name: c.name.clone(), size: c.size, drive: effective_drive, noise: c.noise_amp, drive_r: effective_drive_r, half });
+        // v0.3.48 — modelled tunnelling + twin entanglement; absent → 0 → plain map.
+        let q = crate::compute::Quantum {
+            tunnel_a: c.tunnel_a.unwrap_or(0.0).clamp(0.0, 1.0),
+            tunnel_kappa: c.tunnel_kappa.unwrap_or(0.0).max(0.0),
+            entangle_rho: c.entangle_rho.unwrap_or(0.0).clamp(0.0, 0.99),
+        };
+        jobs.push(StepJob { name: c.name.clone(), size: c.size, drive: effective_drive, noise: c.noise_amp, drive_r: effective_drive_r, half, q });
     }
     // Advance the batch seed once; MultiEngine derives a distinct per-GPU stream and runs
     // each card's clusters in parallel, returning per-cluster spike totals.

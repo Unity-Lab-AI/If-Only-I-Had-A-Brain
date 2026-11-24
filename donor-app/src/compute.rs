@@ -37,8 +37,15 @@ struct LifParams {
     /// both sides in the same order.
     effective_drive_r: f32,
     half: u32,
+    /// v0.3.48 — modelled tunnelling + twin entanglement (docs/EQUATIONS.md §2).
+    /// 17 × 4 = 68 bytes → padded to 80 for the 16-byte WGSL uniform alignment;
+    /// the shader's `Params` declares the same fields in the same order.
+    tunnel_a: f32,
+    tunnel_kappa: f32,
+    entangle_rho: f32,
     _pad0: u32,
     _pad1: u32,
+    _pad2: u32,
 }
 
 #[repr(C)]
@@ -454,7 +461,7 @@ impl ComputeEngine {
     /// One Rulkov substep. Returns the spike count of each HALF of the cluster
     /// `(left, right)` — the Seed Crystal's hemispheric read (v0.3.40). `half`
     /// is the split index; `effective_drive_r` drives neurons at or past it.
-    pub fn step(&self, name: &str, effective_drive: f32, effective_drive_r: f32, half: u32, noise_amp: f32, seed: u32) -> Result<(u32, u32), String> {
+    pub fn step(&self, name: &str, effective_drive: f32, effective_drive_r: f32, half: u32, noise_amp: f32, seed: u32, q: Quantum) -> Result<(u32, u32), String> {
         let c = self.clusters.get(name).ok_or_else(|| format!("cluster '{name}' not initialized"))?;
         let (dx, dy, grid_x) = dispatch_dims(c.size);
 
@@ -473,8 +480,12 @@ impl ComputeEngine {
             num_regions: c.num_regions,
             effective_drive_r,
             half,
+            tunnel_a: q.tunnel_a,
+            tunnel_kappa: q.tunnel_kappa,
+            entangle_rho: q.entangle_rho,
             _pad0: 0,
             _pad1: 0,
+            _pad2: 0,
         };
         let lif_ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("lif-params"),
@@ -1395,11 +1406,11 @@ impl Backend {
         }
     }
     /// Seed Crystal (v0.3.40) — both halves' counts, per backend.
-    fn step(&self, name: &str, drive: f32, drive_r: f32, half: u32, noise: f32, seed: u32) -> Result<(u32, u32), String> {
+    fn step(&self, name: &str, drive: f32, drive_r: f32, half: u32, noise: f32, seed: u32, q: Quantum) -> Result<(u32, u32), String> {
         match self {
-            Backend::Wgpu(e) => e.step(name, drive, drive_r, half, noise, seed),
+            Backend::Wgpu(e) => e.step(name, drive, drive_r, half, noise, seed, q),
             #[cfg(feature = "cuda")]
-            Backend::Cuda(e) => e.step(name, drive, drive_r, half, noise, seed),
+            Backend::Cuda(e) => e.step(name, drive, drive_r, half, noise, seed, q),
         }
     }
     fn has_sparse(&self, name: &str) -> bool {
@@ -1602,6 +1613,16 @@ pub struct StepJob {
     /// (`half == 0` or `half >= size` → one drive for the whole cluster).
     pub drive_r: f32,
     pub half: u32,
+    /// v0.3.48 — tunnelling / entanglement terms (all 0 = the plain map).
+    pub q: Quantum,
+}
+
+/// v0.3.48 — the modelled quantum terms (docs/EQUATIONS.md §2).
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Quantum {
+    pub tunnel_a: f32,
+    pub tunnel_kappa: f32,
+    pub entangle_rho: f32,
 }
 
 #[derive(Default, Clone, Copy)]
@@ -2015,7 +2036,7 @@ impl MultiEngine {
                         let mut last_r: u64 = 0;
                         for _ in 0..substeps {
                             seed = seed.wrapping_mul(2654435761).wrapping_add(40503);
-                            match engine.step(&job.name, job.drive, job.drive_r, job.half, job.noise, seed) {
+                            match engine.step(&job.name, job.drive, job.drive_r, job.half, job.noise, seed, job.q) {
                                 Ok((cl, cr)) => {
                                     let cl = cl as u64;
                                     let cr = cr as u64;
@@ -2080,7 +2101,7 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
     eng.init_cluster("selftest", neurons, &HashMap::new(), drive, 0.05);
     for s in 0..steps {
         // Seed Crystal (v0.3.40): both halves on the same drive, counted apart.
-        let (cl, cr) = eng.step("selftest", drive, drive, neurons / 2, 0.05, s.wrapping_mul(2654435761))?;
+        let (cl, cr) = eng.step("selftest", drive, drive, neurons / 2, 0.05, s.wrapping_mul(2654435761), Quantum::default())?;
         let count = cl + cr;
         let pct = (count as f64 / neurons as f64) * 100.0;
         println!("  step {s:>3}: {count:>10} spikes ({pct:.2}% of {neurons}) — L {cl} / R {cr}");
