@@ -2010,7 +2010,14 @@ const SERVER_GPU_MIXIN = {
       // when the previous holder is gone (or there was none) is the pointer set
       // here — that is the existing leave/first-card path.
       const _cur = this._gpuClient;
-      if (_cur && _cur.readyState === 1 && cortexOwner && live.includes(_cur)) {
+      // ⛔ NOTHING TO PULL YET = NOT A MOVE. Before her weights upload starts,
+      // the current card holds none of them, so the bigger card takes the
+      // cortex at once. A "move" here made the brain upload everything to the
+      // first card to register, then pull it back off and upload it again to
+      // the bigger card that was already waiting in Clients.
+      const _curHoldsNothing = !this._cortexGpuInitStarted && !this._cortexUploadInFlight
+        && !(this.cortexCluster && this.cortexCluster._gpuProxyReady);
+      if (_cur && _cur.readyState === 1 && cortexOwner && live.includes(_cur) && !_curHoldsNothing) {
         this._pendingCortexMove = { to: cortexOwner, from: _cur };
         owner.set('cortex', _cur);          // ownership changes when the move completes
       } else {
