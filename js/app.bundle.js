@@ -14963,6 +14963,16 @@ var CLUSTER_HEBBIAN_MIXIN = {
     const rows = proj.rows | 0;
     if (!this._ojaChunkRows) this._ojaChunkRows = 65536;
     const activeRows = ojaOpts && ojaOpts.activeRows;
+    if (activeRows && activeRows.length > 2048 && this._sparsePool && typeof this._sparsePool.ojaActive === "function" && !(ojaOpts && (ojaOpts.kScales || ojaOpts.trackDelta || typeof ojaOpts.rowStart === "number" || typeof ojaOpts.rowEnd === "number"))) {
+      try {
+        if (await this._sparsePool.ojaActive(proj, preF, postF, lr, activeRows)) return;
+      } catch (e) {
+        if (!this._ojaPoolWarned) {
+          this._ojaPoolWarned = true;
+          console.warn(`[Cluster ${this.name}] Oja on the worker pool failed (${e && e.message}) \u2014 running it on the main thread.`);
+        }
+      }
+    }
     if (activeRows) {
       const n = activeRows.length | 0;
       const ACTIVE_SLICE_MIN = 2048;

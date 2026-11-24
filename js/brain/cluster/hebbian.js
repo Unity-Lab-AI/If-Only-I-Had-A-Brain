@@ -666,6 +666,18 @@ export const CLUSTER_HEBBIAN_MIXIN = {
     // row-range loop below, with its own chunk state (active-list slices and
     // row-range slices have very different per-unit costs).
     const activeRows = ojaOpts && ojaOpts.activeRows;
+    // ⭐ EVERY THREAD, NOT ONE. Plain Oja over firing rows (no kScales, no
+    // delta tracking, no row window) runs on the worker pool — all hardware
+    // threads but one — instead of this brain's single main thread, which it
+    // used to hold for ~44% of the time while the donor card waited.
+    if (activeRows && activeRows.length > 2048 && this._sparsePool && typeof this._sparsePool.ojaActive === 'function'
+        && !(ojaOpts && (ojaOpts.kScales || ojaOpts.trackDelta || typeof ojaOpts.rowStart === 'number' || typeof ojaOpts.rowEnd === 'number'))) {
+      try {
+        if (await this._sparsePool.ojaActive(proj, preF, postF, lr, activeRows)) return;
+      } catch (e) {
+        if (!this._ojaPoolWarned) { this._ojaPoolWarned = true; console.warn(`[Cluster ${this.name}] Oja on the worker pool failed (${e && e.message}) — running it on the main thread.`); }
+      }
+    }
     if (activeRows) {
       const n = activeRows.length | 0;
       // Small sets stay a single synchronous pass — below this the yield
