@@ -316,7 +316,12 @@ enum Work {
     // the FLOOD lane, not the priority lane: it is a ~1.81 GB transfer for the
     // intra matrix and it must never jump ahead of a deadline-bearing
     // compute_batch, which is exactly how the zombie-kick incident happened.
-    ReadbackValues { req_id: u32, name: String, chunk_bytes: u32 },
+    // v0.3.52 — `offset` / `length` (bytes) read ONE RANGE instead of the whole
+    // matrix, so the brain paces a pull range by range and the reply channel is
+    // never filled with gigabytes ahead of its other replies. None = whole matrix.
+    ReadbackValues { req_id: u32, name: String, chunk_bytes: u32, offset: Option<u64>, length: Option<u64> },
+    // v0.3.52 — remember which brain these resident matrices belong to.
+    SetLineage { lineage: String },
     // ONE PROCESS — a mind-space op (her imagery) computed on this donor.
     // Pure CPU (no engine state); answered with a mindspace_result JSON.
     Mindspace { id: u64, op: String, payload: serde_json::Map<String, serde_json::Value> },
@@ -952,6 +957,18 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
     tx.send(Message::text(serde_json::to_string(&reg).unwrap()))
         .await
         .map_err(|e| format!("register send failed: {e}"))?;
+    // v0.3.52 — WHOSE matrices, and exactly what shape. A restarted brain of the
+    // same lineage adopts a matrix this card already holds instead of pushing it
+    // again over the link (a 20-30 min upload through the tunnel); any mismatch
+    // and it uploads as before. A separate message so the shared protocol crate's
+    // registration stays unchanged; an older brain ignores the unknown type.
+    {
+        let shapes: Vec<serde_json::Value> = engine.sparse_shapes().into_iter()
+            .map(|(n, r, c, z)| serde_json::json!({ "name": n, "rows": r, "cols": c, "nnz": z }))
+            .collect();
+        let inv = serde_json::json!({ "type": "engine_inventory", "lineage": engine.lineage.clone(), "matrices": shapes });
+        let _ = tx.send(Message::text(inv.to_string())).await;
+    }
     println!("[donor] registered as {} ({} MB binding cap) — leaderboard: {}. Donating at {}% utilization.", host_name, binding_mb, donor_name.as_deref().unwrap_or("anonymous"), cfg.utilization_pct);
     set_status(&control, |s| { s.connected = true; s.gpu_name = host_name.clone(); s.note = "registered".into(); });
     stamp_donor_progress();   // registration is real progress — see the wedge watchdog
@@ -1074,6 +1091,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 Work::Mindspace { op, .. } => format!("mindspace {op}"),
                 Work::CheckpointSave { .. } => "checkpoint save".to_string(),
                 Work::CheckpointRestore { .. } => "checkpoint restore".to_string(),
+                Work::SetLineage { .. } => "set lineage".to_string(),
                 Work::FreeMatrices { names } => format!("free x{}", names.len()),
                 Work::SliceBase { name, base, count } => format!("slice {name} @{base}+{count}"),
                 Work::UploadSlice { name, slice, .. } => format!("slice upload {name} x{}", slice.rows),
@@ -1338,7 +1356,10 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 // and carries the FNV-1a-64 digest of the SAME bytes, so the server
                 // proves the transfer intact by hashing what it received rather
                 // than trusting a byte count.
-                Work::ReadbackValues { req_id, name, chunk_bytes } => {
+                Work::SetLineage { lineage } => {
+                    if !lineage.is_empty() { engine.lineage = Some(lineage); }
+                }
+                Work::ReadbackValues { req_id, name, chunk_bytes, offset: range_off, length: range_len } => {
                     // Clamp the requested chunk to something a frame can carry
                     // (~16 MiB donor ceiling) and align it to f32. An oversized
                     // request would otherwise be silently fragmented or dropped —
@@ -1356,16 +1377,20 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                         };
                         let _ = reply_tx.send(Out::Text(serde_json::to_string(&ack).unwrap()));
                     } else {
-                        let total_chunks = ((total_bytes + chunk - 1) / chunk) as u32;
+                        // v0.3.52 — one byte range when the brain asks for one
+                        // (f32-aligned, clamped to the matrix); else the whole.
+                        let start = (range_off.unwrap_or(0) & !3u64).min(total_bytes);
+                        let end = match range_len { Some(l) => start.saturating_add(l & !3u64).min(total_bytes), None => total_bytes };
+                        let total_chunks = ((end - start + chunk - 1) / chunk) as u32;
                         // FNV-1a-64 accumulated ACROSS chunks in wire order — the
                         // same digest checksum_matrix returns for the whole buffer,
                         // so server and donor can compare without a second read.
                         let mut hash: u64 = 0xcbf29ce484222325;
                         let mut sent: u32 = 0;
                         let mut failed: Option<String> = None;
-                        let mut off: u64 = 0;
-                        while off < total_bytes {
-                            match engine.read_values_chunk(&name, off, chunk) {
+                        let mut off: u64 = start;
+                        while off < end {
+                            match engine.read_values_chunk(&name, off, chunk.min(end - off)) {
                                 Some(bytes) if !bytes.is_empty() => {
                                     for &b in &bytes { hash ^= b as u64; hash = hash.wrapping_mul(0x100000001b3); }
                                     let frame = crate::frames::ack_values_chunk(req_id, sent, total_chunks, off, &bytes);
@@ -1771,6 +1796,10 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                                     workq.push(Work::CheckpointRestore { lineage: lin.clone(), brain_saved_at: saved });
                                 }
                                 if ckpt_lineage.is_none() { last_ckpt = std::time::Instant::now(); }
+                                // v0.3.52 — the ENGINE remembers whose matrices it holds,
+                                // so a restarted brain of this lineage can adopt them.
+                                pending.fetch_add(1, Ordering::Relaxed);
+                                workq.push(Work::SetLineage { lineage: lin.clone() });
                                 ckpt_lineage = Some(lin);
                             }
                             continue;
@@ -1808,7 +1837,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                             }
                             Ok(ServerMessage::ReadbackLetterBuckets(rb)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::Readback { req_id: rb.req_id, cluster: rb.cluster_name, region: rb.region_name, bucket_count: rb.bucket_count, sub_slice_len: rb.sub_slice_len, start_offset: rb.start_offset }); }
                             Ok(ServerMessage::ReadbackMatrixChecksum(rc)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::ChecksumMatrix { req_id: rc.req_id, name: rc.name, sample_count: rc.sample_count }); }
-                            Ok(ServerMessage::ReadbackMatrixValues(rv)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::ReadbackValues { req_id: rv.req_id, name: rv.name, chunk_bytes: rv.chunk_bytes }); }
+                            Ok(ServerMessage::ReadbackMatrixValues(rv)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::ReadbackValues { req_id: rv.req_id, name: rv.name, chunk_bytes: rv.chunk_bytes, offset: rv.offset, length: rv.length }); }
                             Ok(ServerMessage::MindspaceOp(m)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::Mindspace { id: m.id, op: m.op, payload: m.payload }); }
                             // TU.20.12 — the brain refused this binary as incompatible. Surface it
                             // and set stop so the supervisor does NOT reconnect-loop a version it

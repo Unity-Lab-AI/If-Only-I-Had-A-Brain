@@ -463,6 +463,13 @@ pub struct ReadbackMatrixValues {
     pub name: String,
     #[serde(rename = "chunkBytes", default = "default_chunk_bytes")]
     pub chunk_bytes: u32,
+    // v0.3.52 — read ONE byte range [offset, offset+length) instead of the whole
+    // matrix. The brain paces a pull range by range; absent = the whole matrix,
+    // exactly as before. Both are byte counts and must be f32-aligned.
+    #[serde(default)]
+    pub offset: Option<u64>,
+    #[serde(default)]
+    pub length: Option<u64>,
 }
 
 fn default_chunk_bytes() -> u32 { 8 * 1024 * 1024 }
