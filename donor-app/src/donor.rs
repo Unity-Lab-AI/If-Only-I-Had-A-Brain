@@ -1057,6 +1057,21 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     // Count teach work (propagate / Hebbian) so the GUI reflects the curriculum
                     // walk — the brain sends these, not compute_batch, during teaching.
                     let is_teach = matches!(frame, Frame::Propagate { .. } | Frame::Hebbian { .. } | Frame::BatchedHebbian { .. } | Frame::HebbianBoundMasked { .. });
+                    // v0.3.48 — frames that carry POST ROW numbers of a sliced
+                    // matrix are shifted into this card's slice; rows another
+                    // card holds are dropped.
+                    let shift = |v: Vec<u32>, b: u32| -> Vec<u32> { v.into_iter().filter(|&r| r >= b).map(|r| r - b).collect() };
+                    let frame = match frame {
+                        Frame::Hebbian { req_id, name, pre, post, lr } if slice_base.contains_key(&name) => {
+                            let b = slice_base[&name];
+                            Frame::Hebbian { req_id, pre, post: shift(post, b), lr, name }
+                        }
+                        Frame::HebbianBoundMasked { req_id, name, lr, reps, post_idx } if slice_base.contains_key(&name) => {
+                            let b = slice_base[&name];
+                            Frame::HebbianBoundMasked { req_id, lr, reps, post_idx: shift(post_idx, b), name }
+                        }
+                        f => f,
+                    };
                     if let Some(ack) = handle_frame(&mut engine, &mut partials, frame) {
                         let _ = reply_tx.send(Out::Binary(ack));
                     }
@@ -1151,7 +1166,9 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                         v
                     };
                     let pre = expand(&pre_ranges);
-                    let post = expand(&post_ranges);
+                    let mut post = expand(&post_ranges);
+                    // v0.3.48 — post rows of a sliced matrix shift into this card's slice.
+                    if let Some(&b) = slice_base.get(&name) { post = post.into_iter().filter(|&r| r >= b).map(|r| r - b).collect(); }
                     if !pre.is_empty() && !post.is_empty() {
                         // v0.3.19 — the dose runs as ONE engine call: pattern
                         // written once, kernel looped `reps` times inside the

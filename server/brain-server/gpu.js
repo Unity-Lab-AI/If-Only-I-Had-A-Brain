@@ -1563,7 +1563,10 @@ const SERVER_GPU_MIXIN = {
         if (Date.now() - t0 < 3 * 3600 * 1000) setTimeout(tick, 10000);
         return;
       }
-      const names = Object.keys(this._cortexMatrixMB || {});
+      // MULTI-CARD — a card that still holds a SLICE of the intra matrix keeps
+      // it; only the matrices that left with the cortex are freed.
+      const holdsSlice = this._intraSliceActive() && this._intraSlices.some((s) => s.ws === oldWs);
+      const names = Object.keys(this._cortexMatrixMB || {}).filter((n) => !(holdsSlice && n === this._SLICE_NAME));
       if (!names.length) return;
       try {
         oldWs.send(JSON.stringify({ type: 'free_matrices', names }));
@@ -3131,16 +3134,206 @@ const SERVER_GPU_MIXIN = {
    * a failed or timed-out upload cannot leave the count stuck high and close
    * the look lane forever (the leaked-slot lesson from LOOKQUEUE.1).
    */
-  async gpuSparseUpload(name, matrix, binding, targetWs = null) {
+  async gpuSparseUpload(name, matrix, binding, targetWs = null, noRegister = false) {
     this._gpuUploadsInFlight = (this._gpuUploadsInFlight | 0) + 1;
     try {
-      return await this._gpuSparseUploadInner(name, matrix, binding, targetWs);
+      // MULTI-CARD — the canonical upload of the intra matrix becomes one row
+      // slice per card when more than one card can hold a slice.
+      if (!targetWs && !noRegister && name === this._SLICE_NAME && matrix && matrix.rowPtr) {
+        const plan = this._planIntraSlices(matrix.rows);
+        if (plan) return await this._uploadIntraSliced(name, matrix, binding, plan);
+      }
+      return await this._gpuSparseUploadInner(name, matrix, binding, targetWs, noRegister);
     } finally {
       this._gpuUploadsInFlight = Math.max(0, (this._gpuUploadsInFlight | 0) - 1);
     }
   },
 
-  async _gpuSparseUploadInner(name, matrix, binding, targetWs = null) {
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MULTI-CARD TRAINING — THE INTRA MATRIX IN ROW SLICES (docs/POOL-SHARDING.md)
+  //
+  // The intra matrix binds the `langCortex` pseudo-cluster, which the tick
+  // never steps — only teaching writes it and only teaching/probes read it. So
+  // no card needs the whole matrix: each holder keeps contiguous rows [a, b),
+  // uploaded as an ordinary bound matrix whose destination window is narrowed to
+  // those rows. Then:
+  //   • every teach frame sent to the cortex owner is COPIED to every other
+  //     holder (`_installSliceFanout`) — each applies it to its own rows; a card
+  //     without the matrix or cluster a frame names ignores it;
+  //   • row numbers inside frames (masked rows, explicit Hebbian post, ranges)
+  //     are shifted into the slice on the card (`slice_base`, donor 0.3.48);
+  //   • a propagate on the intra matrix asks every holder and STITCHES their
+  //     currents by row base (`_gatherIntraPropagate`);
+  //   • the checkpoint pull reads each slice into its rows of the CPU master.
+  // Holders: the cortex owner plus every pool card speaking 0.3.48+, rows split
+  // in proportion to each card's room. `DREAM_SLICE=0` keeps one card.
+  // ═══════════════════════════════════════════════════════════════════════════
+  _SLICE_NAME: 'cortex_intraSynapses',
+
+  _sliceCapable(ws) {
+    const c = ws && this.clients && this.clients.get ? this.clients.get(ws) : null;
+    const m = /^(\d+)\.(\d+)\.(\d+)/.exec(String((c && c.donorAppVersion) || ''));
+    return !!m && ((+m[1]) * 1e6 + (+m[2]) * 1e3 + (+m[3])) >= 3048;
+  },
+
+  _intraSliceActive() {
+    const s = this._intraSlices;
+    return Array.isArray(s) && s.length > 1;
+  },
+
+  _intraSliceHolders() {
+    return this._intraSliceActive() ? this._intraSlices.map((s) => s.ws).filter((w) => w && w.readyState === 1) : [];
+  },
+
+  /** Row ranges per holder, or null when one card should hold it all. */
+  _planIntraSlices(rows) {
+    if (process.env.DREAM_SLICE === '0') return null;
+    const owner = this._gpuClient;
+    if (!owner || owner.readyState !== 1 || !(rows > 0)) return null;
+    const others = (typeof this._livePoolDonors === 'function' ? this._livePoolDonors() : [])
+      .filter((ws) => ws && ws !== owner && ws.readyState === 1 && this._sliceCapable(ws));
+    if (!others.length) return null;
+    // Room each card can give its slice. The owner also carries the 16
+    // cross-projections and the other clusters it owns, so its room is what is
+    // left after those; teachers carry only their own clusters.
+    const crossMB = (() => { let s = 0; const r = this._cortexMatrixMB || {}; for (const k of Object.keys(r)) if (k !== this._SLICE_NAME) s += Number(r[k]) || 0; return s; })();
+    const ownedMB = (ws) => { let s = 0; if (this._clusterOwner instanceof Map) for (const [n, o] of this._clusterOwner) if (o === ws && n !== 'cortex') s += this._clusterCostMB(n); return s; };
+    const room = (ws) => Math.max(0, this._donorCapacityMB(ws) - ownedMB(ws) - (ws === owner ? crossMB : 0));
+    const holders = [owner, ...others].map((ws) => ({ ws, room: room(ws) })).filter((h) => h.room > 512);
+    if (holders.length < 2) return null;
+    const total = holders.reduce((s, h) => s + h.room, 0);
+    const plan = [];
+    let a = 0;
+    holders.forEach((h, i) => {
+      const b = i === holders.length - 1 ? rows : Math.min(rows, a + Math.floor(rows * h.room / total));
+      if (b > a) plan.push({ ws: h.ws, a, b });
+      a = b;
+    });
+    return plan.length > 1 ? plan : null;
+  },
+
+  _csrRowSlice(m, a, b) {
+    const rp = m.rowPtr, base = rp[a], end = rp[b];
+    const rowPtr = new Uint32Array(b - a + 1);
+    for (let i = 0; i <= b - a; i++) rowPtr[i] = rp[a + i] - base;
+    return { rows: b - a, cols: m.cols, values: m.values.subarray(base, end), colIdx: m.colIdx.subarray(base, end), rowPtr };
+  },
+
+  /** Upload the intra matrix as one slice per holder. */
+  async _uploadIntraSliced(name, matrix, binding, plan) {
+    if (!this._replicaMatrixRegistry) this._replicaMatrixRegistry = new Map();
+    this._replicaMatrixRegistry.set(name, { matrix, binding });
+    if (!this._cortexMatrixMB) this._cortexMatrixMB = {};
+    this._cortexMatrixMB[name] = +(((matrix.values.byteLength || 0) + (matrix.colIdx.byteLength || 0) + (matrix.rowPtr.byteLength || 0)) / 1e6).toFixed(1);
+    this._intraSlices = plan.map((p) => ({ ws: p.ws, a: p.a, b: p.b }));
+    const nm = (ws) => { const c = this.clients && this.clients.get ? this.clients.get(ws) : null; return (c && (c.gpuName || c.id)) || 'donor'; };
+    console.log(`[Pool] SLICES — ${name} split across ${plan.length} cards: ${plan.map((p) => `${nm(p.ws)} rows ${p.a.toLocaleString()}–${p.b.toLocaleString()}`).join(' · ')}`);
+    const results = await Promise.all(plan.map(async (p) => {
+      if (p.ws !== this._gpuClient) this._gpuInitLangPseudoCluster(p.ws);
+      const slice = this._csrRowSlice(matrix, p.a, p.b);
+      const sb = binding && binding.dstRegion
+        ? { ...binding, dstRegion: { start: binding.dstRegion.start + p.a, end: binding.dstRegion.start + p.b } }
+        : binding;
+      const r = await this._gpuSparseUploadInner(name, slice, sb, p.ws, true);
+      try { p.ws.send(JSON.stringify({ type: 'slice_base', name, rowBase: p.a })); } catch { /* a dropped holder re-plans */ }
+      return r;
+    }));
+    const ok = results.every((r) => r);
+    if (!ok) console.warn(`[Pool] SLICES — ${results.filter((r) => !r).length} of ${plan.length} slice upload(s) failed; the walk re-plans on the next cortex upload.`);
+    return ok ? results[0] : null;
+  },
+
+  /** Copy every teach frame sent to the cortex owner to the other holders. */
+  _installSliceFanout(ws) {
+    if (!ws || ws._sliceFanout || typeof ws.send !== 'function') return;
+    ws._sliceFanout = true;
+    const inner = ws.send.bind(ws);
+    const FAN = new Set([3, 5, 7, 8, 9, 10, 11, 12, 13, 14, 17]);
+    ws.send = (data, ...rest) => {
+      try {
+        if (ws === this._gpuClient && this._intraSliceActive() && Buffer.isBuffer(data)
+            && data.length > 5 && data[0] === 0x53 && data[1] === 0x50 && data[2] === 0x52 && data[3] === 0x53 && FAN.has(data[4])) {
+          for (const s of this._intraSlices) {
+            if (s.ws !== ws && s.ws && s.ws.readyState === 1) { try { s.ws.send(data); } catch { /* holder dropped */ } }
+          }
+        }
+      } catch { /* the copy must never break the owner's own send */ }
+      return inner(data, ...rest);
+    };
+  },
+
+  /**
+   * Has the set of cards that should hold slices changed? A holder dropped, or
+   * a slice-capable card has been connected ≥ 60 s and holds nothing. (60 s,
+   * not the cortex hold-down: a slice move is the same upload either way, and
+   * a just-registered card is still sending its first telemetry.)
+   */
+  _intraSliceNeedsReplan() {
+    if (process.env.DREAM_SLICE === '0') return false;
+    if (this._cortexUploadInFlight || this._cortexMoveInFlight || this._resliceInFlight) return false;
+    const owner = this._gpuClient;
+    if (!owner || owner.readyState !== 1) return false;
+    const cc = this.cortexCluster;
+    if (!cc || !cc._gpuProxyReady) return false;
+    const held = new Set(this._intraSliceActive() ? this._intraSlices.map((s) => s.ws) : [owner]);
+    if (this._intraSliceActive() && this._intraSlices.some((s) => !s.ws || s.ws.readyState !== 1)) return true;
+    const now = Date.now();
+    for (const ws of (typeof this._livePoolDonors === 'function' ? this._livePoolDonors() : [])) {
+      if (!ws || held.has(ws) || ws.readyState !== 1 || !this._sliceCapable(ws)) continue;
+      const c = this.clients && this.clients.get ? this.clients.get(ws) : null;
+      if (c && c.connectedAt && now - c.connectedAt >= 60000 && this._donorCapacityMB(ws) > 512) return true;
+    }
+    return false;
+  },
+
+  /**
+   * Re-slice: pause teaching, pull every LIVE slice (and the owner's cross-
+   * projections) into the CPU master, forget the old plan, and re-arm the
+   * cortex upload — which plans fresh slices over the cards connected now.
+   * ⚠ A holder that DROPPED takes its rows' learning since the last pull with
+   * it; two copies per slice (the next stage) is what removes that loss.
+   */
+  async _resliceIntra(reason) {
+    if (this._resliceInFlight) return;
+    this._resliceInFlight = true;
+    const cc = this.cortexCluster;
+    try {
+      console.log(`[Pool] RESLICE (${reason}) — teaching paused; pulling every live slice into the master before re-planning.`);
+      if (cc) cc._gpuProxyReady = false;
+      if (this._intraSliceActive()) this._intraSlices = this._intraSlices.filter((s) => s.ws && s.ws.readyState === 1);
+      const _w0 = Date.now();
+      while (this._valuesReadbackInFlight && Date.now() - _w0 < 10 * 60 * 1000) await new Promise((r) => setTimeout(r, 1000));
+      const r = await this.refreshCheckpointFromDonor(`reslice: ${reason}`, { force: true });
+      if (!r || !r.ok) console.warn(`[Pool] RESLICE — pull did not complete (${(r && r.reason) || 'unknown'}); re-planning from the last save.`);
+    } catch (e) {
+      console.warn(`[Pool] RESLICE — pull threw (${e && e.message}); re-planning from the last save.`);
+    } finally {
+      // Old holders drop their slices; the new plan uploads fresh ones.
+      for (const s of (this._intraSlices || [])) {
+        if (s.ws && s.ws !== this._gpuClient && s.ws.readyState === 1) {
+          try { s.ws.send(JSON.stringify({ type: 'free_matrices', names: [this._SLICE_NAME] })); } catch { /* gone */ }
+        }
+      }
+      this._intraSlices = null;
+      this._resliceInFlight = false;
+      const rearm = globalThis.__rearmCortexGpuUpload;
+      if (typeof rearm === 'function') rearm(`reslice: ${reason}`);
+    }
+  },
+
+  /** A propagate on the sliced intra matrix: every holder, stitched by row base. */
+  async _gatherIntraPropagate(name, pre, timeoutMs, reuseKey) {
+    const slices = this._intraSlices.filter((s) => s.ws && s.ws.readyState === 1);
+    const rows = this._intraSlices[this._intraSlices.length - 1].b;
+    if (slices.length !== this._intraSlices.length) return null;   // a holder is gone — no partial answer
+    const parts = await Promise.all(slices.map((s) => this.gpuSparsePropagate(name, pre, s.ws, timeoutMs, reuseKey ? `${reuseKey}@${s.a}` : null)));
+    if (parts.some((p) => !p)) return null;
+    const out = new Float32Array(rows);
+    slices.forEach((s, i) => out.set(parts[i].subarray(0, s.b - s.a), s.a));
+    return out;
+  },
+
+  async _gpuSparseUploadInner(name, matrix, binding, targetWs = null, noRegister = false) {
     // TEACHCREDIT — record the matrix's stored-synapse count so teach frames
     // can be credited with their real giga-ops (see _countTeachOut). Values
     // length IS the nnz; a matrix without one records nothing (no invented
@@ -3157,7 +3350,9 @@ const SERVER_GPU_MIXIN = {
     // registry so a newly-joined donor can be brought to a FULL brain replica
     // by replaying these. Replica-sync uploads (targetWs set) don't re-track.
     let ws = (targetWs && targetWs.readyState === 1) ? targetWs : this._gpuClient;
-    const isReplicaSync = !!(targetWs && targetWs !== this._gpuClient);
+    // A slice upload is never the canonical matrix: it must not replace the
+    // registry's full copy or be mirrored, even when it targets the owner.
+    const isReplicaSync = !!(targetWs && targetWs !== this._gpuClient) || !!noRegister;
     // DEAD-SOCKET DEFER (canonical uploads only): a just-dropped primary is
     // not a failed attempt. If no live primary but one existed recently, WAIT
     // (bounded) for the re-register instead of letting the per-matrix retry
@@ -3272,7 +3467,7 @@ const SERVER_GPU_MIXIN = {
     // size record existed before this line; the only place the size was ever
     // known was this log string.
     if (!this._cortexMatrixMB) this._cortexMatrixMB = {};
-    this._cortexMatrixMB[name] = Number(totalMb);
+    if (!noRegister) this._cortexMatrixMB[name] = Number(totalMb);   // a slice is not the matrix's size
     const hasBinding = !!(binding && binding.srcCluster && binding.dstCluster);
     console.log(`[Brain] sparse chunked upload reqId=${reqId} name=${name} totalChunks=${totalChunks} totalSize=${totalMb}MB${hasBinding ? ` (cluster-bound: ${binding.srcCluster}[${binding.srcRegion.start}..${binding.srcRegion.end}] → ${binding.dstCluster}[${binding.dstRegion.start}..${binding.dstRegion.end}])` : ''}`);
 
@@ -3744,6 +3939,10 @@ const SERVER_GPU_MIXIN = {
     const pre = preSpikes instanceof Uint32Array ? preSpikes
       : preSpikes instanceof Uint8Array ? Uint32Array.from(preSpikes)
       : new Uint32Array(preSpikes || []);
+    // MULTI-CARD — the sliced intra matrix answers from every holder, stitched.
+    if (!targetWs && name === this._SLICE_NAME && this._intraSliceActive()) {
+      return this._gatherIntraPropagate(name, pre, timeoutMs, reuseKey);
+    }
     // DF.7 — a STANDALONE propagate (non-empty preSpikes) carries its own input,
     // so it's stateless + correct on any replica holding the same weights. When
     // fan-out is ON and no explicit target was given, round-robin it across the
@@ -5266,6 +5465,11 @@ const SERVER_GPU_MIXIN = {
   },
   _lessonAcked(reqId, ws) {
     const e = this._lessonInflight instanceof Map ? this._lessonInflight.get(reqId) : null;
+    // MULTI-CARD — wait for every holder; the slowest one's ack completes it.
+    if (e && e.acked) {
+      if (ws) e.acked.add(ws);
+      if (e.acked.size < (e.need || 1)) return;
+    }
     if (e) {
       const now = Date.now();
       const full = this._lessonInflight.size >= (this._lessonWindowNow || 4);
@@ -5303,7 +5507,11 @@ const SERVER_GPU_MIXIN = {
       if (!this._donorPatternSendGated(frame)) return false;
       if (paced) {
         if (!(this._lessonInflight instanceof Map)) this._lessonInflight = new Map();
-        this._lessonInflight.set(reqId, { ws: this._gpuClient, at: Date.now() });
+        // MULTI-CARD — the lesson is copied to every slice holder; it is done
+        // only when ALL of them have acked, so the slowest card paces the send
+        // and no card's queue can grow without bound.
+        const need = this._intraSliceActive() ? this._intraSliceHolders().length : 1;
+        this._lessonInflight.set(reqId, { ws: this._gpuClient, at: Date.now(), need, acked: new Set() });
       }
       this._countTeachOut(17, frame.length);
       // ⭐ Credit the card on its own row. `teachOps` was bumped only in
@@ -5648,12 +5856,15 @@ const SERVER_GPU_MIXIN = {
    * ever ride the KB-scale template lane. Costs the donor one 12M-cell
    * spike/current buffer pair (~96MB VRAM).
    */
-  _gpuInitLangPseudoCluster() {
-    this._langPseudoInit = false;
+  _gpuInitLangPseudoCluster(targetWs = null) {
+    // A slice holder (targetWs) needs the same spike space its slice binds to;
+    // the owner's init flag is only about the owner.
+    const ws = targetWs || this._gpuClient;
+    if (!targetWs) this._langPseudoInit = false;
     const cortex = this.cortexCluster;
     if (!cortex || !cortex.regions || !cortex.size) return;
-    if (!this._gpuClient || this._gpuClient.readyState !== 1) return;
-    if (!this._donorSpikeTemplateTeach()) return;   // pre-0.3.17 donor — intra stays CPU exactly as before
+    if (!ws || ws.readyState !== 1) return;
+    if (!targetWs && !this._donorSpikeTemplateTeach()) return;   // pre-0.3.17 donor — intra stays CPU exactly as before
     const all = cortex.regions;
     const regions = {};
     for (const [rn, r] of Object.entries(all)) {
@@ -5667,7 +5878,7 @@ const SERVER_GPU_MIXIN = {
       if (!sub && r && r.end > r.start) regions[rn] = { start: r.start, end: r.end, side: 'left' };
     }
     try {
-      this._gpuClient.send(JSON.stringify({
+      ws.send(JSON.stringify({
         type: 'gpu_init',
         clusterName: 'langCortex',
         size: cortex.size,
@@ -5676,7 +5887,7 @@ const SERVER_GPU_MIXIN = {
         lifParams: { tau: 20, Vrest: -65, Vthresh: -50, Vreset: -70, dt: 1, R: 1, tRefrac: 2 },
         regions,
       }));
-      this._langPseudoInit = true;
+      if (!targetWs) this._langPseudoInit = true;
       console.log(`[Brain] GINTRA — langCortex pseudo-cluster gpu_init sent (${cortex.size.toLocaleString()} neurons, ${Object.keys(regions).length} regions). The intra matrix binds here; teach-frame twins keep its spike space current; hebbian_bound trains it GPU-resident.`);
     } catch (e) {
       console.warn('[Brain] GINTRA — pseudo-cluster init send failed:', e && e.message);
@@ -6122,12 +6333,14 @@ const SERVER_GPU_MIXIN = {
    * on the wire and ships it in the closing ack, so "did I receive all of it,
    * intact, in order" is answered by hashing what arrived.
    */
-  async gpuReadbackMatrixValues(name, targetWs = null, chunkBytes = 8 * 1024 * 1024) {
+  async gpuReadbackMatrixValues(name, targetWs = null, chunkBytes = 8 * 1024 * 1024, into = null) {
     const ws = (targetWs && targetWs.readyState === 1) ? targetWs : this._gpuClient;
     if (!ws || ws.readyState !== 1) return { ok: false, reason: 'no donor connected' };
     const reg = this._replicaMatrixRegistry;
     const entry = (reg && typeof reg.get === 'function') ? reg.get(name) : null;
-    const matrix = entry && entry.matrix;
+    // MULTI-CARD — a slice reads into ITS rows of the master (`into.values` is
+    // a subarray view), so the bytes land in place with no copy.
+    const matrix = into || (entry && entry.matrix);
     if (!matrix || !matrix.values) return { ok: false, reason: `no CPU master matrix '${name}' to write into` };
     if (!this._valuesReadbacks) this._valuesReadbacks = new Map();
     if (this._valuesReadbackInFlight) return { ok: false, reason: 'a values readback is already in flight' };
@@ -6426,6 +6639,26 @@ const SERVER_GPU_MIXIN = {
     const t0 = Date.now();
     let bytes = 0;
     for (const n of names) {
+      // MULTI-CARD — the sliced intra matrix is pulled slice by slice, each into
+      // its own rows of the master; any slice failing aborts the save the same
+      // way a whole-matrix failure does.
+      if (n === this._SLICE_NAME && this._intraSliceActive()) {
+        const reg = this._replicaMatrixRegistry;
+        const full = reg && reg.get(n) && reg.get(n).matrix;
+        let sliceFail = null;
+        for (const s of this._intraSlices) {
+          if (!full || !s.ws || s.ws.readyState !== 1) { sliceFail = { reason: 'a slice holder is gone' }; break; }
+          const rp = full.rowPtr;
+          const r = await this.gpuReadbackMatrixValues(n, s.ws, undefined, { values: full.values.subarray(rp[s.a], rp[s.b]) });
+          if (!r || !r.ok) { sliceFail = r || { reason: 'unknown' }; break; }
+          bytes += r.bytes || 0;
+        }
+        if (sliceFail) {
+          console.warn(`[Brain] SHADOWCOST.3 readback ABORTED on a slice of '${n}' (${reason}): ${sliceFail.reason || 'unknown'} — NOT saving, so the existing checkpoint slots stay coherent.`);
+          return { ...refuse(`aborted on a slice of '${n}': ${sliceFail.reason || 'unknown'}`), name: n };
+        }
+        continue;
+      }
       const r = await this.gpuReadbackMatrixValues(n);
       if (!r || !r.ok) {
         console.warn(`[Brain] SHADOWCOST.3 readback ABORTED on '${n}' (${reason}): ${(r && r.reason) || 'unknown'} — NOT saving, so the existing checkpoint slots stay coherent.`);

@@ -10822,6 +10822,12 @@ function _applyPoolPartition(reason, moveReason) {
 // is in flight. Cheap: a few map operations when nothing changes.
 setInterval(() => {
   try {
+    // MULTI-CARD — checked BEFORE the two-card gate: when a holder drops and
+    // leaves one card, its rows must come back onto that card.
+    if (brain && typeof brain._intraSliceNeedsReplan === 'function' && brain._intraSliceNeedsReplan()) {
+      brain._resliceIntra('the cards changed').catch(() => {});
+      return;
+    }
     if (!brain || !brain._gpuClients || brain._gpuClients.size < 2) return;
     // ⛔ Not while the cortex is moving or uploading. Measured: a check that ran
     // mid-move still saw the cortex on the OLD card (ownership switches when the
@@ -14845,6 +14851,10 @@ wss.on('connection', (ws, req) => {
           // message per event-loop turn instead of one per teach frame.
           if (_donorVer && typeof brain._donorSpeaksBundle === 'function' && brain._donorSpeaksBundle(_donorVer)) {
             try { brain._installTeachBundler(ws); } catch (e) { console.warn(`[Brain] teach bundle install failed (frames go unbundled): ${e.message}`); }
+            // MULTI-CARD — installed after the bundler so it sees each frame
+            // before bundling; it copies teach frames only while this socket is
+            // the cortex owner and the intra matrix is sliced.
+            try { brain._installSliceFanout(ws); } catch (e) { console.warn(`[Brain] slice fan-out install failed: ${e.message}`); }
           }
           // CHAT.1 — sparse-propagate-v2 capability (type=6 sparse-index wire).
           // Browser donors (current compute.html) advertise it; native donors
