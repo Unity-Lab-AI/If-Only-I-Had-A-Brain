@@ -3255,7 +3255,7 @@ const SERVER_GPU_MIXIN = {
     const owner = this._gpuClient;
     if (!owner || owner.readyState !== 1 || !(rows > 0)) return null;
     const others = (typeof this._livePoolDonors === 'function' ? this._livePoolDonors() : [])
-      .filter((ws) => ws && ws !== owner && ws.readyState === 1 && this._sliceCapable(ws) && this._sliceSettled(ws));
+      .filter((ws) => ws && ws !== owner && ws.readyState === 1 && this._sliceCapable(ws) && this._sliceSettled(ws, Date.now(), true));
     if (!others.length) return null;
     // Room each card can give its slice. The owner also carries the 16
     // cross-projections and the other clusters it owns, so its room is what is
@@ -3510,13 +3510,18 @@ const SERVER_GPU_MIXIN = {
    * DREAM_SLICE_REJOIN_HOLD_MS (10 min) first; a card new to her waits 60 s.
    * Until then it still steps the clusters the partition gives it.
    */
-  _sliceSettled(ws, now = Date.now()) {
+  // `forPlan`: a card that has never dropped is taken at once by the planner —
+  // the 60 s wait applies only to TRIGGERING a re-slice for a newcomer. Holding
+  // every fresh card at boot sent the first upload to one card, then re-sliced.
+  _sliceSettled(ws, now = Date.now(), forPlan = false) {
     const c = ws && this.clients && this.clients.get ? this.clients.get(ws) : null;
     if (!c || !c.connectedAt) return false;
     const key = this._sliceKey(ws);
     const dropped = key ? this._sliceDroppedAt().get(key) : 0;
     const _h = Number(process.env.DREAM_SLICE_REJOIN_HOLD_MS);
-    const holdMs = (dropped && now - dropped < 3600000) ? (Number.isFinite(_h) && _h >= 0 ? _h : 600000) : 60000;
+    const recentDrop = !!(dropped && now - dropped < 3600000);
+    if (forPlan && !recentDrop) return true;
+    const holdMs = recentDrop ? (Number.isFinite(_h) && _h >= 0 ? _h : 600000) : 60000;
     return now - c.connectedAt >= holdMs;
   },
 
