@@ -15536,6 +15536,7 @@ export class Curriculum {
       : 'no donor connected');
     if (!this._substratePause) {
       this._substratePause = { sinceMs: Date.now(), reason: reasonNow() };
+      this._substratePauseCount = (this._substratePauseCount | 0) + 1;
       this._pausedForDonorSinceMs = this._substratePause.sinceMs;
       this._hb(`[Curriculum] PAUSED - no compute substrate (${this._substratePause.reason}). This brain has no CPU teach path: training does not happen without a donor GPU. The walk waits with a free event loop and resumes the moment the weights are live on one.`);
     }
@@ -19940,7 +19941,18 @@ export class Curriculum {
       ? Number(process.env.DREAM_PER_WORD_TEACH_TIMEOUT_MS) : 120000;
     const SLOW_WORD_WARN_MS = 5000;
 
-    for (const w of words) {
+    // ⛔ A WORD CUT SHORT BY A PAUSE IS TAUGHT AGAIN, FROM ITS FIRST SENSE.
+    // When a card joins or the cortex moves, teaching pauses for the upload
+    // (minutes). The word in flight ran out its per-word limit during that
+    // pause, was aborted and SKIPPED — every GPU joining cost her the word she
+    // was on (operator, verbatim: "it wont pic up on the exact letter it didnt
+    // train yet, it like skips everything"). Now a word whose time ran out while
+    // the walk was paused is retried in place (bounded), never dropped.
+    const _wordQ = Array.from(words || []);
+    const _wordRetries = new Map();
+    for (let _wi = 0; _wi < _wordQ.length; _wi++) {
+      const w = _wordQ[_wi];
+      const _pc0 = this._substratePauseCount | 0;
       // ⛔ SHUTDOWN ENDS THE WORD LOOP, not each word separately. Every teach
       // call already stops at a rep boundary on shutdown, but this loop kept
       // handing out the next word, so a stop visited EVERY remaining word —
@@ -19973,6 +19985,16 @@ export class Curriculum {
           // 114.19es.4 — fire the abort signal so the abandoned promise
           // bails before its next Hebbian write lands.
           ac.abort();
+          const _paused = (this._substratePauseCount | 0) !== _pc0 || !!this._substratePause;
+          const _n = _wordRetries.get(w) | 0;
+          if (_paused && _n < 3) {
+            _wordRetries.set(w, _n + 1);
+            // let the aborted call reach its next abort check before re-teaching
+            try { await Promise.race([teachPromise, new Promise((res) => setTimeout(res, 5000))]); } catch { /* aborted */ }
+            this._hb(`[Curriculum][${label}] ↻ "${w}" ran out its time during a pause (cards changing) — teaching it again from its first sense (retry ${_n + 1}/3).`);
+            _wi--;
+            continue;
+          }
           timeouts += 1;
           skipped += 1;
           if (errorSamples.length < 5) {
