@@ -15501,11 +15501,21 @@ wss.on('connection', (ws, req) => {
             // teach lane only ever rides the primary socket. Same currency
             // class (giga neural ops), same honesty rule as MIRRORID.6: credit
             // is work actually dispatched, an idle card still earns nothing.
-            if (brain._gpuClient === ws) {
+            // With her main matrix row-sliced, every holder runs every lesson on its
+            // own rows, so the teach work is shared by row count — the primary is
+            // no longer the only card doing it (it was banking a rented card's work).
+            let _tgShare = brain._gpuClient === ws ? 1 : 0;
+            if (typeof brain._intraSliceActive === 'function' && brain._intraSliceActive()) {
+              const _sl = brain._intraSlices || [];
+              const _tot = _sl.reduce((a, s) => a + Math.max(0, (s.b || 0) - (s.a || 0)), 0);
+              const _mine = _sl.filter((s) => s.ws === ws).reduce((a, s) => a + Math.max(0, (s.b || 0) - (s.a || 0)), 0);
+              _tgShare = _tot > 0 ? _mine / _tot : 0;
+            }
+            if (_tgShare > 0) {
               const _tgNow = Number(brain._teachWorkGops) || 0;
               const _tgPrev = Number(lb._lastTeachGops);
               if (Number.isFinite(_tgPrev) && _tgNow > _tgPrev) {
-                const _tgDelta = _tgNow - _tgPrev;
+                const _tgDelta = (_tgNow - _tgPrev) * _tgShare;
                 lb.neurons += _tgDelta;                              // giga-ops of synaptic work
                 lb.teachGops = (lb.teachGops || 0) + _tgDelta;       // composition stays visible
                 lb._lastComputeTs = now;
