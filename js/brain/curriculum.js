@@ -21653,12 +21653,21 @@ export class Curriculum {
     // definition is unchanged (nothing dumbed down — only the post-hoc
     // basin-separation diagnostics are batched).
     const _deferDiag = opts.deferDiagnostics === true;
+    // ⛔ A FROZEN COPY IS NOT REWRITTEN. When the card holds a projection, its CPU
+    // `values` are a shadow the card never reads — the line this call prints says
+    // so (`CPU shadow · GPU bound, values frozen`) — and the next readback from the
+    // card overwrites them. Prune / rescale / row-normalise on that copy changed
+    // nothing she learned and cost ~0.2 s per word (the last sense of every word,
+    // measured: `#27/27 … in 0.2s` against 0.0 s for the others; 15.5 ms per call
+    // averaged, the largest span in the pair loop). They still run in full on any
+    // projection the CPU actually owns (no card, or not bound).
+    const _cardHolds = (p) => !!(p && p._gpuBound && cluster._gpuProxyReady && cluster._gpuProxy);
     let pruneReport = '';
     if (pruneTopK > 0 && !_deferDiag && cluster.crossProjections) {
       const pruned = [];
       for (const key of diagProjKeys) {
         const proj = cluster.crossProjections[key];
-        if (proj && typeof proj.pruneTopKPerRow === 'function' && proj.values && proj.values.length > 0) {
+        if (proj && !_cardHolds(proj) && typeof proj.pruneTopKPerRow === 'function' && proj.values && proj.values.length > 0) {
           try {
             const removed = proj.pruneTopKPerRow(pruneTopK);
             if (removed > 0) pruned.push(`${key}:-${removed}`);
@@ -21814,7 +21823,7 @@ export class Curriculum {
       const rescaled = [];
       for (const key of diagProjKeys) {
         const proj = cluster.crossProjections[key];
-        if (proj && typeof proj.scale === 'function' && proj.values && proj.values.length > 0) {
+        if (proj && !_cardHolds(proj) && typeof proj.scale === 'function' && proj.values && proj.values.length > 0) {
           try {
             const stats = proj.scale(rescaleFactor);
             if (stats && stats.before && stats.after) {
@@ -21843,7 +21852,7 @@ export class Curriculum {
       const normed = [];
       for (const key of diagProjKeys) {
         const proj = cluster.crossProjections[key];
-        if (proj && typeof proj.normalizeRows === 'function') {
+        if (proj && !_cardHolds(proj) && typeof proj.normalizeRows === 'function') {
           try {
             const rowsNorm = proj.normalizeRows(normTarget);
             if (rowsNorm > 0) normed.push(`${key}:${rowsNorm}`);
