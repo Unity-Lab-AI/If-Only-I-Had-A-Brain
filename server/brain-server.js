@@ -11726,6 +11726,45 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
+  // RUNPOD — the optional rented-GPU plug-in (server/runpod-control.js). Admin
+  // only, and stricter than loopback: the Cloudflare tunnel also arrives from
+  // 127.0.0.1, so any request carrying a proxy header is refused — the same
+  // rule the WS admin lane uses. These routes spend real money.
+  if (req.url && req.url.split('?')[0].startsWith('/admin/runpod/')) {
+    if (!requireLoopback(req, res, '/admin/runpod')) return;
+    const _proxied = ['x-forwarded-for', 'cf-connecting-ip', 'cf-ray', 'tailscale-funnel-request', 'forwarded', 'x-real-ip']
+      .some((h) => req.headers[h] !== undefined);
+    const reply = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)); };
+    if (_proxied) return reply(403, { ok: false, why: 'Runpod controls answer only on this machine, never through a proxy or tunnel' });
+    const rp = require('./runpod-control.js');
+    const verb = req.url.split('?')[0].slice('/admin/runpod/'.length);
+    if (req.method === 'GET' && verb === 'status') {
+      rp.status().then((s) => reply(200, { ok: true, ...s })).catch((e) => reply(500, { ok: false, why: e.message }));
+      return;
+    }
+    if (req.method !== 'POST') return reply(405, { ok: false, why: 'POST' });
+    let body = '';
+    req.on('data', (c) => { body += c; if (body.length > 4096) req.destroy(); });
+    req.on('end', () => {
+      let j = {};
+      try { j = JSON.parse(body || '{}'); } catch { return reply(400, { ok: false, why: 'body is not JSON' }); }
+      const run = async () => {
+        if (verb === 'key') { rp.setKey(j.key); return { hasKey: rp.hasKey() }; }
+        if (verb === 'settings') {
+          const patch = {};
+          if (typeof j.autoStopOnShutdown === 'boolean') patch.autoStopOnShutdown = j.autoStopOnShutdown;
+          if (typeof j.donorName === 'string') patch.donorName = j.donorName.slice(0, 40);
+          return { settings: rp.saveSettings(patch) };
+        }
+        if (verb === 'start') return { pod: await rp.startDonor(String(j.gpuId || '')) };
+        if (verb === 'stop') return await rp.stopDonor(String(j.id || ''));
+        throw Object.assign(new Error(`unknown verb '${verb}'`), { status: 404 });
+      };
+      run().then((r) => reply(200, { ok: true, ...r })).catch((e) => reply(e.status && e.status < 500 ? e.status : 500, { ok: false, why: e.message }));
+    });
+    return;
+  }
+
   if (req.url && req.url.split('?')[0] === '/knob' && req.method === 'POST') {
     if (!requireLoopback(req, res, '/knob')) return;
     let body = '';
@@ -12179,6 +12218,17 @@ const httpServer = http.createServer((req, res) => {
       try { brain.stop(); } catch (err) {
         console.error('[Brain] stop() failed during /shutdown:', err);
       }
+      // RUNPOD — a TRUE halt terminates any rented donor pod, AFTER the readback
+      // above (the card was still handing its weights back until then). A pod
+      // with no brain to donate to only bills. Restart/Savestart do NOT do this:
+      // she comes straight back and the pod reconnects. Capped at 20s so it can
+      // never be the reason a stop hangs; off by the admin page's switch.
+      try {
+        await Promise.race([
+          require('./runpod-control.js').stopAllOnShutdown(),
+          new Promise((r) => setTimeout(r, 20000)),
+        ]);
+      } catch (err) { console.warn('[Runpod] shutdown auto-stop failed:', err && err.message); }
       // The save above is synchronous, so by the time this runs it has landed;
       // the short delay only lets the HTTP reply and log lines flush.
       // Exit 42 (deliberate-halt sentinel) — see RestartPreventExitStatus in the unit.
@@ -14482,6 +14532,11 @@ wss.on('connection', (ws, req) => {
           }
           client.donorAppVersion = _donorVer || 'browser';
           client.isGPU = true;
+          // Teach bundle (SPRS 16) — native donors that unpack it get one
+          // message per event-loop turn instead of one per teach frame.
+          if (_donorVer && typeof brain._donorSpeaksBundle === 'function' && brain._donorSpeaksBundle(_donorVer)) {
+            try { brain._installTeachBundler(ws); } catch (e) { console.warn(`[Brain] teach bundle install failed (frames go unbundled): ${e.message}`); }
+          }
           // CHAT.1 — sparse-propagate-v2 capability (type=6 sparse-index wire).
           // Browser donors (current compute.html) advertise it; native donors
           // don't → they keep the legacy dense type=2 path. Stamped on the ws so

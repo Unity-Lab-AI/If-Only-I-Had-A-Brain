@@ -7,6 +7,7 @@
 //! 12=repeat (v0.3.15: the server detected a byte-identical teach payload and sends this
 //! ~30-byte frame instead of re-shipping ~150-700KB — the donor re-executes its cached
 //! copy; payload = origType(u8); type-3 repeats carry a real reqId and are acked as type 3).
+//! 16=bundle (v0.3.43: many of the above in one socket message, executed in order).
 //!
 //! Chunked-upload flags: 1=first chunk (carries rows/cols/nnz + rowPtr), 2=binding block
 //! follows rowPtr, 4=colIdx is DELTA-VARINT encoded (v0.3.22 DELTAIDX — see `delta_cols`).
@@ -85,6 +86,13 @@ pub enum Frame {
     /// ~30s windows. `reps` loops the kernel stream-ordered (the v0.3.19 rep-dose
     /// pattern). Fire-and-forget: no ack, same contract as types 7-11.
     HebbianBoundMasked { req_id: u32, name: String, lr: f32, reps: u32, post_idx: Vec<u32> },
+    /// v0.3.43 — BUNDLE (type 16): a run of ordinary SPRS frames carried in ONE
+    /// socket message. Payload = count(u32) then, per inner frame, byteLen(u32) +
+    /// the inner frame's exact bytes + pad→4B. The receive loop routes each inner
+    /// frame through the SAME path it would take arriving alone, in order, so the
+    /// GPU executes identical work in identical order — only the per-message cost
+    /// on both ends is gone. Bundles never nest (an inner type-16 is malformed).
+    Bundle { frames: Vec<Frame> },
 }
 
 /// Cluster-slice binding for a sparse matrix (chunk flags bit 2): the matrix's pre
@@ -387,6 +395,21 @@ pub fn decode(data: &[u8]) -> Option<Frame> {
             let count = r.u32()? as usize;
             let post_idx = r.u32_vec(count)?;
             Some(Frame::HebbianBoundMasked { req_id, name, lr, reps, post_idx })
+        }
+        // v0.3.43 — bundle: count + length-prefixed inner frames. Any malformed or
+        // nested inner frame rejects the WHOLE bundle, so a partial lesson can never
+        // execute.
+        16 => {
+            let count = r.u32()? as usize;
+            let mut frames = Vec::with_capacity(count.min(65536));
+            for _ in 0..count {
+                let len = r.u32()? as usize;
+                let inner = r.bytes(len)?;
+                r.align4();
+                if inner.len() > 4 && inner[4] == 16 { return None; }
+                frames.push(decode(inner)?);
+            }
+            Some(Frame::Bundle { frames })
         }
         _ => None,
     }
@@ -698,6 +721,38 @@ mod tests {
             }
             other => panic!("type-13 decode returned unexpected: {other:?}"),
         }
+    }
+
+    /// v0.3.43 — type-16 bundle. These bytes were produced by the SERVER's real
+    /// `_installTeachBundler` (server/brain-server/gpu.js) wrapping a stub socket:
+    /// a type-9 clear of cortex/sem followed by a type-13 masked op. The decode must
+    /// return both, IN ORDER, with every field intact — order is the whole contract,
+    /// because the masked op reads the spikes the clear just reset.
+    #[test]
+    fn bundle_matches_server_encoder() {
+        let hex = "53505253100000000000000002000000180000005350525309000000000a00636f727465782f73656d00000034000000535052530d000000001400636f727465785f696e74726153796e617073657300a69b44bb040000000200000005000000e7030000";
+        let bytes: Vec<u8> = (0..hex.len()).step_by(2).map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap()).collect();
+        match decode(&bytes) {
+            Some(Frame::Bundle { frames }) => {
+                assert_eq!(frames.len(), 2);
+                match &frames[0] {
+                    Frame::ClearSpikeRegion { cluster, region } => { assert_eq!(cluster, "cortex"); assert_eq!(region, "sem"); }
+                    other => panic!("inner 0 unexpected: {other:?}"),
+                }
+                match &frames[1] {
+                    Frame::HebbianBoundMasked { name, lr, reps, post_idx, .. } => {
+                        assert_eq!(name, "cortex_intraSynapses");
+                        assert_eq!(*lr, -0.003f32);
+                        assert_eq!(*reps, 4);
+                        assert_eq!(post_idx, &vec![5u32, 999]);
+                    }
+                    other => panic!("inner 1 unexpected: {other:?}"),
+                }
+            }
+            other => panic!("bundle decode returned unexpected: {other:?}"),
+        }
+        // A truncated bundle must reject WHOLE — never execute half a lesson.
+        assert!(decode(&bytes[..bytes.len() - 3]).is_none());
     }
 
     /// The raw path must remain byte-identical for donors/servers that never set flag 4.

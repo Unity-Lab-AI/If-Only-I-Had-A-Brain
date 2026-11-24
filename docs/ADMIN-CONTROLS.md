@@ -309,6 +309,7 @@ statement, verified individually at the line numbers below.
 | `/learn-from-web` | POST | `9425` | Feeds fetched web content into the teach lane |
 | `/diag/parity` | GET | `8659` | GPU↔CPU parity read. ⭐ **This is the live replacement for the dead `node scripts/gpu-cpu-parity.mjs` command that `README.md` advertised until 2026-08-27** — the script had been purged in the 2026-08-20 cleanup. ⛔ **Loopback-only, and the deployed box takes no shell — so from outside it was unreachable, which is the same as absent.** Since 2026-08-30 it also rides the public tunnel: `GET /public-state.json?parity=samples` (cheap live read) and `?parity=run` (the exact one) — see `docs/WEBSOCKET.md` |
 | `/public-state.json?readback=` | GET | `8989` | ⭐ **`READBACKEYE.1` — the checkpoint-readback tunnel.** Bare `?readback` is a FREE read of the recorded state (`lastOk` with its **age**, `lastRefusal` with its age, per-reason refusal counts). `?readback=run` **ARMS one**, and `&force=1` bypasses the hourly gap. ⛔ **Guarded like `?parity=run` and for a bigger reason — this moves ~6.8 GB off the card and ends in a save**; never more than one at a time. ⚠ **Awaited, unlike `?parity=run`:** a readback that answered "started" would report the boring half and hide the half worth measuring (did it complete, and in how many seconds). The same numbers ride every poll at **`state.profiling.readback`** — ⛔ **NOT `state.readback`**, which is what this row said for one commit and is `undefined`: the block sits inside `_getProfilingState()` beside its sibling `cortexUpload`, and the enclosing function decides the path, not the assignment's indentation. That is defect shape #1 (producer/consumer path mismatch) committed inside the fix for it; caught by reading the LIVE payload after the press instead of trusting the write. The arming route is only needed to TEST the cadence rather than wait an hour for it |
+| `/admin/runpod/*` | GET + POST | `startsWith('/admin/runpod/')` | The Runpod plug-in (added 2026-11-24) — see the Runpod section below. ⛔ The one family here that **also refuses proxied loopback**, because it spends money and the tunnel arrives from 127.0.0.1. ⚠ It dispatches on a **prefix**, so an `=== '/route'` sweep will not find it — the method caution below applies |
 | `/public-state.json?console=N` | GET | `8925` | The console ring tunnel. `&since=<ms>` filters forward; ⭐ **`&before=<ms>` (added 2026-08-30) pages BACKWARD.** The ring holds **2,000** lines (`RING_CAP`) but every call was `.slice(-n)` of at most 500, so **three quarters of it was unreachable through the only path the public origin forwards** — an hourly event was still in memory and simply not addressable. Response now carries `ringSize`, `oldestTs` and `more`; pass the previous page's `oldestTs` as the next `before`. Verified: 4 pages reach all 2,000 with no duplicates and terminate. See `KNOWN_ISSUES.md` KI-36 |
 
 ⚠ **Deliberately still NOT documented here:** `/episodes`, `/exam-answer`, `/history`
@@ -453,6 +454,28 @@ ping-stamp). All reads defensive — missing sources degrade to `—`, never thr
 **What the removal changed for a VISITOR:** a chat picture is rendered server-side and arrives as `{type:'image', url:'/image/<id>.png'}` — a picture already made, served from a bounded cache. ⛔ **A visitor can never trigger a render**: a cache miss is a 404, never a render, which is why `/image/` is on the tunnel allowlists while the engine port is not. With a free remote API that protection was unnecessary; with her own GPU it is the difference between a public site and a denial-of-walk vector.
 
 **What survives from the old rule:** *never send a client something that spends her resources on their say-so.* It used to mean a keyed URL; now it means the render decision stays with the brain and its pacing.
+
+---
+
+## ☁️ Runpod — renting a GPU for her pool (`html/runpod.html`, 2026-11-24)
+
+An optional plug-in. A rented card joins her pool as an ordinary donor; her brain stays on this machine. The page shows the account balance, the cards in stock now (16 GB or more, cheapest first, Runpod's live community price), and every donor pod it started.
+
+| Route | Does |
+|---|---|
+| `GET /admin/runpod/status` | balance, in-stock cards with hourly prices, this plug-in's pods (never the key) |
+| `POST /admin/runpod/key` | save `{key}` to `server/runpod-key.json` (gitignored); an empty key forgets it |
+| `POST /admin/runpod/settings` | `{autoStopOnShutdown, donorName}` |
+| `POST /admin/runpod/start` | `{gpuId}` — create a donor pod. ⛔ **Bills from this moment** at the price shown |
+| `POST /admin/runpod/stop` | `{id}` — terminate; refuses any pod this plug-in did not create |
+
+⛔ **Stricter than loopback.** The Cloudflare tunnel also arrives from `127.0.0.1`, so a request carrying any proxy header (`x-forwarded-for`, `cf-connecting-ip`, `cf-ray`, `tailscale-funnel-request`, `forwarded`, `x-real-ip`) is refused — the rule the WS admin lane already uses. These routes spend real money.
+
+⭐ **The pod's command is read from `deploy/runpod-donor-launcher.sh` when the pod is created** (from its `set -x` line down, comment lines dropped), never copied into code. A pod's command cannot be changed after creation, and a pasted copy is exactly the stale pin that launcher was written to end.
+
+⚠ **Only pods named `unity-donor-…` are ever touched.** A pod made by hand in the Runpod console is not listed, stopped or terminated.
+
+⚠ **A true Stop terminates them; Restart and Savestart do not.** `/shutdown` terminates this plug-in's pods after the GPU readback (the card is handing its weights back until then), capped at 20 s so it can never hang a stop. Turn it off with the page's switch.
 
 ---
 
@@ -883,6 +906,8 @@ The donor is data-parallel: every donor holds a full replica and the server merg
 | `DREAM_DF7_REBROADCAST_MS` · `DREAM_DF7_REBROADCAST_DUTY` · `DREAM_DF7_REBALANCE_MS` | ⚠ | levers | Master re-broadcast cadence, its duty cycle, and the rebalance interval |
 | `DREAM_DF7_PROMOTE_COOLDOWN_S` · `DREAM_DF7_FLOOD_COOLDOWN_MS` | ⚠ | escape hatches | How soon a replica may be promoted to PRIMARY again, and the anti-flood cooldown |
 | `DREAM_DF7_INFLIGHT` · `DREAM_DF7_READ_FRESH_MS` · `DREAM_DF7_WORK_FLOOR` · `DREAM_DF7_BACKED_PENALTY` | ⚠ | levers | In-flight budget, read-freshness window, minimum work share, and the scoring penalty applied to a backed replica |
+| `DREAM_TEACH_BUNDLE` | unset (bundling ON for 0.3.43+ donors) | escape hatch | `0` sends every teach frame as its own WebSocket message, the way older donors receive them. With it on, the fire-and-forget teach frames (SPRS 5, 7–14) ride one type-16 message per event-loop turn, in order — see `docs/WEBSOCKET.md`. ⚠ The ordering flush of the bound-Hebbian queue before each pattern frame is **not** behind this switch; it is a correctness fix and applies to every donor |
+| `RUNPOD_API_KEY` | unset | secret | The Runpod API key for the admin Runpod page (`html/runpod.html`). Wins over the key file `server/runpod-key.json` the page writes. Never committed, never returned by any route |
 | `DREAM_SUBSTEPS` | ⚠ | lever | The base substeps value. ⚠ Distinct from `DREAM_SUBSTEPS_NATIVE` / `_TARGET_MS` / `_MAX` in the curated table above — those govern the adaptive controller; this is the underlying figure |
 
 ### Art, vision & the mind's eye
