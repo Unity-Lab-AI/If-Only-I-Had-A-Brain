@@ -333,6 +333,11 @@ enum Work {
     // matrices. The copy here stopped being current at the move and was only
     // holding VRAM (measured: 12.7 GB on a 16 GB card, starving her renderer).
     FreeMatrices { names: Vec<String> },
+    // v0.3.48 — this card holds rows [base, base + rows) of a matrix, not all of
+    // it. A lesson's `Masked` rows are full-matrix row numbers, so they are
+    // shifted by `base` and dropped when they fall outside the slice. Queued in
+    // the same lane as the upload so it lands after the matrix exists.
+    SliceBase { name: String, base: u32 },
 }
 
 /// A reply the worker produced; the WS loop sends it in receipt order.
@@ -968,6 +973,8 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
         let mut lc_sampled: u32 = 0;
         let mut lc_acc: HashMap<String, (f64, u32)> = HashMap::new();
         let mut lc_total_ms: f64 = 0.0;
+        // v0.3.48 — first full-matrix row of each slice this card holds.
+        let mut slice_base: HashMap<String, u32> = HashMap::new();
         while let Some(work) = workq_w.pop() {
             pending_w.fetch_sub(1, Ordering::Relaxed); // pulled one off the queue
             // Stop promptly on request: DON'T drain the queued backlog (the brain can have many
@@ -1016,6 +1023,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 Work::CheckpointSave { .. } => "checkpoint save".to_string(),
                 Work::CheckpointRestore { .. } => "checkpoint restore".to_string(),
                 Work::FreeMatrices { names } => format!("free x{}", names.len()),
+                Work::SliceBase { name, base } => format!("slice {name} @{base}"),
             });
             match work {
                 Work::Init(init) => {
@@ -1092,7 +1100,16 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                                 if let Err(e) = engine.hebbian_bound(&name, lr) { eprintln!("[donor] lesson bound hebbian '{name}' failed: {e}"); }
                             }
                             frames::LessonOp::Masked { name, lr, rows } => {
-                                if let Err(e) = engine.hebbian_bound_masked(&name, lr, 1, &rows) { eprintln!("[donor] lesson masked hebbian '{name}' failed: {e}"); }
+                                // A slice holds rows [base, base + n): shift into it and
+                                // drop rows another card holds. The bound kernel bounds-
+                                // checks against the slice's own row count.
+                                let rows: Vec<u32> = match slice_base.get(&name) {
+                                    Some(&b) => rows.into_iter().filter(|&r| r >= b).map(|r| r - b).collect(),
+                                    None => rows,
+                                };
+                                if !rows.is_empty() {
+                                    if let Err(e) = engine.hebbian_bound_masked(&name, lr, 1, &rows) { eprintln!("[donor] lesson masked hebbian '{name}' failed: {e}"); }
+                                }
                             }
                         }
                         if let Some(k) = key {
@@ -1311,7 +1328,12 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     let reply = serde_json::json!({ "type": "donor_checkpoint_restored", "restored": done, "skipped": skipped });
                     let _ = reply_tx.send(Out::Text(reply.to_string()));
                 }
+                Work::SliceBase { name, base } => {
+                    if base == 0 { slice_base.remove(&name); } else { slice_base.insert(name.clone(), base); }
+                    println!("[donor] {name} is a slice starting at row {base}.");
+                }
                 Work::FreeMatrices { names } => {
+                    for n in &names { slice_base.remove(n); }
                     let freed: Vec<String> = names.into_iter().filter(|n| engine.free_sparse(n)).collect();
                     println!("[donor] freed {} resident matrix(es) — the cortex moved to another card.", freed.len());
                     let reply = serde_json::json!({ "type": "free_matrices_ack", "freed": freed });
@@ -1507,8 +1529,17 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                         // JSON ahead of the protocol enum, so they need no change to
                         // the shared crate and an older brain simply never sends them.
                         let ckpt_msg = serde_json::from_str::<serde_json::Value>(t.as_str()).ok()
-                            .filter(|v| matches!(v.get("type").and_then(|x| x.as_str()), Some("donor_checkpoint") | Some("leave_ok") | Some("free_matrices")));
+                            .filter(|v| matches!(v.get("type").and_then(|x| x.as_str()), Some("donor_checkpoint") | Some("leave_ok") | Some("free_matrices") | Some("slice_base")));
                         if let Some(v) = ckpt_msg {
+                            if v.get("type").and_then(|x| x.as_str()) == Some("slice_base") {
+                                let name = v.get("name").and_then(|x| x.as_str()).unwrap_or("").to_string();
+                                let base = v.get("rowBase").and_then(|x| x.as_u64()).unwrap_or(0) as u32;
+                                if !name.is_empty() {
+                                    pending.fetch_add(1, Ordering::Relaxed);
+                                    workq.push(Work::SliceBase { name, base });
+                                }
+                                continue;
+                            }
                             if v.get("type").and_then(|x| x.as_str()) == Some("free_matrices") {
                                 let names: Vec<String> = v.get("names").and_then(|x| x.as_array())
                                     .map(|a| a.iter().filter_map(|n| n.as_str().map(String::from)).collect())
