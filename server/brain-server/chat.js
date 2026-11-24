@@ -4252,7 +4252,13 @@ const SERVER_CHAT_MIXIN = {
     // judged to wreck the drawings (torn-off shadows, half-kept stands, bodies
     // chopped where the cut went wrong). The scene is painted unposed:
     // stretching or turning a whole frame would tear its corners open.
-    const full = !!(skel.scene && skel.scene.b64 && style.mass !== 'none');
+    // ⛔ PENCIL AND INK ARE DRAWINGS, NOT OUTLINES. Styles with no colour mass
+    // used to skip the scene and the body and draw only the silhouette's edge —
+    // judged live as "two blob pencil shapes". They now paint the same picture
+    // as a VALUE study: every cell its real lightness (graphite), or that
+    // lightness pushed to strong darks and lights with a smooth curve (ink).
+    const mono = style.mass === 'none' ? (style.ink === 'mono' ? 'ink' : 'graphite') : null;
+    const full = !!(skel.scene && skel.scene.b64);
     const sc = full ? 1 : Math.min(box.w / fw, box.h / fh);
     const cxM = full ? W / 2 : (x0 + x1 + 1) / 2, cyM = full ? H / 2 : (y0 + y1 + 1) / 2;
     const p = full ? { sx: 1, sy: 1, rot: 0 } : (skel.posed || { sx: 1, sy: 1, rot: 0 });
@@ -4298,8 +4304,13 @@ const SERVER_CHAT_MIXIN = {
       for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
         if (!inside(x, y)) continue;
         const i = y * W + x;
-        const c = tc ? tc(x, y, W, H) : palette[id2[i]];
+        let c = tc ? tc(x, y, W, H) : palette[id2[i]];
         if (!c) continue;
+        if (mono) {
+          let g = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
+          if (mono === 'ink') g = 255 / (1 + Math.exp(-(g - 128) / 26));
+          c = [g, g, g];
+        }
         alpha[i] = 1;
         rgb[i * 3] = c[0]; rgb[i * 3 + 1] = c[1]; rgb[i * 3 + 2] = c[2];
       }
@@ -4325,7 +4336,7 @@ const SERVER_CHAT_MIXIN = {
     //     samples smoothly, with an antialiased edge (`layer`).
     // It is still her abstraction — six learned colours and where they sit —
     // only laid down the way a brush would, not as grains.
-    if (style.mass !== 'none') {
+    {
       // Inverse of T: canvas point → grid coordinate (the layer samples by it).
       let inv;
       if (full) inv = [W, 0, 0, 0, H, 0];
@@ -4355,7 +4366,8 @@ const SERVER_CHAT_MIXIN = {
     // [232,228,236] — judged live, again, as "white pen traces". It now wears the
     // subject's own most saturated colour, lifted only as far as it needs to read
     // on her dark page; dark ink over a bright fill as before.
-    const ink = (style.mass !== 'none' && ln && lum / ln > 120) ? [28, 24, 32] : this._readableInk(pal);
+    // A value drawing's line is the graphite itself — dark, never a pale pen.
+    const ink = mono ? [30, 30, 34] : ((ln && lum / ln > 120) ? [28, 24, 32] : this._readableInk(pal));
     const lw = style.outlineW > 0 ? Math.min(style.outlineW, 0.007) * ((skill && skill.traceW) || 1) : undefined;
     // In a fully painted picture the subject is set off by its own colours
     // against the scene — an outline round it would make it a sticker.
