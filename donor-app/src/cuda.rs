@@ -686,6 +686,37 @@ impl CudaEngine {
         self.dev_zero_u32(&c.spikes, start, end - start)
     }
 
+    /// v0.3.51 — many spike writes, ONE host→device copy. A lesson's per-pair writes
+    /// each used to upload their own index list (an allocation plus a copy from
+    /// pageable memory, which holds the worker until the stream reaches it — a
+    /// serialising wait per write). Here every list goes up together and each
+    /// write's scatter reads its own span of that one buffer. `zero` = clear the
+    /// region first (false when the lesson cleared it just before — the same zero
+    /// twice). Same result as calling `write_spike_slice` per entry.
+    pub fn write_spike_slices(&mut self, writes: &[(String, String, Vec<u32>, bool)]) -> Result<(), String> {
+        let flat: Vec<u32> = writes.iter().flat_map(|w| w.2.iter().copied()).collect();
+        let idx_buf = if flat.is_empty() { None } else { Some(self.stream.memcpy_stod(&flat).map_err(|e| e.to_string())?) };
+        let mut off = 0usize;
+        for (cluster, region, indices, zero) in writes {
+            let n = indices.len();
+            let (start, end) = match self.region(cluster, region) { Some(r) => r, None => { off += n; continue; } };
+            let len = end - start;
+            let c = self.clusters.get(cluster.as_str()).unwrap();
+            if *zero { self.dev_zero_u32(&c.spikes, start, len)?; }
+            if n > 0 {
+                if let Some(buf) = &idx_buf {
+                    let view = buf.slice(off..off + n);
+                    let count = n as u32;
+                    let mut b = self.stream.launch_builder(&self.f_scatter_u32);
+                    b.arg(&count).arg(&start).arg(&len).arg(&view).arg(&c.spikes);
+                    unsafe { b.launch(cfg(count)) }.map_err(|e| format!("scatter_ones_u32 launch: {e}"))?;
+                }
+            }
+            off += n;
+        }
+        Ok(())
+    }
+
     pub fn write_current_slice(&mut self, cluster: &str, region: &str, indices: &[u32], values: &[f32], psi: f32) -> Result<(), String> {
         let (start, end) = match self.region(cluster, region) { Some(r) => r, None => return Ok(()) };
         let len = end - start;

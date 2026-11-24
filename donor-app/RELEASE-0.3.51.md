@@ -1,0 +1,3 @@
+# Donor 0.3.51
+
+- **A lesson's pattern writes go to the card together.** Each pair in a lesson writes three patterns on both copies of the cortex, and every write used to upload its own index list — an allocation and a copy from ordinary memory, which holds the worker until the card catches up. The writes between two learning steps now go up in one copy, and each write reads its own span of it. A write straight after its region's clear no longer zeroes the region a second time. The card does the same steps in the same order and ends in the same state; the self-test checks the batched write against the one-at-a-time write on the card.

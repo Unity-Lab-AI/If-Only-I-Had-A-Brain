@@ -1152,7 +1152,31 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     let sample = lc_seen % LC_EVERY == 0;
                     if sample { engine.sync(); }
                     let l_t0 = std::time::Instant::now();
+                    // v0.3.51 — writes between two non-write steps go to the card
+                    // together (one upload), and a write right after its region's
+                    // clear skips the second zero. Same steps, same order per card.
+                    let mut pending: Vec<(String, String, Vec<u32>, bool)> = Vec::new();
+                    let mut cleared: std::collections::HashSet<(String, String)> = std::collections::HashSet::new();
+                    let flush = |engine: &mut MultiEngine, pending: &mut Vec<(String, String, Vec<u32>, bool)>, acc: &mut HashMap<String, (f64, u32)>, sample: bool| {
+                        if pending.is_empty() { return; }
+                        let t0 = std::time::Instant::now();
+                        let _ = engine.write_spike_slices(std::mem::take(pending));
+                        if sample {
+                            engine.sync();
+                            let e = acc.entry("write".to_string()).or_insert((0.0, 0));
+                            e.0 += t0.elapsed().as_secs_f64() * 1000.0; e.1 += 1;
+                        }
+                    };
                     for op in frames::expand_lesson(&lesson) {
+                        if let frames::LessonOp::Write { cluster, region, indices } = op {
+                            let zero = !cleared.remove(&(cluster.clone(), region.clone()));
+                            pending.push((cluster, region, indices, zero));
+                            continue;
+                        }
+                        flush(&mut engine, &mut pending, &mut lc_acc, sample);
+                        if let frames::LessonOp::Clear { cluster, region } = &op {
+                            cleared.insert((cluster.clone(), region.clone()));
+                        }
                         let key = if sample {
                             Some(match &op {
                                 frames::LessonOp::Clear { .. } => "clear".to_string(),
@@ -1188,6 +1212,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                             e.0 += ms; e.1 += 1;
                         }
                     }
+                    flush(&mut engine, &mut pending, &mut lc_acc, sample);
                     if sample {
                         lc_total_ms += l_t0.elapsed().as_secs_f64() * 1000.0;
                         lc_sampled += 1;
