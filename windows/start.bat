@@ -436,7 +436,23 @@ REM Setting both [Console]::OutputEncoding + Get-Content -Encoding UTF8
 REM renders the log window cleanly.
 echo [start] step 7/7: launching the control plane, the tunnel, her voice, her eyes, the brain, the log tail, her pages...
 echo   server log: %~dp0..\server\server.log
-if exist server.log del server.log
+REM LOGLOCK (2026-11-24) - wait until the previous brain has let go of
+REM server.log (it keeps it open while it finishes saving after its port
+REM closes); a locked log meant the new brain could not start. Up to 300s.
+set /a ST_LOGWAIT=0
+:st_logwait
+if not exist server.log goto :st_logfree
+del server.log >nul 2>&1
+if not exist server.log goto :st_logfree
+if %ST_LOGWAIT% GEQ 300 (
+    echo   [start] WARNING: server.log still locked after 300s - a previous brain is still running. Launching anyway.
+    goto :st_logfree
+)
+if %ST_LOGWAIT% EQU 0 echo   [start] previous brain is still finishing its save - waiting for it to let go of server.log...
+ping -n 3 127.0.0.1 >nul
+set /a ST_LOGWAIT+=2
+goto :st_logwait
+:st_logfree
 REM LOCALCTL - start the control plane FIRST, so the dashboard's power buttons
 REM work locally. It is a separate always-up process on 7526 by design: that is
 REM what lets the Start button work while the brain is DOWN. If one is already
