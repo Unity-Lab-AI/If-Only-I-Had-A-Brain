@@ -5127,6 +5127,15 @@ const SERVER_GPU_MIXIN = {
       const frame = this.encodeTeachLesson(spec);
       if (!this._donorPatternSendGated(frame)) return false;
       this._countTeachOut(17, frame.length);
+      // ⭐ Credit the card on its own row. `teachOps` was bumped only in
+      // `_sparseSendBinary` (the acked lane), and lessons go fire-and-forget, so
+      // a card running every lesson read `idle` on the Clients table — the
+      // TEACHMIRROR.1 lie again, one lane over. One op per pair: each pair is the
+      // same work a per-pair dispatch used to be.
+      try {
+        const _tc = this.clients && this.clients.get ? this.clients.get(this._gpuClient) : null;
+        if (_tc && _tc.isGPU) { _tc.teachOps = (_tc.teachOps || 0) + spec.pairs.length; _tc.teachOpsAt = Date.now(); }
+      } catch { /* the row is an instrument; it must never stop a lesson */ }
       this._lessonsSent = (this._lessonsSent || 0) + 1;
       this._lessonPairsSent = (this._lessonPairsSent || 0) + spec.pairs.length;
       return true;
