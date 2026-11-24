@@ -15081,6 +15081,16 @@ wss.on('connection', (ws, req) => {
                   if (typeof brain._installSliceFanout === 'function' && brain._gpuClient === ws) brain._installSliceFanout(ws);
                   brain._reattachedSockets = (brain._reattachedSockets || 0) + 1;
                   console.log(`[Pool] REATTACH — ${client.gpuName || id} reconnected holding all ${_oldHeld.length} of its matrices; it keeps its place (${brain._gpuClient === ws ? 'cortex owner' : 'pool card'}) with NO re-upload.`);
+                  // ⛔ ITS OWN CHECKPOINT SCHEDULE COMES BACK WITH IT. The schedule
+                  // was sent only after a full upload, so a reattached card — one
+                  // that skipped the upload — never saved again (measured: last
+                  // save 16:09, nothing for 20+ min after a reattach). Sent with
+                  // `restore: false`: the card holds the live weights; there is
+                  // nothing to put back. A short delay lets this registration's
+                  // version fields land first.
+                  if (brain._gpuClient === ws && typeof brain._sendDonorCheckpointConfig === 'function') {
+                    setTimeout(() => { try { brain._sendDonorCheckpointConfig(ws, false); } catch { /* the card simply does not checkpoint this session */ } }, 2000);
+                  }
                 } catch (e) { console.warn(`[Pool] reattach failed (falling back to the full re-init): ${e && e.message}`); }
               }
               brain._gpuClients.delete(_old);

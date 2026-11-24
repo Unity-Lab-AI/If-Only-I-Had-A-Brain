@@ -7009,7 +7009,7 @@ const SERVER_GPU_MIXIN = {
     //   so 11 of every 12 calls refuse normally — letting those occupy the
     //   "last refusal" field would bury the one that means something under a
     //   permanent, healthy, misleading value.
-    const ROUTINE = new Set(['inside the readback gap', 'first tick — clock seeded, first pull is one gap from now']);
+    const ROUTINE = new Set(['inside the readback gap', 'first tick — clock seeded, first pull is one gap from now', 'remote cortex card — it keeps its own checkpoint; no periodic pull']);
     const refuse = (why) => {
       const st = this._readbackStats || (this._readbackStats = { refusals: {} });
       st.refusals[why] = (st.refusals[why] || 0) + 1;
@@ -7073,10 +7073,23 @@ const SERVER_GPU_MIXIN = {
       const _remote = _oc && (_host
         ? String(_oc.gpuName || '') !== String(_host)
         : Number(_oc.rttMs) > 500);
-      if (_remote) {
-        const _r = Number.isFinite(+process.env.DREAM_READBACK_REMOTE_GAP_MS) ? Math.max(0, +process.env.DREAM_READBACK_REMOTE_GAP_MS) : 600_000;
+      // ⛔⛔ NO PERIODIC PULL FROM A REMOTE CORTEX CARD. It was every 10 min, and
+      // one pull is ~6.8 GB — about 11 minutes over the pod's link at ~10 MB/s —
+      // so the pull ran longer than its own gap and the pod's outbound line was
+      // never free: every reply and heartbeat queued behind gigabytes of weights
+      // until the donor's 30 s send watchdog dropped the link (measured: a drop
+      // 1,680 MB into a pull). The loss bound it was buying is already held on
+      // the card: the donor keeps its own on-disk checkpoint and hands it back
+      // on reconnect (`donor-checkpoint-restore`). She trains straight through;
+      // only an explicit pull (`force`, e.g. before a stop) reads the weights.
+      // `DREAM_READBACK_REMOTE_GAP_MS` > 0 opts back into a periodic pull.
+      if (_remote && !opts.force) {
+        const _r = Number(process.env.DREAM_READBACK_REMOTE_GAP_MS);
+        if (!(_r > 0)) return refuse('remote cortex card — it keeps its own checkpoint; no periodic pull');
         GAP_MS = Math.min(GAP_MS, _r);
       }
+      if (_remote) this._readbackChunkBytes = 1024 * 1024;   // small pieces on a tunnel: no single send near the donor's 30 s watchdog
+      else this._readbackChunkBytes = 0;
     } catch { /* keep the default gap */ }
     // The ONE owner of the gap. The published state read its own copy with a
     // default of 3,600,000 that was never moved when this one was halved to
@@ -7141,7 +7154,7 @@ const SERVER_GPU_MIXIN = {
         }
         continue;
       }
-      const r = await this.gpuReadbackMatrixValues(n);
+      const r = await this.gpuReadbackMatrixValues(n, null, this._readbackChunkBytes || undefined);
       if (!r || !r.ok) {
         console.warn(`[Brain] SHADOWCOST.3 readback ABORTED on '${n}' (${reason}): ${(r && r.reason) || 'unknown'} — NOT saving, so the existing checkpoint slots stay coherent.`);
         return { ...refuse(`aborted on '${n}': ${(r && r.reason) || 'unknown'}`), name: n };
