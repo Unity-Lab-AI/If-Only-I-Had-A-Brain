@@ -15153,7 +15153,10 @@ wss.on('connection', (ws, req) => {
           // too-small-for-primary guard below reads a populated running floor
           // (idempotent; also runs at the end of register as before).
           if (brain._recomputeCommunityCompute) { try { brain._recomputeCommunityCompute(); } catch { /* non-fatal */ } }
-          const havePrimary = brain._gpuClient && brain._gpuClient.readyState === 1;
+          // Inside an owner rejoin grace the cortex still has an owner — the one
+          // on its way back — so no card is promoted (and nothing re-uploaded)
+          // until the grace is settled by the OWNER REJOIN block below or expires.
+          const havePrimary = (brain._gpuClient && brain._gpuClient.readyState === 1) || !!brain._ownerGrace;
           // DF.7 (flag-gated) — promote a materially-stronger newcomer to PRIMARY
           // so the beefiest GPU does the work instead of whoever connected first
           // (the "2GB card is primary while the 16GB idles" problem). Re-uploads
@@ -15211,7 +15214,7 @@ wss.on('connection', (ws, req) => {
           if (_tooSmallForPrimary && (!havePrimary || _df7PromoteStronger)) {
             console.log(`[${id}] DF.7 — donor VRAM cannot hold the FULL running brain (needs ~${brain._runningFloorMB}MB) — NOT eligible for PRIMARY; joins as a (partial) replica.`);
           }
-          if ((!havePrimary || _df7PromoteStronger) && !_tooSmallForPrimary) {
+          if ((!havePrimary || _df7PromoteStronger) && !_tooSmallForPrimary && !brain._ownerGrace) {
             if (_df7PromoteStronger) {
               console.log(`[${id}] DF.7 — newcomer GPU is STRONGER (capacity score ${brain._donorStrength(ws).toFixed(2)} > current primary ${brain._donorStrength(brain._gpuClient).toFixed(2)}; score = throughput Gn/s × link-health, F1) — promoting it to PRIMARY; previous primary stays a replica + re-syncs.`);
             }
@@ -15311,6 +15314,28 @@ wss.on('connection', (ws, req) => {
             // still holding its rows, takes its old place with no re-upload.
             try { if (typeof brain._tryReattachSlice === 'function') brain._tryReattachSlice(ws, Array.isArray(msg.heldMatrices) ? msg.heldMatrices : []); }
             catch (e) { console.warn(`[Pool] rejoin check failed (non-fatal): ${e && e.message}`); }
+            // OWNER REJOIN — the cortex owner back inside its grace window, still
+            // holding every matrix it held, takes the cortex back with no upload.
+            try {
+              const _og = brain._ownerGrace;
+              const _held = Array.isArray(msg.heldMatrices) ? msg.heldMatrices : [];
+              if (_og && _og.key && brain._sliceKey(ws) === _og.key && _og.held.length > 0
+                  && _og.held.every((m) => _held.includes(m))) {
+                const _old = _og.ws;
+                brain._ownerGrace = null;
+                brain._gpuClient = ws;
+                brain._gpuConnected = true;
+                if (brain._clusterOwner instanceof Map) {
+                  for (const [cl, o] of brain._clusterOwner) if (o === _old) brain._clusterOwner.set(cl, ws);
+                }
+                if (!(client.heldMatrices instanceof Set)) client.heldMatrices = new Set();
+                for (const m of _og.held) client.heldMatrices.add(m);
+                if (Array.isArray(brain._intraSlices)) for (const s of brain._intraSlices) if (s.ws === _old) s.ws = ws;
+                if (typeof brain._installSliceFanout === 'function') brain._installSliceFanout(ws);
+                if (brain.cortexCluster) brain.cortexCluster._gpuProxyReady = true;
+                console.log(`[Pool] OWNER REJOIN — ${client.gpuName || id} came back holding all ${_og.held.length} of its matrices after ${((Date.now() - _og.since) / 1000).toFixed(1)} s; it owns the cortex again with NO re-upload. Teaching resumes.`);
+              }
+            } catch (e) { console.warn(`[Pool] owner rejoin check failed (non-fatal): ${e && e.message}`); }
             if (_replicaSync) {
             // DF.7 — make the new donor a REAL replica that SHARES compute,
             // not an idle hot-standby. Replays cluster init + every tracked
@@ -15874,6 +15899,11 @@ wss.on('connection', (ws, req) => {
         if (_cc.gpuName) brain._recentDonorDrops.set(String(_cc.gpuName), Date.now());
       }
     } catch { /* the post-mortem must never stop the teardown */ }
+    // Who this card is across reconnects — read before its client record goes.
+    let _closingKey = '';
+    try { _closingKey = typeof brain._sliceKey === 'function' ? brain._sliceKey(ws) : ''; } catch { /* no key → no grace */ }
+    let _closingHeld = [];
+    try { const _hc = brain.clients.get(ws); if (_hc && _hc.heldMatrices instanceof Set) _closingHeld = [..._hc.heldMatrices]; } catch { /* none */ }
     brain.clients.delete(ws);
     // PA.4.3 — remove this donor from the GPU pool (no-op if it wasn't one).
     if (brain._gpuClients) brain._gpuClients.delete(ws);
@@ -15941,7 +15971,28 @@ wss.on('connection', (ws, req) => {
         && [...brain._clusterOwner.values()].includes(ws)) {
       _repartitionAfterLeave();
     }
-    if (ws === brain._gpuClient) {
+    // ⭐ OWNER REJOIN GRACE (donor ≥ 0.3.50 keeps its engine across a reconnect).
+    // The card that owns her cortex gets DREAM_REJOIN_GRACE_MS to come back
+    // holding everything; teaching is paused meanwhile, and a card that returns
+    // takes the cortex back with nothing re-uploaded (see `gpu_register`). Only
+    // when the grace runs out does the failover below run.
+    const _ownerGraceMs = (() => { const g = Number(process.env.DREAM_REJOIN_GRACE_MS); return Number.isFinite(g) && g >= 0 ? g : 30000; })();
+    if (ws === brain._gpuClient && _ownerGraceMs > 0 && !global._brainShutdownRequested
+        && _closingKey && brain.cortexCluster && brain.cortexCluster._gpuProxyReady) {
+      brain._ownerGrace = { key: _closingKey, ws, since: Date.now(), held: _closingHeld };
+      brain.cortexCluster._gpuProxyReady = false;
+      console.log(`[Pool] OWNER REJOIN GRACE — the cortex owner dropped; teaching paused up to ${(_ownerGraceMs / 1000).toFixed(0)} s for it to come back holding her (no re-upload if it does).`);
+      setTimeout(() => {
+        if (!brain._ownerGrace || brain._ownerGrace.ws !== ws) return;
+        brain._ownerGrace = null;
+        console.log('[Pool] OWNER REJOIN GRACE expired — failing over to the cards connected now.');
+        if (brain._gpuClient === ws) _primaryLeft();
+      }, _ownerGraceMs);
+    } else if (ws === brain._gpuClient) {
+      _primaryLeft();
+    }
+    console.log(`[Server] Client disconnected: ${id} (${brain.clients.size} remaining)`);
+    function _primaryLeft() {
       // PA.4.3 — the PRIMARY donor left. Promote a healthy STANDBY from the
       // pool (failover) so the brain keeps a GPU instead of dropping to
       // all-CPU + Chrome auto-respawn. The promoted donor has empty VRAM, so
@@ -16026,7 +16077,6 @@ wss.on('connection', (ws, req) => {
       }
       } // PA.4.3 — end no-standby branch (all-CPU + auto-respawn)
     }
-    console.log(`[Server] Client disconnected: ${id} (${brain.clients.size} remaining)`);
   });
 
   ws.on('error', (err) => {
