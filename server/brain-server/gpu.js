@@ -3477,11 +3477,31 @@ const SERVER_GPU_MIXIN = {
     const owner = this._gpuClient;
     if (!owner || owner.readyState !== 1) return false;
     const cc = this.cortexCluster;
-    if (!cc || !cc._gpuProxyReady) return false;
+    // The grace window itself clears `_gpuProxyReady`, so it must be let through here.
+    if (!cc || (!cc._gpuProxyReady && !this._sliceGracePaused)) return false;
     const held = new Set(this._intraSliceActive() ? this._intraSlices.map((s) => s.ws) : [owner]);
     if (this._intraSliceActive() && this._intraSlices.some((s) => !s.ws || s.ws.readyState !== 1)) {
       // Remember who dropped: that card waits longer before it is trusted with rows again.
       for (const s of this._intraSlices) if ((!s.ws || s.ws.readyState !== 1) && s.key) this._sliceDroppedAt().set(s.key, Date.now());
+      // ⭐ REJOIN GRACE (donor 0.3.50 keeps its engine across a reconnect). A
+      // holder that dropped gets DREAM_REJOIN_GRACE_MS to come back holding its
+      // slice; teaching is PAUSED meanwhile so its rows miss no lesson, and a
+      // card that returns is re-attached with no re-upload. Only after the grace
+      // runs out is everything re-sliced. The cortex owner is not covered (its
+      // loss takes the move path in the close handler).
+      const _g = Number(process.env.DREAM_REJOIN_GRACE_MS);
+      const graceMs = Number.isFinite(_g) && _g >= 0 ? _g : 30000;
+      if (graceMs > 0) {
+        if (!this._sliceGraceSince) {
+          this._sliceGraceSince = Date.now();
+          if (cc) { cc._gpuProxyReady = false; this._sliceGracePaused = true; }
+          console.log(`[Pool] REJOIN GRACE — a slice holder dropped; teaching paused up to ${(graceMs / 1000).toFixed(0)} s for it to come back holding its rows (no re-upload if it does).`);
+        }
+        if (Date.now() - this._sliceGraceSince < graceMs) return false;
+        console.log('[Pool] REJOIN GRACE expired — re-slicing over the cards connected now.');
+      }
+      this._sliceGraceSince = null;
+      this._sliceGracePaused = false;
       return true;
     }
     const now = Date.now();
@@ -3490,6 +3510,31 @@ const SERVER_GPU_MIXIN = {
       if (this._sliceSettled(ws, now) && this._donorCapacityMB(ws) > 512) return true;
     }
     return false;
+  },
+
+  /**
+   * REJOIN — a card that dropped inside its grace window and came back on a new
+   * socket still holding its slice (donor 0.3.50 `heldMatrices`) takes its old
+   * place: same rows, no upload. Teaching resumes once every holder is live.
+   * Returns true when it re-attached.
+   */
+  _tryReattachSlice(ws, heldMatrices) {
+    if (!this._intraSliceActive() || !Array.isArray(heldMatrices) || !heldMatrices.includes(this._SLICE_NAME)) return false;
+    const key = this._sliceKey(ws);
+    if (!key) return false;
+    const s = this._intraSlices.find((e) => e.key === key && (!e.ws || e.ws.readyState !== 1));
+    if (!s) return false;
+    s.ws = ws;
+    const c = this.clients && this.clients.get ? this.clients.get(ws) : null;
+    if (c) { if (!(c.heldMatrices instanceof Set)) c.heldMatrices = new Set(); c.heldMatrices.add(this._SLICE_NAME); }
+    this._sliceDroppedAt().delete(key);
+    const allLive = this._intraSlices.every((e) => e.ws && e.ws.readyState === 1);
+    console.log(`[Pool] REJOIN — ${(c && (c.gpuName || c.id)) || 'donor'} came back holding rows ${s.a.toLocaleString()}–${s.b.toLocaleString()}; re-attached with NO re-upload.${allLive ? ' Teaching resumes.' : ''}`);
+    if (allLive) {
+      this._sliceGraceSince = null;
+      if (this._sliceGracePaused) { this._sliceGracePaused = false; const cc = this.cortexCluster; if (cc) cc._gpuProxyReady = true; }
+    }
+    return true;
   },
 
   // Who a card is across reconnects (its socket changes; its donor id does not).

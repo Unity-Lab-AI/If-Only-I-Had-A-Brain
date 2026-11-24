@@ -1861,6 +1861,14 @@ impl MultiEngine {
     /// v0.3.47 — drain every GPU this donor drives (sampled lesson timing).
     pub fn sync(&self) { for e in &self.engines { e.sync(); } }
 
+    /// v0.3.50 — every matrix resident on this donor's cards. Reported on a
+    /// reconnect so the brain can re-attach instead of re-uploading.
+    pub fn held_matrices(&self) -> Vec<String> {
+        let mut v: Vec<String> = self.matrix_gpu.keys().cloned().collect();
+        v.sort();
+        v
+    }
+
     /// v0.3.46 — drop a resident matrix from whichever GPU holds it.
     pub fn free_sparse(&mut self, name: &str) -> bool {
         match self.matrix_gpu.remove(name) {

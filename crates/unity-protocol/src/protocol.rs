@@ -97,6 +97,11 @@ pub struct GpuRegister {
     /// glyph-plane port) fall to the server's local ramp with zero round-trips.
     #[serde(rename = "mindspaceOps")]
     pub mindspace_ops: Vec<String>,
+    /// v0.3.50 — matrices still resident from the previous session (a reconnect
+    /// that kept its engine). Empty on a fresh start. The brain can re-attach a
+    /// card it kept a place for instead of re-uploading.
+    #[serde(rename = "heldMatrices", skip_serializing_if = "Vec::is_empty")]
+    pub held_matrices: Vec<String>,
 }
 
 impl GpuRegister {
@@ -162,6 +167,7 @@ impl GpuRegister {
             app_version,
             mindspace_v1: true,
             mindspace_ops,
+            held_matrices: Vec::new(),
         }
     }
 }
