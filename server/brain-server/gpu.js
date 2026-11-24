@@ -6049,6 +6049,82 @@ const SERVER_GPU_MIXIN = {
     }
   },
 
+  /**
+   * v0.3.53 — PATTERN LESSON (type 18): many items, each a multi-region spike
+   * pattern then the same bound plasticity ops — the sentence lane's per-word
+   * step (clear regions → write tiles → bound Hebbian), a whole run of
+   * sentences in one frame. Wire: header(18, reqId, cluster) · twin · u16
+   * nRegions · u16 nOps · regions (name, u32 group, u32 size) · ops (name, f32
+   * lr) · u32 nItems · per item: nRegions u16 counts, pad→4, dims u16, pad→4.
+   * Acked as type 17, so the lesson window paces it.
+   */
+  encodeTeachPatternLesson(spec) {
+    const str = (s) => {
+      const b = Buffer.from(String(s || ''), 'utf8');
+      const pad = (4 - ((4 + b.length) % 4)) % 4;
+      const out = Buffer.alloc(4 + b.length + pad);
+      out.writeUInt16LE(b.length, 0);
+      b.copy(out, 4);
+      return out;
+    };
+    const u32 = (...v) => { const b = Buffer.alloc(4 * v.length); v.forEach((x, i) => b.writeUInt32LE(x >>> 0, 4 * i)); return b; };
+    const f32 = (x) => { const b = Buffer.alloc(4); b.writeFloatLE(x, 0); return b; };
+    const parts = [this._encodeSparseHeader(18, spec.reqId >>> 0, spec.cluster), str(spec.twin || '')];
+    const cnt = Buffer.alloc(4);
+    cnt.writeUInt16LE(spec.regions.length, 0);
+    cnt.writeUInt16LE(spec.ops.length, 2);
+    parts.push(cnt);
+    for (const [n, g, sz] of spec.regions) parts.push(str(n), u32(g, sz));
+    for (const [n, lr] of spec.ops) parts.push(str(n), f32(lr));
+    parts.push(u32(spec.items.length));
+    const R = spec.regions.length;
+    for (const item of spec.items) {
+      const cb = Buffer.alloc(2 * R + ((4 - ((2 * R) % 4)) % 4));
+      let total = 0;
+      for (let r = 0; r < R; r++) { const n = (item[r] || []).length; cb.writeUInt16LE(n, 2 * r); total += n; }
+      parts.push(cb);
+      const db = Buffer.alloc(2 * total + ((4 - ((2 * total) % 4)) % 4));
+      let o = 0;
+      for (let r = 0; r < R; r++) for (const d of (item[r] || [])) { db.writeUInt16LE(d, o); o += 2; }
+      parts.push(db);
+    }
+    return Buffer.concat(parts);
+  },
+
+  /** PRIMARY donor speaks SPRS type 18 (pattern lesson)? v0.3.53+. */
+  _donorSpeaksPatternLessonNow() {
+    const ws = this._gpuClient;
+    if (!ws) return false;
+    const c = this.clients && this.clients.get ? this.clients.get(ws) : null;
+    const m = /^(\d+)\.(\d+)\.(\d+)/.exec(String((c && c.donorAppVersion) || ''));
+    return !!m && ((+m[1]) * 1e6 + (+m[2]) * 1e3 + (+m[3])) >= 3053;
+  },
+
+  /** Send a pattern lesson to the cortex card; true only when it went out. Paced like lessons. */
+  gpuTeachPatternLesson(spec) {
+    if (!this._gpuClient || this._gpuClient.readyState !== 1) return false;
+    if (!this._donorSpeaksPatternLessonNow()) return false;
+    try {
+      const reqId = this._nextSparseReqId();
+      const frame = this.encodeTeachPatternLesson({ ...spec, reqId });
+      if (!this._donorPatternSendGated(frame)) return false;
+      if (!(this._lessonInflight instanceof Map)) this._lessonInflight = new Map();
+      const need = this._intraSliceActive() ? this._intraSliceHolders().length : 1;
+      this._lessonInflight.set(reqId, { ws: this._gpuClient, at: Date.now(), need, acked: new Set() });
+      this._countTeachOut(18, frame.length, 0, 0);
+      try {
+        const _tc = this.clients && this.clients.get ? this.clients.get(this._gpuClient) : null;
+        if (_tc && _tc.isGPU) { _tc.teachOps = (_tc.teachOps || 0) + spec.items.length; _tc.teachOpsAt = Date.now(); }
+      } catch { /* instrument only */ }
+      this._patternLessonsSent = (this._patternLessonsSent || 0) + 1;
+      this._patternLessonItemsSent = (this._patternLessonItemsSent || 0) + spec.items.length;
+      return true;
+    } catch (e) {
+      if (!this._patternLessonEncodeWarned) { this._patternLessonEncodeWarned = true; console.warn(`[Brain] pattern lesson encode failed (per-word path used): ${e.message}`); }
+      return false;
+    }
+  },
+
   /** PRIMARY donor speaks SPRS type 17 (lesson)? v0.3.44+. */
   _donorSpeaksLessonNow() {
     const ws = this._gpuClient;
