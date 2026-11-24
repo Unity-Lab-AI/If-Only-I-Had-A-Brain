@@ -15793,6 +15793,20 @@ const _heartbeatTimer = setInterval(() => {
         ? Number(process.env.DREAM_HB_BUF_FORGIVE_MB) : 32) * 1024 * 1024;
       const bufSaturated = typeof ws.bufferedAmount === 'number' && ws.bufferedAmount > _hbBufForgiveBytes;
       const recentUpload = (Date.now() - (ws._lastUploadDispatchTs || 0)) < 90_000;
+      // ⛔⛔ A SOCKET THAT IS TALKING IS NOT DEAD. Measured live: the local 4070
+      // holding the cortex was terminated for "missed 2 consecutive pings" while
+      // its post-mortem read `last heard 4.6s ago` (pong RTT 7.2 s — a busy card,
+      // answering slowly). The failover then handed the cortex to a rented card
+      // and began an ~18-min upload over the home uplink. A pong is one kind of
+      // reply; ANY message proves the peer is alive, so a socket heard from
+      // within the last sweep interval has its misses cleared, not counted.
+      if (c && c.lastSeen && (Date.now() - c.lastSeen) < _HEARTBEAT_MS) {
+        ws._missedPings = 0;
+        ws._heardNotPonged = (ws._heardNotPonged || 0) + 1;
+        ws._pingSentAt = Date.now();
+        try { ws.ping(); } catch { /* dying — a later sweep terminates it */ }
+        continue;
+      }
       if ((loopBlockedRecently || bufSaturated || recentUpload) && ws._missedPings < _HB_MISS_LIMIT_HARD) {
         ws._missedPings -= 1; // uncount — this miss is self-inflicted (loop block / our congestion / mid-upload)
         ws._forgivenPings = (ws._forgivenPings || 0) + 1;
