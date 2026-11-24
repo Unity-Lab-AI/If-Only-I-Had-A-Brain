@@ -5822,7 +5822,18 @@ const SERVER_GPU_MIXIN = {
     const pin = Number(process.env.DREAM_LESSON_INFLIGHT);
     if (pin > 0) return Math.floor(pin);
     const lat = Array.isArray(this._lessonLatRing) && this._lessonLatRing.length >= 8 ? Math.min(...this._lessonLatRing) : null;
-    const svc = this._lessonSvcEmaMs;
+    // ⛔ The ack spacing measured while the window is full is NOT the card's
+    // time per lesson once the window is too small for the link: a full window
+    // of W lessons acks every latency/W, so the spacing reads latency/W and the
+    // window settles at W+2 — circular. Measured: window 6, spacing 65 ms, the
+    // rented card at 5% while it spent ~20 ms a lesson. The card's own measured
+    // time per lesson (`lesson_cost`) is the true service time; the window uses
+    // the smaller of the two.
+    let svc = this._lessonSvcEmaMs;
+    try {
+      const costs = Object.values(this._lessonCost || {}).map((c) => c && c.msPerLesson).filter((v) => v > 0);
+      if (costs.length) { const cardMs = Math.min(...costs); svc = svc > 0 ? Math.min(svc, cardMs) : cardMs; }
+    } catch { /* fall back to the ack spacing */ }
     if (!(lat > 0) || !(svc > 0)) return 4;
     return Math.max(4, Math.min(64, Math.ceil(lat / svc) + 2));
   },
