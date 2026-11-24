@@ -38,7 +38,7 @@ verified-scope: |
 | | |
 |---|---|
 | **refractoriness** | each spike lowers the Rulkov slow variable by β = 0.016 (derived, docs/EQUATIONS.md §3) — her firing had no stable middle (flipped ~1.5% ↔ ~20%) |
-| **two copies of every row range** | cards are paired; a card leaving costs no learning and no pause (`DREAM_SLICE_REPLICAS`=2) |
+| **row slices split, not mirrored** | below 4 cards every card trains its own rows, sized by speed; from 4 cards they pair up so a drop costs nothing (`DREAM_SLICE_REPLICAS`) |
 | **rejoin without re-upload** | a donor keeps its engine across a reconnect and reports `heldMatrices`; a dropped slice holder has 30 s to come back and is re-attached with nothing sent |
 | **no room moves while sliced** | neither the placement check nor a bigger card registering moves her language area any more (seen 04:07: `CORTEX MOVE for room skipped`) |
 | **slices by speed** | once every card has a measured lesson time, rows follow rows-per-ms, capped by room |
