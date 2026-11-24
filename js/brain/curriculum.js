@@ -22071,7 +22071,11 @@ export class Curriculum {
       // 62-sense dream word ran past its 60 s watchdog and a window bound nothing.
       const _wlRep = opts.projectionsWhitelist;
       const _repProbesMotor = !(Array.isArray(_wlRep) && _wlRep.length > 0) || _wlRep.includes('sem_to_motor');
-      if (rep >= 1 && pairs.length >= 2 && _repProbesMotor) {
+      // ⏱ Not when the rep ran ON THE CARD: a rep there costs milliseconds, and
+      // this probe awaits four card round trips (~0.5 s each, measured) — 2 s a
+      // rep spent to maybe skip a rep worth a few ms. Live: 18-update lessons
+      // took 7.5 s. Running the remaining reps is the cheaper side of the trade.
+      if (rep >= 1 && pairs.length >= 2 && _repProbesMotor && !_repOnCard) {
         try {
           const quickSep = await this._checkSemBasinSeparation(pairs, {
             semRegion, motorRegion, overloadMax, sampleSize: 4,
