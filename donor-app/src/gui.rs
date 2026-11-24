@@ -26,6 +26,8 @@ use crate::gpu::GpuInfo;
 // 2026-10-18); the brain itself is reached through PROD_SERVER in config.rs.
 // These are page links only.
 const LEGEND_URL: &str = "https://theunitybrain.com/html/legend.html";
+/// The current donor build, always (GitHub's `latest` release is the donor).
+const UPDATE_URL: &str = "https://github.com/Unity-Lab-AI/If-Only-I-Had-A-Brain/releases/latest";
 const DASHBOARD_URL: &str = "https://theunitybrain.com/html/dashboard-public.html";
 const LEADERBOARD_URL: &str = "https://theunitybrain.com/html/dashboard-public.html";
 
@@ -511,6 +513,26 @@ impl DonorApp {
         )).color(pal.text_bright));
         if !note.is_empty() {
             ui.label(egui::RichText::new(format!("({note})")).small().color(pal.text_dim));
+        }
+        // OUTDATED — the brain names the build it wants on every welcome, and refuses
+        // a binary below its floor. Either way the donor says so here, with a button.
+        let wanted = self.host.as_ref()
+            .and_then(|h| h.control.wanted_version.lock().ok().map(|v| v.clone()))
+            .unwrap_or_default();
+        let refused = note.to_lowercase().contains("incompatible");
+        if refused || (!wanted.is_empty() && donor::version_is_newer(&wanted, donor::MY_VERSION)) {
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                let txt = if refused {
+                    format!("⛔ This donor (v{}) is too old for the brain — update to keep donating.", donor::MY_VERSION)
+                } else {
+                    format!("⬆ Update available: v{} (you have v{}).", wanted, donor::MY_VERSION)
+                };
+                ui.label(egui::RichText::new(txt).strong().color(pal.warn));
+                if ui.button("⬇ Update").clicked() {
+                    ui.ctx().open_url(egui::OpenUrl::new_tab(UPDATE_URL));
+                }
+            });
         }
 
         // Per-GPU rows — what each card is doing (DA.5). The aggregate work

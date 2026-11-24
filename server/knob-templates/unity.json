@@ -202,7 +202,7 @@
     "DREAM_HB_BUF_FORGIVE_MB": { "code": "computed", "why": "Heartbeat forgiveness for a socket with a real backlog." },
     "DREAM_IMAGE_MIN_FREE_VRAM_MB": { "code": "safety", "why": "Renderer free-VRAM floor (3 GB) so a look cannot starve the donor's CUDA context." },
     "DREAM_LANG_VRAM_RESERVE_MB": { "code": "computed", "why": "Language-cortex VRAM reserve, derived (~4 GB)." },
-    "DREAM_MIN_DONOR_VERSION": { "code": "computed", "why": "0.3.26 floor: older donors still work (unpaced lessons fall back per pair). Raising it would turn helpers away." },
+    "DREAM_MIN_DONOR_VERSION": { "code": "computed", "why": "Unset = the current release (Cargo.toml): an older donor is told to update and refused. A stale binary froze a pod (unbounded socket sends)." },
     "DREAM_NO_AUTO_GPU": { "code": "off-by-design", "why": "Unset: the launcher brings a GPU up automatically." },
     "DREAM_NO_DONOR_ID_EVICT": { "code": "off-by-design", "why": "Unset: stale sockets sharing a donor id are reaped." },
     "DREAM_PATTERN_LANE_CAP_MB": { "code": "computed", "why": "Pattern lane backlog cap." },
