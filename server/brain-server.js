@@ -15114,7 +15114,19 @@ wss.on('connection', (ws, req) => {
             gpuName: (msg.gpuName || client.gpuName || 'webgpu').toString().slice(0, 80),
             vramMB: Number(msg.vramMB) || client.gpuVramMB || 0,
             maxBindMB: Number(msg.maxBindMB) || 0,
-            gneuronsPerSec: Number(msg.gneuronsPerSec) || 0,
+            // ⛔ An impossible rate is not a measurement. A card that owned only
+            // the cortex stepped an empty batch (the walk heartbeat leaves the
+            // teach-owned cortex out), so it divided its neuron count by a
+            // near-zero time and reported 59,225 Gn/s — shown on the Clients
+            // table and fed into donor strength. No GPU steps more than a few
+            // hundred Gn/s; past `DREAM_GNS_SANE_MAX` (default 2000) the reading
+            // is dropped to 0 (no measurement) and counted.
+            gneuronsPerSec: (() => {
+              const g = Number(msg.gneuronsPerSec) || 0;
+              const cap = Number(process.env.DREAM_GNS_SANE_MAX) > 0 ? Number(process.env.DREAM_GNS_SANE_MAX) : 2000;
+              if (g > cap) { brain._gnsInsaneDrops = (brain._gnsInsaneDrops || 0) + 1; return 0; }
+              return g;
+            })(),
             stepsComputed: Number(msg.stepsComputed) || 0,
             osPlatform: client.osPlatform || '',
             engineBackend: client.engineBackend || '',
@@ -15498,7 +15510,21 @@ wss.on('connection', (ws, req) => {
     }
   });
 
-  ws.on('close', () => {
+  ws.on('close', (closeCode, closeReason) => {
+    // ⭐ WHY IT CLOSED, recorded before anything is torn down. A rented card
+    // dropped with nothing but "Client disconnected" in the log and no way to
+    // tell a crash (1006, abnormal) from a deliberate close (1000/1001), our own
+    // heartbeat reap (we terminate → 1006 after a missed-ping line), or a tunnel
+    // cut. Code, reason, how long since it was last heard, its RTT and its
+    // backlog — for GPU donors, every time.
+    try {
+      const _cc = brain.clients.get(ws);
+      if (_cc && _cc.isGPU) {
+        const _r = closeReason ? String(closeReason).slice(0, 120) : '';
+        console.warn(`[Server] GPU donor ${_cc.gpuName || _cc.id} CLOSED — code ${closeCode}${_r ? ` "${_r}"` : ''} · last heard ${_cc.lastSeen ? ((Date.now() - _cc.lastSeen) / 1000).toFixed(1) + 's' : '?'} ago · rtt ${_cc.rttMs ?? '?'}ms · buffered ${((ws.bufferedAmount || 0) / 1048576).toFixed(1)}MB · held cortex: ${brain._gpuClient === ws}. (1000/1001 = it closed on purpose · 1006 = connection died with no close frame: crash, network, or our heartbeat reap — look for a "missed … pings" line just above.)`);
+        brain._lastDonorClose = { at: Date.now(), code: closeCode, reason: _r, gpu: _cc.gpuName || null, rttMs: _cc.rttMs ?? null, heldCortex: brain._gpuClient === ws };
+      }
+    } catch { /* the post-mortem must never stop the teardown */ }
     brain.clients.delete(ws);
     // PA.4.3 — remove this donor from the GPU pool (no-op if it wasn't one).
     if (brain._gpuClients) brain._gpuClients.delete(ws);
@@ -15686,8 +15712,8 @@ setInterval(() => {
   try { brain._publicStateJson = JSON.stringify({ type: 'state', state: stateObj, snapshotAt: Date.now() }); } catch { /* non-fatal */ }
   if (hasWsViewers) {
     const state = JSON.stringify({ type: 'state', state: stateObj });
-    for (const [ws] of brain.clients) {
-      if (ws.readyState === ws.OPEN) {
+    for (const [ws, c] of brain.clients) {
+      if (ws.readyState === ws.OPEN && brain._stateSendOk(ws, c)) {
         try { ws.send(state); } catch {}
       }
     }
