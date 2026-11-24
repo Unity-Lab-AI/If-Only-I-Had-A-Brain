@@ -4,64 +4,57 @@
 # produced it. Nothing here is recalled, and nothing here is a constant.
 status: verified
 sources:
+  - server/brain-server.js
   - server/brain-server/chat.js
-  - server/brain-server/visual-memory.js
-  - server/drawable-taxonomy.js
-  - server/brain-server/eye-style.js
-  - js/brain/mindspace/gpu.js
-  - windows/start.bat
+  - server/brain-server/gpu.js
+  - server/brain-server/state.js
+  - server/coverage-worker.mjs
+  - js/brain/curriculum.js
 verified-scope: |
-  OVERWRITTEN 2026-11-23, night. This file is a SNAPSHOT of the present and is
-  overwritten, never appended. The previous snapshot (the evening's two boots)
-  is in git: git log -p docs/NOW.md.
+  OVERWRITTEN 2026-11-23, late night. This file is a SNAPSHOT of the present
+  and is overwritten, never appended. The previous snapshot is in git:
+  git log -p docs/NOW.md.
 ---
 
-# NOW — 2026-11-23, night
+# NOW — 2026-11-23, late night
 
 ## Where she is
 
 | | |
 |---|---|
-| state | **DOWN** — stopped by the operator during the evening boot; no boot since |
-| code | `main` **ca0b766f** on both remotes (`origin` Forgejo, `github`) |
-| next launch | **a FRESHSTART** (`start.bat` — boots fresh; the operator's call, to carry nothing over from earlier sessions) |
-| donor | **0.3.42** in the repo root and published |
-| board | `docs/TODO.md` = template + the one open watch row |
+| state | **DOWN** — stopped cleanly by the operator at 5:41 PM after a 54-minute freshstart (`Binary weights saved 17 sections, 5997.0 MB`) |
+| next launch | **a FRESHSTART** (`start.bat`) — the fixes below change what she is taught (her eyes), so the walk starts over |
+| donor | **0.3.42**, unchanged — nothing in this round touches the donor |
 
-## The last field read (the evening boot, before she was stopped)
+## The last field read (the freshstart, 4:47–5:41 PM)
 
-- `/health` 200, **199,728,759 neurons** on that boot, RTX 4070 Ti SUPER holding all
-  8 clusters, `runningFloorMB` 8,064, ports 7526 / 5123 / 5124 answering.
-- Her renderer had done **0** renders and **0** look-ups; she drew 9 times from
-  shapes she already held. The walk was at ELA kindergarten pre-vocabulary; no
-  gate probe yet.
-- A freshstart derives its own neuron count from free RAM at boot — the number
-  above belongs to that boot only.
+- **199,728,759 neurons** on that boot, fresh seed 1906868639, 22 state files cleared.
+- Spikes climbed to ~2.8 billion; the walk stayed in ELA kindergarten pre-vocabulary.
+- **Her eyes never started**: 0 looks, 0 drawings in 54 minutes.
+- A second card (RTX 5060 Ti, on another machine) joined at 5:06 and dropped at 5:38.
+- Her firing swung between ~0.1% and ~15–21% on a ~22-minute cycle instead of
+  holding 7.5%.
 
-## What changed since that read (code only — no live read exists yet)
+## What changed since that read (code — no live read yet)
 
 | | |
 |---|---|
-| **her inventions** | ONE fused new thing, never old drawings side by side. Her thoughts supply the words; how they join (a quality, a kind, a place, a substance) is read from WordNet's own categories. Her renderer pictures the idea as one image, two renders must agree, she learns its shape under its own name, then paints it |
-| **her eye** | the backdrop is the border colour families present on ≥3 sides, so a subject that runs off the frame no longer teaches her its own colours are background; a backdrop must also be smooth; frames are skipped, stands dropped by colour, thin parts kept |
-| **her hand** | paints the WHOLE picture she learned — scene and subject — as smooth surfaces from colour layouts kept at 3× the shape grid. Nothing cut out, no grain, no fog |
-| **her judgement** | a piece is shown only when it looks more like its own thing than anything else she remembers, by silhouette and by percept |
+| **her eyes** | on a fresh walk, with no thoughts yet, she now looks at words she has been taught but never seen; what her eye picks is published at `state.ownArt.eyePicks` |
+| **a card joining** | is no longer promoted over a working card before it has reported any throughput, and a card is sent only the matrices of clusters it owns — the duplicate 4.4 GB re-upload and the 5.9-minute training pause are gone |
+| **a card leaving** | its clusters are re-placed on the remaining cards, whether or not it was primary |
+| **boot** | the corpus coverage and exam-word sweeps (72.7 million words) run on their own thread; the 52-second boot freeze is gone |
+| **shutdown** | stops the word loop once instead of visiting every remaining word |
 
-Judged on renders through the production code (a harness on the real mixins, the
-worker proxy and her renderer — not a live boot): eight of eight read as what
-they are, and the operator called the last set perfect.
+## Still open — what to watch on the freshstart
 
-## What to watch on the freshstart
-
-- **Her first looks** — `ownArt.imageEngine.ok` and `ownArt.lookups.grounded`
-  climbing, with `vramTightSkips` (not `vramUnreadable`) carrying any deferrals.
-- **Her inventions** — `canvas:imagine:<idea>` frames that are one thing, and
-  `ownArt.imageEngine.inventions` / `inventionsDeclined`.
-- **Her judgement** — `ownArt.eyeJudge`: `passed`, `refused`, and on the last
-  verdict `beaten` (shape) and `sightBeaten` (percept). Early on, with almost
-  nothing in her memory, she has little to rank against and passes most pieces.
-- **A known gap** — a fused picture can come back missing one of its things,
-  and nothing in her can tell yet; it needs recognition of parts within a
-  picture.
-- **Her voice** is still started from another project's tree — the operator's
-  call.
+- **Her eyes** — `ownArt.eyePicks.fromAcquisition` and `ownArt.lookups.grounded`
+  climbing within minutes. `picks: 0` means the fix did not take.
+- **Her firing** — bistable: there is no drive level at which she sits at 7.5%,
+  so the controller swings and lands the average near target. A steady middle
+  needs a change to her neuron dynamics — the operator's decision.
+- **Vocabulary binding** — 15–40 s a word, so a dream window binds 11–13 words
+  and its other stages never run. Needs batching.
+- **A card joining** — `Post-upload V8 memory` should stay near ~1.1 GB, and
+  training must not pause.
+- **The 39-second freeze** while her cortex is wired at boot is still there; no
+  donor is connected yet when it happens.

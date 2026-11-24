@@ -2598,15 +2598,20 @@ const SERVER_GPU_MIXIN = {
   // can't be interleaved by another send. cb fires exactly once, after all
   // parts flush (first error wins) — pacing/backpressure callers see the same
   // semantics as a single send.
-  // ⚠ 64MiB HARD MESSAGE CAP remains on native donors: at hop 2 (~20M rows)
-  // the intra rowPtr alone is ~80MB — that needs a donor-side protocol change
-  // (segmented rowPtr) + release BEFORE the next growth. Tripwire warn below.
+  // ⚠ The native donor's RECEIVE ceiling is 512 MiB per message / 64 MiB per
+  // frame (donor-app/src/donor.rs, `WebSocketConfig`, raised from tungstenite's
+  // 64 MiB default — the "segmented rowPtr" redesign stopped being a
+  // prerequisite then). This tripwire used to warn at 60 MB against the OLD
+  // 64 MiB cap, so a perfectly legal 75.7 MB intra rowPtr message (18.3 M rows
+  // × 4 B) printed "may refuse it" on every upload. It now warns against the
+  // real ceiling: a message approaching 512 MiB would be refused.
   _wsSendFrag(ws, buf, cb) {
     const LIMIT = 15 * 1024 * 1024; // margin under the ~16MiB native frame ceiling
     if (!buf || buf.length <= LIMIT) { ws.send(buf, cb); return; }
-    if (buf.length > 60 * 1024 * 1024 && (!this._fragCapWarnMs || (Date.now() - this._fragCapWarnMs) > 60000)) {
+    const _MSG_CAP = 512 * 1024 * 1024;
+    if (buf.length > _MSG_CAP * 0.85 && (!this._fragCapWarnMs || (Date.now() - this._fragCapWarnMs) > 60000)) {
       this._fragCapWarnMs = Date.now();
-      console.warn(`[Brain] fragmented WS message is ${(buf.length / 1048576).toFixed(1)}MB — approaching/exceeding the native donor's 64MiB MESSAGE cap. Native donors may refuse it; this is the hop-2 rowPtr-segmentation prerequisite (donor release).`);
+      console.warn(`[Brain] fragmented WS message is ${(buf.length / 1048576).toFixed(1)}MB — approaching the native donor's 512 MiB MESSAGE ceiling (donor.rs WebSocketConfig). Past it the donor refuses the message.`);
     }
     const parts = Math.ceil(buf.length / LIMIT);
     let firstErr = null;
@@ -3051,8 +3056,20 @@ const SERVER_GPU_MIXIN = {
         if (!this._replicaMirrorAt) this._replicaMirrorAt = new WeakMap();
         const nowMs = Date.now();
         const MIRROR_THROTTLE_MS = 15_000;
+        // ⛔ OWNERSHIP, NOT REPLICATION — once the pool has partitioned the
+        // clusters, a card holds only what it OWNS. These matrices are the
+        // cortex's; mirroring them to a card that does not own the cortex sent
+        // a 4.4 GB intra matrix (and every cross-projection) to an RTX 5060 Ti
+        // that owns ONE other cluster — measured on a freshstart: every cortex
+        // matrix went out twice, the second copy at a third of the speed, and
+        // training sat paused 5.9 min waiting for it.
+        const _poolOwned = this._clusterOwner instanceof Map && this._clusterOwner.size > 0;
         for (const _r of this._livePoolDonors()) {
           if (!_r || _r === this._gpuClient || _r.readyState !== 1) continue;
+          if (_poolOwned && this._ownerOf('cortex') !== _r) {
+            this._mirrorSkippedNotOwner = (this._mirrorSkippedNotOwner | 0) + 1;
+            continue;
+          }
           let _seen = this._replicaMirrorAt.get(_r);
           if (!_seen) { _seen = new Map(); this._replicaMirrorAt.set(_r, _seen); }
           if (nowMs - (_seen.get(name) || 0) < MIRROR_THROTTLE_MS) continue;
@@ -3332,7 +3349,7 @@ const SERVER_GPU_MIXIN = {
       }
       const frame = this._uploadChunkScratch.subarray(0, _frameLen);
       _upBytes += _frameLen;
-      if (isFirst) console.log(`[Brain] sparse upload ${name} first frame = ${(frame.length / 1048576).toFixed(1)}MB${frame.length > 15 * 1024 * 1024 ? ` — FRAGMENTED into ${Math.ceil(frame.length / (15 * 1024 * 1024))} WS continuation frames (native donor frame ceiling ~16MiB; message reassembles up to 64MiB)` : ' (under the ~16MiB native frame ceiling — sent whole)'}.`);
+      if (isFirst) console.log(`[Brain] sparse upload ${name} first frame = ${(frame.length / 1048576).toFixed(1)}MB${frame.length > 15 * 1024 * 1024 ? ` — FRAGMENTED into ${Math.ceil(frame.length / (15 * 1024 * 1024))} WS continuation frames (sent in ≤15 MiB frames; the native donor reassembles messages up to 512 MiB)` : ' (under the ~16MiB native frame ceiling — sent whole)'}.`);
       // Send chunk. WebSocket preserves order. Wait for the send
       // callback so we don't flood the send buffer with hundreds of
       // MB at once — backpressure per chunk.
