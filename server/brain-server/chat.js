@@ -2603,9 +2603,13 @@ const SERVER_CHAT_MIXIN = {
     if (style === 'own') {
       const own = await this._drawOwnCreation(seed, { ...opts, label: opts.label });
       if (own) return own;
-      // She could not build a schema for anything in it — fall through to the
-      // reference-render styles rather than returning nothing, and the label says
-      // plainly which one it was (`canvas:draw:` = a render of what she saw).
+      // ⛔⛔ NO FALL-THROUGH TO A TRACE. When she could not build her own piece
+      // (an abstract word, nothing seen yet), this used to fall through to the
+      // line-art style — a pale chalk-ink TRACE of the reference picture — and
+      // that is the "white pen trace" judged live again and again. Nothing she
+      // can build means nothing is drawn; the trace styles run only when a
+      // caller or `DREAM_DRAW_STYLE` asks for them by name.
+      return null;
     }
 
     // FIELD style returns a FINISHED drawn rec (no tracing/sketch) — the detailed
@@ -3386,6 +3390,19 @@ const SERVER_CHAT_MIXIN = {
     this._lastArtStyle = pick.name;
     return pick;
   },
+  // A line colour that reads on her dark page: the most saturated colour given,
+  // lifted only as far as it needs to; with no colour at all, a warm neutral
+  // sketch tone — never the pale white pen.
+  _readableInk(colors) {
+    const pal = Array.isArray(colors) ? colors.filter((c) => Array.isArray(c) && c.length >= 3) : [];
+    if (!pal.length) return [168, 150, 128];
+    const sat = (c) => Math.max(c[0], c[1], c[2]) - Math.min(c[0], c[1], c[2]);
+    const c = pal.slice().sort((a, b) => sat(b) - sat(a))[0];
+    const L = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
+    const t = L >= 120 ? 0 : (120 - L) / Math.max(1, 255 - L);
+    return c.map((v) => Math.round(v + (255 - v) * t));
+  },
+
   // Ink for a style: graphite = warm grays, mono = near-black, palette = the
   // learned palette (via _ownArtInk) tinted by the definition color when known.
   _artInk(style, schema, strength, rnd, defColor) {
@@ -3399,14 +3416,10 @@ const SERVER_CHAT_MIXIN = {
     // read on the dark page; the pale gel pen stays only for an unseen subject.
     if (style && style.ink === 'mono') {
       const pal = (schema && Array.isArray(schema.palette)) ? schema.palette.filter((c) => Array.isArray(c) && c.length >= 3) : [];
-      if (pal.length) {
-        const sat = (c) => Math.max(c[0], c[1], c[2]) - Math.min(c[0], c[1], c[2]);
-        const c = pal.slice().sort((a, b) => sat(b) - sat(a))[0];
-        const L = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
-        const t = L >= 120 ? 0 : (120 - L) / Math.max(1, 255 - L);
-        return c.map((v) => Math.round(v + (255 - v) * t));
-      }
-      const g = 205 + Math.round(rnd() * 40); return [g, g, Math.min(255, g + 8)];
+      // ⛔ No pale gel pen for anything, seen or not — that fallback is the
+      // "white pen trace" judged live five times. Seen colours first, then the
+      // definition's colour, then a warm neutral sketch tone.
+      return this._readableInk(pal.length ? pal : (Array.isArray(defColor) ? [defColor] : []));
     }
     // PAINT.6 — THE SUBJECT'S COLOR DOMINATES. The live judged test rendered a
     // gray/cream subject HOT PINK because _ownArtInk caps the learned palette at
@@ -4290,7 +4303,11 @@ const SERVER_CHAT_MIXIN = {
     // With a painted body the outline contrasts the BODY; with no body painted
     // it sits on bare paper, which is dark, so it must be light — judged on a
     // render: a dark outline on dark paper was an invisible drawing.
-    const ink = (style.mass !== 'none' && ln && lum / ln > 120) ? [28, 24, 32] : [232, 228, 236];
+    // ⛔ NO WHITE PEN. The outline over a dark or absent fill was a fixed pale
+    // [232,228,236] — judged live, again, as "white pen traces". It now wears the
+    // subject's own most saturated colour, lifted only as far as it needs to read
+    // on her dark page; dark ink over a bright fill as before.
+    const ink = (style.mass !== 'none' && ln && lum / ln > 120) ? [28, 24, 32] : this._readableInk(pal);
     const lw = style.outlineW > 0 ? Math.min(style.outlineW, 0.007) * ((skill && skill.traceW) || 1) : undefined;
     // In a fully painted picture the subject is set off by its own colours
     // against the scene — an outline round it would make it a sticker.
@@ -4505,7 +4522,9 @@ const SERVER_CHAT_MIXIN = {
         }
       }
     }
-    const lineInk = bodyLum > 120 ? [28, 24, 32] : [232, 228, 236];
+    // ⛔ No white pen here either: over dark or absent fills the outline wears the
+    // subject's own colour (lifted to read), not a fixed pale [232,228,236].
+    const lineInk = bodyLum > 120 ? [28, 24, 32] : this._readableInk(vols.map((v) => v && v.rgb));
     const lw = style.outlineW > 0 ? Math.min(style.outlineW, 0.007) * ((skill && skill.traceW) || 1) : undefined;
     for (let i = 0; i < vols.length; i++) {
       let run = [];
@@ -5366,7 +5385,7 @@ const SERVER_CHAT_MIXIN = {
         // ARTZIG2 — same real-underpaint read as the per-stroke contrast below.
         const bodyProbe = _bodyInkUsed || this._artInk(style, schema, 0.6, rnd, defColor);
         const lum = 0.299 * bodyProbe[0] + 0.587 * bodyProbe[1] + 0.114 * bodyProbe[2];
-        traceInk = lum > 120 ? [30, 26, 34] : [226, 222, 230];
+        traceInk = lum > 120 ? [30, 26, 34] : this._readableInk(schema && schema.palette);   // never the pale white pen
       }
       const tw = style.outlineW > 0 ? Math.min(style.outlineW, 0.006) * skill.traceW : undefined;
       // PAINT.12 — per-attempt STROKE SUBSET: the trace is length-sorted at
