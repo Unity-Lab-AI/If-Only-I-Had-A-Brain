@@ -410,6 +410,9 @@ impl CudaEngine {
         self.sparse.contains_key(name)
     }
 
+    /// v0.3.47 — block until the stream drains (timing a sampled lesson step).
+    pub fn sync(&self) { let _ = self.stream.synchronize(); }
+
     /// v0.3.46 — drop a resident matrix; its device slices free on drop.
     pub fn free_sparse(&mut self, name: &str) -> bool {
         self.sparse.remove(name).is_some()

@@ -639,6 +639,10 @@ impl ComputeEngine {
         self.sparse.contains_key(name)
     }
 
+    /// v0.3.47 — block until every submitted GPU command has finished. Used only
+    /// to TIME a sampled lesson step; never on the teaching path otherwise.
+    pub fn sync(&self) { let _ = self.device.poll(wgpu::Maintain::Wait); }
+
     /// v0.3.46 — drop a resident matrix. Its device buffers are released when
     /// the entry drops. Sent to a card that no longer owns the cortex after a
     /// move: its copy is stale from that moment and only holds VRAM.
@@ -1402,6 +1406,13 @@ impl Backend {
             Backend::Cuda(e) => e.free_sparse(name),
         }
     }
+    fn sync(&self) {
+        match self {
+            Backend::Wgpu(e) => e.sync(),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.sync(),
+        }
+    }
     fn upload_sparse(&mut self, name: &str, rows: u32, cols: u32, row_ptr: &[u32], values: &[f32], col_idx: &[u32], binding: Option<Binding>) {
         match self {
             Backend::Wgpu(e) => e.upload_sparse(name, rows, cols, row_ptr, values, col_idx, binding),
@@ -1805,6 +1816,9 @@ impl MultiEngine {
     pub fn has_sparse(&self, name: &str) -> bool {
         self.matrix_gpu.get(name).map(|&g| self.engines[g].has_sparse(name)).unwrap_or(false)
     }
+
+    /// v0.3.47 — drain every GPU this donor drives (sampled lesson timing).
+    pub fn sync(&self) { for e in &self.engines { e.sync(); } }
 
     /// v0.3.46 — drop a resident matrix from whichever GPU holds it.
     pub fn free_sparse(&mut self, name: &str) -> bool {

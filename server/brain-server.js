@@ -14494,7 +14494,7 @@ wss.on('connection', (ws, req) => {
       // public/donor-route connection faking these could poison brain state.
       // gpu_register is exempt (it's how a donor JOINS the pool). Chat policy
       // (who may send 'text') is a separate operator decision — not gated here.
-      const DONOR_PROTOCOL = ['compute_result', 'compute_batch_result', 'gpu_init_ack', 'sparse_upload_ack', 'sparse_propagate_ack', 'sparse_hebbian_ack', 'rebind_sparse_ack', 'readback_letter_buckets_ack', 'readback_matrix_checksum_ack', 'readback_matrix_values_ack', 'letter_surprise_ack', 'device_lost'];
+      const DONOR_PROTOCOL = ['compute_result', 'compute_batch_result', 'gpu_init_ack', 'sparse_upload_ack', 'sparse_propagate_ack', 'sparse_hebbian_ack', 'rebind_sparse_ack', 'readback_letter_buckets_ack', 'readback_matrix_checksum_ack', 'readback_matrix_values_ack', 'letter_surprise_ack', 'device_lost', 'lesson_cost'];
       if (DONOR_PROTOCOL.indexOf(msg.type) !== -1 && !(brain._gpuClients && brain._gpuClients.has(ws))) {
         if (!brain._donorSpoofWarnAt || (Date.now() - brain._donorSpoofWarnAt) > 5000) {
           brain._donorSpoofWarnAt = Date.now();
@@ -15242,6 +15242,24 @@ wss.on('connection', (ws, req) => {
         // A donor writes the matrices it trains to its own disk on the brain's
         // cadence, puts them back after a re-upload, and hands them over before
         // it leaves. These three messages are the brain's half of that.
+        // ── LESSON COST (donor 0.3.47) — where a lesson's card time goes, per
+        // step and matrix, measured on sampled lessons with the card drained
+        // between steps. Kept per GPU model so two cards are never averaged.
+        case 'lesson_cost': {
+          const ops = (msg.ops && typeof msg.ops === 'object') ? msg.ops : {};
+          const lessons = Math.max(1, msg.lessons | 0);
+          const total = Number(msg.totalMs) || 0;
+          const rows = Object.entries(ops).map(([k, v]) => ({ step: k, msPerLesson: +((Number(v && v.ms) || 0) / lessons).toFixed(3), share: total > 0 ? +((Number(v && v.ms) || 0) / total).toFixed(3) : null }))
+            .sort((a, b) => b.msPerLesson - a.msPerLesson);
+          const gpu = String((client && client.gpuName) || id);
+          brain._lessonCost = brain._lessonCost || {};
+          brain._lessonCost[gpu] = { at: Date.now(), lessons, msPerLesson: +(total / lessons).toFixed(3), steps: rows.slice(0, 24) };
+          if (!brain._lessonCostLogged || Date.now() - brain._lessonCostLogged > 600000) {
+            brain._lessonCostLogged = Date.now();
+            console.log(`[Brain] LESSON COST on ${gpu} — ${(total / lessons).toFixed(2)} ms a lesson: ${rows.slice(0, 5).map((r) => `${r.step} ${r.msPerLesson}ms (${r.share != null ? Math.round(r.share * 100) + '%' : '?'})`).join(' · ')}`);
+          }
+          break;
+        }
         case 'donor_checkpoint_saved': {
           brain._donorCheckpoint = brain._donorCheckpoint || { saves: 0, fails: 0 };
           if (msg.ok) { brain._donorCheckpoint.saves++; brain._donorCheckpoint.lastSave = { at: Date.now(), matrices: msg.matrices | 0, mb: +((Number(msg.bytes) || 0) / 1048576).toFixed(1), secs: +(Number(msg.secs) || 0).toFixed(1) }; }

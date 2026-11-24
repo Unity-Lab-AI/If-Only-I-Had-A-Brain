@@ -958,6 +958,16 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
         // RHYTHM3S.2 (v0.3.34) — full protocol regions (incl. `side`) per
         // cluster, cached at gpu_init for the per-batch Ψ-gate rebuild.
         let mut cluster_regions: HashMap<String, HashMap<String, crate::protocol::Region>> = HashMap::new();
+        // v0.3.47 — LESSON COST. One lesson in LC_EVERY is run with the card
+        // drained after each step, so each step's real GPU time is measured
+        // (an unsynced timer measures only queueing). Reported every LC_REPORT
+        // sampled lessons as `lesson_cost`, then reset.
+        const LC_EVERY: u64 = 50;
+        const LC_REPORT: u32 = 10;
+        let mut lc_seen: u64 = 0;
+        let mut lc_sampled: u32 = 0;
+        let mut lc_acc: HashMap<String, (f64, u32)> = HashMap::new();
+        let mut lc_total_ms: f64 = 0.0;
         while let Some(work) = workq_w.pop() {
             pending_w.fetch_sub(1, Ordering::Relaxed); // pulled one off the queue
             // Stop promptly on request: DON'T drain the queued backlog (the brain can have many
@@ -1061,7 +1071,20 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 // keep a bounded number of lessons in flight and never pile up an
                 // unbounded queue on this card.
                 Work::Lesson(lesson) => {
+                    lc_seen += 1;
+                    let sample = lc_seen % LC_EVERY == 0;
+                    if sample { engine.sync(); }
+                    let l_t0 = std::time::Instant::now();
                     for op in frames::expand_lesson(&lesson) {
+                        let key = if sample {
+                            Some(match &op {
+                                frames::LessonOp::Clear { .. } => "clear".to_string(),
+                                frames::LessonOp::Write { .. } => "write".to_string(),
+                                frames::LessonOp::Bound { name, .. } => format!("bound:{name}"),
+                                frames::LessonOp::Masked { name, .. } => format!("masked:{name}"),
+                            })
+                        } else { None };
+                        let op_t0 = std::time::Instant::now();
                         match op {
                             frames::LessonOp::Clear { cluster, region } => { let _ = engine.clear_spike_region(&cluster, &region); }
                             frames::LessonOp::Write { cluster, region, indices } => { let _ = engine.write_spike_slice(&cluster, &region, &indices); }
@@ -1071,6 +1094,24 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                             frames::LessonOp::Masked { name, lr, rows } => {
                                 if let Err(e) = engine.hebbian_bound_masked(&name, lr, 1, &rows) { eprintln!("[donor] lesson masked hebbian '{name}' failed: {e}"); }
                             }
+                        }
+                        if let Some(k) = key {
+                            engine.sync();
+                            let ms = op_t0.elapsed().as_secs_f64() * 1000.0;
+                            let e = lc_acc.entry(k).or_insert((0.0, 0));
+                            e.0 += ms; e.1 += 1;
+                        }
+                    }
+                    if sample {
+                        lc_total_ms += l_t0.elapsed().as_secs_f64() * 1000.0;
+                        lc_sampled += 1;
+                        if lc_sampled >= LC_REPORT {
+                            let ops: serde_json::Map<String, serde_json::Value> = lc_acc.iter()
+                                .map(|(k, (ms, n))| (k.clone(), serde_json::json!({ "ms": (ms * 1000.0).round() / 1000.0, "n": n })))
+                                .collect();
+                            let reply = serde_json::json!({ "type": "lesson_cost", "lessons": lc_sampled, "totalMs": (lc_total_ms * 1000.0).round() / 1000.0, "ops": ops });
+                            let _ = reply_tx.send(Out::Text(reply.to_string()));
+                            lc_acc.clear(); lc_sampled = 0; lc_total_ms = 0.0;
                         }
                     }
                     if lesson.req_id != 0 {
