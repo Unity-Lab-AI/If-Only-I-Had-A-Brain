@@ -1929,7 +1929,13 @@ const SERVER_CHAT_MIXIN = {
                 // Bounded scan — this runs on the mind's-eye tick, so it samples
                 // rather than walking a store that can hold tens of thousands.
                 const _scan = Math.min(_favKeys.length, 24);
-                for (let _i = 0; _i < _scan; _i++) {
+                // ⏱ TIME-BOUNDED: an uncached read is a full CPU propagate (~50
+                // ms), and 24 of them per tick were 26.7% of the main thread
+                // while teaching (2026-11-24), starving the card. Cached reads
+                // stay free; new reads stop once this tick has spent its share.
+                const _relT0 = Date.now();
+                const _relBudgetMs = Number(process.env.DREAM_EYE_REL_BUDGET_MS) > 0 ? Number(process.env.DREAM_EYE_REL_BUDGET_MS) : 8;
+                for (let _i = 0; _i < _scan && (Date.now() - _relT0) < _relBudgetMs; _i++) {
                   const _k = _favKeys[Math.floor(this._rand('eye-favourite-pick') * _favKeys.length)];
                   if (_cur._confidentRelationFor(_k)) _known.push(_k);
                 }
