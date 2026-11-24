@@ -651,6 +651,11 @@ impl ComputeEngine {
         self.sparse.contains_key(name)
     }
 
+    /// v0.3.52 — (rows, cols, nnz) of a resident matrix (see the CUDA twin).
+    pub fn sparse_shape(&self, name: &str) -> Option<(u32, u32, u32)> {
+        self.sparse.get(name).map(|s| (s.rows, s.cols, s.nnz))
+    }
+
     /// v0.3.47 — block until every submitted GPU command has finished. Used only
     /// to TIME a sampled lesson step; never on the teaching path otherwise.
     pub fn sync(&self) { let _ = self.device.poll(wgpu::Maintain::Wait); }
@@ -1421,6 +1426,13 @@ impl Backend {
             Backend::Cuda(e) => e.has_sparse(name),
         }
     }
+    fn sparse_shape(&self, name: &str) -> Option<(u32, u32, u32)> {
+        match self {
+            Backend::Wgpu(e) => e.sparse_shape(name),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.sparse_shape(name),
+        }
+    }
     fn free_sparse(&mut self, name: &str) -> bool {
         match self {
             Backend::Wgpu(e) => e.free_sparse(name),
@@ -1611,6 +1623,11 @@ pub struct MultiEngine {
     matrix_gpu: HashMap<String, usize>,
     next_cluster: usize,
     next_matrix: usize,
+    /// v0.3.52 — the brain these resident matrices belong to (her RNG seed, the
+    /// same lineage the disk checkpoint is keyed by). Kept with the engine across
+    /// reconnects, so a restarted brain can adopt this card's matrices instead of
+    /// re-uploading them. None until a brain has said who it is.
+    pub lineage: Option<String>,
 }
 
 /// One cluster's per-batch stepping parameters (effective drive already folded in).
@@ -1775,7 +1792,17 @@ impl MultiEngine {
             matrix_gpu: HashMap::new(),
             next_cluster: 0,
             next_matrix: 0,
+            lineage: None,
         })
+    }
+
+    /// v0.3.52 — (name, rows, cols, nnz) of every resident matrix, sorted.
+    pub fn sparse_shapes(&self) -> Vec<(String, u32, u32, u32)> {
+        let mut v: Vec<(String, u32, u32, u32)> = self.matrix_gpu.iter()
+            .filter_map(|(n, &g)| self.engines[g].sparse_shape(n).map(|(r, c, z)| (n.clone(), r, c, z)))
+            .collect();
+        v.sort_by(|a, b| a.0.cmp(&b.0));
+        v
     }
 
     pub fn gpu_count(&self) -> usize {

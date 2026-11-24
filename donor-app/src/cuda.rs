@@ -415,6 +415,12 @@ impl CudaEngine {
         self.sparse.contains_key(name)
     }
 
+    /// v0.3.52 — (rows, cols, nnz) of a resident matrix, so a restarted brain
+    /// can prove this card holds exactly the matrix it would have uploaded.
+    pub fn sparse_shape(&self, name: &str) -> Option<(u32, u32, u32)> {
+        self.sparse.get(name).map(|s| (s.rows, s.cols, s.nnz))
+    }
+
     /// v0.3.47 — block until the stream drains (timing a sampled lesson step).
     pub fn sync(&self) { let _ = self.stream.synchronize(); }
 

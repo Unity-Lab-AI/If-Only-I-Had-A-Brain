@@ -27,9 +27,9 @@ verified-scope: |
 
 | | |
 |---|---|
-| state | **RUNNING** — fresh walk booted 04:04 on `main` @ `9722e83d` minus the last retry fix (it lands on her next restart). Kindergarten English, pre-cell warm-up. Teaching paused while the PRO 6000 pod's copy of her main matrix uploads over the home link (400/800 chunks at 8.5 MB/s at 04:14) |
-| cards | your 4070 Ti SUPER + one rented RTX PRO 6000 (Secure Cloud, `v1q3tju9r0knqu`). With two cards both hold the FULL main matrix (two copies — a drop costs nothing) |
-| donor | **0.3.51** (a lesson's pattern writes go to the card in one copy) — older donors are refused at register with an Update prompt |
+| state | **STOPPED** on purpose — Kindergarten English, pre-cell vocabulary (about 10,600 words still owed). Next start is a Savestart; no fresh walk is needed |
+| cards | your 4070 Ti SUPER + one rented RTX PRO 6000 (`ua8x877eiqz63m`). **One card per job:** the PRO 6000 holds her cortex and all 17 matrices, your card steps the other clusters, and no card recomputes another's work. 200 M neurons (`DREAM_BRAIN_BUDGET_MB=8000`) — the most your card can still hold alone if the pod goes |
+| donor | **0.3.52** — a restarted brain ADOPTS the matrices a card still holds for it (no 20–30 min re-upload), and copies the card's weights back paced (~2 MB/s) so the link never fills. The first start after the release is still one full upload: the pod's donor restarts onto the new version with an empty card |
 | next restart | `Savestart.bat` keeps this walk; `start.bat` is a fresh walk |
 | auto-stop | ON — stopping her terminates her pods |
 
