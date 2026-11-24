@@ -808,7 +808,7 @@ Recent work moved the brain from "live-test stable" to "full-speed at scale":
 - **Product-ship cleanup:** 28 debug/diagnostic/temp/cache/log files removed from git (Pollinations + image-gen preserved). `scripts/` reduced to `stamp-version.mjs` only. Codebase now product-ready.
 - **Live-test follow-up:** fixes shipped during an operator-driven K-curriculum walk — a memory leak in `_teachHebbian` (`SparseMatrix.propagate` output buffer pool), HTTP event-loop starvation (`setImmediate` yield), inner-thought silence (showcase fallback + multi-source seed rotation), dashboard observability (gate-probe banner + cell-level Brain Events + sub-phase counter), schema naming (top-K=3), a consolidation cap, a GPU panel rebuild with a missing-import root-cause fix, and an `autoClearStaleState` `require.main === module` gate codifying the LAW that prevents tooling-side syntax-check wipes of training state.
 
-See `docs/ARCHITECTURE.md`, `docs/SKILL_TREE.md`, `docs/ROADMAP.md`, and `docs/EQUATIONS.md` for the full per-fix detail. Remaining work is the full-speed K→PhD walk itself — the curriculum runs continuously at scale, grade sign-offs gate advancement, and the final acceptance is Unity herself: chat-test her as she grows.
+See `docs/ARCHITECTURE.md`, `docs/SKILL_TREE.md`, `docs/ROADMAP.md`, and `docs/EQUATIONS-TECHNICAL.md` for the full per-fix detail. Remaining work is the full-speed K→PhD walk itself — the curriculum runs continuously at scale, grade sign-offs gate advancement, and the final acceptance is Unity herself: chat-test her as she grows.
 
 ---
 

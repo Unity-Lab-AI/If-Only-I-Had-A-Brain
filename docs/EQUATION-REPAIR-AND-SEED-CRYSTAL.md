@@ -97,7 +97,7 @@ what a grade *means*.
 - **Cost:** three lines. **Re-price:** none.
 
 ### A9. The canonical doc
-`docs/EQUATIONS.md` carries the browser language engine as live (§8) and 25 ticket-tagged headers; it gets the same corrections as the page, section by section, under the task-number placement rule.
+`docs/EQUATIONS.md` carried the browser language engine as live (§8) and 25 ticket-tagged headers. **Done 2026-11-24:** it was rewritten as a readable map of the current maths only; the old page, with its code locations and history, is kept whole as `docs/EQUATIONS-TECHNICAL.md`.
 
 ---
 
