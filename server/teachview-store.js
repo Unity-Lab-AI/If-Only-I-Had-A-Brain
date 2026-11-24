@@ -103,9 +103,11 @@ function restoreInto(tv, saved) {
   if (Array.isArray(saved.ring) && saved.ring.length) {
     tv.ring = saved.ring.concat(tv.ring).slice(-RING_CAP);
   }
-  if (Array.isArray(saved.flags) && saved.flags.length) {
-    tv.flags = saved.flags.concat(tv.flags);
-  }
+  // ⛔ FLAGS ARE NOT RESTORED. A flag is the state of THIS boot's code, and
+  // restoring them carried every old build's verdicts forward forever: the
+  // panel showed `DEF-MISS` for "didn"/"couldn" (a harvest split fixed since)
+  // and "diwali"/"william" (defined by Wikipedia since), and summed `×5` across
+  // five boots. Each boot raises its own flags from what it actually sees.
   // The original start of the walk, not this boot's.
   if (saved.startedAt) tv.startedAt = Math.min(tv.startedAt || saved.startedAt, saved.startedAt);
   if (saved.lastAt) tv.lastAt = Math.max(tv.lastAt | 0, saved.lastAt | 0);
