@@ -19674,7 +19674,18 @@ export class Curriculum {
         let anchored = 0;
         let _wi = 0;
         let _newPerma = 0;
-        for (const w of batch) {
+        // ⭐ MANY WORDS AT ONCE, SAME RULE AS `_teachWordDefinitions`: this lane
+        // walked the cell's corpus words one at a time — each bind is ~0 s on
+        // the card, so the lane was its lookups in series and the card sat at 0%
+        // (measured 15:2x, 15/15 samples). On the card-lesson path the words are
+        // taught by `DREAM_DEF_CONCURRENCY` (64) workers; without it, one at a time.
+        const _pvLessonOk = !!(cluster._gpuProxy && typeof cluster._gpuProxy.lessonCapable === 'function'
+          && cluster._gpuProxy.lessonCapable() && typeof cluster._gpuProxy.teachLesson === 'function');
+        const _pvConc = _pvLessonOk
+          ? (() => { const v = Number(process.env.DREAM_DEF_CONCURRENCY); return v >= 1 ? Math.floor(v) : 64; })()
+          : 1;
+        let _pvNext = 0;
+        const _prevocabOne = async (w) => {
           try {
             const r = await this._teachWordDefinition(w, { reps: 3, label: `ACADEMIC-PREVOCAB-${subject}-${grade}` });
             if (r && r.defsBound > 0) anchored++;
@@ -19728,7 +19739,15 @@ export class Curriculum {
               };
             } catch { /* an instrument must never be able to stop a teach */ }
           }
-        }
+        };
+        await Promise.all(Array.from({ length: Math.min(_pvConc, Math.max(1, batch.length)) }, async () => {
+          for (;;) {
+            if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
+            const i = _pvNext++;
+            if (i >= batch.length) return;
+            await _prevocabOne(batch[i]);
+          }
+        }));
         // ⭐ REPORT THE COVERAGE THE WINDOW ACTUALLY BOUGHT, not just its size.
         // "60/60 anchored" says nothing about whether those sixty words are the
         // ones the chapter leans on — and that difference is the entire point of
