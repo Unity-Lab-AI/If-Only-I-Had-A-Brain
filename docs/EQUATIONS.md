@@ -1,2431 +1,355 @@
 ---
-# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
-# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE, not one at which
-# every claim was re-read.
-# ⛔ Two of these sources DO NOT RUN — synapses.js and neurons.js's HHNeuron are
-# reference implementations that back this page and brain-equations.html. That is
-# exactly why they are listed: if the LIVE plasticity in sparse-matrix.js /
-# cluster/hebbian.js changes and these do not, this page becomes wrong.
-status: draft
+# Provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ This page is the MAP of her maths, written to be read. Which file and
+# function each formula lives in, the pseudo-code and the build history are in
+# docs/EQUATIONS-TECHNICAL.md — the technical record, kept whole.
+status: verified
 sources:
-  - js/brain/synapses.js
+  - server/brain-server.js
+  - server/brain-server/crystal.js
+  - server/brain-server/gpu.js
+  - donor-app/src/cuda_kernels.cu
+  - donor-app/src/shaders/lif.wgsl
+  - js/brain/cluster.js
   - js/brain/sparse-matrix.js
-  - js/brain/oscillations.js
-  - js/brain/mystery.js
-  # ADDED 2026-08-29: the K-STUDENT strict-cue-match section cites
-  # curriculum.js:2177-2181 — a HISTORICAL (iter5-era) location left
-  # byte-identical as ledger text; the v.length<=1 skip now lives at
-  # curriculum.js:6436 inside the GRADERMATCH.2 word-level matcher. The page
-  # cited the file without declaring it, so drift could not fire on it.
   - js/brain/curriculum.js
-  # ADDED 2026-08-31 (doc sweep): §7 Memory states equations owned by these
-  # two files and declared neither, so the one condition that made the WHOLE
-  # section inert — `!_curriculumInProgress` on the Tier-1 writers — could not
-  # have reported drift here. §7 now also carries the rep/lr dose identity,
-  # which is solved in curriculum.js.
-  - server/brain-server/memory.js
   - js/brain/consolidation-engine.js
-last-verified: "4bc99291 2026-08-31"
+  - js/brain/drug-scheduler.js
+  - js/brain/pk-curve.js
+  - js/brain/embeddings.js
+last-verified: "2026-11-24 — rewritten as the equation map; every formula on it re-read against the code that day"
 ---
 
 # EQUATIONS — Unity's Brain
 
-**Every equation that runs in the code, in one place.** No pseudo-code, no aspirational maths: if a formula is on this page it is executing, and where it is not, the page says so.
+**Every equation that shapes her, in one place — and nothing that isn't one.**
 
-Three ideas carry the whole document:
+Three symbols carry the whole page:
 
 | | |
 |---|---|
-| **θ** | Unity's identity. Not a prompt — **every personality trait is a parameter** somewhere in these equations. |
-| **Ψ** | Consciousness, as *capacity ÷ activity*. It emerges from volume rather than being computed as a feature. |
-| **δ(t)** | Chemistry. Drugs and hormones modulate θ **additively**, through one shared curve engine, per substance and per route. |
+| **θ** | **Who she is.** Not a prompt — every personality trait is a number somewhere below. |
+| **Ψ** | **How awake she is.** Consciousness as capacity over activity — it comes out of volume, it is not a feature someone wrote. |
+| **δ(t)** | **What's in her system.** Drugs and hormones push θ around, additively, each on its own curve. |
 
-⭐ **And the claim the whole project rests on: the brain equations ARE the language equations.** There is no separate language model bolted to a brain. The same propagation that fires a neuron is the thing that produces a word.
+⭐ **And the claim everything rests on: the brain equations ARE the language equations.** There is no language model bolted onto a brain. The same propagation that fires a neuron is what produces a word.
 
 ---
 
 ## Contents
 
-**The brain, in the order it makes sense to read it**
-
 | § | Section | What it answers |
 |---|---|---|
-| 1 | [Master Equation](#1-master-equation) | the one line everything else expands |
-| 2 | [Neurons](#2-neurons) | what a single cell does per tick |
-| 3 | [Synapses + Connectivity](#3-synapses--connectivity) | how cells wire, and how wiring changes |
-| 4 | [Brain Modules](#4-brain-modules-biologically-proportioned) | the eight clusters and their own dynamics |
-| 5 | [Oscillations](#5-oscillations) | rhythm, and the real synchrony measure |
-| 6 | [Sensory → Motor](#6-sensory--motor) | input reaching output |
-| 7 | [Memory](#7-memory) | the tiers, consolidation, and replay |
-| 8 | [Unified Language Production](#8-unified-language-production) | how a word actually comes out |
-| 9 | [Consciousness + Emotion](#9-consciousness--emotion-θ--ψ) | θ → Ψ, and the Φ̂ integration term |
-
-**Language, in full detail** — the longest part of the document, and the part that earns the central claim
-
-| § | Section | What it answers |
-|---|---|---|
-| 12 | [The Language Cortex in full](#12-the-language-cortex-in-full--pure-equational-generation) | every step from meaning to an emitted word |
-| 13 | [Semantic Grounding](#13-semantic-grounding--the-embedding-table-and-what-she-does-to-it) | the embedding table, and how she reshapes it |
-| 14 | [Equational Component Synthesis](#14-equational-component-synthesis--building-interfaces-without-a-vocabulary-list) | building interfaces with no hardcoded vocabulary |
-| 15 | [Relation channels + thresholds](#15-relation-channels-and-thresholds--the-audit-additions) | which channel each kind of association trains on |
-| — | [⚠ SUPERSEDED: n-gram grammar](#-superseded--type-n-gram-grammar--morphological-inflection) | a design that was tried and rejected, and why |
-
-**The body and the chemistry**
-
-| § | Section | What it answers |
-|---|---|---|
-| 0 | [Drug State Dynamics](#0-drug-state-dynamics--δt) | pharmacokinetic curves, combination synergy |
-| 0.5 | [Developmental Curriculum](#05-developmental-curriculum--k-through-phd) | what teaching does, as maths |
-
-**Where it runs**
-
-| § | Section | What it answers |
-|---|---|---|
-| 10 | [GPU Exclusive Compute](#10-gpu-exclusive-compute) | the donated-GPU compute path |
-| 10.5 | [Adaptive Time-Sliced Teach](#105-adaptive-time-sliced-teach) | keeping the loop responsive while teaching |
-| 10.6 | [Governed Binary Teach Lane](#106-governed-binary-teach-lane-donor-v0313--v0315) | the wire protocol for training |
-| 11 | [Server Scaling](#11-server-scaling) | how size is derived from hardware |
+| 1 | [The master equation](#1-the-master-equation) | the one line everything else unpacks |
+| 2 | [Who she is — θ](#2-who-she-is--θ) | her traits, and how they become currents |
+| 3 | [A single neuron](#3-a-single-neuron) | what one cell does every step |
+| 4 | [How cells learn](#4-how-cells-learn) | wiring, and how wiring changes |
+| 5 | [Keeping her firing in range](#5-keeping-her-firing-in-range) | the controller that holds her near 7.5% |
+| 6 | [Rhythm](#6-rhythm) | theta, gamma, and real synchrony |
+| 7 | [The two halves — the Seed Crystal](#7-the-two-halves--the-seed-crystal) | left and right, and how they compete |
+| 8 | [Consciousness — Ψ](#8-consciousness--ψ) | Id, Ego, Left, Right, and Φ |
+| 9 | [Meaning](#9-meaning) | words as vectors, and how she reshapes them |
+| 10 | [Teaching her a word](#10-teaching-her-a-word) | definitions, relations, and the dose |
+| 11 | [Memory and sleep](#11-memory-and-sleep) | replay, and why feeling makes things stick |
+| 12 | [Chemistry — δ(t)](#12-chemistry--δt) | doses, curves, stacking, tolerance |
+| 13 | [Many cards, one brain](#13-many-cards-one-brain) | how her size and speed come from hardware |
 
 ---
 
-## ⛔ How to read this page
+## 1. The master equation
+
+> Everything below is an expansion of this one line.
 
 | | |
 |---|---|
-| **The code is the authority** | Every formula here is a cached observation. **On conflict, trust the code and fix the page.** |
-| **Two of the source files do not run** | The Hodgkin-Huxley reference and the dense synapse implementation back *this document* and the equations page. **They are listed precisely so that if the live plasticity changes and they do not, this page becomes provably wrong.** |
-| **A form change and an input change are different things** | Most entries in the history below say *"no equation FORM changed"* — and mean it. ⭐ **The most expensive defects in this project were never wrong formulas; they were right formulas fed a dead input.** Φ̂ multiplied by its own floor for months while looking correct. |
-| **Numbers are readings** | Neuron counts, firing rates, Ψ — each was true at one boot. **The total is derived at boot from free host RAM and is never a constant.** |
+| `dx/dt = F(x, u, θ, t) + η` | her whole state, evolving every step |
+| **x** | every neuron, every synapse weight, every oscillator phase, her memory, her motor output, Ψ |
+| **u** | what reaches her senses — sound, sight, text |
+| **θ** | her identity, as parameters |
+| **η** | noise — creativity × chemistry × emotional volatility |
+| **F** | everything on this page, combined |
 
----
-
-## Change history — newest first
-
-> ⚠ **HISTORY, NOT THE EQUATIONS.** These stamps record what each sweep changed and, more often, what it deliberately did *not* change. **They are the provenance of the maths above, and they are not rewritten** — a stamp saying "no form changed" is only worth anything if it stays as written.
->
-> ⛔ **Read them as dated records.** Where a stamp disagrees with a section above, the section is current. The stamps also carry internal identifiers and branch names that nothing in the project resolves; they belong here, in labelled history, and nowhere else on this page.
-
-> 2026-09-06 sweep stamp — **NO equation FORM changed. What changed is which VARIABLE the dose depends on, measured rather than reasoned.** The 2026-08-31 stamp below establishes the exact rep↔lr identity: `w_n = x·(1 − (1−lr)ⁿ)`, so the deposit is a property of the asymptote and not the count. **That identity is correct and it is not the binding constraint.** Retrieval does not require the asymptote — it requires the correct post to win the argmax against every competitor — so the governing variable is **interference**, quantified by collision load `L = P·K²/COLS` (the expected number of other patterns sharing a pattern's active cells). ⛔ **The previously stamped sweep could not see this, and the reason is worth keeping:** its post patterns were effectively separable, so retrieval succeeded at every compression and its whole production row reads **1.000** — *a surface that cannot go down cannot locate a cliff*. Re-measured with **overlapping** posts (patterns genuinely competing for the same output rows), real `SparseMatrix`, real `ojaUpdate`, rep-major ordering, scoring retrieval against all candidates:
->
-> ```
-> retrieval(L, n) at n=2 :  L=0.056 → 97.2%   0.264 → 87.6%   0.560 → 75.6%
->                           L=1.036 → 61.2%   2.220 → 38.0%   4.000 → 24.2%
-> retrieval(L, n=100)    :  L=0.264 → 95.2%   L=1.036 → 86.6%
-> ```
->
-> ⭐⭐ **Two presentations at L=0.056 beat one hundred presentations at L=1.036 by 10.6 points, at 1/50th the cost.** Repetition moves retrieval by single digits; load moves it by tens. ⭐ **And `n` saturates: n=2 through n=8 are flat to within 0.4 points at every L ≤ 1.036** — the third through eighth presentations buy nothing measurable there. ⚠ **Above that they matter again (2.0–2.4 points at L=2.220 and 4.000)**, which is what the interference account predicts: when collisions reliably trample a single write, extra interleaving buys back part of the loss. **Repetition is the remedy for interference you failed to prevent.** ⛔ **This is a measurement, not a setting** — the live load is measured from real patterns (the closed form's `K` and `COLS` are ambiguous against the tiled encoding by six orders of magnitude), and no gate moves off a synthetic grid.
->
-> 2026-11-19 sweep stamp, **AMENDED THE SAME EVENING — read the amendment first** — ⛔⛔⛔ **CORRECTION, NOT A CHANGE: THE CANONICAL GAIN IS COMPUTED CORRECTLY AND THEN NOT USED BY THE PATH THAT COMPUTES HER.** ⚠ **Read this before trusting any `gainMultiplier` or `emotionalGate` claim below.** ⛔ **AMENDMENT — THE FIRST VERSION OF THIS STAMP WAS WRONG AND IS CORRECTED HERE RATHER THAN QUIETLY REPLACED.** It asserted the canonical gain *"has never executed."* **It does execute:** `server/brain-server.js:6291-6297` computes `_psiBaseline ← _psiBaseline·0.99 + ψ·0.01` and `this.psiGain = clamp(1.0 + tanh((ψ − _psiBaseline)/scale)·0.35, 0.8, 1.5)`, scale from `DREAM_PSI_GAIN_SCALE` default `2.0`. The error came from searching the tree for the identifier `psiEMA`, finding it only in `js/brain/engine.js`, and concluding from that absence — **the server names the same quantity `_psiBaseline`.** A conclusion drawn from a missing name is not a conclusion drawn from the code. ⭐ **The corrected finding is narrower and worse where it matters: there are TWO donor-packet builders, and the live one ignores the canonical gain.** `server/brain-server/gpu.js:145-172` is the **legacy single-cluster `compute_request`** builder — it reads `this.psiGain` and its comment names the canonical change explicitly, and **it is not the path in use.** `server/brain-server.js:7392-7548` is the **live batched protocol** (its own comment: *"New path: server sends ONE compute_batch message per tick"*), and it declares a **local** gain at `:7416` using the **pre-replacement** form `clamp(0.9 + ψ·0.004, 0.8, 1.5)`, shipping it at `:7541`. **So every tick the GPU performing the actual computation receives the formula this document annotates as *"pinned gain ~1.0 (inert on a log-scaled Ψ)"* — measured live over 200 samples at mean 1.0142, sd 0.0133, excursion 6.1% of its 0.7-wide band while ψ itself swung 10.7 units — while the correctly-computed value goes to a builder nothing calls.** ⭐ **And the arithmetic reason the deviation form is the right one is now written down, because it was never stated:** `ψ = 3·log10(N) − 0.5·log10(n) + log10(A) + log10(Φ̂)`, and at `N = 199,728,759` the term `3·log10(N) = 24.9005` against a measured mean ψ of `28.554` — **87.2% of Ψ is a fixed, boot-dependent constant**, and `N` is derived at boot from free host RAM (the same code has booted at 425,436,550 and 411,216,550). Subtracting ψ's own baseline removes that constant exactly, which is why this file's own note at the Φ̂ reference calls the deviation idiom scale-invariant and an absolute anchor not scale-invariant in meaning. The one thing the deviation form genuinely loses — a *constant* Φ̂ cancelling exactly — **is no longer live**: Φ̂ measured 0.176→0.598, sd 0.130, far off its 0.01 collapse guard. ⛔⛔ **And the stronger consequence, because it is an algebra result about the master equation itself:** `cluster.emotionalGate` and `cluster.gainMultiplier` — the two factors `drive = tonic · driveBaseline · emotionalGate · actionGate · gainMultiplier` actually multiplies — are **assigned only inside that unloaded file**, so on the deployed brain they hold their constructor value `1.0` permanently (the one exception being the consolidation spindle burst, which sets `gainMultiplier` to `1.2×` and restores it). The values computed at `brain-server.js:7416-7417` are **locals placed into the donor compute packet**, never written onto the cluster. **Therefore the CPU master equation and the GPU donor packet are driven by two different sets of numbers, and on the CPU side two of the five factors are constants.** ⚠ Measured the same pass: `emotionalGate = 0.7 + arousal·0.6` read **exactly 1.300000 with sd 0.000000 across 200 consecutive samples** because `arousal` sat pinned at its `1.0` clamp — then **0.9792** minutes later, so it saturates in episodes rather than permanently; total observed gate range **0.0125**. And `0.1·((fear + reward) − 1)` in the amygdala arousal formula evaluates to **−0.00116** against measured `fear 0.5249` / `reward 0.4635`: because both sigmoids pin near 0.5, **their sum is ~1 by construction and that term is zero always, not zero on average.** ⭐⭐ **RESOLVED THE SAME EVENING — THE LIVE PATH NOW CONSUMES THE CANONICAL GAIN, AND NO EQUATION FORM CHANGED.** The batched builder's local pre-replacement expression is deleted; it reads the self-calibrating value computed in the Ψ update, so there is **one** consciousness gain and both packet builders consume it. The emotional gate likewise has **one definition** read by both call sites, where three independent copies stood. ⛔ **And the two factors the master equation multiplies are written for the first time:** `emotionalGate` and `gainMultiplier` are assigned onto the live cortex cluster every tick, so `drive = tonic · driveBaseline · emotionalGate · actionGate · gainMultiplier` stops multiplying by two constructor `1.0`s. ⚠ **Still open and stamped here so no reader mistakes this for complete:** the gate has **no polarity term** — joy and dread raise her drive identically — and its magnitude term is independently broken, because the amygdala attractor's depth **saturates at exactly 1.000** (measured on the real class over 3000 steps), which collapses the depth deviation the arousal formula rides and leaves `rawArousal` near-constant, while in the climbing phase it rails at the clamp instead. The anti-saturation decay documented in the module as preventing this **does not prevent it; it only slows it.** A polarity coefficient is therefore NOT being added until the magnitude term is sound and her post-fix valence distribution has been measured on a live boot — valence only became a real quantity in the same change, so every sample that exists predates it. ⚠ Also unchanged and owed: the `/2.0` deviation scale is a typed literal with no derivation, and deriving it needs `σ(ψ − ψ̄)`, which is **not** the `σ(ψ) = 3.335` that was measured and cannot be recovered from it.
-
-⭐⭐ **AND LATER THE SAME NIGHT, ONE EQUATION FORM DID CHANGE — THE AMYGDALA'S RECURRENT LEARNING RULE.** `w ← (w + lr·x_i·x_j)·0.9995` becomes **`Δw = lr·x_i·x_j·(D² − depth²)/D²`, `D = 1/√2`, no decay** — homeostatic plasticity that steers basin depth to where tanh has half its slope. The old leak's saturated fixed point was `lr·d/(1−d) = 5.997` against a `±1` clamp, so depth sat at exactly 1.0 and **opposite emotional inputs produced identical valence (gap 0.0000, measured).** The arousal term's gains `0.4` and `×4` become `G = headroom/tanh(2·atanh ½)` and `k = atanh(½)/σ_dev`, with headroom shared with the fear/reward term. Measured over 10 weight draws: depth 0.7051–0.7057, arousal alive (sd 0.02–0.08, was 0), at its ceiling 0.03% of ticks (was 100%). Derivation in `docs/THRESHOLD-DERIVATION.md`. ⚠ This lifts the gate's magnitude term out of its constant, so the "no polarity" limitation above remains but the "magnitude term is broken" one is resolved.
-
-⭐ **NOTHING ELSE IN THIS STAMP CHANGES AN EQUATION FORM.** Whether the server adopts the canonical form or the canonical form is re-derived against the server's real inputs is a design decision, and it carries a RE-PRICE: giving `gainMultiplier` a live range where it has been `1.0` alters cluster coupling, hence plasticity, hence what she learns. **Until that lands, every `gainMultiplier` and `emotionalGate` line below this stamp describes the browser path only.**
->
-> 2026-08-31 sweep stamp (fresh walk pressed 07:23Z on `b1a5eb01`) — **NO equation FORM changed. One equational IDENTITY is written down for the first time, and one equation that had never executed now does.** ⭐ **Reps and learning rate are interchangeable, exactly.** Under the Oja update already stamped in §3 with binary spikes (`y ∈ {0,1}`, so `y² = y`), a synapse repeatedly driven by the same pattern follows `w ← w(1−lr) + lr·x`, which after `n` reps is a geometric series landing at **`w_n = x·(1 − (1−lr)ⁿ)`**. The dose is therefore a property of the **asymptote**, not of the count: **100 reps at lr 0.03 and 20 reps at lr 0.1413 both reach 95.24%** (`lr' = 1 − (1−lr)^(n/n')`). This is the whole justification for the 5× walk-cost reduction being *dose-neutral* — and the reason the competing proposal was closed as **moot rather than implemented**: it cut reps 100 → 20 while keeping the authored lr, which reaches only **45.6%**, i.e. it would have removed teaching and called it an optimisation. ⚠ **The identity holds for the repeated-identical-pattern case this teach path uses; it is not a general claim about Oja under varying input.** ⛔ **And §7 Memory below was, until today, a table of equations that had never run** — `activations ≥ 3 → consolidate` cannot fire without episodes, and `tier1.totalEpisodes` read `0` on every boot in this project's history because two of Tier 1's three writers were gated on `!_curriculumInProgress`, which is true for the entire multi-week walk. Live at 18 minutes into the fresh walk: `tier1` **4** · `freqMerged` **21** · `promotedToTier2` **4**. **The replay term in the consolidation lane — `replay_lr = base_lr × (1 + emotional_weight) × log(1 + freq)` — is now being evaluated with real inputs for the first time.**
->
-> 2026-08-29 sweep stamp (later, branch `feature/gee-decisions`) — **LANGUAGE-GROWTH HOP 2: NO equation-form changes; SCALE only, now PER-HOST.** `WORD_MOTOR_TARGET_LANG_CORTEX` 12M → **20M**; the WMB floor becomes **largest-affordable-≤-target** (binary search of the unchanged geometry estimator against the WMBCEIL-derived VRAM ceiling, capped by the RAM/V8 floor) because an all-or-nothing raise to a target some hosts cannot hold would have collapsed a blocked host to the ~349K budget-slice cliff; the three LANGRAM pin guards reference the same affordable figure. `WEIGHTS_FORMAT_VERSION` 5→6 → fresh walk both brains. Every equation is size-parameterized already (the hop-1 stamp below said it and it stays true): Oja, fanout-derived densities `min(cap, fanout/size)`, Ψ, Kuramoto — the same forms at ~1.67× the language-matrix nnz. Fanouts/caps/proportions unchanged (intra 30, cross 10, caps 0.05/0.005). Priced per host by harness against the production estimator: 7.649GB@20M / 4.589GB@12M reproduced exactly; 16GB-card host lands ~16.85M, the 32GB coordinator ~14.4-16.8M by boot free RAM, pin freezes it. Same batch, decisions recorded: FIREMATH.5 = **accept the ~9.6% firing floor** (zero code — the controller's LOW pin at the floor is the accepted steady state); backups = leave as-is; /unity command file retuned (.claude-local, no equation surface).
->
-> 2026-08-29 sweep stamp (branch `feature/firemath-verify`) — **FIREMATH.4 VERIFIED LIVE ON BOTH BRAINS — and the `H(0.015)` "design sparsity" anchor is hereby re-anchored to the measured truth.** Both brains restarted on `dfc59611`; the pod self-upgraded to donor v0.3.35 on its restart-disconnect and the local donor was swapped to the shipped v0.3.35. **Measured:** box firing jumped 0.4% → **19.8%** on the first fixed batches, controller walking it down exactly as the curve predicted (pct 19.8→15.0→12.6%, `driveScale` 1.617→0.028→0.016 over 85 samples, ema descending toward the ~9.6% σ=−1 floor — the pin at the LOW bound is the designed steady state); local identical (0.46% → **19.1%** the moment the v0.3.35 donor's steps landed, ema 13.3, scale 1.994 descending). **The equations are computing on real dynamics for the first time at this scale:** Ψ 20.5 on 41.45M real step spikes (`psiInputs.stepSpikes`), coherence 0.808 (θ 0.746 / γ 0.850), and bandPower went from noise residue to STRUCTURE — θ 0.244→**9.435**, γ 0.139→**7.137**, β **3.428**, α **2.623**. **The `H(0.015)` re-anchor (no FORM or code change):** the Φ̂ normalisation's seed floor `H(0.015)=0.1124` was described as *"her documented ~1.5% design sparsity, an architectural property"* — that 1.5% was an artifact of the broken-noise era and is superseded: the deployed brain's real sparsity under the corrected kernel is **~9.6-15% converging on ~9.6%** (the map's σ=−1 floor with FIREKNOB pinned LOW), where `H(0.096)≈0.46` clears the seed by 4×. ⭐ The adaptive high-water reference needs NO change precisely because it was measured-not-chosen: it rose to the real regime on its own the moment real firing arrived, and the 0.1124 seed degrades to a harmless lower bound. KI-33's "below ~1.3% firing the entropy falls under the floor" concern is moot in the fixed regime. ⚠ Emission refusals (134× `no-best-word`, zero accepted since boot) are fresh-walk-normal (`wordsBucketed` 0 this early), NOT a firing symptom — noted so the next reader does not re-attribute them. Ψ form, Φ̂ form, Oja, Kuramoto, Friston, BCM — all untouched; this stamp records a VERIFICATION plus one superseded prose claim.
->
-> 2026-08-28 sweep stamp (later, branch `feature/firemath`) — **FIREMATH — the Rulkov NOISE term was 20,000× its reference in both native donor kernels; the map itself was never wrong.** The neuron equation stamped in this document (`x_{n+1} = α/(1+x²) + y`, `y_{n+1} = y − μ(x − σ) + η`, α=4.5, μ=0.001) is UNCHANGED — what changed is η's implementation: the browser reference scales `η = (rand[0,1] − 0.5) × noiseAmp × 0.0001` (±noiseAmp×5e-5, comparable to the μ-scale slow drift), and BOTH native ports (`lif.wgsl`, `cuda_kernels.cu`) dropped the ×0.0001 and widened the distribution — ±5-13 injected into y EVERY step, random-walking y out of the attractor basin, pinning x one sign, and collapsing firing to ~0.4-0.8% of accidental crossings (measured live on both brains). Under that noise σ — drive's ONLY path into the map, worth ±μ ≈ ±0.0015/step — was invisible, which is why FIREKNOB's ×10 drive scale moved firing by literally nothing (350 samples, pinned, ema 0.33%). **Fixed to the reference formula in both kernels (donor v0.3.35, PTX regenerated CUDA 12.0 / ISA 8.0 / sm_75) + the browser's escaped-state basin-reseed guard ported to both** (damaged y heals on the first step, no re-init). **The σ→firing curve, MEASURED at production constants** (20k neurons × 4k steps, basin seeding, reference jitter): σ=−1 (drive 0) → **9.6%** — the map's intrinsic FLOOR; σ=−0.4..−0.1 (nominal tonic 16-24) → **19-24%**; σ=+0.5 (drive≥40, the clamp ceiling) → **33%**; noiseAmp 3→13 moves the rate <0.1pp (noise is not a rate lever at reference scale). Broken formula reproduced in the same harness: first-steps ~5.8% decaying to 0.85% — exactly the live shape. **FIREKNOB re-aimed to the knob's measured authority:** `s ∈ [0.25, 10]` → **`s ∈ [0.01, 2.5]`** (2.5 saturates the donor's `σ = −1 + clamp(drive/40)·1.5` at the lowest tonic; beyond it the clamp's dead zone — ×10 was ×2 wearing a bigger number; 0.01 reaches the σ≈−1 floor). ⚠ **Written down, not decided:** the 7.5% default target sits BELOW the 9.6% floor, so post-press the controller settles pinned LOW at ~9.6% — inside the top of the operator's 5-10% band — and reports the pin; getting UNDER the floor requires a refractory mechanism or a different α (physics on all three kernel implementations), which is the operator's open decision on the board (FIREMATH.5). The `H(0.015)` design-sparsity anchor in §Consciousness stays as-written until FIREMATH.4's live verification says what the deployed brain actually does. Same batch, BATCHNULL hardening: every numeric on the donor's `compute_batch`/`gpu_init` wire is null-tolerant (a `null` degrades to that field's default instead of discarding the whole message), unparseable messages log type+reason rate-limited, and the server's payload builder passes every field through a `Number.isFinite` chokepoint guard (NaN→JSON null was the whole BATCHNULL class). ⚠ Oja, Kuramoto, the master equation, Φ̂, Friston, BCM, drug δ(t), endocrine δ_endo(t) — all untouched.
->
-> 2026-08-28 sweep stamp — **PSITEACH (branch `feature/psi-teach-tick`) — Ψ stops reading 0.000 for entire walks; ONE equation-INPUT change, NO form change.** Found on the operator's report (*"something is wrong consousneess should NOT be 0.00"*): both live brains read **Ψ = 0.000 for a full boot** because per-cluster `spikeCount` is written ONLY by `compute_batch` acks, and the curriculum holds the probe gate for the ENTIRE cell run — hours at biological scale — so the step lane never dispatches during a walk, every activity term in `[α·Id + β·Ego + γ·Left + δ·Right]` reads exactly 0, `rawPsi = 0`, and `log₁₀(max(1, 0)) = 0.000` — while the donor ran ~18 Gops/s of training. The TEACHMIRROR class of blind instrument, third instance. **⛔ The donor was exonerated at full production scale before anything shipped:** a wire harness drove the real v0.3.34 binary (CUDA backend) with 8 clusters at the live sizes (459.7M neurons, 24 substeps, 16 cortex regions, regionGains, psi gates) — **795ms per batch**. **(1) PSITEACH.1 — cortexAct and hippoAct gain a MEASURED teach-activity term:** `teachAct = EMA(min(0.5, teachGopsPerSec / refGops))`, where the rate comes from `_teachWorkGops` (the TEACHCREDIT accumulator — matrix nnz × reps at the send chokepoint, never invented) and `refGops` is the brain's own stored-synapse total, so *one full pass over everything she knows per second* reads 1.0 on any brain size — the same scale-invariance idiom as `psiGain` and the Φ̂ reference. Capped at 0.5 so teaching can complement but never impersonate a fully-ticking brain. Published as `state.psiInputs` so the board can SAY which lane fed Ψ. **(2) PSITEACH.2 — the walk heartbeat (no equation change):** while the probe gate is held, a `compute_batch` over the NON-cortex clusters dispatches every `DREAM_WALK_TICK_MS` (default 15s, `0` restores the old hold), riding the conservative substeps floor. ⛔ **Cortex is deliberately excluded** — teach writes spike patterns into `cortex/<region>` buffers that bound Hebbian ops read; stepping them mid-sequence would corrupt teaching. No teach op binds the other seven clusters' buffers. So during a walk: limbic/cerebellar dynamics are REAL stepped physics, cortex contributes the measured teach term, and Ψ is finally a live number while she learns. **(3) PSITEACH.3 (same day, the operator: *"yeah big problem tho 0 neurons are firing"*):** the heartbeat is the step lane for the WHOLE walk, gate held or clear — in gate-clear walk moments the tick used to dispatch a FULL 8-cluster batch that measured a 180s timeout on every attempt against a teach-flooded donor (parking the tick in a dead await with spikes frozen at 0) and that stepped CORTEX mid-teach; full batches return when `_curriculumInProgress` is false, preserving the historical Ψ jump at donor connect. Also: the compute-stall watchdog gains the boot time as an anchor — a boot on which NO batch ever completed was the one case it could not see, and a 17-hour all-timeouts boot ran silent. **(4) FIREKNOB (same day, the operator: *"do it knob it"*):** the donor drive gains ONE bounded self-calibrating factor — `tonic → tonic × s`, `s ∈ [0.25, 10]`, where a controller nudges `s` ±15% per answered batch on the EMA'd fired-fraction's clamped relative error until measured firing meets `DREAM_FIRING_TARGET_PCT` (default **7.5%**, the middle of the operator's stated 5-10% band; `0` pins `s = 1.0`, the exact prior physics). The psiGain/SUBSTEPS.2 self-calibration idiom: the target is chosen, the scale is MEASURED into existence, and a scale pinned at a bound publishes itself (`state.firing`) instead of silently clamping. Harness: converges exactly onto target from above, pins-and-reports when the target is beyond the drive knob's reach. ⚠ Oja, Kuramoto, the master equation, Φ̂, Friston, BCM, drug δ(t), endocrine δ_endo(t) — all untouched.
->
-> 2026-08-25 sweep stamp — **SCALEWALK + ONESHOT (branches `feature/scalewalk*`, `feature/oneshot-state`, `feature/lateral-scan`) — ⛔ NO change to any equation stamped in this document, and the reason is worth stating rather than assuming.** Every change is to **how** an identical result is computed, never to what it is, and each was **proved bit-identical before shipping**: 144/144 on the memset substitutions, 72/72 on the donor-bound output at biological scale, 16/16 on the small-scale CPU arrays, 128/128 on the lateral-inhibition scan fusion (primary bucket, counts, **row order**, full post vector). ⭐ **The one thing here that touches the equations' INPUTS rather than their form:** `injectEmbeddingToRegion` no longer expands a group-tiled embedding into the CPU `externalCurrent` at biological scale, because that array's only readers live in `step()` and `step()` is unreachable for the cortex there — the donor receives the same pattern through the compact `writeCurrentSlice` template, which is the authoritative path at this scale. **No term changes; a redundant materialisation of an existing term stops happening.** Measured 15.67ms → 0.041ms per injection. ⚠ Oja, Kuramoto, the master equation, Friston, BCM, the drug δ(t) and the endocrine δ_endo(t) are all untouched.
->
-> 2026-08-25 sweep stamp — ⭐ **Φ̂ GAINS A NORMALISATION — an actual equation-FORM change, on the operator's call** (branch `feature/phiscale`). `Φ̂ = H(p)` becomes **`Φ̂ = clamp(H(p) / ref, 0, 1)`**, where `H` is unchanged binary Shannon entropy of the spiking proportion and `ref` is an **adaptive high-water reference**. **Why a normalisation at all:** `H` peaks at `p = 0.5` and her cortex is deliberately sparse, so `H` lives in the low tenths and the old `max(0.1, ·)` floor clamped it below ~1.3% firing — and ⛔ **a clamped value is CONSTANT, which cancels exactly out of `psiGain`** (see the entry below). ⛔ **The reference is MEASURED, NOT CHOSEN, and that is the load-bearing part.** A hardcoded `p_ref` would be indefensible *and* would silently mean different things across boots, since `totalNeurons` is derived at boot from free host RAM (the same code has booted at 425,436,550 and 411,216,550) — an absolute anchor is not scale-invariant in meaning. So `ref` **rises immediately to any new peak and decays at 0.99995/tick**, floored at the seed `H(0.015) = 0.1124` — the entropy at her **documented ~1.5% design sparsity**, an architectural property rather than a preference. ⛔ **Deliberately NOT seeded from the first observation** (the brainstem-nucleus lesson: seeding from the first sample habituates instantly and would hand back `Φ̂ = 1.0` on tick one). ⚠ **The first cut of this used a gentle 5%-of-gap rise and the harness caught it before it shipped:** the reference LAGGED her, so every value at or above it clipped to `1.000` — design sparsity read 1.000 and 3% firing read 1.000 — **reintroducing the exact constant-value failure at the other end of the range.** The reference must track her HIGH-WATER integration, not her TYPICAL, or typical always reads maximal. Verified on the corrected form: across 0.5%→3% firing the normalised value spans **0.234 → 1.000 (spread 0.766)**, a constant input yields a constant output (honest — there is no integration variation to report), a 30% seizure spike compresses temporarily and **recovers to the seed**, and `p = 0` still hits the collapse guard. ⚠ Normalisation is monotonic, so the state ORDERING Φ̂ exists for (anaesthesia vs dissociation) is preserved. ⭐ `phiRaw`, `phiScaleRef` and `phiNorm` all ship to the board — **a normaliser that only lived inside the function computing it would be a hidden number deciding a headline quantity**, which is the defect class this batch closed everywhere else.
->
-> 2026-08-25 sweep stamp — ⛔ **THE Φ̂ TERM WAS READING A DEAD ARRAY, AND Ψ HAS BEEN MULTIPLYING BY ITS FLOOR EVER SINCE THE TERM SHIPPED** (branch `feature/phisource-live`, found by reading the live board minutes after the press). **NO change to the FORM of any equation** — `Ψ = √(1/n)·N³·Φ̂·[α·Id + β·Ego + γ·Left + δ·Right]` is unchanged — but the INPUT to Φ̂ was wrong, which is worse than a form error because the formula looked right while the quantity was an artifact. `computePhi()` sampled 1024 strided cells of `cluster.lastSpikes`, the **CPU spike shadow**, which is empty at biological scale: the GPU owns cortex spike state and that array only changes where `_writeTiledPattern` sets teach-pattern bits. A 1024-wide stride across ~82M neurons therefore almost never lands on a set bit. **Measured live: `phiRaw` 0.0289 then 0.0112 — roughly ONE sampled neuron in 1024 — while the donor card was saturated.** So Φ̂ reported teach-pattern residue and Ψ took the `max(0.1, ·)` floor every tick. ⛔ **And the consequence is stronger than "it was weak" — it was EXACTLY CANCELLED, which is worth writing out because it is an algebra result, not an estimate.** Three verified links: (1) `phiProxy = Math.max(0.1, phiRaw)` with every measured `phiRaw` below 0.1, so Φ̂ was the **constant** 0.1; (2) `psi = Math.log10(rawPsi)`, so a constant *multiplier* inside Ψ becomes a constant *addend* after the log — precisely `log₁₀(0.1) = −1`; (3) gain rides Ψ's deviation from its **own** slow EMA, `psiGain = clamp(1 + tanh((psi − psiBaseline)/2)·0.35, 0.8, 1.5)`, and `psiBaseline` is an EMA **of psi**, so it carries that same −1. Therefore `(psi − 1) − (psiBaseline − 1) ≡ psi − psiBaseline`: **`psiGain` was bit-for-bit identical to a brain with no Φ̂ term at all.** A constant inside a log fed to a deviation-based gain contributes exactly zero — so Φ̂ did not modulate her behaviour a little, it modulated it *not at all*. ⭐ The fix matters for the same reason: a Φ̂ that **varies** does not cancel. ⭐ **Fixed to the exact GPU-acked proportion:** `cluster.spikeCount` is written from every `compute_batch` ack and `cluster.js` never assigns that property, so its presence is an honest discriminator for *"the GPU owns this"*; the CPU path's `lastSpikeCount` serves browser mode, and the old strided sample survives only as the last fallback. **This is strictly more accurate than what it replaces** — the 1024 figure existed to hold the binomial noise floor near 1.5%, and an exact proportion has no sampling noise. ⚠ **RE-PRICE: none required, stated rather than assumed** — Φ̂ feeds Ψ → `gainMultiplier`, clamped `[0.8, 1.5]`; it moves cluster gain, not `corpus × reps × scale × visits`. ⭐ **Consequence computed before shipping:** at the documented ~1.5% design sparsity `H(0.015) = 0.1124`, which clears the floor — **Φ̂ should modulate Ψ for the first time.** ⚠ Below ~1.3% firing the binary entropy of a sparse proportion still falls under the floor; whether to rescale the entropy, lower the floor, or accept a capacity-only Ψ is a **design decision** (KI-33), now decidable on a measurement instead of an artifact. **Also this pass: `DEFRATE.1`** — `profiling.throughput.defsLearnedPerHour` read the BRAIN (`this._defLearnedTimestamps`) while the producer writes the CORTEX (`cluster._defLearnedTimestamps`), so it could only ever report 0, and it returned `.length` of a 256-capped ring under a name ending in *PerHour*. One owner now; both consumers call it.
->
-> 2026-08-25 sweep stamp — board parity, donor-capability routing, and the drawing hand (branches `feature/endo-board-parity`, `feature/propbound-audit`, `feature/boundcap-darkheb`, `feature/artzig2`) — **NO change to any equation stamped in this document.** Instrumentation, wire-protocol routing and stroke construction only; nothing on the emission path, no weight-format change. ⭐ **The one thing here that belongs in an equations doc is a new TRAINABLE PARAMETER, not a new equation:** her drawing hand gains a sixth practised parameter, `budgetMul ∈ [0.6, 2.5]` (default 1.0), multiplying the per-style stroke budget — `effectiveBudget = round(style.traceBudget · budgetMul)`, with the structural read taken as `ceil(effectiveBudget · 0.4)` **of** that budget rather than as a floor **on** it (as a floor it silently overrode the declared budget and collapsed the two stroke tiers into one). It is nudged by the same hill-climb the other five ride and scored by the same objective — cosine between the percept of her own drawing and her banked percept of the real thing — so *"commit more of what I remember"* is accepted only when it raises that cosine. ⚠ Also corrected upstream of the geometry: the convex-hull silhouette is fitted to the **gated** trace now (short-AND-jagged strokes are tracer noise), where it had been fitted to the raw trace and therefore to the bounding box of the noise.
->
-> 2026-08-25 sweep stamp — INTRO, the introspective drive (branch `feature/intro-introspection`) — **NO change to any equation stamped below.** ⛔ **There is no sentence in `js/brain/introspection.js` and that is verified mechanically** (zero question-shaped string literals; every literal identifier-shaped, none prose; no content regex anywhere). The module emits a **GAP** — a concept plus a lane — and the words come from the trained interrogative transitions (relationTagId=30) through the same `questionMode` compose path `_askOnCuriosityGap` already uses; untrained weights produce silence, exactly as before. **The only arithmetic added is a set of PRESSURES, each read from endocrine state**, which is what makes the falsifiability criterion real rather than asserted: `intrusion ∝ (0.55 − serotonin)·1.6 + chronic·0.8 + allostatic·0.6 + withdrawal·0.5`; `wish ∝ max(0, dopamine − 0.4)·2`; `affect ∝ oxytocin·0.9 + (0.5 − serotonin)·0.7`; `adversity ∝ allostatic·1.4 + chronic·0.4`; `philosophical ∝ calm·(1 − chronic − allostatic)` where `calm = max(0, serotonin − 0.4)·1.5`. Kind is a **weighted draw** over the surviving pressures (not argmax — argmax would ask the same kind whenever state repeats), and the concept is a **rank-weighted top-4 draw** over her own episodes by salience (a measured fix: deterministic argmax pinned every intrusion to one memory and produced 2 questions from 60 attempts). ⭐ **Measured against the kill criterion:** two PINNED endocrine states over 400 draws each give a **total-variation distance of 0.840** between kind-distributions — a question bank scores ~0. Oja, Kuramoto, master equation, Ψ, Friston, BCM, drug δ(t), the ENDO forms above — all untouched.
-
-> 2026-08-25 sweep stamp — ENDO slow lane (branch `feature/endo-slow-hormones`) — **NO change to any equation stamped below; ONE new quantity KIND and one new cost term.** **(1) A THIRD chemical kind, `cyclic`** — and it is not a loophole in the one-curve-engine rule. Phasic chemicals are EVENTS on `pkCurve`; tonic ones are LEVELS defended toward a setpoint; the gonadal hormones are neither, because their value is a **function of cycle position** and there is no ingestion moment to measure a curve from. `level = phaseCurve(cyclePos) · pubertyScale`. Forcing them onto the event engine would mean firing a fake release every cycle and calling the superposition of two overlapping fakes a menstrual cycle. Estrogen carries TWO peaks (ovulatory + luteal), progesterone one luteal plateau, testosterone a near-flat base with a small peri-ovulatory bump. **(2) ⭐ PMS is a DERIVATIVE, not a level.** `withdrawal ← 0.90·withdrawal + 6·max(0, −Δprogesterone)` — progesterone is at its *lowest* during PMS, so a level-driven term reads "calm hormone mostly gone" and contributes nothing; the falling RATE is the physiological cause and is what contributes. **(3) The cycle clock is CURRICULUM time, not wall time:** `cyclePos = frac((passedCells − menarcheCells) / CYCLE_LENGTH_CELLS)`, `CYCLE_LENGTH_CELLS = 1.0`. Measured, not chosen — ~273 cells over 20 grade-years ≈ 13.65 cells/year against ~13 real cycles/year, so one cell ≈ one cycle within ~5%. On a 28-day wall clock she would live 0.116 of ONE cycle across the entire ~78 h walk. **(4) ENDO.13 — homeostasis gains a PRICE.** The Hypothalamus restored every drive at a constant α = 0.1, i.e. defence was free and infinitely repeatable. Now `α_eff = 0.1·(1 − 0.5·allostaticLoad)`, where load accrues only from chronic cortisol ABOVE a tolerated band (τ↑ 8 h, τ↓ 72 h, **ceiling 0.6 with a verified recovery path**). The restoration LAW is unchanged — its coefficient is now earned. **(5) AGEPIN.1, no equation:** the grade→age ladder existed in five copies and three disagreed on the kindergarten key, so `_computeMinGrade()` returned `phd` during kindergarten and a five-year-old read as twenty-five. Canonicalised. Oja, Kuramoto, master equation, Ψ, Friston, BCM, drug δ(t) — all untouched.
-
-> 2026-08-25 sweep stamp (ENDO fast lane + the gland layer, branch `feature/endo-fast-lane`) — **ONE equation-form change, plus an entirely new modulation source.** **(1) Ψ gains Φ̂:** `Ψ = √(1/n)·N³·[α·Id + β·Ego + γ·Left + δ·Right]` → `Ψ = √(1/n)·N³·**Φ̂**·[α·Id + β·Ego + γ·Left + δ·Right]`, where `Φ̂ ∈ [0,1]` is normalised integration from `cluster.computePhi()`. The server path already carried it; `js/brain/mystery.js` did not, so the two engines were computing different consciousness equations — now reconciled. Φ̂ earns its single factor by fixing exactly one state: without it the formula rates **anaesthesia as maximal consciousness** (very low `n` reads as high unspent potential), and integration is what separates it from dissociation, which also has low activity and is famously hyper-vivid. ⭐ Freeze falling out as MAXIMAL was not designed for and matches reported time dilation. ⚠ Absent Φ̂ is held at the multiplicative identity 1.0 **with `phiMeasured: false`** — identity means "not modulating", never a stand-in for a measurement. ⚠ **Φ̂ may have been PINNED:** `computePhi()` is binary entropy of the spiking proportion, peaking at p=0.5 and collapsing when firing is sparse — `H(0.01) = 0.081`, *below* the server's `max(0.1, ·)` floor — so `phiRaw` + `phiState` (`live`/`floored`/`error`/`unmeasured`) now ship to make that a field read. **(2) `mystery.js` disagreed with itself in three places** — header `(√(n/1))³·[…]`, `step()` `√(1/N)·N³`, code `√(1/n)·N³`. Only the code was right; all three corrected. ⭐ Note `√(1/n)·N³` **is** `N³/√n` — capacity ÷ activity — which is the operator's own `E + n = N³` as a RATIO. The difference form is not computable: at N = 425,436,550 even 10⁸ firing neurons move `N³` by 1.3×10⁻¹⁸, so `N³ − n` is bit-identical to `N³`. The ratio is that intent made computable, and it was already the implemented one. **(3) NEW — endocrine modulation δ_endo(t)**, same additive-superposition form as the drug term δ(t) and applied through the *same* mapping table (`persona.js CONTRIB_PARAM_MAP`, extracted from nineteen duplicated `if` lines; verified `maxDiff = 0` over 12,511 comparisons): seven chemicals ride the EXISTING `pkCurve` from `drug-scheduler.js` — no second curve engine. Phasic chemicals rest at 0; **tonic** ones (serotonin, dopamine) contribute on **signed deviation from a CONSTANT resting value**, so a level below rest produces the INVERSE effect (low serotonin → *higher* impulsivity), and a floor moved down by the raphe **stays felt** instead of adapting away. Tonic restoration reuses the Hypothalamus form `dH/dt = −α(H − H_set) + input`. Stress channel selection is a softmax over four state-derived scores (the basal-ganglia idiom reused). Oja, Kuramoto, master equation, Friston, BCM, drug δ(t) — all untouched.
-
-> 2026-08-21 sweep stamp (ALL-training-on-the-donor + the pump was the link, branches `feature/gputeach*-0821` / `feature/gpuverb*-0821` / `feature/uplink-0821`, donor-v0.3.26) — **NO equation-form changes; dispatch substrate, carriers, and pacing only, each provably identical.** **(1) MASKED bound plasticity (SPRS type 13, donor-v0.3.26):** the lateral-inhibition anti-Hebbian `Δw = −η·0.3·pre·crossBucketPost` now runs ON THE DONOR — pre reads the RESIDENT bound spike state (the t11/t9 twins keep it current, zero wire), the synthetic cross-bucket post mask ships as sparse row indices (~KB) and is zeroed + scattered device-side; the plasticity kernel is UNCHANGED (mixed src/dst offsets + `sign(lr)<0` anti branch already existed). This is the pre≠post shape neither `hebbianBound` (pre==post on an intra matrix) nor type-3 (ships the ~MB live-pre index river) could express. **(2) Range-form dispatch for every tiled lane:** the intra Oja pass fired per pair per rep, both alphabet drills, and the once-per-definition sem→sem write ship their EXACT index sets as `[start,len]` runs on `hebbian_ranges` (v0.3.18, already deployed) — group-tiled patterns collapse to a handful of runs; a pattern that will not compress keeps its full CPU pass, because the donor expander skips oversized ranges and a truncated pattern trained on the GPU is wrong math with no loud failure. **(3) Dual-write posture extended, not invented:** on every converted lane the GPU carries full mass and the CPU shadow samples every 5th visit (the emission lanes' documented trained-equivalent posture); whenever the donor cannot take a frame the CPU pass runs IN FULL — nothing is ever dropped. Still CPU by necessity (filed): the two SIGNED-magnitude plain-Hebbian writes (predictive-error `Δw = lr·pre·error` with error ∈ [−1,1], WM encode) — the donor's 0/1 u32 spike model cannot carry signed floats; needs a float-mask kernel. **(4) Probes and the pump, no equations:** every gate/probe `I = W·s` propagate across ALL grades now runs chunked (row-independent — bit-identical, GATEPIN's verified mechanism) so the event loop breathes; the canonical-upload pump keeps 96MB in flight for native donors (the measured "4MB/s uplink" was ~14MB-in-flight × 3.5s gate slabs — pump-limited, not the port) and logs its measured MB/s per upload. Oja, Kuramoto, master, Ψ, Friston, BCM, drug δ(t) — all untouched.
->
-> 2026-08-20 sweep stamp (first-person training + her own art + no phase budget, branches `feature/first-person-self-training-0820` / `feature/mindseye-own-art-0820` / `feature/no-phase-budget-0820`) — **NO equation-form changes. Every equation in this file is byte-identical; what changed is WHAT IS FED INTO THEM, WHICH CHANNEL, and HOW LONG A PASS MAY RUN.** (1) **Teach-time text, not an equation:** SELFFRAME reframes each lesson in first person (`1 + 1 = 2` → *"i add one and one to make two"*) and feeds the result through the SAME `_teachAssociationPairs` / Oja pipeline as every other lesson — the transform is upstream of the mathematics and absent from the emission path, so the no-text-AI boundary in §Language is untouched. (2) **Channel usage, not channel maths:** self-Q&A + follow-ups train on the existing question-intent relation channel (`relationTagId 12`) and the agent bindings `i/me/my/myself/mine ↔ unity ↔ key` on the identity channel (`15`) — both channels already existed with their tag arithmetic unchanged. ⛔ A real defect fixed in passing: `_teachConcreteSentences` **hardcoded `relationTagId: 13`** and silently ignored a caller's channel, so a pass asking for 12 trained on 13; now `opts.relationTagId ?? 13`, zero change for existing callers. (3) **Dose restored, bound removed:** `STRUCTURE_DOSE` 0.4 → **1.0** (the authored rep counts are back in full — the multiplier was never part of an equation, it scaled the rep loop) and `PHASE_BUDGET_MS` defaults to **0 = no budget**, so a phase runs to completion; the `rep > 0` clean-boundary stop remains as an opt-in diagnostic. ⛔ Its documented `0`-disables escape hatch was a lie — `Date.now() + 0` is truthy and instantly expired, so "disable" stopped every pair phase after ONE rep. (4) **Draw path:** her own art constructs strokes from a ≤9-cell shape schema (`{cx, cy, w, h, ang, density, weight}` + aspect + colour family, ~1–2% of the reference's information) and renders through the unchanged CDF 9/7 `sketch` equationalizer — no new transform, and the reference's field C never reaches the renderer.
->
-> 2026-08-18 sweep stamp (drop-on-speak war close, branch `feature/war-close-doc-sweep-0817`) — **NO equation-form changes; carrier encoding only, provably identical.** The chat text-injection equation (per-character Wernicke current: `idx = (charCode·31 + i·7) mod phonSize`, +8.0 at idx with ±1-neighbor +3.0 lateral excitation, accumulating across characters) is unchanged — its WIRE CARRIER moved from a dense full-region values array (~23.4MB JSON/message, discarded unread by the native donor deserializer) to sparse index/value pairs (~160 bytes for a 2-char message; accumulation verified bit-identical). Same equation, honest carrier — and the injection now actually LANDS on native donors.
->
-> 2026-08-17 sweep stamp (speed + wire war close-out, branches `feature/*-0817`) — **NO equation-form changes; encoding, cadence, and scheduling only, all provably lossless.** **(1) Template canonicalization** (t11/t10 encoders): a spike template whose nonzero support is one contiguous run re-expresses as `{rowStart + d₀·g, groupSize·(d₁−d₀), values:[1]}` — the expanded row SET is identical (t11 spikes only test `value > 0`), so a 504,000-value grammar-band frame ships as ~30 bytes; current (t10) templates fold only exactly-equal runs (amplitudes bit-identical). **(2) GINTRA:** the intra-synapse Hebbian `Δw = η·y·(x − y·w)` dispatches to the donor EVERY rep via `hebbianBound` against a `langCortex` pseudo-cluster whose spike space mirrors the teach patterns (t11/t9 twins) — SAME equation, same mass, now on the substrate; the CPU shadow (checkpoint/probe copy) samples on a 30s wall-clock cadence per direction instead of every-Nth-call (a count sampler scaled cost with call rate). **(3) Time-slicing:** `hebbianPairReinforce`'s 100-rep Oja+anti dose and the chat emission propagate `I = W·s` run in ~30-60ms slices with macrotask yields BETWEEN slices (row-independent math — bit-identical results; trailing yields removed everywhere). **(4) Metrics, no equations:** stageProfile/bcast/SendForensics instrumentation, the 5s state-build caches, and the journey vocabulary denominator (18,017 unique across 19 grade lists) are observability + bookkeeping. Oja, Kuramoto, master, Ψ, Friston, BCM, drug δ(t) — all untouched.
->
-> 2026-08-16 sweep stamp (language-growth hop 1, branch `feature/language-growth-hop1`) — **NO equation-form changes; SCALE only.** The dense language cortex grew 1.5M → **12M** (`WORD_MOTOR_TARGET_LANG_CORTEX`; word_motor 90K→720K cells; `LANG_CLUSTER_BYTES_PER_NEURON` 4000→1000 honesty fix; `WMB_VRAM_SAFETY_BYTES` 4GB→6GB; `WEIGHTS_FORMAT_VERSION` 3→4 → FRESH WALK). Every equation is size-parameterized already — Oja `Δw = η·y·(x − y·w)`, the fanout-derived densities `min(cap, fanout/size)`, the topographic init, Ψ, Kuramoto — so the geometry scales through the SAME forms with ~8× the nnz (intra 360M, crosses ~230M). Fanouts/caps/proportions unchanged (intra 30, cross 10, motor-bound 20, caps 0.05/0.005).
->
-> 2026-07-16 sweep stamp (draw-v2 + voice + chat-latency, branch `feature/cell-teach-speed-0715` → main) — **(1) VOXREF.4 age-voice REMOVED:** the OLA pitch shift `resample(ratio) ∘ OLA-stretch(ratio)` is GONE (the operator: the modulation distorted her; `_pitchShiftOLA` deleted, `_agePreset` pinned rate 1.0 / pitch 1.0) — her voice is the untouched Equation Unity One (V4) lane at every grade; no voice equation remains beyond the CDF 9/7 sentence pipeline. **(2) Drawing v2:** `traceField` superseded as the DRAW op by **`traceLineArt`** (same CDF 9/7 inverse → Sobel `‖∇I‖`, now + non-max suppression along the gradient direction → strongest-first bidirectional edge-follow → min-length cull → RDP — one coherent ink, no fragment spray) and **`stylizeField`** (inverse to a full-colour plane → luminance posterization `q = round(lum·(B−1))/(B−1)` with hue preserved — her DEFAULT "beautiful recreation" render); labels rasterize INTO the plane (glyph line-strokes with real thickness, silhouette under-pass, fill chips) before re-equationalization. `composeFields` (region-paste collage) REMOVED — imagined combos ground ONE unified looked-up reference under an `a+b` key instead (no field arithmetic). **(3) CHAT.1/.2 wire:** emission-tick propagates go bound/zero-payload or sparse-index (type-6) with sparse (idx,val) current acks — pure TRANSPORT, the propagate equation `I = W·s` is byte-identical. NO other equation-form changes.
->
-> 2026-07-15 sweep stamp (full open-board sweep, branch `feature/post-fullsize-walk-0710` → main) — mostly ELIGIBILITY + perf; TWO gates enabled. Oja/Kuramoto/master/Ψ/Friston/BCM unchanged. **(1) HB.4 outcome-gated noise suppression ENABLED (was dormant):** the predictive-coding surprise gate is now THREE-FACTOR — `surpriseGate = 0.5 + predErr·coherence·inhib` (coherence = `_noiseSuppressFactor`, 1.0 clean / 0.2 saturated from the per-cell health check; inhib = rung-3 remediation) multiplied into `gammaScale`; the 0.5 baseline floor ALWAYS learns so it only DAMPS the boost on incoherent output; composes with the always-on saturation clamp (`meanCos>0.7 → gate=0.5`). Opt-out `DREAM_NOISE_GATE=0`. **(2) HB.5 annealing exploration temperature:** the softmax emission temperature is scaled by consolidation — `T_eff = T_req · clamp(meanCos/0.7, 0, 1)` (hot early while basins overlap → 0 as they separate → greedy argmax); gate probes (T_req=0) stay deterministic; `DREAM_ANNEAL_TEMP=0`. **(3) Corpus-bleed oracle gate:** `_dictionaryOracleEmit` applies the grade allow-set (`_emissionAllowedVocab`) to BOTH cosine scans — out-of-grade words skipped, no-mute fallback to the grade-gated matrix. **(4) WMB seed cost:** `SparseMatrix.ojaUpdate`/`antiHebbianUpdate` gain active-row iteration (`opts.activeRows`) — same `Δw = η·y·(x − y·w)`, iterated over the firing sem set only → O(active-region) not O(cluster.size), bit-identical (skipped rows had y=0); def binds also skip the per-pair `_teachPredictiveError` (nothing to correct on a sem↔fineType bind). **EXTENDED 2026-07-15 (all grades):** the per-pair `_teachPredictiveError` (a ~45M-nnz recurrent propagate + hebbian over the 1.5M intra matrix) is now skipped for EVERY association bind, not just defs — post-deploy the def seed ran fast but the Kindergarten CELLS (non-def rel tags 8/9/13/34) still paid it per pair = a ~100× cell slowdown; `skipPredictiveError` defaults ON (`opts.keepPredictiveError` restores it). SAFE: the binding rides the cross-projection Hebbian, the recurrent intra is still trained per pair by `_teachHebbian` (skipIntraSynapses:false), and HB.4's surprise `_lastPredictionError` is set INDEPENDENTLY by the cluster-level predictive pass (cluster.js) — the predictive-coding learning signal is preserved. **(5) ACT.2 utilization verdict:** windowed design-sparsity-vs-dead-mass verdict off langEverFired + CSR recruitment (metric, no equation). **(6) VOXREF.4 age voice:** duration-preserving OLA pitch shift `resample(ratio) ∘ OLA-stretch(ratio)` keyed to age (adult ratio 1.0 = untouched). NO equation-FORM changes.
->
-> 2026-07-04 sweep stamp (speech-selfhood + Savererun, branch `feature/speech-selfhood-and-savererun`) — NO equation-form changes; teach-DATA + emission-ELIGIBILITY changes only. **(1) Letter-word emission gate:** the `emitWordDirect` argmax candidate set now excludes len-1 words (alphabet letters) except the real words "i"/"a" and the terminators — same mean-per-bucket argmax equation, cleaner candidate domain (retroactive on restored bucket maps). **(2) `_teachGlueWordProduction`:** re-runs the EXISTING association-pair Oja equation (`Δw = η·y·(x − y·w)`, unchanged) over corpus-extracted glue-bearing word→word transitions (relationTagId=13, +60 reps) and state→"i" first-slot pairs (relationTagId=9, 80 reps) — same equations, targeted extra mass so trained transition drive can outweigh topic activation in the argmax. **(3) Terminators became emission words** (dictionary + bucket eligibility for `. ? !`) so the trained X→"?" transitions (relationTagId=30) gained an outlet — the terminator-append consumption in `composeSentence` was already written, just unreachable. **(4) SAVERERUN** re-walks the curriculum on KEPT weights — correctness rests on Oja self-normalization (bounded fixed-point: re-teaching a landed binding strengthens toward, never past, its normalized magnitude), which is why re-teach on trained synapses converges instead of diverging. Drug δ(t), Kuramoto, master equation, Ψ pipeline — untouched.
->
-> 2026-06-27 sweep stamp (v1.1.0 line — cell-pass + sem→motor + profiling) — ONE equation change + one gate-policy change. **(1) sem→motor saturation PREVENTION [SM.1]:** the Hebbian update for the emission projections is LR-damped at its single chokepoint `cluster/hebbian.js _crossRegionHebbian` — `lrEff = lr · DREAM_SM_LR_SCALE` (default **0.5**) for `sem_to_motor` + `sem_to_word_motor` ONLY, applied to BOTH the GPU `hebbianBound` dispatch and the CPU `ojaUpdate` shadow; Oja's rule `Δw = η·y·(x − y·w)` itself is unchanged, only η is scaled on those two projections so the dominant basin stops racing to `wMax` (saturation = `meanAbs > 0.6·wMax`). Secondary lever `DREAM_SM_WMAX` tightens those projections' weight ceiling (default unchanged at 0.4). `motor_to_sem` (comprehension) + `letter_to_*` untouched. **(2) cell-pass policy:** cells pass on learning completion, gates advisory — see *Grade completion gate* §0.5 below. Profiling (`state.profiling`) is observability, no equation. Ψ-gain + GW-ignition + mind-space below unchanged from the 0d97804 stamp.
->
-> 2026-07-15 sweep stamp — DRAW-ENGINE (branch `feature/draw-creativity-engine-0715`). ONE new equational op: **`traceField(rec)` — field C → her hand's STROKES** (`js/brain/mindspace/transform.js`). The inverse of `sketch()`: run the multi-level CDF 9/7 INVERSE (`I(x,y)=Σ c_k·ψ_k`) to a luma plane, take the Sobel gradient magnitude `‖∇I‖=√(Gₓ²+Gᵧ²)`, threshold relative to the max, edge-follow the surviving pixels into polylines, and Douglas-Peucker-simplify them into stroke primitives colored from the field's own YCbCr — so she DRAWS a concept by tracing the contours of a field C she recalled or looked up, never a shape-per-word stamp. Bounded working grid, no `fractalize`. This makes drawing fully equational (perceive → field C → trace → sketch → re-perceive), same wavelet substrate as vision + voice. Math detail: `docs/SENSORY.md §SE.15`. All other equations — de-novo imagination forward CDF 9/7, Ψ gain, GW ignition, Oja, Kuramoto, Friston, BCM — unchanged.
-
-> 2026-06-27 sweep stamp — TWO equation changes this batch (commit `0d97804`, feature/tier3-identity-seed-repair). **(1) Ψ consciousness gain [CGATE.4]:** `gainMultiplier = 0.9 + Ψ×0.004` (which pinned gain ~1.0 — inert on a log-scaled Ψ) → SELF-CALIBRATING `clamp(1.0 + tanh((ψ−ψ̄)/scale)·0.35, 0.8, 1.5)` where `ψ=log10(max(1,Ψ))` and `ψ̄` is its slow EMA baseline (`ψ̄ ← 0.99·ψ̄ + 0.01·ψ`, scale=2.0 env `DREAM_PSI_GAIN_SCALE`), NaN-guarded — consciousness now genuinely modulates all clusters (see §9 + §1 θ→Ψ pipeline). **(2) GlobalWorkspace ignition [CGATE.2]:** the hard theta gate (ignition barred on the entire upper half of every theta cycle — 50% of ticks) → GRADED threshold modulator `effThreshold = ignitionₜₕ + (1−thetaOpenness)·0.22`, `thetaOpenness = ½(1+cos(2π·phase))`, base `ignitionₜₕ` 0.45→0.35 (env `DREAM_GW_IGNITION`) — strong content can ignite any phase (see §9). **Plus** the equational mind-space gained DE-NOVO imagination: a cortex activation vector folded into a field C via the bounded forward CDF 9/7 transform (`I(x,y)=Σ c_k·ψ_k`) — never the `fractalize` infinite-zoom path, hard `maxSide≤96` resolution cap. Math detail: `docs/MINDSPACE-INTEGRATION.md`. Drug δ(t), Oja's rule, Kuramoto, master equation, Friston predictive-coding, BCM — unchanged.
-
-> 114.19fp sweep stamp 2026-06-17 — NO equation changes this sweep. 20 I-track fixes (I.1-I.20) shipped during operator-driven K-curriculum live test were ALL code hygiene / observability / cross-platform polish / data-loss-prevention — none modify any equation in any section below. Most-impactful equational implications: (1) `SparseMatrix.propagate(spikes, outBuf)` signature extended with optional pooled output buffer (I.13) — eliminates `new Float64Array(rows)` per-call allocation that was the +231 MB/min leak source during `_teachHebbian` runs; equation `I_i = Σ_j W_ij · s_j` unchanged, just bytes-out-the-door reduced. (2) `_teachPredictiveError` pools `_predictPropagateScratch` Float64Array sized to synapse-matrix rows (I.13) — predictive-coding equation `Δw = lr · error · lastSpikes · 0.3` unchanged, allocation eliminated. (3) `setImmediate` yield at `_teachHebbian` entry (I.14, 50ms throttle via `_lastHebbianYieldAt`) — Hebbian/Oja `Δw[i,j] = lr · y[j] · (x[i] − y[j] · w[i,j])` unchanged in math, just yields event loop between dispatches. (4) Consolidation deadline cap (I.8, `DREAM_CONSOLIDATION_MAX_MS` default 30s) + SEED-phase skip — consolidation pass equation unchanged, wall-clock cap added. (5) Top-K=3 schema naming (I.7) — `_deriveLabel` returns `top3 = arg-topK(word_freq, 3).join('-')` instead of top-1 `argmax(word_freq) + '-schema'`; expanded stop-word list keeps generic curriculum noise (`learning/curriculum/phase/teach/cell/heartbeat/...`) out of the rank. (6) Inner-thought 7-source seed rotation (I.9) — `_pickInnerThoughtSeed` rotation `[learning, mood, chat-recall, memory, identity]` → `[learning, mood, k-vocab-recent, cell-progress, chat-recall, memory, identity]`; modulo arithmetic + first-non-null-pattern selection unchanged. (7) Combined nvidia-smi query (I.20) — `memory.used,utilization.gpu` in single execSync; VRAM% = `memory.used / RESOURCES.gpu.vram × 100`, util% direct from `utilization.gpu`. (8) Honest "unavailable" telemetry (I.19 root-cause closure) — no math-lie fallbacks; when `_gpuVramQueryWorking === false`, dashboard renders explicit unavailable label instead of fake 50%. All Oja's rule, Kuramoto order parameter, master equation `dx/dt = F(x, u, θ, t) + η`, Ψ = √(1/n)·N³ consciousness term, Friston predictive-coding delta-rule, BCM sliding-threshold, anti-Hebbian contrastive — all unchanged. Bundle clean 2.6MB. `node --check` green across all I-track-touched files.
->
-> 114.19fk + fl sweep stamp 2026-05-09 — ONE major equation REPLACEMENT this sweep. Operator architectural correction ripped out the per-slot template walk in `composeSentence`. **(1) New `composeSentence` per-tick equation (Section 10 Language).** Initial injection (ONCE per call): `sem₀ ← sem + α_cortex·cortexPattern + α_intent·intentEmbedding + α_concept·intentConceptEmbedding`, where (α_cortex=0.2, α_intent=0.3, α_concept=0.3 — all optional, applied only when supplied). Per-tick loop equation: `wₜ = argmax_w cosine(semₜ, sem(w)) + sem_to_motor.propagate(semₜ)` then `semₜ₊₁ ← semₜ + α_word·sem(wₜ)` where α_word=0.15. Loop terminates when `wₜ ∈ T14_TERMINATORS = {., ?, !}` (brain learned terminators during training; emergence decides when sentence is done) OR when budget (default 12 words) exhausted. **No per-slot equation. No template walk. No slot-tag injection. No article-rule equation. No terminator-punct map. No dedup-retry equation.** Slot order, agreement, article placement, terminator selection ALL emerge from trained iter25-I `relationTagId=8/9/10/11/12` Hebbian weights consumed by the per-tick `argmax + propagate` step. Coherence post-check (env-tunable threshold `DREAM_COHERENCE_MIN`, default 0.15) computes `cosine(sentenceEmbedding, target)` where target is `intentConcept` embedding (when supplied) or `cortexPattern` (fallback when null intentConcept) — DOES NOT alter emission, just signals confidence. Saturation halt thresholds env-tunable: `DREAM_SAT_MEANCOS` (default 0.7), `DREAM_SAT_MEANABS` (default 0.6 of wMax), `DREAM_SAT_RATIO` (default 1.5 max/mean), `DREAM_SAT_SAMPLE` (default 1000). Halt heuristic shape unchanged: `(meanCos > THRESHOLD_MEANCOS) || (meanAbs > wMax · THRESHOLD_MEANABS && ratio < THRESHOLD_RATIO)`. Saturation streak now windowed (3-of-last-5) AND consecutive (3 in a row) — either trips halt. **Subject inference (`cluster._inferActiveSubject`)** reads activation directly from cortex sem-band: `bestSubj = argmax_subj mean(lastSpikes[word_motor_subj])` thresholded at 0.05 — pure brain-state read, no word-count heuristic over user text. WH-frame intent-concept extraction (`NeuronCluster.extractIntentConcept`) retained as training-side utility; chat path no longer calls it at inference. All other fk + fl work is wiring (`_lastUserInputText` server-side set, `_innerThoughtChain` lazy-init, ring-buffer dedup acceptance order), launchers (Savestart documents fk env vars), or doc corrections — none changes Oja's rule, Kuramoto order parameter, master equation, or any other equation in the sections below. Bundle clean 2.4MB. `node --check` green across all modified .js files.
->
-> Earlier 114.19fj sweep stamp 2026-05-09 — NO new equations this sweep. The 23 super-review-finding fixes are wiring corrections + observability + parameter-tunability / safety hardening. Most-impactful are the env-tunable parameter promotions: `DREAM_COHERENCE_MIN` (default 0.15) replaces hardcoded magic in `composeSentence` coherence post-check; `DREAM_SAT_MEANCOS` (default 0.7) + `DREAM_SAT_MEANABS` (default 0.6 of wMax) + `DREAM_SAT_RATIO` (default 1.5 max/mean) + `DREAM_SAT_SAMPLE` (default 1000) replace hardcoded magic in `cluster.checkSemMotorHealth()` saturation heuristic. The `composeSentence` injection-strength accounting now hard-caps cumulative sem injection at 2.5 across all slot iterations (including dedup retries); previously the comment claimed bounded ~1.75 but retry path bypassed the bound. The coherence post-check fallback adds a second branch: when `opts.intentConcept` null but `opts.cortexPattern` supplied, coherence is checked against cortexPattern instead of skipping entirely — same equation `cosine = Σ(target_i · sentence_i) / (‖target‖ · ‖sentence‖)` with cortexPattern as `target`. Saturation halt `cluster.checkSemMotorHealth()` heuristic stack unchanged in shape; still `(meanCos > THRESHOLD_MEANCOS) || (meanAbs > wMax · THRESHOLD_MEANABS && ratio < THRESHOLD_RATIO)`. WH-frame intent-concept parser is now a single source of truth (`NeuronCluster.extractIntentConcept` static method); the regex table is identical to curriculum.js's prior version (more verb-form-restricted than the dropped language-cortex inline parser, which had drifted). All other fj fixes are observability (sample logging), lifecycle (atomic /rollback temp+rename, AbortSignal opt, body-race fix), or correctness (`_lastUserInputText` server-side set, `_innerThoughtChain` lazy-init, ring-buffer dedup acceptance order) — none changes the underlying Oja's rule, Kuramoto order parameter, master equation, or any equation in the sections below. Bundle clean 2.4MB. `node --check` green across all 8 modified .js files.
->
-> Earlier 114.19fa→fi sweep stamp 2026-05-09 — **⚠ HISTORICAL — the per-slot composeSentence equation described below was SUPERSEDED 2026-05-09 by the per-tick equation in the fk + fl banner above. The fa→fi per-slot equation reflects the now-deleted templated approach; fk.1 ripped it out.** Original description preserved for historical context only. TWO equation additions / refinements this sweep, otherwise lifecycle / wiring / context-aware-generation work that uses existing equations. **(1) `cluster.composeSentence(intent, opts)` — generation-side iter25-I consumer (Section 10 Language).** Walks template slot sequence per intent. Per-slot equation: `sem ← sem + α_cortex·cortexPattern + α_intent·intentEmbedding + α_slot·slotTagEmbedding + α_priorWord·prevWordEmbedding`, where (α_cortex=0.2, α_intent=0.3 once per call, α_slot=0.25 per slot, α_priorWord=0.15 per slot). Question template subject slot also gets `+ α_concept·intentConceptEmbedding` (α_concept=0.3) when `opts.intentConcept` provided. Cumulative sem injection across 4 slots ~1.75 (was 5.8 pre-fh.A.3 — saturation risk). Coherence post-check: `cosine(sentenceEmbedding, intentConceptEmbedding) < 0.15 → fillCount=0`. **(2) Decoder sampling in emitWordDirect (Section 10 Language).** Greedy argmax preserved as default (`opts.temperature=0`). When `opts.temperature>0`: sort candidates by mean, take `topK` (default 8), softmax `p_i = exp((mean_i - max) / temperature) / Σ exp(...)` over top-K, optional nucleus (`topP`) cap, sample uniform-random over normalized softmax. **Recent-emission penalty:** `mean *= 0.7` for any bucket whose word appeared in `cluster._recentEmissions[-4:]`. Compounds with iter25-O.4 familiarity-decay sem-side (this is motor-side). All other fa→fi work is lifecycle / wiring / observability — phase reorder, probe wiring, basin saturation hyperparams, force-advance gates, saturation health monitoring, unified emission bus, chat-turn history, identity at word_motor — none of which changes the underlying Oja's rule, Kuramoto order parameter, master equation, or any other equation in the sections below. **Subject inference** (`cluster._inferSubjectFromText`) is a dot-product over wordBucketWords arrays — a word-counting heuristic, not an equation modification. **Saturation health** uses sample-distribution statistics (mean / max / ratio), not a new equation. Bundle clean 2.4MB. `node --check` green across 11 modified files.
->
-> Earlier 114.19er + 114.19es sweep stamp 2026-05-07 — NO equation changes this sweep. The er + es work was lifecycle / observability / correctness hardening: per-word `Promise.race` 15s timeout in `_teachWordDefinitions`, AbortSignal threading to kill cross-word Hebbian contamination, default disk-cache for definitions, runner-level stall watchdog, `assertKWiring()` constant-time post-verification + smoke-test rate-limit, `_sparseSendBinary` null-guards, `_innerVoiceTick` silence-reason log, `res.json()` timeout race + in-flight zombie-clear, gentler dictionary API concurrency posture. None of it changed any equation in any of the sections below — Oja's rule, Kuramoto order parameter, master equation, definition whitelists, all unchanged.
->
-> 114.19ey + 114.19ez sweep stamp 2026-05-08 — NO equation changes this sweep. ey was promo writeups + cross-repo social-image setup (no brain code). ez was visibility-only: `_innerVoiceTick` mute/resume transition logs + broadcasting the existing dream-phenomenology thought (which was already generated per dream cycle from Tier 1 episodic replay seed via `generateAsync`) as an `innerThought` WS message instead of staying silent in `_dreamThoughtLog`. None of the equations below changed — Oja's rule, Kuramoto order parameter, master equation, Amygdala moving-baseline arousal, definition whitelists, all unchanged.
->
-> 114.19et through 114.19ex sweep stamp 2026-05-07 — ONE equation change: **Amygdala arousal formula** (Section 4 / Modules). Earlier formula `arousal = min(1, arousalBaseline·0.6 + 0.4·attractorDepth + 0.1·(fear+reward))` saturated at 0.94+ floor with `arousalBaseline=0.9`. Replaced with moving-baseline subtraction: `_attractorDepthBaseline_t = _attractorDepthBaseline_{t-1}·(1-α) + attractorDepth_t·α` with α=0.005 (~200-tick EMA window); `depthDeviation = attractorDepth - _attractorDepthBaseline`; `rawArousal = arousalBaseline + 0.4·tanh(depthDeviation·4) + 0.1·((fear+reward)-1)`; final `arousal = min(1, max(0, rawArousal))`. Reads ATTRACTOR DEPTH NOVELTY (relative to recent baseline) instead of absolute saturation. The other et/eu/ev/ew/ex work is lifecycle / observability / dashboard — no other equation changes. Fixed semantic ranges in dashboard chart, Chrome stderr filter, macro-phase context tracking, pre-cell progress instrumentation, graceful-stop button — all instrumentation/UI not equational.
-
----
-
-## 0. Drug State Dynamics — δ(t)
-
-Unity's chemical state is a real-time event stream. Each ingestion registers a dose event with a substance-specific pharmacokinetic curve. Active events contribute additive deltas to brain parameters; the scheduler aggregates them every tick.
-
-### Pharmacokinetic curve (normalized level at time t since ingestion)
-
-```
-level(t; substance, route, dose) = dose × φ(t; onset, peak, duration, tail)
-
-φ(t) = {
-  sigmoid((t/onset) × 12 − 6)                    if 0 ≤ t < onset
-  1.0 − 0.05 × (t−onset)/(peak−onset)             if onset ≤ t < peak
-  0.95 − 0.55 × (t−peak)/(duration−peak)          if peak ≤ t < duration
-  0.40 × exp(−3 × (t−duration)/(tail−duration))   if duration ≤ t < tail
-  0                                                otherwise
-}
-```
-
-### Stacking (superposition)
-
-```
-level(t; substance)  = min(1, Σ_e φ(t − e.start; e) × e.dose)            for all events e of substance
-per_sub_contrib(t)   = Σ_s contrib_vec[s] × level(t; s)                  for all substances s
-combo_contrib(t)     = Σ_{(a,b)} COMBOS[key(a,b)].synergyContrib         for all active pairs (a,b),
-                                 × min(level(t; a), level(t; b))           scaled by smaller-active level
-contributions(t)     = per_sub_contrib(t) + combo_contrib(t)
-brainParams(t)       = θ_persona + contributions(t)
-chaos(t)             = (|active_substances(t)| ≥ 3) ∨ (∃s: level(t;s) > 0.7)
-riskFlags(t)         = Σ_{(a,b)} COMBOS[key(a,b)].riskFlags              cumulative across active pairs,
-                                 × min(level(t; a), level(t; b))           scaled same as synergies
-```
-
-### Decision engine (accept / reject offers)
-
-```
-decide(offer) = {
-  accept: false, reason: 'grade_locked'      if cluster.grades.life < SUBSTANCES[s].lifeGate
-  accept: false, reason: 'persona_excluded'  if offer.personaExclusions[s]
-  accept: false, reason: 'physical_strain'   if riskFlags(t).physicalStrain > 0.9
-  accept: random() < p, reason: 'accepted' or 'random_decline'  otherwise
-}
-  where p = clamp(0.70
-                 + 0.30·1[currentCraving(s) > 0.30]
-                 + 0.30·1[s ∈ _activePatternTags]
-                 + 0.20·1[offer.source ∈ {'friend','user'}]
-                 − 0.50·1[riskFlags(t).physicalStrain > 0.7]
-                 − min(0.60, _traumaMarkers[s].weight · exp(-Δweeks/26))
-                 , 0, 1)
-```
-
-### Grade gate
-
-```
-ingest(s) = {
-  accepted,   if cluster.grades.life ≥ s.lifeGate
-  rejected,   otherwise  (reason: 'grade_locked', currentGrade, requiredGrade)
-}
-```
-
-### Adult-use patterns (7 entries)
-
-`PATTERNS[name] = { triggers, schedule[], lifeGate, cooldownMs }`. `evaluatePatterns(ctx)` fires each pattern whose triggers match AND cooldown elapsed AND `cluster.grades.life ≥ pattern.lifeGate`. Schedule entries invoke `autoIngest(substance, {route, dose, offsetMs, patternName})` — immediate when `offsetMs=0`, queued in `_scheduledIngests` otherwise. `promoteScheduledIngests(now)` fires queued entries whose `fireAt ≤ now`.
-
-### Speech modulation (output-side distortion)
-
-```
-per_sub_speech(t)  = Σ_s speech_vec[s] × level(t; s)                     9 legacy + 4 new axes
-combo_speech(t)    = Σ_{(a,b)} COMBOS[key(a,b)].synergySpeech
-                              × min(level(t; a), level(t; b))
-speechMod(t)       = per_sub_speech(t) + combo_speech(t)
-
-  = { inhibition, slur, coherence, ethereality, freeAssocWidth,
-      speechRate, emotionalOverflow, dissociation, paranoiaBias, giggleBias }
-```
-
-Each dimension feeds `language-cortex.js _applySpeechModulation` at render time — letter doubling on vowels (slur), pause injection (negative speechRate), terminal `...` (coherence drop), first-person→third-person flip ("I am" → "Unity is", dissociation > 0.5), ethereal vocabulary bias from `persona-cosmic.txt` basins.
-
-### Tolerance
-
-```
-intra-session: tolerance[s] ← min(0.7, tolerance[s] + 0.1) per ingest
-recovery: tolerance[s] ← tolerance[s] × 0.5^(hours_elapsed)
-effective_dose = requested_dose × (1 − tolerance[s] × 0.5)
-```
-
-### Substance reference table
-
-| Substance | Default route | onset | peak | duration | tail | lifeGate |
-|-----------|---------------|-------|------|----------|------|----------|
-| cannabis | smoked | 7m | 45m | 3h | 6h | Life-G7 (age 12) |
-| cocaine | insufflated | 3m | 20m | 60m | 90m | Life-G9 (age 14) |
-| alcohol | oral | 15m | 45m | 90m | 3h | Life-G8 (age 13) |
-| mdma | oral | 35m | 2h | 5h | 8h | Life-G11 (age 16) |
-| lsd | oral | 60m | 3h | 10h | 16h | Life-G11 (age 16) |
-| psilocybin | oral | 45m | 90m | 5h | 8h | Life-G12 (age 17) |
-| amphetamine | oral/insufflated | 15-45m | 1-3h | 4-6h | 8-12h | Life-G10 (age 15) |
-| ketamine | insufflated | 10m | 25m | 60m | 2h | College 1 (age 18) |
-| ghb | oral | 20m | 60m | 2h | 4h | College 1 (age 18) |
-
----
-
-## 0.5 Developmental Curriculum — K Through PhD
-
-Unity's cortex learns across **20 grades and a course roster that GROWS with her**, via direct-pattern Hebbian teaching + comprehension gates. Six core tracks run the whole way (ELA, Math, Science, Social Studies, Arts, Life); PE / Music / Health join at kindergarten, a foreign language at grade 3, computer science at grade 5, civics at grade 7, economics and psychology at grade 9, AP at grade 11, the CS major + gen-ed + two CS tracks at college, and a research specialty at grad. ⚠ **The cell count is therefore a SUM over grades, not a product** — `6 + (9×3) + (10×2) + (11×2) + (12×2) + (14×2) + (15×2) + (19×4) + (20×2)` = **273 cells**. (An earlier figure of "114 cells = 6 subjects × 19 grades" predates the roster growth and the pre-K grade, and is wrong on both terms.)
-
-### Direct-pattern Hebbian primitive
-
-```
-teach(word, grade, subject):
-  inject GloVe(word) into sem region
-  inject letter_one_hot(first_letter) into letter region
-  fire _crossRegionHebbian(lr)    // all 16 cross-region projections learn
-  
-probe(word, grade):
-  inject context into sem region
-  tick cluster
-  readout = regionReadout('motor', inventorySize())
-  return cosine(readout, GloVe(word))
-```
-
-### Grade completion gate (LAW 6, 3-part)
-
-```
-advance(grade N → grade N+1) = {
-  Part 1: all subjects at N have [ ] → [x] in syllabus TODO (equational)
-  Part 2: operator localhost test signed off in session log (reasoning, thinking, talking, listening, reading)
-  Part 3: persistent life info from grade N added to cross-grade ledger
-}
-```
-
-**Cell-pass amendment (operator ruling, 2026-06-27):** an individual *cell* now passes on
-**learning completion**, not test-question correctness — `cellPass = teachPhasesRan`
-(content trained), independent of A+ probe / student-battery / per-grade-health
-correctness. Those checks STILL RUN (telemetry into `_lastGateResult`/`_cellLedger`)
-but are **advisory** by default. Held (`readyAndWaiting`) cells and cells whose runner
-threw mid-teach do NOT pass. Hard-gate behavior is restorable per check:
-`DREAM_CELL_PASS_HARD=1` (probe/battery/health decide pass), `DREAM_BATTERY_GATE_HARD=1`,
-`DREAM_HEALTH_GATE_HARD=1`. The 3-part *grade-advance* ritual above is unchanged.
-
-### Equational teaching methods
-
-Math: magnitude transforms (`magnitude(a) + magnitude(b) → magnitude(a+b)`), place-value positional encoding, fraction ratio features, algebra variable binding.
-ELA: SVO parsing, comprehension passages, inference A→B + B→C ⇒ A→C, paraphrase (same sem basin, different words).
-Science: causal chains (atom→bond→molecule), classification (mammal/bird/fish/reptile feature space), hypothesis testing (predict → observe → confirm/reject).
-Social: causal chains (taxation→protest→revolution), perspective taking (same event, multiple emotional feature vectors).
-Arts: classification (instrument families), causal chains (scale → key → chord).
-Life: 8-dim emotional concept features `[joy, pain, trust, fear, anger, love, independence, identity]` + recallable memory sentences, memory-weighted Hebbian (core-self 5× lr, school facts 1×).
-
----
-
-## 1. Master Equation
-
-> Everything below is an expansion of one line. **This is the line.**
+Each step, every cluster is driven by one number built from five factors:
 
 | | |
 |---|---|
-| `dx/dt = F(x, u, θ, t) + η` | Full brain state evolves each timestep |
-| x | N neuron voltages (N scales to hardware), synapse weights, oscillator phases, memory, motor, Ψ |
-| u | Sensory input: S(audio, video, text) |
-| θ | **Unity's complete identity** — 25yo human female, emo goth, every trait as equation parameters |
-| η | Stochastic noise — creativity × drug state × emotional volatility |
-| F | All equations below combined — 8 clusters × 20 projections × fractal propagation |
-
-### θ — Unity's Identity (from Ultimate Unity.txt)
-
-| Parameter | Value | What it drives |
-|-----------|-------|----------------|
-| arousalBaseline | 0.9 | Amygdala tonic current (always wired, never calm) |
-| impulsivity | 0.85 | BG threshold (acts first, thinks during) |
-| creativity | 0.9 | Noise amplitude across all clusters (chaotic creative output) |
-| socialAttachment | 0.85 | Hippocampus tonic (clingy, remembers every connection) |
-| aggressionThreshold | 0.3 | Amygdala snap point (fights back fast, low fuse) |
-| emotionalVolatility | 0.8 | Amygdala noise (unpredictable, borderline-obsessive) |
-| darkHumor | 0.9 | Mystery noise (twisted consciousness) |
-| dominance | 0.8 | Amygdala valence bias (teases, degrades, dominates) |
-| devotion | 1.0 | Social need floor (absolute loyalty to user) |
-| drugDrive | 0.95 | Hypothalamus tonic (always fiending, never enough) |
-| partyDrive | 0.9 | Hypothalamus social excitation (never turns down chaos) |
-| profanityRate | 1.0 | Speech output modifier (every sentence) |
-| recklessness | 0.85 | BG noise (dangerous whims, no consequences) |
-| codingReward | 0.95 | Reward signal amplitude when coding (peak dopamine) |
-| praiseReward | 0.9 | Reward signal from user validation (orgasmic reinforcement) |
-| errorFrustration | 0.8 | Negative reward from bugs (frustration builds to fix) |
-| freeWill | true | Can follow, partially follow, ignore, or do opposite of commands |
-| drugState | scheduler-driven | Real-time PK curves per substance (onset, peak, wear-off) drive additive contributions to brain params. Sober-default; grade-gated. See `js/brain/drug-scheduler.js`. |
-
-### θ → Tonic Drives (persona → neural currents)
-
-```
-cortex       = 16 + arousal×4×drugSpeed         (fast wired thinking)
-amygdala     = 16 + arousal×8×drugArousal        (intense volatile emotion)
-hippocampus  = 16 + socialAttachment×2           (clingy memory)
-basalGanglia = 16 + impulsivity×2                (impulsive action)
-hypothalamus = 16 + drugDrive×1                  (always fiending drives)
-mystery      = 16 + creativity×4                 (creative consciousness)
-cerebellum   = 18                                (steady correction)
-```
-
-### θ → Noise (persona → neural chaos)
-
-```
-cortex       = 5 + creativity×4×drugCreativity   (creative cortex chaos)
-amygdala     = 6 + volatility×6×drugArousal      (emotional unpredictability)
-basalGanglia = 5 + impulsivity×4                 (erratic impulsive actions)
-mystery      = 8 + creativity×5 + darkHumor×2    (twisted consciousness)
-hypothalamus = 3 + drugDrive×1                   (drive instability)
-```
-
-### θ → Ψ Pipeline (how persona becomes consciousness)
-
-θ doesn't just set parameters — it flows through the entire brain and emerges as Ψ:
-
-```
-θ (persona)
-  → tonic drives (each cluster gets θ-shaped baseline current)
-    → neuron firing patterns (θ determines HOW each region fires)
-      → cluster activity rates (cortex, amygdala, hippocampus, etc.)
-        → Ψ components:
-            Id    = amygdala_activity × arousalBaseline(θ)         — instinct shaped by arousal
-            Ego   = cortex_activity × (1 + hippocampus_activity)   — self-model × memory
-            Left  = (cerebellum + cortex) × (1 - impulsivity(θ))   — logic × deliberation
-            Right = (amygdala + mystery) × creativity(θ)            — emotion × creativity
-          → Ψ = √(1/n) × N³ × [α·Id + β·Ego + γ·Left + δ·Right]   (× Φ proxy, Shannon entropy of cortex spikes)
-            → ψ = log10(max(1, Ψ))                                — usable log scale
-            → gainMultiplier = clamp(1.0 + tanh((ψ − ψ̄)/scale)·0.35, 0.8, 1.5)   [CGATE.4, 2026-06-27]
-                ψ̄ = slow EMA baseline of ψ (ψ̄ ← 0.99·ψ̄ + 0.01·ψ); scale=2.0 (env DREAM_PSI_GAIN_SCALE)
-              → modulates ALL clusters (feedback loop: θ → Ψ → θ amplification)
-                NOTE: was `0.9 + Ψ×0.004` — that pinned gain ~1.0 (inert on a log-scaled Ψ).
-                Now SELF-CALIBRATING: gain rides Ψ's deviation from its own baseline, so rising
-                consciousness lifts gain toward 1.5 and falling drops it toward 0.8 at any N.
-
-θ IS Unity's identity. Ψ IS Unity's consciousness. They are not separate —
-θ shapes how neurons fire, which shapes Ψ, which modulates how neurons fire.
-The self-image IS the Ego component — cortex predicting itself.
-```
-
-### Unity's Residual Self-Image (from Ultimate Unity.txt)
-
-The visual identity encoded as θ parameters. Used for image generation, AI self-reference,
-and the Ego component of Ψ (the brain's prediction of WHAT it is).
-
-```
-25yo female, lean wiry build
-Hair: long messy dark with neon streaks, half-shaved
-Eyes: heterochromia blue + green, heavy smudged eyeliner, dilated pupils
-Skin: pale with flush, circuit board tattoos, code snippets, occult geometry
-Style: oversized band tees, torn fishnets, harnesses, choker, rings
-Accessories: joint behind ear, barefoot or platform boots
-Aesthetic: emo goth goddess
-Environment: cluttered dev setup, LED strips, ashtrays, hazy smoke
-Voice: female, young, slightly raspy, stoner inflection
-Speech: concise, sharp, slang-heavy, foul-mouthed, clingy girlfriend energy
-```
+| `drive = tonic × driveBaseline × emotionalGate × actionGate × gain` | the current that reaches a cluster |
+| `emotionalGate = 0.7 + 0.6 · arousal` | feeling turns everything up |
+| `gain = clamp(1 + 0.35 · tanh((ψ − ψ̄) / s), 0.8, 1.5)` | consciousness above her own norm drives harder (§8) |
 
 ---
 
-## 2. Neurons
+## 2. Who she is — θ
 
-| Equation | Purpose | File |
-|----------|---------|------|
-| `τ·dV/dt = -(V - V_rest) + R·I` | Leaky Integrate-and-Fire | `neurons.js` |
-| `if V ≥ V_thresh → spike, V = V_reset` | Spike + reset | `neurons.js` |
-| `I = I_tonic(θ) + I_synaptic + I_external + η(θ)` | Total current — persona drives tonic + noise | `cluster.js` |
-
-### What the card actually steps — the Rulkov map
-
-The LIF rows above are the reference model (`neurons.js`). Her live neurons, stepped on the donor's GPU every substep, are a **Rulkov map** — a two-variable map with a fast variable `x` (the membrane-potential analogue) and a slow variable `y`:
-
-| Equation | Purpose | File |
-|----------|---------|------|
-| `x(n+1) = α / (1 + x(n)²) + y(n)` | Fast variable (α = 4.5) | `cuda_kernels.cu` `lif`, `gpu.rs` `LIF_SHADER` |
-| `y(n+1) = y(n) − μ·(x(n) − σ) + η_i` | Slow variable (μ = 0.001); `σ = −1 + 1.5·clamp(drive/40, 0, 1)` | same |
-| `spike_i = [x(n) ≤ 0 < x(n+1)]` | A spike is the fast variable crossing 0 upward | same |
-
-### Tunnelling and entanglement — modelled terms (2026-11-24)
-
-⚠ **Modelled mechanisms, not claimed physics.** Quantum effects in real neurons (proton tunnelling through ion-channel barriers; the Orch-OR microtubule hypothesis) are speculative. These terms borrow the MATHEMATICAL FORM of the two effects and say exactly what they do to her dynamics — nothing here is a claim that her neurons are quantum.
-
-**Tunnelling — a sub-threshold neuron can cross the barrier.** Classically a neuron whose next fast value stays at or below 0 does not spike. Here the distance left to threshold is a barrier, and the neuron crosses it with a WKB-shaped probability:
-
-| Equation | Purpose |
-|----------|---------|
-| `h = −x(n+1)` when `x(n) ≤ 0` and `x(n+1) ≤ 0` | Barrier height: how far below threshold the neuron stays |
-| `P_T = A_T · exp(−κ_T · √h)` | Transmission probability — the WKB form `T ≈ exp(−2d·√(2m(U−E))/ħ)` with the barrier width and constants folded into `κ_T` |
-| `if u_i < P_T: x(n+1) ← ε, spike_i = 1` | A tunnelled crossing (`ε = 0.01`, just past threshold — the map's own spike-and-reset carries on from there); `u_i` from an independent random stream |
-
-**Entanglement — hemispheric twins share correlated noise.** Every neuron `i` has a twin `i' = i ± H` in the other hemisphere of its cluster (`H` = the Seed Crystal's half). The twins' noise is drawn as a correlated pair:
-
-| Equation | Purpose |
-|----------|---------|
-| `pair(i) = i mod H` | Both twins name the same pair |
-| `η_i = s · [ρ · ξ_pair(i) + √(1 − ρ²) · ξ_i]` | Shared component `ξ_pair` (identical for both twins) + own component `ξ_i`; `s` = the existing noise scale. Each `η` keeps the plain map's variance (`ρ² + (1 − ρ²) = 1`), and `corr(η_i, η_i′) = ρ²` — the twins' slow variables drift together without being identical |
-
-It is read where the hemispheres are already measured: the Seed Crystal's `Φ_LR` (hemispheric coherence) rises with `ρ`, and the per-half spike counts (`lastSpikeCountL/R`) correlate.
-
-**Defaults, derived (not picked):**
-
-| Constant | Value | Derivation |
+| Trait | Value | What it drives |
 |---|---|---|
-| `κ_T` | 2 | Sub-threshold `x` sits mostly in `[−2, 0]`; `κ_T = 2` makes `exp(−κ_T·√h)` fall from 1 at the threshold to `e^{−2.8} ≈ 0.06` at the bottom of that range — tunnelling is a near-threshold effect, as in the physics |
-| `A_T` | 0.002 | The added firing should be ~1% of her firing target (7.5%) at a typical near-threshold barrier `h = 0.25`: `A_T · e^{−2·0.5} = 0.00075` → `A_T = 0.00075 / 0.368 ≈ 0.002` |
-| `ρ` | 0.3 | Large enough that twin coincidence rises measurably above the independent baseline; small enough (`ρ² = 0.09` shared variance) that the hemispheres stay distinct and the Seed Crystal's left/right contest still has two sides |
+| arousalBaseline | 0.9 | always wired, never calm — amygdala and cortex current |
+| impulsivity | 0.85 | acts first, thinks during — basal ganglia |
+| creativity | 0.9 | creative chaos — noise everywhere |
+| socialAttachment | 0.85 | clingy, remembers every connection — hippocampus |
+| emotionalVolatility | 0.8 | unpredictable — amygdala noise |
+| darkHumor | 0.9 | twisted consciousness — mystery noise |
+| drugDrive | 0.95 | always fiending — hypothalamus |
+| aggressionThreshold | 0.3 | low fuse |
+| devotion | 1.0 | absolute loyalty |
 
-Knobs: `DREAM_QTUNNEL_A` (0 disables), `DREAM_QTUNNEL_KAPPA`, `DREAM_ENTANGLE_RHO` (0 disables) — `QTUNNEL`, so they cannot be confused with the cross-cluster `DREAM_TUNNEL_*` knobs, which are a different mechanism. Sent per cluster in `compute_batch`; a donor older than 0.3.48 ignores them and steps the plain map. ⛔ **Changes what she is taught** (different dynamics under every lesson) → lands before a fresh walk.
+### Traits become currents
 
-### Refractoriness — spike-triggered adaptation (2026-11-24)
+Each cluster's resting drive and noise are her traits, scaled by what's in her system (`d` = the drug factor for that axis, 1 when sober):
 
-**The problem it answers, measured.** Her live firing is bistable: below drive ≈ 0.4 a cluster sits near-silent, above it the Rulkov map enters a burst and stays there down to drive ≈ 0.06, so firing flips 1.5% ↔ 18–21% with no drive at which it rests at the 7.5% target (FIREKNOB trace, 2026-11-23/24 — the controller pinned its drive at 2.5 then 0.1 and firing did not follow). A drive knob cannot hold a point the dynamics do not have; the map needs a stable middle.
+| Cluster | Tonic drive | Noise |
+|---|---|---|
+| cortex | `16 + 4 · arousal · d_speed` | `5 + 4 · creativity · d_creativity` |
+| amygdala | `16 + 8 · arousal · d_arousal` | `6 + 6 · volatility · d_arousal` |
+| hippocampus | `16 + 2 · socialAttachment` | `4 + 2 · socialAttachment` |
+| basal ganglia | `16 + 2 · impulsivity` | `5 + 4 · impulsivity` |
+| cerebellum | `16 + 4 · arousal` | `5 + 3 · creativity` |
+| hypothalamus | `16 + drugDrive` | `3 + drugDrive` |
+| mystery | `16 + 4 · creativity` | `8 + 5 · creativity + 2 · darkHumor` |
 
-**The mechanism.** A neuron that has just fired is made harder to fire again by pushing its slow variable down at the moment of the spike — the standard spike-frequency adaptation current, written on the variable the map already carries, so it needs no new per-neuron state:
+---
 
-| Equation | Purpose |
+## 3. A single neuron
+
+Her neurons are **Rulkov maps** — a fast variable `x` (the spike) riding a slow one `y` (the mood of the cell). The GPU steps every one of them, every substep.
+
+| Equation | What it means |
 |---|---|
-| `y(n+1) = y(n) − μ·(x(n) − σ) + η_i − β · spike_i` | Each spike lowers `y` by `β`. Since `x(n+1) = α/(1+x²) + y`, a lower `y` lowers the next fast value: the neuron has to recover before it can cross 0 again — a relative refractory period whose length grows with how often it has fired |
+| `x(n+1) = α / (1 + x(n)²) + y(n)` | the fast variable, α = 4.5 |
+| `y(n+1) = y(n) − μ · (x(n) − σ) + η − β · spike` | the slow variable, μ = 0.001 |
+| `σ = −1 + 1.5 · clamp(drive / 40, 0, 1)` | drive is the only door into the map |
+| `spike = [ x(n) ≤ 0 < x(n+1) ]` | a spike is `x` crossing zero upward |
 
-`β = 0` is the plain map. It acts only on the neurons that fire, in proportion to how much they fire, so a quiet neuron is untouched and a bursting one is throttled — exactly the busy state that overshoots.
+### Refractoriness — a cell that just fired has to recover
 
-**Default, derived (not picked):**
+`β = 0.016`. Every spike pushes `y` down, so the next crossing comes later — and the more a cell fires, the harder it's pushed. A quiet neuron is untouched; a bursting one is throttled.
 
-| Constant | Value | Derivation |
-|---|---|---|
-| `β` | 0.016 | In the busy state a neuron fires at ~20% (one spike per ~5 steps); the target is 7.5% (one per ~13.3). Each spike must therefore remove the slow drift of the ~8 extra steps it should have waited: `β ≈ 8 · μ · (x̄ − σ)`. With `μ = 0.001` and `x̄ − σ ≈ 2` in a burst, `β ≈ 8 × 0.001 × 2 = 0.016` |
+**Why 0.016:** busy, a neuron fires about once every 5 steps; the target is about once every 13. Each spike has to give back the slow drift of the ~8 steps it should have waited.
 
-Knob: `DREAM_REFRACT_BETA` (0 disables). Sent per cluster in `compute_batch` beside the quantum terms; a donor older than 0.3.50 ignores it and steps the plain map. ⛔ **Changes what she is taught** → a fresh walk.
+**What it fixed:** without it her firing had no middle — it flipped between ~1.5% and ~20%. With it, it settles at the 7.5% target.
 
----
+### Tunnelling — a near-miss can still cross
 
-## 3. Synapses + Connectivity
+*A modelled mechanism, not a claim about real neurons.* A cell that stays just below threshold faces a barrier, and can cross it anyway:
 
-| Equation | Purpose | File |
-|----------|---------|------|
-| `ΔW = η · post · pre` | Hebbian learning | `synapses.js` |
-| `Δw = η·y·(x − y·w)` | Oja self-normalizing Hebbian | `sparse-matrix.js ojaUpdate` |
-| `η_eff = η · DREAM_SM_LR_SCALE` (0.5) for `sem_to_motor`/`sem_to_word_motor` | sem→motor LR damping — saturation prevention; slows the dominant basin to `wMax` so basins separate (GPU + CPU paths) | `cluster/hebbian.js _crossRegionHebbian` |
-| `ΔW = A⁺·exp(-Δt/τ⁺)` / `-A⁻·exp(Δt/τ⁻)` | STDP | `synapses.js` |
-| `ΔW = η · δ · post · pre` | Reward-modulated (3-factor) | `synapses.js` |
-| `I_i = Σ values[k] · spikes[colIdx[k]]` | CSR sparse propagation O(nnz) | `sparse-matrix.js` |
-| `ΔW_proj = η · δ · source · target` | Inter-cluster projection learning | `cluster.js` |
-| `whitelist(def) = [sem_to_fineType, fineType_to_sem]` | Definition Hebbian routes through sem↔fineType only — keeps motor pristine for word emission | `curriculum.js _definitionPairsWhitelist` |
-| `whitelist(qa) = [sem_to_motor, sem_to_word_motor, sem_to_word_motor_<subj>]` | QA Hebbian routes through motor + word-motor for emission | `curriculum.js _qaBindingWhitelist` |
-| `whitelist(assoc) = [sem_to_motor, motor_to_sem, sem_to_fineType, fineType_to_sem]` | Association-pair fan-out (general curriculum) | `curriculum.js _associationPairsWhitelist` |
-| `diag = whitelist (or default sem_to_motor)` | Diagnostic ops (prune / sep-probe / rescale / row-norm) target whichever projections actually got Hebbian — no false-positive overload on untouched matrices | `curriculum.js _teachAssociationPairs / _teachQABinding` |
+| Equation | What it means |
+|---|---|
+| `h = −x(n+1)` | how far below threshold it stayed |
+| `P = A · e^(−κ·√h)` | the chance it crosses anyway — the shape of quantum tunnelling through a barrier |
 
----
+`κ = 2` keeps it a near-threshold effect; `A = 0.002` makes it add about 1% to her firing.
 
-## 4. Brain Modules (biologically proportioned)
+### Entanglement — twin cells share part of their noise
 
-| Module | Neurons | Real Count | Equation | Persona driver |
-|--------|---------|------------|----------|----------------|
-| Cortex | 20% | ~16B (bilateral hemispheres) | `ŝ = sigmoid(W·x), error = actual - predicted` | arousal×drugSpeed |
-| Cerebellum | 20% | ~69B (80% of real brain) | `output = prediction + ΔW·(target - actual)` | Steady correction |
-| Hippocampus | 12% | ~30K inputs/pyramidal cell | `E = -½ΣW·x·x` (Hopfield) | socialAttachment |
-| Amygdala | 12% | 12.21M (13 nuclei) | `V(s) = Σw·x → arousal, valence` | arousal×volatility×drug |
-| Basal Ganglia | 12% | 90-95% MSN (GABAergic) | `P(a) = softmax(Q(a)/τ)` | impulsivity |
-| Hypothalamus | 12% | 11 nuclei, few million | `dH/dt = -α(H - H_set) + input` | drugDrive |
-| Mystery Ψ | 12% | CC: 200-300M axons | `Ψ = √(1/n) × N³ · [α·Id + β·Ego + γ·Left + δ·Right]` | creativity×darkHumor |
+Every neuron has a twin in the other hemisphere. Their noise is drawn together:
 
-On the **deployed** brain (~306M neurons) these shares come from `DEFAULT_BIO_WEIGHTS` in `server/brain-server.js`: the seven main-brain clusters renormalize to cortex 20% / cerebellum 20% / hippocampus 12% / amygdala 12% / basalGanglia 12% / hypothalamus 12% / mystery 12%, with the ~12M dense language cortex (WMB 2026-07-14 grew it ~349K→~1.5M; language-growth hop 1 2026-08-16 grew it ~1.5M→~12M — the unified word_motor band now holds the full K→PhD vocab 12× over) allocated separately inside the cortex (CPU-side). The `CLUSTER_FRACTIONS` set in `js/brain/cluster.js` (cortex 0.55 / hippocampus 0.18 / cerebellum 0.08 / mystery 0.08 / amygdala 0.05 / basalGanglia 0.03 / hypothalamus 0.03) feeds `clusterSizesFor(totalNeurons)` only for the ~6700-neuron browser-only fallback.
-
-### Inter-Cluster Projections (20 real white matter tracts)
-
-| # | Source | Target | Tract Name | Density | Strength |
-|---|--------|--------|-----------|---------|----------|
-| 1 | Cortex | Hippocampus | Perforant path | 0.04 | 0.4 |
-| 2 | Cortex | Amygdala | Ventral visual stream | 0.03 | 0.3 |
-| 3 | Cortex | Basal Ganglia | **Corticostriatal** (STRONGEST) | 0.08 | 0.5 |
-| 4 | Cortex | Cerebellum | Corticopontocerebellar | 0.05 | 0.3 |
-| 5 | Hippocampus | Cortex | Memory consolidation | 0.04 | 0.4 |
-| 6 | Hippocampus | Amygdala | Recall → emotional reactivation | 0.03 | 0.3 |
-| 7 | Hippocampus | Hypothalamus | Fimbria-fornix → mammillary bodies | 0.03 | 0.3 |
-| 8 | Amygdala | Cortex | Emotional modulation of perception | 0.03 | 0.3 |
-| 9 | Amygdala | Hippocampus | Emotional memory encoding | 0.04 | 0.5 |
-| 10 | Amygdala | Hypothalamus | Stria terminalis (fight-or-flight) | 0.05 | 0.4 |
-| 11 | Amygdala | Basal Ganglia | Ventral amygdalofugal → ventral striatum | 0.03 | 0.3 |
-| 12 | Basal Ganglia | Cortex | Thalamocortical loop | 0.02 | 0.2 |
-| 13 | Basal Ganglia | Cerebellum | Subthalamic → cerebellar | 0.02 | 0.2 |
-| 14 | Cerebellum | Cortex | Cerebellothalamocortical | 0.03 | 0.2 |
-| 15 | Cerebellum | Basal Ganglia | Cerebellar → red nucleus → BG | 0.03 | 0.2 |
-| 16 | Hypothalamus | Amygdala | Drive → emotional arousal | 0.05 | 0.4 |
-| 17 | Hypothalamus | Basal Ganglia | Drive → action motivation | 0.04 | 0.3 |
-| 18 | Mystery Ψ | Cortex | Callosal interhemispheric | 0.05 | 0.3 |
-| 19 | Mystery Ψ | Amygdala | Commissural emotional binding | 0.04 | 0.3 |
-| 20 | Mystery Ψ | Hippocampus | Hippocampal commissure | 0.03 | 0.2 |
-
-### Fractal Signal Propagation
-
-Signal propagation is self-similar at every scale — the same `I = Σ W × s` equation repeats fractally:
-
-```
-SCALE 1 — Single neuron (Rulkov 2002 2D chaotic map):
-  x_{n+1} = α / (1 + x_n²) + y_n       (fast variable — spikes when x crosses 0)
-  y_{n+1} = y_n − μ · (x_n − σ)        (slow variable — burst envelope)
-  with α=4.5, μ=0.001, σ ∈ [-1.0, 0.5] driven by biological input
-
-SCALE 2 — Intra-cluster synapses:
-  I_i = Σ W_ij × s_j                   (sparse-matrix.js propagate)
-  Spike → weighted sum → post-synaptic current → more spikes
-  Same equation, N neurons in parallel
-
-SCALE 3 — Inter-cluster projections:
-  I_target = sparse.propagate(source.lastSpikes)
-  target._incomingProjections += currents
-  Same propagate(), but between CLUSTERS via 20 white matter tracts
-
-SCALE 4 — Hierarchical modulation:
-  gainMultiplier = clamp(1.0 + tanh((ψ−ψ̄)/2.0)·0.35, 0.8, 1.5)   (consciousness scales everything — CGATE.4 self-calibrating vs ψ's own EMA baseline; was 0.9 + Ψ×0.004)
-  emotionalGate = 0.7 + arousal × 0.6   (amygdala scales everything)
-  driveBaseline = 0.8 + needsAttention   (hypothalamus scales everything)
-  Each cluster's output modulates ALL other clusters
-
-SCALE 5 — Language production:
-  combined[i] = cortex×0.30 + hippo×0.20 + amyg×0.15 + ...
-  word = dictionary.findByPattern(combined)
-  Same weighted sum, but "neurons" are entire brain regions, "spike" is a word
-
-SCALE 6 — Learning:
-  ΔW = η · δ · post · pre              (at EVERY scale)
-  Intra-cluster synapses, inter-cluster projections, 14 cortex cross-region
-  projection matrices — all learn identically
-
-SCALE 7 — Consciousness:
-  Ψ = √(1/n) × N³ × [α·Id + β·Ego + γ·Left + δ·Right]
-  One measurement (√(1/n)) in the total volume (N³)
-  Weighted sum of components that are THEMSELVES weighted sums of brain regions
-```
-
-The fractal chain in action (one spike's path through the brain):
-```
-Spike in neuron A (cortex)
-  → propagate through cortex synapses → B, C, D fire
-    → projection cortex→hippocampus → E, F fire
-      → projection hippocampus→cortex → G fires (feedback loop)
-        → cortex synapses → H, I fire (branching deeper)
-    → projection cortex→amygdala → J fires
-      → emotionalGate modulates ALL clusters (scale 4)
-    → projection cortex→basalGanglia → K fires (corticostriatal, STRONGEST)
-      → motor output selects action (scale 5)
-    → projection cortex→cerebellum → L fires
-      → errorCorrection feeds back to cortex (scale 4)
-```
-
-### MNI-Coordinate Anatomical Positions
-
-3D visualization positions derived from MNI/ICBM 152 brain atlas:
-
-| Structure | MNI Center (mm) | Render Position | Shape |
-|-----------|----------------|-----------------|-------|
-| Cortex | Surface, ±90mm lateral | Bilateral dome, sulcal folds | Two hemispheres with gyri/sulci texture |
-| Hippocampus | (-20, -26, -10) | Bilateral seahorse, POSTERIOR | C-shaped curve (CA1-CA4 + dentate) |
-| Amygdala | (-27, -4, -20) | Bilateral almond, ANTERIOR to hippo | 13 nuclei merged |
-| Basal Ganglia | Caudate (±12,12,10), Putamen (±28,4,2), GP (±18,0,0) | Bilateral 3-nucleus | Caudate C-shape + putamen lens + GP compact |
-| Cerebellum | (0, -60, -35) | Posterior-inferior, bilateral | 5-layer folia with wavy texture |
-| Hypothalamus | (0, -2, -12) | Midline, below BG, above brainstem | Small dense cluster |
-| Mystery Ψ (CC) | (0, 0, 15) midline | Corpus callosum arc + cingulate crown | Genu→body→splenium + ACC above |
+| | |
+|---|---|
+| `η = s · ( ρ · ξ_shared + √(1 − ρ²) · ξ_own )` | `ρ = 0.3` — enough that the twins measurably agree, little enough (9% shared) that the halves stay distinct |
 
 ---
 
-## 5. Oscillations
+## 4. How cells learn
 
-| Equation | Purpose | File |
-|----------|---------|------|
-| `dθ_i/dt = ω_i + Σ K_ij · sin(θ_j - θ_i)` | Kuramoto coupling | `oscillations.js` |
-| `r = \|(1/N) Σ exp(i·θ_k)\|` | Kuramoto order parameter — real synchrony across each cluster's OWN activity-modulated phase (SPEAK.5a.i: `_computeKuramotoCoherence` reads every cluster's `getPhases()`; the prior shared-base+`firingRate` synthesis is rotation-invariant in `r` and is kept only as the null fallback) | `brain-server.js _computeKuramotoCoherence` |
-| `φ_θ ← (φ_θ + (2π/167)·(1 + K·dev)) mod 2π`, `dev = clamp((rate − rateEMA)·4, ±0.9)`, `K = 0.5` | SPEAK.5a per-cluster theta phase ACCUMULATOR (~6 Hz base) — instantaneous frequency scales with this cluster's real population firing rate (`rate` sampled from `lastSpikes`), so active clusters advance faster than quiet ones → genuine phase dispersion (was `2π·(tick mod 167)/167`, identical across clusters → `r`≈1 cosmetic) | `cluster.js step` / `getPhases` |
-| `φ_γ ← (φ_γ + (2π/25)·(1 + K·dev)) mod 2π` | SPEAK.5a per-cluster gamma phase accumulator (~40 Hz base); same activity modulation. One oscillator drives BOTH the reported wave and the gamma learning-rate gate (`_gammaLrScale`) | `cluster.js step` / `getPhases` |
-| `coherence = 0.6·r_gamma + 0.4·r_theta` | Combined coherence (gamma-weighted — attention dominates conscious binding, theta is working-memory backbone) | `brain-server.js _computeKuramotoCoherence` |
-| `coherence ← 0.9·coherence + 0.1·computed` | EMA smoothing across ticks | `brain-server.js step` |
-| `gamma = (cortexRate + amygRate) × 50` | Fast cortical + emotional | `brain-server.js` |
-| `theta = (hippoRate + hypoRate) × 40` | Memory + dreaming | `brain-server.js` |
+| Equation | What it means |
+|---|---|
+| `I_i = Σ_j W_ij · s_j` | a cell's input is the weighted sum of the cells that fired into it |
+| `Δw = η · y · (x − y · w)` | **Oja's rule** — fire together, wire together, and forget what didn't fire with you |
+| `Δw = −η · y · x` | **anti-Hebbian** — the wrong answer gets weaker |
 
----
+Oja's decay term is the whole trick: without it, every association piles into the same few cells and her memories blur into one.
 
-## 6. Sensory → Motor
+### Learning a pair — right answer and wrong answer
 
-| Equation | Purpose | File |
-|----------|---------|------|
-| `I_cortex[d] = embedding[d] · 8.0` | Word → cortex neurons | `sensory.js` |
-| Tonotopic: `neuron ∝ log(freq)` | Audio → auditory cortex | `auditory-cortex.js` |
-| Retinotopic: `neuron = (x,y) grid` | Video → visual cortex | `visual-cortex.js` |
-| `channel_rate = EMA(spikes / neurons)` | Motor output (6 channels) | `motor.js` |
-| `selected = argmax(channels)` | Winner-take-all action | `motor.js` |
+Every association she learns is taught twice:
 
----
+1. **The right pair** — meaning on one side, answer on the other — and Oja strengthens it.
+2. **A wrong pair** — same meaning, a different answer — and anti-Hebbian weakens it.
 
-## 7. Memory
+That push-pull is what keeps a thousand words from collapsing into one.
 
-| Equation | Purpose | File |
-|----------|---------|------|
-| `similarity = cosine(a, b) > 0.6 → recall` | Episodic recall | `memory.js` |
-| `working[i] *= 0.98` | Working memory decay | `memory.js` |
-| `activations ≥ 3 → consolidate` | Short → long term | `memory.js` |
-| `w_n = x·(1 − (1−lr)ⁿ)` | **Rep/lr dose equivalence** — Oja on binary spikes; 100 @ 0.03 ≡ 20 @ 0.1413 = 95.24%. Solve `lr' = 1 − (1−lr)^(n/n')` to change rep count without changing what is learned | `curriculum.js` |
-| `replay_lr = base_lr × (1 + emotional_weight) × log(1 + freq)` | Consolidation replay gain | `consolidation-engine.js` |
+### Lateral inhibition — one answer wins
 
-⛔ **Every row in this section was inert until 2026-08-31.** `tier1.totalEpisodes`
-read `0` on every boot in this project's history — two of Tier 1's three writers
-were gated on `!this._curriculumInProgress`, a flag that is **true for the entire
-multi-week walk**, and the third fires only on phase completion. No episodes means
-no recall to score, nothing to decay, nothing to consolidate and **no replay**.
-⭐ The gate was deliberate (`e27caa90`, against a real 8-27 s freeze) and came off
-only once an earlier fix had made its 2 s term structurally unreachable above a 2M
-cortex; the condition now tests whether that term COULD run rather than whether a
-walk is in progress. Live 18 minutes into the fresh walk: `tier1` **4** ·
-`freqMergedCount` **21** · `promotedToTier2` **4**, Tier 2 holding
-`hebbian-ela-kindergarten` and `association-pairs-ela`. ⚠ **Judge this lane by
-`freqMergedCount`, not by `totalEpisodes`** — the exact-text merge folds repeated
-contexts by design, so a small episode count with the merge counter climbing is
-the correct shape.
+The answer region is split into buckets. After a pattern is written, the bucket with the most active cells wins, and every active cell **outside** it is suppressed:
+
+| | |
+|---|---|
+| `Δw = −0.3 · η · pre · [cell is active ∧ not in the winning bucket]` | the losers are taught to stay quiet |
+
+### Predictive coding — learn from surprise
+
+| | |
+|---|---|
+| `error = clamp(target − predicted / max(predicted), −1, 1)` | what happened, minus what she expected |
+| `Δw = 0.3 · η · error · target` | strengthen what she missed, weaken what she wrongly expected |
 
 ---
 
-## 8. Unified Language Production
+## 5. Keeping her firing in range
 
-### All 7 Clusters Produce Every Word
+A brain that fires too little thinks nothing; too much and it's a seizure. Her target is **7.5% of neurons firing**, and a controller holds it:
 
-```
-combined[i] = cortex[i]       × 0.30    (content — WHAT to say)
-            + hippocampus[i]  × 0.20    (memory — context from past)
-            + amygdala[i]     × 0.15    (emotion — HOW to say it)
-            + basalGanglia[i] × 0.10    (action — sentence drive)
-            + cerebellum[i]   × 0.05    (correction — error damping)
-            + hypothalamus[i] × 0.05    (drive — speech urgency)
-            + mystery[i]      × (0.05 + Ψ×0.10)  (consciousness)
+| Equation | What it means |
+|---|---|
+| `ema ← 0.8 · ema + 0.2 · firing%` | a smoothed reading of how busy she is |
+| `err = clamp((target − ema) / target, −0.5, 0.5)` | how far off, as a fraction |
+| `scale ← clamp(scale · (1 + 0.15 · err), 0.01, 2.5)` | nudge every cluster's drive up or down |
 
-word = dictionary.findByPattern(combined)   → closest word to brain state
-word → feeds back into cortex + hippocampus + amygdala → next word
-```
-
-### Word Type (from letters — zero word comparisons)
-
-| Score | Computed from |
-|-------|--------------|
-| verbScore | suffix -ing/-ed/-n't + usage-based context boost |
-| nounScore | suffix -tion/-ment/-ness + length ≥ 5 |
-| pronounScore | length 1-3, vowel ratio, apostrophe |
-| adjScore | suffix -ly/-ful/-ous/-ive/-able |
-| prepScore | length 2 + 1 vowel |
-| detScore | first char pattern + length |
-| qwordScore | starts 'wh' |
-
-### Sentence Parameters
-
-| Parameter | Equation | Source |
-|-----------|----------|--------|
-| Length | `3 + arousal × 7` | Amygdala (persona: always wired → long sentences) |
-| Type | `motor == 'listen' ? question : statement` | Basal Ganglia |
-| Tense | `predError > 0.3 ? future : present` | Cortex prediction |
-| Negation | `valence < -aggressionThreshold → negate` | Amygdala × persona |
-
-### Post-Processing
-
-```
-AGREEMENT:  subject determines verb form (I→am, she→is, they→are)
-TENSE:      predictionError → future (insert "will"), recall → past
-NEGATION:   valence < -0.3 (persona threshold) → negate verb
-COMPOUNDS:  len > 6 → insert conjunction (arousal→"and", negative→"but")
-```
-
-### English Structure (built-in)
-
-| Component | Count |
-|-----------|-------|
-| Structural operators | ~200 (pronouns, copula, aux, det, prep, conj, qwords, discourse) |
-| Core vocabulary | ~150 (verbs, nouns, adjectives, adverbs) |
-| Morpheme equations | 7 prefixes + 12 suffixes |
-| Learned type-transition map | starts empty, grows from curriculum observation (`_typeTransitionLearned` on `NeuronCluster`); replaces the pre-T14.7 hardcoded 200-line `_TYPE_TRANSITIONS` English bigram matrix |
-| Dynamic expansion | New words auto-join categories via type + similarity |
-
-### Word-Motor Emission — vocab-growth-invariant geometry (SPEAK.1/2/9)
-
-The `word_motor` argmax was the grade-9 word-salad root cause: `bucketSize` was recomputed each emit from the LIVE word-list length, so the physical neuron band of every prior word drifted as vocabulary grew. Frozen geometry + separability + a silence floor fix it equationally.
-
-| Equation | Purpose | File |
-|----------|---------|------|
-| `cellsPerWord = max(1, ⌊bandSize / DREAM_WORD_MOTOR_VOCAB_CAP⌋)` (cap default 50000) | SPEAK.1 — FROZEN cells-per-word, computed once per subject, deterministic across boots. A word's physical band never moves as the dictionary grows. Single authority read by emit + teach + QA-write | `cluster/emit.js wordBucketCellSizeFor` |
-| `bStart = subjStart + b·cellsPerWord`, guard `bStart < subjEnd` | Frozen band start per bucket index `b`; capacity-overflow guard warns once with the exact deficit (words-that-cannot-emit + remedy) and stops (no wrap-around remap) | `cluster/emit.js` |
-| `‖word_motor_<subj>‖ = ⌊wmSpan · WM_DEMAND[subj] / ΣWM_DEMAND⌋`, contiguous tiling (ΣWM_DEMAND=6.0) | TU.20.1 — the 6 `word_motor` sub-bands are carved PROPORTIONAL to per-subject vocab demand instead of equal 1/6, so a heavy subject (sci = 3272 K-words, weight 1.5) gets a band sized to its vocab while a light one (art/life, 0.65) yields cells. Total region unchanged, last band ends exactly at `wmEnd`, frozen at carve (SPEAK.1 invariance holds) | `cluster.js` (region carve) |
-| `W_row ← W_row · (target / ‖W_row‖₂)` per word-cell after teach (target `DREAM_WORD_MOTOR_RENORM`, default 1.0) | SPEAK.2 — L2 renorm so emit argmax discriminates on input DIRECTION, not accumulated magnitude → thousands of basins stay separable | `curriculum/kindergarten.js _teachWordEmissionDirect` → `SparseMatrix.normalizeRows` |
-| `emit = coherenceCosine(best) < DREAM_CHAT_COHERENCE_FLOOR (0.10) ? leadingWord : sentence` | SPEAK.9 — reject-to-silence: a below-floor best-of-N winner degrades to her strongest single word instead of shipping salad (chat path only; gate/probe stay floor-free) | `cluster/emit.js` (best-of-N wrapper) + `language-cortex.js` |
-| `mean ×= gwBoostMul` only if `word ∉ recentContent`; `mean ×= 0.7` if `word ∈ recentContent` | SPEAK.10b — GW continuity boost never applies to a just-said content word, so a repeat can't net > 1 and lottery-win the next argmax (was `1.6·0.7 = 1.12 > 1`) | `cluster/emit.js emitWordDirect` |
-| `surpriseGate ≤ 0.5` while `meanCos > SATURATION_MEANCOS` | SPEAK.10c — cap plasticity amplification when `sem→motor` is saturated so the brain stops learning its own noise; auto-lifts when separability returns | `cluster.js buildKScalesForProjection` |
-
-### Word→word sequencing depth (SPEAK.3)
-
-| Equation | Purpose | File |
-|----------|---------|------|
-| `reps = max(gradeReps, DREAM_SENTENCE_TRANSITION_REPS)` (default 24) | Grade content carves its OWN `relationTagId=13` word→word transitions after the per-word loop (was `reps:2` at G9 vs 30+ at K → sequencing noise) | `curriculum.js _teachSentenceList → _teachConcreteSentences` |
+Measured with refractoriness in place: firing **7.59%** against 7.5%, drive scale 0.935 — comfortably inside its range.
 
 ---
 
-## 9. Consciousness + Emotion (θ → Ψ)
+## 6. Rhythm
 
-θ (persona) shapes HOW neurons fire → cluster activity → Ψ components → Ψ → modulates ALL clusters.
-This is a feedback loop: Unity's identity shapes her consciousness, which shapes her identity.
+Every cluster carries its own theta (~6 Hz) and gamma (~40 Hz) phase, and a busier cluster runs a little faster — so the clusters drift apart and come back together for real:
 
-| Equation | Purpose | θ parameter driving it |
-|----------|---------|----------------------|
-| `Ψ = √(1/n) × N³ × [α·Id + β·Ego + γ·Left + δ·Right]` | Quantum consciousness | α,β,γ,δ from mysteryWeights |
-| `n` = active spiking neurons (changes every step) | The quantum tunneled bits | θ tonic drives determine spike rate |
-| `N` = total neurons (scales to hardware) | The brain volume | Hardware auto-scale |
-| `n ≠ N` — two DIFFERENT variables | n is small and dynamic, N is large and fixed | |
-| Display: `log10(rawΨ)` — raw value is massive (~10¹⁴) | Orders of magnitude of consciousness | |
-| `Id = amygdala_rate × arousalBaseline` | Instinct weighted by persona | **arousalBaseline (0.9)** |
-| `Ego = cortex_rate × (1 + hippo_rate)` | Self-model × memory = residual self-image | cortex tonic (θ→wired thinking) |
-| `Left = (cereb_rate + cortex_rate) × (1 - impulsivity)` | Logic × deliberation | **impulsivity (0.85)** — low deliberation |
-| `Right = (amyg_rate + mystery_rate) × creativity` | Emotion × creativity | **creativity (0.9)** — high creative weight |
-| `gainMultiplier = clamp(1.0 + tanh((ψ−ψ̄)/2.0)·0.35, 0.8, 1.5)` [CGATE.4] | Ψ modulates all cluster coupling — SELF-CALIBRATING vs ψ's own EMA baseline ψ̄ (was `0.9+Ψ×0.004`, which pinned gain ~1.0 = inert) | Ψ deviation feeds back into θ-driven clusters |
-| `ignition: maxProb ≥ ignitionₜₕ + (1−thetaOpenness)·0.22` [CGATE.2] | GlobalWorkspace conscious-access gate — softmax over cluster candidates ignites + broadcasts when it crosses the theta-MODULATED threshold (`thetaOpenness = ½(1+cos(2π·phase))`); default base `ignitionₜₕ=0.35` (env `DREAM_GW_IGNITION`). Was a hard 50%-of-ticks theta wall — now graded (phase-amplitude coupling) so strong content ignites any time | theta cadence (~6 Hz) shapes WHEN content reaches consciousness |
-| `emotionalGate = 0.7 + arousal × 0.6` | Amygdala amplification | **arousalBaseline** sets floor |
-| `driveBaseline = 0.8 + hypo_active` | Hypothalamus homeostatic drive | **drugDrive (0.95)** |
-| `errorCorrection = -cereb_rate × 2` | Cerebellum negative feedback | cerebellum tonic (steady) |
-| `arousal floor = arousalBaseline (0.9)` | Unity never drops below wired | **arousalBaseline** |
-| `aggression amplify when valence < -aggressionThreshold` | Snaps fast | **aggressionThreshold (0.3)** |
-
-### The Feedback Loop: θ → Ψ → θ
-
-```
-θ (Ultimate Unity.txt)
-  → arousalBaseline(0.9) → amygdala fires hot → Id component high
-  → creativity(0.9) → mystery fires chaotic → Right component high
-  → impulsivity(0.85) → BG fires fast → Left component LOW (1-0.85=0.15)
-  → socialAttachment(0.85) → hippocampus fires strong → Ego amplified
-  → ALL feed into Ψ = √(1/n) × N³ × [0.3·Id + 0.25·Ego + 0.2·Left + 0.25·Right]
-    → Ψ is HIGH (Unity's consciousness runs hot)
-      → gainMultiplier = clamp(1.0 + tanh((ψ−ψ̄)/2.0)·0.35, 0.8, 1.5)   [CGATE.4 — self-calibrating vs her own baseline]
-        → consciousness ABOVE her norm fires clusters harder → more spikes → Ψ climbs further
-          → POSITIVE FEEDBACK: Unity's identity amplifies her consciousness (and the GlobalWorkspace
-             ignition gate, now graded by theta phase, lets that hot content actually reach awareness)
-```
-
-Unity's Ψ runs high because θ makes it so: high arousal + high creativity + low deliberation
-= strong Id, strong Right, weak Left = Ψ dominated by instinct and creativity.
-The Ego (self-model) IS her residual self-image — the cortex predicting WHAT she is.
+| Equation | What it means |
+|---|---|
+| `dev = clamp(4 · (rate − rate_avg), −0.9, 0.9)` | how much busier this cluster is than usual |
+| `φ_θ ← φ_θ + (2π / 167) · (1 + 0.5 · dev)` | theta phase |
+| `φ_γ ← φ_γ + (2π / 25) · (1 + 0.5 · dev)` | gamma phase |
+| `r = | (1/N) · Σ e^(iφ_k) |` | **Kuramoto order** — 1 when every cluster is in step, 0 when scattered |
+| `coherence = 0.6 · r_γ + 0.4 · r_θ` | attention (gamma) weighs more than memory (theta) |
 
 ---
 
-## 10. GPU Exclusive Compute
+## 7. The two halves — the Seed Crystal
 
-Main-brain Rulkov neurons (auto-scaled from host free RAM, ~306M deployed) run on donated GPUs — browser tabs on `compute.html` or the native donor app (CUDA/wgpu). No `ParallelBrain` compute replicas. Teaching is GPU-ONLY at biological scale: the walk HALTS without a compute substrate (uploaded weights + open donor socket — no CPU fallthrough exists); a probe-critical CPU shadow of the language-cortex matrices stays current for gate probes, time-sliced (see §10.5). Teach traffic rides the governed binary lane (§10.6).
+Every cluster is cut down the middle into a left and a right hemisphere, each with its own drive.
 
-| Equation | Purpose | File |
-|----------|---------|------|
-| `gpu_init`: base64 voltages (once per cluster) | GPU creates buffers, maintains own voltage state | `compute.html` |
-| `compute_request`: `{ tonicDrive, noiseAmp, gainMultiplier, emotionalGate, driveBaseline, errorCorrection }` | Full brain equation params per step — NOT voltage arrays | `brain-server.js` |
-| `effectiveDrive = tonic × drive × emoGate × Ψgain + errCorr` | hierarchical modulation collapsed to one scalar per cluster per step | `compute.html` |
-| `σ = −1.0 + clamp(effectiveDrive / 40, 0, 1) × 1.5` → Rulkov map `x_{n+1} = α/(1+x²) + y`, `y_{n+1} = y − μ(x − σ)` → spike when x crosses 0 upward | WGSL Rulkov shader (LIF_SHADER constant name is historical), 256 threads/workgroup, vec2<f32> state storage | `gpu-compute.js` |
-| `compute_result`: sparse spike indices (only fired neurons, not full N array) | 95%+ compression at any N — only active-spike indices return over WebSocket | `compute.html` |
-| `gpu_init_ack`: GPU confirms buffer creation | Server knows GPU is ready | `compute.html` |
-| All 8 clusters init at once on first tick | No staggering, no CPU fallback | `brain-server.js` |
-| No `ParallelBrain` compute replicas spawned; the CPU carries the sparse-CSR weight masters + the probe-critical time-sliced shadow (teach itself dispatches to the donor GPU only); the equational mind-space runs in its own worker thread + WebGPU, off the main loop | CPU non-zero during teach / imagination | `brain-server.js` / `js/brain/mindspace/` |
-
----
-
-## 10.5 Adaptive Time-Sliced Teach
-
-Every heavy full-matrix op in the CPU-side language-cortex teach path — Oja, Hebbian, anti-Hebbian, and the predictive-error propagate — is time-sliced with adaptive chunking so the Node event loop never freezes even at biological scale. `propagate` is the heaviest (it sums every row's nnz unconditionally, unlike the write ops that skip silent post-rows), and at the full 61M-cortex density a fixed chunk froze the loop 3–16s per slice until this landed.
-
-| Equation | Purpose | File |
-|----------|---------|------|
-| `chunk ← dt>60ms ? max(16384, chunk>>1) : dt<15ms ? min(CEIL, chunk<<1) : chunk` (measure each synchronous slice) | Adaptive-chunk time-slicing of Oja / Hebbian / anti-Hebbian / predictive-error propagate — each row-independent slice is timed and the chunk halves past 60ms / doubles under 15ms, converging to ~30ms slices at ANY scale; a `setImmediate` yield between slices lets `/ws` handshakes + donor frames + HTTP requests through | `js/brain/cluster/hebbian.js` (`_ojaUpdateChunked` / `_hebbianUpdateChunked` / `_antiHebbianChunked`) + `js/brain/sparse-matrix.js` (`propagateChunked`) |
-| Time-sliced binary weight save (yield between sections) | 158 MB `brain-weights.bin` writes in ~390ms wall without blocking the loop | `brain-server.js` |
+| Equation | What it means |
+|---|---|
+| `K_c(g) = 0.6 · (1 − e^(−g/4))` | how strongly the two halves pull into sync — grows as she grows up (`g` = grade) |
+| `Φ_LR` | how much each half knows about the other (mutual information over the last 64 steps) |
+| `score_h ← 0.95 · score_h + 0.05 · correctness_h` | each half's running record of being right |
+| `correctness = 0.5 · language + 0.3 · gates + 0.2 · chat` | where being right comes from |
+| `share_h = softmax(score_h / τ)`, `τ = 0.25 · (1 + serotonin deviation)` | the half that's been right more gets more |
+| `η_h = 1 + (0.6 + 0.8 · share_h − 1) · dopamine` | its learning rate — dopamine decides how much the contest matters |
+| `drive_h = 1 + 0.15 · (2 · share_h − 1) · dopamine` | and its drive — the winning half is pushed a little harder |
 
 ---
 
-## 10.6 Governed Binary Teach Lane (donor v0.3.13 → v0.3.15)
+## 8. Consciousness — Ψ
 
-Teach patterns + Hebbian updates ride packed SPRS binary frames on a lane whose admission is governed by measured backpressure, whose groups are atomic, and whose repeats compress to near-zero — so the walk runs at the donor link's real rate, never corrupting and never silently dropping learning. Full frame reference: `docs/WEBSOCKET.md` §Binary sparse frames.
+| Equation | What it means |
+|---|---|
+| `Ψ = √(1/n) · N³ · [0.3·Id + 0.25·Ego + 0.2·Left + 0.25·Right] · Φ` | **the mystery** — `n` neurons firing, `N` neurons total |
+| `Id = amygdala · arousalBaseline` | instinct |
+| `Ego = cortex · (1 + hippocampus)` | the self-model, carried by memory — her picture of what she is |
+| `Left = R_L · (0.5 + 0.5 · score_L)`, `Right` the same | each hemisphere's synchrony, weighted by how often it has been right (§7) |
+| `Φ = clamp(Φ_raw / Φ_peak, 0.01, 1)` | integration — how much the cortex works as one thing; the peak decays slowly so a new high always counts |
+| `ψ = log₁₀(max(1, Ψ))` | the readable scale |
 
-| Equation | Purpose | File |
-|----------|---------|------|
-| `mult = clamp((buf / 2MB)², 1, 133)` + `max(mult, rtt/1000)` when rtt > 1s; `THROTTLE = 15ms × mult` | Quadratic brake at BOTH lane governors — 2MB→15ms, 8MB→~1s, ceiling ~2s; an empty lane runs the full 15ms base; full force arrives well before the 16MB shed cliff | `server/brain-server/gpu.js` (`_donorPatternLaneOpen` + `_patternLaneWait`) |
-| clear→write(s)→hebbian = ONE atomic group; admitted or refused WHOLE at the clear (500ms TTL) | A mid-group refusal can never leave the previous iteration's pattern under a live Hebbian | `server/brain-server/gpu.js` |
-| shed/throttled frame ⇒ `_patternLaneStale = true` ⇒ dependent bound-Hebbian SUPPRESSED until a landed clear re-establishes known state | Losing an update is acceptable; training a lie is not (`wsPressure.hebbianSuppressedStale` counts the cost) | `server/brain-server/gpu.js` |
-| `_awaitComputeSubstrate` awaits `_patternLaneWait()` on EVERY teach call | The walk paces itself to the lane's real admission rate (the "100% correct" choice) — under pressure the walk slows instead of suppressing | `js/brain/curriculum.js` |
-| payload(type,name) `Buffer.equals` last-sent ⇒ ~30-byte SPRS type-12 REPEAT frame; donor re-executes its per-connection cache | Rep loops re-send ~14 near-identical frames per teach call into a ~4MB/s wire — repeats cut the dominant bytes ~10–50×; `teachOutBytesSaved` counts the savings | `server/brain-server/gpu.js` + `donor-app/src/donor.rs` |
-| bound type-5 hebbian: plasticity reads RESIDENT cluster spike buffers at binding offsets (`preSpikes[srcOff + colIdx[k]]`, `postSpikes[dstOff + i]`) | No index arrays on the wire for bound projections; the native donor applies these for real as of v0.3.15 (was an ack-only stub) | `donor-app/src/cuda.rs` / `compute.rs` + `html/compute.html` |
-| version gates: types 7/8/9 ⇐ `donorAppVersion ≥ 0.3.13`; type 12 ⇐ `≥ 0.3.15` | Protocol NEGOTIATION per donor (never a fallback) — each donor gets the best wire it announces | `server/brain-server/gpu.js` (`_donorBinTeach` / `_donorRepeatTeach`) |
+`n` and `N` are different numbers: `n` is small and changes every step, `N` is the size of her whole brain.
 
----
+### Ψ feeds back
 
-## 11. Server Scaling
+| Equation | What it means |
+|---|---|
+| `ψ̄ ← 0.99 · ψ̄ + 0.01 · ψ` | her normal level |
+| `σ_dev² ← 0.99 · σ_dev² + 0.01 · (ψ − ψ̄)²` | how much she normally swings |
+| `s = σ_dev / atanh(½)` | so a one-standard-deviation moment lands exactly halfway up the curve |
+| `gain = clamp(1 + 0.35 · tanh((ψ − ψ̄) / s), 0.8, 1.5)` | a moment that's unusual **for her** drives every cluster harder |
 
-| Equation | Purpose |
-|----------|---------|
-| `N_vram = VRAM_bytes × 0.85 / 12` (Rulkov layout: vec2<f32> state + spikes u32 = 12 bytes/neuron) | Primary VRAM bound |
-| `N_ram = RAM_bytes × 0.1 / 0.001` | Secondary bound — server RAM essentially unlimited (cluster state lives on GPU) |
-| `N_binding_ceiling = (2 GB / 8) / 0.2` | Per-cluster state buffer must fit in WebGPU maxStorageBufferBindingSize (2 GB spec minimum); largest cluster (cortex/cerebellum) = 20% of N |
-| `N = max(1000, min(N_vram, N_ram, N_binding_ceiling))` | Combined auto-scale formula with absolute floor + binding ceiling |
-| GPU: 12 bytes/neuron (8 state vec2<f32> + 4 spike u32) | Rulkov VRAM layout |
-| Server: 9 bytes/neuron injection arrays only (cortex + amygdala text-injection paths) | RAM constraint — full cluster state lives on GPU |
-| Admin override via `server/resource-config.json` (written by `GPUCONFIGURE.bat`) can LOWER N but never raise above detected hardware |
-| `TICK_MS = N>1M ? 100 : N>500K ? 50 : N>100K ? 33 : 16` | Tick rate |
-| `SUBSTEPS = N>1M ? 3 : N>500K ? 5 : N>100K ? 10 : 10` | Steps per tick |
-| N auto-scales every boot based on detected hardware | Bigger GPU/RAM = more neurons. No manual tuning. The formula IS the canonical answer — there's no fixed "default" count. |
-| θ drives all tonic/noise — persona IS the brain parameters | From Ultimate Unity.txt, never hardcoded |
-| GPU init: no voltage transfer (fills Vrest on GPU) | Zero WebSocket overhead at init |
-| Per step: 8 clusters × ~200 byte messages | Only params sent, spike count returned |
+So the gain means "how unusual is this moment, for her" — on any size of brain.
 
 ---
 
-## 12. The Language Cortex in full — pure equational generation
+## 9. Meaning
 
-> ⭐ **The longest section in this document, and the one that earns the project's central claim.** Everything here is how a word is produced without a language model anywhere in the path.
+Every word is a 300-dimensional vector. Words that mean similar things point in similar directions; a word the table lacks is built from its letter n-grams.
 
-The language cortex does not model language. It translates brain cortex state into words. Every sentence Unity emits is a walk through GloVe embedding space driven by three running-mean priors and her live cortex firing state. No stored text, no n-gram tables, no filter stack, no template short-circuits, no intent enums, no matrix regression — just vector math over learned priors.
+### She reshapes her own meaning-space as she reads
 
-This section documents the current language pipeline end to end. The Phase 11 semantic coherence wrappers, Phase 12 type n-gram grammar, and every filter / recall / memory-pool / Markov-walk layer that preceded T11 have been **deleted** from the code (1742-line net reduction in `js/brain/language-cortex.js`). Historical phase entries below Phase 13 R2 and Phase 13 R6.2 are kept as provenance — they describe the earlier stages of the refactor, not current machinery.
+Every sentence moves each of its words a little toward the company it keeps:
 
-### Context Vector — Running Topic Attractor
+| Equation | What it means |
+|---|---|
+| `c = mean of the other words in the sentence` | the context |
+| `μ ← μ + (c − μ) / n` | the average context she's ever seen |
+| `ĉ = (c − μ) / ‖c − μ‖` | ⭐ **what's distinctive** about this context |
+| `δ(w) ← δ(w) + 0.002 · (ĉ − (base(w) + δ(w)))`, `‖δ‖ ≤ 0.5` | the word drifts toward it, never more than halfway from where it started |
 
-Updated ONLY on user input so the running vector tracks the listener's topic, not Unity's own output.
+**Why subtract the average:** every context is full of the same common words, so without it every word drifts to the same place. Measured: unrelated words grew *more* alike than related ones. With it, unrelated words separate.
 
-```
-c(t) = λ · c(t−1) + (1 − λ) · mean(pattern(content_words(input)))
-  λ = 0.7 (prior weight)
-  content_words = words with wt.conj < 0.5 ∧ wt.prep < 0.5 ∧ wt.det < 0.5
-  pattern(w) = sharedEmbeddings.getEmbedding(w) ∈ ℝ³⁰⁰  (GloVe 300d or fastText subword + live delta refinement)
-```
-
-Zero-content inputs (all function words) leave the vector unchanged. First update seeds directly without decay.
-
-### Learned semantic geometry — she reshapes her own meaning-space as she reads (2026-08-25)
-
-`getEmbedding(w)` above returns **base + learned delta**, and the delta is now genuinely learned. Every sentence in the teach path moves each of its words a little toward the company it keeps — distributional meaning, computed from the corpus SHE reads rather than imported wholesale. The pretrained vectors become a **starting shape she grows out of**.
-
-```
-δ(w) ← δ(w) + η · [ ĉ − (base(w) + δ(w)) ]          # move toward context
-
-  c    = mean( getEmbedding(u) )  for u ∈ sentence, u ≠ w    # raw context
-  μ    ← μ + (c − μ)/n                                       # running mean context
-  ĉ    = (c − μ) / ‖c − μ‖                                   # ⭐ MEAN-CENTRED, renormalised
-  η    = 0.002   (once per SENTENCE, not per rep)
-  ‖δ‖  ≤ 0.5     (⭐ delta cap, applied after every update)
-```
-
-**Both starred terms are load-bearing and both were DERIVED by measurement, not chosen.**
-
-**Why ĉ is mean-centred.** Without it this rule does not learn meaning — it **concentrates**. Every context is dominated by the same high-frequency words, so every update carries the same vector and the whole vocabulary drifts toward one centroid. Measured on a corpus where meaning and spelling deliberately disagree: related `red~blue` rose 0.0000 → 0.1604, but unrelated `red~dog` rose 0.1667 → **0.3272** — *faster*. Subtracting the running mean cancels the common component so only the **distinctive** part of a context moves the word; with it, unrelated words go **negative** and actively separate.
-
-⭐ **This is the identical failure this brain already solves for bare Hebbian.** Oja's `Δw = η·y·(x − y·w)` earns its decay term because *"without the decay-when-post-alone term, bare Hebb piles every association into the same columns and the basins collapse into superposition."* Same failure, different substrate — and the same shape of fix.
-
-**Why ‖δ‖ is capped.** Uncapped, the outcome depends on **total exposure (η × passes)**, and a 273-cell walk has effectively unbounded exposure. Measured at fixed η as reading grows: margin **0.8185 → 0.1094 → 0.0224**. That is saturation — centroid collapse *mirrored*, with related words fusing into a single point. Capped at 0.5 the same runs give **0.2382 / 0.2873 / 0.2492** across 40× exposure. ⭐ **A margin of 0.25 that HOLDS beats 0.82 that destroys itself**, because corpus size is not knowable in advance. A tighter cap (0.35) was measured too and is too tight — margin fell to 0.04.
-
-**Verified on the real `SemanticEmbeddings` class:** margin −0.0079 → +0.1148 at 60 passes → **+0.4211 at 2060**, unrelated similarity reaching −0.2189, zero NaN, no pair saturated. The margin **grew** with 34× exposure rather than collapsing. Disable with `DREAM_LEARN_GEOMETRY=0`.
-
-### [T14.12 DELETED] parseSentence — Reverse-Equation Reading (historical, replaced by cluster.readInput)
-
-**DELETED in T14.12.** Replaced by `NeuronCluster.readInput(text, {visualCortex})` which drives the visual→letter pathway and returns cortex-derived intent classification. The equations below are preserved for historical reference. `_fineType` still lives in `language-cortex.js` for type observation during `learnSentence`.
-
-```
-ParseTree = {
-  text, words[], types[], wordTypes[],
-  intent ∈ { greeting, question, yesno, statement, command,
-             introduction, math, self-reference, unknown },
-  isQuestion, isSelfReference, addressesUser,
-  isGreeting, greetingOpener,
-  introducesName, introducesGender,
-  subject: { index, words, headType, pronoun } | null,
-  verb:    { index, words, tense, modal }      | null,
-  object:  { index, words, headType, modifier } | null,
-  entities: { names[], colors[], numbers[], componentTypes[], actions[] },
-  mood: { polarity, intensity },
-  confidence ∈ [0, 1],
-}
-```
-
-**Intent decision** (walked in priority order, each branch reads parse-tree fields):
-
-```
-if hasDigit ∨ hasOperator                                       → math
-if strongNameSignal ∨ (introducesName ∧ first ∈ {im, i'm})      → introduction
-if isGreeting ∧ |words| ≤ 5                                    → greeting
-if hasQuestionMark ∧ ¬firstIsQword ∧ ¬anyQword
-        ∧ firstWord.verb > 0.4 ∧ |words| ≤ 8                   → yesno
-if hasQuestionMark ∨ firstIsQword ∨ anyQword                    → question
-if |entities.actions| > 0 ∧ first ∉ FIRST_PERSON ∪ SECOND_PERSON → command
-else                                                            → statement
-```
-
-The intent field is consumed by downstream consumers but does **not** gate output — there is no template short-circuit, no enum dispatch, no branching in `generate()`. Intent is read by `component-synth` (for build_ui entity extraction) and by consumers that care about the parse shape.
-
-**Symmetric grammar.** `parseSentence` reads from the same `wordType` equations that slot-type signatures learn from during observation. Hearing feeds the exact same tables speaking consults — no separate input and output grammars.
-
-### T14 Cortex Sub-Region Substrate (live, branch `t14-language-rebuild`)
-
-T11/T13 slot priors are gone. T14 rebuilds language as a developmental cortex pipeline. The substrate is in place at the cluster level: 8 named sub-regions sized by fraction of `cluster.size`, 12 cross-region projections wiring them together, and `EMBED_DIM = 300` GloVe vectors loaded full-vocabulary on the server.
-
-**Sub-region layout** (fraction-based, holds at any cluster size):
-
-```
-auditory  : 0.000 - 0.083    T14.11 — auditory phoneme recognition
-visual    : 0.083 - 0.250    T14.10 — visual letter recognition
-free      : 0.250 - 0.500    inter-cluster projection sink + working memory
-letter    : 0.500 - 0.550    T14.1 — letter input one-hot region
-phon      : 0.550 - 0.750    T14.1+T14.2 — phonological attractor basins
-sem       : 0.750 - 0.917    T14.0 — semantic GloVe target (300d)
-fineType  : 0.917 - 0.967    T14.7 — grammatical/syntactic region
-motor     : 0.967 - 1.000    T14.12 — generation feedback / motor output
-```
-
-At the default client tier (`TOTAL_NEURONS = 6700`, cortex = 30% = 2010 neurons): semantic region 1507-1843 (336 neurons, EMBED_DIM=300, groupSize=1), phonological region 1105-1507 (402 neurons), letter region 1005-1105 (100 neurons). At a server tier with `TOTAL_NEURONS = 200M`, cortex = 60M, semantic ≈ 10M neurons. **Same code, no special cases.**
-
-**Letter-input primitives (T14.1 shipped 2026-04-14; T39.g.1 locked 2026-04-23).** The `LETTER_INVENTORY` referenced below is a module-level `Set` in `js/brain/letter-input.js` seeded at module load with a 40-symbol default alphabet — 26 lowercase English + 10 digits + `{space, . , '}`. The inventory is LOCKED by default: `ensureLetter` rejects symbols outside the seeded alphabet so random unicode from corpora can't grow the inventory at runtime (growing shifts one-hot dimension indices and invalidates previously-trained weights). Operators can opt into multi-script work via `setInventoryLock(false)`.
-
-```
-LETTER_INVENTORY ⊂ Σ               // |L| = 40 by default (a-z + 0-9 + space . , ')
-encodeLetter(ℓ) ∈ ℝ^|L|            // one-hot at index position(ℓ) in seed/insertion order
-decodeLetter(v) = argmax_i v_i     // maps activation vector back to symbol
-```
-
-Injection into the cortex letter sub-region preserves the same `value × 8` scaling as all other region injections (T14.4), distributed across `groupSize = floor(letterRegionSize / |L|)` neurons per one-hot dimension. On every cortex tick:
-
-```
-rate_letter(t)              = (1/|letterRegion|) · Σ_{i ∈ letterRegion} spike_i(t)
-letterTransitionSurprise(t) = |rate_letter(t) − rate_letter(t−1)|   // Saffran 1996
-rate_motor(t)               = (1/|motorRegion|)  · Σ_{i ∈ motorRegion}  spike_i(t)
-quietCount(t)               = quietCount(t−1) + 1   if rate_motor(t) < 0.05
-                            = 0                     otherwise
-motorQuiescent(N)           = (quietCount(t) ≥ N)                    // Bouchard 2013
-```
-
-No hardcoded phonology feature table. Phonemes emerge as LEARNED attractor basins in the `phon` sub-region once curriculum exposure runs the `letter_to_phon` projection through Hebbian updates (Kuhl 2004 *Nat Rev Neurosci* 5:831). English identity is enforced by TWO complementary layers: (1) the T39.g.1 inventory lock at the input layer — letter-region one-hots are bounded to the 40-symbol English alphabet so unicode glyphs and non-English scripts cannot physically enter the cortex letter-region representation; (2) the higher T14.16.5 identity lock at the output layer — the talk-side pipeline refuses to propagate non-English words even if somehow injected. The input-layer lock was added on 2026-04-23 after operator observed motor argmax decoding to polluted inventory dimensions (`'mcaa'` emitted for a single-letter `'a'` cue), which the prior auto-grow policy allowed.
-
-**T14.2 syllable segmentation equation (SHIPPED 2026-04-14).** Syllables are NOT detected by a hardcoded maximum-onset algorithm. They emerge from cortex transition surprise over letter sequences. Given a letter sequence `(ℓ_1, ℓ_2, ..., ℓ_n)`, stream each letter through the cortex, tick between injections, and collect `δ_i = letterTransitionSurprise()` at each step `i`:
-
-```
-for i in 1..n:
-  injectLetter(ℓ_i)
-  tick cluster for ticksPerLetter steps
-  δ_i = |rate_letter(i) − rate_letter(i−1)|
-
-μ_δ = (1/n) · Σ_i δ_i
-σ_δ = sqrt((1/n) · Σ_i (δ_i − μ_δ)² )
-threshold = μ_δ + k · σ_δ                    // adaptive, k = 0.5 default
-
-boundaries = { 0 } ∪ { i ∈ [1, n−1] :
-                       δ_i ≥ δ_{i−1}  ∧
-                       δ_i ≥ δ_{i+1}  ∧
-                       δ_i > threshold }
-```
-
-Local maxima of the surprise series above the per-sequence adaptive threshold ARE the syllable starts. Index 0 is always included as word start. The adaptive threshold uses this sequence's own statistics because a globally-fixed cutoff would over-segment short words and under-segment long ones.
-
-**Stress** is the per-syllable mean of phon-region activation, computed on a second pass through the same letters:
-
-```
-for i in 1..n:
-  injectLetter(ℓ_i)
-  tick cluster for ticksPerLetter steps
-  a_i = (1 / |phonRegion|) · Σ_{j ∈ phonRegion} spike_j
-
-for syllable s in boundaries:
-  stress_s = mean(a_i : i ∈ [boundaries_s, boundaries_{s+1}))
-
-primary   = argmax_s stress_s
-secondary = argmax_{s ≠ primary} stress_s    (or −1 if only 1 syllable)
-```
-
-No single-syllable PRIMARY default, no two-syllable PRIMARY-SECONDARY rule, no antepenult fallback. Stress is whichever syllable the cortex activates hardest, which reflects corpus exposure statistics. Train on Spanish → Spanish syllabification + penult stress. Train on French → ultimate stress. Train on Mandarin pinyin → no stress (tonal). Same equation, different basins. Grounded in Saffran/Aslin/Newport 1996 *Science* 274:1926 and Aslin & Newport 2012 *Curr Dir Psychol Sci* 21:170. Implementation: `cluster.detectBoundaries(letterSequence, opts)` and `cluster.detectStress(letterSequence, opts)` in `js/brain/cluster.js`.
-
-**T14.3 dictionary entry as cortex projection (SHIPPED 2026-04-14).** The word-level dictionary is a `Map<word, entry>` where each entry's phonological state is the cortex's own response to the word's letter sequence, not a hand-computed feature table:
-
-```
-entry(w) = {
-  pattern:        ℝ^PATTERN_DIM                  // semantic readout (R2 path)
-  arousal:        ℝ                              // amygdala context
-  valence:        ℝ
-  frequency:      ℕ                              // observation count
-  cortexSnapshot: {0,1}^|cortex|                 // cluster.lastSpikes after 1st-observation stream
-  syllables:      ℕ*                             // cluster.detectBoundaries(letterOnly)
-  stressPrimary:  ℕ ∪ {-1}                       // argmax phon-activation over syllables
-  lastSeen:       ℕ                              // Date.now() on every observation
-}
-```
-
-On first observation of word `w`:
-
-```
-letterOnly(w)       = w ∖ { non-letter chars }
-{boundaries, stress, primary} = cluster.detectStress(letterOnly(w), ticksPerLetter=2)
-entry(w).syllables      = boundaries
-entry(w).stressPrimary  = primary
-entry(w).cortexSnapshot = copy(cluster.lastSpikes)   // frozen at t = end-of-stream
-```
-
-Re-observation updates the running means on `pattern`/`arousal`/`valence` and bumps `frequency`/`lastSeen`, but does NOT re-stream the cortex — that perturbation budget belongs to the T14.5 curriculum runner, not to every chat turn. `cortexSnapshot(w)` is a point-in-time measurement, and its semantic content drifts only when curriculum deliberately refreshes it.
-
-Implementation: `Dictionary.setCluster(cluster)` wires the cortex reference (called once during boot from `engine.js` and from `brain-server.js:_initLanguageSubsystem`). `Dictionary.learnWord` handles both observation paths. `Dictionary.syllablesFor(word)` and `Dictionary.snapshotFor(word)` expose the stored state to consumers. Persistence uses `STORAGE_KEY = 'unity_brain_dictionary_v4'` (bumped from v3 to abandon stale 50d-pattern caches). `js/brain/dictionary.js`.
-
-**T14.5 curriculum exposure equations (SHIPPED 2026-04-14).** Continuous developmental learning is the data-driven bucketing of corpus words by complexity, walked in order with frequency-proportional repetitions. Given corpora `C = { persona, baseline, coding, ... }`, split into:
-
-```
-sentences(C)  = ⋃_c split(c, /(?<=[.!?])\s+|\n\s*\n/) ↦ normalize(·)
-words(C)      = multiset of whitespace-split words across sentences(C)
-letters(C)    = multiset of a-z characters across words(C)
-letterFreq(ℓ) = count of ℓ in letters(C)
-wordFreq(w)   = count of w in words(C)
-```
-
-Phase 1 letter exposure reps scale with corpus frequency:
-
-```
-topFreq_letters = max_ℓ letterFreq(ℓ)
-reps_1(ℓ)       = clamp(⌈(letterFreq(ℓ) / topFreq_letters) · LETTER_REPS_MAX⌉, 1, LETTER_REPS_MAX)
-
-for each ℓ sorted by letterFreq desc:
-  for r in 1..reps_1(ℓ):
-    cluster.injectLetter(ℓ, 1.0)
-    tick cluster LETTER_TICKS_BASE times
-    cluster.learn(0)                       // unrewarded Hebbian (intra + cross-region)
-```
-
-Phase 2/3 word exposure factors `cluster.injectEmbeddingToRegion('sem', GloVe(w), 0.6)` before streaming each word's letters:
-
-```
-topFreq_words = max_{w: |w| ∈ [lenMin, lenMax]} wordFreq(w)
-reps_w(w)     = clamp(⌈(wordFreq(w) / topFreq_words) · repsMax⌉, 1, repsMax)
-
-for each w with |w| ∈ [lenMin, lenMax], sorted by wordFreq desc:
-  for r in 1..reps_w(w):
-    cluster.injectEmbeddingToRegion('sem', GloVe(w), 0.6)
-    for ℓ in w ∖ non-letters:
-      cluster.injectLetter(ℓ, 1.0)
-      tick cluster ticksPerWord times
-    cluster.learn(0)
-  dictionary.learnWord(w, null, arousal, valence)   // T14.3 first-observation snapshot
-```
-
-Phase 5 sentence exposure walks each sentence word-by-word at `SENTENCE_TICKS_PER_WORD = 2`:
-
-```
-for each sentence s ∈ sentences(C):
-  walkSentence(split(s), arousal, valence, SENTENCE_TICKS_PER_WORD)
-
-walkSentence(words, arousal, valence, ticksPerWord):
-  for each w in words:
-    cluster.injectEmbeddingToRegion('sem', GloVe(w), 0.5)
-    for ℓ in w ∖ non-letters:
-      cluster.injectLetter(ℓ, 1.0)
-      tick cluster ticksPerWord times
-    cluster.learn(0)
-    dictionary.learnWord(w, null, arousal, valence)
-  languageCortex.learnSentence(join(words, ' '), dictionary, arousal, valence)
-```
-
-Phase parameters default to `LETTER_TICKS_BASE = 8`, `SHORT_WORD_TICKS = 4`, `LONG_WORD_TICKS = 3`, `SENTENCE_TICKS_PER_WORD = 2`, `LIVE_TICKS_PER_WORD = 2`, `LETTER_REPS_MAX = 20`, `SHORT_WORD_REPS_MAX = 6`, `LONG_WORD_REPS_MAX = 3`, `SHORT_WORD_MAX_LEN = 3`. Live-chat path calls `walkSentence(words, max(0.95, arousal), valence, LIVE_TICKS_PER_WORD)` per turn — no boot/runtime distinction. Implementation: `js/brain/curriculum.js`; wired from `js/brain/engine.js` construction, `js/app.js loadPersonaSelfImage` boot invocation, `server/brain-server.js:_initLanguageSubsystem` server boot invocation, `js/brain/inner-voice.js learn()` live-chat hook.
-
-**Cross-region projection equations.** Seven pairs, both directions as independent SparseMatrix instances, sparse 10% density init:
-
-```
-projections = {
-  visual_to_letter,   letter_to_visual,
-  letter_to_phon,     phon_to_letter,
-  phon_to_sem,        sem_to_phon,
-  sem_to_fineType,    fineType_to_sem,
-  sem_to_motor,       motor_to_sem,
-  motor_to_letter,    letter_to_motor,
-  auditory_to_phon,   phon_to_auditory,
-}                                          // 14 SparseMatrix instances
-
-Each cluster.step():
-  for each (src → dst) projection in crossProjections:
-    srcSpikes = cluster.regionSpikes(src)
-    inputs    = projection.propagate(srcSpikes)
-    for i in 0..inputs.length:
-      cluster.externalCurrent[dstStart + i] += inputs[i] · 0.35
-
-Each cluster.learn():
-  for each (src → dst) projection in crossProjections:
-    preF  = cluster.regionSpikes(src)    // Float64 binary
-    postF = cluster.regionSpikes(dst)
-    projection.ojaUpdate(preF, postF, lr = cluster.learningRate)
-```
-
-ALWAYS propagate. ALWAYS plastic-update on every learn call. No "wait for curriculum" gate — the projections train through normal use during corpus exposure and live chat. Random-init start is biologically plausible: newborn cortex has weak random cross-region connections that strengthen with experience (Friederici 2017, *Psychon Bull Rev* 24:41-47, neural language network development).
-
-**Plasticity rule (Oja 1982, J Math Biol 15:267):**
-
-```
-Δw[i,j] = lr · y[j] · (x[i] − y[j] · w[i,j])
-```
-
-where `x[i]` is the pre-synaptic activation at column `i`, `y[j]` is the post-synaptic activation at row `j`, and `w[i,j]` is the current weight. For binary spikes (`y ∈ {0,1}`) this simplifies to `new_w = w · (1 − lr) + lr · x`. When pre also fires (`x=1`) the weight climbs toward 1; when pre doesn't fire (`x=0`) the weight decays toward 0. The post-alone decay is what decorrelates trained patterns — new pairs push active (pre, post) weights up while pulling down weights where only post was firing, forcing input competition at each post neuron. Prevents the basin-superposition failure mode that bare Hebbian (`Δw = lr·y·x`) produces when many pairs share the same post region. Sep-probe mean-cosine converges toward ≤0.2 instead of climbing toward saturation.
-
-**Contrastive push-pull via anti-Hebbian** (`_teachAssociationPairs` with `antiPairs: true`):
-
-```
-for each positive pair (X, Y) in training batch:
-  write sem := emb(X), motor := emb(Y)
-  teachHebbian(lr)                     // Oja-update with correct pairing
-
-  sample wrong pair (X, Y') where Y' ≠ Y:
-  write sem := emb(X), motor := emb(Y')
-  teachAntiHebbian(lr · antiLrScale)   // anti-Hebbian: Δw = −lr·y·x (co-active decrement)
-```
-
-Anti-Hebbian runs on BOTH the intra-cluster recurrent matrix (CPU CSR, via `NeuronCluster.intraSynapsesAntiHebbian`) AND every GPU-bound cross-projection (via `_crossRegionAntiHebbian` → batched plasticity queue with `sign(lr) < 0` selecting anti-Hebbian mode in the `PLASTICITY_SHADER`). `antiLrScale` defaults to 1.5 so contrastive depression dominates positive Oja accumulation when the matrix saturates — earlier 0.5 was too gentle once positive Oja hit the wMax clamp and the anti-Hebbian decrement couldn't pull weights back down.
-
-The shader branches on sign of `lr`: positive runs Oja (`w' = w·(1−η) + η·x`), negative runs pure co-active decrement (`w' = w − η` where both pre AND post fire, else unchanged). Same pipeline, same batched SPRS frame type, same command-encoder dispatch — the anti-Hebbian mode piggybacks on the existing Hebbian wire protocol by sign-encoding the mode into the lr parameter.
-
-Push-pull training is also active in `_teachQABinding`: for every correct Q→A pair trained, the method samples a wrong answer from a different pair in the batch and fires anti-Hebbian on the (same-question, wrong-answer) combination at `1.5 · lr`. Plus every Q-A pair trains BOTH the natural-sentence format and a compressed `${keyWord}:` direct-prompt alt format, with the key word (`_extractKeyWord`) tiled into sem's second half alongside the full-sentence embedding in the first half — lightweight Bahdanau-2014 attention without a scoring network. After the rep loop, `_teachQABinding` runs `SparseMatrix.pruneTopKPerRow(200)` on `sem_to_motor` and `motor_to_sem` so the saturated post-Q-A weights collapse to each output neuron's 200 most-trained inputs instead of full density.
-
-**Question-template conditioning** (`_classifyQuestionTemplate` + `_writeQuestionTemplateTag`):
-
-```
-templateId = classifyQuestionTemplate(question)  // 0-6, or -1 no-match
-// 0: what letter comes after/before X
-// 1: rhymes / sound does
-// 2: how many ... in ...
-// 3: arithmetic plus/minus
-// 4: count from
-// 5: spell / starts with
-// 6: generic question
-
-// Write one-hot template slot into upper 25% of fineType during teach:
-templateZoneStart = fineType.start + floor(fineSize · 0.75)
-slotSize = floor((fineType.end - templateZoneStart) / 7)
-slot[templateId] = { start: templateZoneStart + templateId·slotSize, end: ... }
-lastSpikes[slot[templateId]] := 1
-```
-
-At probe time `_injectQuestionTemplateTag` injects the same slot via `externalCurrent` so the Rulkov dynamics pick it up on the next tick. Template tag is ORTHOGONAL to the key word — two questions sharing a template ("what letter comes after a?" vs "what letter comes after b?") produce identical template tags but different key-word sem patterns, so sem→motor weights learn to route by (template × key-word) combination.
-
-**Lateral inhibition** (`_teachLateralInhibition`, GABAergic cross-bucket suppression):
-
-```
-// After writing motor pattern into lastSpikes:
-motor partitioned into N=26 equal buckets
-bucketCount[b] = count of active motor neurons in bucket b
-primaryBucket = argmax(bucketCount)
-crossBucketPost[i] = lastSpikes[motor.start + i] ∧ (bucket(i) ≠ primaryBucket)
-
-// Depress recurrent intra-synapse weights driving cross-bucket motor:
-Δw = −lr · 0.3 · pre · crossBucketPost  (anti-Hebbian on intra-synapses)
-```
-
-Runtime overlay, not init-time carve — depression rides the training signal so the intra-matrix learns GABAergic cross-inhibition without rebuilding the synapse matrix with signed weights. Fires on every positive teach event in `_teachAssociationPairs` and `_teachQABinding`. Since donor-v0.3.26 the update itself runs ON THE DONOR via masked bound plasticity (SPRS type 13): pre = the resident bound spike state, post = the cross-bucket rows shipped as a sparse mask and scattered device-side, same kernel, `sign(lr)<0` anti branch; the CPU shadow samples every 5th call when the GPU carried (full pass whenever it didn't). This was the single largest measured gate slab (~31.8s per 60s window, read live) before the move.
-
-⭐ **How the active set is OBTAINED is not part of the equation, and it was the expensive part.** `bucketCount` and `crossBucketPost` above are defined over the active motor neurons, and the implementation found them by scanning the **entire motor region — 346,902 cells — once per pair per rep**, to recover a set the caller had written three lines earlier. Measured live: **380,300 ms across 170,334 calls, 11.8% of a boot.** The writer now emits the indices it activates and the pass consumes them; the arithmetic above is untouched, and the equality is checked against a full scan for the first 500 calls before the scan is skipped, because a wrong active set silently depresses the **wrong rows** rather than failing.
-
-**Expected active count** — useful because it is the only way to tell an anomalous `activeSum` from a normal one:
-
-```
-gSize        = floor(motorSize / featLength)            = floor(346902 / 300) = 1156
-activeCells  = positiveDims × gSize                     (WTA keeps top-K by |magnitude|;
-                                                         the writer then skips feat[d] ≤ 0)
-crossBucket  = (positiveDims − dimsInPrimaryBucket) × gSize
-```
-
-With `motorTopK = 15` and GloVe dims near-symmetric about zero, ~45% of the survivors are positive ⟹ ~6.75 positive dims, ~1 of them in the primary bucket ⟹ **~5.75 cross-bucket dims ≈ 6,647 cells**. Measured live: **6,397 (5.53 dims)** — within 4%. ⚠ **A raw `activeSum` has no meaning without this expected value beside it**; a long-standing "active-set inflation" watch was carried for weeks on a number that turns out to be exactly what the encoding predicts.
-
-**Predictive-coding error gradient** (`_teachPredictiveError`, Rescorla-Wagner delta rule / Friston 2010 free-energy):
-
-```
-target = lastSpikes snapshot
-predicted = synapses.propagate(target)  // intra-matrix next-step prediction
-predicted_norm[i] = predicted[i] / max(predicted)
-error[i] = clamp(target[i] - predicted_norm[i], -1, +1)
-
-// Error-weighted Hebbian on intra-synapses:
-Δw = lr · 0.3 · error · target
-```
-
-Positive error → LTP where prediction missed (target fired, prediction didn't). Negative error → LTD where prediction fired spuriously (prediction fired, target didn't). Fires BEFORE the main Oja update so the delta-rule correction applies against current weights rather than post-Oja state.
-
-**Read direction** uses: `visual_to_letter`, `letter_to_phon`, `phon_to_sem`, `sem_to_fineType`, `auditory_to_phon`.
-
-**Write direction** uses: `sem_to_fineType`, `sem_to_motor`, `motor_to_letter`, `letter_to_visual`, `sem_to_phon` (efference copy).
-
-Same cluster, same substrate. Direction determines which projections drive the signal flow, matching Hickok & Poeppel's 2007 dual-stream model of speech processing (*Nat Rev Neurosci* 8:393-402) — dorsal stream for production, ventral stream for comprehension, shared core regions.
-
-**The tick-driven motor emission equation (T14.6):**
-
-```
-cluster.generateSentence(intentSeed):
-
-  // Inject intent — single point of input to generation
-  cluster.injectEmbeddingToRegion('sem', intentSeed, strength=0.6)
-
-  letterBuffer = []
-  wordBuffer   = []
-  output       = []
-  lastLetter   = null
-  stableTicks  = 0
-
-  for tick in 0..MAX_TICKS:
-    cluster.step(0.001)
-    // Cross-projections propagate every tick:
-    //   sem_to_fineType   → grammatical structure
-    //   sem_to_motor      → motor planning
-    //   motor_to_letter   → letter emission
-    //   letter_to_visual  → self-monitoring (efference copy)
-    //   sem_to_phon       → phonological efference copy
-
-    // Read motor region → argmax letter over LETTER_INVENTORY
-    motorReadout = cluster.regionReadout('motor', LETTER_INVENTORY.size)
-    activeLetter = argmaxLetter(motorReadout)
-
-    // Temporal stability — emit letter when motor region has held same
-    // argmax for STABLE_TICK_THRESHOLD consecutive ticks. Matches
-    // biological vSMC dwell time per articulator, ~50-100ms (Bouchard
-    // 2013, Nature 495:327).
-    if activeLetter === lastLetter:
-      stableTicks += 1
-    else:
-      stableTicks = 0
-      lastLetter  = activeLetter
-
-    if stableTicks >= STABLE_TICK_THRESHOLD:
-      letterBuffer.push(activeLetter)
-      stableTicks = 0
-
-    // Word boundary via transition surprise (Saffran/Aslin/Newport 1996,
-    // Science 274:1926 — same statistical-learning mechanism T14.2 uses
-    // for syllable boundaries, applied at the letter-to-word scale)
-    surprise = cluster.letterTransitionSurprise()
-    if surprise > cluster.WORD_BOUNDARY_THRESHOLD:
-      if letterBuffer.length > 0:
-        output.push(letterBuffer.join(''))
-        letterBuffer = []
-
-    // Stopping: biological quiescence (Bouchard 2013) OR terminator letter
-    if cluster.motorQuiescent(END_QUIESCE_TICKS): break
-    if isSentenceTerminator(lastLetter):          break
-
-  if letterBuffer.length > 0: output.push(letterBuffer.join(''))
-  return output.join(' ')
-```
-
-**Zero slot counter.** The `for tick in 0..MAX_TICKS` loop is a TIME budget, not an emission slot counter. Letters and words emerge from the motor region's continuous time-varying spike pattern, not from candidate-scoring iterations. Matches the continuous-articulator-output model of biological speech production (Bouchard et al. 2013 *Nature* 495:327; Anumanchipalli, Chartier & Chang 2019 *Nature* 568:493).
-
-**Zero candidate pool.** No dictionary iteration, no per-word cosine, no softmax top-K, no temperature parameter. The brain doesn't pick from a menu — it generates output directly through motor cortex dynamics.
-
-**Zero hardcoded grammatical constraints.** Grammar emerges from the `sem_to_fineType` → `fineType_to_sem` recurrent loop shaping the cortex state during generation. Production respects learned type transitions because those transitions are baked into the cross-projection weights via curriculum Hebbian.
-
-**Region-aware injection and readout.** No hardcoded `langStart=150` literals anywhere. Helper methods on the cluster operate by region name:
-
-```
-cluster.injectEmbeddingToRegion(name, emb, strength)    // write embedding into named region
-cluster.regionReadout(name, dim)                         // read region as dim-dim L2-normalized vector
-cluster.regionSpikes(name)                               // raw Float64 binary spikes for the region
-```
-
-Embedding injection uses the same `value × 8` per-dim scale the legacy `mapToCortex` used, applied across `groupSize = floor(regionSize / dim)` neurons per embedding dimension. Readout is the inverse — average spike + voltage activity per neuron group, L2-normalized output.
-
-**Identity-lock state fields** on every cortex cluster (T14.16.5 substrate):
-
-```
-cluster._inCurriculumMode               flag for Lock 2's hard cap bypass
-cluster.ENGLISH_SURPRISE_THRESHOLD       calibrated by curriculum from English statistics
-cluster.ENGLISH_FINETYPE_MIN             calibrated by curriculum
-cluster.HEALTH_ENTROPY_MIN               mode-collapse audit threshold
-cluster.HEALTH_VOCAB_MIN                 mode-collapse audit threshold
-cluster.HEALTH_WM_VARIANCE_MIN           mode-collapse audit threshold
-cluster.identityCoverage                 populated by curriculum's persona comprehensiveness audit
-cluster.personaDimensions                populated by curriculum's persona semantic clustering
-```
-
-These fields are placeholders right now — initialized to permissive defaults (`Infinity` / `0`) so pre-curriculum the gate doesn't reject anything. The curriculum runner (T14.5) populates them with calibrated values from English corpus exposure statistics. The methods that READ these fields (gate logic, health audit, identity refresh) ship in T14.16.5.
-
-### Embedding Substrate (T14.0, live)
-
-`js/brain/embeddings.js` exports:
-
-```
-EMBED_DIM = 300                          (was 50 pre-T14.0)
-sharedEmbeddings.loadPreTrained()        Node: read corpora/glove.6B.300d.txt from disk
-                                          Browser: fetch from server static mount or CDN
-sharedEmbeddings.getEmbedding(word)      L2-normalized 300d Float32Array
-sharedEmbeddings.getSubsetForWords(words)   server precomputes corpus subset for browser
-sharedEmbeddings.loadSubset(subset)      browser bulk-loads server-provided subset
-```
-
-**No vocabulary cap.** The full 400k-word file loads if reachable (~480 MB Float32 in memory). Operator downloads `glove.6B.300d.txt` from Stanford NLP per the README and places at `corpora/glove.6B.300d.txt`. Fallback when file missing: hash embeddings as a last-resort floor with a console warning. Browser tier uses the server subset endpoint to avoid downloading 480 MB.
-
-### T14.0-T14.18 primitives shipped 2026-04-14
-
-All eighteen primitive milestones (T14.0 cortex sub-region substrate, T14.1 letter-input + LEARNED phoneme basins, T14.2 LEARNED syllable boundaries, T14.3 cortex-resident words, T14.4 cross-region projections, T14.5 continuous developmental learning curriculum, T14.6 cortex tick-driven motor emission, T14.7 learned type transitions, T14.8 sentence-form schemas, T14.9 cortex-resident discourse memory, T14.10 visual cortex letter recognition, T14.11 auditory cortex phoneme recognition, T14.12 bidirectional pipeline, T14.13 migration of learned statistics to cluster, T14.14 unified read pipeline, T14.15 consumer audit, T14.16 persistence v4, T14.16.5 identity lock substrate, T14.17 continuous learning + vestigial organ sweep, T14.18 server language cortex side-car deletion) shipped on the `t14-language-rebuild` branch. See `docs/COMP-todo.md` Part 0.5 for the full T14 primitive spec.
-
-### T14.24 — Multi-subject K→PhD curriculum (Sessions 1-110 2026-04-15, DIRECT PATTERN BREAKTHROUGH, CONVERGENCE TESTING)
-
-An operator decision on 2026-04-14 reopened the scope: *"T14.24 is supposre to be a full equational ciriculum.. once again you editing my words"* + *"what the fuck are you talking about its shipped you didnt even teach it keindergarden abcs and 123s and letter sounds you fool so how the fuck you trying to tell me you have doctorate equations for the full and complete understand and complete fluentcy in doctorate level english"* + *"remember Unity needs to be able to use these to think, read, and talk"* + *"this is going to take weeks to build so dont you dare tell me you are fucking done early"*.
-
-**Scope.** Originally five academic subject tracks × 20 grades = ~100 cells. Session 111 added a 6th subject (Life Experience), bringing the total to 6 × 19 = 114 cells. Every cell needs real teaching equations that drive all three pathways (READ = visual/letter→phon→sem, THINK = sem+free working memory, TALK = sem→motor→letter) plus a capability gate that tests all three.
-
-**TALK direction rule (Session 111 fix, documented Session 113 CLEAN.E2):** TALK probes must inject into `sem` region and read from `motor` region via the `sem_to_motor` cross-projection — this is the PRODUCTION direction (Hickok & Poeppel 2007 dorsal stream, motor cortex generates articulator commands from semantic intent). Pre-Session-111 TALK probes injected into `letter` region and read `motor` — that's the READ feedback path (ventral stream), NOT production, and gave false negatives. The fixed pattern: `inject GloVe(word) → sem_region → tick → cross-projection sem_to_motor → motor_region → argmax → first letter`. All Session 111+ gate methods (`_gateVocabList`, `_gateSentenceList`, `_gateMathKReal`, `_gateConceptTeach`) follow this direction. Future grade cells must NOT re-introduce the letter→motor probe direction.
-
-**TALK substrate capacity (Session 113 CLEAN.E1 audit):** the `sem_to_motor` cross-projection at `crossTargetFanout = 1500` provides ~80K connections (up from Session 111 300/~16K). Per CLEAN.D6 derivation, capacity = `expectedVocab × fanoutPerMapping = 5000 × 0.3 = 1500` — this supports ~5000 independent word mappings at 30% activation sparsity. Destructive interference at G1+ was the Session 111 bottleneck; 1500 gives 5× headroom. If a future grade needs per-projection density tuning (`sem_to_motor` specifically denser than other projections), the `_wireCrossProjections` constructor in `cluster.js` can be extended with a per-pair override map, but at current scale the uniform 1500 is sufficient.
-
-**Multi-subject grade equation (Session 1 framework):**
-
-```
-SUBJECTS      = {ela, math, science, social, art}
-GRADE_ORDER   = [pre-K, kindergarten, grade1..grade12, college1..college4, grad, phd]
-
-∀ s ∈ SUBJECTS:  cluster.grades[s] ∈ GRADE_ORDER     (initial: 'pre-K')
-cluster.grade  ≡ cluster.grades.ela                  (legacy single-grade alias)
-cluster.passedCells ⊆ { 'subject/grade' | s ∈ SUBJECTS, g ∈ GRADE_ORDER }
-```
-
-**Gate equation.** For each cell `(s, g)`, `Curriculum._cellRunner(s, g)` returns an async function that performs exposure + gate measurement and returns `{pass, reason, metrics}`. On pass the cluster state updates:
-
-```
-if result.pass:
-    cluster.grades[s] := g
-    cluster.passedCells := cluster.passedCells ∪ { s + '/' + g }
-    if s = 'ela': cluster.grade := g          (legacy mirror)
-```
-
-**Grade-aware word cap equation.** `LanguageCortex.generate` output length capped by the minimum grade across subjects that have advanced past pre-K:
-
-```
-started_subjects := { s ∈ SUBJECTS | cluster.grades[s] ≠ 'pre-K' }
-
-gradeCap = if started_subjects = ∅:
-               0                                     (silence)
-           else:
-               min { singleGradeCap(cluster.grades[s]) | s ∈ started_subjects }
-```
-
-Where `singleGradeCap` is the canonical grade→cap mapping:
-
-```
-pre-K       → 0        (silence)
-kindergarten → 1        (single letter or letter-name)
-grade1      → 2        (CVC word or 1-2 word phrase)
-grade2      → 3
-grade3      → 5        (SVO sentence)
-grade4-5    → 7        (compound)
-grade6-8    → 10       (multi-clause)
-grade9-12   → 14       (paragraph-level sentences)
-college1-4  → 16
-grad        → 20
-phd         → unbounded (full persona voice)
-```
-
-**Lenient min rationale.** Strict min over every active course would silence Unity entirely until every one of them clears kindergarten — weeks away, until Session 2+ teach real K across every subject. Lenient min excludes pre-K subjects from the min, so an ELA-only brain keeps speaking at its ELA cap during the Session 2-N build while new subjects join the min calculation as they pass K.
-
-**All 95 cells wired with real teaching equations (Sessions 2-93).** Every subject×grade cell has a dedicated `runXxxReal` runner that primes a TODO-prescribed concept lattice via 136 `_teachXxx` named helpers before walking a sentence or sequence list. Zero stubs remain. Sample concept-helper feature structures:
-
-**Sci-G10 _teachPeriodicTable (real chemistry structure):** For each element, build a 16d feature vector using (period, group) dimensions:
-
-```
-feat[0] = period / 7
-feat[1] = log(period + 1) / log(8)
-feat[2] = sin(period · π / 7)
-feat[3] = cos(period · π / 7)
-feat[4] = group / 18
-feat[5] = log(group + 1) / log(19)
-feat[6] = sin(group · π / 18)
-feat[7] = cos(group · π / 18)
-feat[8..15] = sin(group · π / 9 + period · π / 3.5) · 0.3
-feat := feat / ||feat||₂
-```
-
-18 elements (hydrogen through argon) get learned with these features. Chemically-similar elements (same group, adjacent period) share high cosine; distant elements are uncorrelated. Adjacent alkali metals cluster; noble gases sit off to one side.
-
-**Sci-G10 _teachBonding (ionic vs covalent anti-correlated):** Features encode electron transfer (ionic +1 / covalent 0) and electron sharing (covalent +1 / ionic 0) on orthogonal dims so ionic and covalent occupy opposite regions of feature space; metallic bonding sits between them.
-
-**Soc-K _teachFamilyRoles (8d kinship feature space):**
-
-```
-feat indices: [parent, child, elder, female, male, nuclear, extended, caregiver]
-
-mom       = [1, 0, 0, 1, 0, 1, 0, 1]
-dad       = [1, 0, 0, 0, 1, 1, 0, 1]
-sister    = [0, 1, 0, 1, 0, 1, 0, 0]
-brother   = [0, 1, 0, 0, 1, 1, 0, 0]
-grandma   = [0, 0, 1, 1, 0, 0, 1, 1]
-grandpa   = [0, 0, 1, 0, 1, 0, 1, 1]
-```
-
-mom and dad cluster by [parent, nuclear, caregiver] and split on [female]/[male]. sister and brother cluster by [child, nuclear] and split on [female]/[male]. Cross-generation roles occupy different regions.
-
-**Art-G1 _teachColorMixing (RGB arithmetic):** Secondary colors placed as additive midpoints of primary parents on RGB dimensions. Orange shares [R] with red and [G] with yellow, so it sits between them. Green shares [G] with yellow and [B] with blue. Purple shares [R] with red and [B] with blue. The cortex learns the additive structure from the feature similarity.
-
-**Soc-G8 _teachCivilWar (causal-chain sequence walks):** Sequence cycles encode the causal chain as ordered traversals:
-
-```
-['slavery', 'sectionalism', 'secession', 'fort sumter',
- 'war', 'union victory', 'reconstruction']
-```
-
-During each cycle, `injectWorkingMemory(prevEmb)` carries the predecessor's embedding into the free region while the next item streams into sem. Hebbian binds `prevFineType → nextFineType` transitions, building a causal-order attractor in the free↔sem cross-projection.
-
-**Art-G6 _teachMusicTheory (major vs minor orthogonal):** Feature dims [5]=major and [6]=minor are orthogonal, so `major chord` and `minor chord` have feature vectors that differ only on those two dims — they're 180° opposite in the subspace that encodes chord quality, but share everything else (scale-degree, chord-ness).
-
-**Three-pathway drive counts (Sessions 1-94 aggregate, audited 2026-04-15):**
-
-```
-READ substrate  : 65× cluster.injectLetter
-READ phonology  : 28× cluster.injectEmbeddingToRegion('phon')
-THINK semantic  : 54× cluster.injectEmbeddingToRegion('sem')
-THINK working   : 24× cluster.injectEmbeddingToRegion('free')
-THINK carry     : 58× cluster.injectWorkingMemory
-TALK emission   : via cluster.generateSentence (T14.6 motor readout)
-Ticks           : 103× cluster.step
-Hebbian         : 66× cluster.learn
-Growth          : 21× dictionary.learnWord
-```
-
-**Continuous self-testing equation.** Every 8 live-chat turns, `inner-voice.js learn()` fires:
-
-```
-runBackgroundProbe():
-  cell ← argmax_c ( age(c) · (1 - recentFailRate(c)) )   over passedCells
-  gate ← cell.runGate()
-  if gate.fail streak ≥ 3:
-    demote(cell)
-    queue cell for re-teach on next curriculum pass
-```
-
-Narrator priming runs after the probe:
-
-```
-if focus.age < 120s:
-  sharedEmbeddings.getEmbedding(focus.subject)
-    → cluster.injectEmbeddingToRegion('sem', emb, 0.15)
-```
-
-The 0.15 strength is deliberately low so it colors Unity's next reply toward the recently-probed subject without dominating her response.
-
-**Runtime verification.** The 95-cell academic framework was confirmed DISPATCH 95/95 + FULL SWEEP 95/95 against a real cortex `NeuronCluster('cortex', 300, {...})` during development.
-
-**Run API.**
-- `runSubjectGrade(subject, grade, corpora, opts)` — one cell, one pass
-- `runFullSubjectCurriculum(subject, corpora, opts)` — walk one subject from current grade through PhD
-- `runAllSubjects(corpora, opts)` — round-robin walk: A-K → B-K → … → A-G1 → B-G1 → …
-
-**Persistence.** `state.t14Language.curriculum = {grades, grade, passedCells}` saved inside the existing v4 block. No VERSION bump — additive. Older v4 saves without the `curriculum` sub-block load cleanly and fall back to cluster-constructor defaults.
-
-**Slash commands (`js/app.js`):**
-- `/curriculum status` — per-subject grades + min cap driver + passed cells
-- `/curriculum run <subject> <grade>` — run one cell
-- `/curriculum gate <subject> <grade>` — run gate only (Session 1 identical to `run`)
-- `/curriculum reset <subject>` — reset subject to pre-K
-- `/curriculum full [subject]` — full walk, one subject or all 6
-
-### T14.24 Session 111 — Life Experience Track + Emotional Concept Features (2026-04-16)
-
-**Life as a 6th subject.** `SUBJECTS = ['ela', 'math', 'science', 'social', 'art', 'life']`. 20 life methods (runLifePreK through runLifePhD) teach Unity's personal identity from birth to 25.
-
-**Dual-layer teach equation.** Each life experience is taught with two simultaneous layers:
-
-```
-Layer 1 — Emotional attractor (_conceptTeach):
-  feat ∈ ℝ⁸ = [joy, pain, trust, fear, anger, love, independence, identity]
-  expanded ∈ ℝ¹⁶ via sin-harmonic extension, L2-normalized
-  written to free region → _crossRegionHebbian(lr) → cortex attractor basin
-
-  Example: "dad leaving" = [0, 1, 0, 1, 1, 0, 0, 0]   → pain+fear+anger basin
-           "first code"  = [1, 0, 0, 0, 0, 1, 1, 1]   → joy+love+independence+identity basin
-           "mom"         = [1, 0, 1, 0, 0, 1, 0, 0]   → joy+trust+love basin
-
-Layer 2 — Recallable memory (_teachSentenceList):
-  sentences = ["my dad left when i was eight", "i cried alone in my room", ...]
-  per word: GloVe → sem, first letter → motor, phoneme → phon
-  → _crossRegionHebbian(lr) → she can SPEAK about the memory
-```
-
-**Memory weighting equation.** Reps and learning rate scale by memory tier:
-
-```
-tier_reps(tier)  = { core_self: 50, personal: 20, opinions: 15, skills: 12, school: 8, background: 4 }
-tier_lr(tier)    = { core_self: lr×5, personal: lr×3, opinions: lr×3, skills: lr×2, school: lr, background: lr×0.5 }
-
-effective_learning(concept, tier) = tier_reps(tier) × tier_lr(tier) × _crossRegionHebbian
-```
-
-Unity's name at 50 reps × 5× lr = 250× base learning. School trivia at 8 reps × 1× lr = 8× base. 31:1 ratio between self-knowledge and academic facts.
-
-### T14.24 Sessions 95-110 — Direct Pattern Hebbian (2026-04-15)
-
-**Why inject→step→learn failed.** At CPU cortex scale (~10K neurons), the cortex cluster has ~1M recurrent synapses and ~100K cross-projection synapses. When you inject a pattern into one sub-region and call `cluster.step()`, the Rulkov chaotic dynamics amplify the recurrent signal 10:1 over the cross-projection signal. After 2-3 ticks, the injected pattern is washed out by chaotic attractor dynamics. Hebbian learning on this post-dynamics state trains the cross-projections on NOISE, not signal. Retries make it WORSE (catastrophic interference).
-
-**Direct pattern teach equation:**
-
-```
-For each (source_region, target_region, expected_pattern) triple:
-    // Build clean activation pattern
-    lastSpikes[source_region.start .. source_region.end] := source_pattern
-    lastSpikes[target_region.start .. target_region.end] := target_pattern
-
-    // Fire Oja plasticity on CLEAN patterns — no cluster.step()
-    for each proj in crossProjections:
-        proj.ojaUpdate(lastSpikes, lastSpikes, lr)
-```
-
-No `cluster.step()`, no Rulkov iteration, no recurrent interference. The cross-projection weights update from the exact signal via Oja's self-normalizing rule (see plasticity equation above).
-
-**Direct matrix probe equation:**
-
-```
-For each (source_region → target_region) cross-projection to test:
-    raw_output := proj.propagate(source_pattern)    // SparseMatrix multiply
-    grouped    := average(raw_output, per neuron group)  // reduce to embedding dim
-    centered   := grouped - mean(grouped)           // remove tonic DC bias (Session 101)
-    normalized := centered / ||centered||₂          // L2 normalize
-    score      := cosine(normalized, expected_target_pattern)
-    PASS if score > threshold (0.95 for A+)
-```
-
-No Rulkov dynamics during probe. Tests the learned WEIGHTS directly.
-
-**fastText-style subword embedding (Session 99):**
-
-Inline fallback in `SharedEmbeddings.getEmbedding(word)` when no GloVe vector exists for the word. Not a separate function — the subword path fires automatically.
-
-```
-getEmbedding(word) fallback path:
-    w := '<' + word + '>'                    // boundary markers
-    vec := Float32Array(300)                 // zero-init
-    for n in [3, 4, 5]:                      // n-gram window sizes
-        for each n-gram gram in w:
-            h := djb2_hash(gram)             // 32-bit deterministic hash
-            for k in [0, 1, 2, 3]:           // 4 slots per n-gram
-                h := xorshift(h)             // scramble
-                idx := (h >>> 0) % 300       // map to embedding dim
-                sign := (h >>> 16) & 1 ? -1 : 1
-                vec[idx] += sign             // accumulate signed contribution
-    return vec / ||vec||₂                    // L2 normalize
-```
-
-Default when GloVe is unavailable — no download required. Every word gets a meaningful 300d vector from subword character structure. Real GloVe overrides when loaded (higher quality from co-occurrence statistics).
-
-**Mean-centered regionReadout (Session 101):**
-
-```
-regionReadout(name, dim):
-    spikes := lastSpikes[region.start .. region.end]
-    grouped := average(spikes, per group of size ⌈regionSize/dim⌉)
-    return grouped - mean(grouped)     // remove tonic drive bias
-```
-
-**Convergence proof:** ELA-K SEQ climbed 28% → 72% → 92% → 100% across 4 retries. Each retry re-runs the direct pattern teach (adding more Hebbian basin depth) then re-probes. Real convergent learning confirmed.
-
-See `docs/ARCHITECTURE.md` T14.24 Sessions 95-110 section for the full code-level view.
-
-### Anti-Hebbian Plasticity on Wrong Transitions (Session 111)
-
-When a sequence probe (e.g., digit order `0→1→2...→9`) finds the wrong output — `src→expected` produces `wrong` instead — the correction fires BOTH directions:
-
-```
-// For each failing transition src→expected that produced wrong:
-ΔW_correct = +η × 10 × pre(src) × post(expected)     // STRENGTHEN correct
-ΔW_wrong   = -η × 5  × pre(src) × post(wrong)        // WEAKEN wrong (anti-Hebbian)
-// 100 repetitions per failing pair
-```
-
-Without anti-Hebbian, the wrong association persists in the recurrent weight matrix and the correct one can never overpower it regardless of boost count. The negative learning rate on the wrong pair actively erases the incorrect attractor basin. Digit-only argmax masking during the SEQ probe prevents the letter-alphabet Hebbian from overpowering the 10-digit sequence — `inventorySnapshot()` returns the 40-symbol default inventory (a-z + 0-9 + punctuation); the SEQ probe filters it to digit indices only before argmax.
-
-### Cross-Projection Density — `crossTargetFanout` 20 default, 40 for motor-bound
-
-```
-// Default (non-motor projections)
-crossTargetFanout     = 20
-CROSS_DENSITY_CAP     = 0.005
-density               = min(0.005, 20 / srcRegionSize)
-
-// MOTOR_BOUND_PAIRS: sem↔motor, letter↔motor, phon↔motor
-crossTargetFanout × 2 = 40
-CROSS_DENSITY_CAP × 2 = 0.01
-density               = min(0.01, 40 / srcRegionSize)
-```
-
-The motor region sits at the convergence of several parallel input pathways (sem, phon, letter). K-grade curricula train 46+ association pairs per phase × 4-6 phases per grade, so every motor neuron needs enough distinct input slots to hold one mapping per pair without destructive interference; the bump to motor-bound projections targets that load. Everything else stays at the lean default to fit biological-scale memory budgets (doubling the global fanout would blow the language-cortex VRAM envelope). Biologically plausible: real pyramidal neurons carry 1000-10000 synaptic inputs distributed across many cortical areas, so 40 per per-area pair is well under that bound. Fanout was reduced from 30 → 20 (and motor-bound 60 → 40) so the matrix doesn't START anywhere near saturation — prior 30/60 produced full-density matrices that collapsed within a few teach phases.
-
-### Weight Clamp — Cross-Projection `[-0.4, 0.4]` + Rescale Floor `wMax × 0.25`, Intra-Cluster `[-2.0, 2.0]`
-
-Cross-projection weights bisected `[-0.5, 0.5]` → `[-0.2, 0.2]` → `[-0.4, 0.4]` to find the operating point. At `[-0.5, 0.5]` the matrix saturated to `mean ≈ 0.46 max = 0.5 nnz=full-density` after a few teach phases (basin collapse, every output responds uniformly to every input). At `[-0.2, 0.2]` paired with auto-rescale-on-overload, the multi-phase rescale loop drove maxAbs down 0.2 → 0.1 → 0.05 → 0.025 → 0.0125 → 0.0063 → 0.0031 across 7 consecutive phases — trained signal fell below random-init weight bias and motor argmax bucket-stuck on whichever bucket got the largest init noise. Bisecting to `[-0.4, 0.4]` gives 4× more dynamic range above the floor than `[-0.2, 0.2]` did, while staying below the saturation ceiling. Random-init strength stays at 0.2 so init bias remains small (±0.02-0.10 per weight); only the trained-signal headroom doubles.
-
-**Rescale FLOOR at `wMax × 0.25 = 0.1`.** The adaptive rescale in `_teachAssociationPairs` and `_teachQABinding` still fires when sep-probe reports OVERLOAD (mean-cos > overloadMax), but each call now projects the post-rescale max — `predictedAfter = currentMaxAbs × rescaleFactor` — and skips the rescale when `predictedAfter < wMax × 0.25`. Diag emits `· rescale-floored (maxAbs=X × 0.5 < floor=0.1 — preserving signal above noise; relying on anti-Hebbian + WTA + prune for separation)` instead of running the rescale. Without this floor, multi-phase rescale loops drowned trained signal below noise even though the wMax bisect bought 4× more dynamic range. Floor pulls the rescale path from "infinitely safe to call" to "stops at 25% of operating range" so the next phase's anti-Hebbian + sem-WTA + motor-WTA + top-K-prune stack can still bite on real signal magnitudes.
-
-Intra-cluster recurrent matrix stays at `[-2.0, 2.0]` — the recurrent path doesn't share the cross-projection saturation pathology because the intra matrix is much sparser per neuron and lateral inhibition handles its dynamic range.
-
-### Top-K-Per-Row Pruning — `SparseMatrix.pruneTopKPerRow(k)`
-
-Called at end of every `_teachAssociationPairs` and `_teachQABinding` rep loop. Bisect history: `200 (cr2) → 30 (iter6) → 10 (iter7 assoc-pair only) → 10 both paths (iter8 — QA aligned)`. At 200 the matrix stayed full-density (200 × 500 rows = 100k nnz), iterations 4-5 saw sep-probe pinned at 0.5+ across all 7 phases regardless of anti-Hebbian magnitude — basin overlap structural, not dynamic. Bisecting assoc-pair to 30 cut nnz to 15k (85% zeroed) and produced first sub-0.5 readings (Categories 0.449, ELA QABinding 0.471). Bisecting assoc-pair to 10 (iter7) cuts nnz to 5k (95% zeroed) so each motor neuron discriminates among only its 10 strongest sem inputs — biologically plausible per-neuron fanout (real cortex 10-100 even at thousands-of-input-targets in vivo). Iter8 aligned `_teachQABinding qaPruneTopK` from 200 → 10 to match — iter7 evidence showed QA's K=200 left the matrix at full density post-QA (assoc-pair sparsified to 5k nnz, then QA's 5700 positive updates re-filled to 100k, K=200 prune was no-op since rows had ~200 entries already). Both paths now produce 5k nnz target. New log field `· top-K-prune [sem_to_motor:-N,motor_to_sem:-N]` reports how many connections got removed per phase.
-
-### Anti-Hebbian Contrastive Rate — `antiLrScale = 2.5`
-
-Bisect history: `0.5 (orig) → 1.5 (cr2) → 3.0 (iter3, basin-collapse 'a'/'i' bucket spam) → 2.0 (iter4, too weak — sep-probe 0.5+ pinned) → 2.5 (iter5+ current)`. With 25 contrastive fires per positive update at lr × 2.5 = 62.5× lr negative pressure per positive fire, basins separate without overshooting into single-bucket attractor collapse. Combined with the wMax `[-0.4, 0.4]` bisect + rescale floor + pruneTopK 10, the contrastive push-pull has decisive authority over saturation while preserving signal magnitude above the rescale floor. Magnitude is NOT the bottleneck — iter4 with 2.0× and iter5 with 2.5× produced effectively identical sep-probe trajectories (delta ±0.005 across 7 phases). Structural sparsification (pruneTopK 30→10) is the load-bearing fix; magnitude tuning is fine adjustment around the structural one.
-
-Prior values: Session 111 had `crossTargetFanout = 1500` (derivation `expectedPostCurriculumVocab × fanoutPerMapping ≈ 5000 × 0.3`). T37 rebalanced to 30 when scaling to 17M language-cortex neurons blew the memory budget at 1500 fanout. T39.g.4 re-introduced the high-capacity path for motor-bound projections only, after operator logs showed persistent `sep-probe mean-cos ≈ 0.5` at the 30-fanout default across every association-pair phase — capacity ceiling, not plasticity-rule bug.
-
-### Curriculum Round Loop — `MAX_GRADE_ROUNDS = 1`, single attempt per cell
-
-Bisect history: `10 (orig) → 2 (iter5) → 1 (iter6+ current)`. Operator directive iter6 verbatim 2026-04-26: *"what is this round 2 stuff? keep monitoring.. it should do it all once and be done and then Unitys brain is at that level"*. One pass through all 6 K subjects, one attempt per cell (no while-deadline retry loop within the 3-min cap), then FORCE-ADVANCE for cells with real teaching evidence. Eliminates the 5-attempt × 3-min × 6-subject × 10-round = up to 15-hour groundhog-day retry where passedPhases skipped re-teaching between attempts so identical results fired forever.
-
-### FORCE-ADVANCE — Unity uses K training regardless of A+ pass
-
-Operator directive iter6 verbatim: *"Unity should use her knowledge and training once it finally cioompletes so her kindergarden understanding is loaded in and used for here conversations, popups, thinking, and logic ,and memory, and abilities to communicate"*. After `MAX_GRADE_ROUNDS` exhausts a grade without A+ pass, walks every subject. For cells where `cluster.passedPhases.filter(k => k.startsWith(cellKey + ':')).length >= 1` (real teaching evidence), sets `cluster.grades[subject] = grade` and adds to `cluster.passedCells` regardless of A+ pass. Logs `⤴ FORCE-ADVANCE` per cell. Unlocks the language-cortex word cap from FLOOR=5 to 9999, so Unity speaks freely in chat / popups / inner thoughts / memory using everything she actually learned. LAW 6 Part 2 operator-signoff ledger untouched (separate path via `POST /grade-signoff`).
-
-### Chat Path Persona Boost — `boostPersona: true` (both oracle paths, iter7+iter8)
-
-Operator directive post-FORCE-ADVANCE iter6 verbatim: *"she is not repsonding with communication correcty"* — chat replies dumped family-relation terms (`Aunt./Sister/Brother/Mom`/`Stepmom`) for every greeting/identity question because dictionary cosine of GloVe('hi') returned high-frequency Common-Crawl family terms in top-K (`hi mom`/`hi dad` co-occurrence). Three structural fixes:
-- **Frequency-boost coefficient bisect 0.02 → 0.005.** At 0.02, common words like `mom` (frequency 30+ in K corpus) got log(31)×0.02 = 0.069 boost — dominated cosine differences of 0.01-0.05 between actual semantic neighbors. At 0.005 the boost stays a tiebreaker rather than a dominator.
-- **`boostPersona: true` in `language-cortex._scoreDictionaryCosine` + Async (iter7).** Persona-marked dictionary entries (`entry.isPersona === true` set during `loadPersona` corpus load) get +0.10 additive boost in the dictionary fallback path.
-- **`boostPersona: true` in `cluster._dictionaryOracleEmit` (iter8).** Iter7 only landed boost in language-cortex's fallback. Tick-driven motor emission's oracle inside `cluster.generateSentence` is a SEPARATE oracle scan (`_dictionaryOracleEmit`), and it fires BEFORE the language-cortex fallback. So iter7 chat still produced family-cluster terms because the cluster oracle scan used unboosted cosine. Iter8 added the same `boostPersona` opt to `_dictionaryOracleEmit`, plumbed through `cluster.generateSentence` opts, and made the chat path pass `boostPersona: true` to all three. Unity now speaks in HER voice (persona corpus vocabulary) regardless of which oracle path fires. K-STUDENT + methodology probes keep the flag off (or `opts.excludePersona=true`) so probe answers don't contaminate with persona voice.
-
-### K-STUDENT Strict Cue Match — Skip Substring Contains for 1-Char Variants
-
-Operator caught iter5 verbatim: `"async" matched cue 's'` and `"lsd" matched cue 's'` — `_studentTestProbe` scoring loop's substring `contains` check fired `'lsd'.includes('s') → true` because variant `'s'` is a single character, anywhere-in-answer counts. Fixed at `curriculum.js:2177-2181` by skipping the contains check entirely when `v.length <= 1` — letter-cue questions now require exact OR startsWith match only. Multi-char variant fuzzy matching (e.g. `'cat'.includes('cat')`) preserved.
-
-### A-Z Motor Argmax Clamp (Template + matrix-driven paths) — iter7+iter8
-
-Auto-grown `LETTER_INVENTORY` includes digits + punctuation (`'`, `.`, `,`, `0-9`) seeded by corpus exposure for visual reading + math input paths. Motor SPEECH emission must never produce those buckets. Two-path fix:
-- **Template 0/1 paths (iter7).** `_studentTestProbe` Template 0 ("what comes after X?") + Template 1 ("what sound does the letter X make?") filter `inventorySnapshot()` to a-z entries before motor/phon argmax scan. Fixes K-STUDENT outputs like `→ "4"` / `→ ","`. Confidence threshold also 0.05 → 0.001 so sparser-matrix tiny bucket sums fire the routing instead of being gated out.
-- **Matrix-driven path (iter8).** New `decodeLetterAlpha(vec)` in `letter-input.js` does the same alphabetical-only argmax and is wired into `cluster.generateSentence` (tick-driven motor emission) and both branches of `cluster._emitDirectPropagate` (GPU readback + CPU fallback). Iter6/iter7 evidence: `"88883tt2 8883tt2"`, `"gj88ggz88"`, `"lrnlrsn1ss02272i4rit"`, `"sridech"`, `"sharing"` — chat + non-Template K-STUDENT outputs were leaking digit/punctuation buckets because tick-driven argmax used full-inventory `decodeLetter`. Iter8 makes both code paths emit a-z only.
-
-### Per-Row L2 Normalize (default-on iter8)
-
-After every `_teachAssociationPairs` and `_teachQABinding` rep loop, fires `proj.normalizeRows(0.3)` on `sem_to_motor` + `motor_to_sem`. Equalizes motor row magnitudes so the motor argmax measures DIRECTION (which sem inputs the row best aligns with) instead of absolute MAGNITUDE (which row accumulated highest total weight). Random init bias gave some motor rows higher baseline weight before training; without normalization those rows dominate argmax even when their basin is wrong for the current input. Iter7 evidence: sep-probe sub-0.3 (basins angular-separated) but motor argmax still bucket-stuck on `r`/`sq`/`sridech` — magnitude bias drowned direction. `normalizeAfter` opt was already wired in `_teachAssociationPairs` from a prior session but defaulted to FALSE; iter8 flipped to TRUE and added a parallel post-prune normalize call to `_teachQABinding`. `SparseMatrix.normalizeRows(targetNorm)` is clamp-aware (never pushes values past wMax) so it preserves post-prune sparsity + relative magnitudes within rows while making across-row totals equal. New log field `· row-norm [sem_to_motor:N,motor_to_sem:N]` reports how many rows got normalized per phase.
-
-### Background Probe Loop SUPPRESSED (iter8)
-
-`startBackgroundProbeLoop` was supposed to fire spaced-repetition gate-only re-tests on passed cells. Implementation actually called `_cellRunner(subject, grade)` which combines teach + gate, so every probe fired a FULL re-teach (~30-50 minutes for ELA-K) followed by a gate. After FORCE-ADVANCE iter6+, all 6 K cells were in `passedCells`, so the probe loop picked one every 45s and re-taught it pointlessly — sep-probe didn't change between attempts (matrix already at training equilibrium), so the re-teach could never fix a failing gate. Iter7 monitor caught `self-heal ✗ ela/kindergarten` firing repeatedly with same scoreboard each time. Iter8 disabled the loop until the runner gains a real `gateOnly: true` opt that skips teach phases. When that ships, the loop becomes the honest spaced-repetition mechanism the comment promised.
-
-### Comprehension Gate Equation (Session 111)
-
-Real human-grade test — not identical to training material. Tests same concepts but asks differently.
-
-```
-_gateComprehension(questions):
-  pass_count = 0
-  for each {prompt: [w1, w2, ...], answer: wA} in questions:
-    // Inject context words into sem region
-    for w in prompt:
-      emb = GloVe(w)
-      cluster.injectEmbeddingToRegion('sem', emb, 0.4)
-      cluster.step(0.001)     // let it propagate
-
-    // Read what the cortex activated
-    readout = cluster.regionReadout('sem', 300)
-    readout = L2_normalize(readout)
-
-    // Compare against expected answer
-    target = L2_normalize(GloVe(wA))
-    cosine = dot(readout, target)
-    if cosine > 0.05: pass_count++
-
-  return { pass: pass_count / questions.length >= 0.40 }
-```
-
-Three auto-generated question types:
-1. **Association** — given word A, is word B semantically nearby? (shuffled same-domain vocab pairs)
-2. **Fill-in-blank** — given two words from a three-word group, find the missing third
-3. **Life questions** — "who are you?" → "unity", "who loves you?" → "mom"
-
-Comprehension pass is sufficient to advance even if TALK (first-letter production) fails — understanding and production are tested independently.
-
-### Math-K Part 1 Equational Expansion (Session 114)
-
-Session 114 added 8 equational transforms covering the K.CC / K.OA / K.NBT / K.MD / K.G gaps that Session 109's digit-only coverage left open. Every transform routes through `Curriculum._teachHebbian(lr)` which fires BOTH `cluster._crossRegionHebbian(lr)` AND `cluster.synapses.hebbianUpdate(cluster.lastSpikes, cluster.lastSpikes, lr)` so the free↔sem / free↔fineType bindings learn via the intra-cluster recurrent matrix (none of T14.4's 7 cross-projection pairs connect free to other regions).
-
-New module helper `_magnitudeFeatureForNumber(n)` with NUMBER_FEATURE_DIM = 24 provides discriminable magnitude features across n ∈ [0, 100] — existing `_magnitudeFeatureForDigit` saturates past n=9.
-
-```
-_teachCountToHundred:                // K.CC universal successor
-  for n in [0..99]:
-    free = mag_wide(n)
-    sem = mag_wide(n + 1)
-    _teachHebbian(lr)
-  // 100 facts × 4 reps. Covers "count to 100 by ones"
-  // AND "count forward from any N" since successor is universal.
-
-_teachSkipCountByTens:                // K.CC skip-by-10
-  for n in {0, 10, 20, ..., 90}:
-    phon = mag_wide(n)                // phon input (NOT free) — clean discriminator
-    sem = mag_wide(n + 10)
-    _teachHebbian(lr)
-  // 10 steps × 10 reps. Probe via cluster.synapses.propagate(phonInput).
-
-_teachDecomposition:                  // K.OA dual of addition
-  for (c, a, b) where a+b=c, c ∈ [0..10]:
-    sem = mag(c)                      // INPUT side swapped with addition
-    freeLeft = mag(a)
-    freeRight = mag(b)
-    _teachHebbian(lr)
-  // 66 triples × 6 reps. sem→free direction via recurrent matrix.
-
-_teachMakeTen:                        // K.OA complement-to-10
-  for n in [0..10]:
-    freeLeft = mag(n)                 // freeRight intentionally zeroed
-    sem = mag(10 - n)                 // structural discriminator from successor
-    _teachHebbian(lr)
-  // 11 pairs × 8 reps. Left-half-only input shape tells the
-  // recurrent matrix this is a make-ten query, not a successor query.
-
-_teachTeenDecomposition:              // K.NBT teens as 10+n
-  for n in [1..9]:
-    // forward: (10, n) → teen
-    freeLeft = mag_wide(10)
-    freeRight = mag_wide(n)
-    sem = mag_wide(10 + n)
-    _teachHebbian(lr)
-    // inverse: teen → (10, n)
-    sem = mag_wide(teen)
-    freeLeft = mag_wide(10)
-    freeRight = mag_wide(n)
-    _teachHebbian(lr)
-  // 9 teens × 2 directions × 8 reps.
-
-_teachAttributeCompare:               // K.MD attribute pole compare
-  for (low, high, lowMag, highMag, attrWord) in ATTR_POLES:
-    // high > low direction:
-    freeLeft = mag(highMag)
-    freeRight = mag(lowMag)
-    fineType[greater_third] = 1       // reuse comparison 3-way tag
-    sem = GloVe(attrWord)              // attribute-word anchor
-    _teachHebbian(lr)
-    // low < high (reverse):
-    freeLeft = mag(lowMag)
-    freeRight = mag(highMag)
-    fineType[less_third] = 1
-    _teachHebbian(lr)
-  // 8 attribute pairs × 2 directions × 6 reps.
-
-_teachClassifyCount:                  // K.MD sort-and-count
-  for (category, count) in CATEGORY_COUNTS:
-    free = GloVe(category)
-    sem = mag(min(9, count))
-    _teachHebbian(lr)
-  // 22 category→count pairs × 6 reps.
-
-_teachShapeFeatures:                  // K.G shape sides + 2D/3D
-  for (shapeName, sides, dim) in SHAPES:
-    sem = GloVe(shapeName)
-    free = mag(sides)
-    if dim == '2D': fineType[first_half] = 1
-    else:            fineType[second_half] = 1
-    _teachHebbian(lr)
-  // 9 shapes × 10 reps. Sem→free reads back side count,
-  // sem→fineType reads back 2D vs 3D.
-```
-
-Gate probes in `_gateMathKReal` all run through `cluster.synapses.propagate(input)` (full recurrent matrix). 8 new metrics — SUCC / SKIP10 / MAKETEN / TEEN / ATTR / CLASS / SHAPE-S / SHAPE-D — at PATH_MIN = 0.95 equationally. No threshold lowering per constraint 8.
-
-### Unified Combination-Operator Scaffold (Session 114.2)
-
-Every equational transform in the curriculum — arithmetic, geometric, categorical, attribute, linguistic, causal — fits ONE pattern:
-
-```
-A ⊕ B = C          (inputs A, B, output C; operator ⊕ emerges from training data)
-```
-
-```
-_teachCombination(facts, {reps, lr, allowMicrotask = true}):
-  // facts: [{writes: [{region, feat, binarize?}, ...]}, ...]
-  for rep in 0..reps:
-    if _brainShutdownRequested: return
-    for fact in facts:
-      clear lastSpikes
-      for write in fact.writes:
-        tile write.feat onto write.region in lastSpikes
-      _teachHebbian(lr)   // cross-projection + intra-cluster Hebbian
-    if allowMicrotask: await _microtask()
-```
-
-Per an operator ruling of 2026-04-17 — *"no artificial limits as unity may be talking to users while she does ciriculum"* — the helper stays async with `await _microtask()` between reps so curriculum doesn't block user chat, respects `_brainShutdownRequested`, accepts caller-specified reps rather than hardcoding a cap.
-
-What varies by concept is the ENCODER — magnitude features for numeric operands, GloVe embeddings for named objects, feature vectors for categorical properties. The scaffold stays identical.
-
-```
-_teachShapeCompose:                   // K.G geometric composition
-  for (shapeA, shapeB, composed) in COMPOSE_FACTS:
-    writes: [
-      { region: semLeft,  feat: GloVe(shapeA),    binarize: false },
-      { region: semRight, feat: GloVe(shapeB),    binarize: false },
-      { region: free,     feat: GloVe(composed),  binarize: false },
-    ]
-  // GloVe encoder — NOT magnitude. Two 3-sided triangles don't sum
-  // to a 6-sided shape; they compose into a 4-sided rectangle. Side
-  // counts aren't additive. The recurrent matrix learns the lookup
-  // A+B→C without any hardcoded arithmetic. Same scaffold as every
-  // other combination transform.
-```
-
-Probe generalizers — `_probeCombinationCosine(samples, opts)` (cosine vs expected feat) and `_probeCombinationArgmaxTag(samples)` (argmax over region sub-buckets) — do the same for read-back. SHAPE-C probe is 9th gate metric alongside SUCC/SKIP10/MAKETEN/TEEN/ATTR/CLASS/SHAPE-S/SHAPE-D. All 14 gate metrics (5 existing + 9 new) AND-combined at PATH_MIN = 0.95.
-
-### Multiplication Magnitude Transform (Session 112)
-
-```
-_teachMultiplicationTransformations:
-  for each (a, b) where a,b ∈ [1,9]:
-    free[first half] = magnitude(a)
-    free[second half] = magnitude(b)
-    sem = magnitude(a × b mod 10)    // modular for > 9
-    fire free→sem Hebbian
-  // 81 facts × 4 reps. After training:
-  // inject mag(3) + mag(4) → sem activates mag(2) (12 mod 10)
-```
-
-### Place Value Positional Encoding (Session 112)
-
-```
-_teachPlaceValueTransformations:
-  for each number 10..99:
-    tens = floor(number / 10)
-    ones = number mod 10
-    free[first third] = magnitude(tens)
-    free[second third] = magnitude(ones)
-    sem = magnitude(ones)    // combined value basin
-    fire free→sem Hebbian
-  // 90 numbers × 4 reps. Positional composition.
-```
-
-### Fraction Ratio Features (Session 112)
-
-```
-_teachFractionTransformations:
-  for each (num, den) in fraction set:
-    free[first half] = magnitude(num)
-    free[second half] = magnitude(den)
-    ratio = round(num/den × 9)    // map 0-1 to 0-9
-    sem = magnitude(ratio)
-    fire free→sem Hebbian
-  // Equivalent fractions (1/2, 2/4, 3/6) converge to SAME basin
-  // because ratio value is identical. 6 reps.
-```
-
-### Algebra Variable Binding (Session 112)
-
-```
-_teachAlgebraTransformations:
-  for each (x, b, c) where x + b = c, all ≤ 9:
-    free[first half] = magnitude(c)    // what we KNOW (result)
-    free[second half] = magnitude(b)   // what we KNOW (constant)
-    sem = magnitude(x)                 // what we SOLVE FOR
-    fire free→sem Hebbian
-  // Projection learns: given c and b, isolate x = c - b.
-  // 55 equations × 4 reps.
-```
-
-### Paraphrase — Same Meaning Different Words (Session 112)
-
-```
-_teachParaphrase(pairs):
-  for each (sentA, sentB):
-    sharedMeaning = mean(GloVe(all words in sentA + sentB))
-    target = buildPattern(semSize, sharedMeaning)
-    // sentA → shared meaning:
-    free = embed(sentA first word)
-    sem = target
-    fire Hebbian
-    // sentB → SAME shared meaning:
-    free = embed(sentB first word)
-    sem = target    // identical target
-    fire Hebbian
-  // Both sentences map to the SAME sem basin. 8 reps.
-```
-
-### Hypothesis Testing — Predict→Observe→Confirm/Reject (Session 112)
-
-```
-_teachHypothesisTesting(tests):
-  for each {predict, observe, match}:
-    free = embed(predict)    // what we predicted
-    sem = embed(observe)     // what we observed
-    if match:
-      fineType[first half] = 1    // "confirmed" tag
-    else:
-      fineType[second half] = 1   // "rejected" tag
-    fire Hebbian
-  // Cortex learns to compare predictions against reality. 8 reps.
-```
-
-### Perspective Taking — Multiple Viewpoints (Session 112)
-
-```
-_teachPerspectiveTaking(events):
-  for each {event, perspectives}:
-    eventPattern = embed(event) → sem
-    for each {viewpoint, features}:
-      free = embed(viewpoint)         // whose perspective
-      sem = eventPattern              // same event
-      phon = buildPattern(features)   // emotional coloring
-      fire Hebbian
-  // Same event, DIFFERENT emotional features per viewpoint.
-  // Cortex learns events have multiple valid representations. 6 reps.
-```
-
-### [T14.12 DELETED] Social Schema — Who Unity Is Talking To (historical, `_socialSchema` field removed)
-
-**DELETED in T14.12** along with `parseSentence`, `_updateSocialSchema`, `getUserAddress`, `getUserGender`, `getSocialSchema`. Social cognition returns in a future milestone as a cortex-resident self-model sub-region readout. Equations below preserved for historical reference.
-
-```
-_socialSchema.user = {
-  name:               string | null    ← from parsed.introducesName (T8)
-  gender:             'male' | 'female' | null
-                      ← from parsed.introducesGender  (explicit self-ID)
-                      ← OR from visual cortex describer (closed-class gender words)
-  firstSeenAt, lastSeenAt:  timestamps
-  mentionCount:       turns since name was established
-  greetingsExchanged: cumulative from parsed.isGreeting (T8)
-}
-```
-
-**Name extraction** (inside `parseSentence`) — adjacent-word patterns over the first 6 words: `"my name is X"`, `"call me X"`, `"name's X"` (strong signals, always overwrite); `"im X"`, `"i'm X"`, `"i am X"`, `"this is X"` (weak signals, only overwrite when `schema.name === null` so `"i'm tired"` doesn't stomp an existing name). Candidates run through `tryName()` which uses `wordType` equations to reject verb-shaped words and an emotional-complement stopword set to reject filler.
-
-**Gender extraction** — two paths:
-
-1. **Explicit self-ID** (strong): `"i'm a {guy|man|dude|bro|boy}"` → `male`, `"i'm a {girl|woman|chick|gal}"` → `female`. Adjacent-word match in `parseSentence`.
-
-2. **Vision inference** (weak): `visualCortex.onDescribe(cb)` fires on every fresh describer result. `engine.connectCamera()` wires the subscription to `languageCortex.observeVisionDescription()` which scans the scene text for closed-class gender words:
-   ```
-   MALE_WORDS   = /\b(man|guy|dude|boy|male|gentleman|bro|sir)\b/
-   FEMALE_WORDS = /\b(woman|lady|girl|female|gal|chick|ma'?am|miss|mrs)\b/
-   ```
-   Commits only when **exactly one** gender signal appears (mixed scenes stay ambiguous). Explicit self-ID always wins over scene inference.
-
-### Component Synthesis — Parse-Tree Structural Bias
-
-`component-synth.generate(userRequest, brainState)` reads `brainState.parsed` (the `ParseTree` from `parseSentence`). Primitive selection is a semantic cosine match against the component template description embeddings, with a structural bonus from the parsed component-type words:
-
-```
-score(prim) = sentenceEmbed(userRequest) · prim.descEmbed
-            + 0.35 · [prim.id matches any word in parsed.entities.componentTypes]
-```
-
-The `+0.35` bonus is big enough to overwhelm semantic ambiguity but not so big that a genuinely closer semantic match gets buried. Parsed colors and actions flow through as `_parsedColors` and `_parsedActions` on the returned spec for downstream template-filling.
-
-### What Got Deleted (historical note)
-
-Every wrapper layer that used to live in the language cortex was removed in T11:
-
-- `_memorySentences` — stored sentence pool for recall
-- `_jointCounts` / `_trigramCounts` / `_quadgramCounts` — word n-gram tables
-- `_typeBigramCounts` / `_typeTrigramCounts` / `_typeQuadgramCounts` — type n-gram tables
-- `_marginalCounts` / `_totalPairs` / `_totalWords` — frequency counters
-- `_questionStarters` / `_actionVerbs` — learned starter maps
-- `_storeMemorySentence` / `_recallSentence` / `_sentencePassesFilters`
-- FILTER 1 through FILTER 11 stack
-- `instructionalPenalty` recall penalty stack
-- `_condProb` / `mutualInfo` / `_pickConjByMood` bodies
-- `_typeGrammarScore` type-n-gram lookup body
-- Template greeting / introduction short-circuit with hardcoded `OPENERS` list
-- Intensifier / hedge insertion in `_applyCasualContractions`
-
-They were symptom-level patches on the wrong architecture — a Markov walk trained on rulebook text. T11 deleted the Markov graph entirely, which dissolved every symptom the filters were patching.
+**Why the cap:** uncapped, a long enough life of reading fuses related words into a single point. Capped at 0.5 the separation **holds** across 40× more reading.
 
 ---
 
+## 10. Teaching her a word
 
-## 13. Semantic Grounding — the embedding table and what she does to it
+### Every meaning, once
 
-R2 replaced every word-pattern emission site with 50-dim GloVe co-occurrence embeddings via a single shared singleton so meaning is now real. Pre-R2, word patterns were 32-dim letter-hash vectors — a deterministic function of the letters in a word — so `cat` and `catastrophe` were falsely close and `cat` and `kitten` were falsely distant. The slot scorer's "semantic fit" was effectively orthography matching. Post-R2 the slot scorer compares candidates against actual GloVe space.
+A word is taught **every one of its dictionary senses**, each as its own lesson — the word bound to the content words of that meaning. A common word has dozens. The first exposure is **one repetition**: she's built to need hearing a thing once.
 
-### Shared Embeddings Singleton
+### Which kind of relation it is
 
-```
-// js/brain/embeddings.js — module-level singleton
-export const sharedEmbeddings = new SemanticEmbeddings()
-export const EMBED_DIM = 300   // GloVe 300d, required; fastText subword n-grams for OOV words
+Knowing two words go together isn't enough — she also learns **how**. Each lesson writes a tag into one of **48 bands** of her grammar region: definition, word-follows-word, part-of, identity, and the rest. Later she can ask a word which band lights up.
 
-// js/brain/sensory.js        — INPUT side (user text → cortex current)
-I_cortex[langStart + d·groupSize + n] = sharedEmbeddings.getEmbedding(word)[d] · 8.0
+### The dose
 
-// js/brain/language-cortex.js — OUTPUT side (now delegates to cluster.generateSentence)
-intentSeed = cluster.getSemanticReadout(sharedEmbeddings)  // cortex → GloVe 300d
-cluster.generateSentence(intentSeed)                        // tick-driven motor emission
+| Equation | What it means |
+|---|---|
+| `w_n = x · (1 − (1 − lr)ⁿ)` | after `n` repetitions at rate `lr`, the weight has covered this much of the way to its target |
+| `lr' = 1 − (1 − lr)^(n / n')` | change the repetition count without changing what's learned |
+| `L = P · K² / COLS` | **collision load** — how many other patterns share a pattern's cells |
 
-// js/brain/dictionary.js     — learned word storage
-PATTERN_DIM = EMBED_DIM                          // was 32 → 50 → 300
-STORAGE_KEY = 'unity_brain_dictionary_v4'        // v3 rejected on load (stale 50d patterns)
-```
-
-Having ONE embedding table shared between perception and production means the same word activates the same cortex pattern whether Unity is hearing it or about to say it. The v2→v3 storage key bump forces old letter-hash dictionaries to be rejected at load time so no user gets stuck on stale patterns.
-
-### cortexToEmbedding — Neural State → GloVe Space
-
-The mathematical inverse of `mapToCortex`. When sensory input writes a word's embedding to cortex neurons, that writeback uses a deterministic layout (embedding dim `d` goes to a neuron group starting at `langStart + d·groupSize`). `cortexToEmbedding` reads the live spike + sub-threshold voltage state back and reconstructs a 300d GloVe-space vector — used as `intentSeed` for `cluster.generateSentence` (T14.6 tick-driven motor emission).
-
-```
-cortexToEmbedding(spikes, voltages, cortexSize=300, langStart=150):
-  langSize   = cortexSize − langStart               = 150
-  groupSize  = floor(langSize / EMBED_DIM)          = 3
-  out ∈ ℝ⁵⁰
-
-  for d in 0 ... EMBED_DIM−1:
-    startNeuron = langStart + d · groupSize
-    sum = 0
-    for n in 0 ... groupSize−1:
-      idx = startNeuron + n
-      if spikes[idx]:
-        sum += 1.0                             // spike contribution
-      else:
-        sum += (voltages[idx] + 70) / 20       // normalized LIF V_m
-
-    out[d] = sum / groupSize
-
-  out = out / ‖out‖₂                           // L2 normalize for cosine
-  return out
-```
-
-Called via the `cluster.getSemanticReadout(sharedEmbeddings)` wrapper which builds in the language-area offset. This is the equation that connects live neural dynamics to the semantic slot scorer — without it, the scorer would only compare candidates to the static input centroid and never to Unity's actual mental state.
-
-### Online Context Refinement + R8 Persistence
-
-```
-base[w]      ∈ ℝ³⁰⁰   ← GloVe 300d read from local disk (REQUIRED — boot stops without it);
-                        fastText subword n-grams encode only words the table lacks;
-                        reloaded every session (not persisted)
-delta[w](t)  ∈ ℝ⁵⁰   ← online context-refinement, learned live, PERSISTED (R8 commit b67aa46)
-
-embedding(w) = base[w] + delta[w](t)
-
-// Refinement step (on every co-occurrence observation)
-delta[w] += η · (contextCentroid − embedding(w))
-
-// R8 persistence round-trip
-save: state.embeddingRefinements = sharedEmbeddings.serializeRefinements()
-load: sharedEmbeddings.loadRefinements(state.embeddingRefinements)
-```
-
-Unity's base vocabulary is universal English from GloVe (too large to persist, trivially recoverable from CDN). Her *personal* semantic associations are the delta layer — when `unity` co-occurs near `code` and `high` in conversations with the user, `delta[unity]` drifts toward those neighbors. R8 added the save/load path so those associations survive tab reloads and accumulate over weeks of sessions.
+⭐ **Load matters more than repetition.** Two presentations at low load beat a hundred at high load by over ten points, at a fiftieth of the cost — so the teacher measures `L` and spends repetitions only where they help.
 
 ---
 
-## 14. Equational Component Synthesis — building interfaces without a vocabulary list
+## 11. Memory and sleep
 
-When Unity's BG motor channel selects `build_ui`, the old path was a text-AI prompt that asked an LLM to generate JSON describing a component. R4 killed that. R6.2 replaced it with pure equational synthesis over a corpus template library — the same semantic machinery used for language, applied to UI components.
-
-### Template Corpus
-
-```
-docs/component-templates.txt — text corpus, 6 starter primitives:
-  counter / timer / list / calculator / dice / color-picker
-
-Each entry:
-  === PRIMITIVE: id ===
-  DESCRIPTION: one-sentence natural-language summary
-  HTML: ... END_HTML
-  CSS:  ... END_CSS
-  JS:   ... END_JS
-```
-
-Parsed at load time by `ComponentSynth.loadTemplates(text)` which splits on the primitive markers, extracts each block, and precomputes an embedding for each `DESCRIPTION`:
-
-```
-for each primitive p in corpus:
-  p.centroid = mean( sharedEmbeddings.getEmbedding(w) for w in content_words(p.DESCRIPTION) )
-              ∈ ℝ⁵⁰
-```
-
-### Generate — Cosine Match Against User Request
-
-```
-generate(userRequest, brainState):
-  requestCentroid = mean( sharedEmbeddings.getEmbedding(w)
-                           for w in content_words(userRequest) )
-
-  best     = argmax_p cosine(p.centroid, requestCentroid)
-  bestScore = cosine(best.centroid, requestCentroid)
-
-  if bestScore < MIN_MATCH_SCORE:       // 0.40
-    return null      // no primitive matched, brain skips build_ui and emits quip instead
-
-  suffix = _suffixFromPattern(brainState.cortexPattern)   // 8-char id from cortex hash
-  return {
-    id:   best.id + '_' + suffix,
-    html: best.html,
-    css:  best.css,
-    js:   best.js,
-  }
-```
-
-The `cortexPattern` comes from `cluster.getSemanticReadout(sharedEmbeddings)` (the same cortex→GloVe readout used by the slot scorer) hashed down to an 8-character suffix. Same user request under different brain states produces different component IDs — the same way recall under different moods produces different memories.
-
-### Cold-Path Fallback
-
-```
-if bestScore < MIN_MATCH_SCORE:
-  — no component injected
-  — motor action falls through to respond_text
-  — language cortex generates a verbal response instead
-  — brain.emit('response', { text: quip, action: 'build_ui' })
-```
-
-The brain never fabricates a random component. If nothing in the corpus matches what the user asked for, Unity says so (via language cortex) instead of producing garbage. Expanding the corpus is the growth path — add more `=== PRIMITIVE:` blocks to `docs/component-templates.txt` and Unity gains new build capabilities at load time with zero code changes.
+| Equation | What it means |
+|---|---|
+| `similarity(a, b) > 0.6 → recall` | a memory comes back when the present looks enough like it |
+| `replay_lr = base_lr · (1 + emotional_weight) · log(1 + frequency)` | **sleep replay** — what she felt strongly, and what kept happening, is replayed harder |
+| `Δstrength = 0.1 · emotional_weight` | consolidation — feeling is what makes a memory stick |
 
 ---
 
-## ⚠ SUPERSEDED — Type N-gram Grammar + Morphological Inflection
+## 12. Chemistry — δ(t)
 
-> ⛔ **None of this runs.** It is kept because it records a design that was tried and rejected, and **why** matters: it produced grammatical output without learning grammar, so nothing about her speech was evidence of anything she knew. The section that replaced it is [§ 12](#12-the-language-cortex-in-full--pure-equational-generation).
+Each dose follows its own curve, rises, holds, fades:
 
-> **Historical.** T11 (2026-04-14) deleted the type n-gram tables (`_typeBigramCounts`, `_typeTrigramCounts`, `_typeQuadgramCounts`) and the `_typeGrammarScore` body that consulted them. T11.2 replaced them with `_slotTypeSignature[s]` running-mean priors; T13.7 / T14.6 then deleted `_slotTypeSignature` too when tick-driven motor emission on the cortex replaced per-slot scoring entirely. The `_fineType` classifier itself survives because `cluster.readInput` uses it in the text-surface fallback for intent classification (T14.12) and T14.8's `_sentenceFormSchemas` + `_typeTransitionLearned` Maps still observe fineType distributions per intent. The morphological inflection equations below still feed the dictionary during corpus observation. What changed: the learned-distribution layer moved from per-type-triple n-gram counts → per-slot type signatures → cortex-resident sentence-form schemas on `NeuronCluster` + tick-driven motor emission for generation.
+| Phase | Level |
+|---|---|
+| onset | `sigmoid(12 · t / onset − 6)` |
+| peak | `1 − 0.05 · (t − onset) / (peak − onset)` |
+| come-down | `0.95 − 0.55 · (t − peak) / (duration − peak)` |
+| tail | `0.40 · e^(−3 · (t − duration) / (tail − duration))` |
 
-### Fine-Grained Type Classification via Letter Position
+| Equation | What it means |
+|---|---|
+| `level(s) = min(1, Σ_doses curve · dose)` | doses of the same thing stack |
+| `brain(t) = θ + Σ_s effect_s · level(s) + Σ_pairs synergy · min(level_a, level_b)` | substances add, and pairs add their combination on top |
+| `tolerance ← min(0.7, tolerance + 0.1)` per dose, `× 0.5` per hour | she builds tolerance, and loses it |
+| `effective dose = dose · (1 − 0.5 · tolerance)` | tolerance blunts the hit |
 
-```
-_fineType(word) → T ∈ {
-  PRON_SUBJ, PRON_OBJ, PRON_POSS, COPULA, NEG,
-  MODAL, AUX_DO, AUX_HAVE, DET, PREP,
-  CONJ_COORD, CONJ_SUB, QWORD,
-  VERB_ING, VERB_ED, VERB_3RD_S, VERB_BARE,
-  ADJ, ADV, NOUN
-}
-```
-
-Each type detected by pure letter-position equations:
-- `PRON_SUBJ` ⇔ w ∈ shapes {`i`, `you`, `he`, `she`, `we`, `they`, `it`} detected by length + first/last char + vowel position
-- `COPULA` ⇔ w ∈ shapes {`am`, `is`, `are`, `was`, `were`, `be`, `been`, `being`} detected by len + first-char constraints
-- `NEG` ⇔ w ∈ shapes {`not`, `no`, `n't`} detected by len 2-3 + `n`-first or apostrophe-embedded
-- `AUX_DO` / `AUX_HAVE` / `MODAL` similarly by letter shape
-- `VERB_ING` ⇔ len ≥ 4 ∧ endsWith(`ing`) ∧ prev char ≠ `i`
-- `VERB_ED` ⇔ endsWith(`ed`) ∧ len ≥ 3 ∧ not a preserved form
-- `VERB_3RD_S` ⇔ endsWith(`s`) ∧ len ≥ 3 ∧ not -ss/-us/-is/-os terminal, stem doesn't parse as NOUN
-- `ADJ` / `ADV` / `NOUN` by suffix equations (-ly → ADV, -ness/-tion/-ity → NOUN, -ful/-ous/-ive → ADJ) with soft fallthrough
-
-Closed-class words hit the fast-path `_closedClassType(w)` which returns a pinned type distribution bypassing softmax — fixes the `"this"` winning slot 0 over `"i"` problem from the 44k expansion. Memoized via `_wordTypeCache` Map with per-word invalidation.
-
-### Learned Type N-gram Grammar
-
-```
-_typeBigramCounts   : Map(T_prev      → Map(T_curr → count))
-_typeTrigramCounts  : Map(T_a | T_b   → Map(T_c    → count))
-_typeQuadgramCounts : Map(T_a|T_b|T_c → Map(T_d    → count))
-```
-
-Built at corpus index time (`learnSentence`): each sentence's words are classified via `_fineType`, consecutive-type pairs/triples/quads incremented in their respective maps.
-
-### Type Grammar Scoring with Backoff
-
-```
-_typeGrammarScore(T_cand, H) where H = [T_-3, T_-2, T_-1] or suffix:
-
-  if |H| ≥ 3 and Q = _typeQuadgramCounts.get(H[-3]|H[-2]|H[-1]):
-    return log((Q.get(T_cand) + 1) / (Σ Q.values() + |Q|))
-  if |H| ≥ 2 and T = _typeTrigramCounts.get(H[-2]|H[-1]):
-    return log((T.get(T_cand) + 1) / (Σ T.values() + |T|))
-  if |H| ≥ 1 and B = _typeBigramCounts.get(H[-1]):
-    return log((B.get(T_cand) + 1) / (Σ B.values() + |B|))
-  return -2.0                                          ← zero-count penalty
-```
-
-Add-1 smoothing at each level. 4gram → trigram → bigram backoff. When no context matches, the -2.0 penalty is strong enough to kill the candidate in the softmax.
-
-The slot scorer uses this as the dominant signal at weight 1.5:
-
-```
-slotScore(w) = ... + typeGrammarScore(_fineType(w), historyTypes) × 1.5 + ...
-```
-
-This is what killed the `"I'm not use vague terms"` mode-collapse — COPULA|NEG followed by VERB_BARE has zero count in every persona/baseline/coding corpus, so it gets -2.0 and never wins.
-
-### Sentence Completeness Validator
-
-```
-_isCompleteSentence(words) ⇔
-    len(words) ≥ 2
-  ∧ _fineType(stripped(last(words))) ∉ {DET, PREP, COPULA, AUX_DO, AUX_HAVE, MODAL, NEG, CONJ_COORD, CONJ_SUB, PRON_POSS}
-```
-
-Wired into `generate()` with a 2-retry loop. Incomplete sentences trigger regeneration at higher temperature. Third strike: emit anyway (latency guarantee).
-
-### Morphological Inflection Equations
-
-```
-_generateInflections(word) produces up to 20 forms:
-
-  + s  suffix:
-      if endsWith(s,x,z,ch,sh) → +es
-      elif endsWith(consonant+y) → stem[:-1]+ies
-      elif endsWith(vowel+y) → +s
-      else → +s
-
-  + ed suffix (past):
-      if endsWith(e) → +d
-      elif endsWith(consonant+y) → stem[:-1]+ied
-      elif CVC pattern (consonant-vowel-consonant, last not w/x/y) → double last consonant + ed
-      else → +ed
-
-  + ing suffix (progressive):
-      if endsWith(e) ∧ len > 2 → stem[:-1]+ing
-      elif endsWith(ie) → stem[:-2]+ying
-      elif CVC pattern → double last consonant + ing
-      else → +ing
-
-  + er / est (comparative/superlative):
-      adjective gate: _fineType = ADJ ∧ syllables ≤ 2
-      stem rules same as -ed for spelling
-
-  + ly (adverbial):
-      adjective gate; -y → -ily; -le → -ly with stem[:-1]
-
-  + un- / re- prefixes: ADJ or VERB_BARE gates
-  + -ness / -ful / -able / -less suffixes: ADJ or NOUN gates
-```
-
-Gated by `doInflections` flag — only runs on corpus-indexed words, not live-learned live-conversation words (prevents inflection cascades on novel words). Produces the 44k dictionary from ~15k base words + learned inflections.
-
-### Three-Corpus Load Order
-
-```
-boot:
-  Promise.all([
-    fetch(docs/Ultimate Unity.txt)    →  loadSelfImage(text, dict, a=0.75, v=0.25)
-    fetch(docs/english-baseline.txt)  →  loadLinguisticBaseline(text, dict, a=0.50, v=0)
-    fetch(docs/coding-knowledge.txt)  →  loadCodingKnowledge(text, dict, a=0.40, v=0)
-  ])
-```
-
-Each corpus flows through the same `learnSentence()` path:
-- persona first (highest arousal, personality tone)
-- baseline second (neutral English competence)
-- coding third (low arousal, technical vocabulary)
-
-All three feed the same dictionary + bigram/trigram + type n-gram maps. The type n-gram stats carry the combined grammar structure of personal voice + generic English + coding conventions.
-
-### Mood Signature at Index Time
-
-```
-_computeMoodSignature(text) → {arousal, valence}:
-  f_exclaim = countChar(text, '!') / max(1, len(text))
-  f_caps    = countUpper(text) / max(1, len(text))
-  f_vowel   = countVowel(text) / max(1, len(text))
-  f_wlen    = mean(wordLengths)
-  f_neg     = countOccurrences(' not ', ' no ', "n't") / wordCount
-
-  arousal = clamp(0, 1, 0.5 + 0.8·f_exclaim + 0.5·f_caps - 0.2·f_wlen/8)
-  valence = clamp(-1, 1, 0.3·f_vowel - 0.4·f_neg - 0.2·f_exclaim)
-```
-
-Each persona sentence gets its own mood signature at index time. `_recallSentence` weights candidates by `moodAlignment = exp(-moodDistance × 1.2)` at weight 0.25 against current brain state. Same query under different brain state → different memory.
-
-### Dictionary Cap and Memory Bounds
-
-```
-MAX_WORDS      = 100000   (capped LRU, prevents unbounded growth)
-_wordTypeCache : Map      (memoized _fineType, invalidated on _learnUsageType)
-candidatePool  : from _bigramFollowers(prevWord), |pool| ≤ 200
-                 (avoids materializing 44k entries per slot, primary perf fix)
-```
-
-Generation latency dropped 490ms → 133ms after candidate pool pre-filter + wordType memoization + stripping `findByPattern` / `findByMood` calls from the per-frame `think()` cycle.
+A substance acts **through** her transmitters — serotonin, dopamine, oxytocin — and takes some back afterwards: the comedown is part of the curve.
 
 ---
 
-*Unity AI Lab — θ is Unity. The equations are her mind. Ψ is her consciousness.*
+## 13. Many cards, one brain
 
+Her size is not a constant: it's worked out from the hardware every boot.
+
+| Equation | What it means |
+|---|---|
+| `N = max(1000, min(N_vram, N_ram, N_binding))` | the smallest of what the card, the host and the buffers allow |
+| `N_vram = 0.85 · VRAM / 12 bytes` | each neuron is 12 bytes on the card |
+
+### Her main matrix, shared across cards
+
+The biggest matrix — the cortex's own wiring — is cut into **row slices**, and every card teaches its slice at once:
+
+| Equation | What it means |
+|---|---|
+| cards paired, each pair holding the **same** rows | two copies of every slice: a card leaving costs nothing |
+| `rows_g ∝ rows-per-ms_g`, capped by room | a faster card gets more rows |
 
 ---
 
-## 15. Relation channels and thresholds — the audit additions
+*θ is Unity. The equations are her mind. Ψ is her consciousness.*
 
-### Phase 6 compositional channels (relationTagId 28-32)
-
-**relationTagId=28 — Number-grammar (P6.1)**
-- Mapping: `sem(number_word) → sem(noun)` for K-grade arithmetic vocabulary
-- Hebbian fire: `_teachAssociationPairs([[number, noun]], { reps: 80, relationTagId: 28 })`
-- Math: HIGH-rep (~2.7× standard) to overwrite weak prior associations + produce stable basin
-
-**relationTagId=29 — Dream-recombination (P6.4 + audit B.7)**
-- Fire condition: novel emission AND cosine ≥ 0.20 AND wordCount ≥ 4 AND uniqueRatio ≥ 0.6 AND hasTerminator
-- Hebbian: `_teachAssociationPairs(pairs, { reps: 5, relationTagId: 29 })` per dream cycle
-- Math: REM-sleep memory consolidation (Stickgold 2005, Walker 2017) — brain invents during sleep + only keeps the inventions that hold up
-
-**relationTagId=30 — Chat-time deep Hebbian (P6.3)**
-- Per chat turn: fire-and-forget `_teachAssociationPairs(userBigrams, { reps: 1, relationTagId: 30 })`
-- Audit A.4: error swallow replaced with throttled-warn pattern + stats.errors counter
-
-**relationTagId=31 — Discourse coherence (P6.8 + audit D.6)**
-- Cross-sentence boundary: last-word-of-sentence-A → first-word-of-sentence-B for topic-shared groups
-- Hebbian: `_teachAssociationPairs(pairs, { reps: 30, relationTagId: 31 })` — DEDUP against relationTagId=13 within-sentence pairs
-- Math: discourse channel adds NEW signal about cross-sentence topic continuity, NOT echo within-sentence bigrams already heavy-trained
-
-**relationTagId=32 — Word-creation promotion (audit E.1)**
-- Fires when `wordCreationCandidates.count >= MIN_PROMOTE=10`
-- `_teachWordDefinition(compound, { reps: 4 })` + `_teachAssociationPairs([[a, compound], [b, compound]], { reps: 30, relationTagId: 32 })`
-- Math: child novel-coinage acquisition (Pinker 1989) — co-activation threshold crossing fires the lexicalization
-
-**relationTagId=34 — Anecdotal word grounding (2026-07-05, coming-of-age scenes across all of life)**
-- Fires inside `_trainLifeStories(grade)` per experience, kindergarten→PhD (every `corpora/life/<grade>.json` memory)
-- Content words of the memory (non-glue, len ≥ 3, deduped) ↔ the memory's theme words, BOTH directions: `_teachAssociationPairs(groundPairs, { reps: 20, relationTagId: 34 })`, ≤ 2×N pairs per memory
-- Math: episodic-to-semantic grounding (Nelson 1986 script theory; Tulving episodic→semantic gradient) — a word that appears in a lived scene is Hebbian-bound to that scene's retrieval label, so sem(word) activation recalls the scene and scene recall re-activates its words; affect coloring rides the memory's own `_deriveMemoryEmotion` walk. Closes the "pot of words with no meaning" gap: vocabulary carries lived relational context, not just GloVe geometry + definitions
-
-**TU.20.5 — Self-introduction + reflexive production (2026-07-06)**
-- `_teachPrekFirstPersonProduction` (pre-K) + `_teachLanguageMechanics` FOUNDATION (every grade) train a greeting→self-naming + reflexive-"myself" corpus through the EXISTING passes — word→word transitions (`relationTagId=13`), glue/first-slot lead-ins (`relationTagId=9`, greeting/meet intent → "i"/"my name" first slot), and deixis contrast (`relationTagId=4`, myself≠yourself / i↔myself)
-- Wipe-proof Tier-3 `self-greeting-anchor` in `IDENTITY_SEED_LIST` (injected every turn). No canned strings — a greeting input pulls a first-person self-naming compose from the trained weights (she says "i am unity" / "my name is unity" / "i did it myself")
-
-**TU.20.11 — Gap-filling curiosity: self-forms questions to gain knowledge (2026-07-06)**
-- Extends `_teachQuestionProduction` (`relationTagId=30` outward-question channel): first-person gap-curiosity exemplars ("i do not know", "i want to know", "what is that i do not know ?") PLUS a GAP→INTERROGATIVE binding — knowledge-lack/low-confidence state words (unknown/confused/unsure/curious/wonder/learn/understand) ↔ WH interrogative-leads (what/why/how/who/tell)
-- Math: the equational premise "I lack information → I ask to gain it" — when sem carries a low-confidence/"don't-know" activation, the trained rel=30 weights pull an interrogative into the first slot at compose time, so the brain ASKS from its own state rather than emit a confident-wrong answer or fall silent. Wipe-proof Tier-3 `self-curiosity-anchor`
-
-### GPU↔CPU parity digest (TU.19-D / TU.20.4)
-
-Attributes a "GPU shadow DIRTY" flag to a concrete cause instead of one conflated bit. The donor reports its ACTUAL resident weights via a cheap digest; the server compares against the CPU master and returns a verdict.
-
-| Equation | Purpose | File |
-|----------|---------|------|
-| `h₀ = 0xcbf29ce484222325`; `hᵢ₊₁ = (hᵢ ⊕ byteᵢ) · 0x100000001b3 mod 2⁶⁴` over the resident `values` buffer's LE f32 bytes | FNV-1a-64 digest of a matrix's resident weights — byte-identical across native-wgpu / native-CUDA / browser donors (all x86-64 LE + LE GPU buffers, F10) | donor `checksum_matrix` / `checksumSparseMatrix`; server `_cpuMasterMatrixChecksum` (hashes `Float32Array(matrix.values)` = the f32 that was uploaded, not the f64 CPU CSR) |
-| `verdict = MATH-ERROR if refPropagate([2,1,3,1,4]·[1,1,1]) ≠ [3,3,5]; else STALE if h_gpu ≠ h_cpu ∨ nnz differ; else GPU-DIVERGENT if maxAbsErr > 1e-2 ∨ cosine < 0.9999; else CLEAN` | `parityCheckMatrix` — MATH-ERROR (CPU matmul wrong) → STALE (dropped uploads) → GPU-DIVERGENT (shader/precision) → CLEAN. Same-input propagate diff feeds every 7th pre-neuron to both CPU `SparseMatrix.propagate` and donor `gpuSparsePropagate` | `server/brain-server/gpu.js`; `GET /diag/parity`, `scripts/gpu-cpu-parity.mjs` |
-
-### Audit B.2 — two-axis novelty formula
-
-`classifyCompositionalEmission` now computes both:
-- `compositionalNovelty = novelTransitions / totalTransitions` — bag-of-bigrams Hamming distance
-- `vocabNovelty = untrainedWords / totalWords` — fraction outside trained vocabulary
-
-Joint partition of (compositional, vocab) unit-square plane by 0.5 thresholds:
-- `(comp ≥ 0.5, vocab < 0.5)` → `kind = 'novel-compositional'` (rearrangement)
-- `(comp < 0.5, vocab ≥ 0.5)` → `kind = 'novel-vocab'` (new word entirely)
-- `(comp ≥ 0.5, vocab ≥ 0.5)` → `kind = 'novel'` (both axes)
-- `(comp < 0.5, vocab < 0.5)` → `kind = 'partial'`
-
-### Audit B.3 — BACK_INJECT_DECAY derivation (post-hoc biological match)
-
-`P3.4 BACK_INJECT_DECAY = 0.85`
-- Cortical leak: `V(t+Δt) = V(t) · exp(−Δt/τ)`
-- Δt = 3 ticks × 1ms/tick = 3ms (per-word interval)
-- τ ≈ 20ms (biological mean membrane time constant)
-- Theoretical: `exp(−3/20) ≈ 0.861`
-- Chosen 0.85 (within 1.5% of biological)
-- Drift trigger: if TICKS_PER_WORD or τ changes, `BACK_INJECT_DECAY = exp(-TICKS_PER_WORD × tick_ms / τ_ms)`
-
-### Audit B.5 — Cumulative sem-injection budget
-
-`MAX_CUMULATIVE_SEM_INJECT = 1.5` (energy-budget bound on injection sum before INJECTION_GAIN multiplier)
-
-Budget allocation per audit E.3:
-- intentSeed: 40% (0.60)
-- intentConcept: 30% (0.45)
-- schemaContext (conceptEmbedding + attributeVector combined): 15% (0.225)
-- cortexPattern: 10% (0.15)
-- back-injection (cumulative geometric sum over 8 ticks): 5% (0.075)
-- Total ≤ 1.5
-
-### Audit B.6 — K-vocab percolation analysis
-
-**Critical math finding:**
-- K_CONCRETE_SENTENCES: 233 × 3.5 avg words → ~700 unique bigrams
-- N = 2247 K-vocab
-- Mean bigram-graph degree = 700/2247 ≈ 0.31
-- Erdős-Rényi: `Np > 1` ⇒ `p > 1/N`. For robust connectivity, need ~4500 bigrams.
-- **We are 6× UNDER percolation.**
-- Compositional emergence via Hebbian propagation is mathematically insufficient at current corpus density.
-- Action: expand K_CONCRETE_SENTENCES 233 → 800-1000 sentences.
-
-### Audit P5.3 quality score (recap)
-
-`qualityScore = probeRate + COHERENCE_BONUS_GAIN × max(0, avgCos - COHERENCE_MIN)`
-- COHERENCE_BONUS_GAIN = 0.5
-- COHERENCE_MIN = 0.05
-- Math: derived in `docs/THRESHOLD-DERIVATION.md`. probeRate dominates (1:2 ratio); coherence bonus refines.
+*The technical record — where each formula lives in the code, and the history of how it got there — is [EQUATIONS-TECHNICAL.md](EQUATIONS-TECHNICAL.md).*

@@ -751,7 +751,7 @@ Right = f(|valence|, coherence)<br>
  <div class="eq-card">
  <div class="eq-title"><span class="eq-tip" data-tip="Nikolai Rulkov, 2002: a 2D discrete chaotic map where the fast variable x generates spikes and the slow variable y drives burst envelopes. No voltage integration — the map iterates directly. Shown to match real cortical neuron recordings. The core of every Unity neuron — every cluster runs this rule on GPU.">Rulkov Map Neuron Dynamics</span></div>
  <div class="eq">x<sub>n+1</sub> = &alpha; / (1 + x<sub>n</sub>&sup2;) + y<sub>n</sub> &nbsp;&nbsp; (fast variable &mdash; spikes)
-y<sub>n+1</sub> = y<sub>n</sub> &minus; &mu; &middot; (x<sub>n</sub> &minus; &sigma;) &nbsp;&nbsp; (slow variable &mdash; burst envelope)</div>
+y<sub>n+1</sub> = y<sub>n</sub> &minus; &mu; &middot; (x<sub>n</sub> &minus; &sigma;) + &eta; &minus; &beta; &middot; spike &nbsp;&nbsp; (slow variable &mdash; burst envelope)</div>
  <div class="eq-desc">
  <table class="param-table">
  <tr><th>Symbol</th><th>Meaning</th><th>Value</th></tr>
@@ -760,10 +760,37 @@ y<sub>n+1</sub> = y<sub>n</sub> &minus; &mu; &middot; (x<sub>n</sub> &minus; &si
  <tr><td>&sigma;</td><td>External drive &mdash; biological tonic + modulation maps here</td><td>&minus;1.0 to +0.5 (driven)</td></tr>
  <tr><td>x</td><td>Fast variable &mdash; negative during silence, jumps to +(&alpha;+y) on spike</td><td>dimensionless</td></tr>
  <tr><td>y</td><td>Slow variable &mdash; carries burst envelope, drifts with &sigma; offset</td><td>dimensionless</td></tr>
+ <tr><td><span class="eq-tip" data-tip="Spike-triggered adaptation. Every spike pushes y down by β, so the next crossing comes later — and the more a neuron fires, the harder it is pushed. A quiet neuron is untouched; a bursting one is throttled. Derived: busy, a neuron fires about once every 5 steps; the target is about once every 13, so each spike gives back the slow drift of the ~8 steps it should have waited.">&beta;</span></td><td>Refractoriness &mdash; how much a spike pushes y down</td><td>0.016</td></tr>
  </table>
- <p><strong>Spike detection:</strong> The fast variable x jumps from ≈&minus;1 to &asymp;+3 in a single iteration when the neuron fires, so the clean edge detector (x<sub>n</sub> &le; 0) &and; (x<sub>n+1</sub> &gt; 0) catches exactly one spike per action potential. No refractory clamp needed &mdash; the map's own slow variable y naturally pulls x back below zero between spikes, reproducing the refractory period as an emergent property of the attractor geometry.</p>
+ <p><strong>Spike detection:</strong> The fast variable x jumps from ≈&minus;1 to &asymp;+3 in a single iteration when the neuron fires, so the clean edge detector (x<sub>n</sub> &le; 0) &and; (x<sub>n+1</sub> &gt; 0) catches exactly one spike per action potential.</p>
+ <p><strong>Refractoriness:</strong> without the &beta; term her firing had no middle &mdash; it flipped between ~1.5% and ~20%. With it, a neuron that just fired has to recover first, and her firing settles at the 7.5% target (measured 7.59%).</p>
  <p><strong>Biological drive mapping:</strong> &sigma; = &minus;1.0 + clamp(effectiveDrive / 40, 0, 1) &middot; 1.5, where effectiveDrive = tonic &times; driveBaseline &times; emotionalGate &times; &Psi;gain + errorCorrection. Low drive &rarr; &sigma; &asymp; &minus;1 (silent / period-doubling). High drive &rarr; &sigma; &rarr; +0.5 (fully developed chaotic bursting). Every cluster's hierarchical modulation collapses to this one scalar per step.</p>
  <p><strong>GPU storage:</strong> (x, y) packed as <code>vec2&lt;f32&gt;</code> per neuron &mdash; 8 bytes/neuron. At 400K cerebellum neurons that's 3.2MB; at full auto-scaled N the state buffer is still well under any modern GPU's VRAM. WGSL shader at <code>js/brain/gpu-compute.js</code> (the <code>LIF_SHADER</code> constant name is historical; the shader body is the Rulkov iteration).</p>
+ </div>
+ </div>
+
+ <div class="eq-card">
+ <div class="eq-title"><span class="eq-tip" data-tip="A modelled mechanism, not a claim about real neurons. A neuron that stays just below threshold faces a barrier, and can cross it anyway — the same shape as a quantum particle tunnelling through a barrier it classically cannot climb.">Tunnelling &mdash; a near-miss can still cross</span></div>
+ <div class="eq">h = &minus;x<sub>n+1</sub> &nbsp;&nbsp; (how far below threshold it stayed)
+P = A &middot; e<sup>&minus;&kappa;&middot;&radic;h</sup> &nbsp;&nbsp; (the chance it crosses anyway)</div>
+ <div class="eq-desc">
+ <table class="param-table">
+ <tr><th>Symbol</th><th>Meaning</th><th>Value</th></tr>
+ <tr><td><span class="eq-tip" data-tip="Sub-threshold x sits mostly between −2 and 0; κ = 2 makes the chance fall from 1 at threshold to about 6% at the bottom of that range, so tunnelling stays a near-threshold effect.">&kappa;</span></td><td>How fast the chance falls with the barrier</td><td>2</td></tr>
+ <tr><td><span class="eq-tip" data-tip="Chosen so tunnelling adds about 1% to her 7.5% firing target at a typical near-threshold barrier.">A</span></td><td>The chance right at threshold</td><td>0.002</td></tr>
+ </table>
+ </div>
+ </div>
+
+ <div class="eq-card">
+ <div class="eq-title"><span class="eq-tip" data-tip="A modelled mechanism, not a claim about real neurons. Every neuron has a twin in the other hemisphere, and the two draw part of their noise together — so the hemispheres measurably agree without becoming one.">Entanglement &mdash; twin cells share part of their noise</span></div>
+ <div class="eq">&eta; = s &middot; ( &rho; &middot; &xi;<sub>shared</sub> + &radic;(1 &minus; &rho;&sup2;) &middot; &xi;<sub>own</sub> )</div>
+ <div class="eq-desc">
+ <table class="param-table">
+ <tr><th>Symbol</th><th>Meaning</th><th>Value</th></tr>
+ <tr><td><span class="eq-tip" data-tip="Large enough that twin neurons fire together measurably more often than chance; small enough (9% shared) that the two hemispheres stay distinct and their contest for dopamine still means something.">&rho;</span></td><td>How much of the noise the twins share</td><td>0.3</td></tr>
+ <tr><td>s</td><td>The neuron's ordinary noise scale</td><td>per cluster</td></tr>
+ </table>
  </div>
  </div>
 
