@@ -23,10 +23,11 @@ verified-scope: |
 
 | | |
 |---|---|
-| state | **DOWN** — stopped by the operator so the fixes below could land |
-| next launch | `Savestart.bat` keeps her learning (nothing in this round changes what she is taught); `start.bat` is a fresh walk |
-| donor | **0.3.45** for paced lessons (local + rented); 0.3.44 still works, unpaced |
-| rented card | Runpod RTX PRO 5000 Blackwell (48 GB, $0.82/hr) — the pod's launcher picks up 0.3.45 on its own within ~5 min |
+| state | **DOWN** — stopped by the operator after a run with her cortex on a rented RTX PRO 6000 (96 GB), so the fixes below could land |
+| next launch | `Savestart.bat` keeps her learning (the knob template pins only the values she already ran on); `start.bat` is a fresh walk |
+| donor | **0.3.46** frees a card's stale cortex after a move; 0.3.45 paces lessons; 0.3.44 still works, unpaced |
+| knobs | the **Unity template** is the default — every one of the 262 knobs set or left to the code with its reason; the first boot seeds it and says so |
+| rented card | Runpod — the pod's launcher picks up a new donor on its own within ~5 min |
 
 ## The last field reads
 
@@ -52,6 +53,11 @@ verified-scope: |
 | **the wire** | state snapshots no longer go to GPU donors or to a viewer more than 4 MB behind |
 | **dream vocabulary** | no per-rep probe on lessons that do not train what it probes; one dream word at a time |
 | **a donor closing** | the log now says why: close code, last heard, round trip, backlog |
+| **the RTX PRO 6000 run** | the cortex moved the moment the card joined; the 4.9 GB main matrix went up in 582 s (~8 MB/s), teaching resumed on the rented card at a 192 ms round trip |
+| **after a cortex move** | the old card is told to free its copy once the new one holds every matrix — the stale copy had left her own image renderer short of VRAM and refusing looks |
+| **lesson window** | sized to the link instead of a fixed 4: enough in flight to cover one round trip (4 on her own card, ~30 on a rented one), still bounded. `state.lessonPacing` |
+| **gate batteries** | no battery-wide clock — a slow card no longer fails a gate on time; each question keeps its 45 s hang guard |
+| **knob templates** | load a whole set from the teach view: preview, then apply; live knobs change now, and she restarts ONCE for all boot-frozen ones |
 
 ## What to read on the next boot
 
@@ -59,4 +65,7 @@ verified-scope: |
 - The time per word-pair on the rented card against 0.94 ms, and its round trip
   (it should stay near ~200 ms now its queue is bounded).
 - Any `GPU donor … CLOSED` line — it now names its own cause.
+- `the 'unity' template was SEEDED` and `active template: 'unity'` at boot.
+- `state.lessonPacing.window` on a rented card, and the card's utilisation.
+- `CORTEX MOVE done — told … to free its 17 stale cortex matrices` after a move.
 - Her first gate.

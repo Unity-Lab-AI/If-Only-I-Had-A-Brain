@@ -329,6 +329,10 @@ enum Work {
     // (not the receive loop, which must stay free to answer pings), then acked
     // so the brain can keep only a few lessons in flight per card.
     Lesson(frames::Lesson),
+    // v0.3.46 — the brain moved the cortex to another card: drop these resident
+    // matrices. The copy here stopped being current at the move and was only
+    // holding VRAM (measured: 12.7 GB on a 16 GB card, starving her renderer).
+    FreeMatrices { names: Vec<String> },
 }
 
 /// A reply the worker produced; the WS loop sends it in receipt order.
@@ -1001,6 +1005,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 Work::Mindspace { op, .. } => format!("mindspace {op}"),
                 Work::CheckpointSave { .. } => "checkpoint save".to_string(),
                 Work::CheckpointRestore { .. } => "checkpoint restore".to_string(),
+                Work::FreeMatrices { names } => format!("free x{}", names.len()),
             });
             match work {
                 Work::Init(init) => {
@@ -1265,6 +1270,13 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     let reply = serde_json::json!({ "type": "donor_checkpoint_restored", "restored": done, "skipped": skipped });
                     let _ = reply_tx.send(Out::Text(reply.to_string()));
                 }
+                Work::FreeMatrices { names } => {
+                    let freed: Vec<String> = names.into_iter().filter(|n| engine.free_sparse(n)).collect();
+                    println!("[donor] freed {} resident matrix(es) — the cortex moved to another card.", freed.len());
+                    let reply = serde_json::json!({ "type": "free_matrices_ack", "freed": freed });
+                    let _ = reply_tx.send(Out::Text(reply.to_string()));
+                    set_status(&control_w, |s| { s.note = "idle".into(); });
+                }
             }
             activity_w.end();
         }
@@ -1454,8 +1466,19 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                         // JSON ahead of the protocol enum, so they need no change to
                         // the shared crate and an older brain simply never sends them.
                         let ckpt_msg = serde_json::from_str::<serde_json::Value>(t.as_str()).ok()
-                            .filter(|v| matches!(v.get("type").and_then(|x| x.as_str()), Some("donor_checkpoint") | Some("leave_ok")));
+                            .filter(|v| matches!(v.get("type").and_then(|x| x.as_str()), Some("donor_checkpoint") | Some("leave_ok") | Some("free_matrices")));
                         if let Some(v) = ckpt_msg {
+                            if v.get("type").and_then(|x| x.as_str()) == Some("free_matrices") {
+                                let names: Vec<String> = v.get("names").and_then(|x| x.as_array())
+                                    .map(|a| a.iter().filter_map(|n| n.as_str().map(String::from)).collect())
+                                    .unwrap_or_default();
+                                // Stop checkpointing a set this card no longer holds; the
+                                // next owner's own checkpoint is the current one.
+                                ckpt_lineage = None;
+                                pending.fetch_add(1, Ordering::Relaxed);
+                                workq.push(Work::FreeMatrices { names });
+                                continue;
+                            }
                             if v.get("type").and_then(|x| x.as_str()) == Some("leave_ok") {
                                 println!("[donor] the brain confirmed it holds this donor's weights — closing.");
                                 let _ = tx.send(Message::Close(None)).await;

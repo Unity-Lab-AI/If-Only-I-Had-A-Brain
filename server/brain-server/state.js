@@ -2108,6 +2108,16 @@ const SERVER_STATE_MIXIN = {
       crystal: (typeof this._crystalState === 'function') ? this._crystalState() : null,
       psiLeftRightSource: this.psiLeftRightSource || 'legacy',
       psiCrystalTerm: (typeof this.psiCrystalTerm === 'number') ? Number(this.psiCrystalTerm.toFixed(4)) : null,
+      // LESSON PACING — the in-flight window sized to the link, and what it read
+      // it from. `window` 4 with `svcMs` null means no measurement yet.
+      lessonPacing: {
+        window: this._lessonWindowNow || null,
+        latFloorMs: Array.isArray(this._lessonLatRing) && this._lessonLatRing.length ? Math.min(...this._lessonLatRing) : null,
+        svcMs: this._lessonSvcEmaMs ? Number(this._lessonSvcEmaMs.toFixed(2)) : null,
+        sent: this._lessonsSent || 0, acks: this._lessonAcks || 0, ackLost: this._lessonAckLost || 0,
+        slotWaits: this._lessonSlotWaits || 0, slotWaitMs: this._lessonSlotWaitMs || 0,
+        pinned: Number(process.env.DREAM_LESSON_INFLIGHT) > 0,
+      },
       // POOL — who owns what, who was late, and whether the tunnel is crossing.
       // Every field is a count or a name, never a flag: "the pool is on" is
       // not a fact, "cortex is on card X and 3 pairs crossed last cycle" is.
