@@ -10864,7 +10864,12 @@ function _applyPoolPartition(reason, moveReason) {
     // full pull + re-slice + re-upload (seen: every boot moved 4070 → PRO 6000
     // ~2 min in and paid the upload twice). A move still happens when the owner
     // is gone (that path does not come through the placement check).
-    if (_pm && reason === 'placement check' && typeof brain._intraSliceActive === 'function' && brain._intraSliceActive()
+    // ⚠ Also when the matrix is not sliced YET but could be: a card that joined
+    // before any slice was planned triggered this move with the whole cortex on
+    // one card (seen 03:14 — 6 GB over the home upload). Slicing onto it costs
+    // only its share; the re-slice check picks the new card up once it settles.
+    const _canSlice = process.env.DREAM_SLICE !== '0' && _pm && _pm.to && typeof brain._sliceCapable === 'function' && brain._sliceCapable(_pm.to);
+    if (_pm && reason === 'placement check' && typeof brain._intraSliceActive === 'function' && (brain._intraSliceActive() || _canSlice)
         && process.env.DREAM_SLICED_ROOM_MOVE !== '1') {
       if (!brain._roomMoveSkipLogged) { brain._roomMoveSkipLogged = true; console.log('[Pool] CORTEX MOVE for room skipped — her main matrix is sliced across the pool, so the bigger card gains nothing by owning it and the move would re-upload every slice. DREAM_SLICED_ROOM_MOVE=1 restores it.'); }
       _pm = null;
