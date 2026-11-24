@@ -28,6 +28,8 @@ parentPort.on('message', (msg) => {
     hebbian(msg);
   } else if (msg.type === 'hebbianBatch') {
     hebbianBatch(msg);
+  } else if (msg.type === 'ojaActive') {
+    ojaActive(msg);
   } else if (msg.type === 'mem') {
     // Memory snapshot request. Main thread aggregates these across
     // all workers so the heartbeat can show `workers=XXXmb` as a
@@ -89,6 +91,33 @@ function propagate(msg) {
   }
 
   parentPort.postMessage({ type: 'done', jobId, startRow, endRow });
+}
+
+/**
+ * Oja over this worker's share [from, to) of the firing-row list:
+ *   Δw = lr · y · (x − y · w), clamped. Rows are disjoint across workers.
+ */
+function ojaActive(msg) {
+  const { jobId, valuesBuf, colIdxBuf, rowPtrBuf, preBuf, rowsBuf, yBuf, from, to, lr, wMin, wMax } = msg;
+  const values = new Float32Array(valuesBuf);
+  const colIdx = new Uint32Array(colIdxBuf);
+  const rowPtr = new Uint32Array(rowPtrBuf);
+  const pre = new Float32Array(preBuf);
+  const rows = new Uint32Array(rowsBuf);
+  const ys = new Float32Array(yBuf);
+  for (let j = from; j < to; j++) {
+    const y = ys[j];
+    if (!y) continue;
+    const i = rows[j];
+    const y2 = y * y;
+    const end = rowPtr[i + 1];
+    for (let k = rowPtr[i]; k < end; k++) {
+      values[k] += lr * y * pre[colIdx[k]] - lr * y2 * values[k];
+      if (values[k] > wMax) values[k] = wMax;
+      else if (values[k] < wMin) values[k] = wMin;
+    }
+  }
+  parentPort.postMessage({ type: 'done', jobId, startRow: from, endRow: to });
 }
 
 /**
