@@ -10665,9 +10665,10 @@ var Dictionary = class {
       if (letterOnly.length > 0) {
         try {
           const stress = cluster.detectStress(letterOnly, { ticksPerLetter: 2 });
-          syllables = stress.boundaries;
-          stressPrimary = stress.primary;
-          if (cluster.lastSpikes && cluster.lastSpikes.length > 0) {
+          const _streamed = !!(stress && !Array.isArray(stress) && Array.isArray(stress.boundaries));
+          syllables = _streamed ? stress.boundaries : null;
+          stressPrimary = _streamed ? stress.primary : -1;
+          if (_streamed && cluster.lastSpikes && cluster.lastSpikes.length > 0) {
             cortexSnapshot = new Uint8Array(cluster.lastSpikes);
           }
         } catch (err) {

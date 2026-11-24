@@ -220,12 +220,23 @@ export class Dictionary {
       if (letterOnly.length > 0) {
         try {
           const stress = cluster.detectStress(letterOnly, { ticksPerLetter: 2 });
-          syllables = stress.boundaries;
-          stressPrimary = stress.primary;
+          // ⛔⛔ THE MEMORY CLIMB (MEMCLIMB, 2026-11-24). At biological scale
+          // `detectStress` refuses (it returns `[]` — no letters are streamed),
+          // and this still copied the WHOLE `lastSpikes` — one byte per cortex
+          // neuron, ~40 MB at 40M — into the entry, forever, for every NEW
+          // word. The sentence lane meets thousands of new words, so `ext`
+          // climbed ~1 GB/min on every boot and never came back (the
+          // dictionary holds them; no collection can free them). And the copy
+          // was meaningless: with no stream, `lastSpikes` held whatever another
+          // lane last wrote, not this word. The snapshot is taken only when the
+          // stream actually ran.
+          const _streamed = !!(stress && !Array.isArray(stress) && Array.isArray(stress.boundaries));
+          syllables = _streamed ? stress.boundaries : null;
+          stressPrimary = _streamed ? stress.primary : -1;
           // Snapshot cluster.lastSpikes right after the stream — this is
           // the cortex state reflecting this specific word's letter
           // sequence after two detectBoundaries + detectStress passes.
-          if (cluster.lastSpikes && cluster.lastSpikes.length > 0) {
+          if (_streamed && cluster.lastSpikes && cluster.lastSpikes.length > 0) {
             cortexSnapshot = new Uint8Array(cluster.lastSpikes);
           }
         } catch (err) {
