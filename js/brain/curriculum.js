@@ -15076,9 +15076,15 @@ export class Curriculum {
     // the identical bytes. Measured on the live main thread: this function was
     // 10.5% of ALL its time, ~50,000 single-byte writes per sem pattern.
     const _bulk = !sparseIndices && !collectInto;
+    // `noCpu` (the card-held lesson path): the card gets the identical frame and
+    // the caller still gets its index list, but the CPU copy is not written —
+    // nothing on that path reads it, and the lesson writes its final pattern
+    // CPU-side once at the end.
+    const _noCpu = !!(opts && opts.noCpu);
     for (let d = 0; d < feat.length; d++) {
       if (feat[d] <= 0) continue;
       if (_bulk) {
+        if (_noCpu) continue;
         const a = region.start + d * gSize;
         const b = Math.min(a + gSize, region.end);
         if (a < b) cluster.lastSpikes.fill(1, a, b);
@@ -15087,7 +15093,7 @@ export class Curriculum {
       for (let n = 0; n < gSize; n++) {
         const idx = region.start + d * gSize + n;
         if (idx >= region.end) continue;
-        cluster.lastSpikes[idx] = 1;
+        if (!_noCpu) cluster.lastSpikes[idx] = 1;
         if (sparseIndices) sparseIndices.push(idx - region.start);
         if (collectInto) collectInto.push(idx - region.start);
       }
@@ -15156,9 +15162,13 @@ export class Curriculum {
     }
   }
 
-  _clearSpikes(regionNames = null) {
+  _clearSpikes(regionNames = null, opts = null) {
     const cluster = this.cluster;
     if (!cluster) return;
+    // `noCpu` — scoped clears only: the card's slices are cleared exactly as
+    // before, the CPU memset is skipped (10.5% of the live main thread, two
+    // 1.88 MB fills per pair, for a copy the card-held lesson never reads).
+    const _noCpuClear = !!(opts && opts.noCpu) && Array.isArray(regionNames) && regionNames.length;
     // WMB REGRESSION FIX 2 — scoped clear. When `regionNames` is a non-empty
     // array, zero ONLY those region spans + their GPU spike slices instead of
     // the whole cluster.lastSpikes (O(regionSize) not O(cluster.size)). The
@@ -15173,7 +15183,7 @@ export class Curriculum {
       for (const name of regionNames) {
         const r = cluster.regions[name];
         if (!r) continue;
-        cluster.lastSpikes.fill(0, r.start, r.end);   // SCALEWALK.1 — native memset, identical result
+        if (!_noCpuClear) cluster.lastSpikes.fill(0, r.start, r.end);   // SCALEWALK.1 — native memset, identical result
         if (cluster._gpuProxy && cluster._gpuProxy.clearSpikeSlice) {
           try { cluster._gpuProxy.clearSpikeSlice(name); } catch { /* non-fatal */ }
         }
@@ -15936,7 +15946,14 @@ export class Curriculum {
     const _verifyBudget = Math.max(0, Number(process.env.DREAM_LATERAL_HINT_VERIFY ?? 500) || 0);
     const _st = cluster._lateralHintStats
       || (cluster._lateralHintStats = { used: 0, verified: 0, mismatch: 0, scanned: 0, disabled: false });
-    const _mustScan = !_hint || _st.disabled || _st.verified < _verifyBudget;
+    // `trustHint` (the card-held lesson path): the CPU copy is deliberately NOT
+    // written there, so a verification scan would read an empty motor span,
+    // "disagree" with a correct hint, and disable it — and with no hint the scan
+    // finds nothing and lateral inhibition stops. The hint on that path comes
+    // from the same tiling pass that built the card's motor frame, so it is the
+    // motor pattern by construction.
+    const _trust = !!(opts && opts.trustHint && _hint);
+    const _mustScan = !_trust && (!_hint || _st.disabled || _st.verified < _verifyBudget);
     if (_mustScan) {
       _st.scanned++;
       for (let i = 0; i < motorSize; i++) {
@@ -15948,7 +15965,7 @@ export class Curriculum {
         }
       }
     }
-    if (_hint && !_st.disabled) {
+    if (_hint && (_trust || !_st.disabled)) {
       // Build the hint's view. `_writeTiledPattern` emits ascending indices, so
       // no sort is needed — but a DUPLICATE would double-count a bucket, and the
       // comparison below is what would catch that too.
@@ -20310,7 +20327,7 @@ export class Curriculum {
    *
    * A tag that does not fit now REFUSES LOUDLY instead of writing nothing.
    */
-  _writeRelationTag(cluster, fineTypeRegion, relationTagId, binarize) {
+  _writeRelationTag(cluster, fineTypeRegion, relationTagId, binarize, opts = null) {
     if (!fineTypeRegion || relationTagId === null || relationTagId === undefined) return false;
     if (!cluster || !cluster.lastSpikes) return false;
     const fineSize = fineTypeRegion.end - fineTypeRegion.start;
@@ -20330,11 +20347,30 @@ export class Curriculum {
     const tagStart = fineTypeRegion.start + relationTagId * band;
     const tagEnd = Math.min(fineTypeRegion.end, tagStart + band);
     if (tagEnd <= tagStart) return false;
-    // Soft tag — match the vector-write intensity so the relation channel
-    // doesn't dominate the pair pattern (binary 1 against sub-1.0 GloVe
-    // magnitudes would).
-    const tagVal = binarize ? 1 : 0.5;
-    for (let i = tagStart; i < tagEnd; i++) cluster.lastSpikes[i] = tagVal;
+    // ⛔⛔ THE TAG NEVER REACHED ANYTHING — found 2026-11-24 reading this for the
+    // card-side lesson. Two defects, both silent:
+    //   1. `lastSpikes` is a Uint8Array, so the "soft" 0.5 this wrote (every
+    //      association call defaults to binarize:false) TRUNCATED TO 0 — the same
+    //      bug `_writeTiledPattern`'s SOFT-WRITE note records and fixed for the
+    //      sem/motor patterns but never here. The CPU copy held no tag.
+    //   2. It sent nothing to the card. The card's fineType span was cleared by
+    //      `_clearSpikes` and never written, so every bound sem↔fineType update
+    //      trained against a blank relation channel.
+    // So the relation channels have been untrained on both sides, which is why
+    // `readRelationBand` reads flat. Spikes are 0/1 (magnitude never survives
+    // the byte array or the GPU spike buffer), so the tag is 1, and it ships to
+    // the card as a spike template like every other teach pattern. ⚠ This
+    // CHANGES WHAT SHE IS TAUGHT: the relation channels start learning.
+    const tagVal = 1;
+    if (!(opts && opts.noCpu)) cluster.lastSpikes.fill(tagVal, tagStart, tagEnd);
+    if (cluster._gpuProxy && typeof cluster._gpuProxy.writeSpikeSlice === 'function') {
+      const regionName = this._resolveRegionName(cluster, fineTypeRegion);
+      if (regionName) {
+        const carrier = [];
+        carrier._template = { rowStart: tagStart - fineTypeRegion.start, groupSize: tagEnd - tagStart, values: [1] };
+        try { cluster._gpuProxy.writeSpikeSlice(regionName, carrier); } catch { /* non-fatal */ }
+      }
+    }
     // RELWRITE.1 — this total existed and NOTHING IN THE TREE EVER READ IT.
     // A write-only counter is the same defect as no counter at all, and it is
     // the one number that separates "the bands have not separated yet" from
@@ -21311,6 +21347,65 @@ export class Curriculum {
     const startMs = Date.now();
     this._hb(`[Curriculum][${label}] START — ${pairs.length} pairs × ${reps} reps · soft-writes=${!binarize} · row-norm=${normalizeAfter} · anti-pairs=${antiPairs} · motor-WTA=${motorWTA}/${motorTopK} · sem-WTA=${semWTA}/${semTopK}`);
     try { this._pushBrainEvent?.('teach', 'sem', `ASSOC START: ${label} · ${pairs.length}×${reps}`, { label, pairs: pairs.length, reps }); } catch {}
+    // ⭐⭐ THE CARD-HELD LESSON. When the card holds every matrix this lesson
+    // touches, nothing on the pair path reads the CPU spike copy: the bound
+    // Hebbian, lateral and anti ops read the CARD's resident spikes, which the
+    // clear/template frames set. So the per-pair CPU writes and memsets are skipped
+    // (`noCpu`), the lateral pass trusts the index list the tiling pass produced
+    // (`trustHint`), and every CPU mirror stays off (`_teachIntermediateRep`) —
+    // the card receives byte-identical frames in identical order. The final
+    // pattern is written CPU-side ONCE after the loop, so anything reading
+    // `lastSpikes` afterwards sees exactly what it saw before.
+    // Measured before it: the main thread was saturated and `_clearSpikes` +
+    // `_writeTiledPattern` + the tag write were ~17% of it. `DREAM_TEACH_FAST=0`
+    // restores the CPU-written path.
+    const _wlFast = this._associationPairsWhitelist(opts.subject) || [];
+    const _probeCritical = new Set(['letter_to_phon', 'letter_to_motor']);
+    const _fastLesson = !(typeof process !== 'undefined' && process.env && process.env.DREAM_TEACH_FAST === '0')
+      && skipPredictiveError
+      && !!(cluster._gpuProxyReady && cluster._gpuProxy && cluster._brain && cluster._brain._langPseudoInit === true)
+      && !!(cluster.synapses && cluster.synapses._gpuBound)
+      && _wlFast.length > 0
+      && _wlFast.every((n) => cluster.crossProjections[n] && cluster.crossProjections[n]._gpuBound && !_probeCritical.has(n));
+    const _noCpuOpt = _fastLesson ? { noCpu: true } : null;
+    let _lastSemFeat = null, _lastMotorFeat = null;
+    // The ONE CPU write of the card-held lesson: leave `lastSpikes` holding the
+    // last pattern written (sem + motor + tag), exactly what the per-pair CPU
+    // path would have left. Same tiling arithmetic as `_writeTiledPattern`, same
+    // band arithmetic as `_writeRelationTag`; no frames (the card already has it).
+    const _settleCpu = () => {
+      if (!_fastLesson || !_lastSemFeat) return;
+      const ls = cluster.lastSpikes;
+      for (const nm of ['sem', 'motor', 'fineType']) {
+        const r = cluster.regions[nm];
+        if (r) ls.fill(0, r.start, r.end);
+      }
+      const put = (region, feat) => {
+        if (!region || !feat || !feat.length) return;
+        const g = Math.max(1, Math.floor((region.end - region.start) / feat.length));
+        for (let d = 0; d < feat.length; d++) {
+          if (feat[d] <= 0) continue;
+          const a = region.start + d * g;
+          const b = Math.min(a + g, region.end);
+          if (a < b) ls.fill(1, a, b);
+        }
+      };
+      put(semRegion, _lastSemFeat);
+      put(motorRegion, _lastMotorFeat);
+      if (fineTypeRegion && relationTagId !== null && relationTagId >= 0 && relationTagId < Curriculum.RELATION_TAG_BANDS) {
+        const band = Math.floor((fineTypeRegion.end - fineTypeRegion.start) / Curriculum.RELATION_TAG_BANDS);
+        if (band > 0) {
+          const t0 = fineTypeRegion.start + relationTagId * band;
+          const t1 = Math.min(fineTypeRegion.end, t0 + band);
+          if (t1 > t0) ls.fill(1, t0, t1);
+        }
+      }
+    };
+    {
+      const sp = this._teachStageProfile || (this._teachStageProfile = {});
+      const f = sp.cardLesson || (sp.cardLesson = { fastCalls: 0, cpuCalls: 0, fastPairs: 0 });
+      if (_fastLesson) { f.fastCalls++; f.fastPairs += pairs.length * reps; } else f.cpuCalls++;
+    }
     _psPreMs += Date.now() - startMs;
     for (let rep = 0; rep < reps; rep++) {
       // ⭐⭐ `PHASELOOP.1` (2026-08-30) — BANK THE CURSOR ON EVERY REP, NOT ONLY
@@ -21381,6 +21476,7 @@ export class Curriculum {
         // interrupted phase as a finished one.
         const _owedNow = reps - rep;
         console.warn(`[Curriculum][${label}] PHASELOOP.1 - SHUTDOWN at a clean rep boundary, rep ${rep}/${reps} (${trained} pair-teaches landed). ${_cursorKey ? `Cursor BANKED as '${_cursorKey}' = ${_owedNow} rep(s) owed — the next boot RESUMES the remainder instead of repeating the whole dose.` : 'NO CURSOR KEY on this call, so this remainder CANNOT be banked and the next visit repeats the dose.'}`);
+        _settleCpu();
         _acRow.ms += Date.now() - startMs;
         _flushPairSegments();   // `DEFCOST.2` — the early exits are the LONG calls
         return { trained, skipped, repsDone: rep, deferredReps: _owedNow, shutdownStopped: true };
@@ -21413,6 +21509,7 @@ export class Curriculum {
           cluster._phaseRepCursor[_cursorKey] = _deferred;
         }
         console.warn(`[Curriculum][${label}] CELLBOUND - phase '${cluster._phaseDeadlineName || '?'}' spent its ${(PHASE_BUDGET_MS / 60000).toFixed(0)}min budget after ${_heldS}s; stopping on a clean rep boundary at rep ${rep}/${reps} (${trained} pair-teaches landed). DEFERRED ${_deferred} rep(s) to the next visit to this phase - training is spread, NOT discarded${_cursorKey ? ` · cursor BANKED as '${_cursorKey}' = ${_deferred} rep(s) owed (persisted, so a reboot resumes rather than repeats)` : ''}. DREAM_PHASE_BUDGET_MS raises the budget; 0 disables the bound.`);
+        _settleCpu();
         _acRow.ms += Date.now() - startMs;   // ASSOCBOUND.1 — budget-stop exit still owns its time
         _flushPairSegments();   // `DEFCOST.2` — the early exits are the LONG calls
         return { trained, skipped, repsDone: rep, deferredReps: _deferred, budgetStopped: true };
@@ -21427,7 +21524,7 @@ export class Curriculum {
       // convergence early-exit breaks before the final rep, the shadow's
       // catch-up rides the next phase (approximately-current, the accepted
       // posture everywhere else).
-      cluster._teachIntermediateRep = rep < reps - 1;
+      cluster._teachIntermediateRep = _fastLesson || rep < reps - 1;
       cluster._teachFinalRepSampleEveryN = (rep === reps - 1) ? 5 : 0;
       for (let pairIdx = 0; pairIdx < pairs.length; pairIdx++) {
         const pair = pairs[pairIdx];
@@ -21481,16 +21578,17 @@ export class Curriculum {
           // FIX 2 — scoped clear for def binds: only sem+motor+fineType are
           // written below, and defs skip the full-vector predictive-error
           // read, so the whole-cluster zero is pure waste at 1.5M.
-          this._clearSpikes(skipPredictiveError ? ['sem', 'motor', 'fineType'] : null);
+          this._clearSpikes(skipPredictiveError ? ['sem', 'motor', 'fineType'] : null, _noCpuOpt);
           const _ps3 = Date.now();
-          this._writeTiledPattern(semRegion, inEmbSem, binarize);
+          this._writeTiledPattern(semRegion, inEmbSem, binarize, _noCpuOpt);
           // `LATSCAN.1` — collect the motor actives as they are written so the
           // lateral pass does not walk all 346,902 motor cells to find them
           // again. Reused array, cleared here; the writer is the single source
           // of the tiling arithmetic.
           _motorActiveHint.length = 0;
-          this._writeTiledPattern(motorRegion, outEmbMotor, binarize, { collectInto: _motorActiveHint });
-          this._writeRelationTag(cluster, fineTypeRegion, relationTagId, binarize);
+          this._writeTiledPattern(motorRegion, outEmbMotor, binarize, { collectInto: _motorActiveHint, noCpu: _fastLesson });
+          this._writeRelationTag(cluster, fineTypeRegion, relationTagId, binarize, _noCpuOpt);
+          _lastSemFeat = inEmbSem; _lastMotorFeat = outEmbMotor;
           const _ps4 = Date.now();
           _psEmbedMs += (_ps1 - _ps0);
           _psWtaMs += (_ps2 - _ps1);
@@ -21541,7 +21639,7 @@ export class Curriculum {
           // lateral call site writes a different pattern and correctly keeps
           // scanning; a hint is only safe where the caller owns the write.
           const _al0 = Date.now();
-          try { await this._teachLateralInhibition(lr, 26, { activeHint: _motorActiveHint }); }
+          try { await this._teachLateralInhibition(lr, 26, { activeHint: _motorActiveHint, trustHint: _fastLesson }); }
           catch { /* non-fatal */ }
           _psLatWallMs += (Date.now() - _al0);
           trained++;
@@ -21577,17 +21675,18 @@ export class Curriculum {
               if (wrongEmb && wrongEmb.length > 0) {
                 const wrongEmbMotor = motorWTA ? this._topKEmbedding(wrongEmb, motorTopK) : wrongEmb;
                 try {
-                  this._clearSpikes(skipPredictiveError ? ['sem', 'motor', 'fineType'] : null);
+                  this._clearSpikes(skipPredictiveError ? ['sem', 'motor', 'fineType'] : null, _noCpuOpt);
                   // Use the same top-K sem input as the positive pair —
                   // so anti-Hebbian depression lands on the SAME sem
                   // pattern geometry the positive Oja update wrote to,
                   // not a denser one that would target different weights.
-                  this._writeTiledPattern(semRegion, inEmbSem, binarize);
-                  this._writeTiledPattern(motorRegion, wrongEmbMotor, binarize);
+                  this._writeTiledPattern(semRegion, inEmbSem, binarize, _noCpuOpt);
+                  this._writeTiledPattern(motorRegion, wrongEmbMotor, binarize, _noCpuOpt);
                   // Relation tag fires on NEG pair too so the relation
                   // channel doesn't learn to classify positive vs negative
                   // by tag presence alone.
-                  this._writeRelationTag(cluster, fineTypeRegion, relationTagId, binarize);
+                  this._writeRelationTag(cluster, fineTypeRegion, relationTagId, binarize, _noCpuOpt);
+                  _lastSemFeat = inEmbSem; _lastMotorFeat = wrongEmbMotor;
                   // iter22-F.1 — match positive-pair association whitelist
                   // (sem↔motor + sem↔fineType for relation tags) so anti-
                   // Hebbian only depresses those projections.
@@ -21641,6 +21740,7 @@ export class Curriculum {
     cluster._teachIntermediateRep = false;
     cluster._teachFinalRepSampleEveryN = 0;
     this._convergenceStreak = 0;
+    _settleCpu();
     const _postT0 = Date.now();
     // CELLBOUND.H - the rep loop ran to its end (or converged early, which IS
     // the dose being met), so the debt is paid: clear the cursor. Reaching here
