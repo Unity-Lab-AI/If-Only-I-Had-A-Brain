@@ -10857,8 +10857,18 @@ function _applyPoolPartition(reason, moveReason) {
       const oc = brain.clients.get(owner);
       console.log(`[Pool] ${(oc && (oc.gpuName || oc.id)) || 'donor'} now owns [${[...set].join(', ')}] — gpu_init sent for ${n} cluster(s).`);
     }
-    const _pm = brain._pendingCortexMove;
+    let _pm = brain._pendingCortexMove;
     brain._pendingCortexMove = null;
+    // With her main matrix row-sliced no card holds the whole of it, so "a card
+    // with more room" gains nothing by owning the cortex — and the move costs a
+    // full pull + re-slice + re-upload (seen: every boot moved 4070 → PRO 6000
+    // ~2 min in and paid the upload twice). A move still happens when the owner
+    // is gone (that path does not come through the placement check).
+    if (_pm && reason === 'placement check' && typeof brain._intraSliceActive === 'function' && brain._intraSliceActive()
+        && process.env.DREAM_SLICED_ROOM_MOVE !== '1') {
+      if (!brain._roomMoveSkipLogged) { brain._roomMoveSkipLogged = true; console.log('[Pool] CORTEX MOVE for room skipped — her main matrix is sliced across the pool, so the bigger card gains nothing by owning it and the move would re-upload every slice. DREAM_SLICED_ROOM_MOVE=1 restores it.'); }
+      _pm = null;
+    }
     if (_pm && typeof brain._moveCortexTo === 'function') {
       brain._moveCortexTo(_pm.to, _pm.from, moveReason || reason).catch(() => {});
     }
