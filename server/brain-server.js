@@ -8153,7 +8153,20 @@ class ServerBrain {
                 // brain last saved, so a checkpoint it wrote to its OWN disk —
                 // newer, same lineage — goes back onto the card, and so it keeps
                 // checkpointing on the brain's cadence from here on.
-                try { this._sendDonorCheckpointConfig(this._gpuClient, true); } catch { /* the donor simply does not checkpoint this session */ }
+                // ⛔ ADOPTED → NO RESTORE. An adopted card holds the LIVE weights,
+                // newer than its own disk checkpoint; a restore would roll them
+                // back. Instead the brain's copy is refreshed FROM the card, paced
+                // so the pull never fills the link (see refreshCheckpointFromDonor).
+                const _adopted = (this._adoptedMatrices instanceof Set) ? this._adoptedMatrices.size : 0;
+                try { this._sendDonorCheckpointConfig(this._gpuClient, _adopted === 0); } catch { /* the donor simply does not checkpoint this session */ }
+                if (_adopted > 0) {
+                  console.log(`[Pool] ${_adopted} matri${_adopted === 1 ? 'x' : 'ces'} adopted from the card — no restore; refreshing the brain's copy from the card at a paced rate.`);
+                  setTimeout(() => {
+                    this.refreshCheckpointFromDonor('adopted', { force: true })
+                      .then((r) => { if (!r || !r.ok) console.warn(`[Pool] paced refresh after adopt did not complete: ${(r && r.reason) || 'unknown'} — the card still holds the weights and keeps its own checkpoint.`); })
+                      .catch((e) => console.warn('[Pool] paced refresh after adopt threw:', e && e.message));
+                  }, 60000);
+                }
               }).catch((err) => {
                 // #32 — DON'T fail silently. Before this, a thrown initGpu
                 // (e.g. a donor whose WebGPU binding ceiling can't hold a
@@ -15468,6 +15481,20 @@ wss.on('connection', (ws, req) => {
           if (!brain._lessonCostLogged || Date.now() - brain._lessonCostLogged > 600000) {
             brain._lessonCostLogged = Date.now();
             console.log(`[Brain] LESSON COST on ${gpu} — ${(total / lessons).toFixed(2)} ms a lesson: ${rows.slice(0, 5).map((r) => `${r.step} ${r.msPerLesson}ms (${r.share != null ? Math.round(r.share * 100) + '%' : '?'})`).join(' · ')}`);
+          }
+          break;
+        }
+        // v0.3.52 — the card says whose matrices it holds and their exact shape.
+        // The upload adopts a matrix that matches instead of re-sending it.
+        case 'engine_inventory': {
+          if (client) {
+            client.engineLineage = (msg.lineage == null) ? null : String(msg.lineage);
+            const m = new Map();
+            for (const s of (Array.isArray(msg.matrices) ? msg.matrices : [])) {
+              if (s && s.name) m.set(String(s.name), { rows: s.rows >>> 0, cols: s.cols >>> 0, nnz: s.nnz >>> 0 });
+            }
+            client.engineShapes = m;
+            if (m.size) console.log(`[Pool] ${client.gpuName || id} still holds ${m.size} matri${m.size === 1 ? 'x' : 'ces'} for lineage ${client.engineLineage || '(none)'} — matching ones are adopted, not re-uploaded.`);
           }
           break;
         }

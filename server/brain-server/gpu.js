@@ -3847,6 +3847,38 @@ const SERVER_GPU_MIXIN = {
         }
       }
     }
+    // ⭐ ADOPT — THE CARD ALREADY HOLDS IT. A donor ≥ 0.3.52 keeps its engine
+    // across a brain restart and says whose matrices it holds (`engine_inventory`:
+    // her lineage + each matrix's rows/cols/nnz). When this brain's lineage and
+    // this exact shape match, the card's copy IS her matrix — newer than the
+    // brain's file, since the card kept training after the last pull — so nothing
+    // is sent: re-sending would cost a 20-30 min upload over the tunnel AND roll
+    // the card back to the older weights on disk. All the bookkeeping an upload
+    // does still happens here (registry above, size, residency, the ack), so the
+    // rest of the upload flow cannot tell the difference. Any mismatch → upload.
+    // `DREAM_ADOPT=0` always uploads.
+    if (!isReplicaSync && ws && process.env.DREAM_ADOPT !== '0') {
+      try {
+        const _ac = this.clients && this.clients.get ? this.clients.get(ws) : null;
+        const _sh = _ac && _ac.engineShapes instanceof Map ? _ac.engineShapes.get(name) : null;
+        const _st = (this._rngMod && typeof this._rngMod.brainRngState === 'function') ? this._rngMod.brainRngState() : null;
+        const _myLineage = (_st && Number.isFinite(Number(_st.seed))) ? String(Number(_st.seed) >>> 0) : null;
+        const _nnzHere = (matrix.values && matrix.values.length) || 0;
+        if (_sh && _myLineage && _ac.engineLineage === _myLineage
+            && _sh.rows === (matrix.rows >>> 0) && _sh.cols === (matrix.cols >>> 0) && _sh.nnz === (_nnzHere >>> 0)) {
+          const _mb = +(((matrix.values.byteLength || 0) + (matrix.colIdx ? matrix.colIdx.byteLength : 0) + (matrix.rowPtr ? matrix.rowPtr.byteLength : 0)) / 1e6).toFixed(1);
+          if (!this._cortexMatrixMB) this._cortexMatrixMB = {};
+          if (!noRegister) this._cortexMatrixMB[name] = _mb;
+          if (!(_ac.heldMatrices instanceof Set)) _ac.heldMatrices = new Set();
+          _ac.heldMatrices.add(name);
+          if (!(this._adoptedMatrices instanceof Set)) this._adoptedMatrices = new Set();
+          this._adoptedMatrices.add(name);
+          this._adoptedAt = Date.now();
+          console.log(`[Pool] ADOPT ${name} — ${_ac.gpuName || 'the card'} already holds it for this brain (${_sh.rows.toLocaleString()}×${_sh.cols.toLocaleString()}, ${_sh.nnz.toLocaleString()} synapses); ${_mb} MB NOT re-sent. Its copy is the newer one.`);
+          return { ok: true, adopted: true, name };
+        }
+      } catch (e) { console.warn(`[Pool] adopt check for ${name} failed (uploading instead): ${e && e.message}`); }
+    }
     const reqId = this._nextSparseReqId();
     const rows = matrix.rows;
     const cols = matrix.cols;
@@ -6813,7 +6845,7 @@ const SERVER_GPU_MIXIN = {
    * on the wire and ships it in the closing ack, so "did I receive all of it,
    * intact, in order" is answered by hashing what arrived.
    */
-  async gpuReadbackMatrixValues(name, targetWs = null, chunkBytes = 8 * 1024 * 1024, into = null) {
+  async gpuReadbackMatrixValues(name, targetWs = null, chunkBytes = 8 * 1024 * 1024, into = null, range = null) {
     const ws = (targetWs && targetWs.readyState === 1) ? targetWs : this._gpuClient;
     if (!ws || ws.readyState !== 1) return { ok: false, reason: 'no donor connected' };
     const reg = this._replicaMatrixRegistry;
@@ -6831,8 +6863,9 @@ const SERVER_GPU_MIXIN = {
     //   basis 0xcbf29ce484222325 split at the word boundary.
     const st = {
       name, matrix, hashHi: 0xcbf29ce4, hashLo: 0x84222325,
-      chunks: 0, bytes: 0, nextOffset: 0,
-      outOfOrder: 0, overrun: 0, t0: Date.now(), done: null,
+      // a ranged read's chunks start at the range's own offset
+      chunks: 0, bytes: 0, nextOffset: range ? (range.offset >>> 0) : 0,
+      outOfOrder: 0, overrun: 0, t0: Date.now(), done: null, ranged: !!range,
     };
     this._valuesReadbacks.set(reqId, st);
     this._valuesReadbackInFlight = true;
@@ -6865,7 +6898,9 @@ const SERVER_GPU_MIXIN = {
     st.onIdle = () => { if (st.done) { const d = st.done; st.done = null; d({ ok: false, reason: `idle ${Math.round(st.idleMs / 1000)}s after ${st.chunks} chunk(s) / ${(st.bytes / 1048576).toFixed(1)} MB — the donor stopped sending` }); } };
     const timer = st.timer = setTimeout(st.onIdle, st.idleMs);
     try {
-      ws.send(JSON.stringify({ type: 'readback_matrix_values', reqId, name, chunkBytes: chunkBytes | 0 }));
+      ws.send(JSON.stringify(range
+        ? { type: 'readback_matrix_values', reqId, name, chunkBytes: chunkBytes | 0, offset: range.offset, length: range.length }
+        : { type: 'readback_matrix_values', reqId, name, chunkBytes: chunkBytes | 0 }));
     } catch (e) {
       clearTimeout(timer); this._valuesReadbacks.delete(reqId); this._valuesReadbackInFlight = false;
       return { ok: false, reason: `send failed: ${(e && e.message) || e}` };
@@ -6947,6 +6982,49 @@ const SERVER_GPU_MIXIN = {
     return true;
   },
 
+  /**
+   * ⭐ PACED PULL (donor ≥ 0.3.52) — read a matrix range by range at a set rate,
+   * so the pull NEVER fills the card's link. The old whole-matrix pull queued
+   * every chunk at once ahead of the card's other replies; over the tunnel one
+   * ~6.8 GB pull ran ~11 min with the outbound line full and dropped the pod.
+   * Here each range (DREAM_READBACK_RANGE_MB, default 4) is its own verified
+   * request — checksum per range — and the loop waits so the average stays at
+   * DREAM_READBACK_PACE_MBPS (default 2). Her lessons run the whole time.
+   * Chunks land straight in the CPU master as they arrive (as before).
+   */
+  async _pacedReadbackMatrix(name, ws, into = null) {
+    const reg = this._replicaMatrixRegistry;
+    const entry = (reg && typeof reg.get === 'function') ? reg.get(name) : null;
+    const m = into || (entry && entry.matrix);
+    if (!m || !m.values) return { ok: false, reason: `no CPU master matrix '${name}'` };
+    const total = m.values.length * 4;
+    const RANGE = Math.max(1, Number(process.env.DREAM_READBACK_RANGE_MB) > 0 ? Number(process.env.DREAM_READBACK_RANGE_MB) : 4) * 1048576;
+    const PACE = (Number(process.env.DREAM_READBACK_PACE_MBPS) > 0 ? Number(process.env.DREAM_READBACK_PACE_MBPS) : 2) * 1048576;
+    const t0 = Date.now();
+    let bytes = 0;
+    for (let off = 0; off < total; off += RANGE) {
+      if (!ws || ws.readyState !== 1) return { ok: false, reason: 'the card left mid-pull', bytes };
+      if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested && !this._pacedAllowDuringStop) return { ok: false, reason: 'shutdown', bytes };
+      const len = Math.min(RANGE, total - off);
+      const r = await this.gpuReadbackMatrixValues(name, ws, 1024 * 1024, into, { offset: off, length: len });
+      if (!r || !r.ok) return { ok: false, reason: `range @${off}: ${(r && r.reason) || 'unknown'}`, bytes };
+      bytes += r.bytes || 0;
+      const due = t0 + (bytes / PACE) * 1000;
+      const wait = due - Date.now();
+      if (wait > 0) await new Promise((res) => setTimeout(res, wait));
+    }
+    const secs = (Date.now() - t0) / 1000;
+    console.log(`[Brain] PACED PULL ${name} — ${(bytes / 1048576).toFixed(1)} MB in ${secs.toFixed(0)}s (${(bytes / 1048576 / Math.max(1, secs)).toFixed(1)} MB/s, every range checksum-matched); the brain's copy now holds what the card trained.`);
+    return { ok: true, bytes, secs };
+  },
+
+  /** A card that speaks ranged reads (donor ≥ 0.3.52). */
+  _pacedCapable(ws) {
+    const c = ws && this.clients && this.clients.get ? this.clients.get(ws) : null;
+    const v = /^(\d+)\.(\d+)\.(\d+)/.exec(String((c && c.donorAppVersion) || ''));
+    return !!v && ((+v[1]) * 1e6 + (+v[2]) * 1e3 + (+v[3])) >= 3052;
+  },
+
   /** `SHADOWCOST.3` — the closing JSON ack: verify and settle. */
   _settleValuesReadback(ack) {
     const st = this._valuesReadbacks && this._valuesReadbacks.get(ack.reqId);
@@ -6968,7 +7046,7 @@ const SERVER_GPU_MIXIN = {
       return;
     }
     const mbps = ms > 0 ? (st.bytes / 1048576) / (ms / 1000) : 0;
-    console.log(`[Brain] SHADOWCOST.3 readback ${st.name} — ${st.chunks} chunks / ${(st.bytes / 1048576).toFixed(1)} MB in ${(ms / 1000).toFixed(1)}s = ${mbps.toFixed(1)} MB/s, checksum MATCHED; the CPU master now holds the weights the GPU trained.`);
+    if (!st.ranged) console.log(`[Brain] SHADOWCOST.3 readback ${st.name} — ${st.chunks} chunks / ${(st.bytes / 1048576).toFixed(1)} MB in ${(ms / 1000).toFixed(1)}s = ${mbps.toFixed(1)} MB/s, checksum MATCHED; the CPU master now holds the weights the GPU trained.`);
     done({ ok: true, chunks: st.chunks, bytes: st.bytes, ms, mbps, checksum: mine });
   },
 
@@ -7085,11 +7163,19 @@ const SERVER_GPU_MIXIN = {
       // `DREAM_READBACK_REMOTE_GAP_MS` > 0 opts back into a periodic pull.
       if (_remote && !opts.force) {
         const _r = Number(process.env.DREAM_READBACK_REMOTE_GAP_MS);
-        if (!(_r > 0)) return refuse('remote cortex card — it keeps its own checkpoint; no periodic pull');
-        GAP_MS = Math.min(GAP_MS, _r);
+        // ⭐ A card that reads BY RANGE (≥ 0.3.52) is pulled hourly AT A PACE —
+        // ~2 MB/s in the background, her lessons never pause, the link never
+        // fills — so the brain's copy is never more than about an hour behind
+        // what the card trained (a rented card's disk dies with it). An older
+        // card can only be pulled whole, which is what dropped the link: none.
+        if (this._pacedCapable(ws)) GAP_MS = _r > 0 ? _r : 3_600_000;
+        else if (!(_r > 0)) return refuse('remote cortex card — it keeps its own checkpoint; no periodic pull');
+        else GAP_MS = Math.min(GAP_MS, _r);
       }
       if (_remote) this._readbackChunkBytes = 1024 * 1024;   // small pieces on a tunnel: no single send near the donor's 30 s watchdog
       else this._readbackChunkBytes = 0;
+      // A remote card that reads by range is PULLED AT A PACE (never fills its link).
+      this._readbackPaced = !!(_remote && this._pacedCapable(ws));
     } catch { /* keep the default gap */ }
     // The ONE owner of the gap. The published state read its own copy with a
     // default of 3,600,000 that was never moved when this one was halved to
@@ -7116,9 +7202,22 @@ const SERVER_GPU_MIXIN = {
     // ⛔ Never two at once, and never during an upload — the values buffer is
     // being written from the other direction and a readback mid-upload would
     // capture a half-replaced matrix.
-    if (this._valuesReadbackInFlight) return refuse('already in flight');
+    if (this._valuesReadbackInFlight || this._pacedPullInFlight) return refuse('already in flight');
     if (this._cortexUploadInFlight) return refuse('a cortex upload is in flight');
     this._lastReadbackMs = Date.now();
+    this._pacedPullInFlight = !!this._readbackPaced;
+    try {
+      return await this._refreshCheckpointPull(reason, ws);
+    } finally { this._pacedPullInFlight = false; }
+  },
+
+  async _refreshCheckpointPull(reason, ws) {
+    const refuse = (why) => {
+      const st = this._readbackStats || (this._readbackStats = { refusals: {} });
+      st.refusals[why] = (st.refusals[why] || 0) + 1;
+      this._lastReadbackRefusal = { reason: why, at: Date.now() };
+      return { ok: false, reason: why };
+    };
     // The intra matrix is the whole point — it is the biggest thing in the
     // cluster and the one `hebbian_bound` trains behind the CPU's back. The
     // cross-projections ride the same dual-write posture and are far smaller;
@@ -7154,7 +7253,9 @@ const SERVER_GPU_MIXIN = {
         }
         continue;
       }
-      const r = await this.gpuReadbackMatrixValues(n, null, this._readbackChunkBytes || undefined);
+      const r = this._readbackPaced
+        ? await this._pacedReadbackMatrix(n, ws)
+        : await this.gpuReadbackMatrixValues(n, null, this._readbackChunkBytes || undefined);
       if (!r || !r.ok) {
         console.warn(`[Brain] SHADOWCOST.3 readback ABORTED on '${n}' (${reason}): ${(r && r.reason) || 'unknown'} — NOT saving, so the existing checkpoint slots stay coherent.`);
         return { ...refuse(`aborted on '${n}': ${(r && r.reason) || 'unknown'}`), name: n };
