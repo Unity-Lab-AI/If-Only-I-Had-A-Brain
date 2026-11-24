@@ -1529,6 +1529,15 @@ impl Backend {
             Backend::Cuda(e) => e.write_current_slice(cluster, region, indices, values, psi),
         }
     }
+    /// v0.3.51 — a run of spike writes in one go (CUDA: one upload). wgpu writes the
+    /// whole region densely on every call, so `zero` is already implied there.
+    fn write_spike_slices(&mut self, writes: &[(String, String, Vec<u32>, bool)]) -> Result<(), String> {
+        match self {
+            Backend::Wgpu(e) => { for (c, r, i, _) in writes { e.write_spike_slice(c, r, i)?; } Ok(()) }
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.write_spike_slices(writes),
+        }
+    }
     fn clear_spike_region(&mut self, cluster: &str, region: &str) -> Result<(), String> {
         match self {
             Backend::Wgpu(e) => e.clear_spike_region(cluster, region),
@@ -1999,6 +2008,19 @@ impl MultiEngine {
         self.engines[g].write_current_slice(cluster, region, indices, values, psi)
     }
 
+    /// v0.3.51 — spike writes grouped per card, each card's group in one go, in
+    /// order within a card (cards run on their own streams, as before).
+    pub fn write_spike_slices(&mut self, writes: Vec<(String, String, Vec<u32>, bool)>) -> Result<(), String> {
+        let mut per: Vec<Vec<(String, String, Vec<u32>, bool)>> = (0..self.engines.len()).map(|_| Vec::new()).collect();
+        for w in writes {
+            if let Some(&g) = self.cluster_gpu.get(w.0.as_str()) { per[g].push(w); }
+        }
+        for (g, ws) in per.into_iter().enumerate() {
+            if !ws.is_empty() { self.engines[g].write_spike_slices(&ws)?; }
+        }
+        Ok(())
+    }
+
     pub fn clear_spike_region(&mut self, cluster: &str, region: &str) -> Result<(), String> {
         let g = match self.cluster_gpu.get(cluster) { Some(&g) => g, None => return Ok(()) };
         self.engines[g].clear_spike_region(cluster, region)
@@ -2214,6 +2236,46 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
         check(&[0], &eng)?;
         check(&[1, 3], &eng)?;
         println!("  predictive-error parity OK — the card reproduced the server's rule exactly.");
+    }
+
+    // ── v0.3.51 — the batched lesson write must leave exactly the spikes the
+    // one-at-a-time write leaves (CUDA, which is where it differs).
+    #[cfg(feature = "cuda")]
+    {
+        println!("self-test: batched spike-write parity (CUDA)...");
+        match crate::cuda::CudaEngine::new(gpu_index) {
+            Err(e) => println!("  skipped — no CUDA engine here ({e})"),
+            Ok(mut ce) => {
+                let mut regions = HashMap::new();
+                regions.insert("a".to_string(), (0u32, 32u32));
+                regions.insert("b".to_string(), (32u32, 64u32));
+                ce.init_cluster("bw", 64, &regions, 0.0, 0.0);
+                let read = |ce: &crate::cuda::CudaEngine| -> Result<Vec<u32>, String> {
+                    let mut v = ce.readback_letter_buckets("bw", "a", 32, 32, 0)?;
+                    v.extend(ce.readback_letter_buckets("bw", "b", 32, 32, 0)?);
+                    Ok(v)
+                };
+                // one at a time (the old lesson path)
+                ce.write_spike_slice("bw", "a", &[2, 3, 30])?;
+                ce.clear_spike_region("bw", "a")?; ce.clear_spike_region("bw", "b")?;
+                ce.write_spike_slice("bw", "a", &[1, 5, 9])?;
+                ce.write_spike_slice("bw", "b", &[0, 31])?;
+                ce.sync();
+                let want = read(&ce)?;
+                // batched, cleared first (zero skipped) and not cleared (zero kept)
+                ce.write_spike_slice("bw", "a", &[2, 3, 30])?;
+                ce.write_spike_slice("bw", "b", &[7])?;
+                ce.clear_spike_region("bw", "a")?;
+                ce.write_spike_slices(&[
+                    ("bw".to_string(), "a".to_string(), vec![1, 5, 9], false),
+                    ("bw".to_string(), "b".to_string(), vec![0, 31], true),
+                ])?;
+                ce.sync();
+                let got = read(&ce)?;
+                if got != want { return Err(format!("batched spike-write MISMATCH: batched={got:?} one-at-a-time={want:?}")); }
+                println!("  batched write == one-at-a-time write ({} cells, {} set)", got.len(), got.iter().filter(|&&x| x > 0).count());
+            }
+        }
     }
 
     println!("self-test: OK — Rulkov LIF + spike-count + sparse propagate + plasticity + predictive-error parity ran on the GPU.");
