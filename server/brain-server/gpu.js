@@ -1834,9 +1834,19 @@ const SERVER_GPU_MIXIN = {
       const _holdS = Number.isFinite(+process.env.DREAM_POOL_CORTEX_HOLD_S) ? +process.env.DREAM_POOL_CORTEX_HOLD_S : 300;
       const _coolS = Number.isFinite(+process.env.DREAM_POOL_CORTEX_MOVE_COOLDOWN_S) ? +process.env.DREAM_POOL_CORTEX_MOVE_COOLDOWN_S : 1800;
       const _now = Date.now();
+      // ⭐ The hold-down applies only to a card that DROPPED and came back — the
+      // case it exists for. A brand-new card gets the cortex at once; holding it
+      // 5 min just billed pod time for nothing (operator: "this hoilddown time
+      // bullshit that jhust wastes pod time"). A rejoin is recognised by GPU
+      // model, because a relaunched donor arrives with a NEW id
+      // (`_recentDonorDrops` is stamped by the close handler).
       const _settled = (ws) => {
         const c = this.clients && this.clients.get ? this.clients.get(ws) : null;
-        return !!(c && c.connectedAt && (_now - c.connectedAt) >= _holdS * 1000);
+        if (!c) return false;
+        const dropAt = this._recentDonorDrops && this._recentDonorDrops.get(String(c.gpuName || ''));
+        const rejoin = !!(dropAt && (_now - dropAt) < _coolS * 1000);
+        if (!rejoin) return true;
+        return !!(c.connectedAt && (_now - c.connectedAt) >= _holdS * 1000);
       };
       const _moveAllowed = !this._cortexUploadInFlight && !this._cortexMoveInFlight
         && (_now - (this._lastCortexMoveAt || 0)) >= _coolS * 1000;
