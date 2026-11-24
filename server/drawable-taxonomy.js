@@ -395,7 +395,16 @@ function fuseRole(word) {
   const nt = ne ? (ne.tag | 0) : -1;
   const lex = primaryLex(w);
   // An adjective whose noun reading is not a thing (wet → a state) describes.
-  if (hasAdj && (!ne || at > nt || !CONCRETE_LEX.has(lex))) return 'quality';
+  // ⛔ BUT ONLY WHEN THE ADJECTIVE IS WHAT THE WORD MOSTLY IS. "second",
+  // "south" and "sound" are each used far more as nouns (a unit of time, a
+  // direction, a noise) than as adjectives, and their adjective reading
+  // paints nothing — they fused into ideas like "second fish in world" that
+  // no picture can show. A noun-led word passes only when its noun sense is a
+  // visible STATE (lex 26: dark, wet).
+  if (hasAdj && (!ne || at > nt || !CONCRETE_LEX.has(lex))) {
+    if (ne && at < nt && lex !== 26) return null;
+    return 'quality';
+  }
   // 07 noun.attribute — a colour, a texture, a size: it describes, so it
   // fuses as a quality even where its noun reading out-attests the adjective.
   if (lex === 7) return 'quality';
@@ -406,4 +415,22 @@ function fuseRole(word) {
   return CONCRETE_LEX.has(lex) ? 'kind' : null;
 }
 
-module.exports = { drawableVerdict, primaryLex, knownDescriptor, knownOnlyNonNoun, otherPosLeads, unattestedNoun, descendsFromJuvenile, verbLeads, fuseRole };
+// WHAT THE WORD MOSTLY MEANS IS A THING. `drawableVerdict` says 'concrete'
+// when ANY noun sense is a thing — right for learning every meaning, wrong for
+// choosing what to draw: "second" has a rare noun sense (a duellist's aide) and
+// was drawn into piece after piece, while its primary sense is a unit of time;
+// "south" is a direction, "way" a manner. A subject's PRIMARY (most attested)
+// noun sense must be a thing, a person, a place, an animal, a plant, food,
+// a substance — or a group of them (lex 14: a family, a herd). Returns null
+// when WordNet has no noun reading (other judges decide).
+function primaryIsThing(word) {
+  _load();
+  const lex = primaryLex(word);
+  if (!(lex >= 0)) return null;
+  // 11 noun.event (a fire, a race), 19 noun.phenomenon (lightning, a rainbow)
+  // and 22 noun.process are SEEN, so they pass; time, feeling, idea, manner
+  // and relation are not.
+  return CONCRETE_LEX.has(lex) || lex === 11 || lex === 14 || lex === 19 || lex === 22;
+}
+
+module.exports = { drawableVerdict, primaryLex, primaryIsThing, knownDescriptor, knownOnlyNonNoun, otherPosLeads, unattestedNoun, descendsFromJuvenile, verbLeads, fuseRole };

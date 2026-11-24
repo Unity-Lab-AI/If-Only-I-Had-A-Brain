@@ -87,7 +87,7 @@ const path = require('path');
 // "no", "equals") came back as plates and rings seen from above. The tail is
 // fixed; the looks learned on it are left behind the same way as every bump —
 // imagery cleared, weights and training untouched.
-const VM_DB = path.join(__dirname, '..', 'visual-memory-v12.db');
+const VM_DB = path.join(__dirname, '..', 'visual-memory-v13.db');   // v12 → v13 2026-11-24: fresh eyes for the value-drawing / drawable-subject fixes
 // NOLIMIT (ruled 2026-08-20: the equations behind her mind's-eye imagery are
 // not to be limited). 384 concepts was a small number for a mind that will walk K→PhD
 // and see everything on the way — she would start FORGETTING what things look like

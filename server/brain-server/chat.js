@@ -4306,6 +4306,14 @@ const SERVER_CHAT_MIXIN = {
         const i = y * W + x;
         let c = tc ? tc(x, y, W, H) : palette[id2[i]];
         if (!c) continue;
+        // her practised hand: colour strength and value spread, around the
+        // cell's own lightness (1.0 = exactly what she saw)
+        const _ch = (skill && skill.chroma) || 1, _ct = (skill && skill.contrast) || 1;
+        if (_ch !== 1 || _ct !== 1) {
+          const L = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
+          const L2 = 128 + (L - 128) * _ct;
+          c = [0, 1, 2].map((k) => Math.max(0, Math.min(255, L2 + (c[k] - L) * _ch)));
+        }
         if (mono) {
           let g = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
           if (mono === 'ink') g = 255 / (1 + Math.exp(-(g - 128) / 26));
@@ -4755,7 +4763,10 @@ const SERVER_CHAT_MIXIN = {
     // (how wide she builds each volume against the width she learned), `fillA`
     // (how solidly she paints it), `traceW` now weights her OUTLINE, and
     // `detailMul` sets how much shading she puts inside each volume.
-    return { jitter: 0.006, underA: 0.55, traceW: 1.0, keepP: 0.85, detailMul: 1.0, budgetMul: 1.0, volW: 1.0, fillA: 0.92 };
+    // `chroma` (how strongly she lays the colour she saw) and `contrast` (how
+    // far apart her lights and darks sit) are the two the painted build reads
+    // on every cell — the knobs practice can actually move on a painted piece.
+    return { jitter: 0.006, underA: 0.55, traceW: 1.0, keepP: 0.85, detailMul: 1.0, budgetMul: 1.0, volW: 1.0, fillA: 0.92, chroma: 1.0, contrast: 1.0 };
   },
   _skillFor(word) {
     const d = this._skillDefaults();
@@ -5146,6 +5157,8 @@ const SERVER_CHAT_MIXIN = {
       // DRAWCOPY — the skills of building a figure from its skeleton.
       volW:      [0.6, 1.5, 0.08],
       fillA:     [0.5, 1.0, 0.06],
+      chroma:    [0.7, 1.5, 0.08],
+      contrast:  [0.75, 1.35, 0.06],
     };
     const params = { ...this._skillDefaults(), ...(e.skill && e.skill.params) };
     const sessions = (e.skill && e.skill.sessions) || 0;
@@ -5153,7 +5166,12 @@ const SERVER_CHAT_MIXIN = {
     try { best = await score(params); } catch { return null; }
     if (best < 0) return null;
     const base = best;
-    const keys = Object.keys(RANGES);
+    // ⛔ ONLY THE KNOBS THIS HAND READS. A painted build (silhouette + colour
+    // layout) reads `chroma` and `contrast` on every cell; the other knobs
+    // belong to the older stroke hands and cannot change one pixel of it — so
+    // every session nudged them and kept nothing (0 of 5, session after session).
+    const _painted = !!(e.schema.skeleton && e.schema.skeleton.mask && e.schema.skeleton.colors);
+    const keys = _painted ? ['chroma', 'contrast'] : Object.keys(RANGES);
     const prnd = this._ownArtRng('nudge|' + key + '|' + sessions);   // deterministic per session, different every session
     let kept = 0;
     for (let i = 0; i < ITERS; i++) {
@@ -5803,6 +5821,14 @@ const SERVER_CHAT_MIXIN = {
     for (const w of words) {
       if (w === head || head.startsWith(w) || w.startsWith(head)) continue;
       const role = tax.fuseRole(w);
+      // A thing, place or substance joins only if it is itself something she
+      // could draw — the same gate the head passes (it cross-examines grammar,
+      // which is what refuses "must", a modal verb WordNet files as a noun).
+      if ((role === 'kind' || role === 'place' || role === 'stuff') && typeof this._conceptIsDrawable === 'function') {
+        let ok = false;
+        try { ok = await this._conceptIsDrawable(w); } catch { ok = false; }
+        if (!ok) continue;
+      }
       if (role === 'quality') quality.push(w);
       else if (role === 'kind') kind.push(w);
       else if (role === 'place') place.push(w);
@@ -6288,6 +6314,9 @@ const SERVER_CHAT_MIXIN = {
       // says — those were looked up, rendered as studio jewellery, and drawn
       // as orbs. Judged by WordNet's own per-part-of-speech corpus counts.
       if (typeof this._drawTaxonomy.otherPosLeads === 'function' && this._drawTaxonomy.otherPosLeads(w)) return false;
+      // what the word MOSTLY means must be a thing ("second" = time, "south" =
+      // a direction, "way" = a manner), not merely one rare sense of it
+      if (typeof this._drawTaxonomy.primaryIsThing === 'function' && this._drawTaxonomy.primaryIsThing(w) === false) return false;
       const v = this._drawTaxonomy.drawableVerdict(w);
       if (v === 'concrete') {
         // an UNATTESTED grant (the noun reading never occurs in tagged
@@ -6300,6 +6329,9 @@ const SERVER_CHAT_MIXIN = {
           try { xdefs = await this.cortexCluster.lookupDefinitionFull(w); } catch { xdefs = null; }
         }
         if (Array.isArray(xdefs)) {
+          // a dictionary lists a word's main use FIRST: an unattested noun whose
+          // entry leads with another part of speech ("must" → verb) is that
+          if (xdefs.length && String(xdefs[0].partOfSpeech || '').toLowerCase() !== 'noun') return false;
           for (const d of xdefs) {
             const pos = String(d.partOfSpeech || '').toLowerCase();
             if (pos === 'conjunction' || pos === 'preposition' || pos === 'pronoun' || pos === 'interjection' || pos === 'determiner' || pos === 'article' || pos === 'particle' || pos === 'numeral') return false;
