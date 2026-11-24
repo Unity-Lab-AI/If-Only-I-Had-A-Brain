@@ -11557,6 +11557,9 @@ export class Curriculum {
     } catch (err) {
       this._hb(`[Curriculum] 📚 PRE-CELL VOCAB error (non-fatal — cell proceeds; the dream-trickle still carries defs): ${err?.message || err}`);
     }
+    // A stop that lands during the vocabulary pass ends the cell here — it
+    // used to fall through into the cell's phases while the brain shut down.
+    if (this._shuttingDown()) { cluster._probeGateActive = false; return { pass: false, reason: 'shutdown' }; }
 
     // SELFFRAME — "I" IS GROUNDED BEFORE THE CELL TEACHES ANYTHING (2026-08-20).
     // Every first-person lesson in this cell depends on `i` / `me` / `my` / `myself`
