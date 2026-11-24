@@ -4181,8 +4181,23 @@ const SERVER_CHAT_MIXIN = {
       }
       scene = { palette: sp.map(c => c.map(v => Math.round(v))), w: HW, h: HH, z: 1, b64: zlib.deflateSync(Buffer.from(sidx)).toString('base64') };
     }
+    // ⭐ THE COLOURS SHE ACTUALLY SAW, everywhere in the picture, at the shape
+    // grid. The few-colour palettes above snap every smooth shadow and gradient
+    // into flat bands ("like a Looney Tunes closing scene" — judged live); with
+    // the real colour per cell, painted back with smooth interpolation, a
+    // shadow stays a shadow. ~3 bytes a cell, deflated.
+    // Long side capped at 96 cells (~27 KB raw before deflate): light and shade
+    // are smooth, so this carries them exactly, and her memory stays bounded.
+    const tcS = Math.min(1, 96 / Math.max(gw, gh)), TW = Math.max(1, Math.round(gw * tcS)), TH = Math.max(1, Math.round(gh * tcS));
+    const tcBuf = Buffer.alloc(TW * TH * 3);
+    for (let y = 0; y < TH; y++) for (let x = 0; x < TW; x++) {
+      const sx = Math.min(SW - 1, Math.floor((x + 0.5) * SW / TW)), sy = Math.min(SH - 1, Math.floor((y + 0.5) * SH / TH));
+      const so = (sy * SW + sx) * 4, o = (y * TW + x) * 3;
+      tcBuf[o] = D[so]; tcBuf[o + 1] = D[so + 1]; tcBuf[o + 2] = D[so + 2];
+    }
     return out.length ? {
       bones: out, aspect: +(gw / gh).toFixed(3), bg,
+      truecolor: { w: TW, h: TH, z: 1, b64: zlib.deflateSync(tcBuf).toString('base64') },
       mask: { w: gw, h: gh, b64: Buffer.from(bits).toString('base64') },
       colors: { palette: pal.map(c => c.map(v => Math.round(v))), w: HW, h: HH, z: 1, b64: zlib.deflateSync(Buffer.from(idx)).toString('base64') },
       scene,
@@ -4207,6 +4222,23 @@ const SERVER_CHAT_MIXIN = {
     const idx = unpack(skel.colors);
     const CW = skel.colors.w || W, CH = skel.colors.h || H;
     const pal = skel.colors.palette || [];
+    // The real colours she saw (shapes learned before this have none — they
+    // paint from the palette as before). Sampled bilinearly, so a shadow or a
+    // gradient comes back smooth, never as flat bands.
+    let tc = null;
+    if (skel.truecolor && skel.truecolor.b64) {
+      try {
+        const tb = unpack(skel.truecolor), TW = skel.truecolor.w, TH = skel.truecolor.h;
+        if (tb.length >= TW * TH * 3) {
+          tc = (x, y, LW, LH) => {
+            const gx = Math.max(0, Math.min(TW - 1, (x + 0.5) * TW / LW - 0.5)), gy = Math.max(0, Math.min(TH - 1, (y + 0.5) * TH / LH - 0.5));
+            const xa = Math.floor(gx), ya = Math.floor(gy), xb = Math.min(TW - 1, xa + 1), yb = Math.min(TH - 1, ya + 1), fx = gx - xa, fy = gy - ya;
+            const at = (xx, yy, ch) => tb[(yy * TW + xx) * 3 + ch];
+            return [0, 1, 2].map((ch) => (at(xa, ya, ch) * (1 - fx) + at(xb, ya, ch) * fx) * (1 - fy) + (at(xa, yb, ch) * (1 - fx) + at(xb, yb, ch) * fx) * fy);
+          };
+        }
+      } catch { tc = null; }
+    }
     const on = (x, y) => x >= 0 && y >= 0 && x < W && y < H && ((bits[(y * W + x) >> 3] >> ((y * W + x) & 7)) & 1);
     let x0 = W, y0 = H, x1 = 0, y1 = 0, n = 0;
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (on(x, y)) { n++; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
@@ -4265,7 +4297,7 @@ const SERVER_CHAT_MIXIN = {
       for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
         if (!inside(x, y)) continue;
         const i = y * W + x;
-        const c = palette[id2[i]];
+        const c = tc ? tc(x, y, W, H) : palette[id2[i]];
         if (!c) continue;
         alpha[i] = 1;
         rgb[i * 3] = c[0]; rgb[i * 3 + 1] = c[1]; rgb[i * 3 + 2] = c[2];
