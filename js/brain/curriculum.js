@@ -5597,8 +5597,19 @@ export class Curriculum {
             // rather than silently discarded - a word dictionaryapi.dev genuinely
             // does not carry should be visible, not vanish.
             const MAX_ATTEMPTS = 3;
+            // The word queue has its OWN budget, timed from its own start. It used
+            // to share the window's 180 s with every enrichment stage and got the
+            // leftovers: measured live 10 words in a window with 2,237 waiting, one
+            // window per boot — the queue never drained. RE-PRICED: at ~19 s a word
+            // on three cards, 10 min a window teaches ~30 words; the walk gets up
+            // to 10 min longer per window until the queue is empty, then nothing.
+            // DREAM_TRICKLE_WINDOW_MS (0 = back to the shared budget).
+            const _twEnv = Number(typeof process !== 'undefined' && process?.env?.DREAM_TRICKLE_WINDOW_MS);
+            const _twMs = Number.isFinite(_twEnv) && _twEnv >= 0 ? _twEnv : 600000;
+            const _twFrom = Date.now();
             for (let i = 0; i < batchN; i++) {
-              if (_dwOverBudget('dream-trickle (remaining words this window) -- vocabulary binding cut short; the queue persists and later windows resume it')) break;
+              if (_twMs > 0 ? (Date.now() - _twFrom >= _twMs)
+                : _dwOverBudget('dream-trickle (remaining words this window) -- vocabulary binding cut short; the queue persists and later windows resume it')) break;
               if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) break;
               const word = cluster._kVocabQueue[0];
               if (!word) break;

@@ -4490,6 +4490,21 @@ const SERVER_CHAT_MIXIN = {
       }
       flush();
     }
+    // A line-only hand (no mass) used to draw every outline in one pale ink —
+    // judged live as "white pen tracings". Each outline now wears the colour
+    // she saw on that part of the thing, lifted until it reads on her dark
+    // sketchbook paper (a dark colour is mixed toward white, hue kept).
+    if (!paints) {
+      for (const s of out) {
+        if (s.type !== 'poly' || s.rgb !== lineInk) continue;
+        const vi = vols.findIndex((v) => v.poly.some((p) => Math.hypot(p[0] - s.pts[0][0], p[1] - s.pts[0][1]) < 0.02));
+        const c = (vi >= 0 && Array.isArray(vols[vi].rgb)) ? vols[vi].rgb : null;
+        if (!c) continue;
+        const L = lum(c);
+        const t = L >= 120 ? 0 : (120 - L) / Math.max(1, 255 - L);
+        s.rgb = c.map((v) => Math.round(v + (255 - v) * t));
+      }
+    }
     return out;
   },
 
