@@ -146,7 +146,9 @@ function spawnLauncher(script) {
       const child = IS_WIN
         // cmd.exe /c runs the .bat; the empty title arg is required by `start`
         // when any later argument is quoted, or cmd treats the path AS the title.
-        ? spawn('cmd.exe', ['/c', 'start', '', '/D', LAUNCH_DIR, path.basename(script)],
+        // `start <file>.bat` runs the batch under `cmd /K`, which keeps the
+        // window open after it ends; `cmd /c <file>.bat` closes it.
+        ? spawn('cmd.exe', ['/c', 'start', '', '/D', LAUNCH_DIR, 'cmd', '/c', path.basename(script)],
             { cwd: LAUNCH_DIR, detached: true, stdio: 'ignore', windowsHide: false, env })
         : spawn('bash', [script],
             { cwd: LAUNCH_DIR, detached: true, stdio: 'ignore', env });
