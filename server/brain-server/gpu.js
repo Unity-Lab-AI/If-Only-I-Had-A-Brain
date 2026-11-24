@@ -5136,7 +5136,7 @@ const SERVER_GPU_MIXIN = {
     };
     const u32 = (...v) => { const b = Buffer.alloc(4 * v.length); v.forEach((x, i) => b.writeUInt32LE(x >>> 0, 4 * i)); return b; };
     const f32 = (x) => { const b = Buffer.alloc(4); b.writeFloatLE(x, 0); return b; };
-    const parts = [this._encodeSparseHeader(17, 0, spec.cluster),
+    const parts = [this._encodeSparseHeader(17, spec.reqId >>> 0, spec.cluster),
       str(spec.twin || ''), str(spec.sem), str(spec.motor), str(spec.tag),
       u32(spec.semGroup, spec.semSize, spec.motorGroup, spec.motorSize, spec.tagRowStart, spec.tagLen)];
     const cnt = Buffer.alloc(4);
@@ -5160,12 +5160,58 @@ const SERVER_GPU_MIXIN = {
     return Buffer.concat(parts);
   },
 
+  /**
+   * v0.3.45 — LESSON PACING. Lessons are fire-and-forget, so without a bound a
+   * card can be handed an unlimited queue of them: measured, the local card's
+   * pong RTT reached 7 s under teaching and the heartbeat killed it. A 0.3.45
+   * donor acks each lesson when its WORKER finishes it; the curriculum awaits
+   * `lessonSlot()` before sending, so at most `DREAM_LESSON_INFLIGHT` (default 4)
+   * are queued on the card — it runs flat out and its queue never grows. An
+   * in-flight entry older than 60 s (a card that died mid-lesson) is dropped so
+   * a lost ack can never wedge the walk; a change of cortex owner clears all.
+   */
+  _donorAcksLessons() {
+    const ws = this._gpuClient;
+    const c = ws && this.clients && this.clients.get ? this.clients.get(ws) : null;
+    const m = /^(\d+)\.(\d+)\.(\d+)/.exec(String((c && c.donorAppVersion) || ''));
+    return !!m && ((+m[1]) * 1e6 + (+m[2]) * 1e3 + (+m[3])) >= 3045;
+  },
+  async lessonSlot() {
+    if (!this._donorAcksLessons()) return;
+    const max = Number(process.env.DREAM_LESSON_INFLIGHT) > 0 ? Number(process.env.DREAM_LESSON_INFLIGHT) : 4;
+    if (!(this._lessonInflight instanceof Map)) this._lessonInflight = new Map();
+    const t0 = Date.now();
+    for (;;) {
+      const now = Date.now();
+      for (const [id, e] of this._lessonInflight) {
+        if (e.ws !== this._gpuClient || (now - e.at) > 60000) { this._lessonInflight.delete(id); this._lessonAckLost = (this._lessonAckLost || 0) + 1; }
+      }
+      if (this._lessonInflight.size < max) break;
+      await new Promise((r) => { this._lessonWake = r; setTimeout(r, 50); });
+    }
+    const waited = Date.now() - t0;
+    if (waited > 0) { this._lessonSlotWaitMs = (this._lessonSlotWaitMs || 0) + waited; this._lessonSlotWaits = (this._lessonSlotWaits || 0) + 1; }
+  },
+  _lessonAcked(reqId, ws) {
+    if (this._lessonInflight instanceof Map && this._lessonInflight.delete(reqId)) {
+      this._lessonAcks = (this._lessonAcks || 0) + 1;
+      const w = this._lessonWake; this._lessonWake = null;
+      if (typeof w === 'function') w();
+    }
+  },
+
   gpuTeachLesson(spec) {
     if (!this._gpuClient || this._gpuClient.readyState !== 1) return false;
     if (!this._donorSpeaksLessonNow()) return false;
     try {
-      const frame = this.encodeTeachLesson(spec);
+      const paced = this._donorAcksLessons();
+      const reqId = paced ? this._nextSparseReqId() : 0;
+      const frame = this.encodeTeachLesson({ ...spec, reqId });
       if (!this._donorPatternSendGated(frame)) return false;
+      if (paced) {
+        if (!(this._lessonInflight instanceof Map)) this._lessonInflight = new Map();
+        this._lessonInflight.set(reqId, { ws: this._gpuClient, at: Date.now() });
+      }
       this._countTeachOut(17, frame.length);
       // ⭐ Credit the card on its own row. `teachOps` was bumped only in
       // `_sparseSendBinary` (the acked lane), and lessons go fire-and-forget, so
