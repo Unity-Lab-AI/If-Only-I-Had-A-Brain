@@ -239,14 +239,16 @@ class MindSpaceWorkerProxy {
   // _drawConcept/_drawImagined updated in the same batch — a non-awaited call
   // would see a Promise with no .length and silently draw nothing, the exact
   // old traceField-forward bug class).
+  //
+  // ⛔ DELIBERATELY NOT DONOR-ROUTED AS OF 2026-11-24 — same reason as
+  // `describe` below. Each trace shipped the whole rec as one ~2.2 MB JSON
+  // frame to the PRIMARY, and the remote card dropped its link (code 1006,
+  // "send to the brain did not complete in 30s") right after one, while the
+  // brain's loop was live. The trace is edge-following over one decoded
+  // field: CPU work, run here in the mindspace worker thread, off the main
+  // loop. Nothing crosses the socket; the strokes are the same engine's.
   async traceLineArt(rec, opts) {
-    if (this._viaDonor('traceLineArt')) {
-      const r = await this._donorDispatch('traceLineArt', { rec: this._recWireSafe(rec), opts: opts || {} });
-      if (r && Array.isArray(r.strokes)) return r.strokes;
-    }
-    return (this._local && typeof this._local.traceLineArt === 'function')
-      ? this._local.traceLineArt(rec, opts)
-      : [];
+    return this._call('traceLineArt', [rec, opts || {}]);
   }
 
   // ⛔⛔ THE PROXY PASSTHROUGH IS NOT OPTIONAL, AND THIS PROJECT HAS ALREADY PAID
