@@ -4090,8 +4090,7 @@ const SERVER_GPU_MIXIN = {
    * caller (MindSpaceWorkerProxy) holds the rollout ramp until v0.3.11 is the
    * min donor version (sparseV2 precedent — ramp removal is a logged milestone).
    */
-  _mindspaceDonorCapable(op) {
-    const ws = this._gpuClient;
+  _mindspaceWsCapable(ws, op) {
     if (!(ws && ws.readyState === 1 && ws._mindspaceV1 === true)) return false;
     // Per-op capability: a donor may advertise a `mindspaceOps` list (the native
     // binary ships perceive/describe/stylizeField/traceLineArt first; de-novo
@@ -4101,13 +4100,41 @@ const SERVER_GPU_MIXIN = {
     return true;
   },
 
+  /**
+   * MULTI-CARD — a mind-space op carries its whole input (the rec / frame), so
+   * any card that speaks it can run it. Pick the capable card with the fewest
+   * ops already in flight; ties go to the lowest round trip, which keeps the
+   * MB-sized payloads on this machine's card when it is free. The cortex owner
+   * is no longer the only card her imagery runs on.
+   */
+  _pickMindspaceCard(op) {
+    const cands = [];
+    const seen = new Set();
+    for (const ws of [this._gpuClient, ...(typeof this._livePoolDonors === 'function' ? this._livePoolDonors() : [])]) {
+      if (!ws || seen.has(ws)) continue;
+      seen.add(ws);
+      if (this._mindspaceWsCapable(ws, op)) cands.push(ws);
+    }
+    if (!cands.length) return null;
+    const rtt = (ws) => { const c = this.clients && this.clients.get ? this.clients.get(ws) : null; return Number(c && c.rttMs) || 0; };
+    cands.sort((a, b) => ((a._msInflight | 0) - (b._msInflight | 0)) || (rtt(a) - rtt(b)));
+    return cands[0];
+  },
+
+  _mindspaceDonorCapable(op) {
+    return !!this._pickMindspaceCard(op);
+  },
+
   async gpuMindspaceOp(op, payload, timeoutMs = 30_000) {
-    const ws = this._gpuClient;
-    if (!this._mindspaceDonorCapable(op)) return null;
+    const ws = this._pickMindspaceCard(op);
+    if (!ws) return null;
     if (!this._mindspacePending) this._mindspacePending = new Map();
     if (!this._mindspaceReqId) this._mindspaceReqId = 1;
     const id = this._mindspaceReqId++;
-    return new Promise((resolve) => {
+    ws._msInflight = (ws._msInflight | 0) + 1;
+    return new Promise((outerResolve) => {
+      let done = false;
+      const resolve = (v) => { if (done) return; done = true; ws._msInflight = Math.max(0, (ws._msInflight | 0) - 1); outerResolve(v); };
       const timeout = setTimeout(() => {
         this._mindspacePending.delete(id);
         resolve(null);
