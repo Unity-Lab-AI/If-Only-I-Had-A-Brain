@@ -50,7 +50,8 @@ __device__ float region_gate(unsigned int n_idx, unsigned int numRegions, const 
 __global__ void lif(unsigned int n, float effectiveDrive, float effectiveDriveR, unsigned int half,
                     float noiseAmp, unsigned int seed, unsigned int numRegions,
                     float* state, unsigned int* spikes,
-                    const float* currents, const float* regionGates) {
+                    const float* currents, const float* regionGates,
+                    float tunnelA, float tunnelKappa, float entangleRho) {
   unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i >= n) return;
   const float ALPHA = 4.5f;
@@ -74,12 +75,27 @@ __global__ void lif(unsigned int n, float effectiveDrive, float effectiveDriveR,
   // reference's (rand[0,1]-0.5)×noiseAmp×0.0001; rnd here spans [-1,1] so
   // ×0.5 gives the identical amplitude). The unscaled port injected
   // ±noiseAmp per step — 20,000× the reference — see the WGSL twin's note.
-  float jitter = rnd(seed, i) * 0.5f * noiseAmp * 0.0001f;
+  // ENTANGLEMENT (v0.3.48) — hemispheric twins i and i±half share a noise
+  // component (same seed mix as the WGSL twin); corr = rho². rho = 0 → own only.
+  float r = rnd(seed, i);
+  if (entangleRho > 0.0f && half > 0u) {
+    float shared = rnd(seed ^ 0x5bd1e995u, i % half);
+    r = entangleRho * shared + sqrtf(fmaxf(0.0f, 1.0f - entangleRho * entangleRho)) * r;
+  }
+  float jitter = r * 0.5f * noiseAmp * 0.0001f;
   float xNext = ALPHA / (1.0f + xN * xN) + yN;
   float yNext = yN - MU * (xN - sigmaEff) + jitter;
+  unsigned int spk = (xN <= 0.0f && xNext > 0.0f) ? 1u : 0u;
+  // TUNNELLING (v0.3.48) — WKB-shaped crossing of the barrier left below
+  // threshold: A·exp(−κ·√h). tunnelA = 0 → off.
+  if (!spk && tunnelA > 0.0f && xN <= 0.0f && xNext <= 0.0f) {
+    float pT = tunnelA * expf(-tunnelKappa * sqrtf(-xNext));
+    float u = rnd(seed ^ 0x9e3779b9u, i) * 0.5f + 0.5f;
+    if (u < pT) { xNext = 0.01f; spk = 1u; }
+  }
   state[2u*i]      = xNext;
   state[2u*i + 1u] = yNext;
-  spikes[i] = (xN <= 0.0f && xNext > 0.0f) ? 1u : 0u;
+  spikes[i] = spk;
 }
 
 // GOTCHA.3b (v0.3.32) — mean of the Rulkov FAST variable. Port of

@@ -141,6 +141,45 @@ donor_attached() {
   return 1
 }
 
+# ── HER IMAGE LANE ON THIS POD (donor 0.3.48) ────────────────────────────────
+# The same renderer she runs at home (`server/image-render.py`, port 5124) with
+# the SAME checkpoint, so a picture does not depend on which card drew it. The
+# model comes from the model host, not from the operator's upload, and is taken
+# only if its SHA-256 matches the file at home byte for byte:
+#   Realistic_Vision_V5.1_fp16-no-ema.safetensors · 2,132,625,894 B
+#   sha256 99a75a901f4fec732056930a89fa34cf360f6f72d75ce5bf333ddf82adf8dd2a
+# Runs in the background and never blocks the donor; the donor re-checks the
+# renderer every minute and offers the lane the moment it answers.
+# DONOR_IMAGE=0 skips it.
+if [ "${DONOR_IMAGE:-1}" != "0" ]; then
+  ( IMG=/opt/unity-image
+    CKPT="$IMG/models/image/realistic-vision-v51.safetensors"
+    CKPT_URL="https://huggingface.co/SG161222/Realistic_Vision_V5.1_noVAE/resolve/main/Realistic_Vision_V5.1_fp16-no-ema.safetensors"
+    CKPT_SHA=99a75a901f4fec732056930a89fa34cf360f6f72d75ce5bf333ddf82adf8dd2a
+    RENDER_URL="https://raw.githubusercontent.com/Unity-Lab-AI/If-Only-I-Had-A-Brain/main/server/image-render.py"
+    mkdir -p "$IMG/models/image" "$IMG/server"
+    curl -fsSL -m 120 -o "$IMG/server/image-render.py" "$RENDER_URL" || { echo IMAGE_LANE_NO_RENDERER_SCRIPT; exit 0; }
+    if [ ! -f "$CKPT" ] || [ "$(sha256sum "$CKPT" | cut -c1-64)" != "$CKPT_SHA" ]; then
+      echo IMAGE_LANE_FETCHING_MODEL
+      curl -fsSL -m 3600 -o "$CKPT.part" "$CKPT_URL" || { echo IMAGE_LANE_MODEL_DOWNLOAD_FAILED; exit 0; }
+      if [ "$(sha256sum "$CKPT.part" | cut -c1-64)" != "$CKPT_SHA" ]; then echo IMAGE_LANE_MODEL_HASH_MISMATCH refusing; rm -f "$CKPT.part"; exit 0; fi
+      mv -f "$CKPT.part" "$CKPT"
+    fi
+    # ubuntu:24.04 ships no Python and its system pip refuses installs
+    # (PEP 668), so the renderer gets its own venv.
+    command -v python3 >/dev/null 2>&1 && python3 -c "import venv" 2>/dev/null \
+      || apt-get install -y --no-install-recommends python3 python3-venv >/dev/null 2>&1 \
+      || { echo IMAGE_LANE_NO_PYTHON; exit 0; }
+    [ -x "$IMG/venv/bin/python" ] || python3 -m venv "$IMG/venv" || { echo IMAGE_LANE_NO_VENV; exit 0; }
+    PY="$IMG/venv/bin/python"
+    "$PY" -c "import torch, diffusers, transformers, accelerate, safetensors" 2>/dev/null \
+      || "$PY" -m pip install -q torch diffusers transformers accelerate safetensors \
+      || { echo IMAGE_LANE_PIP_FAILED; exit 0; }
+    echo IMAGE_LANE_READY starting_renderer_on_5124
+    while true; do "$PY" "$IMG/server/image-render.py" --port 5124 --checkpoint "$CKPT"; echo IMAGE_LANE_RENDERER_EXITED restarting_in_20s; sleep 20; done
+  ) &
+fi
+
 while true; do
   U=$(latest_url); T=$(latest_tag)
   if [ -n "$U" ]; then

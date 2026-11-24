@@ -789,7 +789,7 @@
             title="Show the description and the effect-class evidence for each knob."
             data-tip="Show what each knob does, plus the evidence behind its effect class — the read site and why it was classified live, boot-frozen or unproven.&#10;&#10;⚠ The evidence line matters as much as the value: it is what lets a claim about this panel be checked instead of believed."><input type="checkbox" id="tvKnobDetail" checked /> show what each one does</label>
         </div>
-        <div class="tv-controls" style="margin-top:9px"><span class="tv-sub tv-tip" title="A named set of every knob position, applied all at once." data-tip="A TEMPLATE names every knob she reads: a value, or &quot;leave it to the code&quot; — each with its reason.&#10;&#10;⭐ Applying writes the whole set in one go. Live knobs change now; the rest are stored as the boot defaults, and if any boot-frozen knob changed she restarts ONCE for all of them — never once per knob.&#10;&#10;⚠ A knob the launcher or service unit sets still wins, and is listed as shadowed.">template</span> <select id="tvTplPick"><option value="">— loading —</option></select> <button id="tvTplPreview" class="tv-tip" title="Show what this template would change — applies nothing." data-tip="Lists every knob the template would change, split into: changes now (live), needs the one restart (boot-frozen / cached / unproven), and shadowed by the launcher.&#10;&#10;Nothing is written.">◇ preview</button> <button id="tvTplApply" class="tv-tip" title="Apply the whole template; restarts her once if a boot-frozen knob changed." data-tip="Applies every knob in the template at once and makes it the set she starts with.&#10;&#10;⛔ If any boot-frozen knob changes, she is saved and restarted ONCE (resume, no wipe) so all of them take effect together. Live-only changes apply without a restart.">✔ apply template</button> <span id="tvTplActive" class="tv-sub"></span></div><div id="tvKnobReport" style="margin-top:9px"></div>
+        <div class="tv-controls" style="margin-top:9px"><span class="tv-sub tv-tip" title="A named set of every knob position, applied all at once." data-tip="A TEMPLATE names every knob she reads: a value, or &quot;leave it to the code&quot; — each with its reason.&#10;&#10;⭐ Applying writes the whole set in one go. Live knobs change now; the rest are stored as the boot defaults, and if any boot-frozen knob changed she restarts ONCE for all of them — never once per knob.&#10;&#10;⚠ A knob the launcher or service unit sets still wins, and is listed as shadowed.">template</span> <select id="tvTplPick"><option value="">— loading —</option></select> <button id="tvTplPreview" class="tv-tip" title="Show what this template would change — applies nothing." data-tip="Lists every knob the template would change, split into: changes now (live), needs the one restart (boot-frozen / cached / unproven), and shadowed by the launcher.&#10;&#10;Nothing is written.">◇ preview</button> <button id="tvTplApply" class="tv-tip" title="Apply the whole template; restarts her once if a boot-frozen knob changed." data-tip="Applies every knob in the template at once and makes it the set she starts with.&#10;&#10;⛔ If any boot-frozen knob changes, she is saved and restarted ONCE (resume, no wipe) so all of them take effect together. Live-only changes apply without a restart.">✔ apply template</button> <span id="tvTplActive" class="tv-sub"></span></div><div id="tvScaleUp" class="tv-controls" style="margin-top:9px;display:none"><span class="tv-sub tv-tip" title="A bigger size the card pool has held — waiting for you." data-tip="The connected cards have held enough room for a bigger her for 5 minutes.&#10;&#10;⛔ Growing WIPES her weights and fresh-walks her from kindergarten at the new size. Nothing happens until you press approve.">scale-up</span> <span id="tvScaleUpText" class="tv-sub"></span> <button id="tvScaleUpGo" class="tv-tip" title="Grow her to the offered size — wipes and fresh-walks." data-tip="Writes the approved tier, clears her weights, and restarts her at the new size (a fresh walk). An approved tier overrides the launcher's budget pin; host RAM still bounds it.">✔ approve — wipe and grow</button> <span id="tvScaleUpMsg" class="tv-sub"></span></div><div id="tvKnobReport" style="margin-top:9px"></div>
         <div id="tvKnobs" style="margin-top:9px"><div class="tv-note">—</div></div>
       </div>
     </div>
@@ -1149,6 +1149,7 @@ async function poll() {
      reading. Rendering them below the `return` would hide them at the only
      moment they matter. */
   renderKnobs(st.knobs);
+  try { renderScaleUp(st.scaleUp || null); } catch { /* the offer row is an instrument; it never stops the page */ }
   /* Instruments render on the same terms and for the same reason — a stopped
      walk is exactly when the dials and the knob values want reading, so they
      must not sit below the teach-bus guard. */
@@ -2416,6 +2417,27 @@ async function tplPost(preview) {
 }
 if ($('tvTplPreview')) $('tvTplPreview').onclick = () => tplPost(true);
 if ($('tvTplApply')) $('tvTplApply').onclick = () => tplPost(false);
+/* SCALE-UP OFFER — shown only while the pool holds a bigger size than she runs.
+   ⛔ Approving wipes and fresh-walks her; the confirm says so in plain words. */
+function renderScaleUp(o) {
+  const row = $('tvScaleUp');
+  if (!row) return;
+  if (!o) { row.style.display = 'none'; return; }
+  row.style.display = '';
+  $('tvScaleUpText').textContent = `tier ${o.runningTier} → ${o.tier}: ${Number(o.runningNeurons || 0).toLocaleString()} → ${Number(o.targetNeurons).toLocaleString()} neurons, on offer since ${new Date(o.since).toLocaleTimeString()}`;
+}
+if ($('tvScaleUpGo')) $('tvScaleUpGo').onclick = async () => {
+  const msg = $('tvScaleUpMsg');
+  if (!confirm('Grow her to the offered size?\n\nThis WIPES her weights and fresh-walks her from kindergarten at the new size. It cannot be undone.')) return;
+  msg.textContent = ' …';
+  try {
+    const r = await fetch((WEIGHT_BASE || '') + '/scale-up', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"approve":true}' });
+    if (isForbidden(r)) { msg.textContent = ' ⚠ admin-only — this page is not on the admin lane.'; return; }
+    const j = await r.json();
+    msg.textContent = j.ok ? ` ✔ approved — tier ${j.tier}; she restarts at the new size.` : ` ⛔ ${j.why || 'refused'}`;
+  } catch (e) { msg.textContent = ` ⛔ ${(e && e.message) || 'request failed'}`; }
+};
+
 /* ⛔ DEFERRED, NOT CALLED HERE: `WEIGHT_BASE` is a `let` declared further down
    this script, so touching it at this line is a TDZ ReferenceError that kills
    the whole block. By 3 s the script has run and the base has been probed. */

@@ -1,6 +1,28 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-11-24 (latest, 51st) — THE UNITY KNOB TEMPLATE (DEFAULT); STALE CORTEX FREED AFTER A MOVE (DONOR 0.3.46); LESSON WINDOW SIZED TO THE LINK
+> # 🛑 2026-11-24 (latest, 52nd) — EVERY CARD TEACHES (DONOR 0.3.48): ROW SLICES, IMAGES ON DONORS, WEIGHTS FROM A RELEASE, SIZE FROM THE POOL, TUNNELLING + ENTANGLEMENT
+>
+> **Branch: `feature/multicard-train`.** Gee: *"no it has to work with multiple doners or what the fuck are we doing"* · *"get to it i want multi card working for her training and processing and image gen and stuff and the doners casn pull directly from github the model soite or forgjo"* · *"and we need to equate fdor quantum tunnelling and entanglement in her eqyuastions in nurons"* · *"no we ARE NOT STARTING HER TILL SHE IS READY"*. **Next launch: `start.bat` — a FRESH WALK** (the neuron terms change what she learns), donor 0.3.48, then pods.
+>
+> ```
+>   BUILT     intra matrix in row slices across EVERY card (no thinker: langCortex is never
+>             ticked) — plan/upload/slice_base, teach frames copied at the owner socket,
+>             gathered propagate, per-slice checkpoint pull, all-holder lesson acks, reslice
+>             · image lane on donors (same sha256-checked model from the model host)
+>             · mind-space ops to the least-busy card · weights as GitHub PRE-release row
+>             blocks, slices built from them + changed-row patch · pooled size offer, ASK
+>             FIRST, approved tier beats the launcher pin · tunnelling + twin entanglement
+>             in both neuron kernels (EQUATIONS §2), PTX rebuilt
+>   PROVEN    slices byte-identical (harness) · release round trip byte-identical · pooled
+>             sizing harness · donor GPU self-test clean (caught WGSL `shared`)
+>   FOUND     running tier read from a stale file (5 vs her real 199.7M) — no offer could
+>             appear · donor release profile drifted to strip=true — crash logs unlocatable
+>   READ NEXT MULTICARD.READ on the board
+> ```
+>
+> ---
+>
+> # 🛑 2026-11-24 (51st) — THE UNITY KNOB TEMPLATE (DEFAULT); STALE CORTEX FREED AFTER A MOVE (DONOR 0.3.46); LESSON WINDOW SIZED TO THE LINK
 >
 > **Branch: `feature/unity-knob-template`.** Gee: *"go through the 262 nobs in the tech view and set them all correctly … make this the Unity templket"* · *"dont just restart when one boot needed nob changes"* · *"should we have deadlines i mean shit take swhat it takes"* · *"then do the cascade and any deploys we need"*. **Next launch: `Savestart.bat`** with donor 0.3.46.
 >

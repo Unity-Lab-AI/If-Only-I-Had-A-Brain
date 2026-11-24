@@ -768,7 +768,28 @@ const BRAIN_VRAM_ALLOC = (function () {
     const _hostMB = Math.floor(os.totalmem() / 1048576);
     const _hostSafeMB = Math.max(1024, _hostMB - 13312);
     const _envMB = Number(process.env.DREAM_BRAIN_BUDGET_MB) || 0;
-    if (_envMB > 0) {
+    // ⭐ AN APPROVED SCALE-UP WINS OVER THE LAUNCHER'S PIN. The launchers pin
+    // DREAM_BRAIN_BUDGET_MB=8000 so a Savestart matches the boot that saved the
+    // weights — but a scale-up step the operator approved has already wiped
+    // those weights and asks for a bigger brain on purpose; honouring the pin
+    // would boot her at the old size and the step would do nothing but wipe.
+    // Only `approved: true` (written by the dashboard approval) counts, and
+    // host RAM still bounds it — the CPU master copy has to fit.
+    let _approvedTierMB = 0;
+    try {
+      const _ct = JSON.parse(fs.readFileSync(path.join(__dirname, 'community-tier.json'), 'utf8'));
+      if (_ct && _ct.approved === true && Number(_ct.targetNeurons) > 0) {
+        const _rw = { ...DEFAULT_BIO_WEIGHTS, ...(cfg.biologicalWeights || {}) };
+        const _wSum = Object.values(_rw).reduce((s, w) => s + (Number(w) || 0), 0) || 1;
+        const _mainFrac = Math.max(0.05, 1 - ((Number(_rw.language_cortex) || 0) / _wSum));
+        _approvedTierMB = Math.ceil((Number(_ct.targetNeurons) * 21) / _mainFrac / 1048576) + 2048;
+        console.log(`[Brain] SCALE-UP — approved tier ${_ct.tier} (${Number(_ct.targetNeurons).toLocaleString()} neurons) needs ${_approvedTierMB}MB; it overrides the launcher's DREAM_BRAIN_BUDGET_MB=${_envMB || 'unset'}.`);
+      }
+    } catch { /* no approved tier */ }
+    if (_approvedTierMB > 0) {
+      vramMB = Math.max(1024, Math.min(_approvedTierMB, _hostSafeMB));
+      if (_approvedTierMB > _hostSafeMB) console.warn(`[Brain] SCALE-UP — host RAM caps the approved tier at ${_hostSafeMB}MB of ${_approvedTierMB}MB; she boots at the safe max.`);
+    } else if (_envMB > 0) {
       const _wanted = _envMB;
       vramMB = Math.max(1024, Math.min(_envMB, _hostSafeMB));
       console.log(`[Brain] LOCALSCALE — DREAM_BRAIN_BUDGET_MB=${_wanted}MB honoured on a GPU host: budget → ${vramMB}MB${_wanted > _hostSafeMB ? ` (host-RAM ceiling ${_hostSafeMB}MB applied — the CPU master copy has to fit in RAM)` : ''}. ⚠ RE-PRICE: teach cost scales with the brain, so ${(vramMB / _hardMaxMB).toFixed(2)}× the card-derived budget is ~${(vramMB / _hardMaxMB).toFixed(2)}× per teach op.`);
@@ -2248,6 +2269,21 @@ let COMMUNITY_TIER_RUNNING = 0;
   } else {
     console.log(`[Brain] main-brain sized to the RAM-safe budget base: ${_curTotal.toLocaleString()} neurons (no down-scale; deployed runs at the box's safe max).`);
   }
+  // ⛔ THE RUNNING TIER IS WHAT SHE BOOTED AT, NOT WHAT THE FILE SAYS. Measured:
+  // `community-tier.json` read tier 5 (2.4 B neurons) while she booted at
+  // 199,728,759 — so every milestone at or below tier 5 read as "already
+  // running" and no scale-up could ever be offered. The tier is the highest rung
+  // at or below her actual size.
+  try {
+    const { DF7_MILESTONES } = require('./brain-server/gpu.js');
+    const _actual = Object.values(CLUSTER_SIZES).reduce((s, n) => s + n, 0);
+    let _t = 0;
+    for (let i = 0; i < DF7_MILESTONES.length; i++) if (_actual >= DF7_MILESTONES[i].neurons) _t = i;
+    if (_t !== COMMUNITY_TIER_RUNNING) {
+      console.log(`[Brain] running tier ${_t} (she booted at ${_actual.toLocaleString()} neurons) — the tier file said ${COMMUNITY_TIER_RUNNING}.`);
+      COMMUNITY_TIER_RUNNING = _t;
+    }
+  } catch { /* tier stays as read */ }
 }
 // TOTAL_NEURONS is the SUM of main-brain cluster sizes (language cortex
 // lives in its own scaler and is tracked as `langCortexSize` separately).
@@ -8345,6 +8381,20 @@ class ServerBrain {
                 errorCorrection: _fin(errorSignal, 0),
                 reward: _fin(this.reward, 0),
                 ...(regionGains ? { regionGains } : {}),
+                // MODELLED QUANTUM TERMS (docs/EQUATIONS.md §2) — tunnelling
+                // across the sub-threshold barrier and hemispheric-twin
+                // entanglement. Read live so a knob write takes effect on the
+                // next batch; 0 turns each off. A donor older than 0.3.48
+                // ignores the fields and steps the plain map.
+                ...(() => {
+                  const a = Number.isFinite(+process.env.DREAM_QTUNNEL_A) ? +process.env.DREAM_QTUNNEL_A : 0.002;
+                  const k = Number.isFinite(+process.env.DREAM_QTUNNEL_KAPPA) ? +process.env.DREAM_QTUNNEL_KAPPA : 2;
+                  const rho = Number.isFinite(+process.env.DREAM_ENTANGLE_RHO) ? +process.env.DREAM_ENTANGLE_RHO : 0.3;
+                  const out = {};
+                  if (a > 0) { out.tunnelA = a; out.tunnelKappa = k; }
+                  if (rho > 0) { out.entangleRho = rho; out.half = Math.floor((CLUSTER_SIZES[name] || 0) / 2); }
+                  return out;
+                })(),
               };
             });
             // Keep the cortex cluster's step-loop gamma field honest for the
@@ -10822,6 +10872,12 @@ function _applyPoolPartition(reason, moveReason) {
 // is in flight. Cheap: a few map operations when nothing changes.
 setInterval(() => {
   try {
+    // MULTI-CARD — checked BEFORE the two-card gate: when a holder drops and
+    // leaves one card, its rows must come back onto that card.
+    if (brain && typeof brain._intraSliceNeedsReplan === 'function' && brain._intraSliceNeedsReplan()) {
+      brain._resliceIntra('the cards changed').catch(() => {});
+      return;
+    }
     if (!brain || !brain._gpuClients || brain._gpuClients.size < 2) return;
     // ⛔ Not while the cortex is moving or uploading. Measured: a check that ran
     // mid-move still saw the cortex on the OLD card (ownership switches when the
@@ -12105,6 +12161,23 @@ const httpServer = http.createServer((req, res) => {
       return (d && d.kind === 'unity-knob-defaults') ? d : null;
     } catch { return null; }
   };
+
+  // ── POST /scale-up — the operator approves the offered size step ────────────
+  // A step WIPES her weights and fresh-walks her at the new size, so it never
+  // fires on its own (unless DREAM_SCALEUP_AUTO=1). Body `{approve:true}`.
+  if (req.url && req.url.split('?')[0] === '/scale-up' && req.method === 'POST') {
+    if (!requireLoopback(req, res, '/scale-up')) return;
+    let body = '';
+    req.on('data', (c) => { body += c; if (body.length > 1024) req.destroy(); });
+    req.on('end', () => {
+      let j = {};
+      try { j = JSON.parse(body || '{}'); } catch { /* empty */ }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      if (j.approve !== true) { res.end(JSON.stringify({ ok: false, why: 'send {"approve":true} to approve the step', offer: brain._scaleUpOffer || null })); return; }
+      res.end(JSON.stringify(typeof brain.approveScaleUp === 'function' ? brain.approveScaleUp() : { ok: false, why: 'not available' }));
+    });
+    return;
+  }
 
   if (req.url && req.url.split('?')[0] === '/knob-templates' && req.method === 'GET') {
     if (!requireLoopback(req, res, '/knob-templates')) return;
@@ -14494,7 +14567,7 @@ wss.on('connection', (ws, req) => {
       // public/donor-route connection faking these could poison brain state.
       // gpu_register is exempt (it's how a donor JOINS the pool). Chat policy
       // (who may send 'text') is a separate operator decision — not gated here.
-      const DONOR_PROTOCOL = ['compute_result', 'compute_batch_result', 'gpu_init_ack', 'sparse_upload_ack', 'sparse_propagate_ack', 'sparse_hebbian_ack', 'rebind_sparse_ack', 'readback_letter_buckets_ack', 'readback_matrix_checksum_ack', 'readback_matrix_values_ack', 'letter_surprise_ack', 'device_lost', 'lesson_cost'];
+      const DONOR_PROTOCOL = ['compute_result', 'compute_batch_result', 'gpu_init_ack', 'sparse_upload_ack', 'sparse_propagate_ack', 'sparse_hebbian_ack', 'rebind_sparse_ack', 'readback_letter_buckets_ack', 'readback_matrix_checksum_ack', 'readback_matrix_values_ack', 'letter_surprise_ack', 'device_lost', 'lesson_cost', 'image_capable', 'image_result', 'slice_loaded', 'slice_patched'];
       if (DONOR_PROTOCOL.indexOf(msg.type) !== -1 && !(brain._gpuClients && brain._gpuClients.has(ws))) {
         if (!brain._donorSpoofWarnAt || (Date.now() - brain._donorSpoofWarnAt) > 5000) {
           brain._donorSpoofWarnAt = Date.now();
@@ -14845,6 +14918,10 @@ wss.on('connection', (ws, req) => {
           // message per event-loop turn instead of one per teach frame.
           if (_donorVer && typeof brain._donorSpeaksBundle === 'function' && brain._donorSpeaksBundle(_donorVer)) {
             try { brain._installTeachBundler(ws); } catch (e) { console.warn(`[Brain] teach bundle install failed (frames go unbundled): ${e.message}`); }
+            // MULTI-CARD — installed after the bundler so it sees each frame
+            // before bundling; it copies teach frames only while this socket is
+            // the cortex owner and the intra matrix is sliced.
+            try { brain._installSliceFanout(ws); } catch (e) { console.warn(`[Brain] slice fan-out install failed: ${e.message}`); }
           }
           // CHAT.1 — sparse-propagate-v2 capability (type=6 sparse-index wire).
           // Browser donors (current compute.html) advertise it; native donors
@@ -15245,6 +15322,24 @@ wss.on('connection', (ws, req) => {
         // ── LESSON COST (donor 0.3.47) — where a lesson's card time goes, per
         // step and matrix, measured on sampled lessons with the card drained
         // between steps. Kept per GPU model so two cards are never averaged.
+        // ── MULTI-CARD IMAGE (donor 0.3.48) — a donor whose machine runs her
+        // renderer offers it; its renders come back here.
+        case 'image_capable': {
+          if (client) client.imageCapable = !!msg.ok;
+          if (msg.ok) console.log(`[Brain] IMAGE LANE — ${(client && (client.gpuName || client.id)) || id} has her renderer; looks and drawings can render there.`);
+          break;
+        }
+        case 'image_result': {
+          if (typeof brain._imageResult === 'function') brain._imageResult(msg);
+          break;
+        }
+        // DONOR PULL (donor 0.3.48) — a card built its slice from the published
+        // snapshot / applied the change patch.
+        case 'slice_loaded':
+        case 'slice_patched': {
+          if (typeof brain._donorReply === 'function') brain._donorReply(msg.type, msg);
+          break;
+        }
         case 'lesson_cost': {
           const ops = (msg.ops && typeof msg.ops === 'object') ? msg.ops : {};
           const lessons = Math.max(1, msg.lessons | 0);
