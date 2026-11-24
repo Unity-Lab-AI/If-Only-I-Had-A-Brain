@@ -768,7 +768,28 @@ const BRAIN_VRAM_ALLOC = (function () {
     const _hostMB = Math.floor(os.totalmem() / 1048576);
     const _hostSafeMB = Math.max(1024, _hostMB - 13312);
     const _envMB = Number(process.env.DREAM_BRAIN_BUDGET_MB) || 0;
-    if (_envMB > 0) {
+    // ⭐ AN APPROVED SCALE-UP WINS OVER THE LAUNCHER'S PIN. The launchers pin
+    // DREAM_BRAIN_BUDGET_MB=8000 so a Savestart matches the boot that saved the
+    // weights — but a scale-up step the operator approved has already wiped
+    // those weights and asks for a bigger brain on purpose; honouring the pin
+    // would boot her at the old size and the step would do nothing but wipe.
+    // Only `approved: true` (written by the dashboard approval) counts, and
+    // host RAM still bounds it — the CPU master copy has to fit.
+    let _approvedTierMB = 0;
+    try {
+      const _ct = JSON.parse(fs.readFileSync(path.join(__dirname, 'community-tier.json'), 'utf8'));
+      if (_ct && _ct.approved === true && Number(_ct.targetNeurons) > 0) {
+        const _rw = { ...DEFAULT_BIO_WEIGHTS, ...(cfg.biologicalWeights || {}) };
+        const _wSum = Object.values(_rw).reduce((s, w) => s + (Number(w) || 0), 0) || 1;
+        const _mainFrac = Math.max(0.05, 1 - ((Number(_rw.language_cortex) || 0) / _wSum));
+        _approvedTierMB = Math.ceil((Number(_ct.targetNeurons) * 21) / _mainFrac / 1048576) + 2048;
+        console.log(`[Brain] SCALE-UP — approved tier ${_ct.tier} (${Number(_ct.targetNeurons).toLocaleString()} neurons) needs ${_approvedTierMB}MB; it overrides the launcher's DREAM_BRAIN_BUDGET_MB=${_envMB || 'unset'}.`);
+      }
+    } catch { /* no approved tier */ }
+    if (_approvedTierMB > 0) {
+      vramMB = Math.max(1024, Math.min(_approvedTierMB, _hostSafeMB));
+      if (_approvedTierMB > _hostSafeMB) console.warn(`[Brain] SCALE-UP — host RAM caps the approved tier at ${_hostSafeMB}MB of ${_approvedTierMB}MB; she boots at the safe max.`);
+    } else if (_envMB > 0) {
       const _wanted = _envMB;
       vramMB = Math.max(1024, Math.min(_envMB, _hostSafeMB));
       console.log(`[Brain] LOCALSCALE — DREAM_BRAIN_BUDGET_MB=${_wanted}MB honoured on a GPU host: budget → ${vramMB}MB${_wanted > _hostSafeMB ? ` (host-RAM ceiling ${_hostSafeMB}MB applied — the CPU master copy has to fit in RAM)` : ''}. ⚠ RE-PRICE: teach cost scales with the brain, so ${(vramMB / _hardMaxMB).toFixed(2)}× the card-derived budget is ~${(vramMB / _hardMaxMB).toFixed(2)}× per teach op.`);
@@ -2248,6 +2269,21 @@ let COMMUNITY_TIER_RUNNING = 0;
   } else {
     console.log(`[Brain] main-brain sized to the RAM-safe budget base: ${_curTotal.toLocaleString()} neurons (no down-scale; deployed runs at the box's safe max).`);
   }
+  // ⛔ THE RUNNING TIER IS WHAT SHE BOOTED AT, NOT WHAT THE FILE SAYS. Measured:
+  // `community-tier.json` read tier 5 (2.4 B neurons) while she booted at
+  // 199,728,759 — so every milestone at or below tier 5 read as "already
+  // running" and no scale-up could ever be offered. The tier is the highest rung
+  // at or below her actual size.
+  try {
+    const { DF7_MILESTONES } = require('./brain-server/gpu.js');
+    const _actual = Object.values(CLUSTER_SIZES).reduce((s, n) => s + n, 0);
+    let _t = 0;
+    for (let i = 0; i < DF7_MILESTONES.length; i++) if (_actual >= DF7_MILESTONES[i].neurons) _t = i;
+    if (_t !== COMMUNITY_TIER_RUNNING) {
+      console.log(`[Brain] running tier ${_t} (she booted at ${_actual.toLocaleString()} neurons) — the tier file said ${COMMUNITY_TIER_RUNNING}.`);
+      COMMUNITY_TIER_RUNNING = _t;
+    }
+  } catch { /* tier stays as read */ }
 }
 // TOTAL_NEURONS is the SUM of main-brain cluster sizes (language cortex
 // lives in its own scaler and is tracked as `langCortexSize` separately).
@@ -12111,6 +12147,23 @@ const httpServer = http.createServer((req, res) => {
       return (d && d.kind === 'unity-knob-defaults') ? d : null;
     } catch { return null; }
   };
+
+  // ── POST /scale-up — the operator approves the offered size step ────────────
+  // A step WIPES her weights and fresh-walks her at the new size, so it never
+  // fires on its own (unless DREAM_SCALEUP_AUTO=1). Body `{approve:true}`.
+  if (req.url && req.url.split('?')[0] === '/scale-up' && req.method === 'POST') {
+    if (!requireLoopback(req, res, '/scale-up')) return;
+    let body = '';
+    req.on('data', (c) => { body += c; if (body.length > 1024) req.destroy(); });
+    req.on('end', () => {
+      let j = {};
+      try { j = JSON.parse(body || '{}'); } catch { /* empty */ }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      if (j.approve !== true) { res.end(JSON.stringify({ ok: false, why: 'send {"approve":true} to approve the step', offer: brain._scaleUpOffer || null })); return; }
+      res.end(JSON.stringify(typeof brain.approveScaleUp === 'function' ? brain.approveScaleUp() : { ok: false, why: 'not available' }));
+    });
+    return;
+  }
 
   if (req.url && req.url.split('?')[0] === '/knob-templates' && req.method === 'GET') {
     if (!requireLoopback(req, res, '/knob-templates')) return;

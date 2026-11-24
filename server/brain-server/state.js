@@ -2121,6 +2121,12 @@ const SERVER_STATE_MIXIN = {
       // LESSON COST — per GPU: card time per lesson and each step's share,
       // measured on sampled lessons (donor 0.3.47+). Null until one reports.
       lessonCost: this._lessonCost || null,
+      // SCALE-UP — a size step the pool has held, waiting for the operator
+      // (it wipes and fresh-walks her). null = nothing on offer.
+      scaleUp: this._scaleUpOffer ? { ...this._scaleUpOffer, runningNeurons: this.CLUSTER_SIZES ? Object.values(this.CLUSTER_SIZES).reduce((s, n) => s + n, 0) : null } : null,
+      // MULTI-CARD — the intra matrix's slices, and the published weights.
+      slices: Array.isArray(this._intraSlices) ? this._intraSlices.map((s) => { const c = this.clients && this.clients.get ? this.clients.get(s.ws) : null; return { card: (c && (c.gpuName || c.id)) || null, rowStart: s.a, rowEnd: s.b, live: !!(s.ws && s.ws.readyState === 1) }; }) : null,
+      weightsSnapshot: this._weightsSnapshot ? { tag: this._weightsSnapshot.tag, blocks: this._weightsSnapshot.blocks.length, at: this._weightsSnapshotAt || null } : null,
       // POOL — who owns what, who was late, and whether the tunnel is crossing.
       // Every field is a count or a name, never a flag: "the pool is on" is
       // not a fact, "cortex is on card X and 3 pairs crossed last cycle" is.

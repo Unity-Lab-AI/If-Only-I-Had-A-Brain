@@ -868,7 +868,27 @@ const SERVER_GPU_MIXIN = {
       : _baselineMB;
     const _bytesPerNeuron = settings.donorBytesPerNeuron || MAIN_BRAIN_BYTES_PER_NEURON;
     // Mirrors local host sizing: 75% of the card usable minus a 2GB reserve.
-    const _capNeurons = Math.max(0, Math.floor(((_driverMB * 0.75 - 2048) * 1048576) / _bytesPerNeuron));
+    let _capNeurons = Math.max(0, Math.floor(((_driverMB * 0.75 - 2048) * 1048576) / _bytesPerNeuron));
+    // ⭐ MULTI-CARD — when EVERY connected card can hold a slice (donor 0.3.48+),
+    // no card holds the whole brain, so capacity is the SUM of each card's usable
+    // share, not the smallest card's whole. More cards = a bigger brain on offer
+    // (the step itself still waits for the operator — it wipes and re-walks).
+    try {
+      const _live = (this._gpuClients ? [...this._gpuClients] : []).filter((w) => w && w.readyState === 1);
+      if (_live.length >= 2 && process.env.DREAM_SLICE !== '0' && _live.every((w) => this._sliceCapable(w))) {
+        let _sum = 0;
+        for (const w of _live) {
+          const c = this.clients && this.clients.get(w);
+          const full = (c && c.gpuVramMB) || 0;
+          const held = (c && Number(c.donatedMB) > 0) ? (full > 0 ? Math.min(Number(c.donatedMB), full) : Number(c.donatedMB)) : full;
+          _sum += Math.max(0, held * 0.75 - 2048);
+        }
+        const _pooled = Math.floor((_sum * 1048576) / _bytesPerNeuron);
+        if (_pooled > _capNeurons) { _capNeurons = _pooled; this._communitySizeDriverPooled = true; }
+      } else {
+        this._communitySizeDriverPooled = false;
+      }
+    } catch { /* keep the single-card driver */ }
     // Capacity of the baseline ALONE — tiers this covers are entered without
     // the dead-zone buffer (the baseline is an operator constant, it cannot
     // flap the way a joining/leaving donor can).
@@ -1014,10 +1034,23 @@ const SERVER_GPU_MIXIN = {
       if (pending != null && pending > running
           && this._communityTierPendingSince
           && (Date.now() - this._communityTierPendingSince) >= STABILITY_MS) {
-        this._persistTierAndRestart(pending, this._communityTierPendingTarget || 6_000_000,
-          `UP-scale: milestone tier ${pending} held ≥${settings.stabilityMin}min past the dead-zone`);
+        // ⛔ ASK FIRST (operator's choice). A step up wipes her weights and
+        // fresh-walks her from kindergarten, so a held milestone is ANNOUNCED
+        // and waits for the dashboard's approval (`POST /scale-up`). Only
+        // `DREAM_SCALEUP_AUTO=1` lets it fire unattended.
+        if (process.env.DREAM_SCALEUP_AUTO === '1') {
+          this._persistTierAndRestart(pending, this._communityTierPendingTarget || 6_000_000,
+            `UP-scale: milestone tier ${pending} held ≥${settings.stabilityMin}min past the dead-zone (auto)`, true);
+          return;
+        }
+        const target = this._communityTierPendingTarget || 6_000_000;
+        if (!this._scaleUpOffer || this._scaleUpOffer.tier !== pending) {
+          this._scaleUpOffer = { tier: pending, targetNeurons: target, runningTier: running, since: Date.now() };
+          console.log(`[Brain] SCALE-UP AVAILABLE — the pool has held tier ${pending} (${target.toLocaleString()} neurons, from tier ${running}) for ${settings.stabilityMin} min. ⛔ Growing WIPES her weights and fresh-walks her at the new size. Waiting for approval on the dashboard — nothing changes until then.`);
+        }
         return;
       }
+      if (this._scaleUpOffer && (pending == null || pending <= running)) this._scaleUpOffer = null;
       if (pending != null && pending <= running) this._communityTierPending = null;
     }
 
@@ -1051,13 +1084,14 @@ const SERVER_GPU_MIXIN = {
    * flag is persisted separately and re-applied on boot (survives the weight
    * clear) — see brain-server.js auto-advance persistence.
    */
-  _persistTierAndRestart(tier, targetNeurons, reason) {
+  _persistTierAndRestart(tier, targetNeurons, reason, approved = false) {
     try {
       const fsx = require('fs');
       const px = require('path');
+      // `approved` is what lets the boot size her past the launcher's budget pin.
       fsx.writeFileSync(
         px.join(__dirname, '..', 'community-tier.json'),
-        JSON.stringify({ tier, targetNeurons, confirmedAtMs: Date.now() }, null, 2),
+        JSON.stringify({ tier, targetNeurons, confirmedAtMs: Date.now(), approved: !!approved }, null, 2),
       );
     } catch (e) {
       console.error('[Brain] DF.7 — failed to persist community tier (tier change deferred):', e.message);
@@ -1080,8 +1114,29 @@ const SERVER_GPU_MIXIN = {
     this._communityTierRunning = tier;
     this._communityTierPending = null;
     this._communityDownTierPending = null;
+    this._scaleUpOffer = null;
     global._brainShutdownRequested = true;
+    // A local Windows run has no supervisor — hand off to the resume launcher
+    // (the old weights are already cleared, so it boots fresh at the new size).
+    if (process.platform === 'win32' && !process.env.INVOCATION_ID) {
+      try {
+        const px = require('path'), fsx = require('fs');
+        const sav = px.join(__dirname, '..', '..', 'windows', 'Savestart.bat');
+        if (fsx.existsSync(sav)) {
+          require('child_process').spawn('cmd.exe', ['/c', `timeout /t 10 /nobreak >nul & start "" /d "${px.dirname(sav)}" "${sav}"`], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+          console.log('[Brain] DF.7 — local run: Savestart.bat relaunches her at the new size in ~10 s.');
+        }
+      } catch (e) { console.warn('[Brain] DF.7 — could not hand off to Savestart.bat — start her by hand:', e && e.message); }
+    }
     setTimeout(() => process.exit(0), 1500);
+  },
+
+  /** The operator approved the offered scale-up (dashboard → POST /scale-up). */
+  approveScaleUp() {
+    const o = this._scaleUpOffer;
+    if (!o) return { ok: false, why: 'no scale-up is on offer' };
+    this._persistTierAndRestart(o.tier, o.targetNeurons, `UP-scale to tier ${o.tier} — approved by the operator`, true);
+    return { ok: true, tier: o.tier, targetNeurons: o.targetNeurons };
   },
 
   /**
