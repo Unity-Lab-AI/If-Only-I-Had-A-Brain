@@ -472,4 +472,16 @@ function describerLeads(word) {
   return !!(u && u.d > u.n);
 }
 
-module.exports = { drawableVerdict, primaryLex, primaryIsThing, describerLeads,knownDescriptor, knownOnlyNonNoun, otherPosLeads, unattestedNoun, descendsFromJuvenile, verbLeads, fuseRole };
+// A REAL COMPOUND, NOT A MASH-UP. WordNet lists the noun-noun compounds English
+// actually uses as their own lemmas ("fire_truck", "apple_tree", "dog_house").
+// "ant bunny" is not one — a phrase that puts one thing in front of another is a
+// real thing only when the language has that word for it. No list: the lexicon.
+function knownCompound(phrase) {
+  _load();
+  const k = String(phrase || '').toLowerCase().trim().replace(/[\s-]+/g, '_');
+  if (!(k && k.indexOf('_') > 0 && _index)) return false;
+  // spaced ("fire_truck") or written as one word ("birdhouse")
+  return _index.has(k) || _index.has(k.replace(/_/g, ''));
+}
+
+module.exports = { drawableVerdict, primaryLex, primaryIsThing, describerLeads, knownCompound,knownDescriptor, knownOnlyNonNoun, otherPosLeads, unattestedNoun, descendsFromJuvenile, verbLeads, fuseRole };
