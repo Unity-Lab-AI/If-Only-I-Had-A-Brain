@@ -67,7 +67,7 @@ fn b64_decode(s: &str) -> Vec<u8> {
     out
 }
 
-fn b64_encode(b: &[u8]) -> String {
+pub fn b64_encode(b: &[u8]) -> String {
     const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity(b.len().div_ceil(3) * 4);
     for ch in b.chunks(3) {

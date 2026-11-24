@@ -22,6 +22,7 @@ mod donor;
 mod gpu;
 #[cfg(feature = "gui")]
 mod gui;
+mod image_lane;
 mod mindspace;
 
 // ⭐ `frames` and `protocol` MOVED OUT on 2026-09-05 (migration phase B0) into

@@ -236,8 +236,55 @@ const ImageEngineMixin = {
    * or null — never throws. `opts.purpose` is 'look' (skips when the donor is
    * uploading) or 'chat' (waits, bounded).
    */
+  /**
+   * MULTI-CARD IMAGE — a donor whose machine runs her renderer (it said so with
+   * `image_capable`) draws for her, so the card carrying her cortex is not also
+   * rendering. Same request body in, same PNG bytes out. Least-recently-used
+   * capable donor first, so several image cards share the work.
+   */
+  _pickImageDonor() {
+    if (process.env.DREAM_IMAGE_ON_DONORS === '0' || !this.clients) return null;
+    let best = null;
+    for (const [ws, c] of this.clients) {
+      if (!c || !c.isGPU || !c.imageCapable || !ws || ws.readyState !== 1) continue;
+      if (!best || (c.imageLastAt || 0) < (best.c.imageLastAt || 0)) best = { ws, c };
+    }
+    return best;
+  },
+
+  async _imageRenderOnDonor(pick, req, st) {
+    const id = (this._imageReqSeq = (this._imageReqSeq | 0) + 1);
+    if (!this._imagePending) this._imagePending = new Map();
+    pick.c.imageLastAt = Date.now();
+    const t0 = Date.now();
+    const out = await new Promise((resolve) => {
+      const timer = setTimeout(() => { this._imagePending.delete(id); resolve({ ok: false, error: 'timeout' }); }, RENDER_TIMEOUT_MS + 5000);
+      this._imagePending.set(id, (msg) => { clearTimeout(timer); resolve(msg); });
+      try { pick.ws.send(JSON.stringify({ type: 'image_render', id, timeoutMs: RENDER_TIMEOUT_MS, body: JSON.parse(req.init.body) })); }
+      catch (e) { clearTimeout(timer); this._imagePending.delete(id); resolve({ ok: false, error: `send: ${e && e.message}` }); }
+    });
+    if (!out || !out.ok || !out.png_b64) {
+      st.httpFails++;
+      st.lastErr = `donor ${pick.c.gpuName || pick.c.id}: ${(out && out.error) || 'no picture'}`;
+      st.lastErrAt = Date.now();
+      return null;
+    }
+    const ms = Date.now() - t0;
+    st.ok++; st.lastMs = ms; st.lastOkAt = Date.now();
+    st.donorRenders = (st.donorRenders | 0) + 1;
+    return { png: Buffer.from(out.png_b64, 'base64'), seed: req.seed, ms, width: req.width, height: req.height, card: pick.c.gpuName || pick.c.id };
+  },
+
+  /** Donor reply for an image render (routed from the donor message handler). */
+  _imageResult(msg) {
+    const f = this._imagePending && this._imagePending.get(msg.id);
+    if (f) { this._imagePending.delete(msg.id); f(msg); }
+  },
+
   async _imageEngineRender(prompt, opts = {}) {
     const st = this._imageEngine();
+    const _donor = this._pickImageDonor();
+    if (_donor) return this._imageRenderOnDonor(_donor, this._buildImageRequest(prompt, opts), st);
     if (!(await this._imageEngineAlive())) {
       st.engineDown++;
       st.lastErr = `engineDown: ${ENGINE_URL} not answering /health`;

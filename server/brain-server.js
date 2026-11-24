@@ -14500,7 +14500,7 @@ wss.on('connection', (ws, req) => {
       // public/donor-route connection faking these could poison brain state.
       // gpu_register is exempt (it's how a donor JOINS the pool). Chat policy
       // (who may send 'text') is a separate operator decision — not gated here.
-      const DONOR_PROTOCOL = ['compute_result', 'compute_batch_result', 'gpu_init_ack', 'sparse_upload_ack', 'sparse_propagate_ack', 'sparse_hebbian_ack', 'rebind_sparse_ack', 'readback_letter_buckets_ack', 'readback_matrix_checksum_ack', 'readback_matrix_values_ack', 'letter_surprise_ack', 'device_lost', 'lesson_cost'];
+      const DONOR_PROTOCOL = ['compute_result', 'compute_batch_result', 'gpu_init_ack', 'sparse_upload_ack', 'sparse_propagate_ack', 'sparse_hebbian_ack', 'rebind_sparse_ack', 'readback_letter_buckets_ack', 'readback_matrix_checksum_ack', 'readback_matrix_values_ack', 'letter_surprise_ack', 'device_lost', 'lesson_cost', 'image_capable', 'image_result'];
       if (DONOR_PROTOCOL.indexOf(msg.type) !== -1 && !(brain._gpuClients && brain._gpuClients.has(ws))) {
         if (!brain._donorSpoofWarnAt || (Date.now() - brain._donorSpoofWarnAt) > 5000) {
           brain._donorSpoofWarnAt = Date.now();
@@ -15255,6 +15255,17 @@ wss.on('connection', (ws, req) => {
         // ── LESSON COST (donor 0.3.47) — where a lesson's card time goes, per
         // step and matrix, measured on sampled lessons with the card drained
         // between steps. Kept per GPU model so two cards are never averaged.
+        // ── MULTI-CARD IMAGE (donor 0.3.48) — a donor whose machine runs her
+        // renderer offers it; its renders come back here.
+        case 'image_capable': {
+          if (client) client.imageCapable = !!msg.ok;
+          if (msg.ok) console.log(`[Brain] IMAGE LANE — ${(client && (client.gpuName || client.id)) || id} has her renderer; looks and drawings can render there.`);
+          break;
+        }
+        case 'image_result': {
+          if (typeof brain._imageResult === 'function') brain._imageResult(msg);
+          break;
+        }
         case 'lesson_cost': {
           const ops = (msg.ops && typeof msg.ops === 'object') ? msg.ops : {};
           const lessons = Math.max(1, msg.lessons | 0);

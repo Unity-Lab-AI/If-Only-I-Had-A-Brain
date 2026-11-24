@@ -943,6 +943,28 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
     let workq = std::sync::Arc::new(WorkQueue::new());
     let workq_w = workq.clone();
     let (reply_tx, mut reply_rx) = tokio::sync::mpsc::unbounded_channel::<Out>();
+    // v0.3.48 — her image lane: a sender the receive loop keeps (the worker
+    // takes `reply_tx`), and a one-time probe for a renderer on this machine.
+    let img_tx = reply_tx.clone();
+    {
+        let probe_tx = reply_tx.clone();
+        // Re-checked every minute for the life of the connection: a pod's
+        // renderer comes up minutes after the donor (packages + a 2 GB model), and
+        // can also stop. The brain hears every change, and only changes.
+        std::thread::spawn(move || {
+            let mut last: Option<bool> = None;
+            loop {
+                let ok = crate::image_lane::local_renderer_alive();
+                if last != Some(ok) {
+                    if ok { println!("[donor] her renderer answers on this machine — offering the image lane."); }
+                    if probe_tx.send(Out::Text(serde_json::json!({ "type": "image_capable", "ok": ok }).to_string())).is_err() { break; }
+                    last = Some(ok);
+                }
+                if probe_tx.is_closed() { break; }
+                std::thread::sleep(std::time::Duration::from_secs(60));
+            }
+        });
+    }
     let control_w = control.clone();
     // Count of QUEUED (not-yet-pulled) Work. The duty-cycle idle (run_substeps) aborts the
     // moment this is > 0, so the throttle never delays a matrix upload / its ack behind a
@@ -1547,8 +1569,25 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                         // JSON ahead of the protocol enum, so they need no change to
                         // the shared crate and an older brain simply never sends them.
                         let ckpt_msg = serde_json::from_str::<serde_json::Value>(t.as_str()).ok()
-                            .filter(|v| matches!(v.get("type").and_then(|x| x.as_str()), Some("donor_checkpoint") | Some("leave_ok") | Some("free_matrices") | Some("slice_base")));
+                            .filter(|v| matches!(v.get("type").and_then(|x| x.as_str()), Some("donor_checkpoint") | Some("leave_ok") | Some("free_matrices") | Some("slice_base") | Some("image_render")));
                         if let Some(v) = ckpt_msg {
+                            // v0.3.48 — a render for her, on this machine's renderer, on
+                            // its own thread so teaching never waits on a picture.
+                            if v.get("type").and_then(|x| x.as_str()) == Some("image_render") {
+                                let id = v.get("id").and_then(|x| x.as_u64()).unwrap_or(0);
+                                let body = v.get("body").map(|b| b.to_string()).unwrap_or_default();
+                                let timeout = v.get("timeoutMs").and_then(|x| x.as_u64()).unwrap_or(90_000);
+                                let tx_i = img_tx.clone();
+                                std::thread::spawn(move || {
+                                    let t0 = std::time::Instant::now();
+                                    let reply = match crate::image_lane::render(&body, timeout) {
+                                        Ok(png) => serde_json::json!({ "type": "image_result", "id": id, "ok": true, "ms": t0.elapsed().as_millis() as u64, "png_b64": crate::mindspace::b64_encode(&png) }),
+                                        Err(e) => serde_json::json!({ "type": "image_result", "id": id, "ok": false, "error": e }),
+                                    };
+                                    let _ = tx_i.send(Out::Text(reply.to_string()));
+                                });
+                                continue;
+                            }
                             if v.get("type").and_then(|x| x.as_str()) == Some("slice_base") {
                                 let name = v.get("name").and_then(|x| x.as_str()).unwrap_or("").to_string();
                                 let base = v.get("rowBase").and_then(|x| x.as_u64()).unwrap_or(0) as u32;
