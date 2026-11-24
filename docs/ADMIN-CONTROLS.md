@@ -613,6 +613,20 @@ Settable training defaults, per knob, that survive a restart.
 
 ⚠ **The walk-bounding knobs (`DREAM_PHASE_BUDGET_MS`, `DREAM_STRUCTURE_DOSE`, the consolidation gate) may carry a default like any other**, by operator ruling. There is no pre-save re-price gate. **The boot announcement is what surfaces it** — a gate knob carrying a default is named at every boot, so a change to how long the walk takes is flagged rather than silent. `CONSTRAINTS.md §RE-PRICE THE WALK BEFORE REMOVING A GATE` still applies to the person setting it.
 
+### ◆ Knob templates — `server/knob-templates/<name>.json`
+
+A **template** names **every** knob the registry knows — either a value (`set`) or "leave it to the code" (`code`, with the category of reason: computed from hardware or measurement, path / identity, opt-out whose code state is correct, hang guard, diagnostic, emergency, dead) — each with its reason.
+
+⭐ **`unity` is the default.** A machine with no `knob-defaults.json` seeds one from `unity.json` at boot, before any module loads, and says so on the console (`the 'unity' template was SEEDED`). It pins 33 values read off their own read sites and leaves 229 to the code on purpose. ⛔ **Pinned values are copied from the code's fallback, never from the panel's displayed default** — three displayed defaults were wrong (`DREAM_WORD_MOTOR_VOCAB_CAP` showed 10 where the code holds 50,000; `DREAM_CHAT_MAX_WORDS` 10 vs 12; `DREAM_BATTERY_DEADLINE_MS` 8 vs 8 minutes), and a computed default (`DREAM_LANG_CORTEX`, `DREAM_PSI_GAIN_SCALE`, `DREAM_BRAIN_BUDGET_MB`) is never pinned because pinning freezes the computation.
+
+| Route | Effect |
+|---|---|
+| `GET /knob-templates` | Lists the templates on this machine, which one is active, and whether it was hand-edited since |
+| `POST /knob-template` `{name, preview:true}` | Lists what would change — live now / at the one restart / shadowed by the environment / knobs the template does not name. Writes nothing |
+| `POST /knob-template` `{name, restart}` | Applies the **whole** set at once: live knobs change now, `knob-defaults.json` is **replaced** by the template (switching templates leaves nothing of the previous one), and if any boot-frozen / cached / unproven knob changed and `restart:true`, she is saved and restarted **ONCE** (resume) for all of them — never once per knob. Locally on Windows the server hands off to `Savestart.bat`; on the box systemd revives her |
+
+⚠ A knob the launcher or service unit set at boot is never overwritten — it is reported **shadowed**, the same rule as the boot apply. A later `◎ make default` on one knob marks the template **hand-edited**.
+
 ## 🎛 Env knobs that change TRAINING
 
 Every one of these is opt-in with a stated default. **The buttons above are the normal
@@ -782,7 +796,7 @@ Per the 2026-06-27 amendment a cell passes on **learning completion**, not answe
 | `DREAM_GATE_PATH_MIN` | ✅ `0.80` | lever | Minimum READ/THINK/TALK pathway score |
 | `DREAM_GATE_PROD_MIN` | ✅ `0.80` | lever | Minimum production score |
 | `DREAM_GATE_GPU_PROBES` | ⚠ | lever | Whether gate probes may use the GPU lane |
-| `DREAM_BATTERY_DEADLINE_MS` | ✅ `8` | lever | Battery deadline (note the unit in the name against the value — verify at the call site before tuning) |
+| `DREAM_BATTERY_DEADLINE_MS` | unset = **no battery-wide deadline** | lever | Pins a battery-wide clock in ms. ⛔ Unset by default: the per-question cap (`DREAM_BATTERY_QUESTION_TIMEOUT_MS`, 45 s) is the hang guard, and a battery clock only ever scored unreached questions 0 — a slow but healthy card failed gates on time, not on what she knew. (The old default was 8 **minutes**, `8 * 60_000`; the panel used to read it as `8`.) |
 | `DREAM_BATTERY_QUESTION_TIMEOUT_MS` | ✅ `45_000` | lever | Per-question timeout in the battery |
 | `DREAM_GRADE_MAJOR_ROUNDS` | ✅ `2` (range 1–5) | **lever, and a walk-price term** | ⛔ How many re-teach rounds a grade gets before a still-unpassed cell is recorded as blocked and the walk proceeds. **This is the bound that makes the grade-major block finite** — unbounded, the walk wedges forever on a single stuck course. Changing it re-prices the whole walk; see `CONSTRAINTS.md §RE-PRICE THE WALK BEFORE REMOVING A GATE` |
 
@@ -913,7 +927,7 @@ The donor is data-parallel: every donor holds a full replica and the server merg
 | `DREAM_POOL_CORTEX_HOLD_S` | `300` | lever | Applies only to a card that DROPPED and came back (recognised by GPU model, since a relaunched donor has a new id; remembered for the move cooldown). Such a card must stay connected this long before it may take the cortex back — a rented pod's supervisor relaunches within a minute, and the cortex used to thrash straight back to it. A brand-new card is not held: it takes the cortex at register |
 | `DREAM_POOL_CORTEX_MOVE_COOLDOWN_S` | `1800` | lever | Minimum time between two cortex moves — each one is a full re-upload (~18 min over a home uplink to a rented card) |
 | `DREAM_READBACK_REMOTE_GAP_MS` | `600000` | lever | The weight-pull gap while the cortex is on a REMOTE card (median heartbeat RTT > 200 ms) — the bound on what dies with a card that vanishes. The local gap (`DREAM_READBACK_MIN_GAP_MS`, 30 min) is unchanged |
-| `DREAM_LESSON_INFLIGHT` | `4` | lever | Lessons queued on a card at once (donor 0.3.45+, which acks each lesson when its worker finishes). Teaching waits for a free slot, so the card runs flat out but never accumulates an unbounded queue — the cause of a local card's 7 s pong RTT and its false heartbeat kill. An ack lost for 60 s frees its slot; a change of cortex owner frees all. Counters `_lessonAcks`, `_lessonAckLost`, `_lessonSlotWaits` / `_lessonSlotWaitMs` |
+| `DREAM_LESSON_INFLIGHT` | unset = **sized to the link** | lever | Lessons queued on a card at once (donor 0.3.45+, which acks each lesson when its worker finishes). Unset, the window is `ceil(ack-latency floor ÷ card time per lesson) + 2`, clamped 4–64, both read off the acks (the fastest of the last 200 latencies, and the median ack spacing while the window was full) — a card on this machine sits near 4, a rented one at ~200 ms round trip opens to ~30 so it stays busy. Always bounded, so the queue can never grow without limit (the cause of a local card's 7 s pong RTT and its false heartbeat kill). A number pins it. An ack lost for 60 s frees its slot; a change of cortex owner frees all. Published at `state.lessonPacing` (`window`, `latFloorMs`, `svcMs`, `acks`, `ackLost`, `slotWaits`) |
 | `DREAM_STATE_SEND_CAP_MB` | `4` | lever | A state snapshot is not sent to a socket already holding this much unsent data; the next snapshot supersedes it, so a slow viewer just skips frames. GPU donors never get snapshots (they discard them). Measured before: two viewer tabs held 416 MB and 1.14 GB. Skips counted at `_stateSendSkips` |
 | `DREAM_GNS_SANE_MAX` | `2000` | lever | A donor-reported Gn/s above this is dropped as no-measurement (a card stepping an empty batch reported 59,225). Drops counted at `_gnsInsaneDrops` |
 | `DREAM_DF7_REPLICA_SYNC` | unset (OFF) | escape hatch | `1` restores the old full-brain replica push to every joining card and the periodic rebroadcast. Off because a card holds only the clusters it owns: the push streamed gigabytes to cards that could not use them (measured: a pair-teach 1.71 → 2.90 ms when an L40 joined) |

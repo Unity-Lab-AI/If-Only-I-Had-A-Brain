@@ -7015,7 +7015,14 @@ export class Curriculum {
     // unblock that lets her leave the cell.
     // ═══════════════════════════════════════════════════════════════
     const PER_Q_TIMEOUT_MS = Number(process.env.DREAM_BATTERY_QUESTION_TIMEOUT_MS) || 45_000;
-    const BATTERY_DEADLINE_MS = Number(process.env.DREAM_BATTERY_DEADLINE_MS) || 8 * 60_000;
+    // ⛔ NO BATTERY-LEVEL DEADLINE BY DEFAULT. The wedge above was a question
+    // that never returned, and the per-question cap already bounds that: N
+    // questions × 45 s is finite. A battery-wide clock only ever did one more
+    // thing — score every question it had not reached as 0 — so a slow but
+    // healthy card (a rented one answers each probe in ~1 s) failed gates on
+    // time, not on what she knew, and burned re-teach rounds re-teaching what
+    // she had. `DREAM_BATTERY_DEADLINE_MS` still pins one.
+    const BATTERY_DEADLINE_MS = Number(process.env.DREAM_BATTERY_DEADLINE_MS) > 0 ? Number(process.env.DREAM_BATTERY_DEADLINE_MS) : Infinity;
     // Run one probe under a hard per-question wall-clock cap. Returns the
     // probe result, or `{ __timedOut: true }` if the cap trips first. The
     // AbortSignal is passed into the probe so it stops its own

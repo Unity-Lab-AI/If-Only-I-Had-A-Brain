@@ -53,9 +53,35 @@ if (!process.env.TZ) process.env.TZ = 'America/Denver';
 // remote console tunnel cannot reach. It is announced once the ring exists.
 const KNOB_DEFAULTS_FILE = require('path').join(__dirname, 'knob-defaults.json');
 const _knobDefaultsBoot = (() => {
-  const report = { file: KNOB_DEFAULTS_FILE, applied: [], shadowed: [], skipped: [], error: null, savedAt: null };
+  const report = { file: KNOB_DEFAULTS_FILE, applied: [], shadowed: [], skipped: [], error: null, savedAt: null, template: null,
+    // Which DREAM_* the launcher / service unit set BEFORE any default applied.
+    // A template may never overwrite these — they are the authoritative layer —
+    // and nothing after this instant can tell them apart from a default.
+    envAtBoot: Object.keys(process.env).filter((k) => /^DREAM_[A-Z0-9_]+$/.test(k) && process.env[k] !== '') };
   try {
     const fsBoot = require('fs');
+    // ⭐ THE UNITY TEMPLATE IS THE DEFAULT. With no defaults file on this
+    // machine, seed one from `knob-templates/unity.json` — every pinned value
+    // with its reason — so a fresh box starts on the set her equations were
+    // priced against instead of on whatever each read site happens to fall back
+    // to. Written, not just applied, so the panel names the active template and
+    // the next boot reads the same file. Any later apply / hand edit replaces it.
+    if (!fsBoot.existsSync(KNOB_DEFAULTS_FILE)) {
+      try {
+        const tplPath = require('path').join(__dirname, 'knob-templates', 'unity.json');
+        const tpl = JSON.parse(fsBoot.readFileSync(tplPath, 'utf8'));
+        if (tpl && tpl.kind === 'unity-knob-template' && tpl.knobs) {
+          const defaults = {};
+          for (const [k, e] of Object.entries(tpl.knobs)) {
+            if (e && Object.prototype.hasOwnProperty.call(e, 'set') && e.set !== null && typeof e.set !== 'object') defaults[k] = String(e.set);
+          }
+          const tmp = KNOB_DEFAULTS_FILE + '.tmp';
+          fsBoot.writeFileSync(tmp, JSON.stringify({ kind: 'unity-knob-defaults', savedAt: new Date().toISOString(), template: 'unity', templateModified: false, seededAtBoot: true, defaults }, null, 2));
+          fsBoot.renameSync(tmp, KNOB_DEFAULTS_FILE);
+          report.seeded = 'unity';
+        }
+      } catch (e) { report.seedError = (e && e.message) || String(e); }
+    }
     if (!fsBoot.existsSync(KNOB_DEFAULTS_FILE)) return report;
     const doc = JSON.parse(fsBoot.readFileSync(KNOB_DEFAULTS_FILE, 'utf8'));
     if (!doc || doc.kind !== 'unity-knob-defaults' || !doc.defaults || typeof doc.defaults !== 'object') {
@@ -63,6 +89,7 @@ const _knobDefaultsBoot = (() => {
       return report;
     }
     report.savedAt = doc.savedAt || null;
+    report.template = (typeof doc.template === 'string' && doc.template) ? doc.template : null;
     for (const [key, value] of Object.entries(doc.defaults)) {
       // Only DREAM_* keys, and only scalars. A defaults file is operator data
       // that survives a deploy; it must not be a route to setting PATH.
@@ -196,6 +223,9 @@ function humanStamp(ts) {
 // boot-frozen knob is decided before these lines could run.
 (() => {
   const r = _knobDefaultsBoot;
+  if (r.seeded) console.log(`[Brain] knob defaults — no defaults file on this machine, so the '${r.seeded}' template was SEEDED as the default set (${r.file}).`);
+  if (r.seedError) console.warn(`[Brain] knob defaults — could not seed the unity template: ${r.seedError}. This boot runs code defaults.`);
+  if (r.template) console.log(`[Brain] knob defaults — active template: '${r.template}'.`);
   if (r.error) {
     console.warn(`[Brain] knob defaults — NOT APPLIED: ${r.error} (${r.file}). This boot runs code defaults plus whatever the environment sets.`);
     return;
@@ -10793,6 +10823,14 @@ function _applyPoolPartition(reason, moveReason) {
 setInterval(() => {
   try {
     if (!brain || !brain._gpuClients || brain._gpuClients.size < 2) return;
+    // ⛔ Not while the cortex is moving or uploading. Measured: a check that ran
+    // mid-move still saw the cortex on the OLD card (ownership switches when the
+    // move completes), budgeted its matrices there, and pushed two small
+    // clusters to the new card off that wrong picture. The next check after the
+    // upload lands sees the real owner.
+    if (brain._cortexMoveInFlight || brain._cortexUploadInFlight) return;
+    const _cc = brain.cortexCluster;
+    if (brain._lastCortexMoveAt && _cc && !_cc._gpuProxyReady) return;
     _applyPoolPartition('placement check', 'a settled card has more room');
   } catch { /* the check must never throw into the timer */ }
 }, 60000).unref?.();
@@ -12013,6 +12051,9 @@ const httpServer = http.createServer((req, res) => {
 
       stored.kind = 'unity-knob-defaults';
       stored.savedAt = new Date().toISOString();
+      // A hand edit after a template was applied: the file no longer IS that
+      // template, and the panel must not keep naming it as if it were.
+      if (stored.template) stored.templateModified = true;
       // Atomic temp-then-rename, like every other operator-data write here — a
       // half-written defaults file would be read at the next boot and refused
       // wholesale, losing every default rather than one.
@@ -12030,6 +12071,139 @@ const httpServer = http.createServer((req, res) => {
         // applied and is not is the failure the whole row exists to prevent.
         note: 'Saved. This does NOT change the running brain — it is what the box will start with. Restart to apply it.',
       });
+    });
+    return;
+  }
+
+  // ── KNOB TEMPLATES — a whole, named set of knob positions, applied at once ──
+  //
+  // A template names EVERY knob the registry knows: either a value, or "leave it
+  // to the code" — each with its reason. `server/knob-templates/<name>.json`.
+  //
+  // ⭐ ONE APPLY, AT MOST ONE RESTART. Applying writes the whole set in one go:
+  // live knobs change now, and `knob-defaults.json` is REPLACED by the template's
+  // values (so switching templates leaves nothing of the previous one behind).
+  // Every boot-frozen / cached / unproven knob that changed is collected, and if
+  // any did, ONE restart applies all of them — never one per knob.
+  //
+  // ⛔ The launcher / service unit stays authoritative: a knob it set at boot
+  // (`envAtBoot`) is never overwritten; the template's value for it is reported
+  // `shadowed`, the same rule the boot apply follows.
+  const KNOB_TEMPLATE_DIR = path.join(__dirname, 'knob-templates');
+  const _loadKnobTemplate = (name) => {
+    if (typeof name !== 'string' || !/^[a-z0-9-]{1,40}$/.test(name)) throw Object.assign(new Error('template name must be lower-case letters, digits or dashes'), { status: 400 });
+    const f = path.join(KNOB_TEMPLATE_DIR, name + '.json');
+    if (!fs.existsSync(f)) throw Object.assign(new Error(`no template named '${name}'`), { status: 404 });
+    const t = JSON.parse(fs.readFileSync(f, 'utf8'));
+    if (!t || t.kind !== 'unity-knob-template' || !t.knobs || typeof t.knobs !== 'object') throw Object.assign(new Error(`${name}.json is not a unity-knob-template`), { status: 409 });
+    return t;
+  };
+  const _readKnobDefaultsDoc = () => {
+    try {
+      if (!fs.existsSync(KNOB_DEFAULTS_FILE)) return null;
+      const d = JSON.parse(fs.readFileSync(KNOB_DEFAULTS_FILE, 'utf8'));
+      return (d && d.kind === 'unity-knob-defaults') ? d : null;
+    } catch { return null; }
+  };
+
+  if (req.url && req.url.split('?')[0] === '/knob-templates' && req.method === 'GET') {
+    if (!requireLoopback(req, res, '/knob-templates')) return;
+    const out = { ok: true, templates: [], active: null, activeModified: false, bootTemplate: (globalThis.__knobDefaultsBoot || {}).template || null };
+    const cur = _readKnobDefaultsDoc();
+    if (cur) { out.active = cur.template || null; out.activeModified = !!cur.templateModified; }
+    try {
+      for (const fn of (fs.existsSync(KNOB_TEMPLATE_DIR) ? fs.readdirSync(KNOB_TEMPLATE_DIR) : []).sort()) {
+        if (!fn.endsWith('.json')) continue;
+        try {
+          const t = _loadKnobTemplate(fn.slice(0, -5));
+          const ks = Object.values(t.knobs);
+          out.templates.push({ name: fn.slice(0, -5), title: t.title || fn, description: t.description || '', knobs: ks.length,
+            set: ks.filter((k) => k && Object.prototype.hasOwnProperty.call(k, 'set')).length });
+        } catch (e) { out.templates.push({ name: fn.slice(0, -5), error: e.message }); }
+      }
+    } catch (e) { out.error = e.message; }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(out));
+    return;
+  }
+
+  if (req.url && req.url.split('?')[0] === '/knob-template' && req.method === 'POST') {
+    if (!requireLoopback(req, res, '/knob-template')) return;
+    let body = '';
+    req.on('data', (c) => { body += c; if (body.length > 8192) req.destroy(); });
+    req.on('end', () => {
+      const reply = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)); };
+      let doc;
+      try { doc = JSON.parse(body || '{}'); } catch { return reply(400, { ok: false, why: 'body is not JSON' }); }
+      let t, rows;
+      try { t = _loadKnobTemplate(doc.name); } catch (e) { return reply(e.status || 500, { ok: false, why: e.message }); }
+      try { rows = require('./knob-registry.js').knobState().groups.flatMap((g) => g.knobs); }
+      catch (e) { return reply(500, { ok: false, why: `registry unavailable: ${e && e.message}` }); }
+      const boot = globalThis.__knobDefaultsBoot || {};
+      const unitEnv = new Set(boot.envAtBoot || []);
+      const known = new Map(rows.map((r) => [r.key, r]));
+      const r = { ok: true, template: doc.name, preview: !!doc.preview, liveSet: [], liveCleared: [], restartNeeded: [], shadowed: [],
+        unknownInTemplate: [], notCovered: [], unchanged: 0 };
+      const newDefaults = {};
+      for (const [key, ent] of Object.entries(t.knobs)) {
+        if (!known.has(key)) { r.unknownInTemplate.push(key); continue; }
+        if (ent && Object.prototype.hasOwnProperty.call(ent, 'set') && ent.set !== null && typeof ent.set !== 'object') newDefaults[key] = String(ent.set);
+      }
+      for (const key of known.keys()) if (!Object.prototype.hasOwnProperty.call(t.knobs, key)) r.notCovered.push(key);
+      for (const [key, knob] of known) {
+        if (!Object.prototype.hasOwnProperty.call(t.knobs, key)) continue;
+        const target = Object.prototype.hasOwnProperty.call(newDefaults, key) ? newDefaults[key] : undefined;
+        const cur = (process.env[key] === undefined || process.env[key] === '') ? undefined : process.env[key];
+        if (unitEnv.has(key)) { if (target !== cur) r.shadowed.push({ key, env: cur, template: target === undefined ? '(code)' : target }); continue; }
+        if (target === cur) { r.unchanged++; continue; }
+        if (knob.effect === 'live') {
+          if (!r.preview) { if (target === undefined) delete process.env[key]; else process.env[key] = target; }
+          (target === undefined ? r.liveCleared : r.liveSet).push({ key, from: cur === undefined ? '(code)' : cur, to: target === undefined ? '(code)' : target });
+        } else {
+          // boot / cached / unproven: a live write is not honest about taking
+          // effect, so these wait for the single restart below.
+          r.restartNeeded.push({ key, effect: knob.effect, from: cur === undefined ? '(code)' : cur, to: target === undefined ? '(code)' : target });
+        }
+      }
+      if (r.preview) return reply(200, r);
+      try {
+        const tmp = KNOB_DEFAULTS_FILE + '.tmp';
+        fs.writeFileSync(tmp, JSON.stringify({ kind: 'unity-knob-defaults', savedAt: new Date().toISOString(), template: doc.name, templateModified: false, defaults: newDefaults }, null, 2));
+        fs.renameSync(tmp, KNOB_DEFAULTS_FILE);
+      } catch (e) { return reply(500, { ok: false, why: `could not write the defaults file: ${e && e.message}` }); }
+      console.log(`[Brain] knob TEMPLATE '${doc.name}' applied — ${Object.keys(newDefaults).length} value(s) stored as the boot defaults · ${r.liveSet.length + r.liveCleared.length} live knob(s) changed now · ${r.restartNeeded.length} need a restart${r.shadowed.length ? ` · ${r.shadowed.length} shadowed by the launcher/unit` : ''}.`);
+      r.restarting = false;
+      if (r.restartNeeded.length && doc.restart === true) {
+        if (global._brainShutdownRequested && global._brainShutdownRequestedAt && (Date.now() - global._brainShutdownRequestedAt) < 60000) {
+          r.note = 'a restart is already under way';
+        } else {
+          // ONE restart for every boot-frozen change — same steps as POST /restart.
+          global._brainShutdownRequested = true;
+          global._brainShutdownRequestedAt = Date.now();
+          r.restarting = true;
+          console.log(`[Brain] knob TEMPLATE '${doc.name}' — ONE restart for ${r.restartNeeded.length} boot-frozen knob(s); force-saving + marking resume.`);
+          reply(200, r);
+          try { _writeResumeMarker(`knob template ${doc.name}`); } catch (err) { console.warn('[Brain] resume-marker on template restart failed:', err && err.message); }
+          try { brain.stop(); } catch (err) { console.error('[Brain] stop() failed during template restart:', err); }
+          // ⚠ On the box systemd revives the process. A local Windows run has no
+          // supervisor — an exit would simply STOP her — so hand off to the
+          // resume launcher, delayed so this process has exited and freed its
+          // ports before the new one binds them.
+          if (process.platform === 'win32' && !process.env.INVOCATION_ID) {
+            try {
+              const _sav = path.join(__dirname, '..', 'windows', 'Savestart.bat');
+              if (fs.existsSync(_sav)) {
+                require('child_process').spawn('cmd.exe', ['/c', `timeout /t 10 /nobreak >nul & start "" /d "${path.dirname(_sav)}" "${_sav}"`],
+                  { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+                console.log('[Brain] knob TEMPLATE restart — local run: Savestart.bat relaunches her in ~10 s.');
+              }
+            } catch (err) { console.warn('[Brain] could not hand off to Savestart.bat — start her by hand:', err && err.message); }
+          }
+          setTimeout(() => { process.exit(0); }, 1500);
+          return;
+        }
+      }
+      return reply(200, r);
     });
     return;
   }

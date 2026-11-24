@@ -1533,7 +1533,42 @@ const SERVER_GPU_MIXIN = {
       this._cortexMovesDone = (this._cortexMovesDone || 0) + 1;
       this._lastCortexMoveAt = Date.now();
       this._cortexMoveInFlight = false;
+      this._freeOldCortexWhenLanded(oldWs, newWs);
     }
+  },
+
+  /**
+   * After a move, the OLD card's cortex matrices are stale and only hold VRAM —
+   * measured 12.7 GB used on the 16 GB card after the move, which pushed her
+   * image renderer under its free-VRAM floor (`LOOK FAILED at stage=vramTight`).
+   * Once the NEW card holds every matrix, tell the old one to drop them. Only
+   * then: until the new upload lands, the old copy is the only fallback.
+   * A donor older than 0.3.46 ignores the message.
+   */
+  _freeOldCortexWhenLanded(oldWs, newWs) {
+    if (!oldWs || oldWs === newWs) return;
+    const cc = this.cortexCluster;
+    const t0 = Date.now();
+    const tick = () => {
+      if (!oldWs || oldWs.readyState !== 1) return;            // gone — nothing to free
+      if (this._gpuClient !== newWs) return;                    // moved again — that move owns it
+      if (oldWs === this._gpuClient) return;
+      if (!(cc && cc._gpuProxyReady)) {
+        if (Date.now() - t0 < 3 * 3600 * 1000) setTimeout(tick, 10000);
+        return;
+      }
+      const names = Object.keys(this._cortexMatrixMB || {});
+      if (!names.length) return;
+      try {
+        oldWs.send(JSON.stringify({ type: 'free_matrices', names }));
+        const c = this.clients && this.clients.get ? this.clients.get(oldWs) : null;
+        // Work routing (`_nextPoolDonor`) picks cards by `heldMatrices` — a card
+        // that no longer holds a matrix must stop being offered work on it.
+        if (c && c.heldMatrices instanceof Set) for (const n of names) c.heldMatrices.delete(n);
+        console.log(`[Pool] CORTEX MOVE done — told ${(c && (c.gpuName || c.id)) || 'the old card'} to free its ${names.length} stale cortex matrices.`);
+      } catch { /* old card dropped — its VRAM went with it */ }
+    };
+    setTimeout(tick, 10000);
   },
 
   _maybeRebalancePrimary() {
@@ -5176,9 +5211,30 @@ const SERVER_GPU_MIXIN = {
     const m = /^(\d+)\.(\d+)\.(\d+)/.exec(String((c && c.donorAppVersion) || ''));
     return !!m && ((+m[1]) * 1e6 + (+m[2]) * 1e3 + (+m[3])) >= 3045;
   },
+  /**
+   * ⭐ THE WINDOW IS SIZED TO THE LINK, NOT A CONSTANT. A fixed 4 is right for a
+   * card on this machine and starves a remote one: with ~200 ms round trip and
+   * ~7 ms of card work per lesson, 4 in flight keeps a rented card busy ~15% of
+   * the time — the "lossy 20%" the lesson verb was built to end. Bandwidth-delay
+   * product: in flight = ceil(fastest ack latency / card time per lesson) + 2,
+   * clamped [4, 64]. Both are measured from the acks: the latency FLOOR (the
+   * fastest of the last 200, so a queue that grows cannot inflate its own
+   * window) and the card's service time (the spacing of acks while the window
+   * was full). Still bounded — the queue can never grow without limit, which is
+   * the jam this pacing exists to prevent. `DREAM_LESSON_INFLIGHT` pins it.
+   */
+  _lessonWindow() {
+    const pin = Number(process.env.DREAM_LESSON_INFLIGHT);
+    if (pin > 0) return Math.floor(pin);
+    const lat = Array.isArray(this._lessonLatRing) && this._lessonLatRing.length >= 8 ? Math.min(...this._lessonLatRing) : null;
+    const svc = this._lessonSvcEmaMs;
+    if (!(lat > 0) || !(svc > 0)) return 4;
+    return Math.max(4, Math.min(64, Math.ceil(lat / svc) + 2));
+  },
   async lessonSlot() {
     if (!this._donorAcksLessons()) return;
-    const max = Number(process.env.DREAM_LESSON_INFLIGHT) > 0 ? Number(process.env.DREAM_LESSON_INFLIGHT) : 4;
+    const max = this._lessonWindow();
+    this._lessonWindowNow = max;
     if (!(this._lessonInflight instanceof Map)) this._lessonInflight = new Map();
     const t0 = Date.now();
     for (;;) {
@@ -5193,6 +5249,27 @@ const SERVER_GPU_MIXIN = {
     if (waited > 0) { this._lessonSlotWaitMs = (this._lessonSlotWaitMs || 0) + waited; this._lessonSlotWaits = (this._lessonSlotWaits || 0) + 1; }
   },
   _lessonAcked(reqId, ws) {
+    const e = this._lessonInflight instanceof Map ? this._lessonInflight.get(reqId) : null;
+    if (e) {
+      const now = Date.now();
+      const full = this._lessonInflight.size >= (this._lessonWindowNow || 4);
+      if (!Array.isArray(this._lessonLatRing)) this._lessonLatRing = [];
+      this._lessonLatRing.push(Math.max(1, now - e.at));
+      if (this._lessonLatRing.length > 200) this._lessonLatRing.shift();
+      // Ack spacing is the card's own time per lesson only while it had a
+      // queue — an idle card's gaps measure the curriculum, not the GPU.
+      // ⚠ MEDIAN, not a mean: an under-sized window acks in bursts (lessons
+      // spaced by card time, then one round-trip-long gap before the next burst),
+      // and a mean would fold that gap in and keep the window small forever.
+      if (full && this._lessonLastAckAt) {
+        if (!Array.isArray(this._lessonGapRing)) this._lessonGapRing = [];
+        this._lessonGapRing.push(Math.max(0.2, now - this._lessonLastAckAt));
+        if (this._lessonGapRing.length > 64) this._lessonGapRing.shift();
+        const s = this._lessonGapRing.slice().sort((a, b) => a - b);
+        this._lessonSvcEmaMs = s[Math.floor(s.length / 2)];
+      }
+      this._lessonLastAckAt = now;
+    }
     if (this._lessonInflight instanceof Map && this._lessonInflight.delete(reqId)) {
       this._lessonAcks = (this._lessonAcks || 0) + 1;
       const w = this._lessonWake; this._lessonWake = null;

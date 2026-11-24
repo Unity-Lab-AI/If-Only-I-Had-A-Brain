@@ -372,7 +372,10 @@ const KNOBS = [
   { key: 'DREAM_TRICKLE_BATCH', effect: 'live', group: 'Teaching dose & repetition' },
   { key: 'DREAM_PRECELL_VOCAB', effect: 'live', group: 'Curriculum, gates & schedule' },
   { key: 'DREAM_BATTERY_QUESTION_TIMEOUT_MS', effect: 'live', group: 'Curriculum, gates & schedule' },
-  { key: 'DREAM_BATTERY_DEADLINE_MS', effect: 'live', group: 'Curriculum, gates & schedule' },
+  // ⛔ dflt stated by hand: the read is `|| 8 * 60_000`, and the default scraper
+  // took the bare `8` beside it — a panel reading "8" for an 8-MINUTE budget
+  // invites someone to pin 8 ms and end every battery at once.
+  { key: 'DREAM_BATTERY_DEADLINE_MS', effect: 'live', group: 'Curriculum, gates & schedule', dflt: '480000 (8 min)' },
   { key: 'DREAM_BC_EMISSION_DOM_MAX', effect: 'live', group: 'Brain dynamics' },
   { key: 'DREAM_BC_VOCAB_MIN', effect: 'live', group: 'Brain dynamics' },
   { key: 'DREAM_BC_RECTIFY_DECAY', effect: 'live', group: 'Brain dynamics' },

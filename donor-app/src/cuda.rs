@@ -410,6 +410,11 @@ impl CudaEngine {
         self.sparse.contains_key(name)
     }
 
+    /// v0.3.46 — drop a resident matrix; its device slices free on drop.
+    pub fn free_sparse(&mut self, name: &str) -> bool {
+        self.sparse.remove(name).is_some()
+    }
+
     /// Zero `dst[offset .. offset+len]` on the device (u32) — async on the stream. Replaces
     /// the host-side zero-vec + full-span memcpy that cost megabytes of PCIe per teach frame.
     fn dev_zero_u32(&self, dst: &CudaSlice<u32>, offset: u32, len: u32) -> Result<(), String> {

@@ -1,5 +1,24 @@
 # RESUME — Session Pickup Brief
 
+> # 🛑 2026-11-24 (latest, 51st) — THE UNITY KNOB TEMPLATE (DEFAULT); STALE CORTEX FREED AFTER A MOVE (DONOR 0.3.46); LESSON WINDOW SIZED TO THE LINK
+>
+> **Branch: `feature/unity-knob-template`.** Gee: *"go through the 262 nobs in the tech view and set them all correctly … make this the Unity templket"* · *"dont just restart when one boot needed nob changes"* · *"should we have deadlines i mean shit take swhat it takes"* · *"then do the cascade and any deploys we need"*. **Next launch: `Savestart.bat`** with donor 0.3.46.
+>
+> ```
+>   BUILT     server/knob-templates/unity.json — 262/262 knobs: 33 pinned off their read sites,
+>             229 left to the code with a category + reason. Seeded as the default when no
+>             knob-defaults.json exists. GET /knob-templates · POST /knob-template (preview /
+>             apply; ONE restart for every boot-frozen change; Savestart hand-off locally)
+>   FOUND     panel defaults wrong: word_motor cap 10 vs 50,000; chat words 10 vs 12; battery
+>             deadline 8 vs 8 min; LANG_CORTEX / PSI scale are computed, not constants — KI-63
+>   FIXED     old card keeps 12.7 GB stale cortex after a move → free_matrices (0.3.46) — KI-62;
+>             placement check mid-move; fixed 4-lesson window → bandwidth-delay window 4–64;
+>             battery-wide clock removed (per-question 45 s hang guard stays)
+>   READ NEXT KNOBTPL.2 — seeded line, preview 0 changes, lessonPacing.window, free line
+> ```
+>
+> ---
+
 > # 🛑 2026-11-24 (latest, 50th) — THE LESSON RUNS ON THE CARD (DONOR 0.3.44); RELATION TAGS FINALLY WRITTEN; 3.4× FASTER BEFORE IT
 >
 > **Branch: `feature/lessons-on-card`.** Gee: *"ive stopped her, fix her so we can use 100% of the rented GPUS which ever we use"* · *"WE ARE NOT STARTING HER AGAIN UNTIL YOU FINISH ALL OF IT!!!!"*. **Next launch: a FRESHSTART with the donor on 0.3.44** — the relation-tag fix changes what she is taught.
