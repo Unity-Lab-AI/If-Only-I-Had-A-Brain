@@ -3279,6 +3279,11 @@ const SERVER_GPU_MIXIN = {
 
   /** Upload the intra matrix as one slice per holder. */
   async _uploadIntraSliced(name, matrix, binding, plan) {
+    // TEACHCREDIT — the WHOLE matrix's stored-synapse count (slices skip it).
+    try {
+      const _nnz = (matrix && matrix.values && matrix.values.length) || 0;
+      if (_nnz > 0) { if (!this._matrixNnzByName) this._matrixNnzByName = {}; this._matrixNnzByName[name] = _nnz; }
+    } catch { /* accounting only */ }
     if (!this._replicaMatrixRegistry) this._replicaMatrixRegistry = new Map();
     this._replicaMatrixRegistry.set(name, { matrix, binding });
     if (!this._cortexMatrixMB) this._cortexMatrixMB = {};
@@ -3504,7 +3509,9 @@ const SERVER_GPU_MIXIN = {
     // credit, ever).
     try {
       const _nnz = (matrix && matrix.values && matrix.values.length) || (matrix && matrix.nnz) || 0;
-      if (_nnz > 0) {
+      // A slice is part of the matrix: recording it would replace the whole
+      // matrix's count with one card's share.
+      if (_nnz > 0 && !noRegister) {
         if (!this._matrixNnzByName) this._matrixNnzByName = {};
         this._matrixNnzByName[name] = _nnz;
       }
@@ -5704,15 +5711,22 @@ const SERVER_GPU_MIXIN = {
         const need = this._intraSliceActive() ? this._intraSliceHolders().length : 1;
         this._lessonInflight.set(reqId, { ws: this._gpuClient, at: Date.now(), need, acked: new Set() });
       }
-      this._countTeachOut(17, frame.length);
+      // TEACHCREDIT for lessons — each pair runs Bound + the lateral Masked step
+      // over the intra matrix (every row), so two full passes of its stored
+      // synapses per pair. The accrual shares this by slice rows across holders.
+      this._countTeachOut(17, frame.length, 0, this._teachGopsFor('cortex_intraSynapses', 2 * spec.pairs.length));
       // ⭐ Credit the card on its own row. `teachOps` was bumped only in
       // `_sparseSendBinary` (the acked lane), and lessons go fire-and-forget, so
       // a card running every lesson read `idle` on the Clients table — the
       // TEACHMIRROR.1 lie again, one lane over. One op per pair: each pair is the
       // same work a per-pair dispatch used to be.
       try {
-        const _tc = this.clients && this.clients.get ? this.clients.get(this._gpuClient) : null;
-        if (_tc && _tc.isGPU) { _tc.teachOps = (_tc.teachOps || 0) + spec.pairs.length; _tc.teachOpsAt = Date.now(); }
+        // Every slice holder runs the lesson, so every holder's row is credited.
+        const _holders = this._intraSliceActive() ? this._intraSliceHolders() : [this._gpuClient];
+        for (const _hw of _holders) {
+          const _tc = this.clients && this.clients.get ? this.clients.get(_hw) : null;
+          if (_tc && _tc.isGPU) { _tc.teachOps = (_tc.teachOps || 0) + spec.pairs.length; _tc.teachOpsAt = Date.now(); }
+        }
       } catch { /* the row is an instrument; it must never stop a lesson */ }
       this._lessonsSent = (this._lessonsSent || 0) + 1;
       this._lessonPairsSent = (this._lessonPairsSent || 0) + spec.pairs.length;
