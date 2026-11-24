@@ -4409,7 +4409,14 @@ const SERVER_CHAT_MIXIN = {
           if (cos(dp, o.p) > ownSight) sightBeaten++;
         }
       }
-      const pass = beaten === 0 && sightBeaten === 0;
+      // ⛔ THE SIGHT RANK REPORTS, IT DOES NOT DECIDE. Raw percepts of any two
+      // pictures score ~1.00 against each other (measured), so which memory
+      // edges ahead is decided by noise — on the first live freshstart her eye
+      // refused 65 drawings and passed 6, every refusal "more like N other
+      // sight(s)". The silhouette rank is a real measurement and carries the
+      // verdict; the sight rank stays published for when a discriminating
+      // percept exists.
+      const pass = beaten === 0;
       return {
         judged: true, pass, ownScore: +ownScore.toFixed(3), compared, beaten,
         ownSight: ownSight == null ? null : +ownSight.toFixed(4), sightCompared, sightBeaten,
