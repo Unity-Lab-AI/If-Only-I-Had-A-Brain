@@ -178,6 +178,7 @@ pub struct CudaEngine {
     f_fill_f32: CudaFunction,
     f_scatter_u32: CudaFunction,
     f_scatter_f32: CudaFunction,
+    f_tile_u32: CudaFunction,
     clusters: HashMap<String, CudaCluster>,
     sparse: HashMap<String, CudaSparse>,
 }
@@ -231,6 +232,7 @@ impl CudaEngine {
         let f_fill_f32 = module.load_function("fill_zero_f32").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'fill_zero_f32' load failed on '{name}': {e}"); format!("load fill_zero_f32: {e}") })?;
         let f_scatter_u32 = module.load_function("scatter_ones_u32").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'scatter_ones_u32' load failed on '{name}': {e}"); format!("load scatter_ones_u32: {e}") })?;
         let f_scatter_f32 = module.load_function("scatter_vals_f32").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'scatter_vals_f32' load failed on '{name}': {e}"); format!("load scatter_vals_f32: {e}") })?;
+        let f_tile_u32 = module.load_function("tile_ones_u32").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'tile_ones_u32' load failed on '{name}': {e}"); format!("load tile_ones_u32: {e}") })?;
         Ok(Self {
             ctx,
             stream,
@@ -246,6 +248,7 @@ impl CudaEngine {
             f_fill_f32,
             f_scatter_u32,
             f_scatter_f32,
+            f_tile_u32,
             clusters: HashMap::new(),
             sparse: HashMap::new(),
         })
@@ -699,11 +702,15 @@ impl CudaEngine {
     /// write's scatter reads its own span of that one buffer. `zero` = clear the
     /// region first (false when the lesson cleared it just before — the same zero
     /// twice). Same result as calling `write_spike_slice` per entry.
-    pub fn write_spike_slices(&mut self, writes: &[(String, String, Vec<u32>, bool)]) -> Result<(), String> {
+    /// v0.3.54 — an entry with `group > 0` is TILED: its list is dims, and the
+    /// card sets cells `d*group .. d*group+group` below min(region len, `size`)
+    /// (`tile_ones_u32`) — the same cells the full index list named, without a
+    /// host thread building or uploading that list. `group == 0` = plain indices.
+    pub fn write_spike_slices(&mut self, writes: &[crate::compute::SpikeWrite]) -> Result<(), String> {
         let flat: Vec<u32> = writes.iter().flat_map(|w| w.2.iter().copied()).collect();
         let idx_buf = if flat.is_empty() { None } else { Some(self.stream.memcpy_stod(&flat).map_err(|e| e.to_string())?) };
         let mut off = 0usize;
-        for (cluster, region, indices, zero) in writes {
+        for (cluster, region, indices, zero, group, size) in writes {
             let n = indices.len();
             let (start, end) = match self.region(cluster, region) { Some(r) => r, None => { off += n; continue; } };
             let len = end - start;
@@ -712,10 +719,18 @@ impl CudaEngine {
             if n > 0 {
                 if let Some(buf) = &idx_buf {
                     let view = buf.slice(off..off + n);
-                    let count = n as u32;
-                    let mut b = self.stream.launch_builder(&self.f_scatter_u32);
-                    b.arg(&count).arg(&start).arg(&len).arg(&view).arg(&c.spikes);
-                    unsafe { b.launch(cfg(count)) }.map_err(|e| format!("scatter_ones_u32 launch: {e}"))?;
+                    if *group > 0 {
+                        let count = (n as u64 * *group as u64).min(u32::MAX as u64) as u32;
+                        let lim = len.min(*size);
+                        let mut b = self.stream.launch_builder(&self.f_tile_u32);
+                        b.arg(&count).arg(&start).arg(&lim).arg(group).arg(&view).arg(&c.spikes);
+                        unsafe { b.launch(cfg(count)) }.map_err(|e| format!("tile_ones_u32 launch: {e}"))?;
+                    } else {
+                        let count = n as u32;
+                        let mut b = self.stream.launch_builder(&self.f_scatter_u32);
+                        b.arg(&count).arg(&start).arg(&len).arg(&view).arg(&c.spikes);
+                        unsafe { b.launch(cfg(count)) }.map_err(|e| format!("scatter_ones_u32 launch: {e}"))?;
+                    }
                 }
             }
             off += n;
