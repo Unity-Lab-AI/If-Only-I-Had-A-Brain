@@ -19991,6 +19991,10 @@ export class Curriculum {
             _wordRetries.set(w, _n + 1);
             // let the aborted call reach its next abort check before re-teaching
             try { await Promise.race([teachPromise, new Promise((res) => setTimeout(res, 5000))]); } catch { /* aborted */ }
+            // Retry only once the pause is OVER — retrying inside a long upload
+            // burned all three tries while still paused and skipped the word anyway.
+            const _pw0 = Date.now();
+            while (this._substratePause && Date.now() - _pw0 < 30 * 60 * 1000) await new Promise((res) => setTimeout(res, 2000));
             this._hb(`[Curriculum][${label}] ↻ "${w}" ran out its time during a pause (cards changing) — teaching it again from its first sense (retry ${_n + 1}/3).`);
             _wi--;
             continue;
