@@ -195,6 +195,14 @@ while true; do
 
   echo ===VERSION===; $BIN --version 2>&1 | head -2
   echo ===LIST_GPUS===; $BIN --list-gpus
+  # ⛔ T IS WHAT IS INSTALLED, NOT WHAT WAS PUBLISHED. It used to be the latest
+  # release tag even when that download failed (2026-11-24: the API answered the
+  # tag before the release's files were attached, `U` came back empty, the old
+  # binary was kept, and T still said the new tag). The watchdog then compared
+  # the new tag with itself, saw nothing to do, and the pod stayed on the old
+  # donor until someone stopped it by hand. Read from the binary, a failed
+  # install is retried at the next check.
+  T="donor-v$($BIN --version 2>/dev/null | head -1 | awk '{print $2}')"
   echo ===LAUNCH=== tag=$T
 
   $BIN --headless --gpus "${DONOR_GPUS:-all}" --utilization "${DONOR_UTIL:-all}" --name "${DONOR_NAME}" &
