@@ -210,7 +210,7 @@
     "DREAM_RANGE_MAX_RUNS": { "code": "computed", "why": "The donor's own acceptance limit (16) — not a tuning dial." },
     "DREAM_READBACK_MIN_GAP_MS": { "code": "computed", "why": "30 min local weight pull; a remote cortex holder uses the 10 min gap." },
     "DREAM_READBACK_STOP_BUDGET_MS": { "code": "computed", "why": "Pre-stop readback budget." },
-    "DREAM_RECOMMENDED_DONOR_VERSION": { "set": "0.3.46", "why": "CHANGED: the build she wants donors on — 0.3.45 paces lessons, 0.3.46 frees a card's stale cortex after a move. Donors upgrade between sessions, never mid-teach." },
+    "DREAM_RECOMMENDED_DONOR_VERSION": { "code": "computed", "why": "Read from donor-app/Cargo.toml at boot, so it follows every release by itself. A pin here (first cut: 0.3.46) goes stale at the next release." },
     "DREAM_RESPECT_VRAM_CAP": { "code": "computed", "why": "Donor VRAM cap policy, the code's." },
     "DREAM_RESYNC_TEACH_THROTTLE_MS": { "code": "computed", "why": "Resync throttle during teach." },
     "DREAM_REUPLOAD_DEBOUNCE_MS": { "code": "computed", "why": "Dirty-matrix re-upload debounce." },
