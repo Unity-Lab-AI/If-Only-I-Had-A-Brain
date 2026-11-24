@@ -4519,6 +4519,17 @@ export class Curriculum {
                 residualMs: Math.max(0, Math.round(psx.pairMs - named)),
                 residualPct: psx.pairMs > 0
                   ? +(100 * Math.max(0, psx.pairMs - named) / psx.pairMs).toFixed(1) : null,
+                // ⭐ The residual's three uncovered spans, per CALL (they are paid
+                // once per call, so a per-pair figure would hide them), and what is
+                // STILL unexplained after them and the await overhead. If
+                // `unexplainedMs` is near zero these four numbers are the whole
+                // residual and the largest one is the next fix.
+                prePerCallMs: psx.calls ? +((psx.preMs || 0) / psx.calls).toFixed(3) : null,
+                repYieldPerCallMs: psx.calls ? +((psx.repYieldMs || 0) / psx.calls).toFixed(3) : null,
+                postPerCallMs: psx.calls ? +((psx.postMs || 0) / psx.calls).toFixed(3) : null,
+                unexplainedMs: Math.round(psx.pairMs - named
+                  - Math.max(0, ((psx.hebWallMs || 0) + (psx.latWallMs || 0)) - (heb + lat))
+                  - (psx.preMs || 0) - (psx.repYieldMs || 0) - (psx.postMs || 0)),
                 // ⭐ The K that actually fires. `semTopK` is what WTA is ASKED
                 // for; this is what survives it and the non-positive skip in
                 // `_writeTiledPattern`, and it is the K in `P·K²/COLS`.
@@ -21219,6 +21230,13 @@ export class Curriculum {
     // against the callees' own inclusive profile. wall minus inclusive = the
     // scheduling cost of the `await` itself.
     let _psHebWallMs = 0, _psLatWallMs = 0;
+    // ⭐ RESIDUAL TIMERS — the three spans of a call no segment covered. Live on
+    // the first bundled boot the residual was 59.5% of the pair loop, ~33 ms per
+    // CALL (8,060 calls of ~8 pairs) while the process sat at ~10% CPU and 5–17 ms
+    // loop lag — i.e. the time is spent WAITING, not computing. These name which
+    // span it is: setup before the first rep, the yield after each rep, and the
+    // wrap-up after the loop (diagnostics + the DONE line).
+    let _psPreMs = 0, _psRepYieldMs = 0, _psPostMs = 0;
     // `LATSCAN.1` — reused across every pair-rep in this call; cleared at each
     // motor write. One array, not one per pair, because the alloc churn this
     // file already fought over (`_crossBucketPostScratch`) is the same lesson.
@@ -21244,6 +21262,9 @@ export class Curriculum {
         e.tileMs += _psTileMs;
         e.antiMs += _psAntiMs;
         e.antiN += _psAntiN;
+        e.preMs = (e.preMs || 0) + _psPreMs;
+        e.repYieldMs = (e.repYieldMs || 0) + _psRepYieldMs;
+        e.postMs = (e.postMs || 0) + _psPostMs;
         e.hebWallMs = (e.hebWallMs || 0) + _psHebWallMs;
         e.latWallMs = (e.latWallMs || 0) + _psLatWallMs;
         // ⭐ `DEFCOST.5` — CALL COUNT, so per-CALL and per-PAIR cost can be told
@@ -21259,6 +21280,7 @@ export class Curriculum {
     const startMs = Date.now();
     this._hb(`[Curriculum][${label}] START — ${pairs.length} pairs × ${reps} reps · soft-writes=${!binarize} · row-norm=${normalizeAfter} · anti-pairs=${antiPairs} · motor-WTA=${motorWTA}/${motorTopK} · sem-WTA=${semWTA}/${semTopK}`);
     try { this._pushBrainEvent?.('teach', 'sem', `ASSOC START: ${label} · ${pairs.length}×${reps}`, { label, pairs: pairs.length, reps }); } catch {}
+    _psPreMs += Date.now() - startMs;
     for (let rep = 0; rep < reps; rep++) {
       // ⭐⭐ `PHASELOOP.1` (2026-08-30) — BANK THE CURSOR ON EVERY REP, NOT ONLY
       //   AT A BUDGET STOP. THIS IS WHY THE WALK COULD NEVER PASS ITS FIRST CELL.
@@ -21550,7 +21572,7 @@ export class Curriculum {
           _psAntiN += 1;
         }
       }
-      await _microtask();
+      { const _ry0 = Date.now(); await _microtask(); _psRepYieldMs += Date.now() - _ry0; }
       // iter24.3 — convergence early-exit. After the rep's pair loop
       // completes, run a cheap per-rep separation probe (sampleSize 4
       // — half the post-loop diagnostic). Track 2 consecutive sub-
@@ -21588,6 +21610,7 @@ export class Curriculum {
     cluster._teachIntermediateRep = false;
     cluster._teachFinalRepSampleEveryN = 0;
     this._convergenceStreak = 0;
+    const _postT0 = Date.now();
     // CELLBOUND.H - the rep loop ran to its end (or converged early, which IS
     // the dose being met), so the debt is paid: clear the cursor. Reaching here
     // is the only clean-finish path - a budget stop returns above and keeps its
@@ -21876,6 +21899,7 @@ export class Curriculum {
       : (semWTA ? ` · sem-WTA=${semWtaApplied}/${semTopK}` : '');
     this._hb(`[Curriculum][${label}] DONE — ${trained} Hebbian updates across ${pairs.length} pairs × ${reps} reps in ${elapsedSec}s (skipped ${skipped})${antiReport}${wtaReport}${pruneReport}${rescaleReport}${normReport}${sepReport}${weightReport}`);
     try { this._pushBrainEvent?.('teach', 'motor', `ASSOC DONE: ${label} · ${trained}/${antiFires}`, { label, trained, antiFires, wtaApplied, elapsedSec }); } catch {}
+    _psPostMs += Date.now() - _postT0;
     _acRow.ms += Date.now() - startMs;   // ASSOCBOUND.1 — clean-finish exit
     // `DEFCOST.2` — flush the pair-loop segment timers. `pairMs` is this call's
     // WHOLE wall time, so the residual (`pairMs` minus the named segments minus
