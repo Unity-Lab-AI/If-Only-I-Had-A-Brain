@@ -296,6 +296,9 @@ function _errorEntryExpired(entry) {
   // permanent — except a miss decided before the newest source existed, which
   // gets exactly one more look (NODEF_GEN)
   if (entry.noDef) return (entry.noDefGen | 0) < NODEF_GEN;
+  // A rate-limit cached before a 429 also asked the other sources never asked
+  // them — it gets one fresh look now instead of waiting out its 6 hours.
+  if (entry.rateLimited && !entry.askedOthers) return true;
   const ttl = entry.rateLimited ? RATE_LIMIT_TTL_MS : ERROR_TTL_MS;
   return (Date.now() - entry.fetchedAt) > ttl;
 }
@@ -507,11 +510,14 @@ async function getDefinition(word, opts = {}) {
         signal: controller.signal,
         headers: { 'User-Agent': USER_AGENT, 'Accept': 'application/json' },
       });
-      // propagate 429 status so prefetch can back off.
-      if (res.status === 429) {
-        _cachePut(key, { error: true, fetchedAt: Date.now(), rateLimited: true });
-        return null;
-      }
+      // ⛔ A 429 IS ONE SOURCE SAYING "SLOW DOWN", NOT "NO SUCH WORD" — and it
+      // used to return here, so Wiktionary, Wikipedia and Urban Dictionary were
+      // never asked: 189 kindergarten words (androcles, gelert, whittington…)
+      // waited 6 hours undefined while Wikipedia had pages for them. It now
+      // falls through to the same other-sources path as any wrapper failure;
+      // only if NONE of them answers is it cached rate-limited (prefetch still
+      // backs off on that flag).
+      const _rl = res.status === 429;
       if (!res.ok) {
         // ⛔⛔ A 404 FROM THE WRAPPER IS NOT "NO SUCH WORD", AND TREATING IT AS
         // ONE IS WHAT KEPT HER VOCABULARY CORPORATE. Every word the operator
@@ -568,6 +574,7 @@ async function getDefinition(word, opts = {}) {
         }
         // 404 with nothing from any source = genuinely no entry → permanent at
         // this source generation. Other non-OK (5xx) = transient.
+        if (_rl) { _cachePut(key, { error: true, fetchedAt: Date.now(), rateLimited: true, askedOthers: true }); return null; }
         _cachePut(key, { error: true, fetchedAt: Date.now(), noDef: res.status === 404, noDefGen: NODEF_GEN, typoOf: _typoMap.get(key) || undefined });
         return null;
       }
