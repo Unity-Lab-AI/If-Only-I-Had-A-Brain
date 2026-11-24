@@ -11726,6 +11726,60 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
+  // CPU PROFILE — a real sample of THIS process's main thread for `ms`
+  // milliseconds (default 30 s, max 120 s), summarised as the functions that
+  // spent the most SELF time. Built because the pair-loop timers proved the
+  // teach loop spends most of each call waiting while other work holds the one
+  // thread it shares with the brain tick — and which work that is cannot be read
+  // off any counter. Loopback + no proxy header (it pauses nothing, but it is an
+  // operator instrument). The raw `.cpuprofile` is written beside the server
+  // (gitignored) so it can be opened in Chrome DevTools.
+  if (req.url && req.url.split('?')[0] === '/admin/cpuprofile' && req.method === 'GET') {
+    if (!requireLoopback(req, res, '/admin/cpuprofile')) return;
+    const reply = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)); };
+    if (['x-forwarded-for', 'cf-connecting-ip', 'cf-ray', 'tailscale-funnel-request', 'forwarded', 'x-real-ip'].some((h) => req.headers[h] !== undefined)) {
+      return reply(403, { ok: false, why: 'answers only on this machine' });
+    }
+    if (globalThis.__cpuProfileBusy) return reply(409, { ok: false, why: 'a profile is already running' });
+    const qs = new URL(req.url, 'http://x').searchParams;
+    const ms = Math.min(120000, Math.max(1000, parseInt(qs.get('ms') || '30000', 10) || 30000));
+    globalThis.__cpuProfileBusy = true;
+    const inspector = require('inspector');
+    const session = new inspector.Session();
+    const done = (err, prof) => {
+      globalThis.__cpuProfileBusy = false;
+      try { session.disconnect(); } catch { /* already closed */ }
+      if (err || !prof) return reply(500, { ok: false, why: String((err && err.message) || 'no profile') });
+      const nodes = prof.nodes || [];
+      const span = (prof.endTime - prof.startTime) / 1000;   // µs → ms
+      const nSamples = (prof.samples || []).length || 1;
+      const perSample = span / nSamples;
+      const agg = new Map();
+      for (const n of nodes) {
+        const cf = n.callFrame || {};
+        const file = String(cf.url || '').replace(/^.*[\\/](js|server)[\\/]/, '$1/');
+        const key = `${cf.functionName || '(anonymous)'} ${file}:${(cf.lineNumber | 0) + 1}`;
+        agg.set(key, (agg.get(key) || 0) + (n.hitCount || 0) * perSample);
+      }
+      const top = [...agg.entries()].sort((a, b) => b[1] - a[1]).slice(0, 40)
+        .map(([fn, selfMs]) => ({ fn, selfMs: Math.round(selfMs), pct: +(100 * selfMs / span).toFixed(1) }));
+      let file = null;
+      try {
+        file = path.join(__dirname, `cpuprofile-${Date.now()}.cpuprofile`);
+        fs.writeFileSync(file, JSON.stringify(prof));
+      } catch { file = null; }
+      console.log(`[Brain] CPU PROFILE — ${Math.round(span)} ms sampled; top self time: ${top.slice(0, 5).map((t) => `${t.fn} ${t.pct}%`).join(' · ')}`);
+      reply(200, { ok: true, sampledMs: Math.round(span), samples: nSamples, top, file });
+    };
+    try {
+      session.connect();
+      session.post('Profiler.enable', () => session.post('Profiler.setSamplingInterval', { interval: 1000 }, () => session.post('Profiler.start', () => {
+        setTimeout(() => session.post('Profiler.stop', (err, r) => done(err, r && r.profile)), ms);
+      })));
+    } catch (e) { done(e); }
+    return;
+  }
+
   // RUNPOD — the optional rented-GPU plug-in (server/runpod-control.js). Admin
   // only, and stricter than loopback: the Cloudflare tunnel also arrives from
   // 127.0.0.1, so any request carrying a proxy header is refused — the same
