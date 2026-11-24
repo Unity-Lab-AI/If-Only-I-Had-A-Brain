@@ -4301,35 +4301,48 @@ class ServerBrain {
       // caches the emptiness — the LETTERCOLD failure shape does not apply.
       // Recompute deliberately with the CLI auditor, which imports the SAME
       // module, so the command and this field can never disagree.
+      // ⭐ THE WHOLE-CURRICULUM EXAM-VOCAB SWEEP rides with it — which exam
+      // words the corpus does not contain ANYWHERE. Same module as the
+      // coverage, so the CLI auditor and this field can never disagree.
+      // ⛔ BOTH NOW RUN ON A WORKER THREAD (coverage-worker.mjs). They walk
+      // every corpus — measured on a freshstart, 72.7 million words — and run
+      // inline at boot they froze the main loop for 52 s while a GPU donor
+      // that had just connected waited on it. Until the worker answers, both
+      // fields read null, which the state already publishes as "not computed".
       try {
-        const covMod = await import('./curriculum-coverage.js');
-        this._curriculumCoverage = covMod.computeCoverage(
-          curriculumMod, path.join(__dirname, '..', 'corpora', 'academic'),
-        );
-        if (this._curriculumCoverage) {
-          const c = this._curriculumCoverage;
-          console.log(`[Coverage] ${c.cellsWalkRuns} cells run · ${c.ok} fed · ${c.thin} thin · ${c.empty} EMPTY · ${c.missingLane} no-lane · ${c.unreachableFiles} unreachable (${c.reachableWords.toLocaleString()} words)`);
-        }
-        // ⭐ THE WHOLE-CURRICULUM EXAM-VOCAB SWEEP — which exam words the corpus
-        // does not contain ANYWHERE. It shared no code with the page until now:
-        // it lived in the CLI auditor, so its answer was reachable only from a
-        // terminal. Same module as the coverage above, so the command and this
-        // field can never disagree.
-        // ⚠ Computed ONCE at boot, like the coverage: it walks all three corpora
-        // and must never ride a request or the teach lane.
-        try {
-          this._examVocabSweep = await covMod.examVocabSweep(path.join(__dirname, '..'));
-          const ev = this._examVocabSweep;
-          if (ev && ev.available && ev.report) {
+        const { Worker } = require('worker_threads');
+        const _covWorker = new Worker(path.join(__dirname, 'coverage-worker.mjs'), {
+          workerData: {
+            curriculumPath: path.join(__dirname, '..', 'js', 'brain', 'curriculum.js'),
+            academicDir: path.join(__dirname, '..', 'corpora', 'academic'),
+            root: path.join(__dirname, '..'),
+          },
+        });
+        this._curriculumCoverage = null;
+        this._examVocabSweep = null;
+        _covWorker.once('message', (out) => {
+          this._curriculumCoverage = (out && out.coverage) || null;
+          if (this._curriculumCoverage) {
+            const c = this._curriculumCoverage;
+            console.log(`[Coverage] ${c.cellsWalkRuns} cells run · ${c.ok} fed · ${c.thin} thin · ${c.empty} EMPTY · ${c.missingLane} no-lane · ${c.unreachableFiles} unreachable (${c.reachableWords.toLocaleString()} words) — computed off the main loop`);
+          } else {
+            console.warn(`[Coverage] unavailable — ${(out && out.coverageErr) || 'no result'}`);
+          }
+          const ev = (out && out.exam) || { available: false, reason: 'no result' };
+          this._examVocabSweep = ev;
+          if (ev.available && ev.report) {
             const miss = (ev.report.missing || ev.report.absent || []).length;
             console.log(`[ExamVocab] ${ev.corpusWords.toLocaleString()} distinct corpus words · ${miss} exam word(s) appear NOWHERE in academic+life+coding`);
-          } else if (ev) {
+          } else {
             console.warn(`[ExamVocab] unavailable — ${ev.reason}`);
           }
-        } catch (e) {
-          this._examVocabSweep = { available: false, reason: e?.message || String(e) };
-          console.warn('[ExamVocab] sweep failed —', e?.message || e);
-        }
+        });
+        _covWorker.once('error', (e) => {
+          this._curriculumCoverage = null;
+          this._examVocabSweep = { available: false, reason: (e && e.message) || String(e) };
+          console.warn(`[Coverage] worker failed — ${(e && e.message) || e}`);
+        });
+        _covWorker.unref();
       } catch (e) {
         this._curriculumCoverage = null;
         console.warn(`[Coverage] unavailable — ${e?.message || e}`);
@@ -6074,6 +6087,18 @@ class ServerBrain {
     return (this._fireCtl && this._firingTargetPct() > 0) ? this._fireCtl.scale : 1.0;
   }
 
+  // ⚠ MEASURED 2026-11-23 (freshstart): her live firing is BISTABLE WITH
+  // HYSTERESIS in drive — it flips to busy (14–21%) only when drive climbs to
+  // ~0.4, and once busy stays busy until drive falls to ~0.06, then drops to
+  // near-silent (0.09–3%). There is no drive level at which she sits at 7.5%,
+  // so this controller cannot hold a steady value; it swings across the gap
+  // on a ~22-minute cycle, and that swing is what lands her MEAN near target
+  // (modelled on the measured trace: 7.96% mean). A bracketing controller
+  // was tried and REMOVED the same day: on that model it locked her busy at
+  // 15%. ⚠ The FIREMATH note above ("the map floors at ~9.6%") was a 20k-
+  // neuron bench figure; her live brain read 0.09%. Giving her a stable middle
+  // is a dynamics change (refractoriness / α on the kernels), the operator's
+  // decision — not a knob.
   _firingControllerSample(spikes, steppedSize) {
     const target = this._firingTargetPct();
     if (!(target > 0) || !(steppedSize > 0)) return;
@@ -6084,8 +6109,7 @@ class ServerBrain {
     c.samples++;
     const err = Math.max(-0.5, Math.min(0.5, (target - c.ema) / target));
     // FIREMATH bounds: [0.01, 2.5] — the drive knob's real authority (see the
-    // controller comment above; 2.5 saturates the donor's σ clamp, 0.01 sits
-    // at the map's σ≈−1 firing floor of ~9.6%).
+    // controller comment above; 2.5 saturates the donor's σ clamp).
     const next = Math.max(0.01, Math.min(2.5, c.scale * (1 + 0.15 * err)));
     if (next !== c.scale) c.scale = next;
     if (!this._fireCtlLogMs || (Date.now() - this._fireCtlLogMs) > 60000) {
@@ -14698,7 +14722,22 @@ wss.on('connection', (ws, req) => {
           const _primaryMidUpload = havePrimary
             && (Date.now() - (brain._gpuClient._lastUploadDispatchTs || 0)) < 90_000;
           const _promoteCooling = (Date.now() - (brain._lastPrimaryPromoteTs || 0)) < _promoteCooldownMs;
+          // ⛔ A NEWCOMER MUST BE MEASURED BEFORE IT CAN OUT-SCORE A WORKING
+          // PRIMARY. `_donorStrength` is measured throughput (Gn/s) once a card
+          // has reported telemetry, and its VRAM in GB BEFORE — two different
+          // units. At register a newcomer never has telemetry, so this compared
+          // 16.28 "GB" against a busy primary's measured 5.08 Gn/s and promoted
+          // an unproven RTX 5060 Ti on a freshstart; the full 4.4 GB cortex then
+          // re-uploaded to it and training paused 5.9 min — while the pool
+          // partition (the authority on who holds what) kept the cortex on the
+          // original card. The comment above already said the newcomer should
+          // win "once it has PROVEN itself"; this makes the test say so.
+          const _newcomerMeasured = (() => {
+            const _c = brain.clients && brain.clients.get ? brain.clients.get(ws) : null;
+            return Number(_c && _c.telemetry && _c.telemetry.gneuronsPerSec) > 0;
+          })();
           const _df7PromoteStronger = havePrimary
+            && _newcomerMeasured
             && (typeof brain._df7Fanout === 'function' && brain._df7Fanout())
             && typeof brain._donorStrength === 'function'
             && brain._donorStrength(ws) > brain._donorStrength(brain._gpuClient)
@@ -15325,6 +15364,38 @@ wss.on('connection', (ws, req) => {
         console.log(`[Brain] TU.25.D — cancelled ${_cancelled} in-flight sparse request(s) targeted at the departed donor socket (no 180s rot; callers resolve null now).`);
       }
     }
+    // POOL — a departed card's clusters need new owners, whichever card it was.
+    // ONE function for both paths below. ⛔ It used to live only inside the
+    // PRIMARY-left branch, so a card that was not primary when it dropped left
+    // its clusters on a dead socket: measured on a freshstart, an RTX 5060 Ti
+    // dropped owning `mystery`, and `state.pool` read
+    // `{cards: 2, mystery: "donor"}` for minutes afterwards — that cluster had
+    // no card computing it.
+    const _repartitionAfterLeave = () => {
+      try {
+        if (typeof brain._partitionClustersAcrossPool !== 'function') return;
+        const before = brain._clusterOwner instanceof Map ? new Map(brain._clusterOwner) : new Map();
+        const after = brain._partitionClustersAcrossPool('owner left');
+        const byOwner = new Map();
+        for (const [cl, owner] of after) {
+          if (before.get(cl) === owner) continue;
+          if (!byOwner.has(owner)) byOwner.set(owner, new Set());
+          byOwner.get(owner).add(cl);
+          if (brain._gpuInitializedConfirmed) delete brain._gpuInitializedConfirmed[cl];
+          if (brain._gpuInitialized) delete brain._gpuInitialized[cl];
+        }
+        for (const [owner, set] of byOwner) {
+          if (owner.readyState !== 1) continue;
+          const n = brain._gpuInitDonorClusters(owner, set);
+          const oc = brain.clients.get(owner);
+          console.log(`[Pool] after a card left, ${(oc && (oc.gpuName || oc.id)) || 'donor'} now owns [${[...set].join(', ')}] — gpu_init sent for ${n} cluster(s).`);
+        }
+      } catch (e) { console.warn('[Pool] re-partition on disconnect failed (non-fatal):', e && e.message); }
+    };
+    if (ws !== brain._gpuClient && brain._clusterOwner instanceof Map
+        && [...brain._clusterOwner.values()].includes(ws)) {
+      _repartitionAfterLeave();
+    }
     if (ws === brain._gpuClient) {
       // PA.4.3 — the PRIMARY donor left. Promote a healthy STANDBY from the
       // pool (failover) so the brain keeps a GPU instead of dropping to
@@ -15353,30 +15424,9 @@ wss.on('connection', (ws, req) => {
         brain._gpuMisses = 0;
         if (brain.cortexCluster) brain.cortexCluster._gpuShadowDirty = true;
         _rearmCortexGpuUpload('primary-left failover');
-        // POOL — the departed card's clusters need new owners. Re-partition
-        // over the survivors and re-init only what moved. The cortex-owner
-        // promotion above stays as the cortex placement; this handles the
-        // other seven, which the old failover silently left on a dead socket.
-        try {
-          if (typeof brain._partitionClustersAcrossPool === 'function') {
-            const before = brain._clusterOwner instanceof Map ? new Map(brain._clusterOwner) : new Map();
-            const after = brain._partitionClustersAcrossPool('owner left');
-            const byOwner = new Map();
-            for (const [cl, owner] of after) {
-              if (before.get(cl) === owner) continue;
-              if (!byOwner.has(owner)) byOwner.set(owner, new Set());
-              byOwner.get(owner).add(cl);
-              if (brain._gpuInitializedConfirmed) delete brain._gpuInitializedConfirmed[cl];
-              if (brain._gpuInitialized) delete brain._gpuInitialized[cl];
-            }
-            for (const [owner, set] of byOwner) {
-              if (owner.readyState !== 1) continue;
-              const n = brain._gpuInitDonorClusters(owner, set);
-              const oc = brain.clients.get(owner);
-              console.log(`[Pool] after a card left, ${(oc && (oc.gpuName || oc.id)) || 'donor'} now owns [${[...set].join(', ')}] — gpu_init sent for ${n} cluster(s).`);
-            }
-          }
-        } catch (e) { console.warn('[Pool] re-partition on disconnect failed (non-fatal):', e && e.message); }
+        // POOL — the departed card's clusters need new owners. The cortex-owner
+        // promotion above stays as the cortex placement; this handles the rest.
+        _repartitionAfterLeave();
         const _pid = (brain.clients.get(_promotedGpu) || {}).id || '(unknown)';
         console.log(`[Server] PRIMARY GPU donor left — promoted standby ${_pid} to primary (pool: ${brain._gpuClients ? brain._gpuClients.size : 0}). Brain re-uploads to the new primary on next dispatch.`);
       } else {

@@ -1023,6 +1023,19 @@ const SERVER_STATE_MIXIN = {
           // ENTRY, never "fresh" — two of the four chain writers push a bare
           // string with no `ts`.
           imaginePool: this._imaginePool || null,
+          // WHAT HER EYE CHOSE TO LOOK AT, and why. The picker's own counters —
+          // picks by rank (acquisition / thought / recall / none), how long her
+          // thought has been pinned, and the last subject. ⚠ Published because a
+          // fresh walk ran 54 minutes with her eyes never starting and nothing in
+          // state could say whether the picker was even being asked
+          // (`picks: 0` = never asked; `none` climbing = asked, found nothing).
+          eyePicks: this._eyeStats ? {
+            picks: this._eyeStats.picks | 0, fromAcquisition: this._eyeStats.fromAcquisition | 0,
+            fromThought: this._eyeStats.fromThought | 0, fromRecall: this._eyeStats.fromRecall | 0,
+            none: this._eyeStats.none | 0, pinTicks: this._eyeStats.pinTicks | 0,
+            lastSubject: this._eyeStats.lastSubject || null, lastWhy: this._eyeStats.lastWhy || null,
+            lastAgeMs: this._eyeStats.lastAt ? Math.max(0, Date.now() - this._eyeStats.lastAt) : null,
+          } : { picks: 0 },
           // WAVESEE.4 — is she READING the precomputed wavelet fields, or
           // silently re-transforming every figure? One number cannot answer
           // that, so the counters are separate BY REASON:

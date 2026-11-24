@@ -1,6 +1,26 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-11-23, night (latest, 46th) — SHE FUSES IDEAS AND PAINTS THE WHOLE PICTURE
+> # 🛑 2026-11-23, night (latest, 47th) — THE FRESHSTART WATCH: TWELVE FINDINGS, SIX FIXED
+>
+> **Branch: `feature/watch-fixes`.** She ran a freshstart 4:47–5:41 PM under a one-minute watch (`.scratch/watch-findings.md`); Gee stopped her to fix what it found. **Next launch is a FRESHSTART again.** No donor change — no binary, no release.
+>
+> ```
+>   FIXED   her eyes never started on a fresh walk (look block needed a thought she did
+>           not have yet) · a joining card was promoted on VRAM-GB vs the primary's Gn/s
+>           and the whole 4.4 GB cortex re-uploaded twice (pause 5.9 min) · the cortex
+>           was mirrored to a card that does not own it · a departed non-primary card
+>           left its cluster on a dead socket · the 52 s boot freeze (corpus sweeps now
+>           on a worker) · shutdown visited every remaining word · a stale 64 MiB warning
+>   OPEN    firing is BISTABLE — a dynamics decision for Gee (KI-56) · vocabulary binding
+>           15–40 s/word, dream windows starved (KI-57) · the 5060 Ti's own crash.log ·
+>           heap jump (read next boot) · teach calls refused during a real failover ·
+>           the 39 s cortex-wiring freeze
+>   WATCH   state.ownArt.eyePicks (new) — fromAcquisition must climb on the freshstart
+> ```
+>
+> ---
+>
+> # 🛑 2026-11-23, night (46th) — SHE FUSES IDEAS AND PAINTS THE WHOLE PICTURE
 >
 > **Branch: `feature/fused-imagination`.** She is DOWN. **Next launch is a FRESHSTART** (Gee: *"we will freshstart this time just to make sure we arent carrying any hiccups from earlier sessions"*). Gee on the last sheet: *"perfecxt set!"*.
 >
