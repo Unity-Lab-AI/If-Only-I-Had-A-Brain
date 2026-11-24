@@ -1801,7 +1801,15 @@ const SERVER_CHAT_MIXIN = {
       if (typeof this._imagineAndDraw === 'function' && this._rand('imagine-and-draw') < (Number(process.env.DREAM_IMAGINE_DRAW_PROB) || 0.18)) {
         this._imagineAndDraw().catch(() => { /* background imagine best-effort */ });
       }
-      if (!rec && _recallMissed && typeof this._drawConcept === 'function') {
+      // ⛔ "No thought to recall from" IS a miss too. This block used to need
+      // `_recallMissed`, which is set only when a thought existed and recall
+      // failed — so on a FRESH walk (no thoughts yet: her inner voice cannot
+      // emit before word_motor fires) it never ran, and her eyes never
+      // started: measured on a freshstart, 54 minutes with 0 looks, 0
+      // drawings, `ownArt.lookups` never even created. The picker below already
+      // handles an empty thought (its acquisition rank looks at words she has
+      // been TAUGHT but never seen) — it was simply never asked.
+      if (!rec && (_recallMissed || !_seedText) && typeof this._drawConcept === 'function') {
         // LOOK UP → DRAW, in the background (ruled 2026-07-15: "she shall draw more
         // often"). Detached from the tick (never holds `_imagineInFlight`, so the
         // slow fetch can't freeze the viewer — that was the earlier bug). It fetches

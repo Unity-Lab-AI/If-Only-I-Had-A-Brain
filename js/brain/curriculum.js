@@ -5588,6 +5588,7 @@ export class Curriculum {
             const MAX_ATTEMPTS = 3;
             for (let i = 0; i < batchN; i++) {
               if (_dwOverBudget('dream-trickle (remaining words this window) -- vocabulary binding cut short; the queue persists and later windows resume it')) break;
+              if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) break;
               const word = cluster._kVocabQueue[0];
               if (!word) break;
               processed++;
@@ -6305,6 +6306,7 @@ export class Curriculum {
     let totalTrained = 0, totalWordsBound = 0, totalDefsBound = 0, totalTimeouts = 0, totalSlowWords = 0;
     const t0 = Date.now();
     for (let chunkStart = 0; chunkStart < todo.length; chunkStart += CHUNK) {
+      if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) break;
       const chunk = todo.slice(chunkStart, chunkStart + CHUNK);
       this._hb(`[Curriculum] 📚 PRE-CELL VOCAB chunk ${chunkStart}–${chunkStart + chunk.length}/${todo.length} (${subject}/${grade})`);
       // ⭐⭐ `reps: 1` IS THE DESIGN, NOT A MISSING NUMBER. Operator, 2026-10-19:
@@ -19840,6 +19842,13 @@ export class Curriculum {
     const SLOW_WORD_WARN_MS = 5000;
 
     for (const w of words) {
+      // ⛔ SHUTDOWN ENDS THE WORD LOOP, not each word separately. Every teach
+      // call already stops at a rep boundary on shutdown, but this loop kept
+      // handing out the next word, so a stop visited EVERY remaining word —
+      // measured: ~35,000 log lines in one minute of `SHUTDOWN at a clean rep
+      // boundary … (0 pair-teaches landed)`, lot after lot. One check here
+      // covers every definition lane that walks a word list.
+      if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) break;
       if (!w || typeof w !== 'string') { skipped += 1; continue; }
       const wordStart = Date.now();
       // 114.19es.4 — AbortController per word. On Promise.race timeout

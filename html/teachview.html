@@ -1265,6 +1265,11 @@ async function poll() {
           + (pct ? ` The average cell holds ${fmt(cov.avgWordsPerProseCell)} words ≈ <b>${pct}%</b> of one real course year.` : '')
           + ` Fed means <b>not starved</b>, not finished.</div>`
         : '');
+  } else {
+    /* The coverage and exam-word sweeps walk every corpus on their own thread
+       after boot (about half a minute), so for that first stretch there is no
+       answer yet — which must read as "not yet", never as "nothing found". */
+    $('tvCoverage').innerHTML = '<div class="tv-note">Corpus coverage is still being computed — it runs off the main loop for about half a minute after she starts.</div>';
   }
 
   /* ⭐ WHICH EXAM WORDS THE CORPUS DOES NOT CONTAIN ANYWHERE.
