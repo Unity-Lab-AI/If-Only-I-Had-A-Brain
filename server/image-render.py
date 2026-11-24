@@ -166,6 +166,24 @@ def render_txt2img(req):
 
 def unload():
     had = _state["t2i"] is not None
+    # ⛔ WITH CPU OFFLOAD THE MODEL IS KEPT, ONLY THE CARD IS FREED. Offload
+    # already parks every component in system RAM between renders, so dropping
+    # the pipeline freed no VRAM worth having — and it never freed the RAM:
+    # the offload hooks keep the old copy alive, so each unload→load cycle
+    # leaked a whole SDXL (measured: 6 cycles → 58 GB private on this host).
+    # One resident copy, reused for every render.
+    if had and OFFLOAD and _state.get("device") == "cuda":
+        try:
+            _state["t2i"].maybe_free_model_hooks()
+        except Exception:
+            pass
+        try:
+            import torch
+            torch.cuda.empty_cache()
+        except Exception:
+            pass
+        _log("card freed (model stays resident in RAM)")
+        return True
     _state["t2i"] = None
     gc.collect()
     try:
