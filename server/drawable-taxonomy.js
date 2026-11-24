@@ -433,4 +433,43 @@ function primaryIsThing(word) {
   return CONCRETE_LEX.has(lex) || lex === 11 || lex === 14 || lex === 19 || lex === 22;
 }
 
-module.exports = { drawableVerdict, primaryLex, primaryIsThing, knownDescriptor, knownOnlyNonNoun, otherPosLeads, unattestedNoun, descendsFromJuvenile, verbLeads, fuseRole };
+// A WORD THAT MOSTLY DESCRIBES IS NOT A SUBJECT. WordNet's index.sense carries
+// the real tagged-corpus usage of every sense; summed per part of speech it
+// says how English actually uses the word. "white" is used 76 times as an
+// adjective to 16 as a noun, "second" 108 to 32, "round" 17 to 12 — they
+// describe things, and drawn as subjects they came out as nothing. It stays a
+// quality that can colour a picture ("white dog"); it is never the picture.
+// Verbs are NOT counted against a word: "watch", "fire", "land" are nouns
+// English also uses as verbs, and they are things. No usage on record → no
+// verdict (other judges decide).
+let _senseUse = null;
+function _loadSenseUse() {
+  if (_senseUse || _loadFailed) return;
+  try {
+    const dict = require('wordnet-db').path;
+    const txt = fs.readFileSync(path.join(dict, 'index.sense'), 'utf8');
+    _senseUse = new Map();
+    for (const line of txt.split('\n')) {
+      if (!line) continue;
+      const sp = line.split(' ');
+      const key = sp[0], pc = key.indexOf('%');
+      if (pc <= 0) continue;
+      const w = key.slice(0, pc), pos = key[pc + 1];
+      const c = parseInt(sp[3], 10) || 0;
+      if (!c) continue;
+      let u = _senseUse.get(w);
+      if (!u) _senseUse.set(w, (u = { n: 0, d: 0 }));
+      if (pos === '1') u.n += c;
+      else if (pos === '3' || pos === '4' || pos === '5') u.d += c;   // adjective, adverb, satellite adjective
+    }
+  } catch { _senseUse = null; }
+}
+function describerLeads(word) {
+  _loadSenseUse();
+  if (!_senseUse) return false;
+  const w = String(word || '').toLowerCase().trim().replace(/\s+/g, '_');
+  const u = _senseUse.get(w);
+  return !!(u && u.d > u.n);
+}
+
+module.exports = { drawableVerdict, primaryLex, primaryIsThing, describerLeads,knownDescriptor, knownOnlyNonNoun, otherPosLeads, unattestedNoun, descendsFromJuvenile, verbLeads, fuseRole };
