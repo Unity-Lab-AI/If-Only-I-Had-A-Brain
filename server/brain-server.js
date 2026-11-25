@@ -8173,13 +8173,15 @@ class ServerBrain {
                 // so the pull never fills the link (see refreshCheckpointFromDonor).
                 const _adopted = (this._adoptedMatrices instanceof Set) ? this._adoptedMatrices.size : 0;
                 try { this._sendDonorCheckpointConfig(this._gpuClient, _adopted === 0); } catch { /* the donor simply does not checkpoint this session */ }
+                // ⛔ NO READBACK AFTER ADOPT. This pulled the whole cortex back off
+                // the card 60 s after it reattached. Measured live 2026-11-25: the
+                // pull got 0 chunks, the card went silent ~120 s and its socket died
+                // (code 1006, "last heard 131.4s ago"), which left her with no card
+                // to teach, think or reply on. It never delivered a byte. The card
+                // keeps its own checkpoint on the brain's cadence (config sent just
+                // above), and the brain's own save cycle reads back as before.
                 if (_adopted > 0) {
-                  console.log(`[Pool] ${_adopted} matri${_adopted === 1 ? 'x' : 'ces'} adopted from the card — no restore; refreshing the brain's copy from the card at a paced rate.`);
-                  setTimeout(() => {
-                    this.refreshCheckpointFromDonor('adopted', { force: true })
-                      .then((r) => { if (!r || !r.ok) console.warn(`[Pool] paced refresh after adopt did not complete: ${(r && r.reason) || 'unknown'} — the card still holds the weights and keeps its own checkpoint.`); })
-                      .catch((e) => console.warn('[Pool] paced refresh after adopt threw:', e && e.message));
-                  }, 60000);
+                  console.log(`[Pool] ${_adopted} matri${_adopted === 1 ? 'x' : 'ces'} adopted from the card — no restore and no readback; the card keeps its own checkpoint.`);
                 }
               }).catch((err) => {
                 // #32 — DON'T fail silently. Before this, a thrown initGpu
