@@ -2116,6 +2116,9 @@ const SERVER_STATE_MIXIN = {
         svcMs: this._lessonSvcEmaMs ? Number(this._lessonSvcEmaMs.toFixed(2)) : null,
         sent: this._lessonsSent || 0, acks: this._lessonAcks || 0, ackLost: this._lessonAckLost || 0,
         slotWaits: this._lessonSlotWaits || 0, slotWaitMs: this._lessonSlotWaitMs || 0,
+        // Lessons from separate calls gathered into one frame: frames sent, and
+        // how many calls they carried (calls ÷ sends = merge factor).
+        mergedSends: this._lessonMergedSends || 0, mergedCalls: this._lessonMergedCalls || 0,
         pinned: Number(process.env.DREAM_LESSON_INFLIGHT) > 0,
       },
       // LESSON COST — per GPU: card time per lesson and each step's share,

@@ -6050,6 +6050,91 @@ const SERVER_GPU_MIXIN = {
   },
 
   /**
+   * ⭐⭐ LESSONS FROM SEPARATE CALLS RIDE ONE FRAME. The in-flight window is the
+   * ceiling on a rented card: it holds at most 64 lessons and each one's ack
+   * took ≥1,120 ms to come back, while the card spent 0.2 ms on it. Measured
+   * live: 942 lessons averaging 88 pairs, 439 slot waits totalling 1,597 s —
+   * the walk sat waiting on the link with the card ~1% busy, on EVERY lane,
+   * because every lane's word or sentence is its own small call.
+   *
+   * Calls whose lesson setup is identical (same regions, ops, tag band, group
+   * sizes, lateral step) are gathered for up to `DREAM_LESSON_COALESCE_MS` (50)
+   * or `DREAM_LESSON_MERGE_PAIRS` (4096) pairs and sent as ONE lesson: the same
+   * pairs, in arrival order, applied by the card in sequence exactly as the
+   * separate lessons were. Each caller AWAITS its batch's send, so a caller's
+   * own next step (a probe, a pattern write) still happens after its lesson
+   * went out — the order each lane produces is kept. A setup change or the cap
+   * sends the pending batch first.
+   */
+  gpuTeachLessonMerged(spec) {
+    if (!this._gpuClient || this._gpuClient.readyState !== 1 || !this._donorSpeaksLessonNow()) return Promise.resolve(false);
+    const max = Number(process.env.DREAM_LESSON_MERGE_PAIRS) > 0 ? Math.floor(Number(process.env.DREAM_LESSON_MERGE_PAIRS)) : 4096;
+    const winMs = Number(process.env.DREAM_LESSON_COALESCE_MS) >= 0 && process.env.DREAM_LESSON_COALESCE_MS !== undefined && process.env.DREAM_LESSON_COALESCE_MS !== ''
+      ? Number(process.env.DREAM_LESSON_COALESCE_MS) : 50;
+    const { pairs, ...base } = spec;
+    if (!Array.isArray(pairs) || !pairs.length) return Promise.resolve(false);
+    let key;
+    try { key = JSON.stringify(base); } catch { return Promise.resolve(this.gpuTeachLesson(spec)); }
+    let b = this._lessonCoalesce;
+    if (b && (b.key !== key || b.ws !== this._gpuClient || b.pairs.length + pairs.length > max)) { this._flushLessonCoalesce(b); b = null; }
+    if (!b) {
+      b = this._lessonCoalesce = { key, base, ws: this._gpuClient, pairs: [], waiters: [], calls: 0, timer: null };
+      const _b = b;
+      b.timer = setTimeout(() => this._flushLessonCoalesce(_b), winMs);
+    }
+    for (const p of pairs) b.pairs.push(p);
+    b.calls++;
+    return new Promise((res) => {
+      b.waiters.push(res);
+      if (b.pairs.length >= max) this._flushLessonCoalesce(b);
+    });
+  },
+
+  /** The sentence lane's pattern lesson (type 18), gathered the same way by `items`. */
+  gpuTeachPatternLessonMerged(spec) {
+    if (!this._gpuClient || this._gpuClient.readyState !== 1 || !this._donorSpeaksPatternLessonNow()) return Promise.resolve(false);
+    const max = Number(process.env.DREAM_PATTERN_MERGE_ITEMS) > 0 ? Math.floor(Number(process.env.DREAM_PATTERN_MERGE_ITEMS)) : 2048;
+    const winMs = Number(process.env.DREAM_LESSON_COALESCE_MS) >= 0 && process.env.DREAM_LESSON_COALESCE_MS !== undefined && process.env.DREAM_LESSON_COALESCE_MS !== ''
+      ? Number(process.env.DREAM_LESSON_COALESCE_MS) : 50;
+    const { items, ...base } = spec;
+    if (!Array.isArray(items) || !items.length) return Promise.resolve(false);
+    let key;
+    try { key = JSON.stringify(base); } catch { return Promise.resolve(this.gpuTeachPatternLesson(spec)); }
+    let b = this._patternCoalesce;
+    if (b && (b.key !== key || b.ws !== this._gpuClient || b.pairs.length + items.length > max)) { this._flushLessonCoalesce(b); b = null; }
+    if (!b) {
+      b = this._patternCoalesce = { key, base, ws: this._gpuClient, pairs: [], waiters: [], calls: 0, timer: null, pattern: true };
+      const _b = b;
+      b.timer = setTimeout(() => this._flushLessonCoalesce(_b), winMs);
+    }
+    for (const it of items) b.pairs.push(it);
+    b.calls++;
+    return new Promise((res) => {
+      b.waiters.push(res);
+      if (b.pairs.length >= max) this._flushLessonCoalesce(b);
+    });
+  },
+
+  _flushLessonCoalesce(b) {
+    if (!b || b.done) return;
+    b.done = true;
+    if (this._lessonCoalesce === b) this._lessonCoalesce = null;
+    if (this._patternCoalesce === b) this._patternCoalesce = null;
+    if (b.timer) clearTimeout(b.timer);
+    let ok = false;
+    try {
+      ok = (b.ws === this._gpuClient) && (b.pattern
+        ? this.gpuTeachPatternLesson({ ...b.base, items: b.pairs })
+        : this.gpuTeachLesson({ ...b.base, pairs: b.pairs }));
+    } catch { ok = false; }
+    if (ok) {
+      this._lessonMergedSends = (this._lessonMergedSends || 0) + 1;
+      this._lessonMergedCalls = (this._lessonMergedCalls || 0) + b.calls;
+    }
+    for (const w of b.waiters) { try { w(ok); } catch { /* a waiter must not stop the others */ } }
+  },
+
+  /**
    * v0.3.53 — PATTERN LESSON (type 18): many items, each a multi-region spike
    * pattern then the same bound plasticity ops — the sentence lane's per-word
    * step (clear regions → write tiles → bound Hebbian), a whole run of
