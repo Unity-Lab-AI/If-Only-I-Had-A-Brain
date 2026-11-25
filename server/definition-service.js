@@ -696,8 +696,28 @@ async function getDefinition(word, opts = {}) {
       inFlight.delete(key);
     }
   })();
-  inFlight.set(key, promise);
-  return promise;
+  /* ⛔⛔ EVERY LOOKUP SETTLES. A lookup asks up to five sources in sequence
+     (wrapper, Wiktionary, Wikipedia, Urban Dictionary), each reading its body
+     with `res.json()`, and an abort does not reliably end a stalled body read.
+     One lookup that never settled held `prefetch`'s `Promise.allSettled`
+     open, and with it the whole walk: science/kindergarten sat 11h40m on one
+     300-word vocabulary chunk with the teach ledger frozen. The zombie guard
+     above only cleared the in-flight map — callers already awaiting the
+     promise waited forever. This deadline answers THEM: the word resolves as
+     a transient miss (retried on its TTL like any network blip) and the walk
+     moves on. Bound = every source's own timeout in sequence, plus slack. */
+  const _hardMs = timeoutMs * 6;
+  const guarded = new Promise((resolve) => {
+    const dl = setTimeout(() => {
+      if (inFlight.get(key) === guarded) inFlight.delete(key);
+      if (!_cacheGet(key)) _cachePut(key, { error: true, fetchedAt: Date.now(), deadline: true });
+      console.warn(`[DefinitionService] lookup "${key}" did not settle in ${_hardMs}ms — resolved as a transient miss so the walk continues.`);
+      resolve(null);
+    }, _hardMs);
+    promise.then((v) => { clearTimeout(dl); resolve(v); }, () => { clearTimeout(dl); resolve(null); });
+  });
+  inFlight.set(key, guarded);
+  return guarded;
 }
 
 /**
