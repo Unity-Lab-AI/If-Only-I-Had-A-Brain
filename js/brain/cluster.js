@@ -4344,44 +4344,49 @@ export class NeuronCluster {
     //       (the cluster is surprised, update its model)
     //   (b) Diagnostic / dashboard exposure (so operator can see how
     //       well the brain predicts itself)
-    if (this.predictiveCoding && this._predictedSpikes
-        && this._predictedSpikes.length === size) {
-      let errorSum = 0;
-      for (let i = 0; i < size; i++) {
-        const actual = spikes[i] ? 1 : 0;
-        const predicted = this._predictedSpikes[i];
-        errorSum += Math.abs(actual - predicted);
+    // ⭐ ONE PASS, NOT FIVE. After the neuron update this used to walk every
+    // neuron five separate times — prediction error, prediction EMA, column
+    // voltage sums, spike count, mean voltage — each a full pass over the
+    // ~40M-neuron cortex, every tick of every word she composes. `step` was
+    // measured at 45% of the main thread, starving chat and her inner voice.
+    // Same arithmetic, same order per neuron (the error reads the PREVIOUS
+    // prediction before the EMA overwrites it, exactly as the two loops did);
+    // memory is touched once instead of five times.
+    const _pc = !!this.predictiveCoding;
+    const _pcErr = _pc && this._predictedSpikes && this._predictedSpikes.length === size;
+    if (_pc && (!this._predictedSpikes || this._predictedSpikes.length !== size)) {
+      this._predictedSpikes = new Float32Array(size);
+    }
+    const _pred = _pc ? this._predictedSpikes : null;
+    const _cols = !!(this.microcolumns && this.columnId && this._columnVoltageSum);
+    const _colSum = _cols ? this._columnVoltageSum : null;
+    const _colId = _cols ? this.columnId : null;
+    if (_cols) _colSum.fill(0);
+    const _alpha = 0.3;
+    let errorSum = 0, spikeCount = 0, vSum = 0;
+    for (let i = 0; i < size; i++) {
+      const actual = spikes[i] ? 1 : 0;
+      if (_pc) {
+        const predicted = _pred[i];
+        if (_pcErr) errorSum += Math.abs(actual - predicted);
+        _pred[i] = _alpha * actual + (1 - _alpha) * predicted;
       }
+      const v = voltages[i];
+      if (_cols) _colSum[_colId[i]] += v;
+      spikeCount += actual;
+      vSum += v;
+    }
+    if (_pcErr) {
       this._lastPredictionError = errorSum / size;
       this._predictionErrorHistory.push(this._lastPredictionError);
       if (this._predictionErrorHistory.length > 32) {
         this._predictionErrorHistory.shift();
       }
     }
-    // Update _predictedSpikes for NEXT tick. Simple EMA prediction:
-    // next prediction = α × current_spikes + (1-α) × previous_prediction.
-    // α=0.3 = moderate adaptation. Cortex with layered structure
-    // refines this further via L6 → L4 descending feedback (handled
-    // implicitly by cross-projections since L6 is in regions[].layer=4).
-    if (this.predictiveCoding) {
-      if (!this._predictedSpikes || this._predictedSpikes.length !== size) {
-        this._predictedSpikes = new Float32Array(size);
-      }
-      const alpha = 0.3;
-      for (let i = 0; i < size; i++) {
-        const actual = spikes[i] ? 1 : 0;
-        this._predictedSpikes[i] = alpha * actual + (1 - alpha) * this._predictedSpikes[i];
-      }
-    }
 
-    // Update per-column mean voltages for next tick's
-    // gap-junction coupling. O(size) — same complexity as the existing
-    // mean-voltage scan below, runs once per tick.
-    if (this.microcolumns && this.columnId && this._columnVoltageSum) {
-      this._columnVoltageSum.fill(0);
-      for (let i = 0; i < size; i++) {
-        this._columnVoltageSum[this.columnId[i]] += voltages[i];
-      }
+    // Per-column mean voltages for next tick's gap-junction coupling (sums
+    // were accumulated in the single pass above).
+    if (_cols) {
       const numCols = this.numColumns;
       const sums = this._columnVoltageSum;
       const cnts = this._columnVoltageCount;
@@ -4392,11 +4397,7 @@ export class NeuronCluster {
       }
     }
 
-    // Count spikes
-    let spikeCount = 0;
-    for (let i = 0; i < size; i++) if (spikes[i]) spikeCount++;
-
-    // Update state
+    // Update state (spikeCount came from the single pass above)
     this.lastSpikes = Uint8Array.from(spikes);
     this.lastSpikeCount = spikeCount;
     this.firingRate = this.firingRate * 0.95 + spikeCount * 0.05;
@@ -4414,9 +4415,7 @@ export class NeuronCluster {
       else this._motorQuiescentTicks = 0;
     }
 
-    // Mean voltage for monitoring
-    let vSum = 0;
-    for (let i = 0; i < size; i++) vSum += voltages[i];
+    // Mean voltage for monitoring (vSum came from the single pass above)
     this.lastMeanVoltage = vSum / size;
 
     // Decay external currents
