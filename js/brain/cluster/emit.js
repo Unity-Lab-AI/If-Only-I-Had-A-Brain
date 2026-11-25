@@ -660,6 +660,19 @@ export const CLUSTER_EMIT_MIXIN = {
         // are consumed as sentence punctuation and stay eligible. Skip
         // (not filter) so bucket index ↔ neuron band alignment holds.
         if (_bw.length === 1 && _bw !== 'i' && _bw !== 'a' && !T14_TERMINATORS.has(_bw)) continue;
+        // Real-word guard — a bucket made before the speaking-slot check
+        // existed may hold a name, a typo or corpus junk. It never wins: the
+        // same test the slot enumerator uses (a dictionary knows it, or it is
+        // one of the grammar lane's function words). Memoised per word.
+        if (this.isRealWord && !T14_TERMINATORS.has(_bw)) {
+          const _rm = this._realWordMemo || (this._realWordMemo = new Map());
+          let _ok = _rm.get(_bw);
+          if (_ok === undefined) {
+            _ok = !!((this._grammarStructuralWords && this._grammarStructuralWords.has(_bw)) || this.isRealWord(_bw));
+            _rm.set(_bw, _ok);
+          }
+          if (!_ok) continue;
+        }
         // GRADE-VOCAB EMISSION GATE — persona/dev/consciousness-corpus
         // words (python, sentient, quantum-processed, lover, worship,
         // generate, hacking, cognition...) get Hebbian-bound into the

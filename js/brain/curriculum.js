@@ -17010,6 +17010,15 @@ export class Curriculum {
       if (w.length === 1 && w !== 'i' && w !== 'a') continue;
       if (!entry || !entry.pattern || !entry.pattern.length) continue;
       if (entry.isPersona) continue;
+      // ⭐ A SPEAKING SLOT IS FOR A REAL WORD. A dictionary must know it
+      // (WordNet or a dictionary sense, never Wikipedia/Urban alone), or it must
+      // be one of the grammar lane's own function words (pronouns, articles,
+      // prepositions — WordNet holds none of them, and without this "i"/"me"/
+      // "my" would lose their slots). Names, typos and corpus junk stay out.
+      // The browser copy has no dictionary service attached and skips this.
+      const _real = this.cluster && this.cluster.isRealWord;
+      if (this.cluster) this.cluster._grammarStructuralWords = GRAMMAR_STRUCTURAL_WORDS;
+      if (_real && !GRAMMAR_STRUCTURAL_WORDS.has(w) && !_real(w)) continue;
       out.push(w);
     }
     return out;
