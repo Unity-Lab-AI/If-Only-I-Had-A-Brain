@@ -1841,6 +1841,18 @@ export const CLUSTER_EMIT_MIXIN = {
       // Honest gap — no plausible derivation. Don't fabricate; signal silence.
       return { derived: false, concept: key, reason: 'no-derivation (honest gap)' };
     }
+    // ⛔⛔ A LOOP IS NOT A DERIVATION, AND IT MUST NEVER BE SAVED AS ONE.
+    // Measured live: "what is your name?" derived "Welcome gaming chipped
+    // keyboard subtraction welcome gaming chipped keyboard subtraction welcome
+    // gaming" and committed it `persisted=true` — so the gap could only ever
+    // answer that again, on every restart. A reply that runs the same word
+    // sequence twice is the emission cycling, not an answer reached from
+    // trained weights. Structural test, no word list: any run of 2+ words that
+    // occurs twice.
+    if (this._isLoopedSentence(answer)) {
+      this._derivedLoopRejects = (this._derivedLoopRejects | 0) + 1;
+      return { derived: false, concept: key, reason: 'looped emission (the same words cycling) — not an answer, not stored' };
+    }
 
     const result = { derived: true, concept: key, answer, hedge: true, persisted: false };
     this._derivedMemories.set(key, result);   // cache for consistency-on-recall
@@ -1869,6 +1881,19 @@ export const CLUSTER_EMIT_MIXIN = {
    * @param {Array<{concept:string, answer:string, corrected?:boolean}>} rows
    * @returns {{loaded:number, refused:number}}
    */
+  /** True when any run of 2+ consecutive words appears twice in `s` (emission cycling). */
+  _isLoopedSentence(s) {
+    const w = String(s || '').toLowerCase().match(/[a-z']+/g) || [];
+    if (w.length < 4) return false;
+    const seen = new Set();
+    for (let i = 0; i + 1 < w.length; i++) {
+      const bi = w[i] + ' ' + w[i + 1];
+      if (seen.has(bi)) return true;
+      seen.add(bi);
+    }
+    return false;
+  },
+
   loadDerivedMemories(rows) {
     if (!this._derivedMemories) this._derivedMemories = new Map();
     let loaded = 0, refused = 0;
@@ -1877,6 +1902,9 @@ export const CLUSTER_EMIT_MIXIN = {
       const answer = (r && r.answer) ? String(r.answer) : '';
       if (!key || !answer) continue;
       if (this._isSensitiveGapTopic(key)) { refused++; continue; }
+      // A looped derivation stored before the loop check existed is not
+      // replayed — an operator correction is always kept as written.
+      if (!(r && r.corrected) && this._isLoopedSentence(answer)) { refused++; continue; }
       // A later derivation supersedes an earlier one for the same gap, and an
       // operator CORRECTION supersedes any derivation — so a corrected row is
       // never overwritten by a plain one replayed after it.

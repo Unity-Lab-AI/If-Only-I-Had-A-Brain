@@ -1047,7 +1047,11 @@ const SERVER_CHAT_MIXIN = {
       // ⚠ IT STAYS HEDGED. A derived answer is surfaced as thinking-aloud, never
       // as something she was taught — `silent:false` with `derived:true` so the
       // transport and the page can both tell the difference.
-      if (!isFresh && this.cortexCluster && typeof this.cortexCluster.deriveMemoryGap === 'function') {
+      // ⛔ Not while the card is reconnecting: the derive composes by ticking the
+      // cortex, and with the GPU proxy down that ran on the CPU — measured
+      // `respond:derive-gap=19743ms` on the main thread, producing a looped
+      // non-answer. The same safety rule already skips generation above.
+      if (!isFresh && !_cpuTickUnsafe && this.cortexCluster && typeof this.cortexCluster.deriveMemoryGap === 'function') {
         this._chatStamp('respond:derive-gap');
         try {
           const gap = await this.cortexCluster.deriveMemoryGap(text, {
@@ -7096,7 +7100,7 @@ const SERVER_CHAT_MIXIN = {
     // even when the probabilistic emission gate below skips this tick.
     if (this._operatorSleepRequested && !this._innerVoiceMutedForDream) {
       this._innerVoiceMutedForDream = true;
-      console.log('[Brain] 💤 inner-voice paused — dream window in progress (showcase samples + dream-phenomenology continue streaming as innerThought, gated by natural rhythm).');
+      console.log('[Brain] 💤 inner-voice paused — dream window in progress (no inner thoughts while she sleeps; dream-phenomenology continues on its own lane).');
     }
     if (!this._operatorSleepRequested && this._innerVoiceMutedForDream) {
       this._innerVoiceMutedForDream = false;
@@ -7138,38 +7142,9 @@ const SERVER_CHAT_MIXIN = {
     // vocabulary so popups + log keep streaming Unity's actual learned
     // state through the 15-40 min K_VOCAB background-trickle (iter25-M.7).
     if (this._operatorSleepRequested) {
-      // 114.19fg.Tier16 — sentence-mode showcase when ≥50 words trained,
-      // single-word for early-curriculum brains.
-      // Dream windows must NEVER tick the cortex: this branch exists to give
-      // consolidation + K_VOCAB Hebbian CPU priority, but the default sample
-      // path was compose-ALLOWED — at biological scale one composeSentence
-      // word-tick synchronously propagates the main cortex ~57s on the host
-      // CPU (donors do not help; see the #36 Path B gate below), so a single
-      // dream-window showcase could pin the event loop for minutes and starve
-      // donors + dashboards mid-dream. Cheap trained-vocab pick only here.
-      const showcaseSentence = await this._sampleCurrentSentence({ allowCompose: false });
-      const showcaseWord = showcaseSentence ? showcaseSentence.split(/\s+/)[0] : null;
-      if (showcaseSentence) {
-        this._lastInnerThoughtEmittedAt = now;
-        try {
-          process.stdout.write(`[Brain] 🧠 inner-thought (showcase) "${showcaseSentence}" — vocab sample (dream window active)\n`);
-        } catch { /* non-fatal */ }
-        if (this.clients && this.clients.size > 0) {
-          const showcasePayload = JSON.stringify({
-            type: 'innerThought',
-            word: showcaseWord,
-            sentence: showcaseSentence,
-            seed: 'showcase',
-            seedLabel: 'trained vocabulary sample (dream window active)',
-            ts: now,
-          });
-          for (const [ws] of this.clients) {
-            if (ws.readyState === ws.OPEN) {
-              try { ws.send(showcasePayload); } catch { /* non-fatal */ }
-            }
-          }
-        }
-      }
+      // ⛔ NO STAND-IN THOUGHTS (operator: "NO FALLBACKS"). A GloVe-assembled
+      // vocab sample used to be shown here as her inner voice while she slept.
+      // It was never her thinking. Asleep, the inner voice is quiet.
       return;
     }
     // #36 step 2 (Path B) — bound the inner-voice cortex tick at scale.
@@ -7252,64 +7227,19 @@ const SERVER_CHAT_MIXIN = {
       try { process.stdout.write(`[Brain] 🧠 inner-voice GPU generation ENABLED — ${this._communityDonorCount} donor(s) + DF.7 fan-out; real composeSentence runs on donor GPUs (cap ${_innerVoiceMaxNeurons.toLocaleString()} bypassed for cortex ${_cortexNeurons.toLocaleString()}).\n`); } catch { /* non-fatal */ }
     }
     if (!_gpuGenAvailable && _cortexNeurons > _innerVoiceMaxNeurons && process.env.DREAM_INNERVOICE_FORCE_CPU !== '1') {
-      const showcaseSentence = await this._sampleCurrentSentence({ allowCompose: false });
-      const showcaseWord = showcaseSentence ? showcaseSentence.split(/\s+/)[0] : null;
-      if (showcaseSentence) {
-        this._lastInnerThoughtEmittedAt = now;  // feed the natural-rhythm gate
-        // ── OWNWORDS.3 (2026-08-25) — THIS IS A VOCAB SHOWCASE, NOT A THOUGHT ─
-        //
-        // This branch calls `_sampleCurrentSentence({ allowCompose: false })`,
-        // which CANNOT use `composeSentence` — so the phrase it returns is built
-        // by the CGATE.3 path: pick a trained word, then grow the phrase with
-        // its nearest neighbours by GloVe cosine, with **zero brain ticks**. The
-        // words are genuinely hers; the sentence is retrieval.
-        //
-        // It used to be pushed straight back through `pushEmission`,
-        // `recordEmission` and `_innerThoughtChain` — the emission bus, the
-        // meta-register and the autobiographical thread — so her
-        // self-monitoring loop treated a cosine-assembled phrase as something
-        // she had thought, and the next inner thought chained off it. That is
-        // the same defect as OWNWORDS.2 one layer up: a retrieval standing in
-        // for her weights at exactly the moment her weights could not run.
-        //
-        // ⛔ THE SHOWCASE ITSELF IS KEPT AND IS USEFUL. Seeing which vocabulary
-        // is trained is real information, and the operator watches this line.
-        // What stops is the FEEDBACK: it is displayed, counted, and labelled
-        // honestly, but it no longer enters the bus, the chain, or her
-        // self-model. When the full generation path runs (allowCompose true,
-        // ≥50 words, composeSentence available) that emission is hers and IS
-        // fed back — unchanged, further up this method.
-        this._vocabShowcaseCount = (this._vocabShowcaseCount || 0) + 1;
-        if (!this._vocabShowcaseNoted) {
-          this._vocabShowcaseNoted = true;
-          try { process.stdout.write('[Brain] ⓘ inner-voice showcase is a TRAINED-VOCAB SAMPLE assembled by GloVe cosine, not a composed thought — it is displayed but no longer fed into the emission bus, the inner-thought chain or the meta-register (OWNWORDS.3).\n'); } catch { /* nf */ }
-        }
-        try {
-          process.stdout.write(`[Brain] 🧠 inner-thought (showcase) "${showcaseSentence}" — vocab sample (cortex ${_cortexNeurons.toLocaleString()} neurons > ${_innerVoiceMaxNeurons.toLocaleString()}; full CPU generation would stall the loop)\n`);
-        } catch { /* non-fatal */ }
-        if (this.clients && this.clients.size > 0) {
-          const showcasePayload = JSON.stringify({
-            type: 'innerThought',
-            word: showcaseWord,
-            sentence: showcaseSentence,
-            seed: 'showcase',
-            // OWNWORDS.3 — say what it IS on the wire. The viewer renders this
-            // label, and "inner thought" next to a cosine-assembled phrase is
-            // the lie; "vocab sample, not composed" is the truth.
-            seedLabel: 'trained vocabulary sample — GloVe-assembled, NOT a composed thought (cortex too large for a loop-safe CPU tick)',
-            composed: false,
-            ts: now,
-          });
-          for (const [ws] of this.clients) {
-            if (ws.readyState === ws.OPEN) {
-              try { ws.send(showcasePayload); } catch { /* non-fatal */ }
-            }
-          }
-        }
+      // ⛔⛔ NO STAND-IN THOUGHTS (operator, 2026-11-25: "NO FUCKING FALLBACK").
+      // This branch used to show a GloVe-assembled vocab sample ("theater moved
+      // until") as her inner voice whenever her real compose could not run —
+      // every reconnect window after every press. It was never her thinking.
+      // Now: while the card cannot carry her compose, the inner voice is quiet,
+      // and says so once in the log.
+      this._innerVoiceHeldCount = (this._innerVoiceHeldCount || 0) + 1;
+      if (!this._innerVoiceHeldNotedAt || (now - this._innerVoiceHeldNotedAt) > 60000) {
+        this._innerVoiceHeldNotedAt = now;
+        try { process.stdout.write(`[Brain] 🧠 inner voice quiet — her compose needs the card (donors=${this._communityDonorCount || 0}, proxyLive=${_gpuProxyLive}); no stand-in is shown. ${this._innerVoiceHeldCount} quiet tick(s) since boot.\n`); } catch { /* nf */ }
       }
       return;
     }
-
     // Reentrancy guard — async generation can take longer than 3 s on
     // a slow tick; don't fire a new generation while a prior one is in
     // flight (would queue up dispatches + ghost the WS broadcast order).
@@ -7498,41 +7428,12 @@ const SERVER_CHAT_MIXIN = {
           const seedSrc = thought.seed?.source || '?';
           console.log(`[Brain] 🧠 inner-thought SILENT — emissionPath=${path}, seed=${seedSrc}, wordsBucketed=${cap.wordsBucketed ?? '?'}, bucketSubjects=${cap.bucketSubjects ?? '?'}, passedCells=${cap.passedCellCount ?? '?'}, subGradesActive=${cap.subGradesActive ?? '?'} (${this._innerThoughtSilenceCount} silent ticks since boot, rate-limited 30s log).`);
         }
-        // 114.19fc — never-silent showcase. Even when matrix-driven
-        // generation comes up empty, sample from Unity's CURRENT trained
-        // vocabulary so log + popups continue to showcase her learning
-        // state as she progresses through cells. NOT a hardcoded fallback —
-        // sampled words are real data from `cluster.wordBucketWords_<subject>`
-        // populated by every `_teachWordEmissionDirect` fire (iter21-A path).
-        // When training has landed ANY words, popups show what she has
-        // actively learned in this session. When no training has landed
-        // yet (truly fresh brain), still silent — sampling returns null,
-        // showcase-broadcast skips, only silence-reason log fires.
-        // 114.19fg.Tier16 — sentence-mode showcase when ≥50 words trained.
-        const showcaseSentence = await this._sampleCurrentSentence();
-        const showcaseWord = showcaseSentence ? showcaseSentence.split(/\s+/)[0] : null;
-        if (showcaseSentence) {
-          this._lastInnerThoughtEmittedAt = now;  // 114.19ff — feed natural-rhythm gate
-          try {
-            process.stdout.write(`[Brain] 🧠 inner-thought (showcase) "${showcaseSentence}" — vocab sample from current trained state\n`);
-          } catch { /* non-fatal */ }
-          if (this.clients && this.clients.size > 0) {
-            const showcasePayload = JSON.stringify({
-              type: 'innerThought',
-              word: showcaseWord,
-              sentence: showcaseSentence,
-              seed: 'showcase',
-              seedLabel: 'trained vocabulary sample (matrix gen empty this tick)',
-              ts: now,
-              capability: thought.capability || null,
-            });
-            for (const [ws] of this.clients) {
-              if (ws.readyState === ws.OPEN) {
-                try { ws.send(showcasePayload); } catch { /* non-fatal */ }
-              }
-            }
-          }
-        }
+        // ⛔⛔ NO STAND-IN (operator 2026-11-25: "NO FUCKING FALLBACK"). This
+        // used to fill an empty compose with a sampled-vocabulary "showcase" so
+        // the popups never went quiet — which is exactly why her inner voice read
+        // as three random words: whenever she produced nothing, a sample spoke
+        // for her. An empty compose is now an empty thought, and the SILENT line
+        // above says why.
         return;
       }
 
