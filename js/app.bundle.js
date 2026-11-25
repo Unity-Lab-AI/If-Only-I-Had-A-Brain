@@ -16357,7 +16357,7 @@ var CLUSTER_EMIT_MIXIN = {
       if (opts.gradeGate === true) emitOpts.gradeGate = true;
       let word = "";
       try {
-        word = this.emitWordDirect(emitOpts) || "";
+        word = await this.emitWordDirectDonor(emitOpts) || "";
       } catch {
         word = "";
       }

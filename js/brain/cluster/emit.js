@@ -1364,8 +1364,13 @@ export const CLUSTER_EMIT_MIXIN = {
       // breaks. Fail-safe: unset = ungated.
       if (opts.gradeGate === true) emitOpts.gradeGate = true;
 
+      // ⛔ FROM HER FULL WEIGHTS. This called the synchronous `emitWordDirect`,
+      // which argmaxes the CPU's sampled shadow (~1-in-5 of training mass) —
+      // every word of every reply and inner thought came from the undertrained
+      // copy while the card held the real weights. `emitWordDirectDonor` asks
+      // the card for the per-word bucket means and runs the SAME argmax on them.
       let word = '';
-      try { word = this.emitWordDirect(emitOpts) || ''; } catch { word = ''; }
+      try { word = (await this.emitWordDirectDonor(emitOpts)) || ''; } catch { word = ''; }
       if (!word) break;
       word = String(word).toLowerCase().trim();
       if (!word) break;
