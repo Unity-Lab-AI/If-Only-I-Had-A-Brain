@@ -61017,4 +61017,16 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
   - **Verified:** ESM import.
   - ⚠ **Not the whole answer.** The step still runs on the CPU, so the card stays underfed until the step itself moves to the card. That work stays open as **COMPOSEONCARD** on the board.
 
+- [x] ✅ **CLOSED BUILT 2026-11-25.** **ADOPTREAD — the readback after a card reattached knocked the card off.** Gee 2026-11-25, verbatim: *"and she still isnt respoinding to u, and the pod is at 0% util still, FUCK ME!"* · *"fix everything ive mentioned"*.
+  - **Evidence, boot `8ec51356`:**
+    - `REATTACH … holding all 17 of its matrices`
+    - 60 s later, `SHADOWCOST.3 readback ABORTED on 'cortex_intraSynapses' (adopted): range @0: idle 120s after 0 chunk(s)`
+    - then `GPU donor NVIDIA RTX PRO 6000 … CLOSED — code 1006 · last heard 131.4s ago · held cortex: true`
+    - then `No GPU — brain paused`, while her reply and thoughts were mid-compose.
+  - **Fix (`server/brain-server.js`, cortex upload success path):** the 60 s-delayed `refreshCheckpointFromDonor('adopted')` is removed. It never delivered a byte.
+  - **What still keeps the weights safe:**
+    - the card keeps its own checkpoint on the brain's cadence (the config is sent on the same path);
+    - the brain's save cycle is unchanged.
+  - **Verified:** `node --check`.
+
 
