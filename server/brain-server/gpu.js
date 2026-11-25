@@ -4980,11 +4980,30 @@ const SERVER_GPU_MIXIN = {
    *  - the propagate is PINNED to the PRIMARY (same socket the write went
    *    down — never a pool replica whose mirror may have shed the write).
    */
+  /** True once `ws`'s send buffer is ≤256 KB (polled, ≤3 s); false if it never drains or the socket goes. */
+  async _probeSocketDrained(ws) {
+    const LIMIT = 256 * 1024;
+    const maxMs = Number(process.env.DREAM_PROBE_DRAIN_MS) > 0 ? Number(process.env.DREAM_PROBE_DRAIN_MS) : 3000;
+    const t0 = Date.now();
+    while (ws && ws.readyState === 1 && typeof ws.bufferedAmount === 'number' && ws.bufferedAmount > LIMIT) {
+      if (Date.now() - t0 > maxMs) return false;
+      await new Promise((r) => setTimeout(r, 20));
+    }
+    return !!ws && ws.readyState === 1;
+  },
+
   async gpuGateProbe(matrixName, srcRegionName, sparseIndices) {
     if (process.env.DREAM_GATE_GPU_PROBES === '0') return null;
     const ws = this._gpuClient;
     if (!ws || ws.readyState !== 1) { this._gateProbeRefused = (this._gateProbeRefused || 0) + 1; return null; }
-    if (typeof ws.bufferedAmount === 'number' && ws.bufferedAmount > 256 * 1024) {
+    // ⛔ WAIT FOR THE SOCKET, DON'T REFUSE ON IT. A probe refused whenever more
+    // than 256 KB sat in the send buffer, and teaching keeps that buffer fuller
+    // than that almost continuously — measured live: `ok=2 miss=0 refused=61`.
+    // Every refusal ran the probe on the CPU instead, which is the slow path and
+    // eats the thread the walk feeds the card from. The buffer drains in tens of
+    // ms at link speed, so the probe now waits up to 3 s for it and is refused
+    // only if it never drains.
+    if (!(await this._probeSocketDrained(ws))) {
       this._gateProbeRefused = (this._gateProbeRefused || 0) + 1;
       return null;
     }
@@ -5107,7 +5126,7 @@ const SERVER_GPU_MIXIN = {
     if (!this._donorBucketReadout()) return null;
     const ws = this._gpuClient;
     if (!ws || ws.readyState !== 1) return null;
-    if (typeof ws.bufferedAmount === 'number' && ws.bufferedAmount > 256 * 1024) return null;
+    if (!(await this._probeSocketDrained(ws))) return null;
     if (!sparseIndices || !sparseIndices.length) return null;
     if (!(bucketSize > 0) || !(bucketCount > 0)) return null;
     try {
