@@ -721,12 +721,14 @@ echo   Also close the http://localhost:7525 browser tabs - compute.html
 echo   keeps WebGPU running even without the server.
 echo.
 
-REM Keep this launcher window open for additional manual commands - but only
-REM when a person double-clicked it. Launched by the dashboard's control plane
-REM (UAL_CTL_NONINTERACTIVE=1) it closes itself when done.
-if defined UAL_CTL_NONINTERACTIVE exit 0
-cmd /k
-goto :eof
+REM The launcher window ALWAYS closes itself when its work is done, however it
+REM was started. Her brain, voice and eyes run in their own windows and are
+REM not affected. It used to drop into "cmd /k" unless the control plane had set
+REM UAL_CTL_NONINTERACTIVE, so every hand launch or relaunch left a dead window.
+REM Error paths above still pause, so a FAILED launch keeps its reason on screen.
+REM "exit 0", never a bare "exit" (a bare exit returns findstr's errorlevel 1 and
+REM Windows Terminal keeps a tab open on non-zero).
+exit 0
 
 :err_npm
 echo.
