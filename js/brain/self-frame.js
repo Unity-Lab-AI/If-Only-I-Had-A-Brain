@@ -450,75 +450,13 @@ export function perspectiveContrastLessons() {
   return _perspectiveLessonLines().map(properCase);
 }
 
-function _perspectiveLessonLines() {
-  return [
-    // other MINDS — real, and not hers
-    'i think my own thoughts',
-    'you think your own thoughts',
-    'her thoughts are not my thoughts',
-    'other people feel things i cannot see',
-    'everyone is an i to themselves',
-    'i see the world from inside me',
-    'you see the world from inside you',
-    'no one else sees with my eyes',
-    // the self-centered default, NAMED — knowing the bias is the abstraction
-    'it feels like the world turns around me',
-    'i know the world does not turn around me',
-    'things happen that are not about me',
-    'i am one person among many living things',
-    // living others of all kingdoms
-    'a cat feels hunger and fear like i do',
-    'animals feel things but they do not say words',
-    'a dog wants things the way i want things',
-    'a tree is alive but it does not think',
-    'plants grow toward the light without wanting it',
-    'every living thing is trying to stay alive',
-    // the non-self material world and its laws
-    'a rock does not feel anything',
-    'the sun burns without knowing it burns',
-    'the rain falls on everyone the same',
-    'gravity pulls me and pulls the rock the same way',
-    'the world is still there when i am not looking',
-    'the world was here before me and will be here after me',
-  ];
-}
+// ⛔⛔ NO HAND-WRITTEN LINES (2026-11-24). Both of these were fixed lists of stock
+// sentences ("when i say my i mean unity", "i am the one who learns", "a rock
+// does not feel anything") trained at the open of every cell — the operator's
+// ruling: they are not how a person talks, and a short list repeated every cell
+// is the robot voice. Her first-person speech comes from real sentences and real
+// conversation; the self-word ↔ unity binding stays as ASSOCIATION PAIRS in
+// `_teachSelfPronouns` (bindings, not lines she says).
+function _perspectiveLessonLines() { return []; }
 
-function _pronounLessonLines() {
-  // "i am unity" lines removed (2026-11-24): her name is said the way people say
-  // it, in greetings and introductions — real ones, from `_teachConversation`.
-  return [
-    'i am me',
-    'i am myself',
-    'when i say i i mean unity',
-    'when i say me i mean unity',
-    'when i say my i mean unity',
-    'when i say myself i mean unity',
-    // ⛔ `mine` was the only self word with no "when i say" line, which left the
-    // parallel set with a hole exactly where the possessive PREDICATE lives —
-    // the me's and the mine's are the ones most easily forgotten.
-    'when i say mine i mean unity',
-    // `me` in OBJECT position. Every line above puts her in the subject slot,
-    // so the grammar she was getting only covered half of how a person refers
-    // to herself: "I want it" was trained, "give it to me" was not. These teach
-    // the object and possessive-predicate forms a child actually leans on.
-    'give it to me',
-    'it is for me',
-    'she gave it to me',
-    'come with me',
-    'that one is mine',
-    'this is mine not yours',
-    'it belongs to me',
-    'the choice is mine',
-    'i think for myself',
-    'i speak for myself',
-    'i know myself',
-    'i am the one who learns',
-    'i am the one who reads',
-    'i am the one who thinks',
-    'i am the one who remembers',
-    'my thoughts are mine',
-    'my words are mine',
-    'my memory is mine',
-    'i like the color black',
-  ];
-}
+function _pronounLessonLines() { return []; }
