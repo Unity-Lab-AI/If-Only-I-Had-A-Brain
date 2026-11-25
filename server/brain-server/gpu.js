@@ -3153,13 +3153,17 @@ const SERVER_GPU_MIXIN = {
   //       doesn't block behind hundreds of shadow hebbians.
   //   (2) TCP send-buffer cap — belt-and-suspenders for abnormal queue
   //       growth (slow network, giant frames).
-  _gpuSparseFlowOk(targetWs = null) {
+  _gpuSparseFlowOk(targetWs = null, priority = false) {
     // DF.7 — check the chosen donor's flow when targeting a replica, else the
     // primary's. Keeps the per-donor backpressure gate honest during fan-out.
     const c = (targetWs && targetWs.readyState === 1) ? targetWs : this._gpuClient;
     if (!c || c.readyState !== 1) return false;
     const pending = this._gpuSparsePending ? this._gpuSparsePending.size : 0;
-    if (pending >= 4) return false;
+    // ⛔ A WORD/GATE READOUT IS NOT CAPPED BY PENDING SHADOW PROPAGATES. Every
+    // compose tick has up to 16 propagates in flight, so the cap of 4 refused
+    // every readout instantly — measured `gateProbe … ok=0 miss=18` — and she
+    // picked her words off the CPU shadow. The buffer check below still holds.
+    if (!priority && pending >= 4) return false;
     return c.bufferedAmount < 2_000_000;
   },
 
@@ -4390,7 +4394,7 @@ const SERVER_GPU_MIXIN = {
    * Dispatch sparse propagate via binary frame: currents = matrix @ preSpikes.
    * Returns Float32Array (or null on timeout).
    */
-  async gpuSparsePropagate(name, preSpikes, targetWs = null, timeoutMs = 30_000, reuseKey = null) {
+  async gpuSparsePropagate(name, preSpikes, targetWs = null, timeoutMs = 30_000, reuseKey = null, priority = false) {
     const pre = preSpikes instanceof Uint32Array ? preSpikes
       : preSpikes instanceof Uint8Array ? Uint32Array.from(preSpikes)
       : new Uint32Array(preSpikes || []);
@@ -4411,7 +4415,7 @@ const SERVER_GPU_MIXIN = {
     }
     // Backpressure gate — check the CHOSEN donor's flow; if its WS send buffer is
     // backed up, skip this shadow instead of queueing another doomed request.
-    if (!this._gpuSparseFlowOk(targetWs)) return null;
+    if (!this._gpuSparseFlowOk(targetWs, priority)) return null;
     const reqId = this._nextSparseReqId();
     const hdr = this._encodeSparseHeader(2, reqId, name);
     const lenBuf = Buffer.alloc(4);
@@ -5021,7 +5025,7 @@ const SERVER_GPU_MIXIN = {
       // nothing stale-able), and the probe times out FAST (8s) to the CPU
       // path instead of 30s.
       const _pT0 = Date.now();
-      const out = await this.gpuSparsePropagate(matrixName, Uint32Array.from(sparseIndices), ws, 8_000);
+      const out = await this.gpuSparsePropagate(matrixName, Uint32Array.from(sparseIndices), ws, 8_000, null, true);
       // Probe-latency window stats — the instrument that would have named the
       // 30s-timeout burn in one console read instead of a forensic dig.
       const _s = this._gateProbeStats || (this._gateProbeStats = { ok: 0, miss: 0, msSum: 0, logAt: 0 });

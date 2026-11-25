@@ -61048,6 +61048,20 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
   - **Verified:** `isRealWord`: alquife false, effeminancy false, cat/peddler/climbers true.
 
 - [x] ✅ **CLOSED BUILT 2026-11-25.** **EYESHOW — a drawing her eye doubted was hidden.** Gee 2026-11-25, verbatim: *"and this refusal shit is getting annoying... its like she only ever does the same images and blocks the variety of images she can do,, nothing should be hindering her"*.
-  - **Fix (`chat.js` `_drawOwnCreation`):** a refused verdict no longer returns before showing. The piece is shown, the verdict is kept and logged as "doubts … Shown anyway", and the subject still goes to practice.
+  - **Fix (`chat.js` `_drawOwnCreation`):** a refused verdict no longer returns before showing.
+
+- [x] ✅ **CLOSED BUILT 2026-11-25.** **SPEAKFULL — every word she composed came from the CPU's sampled shadow, not her trained weights.** Gee 2026-11-25, verbatim: *"okayyeah her respond awas incorrect, she didnt give her name when asked and spewed word salad"*.
+  - **Evidence, boot `7ecec046`:**
+    - "what is your name?" → *"april climb corner made letters keyboard"* (87 s);
+    - `gateProbe window — ok=0 miss=18`;
+    - CPU profile `propagate ← emitWordDirect @ emit.js:452`.
+  - **Two causes:**
+    - `_composeSentenceOnce` called the synchronous `emitWordDirect`, which always argmaxes the CPU copy (~1-in-5 of the training mass). It never called `emitWordDirectDonor`, the wrapper that asks the card.
+    - The card flow check refused any send with 4+ requests pending, and every compose tick has up to 16 in flight, so the full-current readout was refused instantly.
+  - **Fix:**
+    - compose awaits `emitWordDirectDonor` (`js/brain/cluster/emit.js`);
+    - `_gpuSparseFlowOk` / `gpuSparsePropagate` take a `priority` flag that skips the pending cap, and the gate probe sets it (`server/brain-server/gpu.js`).
+    - The buffer check still holds. The argmax and its rules are unchanged; only the source of the currents moved.
+  - **Verified:** `node --check` and ESM import. The piece is shown, the verdict is kept and logged as "doubts … Shown anyway", and the subject still goes to practice.
 
 
