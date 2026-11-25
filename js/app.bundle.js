@@ -19866,8 +19866,7 @@ var NeuronCluster = class {
     const spikes = this.lastSpikes;
     if (this.synapses && spikes) {
       const key = `${this.name}_intraSynapses`;
-      const pSpikes = new Uint32Array(spikes.length);
-      for (let i = 0; i < spikes.length; i++) pSpikes[i] = spikes[i] ? 1 : 0;
+      const pSpikes = this._preSpikePayload(key, spikes);
       try {
         const p = this._gpuProxy.propagate(key, pSpikes);
         if (p && typeof p.then === "function") {
@@ -19896,10 +19895,7 @@ var NeuronCluster = class {
           if (proj._gpuBound && this._gpuProxy.propagateBound) {
             p = this._gpuProxy.propagateBound(key);
           } else {
-            const srcSpikes = this.regionSpikes(src);
-            const pSpikes = new Uint32Array(srcSpikes.length);
-            for (let i = 0; i < srcSpikes.length; i++) pSpikes[i] = srcSpikes[i] > 0 ? 1 : 0;
-            p = this._gpuProxy.propagate(key, pSpikes);
+            p = this._gpuProxy.propagate(key, this._preSpikePayload(key, this.regionSpikes(src)));
           }
           if (p && typeof p.then === "function") {
             const cache = this._cachedCrossCurrents;
@@ -20166,8 +20162,10 @@ var NeuronCluster = class {
   _preSpikePayload(matrixName, spikes) {
     if (!spikes || spikes.length === 0) return EMPTY_PRE_SPIKES;
     if (this._isBoundMatrix(matrixName)) return EMPTY_PRE_SPIKES;
-    const out = new Uint32Array(spikes.length);
-    for (let i = 0; i < spikes.length; i++) out[i] = spikes[i] > 0 ? 1 : 0;
+    let n = 0;
+    for (let i = 0; i < spikes.length; i++) if (spikes[i] > 0) n++;
+    const out = new Uint32Array(n);
+    for (let i = 0, w = 0; i < spikes.length; i++) if (spikes[i] > 0) out[w++] = i;
     return out;
   }
   async stepAwait(dt) {

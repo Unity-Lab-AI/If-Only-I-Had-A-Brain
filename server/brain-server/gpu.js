@@ -4441,10 +4441,10 @@ const SERVER_GPU_MIXIN = {
     if (this._cortexBoundNames && this._cortexBoundNames.has(name)) {
       return this.gpuSparsePropagateBound(name);
     }
-    const ws = this._gpuClient;
-    if (ws && ws.readyState === 1 && ws._sparseV2 === true) {
-      return this.gpuSparsePropagateSparseIdx(name, preSpikes);
-    }
+    // The cluster ships ACTIVE INDICES now (`_preSpikePayload`), which is the
+    // type-2 standalone form the native donor reads — the same form the gate
+    // probe and the bound-matrix rebuild already send. The type-6 sender takes a
+    // DENSE array, so it is not used for these payloads.
     return this.gpuSparsePropagate(name, preSpikes);
   },
 
