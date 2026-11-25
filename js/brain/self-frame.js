@@ -199,38 +199,16 @@ export function numWord(n) {
  * never-destroy-training-content rule.
  */
 export function firstPerson(sentence, seed = '') {
-  const s = normalizeLine(sentence);
-  if (!s) return [];
-  const words = s.split(' ');
-  const first = words[0];
-  if (first === 'i' || first === 'my' || first === 'im' || (first === 'i' && words[1] === 'am')) return [s];
-
-  const mathed = mathToFirstPerson(s);
-  if (mathed) return [mathed];
-
-  // 3. imperative — a bare verb start with no subject is an instruction TO her; she does it.
-  if (IMPERATIVE_VERBS.has(first)) {
-    return [`i ${s}`];
-  }
-
+  // ⛔⛔ THE FRAMING IS: SHE IS READING, OR SOMEONE IS SPEAKING TO HER (operator
+  // ruling 2026-11-24: *"she is eaither reeading or someone is speaking to her
+  // those are the only options"* — *"in the traing framing"*). A sentence she
+  // reads trains as it is written, through the corpus lane; a line someone says
+  // to her trains through `_teachConversation`. Nothing is rewritten into her
+  // mouth: the old rules turned an instruction ("read the word cat") into "i
+  // read the word cat" and a character's action ("the girl read a book") into
+  // hers. So this returns nothing, and the frame adds no lines.
+  void sentence; void seed;
   const out = [];
-  // 4. third-person person-subject → she owns the action too.
-  const pm = s.match(/^(?:the |a |an )?(girl|boy|kid|child|children|student|woman|man|person|people|she|he|they|mother|father|teacher|friend)\s+(.+)$/);
-  if (pm) {
-    const rest = pm[2].replace(/^(was|were|is|are)\s+/, 'am ');
-    out.push(`i ${rest}`);
-  }
-  // ⛔ AUDIT FIX (2026-08-20) — GRAMMAR. The bare-verb frames were being applied to full
-  // clauses and training BROKEN sequences: *"i see the cat runs"*. English needs the
-  // complementizer there ("i see THAT the cat runs"), and training ungrammatical strings into
-  // the sequence channel is worse than not framing at all — it is teaching her a wrong path.
-  // So: a full clause only ever takes a `that`-frame; the bare-verb frames are reserved for
-  // short noun phrases ("the cat" → "i see the cat"), where they are always grammatical.
-  // ⛔⛔ NO STOCK OPENER (2026-11-24). Every sentence she could not own used to
-  // be stamped with one of sixteen openers ("i know that …", "i learn that …",
-  // "i found out that …"); across a whole corpus that is how a machine talks, not
-  // a person. A sentence she cannot own trains as CONTENT through the corpus lane;
-  // her voice comes from real first-person lines and real conversation.
   return out;
 }
 

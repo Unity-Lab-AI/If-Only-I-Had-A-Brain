@@ -19413,12 +19413,74 @@ export class Curriculum {
       this._convLifeDone = grade;
     }
     if (!turns.length) return { taught: 0, reason: 'no exchanges in this cell' };
-    const seqs = turns.map(([said, reply]) => `${said} ${reply}`.replace(/\s+/g, ' ').trim()).filter(s => s.split(' ').length >= 4);
+    // ⭐ SOMEONE IS SPEAKING TO HER — so the name they call the listener by is
+    // HERS. A vocative ("where are you going, henny-penny?", "jack, come here")
+    // is a name the speaker uses for the one they talk to; it becomes "unity".
+    // A word counts as a name only when it carries no meaning of its own — no
+    // vector in her vocabulary, or held out as undefinable — so "come here, dear"
+    // keeps its "dear". This is how her name reaches her: the way people really
+    // say it to someone, in the corpus's own sentences.
+    // ⚠ And a name is a CHARACTER — someone the story keeps coming back to — so
+    // it must appear in at least three sentences of this cell's own text.
+    // Measured on ela/K + grade3 before this rule: the misfires were all one-off
+    // interjections and dash debris ("mee-ow", "a-well", "by-the-bye", "oh--ho");
+    // the hits were the cast ("thank you, jackanapes" → "thank you, unity",
+    // "good evening, melampo", "come back, messua!").
+    const _emb = sharedEmbeddings;
+    const _seen = new Map();
+    try {
+      const _cellText = (typeof cluster.academicStorySentences === 'function' && subject) ? cluster.academicStorySentences(subject, grade) : [];
+      for (const sx of _cellText) {
+        for (const tk of new Set(String(sx).toLowerCase().split(/[^a-z'-]+/))) if (tk) _seen.set(tk, (_seen.get(tk) || 0) + 1);
+      }
+    } catch { /* no cell text → no names */ }
+    // No apostrophe (a contraction like "don't" has no vector of its own and is
+    // not a name), and a word repeated in the same line is a cry ("mee-ow,
+    // mee-ow"), not an address — checked in `_addressHer`.
+    const _isName = (tok) => !!tok && /^[a-z][a-z-]+$/.test(tok) && !tok.includes('--') && (_seen.get(tok) || 0) >= 3
+      && ((_emb.bindBlocked && _emb.bindBlocked.has(tok)) || !(_emb._embeddings && _emb._embeddings.has(tok)));
+    const _addressHer = (said) => {
+      let t = String(said || '');
+      const _toks = t.toLowerCase().split(/[^a-z-]+/).filter(Boolean);
+      const _once = (n) => _toks.filter((x) => x === n).length === 1;
+      const _isNameHere = (n) => _isName(n) && _once(n);
+      t = t.replace(/,\s*([a-z][a-z'-]+(?:\s+[a-z][a-z'-]+)?)\s*([?!.]?)\s*$/i, (m, name, end) =>
+        name.toLowerCase().split(/\s+/).every(_isNameHere) ? `, unity${end || ''}` : m);
+      t = t.replace(/^([a-z][a-z'-]+(?:\s+[a-z][a-z'-]+)?)\s*,/i, (m, name) =>
+        name.toLowerCase().split(/\s+/).every(_isNameHere) ? 'unity,' : m);
+      return t;
+    };
+    // ⭐⭐ THREE THINGS, KEPT APART — the role split chat models are trained with,
+    // carried into her brain:
+    //   HEARD  — what someone says to her ("you", "unity"): `hearOnly`, so it
+    //            trains understanding (meaning) and never her speech motor.
+    //   SAID   — her reply: the only part that trains what she produces.
+    //   TURN   — the last word she heard → the first word of her answer, on its
+    //            own relation band (40, "said to me → i answer"), so being spoken
+    //            to — and being called by her name — is what starts her talking.
+    let _named = 0;
+    const heard = [], said = [], turnPairs = [];
+    const _words = (x) => String(x).toLowerCase().replace(/[^a-z'\s-]+/g, ' ').split(/\s+/).filter(Boolean);
+    for (const [line, reply] of turns) {
+      const a = _addressHer(line);
+      if (a !== line) _named++;
+      const hw = _words(a), rw = _words(reply);
+      if (hw.length < 2 || rw.length < 2) continue;
+      heard.push(a);
+      said.push(reply);
+      turnPairs.push([hw[hw.length - 1], rw[0]]);
+    }
+    if (!heard.length) return { taught: 0, reason: 'no usable exchanges' };
+    this.stats.conversationAddressedByName = (this.stats.conversationAddressedByName | 0) + _named;
     const reps = Number(opts.reps) > 0 ? Number(opts.reps) : 3;
-    this._hb?.(`[Curriculum] 💬 CONVERSATION ${subject}/${grade} — ${seqs.length} real exchange(s) from her books and life (what was said → the reply) × ${reps} reps.`);
-    await this._teachSentenceList(seqs, ctx, { reps, label: `CONVERSATION-${subject}-${grade}`, source: 'dialogue' });
-    this.stats.conversationExchanges = (this.stats.conversationExchanges | 0) + seqs.length;
-    return { taught: seqs.length };
+    this._hb?.(`[Curriculum] 💬 CONVERSATION ${subject}/${grade} — ${heard.length} real exchange(s) from her books and life: heard ${heard.length} (understood, not spoken; ${_named} call her by name) · said ${said.length} (her replies) · turn bindings ${turnPairs.length} × ${reps} reps.`);
+    await this._teachSentenceList(heard, ctx, { reps, label: `CONV-HEARD-${subject}-${grade}`, source: 'dialogue-heard', hearOnly: true });
+    await this._teachSentenceList(said, ctx, { reps, label: `CONV-SAID-${subject}-${grade}`, source: 'dialogue-said' });
+    if (typeof this._teachAssociationPairs === 'function') {
+      await this._teachAssociationPairs(turnPairs, { reps, label: `CONV-TURN-${subject}-${grade}`, relationTagId: 40 });
+    }
+    this.stats.conversationExchanges = (this.stats.conversationExchanges | 0) + heard.length;
+    return { taught: heard.length, named: _named };
   }
 
   async _trainAcademicStories(subject, grade, ctx, opts = {}) {
@@ -28749,13 +28811,23 @@ export class Curriculum {
       if (Number.isFinite(_v) && _v > 0 && _v <= 0.5) lr = _v;
     } catch { /* default stands */ }
 
+    // ⭐ HEARD, NOT SAID (`opts.hearOnly`). A line someone says TO her is
+    // understood, not spoken: it trains her meaning region only — no letter, no
+    // sound, no speech motor — so she learns what it means without learning to
+    // say the other person's words. The chat-model rule carried over: the other
+    // speaker's turn is context, and only HER turn trains what she produces.
+    // ⚠ The speech regions stay in the lesson and are CLEARED, never written —
+    // a silent post-synaptic side learns nothing, so letter/sound/motor gain no
+    // trace of the other person's words; leaving them out instead would let the
+    // card learn against whatever the previous lesson left resident there. The
+    // meaning region's own links (intra) carry what was understood.
+    const hearOnly = !!opts.hearOnly;
     const letterRegion = cluster.regions?.letter;
     const phonRegion = cluster.regions?.phon;
     const semRegion = cluster.regions?.sem;
     const motorRegion = cluster.regions?.motor;
-    if (!letterRegion) return { pass: false, reason: 'missing regions' };
+    if (!letterRegion || (hearOnly && !semRegion)) return { pass: false, reason: 'missing regions' };
 
-    const letterSize = letterRegion.end - letterRegion.start;
     const invSize = inventorySize();
 
     function buildPattern(regionSize, feat) {
@@ -28830,6 +28902,8 @@ export class Curriculum {
         ops.push([`${cluster.name}_${name}`, lr * damp]);
       }
       const regionNames = _plRegions.map((rg) => (rg ? this._resolveRegionName(cluster, rg) : null));
+      // Heard lines also learn inside meaning itself (sem ↔ sem).
+      if (hearOnly && cluster.synapses && cluster.synapses._gpuBound !== false) ops.push([`${cluster.name}_intraSynapses`, lr]);
       if (ops.length && regionNames[0]) _pl = { items: [], groups: [], ops, regionNames };
     }
     const _plFlush = async () => {
@@ -29001,7 +29075,9 @@ export class Curriculum {
           // sem→motor damping applied). Many in flight instead of one word per
           // round trip — which is what keeps the card busy through this lane.
           if (_pl) {
-            const feats = [letterOneHot, phonRegion ? phonFeat : null, motorRegion ? letterOneHot : null, semFeat];
+            // Heard: only meaning is written; letter/sound/motor are cleared and stay silent.
+            const feats = hearOnly ? [null, null, null, semFeat]
+              : [letterOneHot, phonRegion ? phonFeat : null, motorRegion ? letterOneHot : null, semFeat];
             const groups = _plRegions.map((rg, i) => (rg && feats[i] && feats[i].length) ? Math.max(1, Math.floor((rg.end - rg.start) / feats[i].length)) : 1);
             if (_pl.items.length && groups.some((g, i) => g !== _pl.groups[i])) await _plFlush();
             _pl.groups = groups;
@@ -29011,16 +29087,19 @@ export class Curriculum {
           }
 
           this._clearSpikes(['letter', 'phon', 'motor', 'sem']);
-          this._writeTiledPattern(letterRegion, letterOneHot, true);
-          if (phonRegion) this._writeTiledPattern(phonRegion, phonFeat, true);
-          if (motorRegion) this._writeTiledPattern(motorRegion, letterOneHot, true);
+          if (!hearOnly) {
+            this._writeTiledPattern(letterRegion, letterOneHot, true);
+            if (phonRegion) this._writeTiledPattern(phonRegion, phonFeat, true);
+            if (motorRegion) this._writeTiledPattern(motorRegion, letterOneHot, true);
+          }
           if (semFeat) this._writeTiledPattern(semRegion, semFeat, true);
 
           await cluster._crossRegionHebbian(lr);
         }
 
-        // Dictionary growth
-        if (this.dictionary && typeof this.dictionary.learnSentence === 'function') {
+        // Dictionary growth — her OWN speech statistics, so a heard line (someone
+        // else's words) never feeds it.
+        if (!hearOnly && this.dictionary && typeof this.dictionary.learnSentence === 'function') {
           try { this.dictionary.learnSentence(sentence, null, arousal, valence); } catch {}
         }
         this.stats.sentencesSeen++;
