@@ -20035,34 +20035,38 @@ var NeuronCluster = class {
     }
     const spikes = neurons.step(dt * 1e3, currents);
     const voltages = neurons.getVoltages();
-    if (this.predictiveCoding && this._predictedSpikes && this._predictedSpikes.length === size) {
-      let errorSum = 0;
-      for (let i = 0; i < size; i++) {
-        const actual = spikes[i] ? 1 : 0;
-        const predicted = this._predictedSpikes[i];
-        errorSum += Math.abs(actual - predicted);
+    const _pc = !!this.predictiveCoding;
+    const _pcErr = _pc && this._predictedSpikes && this._predictedSpikes.length === size;
+    if (_pc && (!this._predictedSpikes || this._predictedSpikes.length !== size)) {
+      this._predictedSpikes = new Float32Array(size);
+    }
+    const _pred = _pc ? this._predictedSpikes : null;
+    const _cols = !!(this.microcolumns && this.columnId && this._columnVoltageSum);
+    const _colSum = _cols ? this._columnVoltageSum : null;
+    const _colId = _cols ? this.columnId : null;
+    if (_cols) _colSum.fill(0);
+    const _alpha = 0.3;
+    let errorSum = 0, spikeCount = 0, vSum = 0;
+    for (let i = 0; i < size; i++) {
+      const actual = spikes[i] ? 1 : 0;
+      if (_pc) {
+        const predicted = _pred[i];
+        if (_pcErr) errorSum += Math.abs(actual - predicted);
+        _pred[i] = _alpha * actual + (1 - _alpha) * predicted;
       }
+      const v = voltages[i];
+      if (_cols) _colSum[_colId[i]] += v;
+      spikeCount += actual;
+      vSum += v;
+    }
+    if (_pcErr) {
       this._lastPredictionError = errorSum / size;
       this._predictionErrorHistory.push(this._lastPredictionError);
       if (this._predictionErrorHistory.length > 32) {
         this._predictionErrorHistory.shift();
       }
     }
-    if (this.predictiveCoding) {
-      if (!this._predictedSpikes || this._predictedSpikes.length !== size) {
-        this._predictedSpikes = new Float32Array(size);
-      }
-      const alpha = 0.3;
-      for (let i = 0; i < size; i++) {
-        const actual = spikes[i] ? 1 : 0;
-        this._predictedSpikes[i] = alpha * actual + (1 - alpha) * this._predictedSpikes[i];
-      }
-    }
-    if (this.microcolumns && this.columnId && this._columnVoltageSum) {
-      this._columnVoltageSum.fill(0);
-      for (let i = 0; i < size; i++) {
-        this._columnVoltageSum[this.columnId[i]] += voltages[i];
-      }
+    if (_cols) {
       const numCols = this.numColumns;
       const sums = this._columnVoltageSum;
       const cnts = this._columnVoltageCount;
@@ -20072,8 +20076,6 @@ var NeuronCluster = class {
         means[c] = cnt > 0 ? sums[c] / cnt : 0;
       }
     }
-    let spikeCount = 0;
-    for (let i = 0; i < size; i++) if (spikes[i]) spikeCount++;
     this.lastSpikes = Uint8Array.from(spikes);
     this.lastSpikeCount = spikeCount;
     this.firingRate = this.firingRate * 0.95 + spikeCount * 0.05;
@@ -20086,8 +20088,6 @@ var NeuronCluster = class {
       if (motorRate < 0.05) this._motorQuiescentTicks++;
       else this._motorQuiescentTicks = 0;
     }
-    let vSum = 0;
-    for (let i = 0; i < size; i++) vSum += voltages[i];
     this.lastMeanVoltage = vSum / size;
     for (let i = 0; i < size; i++) {
       this.externalCurrent[i] *= 0.9;
