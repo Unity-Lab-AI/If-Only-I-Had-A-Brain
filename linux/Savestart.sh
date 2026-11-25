@@ -309,12 +309,16 @@ UNITY_IMAGE_PORT="${UNITY_IMAGE_PORT:-5124}"
 UNITY_IMAGE_CHECKPOINT="${UNITY_IMAGE_CHECKPOINT:-$PWD/models/image/sdxl-base-1.0.safetensors}"
 export UNITY_IMAGE_CHECKPOINT
 if [ -f "$UNITY_IMAGE_CHECKPOINT" ]; then
+    # A leftover renderer is REPLACED, never kept: its memory only grows (the
+    # offload leak), so keeping it across presses is how one reached 128 GB.
     if _port_busy "$UNITY_IMAGE_PORT"; then
-        echo "  [eyes] image renderer already listening on $UNITY_IMAGE_PORT — left alone."
+        echo "  [eyes] old image renderer on $UNITY_IMAGE_PORT — shutting it down and starting a fresh one"
+        curl -s -m 5 -X POST "http://127.0.0.1:$UNITY_IMAGE_PORT/shutdown" >/dev/null 2>&1 || true
+        sleep 4
     else
         echo "  [eyes] starting her image renderer on $UNITY_IMAGE_PORT"
-        ( cd server && nohup python3 -u image-render.py --port "$UNITY_IMAGE_PORT" --device auto >> image-render.log 2>&1 & )
     fi
+    ( cd server && nohup python3 -u image-render.py --port "$UNITY_IMAGE_PORT" --device auto >> image-render.log 2>&1 & )
 else
     echo "  [eyes] her image model is NOT at $UNITY_IMAGE_CHECKPOINT — no pictures until it is."
 fi

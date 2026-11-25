@@ -260,6 +260,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
         _log("txt2img %dx%d seed %d in %.1fs" % (img.size[0], img.size[1], seed, secs))
+        _maybe_recycle()
 
 
 def main():
@@ -279,5 +280,73 @@ def main():
         pass
 
 
+# ⛔⛔ THE OFFLOAD RENDER LEAKS HOST RAM AND NOTHING INSIDE THE PROCESS GETS IT
+# BACK. Measured 2026-11-24 on this host (512x512, 6 steps): with CPU offload,
+# private memory 0 → 11.2 → 19.5 → 24.8 GB over three renders, and /unload
+# freed none of it; the live renderer reached 128 GB after 27 renders. With
+# offload OFF it held flat (17.34 / 17.41 / 17.42 / 17.45 GB over four) — but
+# the 4070 also carries her small clusters, so the whole model cannot live on
+# the card. So the process is RECYCLED: after a render, if its private memory
+# is past UNITY_IMAGE_RECYCLE_GB (default 20), the worker exits with code 3 and
+# this supervisor starts a fresh one (~3 s load on the next render). Any other
+# exit (/shutdown, a crash) ends the supervisor too, so stop and restart
+# behave as before.
+def _private_gb():
+    try:
+        if os.name == "nt":
+            import ctypes
+            from ctypes import wintypes
+
+            class PMC(ctypes.Structure):
+                _fields_ = [("cb", wintypes.DWORD), ("PageFaultCount", wintypes.DWORD),
+                            ("PeakWorkingSetSize", ctypes.c_size_t), ("WorkingSetSize", ctypes.c_size_t),
+                            ("QuotaPeakPagedPoolUsage", ctypes.c_size_t), ("QuotaPagedPoolUsage", ctypes.c_size_t),
+                            ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t), ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+                            ("PagefileUsage", ctypes.c_size_t), ("PeakPagefileUsage", ctypes.c_size_t),
+                            ("PrivateUsage", ctypes.c_size_t)]
+            c = PMC(); c.cb = ctypes.sizeof(PMC)
+            # Typed handle + K32 entry point: the untyped call truncated the
+            # 64-bit pseudo-handle and read 0 every time (measured).
+            k = ctypes.WinDLL("kernel32")
+            k.GetCurrentProcess.restype = wintypes.HANDLE
+            f = k.K32GetProcessMemoryInfo
+            f.argtypes = [wintypes.HANDLE, ctypes.c_void_p, wintypes.DWORD]
+            f.restype = wintypes.BOOL
+            if not f(k.GetCurrentProcess(), ctypes.byref(c), c.cb):
+                return 0.0
+            return c.PrivateUsage / 1e9
+        with open("/proc/self/status") as f:
+            for line in f:
+                if line.startswith("VmRSS:"):
+                    return int(line.split()[1]) / 1e6
+    except Exception:
+        return 0.0
+    return 0.0
+
+
+RECYCLE_GB = float(os.environ.get("UNITY_IMAGE_RECYCLE_GB", "20") or 20)
+
+
+def _maybe_recycle():
+    gb = _private_gb()
+    if RECYCLE_GB > 0 and gb > RECYCLE_GB:
+        _log("RECYCLE — private memory %.1f GB > %.0f GB (offload leak); fresh worker on the next render" % (gb, RECYCLE_GB))
+        threading.Timer(0.3, lambda: os._exit(3)).start()
+
+
+def _supervise():
+    import subprocess
+    import sys
+    env = dict(os.environ, UNITY_IMAGE_WORKER="1")
+    while True:
+        rc = subprocess.call([sys.executable, "-u", os.path.abspath(__file__)] + sys.argv[1:], env=env)
+        if rc != 3:
+            sys.exit(rc)
+        time.sleep(1.0)
+
+
 if __name__ == "__main__":
-    main()
+    if os.environ.get("UNITY_IMAGE_WORKER") == "1":
+        main()
+    else:
+        _supervise()
