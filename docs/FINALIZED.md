@@ -61003,4 +61003,18 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
 
 - [x] ✅ **CLOSED BUILT 2026-11-25.** **STEPFUSE — the cortex tick walked every neuron five times after the neuron update.** Gee 2026-11-25, verbatim: *"both"* · *"get to it"* · *"stop stopping and do the work"* · *"this is the third time ivbe had to tell you to do the fucking work"*. Live CPU profile on `2f9e3377`: `step js/brain/cluster.js` = **45.4%** of the main thread. Every compose tick of her inner voice and chat runs it over the ~40M-neuron language cortex, which starved chat (`/ws handshakes … stalled`, no `Text (` since 15:42) and stretched her thoughts to 40–122 s. After `neurons.step` it made five full separate passes: prediction error, prediction EMA, column voltage sums, spike count, mean voltage. Fix (`js/brain/cluster.js` `step`): ONE fused pass with identical arithmetic and per-neuron order (the error reads the previous prediction before the EMA overwrites it, as before). Memory is touched once instead of five times. Verified: `node --check`, ESM import, bundle rebuilt. Server + browser; lands on the next press. Successor (live on the board): **COMPOSEONCARD**. The currents build and `neurons.step` are still CPU passes.
 
+- [x] ✅ **CLOSED BUILT 2026-11-25.** **STEPBUF — every cortex tick allocated a ~320 MB current buffer, then made a second full pass over the cortex to decay it.** Gee 2026-11-25, verbatim: *"why is the pod at 0% util FUCK we worked on this for 12 hours yesterday and your telling me you never fixed it.. whats the pod buffer show, why isnt it being fed"* · *"fix everything ive mentioned"*.
+  - **Measured live on `a2b044ac`:**
+    - card socket buffer 0 MB;
+    - `lessonPacing.sent` 24 for the whole boot;
+    - pod `0 ×15`.
+    - **30 s CPU profile:** `step` 14.8%, `stepAwait` 5.1%, garbage collector 4.8%, `readRelationBand` 6.3%, `saveWeights` 5.9%.
+    - **Conclusion:** the card is idle because the work stays on the brain's CPU thread.
+  - **Fix (`js/brain/cluster.js` `step()`):**
+    - the per-tick `new Float64Array(size)` is now one persistent buffer;
+    - the external-current decay and projection reset run inside the current-build pass, which is where each value is read.
+    - Same arithmetic.
+  - **Verified:** ESM import.
+  - ⚠ **Not the whole answer.** The step still runs on the CPU, so the card stays underfed until the step itself moves to the card. That work stays open as **COMPOSEONCARD** on the board.
+
 
