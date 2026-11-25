@@ -410,7 +410,7 @@ const cleaningStats = {
   apparatusByClass: {
     indexref: 0, webaddr: 0, credit: 0, licence: 0, bibid: 0, citation: 0,
     transnote: 0, errata: 0, tablerule: 0, pagecite: 0, initrun: 0,
-    attrdebris: 0, placeholder: 0,
+    attrdebris: 0, placeholder: 0, catalog: 0,
   },
 };
 
@@ -455,7 +455,41 @@ function storyToSentences(story, post) {
     const t = post ? post(credited) : credited;
     if (t) out.push(t);
   }
-  return out;
+  return dropCatalogRuns(out);
+}
+
+// ⛔ BOOK LISTS ARE NOT SENTENCES. Gutenberg books end in reading lists
+// ("driggs, lawrence la tourette, adventures of arnold adair, american ace .")
+// and academic sources in bibliographies ("ginev, dimitri, essays in the
+// hermeneutics of science, routledge, 2018."). Taught as prose they train
+// author names and title fragments as word order. An ENTRY is judged by shape,
+// never by a list of names: `surname, given names (≤4 words), rest`, no ? or !,
+// a rest that does not open with "and"/"or" (an inline series, not a title), and
+// a reference mark — the catalog's spaced " ." ending, a year, or vol./ed./pp./
+// trans. Only RUNS of two or more consecutive entries go; a lone match stays,
+// because one line shaped like that can be prose and a list never is one line.
+// Measured on the full corpus (3.7M sentences) before shipping: 1,172 dropped in
+// 290 runs, a 30-line random sample read by hand: bibliography entries; the one
+// prose line found had a rest opening with "and" and is excluded by that rule.
+function catalogEntry(s) {
+  if (/[?!]/.test(s)) return false;
+  const m = /^([a-z][a-z'’\-]+), ([^,]{2,60}), ([^,].{2,})$/i.exec(s);
+  if (!m || m[2].trim().split(/\s+/).length > 4) return false;
+  if (/^(and|or)\s/i.test(m[3])) return false;
+  return /\s\.$/.test(s) || /\b(1[5-9]|20)\d\d\b/.test(s) || /\b(vol|ed|eds|pp|trans)\.(\s|$)/i.test(s);
+}
+function dropCatalogRuns(list) {
+  if (list.length < 2) return list;
+  const flag = list.map(catalogEntry);
+  const keep = [];
+  for (let i = 0; i < list.length;) {
+    if (!flag[i]) { keep.push(list[i]); i++; continue; }
+    let k = i; while (k < list.length && flag[k]) k++;
+    if (k - i >= 2) { cleaningStats.apparatus += k - i; cleaningStats.apparatusByClass.catalog += k - i; }
+    else keep.push(list[i]);
+    i = k;
+  }
+  return keep;
 }
 
 /**

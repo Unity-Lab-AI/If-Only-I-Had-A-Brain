@@ -638,7 +638,11 @@ if exist "%UNITY_IMAGE_CHECKPOINT%" (
         REM environment, so nothing nests inside the cmd /c string.
         start "unity-image-engine (leave running)" /min /D "%~dp0..\server" cmd /c "python -u image-render.py --port %UNITY_IMAGE_PORT% --device auto >> image-render.log 2>&1"
     ) else (
-        echo   [eyes] image renderer already listening on %UNITY_IMAGE_PORT% - left alone.
+        REM A leftover renderer is REPLACED, never kept - see Savestart.bat.
+        echo   [eyes] old image renderer on %UNITY_IMAGE_PORT% - shutting it down and starting a fresh one ...
+        curl -s -m 5 -X POST http://127.0.0.1:%UNITY_IMAGE_PORT%/shutdown >nul 2>&1
+        timeout /t 4 /nobreak >nul
+        start "unity-image-engine (leave running)" /min /D "%~dp0..\server" cmd /c "python -u image-render.py --port %UNITY_IMAGE_PORT% --device auto >> image-render.log 2>&1"
     )
 ) else (
     echo   [eyes] her image model is NOT at %UNITY_IMAGE_CHECKPOINT%

@@ -385,7 +385,13 @@ if exist "%UNITY_IMAGE_CHECKPOINT%" (
         echo   [eyes] starting her image renderer on %UNITY_IMAGE_PORT% ...
         start "unity-image-engine (leave running)" /min /D "%~dp0..\server" cmd /c "python -u image-render.py --port %UNITY_IMAGE_PORT% --device auto >> image-render.log 2>&1"
     ) else (
-        echo   [eyes] image renderer already listening on %UNITY_IMAGE_PORT% - left alone.
+        REM A renderer left over from the last run is REPLACED, never kept: its
+        REM memory only grows - the offload leak - so keeping it across presses is how
+        REM one process reached 128 GB. Asked to shut down, then a fresh one starts.
+        echo   [eyes] old image renderer on %UNITY_IMAGE_PORT% - shutting it down and starting a fresh one ...
+        curl -s -m 5 -X POST http://127.0.0.1:%UNITY_IMAGE_PORT%/shutdown >nul 2>&1
+        timeout /t 4 /nobreak >nul
+        start "unity-image-engine (leave running)" /min /D "%~dp0..\server" cmd /c "python -u image-render.py --port %UNITY_IMAGE_PORT% --device auto >> image-render.log 2>&1"
     )
 ) else (
     echo   [eyes] her image model is NOT at %UNITY_IMAGE_CHECKPOINT% - no pictures until it is.
