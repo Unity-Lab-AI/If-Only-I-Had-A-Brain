@@ -28622,7 +28622,7 @@ export class Curriculum {
     const lines = selfPronounLessons();
     const reps = opts.reps ?? 8;
     try {
-      if (typeof this._teachConcreteSentences === 'function') {
+      if (lines.length && typeof this._teachConcreteSentences === 'function') {
         await this._teachConcreteSentences({ sentences: lines, reps, label: 'SELF-PRONOUN' });
       }
       // Every self word bound to her name, both directions, on the identity channel.
@@ -28631,7 +28631,7 @@ export class Curriculum {
       if (typeof this._teachAssociationPairs === 'function') {
         await this._teachAssociationPairs(pairs, { reps, label: 'SELF-PRONOUN-AGENT', relationTagId: 15 });
       }
-      this._hb(`[Curriculum] SELFFRAME — self-pronoun grounding taught: ${lines.length} lines + ${pairs.length} identity bindings. "i" / "me" / "my" / "myself" / "mine" now resolve to unity in her weights, which is what every first-person lesson depends on.`);
+      this._hb(`[Curriculum] SELFFRAME — self-pronoun grounding: ${pairs.length} identity bindings (i / me / my / myself / mine ↔ unity); no stock lines.`);
       // OTHERMINDS (2026-08-29) — the contrast half, at the SAME chokepoint:
       // other minds / living kingdoms / unfeeling matter / physical law,
       // trained beside the self-grounding so first-person perspective and
@@ -28642,8 +28642,10 @@ export class Curriculum {
       if (typeof perspectiveContrastLessons === 'function' && typeof this._teachConcreteSentences === 'function') {
         const pLines = perspectiveContrastLessons();
         const pReps = Math.max(2, Math.floor(reps * 0.75));
-        await this._teachConcreteSentences({ sentences: pLines, reps: pReps, label: 'OTHERMINDS' });
-        this._hb(`[Curriculum] OTHERMINDS — perspective-contrast taught beside the self frame: ${pLines.length} lines (other minds, living kingdoms, unfeeling matter, physical law) at reps ${pReps}.`);
+        if (pLines.length) {
+          await this._teachConcreteSentences({ sentences: pLines, reps: pReps, label: 'OTHERMINDS' });
+          this._hb(`[Curriculum] OTHERMINDS — perspective-contrast taught beside the self frame: ${pLines.length} lines (other minds, living kingdoms, unfeeling matter, physical law) at reps ${pReps}.`);
+        }
       }
     } catch { /* non-fatal */ }
     return { taught: lines.length };
