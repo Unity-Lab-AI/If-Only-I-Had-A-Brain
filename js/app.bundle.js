@@ -16685,6 +16685,10 @@ var CLUSTER_EMIT_MIXIN = {
     if (!answer) {
       return { derived: false, concept: key, reason: "no-derivation (honest gap)" };
     }
+    if (this._isLoopedSentence(answer)) {
+      this._derivedLoopRejects = (this._derivedLoopRejects | 0) + 1;
+      return { derived: false, concept: key, reason: "looped emission (the same words cycling) \u2014 not an answer, not stored" };
+    }
     const result = { derived: true, concept: key, answer, hedge: true, persisted: false };
     this._derivedMemories.set(key, result);
     if (typeof opts.commit === "function") {
@@ -16710,6 +16714,18 @@ var CLUSTER_EMIT_MIXIN = {
    * @param {Array<{concept:string, answer:string, corrected?:boolean}>} rows
    * @returns {{loaded:number, refused:number}}
    */
+  /** True when any run of 2+ consecutive words appears twice in `s` (emission cycling). */
+  _isLoopedSentence(s) {
+    const w = String(s || "").toLowerCase().match(/[a-z']+/g) || [];
+    if (w.length < 4) return false;
+    const seen = /* @__PURE__ */ new Set();
+    for (let i = 0; i + 1 < w.length; i++) {
+      const bi = w[i] + " " + w[i + 1];
+      if (seen.has(bi)) return true;
+      seen.add(bi);
+    }
+    return false;
+  },
   loadDerivedMemories(rows) {
     if (!this._derivedMemories) this._derivedMemories = /* @__PURE__ */ new Map();
     let loaded = 0, refused = 0;
@@ -16718,6 +16734,10 @@ var CLUSTER_EMIT_MIXIN = {
       const answer = r && r.answer ? String(r.answer) : "";
       if (!key || !answer) continue;
       if (this._isSensitiveGapTopic(key)) {
+        refused++;
+        continue;
+      }
+      if (!(r && r.corrected) && this._isLoopedSentence(answer)) {
         refused++;
         continue;
       }
