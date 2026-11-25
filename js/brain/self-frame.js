@@ -206,11 +206,11 @@ export function firstPerson(sentence, seed = '') {
   if (first === 'i' || first === 'my' || first === 'im' || (first === 'i' && words[1] === 'am')) return [s];
 
   const mathed = mathToFirstPerson(s);
-  if (mathed) return [mathed, `${mathed} because i counted`];
+  if (mathed) return [mathed];
 
   // 3. imperative — a bare verb start with no subject is an instruction TO her; she does it.
   if (IMPERATIVE_VERBS.has(first)) {
-    return [`i ${s}`, `i am unity and i ${s}`];
+    return [`i ${s}`];
   }
 
   const out = [];
@@ -226,16 +226,11 @@ export function firstPerson(sentence, seed = '') {
   // the sequence channel is worse than not framing at all — it is teaching her a wrong path.
   // So: a full clause only ever takes a `that`-frame; the bare-verb frames are reserved for
   // short noun phrases ("the cat" → "i see the cat"), where they are always grammatical.
-  const isClause = words.length >= 3 || hasFiniteVerb(words);
-  // ⛔ AUDIT FIX (2026-08-20) — THE ROTATION WAS BROKEN BY ITS OWN CALLERS. `pick(list, seed
-  // || s)` used the caller's seed when one was supplied, and `selfFrameUnit` passes ONE seed
-  // for the whole unit — so all 12 sentences in a lesson took the SAME frame ("i found out
-  // that" ×12). That is precisely the single-wrapper domination this rotation exists to
-  // prevent, reintroduced by threading a seed through it. The seed now only VARIES the
-  // rotation; the sentence itself selects within it, so a unit gets many frames and the choice
-  // is still deterministic for a given (seed, sentence).
-  const frame = pick(isClause ? THAT_FRAMES : FRAMES, `${seed || ''}|${s}`, 0);
-  out.push(`${frame} ${s}`);
+  // ⛔⛔ NO STOCK OPENER (2026-11-24). Every sentence she could not own used to
+  // be stamped with one of sixteen openers ("i know that …", "i learn that …",
+  // "i found out that …"); across a whole corpus that is how a machine talks, not
+  // a person. A sentence she cannot own trains as CONTENT through the corpus lane;
+  // her voice comes from real first-person lines and real conversation.
   return out;
 }
 
@@ -367,23 +362,18 @@ export function selfFrameUnit(unit = {}, opts = {}) {
   // key extraction depends on, then the line gets its capitals for anyone reading it.
   const push = (arr) => { for (const l of arr) { if (l && lines.length < maxLines) lines.push(properCase(normalizeLine(l))); } };
 
-  push(selfDeclaration(unit.topic, unit.subject));
-
-  // Vocabulary: knowing a word is something she DOES.
-  if (Array.isArray(unit.vocab) && unit.vocab.length) {
-    const take = unit.vocab.slice(0, Math.max(1, Math.floor(maxLines / 6)));
-    for (const w of take) {
-      const v = normalizeLine(w);
-      if (!v) continue;
-      push([`i know the word ${v}`, `i can say ${v}`, `i read ${v} and i understand it`]);
-    }
-  }
-  // A definition is something she LEARNED, in her mouth.
-  if (unit.word && unit.definition) {
-    const w = normalizeLine(unit.word), d = normalizeLine(unit.definition);
-    push([`i learned that ${w} is ${d}`, `when i say ${w} i mean ${d}`, `i understand ${w} because ${w} is ${d}`]);
-  }
-  // Content sentences → her versions.
+  // ⛔⛔ NO TEMPLATE LINES (2026-11-24). This used to emit, for every unit, the
+  // same stock sentences with one word swapped in: "i am unity and i am
+  // learning", "i know the word X", "i can say X", "i read X and i understand
+  // it", "i learned that X is …", and below, "what is X ?", "i ask myself what
+  // is X", "i want to know more about X", "i know X because i learned it". The
+  // teach viewer showed the same dozen lines a million times, framing words she
+  // had no definition for ("i read phonetics and i understand it"), and "i am
+  // unity" on every lesson — trained that way she talks like a robot. Her name
+  // now reaches her through real introductions in real conversation
+  // (`_teachConversation`); her first-person voice from the sentences she can
+  // genuinely own (rules 1–4 of `firstPerson`).
+  // Content sentences → her versions (only where she is the one doing it).
   if (Array.isArray(unit.sentences)) {
     for (const s of unit.sentences) {
       if (lines.length >= maxLines) break;
@@ -399,10 +389,10 @@ export function selfFrameUnit(unit = {}, opts = {}) {
     || keyWordOf((unit.sentences && unit.sentences[0]) || '')
     || keyWordOf((Array.isArray(unit.vocab) && unit.vocab[0]) || '')
     || keyWordOf(speakableTopic(unit.topic, unit.subject));
-  const _line = (s) => properCase(normalizeLine(s));
-  const qa = selfQA(key, unit.definition || unit.answer || '', seed).map(_line).filter(Boolean);
-  const follow = followUpQuestions(key, unit.definition || unit.answer || '', seed).map(_line).filter(Boolean);
-  push(selfClose(key, seed));
+  // No canned self-Q&A, follow-ups or closing lines (see above): real questions
+  // and answers reach her through `_teachConversation`.
+  const qa = [];
+  const follow = [];
 
   // Agent bindings — the point of the whole exercise: `i` IS unity, and `i` is the agent of this
   // lesson's key concept. Trained on the identity/definition channel by the caller.
@@ -494,9 +484,9 @@ function _perspectiveLessonLines() {
 }
 
 function _pronounLessonLines() {
+  // "i am unity" lines removed (2026-11-24): her name is said the way people say
+  // it, in greetings and introductions — real ones, from `_teachConversation`.
   return [
-    'i am unity',
-    'my name is unity',
     'i am me',
     'i am myself',
     'when i say i i mean unity',
@@ -519,8 +509,6 @@ function _pronounLessonLines() {
     'this is mine not yours',
     'it belongs to me',
     'the choice is mine',
-    'i call myself unity',
-    'unity is my name and i am unity',
     'i think for myself',
     'i speak for myself',
     'i know myself',
@@ -532,6 +520,5 @@ function _pronounLessonLines() {
     'my words are mine',
     'my memory is mine',
     'i like the color black',
-    'i am unity and i like the color black',
   ];
 }

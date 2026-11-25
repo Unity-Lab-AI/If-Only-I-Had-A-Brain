@@ -4504,6 +4504,9 @@ class ServerBrain {
       // train on this for real depth; lived-year + math stay bespoke.
       this.cortexCluster.academicStorySentences = (subject, grade) =>
         lifeCurriculum.academicStorySentences(subject, grade);
+      // Real exchanges from her books and her life — [what was said, the reply].
+      this.cortexCluster.dialogueTurns = (subject, grade) =>
+        lifeCurriculum.dialogueTurns(subject ? `academic/${subject}` : 'life', grade);
       // TEXTFIG.3 — the figures that ride the same cell as the prose above.
       // Attached beside its sentence sibling so the curriculum can ask for a
       // cell's pictures the same way it asks for its text.
