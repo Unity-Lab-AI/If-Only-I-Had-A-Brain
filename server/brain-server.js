@@ -11764,7 +11764,19 @@ const httpServer = http.createServer((req, res) => {
       const vBin = WEIGHTS_FILE.replace(/\.json$/, `-v${i}.bin`);
       try {
         if (fs.existsSync(vFile)) {
-          const data = JSON.parse(fs.readFileSync(vFile, 'utf8'));
+          // ⛔ Each slot's JSON is ~150 MB. It was read and parsed on EVERY
+          // request for four fields, and a polling page made that 31% of the
+          // main thread (measured: `/versions` line, 23% self + 8% readFileUtf8)
+          // while the card waited for lessons. Parsed once per file change —
+          // keyed on size + mtime — and the four fields cached.
+          const _st = fs.statSync(vFile);
+          const _key = `${_st.size}:${_st.mtimeMs}`;
+          const _vc = (globalThis.__versionsCache || (globalThis.__versionsCache = {}));
+          if (!_vc[vFile] || _vc[vFile].key !== _key) {
+            const _d = JSON.parse(fs.readFileSync(vFile, 'utf8'));
+            _vc[vFile] = { key: _key, data: { version: _d.version, savedAt: _d.savedAt, time: _d.time, totalNeurons: _d.totalNeurons } };
+          }
+          const data = _vc[vFile].data;
           let binBytes = 0;
           try { if (fs.existsSync(vBin)) binBytes = fs.statSync(vBin).size; } catch {}
           versions.push({ slot: i, version: data.version, savedAt: data.savedAt, time: data.time, neurons: data.totalNeurons || null, binBytes });
