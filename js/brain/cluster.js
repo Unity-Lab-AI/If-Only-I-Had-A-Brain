@@ -4185,8 +4185,13 @@ export class NeuronCluster {
     // clusters skip this with zero overhead.
     this._propagateCrossRegions();
 
-    // Build input currents
-    const currents = new Float64Array(size);
+    // Build input currents. ⛔ ONE BUFFER FOR THE LIFE OF THE CLUSTER: this
+    // allocated a fresh Float64Array(size) every tick — ~320 MB at the ~40M-neuron
+    // cortex, every tick of every word she composes, then thrown to the garbage
+    // collector. Every element is overwritten by the build loop below before
+    // anything reads it, and the neuron step does not keep a reference.
+    if (!this._currentsBuf || this._currentsBuf.length !== size) this._currentsBuf = new Float64Array(size);
+    const currents = this._currentsBuf;
     // One-tick-lag GPU intra-synapse propagate. If GPU proxy is
     // ready AND we have cached currents from the previous
     // tick's async dispatch, use them. Otherwise fall back to CPU sparse
@@ -4315,13 +4320,24 @@ export class NeuronCluster {
       }
     }
 
+    // ⭐ The external-current decay and the projection reset ride THIS pass:
+    // each value is read here and nowhere else in the tick, so decaying it right
+    // after the read is the same arithmetic as the separate full pass that used
+    // to run after the neuron update — one walk over the cortex instead of two.
+    const _ext = this.externalCurrent;
+    const _inc = this._incomingProjections;
+    const _noiseAmp = this.noiseAmplitude;
+    const _errCorr = this.errorCorrection;
     for (let i = 0; i < size; i++) {
+      const _e = _ext[i];
       let cur = synapticCurrents[i]
-        + this.externalCurrent[i]
-        + this._incomingProjections[i]
+        + _e
+        + _inc[i]
         + effectiveDrive
-        + (_lifNoiseRand() - 0.5) * this.noiseAmplitude
-        + this.errorCorrection;  // cerebellum correction signal
+        + (_lifNoiseRand() - 0.5) * _noiseAmp
+        + _errCorr;  // cerebellum correction signal
+      _ext[i] = _e * 0.9;
+      _inc[i] = 0;
       if (k5Active) {
         // Column-mean voltage pull — all column members share this
         // contribution → coherence without per-neuron computation.
@@ -4418,11 +4434,8 @@ export class NeuronCluster {
     // Mean voltage for monitoring (vSum came from the single pass above)
     this.lastMeanVoltage = vSum / size;
 
-    // Decay external currents
-    for (let i = 0; i < size; i++) {
-      this.externalCurrent[i] *= 0.9;
-      this._incomingProjections[i] = 0; // reset for next step
-    }
+    // External-current decay + projection reset happen inside the current-build
+    // pass above (read once, decayed once).
 
     // T17.3.e — Fire async GPU propagates for NEXT tick's intra +
     // cross-region currents. Fire-and-forget: promises resolve and
