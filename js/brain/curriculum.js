@@ -21939,7 +21939,14 @@ export class Curriculum {
       }
       const sp = this._teachStageProfile || (this._teachStageProfile = {});
       const f = sp.cardLesson || (sp.cardLesson = { fastCalls: 0, cpuCalls: 0, fastPairs: 0 });
-      if (cluster._gpuProxy.teachLesson({ ..._lessonBase, semGroup: sg, motorGroup: mg, pairs: lp })) {
+      // Merged across calls when the proxy offers it (one frame carries many
+      // words' lessons through the in-flight window); awaited so this call's
+      // next step still follows its own lesson onto the wire.
+      const _spec = { ..._lessonBase, semGroup: sg, motorGroup: mg, pairs: lp };
+      const _sent = (typeof cluster._gpuProxy.teachLessonMerged === 'function')
+        ? await cluster._gpuProxy.teachLessonMerged(_spec)
+        : cluster._gpuProxy.teachLesson(_spec);
+      if (_sent) {
         trained += acc.t; skipped += acc.sk; antiFires += acc.af; wtaApplied += acc.wa; semWtaApplied += acc.swa;
         _semActiveSum += acc.semAct; _semActiveN += acc.semN; _psN += acc.t;
         if (acc.ls) { _lastSemFeat = acc.ls; _lastMotorFeat = acc.lm; }
@@ -28924,7 +28931,10 @@ export class Curriculum {
       const regs = [], keep = [];
       _pl.regionNames.forEach((nm, i) => { if (nm && _plRegions[i]) { regs.push([nm, _pl.groups[i] || 1, _plRegions[i].end - _plRegions[i].start]); keep.push(i); } });
       if (typeof cluster._gpuProxy.lessonSlot === 'function') { try { await cluster._gpuProxy.lessonSlot(); } catch { /* best-effort pacing */ } }
-      const sent = cluster._gpuProxy.teachPatternLesson({ cluster: cluster.name, twin: 'langCortex', regions: regs, ops: _pl.ops, items: items.map((it) => keep.map((i) => it[i])) });
+      const _pspec = { cluster: cluster.name, twin: 'langCortex', regions: regs, ops: _pl.ops, items: items.map((it) => keep.map((i) => it[i])) };
+      const sent = (typeof cluster._gpuProxy.teachPatternLessonMerged === 'function')
+        ? await cluster._gpuProxy.teachPatternLessonMerged(_pspec)
+        : cluster._gpuProxy.teachPatternLesson(_pspec);
       const sp = this._teachStageProfile || (this._teachStageProfile = {});
       const f = sp.patternLesson || (sp.patternLesson = { lessons: 0, items: 0, refused: 0 });
       if (sent) { f.lessons++; f.items += items.length; } else { f.refused++; }

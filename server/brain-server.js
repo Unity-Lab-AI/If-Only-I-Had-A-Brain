@@ -4078,6 +4078,10 @@ class ServerBrain {
         // v0.3.44 — a whole rep of an association lesson in one frame; the card
         // expands it into the per-pair step sequence. True only when SENT.
         teachLesson: (spec)                                 => this.gpuTeachLesson(spec),
+        // Same lesson, gathered with other calls' identical-setup lessons into
+        // one frame; resolves true once the merged frame is SENT.
+        teachLessonMerged: (spec)                           => this.gpuTeachLessonMerged(spec),
+        teachPatternLessonMerged: (spec)                    => this.gpuTeachPatternLessonMerged(spec),
         lessonCapable: ()                                   => this._donorSpeaksLessonNow(),
         // v0.3.53 — a run of multi-region items (the sentence lane's per-word
         // step) in one frame; acked like a lesson. True only when SENT.
