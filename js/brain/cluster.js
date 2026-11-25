@@ -4043,8 +4043,7 @@ export class NeuronCluster {
     const spikes = this.lastSpikes;
     if (this.synapses && spikes) {
       const key = `${this.name}_intraSynapses`;
-      const pSpikes = new Uint32Array(spikes.length);
-      for (let i = 0; i < spikes.length; i++) pSpikes[i] = spikes[i] ? 1 : 0;
+      const pSpikes = this._preSpikePayload(key, spikes);
       try {
         const p = this._gpuProxy.propagate(key, pSpikes);
         if (p && typeof p.then === 'function') {
@@ -4082,10 +4081,7 @@ export class NeuronCluster {
           if (proj._gpuBound && this._gpuProxy.propagateBound) {
             p = this._gpuProxy.propagateBound(key);
           } else {
-            const srcSpikes = this.regionSpikes(src);
-            const pSpikes = new Uint32Array(srcSpikes.length);
-            for (let i = 0; i < srcSpikes.length; i++) pSpikes[i] = srcSpikes[i] > 0 ? 1 : 0;
-            p = this._gpuProxy.propagate(key, pSpikes);
+            p = this._gpuProxy.propagate(key, this._preSpikePayload(key, this.regionSpikes(src)));
           }
           if (p && typeof p.then === 'function') {
             const cache = this._cachedCrossCurrents;
@@ -4512,8 +4508,18 @@ export class NeuronCluster {
   _preSpikePayload(matrixName, spikes) {
     if (!spikes || spikes.length === 0) return EMPTY_PRE_SPIKES;
     if (this._isBoundMatrix(matrixName)) return EMPTY_PRE_SPIKES;
-    const out = new Uint32Array(spikes.length);
-    for (let i = 0; i < spikes.length; i++) out[i] = spikes[i] > 0 ? 1 : 0;
+    // ⛔⛔ ACTIVE INDICES, NEVER A DENSE 0/1 ARRAY. This built one u32 per
+    // neuron of the whole region every tick — at the ~40M-neuron cortex that is
+    // up to ~160 MB queued to the card per intra propagate, which is what held
+    // the card socket's send buffer at 46 MB, shed teaching frames, refused the
+    // gate probes onto the CPU and stretched her replies past a minute. And the
+    // native donor's type-2 propagate reads its payload as the ACTIVE INDEX
+    // list (the gate probe and the bound-matrix rebuild already ship it that
+    // way), so the dense form was also read wrongly. Same frame, indices only.
+    let n = 0;
+    for (let i = 0; i < spikes.length; i++) if (spikes[i] > 0) n++;
+    const out = new Uint32Array(n);
+    for (let i = 0, w = 0; i < spikes.length; i++) if (spikes[i] > 0) out[w++] = i;
     return out;
   }
 
