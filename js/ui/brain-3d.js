@@ -2897,6 +2897,7 @@ export class Brain3D {
   }
 
   _updateNotifications(mvp, canvas) {
+    this._notifCanvas = canvas;
     // Pass 1 — age, project, fade, reap. Screen position is STORED, not
     // applied: two popups whose clusters project near each other would land
     // on top of one another, and that can only be resolved once every
@@ -2998,10 +2999,23 @@ export class Brain3D {
   }
 
   _placeNotification(n) {
-    if (!Number.isFinite(n.sx)) return;
-    const y = Number.isFinite(n.ty) ? n.ty : n.sy;
-    if (!Number.isFinite(y)) return;
-    n.el.style.left = n.sx + 'px';
+    // ⛔ A POPUP IS ALWAYS INSIDE THE VIEW. Each bubble follows its cluster's
+    // projected position, and only the TOP edge was ever clamped — so when the
+    // rotation carried a cluster near the left/right/bottom edge (or behind the
+    // camera, which never yields a position at all) the bubble sat outside the
+    // overflow-hidden layer and was clipped: "half the time they are invisible".
+    // It now stays as close to its cluster as the view allows, and a bubble that
+    // has never projected waits at the view's centre instead of at 0,0.
+    const c = this._notifCanvas;
+    const vw = (c && c.clientWidth) || 0, vh = (c && c.clientHeight) || 0;
+    const EDGE = 8;
+    if (!n.w || !n.h) { n.h = n.el.offsetHeight || 0; n.w = n.el.offsetWidth || 0; }
+    let x = Number.isFinite(n.sx) ? n.sx : (vw ? vw / 2 : NaN);
+    let y = Number.isFinite(n.ty) ? n.ty : (Number.isFinite(n.sy) ? n.sy : (vh ? vh / 2 : NaN));
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    if (vw) x = Math.min(Math.max(x, EDGE + n.w / 2), Math.max(EDGE + n.w / 2, vw - EDGE - n.w / 2));
+    if (vh) y = Math.min(Math.max(y, EDGE + n.h), Math.max(EDGE + n.h, vh - EDGE));
+    n.el.style.left = x + 'px';
     n.el.style.top = y + 'px';
   }
 
