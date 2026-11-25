@@ -284,7 +284,10 @@ if exist "%ProgramFiles%\Tailscale\tailscale-ipn.exe" (
     tasklist /FI "IMAGENAME eq tailscale-ipn.exe" 2>nul | "%SystemRoot%\System32\find.exe" /i "tailscale-ipn.exe" >nul
     if errorlevel 1 (
         echo   [tunnel] Tailscale tray app not running - starting it so the Funnel stays up.
-        start "" "%ProgramFiles%\Tailscale\tailscale-ipn.exe"
+        REM Started through PowerShell, NOT "start": tailscale-ipn inherited this
+        REM launcher's console, printed its ui: lines into it, and kept the window
+        REM alive after the launcher exited - the window that never closed.
+        powershell -NoProfile -Command "Start-Process -FilePath '%ProgramFiles%\Tailscale\tailscale-ipn.exe' -WindowStyle Hidden" >nul 2>&1
     ) else (
         echo   [tunnel] Tailscale tray app running - public path is up.
     )
@@ -455,15 +458,14 @@ echo   Also close the http://localhost:7525 browser tabs - compute.html
 echo   keeps WebGPU running even without the server.
 echo.
 
-REM Keep this launcher window open for manual commands - but only when a
-REM person double-clicked it. Launched by the dashboard's control plane
-REM (UAL_CTL_NONINTERACTIVE=1) it closes itself when done; her brain, voice
-REM and eyes run in their own windows and are not affected. "exit 0", never a
+REM Her brain, voice and eyes run in their own windows and are not affected
+REM by this window closing. "exit 0", never a
 REM bare "exit": a bare exit returns the last command's errorlevel (the bind
 REM wait's findstr leaves 1), and Windows Terminal keeps a tab open on non-zero.
-if defined UAL_CTL_NONINTERACTIVE exit 0
-cmd /k
-goto :eof
+REM ALWAYS closes now, however it was started. The "cmd /k" that kept it
+REM open on a hand launch or relaunch left a dead window every time. Error paths
+REM above still pause so a failed launch keeps its reason on screen.
+exit 0
 
 :err_npm
 echo.
