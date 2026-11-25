@@ -309,6 +309,22 @@ const SERVER_CHAT_MIXIN = {
     }
   },
 
+  // Light one speaker band on her relation region ('other' = someone is
+  // talking to her, 'self' = she is talking), clearing the previous state, on
+  // the CPU copy and the card alike — the same writer the lessons use.
+  _speakerState(who) {
+    const cur = this.curriculum, cl = this.cortexCluster;
+    const region = cl && cl.regions && cl.regions.fineType;
+    if (!cur || !region || typeof cur._writeRelationTag !== 'function') return;
+    const C = cur.constructor;
+    const band = who === 'self' ? C.SPEAKER_SELF_BAND : C.SPEAKER_OTHER_BAND;
+    try {
+      if (typeof cur._clearSpikes === 'function') cur._clearSpikes(['fineType']);
+      cur._writeRelationTag(cl, region, band, true);
+      this._speakerNow = who;
+    } catch (e) { if (!this._speakerWarned) { this._speakerWarned = true; console.warn(`[Chat] speaker-state write failed: ${e && e.message}`); } }
+  },
+
   async _processAndRespondInner(text, userId) {
     // CHAT-STAGE EYES (2026-08-18) — the lag monitor prints _chatStage when
     // a loop pin lands during chat, so the next freeze names its organ.
@@ -316,6 +332,10 @@ const SERVER_CHAT_MIXIN = {
     // Inject text into brain
     this.injectText(text);
     this._lastInputTime = Date.now();
+    // WHO IS TALKING — someone else is speaking to her: the "other speaker"
+    // band lights with their words, exactly as it did while she learned to
+    // listen (CONV-HEARD trains with the same band).
+    this._speakerState('other');
 
     // 114.19fj.1 — CRITICAL — set `_lastUserInputText` on the language
     // cortex so the chat-side composeSentence path can read it.
@@ -900,6 +920,9 @@ const SERVER_CHAT_MIXIN = {
         // teach forever; cleared in finally the moment the reply lands.
         this._chatPriorityUntil = Date.now() + 60_000;
         this._chatStamp('generate');
+        // Her turn: the "she is speaking" band replaces the listener band, the
+        // state CONV-SAID trained her replies in.
+        this._speakerState('self');
         // T14.26 — `generateAsync` (NOT `generate`) so the dictionary-
         // cosine scoring loop yields to the Node event loop every 500
         // entries. Without this yield, state broadcasts and compute_batch
