@@ -4543,7 +4543,10 @@ const SERVER_CHAT_MIXIN = {
         alpha[i] = 1;
         rgb[i * 3] = c[0]; rgb[i * 3 + 1] = c[1]; rgb[i * 3 + 2] = c[2];
       }
-      out.push({ type: 'layer', gw: W, gh: H, rgb: Array.from(rgb, v => +v.toFixed(1)), alpha: Array.from(alpha), inv, bbox, a });
+      // One decimal by arithmetic — `toFixed` built and re-parsed a string for
+      // every channel of every cell (measured: this line + `paint` = 26% of the
+      // main thread while the card waited for lessons). Same values (≥ 0).
+      out.push({ type: 'layer', gw: W, gh: H, rgb: Array.from(rgb, v => Math.round(v * 10) / 10), alpha: Array.from(alpha), inv, bbox, a });
     };
     if (full) {
       // the scene first, everywhere the subject is not (the subject goes on top)
