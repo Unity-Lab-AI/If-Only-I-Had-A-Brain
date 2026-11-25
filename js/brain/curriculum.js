@@ -16722,11 +16722,15 @@ export class Curriculum {
           const _probeDeadlineMs = (typeof process !== 'undefined' && Number(process.env?.DREAM_PROBE_DEADLINE_MS) > 0)
             ? Number(process.env.DREAM_PROBE_DEADLINE_MS) : 20000;
           let _probeTimer = null;
+          let _deadlineFired = false;
           const out = await Promise.race([
             cluster._gpuProxy.gateProbe(`${cluster.name}_${projName}`, srcRegion, idx),
-            new Promise((res) => { _probeTimer = setTimeout(() => res(null), _probeDeadlineMs); }),
+            new Promise((res) => { _probeTimer = setTimeout(() => { _deadlineFired = true; res(null); }, _probeDeadlineMs); }),
           ]).finally(() => { if (_probeTimer) clearTimeout(_probeTimer); });
-          if (!out) {
+          // ⚠ Only a deadline that actually FIRED is reported as one. A null from
+          // the proxy (refused, no donor, ack timeout) used to be logged as "the
+          // ack layer's own timeout did NOT fire", which named the wrong failure.
+          if (!out && _deadlineFired) {
             // Counted and named — a probe that had to be rescued by the caller's
             // deadline means the ack layer failed to honour its own, and that is
             // a finding rather than a hiccup. Rate-limited so a bad donor cannot
