@@ -7595,7 +7595,7 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
 .b3d-lbl-wrap{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:4}
 .b3d-lbl{position:absolute;font-size:11px;letter-spacing:1.5px;font-weight:800;white-space:nowrap;transform:translate(-50%,-50%);opacity:1;padding:3px 9px;background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.25);border-radius:4px;text-shadow:0 0 6px rgba(0,0,0,1),0 0 12px currentColor;box-shadow:0 0 20px rgba(0,0,0,.6);transition:opacity .3s}
 .b3d-foot{position:absolute;bottom:8px;left:12px;right:12px;display:flex;justify-content:space-between;font-size:9px;color:#444;pointer-events:none;z-index:1}
-.b3d-notif-wrap{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:3}
+.b3d-notif-wrap{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:20}
 /* Solid bubble. The fill was .94 alpha over a blur, so two overlapping
    popups showed each other's text through the glass and read as one
    garbled block. Fully opaque + a rounded bubble radius gives each one a
@@ -8715,8 +8715,29 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
     const src = n > 1e6 ? "server" : "local-fallback";
     return `arousal:${arousal} valence:${valence} \u03A8:${psi} [${src}]`;
   }
+  /**
+   * ⛔ ON THE FRONT PAGE THE POPUPS NEED THEIR OWN LAYER. The landing brain
+   * lives in `#landing-brain` (z 0) and the title, intro and HUD panels in its
+   * sibling `#landing-overlay` (z 10), so nothing inside the brain's layer can
+   * ever paint above that text, whatever its own z-index — the popups drew
+   * UNDER the page copy, which showed straight through them ("hidden behind
+   * something", "translucent"). There they get a viewport-fixed layer of their
+   * own just above the overlay; the full-screen 3D view keeps its in-overlay one.
+   */
+  _notifWrap() {
+    const inner = this._overlay?.querySelector(".b3d-notif-wrap");
+    if (this._containerId !== "brain-3d-landing" || typeof document === "undefined") return inner;
+    if (!this._landingNotifWrap || !this._landingNotifWrap.isConnected) {
+      const w = document.createElement("div");
+      w.className = "b3d-notif-wrap";
+      w.style.cssText = "position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:11";
+      document.body.appendChild(w);
+      this._landingNotifWrap = w;
+    }
+    return this._landingNotifWrap;
+  }
   _addNotification(text, clusterIdx) {
-    const wrap = this._overlay?.querySelector(".b3d-notif-wrap");
+    const wrap = this._notifWrap();
     if (!wrap) return;
     const center = this._centers[clusterIdx] || [0, 0, 0];
     const el = document.createElement("div");
@@ -8753,6 +8774,10 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
   }
   _updateNotifications(mvp, canvas) {
     this._notifCanvas = canvas;
+    if (this._landingNotifWrap) {
+      const shown = !!(canvas && canvas.getClientRects().length);
+      this._landingNotifWrap.style.display = shown ? "" : "none";
+    }
     for (let i = this._notifications.length - 1; i >= 0; i--) {
       const n = this._notifications[i];
       n.age++;
@@ -8761,10 +8786,13 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
       n.sx = screen ? screen.x : n.sx;
       n.sy = screen ? screen.y : n.sy;
       n.visible = !!screen || Number.isFinite(n.sx);
-      const life = n.age / n.maxAge;
-      const opacity = life < 0.1 ? life * 10 : life > 0.7 ? (1 - life) / 0.3 : 1;
-      n.el.style.opacity = Math.max(0, opacity);
-      if (n.age >= n.maxAge) {
+      const nowMs = typeof performance !== "undefined" ? performance.now() : Date.now();
+      if (!n.bornMs) n.bornMs = nowMs;
+      const LIFE_MS = 1e4, IN_MS = 350, OUT_MS = 2e3;
+      const ageMs = nowMs - n.bornMs;
+      const opacity = ageMs < IN_MS ? ageMs / IN_MS : ageMs > LIFE_MS - OUT_MS ? (LIFE_MS - ageMs) / OUT_MS : 1;
+      n.el.style.opacity = Math.max(0, Math.min(1, opacity));
+      if (ageMs >= LIFE_MS) {
         n.el.remove();
         this._notifications.splice(i, 1);
       }
@@ -8820,7 +8848,20 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
         }
         if (!moved) break;
       }
-      if (viewH && y - n.h < EDGE) y = EDGE + n.h;
+      if (viewH && y - n.h < EDGE) {
+        y = EDGE + n.h;
+        for (let pass = 0; pass < placed.length + 1; pass++) {
+          let moved = false;
+          for (const p of placed) {
+            if (Math.abs(n.sx - p.sx) >= (n.w + p.w) / 2) continue;
+            if (y > p.y - p.h && y - n.h < p.y) {
+              y = p.y + GAP + n.h;
+              moved = true;
+            }
+          }
+          if (!moved) break;
+        }
+      }
       n.ty = y;
       placed.push({ sx: n.sx, y, h: n.h, w: n.w });
       this._placeNotification(n);
