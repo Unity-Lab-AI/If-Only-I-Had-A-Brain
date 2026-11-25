@@ -1338,7 +1338,7 @@ export class Brain3D {
 .b3d-lbl-wrap{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:4}
 .b3d-lbl{position:absolute;font-size:11px;letter-spacing:1.5px;font-weight:800;white-space:nowrap;transform:translate(-50%,-50%);opacity:1;padding:3px 9px;background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.25);border-radius:4px;text-shadow:0 0 6px rgba(0,0,0,1),0 0 12px currentColor;box-shadow:0 0 20px rgba(0,0,0,.6);transition:opacity .3s}
 .b3d-foot{position:absolute;bottom:8px;left:12px;right:12px;display:flex;justify-content:space-between;font-size:9px;color:#444;pointer-events:none;z-index:1}
-.b3d-notif-wrap{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:3}
+.b3d-notif-wrap{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:20}
 /* Solid bubble. The fill was .94 alpha over a blur, so two overlapping
    popups showed each other's text through the glass and read as one
    garbled block. Fully opaque + a rounded bubble radius gives each one a
@@ -2843,8 +2843,30 @@ export class Brain3D {
     return `arousal:${arousal} valence:${valence} Ψ:${psi} [${src}]`;
   }
 
+  /**
+   * ⛔ ON THE FRONT PAGE THE POPUPS NEED THEIR OWN LAYER. The landing brain
+   * lives in `#landing-brain` (z 0) and the title, intro and HUD panels in its
+   * sibling `#landing-overlay` (z 10), so nothing inside the brain's layer can
+   * ever paint above that text, whatever its own z-index — the popups drew
+   * UNDER the page copy, which showed straight through them ("hidden behind
+   * something", "translucent"). There they get a viewport-fixed layer of their
+   * own just above the overlay; the full-screen 3D view keeps its in-overlay one.
+   */
+  _notifWrap() {
+    const inner = this._overlay?.querySelector('.b3d-notif-wrap');
+    if (this._containerId !== 'brain-3d-landing' || typeof document === 'undefined') return inner;
+    if (!this._landingNotifWrap || !this._landingNotifWrap.isConnected) {
+      const w = document.createElement('div');
+      w.className = 'b3d-notif-wrap';
+      w.style.cssText = 'position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:11';
+      document.body.appendChild(w);
+      this._landingNotifWrap = w;
+    }
+    return this._landingNotifWrap;
+  }
+
   _addNotification(text, clusterIdx) {
-    const wrap = this._overlay?.querySelector('.b3d-notif-wrap');
+    const wrap = this._notifWrap();
     if (!wrap) return;
 
     const center = this._centers[clusterIdx] || [0, 0, 0];
@@ -2898,6 +2920,12 @@ export class Brain3D {
 
   _updateNotifications(mvp, canvas) {
     this._notifCanvas = canvas;
+    // The landing layer sits outside the brain's own DOM, so it follows the
+    // canvas's visibility by hand: hidden whenever the canvas is not on screen.
+    if (this._landingNotifWrap) {
+      const shown = !!(canvas && canvas.getClientRects().length);
+      this._landingNotifWrap.style.display = shown ? '' : 'none';
+    }
     // Pass 1 — age, project, fade, reap. Screen position is STORED, not
     // applied: two popups whose clusters project near each other would land
     // on top of one another, and that can only be resolved once every
@@ -2913,13 +2941,20 @@ export class Brain3D {
       n.sy = screen ? screen.y : n.sy;
       n.visible = !!screen || Number.isFinite(n.sx);
 
-      // Fade: quick appear, hold, then fade out in last 30%
-      const life = n.age / n.maxAge;
-      const opacity = life < 0.1 ? life * 10 : life > 0.7 ? (1 - life) / 0.3 : 1;
-      n.el.style.opacity = Math.max(0, opacity);
+      // ⛔ FADE BY THE CLOCK, NOT BY FRAMES. Life was 600 frames, so on a fast
+      // display (or whenever the frame rate swung) a popup lived only a few
+      // seconds and spent most of it fading — "translucent as they rise and
+      // disappear". Now: 10 s on screen, 0.35 s to appear, solid for the read,
+      // a 2 s fade at the end — the same on every display.
+      const nowMs = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      if (!n.bornMs) n.bornMs = nowMs;
+      const LIFE_MS = 10000, IN_MS = 350, OUT_MS = 2000;
+      const ageMs = nowMs - n.bornMs;
+      const opacity = ageMs < IN_MS ? ageMs / IN_MS : ageMs > LIFE_MS - OUT_MS ? (LIFE_MS - ageMs) / OUT_MS : 1;
+      n.el.style.opacity = Math.max(0, Math.min(1, opacity));
 
       // Remove when dead
-      if (n.age >= n.maxAge) {
+      if (ageMs >= LIFE_MS) {
         n.el.remove();
         this._notifications.splice(i, 1);
       }
@@ -2989,8 +3024,22 @@ export class Brain3D {
         if (!moved) break;
       }
 
-      // Never let a lifted bubble escape off the top of the view.
-      if (viewH && (y - n.h) < EDGE) y = EDGE + n.h;
+      // ⛔ NO ROOM ABOVE → STACK BELOW, NEVER CLAMP INTO A NEIGHBOUR. Clamping
+      // a lifted bubble back to the top edge dropped it onto the bubble it had
+      // just cleared, so two popups shared one spot and their text bled through
+      // each other while they faded — "translucent as they rise". When there is
+      // no room above, the bubble goes under every bubble it overlaps instead.
+      if (viewH && (y - n.h) < EDGE) {
+        y = EDGE + n.h;
+        for (let pass = 0; pass < placed.length + 1; pass++) {
+          let moved = false;
+          for (const p of placed) {
+            if (Math.abs(n.sx - p.sx) >= ((n.w + p.w) / 2)) continue;
+            if (y > p.y - p.h && (y - n.h) < p.y) { y = p.y + GAP + n.h; moved = true; }
+          }
+          if (!moved) break;
+        }
+      }
 
       n.ty = y;
       placed.push({ sx: n.sx, y, h: n.h, w: n.w });
