@@ -8752,6 +8752,7 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
     }
   }
   _updateNotifications(mvp, canvas) {
+    this._notifCanvas = canvas;
     for (let i = this._notifications.length - 1; i >= 0; i--) {
       const n = this._notifications[i];
       n.age++;
@@ -8826,10 +8827,19 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
     }
   }
   _placeNotification(n) {
-    if (!Number.isFinite(n.sx)) return;
-    const y = Number.isFinite(n.ty) ? n.ty : n.sy;
-    if (!Number.isFinite(y)) return;
-    n.el.style.left = n.sx + "px";
+    const c = this._notifCanvas;
+    const vw = c && c.clientWidth || 0, vh = c && c.clientHeight || 0;
+    const EDGE = 8;
+    if (!n.w || !n.h) {
+      n.h = n.el.offsetHeight || 0;
+      n.w = n.el.offsetWidth || 0;
+    }
+    let x = Number.isFinite(n.sx) ? n.sx : vw ? vw / 2 : NaN;
+    let y = Number.isFinite(n.ty) ? n.ty : Number.isFinite(n.sy) ? n.sy : vh ? vh / 2 : NaN;
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    if (vw) x = Math.min(Math.max(x, EDGE + n.w / 2), Math.max(EDGE + n.w / 2, vw - EDGE - n.w / 2));
+    if (vh) y = Math.min(Math.max(y, EDGE + n.h), Math.max(EDGE + n.h, vh - EDGE));
+    n.el.style.left = x + "px";
     n.el.style.top = y + "px";
   }
   _project3Dto2D(x, y, z, mvp, canvas) {
