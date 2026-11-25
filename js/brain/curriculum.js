@@ -10416,6 +10416,8 @@ export class Curriculum {
         catch (e) { if (this._hb) this._hb(`[Curriculum] _enqueueCellFigures(${subject}/${grade}) non-fatal: ${e?.message || e}`); }
         try { this._tstage?.('runner:stories'); await this._trainAcademicStories(subject, grade, ctx); this._tstage?.('runner:stories-done'); }
         catch (e) { if (this._hb) this._hb(`[Curriculum] _trainAcademicStories(${subject}/${grade}) non-fatal: ${e?.message || e}`); }
+        try { this._tstage?.('runner:conversation'); await this._teachConversation(subject, grade, ctx); this._tstage?.('runner:conversation-done'); }
+        catch (e) { if (this._hb) this._hb(`[Curriculum] _teachConversation(${subject}/${grade}) non-fatal: ${e?.message || e}`); }
         // TEXTFIG.3 / .7 — the pictures that came with this chapter's prose.
         // Runs AFTER the text so a figure is perceived while the words it
         // illustrates are the freshest thing in the cell, and so a failure
@@ -19389,6 +19391,36 @@ export class Curriculum {
    * psychology/civics; math (equational) + the lived year stay bespoke. Absent
    * corpus → trains nothing (data-absence, not a capability fallback).
    */
+  // ⭐⭐ CONVERSATION — HOW TALKING TO SOMEONE WORKS. Every other lane teaches her
+  // to narrate; nothing taught her that one person speaks and the other answers.
+  // The exchanges come out of her own books and her own life stories, in their own
+  // words (`dialogueTurns`: consecutive lines of quoted speech, title-quotes
+  // excluded): "who's there?" → "and what news with my poor cousin jack?". Each
+  // exchange trains as ONE sequence — what was said, then the reply — so the
+  // transition from the end of a line spoken to her into the start of an answer is
+  // the thing learned. No template, no fixed line: 22,912 real exchanges across
+  // the corpus, and her name reaches her the way people actually say it, in the
+  // introductions those exchanges already contain.
+  // Rides `_teachSentenceList`, so it goes to the card as pattern lessons.
+  async _teachConversation(subject, grade, ctx, opts = {}) {
+    const cluster = this.cluster;
+    if (!cluster || typeof cluster.dialogueTurns !== 'function') return { taught: 0, reason: 'no dialogue loader (server-only)' };
+    const turns = [];
+    try { for (const t of (cluster.dialogueTurns(subject, grade) || [])) turns.push(t); } catch { /* absent corpus */ }
+    // Her own lived year's conversations ride with the cell's academic ones.
+    if (!this._convLifeDone || this._convLifeDone !== grade) {
+      try { for (const t of (cluster.dialogueTurns(null, grade) || [])) turns.push(t); } catch { /* absent */ }
+      this._convLifeDone = grade;
+    }
+    if (!turns.length) return { taught: 0, reason: 'no exchanges in this cell' };
+    const seqs = turns.map(([said, reply]) => `${said} ${reply}`.replace(/\s+/g, ' ').trim()).filter(s => s.split(' ').length >= 4);
+    const reps = Number(opts.reps) > 0 ? Number(opts.reps) : 3;
+    this._hb?.(`[Curriculum] 💬 CONVERSATION ${subject}/${grade} — ${seqs.length} real exchange(s) from her books and life (what was said → the reply) × ${reps} reps.`);
+    await this._teachSentenceList(seqs, ctx, { reps, label: `CONVERSATION-${subject}-${grade}`, source: 'dialogue' });
+    this.stats.conversationExchanges = (this.stats.conversationExchanges | 0) + seqs.length;
+    return { taught: seqs.length };
+  }
+
   async _trainAcademicStories(subject, grade, ctx, opts = {}) {
     const cluster = this.cluster;
     if (!cluster || typeof cluster.academicStorySentences !== 'function') {
@@ -28507,7 +28539,9 @@ export class Curriculum {
     // than paying a whole unit per word.
     const _maxLines = Number(opts.maxLines) > 0 ? Math.min(Number(opts.maxLines), 36) : 6;
     try { f = selfFrameUnit(unit, { maxLines: _maxLines }); } catch { return { framed: 0 }; }
-    if (!f || (!f.lines.length && !f.pairs.length)) return { framed: 0 };
+    // No real line she owns → nothing to bind her self-words to (a bare vocab
+    // word with no sentence used to get `i`/`unity` bound to it regardless).
+    if (!f || !f.lines.length) return { framed: 0 };
     this._sfLightUnitsThisCell = (this._sfLightUnitsThisCell || 0) + 1;
     this._selfFramingNow = true;
     const reps = Math.max(2, Math.round((opts.reps ?? 8) * 0.25));
