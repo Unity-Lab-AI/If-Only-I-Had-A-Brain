@@ -2952,6 +2952,10 @@ export class Curriculum {
   // strictly cheaper per pair than the 84,000 the six-band layout wrote.
   // A tag beyond this REFUSES LOUDLY; it never writes nothing in silence.
   static RELATION_TAG_BANDS = 48;
+  // Who is talking — the role bands (see `_teachSentenceList` opts.speakerBand).
+  // 40 is the conversation turn binding; 41 / 42 are the speaker state itself.
+  static SPEAKER_OTHER_BAND = 41;
+  static SPEAKER_SELF_BAND = 42;
 
   /**
    * T18.25 — REMOVED forced gc() from T18.24's between-phase memory
@@ -19474,8 +19478,8 @@ export class Curriculum {
     this.stats.conversationAddressedByName = (this.stats.conversationAddressedByName | 0) + _named;
     const reps = Number(opts.reps) > 0 ? Number(opts.reps) : 3;
     this._hb?.(`[Curriculum] 💬 CONVERSATION ${subject}/${grade} — ${heard.length} real exchange(s) from her books and life: heard ${heard.length} (understood, not spoken; ${_named} call her by name) · said ${said.length} (her replies) · turn bindings ${turnPairs.length} × ${reps} reps.`);
-    await this._teachSentenceList(heard, ctx, { reps, label: `CONV-HEARD-${subject}-${grade}`, source: 'dialogue-heard', hearOnly: true });
-    await this._teachSentenceList(said, ctx, { reps, label: `CONV-SAID-${subject}-${grade}`, source: 'dialogue-said' });
+    await this._teachSentenceList(heard, ctx, { reps, label: `CONV-HEARD-${subject}-${grade}`, source: 'dialogue-heard', hearOnly: true, speakerBand: Curriculum.SPEAKER_OTHER_BAND });
+    await this._teachSentenceList(said, ctx, { reps, label: `CONV-SAID-${subject}-${grade}`, source: 'dialogue-said', speakerBand: Curriculum.SPEAKER_SELF_BAND });
     if (typeof this._teachAssociationPairs === 'function') {
       await this._teachAssociationPairs(turnPairs, { reps, label: `CONV-TURN-${subject}-${grade}`, relationTagId: 40 });
     }
@@ -28883,7 +28887,15 @@ export class Curriculum {
     // v0.3.53 pattern-lesson setup (see the word loop). Ops = every card-bound
     // cross projection between existing regions, sem→motor damped — the set
     // `_crossRegionHebbian(lr)` fires with no whitelist on the card path.
-    const _plRegions = [letterRegion, phonRegion || null, motorRegion || null, semRegion || null];
+    // ⭐ WHO IS TALKING (`opts.speakerBand`) — the role signal, the brain's
+    // counterpart of a chat model's role markers: one relation band lit for the
+    // whole line (41 = someone else is speaking to her, 42 = she is speaking),
+    // on the fineType region every relation channel already uses, same band
+    // width as `_writeRelationTag`. Learned with the words, so the state itself
+    // tells her whether to listen or to answer.
+    const _spkRegion = (Number.isInteger(opts.speakerBand) && cluster.regions?.fineType) ? cluster.regions.fineType : null;
+    const _spkFeat = _spkRegion ? (() => { const f = new Float64Array(Curriculum.RELATION_TAG_BANDS); f[opts.speakerBand] = 1; return f; })() : null;
+    const _plRegions = [letterRegion, phonRegion || null, motorRegion || null, semRegion || null, _spkRegion];
     let _pl = null;
     const _plMax = (() => { const v = Number(process.env.DREAM_PATTERN_LESSON_ITEMS); return v > 0 ? Math.floor(v) : 2048; })();
     if (cluster._gpuProxy && typeof cluster._gpuProxy.patternLessonCapable === 'function' && cluster._gpuProxy.patternLessonCapable()
@@ -29076,8 +29088,8 @@ export class Curriculum {
           // round trip — which is what keeps the card busy through this lane.
           if (_pl) {
             // Heard: only meaning is written; letter/sound/motor are cleared and stay silent.
-            const feats = hearOnly ? [null, null, null, semFeat]
-              : [letterOneHot, phonRegion ? phonFeat : null, motorRegion ? letterOneHot : null, semFeat];
+            const feats = hearOnly ? [null, null, null, semFeat, _spkFeat]
+              : [letterOneHot, phonRegion ? phonFeat : null, motorRegion ? letterOneHot : null, semFeat, _spkFeat];
             const groups = _plRegions.map((rg, i) => (rg && feats[i] && feats[i].length) ? Math.max(1, Math.floor((rg.end - rg.start) / feats[i].length)) : 1);
             if (_pl.items.length && groups.some((g, i) => g !== _pl.groups[i])) await _plFlush();
             _pl.groups = groups;
@@ -29086,7 +29098,8 @@ export class Curriculum {
             continue;
           }
 
-          this._clearSpikes(['letter', 'phon', 'motor', 'sem']);
+          this._clearSpikes(_spkRegion ? ['letter', 'phon', 'motor', 'sem', 'fineType'] : ['letter', 'phon', 'motor', 'sem']);
+          if (_spkRegion) this._writeTiledPattern(_spkRegion, _spkFeat, true);
           if (!hearOnly) {
             this._writeTiledPattern(letterRegion, letterOneHot, true);
             if (phonRegion) this._writeTiledPattern(phonRegion, phonFeat, true);
