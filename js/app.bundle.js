@@ -15974,6 +15974,15 @@ var CLUSTER_EMIT_MIXIN = {
         const _bw = wordsList[b];
         if (!_bw || !/\S/.test(_bw) || !/[a-z0-9]/i.test(_bw) && !T14_TERMINATORS.has(_bw)) continue;
         if (_bw.length === 1 && _bw !== "i" && _bw !== "a" && !T14_TERMINATORS.has(_bw)) continue;
+        if (this.isRealWord && !T14_TERMINATORS.has(_bw)) {
+          const _rm = this._realWordMemo || (this._realWordMemo = /* @__PURE__ */ new Map());
+          let _ok = _rm.get(_bw);
+          if (_ok === void 0) {
+            _ok = !!(this._grammarStructuralWords && this._grammarStructuralWords.has(_bw) || this.isRealWord(_bw));
+            _rm.set(_bw, _ok);
+          }
+          if (!_ok) continue;
+        }
         if (opts.gradeGate === true) {
           const _allow = this._emissionAllowedVocab;
           if (_allow && _allow.size > 0 && !_allow.has(_bw.toLowerCase()) && !FUNCTION_WORDS.has(_bw) && !T14_TERMINATORS.has(_bw)) continue;

@@ -4474,6 +4474,9 @@ class ServerBrain {
       // it in the purge did not stop it in the flag.
       this.cortexCluster.lookupDefinitionStatus = (word) =>
         definitionService.lookupStatus(word);
+      // a dictionary (not an encyclopedia) knows this word — gates her speaking
+      // slots and her drawing subjects
+      this.cortexCluster.isRealWord = (word) => definitionService.isRealWord(word);
       // the real word a misspelling stands for (never a definition of the typo)
       this.cortexCluster.lookupTypoOf = (word) =>
         (typeof definitionService.typoOf === 'function' ? definitionService.typoOf(word) : null);
@@ -14712,13 +14715,20 @@ wss.on('connection', (ws, req) => {
     try {
       const msg = JSON.parse(data.toString());
 
-      // Rate limit
-      const now = Date.now();
-      if (msg.type === 'text' && now - client.lastInput < 1000 / MAX_TEXT_PER_SEC) {
-        ws.send(JSON.stringify({ type: 'error', message: 'Rate limited — slow down' }));
-        return;
+      // Rate limit — CHAT AGAINST CHAT ONLY. ⛔ This stamped `lastInput` on
+      // EVERY message, so the brain page's continuous camera/vision frames
+      // reset the clock and a chat arriving within 500 ms of any frame was
+      // refused — silently, before the `Text (` line ever printed. Measured
+      // 2026-11-25: two visible-window chats in a row never reached her.
+      if (msg.type === 'text') {
+        const now = Date.now();
+        if (now - client.lastInput < 1000 / MAX_TEXT_PER_SEC) {
+          console.warn(`[${id}] chat rate-limited (${now - client.lastInput}ms after the previous chat) — not processed.`);
+          ws.send(JSON.stringify({ type: 'error', message: 'Rate limited — slow down' }));
+          return;
+        }
+        client.lastInput = now;
       }
-      client.lastInput = now;
 
       // PA.4.6 — donor isolation + bad-actor hardening. Compute-protocol
       // messages mutate brain state (spike counts, init flags, device-lost,

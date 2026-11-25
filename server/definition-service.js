@@ -1033,7 +1033,25 @@ function typoOf(word) {
   return (e && e.typoOf) || _typoMap.get(key) || null;
 }
 
+// ⭐ IS THIS A REAL WORD — answered by a DICTIONARY, never an encyclopedia.
+// Wikipedia and Urban Dictionary answer for names, places, typos and slang
+// spellings ("alquife", "effeminancy"), so "has a definition" stopped meaning
+// "is a word" once they joined the union, and she spoke and drew strings that
+// are not words. A word is real when WordNet holds it, or a cached sense came
+// from a dictionary (any source other than wikipedia/urban). A known typo is
+// never real. Cache-only, never fetches.
+function isRealWord(word) {
+  const key = _normalize(word);
+  if (!key) return false;
+  if (typoOf(word)) return false;
+  try { const off = offlineDict.lookup(key); if (off && off.length) return true; } catch { /* fall to cache */ }
+  const e = cache.get(key);
+  if (!e || e.error || !Array.isArray(e.definitions)) return false;
+  return e.definitions.some((d) => d && d.source !== 'wikipedia' && d.source !== 'urban');
+}
+
 module.exports = {
+  isRealWord,
   typoOf,
   getDefinition,
   getDefinitionSync,

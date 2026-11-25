@@ -3152,9 +3152,12 @@ const SERVER_CHAT_MIXIN = {
       else {
         ej.refused++;
         ej.last = { word: contributed[0].word, at: Date.now(), ...verdict };
-        try { console.log(`[OwnArt] 👁 her eye REFUSED her "${contributed[0].word}" — ${verdict.why || `${verdict.beaten} of ${verdict.compared} other things she knows match its shape better (own ${verdict.ownScore})`}. Not shown; she practises it.`); } catch { /* nf */ }
+        // ⛔ A PIECE HER EYE DOUBTS IS STILL SHOWN. Hiding it cut her variety
+        // down to the few shapes her eye already trusted, so the viewer saw the
+        // same images again and again. The verdict is kept and she still
+        // practises the subject; it just no longer blocks the piece.
+        try { console.log(`[OwnArt] 👁 her eye doubts her "${contributed[0].word}" — ${verdict.why || `${verdict.beaten} of ${verdict.compared} other things she knows match its shape better (own ${verdict.ownScore})`}. Shown anyway; she practises it.`); } catch { /* nf */ }
         try { if (Array.isArray(this._mindsEyePreviewQueue)) this._mindsEyePreviewQueue.push({ kind: 'practice', word: contributed[0].word }); } catch { /* practice best-effort */ }
-        return null;
       }
       if (verdict.judged) ej.last = { word: contributed[0].word, at: Date.now(), ...verdict };
     }
@@ -6527,6 +6530,10 @@ const SERVER_CHAT_MIXIN = {
     // ARTJUDGE 🚫 — the operator taught her this word is not a drawing
     // subject; that verdict outranks every other judge.
     try { if (this._artBanSet().has(w)) return false; } catch { /* ban set best-effort */ }
+    // A DRAWING SUBJECT IS A REAL WORD — a dictionary must know it. Wikipedia
+    // and Urban Dictionary answer for names, places and typos, so she was
+    // drawing strings that are not words ("alquife").
+    if (!require('../definition-service.js').isRealWord(w)) return false;
     // HER OWN EXPERIENCE OUTRANKS THE DICTIONARY. When she has LOOKED at this
     // word and the look held no subject — nothing her eye could find a body
     // in, so no skeleton was learned — that is what the word turned out to be
