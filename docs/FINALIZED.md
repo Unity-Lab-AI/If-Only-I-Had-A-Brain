@@ -61029,4 +61029,25 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
     - the brain's save cycle is unchanged.
   - **Verified:** `node --check`.
 
+- [x] ✅ **CLOSED BUILT 2026-11-25.** **CHATRATE — chats from the brain page were refused before they reached her.** Gee 2026-11-25, verbatim: *"okay but same issue, she isnt respoinding"* · *"im still waiting on u to properly talk to her"*.
+  - **Cause:**
+    - The per-client rate limit stamped `lastInput` on EVERY message, and the brain page streams camera/vision frames continuously.
+    - So a chat arriving within 500 ms of any frame was refused before the `Text (` line printed.
+    - Measured: two visible-window chats in a row (16:09, 16:33) never reached the server.
+  - **Fix (`server/brain-server.js` message handler):** the clock is stamped and checked for `text` only, and a refusal now logs `chat rate-limited`.
+
+- [x] ✅ **CLOSED BUILT 2026-11-25.** **REALWORD — she spoke and drew strings that are not words.** Gee 2026-11-25, verbatim: *"and ive noticed she images in minds eye and usdes words that arnt in the dictionary alot like she is saying typos and pronouns and shit that arent real words"* · *"do we need like a real dictionary check on what she is saying?"* · *"but thats the same issue as u can seee drawing typos and words that dont exist"*.
+  - **Cause:** once Wikipedia and Urban Dictionary joined the definition union, "has a definition" stopped meaning "is a word". Live examples: `alquife`, `effeminancy`.
+  - **Fix:**
+    - `isRealWord` (`server/definition-service.js`): a word is real when WordNet holds it, or when a cached sense came from a dictionary (any source but wikipedia/urban). A known typo is never real.
+    - The check is applied at three places:
+      - when a word gets a speaking slot (`_enumerateBucketableWords`);
+      - when she says a word (`emitWordDirect` skips a slot made before the check existed, memoised per word);
+      - when she picks a drawing subject (`_conceptIsDrawable`).
+    - The grammar lane's own function words (`GRAMMAR_STRUCTURAL_WORDS`: pronouns, articles, prepositions, which WordNet does not hold) keep their slots, so "i"/"me"/"my" are never locked out.
+  - **Verified:** `isRealWord`: alquife false, effeminancy false, cat/peddler/climbers true.
+
+- [x] ✅ **CLOSED BUILT 2026-11-25.** **EYESHOW — a drawing her eye doubted was hidden.** Gee 2026-11-25, verbatim: *"and this refusal shit is getting annoying... its like she only ever does the same images and blocks the variety of images she can do,, nothing should be hindering her"*.
+  - **Fix (`chat.js` `_drawOwnCreation`):** a refused verdict no longer returns before showing. The piece is shown, the verdict is kept and logged as "doubts … Shown anyway", and the subject still goes to practice.
+
 
