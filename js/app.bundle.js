@@ -19965,7 +19965,8 @@ var NeuronCluster = class {
       }
     }
     this._propagateCrossRegions();
-    const currents = new Float64Array(size);
+    if (!this._currentsBuf || this._currentsBuf.length !== size) this._currentsBuf = new Float64Array(size);
+    const currents = this._currentsBuf;
     let synapticCurrents;
     if ((this._gpuProxyReady || this._useChunkedCache) && this._cachedIntraCurrents && this._cachedIntraCurrents.length === size) {
       synapticCurrents = this._cachedIntraCurrents;
@@ -20025,8 +20026,15 @@ var NeuronCluster = class {
         for (let i = r.start; i < r.end; i++) attentionLookup[i] = safeGain;
       }
     }
+    const _ext = this.externalCurrent;
+    const _inc = this._incomingProjections;
+    const _noiseAmp = this.noiseAmplitude;
+    const _errCorr = this.errorCorrection;
     for (let i = 0; i < size; i++) {
-      let cur = synapticCurrents[i] + this.externalCurrent[i] + this._incomingProjections[i] + effectiveDrive + (_lifNoiseRand() - 0.5) * this.noiseAmplitude + this.errorCorrection;
+      const _e = _ext[i];
+      let cur = synapticCurrents[i] + _e + _inc[i] + effectiveDrive + (_lifNoiseRand() - 0.5) * _noiseAmp + _errCorr;
+      _ext[i] = _e * 0.9;
+      _inc[i] = 0;
       if (k5Active) {
         cur += k5Scale * this._columnVoltageMean[this.columnId[i]];
       }
@@ -20089,10 +20097,6 @@ var NeuronCluster = class {
       else this._motorQuiescentTicks = 0;
     }
     this.lastMeanVoltage = vSum / size;
-    for (let i = 0; i < size; i++) {
-      this.externalCurrent[i] *= 0.9;
-      this._incomingProjections[i] = 0;
-    }
     if (!opts.skipTailDispatch) this._dispatchGpuPropagates();
     return { spikes: this.lastSpikes, spikeCount, voltages };
   }
