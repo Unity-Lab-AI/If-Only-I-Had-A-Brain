@@ -16341,13 +16341,22 @@ var CLUSTER_EMIT_MIXIN = {
         this._composeStats.aborted = (this._composeStats.aborted || 0) + 1;
         return null;
       }
-      for (let t = 0; t < TICKS_PER_WORD; t++) {
-        if (checkAborted()) {
-          if (!this._composeStats) this._composeStats = { calls: 0, fills: 0, partial: 0, empty: 0 };
-          this._composeStats.aborted = (this._composeStats.aborted || 0) + 1;
-          return null;
+      const _cur = this._brain && this._brain.curriculum;
+      const _taught = (this.size | 0) > 2e6 && _cur && typeof _cur._dictionaryPatternFor === "function" && typeof _cur._topKEmbedding === "function" && typeof _cur._writeTiledPattern === "function";
+      const _seedWord = words.length > 0 ? words[words.length - 1] : opts.intentConcept || (typeof intentSeed === "string" ? (intentSeed.replace(/_/g, " ").toLowerCase().match(/[a-z]+/g) || []).filter((t) => t.length > 2).pop() : null);
+      if (_taught && _seedWord) {
+        const semR = this.regions.sem;
+        this.lastSpikes.fill(0, semR.start, semR.end);
+        _cur._writeTiledPattern(semR, _cur._topKEmbedding(_cur._dictionaryPatternFor(_seedWord), 8), true, { noCpu: false });
+      } else {
+        for (let t = 0; t < TICKS_PER_WORD; t++) {
+          if (checkAborted()) {
+            if (!this._composeStats) this._composeStats = { calls: 0, fills: 0, partial: 0, empty: 0 };
+            this._composeStats.aborted = (this._composeStats.aborted || 0) + 1;
+            return null;
+          }
+          await this.stepAwait(1e-3);
         }
-        await this.stepAwait(1e-3);
       }
       const emitOpts = { skipRecentTrack: true };
       if (opts.subject) emitOpts.subject = opts.subject;
