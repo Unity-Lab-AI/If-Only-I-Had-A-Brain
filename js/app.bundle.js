@@ -16365,6 +16365,10 @@ var CLUSTER_EMIT_MIXIN = {
         const _kw = _cur._extractKeyWord(opts.questionText);
         const _kEmb = _kw ? _cur._dictionaryPatternFor(_kw) : null;
         if (_kEmb && _kEmb.length) _cur._writeTiledPatternOffset(semR, _kEmb, false, 0.5);
+        if (typeof _cur._classifyQuestionTemplate === "function" && typeof _cur._writeQuestionTemplateTag === "function") {
+          const _tid = _cur._classifyQuestionTemplate(opts.questionText);
+          if (_tid >= 0) _cur._writeQuestionTemplateTag(_tid);
+        }
       } else if (_taught && _seedWord) {
         const semR = this.regions.sem;
         this.lastSpikes.fill(0, semR.start, semR.end);

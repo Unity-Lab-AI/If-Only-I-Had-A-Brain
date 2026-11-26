@@ -1378,6 +1378,14 @@ export const CLUSTER_EMIT_MIXIN = {
         const _kw = _cur._extractKeyWord(opts.questionText);
         const _kEmb = _kw ? _cur._dictionaryPatternFor(_kw) : null;
         if (_kEmb && _kEmb.length) _cur._writeTiledPatternOffset(semR, _kEmb, false, 0.5);
+        // …and the question's template band, which every Q→A teach and every
+        // gate probe writes beside the pattern — so she answers in exactly the
+        // state the answer was bound in (the asked band 43 rides chat's
+        // speaker state while the question is pending).
+        if (typeof _cur._classifyQuestionTemplate === 'function' && typeof _cur._writeQuestionTemplateTag === 'function') {
+          const _tid = _cur._classifyQuestionTemplate(opts.questionText);
+          if (_tid >= 0) _cur._writeQuestionTemplateTag(_tid);
+        }
       } else if (_taught && _seedWord) {
         const semR = this.regions.sem;
         this.lastSpikes.fill(0, semR.start, semR.end);
