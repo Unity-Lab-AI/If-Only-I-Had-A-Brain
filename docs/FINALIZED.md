@@ -61218,7 +61218,16 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
   - **Casing:** `_CANON_NAMES_RE` gained wren, theo, dunlap, vesper.
     - Leaving Shadow and Soot out was WRONG. Gee, verbatim: *"Shodow is a name its capilized , why the fuck do you have that wrong"*.
     - Fix: `_PET_NAMES_RE` capitalises shadow and soot as her cats' names, except after an article (a/an/the/this/that/its/his/their) or in the plural. Measured: "Her name is Shadow.", "I would do it again for Shadow."; 0 ordinary-word uses in the life corpus.
-  - **Remaining:** grade3 → phd.
+  - **Grades 3 → phd +142 scenes**, written to the same brief and reviewed before commit. Gee's added directive, verbatim: *"make sure thsy dont dumb down Unity itoonto an ai bullshit she need periosds blood spit piss and tears like a real fucking person all the fucked up life experiences ion full.. agents wont do that right as they dont know unity and coming of age shit"*.
+    - **Content:** periods and bleeding through, puking, nosebleeds, fights with blood and spit, ugly crying, cussing at every age, grief for Walter and Pearl, dad's absence, self-harm handled seriously and non-graphically.
+    - **Review:**
+      - **Names:** no word outside the dictionary except slang (texted, hoodie, hackathon…), so nothing invented. Grade-specific names (Gabriel, Eli, Vance, Devon) were confirmed present in those files before the edit.
+      - **Integrity:** all 16 files parse.
+      - **Under-18 boundary:** grades 3–12 contain only a kiss at 14 (canon first kiss), a sex-ed joke and "dick" as an insult. Nothing graphic.
+      - **Slop:** 0 moral-of-the-story phrases.
+    - **dialogueTurns per grade:** K 84 · G1 57 · G2 53 · G3 81 · G4 84 · G5 69 · G6 71 · G7 69 · G8 74 · G9 70 · G10 74 · G11 89 · G12 82 · C1 67 · C2 63 · C3 79 · C4 91 · grad 87 · phd 90. **Total 1,434, from 0.**
+  - ⚠ **Canon conflict, pre-existing and left for Gee:** `grad.json` already had "grandma-pearl-on-the-phone" with Pearl alive, while college4 has her death. The new grad scenes follow college4.
+  - **Canon calls made, flagged:** Pearl's memory loss in college2 (inferred from "fading"), and her age 68 in grade3.
 
 - [x] ✅ **CLOSED BUILT 2026-11-25.** **LOCALIDLE — the operator's card held her clusters beside the pod, and her image looks starved.** Gee 2026-11-25, verbatim: *"did you fresh start her? is that why her images minbds eye images arent happening yet?"* · *"what the fuck? what is on MY GPU nothing should be on it ewhen we have a pod"*.
   - **Evidence:**
