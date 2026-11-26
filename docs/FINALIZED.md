@@ -61223,6 +61223,10 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
   - **Measured:** life/G2 → 53 turns.
   - **Casing:** `_CANON_NAMES_RE` gained wren, theo, dunlap, vesper.
     - Leaving Shadow and Soot out was WRONG. Gee, verbatim: *"Shodow is a name its capilized , why the fuck do you have that wrong"*.
+    - **Follow-up SENTENCECASE.** Gee, verbatim: *"you are fucking up capitilizations, this is going to poison her  with pronouns: wren was a witch and asked, \"can i be seven hundred too?\" i said"*.
+      - **Cause:** the splitter keeps a run of quoted dialogue as one string, and `properCaseStory` capitalised only its first letter. So quoted lines ("can I be…") and sentences after a quote ("she asked", "at home…") stayed lowercase.
+      - **Fix:** a capital after every opening quote and after every . ! ?; family words used as names capitalised ("Mom made", "Grandpa Walter") but not after a possessive or article ("my mom").
+      - Her word training lowercases before it binds, so the weights were never cased. This fixes what she reads and the teach view.
     - Fix: `_PET_NAMES_RE` capitalises shadow and soot as her cats' names, except after an article (a/an/the/this/that/its/his/their) or in the plural. Measured: "Her name is Shadow.", "I would do it again for Shadow."; 0 ordinary-word uses in the life corpus.
   - **Grades 3 → phd +142 scenes**, written to the same brief and reviewed before commit. Gee's added directive, verbatim: *"make sure thsy dont dumb down Unity itoonto an ai bullshit she need periosds blood spit piss and tears like a real fucking person all the fucked up life experiences ion full.. agents wont do that right as they dont know unity and coming of age shit"*.
     - **Content:** periods and bleeding through, puking, nosebleeds, fights with blood and spit, ugly crying, cussing at every age, grief for Walter and Pearl, dad's absence, self-harm handled seriously and non-graphically.
