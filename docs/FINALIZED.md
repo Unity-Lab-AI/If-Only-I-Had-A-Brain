@@ -61336,4 +61336,13 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
   - **Measured on CPU:** a full sentence in 1.4 s (HTTP 200, 123 KB WAV). 0 VRAM, with or without a pod, so the handoff gets the whole card.
   - **Done live:** the old GPU voice was stopped and the CPU voice is serving on 5123. Gee's card went 5.6 → 4.9 GB; the remainder is the desktop plus his donor client, which holds no clusters.
 
+## 2026-11-25 — PROBELANE: one gate probe on the pod link at a time
+
+- **Gee:** *"okay sdo FUCKING DO IT YOU FUCK!"* (the pod-idle fix before the fresh walk)
+  - **Measured on boot `13123c0b`, science/K gate:** compute_batch round-trip 25–50 s while the donor computed 1–2 s (`UNACCOUNTED=49083ms … sparse dispatches in flight during batch=9`). Pod 0%. `gateProbes gpu 226 / refused 8 / nullAck 20` (~11% fell to the CPU).
+    - The main loop was NOT frozen: only 4 short BLOCKED lines.
+    - Gate, chat and inner-voice probes were stacking on the single pod socket, so batch replies queued behind them.
+  - **Fix:** the `gateProbe` / `gateProbeBuckets` proxy entries run through `_probeLane`, one at a time. Nothing is skipped or refused; probes only wait their turn, so what she computes is unchanged.
+  - **Verified:** `node --check` on both files. Pod utilisation is measured after the press.
+
 

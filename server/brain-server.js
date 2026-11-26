@@ -4123,12 +4123,18 @@ class ServerBrain {
         // bound propagate pinned to the PRIMARY, currents back on the ack.
         // Null on any honesty guard (lane busy / no donor / kill switch) —
         // the caller's CPU chunked path grades instead.
-        gateProbe: (matrixName, srcRegion, indices)         => this.gpuGateProbe(matrixName, srcRegion, indices),
+        // ⛔ ONE PROBE ON THE LINK AT A TIME. Gate, chat and inner voice each
+        // probe, and concurrently they stacked up to 9 dispatches on the single
+        // pod socket; measured: compute_batch round-trip 25–50 s with the donor
+        // computing 1–2 s (`UNACCOUNTED=49083ms … sparse dispatches in flight=9`),
+        // the card idle and ~11% of probes timing out. Serialized, a batch reply
+        // never queues behind more than one probe.
+        gateProbe: (matrixName, srcRegion, indices)         => this._probeLane(() => this.gpuGateProbe(matrixName, srcRegion, indices)),
         // GATEGPU.2 (donor v0.3.28) — the REDUCED readout: the card reduces the
         // post currents to per-word-bucket means, so a spoken word's ack is
         // kilobytes instead of the whole post region. Null when the donor
         // predates it and the caller takes the full-current probe instead.
-        gateProbeBuckets: (matrixName, indices, bucketSize, bucketCount) => this.gpuGateProbeBuckets(matrixName, indices, bucketSize, bucketCount),
+        gateProbeBuckets: (matrixName, indices, bucketSize, bucketCount) => this._probeLane(() => this.gpuGateProbeBuckets(matrixName, indices, bucketSize, bucketCount)),
         // GPUVERB.3 (donor v0.3.28) — the predictive-error correction runs on the
         // card from its own resident spikes; the frame carries no vectors. Returns
         // true only when SENT, so the caller knows whether to run its CPU pass.
