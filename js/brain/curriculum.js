@@ -3289,7 +3289,7 @@ export class Curriculum {
       const original = this[name].bind(this);
       this[name] = async (...args) => {
         const cl = this.cluster;
-        const phaseKey = buildPhaseKey(name);
+        let phaseKey = buildPhaseKey(name);
         if (cl && !Array.isArray(cl._phaseStack)) cl._phaseStack = [];
         const stack = cl ? cl._phaseStack : null;
         const isOutermost = stack ? stack.length === 0 : true;
@@ -3309,9 +3309,31 @@ export class Curriculum {
         // bank/skip ONLY when no `_teach*` ancestor is in flight. Runner and
         // battery words (non-_teach names) don't block banking; any teach
         // ancestor means "nested primitive — always execute, never ledger".
-        const isCellPhase = !!phaseKey
+        // A side-lane call (chat / look / art / dream jobs drained between
+        // teach calls — `opts.sideLane`) is never the cell's phase: it is
+        // other teaching that happens to use the same method.
+        const _sideLane = args.some((a) => a && typeof a === 'object' && !Array.isArray(a) && a.sideLane === true);
+        const isCellPhase = !!phaseKey && !_sideLane
           && this._declaredPhaseNames(cl._currentCellKey).has(name)
           && !stack.some((t) => t.ledger || t.teach);
+        // ⛔ THE LEDGER KEY IS THE LESSON, NOT THE METHOD NAME. A runner calls
+        // the same method many times with different lessons (ela/K calls
+        // `_teachAssociationPairs` for dozens of distinct pair sets), and other
+        // lanes call it at the top level too. Keyed by name alone, the first
+        // call banked `cell:_teachAssociationPairs` and every later one in the
+        // cell was SKIPPED as "already passed" — measured on a FRESH walk: 26
+        // lessons never taught. Each call now gets its occurrence number in
+        // this cell visit (`name`, `name#2`, `name#3`…), so a resume skips
+        // exactly the calls that completed. The first occurrence keeps the bare
+        // key, so the phase counter (which reads bare declared names) is
+        // unchanged.
+        if (isCellPhase) {
+          const _cell = cl._currentCellKey;
+          if (!this._phaseOccur || this._phaseOccur.cell !== _cell) this._phaseOccur = { cell: _cell, n: new Map() };
+          const _k = (this._phaseOccur.n.get(name) || 0) + 1;
+          this._phaseOccur.n.set(name, _k);
+          if (_k > 1) phaseKey = `${phaseKey}#${_k}`;
+        }
 
         // CELL-PHASE-ONLY skip+persist. Prior T31-extended wrapped EVERY
         // _teachX method with skip+persist - which CATASTROPHICALLY broke
@@ -5709,7 +5731,7 @@ export class Curriculum {
                   this._hb(`[Curriculum] 💤 dream trickle waits — the word abandoned by the watchdog is still running; no second teacher starts beside it.`);
                   break;
                 }
-                const _wordCall = this._teachWordDefinition(word, { reps: 4, label: 'DREAM-DEF-TRICKLE', timeoutMs: 20000 });
+                const _wordCall = this._teachWordDefinition(word, { reps: 4, label: 'DREAM-DEF-TRICKLE', timeoutMs: 20000, sideLane: true });
                 const r = await Promise.race([
                   _wordCall,
                   new Promise((resolve) => {
@@ -11568,6 +11590,9 @@ export class Curriculum {
     // subjects × pre-K + K grades. Restored on exit.
     const wasCellKey = cluster._currentCellKey;
     cluster._currentCellKey = cellKey;
+    // Each visit numbers its lessons from 1 (`name`, `name#2`…), so a resume
+    // or a retry round matches the keys the earlier visit banked.
+    this._phaseOccur = { cell: cellKey, n: new Map() };
 
     // Dashboard training-status tracking. `_currentSubject` + `_currentGrade`
     // drive the dashboard "Current Training" card. Phase counters live on
@@ -13536,7 +13561,19 @@ export class Curriculum {
           // entries at all, because pre-K passes predate `passedCells`
           // recording (SCALEDOC.1) and a long-trained subject must not be
           // declared unstarted just because its early history is unrecorded.
-          const _pointerIdx = GRADE_ORDER.indexOf(cluster.grades[subject] || 'pre-K');
+          // ⛔⛔ THE POINTER'S DEFAULT IS NOT A PASS. `cluster.grades[subject]`
+          // is seeded 'pre-K' and a missing entry defaults to 'pre-K', i.e.
+          // "sitting at pre-K" — and this read it as "pre-K cleared" (index 0
+          // ≥ i 0 → skip). On a fresh walk every subject therefore skipped
+          // pre-K and the grade printed "ALL 6 subjects passed pre-K" with ZERO
+          // lessons run: her self, name, family and first words never taught.
+          // The pointer now counts only when that subject actually trained at
+          // the pointed grade (a phase of `subject/grade` in passedPhases) —
+          // the pre-ledger history this fallback exists for has exactly that.
+          const _pointerGrade = cluster.grades[subject] || null;
+          const _pp = Array.isArray(cluster.passedPhases) ? cluster.passedPhases : [];
+          const _pointerTrained = !!_pointerGrade && _pp.some((k) => typeof k === 'string' && k.startsWith(`${subject}/${_pointerGrade}:`));
+          const _pointerIdx = _pointerTrained ? GRADE_ORDER.indexOf(_pointerGrade) : -1;
           const currentIdx = _lastPassedIdx >= 0
             ? _lastPassedIdx
             : Math.max(_pointerIdx, _introIdx - 1);
@@ -15527,6 +15564,7 @@ export class Curriculum {
             reps: 1,
             label: 'CHAT-TIME-DEEP-HEBBIAN',
             relationTagId: 30,
+            sideLane: true,
           });
         } catch (err) {
           const stats = brain._chatTimeHebbianStats;
@@ -15588,7 +15626,7 @@ export class Curriculum {
               }
             }
           } else if (job && Array.isArray(job.pairs) && job.pairs.length > 0) {
-            await this._teachAssociationPairs(job.pairs, job.opts || { reps: 1, label: 'CHAT-TEACH-JOB', relationTagId: 30 });
+            await this._teachAssociationPairs(job.pairs, { ...(job.opts || { reps: 1, label: 'CHAT-TEACH-JOB', relationTagId: 30 }), sideLane: true });
             if (brain._chatTimeHebbianStats) {
               brain._chatTimeHebbianStats.jobsTaught = (brain._chatTimeHebbianStats.jobsTaught || 0) + 1;
               brain._chatTimeHebbianStats.lastJobLabel = (job.opts && job.opts.label) || 'CHAT-TEACH-JOB';

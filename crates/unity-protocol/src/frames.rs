@@ -652,6 +652,24 @@ pub fn decode(data: &[u8]) -> Option<Frame> {
             let pre = r.u32_vec(count)?;
             Some(Frame::PropagateBuckets { req_id, name, bucket_size, bucket_count, pre })
         }
+        // v0.3.57 — the SAME probe with its pre indices RUN-LENGTH encoded:
+        // `n` (start, len) pairs. Her sem patterns are tiled, i.e. long runs,
+        // so a word read that shipped ~2.5 MB of raw indices is a few KB. The
+        // runs expand here into the ordinary PropagateBuckets frame — exact,
+        // and execution is unchanged. A run past 2^24 is refused as malformed.
+        20 => {
+            let bucket_size = r.u32()?.max(1);
+            let bucket_count = r.u32()?.max(1);
+            let n = r.u32()? as usize;
+            let mut pre = Vec::new();
+            for _ in 0..n {
+                let start = r.u32()?;
+                let len = r.u32()?;
+                if len > (1 << 24) { return None; }
+                pre.extend(start..start.saturating_add(len));
+            }
+            Some(Frame::PropagateBuckets { req_id, name, bucket_size, bucket_count, pre })
+        }
         // v0.3.26 — masked bound plasticity: lr + reps + sparse post row mask.
         13 => {
             let lr = r.f32()?;
