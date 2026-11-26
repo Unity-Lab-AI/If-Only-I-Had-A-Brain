@@ -61092,6 +61092,14 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
   - **RE-PRICE:** added mass ≈ unique transitions × ~2.4 binds per visit (≈ one LO bucket rep). No gate removed.
   - **Verified:** ESM import.
   - **Lands on the next press.** Her speaking slots carry the transitions only as cells re-teach them.
+
+- [x] ✅ **CLOSED BUILT 2026-11-25.** **QASHAPE — a question could never reach its trained answer.** Gee 2026-11-25, verbatim: *"well wtf put them in, what the fuck are you waiting on jesus christ you FUCK!"* · *"why cant she answer her name?"*.
+  - **Cause:** "what is your name?" → "unity" is in her question banks, and `_teachQABinding` binds it in a specific sem shape: the question's sentence embedding tiled across sem, plus the key word's dictionary pattern in the second half. Compose read her first word from the key word alone, so the trained question shape was never present at speech.
+  - **Fix:**
+    - `language-cortex.js` passes `questionText` to compose.
+    - `_composeSentenceOnce` writes the first word's sem exactly as the QA trainer does (`_writeTiledPattern` of the sentence embedding + `_writeTiledPatternOffset` of the key word at 0.5).
+    - Later words read from the previous word (ORDERSPEECH).
+  - **Verified:** ESM import.
   - **Verified:** ESM import. The piece is shown, the verdict is kept and logged as "doubts … Shown anyway", and the subject still goes to practice.
 
 
