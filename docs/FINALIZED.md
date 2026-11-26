@@ -61474,5 +61474,15 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
   - **Any card:** a step lesson goes to whichever card is PRIMARY — the pod, or Gee's card when there is no pod (his donor is on 0.3.56). The CPU path runs only on an older donor or a refused frame, and a refused frame replays just its own words.
   - `_teachSequenceCycles` and the drills skip the pull-back (they run many times per cell; the hourly pull refreshes the CPU copy).
 - **Verified:** `node --check` both files, `import()` of the curriculum module. Live check after the press: each converted lane's `on the card` line and the Teach View rows.
+- **Measured live on `968f27b9`:** `alphabet sequence a→z on the card — 25 words × 12 reps in 1.6s` and `_teachWordSpellingDirect on the card — 3812 words × 8 reps in 12.2s` (the latter ran 16+ min on the CPU that morning).
+
+## 2026-11-26 — QAFORM (part): questions about her stop going to the dictionary; the question text stops leaking
+
+- **Gee, verbatim:** *"does she just need more trasining? idk id think shed know her name by now?"* · *"get it done we are running and she isnt set up to train right, appearently"* · *"like her whole question answer for both her questions and her being asked questions is not properly formulated for a neuronic brain that we have, she has no idea what a question is or that it has right answre"*
+- **Measured:** chat *"helllo! who are you? what is your name?"* → *"Cliff!"*, *"is your name Unity?"* → *"Download."* — while the ela/K teach ledger holds `"my name is unity"` (100 reps), `SELF-INTRODUCTION-REFRESH` lines and 815 rows containing "unity". `NeuronCluster.extractIntentConcept` returns `definition` for both "what is your name?" forms, and `_studentTestProbe` sends every `definition` question to `_emitDefinition` (the live dictionary) before the joint path that reads the trained pairing; the compose WH-definition path in `language-cortex.js` captured "your" the same way.
+- **Fix:** a question in the second person (`you / your / yours / yourself`) skips both dictionary shortcuts and reaches the trained answer. Grammatical person, not a word list: a question about the listener is never a definition request.
+- **And the question text:** `generate` consumed `_lastUserInputText` for every caller including the inner voice, while the async chat path never cleared it — so a person's question could be erased mid-reply, or linger and be answered by later inner thoughts. Now only the chat reply consumes it, and `chat.js` clears it once the reply has been composed (or has failed).
+- **Verified:** `node --check` on `curriculum.js`, `language-cortex.js`, `chat.js`; `import()` of both modules. Live check after the press: the same two questions in chat.
+- **Not done here:** the representation of questions and right answers as such (Gee's last line) — a design proposal, not a patch; filed open under QAFORM.
 
 
