@@ -16513,7 +16513,14 @@ const _HEARTBEAT_MS = 30000;
 // server's own teach/sync event-loop blocks can delay the ping send AND the pong handler. One miss
 // under those conditions was falsely killing live, busy donors (worse on high-RTT/Starlink/Linux
 // links) → terminate mid-sync → write-after-destroyed flood → reconnect → re-sync → churn.
-const _HB_MISS_LIMIT = 2;        // healthy loop, idle donor: 2 misses (~60s) → dead
+// ⛔ 2 → 4 (2026-11-26). Measured on a pod overnight: five drops, every one
+// after 64–81 s of silence (`last heard 64.5s / 72.6s / 80.9s ago`), and every
+// time the pod reconnected within ~2 min STILL HOLDING all her matrices (`ADOPT …
+// already holds it for this brain`). The donor was alive and briefly quiet; the
+// 2-miss (~60 s) limit was killing it, pausing her and forcing a reconnect each
+// time. 4 misses (~120 s) covers every silence measured; a truly dead socket is
+// caught in 2 min instead of 1. DREAM_HB_MISS_LIMIT overrides.
+const _HB_MISS_LIMIT = Number(process.env.DREAM_HB_MISS_LIMIT) > 0 ? Number(process.env.DREAM_HB_MISS_LIMIT) : 4;
 const _HB_MISS_LIMIT_BUSY = 5;   // mid-sync: ~150s grace before death
 // HBGRACE.4 — hard ceiling on FORGIVEN misses. A miss that lands while the
 // server's own loop just blocked is not evidence about the donor at all (the
