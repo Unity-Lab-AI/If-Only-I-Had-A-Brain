@@ -61418,4 +61418,15 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
   - **⚠ Inert until brain-ctl restarts:** `brain-ctl.js` changes only take effect when the brain-ctl process itself is restarted. A brain press does not restart it.
   - **Verified:** `node --check`. Caught before ship: a first draft referenced `confirm`, but the parameter is `confirmToken`, which would have thrown on every press.
 
+## 2026-11-25 — RELEASEIDLE: a card that owns no clusters is told to free everything
+
+- **Gee:** *"so are you going to fix it. id never be able to hold the brain with a random 13 gigs oion it"* · *"that was it the doner was holding it do we need a new doner version"*
+  - **Measured on the fresh walk, boot `62b806fc`:** Gee's card held 12.7 GB for the whole run. There were 0 `STALE COPY freed` lines even with STALEALL live, because the brain had no record of what the host held. Restarting Gee's donor cleared it, which proves the donor was holding it.
+  - **Fix (brain-side, no donor build):**
+    - The placement check sends a card that owns ZERO clusters (and is neither the cortex owner nor a slice holder) `free_matrices` naming every matrix the brain knows, once per connection.
+    - The donor frees what it holds by name (`compute.rs free_sparse`) and ignores the rest.
+    - The donor's `free_matrices_ack` is now logged as `[Pool] FREE ACK … freed N matrix(es)`; nothing read it before.
+  - **Decides whether a donor build is needed:** if the next fresh boot logs freed matrices and the host card drops, it is not. If it frees 0 and the card stays high, the held memory is per-cluster state the donor has no release for, and a donor build is next.
+  - **Verified:** `node --check`. Not pressed: the walk is running and the card was cleared by the donor restart.
+
 
