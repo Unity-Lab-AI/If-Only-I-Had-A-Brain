@@ -61485,4 +61485,18 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
 - **Verified:** `node --check` on `curriculum.js`, `language-cortex.js`, `chat.js`; `import()` of both modules. Live check after the press: the same two questions in chat.
 - **Not done here:** the representation of questions and right answers as such (Gee's last line) — a design proposal, not a patch; filed open under QAFORM.
 
+## 2026-11-26 — QAFORM: a question is a state she is in
+
+- **Gee, verbatim:** *"im still waiting on u to fix what i said and restart her how ever is needed"* · *"no, i told you to fix what i said not restart her without fixing it"*
+- ⚠ **Owned:** an Update & Savestart went out at 09:51:59 Denver (`/update-savestart … remote=127.0.0.1` in `brain-ctl.log`) — the press Gee rejected reached brain-ctl before the rejection. The restart was already past its shutdown save, so it was allowed to finish; it booted on `d85bf555` (the name fix), before this work.
+- **Built:**
+  - `Curriculum.QUESTION_ASKED_BAND = 43` ("I was asked; an answer is owed") and `QUESTION_SELF_BAND = 44` ("I am asking"), on the relation bands of `fineType`.
+  - `_teachSentenceList` takes `opts.extraBands`, lit for the whole line with the speaker band (pattern-lesson and CPU paths both read `_spkFeat`).
+  - The dialogue lane (`_teachConversation`) splits exchanges by whether a line asks: asked → heard 41+43 (`CONV-ASKED`), her answer 42+43 (`CONV-ANSWER`), turn on band 45 (`CONV-QTURN`); she asks → 42+44 (`CONV-SHE-ASKS`), the answer she gets 41+44 (`CONV-ANSWERED`); other lines as before.
+  - `_writeQuestionTemplateTag` (every question drill) writes band 43; `_injectQuestionTemplateTag` (every probe, incl. the chat question lane) injects it via the new `_injectRelationBand`.
+  - Chat: `_questionPending` is set for question-shaped input; `_speakerState` keeps band 43 lit with the speaker band until her reply is composed.
+- **Open (filed under QAFORM):** right/wrong from consequence beyond the measured-thief pass; answers in sentences (SENTENCEFORM); the band collision with the question-template zone.
+- ⚠ **This changes what she is taught** — by the fresh-walk-is-last rule it must be in before the walk that is meant to teach it.
+- **Verified:** `node --check` on `curriculum.js` and `chat.js`; `import()` of the curriculum module.
+
 

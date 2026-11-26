@@ -2956,6 +2956,14 @@ export class Curriculum {
   // 40 is the conversation turn binding; 41 / 42 are the speaker state itself.
   static SPEAKER_OTHER_BAND = 41;
   static SPEAKER_SELF_BAND = 42;
+  // THE QUESTION STATE — a question is a state the brain is in, not a word list.
+  // 43 = "I was asked; an answer is owed": lit on a line that asks her, on her
+  //      answer to it, in every question→answer drill, and in chat while a
+  //      person's question waits for her reply.
+  // 44 = "I am asking": lit on a question she asks, and on the answer she gets,
+  //      so what comes back binds to what she wanted to know.
+  static QUESTION_ASKED_BAND = 43;
+  static QUESTION_SELF_BAND = 44;
 
   /**
    * T18.25 — REMOVED forced gc() from T18.24's between-phase memory
@@ -18129,6 +18137,11 @@ export class Curriculum {
       try { cluster._gpuProxy.writeSpikeSlice(sparseIndices); }
       catch { /* non-fatal */ }
     }
+    // THE QUESTION STATE — every question drill is in "I was asked; an answer
+    // is owed", the same band the dialogue lane lights on a question to her and
+    // on her answer to it. The probe injects the same band, so what is tested is
+    // what was taught.
+    this._writeRelationTag(cluster, fineType, Curriculum.QUESTION_ASKED_BAND, true);
   }
 
   /**
@@ -18175,6 +18188,37 @@ export class Curriculum {
       try { cluster._gpuProxy.writeCurrentSlice('fineType', fwdIndices, fwdValues); }
       catch { /* non-fatal */ }
     }
+    // The probe side of the question state: the same "I was asked" band the
+    // teach side writes (`_writeQuestionTemplateTag`), as current.
+    this._injectRelationBand(Curriculum.QUESTION_ASKED_BAND, strength);
+  }
+
+  /**
+   * Inject current into one relation band of fineType (probe / chat side of a
+   * role state the teach side writes as spikes with `_writeRelationTag`). Same
+   * band geometry as `_writeRelationTag`, same template wire form as the
+   * question-template injection above.
+   */
+  _injectRelationBand(bandId, strength = 0.6) {
+    const cluster = this.cluster;
+    const fineType = cluster && cluster.regions && cluster.regions.fineType;
+    if (!fineType || fineType.end <= fineType.start || !cluster.externalCurrent) return false;
+    const BANDS = Curriculum.RELATION_TAG_BANDS;
+    if (!(bandId >= 0) || bandId >= BANDS) return false;
+    const band = Math.floor((fineType.end - fineType.start) / BANDS);
+    if (band <= 0) return false;
+    const a = fineType.start + bandId * band;
+    const b = Math.min(fineType.end, a + band);
+    const value = 8 * strength;
+    for (let i = a; i < b; i++) cluster.externalCurrent[i] += value;
+    if (cluster._gpuProxy && typeof cluster._gpuProxy.writeCurrentSlice === 'function') {
+      const tmplWire = !!(cluster._brain && cluster._brain._tmplTeachOk === true);
+      const idx = [], vals = [];
+      if (!tmplWire) for (let i = a; i < b; i++) { idx.push(i - fineType.start); vals.push(value); }
+      vals._template = { rowStart: a - fineType.start, groupSize: b - a, values: [value] };
+      try { cluster._gpuProxy.writeCurrentSlice('fineType', idx, vals); } catch { /* non-fatal */ }
+    }
+    return true;
   }
 
   /**
@@ -19692,28 +19736,60 @@ export class Curriculum {
     //            own relation band (40, "said to me → i answer"), so being spoken
     //            to — and being called by her name — is what starts her talking.
     let _named = 0;
+    // ⭐ THE QUESTION STATE, from the exchanges themselves. A line that ends in
+    // "?" asks something; whatever answers it is owed by the question. So the
+    // exchanges are taught in four groups, each with its own state lit:
+    //   asked → her answer : heard 41+43 · said 42+43 · turn band 45
+    //   she asks → answer  : said 42+44 · the next heard line 41+44
+    //   everything else    : 41 / 42, exactly as before
+    // What she learns is not a list of questions: it is that a question is a
+    // state she can be in, that it calls for an answer, and that the answer
+    // she gets back belongs to the question she asked.
     const heard = [], said = [], turnPairs = [];
+    const heardQ = [], saidAns = [], turnQ = [], saidQ = [], heardAns = [];
     const _words = (x) => String(x).toLowerCase().replace(/[^a-z'\s-]+/g, ' ').split(/\s+/).filter(Boolean);
+    const _asks = (x) => /\?\s*["')\]]*\s*$/.test(String(x || ''));
+    let _prevSheAsked = false;
     for (const [line, reply] of turns) {
       const a = _addressHer(line);
       if (a !== line) _named++;
       const hw = _words(a), rw = _words(reply);
-      if (hw.length < 2 || rw.length < 2) continue;
-      heard.push(a);
-      said.push(reply);
-      turnPairs.push([hw[hw.length - 1], rw[0]]);
+      if (hw.length < 2 || rw.length < 2) { _prevSheAsked = false; continue; }
+      const askedHer = _asks(a);
+      const sheAsks = _asks(reply);
+      // The heard line: a question to her, the answer to her own last question, or plain.
+      if (askedHer) heardQ.push(a);
+      else if (_prevSheAsked) heardAns.push(a);
+      else heard.push(a);
+      // Her line: an answer owed to a question, a question of her own, or plain.
+      if (askedHer) saidAns.push(reply);
+      else if (sheAsks) saidQ.push(reply);
+      else said.push(reply);
+      (askedHer ? turnQ : turnPairs).push([hw[hw.length - 1], rw[0]]);
+      _prevSheAsked = sheAsks;
     }
-    if (!heard.length) return { taught: 0, reason: 'no usable exchanges' };
+    const total = heard.length + heardQ.length + heardAns.length;
+    if (!total) return { taught: 0, reason: 'no usable exchanges' };
     this.stats.conversationAddressedByName = (this.stats.conversationAddressedByName | 0) + _named;
     const reps = Number(opts.reps) > 0 ? Number(opts.reps) : 3;
-    this._hb?.(`[Curriculum] 💬 CONVERSATION ${subject}/${grade} — ${heard.length} real exchange(s) from her books and life: heard ${heard.length} (understood, not spoken; ${_named} call her by name) · said ${said.length} (her replies) · turn bindings ${turnPairs.length} × ${reps} reps.`);
-    await this._teachSentenceList(heard, ctx, { reps, label: `CONV-HEARD-${subject}-${grade}`, source: 'dialogue-heard', hearOnly: true, speakerBand: Curriculum.SPEAKER_OTHER_BAND });
-    await this._teachSentenceList(said, ctx, { reps, label: `CONV-SAID-${subject}-${grade}`, source: 'dialogue-said', speakerBand: Curriculum.SPEAKER_SELF_BAND });
+    const A = Curriculum.QUESTION_ASKED_BAND, S = Curriculum.QUESTION_SELF_BAND;
+    this._hb?.(`[Curriculum] 💬 CONVERSATION ${subject}/${grade} — ${total} real exchange(s) from her books and life (${_named} call her by name): asked her ${heardQ.length} → she answers ${saidAns.length} · she asks ${saidQ.length} → answers she gets ${heardAns.length} · other ${heard.length} heard / ${said.length} said · × ${reps} reps.`);
+    const H = { reps, source: 'dialogue-heard', hearOnly: true, speakerBand: Curriculum.SPEAKER_OTHER_BAND };
+    const D = { reps, source: 'dialogue-said', speakerBand: Curriculum.SPEAKER_SELF_BAND };
+    if (heard.length) await this._teachSentenceList(heard, ctx, { ...H, label: `CONV-HEARD-${subject}-${grade}` });
+    if (said.length) await this._teachSentenceList(said, ctx, { ...D, label: `CONV-SAID-${subject}-${grade}` });
+    if (heardQ.length) await this._teachSentenceList(heardQ, ctx, { ...H, extraBands: [A], label: `CONV-ASKED-${subject}-${grade}` });
+    if (saidAns.length) await this._teachSentenceList(saidAns, ctx, { ...D, extraBands: [A], label: `CONV-ANSWER-${subject}-${grade}` });
+    if (saidQ.length) await this._teachSentenceList(saidQ, ctx, { ...D, extraBands: [S], label: `CONV-SHE-ASKS-${subject}-${grade}` });
+    if (heardAns.length) await this._teachSentenceList(heardAns, ctx, { ...H, extraBands: [S], label: `CONV-ANSWERED-${subject}-${grade}` });
     if (typeof this._teachAssociationPairs === 'function') {
-      await this._teachAssociationPairs(turnPairs, { reps, label: `CONV-TURN-${subject}-${grade}`, relationTagId: 40 });
+      if (turnPairs.length) await this._teachAssociationPairs(turnPairs, { reps, label: `CONV-TURN-${subject}-${grade}`, relationTagId: 40 });
+      // "asked → I answer" has its own turn band, so being asked is what starts an answer.
+      if (turnQ.length) await this._teachAssociationPairs(turnQ, { reps, label: `CONV-QTURN-${subject}-${grade}`, relationTagId: 45 });
     }
-    this.stats.conversationExchanges = (this.stats.conversationExchanges | 0) + heard.length;
-    return { taught: heard.length, named: _named };
+    this.stats.conversationExchanges = (this.stats.conversationExchanges | 0) + total;
+    this.stats.conversationQuestions = (this.stats.conversationQuestions | 0) + heardQ.length + saidQ.length;
+    return { taught: total, named: _named, askedHer: heardQ.length, sheAsked: saidQ.length };
   }
 
   async _trainAcademicStories(subject, grade, ctx, opts = {}) {
@@ -29218,8 +29294,17 @@ export class Curriculum {
     // on the fineType region every relation channel already uses, same band
     // width as `_writeRelationTag`. Learned with the words, so the state itself
     // tells her whether to listen or to answer.
+    // `opts.extraBands` lights more role bands for the whole line alongside the
+    // speaker — the question state (`QUESTION_ASKED_BAND` on a line that asks her,
+    // and on her answer to it; `QUESTION_SELF_BAND` on a line she asks, and on the
+    // answer she gets), so being asked and owing an answer is a state she learns.
     const _spkRegion = (Number.isInteger(opts.speakerBand) && cluster.regions?.fineType) ? cluster.regions.fineType : null;
-    const _spkFeat = _spkRegion ? (() => { const f = new Float64Array(Curriculum.RELATION_TAG_BANDS); f[opts.speakerBand] = 1; return f; })() : null;
+    const _spkFeat = _spkRegion ? (() => {
+      const f = new Float64Array(Curriculum.RELATION_TAG_BANDS);
+      f[opts.speakerBand] = 1;
+      for (const b of (Array.isArray(opts.extraBands) ? opts.extraBands : [])) if (Number.isInteger(b) && b >= 0 && b < f.length) f[b] = 1;
+      return f;
+    })() : null;
     const _plRegions = [letterRegion, phonRegion || null, motorRegion || null, semRegion || null, _spkRegion];
     let _pl = null;
     const _plMax = (() => { const v = Number(process.env.DREAM_PATTERN_LESSON_ITEMS); return v > 0 ? Math.floor(v) : 2048; })();
