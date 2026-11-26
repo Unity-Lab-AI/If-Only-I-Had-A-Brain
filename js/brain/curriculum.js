@@ -23207,6 +23207,43 @@ export class Curriculum {
     }
     this._hb(`[Curriculum] _teachConcreteSentences CELLBOUND.C - ${uniquePairs.size} unique of ${pairs.length} transitions (${(100 * (pairs.length - uniquePairs.size) / Math.max(1, pairs.length)).toFixed(1)}% were literal duplicates) trained in 3 frequency buckets (lo ${_bucket.lo.length} x${reps} / mid ${_bucket.mid.length} x${Math.round(reps * 1.5)} / hi ${_bucket.hi.length} x${reps * 2})${_bucketDeferred ? ` · ${_bucketDeferred} rep(s) DEFERRED by the phase budget` : ''}.`);
     const r = { trained: _bucketTrained, deferredReps: _bucketDeferred };
+    // ⭐⭐ ORDER TO SPEECH — THE TRANSITION ALSO LANDS WHERE SHE SPEAKS FROM.
+    // The bucket pass above binds sem(a) to b's pattern in the LETTER-motor
+    // region; b's speaking slot (word_motor) was never written, and speech reads
+    // sem → word_motor. So "my name is unity", taught hundreds of times, never
+    // reached her mouth — asked her name she emitted unrelated words. Here every
+    // unique transition a→b also writes a's taught sem code (dictionary pattern,
+    // top-8, tiled — exactly what compose writes when it speaks after a) and
+    // b's word_motor bucket, and binds sem→word_motor on them. Frequency kept:
+    // frequent transitions get more reps. Added training mass, no gate touched.
+    // ⚠ RE-PRICE: unique transitions × (2..4 reps) ≈ 7,831 × ~2.4 pair-teaches
+    // per corpus visit, the same order as one LO bucket rep above.
+    if (!(r.deferredReps > 0) && !globalThis._brainShutdownRequested
+        && cluster.crossProjections.sem_to_word_motor && cluster.regions.sem && cluster.regions.word_motor) {
+      const _semR = cluster.regions.sem;
+      const _wl = ['sem_to_word_motor'];
+      const _speechLr = opts.speechLr ?? 0.1413;
+      let _spoken = 0;
+      try {
+        this._ensureWordBucketMap(opts.subject);
+        for (const u of uniquePairs.values()) {
+          if (globalThis._brainShutdownRequested) break;
+          if (!cluster.wordBucketMap || !cluster.wordBucketMap.has(u.b)) continue;
+          const _code = this._topKEmbedding(this._dictionaryPatternFor(u.a), 8);
+          const _n = u.count >= 8 ? 4 : u.count >= 3 ? 3 : 2;
+          for (let k = 0; k < _n; k++) {
+            this._clearSpikes(['sem', 'word_motor']);
+            this._writeTiledPattern(_semR, _code, true);
+            this._writeAnswerToWordMotor(u.b, opts.subject);
+            await this._teachHebbian(_speechLr, { projectionsWhitelist: _wl, skipIntraSynapses: true });
+            _spoken++;
+          }
+        }
+      } catch (err) {
+        console.warn(`[Curriculum] ORDER-TO-SPEECH stopped: ${(err && err.message) || err}`);
+      }
+      this._hb(`[Curriculum] ORDER-TO-SPEECH — ${_spoken} sem→word_motor binds across ${uniquePairs.size} transitions (${opts.label || 'K'}) · her speaking slots now carry what follows each word.`);
+    }
     // (The single flat `_teachAssociationPairs(pairs, ...)` call that used to
     // stand here is replaced by the bucketed loop above. Its rationale still
     // holds and still governs the bucket calls: concrete sentence transitions

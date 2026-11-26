@@ -61079,6 +61079,19 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
   - **Follow-up NOTICK (same day):** a thought with no seed word (seed=mood/learning) still took the tick path, and each tick shipped the cortex's active cells as a ~5 MB type-2 propagate.
     - Measured: a string of `LARGE non-upload send … 5.0MB kind=sprs-t2`, rtt 3.3 s, then `write ECONNRESET`, and the RTX PRO 6000 dropped and got a full 4.6 GB re-upload.
     - At full scale an unseeded first word now reads the sem the intent already wrote. No tick, no propagate.
+
+- [x] ✅ **CLOSED BUILT 2026-11-25.** **ORDERSPEECH — word order was trained where she cannot speak from.** Gee 2026-11-25, verbatim: *"does unity even know what a greeting is and how to introduce her self/.. thats a big part of communicating.. and why cant she answer her name? she litteratlyl is told " My name is Unity" hundreds of times. are we doing it right?"*
+  - **Answer: no.**
+    - `_teachConcreteSentences` (every sentence lane: K corpus, self-framed lines, greetings and introductions) feeds each transition a→b to `_teachAssociationPairs`. That writes sem(a) and b's GloVe into the LETTER-motor region.
+    - b's speaking slot (`word_motor`) was never written, and the card lesson frame does not carry it.
+    - Speech reads sem → word_motor. So "my name is unity" never reached her mouth: "what is your name?" → "Letters move crimson console none laptop."
+  - **Fix (`curriculum.js` `_teachConcreteSentences`):** after the bucket pass, every unique transition also gets a speech bind.
+    - The bind writes a's taught sem code (`_dictionaryPatternFor` → top-8 → tiled, the same code compose now writes when it speaks after a) and b's word_motor bucket (`_writeAnswerToWordMotor`), then runs `_teachHebbian` on `sem_to_word_motor` only.
+    - Frequency is kept: 2 / 3 / 4 reps by corpus count.
+    - Skipped when the phase deferred or a shutdown is pending.
+  - **RE-PRICE:** added mass ≈ unique transitions × ~2.4 binds per visit (≈ one LO bucket rep). No gate removed.
+  - **Verified:** ESM import.
+  - **Lands on the next press.** Her speaking slots carry the transitions only as cells re-teach them.
   - **Verified:** ESM import. The piece is shown, the verdict is kept and logged as "doubts … Shown anyway", and the subject still goes to practice.
 
 
