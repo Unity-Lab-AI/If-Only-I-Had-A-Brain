@@ -16456,7 +16456,7 @@ export class Curriculum {
    * when any of them is not on the card: the CPU path would train it itself,
    * so the whole lane stays on that path rather than split.
    */
-  _stepLessonOps(cluster, whitelist) {
+  _stepLessonOps(cluster, whitelist, lrOverride) {
     const syn = cluster && cluster.synapses;
     if (!syn || !syn._gpuBound) return null;
     if (cluster._smLrScale === undefined) {
@@ -16464,7 +16464,9 @@ export class Curriculum {
       try { _v = parseFloat(process.env.DREAM_SM_LR_SCALE); } catch { _v = NaN; }
       cluster._smLrScale = (Number.isFinite(_v) && _v >= 0) ? _v : 0.5;
     }
-    const lr = cluster.learningRate;
+    // A lane that teaches at its own rate (the spelling pass runs 3× the base)
+    // passes it; every op then carries that rate, as the CPU path's calls did.
+    const lr = Number.isFinite(lrOverride) ? lrOverride : cluster.learningRate;
     const wl = whitelist ? new Set(whitelist) : null;
     const ops = [], byName = new Map(), cross = [];
     for (const [name, proj] of Object.entries(cluster.crossProjections || {})) {
@@ -16515,10 +16517,22 @@ export class Curriculum {
         else if (typeof o.cpuWord === 'function') {
           for (const w of bw) { await o.cpuWord(w); cpuWords++; }
         }
+        // TEACHVIEW — every frame is reported, on every rep, the same way the
+        // sentence lane reports its pattern lessons; without it the view went
+        // silent for whole lanes while the card was being taught the whole time.
+        try {
+          this.teachBus(label, `step lesson → card: ${bw.length} word(s), ${its.length} step item(s) · rep ${rep + 1}/${reps}${sent ? '' : ' · REFUSED → replayed on the CPU'}`, {
+            phase: label, source: 'step-lesson', reps,
+          });
+        } catch { /* the view must never break a teach */ }
       };
       for (let wi = 0; wi < words.length; wi++) {
         const w = words[wi];
-        if (rep === 0 && typeof o.onRep0Word === 'function') o.onRep0Word(w);
+        if (rep === 0) {
+          if (typeof o.onRep0Word === 'function') o.onRep0Word(w);
+          // The content itself, once — what was taught, for the view and the ledger.
+          try { this.teachBus(label, typeof o.describe === 'function' ? o.describe(w) : String(w.word || ''), { phase: label, source: 'step-lesson', reps }); } catch { /* view only */ }
+        }
         const its = itemsFor(w);
         if (batch.length && batch.length + its.length > maxItems) await flush();
         for (const it of its) batch.push(it);
@@ -32660,6 +32674,116 @@ export class Curriculum {
         }
       }
       return pat;
+    }
+
+    // ⭐ ON THE CARD (donor 0.3.56, step lesson). The per-step transition
+    // letter(prev) → letter(cur) is an asymmetric intra update, which
+    // `intraSynapsesHebbian` refuses the card for — so every step of every
+    // cycle ran on the CPU, one at a time, into the CPU copy the hourly pull
+    // from the card overwrites. Per step the card now does what this loop
+    // does: clear and write letter / phon / motor / sem, fire every bound
+    // cross projection (key order, sem→motor damped — `_crossRegionHebbian(lr)`
+    // with no whitelist); then, when there is a previous step, write the
+    // previous letter alone, run the masked intra op over the current
+    // letter's cells, and write the current patterns back so the resident
+    // spikes end where this loop leaves them. One cycle is one unit: a
+    // refused frame replays its cycles on the CPU path below.
+    {
+      const _card = this._stepLessonBase(cluster);
+      const _ops = _card ? this._stepLessonOps(cluster, null) : null;
+      const ix = (k) => (_card ? _card.index.get(k) : undefined);
+      const iLet = ix('letter'), iPh = ix('phon'), iMot = ix('motor'), iSem = ix('sem');
+      if (_card && _ops && _ops.intra >= 0 && iLet !== undefined) {
+        const R = _card.regions;
+        const letDim = encodeLetter('a').length;
+        R[iLet][1] = Math.max(1, Math.floor(letterSize / letDim));
+        if (iPh !== undefined && phonRegion) R[iPh][1] = Math.max(1, Math.floor((phonRegion.end - phonRegion.start) / _phonemeFeatureForLetter('a').length));
+        if (iMot !== undefined && motorRegion) R[iMot][1] = Math.max(1, Math.floor((motorRegion.end - motorRegion.start) / letDim));
+        const iLetPrev = R.length;
+        R.push([R[iLet][0], R[iLet][1], R[iLet][2], R[iLet][3]]);
+        const dimsOf = (feat) => { const d = []; for (let i = 0; i < feat.length; i++) if (feat[i] > 0) d.push(i); return d; };
+        let semGroupSet = false;
+        const units = cycles.map((cycle, ci) => ({ word: `cycle ${ci + 1}`, cycle }));
+        const itemsFor = (u) => {
+          const out = [];
+          let prev = null;
+          for (const word of u.cycle) {
+            const wEmb = sharedEmbeddings.getEmbedding(word.split(/\s+/)[0]);
+            const firstLetter = word.replace(/[^a-z]/g, '')[0];
+            if (!firstLetter) continue;
+            const oneHot = encodeLetter(firstLetter);
+            const dims = R.map(() => []);
+            dims[iLet] = dimsOf(oneHot);
+            if (iPh !== undefined && phonRegion) dims[iPh] = dimsOf(_phonemeFeatureForLetter(firstLetter));
+            if (iMot !== undefined && motorRegion) dims[iMot] = dimsOf(oneHot);
+            const hasSem = iSem !== undefined && semRegion && wEmb && wEmb.length > 0;
+            if (hasSem) {
+              if (!semGroupSet) { R[iSem][1] = Math.max(1, Math.floor((semRegion.end - semRegion.start) / wEmb.length)); semGroupSet = true; }
+              dims[iSem] = dimsOf(wEmb);
+            }
+            const writeNow = [[1, iLet]];
+            if (iPh !== undefined && phonRegion) writeNow.push([1, iPh]);
+            if (iMot !== undefined && motorRegion) writeNow.push([1, iMot]);
+            if (hasSem) writeNow.push([1, iSem]);
+            const clears = [[0, iLet]];
+            if (iPh !== undefined) clears.push([0, iPh]);
+            if (iMot !== undefined) clears.push([0, iMot]);
+            if (iSem !== undefined) clears.push([0, iSem]);
+            const steps = [...clears, ...writeNow, ..._ops.cross.map((o) => [2, o])];
+            if (prev) {
+              dims[iLetPrev] = dimsOf(prev);
+              steps.push(...clears, [1, iLetPrev], [3, _ops.intra, iLet], ...clears, ...writeNow);
+            }
+            out.push({ dims, steps });
+            prev = oneHot;
+          }
+          return out;
+        };
+        const ok = await this._stepLessonRun(cluster, _card, _ops, units, reps, itemsFor, {
+          label: opts.label || '_teachSequenceCycles',
+          describe: (u) => u.cycle.join(' → '),
+          cpuWord: async (u) => {
+            let prevLetterOneHot = null;
+            for (const word of u.cycle) {
+              const wEmb = sharedEmbeddings.getEmbedding(word.split(/\s+/)[0]);
+              const firstLetter = word.replace(/[^a-z]/g, '')[0];
+              if (!firstLetter) continue;
+              const letterOneHot = encodeLetter(firstLetter);
+              const phonFeat = _phonemeFeatureForLetter(firstLetter);
+              this._clearCortexRegionSpans(['letter', 'phon', 'motor', 'sem']);
+              const letterPat = buildPattern(letterSize, letterOneHot);
+              for (let j = 0; j < letterSize; j++) cluster.lastSpikes[letterRegion.start + j] = letterPat[j] > 0 ? 1 : 0;
+              if (phonRegion) {
+                const phonSize = phonRegion.end - phonRegion.start;
+                const phonPat = buildPattern(phonSize, phonFeat);
+                for (let j = 0; j < phonSize; j++) cluster.lastSpikes[phonRegion.start + j] = phonPat[j] > 0 ? 1 : 0;
+              }
+              if (motorRegion) {
+                const motorSize = motorRegion.end - motorRegion.start;
+                const motorPat = buildPattern(motorSize, letterOneHot);
+                for (let j = 0; j < motorSize; j++) cluster.lastSpikes[motorRegion.start + j] = motorPat[j] > 0 ? 1 : 0;
+              }
+              if (semRegion && wEmb && wEmb.length > 0) {
+                const semSize = semRegion.end - semRegion.start;
+                const semPat = buildPattern(semSize, wEmb);
+                for (let j = 0; j < semSize; j++) cluster.lastSpikes[semRegion.start + j] = semPat[j] > 0 ? 1 : 0;
+              }
+              await cluster._crossRegionHebbian(lr);
+              if (prevLetterOneHot) {
+                const scratch = this._ensureScratchBuffers();
+                const pre = this._fillRegionPatternInto(scratch.pre, letterRegion, prevLetterOneHot, true);
+                const post = this._fillRegionPatternInto(scratch.post, letterRegion, letterOneHot, true);
+                await cluster.intraSynapsesHebbian(pre, post, lr);
+              }
+              prevLetterOneHot = letterOneHot;
+            }
+          },
+          // No pull-back here: this lane runs many times per cell, and a pull
+          // after each call would queue behind the one readback lane. The CPU
+          // copies refresh from the card on the hourly pull.
+        });
+        if (ok) return { taught: reps * cycles.length, card: true };
+      }
     }
 
     for (let rep = 0; rep < reps; rep++) {

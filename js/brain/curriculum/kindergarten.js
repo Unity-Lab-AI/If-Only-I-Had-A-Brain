@@ -8750,6 +8750,57 @@ export const K_MIXIN = {
       return;
     }
 
+    // ⭐ ON THE CARD (donor 0.3.56, step lesson). Two faults in the per-word path:
+    // its intra step ran on the CPU (custom pre/post vectors), one word at a
+    // time, and this lane never WRITES the word into the cluster — so the
+    // card's bound `sem_to_motor` op trained on whatever spikes another lane
+    // had left resident, not on this word. Each item now writes sem(word),
+    // runs the intra step against the first letter's motor cells, writes
+    // motor(first letter), then trains `sem_to_motor` — at this lane's own 3×
+    // rate. A refused frame is replayed on the CPU path below, word by word.
+    {
+      const _card = this._stepLessonBase(cluster);
+      const _ops = _card ? this._stepLessonOps(cluster, ['sem_to_motor'], lr) : null;
+      const iSem = _card && _card.index.get('sem'), iMot = _card && _card.index.get('motor');
+      const oSM = _ops && _ops.byName.get('sem_to_motor');
+      if (_card && _ops && _ops.intra >= 0 && iSem !== undefined && iMot !== undefined && oSM !== undefined) {
+        const R = _card.regions;
+        const items0 = [];
+        for (const word of words) {
+          const entry = this.dictionary._words.get(word);
+          if (!entry || !entry.pattern || !entry.pattern.length) continue;
+          const oneHot = encodeLetter(word[0]);
+          if (!oneHot || oneHot.length === 0) continue;
+          items0.push({ word, pattern: entry.pattern, oneHot });
+        }
+        if (items0.length) {
+          R[iSem][1] = Math.max(1, Math.floor((semRegion.end - semRegion.start) / items0[0].pattern.length));
+          R[iMot][1] = Math.max(1, Math.floor((motorRegion.end - motorRegion.start) / items0[0].oneHot.length));
+          const dimsOf = (feat) => { const d = []; for (let i = 0; i < feat.length; i++) if (feat[i] > 0) d.push(i); return d; };
+          const itemsFor = (w) => {
+            const dims = R.map(() => []);
+            dims[iSem] = dimsOf(w.pattern); dims[iMot] = dimsOf(w.oneHot);
+            return [{ dims, steps: [[0, iSem], [0, iMot], [1, iSem], [3, _ops.intra, iMot], [1, iMot], [2, oSM]] }];
+          };
+          const ok = await this._stepLessonRun(cluster, _card, _ops, items0, reps, itemsFor, {
+            label: '_teachWordSpellingDirect',
+            describe: (w) => `${w.word} → first letter ${w.word[0]}`,
+            cpuWord: async (w) => {
+              this._fillRegionPatternInto(scratch.pre, semRegion, w.pattern, false);
+              this._fillRegionPatternInto(scratch.post, motorRegion, w.oneHot, true);
+              try { await this._teachHebbianAsymmetric(scratch.pre, scratch.post, lr, { projectionsWhitelist: ['sem_to_motor'] }); updates++; } catch { skipped++; }
+            },
+            pull: ['sem_to_motor'],
+          });
+          if (ok) {
+            const dtc = ((Date.now() - t0) / 1000).toFixed(1);
+            this._hb(`[Curriculum] _teachWordSpellingDirect DONE in ${dtc}s on the card — ${items0.length} words × ${reps} reps (${words.length - items0.length} skipped: no pattern or letter)`);
+            return;
+          }
+        }
+      }
+    }
+
     let _spYieldAt = Date.now();
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
