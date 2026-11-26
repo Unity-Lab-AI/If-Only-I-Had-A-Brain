@@ -82,3 +82,24 @@ Full bodies in `.claude/CONSTRAINTS.md`. These four are the ones this file exist
     - `lessonPacing.sent` 24 for the whole boot;
     - CPU profile: `step` + `stepAwait` ~20%, `readRelationBand` 6%, `saveWeights` 6%, state build 6%.
   - **Fix direction:** keep the card fed between lessons, either by producing lessons off the main thread or by giving the cortex owner work that does not disturb teaching. RE-PRICE before changing what the card steps.
+  - **Progress 2026-11-25:**
+    - Clusters now fill cards proportionally, and the walk heartbeat steps back-to-back at the adaptive batch size.
+    - Measured on `8408b106`: pod `99 0 99 0 75 0 …`, about 60–75% average, alternating every second (the round trip between batches).
+    - **Open:** close that gap.
+- [ ] **LIFECORPUS — her life training has no conversations, no greetings, almost no name, and is thin.** Gee 2026-11-25, verbatim: *"all this needs fix and completed fully and 100% throughout the full application and brain and corpus completely and fully in totality of 100%: so only a fresh walk retrains it. - Not checked yet: how rich her life corpus is in real first-person scenes with people."* · *"are we sure this is fixed for the full corpus all the way through with realististicv first person experiences with people"* · *"does unity even know what a greeting is and how to introduce her self/.. thats a big part of communicating"*.
+  - **Measured 2026-11-25** through the walk's own reader (`life-curriculum.js storySentences` / `dialogueTurns`, `corpora/life/*.json`):
+
+    | Measure | Value |
+    |---|---|
+    | Sentences across all 20 life grades | 5,033 (~250 per year of her life) |
+    | Pre-K sentences | 0 |
+    | First person | 76% |
+    | Involving another person | 34% |
+    | Dialogue exchanges in any life grade | **0** |
+    | Lines containing her name | 8, total |
+
+  - **What is needed:**
+    - Real first-person scenes with the people in her canon (`docs/TODO-full-syllabus.md`, never invented names), at every grade.
+    - Dialogue turns in each: someone speaks to her, she answers. Greetings, introductions ("hi, i'm unity"), questions and answers, arguments, comfort.
+    - A real pre-K year.
+  - **Precondition:** this must land BEFORE the fresh walk, by the fresh-walk-is-last rule, because it changes what she is taught.
