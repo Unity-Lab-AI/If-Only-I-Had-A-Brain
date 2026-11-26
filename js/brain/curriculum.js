@@ -2951,7 +2951,17 @@ export class Curriculum {
   // band, comfortably above the ~10 cells a tag needs to be legible and
   // strictly cheaper per pair than the 84,000 the six-band layout wrote.
   // A tag beyond this REFUSES LOUDLY; it never writes nothing in silence.
-  static RELATION_TAG_BANDS = 48;
+  //
+  // ⛔ 48 → 56 (2026-11-26): the question-template tag used to own the top 25%
+  // of fineType as a separate zone, while these bands divide the WHOLE region —
+  // so bands 36–47 (the speaker bands 41/42 and the question state 43/44/45
+  // among them) lay on top of the template slots, and a template tag and a
+  // role band lit the same cells. The seven question templates are now bands
+  // 48–54 (`QUESTION_TEMPLATE_BAND0`), one layout, no overlap. At 504,000
+  // fineType cells a band is still 9,000 cells. Changes every band's cells, so
+  // it lands with a fresh walk.
+  static RELATION_TAG_BANDS = 56;
+  static QUESTION_TEMPLATE_BAND0 = 48;
   // Who is talking — the role bands (see `_teachSentenceList` opts.speakerBand).
   // 40 is the conversation turn binding; 41 / 42 are the speaker state itself.
   static SPEAKER_OTHER_BAND = 41;
@@ -16934,7 +16944,7 @@ export class Curriculum {
           // skipped, only relocated." This makes that promise true for the one
           // case it did not cover.
           const _probeDeadlineMs = (typeof process !== 'undefined' && Number(process.env?.DREAM_PROBE_DEADLINE_MS) > 0)
-            ? Number(process.env.DREAM_PROBE_DEADLINE_MS) : 20000;
+            ? Number(process.env.DREAM_PROBE_DEADLINE_MS) : 75000; // covers the probe's own link wait (30 s) + ack + one retry (2 × 20 s)
           let _probeTimer = null;
           let _deadlineFired = false;
           const out = await Promise.race([
@@ -16952,7 +16962,7 @@ export class Curriculum {
             this._probeDeadlineHits = (this._probeDeadlineHits || 0) + 1;
             if (!this._probeDeadlineLogAt || (Date.now() - this._probeDeadlineLogAt) > 60000) {
               this._probeDeadlineLogAt = Date.now();
-              this._hb(`[Curriculum] ⛔ GPU probe exceeded the caller deadline (${_probeDeadlineMs}ms) on ${projName} and was abandoned to the CPU path — ${this._probeDeadlineHits} time(s) this boot. The ack layer's own 8s timeout did NOT fire, which means a pending promise never settled. Teaching continues; this is the guard that stops one probe wedging the entire walk.`);
+              this._hb(`[Curriculum] ⛔ GPU probe exceeded the caller deadline (${_probeDeadlineMs}ms) on ${projName} and was abandoned to the CPU path — ${this._probeDeadlineHits} time(s) this boot. The ack layer's own timeout (DREAM_PROBE_ACK_MS) did NOT fire, which means a pending promise never settled. Teaching continues; this is the guard that stops one probe wedging the entire walk.`);
             }
           }
           if (out && out.length) {
@@ -18119,24 +18129,11 @@ export class Curriculum {
     const fineType = cluster.regions.fineType;
     if (!fineType || fineType.end <= fineType.start) return;
     if (templateId < 0 || templateId > 6) return;
-    const fineSize = fineType.end - fineType.start;
-    const templateZoneStart = fineType.start + Math.floor(fineSize * 0.75);
-    const templateZoneSize = fineType.end - templateZoneStart;
-    if (templateZoneSize <= 0) return;
-    const NUM_TEMPLATE_SLOTS = 7;
-    const slotSize = Math.max(1, Math.floor(templateZoneSize / NUM_TEMPLATE_SLOTS));
-    const slotStart = templateZoneStart + templateId * slotSize;
-    const slotEnd = Math.min(fineType.end, slotStart + slotSize);
-    const haveProxy = !!(cluster._gpuProxy && cluster._gpuProxy.writeSpikeSlice);
-    const sparseIndices = haveProxy ? [] : null;
-    for (let i = slotStart; i < slotEnd; i++) {
-      cluster.lastSpikes[i] = 1;
-      if (sparseIndices) sparseIndices.push(i);
-    }
-    if (haveProxy && sparseIndices.length > 0) {
-      try { cluster._gpuProxy.writeSpikeSlice(sparseIndices); }
-      catch { /* non-fatal */ }
-    }
+    // The template IS a relation band now (48 + id) — one layout for every tag
+    // on fineType, written by the one writer that also reaches the card. (The
+    // old separate zone overlapped bands 36–47, and its card write passed the
+    // index list where the region name belongs.)
+    this._writeRelationTag(cluster, fineType, Curriculum.QUESTION_TEMPLATE_BAND0 + templateId, true);
     // THE QUESTION STATE — every question drill is in "I was asked; an answer
     // is owed", the same band the dialogue lane lights on a question to her and
     // on her answer to it. The probe injects the same band, so what is tested is
@@ -18158,36 +18155,8 @@ export class Curriculum {
     const fineType = cluster.regions.fineType;
     if (!fineType || fineType.end <= fineType.start) return;
     if (templateId < 0 || templateId > 6) return;
-    const fineSize = fineType.end - fineType.start;
-    const templateZoneStart = fineType.start + Math.floor(fineSize * 0.75);
-    const templateZoneSize = fineType.end - templateZoneStart;
-    if (templateZoneSize <= 0) return;
-    const NUM_TEMPLATE_SLOTS = 7;
-    const slotSize = Math.max(1, Math.floor(templateZoneSize / NUM_TEMPLATE_SLOTS));
-    const slotStart = templateZoneStart + templateId * slotSize;
-    const slotEnd = Math.min(fineType.end, slotStart + slotSize);
-    const haveProxy = !!(cluster._gpuProxy && cluster._gpuProxy.writeCurrentSlice);
-    const fwdIndices = haveProxy ? [] : null;
-    const fwdValues = haveProxy ? [] : null;
-    const value = 8 * strength;
-    // TW S4 — skip the wire-dead expanded arrays when templates ride
-    // (see cluster.js injectEmbeddingToRegion).
-    const tmplWire = haveProxy && !!(cluster._brain && cluster._brain._tmplTeachOk === true);
-    for (let i = slotStart; i < slotEnd; i++) {
-      cluster.externalCurrent[i] += value;
-      if (fwdIndices && !tmplWire) {
-        fwdIndices.push(i - fineType.start);
-        fwdValues.push(value);
-      }
-    }
-    if (haveProxy && (fwdIndices.length > 0 || (tmplWire && value !== 0))) {
-      // TEMPLATE FORM (donor-v0.3.16) — a constant-value run is a count-1
-      // template: one value tiled across the slot. See cluster.js
-      // injectEmbeddingToRegion for the tagged-property rationale.
-      fwdValues._template = { rowStart: slotStart - fineType.start, groupSize: slotEnd - slotStart, values: [value] };
-      try { cluster._gpuProxy.writeCurrentSlice('fineType', fwdIndices, fwdValues); }
-      catch { /* non-fatal */ }
-    }
+    // Same band as the teach side (48 + id), as current.
+    this._injectRelationBand(Curriculum.QUESTION_TEMPLATE_BAND0 + templateId, strength);
     // The probe side of the question state: the same "I was asked" band the
     // teach side writes (`_writeQuestionTemplateTag`), as current.
     this._injectRelationBand(Curriculum.QUESTION_ASKED_BAND, strength);
@@ -23409,6 +23378,7 @@ export class Curriculum {
     // Frequency is PRESERVED by bucketing below, so a 70x transition still
     // trains harder than a 1x one; what is removed is the flat re-presentation.
     const uniquePairs = new Map();    // "a\u2192b" -> { a, b, count }
+    const contextPairs = new Map();   // "prefix\u2192b" -> { a, b, prefix, count }
     for (const s of sentences) {
       // \u26d4\u26d4 PUBLISH TO THE TEACH BUS HERE, AND THIS IS A CHOKEPOINT FIX.
       // The viewer's claim is "the exact text going into Unity", and the bus was
@@ -23452,6 +23422,14 @@ export class Curriculum {
         const u = uniquePairs.get(key);
         if (u) u.count += 1;
         else uniquePairs.set(key, { a, b, count: 1 });
+        // The same transition WITH the sentence so far (in order) — what
+        // ORDER-TO-SPEECH binds, so the next word follows the sentence, not
+        // only the last word.
+        const prefix = words.slice(0, i + 1).join(' ');
+        const ckey = `${prefix}→${b}`;
+        const c = contextPairs.get(ckey);
+        if (c) c.count += 1;
+        else contextPairs.set(ckey, { a, b, prefix, count: 1 });
       }
     }
 
@@ -23525,14 +23503,26 @@ export class Curriculum {
       let _spoken = 0;
       try {
         this._ensureWordBucketMap(opts.subject);
-        for (const u of uniquePairs.values()) {
+        // ⭐ SENTENCE CONTEXT. sem carries the last word's taught code AND the
+        // sentence so far as an ordered sentence code in the second half —
+        // byte for byte what compose writes before each word. A bigram alone
+        // (the old write) let anything that ever followed "the" come next,
+        // which is word salad; with the prefix, "my name is" → "unity" is a
+        // different state from "the cat is" → "black".
+        // ⚠ RE-PRICE: one unit per unique (prefix, next) — at most the
+        // corpus's transition count (`pairs.length`), 2..4 reps by frequency.
+        const _haveOffset = typeof this._writeTiledPatternOffset === 'function'
+          && sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === 'function';
+        for (const u of contextPairs.values()) {
           if (globalThis._brainShutdownRequested) break;
           if (!cluster.wordBucketMap || !cluster.wordBucketMap.has(u.b)) continue;
           const _code = this._topKEmbedding(this._dictionaryPatternFor(u.a), 8);
+          const _ctx = _haveOffset ? sharedEmbeddings.getSentenceEmbedding(u.prefix) : null;
           const _n = u.count >= 8 ? 4 : u.count >= 3 ? 3 : 2;
           for (let k = 0; k < _n; k++) {
             this._clearSpikes(['sem', 'word_motor']);
             this._writeTiledPattern(_semR, _code, true);
+            if (_ctx && _ctx.length > 0) this._writeTiledPatternOffset(_semR, _ctx, false, 0.5);
             this._writeAnswerToWordMotor(u.b, opts.subject);
             await this._teachHebbian(_speechLr, { projectionsWhitelist: _wl, skipIntraSynapses: true });
             _spoken++;
@@ -23541,7 +23531,7 @@ export class Curriculum {
       } catch (err) {
         console.warn(`[Curriculum] ORDER-TO-SPEECH stopped: ${(err && err.message) || err}`);
       }
-      this._hb(`[Curriculum] ORDER-TO-SPEECH — ${_spoken} sem→word_motor binds across ${uniquePairs.size} transitions (${opts.label || 'K'}) · her speaking slots now carry what follows each word.`);
+      this._hb(`[Curriculum] ORDER-TO-SPEECH — ${_spoken} sem→word_motor binds across ${contextPairs.size} in-sentence transitions (${uniquePairs.size} word pairs) (${opts.label || 'K'}) · her speaking slots now carry what follows each word.`);
     }
     // (The single flat `_teachAssociationPairs(pairs, ...)` call that used to
     // stand here is replaced by the bucketed loop above. Its rationale still

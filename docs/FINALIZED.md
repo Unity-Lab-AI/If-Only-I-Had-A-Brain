@@ -61499,4 +61499,25 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
 - ⚠ **This changes what she is taught** — by the fresh-walk-is-last rule it must be in before the walk that is meant to teach it.
 - **Verified:** `node --check` on `curriculum.js` and `chat.js`; `import()` of the curriculum module.
 
+## 2026-11-26 — QAFORM finished: band collision, QTYPES, SENTENCEFORM, right/wrong
+
+Gee, verbatim: *"build right/wrong and the sentence answers first and fix collision... obviously we dont start her when shiot is on the board.. wtf fix this so u dont ask stupid questions about what i already told you to do to wherer you dont do it correctly"* · *"7 cquestion types is not enough to teach her how to answer question in the trillions of combinations available"* · *"7 cquestion types is not enough to teach her how to answer questions of  the trillions of combinations available to everyone"* · *"still waiting on you to finish all the fixes"*.
+
+- **Band collision** — `RELATION_TAG_BANDS` 48→56; the seven question templates are relation bands 48–54 (`QUESTION_TEMPLATE_BAND0`), written by `_writeRelationTag` / `_injectRelationBand`. The old top-25% zone of `fineType` overlapped bands 36–47, and its card write passed the index list where the region name belongs.
+- **QTYPES** — `getSentenceEmbedding` (the one function every question path uses: teach, self-quiz, gate, chat compose) was a bag average. It now adds each word's vector rotated by `(position·37) mod 300` at weight 0.5, so word order makes a different code ("is your name unity" vs "your name is unity": cosine 0.944, was 1.0) while meaning stays (word vs its one-word sentence 0.886). "i" and "a" count as words. Templates are a coarse cue only.
+- **SENTENCEFORM** — at full scale every next word was chosen from the LAST word alone, in teaching (ORDER-TO-SPEECH) and in speech (`_composeSentenceOnce`): a bigram chain, the word salad. Both now write last-word code + the ordered sentence-so-far code (second half of sem); teaching binds one unit per unique (prefix, next word), 2–4 reps by frequency. The inner voice uses the same compose.
+- **Right/wrong** — already built; my filing said otherwise. SPEAKLOOP in `_teachQABinding` quizzes her after the reps and re-aims a wrong word (measured-thief contrast, ≤2 rounds); the gate does the same with its own measurement.
+- **Also:** the two 5-minute watch jobs were both firing (the "double landing"); both cancelled.
+- ⚠ **Changes trained geometry and what she is taught** → fresh walk.
+- **Verified:** `node --check` + `import()` on `curriculum.js`, `cluster/emit.js`, `embeddings.js`; bundle rebuilt; order/meaning cosines measured on the real GloVe table.
+
+## 2026-11-26 — PROBEMISS: gate and word probes stay on the card
+
+Gee pointed at the open row: *"- [~] **PROBEMISS** — gate probes alternate between landing on the pod and falling to the CPU path (`gateProbe window — ok=0 miss=4` , `refused=35` after a reconnect)."*
+
+- **Miss cause:** `gpuGateProbe` gave the card 8 s; the probe shares the link with the teach stream and measured successful probes averaged up to 5,395 ms, so the tail ran past 8 s → CPU. **Refused cause:** a dropped link refused instantly instead of waiting for the reconnect.
+- **Fix:** wait ≤30 s for the link (`DREAM_PROBE_LINK_WAIT_MS`), 20 s ack (`DREAM_PROBE_ACK_MS`), one retry on the card; caller deadline `DREAM_PROBE_DEADLINE_MS` 20→75 s so it covers the whole budget. `gpuGateProbeBuckets` (her word readout) gets the same link wait and ack. `retried=` added to the window line.
+- **Docs:** `docs/ADMIN-CONTROLS.md` rows.
+- **Verified:** `node --check` + `import()` on `gpu.js`; `node --check` on `curriculum.js`; bundle rebuilt. Live check on the walk: `miss` near 0, `refused` 0 across a reconnect.
+
 

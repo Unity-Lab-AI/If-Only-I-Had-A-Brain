@@ -1382,6 +1382,14 @@ export const CLUSTER_EMIT_MIXIN = {
         const semR = this.regions.sem;
         this.lastSpikes.fill(0, semR.start, semR.end);
         _cur._writeTiledPattern(semR, _cur._topKEmbedding(_cur._dictionaryPatternFor(_seedWord), 8), true, { noCpu: false });
+        // ⭐ AND THE SENTENCE SO FAR, in order, in the second half — the
+        // ORDER-TO-SPEECH teach write, so the next word follows her sentence,
+        // not just its last word (a bigram chain is word salad).
+        if (words.length > 0 && typeof _cur._writeTiledPatternOffset === 'function'
+            && sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === 'function') {
+          const _ctx = sharedEmbeddings.getSentenceEmbedding(words.join(' '));
+          if (_ctx && _ctx.length) _cur._writeTiledPatternOffset(semR, _ctx, false, 0.5);
+        }
       } else if (_taught && _seedEmb) {
         const semR = this.regions.sem;
         this.lastSpikes.fill(0, semR.start, semR.end);
