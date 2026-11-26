@@ -16422,6 +16422,137 @@ export class Curriculum {
     }
   }
 
+  // ═══════════════════════════════════════════════════════════════════
+  // STEP LESSONS (donor v0.3.56) — a teach lane's per-word steps run on the
+  // card, a rep's words in one frame. Used by the lanes whose steps a pattern
+  // lesson cannot express: a per-step projection whitelist, and the
+  // asymmetric intra step (pre ≠ post), which `intraSynapsesHebbian` refuses
+  // the card for. Each lane builds its items; these three do the rest.
+  // ═══════════════════════════════════════════════════════════════════
+
+  /** The cluster's whole region table, or null when the card cannot take step lessons. */
+  _stepLessonBase(cluster) {
+    if (!cluster || !cluster._gpuProxyReady || !cluster._gpuProxy) return null;
+    const p = cluster._gpuProxy;
+    if (typeof p.stepLessonCapable !== 'function' || !p.stepLessonCapable() || typeof p.teachStepLesson !== 'function') return null;
+    // The masked intra step reads the language twin's spike space — the same
+    // precondition the bound intra path itself checks.
+    if (!cluster._brain || cluster._brain._langPseudoInit !== true) return null;
+    const regions = [];
+    const index = new Map();
+    for (const [key, rg] of Object.entries(cluster.regions || {})) {
+      if (!rg || !(rg.end > rg.start)) continue;
+      index.set(key, regions.length);
+      regions.push([key, 1, rg.end - rg.start, rg.start]);
+    }
+    if (regions.length === 0 || regions.length > 240) return null;
+    return { regions, index };
+  }
+
+  /**
+   * The op table: the named cross projections (every one when `whitelist` is
+   * null), in `crossProjections` key order — the order `_crossRegionHebbian`
+   * walks them — with the same sem→motor damping, then the intra matrix. Null
+   * when any of them is not on the card: the CPU path would train it itself,
+   * so the whole lane stays on that path rather than split.
+   */
+  _stepLessonOps(cluster, whitelist) {
+    const syn = cluster && cluster.synapses;
+    if (!syn || !syn._gpuBound) return null;
+    if (cluster._smLrScale === undefined) {
+      let _v = NaN;
+      try { _v = parseFloat(process.env.DREAM_SM_LR_SCALE); } catch { _v = NaN; }
+      cluster._smLrScale = (Number.isFinite(_v) && _v >= 0) ? _v : 0.5;
+    }
+    const lr = cluster.learningRate;
+    const wl = whitelist ? new Set(whitelist) : null;
+    const ops = [], byName = new Map(), cross = [];
+    for (const [name, proj] of Object.entries(cluster.crossProjections || {})) {
+      if (wl && !wl.has(name)) continue;
+      const at = name.indexOf('_to_');
+      if (at < 0 || !cluster.regions[name.slice(0, at)] || !cluster.regions[name.slice(at + 4)]) continue;
+      if (!proj || !proj._gpuBound) return null;
+      const damp = (name === 'sem_to_motor' || name === 'sem_to_word_motor') ? cluster._smLrScale : 1;
+      byName.set(name, ops.length);
+      cross.push(ops.length);
+      ops.push([`${cluster.name}_${name}`, lr * damp]);
+    }
+    const intra = ops.length;
+    ops.push([`${cluster.name}_intraSynapses`, lr]);
+    if (ops.length > 240) return null;
+    return { ops, byName, cross, intra };
+  }
+
+  /**
+   * Run a lane's reps as step lessons. `itemsFor(word)` returns that word's
+   * items ({dims, steps}); a word's items always ride the same frame, and each
+   * frame opens by clearing every region (the CPU path clears the whole
+   * cluster before every step, so a masked step's pre must not read anything
+   * another lane left resident). A frame the card refuses is replayed on the
+   * CPU word by word (`o.cpuWord`), so no word is ever skipped. Returns false
+   * only when nothing reached the card — the caller then runs its CPU path.
+   */
+  async _stepLessonRun(cluster, card, ops, words, reps, itemsFor, o = {}) {
+    const p = cluster._gpuProxy;
+    const label = o.label || 'step-lesson';
+    const maxItems = (() => { const v = Number(process.env.DREAM_STEP_LESSON_ITEMS); return v > 0 ? Math.floor(v) : 2048; })();
+    const allClear = card.regions.map((_, i) => [0, i]);
+    const t0 = Date.now();
+    let lastHb = t0, sinceHb = 0, frames = 0, items = 0, cpuWords = 0, anySent = false;
+    const total = Math.max(1, words.length * reps);
+    for (let rep = 0; rep < reps; rep++) {
+      if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return anySent;
+      let batch = [], batchWords = [];
+      const flush = async () => {
+        if (!batch.length) return;
+        const its = batch, bw = batchWords;
+        batch = []; batchWords = [];
+        its[0] = { dims: its[0].dims, steps: [...allClear, ...its[0].steps] };
+        if (typeof p.lessonSlot === 'function') { try { await p.lessonSlot(); } catch { /* pacing is best-effort */ } }
+        let sent = false;
+        try { sent = !!p.teachStepLesson({ cluster: cluster.name, twin: 'langCortex', regions: card.regions, ops: ops.ops, items: its }); } catch { sent = false; }
+        if (sent) { anySent = true; frames++; items += its.length; }
+        else if (typeof o.cpuWord === 'function') {
+          for (const w of bw) { await o.cpuWord(w); cpuWords++; }
+        }
+      };
+      for (let wi = 0; wi < words.length; wi++) {
+        const w = words[wi];
+        if (rep === 0 && typeof o.onRep0Word === 'function') o.onRep0Word(w);
+        const its = itemsFor(w);
+        if (batch.length && batch.length + its.length > maxItems) await flush();
+        for (const it of its) batch.push(it);
+        if (its.length) batchWords.push(w);
+        sinceHb++;
+        const now = Date.now();
+        if (now - lastHb > 5000) {
+          const done = Math.min(total, rep * words.length + wi + 1);
+          this._phaseWorkTotal = total;
+          this._phaseWorkName = label;
+          this._phaseWorkOverride = { done, total, frac: done / total };
+          this._hb(`[Curriculum] ⏱ ${label} heartbeat (card) — rep ${rep + 1}/${reps}, word ${wi + 1}/${words.length} (${Math.round((done / total) * 100)}% of ${total.toLocaleString()} word-passes), elapsed ${((now - t0) / 1000).toFixed(1)}s, ~${(sinceHb / ((now - lastHb) / 1000)).toFixed(1)} words/s · ${frames} frame(s) / ${items.toLocaleString()} step item(s) on the card${cpuWords ? ` · ${cpuWords} word(s) replayed on the CPU` : ''}`);
+          lastHb = now; sinceHb = 0;
+          await _microtask();
+        }
+      }
+      await flush();
+      await _microtask();
+    }
+    // The CPU-path probes read these projections' CPU arrays; the card is where
+    // this lane trained them, so bring the trained values home.
+    if (anySent && Array.isArray(o.pull) && typeof p.pullMatrixValues === 'function') {
+      for (const n of o.pull) {
+        if (!cluster.crossProjections || !cluster.crossProjections[n]) continue;
+        try {
+          const r = await p.pullMatrixValues(`${cluster.name}_${n}`);
+          if (!r || !r.ok) console.warn(`[Curriculum] ${label} — could not pull ${n} from the card (${(r && r.reason) || 'unknown'}); its CPU copy refreshes at the next hourly pull.`);
+        } catch (e) { console.warn(`[Curriculum] ${label} — pull of ${n} threw: ${(e && e.message) || e}`); }
+      }
+    }
+    if (anySent || cpuWords) console.log(`[Curriculum] ${label} on the card — ${words.length} words × ${reps} reps in ${((Date.now() - t0) / 1000).toFixed(1)}s · ${frames} frame(s), ${items.toLocaleString()} step item(s)${cpuWords ? ` · ${cpuWords} word(s) replayed on the CPU (frame refused)` : ''}.`);
+    return anySent || cpuWords > 0;
+  }
+
   // ── Helper: build a full-cluster activation vector by writing one
   // feature into one region. Caller pattern for asymmetric teaching:
   //   const pre = this._buildRegionPattern(letterRegion, encodeLetter(ch));

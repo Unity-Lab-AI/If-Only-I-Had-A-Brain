@@ -134,6 +134,25 @@
 tunnel: 30417290-1c95-4a10-8648-15a70646938f
 credentials-file: C:\Users\gfour\.cloudflared\30417290-1c95-4a10-8648-15a70646938f.json
 
+# ⛔ TCP, NOT QUIC (2026-11-26). The default transport is QUIC over UDP, and on
+# this PC it was killing the donor lane. Measured from cloudflared's own
+# counters (127.0.0.1:20241/metrics) after one night with a rented card:
+# quic_client_closed_connections 4, tunnel_register_success 8 (every one of the
+# four edge links died and re-registered), and 17,025 + 3,382 + 1,259 + 2,217
+# packets lost to reordering plus 388 + 270 + 686 + 166 to timeout. Each time a
+# link stalled, the donor's WebSocket inside it went silent for 80–150 s (her
+# pod at 0%, nothing arriving either way) and then reset with code 1006 —
+# seven times in four hours — while the donor process itself never stopped
+# (same PID, healthy send loop, reconnected still holding her matrices). HTTP/2
+# rides TCP, which retransmits and reorders for itself instead of losing the
+# stream, so a lossy moment costs latency, not the connection.
+protocol: http2
+
+# The tunnel's own log. It used to run only in a minimized console, so the one
+# witness to a donor drop vanished with the window; this keeps it on disk.
+logfile: D:\AAA\If-Only-I-Had-A-Brain\server\cloudflared.log
+loglevel: info
+
 # Keep the connection healthy through long quiet periods — she can go minutes
 # without a public request while teaching.
 originRequest:
