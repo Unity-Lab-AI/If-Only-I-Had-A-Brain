@@ -61428,5 +61428,16 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
     - The donor's `free_matrices_ack` is now logged as `[Pool] FREE ACK … freed N matrix(es)`; nothing read it before.
   - **Decides whether a donor build is needed:** if the next fresh boot logs freed matrices and the host card drops, it is not. If it frees 0 and the card stays high, the held memory is per-cluster state the donor has no release for, and a donor build is next.
   - **Verified:** `node --check`. Not pressed: the walk is running and the card was cleared by the donor restart.
+  - **Measured after the press (boot `f0208a52`):** `RELEASE ALL sent to … 4070 Ti SUPER` → `FREE ACK … freed 0 matrix(es) (it held none of them)` while his card stayed at 4,262 MiB.
+    - So the failover leftover is per-cluster `gpu_init` state, not named matrices, and a donor build with a cluster-release message is needed for a permanent fix.
+    - A donor Stop → Start clears it in the meantime.
+
+## 2026-11-26 — HBGRACE.5: four missed pings, not two, before a donor is cut off
+
+- **Gee (overnight hand-off):** *"fix and update if u need to … fix shit thats needed, and update savestart. and keep it training"*
+  - **Measured overnight:** five pod drops. Every one came after 64–81 s of silence (`last heard 64.5s` / `72.6s` / `80.9s ago`). At least one was our own heartbeat: `heartbeat — socket … (GPU donor) missed 2 consecutive pings — terminating`.
+  - Every time, the pod reconnected within ~2 min STILL HOLDING all her matrices (`ADOPT … already holds it for this brain`). The donor was alive and briefly quiet, and each kill paused her.
+  - **Fix:** `_HB_MISS_LIMIT` 2 → 4 (~120 s), which covers every silence measured. A truly dead socket is caught in 2 min instead of 1. The mid-sync grace (5) and the hard ceiling (20) are unchanged. `DREAM_HB_MISS_LIMIT` overrides.
+  - **Verified:** `node --check`. Drops are watched after the press.
 
 
