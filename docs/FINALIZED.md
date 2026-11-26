@@ -61323,5 +61323,8 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
       - One success marks it capable and logs `IMAGE LANE — … rendered a probe look`.
       - A failure marks it and it is re-tried after 10 minutes, with the local renderer used meanwhile.
     - No donor build needed.
+  - **Second follow-up:** boot `2b221076` still rendered locally (txt2img at 20:31 Denver) and Gee's card stayed at 5.7–11.6 GB. Two causes:
+    1. The probe was pinned to `_gpuClient`, which with two cards can be the host's own donor, so the pod never qualified. Now any REMOTE card qualifies, and the host's loopback donor never does.
+    2. The local model's idle unload was armed only by a LOCAL render, so once looks left the host the model stayed resident forever. A donor success now arms the same unload.
 
 

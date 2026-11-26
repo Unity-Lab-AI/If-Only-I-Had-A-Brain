@@ -285,7 +285,11 @@ const ImageEngineMixin = {
     const _probeOk = (c) => c.imageCapable === true
       || (c.imageCapable == null && Date.now() - (c.imageProbeFailAt || 0) > 600000);
     for (const [ws, c] of this.clients) {
-      if (c && c.isGPU && ws && ws.readyState === 1 && ws === this._gpuClient && !c.isLocalHost
+      // Any REMOTE card qualifies here, not only `_gpuClient`: with two cards
+      // attached `_gpuClient` can be the host's own donor while the pod holds the
+      // clusters, and a check pinned to it never reached the pod (boot 2b221076
+      // kept rendering on the host card).
+      if (c && c.isGPU && ws && ws.readyState === 1 && !c.isLocalHost
         && process.env.DREAM_IMAGE_ON_CORTEX_CARD !== '0' && _probeOk(c)) cortexCard = { ws, c };
       if (!c || !c.isGPU || !c.imageCapable || !ws || ws.readyState !== 1) continue;
       // ⛔ NEVER THE CARD CARRYING HER CORTEX — the rule this lane was written
@@ -325,6 +329,13 @@ const ImageEngineMixin = {
     }
     st.ok++; st.lastMs = ms; st.lastOkAt = Date.now();
     st.donorRenders = (st.donorRenders | 0) + 1;
+    // ⛔ THE LOCAL MODEL HAS TO LEAVE THE HOST CARD TOO. The idle unload is armed
+    // only by a LOCAL render (`_imageEngineTouch`), so once looks go to a donor
+    // the model loaded by an earlier local render stays resident forever —
+    // measured 5.7 GB held on the operator's card with every look routed away.
+    // A donor success arms the same idle unload; it is a no-op when nothing is
+    // loaded, and the next local render reloads in under a second.
+    this._imageEngineTouch();
     return { png: Buffer.from(out.png_b64, 'base64'), seed: req.seed, ms, width: req.width, height: req.height, card: pick.c.gpuName || pick.c.id };
   },
 
