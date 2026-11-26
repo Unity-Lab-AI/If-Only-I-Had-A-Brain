@@ -14356,6 +14356,16 @@ wss.on('connection', (ws, req) => {
     || '';
   const client = {
     id, lastInput: 0, inputCount: 0, name: null, isGPU: false, mode: null, ualUser: ualUser || null,
+    // THIS MACHINE, directly (loopback socket, no proxy header) — a donor on
+    // the operator's own card. The partition keeps such a card EMPTY whenever a
+    // remote card can hold her, so his GPU stays free (and renders her looks).
+    isLocalHost: (() => {
+      const a = (req.socket && req.socket.remoteAddress) || '';
+      const loop = a === '127.0.0.1' || a === '::1' || a === '::ffff:127.0.0.1' || a.startsWith('127.');
+      const proxied = ['x-forwarded-for', 'cf-connecting-ip', 'cf-ray', 'tailscale-funnel-request', 'forwarded', 'x-real-ip']
+        .some((h) => req.headers && req.headers[h] != null && String(req.headers[h]).length > 0);
+      return loop && !proxied;
+    })(),
     // PR.4 client↔brain profiling — per-connection health counters. Live byte
     // counters feed the admin Clients table; cumulative totals (on brain) survive
     // disconnects for the Network rate readout.

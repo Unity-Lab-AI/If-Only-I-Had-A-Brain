@@ -61207,6 +61207,16 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
   - **Reader:** a one-word line ("Here.", "Sorry.") now counts when a speech verb is beside it.
   - **Measured:** life/G1 → 57 turns; life/K → 84 turns; ela/K books 2,507 turns.
   - **Remaining:** grade2 → phd.
+
+- [x] ✅ **CLOSED BUILT 2026-11-25.** **LOCALIDLE — the operator's card held her clusters beside the pod, and her image looks starved.** Gee 2026-11-25, verbatim: *"did you fresh start her? is that why her images minbds eye images arent happening yet?"* · *"what the fuck? what is on MY GPU nothing should be on it ewhen we have a pod"*.
+  - **Evidence:**
+    - every look `LOOK FAILED at stage=vramTight … 2628MB free < 6162MB floor`;
+    - the 4070 at 13,433 / 16,376 MiB used;
+    - the pod, the cortex owner, is excluded from image renders by design (its base64 replies dropped the link before).
+  - **Fix:**
+    - `brain-server.js`: every client records `isLocalHost` (loopback socket, no proxy header).
+    - `gpu.js _partitionClustersAcrossPool`: with any remote card live, clusters are placed on remote cards first. A local card takes only a cluster no remote card can hold. With no remote card, everything places on the local card as before.
+  - **Verified:** `node --check`; the local donor's socket is `127.0.0.1:63128 → 7525` (flagged local).
   - **Verified:** ESM import.
   - **Verified:** `node --check`, ESM import.
   - **Verified:** ESM import. The piece is shown, the verdict is kept and logged as "doubts … Shown anyway", and the subject still goes to practice.
