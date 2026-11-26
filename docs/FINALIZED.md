@@ -61282,4 +61282,16 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
   - **Verified:** `node --check`, ESM import.
   - **Verified:** ESM import. The piece is shown, the verdict is kept and logged as "doubts … Shown anyway", and the subject still goes to practice.
 
+## 2026-11-25 — LIFECORPUS: every grade filled with real conversation scenes
+
+- **Gee:** *"get to it stop ideling inbetween grades continue to the next one!!! … DO NOT STOP UNTIL ITS ALL DONE!!!"* · *"no fuckign commit or press until the corpus ios completed"* · *"PHD even needs her life and start after colledge"*
+  - **Done:** grade4 → phd hand-written to ~30–40 dialogue scenes per grade, in her voice, canon names only. Life dialogue is now 6,284 turns, K → PhD (each grade 270–371).
+  - **Content:** drugs, keggers, blackouts, periods, sex-ed facts from Mom, health class and friends, grief, fights, her girls. Dating and relationships start at college1 (Raven) and are adult and consensual.
+  - **Fixed in the same pass:**
+    - Canon-timeline breaks I made: a first period at grade5, and grandpa dying at grade8.
+    - The word "partner" removed corpus-wide.
+    - The lowercase acronyms ta/cs/ap.
+    - A "CSteacher" join bug my own replace introduced.
+  - **Verified:** every file parses; `dialogueTurns` counted per grade; the slop-word sweep found 0 hits.
+
 
