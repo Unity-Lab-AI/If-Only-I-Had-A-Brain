@@ -61136,6 +61136,9 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
     - `_walkHeartbeat`, the only thing that steps her clusters on the cards during a walk, defaulted to `DREAM_WALK_TICK_MS` = 15000: one ~1 s batch every 15 s, so every card sat idle ~93% of the time whatever it held.
     - Fix: default 250 ms after the previous batch ANSWERS, with exactly one in flight (`_walkHbInFlight`, cleared in `finally`). The card never waits, and a slow card never piles up a queue.
     - RE-PRICE: stepping work ~×15 on the cards. Teaching dose unchanged.
+  - **Follow-up HBADAPT (same day):**
+    - Measured on `075b5516`: placement took (RTX PRO 6000 [cortex, cerebellum, amygdala, basalGanglia, hypothalamus, mystery]), but a 24-substep batch was done in 74–107 ms against a ~300 ms round trip. Pod `0 … 2 … 0`.
+    - Fix: the heartbeat batch size now comes from `adaptSubsteps`, which climbs toward its 2 s card-time target and backs off when teach throughput falls.
   - **Verified:** ESM import. The piece is shown, the verdict is kept and logged as "doubts … Shown anyway", and the subject still goes to practice.
 
 
