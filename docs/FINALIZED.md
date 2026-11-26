@@ -61592,4 +61592,13 @@ Gee, verbatim: *"these are shit poor:Dialogue exchanges in any life grade | **0*
 - **Now:** 8,168 sentences · **374** with her name · **232 of 3,167** lines said to her use her name (was 138 of 3,072).
 - ⚠ Changes what she is taught → in before the fresh walk.
 
+## 2026-11-26 — QA-ALIGN + HUMANTALK: before the fresh walk
+
+Gee, verbatim (choosing the fresh walk): *"option 1 but make sure the full corpus is fixed for question answer alignment and everything Unity needs to be Human"*.
+
+- **Q→A alignment, measured in her life dialogue:** 1,392 of 1,465 questions put to her are followed by her answer (the rest are natural question-backs, e.g. *"Who is frankenstein?"*); 643 of 697 questions she asks are answered by the other person. Academic Q→A was already aligned by construction: teach, self-quiz, gate and chat all read the question through `getSentenceEmbedding`, now ordered.
+- **Fixed — the one place the question state differed:** when she answers in chat, compose wrote the question's sentence code + key word but NOT the template band (+ asked band 43) that every Q→A teach and every gate probe writes. `_composeSentenceOnce` now writes it, so she answers in the state the answer was bound in.
+- **Human conversation acts in HER OWN lines were near-absent** (over 3,279 lines: asking for help 1, please 4, asking someone's name 3, feelings 14, goodbye 11, "i love" 9, disagreeing ~0). Added one everyday-talk scene per grade (pre-K → PhD, that grade's canon people only, nobody newly named): she asks for help and says please, thanks, apologises, says how she feels, disagrees with a reason, asks a name, says goodbye and I love you — age-true (grade 5's is her first period at school, handled with the nurse and her mom). Now over her 3,163 distinct lines: help 21 · please 23 · disagree 29 · feelings 28 · goodbye 16 · love 12 · name-asks 5.
+- **Verified:** every life file parses; `node --check` on `cluster/emit.js`; bundle rebuilt.
+
 
