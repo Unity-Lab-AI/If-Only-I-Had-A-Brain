@@ -124,7 +124,7 @@ const LAUNCHERS = Object.freeze({
  * hangs. Detaching is what makes this service able to restart the thing that
  * outlives it.
  */
-function spawnLauncher(script) {
+function spawnLauncher(script, extraEnv = {}) {
   const { spawn } = require('child_process');
   if (!fs.existsSync(script)) {
     return Promise.reject(new Error(`launcher not found: ${script}`));
@@ -140,7 +140,7 @@ function spawnLauncher(script) {
   // ⚠ Error-path pauses in start/Savestart are DELIBERATELY left alone: a
   // launcher that failed should hold its window open with the reason on screen,
   // which is the only diagnostic surface a detached launch has.
-  const env = { ...process.env, UAL_CTL_NONINTERACTIVE: '1' };
+  const env = { ...process.env, UAL_CTL_NONINTERACTIVE: '1', ...extraEnv };
   return new Promise((resolve, reject) => {
     try {
       const child = IS_WIN
@@ -1257,7 +1257,14 @@ async function doUpdate(keep, confirmToken, skipFields) {
     // keep = Savestart (weights kept); fresh = start (state wiped at boot).
     const script = keep ? LAUNCHERS.save : LAUNCHERS.fresh;
     let launched;
-    try { launched = await spawnLauncher(script); }
+    // ⛔ A CONFIRMED FRESH WALK MUST NOT STALL ON start.bat's Y/N GATE. The press
+    // already carries the operator's confirmation (`confirm=WIPE`); start.bat
+    // asks again with a 30 s default of N, so a button press opened a window that
+    // sat on "Are you sure you want to WIPE" and then aborted. DREAM_FORCE_CLEAR
+    // is the launcher's own documented bypass (start.bat /fresh, -y, /yes). A
+    // double-clicked start.bat never sets it and still asks.
+    const _launchEnv = (!keep && String(confirmToken || '') === 'WIPE') ? { DREAM_FORCE_CLEAR: '1' } : {};
+    try { launched = await spawnLauncher(script, _launchEnv); }
     catch (e) {
       return { ok: false, action: 'update', mode, local: true,
         message: `Could not launch ${path.basename(script)}: ${e.message}`,

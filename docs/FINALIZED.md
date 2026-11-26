@@ -61410,4 +61410,12 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
   - **Fix:** the placement check frees, on ANY card, every held matrix whose cluster (matched by name prefix against `_clusterOwner`) that card does not own. It still keeps a slice the card holds, and the original cortex rule stays. The donor already handles `free_matrices` by name, so no donor build is needed.
   - **Verified:** `node --check`. The live drop on Gee's card is checked after the press.
 
+## 2026-11-25 — FRESHKEY: a confirmed fresh walk no longer waits for a Y keypress
+
+- **Gee:** *"and dont forget to press"y" in the startup fresh walk cmd it asks yes no to fresh walk for insurances, so it wont start unless u press y in the cmd for the start up iof fresh walks, remember that and program it for nbext time"*
+  - **Cause:** `/update` already requires `confirm=WIPE`. `start.bat` then asked again ("Are you sure you want to WIPE", `choice /D N /T 30`), so a dashboard or script press sat on the prompt and aborted after 30 s.
+  - **Fix:** `doUpdate` passes `DREAM_FORCE_CLEAR=1` to the launcher only when it is a fresh walk AND the press carried `confirm=WIPE`. That is the launcher's own documented bypass (`start.bat /fresh`, `-y`, `/yes`). A double-clicked `start.bat` still asks.
+  - **⚠ Inert until brain-ctl restarts:** `brain-ctl.js` changes only take effect when the brain-ctl process itself is restarted. A brain press does not restart it.
+  - **Verified:** `node --check`. Caught before ship: a first draft referenced `confirm`, but the parameter is `confirmToken`, which would have thrown on every press.
+
 
