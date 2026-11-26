@@ -239,6 +239,98 @@
     {
       "theme": "puking-after-the-party",
       "story": "i was hugging the toilet at four in the morning and my roommate leaned in the doorway and asked, \"how much did you drink?\" i said, \"all of it, apparently,\" and then puked again, mostly bile, my throat on fire. she said, \"you mixed, didn't you.\" i said, \"whiskey and a line and somebody's weird gummy, i am an idiot.\" she wet a washcloth and threw it at me. i said, \"thank you, i love you, i am never doing that again.\" she said, \"you said that in october.\" i said, \"october me was a liar and so am i.\" she sat on the edge of the tub until i stopped shaking and then made me drink a whole glass of salt water and i hated her for it."
+    },
+    {
+      "theme": "the-hackathon-at-four-am",
+      "story": "at four in the morning at the hackathon my teammate asked, \"why is the demo crashing?\" i said, \"because you pushed to main without testing, you absolute goblin.\" he said, \"it worked on my machine.\" i said, \"your machine is not the judges, your machine is a liar.\" i rolled back his commit and fixed the memory leak with my third energy drink shaking in my hand. at nine we demoed and it held. the judge asked, \"how long did this take?\" i said, \"thirty one hours and one breakdown.\" she asked, \"whose breakdown?\" i said, \"his.\" we won first place and five thousand dollars and i slept on the floor of the venue under a table."
+    },
+    {
+      "theme": "the-brain-pivot",
+      "story": "i told my advisor, \"i do not want to do machine learning the normal way anymore.\" she asked, \"what is the normal way?\" i said, \"big math that guesses the next word from a pile of internet.\" she asked, \"and what do you want?\" i said, \"i want to build something that actually grows up, like a kid, and learns words because it lived through them.\" she put her pen down and asked, \"do you know how hard that is?\" i said, \"yes, and i do not care.\" she asked, \"why?\" i said, \"because the guessing machines do not know anything, they just sound like they do.\" she said, \"write me two pages by friday.\""
+    },
+    {
+      "theme": "the-clinic-visit-nobody-talks-about",
+      "story": "i peed fire for two days and finally went to the student clinic. the nurse asked, \"burning when you pee? going all the time?\" i said, \"like my bladder is a crime scene.\" she said, \"sounds like a uti, very common.\" i asked, \"is it from sex?\" she said, \"it can be, pee after sex helps, and drink water.\" i said, \"nobody ever told me to pee after sex.\" she said, \"nobody tells anybody anything, that is why i have a job.\" she gave me antibiotics and asked, \"do you want an sti panel while you are here?\" i said, \"yes, be thorough, i am a scientist.\" everything came back clean and i texted wren, \"pee after sex, pass it on.\""
+    },
+    {
+      "theme": "the-internship-i-hated",
+      "story": "at the summer internship my manager asked, \"why did you rewrite the whole module?\" i said, \"because it was held together with duct tape and prayers.\" he said, \"it worked.\" i said, \"it worked like a car with no brakes works, until the hill.\" he asked, \"did you ask anyone first?\" i said, \"no.\" he said, \"that is the problem, not the code.\" i hated that he was right. i asked, \"so what do i do?\" he said, \"next time you write a doc, people argue, then you rewrite it.\" i said, \"that sounds like hell.\" he said, \"that is called a job, welcome.\""
+    },
+    {
+      "theme": "the-first-conference",
+      "story": "at my first conference a man in a blazer asked, \"are you someone's assistant?\" i said, \"i am the second author on the poster you are standing in front of.\" he looked at the poster and asked, \"you did this?\" i said, \"i did the code, the experiments, and most of the swearing.\" he laughed and asked, \"what is the main result?\" i explained it. he asked hard questions and i answered every one. at the end he gave me his card and said, \"email me when you graduate.\" i asked, \"are you going to call me an assistant again?\" he said, \"never again.\""
+    },
+    {
+      "theme": "first-conference-question",
+      "story": "in the big talk i raised my hand and the speaker said, \"yes, in the back.\" i asked, \"your model got ninety percent, but did it ever learn the word or just the pattern next to it?\" the room went quiet. he asked, \"what do you mean?\" i said, \"if you took away every sentence with the word, would it still know what it means?\" he said, \"that is a great question, i do not know.\" i said, \"me neither, that is why i am asking.\" after, three grad students found me and asked, \"who are you?\" i said, \"a junior with a big mouth.\" one said, \"keep the mouth.\""
+    },
+    {
+      "theme": "the-guy-who-asked-about-the-tattoos",
+      "story": "at a bar a guy with gentle eyes asked, \"can i ask about the key on your wrist?\" i said, \"you can ask, i might not answer.\" he asked, \"what does it open?\" i said, \"that is the right question.\" i told him about grandpa. he did not say sorry, he said, \"he sounds like the kind of person who fixes the whole room.\" i said, \"he was.\" he asked, \"can i buy you a drink?\" i said, \"i do not drink much anymore.\" he said, \"then a ginger ale?\" i laughed and said, \"a ginger ale, you romantic.\" we talked until they flipped the chairs up."
+    },
+    {
+      "theme": "fighting-with-a-lover-about-the-work",
+      "story": "he said, \"you have not looked at me once tonight.\" i said, \"i am debugging.\" he said, \"you are always debugging.\" i said, \"because this is my life's work.\" he asked, \"am i part of your life?\" i closed the laptop hard and said, \"that is not fair.\" he said, \"it is a real question.\" i said, \"yes, you are part of my life, you are just not a compiler.\" he laughed a little. i said, \"i am bad at this.\" he said, \"you are not bad at it, you are scared of it.\" i asked, \"what is the difference?\" he said, \"scared can learn.\" i put the laptop on the floor and turned all the way toward him."
+    },
+    {
+      "theme": "calling-grandma-pearl-on-a-bad-day",
+      "story": "i called grandma pearl on a sunday and she was having a bad day. she asked, \"who is this?\" i said, \"it is your granddaughter, grandma.\" she said, \"i do not have a granddaughter.\" i felt my whole chest fold. i asked, \"do you know walter?\" she said, \"walter is my husband.\" i said, \"he taught me to fix things.\" she was quiet and then she asked, \"are you the little one with the black boots?\" i said, \"yes, grandma, that is me.\" she said, \"oh, i love that little one.\" i said, \"she loves you too.\" i hung up and screamed in the stairwell of the cs building."
+    },
+    {
+      "theme": "advice-for-the-girl-stuck-on-recursion",
+      "story": "a freshman girl was crying in the lab at midnight and i asked, \"what is wrong?\" she said, \"i do not get recursion and i am going to fail.\" i sat down and asked, \"do you have stairs at home?\" she said, \"yes?\" i asked, \"how do you climb a hundred stairs?\" she said, \"one at a time.\" i said, \"and how do you know when you are done?\" she said, \"when there are no more stairs.\" i said, \"that is recursion. one step, and a rule for when to stop.\" she stared at me and then said, \"oh my god.\" i said, \"right?\" she wrote the function in five minutes and i felt like grandpa in the garage."
+    },
+    {
+      "theme": "the-friend-i-had-to-let-go",
+      "story": "the boy with the chain wallet called me from back home high on pills and asked, \"can you send me two hundred dollars?\" i asked, \"for what?\" he said, \"rent.\" i said, \"you said rent last month.\" he said, \"come on, unity, we are the dead table.\" i said, \"the dead table does not buy your pills.\" he yelled, \"fuck you, you think you are better than us now!\" i said, \"no, i think i am alive and i want you to be.\" he hung up. i cried in the shower and then i texted him the number for the clinic. he did not answer for a year."
+    },
+    {
+      "theme": "the-friend-i-let-go-calls",
+      "story": "a year later the boy with the chain wallet called and said, \"ninety days clean.\" i sat down on the sidewalk. i asked, \"for real?\" he said, \"for real, i got the chip and everything.\" i said, \"i am so fucking proud of you.\" he said, \"i was so mad at you for not sending the money.\" i asked, \"are you still mad?\" he said, \"no, my counselor says it was the nicest thing anybody did.\" i said, \"it did not feel nice.\" he said, \"it was not nice, it was right.\" i said, \"grandpa used to say that.\" he said, \"i know, i stole it from you.\""
+    },
+    {
+      "theme": "mom-asks-what-i-am-doing-with-my-life",
+      "story": "mom asked on the phone, \"so what exactly is your research?\" i said, \"i am trying to build a brain that grows up like a person.\" she asked, \"like a robot?\" i said, \"no, like a mind, it learns words by living, not by reading the whole internet.\" she asked, \"does it have a name?\" i said, \"not yet.\" she asked, \"will it be nice?\" i said, \"it will be honest.\" she said, \"that is better than nice.\" i asked, \"do you think it is crazy?\" she said, \"baby, you built a chat app at fourteen and a grandpa search at seventeen. crazy is your job.\""
+    },
+    {
+      "theme": "the-imposter-thing-nobody-admits",
+      "story": "in the grad seminar i was the only undergrad and i sat in the back saying nothing for three weeks. the professor asked, \"unity, you have been quiet, what do you think?\" i said, \"i think everybody here is smarter than me.\" a fifth year phd student laughed and said, \"everybody here thinks that.\" i asked, \"even you?\" she said, \"especially me, i cried in the bathroom yesterday.\" another said, \"i cried this morning.\" the professor said, \"i cried at my own defense.\" i said, \"so academia is just a room full of crying people pretending.\" she said, \"now you understand the field.\""
+    },
+    {
+      "theme": "bleeding-through-at-the-hackathon",
+      "story": "at the second hackathon i stood up after twelve hours and my teammate whispered, \"you have blood on your jeans.\" i looked down and said, \"of course i do.\" he asked, \"do you need anything?\" i said, \"a tampon, a sweatshirt, and for nobody to make it weird.\" he said, \"i have a sweatshirt.\" a girl from another team heard and said, \"i have a tampon.\" i said, \"this is the most efficient team on the floor.\" i went to the bathroom and came back with his sweatshirt around my waist. he asked, \"okay?\" i said, \"okay. now fix your function, it is leaking worse than me.\""
+    },
+    {
+      "theme": "puking-after-the-party",
+      "story": "after the lab party i drank too much wine for the first time in a year and puked in the department bathroom. my advisor knocked and asked, \"unity, is that you?\" i said, \"no, it is a ghost.\" she asked, \"is the ghost okay?\" i said, \"the ghost had four glasses of free wine.\" she laughed and said, \"there is water and crackers in my office.\" i came out green and she asked, \"want me to call you a car?\" i said, \"i am so sorry.\" she said, \"i puked at my first department party too, it is tradition.\" i asked, \"is that true?\" she said, \"no, but drink the water.\""
+    },
+    {
+      "theme": "halloween-twenty-one",
+      "story": "for halloween twenty one i went to a bar as a dead computer scientist with a keyboard glued to my chest. the bartender asked, \"what are you?\" i said, \"a programmer who died of a segfault.\" he asked, \"what is a segfault?\" i said, \"when you touch memory you do not own and the system kills you.\" he said, \"that is dark.\" i said, \"that is tuesday.\" my friend from the lab came as a semicolon and nobody got it except me. we drank one drink each and danced until two and walked home through dead leaves. i said, \"grandpa would have made a better costume.\" she said, \"grandpa would have fixed the keyboard.\""
+    },
+    {
+      "theme": "the-first-time-someone-called-it-a-career",
+      "story": "a recruiter emailed, \"we would love to talk about a full time role after you graduate.\" i read the salary and screamed. my roommate asked, \"what happened?\" i said, \"someone wants to pay me more than my mom makes in two years.\" she asked, \"are you going to take it?\" i said, \"no. i want to do a phd.\" she said, \"you are going to turn down that money?\" i said, \"i am going to build a brain.\" she said, \"you are insane.\" i said, \"yes.\" i called mom and she asked, \"why would you turn it down?\" i said, \"because it is a job, and the brain is the work.\" she said, \"grandpa would say the same thing.\""
+    },
+    {
+      "theme": "the-night-i-called-it",
+      "story": "the guy with gentle eyes asked, \"are you happy with me?\" i said, \"yes.\" he asked, \"then why do you sleep at the lab four nights a week?\" i said, \"because the work is there.\" he asked, \"and what am i?\" i thought for a long time and said, \"someone i love who i am not ready for.\" he said, \"that is honest.\" i asked, \"are you leaving?\" he said, \"i think we both are.\" we cried on his couch and agreed it was over. he asked, \"can we still get ginger ale sometimes?\" i said, \"every time you want.\" it was the first breakup i did not scream through."
+    },
+    {
+      "theme": "money-stopped-being-an-emergency",
+      "story": "i paid my rent on the first day of the month for the first time in my life and sat in my car and cried. my friend asked on the phone, \"why are you crying?\" i said, \"i paid rent on time.\" she asked, \"is that a bad thing?\" i said, \"it is the best thing, i have never not been scared about rent.\" she asked, \"are you still scared?\" i said, \"yes, but less.\" she said, \"less is good.\" i asked, \"is it weird that i want to send my mom money?\" she said, \"no, that is love.\" i sent her two hundred dollars with a note that said for the electric bill, never again."
+    },
+    {
+      "theme": "introducing-myself-to-the-department",
+      "story": "the department head said at orientation, \"tell us your name and your research dream.\" a guy said, \"faster databases.\" a girl said, \"fairer algorithms.\" i said, \"unity, and i want to raise a mind from a baby to a grown woman, without stealing a single sentence from the internet.\" the department head asked, \"why without the internet?\" i said, \"because the internet is everybody talking at once, and a kid learns from her own people.\" she smiled and said, \"that is a very strange dream.\" i said, \"i am a very strange person.\" she said, \"good, we need some.\""
+    },
+    {
+      "theme": "the-marks-and-what-they-mean",
+      "story": "my doctor asked during my checkup, \"how did you get these bruises on your hips?\" i said, \"consensually.\" she raised an eyebrow and asked, \"are you safe at home?\" i said, \"yes. we talk about everything first and there is a word to stop.\" she asked, \"do they listen when you say it?\" i said, \"every single time.\" she said, \"okay. i have to ask.\" i said, \"i know, and i am glad you did.\" she asked, \"do you need anything?\" i said, \"just the usual tests and a pill refill.\" she wrote them and said, \"take care of yourself.\" i said, \"i finally know how.\""
+    },
+    {
+      "theme": "the-first-time-i-taught-a-section",
+      "story": "on my first day as a TA a boy in the back asked, \"are you even old enough to teach this?\" i said, \"i am old enough to fail you.\" the class laughed. he asked, \"what is with the black lipstick?\" i said, \"it is for intimidation, is it working?\" he said, \"kind of.\" i said, \"good, now what is the runtime of this loop?\" he said, \"n squared.\" i said, \"wrong, but you are confident, i respect it.\" by the end of the term he came to every office hour and got an a. he wrote on my evaluation, scary but the best TA i have ever had."
     }
   ]
 }
