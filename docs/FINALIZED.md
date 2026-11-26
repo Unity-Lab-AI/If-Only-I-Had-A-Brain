@@ -61147,6 +61147,10 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
       - `SUBSTEPS_TARGET_MS` 2000 → 5000, so one ~300 ms round trip idles the card ~6% instead of ~13%.
     - The starvation brake is unchanged.
     - ⚠ Two batches in flight was tried and reverted before shipping: `_gpuBatch` keeps ONE pending record, so a second send would orphan the first.
+  - **Follow-up BRAKEPROOF (same day):**
+    - Gee, verbatim: *"no, hopefully we fix the pod util % before the hand off and i can add more money is the hope, but unless u fix it in 30 minutes"*.
+    - Measured on `dfe940cd`: the starvation brake walked 121 → 84 → 58 → 40 → 28 → 24 substeps while teach sat at ~0.5/s the whole way. The batch was never the cause; the pod read `0 ×15`.
+    - Fix (`adaptSubsteps`): a brake shrink records `{size, rate}`. If the next window's teach is not ≥1.3× that rate, the shrink is disproved: the size is restored and the brake is held off for 10 windows. A shrink that does recover teach clears the probe and keeps the brake armed.
 
 - [x] ✅ **CLOSED BUILT 2026-11-25.** **SFCOVER — her first-person reframing reached only a capped slice of each corpus, on a cursor every corpus shared.** Gee 2026-11-25, verbatim: *"ocay on option 2.... are we sure this is fixed for the full corpus all the way through with realististicv first person experiences with people and when reading that doesnt poison her training with 12 samples, but actually is dynamic"*.
   - **Cause (`_teachConcreteSentences` SELFFRAME chokepoint):**
