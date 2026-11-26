@@ -21980,6 +21980,7 @@ export class Curriculum {
         f.lessonRefused = (f.lessonRefused || 0) + 1;
       }
     };
+    let _apYieldAt = Date.now();
     for (let rep = 0; rep < reps; rep++) {
       // ⭐⭐ `PHASELOOP.1` (2026-08-30) — BANK THE CURSOR ON EVERY REP, NOT ONLY
       //   AT A BUDGET STOP. THIS IS WHY THE WALK COULD NEVER PASS ITS FIRST CELL.
@@ -22109,6 +22110,11 @@ export class Curriculum {
         let t = 0, sk = 0, af = 0, wa = 0, swa = 0, semAct = 0, semN = 0;
         let ls = null, lm = null, sg = 0, mg = 0, okShape = true;
         for (let pairIdx = 0; pairIdx < pairs.length; pairIdx++) {
+          // Yield on the CLOCK: this build loop runs every pair (8,428 in one
+          // recorded call) with no await, and measured it held the loop ~8.4 s
+          // while the pod's batch reply sat unread (round-trip 9,586 ms,
+          // UNACCOUNTED 8,391 ms). Same 40 ms rule as the spelling teach.
+          if ((pairIdx & 63) === 0 && Date.now() - _apYieldAt >= 40) { await _microtask({ force: true }); _apYieldAt = Date.now(); }
           const pair = pairs[pairIdx];
           if (!Array.isArray(pair) || pair.length < 2) { sk++; continue; }
           const [inputWord, outputWord] = pair;
@@ -22171,6 +22177,7 @@ export class Curriculum {
         }
       }
       for (let pairIdx = 0; !_repOnCard && pairIdx < pairs.length; pairIdx++) {
+        if (Date.now() - _apYieldAt >= 40) { await _microtask({ force: true }); _apYieldAt = Date.now(); }
         const pair = pairs[pairIdx];
         if (!Array.isArray(pair) || pair.length < 2) { skipped++; continue; }
         const [inputWord, outputWord] = pair;
