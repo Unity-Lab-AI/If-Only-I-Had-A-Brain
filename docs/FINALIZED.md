@@ -61217,6 +61217,11 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
     - `brain-server.js`: every client records `isLocalHost` (loopback socket, no proxy header).
     - `gpu.js _partitionClustersAcrossPool`: with any remote card live, clusters are placed on remote cards first. A local card takes only a cluster no remote card can hold. With no remote card, everything places on the local card as before.
   - **Verified:** `node --check`; the local donor's socket is `127.0.0.1:63128 → 7525` (flagged local).
+  - **Follow-up STALECOPY (same day), the actual VRAM hog.**
+    - Gee, verbatim: *"and what the fuck how am i to run the whole brain on my card if u r telling me its full? what heppenes when im not renting a pod, i told you not to increas the nuron count so it can all fit on my GPU still"* · *"what the fuck it taking up all the space on my GPU!!!???"* · *"something is mahjor wrong in how u are using the pod and my GPU"*.
+    - **The whole brain still fits the 4070 alone.** This session's failover placed all of her there at `9897/10233 MB`, and the neuron count is unchanged (boot-derived, ~200M).
+    - **The 13.4 GB was a stale cortex copy.** On the failover the cortex was uploaded to the 4070. The pod then rejoined via OWNER REJOIN and took ownership back, and that path never calls `_freeOldCortexWhenLanded`.
+    - **Fix (`brain-server.js`, 60 s placement check):** any live card that is not the cortex owner and still holds cortex matrices (`heldMatrices`) is sent `free_matrices` for them, sparing a held intra slice.
   - **Verified:** ESM import.
   - **Verified:** `node --check`, ESM import.
   - **Verified:** ESM import. The piece is shown, the verdict is kept and logged as "doubts … Shown anyway", and the subject still goes to practice.
