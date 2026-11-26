@@ -6263,7 +6263,12 @@ class ServerBrain {
     // conservative 8 even for native donors (own compute thread, socket drained
     // during a batch, 24 per round trip by design), so the cards stepped a third
     // of what they could carry while the walk taught. A browser donor still gets 8.
-    const _hbSub = substepsForDonor(this, this._gpuClient);
+    // ⭐ AND THE ADAPTIVE CLIMB, so a batch is big enough to fill the card. At 24
+    // substeps the RTX PRO 6000 finished a batch in 74–107 ms against a ~300 ms
+    // round trip, so even back-to-back it worked ≤ ~30%. `adaptSubsteps` grows
+    // the batch toward its 2 s target and owns the brake: it backs off the moment
+    // teach throughput falls, so the card is filled without starving teaching.
+    const _hbSub = adaptSubsteps(this, this._gpuClient, substepsForDonor(this, this._gpuClient));
     let _hbRes = null;
     this._walkHbInFlight = true;
     try { _hbRes = await this._gpuBatch(_hbSub, _hbParams, { noKick: true }); }
