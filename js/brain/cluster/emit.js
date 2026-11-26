@@ -1358,6 +1358,13 @@ export const CLUSTER_EMIT_MIXIN = {
         const semR = this.regions.sem;
         this.lastSpikes.fill(0, semR.start, semR.end);
         _cur._writeTiledPattern(semR, _cur._topKEmbedding(_cur._dictionaryPatternFor(_seedWord), 8), true, { noCpu: false });
+      } else if (_taught) {
+        // ⛔ NO TICK PATH AT FULL SCALE, EVEN WITHOUT A SEED WORD. An unseeded
+        // thought (seed=mood/learning) used to tick, and every tick shipped the
+        // cortex's active cells to the card as a ~5 MB type-2 propagate. Measured
+        // 2026-11-25: a string of 5 MB sends, rtt 3.3 s, then `write ECONNRESET`
+        // and the pod dropped. The first word reads whatever sem already holds
+        // (the injected intent); every later word has its seed.
       } else {
         for (let t = 0; t < TICKS_PER_WORD; t++) {
           if (checkAborted()) {
