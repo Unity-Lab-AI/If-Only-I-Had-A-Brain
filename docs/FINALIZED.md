@@ -61252,6 +61252,15 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
     - `DREAM_RUNPOD_LOW_BALANCE` sets the floor; 0 disables.
   - **Live when shipped:** balance $3.20, burn $2.69/h, so it triggers at $1.35.
   - **Verified:** `node --check`; `runpod-control.status()` read live.
+
+- [x] ✅ **CLOSED BUILT 2026-11-25.** **THOUGHTSTART — her inner thoughts started from noise.** Gee 2026-11-25, verbatim: *"and she is goping to say I, me, mine, my , and other first person thoughts correctly now right? when people think they think not always just word salad, they thhink about people, animals, things, places, all the imagined shit possible rewal and not real, so wtf is up with these inner thought words salad? is the converstion fixes going to rectify this on fresh walk?"* · *"noty every thought starts ! you fuck tard"*.
+  - **Cause:**
+    - Inner thoughts carry their topic as an EMBEDDING (mood, learning, memory), and compose only read string seeds.
+    - So the first word was read off whatever sem held, and every later word chained from that noise.
+  - **Fix (`emit.js _composeSentenceOnce`):** at full scale, an unseeded first word writes the thought's topic embedding into sem as training writes meaning (top-8, tiled). Her first word is whatever is on her mind, and her trained order continues it.
+  - **A forced "i" start was written and reverted before shipping:** not every thought starts with I.
+  - **Verified:** ESM import.
+  - **Lands:** on the next press. The word order behind it is fully trained only after the fresh walk.
   - **Verified:** ESM import.
   - **Verified:** `node --check`, ESM import.
   - **Verified:** ESM import. The piece is shown, the verdict is kept and logged as "doubts … Shown anyway", and the subject still goes to practice.

@@ -16347,6 +16347,7 @@ var CLUSTER_EMIT_MIXIN = {
       const _cur = this._brain && this._brain.curriculum;
       const _taught = (this.size | 0) > 2e6 && _cur && typeof _cur._dictionaryPatternFor === "function" && typeof _cur._topKEmbedding === "function" && typeof _cur._writeTiledPattern === "function";
       const _seedWord = words.length > 0 ? words[words.length - 1] : opts.intentConcept || (typeof intentSeed === "string" ? (intentSeed.replace(/_/g, " ").toLowerCase().match(/[a-z]+/g) || []).filter((t) => t.length > 2).pop() : null);
+      const _seedEmb = words.length === 0 && !_seedWord && intentSeed && typeof intentSeed !== "string" && intentSeed.length > 0 ? intentSeed : null;
       if (_taught && words.length === 0 && typeof opts.questionText === "string" && opts.questionText && typeof _cur._writeTiledPatternOffset === "function" && typeof _cur._extractKeyWord === "function" && sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function") {
         const semR = this.regions.sem;
         this.lastSpikes.fill(0, semR.start, semR.end);
@@ -16358,6 +16359,10 @@ var CLUSTER_EMIT_MIXIN = {
         const semR = this.regions.sem;
         this.lastSpikes.fill(0, semR.start, semR.end);
         _cur._writeTiledPattern(semR, _cur._topKEmbedding(_cur._dictionaryPatternFor(_seedWord), 8), true, { noCpu: false });
+      } else if (_taught && _seedEmb) {
+        const semR = this.regions.sem;
+        this.lastSpikes.fill(0, semR.start, semR.end);
+        _cur._writeTiledPattern(semR, _cur._topKEmbedding(Float64Array.from(_seedEmb), 8), true, { noCpu: false });
       } else if (_taught) {
       } else {
         for (let t = 0; t < TICKS_PER_WORD; t++) {
