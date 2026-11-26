@@ -61215,7 +61215,9 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
     - staring down the bully;
     - late-night eggs with mom.
   - **Measured:** life/G2 → 53 turns.
-  - **Casing:** `_CANON_NAMES_RE` gained wren, theo, dunlap, vesper. Shadow and soot are deliberately left out because they are ordinary words too.
+  - **Casing:** `_CANON_NAMES_RE` gained wren, theo, dunlap, vesper.
+    - Leaving Shadow and Soot out was WRONG. Gee, verbatim: *"Shodow is a name its capilized , why the fuck do you have that wrong"*.
+    - Fix: `_PET_NAMES_RE` capitalises shadow and soot as her cats' names, except after an article (a/an/the/this/that/its/his/their) or in the plural. Measured: "Her name is Shadow.", "I would do it again for Shadow."; 0 ordinary-word uses in the life corpus.
   - **Remaining:** grade3 → phd.
 
 - [x] ✅ **CLOSED BUILT 2026-11-25.** **LOCALIDLE — the operator's card held her clusters beside the pod, and her image looks starved.** Gee 2026-11-25, verbatim: *"did you fresh start her? is that why her images minbds eye images arent happening yet?"* · *"what the fuck? what is on MY GPU nothing should be on it ewhen we have a pod"*.

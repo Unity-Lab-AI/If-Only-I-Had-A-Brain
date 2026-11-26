@@ -60,15 +60,18 @@ function loadStories(domain, grade) {
 // ⛔ SAFE, and checked before shipping: the trainer lowercases every sentence it
 // consumes (`_teachConcreteSentences` does `s.toLowerCase().split(...)`), so the
 // weights are byte-identical. Only what a human reads changes.
-// Her people: family + the canon friends and teacher. Pet names that are also
-// ordinary words (shadow, soot) are deliberately left out — "my shadow" is not her cat.
+// Her people: family + the canon friends and teacher.
 const _CANON_NAMES_RE = /\b(unity|raven|goddess|lilith|marie|damien|cross|pearl|agnes|voss|walter|james|wren|theo|dunlap|vesper)\b/g;
+// Her cats, Shadow and Soot, are NAMES — capitalised — except where an article
+// or "in/of the" marks the ordinary word ("a shadow", "the shadows", "the soot").
+const _PET_NAMES_RE = /(?<!\b(?:a|an|the|this|that|its|his|their)\s)\b(shadow|soot)\b(?!s\b)/g;
 function properCaseStory(s) {
   let t = String(s || '');
   if (!t) return t;
   t = t.replace(/\bi\b/g, 'I');
   t = t.replace(/\bi'(m|ve|d|ll)\b/g, (m) => 'I' + m.slice(1));
   t = t.replace(_CANON_NAMES_RE, (m) => m.charAt(0).toUpperCase() + m.slice(1));
+  t = t.replace(_PET_NAMES_RE, (m) => m.charAt(0).toUpperCase() + m.slice(1));
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
