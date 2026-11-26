@@ -61460,5 +61460,7 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
   - **Cause:** `free_matrices` dropped matrices only; the multi-engine kept every cluster `gpu_init` had allocated.
   - **Fix:** donor 0.3.56 — `free_matrices` takes an optional `clusters` list (`free_cluster` on the wgpu and CUDA engines and the multi-GPU router; `cluster_regions` dropped too); the ack reports `freedClusters` and `heldClusters`. Brain: the placement check names every cluster a card does not own (re-sent only when that set changes; a slice holder keeps the cortex's spike space), RELEASE ALL names them all, the cortex move names the cortex and its twin, and `FREE ACK` logs the result. An older donor ignores the field.
 - **Release:** donor **0.3.56** (`donor-app/RELEASE-0.3.56.md`). The pod's launcher installs it on its own once the release is published.
+- **Measured live after the press (boot `93b56737`, donor 0.3.56 on the pod):** `_teachWordEmission on the card — 1206 words × 6 reps in 19.8s · 24 frame(s), 36,840 step item(s)` — the lane that ran ~1.8 words/s (~1.5 h, pod ~1%) the night before. The phase counter moved 9 → 10/25.
+  - **Gap found and fixed:** both pulls back (`letter_to_motor`, `sem_to_motor`) were refused with `a values readback is already in flight` — the hourly checkpoint pull held the one readback lane at that moment. `_stepLessonRun` now waits (5 s steps, ≤ 10 min) for the lane and retries instead of giving up. Verified: `node --check`, `import()`.
 
 

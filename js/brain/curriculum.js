@@ -16544,7 +16544,18 @@ export class Curriculum {
       for (const n of o.pull) {
         if (!cluster.crossProjections || !cluster.crossProjections[n]) continue;
         try {
-          const r = await p.pullMatrixValues(`${cluster.name}_${n}`);
+          // Only one values readback runs at a time (the hourly checkpoint pull
+          // may hold the lane). Measured live: both pulls refused with "a values
+          // readback is already in flight" right as the lane finished. Wait for
+          // the lane and retry, bounded, instead of giving up.
+          let r = null;
+          const waitUntil = Date.now() + 10 * 60 * 1000;
+          for (;;) {
+            r = await p.pullMatrixValues(`${cluster.name}_${n}`);
+            if (r && r.ok) break;
+            if (!(r && /already in flight/.test(String(r.reason || ''))) || Date.now() > waitUntil) break;
+            await new Promise((res) => setTimeout(res, 5000));
+          }
           if (!r || !r.ok) console.warn(`[Curriculum] ${label} — could not pull ${n} from the card (${(r && r.reason) || 'unknown'}); its CPU copy refreshes at the next hourly pull.`);
         } catch (e) { console.warn(`[Curriculum] ${label} — pull of ${n} threw: ${(e && e.message) || e}`); }
       }
