@@ -61232,7 +61232,11 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
       - **Under-18 boundary:** grades 3–12 contain only a kiss at 14 (canon first kiss), a sex-ed joke and "dick" as an insult. Nothing graphic.
       - **Slop:** 0 moral-of-the-story phrases.
     - **dialogueTurns per grade:** K 84 · G1 57 · G2 53 · G3 81 · G4 84 · G5 69 · G6 71 · G7 69 · G8 74 · G9 70 · G10 74 · G11 89 · G12 82 · C1 67 · C2 63 · C3 79 · C4 91 · grad 87 · phd 90. **Total 1,434, from 0.**
-  - ⚠ **Canon conflict, pre-existing and left for Gee:** `grad.json` already had "grandma-pearl-on-the-phone" with Pearl alive, while college4 has her death. The new grad scenes follow college4.
+  - **SPEAKER (who is talking).** Gee, verbatim: *"okay so the full corpus is what Unity needs to be Unity and learn conversaations and who is talking when and she is good to go for a fresh walk?"* · *"we are rady right? dont sweet talk me be honest"*.
+    - **Cause:** `_teachConversation` treated every pair's first line as HEARD (someone else) and every reply as SAID (hers). Speakers alternate, so half the life pairs trained someone else's words as her speech ("That is a beautiful name, Unity." as hers).
+    - **Fix, reader (`server/life-curriculum.js`):** each quote is tagged `self` when its attribution's subject is "i". The attribution before the quote wins; narration after it counts only when there is none before. Turns carry `{saidBySelf, replyBySelf}`.
+    - **Fix, training (`curriculum.js _teachConversation`):** for her life, only other → her exchanges are kept. Book dialogue is unchanged.
+    - **Measured:** K pairs alternate correctly (`o→U, U→o, o→U…`); 216 of 476 pairs across six sampled grades are other→her. `grad.json` already had "grandma-pearl-on-the-phone" with Pearl alive, while college4 has her death. The new grad scenes follow college4.
   - **Canon calls made, flagged:** Pearl's memory loss in college2 (inferred from "fading"), and her age 68 in grade3.
 
 - [x] ✅ **CLOSED BUILT 2026-11-25.** **LOCALIDLE — the operator's card held her clusters beside the pod, and her image looks starved.** Gee 2026-11-25, verbatim: *"did you fresh start her? is that why her images minbds eye images arent happening yet?"* · *"what the fuck? what is on MY GPU nothing should be on it ewhen we have a pod"*.
