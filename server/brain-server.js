@@ -11069,6 +11069,31 @@ setInterval(() => {
           console.log(`[Pool] STALE COPY freed on ${c.gpuName || c.id} — ${stale.length} matrices for clusters it no longer owns.`);
         } catch { /* card gone — its VRAM went with it */ }
       }
+      // ⛔ A CARD THAT OWNS NOTHING IS TOLD TO RELEASE EVERYTHING, ONCE. On a fresh
+      // boot the host's donor registered first and was handed her matrices; the
+      // pod then took all 8 clusters, and the brain had no record of what the
+      // host held, so the rule above had nothing to name. Measured: 12.7 GB held
+      // on the operator's card for the whole walk, cleared only by restarting
+      // his donor. So a card with ZERO owned clusters (and no slice) is sent
+      // every matrix name the brain knows; the donor frees what it holds and
+      // ignores the rest. Its `free_matrices_ack` is logged below.
+      const _allNames = new Set(_names);
+      for (const [, cc] of brain.clients) if (cc && cc.heldMatrices instanceof Set) for (const n of cc.heldMatrices) _allNames.add(n);
+      if (_owner) for (const cl of _owner.keys()) _allNames.add(`${cl}_intraSynapses`);
+      for (const [ws, c] of brain.clients) {
+        if (!c || !c.isGPU || ws.readyState !== 1 || c._releasedAll) continue;
+        if (_owner && [..._owner.values()].includes(ws)) continue;
+        if (ws === brain._gpuClient) continue;
+        if (typeof brain._intraSliceActive === 'function' && brain._intraSliceActive()
+          && Array.isArray(brain._intraSlices) && brain._intraSlices.some((s) => s.ws === ws)) continue;
+        if (!_allNames.size) continue;
+        try {
+          ws.send(JSON.stringify({ type: 'free_matrices', names: [..._allNames] }));
+          c._releasedAll = true;
+          if (c.heldMatrices instanceof Set) c.heldMatrices.clear();
+          console.log(`[Pool] RELEASE ALL sent to ${c.gpuName || c.id} — it owns no clusters; asked to free any of ${_allNames.size} known matrices it still holds.`);
+        } catch { /* card gone */ }
+      }
     }
     _applyPoolPartition('placement check', 'a settled card has more room');
   } catch { /* the check must never throw into the timer */ }
@@ -15718,6 +15743,13 @@ wss.on('connection', (ws, req) => {
           if (client) client.imageCapable = !!msg.ok;
           if (msg.ok) console.log(`[Brain] IMAGE LANE — ${(client && (client.gpuName || client.id)) || id} has her renderer; looks and drawings can render there.`);
           else console.log(`[Brain] IMAGE LANE — ${(client && (client.gpuName || client.id)) || id} reports NO renderer on its machine (client known: ${!!client}).`);
+          break;
+        }
+        // The donor's answer to `free_matrices`: exactly which matrices it freed.
+        // Nothing read this before, so a free that freed nothing was invisible.
+        case 'free_matrices_ack': {
+          const _fr = Array.isArray(msg.freed) ? msg.freed : [];
+          console.log(`[Pool] FREE ACK from ${(client && (client.gpuName || client.id)) || id} — freed ${_fr.length} matrix(es)${_fr.length ? ': ' + _fr.slice(0, 8).join(', ') + (_fr.length > 8 ? ' …' : '') : ' (it held none of them)'}.`);
           break;
         }
         case 'image_result': {
