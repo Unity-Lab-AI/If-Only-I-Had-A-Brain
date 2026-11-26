@@ -506,6 +506,8 @@ rsync -a --delete \
   --exclude 'server/visual-memory*.db*' \
   --exclude 'art-notdrawable.json' \
   --exclude 'server/art-notdrawable.json' \
+  --exclude 'people.json' \
+  --exclude 'server/people.json' \
   --exclude 'knob-defaults.json' \
   --exclude 'server/knob-defaults.json' \
   --exclude 'pollinations-user.json' \
