@@ -19426,7 +19426,17 @@ export class Curriculum {
     try { for (const t of (cluster.dialogueTurns(subject, grade) || [])) turns.push(t); } catch { /* absent corpus */ }
     // Her own lived year's conversations ride with the cell's academic ones.
     if (!this._convLifeDone || this._convLifeDone !== grade) {
-      try { for (const t of (cluster.dialogueTurns(null, grade) || [])) turns.push(t); } catch { /* absent */ }
+      // ⛔ HER LIFE: ONLY "SOMEONE ELSE SAID → SHE ANSWERED". Speakers alternate,
+      // so half the consecutive pairs are her line followed by someone else's
+      // reply — and the SAID lane below trains the reply as HER speech. The
+      // reader now names who spoke each line; keep only other→self exchanges.
+      try {
+        for (const t of (cluster.dialogueTurns(null, grade) || [])) {
+          const who = t && t[2];
+          if (who && !(who.saidBySelf === false && who.replyBySelf === true)) continue;
+          turns.push(t);
+        }
+      } catch { /* absent */ }
       this._convLifeDone = grade;
     }
     if (!turns.length) return { taught: 0, reason: 'no exchanges in this cell' };
