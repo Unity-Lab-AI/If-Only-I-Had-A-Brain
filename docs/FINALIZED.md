@@ -61383,4 +61383,20 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
   - **Fix:** the re-drill is skipped for any list with `hearOnly` or a `dialogue-*` source. This is one shared chokepoint, so it covers every grade, K → PhD. Every non-conversation list keeps its re-drill unchanged.
   - **Verified:** ESM import. The edit sits inside `_teachSentenceList(sentences, ctx, opts)`, whose `opts` carries the conversation's `source` / `hearOnly`.
 
+## 2026-11-25 — TEACHFIRST: nothing is tested that was never taught
+
+- **Gee:** *"is she even taught that summer = the hottest?"* · *"that not a singular problem to investigate it goes for all her test questions proposed to her"* · *"we cant test her on shit she isnt taught and biugger yet is why isnt she taught it"* · *"okay thats for the whole corpus not just science needs fixed"* · *"or we teach her durning the tests"*
+  - **Cause:** three separate lists.
+    - `TRAIN_BANKS` is taught through QA-TRAIN.
+    - `EXAM_BANKS` is held out on purpose.
+    - Each gate's own production list (`sciKProductionSamples` …) is taught NOWHERE.
+    - Science/K probed "when is it hottest" → summer while QA-TRAIN taught "is it warmer in sun or shade?" and the 2,053-sentence corpus says only "summer is a WARM season". Graded `word_motor_no_signal` on answers never put in her.
+  - **Fix, at the one chokepoint every production probe rides (`_probeProductionBatch`), every subject and grade:**
+    - The gate's own questions are bound question → answer through the same `_teachQABinding` QA-TRAIN uses, once per question per boot, before the first probe.
+    - The answer taught is the first real word. Single letters stay scorer tolerances.
+    - `nonsense: true` items stay untaught (decoding law).
+    - Kill switch: `DREAM_PROD_TEACH_FIRST=0`.
+  - **During the test:** the existing SPEAKLOOP pre-gate drill and the gate retry still correct wrong answers. Unchanged.
+  - **Verified:** ESM import.
+
 
