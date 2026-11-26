@@ -61373,5 +61373,7 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
   - The host-card gates (upload yield, `/health`, free VRAM) apply only when the look renders locally.
   - With no donor (the pod gone on handoff), both fall back to the local path unchanged.
 - **Verified:** `node --check`.
+- **Follow-up, boot `ee31ab0b`:** the status page then showed `4070 Ti SUPER (host) … image=true`. Gee's own donor offers the local renderer, and the pick's first loop preferred any capable non-cortex card, so with the pod carrying the cortex it picked HIS card first.
+  - **Fix:** a host-local card is never picked through its donor. It renders only through the local path, and only when no remote card offers.
 
 
