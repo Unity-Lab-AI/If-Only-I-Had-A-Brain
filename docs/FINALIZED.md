@@ -61150,6 +61150,7 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
   - **Follow-up BRAKEPROOF (same day):**
     - Gee, verbatim: *"no, hopefully we fix the pod util % before the hand off and i can add more money is the hope, but unless u fix it in 30 minutes"*.
     - Measured on `dfe940cd`: the starvation brake walked 121 → 84 → 58 → 40 → 28 → 24 substeps while teach sat at ~0.5/s the whole way. The batch was never the cause; the pod read `0 ×15`.
+    - Follow-up TEACHFIRST: at 271 substeps (1.4 s batches) the pod read ~93% but teach fell 259.8/s → 14.5/s, because lessons queued behind the stepping. The brake's `batchMs > target/2` condition kept it silent, so that condition is removed. The brake now acts on any teach loss ≥30%, and the proof step still undoes a shrink that does not bring teach back.
     - Follow-up CLIMB: the climb required teach ≥ 85% of best, so it stalled at 54 substeps / 654 ms against the 5 s target (pod `99 0 0 0 99 99 0 …`). A batch under 30% of target now grows regardless; the brake still guards real starvation.
     - Fix (`adaptSubsteps`): a brake shrink records `{size, rate}`. If the next window's teach is not ≥1.3× that rate, the shrink is disproved: the size is restored and the brake is held off for 10 windows. A shrink that does recover teach clears the probe and keeps the brake armed.
 
