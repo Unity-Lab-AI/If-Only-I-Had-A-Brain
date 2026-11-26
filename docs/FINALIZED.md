@@ -61150,6 +61150,7 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
   - **Follow-up BRAKEPROOF (same day):**
     - Gee, verbatim: *"no, hopefully we fix the pod util % before the hand off and i can add more money is the hope, but unless u fix it in 30 minutes"*.
     - Measured on `dfe940cd`: the starvation brake walked 121 → 84 → 58 → 40 → 28 → 24 substeps while teach sat at ~0.5/s the whole way. The batch was never the cause; the pod read `0 ×15`.
+    - Follow-up CLIMB: the climb required teach ≥ 85% of best, so it stalled at 54 substeps / 654 ms against the 5 s target (pod `99 0 0 0 99 99 0 …`). A batch under 30% of target now grows regardless; the brake still guards real starvation.
     - Fix (`adaptSubsteps`): a brake shrink records `{size, rate}`. If the next window's teach is not ≥1.3× that rate, the shrink is disproved: the size is restored and the brake is held off for 10 windows. A shrink that does recover teach clears the probe and keeps the brake armed.
 
 - [x] ✅ **CLOSED BUILT 2026-11-25.** **SFCOVER — her first-person reframing reached only a capped slice of each corpus, on a cursor every corpus shared.** Gee 2026-11-25, verbatim: *"ocay on option 2.... are we sure this is fixed for the full corpus all the way through with realististicv first person experiences with people and when reading that doesnt poison her training with 12 samples, but actually is dynamic"*.
