@@ -61076,6 +61076,9 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
     - At biological scale (>2M) each word step clears sem and writes the previous word's taught pattern, via the curriculum's own `_dictionaryPatternFor` → `_topKEmbedding(…, 8)` → `_writeTiledPattern`. The first word uses the question's concept word, or the last content word of the seed.
     - The next word is then read off the card.
     - The CPU cortex step is gone from her speech. Small (browser) brains keep the tick path.
+  - **Follow-up NOTICK (same day):** a thought with no seed word (seed=mood/learning) still took the tick path, and each tick shipped the cortex's active cells as a ~5 MB type-2 propagate.
+    - Measured: a string of `LARGE non-upload send … 5.0MB kind=sprs-t2`, rtt 3.3 s, then `write ECONNRESET`, and the RTX PRO 6000 dropped and got a full 4.6 GB re-upload.
+    - At full scale an unseeded first word now reads the sem the intent already wrote. No tick, no propagate.
   - **Verified:** ESM import. The piece is shown, the verdict is kept and logged as "doubts … Shown anyway", and the subject still goes to practice.
 
 

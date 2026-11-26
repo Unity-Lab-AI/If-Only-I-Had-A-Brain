@@ -16348,6 +16348,7 @@ var CLUSTER_EMIT_MIXIN = {
         const semR = this.regions.sem;
         this.lastSpikes.fill(0, semR.start, semR.end);
         _cur._writeTiledPattern(semR, _cur._topKEmbedding(_cur._dictionaryPatternFor(_seedWord), 8), true, { noCpu: false });
+      } else if (_taught) {
       } else {
         for (let t = 0; t < TICKS_PER_WORD; t++) {
           if (checkAborted()) {
