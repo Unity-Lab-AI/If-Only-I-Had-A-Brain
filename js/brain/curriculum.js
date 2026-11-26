@@ -29287,6 +29287,16 @@ export class Curriculum {
         return _fails.has(f.toLowerCase().replace(/[^a-z']/g, ''));
       });
       if (_failedSentences.length === 0) return { ...comprehResult, pass: false };
+      // ⛔ NEVER RE-DRILL A CONVERSATION LINE BARE — every grade, K → PhD.
+      // `_teachConversation` sends HEARD lines (someone talking TO her,
+      // `hearOnly`, never her speech) and SAID lines (her replies, on her
+      // speaker band, bound to what she heard) through this list. The re-drill
+      // re-taught each failed one ALONE through the plain sentence lane —
+      // seen live in science/K: "where is your dad?", "unity, that was rude.",
+      // "unity, what is your favorite food?" at 9 reps with no speaker, no
+      // question → answer pair, and someone else's words trained as her speech.
+      // The conversation already carries its own turn binding; it is not re-drilled.
+      if (opts && (opts.hearOnly || String(opts.source || '').startsWith('dialogue-'))) return { ...comprehResult, pass: false };
       await this._teachConcreteSentences({ sentences: _failedSentences.map((s) => String(s).toLowerCase()), reps: reps * 3, label: `${(opts && opts.label) || 'SENTENCES'}-REDRILL`, subject: ctx && ctx.subject });
       await _microtask();
     }
