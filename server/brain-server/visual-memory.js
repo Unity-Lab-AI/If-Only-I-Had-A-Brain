@@ -2233,13 +2233,26 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       // can exceed the card. A LOOK is a background errand: skip it, roll the
       // burns back, retry on cooldown. (A chat picture waits instead — see
       // image-engine.js.)
-      if ((this._gpuUploadsInFlight | 0) > 0) {
+      // ⭐ A LOOK RENDERS ON A DONOR'S CARD WHEN ONE OFFERS — the same pick the
+      // chat lane uses (`_pickImageDonor`). This lane fetched the local renderer
+      // directly, so even with the pod drawing chat pictures every look still
+      // landed on the host card (measured: `LOOK FAILED at stage=engineDown …
+      // local image engine not answering` while the pod read `image=true`).
+      // The local-card gates below (donor upload yield, /health, free VRAM)
+      // protect THE HOST CARD, so they only apply when the look renders there.
+      let _donorBuf = null;
+      const _imgPick = (typeof this._pickImageDonor === 'function') ? this._pickImageDonor() : null;
+      if (_imgPick && typeof this._imageRenderOnDonor === 'function' && typeof this._buildImageRequest === 'function') {
+        const _dr = await this._imageRenderOnDonor(_imgPick, this._buildImageRequest(prompt, { width: _refPx, height: _refPx, purpose: 'look' }), this._imageEngine());
+        if (_dr && _dr.png) _donorBuf = _dr.png;
+      }
+      if (!_donorBuf && (this._gpuUploadsInFlight | 0) > 0) {
         if (typeof this._imageEngine === 'function') this._imageEngine().donorYieldSkips++;
         return this._vmLookFail(key, 'donorYield', 'matrix upload in flight — look deferred');
       }
       // ⛔ No silent fallback: an engine that is not answering /health names
       // itself here, on its own counter, and the look retries later.
-      if (typeof this._imageEngineAlive === 'function' && !(await this._imageEngineAlive())) {
+      if (!_donorBuf && typeof this._imageEngineAlive === 'function' && !(await this._imageEngineAlive())) {
         if (typeof this._imageEngine === 'function') this._imageEngine().engineDown++;
         return this._vmLookFail(key, 'engineDown', 'local image engine not answering /health');
       }
@@ -2259,7 +2272,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       // placed only there protects the CHAT lane and misses the lane doing the
       // overwhelming majority of renders. Caught by reading the call path after
       // the gate was written; the two lanes share the rule, not the code path.
-      if (typeof this._gpuFreeVramMB === 'function') {
+      if (!_donorBuf && typeof this._gpuFreeVramMB === 'function') {
         const _freeMb = await this._gpuFreeVramMB();
         const _floorMb = (typeof this._imageEngine === 'function')
           ? (this._imageEngine().minFreeVramMB | 0) : 0;
@@ -2279,11 +2292,15 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         }
       }
       let _req = null;
-      try { _req = this._buildImageRequest(prompt, { width: _refPx, height: _refPx, purpose: 'look' }); } catch (e) { return this._vmLookFail(key, 'urlBuild', e && e.message); }
-      if (!_req || !_req.url) return this._vmLookFail(key, 'urlBuild', 'builder returned empty');
-      url = _req.url;
-      let buf;
-      try {
+      if (!_donorBuf) {
+        try { _req = this._buildImageRequest(prompt, { width: _refPx, height: _refPx, purpose: 'look' }); } catch (e) { return this._vmLookFail(key, 'urlBuild', e && e.message); }
+        if (!_req || !_req.url) return this._vmLookFail(key, 'urlBuild', 'builder returned empty');
+        url = _req.url;
+      } else {
+        url = `donor:${(_imgPick && _imgPick.c && (_imgPick.c.gpuName || _imgPick.c.id)) || 'card'}`;
+      }
+      let buf = _donorBuf;
+      if (!buf) try {
         const ctrl = new AbortController();
         // ── CHATPREEMPT.1 — publish the controller so CHAT can free the pipe ──
         //
@@ -2411,13 +2428,21 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
           // serialises it behind the first; warm reload is 0.6 s so the
           // 20 s idle-unload window keeps the checkpoint resident between them).
           const _req2 = this._buildImageRequest(prompt, { width: _refPx, height: _refPx, purpose: 'look' });
-          const _c2 = new AbortController();
-          const _t2 = setTimeout(() => _c2.abort(), Number(process.env.DREAM_REF_FETCH_TIMEOUT_MS) || 90000);
-          let r2;
-          try { r2 = await fetch(_req2.url, { ..._req2.init, signal: _c2.signal }); } finally { clearTimeout(_t2); }
-          if (r2 && r2.ok && typeof this._imageEngineTouch === 'function') this._imageEngineTouch();
-          if (r2 && r2.ok) {
-            const buf2 = Buffer.from(await r2.arrayBuffer());
+          let buf2 = null;
+          // Same card as the first seed: a donor that drew the first draws the second.
+          const _pick2 = _donorBuf && typeof this._pickImageDonor === 'function' ? this._pickImageDonor() : null;
+          if (_pick2 && typeof this._imageRenderOnDonor === 'function') {
+            const _dr2 = await this._imageRenderOnDonor(_pick2, _req2, this._imageEngine());
+            if (_dr2 && _dr2.png) buf2 = _dr2.png;
+          } else {
+            const _c2 = new AbortController();
+            const _t2 = setTimeout(() => _c2.abort(), Number(process.env.DREAM_REF_FETCH_TIMEOUT_MS) || 90000);
+            let r2;
+            try { r2 = await fetch(_req2.url, { ..._req2.init, signal: _c2.signal }); } finally { clearTimeout(_t2); }
+            if (r2 && r2.ok && typeof this._imageEngineTouch === 'function') this._imageEngineTouch();
+            if (r2 && r2.ok) buf2 = Buffer.from(await r2.arrayBuffer());
+          }
+          if (buf2) {
             const img2 = this._decodeImageToRGBA(buf2);
             if (img2) {
               const small2 = this._perceptSource(img2, 'look-up second seed');
