@@ -292,6 +292,12 @@ const ImageEngineMixin = {
       if (c && c.isGPU && ws && ws.readyState === 1 && !c.isLocalHost
         && process.env.DREAM_IMAGE_ON_CORTEX_CARD !== '0' && _probeOk(c)) cortexCard = { ws, c };
       if (!c || !c.isGPU || !c.imageCapable || !ws || ws.readyState !== 1) continue;
+      // ⛔ NEVER THE HOST'S OWN CARD THROUGH ITS DONOR. The operator's donor sees
+      // the local renderer on his machine and offers it (`image=true`), so with
+      // the pod carrying the cortex this loop picked HIS card first — the
+      // opposite of the rule. A host-local card renders only through the local
+      // path below, and only when no remote card offers.
+      if (c.isLocalHost) continue;
       // ⛔ NEVER THE CARD CARRYING HER CORTEX — the rule this lane was written
       // for and did not enforce. A render there competed with her lessons, and
       // its picture came back as megabytes of base64 on the same link; the
