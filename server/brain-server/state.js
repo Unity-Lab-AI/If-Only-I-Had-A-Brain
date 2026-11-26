@@ -1256,7 +1256,10 @@ const SERVER_STATE_MIXIN = {
             const totalMB = Math.floor((Number(st.blocks) * bs) / 1048576);
             const freeMB = Math.floor((Number(st.bavail) * bs) / 1048576);
             let storeMB = 0;
-            for (const f of ['visual-memory-v8.db', 'visual-memory-v8.db-wal', 'episodic-memory.db']) {
+            // ⚠ The LIVE store's name — this read `visual-memory-v8` for months
+            // after the store moved on, so the readout said ~0 MB while the real
+            // file was 6.8 GB.
+            for (const f of ['visual-memory-v17.db', 'visual-memory-v17.db-wal', 'episodic-memory.db']) {
               try { storeMB += fs.statSync(path.join(__dirname, '..', f)).size / 1048576; } catch { /* absent */ }
             }
             v = {
