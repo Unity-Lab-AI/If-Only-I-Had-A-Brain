@@ -61318,5 +61318,10 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
   - **Also:** `image_capable` now logs a NO as well as a YES. On boot `3f75f492` the pod's renderer answered `:5124/health` but no offer was ever logged, so the cause was invisible.
   - **Watch after the press:** an `IMAGE LANE` line naming the RTX PRO 6000; Gee's card dropping back to desktop-only VRAM; no 1006 drops on the cortex link during a look.
   - **Verified:** `node --check` on both files.
+  - **Follow-up, same day:** after the press, boot `8917e15d` logged no `IMAGE LANE` line at all, not even the new NO. The pod donor (0.3.55, renderer up since Nov 24) never sends `image_capable`. Gee's card stayed at 5.7 GB.
+    - **Fix:** the donor renders any `image_render` it receives, so a remote cortex card that never declared is now tried.
+      - One success marks it capable and logs `IMAGE LANE — … rendered a probe look`.
+      - A failure marks it and it is re-tried after 10 minutes, with the local renderer used meanwhile.
+    - No donor build needed.
 
 

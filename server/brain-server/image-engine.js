@@ -277,9 +277,17 @@ const ImageEngineMixin = {
     // pod leaves (low-balance handoff), no donor offers and the local renderer
     // takes over by itself.
     let cortexCard = null;
+    // ⚠ A pod donor can run a renderer and never say so: on a 0.3.55 pod with
+    // `:5124/health` answering, no `image_capable` ever reached the brain. The
+    // donor renders whatever `image_render` it is sent regardless, so a remote
+    // cortex card that has not declared either way is TRIED. One success marks
+    // it capable; a failure marks it and it is re-tried after 10 minutes.
+    const _probeOk = (c) => c.imageCapable === true
+      || (c.imageCapable == null && Date.now() - (c.imageProbeFailAt || 0) > 600000);
     for (const [ws, c] of this.clients) {
+      if (c && c.isGPU && ws && ws.readyState === 1 && ws === this._gpuClient && !c.isLocalHost
+        && process.env.DREAM_IMAGE_ON_CORTEX_CARD !== '0' && _probeOk(c)) cortexCard = { ws, c };
       if (!c || !c.isGPU || !c.imageCapable || !ws || ws.readyState !== 1) continue;
-      if (ws === this._gpuClient && !c.isLocalHost && process.env.DREAM_IMAGE_ON_CORTEX_CARD !== '0') cortexCard = { ws, c };
       // ⛔ NEVER THE CARD CARRYING HER CORTEX — the rule this lane was written
       // for and did not enforce. A render there competed with her lessons, and
       // its picture came back as megabytes of base64 on the same link; the
@@ -304,12 +312,17 @@ const ImageEngineMixin = {
       catch (e) { clearTimeout(timer); this._imagePending.delete(id); resolve({ ok: false, error: `send: ${e && e.message}` }); }
     });
     if (!out || !out.ok || !out.png_b64) {
+      if (pick.c.imageCapable == null) pick.c.imageProbeFailAt = Date.now();
       st.httpFails++;
       st.lastErr = `donor ${pick.c.gpuName || pick.c.id}: ${(out && out.error) || 'no picture'}`;
       st.lastErrAt = Date.now();
       return null;
     }
     const ms = Date.now() - t0;
+    if (pick.c.imageCapable !== true) {
+      pick.c.imageCapable = true;
+      console.log(`[Brain] IMAGE LANE — ${pick.c.gpuName || pick.c.id} rendered a probe look in ${ms}ms; her pictures render there now.`);
+    }
     st.ok++; st.lastMs = ms; st.lastOkAt = Date.now();
     st.donorRenders = (st.donorRenders | 0) + 1;
     return { png: Buffer.from(out.png_b64, 'base64'), seed: req.seed, ms, width: req.width, height: req.height, card: pick.c.gpuName || pick.c.id };
