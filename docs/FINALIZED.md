@@ -61364,4 +61364,14 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
 - **Fix:** both loops yield on a 40 ms wall clock, the same rule as the spelling teach. This changes when the loop breathes, not what she learns: same pairs, reps and writes.
 - **Verified:** ESM import. Pod utilisation is measured after the press.
 
+## 2026-11-25 — LOOKPOD: her looks render on the pod, not only her chat pictures
+
+- **Caught by the new status page on boot `7c6d1b5e`:** `cards: … 4070 Ti SUPER (host) image=false · RTX PRO 6000 (remote) image=true`, yet `LOOK FAILED at stage=engineDown … (local image engine not answering /health)`.
+  - The look lane in `visual-memory.js` built a request and fetched `127.0.0.1:5124` directly, in two places (the first render and the second self-consistency seed).
+  - It never went through the donor pick, so every look still targeted the host card. The earlier IMAGEPOD fix only reached the chat lane.
+- **Fix:** both look renders go through `_pickImageDonor` → `_imageRenderOnDonor` when a card offers.
+  - The host-card gates (upload yield, `/health`, free VRAM) apply only when the look renders locally.
+  - With no donor (the pod gone on handoff), both fall back to the local path unchanged.
+- **Verified:** `node --check`.
+
 
