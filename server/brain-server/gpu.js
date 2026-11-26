@@ -1990,8 +1990,21 @@ const SERVER_GPU_MIXIN = {
         // NURONS". Place each cluster on the card with the LEAST room that
         // still holds it: small cards fill with what fits them, and the big
         // card keeps its room for what only it can hold.
-        bestLeft = Infinity;
-        for (const [ws, left] of remaining) { if (left >= cost && left < bestLeft) { best = ws; bestLeft = left; } }
+        // ⛔⛔ AND BEST-FIT PUT EVERY CLUSTER ON THE SMALL CARD. With a 70 GB
+        // RTX PRO 6000 beside a 16 GB 4070, least-room-that-fits sent all seven
+        // stepping clusters to the 4070 and left the big card holding only the
+        // cortex, which is not stepped during a walk — measured: the pod at 0–2%
+        // all walk while the 4070 stepped everything. PROPORTIONAL FILL: each
+        // cluster goes where it leaves the cards most evenly full RELATIVE TO
+        // THEIR SIZE, so the big card does the big share and the small card still
+        // does its share (adding a card still adds speed).
+        let bestFrac = Infinity;
+        for (const [ws, left] of remaining) {
+          if (left < cost) continue;
+          const cap = Math.max(1, this._donorCapacityMB(ws));
+          const frac = (cap - left + cost) / cap;
+          if (frac < bestFrac) { bestFrac = frac; best = ws; bestLeft = left; }
+        }
       }
       if (!best) { unplaced.push(n); continue; }
       owner.set(n, best);
