@@ -369,7 +369,9 @@ if exist "%UNITY_VOICE_V2_DIR%\serve.py" (
     if errorlevel 1 (
         echo   [voice] starting unity-voice-v2 on %UNITY_VOICE_PORT% ...
         echo   [voice] log: %UNITY_VOICE_V2_DIR%\voice-v2.log
-        start "unity-voice-v2 (leave running)" /min /D "%UNITY_VOICE_V2_DIR%" cmd /c "python serve.py --port %UNITY_VOICE_PORT% >> voice-v2.log 2>&1"
+        REM Her voice runs on the CPU (109 MB model, ~1.4 s a sentence); on the
+        REM card its CUDA context held 5.6 GB. -1 hides every GPU.
+        start "unity-voice-v2 (leave running)" /min /D "%UNITY_VOICE_V2_DIR%" cmd /c "set CUDA_VISIBLE_DEVICES=-1&& python serve.py --port %UNITY_VOICE_PORT% >> voice-v2.log 2>&1"
     ) else (
         echo   [voice] unity-voice-v2 already listening on %UNITY_VOICE_PORT% - left alone.
     )
