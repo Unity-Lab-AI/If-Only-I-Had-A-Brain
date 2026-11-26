@@ -131,17 +131,43 @@ function storyExperiences(domain, grade) {
 // least one lowercase letter run, and not a title-only quote (a quoted string
 // with no terminal punctuation and the narrator's sentence giving no speech
 // verb is a book or poem title — "darius green and his flying machine").
-const _SPEECH_RE = /["“]([^"”]{2,240})["”]/;
-function _speechOf(s) {
-  const m = _SPEECH_RE.exec(String(s || ''));
-  if (!m) return '';
-  const q = m[1].replace(/\s+/g, ' ').trim().replace(/^[,;:\s]+|[,;:\s]+$/g, '');
-  if (q.split(' ').length < 2 || !/[a-z]{2}/i.test(q)) return '';
-  const tail = String(s).slice(m.index + m[0].length);
-  const head = String(s).slice(0, m.index);
-  const spoken = /[.!?,]$/.test(m[1].trim()) || /^\s*(said|says|asked|asks|cried|cries|answered|answers|replied|replies|shouted|whispered|called|told)\b/i.test(tail)
-    || /\b(said|says|asked|asks|cried|answered|replied|shouted|whispered|called|told)\b[^"]*$/i.test(head);
-  return spoken ? q : '';
+// ⛔⛔ EVERY QUOTE, IN ORDER, PAIRED BY ITS OWN MARKS. This read ONE quote per
+// split sentence — but the splitter keeps a run of quoted lines inside one long
+// sentence, so most of a conversation was dropped, and with straight quotes the
+// single-quote regex could match from one line's CLOSING mark to the next line's
+// OPENING mark, returning the narration between them ("she smiled and said") as
+// speech. Measured on a hand-authored K scene: 10 exchanges written, 19 "turns"
+// read, most of them narration fragments. Quote marks are now walked pairwise
+// across the whole story (open, close, open, close …), so a quote can never
+// straddle two lines, and every consecutive pair of spoken lines is a turn.
+function _quotesOf(story) {
+  const text = String(story || '');
+  const out = [];
+  const re = /["“”]/g;
+  let open = -1, m;
+  while ((m = re.exec(text)) !== null) {
+    if (open < 0) { open = m.index; continue; }
+    const q = text.slice(open + 1, m.index).replace(/\s+/g, ' ').trim().replace(/^[,;:\s]+|[,;:\s]+$/g, '');
+    const _start = open;
+    open = -1;
+    // ≤240 chars, the old reader's bound: a quoted poem or passage is not a line of talk.
+    if (q.length > 240 || q.split(' ').length < 2 || !/[a-z]{2}/i.test(q)) continue;
+    // SPEECH, NOT A QUOTED TERM: a spoken line ends on . ! ? , inside its marks,
+    // or a speech verb sits right beside it. A quoted term or title
+    // ("internal rhymes") is neither, and pairing it made false turns.
+    const inner = text.slice(_start + 1, m.index).trim();
+    const near = text.slice(Math.max(0, _start - 40), _start) + ' ' + text.slice(m.index + 1, m.index + 40);
+    // A comma alone is not enough — book style puts it inside quoted TERMS too
+    // ("internal rhymes,").
+    const spoken = /\b(said|says|asked|asks|cried|answered|replied|shouted|whispered|called|told|yelled)\b/i.test(near)
+      || (/[.!?]$/.test(inner) && q.split(' ').length >= 3);
+    if (!spoken) continue;
+    // Her name and her "I" capitalised exactly as every other reader does, and
+    // every sentence inside the line opens on a capital.
+    const cased = properCaseStory(q).replace(/([.!?]\s+)([a-z])/g, (_, p, c) => p + c.toUpperCase());
+    out.push(cased);
+  }
+  return out;
 }
 function dialogueTurns(domain, grade) {
   const data = loadStories(domain, grade);
@@ -149,12 +175,8 @@ function dialogueTurns(domain, grade) {
   const out = [];
   for (const exp of data.experiences) {
     if (!exp || typeof exp.story !== 'string') continue;
-    let prev = '';
-    for (const s of storyToSentences(exp.story, null)) {
-      const q = _speechOf(s);
-      if (q && prev) out.push([prev, q]);
-      prev = q;
-    }
+    const qs = _quotesOf(exp.story);
+    for (let i = 1; i < qs.length; i++) out.push([qs[i - 1], qs[i]]);
   }
   return out;
 }

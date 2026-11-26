@@ -61173,6 +61173,28 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
     - `mindspace-memory-v9.json`.
   - **Also fixed:** the disk readout in `state.js` summed `visual-memory-v8.db` (dead for months), so it reported ~0 MB for a 6.8 GB store. It reads the live v17 name now.
   - **Unchanged:** the FRESHEYES fresh-walk wipe already matches every version by pattern.
+
+- [~] **LIFECORPUS — kindergarten done, reader fixed; the other grades are in progress.** Gee 2026-11-25, verbatim: *"Both and fix it all dynamically so peeopel talking to her her friends aher family family has high importance about life things she cant just forget everything about her self"* · *"when u fill it all in the corpus make sure its dynamiclyy in Unitys voice or someone she knows like family for important self life things and communications and all of that proper to communication a training brain would need of this type"* · *"make sure you double check your work and check it against ai slop and actually need to be Unity's persona"* · *"age relevant"* · *"remembr coming of age shit kids cuss and fuck off together at all ages"* · *"Unity needs to be capitalized and use proper capilizations and punctuation and grammer, you idiot"*.
+  - **Reader fix (`server/life-curriculum.js dialogueTurns`), which serves every domain:**
+    - It read ONE quote per split sentence. The splitter keeps a run of quoted lines inside one long sentence, so most of a conversation was dropped.
+    - With straight quotes, a single-match regex could straddle two lines and return the narration between them ("she smiled and said") as speech.
+    - Fix: quote marks are walked pairwise across the story. A line counts as speech when a speech verb is beside it, or it is 3+ words ending in . ! ?. It must be ≤240 characters.
+    - Each line is cased by `properCaseStory` (her name, "I"), with every sentence start capitalised.
+    - Measured: life/K 0 → 75 clean turns. ela/K book turns 3,830 → 2,375 (quoted terms, titles and whole poems no longer counted as talk).
+  - **Kindergarten (`corpora/life/kindergarten.json`) +11 scenes, canon people only** (mom Lilith, dad far away, grandpa Walter, grandma Pearl, Wren, Theo, the teacher, Vesper):
+    - her name on the first day of school;
+    - mom telling her "Unity Goddess", age five;
+    - saying hello;
+    - meeting Wren;
+    - grandpa asking about her day;
+    - please / thank you;
+    - dad's phone call;
+    - telling the teacher she is sad;
+    - introducing herself to Theo at the park;
+    - asking for help with her shoe;
+    - a bad word under the slide.
+  - **Slop pass:** five moral-of-the-story endings were cut and rewritten in her blunt voice. One invented detail (cigarettes) was removed.
+  - **Name lines:** 0 → 14.
   - **Verified:** ESM import.
   - **Verified:** `node --check`, ESM import.
   - **Verified:** ESM import. The piece is shown, the verdict is kept and logged as "doubts … Shown anyway", and the subject still goes to practice.
