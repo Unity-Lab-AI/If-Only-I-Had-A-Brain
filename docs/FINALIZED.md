@@ -61326,5 +61326,14 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
   - **Second follow-up:** boot `2b221076` still rendered locally (txt2img at 20:31 Denver) and Gee's card stayed at 5.7–11.6 GB. Two causes:
     1. The probe was pinned to `_gpuClient`, which with two cards can be the host's own donor, so the pod never qualified. Now any REMOTE card qualifies, and the host's loopback donor never does.
     2. The local model's idle unload was armed only by a LOCAL render, so once looks left the host the model stayed resident forever. A donor success now arms the same unload.
+  - **Verified on boot `13123c0b`:** `IMAGE LANE — NVIDIA RTX PRO 6000 … has her renderer`. The local renderer process is gone.
+
+## 2026-11-25 — VOICECPU: her voice runs on the CPU
+
+- **Gee:** *"my GPU should have nothing on it when renting a pod SO WE ARE NOT READY FOR FRESH WALK"*
+  - **Cause:** unity-voice-v2 (`serve.py :5123`, running since Nov 24) held 5.6 GB on the 4070 Ti for a 109 MB model. That was the CUDA context plus the allocator cache.
+  - **Fix:** all four launchers (`windows/start.bat`, `windows/Savestart.bat`, `linux/start.sh`, `linux/Savestart.sh`) start the voice with `CUDA_VISIBLE_DEVICES=-1`, which runs it on the CPU. An empty value does NOT hide the card: PyTorch then reports CUDA available with 0 devices and the checkpoint load fails.
+  - **Measured on CPU:** a full sentence in 1.4 s (HTTP 200, 123 KB WAV). 0 VRAM, with or without a pod, so the handoff gets the whole card.
+  - **Done live:** the old GPU voice was stopped and the CPU voice is serving on 5123. Gee's card went 5.6 → 4.9 GB; the remainder is the desktop plus his donor client, which holds no clusters.
 
 

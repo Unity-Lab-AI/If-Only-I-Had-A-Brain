@@ -443,7 +443,9 @@ if [ -f "$UNITY_VOICE_V2_DIR/serve.py" ]; then
         echo "  [voice] unity-voice-v2 already listening on $UNITY_VOICE_PORT — left alone."
     else
         echo "  [voice] starting unity-voice-v2 on $UNITY_VOICE_PORT (log: $UNITY_VOICE_V2_DIR/voice-v2.log)"
-        ( cd "$UNITY_VOICE_V2_DIR" && nohup python3 serve.py --port "$UNITY_VOICE_PORT" >> voice-v2.log 2>&1 & )
+        # Her voice runs on the CPU (109 MB model, ~1.4 s a sentence); on the card its
+        # CUDA context held 5.6 GB. -1 hides every GPU (an empty value does not).
+        ( cd "$UNITY_VOICE_V2_DIR" && CUDA_VISIBLE_DEVICES=-1 nohup python3 serve.py --port "$UNITY_VOICE_PORT" >> voice-v2.log 2>&1 & )
     fi
 else
     echo "  [voice] unity-voice-v2 NOT found at $UNITY_VOICE_V2_DIR — she will be SILENT until it runs."
