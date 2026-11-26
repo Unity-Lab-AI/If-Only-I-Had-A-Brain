@@ -2651,6 +2651,8 @@ function adaptSubsteps(brain, ws, floorValue) {
     ? brain._adaptBestTeachRate : 0;
   const prev = brain._adaptSubsteps;
   let next = prev, why = '';
+  // A shrink that DID bring teach back proved its cause — the brake stays armed.
+  if (brain._adaptBrakeProbe && teachRate >= brain._adaptBrakeProbe.rate * 1.3) brain._adaptBrakeProbe = null;
 
   if (missed) {
     // A miss is the hardware or the link saying no. Record the ceiling BELOW
@@ -2683,10 +2685,25 @@ function adaptSubsteps(brain, ws, floorValue) {
     //     — only a batch approaching the target is even a candidate — so phase
     //     variation is attributed to the phase, and the brake still arms for the
     //     case it exists for.
+  } else if (brain._adaptBrakeProbe && !(teachRate >= brain._adaptBrakeProbe.rate * 1.3)) {
+    // ⛔⛔ THE BRAKE MUST PROVE ITS CAUSE. The last window shrank the batch on
+    // "teach fell"; if teach did NOT come back after the shrink, the batch was
+    // not what slowed it — a phase was. Measured 2026-11-25: 121 → 84 → 58 → 40
+    // → 28 → 24 substeps while teach sat at 0.5/s the whole way, and the pod read
+    // 0% for nothing. So: restore the size it cut, and keep the brake out for 10
+    // windows so ordinary phase dips cannot walk the card to the floor again.
+    next = Math.max(prev, brain._adaptBrakeProbe.size);
+    brain._adaptBrakeOffUntil = (brain._adaptSamples || 0) + 10;
+    why = `the last shrink did not bring teach back (${teachRate.toFixed(1)}/s vs ${brain._adaptBrakeProbe.rate.toFixed(1)}/s before it) — the batch was not the cause, restoring ${next} and holding the brake off 10 windows`;
+    brain._adaptBrakeProbe = null;
   } else if (best > 0 && teachRate > 0 && teachRate < best * 0.7
-             && batchMs > SUBSTEPS_TARGET_MS * 0.5) {
+             && batchMs > SUBSTEPS_TARGET_MS * 0.5
+             && !((brain._adaptSamples || 0) < (brain._adaptBrakeOffUntil || 0))) {
     next = Math.max(floorValue, Math.floor(prev * 0.7));
     brain._adaptCooldown = 2;
+    // Remember what was cut and the teach rate at the cut, so the next window
+    // can see whether the shrink actually helped.
+    brain._adaptBrakeProbe = { size: prev, rate: teachRate };
     why = `teach throughput fell to ${teachRate.toFixed(1)}/s from a best of ${best.toFixed(1)}/s — the batch is starving the donor's single worker thread, so backing off. GPU utilisation that costs teach is not work`;
   } else if (brain._adaptCooldown > 0) {
     // HYSTERESIS. Without it a starvation back-off is undone on the very next
