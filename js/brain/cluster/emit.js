@@ -1354,7 +1354,21 @@ export const CLUSTER_EMIT_MIXIN = {
       const _seedWord = words.length > 0 ? words[words.length - 1]
         : (opts.intentConcept || (typeof intentSeed === 'string'
           ? (intentSeed.replace(/_/g, ' ').toLowerCase().match(/[a-z]+/g) || []).filter((t) => t.length > 2).pop() : null));
-      if (_taught && _seedWord) {
+      if (_taught && words.length === 0 && typeof opts.questionText === 'string' && opts.questionText
+          && typeof _cur._writeTiledPatternOffset === 'function' && typeof _cur._extractKeyWord === 'function'
+          && sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === 'function') {
+        // ⭐ HER FIRST WORD IN REPLY TO A QUESTION reads the question in the
+        // shape her question→answer training wrote it: the whole sentence's
+        // embedding tiled across sem, the key word's dictionary pattern in the
+        // second half (`_teachQABinding`'s write, byte for byte). That is where
+        // "what is your name?" → "unity" was bound; the key word alone never was.
+        const semR = this.regions.sem;
+        this.lastSpikes.fill(0, semR.start, semR.end);
+        _cur._writeTiledPattern(semR, sharedEmbeddings.getSentenceEmbedding(opts.questionText), false);
+        const _kw = _cur._extractKeyWord(opts.questionText);
+        const _kEmb = _kw ? _cur._dictionaryPatternFor(_kw) : null;
+        if (_kEmb && _kEmb.length) _cur._writeTiledPatternOffset(semR, _kEmb, false, 0.5);
+      } else if (_taught && _seedWord) {
         const semR = this.regions.sem;
         this.lastSpikes.fill(0, semR.start, semR.end);
         _cur._writeTiledPattern(semR, _cur._topKEmbedding(_cur._dictionaryPatternFor(_seedWord), 8), true, { noCpu: false });

@@ -12450,6 +12450,9 @@ var LanguageCortex = class {
               _lcStamp(`generate:primary(${opts.curriculumBusy ? 1 : 3}cand)`);
               composedSentence = await cluster.composeSentence(intentSeed, {
                 subject: inferredSubject || void 0,
+                // The question text itself, so her FIRST word is read in the
+                // same sem shape her question→answer training wrote.
+                questionText: typeof cluster._lastUserInputText === "string" && cluster._lastUserInputText || void 0,
                 temperature: Number(_temp.toFixed(2)),
                 topK: _topK,
                 // WORDSALAD.3 — the CONVERSATIONAL lane opts in to asking. When a
@@ -16344,7 +16347,14 @@ var CLUSTER_EMIT_MIXIN = {
       const _cur = this._brain && this._brain.curriculum;
       const _taught = (this.size | 0) > 2e6 && _cur && typeof _cur._dictionaryPatternFor === "function" && typeof _cur._topKEmbedding === "function" && typeof _cur._writeTiledPattern === "function";
       const _seedWord = words.length > 0 ? words[words.length - 1] : opts.intentConcept || (typeof intentSeed === "string" ? (intentSeed.replace(/_/g, " ").toLowerCase().match(/[a-z]+/g) || []).filter((t) => t.length > 2).pop() : null);
-      if (_taught && _seedWord) {
+      if (_taught && words.length === 0 && typeof opts.questionText === "string" && opts.questionText && typeof _cur._writeTiledPatternOffset === "function" && typeof _cur._extractKeyWord === "function" && sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function") {
+        const semR = this.regions.sem;
+        this.lastSpikes.fill(0, semR.start, semR.end);
+        _cur._writeTiledPattern(semR, sharedEmbeddings.getSentenceEmbedding(opts.questionText), false);
+        const _kw = _cur._extractKeyWord(opts.questionText);
+        const _kEmb = _kw ? _cur._dictionaryPatternFor(_kw) : null;
+        if (_kEmb && _kEmb.length) _cur._writeTiledPatternOffset(semR, _kEmb, false, 0.5);
+      } else if (_taught && _seedWord) {
         const semR = this.regions.sem;
         this.lastSpikes.fill(0, semR.start, semR.end);
         _cur._writeTiledPattern(semR, _cur._topKEmbedding(_cur._dictionaryPatternFor(_seedWord), 8), true, { noCpu: false });

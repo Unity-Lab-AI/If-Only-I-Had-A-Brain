@@ -2444,6 +2444,9 @@ export class LanguageCortex {
               _lcStamp(`generate:primary(${opts.curriculumBusy ? 1 : 3}cand)`);
               composedSentence = await cluster.composeSentence(intentSeed, {
                 subject: inferredSubject || undefined,
+                // The question text itself, so her FIRST word is read in the
+                // same sem shape her question→answer training wrote.
+                questionText: (typeof cluster._lastUserInputText === 'string' && cluster._lastUserInputText) || undefined,
                 temperature: Number(_temp.toFixed(2)),
                 topK: _topK,
                 // WORDSALAD.3 — the CONVERSATIONAL lane opts in to asking. When a
