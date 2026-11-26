@@ -377,10 +377,14 @@ enum Work {
     // v0.3.53 — a pattern lesson (multi-region items, the sentence lane's step),
     // run by the same worker loop as a lesson and acked the same way.
     PatternLesson(frames::PatternLesson),
+    // v0.3.56 — a step lesson (per-item step lists: the asymmetric / whitelisted
+    // teach lanes), run by the same worker loop and acked the same way.
+    StepLesson(frames::StepLesson),
     // v0.3.46 — the brain moved the cortex to another card: drop these resident
     // matrices. The copy here stopped being current at the move and was only
     // holding VRAM (measured: 12.7 GB on a 16 GB card, starving her renderer).
-    FreeMatrices { names: Vec<String> },
+    // v0.3.56 — `clusters` drops resident neuron state too (an older brain sends none).
+    FreeMatrices { names: Vec<String>, clusters: Vec<String> },
     // v0.3.48 — this card holds rows [base, base + rows) of a matrix, not all of
     // it. A lesson's `Masked` rows are full-matrix row numbers, so they are
     // shifted by `base` and dropped when they fall outside the slice. Queued in
@@ -1122,12 +1126,14 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     Frame::Bundle { frames } => format!("bundle x{}", frames.len()),
                     Frame::Lesson(l) => format!("lesson x{}", l.pairs.len()),
                     Frame::PatternLesson(p) => format!("pattern lesson x{}", p.items.len()),
+                    Frame::StepLesson(p) => format!("step lesson x{}", p.items.len()),
                 },
                 Work::WriteSpike { cluster, region, .. } => format!("write_spike {cluster}/{region}"),
                 Work::WriteCurrent { cluster, region, .. } => format!("write_current {cluster}/{region}"),
                 Work::ClearSpike { cluster, region } => format!("clear_spike {cluster}/{region}"),
                 Work::Lesson(l) => format!("lesson x{}", l.pairs.len()),
                 Work::PatternLesson(p) => format!("pattern lesson x{}", p.items.len()),
+                Work::StepLesson(p) => format!("step lesson x{}", p.items.len()),
                 Work::HebbianRanges { name, reps, .. } => format!("hebbian_ranges {name} x{reps}"),
                 Work::LetterSurprise { cluster, region, letters, .. } => format!("letter_surprise {cluster}/{region} x{}", letters.len()),
                 Work::Readback { cluster, region, .. } => format!("readback {cluster}/{region}"),
@@ -1137,7 +1143,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 Work::CheckpointSave { .. } => "checkpoint save".to_string(),
                 Work::CheckpointRestore { .. } => "checkpoint restore".to_string(),
                 Work::SetLineage { .. } => "set lineage".to_string(),
-                Work::FreeMatrices { names } => format!("free x{}", names.len()),
+                Work::FreeMatrices { names, clusters } => format!("free x{} + {} cluster(s)", names.len(), clusters.len()),
                 Work::SliceBase { name, base, count } => format!("slice {name} @{base}+{count}"),
                 Work::UploadSlice { name, slice, .. } => format!("slice upload {name} x{}", slice.rows),
                 Work::PatchValues { name, vals, .. } => format!("slice patch {name} x{}", vals.len()),
@@ -1210,12 +1216,15 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 // parity-tested definition), then a type-17 ack so the brain can
                 // keep a bounded number of lessons in flight and never pile up an
                 // unbounded queue on this card.
-                w @ (Work::Lesson(_) | Work::PatternLesson(_)) => {
-                    // v0.3.53 — both lesson kinds run this one loop; only the
+                w @ (Work::Lesson(_) | Work::PatternLesson(_) | Work::StepLesson(_)) => {
+                    // v0.3.53 — every lesson kind runs this one loop; only the
                     // expansion differs (each is its own parity definition).
                     let (lesson_ops, lesson_req, lesson_units) = match w {
                         Work::Lesson(l) => (expand_lesson_par(&l), l.req_id, l.pairs.len()),
                         Work::PatternLesson(p) => (expand_pattern_lesson_par(&p), p.req_id, p.items.len()),
+                        // v0.3.56 — items depend on each other's resident spikes only
+                        // through the steps they run in order, so this one expands inline.
+                        Work::StepLesson(p) => (frames::expand_step_lesson(&p), p.req_id, p.items.len()),
                         _ => unreachable!(),
                     };
                     lc_seen += 1;
@@ -1528,11 +1537,19 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     if count == 0 { slice_base.remove(&name); } else { slice_base.insert(name.clone(), (base, count)); }
                     println!("[donor] {name} — rows {base}..{} on this card.", base.saturating_add(count));
                 }
-                Work::FreeMatrices { names } => {
+                Work::FreeMatrices { names, clusters } => {
                     for n in &names { slice_base.remove(n); }
                     let freed: Vec<String> = names.into_iter().filter(|n| engine.free_sparse(n)).collect();
-                    println!("[donor] freed {} resident matrix(es) — the cortex moved to another card.", freed.len());
-                    let reply = serde_json::json!({ "type": "free_matrices_ack", "freed": freed });
+                    // v0.3.56 — the neuron state `gpu_init` allocated. A cluster's
+                    // matrices are freed first (above) so nothing bound to it is left
+                    // pointing at a dropped spike buffer.
+                    let freed_clusters: Vec<String> = clusters.into_iter().filter(|c| {
+                        cluster_regions.remove(c);
+                        engine.free_cluster(c)
+                    }).collect();
+                    engine.sync();
+                    println!("[donor] freed {} resident matrix(es) and {} cluster(s) — moved to another card.", freed.len(), freed_clusters.len());
+                    let reply = serde_json::json!({ "type": "free_matrices_ack", "freed": freed, "freedClusters": freed_clusters, "heldClusters": engine.held_clusters() });
                     let _ = reply_tx.send(Out::Text(reply.to_string()));
                     set_status(&control_w, |s| { s.note = "idle".into(); });
                 }
@@ -1834,11 +1851,14 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                                 let names: Vec<String> = v.get("names").and_then(|x| x.as_array())
                                     .map(|a| a.iter().filter_map(|n| n.as_str().map(String::from)).collect())
                                     .unwrap_or_default();
+                                let clusters: Vec<String> = v.get("clusters").and_then(|x| x.as_array())
+                                    .map(|a| a.iter().filter_map(|n| n.as_str().map(String::from)).collect())
+                                    .unwrap_or_default();
                                 // Stop checkpointing a set this card no longer holds; the
                                 // next owner's own checkpoint is the current one.
                                 ckpt_lineage = None;
                                 pending.fetch_add(1, Ordering::Relaxed);
-                                workq.push(Work::FreeMatrices { names });
+                                workq.push(Work::FreeMatrices { names, clusters });
                                 continue;
                             }
                             if v.get("type").and_then(|x| x.as_str()) == Some("leave_ok") {
@@ -2033,6 +2053,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                                 // same order (expand_lesson) and acks when done.
                                 Frame::Lesson(lesson) => workq.push(Work::Lesson(lesson)),
                                 Frame::PatternLesson(pl) => workq.push(Work::PatternLesson(pl)),
+                                Frame::StepLesson(sl) => workq.push(Work::StepLesson(sl)),
                                 other => workq.push(Work::Frame(other)),
                             }
                           }
@@ -2385,6 +2406,7 @@ fn handle_frame(engine: &mut MultiEngine, partials: &mut HashMap<String, Partial
         // Expanded at receive; never reaches the worker whole.
         Frame::Lesson(_) => None,
         Frame::PatternLesson(_) => None,
+        Frame::StepLesson(_) => None,
         Frame::WriteCurrentTemplate { cluster, region, row_start, group_size, values, psi } => {
             // Defensive twin of the receive-layer expansion (identical math).
             let mut indices: Vec<u32> = Vec::with_capacity(values.len() * group_size as usize);

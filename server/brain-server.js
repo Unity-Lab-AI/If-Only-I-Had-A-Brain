@@ -4117,6 +4117,14 @@ class ServerBrain {
         // step) in one frame; acked like a lesson. True only when SENT.
         teachPatternLesson: (spec)                          => this.gpuTeachPatternLesson(spec),
         patternLessonCapable: ()                            => this._donorSpeaksPatternLessonNow(),
+        // v0.3.56 — items with their own step lists (per-step projection whitelist,
+        // the asymmetric intra step); acked like a lesson. True only when SENT.
+        teachStepLesson: (spec)                             => this.gpuTeachStepLesson(spec),
+        stepLessonCapable: ()                               => this._donorSpeaksStepLessonNow(),
+        // Pull one card matrix's trained values into the CPU master (checksum-
+        // verified). A lane that trained a probe-read projection only on the card
+        // calls this so the CPU-path probes read what the card learned.
+        pullMatrixValues: (name)                            => this.gpuReadbackMatrixValues(name),
         // v0.3.45 — await a free in-flight slot before sending a lesson.
         lessonSlot: ()                                      => this.lessonSlot(),
         // GATEGPU — one gate probe on the donor: probe-pattern slice write +
@@ -11052,21 +11060,40 @@ setInterval(() => {
       };
       for (const [ws, c] of brain.clients) {
         if (!c || !c.isGPU || ws.readyState !== 1) continue;
-        if (!(c.heldMatrices instanceof Set) || c.heldMatrices.size === 0) continue;
         const holdsSlice = typeof brain._intraSliceActive === 'function' && brain._intraSliceActive()
           && Array.isArray(brain._intraSlices) && brain._intraSlices.some((s) => s.ws === ws);
         const stale = [];
-        for (const n of c.heldMatrices) {
-          if (holdsSlice && n === brain._SLICE_NAME) continue;
-          const cl = _clusterOf(n);
-          if (cl) { if (_owner.get(cl) !== ws) stale.push(n); }
-          else if (ws !== brain._gpuClient && _names.includes(n)) stale.push(n);   // the original cortex rule
+        if (c.heldMatrices instanceof Set) {
+          for (const n of c.heldMatrices) {
+            if (holdsSlice && n === brain._SLICE_NAME) continue;
+            const cl = _clusterOf(n);
+            if (cl) { if (_owner.get(cl) !== ws) stale.push(n); }
+            else if (ws !== brain._gpuClient && _names.includes(n)) stale.push(n);   // the original cortex rule
+          }
         }
-        if (!stale.length) continue;
+        // ⭐ THE NEURON STATE TOO (donor 0.3.56). `free_matrices` used to drop
+        // matrices only, so a card a cluster had moved off kept that cluster's
+        // `gpu_init` buffers for good — measured: a RELEASE ALL answered
+        // `freed 0` while the card still held its VRAM. Every cluster this card
+        // does not own is named; the donor frees what it holds and ignores the
+        // rest. A slice holder keeps the cortex's own spike space (its slice
+        // trains against it). Sent again only when the set changes.
+        let staleClusters = [];
+        if (_owner) {
+          staleClusters = [..._owner.keys()].filter((cl) => _owner.get(cl) !== ws);
+          const _cxName = _cc && _cc.name;
+          if (_cxName && _owner.has(_cxName) && _owner.get(_cxName) !== ws) staleClusters.push('langCortex');
+          if (holdsSlice) staleClusters = staleClusters.filter((cl) => cl !== _cxName && cl !== 'langCortex');
+          staleClusters.sort();
+        }
+        const _scKey = staleClusters.join(',');
+        const sendClusters = staleClusters.length > 0 && c._staleClustersSent !== _scKey;
+        if (!stale.length && !sendClusters) continue;
         try {
-          ws.send(JSON.stringify({ type: 'free_matrices', names: stale }));
+          ws.send(JSON.stringify({ type: 'free_matrices', names: stale, clusters: sendClusters ? staleClusters : [] }));
           for (const n of stale) c.heldMatrices.delete(n);
-          console.log(`[Pool] STALE COPY freed on ${c.gpuName || c.id} — ${stale.length} matrices for clusters it no longer owns.`);
+          if (sendClusters) c._staleClustersSent = _scKey;
+          console.log(`[Pool] STALE COPY freed on ${c.gpuName || c.id} — ${stale.length} matrices${sendClusters ? ` + the neuron state of ${staleClusters.length} cluster(s) it does not own (${_scKey})` : ''}.`);
         } catch { /* card gone — its VRAM went with it */ }
       }
       // ⛔ A CARD THAT OWNS NOTHING IS TOLD TO RELEASE EVERYTHING, ONCE. On a fresh
@@ -11088,8 +11115,11 @@ setInterval(() => {
           && Array.isArray(brain._intraSlices) && brain._intraSlices.some((s) => s.ws === ws)) continue;
         if (!_allNames.size) continue;
         try {
-          ws.send(JSON.stringify({ type: 'free_matrices', names: [..._allNames] }));
+          // Every cluster too (donor 0.3.56): a card that owns none holds none.
+          const _allClusters = _owner ? [..._owner.keys(), 'langCortex'] : [];
+          ws.send(JSON.stringify({ type: 'free_matrices', names: [..._allNames], clusters: _allClusters }));
           c._releasedAll = true;
+          c._staleClustersSent = [..._allClusters].sort().join(',');
           if (c.heldMatrices instanceof Set) c.heldMatrices.clear();
           console.log(`[Pool] RELEASE ALL sent to ${c.gpuName || c.id} — it owns no clusters; asked to free any of ${_allNames.size} known matrices it still holds.`);
         } catch { /* card gone */ }
@@ -15749,7 +15779,9 @@ wss.on('connection', (ws, req) => {
         // Nothing read this before, so a free that freed nothing was invisible.
         case 'free_matrices_ack': {
           const _fr = Array.isArray(msg.freed) ? msg.freed : [];
-          console.log(`[Pool] FREE ACK from ${(client && (client.gpuName || client.id)) || id} — freed ${_fr.length} matrix(es)${_fr.length ? ': ' + _fr.slice(0, 8).join(', ') + (_fr.length > 8 ? ' …' : '') : ' (it held none of them)'}.`);
+          const _fc = Array.isArray(msg.freedClusters) ? msg.freedClusters : null;
+          const _hc = Array.isArray(msg.heldClusters) ? msg.heldClusters : null;
+          console.log(`[Pool] FREE ACK from ${(client && (client.gpuName || client.id)) || id} — freed ${_fr.length} matrix(es)${_fr.length ? ': ' + _fr.slice(0, 8).join(', ') + (_fr.length > 8 ? ' …' : '') : ' (it held none of them)'}${_fc ? ` · freed ${_fc.length} cluster state(s)${_fc.length ? ': ' + _fc.join(', ') : ''} · still holds ${_hc ? (_hc.length ? _hc.join(', ') : 'no cluster state') : '?'}` : ' · (donor older than 0.3.56: neuron state not freed)'}.`);
           break;
         }
         case 'image_result': {

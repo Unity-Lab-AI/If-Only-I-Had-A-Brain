@@ -432,6 +432,12 @@ impl CudaEngine {
         self.sparse.remove(name).is_some()
     }
 
+    /// v0.3.56 — drop a cluster's resident neuron state (the device buffers
+    /// `init_cluster` allocated). Dropping the CudaSlices frees the VRAM.
+    pub fn free_cluster(&mut self, name: &str) -> bool {
+        self.clusters.remove(name).is_some()
+    }
+
     /// Zero `dst[offset .. offset+len]` on the device (u32) — async on the stream. Replaces
     /// the host-side zero-vec + full-span memcpy that cost megabytes of PCIe per teach frame.
     fn dev_zero_u32(&self, dst: &CudaSlice<u32>, offset: u32, len: u32) -> Result<(), String> {
