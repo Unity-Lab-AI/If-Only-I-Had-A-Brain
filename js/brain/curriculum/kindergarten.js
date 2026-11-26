@@ -9315,23 +9315,33 @@ export const K_MIXIN = {
         const entry = this.dictionary._words.get(word);
         if (!entry || !entry.pattern) { skipped++; continue; }
         if (rep === 0) newlyTaught.push(word);
-        fillSem(entry.pattern);
-        // Post: word_motor with this word's bucket lit ONLY in subject's sub-band
-        postWM.fill(0);
         const bStart = bandStart + wi * bucketSize;
         if (bStart >= bandEnd) break; // SPEAK.1 capacity overflow (index-ordered)
         const bEnd = Math.min(bandEnd, bStart + bucketSize);
-        const activeRows = new Array(bEnd - bStart);
-        for (let n = bStart, ai = 0; n < bEnd; n++, ai++) { postWM[n] = 1; activeRows[ai] = n; }
-        try {
-          semToWordMotor.ojaUpdate(preSem, postWM, lr,
-            _kScalesWM ? { kScales: _kScalesWM, activeRows } : { activeRows });
-          updates++;
-        } catch { skipped++; }
         // GPU dispatch rides EVERY (word, rep) visit — the slice must be
         // rewritten per visit because every other word in the rep loop
         // replaces it in between. Template frames keep this ~KB each.
-        if (_mirrorAndDispatch(entry.pattern, bStart, bEnd)) gpuFires++;
+        const _carried = _mirrorAndDispatch(entry.pattern, bStart, bEnd);
+        if (_carried) gpuFires++;
+        // ⛔ NO CPU MIRROR WHEN THE CARD CARRIED THE UPDATE — the law every
+        // bound lane follows (`intraSynapsesHebbian`, `_crossRegionHebbian`,
+        // the lateral anti pass); the checkpoint readback brings the CPU copy
+        // current. This lane alone refilled the whole sem region and ran the
+        // CPU Oja on every (word, rep): measured live, `fillSem` was 50.6% of
+        // the main thread — the thread that feeds the card — while the card
+        // already held the real update.
+        if (!_carried) {
+          fillSem(entry.pattern);
+          // Post: word_motor with this word's bucket lit ONLY in subject's sub-band
+          postWM.fill(0);
+          const activeRows = new Array(bEnd - bStart);
+          for (let n = bStart, ai = 0; n < bEnd; n++, ai++) { postWM[n] = 1; activeRows[ai] = n; }
+          try {
+            semToWordMotor.ojaUpdate(preSem, postWM, lr,
+              _kScalesWM ? { kScales: _kScalesWM, activeRows } : { activeRows });
+            updates++;
+          } catch { skipped++; }
+        }
         if ((Date.now() - sliceStart) >= YIELD_SLICE_MS) {
           await _microtask();
           sliceStart = Date.now();

@@ -5943,12 +5943,18 @@ var SemanticEmbeddings = class {
    * @returns {Float32Array}
    */
   getSentenceEmbedding(text) {
-    const words = text.toLowerCase().replace(/[^a-z' -]/g, " ").split(/\s+/).filter((w) => w.length >= 2);
+    const words = text.toLowerCase().replace(/[^a-z' -]/g, " ").split(/\s+/).filter((w) => w.length >= 2 || w === "i" || w === "a");
     if (words.length === 0) return new Float32Array(EMBED_DIM);
+    const ORDER_WEIGHT = 0.5;
+    const ORDER_STEP = 37;
     const avg = new Float32Array(EMBED_DIM);
-    for (const word of words) {
-      const vec = this.getEmbedding(word);
-      for (let i = 0; i < EMBED_DIM; i++) avg[i] += vec[i];
+    for (let p = 0; p < words.length; p++) {
+      const vec = this.getEmbedding(words[p]);
+      const shift = (p + 1) * ORDER_STEP % EMBED_DIM;
+      for (let i = 0; i < EMBED_DIM; i++) {
+        avg[i] += vec[i];
+        avg[(i + shift) % EMBED_DIM] += ORDER_WEIGHT * vec[i];
+      }
     }
     let norm = 0;
     for (let i = 0; i < EMBED_DIM; i++) {
@@ -12026,9 +12032,13 @@ var LanguageCortex = class {
     if (curriculumDone) {
       if (Array.isArray(opts._preEmittedWords)) {
         words = opts._preEmittedWords;
+      } else if ((cluster.size | 0) > 2e6) {
+        cluster._composeSilentAtScale = (cluster._composeSilentAtScale | 0) + 1;
+        if (opts.lapLane === "chat") cluster._lastUserInputText = null;
       } else {
-        const _liveExclude = _buildLiveChatExclude(cluster._lastUserInputText);
-        cluster._lastUserInputText = null;
+        const _isChatReply = opts.lapLane === "chat";
+        const _liveExclude = _isChatReply ? _buildLiveChatExclude(cluster._lastUserInputText) : _buildLiveChatExclude(null);
+        if (_isChatReply) cluster._lastUserInputText = null;
         if (cluster.tier3Store && typeof cluster.tier3Store.injectIdentityBaseline === "function") {
           try {
             cluster.tier3Store.injectIdentityBaseline(0.15);
@@ -12271,7 +12281,7 @@ var LanguageCortex = class {
     let preEmittedWords = null;
     const cluster = opts.cortexCluster;
     try {
-      if (cluster && typeof cluster.lookupDefinition === "function" && cluster._lastUserInputText) {
+      if (cluster && typeof cluster.lookupDefinition === "function" && cluster._lastUserInputText && !/\b(?:you|your|yours|yourself)\b/i.test(String(cluster._lastUserInputText))) {
         const userText = String(cluster._lastUserInputText).toLowerCase().trim();
         let subject = null;
         const patterns = [
@@ -16359,6 +16369,10 @@ var CLUSTER_EMIT_MIXIN = {
         const semR = this.regions.sem;
         this.lastSpikes.fill(0, semR.start, semR.end);
         _cur._writeTiledPattern(semR, _cur._topKEmbedding(_cur._dictionaryPatternFor(_seedWord), 8), true, { noCpu: false });
+        if (words.length > 0 && typeof _cur._writeTiledPatternOffset === "function" && sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function") {
+          const _ctx = sharedEmbeddings.getSentenceEmbedding(words.join(" "));
+          if (_ctx && _ctx.length) _cur._writeTiledPatternOffset(semR, _ctx, false, 0.5);
+        }
       } else if (_taught && _seedEmb) {
         const semR = this.regions.sem;
         this.lastSpikes.fill(0, semR.start, semR.end);

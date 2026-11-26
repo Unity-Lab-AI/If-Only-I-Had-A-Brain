@@ -1626,6 +1626,15 @@ export class LanguageCortex {
       // miss penalties at biological scale.
       if (Array.isArray(opts._preEmittedWords)) {
         words = opts._preEmittedWords;
+      } else if ((cluster.size | 0) > 2_000_000) {
+        // ⛔ AT HER FULL SIZE AN EMPTY COMPOSE IS SILENCE, NOT A CPU TICK LOOP.
+        // `generateSentence` below steps the whole cortex on the server CPU
+        // every tick (the ~40M cortex lives on the card) — that is what kept
+        // chat and the inner voice on the main thread for seconds a word, and
+        // its per-tick sends dropped the pod. Her words at this size come from
+        // compose on the card; when it finds none, she says nothing.
+        cluster._composeSilentAtScale = (cluster._composeSilentAtScale | 0) + 1;
+        if (opts.lapLane === 'chat') cluster._lastUserInputText = null; // consumed, same as the path below
       } else {
         // Noise suppression when _internalThought is active — popups
         // produce cleaner emissions during live input without noise

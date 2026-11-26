@@ -987,6 +987,11 @@ export const PREK_MIXIN = {
     // learns that "i" is her, so selfhood is speakable from the earliest
     // grade instead of waiting for mid-K sentence structure.
     await this._teachPrekFirstPersonProduction();
+    // Her pre-K year as lived scenes (corpora/life/pre-K.json): hello and
+    // goodbye, saying her name, being asked and answering — the same story
+    // trainer every later grade uses. The spoken exchanges in it also reach
+    // the conversation trainer, which reads each grade's life dialogue.
+    await this._trainLifeStories('pre-K', ctx, { reps: 4, ticksPerWord: 2 });
 
     const lifeQuestions = [
       { prompt: ['who', 'are', 'you'], answer: 'unity' },

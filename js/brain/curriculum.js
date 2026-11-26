@@ -2951,11 +2951,29 @@ export class Curriculum {
   // band, comfortably above the ~10 cells a tag needs to be legible and
   // strictly cheaper per pair than the 84,000 the six-band layout wrote.
   // A tag beyond this REFUSES LOUDLY; it never writes nothing in silence.
-  static RELATION_TAG_BANDS = 48;
+  //
+  // ⛔ 48 → 56 (2026-11-26): the question-template tag used to own the top 25%
+  // of fineType as a separate zone, while these bands divide the WHOLE region —
+  // so bands 36–47 (the speaker bands 41/42 and the question state 43/44/45
+  // among them) lay on top of the template slots, and a template tag and a
+  // role band lit the same cells. The seven question templates are now bands
+  // 48–54 (`QUESTION_TEMPLATE_BAND0`), one layout, no overlap. At 504,000
+  // fineType cells a band is still 9,000 cells. Changes every band's cells, so
+  // it lands with a fresh walk.
+  static RELATION_TAG_BANDS = 56;
+  static QUESTION_TEMPLATE_BAND0 = 48;
   // Who is talking — the role bands (see `_teachSentenceList` opts.speakerBand).
   // 40 is the conversation turn binding; 41 / 42 are the speaker state itself.
   static SPEAKER_OTHER_BAND = 41;
   static SPEAKER_SELF_BAND = 42;
+  // THE QUESTION STATE — a question is a state the brain is in, not a word list.
+  // 43 = "I was asked; an answer is owed": lit on a line that asks her, on her
+  //      answer to it, in every question→answer drill, and in chat while a
+  //      person's question waits for her reply.
+  // 44 = "I am asking": lit on a question she asks, and on the answer she gets,
+  //      so what comes back binds to what she wanted to know.
+  static QUESTION_ASKED_BAND = 43;
+  static QUESTION_SELF_BAND = 44;
 
   /**
    * T18.25 — REMOVED forced gc() from T18.24's between-phase memory
@@ -11674,6 +11692,8 @@ export class Curriculum {
     // tell "this is the Node runtime at 250 MB" from "something is
     // growing".
     let _nativeBaselineMb = null;
+    let _nativeHighMb = 0;   // boot high-water of the native residual (LEAK = a new high)
+    const _nativeHighAt = []; // high-water per beat, last NATIVE_WINDOW beats
     // v8.getHeapStatistics() gives `total_physical_size` (heap + code
     // + compiled-stub + bytecode) and `malloced_memory` (native C++
     // allocations V8 tracks). Those together plus `external_memory`
@@ -11775,11 +11795,22 @@ export class Curriculum {
             const avgFirst = sumFirst / half;
             const avgSecond = sumSecond / (NATIVE_WINDOW - half);
             const trendMb = Math.round(avgSecond - avgFirst);
-            // Only flag LEAK if native grew > 200 MB sustained.
-            if (trendMb > 200) {
-              nativeTrend = ` ⚠⚠LEAK+${trendMb}MB/min`;
-            } else if (trendMb > 100) {
-              nativeTrend = ` ⚠climbing+${trendMb}MB/min`;
+            // ⛔ A LEAK IS A NEW HIGH, NOT A WARM-UP. The half-window difference
+            // fired `LEAK+205MB/min` on a boot whose native residual rose for
+            // ~8 min and then sat flat at ~4 GB for the rest of the cell (and
+            // the number was never per minute — it is a difference between two
+            // halves of a 6-beat window). Flag only when the residual sets a
+            // boot high-water more than 200 MB above where it stood half a
+            // window ago (a plateau never does; a steady climb always does).
+            const _prevHigh = _nativeHighAt.length >= half ? _nativeHighAt[_nativeHighAt.length - half] : 0;
+            if (nativeMb > _nativeHighMb) _nativeHighMb = nativeMb;
+            _nativeHighAt.push(_nativeHighMb);
+            if (_nativeHighAt.length > NATIVE_WINDOW) _nativeHighAt.shift();
+            const _newHighBy = _prevHigh > 0 ? _nativeHighMb - _prevHigh : 0;
+            if (trendMb > 200 && _newHighBy > 200) {
+              nativeTrend = ` ⚠⚠LEAK new high +${_newHighBy}MB (window +${trendMb}MB)`;
+            } else if (trendMb > 100 && _newHighBy > 0) {
+              nativeTrend = ` ⚠climbing new high +${_newHighBy}MB (window +${trendMb}MB)`;
             }
           }
           const deltaStr = nativeDeltaMb === 0 ? 'Δ±0' : (nativeDeltaMb > 0 ? `Δ+${nativeDeltaMb}` : `Δ${nativeDeltaMb}`);
@@ -16926,7 +16957,7 @@ export class Curriculum {
           // skipped, only relocated." This makes that promise true for the one
           // case it did not cover.
           const _probeDeadlineMs = (typeof process !== 'undefined' && Number(process.env?.DREAM_PROBE_DEADLINE_MS) > 0)
-            ? Number(process.env.DREAM_PROBE_DEADLINE_MS) : 20000;
+            ? Number(process.env.DREAM_PROBE_DEADLINE_MS) : 75000; // covers the probe's own link wait (30 s) + ack + one retry (2 × 20 s)
           let _probeTimer = null;
           let _deadlineFired = false;
           const out = await Promise.race([
@@ -16944,7 +16975,7 @@ export class Curriculum {
             this._probeDeadlineHits = (this._probeDeadlineHits || 0) + 1;
             if (!this._probeDeadlineLogAt || (Date.now() - this._probeDeadlineLogAt) > 60000) {
               this._probeDeadlineLogAt = Date.now();
-              this._hb(`[Curriculum] ⛔ GPU probe exceeded the caller deadline (${_probeDeadlineMs}ms) on ${projName} and was abandoned to the CPU path — ${this._probeDeadlineHits} time(s) this boot. The ack layer's own 8s timeout did NOT fire, which means a pending promise never settled. Teaching continues; this is the guard that stops one probe wedging the entire walk.`);
+              this._hb(`[Curriculum] ⛔ GPU probe exceeded the caller deadline (${_probeDeadlineMs}ms) on ${projName} and was abandoned to the CPU path — ${this._probeDeadlineHits} time(s) this boot. The ack layer's own timeout (DREAM_PROBE_ACK_MS) did NOT fire, which means a pending promise never settled. Teaching continues; this is the guard that stops one probe wedging the entire walk.`);
             }
           }
           if (out && out.length) {
@@ -18111,24 +18142,16 @@ export class Curriculum {
     const fineType = cluster.regions.fineType;
     if (!fineType || fineType.end <= fineType.start) return;
     if (templateId < 0 || templateId > 6) return;
-    const fineSize = fineType.end - fineType.start;
-    const templateZoneStart = fineType.start + Math.floor(fineSize * 0.75);
-    const templateZoneSize = fineType.end - templateZoneStart;
-    if (templateZoneSize <= 0) return;
-    const NUM_TEMPLATE_SLOTS = 7;
-    const slotSize = Math.max(1, Math.floor(templateZoneSize / NUM_TEMPLATE_SLOTS));
-    const slotStart = templateZoneStart + templateId * slotSize;
-    const slotEnd = Math.min(fineType.end, slotStart + slotSize);
-    const haveProxy = !!(cluster._gpuProxy && cluster._gpuProxy.writeSpikeSlice);
-    const sparseIndices = haveProxy ? [] : null;
-    for (let i = slotStart; i < slotEnd; i++) {
-      cluster.lastSpikes[i] = 1;
-      if (sparseIndices) sparseIndices.push(i);
-    }
-    if (haveProxy && sparseIndices.length > 0) {
-      try { cluster._gpuProxy.writeSpikeSlice(sparseIndices); }
-      catch { /* non-fatal */ }
-    }
+    // The template IS a relation band now (48 + id) — one layout for every tag
+    // on fineType, written by the one writer that also reaches the card. (The
+    // old separate zone overlapped bands 36–47, and its card write passed the
+    // index list where the region name belongs.)
+    this._writeRelationTag(cluster, fineType, Curriculum.QUESTION_TEMPLATE_BAND0 + templateId, true);
+    // THE QUESTION STATE — every question drill is in "I was asked; an answer
+    // is owed", the same band the dialogue lane lights on a question to her and
+    // on her answer to it. The probe injects the same band, so what is tested is
+    // what was taught.
+    this._writeRelationTag(cluster, fineType, Curriculum.QUESTION_ASKED_BAND, true);
   }
 
   /**
@@ -18145,36 +18168,39 @@ export class Curriculum {
     const fineType = cluster.regions.fineType;
     if (!fineType || fineType.end <= fineType.start) return;
     if (templateId < 0 || templateId > 6) return;
-    const fineSize = fineType.end - fineType.start;
-    const templateZoneStart = fineType.start + Math.floor(fineSize * 0.75);
-    const templateZoneSize = fineType.end - templateZoneStart;
-    if (templateZoneSize <= 0) return;
-    const NUM_TEMPLATE_SLOTS = 7;
-    const slotSize = Math.max(1, Math.floor(templateZoneSize / NUM_TEMPLATE_SLOTS));
-    const slotStart = templateZoneStart + templateId * slotSize;
-    const slotEnd = Math.min(fineType.end, slotStart + slotSize);
-    const haveProxy = !!(cluster._gpuProxy && cluster._gpuProxy.writeCurrentSlice);
-    const fwdIndices = haveProxy ? [] : null;
-    const fwdValues = haveProxy ? [] : null;
+    // Same band as the teach side (48 + id), as current.
+    this._injectRelationBand(Curriculum.QUESTION_TEMPLATE_BAND0 + templateId, strength);
+    // The probe side of the question state: the same "I was asked" band the
+    // teach side writes (`_writeQuestionTemplateTag`), as current.
+    this._injectRelationBand(Curriculum.QUESTION_ASKED_BAND, strength);
+  }
+
+  /**
+   * Inject current into one relation band of fineType (probe / chat side of a
+   * role state the teach side writes as spikes with `_writeRelationTag`). Same
+   * band geometry as `_writeRelationTag`, same template wire form as the
+   * question-template injection above.
+   */
+  _injectRelationBand(bandId, strength = 0.6) {
+    const cluster = this.cluster;
+    const fineType = cluster && cluster.regions && cluster.regions.fineType;
+    if (!fineType || fineType.end <= fineType.start || !cluster.externalCurrent) return false;
+    const BANDS = Curriculum.RELATION_TAG_BANDS;
+    if (!(bandId >= 0) || bandId >= BANDS) return false;
+    const band = Math.floor((fineType.end - fineType.start) / BANDS);
+    if (band <= 0) return false;
+    const a = fineType.start + bandId * band;
+    const b = Math.min(fineType.end, a + band);
     const value = 8 * strength;
-    // TW S4 — skip the wire-dead expanded arrays when templates ride
-    // (see cluster.js injectEmbeddingToRegion).
-    const tmplWire = haveProxy && !!(cluster._brain && cluster._brain._tmplTeachOk === true);
-    for (let i = slotStart; i < slotEnd; i++) {
-      cluster.externalCurrent[i] += value;
-      if (fwdIndices && !tmplWire) {
-        fwdIndices.push(i - fineType.start);
-        fwdValues.push(value);
-      }
+    for (let i = a; i < b; i++) cluster.externalCurrent[i] += value;
+    if (cluster._gpuProxy && typeof cluster._gpuProxy.writeCurrentSlice === 'function') {
+      const tmplWire = !!(cluster._brain && cluster._brain._tmplTeachOk === true);
+      const idx = [], vals = [];
+      if (!tmplWire) for (let i = a; i < b; i++) { idx.push(i - fineType.start); vals.push(value); }
+      vals._template = { rowStart: a - fineType.start, groupSize: b - a, values: [value] };
+      try { cluster._gpuProxy.writeCurrentSlice('fineType', idx, vals); } catch { /* non-fatal */ }
     }
-    if (haveProxy && (fwdIndices.length > 0 || (tmplWire && value !== 0))) {
-      // TEMPLATE FORM (donor-v0.3.16) — a constant-value run is a count-1
-      // template: one value tiled across the slot. See cluster.js
-      // injectEmbeddingToRegion for the tagged-property rationale.
-      fwdValues._template = { rowStart: slotStart - fineType.start, groupSize: slotEnd - slotStart, values: [value] };
-      try { cluster._gpuProxy.writeCurrentSlice('fineType', fwdIndices, fwdValues); }
-      catch { /* non-fatal */ }
-    }
+    return true;
   }
 
   /**
@@ -19692,28 +19718,60 @@ export class Curriculum {
     //            own relation band (40, "said to me → i answer"), so being spoken
     //            to — and being called by her name — is what starts her talking.
     let _named = 0;
+    // ⭐ THE QUESTION STATE, from the exchanges themselves. A line that ends in
+    // "?" asks something; whatever answers it is owed by the question. So the
+    // exchanges are taught in four groups, each with its own state lit:
+    //   asked → her answer : heard 41+43 · said 42+43 · turn band 45
+    //   she asks → answer  : said 42+44 · the next heard line 41+44
+    //   everything else    : 41 / 42, exactly as before
+    // What she learns is not a list of questions: it is that a question is a
+    // state she can be in, that it calls for an answer, and that the answer
+    // she gets back belongs to the question she asked.
     const heard = [], said = [], turnPairs = [];
+    const heardQ = [], saidAns = [], turnQ = [], saidQ = [], heardAns = [];
     const _words = (x) => String(x).toLowerCase().replace(/[^a-z'\s-]+/g, ' ').split(/\s+/).filter(Boolean);
+    const _asks = (x) => /\?\s*["')\]]*\s*$/.test(String(x || ''));
+    let _prevSheAsked = false;
     for (const [line, reply] of turns) {
       const a = _addressHer(line);
       if (a !== line) _named++;
       const hw = _words(a), rw = _words(reply);
-      if (hw.length < 2 || rw.length < 2) continue;
-      heard.push(a);
-      said.push(reply);
-      turnPairs.push([hw[hw.length - 1], rw[0]]);
+      if (hw.length < 2 || rw.length < 2) { _prevSheAsked = false; continue; }
+      const askedHer = _asks(a);
+      const sheAsks = _asks(reply);
+      // The heard line: a question to her, the answer to her own last question, or plain.
+      if (askedHer) heardQ.push(a);
+      else if (_prevSheAsked) heardAns.push(a);
+      else heard.push(a);
+      // Her line: an answer owed to a question, a question of her own, or plain.
+      if (askedHer) saidAns.push(reply);
+      else if (sheAsks) saidQ.push(reply);
+      else said.push(reply);
+      (askedHer ? turnQ : turnPairs).push([hw[hw.length - 1], rw[0]]);
+      _prevSheAsked = sheAsks;
     }
-    if (!heard.length) return { taught: 0, reason: 'no usable exchanges' };
+    const total = heard.length + heardQ.length + heardAns.length;
+    if (!total) return { taught: 0, reason: 'no usable exchanges' };
     this.stats.conversationAddressedByName = (this.stats.conversationAddressedByName | 0) + _named;
     const reps = Number(opts.reps) > 0 ? Number(opts.reps) : 3;
-    this._hb?.(`[Curriculum] 💬 CONVERSATION ${subject}/${grade} — ${heard.length} real exchange(s) from her books and life: heard ${heard.length} (understood, not spoken; ${_named} call her by name) · said ${said.length} (her replies) · turn bindings ${turnPairs.length} × ${reps} reps.`);
-    await this._teachSentenceList(heard, ctx, { reps, label: `CONV-HEARD-${subject}-${grade}`, source: 'dialogue-heard', hearOnly: true, speakerBand: Curriculum.SPEAKER_OTHER_BAND });
-    await this._teachSentenceList(said, ctx, { reps, label: `CONV-SAID-${subject}-${grade}`, source: 'dialogue-said', speakerBand: Curriculum.SPEAKER_SELF_BAND });
+    const A = Curriculum.QUESTION_ASKED_BAND, S = Curriculum.QUESTION_SELF_BAND;
+    this._hb?.(`[Curriculum] 💬 CONVERSATION ${subject}/${grade} — ${total} real exchange(s) from her books and life (${_named} call her by name): asked her ${heardQ.length} → she answers ${saidAns.length} · she asks ${saidQ.length} → answers she gets ${heardAns.length} · other ${heard.length} heard / ${said.length} said · × ${reps} reps.`);
+    const H = { reps, source: 'dialogue-heard', hearOnly: true, speakerBand: Curriculum.SPEAKER_OTHER_BAND };
+    const D = { reps, source: 'dialogue-said', speakerBand: Curriculum.SPEAKER_SELF_BAND };
+    if (heard.length) await this._teachSentenceList(heard, ctx, { ...H, label: `CONV-HEARD-${subject}-${grade}` });
+    if (said.length) await this._teachSentenceList(said, ctx, { ...D, label: `CONV-SAID-${subject}-${grade}` });
+    if (heardQ.length) await this._teachSentenceList(heardQ, ctx, { ...H, extraBands: [A], label: `CONV-ASKED-${subject}-${grade}` });
+    if (saidAns.length) await this._teachSentenceList(saidAns, ctx, { ...D, extraBands: [A], label: `CONV-ANSWER-${subject}-${grade}` });
+    if (saidQ.length) await this._teachSentenceList(saidQ, ctx, { ...D, extraBands: [S], label: `CONV-SHE-ASKS-${subject}-${grade}` });
+    if (heardAns.length) await this._teachSentenceList(heardAns, ctx, { ...H, extraBands: [S], label: `CONV-ANSWERED-${subject}-${grade}` });
     if (typeof this._teachAssociationPairs === 'function') {
-      await this._teachAssociationPairs(turnPairs, { reps, label: `CONV-TURN-${subject}-${grade}`, relationTagId: 40 });
+      if (turnPairs.length) await this._teachAssociationPairs(turnPairs, { reps, label: `CONV-TURN-${subject}-${grade}`, relationTagId: 40 });
+      // "asked → I answer" has its own turn band, so being asked is what starts an answer.
+      if (turnQ.length) await this._teachAssociationPairs(turnQ, { reps, label: `CONV-QTURN-${subject}-${grade}`, relationTagId: 45 });
     }
-    this.stats.conversationExchanges = (this.stats.conversationExchanges | 0) + heard.length;
-    return { taught: heard.length, named: _named };
+    this.stats.conversationExchanges = (this.stats.conversationExchanges | 0) + total;
+    this.stats.conversationQuestions = (this.stats.conversationQuestions | 0) + heardQ.length + saidQ.length;
+    return { taught: total, named: _named, askedHer: heardQ.length, sheAsked: saidQ.length };
   }
 
   async _trainAcademicStories(subject, grade, ctx, opts = {}) {
@@ -21107,9 +21165,46 @@ export class Curriculum {
     if (!this._relBandOut || this._relBandOut.length !== proj.rows) this._relBandOut = new Float64Array(proj.rows || 0);
     try { out = proj.propagate(pre, this._relBandOut); } catch { return null; }
     if (!out || out.length === 0) return null;
+    return this._relBandSummary(out, fineTypeRegion.end - fineTypeRegion.start);
+  }
 
+  /**
+   * The same read on the CARD, which holds the real sem_to_fineType weights
+   * (the CPU copy is a sampled shadow). The query pattern rides the probe as
+   * indices — nothing is written into the shared `lastSpikes`, which the CPU
+   * read above does (mid-teach, over the teach lane's own pattern). Async;
+   * null when there is no card or it cannot answer.
+   */
+  async readRelationBandOnCard(word) {
+    const cluster = this.cluster;
+    const proxy = cluster && cluster._gpuProxy;
+    if (!cluster || !cluster._gpuProxyReady || !proxy || typeof proxy.gateProbe !== 'function') return null;
+    const proj = cluster.crossProjections && cluster.crossProjections.sem_to_fineType;
+    const semRegion = cluster.regions && cluster.regions.sem;
+    const fineTypeRegion = cluster.regions && cluster.regions.fineType;
+    if (!proj || !proj._gpuBound || !semRegion || !fineTypeRegion) return null;
+    const emb = this._dictionaryPatternFor(word);
+    if (!emb || emb.length === 0) return null;
+    // The tiled layout `_writeTiledPattern` uses (dim d → its gSize-run),
+    // computed here because that writer also ships a spike slice to the card.
+    const semSize = semRegion.end - semRegion.start;
+    const gSize = Math.max(1, Math.floor(semSize / emb.length));
+    const idx = [];
+    for (let d = 0; d < emb.length; d++) {
+      if (!(emb[d] > 0)) continue;
+      const a = d * gSize, b = Math.min(a + gSize, semSize);
+      for (let i = a; i < b; i++) idx.push(i);
+    }
+    if (!idx.length) return null;
+    let out = null;
+    try { out = await proxy.gateProbe(`${cluster.name}_sem_to_fineType`, 'sem', idx); } catch { out = null; }
+    if (!out || !out.length) return null;
+    return this._relBandSummary(out, fineTypeRegion.end - fineTypeRegion.start);
+  }
+
+  /** Band means over a sem_to_fineType readout → the relation verdict. */
+  _relBandSummary(out, fineSize) {
     const BANDS = Curriculum.RELATION_TAG_BANDS;
-    const fineSize = fineTypeRegion.end - fineTypeRegion.start;
     const band = Math.floor(fineSize / BANDS);
     if (band <= 0) return null;
 
@@ -21213,8 +21308,46 @@ export class Curriculum {
     // one, so the outcome selects its own TTL with no extra bookkeeping.
     if (hit && (now - hit.at) < (hit.val ? TTL : FLAT_TTL)) { st.cached++; return hit.val; }
 
+    // ⛔ ON THE CARD WHEN THERE IS ONE. The CPU read is a full sem_to_fineType
+    // propagate (~50 ms) on the thread that feeds the card — measured 11.2% of
+    // the main thread from the mind's-eye tick — against a sampled shadow, and
+    // it wrote its query into the shared spikes mid-teach. With a card: one
+    // read in flight at a time, the result lands in this cache, and this call
+    // answers from the cache (a miss reads as "not known yet", which is what
+    // the gate already returns for every flat band).
+    const _cardRead = !!(this.cluster && this.cluster._gpuProxyReady && this.cluster._gpuProxy
+      && typeof this.cluster._gpuProxy.gateProbe === 'function'
+      && this.cluster.crossProjections && this.cluster.crossProjections.sem_to_fineType
+      && this.cluster.crossProjections.sem_to_fineType._gpuBound);
+    if (_cardRead) {
+      if (!this._relCardInflight) {
+        this._relCardInflight = true;
+        this.readRelationBandOnCard(w).then((r2) => {
+          const t = Date.now();
+          this._relCacheSet(w, t, this._relVerdictFrom(r2, st, w, t));
+        }).catch(() => {}).finally(() => { this._relCardInflight = false; });
+      }
+      st.cardDeferred = (st.cardDeferred | 0) + 1;
+      return hit ? hit.val : null;
+    }
     let r = null;
     try { r = this.readRelationBand(w); } catch { r = null; }
+    const val = this._relVerdictFrom(r, st, w, now);
+    this._relCacheSet(w, now, val);
+    return val;
+  }
+
+  /** Bounded write into the relation cache (consulted on hot lanes — must not leak). */
+  _relCacheSet(w, at, val) {
+    if (!this._relUseCache) this._relUseCache = new Map();
+    this._relUseCache.set(w, { at, val });
+    if (this._relUseCache.size > 512) {
+      for (const k of this._relUseCache.keys()) { this._relUseCache.delete(k); if (this._relUseCache.size <= 384) break; }
+    }
+  }
+
+  /** One read (CPU or card) → the gate's verdict, with every counter banked. */
+  _relVerdictFrom(r, st, w, now = Date.now()) {
     let val = null;
     // RELSEP.1 — BANK THE MARGIN RATIO FOR EVERY READABLE READ, flat included.
     //
@@ -21281,11 +21414,6 @@ export class Curriculum {
         st.recent.unshift({ word: w, tag: r.tag, at: now });
         while (st.recent.length > 8) st.recent.pop();
       } else { st.flat++; }
-    }
-    this._relUseCache.set(w, { at: now, val });
-    // Bounded — this is consulted on hot lanes and must not become a leak.
-    if (this._relUseCache.size > 512) {
-      for (const k of this._relUseCache.keys()) { this._relUseCache.delete(k); if (this._relUseCache.size <= 384) break; }
     }
     return val;
   }
@@ -23333,6 +23461,7 @@ export class Curriculum {
     // Frequency is PRESERVED by bucketing below, so a 70x transition still
     // trains harder than a 1x one; what is removed is the flat re-presentation.
     const uniquePairs = new Map();    // "a\u2192b" -> { a, b, count }
+    const contextPairs = new Map();   // "prefix\u2192b" -> { a, b, prefix, count }
     for (const s of sentences) {
       // \u26d4\u26d4 PUBLISH TO THE TEACH BUS HERE, AND THIS IS A CHOKEPOINT FIX.
       // The viewer's claim is "the exact text going into Unity", and the bus was
@@ -23376,6 +23505,14 @@ export class Curriculum {
         const u = uniquePairs.get(key);
         if (u) u.count += 1;
         else uniquePairs.set(key, { a, b, count: 1 });
+        // The same transition WITH the sentence so far (in order) — what
+        // ORDER-TO-SPEECH binds, so the next word follows the sentence, not
+        // only the last word.
+        const prefix = words.slice(0, i + 1).join(' ');
+        const ckey = `${prefix}→${b}`;
+        const c = contextPairs.get(ckey);
+        if (c) c.count += 1;
+        else contextPairs.set(ckey, { a, b, prefix, count: 1 });
       }
     }
 
@@ -23449,14 +23586,26 @@ export class Curriculum {
       let _spoken = 0;
       try {
         this._ensureWordBucketMap(opts.subject);
-        for (const u of uniquePairs.values()) {
+        // ⭐ SENTENCE CONTEXT. sem carries the last word's taught code AND the
+        // sentence so far as an ordered sentence code in the second half —
+        // byte for byte what compose writes before each word. A bigram alone
+        // (the old write) let anything that ever followed "the" come next,
+        // which is word salad; with the prefix, "my name is" → "unity" is a
+        // different state from "the cat is" → "black".
+        // ⚠ RE-PRICE: one unit per unique (prefix, next) — at most the
+        // corpus's transition count (`pairs.length`), 2..4 reps by frequency.
+        const _haveOffset = typeof this._writeTiledPatternOffset === 'function'
+          && sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === 'function';
+        for (const u of contextPairs.values()) {
           if (globalThis._brainShutdownRequested) break;
           if (!cluster.wordBucketMap || !cluster.wordBucketMap.has(u.b)) continue;
           const _code = this._topKEmbedding(this._dictionaryPatternFor(u.a), 8);
+          const _ctx = _haveOffset ? sharedEmbeddings.getSentenceEmbedding(u.prefix) : null;
           const _n = u.count >= 8 ? 4 : u.count >= 3 ? 3 : 2;
           for (let k = 0; k < _n; k++) {
             this._clearSpikes(['sem', 'word_motor']);
             this._writeTiledPattern(_semR, _code, true);
+            if (_ctx && _ctx.length > 0) this._writeTiledPatternOffset(_semR, _ctx, false, 0.5);
             this._writeAnswerToWordMotor(u.b, opts.subject);
             await this._teachHebbian(_speechLr, { projectionsWhitelist: _wl, skipIntraSynapses: true });
             _spoken++;
@@ -23465,7 +23614,7 @@ export class Curriculum {
       } catch (err) {
         console.warn(`[Curriculum] ORDER-TO-SPEECH stopped: ${(err && err.message) || err}`);
       }
-      this._hb(`[Curriculum] ORDER-TO-SPEECH — ${_spoken} sem→word_motor binds across ${uniquePairs.size} transitions (${opts.label || 'K'}) · her speaking slots now carry what follows each word.`);
+      this._hb(`[Curriculum] ORDER-TO-SPEECH — ${_spoken} sem→word_motor binds across ${contextPairs.size} in-sentence transitions (${uniquePairs.size} word pairs) (${opts.label || 'K'}) · her speaking slots now carry what follows each word.`);
     }
     // (The single flat `_teachAssociationPairs(pairs, ...)` call that used to
     // stand here is replaced by the bucketed loop above. Its rationale still
@@ -29218,8 +29367,17 @@ export class Curriculum {
     // on the fineType region every relation channel already uses, same band
     // width as `_writeRelationTag`. Learned with the words, so the state itself
     // tells her whether to listen or to answer.
+    // `opts.extraBands` lights more role bands for the whole line alongside the
+    // speaker — the question state (`QUESTION_ASKED_BAND` on a line that asks her,
+    // and on her answer to it; `QUESTION_SELF_BAND` on a line she asks, and on the
+    // answer she gets), so being asked and owing an answer is a state she learns.
     const _spkRegion = (Number.isInteger(opts.speakerBand) && cluster.regions?.fineType) ? cluster.regions.fineType : null;
-    const _spkFeat = _spkRegion ? (() => { const f = new Float64Array(Curriculum.RELATION_TAG_BANDS); f[opts.speakerBand] = 1; return f; })() : null;
+    const _spkFeat = _spkRegion ? (() => {
+      const f = new Float64Array(Curriculum.RELATION_TAG_BANDS);
+      f[opts.speakerBand] = 1;
+      for (const b of (Array.isArray(opts.extraBands) ? opts.extraBands : [])) if (Number.isInteger(b) && b >= 0 && b < f.length) f[b] = 1;
+      return f;
+    })() : null;
     const _plRegions = [letterRegion, phonRegion || null, motorRegion || null, semRegion || null, _spkRegion];
     let _pl = null;
     const _plMax = (() => { const v = Number(process.env.DREAM_PATTERN_LESSON_ITEMS); return v > 0 ? Math.floor(v) : 2048; })();

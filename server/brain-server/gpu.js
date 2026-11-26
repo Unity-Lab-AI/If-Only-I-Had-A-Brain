@@ -5054,6 +5054,16 @@ const SERVER_GPU_MIXIN = {
 
   async gpuGateProbe(matrixName, srcRegionName, sparseIndices) {
     if (process.env.DREAM_GATE_GPU_PROBES === '0') return null;
+    // ⛔ A RECONNECT IS NOT A REASON TO GRADE ON THE CPU. Measured: `refused=35`
+    // right after a link drop — every probe in the gap went to the slow CPU path
+    // while the card was seconds from back. Wait for the link (≤ the probe's
+    // own ack budget below) before refusing.
+    const _linkWaitMs = Number(process.env.DREAM_PROBE_LINK_WAIT_MS) > 0 ? Number(process.env.DREAM_PROBE_LINK_WAIT_MS) : 30_000;
+    const _lw0 = Date.now();
+    while ((!this._gpuClient || this._gpuClient.readyState !== 1) && Date.now() - _lw0 < _linkWaitMs) {
+      if (globalThis._brainShutdownRequested) break;
+      await new Promise((r) => setTimeout(r, 250));
+    }
     const ws = this._gpuClient;
     if (!ws || ws.readyState !== 1) { this._gateProbeRefused = (this._gateProbeRefused || 0) + 1; return null; }
     // ⛔ WAIT FOR THE SOCKET, DON'T REFUSE ON IT. A probe refused whenever more
@@ -5080,14 +5090,27 @@ const SERVER_GPU_MIXIN = {
       // No resident slice write needed at all (cleaner: nothing shed-able,
       // nothing stale-able), and the probe times out FAST (8s) to the CPU
       // path instead of 30s.
+      // ⛔ 8 s WAS SHORTER THAN THE QUEUE. The probe shares the link with the
+      // teach stream, and measured successful probes averaged up to 5,395 ms —
+      // so the tail ran past 8 s and every such probe fell to the CPU
+      // (`ok=0 miss=4` windows). The ack budget is now sized to the queue
+      // (DREAM_PROBE_ACK_MS, default 20 s) and a miss retries ONCE on the card
+      // before the CPU path is used.
+      const _ackMs = Number(process.env.DREAM_PROBE_ACK_MS) > 0 ? Number(process.env.DREAM_PROBE_ACK_MS) : 20_000;
       const _pT0 = Date.now();
-      const out = await this.gpuSparsePropagate(matrixName, Uint32Array.from(sparseIndices), ws, 8_000, null, true);
+      const _idx = Uint32Array.from(sparseIndices);
+      let out = null;
+      try { out = await this.gpuSparsePropagate(matrixName, _idx, ws, _ackMs, null, true); } catch { out = null; }
+      if (!(out && out.length) && this._gpuClient && this._gpuClient.readyState === 1) {
+        this._gateProbeRetried = (this._gateProbeRetried || 0) + 1;
+        try { out = await this.gpuSparsePropagate(matrixName, _idx, this._gpuClient, _ackMs, null, true); } catch { out = null; }
+      }
       // Probe-latency window stats — the instrument that would have named the
       // 30s-timeout burn in one console read instead of a forensic dig.
       const _s = this._gateProbeStats || (this._gateProbeStats = { ok: 0, miss: 0, msSum: 0, logAt: 0 });
       if (out && out.length) { _s.ok++; _s.msSum += Date.now() - _pT0; } else { _s.miss++; }
       if (Date.now() - _s.logAt > 30_000 && (_s.ok + _s.miss) > 0) {
-        console.log(`[Brain] gateProbe window — ok=${_s.ok} miss=${_s.miss} refused=${this._gateProbeRefused | 0} avg ok ${_s.ok ? Math.round(_s.msSum / _s.ok) : 0}ms (miss = fell to the CPU path)`);
+        console.log(`[Brain] gateProbe window — ok=${_s.ok} miss=${_s.miss} refused=${this._gateProbeRefused | 0} retried=${this._gateProbeRetried | 0} avg ok ${_s.ok ? Math.round(_s.msSum / _s.ok) : 0}ms (miss = fell to the CPU path)`);
         _s.logAt = Date.now(); _s.ok = 0; _s.miss = 0; _s.msSum = 0;
       }
       if (out && out.length) {
@@ -5184,6 +5207,14 @@ const SERVER_GPU_MIXIN = {
   async gpuGateProbeBuckets(matrixName, sparseIndices, bucketSize, bucketCount) {
     if (process.env.DREAM_GATE_GPU_PROBES === '0') return null;
     if (!this._donorBucketReadout()) return null;
+    // Same rules as gpuGateProbe: wait out a reconnect, ack budget sized to the
+    // teach queue sharing the link (the 8 s it had was under the measured tail).
+    const _linkWaitMs = Number(process.env.DREAM_PROBE_LINK_WAIT_MS) > 0 ? Number(process.env.DREAM_PROBE_LINK_WAIT_MS) : 30_000;
+    const _lw0 = Date.now();
+    while ((!this._gpuClient || this._gpuClient.readyState !== 1) && Date.now() - _lw0 < _linkWaitMs) {
+      if (globalThis._brainShutdownRequested) break;
+      await new Promise((r) => setTimeout(r, 250));
+    }
     const ws = this._gpuClient;
     if (!ws || ws.readyState !== 1) return null;
     if (!(await this._probeSocketDrained(ws))) return null;
@@ -5199,7 +5230,8 @@ const SERVER_GPU_MIXIN = {
       meta.writeUInt32LE(idx.length >>> 0, 8);
       const frame = Buffer.concat([hdr, meta, Buffer.from(idx.buffer, idx.byteOffset, idx.byteLength)]);
       const _t0 = Date.now();
-      const result = await this._sparseSendBinary(frame, reqId, 8_000, ws);
+      const _ackMs = Number(process.env.DREAM_PROBE_ACK_MS) > 0 ? Number(process.env.DREAM_PROBE_ACK_MS) : 20_000;
+      const result = await this._sparseSendBinary(frame, reqId, _ackMs, ws);
       const out = result && result.currents ? result.currents : null;
       if (out && out.length > 0) {
         this._bucketProbeOk = (this._bucketProbeOk || 0) + 1;
