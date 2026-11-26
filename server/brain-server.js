@@ -2711,7 +2711,13 @@ function adaptSubsteps(brain, ws, floorValue) {
     // 35 <-> 58 flap, which is bounded and safe but churns throughput and the
     // log every 12s. Two quiet windows after any shrink before climbing again.
     brain._adaptCooldown--;
-  } else if (batchMs > 0 && batchMs < SUBSTEPS_TARGET_MS * 0.6 && (best === 0 || teachRate >= best * 0.85)) {
+  // ⭐ A batch far under target grows even while teach wobbles. Teach rate swings
+  // by phase, so "holding ≥ 85% of best" stalled the climb at 54 substeps / 654 ms
+  // against a 5 s target with the pod idle half of every second. Under 30% of
+  // target the batch cannot be what is slowing teach; the brake above still
+  // guards the real starvation case.
+  } else if (batchMs > 0 && batchMs < SUBSTEPS_TARGET_MS * 0.6
+             && (best === 0 || teachRate >= best * 0.85 || batchMs < SUBSTEPS_TARGET_MS * 0.3)) {
     next = Math.min(brain._adaptCeiling, SUBSTEPS_MAX, Math.max(prev + 1, Math.floor(prev * 1.5)));
     why = `tick is ${batchMs.toFixed(0)}ms against a ${SUBSTEPS_TARGET_MS}ms target and teach is holding (${teachRate.toFixed(1)}/s vs best ${best.toFixed(1)}/s) — the card has room`;
   } else if (batchMs > SUBSTEPS_TARGET_MS * 1.2) {
