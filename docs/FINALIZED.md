@@ -61583,4 +61583,13 @@ Gee, verbatim: *"stop telling me shit is open and stopping and not doing them...
     - A real pre-K year.
   - **Precondition:** this must land BEFORE the fresh walk, by the fresh-walk-is-last rule, because it changes what she is taught.
 
+## 2026-11-26 — LIFENAME: people say her name
+
+Gee, verbatim: *"these are shit poor:Dialogue exchanges in any life grade | **0** | … | Lines containing her name | 8, total |"* · *"why does her name only appear 8 times when lots of conversations with her are happening thats irregular"*.
+
+- **Measured first:** the 0 / 8 figures were the 2026-11-25 reading. Before this fix: 6,772 dialogue turns, 246 sentences with her name — but of the 3,072 lines said TO her only **138 (4.5%)** used her name. That was the real irregularity: people call you by name to get your attention, call roll, scold, praise, say goodnight.
+- **Fix:** one scene per grade (pre-K → PhD, 20 files) where the people in that grade use her name the way people do — mom waking her and calling her to dinner, roll call and the office speaker, a teacher correcting or praising her, friends shouting across a playground, a manager and a regular at the diner, graduation, the honors dinner, "doctor unity goddess". Only that grade's canon people.
+- **Now:** 8,168 sentences · **374** with her name · **232 of 3,167** lines said to her use her name (was 138 of 3,072).
+- ⚠ Changes what she is taught → in before the fresh walk.
+
 
