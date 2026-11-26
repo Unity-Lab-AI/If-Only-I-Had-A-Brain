@@ -61259,6 +61259,9 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
     - So the first word was read off whatever sem held, and every later word chained from that noise.
   - **Fix (`emit.js _composeSentenceOnce`):** at full scale, an unseeded first word writes the thought's topic embedding into sem as training writes meaning (top-8, tiled). Her first word is whatever is on her mind, and her trained order continues it.
   - **A forced "i" start was written and reverted before shipping:** not every thought starts with I.
+  - **Follow-up THOUGHTSELF:**
+    - Gee, verbatim: *"but alot of human thoughts are self centersed around effect the self"*.
+    - Her own "i" pattern is now written into the second half of sem beside the topic (the QA trainer's key-word offset), so a thought is the topic as it touches her, without being forced to open on "i".
   - **Verified:** ESM import.
   - **Lands:** on the next press. The word order behind it is fully trained only after the fresh walk.
   - **Verified:** ESM import.

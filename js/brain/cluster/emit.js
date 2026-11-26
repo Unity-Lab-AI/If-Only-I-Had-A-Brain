@@ -1386,6 +1386,13 @@ export const CLUSTER_EMIT_MIXIN = {
         const semR = this.regions.sem;
         this.lastSpikes.fill(0, semR.start, semR.end);
         _cur._writeTiledPattern(semR, _cur._topKEmbedding(Float64Array.from(_seedEmb), 8), true, { noCpu: false });
+        // ⭐ AND HER SELF BESIDE IT. Most human thoughts are the topic as it
+        // touches the self, so her own "i" pattern rides the second half of sem
+        // (the offset the QA trainer uses for a key word) — the topic leads, the
+        // self colours it, and nothing forces the thought to open on "i".
+        if (typeof _cur._writeTiledPatternOffset === 'function') {
+          _cur._writeTiledPatternOffset(semR, _cur._dictionaryPatternFor('i'), false, 0.5);
+        }
       } else if (_taught) {
         // ⛔ NO TICK PATH AT FULL SCALE, EVEN WITHOUT A SEED WORD. An unseeded
         // thought (seed=mood/learning) used to tick, and every tick shipped the
