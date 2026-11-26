@@ -25965,6 +25965,42 @@ export class Curriculum {
    */
   async _probeProductionBatch(samples, opts = {}) {
     if (!Array.isArray(samples) || samples.length === 0) return { pass: 0, total: 0, fails: [] };
+    // ⛔⛔ NOTHING IS TESTED THAT WAS NEVER TAUGHT — every subject, every grade.
+    // Each gate carries its OWN production list (`sciKProductionSamples` …),
+    // separate from `TRAIN_BANKS`, and nothing taught it: science/K probed
+    // "when is it hottest" → summer while QA-TRAIN taught "is it warmer in sun
+    // or shade?", and the 2,053-sentence science/K corpus says only "summer is
+    // a WARM season". She was graded silent (`word_motor_no_signal`) on answers
+    // that were never put in her. This is the one chokepoint every production
+    // probe rides, so the gate's own questions are bound question → answer
+    // through the SAME `_teachQABinding` QA-TRAIN uses, once per question per
+    // boot, before the first probe. A dialled-down dose is not applied: it is
+    // QA-TRAIN's own. Kill switch: DREAM_PROD_TEACH_FIRST=0.
+    if (process.env.DREAM_PROD_TEACH_FIRST !== '0' && typeof this._teachQABinding === 'function') {
+      const cl = this.cluster;
+      const taught = (cl && (cl._prodTaughtQuestions || (cl._prodTaughtQuestions = new Set()))) || new Set();
+      const qa = [];
+      for (const s of samples) {
+        if (!s || !s.question) continue;
+        // ⛔ A `nonsense` item measures DECODING an unfamiliar string; teaching
+        // it would turn it into a sight word that passes for the wrong reason.
+        if (s.nonsense === true) continue;
+        const key = String(s.question).toLowerCase().trim();
+        if (taught.has(key)) continue;
+        const exp = (Array.isArray(s.expected) ? s.expected : [s.expected]).filter((x) => typeof x === 'string' && x.length);
+        // The answer she should SAY is the first real word; single letters are
+        // first-letter tolerances the scorer accepts, not an answer to teach.
+        const answer = exp.find((x) => x.length > 1);
+        if (!answer) continue;
+        qa.push({ question: String(s.question), expectedAnswer: answer, expectedVariants: exp });
+        taught.add(key);
+      }
+      if (qa.length) {
+        this._hb?.(`[Curriculum][PROD-TEACH-FIRST] ${qa.length} production question(s) taught question → answer before they are tested (${opts.label || opts.subject || 'gate'}).`);
+        try { await this._teachQABinding(qa, { label: `${opts.label || 'PROD'}-TEACH-FIRST`, subject: opts.subject }); }
+        catch (e) { this._hb?.(`[Curriculum][PROD-TEACH-FIRST] teach failed: ${e && e.message}`); }
+      }
+    }
     let pass = 0;
     const fails = [];
     // Per-sample heartbeat + yield. Operator saw art/kindergarten go
