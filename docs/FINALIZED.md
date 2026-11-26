@@ -61156,6 +61156,14 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
     - no upper cap: each corpus covers itself once across the walk's ~114 visits, floor 12;
     - one cursor per corpus, keyed by label and length, on `cluster._sfCorpusCursors`, saved and restored beside `phaseRepCursor` (`brain-server.js` save and restore).
   - **RE-PRICE:** a corpus with n > 5,472 lines now reframes n/114 per visit instead of 48. That is the dose the walk always declared, finally delivered. No gate removed.
+
+- [x] ✅ **CLOSED BUILT 2026-11-25.** **REDRILL — failed sentences were re-drilled as their bare first words.** Gee 2026-11-25, verbatim: *"and her training is fucked a buncha and alot of training is just single words:Usually, science/kindergarten teachVocabList runner-literal 9 reps Animals …"* · *"we cant teach her letter and words alone with out context wtf is up with this horse shit, ive seen alot of this in the teach viewer"*.
+  - **Cause:**
+    - `_gateSentenceList`'s TALK check lists each missed sentence's FIRST word.
+    - The sentence teacher's focus loop then ran `_teachVocabList(failedWords, …, reps*3)`: bare words with raw capitals and commas ("Usually,", "The", "During"), no sentence, up to 5 rounds per list.
+  - **Fix (`curriculum.js`, the sentence teacher's focus loop):** each failed first word is mapped back to the sentence it opens, and those sentences are re-taught through `_teachConcreteSentences` (word order + ORDERSPEECH binds) at the same `reps*3`.
+  - **Left alone, by design:** the concept-name focus loop still re-drills concept names, which are words.
+  - **Verified:** ESM import.
   - **Verified:** `node --check`, ESM import.
   - **Verified:** ESM import. The piece is shown, the verdict is kept and logged as "doubts … Shown anyway", and the subject still goes to practice.
 
