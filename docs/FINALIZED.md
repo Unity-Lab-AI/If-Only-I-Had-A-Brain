@@ -61147,6 +61147,16 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
       - `SUBSTEPS_TARGET_MS` 2000 → 5000, so one ~300 ms round trip idles the card ~6% instead of ~13%.
     - The starvation brake is unchanged.
     - ⚠ Two batches in flight was tried and reverted before shipping: `_gpuBatch` keeps ONE pending record, so a second send would orphan the first.
+
+- [x] ✅ **CLOSED BUILT 2026-11-25.** **SFCOVER — her first-person reframing reached only a capped slice of each corpus, on a cursor every corpus shared.** Gee 2026-11-25, verbatim: *"ocay on option 2.... are we sure this is fixed for the full corpus all the way through with realististicv first person experiences with people and when reading that doesnt poison her training with 12 samples, but actually is dynamic"*.
+  - **Cause (`_teachConcreteSentences` SELFFRAME chokepoint):**
+    - the sample was `ceil(n/114)` clamped to [12, 48], so any corpus over ~5,500 lines had most of itself never reframed in a walk;
+    - one in-memory cursor (`this._sfCorpusCursor`) served every corpus, so corpora jumped each other's place and every reboot restarted at line 0.
+  - **Fix:**
+    - no upper cap: each corpus covers itself once across the walk's ~114 visits, floor 12;
+    - one cursor per corpus, keyed by label and length, on `cluster._sfCorpusCursors`, saved and restored beside `phaseRepCursor` (`brain-server.js` save and restore).
+  - **RE-PRICE:** a corpus with n > 5,472 lines now reframes n/114 per visit instead of 48. That is the dose the walk always declared, finally delivered. No gate removed.
+  - **Verified:** `node --check`, ESM import.
   - **Verified:** ESM import. The piece is shown, the verdict is kept and logged as "doubts … Shown anyway", and the subject still goes to practice.
 
 

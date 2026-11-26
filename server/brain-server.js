@@ -9072,6 +9072,10 @@ class ServerBrain {
             // landed. Bounded at 512 keys (the whole K→PhD walk has ~114 phase
             // visits, so this is headroom, not a cap in practice) and only
             // non-zero entries are written, so a fully-paid walk persists {}.
+            // Per-corpus first-person rotation cursors — a reboot resumes each
+            // corpus where its reframing reached instead of restarting at line 0.
+            sfCorpusCursors: (cortex._sfCorpusCursors && typeof cortex._sfCorpusCursors === 'object')
+              ? cortex._sfCorpusCursors : {},
             phaseRepCursor: (cortex._phaseRepCursor && typeof cortex._phaseRepCursor === 'object')
               ? Object.fromEntries(
                   Object.entries(cortex._phaseRepCursor)
@@ -10498,6 +10502,13 @@ class ServerBrain {
         // corrupt or negative entry would otherwise shrink a real dose to 1 rep,
         // which is exactly the kind of silent under-training this whole family
         // of items exists to prevent.
+        if (pending.sfCorpusCursors && typeof pending.sfCorpusCursors === 'object') {
+          const _sf = {};
+          for (const [k, v] of Object.entries(pending.sfCorpusCursors)) {
+            if (typeof k === 'string' && k && Number.isFinite(v) && v >= 0) _sf[k] = Math.floor(v);
+          }
+          cortex._sfCorpusCursors = _sf;
+        }
         if (pending.phaseRepCursor && typeof pending.phaseRepCursor === 'object') {
           const _cur = {};
           for (const [k, v] of Object.entries(pending.phaseRepCursor)) {
