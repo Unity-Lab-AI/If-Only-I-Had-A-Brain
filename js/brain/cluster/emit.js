@@ -1354,6 +1354,16 @@ export const CLUSTER_EMIT_MIXIN = {
       const _seedWord = words.length > 0 ? words[words.length - 1]
         : (opts.intentConcept || (typeof intentSeed === 'string'
           ? (intentSeed.replace(/_/g, ' ').toLowerCase().match(/[a-z]+/g) || []).filter((t) => t.length > 2).pop() : null));
+      // ⭐ A THOUGHT STARTS FROM WHAT SHE IS THINKING ABOUT. Inner thoughts carry
+      // their topic as an EMBEDDING (her mood, what she just learned, a memory),
+      // not a word — and compose only ever read string seeds, so their first word
+      // came off whatever sem held: noise. The topic embedding is now written into
+      // sem exactly as her training writes meaning (top-8, tiled), so the first
+      // word is the person, animal, place or thing on her mind, and her trained
+      // word order carries the rest. Not forced to "i" — a thought can start
+      // anywhere.
+      const _seedEmb = (words.length === 0 && !_seedWord && intentSeed && typeof intentSeed !== 'string'
+        && intentSeed.length > 0) ? intentSeed : null;
       if (_taught && words.length === 0 && typeof opts.questionText === 'string' && opts.questionText
           && typeof _cur._writeTiledPatternOffset === 'function' && typeof _cur._extractKeyWord === 'function'
           && sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === 'function') {
@@ -1372,6 +1382,10 @@ export const CLUSTER_EMIT_MIXIN = {
         const semR = this.regions.sem;
         this.lastSpikes.fill(0, semR.start, semR.end);
         _cur._writeTiledPattern(semR, _cur._topKEmbedding(_cur._dictionaryPatternFor(_seedWord), 8), true, { noCpu: false });
+      } else if (_taught && _seedEmb) {
+        const semR = this.regions.sem;
+        this.lastSpikes.fill(0, semR.start, semR.end);
+        _cur._writeTiledPattern(semR, _cur._topKEmbedding(Float64Array.from(_seedEmb), 8), true, { noCpu: false });
       } else if (_taught) {
         // ⛔ NO TICK PATH AT FULL SCALE, EVEN WITHOUT A SEED WORD. An unseeded
         // thought (seed=mood/learning) used to tick, and every tick shipped the
