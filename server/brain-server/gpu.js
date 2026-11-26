@@ -1909,7 +1909,18 @@ const SERVER_GPU_MIXIN = {
       this._poolUnplaced = names.slice();
       return owner;
     }
-    const remaining = new Map(live.map((ws) => [ws, this._donorCapacityMB(ws)]));
+    // ⛔ THE OPERATOR'S OWN CARD STAYS EMPTY WHEN A REMOTE CARD IS HERE. Gee
+    // 2026-11-25: "what is on MY GPU nothing should be on it when we have a pod".
+    // His 4070 held clusters beside a 70 GB pod, and its leftover VRAM (2.6 GB
+    // free) refused every image look (`vramTight`). With any remote card live,
+    // only remote cards are placed on first; his card takes only what fits
+    // nowhere else (and everything when no remote card is connected).
+    const _isLocal = (ws) => { const c = this.clients && this.clients.get ? this.clients.get(ws) : null; return !!(c && c.isLocalHost); };
+    const _remoteLive = live.filter((ws) => !_isLocal(ws));
+    const _localLive = live.filter((ws) => _isLocal(ws));
+    const _placeFirst = _remoteLive.length ? _remoteLive : live;
+    const remaining = new Map(_placeFirst.map((ws) => [ws, this._donorCapacityMB(ws)]));
+    const _localReserve = _remoteLive.length ? _localLive : [];
     const order = names
       .map((n) => ({ n, cost: this._clusterCostMB(n) }))
       .sort((a, b) => (a.n === 'cortex' ? -1 : b.n === 'cortex' ? 1 : b.cost - a.cost));
@@ -2017,6 +2028,13 @@ const SERVER_GPU_MIXIN = {
           const cap = Math.max(1, this._donorCapacityMB(ws));
           const frac = (cap - left + cost) / cap;
           if (frac < bestFrac) { bestFrac = frac; best = ws; bestLeft = left; }
+        }
+      }
+      if (!best && _localReserve.length) {
+        // Nothing remote can hold it — the operator's card takes it.
+        for (const ws of _localReserve) {
+          if (!remaining.has(ws)) remaining.set(ws, this._donorCapacityMB(ws));
+          if (remaining.get(ws) >= cost) { best = ws; bestLeft = remaining.get(ws); break; }
         }
       }
       if (!best) { unplaced.push(n); continue; }
