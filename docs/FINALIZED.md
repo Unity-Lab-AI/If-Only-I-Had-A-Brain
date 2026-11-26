@@ -61356,4 +61356,12 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
   - **Opt-outs:** `DREAM_STATUS_FILE=0` turns it off; `DREAM_STATUS_FILE_MS` and `DREAM_STATUS_HISTORY_LINES` tune the interval and the cap. Both files are gitignored.
   - **Verified:** `node --check`; dry-run page build (63 lines).
 
+## 2026-11-25 — ASSOCYIELD: association pairs yield on a 40 ms clock
+
+- **Measured on boot `370dff0b`, `_teachAssociationPairs`:** pod ~63%; round-trip 9,586 ms with `UNACCOUNTED=8,391ms`.
+  - The pair-building loop ran every pair (8,428 in one recorded call) with no await.
+  - The per-pair fallback loop yielded only once per rep.
+- **Fix:** both loops yield on a 40 ms wall clock, the same rule as the spelling teach. This changes when the loop breathes, not what she learns: same pairs, reps and writes.
+- **Verified:** ESM import. Pod utilisation is measured after the press.
+
 
