@@ -10995,6 +10995,29 @@ setInterval(() => {
     if (brain._cortexMoveInFlight || brain._cortexUploadInFlight) return;
     const _cc = brain.cortexCluster;
     if (brain._lastCortexMoveAt && _cc && !_cc._gpuProxyReady) return;
+    // ⛔ A CARD THAT IS NOT THE CORTEX OWNER MAY NOT KEEP A CORTEX COPY. The
+    // planned move frees the old card (`_freeOldCortexWhenLanded`); the FAILOVER
+    // path does not — the pod dropped, her cortex was uploaded onto the
+    // operator's 4070, the pod rejoined holding its matrices and took ownership
+    // back, and the 4070 kept the whole stale copy (13.4 / 16.4 GB used while
+    // owning two small clusters, every image look refused `vramTight`). Any
+    // live non-owner that still holds cortex matrices is told to free them.
+    if (_cc && _cc._gpuProxyReady && brain._gpuClient && brain.clients) {
+      const _names = Object.keys(brain._cortexMatrixMB || {});
+      for (const [ws, c] of brain.clients) {
+        if (!c || !c.isGPU || ws === brain._gpuClient || ws.readyState !== 1) continue;
+        if (!(c.heldMatrices instanceof Set) || c.heldMatrices.size === 0) continue;
+        const holdsSlice = typeof brain._intraSliceActive === 'function' && brain._intraSliceActive()
+          && Array.isArray(brain._intraSlices) && brain._intraSlices.some((s) => s.ws === ws);
+        const stale = _names.filter((n) => c.heldMatrices.has(n) && !(holdsSlice && n === brain._SLICE_NAME));
+        if (!stale.length) continue;
+        try {
+          ws.send(JSON.stringify({ type: 'free_matrices', names: stale }));
+          for (const n of stale) c.heldMatrices.delete(n);
+          console.log(`[Pool] STALE CORTEX COPY freed on ${c.gpuName || c.id} — ${stale.length} matrices it no longer owns (left behind by a failover).`);
+        } catch { /* card gone — its VRAM went with it */ }
+      }
+    }
     _applyPoolPartition('placement check', 'a settled card has more room');
   } catch { /* the check must never throw into the timer */ }
 }, 60000).unref?.();
