@@ -21165,9 +21165,46 @@ export class Curriculum {
     if (!this._relBandOut || this._relBandOut.length !== proj.rows) this._relBandOut = new Float64Array(proj.rows || 0);
     try { out = proj.propagate(pre, this._relBandOut); } catch { return null; }
     if (!out || out.length === 0) return null;
+    return this._relBandSummary(out, fineTypeRegion.end - fineTypeRegion.start);
+  }
 
+  /**
+   * The same read on the CARD, which holds the real sem_to_fineType weights
+   * (the CPU copy is a sampled shadow). The query pattern rides the probe as
+   * indices — nothing is written into the shared `lastSpikes`, which the CPU
+   * read above does (mid-teach, over the teach lane's own pattern). Async;
+   * null when there is no card or it cannot answer.
+   */
+  async readRelationBandOnCard(word) {
+    const cluster = this.cluster;
+    const proxy = cluster && cluster._gpuProxy;
+    if (!cluster || !cluster._gpuProxyReady || !proxy || typeof proxy.gateProbe !== 'function') return null;
+    const proj = cluster.crossProjections && cluster.crossProjections.sem_to_fineType;
+    const semRegion = cluster.regions && cluster.regions.sem;
+    const fineTypeRegion = cluster.regions && cluster.regions.fineType;
+    if (!proj || !proj._gpuBound || !semRegion || !fineTypeRegion) return null;
+    const emb = this._dictionaryPatternFor(word);
+    if (!emb || emb.length === 0) return null;
+    // The tiled layout `_writeTiledPattern` uses (dim d → its gSize-run),
+    // computed here because that writer also ships a spike slice to the card.
+    const semSize = semRegion.end - semRegion.start;
+    const gSize = Math.max(1, Math.floor(semSize / emb.length));
+    const idx = [];
+    for (let d = 0; d < emb.length; d++) {
+      if (!(emb[d] > 0)) continue;
+      const a = d * gSize, b = Math.min(a + gSize, semSize);
+      for (let i = a; i < b; i++) idx.push(i);
+    }
+    if (!idx.length) return null;
+    let out = null;
+    try { out = await proxy.gateProbe(`${cluster.name}_sem_to_fineType`, 'sem', idx); } catch { out = null; }
+    if (!out || !out.length) return null;
+    return this._relBandSummary(out, fineTypeRegion.end - fineTypeRegion.start);
+  }
+
+  /** Band means over a sem_to_fineType readout → the relation verdict. */
+  _relBandSummary(out, fineSize) {
     const BANDS = Curriculum.RELATION_TAG_BANDS;
-    const fineSize = fineTypeRegion.end - fineTypeRegion.start;
     const band = Math.floor(fineSize / BANDS);
     if (band <= 0) return null;
 
@@ -21271,8 +21308,46 @@ export class Curriculum {
     // one, so the outcome selects its own TTL with no extra bookkeeping.
     if (hit && (now - hit.at) < (hit.val ? TTL : FLAT_TTL)) { st.cached++; return hit.val; }
 
+    // ⛔ ON THE CARD WHEN THERE IS ONE. The CPU read is a full sem_to_fineType
+    // propagate (~50 ms) on the thread that feeds the card — measured 11.2% of
+    // the main thread from the mind's-eye tick — against a sampled shadow, and
+    // it wrote its query into the shared spikes mid-teach. With a card: one
+    // read in flight at a time, the result lands in this cache, and this call
+    // answers from the cache (a miss reads as "not known yet", which is what
+    // the gate already returns for every flat band).
+    const _cardRead = !!(this.cluster && this.cluster._gpuProxyReady && this.cluster._gpuProxy
+      && typeof this.cluster._gpuProxy.gateProbe === 'function'
+      && this.cluster.crossProjections && this.cluster.crossProjections.sem_to_fineType
+      && this.cluster.crossProjections.sem_to_fineType._gpuBound);
+    if (_cardRead) {
+      if (!this._relCardInflight) {
+        this._relCardInflight = true;
+        this.readRelationBandOnCard(w).then((r2) => {
+          const t = Date.now();
+          this._relCacheSet(w, t, this._relVerdictFrom(r2, st, w, t));
+        }).catch(() => {}).finally(() => { this._relCardInflight = false; });
+      }
+      st.cardDeferred = (st.cardDeferred | 0) + 1;
+      return hit ? hit.val : null;
+    }
     let r = null;
     try { r = this.readRelationBand(w); } catch { r = null; }
+    const val = this._relVerdictFrom(r, st, w, now);
+    this._relCacheSet(w, now, val);
+    return val;
+  }
+
+  /** Bounded write into the relation cache (consulted on hot lanes — must not leak). */
+  _relCacheSet(w, at, val) {
+    if (!this._relUseCache) this._relUseCache = new Map();
+    this._relUseCache.set(w, { at, val });
+    if (this._relUseCache.size > 512) {
+      for (const k of this._relUseCache.keys()) { this._relUseCache.delete(k); if (this._relUseCache.size <= 384) break; }
+    }
+  }
+
+  /** One read (CPU or card) → the gate's verdict, with every counter banked. */
+  _relVerdictFrom(r, st, w, now = Date.now()) {
     let val = null;
     // RELSEP.1 — BANK THE MARGIN RATIO FOR EVERY READABLE READ, flat included.
     //
@@ -21339,11 +21414,6 @@ export class Curriculum {
         st.recent.unshift({ word: w, tag: r.tag, at: now });
         while (st.recent.length > 8) st.recent.pop();
       } else { st.flat++; }
-    }
-    this._relUseCache.set(w, { at: now, val });
-    // Bounded — this is consulted on hot lanes and must not become a leak.
-    if (this._relUseCache.size > 512) {
-      for (const k of this._relUseCache.keys()) { this._relUseCache.delete(k); if (this._relUseCache.size <= 384) break; }
     }
     return val;
   }

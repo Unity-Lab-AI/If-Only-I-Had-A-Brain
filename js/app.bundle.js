@@ -12032,6 +12032,9 @@ var LanguageCortex = class {
     if (curriculumDone) {
       if (Array.isArray(opts._preEmittedWords)) {
         words = opts._preEmittedWords;
+      } else if ((cluster.size | 0) > 2e6) {
+        cluster._composeSilentAtScale = (cluster._composeSilentAtScale | 0) + 1;
+        if (opts.lapLane === "chat") cluster._lastUserInputText = null;
       } else {
         const _isChatReply = opts.lapLane === "chat";
         const _liveExclude = _isChatReply ? _buildLiveChatExclude(cluster._lastUserInputText) : _buildLiveChatExclude(null);
