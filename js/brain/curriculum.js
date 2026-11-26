@@ -8522,7 +8522,15 @@ export class Curriculum {
         // This is the path operator demanded — Unity speaks the actual
         // English-dictionary meaning of any word, not a cosine race
         // winner from her trained K-vocab subset.
-        if (intentConcept === 'definition' && subjectTok
+        // ⛔ A question ABOUT HER is never a dictionary request. "what is your
+        // name" matched "what is X", so it went to the dictionary and she
+        // answered with words from the definition of "name" (live: "Cliff!") —
+        // while the pairing she WAS taught (name → unity, the self-introduction
+        // and biography lanes) sits on the joint path below, which never ran.
+        // Grammatical person decides it: a second-person question asks the
+        // listener, so it reads her trained answer instead.
+        const _asksAboutHer = /\b(?:you|your|yours|yourself)\b/i.test(String(question || ''));
+        if (intentConcept === 'definition' && subjectTok && !_asksAboutHer
             && typeof this._emitDefinition === 'function') {
           try {
             const def = await this._emitDefinition(subjectTok);

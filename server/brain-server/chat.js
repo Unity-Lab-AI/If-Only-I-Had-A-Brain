@@ -966,7 +966,11 @@ const SERVER_CHAT_MIXIN = {
             socialNeed: this.persona?.socialAttachment ?? 0.5,
           }
         );
+        // The question has been answered; it stops being "what she was asked".
+        // Left set, every later inner thought read it as its own question.
+        if (this.cortexCluster) this.cortexCluster._lastUserInputText = null;
       } catch (err) {
+        if (this.cortexCluster) this.cortexCluster._lastUserInputText = null;
         this._chatPriorityUntil = 0;   // CHAT.3 — close the priority window on failure too
         console.error('[Brain] languageCortex.generate threw:', err.message);
         console.error(err.stack);
