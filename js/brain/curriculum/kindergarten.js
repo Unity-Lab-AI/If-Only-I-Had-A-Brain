@@ -8581,6 +8581,7 @@ export const K_MIXIN = {
       return;
     }
 
+    let _spYieldAt = Date.now();
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       let count = 0;
@@ -8606,9 +8607,12 @@ export const K_MIXIN = {
           });
           updates++;
         } catch { skipped++; }
-        // Yield every 50 words — at 1000+ K vocab × 12 reps this method
-        // would block the event loop without periodic yields.
-        if (++count % 50 === 0) await _microtask();
+        // Yield on the CLOCK, not a word count: at ~200M neurons one write
+        // costs ~65ms, so a 50-word batch pinned the loop 3-4s and starved
+        // the donor frames (the GPU sat idle behind it). 40ms keeps the
+        // loop under the block-warn floor at any brain size.
+        ++count;
+        if (Date.now() - _spYieldAt >= 40) { await _microtask({ force: true }); _spYieldAt = Date.now(); }
       }
       await _microtask();
     }
