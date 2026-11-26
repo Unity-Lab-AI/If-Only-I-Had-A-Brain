@@ -441,6 +441,10 @@ REM The PUBLIC site too (2026-10-18) - GitHub Pages at theunitybrain.com,
 REM reaching this brain through the tunnel. The one-glance check that the
 REM public path is alive, not just the local one.
 start "" https://theunitybrain.com/
+REM CLEAN UP EVERY LAUNCH - the older copies of these pages, log tails and
+REM launcher windows from previous boots close ~20 s after the new ones open.
+REM Run here, by the launcher, so no boot can ever skip it.
+start "unity-cleanup" /min powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0cleanup-windows.ps1"
 echo.
 echo   Landing:     http://localhost:7525
 echo   Dashboard:   http://localhost:7525/dashboard.html (auto-opened)

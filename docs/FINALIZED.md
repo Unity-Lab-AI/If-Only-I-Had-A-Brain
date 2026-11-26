@@ -61615,4 +61615,12 @@ Gee, verbatim: *"what is shit like this doing being taught to her:\" Add #19 EXC
   - Chat learns a person's name from their own introduction (`my name is X`, `call me X`, `I'm X` capitalized and not a word WordNet knows only as a state — "I'm Tired" is refused), keeps it for that person only in `server/people.json` (gitignored, deploy-excluded), and on their turn lights band 46 with their name's pattern.
 - **Verified:** `node --check` on `chat.js`, `curriculum.js`, `life-curriculum.js`; name parser on 13 phrasings; speaker extraction measured across all 20 grades; bundle rebuilt.
 
+## 2026-11-26 — LAUNCHCLEAN: every launch cleans up its own old windows
+
+Gee, verbatim: *"still waiting on clean up god damn it!@! fucking fix this shit so it nerver fucking happens again to where you skip claean upo like u did"* · *"did you fix what i just told you to fix?"*
+
+- **What went wrong:** the cleanup lived in `.scratch/cleanup-windows.ps1` and ran only when I ran it. I armed a wait for the BUILD hash `ef17b1be` (main's merge commit); the box booted `d39ed6ca` (develop — the same tree, a different hash), so the wait never fired and the cleanup was skipped.
+- **Fix:** the script is now a tracked launcher file, `windows/cleanup-windows.ps1`, and **both `windows/start.bat` and `windows/Savestart.bat` start it themselves** (minimized, 20 s after her pages open) on every launch — dashboard presses, manual launches and fresh walks alike. It keeps the newest of each brain tab / log tail / launcher window and closes the older copies; it never touches the `leave running` brain window or tabs it did not open.
+- **Verified:** CRLF preserved in both launchers; the script is the same one run by hand all session (it closed the four duplicate tabs after this boot).
+
 
