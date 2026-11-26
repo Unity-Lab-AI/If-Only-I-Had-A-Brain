@@ -1632,7 +1632,10 @@ const SERVER_GPU_MIXIN = {
       const names = Object.keys(this._cortexMatrixMB || {}).filter((n) => !(holdsSlice && n === this._SLICE_NAME));
       if (!names.length) return;
       try {
-        oldWs.send(JSON.stringify({ type: 'free_matrices', names }));
+        // Donor 0.3.56 frees the cortex's neuron state too, unless this card's
+        // slice still trains against that spike space.
+        const clusters = (!holdsSlice && cc && cc.name) ? [cc.name, 'langCortex'] : [];
+        oldWs.send(JSON.stringify({ type: 'free_matrices', names, clusters }));
         const c = this.clients && this.clients.get ? this.clients.get(oldWs) : null;
         // Work routing (`_nextPoolDonor`) picks cards by `heldMatrices` — a card
         // that no longer holds a matrix must stop being offered work on it.
@@ -6282,6 +6285,95 @@ const SERVER_GPU_MIXIN = {
       return true;
     } catch (e) {
       if (!this._patternLessonEncodeWarned) { this._patternLessonEncodeWarned = true; console.warn(`[Brain] pattern lesson encode failed (per-word path used): ${e.message}`); }
+      return false;
+    }
+  },
+
+  /**
+   * v0.3.56 — STEP LESSON (type 19): items that each carry their OWN short step
+   * list over one region/op table. For the teach lanes a pattern lesson cannot
+   * express — a per-step projection whitelist, and the asymmetric intra step
+   * (write the pre region, a masked op whose post mask is another region's
+   * cells, then write that region). Wire: header(19, reqId, cluster) · twin ·
+   * u16 nRegions · u16 nOps · regions (name, u32 group, u32 size, u32 rowStart)
+   * · ops (name, f32 lr) · u32 nItems · per item: u16 nSteps, u16 0, nRegions
+   * u16 counts, pad→4, dims u16, pad→4, then nSteps × (u8 code, u8 a, u8 b, u8 0).
+   * Step codes: 0 clear(region a) · 1 tiles(region a) · 2 bound(op a) ·
+   * 3 masked(op a, post region b). Acked as type 17 so the lesson window paces it.
+   * `spec.items` = [{ dims: [per-region dim arrays], steps: [[code, a, b], …] }].
+   */
+  encodeTeachStepLesson(spec) {
+    const str = (s) => {
+      const b = Buffer.from(String(s || ''), 'utf8');
+      const pad = (4 - ((4 + b.length) % 4)) % 4;
+      const out = Buffer.alloc(4 + b.length + pad);
+      out.writeUInt16LE(b.length, 0);
+      b.copy(out, 4);
+      return out;
+    };
+    const u32 = (...v) => { const b = Buffer.alloc(4 * v.length); v.forEach((x, i) => b.writeUInt32LE(x >>> 0, 4 * i)); return b; };
+    const f32 = (x) => { const b = Buffer.alloc(4); b.writeFloatLE(x, 0); return b; };
+    const R = spec.regions.length, O = spec.ops.length;
+    if (R > 255 || O > 255) throw new Error(`step lesson table too large (${R} regions, ${O} ops; max 255 each)`);
+    const parts = [this._encodeSparseHeader(19, spec.reqId >>> 0, spec.cluster), str(spec.twin || '')];
+    const cnt = Buffer.alloc(4);
+    cnt.writeUInt16LE(R, 0);
+    cnt.writeUInt16LE(O, 2);
+    parts.push(cnt);
+    for (const [n, g, sz, r0] of spec.regions) parts.push(str(n), u32(g, sz, r0));
+    for (const [n, lr] of spec.ops) parts.push(str(n), f32(lr));
+    parts.push(u32(spec.items.length));
+    for (const item of spec.items) {
+      const steps = item.steps || [];
+      if (steps.length > 0xFFFF) throw new Error('step lesson item has too many steps');
+      const head = Buffer.alloc(4);
+      head.writeUInt16LE(steps.length, 0);
+      parts.push(head);
+      const cb = Buffer.alloc(2 * R + ((4 - ((2 * R) % 4)) % 4));
+      let total = 0;
+      for (let r = 0; r < R; r++) { const n = ((item.dims && item.dims[r]) || []).length; cb.writeUInt16LE(n, 2 * r); total += n; }
+      parts.push(cb);
+      const db = Buffer.alloc(2 * total + ((4 - ((2 * total) % 4)) % 4));
+      let o = 0;
+      for (let r = 0; r < R; r++) for (const d of ((item.dims && item.dims[r]) || [])) { db.writeUInt16LE(d, o); o += 2; }
+      parts.push(db);
+      const sb = Buffer.alloc(4 * steps.length);
+      steps.forEach(([code, a, b], i) => { sb.writeUInt8(code, 4 * i); sb.writeUInt8(a | 0, 4 * i + 1); sb.writeUInt8(b | 0, 4 * i + 2); });
+      parts.push(sb);
+    }
+    return Buffer.concat(parts);
+  },
+
+  /** PRIMARY donor speaks SPRS type 19 (step lesson)? v0.3.56+. */
+  _donorSpeaksStepLessonNow() {
+    const ws = this._gpuClient;
+    if (!ws) return false;
+    const c = this.clients && this.clients.get ? this.clients.get(ws) : null;
+    const m = /^(\d+)\.(\d+)\.(\d+)/.exec(String((c && c.donorAppVersion) || ''));
+    return !!m && ((+m[1]) * 1e6 + (+m[2]) * 1e3 + (+m[3])) >= 3056;
+  },
+
+  /** Send a step lesson to the cortex card; true only when it went out. Paced like lessons. */
+  gpuTeachStepLesson(spec) {
+    if (!this._gpuClient || this._gpuClient.readyState !== 1) return false;
+    if (!this._donorSpeaksStepLessonNow()) return false;
+    try {
+      const reqId = this._nextSparseReqId();
+      const frame = this.encodeTeachStepLesson({ ...spec, reqId });
+      if (!this._donorPatternSendGated(frame)) return false;
+      if (!(this._lessonInflight instanceof Map)) this._lessonInflight = new Map();
+      const need = this._intraSliceActive() ? this._intraSliceHolders().length : 1;
+      this._lessonInflight.set(reqId, { ws: this._gpuClient, at: Date.now(), need, acked: new Set() });
+      this._countTeachOut(19, frame.length, 0, 0);
+      try {
+        const _tc = this.clients && this.clients.get ? this.clients.get(this._gpuClient) : null;
+        if (_tc && _tc.isGPU) { _tc.teachOps = (_tc.teachOps || 0) + spec.items.length; _tc.teachOpsAt = Date.now(); }
+      } catch { /* instrument only */ }
+      this._stepLessonsSent = (this._stepLessonsSent || 0) + 1;
+      this._stepLessonItemsSent = (this._stepLessonItemsSent || 0) + spec.items.length;
+      return true;
+    } catch (e) {
+      if (!this._stepLessonEncodeWarned) { this._stepLessonEncodeWarned = true; console.warn(`[Brain] step lesson encode failed (per-word path used): ${e.message}`); }
       return false;
     }
   },

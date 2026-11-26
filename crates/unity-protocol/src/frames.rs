@@ -107,6 +107,83 @@ pub enum Frame {
     /// a whole run of sentences rides one frame instead of one word per round
     /// trip. Acked like a lesson (type 17 ack) so the same pacing bounds it.
     PatternLesson(PatternLesson),
+    /// v0.3.56 — STEP LESSON (type 19): many items, each carrying its OWN short
+    /// step list over a shared region/op table. It exists for the teach lanes the
+    /// pattern lesson cannot express: a per-step projection whitelist (the card's
+    /// Oja rule pulls a post-active row toward its pre, so an op whose pre region
+    /// is silent would decay it — the brain names exactly which op each step
+    /// trains) and the ASYMMETRIC intra step (pre = one region's tiles only,
+    /// post = another region's tiles), done as: write the pre region, the masked
+    /// op with the post region's cells as its row mask (its pre then reads only
+    /// what is written), then write the post region. Acked like a lesson.
+    StepLesson(StepLesson),
+}
+
+/// v0.3.56 — one step of a step-lesson item. Region / op numbers index the
+/// lesson's own tables.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Step {
+    /// Clear region `r` (cluster + twin).
+    Clear(u8),
+    /// Write region `r`'s tiled dims from this item (cluster + twin).
+    Tiles(u8),
+    /// Bound plasticity op `o` (pre/post = resident spikes).
+    Bound(u8),
+    /// Masked plasticity op `o`; the post row mask is region `r`'s tiled cells
+    /// from this item, offset by that region's absolute row start.
+    Masked(u8, u8),
+}
+
+/// v0.3.56 — the decoded step lesson.
+#[derive(Debug, Clone, PartialEq)]
+pub struct StepLesson {
+    pub req_id: u32,
+    pub cluster: String,
+    pub twin: Option<String>,
+    /// (region name, tile group, region size, absolute row start in the cluster)
+    pub regions: Vec<(String, u32, u32, u32)>,
+    /// (matrix name, lr)
+    pub ops: Vec<(String, f32)>,
+    /// per item: one dim list per region (same order as `regions`), then the steps
+    pub items: Vec<(Vec<Vec<u16>>, Vec<Step>)>,
+}
+
+/// Expand a step lesson into engine steps, item by item, step by step — in the
+/// exact order the brain's per-word path runs them.
+pub fn expand_step_lesson(l: &StepLesson) -> Vec<LessonOp> {
+    let mut out = Vec::new();
+    let targets: Vec<&String> = std::iter::once(&l.cluster).chain(l.twin.iter()).collect();
+    for (dims, steps) in &l.items {
+        for st in steps {
+            match *st {
+                Step::Clear(r) => {
+                    if let Some((name, _, _, _)) = l.regions.get(r as usize) {
+                        for c in &targets { out.push(LessonOp::Clear { cluster: (*c).clone(), region: name.clone() }); }
+                    }
+                }
+                Step::Tiles(r) => {
+                    let (name, g, size, _) = match l.regions.get(r as usize) { Some(x) => x, None => continue };
+                    if *g == 0 { continue; }
+                    let ds: Vec<u32> = dims.get(r as usize).map(|v| v.iter().map(|&d| d as u32).filter(|&d| d.saturating_mul(*g) < *size).collect()).unwrap_or_default();
+                    // A pattern with no active dims writes nothing (the cleared region stays zero).
+                    if ds.is_empty() { continue; }
+                    for c in &targets { out.push(LessonOp::Tiles { cluster: (*c).clone(), region: name.clone(), dims: ds.clone(), group: *g, size: *size }); }
+                }
+                Step::Bound(o) => {
+                    if let Some((n, lr)) = l.ops.get(o as usize) { out.push(LessonOp::Bound { name: n.clone(), lr: *lr }); }
+                }
+                Step::Masked(o, r) => {
+                    let (n, lr) = match l.ops.get(o as usize) { Some(x) => x, None => continue };
+                    let (_, g, size, row0) = match l.regions.get(r as usize) { Some(x) => x, None => continue };
+                    let d: Vec<u32> = dims.get(r as usize).map(|v| v.iter().map(|&x| x as u32).collect()).unwrap_or_default();
+                    let rows: Vec<u32> = tile_indices(&d, *g, *size).into_iter().map(|i| row0 + i).collect();
+                    // A silent post side trains nothing; the brain's path sends no op for it.
+                    if !rows.is_empty() { out.push(LessonOp::Masked { name: n.clone(), lr: *lr, rows }); }
+                }
+            }
+        }
+    }
+    out
 }
 
 /// v0.3.53 — the decoded pattern lesson.
@@ -678,6 +755,58 @@ pub fn decode(data: &[u8]) -> Option<Frame> {
                 items.push(dims);
             }
             Some(Frame::PatternLesson(PatternLesson {
+                req_id, cluster: name, twin: if twin.is_empty() { None } else { Some(twin) }, regions, ops, items,
+            }))
+        }
+        // v0.3.56 — step lesson. Header name = the cluster. twin str; then
+        // nRegions u16 + nOps u16; regions: name str + group u32 + size u32 +
+        // rowStart u32; ops: name str + lr f32; nItems u32; per item: nSteps u16
+        // + pad u16, nRegions × u16 dim counts, pad→4, the dims (u16) region
+        // after region, pad→4, then nSteps × 4 bytes (code u8, a u8, b u8, 0).
+        // codes: 0 clear(a) · 1 tiles(a) · 2 bound(op a) · 3 masked(op a, post region b).
+        // An unknown code or an out-of-table number rejects the whole frame, so
+        // a half-understood lesson never trains.
+        19 => {
+            fn s(r: &mut Reader) -> Option<String> {
+                let n = r.u16()? as usize;
+                let _ = r.u16()?;
+                let v = String::from_utf8_lossy(r.bytes(n)?).into_owned();
+                r.align4();
+                Some(v)
+            }
+            let twin = s(&mut r)?;
+            let n_regions = r.u16()? as usize;
+            let n_ops = r.u16()? as usize;
+            let mut regions = Vec::with_capacity(n_regions);
+            for _ in 0..n_regions { let nm = s(&mut r)?; let g = r.u32()?.max(1); let sz = r.u32()?; let r0 = r.u32()?; regions.push((nm, g, sz, r0)); }
+            let mut ops = Vec::with_capacity(n_ops);
+            for _ in 0..n_ops { let nm = s(&mut r)?; let lr = r.f32()?; ops.push((nm, lr)); }
+            let n_items = r.u32()? as usize;
+            let mut items = Vec::with_capacity(n_items.min(1 << 20));
+            for _ in 0..n_items {
+                let n_steps = r.u16()? as usize;
+                let _ = r.u16()?;
+                let mut counts = Vec::with_capacity(n_regions);
+                for _ in 0..n_regions { counts.push(r.u16()? as usize); }
+                r.align4();
+                let mut dims = Vec::with_capacity(n_regions);
+                for &c in &counts { let mut v = Vec::with_capacity(c); for _ in 0..c { v.push(r.u16()?); } dims.push(v); }
+                r.align4();
+                let mut steps = Vec::with_capacity(n_steps);
+                for _ in 0..n_steps {
+                    let (code, a, b, _z) = (r.u8()?, r.u8()?, r.u8()?, r.u8()?);
+                    let st = match code {
+                        0 if (a as usize) < n_regions => Step::Clear(a),
+                        1 if (a as usize) < n_regions => Step::Tiles(a),
+                        2 if (a as usize) < n_ops => Step::Bound(a),
+                        3 if (a as usize) < n_ops && (b as usize) < n_regions => Step::Masked(a, b),
+                        _ => return None,
+                    };
+                    steps.push(st);
+                }
+                items.push((dims, steps));
+            }
+            Some(Frame::StepLesson(StepLesson {
                 req_id, cluster: name, twin: if twin.is_empty() { None } else { Some(twin) }, regions, ops, items,
             }))
         }

@@ -7366,6 +7366,94 @@ export const K_MIXIN = {
     this._hb(`[Curriculum] _teachWordEmission START: ${wordList.length} words × ${reps} reps (asymmetric directional)`);
     // iter22 — reusable scratch buffers, allocated once outside loop.
     const scratch = this._ensureScratchBuffers();
+
+    // ⭐ ON THE CARD (donor v0.3.56, step lesson). Every letter of every word used to
+    // run the intra Oja on the CPU — `intraSynapsesHebbian` refuses the card for
+    // custom pre/post vectors — one step at a time, so this lane crawled at ~1–2
+    // words/s with the card at ~1%. And those intra updates landed only in the CPU
+    // copy, which the hourly refresh from the card overwrites. The card now runs
+    // each word's steps itself, in the CPU path's order with the CPU path's
+    // whitelists: the asymmetric intra step as "write the pre region, a masked op
+    // whose post rows are the motor cells, then write the motor region" (the
+    // card's rule pulls each post row toward the pre it reads, and the only pre
+    // written at that moment is the step's own). A rep's words ride one frame.
+    const _card = this._stepLessonBase(cluster);
+    const _ops = _card ? this._stepLessonOps(cluster, ['sem_to_motor', 'letter_to_motor']) : null;
+    if (_card && _ops && _ops.intra >= 0) {
+      const R = _card.regions;
+      const iSem = _card.index.get('sem'), iLet = _card.index.get('letter'), iMot = _card.index.get('motor');
+      const words = [];
+      for (const word of wordList) {
+        const letters = Array.from(word.toLowerCase().replace(/[^a-z]/g, ''));
+        if (letters.length === 0) continue;
+        const wordEmb = sharedEmbeddings.getEmbedding(word);
+        if (!wordEmb || wordEmb.length === 0) continue;
+        words.push({ word, letters, wordEmb });
+      }
+      if (words.length && iSem !== undefined && iLet !== undefined && iMot !== undefined) {
+        // The same tile width `_writeTiledPattern` uses: floor(regionSize / featLen).
+        R[iSem][1] = Math.max(1, Math.floor((semRegion.end - semRegion.start) / words[0].wordEmb.length));
+        const letDim = encodeLetter(words[0].letters[0]).length;
+        R[iLet][1] = Math.max(1, Math.floor((letterRegion.end - letterRegion.start) / letDim));
+        R[iMot][1] = Math.max(1, Math.floor((motorRegion.end - motorRegion.start) / letDim));
+        const dimsOf = (feat) => { const d = []; for (let i = 0; i < feat.length; i++) if (feat[i] > 0) d.push(i); return d; };
+        const oSM = _ops.byName.get('sem_to_motor'), oLM = _ops.byName.get('letter_to_motor');
+        const itemsFor = (w) => {
+          const out = [];
+          const semD = dimsOf(w.wordEmb);
+          const mk = () => R.map(() => []);
+          // (a) initiation: sem(word) → motor(first letter)
+          {
+            const dims = mk(); dims[iSem] = semD; dims[iMot] = dimsOf(encodeLetter(w.letters[0]));
+            const steps = [[0, iSem], [0, iLet], [0, iMot], [1, iSem], [3, _ops.intra, iMot], [1, iMot]];
+            if (oSM !== undefined) steps.push([2, oSM]);
+            out.push({ dims, steps });
+          }
+          // (b) continuation: letter(N-1) → motor(N), sem(word) resident as anchor
+          for (let i = 1; i < w.letters.length; i++) {
+            const dims = mk(); dims[iSem] = semD;
+            dims[iLet] = dimsOf(encodeLetter(w.letters[i - 1]));
+            dims[iMot] = dimsOf(encodeLetter(w.letters[i]));
+            const steps = [[0, iSem], [0, iLet], [0, iMot], [1, iLet], [3, _ops.intra, iMot], [1, iMot], [1, iSem]];
+            if (oLM !== undefined) steps.push([2, oLM]);
+            out.push({ dims, steps });
+          }
+          return out;
+        };
+        const ok = await this._stepLessonRun(cluster, _card, _ops, words, reps, itemsFor, {
+          label: '_teachWordEmission',
+          onRep0Word: (w) => {
+            if (this.dictionary && typeof this.dictionary.learnWord === 'function') {
+              try { this.dictionary.learnWord(w.word, null, this.arousal ?? 0.85, this.valence ?? 0); } catch { /* non-fatal */ }
+            }
+          },
+          // A batch the card refused runs here, word by word, exactly as before.
+          cpuWord: async (w) => {
+            const { letters, wordEmb } = w;
+            this._clearSpikes();
+            this._writeTiledPattern(semRegion, wordEmb);
+            this._writeTiledPattern(motorRegion, encodeLetter(letters[0]));
+            const pre0 = scratch ? this._fillRegionPatternInto(scratch.pre, semRegion, wordEmb, false) : this._buildRegionPattern(semRegion, wordEmb, false);
+            const post0 = scratch ? this._fillRegionPatternInto(scratch.post, motorRegion, encodeLetter(letters[0])) : this._buildRegionPattern(motorRegion, encodeLetter(letters[0]));
+            await this._teachHebbianAsymmetric(pre0, post0, lr, { projectionsWhitelist: ['sem_to_motor'] });
+            for (let i = 1; i < letters.length; i++) {
+              this._clearSpikes();
+              this._writeTiledPattern(semRegion, wordEmb);
+              this._writeTiledPattern(letterRegion, encodeLetter(letters[i - 1]));
+              this._writeTiledPattern(motorRegion, encodeLetter(letters[i]));
+              const pre = scratch ? this._fillRegionPatternInto(scratch.pre, letterRegion, encodeLetter(letters[i - 1])) : this._buildRegionPattern(letterRegion, encodeLetter(letters[i - 1]));
+              const post = scratch ? this._fillRegionPatternInto(scratch.post, motorRegion, encodeLetter(letters[i])) : this._buildRegionPattern(motorRegion, encodeLetter(letters[i]));
+              await this._teachHebbianAsymmetric(pre, post, lr, { projectionsWhitelist: ['letter_to_motor'] });
+            }
+          },
+          pull: ['letter_to_motor', 'sem_to_motor'],
+        });
+        if (ok) {
+          this._hb(`[Curriculum] _teachWordEmission DONE: ${wordList.length} words × ${reps} reps (on the card)`);
+          return;
+        }
+      }
+    }
     // T18.13.c — time-based heartbeat. Prior `_wordIdx % 200 === 0`
     // NEVER FIRED on typical K-emission lists of ~180 words — the operator
     // watched the terminal for minutes seeing only the START line
@@ -8109,6 +8197,87 @@ export const K_MIXIN = {
     this._hb(`[Curriculum] _teachPhonemeBlending START: ${wordList.length} words × ${reps} reps (phoneme-sequence Hebbian)`);
     // iter22 — reusable scratch buffers, allocated once outside loop.
     const scratch = this._ensureScratchBuffers();
+
+    // ⭐ ON THE CARD (donor v0.3.56, step lesson) — the same move as
+    // `_teachWordEmission`, for the same measured reason (~1.1 words/s, card ~1%,
+    // intra updates landing only in the CPU copy). Per letter pair the CPU path
+    // runs the intra sequence step phon(A) → phon(B), then writes letter(A) +
+    // phon(A) + sem(word) and fires `_crossRegionHebbian(lr)` with NO whitelist.
+    // The card does the same: phon appears twice in the table — once carrying A
+    // (written) and once carrying B (the masked op's post rows) — and the cross
+    // step is every bound projection, in key order, sem→motor damped.
+    const _card = this._stepLessonBase(cluster);
+    const _ops = _card ? this._stepLessonOps(cluster, null) : null;
+    if (_card && _ops && _ops.intra >= 0) {
+      const R = _card.regions;
+      const iPh = _card.index.get('phon'), iLet = _card.index.get('letter'), iSem = _card.index.get('sem');
+      const words = [];
+      for (const word of wordList) {
+        const letters = Array.from(word.toLowerCase().replace(/[^a-z]/g, ''));
+        if (letters.length < 2) continue;
+        words.push({ word, letters, wordEmb: sharedEmbeddings.getEmbedding(word) });
+      }
+      const probe = words.find((w) => w.wordEmb && w.wordEmb.length);
+      if (words.length && iPh !== undefined && iLet !== undefined && iSem !== undefined) {
+        const phDim = _phonemeFeatureForLetter('a').length;
+        const letDim = encodeLetter('a').length;
+        R[iPh][1] = Math.max(1, Math.floor((phonRegion.end - phonRegion.start) / phDim));
+        R[iLet][1] = Math.max(1, Math.floor((letterRegion.end - letterRegion.start) / letDim));
+        if (probe) R[iSem][1] = Math.max(1, Math.floor((semRegion.end - semRegion.start) / probe.wordEmb.length));
+        // The second phon entry: same region, carries B for the mask.
+        const iPhB = R.length;
+        R.push([R[iPh][0], R[iPh][1], R[iPh][2], R[iPh][3]]);
+        const dimsOf = (feat) => { const d = []; for (let i = 0; i < feat.length; i++) if (feat[i] > 0) d.push(i); return d; };
+        const itemsFor = (w) => {
+          const out = [];
+          const semD = (w.wordEmb && w.wordEmb.length) ? dimsOf(w.wordEmb) : [];
+          for (let i = 0; i < w.letters.length - 1; i++) {
+            const phonA = _phonemeFeatureForLetter(w.letters[i]);
+            const phonB = _phonemeFeatureForLetter(w.letters[i + 1]);
+            if (!phonA.some(v => v > 0) || !phonB.some(v => v > 0)) continue;
+            const dims = R.map(() => []);
+            dims[iPh] = dimsOf(phonA); dims[iPhB] = dimsOf(phonB);
+            dims[iLet] = dimsOf(encodeLetter(w.letters[i])); dims[iSem] = semD;
+            // intra: pre = phon(A) alone, post = phon(B)'s cells
+            const steps = [[0, iPh], [0, iLet], [0, iSem], [1, iPh], [3, _ops.intra, iPhB], [1, iLet]];
+            if (semD.length) steps.push([1, iSem]);
+            for (const o of _ops.cross) steps.push([2, o]);
+            out.push({ dims, steps });
+          }
+          return out;
+        };
+        const ok = await this._stepLessonRun(cluster, _card, _ops, words, reps, itemsFor, {
+          label: '_teachPhonemeBlending',
+          onRep0Word: (w) => {
+            if (this.dictionary && typeof this.dictionary.learnWord === 'function') {
+              try { this.dictionary.learnWord(w.word, null, this.arousal ?? 0.85, this.valence ?? 0); } catch { /* non-fatal */ }
+            }
+          },
+          // A batch the card refused runs here, word by word, exactly as before.
+          cpuWord: async (w) => {
+            const { letters, wordEmb } = w;
+            for (let i = 0; i < letters.length - 1; i++) {
+              const phonA = _phonemeFeatureForLetter(letters[i]);
+              const phonB = _phonemeFeatureForLetter(letters[i + 1]);
+              if (!phonA.some(v => v > 0) || !phonB.some(v => v > 0)) continue;
+              const pre = scratch ? this._fillRegionPatternInto(scratch.pre, phonRegion, phonA) : this._buildRegionPattern(phonRegion, phonA);
+              const post = scratch ? this._fillRegionPatternInto(scratch.post, phonRegion, phonB) : this._buildRegionPattern(phonRegion, phonB);
+              await cluster.intraSynapsesHebbian(pre, post, lr);
+              this._clearSpikes();
+              this._writeTiledPattern(letterRegion, encodeLetter(letters[i]));
+              this._writeTiledPattern(phonRegion, phonA);
+              if (wordEmb && wordEmb.length > 0) this._writeTiledPattern(semRegion, wordEmb);
+              await cluster._crossRegionHebbian(lr);
+            }
+          },
+          pull: ['letter_to_phon', 'letter_to_motor'],
+        });
+        if (ok) {
+          this._hb(`[Curriculum] _teachPhonemeBlending DONE: ${wordList.length} words × ${reps} reps (on the card)`);
+          return;
+        }
+      }
+    }
     // Time-based heartbeat. 5 s cadence lets the operator see teach
     // progress live.
     const _t18_13_startMs = Date.now();

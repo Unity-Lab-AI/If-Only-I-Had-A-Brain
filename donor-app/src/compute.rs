@@ -672,6 +672,12 @@ impl ComputeEngine {
         self.sparse.remove(name).is_some()
     }
 
+    /// v0.3.56 — drop a cluster's resident neuron state (the buffers `gpu_init`
+    /// allocated). Dropping the entry releases its GPU buffers.
+    pub fn free_cluster(&mut self, name: &str) -> bool {
+        self.clusters.remove(name).is_some()
+    }
+
     /// Upload (or replace) a CSR sparse matrix on the GPU (standalone, or cluster-bound
     /// when `binding` is provided — see SparseMatrix.binding).
     pub fn upload_sparse(&mut self, name: &str, rows: u32, cols: u32, row_ptr: &[u32], values: &[f32], col_idx: &[u32], binding: Option<Binding>) {
@@ -1438,6 +1444,13 @@ impl Backend {
             Backend::Cuda(e) => e.sparse_shape(name),
         }
     }
+    fn free_cluster(&mut self, name: &str) -> bool {
+        match self {
+            Backend::Wgpu(e) => e.free_cluster(name),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.free_cluster(name),
+        }
+    }
     fn free_sparse(&mut self, name: &str) -> bool {
         match self {
             Backend::Wgpu(e) => e.free_sparse(name),
@@ -1914,6 +1927,24 @@ impl MultiEngine {
         let mut v: Vec<String> = self.matrix_gpu.keys().cloned().collect();
         v.sort();
         v
+    }
+
+    /// v0.3.56 — every cluster with resident neuron state on this donor's cards.
+    pub fn held_clusters(&self) -> Vec<String> {
+        let mut v: Vec<String> = self.cluster_gpu.keys().cloned().collect();
+        v.sort();
+        v
+    }
+
+    /// v0.3.56 — drop a cluster's resident neuron state from whichever GPU holds
+    /// it. A card the partition moved a cluster off kept those buffers forever:
+    /// `free_matrices` drops only matrices, so a card owning no clusters still
+    /// held every `gpu_init` allocation it had ever been given.
+    pub fn free_cluster(&mut self, name: &str) -> bool {
+        match self.cluster_gpu.remove(name) {
+            Some(g) => self.engines[g].free_cluster(name),
+            None => false,
+        }
     }
 
     /// v0.3.46 — drop a resident matrix from whichever GPU holds it.
