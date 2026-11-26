@@ -5040,6 +5040,15 @@ const SERVER_GPU_MIXIN = {
     return !!ws && ws.readyState === 1;
   },
 
+  /** Run one probe at a time on the cortex link (see the proxy's gateProbe). */
+  _probeLane(fn) {
+    const prev = this._probeLaneTail || Promise.resolve();
+    let release;
+    const mine = new Promise((r) => { release = r; });
+    this._probeLaneTail = prev.then(() => mine);
+    return prev.then(async () => { try { return await fn(); } finally { release(); } });
+  },
+
   async gpuGateProbe(matrixName, srcRegionName, sparseIndices) {
     if (process.env.DREAM_GATE_GPU_PROBES === '0') return null;
     const ws = this._gpuClient;
