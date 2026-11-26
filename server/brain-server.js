@@ -2533,7 +2533,10 @@ const SUBSTEPS_NATIVE = _SUBSTEPS_EXPLICIT
 // deliberate act always beats the controller — the LANGRAM lesson).
 // DREAM_SUBSTEPS_MAX caps the climb; DREAM_SUBSTEPS_TARGET_MS moves the target.
 const SUBSTEPS_MAX = Math.max(1, Math.floor(_envPositive('DREAM_SUBSTEPS_MAX', 1024)));
-const SUBSTEPS_TARGET_MS = Math.max(50, Math.floor(_envPositive('DREAM_SUBSTEPS_TARGET_MS', 2000)));
+// ⭐ 2000 → 5000. With one batch in flight the card idles one round trip
+// (~300 ms) per batch; a 2 s batch caps it near 87%, a 5 s batch near 94%.
+// The teach-starvation brake in `adaptSubsteps` still backs off on its own.
+const SUBSTEPS_TARGET_MS = Math.max(50, Math.floor(_envPositive('DREAM_SUBSTEPS_TARGET_MS', 5000)));
 const SUBSTEPS_ADAPT_MS = 12000;   // one decision per 12s — long enough for a real teach-rate sample
 
 /**
@@ -6216,7 +6219,7 @@ class ServerBrain {
   async _walkHeartbeat(clusterParams, allClusters) {
     const _hbEnv = process.env.DREAM_WALK_TICK_MS;
     const _hbGap = (_hbEnv !== undefined && _hbEnv !== '')
-      ? Math.max(0, Number(_hbEnv) || 0) : 250;
+      ? Math.max(0, Number(_hbEnv) || 0) : 1;
     // ⛔⛔ THIS WAS 15000 — ONE STEP BATCH EVERY 15 SECONDS, AND THAT WAS THE POD.
     // During a walk this heartbeat is the ONLY thing that steps her clusters on
     // the cards; a ~1 s batch every 15 s left every card idle ~93% of the time,
@@ -8559,7 +8562,9 @@ class ServerBrain {
               // gate-clear walk branch below.
               await this._walkHeartbeat(clusterParams, allClusters);
               this._updateDerivedState();
-              if (this.running) setTimeout(tick, Math.max(200, BRAIN_TICK_MS * 4));
+              // BRAIN_TICK_MS, not 4×: the heartbeat batch above already waited
+              // for its answer, and every extra ms here is the card sitting idle.
+              if (this.running) setTimeout(tick, BRAIN_TICK_MS);
               return;
             }
             if (this._probeGatePauseLogged && !this.cortexCluster?._probeGateActive) {
