@@ -16578,6 +16578,48 @@ export class Curriculum {
     return anySent || cpuWords > 0;
   }
 
+  /**
+   * The K sequence drills (alphabet a→b→…, digits 0→1→…) teach only the
+   * intra transition letter(N) → letter(N+1): pre = the current symbol's
+   * letter cells, post = the next one's. On the card, per pair: clear the
+   * letter region, write the current symbol alone, masked intra op over the
+   * next symbol's cells. True when it ran (the caller then skips its CPU
+   * loop); false when the card cannot, and the caller's loop runs as before.
+   * A frame the card refuses is replayed here, pair by pair, with the same
+   * CPU intra update the caller's loop makes — never the whole dose again.
+   */
+  async _stepLessonLetterChain(seq, reps, lr, label) {
+    const cluster = this.cluster;
+    const card = this._stepLessonBase(cluster);
+    const ops = card ? this._stepLessonOps(cluster, [], lr) : null;
+    const iLet = card ? card.index.get('letter') : undefined;
+    const letterRegion = cluster && cluster.regions && cluster.regions.letter;
+    if (!card || !ops || ops.intra < 0 || iLet === undefined || !letterRegion || !Array.isArray(seq) || seq.length < 2) return false;
+    const R = card.regions;
+    const first = encodeLetter(seq[0]);
+    if (!first || !first.length) return false;
+    R[iLet][1] = Math.max(1, Math.floor((letterRegion.end - letterRegion.start) / first.length));
+    const iNext = R.length;
+    R.push([R[iLet][0], R[iLet][1], R[iLet][2], R[iLet][3]]);
+    const dimsOf = (feat) => { const d = []; for (let i = 0; i < feat.length; i++) if (feat[i] > 0) d.push(i); return d; };
+    const units = [];
+    for (let i = 0; i < seq.length - 1; i++) units.push({ word: `${seq[i]}→${seq[i + 1]}`, cur: encodeLetter(seq[i]), next: encodeLetter(seq[i + 1]) });
+    return await this._stepLessonRun(cluster, card, ops, units, reps, (u) => {
+      const dims = R.map(() => []);
+      dims[iLet] = dimsOf(u.cur); dims[iNext] = dimsOf(u.next);
+      return [{ dims, steps: [[0, iLet], [1, iLet], [3, ops.intra, iNext]] }];
+    }, {
+      label,
+      describe: (u) => u.word,
+      cpuWord: async (u) => {
+        const scratch = this._ensureScratchBuffers();
+        const pre = scratch ? this._fillRegionPatternInto(scratch.pre, letterRegion, u.cur, true) : this._buildRegionPattern(letterRegion, u.cur, true);
+        const post = scratch ? this._fillRegionPatternInto(scratch.post, letterRegion, u.next, true) : this._buildRegionPattern(letterRegion, u.next, true);
+        await cluster.intraSynapsesHebbian(pre, post, lr);
+      },
+    });
+  }
+
   // ── Helper: build a full-cluster activation vector by writing one
   // feature into one region. Caller pattern for asymmetric teaching:
   //   const pre = this._buildRegionPattern(letterRegion, encodeLetter(ch));

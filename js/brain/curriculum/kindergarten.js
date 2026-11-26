@@ -2542,7 +2542,9 @@ export const K_MIXIN = {
     }
 
     // SEQUENCE TEACHING — digit ordering 0→1→2→...→9
-    for (let rep = 0; rep < REPS; rep++) {
+    // On the card when it can take it (the drill is the intra transition only).
+    const _digitChainOnCard = await this._stepLessonLetterChain(Array.from(DIGITS), REPS, lr, 'digit sequence 0→9');
+    for (let rep = 0; rep < (_digitChainOnCard ? 0 : REPS); rep++) {
       for (let i = 0; i < DIGITS.length - 1; i++) {
         const currOneHot = encodeLetter(DIGITS[i]);
         const nextOneHot = encodeLetter(DIGITS[i + 1]);
@@ -3648,7 +3650,9 @@ export const K_MIXIN = {
     // bypass (e.g. at 301K cluster T18.19's > 10M never fires).
     const _p2Pre = new Uint8Array(cluster.size);
     const _p2Post = new Uint8Array(cluster.size);
-    for (let rep = 0; rep < REPS; rep++) {
+    // On the card when it can take it (the drill is the intra transition only).
+    const _alphaChainOnCard = await this._stepLessonLetterChain(Array.from(ALPHABET), REPS, lr, 'alphabet sequence a→z');
+    for (let rep = 0; rep < (_alphaChainOnCard ? 0 : REPS); rep++) {
       for (let i = 0; i < ALPHABET.length - 1; i++) {
         const currOneHot = encodeLetter(ALPHABET[i]);
         const nextOneHot = encodeLetter(ALPHABET[i + 1]);
@@ -7168,7 +7172,69 @@ export const K_MIXIN = {
     const t0 = Date.now();
     // iter22 — reusable scratch buffers, allocated once outside loop.
     const scratch = this._ensureScratchBuffers();
-    for (let rep = 0; rep < reps; rep++) {
+
+    let _namingOnCard = false;
+    // ⭐ ON THE CARD (donor 0.3.56, step lesson) — the same move as the other K
+    // lanes: per letter the CPU path writes letter + motor + phon, then trains
+    // letter→motor (cross + the asymmetric intra step) and letter→phon (cross +
+    // intra). The card runs those steps in that order; each intra step sees the
+    // letter alone as its pre (the post regions are cleared for it and written
+    // back after), exactly the pre/post the CPU vectors carried.
+    {
+      const _card = this._stepLessonBase(cluster);
+      const _ops = _card ? this._stepLessonOps(cluster, ['letter_to_motor', 'letter_to_phon']) : null;
+      const ix = (k) => (_card ? _card.index.get(k) : undefined);
+      const iLet = ix('letter'), iMot = ix('motor'), iPh = ix('phon');
+      const oLM = _ops && _ops.byName.get('letter_to_motor'), oLP = _ops && _ops.byName.get('letter_to_phon');
+      if (_card && _ops && _ops.intra >= 0 && iLet !== undefined && iMot !== undefined && oLM !== undefined) {
+        const R = _card.regions;
+        const letDim = encodeLetter('a').length;
+        R[iLet][1] = Math.max(1, Math.floor((letterRegion.end - letterRegion.start) / letDim));
+        R[iMot][1] = Math.max(1, Math.floor((motorRegion.end - motorRegion.start) / letDim));
+        const usePh = !!(phonRegion && iPh !== undefined);
+        if (usePh) R[iPh][1] = Math.max(1, Math.floor((phonRegion.end - phonRegion.start) / _phonemeFeatureForLetter('a').length));
+        const dimsOf = (feat) => { const d = []; for (let i = 0; i < feat.length; i++) if (feat[i] > 0) d.push(i); return d; };
+        const units = Array.from(ALPHABET_LOWER).map((letter) => ({ word: letter, letter }));
+        const itemsFor = (u) => {
+          const oh = encodeLetter(u.letter);
+          const dims = R.map(() => []);
+          dims[iLet] = dimsOf(oh); dims[iMot] = dimsOf(oh);
+          if (usePh) dims[iPh] = dimsOf(_phonemeFeatureForLetter(u.letter));
+          const clr = [[0, iLet], [0, iMot]]; if (usePh) clr.push([0, iPh]);
+          const steps = [...clr, [1, iLet], [3, _ops.intra, iMot], [1, iMot]];
+          if (usePh) steps.push([1, iPh]);
+          steps.push([2, oLM]);
+          if (usePh && oLP !== undefined) {
+            steps.push([0, iMot], [0, iPh], [3, _ops.intra, iPh], [1, iMot], [1, iPh], [2, oLP]);
+          }
+          return [{ dims, steps }];
+        };
+        const ok = await this._stepLessonRun(cluster, _card, _ops, units, reps, itemsFor, {
+          label: '_teachLetterNaming',
+          describe: (u) => `letter ${u.letter} → say ${u.letter}`,
+          cpuWord: async (u) => {
+            const letterOneHot = encodeLetter(u.letter);
+            this._clearSpikes();
+            this._writeTiledPattern(letterRegion, letterOneHot);
+            this._writeTiledPattern(motorRegion, letterOneHot);
+            if (phonRegion) this._writeTiledPattern(phonRegion, _phonemeFeatureForLetter(u.letter));
+            const pre = scratch ? this._fillRegionPatternInto(scratch.pre, letterRegion, letterOneHot) : this._buildRegionPattern(letterRegion, letterOneHot);
+            const postM = scratch ? this._fillRegionPatternInto(scratch.post, motorRegion, letterOneHot) : this._buildRegionPattern(motorRegion, letterOneHot);
+            await this._teachHebbianAsymmetric(pre, postM, lr, { projectionsWhitelist: ['letter_to_motor'] });
+            if (phonRegion) {
+              const phonFeat = _phonemeFeatureForLetter(u.letter);
+              const postP = scratch ? this._fillRegionPatternInto(scratch.post, phonRegion, phonFeat) : this._buildRegionPattern(phonRegion, phonFeat);
+              await this._teachHebbianAsymmetric(pre, postP, lr, { projectionsWhitelist: ['letter_to_phon'] });
+            }
+          },
+        });
+        // On the card: skip only the CPU loop below — the letter-probe
+        // diagnostic after it still runs.
+        if (ok) _namingOnCard = true;
+      }
+    }
+
+    for (let rep = 0; rep < (_namingOnCard ? 0 : reps); rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       for (const letter of ALPHABET_LOWER) {
         const letterOneHot = encodeLetter(letter);
