@@ -61100,6 +61100,15 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
     - `_composeSentenceOnce` writes the first word's sem exactly as the QA trainer does (`_writeTiledPattern` of the sentence embedding + `_writeTiledPatternOffset` of the key word at 0.5).
     - Later words read from the previous word (ORDERSPEECH).
   - **Verified:** ESM import.
+
+- [x] ✅ **FRESH WALK PRESSED 2026-11-25 on `221494ab`.** Gee 2026-11-25, verbatim: *"and i need to fresh walk her so she trains her name and responses and communtcation order coprrectly, right you fixed it all for the full K - grad corpus right? why didnt you do it yet?"*
+  - **Coverage:**
+    - Every grade's sentence content reaches `_teachConcreteSentences` (SPEAK3-CONTENT-TRANSITIONS, the K corpus, the self-framed lines), so ORDERSPEECH applies K → PhD.
+    - Every question bank reaches `_teachQABinding`, so QASHAPE applies K → PhD.
+  - **RE-PRICE, written before the press as the law requires:**
+    - No gate, bound or dedup was removed or weakened.
+    - The one added mass is ORDERSPEECH: unique transitions × ~2.4 binds per corpus visit, about one LO-bucket rep. Against the measured ~7,831 unique K transitions at ~1 ms per card-carried bind, that is ~20 s per corpus visit, inside the walk's existing per-cell budget.
+    - The consolidation gate still bounds the walk as before.
   - **Verified:** ESM import. The piece is shown, the verdict is kept and logged as "doubts … Shown anyway", and the subject still goes to practice.
 
 
