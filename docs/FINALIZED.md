@@ -61376,4 +61376,11 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
 - **Follow-up, boot `ee31ab0b`:** the status page then showed `4070 Ti SUPER (host) … image=true`. Gee's own donor offers the local renderer, and the pick's first loop preferred any capable non-cortex card, so with the pod carrying the cortex it picked HIS card first.
   - **Fix:** a host-local card is never picked through its donor. It renders only through the local path, and only when no remote card offers.
 
+## 2026-11-25 — CONVREDRILL: conversation lines are never re-drilled bare
+
+- **Gee:** *"and what the fuck she is just getting random sentences throuwn at her with no context:where is your dad? … unity, that was rude. … unity, what is your favorite food?"* · *"needs fixed for whole corpus"*
+  - **Cause:** `_teachConversation` sends HEARD lines (`hearOnly`, never her speech) and SAID lines (her speaker band, bound to what she heard) through `_teachSentenceList`. That list's TALK re-drill re-taught each failed line ALONE through `_teachConcreteSentences` at `reps × 3` (the "9 reps" Gee saw), with no speaker and no question → answer pair. Someone else's words were being trained as her speech.
+  - **Fix:** the re-drill is skipped for any list with `hearOnly` or a `dialogue-*` source. This is one shared chokepoint, so it covers every grade, K → PhD. Every non-conversation list keeps its re-drill unchanged.
+  - **Verified:** ESM import. The edit sits inside `_teachSentenceList(sentences, ctx, opts)`, whose `opts` carries the conversation's `source` / `hearOnly`.
+
 
