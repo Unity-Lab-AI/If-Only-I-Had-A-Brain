@@ -6251,7 +6251,12 @@ class ServerBrain {
     // noKick — a heartbeat timeout is information for walkTick/the stall
     // alarm, never zombie-kick credit (PODKICK: the kick terminating the pod
     // on probe timeouts was the drop loop itself).
-    const _hbRes = await this._gpuBatch(SUBSTEPS, _hbParams, { noKick: true });
+    // ⭐ THE DONOR'S OWN TIER, NOT THE BROWSER FLOOR. The heartbeat used the
+    // conservative 8 even for native donors (own compute thread, socket drained
+    // during a batch, 24 per round trip by design), so the cards stepped a third
+    // of what they could carry while the walk taught. A browser donor still gets 8.
+    const _hbSub = substepsForDonor(this, this._gpuClient);
+    const _hbRes = await this._gpuBatch(_hbSub, _hbParams, { noKick: true });
     const _st = this._walkTickStats || (this._walkTickStats = { sent: 0, ok: 0, lastOkAt: null, lastMissAt: null });
     _st.sent++;
     if (_hbRes && _hbRes.perCluster) {
@@ -6277,7 +6282,7 @@ class ServerBrain {
           if (typeof this._crystalOnAck === 'function') this._crystalOnAck(name, entry, CLUSTER_SIZES[name] || 0);
           _ackSpikes += entry.lastSpikeCount;
           _ackSize += CLUSTER_SIZES[name] || 0;
-          const avgHb = (entry.spikeCountTotal || 0) / SUBSTEPS;
+          const avgHb = (entry.spikeCountTotal || 0) / _hbSub;
           this.clusters[name].firingRate = this.clusters[name].firingRate * 0.95 + avgHb * 0.05;
           if (typeof entry.meanVoltage === 'number') {
             const prevMv = this.clusters[name].meanVoltage ?? entry.meanVoltage;
@@ -6299,7 +6304,7 @@ class ServerBrain {
     } else {
       _st.lastMissAt = Date.now();
       this._walkTickMissedAt = Date.now();
-      console.warn(`[Brain] walk heartbeat step MISSED (non-cortex clusters, ${SUBSTEPS} substeps) — backing off ${(_hbGap * 8 / 1000).toFixed(0)}s. If these persist the donor genuinely cannot service its priority lane and the zombie-kick recovery applies.`);
+      console.warn(`[Brain] walk heartbeat step MISSED (non-cortex clusters, ${_hbSub} substeps) — backing off ${(_hbGap * 8 / 1000).toFixed(0)}s. If these persist the donor genuinely cannot service its priority lane and the zombie-kick recovery applies.`);
     }
   }
 

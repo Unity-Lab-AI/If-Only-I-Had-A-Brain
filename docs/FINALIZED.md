@@ -61109,6 +61109,23 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
     - No gate, bound or dedup was removed or weakened.
     - The one added mass is ORDERSPEECH: unique transitions × ~2.4 binds per corpus visit, about one LO-bucket rep. Against the measured ~7,831 unique K transitions at ~1 ms per card-carried bind, that is ~20 s per corpus visit, inside the walk's existing per-cell budget.
     - The consolidation gate still bounds the walk as before.
+  - ⚠ **NOT RUN.** `start.bat` stopped at its Y/N prompt, and Gee ruled it was not to run yet: *"dont fucking fresdh walk her until u are sure the full corpus is correct and it will 100% util 100% of the time"*. She resumed on Savestart (`7958d9de`), weights intact, backup in `.scratch/weights-keep/`.
+
+- [x] ✅ **CLOSED BUILT 2026-11-25.** **PODSHARE — the RTX PRO 6000 held only the cortex, and nothing steps the cortex during a walk.** Gee 2026-11-25, verbatim: *"pod zaat1& fix it!"* · *"w4ell make sure it works when we dont have a pod as well you fuck"*.
+  - **Evidence:**
+    - `PARTITION … RTX PRO 6000: [cortex] (7657/70890 MB) · 4070 Ti SUPER: [cerebellum, hippocampus, am…]`;
+    - pod `0–2%` across every sample this session;
+    - teaching made thousands of microsecond Hebbian ops, while the one large continuous job (stepping ~200M neurons, ~362 ms per batch) ran entirely on the 4070.
+  - **Two causes:**
+    - Non-cortex placement was best-fit, i.e. least room that still holds the cluster, so every cluster went to the small card.
+    - The walk heartbeat stepped at the browser floor of 8 substeps even for native donors (24 by design).
+  - **Fix:**
+    - `gpu.js _partitionClustersAcrossPool`: non-cortex clusters go to the card left most evenly full relative to its capacity. The big card takes the big share and the small card still takes its share.
+    - `brain-server.js` walk heartbeat: steps at `substepsForDonor` (native 24, browser 8).
+  - **No pod:** with one card, proportional fill places everything on it, exactly as before, and a browser donor still gets 8.
+  - **RE-PRICE:** stepping work per heartbeat ×3 on native donors. No teaching dose changed, no gate touched.
+  - **Takes effect:** on the next boot (placement is decided at registration).
+  - **Verified:** `node --check`.
   - **Verified:** ESM import. The piece is shown, the verdict is kept and logged as "doubts … Shown anyway", and the subject still goes to practice.
 
 
