@@ -170,10 +170,27 @@ function _quotesOf(story) {
     // Her name and her "I" capitalised exactly as every other reader does, and
     // every sentence inside the line opens on a capital.
     const cased = properCaseStory(q).replace(/([.!?]\s+)([a-z])/g, (_, p, c) => p + c.toUpperCase());
-    out.push(cased);
+    // ⭐ WHO IS TALKING. In her own life stories the narration names the
+    // speaker: `i said, "..."` / `"...", i said` is HER line; anyone else's verb
+    // ("mom said", "she asked") is someone else's. Book dialogue has no "i"
+    // speaker, so every line there reads as someone else's.
+    const _verbs = '(said|says|asked|asks|cried|answered|replied|shouted|whispered|called|told|yelled|screamed|snapped|muttered)';
+    const head = text.slice(Math.max(0, _start - 40), _start);
+    const tail = text.slice(m.index + 1, m.index + 30);
+    // The attribution BEFORE a quote wins ("she said, \"…\""); the narration
+    // after it belongs to the NEXT line unless this quote has none before it
+    // (`"…," i said.`). Self = the attributed subject is "i".
+    const _headAttr = new RegExp(`\\b([a-z]+)(?:\\s+[a-z]+)?\\s+${_verbs}\\b[^"“”]*$`, 'i').exec(head.split(/["“”]/).pop() || '');
+    const _tailAttr = _headAttr ? null : new RegExp(`^\\s*,?\\s*([a-z]+)(?:\\s+[a-z]+)?\\s+${_verbs}\\b`, 'i').exec(tail);
+    const _subj = ((_headAttr || _tailAttr || [])[1] || '').toLowerCase();
+    const self = _subj === 'i';
+    out.push({ text: cased, self });
   }
   return out;
 }
+// Turns are [what was said, the reply, { saidBySelf, replyBySelf }] — the third
+// element names who spoke each line, so conversation training can keep only the
+// exchanges where someone else talks and SHE answers.
 function dialogueTurns(domain, grade) {
   const data = loadStories(domain, grade);
   if (!data || !Array.isArray(data.experiences)) return [];
@@ -181,7 +198,9 @@ function dialogueTurns(domain, grade) {
   for (const exp of data.experiences) {
     if (!exp || typeof exp.story !== 'string') continue;
     const qs = _quotesOf(exp.story);
-    for (let i = 1; i < qs.length; i++) out.push([qs[i - 1], qs[i]]);
+    for (let i = 1; i < qs.length; i++) {
+      out.push([qs[i - 1].text, qs[i].text, { saidBySelf: qs[i - 1].self, replyBySelf: qs[i].self }]);
+    }
   }
   return out;
 }
