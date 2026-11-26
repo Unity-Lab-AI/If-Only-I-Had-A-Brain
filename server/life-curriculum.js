@@ -60,7 +60,9 @@ function loadStories(domain, grade) {
 // ⛔ SAFE, and checked before shipping: the trainer lowercases every sentence it
 // consumes (`_teachConcreteSentences` does `s.toLowerCase().split(...)`), so the
 // weights are byte-identical. Only what a human reads changes.
-const _CANON_NAMES_RE = /\b(unity|raven|goddess|lilith|marie|damien|cross|pearl|agnes|voss|walter|james)\b/g;
+// Her people: family + the canon friends and teacher. Pet names that are also
+// ordinary words (shadow, soot) are deliberately left out — "my shadow" is not her cat.
+const _CANON_NAMES_RE = /\b(unity|raven|goddess|lilith|marie|damien|cross|pearl|agnes|voss|walter|james|wren|theo|dunlap|vesper)\b/g;
 function properCaseStory(s) {
   let t = String(s || '');
   if (!t) return t;
