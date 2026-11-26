@@ -1973,6 +1973,19 @@ const SERVER_GPU_MIXIN = {
           if (ws !== prev && left >= cost && left >= prevCap * _ratio && _settled(ws) && !(_inCooldown && _rejoined(ws))) { _keepPrev = false; break; }
         }
       }
+      // ⛔ STICKINESS MAY NOT PIN A STEPPING CLUSTER TO A CARD 3× FULLER. A
+      // non-cortex move costs one gpu_init, not a matrix re-upload, and the 4070
+      // registering first kept all seven clusters there while a 70 GB card joined
+      // empty (measured: 4070 [cerebellum … brainstem] 3200/10233 MB, RTX PRO 6000
+      // [cortex] 3086/70890 MB, pod 0%). Keep the previous card only while its
+      // proportional fill is within 1.5× of the best card's.
+      if (_keepPrev && n !== 'cortex') {
+        const _fr = (ws) => { const cap = Math.max(1, this._donorCapacityMB(ws)); return (cap - remaining.get(ws) + cost) / cap; };
+        const prevFr = _fr(prev);
+        for (const ws of remaining.keys()) {
+          if (ws !== prev && remaining.get(ws) >= cost && prevFr > _fr(ws) * 1.5) { _keepPrev = false; break; }
+        }
+      }
       if (_keepPrev) { best = prev; bestLeft = remaining.get(prev); }
       else if (n === 'cortex') {
         // The atomic unit with the matrices goes to the card with the MOST
