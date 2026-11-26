@@ -29258,7 +29258,19 @@ export class Curriculum {
       if (gateResult.pass) return gateResult;
       const failedWords = gateResult.metrics?.talkFails || [];
       if (failedWords.length === 0) return { ...comprehResult, pass: false };
-      await this._teachVocabList(failedWords, ctx, { reps: reps * 3 });
+      // ⛔ RE-DRILL THE SENTENCE, NEVER ITS FIRST WORD ALONE. TALK fails list each
+      // missed sentence's FIRST word, and this re-taught those words bare — the
+      // teach view filled with "Usually,", "The", "During", "Several", raw case
+      // and punctuation, no context, up to 5 rounds per list. The sentences they
+      // open are re-taught instead, through the sentence lane (word order + the
+      // speech binds), so she learns the word where it lives.
+      const _fails = new Set(failedWords.map((w) => String(w).toLowerCase().replace(/[^a-z']/g, '')));
+      const _failedSentences = sentences.filter((s) => {
+        const f = String(s).trim().split(/\s+/)[0] || '';
+        return _fails.has(f.toLowerCase().replace(/[^a-z']/g, ''));
+      });
+      if (_failedSentences.length === 0) return { ...comprehResult, pass: false };
+      await this._teachConcreteSentences({ sentences: _failedSentences.map((s) => String(s).toLowerCase()), reps: reps * 3, label: `${(opts && opts.label) || 'SENTENCES'}-REDRILL`, subject: ctx && ctx.subject });
       await _microtask();
     }
     // WORDSALAD.2 — HER VERSION OF WHAT SHE JUST LEARNED. This is the chokepoint
