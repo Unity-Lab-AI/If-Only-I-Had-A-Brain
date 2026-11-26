@@ -61126,6 +61126,11 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
   - **RE-PRICE:** stepping work per heartbeat ×3 on native donors. No teaching dose changed, no gate touched.
   - **Takes effect:** on the next boot (placement is decided at registration).
   - **Verified:** `node --check`.
+  - **Follow-up STICKY (same day):** it did not take.
+    - Gee, verbatim: *"so wtf why we got 14 G on my card i thought the pod is the main thing currently"* · *"for the love of GOD! fix the pod buffer to be full so its 100% util im NOT saying it again unless u ignore me"*.
+    - The 4070 registered first and got all seven clusters. When the pod joined, stickiness kept each cluster on its previous card because it still fit (measured: 4070 [cerebellum … brainstem] 3200/10233 MB, RTX PRO 6000 [cortex] 3086/70890 MB).
+    - Fix: a non-cortex cluster keeps its previous card only while that card's proportional fill is within 1.5× of the best card's. A non-cortex move is one gpu_init, not a re-upload.
+    - The 60 s placement check moves them on a live boot.
   - **Verified:** ESM import. The piece is shown, the verdict is kept and logged as "doubts … Shown anyway", and the subject still goes to practice.
 
 
