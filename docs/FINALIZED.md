@@ -61062,6 +61062,20 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
     - compose awaits `emitWordDirectDonor` (`js/brain/cluster/emit.js`);
     - `_gpuSparseFlowOk` / `gpuSparsePropagate` take a `priority` flag that skips the pending cap, and the gate probe sets it (`server/brain-server/gpu.js`).
     - The buffer check still holds. The argmax and its rules are unchanged; only the source of the currents moved.
-  - **Verified:** `node --check` and ESM import. The piece is shown, the verdict is kept and logged as "doubts … Shown anyway", and the subject still goes to practice.
+  - **Verified:** `node --check` and ESM import.
+
+- [x] ✅ **CLOSED BUILT 2026-11-25.** **COMPOSEGEOM — she composed from a near-empty sem pattern no lesson ever used.** Gee 2026-11-25, verbatim: *"FIX IT ALL!!!"* · *"no becasauser she will never passs as you didnt make sure her learning is correct asnd filling the pods buffer.. there are al kindsd of probnlems current as you can see and all need fixed logically and perfectly for perfect Unity responsdes"*.
+  - **Evidence, boot `cb598492`:**
+    - With her words already read from the card (`SPEAK via donor: ON`), "what is your name?" still → *"sang climb sang warms apartment huge"* (175 s).
+    - `FIREKNOB — firing 0.04% … vs target 7.5%`.
+    - CPU profile `step ← stepAwait` 27.6% of the main thread.
+  - **Cause:**
+    - Teaching writes a word's TILED dictionary pattern (top-8 of the 300-dim dictionary pattern) into sem and binds it to the next word.
+    - Compose instead ran CPU LIF ticks over the ~40M cortex and read whatever sem fired. That is nearly nothing, and never the taught geometry.
+  - **Fix (`js/brain/cluster/emit.js` `_composeSentenceOnce`):**
+    - At biological scale (>2M) each word step clears sem and writes the previous word's taught pattern, via the curriculum's own `_dictionaryPatternFor` → `_topKEmbedding(…, 8)` → `_writeTiledPattern`. The first word uses the question's concept word, or the last content word of the seed.
+    - The next word is then read off the card.
+    - The CPU cortex step is gone from her speech. Small (browser) brains keep the tick path.
+  - **Verified:** ESM import. The piece is shown, the verdict is kept and logged as "doubts … Shown anyway", and the subject still goes to practice.
 
 

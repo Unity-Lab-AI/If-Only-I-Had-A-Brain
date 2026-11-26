@@ -1338,18 +1338,40 @@ export const CLUSTER_EMIT_MIXIN = {
       // same argmax every iteration. With them the brain processes the
       // injected intent + prior word context into a real spike pattern
       // word_motor can argmax against.
-      for (let t = 0; t < TICKS_PER_WORD; t++) {
-        if (checkAborted()) {
-          if (!this._composeStats) this._composeStats = { calls: 0, fills: 0, partial: 0, empty: 0 };
-          this._composeStats.aborted = (this._composeStats.aborted || 0) + 1;
-          return null;
+      // ⭐⭐ AT HER FULL SCALE, SPEAK IN THE GEOMETRY SHE WAS TAUGHT IN.
+      // Teaching writes a word's TILED dictionary pattern (top-8 dims) into sem
+      // and binds it to the next word. Compose used to run CPU neuron ticks and
+      // read whatever sem fired — measured 0.04% firing against a 7.5% target,
+      // a near-empty pattern no lesson ever used — so the card was asked about
+      // noise and answered with salad. Here the previous word's taught pattern
+      // (the question's concept word for the first) is written into sem exactly
+      // as the teach side writes it, and the next word is read off the card.
+      // ⚠ This also removes every CPU cortex step from her speech.
+      const _cur = this._brain && this._brain.curriculum;
+      const _taught = (this.size | 0) > 2_000_000 && _cur
+        && typeof _cur._dictionaryPatternFor === 'function' && typeof _cur._topKEmbedding === 'function'
+        && typeof _cur._writeTiledPattern === 'function';
+      const _seedWord = words.length > 0 ? words[words.length - 1]
+        : (opts.intentConcept || (typeof intentSeed === 'string'
+          ? (intentSeed.replace(/_/g, ' ').toLowerCase().match(/[a-z]+/g) || []).filter((t) => t.length > 2).pop() : null));
+      if (_taught && _seedWord) {
+        const semR = this.regions.sem;
+        this.lastSpikes.fill(0, semR.start, semR.end);
+        _cur._writeTiledPattern(semR, _cur._topKEmbedding(_cur._dictionaryPatternFor(_seedWord), 8), true, { noCpu: false });
+      } else {
+        for (let t = 0; t < TICKS_PER_WORD; t++) {
+          if (checkAborted()) {
+            if (!this._composeStats) this._composeStats = { calls: 0, fills: 0, partial: 0, empty: 0 };
+            this._composeStats.aborted = (this._composeStats.aborted || 0) + 1;
+            return null;
+          }
+          // stepAwait existence is asserted at the top of composeSentence
+          // (precondition). A throw here is a real failure (GPU pipeline
+          // error, memory pressure, etc) — propagate to caller so the
+          // emission failure has an attributable cause instead of silently
+          // degrading to a stale-state argmax loop.
+          await this.stepAwait(0.001);
         }
-        // stepAwait existence is asserted at the top of composeSentence
-        // (precondition). A throw here is a real failure (GPU pipeline
-        // error, memory pressure, etc) — propagate to caller so the
-        // emission failure has an attributable cause instead of silently
-        // degrading to a stale-state argmax loop.
-        await this.stepAwait(0.001);
       }
 
       const emitOpts = { skipRecentTrack: true };
