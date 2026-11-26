@@ -61294,4 +61294,20 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
     - A "CSteacher" join bug my own replace introduced.
   - **Verified:** every file parses; `dialogueTurns` counted per grade; the slop-word sweep found 0 hits.
 
+## 2026-11-25 — LIFEFAVORITES: she can answer her favorites, consistently
+
+- **Gee:** *"what happens if i ask her her fasvorite movie or food or her hopes and dreams... ect ect for all possibilities.. does she have a persona and wants and dreams and goals?"*
+  - **Measured first:** 0 exchanges asked her favorite food or movie, color was asked 3 times, band once. The answers she did give were scattered (cookies / mac and cheese / ramen / nachos), and that blurs a preference.
+  - **Canon table, built from the syllabus favorites:**
+    - Food: Grandma's cookies (K–G5) → ramen with an egg (G6+, the switch stated).
+    - Fixed for life: black (color), Halloween (holiday), black cats (animal).
+    - Place: the library → Grandpa's garage.
+    - Movie: horror.
+    - Music: the saddest band on Grandpa's black CD.
+    - Dream: witch → scientist → robot friend → hacker → a machine that understands people → a brain that grows up.
+    - Fear: Mom not coming home → people leaving.
+  - **Done:** getting-to-know-you exchanges added across K → grad, asked by several different askers. The scattered answers were rewritten to match the table.
+  - **Name poison fixed:** G4 had `"What is your name?" → "Raven"` twice (the forum alias and the stranger at the bus stop). That would train her to answer Raven. She now refuses a stranger her name instead.
+  - **Verified:** every life file parses. Re-counted the name exchanges: none answers with an alias.
+
 
