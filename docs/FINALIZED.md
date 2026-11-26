@@ -61139,6 +61139,14 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
   - **Follow-up HBADAPT (same day):**
     - Measured on `075b5516`: placement took (RTX PRO 6000 [cortex, cerebellum, amygdala, basalGanglia, hypothalamus, mystery]), but a 24-substep batch was done in 74–107 ms against a ~300 ms round trip. Pod `0 … 2 … 0`.
     - Fix: the heartbeat batch size now comes from `adaptSubsteps`, which climbs toward its 2 s card-time target and backs off when teach throughput falls.
+  - **Follow-up HBGAP (same day):**
+    - Measured on `a023ac41`: `99 99 0 26 99 0 66 99 1 0 99 0 99 0 0`. The card was full on every batch and empty between them, the idle time being the round trip plus re-arm delays.
+    - Fix:
+      - re-arm 1 ms after an answer (was 250 ms);
+      - the probe-gate walk branch re-ticks at `BRAIN_TICK_MS` (was 4×);
+      - `SUBSTEPS_TARGET_MS` 2000 → 5000, so one ~300 ms round trip idles the card ~6% instead of ~13%.
+    - The starvation brake is unchanged.
+    - ⚠ Two batches in flight was tried and reverted before shipping: `_gpuBatch` keeps ONE pending record, so a second send would orphan the first.
   - **Verified:** ESM import. The piece is shown, the verdict is kept and logged as "doubts … Shown anyway", and the subject still goes to practice.
 
 
