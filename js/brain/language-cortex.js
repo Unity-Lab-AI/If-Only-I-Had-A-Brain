@@ -1644,8 +1644,14 @@ export class LanguageCortex {
         // words get blocked so she can't reply to "what is your
         // favorite color?" with "what" / "is" / "favorite". Same
         // function-word stoplist the K-STUDENT vocab filter uses.
-        const _liveExclude = _buildLiveChatExclude(cluster._lastUserInputText);
-        cluster._lastUserInputText = null; // consume
+        // Only the reply to a person reads and consumes the person's words. The
+        // inner voice runs this same path, and when it consumed the field an
+        // inner thought landing mid-reply erased the question before the reply
+        // read it (live: "composeSentence chat path entered with
+        // cluster._lastUserInputText UNSET").
+        const _isChatReply = opts.lapLane === 'chat';
+        const _liveExclude = _isChatReply ? _buildLiveChatExclude(cluster._lastUserInputText) : _buildLiveChatExclude(null);
+        if (_isChatReply) cluster._lastUserInputText = null; // consume
         // iter14-C fix per operator 2026-05-04: "wtf? we need to fix
         // that then a kindergarden can make coherant sentences and
         // once K grade is completed wtf did u expect us to be working
@@ -2083,8 +2089,12 @@ export class LanguageCortex {
     // future Hebbian updates carve definitional co-activation. The
     // API call itself is sensory I/O, parallel to Pollinations.
     try {
+      // A question about HER ("what is your name") is never a dictionary request —
+      // the pattern below would capture "your" and define it. Second person
+      // asks the listener; those go to her trained answer, not the dictionary.
       if (cluster && typeof cluster.lookupDefinition === 'function'
-          && cluster._lastUserInputText) {
+          && cluster._lastUserInputText
+          && !/\b(?:you|your|yours|yourself)\b/i.test(String(cluster._lastUserInputText))) {
         const userText = String(cluster._lastUserInputText).toLowerCase().trim();
         // broadened WH-frame coverage. Multiple regex
         // patterns try in order, first match wins. Captures multi-word
