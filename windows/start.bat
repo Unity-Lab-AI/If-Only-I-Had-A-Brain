@@ -602,7 +602,11 @@ if exist "%UNITY_VOICE_V2_DIR%\serve.py" (
         REM garbage. `/D` above already sets the working directory to the
         REM model folder, so a bare filename needs no quoting and cannot
         REM break on a path with spaces. One level of quotes, always.
-        start "unity-voice-v2 (leave running)" /min /D "%UNITY_VOICE_V2_DIR%" cmd /c "python serve.py --port %UNITY_VOICE_PORT% >> voice-v2.log 2>&1"
+        REM Her voice runs on the CPU: the model is 109 MB and speaks a sentence
+        REM in ~1.4 s there, while on the card its CUDA context held 5.6 GB, and
+        REM the operator's card must stay empty while a pod is rented and hold the
+        REM whole brain after the handoff. -1 hides every GPU (an empty value does not).
+        start "unity-voice-v2 (leave running)" /min /D "%UNITY_VOICE_V2_DIR%" cmd /c "set CUDA_VISIBLE_DEVICES=-1&& python serve.py --port %UNITY_VOICE_PORT% >> voice-v2.log 2>&1"
     ) else (
         echo   [voice] unity-voice-v2 already listening on %UNITY_VOICE_PORT% - left alone.
     )
