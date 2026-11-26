@@ -293,7 +293,108 @@ const SERVER_CHAT_MIXIN = {
     return false;
   },
 
-  async processAndRespond(text, userId) {
+  // ⭐ ONE CONVERSATION TURN AT A TIME. What she LEARNS from anyone is hers to
+  // use with everyone; what is LIVE in the moment belongs to the person in
+  // front of her. The per-turn state (`_lastUserInputText`, the question flag,
+  // the speaker band, the injected words) is one copy on one brain, so two
+  // people's turns running at once crossed it: one person's words could steer
+  // the reply another person got. Turns now queue; each runs whole.
+  processAndRespond(text, userId, opts) {
+    const run = () => this._processAndRespondOne(text, userId, opts);
+    const p = (this._chatTurnTail || Promise.resolve()).then(run, run);
+    this._chatTurnTail = p.catch(() => {});
+    return p;
+  },
+
+  // Entering someone's conversation: when the speaker changes, the previous
+  // person's live input is cleared from her language state and THIS person's
+  // own recent exchange is brought back, so she continues the conversation
+  // with them — never someone else's moment.
+  _enterConversation(userId) {
+    if (this._convActiveUser === userId) return;
+    const cl = this.cortexCluster;
+    const cur = this.curriculum;
+    try {
+      if (cl) { cl._lastUserInputText = null; cl._lastUserInputEmbedding = null; }
+      this._questionPending = false;
+      if (cl && cl.regions && cl.regions.sem && cl.externalCurrent) {
+        const r = cl.regions.sem;
+        cl.externalCurrent.fill(0, r.start, r.end);
+      }
+      if (cur && typeof cur._clearSpikes === 'function') cur._clearSpikes(['sem', 'fineType']);
+      const mine = (this._conversations && this._conversations[userId]) || [];
+      const recent = mine.slice(-4);
+      const _se = this.sharedEmbeddings;
+      if (cl && typeof cl.injectEmbeddingToRegion === 'function' && _se
+          && typeof _se.getSentenceEmbedding === 'function') {
+        for (let i = 0; i < recent.length; i++) {
+          const emb = _se.getSentenceEmbedding(String(recent[i].text || ''));
+          // Older lines fainter; the newest of their exchange strongest.
+          if (emb && emb.length) cl.injectEmbeddingToRegion('sem', emb, 0.08 * Math.pow(0.7, recent.length - 1 - i));
+        }
+      }
+      this._convSwitches = (this._convSwitches | 0) + 1;
+    } catch (e) {
+      if (!this._convSwitchWarned) { this._convSwitchWarned = true; console.warn(`[Chat] conversation switch: ${e && e.message}`); }
+    }
+    this._convActiveUser = userId;
+  },
+
+  // The people she talks to: userId → { name }, from what each person told her
+  // about themselves. Persisted (server/people.json, experience data —
+  // gitignored and deploy-excluded like her other memories).
+  _peoplePath() { return require('path').join(__dirname, '..', 'people.json'); },
+  _people() {
+    if (this._peopleMap) return this._peopleMap;
+    this._peopleMap = new Map();
+    try {
+      const raw = JSON.parse(require('fs').readFileSync(this._peoplePath(), 'utf8'));
+      for (const [k, v] of Object.entries(raw || {})) this._peopleMap.set(k, v);
+    } catch { /* first person she has met */ }
+    return this._peopleMap;
+  },
+  _personTurn(userId, text) {
+    if (userId == null) return;
+    const id = String(userId);
+    const people = this._people();
+    const raw = String(text || '');
+    // A name, from the person's own introduction: "my name is X", "call me X",
+    // or "i'm X" / "i am X" only when X is written capitalized (so "i'm tired"
+    // is never a name).
+    let m = /\b(?:my name is|my name's|call me)\s+([A-Za-z][A-Za-z'-]{1,23})\b/i.exec(raw)
+      || /\b[Ii](?:'m|’m| am)\s+([A-Z][a-z'-]{1,23})\b/.exec(raw);
+    // A word WordNet knows ONLY as a non-noun ("tired", "happy") is a state,
+    // not a name — even capitalized.
+    if (m) {
+      try {
+        const T = require('../drawable-taxonomy.js');
+        if (typeof T.knownOnlyNonNoun === 'function' && T.knownOnlyNonNoun(m[1].toLowerCase())) m = null;
+      } catch { /* no taxonomy → trust the introduction */ }
+    }
+    if (m) {
+      const name = m[1].toLowerCase();
+      const prev = people.get(id);
+      if (!prev || prev.name !== name) {
+        people.set(id, { ...(prev || {}), name, since: (prev && prev.since) || Date.now() });
+        try { require('fs').writeFileSync(this._peoplePath(), JSON.stringify(Object.fromEntries(people), null, 2)); } catch { /* memory stays in RAM */ }
+      }
+    }
+    const who = people.get(id);
+    const cur = this.curriculum, cl = this.cortexCluster;
+    if (!who || !who.name || !cur || !cl || !cl.regions || !cl.regions.fineType) return;
+    try {
+      const C = cur.constructor;
+      if (Number.isInteger(C.SPEAKER_WHO_BAND)) cur._writeRelationTag(cl, cl.regions.fineType, C.SPEAKER_WHO_BAND, true);
+      if (typeof cur._dictionaryPatternFor === 'function' && typeof cl.injectEmbeddingToRegion === 'function') {
+        const p = cur._dictionaryPatternFor(who.name);
+        if (p && p.length) cl.injectEmbeddingToRegion('sem', p, 0.2);
+      }
+      this._whoNow = who.name;
+    } catch { /* a reply never fails on who */ }
+  },
+
+  async _processAndRespondOne(text, userId, opts) {
+    this._enterConversation(userId);
     const _rpT0 = Date.now();
     this._chatLaps = [];
     this._chatStageT0 = _rpT0;
@@ -345,6 +446,10 @@ const SERVER_CHAT_MIXIN = {
     // band lights with their words, exactly as it did while she learned to
     // listen (CONV-HEARD trains with the same band).
     this._speakerState('other');
+    // WHO — this person, not "someone": the name they gave her (learned from
+    // their own words, kept for them alone) rides band 46 with their words,
+    // the state CONV-WHO bound to how she answers a particular person.
+    this._personTurn(userId, text);
 
     // 114.19fj.1 — CRITICAL — set `_lastUserInputText` on the language
     // cortex so the chat-side composeSentence path can read it.

@@ -154,6 +154,49 @@ function storyExperiences(domain, grade) {
 // read, most of them narration fragments. Quote marks are now walked pairwise
 // across the whole story (open, close, open, close …), so a quote can never
 // straddle two lines, and every consecutive pair of spoken lines is a turn.
+let _taxo = null;
+function _isPersonWord(w) {
+  if (!_taxo) { try { _taxo = require('./drawable-taxonomy.js'); } catch { _taxo = false; } }
+  if (!_taxo) return false;
+  const lex = _taxo.primaryLex(w);
+  if (lex === 18) return true;                       // noun.person
+  // Never a who: a time word ("then", noun.time 28) or a quantity ("one",
+  // noun.quantity 23) — and no two-letter word ("me") is a name.
+  if (lex === 28 || lex === 23 || String(w).length < 3) return false;
+  // A name: no noun sense at all, the corpus uses it as a speaker, AND people
+  // call it out — a vocative inside quoted speech ("hi, theo", "wren, come
+  // on"). Pronouns and conjunctions also lack a noun sense and also precede
+  // "said", but nobody is ever addressed as "she" or "and".
+  // ⚠ Any WordNet category: a name can also be a common noun (her friend
+  // "wren" is filed as a bird). The vocative is the evidence that decides.
+  return (_speakerCounts.get(w) || 0) >= 2 && (_vocativeCounts.get(w) || 0) >= 1;
+}
+const _vocativeCounts = new Map();
+// How often each word stands as a speech-verb subject across her life files —
+// the evidence that an unknown word is someone's name.
+const _speakerCounts = new Map();
+(function _countSpeakers() {
+  try {
+    const dir = path.join(CORPORA, 'life');
+    for (const f of fs.readdirSync(dir)) {
+      if (!f.endsWith('.json')) continue;
+      const j = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
+      for (const e of (j.experiences || [])) {
+        const s = String(e.story || '').toLowerCase();
+        for (const m of s.matchAll(/\b([a-z]+)\s+(?:said|asked|answered|replied|whispered|yelled|called|told)\b/g)) {
+          _speakerCounts.set(m[1], (_speakerCounts.get(m[1]) || 0) + 1);
+        }
+        // Vocatives: the word a quote ends on after a comma ("hi, theo." /
+        // "come on, wren!") — the address form. (The quote-opening form also
+        // catches "me, too", so it is not counted.)
+        for (const q of s.matchAll(/"([^"]{2,240})"/g)) {
+          const mm = /,\s*(?:[a-z]+\s+)?([a-z]+)\s*[.!?,]?\s*$/.exec(q[1]);
+          if (mm) _vocativeCounts.set(mm[1], (_vocativeCounts.get(mm[1]) || 0) + 1);
+        }
+      }
+    }
+  } catch { /* no life corpus → only WordNet persons count */ }
+})();
 function _quotesOf(story) {
   const text = String(story || '');
   const out = [];
@@ -195,8 +238,20 @@ function _quotesOf(story) {
     const _headAttr = new RegExp(`\\b([a-z]+)(?:\\s+[a-z]+)?\\s+${_verbs}\\b[^"“”.!?]*$`, 'i').exec(head.split(/["“”]/).pop() || '');
     const _tailAttr = _headAttr ? null : new RegExp(`^\\s*,?\\s*([a-z]+)(?:\\s+[a-z]+)?\\s+${_verbs}\\b`, 'i').exec(tail);
     const _subj = ((_headAttr || _tailAttr || [])[1] || '').toLowerCase();
+    // The speaker is the phrase's LAST word ("the teacher said" → teacher,
+    // "my mom said" → mom); the capture above is its first.
+    const _attrM = _headAttr || _tailAttr;
+    const _phrase = _attrM ? String(_attrM[0]).toLowerCase().replace(new RegExp(`\\s+${_verbs}\\b[\\s\\S]*$`), '').replace(/^[\s,]+/, '').trim().split(/\s+/) : [];
+    const _who = _phrase.length ? _phrase[_phrase.length - 1] : '';
     const self = _subj === 'i';
-    out.push({ text: cased, self });
+    // WHO, not just "someone else": the attributed speaker's own word ("mom",
+    // "wren", "teacher") when it is a person word, so her conversation
+    // training knows which individual spoke the line. Pronouns carry no who.
+    // A person, judged by WordNet (noun.person), or a word WordNet has no
+    // noun for that this corpus keeps using as a speaker (a name). Pronouns
+    // and glue carry no who.
+    const speaker = (!self && _who && _isPersonWord(_who)) ? _who : null;
+    out.push({ text: cased, self, speaker });
   }
   return out;
 }
@@ -211,7 +266,7 @@ function dialogueTurns(domain, grade) {
     if (!exp || typeof exp.story !== 'string') continue;
     const qs = _quotesOf(exp.story);
     for (let i = 1; i < qs.length; i++) {
-      out.push([qs[i - 1].text, qs[i].text, { saidBySelf: qs[i - 1].self, replyBySelf: qs[i].self }]);
+      out.push([qs[i - 1].text, qs[i].text, { saidBySelf: qs[i - 1].self, replyBySelf: qs[i].self, saidBy: qs[i - 1].speaker || null }]);
     }
   }
   return out;

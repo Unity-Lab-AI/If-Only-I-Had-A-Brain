@@ -2974,6 +2974,9 @@ export class Curriculum {
   //      so what comes back binds to what she wanted to know.
   static QUESTION_ASKED_BAND = 43;
   static QUESTION_SELF_BAND = 44;
+  // 46 — WHO she is talking to: the individual speaking, bound to how she
+  // answers them (CONV-WHO in teaching; the person in front of her in chat).
+  static SPEAKER_WHO_BAND = 46;
 
   /**
    * T18.25 — REMOVED forced gc() from T18.24's between-phase memory
@@ -19732,11 +19735,17 @@ export class Curriculum {
     const _words = (x) => String(x).toLowerCase().replace(/[^a-z'\s-]+/g, ' ').split(/\s+/).filter(Boolean);
     const _asks = (x) => /\?\s*["')\]]*\s*$/.test(String(x || ''));
     let _prevSheAsked = false;
-    for (const [line, reply] of turns) {
+    // WHO SHE IS TALKING TO — the individual who spoke the line, bound to how
+    // she answers them (band 46). Her life names its speakers (mom, wren, the
+    // teacher), and she answers each in her own way; chat lights the same
+    // band with the person in front of her.
+    const whoPairs = [];
+    for (const [line, reply, meta] of turns) {
       const a = _addressHer(line);
       if (a !== line) _named++;
       const hw = _words(a), rw = _words(reply);
       if (hw.length < 2 || rw.length < 2) { _prevSheAsked = false; continue; }
+      if (meta && meta.saidBy && meta.replyBySelf) whoPairs.push([meta.saidBy, rw[0]]);
       const askedHer = _asks(a);
       const sheAsks = _asks(reply);
       // The heard line: a question to her, the answer to her own last question, or plain.
@@ -19768,6 +19777,7 @@ export class Curriculum {
       if (turnPairs.length) await this._teachAssociationPairs(turnPairs, { reps, label: `CONV-TURN-${subject}-${grade}`, relationTagId: 40 });
       // "asked → I answer" has its own turn band, so being asked is what starts an answer.
       if (turnQ.length) await this._teachAssociationPairs(turnQ, { reps, label: `CONV-QTURN-${subject}-${grade}`, relationTagId: 45 });
+      if (whoPairs.length) await this._teachAssociationPairs(whoPairs, { reps, label: `CONV-WHO-${subject}-${grade}`, relationTagId: Curriculum.SPEAKER_WHO_BAND });
     }
     this.stats.conversationExchanges = (this.stats.conversationExchanges | 0) + total;
     this.stats.conversationQuestions = (this.stats.conversationQuestions | 0) + heardQ.length + saidQ.length;
