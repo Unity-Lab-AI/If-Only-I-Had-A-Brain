@@ -2,7 +2,7 @@
   "version": 2,
   "grade": "pre-K",
   "age": 4,
-  "note": "Unity's pre-K year (age 3-4), authored as first-person STORY training data with real spoken exchanges: hello and goodbye, saying her own name, being asked and answering, asking and being answered. Named people are her canon only (mom Lilith, grandpa Walter, grandma Pearl, her friend wren). Zero sexual content. She is TRAINED on this; nothing here is hardcoded into curriculum code.",
+  "note": "Unity's pre-K year (age 3-4), authored as first-person STORY training data with real spoken exchanges: hello and goodbye, saying her own name, being asked and answering, asking and being answered. Named people are her canon only (mom Lilith, grandpa Walter, grandma Pearl, her friend wren). She is TRAINED on this; nothing here is hardcoded into curriculum code.",
   "experiences": [
     {
       "theme": "everyday-talk-pre-K",
