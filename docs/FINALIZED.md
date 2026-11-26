@@ -61234,6 +61234,15 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
     - **The whole brain still fits the 4070 alone.** This session's failover placed all of her there at `9897/10233 MB`, and the neuron count is unchanged (boot-derived, ~200M).
     - **The 13.4 GB was a stale cortex copy.** On the failover the cortex was uploaded to the 4070. The pod then rejoined via OWNER REJOIN and took ownership back, and that path never calls `_freeOldCortexWhenLanded`.
     - **Fix (`brain-server.js`, 60 s placement check):** any live card that is not the cortex owner and still holds cortex matrices (`heldMatrices`) is sent `free_matrices` for them, sparing a held intra slice.
+
+- [x] ✅ **CLOSED BUILT 2026-11-25.** **LOWBAL — her weights come home before the pod's money runs out.** Gee 2026-11-25, verbatim: *"and it needs safe load back on my GPu when the pod runs out of money"* · *"liek befoire it does when 1$ is left"*.
+  - **Fix (`brain-server.js`, 5-min timer):**
+    - With a Runpod key saved and one of the brain's donor pods RUNNING, it reads the balance.
+    - At or below `max($1, 30 min of the running pods' spend)`, it acts ONCE: pulls her trained weights off the card (`refreshCheckpointFromDonor('runpod low balance', {force})`), then terminates the pod through the same `stopDonor` path the dashboard Stop uses.
+    - The pod's socket closes and the existing failover places her on the local card (seen working today: `moved: cortex → 4070 … 9897/10233 MB`).
+    - `DREAM_RUNPOD_LOW_BALANCE` sets the floor; 0 disables.
+  - **Live when shipped:** balance $3.20, burn $2.69/h, so it triggers at $1.35.
+  - **Verified:** `node --check`; `runpod-control.status()` read live.
   - **Verified:** ESM import.
   - **Verified:** `node --check`, ESM import.
   - **Verified:** ESM import. The piece is shown, the verdict is kept and logged as "doubts … Shown anyway", and the subject still goes to practice.

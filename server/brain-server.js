@@ -11271,6 +11271,40 @@ setInterval(() => {
   });
 }, READBACK_TICK_MS);
 
+// ⭐ LOW-BALANCE HANDOFF — her weights come home BEFORE the pod's money runs out.
+// Gee 2026-11-25: "it needs safe load back on my GPu when the pod runs out of
+// money" · "liek befoire it does when 1$ is left". Every 5 min: if a Runpod key is
+// saved and one of OUR donor pods is running, read the balance. At or below the
+// threshold — $1, or 30 minutes of the running pods' spend if that is larger, so
+// the pull has time to finish — ONCE: pull her trained weights off the card
+// (`refreshCheckpointFromDonor`, forced), then terminate the pod through the
+// same `stopDonor` path the dashboard's Stop uses. The pod's socket closes and the
+// existing failover places her on the local card. DREAM_RUNPOD_LOW_BALANCE sets
+// the dollar floor; 0 disables.
+const _LOW_BAL = (() => { const v = Number(process.env.DREAM_RUNPOD_LOW_BALANCE); return Number.isFinite(v) && v >= 0 ? v : 1; })();
+setInterval(async () => {
+  if (!(_LOW_BAL > 0) || brain._lowBalanceHandoff) return;
+  let rp;
+  try { rp = require('./runpod-control.js'); } catch { return; }
+  if (!rp.hasKey()) return;
+  try {
+    const st = await rp.status();
+    const live = (st.pods || []).filter((p) => p.status === 'RUNNING');
+    if (!live.length || typeof st.balance !== 'number') return;
+    const burn = live.reduce((s, p) => s + (Number(p.costPerHr) || 0), 0);
+    const floor = Math.max(_LOW_BAL, burn * 0.5);
+    if (st.balance > floor) return;
+    brain._lowBalanceHandoff = { at: Date.now(), balance: st.balance, floor };
+    console.warn(`[Runpod] ⛔ LOW BALANCE $${st.balance.toFixed(2)} ≤ $${floor.toFixed(2)} (burn $${burn.toFixed(2)}/h) — pulling her weights off the pod, then stopping it; she continues on the local card.`);
+    for (const p of live) {
+      await rp.stopDonor(p.id, async () => { await brain.refreshCheckpointFromDonor('runpod low balance', { force: true }); });
+    }
+  } catch (e) {
+    console.warn('[Runpod] low-balance check failed (retries in 5 min):', (e && e.message) || e);
+    brain._lowBalanceHandoff = null;
+  }
+}, 5 * 60 * 1000).unref?.();
+
 // Loopback gate for privileged HTTP endpoints (/shutdown, /grade-advance,
 // /grade-signoff). Defense-in-depth on top of the BIND_HOST=127.0.0.1
 // default — even when the operator opts in to BRAIN_BIND=0.0.0.0 to
