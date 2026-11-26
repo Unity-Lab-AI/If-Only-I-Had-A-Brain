@@ -11037,17 +11037,36 @@ setInterval(() => {
     // live non-owner that still holds cortex matrices is told to free them.
     if (_cc && _cc._gpuProxyReady && brain._gpuClient && brain.clients) {
       const _names = Object.keys(brain._cortexMatrixMB || {});
+      // ⭐ EVERY CLUSTER, NOT ONLY THE CORTEX. A partition move sends `gpu_init`
+      // to the NEW owner and nothing to the OLD one, so a card that held
+      // clusters before a bigger card took them keeps every buffer. Measured on
+      // a fresh walk: the operator's donor registered first and got her
+      // clusters, the pod registered and took all 8, and his card sat at
+      // 11.9 GB at 1% util after the upload with 0 `STALE … freed` lines —
+      // this check only ever looked at cortex names.
+      const _owner = brain._clusterOwner instanceof Map ? brain._clusterOwner : null;
+      const _clusterOf = (n) => {
+        if (!_owner) return null;
+        for (const cl of _owner.keys()) if (n === cl || n.startsWith(cl + '_')) return cl;
+        return null;
+      };
       for (const [ws, c] of brain.clients) {
-        if (!c || !c.isGPU || ws === brain._gpuClient || ws.readyState !== 1) continue;
+        if (!c || !c.isGPU || ws.readyState !== 1) continue;
         if (!(c.heldMatrices instanceof Set) || c.heldMatrices.size === 0) continue;
         const holdsSlice = typeof brain._intraSliceActive === 'function' && brain._intraSliceActive()
           && Array.isArray(brain._intraSlices) && brain._intraSlices.some((s) => s.ws === ws);
-        const stale = _names.filter((n) => c.heldMatrices.has(n) && !(holdsSlice && n === brain._SLICE_NAME));
+        const stale = [];
+        for (const n of c.heldMatrices) {
+          if (holdsSlice && n === brain._SLICE_NAME) continue;
+          const cl = _clusterOf(n);
+          if (cl) { if (_owner.get(cl) !== ws) stale.push(n); }
+          else if (ws !== brain._gpuClient && _names.includes(n)) stale.push(n);   // the original cortex rule
+        }
         if (!stale.length) continue;
         try {
           ws.send(JSON.stringify({ type: 'free_matrices', names: stale }));
           for (const n of stale) c.heldMatrices.delete(n);
-          console.log(`[Pool] STALE CORTEX COPY freed on ${c.gpuName || c.id} — ${stale.length} matrices it no longer owns (left behind by a failover).`);
+          console.log(`[Pool] STALE COPY freed on ${c.gpuName || c.id} — ${stale.length} matrices for clusters it no longer owns.`);
         } catch { /* card gone — its VRAM went with it */ }
       }
     }

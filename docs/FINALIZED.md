@@ -61399,4 +61399,15 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
   - **During the test:** the existing SPEAKLOOP pre-gate drill and the gate retry still correct wrong answers. Unchanged.
   - **Verified:** ESM import.
 
+## 2026-11-25 — STALEALL: a card is told to free every cluster it no longer owns
+
+- **Gee:** *"we cant have 12 random gigs loading up, FIX IT I SAID FIX IT"* · *"she is teraching and my card still holding 12 gigs"*
+  - **Measured on the fresh walk, boot `b9a3832e`:** Gee's 4070 Ti sat at 11,865 MiB at 1% util (baseline ~5 GB) after the cortex upload landed and the 60 s check had run several times. There were 0 `STALE … freed` lines.
+  - **Cause:**
+    - At boot his donor registered first and got her clusters. The pod registered and took all 8.
+    - `_applyPoolPartition` sends `gpu_init` to the NEW owner and nothing to the OLD one.
+    - The placement check's stale-copy rule only looked at CORTEX matrix names.
+  - **Fix:** the placement check frees, on ANY card, every held matrix whose cluster (matched by name prefix against `_clusterOwner`) that card does not own. It still keeps a slice the card holds, and the original cortex rule stays. The donor already handles `free_matrices` by name, so no donor build is needed.
+  - **Verified:** `node --check`. The live drop on Gee's card is checked after the press.
+
 
