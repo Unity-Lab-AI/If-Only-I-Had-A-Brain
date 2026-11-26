@@ -2696,8 +2696,12 @@ function adaptSubsteps(brain, ws, floorValue) {
     brain._adaptBrakeOffUntil = (brain._adaptSamples || 0) + 10;
     why = `the last shrink did not bring teach back (${teachRate.toFixed(1)}/s vs ${brain._adaptBrakeProbe.rate.toFixed(1)}/s before it) — the batch was not the cause, restoring ${next} and holding the brake off 10 windows`;
     brain._adaptBrakeProbe = null;
+  // ⛔ No batch-length condition any more: measured 2026-11-25 at 271 substeps /
+  // 1.4 s batches, teach fell 259.8/s → 14.5/s while the pod read ~93% — lessons
+  // queued behind the stepping, and the old `batchMs > target/2` test kept the
+  // brake silent. The proof step above now stops a phase dip from walking the
+  // card down, so the brake may act on any real teach loss.
   } else if (best > 0 && teachRate > 0 && teachRate < best * 0.7
-             && batchMs > SUBSTEPS_TARGET_MS * 0.5
              && !((brain._adaptSamples || 0) < (brain._adaptBrakeOffUntil || 0))) {
     next = Math.max(floorValue, Math.floor(prev * 0.7));
     brain._adaptCooldown = 2;
