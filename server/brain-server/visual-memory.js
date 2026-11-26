@@ -87,7 +87,7 @@ const path = require('path');
 // "no", "equals") came back as plates and rings seen from above. The tail is
 // fixed; the looks learned on it are left behind the same way as every bump —
 // imagery cleared, weights and training untouched.
-const VM_DB = path.join(__dirname, '..', 'visual-memory-v16.db');   // v15 → v16 2026-11-24: fresh eyes on the SDXL renderer (every look from the old SD1.5 model dropped)
+const VM_DB = path.join(__dirname, '..', 'visual-memory-v17.db');   // v16 → v17 2026-11-25: fresh eyes — the v16 store held looks of non-words and typos ("alquife") banked before the real-word gate. v15 → v16 2026-11-24: fresh eyes on the SDXL renderer (every look from the old SD1.5 model dropped)
 // NOLIMIT (ruled 2026-08-20: the equations behind her mind's-eye imagery are
 // not to be limited). 384 concepts was a small number for a mind that will walk K→PhD
 // and see everything on the way — she would start FORGETTING what things look like

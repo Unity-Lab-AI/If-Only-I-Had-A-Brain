@@ -61163,6 +61163,16 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
     - The sentence teacher's focus loop then ran `_teachVocabList(failedWords, …, reps*3)`: bare words with raw capitals and commas ("Usually,", "The", "During"), no sentence, up to 5 rounds per list.
   - **Fix (`curriculum.js`, the sentence teacher's focus loop):** each failed first word is mapped back to the sentence it opens, and those sentences are re-taught through `_teachConcreteSentences` (word order + ORDERSPEECH binds) at the same `reps*3`.
   - **Left alone, by design:** the concept-name focus loop still re-drills concept names, which are words.
+
+- [x] ✅ **CLOSED BUILT 2026-11-25.** **FRESHEYES17 — her image memory cleared, old files deleted.** Gee 2026-11-25, verbatim: *"and im looking at the images she is making and i dont think u cleared the memeory images to start freash like i told u last time i did"* · *"dont leave shit orphaned thats the stupidist thing uve said today, delete themn"*.
+  - **Version bumps:**
+    - visual store `visual-memory-v16.db` → `-v17.db` (`visual-memory.js` `VM_DB`);
+    - imagined-field ring `mindspace-memory-v9.json` → `-v10.json` (`brain-server.js`, 5 sites).
+  - **Old files deleted** once the new boot was up:
+    - `visual-memory-v16.db` (6.8 GB) + `-wal` + `-shm`;
+    - `mindspace-memory-v9.json`.
+  - **Also fixed:** the disk readout in `state.js` summed `visual-memory-v8.db` (dead for months), so it reported ~0 MB for a 6.8 GB store. It reads the live v17 name now.
+  - **Unchanged:** the FRESHEYES fresh-walk wipe already matches every version by pattern.
   - **Verified:** ESM import.
   - **Verified:** `node --check`, ESM import.
   - **Verified:** ESM import. The piece is shown, the verdict is kept and logged as "doubts … Shown anyway", and the subject still goes to practice.
