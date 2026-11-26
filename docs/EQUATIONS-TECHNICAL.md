@@ -1193,6 +1193,16 @@ The shader branches on sign of `lr`: positive runs Oja (`w' = w·(1−η) + η·
 
 Push-pull training is also active in `_teachQABinding`: for every correct Q→A pair trained, the method samples a wrong answer from a different pair in the batch and fires anti-Hebbian on the (same-question, wrong-answer) combination at `1.5 · lr`. Plus every Q-A pair trains BOTH the natural-sentence format and a compressed `${keyWord}:` direct-prompt alt format, with the key word (`_extractKeyWord`) tiled into sem's second half alongside the full-sentence embedding in the first half — lightweight Bahdanau-2014 attention without a scoring network. After the rep loop, `_teachQABinding` runs `SparseMatrix.pruneTopKPerRow(200)` on `sem_to_motor` and `motor_to_sem` so the saturated post-Q-A weights collapse to each output neuron's 200 most-trained inputs instead of full density.
 
+**The sentence code carries order** (`Embeddings.getSentenceEmbedding`). For words `w_1…w_n` with vectors `v_p`:
+
+```
+s = normalize( Σ_p v_p  +  0.5 · Σ_p roll(v_p, (p·37) mod 300) )
+```
+
+The first sum is what the words mean; the second puts each word on a direction fixed by its position (37 is coprime with 300, so no two slots share a rotation). "is your name unity" and "your name is unity" are now different codes (cosine 0.944, was 1.0), and any question in any word order composes its own code — there is no closed set of question types to fall outside. "i" and "a" count as words.
+
+**Next word from the sentence so far** (ORDER-TO-SPEECH ↔ `_composeSentenceOnce`). Teaching binds `sem = [top8(code(w_i)) | s(w_1…w_i)] → word_motor(w_{i+1})` once per unique (prefix, next word), 2–4 reps by frequency; at full scale compose writes the same two halves before each word. The old write was the last word alone, a bigram chain, which let anything that ever followed a word come next.
+
 **Question-template conditioning** (`_classifyQuestionTemplate` + `_writeQuestionTemplateTag`):
 
 ```
@@ -1205,12 +1215,14 @@ templateId = classifyQuestionTemplate(question)  // 0-6, or -1 no-match
 // 5: spell / starts with
 // 6: generic question
 
-// Write one-hot template slot into upper 25% of fineType during teach:
-templateZoneStart = fineType.start + floor(fineSize · 0.75)
-slotSize = floor((fineType.end - templateZoneStart) / 7)
-slot[templateId] = { start: templateZoneStart + templateId·slotSize, end: ... }
-lastSpikes[slot[templateId]] := 1
+// The template is a relation band on fineType (56 bands; the old
+// separate top-25% zone overlapped bands 36–47 and is gone):
+band = 48 + templateId          // 48–54
+teach:  _writeRelationTag(fineType, band)   → lastSpikes (and the card)
+probe:  _injectRelationBand(band, strength) → externalCurrent
 ```
+
+The seven templates are a coarse cue only. What a question means comes from its own ordered sentence code above, so a question that fits no template still has its own answer state.
 
 At probe time `_injectQuestionTemplateTag` injects the same slot via `externalCurrent` so the Rulkov dynamics pick it up on the next tick. Template tag is ORTHOGONAL to the key word — two questions sharing a template ("what letter comes after a?" vs "what letter comes after b?") produce identical template tags but different key-word sem patterns, so sem→motor weights learn to route by (template × key-word) combination.
 

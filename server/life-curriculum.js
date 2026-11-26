@@ -189,7 +189,10 @@ function _quotesOf(story) {
     // The attribution BEFORE a quote wins ("she said, \"…\""); the narration
     // after it belongs to the NEXT line unless this quote has none before it
     // (`"…," i said.`). Self = the attributed subject is "i".
-    const _headAttr = new RegExp(`\\b([a-z]+)(?:\\s+[a-z]+)?\\s+${_verbs}\\b[^"“”]*$`, 'i').exec(head.split(/["“”]/).pop() || '');
+    // ⛔ SAME SENTENCE ONLY: in `"…," i said. "…," the lady said.` the
+    // previous line's `i said.` sits before this quote too — a sentence end
+    // between the verb and the quote means it attributes the OTHER line.
+    const _headAttr = new RegExp(`\\b([a-z]+)(?:\\s+[a-z]+)?\\s+${_verbs}\\b[^"“”.!?]*$`, 'i').exec(head.split(/["“”]/).pop() || '');
     const _tailAttr = _headAttr ? null : new RegExp(`^\\s*,?\\s*([a-z]+)(?:\\s+[a-z]+)?\\s+${_verbs}\\b`, 'i').exec(tail);
     const _subj = ((_headAttr || _tailAttr || [])[1] || '').toLowerCase();
     const self = _subj === 'i';

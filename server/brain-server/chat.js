@@ -321,6 +321,12 @@ const SERVER_CHAT_MIXIN = {
     try {
       if (typeof cur._clearSpikes === 'function') cur._clearSpikes(['fineType']);
       cur._writeRelationTag(cl, region, band, true);
+      // THE QUESTION STATE — while a person's question waits for her answer,
+      // "I was asked" stays lit with whoever is speaking: on their turn, and on
+      // her turn while she answers (the state her answers were taught in).
+      if (this._questionPending && Number.isInteger(C.QUESTION_ASKED_BAND)) {
+        cur._writeRelationTag(cl, region, C.QUESTION_ASKED_BAND, true);
+      }
       this._speakerNow = who;
     } catch (e) { if (!this._speakerWarned) { this._speakerWarned = true; console.warn(`[Chat] speaker-state write failed: ${e && e.message}`); } }
   },
@@ -332,6 +338,9 @@ const SERVER_CHAT_MIXIN = {
     // Inject text into brain
     this.injectText(text);
     this._lastInputTime = Date.now();
+    // A question asks her something: the question state is on until she answers.
+    this._questionPending = !!(text && /\?\s*$/.test(String(text).trim())
+      || (this.curriculum && typeof this.curriculum._isQuestionLike === 'function' && this.curriculum._isQuestionLike(text)));
     // WHO IS TALKING — someone else is speaking to her: the "other speaker"
     // band lights with their words, exactly as it did while she learned to
     // listen (CONV-HEARD trains with the same band).
@@ -969,8 +978,10 @@ const SERVER_CHAT_MIXIN = {
         // The question has been answered; it stops being "what she was asked".
         // Left set, every later inner thought read it as its own question.
         if (this.cortexCluster) this.cortexCluster._lastUserInputText = null;
+        this._questionPending = false;
       } catch (err) {
         if (this.cortexCluster) this.cortexCluster._lastUserInputText = null;
+        this._questionPending = false;
         this._chatPriorityUntil = 0;   // CHAT.3 — close the priority window on failure too
         console.error('[Brain] languageCortex.generate threw:', err.message);
         console.error(err.stack);

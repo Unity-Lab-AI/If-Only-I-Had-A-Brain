@@ -546,13 +546,31 @@ export class SemanticEmbeddings {
     // which poisoned the identity-anchor embeddings this method computes
     // for every persona/seed injection. Same fix class as dictionary.js
     // learnSentence.
-    const words = text.toLowerCase().replace(/[^a-z' -]/g, ' ').split(/\s+/).filter(w => w.length >= 2);
+    // "i" and "a" are words ("who am i" ≠ "who am"); other single letters
+    // stay out as stray initials.
+    const words = text.toLowerCase().replace(/[^a-z' -]/g, ' ').split(/\s+/)
+      .filter(w => w.length >= 2 || w === 'i' || w === 'a');
     if (words.length === 0) return new Float32Array(EMBED_DIM);
 
+    // MEANING + ORDER. The plain average is a bag: "is your name unity" and
+    // "your name is unity" were the same vector, so no sentence (a question
+    // above all) could be told apart by how its words are arranged. Each word
+    // also adds its own vector circularly rotated by its position — a fixed
+    // rotation per slot, so the same word in a different place lands on a
+    // different direction while the bag term keeps what the words mean. It
+    // composes over ANY words she knows in ANY order — no question types, no
+    // list — so a sentence she has never heard still gets a distinct,
+    // meaning-near code. ORDER_WEIGHT sets order's share against meaning.
+    const ORDER_WEIGHT = 0.5;
+    const ORDER_STEP = 37; // coprime with 300, so slots never repeat a rotation
     const avg = new Float32Array(EMBED_DIM);
-    for (const word of words) {
-      const vec = this.getEmbedding(word);
-      for (let i = 0; i < EMBED_DIM; i++) avg[i] += vec[i];
+    for (let p = 0; p < words.length; p++) {
+      const vec = this.getEmbedding(words[p]);
+      const shift = ((p + 1) * ORDER_STEP) % EMBED_DIM;
+      for (let i = 0; i < EMBED_DIM; i++) {
+        avg[i] += vec[i];
+        avg[(i + shift) % EMBED_DIM] += ORDER_WEIGHT * vec[i];
+      }
     }
 
     // Normalize
