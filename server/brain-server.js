@@ -16631,6 +16631,11 @@ try {
   console.warn(`[LoopWatchdog] could not start the watchdog thread (${e && e.message}) — a hard freeze will leave only the LOOPNAME.7 breadcrumb.`);
 }
 
+// ONE STATUS PAGE — server/status.md, rewritten in place every 30 s from state
+// the brain already keeps. See server/brain-server/status-file.js.
+try { require('./brain-server/status-file.js').startStatusFile(brain); }
+catch (e) { console.warn(`[Status] status page not started: ${e && e.message}`); }
+
 // ── RHYTHM3S (2026-08-22) — THE SELF CPU PROFILE. A ~3s-block-every-4s loop
 // rhythm shadowed every era of the gate war under STALE stage tags — measured
 // (life-gate production at 4.1min/question vs ~60s of real work) but never

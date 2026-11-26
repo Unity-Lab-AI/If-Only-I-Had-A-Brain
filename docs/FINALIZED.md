@@ -61344,5 +61344,16 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
     - Gate, chat and inner-voice probes were stacking on the single pod socket, so batch replies queued behind them.
   - **Fix:** the `gateProbe` / `gateProbeBuckets` proxy entries run through `_probeLane`, one at a time. Nothing is skipped or refused; probes only wait their turn, so what she computes is unchanged.
   - **Verified:** `node --check` on both files. Pod utilisation is measured after the press.
+  - **Measured after the press, boot `370dff0b`:** `_teachConcreteSentences` 99 99 99 99 99 99 99 99 99 99 17 99 99 98 99 (~93%). `_teachAssociationPairs` ~63%, still waiting up to 8.4 s on the loop.
+
+## 2026-11-25 — STATUSFILE: one status page plus one capped history
+
+- **Gee:** *"i also want before we fresh walk the pod to write a status like file thats not a run on but is updated with basic updated logs on what you need in full of every diagnotstic and shit and information it does that you will need to trouble shoot and minitor all the porcesses to the extent it doesnt take up a shit ton of compute over alll the corpus"* · *"but i dont want it over writting importat information u need but i also dont want ghigs of files and 1000s of them by the time we are done with training"*
+  - **Done:** `server/brain-server/status-file.js`, started at boot.
+    - `server/status.md` is the live page, rewritten in place every 30 s. Sections: boot, curriculum, pod/donor link (round-trip, donor ms, unaccounted ms, card-busy %, substeps, gate probes, cards), loop, memory, eyes/voice/talk, and the last 12 warnings.
+    - `server/status-history.md` keeps every notable event (gate verdicts, cell changes, warnings/errors, freezes ≥ 5 s, partition and image-lane changes). It is capped at 5,000 lines (≈ 1 MB) in ONE file that is never rotated, and it is reloaded on boot so restarts do not lose it.
+  - **Cost:** reads only `getState()` (the dashboard builds it 10×/s already) plus the console ring. One atomic write per 30 s. No donor frames.
+  - **Opt-outs:** `DREAM_STATUS_FILE=0` turns it off; `DREAM_STATUS_FILE_MS` and `DREAM_STATUS_HISTORY_LINES` tune the interval and the cap. Both files are gitignored.
+  - **Verified:** `node --check`; dry-run page build (63 lines).
 
 
