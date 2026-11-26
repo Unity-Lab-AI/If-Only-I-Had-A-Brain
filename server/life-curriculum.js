@@ -72,6 +72,15 @@ function properCaseStory(s) {
   t = t.replace(/\bi'(m|ve|d|ll)\b/g, (m) => 'I' + m.slice(1));
   t = t.replace(_CANON_NAMES_RE, (m) => m.charAt(0).toUpperCase() + m.slice(1));
   t = t.replace(_PET_NAMES_RE, (m) => m.charAt(0).toUpperCase() + m.slice(1));
+  // ⛔ EVERY SENTENCE AND EVERY QUOTED LINE OPENS ON A CAPITAL. The splitter keeps
+  // a run of quoted dialogue as one long string, so capitalising only its first
+  // letter left "she asked, \"can I be…\"" and "at home mom…" lowercase.
+  // Family words used AS A NAME are capitalised ("Mom made", "Grandpa Walter");
+  // after a possessive or article they stay common nouns ("my mom", "a grandma").
+  t = t.replace(/(?<!\b(?:my|your|his|her|our|their|a|an|the|whose|wren's|theo's)\s)\b(mom|dad|grandma|grandpa|mama|daddy|mommy)\b/g,
+    (m) => m.charAt(0).toUpperCase() + m.slice(1));
+  t = t.replace(/(["“]\s*)([a-z])/g, (_, q, c) => q + c.toUpperCase());
+  t = t.replace(/([.!?]["”]?\s+)([a-z])/g, (_, p, c) => p + c.toUpperCase());
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
