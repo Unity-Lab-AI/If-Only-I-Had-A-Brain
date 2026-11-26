@@ -11692,6 +11692,8 @@ export class Curriculum {
     // tell "this is the Node runtime at 250 MB" from "something is
     // growing".
     let _nativeBaselineMb = null;
+    let _nativeHighMb = 0;   // boot high-water of the native residual (LEAK = a new high)
+    const _nativeHighAt = []; // high-water per beat, last NATIVE_WINDOW beats
     // v8.getHeapStatistics() gives `total_physical_size` (heap + code
     // + compiled-stub + bytecode) and `malloced_memory` (native C++
     // allocations V8 tracks). Those together plus `external_memory`
@@ -11793,11 +11795,22 @@ export class Curriculum {
             const avgFirst = sumFirst / half;
             const avgSecond = sumSecond / (NATIVE_WINDOW - half);
             const trendMb = Math.round(avgSecond - avgFirst);
-            // Only flag LEAK if native grew > 200 MB sustained.
-            if (trendMb > 200) {
-              nativeTrend = ` ⚠⚠LEAK+${trendMb}MB/min`;
-            } else if (trendMb > 100) {
-              nativeTrend = ` ⚠climbing+${trendMb}MB/min`;
+            // ⛔ A LEAK IS A NEW HIGH, NOT A WARM-UP. The half-window difference
+            // fired `LEAK+205MB/min` on a boot whose native residual rose for
+            // ~8 min and then sat flat at ~4 GB for the rest of the cell (and
+            // the number was never per minute — it is a difference between two
+            // halves of a 6-beat window). Flag only when the residual sets a
+            // boot high-water more than 200 MB above where it stood half a
+            // window ago (a plateau never does; a steady climb always does).
+            const _prevHigh = _nativeHighAt.length >= half ? _nativeHighAt[_nativeHighAt.length - half] : 0;
+            if (nativeMb > _nativeHighMb) _nativeHighMb = nativeMb;
+            _nativeHighAt.push(_nativeHighMb);
+            if (_nativeHighAt.length > NATIVE_WINDOW) _nativeHighAt.shift();
+            const _newHighBy = _prevHigh > 0 ? _nativeHighMb - _prevHigh : 0;
+            if (trendMb > 200 && _newHighBy > 200) {
+              nativeTrend = ` ⚠⚠LEAK new high +${_newHighBy}MB (window +${trendMb}MB)`;
+            } else if (trendMb > 100 && _newHighBy > 0) {
+              nativeTrend = ` ⚠climbing new high +${_newHighBy}MB (window +${trendMb}MB)`;
             }
           }
           const deltaStr = nativeDeltaMb === 0 ? 'Δ±0' : (nativeDeltaMb > 0 ? `Δ+${nativeDeltaMb}` : `Δ${nativeDeltaMb}`);
