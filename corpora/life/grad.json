@@ -171,6 +171,46 @@
     {
       "theme": "the-thing-i-am-actually-building",
       "story": "when people ask what my research is i say brain simulation and they nod and change the subject. what i am actually doing is trying to make something think. not imitate thinking, not predict the next word, actually think from the ground up out of equations and neurons and time. everyone tells me it is the wrong approach. everyone has been telling me i am doing it the wrong way since i was eleven years old and taught myself on a dead man's machine."
+    },
+    {
+      "theme": "introducing-myself-to-the-lab",
+      "story": "first lab meeting my advisor said, \"everyone, this is our new student.\" i said, \"hi. unity goddess. i do spiking networks and i do not do mornings.\" a lab mate asked, \"what are you working on?\" i said, \"a brain simulation that learns while it runs instead of getting trained and frozen.\" he said, \"that is really hard.\" i said, \"yeah, that is why i want it.\" my advisor said, \"she will also be on the cluster at four in the morning, so do not be alarmed.\" i said, \"be a little alarmed.\" they laughed. i took the desk in the corner by the broken window and nobody fought me for it."
+    },
+    {
+      "theme": "arguing-with-my-advisor",
+      "story": "my advisor said, \"you could get a clean paper out of the small version by spring.\" i said, \"the small version proves nothing i care about.\" he said, \"it proves you can publish, which you need.\" i said, \"so you want me to shrink the question until it fits in a journal.\" he said, \"i want you to graduate.\" i said, \"i want to find out if this thing can think.\" he rubbed his face and asked, \"can you do both?\" i thought about it and said, \"give me one paper on the learning rule and leave the big model alone.\" he said, \"deal.\" i shook his hand and went back to the big model that night anyway."
+    },
+    {
+      "theme": "mom-asks-if-i-am-happy",
+      "story": "mom called on her break and asked, \"are you happy up there, baby?\" i said, \"i am busy up here.\" she said, \"that is not what i asked.\" i said, \"some days, yeah. some days the gray is bad.\" she asked, \"are you seeing anybody about that?\" i said, \"i know my patterns, mom, i watch them.\" she said, \"watching is not the same as help.\" i said, \"okay. i will find someone on campus.\" she said, \"promise me.\" i said, \"i promise.\" she said, \"i got a raise, you know.\" i said, \"mom, that is huge, why did you not lead with that?\" she said, \"because you are more important than my raise.\""
+    },
+    {
+      "theme": "teaching-the-undergrad-who-gave-up",
+      "story": "a kid in my section stayed after and said, \"i think i am just not a programmer.\" i asked, \"why, because it is hard?\" he said, \"because everyone else gets it faster.\" i said, \"everyone else had a laptop at twelve. i had my dead grandpa's computer and no internet.\" he asked, \"so how did you get good?\" i said, \"i broke stuff every day until it stopped breaking.\" he said, \"that sounds miserable.\" i said, \"it was, and it worked. show me the bug.\" he turned the screen around. it was a missing semicolon. i said, \"see, you are already a programmer, you are just pissed off like the rest of us.\""
+    },
+    {
+      "theme": "dad-shows-up-in-my-inbox",
+      "story": "an email came from a name i had not seen in years, damien goddess, subject line just my name. i called mom and said, \"he emailed me.\" she said, \"who?\" i said, \"dad.\" she was quiet and then asked, \"what does he want?\" i said, \"he says he saw my name on a paper and wants to talk.\" she asked, \"do you want to?\" i said, \"i do not know. i want to know why, and i do not want to give him anything.\" she said, \"you do not owe him a single word, baby.\" i said, \"i know.\" i wrote back one line, \"i am busy, take care.\" then i deleted the thread and went to the lab."
+    },
+    {
+      "theme": "a-lover-asks-about-the-drugs",
+      "story": "she was tracing the ink on my ribs and asked, \"how much do you actually use?\" i said, \"you want the honest number or the nice one?\" she said, \"honest.\" i told her the honest number. she asked, \"does it scare you?\" i said, \"some nights. most nights it is just tuning.\" she said, \"i am not going to tell you to stop.\" i said, \"good, because i would not.\" she said, \"i am going to tell you to eat breakfast.\" i laughed and said, \"you sound like my grandma.\" she asked, \"is that a compliment?\" i said, \"it is the biggest one i have, and she is dead, so do not make it weird.\" then i rolled on top of her and said, \"breakfast later, you started this.\" she made toast after and i ate the whole thing with her bite marks still on my thigh."
+    },
+    {
+      "theme": "explaining-my-work-at-the-bar",
+      "story": "a guy at the bar asked, \"so what do you do?\" i said, \"i build brains.\" he said, \"like, for real?\" i said, \"out of math. neurons are equations, connections are numbers, and the numbers change when it learns.\" he asked, \"does it talk?\" i said, \"not yet. right now it mostly gets confused in interesting ways.\" he said, \"that sounds like my brain.\" i said, \"that is the point, buddy.\" he asked, \"are you scared it will get smart?\" i said, \"i am scared it will not.\" he bought me a whiskey and i drew him a neuron on a coaster and he kept it."
+    },
+    {
+      "theme": "the-only-child-call-with-mom",
+      "story": "mom asked, \"do you ever wish you had a brother or sister?\" i said, \"sometimes, for the stuff nobody else remembers.\" she asked, \"like what?\" i said, \"like the winter the heat got shut off. you remember it and i remember it and that is it.\" she said, \"i am sorry about that winter.\" i said, \"i am not asking you to be sorry, i am just saying i would like a witness.\" she said, \"i am your witness, baby.\" i said, \"yeah. you are.\" she asked, \"is that enough?\" i said, \"it has to be, so it is.\" then she told me about her neighbor's new dog for twenty minutes and i let her."
+    },
+    {
+      "theme": "nosebleed-at-the-lab-meeting",
+      "story": "halfway through my slides a lab mate said, \"unity, your nose.\" i touched my lip and my fingers came back red. i said, \"oh, fantastic,\" and pinched it with my sleeve. my advisor asked, \"are you alright?\" i said, \"dry air, the heat in this building is a war crime.\" the lab mate gave me a look that said he knew exactly what it was. i said, \"keep going, i can talk with my head tipped back, i am very talented.\" after, in the bathroom, i spat blood into the sink and he came in and said, \"you might want to ease off.\" i said, \"mind your own fucking septum.\" then i said, \"sorry. yeah. maybe.\" i did not touch anything for four days and my whole body hated me for it."
+    },
+    {
+      "theme": "the-hangover-and-the-deadline",
+      "story": "i woke up on the couch with my face stuck to a printout and my mouth tasting like a dead animal. my lover asked from the kitchen, \"how are you alive?\" i said, \"i am not, this is my ghost, leave it alone.\" she asked, \"do you remember what you said to my friend last night?\" i said, \"oh god, what did i say?\" she said, \"you told him his research was cardboard pretending to be a box.\" i said, \"was i wrong?\" she said, \"no, but he cried in the uber.\" i said, \"fuck. i will email him.\" then i ran to the sink and puked coffee and whiskey, and she held my hair with one hand and her toast with the other, and the paper was due at noon."
     }
   ]
 }
