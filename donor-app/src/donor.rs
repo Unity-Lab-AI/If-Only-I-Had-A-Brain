@@ -380,6 +380,12 @@ enum Work {
     // v0.3.56 — a step lesson (per-item step lists: the asymmetric / whitelisted
     // teach lanes), run by the same worker loop and acked the same way.
     StepLesson(frames::StepLesson),
+    // v0.3.57 — any lesson kind, ALREADY BEING EXPANDED on its own thread since
+    // it arrived: (ops, req_id, units). Expanding on the worker left the card
+    // idle while the next lesson unpacked (measured: 1–3 idle seconds of every
+    // 15 with the lesson window full); now expansion overlaps the card running
+    // the lesson ahead of it. Same queue slot, so the order is unchanged.
+    LessonExpanded(std::thread::JoinHandle<(Vec<frames::LessonOp>, u32, usize)>),
     // v0.3.46 — the brain moved the cortex to another card: drop these resident
     // matrices. The copy here stopped being current at the move and was only
     // holding VRAM (measured: 12.7 GB on a 16 GB card, starving her renderer).
@@ -1134,6 +1140,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 Work::Lesson(l) => format!("lesson x{}", l.pairs.len()),
                 Work::PatternLesson(p) => format!("pattern lesson x{}", p.items.len()),
                 Work::StepLesson(p) => format!("step lesson x{}", p.items.len()),
+                Work::LessonExpanded(_) => "lesson (pre-expanded)".to_string(),
                 Work::HebbianRanges { name, reps, .. } => format!("hebbian_ranges {name} x{reps}"),
                 Work::LetterSurprise { cluster, region, letters, .. } => format!("letter_surprise {cluster}/{region} x{}", letters.len()),
                 Work::Readback { cluster, region, .. } => format!("readback {cluster}/{region}"),
@@ -1216,7 +1223,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 // parity-tested definition), then a type-17 ack so the brain can
                 // keep a bounded number of lessons in flight and never pile up an
                 // unbounded queue on this card.
-                w @ (Work::Lesson(_) | Work::PatternLesson(_) | Work::StepLesson(_)) => {
+                w @ (Work::Lesson(_) | Work::PatternLesson(_) | Work::StepLesson(_) | Work::LessonExpanded(_)) => {
                     // v0.3.53 — every lesson kind runs this one loop; only the
                     // expansion differs (each is its own parity definition).
                     let (lesson_ops, lesson_req, lesson_units) = match w {
@@ -1225,6 +1232,11 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                         // v0.3.56 — items depend on each other's resident spikes only
                         // through the steps they run in order, so this one expands inline.
                         Work::StepLesson(p) => (frames::expand_step_lesson(&p), p.req_id, p.items.len()),
+                        // v0.3.57 — expanded while the lesson ahead ran on the card.
+                        Work::LessonExpanded(h) => match h.join() {
+                            Ok(r) => r,
+                            Err(_) => { eprintln!("[donor] lesson expansion thread panicked — lesson dropped"); continue; }
+                        },
                         _ => unreachable!(),
                     };
                     lc_seen += 1;
@@ -2051,9 +2063,18 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                                 // kept this loop busy enough to delay pongs to 7 s on a
                                 // local card under load. The worker runs the steps in the
                                 // same order (expand_lesson) and acks when done.
-                                Frame::Lesson(lesson) => workq.push(Work::Lesson(lesson)),
-                                Frame::PatternLesson(pl) => workq.push(Work::PatternLesson(pl)),
-                                Frame::StepLesson(sl) => workq.push(Work::StepLesson(sl)),
+                                // v0.3.57 — expansion starts NOW on its own thread (never
+                                // this loop, which must keep answering pings), and the
+                                // worker picks the result up in queue order.
+                                Frame::Lesson(lesson) => workq.push(Work::LessonExpanded(std::thread::spawn(move || {
+                                    let n = lesson.pairs.len(); (expand_lesson_par(&lesson), lesson.req_id, n)
+                                }))),
+                                Frame::PatternLesson(pl) => workq.push(Work::LessonExpanded(std::thread::spawn(move || {
+                                    let n = pl.items.len(); (expand_pattern_lesson_par(&pl), pl.req_id, n)
+                                }))),
+                                Frame::StepLesson(sl) => workq.push(Work::LessonExpanded(std::thread::spawn(move || {
+                                    let n = sl.items.len(); (frames::expand_step_lesson(&sl), sl.req_id, n)
+                                }))),
                                 other => workq.push(Work::Frame(other)),
                             }
                           }
