@@ -5100,11 +5100,14 @@ const SERVER_GPU_MIXIN = {
       const _pT0 = Date.now();
       const _idx = Uint32Array.from(sparseIndices);
       let out = null;
-      try { out = await this.gpuSparsePropagate(matrixName, _idx, ws, _ackMs, null, true); } catch { out = null; }
-      if (!(out && out.length) && this._gpuClient && this._gpuClient.readyState === 1) {
-        this._gateProbeRetried = (this._gateProbeRetried || 0) + 1;
-        try { out = await this.gpuSparsePropagate(matrixName, _idx, this._gpuClient, _ackMs, null, true); } catch { out = null; }
-      }
+      this._probesInFlight = (this._probesInFlight | 0) + 1;   // lessons hold while this waits (lessonSlot)
+      try {
+        try { out = await this.gpuSparsePropagate(matrixName, _idx, ws, _ackMs, null, true); } catch { out = null; }
+        if (!(out && out.length) && this._gpuClient && this._gpuClient.readyState === 1) {
+          this._gateProbeRetried = (this._gateProbeRetried || 0) + 1;
+          try { out = await this.gpuSparsePropagate(matrixName, _idx, this._gpuClient, _ackMs, null, true); } catch { out = null; }
+        }
+      } finally { this._probesInFlight = Math.max(0, (this._probesInFlight | 0) - 1); }
       // Probe-latency window stats — the instrument that would have named the
       // 30s-timeout burn in one console read instead of a forensic dig.
       const _s = this._gateProbeStats || (this._gateProbeStats = { ok: 0, miss: 0, msSum: 0, logAt: 0 });
@@ -5223,15 +5226,43 @@ const SERVER_GPU_MIXIN = {
     try {
       const idx = Uint32Array.from(sparseIndices);
       const reqId = this._nextSparseReqId();
-      const hdr = this._encodeSparseHeader(15, reqId, matrixName);
-      const meta = Buffer.alloc(12);
-      meta.writeUInt32LE(bucketSize >>> 0, 0);
-      meta.writeUInt32LE(bucketCount >>> 0, 4);
-      meta.writeUInt32LE(idx.length >>> 0, 8);
-      const frame = Buffer.concat([hdr, meta, Buffer.from(idx.buffer, idx.byteOffset, idx.byteLength)]);
+      let frame;
+      if (this._donorSpeaksRunProbeNow(ws)) {
+        // ⭐ RUNS, NOT A RAW LIST (type 20, donor 0.3.57). Her sem patterns are
+        // tiled — long contiguous runs — and every word she read off the card
+        // shipped them as ~2.5 MB of u32 indices (1,000+ such sends in one
+        // walk), minutes per thought behind the teach stream. Sorted, then
+        // encoded as (start, length) pairs: exact, a few KB.
+        const s = Uint32Array.from(idx).sort();
+        const runs = [];
+        for (let i = 0; i < s.length; ) {
+          const start = s[i];
+          let j = i + 1;
+          while (j < s.length && s[j] <= s[j - 1] + 1) j++;
+          runs.push(start, s[j - 1] - start + 1);
+          i = j;
+        }
+        const hdr = this._encodeSparseHeader(20, reqId, matrixName);
+        const meta = Buffer.alloc(12 + runs.length * 4);
+        meta.writeUInt32LE(bucketSize >>> 0, 0);
+        meta.writeUInt32LE(bucketCount >>> 0, 4);
+        meta.writeUInt32LE((runs.length / 2) >>> 0, 8);
+        for (let k = 0; k < runs.length; k++) meta.writeUInt32LE(runs[k] >>> 0, 12 + 4 * k);
+        frame = Buffer.concat([hdr, meta]);
+      } else {
+        const hdr = this._encodeSparseHeader(15, reqId, matrixName);
+        const meta = Buffer.alloc(12);
+        meta.writeUInt32LE(bucketSize >>> 0, 0);
+        meta.writeUInt32LE(bucketCount >>> 0, 4);
+        meta.writeUInt32LE(idx.length >>> 0, 8);
+        frame = Buffer.concat([hdr, meta, Buffer.from(idx.buffer, idx.byteOffset, idx.byteLength)]);
+      }
       const _t0 = Date.now();
       const _ackMs = Number(process.env.DREAM_PROBE_ACK_MS) > 0 ? Number(process.env.DREAM_PROBE_ACK_MS) : 20_000;
-      const result = await this._sparseSendBinary(frame, reqId, _ackMs, ws);
+      let result;
+      this._probesInFlight = (this._probesInFlight | 0) + 1;   // lessons hold while this waits (lessonSlot)
+      try { result = await this._sparseSendBinary(frame, reqId, _ackMs, ws); }
+      finally { this._probesInFlight = Math.max(0, (this._probesInFlight | 0) - 1); }
       const out = result && result.currents ? result.currents : null;
       if (out && out.length > 0) {
         this._bucketProbeOk = (this._bucketProbeOk || 0) + 1;
@@ -6057,6 +6088,17 @@ const SERVER_GPU_MIXIN = {
     this._lessonWindowNow = max;
     if (!(this._lessonInflight instanceof Map)) this._lessonInflight = new Map();
     const t0 = Date.now();
+    // ⛔ A PROBE IS WAITING — HOLD THE NEXT LESSON. Probes (her words, the
+    // gates) share the card's queue with the lesson stream; with the card
+    // pegged they sat behind it past their budget and fell to the CPU
+    // (`ok=0 miss=1` for ~20 min). While any probe is in flight no new lesson
+    // is queued (bounded: ≤ DREAM_PROBE_PRIORITY_MS, default 3 s), so the
+    // ~1 s of queued work drains and the probe is next.
+    const _prioMs = Number(process.env.DREAM_PROBE_PRIORITY_MS) > 0 ? Number(process.env.DREAM_PROBE_PRIORITY_MS) : 3000;
+    while ((this._probesInFlight | 0) > 0 && Date.now() - t0 < _prioMs) {
+      this._lessonHeldForProbe = (this._lessonHeldForProbe | 0) + 1;
+      await new Promise((r) => setTimeout(r, 20));
+    }
     for (;;) {
       const now = Date.now();
       for (const [id, e] of this._lessonInflight) {
@@ -6383,6 +6425,15 @@ const SERVER_GPU_MIXIN = {
     const c = this.clients && this.clients.get ? this.clients.get(ws) : null;
     const m = /^(\d+)\.(\d+)\.(\d+)/.exec(String((c && c.donorAppVersion) || ''));
     return !!m && ((+m[1]) * 1e6 + (+m[2]) * 1e3 + (+m[3])) >= 3056;
+  },
+
+  /** PRIMARY donor speaks SPRS type 20 (run-length bucket probe)? v0.3.57+. */
+  _donorSpeaksRunProbeNow(ws) {
+    const w = ws || this._gpuClient;
+    if (!w) return false;
+    const c = this.clients && this.clients.get ? this.clients.get(w) : null;
+    const m = /^(\d+)\.(\d+)\.(\d+)/.exec(String((c && c.donorAppVersion) || ''));
+    return !!m && ((+m[1]) * 1e6 + (+m[2]) * 1e3 + (+m[3])) >= 3057;
   },
 
   /** Send a step lesson to the cortex card; true only when it went out. Paced like lessons. */

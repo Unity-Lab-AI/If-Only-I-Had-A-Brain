@@ -4616,7 +4616,7 @@ class ServerBrain {
           return Promise.resolve(null);
         }
         // Don't await — fire-and-forget so chat response returns instantly.
-        return this.curriculum._teachWordDefinition(word, { reps: 4, label: 'CHAT-DEF', ...(opts || {}) }).catch(() => null);
+        return this.curriculum._teachWordDefinition(word, { reps: 4, label: 'CHAT-DEF', ...(opts || {}), sideLane: true }).catch(() => null);
       };
       // Construct GlobalWorkspace (Baars GWT) and register
       // all clusters as participants. Workspace tick runs each brain
