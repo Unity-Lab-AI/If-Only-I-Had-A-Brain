@@ -6216,8 +6216,16 @@ class ServerBrain {
   async _walkHeartbeat(clusterParams, allClusters) {
     const _hbEnv = process.env.DREAM_WALK_TICK_MS;
     const _hbGap = (_hbEnv !== undefined && _hbEnv !== '')
-      ? Math.max(0, Number(_hbEnv) || 0) : 15000;
+      ? Math.max(0, Number(_hbEnv) || 0) : 250;
+    // ⛔⛔ THIS WAS 15000 — ONE STEP BATCH EVERY 15 SECONDS, AND THAT WAS THE POD.
+    // During a walk this heartbeat is the ONLY thing that steps her clusters on
+    // the cards; a ~1 s batch every 15 s left every card idle ~93% of the time,
+    // whichever card held what — measured: the RTX PRO 6000 at 0–2% for the
+    // whole session. Now back-to-back: the next batch goes 250 ms after the last
+    // one ANSWERS, with exactly one in flight (`_walkHbInFlight`), so the card
+    // never waits and a slow card never piles up a queue.
     if (!(_hbGap > 0) || this._gpuDeviceLost) return;
+    if (this._walkHbInFlight) return;
     // PODKICK (2026-08-28) — never probe through a resync/upload window: after
     // every reconnect the donor's priority lane carries minutes of matrix
     // chunks, a probe behind them can only time out, and on the live box that
@@ -6256,7 +6264,10 @@ class ServerBrain {
     // during a batch, 24 per round trip by design), so the cards stepped a third
     // of what they could carry while the walk taught. A browser donor still gets 8.
     const _hbSub = substepsForDonor(this, this._gpuClient);
-    const _hbRes = await this._gpuBatch(_hbSub, _hbParams, { noKick: true });
+    let _hbRes = null;
+    this._walkHbInFlight = true;
+    try { _hbRes = await this._gpuBatch(_hbSub, _hbParams, { noKick: true }); }
+    finally { this._walkHbInFlight = false; this._walkTickAt = Date.now(); }
     const _st = this._walkTickStats || (this._walkTickStats = { sent: 0, ok: 0, lastOkAt: null, lastMissAt: null });
     _st.sent++;
     if (_hbRes && _hbRes.perCluster) {

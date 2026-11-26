@@ -61131,6 +61131,11 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
     - The 4070 registered first and got all seven clusters. When the pod joined, stickiness kept each cluster on its previous card because it still fit (measured: 4070 [cerebellum … brainstem] 3200/10233 MB, RTX PRO 6000 [cortex] 3086/70890 MB).
     - Fix: a non-cortex cluster keeps its previous card only while that card's proportional fill is within 1.5× of the best card's. A non-cortex move is one gpu_init, not a re-upload.
     - The 60 s placement check moves them on a live boot.
+  - **Follow-up HBCONT (same day), the real cause of the 0%.**
+    - Gee, verbatim: *"pod is still 0% util.. FOR THE LOVE OF GOD FIX IT THIS IS THE @ MILLIONTH TIME IVE TOLD YOU"* · *"YOU ARE WASTING MY POD MONEY!!!!"*.
+    - `_walkHeartbeat`, the only thing that steps her clusters on the cards during a walk, defaulted to `DREAM_WALK_TICK_MS` = 15000: one ~1 s batch every 15 s, so every card sat idle ~93% of the time whatever it held.
+    - Fix: default 250 ms after the previous batch ANSWERS, with exactly one in flight (`_walkHbInFlight`, cleared in `finally`). The card never waits, and a slow card never piles up a queue.
+    - RE-PRICE: stepping work ~×15 on the cards. Teaching dose unchanged.
   - **Verified:** ESM import. The piece is shown, the verdict is kept and logged as "doubts … Shown anyway", and the subject still goes to practice.
 
 
