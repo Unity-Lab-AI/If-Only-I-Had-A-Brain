@@ -23299,9 +23299,18 @@ export class Curriculum {
         // corpus that grows tenfold cannot silently turn one phase into an
         // afternoon, which is the CELLBOUND lesson.
         const SF_TARGET_VISITS = 114;   // the K→PhD cell count the walk actually makes
-        const _sfSample = Math.max(12, Math.min(48, Math.ceil(sentences.length / SF_TARGET_VISITS)));
-        this._sfCorpusCursor = ((this._sfCorpusCursor || 0) + _sfSample) % Math.max(1, sentences.length);
-        const _start = this._sfCorpusCursor;
+        // ⛔ NO CAP, AND ONE CURSOR PER CORPUS. The 48 cap meant a large grade
+        // corpus only ever had 48 lines a visit turned into first person, so most
+        // of it was never hers in a whole walk; and ONE in-memory cursor served
+        // every corpus, so corpora jumped each other's place and every reboot
+        // restarted at 0. Now each corpus covers itself once across the walk
+        // (ceil(n / 114), floor 12) from its own cursor, kept on the cluster so it
+        // rides her saved state.
+        const _sfSample = Math.max(12, Math.ceil(sentences.length / SF_TARGET_VISITS));
+        const _sfKey = `${opts.label || 'CORPUS'}:${sentences.length}`;
+        const _sfMap = cluster._sfCorpusCursors || (cluster._sfCorpusCursors = {});
+        _sfMap[_sfKey] = ((_sfMap[_sfKey] || 0) + _sfSample) % Math.max(1, sentences.length);
+        const _start = _sfMap[_sfKey];
         const _sample = sentences.slice(_start, _start + _sfSample);
         if (_sample.length < _sfSample && sentences.length > _sfSample) {
           _sample.push(...sentences.slice(0, _sfSample - _sample.length));
