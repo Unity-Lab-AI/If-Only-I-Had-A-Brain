@@ -61206,7 +61206,17 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
   - Two invented names (Kevin, Maddie) were caught and replaced with unnamed classmates.
   - **Reader:** a one-word line ("Here.", "Sorry.") now counts when a speech verb is beside it.
   - **Measured:** life/G1 → 57 turns; life/K → 84 turns; ela/K books 2,507 turns.
-  - **Remaining:** grade2 → phd.
+  - **Grade 2 +7 scenes, canon only** (Wren, Theo, Shadow the secret cat, grandpa Walter, grandma Pearl, mom, dad mostly gone):
+    - Wren finds out about Shadow;
+    - grandpa's bowline knot;
+    - the substitute saying "goodness";
+    - the free-lunch card;
+    - the call that never came;
+    - staring down the bully;
+    - late-night eggs with mom.
+  - **Measured:** life/G2 → 53 turns.
+  - **Casing:** `_CANON_NAMES_RE` gained wren, theo, dunlap, vesper. Shadow and soot are deliberately left out because they are ordinary words too.
+  - **Remaining:** grade3 → phd.
 
 - [x] ✅ **CLOSED BUILT 2026-11-25.** **LOCALIDLE — the operator's card held her clusters beside the pod, and her image looks starved.** Gee 2026-11-25, verbatim: *"did you fresh start her? is that why her images minbds eye images arent happening yet?"* · *"what the fuck? what is on MY GPU nothing should be on it ewhen we have a pod"*.
   - **Evidence:**
