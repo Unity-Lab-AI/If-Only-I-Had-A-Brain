@@ -61195,6 +61195,18 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
     - a bad word under the slide.
   - **Slop pass:** five moral-of-the-story endings were cut and rewritten in her blunt voice. One invented detail (cigarettes) was removed.
   - **Name lines:** 0 → 14.
+  - **Grade 1 (`corpora/life/grade1.json`) +7 scenes, canon only** (Mrs. Dunlap, Wren, mom Lilith, dad Damien, grandma Pearl, Vesper, the Halloween birthday):
+    - roll call ("Unity Goddess?" / "Here.") and being teased about the name;
+    - Wren sleeping over;
+    - grandma giving her middle name Raven and "only child";
+    - a fight and making up with Wren;
+    - mom home from her second job;
+    - dad missing the birthday call;
+    - getting in trouble for "dumbass".
+  - Two invented names (Kevin, Maddie) were caught and replaced with unnamed classmates.
+  - **Reader:** a one-word line ("Here.", "Sorry.") now counts when a speech verb is beside it.
+  - **Measured:** life/G1 → 57 turns; life/K → 84 turns; ela/K books 2,507 turns.
+  - **Remaining:** grade2 → phd.
   - **Verified:** ESM import.
   - **Verified:** `node --check`, ESM import.
   - **Verified:** ESM import. The piece is shown, the verdict is kept and logged as "doubts … Shown anyway", and the subject still goes to practice.

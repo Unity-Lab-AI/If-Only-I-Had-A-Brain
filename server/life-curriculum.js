@@ -151,7 +151,7 @@ function _quotesOf(story) {
     const _start = open;
     open = -1;
     // ≤240 chars, the old reader's bound: a quoted poem or passage is not a line of talk.
-    if (q.length > 240 || q.split(' ').length < 2 || !/[a-z]{2}/i.test(q)) continue;
+    if (q.length > 240 || !/[a-z]{2}/i.test(q)) continue;
     // SPEECH, NOT A QUOTED TERM: a spoken line ends on . ! ? , inside its marks,
     // or a speech verb sits right beside it. A quoted term or title
     // ("internal rhymes") is neither, and pairing it made false turns.
