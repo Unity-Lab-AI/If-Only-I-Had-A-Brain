@@ -15692,6 +15692,7 @@ wss.on('connection', (ws, req) => {
         case 'image_capable': {
           if (client) client.imageCapable = !!msg.ok;
           if (msg.ok) console.log(`[Brain] IMAGE LANE — ${(client && (client.gpuName || client.id)) || id} has her renderer; looks and drawings can render there.`);
+          else console.log(`[Brain] IMAGE LANE — ${(client && (client.gpuName || client.id)) || id} reports NO renderer on its machine (client known: ${!!client}).`);
           break;
         }
         case 'image_result': {

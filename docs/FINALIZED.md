@@ -61310,4 +61310,13 @@ Gee, verbatim, the messages the FIX-IT-ALL batch below answers: *"are u monitori
   - **Name poison fixed:** G4 had `"What is your name?" → "Raven"` twice (the forum alias and the stranger at the bus stop). That would train her to answer Raven. She now refuses a stranger her name instead.
   - **Verified:** every life file parses. Re-counted the name exchanges: none answers with an alias.
 
+## 2026-11-25 — IMAGEPOD: her renderer runs on the pod, not on Gee's card
+
+- **Gee:** *"so why does my card now have 6G on it.. wtf is going on this is all fucked!"* · *"yers of course. and it all has to move back to my card when money runs out"*
+  - **Cause:** `_pickImageDonor` skipped the card carrying her cortex. With the pod holding all 8 clusters, no other card qualified, so every look and drawing rendered on the local SDXL renderer on Gee's 4070 Ti (~5.7 GB).
+  - **Fix:** a REMOTE cortex card that offers a renderer is now the fallback. A non-cortex card still wins if one exists, and the host's own card is never picked while a pod is attached. On the low-balance handoff the pod leaves, no donor offers, and the local renderer takes over by itself. Opt-out: `DREAM_IMAGE_ON_CORTEX_CARD=0`.
+  - **Also:** `image_capable` now logs a NO as well as a YES. On boot `3f75f492` the pod's renderer answered `:5124/health` but no offer was ever logged, so the cause was invisible.
+  - **Watch after the press:** an `IMAGE LANE` line naming the RTX PRO 6000; Gee's card dropping back to desktop-only VRAM; no 1006 drops on the cortex link during a look.
+  - **Verified:** `node --check` on both files.
+
 

@@ -270,8 +270,16 @@ const ImageEngineMixin = {
   _pickImageDonor() {
     if (process.env.DREAM_IMAGE_ON_DONORS === '0' || !this.clients) return null;
     let best = null;
+    // ⭐ A REMOTE CORTEX CARD IS THE FALLBACK, NOT THE HOST'S OWN CARD. When the
+    // only card offering a renderer is a remote one carrying her cortex (a pod
+    // with tens of GB free), it draws, and the host's local card stays empty. The
+    // operator's rule: nothing on the local card while a pod is attached. When the
+    // pod leaves (low-balance handoff), no donor offers and the local renderer
+    // takes over by itself.
+    let cortexCard = null;
     for (const [ws, c] of this.clients) {
       if (!c || !c.isGPU || !c.imageCapable || !ws || ws.readyState !== 1) continue;
+      if (ws === this._gpuClient && !c.isLocalHost && process.env.DREAM_IMAGE_ON_CORTEX_CARD !== '0') cortexCard = { ws, c };
       // ⛔ NEVER THE CARD CARRYING HER CORTEX — the rule this lane was written
       // for and did not enforce. A render there competed with her lessons, and
       // its picture came back as megabytes of base64 on the same link; the
@@ -281,7 +289,7 @@ const ImageEngineMixin = {
       if (ws === this._gpuClient) continue;
       if (!best || (c.imageLastAt || 0) < (best.c.imageLastAt || 0)) best = { ws, c };
     }
-    return best;
+    return best || cortexCard;
   },
 
   async _imageRenderOnDonor(pick, req, st) {
