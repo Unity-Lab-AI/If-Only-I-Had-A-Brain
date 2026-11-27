@@ -4975,6 +4975,13 @@ class ServerBrain {
       // so the dashboard 3D brain can show a transient popup anchored
       // to the relevant cortex region. ONE cortex, ONE event stream.
       this.curriculum._pushBrainEvent = (type, region, label, detail) => {
+        // Every lesson event carries the real name of the class she is in, so
+        // a reader is told "in Kindergarten Reading" from her own course
+        // roster rather than from a label someone had to translate.
+        try {
+          const _course = (typeof this.curriculum.courseNameNow === 'function') ? this.curriculum.courseNameNow() : null;
+          if (_course && detail && typeof detail === 'object' && detail.course == null) detail = { ...detail, course: _course };
+        } catch { /* the event goes out without a course name */ }
         try { this.pushBrainEvent(type, region, label, detail); }
         catch { /* non-fatal — event stream is best-effort */ }
       };
@@ -9763,13 +9770,13 @@ class ServerBrain {
   // binary weights as `brain-weights.speech`, written with them, copied with
   // them into every checkpoint slot, and cleared with them — a brain restored
   // without it would hold every lesson except how to speak.
-  // Layout: 4-byte LE header length · JSON header · the taught rows as raw
-  // float32, in header order · the end-of-line row.
+  // Layout: 4-byte LE header length · JSON header · the body the readout
+  // describes (taught rows, then the moments it rehearses), in ≤ 4 MB pieces.
   _speechFile() { return WEIGHTS_FILE.replace(/\.json$/, '.speech'); }
   _speechPayload() {
     const cortex = this.cortexCluster;
     if (!cortex || !cortex._speechReadout || !Array.isArray(cortex.wordBucketWords)) return null;
-    const ser = cortex._speechReadout.serialize(cortex.wordBucketWords.length);
+    const ser = cortex._speechReadout.serialize();
     const head = Buffer.from(JSON.stringify(ser.header), 'utf8');
     const len = Buffer.alloc(4); len.writeUInt32LE(head.length, 0);
     return [len, head, ...ser.buffers];
@@ -9816,18 +9823,45 @@ class ServerBrain {
       console.warn('[Brain] Speech readout save failed (previous file left intact):', err?.message || err);
     }
   }
-  /** Read the file at boot; applied to the cortex once it exists (`_applyPendingCortexState`). */
+  /**
+   * Read the file's header at boot; the body is read in pieces when the cortex
+   * exists (`_applyPendingCortexState`), so no single read is the size of the
+   * file (one read fails above 2 GiB).
+   */
   _loadSpeechReadout() {
     const file = this._speechFile();
+    let fd;
     try {
       if (!fs.existsSync(file)) return;
-      const buf = fs.readFileSync(file);
-      if (buf.length < 4) return;
-      const hl = buf.readUInt32LE(0);
-      if (4 + hl > buf.length) { console.warn('[Brain] Speech readout file is truncated — ignored.'); return; }
-      this._pendingSpeech = { header: JSON.parse(buf.subarray(4, 4 + hl).toString('utf8')), body: buf.subarray(4 + hl) };
+      const size = fs.statSync(file).size;
+      if (size < 4) return;
+      fd = fs.openSync(file, 'r');
+      const lenBuf = Buffer.alloc(4); fs.readSync(fd, lenBuf, 0, 4, 0);
+      const hl = lenBuf.readUInt32LE(0);
+      if (4 + hl > size || hl > (64 << 20)) { console.warn('[Brain] Speech readout file is truncated — ignored.'); return; }
+      const head = Buffer.alloc(hl); fs.readSync(fd, head, 0, hl, 4);
+      const header = JSON.parse(head.toString('utf8'));
+      if (Number.isFinite(header.bytes) && 4 + hl + header.bytes > size) { console.warn('[Brain] Speech readout file is shorter than its header says — ignored.'); return; }
+      this._pendingSpeech = { header, file, bodyAt: 4 + hl, megabytes: size / 1048576 };
     } catch (err) {
       console.warn('[Brain] Speech readout load failed:', err?.message || err);
+    } finally {
+      if (fd !== undefined) { try { fs.closeSync(fd); } catch { /* already closed */ } }
+    }
+  }
+  /** Apply the pending speech file to the cortex's readout. Returns whether it was applied. */
+  _applySpeechReadout(cortex) {
+    const p = this._pendingSpeech; let fd;
+    try {
+      fd = fs.openSync(p.file, 'r');
+      let pos = p.bodyAt;
+      const next = (len) => { const b = Buffer.alloc(len); const got = fs.readSync(fd, b, 0, len, pos); pos += got; return got === len ? b : b.subarray(0, got); };
+      return cortex.speechReadout().restore(p.header, next);
+    } catch (err) {
+      console.warn('[Brain] Speech readout apply failed:', err?.message || err);
+      return false;
+    } finally {
+      if (fd !== undefined) { try { fs.closeSync(fd); } catch { /* already closed */ } }
     }
   }
 
@@ -10795,10 +10829,10 @@ class ServerBrain {
         // `brain-weights.speech` at boot. Its word-slot numbers are positions
         // in the word list restored just above, so it is applied after it.
         if (this._pendingSpeech && typeof cortex.speechReadout === 'function') {
-          const _ok = cortex.speechReadout().restore(this._pendingSpeech.header, this._pendingSpeech.body);
+          const _ok = this._applySpeechReadout(cortex);
           const _sum = cortex.speechReadout().summary();
           console.log(_ok
-            ? `[Brain] restored the speech readout: ${_sum.taughtUnits} taught units × ${this._pendingSpeech.header.nWords} word slots (${(_sum.bytes / 1048576).toFixed(0)} MB) — she speaks from what she was taught.`
+            ? `[Brain] restored the speech readout: ${_sum.entries} weights in ${_sum.taughtUnits} units, ${_sum.moments} taught moments to rehearse (${this._pendingSpeech.megabytes.toFixed(0)} MB file) — she speaks from what she was taught.`
             : `[Brain] ⛔ the speech readout file did not match this build's layout and was NOT applied — she has her lessons but not how to say them until they are taught again.`);
           this._pendingSpeech = null;
         }
@@ -15411,6 +15445,33 @@ wss.on('connection', (ws, req) => {
               break;
             }
           }
+          // A CARD THAT WAS QUARANTINED STAYS OUT, WHATEVER ID IT COMES BACK WITH.
+          // The quarantine used to drop one connection; the donor's own
+          // watchdog relaunched it, it registered under a new id, and the pool
+          // moved her cortex straight back onto the card that had just returned
+          // invalid results (measured: two full re-uploads, ~4 min paused each).
+          // The hold is keyed on the machine + the card model, which a relaunch
+          // does not change. It lasts DREAM_QUARANTINE_HOLD_MS (30 min) and
+          // doubles each time the same card is quarantined again, to 8 h — one
+          // bounce costs ~8 min of paused teaching, so a 30-min hold keeps a
+          // card that fails on every return under about a quarter of the time,
+          // and a repeat offender under a few percent.
+          {
+            const _qKey = `${client.isLocalHost ? 'local' : (client.ip || 'unknown')}|${(msg.gpuName || 'unknown').toString().slice(0, 80)}`;
+            client.cardKey = _qKey;
+            const _q = brain._quarantinedCards && brain._quarantinedCards.get(_qKey);
+            if (_q && Date.now() < _q.until) {
+              const _leftMin = Math.ceil((_q.until - Date.now()) / 60000);
+              try { ws.send(JSON.stringify({ type: 'quarantined', reason: 'invalid compute results', retryAfterMs: _q.until - Date.now() })); } catch { /* best-effort notify */ }
+              if (!_q.refusedLogAt || Date.now() - _q.refusedLogAt > 60000) {
+                _q.refusedLogAt = Date.now();
+                console.warn(`[Brain] gpu_register REFUSED — ${_qKey} is quarantined for another ${_leftMin} min (quarantined ${_q.times}×; it returned invalid results). A relaunch does not clear it.`);
+              }
+              _q.refused = (_q.refused || 0) + 1;
+              try { ws.close(4002, 'card quarantined'); } catch { /* already closing */ }
+              break;
+            }
+          }
           client.donorAppVersion = _donorVer || 'browser';
           client.isGPU = true;
           // Teach bundle (SPRS 16) — native donors that unpack it get one
@@ -16275,7 +16336,15 @@ wss.on('connection', (ws, req) => {
             }
             const QUARANTINE_THRESHOLD = 5;
             if (_strikes >= QUARANTINE_THRESHOLD) {
-              console.error(`[Brain] PA.4.5 — QUARANTINING donor ${id} after ${_strikes} bad-result batches (dirty/incompatible GPU). Removing from pool.`);
+              // Hold the CARD out, not just this connection (see gpu_register).
+              const _holdBase = Number(process.env.DREAM_QUARANTINE_HOLD_MS) > 0 ? Number(process.env.DREAM_QUARANTINE_HOLD_MS) : 30 * 60000;
+              const _qKey = (_dc && _dc.cardKey) || `unknown|${id}`;
+              if (!brain._quarantinedCards) brain._quarantinedCards = new Map();
+              const _prevQ = brain._quarantinedCards.get(_qKey);
+              const _times = (_prevQ ? _prevQ.times : 0) + 1;
+              const _hold = Math.min(8 * 3600000, _holdBase * Math.pow(2, _times - 1));
+              brain._quarantinedCards.set(_qKey, { until: Date.now() + _hold, times: _times, at: Date.now() });
+              console.error(`[Brain] PA.4.5 — QUARANTINING donor ${id} after ${_strikes} bad-result batches (dirty/incompatible GPU). Removing from pool; the card (${_qKey}) is held out for ${Math.round(_hold / 60000)} min, under any id it returns with.`);
               if (brain._gpuClients) brain._gpuClients.delete(ws);
               if (ws === brain._gpuClient) {
                 let _promo = null;

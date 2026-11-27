@@ -18,44 +18,17 @@
  * "practising".
  */
 
-// What a lesson label is about, in plain words. Checked in order; first hit wins.
-const TOPICS = [
-  ['letter-sound', 'letter sounds'], ['phon', 'letter sounds'], ['alphabet', 'the alphabet'],
-  ['rhyme', 'rhymes'], ['spell', 'spelling'],
-  ['introduc', 'introducing herself'], ['self', 'who she is'], ['biograph', 'her own life story'],
-  ['conv', 'talking with people'], ['reply', 'answering people'], ['question', 'asking and answering questions'],
-  ['transition', 'which word comes next'], ['sentence', 'how sentences go'], ['struct', 'how sentences are built'],
-  ['stories', 'stories'], ['story', 'stories'],
-  ['def', 'what words mean'], ['vocab', 'new words'], ['emission', 'saying words out loud'],
-  ['count', 'counting'], ['number', 'numbers'], ['add', 'adding'], ['subtract', 'taking away'],
-  ['shape', 'shapes'], ['pattern', 'patterns'], ['measure', 'measuring'], ['time', 'telling time'], ['money', 'money'],
-  ['color', 'colors'], ['colour', 'colors'], ['art', 'art'], ['music', 'music'],
-  ['animal', 'animals'], ['plant', 'plants'], ['weather', 'the weather'], ['body', 'her body'], ['health', 'staying healthy'],
-  ['family', 'her family'], ['friend', 'friends'], ['feel', 'feelings'], ['emotion', 'feelings'],
-  ['rule', 'rules'], ['safety', 'staying safe'], ['game', 'games'],
-  ['grammar', 'grammar'], ['life', 'her own life'],
-];
-const SUBJECTS = [
-  ['ela', 'reading'], ['math', 'math'], ['science', 'science'], ['sci', 'science'], ['social', 'social studies'], ['soc', 'social studies'],
-  ['art', 'art'], ['life', 'life'], ['music', 'music'], ['health', 'health'], ['pe', 'PE'], ['coding', 'coding'],
-];
-
-/** Plain-words reading of an internal lesson label, e.g. "PREK-ELA-RHYME" → { topic:'rhymes', subject:'reading' }. */
-export function readLessonLabel(label) {
-  const raw = String(label || '').replace(/#.*$/, '');
-  const low = raw.toLowerCase();
-  const parts = low.split(/[^a-z]+/).filter(Boolean);
-  let subject = null;
-  for (const [k, v] of SUBJECTS) if (parts.includes(k)) { subject = v; break; }
-  // "PRECELL-<subject>-<grade>-<word>" — one word being defined before a class starts
-  const pre = /^precell-[a-z]+-(?:pre-k|[a-z0-9]+)-([a-z][a-z'-]*)$/.exec(low);
-  if (pre) return { word: pre[1], subject, topic: 'what words mean' };
-  for (const [k, v] of TOPICS) if (low.includes(k)) return { topic: v, subject };
-  return { topic: null, subject };
-}
+// A LESSON MOMENT SHOWS THE REAL THING SHE IS BEING TAUGHT. Every lesson event
+// carries a sample of its own content (`detail.sample` — the first pair, the
+// first question, the first words) and the real name of the class she is in
+// (`detail.course`, from her course roster). Nothing here translates a lesson
+// label into a phrase: a table of label → phrase only ever covers the labels
+// someone thought to put in it. A lesson that sends no sample shows no moment.
 
 const plural = (n, one, many) => `${Number(n).toLocaleString()} ${Number(n) === 1 ? one : many}`;
-const inClass = (s) => (s ? ` for ${s}` : '');
+const inClass = (course) => (typeof course === 'string' && course ? ` in ${course}` : '');
+const more = (n, of) => (Number(n) > 1 ? ` — and ${plural(Number(n) - 1, 'more', 'more')} ${of}` : '');
+const clip = (s, max = 80) => { const t = String(s || '').replace(/\s+/g, ' ').trim(); return t.length > max ? t.slice(0, max - 1).trimEnd() + '…' : t; };
 
 /**
  * A lesson event from the walk → a moment, or null when the event is not worth
@@ -66,22 +39,29 @@ export function momentFromLesson(evt) {
   if (!evt || typeof evt.label !== 'string') return null;
   const d = evt.detail || {};
   const head = evt.label.split(':')[0].trim().toUpperCase();
-  const L = readLessonLabel(d.label || d.cellKey || evt.label.split(':').slice(1).join(':').split('·')[0].trim());
+  const where = inClass(d.course);
   switch (head) {
     case 'WORD-INT START':
       return d.word ? { kind: 'word', rank: 9, icon: '🔤', title: 'sounding it out', line: `Working out the word “${d.word}” — its letters, its sounds, what it means.`, cluster: 7 } : null;
-    case 'ASSOC START':
-      if (L.word) return { kind: 'meaning', rank: 8, icon: '📖', title: 'a new word', line: `Learning what “${L.word}” means${inClass(L.subject)}.`, cluster: 9 };
-      if (!L.topic) return null;
-      return { kind: 'practise:' + L.topic, rank: 3, icon: '✏️', title: 'practising', line: `Practising ${L.topic}${d.pairs ? ` — ${plural(d.pairs, 'thing', 'things')} to get right` : ''}.`, cluster: 9 };
+    case 'ASSOC START': {
+      const s = Array.isArray(d.sample) && d.sample.length === 2 ? d.sample : null;
+      if (!s) return null;
+      return { kind: 'pair', rank: 6, icon: '🔗', title: 'putting two things together', line: `Learning that “${clip(s[0], 30)}” goes with “${clip(s[1], 30)}”${more(d.pairs, 'like it')}${where}.`, cluster: 9 };
+    }
     case 'Q-A START':
-      return { kind: 'qa', rank: 5, icon: '🙋', title: 'question time', line: `Practising how to answer ${plural(d.pairs || 0, 'question', 'questions')}${inClass(L.subject)}.`, cluster: 9 };
-    case 'VOCAB-LIST START':
-      return { kind: 'vocab-start', rank: 6, icon: '📚', title: 'new words', line: `${plural(d.total || 0, 'new word', 'new words')} to learn${inClass(L.subject)}.`, cluster: 9 };
+      if (typeof d.sample !== 'string' || !d.sample) return null;
+      return { kind: 'qa', rank: 7, icon: '🙋', title: 'question time', line: `Being asked: “${clip(d.sample)}”${more(d.pairs, 'questions')}${where}.`, cluster: 9 };
+    case 'VOCAB-LIST START': {
+      const w = Array.isArray(d.sample) ? d.sample.filter(Boolean) : [];
+      if (!w.length) return null;
+      const rest = Number(d.total) - w.length;
+      return { kind: 'vocab-start', rank: 6, icon: '📚', title: 'new words', line: `New words${where}: ${w.map((x) => `“${clip(x, 24)}”`).join(', ')}${rest > 0 ? ` and ${plural(rest, 'more', 'more')}` : ''}.`, cluster: 9 };
+    }
     case 'VOCAB-LIST DONE':
       return { kind: 'vocab-done', rank: 6, icon: '✅', title: 'words learned', line: `Finished a word list — ${plural(d.taught || 0, 'word', 'words')} in.`, cluster: 9 };
     case 'USAGE START':
-      return { kind: 'usage', rank: 4, icon: '👀', title: 'reading', line: 'Reading how words are used in real sentences.', cluster: 9 };
+      if (typeof d.sample !== 'string' || !d.sample) return null;
+      return { kind: 'usage', rank: 4, icon: '👀', title: 'reading', line: `Reading how “${clip(d.sample, 24)}” is used in real sentences${where}.`, cluster: 9 };
     case 'STRUCT START':
       return { kind: 'struct', rank: 4, icon: '🧩', title: 'sentence building', line: 'Learning how a sentence is put together.', cluster: 13 };
     case 'METHOD START':
@@ -90,10 +70,10 @@ export function momentFromLesson(evt) {
       return (d.total > 0) ? { kind: 'method-done', rank: 7, icon: '📝', title: 'explained her thinking', line: `Explained her thinking on ${d.passed} of ${plural(d.total, 'question', 'questions')}.`, cluster: 13 } : null;
     case 'VOCAB GAP': {
       const miss = Array.isArray(d.missing) ? d.missing.slice(0, 4) : [];
-      return miss.length ? { kind: 'vocab-gap', rank: 7, icon: '❓', title: 'words she does not know yet', line: `This class uses words she has not learned yet: ${miss.join(', ')}${(d.missing.length > miss.length) ? '…' : ''}`, cluster: 9 } : null;
+      return miss.length ? { kind: 'vocab-gap', rank: 7, icon: '❓', title: 'words she does not know yet', line: `${d.course || 'This class'} uses words she has not learned yet: ${miss.join(', ')}${(d.missing.length > miss.length) ? '…' : ''}`, cluster: 9 } : null;
     }
     case 'VOCAB OK':
-      return { kind: 'vocab-ok', rank: 6, icon: '🌟', title: 'ready for class', line: `She knows every word this class needs${d.required ? ` — all ${Number(d.required).toLocaleString()}` : ''}.`, cluster: 9 };
+      return { kind: 'vocab-ok', rank: 6, icon: '🌟', title: 'ready for class', line: `She knows every word ${d.course || 'this class'} needs${d.required ? ` — all ${Number(d.required).toLocaleString()}` : ''}.`, cluster: 9 };
     default: {
       // "attend "word" …" — her attention landing on one word of what she is saying
       const at = /^attend\s+"([^"]+)"/.exec(evt.label);
@@ -158,20 +138,20 @@ export class MindMoments {
     this._turn = 0;
   }
   /** The single most interesting lesson moment in a burst of events, or null. */
-  bestLesson(events) {
+  bestLesson(events, now = Date.now()) {
     let best = null;
     for (const e of events || []) {
       const m = momentFromLesson(e);
       if (!m) continue;
-      if (now_ok(this, m.kind) && (!best || m.rank > best.rank)) best = m;
+      if (now_ok(this, m.kind, now) && (!best || m.rank > best.rank)) best = m;
     }
     return best;
   }
   /** The first of these noticed things that may be shown now, or null. */
-  bestNoticed(events) {
+  bestNoticed(events, now = Date.now()) {
     for (const e of events || []) {
       const m = momentFromDetector(e, this._turn);
-      if (m && now_ok(this, m.kind)) return m;
+      if (m && now_ok(this, m.kind, now)) return m;
     }
     return null;
   }

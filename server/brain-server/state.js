@@ -2486,6 +2486,7 @@ const SERVER_STATE_MIXIN = {
           flushedOps: this._boundHebbianFlushedOps | 0,
           capFlushes: this._boundHebbianCapFlushes | 0,
           suppressedStale: this._hebbianSuppressedStale | 0,
+          laneRecoveries: this._patternLaneRecoveries | 0,   // times the card's regions were cleared to resume after a broken pattern
           rangesSent: this._hebbianRangesSent | 0,
           maskedSent: this._hebbianMaskedSent | 0,
         },
@@ -3444,7 +3445,11 @@ const SERVER_STATE_MIXIN = {
               says: s.says,
               taughtUnits: s.taughtUnits,
               units: s.units,
-              wordCapacity: s.wordCapacity,
+              weights: s.entries,                 // (unit, word) weights held — size follows what she learned
+              moments: s.moments,                 // taught moments kept for rehearsal
+              momentsSeen: s.momentsSeen,         // distinct moments ever taught
+              rehearsed: s.rehearsed,             // old moments gone back over
+              rehearsalFixes: s.rehearsalFixes,   // of those, how many a later lesson had disturbed
               megabytes: Number((s.bytes / 1048576).toFixed(1)),
             };
           }
