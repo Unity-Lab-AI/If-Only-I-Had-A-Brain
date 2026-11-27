@@ -40,6 +40,7 @@
 
 import { sharedEmbeddings } from './embeddings.js';
 import { brainStream } from './brain-rng.js';
+import { SPEECH_END } from './speech-readout.js';
 // Every sampling choice the curriculum makes while teaching or probing her
 // (which sentence, which distractor, which word to blank) rides her seeded
 // stream, so a walk replays from its seed.
@@ -15262,10 +15263,26 @@ export class Curriculum {
   // re-derive it with a second copy of this arithmetic — two implementations of
   // the same tiling is how they drift apart silently. One source of truth: the
   // writer hands out what it wrote. Caller owns clearing the array.
+  /**
+   * A meaning written into sem is what is in mind: the speech readout names it
+   * when no explicit speaking state is set (`cluster.currentSpeechUnits`). The
+   * last four writes since sem was cleared are kept.
+   */
+  _noteSemMeaning(region, feat) {
+    const cluster = this.cluster;
+    if (!cluster.regions || region !== cluster.regions.sem || feat.length !== 300) return;
+    cluster._speechUnits = null;
+    cluster._speechCtx = null;
+    const m = cluster._mindFeats || (cluster._mindFeats = []);
+    m.push(feat);
+    if (m.length > 4) m.shift();
+  }
+
   _writeTiledPattern(region, feat, binarize = true, opts = null) {
     const cluster = this.cluster;
     const collectInto = opts && opts.collectInto;
     if (!cluster || !region || !feat || feat.length === 0) return;
+    this._noteSemMeaning(region, feat);
     const size = region.end - region.start;
     const gSize = Math.max(1, Math.floor(size / feat.length));
     const haveProxy = !!(cluster._gpuProxy && cluster._gpuProxy.writeSpikeSlice);
@@ -15395,6 +15412,11 @@ export class Curriculum {
     // before, the CPU memset is skipped (10.5% of the live main thread, two
     // 1.88 MB fills per pair, for a copy the card-held lesson never reads).
     const _noCpuClear = !!(opts && opts.noCpu) && Array.isArray(regionNames) && regionNames.length;
+    // The speaking state lives with sem, and the words a lesson lit live with
+    // word_motor: clearing either region clears what rode on it.
+    const _scoped = Array.isArray(regionNames) && regionNames.length > 0;
+    if (!_scoped || regionNames.includes('sem')) { cluster._speechUnits = null; cluster._speechCtx = null; cluster._mindFeats = null; }
+    if (!_scoped || regionNames.includes('word_motor')) cluster._speechTargets = null;
     // WMB REGRESSION FIX 2 — scoped clear. When `regionNames` is a non-empty
     // array, zero ONLY those region spans + their GPU spike slices instead of
     // the whole cluster.lastSpikes (O(regionSize) not O(cluster.size)). The
@@ -15823,6 +15845,24 @@ export class Curriculum {
   }
 
   async _teachHebbian(lr, opts = {}) {
+    // ⭐ WHAT SHE SAYS IS TAUGHT HERE. When a lesson has lit word slots for this
+    // call, each of those words is taught in the current speaking state — look
+    // at what she would say, and correct it only if it is not that word. Every
+    // lane that teaches speech reaches this one function, so they all teach the
+    // same way. A call that teaches speech alone has nothing for the card to do.
+    const _scope = this._speechScope(opts);
+    if (_scope !== 'none') {
+      this._speechTeachTargets();
+      if (_scope === 'only') {
+        // Thousands of these run back to back; hand the loop back every ~30 ms.
+        const _t = Date.now();
+        if (_t - (this._lastSpeechYieldAt || 0) > 30) {
+          await new Promise((resolve) => setImmediate(resolve));
+          this._lastSpeechYieldAt = Date.now();
+        }
+        return;
+      }
+    }
     const _sp0 = Date.now();
     this._tstage('hebbian:substrate');   // LOOPNAME
     await this._awaitComputeSubstrate();   // no-donor gate — pause with a free loop instead of CPU-grinding
@@ -16420,7 +16460,33 @@ export class Curriculum {
     brain._teachStageAt = now;
   }
 
+  /**
+   * Does this teach call address what she SAYS? A lesson that lit word slots
+   * (`_writeAnswerToWordMotor`) and whose whitelist names `sem_to_word_motor`
+   * (or has no whitelist) is teaching speech. Returns:
+   *   'none'  — no speech in this call
+   *   'also'  — speech plus other projections (the card still runs the others)
+   *   'only'  — speech alone (nothing for the card to do)
+   */
+  _speechScope(opts) {
+    const cluster = this.cluster;
+    const targets = cluster && cluster._speechTargets;
+    if (!Array.isArray(targets) || !targets.length) return 'none';
+    const wl = opts && opts.projectionsWhitelist;
+    if (!wl) return 'also';
+    const list = wl instanceof Set ? [...wl] : (Array.isArray(wl) ? wl : []);
+    if (!list.includes('sem_to_word_motor')) return 'none';
+    return list.every((n) => n === 'sem_to_word_motor' || n === 'word_motor_to_sem') ? 'only' : 'also';
+  }
+
   async _teachAntiHebbian(lr, opts = {}) {
+    // "Not this word, here": the word slots lit for this call are pushed below
+    // the best other word in the current speaking state.
+    const _scope = this._speechScope(opts);
+    if (_scope !== 'none') {
+      this._speechPushAway(this.cluster._speechTargets[0]);
+      if (_scope === 'only') return;
+    }
     await this._awaitComputeSubstrate();   // no-donor gate — pause with a free loop instead of CPU-grinding
     const cluster = this.cluster;
     if (!cluster) return;
@@ -17248,7 +17314,11 @@ export class Curriculum {
     if (!cluster || !cluster.crossProjections) return null;
     const subjBand = wordMotorBandName(subject);
     const wl = ['sem_to_motor'];
-    if (cluster.crossProjections.sem_to_word_motor) wl.push('sem_to_word_motor');
+    // 'sem_to_word_motor' names the speech pathway (sem state → word slots). It
+    // is held by the speech readout, not a card matrix, and its presence in a
+    // whitelist is what marks a teach call as teaching what she SAYS
+    // (`_speechScope`).
+    wl.push('sem_to_word_motor');
     if (subjBand && cluster.crossProjections[`sem_to_${subjBand}`]) wl.push(`sem_to_${subjBand}`);
     return wl;
   }
@@ -17415,6 +17485,13 @@ export class Curriculum {
     // wordBucketCellSizeFor()).
     const fullMap = cluster.wordBucketMap;
     const fullWords = cluster.wordBucketWords;
+    // The words this call lights are what the next teach call teaches her to
+    // say in the current speaking state (see `_teachHebbian`). Cleared with
+    // word_motor.
+    if (fullMap && typeof fullMap.get === 'function') {
+      const lit = answerWords.filter((aw) => { const i = fullMap.get(aw); return typeof i === 'number' && i >= 0; });
+      cluster._speechTargets = (Array.isArray(cluster._speechTargets) ? cluster._speechTargets : []).concat(lit);
+    }
     if (fullMap && typeof fullMap.get === 'function' && Array.isArray(fullWords)) {
       // No `typeof` guard: `wordBucketCellSizeFor` is the single geometry
       // authority on the cortex and is called unguarded from the emission and
@@ -19702,6 +19779,17 @@ export class Curriculum {
     if (!semR || !sharedEmbeddings || typeof sharedEmbeddings.getSentenceEmbedding !== 'function') return false;
     const h = String(heard || '').trim();
     const p = Array.isArray(prefix) ? prefix.filter(Boolean) : [];
+    // `unitsOnly` — a lesson or a line that only speaks: set the state her word
+    // is read from and skip painting it onto the sem sheet (two region fills and
+    // two frames to the card per word, which nothing on a speech-only path reads).
+    if (opts.unitsOnly) {
+      if (!p.length && !h) return false;
+      cluster._speechUnits = cluster.speechReadout().stateUnits(h, p);
+      cluster._speechCtx = { heard: h, prefix: p };
+      cluster._mindFeats = null;
+      cluster._speechTargets = null;
+      return true;
+    }
     if (opts.clear !== false) this._clearSpikes(['sem', 'word_motor']);
     if (!p.length) {
       if (!h) return false;
@@ -19713,53 +19801,138 @@ export class Curriculum {
         const tid = this._classifyQuestionTemplate(h);
         if (tid >= 0) this._writeQuestionTemplateTag(tid);
       }
-      return true;
+    } else {
+      this._writeTiledPattern(semR, this._topKEmbedding(this._dictionaryPatternFor(p[p.length - 1]), 8), true);
+      const c = sharedEmbeddings.getSentenceEmbedding((h ? h + ' ' : '') + p.join(' '));
+      if (c && c.length) this._writeTiledPatternOffset(semR, c, false, 0.5);
     }
-    this._writeTiledPattern(semR, this._topKEmbedding(this._dictionaryPatternFor(p[p.length - 1]), 8), true);
-    const c = sharedEmbeddings.getSentenceEmbedding((h ? h + ' ' : '') + p.join(' '));
-    if (c && c.length) this._writeTiledPatternOffset(semR, c, false, 0.5);
+    // ⭐ THE STATE HER NEXT WORD IS READ FROM — and the state a lesson teaches
+    // in: the sparse unit list the speech readout builds from what was said and
+    // her words so far. Set AFTER the sem writes above, which each mark sem as
+    // holding a plain meaning; this is the explicit speaking state and wins.
+    cluster._speechUnits = cluster.speechReadout().stateUnits(h, p);
+    cluster._speechCtx = { heard: h, prefix: p };
+    cluster._mindFeats = null;
     return true;
   }
+
+  /**
+   * Teach the words a lesson lit (`_writeAnswerToWordMotor`) as what she SAYS
+   * from the current state. In a speaking state the lit words are the whole
+   * answer, in order: the first is taught here, each next one in the state that
+   * follows the words before it, and then "the line is finished". With only a
+   * thing or a meaning in mind, the first lit word is its name.
+   */
+  _speechTeachTargets() {
+    const cluster = this.cluster;
+    const targets = cluster._speechTargets;
+    if (!Array.isArray(targets) || !targets.length) return;
+    const ctx = cluster._speechCtx;
+    if (!ctx) { this._speechTeach(targets[0]); return; }
+    const rd = cluster.speechReadout();
+    const keep = cluster._speechUnits;
+    const said = ctx.prefix.slice();
+    for (const w of targets) {
+      cluster._speechUnits = rd.stateUnits(ctx.heard, said);
+      this._speechTeach(w);
+      said.push(w);
+    }
+    cluster._speechUnits = rd.stateUnits(ctx.heard, said);
+    this._speechTeach(SPEECH_END);
+    cluster._speechUnits = keep;
+  }
+
+  /** A thing in mind, to be named ("this thing → its word"): the naming lesson
+   *  teaches in this state and a thought opens from it. */
+  _writeConceptState(word) {
+    const cluster = this.cluster;
+    const semR = cluster && cluster.regions && cluster.regions.sem;
+    const w = String(word || '').toLowerCase().trim();
+    if (!semR || !w) return false;
+    this._clearSpikes(['sem', 'word_motor']);
+    this._writeTiledPattern(semR, this._topKEmbedding(this._dictionaryPatternFor(w), 8), true);
+    cluster._speechUnits = cluster.speechReadout().conceptUnits(w);
+    cluster._mindFeats = null;
+    return cluster._speechUnits.length > 0;
+  }
+
+  /** A meaning in mind with no word attached (a mood, a memory, a topic vector). */
+  _writeMeaningState(emb) {
+    const cluster = this.cluster;
+    const semR = cluster && cluster.regions && cluster.regions.sem;
+    if (!semR || !emb || !emb.length) return false;
+    this._clearSpikes(['sem', 'word_motor']);
+    const f = Float64Array.from(emb);
+    this._writeTiledPattern(semR, this._topKEmbedding(f, 8), true);
+    cluster._speechUnits = cluster.speechReadout().meaningUnits([f]);
+    cluster._mindFeats = null;
+    return cluster._speechUnits.length > 0;
+  }
+
+  /**
+   * Teach her to say `word` in the state she is in now ("teach until she says
+   * it"). `word` may be SPEECH_END: the line is finished here. Returns
+   * { right, updates } — `right` is whether she already said it — or null when
+   * there is no state or the word has no slot.
+   */
+  _speechTeach(word, also = null) {
+    const cluster = this.cluster;
+    const units = cluster && typeof cluster.currentSpeechUnits === 'function' ? cluster.currentSpeechUnits() : null;
+    if (!units || !units.length) return null;
+    const n = Array.isArray(cluster.wordBucketWords) ? cluster.wordBucketWords.length : 0;
+    if (!n) return null;
+    const slot = (w) => {
+      if (w === SPEECH_END) return SPEECH_END;
+      const i = cluster.wordBucketMap ? cluster.wordBucketMap.get(String(w || '').toLowerCase()) : undefined;
+      return (typeof i === 'number' && i >= 0) ? i : null;
+    };
+    const idx = slot(word);
+    if (idx === null) return null;
+    // `also` — the other words taught in this same state; not rivals here.
+    let alsoSet = null;
+    if (also && also.length > 1) {
+      alsoSet = new Set();
+      for (const w of also) { const i = slot(w); if (i !== null && i !== idx) alsoSet.add(i); }
+    }
+    const r = cluster.speechReadout().teach(units, idx, n, alsoSet ? { also: alsoSet } : undefined);
+    const st = this._speechLesson || (this._speechLesson = { taught: 0, right: 0 });
+    st.taught++; if (r.right) st.right++;
+    return r;
+  }
+  /** "Not this word, here." */
+  _speechPushAway(word) {
+    const cluster = this.cluster;
+    const units = cluster && typeof cluster.currentSpeechUnits === 'function' ? cluster.currentSpeechUnits() : null;
+    const n = cluster && Array.isArray(cluster.wordBucketWords) ? cluster.wordBucketWords.length : 0;
+    if (!units || !units.length || !n || !cluster.wordBucketMap) return false;
+    const idx = cluster.wordBucketMap.get(String(word || '').toLowerCase());
+    if (typeof idx !== 'number' || idx < 0) return false;
+    return cluster.speechReadout().pushAway(units, idx, n);
+  }
+  /** Start / read the "said it before being corrected" count of a speech lesson. */
+  _speechLessonStart() { this._speechLesson = { taught: 0, right: 0 }; }
+  _speechLessonRead() { const s = this._speechLesson || { taught: 0, right: 0 }; return `${s.right}/${s.taught} said before being corrected${s.taught ? ` (${(100 * s.right / s.taught).toFixed(0)}%)` : ''}`; }
 
   async _teachReplyInContext(pairs, opts = {}) {
     const cluster = this.cluster;
     const semR = cluster && cluster.regions && cluster.regions.sem;
-    if (!semR || !cluster.regions.word_motor || !cluster.crossProjections || !cluster.crossProjections.sem_to_word_motor) return { taught: 0 };
+    if (!semR || !cluster.regions.word_motor || typeof cluster.speechReadout !== 'function') return { taught: 0 };
     if (!sharedEmbeddings || typeof sharedEmbeddings.getSentenceEmbedding !== 'function') return { taught: 0 };
     const words = (x) => String(x || '').toLowerCase().replace(/[^a-z'\s-]+/g, ' ').split(/\s+/).filter(Boolean);
     this._ensureWordBucketMap(opts.subject);
     const map = cluster.wordBucketMap;
     const has = (w) => !!(map && map.has(w));
-    const wl = ['sem_to_word_motor'];
-    const lr = opts.lr ?? 0.1413;
-    const antiLr = lr * (opts.antiScale ?? 0.3);
     const reps = Number(opts.reps) > 0 ? Number(opts.reps) : 3;
     // The one speech-state writer compose also uses.
-    const writeState = (heard, prefix) => this._writeSpeechState(heard, prefix);
-    // Negatives come from her own replies' vocabulary (words she does say).
-    const pool = [];
-    for (const [, r] of pairs) for (const w of words(r)) if (has(w) && !pool.includes(w)) pool.push(w);
-    const pickWrong = (right, avoid) => {
-      for (let t = 0; t < 8 && pool.length > 1; t++) {
-        const w = pool[Math.floor(_curriculumRand() * pool.length)];
-        if (w !== right && !avoid.includes(w)) return w;
-      }
-      return null;
-    };
+    const writeState = (heard, prefix) => this._writeSpeechState(heard, prefix, { unitsOnly: true });
+    // Teach until she says it: in this state, `next` (a word, or "the line is
+    // finished") must lead whatever she would otherwise say. The word that was
+    // beating it is the one pushed down — the measured rival, not a sampled one.
     const bind = async (heard, prefix, next) => {
       writeState(heard, prefix);
-      this._writeAnswerToWordMotor(next, opts.subject);
-      await this._teachHebbian(lr, { projectionsWhitelist: wl, skipIntraSynapses: true });
-      const avoid = [next];
-      for (let a = 0; a < 2; a++) {
-        const wrong = pickWrong(next, avoid);
-        if (!wrong) break;
-        avoid.push(wrong);
-        writeState(heard, prefix);
-        this._writeAnswerToWordMotor(wrong, opts.subject);
-        await this._teachAntiHebbian(antiLr, { projectionsWhitelist: wl, skipIntraSynapses: true });
-      }
+      this._speechTeach(next);
     };
+    this._speechLessonStart();
     let taught = 0;
     const usable = [];
     for (const [heard, reply] of pairs) {
@@ -19767,6 +19940,7 @@ export class Curriculum {
       if (!words(heard).length || rw.length < 1) continue;
       usable.push([heard, rw]);
     }
+    let _sliceAt = Date.now();
     for (let rep = 0; rep < reps; rep++) {
       for (const [heard, rw] of usable) {
         if (globalThis._brainShutdownRequested) return { taught };
@@ -19774,9 +19948,12 @@ export class Curriculum {
           await bind(heard, rw.slice(0, i), rw[i]);
           taught++;
         }
+        await bind(heard, rw, SPEECH_END);          // and that is where her answer ends
+        if (Date.now() - _sliceAt > 30) { await _microtask(); _sliceAt = Date.now(); }
       }
       await _microtask();
     }
+    const _firstPass = this._speechLessonRead();
     // WHOLE-LINE SELF-CHECK — say it back, correct each wrong word.
     let checked = 0, rightWords = 0, corrected = 0;
     if (typeof cluster.emitWordDirectDonor === 'function' && process.env.DREAM_REPLY_CHECK !== '0') {
@@ -19792,12 +19969,7 @@ export class Curriculum {
           let said = '';
           try { said = String((await cluster.emitWordDirectDonor({ subject: opts.subject })) || '').toLowerCase().trim(); } catch { said = ''; }
           if (said === rw[i]) { rightWords++; continue; }
-          // push the word she said away in this state, teach the right one again
-          if (said && has(said)) {
-            writeState(heard, rw.slice(0, i));
-            this._writeAnswerToWordMotor(said, opts.subject);
-            await this._teachAntiHebbian(lr * 0.5, { projectionsWhitelist: wl, skipIntraSynapses: true });
-          }
+          // teach the right one again; the word she said instead is the rival pushed down
           await bind(heard, rw.slice(0, i), rw[i]);
           corrected++;
         }
@@ -19805,7 +19977,7 @@ export class Curriculum {
     }
     this._clearSpikes(['sem', 'word_motor']);
     this.stats.replyInContext = (this.stats.replyInContext | 0) + taught;
-    this._hb?.(`[Curriculum] 💬 REPLY-IN-CONTEXT ${opts.label || ''} — ${usable.length} exchange(s), ${taught} word step(s) × context (what was said + her reply so far) with 2 contrast words each · self-check: ${checked} line(s), ${rightWords} word(s) right first time, ${corrected} corrected.`);
+    this._hb?.(`[Curriculum] 💬 REPLY-IN-CONTEXT ${opts.label || ''} — ${usable.length} exchange(s), ${taught} word step(s) × context (what was said + her reply so far), each taught until she says it · while teaching: ${_firstPass} · self-check: ${checked} line(s), ${rightWords} word(s) right first time, ${corrected} corrected.`);
     return { taught, checked, rightWords, corrected };
   }
 
@@ -21173,6 +21345,7 @@ export class Curriculum {
   _writeTiledPatternOffset(region, feat, binarize, offset) {
     const cluster = this.cluster;
     if (!cluster || !region || !feat || feat.length === 0) return;
+    this._noteSemMeaning(region, feat);
     const size = region.end - region.start;
     const slideStart = region.start + Math.floor(size * (offset || 0));
     const slideSize = region.end - slideStart;
@@ -23688,6 +23861,14 @@ export class Curriculum {
         if (c) c.count += 1;
         else contextPairs.set(ckey, { a, b, prefix, count: 1 });
       }
+      // …and where the sentence ends: after its last word, the line is finished.
+      if (words.length >= 2) {
+        const whole = words.join(' ');
+        const ekey = `${whole}→\u0000end`;
+        const e = contextPairs.get(ekey);
+        if (e) e.count += 1;
+        else contextPairs.set(ekey, { a: words[words.length - 1], b: null, end: true, prefix: whole, count: 1 });
+      }
     }
 
     if (pairs.length === 0) {
@@ -23743,51 +23924,68 @@ export class Curriculum {
     const r = { trained: _bucketTrained, deferredReps: _bucketDeferred };
     // ⭐⭐ ORDER TO SPEECH — THE TRANSITION ALSO LANDS WHERE SHE SPEAKS FROM.
     // The bucket pass above binds sem(a) to b's pattern in the LETTER-motor
-    // region; b's speaking slot (word_motor) was never written, and speech reads
-    // sem → word_motor. So "my name is unity", taught hundreds of times, never
-    // reached her mouth — asked her name she emitted unrelated words. Here every
-    // unique transition a→b also writes a's taught sem code (dictionary pattern,
-    // top-8, tiled — exactly what compose writes when it speaks after a) and
-    // b's word_motor bucket, and binds sem→word_motor on them. Frequency kept:
-    // frequent transitions get more reps. Added training mass, no gate touched.
-    // ⚠ RE-PRICE: unique transitions × (2..4 reps) ≈ 7,831 × ~2.4 pair-teaches
-    // per corpus visit, the same order as one LO bucket rep above.
-    if (!(r.deferredReps > 0) && !globalThis._brainShutdownRequested
-        && cluster.crossProjections.sem_to_word_motor && cluster.regions.sem && cluster.regions.word_motor) {
-      const _wl = ['sem_to_word_motor'];
-      const _speechLr = opts.speechLr ?? 0.1413;
-      let _spoken = 0;
+    // region; that is not where a word is said from. Here every unique
+    // (sentence so far → next word) is taught in the speaking state compose is
+    // in before that word — and the end of each sentence is taught as "the line
+    // is finished" — each one until she says it.
+    //
+    // A pass over the transitions is repeated while it is still correcting a
+    // lot: teaching one transition can disturb another, and a second visit
+    // settles them. It stops once at least `DREAM_SPEECH_PASS_TARGET` (90 %) of a
+    // pass was already right before being corrected, or after
+    // `DREAM_SPEECH_MAX_PASSES` (4).
+    // ⚠ RE-PRICE: ≤ 4 passes × the corpus's unique in-sentence transitions, each
+    // a table sum on this machine (measured 0.6 ms at 1,864 words; it grows with
+    // vocabulary) — 10,261 transitions × 4 × ~3 ms ≈ 2 minutes for the largest
+    // corpus, against the card binds this replaces (2–4 per transition, each a
+    // round trip).
+    if (!(r.deferredReps > 0) && !globalThis._brainShutdownRequested && cluster.regions.word_motor) {
+      let _spoken = 0, _passes = 0, _lastRead = '';
       try {
         this._ensureWordBucketMap(opts.subject);
-        // ⭐ SENTENCE CONTEXT. sem carries the last word's taught code AND the
-        // sentence so far as an ordered sentence code in the second half —
-        // byte for byte what compose writes before each word. A bigram alone
-        // (the old write) let anything that ever followed "the" come next,
-        // which is word salad; with the prefix, "my name is" → "unity" is a
-        // different state from "the cat is" → "black".
-        // ⚠ RE-PRICE: one unit per unique (prefix, next) — at most the
-        // corpus's transition count (`pairs.length`), 2..4 reps by frequency.
-        // The ONE speech-state writer compose uses (`_writeSpeechState`), with
-        // nothing heard: a narrated line is her own sentence.
         const _tok = (s) => String(s || '').toLowerCase().replace(/[^a-z'\s-]+/g, ' ').split(/\s+/).filter(Boolean);
+        const _items = [];
+        // A sentence start can have several taught next words ("i" → am / want /
+        // see …, or a short sentence that is also the start of a longer one).
+        // They are gathered per start so teaching one does not push its
+        // siblings down — any of them is a right thing to say there.
+        const _sibs = new Map();
         for (const u of contextPairs.values()) {
-          if (globalThis._brainShutdownRequested) break;
-          const _next = _tok(u.b)[0];
-          if (!_next || !cluster.wordBucketMap || !cluster.wordBucketMap.has(_next)) continue;
           const _prefix = _tok(u.prefix);
           if (!_prefix.length) continue;
-          const _n = u.count >= 8 ? 4 : u.count >= 3 ? 3 : 2;
-          for (let k = 0; k < _n; k++) {
-            this._writeSpeechState('', _prefix);
-            this._writeAnswerToWordMotor(_next, opts.subject);
-            await this._teachHebbian(_speechLr, { projectionsWhitelist: _wl, skipIntraSynapses: true });
-            _spoken++;
+          let _next = SPEECH_END;
+          if (!u.end) {
+            _next = _tok(u.b)[0];
+            if (!_next || !cluster.wordBucketMap || !cluster.wordBucketMap.has(_next)) continue;
           }
+          const _key = _prefix.join(' ');
+          let _g = _sibs.get(_key);
+          if (!_g) { _g = []; _sibs.set(_key, _g); }
+          if (!_g.includes(_next)) _g.push(_next);
+          _items.push([_prefix, _next, _g]);
+        }
+        const _env = (typeof process !== 'undefined' && process.env) ? process.env : {};
+        const _target = Number(_env.DREAM_SPEECH_PASS_TARGET) > 0 ? Number(_env.DREAM_SPEECH_PASS_TARGET) : 0.9;
+        const _maxPasses = Number(_env.DREAM_SPEECH_MAX_PASSES) > 0 ? Math.floor(Number(_env.DREAM_SPEECH_MAX_PASSES)) : 4;
+        let _sliceAt = Date.now();
+        for (; _passes < _maxPasses && _items.length; ) {
+          if (globalThis._brainShutdownRequested) break;
+          this._speechLessonStart();
+          for (const [_prefix, _next, _g] of _items) {
+            this._writeSpeechState('', _prefix, { unitsOnly: true });
+            this._speechTeach(_next, _g);
+            _spoken++;
+            if (Date.now() - _sliceAt > 30) { await _microtask(); _sliceAt = Date.now(); if (globalThis._brainShutdownRequested) break; }
+          }
+          _passes++;
+          _lastRead = this._speechLessonRead();
+          const _s = this._speechLesson;
+          if (_s.taught > 0 && _s.right / _s.taught >= _target) break;
         }
       } catch (err) {
         console.warn(`[Curriculum] ORDER-TO-SPEECH stopped: ${(err && err.message) || err}`);
       }
-      this._hb(`[Curriculum] ORDER-TO-SPEECH — ${_spoken} sem→word_motor binds across ${contextPairs.size} in-sentence transitions (${uniquePairs.size} word pairs) (${opts.label || 'K'}) · her speaking slots now carry what follows each word.`);
+      this._hb(`[Curriculum] ORDER-TO-SPEECH — ${_spoken} speaking steps over ${contextPairs.size} in-sentence transitions (${uniquePairs.size} word pairs) in ${_passes} pass(es) (${opts.label || 'K'}) · last pass: ${_lastRead}.`);
     }
     // (The single flat `_teachAssociationPairs(pairs, ...)` call that used to
     // stand here is replaced by the bucketed loop above. Its rationale still
@@ -28824,62 +29022,25 @@ export class Curriculum {
         readPass++;
       }
 
-      // TALK: sem → motor → decode first letter (PRODUCTION direction)
-      // Given the word's MEANING (GloVe in sem), can Unity produce the
-      // correct first letter at motor? Tests sem_to_motor cross-projection.
-      // Fix: was letter→motor (READ feedback, wrong direction).
-      const wordEmb = sharedEmbeddings.getEmbedding(word);
-      const s2m = allProjs['sem_to_motor'];
-      if (s2m && semRegion && motorRegion && wordEmb && wordEmb.length > 0) {
-        const semSize = semRegion.end - semRegion.start;
-        const semPat = new Float64Array(semSize);
-        const sGSize = Math.max(1, Math.floor(semSize / wordEmb.length));
-        for (let d = 0; d < wordEmb.length; d++) {
-          if (wordEmb[d] <= 0) continue;
-          for (let n = 0; n < sGSize; n++) {
-            const idx = d * sGSize + n;
-            if (idx < semSize) semPat[idx] = wordEmb[d];
-          }
-        }
-        const motorOutput = await this._probePropagate('sem_to_motor', semPat);
-        const motorSize = motorRegion.end - motorRegion.start;
-        const mGSize = Math.max(1, Math.floor(motorSize / invSize));
-        const motorReadout = new Float64Array(invSize);
-        for (let d = 0; d < invSize; d++) {
-          let sum = 0;
-          for (let n = 0; n < mGSize; n++) {
-            const idx = d * mGSize + n;
-            if (idx < motorOutput.length) sum += motorOutput[idx];
-          }
-          motorReadout[d] = sum / mGSize;
-        }
-        // Mean-center
-        let mean = 0;
-        for (let i = 0; i < invSize; i++) mean += motorReadout[i];
-        mean /= invSize;
-        for (let i = 0; i < invSize; i++) motorReadout[i] -= mean;
-        if (decodeLetter(motorReadout) === firstLetter) {
-          talkPass++;
-        } else {
-          talkFails.push(word);
-        }
-      } else {
-        talkPass++;
-      }
+      // TALK: with this thing in mind, does she SAY its word? Read where she
+      // speaks from (the speech readout, in the naming state the naming lesson
+      // teaches in) — the word passes when it is the one she would say.
+      if (this._talkNames(word)) talkPass++;
+      else talkFails.push(word);
     }
 
-    const thinkPass = sample.length;
+    // No THINK figure: nothing in this gate measures it. It used to be set to
+    // the sample size and printed as "THINK 10/10 (100%)" on every verdict.
     const N = sample.length;
     const readRate = N > 0 ? readPass / N : 0;
-    const thinkRate = N > 0 ? thinkPass / N : 0;
     const talkRate = N > 0 ? talkPass / N : 0;
-    const pass = readRate >= PATH_MIN && thinkRate >= PATH_MIN && talkRate >= PATH_MIN;
+    const pass = readRate >= PATH_MIN && talkRate >= PATH_MIN;
     this._gateRead('vocab', { pass, read: readPass, talk: talkPass, total: N, readRate, talkRate, talkFails: talkFails.length });
 
     return {
       pass,
-      reason: `READ ${readPass}/${N} (${(readRate * 100).toFixed(0)}%), THINK ${thinkPass}/${N} (${(thinkRate * 100).toFixed(0)}%), TALK ${talkPass}/${N} (${(talkRate * 100).toFixed(0)}%)${talkFails.length > 0 ? ' [TALK fail: ' + talkFails.join(', ') + ']' : ''}`,
-      metrics: { readRate, thinkRate, talkRate, talkFails },
+      reason: `READ ${readPass}/${N} (${(readRate * 100).toFixed(0)}%), TALK ${talkPass}/${N} (${(talkRate * 100).toFixed(0)}%)${talkFails.length > 0 ? ' [TALK fail: ' + talkFails.join(', ') + ']' : ''}`,
+      metrics: { readRate, talkRate, talkFails },
     };
   }
 
@@ -29936,6 +30097,7 @@ export class Curriculum {
     const talkFails = [];
     const PATH_MIN = GATE_PATH_MIN;
 
+    let talkSteps = 0;   // in-sentence next-word steps asked
     let _si = 0;
     for (const sentence of sample) {
       this._probeMark('sentence', ++_si, sample.length);
@@ -29986,61 +30148,66 @@ export class Curriculum {
         readPass++; // no letter→sem projection = skip READ (pass by default)
       }
 
-      // TALK: sem → motor → decode first letter (PRODUCTION direction)
-      // Fix: was letter→motor (wrong direction).
-      const wordEmb = sharedEmbeddings.getEmbedding(firstWord);
-      const s2m = allProjs['sem_to_motor'];
-      if (s2m && semRegion && motorRegion && wordEmb && wordEmb.length > 0) {
-        const semSize = semRegion.end - semRegion.start;
-        const semPat = new Float64Array(semSize);
-        const sGSize = Math.max(1, Math.floor(semSize / wordEmb.length));
-        for (let d = 0; d < wordEmb.length; d++) {
-          if (wordEmb[d] <= 0) continue;
-          for (let n = 0; n < sGSize; n++) {
-            const idx = d * sGSize + n;
-            if (idx < semSize) semPat[idx] = wordEmb[d];
-          }
-        }
-        const motorOutput = await this._probePropagate('sem_to_motor', semPat);
-        const motorSize = motorRegion.end - motorRegion.start;
-        const mGSize = Math.max(1, Math.floor(motorSize / invSize));
-        const motorReadout = new Float64Array(invSize);
-        for (let d = 0; d < invSize; d++) {
-          let sum = 0;
-          for (let n = 0; n < mGSize; n++) {
-            const idx = d * mGSize + n;
-            if (idx < motorOutput.length) sum += motorOutput[idx];
-          }
-          motorReadout[d] = sum / mGSize;
-        }
-        // Mean-center
-        let mean = 0;
-        for (let i = 0; i < invSize; i++) mean += motorReadout[i];
-        mean /= invSize;
-        for (let i = 0; i < invSize; i++) motorReadout[i] -= mean;
-        if (decodeLetter(motorReadout) === firstLetter) {
-          talkPass++;
-        } else {
-          talkFails.push(firstWord);
-        }
-      } else {
-        talkPass++;
-      }
+      // TALK: given the sentence so far, does she say its next word? Every
+      // in-sentence step is read where she speaks from, in the state compose
+      // is in before that word. Counted in next-words, not sentences.
+      const t = this._talkContinues(sentence);
+      talkPass += t.right; talkSteps += t.total;
+      if (t.firstMiss) talkFails.push(t.firstMiss);
     }
 
-    const thinkPass = sample.length; // 100%
+    // No THINK figure: nothing in this gate measures it (it was the sample size).
     const N = sample.length;
     const readRate = N > 0 ? readPass / N : 0;
-    const thinkRate = N > 0 ? thinkPass / N : 0;
-    const talkRate = N > 0 ? talkPass / N : 0;
-    const pass = readRate >= PATH_MIN && thinkRate >= PATH_MIN && talkRate >= PATH_MIN;
-    this._gateRead('sentence', { pass, read: readPass, talk: talkPass, total: N, readRate, talkRate, talkFails: talkFails.length });
+    const talkRate = talkSteps > 0 ? talkPass / talkSteps : 0;
+    const pass = readRate >= PATH_MIN && talkRate >= PATH_MIN;
+    this._gateRead('sentence', { pass, read: readPass, talk: talkPass, total: N, talkSteps, readRate, talkRate, talkFails: talkFails.length });
 
     return {
       pass,
-      reason: `READ ${readPass}/${N} (${(readRate * 100).toFixed(0)}%), THINK ${thinkPass}/${N} (${(thinkRate * 100).toFixed(0)}%), TALK ${talkPass}/${N} (${(talkRate * 100).toFixed(0)}%)${talkFails.length > 0 ? ' [TALK fail: ' + talkFails.join(', ') + ']' : ''}`,
-      metrics: { readRate, thinkRate, talkRate, talkFails },
+      reason: `READ ${readPass}/${N} (${(readRate * 100).toFixed(0)}%), TALK ${talkPass}/${talkSteps} next words (${(talkRate * 100).toFixed(0)}%)${talkFails.length > 0 ? ' [TALK first miss: ' + talkFails.slice(0, 10).join(', ') + ']' : ''}`,
+      metrics: { readRate, talkRate, talkFails },
     };
+  }
+
+  /** TALK, naming: with `word` in mind, is it the word she would say? */
+  _talkNames(word) {
+    const cluster = this.cluster;
+    const w = String(word || '').toLowerCase().trim();
+    this._ensureWordBucketMap(this._currentGateSubject);
+    const idx = cluster.wordBucketMap ? cluster.wordBucketMap.get(w) : undefined;
+    const n = Array.isArray(cluster.wordBucketWords) ? cluster.wordBucketWords.length : 0;
+    if (typeof idx !== 'number' || idx < 0 || !n) return false;
+    const rd = cluster.speechReadout();
+    return rd.rank(rd.conceptUnits(w), idx, n) === 1;
+  }
+
+  /**
+   * TALK, continuing: for each word of `sentence` after the first, is it the
+   * word she would say given the words before it? Returns { right, total,
+   * firstMiss } — firstMiss is "said→expected" at the first wrong step.
+   */
+  _talkContinues(sentence) {
+    const cluster = this.cluster;
+    const words = String(sentence || '').toLowerCase().replace(/[^a-z'\s-]+/g, ' ').split(/\s+/).filter(Boolean);
+    this._ensureWordBucketMap(this._currentGateSubject);
+    const map = cluster.wordBucketMap; const list = cluster.wordBucketWords;
+    const n = Array.isArray(list) ? list.length : 0;
+    const out = { right: 0, total: 0, firstMiss: null };
+    if (!map || !n || words.length < 2) return out;
+    const rd = cluster.speechReadout();
+    for (let i = 1; i < words.length; i++) {
+      const idx = map.get(words[i]);
+      if (typeof idx !== 'number' || idx < 0) continue;
+      const units = rd.stateUnits('', words.slice(0, i));
+      out.total++;
+      if (rd.rank(units, idx, n) === 1) { out.right++; continue; }
+      if (!out.firstMiss) {
+        const s = rd.scores(units, n); let b = 0; for (let k = 1; k < n; k++) if (s[k] > s[b]) b = k;
+        out.firstMiss = `${s[b] > 0 ? list[b] : '(nothing)'}→${words[i]}`;
+      }
+    }
+    return out;
   }
 
   // ─── TODO-aligned Math-G2 helpers (Session 32) ───────────────────
@@ -31429,46 +31596,20 @@ export class Curriculum {
         readPass++;
       }
 
-      // TALK: sem → motor → first letter match
-      if (semToMotor && motorRegion && nameEmb && nameEmb.length > 0) {
-        const semSize = semRegion.end - semRegion.start;
-        const semPat = buildPattern(semSize, nameEmb);
-        const motorOutput = await this._probePropagate('sem_to_motor', semPat);
-        const motorSize = motorRegion.end - motorRegion.start;
-        const mGSize = Math.max(1, Math.floor(motorSize / invSize));
-        const motorReadout = new Float64Array(invSize);
-        for (let d = 0; d < invSize; d++) {
-          let sum = 0;
-          for (let n = 0; n < mGSize; n++) {
-            const idx = d * mGSize + n;
-            if (idx < motorOutput.length) sum += motorOutput[idx];
-          }
-          motorReadout[d] = sum / mGSize;
-        }
-        let mean = 0;
-        for (let i = 0; i < invSize; i++) mean += motorReadout[i];
-        mean /= invSize;
-        for (let i = 0; i < invSize; i++) motorReadout[i] -= mean;
-        if (decodeLetter(motorReadout) === firstLetter) {
-          talkPass++;
-        } else {
-          talkFails.push(name);
-        }
-      } else {
-        talkPass++;
-      }
+      // TALK: with this thing in mind, does she SAY its word? (see `_talkNames`)
+      if (this._talkNames(name)) talkPass++;
+      else talkFails.push(name);
     }
 
-    const thinkPass = sample.length; // 100% — concept features in free region always hold
+    // No THINK figure: nothing in this gate measures it (it was the sample size).
     const N = sample.length;
     const readRate = N > 0 ? readPass / N : 0;
-    const thinkRate = N > 0 ? thinkPass / N : 0;
     const talkRate = N > 0 ? talkPass / N : 0;
-    const pass = readRate >= PATH_MIN && thinkRate >= PATH_MIN && talkRate >= PATH_MIN;
+    const pass = readRate >= PATH_MIN && talkRate >= PATH_MIN;
     return {
       pass,
-      reason: `READ ${readPass}/${N} (${(readRate * 100).toFixed(0)}%), THINK ${thinkPass}/${N} (${(thinkRate * 100).toFixed(0)}%), TALK ${talkPass}/${N} (${(talkRate * 100).toFixed(0)}%)${talkFails.length > 0 ? ' [TALK fail: ' + talkFails.join(', ') + ']' : ''}`,
-      metrics: { readRate, thinkRate, talkRate, talkFails },
+      reason: `READ ${readPass}/${N} (${(readRate * 100).toFixed(0)}%), TALK ${talkPass}/${N} (${(talkRate * 100).toFixed(0)}%)${talkFails.length > 0 ? ' [TALK fail: ' + talkFails.join(', ') + ']' : ''}`,
+      metrics: { readRate, talkRate, talkFails },
     };
   }
 

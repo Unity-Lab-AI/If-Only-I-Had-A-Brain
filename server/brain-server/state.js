@@ -3410,85 +3410,48 @@ const SERVER_STATE_MIXIN = {
             };
           })()
         : null,
-      // SPEAK.2/9-obs — speech-pipeline health. Per-subject word_motor basin
-      // separability (weight-mass distribution: uniform = separable; from the
-      // SPEAK.2 renorm probe) + frozen cellSize (SPEAK.1) + the reject-to-silence
-      // coherence-floor stats (SPEAK.9) + best-of-N rerank stats. Lets separability
-      // regression show at G4 instead of surfacing as G9 word salad.
+      // Speech health: how much of what she was taught to say she already
+      // says (`readout`), the reject-to-silence coherence-floor stats and the
+      // best-of-N rerank stats.
       speechHealth: (() => {
         try {
-          // ── DORMANT.4 (2026-08-25) — SEPARABILITY HAD NO PRODUCER AT ALL ────
+          // ⛔ THE NUMBER THAT STOOD HERE WAS THE BOOT-TIME COPY. It sampled the
+          // host's copy of the card-held sem → word_motor matrix, which the
+          // card trained and the host never saw again: it read `meanAbs 0.0604 /
+          // maxAbs 0.1` from the first minute of a walk to the last and reported
+          // that as her speech margin.
           //
-          // This block read `cortex.wordMotorWeightMaxAbs_<subject>` for six
-          // per-subject bands. **Nothing anywhere writes those fields** — not a
-          // rename, a consumer with no producer — so `separability` has always
-          // serialised as `{}`. That matters more than an empty dashboard cell:
-          // this is the ONLY instrument that measures the emission margin
-          // directly, i.e. the exact quantity the whole word-salad diagnosis
-          // turns on, and `voice.emitRejection: "below-signal-floor"` is a
-          // margin symptom we have been reasoning about without ever measuring.
-          //
-          // The six per-subject bands are also gone: WMB UNIFY collapsed them
-          // into ONE global `word_motor` band with one bucket per word. So it
-          // is computed here, from the unified matrix, as a real number.
-          //
-          // ⛔ SAMPLED AND CACHED ON PURPOSE. This runs on the 10fps broadcast
-          // build; a full scan of a 720k-row matrix on that path is exactly the
-          // kind of unpriced per-tick cost that produced the loop-starvation
-          // work. 4,096 evenly-strided values, recomputed at most every 5s.
-          const subj = ['ela', 'math', 'sci', 'soc', 'art', 'life'];
+          // ⭐ What is published now is counted where speech is taught. Every
+          // speech lesson asks "would she already say this word here?" before it
+          // changes anything, so the share that was already right is a direct
+          // read of how much of what she was taught she can say:
+          //   taught        teach steps since boot
+          //   saidAlready   of those, she already said the taught word
+          //   corrections   weight changes made (0 when she was already right)
+          //   pushes        "not this word, here" corrections
+          //   says          words read off the readout (spoken or probed)
+          // plus the table's size. Read once per broadcast; a few field copies.
           const sep = {};
-          const _now = Date.now();
-          if (!this._sepCache || (_now - this._sepCache.ts) > 5000) {
-            let unified = null;
-            try {
-              const xp = cortex && cortex.crossProjections;
-              const mx = xp && (xp.sem_to_word_motor || xp.sem_to_motor);
-              if (mx && mx.values && mx.values.length > 0) {
-                const v = mx.values;
-                const SAMPLE = 4096;
-                const stride = Math.max(1, Math.floor(v.length / SAMPLE));
-                let maxAbs = 0, sumAbs = 0, n = 0, nz = 0;
-                for (let i = 0; i < v.length; i += stride) {
-                  const a = Math.abs(v[i]);
-                  if (a > maxAbs) maxAbs = a;
-                  sumAbs += a; n++;
-                  if (a > 1e-9) nz++;
-                }
-                const meanAbs = n > 0 ? sumAbs / n : 0;
-                unified = {
-                  maxAbs: Number(maxAbs.toFixed(4)),
-                  meanAbs: Number(meanAbs.toFixed(4)),
-                  // The margin number. A LOW ratio means every word bucket
-                  // carries similar mass — nothing stands out, the argmax is
-                  // deciding on noise, and that is word salad measured rather
-                  // than inferred. A high ratio means real discrimination.
-                  ratio: meanAbs > 0 ? Number((maxAbs / meanAbs).toFixed(2)) : 0,
-                  nonZeroPct: n > 0 ? Number((100 * nz / n).toFixed(1)) : 0,
-                  sampled: n,
-                  cellSize: (cortex && cortex.wordBucketCellSize_unified) || 0,
-                };
-              }
-            } catch { unified = null; }
-            this._sepCache = { ts: _now, unified };
-          }
-          if (this._sepCache && this._sepCache.unified) sep.unified = this._sepCache.unified;
-          for (const sj of subj) {
-            const mx = cortex && cortex[`wordMotorWeightMaxAbs_${sj}`];
-            const mn = cortex && cortex[`wordMotorWeightMeanAbs_${sj}`];
-            if (typeof mx === 'number' || typeof mn === 'number') {
-              sep[sj] = {
-                maxAbs: Number((mx || 0).toFixed(4)),
-                meanAbs: Number((mn || 0).toFixed(4)),
-                ratio: (mn > 0) ? Number((mx / mn).toFixed(2)) : 0,
-                cellSize: (cortex && cortex[`wordBucketCellSize_${sj}`]) || 0,
-              };
-            }
+          const _rd = cortex && cortex._speechReadout;
+          if (_rd) {
+            const s = _rd.summary();
+            sep.readout = {
+              taught: s.teaches,
+              saidAlready: s.alreadyRight,
+              saidAlreadyPct: s.teaches > 0 ? Number((100 * s.alreadyRight / s.teaches).toFixed(1)) : 0,
+              corrections: s.corrections,
+              pushes: s.pushes,
+              says: s.says,
+              taughtUnits: s.taughtUnits,
+              units: s.units,
+              wordCapacity: s.wordCapacity,
+              megabytes: Number((s.bytes / 1048576).toFixed(1)),
+            };
           }
           const cf = cortex && cortex._coherenceFloorStats;
           const rr = cortex && cortex._coherenceRerankStats;
           return {
-            separability: sep,
+            readout: sep.readout || null,
             coherenceFloor: cf ? { total: cf.total || 0, rejected: cf.rejected || 0, rejectRate: cf.total ? Number((cf.rejected / cf.total).toFixed(3)) : 0 } : null,
             rerank: rr ? { calls: rr.calls || 0, reranked: rr.reranked || 0 } : null,
           };

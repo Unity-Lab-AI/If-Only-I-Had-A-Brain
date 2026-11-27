@@ -101,6 +101,35 @@ last-verified: "4bc99291 2026-08-31"
 >
 > ⛔ **KNOWN LAYOUT DEBT, STATED RATHER THAN HIDDEN:** these entries are single-paragraph walls carrying internal ticket and branch identifiers, and **68 of them exist nowhere else in the project** — not in the ledger, not in the resume brief. They cannot be deleted, and relocating them is a migration rather than a formatting pass. **The most recent entries have been rebuilt into readable form; the older ones are still walls.**
 
+### 2026-11-27 — she passed two classes without being able to say a taught word, and the path from meaning to speech was rebuilt
+
+A 15-hour pre-K reading class and a pre-K math class both passed on completion with the gate's speaking score at 0/10 and 1/10; every inner thought from first to last was a dozen unrelated words from the same small set; asked her name she answered "Writing." The lessons were running — nothing was skipped and the card was busy — and nothing reached her mouth.
+
+**Three faults were stacked on the one path every spoken word takes** (`sem → word_motor`), each measured with the production embedding code on her own stories:
+
+| Fault | Measured |
+|---|---|
+| The state she spoke from barely changed. Her last word's sparse code was written over sem, then an ordered sentence code was laid over sem's second half lighting every positive dimension | 153 of 300 dimensions lit; two unrelated sentence starts shared 64.7 % of them; 26.5 % of sem cells lit, 0.94 % of them because of her last word |
+| A word slot could not read what it was asked to tell apart. 24 cells per word × 6 fixed wires per cell, and the update rule cannot add a wire | of a word's 144 wires, 38 read a lit cell and 1.4 read her last word's identity |
+| The rule overwrote a word each time it was taught. Oja pulls the taught slot's wires toward the current state and decays the rest | 100× the wiring still recalled only 19.9 % |
+
+A fourth made it worse: the "identity" part of a word's code was one hash stepped by a constant across 50 dimensions, so 713 of 905 words shared their whole identity pattern with another word.
+
+Together: **38 of 3,401 taught transitions recalled (1.1 %), eight words taking 66.9 % of all wins** — the same handful of words in every sentence, which is what she sounded like.
+
+**What replaced it** is the speech readout (`js/brain/speech-readout.js`; see [§ How she speaks](#how-she-speaks--the-speech-readout)). The same equation — active meaning units drive word slots, the strongest speaks — with a state made of non-overlapping sparse parts, every word slot reading every unit, and a rule that changes a slot only when the wrong word wins. The production module recalls **92.9 %** of 13,580 taught transitions after four visits. Each change alone measured 7–58 %.
+
+**Also in this change:**
+
+- The `sem ↔ word_motor` card matrices are gone (fourteen cross-projections, not sixteen), and saved weights from before are refused at boot — this takes effect on a fresh walk.
+- What she has been taught to say is saved beside the weights (`brain-weights.speech`), copied into every checkpoint slot, restored with them and cleared with them.
+- Every lesson that teaches speech reaches one function, so they all teach the same way; sentence ends are taught, so a line stops.
+- The gate's speaking tests read where she speaks from. They used to decode a first letter off a different projection with a code no lesson used, and the "THINK" figure on three gates was the sample size printed as a score — it is removed.
+- A reply or a thought is about a millisecond a word on the host with no round trip to the card; on the walk each thought had taken 20–600 s.
+- The pop-ups over her brain that are not her inner voice became paced plain-sentence "mind moments" (`js/ui/mind-moments.js`); the per-event labels, field-name tags, decimals and the every-five-seconds filler are deleted.
+
+⚠ Measured in a model and in the real lessons on a small real cortex, with no card attached. **Not yet measured: a walk.** The numbers to read on the next one are the speech lessons' "said before being corrected" share and the gates' TALK lines.
+
 ### 2026-09-06 — the same defect a fourth time, a gate that taught its own answers, and a deciding number written to a field nothing reads
 
 **No equation changed · no geometry changed · no weight format changed.**
@@ -723,7 +752,7 @@ Implemented in `js/ui/brain-3d.js`. WebGL-based 3D rendering (fixed pool of 20K 
 - Cluster toggle buttons, floating process notifications from brain equations
 - Brain expansion (clusters spread with activity)
 - Real-time feed from server state via WebSocket
-- Inner state popups — when Unity can generate speech (post-K), popups show real brain-generated text via `languageCortex.generate()` with `_internalThought: true`. When she can't speak yet (pre-K or untrained), shows raw brain state numbers: `arousal:0.85 valence:0.12 Ψ:0.034`. No hardcoded strings, no fake poetry — only what her brain ACTUALLY produces or what her neural state ACTUALLY reads. Inner thoughts gated by life grade — no tattoo references before college, no coke before grade 12.
+- Pop-ups, two kinds. **Her inner voice** — her own words, broadcast by the server as `innerThought` and shown in quotes; always shown; gated by life grade (no tattoo references before college, no coke before grade 12). **Mind moments** (`js/ui/mind-moments.js`) — one plain sentence about something that really just happened in her head (a lesson starting, a word she is working out, a jolt of surprise, a memory surfacing, focus locking in), with no field names, decimals or symbols. The triggering reading picks the sentence and the place on the brain; the number itself stays on the dashboard. Moments are narration and are kept rarer than her thoughts: at most one every 25 s, the same kind at most once in 3 min, lessons and feelings taking turns, and nothing when nothing notable happened. A burst of lesson events yields the single most interesting one.
 - IQ HUD — reads `curriculum.subjectStatus()` every render tick, shows intelligence level (pre-K / elementary / middle / high / college / grad / PhD) with per-subject grade breakdown
 
 ---
@@ -1168,14 +1197,46 @@ abDensity = min(densityCap, crossTargetFanout / sourceSize) × betweenScale
 
 > ⚠ **This block read `20` and `40` until 2026-09-04 and the code has said `10` and `20` since the language-cortex resize.** The doc was describing a brain twice as wired as the one that runs.
 
-> ⛔⛔ **AND THE BETWEEN-CLUSTER TERM IS THE ONE THAT MATTERS MOST, BECAUSE IT LANDS ON WORD PRODUCTION.** `sem` is an `association` region and `motor` / `word_motor` are `output` regions, so every sem→motor projection pays the 0.3 haircut. **Measured on the real construction at the deployed geometry: `sem_to_word_motor` came out at 3 wires per row — half of `sem_to_motor`'s 6 — so the projection asked to discriminate tens of thousands of WORDS had half the wiring of the one that picks between 26 letters.** `word_motor` was on neither whitelist because the band was created after both lists were written. **Fixed 2026-09-04: 3 → 6 per row, and with 202 cells per word bucket, 606 → 1,212 wires per word.**
+> ⛔⛔ **AND THE BETWEEN-CLUSTER TERM IS THE ONE THAT MATTERS MOST, BECAUSE IT LANDS ON WORD PRODUCTION.** `sem` is an `association` region and `motor` / `word_motor` are `output` regions, so every sem→motor projection pays the 0.3 haircut. **Measured on the real construction at the deployed geometry: `sem_to_word_motor` came out at 3 wires per row — half of `sem_to_motor`'s 6 — so the projection asked to discriminate tens of thousands of WORDS had half the wiring of the one that picks between 26 letters.** `word_motor` was on neither whitelist because the band was created after both lists were written. **Fixed 2026-09-04: 3 → 6 per row, and with 202 cells per word bucket, 606 → 1,212 wires per word.** ⛔ **Superseded 2026-11-27: doubling the wires did not reach the problem.** At the geometry the next walk ran at (24 cells per word, 144 wires) a slot still read her last word's identity through about one wire, and no amount of fixed random wiring measured above 20 % recall. The `sem ↔ word_motor` matrices no longer exist; word production is the speech readout below, where every word slot reads every unit.
+
+### How she speaks — the speech readout
+
+`js/brain/speech-readout.js`, one per cortex (`cluster.speechReadout()`), saved as `brain-weights.speech`.
+
+**The read.** `score(word) = Σ over active units of W[unit][word]`; the highest score is the word she says; "the line is finished" is a slot like any word's, and when it is highest she stops. A slot's index is the word's position in the cluster's append-only word list, so it is stable as her vocabulary grows.
+
+**The state** (`stateUnits(heard, prefix)`) is the list of active units — about 45 of 9,904 — built from stripes that do not overlap:
+
+| Stripe | Units | Active | Carries |
+|---|---|---|---|
+| last word, identity | 512 | 8 | which word she just said (independent hashes) |
+| last word, meaning | 300 | 4 | what it means (its embedding with the part every word shares removed) |
+| word before / word before that | 512 each | 6 / 4 | recent order |
+| pair, triple | 2,048 each | 6 each | her last two / three words as one thing |
+| gist | 300 | 12 | everything said so far, hers and theirs |
+| heard line, heard key word, heard gist | 2,048 / 512 / 300 | 6 / 8 / 12 | what was said to her: exactly, its least-common word, its drift |
+| thing in mind: identity, meaning | 512 / 300 | 8 / 8 | a thing to be named — the naming lesson, and how a thought opens |
+
+Three states exist and nothing else is read: a **speaking state** (what was heard + her words so far), a **thing in mind** (a word's concept, to be named), and a **meaning in mind** (a vector with no word attached — a mood, a memory — which uses only the meaning half of the thing-in-mind stripes, so naming generalises to it). Any 300-dimension meaning written or injected into sem counts as a meaning in mind until sem is cleared.
+
+**The rule** (`teach`): the taught word must lead the strongest other slot by `0.1 × (active units)`. Already true → no change. Otherwise raise the taught word and lower the one that beat it by `loss / (2 × active units)`, for up to four rivals. Words taught in the same state (a sentence start with several taught continuations) are siblings, not rivals.
+
+**Where it is taught.** Every lesson that teaches speech reaches one of two doors, so they all teach the same way:
+- `_teachHebbian` / `_teachAntiHebbian` — a lesson that lit word slots (`_writeAnswerToWordMotor`) and whose projection whitelist names `sem_to_word_motor` (now the name of this pathway, not of a matrix) has those words taught in order from the current state, then "finished"; an anti call pushes a word below the best other.
+- `_speechTeach(word)` — the sentence-order lesson, the reply lesson and the naming lesson call it directly, one step per state, with sentence and reply ends taught explicitly.
+
+**Where it is read.** `cluster.emitWordDirect` / `emitWordDirectDonor` (same function now) — every reply, thought and gate probe. The grade gate, real-word guard, repetition penalty, signal floors and sampling all run unchanged on the readout's per-word means; the sampling temperature is in units of the teach margin.
+
+**Cost.** About 0.6 ms a teach step and 2–4 ms a composed reply at 1,900 words, on the host; the table is `taught units × word capacity × 4 bytes` (58 MB measured at 2,048 slots). Derivations for every number: `docs/THRESHOLD-DERIVATION.md § Speech readout`.
+
+### Cross-region projections — wiring detail
 
 > ⛔ **A projection's wires-per-row is set at construction and never grows.** `ojaUpdate` walks `rowPtr[i]..rowPtr[i+1]` and has no insertion path, so those entries are the row's entire lifetime capacity — and a row that comes out of construction EMPTY can never learn anything at all. The boot-time **wiring audit** now prints wires-per-row, min, max and empty-row count for every projection and warns by name on the thin ones; before it existed nothing anywhere reported this.
 
 Fanout reduced from 30 to 20 (and motor-bound from 60 to 40) so the matrix doesn't START anywhere near saturation. Prior 30/60 fanout produced full-density matrices that collapsed within a few teach phases.
 
 **MOTOR_BOUND_PAIRS** (2× fan-in + 2× density cap):
-`sem-motor`, `motor-sem`, **`sem-word_motor`, `word_motor-sem`** (added 2026-09-04), `letter-motor`, `motor-letter`, `phon-motor`, `motor-phon`. Motor sits at the convergence of several parallel input pathways (sem, phon, letter) and must discriminate between K-grade answer letters across many trained association pairs. 30 slots per pathway was insufficient to carve separable basins when 46+ pairs trained into the same motor region across 4-6 phases per grade — operator log showed persistent `sep-probe mean-cos ≈ 0.5` across every association-pair phase. Bumping motor-bound projections to 60 gives each post-neuron enough capacity to hold ~50 separable mappings without superposition.
+`sem-motor`, `motor-sem`, `letter-motor`, `motor-letter`, `phon-motor`, `motor-phon` (`sem-word_motor` / `word_motor-sem` were on this list from 2026-09-04 until those two matrices were removed 2026-11-27). Motor sits at the convergence of several parallel input pathways (sem, phon, letter) and must discriminate between K-grade answer letters across many trained association pairs. 30 slots per pathway was insufficient to carve separable basins when 46+ pairs trained into the same motor region across 4-6 phases per grade — operator log showed persistent `sep-probe mean-cos ≈ 0.5` across every association-pair phase. Bumping motor-bound projections to 60 gives each post-neuron enough capacity to hold ~50 separable mappings without superposition.
 
 Biologically plausible — real pyramidal neurons carry 1000-10000 synaptic inputs distributed across many cortical areas; 60 per per-area pair is well under that bound.
 

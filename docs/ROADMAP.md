@@ -569,7 +569,7 @@ Key breakthroughs and fixes:
 - `crossTargetFanout` 30 default + 60 for `MOTOR_BOUND_PAIRS` (sem↔motor, letter↔motor, phon↔motor) via the T39.g.4 whitelist — targeted 2× capacity where basin overlap was strongest; non-motor projections stay lean to fit biological-scale memory budgets. (Historical: Session 111 `1500`, T37 rebalance dropped to `30`.)
 - Real human-grade comprehension gates (`_gateComprehension` with association + fill-in-blank testing)
 - Anti-Hebbian plasticity on wrong digit transitions (strengthen correct + weaken wrong)
-- Inner state popups — real brain-generated text or raw neural readings (`arousal:0.85 valence:0.12 Ψ:0.034`), gated by life grade
+- Inner state popups — real brain-generated text or raw neural readings (`arousal:0.85 valence:0.12 Ψ:0.034`), gated by life grade *(the raw readings were replaced 2026-11-27 by paced plain-sentence mind moments — `js/ui/mind-moments.js`)*
 - 2D brain viz ALL tabs fixed (root cause: `brainViz.updateState(serverState)` was never called — ONE LINE fix)
 - Neurons tab rewritten as flat 2D brain map with wave overlays
 - Synapses tab rewritten as animated circular network with co-firing pulses

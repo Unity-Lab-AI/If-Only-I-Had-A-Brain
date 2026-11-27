@@ -1030,12 +1030,13 @@ export class NeuronCluster {
         ['sem',      'motor'],
         ['motor',    'letter'],
         ['auditory', 'phon'],
-        // iter21-A — sem → word_motor for word-level production. Operator
-        // 2026-05-05 "motor argmax is fucked if it ever just relplies with
-        // letters and not words". This is the PRIMARY production path —
-        // single-tick word emission via argmax over word vocabulary
-        // buckets. NO FALLBACK to letter motor.
-        ['sem',      'word_motor'],
+        // ⛔ NO `['sem', 'word_motor']` PAIR. What she says is read by the speech
+        // readout (`speech-readout.js`): active units of the speaking state →
+        // word slots, every slot reading every unit. As a cell-to-cell sheet
+        // this pair gave a word slot 144 fixed wires onto 2.5 M sem cells, so a
+        // slot read the last word's identity through about one wire, and no
+        // lesson could change which cells a slot was wired to. The `word_motor`
+        // region itself stays: it is where the said word lights up.
       ];
       // T14.19 — cross-projection density also scales inversely with
       // the projection's source region size, same biological-fanout
@@ -1110,7 +1111,6 @@ export class NeuronCluster {
       // the most important job in the brain quietly took every default.
       const EMISSION_PAIRS = new Set([
         'sem-motor', 'motor-sem',
-        'sem-word_motor', 'word_motor-sem',
       ]);
       // Motor-bound projections get a HIGHER fan-in than the default
       // cross-projection fanout. The motor region sits at the convergence
@@ -1149,7 +1149,6 @@ export class NeuronCluster {
       // WALK and on nothing before it.
       const MOTOR_BOUND_PAIRS = new Set([
         'sem-motor', 'motor-sem',
-        'sem-word_motor', 'word_motor-sem',
         'letter-motor', 'motor-letter',
         'phon-motor', 'motor-phon',
       ]);
@@ -1221,8 +1220,8 @@ export class NeuronCluster {
         'phon-motor', 'motor-phon',
       ]);
       if (_semTopographic) {
-        for (const k of ['sem-motor', 'motor-sem', 'sem-word_motor', 'word_motor-sem']) TOPOGRAPHIC_PAIRS.add(k);
-        console.warn(`[Cluster ${name}] DREAM_SEM_TOPOGRAPHIC=1 — the sem↔motor and sem↔word_motor projections are being built with a topographic prior over UNALIGNED spaces. At this size that spends ~70% of each word's wiring inside a single GloVe dimension; it is the pre-2026-09-04 behaviour, kept so the two can be compared on real walks.`);
+        for (const k of ['sem-motor', 'motor-sem']) TOPOGRAPHIC_PAIRS.add(k);
+        console.warn(`[Cluster ${name}] DREAM_SEM_TOPOGRAPHIC=1 — the sem↔motor projections are being built with a topographic prior over UNALIGNED spaces. At this size that spends ~70% of each word's wiring inside a single GloVe dimension; it is the pre-2026-09-04 behaviour, kept so the two can be compared on real walks.`);
       }
       // Progress logging so cluster construction doesn't look like a
       // hang at large sizes. Each cross-projection init can take
@@ -1736,6 +1735,20 @@ export class NeuronCluster {
     if (!region) return;
     const regionSize = region.end - region.start;
     if (regionSize <= 0 || !emb || emb.length === 0) return;
+    // A meaning driven into sem is what is in mind, and it is what the speech
+    // readout names when no explicit speaking state is set
+    // (`currentSpeechUnits`). Injected current leaks away between injections, so
+    // meanings injected more than 5 s ago are no longer in mind; the last four
+    // within that window are.
+    if (regionName === 'sem' && emb.length === 300) {
+      const now = Date.now();
+      if (!Array.isArray(this._mindFeats) || now - (this._mindFeatsAt || 0) > 5000) this._mindFeats = [];
+      this._mindFeats.push(emb);
+      if (this._mindFeats.length > 4) this._mindFeats.shift();
+      this._mindFeatsAt = now;
+      this._speechUnits = null;
+      this._speechCtx = null;
+    }
     const groupSize = Math.max(1, Math.floor(regionSize / emb.length));
     // T17.7 Phase E.a — when cortexCluster has a GPU proxy wired to
     // main cortex slices, also forward the intent-current pattern so

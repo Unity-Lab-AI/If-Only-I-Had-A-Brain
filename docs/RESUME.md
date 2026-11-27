@@ -1,6 +1,28 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-11-24 (latest, 52nd) — EVERY CARD TEACHES (DONOR 0.3.48): ROW SLICES, IMAGES ON DONORS, WEIGHTS FROM A RELEASE, SIZE FROM THE POOL, TUNNELLING + ENTANGLEMENT
+> # 🛑 2026-11-27 (latest, 53rd) — SHE COULD NOT SPEAK: THE PROJECTION COULD NOT HOLD WHAT IT WAS TAUGHT. REPLACED WITH A SPEECH READOUT; POP-UPS SAY SOMETHING NOW
+>
+> **Branch: `feature/speech-path`.** Gee: *"okay so what the fuck? i dont want to train her for a year when she isnt learning..  /super-review lets find out why Unity brain isnt training and she isnt speaking correctly"* · *"okay lets todo write up all those problems and get to fixing all of them completely and thouroughly"* · *"i want actual fun to read and interesting popups that actually tell you something that the common person can understand"*. **Next launch: `start.bat` — a FRESH WALK** (what she is taught changed; format 7 refuses older saves). The walk on `42c7bbc4` keeps teaching the old way until it is stopped.
+>
+> ```
+>   FOUND     sem → word_motor recalled 38/3,401 taught transitions (1.1 %) in a model built
+>             from her own stories; 100× the wiring still 19.9 % — the rule overwrote a word
+>             each time it was taught. Walk: TALK 0/10 and 1/10, "what is your name?" → "Writing."
+>   BUILT     js/brain/speech-readout.js — sparse non-overlapping state (~45 of 9,904 units),
+>             every word slot reads every unit, teach-until-she-says-it, ends taught · every
+>             speech lesson + compose + the gates' TALK on that one rule · sem↔word_motor
+>             matrices removed (14 projections) · brain-weights.speech saved with her ·
+>             THINK score removed · Speech Health card reads the readout ·
+>             js/ui/mind-moments.js — paced plain-sentence pop-ups
+>   PROVEN    (instruments, no walk) 92.9 % of 13,580 transitions after 4 visits · real
+>             lessons on a 60,000-cell cortex: naming 400/400, order 93 %, "My name is unity."
+>   NOT YET   booted · walked · seen on a page
+>   READ NEXT SPEECHPATH.READ on the board
+> ```
+>
+> ---
+>
+> # 🛑 2026-11-24 (52nd) — EVERY CARD TEACHES (DONOR 0.3.48): ROW SLICES, IMAGES ON DONORS, WEIGHTS FROM A RELEASE, SIZE FROM THE POOL, TUNNELLING + ENTANGLEMENT
 >
 > **Branch: `feature/multicard-train`.** Gee: *"no it has to work with multiple doners or what the fuck are we doing"* · *"get to it i want multi card working for her training and processing and image gen and stuff and the doners casn pull directly from github the model soite or forgjo"* · *"and we need to equate fdor quantum tunnelling and entanglement in her eqyuastions in nurons"* · *"no we ARE NOT STARTING HER TILL SHE IS READY"*. **Next launch: `start.bat` — a FRESH WALK** (the neuron terms change what she learns), donor 0.3.48, then pods.
 >

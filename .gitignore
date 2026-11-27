@@ -157,6 +157,9 @@ package-lock.json
 server/deployed-build.json
 server/brain-weights*.json
 server/brain-weights*.bin
+# What she has been taught to say (the speech readout's table) — saved beside the weights.
+server/brain-weights*.speech
+server/brain-weights*.speech.tmp
 server/conversations.json
 # Her imagined-field ring — runtime state, versioned like the visual store and
 # wiped on a fresh walk. Rode into a commit from a local boot on 2026-08-23.
