@@ -15,7 +15,14 @@
 >   PROVEN    (production code, no card) whole life 100.0 % after 3 passes · pre-K 98 %
 >             after every later grade (69 % without rehearsal) · 82–87 % of 60 untaught
 >             rewordings exact · unrelated line → silence · 56 MB · 0.69 ms a teach
->   NOT YET   booted · walked · rewordings sharing no word · memory in what she says
+>   ALSO      dropped lessons: 33 sheds had skipped 11,356 updates → the lane recovers itself ·
+>             slow thoughts: a card request per word, median 59 s → 1.5–4.4 ms on the host ·
+>             quarantine holds the CARD (machine + model) · word identity code was 50 patterns
+>             for every word → 6,511 of 6,525 distinct · pop-ups show the real thing taught
+>             (my label→phrase tables deleted) · a started line needs half the floor
+>   NOT YET   booted · walked
+>   OPEN      SPEECHPATH.READ (a read) · SPEECHPATH.10 second half (needs an instrument) ·
+>             SPEECHREAL.13 (a decision: should a memory change an answer?)
 >   READ NEXT SPEECHPATH.READ on the board
 > ```
 >

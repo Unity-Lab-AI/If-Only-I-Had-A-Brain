@@ -706,6 +706,14 @@ Measured on the production module, the score of the first word of an answer:
 
 The teach margin is 0.1, so a taught wording is ≥ 0.1 by construction. The floor is 0.04 — four tenths of the margin: above 11 of the 12 unrelated lines and below all but the weakest right rewording. Dividing by the taught units only (leaving out never-seen exact units) was measured and separates worse (unrelated max 0.083), so the plain mean is used. ⚠ The old floor — half the running average of accepted scores — was calibrated for the removed projection; it is no longer read.
 
+**Half the floor once a line has started (0.02).** The full floor decides whether she speaks at all, at her first word. After it, the exact units of a line she is putting together herself were never seen — they add to the count of active units and nothing to the score — so a taught next word carried by her own last words (about 20 of ~45 units → ≈ 0.044) reads right at the full floor. Measured on her pre-K → grade-6 sentences through the real compose loop: 4 of 12 thoughts were cut off mid-line at 0.04 ("At school i told"); at 0.02, 3, with the longest running to its 12-word limit as one of her own sentences.
+
+**What her own thoughts look like** (same run, the things her sentences are most often about, taken from the corpus): pre-K + K → 12 of 12 thoughts are three words or more, 11 of them word for word a sentence of hers; pre-K → grade 6 → 9 of 12, 6 word for word; 3.0–4.4 ms a thought.
+
+**A remembered thing held in mind while she answers:** taught answers still exact 240 / 240; rewordings whose answer changed 0 / 180. It is safe and it changes nothing, because no lesson teaches a reply with a memory present.
+
+**A heavier meaning part for what was said to her** (24 units instead of 12): 52 / 60 rewordings, inside the 49–52 the lighter one measures. The misses share no word with the taught wording ("what is your age" / "how old are you") and the mean of a line's word vectors does not bridge them. Left at 12.
+
 ### The first module (kept for the record — four grades, what the design sweep ran on)
 
 **The measure** is recall: teach every (sentence so far → next word) of a corpus, then ask for the same taught sentence starts back. Corpus: her pre-K → grade-2 life stories, 2,428 sentences, 1,864 words, 13,580 unique transitions.
@@ -746,3 +754,15 @@ A caller's sampling temperature (0.5–1.0 for thoughts) is multiplied by the ma
 0.69 ms per teach step at 4,392 words with rehearsal included; 2–4 ms per composed reply. The whole life corpus taught four times over is `78,120 × 4 × 0.69 ms ≈ 3.6 minutes` across the entire walk. A step's cost grows with vocabulary, because the shared units' rows become arrays over the word list (~40 of them active): about 3 ms at 20,000 words and 8 ms at 50,000. A corpus ten times her life at 20,000 words is `781,200 × 4 × 3 ms ≈ 2.6 hours`, against a walk of days, with no frame sent to the card.
 
 Size follows what she has learned, not units × vocabulary: 56 MB for her whole life. The part that does grow with vocabulary is the shared units that went wide — at most ~11,000 units × the word list × 4 bytes (about 880 MB if every one of them were wide at 20,000 words; 522 were wide after pre-K + K). ⚠ The first module's table was `taught units × word capacity × 4 bytes` — 146 MB at this size and about 2 GB at the 50,000-word cap.
+
+**Why it stays on the host and not on the card.** A reply is 1.5–3.8 ms on the host. On the card every word was one request, queued one at a time behind her lessons: 566 thoughts in one walk's log took a median **59 s** (90th percentile 173 s, worst 22 min). The table is 56 MB. Moving it onto the card would buy nothing and bring that queue back.
+
+## Quarantine hold (2026-11-27)
+
+`DREAM_QUARANTINE_HOLD_MS`, 30 minutes, doubling per repeat to 8 hours, keyed on the machine + the card model.
+
+A card that returns invalid results five times is dropped from the pool. Measured on the 2026-11-26 walk: the donor's own watchdog relaunched it, it registered under a new id, and her cortex was moved straight back onto it — two full re-uploads, about 4 minutes of paused teaching each, so **≈ 8 minutes lost per bounce**. With a 30-minute hold a card that fails on every return costs at most 8 minutes in every 38 (≈ 21 %); doubling brings a second offence to 8 in 68 (≈ 12 %) and a fifth to 8 in 488 (< 2 %). A hold shorter than the bounce itself would not bound anything; a permanent one would shut out a card whose driver was fixed.
+
+## Teach lane recovery (2026-11-27)
+
+Not a threshold — a count that shows why one was not needed. On a 20-hour walk **33** teach-pattern frames were shed at the 16 MB lane cap and **11,356** teach updates were skipped: about 344 per shed. The cap was not the cause. A shed marks the lane stale so no update trains on a broken pattern, and stale cleared only when some lesson's own region clear happened to go out — rare. Now the first skipped update clears every cortex region on the card itself, which is the known state the flag waits for, so one shed costs the updates of one iteration. `boundHebbian.laneRecoveries` counts them.

@@ -55,12 +55,24 @@ It was measured on four grades and called done. On her **whole life** (pre-K →
 - 💭 **Every sentence is a line about something**, from its first word.
 - 🤐 **A floor she must clear** (measured, 0.04): below it she says nothing.
 
+## Also fixed tonight (found while closing the open rows)
+
+| | What was wrong | Now |
+|---|---|---|
+| 🕳 **Dropped lessons** | 33 dropped frames had thrown away **11,356** teach updates — one hiccup silenced hundreds of lessons after it | the card is put back in a known state at once; one hiccup costs one lesson |
+| 🐌 **Slow thoughts** | every word of a thought was a separate request to the card, queued behind her lessons: median **59 s** a thought, worst 22 min | read on the host: **1.5–4.4 ms** |
+| 🚪 **Quarantine** | a card kicked out for bad results relaunched and walked straight back in | held out by machine + card model, 30 min doubling to 8 h |
+| 🔢 **Word identity** | the "identity" part of a word's meaning code had only **50 patterns for her whole vocabulary** | 6,511 distinct of 6,525 words |
+| 💬 **Pop-ups** | I had written a table translating lesson labels into phrases — it only knew the labels in it | the lesson sends the real thing being taught and her real class name; 142 pop-ups in a simulated hour, none in a silent one |
+| ✂️ **Cut-off thoughts** | a thought could stop mid-sentence | a line she has started needs half the bar to go on |
+
 ## Honest edges
 
-- **Not booted, not walked.** Everything above is the production code run on her text with no card. The server's speech-file reader was run as the server runs it (sizes agree, 800/800 the same word after a round trip), but the server itself has not started on this build.
-- **Rewordings that share no word with what was taught still miss** — *"what is your age"* does not reach *"how old are you"*.
-- **Her thoughts are only as good as the sentences she has.** On pre-K + K stories, a thought about a dog: *"I said it is my color."* A real sentence shape; wrong content. More grades, more sentences.
-- **Mood tips a close choice; it does not rewrite a taught line.** Its effect on a walk is unmeasured. Memory does not enter what she says yet.
+- **Not booted, not walked.** Everything above is the production code run on her text with no card. The server's speech-file reader was run as the server runs it (sizes agree, 800/800 the same word after a round trip), but the server itself has not started on this build. That is a read, not work — it happens when she starts.
+- **Rewordings that share no word with what was taught still miss** — *"what is your age"* does not reach *"how old are you"*. Measured: more meaning in the state does not close it; more taught wordings do.
+- **Her thoughts are real sentences now, not always whole ones.** Pre-K → grade 6: 9 of 12 are three words or more, 6 word for word hers (*"Mom said i will show you then you try."*); three are fragments (*"You fine"*).
+- **Mood tips a close choice; it does not rewrite a taught line.** A memory reaches her thoughts; for it to change an *answer*, answers would have to be taught with a memory in mind — a decision, on the board.
+- **One piece of real work is still open:** the non-speech lessons still write three different codes for one word. Folding them into one changes what every reading and letter lesson teaches, and it needs an instrument first — on the board, not rushed.
 - **The other equations were not touched and were not re-proved today** — only the speech ones changed, and `docs/EQUATIONS.md` now has the section on how she speaks that it never had.
 
 ## Next

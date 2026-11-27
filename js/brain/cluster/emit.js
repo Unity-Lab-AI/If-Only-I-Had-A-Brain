@@ -72,6 +72,9 @@ const _emitSampleRand = brainStream('emit-word-sample');
 // What she is about to say is read here: active units of the speaking state →
 // word slots, every slot reading every unit. See speech-readout.js.
 import { SpeechReadout } from '../speech-readout.js';
+// How much of what a lesson gives must be present before she says a word
+// (score ÷ active units). Measured; see docs/THRESHOLD-DERIVATION.md.
+const SPEECH_FLOOR = 0.04;
 
 export const CLUSTER_EMIT_MIXIN = {
   /** The one speech readout of this cluster (made on first use, saved with her weights). */
@@ -98,6 +101,26 @@ export const CLUSTER_EMIT_MIXIN = {
     // feeling afterwards, so the same moment can come out differently.
     const live = this.feelingUnits();
     return live.length ? base.concat(live) : base;
+  },
+
+  /**
+   * Has she been taught something to say to this line? True when the first
+   * word of an answer to it clears the speech floor — by the taught wording or
+   * a rewording near enough to it. Callers use it to let what she was taught
+   * go first, before any other way of answering is tried.
+   */
+  hasTaughtReply(text) {
+    const n = Array.isArray(this.wordBucketWords) ? this.wordBucketWords.length : 0;
+    const said = String(text || '').trim();
+    if (!n || !said) return false;
+    const rd = this.speechReadout();
+    const units = rd.stateUnits(said, []);
+    if (!units.length) return false;
+    const live = this.feelingUnits();
+    const all = live.length ? units.concat(live) : units;
+    const s = rd.scores(all, n);
+    let best = 0; for (let b = 0; b < n; b++) if (s[b] > best) best = s[b];
+    return best / all.length >= SPEECH_FLOOR;
   },
 
   /** How she feels right now, as speaking-state units (empty when no mood is known). */
@@ -601,7 +624,17 @@ export const CLUSTER_EMIT_MIXIN = {
     // the 12 unrelated lines and below all but the weakest right rewording.
     // She speaks when that much of what a lesson gives is present, and says
     // nothing (and records the gap) below it. docs/THRESHOLD-DERIVATION.md.
-    const adaptiveComponent = 0.04;
+    // ONCE SHE HAS STARTED A LINE, the bar to go on is half the bar to begin.
+    // The full floor answers "is there anything here she was taught to say?"
+    // — that is decided at her first word. After it, the exact units of a
+    // line she is putting together herself were never seen, so they add to
+    // the count of active units and nothing to the score; a taught next word
+    // carried by her own last words then reads just under the full floor and
+    // the line was cut off in the middle ("At school i told"). Measured on
+    // her pre-K → grade-6 sentences: 4 of 12 thoughts were cut mid-line at
+    // the full floor.
+    const _midLine = !!(this._speechCtx && Array.isArray(this._speechCtx.prefix) && this._speechCtx.prefix.length > 0);
+    const adaptiveComponent = _midLine ? SPEECH_FLOOR / 2 : SPEECH_FLOOR;
     // (Function words used to be gated against the noise floor only, because
     // the old running-average floor was held high by content words and refused
     // every connecting word. `winnerIsFunctionWord` still keeps them out of the

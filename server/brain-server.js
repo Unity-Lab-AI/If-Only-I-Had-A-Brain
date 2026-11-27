@@ -4975,6 +4975,13 @@ class ServerBrain {
       // so the dashboard 3D brain can show a transient popup anchored
       // to the relevant cortex region. ONE cortex, ONE event stream.
       this.curriculum._pushBrainEvent = (type, region, label, detail) => {
+        // Every lesson event carries the real name of the class she is in, so
+        // a reader is told "in Kindergarten Reading" from her own course
+        // roster rather than from a label someone had to translate.
+        try {
+          const _course = (typeof this.curriculum.courseNameNow === 'function') ? this.curriculum.courseNameNow() : null;
+          if (_course && detail && typeof detail === 'object' && detail.course == null) detail = { ...detail, course: _course };
+        } catch { /* the event goes out without a course name */ }
         try { this.pushBrainEvent(type, region, label, detail); }
         catch { /* non-fatal — event stream is best-effort */ }
       };
@@ -15438,6 +15445,33 @@ wss.on('connection', (ws, req) => {
               break;
             }
           }
+          // A CARD THAT WAS QUARANTINED STAYS OUT, WHATEVER ID IT COMES BACK WITH.
+          // The quarantine used to drop one connection; the donor's own
+          // watchdog relaunched it, it registered under a new id, and the pool
+          // moved her cortex straight back onto the card that had just returned
+          // invalid results (measured: two full re-uploads, ~4 min paused each).
+          // The hold is keyed on the machine + the card model, which a relaunch
+          // does not change. It lasts DREAM_QUARANTINE_HOLD_MS (30 min) and
+          // doubles each time the same card is quarantined again, to 8 h — one
+          // bounce costs ~8 min of paused teaching, so a 30-min hold keeps a
+          // card that fails on every return under about a quarter of the time,
+          // and a repeat offender under a few percent.
+          {
+            const _qKey = `${client.isLocalHost ? 'local' : (client.ip || 'unknown')}|${(msg.gpuName || 'unknown').toString().slice(0, 80)}`;
+            client.cardKey = _qKey;
+            const _q = brain._quarantinedCards && brain._quarantinedCards.get(_qKey);
+            if (_q && Date.now() < _q.until) {
+              const _leftMin = Math.ceil((_q.until - Date.now()) / 60000);
+              try { ws.send(JSON.stringify({ type: 'quarantined', reason: 'invalid compute results', retryAfterMs: _q.until - Date.now() })); } catch { /* best-effort notify */ }
+              if (!_q.refusedLogAt || Date.now() - _q.refusedLogAt > 60000) {
+                _q.refusedLogAt = Date.now();
+                console.warn(`[Brain] gpu_register REFUSED — ${_qKey} is quarantined for another ${_leftMin} min (quarantined ${_q.times}×; it returned invalid results). A relaunch does not clear it.`);
+              }
+              _q.refused = (_q.refused || 0) + 1;
+              try { ws.close(4002, 'card quarantined'); } catch { /* already closing */ }
+              break;
+            }
+          }
           client.donorAppVersion = _donorVer || 'browser';
           client.isGPU = true;
           // Teach bundle (SPRS 16) — native donors that unpack it get one
@@ -16302,7 +16336,15 @@ wss.on('connection', (ws, req) => {
             }
             const QUARANTINE_THRESHOLD = 5;
             if (_strikes >= QUARANTINE_THRESHOLD) {
-              console.error(`[Brain] PA.4.5 — QUARANTINING donor ${id} after ${_strikes} bad-result batches (dirty/incompatible GPU). Removing from pool.`);
+              // Hold the CARD out, not just this connection (see gpu_register).
+              const _holdBase = Number(process.env.DREAM_QUARANTINE_HOLD_MS) > 0 ? Number(process.env.DREAM_QUARANTINE_HOLD_MS) : 30 * 60000;
+              const _qKey = (_dc && _dc.cardKey) || `unknown|${id}`;
+              if (!brain._quarantinedCards) brain._quarantinedCards = new Map();
+              const _prevQ = brain._quarantinedCards.get(_qKey);
+              const _times = (_prevQ ? _prevQ.times : 0) + 1;
+              const _hold = Math.min(8 * 3600000, _holdBase * Math.pow(2, _times - 1));
+              brain._quarantinedCards.set(_qKey, { until: Date.now() + _hold, times: _times, at: Date.now() });
+              console.error(`[Brain] PA.4.5 — QUARANTINING donor ${id} after ${_strikes} bad-result batches (dirty/incompatible GPU). Removing from pool; the card (${_qKey}) is held out for ${Math.round(_hold / 60000)} min, under any id it returns with.`);
               if (brain._gpuClients) brain._gpuClients.delete(ws);
               if (ws === brain._gpuClient) {
                 let _promo = null;

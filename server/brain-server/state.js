@@ -2486,6 +2486,7 @@ const SERVER_STATE_MIXIN = {
           flushedOps: this._boundHebbianFlushedOps | 0,
           capFlushes: this._boundHebbianCapFlushes | 0,
           suppressedStale: this._hebbianSuppressedStale | 0,
+          laneRecoveries: this._patternLaneRecoveries | 0,   // times the card's regions were cleared to resume after a broken pattern
           rangesSent: this._hebbianRangesSent | 0,
           maskedSent: this._hebbianMaskedSent | 0,
         },

@@ -74,7 +74,7 @@ const L = (() => {
   l.G = o; return l;
 })();
 const K = { w1: 8, mean: 4, w2: 6, w3: 4, opener: 3, pos: 2, gist: 12, conj: 6, quad: 4, line: 6,
-  bag: 3, bi: 2, heardKey: 8, concept: 8, conceptMean: 8, about: 8, aboutMean: 8, live: 2 };
+  bag: 3, bi: 2, heardKey: 8, heardGist: 12, concept: 8, conceptMean: 8, about: 8, aboutMean: 8, live: 2 };
 const HEARD_MAX = 16;                // words of a heard line that enter the bag / pairs
 
 /** The slot that means "the line is finished". Passed as `target` to teach(). */
@@ -242,7 +242,7 @@ export class SpeechReadout {
       const key = this._keyWord(h);
       if (key) hashUnits(key, K.heardKey, ID, 13, L.heardKey + at * ID, out);
       const hg = this._gist(h);
-      if (hg) this._meaningUnits(hg, K.gist, L.heardGist + at * D, out);
+      if (hg) this._meaningUnits(hg, K.heardGist, L.heardGist + at * D, out);
     }
     return unique(out);
   }

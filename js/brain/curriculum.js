@@ -6866,16 +6866,23 @@ export class Curriculum {
     const idActive = 5;
     const idWeight = 2.0;
     const lower = word.toLowerCase();
+    // Each of the 5 dims comes from its OWN hash of (word, k): the salt goes
+    // in BEFORE the letters and the result is mixed, so the five positions are
+    // independent of each other. (The salt used to be added after hashing —
+    // `h + k·2654435761`, and 2654435761 mod 50 is 11 — so every word's five
+    // dims were its first one stepped by 11: only 50 patterns existed for the
+    // whole vocabulary, and 713 of 905 measured words shared theirs with
+    // another word.) A position already taken moves to the next free one, so
+    // every word has exactly five.
     for (let k = 0; k < idActive; k++) {
-      // djb2-like hash with k-salt so each of the 5 dims is
-      // independently determined by the (word, k) pair.
-      let h = 5381;
+      let h = (5381 ^ Math.imul(k + 1, 0x9E3779B1)) >>> 0;
       for (let i = 0; i < lower.length; i++) {
-        h = ((h * 33) ^ lower.charCodeAt(i)) >>> 0;
+        h = (Math.imul(h, 33) ^ lower.charCodeAt(i)) >>> 0;
       }
-      h = (h + k * 2654435761) >>> 0;
-      const idx = idStart + (h % idDims);
-      out[idx] = idWeight;
+      h ^= h >>> 15; h = Math.imul(h, 0x85EBCA6B) >>> 0; h ^= h >>> 13;
+      let slot = (h >>> 0) % idDims;
+      for (let tries = 0; tries < idDims && out[idStart + slot] !== 0; tries++) slot = (slot + 1) % idDims;
+      out[idStart + slot] = idWeight;
     }
 
     // 3. Cortex-snapshot stripe — present only after first observation
@@ -14702,7 +14709,7 @@ export class Curriculum {
     const label = opts.label || 'WORD-USAGE';
     let readings = 0;
     this._hb(`[Curriculum][${label}] START — context-pass across ${Object.keys(contextMap).length} words`);
-    try { this._pushBrainEvent?.('teach', 'sem', `USAGE START: ${label} · ${Object.keys(contextMap).length} words`, { label }); } catch {}
+    try { this._pushBrainEvent?.('teach', 'sem', `USAGE START: ${label} · ${Object.keys(contextMap).length} words`, { label, sample: Object.keys(contextMap)[0] || null }); } catch {}
     for (const [word, sentences] of Object.entries(contextMap)) {
       if (!Array.isArray(sentences) || sentences.length === 0) continue;
       for (const sentence of sentences) {
@@ -17675,7 +17682,7 @@ export class Curriculum {
     this._hb(`[Curriculum][${label}] START — ${qaList.length} Q→A training pairs × ${reps} reps (teacher-modeling; HELD-OUT-DISTINCT from EXAM_BANKS; direct-alt=${directPromptAlt} · keyWordTile=${keyWordTile} · anti-pairs=${antiPairs})`);
     // Dashboard popup — announce the Q-A phase START on the 3D brain
     // so operator sees WHICH teach pass is firing in real time.
-    try { this._pushBrainEvent?.('teach', 'sem', `Q-A START: ${label} · ${qaList.length}×${reps}`, { label, pairs: qaList.length, reps }); } catch {}
+    try { this._pushBrainEvent?.('teach', 'sem', `Q-A START: ${label} · ${qaList.length}×${reps}`, { label, pairs: qaList.length, reps, sample: (qaList[0] && typeof qaList[0].question === 'string') ? qaList[0].question : null }); } catch {}
     for (let rep = 0; rep < reps; rep++) {
       // PHASELOOP.2 — BANK THE CURSOR ON EVERY REP, same law as
       // `_teachAssociationPairs`: banking here has no ordering dependency on
@@ -19911,6 +19918,10 @@ export class Curriculum {
     const idx = cluster.wordBucketMap.get(String(word || '').toLowerCase());
     if (typeof idx !== 'number' || idx < 0) return false;
     return cluster.speechReadout().pushAway(units, idx, n);
+  }
+  /** The real name of the class she is in right now ("Kindergarten Reading", "Algebra I"), or null between classes. */
+  courseNameNow() {
+    return this._currentSubject ? courseNameFor(this._currentSubject, this._currentGrade) : null;
   }
   /** Start / read the "said it before being corrected" count of a speech lesson. */
   _speechLessonStart() { this._speechLesson = { taught: 0, right: 0 }; }
@@ -22502,7 +22513,7 @@ export class Curriculum {
     };
     const startMs = Date.now();
     this._hb(`[Curriculum][${label}] START — ${pairs.length} pairs × ${reps} reps · soft-writes=${!binarize} · row-norm=${normalizeAfter} · anti-pairs=${antiPairs} · motor-WTA=${motorWTA}/${motorTopK} · sem-WTA=${semWTA}/${semTopK}`);
-    try { this._pushBrainEvent?.('teach', 'sem', `ASSOC START: ${label} · ${pairs.length}×${reps}`, { label, pairs: pairs.length, reps }); } catch {}
+    try { this._pushBrainEvent?.('teach', 'sem', `ASSOC START: ${label} · ${pairs.length}×${reps}`, { label, pairs: pairs.length, reps, sample: (Array.isArray(pairs[0]) && typeof pairs[0][0] === 'string' && typeof pairs[0][1] === 'string') ? [pairs[0][0], pairs[0][1]] : null }); } catch {}
     // ⭐⭐ THE CARD-HELD LESSON. When the card holds every matrix this lesson
     // touches, nothing on the pair path reads the CPU spike copy: the bound
     // Hebbian, lateral and anti ops read the CARD's resident spikes, which the
@@ -28662,7 +28673,7 @@ export class Curriculum {
     // method iterated through every word's _teachWordIntegrated pass.
     const _vocabLabel = opts.label || ctx?.label || 'vocab';
     const _vocabTotal = Array.isArray(vocab) ? vocab.length : 0;
-    try { this._pushBrainEvent?.('teach', 'sem', `VOCAB-LIST START: ${_vocabLabel} · ${_vocabTotal} words`, { label: _vocabLabel, total: _vocabTotal }); } catch {}
+    try { this._pushBrainEvent?.('teach', 'sem', `VOCAB-LIST START: ${_vocabLabel} · ${_vocabTotal} words`, { label: _vocabLabel, sample: Array.isArray(vocab) ? vocab.slice(0, 3).filter((w) => typeof w === 'string') : null, total: _vocabTotal }); } catch {}
     const _vocabListStartMs = Date.now();
 
     const reps = opts.reps ?? 12;
