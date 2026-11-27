@@ -16358,25 +16358,16 @@ var CLUSTER_EMIT_MIXIN = {
       const _taught = (this.size | 0) > 2e6 && _cur && typeof _cur._dictionaryPatternFor === "function" && typeof _cur._topKEmbedding === "function" && typeof _cur._writeTiledPattern === "function";
       const _seedWord = words.length > 0 ? words[words.length - 1] : opts.intentConcept || (typeof intentSeed === "string" ? (intentSeed.replace(/_/g, " ").toLowerCase().match(/[a-z]+/g) || []).filter((t) => t.length > 2).pop() : null);
       const _seedEmb = words.length === 0 && !_seedWord && intentSeed && typeof intentSeed !== "string" && intentSeed.length > 0 ? intentSeed : null;
-      if (_taught && words.length === 0 && typeof opts.questionText === "string" && opts.questionText && typeof _cur._writeTiledPatternOffset === "function" && typeof _cur._extractKeyWord === "function" && sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function") {
-        const semR = this.regions.sem;
-        this.lastSpikes.fill(0, semR.start, semR.end);
-        _cur._writeTiledPattern(semR, sharedEmbeddings.getSentenceEmbedding(opts.questionText), false);
-        const _kw = _cur._extractKeyWord(opts.questionText);
-        const _kEmb = _kw ? _cur._dictionaryPatternFor(_kw) : null;
-        if (_kEmb && _kEmb.length) _cur._writeTiledPatternOffset(semR, _kEmb, false, 0.5);
-        if (typeof _cur._classifyQuestionTemplate === "function" && typeof _cur._writeQuestionTemplateTag === "function") {
-          const _tid = _cur._classifyQuestionTemplate(opts.questionText);
-          if (_tid >= 0) _cur._writeQuestionTemplateTag(_tid);
-        }
+      const _heardText = typeof opts.questionText === "string" && opts.questionText ? opts.questionText : "";
+      const _canState = _taught && typeof _cur._writeSpeechState === "function";
+      if (_canState && words.length === 0 && _heardText) {
+        _cur._writeSpeechState(_heardText, []);
+      } else if (_canState && words.length > 0) {
+        _cur._writeSpeechState(_heardText, words);
       } else if (_taught && _seedWord) {
         const semR = this.regions.sem;
         this.lastSpikes.fill(0, semR.start, semR.end);
         _cur._writeTiledPattern(semR, _cur._topKEmbedding(_cur._dictionaryPatternFor(_seedWord), 8), true, { noCpu: false });
-        if (words.length > 0 && typeof _cur._writeTiledPatternOffset === "function" && sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function") {
-          const _ctx = sharedEmbeddings.getSentenceEmbedding(words.join(" "));
-          if (_ctx && _ctx.length) _cur._writeTiledPatternOffset(semR, _ctx, false, 0.5);
-        }
       } else if (_taught && _seedEmb) {
         const semR = this.regions.sem;
         this.lastSpikes.fill(0, semR.start, semR.end);

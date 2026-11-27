@@ -17457,20 +17457,16 @@ export class Curriculum {
     const qEmb = (sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === 'function')
       ? sharedEmbeddings.getSentenceEmbedding(question) : null;
     if (!qEmb || qEmb.length === 0) return false;
-    const keyWord = this._extractKeyWord(question);
-    const keyEmb = keyWord ? this._dictionaryPatternFor(keyWord) : null;
-    const templateId = this._classifyQuestionTemplate(question);
     const reps = opts.reps ?? 6;
     const lr = opts.lr ?? 0.05;
     // Measured thief ⇒ harder push than WORDCONTRAST's random-sibling 0.3 —
     // this negative is KNOWN guilty, not a sampled maybe.
     const antiScale = opts.antiLrScale ?? 0.5;
     const wl = this._qaBindingWhitelist(opts.subject);
+    // The ONE speech state compose answers in (`_writeSpeechState`).
     const writeQuestionPattern = () => {
       this._clearSpikes();
-      this._writeTiledPattern(semRegion, qEmb, false);
-      if (keyEmb && keyEmb.length > 0) this._writeTiledPatternOffset(semRegion, keyEmb, false, 0.5);
-      if (templateId >= 0) this._writeQuestionTemplateTag(templateId);
+      this._writeSpeechState(question, [], { clear: false });
     };
     for (let r = 0; r < reps; r++) {
       if (thief && /^[a-z]+$/.test(thief)) {
@@ -17665,22 +17661,12 @@ export class Curriculum {
         const templateId = this._classifyQuestionTemplate(entry.question);
         try {
           // ─── Natural-sentence positive pair ────────────────────────
+          // The question as she will hear it: the ONE speech state compose
+          // answers in (`_writeSpeechState` — sentence code, key word in the
+          // second half, template band), so the answer is bound in exactly the
+          // state she is in when someone asks.
           this._clearSpikes();
-          this._writeTiledPattern(semRegion, qEmb, false);
-          if (keyWordTile && keyEmb && keyEmb.length > 0) {
-            // Second-half overlay — key word gets its own pattern
-            // inside sem alongside the full sentence. Same region,
-            // different tile offset (second half), so both signals
-            // combine without overwriting each other.
-            this._writeTiledPatternOffset(semRegion, keyEmb, false, 0.5);
-          }
-          // Question-template tag — one-hot into fineType upper 25%
-          // slot for this template ID. Creates a template-conditioned
-          // routing signal orthogonal to the sentence bag and key
-          // word, so "what letter comes after X?" and "what rhymes
-          // with X?" with the same X activate different sem→motor
-          // basins via template presence in fineType.
-          if (templateId >= 0) this._writeQuestionTemplateTag(templateId);
+          this._writeSpeechState(entry.question, [], { clear: false });
           this._writeTiledPattern(motorRegion, motorPattern, false);
           // iter22-D — also write answer's word-bucket into word_motor
           // so emitWordDirect can route Q→A via word-level projection.
@@ -17766,11 +17752,7 @@ export class Curriculum {
             if (wordsDiffer || lettersDiffer) {
               try {
                 this._clearSpikes();
-                this._writeTiledPattern(semRegion, qEmb, false);
-                if (keyWordTile && keyEmb && keyEmb.length > 0) {
-                  this._writeTiledPatternOffset(semRegion, keyEmb, false, 0.5);
-                }
-                if (templateId >= 0) this._writeQuestionTemplateTag(templateId);
+                this._writeSpeechState(entry.question, [], { clear: false });
                 if (lettersDiffer) {
                   const wrongMotorPattern = encodeLetter(wrongLetter);
                   if (wrongMotorPattern && wrongMotorPattern.length > 0) {
@@ -18064,15 +18046,10 @@ export class Curriculum {
         const qEmb2 = (sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === 'function')
           ? sharedEmbeddings.getSentenceEmbedding(entry.question) : null;
         if (!qEmb2 || qEmb2.length === 0) continue;
-        const kt2 = this._extractKeyWord(entry.question);
-        const ke2 = kt2 ? this._dictionaryPatternFor(kt2) : null;
-        const tid2 = this._classifyQuestionTemplate(entry.question);
         _slChecked++;
         for (let round = 0; round <= _slRounds; round++) {
           this._clearSpikes();
-          this._writeTiledPattern(semRegion, qEmb2, false);
-          if (keyWordTile && ke2 && ke2.length > 0) this._writeTiledPatternOffset(semRegion, ke2, false, 0.5);
-          if (tid2 >= 0) this._writeQuestionTemplateTag(tid2);
+          this._writeSpeechState(entry.question, [], { clear: false });
           let said = '';
           try { said = (await cluster.emitWordDirectDonor({ subject: opts.subject })) || ''; }
           catch { said = ''; }
@@ -19691,6 +19668,147 @@ export class Curriculum {
   // the thing learned. No template, no fixed line: 22,912 real exchanges across
   // the corpus, and her name reaches her the way people actually say it, in the
   // introductions those exchanges already contain.
+  // ⭐⭐⭐ A REPLY IS A CONTINUATION OF WHAT WAS SAID. For each exchange where
+  // someone speaks and she answers, every word of her answer is bound from the
+  // exact state compose is in before it says that word:
+  //   word 1:   sem = what was said (sentence code, tiled) + its key word (2nd half)
+  //   word i+1: sem = top8(code(word i)) + ordered code of "what was said +
+  //             her reply so far" (2nd half)
+  // → that word's word_motor bucket (sem_to_word_motor), with two words that do
+  // NOT follow there pushed down in the same state (contrast — the part a bare
+  // Hebbian bind never had). Then a WHOLE-LINE SELF-CHECK on a bounded sample:
+  // she says each next word off the card in that state; a wrong word is pushed
+  // away and the right one taught again, word by word (teacher-forced).
+  // ⚠ RE-PRICE: reply words × reps × 3 binds per exchange (≈ 170 exchanges ×
+  // ~6 words × 3 reps × 3 ≈ 9k card binds per life grade); the self-check is
+  // bounded by DREAM_REPLY_CHECK_PAIRS (24) and DREAM_REPLY_CHECK_MAX_MS (120 s).
+  /**
+   * ⭐⭐⭐ THE SPEECH STATE — the ONE definition of what sem holds before she
+   * says a word. Speaking (`_composeSentenceOnce`) and every lane that teaches
+   * what she says (ORDER-TO-SPEECH, the reply lesson, the Q→A binder) call
+   * this, so what she was taught in and what she speaks in cannot drift apart.
+   *   prefix = []        → first word: `heard` as a tiled sentence code, its key
+   *                        word in sem's second half, and (when `heard` is a
+   *                        question) its template + asked band.
+   *   prefix = [w1..wi]  → next word: top-8 code of wi, plus the ordered code of
+   *                        "heard + w1..wi" in sem's second half.
+   * `heard` = what was said to her ('' for her own thought or a narrated line).
+   * `opts.noTemplate` skips the template band (a statement teach that must not
+   * mark itself a question). Returns false when there is nothing to write.
+   */
+  _writeSpeechState(heard, prefix, opts = {}) {
+    const cluster = this.cluster;
+    const semR = cluster && cluster.regions && cluster.regions.sem;
+    if (!semR || !sharedEmbeddings || typeof sharedEmbeddings.getSentenceEmbedding !== 'function') return false;
+    const h = String(heard || '').trim();
+    const p = Array.isArray(prefix) ? prefix.filter(Boolean) : [];
+    if (opts.clear !== false) this._clearSpikes(['sem', 'word_motor']);
+    if (!p.length) {
+      if (!h) return false;
+      this._writeTiledPattern(semR, sharedEmbeddings.getSentenceEmbedding(h), false);
+      const kw = this._extractKeyWord(h);
+      const ke = kw ? this._dictionaryPatternFor(kw) : null;
+      if (ke && ke.length) this._writeTiledPatternOffset(semR, ke, false, 0.5);
+      if (!opts.noTemplate) {
+        const tid = this._classifyQuestionTemplate(h);
+        if (tid >= 0) this._writeQuestionTemplateTag(tid);
+      }
+      return true;
+    }
+    this._writeTiledPattern(semR, this._topKEmbedding(this._dictionaryPatternFor(p[p.length - 1]), 8), true);
+    const c = sharedEmbeddings.getSentenceEmbedding((h ? h + ' ' : '') + p.join(' '));
+    if (c && c.length) this._writeTiledPatternOffset(semR, c, false, 0.5);
+    return true;
+  }
+
+  async _teachReplyInContext(pairs, opts = {}) {
+    const cluster = this.cluster;
+    const semR = cluster && cluster.regions && cluster.regions.sem;
+    if (!semR || !cluster.regions.word_motor || !cluster.crossProjections || !cluster.crossProjections.sem_to_word_motor) return { taught: 0 };
+    if (!sharedEmbeddings || typeof sharedEmbeddings.getSentenceEmbedding !== 'function') return { taught: 0 };
+    const words = (x) => String(x || '').toLowerCase().replace(/[^a-z'\s-]+/g, ' ').split(/\s+/).filter(Boolean);
+    this._ensureWordBucketMap(opts.subject);
+    const map = cluster.wordBucketMap;
+    const has = (w) => !!(map && map.has(w));
+    const wl = ['sem_to_word_motor'];
+    const lr = opts.lr ?? 0.1413;
+    const antiLr = lr * (opts.antiScale ?? 0.3);
+    const reps = Number(opts.reps) > 0 ? Number(opts.reps) : 3;
+    // The one speech-state writer compose also uses.
+    const writeState = (heard, prefix) => this._writeSpeechState(heard, prefix);
+    // Negatives come from her own replies' vocabulary (words she does say).
+    const pool = [];
+    for (const [, r] of pairs) for (const w of words(r)) if (has(w) && !pool.includes(w)) pool.push(w);
+    const pickWrong = (right, avoid) => {
+      for (let t = 0; t < 8 && pool.length > 1; t++) {
+        const w = pool[Math.floor(_curriculumRand() * pool.length)];
+        if (w !== right && !avoid.includes(w)) return w;
+      }
+      return null;
+    };
+    const bind = async (heard, prefix, next) => {
+      writeState(heard, prefix);
+      this._writeAnswerToWordMotor(next, opts.subject);
+      await this._teachHebbian(lr, { projectionsWhitelist: wl, skipIntraSynapses: true });
+      const avoid = [next];
+      for (let a = 0; a < 2; a++) {
+        const wrong = pickWrong(next, avoid);
+        if (!wrong) break;
+        avoid.push(wrong);
+        writeState(heard, prefix);
+        this._writeAnswerToWordMotor(wrong, opts.subject);
+        await this._teachAntiHebbian(antiLr, { projectionsWhitelist: wl, skipIntraSynapses: true });
+      }
+    };
+    let taught = 0;
+    const usable = [];
+    for (const [heard, reply] of pairs) {
+      const rw = words(reply).filter(has);
+      if (!words(heard).length || rw.length < 1) continue;
+      usable.push([heard, rw]);
+    }
+    for (let rep = 0; rep < reps; rep++) {
+      for (const [heard, rw] of usable) {
+        if (globalThis._brainShutdownRequested) return { taught };
+        for (let i = 0; i < rw.length; i++) {
+          await bind(heard, rw.slice(0, i), rw[i]);
+          taught++;
+        }
+      }
+      await _microtask();
+    }
+    // WHOLE-LINE SELF-CHECK — say it back, correct each wrong word.
+    let checked = 0, rightWords = 0, corrected = 0;
+    if (typeof cluster.emitWordDirectDonor === 'function' && process.env.DREAM_REPLY_CHECK !== '0') {
+      const maxPairs = Number(process.env.DREAM_REPLY_CHECK_PAIRS) > 0 ? Number(process.env.DREAM_REPLY_CHECK_PAIRS) : 24;
+      const maxMs = Number(process.env.DREAM_REPLY_CHECK_MAX_MS) > 0 ? Number(process.env.DREAM_REPLY_CHECK_MAX_MS) : 120_000;
+      const t0 = Date.now();
+      for (let p = 0; p < usable.length && checked < maxPairs && Date.now() - t0 < maxMs; p++) {
+        const [heard, rw] = usable[Math.floor(_curriculumRand() * usable.length)];
+        checked++;
+        for (let i = 0; i < rw.length; i++) {
+          if (globalThis._brainShutdownRequested) break;
+          writeState(heard, rw.slice(0, i));
+          let said = '';
+          try { said = String((await cluster.emitWordDirectDonor({ subject: opts.subject })) || '').toLowerCase().trim(); } catch { said = ''; }
+          if (said === rw[i]) { rightWords++; continue; }
+          // push the word she said away in this state, teach the right one again
+          if (said && has(said)) {
+            writeState(heard, rw.slice(0, i));
+            this._writeAnswerToWordMotor(said, opts.subject);
+            await this._teachAntiHebbian(lr * 0.5, { projectionsWhitelist: wl, skipIntraSynapses: true });
+          }
+          await bind(heard, rw.slice(0, i), rw[i]);
+          corrected++;
+        }
+      }
+    }
+    this._clearSpikes(['sem', 'word_motor']);
+    this.stats.replyInContext = (this.stats.replyInContext | 0) + taught;
+    this._hb?.(`[Curriculum] 💬 REPLY-IN-CONTEXT ${opts.label || ''} — ${usable.length} exchange(s), ${taught} word step(s) × context (what was said + her reply so far) with 2 contrast words each · self-check: ${checked} line(s), ${rightWords} word(s) right first time, ${corrected} corrected.`);
+    return { taught, checked, rightWords, corrected };
+  }
+
   // Rides `_teachSentenceList`, so it goes to the card as pattern lessons.
   async _teachConversation(subject, grade, ctx, opts = {}) {
     const cluster = this.cluster;
@@ -19778,12 +19896,16 @@ export class Curriculum {
     // teacher), and she answers each in her own way; chat lights the same
     // band with the person in front of her.
     const whoPairs = [];
+    const replyPairs = [];
     for (const [line, reply, meta] of turns) {
       const a = _addressHer(line);
       if (a !== line) _named++;
       const hw = _words(a), rw = _words(reply);
       if (hw.length < 2 || rw.length < 2) { _prevSheAsked = false; continue; }
       if (meta && meta.saidBy && meta.replyBySelf) whoPairs.push([meta.saidBy, rw[0]]);
+      // Someone else spoke and SHE answered — her reply, word by word, in the
+      // context of what they said (`_teachReplyInContext`).
+      if (meta && meta.saidBySelf === false && meta.replyBySelf === true) replyPairs.push([a, reply]);
       const askedHer = _asks(a);
       const sheAsks = _asks(reply);
       // The heard line: a question to her, the answer to her own last question, or plain.
@@ -19816,6 +19938,10 @@ export class Curriculum {
       // "asked → I answer" has its own turn band, so being asked is what starts an answer.
       if (turnQ.length) await this._teachAssociationPairs(turnQ, { reps, label: `CONV-QTURN-${subject}-${grade}`, relationTagId: 45 });
       if (whoPairs.length) await this._teachAssociationPairs(whoPairs, { reps, label: `CONV-WHO-${subject}-${grade}`, relationTagId: Curriculum.SPEAKER_WHO_BAND });
+    }
+    if (replyPairs.length) {
+      try { await this._teachReplyInContext(replyPairs, { reps, subject, label: `CONV-REPLY-${subject}-${grade}` }); }
+      catch (e) { this._hb?.(`[Curriculum] reply-in-context ${subject}/${grade} non-fatal: ${e?.message || e}`); }
     }
     this.stats.conversationExchanges = (this.stats.conversationExchanges | 0) + total;
     this.stats.conversationQuestions = (this.stats.conversationQuestions | 0) + heardQ.length + saidQ.length;
@@ -23628,7 +23754,6 @@ export class Curriculum {
     // per corpus visit, the same order as one LO bucket rep above.
     if (!(r.deferredReps > 0) && !globalThis._brainShutdownRequested
         && cluster.crossProjections.sem_to_word_motor && cluster.regions.sem && cluster.regions.word_motor) {
-      const _semR = cluster.regions.sem;
       const _wl = ['sem_to_word_motor'];
       const _speechLr = opts.speechLr ?? 0.1413;
       let _spoken = 0;
@@ -23642,19 +23767,19 @@ export class Curriculum {
         // different state from "the cat is" → "black".
         // ⚠ RE-PRICE: one unit per unique (prefix, next) — at most the
         // corpus's transition count (`pairs.length`), 2..4 reps by frequency.
-        const _haveOffset = typeof this._writeTiledPatternOffset === 'function'
-          && sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === 'function';
+        // The ONE speech-state writer compose uses (`_writeSpeechState`), with
+        // nothing heard: a narrated line is her own sentence.
+        const _tok = (s) => String(s || '').toLowerCase().replace(/[^a-z'\s-]+/g, ' ').split(/\s+/).filter(Boolean);
         for (const u of contextPairs.values()) {
           if (globalThis._brainShutdownRequested) break;
-          if (!cluster.wordBucketMap || !cluster.wordBucketMap.has(u.b)) continue;
-          const _code = this._topKEmbedding(this._dictionaryPatternFor(u.a), 8);
-          const _ctx = _haveOffset ? sharedEmbeddings.getSentenceEmbedding(u.prefix) : null;
+          const _next = _tok(u.b)[0];
+          if (!_next || !cluster.wordBucketMap || !cluster.wordBucketMap.has(_next)) continue;
+          const _prefix = _tok(u.prefix);
+          if (!_prefix.length) continue;
           const _n = u.count >= 8 ? 4 : u.count >= 3 ? 3 : 2;
           for (let k = 0; k < _n; k++) {
-            this._clearSpikes(['sem', 'word_motor']);
-            this._writeTiledPattern(_semR, _code, true);
-            if (_ctx && _ctx.length > 0) this._writeTiledPatternOffset(_semR, _ctx, false, 0.5);
-            this._writeAnswerToWordMotor(u.b, opts.subject);
+            this._writeSpeechState('', _prefix);
+            this._writeAnswerToWordMotor(_next, opts.subject);
             await this._teachHebbian(_speechLr, { projectionsWhitelist: _wl, skipIntraSynapses: true });
             _spoken++;
           }
@@ -27671,15 +27796,10 @@ export class Curriculum {
       const qEmb = (sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === 'function')
         ? sharedEmbeddings.getSentenceEmbedding(s.question) : null;
       if (!qEmb || qEmb.length === 0) continue;
-      const kt = this._extractKeyWord(s.question);
-      const ke = kt ? this._dictionaryPatternFor(kt) : null;
-      const tid = this._classifyQuestionTemplate(s.question);
       checked++;
       for (let round = 0; round <= rounds; round++) {
         this._clearSpikes();
-        this._writeTiledPattern(semRegion, qEmb, false);
-        if (ke && ke.length > 0) this._writeTiledPatternOffset(semRegion, ke, false, 0.5);
-        if (tid >= 0) this._writeQuestionTemplateTag(tid);
+        this._writeSpeechState(s.question, [], { clear: false });   // the state she answers in
         let said = '';
         try { said = (await cluster.emitWordDirectDonor({ subject: opts.subject })) || ''; }
         catch { said = ''; }
