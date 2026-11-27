@@ -3444,7 +3444,11 @@ const SERVER_STATE_MIXIN = {
               says: s.says,
               taughtUnits: s.taughtUnits,
               units: s.units,
-              wordCapacity: s.wordCapacity,
+              weights: s.entries,                 // (unit, word) weights held — size follows what she learned
+              moments: s.moments,                 // taught moments kept for rehearsal
+              momentsSeen: s.momentsSeen,         // distinct moments ever taught
+              rehearsed: s.rehearsed,             // old moments gone back over
+              rehearsalFixes: s.rehearsalFixes,   // of those, how many a later lesson had disturbed
               megabytes: Number((s.bytes / 1048576).toFixed(1)),
             };
           }

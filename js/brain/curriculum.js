@@ -19782,10 +19782,13 @@ export class Curriculum {
     // `unitsOnly` — a lesson or a line that only speaks: set the state her word
     // is read from and skip painting it onto the sem sheet (two region fills and
     // two frames to the card per word, which nothing on a speech-only path reads).
+    // `opts.about` — what her own line is about (a word, or a meaning in mind
+    // with no word attached). It stays in the state for the whole line.
+    const about = h ? null : (opts.about || null);
     if (opts.unitsOnly) {
-      if (!p.length && !h) return false;
-      cluster._speechUnits = cluster.speechReadout().stateUnits(h, p);
-      cluster._speechCtx = { heard: h, prefix: p };
+      if (!p.length && !h && !about) return false;
+      cluster._speechUnits = cluster.speechReadout().stateUnits(h, p, about);
+      cluster._speechCtx = { heard: h, prefix: p, about };
       cluster._mindFeats = null;
       cluster._speechTargets = null;
       return true;
@@ -19833,11 +19836,11 @@ export class Curriculum {
     const keep = cluster._speechUnits;
     const said = ctx.prefix.slice();
     for (const w of targets) {
-      cluster._speechUnits = rd.stateUnits(ctx.heard, said);
+      cluster._speechUnits = rd.stateUnits(ctx.heard, said, ctx.about || null);
       this._speechTeach(w);
       said.push(w);
     }
-    cluster._speechUnits = rd.stateUnits(ctx.heard, said);
+    cluster._speechUnits = rd.stateUnits(ctx.heard, said, ctx.about || null);
     this._speechTeach(SPEECH_END);
     cluster._speechUnits = keep;
   }
@@ -23934,35 +23937,45 @@ export class Curriculum {
     // settles them. It stops once at least `DREAM_SPEECH_PASS_TARGET` (90 %) of a
     // pass was already right before being corrected, or after
     // `DREAM_SPEECH_MAX_PASSES` (4).
-    // ⚠ RE-PRICE: ≤ 4 passes × the corpus's unique in-sentence transitions, each
-    // a table sum on this machine (measured 0.6 ms at 1,864 words; it grows with
-    // vocabulary) — 10,261 transitions × 4 × ~3 ms ≈ 2 minutes for the largest
-    // corpus, against the card binds this replaces (2–4 per transition, each a
-    // round trip).
+    // ⚠ RE-PRICE (measured on the production readout, her whole life corpus,
+    // pre-K → PhD: 4,392 words, 78,120 steps counting openers and line ends):
+    // 0.69 ms a step with rehearsal included, so ≤ 4 passes over ALL of it is
+    // 78,120 × 4 × 0.69 ms ≈ 3.6 minutes across the whole walk. The cost of a
+    // step grows with vocabulary (the shared units' rows are arrays over the
+    // word list): about 3 ms at 20,000 words, 8 ms at 50,000. A corpus ten
+    // times her life at 20,000 words is 781,200 × 4 × 3 ms ≈ 2.6 hours — against
+    // a walk of days, and with no frame sent to the card.
     if (!(r.deferredReps > 0) && !globalThis._brainShutdownRequested && cluster.regions.word_motor) {
       let _spoken = 0, _passes = 0, _lastRead = '';
       try {
         this._ensureWordBucketMap(opts.subject);
         const _tok = (s) => String(s || '').toLowerCase().replace(/[^a-z'\s-]+/g, ' ').split(/\s+/).filter(Boolean);
         const _items = [];
-        // A sentence start can have several taught next words ("i" → am / want /
-        // see …, or a short sentence that is also the start of a longer one).
-        // They are gathered per start so teaching one does not push its
-        // siblings down — any of them is a right thing to say there.
-        const _sibs = new Map();
-        for (const u of contextPairs.values()) {
-          const _prefix = _tok(u.prefix);
-          if (!_prefix.length) continue;
-          let _next = SPEECH_END;
-          if (!u.end) {
-            _next = _tok(u.b)[0];
-            if (!_next || !cluster.wordBucketMap || !cluster.wordBucketMap.has(_next)) continue;
+        // Every sentence is taught as a line ABOUT something — the word in it
+        // that is least like every other word — from its FIRST word to its
+        // end. So a thing in mind opens a sentence about it, the thing stays in
+        // the state while she says it, and the line stops where it ends.
+        // A point in a line can have several taught next words ("i" → am /
+        // want / see …); they are gathered per point so teaching one does not
+        // push its siblings down — any of them is a right thing to say there.
+        const _rd = cluster.speechReadout();
+        const _sibs = new Map(); const _seenStep = new Set();
+        for (const s of sentences) {
+          const _w = _tok(s);
+          if (_w.length < 2) continue;
+          const _about = _rd.aboutOf(_w);
+          for (let i = 0; i <= _w.length; i++) {
+            const _next = i < _w.length ? _w[i] : SPEECH_END;
+            if (_next !== SPEECH_END && (!cluster.wordBucketMap || !cluster.wordBucketMap.has(_next))) break;   // a word she has no slot for ends what can be taught of this line
+            const _key = `${_about || ''}|${_w.slice(0, i).join(' ')}`;
+            const _stepKey = `${_key}>${_next === SPEECH_END ? '\u0000' : _next}`;
+            let _g = _sibs.get(_key);
+            if (!_g) { _g = []; _sibs.set(_key, _g); }
+            if (_seenStep.has(_stepKey)) continue;
+            _seenStep.add(_stepKey);
+            _g.push(_next);
+            _items.push([_w.slice(0, i), _next, _g, _about]);
           }
-          const _key = _prefix.join(' ');
-          let _g = _sibs.get(_key);
-          if (!_g) { _g = []; _sibs.set(_key, _g); }
-          if (!_g.includes(_next)) _g.push(_next);
-          _items.push([_prefix, _next, _g]);
         }
         const _env = (typeof process !== 'undefined' && process.env) ? process.env : {};
         const _target = Number(_env.DREAM_SPEECH_PASS_TARGET) > 0 ? Number(_env.DREAM_SPEECH_PASS_TARGET) : 0.9;
@@ -23971,8 +23984,8 @@ export class Curriculum {
         for (; _passes < _maxPasses && _items.length; ) {
           if (globalThis._brainShutdownRequested) break;
           this._speechLessonStart();
-          for (const [_prefix, _next, _g] of _items) {
-            this._writeSpeechState('', _prefix, { unitsOnly: true });
+          for (const [_prefix, _next, _g, _about] of _items) {
+            if (!this._writeSpeechState('', _prefix, { unitsOnly: true, about: _about })) continue;
             this._speechTeach(_next, _g);
             _spoken++;
             if (Date.now() - _sliceAt > 30) { await _microtask(); _sliceAt = Date.now(); if (globalThis._brainShutdownRequested) break; }
@@ -30184,7 +30197,9 @@ export class Curriculum {
 
   /**
    * TALK, continuing: for each word of `sentence` after the first, is it the
-   * word she would say given the words before it? Returns { right, total,
+   * word she would say given the words before it — or another word she was
+   * also taught to say at that same point (a sentence start can have several
+   * taught continuations, and any of them is right)? Returns { right, total,
    * firstMiss } — firstMiss is "said→expected" at the first wrong step.
    */
   _talkContinues(sentence) {
@@ -30196,15 +30211,16 @@ export class Curriculum {
     const out = { right: 0, total: 0, firstMiss: null };
     if (!map || !n || words.length < 2) return out;
     const rd = cluster.speechReadout();
+    const about = rd.aboutOf(words);              // the state the sentence lesson teaches in
     for (let i = 1; i < words.length; i++) {
       const idx = map.get(words[i]);
       if (typeof idx !== 'number' || idx < 0) continue;
-      const units = rd.stateUnits('', words.slice(0, i));
+      const units = rd.stateUnits('', words.slice(0, i), about);
       out.total++;
-      if (rd.rank(units, idx, n) === 1) { out.right++; continue; }
+      if (rd.saysTaught(units, idx, n)) { out.right++; continue; }
       if (!out.firstMiss) {
-        const s = rd.scores(units, n); let b = 0; for (let k = 1; k < n; k++) if (s[k] > s[b]) b = k;
-        out.firstMiss = `${s[b] > 0 ? list[b] : '(nothing)'}→${words[i]}`;
+        const t = rd.top(units, n);
+        out.firstMiss = `${t >= 0 ? list[t] : (t === SPEECH_END ? '(stops)' : '(nothing)')}→${words[i]}`;
       }
     }
     return out;

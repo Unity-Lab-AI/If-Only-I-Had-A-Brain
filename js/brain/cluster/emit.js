@@ -9,9 +9,9 @@
 //    sem→word_motor or it is silence.)
 //   generateSentence(intentSeed, opts)         — synchronous-API sentence
 //                                                generator (older path)
-//   emitWordDirect(opts)                       — single-word emission via
-//                                                sem→word_motor argmax with
-//                                                adaptive signal floor +
+//   emitWordDirect(opts)                       — single-word emission: the
+//                                                speech readout's strongest
+//                                                word slot, with the speech floor +
 //                                                GW boost + repetition penalty +
 //                                                word-creation candidate hook
 //   composeSentence(intentSeed, opts)          — load-bearing autoregressive
@@ -86,12 +86,26 @@ export const CLUSTER_EMIT_MIXIN = {
    * sem currently holds. Null when nothing is in mind.
    */
   currentSpeechUnits() {
-    if (Array.isArray(this._speechUnits) && this._speechUnits.length) return this._speechUnits;
-    if (Array.isArray(this._mindFeats) && this._mindFeats.length) {
+    let base = null;
+    if (Array.isArray(this._speechUnits) && this._speechUnits.length) base = this._speechUnits;
+    else if (Array.isArray(this._mindFeats) && this._mindFeats.length) {
       const u = this.speechReadout().meaningUnits(this._mindFeats);
-      return u.length ? u : null;
+      if (u.length) base = u;
     }
-    return null;
+    if (!base) return null;
+    // How she feels is part of the state she speaks from AND the state she is
+    // taught in: a word learned while she felt one way leans toward that
+    // feeling afterwards, so the same moment can come out differently.
+    const live = this.feelingUnits();
+    return live.length ? base.concat(live) : base;
+  },
+
+  /** How she feels right now, as speaking-state units (empty when no mood is known). */
+  feelingUnits() {
+    const b = this._brain;
+    const m = b && (b.mood || b);
+    if (!m || typeof m.valence !== 'number' || typeof m.arousal !== 'number') return [];
+    return this.speechReadout().liveUnits(m.valence, m.arousal);
   },
 
   /**
@@ -332,28 +346,6 @@ export const CLUSTER_EMIT_MIXIN = {
   // empty string if word_motor projection / region missing or no
   // signal above noise floor.
   /**
-   * SPEAKGPU (2026-08-22) — word emission that SPEAKS FROM HER FULL WEIGHTS.
-   * The sem→word_motor argmax used to read only the CPU CSR — the sampled
-   * shadow (~1-in-5 of training mass since the GPU-first architecture). For a
-   * discrimination across 2,000+ word buckets, the undertrained shadow gives
-   * mushy near-ties that break toward noise — the measured TALK 0/10 / PROD
-   * 0/17 "grab-a-neighbor" failure ("four plus one equals"→"ribbon") while
-   * the donor-probed comprehension sections scored 100%. This wrapper fetches
-   * the currents from the donor via the same standalone probe verb the gates
-   * use (720K rows ≈ 2.9MB ack at speech cadence), then runs the UNCHANGED
-   * bucket argmax on them. Any refusal/timeout → the plain CPU path — a word
-   * is never skipped, only sourced honestly.
-   */
-  /**
-   * LOOPCHAT.1 — the sem-region pre-vector, built in ONE place.
-   *
-   * Read straight off `lastSpikes` for the sem span. Both the synchronous
-   * emission path and the chunked CPU shadow in `emitWordDirectDonor` consume
-   * it, and they MUST consume the same numbers — a second hand-written copy of
-   * this loop is exactly how two callers begin propagating subtly different
-   * inputs while every test still passes.
-   */
-  /**
    * Her next word. Kept `async` because every caller awaits it; the read itself
    * is a table sum on this machine (about a millisecond), with no card round trip.
    */
@@ -519,18 +511,14 @@ export const CLUSTER_EMIT_MIXIN = {
               && !FUNCTION_WORDS.has(_bw)
               && !T14_TERMINATORS.has(_bw)) continue;
         }
-        const bStart = subjStart + b * bucketSize;
-        // SPEAK.1 — capacity overflow: index-ordered, so once a band starts
-        // past the sub-band every higher word overflows too. Break, warn once.
-        if (bStart >= subjEnd) {
-          if (!this._wordBucketOverflowWarned) {
-            this._wordBucketOverflowWarned = true;
-            const bandCells = subjEnd - subjStart;
-            const fits = bucketSize > 0 ? Math.floor(bandCells / bucketSize) : 0;
-            const cantEmit = Math.max(0, wordsList.length - b);
-            try { console.warn(`[emit] word_motor capacity overflow — unified band holds ${fits} words (${bandCells} cells / ${bucketSize} per word) but vocab has ${wordsList.length}; ${cantEmit} words past index ${b} CANNOT emit. Grow langCortexSize (word_motor = 6% of it) so the band exceeds the full K→PhD vocab.`); } catch {}
-          }
-          break;
+        // The word_motor sheet has room to LIGHT only so many words' cells
+        // (band cells ÷ cells per word). What she says is read from the speech
+        // readout, which has no such limit, so a word past the sheet's room is
+        // still said — it just has no cells to light. Noted once.
+        if (!this._wordBucketOverflowWarned && subjStart + b * bucketSize >= subjEnd) {
+          this._wordBucketOverflowWarned = true;
+          const fits = bucketSize > 0 ? Math.floor((subjEnd - subjStart) / bucketSize) : 0;
+          try { console.warn(`[emit] the word_motor sheet lights ${fits} words' cells and her vocabulary is ${wordsList.length}; words past that are still spoken, without lit cells.`); } catch {}
         }
         let mean = b < bucketMeans.length ? bucketMeans[b] : 0;
         // GW bias multiplier — boost the bucket whose word matches
@@ -592,54 +580,37 @@ export const CLUSTER_EMIT_MIXIN = {
     // ─── Acceptance gate: two-level signal threshold ───
     // Both thresholds are LOAD-BEARING constants, not fallbacks:
     //
-    // (1) NOISE_FLOOR (= 0.001) — the absolute physical minimum below
-    //     which any "winning" bucket-mean is mathematically noise given
-    //     the sparse-matrix substrate's signal-to-noise characteristics.
-    //     A bucket-mean of 0.001 in a region with ~30 sparse synapses
-    //     per bucket is at the level of random-init weight residue —
-    //     emitting words at that level is emitting NOISE. This is the
-    //     hard floor every emission must clear.
-    //
-    // (2) ADAPTIVE_FLOOR (= EMA × 0.5) — once the cluster has emitted
-    //     ≥20 accepted words and built a running EMA of typical
-    //     accepted-emission signal, the floor RAMPS UP to half of typical.
-    //     This filters borderline-noise that happens to exceed the hard
-    //     noise floor but is below typical for THIS cluster's current
-    //     training depth.
-    //
-    // Active floor = max(NOISE_FLOOR, ADAPTIVE_FLOOR). Caller can pass
-    // `opts.signalFloorOverride` to bypass for calibration tools but
-    // never for production emission. This is NOT a fallback pattern —
-    // both thresholds are independently meaningful and the max() of them
-    // is the always-correct gate.
+    // (1) NOISE_FLOOR (= 0.001) — below this a "winning" score is nothing
+    //     at all; kept as the absolute minimum.
+    // (2) THE SPEECH FLOOR (0.04, derived below) — how much of what a lesson
+    //     gives must be present before she says the word.
+    // Active floor = max of the two. `opts.signalFloorOverride` replaces it
+    // for calibration tools only, never for production emission.
     const NOISE_FLOOR = 0.001;
     if (typeof this._emitSignalEMA !== 'number') this._emitSignalEMA = 0;
     if (typeof this._emitSignalSampleCount !== 'number') this._emitSignalSampleCount = 0;
-    const adaptiveComponent = (this._emitSignalSampleCount >= 20 && this._emitSignalEMA > 0)
-      ? this._emitSignalEMA * 0.5
-      : 0;  // not yet warmed up → no adaptive contribution
-    // SPEAK.11 — function-word floor relief (root fix for the "no
-    // connecting words" gap). The adaptive component is an EMA of ACCEPTED
-    // emissions, which are dominated by CONTENT words (sharp semantic
-    // basins → high bucket-mean). Content words hold the EMA high, so the
-    // adaptive floor (= EMA × 0.5) sits far above the naturally
-    // lower-magnitude activation of grammatical FUNCTION words
-    // (the/a/is/am/i/it/that/this — high-frequency, distributionally
-    // diffuse, shallow trained basins). Pre-fix consequence: a function
-    // word that legitimately WON its bucket argmax above NOISE_FLOOR was
-    // still rejected for being below the content-calibrated adaptive floor
-    // → emitWordDirect returned '' → composeSentence broke the loop → ZERO
-    // function-word syntax ever emerged. Reported 2026-07-07: she was not using
-    // connecting words at all — no copulas, no determiners, no first-person
-    // wants — which a real kindergartener has. Fix: when the argmax WINNER is a
-    // function word, gate it against the HARD NOISE_FLOOR only, not the
-    // adaptive component. This is NOT a template / slot prescription — the
-    // brain's own trained sem→word_motor argmax still decides IF and WHICH
-    // function word wins each tick; we only stop a miscalibrated floor from
-    // censoring winners whose magnitude is naturally sub-content. Content
-    // words remain gated by the full adaptive floor exactly as before.
+    // ⭐ THE FLOOR ON THE READOUT'S SCALE (replaces "half the running average
+    // of accepted scores", which was calibrated for the removed projection and
+    // refused a partly matching state to silence). A taught word leads its
+    // rivals by 0.1 per active unit. Measured on the production readout at her
+    // whole life corpus, the score of the first word of an answer was:
+    //   the taught wording                       0.102 – 0.163  (median 0.123)
+    //   a rewording never taught, answered right 0.033 – 0.132  (median 0.069)
+    //   an unrelated line (12 of them)           0.000 – 0.047  (median 0.003)
+    // The floor is 0.04 — four tenths of the teach margin: it sits above 11 of
+    // the 12 unrelated lines and below all but the weakest right rewording.
+    // She speaks when that much of what a lesson gives is present, and says
+    // nothing (and records the gap) below it. docs/THRESHOLD-DERIVATION.md.
+    const adaptiveComponent = 0.04;
+    // (Function words used to be gated against the noise floor only, because
+    // the old running-average floor was held high by content words and refused
+    // every connecting word. `winnerIsFunctionWord` still keeps them out of the
+    // running average the dashboard shows.)
     const winnerIsFunctionWord = !!(bestWord && FUNCTION_WORDS.has(bestWord));
-    const activeAdaptive = winnerIsFunctionWord ? 0 : adaptiveComponent;
+    // One floor for every word: on the readout a function word is taught to the
+    // same margin as any other, so it needs no relief (relief let a chance
+    // overlap come out as "the the").
+    const activeAdaptive = adaptiveComponent;
     const floor = (typeof opts.signalFloorOverride === 'number')
       ? opts.signalFloorOverride
       : Math.max(NOISE_FLOOR, activeAdaptive);
@@ -1168,26 +1139,12 @@ export const CLUSTER_EMIT_MIXIN = {
       // and binds it to the next word. Compose used to run CPU neuron ticks and
       // read whatever sem fired — measured 0.04% firing against a 7.5% target,
       // a near-empty pattern no lesson ever used — so the card was asked about
-      // noise and answered with salad. Here the previous word's taught pattern
-      // (the question's concept word for the first) is written into sem exactly
-      // as the teach side writes it, and the next word is read off the card.
-      // ⚠ This also removes every CPU cortex step from her speech.
+      // noise and answered with salad. Here the speaking state is set exactly
+      // as the teach side sets it, and the next word is read from the speech
+      // readout in host memory — no card round trip and no cortex step.
       const _cur = this._brain && this._brain.curriculum;
       const _taught = !!(_cur && typeof _cur._writeSpeechState === 'function'
         && typeof _cur._writeConceptState === 'function' && typeof _cur._writeMeaningState === 'function');
-      const _seedWord = words.length > 0 ? words[words.length - 1]
-        : (opts.intentConcept || (typeof intentSeed === 'string'
-          ? (intentSeed.replace(/_/g, ' ').toLowerCase().match(/[a-z]+/g) || []).filter((t) => t.length > 2).pop() : null));
-      // ⭐ A THOUGHT STARTS FROM WHAT SHE IS THINKING ABOUT. Inner thoughts carry
-      // their topic as an EMBEDDING (her mood, what she just learned, a memory),
-      // not a word — and compose only ever read string seeds, so their first word
-      // came off whatever sem held: noise. The topic embedding is now written into
-      // sem exactly as her training writes meaning (top-8, tiled), so the first
-      // word is the person, animal, place or thing on her mind, and her trained
-      // word order carries the rest. Not forced to "i" — a thought can start
-      // anywhere.
-      const _seedEmb = (words.length === 0 && !_seedWord && intentSeed && typeof intentSeed !== 'string'
-        && intentSeed.length > 0) ? intentSeed : null;
       // ⭐⭐⭐ ONE SPEECH STATE. The state before each word is written by the
       // curriculum's `_writeSpeechState` — the same function every lane that
       // teaches what she says uses (Q→A, ORDER-TO-SPEECH, reply-in-context) — so
@@ -1199,18 +1156,19 @@ export const CLUSTER_EMIT_MIXIN = {
       //                             sentence, not only the last word.
       const _heardText = (typeof opts.questionText === 'string' && opts.questionText) ? opts.questionText : '';
       const _canState = _taught && typeof _cur._writeSpeechState === 'function';
-      if (_canState && words.length === 0 && _heardText) {
-        _cur._writeSpeechState(_heardText, [], { unitsOnly: true });
-      } else if (_canState && words.length > 0) {
+      // What her own line is ABOUT: the thing she was given to think about (a
+      // word), or the meaning in her mind when no word is attached (her mood, a
+      // memory). It is held in the state for the whole line — the state every
+      // sentence was taught in — so a thought is a sentence about something
+      // from its first word, not a bare name followed by silence.
+      const _topicWord = opts.intentConcept || (typeof intentSeed === 'string'
+        ? (intentSeed.replace(/_/g, ' ').toLowerCase().match(/[a-z]+/g) || []).filter((t) => t.length > 2).pop() : null) || null;
+      const _topicEmb = (!_topicWord && intentSeed && typeof intentSeed !== 'string' && intentSeed.length > 0) ? intentSeed : null;
+      const _about = _heardText ? null : (_topicWord || _topicEmb);
+      if (_canState && _heardText) {
         _cur._writeSpeechState(_heardText, words, { unitsOnly: true });
-      } else if (_taught && _seedWord) {
-        // A thought opens on the thing in mind: the state the naming lesson
-        // teaches in ("this thing → its word").
-        _cur._writeConceptState(_seedWord);
-      } else if (_taught && _seedEmb) {
-        // A topic with no word attached (a mood, a memory): its meaning alone,
-        // so she names what the meaning is most like.
-        _cur._writeMeaningState(_seedEmb);
+      } else if (_canState && (_about || words.length > 0)) {
+        _cur._writeSpeechState('', words, { unitsOnly: true, about: _about });
       } else if (_taught) {
         // No seed at all: she says whatever meaning sem already holds (the
         // injected intent), or nothing when nothing is in mind. No cortex ticks.

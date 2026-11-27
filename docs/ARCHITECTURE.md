@@ -1205,29 +1205,43 @@ abDensity = min(densityCap, crossTargetFanout / sourceSize) × betweenScale
 
 **The read.** `score(word) = Σ over active units of W[unit][word]`; the highest score is the word she says; "the line is finished" is a slot like any word's, and when it is highest she stops. A slot's index is the word's position in the cluster's append-only word list, so it is stable as her vocabulary grows.
 
-**The state** (`stateUnits(heard, prefix)`) is the list of active units — about 45 of 9,904 — built from stripes that do not overlap:
+**The state** (`stateUnits(heard, prefix, about)`) is the list of active units — about 57 of 391,524 — built from stripes that do not overlap. Some are **exact** (one particular run of words), so a taught line comes back as taught; the rest are **shared** between moments that are alike, so a line worded differently still lands near what was taught:
 
-| Stripe | Units | Active | Carries |
-|---|---|---|---|
-| last word, identity | 512 | 8 | which word she just said (independent hashes) |
-| last word, meaning | 300 | 4 | what it means (its embedding with the part every word shares removed) |
-| word before / word before that | 512 each | 6 / 4 | recent order |
-| pair, triple | 2,048 each | 6 each | her last two / three words as one thing |
-| gist | 300 | 12 | everything said so far, hers and theirs |
-| heard line, heard key word, heard gist | 2,048 / 512 / 300 | 6 / 8 / 12 | what was said to her: exactly, its least-common word, its drift |
-| thing in mind: identity, meaning | 512 / 300 | 8 / 8 | a thing to be named — the naming lesson, and how a thought opens |
+| Stripe | Units | Active | Kind | Carries |
+|---|---|---|---|---|
+| last word: identity, meaning | 1,024 / 300 | 8 / 4 | shared | which word she just said, and what it means (its embedding with the part every word shares removed) |
+| word before / word before that / the line's first word | 1,024 each | 6 / 4 / 3 | shared | recent order, and how the line began |
+| place in the line | 64 | 2 | shared | how many words in she is |
+| gist | 300 | 12 | shared | everything said so far, hers and theirs |
+| pair, triple, quad | 65,536 each | 6 / 6 / 4 | exact | her last two / three / four words as one thing |
+| this moment | 131,072 | 6 | exact | everything said to her plus every word of hers so far |
+| heard words, heard key word, heard gist — **one set per place in her answer** (7 places) | 2,048 / 1,024 / 300 each | 3 per word / 8 / 12 | shared | each word that was said to her wherever it stood, the word it was about, its drift |
+| heard word-pairs | 32,768 | 2 per pair | exact | neighbouring words of what was said, per place |
+| thing to name: identity, meaning | 1,024 / 300 | 8 / 8 | shared | the naming lesson |
+| what her own line is about: identity, meaning | 1,024 / 300 | 8 / 8 | shared | the thing (or the wordless meaning — a mood, a memory) her line is about, lit for the whole line |
+| how she feels | 64 | 4 | shared | pleasant ↔ unpleasant and calm ↔ stirred, five steps each, from her mood |
 
-Three states exist and nothing else is read: a **speaking state** (what was heard + her words so far), a **thing in mind** (a word's concept, to be named), and a **meaning in mind** (a vector with no word attached — a mood, a memory — which uses only the meaning half of the thing-in-mind stripes, so naming generalises to it). Any 300-dimension meaning written or injected into sem counts as a meaning in mind until sem is cleared.
+⚠ What was said to her is held **separately for each place in her answer** because the state before her first word is otherwise a part of every later state of the same answer, and the words of one answer compete on the same units — measured, reworded questions lost their first word, then their second, until this was done.
 
-**The rule** (`teach`): the taught word must lead the strongest other slot by `0.1 × (active units)`. Already true → no change. Otherwise raise the taught word and lower the one that beat it by `loss / (2 × active units)`, for up to four rivals. Words taught in the same state (a sentence start with several taught continuations) are siblings, not rivals.
+**Three ways she is in a state**, and nothing else is read: answering (what was heard + her words so far), her own line (what it is about + her words so far), and naming a thing. With no explicit state, a 300-dimension meaning written or injected into sem is named by its meaning alone.
+
+**How she feels is part of the state** at both ends — while she is taught and while she speaks (`cluster.feelingUnits()`, from the brain's mood). A word learned while she felt one way leans toward that feeling afterwards. It is 4 of ~57 units, so it tips a close choice and does not override a taught line. ⚠ Her memory and the workspace's content do not enter the state (the workspace still boosts its word at the read).
+
+**The rule** (`teach`): the taught word must lead the strongest other slot by `0.1 × (active units)`; a word no unit has a weight for scores zero, so zero is the floor she must clear. Already true → no change. Otherwise the taught word is raised and the word that beat it lowered, closing the gap, for up to four rivals. **Who takes the correction:** each unit's share is `1/√(1 + times it has been corrected)`, so what is particular to this moment carries the change and what is shared settles into what is generally true; the rival is lowered on the shared units only. Words taught in the same state are siblings, not rivals — the readout remembers them itself, so every lesson gets this.
+
+**Taught as a rewording would find it.** When something was said to her, each word of her answer is taught three times: in the full state, with the exact moment left out, and with the heard word-pairs left out too. A thing is likewise taught by its meaning with its own word left out (naming it, and opening a line about it). Without this the exact units take the whole lesson and a rewording, or a feeling with no word, finds nothing.
+
+**Rehearsal.** The readout keeps a uniform sample of the moments it was taught (up to 200,000) and, for every teach, goes back over one old moment — checking it and correcting it only if a later lesson disturbed it. Measured on her whole life taught grade by grade and never revisited: pre-K is still said **98 %** at the end with rehearsal, **69 %** without.
+
+**Rows.** A unit holds weights only for the words it was ever taught about (a short list with a lookup table once it is long), and becomes a plain array over the word list only when it covers a third of it. Her whole life corpus is 3.5 million weights in 56 MB.
 
 **Where it is taught.** Every lesson that teaches speech reaches one of two doors, so they all teach the same way:
 - `_teachHebbian` / `_teachAntiHebbian` — a lesson that lit word slots (`_writeAnswerToWordMotor`) and whose projection whitelist names `sem_to_word_motor` (now the name of this pathway, not of a matrix) has those words taught in order from the current state, then "finished"; an anti call pushes a word below the best other.
-- `_speechTeach(word)` — the sentence-order lesson, the reply lesson and the naming lesson call it directly, one step per state, with sentence and reply ends taught explicitly.
+- `_speechTeach(word)` — the sentence-order lesson, the reply lesson and the naming lesson call it directly, one step per state, with sentence and reply ends taught explicitly. The sentence-order lesson teaches every sentence **as a line about something** (the word in it least like every other word), from its first word to its end — which is what lets a thought be a sentence about what is on her mind.
 
-**Where it is read.** `cluster.emitWordDirect` / `emitWordDirectDonor` (same function now) — every reply, thought and gate probe. The grade gate, real-word guard, repetition penalty, signal floors and sampling all run unchanged on the readout's per-word means; the sampling temperature is in units of the teach margin.
+**Where it is read.** `cluster.emitWordDirect` / `emitWordDirectDonor` (same function now) — every reply, thought and gate probe. The grade gate, real-word guard, repetition penalty and sampling run on the readout's per-word means; the sampling temperature is in units of the teach margin. **The floor is 0.04** (score ÷ active units): she says nothing, and records the gap, when less than that much of what a lesson gives is present. A word past the `word_motor` sheet's room to light cells is still said.
 
-**Cost.** About 0.6 ms a teach step and 2–4 ms a composed reply at 1,900 words, on the host; the table is `taught units × word capacity × 4 bytes` (58 MB measured at 2,048 slots). Derivations for every number: `docs/THRESHOLD-DERIVATION.md § Speech readout`.
+**Cost.** 0.69 ms a teach step with rehearsal included, 2–4 ms a composed reply, at 4,392 words, on the host. Saved as `brain-weights.speech` (46 MB for her whole life corpus), written and read in pieces. Derivations for every number: `docs/THRESHOLD-DERIVATION.md § Speech readout`.
 
 ### Cross-region projections — wiring detail
 

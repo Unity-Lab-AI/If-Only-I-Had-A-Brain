@@ -15336,8 +15336,14 @@ init_brain_rng();
 
 // ../js/brain/speech-readout.js
 var D = 300;
-var ID = 512;
-var CJ = 2048;
+var ID = 1024;
+var CJ = 1 << 16;
+var LINE = 1 << 17;
+var BAG = 2048;
+var BI = 1 << 15;
+var POS = 64;
+var LIVE = 64;
+var HP = 7;
 var L = (() => {
   let o = 0;
   const at = (n) => {
@@ -15352,28 +15358,67 @@ var L = (() => {
     w2Id: at(ID),
     w3Id: at(ID),
     // the two words before it
+    opener: at(ID),
+    // the word her line began with
+    pos: at(POS),
     gist: at(D),
     // everything said so far (what was said to her + her words)
     pair: at(CJ),
     triple: at(CJ),
-    // her last two / three words as one thing
-    heardLine: at(CJ),
-    // the exact line said to her
-    heardKey: at(ID),
-    heardGist: at(D),
+    quad: at(CJ),
+    line: at(LINE),
+    // What was said to her is held once PER PLACE in her answer (her first
+    // word, her second … her seventh and on). Otherwise the state before her
+    // first word is a part of every later state of the same answer, and the
+    // words of one answer compete with each other on the same units: measured,
+    // reworded questions lost their first word, then their second.
+    heardBag: at(BAG * HP),
+    heardBi: at(BI),
+    heardKey: at(ID * HP),
+    heardGist: at(D * HP),
     concept: at(ID),
-    conceptMean: at(D)
+    conceptMean: at(D),
     // a thing in mind, to be named: who it is, what it means
+    about: at(ID),
+    aboutMean: at(D)
+    // what her own line is about, held while she says it
   };
+  l.live = at(LIVE);
   l.G = o;
   return l;
 })();
-var K = { w1: 8, mean: 4, w2: 6, w3: 4, gist: 12, conj: 6, heardKey: 8, concept: 8, conceptMean: 8 };
+var K = {
+  w1: 8,
+  mean: 4,
+  w2: 6,
+  w3: 4,
+  opener: 3,
+  pos: 2,
+  gist: 12,
+  conj: 6,
+  quad: 4,
+  line: 6,
+  bag: 3,
+  bi: 2,
+  heardKey: 8,
+  concept: 8,
+  conceptMean: 8,
+  about: 8,
+  aboutMean: 8,
+  live: 2
+};
+var HEARD_MAX = 16;
 var SPEECH_END = -2;
 var MARGIN = 0.1;
 var TRIES = 4;
 var W_MAX = 8;
-var GROW = 2048;
+var MU_MIN_WORDS = 1e3;
+var REHEARSE_CAP = 2e5;
+var REHEARSE_EVERY = 1;
+var SAME_STATE_MAX = 64;
+var LIST_SCAN = 16;
+var WIDE_MIN = 256;
+var VOCAB_STEP = 2048;
 function h32(str, salt) {
   let h = (2166136261 ^ Math.imul(salt + 1, 2654435761)) >>> 0;
   for (let i = 0; i < str.length; i++) {
@@ -15397,21 +15442,62 @@ function hashUnits(text, k, span, salt, base, out) {
     if (!dup) out.push(u);
   }
 }
-var tokens = (s) => String(s || "").toLowerCase().replace(/[^a-z'\s-]+/g, " ").split(/\s+/).filter(Boolean);
+function unique(out) {
+  if (out.length < 2) return out;
+  const seen = /* @__PURE__ */ new Set();
+  let w = 0;
+  for (let i = 0; i < out.length; i++) {
+    const u = out[i];
+    if (!seen.has(u)) {
+      seen.add(u);
+      out[w++] = u;
+    }
+  }
+  out.length = w;
+  return out;
+}
+var tokens = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9'\s-]+/g, " ").split(/\s+/).filter(Boolean);
+var slotOf = (key, mask) => Math.imul(key, 2654435761) >>> 0 & mask;
+var clampW = (v) => v > W_MAX ? W_MAX : v < -W_MAX ? -W_MAX : v;
+var stepUp = (n) => Math.max(VOCAB_STEP, Math.ceil(n / VOCAB_STEP) * VOCAB_STEP);
+var isHeardPair = (u) => u >= L.heardBi && u < L.heardKey;
+var isExact = (u) => u >= L.pair && u < L.heardBag || isHeardPair(u);
 var SpeechReadout = class {
-  constructor(embeddings) {
+  constructor(embeddings, opts = {}) {
     this.emb = embeddings;
     this.G = L.G;
-    this.rows = new Array(L.G).fill(null);
-    this.endRow = new Float32Array(L.G);
-    this.cap = 0;
+    this.lk = new Array(L.G).fill(null);
+    this.lv = new Array(L.G).fill(null);
+    this.lx = new Array(L.G).fill(null);
+    this.ln = new Int32Array(L.G);
+    this.wd = new Array(L.G).fill(null);
+    this.endW = new Float32Array(L.G);
+    this.use = new Uint32Array(L.G);
+    this._share = new Float64Array(128);
+    this.entries = 0;
+    this.wide = 0;
+    this.nWords = 0;
     this.mu = null;
+    this.muWords = 0;
     this._score = new Float32Array(0);
-    this.stats = { teaches: 0, alreadyRight: 0, corrections: 0, pushes: 0, says: 0 };
+    this._mark = new Int32Array(0);
+    this._touched = new Int32Array(1024);
+    this._nt = 0;
+    this._epoch = 0;
+    this._end = 0;
+    this._all = false;
+    this._n = 0;
+    this.rehearseCap = Number(opts.rehearseCap) >= 0 ? Number(opts.rehearseCap) : REHEARSE_CAP;
+    this.rehearseEvery = Number(opts.rehearseEvery) > 0 ? Number(opts.rehearseEvery) : REHEARSE_EVERY;
+    this.mem = [];
+    this.memAt = /* @__PURE__ */ new Map();
+    this.memSeen = 0;
+    this._rng = 625341585;
+    this.stats = { teaches: 0, alreadyRight: 0, corrections: 0, pushes: 0, says: 0, rehearsed: 0, rehearsalFixes: 0 };
   }
   // ── Meaning ────────────────────────────────────────────────────────────────
   /** The vector every word shares, so a meaning stripe carries what is DIFFERENT
-   *  about a word. Fixed once (the table's most frequent words) and saved. */
+   *  about a word. Fixed once the table holds enough words, and saved. */
   _mean() {
     if (this.mu) return this.mu;
     const mu = new Float64Array(D);
@@ -15424,17 +15510,26 @@ var SpeechReadout = class {
       }
     }
     if (n > 0) for (let i = 0; i < D; i++) mu[i] /= n;
-    this.mu = mu;
+    if (n >= MU_MIN_WORDS) {
+      this.mu = mu;
+      this.muWords = n;
+    } else if (!this._muWarned) {
+      this._muWarned = true;
+      try {
+        console.warn(`[SpeechReadout] the word table holds ${n} vectors (< ${MU_MIN_WORDS}); the common-meaning vector is NOT fixed yet and meanings are read without it until the table is loaded.`);
+      } catch {
+      }
+    }
     return mu;
   }
   /** The k most positive dimensions of (vec − common part), as units at `base`. */
-  _meaningUnits(vec, k, base, out, removeMean = true) {
+  _meaningUnits(vec, k, base, out) {
     if (!vec || !vec.length) return;
-    const mu = removeMean ? this._mean() : null;
+    const mu = this._mean();
     const best = new Int32Array(k).fill(-1);
     const bv = new Float64Array(k).fill(0);
     for (let d = 0; d < D && d < vec.length; d++) {
-      const v = vec[d] - (mu ? mu[d] : 0);
+      const v = vec[d] - mu[d];
       if (!(v > bv[k - 1])) continue;
       let j = k - 1;
       while (j > 0 && v > bv[j - 1]) {
@@ -15460,7 +15555,6 @@ var SpeechReadout = class {
     return n > 0 ? g : null;
   }
   // ── The ONE word code: who the word is + what it means. ───────────────────────
-  /** Units for `word` placed at an identity stripe and (optionally) a meaning stripe. */
   wordUnits(word, idBase, kId, salt, out, meanBase = -1, kMean = 0) {
     hashUnits(word, kId, ID, salt, idBase, out);
     if (meanBase >= 0 && kMean > 0) this._meaningUnits(this.emb.getEmbedding(word), kMean, meanBase, out);
@@ -15470,30 +15564,46 @@ var SpeechReadout = class {
    * The state before she says her next word.
    *   heard  = what was said to her ('' when the line is her own)
    *   prefix = the words she has said so far in this line
+   *   about  = what her own line is about: a word, or the 300-d meaning(s) in
+   *            her mind when no word is attached (a mood, a memory). It stays
+   *            lit for the whole line, so a thought is a sentence ABOUT
+   *            something and not only a chain of next words.
    */
-  stateUnits(heard, prefix) {
+  stateUnits(heard, prefix, about = null) {
     const out = [];
     const p = Array.isArray(prefix) ? prefix.filter(Boolean).map((w) => String(w).toLowerCase()) : [];
     const h = tokens(heard);
     const n = p.length;
-    if (!n && !h.length) return out;
-    const w1 = n >= 1 ? p[n - 1] : "^", w2 = n >= 2 ? p[n - 2] : "^", w3 = n >= 3 ? p[n - 3] : "^";
-    if (n >= 1) this.wordUnits(w1, L.w1Id, K.w1, 1, out, L.w1Mean, K.mean);
-    else hashUnits("^", K.w1, ID, 1, L.w1Id, out);
-    hashUnits(w2, K.w2, ID, 2, L.w2Id, out);
-    hashUnits(w3, K.w3, ID, 3, L.w3Id, out);
-    hashUnits(w2 + " " + w1, K.conj, CJ, 7, L.pair, out);
-    hashUnits(w3 + " " + w2 + " " + w1, K.conj, CJ, 9, L.triple, out);
+    const topic = typeof about === "string" ? about.toLowerCase().trim() : "";
+    const topicFeats = about && typeof about !== "string" ? about : null;
+    if (!n && !h.length && !topic && !topicFeats) return out;
+    if (topic) this.wordUnits(topic, L.about, K.about, 35, out, L.aboutMean, K.aboutMean);
+    else if (topicFeats) {
+      const m = this._featsMean(topicFeats);
+      if (m) this._meaningUnits(m, K.aboutMean, L.aboutMean, out);
+    }
+    if (n >= 1) this.wordUnits(p[n - 1], L.w1Id, K.w1, 1, out, L.w1Mean, K.mean);
+    if (n >= 2) hashUnits(p[n - 2], K.w2, ID, 2, L.w2Id, out);
+    if (n >= 3) hashUnits(p[n - 3], K.w3, ID, 3, L.w3Id, out);
+    if (n >= 2) hashUnits(p[0], K.opener, ID, 23, L.opener, out);
+    hashUnits("p" + Math.min(n, 12), K.pos, POS, 21, L.pos, out);
+    if (n >= 2) hashUnits(p[n - 2] + " " + p[n - 1], K.conj, CJ, 7, L.pair, out);
+    if (n >= 3) hashUnits(p[n - 3] + " " + p[n - 2] + " " + p[n - 1], K.conj, CJ, 9, L.triple, out);
+    if (n >= 4) hashUnits(p[n - 4] + " " + p[n - 3] + " " + p[n - 2] + " " + p[n - 1], K.quad, CJ, 10, L.quad, out);
+    hashUnits(h.join(" ") + "|" + p.join(" "), K.line, LINE, 25, L.line, out);
     const g = this._gist(h.concat(p));
     if (g) this._meaningUnits(g, K.gist, L.gist, out);
     if (h.length) {
-      hashUnits(h.join(" "), K.conj, CJ, 11, L.heardLine, out);
+      const hw = h.length > HEARD_MAX ? h.slice(0, HEARD_MAX) : h;
+      const at = Math.min(n, HP - 1);
+      for (const w of hw) hashUnits(w, K.bag, BAG, 27, L.heardBag + at * BAG, out);
+      for (let i = 1; i < hw.length; i++) hashUnits(at + ":" + hw[i - 1] + " " + hw[i], K.bi, BI, 29, L.heardBi, out);
       const key = this._keyWord(h);
-      if (key) hashUnits(key, K.heardKey, ID, 13, L.heardKey, out);
+      if (key) hashUnits(key, K.heardKey, ID, 13, L.heardKey + at * ID, out);
       const hg = this._gist(h);
-      if (hg) this._meaningUnits(hg, K.gist, L.heardGist, out);
+      if (hg) this._meaningUnits(hg, K.gist, L.heardGist + at * D, out);
     }
-    return out;
+    return unique(out);
   }
   /** The word of a heard line that is least like every other word: the one it is about. */
   _keyWord(h) {
@@ -15520,7 +15630,7 @@ var SpeechReadout = class {
     const w = String(word || "").toLowerCase().trim();
     if (!w) return out;
     this.wordUnits(w, L.concept, K.concept, 17, out, L.conceptMean, K.conceptMean);
-    return out;
+    return unique(out);
   }
   /**
    * A meaning in mind with no word attached (a mood, a memory, a topic vector):
@@ -15530,7 +15640,13 @@ var SpeechReadout = class {
    */
   meaningUnits(feats) {
     const out = [];
-    const list = Array.isArray(feats) ? feats : [feats];
+    const m = this._featsMean(feats);
+    if (m) this._meaningUnits(m, K.conceptMean, L.conceptMean, out);
+    return out;
+  }
+  /** The mean of one or several 300-d meanings (identity markers ≥ 1.5 left out), or null. */
+  _featsMean(feats) {
+    const list = Array.isArray(feats) && feats.length && typeof feats[0] !== "number" ? feats : [feats];
     const m = new Float64Array(D);
     let n = 0;
     for (const f of list) {
@@ -15541,42 +15657,222 @@ var SpeechReadout = class {
       }
       n++;
     }
-    if (!n) return out;
+    if (!n) return null;
     for (let i = 0; i < D; i++) m[i] /= n;
-    this._meaningUnits(m, K.conceptMean, L.conceptMean, out);
-    return out;
+    return m;
+  }
+  /** What a line is about: the word in it that is least like every other word. */
+  aboutOf(words) {
+    return this._keyWord(Array.isArray(words) ? words : tokens(words));
+  }
+  /**
+   * How she feels, as units: pleasant ↔ unpleasant and calm ↔ stirred, each in
+   * five steps. Added to whatever state she speaks or is taught in, so a word
+   * taught while she felt one way leans toward that feeling afterwards.
+   */
+  liveUnits(valence, arousal) {
+    const out = [];
+    const step = (x, lo, hi) => {
+      const t = (Number(x) - lo) / (hi - lo);
+      return Math.max(0, Math.min(4, Math.floor((Number.isFinite(t) ? t : 0.5) * 5)));
+    };
+    hashUnits("v" + step(valence, -1, 1), K.live, LIVE, 31, L.live, out);
+    hashUnits("a" + step(arousal, 0, 1), K.live, LIVE, 33, L.live, out);
+    return unique(out);
+  }
+  // ── Rows ──────────────────────────────────────────────────────────────────────
+  /** Position of `key` in unit u's list, or −1. */
+  _find(u, key) {
+    const n = this.ln[u];
+    const k = this.lk[u];
+    const x = this.lx[u];
+    if (!x) {
+      for (let i = 0; i < n; i++) if (k[i] === key) return i;
+      return -1;
+    }
+    const mask = x.length - 1;
+    let j = slotOf(key, mask);
+    for (; ; ) {
+      const p = x[j];
+      if (p === 0) return -1;
+      if (k[p - 1] === key) return p - 1;
+      j = j + 1 & mask;
+    }
+  }
+  _index(u) {
+    const n = this.ln[u];
+    const k = this.lk[u];
+    let cap = 64;
+    while (cap < n * 2 + 2) cap *= 2;
+    const x = new Int32Array(cap);
+    const mask = cap - 1;
+    for (let i = 0; i < n; i++) {
+      let j = slotOf(k[i], mask);
+      while (x[j] !== 0) j = j + 1 & mask;
+      x[j] = i + 1;
+    }
+    this.lx[u] = x;
+  }
+  /** Add `d` to unit u's weight for word `key`. */
+  _add(u, key, d) {
+    const w = this.wd[u];
+    if (w) {
+      if (key >= w.length) {
+        const nw = new Float32Array(stepUp(key + 1));
+        nw.set(w);
+        this.wd[u] = nw;
+        nw[key] = clampW(d);
+        this.entries++;
+        return;
+      }
+      if (w[key] === 0) this.entries++;
+      w[key] = clampW(w[key] + d);
+      return;
+    }
+    let k = this.lk[u];
+    if (!k) {
+      k = this.lk[u] = new Int32Array(4);
+      this.lv[u] = new Float32Array(4);
+    }
+    const at = this._find(u, key);
+    if (at >= 0) {
+      this.lv[u][at] = clampW(this.lv[u][at] + d);
+      return;
+    }
+    let n = this.ln[u];
+    if (n === k.length) {
+      const nk = new Int32Array(n * 2);
+      nk.set(k);
+      const nv = new Float32Array(n * 2);
+      nv.set(this.lv[u]);
+      k = this.lk[u] = nk;
+      this.lv[u] = nv;
+    }
+    k[n] = key;
+    this.lv[u][n] = clampW(d);
+    this.ln[u] = ++n;
+    this.entries++;
+    if (n > LIST_SCAN) {
+      const x = this.lx[u];
+      if (!x || n * 2 + 2 > x.length) this._index(u);
+      else {
+        const mask = x.length - 1;
+        let j = slotOf(key, mask);
+        while (x[j] !== 0) j = j + 1 & mask;
+        x[j] = n;
+      }
+    }
+    if (n >= WIDE_MIN && n * 3 > this.nWords) this._widen(u);
+  }
+  /** Turn unit u's list into a plain array over word slots. */
+  _widen(u) {
+    const n = this.ln[u];
+    const k = this.lk[u], v = this.lv[u];
+    let top = this.nWords;
+    for (let i = 0; i < n; i++) if (k[i] >= top) top = k[i] + 1;
+    const w = new Float32Array(stepUp(top));
+    for (let i = 0; i < n; i++) w[k[i]] = v[i];
+    this.wd[u] = w;
+    this.lk[u] = null;
+    this.lv[u] = null;
+    this.lx[u] = null;
+    this.ln[u] = 0;
+    this.wide++;
   }
   // ── Read ──────────────────────────────────────────────────────────────────────
-  _grow(nWords) {
-    if (nWords <= this.cap) return;
-    const cap = Math.ceil(nWords / GROW) * GROW;
-    for (let u = 0; u < this.G; u++) {
-      const r = this.rows[u];
-      if (!r) continue;
-      const nr = new Float32Array(cap);
-      nr.set(r);
-      this.rows[u] = nr;
-    }
-    this.cap = cap;
-  }
-  /** Score of every word slot [0, nWords) in this state. The returned array is reused. */
+  /**
+   * Score of every word slot [0, nWords) in this state. The returned array is
+   * reused and is valid for [0, nWords): zero for every word no active unit has
+   * a weight for. The end slot's score is left in `this._end`.
+   */
   scores(units, nWords) {
-    if (this._score.length < nWords) this._score = new Float32Array(Math.ceil(nWords / GROW) * GROW);
-    const s = this._score;
-    s.fill(0, 0, nWords);
-    const n = Math.min(nWords, this.cap);
-    for (let i = 0; i < units.length; i++) {
-      const r = this.rows[units[i]];
-      if (!r) continue;
-      for (let b = 0; b < n; b++) s[b] += r[b];
+    if (nWords > this.nWords) this.nWords = nWords;
+    if (this._score.length < nWords) {
+      const cap = stepUp(nWords);
+      this._score = new Float32Array(cap);
+      this._mark = new Int32Array(cap);
+      this._nt = 0;
+      this._epoch = 0;
+      this._all = false;
+      this._n = 0;
     }
+    const s = this._score, mark = this._mark;
+    let T = this._touched;
+    if (this._all) s.fill(0, 0, this._n);
+    else for (let i = 0; i < this._nt; i++) s[T[i]] = 0;
+    let all = false, end = 0;
+    for (let i = 0; i < units.length; i++) {
+      const u = units[i];
+      end += this.endW[u];
+      const w = this.wd[u];
+      if (!w) continue;
+      all = true;
+      const m = nWords < w.length ? nWords : w.length;
+      for (let b = 0; b < m; b++) s[b] += w[b];
+    }
+    const ep = ++this._epoch;
+    let nt = 0;
+    for (let i = 0; i < units.length; i++) {
+      const u = units[i];
+      const n = this.ln[u];
+      if (!n) continue;
+      const k = this.lk[u], v = this.lv[u];
+      if (all) {
+        for (let j = 0; j < n; j++) {
+          const key = k[j];
+          if (key < nWords) s[key] += v[j];
+        }
+        continue;
+      }
+      for (let j = 0; j < n; j++) {
+        const key = k[j];
+        if (key >= nWords) continue;
+        if (mark[key] !== ep) {
+          mark[key] = ep;
+          s[key] = v[j];
+          if (nt === T.length) {
+            const nT = new Int32Array(T.length * 2);
+            nT.set(T);
+            T = this._touched = nT;
+          }
+          T[nt++] = key;
+        } else s[key] += v[j];
+      }
+    }
+    this._all = all;
+    this._n = nWords;
+    this._nt = nt;
+    this._end = end;
     return s;
   }
   /** Score of "the line is finished" in this state. */
   endScore(units) {
     let e = 0;
-    for (let i = 0; i < units.length; i++) e += this.endRow[units[i]];
+    for (let i = 0; i < units.length; i++) e += this.endW[units[i]];
     return e;
+  }
+  /** The strongest word of the last read that is not in `skip`: [slot, score]; slot −1 when no word scores above `floor`. */
+  _best(skipA, skipList, floor) {
+    const s = this._score;
+    let bw = -1, bv = floor;
+    if (this._all) {
+      for (let b = 0; b < this._n; b++) {
+        if (s[b] > bv && b !== skipA && !(skipList && skipList.includes(b))) {
+          bv = s[b];
+          bw = b;
+        }
+      }
+    } else {
+      const T = this._touched;
+      for (let i = 0; i < this._nt; i++) {
+        const b = T[i];
+        if (s[b] > bv && b !== skipA && !(skipList && skipList.includes(b))) {
+          bv = s[b];
+          bw = b;
+        }
+      }
+    }
+    return [bw, bv];
   }
   /** Per-word means in the shape the emission argmax takes (score ÷ active units),
    *  with the end-of-line mean alongside as `.end`. */
@@ -15584,151 +15880,519 @@ var SpeechReadout = class {
     const s = this.scores(units, nWords);
     const out = new Float32Array(nWords);
     const d = Math.max(1, units.length);
-    for (let b = 0; b < nWords; b++) out[b] = s[b] / d;
-    out.end = this.endScore(units) / d;
+    if (this._all) for (let b = 0; b < nWords; b++) out[b] = s[b] / d;
+    else {
+      const T = this._touched;
+      for (let i = 0; i < this._nt; i++) out[T[i]] = s[T[i]] / d;
+    }
+    out.end = this._end / d;
     this.stats.says++;
     return out;
   }
-  /** Where `target` ranks in this state (1 = she would say it). */
+  /** The word she would say in this state: its slot, SPEECH_END, or −1 for nothing. */
+  top(units, nWords) {
+    if (!units || !units.length) return -1;
+    this.scores(units, nWords);
+    const [bw, bv] = this._best(-1, null, 0);
+    if (this._end > 0 && this._end >= bv) return SPEECH_END;
+    return bw;
+  }
+  /** Where `target` ranks in this state (1 = she would say it; −1 = she would not say it at all). */
   rank(units, target, nWords) {
     if (!units.length || target >= nWords || target < 0 && target !== SPEECH_END) return -1;
     const s = this.scores(units, nWords);
-    const e = this.endScore(units);
+    const e = this._end;
     const t = target === SPEECH_END ? e : s[target];
+    if (!(t > 0)) return -1;
     let r = 1;
-    for (let b = 0; b < nWords; b++) if (b !== target && s[b] >= t) r++;
+    if (this._all) {
+      for (let b = 0; b < nWords; b++) if (b !== target && s[b] >= t) r++;
+    } else {
+      const T = this._touched;
+      for (let i = 0; i < this._nt; i++) if (T[i] !== target && s[T[i]] >= t) r++;
+    }
     if (target !== SPEECH_END && e >= t) r++;
     return r;
   }
+  /** The words taught in exactly this state, as far as rehearsal still holds it. */
+  taughtHere(units) {
+    const m = this.mem[this.memAt.get(this._key(units))];
+    return m ? m.targets : null;
+  }
+  /** Would she say `target` here, or another word she was also taught to say here? */
+  saysTaught(units, target, nWords) {
+    const t = this.top(units, nWords);
+    if (t === target) return true;
+    const also = this.taughtHere(units);
+    return !!(also && t !== -1 && also.includes(t) && also.includes(target));
+  }
   // ── Teach ─────────────────────────────────────────────────────────────────────
-  _row(u) {
-    let r = this.rows[u];
-    if (!r) {
-      r = this.rows[u] = new Float32Array(this.cap);
+  /** The moment's key: its units without how she feels. */
+  _key(units) {
+    let a = 2166136261, b = 2654435769;
+    for (let i = 0; i < units.length; i++) {
+      const u = units[i];
+      if (u >= L.live) continue;
+      a = Math.imul(a ^ u, 16777619) >>> 0;
+      b = Math.imul(b ^ u + 2135587861, 2246822507) >>> 0;
+      b ^= b >>> 13;
     }
-    return r;
+    return a * 2097152 + (b >>> 0 >>> 11);
+  }
+  _rand() {
+    let x = this._rng;
+    x ^= x << 13;
+    x >>>= 0;
+    x ^= x >>> 17;
+    x ^= x << 5;
+    x >>>= 0;
+    this._rng = x;
+    return x / 4294967296;
+  }
+  /** Note that `target` was taught in this state; returns the words taught here (target included). */
+  _remember(units, target) {
+    if (!this.rehearseCap) return null;
+    const key = this._key(units);
+    let at = this.memAt.get(key);
+    if (at === void 0) {
+      this.memSeen++;
+      let base = units;
+      for (let i = 0; i < units.length; i++) if (units[i] >= L.live) {
+        base = units.filter((u) => u < L.live);
+        break;
+      }
+      const entry = { key, units: Int32Array.from(base), targets: [target] };
+      if (this.mem.length < this.rehearseCap) {
+        at = this.mem.length;
+        this.mem.push(entry);
+      } else {
+        if (this._rand() * this.memSeen >= this.rehearseCap) return entry.targets;
+        at = Math.floor(this._rand() * this.mem.length);
+        this.memAt.delete(this.mem[at].key);
+        this.mem[at] = entry;
+      }
+      this.memAt.set(key, at);
+      return entry.targets;
+    }
+    const t = this.mem[at].targets;
+    if (!t.includes(target) && t.length < SAME_STATE_MAX) t.push(target);
+    return t;
+  }
+  /** Does this state hold something that was said to her? */
+  _heardIn(units) {
+    for (let i = 0; i < units.length; i++) {
+      const u = units[i];
+      if (u >= L.heardBag && u < L.concept) return true;
+    }
+    return false;
+  }
+  /** The state a rewording would light: level 1 leaves out the exact moment; level 2 also the heard word-pairs. */
+  _general(units, level) {
+    const out = [];
+    for (let i = 0; i < units.length; i++) {
+      const u = units[i];
+      if (u >= L.line && u < L.heardBag) continue;
+      if (level >= 2 && isHeardPair(u)) continue;
+      out.push(u);
+    }
+    return out;
+  }
+  /**
+   * The same state with the thing's own word left out, where that applies:
+   * naming a thing (its meaning alone), or opening a line about a thing (its
+   * meaning and "nothing said yet"). Null for every other state.
+   */
+  _meaningOnly(units) {
+    let named = false, topic = false, spoken = false;
+    for (let i = 0; i < units.length; i++) {
+      const u = units[i];
+      if (u >= L.concept && u < L.conceptMean) named = true;
+      else if (u >= L.about && u < L.aboutMean) topic = true;
+      else if (u >= L.w1Id && u < L.w1Mean) spoken = true;
+    }
+    if (!named && !(topic && !spoken)) return null;
+    const out = [];
+    for (let i = 0; i < units.length; i++) {
+      const u = units[i];
+      if (u >= L.concept && u < L.conceptMean || u >= L.about && u < L.aboutMean || u >= L.line && u < L.heardBag) continue;
+      out.push(u);
+    }
+    return out;
+  }
+  /** One "teach until she says it" in one state. Returns { right, updates }. */
+  _fit(units, target, nWords, also, marginPer, tries) {
+    const isEnd = target === SPEECH_END;
+    const n = units.length;
+    const margin = marginPer * n;
+    const s = this.scores(units, nWords);
+    if (!isEnd && !this._all && this._mark[target] !== this._epoch) {
+      this._mark[target] = this._epoch;
+      if (this._nt === this._touched.length) {
+        const nT = new Int32Array(this._nt * 2);
+        nT.set(this._touched);
+        this._touched = nT;
+      }
+      this._touched[this._nt++] = target;
+    }
+    const alsoEnd = !!(also && also.includes(SPEECH_END));
+    let updates = 0, right = false;
+    for (let t = 0; t < tries; t++) {
+      const e = this._end;
+      const tv = isEnd ? e : s[target];
+      let [rival, rv] = this._best(isEnd ? -1 : target, also, 0);
+      if (!isEnd && !alsoEnd && e > rv) {
+        rv = e;
+        rival = SPEECH_END;
+      }
+      if (t === 0) {
+        let sib = -Infinity;
+        if (also) {
+          for (const b of also) {
+            if (b === target) continue;
+            const v = b === SPEECH_END ? e : b >= 0 && b < nWords ? s[b] : -Infinity;
+            if (v > sib) sib = v;
+          }
+        }
+        right = Math.max(tv, sib) > rv;
+      }
+      const loss = margin - (tv - rv);
+      if (loss <= 0) break;
+      const none = rival === -1;
+      const use = this.use;
+      let sumAll = 0, sumShared = 0;
+      const share = n <= this._share.length ? this._share : this._share = new Float64Array(n * 2);
+      for (let i = 0; i < n; i++) {
+        const u = units[i];
+        const a = 1 / Math.sqrt(1 + use[u]);
+        share[i] = a;
+        sumAll += a;
+        if (!isExact(u)) sumShared += a;
+      }
+      const up = (none || !(sumShared > 0) ? loss : loss / 2) + 1e-4 * n;
+      const down = none || !(sumShared > 0) ? 0 : loss / 2 + 1e-4 * n;
+      for (let i = 0; i < n; i++) {
+        const u = units[i];
+        const tu = up * share[i] / sumAll;
+        if (isEnd) this.endW[u] = clampW(this.endW[u] + tu);
+        else this._add(u, target, tu);
+        if (use[u] < 4294967295) use[u]++;
+        if (!down || isExact(u)) continue;
+        const td = down * share[i] / sumShared;
+        if (rival === SPEECH_END) this.endW[u] = clampW(this.endW[u] - td);
+        else this._add(u, rival, -td);
+      }
+      if (isEnd) this._end += up;
+      else s[target] += up;
+      if (down) {
+        if (rival === SPEECH_END) this._end -= down;
+        else s[rival] -= down;
+      }
+      updates++;
+    }
+    return { right, updates };
   }
   /**
    * Teach until she says it: in this state, `target` must lead every other word
    * slot by MARGIN × (active units). Returns { right, updates } — `right` is
-   * whether she already said it before any change.
+   * whether she already said it (or another word taught in this same state)
+   * before any change. `opts.also` — other slots taught in this same state.
    */
   teach(units, target, nWords, opts = {}) {
     const isEnd = target === SPEECH_END;
     if (!units || !units.length || target >= nWords || target < 0 && !isEnd) return { right: false, updates: 0 };
-    this._grow(nWords);
-    const margin = (opts.margin ?? MARGIN) * units.length;
-    const tries = opts.tries ?? TRIES;
-    const bump = (slot, d) => {
-      for (let i = 0; i < units.length; i++) {
-        if (slot === SPEECH_END) {
-          const v = this.endRow[units[i]] + d;
-          this.endRow[units[i]] = v > W_MAX ? W_MAX : v < -W_MAX ? -W_MAX : v;
-        } else {
-          const r = this._row(units[i]);
-          const v = r[slot] + d;
-          r[slot] = v > W_MAX ? W_MAX : v < -W_MAX ? -W_MAX : v;
-        }
-      }
-    };
-    const also = opts.also && opts.also.size ? opts.also : null;
-    let updates = 0, right = false;
-    for (let t = 0; t < tries; t++) {
-      const s = this.scores(units, nWords);
-      const e = this.endScore(units);
-      const tv = isEnd ? e : s[target];
-      let rival = -1, rv = -Infinity;
-      let sib = -Infinity;
-      for (let b = 0; b < nWords; b++) {
-        if (b === target) continue;
-        if (also && also.has(b)) {
-          if (s[b] > sib) sib = s[b];
-          continue;
-        }
-        if (s[b] > rv) {
-          rv = s[b];
-          rival = b;
-        }
-      }
-      if (!isEnd) {
-        if (also && also.has(SPEECH_END)) {
-          if (e > sib) sib = e;
-        } else if (e > rv) {
-          rv = e;
-          rival = SPEECH_END;
-        }
-      }
-      const none = rival === -1;
-      if (t === 0) right = none ? Math.max(tv, sib) > 0 : Math.max(tv, sib) > rv;
-      const loss = margin - (tv - (none ? 0 : rv));
-      if (loss <= 0) break;
-      const tau = loss / (2 * units.length) + 1e-4;
-      bump(target, tau);
-      if (!none) bump(rival, -tau);
-      updates++;
+    let also = this._remember(units, target);
+    if (opts.also && opts.also.size) {
+      also = also ? also.slice() : [];
+      for (const b of opts.also) if (!also.includes(b)) also.push(b);
     }
+    const r = this._fit(units, target, nWords, also, opts.margin ?? MARGIN, opts.tries ?? TRIES);
     this.stats.teaches++;
-    if (right) this.stats.alreadyRight++;
-    this.stats.corrections += updates;
-    return { right, updates };
+    if (r.right) this.stats.alreadyRight++;
+    this.stats.corrections += r.updates;
+    if (opts.general !== false) {
+      const wider = [];
+      if (this._heardIn(units)) {
+        wider.push(this._general(units, 1), this._general(units, 2));
+      } else {
+        const g = this._meaningOnly(units);
+        if (g) wider.push(g);
+      }
+      for (const g of wider) {
+        if (g.length < 4 || g.length === units.length) continue;
+        const ga = this._remember(g, target);
+        const gr = this._fit(g, target, nWords, ga, opts.margin ?? MARGIN, opts.tries ?? TRIES);
+        this.stats.generalTeaches = (this.stats.generalTeaches || 0) + 1;
+        this.stats.corrections += gr.updates;
+      }
+    }
+    if (this.mem.length > 1 && this.stats.teaches % this.rehearseEvery === 0) this.rehearse(1, nWords);
+    return r;
+  }
+  /** Go back over `count` taught moments: check each, and correct it only if a later lesson disturbed it. */
+  rehearse(count, nWords) {
+    let fixed = 0;
+    for (let c = 0; c < count && this.mem.length; c++) {
+      const m = this.mem[Math.floor(this._rand() * this.mem.length)];
+      const target = m.targets[Math.floor(this._rand() * m.targets.length)];
+      if (target >= nWords) continue;
+      const r = this._fit(m.units, target, nWords, m.targets, MARGIN, 2);
+      this.stats.rehearsed++;
+      if (r.updates) {
+        this.stats.rehearsalFixes++;
+        fixed++;
+      }
+    }
+    return fixed;
   }
   /** "Not this word, here": lower `word` until the best other slot leads it by the margin. */
   pushAway(units, word, nWords, opts = {}) {
     if (!units || !units.length || !(word >= 0) || word >= nWords) return false;
-    this._grow(nWords);
     const s = this.scores(units, nWords);
-    let rv = this.endScore(units);
-    for (let b = 0; b < nWords; b++) if (b !== word && s[b] > rv) rv = s[b];
+    const [, bv] = this._best(word, null, 0);
+    const rv = Math.max(bv, this._end, 0);
     const loss = (opts.margin ?? MARGIN) * units.length - (rv - s[word]);
     if (loss <= 0) return false;
     const tau = loss / units.length + 1e-4;
-    for (let i = 0; i < units.length; i++) {
-      const r = this._row(units[i]);
-      const v = r[word] - tau;
-      r[word] = v < -W_MAX ? -W_MAX : v;
-    }
+    for (let i = 0; i < units.length; i++) this._add(units[i], word, -tau);
+    this.scores(units, nWords);
     this.stats.pushes++;
     return true;
   }
   // ── Save / restore ────────────────────────────────────────────────────────────
-  /** { header, buffers } — header is JSON-safe; buffers are the taught rows in header order. */
-  serialize(nWords) {
-    const units = [];
+  /**
+   * { header, buffers } — header is JSON-safe; buffers are written in order.
+   * Body (all little-endian 32-bit): taught unit ids · their weight counts ·
+   * every row as (word slots, weights) · every unit's end weight · every
+   * unit's correction count · rehearsal:
+   * unit counts · target counts · units · targets. Nothing here is one
+   * allocation the size of the whole table.
+   */
+  serialize() {
     const buffers = [];
-    const n = Math.min(nWords, this.cap);
+    const CH = 1 << 20;
+    let cur = new Int32Array(CH), cf = new Float32Array(cur.buffer), n = 0, bytes = 0;
+    const flush = () => {
+      if (n) {
+        buffers.push(Buffer.from(cur.buffer, 0, n * 4));
+        bytes += n * 4;
+        cur = new Int32Array(CH);
+        cf = new Float32Array(cur.buffer);
+        n = 0;
+      }
+    };
+    const pi = (x) => {
+      if (n === CH) flush();
+      cur[n++] = x;
+    };
+    const pf = (x) => {
+      if (n === CH) flush();
+      cf[n++] = x;
+    };
+    const count = (u) => {
+      const w = this.wd[u];
+      if (!w) return this.ln[u];
+      let c = 0;
+      for (let b = 0; b < w.length; b++) if (w[b] !== 0) c++;
+      return c;
+    };
+    const counts = new Int32Array(this.G);
+    let nU = 0, total = 0;
     for (let u = 0; u < this.G; u++) {
-      const r = this.rows[u];
-      if (!r) continue;
-      units.push(u);
-      buffers.push(Buffer.from(r.buffer, r.byteOffset, n * 4));
+      const c = count(u);
+      counts[u] = c;
+      if (c > 0) {
+        nU++;
+        total += c;
+      }
     }
-    buffers.push(Buffer.from(this.endRow.buffer, this.endRow.byteOffset, this.G * 4));
-    return { header: { v: 1, G: this.G, nWords: n, units, mu: this.mu ? Array.from(this.mu) : null, stats: this.stats }, buffers };
+    for (let u = 0; u < this.G; u++) if (counts[u] > 0) pi(u);
+    for (let u = 0; u < this.G; u++) if (counts[u] > 0) pi(counts[u]);
+    for (let u = 0; u < this.G; u++) {
+      if (!(counts[u] > 0)) continue;
+      const w = this.wd[u];
+      if (w) {
+        for (let b = 0; b < w.length; b++) if (w[b] !== 0) pi(b);
+        for (let b = 0; b < w.length; b++) if (w[b] !== 0) pf(w[b]);
+      } else {
+        const k = this.lk[u], v = this.lv[u];
+        for (let j = 0; j < counts[u]; j++) pi(k[j]);
+        for (let j = 0; j < counts[u]; j++) pf(v[j]);
+      }
+    }
+    for (let u = 0; u < this.G; u++) pf(this.endW[u]);
+    for (let u = 0; u < this.G; u++) pi(this.use[u] | 0);
+    let mU = 0, mT = 0;
+    for (const m of this.mem) pi(m.units.length);
+    for (const m of this.mem) pi(m.targets.length);
+    for (const m of this.mem) {
+      for (let i = 0; i < m.units.length; i++) pi(m.units[i]);
+      mU += m.units.length;
+    }
+    for (const m of this.mem) {
+      for (const t of m.targets) pi(t);
+      mT += m.targets.length;
+    }
+    flush();
+    return {
+      header: {
+        v: 2,
+        G: this.G,
+        nWords: this.nWords,
+        units: nU,
+        entries: total,
+        moments: this.mem.length,
+        momentUnits: mU,
+        momentTargets: mT,
+        memSeen: this.memSeen,
+        bytes,
+        mu: this.mu ? Array.from(this.mu) : null,
+        muWords: this.muWords,
+        stats: this.stats
+      },
+      buffers
+    };
   }
-  restore(header, buf) {
-    if (!header || header.v !== 1 || header.G !== this.G) return false;
-    const n = header.nWords | 0;
-    const need = header.units.length * n * 4 + this.G * 4;
-    if (!buf || buf.length < need) return false;
-    const f32 = (off, count) => new Float32Array(buf.buffer.slice(buf.byteOffset + off, buf.byteOffset + off + count * 4));
-    this.rows.fill(null);
-    this.cap = 0;
-    this._grow(Math.max(1, n));
-    for (let i = 0; i < header.units.length; i++) {
-      const r = new Float32Array(this.cap);
-      r.set(f32(i * n * 4, n));
-      this.rows[header.units[i]] = r;
+  /**
+   * Restore from a header and its body. `body` is a Buffer, or a function
+   * `(byteLength) → Buffer` that returns the next bytes of the file in order
+   * (so a large file is never read as one piece). Returns false, changing
+   * nothing, when the header does not describe this layout or the body is short
+   * or inconsistent.
+   */
+  restore(header, body) {
+    const H = header;
+    const int = (x) => Number.isInteger(x) && x >= 0;
+    if (!H || H.v !== 2 || H.G !== this.G || !int(H.units) || !int(H.entries) || !int(H.moments) || !int(H.momentUnits) || !int(H.momentTargets)) return false;
+    if (H.units > this.G) return false;
+    const need = (2 * H.units + 2 * H.entries + 2 * this.G + 2 * H.moments + H.momentUnits + H.momentTargets) * 4;
+    let off = 0;
+    const next = typeof body === "function" ? body : (len) => {
+      const b = body.subarray(off, off + len);
+      off += len;
+      return b;
+    };
+    const ints = (count) => {
+      const out = new Int32Array(count);
+      const dst = Buffer.from(out.buffer);
+      for (let got = 0; got < count * 4; ) {
+        const b = next(Math.min(64 << 20, count * 4 - got));
+        if (!b || !b.length) throw new Error("short body");
+        b.copy(dst, got);
+        got += b.length;
+      }
+      return out;
+    };
+    let ids, counts, rows, endW, use, mLen, mTLen, mUnits, mTargets;
+    try {
+      if (typeof body !== "function" && (!body || body.length < need)) return false;
+      ids = ints(H.units);
+      counts = ints(H.units);
+      let sum = 0;
+      for (let i = 0; i < H.units; i++) {
+        if (ids[i] < 0 || ids[i] >= this.G || counts[i] <= 0) return false;
+        sum += counts[i];
+      }
+      if (sum !== H.entries) return false;
+      rows = new Array(H.units);
+      for (let i = 0; i < H.units; i++) {
+        const k = ints(counts[i]);
+        const v = new Float32Array(ints(counts[i]).buffer);
+        rows[i] = [k, v];
+      }
+      endW = new Float32Array(ints(this.G).buffer);
+      use = new Uint32Array(ints(this.G).buffer);
+      mLen = ints(H.moments);
+      mTLen = ints(H.moments);
+      let su = 0, stt = 0;
+      for (let i = 0; i < H.moments; i++) {
+        su += mLen[i];
+        stt += mTLen[i];
+      }
+      if (su !== H.momentUnits || stt !== H.momentTargets) return false;
+      mUnits = ints(H.momentUnits);
+      mTargets = ints(H.momentTargets);
+    } catch {
+      return false;
     }
-    this.endRow.set(f32(header.units.length * n * 4, this.G));
-    if (Array.isArray(header.mu) && header.mu.length === D) this.mu = Float64Array.from(header.mu);
-    if (header.stats) this.stats = { ...this.stats, ...header.stats };
+    this.lk.fill(null);
+    this.lv.fill(null);
+    this.lx.fill(null);
+    this.wd.fill(null);
+    this.ln.fill(0);
+    this.entries = 0;
+    this.wide = 0;
+    this.nWords = int(H.nWords) ? H.nWords : 0;
+    for (let i = 0; i < H.units; i++) {
+      const [k, v] = rows[i];
+      const u = ids[i];
+      const n = k.length;
+      for (let j = 0; j < n; j++) if (k[j] >= this.nWords) this.nWords = k[j] + 1;
+      let cap = 4;
+      while (cap < n) cap *= 2;
+      const lk = new Int32Array(cap);
+      lk.set(k);
+      const lv = new Float32Array(cap);
+      lv.set(v);
+      this.lk[u] = lk;
+      this.lv[u] = lv;
+      this.ln[u] = n;
+      this.entries += n;
+      if (n > LIST_SCAN) this._index(u);
+    }
+    for (let i = 0; i < H.units; i++) {
+      const u = ids[i];
+      if (this.ln[u] >= WIDE_MIN && this.ln[u] * 3 > this.nWords) this._widen(u);
+    }
+    this.endW.set(endW);
+    this.use.set(use);
+    this.mem = [];
+    this.memAt = /* @__PURE__ */ new Map();
+    let ou = 0, ot = 0;
+    for (let i = 0; i < H.moments; i++) {
+      const units = mUnits.slice(ou, ou + mLen[i]);
+      ou += mLen[i];
+      const targets = Array.from(mTargets.subarray(ot, ot + mTLen[i]));
+      ot += mTLen[i];
+      const key = this._key(units);
+      this.memAt.set(key, this.mem.length);
+      this.mem.push({ key, units, targets });
+    }
+    this.memSeen = int(H.memSeen) ? Math.max(H.memSeen, this.mem.length) : this.mem.length;
+    if (Array.isArray(H.mu) && H.mu.length === D) {
+      this.mu = Float64Array.from(H.mu);
+      this.muWords = int(H.muWords) ? H.muWords : 0;
+    }
+    if (H.stats) this.stats = { ...this.stats, ...H.stats };
+    this._nt = 0;
+    this._all = false;
+    this._n = 0;
+    this._score.fill(0);
     return true;
   }
   /** Counts for the dashboard: how much has been taught and how big it is. */
   summary() {
-    let taughtUnits = 0;
-    for (let u = 0; u < this.G; u++) if (this.rows[u]) taughtUnits++;
-    return { units: this.G, taughtUnits, wordCapacity: this.cap, bytes: taughtUnits * this.cap * 4, ...this.stats };
+    let taughtUnits = 0, bytes = 0;
+    for (let u = 0; u < this.G; u++) {
+      const w = this.wd[u];
+      if (w) {
+        taughtUnits++;
+        bytes += w.length * 4;
+      } else if (this.ln[u] > 0) {
+        taughtUnits++;
+        bytes += this.lk[u].length * 8 + (this.lx[u] ? this.lx[u].length * 4 : 0);
+      }
+    }
+    return {
+      units: this.G,
+      taughtUnits,
+      wideUnits: this.wide,
+      entries: this.entries,
+      moments: this.mem.length,
+      momentsSeen: this.memSeen,
+      bytes,
+      muWords: this.muWords,
+      ...this.stats
+    };
   }
 };
 
@@ -15746,12 +16410,22 @@ var CLUSTER_EMIT_MIXIN = {
    * sem currently holds. Null when nothing is in mind.
    */
   currentSpeechUnits() {
-    if (Array.isArray(this._speechUnits) && this._speechUnits.length) return this._speechUnits;
-    if (Array.isArray(this._mindFeats) && this._mindFeats.length) {
+    let base = null;
+    if (Array.isArray(this._speechUnits) && this._speechUnits.length) base = this._speechUnits;
+    else if (Array.isArray(this._mindFeats) && this._mindFeats.length) {
       const u = this.speechReadout().meaningUnits(this._mindFeats);
-      return u.length ? u : null;
+      if (u.length) base = u;
     }
-    return null;
+    if (!base) return null;
+    const live = this.feelingUnits();
+    return live.length ? base.concat(live) : base;
+  },
+  /** How she feels right now, as speaking-state units (empty when no mood is known). */
+  feelingUnits() {
+    const b = this._brain;
+    const m = b && (b.mood || b);
+    if (!m || typeof m.valence !== "number" || typeof m.arousal !== "number") return [];
+    return this.speechReadout().liveUnits(m.valence, m.arousal);
   },
   /**
    * Set (or clear) the grade-vocab emission allow-set consumed by
@@ -15904,28 +16578,6 @@ var CLUSTER_EMIT_MIXIN = {
   // empty string if word_motor projection / region missing or no
   // signal above noise floor.
   /**
-   * SPEAKGPU (2026-08-22) — word emission that SPEAKS FROM HER FULL WEIGHTS.
-   * The sem→word_motor argmax used to read only the CPU CSR — the sampled
-   * shadow (~1-in-5 of training mass since the GPU-first architecture). For a
-   * discrimination across 2,000+ word buckets, the undertrained shadow gives
-   * mushy near-ties that break toward noise — the measured TALK 0/10 / PROD
-   * 0/17 "grab-a-neighbor" failure ("four plus one equals"→"ribbon") while
-   * the donor-probed comprehension sections scored 100%. This wrapper fetches
-   * the currents from the donor via the same standalone probe verb the gates
-   * use (720K rows ≈ 2.9MB ack at speech cadence), then runs the UNCHANGED
-   * bucket argmax on them. Any refusal/timeout → the plain CPU path — a word
-   * is never skipped, only sourced honestly.
-   */
-  /**
-   * LOOPCHAT.1 — the sem-region pre-vector, built in ONE place.
-   *
-   * Read straight off `lastSpikes` for the sem span. Both the synchronous
-   * emission path and the chunked CPU shadow in `emitWordDirectDonor` consume
-   * it, and they MUST consume the same numbers — a second hand-written copy of
-   * this loop is exactly how two callers begin propagating subtly different
-   * inputs while every test still passes.
-   */
-  /**
    * Her next word. Kept `async` because every caller awaits it; the read itself
    * is a table sum on this machine (about a millisecond), with no card round trip.
    */
@@ -15984,19 +16636,13 @@ var CLUSTER_EMIT_MIXIN = {
           const _allow = this._emissionAllowedVocab;
           if (_allow && _allow.size > 0 && !_allow.has(_bw.toLowerCase()) && !FUNCTION_WORDS.has(_bw) && !T14_TERMINATORS.has(_bw)) continue;
         }
-        const bStart = subjStart + b * bucketSize;
-        if (bStart >= subjEnd) {
-          if (!this._wordBucketOverflowWarned) {
-            this._wordBucketOverflowWarned = true;
-            const bandCells = subjEnd - subjStart;
-            const fits = bucketSize > 0 ? Math.floor(bandCells / bucketSize) : 0;
-            const cantEmit = Math.max(0, wordsList.length - b);
-            try {
-              console.warn(`[emit] word_motor capacity overflow \u2014 unified band holds ${fits} words (${bandCells} cells / ${bucketSize} per word) but vocab has ${wordsList.length}; ${cantEmit} words past index ${b} CANNOT emit. Grow langCortexSize (word_motor = 6% of it) so the band exceeds the full K\u2192PhD vocab.`);
-            } catch {
-            }
+        if (!this._wordBucketOverflowWarned && subjStart + b * bucketSize >= subjEnd) {
+          this._wordBucketOverflowWarned = true;
+          const fits = bucketSize > 0 ? Math.floor((subjEnd - subjStart) / bucketSize) : 0;
+          try {
+            console.warn(`[emit] the word_motor sheet lights ${fits} words' cells and her vocabulary is ${wordsList.length}; words past that are still spoken, without lit cells.`);
+          } catch {
           }
-          break;
         }
         let mean = b < bucketMeans.length ? bucketMeans[b] : 0;
         const _isRecent = recentLast4.has(wordsList[b]);
@@ -16035,9 +16681,9 @@ var CLUSTER_EMIT_MIXIN = {
     const NOISE_FLOOR = 1e-3;
     if (typeof this._emitSignalEMA !== "number") this._emitSignalEMA = 0;
     if (typeof this._emitSignalSampleCount !== "number") this._emitSignalSampleCount = 0;
-    const adaptiveComponent = this._emitSignalSampleCount >= 20 && this._emitSignalEMA > 0 ? this._emitSignalEMA * 0.5 : 0;
+    const adaptiveComponent = 0.04;
     const winnerIsFunctionWord = !!(bestWord && FUNCTION_WORDS.has(bestWord));
-    const activeAdaptive = winnerIsFunctionWord ? 0 : adaptiveComponent;
+    const activeAdaptive = adaptiveComponent;
     const floor = typeof opts.signalFloorOverride === "number" ? opts.signalFloorOverride : Math.max(NOISE_FLOOR, activeAdaptive);
     this._emitSignalFloor = floor;
     if (!bestWord || bestMean < floor) {
@@ -16344,18 +16990,15 @@ var CLUSTER_EMIT_MIXIN = {
       }
       const _cur = this._brain && this._brain.curriculum;
       const _taught = !!(_cur && typeof _cur._writeSpeechState === "function" && typeof _cur._writeConceptState === "function" && typeof _cur._writeMeaningState === "function");
-      const _seedWord = words.length > 0 ? words[words.length - 1] : opts.intentConcept || (typeof intentSeed === "string" ? (intentSeed.replace(/_/g, " ").toLowerCase().match(/[a-z]+/g) || []).filter((t) => t.length > 2).pop() : null);
-      const _seedEmb = words.length === 0 && !_seedWord && intentSeed && typeof intentSeed !== "string" && intentSeed.length > 0 ? intentSeed : null;
       const _heardText = typeof opts.questionText === "string" && opts.questionText ? opts.questionText : "";
       const _canState = _taught && typeof _cur._writeSpeechState === "function";
-      if (_canState && words.length === 0 && _heardText) {
-        _cur._writeSpeechState(_heardText, [], { unitsOnly: true });
-      } else if (_canState && words.length > 0) {
+      const _topicWord = opts.intentConcept || (typeof intentSeed === "string" ? (intentSeed.replace(/_/g, " ").toLowerCase().match(/[a-z]+/g) || []).filter((t) => t.length > 2).pop() : null) || null;
+      const _topicEmb = !_topicWord && intentSeed && typeof intentSeed !== "string" && intentSeed.length > 0 ? intentSeed : null;
+      const _about = _heardText ? null : _topicWord || _topicEmb;
+      if (_canState && _heardText) {
         _cur._writeSpeechState(_heardText, words, { unitsOnly: true });
-      } else if (_taught && _seedWord) {
-        _cur._writeConceptState(_seedWord);
-      } else if (_taught && _seedEmb) {
-        _cur._writeMeaningState(_seedEmb);
+      } else if (_canState && (_about || words.length > 0)) {
+        _cur._writeSpeechState("", words, { unitsOnly: true, about: _about });
       } else if (_taught) {
       } else {
         for (let t = 0; t < TICKS_PER_WORD; t++) {
@@ -19539,16 +20182,16 @@ var NeuronCluster = class {
   }
   _computeVocabDiversity(sentences) {
     if (!sentences || sentences.length === 0) return 0;
-    const unique = /* @__PURE__ */ new Set();
+    const unique2 = /* @__PURE__ */ new Set();
     let total = 0;
     for (const s of sentences) {
       const words = String(s).toLowerCase().split(/\s+/).filter(Boolean);
       for (const w of words) {
-        unique.add(w);
+        unique2.add(w);
         total++;
       }
     }
-    return total > 0 ? unique.size / total : 0;
+    return total > 0 ? unique2.size / total : 0;
   }
   _computeWorkingMemoryVariance() {
     if (!this.regions || !this.regions.free) return 0;

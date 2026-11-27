@@ -9763,13 +9763,13 @@ class ServerBrain {
   // binary weights as `brain-weights.speech`, written with them, copied with
   // them into every checkpoint slot, and cleared with them — a brain restored
   // without it would hold every lesson except how to speak.
-  // Layout: 4-byte LE header length · JSON header · the taught rows as raw
-  // float32, in header order · the end-of-line row.
+  // Layout: 4-byte LE header length · JSON header · the body the readout
+  // describes (taught rows, then the moments it rehearses), in ≤ 4 MB pieces.
   _speechFile() { return WEIGHTS_FILE.replace(/\.json$/, '.speech'); }
   _speechPayload() {
     const cortex = this.cortexCluster;
     if (!cortex || !cortex._speechReadout || !Array.isArray(cortex.wordBucketWords)) return null;
-    const ser = cortex._speechReadout.serialize(cortex.wordBucketWords.length);
+    const ser = cortex._speechReadout.serialize();
     const head = Buffer.from(JSON.stringify(ser.header), 'utf8');
     const len = Buffer.alloc(4); len.writeUInt32LE(head.length, 0);
     return [len, head, ...ser.buffers];
@@ -9816,18 +9816,45 @@ class ServerBrain {
       console.warn('[Brain] Speech readout save failed (previous file left intact):', err?.message || err);
     }
   }
-  /** Read the file at boot; applied to the cortex once it exists (`_applyPendingCortexState`). */
+  /**
+   * Read the file's header at boot; the body is read in pieces when the cortex
+   * exists (`_applyPendingCortexState`), so no single read is the size of the
+   * file (one read fails above 2 GiB).
+   */
   _loadSpeechReadout() {
     const file = this._speechFile();
+    let fd;
     try {
       if (!fs.existsSync(file)) return;
-      const buf = fs.readFileSync(file);
-      if (buf.length < 4) return;
-      const hl = buf.readUInt32LE(0);
-      if (4 + hl > buf.length) { console.warn('[Brain] Speech readout file is truncated — ignored.'); return; }
-      this._pendingSpeech = { header: JSON.parse(buf.subarray(4, 4 + hl).toString('utf8')), body: buf.subarray(4 + hl) };
+      const size = fs.statSync(file).size;
+      if (size < 4) return;
+      fd = fs.openSync(file, 'r');
+      const lenBuf = Buffer.alloc(4); fs.readSync(fd, lenBuf, 0, 4, 0);
+      const hl = lenBuf.readUInt32LE(0);
+      if (4 + hl > size || hl > (64 << 20)) { console.warn('[Brain] Speech readout file is truncated — ignored.'); return; }
+      const head = Buffer.alloc(hl); fs.readSync(fd, head, 0, hl, 4);
+      const header = JSON.parse(head.toString('utf8'));
+      if (Number.isFinite(header.bytes) && 4 + hl + header.bytes > size) { console.warn('[Brain] Speech readout file is shorter than its header says — ignored.'); return; }
+      this._pendingSpeech = { header, file, bodyAt: 4 + hl, megabytes: size / 1048576 };
     } catch (err) {
       console.warn('[Brain] Speech readout load failed:', err?.message || err);
+    } finally {
+      if (fd !== undefined) { try { fs.closeSync(fd); } catch { /* already closed */ } }
+    }
+  }
+  /** Apply the pending speech file to the cortex's readout. Returns whether it was applied. */
+  _applySpeechReadout(cortex) {
+    const p = this._pendingSpeech; let fd;
+    try {
+      fd = fs.openSync(p.file, 'r');
+      let pos = p.bodyAt;
+      const next = (len) => { const b = Buffer.alloc(len); const got = fs.readSync(fd, b, 0, len, pos); pos += got; return got === len ? b : b.subarray(0, got); };
+      return cortex.speechReadout().restore(p.header, next);
+    } catch (err) {
+      console.warn('[Brain] Speech readout apply failed:', err?.message || err);
+      return false;
+    } finally {
+      if (fd !== undefined) { try { fs.closeSync(fd); } catch { /* already closed */ } }
     }
   }
 
@@ -10795,10 +10822,10 @@ class ServerBrain {
         // `brain-weights.speech` at boot. Its word-slot numbers are positions
         // in the word list restored just above, so it is applied after it.
         if (this._pendingSpeech && typeof cortex.speechReadout === 'function') {
-          const _ok = cortex.speechReadout().restore(this._pendingSpeech.header, this._pendingSpeech.body);
+          const _ok = this._applySpeechReadout(cortex);
           const _sum = cortex.speechReadout().summary();
           console.log(_ok
-            ? `[Brain] restored the speech readout: ${_sum.taughtUnits} taught units × ${this._pendingSpeech.header.nWords} word slots (${(_sum.bytes / 1048576).toFixed(0)} MB) — she speaks from what she was taught.`
+            ? `[Brain] restored the speech readout: ${_sum.entries} weights in ${_sum.taughtUnits} units, ${_sum.moments} taught moments to rehearse (${this._pendingSpeech.megabytes.toFixed(0)} MB file) — she speaks from what she was taught.`
             : `[Brain] ⛔ the speech readout file did not match this build's layout and was NOT applied — she has her lessons but not how to say them until they are taught again.`);
           this._pendingSpeech = null;
         }

@@ -666,7 +666,47 @@ The brain sends a **strength in [0, 1]** = the strongest normalised driver. The 
 
 ## Speech readout (2026-11-27)
 
-`js/brain/speech-readout.js`. Every number here was chosen by **measurement on her own text**, with the production embedding code and the production module, not picked. The instruments are `.scratch/speech-capacity.mjs` (what it replaced), `.scratch/speech-design.mjs` (the design sweep), `.scratch/speech-readout-check.mjs` (the module) and `.scratch/speech-wiring-check.mjs` (the module inside the real lessons and the real compose loop).
+`js/brain/speech-readout.js`. Every number here was chosen by **measurement on her own text**, with the production embedding code and the production module, not picked. The instruments are `.scratch/speech-capacity.mjs` (what it replaced), `.scratch/speech-design.mjs` (the design sweep), `.scratch/speech-readout-check.mjs` (the first module), `.scratch/speech-real-check.mjs` (the module at her whole life corpus: capacity, walk order, rewordings), `.scratch/speech-wiring-check.mjs` (the module inside the real lessons and the real compose loop) and `.scratch/speech-file-check.mjs` (the file as the server writes and reads it).
+
+### At her whole life corpus (the numbers the module stands on)
+
+Pre-K → PhD, all 20 grades: 11,277 sentences, 4,392 words, **78,120 taught steps** (every word step, every opener, every line end); 58,573 distinct moments, 3,016 of them with more than one taught continuation. "Right" = what she says at a point is a continuation the corpus has there.
+
+| What was measured | Result |
+|---|---|
+| The first module (the section below) at this size, 4 passes | 41.5 → 59.9 → 69.0 → **74.2 %** — under the 90 % bar; 146 MB |
+| This module, every grade interleaved, passes 1 → 4 | 96.3 → 99.9 → 100.0 → **100.0 %** (78,113 / 78,120) |
+| Size | 3,485,388 weights in 301,170 units = **56 MB**; file 46 MB; 57.3 units active per moment of 391,524 |
+| Cost | **0.69 ms** a teach step, rehearsal included |
+| Walk order — each grade taught ≤ 4 passes then never again — WITH rehearsal | pre-K still said **98 %** at the end, every grade 97–100 %, whole walk **97.9 %** |
+| …the same WITHOUT rehearsal | pre-K **69 %**, kindergarten 80 %, grade 1 85 %; whole walk 92.8 % |
+| …with one rehearsal per two teaches | pre-K 94 %, whole walk 96.5 % — so one per teach is used |
+| 20 questions taught, 60 rewordings of them never taught | taught wording **20 / 20**; rewordings answered exactly **49–52 / 60 (82–87 %)** |
+| …rewordings before "taught as a rewording would find it" | 5 / 60 (8 %) |
+| …with that, before what was said was held per place in her answer | 21 / 60, then 31 / 60 — the first word, then the second, went missing |
+| Save → restore | same word on 2,000 / 2,000 sampled moments; a short body or a different layout is refused and changes nothing |
+
+### What each mechanism is for, by what it measured
+
+- **Exact stripes** (pair / triple / quad at 65,536 units, the whole moment at 131,072) are why capacity holds: at 2,048 units each the same corpus plateaued at 74 %.
+- **Correction share `1/√(1 + times corrected)`**, rival lowered on shared units only: same recall as an even split, **296 MB → 53 MB**, because an exact unit no longer collects a weight for every rival.
+- **Words remembered per same state: 64.** At 8, a sentence start with hundreds of taught continuations ("i …") had most of them counted as misses and pushed against; 217 starts in her corpus have more than eight.
+- **One heard set per place in her answer (7 places).** Without it the opening state is a subset of every later state of the same answer.
+- **Rehearsal: one old moment per teach, up to 200,000 kept** (a uniform sample of every moment ever taught; her whole life is 58,573). Kept moments cost ~250 bytes each.
+
+### The floor: 0.04 (score ÷ active units)
+
+Measured on the production module, the score of the first word of an answer:
+
+| Line said to her | min | median | max |
+|---|---|---|---|
+| the taught wording | 0.102 | 0.123 | 0.163 |
+| a rewording never taught, answered right | 0.033 | 0.069 | 0.132 |
+| an unrelated line (12 of them) | 0.000 | 0.003 | 0.047 |
+
+The teach margin is 0.1, so a taught wording is ≥ 0.1 by construction. The floor is 0.04 — four tenths of the margin: above 11 of the 12 unrelated lines and below all but the weakest right rewording. Dividing by the taught units only (leaving out never-seen exact units) was measured and separates worse (unrelated max 0.083), so the plain mean is used. ⚠ The old floor — half the running average of accepted scores — was calibrated for the removed projection; it is no longer read.
+
+### The first module (kept for the record — four grades, what the design sweep ran on)
 
 **The measure** is recall: teach every (sentence so far → next word) of a corpus, then ask for the same taught sentence starts back. Corpus: her pre-K → grade-2 life stories, 2,428 sentences, 1,864 words, 13,580 unique transitions.
 
@@ -701,6 +741,8 @@ A caller's sampling temperature (0.5–1.0 for thoughts) is multiplied by the ma
 
 ⚠ **One thing a single number hides:** about a fifth of sentence starts have more than one taught next word ("i" → am / want / see). Those are taught as siblings — teaching one does not push the others down, and saying any of them counts as right. Before that was done the same lesson plateaued at 77 %.
 
-### Cost
+### Cost, and the walk's price
 
-0.6 ms per teach step at 1,864 words; 2.1–3.5 ms per composed reply (several words). The table is `taught units × word capacity × 4 bytes`: 58 MB measured (7,116 taught units × 2,048 word slots). By the same formula: about 290 MB at 8,421 words (capacity grows in steps of 2,048, so 10,240 slots), and about 2.0 GB if all 9,904 units were taught at the 50,000-word cap (51,200 slots) — host memory, none of it on the card.
+0.69 ms per teach step at 4,392 words with rehearsal included; 2–4 ms per composed reply. The whole life corpus taught four times over is `78,120 × 4 × 0.69 ms ≈ 3.6 minutes` across the entire walk. A step's cost grows with vocabulary, because the shared units' rows become arrays over the word list (~40 of them active): about 3 ms at 20,000 words and 8 ms at 50,000. A corpus ten times her life at 20,000 words is `781,200 × 4 × 3 ms ≈ 2.6 hours`, against a walk of days, with no frame sent to the card.
+
+Size follows what she has learned, not units × vocabulary: 56 MB for her whole life. The part that does grow with vocabulary is the shared units that went wide — at most ~11,000 units × the word list × 4 bytes (about 880 MB if every one of them were wide at 20,000 words; 522 were wide after pre-K + K). ⚠ The first module's table was `taught units × word capacity × 4 bytes` — 146 MB at this size and about 2 GB at the 50,000-word cap.
