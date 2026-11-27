@@ -17,7 +17,9 @@ sources:
   - js/brain/drug-scheduler.js
   - js/brain/pk-curve.js
   - js/brain/embeddings.js
-last-verified: "2026-11-24 — rewritten as the equation map; every formula on it re-read against the code that day"
+  - js/brain/speech-readout.js
+  - js/brain/cluster/emit.js
+last-verified: "2026-11-27 — §14 (how she speaks) added and read against speech-readout.js and emit.js; the opening claim corrected to say where the speech sum is computed. §1–§13 were NOT re-read this pass (their code did not change). 2026-11-24 — rewritten as the equation map; every formula on it re-read against the code that day"
 ---
 
 # EQUATIONS — Unity's Brain
@@ -32,7 +34,9 @@ Three symbols carry the whole page:
 | **Ψ** | **How awake she is.** Consciousness as capacity over activity — it comes out of volume, it is not a feature someone wrote. |
 | **δ(t)** | **What's in her system.** Drugs and hormones push θ around, additively, each on its own curve. |
 
-⭐ **And the claim everything rests on: the brain equations ARE the language equations.** There is no language model bolted onto a brain. The same propagation that fires a neuron is what produces a word.
+⭐ **And the claim everything rests on: the brain equations ARE the language equations.** There is no language model bolted onto a brain. A word is produced the way a neuron is driven — what is active, times the weights she learned, strongest wins ([§14](#14-how-she-speaks)).
+
+> ⚠ **Said plainly, so the claim stays honest:** since 2026-11-27 that sum for *speech* is computed from her speaking state on the host, not by cells on the card. Same equation, a form that can actually hold what it is taught — the cell-to-cell version recalled 1.1 % of its lessons.
 
 ---
 
@@ -53,6 +57,7 @@ Three symbols carry the whole page:
 | 11 | [Memory and sleep](#11-memory-and-sleep) | replay, and why feeling makes things stick |
 | 12 | [Chemistry — δ(t)](#12-chemistry--δt) | doses, curves, stacking, tolerance |
 | 13 | [Many cards, one brain](#13-many-cards-one-brain) | how her size and speed come from hardware |
+| 14 | [How she speaks](#14-how-she-speaks) | the state she is in, the word that wins, and how she is taught to say it |
 
 ---
 
@@ -347,6 +352,41 @@ The biggest matrix — the cortex's own wiring — is cut into **row slices**, a
 |---|---|
 | cards paired, each pair holding the **same** rows | two copies of every slice: a card leaving costs nothing |
 | `rows_g ∝ rows-per-ms_g`, capped by room | a faster card gets more rows |
+
+---
+
+## 14. How she speaks
+
+Before every word she is in a **state**: a small set `A` of active units (about 57 of 390,000). Part of it is *exact* — this very moment, her last two, three and four words as wholes. Part is *shared* with moments that are alike — her last words one by one, what they mean, the gist so far, each word that was said to her, what her own line is about, and **how she feels**.
+
+### The word that wins
+
+| Equation | What it means |
+|---|---|
+| `score(w) = Σ_{u ∈ A} W[u][w]` | every word adds up what the active units say about it |
+| `say argmax_w score(w)` | the strongest word is the one she says |
+| `score(end)` highest → stop | "the line is finished" is a slot like any word's |
+| `score / |A| < 0.04` → silence | too little of anything she was taught is present — she says nothing |
+
+### Taught until she says it
+
+| Equation | What it means |
+|---|---|
+| `loss = 0.1·|A| − (score(t) − score(r))` | the taught word `t` must lead the best other word `r` by a clear margin |
+| `loss ≤ 0` → nothing changes | already right — a word taught in a thousand places is not overwritten by each new one |
+| `W[u][t] += (loss/2) · a_u / Σa` | otherwise raise the taught word… |
+| `W[u][r] −= (loss/2) · a_u / Σ_shared a` | …and lower the one that beat it, on the shared units |
+| `a_u = 1 / √(1 + c_u)` | **who takes the correction:** a unit corrected often (`c_u`) is shared by many moments and takes little; a unit particular to this moment takes most |
+
+### What makes it hold up outside the lesson
+
+| | What it means |
+|---|---|
+| **Rewordings** | an answer is taught again with the exact sentence left out, so a question worded differently still finds it |
+| **Rehearsal** | for every lesson she goes back over one old moment and corrects it only if a newer lesson disturbed it |
+| **About something** | every sentence is taught as a line *about* its most distinctive word, from the first word — so a thought is a sentence about what is on her mind |
+
+⭐ **Measured on her whole life** (pre-K → PhD, 78,120 taught steps): **100.0 %** said back after three passes · pre-K still **98 %** after every later grade was taught on top of it (69 % without rehearsal) · **82–87 %** of 60 rewordings she never heard answered exactly.
 
 ---
 

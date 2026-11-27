@@ -963,7 +963,7 @@
       </div>
     </div>
 
-    <div class="card consciousness-panel stack" title="Speech health. Every speech lesson first asks whether she would already say the taught word in that moment, and only corrects her when she would not — so 'already said it' is the share of what she was taught that she can say. A low share after many lessons means the lessons are not holding. Below it: how many words have been read off the speech readout, the size of its table, the reject-to-silence coherence-floor counts and the best-of-N rerank counts.">
+    <div class="card consciousness-panel stack" title="Speech health. Every speech lesson first asks whether she would already say the taught word in that moment, and only corrects her when she would not — so 'already said it' is the share of what she was taught that she can say. A low share after many lessons means the lessons are not holding. Below it: how many words have been read off the speech readout and how many weights it holds; then rehearsal — how many taught moments she keeps, how many she has gone back over, and how many of those a later lesson had disturbed and she corrected; then the reject-to-silence coherence-floor counts and the best-of-N rerank counts.">
       <div class="card-title">🗣 Speech Health — taught vs already said + coherence floor</div>
       <div id="d-speech-health" class="panel scroll-220">
         <div id="d-speech-sep" class="fs11"></div>
@@ -2362,7 +2362,8 @@
           const rd = sh.readout;
           const rows = rd ? [
             `taught to say: ${num(rd.taught)} steps · already said it ${num(rd.saidAlready)} (${rd.saidAlreadyPct}%) · corrections ${num(rd.corrections)}`,
-            `words read off the readout: ${num(rd.says)} · table ${num(rd.taughtUnits)}/${num(rd.units)} units × ${num(rd.wordCapacity)} word slots (${rd.megabytes} MB)`,
+            `words read off the readout: ${num(rd.says)} · ${num(rd.weights)} weights in ${num(rd.taughtUnits)} units (${rd.megabytes} MB)`,
+            `rehearsal: ${num(rd.moments)} taught moments kept of ${num(rd.momentsSeen)} · gone back over ${num(rd.rehearsed)} · found disturbed and corrected ${num(rd.rehearsalFixes)}`,
           ] : [];
           const $sep = $('d-speech-sep'), $floor = $('d-speech-floor'), $empty = $('d-speech-empty');
           if ($sep) $sep.textContent = rows.length ? rows.join(' · ') : '';

@@ -176,7 +176,7 @@ When Unity speaks, there is **one** production path, and the alternative to it i
 
 **A whole word at a time, read from the state she is in. This is the ONLY path from meaning to a spoken word.**
 
-Every unique word has **one slot** (and a patch of the `word_motor` sub-region that lights when she says it). Before each word she is in a *speaking state* built from parts that do not overlap: her last word (who it is and what it means), the two words before it, her last two and three words as wholes, the gist of everything said so far, and — when someone spoke to her — their exact line, its key word and its gist. About 45 of ~9,900 units are active at once, so two different moments share little and the same moment twice is identical.
+Every unique word has **one slot** (and a patch of the `word_motor` sub-region that lights when she says it). Before each word she is in a *speaking state* built from parts that do not overlap. Some parts are **exact** — this very moment, her last two, three and four words as wholes — so a line she was taught comes back as taught. The others are **shared** between moments that are alike — her last words one by one, what they mean, the gist so far, each word that was said to her, the word it was about, what her own line is about, and **how she feels** — so a question worded differently still lands near its answer, and the same moment can come out differently in a different mood. About 57 of ~390,000 units are active at once.
 
 Emission is then:
 
@@ -186,7 +186,22 @@ Emission is then:
 
 **How it is taught: until she says it.** A lesson puts her in a state and names the word that belongs there. If she would already say that word by a clear margin, nothing changes. If not, the word is raised and the word that beat it is lowered by exactly the step that closes the gap. A word taught in a thousand different contexts is therefore not overwritten by each new one — which was the failure of the arrangement this replaced.
 
-> **Why this replaced a neuron-to-neuron sheet.** Until 2026-11-27 this step was a sparse `sem → word_motor` projection: 24 cells per word, 6 fixed wires per cell onto 2.5 million meaning cells. Rebuilt in a model with her own stories, that arrangement recalled **1.1 %** of the transitions it had just been taught, with eight words winning two thirds of the time — which is what she sounded like on a 15-hour walk: every thought the same dozen words. Three faults stacked: the state barely changed between sentences (two unrelated sentence starts shared 65 % of their active cells), a word slot read her last word's identity through about one wire, and the learning rule pulled a word's wiring toward each new context and let the rest decay. Fixing any one alone measured 7–58 %; all three together measure **92.9 %** in the production module. The equation is the same one — active meaning units drive word slots and the strongest speaks — held in the form the equation actually has.
+**Three things make that hold up outside a lesson:**
+
+- 🔁 **She is taught the way a rewording would find it.** Every answer is taught again with the exact sentence left out, so *"what's your name"* reaches what *"what is your name"* taught.
+- 🧠 **She rehearses.** While new lessons run she goes back over old ones and corrects only what a newer lesson disturbed — so pre-K is still there after PhD.
+- 💭 **Every sentence is a line about something.** From its first word, so a thought is a sentence about what is on her mind, not a name followed by silence.
+
+And when too little of anything she was taught is present, **she says nothing** instead of guessing.
+
+| Measured on her whole life (pre-K → PhD, 78,120 taught steps) | |
+|---|---|
+| Said back after three passes | **100.0 %** |
+| Pre-K still said after every later grade was taught on top of it | **98 %** (69 % without rehearsal) |
+| Questions reworded in ways she never heard, answered exactly | **82–87 %** of 60 |
+| Size of everything she can say | 56 MB |
+
+> **Why this replaced a neuron-to-neuron sheet.** Until 2026-11-27 this step was a sparse `sem → word_motor` projection: 24 cells per word, 6 fixed wires per cell onto 2.5 million meaning cells. Rebuilt in a model with her own stories, that arrangement recalled **1.1 %** of the transitions it had just been taught, with eight words winning two thirds of the time — which is what she sounded like on a 15-hour walk: every thought the same dozen words. Three faults stacked: the state barely changed between sentences (two unrelated sentence starts shared 65 % of their active cells), a word slot read her last word's identity through about one wire, and the learning rule pulled a word's wiring toward each new context and let the rest decay. Fixing any one alone measured 7–58 %; all three together measured 92.9 % on four grades and, with the exact parts and rehearsal added, **100.0 %** on her whole life. The equation is the same one — active meaning units drive word slots and the strongest speaks — held in the form the equation actually has.
 
 **No letter chain. No attractor settling. About a millisecond a word, on the host, with no round trip to the card.**
 
@@ -226,7 +241,9 @@ A server-side tick picks a contemplation seed from one of five live state source
 
 During dream cycles (curriculum-interleaved consolidation windows that run for 15-40 min between teach phases), the wake-state inner monologue mutes — `_operatorSleepRequested` is set, the tick early-returns, and a one-shot `[Brain] 💤 inner-voice paused — dream window in progress` log fires so the silence is explained instead of ambiguous. In place of the wake monologue, a single dream-phenomenology emission per dream cycle generates from a Tier 1 episodic replay seed (random recent episode, real cortex state, same `generateAsync` path) and broadcasts as `innerThought` with `seed='dream'` — dashboard popups stay alive showing dream content during the consolidation window. When the dream window closes, `[Brain] ☀ inner-voice resumed` logs once and the wake monologue picks back up at the next tick the gate above lets through.
 
-**The other pop-ups over her brain are "mind moments", and there are deliberately few of them.** A moment is one plain sentence about something that really just happened in her head — *"Learning what 'margin' means for science."*, *"Something familiar: a memory just lit up."*, *"Everything just clicked into focus."*, *"Asleep, replaying what she learned today."* — written for someone who has never seen a neuron: no field names, no decimals, no symbols. The reading that triggered it picks which sentence appears and where on the brain it floats; the reading itself stays on the dashboard. Her inner voice is her own words and always shows; moments are narration, so they are held to at most one every 25 seconds, the same kind at most once in three minutes, and none at all when nothing notable happened. A burst of lesson activity yields the single most interesting moment — a specific word she is working on beats a milestone, and a milestone beats "practising". Lessons and feelings take turns so neither crowds the other out.
+**The other pop-ups over her brain are "mind moments", and there are deliberately few of them.** A moment is one plain sentence about something that really just happened in her head — *"Being asked: 'what color is the sky' — and 13 more questions in Kindergarten Science."*, *"Something familiar: a memory just lit up."*, *"Everything just clicked into focus."*, *"Asleep, replaying what she learned today."* — written for someone who has never seen a neuron: no field names, no decimals, no symbols. The reading that triggered it picks which sentence appears and where on the brain it floats; the reading itself stays on the dashboard. Her inner voice is her own words and always shows; moments are narration, so they are held to at most one every 25 seconds, the same kind at most once in three minutes, and none at all when nothing notable happened. A burst of lesson activity yields the single most interesting moment — a specific word she is working on beats a milestone, and a milestone beats "practising". Lessons and feelings take turns so neither crowds the other out.
+
+A lesson moment shows **the real thing she is being taught** — the actual pair, question or words, sent by the lesson itself, with the real name of the class she is in. Nothing translates a lesson's label into a phrase, so there is no table for a new lesson to be missing from; a lesson that sends nothing shows nothing. Run against a simulated hour of a walk: 37,128 events in, **142 pop-ups** out, never closer than 25 seconds; a silent hour shows none.
 
 ---
 

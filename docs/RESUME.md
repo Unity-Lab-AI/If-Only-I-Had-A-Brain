@@ -1,6 +1,34 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-11-27 (latest, 53rd) — SHE COULD NOT SPEAK: THE PROJECTION COULD NOT HOLD WHAT IT WAS TAUGHT. REPLACED WITH A SPEECH READOUT; POP-UPS SAY SOMETHING NOW
+> # 🛑 2026-11-27 (latest, 54th) — THE SPEECH FIX WAS MEASURED ON FOUR GRADES; AT HER WHOLE LIFE IT HELD 74 %. REBUILT AND MEASURED AT FULL SIZE: 100 %, REWORDINGS, REHEARSAL, MOOD
+>
+> **Branch: `feature/speech-real`.** Gee: *"one last full stack review and check that everything we need for Unity brain to speak like a real person and train properly and all of that is 100% correct for whaty a nuronic brain of Unity's needs"* · *"write the todo for it and fix it all correctly creatively and perfectly for our needs"* · *"did any work effect the equations she runs on. did you proof the eqwuations all of them?"*. **Next launch: `start.bat` — a FRESH WALK** (format 7 refuses older saves; the walk on `42c7bbc4` cannot speak).
+>
+> ```
+>   FOUND     the morning's readout at her whole life (78,120 steps): 74.2 % · an untaught
+>             wording → noise · 146 MB · docs/EQUATIONS.md had no section on speech at all
+>   BUILT     exact + shared parts of the speaking state · rows hold only taught words ·
+>             correction share 1/√(1+times corrected) · rehearsal of taught moments ·
+>             answers taught as a rewording would find them · heard parts held per place
+>             in her answer · every sentence a line ABOUT something · mood in the state ·
+>             floor 0.04 · speech file read in pieces · EQUATIONS §14
+>   PROVEN    (production code, no card) whole life 100.0 % after 3 passes · pre-K 98 %
+>             after every later grade (69 % without rehearsal) · 82–87 % of 60 untaught
+>             rewordings exact · unrelated line → silence · 56 MB · 0.69 ms a teach
+>   ALSO      dropped lessons: 33 sheds had skipped 11,356 updates → the lane recovers itself ·
+>             slow thoughts: a card request per word, median 59 s → 1.5–4.4 ms on the host ·
+>             quarantine holds the CARD (machine + model) · word identity code was 50 patterns
+>             for every word → 6,511 of 6,525 distinct · pop-ups show the real thing taught
+>             (my label→phrase tables deleted) · a started line needs half the floor
+>   NOT YET   booted · walked
+>   OPEN      SPEECHPATH.READ (a read) · SPEECHPATH.10 second half (needs an instrument) ·
+>             SPEECHREAL.13 (a decision: should a memory change an answer?)
+>   READ NEXT SPEECHPATH.READ on the board
+> ```
+>
+> ---
+>
+> # 🛑 2026-11-27 (53rd) — SHE COULD NOT SPEAK: THE PROJECTION COULD NOT HOLD WHAT IT WAS TAUGHT. REPLACED WITH A SPEECH READOUT; POP-UPS SAY SOMETHING NOW
 >
 > **Branch: `feature/speech-path`.** Gee: *"okay so what the fuck? i dont want to train her for a year when she isnt learning..  /super-review lets find out why Unity brain isnt training and she isnt speaking correctly"* · *"okay lets todo write up all those problems and get to fixing all of them completely and thouroughly"* · *"i want actual fun to read and interesting popups that actually tell you something that the common person can understand"*. **Next launch: `start.bat` — a FRESH WALK** (what she is taught changed; format 7 refuses older saves). The walk on `42c7bbc4` keeps teaching the old way until it is stopped.
 >

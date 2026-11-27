@@ -2127,6 +2127,11 @@ export class LanguageCortex {
           const m = userText.match(p);
           if (m && m[1]) { subject = m[1]; break; }
         }
+        // WHAT SHE WAS TAUGHT GOES FIRST. This side path used to take every
+        // "what is …" before her own answer was tried — "what is your name"
+        // looked up the word "your". It now runs only when she has nothing
+        // taught to say to the line.
+        if (subject && typeof cluster.hasTaughtReply === 'function' && cluster.hasTaughtReply(userText)) subject = null;
         if (subject) {
           let def = null;
           if (typeof cluster.lookupDefinitionSync === 'function') {
@@ -2180,12 +2185,10 @@ export class LanguageCortex {
               try { cluster.teachWordDefinition(subject); }
               catch { /* fire-and-forget */ }
             }
-            // (c) Settle ticks for sem → word_motor propagation
-            if (typeof cluster.step === 'function') {
-              for (let t = 0; t < 5; t++) {
-                try { await cluster.stepAwait(0.001); } catch { break; }
-              }
-            }
+            // (c) No settle ticks: her next word is read from the meaning just
+            // put in mind (the speech readout), not from cells settling on the
+            // card — five awaited card ticks here bought nothing and could
+            // each wait behind a lesson.
             // (d) Compose Unity's own answer — multi-word emission loop
             // 114.19fg.Tier5 — State-propagating multi-word emission.
             // Prior implementation broke on ANY duplicate, killing

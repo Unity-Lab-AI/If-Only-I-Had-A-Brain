@@ -4711,9 +4711,43 @@ const SERVER_GPU_MIXIN = {
     if (this._patternGroup) this._patternGroup.open = false;
     if (this._patternLaneStale) {
       this._hebbianSuppressedStale = (this._hebbianSuppressedStale || 0) + 1;
+      // ⭐ RECOVER, DON'T WAIT TO BE RESCUED. Stale used to clear only when a
+      // lesson's own region clear happened to go out, and most lessons no
+      // longer clear every region — so ONE shed frame suppressed every update
+      // after it for a long window (measured on a 20-hour walk: 33 frames
+      // shed, 11,356 updates suppressed — about 344 per shed). The update of
+      // the iteration whose pattern was broken is still skipped, here. Then
+      // every cortex region is cleared on the card, which is the known state
+      // the stale flag waits for, so the NEXT iteration teaches. If the link
+      // is still over its cap the clears are refused too and this is tried
+      // again on the next skipped update.
+      this._recoverPatternLane();
       return null;
     }
     return this._enqueueBoundHebbian(name, lr);
+  },
+
+  /**
+   * Put the card's cortex spike buffer back in a known state after a teach
+   * pattern was broken in flight: clear every region. A clear that lands lifts
+   * the stale flag (`_gpuClearCortexSpikeRegion`). At most once per 50 ms.
+   */
+  _recoverPatternLane() {
+    const now = Date.now();
+    if (this._patternRecoverAt && now - this._patternRecoverAt < 50) return;
+    this._patternRecoverAt = now;
+    const regions = this.cortexCluster && this.cortexCluster.regions;
+    if (!regions) return;
+    for (const name of Object.keys(regions)) {
+      try { this._gpuClearCortexSpikeRegion(name); } catch { /* a refused clear is retried on the next skipped update */ }
+    }
+    if (!this._patternLaneStale) {
+      this._patternLaneRecoveries = (this._patternLaneRecoveries || 0) + 1;
+      if (!this._patternRecoverLogAt || now - this._patternRecoverLogAt > 30000) {
+        this._patternRecoverLogAt = now;
+        console.log(`[Brain] teach lane recovered after a broken pattern — the card's cortex regions were cleared and teaching resumes on the next iteration (${this._patternLaneRecoveries} recoveries, ${this._hebbianSuppressedStale || 0} updates skipped since boot).`);
+      }
+    }
   },
 
   /**
