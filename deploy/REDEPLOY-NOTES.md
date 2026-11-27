@@ -1089,7 +1089,7 @@ Two backend waves landed on `main` (tag `v1.1.0`, then the `feature/tier3-identi
 | Flag | Default | Effect |
 |------|---------|--------|
 | `DREAM_SM_LR_SCALE` | `0.5` (active) | sem→motor Hebbian LR multiplier (saturation prevention, `cluster/hebbian.js`). `1.0` = old behavior. Lower (`0.25`) if `[SatHealth] meanCos` still climbs past 0.7 on a fresh walk; raise (`0.7`) if basins go dead / TALK→0. |
-| `DREAM_SM_WMAX` | unset (=0.4) | tighter weight ceiling for `sem_to_motor`+`sem_to_word_motor` only. Secondary saturation lever; try `0.25` if LR damping alone doesn't clear meanCos. |
+| `DREAM_SM_WMAX` | unset (=0.4) | tighter weight ceiling for `sem_to_motor` (and, until that matrix was removed 2026-11-27, `sem_to_word_motor`). Secondary saturation lever; try `0.25` if LR damping alone doesn't clear meanCos. |
 | `DREAM_CELL_PASS_HARD` | unset (OFF) | restore old gate (probe/battery/health correctness decides cell pass). Default OFF = cells pass on learning completion. |
 | `DREAM_BATTERY_GATE_HARD` | unset (OFF) | restore student-battery hard-block on cell pass. (Supersedes the older `DREAM_BATTERY_GATE_ADVISORY` opt-in — advisory is now the default.) |
 | `DREAM_HEALTH_GATE_HARD` | unset (OFF) | restore per-grade health-gate hard-block on cell pass. |

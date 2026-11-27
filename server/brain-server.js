@@ -1540,7 +1540,7 @@ const CURRENT_DONOR_VERSION = (() => {
   return _m[1];
 })();
 
-const WEIGHTS_FORMAT_VERSION = 6;   // language-growth hop 2 (2026-08-29): WORD_MOTOR_TARGET_LANG_CORTEX 12M→20M with per-host AFFORDABLE geometry (each host hops as far as its own RAM/VRAM bounds allow, ≤ target) — saved lang-cortex geometry no longer matches, old weights auto-refuse → fresh walk both directions, per the operator's word. (v5 was ENDO 2026-08-25: `brainstem` cluster added (monoamine nuclei) — cluster set + cerebellum fraction changed. v4 was language-growth hop 1 2026-08-16: langCortexSize 1.5M→12M. v3 was WMB 2026-07-14: word_motor unified band.)
+const WEIGHTS_FORMAT_VERSION = 7;   // speech readout (2026-11-27): the sem↔word_motor card matrices are gone and what she says is read from the speech-readout table saved beside the weights — earlier saves hold two matrices this brain no longer builds and no speech table, so they auto-refuse → fresh walk. (v6 was language-growth hop 2 (2026-08-29): WORD_MOTOR_TARGET_LANG_CORTEX 12M→20M with per-host AFFORDABLE geometry (each host hops as far as its own RAM/VRAM bounds allow, ≤ target) — saved lang-cortex geometry no longer matches, old weights auto-refuse → fresh walk both directions, per the operator's word. (v5 was ENDO 2026-08-25: `brainstem` cluster added (monoamine nuclei) — cluster set + cerebellum fraction changed. v4 was language-growth hop 1 2026-08-16: langCortexSize 1.5M→12M. v3 was WMB 2026-07-14: word_motor unified band.)
 // ⛔⛔ THE `UBWT` BINARY WEIGHT FILE'S OWN FORMAT VERSION — A DIFFERENT NUMBER
 // FROM `WEIGHTS_FORMAT_VERSION` ABOVE, AND CONFLATING THEM IS A DATA-LOSS BUG.
 //
@@ -1773,7 +1773,7 @@ function _nextCheckpointSlot(brain) {
 
 function _pruneStaleCheckpointSlots() {
   for (let i = CHECKPOINT_SLOTS; i <= 9; i++) {
-    for (const ext of ['json', 'bin']) {
+    for (const ext of ['json', 'bin', 'speech']) {
       const f = path.join(__dirname, `brain-weights-v${i}.${ext}`);
       try {
         if (fs.existsSync(f)) { fs.unlinkSync(f); console.log(`[Brain] #112.11 pruned stale checkpoint slot brain-weights-v${i}.${ext} (cap=${CHECKPOINT_SLOTS})`); }
@@ -1994,6 +1994,17 @@ function autoClearStaleState() {
     path.join(__dirname, 'brain-weights-v2.bin'),
     path.join(__dirname, 'brain-weights-v3.bin'),
     path.join(__dirname, 'brain-weights-v4.bin'),
+    // The speech readout's table — what she has been taught to SAY. It must
+    // clear with the weights it was taught beside: left behind after a wipe, a
+    // fresh brain would speak a previous walk's lines from word slots whose
+    // numbers no longer mean the same words.
+    path.join(__dirname, 'brain-weights.speech'),
+    path.join(__dirname, 'brain-weights.speech.tmp'),
+    path.join(__dirname, 'brain-weights-v0.speech'),
+    path.join(__dirname, 'brain-weights-v1.speech'),
+    path.join(__dirname, 'brain-weights-v2.speech'),
+    path.join(__dirname, 'brain-weights-v3.speech'),
+    path.join(__dirname, 'brain-weights-v4.speech'),
     path.join(__dirname, 'conversations.json'),
     path.join(__dirname, 'episodic-memory.db'),
     path.join(__dirname, 'episodic-memory.db-wal'),
@@ -3500,11 +3511,9 @@ class ServerBrain {
         ['sem', 'motor'],     ['motor', 'sem'],
         ['motor', 'letter'],  ['letter', 'motor'],
         ['auditory', 'phon'], ['phon', 'auditory'],
-        // SCALEAUDIT.1 — the two the estimator never knew about. Confirmed live:
-        // `cortex_sem_to_word_motor` (720,000 rows) + `cortex_word_motor_to_sem`
-        // (1,500,000 rows). 16 cross-projections + the intra matrix = the 17 the
-        // box reports, so the estimator now covers the whole allocation.
-        ['sem', 'word_motor'], ['word_motor', 'sem'],
+        // No sem↔word_motor pair: what she says is read by the speech readout
+        // (js/brain/speech-readout.js), a table in host memory, not a card
+        // matrix. 14 cross-projections + the intra matrix = 15 on the card.
       ];
       // ⛔⛔ THE TWO TERMS BELOW WERE MISSING, AND THEY ERRED IN OPPOSITE
       // DIRECTIONS SO THE TOTAL LOOKED PLAUSIBLE. Measured against the real
@@ -3530,7 +3539,6 @@ class ServerBrain {
       // and the cluster membership all mirror the construction they predict.
       const EST_MOTOR_BOUND_PAIRS = new Set([
         'sem-motor', 'motor-sem',
-        'sem-word_motor', 'word_motor-sem',
         'letter-motor', 'motor-letter',
         'phon-motor', 'motor-phon',
       ]);
@@ -3552,9 +3560,7 @@ class ServerBrain {
         const intraDensity = Math.min(INTRA_CONNECTIVITY_CAP, CORTEX_TARGET_FANOUT / Math.max(1, trial));
         const intraNnz = Math.floor(trial * intraDensity * trial);
         let total = intraNnz * BYTES_PER_NNZ + (trial + 1) * 4;
-        // ⚠ 16 cross-projections (8 pairs × 2 directions). The old comment here
-        // said "14 (7 pairs × 2)" while the list beside it already held 8 pairs —
-        // a count that was wrong at the moment it was written.
+        // 14 cross-projections (7 pairs × 2 directions) — the list above.
         for (const [src, dst] of CROSS_PAIRS) {
           const srcSize = regions[src] || 0;
           const dstSize = regions[dst] || 0;
@@ -9518,6 +9524,7 @@ class ServerBrain {
               const _slotS = _nextCheckpointSlot(this);
               fs.copyFileSync(BIN_FILE_R, BIN_FILE_R.replace(/\.bin$/, `-v${_slotS}.bin`));
               try { fs.copyFileSync(WEIGHTS_FILE, WEIGHTS_FILE.replace('.json', `-v${_slotS}.json`)); } catch { /* pair json best-effort */ }
+              try { const _sp = this._speechFile(); if (fs.existsSync(_sp)) fs.copyFileSync(_sp, _sp.replace(/\.speech$/, `-v${_slotS}.speech`)); } catch { /* speech table rides the slot best-effort */ }
             }
           } catch (err) {
             console.warn('[Brain] Binary weights versioned backup failed:', err?.message || err);
@@ -9587,6 +9594,12 @@ class ServerBrain {
                       if (err) console.warn('[Brain] JSON slot pair copy failed:', err?.message || err);
                     });
                   } catch { /* pair json best-effort */ }
+                  try {
+                    const _sp = this._speechFile();
+                    if (fs.existsSync(_sp)) fs.copyFile(_sp, _sp.replace(/\.speech$/, `-v${_slot}.speech`), (err) => {
+                      if (err) console.warn('[Brain] Speech readout slot copy failed:', err?.message || err);
+                    });
+                  } catch { /* speech table rides the slot best-effort */ }
                 } else if (fs.existsSync(BIN_FILE_R)) {
                   console.log('[SavePin] v-copy SKIPPED (hourly rotation — each copy duplicates the full weights file on disk).');
                 }
@@ -9744,6 +9757,80 @@ class ServerBrain {
 
   // SYNC path — shutdown-class only (clean-shutdown / savererun checkpoint):
   // the process must not exit before the write lands; the pin is irrelevant.
+  // ── THE SPEECH READOUT'S FILE ─────────────────────────────────────────────
+  // What she has been taught to SAY lives in the speech readout (a table in
+  // host memory: speaking-state units × word slots). It is saved beside the
+  // binary weights as `brain-weights.speech`, written with them, copied with
+  // them into every checkpoint slot, and cleared with them — a brain restored
+  // without it would hold every lesson except how to speak.
+  // Layout: 4-byte LE header length · JSON header · the taught rows as raw
+  // float32, in header order · the end-of-line row.
+  _speechFile() { return WEIGHTS_FILE.replace(/\.json$/, '.speech'); }
+  _speechPayload() {
+    const cortex = this.cortexCluster;
+    if (!cortex || !cortex._speechReadout || !Array.isArray(cortex.wordBucketWords)) return null;
+    const ser = cortex._speechReadout.serialize(cortex.wordBucketWords.length);
+    const head = Buffer.from(JSON.stringify(ser.header), 'utf8');
+    const len = Buffer.alloc(4); len.writeUInt32LE(head.length, 0);
+    return [len, head, ...ser.buffers];
+  }
+  _saveSpeechReadoutSync() {
+    const parts = this._speechPayload();
+    if (!parts) return;
+    const file = this._speechFile(); const tmp = file + '.tmp';
+    let fd;
+    try {
+      fd = fs.openSync(tmp, 'w');
+      let bytes = 0;
+      for (const b of parts) { fs.writeSync(fd, b, 0, b.length); bytes += b.length; }
+      fs.fsyncSync(fd); fs.closeSync(fd); fd = undefined;
+      fs.renameSync(tmp, file);
+      console.log(`[Brain] Speech readout saved ${(bytes / 1048576).toFixed(1)} MB → ${path.basename(file)}`);
+    } catch (err) {
+      if (fd !== undefined) { try { fs.closeSync(fd); } catch {} }
+      try { if (fs.existsSync(tmp)) fs.unlinkSync(tmp); } catch { /* best-effort */ }
+      console.warn('[Brain] Speech readout save failed (previous file left intact):', err?.message || err);
+    }
+  }
+  async _saveSpeechReadoutAsync() {
+    const parts = this._speechPayload();
+    if (!parts) return;
+    const file = this._speechFile(); const tmp = file + '.tmp';
+    let fh;
+    try {
+      fh = await fs.promises.open(tmp, 'w');
+      let bytes = 0;
+      for (const b of parts) {
+        // ≤ 8 MB per write so the loop is handed back between slices.
+        for (let off = 0; off < b.length; off += 8 << 20) {
+          const n = Math.min(8 << 20, b.length - off);
+          await fh.write(b, off, n); bytes += n;
+        }
+      }
+      await fh.sync(); await fh.close(); fh = undefined;
+      await fs.promises.rename(tmp, file);
+      console.log(`[Brain] Speech readout saved ${(bytes / 1048576).toFixed(1)} MB → ${path.basename(file)}`);
+    } catch (err) {
+      if (fh) { try { await fh.close(); } catch {} }
+      try { if (fs.existsSync(tmp)) fs.unlinkSync(tmp); } catch { /* best-effort */ }
+      console.warn('[Brain] Speech readout save failed (previous file left intact):', err?.message || err);
+    }
+  }
+  /** Read the file at boot; applied to the cortex once it exists (`_applyPendingCortexState`). */
+  _loadSpeechReadout() {
+    const file = this._speechFile();
+    try {
+      if (!fs.existsSync(file)) return;
+      const buf = fs.readFileSync(file);
+      if (buf.length < 4) return;
+      const hl = buf.readUInt32LE(0);
+      if (4 + hl > buf.length) { console.warn('[Brain] Speech readout file is truncated — ignored.'); return; }
+      this._pendingSpeech = { header: JSON.parse(buf.subarray(4, 4 + hl).toString('utf8')), body: buf.subarray(4 + hl) };
+    } catch (err) {
+      console.warn('[Brain] Speech readout load failed:', err?.message || err);
+    }
+  }
+
   _saveBinaryWeightsSync() {
     const col = this._collectBinarySections();
     if (!col) return;
@@ -9815,6 +9902,7 @@ class ServerBrain {
       fs.closeSync(fd);
       fd = undefined;
       fs.renameSync(TMP_FILE, BIN_FILE);   // atomic swap — the old checkpoint survives until this instant
+      this._saveSpeechReadoutSync();       // what she says, saved with what she knows
       console.log(`[Brain] Binary weights saved ${sections.length} sections, ${(totalBytes / 1048576).toFixed(1)} MB → ${path.basename(BIN_FILE)} (sync shutdown path, atomic tmp+fsync+rename, ${Date.now() - t0}ms)`);
     } catch (err) {
       if (fd !== undefined) { try { fs.closeSync(fd); } catch {} }
@@ -9965,6 +10053,8 @@ class ServerBrain {
       fd = undefined;
       _stamp('rename');
       await fs.promises.rename(TMP_FILE, BIN_FILE);   // atomic swap — readers never see a torn file
+      _stamp('speech');
+      await this._saveSpeechReadoutAsync();           // what she says, saved with what she knows
       _stamp(null);
       console.log(`[Brain] Binary weights saved ${sections.length} sections, ${(totalBytes / 1048576).toFixed(1)} MB → ${path.basename(BIN_FILE)} (async-write + fsync, ${Date.now() - t0}ms wall)`);
       console.log(`[SavePin] split — ${_laps.join(' · ')}`);
@@ -10440,6 +10530,7 @@ class ServerBrain {
       // _applyPendingCortexState fires. When absent, weights start fresh
       // and the operator is warned.
       this._loadBinaryWeights();
+      this._loadSpeechReadout();
       if (!this._pendingCortexWeights) {
         if (fs.existsSync(WEIGHTS_FILE)) {
           console.log('[Brain] ⚠ No binary weights file — passed-cell state resumes but language weights start fresh this boot. Re-teaching the curriculum will rebuild them.');
@@ -10699,6 +10790,17 @@ class ServerBrain {
             }
             console.log(`[Brain] restored unified word-bucket map: ${cortex.wordBucketWords.length} words — emitWordDirect + inner-voice active immediately on resume.`);
           }
+        }
+        // What she was taught to SAY: the speech readout's table, read from
+        // `brain-weights.speech` at boot. Its word-slot numbers are positions
+        // in the word list restored just above, so it is applied after it.
+        if (this._pendingSpeech && typeof cortex.speechReadout === 'function') {
+          const _ok = cortex.speechReadout().restore(this._pendingSpeech.header, this._pendingSpeech.body);
+          const _sum = cortex.speechReadout().summary();
+          console.log(_ok
+            ? `[Brain] restored the speech readout: ${_sum.taughtUnits} taught units × ${this._pendingSpeech.header.nWords} word slots (${(_sum.bytes / 1048576).toFixed(0)} MB) — she speaks from what she was taught.`
+            : `[Brain] ⛔ the speech readout file did not match this build's layout and was NOT applied — she has her lessons but not how to say them until they are taught again.`);
+          this._pendingSpeech = null;
         }
         // Grade-advance pause — restore so curriculum walker lands on
         // the wait-loop at the same grade boundary the prior boot was
@@ -12648,9 +12750,9 @@ const httpServer = http.createServer((req, res) => {
       // The download route below resolves `file` against THIS list only, so a
       // traversal string can never name a path — there is nothing to traverse
       // to. A scan would also expose whatever else happens to sit in server/.
-      const names = ['brain-weights.json', 'brain-weights.bin'];
+      const names = ['brain-weights.json', 'brain-weights.bin', 'brain-weights.speech'];
       for (let i = 0; i < CHECKPOINT_SLOTS; i++) {
-        names.push(`brain-weights-v${i}.json`, `brain-weights-v${i}.bin`);
+        names.push(`brain-weights-v${i}.json`, `brain-weights-v${i}.bin`, `brain-weights-v${i}.speech`);
       }
       const files = [];
       for (const n of names) {
@@ -12776,8 +12878,8 @@ const httpServer = http.createServer((req, res) => {
     if (!requireLoopback(req, res, '/weights/download')) return;
     let want = '';
     try { want = new URL(req.url, 'http://localhost').searchParams.get('file') || ''; } catch { want = ''; }
-    const allowed = ['brain-weights.json', 'brain-weights.bin'];
-    for (let i = 0; i < CHECKPOINT_SLOTS; i++) allowed.push(`brain-weights-v${i}.json`, `brain-weights-v${i}.bin`);
+    const allowed = ['brain-weights.json', 'brain-weights.bin', 'brain-weights.speech'];
+    for (let i = 0; i < CHECKPOINT_SLOTS; i++) allowed.push(`brain-weights-v${i}.json`, `brain-weights-v${i}.bin`, `brain-weights-v${i}.speech`);
     if (!allowed.includes(want)) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'unknown weights file', allowed }));
@@ -14072,6 +14174,20 @@ const httpServer = http.createServer((req, res) => {
         } else {
           binWarning = `brain-weights-${to}.bin not found — JSON-only rollback (binary weights stay at most-recent state). Restore is partial; consider rolling back to a different version that has both files.`;
           console.warn(`[Rollback] ${binWarning}`);
+        }
+        // The slot's speech table rides the same rollback, so what she says
+        // comes from the same moment as what she knows.
+        try {
+          const srcSpeech = path.join(__dirname, `brain-weights-${to}.speech`);
+          if (fs.existsSync(srcSpeech)) {
+            const dstSpeech = path.join(__dirname, 'brain-weights.speech');
+            fs.copyFileSync(srcSpeech, dstSpeech + '.tmp');
+            fs.renameSync(dstSpeech + '.tmp', dstSpeech);
+          } else {
+            console.warn(`[Rollback] brain-weights-${to}.speech not found — the speech table stays at its most recent state.`);
+          }
+        } catch (spErr) {
+          console.warn(`[Rollback] speech table copy failed: ${spErr && spErr.message ? spErr.message : spErr}`);
         }
         console.log(`[Rollback] copied brain-weights-${to}.json → brain-weights.json (${jsonStats.size} bytes)${binStatsSize > 0 ? ` + brain-weights-${to}.bin → brain-weights.bin (${binStatsSize} bytes)` : ''}. Next stop+Savestart will load this snapshot. Live brain state unchanged until restart.`);
         res.writeHead(200, { 'Content-Type': 'application/json' });

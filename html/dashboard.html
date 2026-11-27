@@ -963,8 +963,8 @@
       </div>
     </div>
 
-    <div class="card consciousness-panel stack" title="SPEAK speech-pipeline health — unified word_motor basin separability (one global band, one bucket per unique word — WMB 2026-07-14; frozen cellSize from SPEAK.1; weight-mass ratio from the SPEAK.2 renorm: ratio near 1 = uniform = separable, high = one basin dominating) + reject-to-silence coherence-floor stats (SPEAK.9) + best-of-N rerank. Catches separability regression at G4 instead of G9 salad.">
-      <div class="card-title">🗣 Speech Health (SPEAK) — separability + coherence floor</div>
+    <div class="card consciousness-panel stack" title="Speech health. Every speech lesson first asks whether she would already say the taught word in that moment, and only corrects her when she would not — so 'already said it' is the share of what she was taught that she can say. A low share after many lessons means the lessons are not holding. Below it: how many words have been read off the speech readout, the size of its table, the reject-to-silence coherence-floor counts and the best-of-N rerank counts.">
+      <div class="card-title">🗣 Speech Health — taught vs already said + coherence floor</div>
       <div id="d-speech-health" class="panel scroll-220">
         <div id="d-speech-sep" class="fs11"></div>
         <div id="d-speech-floor" style="color:#00e5ff;font-size:11px;margin-top:6px;"></div>
@@ -2359,8 +2359,11 @@
 
         if (m.speechHealth) {
           const sh = m.speechHealth;
-          const sep = sh.separability || {};
-          const rows = Object.keys(sep).map(k => { const v = sep[k]; return `${k}: cell=${v.cellSize} ratio=${v.ratio} mean=${v.meanAbs}`; });
+          const rd = sh.readout;
+          const rows = rd ? [
+            `taught to say: ${num(rd.taught)} steps · already said it ${num(rd.saidAlready)} (${rd.saidAlreadyPct}%) · corrections ${num(rd.corrections)}`,
+            `words read off the readout: ${num(rd.says)} · table ${num(rd.taughtUnits)}/${num(rd.units)} units × ${num(rd.wordCapacity)} word slots (${rd.megabytes} MB)`,
+          ] : [];
           const $sep = $('d-speech-sep'), $floor = $('d-speech-floor'), $empty = $('d-speech-empty');
           if ($sep) $sep.textContent = rows.length ? rows.join(' · ') : '';
           if ($floor && sh.coherenceFloor) { $floor.textContent = `coherence-floor: ${sh.coherenceFloor.rejected}/${sh.coherenceFloor.total} refused (${(sh.coherenceFloor.rejectRate*100).toFixed(1)}%)` + (sh.rerank ? ` · rerank ${sh.rerank.reranked}/${sh.rerank.calls}` : ''); }
