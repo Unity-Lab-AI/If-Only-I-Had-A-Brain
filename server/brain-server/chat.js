@@ -317,6 +317,7 @@ const SERVER_CHAT_MIXIN = {
     try {
       if (cl) { cl._lastUserInputText = null; cl._lastUserInputEmbedding = null; }
       this._questionPending = false;
+      this._whoNow = null;   // the next person's name (if they gave one) is set by _personTurn
       if (cl && cl.regions && cl.regions.sem && cl.externalCurrent) {
         const r = cl.regions.sem;
         cl.externalCurrent.fill(0, r.start, r.end);
@@ -427,6 +428,11 @@ const SERVER_CHAT_MIXIN = {
       // her turn while she answers (the state her answers were taught in).
       if (this._questionPending && Number.isInteger(C.QUESTION_ASKED_BAND)) {
         cur._writeRelationTag(cl, region, C.QUESTION_ASKED_BAND, true);
+      }
+      // WHO she is talking to stays lit on her turn too (band 46), so her reply
+      // is made to that person.
+      if (this._whoNow && Number.isInteger(C.SPEAKER_WHO_BAND)) {
+        cur._writeRelationTag(cl, region, C.SPEAKER_WHO_BAND, true);
       }
       this._speakerNow = who;
     } catch (e) { if (!this._speakerWarned) { this._speakerWarned = true; console.warn(`[Chat] speaker-state write failed: ${e && e.message}`); } }
@@ -2692,8 +2698,8 @@ const SERVER_CHAT_MIXIN = {
       // knows what it looks like, and asking again is the cooldown no-op this
       // fix exists to remove.
       try {
-        const known = store && store.get(w);
-        if (known && known.conf === true && known.rec) continue;
+        const known = (typeof this._vmPeek === 'function') ? this._vmPeek(w) : null;
+        if (known && known.conf && known.rec) continue;
       } catch { /* store unreadable — treat as unseen and let the look-up decide */ }
       if (!(await isDrawable(w))) continue;
       return w;
@@ -3551,8 +3557,8 @@ const SERVER_CHAT_MIXIN = {
       if (Array.isArray(subjectWords) && subjectWords.length && typeof this._vmStore === 'function') {
         const store = this._vmStore();
         for (const sw of subjectWords) {
-          const e = store && store.get(String(sw).toLowerCase());
-          const st = e && e.art && e.art.styles;
+          // one field, not the ~4–10 MB entry (this runs per subject word per piece)
+          const st = typeof this._vmArtStyles === 'function' ? this._vmArtStyles(String(sw).toLowerCase()) : null;
           if (st) for (const [k, n] of Object.entries(st)) learned[k] = (learned[k] | 0) + (n | 0);
         }
       }
@@ -4817,6 +4823,36 @@ const SERVER_CHAT_MIXIN = {
   // with the one she learned for the subject — and with the ones she learned
   // for other things she knows. The piece passes only when its own subject
   // is the BEST match. A rank among her memories, not a cutoff of mine.
+  // A memory as the eye compares it: its silhouette reduced to an N×N grid and
+  // its percept `p` — read as two JSON fields (never the ~4–10 MB entry), the
+  // small grid cached per key and dropped when the entry is rewritten.
+  _vmJudgeView(key, N) {
+    if (!this._vmJudgeCache) this._vmJudgeCache = new Map();
+    const ck = key;
+    const hit = this._vmJudgeCache.get(ck);
+    if (hit !== undefined && (hit === null || hit.N === N)) return hit;
+    let out = null;
+    try {
+      const store = this._vmStore();
+      let mask = null, p = null;
+      if (Map.prototype.has.call(store, key)) {
+        const e = Map.prototype.get.call(store, key);
+        mask = e && e.schema && e.schema.skeleton && e.schema.skeleton.mask;
+        p = e && e.p;
+      } else {
+        const db = this._vmDb();
+        const r = db ? db.prepare("SELECT json_extract(entry, '$.schema.skeleton.mask') AS mask, json_extract(entry, '$.p') AS p FROM concepts WHERE key = ?").get(key) : null;
+        if (r) {
+          if (typeof r.mask === 'string') { try { mask = JSON.parse(r.mask); } catch { mask = null; } }
+          if (typeof r.p === 'string') { try { p = JSON.parse(r.p); } catch { p = null; } }
+        }
+      }
+      if (mask || p) out = { N, grid: mask ? this._maskGrid(mask, N) : null, p: Array.isArray(p) || ArrayBuffer.isView(p) ? p : null };
+    } catch { out = null; }
+    this._vmJudgeCache.set(ck, out);
+    if (this._vmJudgeCache.size > 4096) this._vmJudgeCache.delete(this._vmJudgeCache.keys().next().value);
+    return out;
+  },
   _maskGrid(mask, N) {
     const W = mask.w, H = mask.h, bits = Buffer.from(mask.b64, 'base64');
     const on = (x, y) => (bits[(y * W + x) >> 3] >> ((y * W + x) & 7)) & 1;
@@ -4852,9 +4888,8 @@ const SERVER_CHAT_MIXIN = {
   },
   async _eyeJudgesDrawing(drawnRec, word, posed) {
     try {
-      const store = this._vmStore();
-      const e = store.get(word);
-      const learned = this._poseMask(e && e.schema && e.schema.skeleton && e.schema.skeleton.mask, posed);
+      // The mask alone (one JSON field read in SQLite), not the ~10 MB entry.
+      const learned = this._poseMask(typeof this._vmSkeletonMask === 'function' ? this._vmSkeletonMask(word) : null, posed);
       if (!learned) return { judged: false };
       const img = await this.mindSpace.imagine(drawnRec, 0);
       const seenInDrawing = this._learnSkeleton(img);
@@ -4880,17 +4915,24 @@ const SERVER_CHAT_MIXIN = {
       const cos = (a, b) => { if (!a || !b) return 0; let d = 0, na = 0, nb = 0; const n = Math.min(a.length, b.length); for (let i = 0; i < n; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; } const dn = Math.sqrt(na) * Math.sqrt(nb); return dn > 0 ? d / dn : 0; };
       let dp = null;
       try { const _d = await this.mindSpace.describe(drawnRec); if (_d) dp = Array.from(_d); } catch { dp = null; }
-      const ownSight = (dp && e.p) ? cos(dp, e.p) : null;
+      // ⛔ EACH MEMORY AS ITS 32×32 SILHOUETTE GRID + PERCEPT, NOT ITS ENTRY.
+      // This loop `get()`-loaded up to 48 whole entries (each ~4–10 MB of JSON,
+      // her drawing inside it) synchronously on the main thread — the profile's
+      // largest stall behind her thoughts. `_vmJudgeView` reads only the mask
+      // and percept fields, caches the small grid per key, and the loop yields
+      // between keys so it can never hold the loop.
+      const _ownView = this._vmJudgeView(word, N);
+      const ownSight = (dp && _ownView && _ownView.p) ? cos(dp, _ownView.p) : null;
       let beaten = 0, compared = 0, sightBeaten = 0, sightCompared = 0;
+      let _y = 0;
       for (const k of this._vmAllKeys()) {
         if (k === word || compared >= 48) continue;
-        const o = store.get(k);
+        if ((++_y % 4) === 0) await new Promise((r) => setImmediate(r));
+        const o = this._vmJudgeView(k, N);
         if (!o) continue;
-        const m = o.schema && o.schema.skeleton && o.schema.skeleton.mask;
-        if (m) {
+        if (o.grid) {
           compared++;
-          const g = this._maskGrid(m, N);
-          if (g && Math.max(this._maskIoU(mine, g), this._maskIoU(flip(mine), g)) > ownScore) beaten++;
+          if (Math.max(this._maskIoU(mine, o.grid), this._maskIoU(flip(mine), o.grid)) > ownScore) beaten++;
         }
         if (ownSight != null && o.p) {
           sightCompared++;
@@ -6403,8 +6445,14 @@ const SERVER_CHAT_MIXIN = {
         for (let i = keys.length - 1, scanned = 0; i >= 0 && scanned < SCAN && learnedAdded < KEEP; i--, scanned++) {
           const k = keys[i];
           if (!k || cand.includes(k)) continue;
-          const e = store.get(k);
-          if (!(e && e.schema && Array.isArray(e.schema.parts) && e.schema.parts.length)) continue;
+          // A PEEK, not a load: only "has a learned schema?" is asked here, and a
+          // cold `get()` parsed the whole ~4–10 MB entry on the main thread per
+          // key — the measured loop stalls behind every inner thought.
+          // a row's first peek (before its meta is written) is one SQLite JSON
+          // read (~25 ms on a 4 MB entry) — yield so a cold scan never pins
+          if ((scanned % 4) === 3) await new Promise((r) => setImmediate(r));
+          const pk = (typeof this._vmPeek === 'function') ? this._vmPeek(k) : null;
+          if (!(pk && pk.parts > 0)) continue;
           cand.push(k);
           learnedAdded++;
         }
@@ -6661,9 +6709,9 @@ const SERVER_CHAT_MIXIN = {
     // null` is that recorded verdict; an absent field (a schema banked before
     // skeletons existed) is no evidence either way.
     try {
-      const st = (typeof this._vmStore === 'function') ? this._vmStore() : null;
-      const ev = st && st.get(w);
-      if (ev && ev.schema && Object.prototype.hasOwnProperty.call(ev.schema, 'skeleton') && ev.schema.skeleton === null) return false;
+      // A peek (the row's few-byte meta), never a full load of the entry.
+      const pk = (typeof this._vmPeek === 'function') ? this._vmPeek(w) : null;
+      if (pk && pk.skel === -1) return false;
     } catch { /* store unreadable — the other judges stand */ }
     // STYLEBLEED (2026-08-29) — reported: one recurring full-screen neon-green
     // reference kept being looked up and then tainted every image it was
@@ -6748,9 +6796,8 @@ const SERVER_CHAT_MIXIN = {
     // No taxonomy entry and no definition — her banked shape is the only
     // witness left: she LOOKED at something real under this word once.
     try {
-      const store = (typeof this._vmStore === 'function') ? this._vmStore() : null;
-      const e = store && store.get(w);
-      if (e && e.schema && Array.isArray(e.schema.parts) && e.schema.parts.length) return true;
+      const pk = (typeof this._vmPeek === 'function') ? this._vmPeek(w) : null;
+      if (pk && pk.parts > 0) return true;
     } catch { /* store unreadable — strict default below */ }
     return false;
   },

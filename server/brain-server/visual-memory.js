@@ -183,6 +183,15 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         // ships this shape from birth: no migration ever runs (v8 has never
         // existed on any box).
         db.exec('CREATE TABLE IF NOT EXISTS concepts (key TEXT PRIMARY KEY, entry TEXT NOT NULL, bin BLOB, at INTEGER NOT NULL)');
+        // META — a few bytes per row ({parts}: the schema's part count) so the
+        // mind's-eye scans never parse the entry JSON, which carries her whole
+        // drawing (measured: ~4 MB average, 10 MB max per row). Written on every
+        // flush; NULL on older rows, filled in the first time one is peeked.
+        // ⚠ ITS OWN TABLE, not a column: SQLite reaches a column stored after a
+        // multi-MB one by walking that one's overflow pages, so a `meta` column
+        // after `entry`/`bin` measured ~19 ms per read — no faster than parsing.
+        try { db.exec('CREATE TABLE IF NOT EXISTS concept_meta (key TEXT PRIMARY KEY, meta TEXT NOT NULL)'); }
+        catch { /* a store without meta still works — peeks fall back to the JSON */ }
         this._vmDbConn = db;
       } catch (e) {
         this._vmDbConn = null;
@@ -223,6 +232,8 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
           const prev = super.get(k);
           if (prev !== undefined) self._vmResidentBytes -= self._recResidentBytes(prev);
           const r = super.set(k, v);
+          if (self._vmPeekCache) self._vmPeekCache.delete(k);   // a peek never outlives a write
+          if (self._vmJudgeCache) self._vmJudgeCache.delete(k);
           self._vmResidentBytes += self._recResidentBytes(v);
           try { self._vmMarkDirty(k, false); } catch { /* nf */ }
           return r;
@@ -230,6 +241,8 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         delete(k) {
           const prev = super.get(k);
           const had = super.delete(k);
+          if (self._vmPeekCache) self._vmPeekCache.delete(k);
+          if (self._vmJudgeCache) self._vmJudgeCache.delete(k);
           if (had) {
             self._vmResidentBytes -= self._recResidentBytes(prev);
             try { self._vmMarkDirty(k, true); } catch { /* nf */ }
@@ -344,6 +357,89 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     return n;
   },
 
+  // PEEK — an entry's small JSON part (schema, labels, verdicts) WITHOUT its
+  // image payload, without making it resident, cached per key. The mind's-eye
+  // scans only ask "does this concept have a learned schema / skeleton?", and
+  // answering that with `get()` pulled the WHOLE entry — payload attached — off
+  // disk synchronously for every cold key in the scan: measured as the main-loop
+  // stalls (2–10 s, 11 of 12 with the inner voice in flight; the profile's
+  // `get → _vmLoadOne` under `_imagineAndDraw` / `_eyeJudgesDrawing`).
+  // ⚠ Returns a SUMMARY, `{ parts }` (the schema's part count), never the
+  // entry. Read from the row's `meta` column (bytes); a row without meta (written
+  // before the column existed) is measured once with SQLite's own JSON reader
+  // and its meta written back, so each old row costs one parse, ever.
+  // `skel`: 1 = a skeleton was learned, -1 = the look held no subject
+  // (`schema.skeleton === null`, a recorded verdict), 0 = no skeleton field.
+  _vmMetaOf(e) {
+    const s = e && e.schema;
+    const has = !!s && Object.prototype.hasOwnProperty.call(s, 'skeleton');
+    return {
+      parts: s && Array.isArray(s.parts) ? s.parts.length : 0,
+      skel: !has ? 0 : (s.skeleton === null ? -1 : 1),
+      conf: !!(e && e.conf === true),
+      rec: !!(e && e.rec),
+    };
+  },
+  _vmPeek(key) {
+    const store = this._vmStore();
+    if (Map.prototype.has.call(store, key)) return this._vmMetaOf(Map.prototype.get.call(store, key));
+    if (!this._vmPeekCache) this._vmPeekCache = new Map();
+    if (this._vmPeekCache.has(key)) return this._vmPeekCache.get(key);
+    let out = null;
+    try {
+      const db = this._vmDb();
+      const r = db ? db.prepare('SELECT meta FROM concept_meta WHERE key = ?').get(key) : null;
+      if (r && r.meta) {
+        const m = JSON.parse(r.meta);
+        out = { parts: Number(m.parts) || 0, skel: Number(m.skel) || 0, conf: m.conf === true, rec: m.rec === true };
+      } else if (db) {
+        const m = db.prepare("SELECT json_array_length(json_extract(entry, '$.schema.parts')) AS parts, json_type(entry, '$.schema.skeleton') AS st, json_extract(entry, '$.conf') AS conf, json_type(entry, '$.rec') AS rt FROM concepts WHERE key = ?").get(key);
+        if (m) {
+          out = {
+            parts: Number(m.parts) || 0,
+            skel: m.st == null ? 0 : (m.st === 'null' ? -1 : 1),
+            conf: m.conf === 1 || m.conf === true,
+            rec: m.rt != null && m.rt !== 'null',
+          };
+          db.prepare('INSERT OR REPLACE INTO concept_meta (key, meta) VALUES (?, ?)').run(key, JSON.stringify(out));
+          this._vmMetaBackfills = (this._vmMetaBackfills | 0) + 1;
+        }
+      }
+    } catch { out = null; }
+    // null = no such row (an absent memory), distinct from a row with no schema.
+    this._vmPeekCache.set(key, out);
+    if (this._vmPeekCache.size > 8192) this._vmPeekCache.delete(this._vmPeekCache.keys().next().value);
+    this._vmPeeks = (this._vmPeeks | 0) + 1;
+    return out;
+  },
+  // ONE field of one row — her learned style preferences for a subject.
+  _vmArtStyles(key) {
+    const store = this._vmStore();
+    if (Map.prototype.has.call(store, key)) {
+      const e = Map.prototype.get.call(store, key);
+      return (e && e.art && e.art.styles) || null;
+    }
+    try {
+      const db = this._vmDb();
+      const r = db ? db.prepare("SELECT json_extract(entry, '$.art.styles') AS st FROM concepts WHERE key = ?").get(key) : null;
+      return r && typeof r.st === 'string' ? JSON.parse(r.st) : null;
+    } catch { return null; }
+  },
+  // ONE field of one row — the learned skeleton mask — without loading the
+  // entry (which carries her whole drawing, up to ~10 MB of JSON).
+  _vmSkeletonMask(key) {
+    const store = this._vmStore();
+    if (Map.prototype.has.call(store, key)) {
+      const s = Map.prototype.get.call(store, key)?.schema;
+      return (s && s.skeleton && s.skeleton.mask) || null;
+    }
+    try {
+      const db = this._vmDb();
+      const r = db ? db.prepare("SELECT json_extract(entry, '$.schema.skeleton.mask') AS mask FROM concepts WHERE key = ?").get(key) : null;
+      return r && typeof r.mask === 'string' ? JSON.parse(r.mask) : null;
+    } catch { return null; }
+  },
+
   // Read ONE entry back from sqlite. This is what makes eviction safe: a key
   // that is not resident is on disk, not gone.
   _vmLoadOne(key) {
@@ -405,9 +501,11 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         const store = this._vmStore();
         const t0 = Date.now();
         const put = db.prepare('INSERT OR REPLACE INTO concepts (key, entry, bin, at) VALUES (?, ?, ?, ?)');
+        const putMeta = db.prepare('INSERT OR REPLACE INTO concept_meta (key, meta) VALUES (?, ?)');
         const del = db.prepare('DELETE FROM concepts WHERE key = ?');
+        const delMeta = db.prepare('DELETE FROM concept_meta WHERE key = ?');
         const tx = db.transaction(() => {
-          for (const k of dels) del.run(k);
+          for (const k of dels) { del.run(k); delMeta.run(k); }
           for (const k of ups) {
             const e = store.get(k);
             if (!e) continue;
@@ -416,6 +514,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
             // too, reclaiming the resident base64 immediately.
             const { json, bin } = this._recSplitBin(e);
             put.run(k, json, bin, e.at || Date.now());
+            putMeta.run(k, JSON.stringify(this._vmMetaOf(e)));
             if (bin) this._recAttachBin(e, bin, true);
           }
         });
