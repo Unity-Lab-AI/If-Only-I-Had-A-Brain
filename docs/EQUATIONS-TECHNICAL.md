@@ -1201,6 +1201,17 @@ s = normalize( Σ_p v_p  +  0.5 · Σ_p roll(v_p, (p·37) mod 300) )
 
 The first sum is what the words mean; the second puts each word on a direction fixed by its position (37 is coprime with 300, so no two slots share a rotation). "is your name unity" and "your name is unity" are now different codes (cosine 0.944, was 1.0), and any question in any word order composes its own code — there is no closed set of question types to fall outside. "i" and "a" count as words.
 
+**The speech state** (`Curriculum._writeSpeechState(heard, prefix)` — the ONE definition, called by compose and by every lane that teaches what she says: Q→A binding, the gates' answer checks, ORDER-TO-SPEECH, reply-in-context):
+
+```
+prefix = []              sem = tile(s(heard)) | key(heard) in 2nd half   (+ template band if a question)
+prefix = [w1 … wi]       sem = top8(code(wi)) | s(heard + w1 … wi) in 2nd half
+```
+
+`heard` is what was said to her (`''` for her own thought or a narrated line). Because the reply's later words carry `heard`, the question stays in her state for every word of the answer, not only the first.
+
+**Reply in context** (`_teachReplyInContext`, every someone-speaks-she-answers exchange): for each word of her reply, `sem = speechState(heard, reply[0..i]) → word_motor(reply[i])` (Hebbian), plus two words that do not follow there pushed down in the same state (anti-Hebbian, 0.3·lr). Then a whole-line self-check on up to 24 exchanges: each next word is read off the card in that state; a wrong word is pushed away (0.5·lr) and the right one bound again.
+
 **Next word from the sentence so far** (ORDER-TO-SPEECH ↔ `_composeSentenceOnce`). Teaching binds `sem = [top8(code(w_i)) | s(w_1…w_i)] → word_motor(w_{i+1})` once per unique (prefix, next word), 2–4 reps by frequency; at full scale compose writes the same two halves before each word. The old write was the last word alone, a bigram chain, which let anything that ever followed a word come next.
 
 **Question-template conditioning** (`_classifyQuestionTemplate` + `_writeQuestionTemplateTag`):

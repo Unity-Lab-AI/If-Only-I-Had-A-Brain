@@ -1364,40 +1364,26 @@ export const CLUSTER_EMIT_MIXIN = {
       // anywhere.
       const _seedEmb = (words.length === 0 && !_seedWord && intentSeed && typeof intentSeed !== 'string'
         && intentSeed.length > 0) ? intentSeed : null;
-      if (_taught && words.length === 0 && typeof opts.questionText === 'string' && opts.questionText
-          && typeof _cur._writeTiledPatternOffset === 'function' && typeof _cur._extractKeyWord === 'function'
-          && sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === 'function') {
-        // ⭐ HER FIRST WORD IN REPLY TO A QUESTION reads the question in the
-        // shape her question→answer training wrote it: the whole sentence's
-        // embedding tiled across sem, the key word's dictionary pattern in the
-        // second half (`_teachQABinding`'s write, byte for byte). That is where
-        // "what is your name?" → "unity" was bound; the key word alone never was.
-        const semR = this.regions.sem;
-        this.lastSpikes.fill(0, semR.start, semR.end);
-        _cur._writeTiledPattern(semR, sharedEmbeddings.getSentenceEmbedding(opts.questionText), false);
-        const _kw = _cur._extractKeyWord(opts.questionText);
-        const _kEmb = _kw ? _cur._dictionaryPatternFor(_kw) : null;
-        if (_kEmb && _kEmb.length) _cur._writeTiledPatternOffset(semR, _kEmb, false, 0.5);
-        // …and the question's template band, which every Q→A teach and every
-        // gate probe writes beside the pattern — so she answers in exactly the
-        // state the answer was bound in (the asked band 43 rides chat's
-        // speaker state while the question is pending).
-        if (typeof _cur._classifyQuestionTemplate === 'function' && typeof _cur._writeQuestionTemplateTag === 'function') {
-          const _tid = _cur._classifyQuestionTemplate(opts.questionText);
-          if (_tid >= 0) _cur._writeQuestionTemplateTag(_tid);
-        }
+      // ⭐⭐⭐ ONE SPEECH STATE. The state before each word is written by the
+      // curriculum's `_writeSpeechState` — the same function every lane that
+      // teaches what she says uses (Q→A, ORDER-TO-SPEECH, reply-in-context) — so
+      // she speaks in exactly the state she was taught in:
+      //   first word of a reply   → what was said + its key word (+ template band)
+      //   every later word        → her last word + "what was said + her reply so
+      //                             far" — the question no longer drops out after
+      //                             word one, and the next word follows the
+      //                             sentence, not only the last word.
+      const _heardText = (typeof opts.questionText === 'string' && opts.questionText) ? opts.questionText : '';
+      const _canState = _taught && typeof _cur._writeSpeechState === 'function';
+      if (_canState && words.length === 0 && _heardText) {
+        _cur._writeSpeechState(_heardText, []);
+      } else if (_canState && words.length > 0) {
+        _cur._writeSpeechState(_heardText, words);
       } else if (_taught && _seedWord) {
+        // a thought's opening concept word (no sentence yet): that word's code
         const semR = this.regions.sem;
         this.lastSpikes.fill(0, semR.start, semR.end);
         _cur._writeTiledPattern(semR, _cur._topKEmbedding(_cur._dictionaryPatternFor(_seedWord), 8), true, { noCpu: false });
-        // ⭐ AND THE SENTENCE SO FAR, in order, in the second half — the
-        // ORDER-TO-SPEECH teach write, so the next word follows her sentence,
-        // not just its last word (a bigram chain is word salad).
-        if (words.length > 0 && typeof _cur._writeTiledPatternOffset === 'function'
-            && sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === 'function') {
-          const _ctx = sharedEmbeddings.getSentenceEmbedding(words.join(' '));
-          if (_ctx && _ctx.length) _cur._writeTiledPatternOffset(semR, _ctx, false, 0.5);
-        }
       } else if (_taught && _seedEmb) {
         const semR = this.regions.sem;
         this.lastSpikes.fill(0, semR.start, semR.end);
