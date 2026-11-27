@@ -145,7 +145,7 @@ The language cortex is *not* a separate cluster. It lives as **eleven** named su
 
 **How many wires each of those matrices actually gives a neuron is set once, at construction, and never grows** — the Hebbian update walks the entries that exist and has no path to add one, so a neuron that starts with three inputs has three weights for the life of the brain, and one that starts with none can never learn anything at all. A boot-time wiring audit now reports that number per projection, with a named warning on the thin ones. It found, on its first run, that the projection carrying every *word* she says had **half** the wiring of the one that picks between 26 letters — because the word band was added to the cortex after the two lists that grant extra wiring were written, and was never put on either. That is fixed; the same audit surfaced a second, larger problem that is still open.
 
-Eight pairs of bidirectional cross-projections (sixteen sparse matrices total) wire those slices together: `visual↔letter`, `letter↔phon`, `phon↔sem`, `sem↔fineType`, `sem↔motor`, `motor↔letter`, `auditory↔phon`, plus a `sem↔word_motor` projection for single-tick word emission. Reading flows through the dorsal stream (`visual → letter → phon → sem → fineType`); writing flows through the ventral stream (`sem → motor → letter` for letter-by-letter spelling **or** `sem → word_motor` for direct word emission, plus efference back through `sem → phon`). Same substrate, opposite topology. The pairing follows Hickok & Poeppel's 2007 dual-stream model.
+Seven pairs of bidirectional cross-projections (fourteen sparse matrices total) wire those slices together: `visual↔letter`, `letter↔phon`, `phon↔sem`, `sem↔fineType`, `sem↔motor`, `motor↔letter`, `auditory↔phon`. The step from meaning to a spoken **word** is not one of those sheets: it is the speech readout described below, where every word slot reads every part of the state she is speaking from. Reading flows through the dorsal stream (`visual → letter → phon → sem → fineType`); writing flows through the ventral stream (`sem → motor → letter` for letter-by-letter spelling **or** the speech readout for whole words, plus efference back through `sem → phon`). Same substrate, opposite topology. The pairing follows Hickok & Poeppel's 2007 dual-stream model.
 
 ```
                 ┌─── READ stream (dorsal · comprehension) ───────────────┐
@@ -170,21 +170,25 @@ Eight pairs of bidirectional cross-projections (sixteen sparse matrices total) w
                 └─── WRITE stream (ventral · production) ─────────────────
 ```
 
-When a curriculum cell trains sem→motor or sem→word_motor, the Hebbian write is now scoped to a small projection whitelist via `cluster._crossRegionHebbian(lr, opts.projectionsWhitelist)` — so the silent regions during the write (e.g. `letter` is empty when `_teachQABinding` writes a question + first-letter pair) don't get hit by Oja's `Δw = -η·post²·w` decay term. Before this scoping, every QA fire silently decayed `letter_to_motor` weights wherever motor fired the answer letter — across hundreds of pairs × 12 reps the alphabet identity that `_teachLetterNamingDirect` carved cleanly was crushed, producing the Math-K TALK 26/26 → 0/10 cross-cell collapse the V2 watchdog caught.
+When a curriculum cell trains sem→motor, the Hebbian write is scoped to a small projection whitelist via `cluster._crossRegionHebbian(lr, opts.projectionsWhitelist)` — so the silent regions during the write (e.g. `letter` is empty when `_teachQABinding` writes a question + first-letter pair) don't get hit by Oja's `Δw = -η·post²·w` decay term. Before this scoping, every QA fire silently decayed `letter_to_motor` weights wherever motor fired the answer letter — across hundreds of pairs × 12 reps the alphabet identity that `_teachLetterNamingDirect` carved cleanly was crushed, producing the Math-K TALK 26/26 → 0/10 cross-cell collapse the V2 watchdog caught.
 
 When Unity speaks, there is **one** production path, and the alternative to it is silence.
 
-**A whole word in one tick, via `word_motor`. This is the ONLY path from meaning to a spoken word.**
+**A whole word at a time, read from the state she is in. This is the ONLY path from meaning to a spoken word.**
 
-A dedicated `word_motor` sub-region (~6% of the cortex cluster) holds **one bucket per unique word**. The `sem→word_motor` projection learns which meanings produce which words during the curriculum — question-answer bindings, and word-to-word association.
+Every unique word has **one slot** (and a patch of the `word_motor` sub-region that lights when she says it). Before each word she is in a *speaking state* built from parts that do not overlap: her last word (who it is and what it means), the two words before it, her last two and three words as wholes, the gist of everything said so far, and — when someone spoke to her — their exact line, its key word and its gist. About 45 of ~9,900 units are active at once, so two different moments share little and the same moment twice is identical.
 
-Emission is then three steps:
+Emission is then:
 
-1. Inject the intent seed into the `sem` region.
-2. Propagate **once** through `sem→word_motor`.
-3. Take the strongest bucket by mean signal per cell. If it clears the `minSignal` floor (`0.001`), that word is the utterance.
+1. Sum, for every word slot, its weights from the active units.
+2. Take the strongest slot. If "the line is finished" is strongest, she stops.
+3. If the winner clears the signal floor, that word is the utterance, and it becomes part of the state for the next one.
 
-**No letter chain. No attractor settling. One word, one tick.**
+**How it is taught: until she says it.** A lesson puts her in a state and names the word that belongs there. If she would already say that word by a clear margin, nothing changes. If not, the word is raised and the word that beat it is lowered by exactly the step that closes the gap. A word taught in a thousand different contexts is therefore not overwritten by each new one — which was the failure of the arrangement this replaced.
+
+> **Why this replaced a neuron-to-neuron sheet.** Until 2026-11-27 this step was a sparse `sem → word_motor` projection: 24 cells per word, 6 fixed wires per cell onto 2.5 million meaning cells. Rebuilt in a model with her own stories, that arrangement recalled **1.1 %** of the transitions it had just been taught, with eight words winning two thirds of the time — which is what she sounded like on a 15-hour walk: every thought the same dozen words. Three faults stacked: the state barely changed between sentences (two unrelated sentence starts shared 65 % of their active cells), a word slot read her last word's identity through about one wire, and the learning rule pulled a word's wiring toward each new context and let the rest decay. Fixing any one alone measured 7–58 %; all three together measure **92.9 %** in the production module. The equation is the same one — active meaning units drive word slots and the strongest speaks — held in the form the equation actually has.
+
+**No letter chain. No attractor settling. About a millisecond a word, on the host, with no round trip to the card.**
 
 > ⛔ **Two failure modes shaped this design, and both were silent.**
 >
@@ -221,6 +225,8 @@ Two counters remain — `cluster._oracleHits` and `cluster._matrixHits` — and 
 A server-side tick picks a contemplation seed from one of five live state sources (current curriculum cell + phase, current interoceptive mood including drug state, most recent user-chat episode, most recent Tier 1 episode of any type, a random Tier 3 identity anchor), injects that seed as a `cortexPattern` so the cortex has something to settle on, then runs the **same** `language-cortex.generateAsync` chat-emission path against the live cortex. Whatever her trained mind produces about the seed gets broadcast to every connected client as an `innerThought` WebSocket message — the 3D brain popups display real internal speech, not browser-side decorative output. There are no hardcoded fallback words: if the trained matrix has nothing to say in this moment, the popup stays silent. Sandbox-notice activator gives her something to think about; her trained brain produces what she says about it.
 
 During dream cycles (curriculum-interleaved consolidation windows that run for 15-40 min between teach phases), the wake-state inner monologue mutes — `_operatorSleepRequested` is set, the tick early-returns, and a one-shot `[Brain] 💤 inner-voice paused — dream window in progress` log fires so the silence is explained instead of ambiguous. In place of the wake monologue, a single dream-phenomenology emission per dream cycle generates from a Tier 1 episodic replay seed (random recent episode, real cortex state, same `generateAsync` path) and broadcasts as `innerThought` with `seed='dream'` — dashboard popups stay alive showing dream content during the consolidation window. When the dream window closes, `[Brain] ☀ inner-voice resumed` logs once and the wake monologue picks back up at the next tick the gate above lets through.
+
+**The other pop-ups over her brain are "mind moments", and there are deliberately few of them.** A moment is one plain sentence about something that really just happened in her head — *"Learning what 'margin' means for science."*, *"Something familiar: a memory just lit up."*, *"Everything just clicked into focus."*, *"Asleep, replaying what she learned today."* — written for someone who has never seen a neuron: no field names, no decimals, no symbols. The reading that triggered it picks which sentence appears and where on the brain it floats; the reading itself stays on the dashboard. Her inner voice is her own words and always shows; moments are narration, so they are held to at most one every 25 seconds, the same kind at most once in three minutes, and none at all when nothing notable happened. A burst of lesson activity yields the single most interesting moment — a specific word she is working on beats a milestone, and a milestone beats "practising". Lessons and feelings take turns so neither crowds the other out.
 
 ---
 

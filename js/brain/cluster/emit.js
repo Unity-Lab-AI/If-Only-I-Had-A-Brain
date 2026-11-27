@@ -69,8 +69,31 @@ import { encodeLetter, decodeLetterAlpha, inventorySize, inventorySnapshot } fro
 // persisted stream, so a resumed brain chooses the next word where it left off.
 import { brainStream } from '../brain-rng.js';
 const _emitSampleRand = brainStream('emit-word-sample');
+// What she is about to say is read here: active units of the speaking state →
+// word slots, every slot reading every unit. See speech-readout.js.
+import { SpeechReadout } from '../speech-readout.js';
 
 export const CLUSTER_EMIT_MIXIN = {
+  /** The one speech readout of this cluster (made on first use, saved with her weights). */
+  speechReadout() {
+    return this._speechReadout || (this._speechReadout = new SpeechReadout(sharedEmbeddings));
+  },
+
+  /**
+   * The units active right now — the state her next word is read from, and the
+   * state a lesson teaches in. An explicit speaking state (what was said + her
+   * words so far, or a thing in mind to name) wins; otherwise it is the meaning
+   * sem currently holds. Null when nothing is in mind.
+   */
+  currentSpeechUnits() {
+    if (Array.isArray(this._speechUnits) && this._speechUnits.length) return this._speechUnits;
+    if (Array.isArray(this._mindFeats) && this._mindFeats.length) {
+      const u = this.speechReadout().meaningUnits(this._mindFeats);
+      return u.length ? u : null;
+    }
+    return null;
+  },
+
   /**
    * Set (or clear) the grade-vocab emission allow-set consumed by
    * emitWordDirect's free-composition argmax. Pass an iterable of
@@ -330,172 +353,28 @@ export const CLUSTER_EMIT_MIXIN = {
    * this loop is exactly how two callers begin propagating subtly different
    * inputs while every test still passes.
    */
-  _buildSemPreVector() {
-    const sem = this.regions && this.regions.sem;
-    if (!sem || !this.lastSpikes) return null;
-    const semSize = sem.end - sem.start;
-    const preSem = new Float64Array(semSize);
-    for (let i = 0; i < semSize; i++) {
-      preSem[i] = this.lastSpikes[sem.start + i] || 0;
-    }
-    return preSem;
-  },
-
+  /**
+   * Her next word. Kept `async` because every caller awaits it; the read itself
+   * is a table sum on this machine (about a millisecond), with no card round trip.
+   */
   async emitWordDirectDonor(opts = {}) {
-    const proj = this.crossProjections && this.crossProjections.sem_to_word_motor;
-    const sem = this.regions && this.regions.sem;
-    if (proj && sem && proj._gpuBound && this._gpuProxyReady && this._gpuProxy
-        && typeof this._gpuProxy.gateProbe === 'function' && this.lastSpikes) {
-      try {
-        const idx = [];
-        for (let i = sem.start; i < sem.end; i++) { if (this.lastSpikes[i]) idx.push(i - sem.start); }
-        this._lastEmitSemActive = idx.length;   // EMITWHY — did the question pattern even land?
-        // GATEGPU.2 (2026-08-23) — ASK FOR THE REDUCTION, NOT THE RAW FIELD.
-        // The argmax below only ever wanted per-bucket means; pulling the whole
-        // post region (720K floats, ~2.9MB) per spoken word to compute them
-        // server-side was the readout waste this fix removes. A donor ≥0.3.28
-        // reduces on the card and answers with the means themselves. Every
-        // downstream rule (WORDNORM, repetition penalty, GW boost, function-word
-        // floor, capacity break, grade gate) runs UNCHANGED on those means.
-        if (idx.length && typeof this._gpuProxy.gateProbeBuckets === 'function'
-            && typeof this.wordBucketCellSizeFor === 'function'
-            && Array.isArray(this.wordBucketWords) && this.wordBucketWords.length > 0) {
-          try {
-            const means = await this._gpuProxy.gateProbeBuckets(
-              `${this.name}_sem_to_word_motor`, idx,
-              this.wordBucketCellSizeFor(), this.wordBucketWords.length,
-            );
-            if (means && means.length > 0) {
-              const s2 = this._speakGpuStats || (this._speakGpuStats = { gpu: 0, cpu: 0, logged: false });
-              s2.gpu++;
-              if (!s2.logged) { s2.logged = true; console.log('[Cluster ' + this.name + '] SPEAK via donor: ON (reduced readout) — the card returns per-word bucket means, not the raw post region.'); }
-              return this.emitWordDirect({ ...opts, wmBucketMeans: means });
-            }
-          } catch { /* fall through to the full-current probe */ }
-        }
-        if (idx.length) {
-          // PROBELANE (2026-08-22) — one retry: the first attempt can land
-          // while the previous per-tick propagate round is still draining
-          // (the round guard bounds that wait to one round); a second probe
-          // rides the now-clear lane. Two timeouts = the donor genuinely
-          // cannot answer → CPU shadow, honestly.
-          let out = await this._gpuProxy.gateProbe(`${this.name}_sem_to_word_motor`, 'sem', idx);
-          if (!out || !out.length) {
-            out = await this._gpuProxy.gateProbe(`${this.name}_sem_to_word_motor`, 'sem', idx);
-          }
-          if (out && out.length > 0) {
-            const s = this._speakGpuStats || (this._speakGpuStats = { gpu: 0, cpu: 0, logged: false });
-            s.gpu++;
-            if (!s.logged) { s.logged = true; console.log('[Cluster ' + this.name + '] SPEAK via donor: ON — word emission argmaxes the FULL GPU training mass (sem→word_motor currents ride the probe ack); CPU shadow only when the donor cannot answer.'); }
-            return this.emitWordDirect({ ...opts, wmOutOverride: out });
-          }
-        }
-      } catch { /* fall through to the CPU shadow */ }
-    }
-    const s = this._speakGpuStats || (this._speakGpuStats = { gpu: 0, cpu: 0, logged: false });
-    s.cpu++;
-    // ⛔ LOOPCHAT.1 (2026-08-26) — THE CPU SHADOW WAS A SYNCHRONOUS
-    // 1.5M→720K SPARSE PROPAGATE, ONCE PER SPOKEN WORD, ON THE EVENT LOOP.
-    //
-    // `emitWordDirect` is synchronous, so its `proj.propagate(preSem)` cannot
-    // yield — and it is reached whenever the donor cannot answer. Measured on
-    // the box: `boundPropagate` read `native 5489 / emptyMirror 2246`, i.e.
-    // **29% of bound propagates refuse and drop to CPU**, with
-    // `lastEmptyName: cortex_word_motor_to_sem`. A K gate speaks 14 production
-    // probes plus sentence generation, so that is dozens of unyielding
-    // multi-hundred-millisecond propagates per gate pass.
-    //
-    // Consequence, in the loop watchdog's own words:
-    //   `[EventLoop] BLOCKED 2821ms — /ws handshakes + donor frames stalled`
-    //   `[EventLoop] STARVED — late 38.1s out of the last 62s (39% serviced)`
-    // ⛔ **Chat is a WebSocket lane.** At 39% serviced a chat message cannot
-    // land and the reply pass cannot run — she reads as "not talking" while
-    // emission itself is perfectly healthy (151 accepted content emissions,
-    // `matrixDrivenPct: 100`). **The silence was a scheduling failure wearing
-    // the costume of a speech failure.**
-    //
-    // ⭐ The fix needs no signature change and no new mechanism: THIS wrapper
-    // is already `async`, and `emitWordDirect` already accepts a pre-computed
-    // readout via `wmOutOverride` — built for the donor path, and exactly the
-    // right shape for a chunked CPU one. So the shadow propagate happens HERE,
-    // chunked, and the synchronous path is never entered.
-    //
-    // ⚠ NO GATE IS WEAKENED — nothing to RE-PRICE. `propagateChunked` is the
-    // same arithmetic split across row ranges (verified bit-identical,
-    // maxDiff=0, when GATEPIN.1 converted the probe lane on 2026-08-21); it
-    // changes WHEN the loop breathes, never WHAT she computes. Every
-    // downstream rule — WORDNORM, repetition penalty, GW boost, function-word
-    // floor, capacity break, the grade gate — reads the identical numbers.
-    //
-    // ⚠ The bare `emitWordDirect(opts)` below stays as the last resort on
-    // purpose: a matrix with no `propagateChunked`, an absent `lastSpikes`, or
-    // a throw must still produce her word rather than silence. Refusing to
-    // speak because an optimisation was unavailable would be the fallback
-    // pattern this repo bans.
-    if (!opts.wmBucketMeans && !opts.wmOutOverride
-        && proj && typeof proj.propagateChunked === 'function' && this.lastSpikes) {
-      try {
-        const preSem = this._buildSemPreVector();
-        if (preSem) {
-          const out = await proj.propagateChunked(preSem, { chunkRows: 250000 });
-          if (out && out.length > 0) {
-            s.cpuChunked = (s.cpuChunked || 0) + 1;
-            return this.emitWordDirect({ ...opts, wmOutOverride: out });
-          }
-        }
-      } catch { /* fall through to the synchronous shadow — a word beats silence */ }
-    }
-    s.cpuSync = (s.cpuSync || 0) + 1;
     return this.emitWordDirect(opts);
   },
 
   emitWordDirect(opts = {}) {
-    if (!this.regions || !this.regions.word_motor || !this.regions.sem) return '';
-    if (!this.crossProjections?.sem_to_word_motor) return '';
+    if (!this.regions || !this.regions.word_motor) return '';
     if (!this.dictionary || !this.dictionary._words) return '';
-
-    const proj = this.crossProjections.sem_to_word_motor;
-    if (typeof proj.propagate !== 'function') return '';
-
-    const sem = this.regions.sem;
     const wordMotor = this.regions.word_motor;
-    const semSize = sem.end - sem.start;
-    const wmSize = wordMotor.end - wordMotor.start;
 
-    // GATEGPU.2 (2026-08-23) — PRE-REDUCED MEANS from the donor. When the card
-    // did the bucket reduction there is nothing to build a dense pre-vector for
-    // and nothing to sum: skip both. The dense paths below are untouched for
-    // every caller that still hands raw currents (or none).
-    const bucketMeans = (opts.wmBucketMeans && opts.wmBucketMeans.length > 0)
-      ? opts.wmBucketMeans : null;
-
-    // Build sem-region input from current cluster spike state.
-    // ⭐ LOOPCHAT.1 — ONE OWNER. `emitWordDirectDonor` needs the identical
-    // vector to run the CPU shadow through `propagateChunked`, and a
-    // hand-copied second construction is how two callers silently start
-    // propagating different inputs. See `_buildSemPreVector`.
-    let preSem = null;
-    if (!bucketMeans) preSem = this._buildSemPreVector();
-
-    let wmOut;
-    // SPEAKGPU (2026-08-22) — a caller that already fetched the word-motor
-    // currents from the donor's FULL weights hands them in here; the CPU CSR
-    // (the SAMPLED shadow — ~1-in-5 of training mass since the GPU-first
-    // architecture) is the no-donor path only. Measured reason: math-K verdict
-    // THINK/SEQ/ORDER 100% (gate probes read the donor) vs TALK 0/10 + PROD
-    // 0/17 ("four plus one equals"→"ribbon") — she knew more than the matrix
-    // she spoke from.
-    if (bucketMeans) {
-      wmOut = null;   // GATEGPU.2 — the means ARE the readout; no dense field exists
-    } else if (opts.wmOutOverride && opts.wmOutOverride.length > 0) {
-      wmOut = opts.wmOutOverride;
-    } else {
-      try { wmOut = proj.propagate(preSem); }
-      catch { return ''; }
-    }
-    // GATEGPU.2 — the empty-readout guard applies to whichever form carries the
-    // readout: the dense field, or the pre-reduced bucket means.
-    if (!bucketMeans && (!wmOut || wmOut.length === 0)) return '';
+    // ⭐ THE READ. The state her next word is read from is a list of active
+    // units (`currentSpeechUnits`); every word slot's score is the sum of its
+    // weights from those units, divided by how many are active. Nothing in mind
+    // → nothing to say.
+    const _nSlots = Array.isArray(this.wordBucketWords) ? this.wordBucketWords.length : 0;
+    const _units = _nSlots > 0 ? this.currentSpeechUnits() : null;
+    this._lastEmitSemActive = _units ? _units.length : 0;   // how many units the state lit
+    if (!_units || !_units.length) return '';
+    const bucketMeans = this.speechReadout().bucketMeans(_units, _nSlots);
 
     // GlobalWorkspace bias: when a previous-tick ignition broadcast
     // names a specific word (cortex's getWorkspaceCandidate label
@@ -562,85 +441,21 @@ export const CLUSTER_EMIT_MIXIN = {
     if (!Array.isArray(this._recentEmissions)) this._recentEmissions = [];
     const recentLast4 = new Set(this._recentEmissions.slice(-4));
     const REPETITION_PENALTY = 0.7;
-    // WORDNORM (2026-08-23) — HOMEOSTATIC BUCKET-MASS NORMALIZATION, the
-    // hot-bucket killer. Measured to exhaustion first: a handful of word
-    // buckets accumulated a whole walk's worth of incoming sem→word_motor
-    // mass, so ANY diffuse sem context summed biggest into them — the same
-    // thief words ("taste"/"asteroids"/"scheme"…) won gate after gate across
-    // unrelated questions, and the SPEAKLOOP drill receipt proved contrast
-    // doses cannot depress them (8/8 still wrong after measured-thief
-    // contrast ×2 rounds each: the mass differential is orders of magnitude).
-    // The biological fix is the read-side one — synaptic scaling: a bucket
-    // whose TOTAL incoming mass exceeds the average gets its score divided
-    // by (mass/avg)^alpha, so the CONTEXT-SPECIFIC signal decides the argmax,
-    // not accumulated popularity. Buckets at/below average are UNTOUCHED
-    // (factor clamped ≥1 — young words are never noise-boosted, the floor's
-    // honesty semantics survive intact). Mass reads the CPU CSR (the sampled
-    // shadow — proportional, which is all a ratio needs), cached 10 min.
-    // Kill switch DREAM_WORDNORM=0; exponent DREAM_WORDNORM_ALPHA (0.7).
-    const _wnEnv = (typeof process !== 'undefined' && process.env) ? process.env : {};
-    const _wnOn = _wnEnv.DREAM_WORDNORM !== '0';
-    const _wnAlpha = Number(_wnEnv.DREAM_WORDNORM_ALPHA) > 0 ? Number(_wnEnv.DREAM_WORDNORM_ALPHA) : 0.7;
-    let _wnMass = null;
-    // WMB unify (2026-07-14) — ONE global word_motor band + umbrella word list.
-    // Single pass (not a per-subject sub-band loop): every unique word occupies
-    // exactly one bucket across the whole word_motor region, argmaxed globally,
-    // so any trained word can win regardless of which subject taught it.
-    // opts.subject no longer scopes emission. Iterate-once so the existing
-    // `continue` guards below keep working with zero body changes.
+    // ONE word slot per unique word, argmaxed across all of them, so any taught
+    // word can win whichever subject taught it. Slot index b is the word's
+    // position in `wordBucketWords` (append-only, saved with her) — the same
+    // index every lesson teaches into. Iterate-once so the `continue` guards
+    // below keep their meaning.
+    // (A read-side "bucket-mass normalisation" stood here. It divided a word's
+    // score by how much total weight its slot had collected, to hold down words
+    // that won everywhere. The teach rule no longer builds that mass — a slot
+    // changes only when the wrong word wins — so there is nothing to divide by.)
     for (let _wmOnce = 0; _wmOnce < 1; _wmOnce++) {
       const subjStart = 0;                               // offsets relative to wordMotor.start
       const subjEnd = wordMotor.end - wordMotor.start;   // full word_motor span
-      const subjSize = subjEnd - subjStart;
-      if (subjSize <= 0) continue;
       const wordsList = this.wordBucketWords;
       if (!Array.isArray(wordsList) || wordsList.length === 0) continue;
-      // SPEAK.1 — bucket band is FROZEN (vocab-growth-invariant). Prior-grade
-      // sem->word_motor weights stay addressable as new words append, instead
-      // of every word remapping to a new band each time the dictionary grows
-      // (the grade-9 word-salad root cause). Single authority: wordBucketCellSizeFor.
-      // ⛔ NO FALLBACKS (2026-09-02). The `: Math.max(1, floor(subjSize /
-      // wordsList.length))` arm that used to close this expression was a SECOND
-      // geometry — the vocab-growth-dependent one whose remapping the line above
-      // names as the grade-9 word-salad root cause. A "single authority" with an
-      // alternative is not an authority. The method is defined on this same
-      // prototype and is called unguarded from the schema path, so the guard
-      // could only ever swap the frozen band for the drifting one.
-      const bucketSize = this.wordBucketCellSizeFor();
-      // WORDNORM — per-bucket incoming-mass profile (row-band |weight| sums
-      // over the post-major CSR), cached on the cluster, refreshed on vocab
-      // growth or 10-minute expiry.
-      if (_wnOn) {
-        const _c = this._wnMassCache;
-        if (_c && _c.n === wordsList.length && Date.now() - _c.at < 600_000) {
-          _wnMass = _c;
-        } else {
-          try {
-            const proj = this.crossProjections && this.crossProjections.sem_to_word_motor;
-            if (proj && proj.values && proj.rowPtr && proj.rowPtr.length > 1) {
-              const mass = new Float64Array(wordsList.length);
-              const rows = proj.rowPtr.length - 1;
-              let total = 0, hot = 0;
-              for (let b = 0; b < wordsList.length; b++) {
-                const r0 = Math.min(rows, subjStart + b * bucketSize);
-                const r1 = Math.min(rows, r0 + bucketSize);
-                let m = 0;
-                for (let r = r0; r < r1; r++) {
-                  for (let k = proj.rowPtr[r]; k < proj.rowPtr[r + 1]; k++) m += Math.abs(proj.values[k]);
-                }
-                mass[b] = m; total += m;
-              }
-              const avg = wordsList.length > 0 ? total / wordsList.length : 0;
-              if (avg > 0) { for (let b = 0; b < mass.length; b++) if (mass[b] > avg * 3) hot++; }
-              _wnMass = this._wnMassCache = { at: Date.now(), n: wordsList.length, mass, avg };
-              if (!this._wnLogOnce && avg > 0) {
-                this._wnLogOnce = true;
-                console.log(`[Cluster ${this.name}] WORDNORM: ON — homeostatic bucket-mass normalization at the emission argmax (avg bucket mass ${avg.toFixed(3)}, ${hot} buckets >3× avg get scaled, alpha ${_wnAlpha}). Kill switch: DREAM_WORDNORM=0.`);
-              }
-            }
-          } catch { _wnMass = null; /* no CSR readable — raw argmax, unchanged */ }
-        }
-      }
+      const bucketSize = this.wordBucketCellSizeFor();   // cells per word on the word_motor sheet (capacity check below)
       for (let b = 0; b < wordsList.length; b++) {
         // Filler-word guard — a bucket whose word is empty, pure
         // whitespace, or carries no word character must never win argmax
@@ -717,23 +532,7 @@ export const CLUSTER_EMIT_MIXIN = {
           }
           break;
         }
-        const bEnd = Math.min(subjEnd, bStart + bucketSize);
-        const cellCount = Math.max(1, bEnd - bStart);
-        // GATEGPU.2 — the card already computed this exact quotient
-        // (sum over [bStart,bEnd) ÷ the bucket's REAL span); otherwise sum here.
-        let mean;
-        if (bucketMeans) {
-          mean = b < bucketMeans.length ? bucketMeans[b] : 0;
-        } else {
-          let sum = 0;
-          for (let n = bStart; n < bEnd; n++) sum += wmOut[n];
-          mean = sum / cellCount;
-        }
-        // WORDNORM — divide an over-massed bucket's score by (mass/avg)^alpha;
-        // at/below-average buckets untouched (factor clamped to 1).
-        if (_wnMass && _wnMass.avg > 0 && _wnMass.mass[b] > _wnMass.avg) {
-          mean /= Math.pow(_wnMass.mass[b] / _wnMass.avg, _wnAlpha);
-        }
+        let mean = b < bucketMeans.length ? bucketMeans[b] : 0;
         // GW bias multiplier — boost the bucket whose word matches
         // the current workspace broadcast (continuity-of-thought
         // bias). Scales with ignition strength via
@@ -743,8 +542,13 @@ export const CLUSTER_EMIT_MIXIN = {
         // that was also the workspace broadcast got 1.6*0.7=1.12 net > 1 and
         // still lottery-won the next argmax — the repeat/stammer loop that reads
         // as salad. Compute recency FIRST; skip the boost when recent-content.
-        const _isRecentContent = recentLast4.has(wordsList[b]) && !FUNCTION_WORDS.has(wordsList[b]);
-        if (gwBoostWord && wordsList[b] === gwBoostWord && !_isRecentContent) mean *= gwBoostMul;
+        const _isRecent = recentLast4.has(wordsList[b]);
+        const _isRecentContent = _isRecent && !FUNCTION_WORDS.has(wordsList[b]);
+        // The boost lifts a word she has NOT just said, and only a word already
+        // scoring above zero: a taught next word leads its rivals by a fixed
+        // margin, and multiplying a word she just said (function words included)
+        // by up to 1.6 would carry it over that margin and repeat it.
+        if (gwBoostWord && wordsList[b] === gwBoostWord && !_isRecent && mean > 0) mean *= gwBoostMul;
         // 114.19fi.A.3 — repetition penalty: words emitted in last 4
         // ticks get downweighted 30% so the same word doesn't lottery-
         // win the next argmax in a row.
@@ -756,7 +560,7 @@ export const CLUSTER_EMIT_MIXIN = {
         // SPEAK.10b — reuse the recency flag computed above; a recent content
         // word is penalized AND unboosted, so its net multiplier can never exceed
         // REPETITION_PENALTY (0.7). Function words stay exempt (grammatical glue).
-        if (_isRecentContent) {
+        if (_isRecentContent && mean > 0) {
           mean *= REPETITION_PENALTY;
         }
         candidates.push({ word: wordsList[b], mean, idx: b });
@@ -764,13 +568,8 @@ export const CLUSTER_EMIT_MIXIN = {
       }
     }
 
-    // EMITWHY (2026-08-23) — the decisive diagnostic. Two hypotheses for the
-    // repeating thief words died on measurement (accumulated bucket mass:
-    // WORDNORM found the profile nearly UNIFORM, avg 1.501 with 2 hot buckets;
-    // question-independent currents: the donor demonstrably scatters the passed
-    // pre indices). So record what the argmax ACTUALLY saw — the top candidates
-    // with their means — and let the caller ask where the expected word ranked.
-    // Cheap: a partial top-5 scan over an array we already built.
+    // Record what the argmax actually saw — the top candidates with their
+    // means — so a caller can ask where the expected word ranked.
     {
       const top = [];
       for (const c of candidates) {
@@ -779,6 +578,15 @@ export const CLUSTER_EMIT_MIXIN = {
       }
       this._lastEmitTop = top;
       this._lastEmitCandidateCount = candidates.length;
+    }
+
+    // THE LINE IS FINISHED. "Finished" is a slot like any word's, taught where
+    // her lines end; when it outscores every word here she stops, and the
+    // sentence loop reads the terminator as the end of the line.
+    this._lastEmitEnd = false;
+    if (bucketMeans.end > 0 && bucketMeans.end >= bestMean) {
+      this._lastEmitEnd = true;
+      return '.';
     }
 
     // ─── Acceptance gate: two-level signal threshold ───
@@ -951,7 +759,12 @@ export const CLUSTER_EMIT_MIXIN = {
     // signal yet (very early) → hot. Composes with HB.4 (which damps the
     // PLASTICITY boost on incoherent output; this sharpens EMISSION as it settles).
     // Opt OUT with DREAM_ANNEAL_TEMP=0.
-    let temperature = typeof opts.temperature === 'number' ? opts.temperature : 0;
+    // The sampling temperature is in units of the teach margin (0.1 per active
+    // unit): a taught next word leads its nearest rival by that much, so at
+    // temperature 1 the rival is said about a quarter as often as the taught
+    // word. On the raw scale a temperature of 0.5–1 would flatten the top eight
+    // to near-equal odds and every sampled line would be a random pick of them.
+    let temperature = typeof opts.temperature === 'number' ? opts.temperature * 0.1 : 0;
     if (temperature > 0) {
       const _annealOff = (typeof process !== 'undefined' && !!process.env && process.env.DREAM_ANNEAL_TEMP === '0');
       if (!_annealOff) {
@@ -1008,6 +821,18 @@ export const CLUSTER_EMIT_MIXIN = {
     this._lastEmittedWord = bestWord;
     this._lastEmittedActivation = bestMean;
     this._lastEmittedBucketIdx = bestIdx;
+    // The said word lights its own cells on the word_motor sheet (and the word
+    // before it goes dark), so the sheet shows what she is saying.
+    if (this.lastSpikes && bestIdx >= 0) {
+      const _cell = this.wordBucketCellSizeFor();
+      const _lit = (i, v) => {
+        const a = wordMotor.start + i * _cell;
+        if (i >= 0 && a < wordMotor.end) this.lastSpikes.fill(v, a, Math.min(wordMotor.end, a + _cell));
+      };
+      if (typeof this._litWordSlot === 'number' && this._litWordSlot !== bestIdx) _lit(this._litWordSlot, 0);
+      _lit(bestIdx, 1);
+      this._litWordSlot = bestIdx;
+    }
     // 114.19fi.A.3 — push to recent-emissions ring buffer for next
     // call's repetition penalty. 8-entry rolling window.
     // 114.19fj.9 — opt-out for callers that manage the ring themselves
@@ -1348,9 +1173,8 @@ export const CLUSTER_EMIT_MIXIN = {
       // as the teach side writes it, and the next word is read off the card.
       // ⚠ This also removes every CPU cortex step from her speech.
       const _cur = this._brain && this._brain.curriculum;
-      const _taught = (this.size | 0) > 2_000_000 && _cur
-        && typeof _cur._dictionaryPatternFor === 'function' && typeof _cur._topKEmbedding === 'function'
-        && typeof _cur._writeTiledPattern === 'function';
+      const _taught = !!(_cur && typeof _cur._writeSpeechState === 'function'
+        && typeof _cur._writeConceptState === 'function' && typeof _cur._writeMeaningState === 'function');
       const _seedWord = words.length > 0 ? words[words.length - 1]
         : (opts.intentConcept || (typeof intentSeed === 'string'
           ? (intentSeed.replace(/_/g, ' ').toLowerCase().match(/[a-z]+/g) || []).filter((t) => t.length > 2).pop() : null));
@@ -1376,32 +1200,20 @@ export const CLUSTER_EMIT_MIXIN = {
       const _heardText = (typeof opts.questionText === 'string' && opts.questionText) ? opts.questionText : '';
       const _canState = _taught && typeof _cur._writeSpeechState === 'function';
       if (_canState && words.length === 0 && _heardText) {
-        _cur._writeSpeechState(_heardText, []);
+        _cur._writeSpeechState(_heardText, [], { unitsOnly: true });
       } else if (_canState && words.length > 0) {
-        _cur._writeSpeechState(_heardText, words);
+        _cur._writeSpeechState(_heardText, words, { unitsOnly: true });
       } else if (_taught && _seedWord) {
-        // a thought's opening concept word (no sentence yet): that word's code
-        const semR = this.regions.sem;
-        this.lastSpikes.fill(0, semR.start, semR.end);
-        _cur._writeTiledPattern(semR, _cur._topKEmbedding(_cur._dictionaryPatternFor(_seedWord), 8), true, { noCpu: false });
+        // A thought opens on the thing in mind: the state the naming lesson
+        // teaches in ("this thing → its word").
+        _cur._writeConceptState(_seedWord);
       } else if (_taught && _seedEmb) {
-        const semR = this.regions.sem;
-        this.lastSpikes.fill(0, semR.start, semR.end);
-        _cur._writeTiledPattern(semR, _cur._topKEmbedding(Float64Array.from(_seedEmb), 8), true, { noCpu: false });
-        // ⭐ AND HER SELF BESIDE IT. Most human thoughts are the topic as it
-        // touches the self, so her own "i" pattern rides the second half of sem
-        // (the offset the QA trainer uses for a key word) — the topic leads, the
-        // self colours it, and nothing forces the thought to open on "i".
-        if (typeof _cur._writeTiledPatternOffset === 'function') {
-          _cur._writeTiledPatternOffset(semR, _cur._dictionaryPatternFor('i'), false, 0.5);
-        }
+        // A topic with no word attached (a mood, a memory): its meaning alone,
+        // so she names what the meaning is most like.
+        _cur._writeMeaningState(_seedEmb);
       } else if (_taught) {
-        // ⛔ NO TICK PATH AT FULL SCALE, EVEN WITHOUT A SEED WORD. An unseeded
-        // thought (seed=mood/learning) used to tick, and every tick shipped the
-        // cortex's active cells to the card as a ~5 MB type-2 propagate. Measured
-        // 2026-11-25: a string of 5 MB sends, rtt 3.3 s, then `write ECONNRESET`
-        // and the pod dropped. The first word reads whatever sem already holds
-        // (the injected intent); every later word has its seed.
+        // No seed at all: she says whatever meaning sem already holds (the
+        // injected intent), or nothing when nothing is in mind. No cortex ticks.
       } else {
         for (let t = 0; t < TICKS_PER_WORD; t++) {
           if (checkAborted()) {

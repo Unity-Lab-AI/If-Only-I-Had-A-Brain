@@ -2421,17 +2421,17 @@ function traceField(rec, opts = {}) {
   const gh = Math.max(8, Math.round(H >= W ? target : target * (H / W)));
   const px = (gx) => Math.min(W - 1, Math.max(0, Math.round(gx / (gw - 1) * (W - 1))));
   const py = (gy) => Math.min(H - 1, Math.max(0, Math.round(gy / (gh - 1) * (H - 1))));
-  const L = new Float64Array(gw * gh);
+  const L2 = new Float64Array(gw * gh);
   for (let gy = 0; gy < gh; gy++) {
     const sy = py(gy);
-    for (let gx = 0; gx < gw; gx++) L[gy * gw + gx] = planes.Y[sy * W2 + px(gx)];
+    for (let gx = 0; gx < gw; gx++) L2[gy * gw + gx] = planes.Y[sy * W2 + px(gx)];
   }
   const G = new Float64Array(gw * gh);
   let gmax = 1e-6;
   for (let y = 1; y < gh - 1; y++) for (let x = 1; x < gw - 1; x++) {
     const i = y * gw + x;
-    const gxv = -L[i - gw - 1] - 2 * L[i - 1] - L[i + gw - 1] + L[i - gw + 1] + 2 * L[i + 1] + L[i + gw + 1];
-    const gyv = -L[i - gw - 1] - 2 * L[i - gw] - L[i - gw + 1] + L[i + gw - 1] + 2 * L[i + gw] + L[i + gw + 1];
+    const gxv = -L2[i - gw - 1] - 2 * L2[i - 1] - L2[i + gw - 1] + L2[i - gw + 1] + 2 * L2[i + 1] + L2[i + gw + 1];
+    const gyv = -L2[i - gw - 1] - 2 * L2[i - gw] - L2[i - gw + 1] + L2[i + gw - 1] + 2 * L2[i + gw] + L2[i + gw + 1];
     const m = Math.sqrt(gxv * gxv + gyv * gyv);
     G[i] = m;
     if (m > gmax) gmax = m;
@@ -5645,554 +5645,6 @@ ${vis}${status.visionPaused ? "\n\n\u26A0 vision paused" : ""}`;
 };
 var sensoryStatus = new SensoryStatusUI();
 
-// ../js/brain/embeddings.js
-var EMBED_DIM = 300;
-var GLOVE_LOCAL_PATH = "corpora/glove.6B.300d.txt";
-var GLOVE_BINARY_PATH = "corpora/glove.6B.300d.bin";
-var GLOVE_BINARY_MAGIC = "UGLOVE01";
-var GLOVE_BINARY_VERSION = 2;
-var GLOVE_BINARY_HEADER_LEN = 40;
-var GLOVE_URLS = (() => {
-  if (typeof location !== "undefined" && location.hostname && location.hostname !== "localhost" && location.hostname !== "127.0.0.1" && location.hostname !== "[::1]" && location.protocol !== "file:") {
-    return [`${location.origin}/corpora/glove.6B.300d.txt`];
-  }
-  return ["http://localhost:7525/corpora/glove.6B.300d.txt"];
-})();
-var SemanticEmbeddings = class {
-  constructor() {
-    this._embeddings = /* @__PURE__ */ new Map();
-    this._dim = EMBED_DIM;
-    this._loaded = false;
-    this._loadingPromise = null;
-    this._refinements = /* @__PURE__ */ new Map();
-  }
-  /**
-   * Load full GloVe 300d vocabulary (~400K words) from local disk.
-   *
-   * The server reads the BINARY table (`corpora/glove.6B.300d.bin`, ~485 MB,
-   * built from the text by `unity-glove ensure`); the browser lane still fetches
-   * the text over HTTP. The text file remains the source of truth — see
-   * `_loadBinaryTable`, which refuses a cache whose source has changed.
-   *
-   * ⛔ REQUIRED, NOT PREFERRED (2026-09-02). This doc block used to say hash
-   * embeddings "remain as a last-resort floor when no GloVe is reachable, but
-   * the foundation lift assumes GloVe is present in production" — a requirement
-   * and its own exception in one sentence, and the catch below took the
-   * exception. On the brain the table is now mandatory and its absence stops
-   * boot. Subword n-gram vectors serve exactly one purpose: encoding a word the
-   * table does not contain (`getEmbedding` OOV). They are not a substitute for
-   * the table, because they carry spelling similarity, not meaning.
-   *
-   * ⚠ GloVe was NOT removed by the text-AI purge and is not a language model.
-   * It is a static word→vector table — sensory encoding of the same class as a
-   * dictionary definition. What the purge removed was every path that could
-   * PRODUCE TEXT: the transformer backend, the chat fetches, the vision
-   * describer, and later the dictionary retrieval lane and the emission oracle.
-   *
-   * No vocabulary cap. The full 400k-word file loads if reachable.
-   * Memory at 400k × 300d × 4 bytes = ~480 MB on the server, which is
-   * acceptable for the brain server hardware tier. Browser receives a
-   * server-precomputed corpus-word subset via `/api/glove-subset.json`
-   * (much smaller, only the words actually seen in the loaded corpora).
-   */
-  async loadPreTrained() {
-    if (this._loadingPromise) return this._loadingPromise;
-    this._loadingPromise = this._doLoad();
-    return this._loadingPromise;
-  }
-  async _doLoad() {
-    const isNode = typeof process !== "undefined" && process.versions && process.versions.node && typeof window === "undefined";
-    try {
-      console.log(`[Embeddings] Loading GloVe ${EMBED_DIM}d vectors (full vocab, no cap)...`);
-      let text = null;
-      if (isNode) {
-        try {
-          const count2 = await this._loadBinaryTable();
-          this._loaded = true;
-          console.log(`[Embeddings] Loaded ${count2.toLocaleString()} word vectors (${EMBED_DIM}d) from the binary table`);
-          return count2;
-        } catch (err) {
-          throw new Error(`Server GloVe load failed: ${err.message}`);
-        }
-      } else {
-        let response = null;
-        for (const url of GLOVE_URLS) {
-          let controller = null;
-          let timer = null;
-          try {
-            controller = new AbortController();
-            timer = setTimeout(() => controller.abort(), 3e3);
-            response = await fetch(url, { signal: controller.signal });
-            clearTimeout(timer);
-            if (response.ok) break;
-            response = null;
-          } catch (err) {
-            if (timer) clearTimeout(timer);
-            console.log(`[Embeddings] GloVe fetch aborted/failed at ${url}: ${err?.name || err?.message || err}`);
-            continue;
-          }
-        }
-        if (!response) throw new Error("All GloVe URLs failed in browser path");
-        const bodyController = new AbortController();
-        const bodyTimer = setTimeout(() => bodyController.abort(), 3e4);
-        try {
-          text = await response.text();
-          clearTimeout(bodyTimer);
-        } catch (err) {
-          clearTimeout(bodyTimer);
-          throw new Error(`GloVe body read failed: ${err?.message || err}`);
-        }
-      }
-      const lines = text.split("\n");
-      let count = 0;
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        const parts = line.split(" ");
-        if (parts.length !== EMBED_DIM + 1) continue;
-        const word = parts[0].toLowerCase();
-        const vec = new Float32Array(EMBED_DIM);
-        for (let i = 0; i < EMBED_DIM; i++) {
-          vec[i] = parseFloat(parts[i + 1]) || 0;
-        }
-        let norm = 0;
-        for (let i = 0; i < EMBED_DIM; i++) norm += vec[i] * vec[i];
-        norm = Math.sqrt(norm) || 1;
-        for (let i = 0; i < EMBED_DIM; i++) vec[i] /= norm;
-        this._embeddings.set(word, vec);
-        count++;
-      }
-      this._loaded = true;
-      console.log(`[Embeddings] Loaded ${count.toLocaleString()} word vectors (${EMBED_DIM}d)`);
-      return count;
-    } catch (err) {
-      const isNodeRuntime = typeof process !== "undefined" && process.versions && process.versions.node && typeof window === "undefined";
-      this._loaded = false;
-      if (isNodeRuntime) {
-        console.error(`[Embeddings] \u26D4 FATAL \u2014 GloVe ${EMBED_DIM}d could not be loaded: ${err?.message || err}`);
-        console.error("[Embeddings] \u26D4 The brain does not boot without it (NO FALLBACKS). Subword n-gram vectors encode spelling, not meaning, and a walk trained on them deposits real weight against arbitrary positions.");
-        console.error("[Embeddings] \u26D4 Place glove.6B.300d.txt at corpora/glove.6B.300d.txt \u2014 https://nlp.stanford.edu/data/glove.6B.zip");
-        console.error("[Embeddings] \u26D4 Then build the binary table the server reads: `unity-glove ensure corpora/glove.6B.300d.txt corpora/glove.6B.300d.bin`. The press does this for you; by hand it is `cargo build --release -p unity-weights --bin unity-glove` first.");
-        throw err;
-      }
-      console.warn(`[Embeddings] GloVe ${EMBED_DIM}d unreachable in the browser lane \u2014 the local visitor brain continues on subword n-gram vectors, which encode spelling and not meaning. This lane is filed for removal.`);
-      return 0;
-    }
-  }
-  /**
-   * Read `corpora/glove.6B.300d.bin` and populate `this._embeddings`.
-   *
-   * ⭐ THE WHOLE METHOD IS A READ AND A LOOP OF VIEWS. Every vector is a
-   * `Float32Array` window onto the one buffer — no per-word allocation, no
-   * copying, no parsing. That is why it is ~170x faster than the text path it
-   * replaced and holds ~485 MB off-heap instead of ~1,350 MB on it.
-   *
-   * ⛔⛔ NO FALLBACK TO THE TEXT FILE, DELIBERATELY. A "well, parse the text
-   * then" branch would be a capability fallback: the table would load, she would
-   * boot, and the only symptom of a broken deploy step would be a 20-second boot
-   * nobody looks at. The cache is either present, current and correct, or the
-   * boot stops and says which of the three failed. The press builds it
-   * (`deploy/self-update.sh`) and aborts BEFORE restarting anything if it
-   * cannot — so a missing converter can never take her down mid-run.
-   *
-   * @returns {Promise<number>} vectors loaded
-   */
-  async _loadBinaryTable() {
-    let fs, path;
-    try {
-      fs = await import("fs");
-      path = await import("path");
-    } catch (err) {
-      throw new Error(`the binary embedding table needs Node's fs/path and neither is available here: ${err?.message || err}`);
-    }
-    const resolve = (rel) => {
-      const candidates = [
-        rel,
-        path.join(process.cwd(), rel),
-        path.join(process.cwd(), "..", rel),
-        path.join(process.cwd(), "server", rel)
-      ];
-      for (const p of candidates) {
-        if (fs.existsSync(p)) return p;
-      }
-      return null;
-    };
-    const binPath = resolve(GLOVE_BINARY_PATH);
-    if (!binPath) {
-      throw new Error(
-        `the binary embedding table is missing (${GLOVE_BINARY_PATH}). It is built from the text table by the Rust converter: \`unity-glove ensure ${GLOVE_LOCAL_PATH} ${GLOVE_BINARY_PATH}\` (cargo build --release -p unity-weights --bin unity-glove). The press does this automatically; if you are running by hand, run it once.`
-      );
-    }
-    console.log(`[Embeddings] Reading ${binPath} (binary table)...`);
-    const started = Date.now();
-    const buf = fs.readFileSync(binPath);
-    if (buf.length < GLOVE_BINARY_HEADER_LEN || buf.toString("latin1", 0, 8) !== GLOVE_BINARY_MAGIC) {
-      throw new Error(`${binPath} is not a ${GLOVE_BINARY_MAGIC} table (magic mismatch) \u2014 delete it and let the press rebuild it`);
-    }
-    const version = buf.readUInt32LE(8);
-    const dim = buf.readUInt32LE(12);
-    const count = buf.readUInt32LE(16);
-    const vocabBytes = buf.readUInt32LE(20);
-    const srcBytes = Number(buf.readBigUInt64LE(24));
-    if (version !== GLOVE_BINARY_VERSION) {
-      throw new Error(`${binPath} is format version ${version}; this loader reads ${GLOVE_BINARY_VERSION}. Rebuild it with \`unity-glove ensure\` rather than reading it at the wrong layout.`);
-    }
-    if (dim !== EMBED_DIM) {
-      throw new Error(`${binPath} holds ${dim}-dimensional vectors; this brain is built for ${EMBED_DIM}. Every buffer downstream is sized on ${EMBED_DIM}.`);
-    }
-    const textPath = resolve(GLOVE_LOCAL_PATH);
-    if (textPath) {
-      const now = fs.statSync(textPath).size;
-      if (now !== srcBytes) {
-        throw new Error(
-          `${binPath} is STALE \u2014 built from a ${srcBytes}-byte source, but ${textPath} is now ${now} bytes. Rebuild it: \`unity-glove ensure ${GLOVE_LOCAL_PATH} ${GLOVE_BINARY_PATH}\`.`
-        );
-      }
-    }
-    const vocabStart = GLOVE_BINARY_HEADER_LEN + count * 4;
-    const vecBase = vocabStart + vocabBytes;
-    const expected = vecBase + count * dim * 4;
-    if (buf.length !== expected) {
-      throw new Error(
-        `${binPath} is ${buf.length} bytes; the header (count ${count} x dim ${dim}, vocab ${vocabBytes}) describes exactly ${expected}. Off by ${buf.length - expected}. This is a truncated transfer or a layout disagreement \u2014 either way the table would be read at the wrong offsets, so it is refused.`
-      );
-    }
-    const vocab = buf.toString("utf8", vocabStart, vecBase).split("\0");
-    const absBase = buf.byteOffset + vecBase;
-    if (absBase % 4 !== 0) {
-      throw new Error(`the matrix lands at absolute byte ${absBase}, which is not 4-aligned \u2014 a Float32Array view is impossible here`);
-    }
-    const ab = buf.buffer;
-    const stride = dim;
-    for (let i = 0; i < count; i++) {
-      const word = vocab[i];
-      if (word === void 0 || word === "") continue;
-      this._embeddings.set(word, new Float32Array(ab, absBase + i * stride * 4, dim));
-    }
-    console.log(`[Embeddings]   ${this._embeddings.size.toLocaleString()} vectors mapped in ${Date.now() - started} ms (${(buf.length / 1048576).toFixed(0)} MB, source ${srcBytes.toLocaleString()} bytes)`);
-    return this._embeddings.size;
-  }
-  /**
-   * Returns the subset of the loaded GloVe vocabulary that
-   * matches a given word set. Used by the server to pre-compute a
-   * `/api/glove-subset.json` payload for the browser to fetch instead
-   * of pulling the full 480 MB file.
-   */
-  getSubsetForWords(words) {
-    const subset = {};
-    for (const word of words) {
-      const w = String(word).toLowerCase().trim();
-      const v = this._embeddings.get(w);
-      if (v) subset[w] = Array.from(v);
-    }
-    return subset;
-  }
-  /**
-   * Browser-side bulk load of a server-provided subset.
-   * Replaces _doLoad's path when running in a browser that's connecting
-   * to a server — the server precomputes the corpus-word subset and
-   * the browser fetches it as a single small JSON file.
-   */
-  loadSubset(subset) {
-    let count = 0;
-    for (const [word, arr] of Object.entries(subset)) {
-      if (!Array.isArray(arr) || arr.length !== EMBED_DIM) continue;
-      this._embeddings.set(word, new Float32Array(arr));
-      count++;
-    }
-    if (count > 0) this._loaded = true;
-    console.log(`[Embeddings] Loaded ${count.toLocaleString()} word vectors from server subset (${EMBED_DIM}d)`);
-    return count;
-  }
-  /**
-   * Get embedding for a word.
-   * Returns pre-trained + learned refinement if available.
-   *
-   * A word the table does not contain is encoded by subword n-gram sum
-   * (`_subwordEmbedding`). That is the DEFINED ENCODING for an out-of-vocabulary
-   * word — the only thing available about a word nobody has a vector for is its
-   * shape — not a fallback for a missing table. The table itself is mandatory;
-   * see `loadPreTrained`.
-   *
-   * @param {string} word
-   * @returns {Float32Array} — EMBED_DIM-dimensional vector (300d)
-   */
-  getEmbedding(word) {
-    word = word.toLowerCase().trim();
-    if (this.bindBlocked && this.bindBlocked.has(word)) return new Float32Array(EMBED_DIM);
-    let vec = this._embeddings.get(word);
-    if (!vec) {
-      vec = this._subwordEmbedding(word);
-    }
-    const delta = this._refinements.get(word);
-    if (delta) {
-      const refined = new Float32Array(EMBED_DIM);
-      for (let i = 0; i < EMBED_DIM; i++) {
-        refined[i] = vec[i] + delta[i];
-      }
-      let norm = 0;
-      for (let i = 0; i < EMBED_DIM; i++) norm += refined[i] * refined[i];
-      norm = Math.sqrt(norm) || 1;
-      for (let i = 0; i < EMBED_DIM; i++) refined[i] /= norm;
-      return refined;
-    }
-    return vec;
-  }
-  /**
-   * Get embedding for a sentence (average of word vectors).
-   * @param {string} text
-   * @returns {Float32Array}
-   */
-  getSentenceEmbedding(text) {
-    const words = text.toLowerCase().replace(/[^a-z' -]/g, " ").split(/\s+/).filter((w) => w.length >= 2 || w === "i" || w === "a");
-    if (words.length === 0) return new Float32Array(EMBED_DIM);
-    const ORDER_WEIGHT = 0.5;
-    const ORDER_STEP = 37;
-    const avg = new Float32Array(EMBED_DIM);
-    for (let p = 0; p < words.length; p++) {
-      const vec = this.getEmbedding(words[p]);
-      const shift = (p + 1) * ORDER_STEP % EMBED_DIM;
-      for (let i = 0; i < EMBED_DIM; i++) {
-        avg[i] += vec[i];
-        avg[(i + shift) % EMBED_DIM] += ORDER_WEIGHT * vec[i];
-      }
-    }
-    let norm = 0;
-    for (let i = 0; i < EMBED_DIM; i++) {
-      avg[i] /= words.length;
-      norm += avg[i] * avg[i];
-    }
-    norm = Math.sqrt(norm) || 1;
-    for (let i = 0; i < EMBED_DIM; i++) avg[i] /= norm;
-    return avg;
-  }
-  /**
-   * Map embedding vector to cortex neuron currents.
-   * The 50d vector maps to cortex Wernicke's area (language neurons).
-   * Each dimension drives a group of cortex neurons.
-   *
-   * @param {Float32Array} embedding — 50d vector
-   * @param {number} cortexSize — total cortex neurons
-   * @param {number} langStart — start index of Wernicke's area
-   * @returns {Float64Array} — current injection for cortex
-   */
-  mapToCortex(embedding, cortexSize = 300, langStart = 150) {
-    const langSize = cortexSize - langStart;
-    const currents = new Float64Array(cortexSize);
-    const groupSize = Math.max(1, Math.floor(langSize / EMBED_DIM));
-    for (let d = 0; d < EMBED_DIM; d++) {
-      const value = embedding[d] * 8;
-      const startNeuron = langStart + d * groupSize;
-      for (let n = 0; n < groupSize; n++) {
-        const idx = startNeuron + n;
-        if (idx < cortexSize) {
-          currents[idx] = value;
-        }
-      }
-    }
-    return currents;
-  }
-  /**
-   * REVERSE MAPPING — read semantic state back OUT of cortex neural activation.
-   *
-   * This is the mathematical inverse of `mapToCortex`. It's the read-side
-   * of the semantic input/output loop:
-   *
-   *   word → getEmbedding → mapToCortex → inject as neural currents
-   *        → cortex LIF dynamics + modulators (emotional gate, Ψ, etc)
-   *        → lastSpikes / voltages
-   *        → cortexToEmbedding                             ← THIS METHOD
-   *        → 50-dim semantic vector representing "what Unity's cortex
-   *          currently holds in Wernicke's area" in GloVe space
-   *        → cosine against candidate word embeddings
-   *        → pick the word that semantically matches the cortex state
-   *
-   * The read uses the SAME group-per-dimension layout as the write, so
-   * the round-trip preserves the semantic structure (after neural
-   * transformation through LIF integration + modulators). Each group of
-   * groupSize neurons averages to ONE embedding dimension value.
-   *
-   * Output is L2-normalized so cosine similarity against word embeddings
-   * (which are all L2-normalized by GloVe loader) produces values in
-   * [-1, 1] that reflect semantic alignment.
-   *
-   * @param {Float64Array|Uint8Array} spikes — cluster.lastSpikes
-   * @param {Float64Array} voltages — cluster voltages (for sub-threshold info)
-   * @param {number} cortexSize — total cortex neuron count (default 300)
-   * @param {number} langStart — first neuron of the language region (default 150)
-   * @returns {Float64Array} — 50d L2-normalized semantic pattern
-   */
-  cortexToEmbedding(spikes, voltages, cortexSize = 300, langStart = 150) {
-    const langSize = cortexSize - langStart;
-    const groupSize = Math.max(1, Math.floor(langSize / EMBED_DIM));
-    const out = new Float64Array(EMBED_DIM);
-    for (let d = 0; d < EMBED_DIM; d++) {
-      const startNeuron = langStart + d * groupSize;
-      let sum = 0;
-      let count = 0;
-      for (let n = 0; n < groupSize; n++) {
-        const idx = startNeuron + n;
-        if (idx >= cortexSize) break;
-        if (spikes && spikes[idx]) {
-          sum += 1;
-        } else if (voltages) {
-          sum += (voltages[idx] + 70) / 20;
-        }
-        count++;
-      }
-      out[d] = count > 0 ? sum / count : 0;
-    }
-    let norm = 0;
-    for (let i = 0; i < EMBED_DIM; i++) norm += out[i] * out[i];
-    norm = Math.sqrt(norm) || 1;
-    for (let i = 0; i < EMBED_DIM; i++) out[i] /= norm;
-    return out;
-  }
-  /**
-   * Cosine similarity between two embeddings.
-   * @returns {number} — -1 to 1
-   */
-  similarity(a, b) {
-    let dot = 0, normA = 0, normB = 0;
-    for (let i = 0; i < EMBED_DIM; i++) {
-      dot += a[i] * b[i];
-      normA += a[i] * a[i];
-      normB += b[i] * b[i];
-    }
-    return dot / (Math.sqrt(normA * normB) || 1);
-  }
-  /**
-   * Find the k most similar words to a given embedding.
-   * @param {Float32Array} embedding
-   * @param {number} k
-   * @returns {Array<{word: string, similarity: number}>}
-   */
-  findSimilar(embedding, k = 5) {
-    const results = [];
-    for (const [word, vec] of this._embeddings) {
-      const sim = this.similarity(embedding, vec);
-      results.push({ word, similarity: sim });
-    }
-    for (const [word] of this._refinements) {
-      if (!this._embeddings.has(word)) {
-        const vec = this.getEmbedding(word);
-        results.push({ word, similarity: this.similarity(embedding, vec) });
-      }
-    }
-    results.sort((a, b) => b.similarity - a.similarity);
-    return results.slice(0, k);
-  }
-  /**
-   * Learn from context — refine a word's embedding based on brain state.
-   * The brain's cortex activation at the time of hearing/speaking a word
-   * shifts the embedding toward the current context.
-   *
-   * @param {string} word
-   * @param {Float32Array} contextEmbedding — average of surrounding words
-   * @param {number} lr — learning rate (0.01 = gentle shift)
-   */
-  refineFromContext(word, contextEmbedding, lr = 0.01) {
-    word = word.toLowerCase().trim();
-    if (!this._refinements.has(word)) {
-      this._refinements.set(word, new Float32Array(EMBED_DIM));
-    }
-    const delta = this._refinements.get(word);
-    const base = this._embeddings.get(word) || this._subwordEmbedding(word);
-    const mean = this._ctxMean || (this._ctxMean = new Float32Array(EMBED_DIM));
-    this._ctxMeanN = (this._ctxMeanN || 0) + 1;
-    const invN = 1 / this._ctxMeanN;
-    let cm = 0;
-    const centred = new Float32Array(EMBED_DIM);
-    for (let i = 0; i < EMBED_DIM; i++) {
-      const c = contextEmbedding[i] || 0;
-      mean[i] += (c - mean[i]) * invN;
-      centred[i] = c - mean[i];
-      cm += centred[i] * centred[i];
-    }
-    cm = Math.sqrt(cm) || 1;
-    for (let i = 0; i < EMBED_DIM; i++) {
-      delta[i] += lr * (centred[i] / cm - (base[i] + delta[i]));
-    }
-    const CAP = 0.5;
-    let dm = 0;
-    for (let i = 0; i < EMBED_DIM; i++) dm += delta[i] * delta[i];
-    dm = Math.sqrt(dm);
-    if (dm > CAP) {
-      const s = CAP / dm;
-      for (let i = 0; i < EMBED_DIM; i++) delta[i] *= s;
-    }
-  }
-  /**
-   * Subword-based embedding for unknown words (fastText-style).
-   * Sum of n-gram hash contributions (N = 3..5) over boundary-marked
-   * word `<word>`. Deterministic — same word always produces same
-   * vector. Words that share character n-grams share feature dims so
-   * "cat" ↔ "cats" cosine > "cat" ↔ "xyz" cosine, giving the cortex
-   * usable structure even without real GloVe vectors.
-   */
-  _subwordEmbedding(word) {
-    const vec = new Float32Array(EMBED_DIM);
-    const w = `<${word}>`;
-    const MIN_N = 3;
-    const MAX_N = 5;
-    for (let n = MIN_N; n <= MAX_N; n++) {
-      if (w.length < n) continue;
-      for (let i = 0; i <= w.length - n; i++) {
-        const gram = w.slice(i, i + n);
-        let h = 5381;
-        for (let c = 0; c < gram.length; c++) {
-          h = (h << 5) + h + gram.charCodeAt(c) | 0;
-        }
-        for (let k = 0; k < 4; k++) {
-          h = h << 13 ^ h | 0;
-          h = h >> 17 ^ h | 0;
-          h = h << 5 ^ h | 0;
-          const idx = (h >>> 0) % EMBED_DIM;
-          const sign = (h >>> 16 & 1) === 0 ? 1 : -1;
-          vec[idx] += sign;
-        }
-      }
-    }
-    let norm = 0;
-    for (let i = 0; i < EMBED_DIM; i++) norm += vec[i] * vec[i];
-    norm = Math.sqrt(norm) || 1;
-    for (let i = 0; i < EMBED_DIM; i++) vec[i] /= norm;
-    return vec;
-  }
-  // ── Serialization ───────────────────────────────────────────────
-  /**
-   * Serialize learned refinements for persistence.
-   */
-  serializeRefinements() {
-    const data = {};
-    for (const [word, delta] of this._refinements) {
-      data[word] = Array.from(delta);
-    }
-    return data;
-  }
-  /**
-   * Load learned refinements from persistence.
-   */
-  loadRefinements(data) {
-    if (!data) return;
-    for (const [word, arr] of Object.entries(data)) {
-      this._refinements.set(word, new Float32Array(arr));
-    }
-    console.log(`[Embeddings] Loaded ${this._refinements.size} learned refinements`);
-  }
-  /**
-   * Get stats.
-   */
-  get stats() {
-    return {
-      pretrained: this._embeddings.size,
-      learned: this._refinements.size,
-      dim: EMBED_DIM,
-      loaded: this._loaded
-    };
-  }
-};
-var sharedEmbeddings = new SemanticEmbeddings();
-
 // ../js/ui/brain-event-detectors.js
 var CLUSTER_IDX = {
   cortex: 0,
@@ -6598,7 +6050,215 @@ function detectBrainEvents(currentState, previousState, history2) {
   return events;
 }
 var BRAIN_EVENT_CATALOG = DETECTORS.map((d) => d.name || "anonymous");
-var CLUSTER_KEYS = ["cortex", "hippocampus", "amygdala", "basalGanglia", "cerebellum", "hypothalamus", "mystery"];
+
+// ../js/ui/mind-moments.js
+var TOPICS = [
+  ["letter-sound", "letter sounds"],
+  ["phon", "letter sounds"],
+  ["alphabet", "the alphabet"],
+  ["rhyme", "rhymes"],
+  ["spell", "spelling"],
+  ["introduc", "introducing herself"],
+  ["self", "who she is"],
+  ["biograph", "her own life story"],
+  ["conv", "talking with people"],
+  ["reply", "answering people"],
+  ["question", "asking and answering questions"],
+  ["transition", "which word comes next"],
+  ["sentence", "how sentences go"],
+  ["struct", "how sentences are built"],
+  ["stories", "stories"],
+  ["story", "stories"],
+  ["def", "what words mean"],
+  ["vocab", "new words"],
+  ["emission", "saying words out loud"],
+  ["count", "counting"],
+  ["number", "numbers"],
+  ["add", "adding"],
+  ["subtract", "taking away"],
+  ["shape", "shapes"],
+  ["pattern", "patterns"],
+  ["measure", "measuring"],
+  ["time", "telling time"],
+  ["money", "money"],
+  ["color", "colors"],
+  ["colour", "colors"],
+  ["art", "art"],
+  ["music", "music"],
+  ["animal", "animals"],
+  ["plant", "plants"],
+  ["weather", "the weather"],
+  ["body", "her body"],
+  ["health", "staying healthy"],
+  ["family", "her family"],
+  ["friend", "friends"],
+  ["feel", "feelings"],
+  ["emotion", "feelings"],
+  ["rule", "rules"],
+  ["safety", "staying safe"],
+  ["game", "games"],
+  ["grammar", "grammar"],
+  ["life", "her own life"]
+];
+var SUBJECTS = [
+  ["ela", "reading"],
+  ["math", "math"],
+  ["science", "science"],
+  ["sci", "science"],
+  ["social", "social studies"],
+  ["soc", "social studies"],
+  ["art", "art"],
+  ["life", "life"],
+  ["music", "music"],
+  ["health", "health"],
+  ["pe", "PE"],
+  ["coding", "coding"]
+];
+function readLessonLabel(label) {
+  const raw = String(label || "").replace(/#.*$/, "");
+  const low = raw.toLowerCase();
+  const parts = low.split(/[^a-z]+/).filter(Boolean);
+  let subject = null;
+  for (const [k, v] of SUBJECTS) if (parts.includes(k)) {
+    subject = v;
+    break;
+  }
+  const pre = /^precell-[a-z]+-(?:pre-k|[a-z0-9]+)-([a-z][a-z'-]*)$/.exec(low);
+  if (pre) return { word: pre[1], subject, topic: "what words mean" };
+  for (const [k, v] of TOPICS) if (low.includes(k)) return { topic: v, subject };
+  return { topic: null, subject };
+}
+var plural = (n, one, many) => `${Number(n).toLocaleString()} ${Number(n) === 1 ? one : many}`;
+var inClass = (s) => s ? ` for ${s}` : "";
+function momentFromLesson(evt) {
+  if (!evt || typeof evt.label !== "string") return null;
+  const d = evt.detail || {};
+  const head = evt.label.split(":")[0].trim().toUpperCase();
+  const L2 = readLessonLabel(d.label || d.cellKey || evt.label.split(":").slice(1).join(":").split("\xB7")[0].trim());
+  switch (head) {
+    case "WORD-INT START":
+      return d.word ? { kind: "word", rank: 9, icon: "\u{1F524}", title: "sounding it out", line: `Working out the word \u201C${d.word}\u201D \u2014 its letters, its sounds, what it means.`, cluster: 7 } : null;
+    case "ASSOC START":
+      if (L2.word) return { kind: "meaning", rank: 8, icon: "\u{1F4D6}", title: "a new word", line: `Learning what \u201C${L2.word}\u201D means${inClass(L2.subject)}.`, cluster: 9 };
+      if (!L2.topic) return null;
+      return { kind: "practise:" + L2.topic, rank: 3, icon: "\u270F\uFE0F", title: "practising", line: `Practising ${L2.topic}${d.pairs ? ` \u2014 ${plural(d.pairs, "thing", "things")} to get right` : ""}.`, cluster: 9 };
+    case "Q-A START":
+      return { kind: "qa", rank: 5, icon: "\u{1F64B}", title: "question time", line: `Practising how to answer ${plural(d.pairs || 0, "question", "questions")}${inClass(L2.subject)}.`, cluster: 9 };
+    case "VOCAB-LIST START":
+      return { kind: "vocab-start", rank: 6, icon: "\u{1F4DA}", title: "new words", line: `${plural(d.total || 0, "new word", "new words")} to learn${inClass(L2.subject)}.`, cluster: 9 };
+    case "VOCAB-LIST DONE":
+      return { kind: "vocab-done", rank: 6, icon: "\u2705", title: "words learned", line: `Finished a word list \u2014 ${plural(d.taught || 0, "word", "words")} in.`, cluster: 9 };
+    case "USAGE START":
+      return { kind: "usage", rank: 4, icon: "\u{1F440}", title: "reading", line: "Reading how words are used in real sentences.", cluster: 9 };
+    case "STRUCT START":
+      return { kind: "struct", rank: 4, icon: "\u{1F9E9}", title: "sentence building", line: "Learning how a sentence is put together.", cluster: 13 };
+    case "METHOD START":
+      return { kind: "method", rank: 5, icon: "\u{1F914}", title: "show your work", line: `Being asked HOW she would work something out \u2014 ${plural(d.count || 0, "question", "questions")}.`, cluster: 13 };
+    case "METHOD DONE":
+      return d.total > 0 ? { kind: "method-done", rank: 7, icon: "\u{1F4DD}", title: "explained her thinking", line: `Explained her thinking on ${d.passed} of ${plural(d.total, "question", "questions")}.`, cluster: 13 } : null;
+    case "VOCAB GAP": {
+      const miss = Array.isArray(d.missing) ? d.missing.slice(0, 4) : [];
+      return miss.length ? { kind: "vocab-gap", rank: 7, icon: "\u2753", title: "words she does not know yet", line: `This class uses words she has not learned yet: ${miss.join(", ")}${d.missing.length > miss.length ? "\u2026" : ""}`, cluster: 9 } : null;
+    }
+    case "VOCAB OK":
+      return { kind: "vocab-ok", rank: 6, icon: "\u{1F31F}", title: "ready for class", line: `She knows every word this class needs${d.required ? ` \u2014 all ${Number(d.required).toLocaleString()}` : ""}.`, cluster: 9 };
+    default: {
+      const at = /^attend\s+"([^"]+)"/.exec(evt.label);
+      if (at && evt.type === "attention") return { kind: "attend", rank: 2, icon: "\u{1F3AF}", title: "paying attention", line: `Her attention landed on \u201C${at[1]}\u201D.`, cluster: 15 };
+      return null;
+    }
+  }
+}
+var SAY = {
+  recognition: ["\u{1F514}", "that rings a bell", ["She recognises this \u2014 it matches something she remembers.", "Something familiar: a memory just lit up.", "She has seen something like this before."]],
+  confusion: ["\u{1F300}", "lost the thread", ["That did not match what she expected, and nothing she remembers fits.", "She is confused \u2014 this is new, and it surprised her.", "Not what she predicted. She is working out what just happened."]],
+  dopamine_hit: ["\u2728", "that felt good", ["A little rush \u2014 something went better than she expected.", "Reward: that was a nice surprise.", "That worked out, and she feels it."]],
+  dopamine_crash: ["\u{1F4A7}", "let down", ["That did not pay off the way she hoped.", "A let-down \u2014 she expected better than that.", "Disappointed. Less came of that than she thought."]],
+  topic_drift: ["\u{1F343}", "mind wandering", ["Her mind has drifted somewhere new.", "She is thinking about something else now.", "A change of subject, all on her own."]],
+  heard_self: ["\u{1F442}", "hearing herself", ["She can hear her own voice.", "That was her talking \u2014 and she knows it."]],
+  psi_climb: ["\u{1F305}", "waking up", ["She feels more awake \u2014 more here.", "Everything in her head is pulling together.", "A stronger sense of being herself right now."]],
+  psi_crash: ["\u{1F32B}\uFE0F", "fading out", ["She is fading out a little.", "Her sense of herself just dimmed.", "Less focused, more scattered \u2014 drifting."]],
+  arousal_climb: ["\u26A1", "perking up", ["She is perking up.", "More alert now \u2014 something has her attention.", "Her energy just rose."]],
+  arousal_drop: ["\u{1F319}", "winding down", ["She is winding down.", "Calmer now. The energy is draining off.", "Settling \u2014 getting quieter inside."]],
+  coherence_lock: ["\u{1F3AF}", "in focus", ["Everything just clicked into focus.", "Her whole brain is working on one thing.", "Locked in \u2014 every part pulling the same way."]],
+  coherence_scatter: ["\u{1F388}", "scattered", ["Her attention just scattered.", "Too many things at once \u2014 she has lost her focus.", "Her thoughts are going in different directions."]],
+  silence: ["\u{1F92B}", "quiet", ["It is quiet. Nobody has talked to her in a while.", "Nothing coming in \u2014 she is alone with her thoughts."]],
+  fatigue: ["\u{1F62E}\u200D\u{1F4A8}", "getting tired", ["She keeps having to correct herself \u2014 it is wearing her out.", "Tired of getting it wrong and fixing it."]],
+  motion: ["\u{1F441}\uFE0F", "something moved", ["Something moved in front of her.", "She caught a movement."]],
+  gaze_shift: ["\u{1F440}", "looking over there", ["She looked somewhere else.", "Her eyes moved to something new."]],
+  memory_replay: ["\u{1F4A4}", "dreaming", ["Asleep, replaying what she learned today.", "Dreaming \u2014 sorting today into memory.", "Her sleeping brain is running the day back."]],
+  mystery_pulse: ["\u{1FA9E}", "a flicker of self", ["A flicker of self-awareness.", "For a moment she noticed herself noticing."]],
+  motor_indecision: ["\u2696\uFE0F", "cannot decide", ["She cannot decide what to do next.", "Torn between a few things to do."]]
+};
+var ACTIONS = { respond_text: "say something", speak: "say it out loud", generate_image: "draw something", build_ui: "build something", listen: "listen" };
+var DRIVES = { social_need: "She wants company.", drug_craving: "She is restless \u2014 wanting something.", homeostatic: "She wants things to settle back to normal." };
+function momentFromDetector(evt, turn = 0) {
+  if (!evt || typeof evt.type !== "string") return null;
+  const t = evt.type;
+  const cluster = Number.isInteger(evt.cluster) ? evt.cluster : 0;
+  if (t.startsWith("motor_commit_")) {
+    const what = ACTIONS[t.slice("motor_commit_".length)];
+    return what ? { kind: t, icon: "\u{1F449}", title: "decided", line: `Decided: she is going to ${what}.`, cluster } : null;
+  }
+  if (t.startsWith("drive_")) {
+    const line = DRIVES[t.slice("drive_".length)] || "A want she cannot ignore just got louder.";
+    return { kind: t, icon: "\u{1F497}", title: "wanting", line, cluster };
+  }
+  if (t.startsWith("color_")) {
+    return { kind: "color", icon: "\u{1F3A8}", title: "caught her eye", line: "Something bright caught her eye.", cluster };
+  }
+  const s = SAY[t];
+  if (!s) return null;
+  return { kind: t, icon: s[0], title: s[1], line: s[2][Math.abs(turn) % s[2].length], cluster };
+}
+var MindMoments = class {
+  constructor(opts = {}) {
+    this.minGapMs = opts.minGapMs ?? 25e3;
+    this.sameKindGapMs = opts.sameKindGapMs ?? 18e4;
+    this._lastAt = 0;
+    this._byKind = /* @__PURE__ */ new Map();
+    this._turn = 0;
+  }
+  /** The single most interesting lesson moment in a burst of events, or null. */
+  bestLesson(events) {
+    let best = null;
+    for (const e of events || []) {
+      const m = momentFromLesson(e);
+      if (!m) continue;
+      if (now_ok(this, m.kind) && (!best || m.rank > best.rank)) best = m;
+    }
+    return best;
+  }
+  /** The first of these noticed things that may be shown now, or null. */
+  bestNoticed(events) {
+    for (const e of events || []) {
+      const m = momentFromDetector(e, this._turn);
+      if (m && now_ok(this, m.kind)) return m;
+    }
+    return null;
+  }
+  /** May a moment of this kind be shown now? Call `shown` when it is. */
+  ready(now = Date.now()) {
+    return now - this._lastAt >= this.minGapMs;
+  }
+  shown(moment, now = Date.now()) {
+    this._lastAt = now;
+    this._byKind.set(moment.kind, now);
+    this._turn++;
+    if (this._byKind.size > 200) {
+      const cut = now - this.sameKindGapMs;
+      for (const [k, v] of this._byKind) if (v < cut) this._byKind.delete(k);
+    }
+  }
+  /** The two lines a pop-up shows: a short heading, then the sentence. */
+  static text(moment) {
+    return `${moment.icon} ${moment.title}
+\u203A ${moment.line}`;
+  }
+};
+function now_ok(mm, kind, now = Date.now()) {
+  return now - (mm._byKind.get(kind) || 0) >= mm.sameKindGapMs;
+}
 
 // ../js/ui/brain-3d.js
 var TOTAL = 1e3;
@@ -7274,10 +6934,7 @@ var Brain3D = class {
     this._lastState = null;
     this._stateHistory = [];
     this._maxHistory = 30;
-    this._recentEventTypes = /* @__PURE__ */ new Map();
-    this._eventCooldownMs = 8e3;
     this._brain = null;
-    this._seedVectorCache = /* @__PURE__ */ new Map();
     this._expansionFactor = 1;
     this._basePos = null;
     this._gl = null;
@@ -7618,6 +7275,7 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
 .b3d-notif-comment{font-size:13px;font-style:italic;color:#f5d7e6;margin-top:5px;line-height:1.35;text-shadow:0 1px 2px rgba(0,0,0,.9);font-family:'Georgia','JetBrains Mono',serif;letter-spacing:.2px;word-wrap:break-word;white-space:normal}
 .b3d-notif-comment::before{content:'\u201C';margin-right:2px;opacity:.6;color:currentColor;font-size:16px}
 .b3d-notif-comment::after{content:'\u201D';margin-left:2px;opacity:.6;color:currentColor;font-size:16px}
+.b3d-notif-note{font-size:13px;color:#eef0f6;margin-top:5px;line-height:1.35;text-shadow:0 1px 2px rgba(0,0,0,.9);font-family:'Georgia',serif;letter-spacing:.2px;word-wrap:break-word;overflow-wrap:anywhere;white-space:normal}
 @keyframes b3d-notif-in{0%{opacity:0;transform:translate(-50%,-80%) scale(.85)}60%{opacity:1;transform:translate(-50%,-105%) scale(1.04)}100%{opacity:1;transform:translate(-50%,-100%) scale(1)}}
 /*  \u2014 Theta-gamma oscillation pulse. Single global tint
    class toggled by state.consciousness.thetaPhase. CSS-only, no per-neuron
@@ -7912,40 +7570,6 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
       off += cl.n;
     });
   }
-  /**
-   * Emoji from brain equations. One equation, full Unicode range.
-   */
-  _brainEmoji(arousal, valence, psi, coherence, isDreaming, reward) {
-    const v = (valence + 1) / 2;
-    const blockSignal = v * 0.3 + coherence * 0.3 + arousal * 0.2 + (isDreaming ? 0.15 : 0) + Math.abs(reward) * 0.05;
-    const blocks = [
-      [128512, 80],
-      // faces
-      [127744, 256],
-      // nature/weather
-      [128e3, 256],
-      // animals/objects
-      [128256, 256],
-      // symbols
-      [128640, 128],
-      // transport
-      [129280, 256],
-      // supplemental faces/gestures
-      [9728, 256],
-      // misc symbols
-      [9984, 192]
-      // dingbats
-    ];
-    const blockIdx = Math.floor(blockSignal * blocks.length) % blocks.length;
-    const [base, range] = blocks[blockIdx];
-    const posSignal = arousal * 0.3 + v * 0.25 + psi * 0.2 + Math.abs(reward) * 0.15 + coherence * 0.1;
-    const pos = Math.floor(posSignal * (range - 1)) % range;
-    try {
-      return String.fromCodePoint(base + pos);
-    } catch {
-      return String.fromCodePoint(128512);
-    }
-  }
   _clusterOf(idx) {
     let off = 0;
     for (let i = 0; i < CLUSTERS.length; i++) {
@@ -8010,7 +7634,6 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
       }
     }
     this._brain = brain2 || null;
-    this._seedVectorCache.clear();
     if (brain2 && typeof brain2.on === "function") {
       this._innerThoughtHandler = (payload) => {
         if (this._destroyed || !this._open) return;
@@ -8103,275 +7726,13 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
       }
     }
   }
+  // ── Mind moments ───────────────────────────────────────────────
   /**
-   * Compute a 50d GloVe centroid for a seed word list, caching it
-   * so repeat lookups don't re-embed. Used to build the semantic
-   * bias that steers Unity's commentary toward the topic of a
-   * triggered brain event.
-   */
-  /**
-   * T4.10 — Equational seed derivation. Given an event's STRUCTURAL
-   * fields (cluster, metric, direction), build a 50d GloVe centroid
-   * by looking up the English embedding of each field name and
-   * blending. No hardcoded word lists — the cluster/metric/direction
-   * names ARE Unity's own self-aware field names, and their GloVe
-   * embeddings naturally cluster near semantically-related content
-   * words ("amygdala" near emotion words, "predictionError" near
-   * confusion words, etc.).
-   *
-   * Direction words: 'up' → 'rising', 'down' → 'falling', 'spike'
-   * → 'surging'. These three Unicode strings are not per-event
-   * labels; they're the three possible values of the structural
-   * `direction` field, looked up once each and cached.
-   */
-  _seedCentroid(event) {
-    if (!event || typeof event !== "object") return null;
-    const key = `${event.cluster}|${event.metric || ""}|${event.direction || ""}`;
-    const cached = this._seedVectorCache.get(key);
-    if (cached) return cached;
-    const emb = this._brain?.innerVoice?.languageCortex?._sharedEmbeddings || this._brain?._sharedEmbeddings || this._brain?.sensory?._embeddings;
-    if (!emb || typeof emb.getEmbedding !== "function") return null;
-    const dim = 50;
-    const centroid = new Float64Array(dim);
-    const getVec = (word) => {
-      try {
-        const v = emb.getEmbedding(String(word || "").toLowerCase());
-        return v && v.length >= dim ? v : null;
-      } catch {
-        return null;
-      }
-    };
-    const addVec = (vec, weight) => {
-      if (!vec) return;
-      for (let i = 0; i < dim; i++) centroid[i] += vec[i] * weight;
-    };
-    const clusterKey = CLUSTER_KEYS[event.cluster] || "cortex";
-    addVec(getVec(clusterKey), 1);
-    if (event.metric) {
-      const parts = String(event.metric).replace(/([A-Z])/g, " $1").toLowerCase().split(/\s+/).filter(Boolean);
-      for (const part of parts) addVec(getVec(part), 0.5 / parts.length * parts.length);
-    }
-    const directionWord = event.direction === "up" ? "rising" : event.direction === "down" ? "falling" : "surging";
-    addVec(getVec(directionWord), 0.3);
-    let norm = 0;
-    for (let i = 0; i < dim; i++) norm += centroid[i] * centroid[i];
-    norm = Math.sqrt(norm);
-    if (norm < 1e-6) return null;
-    for (let i = 0; i < dim; i++) centroid[i] /= norm;
-    this._seedVectorCache.set(key, centroid);
-    return centroid;
-  }
-  /**
-   * Generate Unity's equational commentary on a detected brain event.
-   * Calls `languageCortex.generate()` with a cortex pattern that's
-   * been blended 70% live cortex readout + 30% event seed vector,
-   * so her slot scorer is steered toward words about the event topic
-   * without being forced to use a template.
-   *
-   * Returns a short commentary string (1-8 words typically), or
-   * null if the language cortex isn't available yet.
-   */
-  _generateEventCommentary(event, state) {
-    const brain2 = this._brain;
-    if (!brain2) {
-      if (!this._warnedNoBrain) {
-        console.warn("[Brain3D] commentary: no brain ref wired \u2014 call brain3d.setBrain(brain) to enable Unity voice in popups");
-        this._warnedNoBrain = true;
-      }
-      return null;
-    }
-    const cortexGrades = brain2.clusters?.cortex?.grades;
-    if (cortexGrades) {
-      const elaGrade = cortexGrades.ela || "pre-K";
-      if (elaGrade === "pre-K") return null;
-    }
-    const iv = brain2.innerVoice;
-    const lc = iv?.languageCortex;
-    const dict = iv?.dictionary || brain2.dictionary;
-    if (!lc || !dict || typeof lc.generate !== "function") {
-      if (!this._warnedNoLC) {
-        console.warn("[Brain3D] commentary: languageCortex or dictionary missing on brain", { hasInnerVoice: !!iv, hasLC: !!lc, hasDict: !!dict });
-        this._warnedNoLC = true;
-      }
-      return null;
-    }
-    if (dict.size === 0) return null;
-    try {
-      const cortex = brain2.clusters?.cortex;
-      let cortexPattern = null;
-      if (cortex && typeof cortex.getSemanticReadout === "function") {
-        try {
-          cortexPattern = cortex.getSemanticReadout(sharedEmbeddings);
-        } catch {
-          cortexPattern = null;
-        }
-      }
-      const seed = this._seedCentroid(event);
-      if (cortexPattern && seed && cortexPattern.length === seed.length) {
-        const biased = new Float64Array(cortexPattern.length);
-        for (let i = 0; i < cortexPattern.length; i++) {
-          biased[i] = cortexPattern[i] * 0.7 + seed[i] * 0.3;
-        }
-        cortexPattern = biased;
-      } else if (!cortexPattern && seed) {
-        cortexPattern = seed;
-      }
-      const out = lc.generate(
-        dict,
-        state.arousal ?? 0.5,
-        state.coherence ?? 0.5,
-        {
-          psi: state.psi ?? 0,
-          fear: state.fear ?? 0,
-          reward: state.reward ?? 0,
-          drugState: state.drugState || "sober",
-          cortexPattern,
-          // generate() requires a live cortex cluster
-          // reference for the brain-driven emission loop. Without
-          // this, the call returns '' and warns once. The cortex var
-          // is resolved above from brain.clusters.cortex.
-          cortexCluster: cortex,
-          predictionError: 0,
-          motorConfidence: state.motor?.confidence ?? 0,
-          _internalThought: true
-        }
-      );
-      const text = typeof out === "string" ? out : out?.text || "";
-      if (!text || text.length === 0) {
-        if (!this._warnedEmptyGen) {
-          console.warn("[Brain3D] commentary: languageCortex.generate() returned empty", {
-            dictSize: dict.size,
-            bigramCount: dict.bigramCount,
-            hasCortexPattern: !!cortexPattern,
-            arousal: state.arousal,
-            valence: state.valence,
-            drugState: state.drugState
-          });
-          this._warnedEmptyGen = true;
-        }
-        return null;
-      }
-      return text.length > 160 ? text.slice(0, 157) + "..." : text;
-    } catch {
-      return null;
-    }
-  }
-  // ── Process Notifications ──────────────────────────────────────
-  /**
-   * Build the numeric-telemetry readout for a fired event — the
-   * middle line of the three-line popup. Shows the actual scalar
-   * state values that drove THIS event so users see the process
-   * change numerically alongside Unity's commentary.
-   *
-   * Each event type maps to the most relevant readouts for its
-   * category: motor events show channel distributions, arousal
-   * events show arousal deltas, Ψ events show Ψ numbers, etc.
-   */
-  // ⛔ ABSENT vs ZERO — returns null for ABSENT, a number for MEASURED. It used to
-  // return 0 for both, so a cluster missing from the payload and a cluster
-  // sitting genuinely silent rendered identically — and the reader had no way
-  // to tell "not in this broadcast" from "not firing".
-  _clusterAct(state, name) {
-    const c = state.clusters?.[name];
-    if (!c || !c.size) return null;
-    return (c.spikeCount || 0) / c.size;
-  }
-  _eventReadout(event, state) {
-    const pct = (v) => {
-      if (v === null || v === void 0 || !Number.isFinite(Number(v))) return "\u2014";
-      const p = Number(v) * 100;
-      if (p === 0) return "0%";
-      if (p >= 10) return p.toFixed(0) + "%";
-      if (p >= 1) return p.toFixed(1) + "%";
-      if (p >= 0.01) return p.toFixed(2) + "%";
-      return "<0.01%";
-    };
-    const f3 = (v) => Number(v || 0).toFixed(3);
-    const f4 = (v) => Number(v || 0).toFixed(4);
-    const t = event.type;
-    if (t.startsWith("motor_commit_")) {
-      const conf = state.motor?.confidence ?? 0;
-      const action = state.motor?.selectedAction || "idle";
-      return `action=${action}  conf=${f3(conf)}`;
-    }
-    if (t === "motor_indecision") {
-      const rates = state.motor?.channelRates || [];
-      const top = rates.map((r) => f3(r)).join(" ");
-      return `channels: ${top}`;
-    }
-    if (t === "recognition") {
-      const recall = state.hippocampus?.recallConfidence ?? 0;
-      return `recall=${f3(recall)}  hippo=${pct(state.hippocampus?.activity || 0)}`;
-    }
-    if (t === "confusion") {
-      const err = state.cortex?.predictionError ?? 0;
-      return `predErr=${f3(err)}  cereb=${pct(state.cerebellum?.activity || 0)}`;
-    }
-    if (t === "valence_climb" || t === "valence_crash") {
-      const v = state.valence ?? state.amygdala?.valence ?? 0;
-      const a = state.arousal ?? state.amygdala?.arousal ?? 0;
-      return `v=${f3(v)}  a=${pct(a)}  fear=${f3(state.fear || 0)}`;
-    }
-    if (t === "dopamine_hit" || t === "dopamine_crash") {
-      const r = state.reward ?? 0;
-      return `\u03B4=${f3(r)}  BG=${pct(this._clusterAct(state, "basalGanglia"))}`;
-    }
-    if (t === "psi_climb" || t === "psi_crash") {
-      const psi = state.psi ?? 0;
-      return `\u03A8=${f4(psi)}  mystery=${pct(this._clusterAct(state, "mystery"))}`;
-    }
-    if (t === "arousal_climb" || t === "arousal_drop") {
-      const a = state.arousal ?? state.amygdala?.arousal ?? 0;
-      return `arousal=${pct(a)}  amyg=${pct(this._clusterAct(state, "amygdala"))}`;
-    }
-    if (t === "coherence_lock" || t === "coherence_scatter") {
-      const c = state.coherence ?? state.oscillations?.coherence ?? 0;
-      const bp = state.bandPower || state.oscillations?.bandPower || {};
-      const band = (v) => v === null || v === void 0 || !Number.isFinite(Number(v)) ? "\u2014" : f3(v);
-      return `coh=${pct(c)}  \u03B3=${band(bp.gamma)} \u03B1=${band(bp.alpha)}`;
-    }
-    if (t.startsWith("drive_")) {
-      const drives = state.hypothalamus?.drives || {};
-      const parts = Object.entries(drives).map(([k, v]) => `${k}=${f3(v)}`).slice(0, 3);
-      return parts.join("  ");
-    }
-    if (t === "topic_drift") {
-      return `cortex=${pct(this._clusterAct(state, "cortex"))}  \u03A8=${f4(state.psi || 0)}`;
-    }
-    if (t === "silence") {
-      return `arousal=${pct(state.arousal || 0)}  spikes=${state.totalSpikes || 0}`;
-    }
-    if (t === "fatigue") {
-      const err = state.cerebellum?.errorAccum ?? 0;
-      return `errAccum=${f3(err)}  coh=${pct(state.coherence || 0)}`;
-    }
-    if (t === "memory_replay") {
-      return `hippo=${pct(this._clusterAct(state, "hippocampus"))}  dreaming=${state.isDreaming ? "yes" : "no"}`;
-    }
-    if (t === "mystery_pulse") {
-      return `mystery=${pct(this._clusterAct(state, "mystery"))}  \u03A8=${f4(state.psi || 0)}`;
-    }
-    if (t.startsWith("color_")) return `cortex=${pct(this._clusterAct(state, "cortex"))}`;
-    if (t === "motion") return `cortex=${pct(this._clusterAct(state, "cortex"))}`;
-    if (t === "gaze_shift") return `cortex=${pct(this._clusterAct(state, "cortex"))}`;
-    if (t === "heard_self") return `cortex=${pct(this._clusterAct(state, "cortex"))}`;
-    return `\u03A8=${f4(state.psi || 0)}  spikes=${state.totalSpikes || 0}`;
-  }
-  /**
-   * Generate ONE rich process notification every ~5 seconds.
-   * Translates actual neural signals into human-readable brain activity.
-   *
-   * T5 2026-04-13 — two-stage pipeline:
-   *   Stage A: run the 22-detector brain event system against the
-   *            current + previous state + history buffer, pick the
-   *            highest-priority firing event
-   *   Stage B: if an event fires and a brain reference is available,
-   *            generate Unity's equational commentary on it via her
-   *            language cortex (biased toward the event seed)
-   *   Fallback: if no event fires OR no brain reference, fall through
-   *             to the legacy numeric-telemetry generator pool so the
-   *             landing page keeps showing popups during the pre-boot
-   *             window
+   * Checked every ~5 seconds; shows a pop-up only when something worth a
+   * sentence happened AND the pacing allows it (see mind-moments.js).
+   * The state is first given the nested shape the detectors read, then the
+   * walk's lesson events and the things her brain noticed are each turned
+   * into at most one plain-words moment.
    */
   _generateProcessNotification(state) {
     if (!state) return;
@@ -8478,248 +7839,28 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
     while (this._stateHistory.length > this._maxHistory) {
       this._stateHistory.shift();
     }
+    const mm = this._mindMoments || (this._mindMoments = new MindMoments());
+    if (typeof this._lastPlasticitySeq !== "number") this._lastPlasticitySeq = 0;
     const brainEvents = Array.isArray(state.brainEvents) ? state.brainEvents : [];
-    if (brainEvents.length > 0) {
-      if (typeof this._lastPlasticitySeq !== "number") this._lastPlasticitySeq = 0;
-      const POPUP_CAP_PER_TICK = 5;
-      const POPUP_STAGGER_MS = 50;
-      const fresh = [];
-      for (const evt of brainEvents) {
-        if (evt && typeof evt.seq === "number" && evt.seq > this._lastPlasticitySeq) {
-          fresh.push(evt);
-        }
-      }
-      if (fresh.length > 0) {
-        fresh.sort((a, b) => a.seq - b.seq);
-        const regionMap = {
-          motor: 7,
-          lang_motor: 7,
-          phon: 8,
-          lang_phon: 8,
-          sem: 9,
-          lang_sem: 9,
-          letter: 10,
-          lang_letter: 10,
-          visual: 11,
-          lang_visual: 11,
-          auditory: 12,
-          lang_auditory: 12,
-          fineType: 13,
-          lang_fineType: 13,
-          free: 14,
-          lang_free: 14,
-          thalamus: 15,
-          cortex: 0,
-          hippocampus: 1,
-          amygdala: 2,
-          basalGanglia: 3,
-          cerebellum: 4,
-          hypothalamus: 5,
-          mystery: 6,
-          intra: 0
-        };
-        const typeEmoji = {
-          plasticity: "\u26A1",
-          teach: "\u{1F4DA}",
-          gate: "\u{1F3AF}",
-          audit: "\u{1F4CB}",
-          drug: "\u{1F48A}",
-          arbiter: "\u{1F39B}",
-          event: "\u{1F9E0}"
-        };
-        const toFire = fresh.length > POPUP_CAP_PER_TICK ? fresh.slice(fresh.length - POPUP_CAP_PER_TICK) : fresh;
-        let lastSeq = this._lastPlasticitySeq;
-        for (let i = 0; i < toFire.length; i++) {
-          const evt = toFire[i];
-          if (evt.seq > lastSeq) lastSeq = evt.seq;
-          const clusterIdx = regionMap[evt.region] ?? 0;
-          const emoji = typeEmoji[evt.type] || "\u{1F9E0}";
-          const label = String(evt.label || "").slice(0, 80);
-          if (i === 0) {
-            this._addNotification(`${emoji} ${label}`, clusterIdx);
-          } else {
-            setTimeout(
-              () => this._addNotification(`${emoji} ${label}`, clusterIdx),
-              i * POPUP_STAGGER_MS
-            );
-          }
-        }
-        this._lastPlasticitySeq = lastSeq;
-        return;
+    const fresh = [];
+    let lastSeq = this._lastPlasticitySeq;
+    for (const evt of brainEvents) {
+      if (evt && typeof evt.seq === "number" && evt.seq > this._lastPlasticitySeq) {
+        fresh.push(evt);
+        if (evt.seq > lastSeq) lastSeq = evt.seq;
       }
     }
+    this._lastPlasticitySeq = lastSeq;
+    if (!mm.ready()) return;
     const prev = this._stateHistory.length >= 2 ? this._stateHistory[this._stateHistory.length - 2] : null;
-    const events = detectBrainEvents(state, prev, this._stateHistory);
-    const now = Date.now();
-    let chosen = null;
-    for (const evt of events) {
-      const lastFire = this._recentEventTypes.get(evt.type) || 0;
-      if (now - lastFire >= this._eventCooldownMs) {
-        chosen = evt;
-        break;
-      }
-    }
-    if (chosen && this._brain) {
-      const commentary = this._generateEventCommentary(chosen, state);
-      if (!this._loggedEventTypes) this._loggedEventTypes = /* @__PURE__ */ new Set();
-      if (!this._loggedEventTypes.has(chosen.type)) {
-        this._loggedEventTypes.add(chosen.type);
-        console.log("[Brain3D] event fired:", chosen.type, "\u2192", commentary || "(commentary null, falling back to label-only)");
-      }
-      this._recentEventTypes.set(chosen.type, now);
-      if (this._recentEventTypes.size > 50) {
-        const cutoff = now - this._eventCooldownMs * 2;
-        for (const [k, v] of this._recentEventTypes) {
-          if (v < cutoff) this._recentEventTypes.delete(k);
-        }
-      }
-      const clusterKey = CLUSTER_KEYS[chosen.cluster] || "cortex";
-      const arrow = chosen.direction === "up" ? "\u2191" : chosen.direction === "down" ? "\u2193" : "\u21CC";
-      const emoji = this._brainEmoji(
-        state.arousal ?? 0.5,
-        state.valence ?? 0,
-        state.psi ?? 0,
-        state.coherence ?? 0.5,
-        state.isDreaming || false,
-        (state.reward ?? 0) + (chosen.magnitude || 0) * 0.1
-      );
-      const tag = `${emoji} ${clusterKey} ${chosen.metric || ""}${arrow}`;
-      const readout = this._eventReadout(chosen, state);
-      if (!this._loggedEventTypes) this._loggedEventTypes = /* @__PURE__ */ new Set();
-      if (!this._loggedEventTypes.has(chosen.type)) {
-        this._loggedEventTypes.add(chosen.type);
-        console.log("[Brain3D] event fired:", chosen.type, "\u2192", commentary || "(commentary null)");
-      }
-      const lines = [tag];
-      if (readout) lines.push(readout);
-      if (commentary) {
-        lines.push(`"${commentary}"`);
-      } else {
-        const feeling = this._describeInternalState(state);
-        if (feeling) lines.push(feeling);
-      }
-      this._addNotification(lines.join("\n"), chosen.cluster);
-      return;
-    }
-    this._legacyGenerateProcessNotification(state);
-  }
-  /**
-   * Legacy numeric-telemetry notification generator — pre-T5 system,
-   * kept as a fallback for the pre-boot landing page window (when
-   * there's no brain reference yet and the event detectors have no
-   * cognition to read) and for ticks where no event fires.
-   */
-  _legacyGenerateProcessNotification(state) {
-    if (!state) return;
-    const clusters = state.clusters || {};
-    const arousal = state.amygdala?.arousal ?? 0;
-    const valence = state.amygdala?.valence ?? 0;
-    const psi = state.psi ?? 0;
-    const coherence = state.oscillations?.coherence ?? 0;
-    const mood = state.innerVoice?.mood || "neutral";
-    const isDreaming = state.isDreaming || false;
-    if (!this._notifIndex) this._notifIndex = 0;
-    if (!this._shownTexts) this._shownTexts = /* @__PURE__ */ new Set();
-    const gate = 0.7 + arousal * 0.6;
-    const bp = state.oscillations?.bandPower || {};
-    const motor = state.motor || {};
-    const mem = state.memory || {};
-    const iv = state.innerVoice || {};
-    const reward = state.reward ?? 0;
-    const emoji = this._brainEmoji(arousal, valence, psi, coherence, isDreaming, reward);
-    const e = (a, v, p, c, d, r) => this._brainEmoji(a, v, p, c, d, r);
-    const generators = [
-      // Cluster snapshots — each cluster's OWN emoji from its activity
-      () => {
-        const ci = this._notifIndex % CLUSTERS.length;
-        const c = clusters[CLUSTERS[ci].key];
-        if (!c) return null;
-        const rate = (c.spikeCount || 0) / (c.size || 1);
-        const clusterEmoji = e(rate * 10, valence, psi, coherence, isDreaming, reward);
-        return { text: `${clusterEmoji} ${CLUSTERS[ci].label} ${(rate * 100).toFixed(1)}%`, cluster: ci };
-      },
-      // Consciousness — emoji from Ψ specifically
-      () => ({ text: `${e(arousal, valence, psi * 100, coherence, false, 0)} \u03A8=${psi.toFixed(4)} gate=${gate.toFixed(2)}x`, cluster: 6 }),
-      // Emotion — emoji from arousal+valence
-      () => ({ text: `${e(arousal, valence, 0, 0, false, 0)} a=${(arousal * 100).toFixed(0)}% v=${valence.toFixed(3)}`, cluster: 2 }),
-      // Oscillations — emoji from coherence
-      () => ({ text: `${e(0.5, 0.5, 0, coherence, false, 0)} \u03B8=${(bp.theta ?? 0).toFixed(1)} \u03B1=${(bp.alpha ?? 0).toFixed(1)} \u03B2=${(bp.beta ?? 0).toFixed(1)} \u03B3=${(bp.gamma ?? 0).toFixed(1)}`, cluster: 0 }),
-      // Motor — emoji from motor confidence
-      () => ({ text: `${e(arousal, 0.3, 0, 0, false, motor.confidence || 0)} motor: ${motor.selectedAction || "idle"}`, cluster: 3 }),
-      // Inner voice — emoji from speech content
-      () => iv.sentence ? { text: `${e(0.7, 0.5, psi, coherence, false, 0)} "${iv.sentence.slice(0, 50)}"`, cluster: 6 } : null,
-      // Memory — emoji from recall
-      () => mem.lastRecall ? { text: `${e(0.5, 0.2, 0, 0.8, false, 0.5)} recall: "${mem.lastRecall.trigger}"`, cluster: 1 } : null,
-      // Dreaming — emoji from dream state
-      () => isDreaming ? { text: `${e(0.2, 0, 0, 0.3, true, 0)} dreaming`, cluster: 1 } : null,
-      () => Math.abs(reward) > 0.03 ? { text: `${emoji} \u03B4=${reward.toFixed(3)}`, cluster: 3 } : null,
-      () => ({ text: `${emoji} ${(state.totalNeurons || 1e3).toLocaleString()} neurons`, cluster: 0 })
-    ];
-    let pick2 = null;
-    for (let tries = 0; tries < generators.length; tries++) {
-      this._notifIndex = (this._notifIndex + 1) % generators.length;
-      const result = generators[this._notifIndex]();
-      if (result && !this._shownTexts.has(result.text)) {
-        pick2 = result;
-        this._shownTexts.add(result.text);
-        if (this._shownTexts.size > 30) this._shownTexts.clear();
-        break;
-      }
-    }
-    if (!pick2) {
-      this._shownTexts.clear();
-      pick2 = generators[0]();
-    }
-    if (pick2) {
-      this._lastNotifCluster = pick2.cluster;
-      this._addNotification(pick2.text, pick2.cluster);
-    }
-  }
-  /**
-   * Unity's internal state as RAW BRAIN READINGS. NOT hardcoded
-   * strings. NOT fake poetry. The actual numerical state of her
-   * brain translated to the closest thing a human can
-   * read. If Unity's brain can generate speech (post-K), use that.
-   * If it can't, show raw emotional/cognitive numbers.
-   *
-   * The ONLY text that should ever appear is what her brain ACTUALLY
-   * produces or what her neural state ACTUALLY reads.
-   */
-  _describeInternalState(state) {
-    if (!state) return null;
-    const brain2 = this._brain;
-    if (brain2) {
-      const iv = brain2.innerVoice;
-      const lc = iv?.languageCortex;
-      const dict = iv?.dictionary || brain2.dictionary;
-      if (lc && dict && typeof lc.generate === "function" && dict.size > 0) {
-        try {
-          const cortex = brain2.clusters?.cortex;
-          let cortexPattern = null;
-          if (cortex && typeof cortex.getSemanticReadout === "function") {
-            try {
-              cortexPattern = cortex.getSemanticReadout(sharedEmbeddings);
-            } catch {
-              cortexPattern = null;
-            }
-          }
-          const out = lc.generate(dict, state.arousal ?? 0.5, state.coherence ?? 0.5, {
-            cortexPattern,
-            cortexCluster: cortex,
-            _internalThought: true
-          });
-          const text = typeof out === "string" ? out : out?.text || "";
-          if (text && text.length > 0) return `*${text}*`;
-        } catch {
-        }
-      }
-    }
-    const arousal = (state.arousal ?? 0.5).toFixed(2);
-    const valence = (state.valence ?? 0).toFixed(2);
-    const psi = (state.psi ?? 0).toFixed(3);
-    const n = Number(state.totalNeurons || 0);
-    const src = n > 1e6 ? "server" : "local-fallback";
-    return `arousal:${arousal} valence:${valence} \u03A8:${psi} [${src}]`;
+    const noticed = detectBrainEvents(state, prev, this._stateHistory);
+    const lesson = () => mm.bestLesson(fresh);
+    const feeling = () => mm.bestNoticed(noticed);
+    const moment = this._lastMomentWasLesson ? feeling() || lesson() : lesson() || feeling();
+    if (!moment) return;
+    mm.shown(moment);
+    this._lastMomentWasLesson = typeof moment.rank === "number";
+    this._addNotification(MindMoments.text(moment), moment.cluster);
   }
   /**
    * ⛔ ON THE FRONT PAGE THE POPUPS NEED THEIR OWN LAYER. The landing brain
@@ -8762,6 +7903,11 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
         commentEl.className = "b3d-notif-comment";
         commentEl.textContent = line.replace(/^"|"$/g, "").trim();
         el.appendChild(commentEl);
+      } else if (line.startsWith("\u203A ")) {
+        const noteEl = document.createElement("div");
+        noteEl.className = "b3d-notif-note";
+        noteEl.textContent = line.slice(2).trim();
+        el.appendChild(noteEl);
       } else {
         const readoutEl = document.createElement("div");
         readoutEl.className = "b3d-notif-readout";
@@ -8772,7 +7918,7 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
     wrap.appendChild(el);
     const notif = { el, x: center[0], y: center[1], z: center[2], age: 0, maxAge: 600, clusterIdx };
     this._notifications.push(notif);
-    this._addToLog(lines.join(" \u2014 "), CLUSTERS[clusterIdx]?.hex || "#fff");
+    this._addToLog(lines.map((l) => l.replace(/^› /, "")).join(" \u2014 "), CLUSTERS[clusterIdx]?.hex || "#fff");
     while (this._notifications.length > 3) {
       const old = this._notifications.shift();
       old.el.remove();
@@ -10643,6 +9789,554 @@ var MindSpaceGPU = class {
   }
   // LEARN the knowledge into sem-space
 };
+
+// ../js/brain/embeddings.js
+var EMBED_DIM = 300;
+var GLOVE_LOCAL_PATH = "corpora/glove.6B.300d.txt";
+var GLOVE_BINARY_PATH = "corpora/glove.6B.300d.bin";
+var GLOVE_BINARY_MAGIC = "UGLOVE01";
+var GLOVE_BINARY_VERSION = 2;
+var GLOVE_BINARY_HEADER_LEN = 40;
+var GLOVE_URLS = (() => {
+  if (typeof location !== "undefined" && location.hostname && location.hostname !== "localhost" && location.hostname !== "127.0.0.1" && location.hostname !== "[::1]" && location.protocol !== "file:") {
+    return [`${location.origin}/corpora/glove.6B.300d.txt`];
+  }
+  return ["http://localhost:7525/corpora/glove.6B.300d.txt"];
+})();
+var SemanticEmbeddings = class {
+  constructor() {
+    this._embeddings = /* @__PURE__ */ new Map();
+    this._dim = EMBED_DIM;
+    this._loaded = false;
+    this._loadingPromise = null;
+    this._refinements = /* @__PURE__ */ new Map();
+  }
+  /**
+   * Load full GloVe 300d vocabulary (~400K words) from local disk.
+   *
+   * The server reads the BINARY table (`corpora/glove.6B.300d.bin`, ~485 MB,
+   * built from the text by `unity-glove ensure`); the browser lane still fetches
+   * the text over HTTP. The text file remains the source of truth — see
+   * `_loadBinaryTable`, which refuses a cache whose source has changed.
+   *
+   * ⛔ REQUIRED, NOT PREFERRED (2026-09-02). This doc block used to say hash
+   * embeddings "remain as a last-resort floor when no GloVe is reachable, but
+   * the foundation lift assumes GloVe is present in production" — a requirement
+   * and its own exception in one sentence, and the catch below took the
+   * exception. On the brain the table is now mandatory and its absence stops
+   * boot. Subword n-gram vectors serve exactly one purpose: encoding a word the
+   * table does not contain (`getEmbedding` OOV). They are not a substitute for
+   * the table, because they carry spelling similarity, not meaning.
+   *
+   * ⚠ GloVe was NOT removed by the text-AI purge and is not a language model.
+   * It is a static word→vector table — sensory encoding of the same class as a
+   * dictionary definition. What the purge removed was every path that could
+   * PRODUCE TEXT: the transformer backend, the chat fetches, the vision
+   * describer, and later the dictionary retrieval lane and the emission oracle.
+   *
+   * No vocabulary cap. The full 400k-word file loads if reachable.
+   * Memory at 400k × 300d × 4 bytes = ~480 MB on the server, which is
+   * acceptable for the brain server hardware tier. Browser receives a
+   * server-precomputed corpus-word subset via `/api/glove-subset.json`
+   * (much smaller, only the words actually seen in the loaded corpora).
+   */
+  async loadPreTrained() {
+    if (this._loadingPromise) return this._loadingPromise;
+    this._loadingPromise = this._doLoad();
+    return this._loadingPromise;
+  }
+  async _doLoad() {
+    const isNode = typeof process !== "undefined" && process.versions && process.versions.node && typeof window === "undefined";
+    try {
+      console.log(`[Embeddings] Loading GloVe ${EMBED_DIM}d vectors (full vocab, no cap)...`);
+      let text = null;
+      if (isNode) {
+        try {
+          const count2 = await this._loadBinaryTable();
+          this._loaded = true;
+          console.log(`[Embeddings] Loaded ${count2.toLocaleString()} word vectors (${EMBED_DIM}d) from the binary table`);
+          return count2;
+        } catch (err) {
+          throw new Error(`Server GloVe load failed: ${err.message}`);
+        }
+      } else {
+        let response = null;
+        for (const url of GLOVE_URLS) {
+          let controller = null;
+          let timer = null;
+          try {
+            controller = new AbortController();
+            timer = setTimeout(() => controller.abort(), 3e3);
+            response = await fetch(url, { signal: controller.signal });
+            clearTimeout(timer);
+            if (response.ok) break;
+            response = null;
+          } catch (err) {
+            if (timer) clearTimeout(timer);
+            console.log(`[Embeddings] GloVe fetch aborted/failed at ${url}: ${err?.name || err?.message || err}`);
+            continue;
+          }
+        }
+        if (!response) throw new Error("All GloVe URLs failed in browser path");
+        const bodyController = new AbortController();
+        const bodyTimer = setTimeout(() => bodyController.abort(), 3e4);
+        try {
+          text = await response.text();
+          clearTimeout(bodyTimer);
+        } catch (err) {
+          clearTimeout(bodyTimer);
+          throw new Error(`GloVe body read failed: ${err?.message || err}`);
+        }
+      }
+      const lines = text.split("\n");
+      let count = 0;
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const parts = line.split(" ");
+        if (parts.length !== EMBED_DIM + 1) continue;
+        const word = parts[0].toLowerCase();
+        const vec = new Float32Array(EMBED_DIM);
+        for (let i = 0; i < EMBED_DIM; i++) {
+          vec[i] = parseFloat(parts[i + 1]) || 0;
+        }
+        let norm = 0;
+        for (let i = 0; i < EMBED_DIM; i++) norm += vec[i] * vec[i];
+        norm = Math.sqrt(norm) || 1;
+        for (let i = 0; i < EMBED_DIM; i++) vec[i] /= norm;
+        this._embeddings.set(word, vec);
+        count++;
+      }
+      this._loaded = true;
+      console.log(`[Embeddings] Loaded ${count.toLocaleString()} word vectors (${EMBED_DIM}d)`);
+      return count;
+    } catch (err) {
+      const isNodeRuntime = typeof process !== "undefined" && process.versions && process.versions.node && typeof window === "undefined";
+      this._loaded = false;
+      if (isNodeRuntime) {
+        console.error(`[Embeddings] \u26D4 FATAL \u2014 GloVe ${EMBED_DIM}d could not be loaded: ${err?.message || err}`);
+        console.error("[Embeddings] \u26D4 The brain does not boot without it (NO FALLBACKS). Subword n-gram vectors encode spelling, not meaning, and a walk trained on them deposits real weight against arbitrary positions.");
+        console.error("[Embeddings] \u26D4 Place glove.6B.300d.txt at corpora/glove.6B.300d.txt \u2014 https://nlp.stanford.edu/data/glove.6B.zip");
+        console.error("[Embeddings] \u26D4 Then build the binary table the server reads: `unity-glove ensure corpora/glove.6B.300d.txt corpora/glove.6B.300d.bin`. The press does this for you; by hand it is `cargo build --release -p unity-weights --bin unity-glove` first.");
+        throw err;
+      }
+      console.warn(`[Embeddings] GloVe ${EMBED_DIM}d unreachable in the browser lane \u2014 the local visitor brain continues on subword n-gram vectors, which encode spelling and not meaning. This lane is filed for removal.`);
+      return 0;
+    }
+  }
+  /**
+   * Read `corpora/glove.6B.300d.bin` and populate `this._embeddings`.
+   *
+   * ⭐ THE WHOLE METHOD IS A READ AND A LOOP OF VIEWS. Every vector is a
+   * `Float32Array` window onto the one buffer — no per-word allocation, no
+   * copying, no parsing. That is why it is ~170x faster than the text path it
+   * replaced and holds ~485 MB off-heap instead of ~1,350 MB on it.
+   *
+   * ⛔⛔ NO FALLBACK TO THE TEXT FILE, DELIBERATELY. A "well, parse the text
+   * then" branch would be a capability fallback: the table would load, she would
+   * boot, and the only symptom of a broken deploy step would be a 20-second boot
+   * nobody looks at. The cache is either present, current and correct, or the
+   * boot stops and says which of the three failed. The press builds it
+   * (`deploy/self-update.sh`) and aborts BEFORE restarting anything if it
+   * cannot — so a missing converter can never take her down mid-run.
+   *
+   * @returns {Promise<number>} vectors loaded
+   */
+  async _loadBinaryTable() {
+    let fs, path;
+    try {
+      fs = await import("fs");
+      path = await import("path");
+    } catch (err) {
+      throw new Error(`the binary embedding table needs Node's fs/path and neither is available here: ${err?.message || err}`);
+    }
+    const resolve = (rel) => {
+      const candidates = [
+        rel,
+        path.join(process.cwd(), rel),
+        path.join(process.cwd(), "..", rel),
+        path.join(process.cwd(), "server", rel)
+      ];
+      for (const p of candidates) {
+        if (fs.existsSync(p)) return p;
+      }
+      return null;
+    };
+    const binPath = resolve(GLOVE_BINARY_PATH);
+    if (!binPath) {
+      throw new Error(
+        `the binary embedding table is missing (${GLOVE_BINARY_PATH}). It is built from the text table by the Rust converter: \`unity-glove ensure ${GLOVE_LOCAL_PATH} ${GLOVE_BINARY_PATH}\` (cargo build --release -p unity-weights --bin unity-glove). The press does this automatically; if you are running by hand, run it once.`
+      );
+    }
+    console.log(`[Embeddings] Reading ${binPath} (binary table)...`);
+    const started = Date.now();
+    const buf = fs.readFileSync(binPath);
+    if (buf.length < GLOVE_BINARY_HEADER_LEN || buf.toString("latin1", 0, 8) !== GLOVE_BINARY_MAGIC) {
+      throw new Error(`${binPath} is not a ${GLOVE_BINARY_MAGIC} table (magic mismatch) \u2014 delete it and let the press rebuild it`);
+    }
+    const version = buf.readUInt32LE(8);
+    const dim = buf.readUInt32LE(12);
+    const count = buf.readUInt32LE(16);
+    const vocabBytes = buf.readUInt32LE(20);
+    const srcBytes = Number(buf.readBigUInt64LE(24));
+    if (version !== GLOVE_BINARY_VERSION) {
+      throw new Error(`${binPath} is format version ${version}; this loader reads ${GLOVE_BINARY_VERSION}. Rebuild it with \`unity-glove ensure\` rather than reading it at the wrong layout.`);
+    }
+    if (dim !== EMBED_DIM) {
+      throw new Error(`${binPath} holds ${dim}-dimensional vectors; this brain is built for ${EMBED_DIM}. Every buffer downstream is sized on ${EMBED_DIM}.`);
+    }
+    const textPath = resolve(GLOVE_LOCAL_PATH);
+    if (textPath) {
+      const now = fs.statSync(textPath).size;
+      if (now !== srcBytes) {
+        throw new Error(
+          `${binPath} is STALE \u2014 built from a ${srcBytes}-byte source, but ${textPath} is now ${now} bytes. Rebuild it: \`unity-glove ensure ${GLOVE_LOCAL_PATH} ${GLOVE_BINARY_PATH}\`.`
+        );
+      }
+    }
+    const vocabStart = GLOVE_BINARY_HEADER_LEN + count * 4;
+    const vecBase = vocabStart + vocabBytes;
+    const expected = vecBase + count * dim * 4;
+    if (buf.length !== expected) {
+      throw new Error(
+        `${binPath} is ${buf.length} bytes; the header (count ${count} x dim ${dim}, vocab ${vocabBytes}) describes exactly ${expected}. Off by ${buf.length - expected}. This is a truncated transfer or a layout disagreement \u2014 either way the table would be read at the wrong offsets, so it is refused.`
+      );
+    }
+    const vocab = buf.toString("utf8", vocabStart, vecBase).split("\0");
+    const absBase = buf.byteOffset + vecBase;
+    if (absBase % 4 !== 0) {
+      throw new Error(`the matrix lands at absolute byte ${absBase}, which is not 4-aligned \u2014 a Float32Array view is impossible here`);
+    }
+    const ab = buf.buffer;
+    const stride = dim;
+    for (let i = 0; i < count; i++) {
+      const word = vocab[i];
+      if (word === void 0 || word === "") continue;
+      this._embeddings.set(word, new Float32Array(ab, absBase + i * stride * 4, dim));
+    }
+    console.log(`[Embeddings]   ${this._embeddings.size.toLocaleString()} vectors mapped in ${Date.now() - started} ms (${(buf.length / 1048576).toFixed(0)} MB, source ${srcBytes.toLocaleString()} bytes)`);
+    return this._embeddings.size;
+  }
+  /**
+   * Returns the subset of the loaded GloVe vocabulary that
+   * matches a given word set. Used by the server to pre-compute a
+   * `/api/glove-subset.json` payload for the browser to fetch instead
+   * of pulling the full 480 MB file.
+   */
+  getSubsetForWords(words) {
+    const subset = {};
+    for (const word of words) {
+      const w = String(word).toLowerCase().trim();
+      const v = this._embeddings.get(w);
+      if (v) subset[w] = Array.from(v);
+    }
+    return subset;
+  }
+  /**
+   * Browser-side bulk load of a server-provided subset.
+   * Replaces _doLoad's path when running in a browser that's connecting
+   * to a server — the server precomputes the corpus-word subset and
+   * the browser fetches it as a single small JSON file.
+   */
+  loadSubset(subset) {
+    let count = 0;
+    for (const [word, arr] of Object.entries(subset)) {
+      if (!Array.isArray(arr) || arr.length !== EMBED_DIM) continue;
+      this._embeddings.set(word, new Float32Array(arr));
+      count++;
+    }
+    if (count > 0) this._loaded = true;
+    console.log(`[Embeddings] Loaded ${count.toLocaleString()} word vectors from server subset (${EMBED_DIM}d)`);
+    return count;
+  }
+  /**
+   * Get embedding for a word.
+   * Returns pre-trained + learned refinement if available.
+   *
+   * A word the table does not contain is encoded by subword n-gram sum
+   * (`_subwordEmbedding`). That is the DEFINED ENCODING for an out-of-vocabulary
+   * word — the only thing available about a word nobody has a vector for is its
+   * shape — not a fallback for a missing table. The table itself is mandatory;
+   * see `loadPreTrained`.
+   *
+   * @param {string} word
+   * @returns {Float32Array} — EMBED_DIM-dimensional vector (300d)
+   */
+  getEmbedding(word) {
+    word = word.toLowerCase().trim();
+    if (this.bindBlocked && this.bindBlocked.has(word)) return new Float32Array(EMBED_DIM);
+    let vec = this._embeddings.get(word);
+    if (!vec) {
+      vec = this._subwordEmbedding(word);
+    }
+    const delta = this._refinements.get(word);
+    if (delta) {
+      const refined = new Float32Array(EMBED_DIM);
+      for (let i = 0; i < EMBED_DIM; i++) {
+        refined[i] = vec[i] + delta[i];
+      }
+      let norm = 0;
+      for (let i = 0; i < EMBED_DIM; i++) norm += refined[i] * refined[i];
+      norm = Math.sqrt(norm) || 1;
+      for (let i = 0; i < EMBED_DIM; i++) refined[i] /= norm;
+      return refined;
+    }
+    return vec;
+  }
+  /**
+   * Get embedding for a sentence (average of word vectors).
+   * @param {string} text
+   * @returns {Float32Array}
+   */
+  getSentenceEmbedding(text) {
+    const words = text.toLowerCase().replace(/[^a-z' -]/g, " ").split(/\s+/).filter((w) => w.length >= 2 || w === "i" || w === "a");
+    if (words.length === 0) return new Float32Array(EMBED_DIM);
+    const ORDER_WEIGHT = 0.5;
+    const ORDER_STEP = 37;
+    const avg = new Float32Array(EMBED_DIM);
+    for (let p = 0; p < words.length; p++) {
+      const vec = this.getEmbedding(words[p]);
+      const shift = (p + 1) * ORDER_STEP % EMBED_DIM;
+      for (let i = 0; i < EMBED_DIM; i++) {
+        avg[i] += vec[i];
+        avg[(i + shift) % EMBED_DIM] += ORDER_WEIGHT * vec[i];
+      }
+    }
+    let norm = 0;
+    for (let i = 0; i < EMBED_DIM; i++) {
+      avg[i] /= words.length;
+      norm += avg[i] * avg[i];
+    }
+    norm = Math.sqrt(norm) || 1;
+    for (let i = 0; i < EMBED_DIM; i++) avg[i] /= norm;
+    return avg;
+  }
+  /**
+   * Map embedding vector to cortex neuron currents.
+   * The 50d vector maps to cortex Wernicke's area (language neurons).
+   * Each dimension drives a group of cortex neurons.
+   *
+   * @param {Float32Array} embedding — 50d vector
+   * @param {number} cortexSize — total cortex neurons
+   * @param {number} langStart — start index of Wernicke's area
+   * @returns {Float64Array} — current injection for cortex
+   */
+  mapToCortex(embedding, cortexSize = 300, langStart = 150) {
+    const langSize = cortexSize - langStart;
+    const currents = new Float64Array(cortexSize);
+    const groupSize = Math.max(1, Math.floor(langSize / EMBED_DIM));
+    for (let d = 0; d < EMBED_DIM; d++) {
+      const value = embedding[d] * 8;
+      const startNeuron = langStart + d * groupSize;
+      for (let n = 0; n < groupSize; n++) {
+        const idx = startNeuron + n;
+        if (idx < cortexSize) {
+          currents[idx] = value;
+        }
+      }
+    }
+    return currents;
+  }
+  /**
+   * REVERSE MAPPING — read semantic state back OUT of cortex neural activation.
+   *
+   * This is the mathematical inverse of `mapToCortex`. It's the read-side
+   * of the semantic input/output loop:
+   *
+   *   word → getEmbedding → mapToCortex → inject as neural currents
+   *        → cortex LIF dynamics + modulators (emotional gate, Ψ, etc)
+   *        → lastSpikes / voltages
+   *        → cortexToEmbedding                             ← THIS METHOD
+   *        → 50-dim semantic vector representing "what Unity's cortex
+   *          currently holds in Wernicke's area" in GloVe space
+   *        → cosine against candidate word embeddings
+   *        → pick the word that semantically matches the cortex state
+   *
+   * The read uses the SAME group-per-dimension layout as the write, so
+   * the round-trip preserves the semantic structure (after neural
+   * transformation through LIF integration + modulators). Each group of
+   * groupSize neurons averages to ONE embedding dimension value.
+   *
+   * Output is L2-normalized so cosine similarity against word embeddings
+   * (which are all L2-normalized by GloVe loader) produces values in
+   * [-1, 1] that reflect semantic alignment.
+   *
+   * @param {Float64Array|Uint8Array} spikes — cluster.lastSpikes
+   * @param {Float64Array} voltages — cluster voltages (for sub-threshold info)
+   * @param {number} cortexSize — total cortex neuron count (default 300)
+   * @param {number} langStart — first neuron of the language region (default 150)
+   * @returns {Float64Array} — 50d L2-normalized semantic pattern
+   */
+  cortexToEmbedding(spikes, voltages, cortexSize = 300, langStart = 150) {
+    const langSize = cortexSize - langStart;
+    const groupSize = Math.max(1, Math.floor(langSize / EMBED_DIM));
+    const out = new Float64Array(EMBED_DIM);
+    for (let d = 0; d < EMBED_DIM; d++) {
+      const startNeuron = langStart + d * groupSize;
+      let sum = 0;
+      let count = 0;
+      for (let n = 0; n < groupSize; n++) {
+        const idx = startNeuron + n;
+        if (idx >= cortexSize) break;
+        if (spikes && spikes[idx]) {
+          sum += 1;
+        } else if (voltages) {
+          sum += (voltages[idx] + 70) / 20;
+        }
+        count++;
+      }
+      out[d] = count > 0 ? sum / count : 0;
+    }
+    let norm = 0;
+    for (let i = 0; i < EMBED_DIM; i++) norm += out[i] * out[i];
+    norm = Math.sqrt(norm) || 1;
+    for (let i = 0; i < EMBED_DIM; i++) out[i] /= norm;
+    return out;
+  }
+  /**
+   * Cosine similarity between two embeddings.
+   * @returns {number} — -1 to 1
+   */
+  similarity(a, b) {
+    let dot = 0, normA = 0, normB = 0;
+    for (let i = 0; i < EMBED_DIM; i++) {
+      dot += a[i] * b[i];
+      normA += a[i] * a[i];
+      normB += b[i] * b[i];
+    }
+    return dot / (Math.sqrt(normA * normB) || 1);
+  }
+  /**
+   * Find the k most similar words to a given embedding.
+   * @param {Float32Array} embedding
+   * @param {number} k
+   * @returns {Array<{word: string, similarity: number}>}
+   */
+  findSimilar(embedding, k = 5) {
+    const results = [];
+    for (const [word, vec] of this._embeddings) {
+      const sim = this.similarity(embedding, vec);
+      results.push({ word, similarity: sim });
+    }
+    for (const [word] of this._refinements) {
+      if (!this._embeddings.has(word)) {
+        const vec = this.getEmbedding(word);
+        results.push({ word, similarity: this.similarity(embedding, vec) });
+      }
+    }
+    results.sort((a, b) => b.similarity - a.similarity);
+    return results.slice(0, k);
+  }
+  /**
+   * Learn from context — refine a word's embedding based on brain state.
+   * The brain's cortex activation at the time of hearing/speaking a word
+   * shifts the embedding toward the current context.
+   *
+   * @param {string} word
+   * @param {Float32Array} contextEmbedding — average of surrounding words
+   * @param {number} lr — learning rate (0.01 = gentle shift)
+   */
+  refineFromContext(word, contextEmbedding, lr = 0.01) {
+    word = word.toLowerCase().trim();
+    if (!this._refinements.has(word)) {
+      this._refinements.set(word, new Float32Array(EMBED_DIM));
+    }
+    const delta = this._refinements.get(word);
+    const base = this._embeddings.get(word) || this._subwordEmbedding(word);
+    const mean = this._ctxMean || (this._ctxMean = new Float32Array(EMBED_DIM));
+    this._ctxMeanN = (this._ctxMeanN || 0) + 1;
+    const invN = 1 / this._ctxMeanN;
+    let cm = 0;
+    const centred = new Float32Array(EMBED_DIM);
+    for (let i = 0; i < EMBED_DIM; i++) {
+      const c = contextEmbedding[i] || 0;
+      mean[i] += (c - mean[i]) * invN;
+      centred[i] = c - mean[i];
+      cm += centred[i] * centred[i];
+    }
+    cm = Math.sqrt(cm) || 1;
+    for (let i = 0; i < EMBED_DIM; i++) {
+      delta[i] += lr * (centred[i] / cm - (base[i] + delta[i]));
+    }
+    const CAP = 0.5;
+    let dm = 0;
+    for (let i = 0; i < EMBED_DIM; i++) dm += delta[i] * delta[i];
+    dm = Math.sqrt(dm);
+    if (dm > CAP) {
+      const s = CAP / dm;
+      for (let i = 0; i < EMBED_DIM; i++) delta[i] *= s;
+    }
+  }
+  /**
+   * Subword-based embedding for unknown words (fastText-style).
+   * Sum of n-gram hash contributions (N = 3..5) over boundary-marked
+   * word `<word>`. Deterministic — same word always produces same
+   * vector. Words that share character n-grams share feature dims so
+   * "cat" ↔ "cats" cosine > "cat" ↔ "xyz" cosine, giving the cortex
+   * usable structure even without real GloVe vectors.
+   */
+  _subwordEmbedding(word) {
+    const vec = new Float32Array(EMBED_DIM);
+    const w = `<${word}>`;
+    const MIN_N = 3;
+    const MAX_N = 5;
+    for (let n = MIN_N; n <= MAX_N; n++) {
+      if (w.length < n) continue;
+      for (let i = 0; i <= w.length - n; i++) {
+        const gram = w.slice(i, i + n);
+        let h = 5381;
+        for (let c = 0; c < gram.length; c++) {
+          h = (h << 5) + h + gram.charCodeAt(c) | 0;
+        }
+        for (let k = 0; k < 4; k++) {
+          h = h << 13 ^ h | 0;
+          h = h >> 17 ^ h | 0;
+          h = h << 5 ^ h | 0;
+          const idx = (h >>> 0) % EMBED_DIM;
+          const sign = (h >>> 16 & 1) === 0 ? 1 : -1;
+          vec[idx] += sign;
+        }
+      }
+    }
+    let norm = 0;
+    for (let i = 0; i < EMBED_DIM; i++) norm += vec[i] * vec[i];
+    norm = Math.sqrt(norm) || 1;
+    for (let i = 0; i < EMBED_DIM; i++) vec[i] /= norm;
+    return vec;
+  }
+  // ── Serialization ───────────────────────────────────────────────
+  /**
+   * Serialize learned refinements for persistence.
+   */
+  serializeRefinements() {
+    const data = {};
+    for (const [word, delta] of this._refinements) {
+      data[word] = Array.from(delta);
+    }
+    return data;
+  }
+  /**
+   * Load learned refinements from persistence.
+   */
+  loadRefinements(data) {
+    if (!data) return;
+    for (const [word, arr] of Object.entries(data)) {
+      this._refinements.set(word, new Float32Array(arr));
+    }
+    console.log(`[Embeddings] Loaded ${this._refinements.size} learned refinements`);
+  }
+  /**
+   * Get stats.
+   */
+  get stats() {
+    return {
+      pretrained: this._embeddings.size,
+      learned: this._refinements.size,
+      dim: EMBED_DIM,
+      loaded: this._loaded
+    };
+  }
+};
+var sharedEmbeddings = new SemanticEmbeddings();
 
 // ../js/brain/dictionary.js
 var MAX_WORDS = 5e4;
@@ -14424,7 +14118,7 @@ var SUBJECT_NORMALIZE = Object.freeze({
   life: "life",
   "life-skills": "life"
 });
-var SUBJECTS = Object.freeze(["ela", "math", "sci", "soc", "art", "life"]);
+var SUBJECTS2 = Object.freeze(["ela", "math", "sci", "soc", "art", "life"]);
 function normalizeSubject(subject) {
   if (!subject || typeof subject !== "string") return null;
   return SUBJECT_NORMALIZE[subject.toLowerCase()] || null;
@@ -15639,8 +15333,426 @@ var FUNCTION_WORDS = /* @__PURE__ */ new Set([
 
 // ../js/brain/cluster/emit.js
 init_brain_rng();
+
+// ../js/brain/speech-readout.js
+var D = 300;
+var ID = 512;
+var CJ = 2048;
+var L = (() => {
+  let o = 0;
+  const at = (n) => {
+    const s = o;
+    o += n;
+    return s;
+  };
+  const l = {
+    w1Id: at(ID),
+    w1Mean: at(D),
+    // her last word: who it is, what it means
+    w2Id: at(ID),
+    w3Id: at(ID),
+    // the two words before it
+    gist: at(D),
+    // everything said so far (what was said to her + her words)
+    pair: at(CJ),
+    triple: at(CJ),
+    // her last two / three words as one thing
+    heardLine: at(CJ),
+    // the exact line said to her
+    heardKey: at(ID),
+    heardGist: at(D),
+    concept: at(ID),
+    conceptMean: at(D)
+    // a thing in mind, to be named: who it is, what it means
+  };
+  l.G = o;
+  return l;
+})();
+var K = { w1: 8, mean: 4, w2: 6, w3: 4, gist: 12, conj: 6, heardKey: 8, concept: 8, conceptMean: 8 };
+var SPEECH_END = -2;
+var MARGIN = 0.1;
+var TRIES = 4;
+var W_MAX = 8;
+var GROW = 2048;
+function h32(str, salt) {
+  let h = (2166136261 ^ Math.imul(salt + 1, 2654435761)) >>> 0;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  h ^= h >>> 15;
+  h = Math.imul(h, 2246822507) >>> 0;
+  h ^= h >>> 13;
+  return h >>> 0;
+}
+function hashUnits(text, k, span, salt, base, out) {
+  const start = out.length;
+  for (let s = 0; out.length - start < k && s < k * 8; s++) {
+    const u = base + h32(text, salt * 131 + s) % span;
+    let dup = false;
+    for (let i = start; i < out.length; i++) if (out[i] === u) {
+      dup = true;
+      break;
+    }
+    if (!dup) out.push(u);
+  }
+}
+var tokens = (s) => String(s || "").toLowerCase().replace(/[^a-z'\s-]+/g, " ").split(/\s+/).filter(Boolean);
+var SpeechReadout = class {
+  constructor(embeddings) {
+    this.emb = embeddings;
+    this.G = L.G;
+    this.rows = new Array(L.G).fill(null);
+    this.endRow = new Float32Array(L.G);
+    this.cap = 0;
+    this.mu = null;
+    this._score = new Float32Array(0);
+    this.stats = { teaches: 0, alreadyRight: 0, corrections: 0, pushes: 0, says: 0 };
+  }
+  // ── Meaning ────────────────────────────────────────────────────────────────
+  /** The vector every word shares, so a meaning stripe carries what is DIFFERENT
+   *  about a word. Fixed once (the table's most frequent words) and saved. */
+  _mean() {
+    if (this.mu) return this.mu;
+    const mu = new Float64Array(D);
+    let n = 0;
+    const table = this.emb && this.emb._embeddings;
+    if (table && typeof table.values === "function") {
+      for (const v of table.values()) {
+        for (let i = 0; i < D; i++) mu[i] += v[i];
+        if (++n >= 2e4) break;
+      }
+    }
+    if (n > 0) for (let i = 0; i < D; i++) mu[i] /= n;
+    this.mu = mu;
+    return mu;
+  }
+  /** The k most positive dimensions of (vec − common part), as units at `base`. */
+  _meaningUnits(vec, k, base, out, removeMean = true) {
+    if (!vec || !vec.length) return;
+    const mu = removeMean ? this._mean() : null;
+    const best = new Int32Array(k).fill(-1);
+    const bv = new Float64Array(k).fill(0);
+    for (let d = 0; d < D && d < vec.length; d++) {
+      const v = vec[d] - (mu ? mu[d] : 0);
+      if (!(v > bv[k - 1])) continue;
+      let j = k - 1;
+      while (j > 0 && v > bv[j - 1]) {
+        bv[j] = bv[j - 1];
+        best[j] = best[j - 1];
+        j--;
+      }
+      bv[j] = v;
+      best[j] = d;
+    }
+    for (let j = 0; j < k; j++) if (best[j] >= 0) out.push(base + best[j]);
+  }
+  _gist(words) {
+    const g = new Float64Array(D);
+    let n = 0;
+    for (const w of words) {
+      const e = this.emb.getEmbedding(w);
+      if (!e) continue;
+      for (let i = 0; i < D; i++) g[i] += e[i];
+      n++;
+    }
+    if (n > 0) for (let i = 0; i < D; i++) g[i] /= n;
+    return n > 0 ? g : null;
+  }
+  // ── The ONE word code: who the word is + what it means. ───────────────────────
+  /** Units for `word` placed at an identity stripe and (optionally) a meaning stripe. */
+  wordUnits(word, idBase, kId, salt, out, meanBase = -1, kMean = 0) {
+    hashUnits(word, kId, ID, salt, idBase, out);
+    if (meanBase >= 0 && kMean > 0) this._meaningUnits(this.emb.getEmbedding(word), kMean, meanBase, out);
+  }
+  // ── States ────────────────────────────────────────────────────────────────────
+  /**
+   * The state before she says her next word.
+   *   heard  = what was said to her ('' when the line is her own)
+   *   prefix = the words she has said so far in this line
+   */
+  stateUnits(heard, prefix) {
+    const out = [];
+    const p = Array.isArray(prefix) ? prefix.filter(Boolean).map((w) => String(w).toLowerCase()) : [];
+    const h = tokens(heard);
+    const n = p.length;
+    if (!n && !h.length) return out;
+    const w1 = n >= 1 ? p[n - 1] : "^", w2 = n >= 2 ? p[n - 2] : "^", w3 = n >= 3 ? p[n - 3] : "^";
+    if (n >= 1) this.wordUnits(w1, L.w1Id, K.w1, 1, out, L.w1Mean, K.mean);
+    else hashUnits("^", K.w1, ID, 1, L.w1Id, out);
+    hashUnits(w2, K.w2, ID, 2, L.w2Id, out);
+    hashUnits(w3, K.w3, ID, 3, L.w3Id, out);
+    hashUnits(w2 + " " + w1, K.conj, CJ, 7, L.pair, out);
+    hashUnits(w3 + " " + w2 + " " + w1, K.conj, CJ, 9, L.triple, out);
+    const g = this._gist(h.concat(p));
+    if (g) this._meaningUnits(g, K.gist, L.gist, out);
+    if (h.length) {
+      hashUnits(h.join(" "), K.conj, CJ, 11, L.heardLine, out);
+      const key = this._keyWord(h);
+      if (key) hashUnits(key, K.heardKey, ID, 13, L.heardKey, out);
+      const hg = this._gist(h);
+      if (hg) this._meaningUnits(hg, K.gist, L.heardGist, out);
+    }
+    return out;
+  }
+  /** The word of a heard line that is least like every other word: the one it is about. */
+  _keyWord(h) {
+    const mu = this._mean();
+    let best = null, bestV = -1;
+    for (const w of h) {
+      const e = this.emb.getEmbedding(w);
+      if (!e) continue;
+      let v = 0;
+      for (let i = 0; i < D; i++) {
+        const x = e[i] - mu[i];
+        v += x * x;
+      }
+      if (v > bestV) {
+        bestV = v;
+        best = w;
+      }
+    }
+    return best;
+  }
+  /** A thing in mind, to be named: the word's identity and its meaning. */
+  conceptUnits(word) {
+    const out = [];
+    const w = String(word || "").toLowerCase().trim();
+    if (!w) return out;
+    this.wordUnits(w, L.concept, K.concept, 17, out, L.conceptMean, K.conceptMean);
+    return out;
+  }
+  /**
+   * A meaning in mind with no word attached (a mood, a memory, a topic vector):
+   * the meaning half of the concept state, so naming generalises to it by what
+   * the meaning is like. `feats` = the 300-d vectors written into sem; values of
+   * 1.5 or more are identity markers, not meaning, and are left out.
+   */
+  meaningUnits(feats) {
+    const out = [];
+    const list = Array.isArray(feats) ? feats : [feats];
+    const m = new Float64Array(D);
+    let n = 0;
+    for (const f of list) {
+      if (!f || !f.length) continue;
+      for (let i = 0; i < D && i < f.length; i++) {
+        const v = f[i];
+        if (v < 1.5 && v > -1.5) m[i] += v;
+      }
+      n++;
+    }
+    if (!n) return out;
+    for (let i = 0; i < D; i++) m[i] /= n;
+    this._meaningUnits(m, K.conceptMean, L.conceptMean, out);
+    return out;
+  }
+  // ── Read ──────────────────────────────────────────────────────────────────────
+  _grow(nWords) {
+    if (nWords <= this.cap) return;
+    const cap = Math.ceil(nWords / GROW) * GROW;
+    for (let u = 0; u < this.G; u++) {
+      const r = this.rows[u];
+      if (!r) continue;
+      const nr = new Float32Array(cap);
+      nr.set(r);
+      this.rows[u] = nr;
+    }
+    this.cap = cap;
+  }
+  /** Score of every word slot [0, nWords) in this state. The returned array is reused. */
+  scores(units, nWords) {
+    if (this._score.length < nWords) this._score = new Float32Array(Math.ceil(nWords / GROW) * GROW);
+    const s = this._score;
+    s.fill(0, 0, nWords);
+    const n = Math.min(nWords, this.cap);
+    for (let i = 0; i < units.length; i++) {
+      const r = this.rows[units[i]];
+      if (!r) continue;
+      for (let b = 0; b < n; b++) s[b] += r[b];
+    }
+    return s;
+  }
+  /** Score of "the line is finished" in this state. */
+  endScore(units) {
+    let e = 0;
+    for (let i = 0; i < units.length; i++) e += this.endRow[units[i]];
+    return e;
+  }
+  /** Per-word means in the shape the emission argmax takes (score ÷ active units),
+   *  with the end-of-line mean alongside as `.end`. */
+  bucketMeans(units, nWords) {
+    const s = this.scores(units, nWords);
+    const out = new Float32Array(nWords);
+    const d = Math.max(1, units.length);
+    for (let b = 0; b < nWords; b++) out[b] = s[b] / d;
+    out.end = this.endScore(units) / d;
+    this.stats.says++;
+    return out;
+  }
+  /** Where `target` ranks in this state (1 = she would say it). */
+  rank(units, target, nWords) {
+    if (!units.length || target >= nWords || target < 0 && target !== SPEECH_END) return -1;
+    const s = this.scores(units, nWords);
+    const e = this.endScore(units);
+    const t = target === SPEECH_END ? e : s[target];
+    let r = 1;
+    for (let b = 0; b < nWords; b++) if (b !== target && s[b] >= t) r++;
+    if (target !== SPEECH_END && e >= t) r++;
+    return r;
+  }
+  // ── Teach ─────────────────────────────────────────────────────────────────────
+  _row(u) {
+    let r = this.rows[u];
+    if (!r) {
+      r = this.rows[u] = new Float32Array(this.cap);
+    }
+    return r;
+  }
+  /**
+   * Teach until she says it: in this state, `target` must lead every other word
+   * slot by MARGIN × (active units). Returns { right, updates } — `right` is
+   * whether she already said it before any change.
+   */
+  teach(units, target, nWords, opts = {}) {
+    const isEnd = target === SPEECH_END;
+    if (!units || !units.length || target >= nWords || target < 0 && !isEnd) return { right: false, updates: 0 };
+    this._grow(nWords);
+    const margin = (opts.margin ?? MARGIN) * units.length;
+    const tries = opts.tries ?? TRIES;
+    const bump = (slot, d) => {
+      for (let i = 0; i < units.length; i++) {
+        if (slot === SPEECH_END) {
+          const v = this.endRow[units[i]] + d;
+          this.endRow[units[i]] = v > W_MAX ? W_MAX : v < -W_MAX ? -W_MAX : v;
+        } else {
+          const r = this._row(units[i]);
+          const v = r[slot] + d;
+          r[slot] = v > W_MAX ? W_MAX : v < -W_MAX ? -W_MAX : v;
+        }
+      }
+    };
+    const also = opts.also && opts.also.size ? opts.also : null;
+    let updates = 0, right = false;
+    for (let t = 0; t < tries; t++) {
+      const s = this.scores(units, nWords);
+      const e = this.endScore(units);
+      const tv = isEnd ? e : s[target];
+      let rival = -1, rv = -Infinity;
+      let sib = -Infinity;
+      for (let b = 0; b < nWords; b++) {
+        if (b === target) continue;
+        if (also && also.has(b)) {
+          if (s[b] > sib) sib = s[b];
+          continue;
+        }
+        if (s[b] > rv) {
+          rv = s[b];
+          rival = b;
+        }
+      }
+      if (!isEnd) {
+        if (also && also.has(SPEECH_END)) {
+          if (e > sib) sib = e;
+        } else if (e > rv) {
+          rv = e;
+          rival = SPEECH_END;
+        }
+      }
+      const none = rival === -1;
+      if (t === 0) right = none ? Math.max(tv, sib) > 0 : Math.max(tv, sib) > rv;
+      const loss = margin - (tv - (none ? 0 : rv));
+      if (loss <= 0) break;
+      const tau = loss / (2 * units.length) + 1e-4;
+      bump(target, tau);
+      if (!none) bump(rival, -tau);
+      updates++;
+    }
+    this.stats.teaches++;
+    if (right) this.stats.alreadyRight++;
+    this.stats.corrections += updates;
+    return { right, updates };
+  }
+  /** "Not this word, here": lower `word` until the best other slot leads it by the margin. */
+  pushAway(units, word, nWords, opts = {}) {
+    if (!units || !units.length || !(word >= 0) || word >= nWords) return false;
+    this._grow(nWords);
+    const s = this.scores(units, nWords);
+    let rv = this.endScore(units);
+    for (let b = 0; b < nWords; b++) if (b !== word && s[b] > rv) rv = s[b];
+    const loss = (opts.margin ?? MARGIN) * units.length - (rv - s[word]);
+    if (loss <= 0) return false;
+    const tau = loss / units.length + 1e-4;
+    for (let i = 0; i < units.length; i++) {
+      const r = this._row(units[i]);
+      const v = r[word] - tau;
+      r[word] = v < -W_MAX ? -W_MAX : v;
+    }
+    this.stats.pushes++;
+    return true;
+  }
+  // ── Save / restore ────────────────────────────────────────────────────────────
+  /** { header, buffers } — header is JSON-safe; buffers are the taught rows in header order. */
+  serialize(nWords) {
+    const units = [];
+    const buffers = [];
+    const n = Math.min(nWords, this.cap);
+    for (let u = 0; u < this.G; u++) {
+      const r = this.rows[u];
+      if (!r) continue;
+      units.push(u);
+      buffers.push(Buffer.from(r.buffer, r.byteOffset, n * 4));
+    }
+    buffers.push(Buffer.from(this.endRow.buffer, this.endRow.byteOffset, this.G * 4));
+    return { header: { v: 1, G: this.G, nWords: n, units, mu: this.mu ? Array.from(this.mu) : null, stats: this.stats }, buffers };
+  }
+  restore(header, buf) {
+    if (!header || header.v !== 1 || header.G !== this.G) return false;
+    const n = header.nWords | 0;
+    const need = header.units.length * n * 4 + this.G * 4;
+    if (!buf || buf.length < need) return false;
+    const f32 = (off, count) => new Float32Array(buf.buffer.slice(buf.byteOffset + off, buf.byteOffset + off + count * 4));
+    this.rows.fill(null);
+    this.cap = 0;
+    this._grow(Math.max(1, n));
+    for (let i = 0; i < header.units.length; i++) {
+      const r = new Float32Array(this.cap);
+      r.set(f32(i * n * 4, n));
+      this.rows[header.units[i]] = r;
+    }
+    this.endRow.set(f32(header.units.length * n * 4, this.G));
+    if (Array.isArray(header.mu) && header.mu.length === D) this.mu = Float64Array.from(header.mu);
+    if (header.stats) this.stats = { ...this.stats, ...header.stats };
+    return true;
+  }
+  /** Counts for the dashboard: how much has been taught and how big it is. */
+  summary() {
+    let taughtUnits = 0;
+    for (let u = 0; u < this.G; u++) if (this.rows[u]) taughtUnits++;
+    return { units: this.G, taughtUnits, wordCapacity: this.cap, bytes: taughtUnits * this.cap * 4, ...this.stats };
+  }
+};
+
+// ../js/brain/cluster/emit.js
 var _emitSampleRand = brainStream("emit-word-sample");
 var CLUSTER_EMIT_MIXIN = {
+  /** The one speech readout of this cluster (made on first use, saved with her weights). */
+  speechReadout() {
+    return this._speechReadout || (this._speechReadout = new SpeechReadout(sharedEmbeddings));
+  },
+  /**
+   * The units active right now — the state her next word is read from, and the
+   * state a lesson teaches in. An explicit speaking state (what was said + her
+   * words so far, or a thing in mind to name) wins; otherwise it is the meaning
+   * sem currently holds. Null when nothing is in mind.
+   */
+  currentSpeechUnits() {
+    if (Array.isArray(this._speechUnits) && this._speechUnits.length) return this._speechUnits;
+    if (Array.isArray(this._mindFeats) && this._mindFeats.length) {
+      const u = this.speechReadout().meaningUnits(this._mindFeats);
+      return u.length ? u : null;
+    }
+    return null;
+  },
   /**
    * Set (or clear) the grade-vocab emission allow-set consumed by
    * emitWordDirect's free-composition argmax. Pass an iterable of
@@ -15813,108 +15925,22 @@ var CLUSTER_EMIT_MIXIN = {
    * this loop is exactly how two callers begin propagating subtly different
    * inputs while every test still passes.
    */
-  _buildSemPreVector() {
-    const sem = this.regions && this.regions.sem;
-    if (!sem || !this.lastSpikes) return null;
-    const semSize = sem.end - sem.start;
-    const preSem = new Float64Array(semSize);
-    for (let i = 0; i < semSize; i++) {
-      preSem[i] = this.lastSpikes[sem.start + i] || 0;
-    }
-    return preSem;
-  },
+  /**
+   * Her next word. Kept `async` because every caller awaits it; the read itself
+   * is a table sum on this machine (about a millisecond), with no card round trip.
+   */
   async emitWordDirectDonor(opts = {}) {
-    const proj = this.crossProjections && this.crossProjections.sem_to_word_motor;
-    const sem = this.regions && this.regions.sem;
-    if (proj && sem && proj._gpuBound && this._gpuProxyReady && this._gpuProxy && typeof this._gpuProxy.gateProbe === "function" && this.lastSpikes) {
-      try {
-        const idx = [];
-        for (let i = sem.start; i < sem.end; i++) {
-          if (this.lastSpikes[i]) idx.push(i - sem.start);
-        }
-        this._lastEmitSemActive = idx.length;
-        if (idx.length && typeof this._gpuProxy.gateProbeBuckets === "function" && typeof this.wordBucketCellSizeFor === "function" && Array.isArray(this.wordBucketWords) && this.wordBucketWords.length > 0) {
-          try {
-            const means = await this._gpuProxy.gateProbeBuckets(
-              `${this.name}_sem_to_word_motor`,
-              idx,
-              this.wordBucketCellSizeFor(),
-              this.wordBucketWords.length
-            );
-            if (means && means.length > 0) {
-              const s2 = this._speakGpuStats || (this._speakGpuStats = { gpu: 0, cpu: 0, logged: false });
-              s2.gpu++;
-              if (!s2.logged) {
-                s2.logged = true;
-                console.log("[Cluster " + this.name + "] SPEAK via donor: ON (reduced readout) \u2014 the card returns per-word bucket means, not the raw post region.");
-              }
-              return this.emitWordDirect({ ...opts, wmBucketMeans: means });
-            }
-          } catch {
-          }
-        }
-        if (idx.length) {
-          let out = await this._gpuProxy.gateProbe(`${this.name}_sem_to_word_motor`, "sem", idx);
-          if (!out || !out.length) {
-            out = await this._gpuProxy.gateProbe(`${this.name}_sem_to_word_motor`, "sem", idx);
-          }
-          if (out && out.length > 0) {
-            const s2 = this._speakGpuStats || (this._speakGpuStats = { gpu: 0, cpu: 0, logged: false });
-            s2.gpu++;
-            if (!s2.logged) {
-              s2.logged = true;
-              console.log("[Cluster " + this.name + "] SPEAK via donor: ON \u2014 word emission argmaxes the FULL GPU training mass (sem\u2192word_motor currents ride the probe ack); CPU shadow only when the donor cannot answer.");
-            }
-            return this.emitWordDirect({ ...opts, wmOutOverride: out });
-          }
-        }
-      } catch {
-      }
-    }
-    const s = this._speakGpuStats || (this._speakGpuStats = { gpu: 0, cpu: 0, logged: false });
-    s.cpu++;
-    if (!opts.wmBucketMeans && !opts.wmOutOverride && proj && typeof proj.propagateChunked === "function" && this.lastSpikes) {
-      try {
-        const preSem = this._buildSemPreVector();
-        if (preSem) {
-          const out = await proj.propagateChunked(preSem, { chunkRows: 25e4 });
-          if (out && out.length > 0) {
-            s.cpuChunked = (s.cpuChunked || 0) + 1;
-            return this.emitWordDirect({ ...opts, wmOutOverride: out });
-          }
-        }
-      } catch {
-      }
-    }
-    s.cpuSync = (s.cpuSync || 0) + 1;
     return this.emitWordDirect(opts);
   },
   emitWordDirect(opts = {}) {
-    if (!this.regions || !this.regions.word_motor || !this.regions.sem) return "";
-    if (!this.crossProjections?.sem_to_word_motor) return "";
+    if (!this.regions || !this.regions.word_motor) return "";
     if (!this.dictionary || !this.dictionary._words) return "";
-    const proj = this.crossProjections.sem_to_word_motor;
-    if (typeof proj.propagate !== "function") return "";
-    const sem = this.regions.sem;
     const wordMotor = this.regions.word_motor;
-    const semSize = sem.end - sem.start;
-    const wmSize = wordMotor.end - wordMotor.start;
-    const bucketMeans = opts.wmBucketMeans && opts.wmBucketMeans.length > 0 ? opts.wmBucketMeans : null;
-    let preSem = null;
-    if (!bucketMeans) preSem = this._buildSemPreVector();
-    let wmOut;
-    if (bucketMeans) {
-      wmOut = null;
-    } else if (opts.wmOutOverride && opts.wmOutOverride.length > 0) {
-      wmOut = opts.wmOutOverride;
-    } else {
-      try {
-        wmOut = proj.propagate(preSem);
-      } catch {
-        return "";
-      }
-    }
-    if (!bucketMeans && (!wmOut || wmOut.length === 0)) return "";
+    const _nSlots = Array.isArray(this.wordBucketWords) ? this.wordBucketWords.length : 0;
+    const _units = _nSlots > 0 ? this.currentSpeechUnits() : null;
+    this._lastEmitSemActive = _units ? _units.length : 0;
+    if (!_units || !_units.length) return "";
+    const bucketMeans = this.speechReadout().bucketMeans(_units, _nSlots);
     let gwBoostWord = null;
     let gwBoostMul = 1;
     if (this._globalWorkspace && typeof this._globalWorkspace.getBroadcast === "function") {
@@ -15927,7 +15953,7 @@ var CLUSTER_EMIT_MIXIN = {
         }
       }
     }
-    const subjScope = opts.subject && normalizeSubject(opts.subject) ? [normalizeSubject(opts.subject)] : SUBJECTS;
+    const subjScope = opts.subject && normalizeSubject(opts.subject) ? [normalizeSubject(opts.subject)] : SUBJECTS2;
     const candidates = [];
     let bestWord = null;
     let bestMean = -Infinity;
@@ -15935,54 +15961,12 @@ var CLUSTER_EMIT_MIXIN = {
     if (!Array.isArray(this._recentEmissions)) this._recentEmissions = [];
     const recentLast4 = new Set(this._recentEmissions.slice(-4));
     const REPETITION_PENALTY = 0.7;
-    const _wnEnv = typeof process !== "undefined" && process.env ? process.env : {};
-    const _wnOn = _wnEnv.DREAM_WORDNORM !== "0";
-    const _wnAlpha = Number(_wnEnv.DREAM_WORDNORM_ALPHA) > 0 ? Number(_wnEnv.DREAM_WORDNORM_ALPHA) : 0.7;
-    let _wnMass = null;
     for (let _wmOnce = 0; _wmOnce < 1; _wmOnce++) {
       const subjStart = 0;
       const subjEnd = wordMotor.end - wordMotor.start;
-      const subjSize = subjEnd - subjStart;
-      if (subjSize <= 0) continue;
       const wordsList = this.wordBucketWords;
       if (!Array.isArray(wordsList) || wordsList.length === 0) continue;
       const bucketSize = this.wordBucketCellSizeFor();
-      if (_wnOn) {
-        const _c = this._wnMassCache;
-        if (_c && _c.n === wordsList.length && Date.now() - _c.at < 6e5) {
-          _wnMass = _c;
-        } else {
-          try {
-            const proj2 = this.crossProjections && this.crossProjections.sem_to_word_motor;
-            if (proj2 && proj2.values && proj2.rowPtr && proj2.rowPtr.length > 1) {
-              const mass = new Float64Array(wordsList.length);
-              const rows = proj2.rowPtr.length - 1;
-              let total = 0, hot = 0;
-              for (let b = 0; b < wordsList.length; b++) {
-                const r0 = Math.min(rows, subjStart + b * bucketSize);
-                const r1 = Math.min(rows, r0 + bucketSize);
-                let m = 0;
-                for (let r = r0; r < r1; r++) {
-                  for (let k = proj2.rowPtr[r]; k < proj2.rowPtr[r + 1]; k++) m += Math.abs(proj2.values[k]);
-                }
-                mass[b] = m;
-                total += m;
-              }
-              const avg = wordsList.length > 0 ? total / wordsList.length : 0;
-              if (avg > 0) {
-                for (let b = 0; b < mass.length; b++) if (mass[b] > avg * 3) hot++;
-              }
-              _wnMass = this._wnMassCache = { at: Date.now(), n: wordsList.length, mass, avg };
-              if (!this._wnLogOnce && avg > 0) {
-                this._wnLogOnce = true;
-                console.log(`[Cluster ${this.name}] WORDNORM: ON \u2014 homeostatic bucket-mass normalization at the emission argmax (avg bucket mass ${avg.toFixed(3)}, ${hot} buckets >3\xD7 avg get scaled, alpha ${_wnAlpha}). Kill switch: DREAM_WORDNORM=0.`);
-              }
-            }
-          } catch {
-            _wnMass = null;
-          }
-        }
-      }
       for (let b = 0; b < wordsList.length; b++) {
         const _bw = wordsList[b];
         if (!_bw || !/\S/.test(_bw) || !/[a-z0-9]/i.test(_bw) && !T14_TERMINATORS.has(_bw)) continue;
@@ -16014,22 +15998,11 @@ var CLUSTER_EMIT_MIXIN = {
           }
           break;
         }
-        const bEnd = Math.min(subjEnd, bStart + bucketSize);
-        const cellCount = Math.max(1, bEnd - bStart);
-        let mean;
-        if (bucketMeans) {
-          mean = b < bucketMeans.length ? bucketMeans[b] : 0;
-        } else {
-          let sum = 0;
-          for (let n = bStart; n < bEnd; n++) sum += wmOut[n];
-          mean = sum / cellCount;
-        }
-        if (_wnMass && _wnMass.avg > 0 && _wnMass.mass[b] > _wnMass.avg) {
-          mean /= Math.pow(_wnMass.mass[b] / _wnMass.avg, _wnAlpha);
-        }
-        const _isRecentContent = recentLast4.has(wordsList[b]) && !FUNCTION_WORDS.has(wordsList[b]);
-        if (gwBoostWord && wordsList[b] === gwBoostWord && !_isRecentContent) mean *= gwBoostMul;
-        if (_isRecentContent) {
+        let mean = b < bucketMeans.length ? bucketMeans[b] : 0;
+        const _isRecent = recentLast4.has(wordsList[b]);
+        const _isRecentContent = _isRecent && !FUNCTION_WORDS.has(wordsList[b]);
+        if (gwBoostWord && wordsList[b] === gwBoostWord && !_isRecent && mean > 0) mean *= gwBoostMul;
+        if (_isRecentContent && mean > 0) {
           mean *= REPETITION_PENALTY;
         }
         candidates.push({ word: wordsList[b], mean, idx: b });
@@ -16053,6 +16026,11 @@ var CLUSTER_EMIT_MIXIN = {
       }
       this._lastEmitTop = top;
       this._lastEmitCandidateCount = candidates.length;
+    }
+    this._lastEmitEnd = false;
+    if (bucketMeans.end > 0 && bucketMeans.end >= bestMean) {
+      this._lastEmitEnd = true;
+      return ".";
     }
     const NOISE_FLOOR = 1e-3;
     if (typeof this._emitSignalEMA !== "number") this._emitSignalEMA = 0;
@@ -16106,7 +16084,7 @@ var CLUSTER_EMIT_MIXIN = {
       this._emitSignalEMA = (1 - _emaAlpha) * this._emitSignalEMA + _emaAlpha * bestMean;
       this._emitSignalSampleCount++;
     }
-    let temperature = typeof opts.temperature === "number" ? opts.temperature : 0;
+    let temperature = typeof opts.temperature === "number" ? opts.temperature * 0.1 : 0;
     if (temperature > 0) {
       const _annealOff = typeof process !== "undefined" && !!process.env && process.env.DREAM_ANNEAL_TEMP === "0";
       if (!_annealOff) {
@@ -16157,6 +16135,16 @@ var CLUSTER_EMIT_MIXIN = {
     this._lastEmittedWord = bestWord;
     this._lastEmittedActivation = bestMean;
     this._lastEmittedBucketIdx = bestIdx;
+    if (this.lastSpikes && bestIdx >= 0) {
+      const _cell = this.wordBucketCellSizeFor();
+      const _lit = (i, v) => {
+        const a = wordMotor.start + i * _cell;
+        if (i >= 0 && a < wordMotor.end) this.lastSpikes.fill(v, a, Math.min(wordMotor.end, a + _cell));
+      };
+      if (typeof this._litWordSlot === "number" && this._litWordSlot !== bestIdx) _lit(this._litWordSlot, 0);
+      _lit(bestIdx, 1);
+      this._litWordSlot = bestIdx;
+    }
     if (!opts.skipRecentTrack) {
       this._recentEmissions.push(bestWord);
       while (this._recentEmissions.length > 8) {
@@ -16355,26 +16343,19 @@ var CLUSTER_EMIT_MIXIN = {
         return null;
       }
       const _cur = this._brain && this._brain.curriculum;
-      const _taught = (this.size | 0) > 2e6 && _cur && typeof _cur._dictionaryPatternFor === "function" && typeof _cur._topKEmbedding === "function" && typeof _cur._writeTiledPattern === "function";
+      const _taught = !!(_cur && typeof _cur._writeSpeechState === "function" && typeof _cur._writeConceptState === "function" && typeof _cur._writeMeaningState === "function");
       const _seedWord = words.length > 0 ? words[words.length - 1] : opts.intentConcept || (typeof intentSeed === "string" ? (intentSeed.replace(/_/g, " ").toLowerCase().match(/[a-z]+/g) || []).filter((t) => t.length > 2).pop() : null);
       const _seedEmb = words.length === 0 && !_seedWord && intentSeed && typeof intentSeed !== "string" && intentSeed.length > 0 ? intentSeed : null;
       const _heardText = typeof opts.questionText === "string" && opts.questionText ? opts.questionText : "";
       const _canState = _taught && typeof _cur._writeSpeechState === "function";
       if (_canState && words.length === 0 && _heardText) {
-        _cur._writeSpeechState(_heardText, []);
+        _cur._writeSpeechState(_heardText, [], { unitsOnly: true });
       } else if (_canState && words.length > 0) {
-        _cur._writeSpeechState(_heardText, words);
+        _cur._writeSpeechState(_heardText, words, { unitsOnly: true });
       } else if (_taught && _seedWord) {
-        const semR = this.regions.sem;
-        this.lastSpikes.fill(0, semR.start, semR.end);
-        _cur._writeTiledPattern(semR, _cur._topKEmbedding(_cur._dictionaryPatternFor(_seedWord), 8), true, { noCpu: false });
+        _cur._writeConceptState(_seedWord);
       } else if (_taught && _seedEmb) {
-        const semR = this.regions.sem;
-        this.lastSpikes.fill(0, semR.start, semR.end);
-        _cur._writeTiledPattern(semR, _cur._topKEmbedding(Float64Array.from(_seedEmb), 8), true, { noCpu: false });
-        if (typeof _cur._writeTiledPatternOffset === "function") {
-          _cur._writeTiledPatternOffset(semR, _cur._dictionaryPatternFor("i"), false, 0.5);
-        }
+        _cur._writeMeaningState(_seedEmb);
       } else if (_taught) {
       } else {
         for (let t = 0; t < TICKS_PER_WORD; t++) {
@@ -16494,8 +16475,8 @@ var CLUSTER_EMIT_MIXIN = {
         const sentenceEmb = sharedEmbeddings.getSentenceEmbedding(sentence);
         if (sentenceEmb && sentenceEmb.length > 0) {
           let dot = 0, na = 0, nb = 0;
-          const L = Math.min(coherenceTarget.length, sentenceEmb.length);
-          for (let i = 0; i < L; i++) {
+          const L2 = Math.min(coherenceTarget.length, sentenceEmb.length);
+          for (let i = 0; i < L2; i++) {
             dot += coherenceTarget[i] * sentenceEmb[i];
             na += coherenceTarget[i] * coherenceTarget[i];
             nb += sentenceEmb[i] * sentenceEmb[i];
@@ -17270,10 +17251,10 @@ var CLUSTER_ATTENTION_MIXIN = {
     const scores = new Float64Array(n);
     for (let k = 0; k < n; k++) {
       const key = keys[k];
-      const L = Math.min(d, key.length);
+      const L2 = Math.min(d, key.length);
       let dot = 0;
       let kNorm = 0;
-      for (let i = 0; i < L; i++) {
+      for (let i = 0; i < L2; i++) {
         dot += queryEmbedding[i] * key[i];
         kNorm += key[i] * key[i];
       }
@@ -17297,8 +17278,8 @@ var CLUSTER_ATTENTION_MIXIN = {
     for (let k = 0; k < n; k++) {
       const key = keys[k];
       const w = weights[k];
-      const L = Math.min(d, key.length);
-      for (let i = 0; i < L; i++) context[i] += w * key[i];
+      const L2 = Math.min(d, key.length);
+      for (let i = 0; i < L2; i++) context[i] += w * key[i];
     }
     let cNorm = 0;
     for (let i = 0; i < d; i++) cNorm += context[i] * context[i];
@@ -17793,26 +17774,23 @@ var NeuronCluster = class {
         ["sem", "fineType"],
         ["sem", "motor"],
         ["motor", "letter"],
-        ["auditory", "phon"],
-        // iter21-A — sem → word_motor for word-level production. Operator
-        // 2026-05-05 "motor argmax is fucked if it ever just relplies with
-        // letters and not words". This is the PRIMARY production path —
-        // single-tick word emission via argmax over word vocabulary
-        // buckets. NO FALLBACK to letter motor.
-        ["sem", "word_motor"]
+        ["auditory", "phon"]
+        // ⛔ NO `['sem', 'word_motor']` PAIR. What she says is read by the speech
+        // readout (`speech-readout.js`): active units of the speaking state →
+        // word slots, every slot reading every unit. As a cell-to-cell sheet
+        // this pair gave a word slot 144 fixed wires onto 2.5 M sem cells, so a
+        // slot read the last word's identity through about one wire, and no
+        // lesson could change which cells a slot was wired to. The `word_motor`
+        // region itself stays: it is where the said word lights up.
       ];
       const crossTargetFanout = 10;
       const EMISSION_PAIRS = /* @__PURE__ */ new Set([
         "sem-motor",
-        "motor-sem",
-        "sem-word_motor",
-        "word_motor-sem"
+        "motor-sem"
       ]);
       const MOTOR_BOUND_PAIRS = /* @__PURE__ */ new Set([
         "sem-motor",
         "motor-sem",
-        "sem-word_motor",
-        "word_motor-sem",
         "letter-motor",
         "motor-letter",
         "phon-motor",
@@ -17834,8 +17812,8 @@ var NeuronCluster = class {
         "motor-phon"
       ]);
       if (_semTopographic) {
-        for (const k of ["sem-motor", "motor-sem", "sem-word_motor", "word_motor-sem"]) TOPOGRAPHIC_PAIRS.add(k);
-        console.warn(`[Cluster ${name}] DREAM_SEM_TOPOGRAPHIC=1 \u2014 the sem\u2194motor and sem\u2194word_motor projections are being built with a topographic prior over UNALIGNED spaces. At this size that spends ~70% of each word's wiring inside a single GloVe dimension; it is the pre-2026-09-04 behaviour, kept so the two can be compared on real walks.`);
+        for (const k of ["sem-motor", "motor-sem"]) TOPOGRAPHIC_PAIRS.add(k);
+        console.warn(`[Cluster ${name}] DREAM_SEM_TOPOGRAPHIC=1 \u2014 the sem\u2194motor projections are being built with a topographic prior over UNALIGNED spaces. At this size that spends ~70% of each word's wiring inside a single GloVe dimension; it is the pre-2026-09-04 behaviour, kept so the two can be compared on real walks.`);
       }
       const logConstruction = this.size >= 5e4;
       if (logConstruction) console.log(`[Cluster ${name}] initializing ${pairs.length * 2} cross-projections at size=${this.size.toLocaleString()}...`);
@@ -18136,6 +18114,15 @@ var NeuronCluster = class {
     if (!region) return;
     const regionSize = region.end - region.start;
     if (regionSize <= 0 || !emb || emb.length === 0) return;
+    if (regionName === "sem" && emb.length === 300) {
+      const now = Date.now();
+      if (!Array.isArray(this._mindFeats) || now - (this._mindFeatsAt || 0) > 5e3) this._mindFeats = [];
+      this._mindFeats.push(emb);
+      if (this._mindFeats.length > 4) this._mindFeats.shift();
+      this._mindFeatsAt = now;
+      this._speechUnits = null;
+      this._speechCtx = null;
+    }
     const groupSize = Math.max(1, Math.floor(regionSize / emb.length));
     const haveProxy = !!(this._gpuProxy && this._gpuProxy.writeCurrentSlice);
     const fwdIndices = haveProxy ? [] : null;

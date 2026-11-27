@@ -9119,18 +9119,10 @@ export const K_MIXIN = {
   // emission. NO LETTER CHAIN. NO FALLBACK.
   async _teachWordEmissionDirect(opts = {}) {
     const cluster = this.cluster;
-    if (!cluster || !cluster.crossProjections?.sem_to_word_motor) return;
-    const semToWordMotor = cluster.crossProjections.sem_to_word_motor;
-    const semRegion = cluster.regions?.sem;
-    const wordMotorRegion = cluster.regions?.word_motor;
-    if (!semRegion || !wordMotorRegion) return;
-    if (typeof semToWordMotor.ojaUpdate !== 'function') return;
+    if (!cluster || !cluster.regions?.word_motor || typeof cluster.speechReadout !== 'function') return;
 
     const reps = opts.reps ?? 8;
-    const lr = (cluster.learningRate ?? 0.01) * 5;
     const subject = normalizeSubject(opts.subject) || 'all';
-    const subjectBandName = wordMotorBandName(subject);
-    const subjectBand = subjectBandName ? cluster.regions[subjectBandName] : null;
 
     // Read or create the persistent bucket map. The helper enumerates
     // dictionary words once and stashes them on the cluster so emit +
@@ -9147,213 +9139,51 @@ export const K_MIXIN = {
     }
     const words = bucketState.words;
 
-    // EVENT-COST FIX (2026-07-10) — the requirement is that events must not run
-    // endlessly, with twelve subjects trailing into millions upon millions of
-    // them. `_ensureWordBucketMap` returns the ENTIRE accumulated
-    // subject-band dictionary, which GROWS every grade — so the pre-fix
-    // loop re-drilled emission for EVERY previously-learned word on EVERY
-    // cell at EVERY grade, an O(dictionary × reps) cost that compounds
-    // super-linearly across the K→PhD walk. Re-drilling an already-trained
-    // word is WASTE not learning: the word_motor band is frozen + append-
-    // only (SPEAK.1), so a word taught in its own introduction cell keeps
-    // its bucket weights whether or not later cells re-touch it. So we teach
-    // each word's emission ONCE (when first seen) and SKIP it thereafter.
-    // Every word is still fully taught (all reps) the grade it's introduced;
-    // we only drop the redundant re-drill. This is NOT a pass-a-gate cap —
-    // it doesn't shorten teaching a single word, it stops re-teaching words
-    // already learned. `opts.force` re-drills everything (calibration/repair).
-    // Per-subject Set persists for the session; bucket index `wi` is the
-    // frozen-array position, so a skipped word leaves its band untouched and
-    // index↔bucket alignment holds exactly as before.
-    const _emTaughtKey = `_emissionTaughtWords_${subject}`;
-    if (!(cluster[_emTaughtKey] instanceof Set)) cluster[_emTaughtKey] = new Set();
-    const emTaught = cluster[_emTaughtKey];
-    const forceAll = opts.force === true || opts.reteachAll === true;
-    const newlyTaught = [];
-
-    this._hb(`[Curriculum] _teachWordEmissionDirect START: ${words.length} K words × ${reps} reps · lr=${lr.toFixed(4)} (subject=${subject} band=${subjectBandName || 'umbrella word_motor'}) — single-tick word emission via sem_to_word_motor${forceAll ? ' [FORCE re-drill all]' : ` [incremental: ${emTaught.size} already emission-taught this session will be skipped]`}`);
+    // EVERY word she has is checked on every visit, and that is cheap now: a
+    // word she already names correctly costs one table sum and changes nothing,
+    // so a visit only spends work on names another lesson disturbed.
+    // ⚠ RE-PRICE: ≤ `reps` passes × vocabulary × one table sum (measured 0.6 ms
+    // at 1,864 words, growing with vocabulary) — ~25 s per pass at 8,400 words,
+    // and a pass that needed no correction ends the lesson.
+    this._hb(`[Curriculum] _teachWordEmissionDirect START: naming ${words.length} words, up to ${reps} passes (subject=${subject}) — each word taught until she says it for the thing in mind`);
 
     const t0 = Date.now();
     let updates = 0, skipped = 0;
 
-    const semSize = semRegion.end - semRegion.start;
-    const wmSize = wordMotorRegion.end - wordMotorRegion.start;
-    // WMB unify (2026-07-14) — write to the SINGLE global word_motor band (not
-    // a per-subject sub-band). Every unique word gets one bucket across the
-    // whole region; this matches the umbrella bucket map + emitWordDirect's
-    // single-band read + the shared wordBucketCellSizeFor(). subjectBand is now
-    // ignored for the write target (kept above only for log context).
-    const bandStart = 0;
-    const bandEnd = wmSize;
-    const bandSize = bandEnd - bandStart;
-    // SPEAK.1 — teach writes to the SAME frozen band emit argmaxes (vocab-growth-
-    // invariant). Single unified authority: wordBucketCellSizeFor().
-    // ⛔ NO FALLBACKS (2026-09-02). The alternative arm here computed
-    // `bandSize / words.length` — a vocabulary-size-dependent geometry for a
-    // TEACH write whose whole contract is landing on the same frozen cells the
-    // emission argmaxes. Teach and emit disagreeing about band layout does not
-    // throw; it deposits in one place and listens in another. One authority now,
-    // with nothing behind it.
-    const bucketSize = cluster.wordBucketCellSizeFor();
-
-    // iter21-A leak fix: REUSE buffers across iterations instead of
-    // allocating new Float64Arrays per word × per rep. Operator caught
-    // ⚠⚠LEAK+577MB/min during teach phases — heavy allocation churn.
-    // Allocate once outside loop, clear+fill per word.
-    const preSem = new Float64Array(semSize);
-    const postWM = new Float64Array(wmSize);
-    const fillSem = (pattern) => {
-      preSem.fill(0);
-      if (!pattern || pattern.length === 0) return;
-      const gSize = Math.max(1, Math.floor(semSize / pattern.length));
-      for (let d = 0; d < pattern.length; d++) {
-        const v = pattern[d] || 0;
-        if (v === 0) continue;
-        for (let n = 0; n < gSize; n++) {
-          const idx = d * gSize + n;
-          if (idx < semSize) preSem[idx] = v;
-        }
-      }
-    };
-
-    // ACTIVE-ROW OJA + TIME-BASED YIELDING (2026-08-15).
-    //
-    // Live log: `[EventLoop] BLOCKED 91640ms ... phase=_teachWordEmissionDirect`.
-    // Ninety-one seconds with the single-threaded loop pinned, starving donor
-    // frames, /ws handshakes and pings. Two causes, both here:
-    //
-    //   1. `semToWordMotor.ojaUpdate(preSem, postWM, lr)` was called with NO
-    //      activeRows, so every word scanned ALL rows of sem_to_word_motor
-    //      (90,000 at this geometry) to discover that exactly ONE bucket was
-    //      lit. Passing the bucket's row range makes the call O(bucketSize)
-    //      instead of O(rows), and it is BIT-IDENTICAL: under Oja a post=0 row
-    //      updates by lr*0*x - lr*0^2*w = 0, so a skipped row and a
-    //      visited-then-skipped row leave the same weight. Same reasoning and
-    //      the same mechanism `_ojaUpdateChunked`'s active-row path uses.
-    //
-    //   2. The yield fired every 100 WORDS, which at O(rows) per word meant
-    //      ~9,000,000 row visits between event-loop hops. Count-based yielding
-    //      cannot bound wall time when the per-item cost is unknown. Yield on
-    //      ELAPSED TIME (~30ms) instead - the discipline the chunked Oja paths
-    //      converge on at any scale.
-    //
-    // `_microtask` already hops via setImmediate (a real macrotask) despite its
-    // name, so the hop was never the problem - the work between hops was.
+    // Yield on ELAPSED TIME (~30 ms): `_microtask` hops via setImmediate, so
+    // /ws handshakes and donor frames get a slot however long a pass runs.
     const YIELD_SLICE_MS = 30;
-    // Constant for this projection pair; it was rebuilt per word per rep.
-    const _kScalesWM = typeof cluster.buildKScalesForProjection === 'function'
-      ? cluster.buildKScalesForProjection('sem', 'word_motor') : null;
-    // GPU TEACH WIRE (2026-08-21) — this drill was the last vocab lane with
-    // NO GPU dispatch: it bypasses _crossRegionHebbian on purpose (direct
-    // bucket-row ojaUpdate for frozen-band control), so the GPU-resident
-    // sem_to_word_motor copy never saw these drills and only caught up on a
-    // full re-upload. Fix: mirror the exact pre/post state to the GPU spike
-    // slices (write_spike_slice REPLACES the region slice donor-side —
-    // zero-fill + set — so no GPU-side clear is needed) and dispatch bound
-    // Hebbian, the same slice-write + hebbianBound wire the sem_to_motor
-    // emission lanes use. The CPU oja above/below is UNCHANGED (every rep —
-    // it is O(bucket) here, not the slab cost the sampled lanes dodge); the
-    // GPU wire is pure addition. A shed slice write auto-suppresses the
-    // dependent bound dispatch via the stale guard (counted in
-    // throughput.boundHebbian.suppressedStale), so a stale slice cannot
-    // train the wrong pattern.
-    let gpuFires = 0;
-    const _mirrorAndDispatch = (pat, bStart, bEnd) => {
-      if (!semToWordMotor._gpuBound || !cluster._gpuProxyReady || !cluster._gpuProxy
-          || typeof cluster._gpuProxy.writeSpikeSlice !== 'function'
-          || typeof cluster._gpuProxy.hebbianBound !== 'function') return false;
-      // Same-flag law as _writeTiledPattern: template carrier when the donor
-      // speaks type-11, expanded region-relative indices otherwise. The tag
-      // rides on every carrier so the encoder can stamp capability on the
-      // first tagged frame.
-      const tmplOk = !!(cluster._brain && cluster._brain._tmplSpikeOk === true);
-      // Sem slice: group-tiled active-flag template (identity = WHICH dims
-      // fire, magnitudes discarded — the same collapse every GPU spike-slice
-      // write performs).
-      const gSizeSem = Math.max(1, Math.floor(semSize / pat.length));
-      const semVals = new Array(pat.length);
-      let semAny = false;
-      for (let d = 0; d < pat.length; d++) {
-        const on = pat[d] > 0 ? 1 : 0;
-        semVals[d] = on;
-        if (on) semAny = true;
-      }
-      if (!semAny) return false;
-      const semCarrier = [];
-      if (!tmplOk) {
-        for (let d = 0; d < pat.length; d++) {
-          if (!semVals[d]) continue;
-          for (let n = 0; n < gSizeSem; n++) {
-            const idx = d * gSizeSem + n;
-            if (idx < semSize) semCarrier.push(idx);
-          }
-        }
-      }
-      semCarrier._template = { rowStart: 0, groupSize: gSizeSem, values: semVals };
-      // word_motor slice: one contiguous bucket run — collapses to the
-      // ~30-byte canonical template {rowStart, groupSize, values:[1]}.
-      const wmCarrier = [];
-      if (!tmplOk) { for (let n = bStart; n < bEnd; n++) wmCarrier.push(n); }
-      wmCarrier._template = { rowStart: bStart, groupSize: bEnd - bStart, values: [1] };
-      try {
-        cluster._gpuProxy.writeSpikeSlice('sem', semCarrier);
-        cluster._gpuProxy.writeSpikeSlice('word_motor', wmCarrier);
-        cluster._gpuProxy.hebbianBound(`${cluster.name}_sem_to_word_motor`, lr);
-        return true;
-      } catch { return false; }
-    };
+    const readout = cluster.speechReadout();
+    let alreadyRight = 0;
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       let sliceStart = Date.now();
       for (let wi = 0; wi < words.length; wi++) {
         const word = words[wi];
-        // Incremental skip - already emission-taught this session (see
-        // EVENT-COST FIX above). Bucket index wi is the frozen-array
-        // position, so skipping leaves this word's band weights intact
-        // and keeps index<->bucket alignment. force re-drills all.
-        if (!forceAll && emTaught.has(word)) { skipped++; continue; }
-        const entry = this.dictionary._words.get(word);
-        if (!entry || !entry.pattern) { skipped++; continue; }
-        if (rep === 0) newlyTaught.push(word);
-        const bStart = bandStart + wi * bucketSize;
-        if (bStart >= bandEnd) break; // SPEAK.1 capacity overflow (index-ordered)
-        const bEnd = Math.min(bandEnd, bStart + bucketSize);
-        // GPU dispatch rides EVERY (word, rep) visit — the slice must be
-        // rewritten per visit because every other word in the rep loop
-        // replaces it in between. Template frames keep this ~KB each.
-        const _carried = _mirrorAndDispatch(entry.pattern, bStart, bEnd);
-        if (_carried) gpuFires++;
-        // ⛔ NO CPU MIRROR WHEN THE CARD CARRIED THE UPDATE — the law every
-        // bound lane follows (`intraSynapsesHebbian`, `_crossRegionHebbian`,
-        // the lateral anti pass); the checkpoint readback brings the CPU copy
-        // current. This lane alone refilled the whole sem region and ran the
-        // CPU Oja on every (word, rep): measured live, `fillSem` was 50.6% of
-        // the main thread — the thread that feeds the card — while the card
-        // already held the real update.
-        if (!_carried) {
-          fillSem(entry.pattern);
-          // Post: word_motor with this word's bucket lit ONLY in subject's sub-band
-          postWM.fill(0);
-          const activeRows = new Array(bEnd - bStart);
-          for (let n = bStart, ai = 0; n < bEnd; n++, ai++) { postWM[n] = 1; activeRows[ai] = n; }
-          try {
-            semToWordMotor.ojaUpdate(preSem, postWM, lr,
-              _kScalesWM ? { kScales: _kScalesWM, activeRows } : { activeRows });
-            updates++;
-          } catch { skipped++; }
-        }
+        if (!this.dictionary._words.has(word)) { skipped++; continue; }
+        // THE NAMING LESSON: with this thing in mind (who it is + what it
+        // means), the word she says is its name — taught until she says it.
+        // A word already named correctly is left untouched, so a later pass
+        // only repairs the names that another lesson disturbed.
+        cluster._speechUnits = readout.conceptUnits(word);
+        cluster._speechCtx = null;
+        cluster._mindFeats = null;
+        const r = this._speechTeach(word);
+        if (r) { updates++; if (r.right) alreadyRight++; } else skipped++;
         if ((Date.now() - sliceStart) >= YIELD_SLICE_MS) {
           await _microtask();
           sliceStart = Date.now();
         }
       }
+      cluster._speechUnits = null;
       await _microtask();
+      // Stop as soon as a whole pass needed no correction.
+      if (updates > 0 && alreadyRight === updates) break;
+      if (rep < reps - 1) { updates = 0; alreadyRight = 0; skipped = 0; }
     }
 
     const dt = ((Date.now() - t0) / 1000).toFixed(1);
-    // Log line previously announced itself as _teachWordSpellingDirectFinal —
-    // a copy-paste name from a different teach; corrected to the real lane.
-    this._hb(`[Curriculum] _teachWordEmissionDirect DONE in ${dt}s — ${updates} CPU Oja updates · ${gpuFires} GPU bound dispatches · ${skipped} skipped (${words.length} words × ${reps} reps target)`);
+    this._hb(`[Curriculum] _teachWordEmissionDirect DONE in ${dt}s — last pass: ${alreadyRight}/${updates} names said before being corrected · ${skipped} without a dictionary entry (${words.length} words in her vocabulary)`);
   },
 
 

@@ -208,11 +208,13 @@ Finally, `ΔW = η · R · post · pre` gives a dopaminergic third factor. Learn
 
 ### 4.6 The routing whitelists — an original constraint
 
-A design element with no direct precedent in the literature: **plasticity is routed by relation type**. Definition learning (binding a word to its meaning words) fires Hebbian updates *only* through `sem↔fineType`; question-answer binding fires through `sem→motor` and `sem→word_motor`; general association fires through a four-projection set.
+A design element with no direct precedent in the literature: **plasticity is routed by relation type**. Definition learning (binding a word to its meaning words) fires Hebbian updates *only* through `sem↔fineType`; question-answer binding fires through `sem→motor` and the speech pathway (named `sem_to_word_motor` in a whitelist; since 2026-11-27 it is the speech readout of §8.2, not a matrix); general association fires through a four-projection set.
 
 The reasoning is that the motor projections are the *production* pathway, and every Hebbian write into them changes what the brain will physically say. Definition learning must enrich meaning without corrupting articulation. Routing definitional plasticity away from motor keeps the emission path pristine — the equivalent of learning what a word means without that learning disturbing how you pronounce it.
 
 A related discovery, encoded as `DREAM_SM_LR_SCALE = 0.5`: the `sem→motor` and `sem→word_motor` projections learn at *half rate*. They sit downstream of every teaching path, so they accumulate updates faster than any other projection and saturate first. Damping them is not a hack; it reflects that a projection's learning rate should be inversely related to how often it is written.
+
+> ⚠ **What a walk later showed about that reasoning (2026-11-27).** Damping slowed the saturation and did not prevent the failure it was aimed at. For word production the problem was not the rate but the rule: an update that pulls a word's weights toward every context it is taught in, and decays the rest, leaves a common word tuned to "whatever is always active". Word production now uses an error-driven rule — nothing changes unless the wrong word would be said — and needs no damping (§8.2). `sem→motor`, which picks letters, keeps the half rate.
 
 ---
 
@@ -327,7 +329,9 @@ Two locks bound the inventory: an input-layer restriction of letter-region one-h
 
 ### 8.2 Two production paths
 
-**Path A — single-tick word emission.** A dedicated `word_motor` sub-region (720,000 cells at current scale) holds one bucket per unique word. At chat time the intent seed is injected into the semantic region, propagated one tick through `sem→word_motor`, and the winning bucket is chosen by argmax of mean signal per bucket cell. Above a minimum-signal floor (0.001), that word is emitted as a single-tick utterance.
+**Path A — a whole word, read from the speaking state.** Every unique word has one slot. Before each word the brain is in a *speaking state*: about 45 active units out of ~9,900, built from parts that do not overlap — the last word (identity and meaning), the two before it, the last two and three words as wholes, the gist of everything said so far, and what was said to it (the exact line, its key word, its gist). A word's score is the sum of its weights from the active units; the highest score above a minimum-signal floor (0.001) is spoken, and "the line is finished" is a slot that ends the sentence when it wins. Learning is error-driven: in a taught state the taught word must lead every other by a margin, and only when it does not is it raised and its rival lowered.
+
+> **This replaced a result worth recording as a negative one.** Until 2026-11-27 Path A was a sparse neuron-to-neuron projection, `sem→word_motor`: 24 cells per word, 6 fixed wires per cell, Oja learning. Modelled with the production encoder on the brain's own training text it recalled **1.1 %** of the transitions it had just been taught (38 of 3,401), with eight words winning 66.9 % of the time. Three independent causes, each measured: the state was nearly constant (two unrelated sentence prefixes shared 64.7 % of their active dimensions); a word's 144 wires read the previous word's identity through about 1.4 of them; and Oja's decay term overwrote a word's weights at each new context (100× the wiring still recalled 19.9 %). Repairing any one alone gave 7–58 %; all three give 92.9 %. The general lesson is that a tiled population code driving a randomly-wired sparse readout has the capacity of its *wiring per readout unit*, not of its cell count — a quantity no neuron count on a dashboard reveals.
 
 **Path B — letter-chain emission.** The older path walks `sem→motor→letter`, settling attractors letter by letter, and remains available for words the word-motor band has not yet bucketed.
 

@@ -524,13 +524,15 @@ Knob: `DREAM_REFRACT_BETA` (0 disables). Sent per cluster in `compute_batch` bes
 |----------|---------|------|
 | `ΔW = η · post · pre` | Hebbian learning | `synapses.js` |
 | `Δw = η·y·(x − y·w)` | Oja self-normalizing Hebbian | `sparse-matrix.js ojaUpdate` |
-| `η_eff = η · DREAM_SM_LR_SCALE` (0.5) for `sem_to_motor`/`sem_to_word_motor` | sem→motor LR damping — saturation prevention; slows the dominant basin to `wMax` so basins separate (GPU + CPU paths) | `cluster/hebbian.js _crossRegionHebbian` |
+| `η_eff = η · DREAM_SM_LR_SCALE` (0.5) for `sem_to_motor` | sem→motor LR damping — saturation prevention; slows the dominant basin to `wMax` so basins separate (GPU + CPU paths). (`sem_to_word_motor` no longer exists as a matrix — next two rows) | `cluster/hebbian.js _crossRegionHebbian` |
+| `score(w) = Σ_{u∈A} W[u][w]` ; say `argmax_w`, or stop when `score(end)` is highest | **Speech readout** — `A` = the ~45 active units (of 9,904) of the speaking state; every word slot reads every unit | `speech-readout.js scores / bucketMeans`, read by `cluster/emit.js emitWordDirect` |
+| `loss = m·|A| − (score(t) − score(r))`, `m = 0.1`; if `loss > 0`: `W[u][t] += τ`, `W[u][r] −= τ` for `u∈A`, `τ = loss/(2|A|)`; ≤ 4 rivals `r`; slots also taught in this state are not rivals | **Teach until she says it** — a slot changes only when the wrong word would be said | `speech-readout.js teach`, reached from `curriculum.js _speechTeach` |
 | `ΔW = A⁺·exp(-Δt/τ⁺)` / `-A⁻·exp(Δt/τ⁻)` | STDP | `synapses.js` |
 | `ΔW = η · δ · post · pre` | Reward-modulated (3-factor) | `synapses.js` |
 | `I_i = Σ values[k] · spikes[colIdx[k]]` | CSR sparse propagation O(nnz) | `sparse-matrix.js` |
 | `ΔW_proj = η · δ · source · target` | Inter-cluster projection learning | `cluster.js` |
 | `whitelist(def) = [sem_to_fineType, fineType_to_sem]` | Definition Hebbian routes through sem↔fineType only — keeps motor pristine for word emission | `curriculum.js _definitionPairsWhitelist` |
-| `whitelist(qa) = [sem_to_motor, sem_to_word_motor, sem_to_word_motor_<subj>]` | QA Hebbian routes through motor + word-motor for emission | `curriculum.js _qaBindingWhitelist` |
+| `whitelist(qa) = [sem_to_motor, sem_to_word_motor]` | QA Hebbian routes through letter-motor, and `sem_to_word_motor` — the NAME of the speech pathway — marks the call as teaching what she says (the answer's words in order, then the end) | `curriculum.js _qaBindingWhitelist`, `_speechScope` |
 | `whitelist(assoc) = [sem_to_motor, motor_to_sem, sem_to_fineType, fineType_to_sem]` | Association-pair fan-out (general curriculum) | `curriculum.js _associationPairsWhitelist` |
 | `diag = whitelist (or default sem_to_motor)` | Diagnostic ops (prune / sep-probe / rescale / row-norm) target whichever projections actually got Hebbian — no false-positive overload on untouched matrices | `curriculum.js _teachAssociationPairs / _teachQABinding` |
 

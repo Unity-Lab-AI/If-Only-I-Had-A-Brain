@@ -663,3 +663,44 @@ curriculum. It is filed on the board with this measurement attached.
 ### Intensity placement (not a threshold)
 
 The brain sends a **strength in [0, 1]** = the strongest normalised driver. The worker maps it **linearly into the model's own trained window** for that (emotion, act) from `voice-meta.json` (`min + m·(max − min)`), so no constant on the brain side encodes 0.25 / 0.85, a retrain widens the range by itself, and `neutral` (trained at exactly 0.00) always maps to 0. A 422 can therefore only mean an unknown emotion or act name.
+
+## Speech readout (2026-11-27)
+
+`js/brain/speech-readout.js`. Every number here was chosen by **measurement on her own text**, with the production embedding code and the production module, not picked. The instruments are `.scratch/speech-capacity.mjs` (what it replaced), `.scratch/speech-design.mjs` (the design sweep), `.scratch/speech-readout-check.mjs` (the module) and `.scratch/speech-wiring-check.mjs` (the module inside the real lessons and the real compose loop).
+
+**The measure** is recall: teach every (sentence so far → next word) of a corpus, then ask for the same taught sentence starts back. Corpus: her pre-K → grade-2 life stories, 2,428 sentences, 1,864 words, 13,580 unique transitions.
+
+| What was run | Recall of taught transitions |
+|---|---|
+| The state, wiring and rule this replaces (24 cells × 6 wires per word, dense sentence overlay, Oja) — pre-K + K only, 4,346 transitions | 38 / 3,401 = **1.1 %**, 8 words taking 66.9 % of wins |
+| …same, 10× the wiring / 100× the wiring | 7.3 % / 19.9 % |
+| New state, every unit wired, the old rule (Oja), 3 passes | 28.5 % |
+| New state, every unit wired, error-driven, 3 passes | 58.1 % |
+| New state at the old wiring (144 random wires per word), error-driven | 7.0 % |
+| New state without the gist part / without the word-2 and word-3 parts | 48.1 % / 37.8 % |
+| + pair and triple parts, teach-until-right, 4 passes | **93.8 %** |
+| The production module, passes 1 → 4 | 64.4 → 85.3 → 90.4 → **92.9 %** |
+
+So each of the three changes is necessary and none is sufficient: the state (28.5 % on the old rule), the wiring (7.0 % without it), the rule (58.1 → 93.8 %).
+
+### The state's sizes
+
+Identity stripes are 512 units with 8 / 6 / 4 active for her last word / the one before / the one before that; the pair, the triple and the exact heard line are 2,048 units with 6 active; meanings and gists are 4–12 of 300. They are the sizes the 93.8 % row was measured at. Denser stripes (12 / 10 / 8 identity, 16 gist) measured 86.7 % against 85.4 % at 8 passes — a gain inside the noise for half again as many active units — so the sparser set stands. ⚠ Not swept further: stripe widths were held at 512 and 2,048 throughout.
+
+### Margin 0.1 per active unit, 4 rivals per teach
+
+The taught word must lead the next-best slot by `0.1 × (active units)`. Margins 0.1 and 0.2 measured the same recall (73.1 % vs 72.9 % at 3 passes on the no-conjunction state), so the smaller one is used: it moves weights less per correction. Correcting up to 4 rivals per teach step measured 73.1 % against 65.7 % for 1 rival at the same passes.
+
+### Sampling temperature × 0.1
+
+A caller's sampling temperature (0.5–1.0 for thoughts) is multiplied by the margin (0.1) before the softmax. On the readout's scale a taught word leads its nearest rival by 0.1, so at temperature 1 the rival's weight is `e^(−0.1/0.1) = 0.37` of the taught word's — about one sampled word in four. Unscaled, `e^(−0.1/1) = 0.90`: the top eight candidates would be near-equal and every sampled line a random pick among them.
+
+### Lesson pass target 0.9, at most 4 passes
+
+`DREAM_SPEECH_PASS_TARGET` / `DREAM_SPEECH_MAX_PASSES`. The sentence-order lesson repeats its pass until at least 90 % of a pass was already said before being corrected. Measured inside the real lesson (pre-K + K stories, 5,170 transitions including sentence ends): passes reach **93 %** on pass 3, so 0.9 is a bar the lesson clears, and it is above pass 2 (the module's 85.3 %). The cap of 4 is where the module's curve was measured to (92.9 %); a corpus that has not reached the target by then is reported with its last-pass figure instead of looping.
+
+⚠ **One thing a single number hides:** about a fifth of sentence starts have more than one taught next word ("i" → am / want / see). Those are taught as siblings — teaching one does not push the others down, and saying any of them counts as right. Before that was done the same lesson plateaued at 77 %.
+
+### Cost
+
+0.6 ms per teach step at 1,864 words; 2.1–3.5 ms per composed reply (several words). The table is `taught units × word capacity × 4 bytes`: 58 MB measured (7,116 taught units × 2,048 word slots). By the same formula: about 290 MB at 8,421 words (capacity grows in steps of 2,048, so 10,240 slots), and about 2.0 GB if all 9,904 units were taught at the 50,000-word cap (51,200 slots) — host memory, none of it on the card.
