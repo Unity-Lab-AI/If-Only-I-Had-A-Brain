@@ -1540,7 +1540,7 @@ const CURRENT_DONOR_VERSION = (() => {
   return _m[1];
 })();
 
-const WEIGHTS_FORMAT_VERSION = 7;   // speech readout (2026-11-27): the sem↔word_motor card matrices are gone and what she says is read from the speech-readout table saved beside the weights — earlier saves hold two matrices this brain no longer builds and no speech table, so they auto-refuse → fresh walk. (v6 was language-growth hop 2 (2026-08-29): WORD_MOTOR_TARGET_LANG_CORTEX 12M→20M with per-host AFFORDABLE geometry (each host hops as far as its own RAM/VRAM bounds allow, ≤ target) — saved lang-cortex geometry no longer matches, old weights auto-refuse → fresh walk both directions, per the operator's word. (v5 was ENDO 2026-08-25: `brainstem` cluster added (monoamine nuclei) — cluster set + cerebellum fraction changed. v4 was language-growth hop 1 2026-08-16: langCortexSize 1.5M→12M. v3 was WMB 2026-07-14: word_motor unified band.)
+const WEIGHTS_FORMAT_VERSION = 8;   // whole-brain wiring (2026-11-27): the language cortex is wired at 100 inside / 100 between regions (was 30 / 10) with its cell count derived at that wiring, every matrix learns only-when-wrong, a word lights its own cells, and a `speech` region holds a cell for every unit of the speaking state — earlier saves hold a different geometry, different wiring and patterns in a different code, so they auto-refuse → fresh walk. (v7 was speech readout (2026-11-27):the sem↔word_motor card matrices are gone and what she says is read from the speech-readout table saved beside the weights — earlier saves hold two matrices this brain no longer builds and no speech table, so they auto-refuse → fresh walk. (v6 was language-growth hop 2 (2026-08-29): WORD_MOTOR_TARGET_LANG_CORTEX 12M→20M with per-host AFFORDABLE geometry (each host hops as far as its own RAM/VRAM bounds allow, ≤ target) — saved lang-cortex geometry no longer matches, old weights auto-refuse → fresh walk both directions, per the operator's word. (v5 was ENDO 2026-08-25: `brainstem` cluster added (monoamine nuclei) — cluster set + cerebellum fraction changed. v4 was language-growth hop 1 2026-08-16: langCortexSize 1.5M→12M. v3 was WMB 2026-07-14: word_motor unified band.)
 // ⛔⛔ THE `UBWT` BINARY WEIGHT FILE'S OWN FORMAT VERSION — A DIFFERENT NUMBER
 // FROM `WEIGHTS_FORMAT_VERSION` ABOVE, AND CONFLATING THEM IS A DATA-LOSS BUG.
 //
@@ -3344,7 +3344,16 @@ class ServerBrain {
       // allowance scales with them:
       //   1,000 × (inside + 1.92 × between) ÷ 49.2
       // = 1,000 at 30 / 10, and 5,935 at 100 / 100.
-      const LANG_CLUSTER_BYTES_PER_NEURON = Math.ceil(1000 * (CORTEX_TARGET_FANOUT + 1.92 * CROSS_TARGET_FANOUT) / 49.2);
+      // ⛔ CORRECTED THE SAME DAY, BEFORE ANY BOOT: the line above scaled a
+      // constant that was itself stale — the "590 bytes measured" dates from
+      // 12-byte weights, and the "1.92" counted pathways that no longer exist.
+      // The geometry estimator below (`estimateLangCortexVramBytes`, which
+      // mirrors what the cluster builds) gives 342 bytes a cell at 30 / 10 and
+      // 1,728 at 100 / 100: 8.46 bytes for each inside wire and 8.82 for each
+      // unit of between-region fan-out. The host holds the same matrices, so
+      // its allowance is that with the same 1.7 safety:
+      //   1.7 × (8.46 × inside + 8.82 × between)  = 581 at 30/10, 2,938 at 100/100.
+      const LANG_CLUSTER_BYTES_PER_NEURON = Math.ceil(1.7 * (8.46 * CORTEX_TARGET_FANOUT + 8.82 * CROSS_TARGET_FANOUT));
       const freeRamBytes = os.freemem();
       // LANGRAM (2026-08-19) — the free-RAM fraction was 0.5 and it cost the 12M
       // language cortex by 2.4%. Live boot line from the box:
@@ -3734,7 +3743,15 @@ class ServerBrain {
           let _baseMB = 0;
           const _asPath = path.join(__dirname, 'autoscale-settings.json');
           if (fs.existsSync(_asPath)) {
-            _baseMB = Number((JSON.parse(fs.readFileSync(_asPath, 'utf8')) || {}).donorBaselineMB) || 0;
+            // ⭐ THE CARD THAT LAST HELD HER CORTEX, not the biggest card ever
+            // seen. `donorBaselineMB` only ever goes up (a 97 GB rented card
+            // set it once), and at 100 wires a cell a language cortex sized
+            // for that card is 25 GB — it would not fit the 16 GB card of the
+            // machine she actually runs on. `cortexCardMB` is written each
+            // time a card finishes taking her cortex (`_noteCortexCard`), so
+            // the size follows the system she is on. Nothing recorded yet →
+            // the 6 GB floor below, which every card that can hold her has.
+            _baseMB = Number((JSON.parse(fs.readFileSync(_asPath, 'utf8')) || {}).cortexCardMB) || 0;
           }
           if (!(_baseMB > 0)) return _HIST;         // nothing learned yet — behave exactly as before
           const _usableBytes = _baseMB * 0.75 * 1024 * 1024;
@@ -6702,6 +6719,28 @@ class ServerBrain {
    * keeps the mode by matrix name, so it also survives a later re-upload) and
    * answered by `plasticity_mode_ack`. Returns how many matrices were named.
    */
+  /**
+   * Remember the card that now holds her cortex (its memory, its name, when).
+   * The next boot sizes her language cortex from THIS card — the system she is
+   * actually on — and not from the largest card that ever connected. Written
+   * only when it changes; a change takes effect at the next fresh walk (while
+   * weights exist the geometry pin holds the size they were trained at).
+   */
+  _noteCortexCard(ws) {
+    const c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
+    const mb = Math.floor(Number(c && c.gpuVramMB) || 0);
+    if (!(mb > 1024)) return false;
+    const p = path.join(__dirname, 'autoscale-settings.json');
+    let as = {};
+    try { if (fs.existsSync(p)) as = JSON.parse(fs.readFileSync(p, 'utf8')) || {}; } catch { as = {}; }
+    if (Number(as.cortexCardMB) === mb) return false;
+    const prev = Number(as.cortexCardMB) || 0;
+    as.cortexCardMB = mb; as.cortexCardFrom = (c.gpuName || 'unknown').toString().slice(0, 80); as.cortexCardAt = new Date().toISOString();
+    fs.writeFileSync(p, JSON.stringify(as, null, 2));
+    console.log(`[Brain] her cortex is on ${as.cortexCardFrom} (${mb.toLocaleString()} MB)${prev ? ` — the last card that held it had ${prev.toLocaleString()} MB` : ''}. The next fresh walk sizes her language cortex for this card.`);
+    return true;
+  }
+
   _sendPlasticityModes(ws) {
     const cortex = this.cortexCluster;
     if (!ws || ws.readyState !== 1 || !cortex || !cortex.crossProjections) return 0;
@@ -8365,6 +8404,7 @@ class ServerBrain {
                 // Which pathways learn only-when-wrong — after the upload, so the
                 // card answers with how many of them it actually holds.
                 try { this._sendPlasticityModes(this._gpuClient); } catch (e) { console.warn(`[Brain] could not send the pathways' learning mode to the card: ${e.message}`); }
+                try { this._noteCortexCard(this._gpuClient); } catch (e) { console.warn(`[Brain] could not record which card holds her cortex: ${e.message}`); }
                 // ⛔ NO READBACK AFTER ADOPT. This pulled the whole cortex back off
                 // the card 60 s after it reattached. Measured live 2026-11-25: the
                 // pull got 0 chunks, the card went silent ~120 s and its socket died
