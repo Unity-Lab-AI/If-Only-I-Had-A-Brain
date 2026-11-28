@@ -61813,4 +61813,40 @@ Six rows of this section are still open (.1, .2, .3, .6, .8, .9) and two were fi
 - **Commits:** `41a5febe` (the wiring), `b71f160b` (the sounds).
 - **Docs in the same commit:** `docs/` — TODO, this ledger · `wiki/` — cortex-cluster, curriculum + log (local) · owed under WHOLEBRAIN.8 as listed above.
 
+## 2026-11-27 (late night, fourth entry) — WHOLEBRAIN.3 CLOSED: HER CELLS LEARN ON THEIR WIRING — AND WHAT THAT DOES NOT YET MEAN
+
+- **The row, as filed (verbatim):** **WHOLEBRAIN.3 — her cell-to-cell learning barely learns.** Fix it with what speech proved: change a weight only when the wrong thing wins, give a target cell enough inputs to tell things apart, keep codes from overlapping, rehearse. Measured by WHOLEBRAIN.1, lane by lane.
+- **Four things were wrong, each found by a number:**
+
+  | what | as she was | now | the number that showed it |
+  |---|---|---|---|
+  | the rule | every lesson pulled a lit cell's wires toward the current input, overwriting the last | a wire changes only where a cell is wrong, and the step closes that cell's whole gap in one teach | 400 pairs, same wiring: 242 → 400 recalled; at 8 lit inputs a fixed step fires 85.6 % of taught cells, the gap-closing step 99.4 % |
+  | the word code | a word's identity sat in cells that a tenth of all words also lit | a word lights cells of its own (a few for its meaning, the rest hashed from the word) | 400 pairs, same rule: 41 → 242 |
+  | the wiring | 3–30 wires a target cell; pathways between cluster groups cut to 30 % ; inside wires from a cell's ±200 neighbours | 300 wires on every pathway, no cut; inside wires drawn from across the cell's own region | taught cells past threshold by lit inputs a cell: 0.8 → 2 % · 2.7 → 20 % · 5.3 → 60 % · 8 → 99 % ; inside a region 78.8 % (neighbours) → 98 % |
+  | the measure | "is the right pattern the best match" | "do the taught cells pass their firing threshold, and do others stay under it" | the first wiring that ranked 60 of 60 right fired 2–8 % of its taught cells |
+
+- **At her production build** (1,328,482 cells — 936,958 wired + the 391,524 speaking-state cells — built with the server's own options; `.scratch/threshold-check.mjs prod`, 200 taught pairs a pathway, the real `_teachHebbian` / `intraSynapsesHebbian`):
+
+  | pathway | taught cells past threshold | other cells past it |
+  |---|---|---|
+  | meaning → motor | **100.0 %** | 0.000 % |
+  | motor → meaning | **100.0 %** | 0.001 % |
+  | sound → meaning | **99.4 %** | 0.021 % |
+  | meaning → sound | **99.3 %** | 0.020 % |
+  | letters → meaning | **99.4 %** | 0.018 % |
+  | meaning → letters | **99.4 %** | 0.022 % |
+  | meaning → fine type | **99.3 %** | 0.018 % |
+  | fine type → meaning | **99.4 %** | 0.018 % |
+  | motor → letter | 95.8 % | 0.091 % |
+  | letter → motor | 95.9 % (100.0 % with the letter lessons' own patterns) | 0.082 % |
+  | letter → sound | 100.0 % (letter lessons' own patterns; 58.5 % while it was wired by position) | 0.000 % |
+  | inside meaning / letter / motor | **97.9 % / 98.0 % / 98.1 %** | 0.029–0.030 % |
+
+- **Her real lessons at that build:** the pair lesson — the right partner answered **0 / 100 before → 100 / 100 after** (as she was: 3 / 100), and its wrap-up no longer cuts the pathway's wires down behind it. The word lesson — the first letter from a word's meaning **4 / 40 → 40 / 40** (as she was: 22–24 / 200); measured one build earlier at 100 wires, the 300-wire run was still going when this was written.
+- **On the card:** both engines apply the rule the host applies — all 11 test weights match, a lesson leaves rows outside its region untouched, 2.77 ms per 100 million wires. A matrix carries its own learning mode, so every lesson that reaches it learns this way.
+- **What this row does NOT establish — the live row WHOLEBRAIN.14.** These figures are the input a cell receives through its learned wiring when a pattern is sent through it. The card's step does not deliver that input while she runs: a cell there fires from its drive, its noise and what a lesson writes into it. Until .14, "taught cells fire" is true of the wiring and not yet of her running cells.
+- **Also left to other rows:** rehearsal for reading as her vocabulary grows (WHOLEBRAIN.11); the old paths still in the code beside the new ones (to be removed before the push).
+- **Commits:** `332eb0ff` … `ab895b78` (rule, word code, first wiring), `65348762`, `44438714`, `5b455632`, `165f2ee0`, `3a95bcb0`, `15c4b318`, `b35ecc8c`, `ec3fbc75`, `2b69adea`, `00ad3593`, `2ac9a653`, `6430794d`, `41a5febe`.
+- **Docs in the same commit:** `docs/` — TODO, this ledger · `wiki/` — cortex-cluster + log (local) · owed under WHOLEBRAIN.8 as listed above.
+
 
