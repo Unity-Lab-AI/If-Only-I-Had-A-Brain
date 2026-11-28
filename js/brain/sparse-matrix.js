@@ -1243,7 +1243,7 @@ export class SparseMatrix {
    * the lit cells, summed — so a caller holding the read can update it without
    * reading the whole pathway again.
    */
-  stepRows(preIdx, rowStart, rowCount, d) {
+  stepRows(preIdx, rowStart, rowCount, d, colScale = null) {
     const { rows, cols, values, colIdx, rowPtr, wMin, wMax } = this;
     if (!values || !rowPtr || !colIdx) return 0;
     if (!this._litMark || this._litMark.length !== cols) this._litMark = new Uint8Array(cols);
@@ -1252,8 +1252,10 @@ export class SparseMatrix {
     const r1 = Math.min(rows, rowStart + rowCount);
     let sum = 0;
     for (let k = rowPtr[Math.max(0, rowStart)]; k < rowPtr[r1]; k++) {
-      if (!lit[colIdx[k]]) continue;
-      const v = values[k] + d;
+      const c = colIdx[k];
+      if (!lit[c]) continue;
+      // `colScale` — each source cell's share of the step (see SpeechReadout._cellShares)
+      const v = values[k] + (colScale ? d * colScale[c] : d);
       const w = v > wMax ? wMax : v < wMin ? wMin : v;
       values[k] = w; sum += w;
     }

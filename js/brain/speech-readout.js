@@ -370,6 +370,8 @@ export class SpeechReadout {
       per: Math.max(1, Math.floor(opts.cellsPerUnit || 4)),       // state cells one unit lights
       eta: typeof opts.eta === 'number' ? opts.eta : 0.05,          // one correction's step on a wire
       fan: matrix.rows > 0 ? matrix.nnz / matrix.rows : 0,          // wires a word cell has
+      shareByUse: opts.shareByUse === true,                         // see _cellShares
+      use: null, share: null,
     };
     return this.path;
   }
@@ -385,6 +387,25 @@ export class SpeechReadout {
       }
     }
     return Int32Array.from(seen);
+  }
+  /**
+   * WHO TAKES A CORRECTION, in cells. A state cell that has been corrected
+   * often is one many moments light; a cell corrected rarely belongs to this
+   * moment. Each lit cell's share of the step is 1/√(1 + times corrected),
+   * scaled so the shares average 1 — the whole step is the same size, but what
+   * is particular to this moment carries it and what is shared settles into
+   * what is generally true. Returns the per-cell share buffer (valid at the
+   * lit cells) and counts this correction against every lit cell.
+   */
+  _cellShares(cells) {
+    const p = this.path;
+    if (!p.shareByUse) return null;
+    if (!p.use || p.use.length !== p.span) { p.use = new Uint32Array(p.span); p.share = new Float32Array(p.span); }
+    const use = p.use, share = p.share; let sum = 0;
+    for (let i = 0; i < cells.length; i++) { const a = 1 / Math.sqrt(1 + use[cells[i]]); share[cells[i]] = a; sum += a; }
+    const k = sum > 0 ? cells.length / sum : 1;
+    for (let i = 0; i < cells.length; i++) { const c = cells[i]; share[c] *= k; if (use[c] < 0xFFFFFFFF) use[c]++; }
+    return share;
   }
   /** The lead a taught word must have: what ONE correction adds to a word's cells in this state. */
   _cellMargin(cells) { const p = this.path; return p.eta * p.fan * cells.length / p.span; }
@@ -419,10 +440,11 @@ export class SpeechReadout {
       }
       if (tv > 0 && tv - rv >= margin) break;
       const tb = isEnd ? p.end : target;
-      s[tb] = p.m.stepRows(cells, tb * p.cell, p.cell, p.eta) / p.cell;
+      const sh = this._cellShares(cells);
+      s[tb] = p.m.stepRows(cells, tb * p.cell, p.cell, p.eta, sh) / p.cell;
       if (rival !== -1 && rv > 0) {
         const rb = rival === SPEECH_END ? p.end : rival;
-        s[rb] = p.m.stepRows(cells, rb * p.cell, p.cell, -p.eta) / p.cell;
+        s[rb] = p.m.stepRows(cells, rb * p.cell, p.cell, -p.eta, sh) / p.cell;
       }
       this._end = s[p.end];
       updates++;
