@@ -6668,14 +6668,22 @@ class ServerBrain {
       g.names.push(`${cortex.name}_${pn}`);
     }
     // The wiring inside the cortex is one more matrix on the card, under its own name.
+    // It goes in its own message because it carries her region table: a lesson
+    // inside one region then sweeps that region's rows on the card, not the
+    // whole cortex.
+    let n = 0;
     const mi = cortex.synapses && cortex.synapses.errorDriven;
     if (mi) {
-      const key = `${mi.eta}|${mi.theta}|${mi.margin}`;
-      let g = byMode.get(key);
-      if (!g) { g = { mode: { eta: mi.eta, theta: mi.theta, margin: mi.margin }, names: [] }; byMode.set(key, g); }
-      g.names.push(`${cortex.name}_intraSynapses`);
+      const spans = [];
+      for (const r of Object.values(cortex.regions || {})) {
+        if (r && r.end > r.start) spans.push([r.start, r.end - r.start]);
+      }
+      ws.send(JSON.stringify({
+        type: 'plasticity_mode', names: [`${cortex.name}_intraSynapses`],
+        mode: { eta: mi.eta, theta: mi.theta, margin: mi.margin }, spans,
+      }));
+      n += 1;
     }
-    let n = 0;
     for (const g of byMode.values()) {
       ws.send(JSON.stringify({ type: 'plasticity_mode', names: g.names, mode: g.mode }));
       n += g.names.length;

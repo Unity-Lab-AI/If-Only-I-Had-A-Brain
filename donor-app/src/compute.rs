@@ -2541,6 +2541,40 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
                 if bad { return Err(format!("per-matrix mode MISMATCH ({}) for input cell {pre}: card={got:?} host={exp:?}", $label)); }
             }
             println!("  {} — a matrix in error-driven mode: plain hebbian_bound gave the error-rule weights, anti-Hebbian changed nothing", $label);
+            // ROW SPANS: the matrix is told its rows fall in two spans (0..4 and
+            // 4..8). A lesson whose lit target rows are all in the first span must
+            // apply the host rule there and leave the second span alone — row 4
+            // is given a weight the full sweep WOULD lower, so an unranged launch fails this.
+            let mut values3 = values;
+            values3[9] = 0.6;
+            $eng.upload_sparse("errmat3", 8, 8, &row_ptr, &values3, &col_idx, None);
+            $eng.set_plasticity_mode("errmat3", Some((eta, theta, margin)));
+            $eng.set_plasticity_spans("errmat3", vec![(0, 4), (4, 4)]);
+            $eng.hebbian("errmat3", &[0, 1, 2], &[0, 1, 2], 0.01)?;
+            let mut want3 = values3;
+            let mut full_sweep_would_change_row4 = false;
+            for i in 0..8usize {
+                let (s, e) = (row_ptr[i] as usize, row_ptr[i + 1] as usize);
+                let mut sum = 0.0f32;
+                for k in s..e { if lit[col_idx[k] as usize] != 0 { sum += values3[k]; } }
+                let d = if lit[i] != 0 { if sum < theta + margin { eta } else { 0.0 } } else if sum > theta - margin { -eta } else { 0.0 };
+                if d == 0.0 { continue; }
+                if i >= 4 { full_sweep_would_change_row4 = true; continue; }   // outside the lesson's span
+                for k in s..e { if lit[col_idx[k] as usize] != 0 { want3[k] = (want3[k] + d).clamp(-2.0, 2.0); } }
+            }
+            if !full_sweep_would_change_row4 { return Err(format!("row-span test is not discriminating ({})", $label)); }
+            for pre in 0u32..8 {
+                let got = $eng.propagate("errmat3", &[pre])?;
+                let mut exp = [0.0f32; 8];
+                for i in 0..8usize {
+                    let (s, e) = (row_ptr[i] as usize, row_ptr[i + 1] as usize);
+                    for k in s..e { if col_idx[k] == pre { exp[i] += want3[k]; } }
+                }
+                let bad = got.len() != 8 || got.iter().zip(exp.iter()).any(|(a, b)| (a - b).abs() > 1e-5);
+                if bad { return Err(format!("row-span MISMATCH ({}) for input cell {pre}: card={got:?} host={exp:?}", $label)); }
+            }
+            let changed3 = want3.iter().zip(values3.iter()).filter(|(a, b)| a != b).count();
+            println!("  {} — row spans: the lesson's span matches the host rule ({} weights changed), the other span was left alone though a full sweep would have changed it", $label, changed3);
         }};
     }
     println!("self-test: error-driven plasticity parity...");
