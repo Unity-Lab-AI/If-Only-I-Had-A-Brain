@@ -1864,6 +1864,8 @@ pub struct MultiEngine {
     ccs: Vec<String>,
     cluster_gpu: HashMap<String, usize>,
     matrix_gpu: HashMap<String, usize>,
+    /// Cluster name → (gain on the wiring's input, rest shift), as last sent.
+    delivery: HashMap<String, (f32, f32)>,
     next_cluster: usize,
     next_matrix: usize,
     /// v0.3.52 — the brain these resident matrices belong to (her RNG seed, the
@@ -2033,6 +2035,7 @@ impl MultiEngine {
             ccs,
             cluster_gpu: HashMap::new(),
             matrix_gpu: HashMap::new(),
+            delivery: HashMap::new(),
             next_cluster: 0,
             next_matrix: 0,
             lineage: None,
@@ -2118,6 +2121,9 @@ impl MultiEngine {
         let g = self.cluster_engine(name);
         let placed = self.engines[g].adapter_name().to_string();
         self.engines[g].init_cluster(name, size, regions, tonic, noise);
+        // The delivery setting is kept by cluster name, so a cluster built again
+        // (a move, a reconnect) steps the way the brain last asked.
+        if let Some(&(gain, rest)) = self.delivery.get(name) { self.engines[g].set_delivery(name, gain, rest); }
         println!("[multi] cluster '{name}' → GPU {g} ({placed})");
     }
 
@@ -2212,9 +2218,10 @@ impl MultiEngine {
 
     /// Set how strongly a cluster's cells feel their wiring (0 = off) and how far
     /// below the default rest point they sit (0 = default), on the engine holding
-    /// the cluster. Returns whether it is resident. A cluster initialised again
-    /// starts back at 0 / 0 — the brain sends this after every init.
+    /// the cluster. Returns whether it is resident now. Kept by name either way:
+    /// a cluster initialised later, or again, takes the setting at init.
     pub fn set_delivery(&mut self, cluster: &str, gain: f32, rest_shift: f32) -> bool {
+        self.delivery.insert(cluster.to_string(), (gain, rest_shift));
         match self.cluster_gpu.get(cluster).copied() { Some(g) => self.engines[g].set_delivery(cluster, gain, rest_shift), None => false }
     }
 
@@ -2697,7 +2704,8 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
             $eng.init_cluster("dlv", n, &regions, 0.0, 0.0);
             let xs = std::cell::Cell::new(0x1234_5678u32);
             let rnd = || { let mut x = xs.get(); x ^= x << 13; x ^= x >> 17; x ^= x << 5; xs.set(x); x };
-            let build =|rows: u32, cols: u32| -> (Vec<u32>, Vec<f32>, Vec<u32>) {
+            // pos_pct = share of positive starting weights; scale multiplies their size.
+            let build = |rows: u32, cols: u32, pos_pct: u32, scale: f32| -> (Vec<u32>, Vec<f32>, Vec<u32>) {
                 let (mut rp, mut vals, mut ci) = (Vec::with_capacity(rows as usize + 1), Vec::new(), Vec::new());
                 for r in 0..rows {
                     rp.push(r * fan);
@@ -2706,14 +2714,14 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
                     let mut row: Vec<u32> = seen.into_iter().collect(); row.sort_unstable();
                     for c in row {
                         ci.push(c);
-                        let sign = if rnd() % 100 < 80 { 1.0f32 } else { -1.0 };
-                        vals.push(sign * (0.1 + (rnd() % 10_000) as f32 / 10_000.0 * 0.4) * 0.3);
+                        let sign = if rnd() % 100 < pos_pct { 1.0f32 } else { -1.0 };
+                        vals.push(sign * (0.1 + (rnd() % 10_000) as f32 / 10_000.0 * 0.4) * 0.3 * scale);
                     }
                 }
                 rp.push(rows * fan);
                 (rp, vals, ci)
             };
-            let (rp, vals, ci) = build(half_n, half_n);
+            let (rp, vals, ci) = build(half_n, half_n, 80, 1.0);
             let path = crate::frames::Binding { src_cluster: "dlv".to_string(), dst_cluster: "dlv".to_string(), src_start: 0, src_end: half_n, dst_start: half_n, dst_end: n };
             $eng.upload_sparse("dlvpath", half_n, half_n, &rp, &vals, &ci, Some(path));
             $eng.set_plasticity_mode("dlvpath", Some((1.0, 0.5, 0.25)));
@@ -2726,7 +2734,10 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
                     $eng.hebbian_bound("dlvpath", 0.01)?;
                 }
             }
-            let q = Quantum::default();
+            // The step as the brain actually sends it: tunnelling, twin noise,
+            // refractoriness and cortex noise at their running values.
+            let q = Quantum { tunnel_a: 0.002, tunnel_kappa: 2.0, entangle_rho: 0.3, refract_beta: 0.016 };
+            let noise = 8.0f32;
             let mut seed: u32 = 1;
             // rest shift 0 = the map's default rest point (cells burst on their own);
             // 1 = an undriven cell sits below the firing point and is silent.
@@ -2735,7 +2746,7 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
             $eng.init_cluster("dlv", n, &regions, 0.0, 0.0);
             $eng.set_rest_shift("dlv", shift);
             $eng.set_delivery("dlv", 0.0);
-            for _ in 0..3000 { seed += 1; $eng.step("dlv", 0.0, 0.0, n, 0.0, seed, q)?; }
+            for _ in 0..3000 { seed += 1; $eng.step("dlv", 0.0, 0.0, n, noise, seed, q)?; }
             println!("  {} · rest shift {shift} — one step after the source pattern is lit (taught cells fired of {}, other cells fired of {}), mean over {} pairs:", $label, lit_n, half_n as usize - lit_n, pairs);
             for &ed in &[0.0f32, 10.0, 20.0] {
                 let mut line = format!("    drive {ed:>4}:");
@@ -2743,10 +2754,10 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
                     let (mut hit, mut stray) = (0usize, 0usize);
                     for (s, d) in &lessons {
                         $eng.set_delivery("dlv", 0.0);
-                        for _ in 0..20 { seed += 1; $eng.step("dlv", ed, ed, n, 0.0, seed, q)?; }
+                        for _ in 0..20 { seed += 1; $eng.step("dlv", ed, ed, n, noise, seed, q)?; }
                         $eng.write_spike_slice("dlv", "src", s)?;
                         $eng.set_delivery("dlv", g);
-                        seed += 1; $eng.step("dlv", ed, ed, n, 0.0, seed, q)?;
+                        seed += 1; $eng.step("dlv", ed, ed, n, noise, seed, q)?;
                         let fired = $eng.readback_letter_buckets("dlv", "dst", half_n, half_n, 0)?;
                         let all: usize = fired.iter().filter(|&&f| f != 0).count();
                         let h: usize = d.iter().filter(|&&i| fired[i as usize] != 0).count();
@@ -2757,18 +2768,29 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
                 println!("{line}");
             }
             // inside wiring too — every cell hears every region; does firing stay in range?
-            let (rp2, vals2, ci2) = build(n, n);
-            let inside = crate::frames::Binding { src_cluster: "dlv".to_string(), dst_cluster: "dlv".to_string(), src_start: 0, src_end: n, dst_start: 0, dst_end: n };
-            $eng.upload_sparse("dlvin", n, n, &rp2, &vals2, &ci2, Some(inside));
-            println!("  {} · rest shift {shift} — 400 steps with pathway + inside wiring delivering, a taught source pattern lit every 50th step, share of cells firing a step (min / mean / max %):", $label);
-            for &ed in &[0.0f32, 10.0, 20.0] {
-                let mut line = format!("    drive {ed:>4}:");
-                for &g in &[0.0f32, 2.0, 4.0, 6.0] {
+            // Inside starting weights tried: as the brain builds them today (80 %
+            // positive), balanced (50 % positive), a tenth the size, and zero.
+            println!("  {} · rest shift {shift} — 400 steps with pathway + inside wiring delivering, a taught source pattern lit every 50th step, zero drive, share of cells firing a step (min / mean / max %):", $label);
+            for &(what, pos_pct, scale) in &[("as built (80 % positive)", 80u32, 1.0f32), ("balanced (50 % positive)", 50, 1.0), ("a tenth the size", 80, 0.1), ("zero", 80, 0.0)] {
+                $eng.free_sparse("dlvin");
+                // Fresh cell state for every variant: a cluster that has just been
+                // through an avalanche carries it in its slow variable for thousands
+                // of steps, and the next variant would be measured on that hangover.
+                $eng.init_cluster("dlv", n, &regions, 0.0, 0.0);
+                $eng.set_rest_shift("dlv", shift);
+                $eng.set_delivery("dlv", 0.0);
+                for _ in 0..3000 { seed += 1; $eng.step("dlv", 0.0, 0.0, n, noise, seed, q)?; }
+                let (rp2, vals2, ci2) = build(n, n, pos_pct, scale);
+                let inside = crate::frames::Binding { src_cluster: "dlv".to_string(), dst_cluster: "dlv".to_string(), src_start: 0, src_end: n, dst_start: 0, dst_end: n };
+                $eng.upload_sparse("dlvin", n, n, &rp2, &vals2, &ci2, Some(inside));
+                let ed = 0.0f32;
+                let mut line = format!("    inside {what:>26}:");
+                for &g in &[0.0f32, 3.0, 4.0, 6.0] {
                     $eng.set_delivery("dlv", g);
                     let (mut lo, mut hi, mut sum) = (u32::MAX, 0u32, 0u64);
                     for t in 0..400usize {
                         if t % 50 == 0 { $eng.write_spike_slice("dlv", "src", &lessons[(t / 50) % pairs].0)?; }
-                        seed += 1; let (l, r) = $eng.step("dlv", ed, ed, n, 0.0, seed, q)?; let c = l + r; lo = lo.min(c); hi = hi.max(c); sum += c as u64;
+                        seed += 1; let (l, r) = $eng.step("dlv", ed, ed, n, noise, seed, q)?; let c = l + r; lo = lo.min(c); hi = hi.max(c); sum += c as u64;
                     }
                     let pct = |c: f64| c * 100.0 / n as f64;
                     line.push_str(&format!("  g{g}: {:.2}/{:.2}/{:.2}", pct(lo as f64), pct(sum as f64 / 400.0), pct(hi as f64)));
