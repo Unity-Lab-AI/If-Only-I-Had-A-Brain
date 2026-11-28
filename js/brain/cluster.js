@@ -1087,7 +1087,9 @@ export class NeuronCluster {
       // a single pair, 10 is sparse but functional with the contrastive
       // Hebbian + top-K-per-row pruning that keeps basins separable).
       // Must stay in sync with brain-server.js CROSS_TARGET_FANOUT.
-      const crossTargetFanout = 10;
+      // `opts.crossTargetFanout` lets a caller build the projections at a
+      // chosen wiring (the whole-brain instrument measures recall against it).
+      const crossTargetFanout = (opts.crossTargetFanout > 0) ? opts.crossTargetFanout : 10;
       // sem↔motor projections init with 50/50 excitatory/inhibitory
       // (zero-mean random weights) instead of default 70/30. Killed
       // the positive-bias baseline that drowned Hebbian training on
@@ -1263,8 +1265,11 @@ export class NeuronCluster {
         // Density cap — 0.005 is the default; motor-bound pairs get a
         // matching 0.01 cap (2×) so the fanout term can actually land
         // at smaller source sizes.
-        const abCap = MOTOR_BOUND_PAIRS.has(abKey) ? 0.01 : 0.005;
-        const baCap = MOTOR_BOUND_PAIRS.has(baKey) ? 0.01 : 0.005;
+        // `opts.crossDensityCap` replaces both caps (the instrument uses it so a
+        // chosen wiring is not silently capped on a small cortex).
+        const _capOpt = (opts.crossDensityCap > 0) ? opts.crossDensityCap : 0;
+        const abCap = _capOpt || (MOTOR_BOUND_PAIRS.has(abKey) ? 0.01 : 0.005);
+        const baCap = _capOpt || (MOTOR_BOUND_PAIRS.has(baKey) ? 0.01 : 0.005);
         // Hierarchical cluster organization. Between-
         // cluster density gets scaled down so 70% of cross-region
         // routing stays within functional clusters, 30% crosses

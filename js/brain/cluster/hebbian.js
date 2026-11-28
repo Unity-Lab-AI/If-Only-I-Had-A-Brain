@@ -583,6 +583,22 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       const preF = preS2.vec;
       const postF = postS2.vec;
       const activeRows2 = postS2.active;
+      // ERROR-DRIVEN TEACHING (`opts.errorDriven`): the lit target cells are the
+      // pattern that SHOULD fire for the lit source cells, and a wire changes
+      // only where a target cell is wrong (`SparseMatrix.errorUpdate`). Every
+      // row is visited, so it is sliced by time like the Oja path. This is the
+      // host path; the card needs the same rule as a kernel mode.
+      if (opts.errorDriven) {
+        const eOpts = { theta: opts.errorTheta, margin: opts.errorMargin };
+        const eta = (typeof opts.errorEta === 'number') ? opts.errorEta : 0.05;
+        const step = 200000;
+        let sliceAt = Date.now();
+        for (let rs = 0; rs < proj.rows; rs += step) {
+          proj.errorUpdate(preF, postF, eta, { ...eOpts, rowStart: rs, rowEnd: Math.min(proj.rows, rs + step) });
+          if (Date.now() - sliceAt > 40) { await new Promise((resolve) => setImmediate(resolve)); sliceAt = Date.now(); }
+        }
+        continue;
+      }
       // CPU Hebbian OOM fix — route through worker pool when
       // available. AWAIT the pool job so
       // pending cross-projection Hebbians don't pile up in semi-space
