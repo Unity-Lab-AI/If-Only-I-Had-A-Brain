@@ -22182,36 +22182,26 @@ export class Curriculum {
     return out;
   }
 
-  /**
-   * ⭐⭐ A WORD'S SEM CODE — THE ONE PLACE THE RANKING IS CHOSEN.
-   *
-   * A sem cell fires only on a positive value, so what a lane teaches is its set of
-   * POSITIVE dims. The two rankings available give different sets:
-   *   · by |value| (`_topKEmbedding`) — keeps the K largest-magnitude dims, and a
-   *     negative one survives the ranking and then writes NOTHING. Measured on 900
-   *     real words: the pair lane intends 8 dims and only **6.0** are writeable.
-   *   · by value (`_semTeachEmbedding`) — keeps the K largest POSITIVE dims, so
-   *     every kept dim can fire. The prose lanes already fixed themselves this way
-   *     ("3 of 400 real GloVe rows had all eight of their largest-magnitude dims
-   *     negative … unteachable, permanently, and silently").
-   *
-   * Measured on her real pair lesson (400,000 cells, 16 reps, 29 pairs), taught in
-   * the by-|value| code: the lane's own code recovers the right partner **19/29**,
-   * a prose-coded drive recovers **2/29** — one lane cannot read what another
-   * taught — and the by-value code reads **15/29** of the same teaching.
-   *
-   * ⚠ THE KNOB IS MEASUREMENT SCAFFOLDING, NOT AN ARCHITECTURE CHOICE. The arm
-   * still missing is teach-in-by-value, read-in-by-value, which cannot be run
-   * without the teach path producing that code. When that number is in, the winning
-   * ranking becomes the only one and the loser is deleted — this project runs one
-   * correct path, not a switch between two.
-   */
-  _semCodeFor(rawEmb, K) {
-    if (!rawEmb || !rawEmb.length) return rawEmb;
-    const _env = (typeof process !== 'undefined' && process.env) ? process.env : {};
-    if (_env.DREAM_SEM_CODE_VALUE === '1') return this._semTeachEmbedding(rawEmb, { semTopK: K });
-    return this._topKEmbedding(rawEmb, K);
-  }
+  // ⛔ A `_semCodeFor(rawEmb, K)` ranking switch stood here for part of
+  // 2026-11-28 and is DELETED, because the question it was built to answer was
+  // the wrong question. It chose between keeping a word's top-K sem dims by
+  // |value| or by value, measured on her pair lesson, and the arms differed
+  // (19/29 against 15/29 and a cross-lane 2/29 against 9/29) — but ONLY in a
+  // configuration she does not run. `_writeTiledPattern` intercepts any vector
+  // carrying `_word` when `cluster.wordCellCode === true` and writes the WORD-CELL
+  // code instead, discarding the ranking entirely; `_dictionaryPatternFor` sets
+  // `_word` and BOTH ranking functions preserve it. Production has word-cell code
+  // on, so in production the two rankings are the same write and folding them
+  // changes nothing. The probe disagreed only because the word-cell default needs
+  // `size − SPEECH_LAYOUT.G >= 10000` and a 400,000-cell cortex leaves 8,476 —
+  // twenty-four thousand short — so it benchmarked a different brain.
+  //
+  // ⭐ The real asymmetry, kept here because this is where someone will look for
+  // it: the lanes that pass a `_word`-carrying vector already share ONE code. The
+  // story / name / prose sem writes do not — they tile an embedding through a
+  // local `buildPattern`, bypassing `_writeTiledPattern` and therefore the
+  // word-cell code altogether. That is why a word one lane taught is unreadable to
+  // another: one lane missing the shared code, not several codes needing a fold.
 
   _topKEmbedding(feat, K) {
     if (!feat || feat.length === 0 || K <= 0 || feat.length <= K) return feat;
@@ -23785,7 +23775,7 @@ export class Curriculum {
           if (!inEmb || !outEmb || inEmb.length === 0 || outEmb.length === 0) { sk++; continue; }
           const outEmbMotor = motorWTA ? this._topKEmbedding(outEmb, motorTopK) : outEmb;
           if (motorWTA && outEmbMotor !== outEmb) wa++;
-          const inEmbSem = semWTA ? this._semCodeFor(inEmb, semTopK) : inEmb;
+          const inEmbSem = semWTA ? this._topKEmbedding(inEmb, semTopK) : inEmb;
           if (semWTA && inEmbSem !== inEmb) swa++;
           const gS = Math.max(1, Math.floor(_lessonBase.semSize / inEmbSem.length));
           const gM = Math.max(1, Math.floor(_lessonBase.motorSize / outEmbMotor.length));
@@ -23870,7 +23860,7 @@ export class Curriculum {
         // SEM-side sparse code — top-K on the input embedding so similar
         // K-grade content words produce more-orthogonal sem patterns than
         // raw GloVe would. Fires the same _topKEmbedding helper as motor.
-        const inEmbSem = semWTA ? this._semCodeFor(inEmb, semTopK) : inEmb;
+        const inEmbSem = semWTA ? this._topKEmbedding(inEmb, semTopK) : inEmb;
         if (semWTA && inEmbSem !== inEmb) semWtaApplied++;
         const _ps2 = Date.now();
         // ⭐ ACTIVE-DIM COUNT, RECORDED WHERE IT IS ACTUALLY DECIDED. `semTopK`
@@ -26990,9 +26980,7 @@ export class Curriculum {
       if (!Array.isArray(pair) || pair.length < 2) continue;
       const rawEmb = this._dictionaryPatternFor(pair[0]);
       if (!rawEmb || rawEmb.length === 0) continue;
-      // The probe MUST use the same ranking the teach used, or it measures the
-      // mismatch instead of the learning.
-      const inEmb = semWTA ? this._semCodeFor(rawEmb, semTopK) : rawEmb;
+      const inEmb = semWTA ? this._topKEmbedding(rawEmb, semTopK) : rawEmb;
       const active = [];
       const gSize = Math.max(1, Math.floor(semSize / inEmb.length));
       for (let d = 0; d < inEmb.length; d++) {
