@@ -996,7 +996,18 @@ const SERVER_CHAT_MIXIN = {
     const _questionShaped = !!(text && this.curriculum
       && typeof this.curriculum._isQuestionLike === 'function'
       && this.curriculum._isQuestionLike(text));
-    if (!_cpuTickUnsafe && !_preFresh && _questionShaped && this.curriculum
+    // ⛔ NOT ON A CORTEX THAT SPEAKS FROM ITS OWN CELLS. The probe is the old
+    // answer path: it steps the cortex on the host, and its timeout is a timer
+    // on the very loop it holds, so the timeout cannot fire. Measured on the
+    // first walk of this build: one reply spent 69.9 s here
+    // (`[ChatPin] reply pass 69981ms … qa-probe=69918ms`), the loop froze for
+    // all of it, and the donor's connection died (`CLOSED — code 1006`).
+    // A cortex with speech cells answers a question the way it answers
+    // anything said to her — from what was said, through her speech readout
+    // (compose reads the heard line as `questionText`) — so this lane adds
+    // nothing there but the freeze.
+    const _speaksFromCells = !!(this.cortexCluster && this.cortexCluster._speechUnitCells);
+    if (!_cpuTickUnsafe && !_preFresh && !_speaksFromCells && _questionShaped && this.curriculum
         && typeof this.curriculum.answerChatQuestion === 'function') {
       try {
         this._chatStamp('qa-probe');
