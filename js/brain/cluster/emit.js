@@ -79,13 +79,7 @@ const SPEECH_FLOOR = 0.04;
 export const CLUSTER_EMIT_MIXIN = {
   /** The one speech readout of this cluster (made on first use, saved with her weights). */
   speechReadout() {
-    if (this._speechReadout) return this._speechReadout;
-    const rd = this._speechReadout = new SpeechReadout(sharedEmbeddings);
-    // A cluster built with speaking-state cells keeps what she says in the
-    // pathway from those cells onto her word cells; the readout then only
-    // works out which cells a moment lights and runs the lessons.
-    if (this.speechPathway) rd.attachPathway(this.speechPathway, { cellSize: this.wordBucketCellSizeFor() });
-    return rd;
+    return this._speechReadout || (this._speechReadout = new SpeechReadout(sharedEmbeddings));
   },
 
   /**

@@ -875,21 +875,6 @@ export class NeuronCluster {
         word_motor_art:  wmBands.art,
         word_motor_life: wmBands.life,
       };
-      // THE SPEAKING STATE HAS CELLS OF ITS OWN (`opts.speechStateCells`, off at
-      // 0). What was said to her and her words so far light cells here; the
-      // pathway built below reads them onto the word cells in `word_motor`. The
-      // run is taken from the head of `free`, and it is deliberately small:
-      // a word cell has a few hundred wires, so the state must be compact
-      // enough that those wires reach a real share of it.
-      {
-        const want = Math.max(0, Math.floor(opts.speechStateCells || 0));
-        const fr = this.regions.free;
-        const n = Math.min(want, Math.floor((fr.end - fr.start) / 2));
-        if (n > 0) {
-          this.regions.speech = { start: fr.start, end: fr.start + n };
-          this.regions.free = { start: fr.start + n, end: fr.end };
-        }
-      }
       // ONE CELL FOR EVERY UNIT OF THE SPEAKING STATE (`opts.speechUnitCells`).
       // The state her next word is read from — what was said, her words so
       // far, the thing in mind, how she feels — is a set of units; here each
@@ -901,8 +886,8 @@ export class NeuronCluster {
       if (opts.speechUnitCells) {
         const G = SPEECH_LAYOUT.G;
         const fr = this.regions.free;
-        if (this.regions.speech || fr.end - fr.start < G) {
-          throw new Error(`[Cluster ${name}] speechUnitCells needs ${G.toLocaleString()} free cells for the speaking state; this build has ${(fr.end - fr.start).toLocaleString()}${this.regions.speech ? ' and already carved a speech region another way' : ''}.`);
+        if (fr.end - fr.start < G) {
+          throw new Error(`[Cluster ${name}] speechUnitCells needs ${G.toLocaleString()} free cells for the speaking state; this build has ${(fr.end - fr.start).toLocaleString()}.`);
         }
         this.regions.speech = { start: fr.start, end: fr.start + G };
         this.regions.free = { start: fr.start + G, end: fr.end };
@@ -1548,26 +1533,6 @@ export class NeuronCluster {
       }
     } else {
       this.crossProjections = {};
-    }
-
-    // THE SPEECH PATHWAY: speaking-state cells → word cells. Every word cell
-    // gets `opts.speechFanout` wires (300) onto the state cells, all starting at
-    // zero, so an untaught pathway says nothing. It learns only through
-    // `speechTeach` (the error read at the word) — `speechPathway` keeps every
-    // general lesson and wrap-up off it — and what she says is the word whose
-    // cells it drives hardest. Zero it, or light no state cell, and she is silent.
-    this.speechPathway = null;
-    if (this.regions && this.regions.speech && this.regions.word_motor && !this._speechUnitCells) {
-      const sp = this.regions.speech, wm = this.regions.word_motor;
-      const sN = sp.end - sp.start, wN = wm.end - wm.start;
-      const fan = Math.min(sN, Math.max(1, Math.floor(opts.speechFanout ?? 300)));
-      const m = new SparseMatrix(wN, sN, { wMin: -2, wMax: 2 });
-      m.initRandom(fan / sN, 1.0, 1.0);
-      m.values.fill(0);
-      m.speechPathway = true;
-      m.errorDriven = { eta: 0.05, theta: 0.5, margin: 0.25 };   // re-shaping wrap-ups leave it alone
-      this.speechPathway = m;
-      if (this.size >= 50000) console.log(`[Cluster ${name}] speech pathway — ${sN.toLocaleString()} state cells → ${wN.toLocaleString()} word cells, ${(m.nnz / wN).toFixed(0)} wires a word cell (${m.nnz.toLocaleString()} weights, all zero until taught)`);
     }
 
     // T14.16.5 — Identity lock state. Default (pre-curriculum) thresholds
