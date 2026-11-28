@@ -61982,4 +61982,37 @@ Six rows of this section are still open (.1, .2, .3, .6, .8, .9) and two were fi
 - **Commits:** the commit carrying this entry.
 - **Docs in the same commit:** `docs/` — TODO, this ledger.
 
+---
+
+## 2026-11-27 (late) — NEWWORDS.2, .3, .4 closed: a word she does not know becomes hers, she asks about it by name, and the dashboard counts it (branch `feature/new-words-and-rules`, nothing booted)
+
+**Gee's words that govern this entry (verbatim):** "okay the issue of her never producing what was never teaught we teach her how to create nd conclude and formulate bvia eqautional math of language laws and rules and characteriestics.... just like humans do... "i before e except after c" so that equationally when she sees a new word(should alread y exist>) she looks it up and incorportests the under standing or says like arreal peson  what does ""  word mean? and incorportests the answer with discernment into her understandings. That was the whole learns new words and counter for it on dashboard" · "start crone to keep u on this task same ass last crone in all reguards but for finishinshing this feature and todo items of it" · "we need her speaqking like real llms do and humans do but as her neuronic brain driving it all , not bolt on horse shit" · "no we arent booting her up till everything is done and complete and finished".
+
+**Measured first, as he said ("should alread y exist").** It half existed. A word she had never met, through the live path as it was: holds a definition 12/12 · a place to say it 0/12 · reads it 0/12 · says it 0/12 — and the lookup only ran when the PERSON asked "what does X mean". Asked to make a question about 12 words: 0 said anything. Every line she made was a taught sentence word for word, 79 of 79.
+
+**NEWWORDS.2 — "when she sees a new word(should alread y exist>) she looks it up and incorportests the under standing". CLOSED.** Row text and verdict stay on the board.
+- The words of a line said to her that she does not hold are noticed (at most four a line), queued, and taken in between lessons by `Curriculum._meetNewWord`: her whole word lesson, naming, then the definition. A misspelling is met as the word it was meant to be.
+- After: definition yes · place to say it yes · reads it yes · says it yes, every looked-up word. Used in a line of her own 5 of 5, all ended. Asked what it means: "umbrella" → "collapsible" when she can name the defining words; the nearest thing she has a word for when she cannot. 30 earlier words still read and said 30/30.
+
+**NEWWORDS.3 — "or says like arreal peson  what does ""  word mean? and incorportests the answer with discernment into her understandings". CLOSED.**
+- Not knowing is a feeling in her speaking state, taught on the questions in her own reading (quoted questions are lines of their own). A learned "say the thing I mean" weight per unit is added to the word her line is about, and the state holds whether she has said it yet.
+- On 60 words she was taught no line about: the word is in her line **100 %** (2 % before), named once; a question **70 %** not knowing against **15 %** sure. Through her own compose path 12 and 16 of 20 asks came out at two lesson sizes; the rest were first words just under her 0.04 speech floor, withheld, and the word waits its turn. The floor was not moved.
+- A fitting answer is taken at full dose; "purple river sings yesterday" for "toaster" is taken at a quarter and marked doubted. A made-up word is kept, sayable, and asked about.
+
+**NEWWORDS.4 — "That was the whole learns new words and counter for it on dashboard". CLOSED.**
+- Through the server's own chat mixin, lane drain and state mixin: one line with three unknown words → noticed 3 → met 3 → published `newWords` 0 → total 2 · looked up 2 · waiting to ask 1 · last "truly". Dashboard row "new words she took in". Saved with her weights.
+
+**What I got wrong on the way, each caught by a number:** made-up strings were counted "looked up" (the lookup answers for misspellings) · a lesson I added to make her say the word first made her real compose path blurt the bare word, and was deleted · a held made-up word had no place to say it, twice · I wrote 18.9 → 26.8 % into six documents as the gates' never-taught figure when it is the next word of a never-taught sentence said as her own line; the gates' said-to-her figure is a different path, unchanged at 12.2 % at the same lesson size (16.5 % at twice the lessons). All six corrected.
+
+**NEWWORDS.1 — "we teach her how to create nd conclude and formulate bvia eqautional math of language laws and rules and characteriestics.... just like humans do... "i before e except after c"". CLOSED ON WHAT IS MEASURED — Gee's decision, asked with options: "Close on measured (Recommended)".**
+- She creates: what she says depends on what she means. A line about a thing she was taught no line about is a new line that ends (60 of 60), with the thing named in it; a taught-about thing is still recited 30 of 30. The next word of a never-taught sentence said as her own line 18.9 % → 26.8 %; taught 88.2 % → 92.3 %.
+- The figure the row named — a never-taught sentence said to her with a word left out — is **12.2 % before and after** at 300 taught sentences (that path was not changed), and 16.5 % at 600 on the same code.
+- A dictionary's part-of-speech label carries no word-order signal she can use (31.8 % against 32.8 %); nothing was built on a label table.
+- Spelling, taught on 1,200 words and asked of 600 others: the word's own meaning over another's 52.1 % → 54.6 % and 50.1 % → 55.8 % — a small lean. Not built, by the decision: a path that spells a word out letter by letter.
+
+**Every NEWWORDS row is now closed.**
+
+- **Commits:** the commit carrying this entry.
+- **Docs in the same commit:** `docs/` — TODO, this ledger, NOW, RESUME, EQUATIONS, EQUATIONS-TECHNICAL, ARCHITECTURE, WHOLE-BRAIN-DESIGN · `README.md` · `html/` — dashboard (row + tooltip), brain-equations, unity-guide · `.claude/CLAUDE.md` · `js/app.bundle.js` rebuilt · `deploy/` unaffected (no launcher, service or script changed) · `wiki/` stamped locally.
+
 

@@ -14130,7 +14130,8 @@ var K = {
   conceptMean: 8,
   about: 8,
   aboutMean: 8,
-  live: 2
+  live: 2,
+  unsure: 6
 };
 var HEARD_MAX = 16;
 var SPEECH_END = -2;
@@ -14187,6 +14188,12 @@ var clampW = (v) => v > W_MAX ? W_MAX : v < -W_MAX ? -W_MAX : v;
 var stepUp = (n) => Math.max(VOCAB_STEP, Math.ceil(n / VOCAB_STEP) * VOCAB_STEP);
 var isHeardPair = (u) => u >= L.heardBi && u < L.heardKey;
 var isExact = (u) => u >= L.pair && u < L.heardBag || isHeardPair(u);
+var aboutMix = (u) => {
+  let x = Math.imul(u + 2135587861, 2654435761) >>> 0;
+  x ^= x >>> 15;
+  x = Math.imul(x, 2246822507) >>> 0;
+  return (x ^ x >>> 13) >>> 0;
+};
 var SpeechReadout = class {
   constructor(embeddings, opts = {}) {
     this.emb = embeddings;
@@ -14198,6 +14205,12 @@ var SpeechReadout = class {
     this.wd = new Array(L.G).fill(null);
     this.endW = new Float32Array(L.G);
     this.use = new Uint32Array(L.G);
+    this.thingW = new Float32Array(L.G);
+    this.topicAt = /* @__PURE__ */ new Map();
+    this._topicWords = null;
+    this._topicN = 0;
+    this._thing = 0;
+    this._topic = -1;
     this._share = new Float64Array(128);
     this.entries = 0;
     this.wide = 0;
@@ -14312,10 +14325,12 @@ var SpeechReadout = class {
     if (n >= 3) hashUnits(p[n - 3], K.w3, ID, 3, L.w3Id, out);
     if (n >= 2) hashUnits(p[0], K.opener, ID, 23, L.opener, out);
     hashUnits("p" + Math.min(n, 12), K.pos, POS, 21, L.pos, out);
-    if (n >= 2) hashUnits(p[n - 2] + " " + p[n - 1], K.conj, CJ, 7, L.pair, out);
-    if (n >= 3) hashUnits(p[n - 3] + " " + p[n - 2] + " " + p[n - 1], K.conj, CJ, 9, L.triple, out);
-    if (n >= 4) hashUnits(p[n - 4] + " " + p[n - 3] + " " + p[n - 2] + " " + p[n - 1], K.quad, CJ, 10, L.quad, out);
-    hashUnits(h.join(" ") + "|" + p.join(" "), K.line, LINE, 25, L.line, out);
+    const own = !h.length && topic ? topic + "|" : "";
+    if (own) hashUnits(p.includes(topic) ? "thing-said" : "thing-unsaid", 4, POS, 37, L.pos, out);
+    if (n >= 2) hashUnits(own + p[n - 2] + " " + p[n - 1], K.conj, CJ, 7, L.pair, out);
+    if (n >= 3) hashUnits(own + p[n - 3] + " " + p[n - 2] + " " + p[n - 1], K.conj, CJ, 9, L.triple, out);
+    if (n >= 4) hashUnits(own + p[n - 4] + " " + p[n - 3] + " " + p[n - 2] + " " + p[n - 1], K.quad, CJ, 10, L.quad, out);
+    hashUnits(own + h.join(" ") + "|" + p.join(" "), K.line, LINE, 25, L.line, out);
     const g = this._gist(h.concat(p));
     if (g) this._meaningUnits(g, K.gist, L.gist, out);
     if (h.length) {
@@ -14395,7 +14410,7 @@ var SpeechReadout = class {
    * five steps. Added to whatever state she speaks or is taught in, so a word
    * taught while she felt one way leans toward that feeling afterwards.
    */
-  liveUnits(valence, arousal) {
+  liveUnits(valence, arousal, unsure) {
     const out = [];
     const step = (x, lo, hi) => {
       const t = (Number(x) - lo) / (hi - lo);
@@ -14403,6 +14418,7 @@ var SpeechReadout = class {
     };
     hashUnits("v" + step(valence, -1, 1), K.live, LIVE, 31, L.live, out);
     hashUnits("a" + step(arousal, 0, 1), K.live, LIVE, 33, L.live, out);
+    if (unsure === true) hashUnits("not-knowing", K.unsure, LIVE, 35, L.live, out);
     return unique(out);
   }
   // ── Rows ──────────────────────────────────────────────────────────────────────
@@ -14525,10 +14541,15 @@ var SpeechReadout = class {
     let T = this._touched;
     if (this._all) s.fill(0, 0, this._n);
     else for (let i = 0; i < this._nt; i++) s[T[i]] = 0;
-    let all = false, end = 0;
+    let all = false, end = 0, thing = 0, aKey = 0, aN = 0;
     for (let i = 0; i < units.length; i++) {
       const u = units[i];
       end += this.endW[u];
+      thing += this.thingW[u];
+      if (u >= L.about && u < L.aboutMean) {
+        aKey += aboutMix(u);
+        aN++;
+      }
       const w = this.wd[u];
       if (!w) continue;
       all = true;
@@ -14564,11 +14585,52 @@ var SpeechReadout = class {
         } else s[key] += v[j];
       }
     }
+    let topic = -1;
+    if (aN > 0) {
+      const t = this.topicAt.get(aKey);
+      if (t !== void 0 && t < nWords) topic = t;
+    }
+    if (topic >= 0) {
+      if (!all && mark[topic] !== ep) {
+        mark[topic] = ep;
+        s[topic] = 0;
+        if (nt === T.length) {
+          const nT = new Int32Array(T.length * 2);
+          nT.set(T);
+          T = this._touched = nT;
+        }
+        T[nt++] = topic;
+      }
+      s[topic] += thing;
+    }
     this._all = all;
     this._n = nWords;
     this._nt = nt;
     this._end = end;
+    this._thing = thing;
+    this._topic = topic;
     return s;
+  }
+  /**
+   * Her word list (slot = position; it only grows). Lets a read find the slot
+   * of the word a line is about from the state's own "about" units.
+   */
+  knowWords(words) {
+    if (!Array.isArray(words)) return;
+    if (words !== this._topicWords || words.length < this._topicN) {
+      this.topicAt.clear();
+      this._topicN = 0;
+      this._topicWords = words;
+    }
+    const tmp = [];
+    for (let i = this._topicN; i < words.length; i++) {
+      tmp.length = 0;
+      hashUnits(String(words[i]), K.about, ID, 35, L.about, tmp);
+      let key = 0;
+      for (let j = 0; j < tmp.length; j++) key += aboutMix(tmp[j]);
+      this.topicAt.set(key, i);
+    }
+    this._topicN = words.length;
   }
   /** Score of "the line is finished" in this state. */
   endScore(units) {
@@ -14755,6 +14817,29 @@ var SpeechReadout = class {
     }
     return out;
   }
+  /**
+   * Her own line, part-way in, with every unit that stands for an EXACT run of
+   * her words left out: what is left is shared between lines — her last words
+   * one at a time, how far in she is, the drift of the line, what it is about.
+   * Null for a state that is not part-way through a line of her own.
+   */
+  _sharedOfOwnLine(units) {
+    let spoken = false, exact = false;
+    for (let i = 0; i < units.length; i++) {
+      const u = units[i];
+      if (u >= L.heardBag && u < L.concept) return null;
+      if (u >= L.w1Id && u < L.w1Mean) spoken = true;
+      else if (u >= L.pair && u < L.heardBag) exact = true;
+    }
+    if (!spoken || !exact) return null;
+    const out = [];
+    for (let i = 0; i < units.length; i++) {
+      const u = units[i];
+      if (u >= L.pair && u < L.heardBag) continue;
+      out.push(u);
+    }
+    return out;
+  }
   /** One "teach until she says it" in one state. Returns { right, updates }. */
   _fit(units, target, nWords, also, marginPer, tries) {
     const isEnd = target === SPEECH_END;
@@ -14771,6 +14856,8 @@ var SpeechReadout = class {
       this._touched[this._nt++] = target;
     }
     const alsoEnd = !!(also && also.includes(SPEECH_END));
+    const topic = this._topic;
+    const thingLed = this._thing > 0;
     let updates = 0, right = false;
     for (let t = 0; t < tries; t++) {
       const e = this._end;
@@ -14810,11 +14897,13 @@ var SpeechReadout = class {
         const u = units[i];
         const tu = up * share[i] / sumAll;
         if (isEnd) this.endW[u] = clampW(this.endW[u] + tu);
+        else if (target === topic && !isExact(u)) this.thingW[u] = clampW(this.thingW[u] + tu);
         else this._add(u, target, tu);
         if (use[u] < 4294967295) use[u]++;
         if (!down || isExact(u)) continue;
         const td = down * share[i] / sumShared;
         if (rival === SPEECH_END) this.endW[u] = clampW(this.endW[u] - td);
+        else if (rival === topic && thingLed) this.thingW[u] = clampW(this.thingW[u] - td);
         else this._add(u, rival, -td);
       }
       if (isEnd) this._end += up;
@@ -14852,6 +14941,8 @@ var SpeechReadout = class {
       } else {
         const g = this._meaningOnly(units);
         if (g) wider.push(g);
+        const s = this._sharedOfOwnLine(units);
+        if (s) wider.push(s);
       }
       for (const g of wider) {
         if (g.length < 4 || g.length === units.length) continue;
@@ -14957,6 +15048,7 @@ var SpeechReadout = class {
     }
     for (let u = 0; u < this.G; u++) pf(this.endW[u]);
     for (let u = 0; u < this.G; u++) pi(this.use[u] | 0);
+    for (let u = 0; u < this.G; u++) pf(this.thingW[u]);
     let mU = 0, mT = 0;
     for (const m of this.mem) pi(m.units.length);
     for (const m of this.mem) pi(m.targets.length);
@@ -14970,8 +15062,12 @@ var SpeechReadout = class {
     }
     flush();
     return {
+      // v 3: in a line of her own the exact-run units are made from the run of
+      // words AND what the line is about. A file saved before that holds
+      // weights on units that no longer mean the same thing, and is refused.
+      // v 4: every unit's "say the thing" weight follows the correction counts.
       header: {
-        v: 2,
+        v: 4,
         G: this.G,
         nWords: this.nWords,
         units: nU,
@@ -14998,9 +15094,9 @@ var SpeechReadout = class {
   restore(header, body) {
     const H = header;
     const int = (x) => Number.isInteger(x) && x >= 0;
-    if (!H || H.v !== 2 || H.G !== this.G || !int(H.units) || !int(H.entries) || !int(H.moments) || !int(H.momentUnits) || !int(H.momentTargets)) return false;
+    if (!H || H.v !== 4 || H.G !== this.G || !int(H.units) || !int(H.entries) || !int(H.moments) || !int(H.momentUnits) || !int(H.momentTargets)) return false;
     if (H.units > this.G) return false;
-    const need = (2 * H.units + 2 * H.entries + 2 * this.G + 2 * H.moments + H.momentUnits + H.momentTargets) * 4;
+    const need = (2 * H.units + 2 * H.entries + 3 * this.G + 2 * H.moments + H.momentUnits + H.momentTargets) * 4;
     let off = 0;
     const next = typeof body === "function" ? body : (len) => {
       const b = body.subarray(off, off + len);
@@ -15018,7 +15114,7 @@ var SpeechReadout = class {
       }
       return out;
     };
-    let ids, counts, rows, endW, use, mLen, mTLen, mUnits, mTargets;
+    let ids, counts, rows, endW, use, thingW, mLen, mTLen, mUnits, mTargets;
     try {
       if (typeof body !== "function" && (!body || body.length < need)) return false;
       ids = ints(H.units);
@@ -15037,6 +15133,7 @@ var SpeechReadout = class {
       }
       endW = new Float32Array(ints(this.G).buffer);
       use = new Uint32Array(ints(this.G).buffer);
+      thingW = new Float32Array(ints(this.G).buffer);
       mLen = ints(H.moments);
       mTLen = ints(H.moments);
       let su = 0, stt = 0;
@@ -15081,6 +15178,7 @@ var SpeechReadout = class {
     }
     this.endW.set(endW);
     this.use.set(use);
+    this.thingW.set(thingW);
     this.mem = [];
     this.memAt = /* @__PURE__ */ new Map();
     let ou = 0, ot = 0;
@@ -16574,7 +16672,10 @@ var SPEECH_FLOOR = 0.04;
 var CLUSTER_EMIT_MIXIN = {
   /** The one speech readout of this cluster (made on first use, saved with her weights). */
   speechReadout() {
-    return this._speechReadout || (this._speechReadout = new SpeechReadout(sharedEmbeddings));
+    const rd = this._speechReadout || (this._speechReadout = new SpeechReadout(sharedEmbeddings));
+    const words = this.wordBucketWords;
+    if (Array.isArray(words) && (words !== rd._topicWords || words.length !== rd._topicN)) rd.knowWords(words);
+    return rd;
   },
   /**
    * The units active right now — the state her next word is read from, and the
@@ -16708,7 +16809,7 @@ var CLUSTER_EMIT_MIXIN = {
     const b = this._brain;
     const m = b && (b.mood || b);
     if (!m || typeof m.valence !== "number" || typeof m.arousal !== "number") return [];
-    return this.speechReadout().liveUnits(m.valence, m.arousal);
+    return this.speechReadout().liveUnits(m.valence, m.arousal, this._unsureAbout === true);
   },
   /**
    * Set (or clear) the grade-vocab emission allow-set consumed by

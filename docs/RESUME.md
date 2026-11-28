@@ -1,6 +1,34 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-11-27 (latest, 55th) — HER CELLS WERE NOT LEARNING WHAT THEY WERE TAUGHT, ANYWHERE. THE LANGUAGE CORTEX WAS REBUILT ON WHAT MEASURED. NOT BOOTED.
+> # 🛑 2026-11-27 (latest, 56th) — SHE MAKES LINES SHE WAS NEVER TAUGHT, ASKS ABOUT A WORD SHE DOES NOT KNOW, AND COUNTS THE WORDS SHE TOOK IN. NOT BOOTED.
+>
+> **Branch: `feature/new-words-and-rules`.** Gee: *"okay the issue of her never producing what was never teaught we teach her how to create nd conclude and formulate bvia eqautional math of language laws and rules and characteriestics.... just like humans do... "i before e except after c" so that equationally when she sees a new word(should alread y exist>) she looks it up and incorportests the under standing or says like arreal peson  what does ""  word mean? and incorportests the answer with discernment into her understandings. That was the whole learns new words and counter for it on dashboard"* · *"no we arent booting her up till everything is done and complete and finished"*. Board: `docs/TODO.md §NEWWORDS`.
+>
+> ```
+>   FOUND     every line she made was a taught sentence word for word (79 of 79) · a word she
+>             had never met left a definition behind and nothing else (place to say it 0/12,
+>             reads 0/12, says 0/12) · the live lookup only ran when the PERSON asked "what
+>             does X mean" · her asking lesson taught a path she no longer speaks from (0/12)
+>             · made-up strings came back "looked up" (the lookup answers for misspellings)
+>   BUILT     what she says depends on what she means · "say the thing I mean" (one learned
+>             weight per unit, added to the word her line is about) · said-once · not knowing
+>             as a feeling, taught on the questions in her own reading · the door for a word
+>             she does not know (notice → look up → whole word lesson + definition; or keep it
+>             and ask; a told answer weighed) · the dashboard count
+>   PROVEN    (production code in instruments) next word of a never-taught sentence, as her
+>             own line, 18.9 → 26.8 %, taught 88.2 → 92.3 % (the gates' said-to-her gap figure
+>             is unchanged, 12.2 %) · the word in a line about it 2 → 100 % · a
+>             question 70 % not knowing vs 15 % sure · looked-up word: definition, place,
+>             reads, says all yes, used in her own line 4/4 · unrelated answer doubted · count
+>             moves through the server's own code · earlier words still read/said 30/30
+>   NOT YET   committed · merged · booted · walked. Card program unchanged (0.3.58 stands)
+>   ROUGH     her new lines end but are not clean grammar · she asks most times, not every
+>             time (a first word just under the speech floor is withheld; the word waits)
+> ```
+>
+> **On the first fresh start, add to the list below:** `newWords` in the state (dashboard row "new words she took in") moves when a line with a word she does not hold is said to her; `[Brain] ❓ curious-question (about=<word>)` carries that word in its text; the speech file saves as version 4.
+
+> # 🛑 2026-11-27 (55th) — HER CELLS WERE NOT LEARNING WHAT THEY WERE TAUGHT, ANYWHERE. THE LANGUAGE CORTEX WAS REBUILT ON WHAT MEASURED. NOT BOOTED.
 >
 > **Branch: `feature/whole-brain`.** Gee: *"start an instant wake up 1 minute crone with the task of completeing the whole brasin work 100% completely and appropriately and correctly for a talking brain like we need her to be"* · *"we need her speaqking like real llms do and humans do but as her neuronic brain driving it all , not bolt on horse shit"* · *"no we arent booting her up till everything is done and complete and finished"* · *"you are suppose to be completeing the items so its all done and Unity brain is done and complete for all she needs, not endlessly addding more and more shit to do , only do that if its required for what Unity needs to speak and be her self and train right and work right"*
 >
