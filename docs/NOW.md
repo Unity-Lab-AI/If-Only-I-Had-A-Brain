@@ -50,11 +50,11 @@ Her cells were not learning what they were taught — **anywhere**, not only in 
 |---|---|
 | 🧬 **A word's own cells** — half from its meaning, half its own; the same in every lesson | a word lights 2.67 % of a region |
 | 🎯 **Learn only when wrong** — host and card, both graphics backends | card agrees with host on all 11 test weights |
-| 🔌 **300 wires a cell**, inside a region and on every pathway | at her production size (1,328,482 cells): **95.8–100 %** of taught cells pass threshold on every pathway, **99.9 %** inside each region; her real pair lesson **0 → 100 of 100** |
+| 🔌 **300 wires a cell**, inside a region and on every pathway (600 on the four pathways into and out of her motor cells) | at her production size (1,328,482 cells): **95.8–100 %** of taught cells pass threshold on every pathway, **99.9 %** inside each region; her real pair lesson **0 → 100 of 100** |
 | ⚡ **Cells fire from their wiring**, and rest silent | card self-test: **54.0 of 54** taught cells fire, **0.7 of 1,946** others; with wiring input off, 0.0 and 0.2 |
 | 🌊 **No runaway** | inside wiring at its old starting size: 85–88 % of the cluster fired from one lit pattern. Started near nothing: **1.35 %** at the peak — the taught cells |
 | 🗣 **Speech from her own cells** | 7 of 7 taught answers; **0 of 7 with her speech cells dark**; 7 of 7 relit. Naming 900 of 900. A taught question put in other words: 50 of 60 |
-| 📖 **Reading** — letters straight to a word's meaning; half of a written word's cells are the whole word | 600 words, each met once: **198 / 195 / 198 of 200** per set still read at the end; untaught words read **0 of 200** |
+| 📖 **Reading** — letters straight to a word's meaning; half of a written word's cells are the whole word | 600 words, each met once: **198 / 198 / 199 of 200** per set still read at the end where the server teaches, **200 / 200 / 200** the way a card does it; untaught words read **0 of 200** |
 | 🧩 **A sentence with a word left out** | taught **99.3 %**, never taught **12.2 %** |
 | 🚦 **Gates** | every figure measures what it names; each list gate also prints the same questions asked before the lesson (vocabulary: READ 0/10 before → 10/10 after). That figure never decides a pass |
 | 📐 **Her size** | derived from the card that holds her: 624,194 wired cells on 4 GB, 936,958 on 6 GB, 2,499,584 on 16 GB, beside 391,524 speech cells |

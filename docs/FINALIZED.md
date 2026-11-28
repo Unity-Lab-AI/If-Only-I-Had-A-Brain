@@ -61935,4 +61935,31 @@ Six rows of this section are still open (.1, .2, .3, .6, .8, .9) and two were fi
 - **Commits:** `bdf771ef`, `75e03050`, `8f22bfb7`.
 - **Docs in the same commits:** `docs/` — TODO, this ledger, NOW (overwritten), RESUME (55th block), EQUATIONS (§3 wiring, §4 only-when-wrong, §5, the contents table's "Shown by an instrument?" column, the claim restated), EQUATIONS-TECHNICAL (note under the claim), WHOLE-BRAIN-DESIGN (§4–§6), ARCHITECTURE (change-history entry, "What is true now", the wiring block marked superseded, "The state lives in her cells") · `README.md` · `html/` — brain-equations (wiring line, only-when-wrong card, fan-out block, each with its tooltip), unity-guide (plain-words paragraph, three tooltips), legend; docs.html, teachview.html, the dashboards, compute.html, gpu-configure, minds-eye, runpod, webgpu-prep checked and unaffected · `.claude/CLAUDE.md` (current-state block) · `deploy/` — unaffected until the card release, which carries its own note · `wiki/` — stamped per page, local.
 
+---
+
+## 2026-11-27 (night, seventh entry) — WHOLEBRAIN.11 closed
+
+**Gee's words that govern this entry (verbatim):** "so wtf are you telling me" reading upkeep by look-backs alone fails once she knows 600 words — 505 of 600 read," ... that she can only learn 600 words?" · "make sure u commit to all remotes we have" · "and if we need to deploy a doner build do it correctly".
+
+**WHOLEBRAIN.11 — reading has to hold as her vocabulary grows. CLOSED.** Row text as filed stays on the board.
+- The answer to his question, kept here because my wording caused it: **no.** 600 words was the size of the test — three sets of 200, each word shown once. The pathway is sized for her whole vocabulary. What failed at that point was my first fix, not her.
+- What was wrong: (1) every cell a written word lit was shared with other words spelled like it — its letters at their places, its letter pairs, its length — so each new word's lesson lowered the cells of every word spelled alike; (2) nothing went back over earlier words.
+- What was built: half of a written word's cells are the whole word seen at once, half its parts (`_spellingCells`); after each new word the reading lesson goes round the words she has been taught to read and re-teaches one that has stopped reading (`_teachReadingBySight`, `_ownCellsFire`); the list is saved and restored with her weights (`readTaughtWords`).
+- Measured — three sets of 200 words taught one after another, each word met once, every set asked again at the end (read of 200):
+
+| How | Set 1 | Set 2 | Set 3 | Untaught words read | Time a word |
+|---|---|---|---|---|---|
+| As it was (every cell shared, no going back) | 0 | 12 | 112 | 0 | 167 ms |
+| Whole-word half, no going back (two sets) | 59 | 200 | — | 0 | 166 ms |
+| Whole-word half, looks at 64 earlier words, re-teaches the broken ones (the server's way) | **198** | **198** | **199** | 0 | 350 ms |
+| Whole-word half, re-teaches 16 earlier words without looking (the card's way) | **200** | **200** | **200** | 0 | 832 ms on the server; on the card each re-lesson is one short kernel |
+
+- Tried, measured and deleted: looking only at words spelled like the new one (191 / 190 over two sets at 32 looks); that plus asking whether the new word's cells answer to the older word's spelling (197 / 187 at 8 looks, three times the time). Both lost to going round the list in turn.
+- Caught by reading her production wiring before it shipped: the look reads the server's copy of the pathway's weights, and where a card does the teaching that copy is not kept current. On a card-bound pathway the older word is re-taught without looking.
+- Found by the final re-run and fixed in the lesson it belongs to: the word-left-out measure (99.3 %) used three passes of that lesson; her sentence lesson ran it once, and its ten-question gate printed 7, 8, 9 and 10 of 10 across four runs. The sentence lesson now makes three passes.
+
+- **Files:** `js/brain/curriculum.js`, `server/brain-server.js`, `js/app.bundle.js` (rebuilt).
+- **Commits:** `1c91141f`, `bdf771ef`, `8f22bfb7`, `3695f4f2`, and the commit carrying this entry.
+- **Docs in the same commit:** `docs/` — TODO, this ledger, NOW, WHOLE-BRAIN-DESIGN (reading row) · `wiki/` — stamped per page, local. Every other tree was brought current in the sixth entry's commits and is unaffected by this one.
+
 

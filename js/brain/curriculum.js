@@ -15638,11 +15638,14 @@ export class Curriculum {
       // like the new one (191 / 190 of 200 at 32 looks), and that plus asking
       // whether the new word's cells answer to the older spelling (197 / 187
       // at three times the time). Round the list at 64 looks: 200 / 198 after
-      // two sets, 198 / 195 / 198 after three, each word met once.
+      // two sets, 198 / 198 / 199 after three, each word met once.
       if (!st.order || st.orderSize !== known.size) { st.order = Array.from(known.keys()); st.orderSize = known.size; }
       const order = st.order;
       const onCard = opts.lessonsWithoutLooking ?? !!(proj.letter_to_sem._gpuBound && cluster._gpuProxyReady && cluster._gpuProxy && cluster._gpuProxy.hebbianBound);
-      const n = Math.min(looks, order.length - 1);
+      // How many: 64 where she looks first (the look skips most of them — 872
+      // lessons from 36,115 looks). Where every one is a lesson, 16 is enough:
+      // measured 200 / 200 / 200 over three sets, each word met once.
+      const n = Math.min(onCard ? Math.min(looks, 16) : looks, order.length - 1);
       for (let k = 0; k < n; k++) {
         st.cursor = ((st.cursor ?? -1) + 1) % order.length;
         const old = order[st.cursor];
@@ -30507,13 +30510,19 @@ export class Curriculum {
     // as the missing one. The gate below then leaves out a word at random.
     // ⚠ RE-PRICE: Σ(words in a sentence) speech teaches a pass — measured
     // 0.18 ms a teach at 751 words, so 1,000 sentences of 7 words ≈ 1.3 s.
+    // THREE passes over the list: a later sentence's gaps disturb an earlier
+    // one's, and one pass left this list's own gate at 7–10 of 10 from run to
+    // run; three passes is what measured 99.3 % of 1,967 gaps right. ≈ 4 s
+    // per 1,000 sentences.
     try {
       let _gaps = 0; const _gT = Date.now(); let _slice = Date.now();
-      for (const sentence of sentences) {
-        _gaps += await this._teachFillTheGap(sentence);
-        if (Date.now() - _slice > 30) { await _microtask(); _slice = Date.now(); }
+      for (let _pass = 0; _pass < 3; _pass++) {
+        for (const sentence of sentences) {
+          _gaps += await this._teachFillTheGap(sentence);
+          if (Date.now() - _slice > 30) { await _microtask(); _slice = Date.now(); }
+        }
       }
-      this._hb(`[Curriculum] FILL-THE-GAP — ${_gaps} gaps taught over ${sentences.length} sentence(s) in ${((Date.now() - _gT) / 1000).toFixed(1)}s`);
+      this._hb(`[Curriculum] FILL-THE-GAP — ${_gaps} gaps taught (three passes) over ${sentences.length} sentence(s) in ${((Date.now() - _gT) / 1000).toFixed(1)}s`);
     } catch (e) { console.warn(`[Curriculum] fill-the-gap lesson failed: ${e && e.message ? e.message : e}`); }
 
     // REAL HUMAN-GRADE GATE for sentences.

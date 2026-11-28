@@ -156,7 +156,7 @@ So about **276 weights per taught pair** holds 2,000 pairs perfectly and 3,000 p
 | **Wiring** | 300 wires per target cell, inside a region and on every pathway, at full fan-out; a cell's inside wires drawn from its own region; her cell count derived from the card that holds her. | **built.** At her production size (1,328,482 cells) 95.8–100 % of taught cells pass threshold on every pathway and 99.9 % inside each region. |
 | **Cells firing from wiring** | On the card each cell hears the cells that just fired (`docs/EQUATIONS.md` §3); her cortex cells rest silent. | **built on the card, both backends, and sent by the server.** From rest, 54.0 of 54 taught cells fire one step after their source pattern is lit, and 0.7 of 1,946 others. Reaches her with the next card release. |
 | **Speech** | The state she speaks from is activity in her own cells — one cell for every unit of that state — and the word she says is read from the cells that are lit. **Test: silence her cells and she goes silent.** | **built.** Seven taught answers: 7 of 7; with her speech cells dark, 0 of 7; relit, 7 of 7. Naming 900 of 900. |
-| **Reading** | A pathway from letters straight to a word's own meaning cells, taught inside her word lesson; after each new word she looks back at earlier words and re-teaches only one the new word broke. | **built.** Taught words read 200 of 200, untaught 0 of 200; two sets of 200 taught one after the other, each word met once: 200 and 198 of 200. |
+| **Reading** | A pathway from letters straight to a word's own meaning cells, taught inside her word lesson. Half of a written word's cells are the whole word at once, half its letters at their places. After each new word she goes back over earlier words and re-teaches one the new word broke. | **built.** Taught words read 200 of 200, untaught 0 of 200; three sets of 200 taught one after the other, each word met once: 198, 198 and 199 of 200 still read at the end where the server teaches, 200, 200 and 200 the way a card does it. With every cell of a written word shared with words spelled alike, the same test left 0, 12 and 112. |
 | **Gates** | Every figure a gate prints measures what it names; beside it, the same questions asked of the lesson's own items before it taught them. | **built.** READ taught 200 / untaught 0 of 200; COMPREHEND taught 99.3 % / untaught 12.2 %; both list gates print the before-the-lesson figure and never gate on it. |
 
 ---
@@ -174,7 +174,7 @@ So about **276 weights per taught pair** holds 2,000 pairs perfectly and 3,000 p
 | | |
 |---|---|
 | Language cortex | sized from the card that holds her: 624,194 wired cells on a 4 GB card, 936,958 on 6 GB, 2,499,584 on 16 GB, plus 391,524 speech cells |
-| Wires per cell | 300 inside its region, 300 on every pathway |
+| Wires per cell | 300 inside its region, 300 on every pathway — 600 on the four pathways into and out of her motor cells (meaning ↔ motor, letters ↔ motor) |
 | A word | 2.67 % of a region — half from its meaning, half its own |
 | Learning | only when wrong, everywhere in the language cortex |
 | At rest | silent; a cell fires when its wiring, a lesson or drive pushes it |

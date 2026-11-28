@@ -1180,7 +1180,7 @@ Language is a **developmental pipeline**, not a generator: letters → phonemes 
 | **Cross-region projections** | **16** — eight pairs, both directions. ⛔ This said 14 until 2026-08-27. **The missing pair was meaning ↔ whole-word, which is the pair everything about her speech rides on.** |
 | **Embedding width** | 300 dimensions, with subword encoding for words the table has never seen |
 | **A word in her cortex** | its own cells — 2.67 % of a region, half chosen from its meaning, half its own — the same in every lesson |
-| **Wiring** | 300 wires a cell inside its region and 300 on every pathway, at full fan-out. A pathway from letters to meaning was added for reading. |
+| **Wiring** | 300 wires a cell inside its region and 300 on every pathway (600 on the four into and out of her motor cells), at full fan-out. A pathway from letters to meaning was added for reading. |
 | **Learning** | a wire changes only when its cell is wrong ([EQUATIONS §4](EQUATIONS.md)) — every pathway and the wiring inside |
 | **Running** | her cortex cells rest silent and fire from their wiring ([EQUATIONS §3](EQUATIONS.md)); the firing controller holds the other clusters, not this one |
 | **Teaching path** | Direct-pattern lessons, which deliberately bypass the chaotic neuron dynamics *during teaching only* |
