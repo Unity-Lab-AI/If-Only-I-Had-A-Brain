@@ -2768,6 +2768,25 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
                 println!("{line}");
             }
             // inside wiring too — every cell hears every region; does firing stay in range?
+            // What follows a lit pattern, step by step (pathway only, gain 4): cells
+            // firing in the source region / taught target cells / other target cells.
+            {
+                $eng.set_delivery("dlv", 0.0);
+                for _ in 0..200 { seed += 1; $eng.step("dlv", 0.0, 0.0, n, noise, seed, q)?; }
+                let (s, d) = &lessons[0];
+                $eng.write_spike_slice("dlv", "src", s)?;
+                $eng.set_delivery("dlv", 4.0);
+                let mut line = format!("  {} · rest shift {shift} — the 8 steps after a source pattern is lit (source cells / taught target cells / other target cells firing):", $label);
+                for _ in 0..8 {
+                    seed += 1; $eng.step("dlv", 0.0, 0.0, n, noise, seed, q)?;
+                    let fs = $eng.readback_letter_buckets("dlv", "src", half_n, half_n, 0)?;
+                    let fd = $eng.readback_letter_buckets("dlv", "dst", half_n, half_n, 0)?;
+                    let h: usize = d.iter().filter(|&&i| fd[i as usize] != 0).count();
+                    line.push_str(&format!("  {}/{}/{}", fs.iter().filter(|&&f| f != 0).count(), h, fd.iter().filter(|&&f| f != 0).count() - h));
+                }
+                println!("{line}");
+                $eng.set_delivery("dlv", 0.0);
+            }
             // Inside starting weights tried: as the brain builds them today (80 %
             // positive), balanced (50 % positive), a tenth the size, and zero.
             println!("  {} · rest shift {shift} — 400 steps with pathway + inside wiring delivering, a taught source pattern lit every 50th step, zero drive, share of cells firing a step (min / mean / max %):", $label);

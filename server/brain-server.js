@@ -1540,7 +1540,15 @@ const CURRENT_DONOR_VERSION = (() => {
   return _m[1];
 })();
 
-const WEIGHTS_FORMAT_VERSION = 8;   // whole-brain wiring (2026-11-27): the language cortex is wired at 100 inside / 100 between regions (was 30 / 10) with its cell count derived at that wiring, every matrix learns only-when-wrong, a word lights its own cells, and a `speech` region holds a cell for every unit of the speaking state — earlier saves hold a different geometry, different wiring and patterns in a different code, so they auto-refuse → fresh walk. (v7 was speech readout (2026-11-27):the sem↔word_motor card matrices are gone and what she says is read from the speech-readout table saved beside the weights — earlier saves hold two matrices this brain no longer builds and no speech table, so they auto-refuse → fresh walk. (v6 was language-growth hop 2 (2026-08-29): WORD_MOTOR_TARGET_LANG_CORTEX 12M→20M with per-host AFFORDABLE geometry (each host hops as far as its own RAM/VRAM bounds allow, ≤ target) — saved lang-cortex geometry no longer matches, old weights auto-refuse → fresh walk both directions, per the operator's word. (v5 was ENDO 2026-08-25: `brainstem` cluster added (monoamine nuclei) — cluster set + cerebellum fraction changed. v4 was language-growth hop 1 2026-08-16: langCortexSize 1.5M→12M. v3 was WMB 2026-07-14: word_motor unified band.)
+// How her cortex cells feel their wiring on the card. Measured in the donor's
+// self-test with the step terms she runs on (tunnelling, twin noise,
+// refractoriness, noise 8), 20 taught pattern pairs, zero drive: with cells
+// resting 1 below the map's default they are silent on their own, and at gain
+// 4, 53.9 of 54 taught target cells fire one step after their source pattern is
+// lit against 4.9 of the other 1,946. Gain 3 loses 5 of the 54.
+const CORTEX_DELIVERY = Object.freeze({ gain: 4, restShift: 1 });
+
+const WEIGHTS_FORMAT_VERSION = 8;  // whole-brain wiring (2026-11-27): the language cortex is wired at 100 inside / 100 between regions (was 30 / 10) with its cell count derived at that wiring, every matrix learns only-when-wrong, a word lights its own cells, and a `speech` region holds a cell for every unit of the speaking state — earlier saves hold a different geometry, different wiring and patterns in a different code, so they auto-refuse → fresh walk. (v7 was speech readout (2026-11-27):the sem↔word_motor card matrices are gone and what she says is read from the speech-readout table saved beside the weights — earlier saves hold two matrices this brain no longer builds and no speech table, so they auto-refuse → fresh walk. (v6 was language-growth hop 2 (2026-08-29): WORD_MOTOR_TARGET_LANG_CORTEX 12M→20M with per-host AFFORDABLE geometry (each host hops as far as its own RAM/VRAM bounds allow, ≤ target) — saved lang-cortex geometry no longer matches, old weights auto-refuse → fresh walk both directions, per the operator's word. (v5 was ENDO 2026-08-25: `brainstem` cluster added (monoamine nuclei) — cluster set + cerebellum fraction changed. v4 was language-growth hop 1 2026-08-16: langCortexSize 1.5M→12M. v3 was WMB 2026-07-14: word_motor unified band.)
 // ⛔⛔ THE `UBWT` BINARY WEIGHT FILE'S OWN FORMAT VERSION — A DIFFERENT NUMBER
 // FROM `WEIGHTS_FORMAT_VERSION` ABOVE, AND CONFLATING THEM IS A DATA-LOSS BUG.
 //
@@ -6783,6 +6791,24 @@ class ServerBrain {
     return true;
   }
 
+  /**
+   * Tell a card how her cortex cells feel their wiring: the gain on the input
+   * each cell receives from cells that fired the step before, and how far below
+   * the map's default rest point an undriven cell sits (so a cell with no input
+   * is silent). The card keeps it by cluster name and answers `delivery_ack`
+   * with the clusters it holds. A card older than 0.3.58 ignores the message
+   * and steps on drive and noise alone.
+   */
+  _sendDelivery(ws) {
+    const cortex = this.cortexCluster;
+    if (!ws || ws.readyState !== 1 || !cortex) return false;
+    const d = CORTEX_DELIVERY;
+    ws.send(JSON.stringify({ type: 'delivery', clusters: [{ name: cortex.name, gain: d.gain, restShift: d.restShift }] }));
+    this._deliverySent = { at: Date.now(), gain: d.gain, restShift: d.restShift, held: null };
+    console.log(`[Brain] told the card her cortex cells feel their wiring at gain ${d.gain}, resting ${d.restShift} below the default; waiting for it to confirm.`);
+    return true;
+  }
+
   _sendPlasticityModes(ws) {
     const cortex = this.cortexCluster;
     if (!ws || ws.readyState !== 1 || !cortex || !cortex.crossProjections) return 0;
@@ -8446,6 +8472,7 @@ class ServerBrain {
                 // Which pathways learn only-when-wrong — after the upload, so the
                 // card answers with how many of them it actually holds.
                 try { this._sendPlasticityModes(this._gpuClient); } catch (e) { console.warn(`[Brain] could not send the pathways' learning mode to the card: ${e.message}`); }
+                try { this._sendDelivery(this._gpuClient); } catch (e) { console.warn(`[Brain] could not tell the card how her cells feel their wiring: ${e.message}`); }
                 try { this._noteCortexCard(this._gpuClient); } catch (e) { console.warn(`[Brain] could not record which card holds her cortex: ${e.message}`); }
                 // ⛔ NO READBACK AFTER ADOPT. This pulled the whole cortex back off
                 // the card 60 s after it reattached. Measured live 2026-11-25: the
@@ -16152,6 +16179,12 @@ wss.on('connection', (ws, req) => {
           const _fc = Array.isArray(msg.freedClusters) ? msg.freedClusters : null;
           const _hc = Array.isArray(msg.heldClusters) ? msg.heldClusters : null;
           console.log(`[Pool] FREE ACK from ${(client && (client.gpuName || client.id)) || id} — freed ${_fr.length} matrix(es)${_fr.length ? ': ' + _fr.slice(0, 8).join(', ') + (_fr.length > 8 ? ' …' : '') : ' (it held none of them)'}${_fc ? ` · freed ${_fc.length} cluster state(s)${_fc.length ? ': ' + _fc.join(', ') : ''} · still holds ${_hc ? (_hc.length ? _hc.join(', ') : 'no cluster state') : '?'}` : ' · (donor older than 0.3.56: neuron state not freed)'}.`);
+          break;
+        }
+        case 'delivery_ack': {
+          const _held = Array.isArray(msg.held) ? msg.held : [];
+          if (brain._deliverySent) { brain._deliverySent.held = _held; brain._deliverySent.ackedAt = Date.now(); }
+          console.log(`[Brain] the card confirmed the wiring setting; resident there now: ${_held.length ? _held.join(', ') : 'none yet — it applies when the cluster is built'}.`);
           break;
         }
         case 'plasticity_mode_ack': {
