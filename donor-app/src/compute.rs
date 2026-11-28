@@ -2385,6 +2385,69 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
         println!("  predictive-error parity OK — the card reproduced the server's rule exactly.");
     }
 
+    // ── ERROR-DRIVEN PLASTICITY PARITY — `error_bound` writes weights, so the
+    // card must reproduce the host rule (SparseMatrix.errorUpdate) exactly.
+    // An 8-cell cluster with cells {0,1,2} lit is both the input and the
+    // teaching pattern. The rows cover every branch:
+    //   row 0  should fire, active sum 0.2  (< 0.75) → +eta on cols 1,2 ; col 5 untouched
+    //   row 1  should fire, active sum 1.0  (≥ 0.75) → unchanged
+    //   row 2  should fire, active sum 0.3           → +eta on col 0
+    //   row 3  should rest, active sum 0.9  (> 0.25) → −eta on cols 0,1 ; col 6 untouched
+    //   row 4  should rest, active sum 0.1  (≤ 0.25) → unchanged
+    //   rows 5–7 have no wires
+    macro_rules! error_parity {
+        ($eng:expr, $label:expr) => {{
+            let mut regions = HashMap::new();
+            regions.insert("all".to_string(), (0u32, 8u32));
+            $eng.init_cluster("errcluster", 8, &regions, 0.0, 0.0);
+            $eng.write_spike_slice("errcluster", "all", &[0, 1, 2])?;
+            let row_ptr = [0u32, 3, 5, 6, 9, 11, 11, 11, 11];
+            let values = [0.1f32, 0.1, 0.7, 0.5, 0.5, 0.3, 0.5, 0.4, 0.9, 0.1, 0.9];
+            let col_idx = [1u32, 2, 5, 0, 2, 0, 0, 1, 6, 2, 7];
+            let binding = crate::frames::Binding {
+                src_cluster: "errcluster".to_string(), dst_cluster: "errcluster".to_string(),
+                src_start: 0, src_end: 8, dst_start: 0, dst_end: 8,
+            };
+            $eng.upload_sparse("errmat", 8, 8, &row_ptr, &values, &col_idx, Some(binding));
+            let (eta, theta, margin) = (0.05f32, 0.5f32, 0.25f32);
+            let lit = [1u32, 1, 1, 0, 0, 0, 0, 0];
+            // the host rule
+            let mut want = values;
+            for i in 0..8usize {
+                let (s, e) = (row_ptr[i] as usize, row_ptr[i + 1] as usize);
+                let mut sum = 0.0f32;
+                for k in s..e { if lit[col_idx[k] as usize] != 0 { sum += values[k]; } }
+                let d = if lit[i] != 0 { if sum < theta + margin { eta } else { 0.0 } } else if sum > theta - margin { -eta } else { 0.0 };
+                if d == 0.0 { continue; }
+                for k in s..e { if lit[col_idx[k] as usize] != 0 { want[k] = (want[k] + d).clamp(-2.0, 2.0); } }
+            }
+            let carried = $eng.error_bound("errmat", eta, theta, margin)?;
+            if !carried { return Err(format!("error_bound refused a properly bound matrix ({})", $label)); }
+            // read every stored weight back through propagate, one input cell at a time
+            for pre in 0u32..8 {
+                let got = $eng.propagate("errmat", &[pre])?;
+                let mut exp = [0.0f32; 8];
+                for i in 0..8usize {
+                    let (s, e) = (row_ptr[i] as usize, row_ptr[i + 1] as usize);
+                    for k in s..e { if col_idx[k] == pre { exp[i] += want[k]; } }
+                }
+                let bad = got.len() != 8 || got.iter().zip(exp.iter()).any(|(a, b)| (a - b).abs() > 1e-5);
+                if bad { return Err(format!("error-plasticity parity MISMATCH ({}) for input cell {pre}: card={got:?} host={exp:?}", $label)); }
+            }
+            let changed = want.iter().zip(values.iter()).filter(|(a, b)| a != b).count();
+            println!("  {} — all 11 weights match the host rule ({} changed, {} left alone)", $label, changed, 11 - changed);
+        }};
+    }
+    println!("self-test: error-driven plasticity parity...");
+    error_parity!(eng, "wgpu");
+    #[cfg(feature = "cuda")]
+    {
+        match crate::cuda::CudaEngine::new(gpu_index) {
+            Err(e) => println!("  CUDA skipped — no CUDA engine here ({e})"),
+            Ok(mut ce) => { error_parity!(ce, "cuda"); }
+        }
+    }
+
     // ── v0.3.51 — the batched lesson write must leave exactly the spikes the
     // one-at-a-time write leaves (CUDA, which is where it differs).
     #[cfg(feature = "cuda")]
