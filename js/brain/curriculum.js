@@ -15630,76 +15630,57 @@ export class Curriculum {
   }
 
   /**
-   * WHAT GOES WITH WHAT — the lesson. For a sentence, each of its words in turn
-   * is the one to bring up: the meanings of the OTHER words are lit in `sem`,
-   * and the wiring inside `sem` learns (only where a cell is wrong) that this
-   * word's own cells fire for them. After it, holding the rest of a sentence
-   * in mind brings its missing word to mind — which is what understanding a
-   * sentence with a gap in it is, and what the comprehension gate asks.
-   * Needs the word-cell code and an error-driven inside wiring; returns the
-   * number of words taught (0 without them).
-   * `opts.only` — teach just these words of the sentence as the one to bring up.
+   * THE WORD THAT GOES IN THE GAP — the lesson. A sentence with one word left
+   * out is put to her as something said to her, and she is taught to say the
+   * missing word. Every word of the sentence takes its turn as the gap. It
+   * uses the path she answers anything by (the speaking state and the wiring
+   * she speaks from), so what it teaches reaches a differently ordered
+   * prompt too. Measured on 300 of her own sentences: the gap as taught 99.5 %
+   * right; the same words reversed 93.8 %.
+   * ⚠ RE-PRICE: (words in the sentence) speech teaches a sentence a pass.
+   * Returns the number of gaps taught.
    */
-  async _teachWhatGoesWith(words, opts = {}) {
+  async _teachFillTheGap(sentence) {   // async: every `_teach…` method is timed through an awaiting wrapper
     const cluster = this.cluster;
-    const sem = cluster && cluster.regions && cluster.regions.sem;
-    if (!sem || cluster.wordCellCode !== true || !cluster.synapses || !cluster.synapses.errorDriven) return 0;
-    const list = (Array.isArray(words) ? words : String(words || '').split(/\s+/))
+    const words = (Array.isArray(sentence) ? sentence : String(sentence || '').split(/\s+/))
       .map((w) => String(w || '').toLowerCase().replace(/[^a-z']/g, '')).filter(Boolean);
-    const uniq = [...new Set(list)].filter((w) => this._wordCells(w, sem).length > 0);
-    if (uniq.length < 2) return 0;
-    const only = Array.isArray(opts.only) ? new Set(opts.only.map((w) => String(w).toLowerCase())) : null;
-    const size = cluster.size;
-    if (!this._goesWithPre || this._goesWithPre.length !== size) { this._goesWithPre = new Float32Array(size); this._goesWithPost = new Float32Array(size); }
-    const pre = this._goesWithPre, post = this._goesWithPost;
+    if (words.length < 3 || !cluster || typeof cluster.speechReadout !== 'function') return 0;
+    const keepU = cluster._speechUnits, keepC = cluster._speechCtx, keepM = cluster._mindFeats;
     let taught = 0;
-    for (const target of uniq) {
-      if (only && !only.has(target)) continue;
-      const tc = this._wordCells(target, sem);
-      const lit = [];
-      for (const w of uniq) { if (w === target) continue; const c = this._wordCells(w, sem); for (let i = 0; i < c.length; i++) { const k = sem.start + c[i]; if (!pre[k]) { pre[k] = 1; lit.push(k); } } }
-      for (let i = 0; i < tc.length; i++) post[sem.start + tc[i]] = 1;
-      try { await cluster.intraSynapsesHebbian(pre, post, cluster.learningRate); taught++; }
-      finally { for (const k of lit) pre[k] = 0; for (let i = 0; i < tc.length; i++) post[sem.start + tc[i]] = 0; }
+    for (let i = 0; i < words.length; i++) {
+      const rest = words.filter((_, j) => j !== i).join(' ');
+      if (!this._writeSpeechState(rest, [], { unitsOnly: true, noTemplate: true })) continue;
+      if (this._speechTeach(words[i])) taught++;
     }
+    cluster.setSpeechUnits(keepU); cluster._speechCtx = keepC; cluster._mindFeats = keepM;
     return taught;
   }
 
   /**
-   * COMPREHEND — with these words in mind, does `answer` come to mind? The
-   * words' meanings are lit in `sem` and sent through the wiring inside it.
-   * `answer` comes to mind when at least half of its own cells are driven past
-   * threshold AND no word outside the prompt is driven as fully. Returns
-   * { got, own, rival, rivalWord }; `reason` when it cannot run.
-   * `among` — the words to compare against (default: every word she has a slot for).
+   * COMPREHEND — given these words, is `answer` the word she says? The words
+   * are put to her as something said to her and the first word she would say
+   * is read the way a spoken word is read (her lit speech cells, how she
+   * feels, the floor she speaks above). Returns { got, said } — `said` is the
+   * word she would say, or null for nothing.
    */
-  _bringsToMind(promptWords, answer, among = null) {
+  _fillsTheGap(promptWords, answer) {
     const cluster = this.cluster;
-    const sem = cluster && cluster.regions && cluster.regions.sem;
-    const S = cluster && cluster.synapses;
-    if (!sem || !S) return { got: false, own: 0, rival: 0, rivalWord: null, reason: 'no meaning region' };
-    if (cluster.wordCellCode !== true) return { got: false, own: 0, rival: 0, rivalWord: null, reason: 'words have no cells of their own in this build' };
-    const clean = (w) => String(w || '').toLowerCase().replace(/[^a-z']/g, '');
-    const prompt = [...new Set((Array.isArray(promptWords) ? promptWords : String(promptWords || '').split(/\s+/)).map(clean).filter(Boolean))];
-    const ans = clean(answer);
-    const lit = new Set();
-    for (const w of prompt) { const c = this._wordCells(w, sem); for (let i = 0; i < c.length; i++) lit.add(sem.start + c[i]); }
-    if (!lit.size || !ans) return { got: false, own: 0, rival: 0, rivalWord: null, reason: 'nothing in mind' };
-    // input each sem cell receives from the lit cells, through the inside wiring
-    const n = sem.end - sem.start; const out = new Float32Array(n);
-    const { rowPtr, colIdx, values } = S;
-    if (!this._bringMark || this._bringMark.length !== cluster.size) this._bringMark = new Uint8Array(cluster.size);
-    const mark = this._bringMark; for (const k of lit) mark[k] = 1;
-    for (let r = 0; r < n; r++) { let s = 0; for (let k = rowPtr[sem.start + r]; k < rowPtr[sem.start + r + 1]; k++) if (mark[colIdx[k]]) s += values[k]; out[r] = s; }
-    for (const k of lit) mark[k] = 0;
-    const theta = (S.errorDriven && typeof S.errorDriven.theta === 'number') ? S.errorDriven.theta : 0.5;
-    const driven = (w) => { const c = this._wordCells(w, sem); if (!c.length) return 0; let k = 0; for (let i = 0; i < c.length; i++) if (out[c[i]] >= theta) k++; return k / c.length; };
-    const own = driven(ans);
-    const inPrompt = new Set(prompt);
-    const list = Array.isArray(among) ? among : (Array.isArray(cluster.wordBucketWords) ? cluster.wordBucketWords : []);
-    let rival = 0, rivalWord = null;
-    for (const cand of list) { if (!cand || cand === ans || inPrompt.has(cand)) continue; const d = driven(cand); if (d > rival) { rival = d; rivalWord = cand; } }
-    return { got: own >= 0.5 && own > rival, own, rival, rivalWord };
+    const prompt = (Array.isArray(promptWords) ? promptWords : String(promptWords || '').split(/\s+/))
+      .map((w) => String(w || '').toLowerCase().replace(/[^a-z0-9']/g, '')).filter(Boolean);
+    const ans = String(answer || '').toLowerCase().replace(/[^a-z0-9']/g, '');
+    this._ensureWordBucketMap(this._currentGateSubject);
+    const list = cluster && cluster.wordBucketWords;
+    const n = Array.isArray(list) ? list.length : 0;
+    if (!prompt.length || !ans || !n || typeof cluster.speechStateFor !== 'function') return { got: false, said: null };
+    const rd = cluster.speechReadout();
+    const units = cluster.speechStateFor(rd.stateUnits(prompt.join(' '), []));
+    if (!units || !units.length) return { got: false, said: null };
+    const m = rd.bucketMeans(units, n);
+    let best = 0, bi = -1;
+    for (let b = 0; b < n; b++) if (m[b] > best) { best = m[b]; bi = b; }
+    const floor = typeof cluster.speechFloor === 'function' ? cluster.speechFloor() : 0.04;
+    const said = (bi >= 0 && best >= floor && !(m.end > 0 && m.end >= best)) ? list[bi] : null;
+    return { got: said === ans, said };
   }
 
   /** READ, for a line: does she read every word of it? (False for an empty line.) */
@@ -30340,6 +30321,20 @@ export class Curriculum {
       }
     } catch { /* frame never blocks the sentence teach */ }
 
+    // THE WORD THAT GOES IN THE GAP — taught on these same sentences before
+    // they are asked about (`_teachFillTheGap`): every word of every sentence
+    // as the missing one. The gate below then leaves out a word at random.
+    // ⚠ RE-PRICE: Σ(words in a sentence) speech teaches a pass — measured
+    // 0.18 ms a teach at 751 words, so 1,000 sentences of 7 words ≈ 1.3 s.
+    try {
+      let _gaps = 0; const _gT = Date.now(); let _slice = Date.now();
+      for (const sentence of sentences) {
+        _gaps += await this._teachFillTheGap(sentence);
+        if (Date.now() - _slice > 30) { await _microtask(); _slice = Date.now(); }
+      }
+      this._hb(`[Curriculum] FILL-THE-GAP — ${_gaps} gaps taught over ${sentences.length} sentence(s) in ${((Date.now() - _gT) / 1000).toFixed(1)}s`);
+    } catch (e) { console.warn(`[Curriculum] fill-the-gap lesson failed: ${e && e.message ? e.message : e}`); }
+
     // REAL HUMAN-GRADE GATE for sentences.
     // Fill-in-blank: given context words, find the missing word.
     // NOT identical to training — tests the SAME sentences but asks
@@ -35882,11 +35877,13 @@ export class Curriculum {
 // ═══════════════════════════════════════════════════════════════════
 
   /**
-   * Comprehension gate — tests if Unity UNDERSTANDS associations.
-   * Given a prompt (sequence of words), checks if the sem readout
-   * after processing the prompt is closest to the expected answer's
-   * GloVe embedding. Like testing "what is 2+3?" and checking if
-   * Unity's semantic state is near "five".
+   * Comprehension gate — given some words, does she give the word that goes
+   * with them? Each question is put to her as something said to her and
+   * passes when the word she says is the answer (`_fillsTheGap`). It asks
+   * what the fill-the-gap lesson teaches (`_teachFillTheGap`), through the
+   * path every answer of hers takes; a question about a sentence she was
+   * never given is answered right far less often, and that is the point of
+   * asking.
    *
    * @param {Array<{prompt: string[], answer: string}>} questions
    *   Each question has a prompt (words to inject) and expected answer.
@@ -35894,38 +35891,7 @@ export class Curriculum {
    */
   async _gateComprehension(questions) {
     const cluster = this.cluster;
-    const allProjs = cluster.crossProjections || {};
-    const letterRegion = cluster.regions?.letter;
-    const semRegion = cluster.regions?.sem;
-    if (!letterRegion || !semRegion) return { pass: false, reason: 'missing regions' };
-
-    const letterSize = letterRegion.end - letterRegion.start;
-    const semSize = semRegion.end - semRegion.start;
-    const invSize = inventorySize();
-    const letterToSem = allProjs['letter_to_sem'];
-    if (!letterToSem) return { pass: false, reason: 'no letter_to_sem projection' };
-
-    function cosine(a, b) {
-      let dot = 0, na = 0, nb = 0;
-      const L = Math.min(a.length, b.length);
-      for (let i = 0; i < L; i++) { dot += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
-      const d = Math.sqrt(na) * Math.sqrt(nb);
-      return d > 0 ? dot / d : 0;
-    }
-
-    function buildLetterPattern(letter) {
-      const oneHot = encodeLetter(letter);
-      const pat = new Float64Array(letterSize);
-      const gSize = Math.max(1, Math.floor(letterSize / oneHot.length));
-      for (let d = 0; d < oneHot.length; d++) {
-        if (oneHot[d] <= 0) continue;
-        for (let n = 0; n < gSize; n++) {
-          const idx = d * gSize + n;
-          if (idx < letterSize) pat[idx] = 1.0;
-        }
-      }
-      return pat;
-    }
+    if (!cluster || typeof cluster.speechReadout !== 'function') return { pass: false, reason: 'no way to answer in this build' };
 
     // Sample up to 10 questions
     const sample = [];
@@ -35938,99 +35904,17 @@ export class Curriculum {
 
     let comprehendPass = 0;
     const fails = [];
-    const SEM_DIM = 300;
     const PATH_MIN = GATE_PATH_MIN;
 
     let _qi = 0;
     for (const { prompt, answer } of sample) {
       this._probeMark('comprehension', ++_qi, sample.length);
-      // Build accumulated sem state from the prompt words.
-      // For each word in the prompt, get its first letter, propagate
-      // through letter→sem, accumulate the sem readouts. This simulates
-      // "reading" the prompt through the trained cross-projections.
-      const accumSem = new Float64Array(SEM_DIM);
-      // Seed Crystal gate credit — the same readout split at the sem midpoint.
-      const accumL = new Float64Array(SEM_DIM), accumR = new Float64Array(SEM_DIM);
-      let wordCount = 0;
-      // ⛔ EVERY LETTER OF EVERY WORD. This probe read only the FIRST letter of
-      // each prompt word for its whole life, so "cat sat" and "car sun" were
-      // the same probe and every grade's comprehension gate measured the
-      // letter→meaning projection's pull toward the answer, not the sentence.
-      // Now each letter propagates through letter_to_sem and the word's readout
-      // is the mean over its letters (a bag of letters — still position-free,
-      // but no longer blind past the initial). `DREAM_GATE_READ=initial`
-      // restores the old probe for an A/B. RE-PRICE: ×len(word) propagates per
-      // word on the probe lane only; the walk's consolidation gate is untouched.
-      const _readInitialOnly = (typeof process !== 'undefined' && process.env && process.env.DREAM_GATE_READ === 'initial');
-      for (const word of prompt) {
-        const clean = word.replace(/[^a-z0-9]/g, '');
-        if (!clean) continue;
-        const letters = _readInitialOnly ? [clean[0]] : clean.split('');
-        const wordSem = new Float64Array(SEM_DIM);
-        const wordL = new Float64Array(SEM_DIM), wordR = new Float64Array(SEM_DIM);
-        let letterCount = 0;
-        for (const letter of letters) {
-          const letterPat = buildLetterPattern(letter);
-          const semOutput = await this._probePropagate('letter_to_sem', letterPat);
-          const sGSize = Math.max(1, Math.floor(semSize / SEM_DIM));
-          const semMid = Math.floor(semSize / 2);
-          for (let d = 0; d < SEM_DIM; d++) {
-            let sum = 0, sumL = 0, sumR = 0;
-            for (let n = 0; n < sGSize; n++) {
-              const idx = d * sGSize + n;
-              if (idx < semOutput.length) {
-                sum += semOutput[idx];
-                if (idx < semMid) sumL += semOutput[idx]; else sumR += semOutput[idx];
-              }
-            }
-            wordSem[d] += sum / sGSize;
-            wordL[d] += sumL / sGSize; wordR[d] += sumR / sGSize;
-          }
-          letterCount++;
-        }
-        if (letterCount === 0) continue;
-        for (let d = 0; d < SEM_DIM; d++) {
-          accumSem[d] += wordSem[d] / letterCount;
-          accumL[d] += wordL[d] / letterCount; accumR[d] += wordR[d] / letterCount;
-        }
-        wordCount++;
-      }
-      if (wordCount === 0) continue;
-
-      // Average and normalize
-      for (let i = 0; i < SEM_DIM; i++) accumSem[i] /= wordCount;
-      let mean = 0;
-      for (let i = 0; i < SEM_DIM; i++) mean += accumSem[i];
-      mean /= SEM_DIM;
-      for (let i = 0; i < SEM_DIM; i++) accumSem[i] -= mean;
-      let norm = 0;
-      for (let i = 0; i < SEM_DIM; i++) norm += accumSem[i] * accumSem[i];
-      norm = Math.sqrt(norm) || 1;
-      for (let i = 0; i < SEM_DIM; i++) accumSem[i] /= norm;
-
-      // Check if the accumulated sem state is closest to the answer's GloVe
-      const answerEmb = sharedEmbeddings.getEmbedding(answer);
-      if (!answerEmb) continue;
-      // 0.10 is derived, not tuned: a mean-centred 300-d readout against a unit
-      // vector has chance cosine ~N(0, 1/√300 = 0.058), so 0.10 is 1.7σ above
-      // chance; with the 80% gate over ≤10 questions the chance pass is ~1e-8.
-      const score = cosine(accumSem, answerEmb);
-      const passed = score > 0.10;
-      if (passed) {
-        comprehendPass++;
-      } else {
-        fails.push(`${prompt.join(' ')} → ${answer} (cos=${score.toFixed(3)})`);
-      }
-      // Seed Crystal — credit the side whose half of the readout was nearer.
-      try {
-        const brain = this.brain || this._brain || (cluster && cluster._brain) || null;
-        const host = (brain && typeof brain._crystalGateCredit === 'function') ? brain
-          : (typeof globalThis.__unityBrain === 'object' && typeof globalThis.__unityBrain._crystalGateCredit === 'function') ? globalThis.__unityBrain : null;
-        if (host) {
-          const centre = (v) => { let m = 0; for (let i = 0; i < v.length; i++) m += v[i]; m /= v.length; const o = new Float64Array(v.length); for (let i = 0; i < v.length; i++) o[i] = v[i] - m; return o; };
-          host._crystalGateCredit(cosine(centre(accumL), answerEmb), cosine(centre(accumR), answerEmb), passed);
-        }
-      } catch { /* credit is optional; the gate's own verdict is unaffected */ }
+      // The prompt is put to her as something said to her; she comprehends it
+      // when the word she says is the answer (`_fillsTheGap` — the same read a
+      // spoken word takes). Nothing said, or another word, is a miss.
+      const r = this._fillsTheGap(prompt, answer);
+      if (r.got) comprehendPass++;
+      else fails.push(`${prompt.join(' ')} → ${answer} (said ${r.said === null ? 'nothing' : '"' + r.said + '"'})`);
     }
 
     const N = sample.length;

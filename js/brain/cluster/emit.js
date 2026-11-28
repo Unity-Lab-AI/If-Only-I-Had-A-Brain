@@ -104,6 +104,9 @@ export const CLUSTER_EMIT_MIXIN = {
     return live.length ? base.concat(live) : base;
   },
 
+  /** How much of what a lesson gives must be present before she says a first word (see SPEECH_FLOOR). */
+  speechFloor() { return SPEECH_FLOOR; },
+
   /**
    * Put the speaking state in mind. Every writer of the state calls this. In
    * a cortex built with a cell for every unit, the units are LIT in her spike
