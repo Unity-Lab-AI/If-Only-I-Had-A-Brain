@@ -3101,6 +3101,9 @@ export class Curriculum {
     // full GloVe patterns + correct spellings — using it as a lookup
     // bypasses sem_to_motor basin collapse for gate-probe emissions.
     if (cluster && dictionary) cluster.dictionary = dictionary;
+    // A cortex built with one code for a word (her language cortex is, by its
+    // own default) is taught with that code from the first lesson.
+    if (cluster && cluster.wordCellCode === true) this.setWordCellCode(true);
     // Telemetry — callers can read post-run to see what the curriculum
     // actually exposed the brain to.
     this.stats = {

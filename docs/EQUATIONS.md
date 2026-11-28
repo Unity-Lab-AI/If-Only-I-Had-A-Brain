@@ -125,6 +125,20 @@ Her neurons are **Rulkov maps** — a fast variable `x` (the spike) riding a slo
 | `σ = −1 + 1.5 · clamp(drive / 40, 0, 1)` | drive is the only door into the map |
 | `spike = [ x(n) ≤ 0 < x(n+1) ]` | a spike is `x` crossing zero upward |
 
+### Wiring — a cell hears the cells that just fired
+
+In her language cortex a cell is not driven by drive alone. Every step, each cell receives the summed weight of its wires from cells that fired the step before, and that sum goes straight into the fast variable — so a cell whose inputs just fired can cross on this very step:
+
+| Equation | What it means |
+|---|---|
+| `S_i = Σ_j W_ij · spike_j(n)` | what cell `i` hears: its wires from every cell that just fired, across every pathway into it and the wiring inside its region |
+| `x(n+1) = α / (1 + x(n)²) + y(n) + g · S_i` | the wiring's input enters the fast variable, `g = 5` |
+| `σ = −1 − r + 1.5 · clamp(drive / 40, 0, 1)` | `r = 1.75` — her cortex cells rest below the point where the map fires on its own |
+
+**Why rest lower:** at `σ = −1` the map never sits still — a cell fires on its own, wiring or no wiring. Lowered by 1.75, a cell with no input is silent, and how much of her cortex fires is the result of what she is doing instead of a number held from outside.
+
+**Measured** on the card's self-test with the terms below switched on, twenty taught pattern pairs of 54 cells: one step after a source pattern is lit, **54.0 of 54** taught target cells fire and **0.7 of the other 1,946**. With the wiring's input switched off: 0.0 and 0.2. At `g = 3` only 2.5 of the 54 fire.
+
 ### Refractoriness — a cell that just fired has to recover
 
 `β = 0.016`. Every spike pushes `y` down, so the next crossing comes later — and the more a cell fires, the harder it's pushed. A quiet neuron is untouched; a bursting one is throttled.
@@ -164,6 +178,23 @@ Every neuron has a twin in the other hemisphere. Their noise is drawn together:
 
 Oja's decay term is the whole trick: without it, every association piles into the same few cells and her memories blur into one.
 
+### Only when wrong — how her language cortex learns
+
+Every pathway of her language cortex, and the wiring inside it, learns by a different rule: a wire changes only when its cell is wrong, and by exactly as much as closes the gap.
+
+| Equation | What it means |
+|---|---|
+| `s = Σ W_ij` over the cell's lit inputs, `k` = how many are lit | what the cell receives from the pattern in front of it |
+| should fire and `s < θ + m` → each lit wire `+= η · (θ + m − s) / k` | short of firing: the lit wires share out what is missing |
+| should rest and `s > θ − m` → each lit wire `+= η · (θ − m − s) / k` | too close to firing: the lit wires share out the excess |
+| otherwise | nothing changes |
+
+`θ = 0.5` is the cell's firing threshold on the pathway, `m = 0.25` the safety margin either side, `η = 1` (the whole gap in one step). A cell with no lit input is skipped. Weights are held within ±2.
+
+**Wiring to match:** a cell can only be taught to fire if enough of its wires come from lit cells. With 300 wires a cell and 2.7 % of a region lit by one word, a cell has about 8 lit inputs — measured at her production size, **95.8–100 %** of taught cells pass threshold on every pathway and **99.9 %** inside each region, against 2 % at the 30 wires she had before.
+
+**Starting from nearly nothing:** wires that learn this way start at 0.003–0.015. Because every cell hears every cell that fires (§3), wiring that started larger set 85 % of a cluster firing from one lit pattern; started this small, only the taught cells fire.
+
 ### Learning a pair — right answer and wrong answer
 
 Every association she learns is taught twice:
@@ -201,6 +232,8 @@ A brain that fires too little thinks nothing; too much and it's a seizure. Her t
 | `scale ← clamp(scale · (1 + 0.15 · err), 0.01, 2.5)` | nudge every cluster's drive up or down |
 
 Measured with refractoriness in place: firing **7.59%** against 7.5%, drive scale 0.935 — comfortably inside its range.
+
+**Her language cortex is not held this way.** Its cells rest silent and fire from their wiring (§3), so the controller leaves its drive alone. What keeps it in range is the wiring itself: over 400 steps with every pathway and the inside wiring delivering and a taught pattern lit every 50th step, the share of cells firing ran **0.00 / 0.06 / 1.35 %** (lowest / average / highest) — the highest is exactly the taught cells. Every other cluster is still held by the controller above.
 
 ---
 

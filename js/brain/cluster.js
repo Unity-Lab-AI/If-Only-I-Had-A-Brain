@@ -29,6 +29,20 @@ import { LIFPopulation } from './neurons.js';
 import { SparseMatrix } from './sparse-matrix.js';
 import { SPEECH_LAYOUT } from './speech-readout.js';
 
+// The build of her language cortex (see the constructor). Measured at her
+// production size: taught cells past threshold 95.8–100 % on every pathway and
+// 99.9 % inside each region; naming 900/900; reading 200/200.
+const CORTEX_BUILD = Object.freeze({
+  targetFanout: 300,
+  crossTargetFanout: 300,
+  betweenClusterDensityScale: 1,
+  crossDensityCap: 1,
+  regionWiring: true,
+  errorDrivenProjections: true,
+  errorDrivenIntra: true,
+  speechUnitCells: true,
+});
+
 // Shared zero-length pre-spike payload for CLUSTER-BOUND matrices. The donor
 // reads those matrices' pre-spikes from its own resident cluster buffer and
 // DISCARDS anything sent on the wire, so the payload is dead weight. One frozen
@@ -324,6 +338,19 @@ export class NeuronCluster {
   constructor(name, size, opts = {}) {
     this.name = name;
     this.size = size;
+    // HER LANGUAGE CORTEX IS BUILT ONE WAY. A cluster named 'cortex' large
+    // enough to hold the cell-per-unit speaking state gets the build her
+    // lessons, reading and speech were measured on, without a caller having to
+    // ask for it: 300 wires a cell inside and on every pathway at full fan-out,
+    // inside wires drawn from a cell's own region, every wire changed only
+    // where a cell is wrong, a cell for every unit of the speaking state, and
+    // one code for a word in every lesson. An explicit option still wins (the
+    // measuring instruments thin the inside wiring to build quickly). Smaller
+    // cortexes (the in-page stand-in) and every other cluster are untouched.
+    if (name === 'cortex' && size - SPEECH_LAYOUT.G >= 10000) {
+      opts = { ...CORTEX_BUILD, ...opts };
+      if (this.wordCellCode === undefined) this.wordCellCode = true;
+    }
 
     // T17.3.d — GPU proxy for cross-region operations. When present,
     // `_propagateCrossRegions` and `_crossRegionHebbian` dispatch to
