@@ -61795,4 +61795,22 @@ Six rows of this section are still open (.1, .2, .3, .6, .8, .9) and two were fi
 - **Commits:** `ea382bfb`, `199a7a11`, `21f5309b`.
 - **Docs in the same commit:** `docs/` — TODO (the row + WHOLEBRAIN.12), this ledger · `wiki/` — curriculum, language-emission, instruments-that-lie + log (local) · owed under WHOLEBRAIN.8 as listed in the entry above.
 
+## 2026-11-27 (late night, third entry) — WHOLEBRAIN.13 FILED AND CLOSED THE SAME NIGHT: FIVE LETTERS HAD NO SOUND OF THEIR OWN
+
+- **The row, as filed (verbatim):** **WHOLEBRAIN.13 — five of her letters have no sound of their own.** Filed 2026-11-27 out of WHOLEBRAIN.3. The sound pattern a letter lesson writes (`_phonemeFeatureForLetter`, 24 features, 4 lit) is the same for **a and i**, for **l and r**, and for **c, k, q and x** — 21 patterns for 26 letters. So sound → letter can name at most 21, and measured it ranks 16 of 26 right with 1.1 % of other letter cells past threshold (letter → sound: 99.9 % of taught cells fire). c / k / q sharing a sound is true to English; a = i and l = r are not. **Closes on:** every letter that has its own sound in English gets its own pattern, and sound → letter is measured again.
+- **How it was found:** checking each pathway for taught cells that actually fire, the letter ↔ sound pathways scored 58 % and 91 %. Two causes. They were wired by position as though a letter's place lined up with its sound's place — it does not (26 letter blocks against 24 sound features), so that pathway is now wired evenly (`cluster.js`, `TOPOGRAPHIC_PAIRS` = letter ↔ motor only). And the sound code itself gave two pairs of different letters one pattern.
+- **The fix:** short a (cat) and short i (sit) are both front and unrounded and differ in how high the tongue is — a low, i high; l differs from r in being lateral (the air goes round the sides of the tongue). Three of the reserved features now say so (`curriculum.js`: `height` on a and i, `lateral` on l; features 19, 20, 21).
+- **Measured** (`.scratch/threshold-check.mjs letters:…`, the letter lessons' own patterns, 300 wires):
+
+  | | before | after |
+  |---|---|---|
+  | distinct sound patterns for 26 letters | 21 | **23** (c / k / q / x share one, as in English) |
+  | letter → sound: taught cells past threshold / other cells | 58.5 % / 0 % | **100.0 % / 0.000 %** |
+  | sound → letter: letters ranked right, 4 visits | 13 of 26 | 18 of 26 |
+  | sound → letter: letters ranked right, 16 visits | — | **23 of 26 — the most possible** |
+  | letter → motor (unchanged, wired by position because it IS aligned) | 100 %, 26 of 26 | 100 %, 26 of 26 |
+
+- **Commits:** `41a5febe` (the wiring), `b71f160b` (the sounds).
+- **Docs in the same commit:** `docs/` — TODO, this ledger · `wiki/` — cortex-cluster, curriculum + log (local) · owed under WHOLEBRAIN.8 as listed above.
+
 
