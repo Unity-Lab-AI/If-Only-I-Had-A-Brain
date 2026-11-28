@@ -491,9 +491,13 @@ export class SpeechReadout {
    *  with the end-of-line mean alongside as `.end`. */
   bucketMeans(units, nWords) {
     const s = this.scores(units, nWords); const out = new Float32Array(nWords);
-    if (this.path) {   // already a mean per word cell
-      const m = Math.min(nWords, this._n); for (let b = 0; b < m; b++) out[b] = s[b];
-      out.end = this._end; this.stats.says++;
+    if (this.path) {
+      // ONE SCALE FOR BOTH STORES: a word that leads by exactly what one lesson
+      // gives reads MARGIN here, as it does from the table (0.1 per active
+      // unit), so the floor she speaks above means the same thing either way.
+      const k = MARGIN / (this._cellMargin(this._cells) || 1);
+      const m = Math.min(nWords, this._n); for (let b = 0; b < m; b++) out[b] = s[b] * k;
+      out.end = this._end * k; this.stats.says++;
       return out;
     }
     const d = Math.max(1, units.length);

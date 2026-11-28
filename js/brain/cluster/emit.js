@@ -79,7 +79,13 @@ const SPEECH_FLOOR = 0.04;
 export const CLUSTER_EMIT_MIXIN = {
   /** The one speech readout of this cluster (made on first use, saved with her weights). */
   speechReadout() {
-    return this._speechReadout || (this._speechReadout = new SpeechReadout(sharedEmbeddings));
+    if (this._speechReadout) return this._speechReadout;
+    const rd = this._speechReadout = new SpeechReadout(sharedEmbeddings);
+    // A cluster built with speaking-state cells keeps what she says in the
+    // pathway from those cells onto her word cells; the readout then only
+    // works out which cells a moment lights and runs the lessons.
+    if (this.speechPathway) rd.attachPathway(this.speechPathway, { cellSize: this.wordBucketCellSizeFor() });
+    return rd;
   },
 
   /**
@@ -118,9 +124,10 @@ export const CLUSTER_EMIT_MIXIN = {
     if (!units.length) return false;
     const live = this.feelingUnits();
     const all = live.length ? units.concat(live) : units;
-    const s = rd.scores(all, n);
+    // `bucketMeans` is on the scale the floor is stated in, whichever store holds what she says.
+    const s = rd.bucketMeans(all, n);
     let best = 0; for (let b = 0; b < n; b++) if (s[b] > best) best = s[b];
-    return best / all.length >= SPEECH_FLOOR;
+    return best >= SPEECH_FLOOR;
   },
 
   /** How she feels right now, as speaking-state units (empty when no mood is known). */
